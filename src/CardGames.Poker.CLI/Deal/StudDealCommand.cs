@@ -28,7 +28,7 @@ internal class StudDealCommand : Command<DealSettings>
             return 1;
         }
 
-        var playerNames = GetPlayerNames(numberOfPlayers);
+        var playerNames = DealUtilities.GetPlayerNames(numberOfPlayers);
         DealStudHand(playerNames);
 
         while (AnsiConsole.Confirm("Deal another hand?"))
@@ -37,17 +37,6 @@ internal class StudDealCommand : Command<DealSettings>
         }
 
         return 0;
-    }
-
-    private static List<string> GetPlayerNames(int numberOfPlayers)
-    {
-        var names = new List<string>();
-        for (int i = 1; i <= numberOfPlayers; i++)
-        {
-            var name = AnsiConsole.Ask<string>($"Player {i} name: ");
-            names.Add(name);
-        }
-        return names;
     }
 
     private static void DealStudHand(List<string> playerNames)
@@ -112,7 +101,6 @@ internal class StudDealCommand : Command<DealSettings>
         Logger.Paragraph("Final Hands (all cards)");
         foreach (var name in playerNames)
         {
-            var allCards = playerHoleCards[name].Concat(playerBoardCards[name]).ToList();
             AnsiConsole.MarkupLine($"[cyan]{name}[/]: [yellow]{playerHoleCards[name].ToStringRepresentation()}[/] (hole) + [green]{playerBoardCards[name].ToStringRepresentation()}[/] (board)");
         }
     }
