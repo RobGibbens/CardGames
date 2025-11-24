@@ -18,7 +18,7 @@ public class FiveCardDrawSimulationResult
         Hands = hands;
     }
 
-    public IReadOnlyCollection<IDictionary<string, DrawHand>> Hands { get; }
+    public IReadOnlyCollection<IDictionary<string, DrawHand>> Hands { get; init; }
 
     public IEnumerable<string> GetPlayers => Hands.First().Keys;
 
