@@ -11,5 +11,6 @@ public enum HandType
     Flush,
     FullHouse,
     Quads,
-    StraightFlush
+    StraightFlush,
+    FiveOfAKind
 }

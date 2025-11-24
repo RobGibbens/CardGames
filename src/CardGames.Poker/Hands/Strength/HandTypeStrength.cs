@@ -27,6 +27,7 @@ public static class HandTypeStrength
             HandType.FullHouse => 6,
             HandType.Quads => 7,
             HandType.StraightFlush => 8,
+            HandType.FiveOfAKind => 9,
             _ => -1,
         };
 
@@ -42,6 +43,7 @@ public static class HandTypeStrength
             HandType.FullHouse => 5,
             HandType.Quads => 7,
             HandType.StraightFlush => 8,
+            HandType.FiveOfAKind => 9,
             _ => -1,
         };
 
