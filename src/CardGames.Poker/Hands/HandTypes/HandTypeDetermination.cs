@@ -16,6 +16,12 @@ public static class HandTypeDetermination
         }
 
         var numberOfDistinctValues = cards.DistinctValues().Count;
+        
+        if (numberOfDistinctValues == 1)
+        {
+            return HandType.FiveOfAKind;
+        }
+
         return numberOfDistinctValues == 5
             ? HandTypeOfDistinctValueHand(cards)
             : HandTypeOfDuplicateValueHand(cards, numberOfDistinctValues);

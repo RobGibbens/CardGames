@@ -18,6 +18,7 @@ public static class SerializationExtensions
             HandType.FullHouse => "Full House",
             HandType.Quads => "Quads",
             HandType.StraightFlush => "Straight Flush",
+            HandType.FiveOfAKind => "Five of a Kind",
             _ => "Incomplete Hand",
         };
 }
