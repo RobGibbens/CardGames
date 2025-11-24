@@ -15,7 +15,6 @@ public class BaseballWildCardRules
     {
         return hand
             .Where(c => c.Symbol == Symbol.Three || c.Symbol == Symbol.Nine)
-            .Distinct()
             .ToList();
     }
 }
