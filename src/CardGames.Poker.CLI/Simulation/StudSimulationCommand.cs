@@ -1,10 +1,11 @@
-﻿using Spectre.Console.Cli;
-using CardGames.Core.Extensions;
-using Spectre.Console;
+﻿using CardGames.Core.Extensions;
 using CardGames.Poker.CLI.Evaluation;
 using CardGames.Poker.CLI.Output;
-using CardGames.Poker.Simulations.Stud;
 using CardGames.Poker.Evaluation;
+using CardGames.Poker.Simulations.Stud;
+using Spectre.Console;
+using Spectre.Console.Cli;
+using System.Threading;
 
 namespace CardGames.Poker.CLI.Simulation;
 
@@ -12,8 +13,8 @@ internal class StudSimulationCommand : Command<SimulationSettings>
 {
     private static readonly SpectreLogger Logger = new();
 
-    public override int Execute(CommandContext context, SimulationSettings settings)
-    {
+	protected override int Execute(CommandContext context, SimulationSettings settings, CancellationToken cancellationToken)
+	{
         Logger.LogApplicationStart();
         var simulation = ConfigureSimulation();
 
