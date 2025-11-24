@@ -91,37 +91,40 @@ public class BaseballSimulation
                 var card = _dealer.DealCard();
                 dealtBoardCards.Add(card);
                 
-                // If a 4 is dealt face up, deal an extra card
-                if (card.Symbol == Symbol.Four)
-                {
-                    var extraCard = _dealer.DealCard();
-                    extraCards.Add(extraCard);
-                    
-                    // The extra card might also be a 4, granting another extra card
-                    while (extraCard.Symbol == Symbol.Four)
-                    {
-                        extraCard = _dealer.DealCard();
-                        extraCards.Add(extraCard);
-                    }
-                }
+                // If a 4 is dealt face up, deal extra cards
+                DealExtraCardsForFour(card, extraCards);
             }
             
-            // Also check given board cards for 4s that weren't yet dealt extra cards
-            var givenFours = player.GivenBoardCards.Count(c => c.Symbol == Symbol.Four);
-            for (int i = 0; i < givenFours; i++)
+            // Also deal extra cards for any given board cards that are 4s
+            foreach (var givenCard in player.GivenBoardCards.Where(c => c.Symbol == Symbol.Four))
             {
-                var extraCard = _dealer.DealCard();
-                extraCards.Add(extraCard);
-                
-                while (extraCard.Symbol == Symbol.Four)
-                {
-                    extraCard = _dealer.DealCard();
-                    extraCards.Add(extraCard);
-                }
+                DealExtraCardsForFour(givenCard, extraCards);
             }
             
             player.DealtBoardCards = dealtBoardCards;
             player.ExtraBoardCards = extraCards;
         });
+    }
+
+    /// <summary>
+    /// When a 4 is dealt face up, the player gets an extra card.
+    /// If that extra card is also a 4, they get another extra card, and so on.
+    /// </summary>
+    private void DealExtraCardsForFour(Card card, List<Card> extraCards)
+    {
+        if (card.Symbol != Symbol.Four)
+        {
+            return;
+        }
+        
+        var extraCard = _dealer.DealCard();
+        extraCards.Add(extraCard);
+        
+        // Chain: if the extra card is also a 4, deal another extra card
+        while (extraCard.Symbol == Symbol.Four)
+        {
+            extraCard = _dealer.DealCard();
+            extraCards.Add(extraCard);
+        }
     }
 }
