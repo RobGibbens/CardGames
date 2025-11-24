@@ -6,6 +6,7 @@ using Spectre.Console;
 using Spectre.Console.Cli;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using CardGames.Poker.Simulations.Omaha;
 using CardGames.Core.French.Cards;
 using CardGames.Poker.Evaluation;
@@ -21,19 +22,6 @@ internal class OmahaSimulationCommand : Command<SimulationSettings>
     private IReadOnlyCollection<Card> _flop = [];
     private Card _turn = default;
 
-    public override int Execute(CommandContext context, SimulationSettings settings)
-    {
-        Logger.LogApplicationStart();
-        do
-        {
-            CollectData(settings);
-            var simulation = CreateSimulation();
-            var results = RunSimulation(simulation);
-            EvaluateResults(results);
-        } while (AnsiConsole.Confirm("Do you want to run another simulation?"));
-
-        return 0;
-    }
 
     private OmahaSimulation CreateSimulation()
     {
@@ -105,4 +93,18 @@ internal class OmahaSimulationCommand : Command<SimulationSettings>
                     .ToArtefact()
             }
             .ForEach(Logger.LogArtefact);
+
+    protected override int Execute(CommandContext context, SimulationSettings settings, CancellationToken cancellationToken)
+    {
+	    Logger.LogApplicationStart();
+	    do
+	    {
+		    CollectData(settings);
+		    var simulation = CreateSimulation();
+		    var results = RunSimulation(simulation);
+		    EvaluateResults(results);
+	    } while (AnsiConsole.Confirm("Do you want to run another simulation?"));
+
+	    return 0;
+	}
 }

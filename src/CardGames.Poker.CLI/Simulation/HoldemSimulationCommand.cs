@@ -1,4 +1,5 @@
-﻿using CardGames.Core.Extensions;
+﻿using System.Threading;
+using CardGames.Core.Extensions;
 using CardGames.Poker.CLI.Evaluation;
 using CardGames.Poker.CLI.Output;
 using CardGames.Poker.Evaluation;
@@ -11,28 +12,6 @@ namespace CardGames.Poker.CLI.Simulation;
 internal class HoldemSimulationCommand : Command<SimulationSettings>
 {
     private static readonly SpectreLogger Logger = new();
-
-    public override int Execute(CommandContext context, SimulationSettings settings)
-    {
-        Logger.LogApplicationStart();
-
-        var simulation = CreateSimulation();
-        var numberOfHands = settings.NumberOfHands == default
-            ? AnsiConsole.Ask<int>("How many hands?")
-            : settings.NumberOfHands;
-
-        var result = AnsiConsole
-            .Status()
-            .Spinner(Spinner.Known.Arrow3)
-            .Start("Simulating ... ", ctx => simulation.SimulateWithFullDeck(numberOfHands));
-
-        AnsiConsole
-            .Status()
-            .Spinner(Spinner.Known.Arrow3)
-            .Start("Evaluating ... ", ctx => PrintResults(result));
-
-        return 0;
-    }
 
     private static HoldemSimulation CreateSimulation()
     {
@@ -79,4 +58,26 @@ internal class HoldemSimulationCommand : Command<SimulationSettings>
                     .ToArtefact()
             }
             .ForEach(Logger.LogArtefact);
+
+    protected override int Execute(CommandContext context, SimulationSettings settings, CancellationToken cancellationToken)
+    {
+	    Logger.LogApplicationStart();
+
+	    var simulation = CreateSimulation();
+	    var numberOfHands = settings.NumberOfHands == default
+		    ? AnsiConsole.Ask<int>("How many hands?")
+		    : settings.NumberOfHands;
+
+	    var result = AnsiConsole
+		    .Status()
+		    .Spinner(Spinner.Known.Arrow3)
+		    .Start("Simulating ... ", ctx => simulation.SimulateWithFullDeck(numberOfHands));
+
+	    AnsiConsole
+		    .Status()
+		    .Spinner(Spinner.Known.Arrow3)
+		    .Start("Evaluating ... ", ctx => PrintResults(result));
+
+	    return 0;
+	}
 }
