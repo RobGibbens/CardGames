@@ -1,0 +1,69 @@
+using CardGames.Core.French.Cards;
+using CardGames.Poker.Hands.HandTypes;
+using CardGames.Poker.Hands.Strength;
+using CardGames.Poker.Hands.WildCards;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace CardGames.Poker.Hands.StudHands;
+
+/// <summary>
+/// Baseball hand: a seven card stud variant where all 3s and 9s are wild.
+/// Players may have more than 7 cards if they receive 4s face up (which grant extra cards).
+/// </summary>
+public class BaseballHand : StudHand
+{
+    private readonly BaseballWildCardRules _wildCardRules;
+    private IReadOnlyCollection<Card> _wildCards;
+    private HandType _evaluatedType;
+    private long _evaluatedStrength;
+    private bool _evaluated;
+
+    public IReadOnlyCollection<Card> WildCards => _wildCards ??= DetermineWildCards();
+
+    public BaseballHand(
+        IReadOnlyCollection<Card> holeCards,
+        IReadOnlyCollection<Card> openCards,
+        IReadOnlyCollection<Card> downCards)
+        : base(holeCards, openCards, downCards)
+    {
+        _wildCardRules = new BaseballWildCardRules();
+    }
+
+    private IReadOnlyCollection<Card> DetermineWildCards()
+        => _wildCardRules.DetermineWildCards(Cards);
+
+    protected override long CalculateStrength()
+    {
+        EvaluateIfNeeded();
+        return _evaluatedStrength;
+    }
+
+    protected override HandType DetermineType()
+    {
+        EvaluateIfNeeded();
+        return _evaluatedType;
+    }
+
+    private void EvaluateIfNeeded()
+    {
+        if (_evaluated)
+        {
+            return;
+        }
+
+        _evaluated = true;
+
+        if (!WildCards.Any())
+        {
+            _evaluatedType = base.DetermineType();
+            _evaluatedStrength = base.CalculateStrength();
+            return;
+        }
+
+        var (type, strength) = WildCardHandEvaluator.EvaluateBestHand(
+            Cards, WildCards, Ranking);
+        _evaluatedType = type;
+        _evaluatedStrength = strength;
+    }
+}
