@@ -108,7 +108,7 @@ public class FollowTheQueenHandTests
 
         var hand = new FollowTheQueenHand(holeCards, openCards, downCard, faceUpCards);
 
-        // Qh is wild, can complete royal flush A K Q J T of hearts
+        // Qh is wild, can complete A K Q J T of hearts (royal flush, which is a StraightFlush type)
         hand.Type.Should().Be(HandType.StraightFlush);
     }
 

@@ -95,35 +95,29 @@ public class FollowTheQueenSimulation
     {
         var faceUpCardsInOrder = new List<Card>();
         
-        // First, add all given board cards in order (for pre-configured scenarios)
+        // Initialize dealt board cards lists for each player
         foreach (var player in _players)
         {
-            faceUpCardsInOrder.AddRange(player.GivenBoardCards);
+            player.DealtBoardCards = new List<Card>();
         }
-
-        // Deal missing board cards street by street (4 streets total for face-up cards)
+        
+        // Deal board cards street by street (4 streets total for face-up cards)
+        // Cards are dealt round-robin: each player gets one card per street
         for (int street = 0; street < 4; street++)
         {
             foreach (var player in _players)
             {
-                var currentBoardCount = player.GivenBoardCards.Count + 
-                    ((player.DealtBoardCards as List<Card>)?.Count ?? 0);
-                
-                if (currentBoardCount <= street)
+                // Check if player already has a given card for this street
+                if (player.GivenBoardCards.Count > street)
                 {
+                    // Use the given card for this street
+                    faceUpCardsInOrder.Add(player.GivenBoardCards.ElementAt(street));
+                }
+                else
+                {
+                    // Deal a new card for this street
                     var card = _dealer.DealCard();
-                    
-                    // Add to player's dealt board cards
-                    if (player.DealtBoardCards is List<Card> dealtList)
-                    {
-                        dealtList.Add(card);
-                    }
-                    else
-                    {
-                        player.DealtBoardCards = new List<Card> { card };
-                    }
-                    
-                    // Track order for wild card determination
+                    ((List<Card>)player.DealtBoardCards).Add(card);
                     faceUpCardsInOrder.Add(card);
                 }
             }
