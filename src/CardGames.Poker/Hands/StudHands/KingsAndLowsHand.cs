@@ -27,11 +27,11 @@ public class KingsAndLowsHand : StudHand
     {
         if (holeCards.Count != 2)
         {
-            throw new ArgumentException("Kings and Lows needs exactly two hole cards");
+            throw new ArgumentException("Kings and Lows needs exactly two hole cards", nameof(holeCards));
         }
         if (openCards.Count > 4)
         {
-            throw new ArgumentException("Kings and Lows has at most four open cards");
+            throw new ArgumentException("Kings and Lows has at most four open cards", nameof(openCards));
         }
 
         _wildCardRules = wildCardRules;
