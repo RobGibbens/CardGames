@@ -28,7 +28,7 @@ internal class HoldemDealCommand : Command<DealSettings>
             return 1;
         }
 
-        var playerNames = GetPlayerNames(numberOfPlayers);
+        var playerNames = DealUtilities.GetPlayerNames(numberOfPlayers);
         DealHoldemHand(playerNames);
 
         while (AnsiConsole.Confirm("Deal another hand?"))
@@ -37,17 +37,6 @@ internal class HoldemDealCommand : Command<DealSettings>
         }
 
         return 0;
-    }
-
-    private static List<string> GetPlayerNames(int numberOfPlayers)
-    {
-        var names = new List<string>();
-        for (int i = 1; i <= numberOfPlayers; i++)
-        {
-            var name = AnsiConsole.Ask<string>($"Player {i} name: ");
-            names.Add(name);
-        }
-        return names;
     }
 
     private static void DealHoldemHand(List<string> playerNames)
@@ -94,7 +83,6 @@ internal class HoldemDealCommand : Command<DealSettings>
         Logger.Paragraph("Final Hands");
         foreach (var (name, holeCards) in playerHands)
         {
-            var allCards = holeCards.Concat(communityCards).ToList();
             AnsiConsole.MarkupLine($"[cyan]{name}[/]: [yellow]{holeCards.ToStringRepresentation()}[/] + [green]{communityCards.ToStringRepresentation()}[/]");
         }
     }

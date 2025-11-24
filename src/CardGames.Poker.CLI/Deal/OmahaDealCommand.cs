@@ -28,7 +28,7 @@ internal class OmahaDealCommand : Command<DealSettings>
             return 1;
         }
 
-        var playerNames = GetPlayerNames(numberOfPlayers);
+        var playerNames = DealUtilities.GetPlayerNames(numberOfPlayers);
         DealOmahaHand(playerNames);
 
         while (AnsiConsole.Confirm("Deal another hand?"))
@@ -37,17 +37,6 @@ internal class OmahaDealCommand : Command<DealSettings>
         }
 
         return 0;
-    }
-
-    private static List<string> GetPlayerNames(int numberOfPlayers)
-    {
-        var names = new List<string>();
-        for (int i = 1; i <= numberOfPlayers; i++)
-        {
-            var name = AnsiConsole.Ask<string>($"Player {i} name: ");
-            names.Add(name);
-        }
-        return names;
     }
 
     private static void DealOmahaHand(List<string> playerNames)
