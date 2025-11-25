@@ -138,7 +138,7 @@ public class CardAsciiArtTests
     [Fact]
     public void GetCardFace_TenCard_HasCorrectSymbol()
     {
-        // Arrange - Ten is the only symbol with 2 characters
+        // Arrange - Test Ten card which has 2 characters ("10")
         var card = "Ts".ToCard();
         
         // Act

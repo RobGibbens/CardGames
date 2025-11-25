@@ -15,6 +15,10 @@ internal static class CardAnimator
 {
     private const int FlipAnimationFrames = 6;
     private const int FrameDelayMs = 80;
+    private const int InitialDelayMs = 200;
+    private const int BetweenCardDelayMs = 150;
+    private const string CursorUp = "\x1b[1A";
+    private const string ClearLine = "\x1b[2K";
 
     /// <summary>
     /// Animates flipping cards from face-down to face-up, revealing them one at a time.
@@ -36,7 +40,7 @@ internal static class CardAnimator
 
         // Initial state: all cards face down
         RenderAnimationFrame(currentlyRevealed, remainingFaceDown);
-        Thread.Sleep(200);
+        Thread.Sleep(InitialDelayMs);
 
         // Flip each card one by one
         foreach (var card in cardList)
@@ -47,7 +51,7 @@ internal static class CardAnimator
             AnimateSingleCardFlip(currentlyRevealed, card, remainingFaceDown);
             
             currentlyRevealed.Add(card);
-            Thread.Sleep(150);
+            Thread.Sleep(BetweenCardDelayMs);
         }
     }
 
@@ -258,8 +262,8 @@ internal static class CardAnimator
         // Move cursor up and clear each line
         for (int i = 0; i < count; i++)
         {
-            AnsiConsole.Write("\x1b[1A"); // Move up
-            AnsiConsole.Write("\x1b[2K"); // Clear line
+            AnsiConsole.Write(CursorUp);
+            AnsiConsole.Write(ClearLine);
         }
     }
 }
