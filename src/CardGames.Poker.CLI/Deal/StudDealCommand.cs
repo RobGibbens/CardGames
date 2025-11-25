@@ -5,6 +5,7 @@ using CardGames.Core.French.Cards;
 using CardGames.Core.French.Cards.Extensions;
 using CardGames.Core.French.Dealers;
 using CardGames.Poker.CLI.Output;
+using CardGames.Poker.Hands.StudHands;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
@@ -97,12 +98,27 @@ internal class StudDealCommand : Command<DealSettings>
         }
         DisplayStudHands(playerNames, playerHoleCards, playerBoardCards);
 
-        // Show final hands
-        Logger.Paragraph("Final Hands (all cards)");
+        // Evaluate hands and display results
+        Logger.Paragraph("Hand Evaluation");
+        var evaluatedHands = new Dictionary<string, SevenCardStudHand>();
         foreach (var name in playerNames)
         {
-            AnsiConsole.MarkupLine($"[cyan]{name}[/]: [yellow]{playerHoleCards[name].ToStringRepresentation()}[/] (hole) + [green]{playerBoardCards[name].ToStringRepresentation()}[/] (board)");
+            var holeCards = playerHoleCards[name].Take(2).ToList();
+            var boardCards = playerBoardCards[name];
+            var downCard = playerHoleCards[name].Last();
+            
+            var hand = new SevenCardStudHand(holeCards, boardCards, downCard);
+            evaluatedHands[name] = hand;
+            var description = HandDescriptionFormatter.GetHandDescription(hand);
+            AnsiConsole.MarkupLine($"[cyan]{name}[/]: [yellow]{playerHoleCards[name].ToStringRepresentation()}[/] (hole) + [green]{boardCards.ToStringRepresentation()}[/] (board) - [magenta]{description}[/]");
         }
+
+        // Determine and display winner
+        var winner = evaluatedHands.MaxBy(kvp => kvp.Value.Strength);
+        var winningDescription = HandDescriptionFormatter.GetHandDescription(winner.Value);
+        
+        Logger.Paragraph("Winner");
+        AnsiConsole.MarkupLine($"[bold green]{winner.Key}[/] wins with [bold magenta]{winningDescription}[/]!");
     }
 
     private static void DisplayStudHands(
