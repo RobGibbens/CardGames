@@ -13,6 +13,7 @@ namespace CardGames.Poker.CLI.Output;
 internal static class CardRenderer
 {
     private const int CardSpacing = 1;
+    private const string CardBackColor = "blue";
 
     /// <summary>
     /// Renders a collection of cards side-by-side showing their faces.
@@ -59,7 +60,7 @@ internal static class CardRenderer
                 {
                     lines[lineIndex].Append(new string(' ', CardSpacing));
                 }
-                lines[lineIndex].Append($"[blue]{Markup.Escape(cardBack[lineIndex])}[/]");
+                lines[lineIndex].Append($"[{CardBackColor}]{Markup.Escape(cardBack[lineIndex])}[/]");
             }
         }
 
@@ -104,7 +105,7 @@ internal static class CardRenderer
                 {
                     lines[lineIndex].Append(new string(' ', CardSpacing));
                 }
-                lines[lineIndex].Append($"[blue]{Markup.Escape(cardBack[lineIndex])}[/]");
+                lines[lineIndex].Append($"[{CardBackColor}]{Markup.Escape(cardBack[lineIndex])}[/]");
             }
             cardIndex++;
         }
@@ -143,7 +144,7 @@ internal static class CardRenderer
         {
             var card = cards[cardIndex];
             var cardLines = showFaces ? CardAsciiArt.GetCardFace(card) : CardAsciiArt.GetCardBack();
-            var color = showFaces ? CardAsciiArt.GetSuitColor(card.Suit) : "blue";
+            var color = showFaces ? CardAsciiArt.GetSuitColor(card.Suit) : CardBackColor;
 
             for (int lineIndex = 0; lineIndex < CardAsciiArt.Height; lineIndex++)
             {
