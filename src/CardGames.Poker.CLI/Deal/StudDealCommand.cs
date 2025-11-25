@@ -64,7 +64,7 @@ internal class StudDealCommand : Command<DealSettings>
             playerHoleCards[name].AddRange(dealer.DealCards(2));
             playerBoardCards[name].Add(dealer.DealCard());
         }
-        DisplayStudHands(playerNames, playerHoleCards, playerBoardCards);
+        DisplayStudHandsWithAscii(playerNames, playerHoleCards, playerBoardCards, animateLastBoard: true);
 
         // Fourth Street: Deal 1 board card to each player
         Logger.Paragraph("Fourth Street");
@@ -72,7 +72,7 @@ internal class StudDealCommand : Command<DealSettings>
         {
             playerBoardCards[name].Add(dealer.DealCard());
         }
-        DisplayStudHands(playerNames, playerHoleCards, playerBoardCards);
+        DisplayStudHandsWithAscii(playerNames, playerHoleCards, playerBoardCards, animateLastBoard: true);
 
         // Fifth Street: Deal 1 board card to each player
         Logger.Paragraph("Fifth Street");
@@ -80,7 +80,7 @@ internal class StudDealCommand : Command<DealSettings>
         {
             playerBoardCards[name].Add(dealer.DealCard());
         }
-        DisplayStudHands(playerNames, playerHoleCards, playerBoardCards);
+        DisplayStudHandsWithAscii(playerNames, playerHoleCards, playerBoardCards, animateLastBoard: true);
 
         // Sixth Street: Deal 1 board card to each player
         Logger.Paragraph("Sixth Street");
@@ -88,7 +88,7 @@ internal class StudDealCommand : Command<DealSettings>
         {
             playerBoardCards[name].Add(dealer.DealCard());
         }
-        DisplayStudHands(playerNames, playerHoleCards, playerBoardCards);
+        DisplayStudHandsWithAscii(playerNames, playerHoleCards, playerBoardCards, animateLastBoard: true);
 
         // Seventh Street (River): Deal 1 hole card to each player (face down)
         Logger.Paragraph("Seventh Street (final down card)");
@@ -96,7 +96,7 @@ internal class StudDealCommand : Command<DealSettings>
         {
             playerHoleCards[name].Add(dealer.DealCard());
         }
-        DisplayStudHands(playerNames, playerHoleCards, playerBoardCards);
+        DisplayStudHandsWithAscii(playerNames, playerHoleCards, playerBoardCards, animateLastBoard: false);
 
         // Evaluate hands and display results
         Logger.Paragraph("Hand Evaluation");
@@ -110,7 +110,13 @@ internal class StudDealCommand : Command<DealSettings>
             var hand = new SevenCardStudHand(holeCards, boardCards, downCard);
             evaluatedHands[name] = hand;
             var description = HandDescriptionFormatter.GetHandDescription(hand);
-            AnsiConsole.MarkupLine($"[cyan]{name}[/]: [yellow]{playerHoleCards[name].ToStringRepresentation()}[/] (hole) + [green]{boardCards.ToStringRepresentation()}[/] (board) - [magenta]{description}[/]");
+            
+            AnsiConsole.MarkupLine($"[cyan bold]{name}[/]:");
+            // Show all cards for the player (hole + board)
+            var allCards = playerHoleCards[name].Concat(boardCards).ToList();
+            CardRenderer.RenderCards(allCards);
+            AnsiConsole.MarkupLine($"[magenta]{description}[/]");
+            AnsiConsole.WriteLine();
         }
 
         // Determine and display winner
@@ -119,6 +125,27 @@ internal class StudDealCommand : Command<DealSettings>
         
         Logger.Paragraph("Winner");
         AnsiConsole.MarkupLine($"[bold green]{winner.Key}[/] wins with [bold magenta]{winningDescription}[/]!");
+    }
+
+    private static void DisplayStudHandsWithAscii(
+        List<string> playerNames, 
+        Dictionary<string, List<Card>> holeCards, 
+        Dictionary<string, List<Card>> boardCards,
+        bool animateLastBoard)
+    {
+        foreach (var name in playerNames)
+        {
+            AnsiConsole.MarkupLine($"[cyan bold]{name}[/]:");
+            
+            // Show hole cards as face down + board cards as face up
+            var board = boardCards[name];
+            CardRenderer.RenderMixedCards(board, holeCards[name].Count);
+            
+            var holeDisplay = holeCards[name].ToStringRepresentation();
+            var boardDisplay = board.ToStringRepresentation();
+            AnsiConsole.MarkupLine($"[dim](hole: {holeDisplay}) (board: {boardDisplay})[/]");
+            AnsiConsole.WriteLine();
+        }
     }
 
     private static void DisplayStudHands(

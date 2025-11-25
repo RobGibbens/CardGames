@@ -54,31 +54,38 @@ internal class HoldemDealCommand : Command<DealSettings>
             playerHands[name] = dealer.DealCards(2);
         }
 
-        // Display hole cards
+        // Display hole cards with ASCII art and flip animation
         Logger.Paragraph("Hole Cards");
         foreach (var (name, cards) in playerHands)
         {
-            AnsiConsole.MarkupLine($"[cyan]{name}[/]: [yellow]{cards.ToStringRepresentation()}[/]");
+            AnsiConsole.MarkupLine($"[cyan bold]{name}[/]:");
+            CardAnimator.AnimateCardFlip(cards);
+            AnsiConsole.MarkupLine($"[dim]({cards.ToStringRepresentation()})[/]");
+            AnsiConsole.WriteLine();
         }
 
         // Deal flop (burn 1, deal 3)
         dealer.DealCard(); // burn
         var flop = dealer.DealCards(3);
         Logger.Paragraph("Flop");
-        AnsiConsole.MarkupLine($"[green]{flop.ToStringRepresentation()}[/]");
+        CardAnimator.AnimateCardFlip(flop);
+        AnsiConsole.MarkupLine($"[dim]({flop.ToStringRepresentation()})[/]");
 
         // Deal turn (burn 1, deal 1)
         dealer.DealCard(); // burn
         var turn = dealer.DealCard();
         Logger.Paragraph("Turn");
-        AnsiConsole.MarkupLine($"[green]{flop.ToStringRepresentation()} {turn}[/]");
+        var flopAndTurn = flop.Concat(new[] { turn }).ToList();
+        CardRenderer.RenderCards(flopAndTurn);
+        AnsiConsole.MarkupLine($"[dim]({flopAndTurn.ToStringRepresentation()})[/]");
 
         // Deal river (burn 1, deal 1)
         dealer.DealCard(); // burn
         var river = dealer.DealCard();
         Logger.Paragraph("River");
         var communityCards = flop.Concat(new[] { turn, river }).ToList();
-        AnsiConsole.MarkupLine($"[green]{communityCards.ToStringRepresentation()}[/]");
+        CardRenderer.RenderCards(communityCards);
+        AnsiConsole.MarkupLine($"[dim]({communityCards.ToStringRepresentation()})[/]");
 
         // Evaluate hands and display results
         Logger.Paragraph("Hand Evaluation");
@@ -88,7 +95,10 @@ internal class HoldemDealCommand : Command<DealSettings>
             var hand = new HoldemHand(holeCards, communityCards);
             evaluatedHands[name] = hand;
             var description = HandDescriptionFormatter.GetHandDescription(hand);
-            AnsiConsole.MarkupLine($"[cyan]{name}[/]: [yellow]{holeCards.ToStringRepresentation()}[/] - [magenta]{description}[/]");
+            AnsiConsole.MarkupLine($"[cyan]{name}[/]:");
+            CardRenderer.RenderCards(holeCards);
+            AnsiConsole.MarkupLine($"[magenta]{description}[/]");
+            AnsiConsole.WriteLine();
         }
 
         // Determine and display winner
