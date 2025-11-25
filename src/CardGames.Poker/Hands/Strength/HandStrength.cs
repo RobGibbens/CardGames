@@ -33,8 +33,19 @@ public static class HandStrength
         => prefixMultiplier * handTypeStrengthMultiplier + CalculateFromCards(cards);
 
     private static int CalculateFromCards(IReadOnlyCollection<Card> cards)
-        => cards
-            .DescendingValues()
+        => OrderByPokerRank(cards)
             .Select((value, index) => (int)(Math.Pow(10, 2 * (4 - index)) * value))
             .Sum();
+
+    /// <summary>
+    /// Orders card values by poker significance: groups with more cards first (pairs, trips, etc.),
+    /// then by value within each group size.
+    /// </summary>
+    private static IEnumerable<int> OrderByPokerRank(IReadOnlyCollection<Card> cards)
+        => cards
+            .GroupBy(c => c.Value)
+            .OrderByDescending(g => g.Count())
+            .ThenByDescending(g => g.Key)
+            .SelectMany(g => g)
+            .Select(c => c.Value);
 }
