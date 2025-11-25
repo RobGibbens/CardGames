@@ -76,8 +76,38 @@ internal static class HandDescriptionFormatter
 
     private static string FormatStraight(IReadOnlyCollection<Card> cards)
     {
-        var highCard = cards.OrderByDescending(c => c.Value).First();
-        return $"Straight ({GetSymbolName(highCard.Symbol)}-high)";
+        var straightHighValue = FindStraightHighValue(cards);
+        var symbol = straightHighValue.ToSymbol();
+        return $"Straight ({GetSymbolName(symbol)}-high)";
+    }
+
+    private static int FindStraightHighValue(IReadOnlyCollection<Card> cards)
+    {
+        // Get distinct values in descending order
+        var distinctValues = cards.DistinctDescendingValues().ToList();
+        
+        // Look for 5 consecutive values starting from the highest
+        for (int i = 0; i <= distinctValues.Count - 5; i++)
+        {
+            var potentialHigh = distinctValues[i];
+            var potentialLow = distinctValues[i + 4];
+            
+            // Check if this forms a straight (5 consecutive values)
+            if (potentialHigh - potentialLow == 4)
+            {
+                return potentialHigh;
+            }
+        }
+        
+        // Check for wheel (A-2-3-4-5) - Ace can be low
+        var wheelValues = new[] { 14, 5, 4, 3, 2 };
+        if (wheelValues.All(distinctValues.Contains))
+        {
+            return 5; // 5-high straight (wheel)
+        }
+        
+        // Fallback to highest card (shouldn't happen if hand is actually a straight)
+        return distinctValues.First();
     }
 
     private static string FormatFlush(IReadOnlyCollection<Card> cards)
@@ -129,19 +159,16 @@ internal static class HandDescriptionFormatter
             .FirstOrDefault();
 
         var flushCards = cards.Where(c => c.Suit == flushSuit).ToList();
-        var highCard = flushCards.OrderByDescending(c => c.Value).First();
+        var straightHighValue = FindStraightHighValue(flushCards);
         
-        // Check for Royal Flush
-        if (highCard.Value == 14) // Ace
+        // Check for Royal Flush (Ace-high straight flush)
+        if (straightHighValue == 14)
         {
-            var values = flushCards.Select(c => c.Value).OrderByDescending(v => v).Take(5).ToList();
-            if (values.SequenceEqual(new[] { 14, 13, 12, 11, 10 }))
-            {
-                return $"Royal Flush ({flushSuit})";
-            }
+            return $"Royal Flush ({flushSuit})";
         }
         
-        return $"Straight Flush ({flushSuit}, {GetSymbolName(highCard.Symbol)}-high)";
+        var symbol = straightHighValue.ToSymbol();
+        return $"Straight Flush ({flushSuit}, {GetSymbolName(symbol)}-high)";
     }
 
     private static string FormatFiveOfAKind(IReadOnlyCollection<Card> cards)

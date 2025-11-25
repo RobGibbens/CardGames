@@ -9,8 +9,8 @@ public static class DistributionMapper
 {
     public static IReportArtefact ToArtefact(this IEnumerable<WinDistribution> distributions)
         => new TableArtefact(
-            ["Name", "Times Won", "Win %"],
-            distributions.Select(distribution => new[] { distribution.Name, $"{distribution.Wins}", $"{distribution.Percentage:P2}" }));
+            ["Name", "Times Won", "Win %", "Ties", "Tie %"],
+            distributions.Select(distribution => new[] { distribution.Name, $"{distribution.Wins}", $"{distribution.Percentage:P2}", $"{distribution.Ties}", $"{distribution.TiePercentage:P2}" }));
 
     public static IReportArtefact ToArtefact(this IDictionary<string, IEnumerable<TypeDistribution>> distributions)
         => new CompositeArtefact(distributions

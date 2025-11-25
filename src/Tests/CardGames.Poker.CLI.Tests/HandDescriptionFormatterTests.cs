@@ -79,6 +79,33 @@ public class HandDescriptionFormatterTests
     }
 
     [Fact]
+    public void GetHandDescription_Straight_IgnoresHigherCardsNotInStraight()
+    {
+        // Arrange - Straight 4-5-6-7-8 with higher cards (Jack, Ace) not part of the straight
+        // This reproduces the bug where "Ah 5h" with board "Jd 8c 7s 6s 4d" was showing "Ace-high" instead of "Eight-high"
+        var hand = new HoldemHand("Ah 5h".ToCards(), "Jd 8c 7s 6s 4d".ToCards());
+        
+        // Act
+        var description = HandDescriptionFormatter.GetHandDescription(hand);
+        
+        // Assert - Should be 8-high straight (4-5-6-7-8), not Ace-high
+        description.Should().Be("Straight (Eight-high)");
+    }
+
+    [Fact]
+    public void GetHandDescription_Straight_IgnoresLowerCardsNotInStraight()
+    {
+        // Arrange - Straight 9-10-J-Q-K with lower cards (4, 5) not part of the straight
+        var hand = new HoldemHand("5d 4s".ToCards(), "Jd Tc Qc Kh 9s".ToCards());
+        
+        // Act
+        var description = HandDescriptionFormatter.GetHandDescription(hand);
+        
+        // Assert - Should be King-high straight (9-T-J-Q-K)
+        description.Should().Be("Straight (King-high)");
+    }
+
+    [Fact]
     public void GetHandDescription_Flush_ReturnsCorrectDescription()
     {
         // Arrange - Flush in Hearts, Ace high

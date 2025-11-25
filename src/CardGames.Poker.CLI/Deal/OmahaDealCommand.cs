@@ -101,11 +101,25 @@ internal class OmahaDealCommand : Command<DealSettings>
             AnsiConsole.WriteLine();
         }
 
-        // Determine and display winner
-        var winner = evaluatedHands.MaxBy(kvp => kvp.Value.Strength);
-        var winningDescription = HandDescriptionFormatter.GetHandDescription(winner.Value);
+        // Determine and display winner(s)
+        var maxStrength = evaluatedHands.Max(kvp => kvp.Value.Strength);
+        var winners = evaluatedHands.Where(kvp => kvp.Value.Strength == maxStrength).ToList();
         
-        Logger.Paragraph("Winner");
-        AnsiConsole.MarkupLine($"[bold green]{winner.Key}[/] wins with [bold magenta]{winningDescription}[/]!");
+        if (winners.Count > 1)
+        {
+            var winningDescription = HandDescriptionFormatter.GetHandDescription(winners.First().Value);
+            Logger.Paragraph("Tie");
+            var winnerNames = winners.Count == 2
+                ? $"{winners[0].Key} and {winners[1].Key}"
+                : string.Join(", ", winners.Take(winners.Count - 1).Select(w => w.Key)) + $", and {winners.Last().Key}";
+            AnsiConsole.MarkupLine($"[bold yellow]{winnerNames}[/] tie with [bold magenta]{winningDescription}[/]!");
+        }
+        else
+        {
+            var winner = winners.First();
+            var winningDescription = HandDescriptionFormatter.GetHandDescription(winner.Value);
+            Logger.Paragraph("Winner");
+            AnsiConsole.MarkupLine($"[bold green]{winner.Key}[/] wins with [bold magenta]{winningDescription}[/]!");
+        }
     }
 }
