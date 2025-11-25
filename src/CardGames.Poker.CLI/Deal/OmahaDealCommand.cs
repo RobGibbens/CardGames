@@ -5,6 +5,7 @@ using CardGames.Core.French.Cards;
 using CardGames.Core.French.Cards.Extensions;
 using CardGames.Core.French.Dealers;
 using CardGames.Poker.CLI.Output;
+using CardGames.Poker.Hands.CommunityCardHands;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
@@ -79,11 +80,22 @@ internal class OmahaDealCommand : Command<DealSettings>
         var communityCards = flop.Concat(new[] { turn, river }).ToList();
         AnsiConsole.MarkupLine($"[green]{communityCards.ToStringRepresentation()}[/]");
 
-        // Show final hands
-        Logger.Paragraph("Final Hands");
+        // Evaluate hands and display results
+        Logger.Paragraph("Hand Evaluation");
+        var evaluatedHands = new Dictionary<string, OmahaHand>();
         foreach (var (name, holeCards) in playerHands)
         {
-            AnsiConsole.MarkupLine($"[cyan]{name}[/]: [yellow]{holeCards.ToStringRepresentation()}[/] + [green]{communityCards.ToStringRepresentation()}[/]");
+            var hand = new OmahaHand(holeCards, communityCards);
+            evaluatedHands[name] = hand;
+            var description = HandDescriptionFormatter.GetHandDescription(hand);
+            AnsiConsole.MarkupLine($"[cyan]{name}[/]: [yellow]{holeCards.ToStringRepresentation()}[/] - [magenta]{description}[/]");
         }
+
+        // Determine and display winner
+        var winner = evaluatedHands.MaxBy(kvp => kvp.Value.Strength);
+        var winningDescription = HandDescriptionFormatter.GetHandDescription(winner.Value);
+        
+        Logger.Paragraph("Winner");
+        AnsiConsole.MarkupLine($"[bold green]{winner.Key}[/] wins with [bold magenta]{winningDescription}[/]!");
     }
 }
