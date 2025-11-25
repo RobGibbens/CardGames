@@ -26,7 +26,7 @@ internal class SpectreLogger
     
     public SpectreLogger()
     {
-        Console.OutputEncoding = System.Text.Encoding.Unicode;
+        Console.OutputEncoding = System.Text.Encoding.UTF8;
     }
 
     public void LogApplicationStart()

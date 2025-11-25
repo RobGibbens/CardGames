@@ -1,7 +1,11 @@
-﻿using CardGames.Poker.CLI.Deal;
+﻿using System;
+using CardGames.Poker.CLI.Deal;
 using CardGames.Poker.CLI.Simulation;
 using Spectre.Console;
 using Spectre.Console.Cli;
+
+// Ensure UTF-8 encoding is set for proper Unicode character display
+Console.OutputEncoding = System.Text.Encoding.UTF8;
 
 // If no arguments provided, show interactive menu
 if (args.Length == 0)
