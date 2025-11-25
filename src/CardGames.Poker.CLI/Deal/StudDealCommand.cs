@@ -127,7 +127,9 @@ internal class StudDealCommand : Command<DealSettings>
         {
             var winningDescription = HandDescriptionFormatter.GetHandDescription(winners.First().Value);
             Logger.Paragraph("Tie");
-            var winnerNames = string.Join(" and ", winners.Select(w => w.Key));
+            var winnerNames = winners.Count == 2
+                ? $"{winners[0].Key} and {winners[1].Key}"
+                : string.Join(", ", winners.Take(winners.Count - 1).Select(w => w.Key)) + $", and {winners.Last().Key}";
             AnsiConsole.MarkupLine($"[bold yellow]{winnerNames}[/] tie with [bold magenta]{winningDescription}[/]!");
         }
         else
