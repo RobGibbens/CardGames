@@ -277,7 +277,9 @@ public static class WildCardHandEvaluator
             var present = needed.Count(v => distinctValues.Contains(v));
             if (present + wildCount >= 5)
             {
-                var cards = needed.Select(v => new Card(Suit.Spades, v)).ToList();
+                // Use alternating suits to avoid creating a flush
+                var suits = new[] { Suit.Spades, Suit.Hearts, Suit.Diamonds, Suit.Clubs };
+                var cards = needed.Select((v, i) => new Card(suits[i % 2], v)).ToList();
                 return (HandType.Straight, HandStrength.Calculate(cards, HandType.Straight, ranking), cards);
             }
         }
