@@ -108,13 +108,7 @@ internal class KingsAndLowsPlayCommand : Command<KingsAndLowsPlaySettings>
         // Display all hands
         DisplayAllHands(game);
 
-        // Drop or Stay phase
-        Logger.Paragraph("Drop or Stay Decision");
-        AnsiConsole.MarkupLine("[cyan]On the count of 3, decide to DROP or STAY.[/]");
-        AnsiConsole.MarkupLine("[dim]Players who DROP pay nothing more for this hand.[/]");
-        AnsiConsole.MarkupLine("[dim]Players who STAY continue to draw and showdown.[/]");
-        AnsiConsole.WriteLine();
-
+        // Drop or Stay phase - the RunDropOrStayPhase method handles screen clearing per player
         RunDropOrStayPhase(game);
 
         var dropResult = game.FinalizeDropOrStay();
@@ -126,6 +120,8 @@ internal class KingsAndLowsPlayCommand : Command<KingsAndLowsPlaySettings>
         }
 
         // Display who stayed and who dropped
+        Logger.ClearScreen();
+        Logger.Paragraph("Drop or Stay Results");
         if (dropResult.DroppedPlayerNames.Any())
         {
             AnsiConsole.MarkupLine($"[red]Dropped:[/] {string.Join(", ", dropResult.DroppedPlayerNames)}");
@@ -165,6 +161,15 @@ internal class KingsAndLowsPlayCommand : Command<KingsAndLowsPlaySettings>
     {
         foreach (var gamePlayer in game.GamePlayers)
         {
+            // Clear screen and show fresh game state for current player's decision
+            Logger.ClearScreen();
+            Logger.Paragraph("Drop or Stay Decision");
+            AnsiConsole.MarkupLine("[cyan]On the count of 3, decide to DROP or STAY.[/]");
+            AnsiConsole.MarkupLine("[dim]Players who DROP pay nothing more for this hand.[/]");
+            AnsiConsole.MarkupLine("[dim]Players who STAY continue to draw and showdown.[/]");
+            AnsiConsole.MarkupLine($"[green]Pot: {game.CurrentPot}[/]");
+            AnsiConsole.WriteLine();
+
             // Show the player's hand
             AnsiConsole.MarkupLine($"[cyan bold]{gamePlayer.Player.Name}[/]'s hand:");
             var wildCards = game.GetPlayerWildCards(gamePlayer.Player.Name);
@@ -190,9 +195,6 @@ internal class KingsAndLowsPlayCommand : Command<KingsAndLowsPlaySettings>
 
     private static void RunDrawPhase(KingsAndLowsGame game)
     {
-        Logger.Paragraph("Draw Phase");
-        AnsiConsole.MarkupLine("[dim]Players may discard up to 5 cards and draw replacements.[/]");
-
         while (game.CurrentPhase == KingsAndLowsPhase.DrawPhase)
         {
             var drawPlayer = game.GetCurrentDrawPlayer();
@@ -200,6 +202,13 @@ internal class KingsAndLowsPlayCommand : Command<KingsAndLowsPlaySettings>
             {
                 break;
             }
+
+            // Clear screen and show fresh game state for draw phase
+            Logger.ClearScreen();
+            Logger.Paragraph("Draw Phase");
+            AnsiConsole.MarkupLine("[dim]Players may discard up to 5 cards and draw replacements.[/]");
+            AnsiConsole.MarkupLine($"[green]Pot: {game.CurrentPot}[/]");
+            AnsiConsole.WriteLine();
 
             AnsiConsole.MarkupLine($"[cyan]{drawPlayer.Player.Name}[/]'s turn to draw:");
             var wildCards = game.GetPlayerWildCards(drawPlayer.Player.Name);
