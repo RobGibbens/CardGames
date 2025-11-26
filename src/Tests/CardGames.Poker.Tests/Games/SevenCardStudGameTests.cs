@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using CardGames.Core.French.Cards;
 using CardGames.Poker.Betting;
 using CardGames.Poker.Games;
 using FluentAssertions;
@@ -92,12 +93,25 @@ public class SevenCardStudGameTests
 
         bringInPlayer.Should().NotBeNull();
         // The bring-in player should have the lowest board card
+        // Suit order for ties: Clubs (lowest) < Diamonds < Hearts < Spades (highest)
         var lowestBoardCard = game.GamePlayers
             .Select(gp => gp.BoardCards.First())
             .OrderBy(c => c.Value)
-            .ThenBy(c => (int)c.Suit)
+            .ThenBy(c => GetSuitRank(c.Suit))
             .First();
         bringInPlayer.BoardCards.First().Should().Be(lowestBoardCard);
+    }
+
+    private static int GetSuitRank(Suit suit)
+    {
+        return suit switch
+        {
+            Suit.Clubs => 0,
+            Suit.Diamonds => 1,
+            Suit.Hearts => 2,
+            Suit.Spades => 3,
+            _ => 0
+        };
     }
 
     [Fact]

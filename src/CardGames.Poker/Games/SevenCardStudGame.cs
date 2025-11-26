@@ -46,6 +46,9 @@ public class SevenCardStudGamePlayer
 /// </summary>
 public class SevenCardStudGame
 {
+    private const int MinPlayers = 2;
+    private const int MaxPlayers = 8;
+
     private readonly List<SevenCardStudGamePlayer> _gamePlayers;
     private readonly FrenchDeckDealer _dealer;
     private readonly int _ante;
@@ -78,14 +81,14 @@ public class SevenCardStudGame
         int bigBet)
     {
         var playerList = players.ToList();
-        if (playerList.Count < 2)
+        if (playerList.Count < MinPlayers)
         {
-            throw new ArgumentException("Seven Card Stud requires at least 2 players");
+            throw new ArgumentException($"Seven Card Stud requires at least {MinPlayers} players");
         }
 
-        if (playerList.Count > 8)
+        if (playerList.Count > MaxPlayers)
         {
-            throw new ArgumentException("Seven Card Stud supports at most 8 players");
+            throw new ArgumentException($"Seven Card Stud supports at most {MaxPlayers} players");
         }
 
         _gamePlayers = playerList
@@ -221,25 +224,30 @@ public class SevenCardStudGame
                 forcedBetPlayerIndex = _bringInPlayerIndex;
                 break;
             case SevenCardStudPhase.FourthStreet:
-                startPosition = FindBestVisibleHandPosition();
+                startPosition = GetDealerPositionForFirstActingPlayer(FindBestVisibleHandPosition());
                 minBet = _smallBet;
-                // On 4th+ street, the player who starts isn't forced to bet
-                // Subtract 1 so that (startPosition + 1) % n = startPosition
-                startPosition = (startPosition - 1 + _gamePlayers.Count) % _gamePlayers.Count;
                 break;
             case SevenCardStudPhase.FifthStreet:
             case SevenCardStudPhase.SixthStreet:
             case SevenCardStudPhase.SeventhStreet:
-                startPosition = FindBestVisibleHandPosition();
+                startPosition = GetDealerPositionForFirstActingPlayer(FindBestVisibleHandPosition());
                 minBet = _bigBet;
-                // Subtract 1 so that (startPosition + 1) % n = startPosition
-                startPosition = (startPosition - 1 + _gamePlayers.Count) % _gamePlayers.Count;
                 break;
             default:
                 throw new InvalidOperationException("Cannot start betting round in current phase");
         }
 
         _currentBettingRound = new BettingRound(activePlayers, _potManager, startPosition, minBet, initialBet, forcedBetPlayerIndex);
+    }
+
+    /// <summary>
+    /// Converts a first-acting player index to a dealer position.
+    /// BettingRound calculates the first player as (dealerPosition + 1) % playerCount,
+    /// so we need to subtract 1 (with wraparound) to make the first-acting player start.
+    /// </summary>
+    private int GetDealerPositionForFirstActingPlayer(int firstActingPlayerIndex)
+    {
+        return (firstActingPlayerIndex - 1 + _gamePlayers.Count) % _gamePlayers.Count;
     }
 
     /// <summary>
@@ -413,14 +421,15 @@ public class SevenCardStudGame
             {
                 var holeCards = gp.HoleCards.Take(2).ToList();
                 var boardCards = gp.BoardCards.ToList();
-                var downCard = gp.HoleCards.Count > 2 ? gp.HoleCards[2] : null;
+                // The 7th street card is dealt face down and added to hole cards
+                var downCard = gp.HoleCards.Count > 2 ? gp.HoleCards[2] : holeCards.LastOrDefault();
                 
                 // Create a StudHand for evaluation
                 var allCards = gp.HoleCards.Concat(gp.BoardCards).ToList();
                 var hand = new SevenCardStudHand(
                     holeCards, 
                     boardCards, 
-                    downCard ?? gp.BoardCards.Last()); // Fallback for edge case
+                    downCard);
                     
                 return (hand, cards: (IReadOnlyCollection<Card>)allCards);
             }
@@ -498,17 +507,14 @@ public class SevenCardStudGame
         for (int i = 0; i < _gamePlayers.Count; i++)
         {
             var gamePlayer = _gamePlayers[i];
-            if (gamePlayer.Player.HasFolded || gamePlayer.BoardCards is null || gamePlayer.BoardCards.Count == 0)
+            if (gamePlayer.Player.HasFolded || gamePlayer.BoardCards.Count == 0)
             {
                 continue;
             }
 
             var upcard = gamePlayer.BoardCards[0];
-            if (upcard is null)
-            {
-                continue;
-            }
             
+            // Use 'is null' pattern because Card's == operator is overloaded
             if (lowestCard is null || CompareCardsForBringIn(upcard, lowestCard) < 0)
             {
                 lowestCard = upcard;

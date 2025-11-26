@@ -15,18 +15,20 @@ namespace CardGames.Poker.CLI.Play;
 internal class SevenCardStudPlayCommand : Command<SevenCardStudPlaySettings>
 {
     private static readonly SpectreLogger Logger = new();
+    private const int MinPlayers = 2;
+    private const int MaxPlayers = 8;
 
     protected override int Execute(CommandContext context, SevenCardStudPlaySettings settings, CancellationToken cancellationToken)
     {
         Logger.LogApplicationStart();
 
         var numberOfPlayers = settings.NumberOfPlayers == default
-            ? AnsiConsole.Ask<int>("How many players? (2-8): ")
+            ? AnsiConsole.Ask<int>($"How many players? ({MinPlayers}-{MaxPlayers}): ")
             : settings.NumberOfPlayers;
 
-        if (numberOfPlayers < 2 || numberOfPlayers > 8)
+        if (numberOfPlayers < MinPlayers || numberOfPlayers > MaxPlayers)
         {
-            AnsiConsole.MarkupLine("[red]Invalid number of players. Must be between 2 and 8.[/]");
+            AnsiConsole.MarkupLine($"[red]Invalid number of players. Must be between {MinPlayers} and {MaxPlayers}.[/]");
             return 1;
         }
 
