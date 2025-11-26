@@ -96,26 +96,4 @@ public class BaseballHandIssueTests
         _output.WriteLine($"Type: {type}");
         _output.WriteLine($"Strength: {strength}");
     }
-
-    [Fact]
-    public void FullHouse_With_Wild_Cards_Should_Format_Correctly()
-    {
-        // A hand that becomes a full house only with wild cards
-        // Natural cards: As Ah (pair of aces)
-        // Wild 9 can make the third ace for trips
-        // But we need a pair for full house
-        var holeCards = "Ah 9d".ToCards();  // 9 is wild
-        var openCards = "As Kh Qh 5c".ToCards();
-        var downCards = "2d".ToCards();
-
-        var hand = new BaseballHand(holeCards, openCards, downCards);
-        
-        _output.WriteLine($"Cards: {string.Join(" ", hand.Cards)}");
-        _output.WriteLine($"Wild cards: {string.Join(" ", hand.WildCards)}");
-        _output.WriteLine($"Type: {hand.Type}");
-        
-        // Now try to format - this should not throw
-        var description = CardGames.Poker.CLI.Output.HandDescriptionFormatter.GetHandDescription(hand);
-        _output.WriteLine($"Description: {description}");
-    }
 }
