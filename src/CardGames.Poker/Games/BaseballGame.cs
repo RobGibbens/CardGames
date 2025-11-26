@@ -116,6 +116,7 @@ public class BaseballGame
     private readonly int _smallBet;
     private readonly int _bigBet;
     private readonly int _buyCardPrice;
+    private readonly bool _useBringIn;
 
     private PotManager _potManager;
     private BettingRound _currentBettingRound;
@@ -138,6 +139,7 @@ public class BaseballGame
     public int SmallBet => _smallBet;
     public int BigBet => _bigBet;
     public int BuyCardPrice => _buyCardPrice;
+    public bool UseBringIn => _useBringIn;
 
     public BaseballGame(
         IEnumerable<(string name, int chips)> players,
@@ -145,7 +147,8 @@ public class BaseballGame
         int bringIn,
         int smallBet,
         int bigBet,
-        int buyCardPrice)
+        int buyCardPrice,
+        bool useBringIn = true)
     {
         var playerList = players.ToList();
         if (playerList.Count < MinPlayers)
@@ -168,6 +171,7 @@ public class BaseballGame
         _smallBet = smallBet;
         _bigBet = bigBet;
         _buyCardPrice = buyCardPrice;
+        _useBringIn = useBringIn;
         _dealerPosition = 0;
         CurrentPhase = BaseballPhase.WaitingToStart;
     }
@@ -248,8 +252,15 @@ public class BaseballGame
             gamePlayer.Player.ResetCurrentBet();
         }
 
-        // Determine the bring-in player (lowest upcard)
-        _bringInPlayerIndex = FindBringInPlayer();
+        // Determine the bring-in player (lowest upcard) only if bring-in is enabled
+        if (_useBringIn)
+        {
+            _bringInPlayerIndex = FindBringInPlayer();
+        }
+        else
+        {
+            _bringInPlayerIndex = -1;
+        }
         
         // Queue up any buy-card offers for 4s dealt on third street
         QueueBuyCardOffers();
@@ -385,12 +396,18 @@ public class BaseballGame
     /// <summary>
     /// Posts the bring-in bet for third street.
     /// Returns the bring-in action.
+    /// Throws if bring-in is disabled or not in the correct phase.
     /// </summary>
     public BettingAction PostBringIn()
     {
         if (CurrentPhase != BaseballPhase.ThirdStreet)
         {
             throw new InvalidOperationException("Cannot post bring-in in current phase");
+        }
+
+        if (!_useBringIn)
+        {
+            throw new InvalidOperationException("Bring-in is disabled for this game");
         }
 
         var bringInPlayer = _gamePlayers[_bringInPlayerIndex];
@@ -402,7 +419,8 @@ public class BaseballGame
 
     /// <summary>
     /// Starts the betting round for the current street.
-    /// For third street, starts after the bring-in player.
+    /// For third street with bring-in, starts after the bring-in player.
+    /// For third street without bring-in, starts with best visible hand (like other streets).
     /// For other streets, starts with best visible hand.
     /// </summary>
     public void StartBettingRound()
@@ -416,11 +434,19 @@ public class BaseballGame
         switch (CurrentPhase)
         {
             case BaseballPhase.ThirdStreet:
-                startPosition = _bringInPlayerIndex;
+                if (_useBringIn && _bringInPlayerIndex >= 0)
+                {
+                    startPosition = _bringInPlayerIndex;
+                    var bringInPlayer = _gamePlayers[_bringInPlayerIndex].Player;
+                    initialBet = bringInPlayer.CurrentBet;
+                    forcedBetPlayerIndex = _bringInPlayerIndex;
+                }
+                else
+                {
+                    // No bring-in: start with best visible hand
+                    startPosition = GetDealerPositionForFirstActingPlayer(FindBestVisibleHandPosition());
+                }
                 minBet = _smallBet;
-                var bringInPlayer = _gamePlayers[_bringInPlayerIndex].Player;
-                initialBet = bringInPlayer.CurrentBet;
-                forcedBetPlayerIndex = _bringInPlayerIndex;
                 break;
             case BaseballPhase.FourthStreet:
                 startPosition = GetDealerPositionForFirstActingPlayer(FindBestVisibleHandPosition());
