@@ -379,11 +379,11 @@ public class SevenCardStudGame
     /// <summary>
     /// Performs the showdown and determines winners.
     /// </summary>
-    public ShowdownResult PerformShowdown()
+    public SevenCardStudShowdownResult PerformShowdown()
     {
         if (CurrentPhase != SevenCardStudPhase.Showdown)
         {
-            return new ShowdownResult
+            return new SevenCardStudShowdownResult
             {
                 Success = false,
                 ErrorMessage = "Not in showdown phase"
@@ -402,11 +402,11 @@ public class SevenCardStudGame
             CurrentPhase = SevenCardStudPhase.Complete;
             MoveDealer();
 
-            return new ShowdownResult
+            return new SevenCardStudShowdownResult
             {
                 Success = true,
                 Payouts = new Dictionary<string, int> { { winner.Player.Name, totalPot } },
-                PlayerHands = new Dictionary<string, (Hands.DrawHands.DrawHand hand, IReadOnlyCollection<Card> cards)>
+                PlayerHands = new Dictionary<string, (SevenCardStudHand hand, IReadOnlyCollection<Card> cards)>
                 {
                     { winner.Player.Name, (null, winner.AllCards.ToList()) }
                 },
@@ -456,21 +456,11 @@ public class SevenCardStudGame
         CurrentPhase = SevenCardStudPhase.Complete;
         MoveDealer();
 
-        // Convert to expected return type
-        var resultHands = playerHands.ToDictionary(
-            kvp => kvp.Key,
-            kvp => ((Hands.DrawHands.DrawHand)null, kvp.Value.cards)
-        );
-
-        return new ShowdownResult
+        return new SevenCardStudShowdownResult
         {
             Success = true,
             Payouts = payouts,
-            PlayerHands = resultHands,
-            StudPlayerHands = playerHands.ToDictionary(
-                kvp => kvp.Key,
-                kvp => (kvp.Value.hand, kvp.Value.cards)
-            )
+            PlayerHands = playerHands
         };
     }
 
@@ -669,4 +659,16 @@ public class SevenCardStudGame
             _ => CurrentPhase.ToString()
         };
     }
+}
+
+/// <summary>
+/// Result of a Seven Card Stud showdown.
+/// </summary>
+public class SevenCardStudShowdownResult
+{
+    public bool Success { get; init; }
+    public string ErrorMessage { get; init; }
+    public Dictionary<string, int> Payouts { get; init; }
+    public Dictionary<string, (SevenCardStudHand hand, IReadOnlyCollection<Card> cards)> PlayerHands { get; init; }
+    public bool WonByFold { get; init; }
 }
