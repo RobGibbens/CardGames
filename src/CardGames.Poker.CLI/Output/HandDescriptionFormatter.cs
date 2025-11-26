@@ -46,6 +46,12 @@ internal static class HandDescriptionFormatter
     private static string FormatOnePair(IReadOnlyCollection<Card> cards)
     {
         var pairValue = cards.ValueOfBiggestPair();
+        if (pairValue == 0)
+        {
+            // Wild card hand - pair made with wild cards
+            var highCard = cards.OrderByDescending(c => c.Value).First();
+            return $"Pair of {GetPluralSymbolName(highCard.Symbol)}";
+        }
         var symbol = pairValue.ToSymbol();
         return $"Pair of {GetPluralSymbolName(symbol)}";
     }
@@ -70,6 +76,12 @@ internal static class HandDescriptionFormatter
     private static string FormatTrips(IReadOnlyCollection<Card> cards)
     {
         var tripsValue = cards.ValueOfBiggestTrips();
+        if (tripsValue == 0)
+        {
+            // Wild card hand - trips made with wild cards
+            var highCard = cards.OrderByDescending(c => c.Value).First();
+            return $"Three of a Kind ({GetPluralSymbolName(highCard.Symbol)})";
+        }
         var symbol = tripsValue.ToSymbol();
         return $"Three of a Kind ({GetPluralSymbolName(symbol)})";
     }
@@ -133,6 +145,28 @@ internal static class HandDescriptionFormatter
             .Select(g => g.Key)
             .FirstOrDefault();
 
+        // Handle wild card hands where actual card pattern doesn't match
+        // This occurs when wild cards are used to complete the full house
+        if (tripsValue == 0 || pairValue == 0)
+        {
+            // Use the two highest distinct card values as a best-effort description
+            var distinctValues = cards
+                .Select(c => c.Value)
+                .Distinct()
+                .OrderByDescending(v => v)
+                .Take(2)
+                .ToList();
+            
+            if (distinctValues.Count >= 2)
+            {
+                var highSymbol = distinctValues[0].ToSymbol();
+                var lowSymbol = distinctValues[1].ToSymbol();
+                return $"Full House ({GetPluralSymbolName(highSymbol)} full of {GetPluralSymbolName(lowSymbol)})";
+            }
+            // Fallback when wild cards make up most of the hand
+            return "Full House";
+        }
+
         var tripsSymbol = tripsValue.ToSymbol();
         var pairSymbol = pairValue.ToSymbol();
         return $"Full House ({GetPluralSymbolName(tripsSymbol)} full of {GetPluralSymbolName(pairSymbol)})";
@@ -144,7 +178,14 @@ internal static class HandDescriptionFormatter
             .GroupBy(c => c.Value)
             .Where(g => g.Count() >= 4)
             .Select(g => g.Key)
-            .First();
+            .FirstOrDefault();
+
+        if (quadsValue == 0)
+        {
+            // Wild card hand - quads made with wild cards
+            var highCard = cards.OrderByDescending(c => c.Value).First();
+            return $"Four of a Kind ({GetPluralSymbolName(highCard.Symbol)})";
+        }
 
         var symbol = quadsValue.ToSymbol();
         return $"Four of a Kind ({GetPluralSymbolName(symbol)})";

@@ -211,4 +211,36 @@ public class HandDescriptionFormatterTests
         // With Omaha rules, using As Ac from hole and Ad from board gives trips
         description.Should().Contain("Three of a Kind");
     }
+
+    [Fact]
+    public void GetHandDescription_BaseballHand_FullHouseWithWildCards_DoesNotThrow()
+    {
+        // Arrange - Baseball hand where wild cards create a full house 
+        // but the actual cards don't have the expected pair pattern
+        // This tests the fix for the "'0' is not a valid card value" error
+        var holeCards = "Ah 9d".ToCards();  // 9 is wild in Baseball
+        var openCards = "As Kh Qh 5c".ToCards();
+        var downCards = "2d".ToCards();
+
+        var hand = new BaseballHand(holeCards, openCards, downCards);
+        
+        // Act & Assert - Should not throw
+        var act = () => HandDescriptionFormatter.GetHandDescription(hand);
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void GetHandDescription_BaseballHand_TripsWithWildCards_DoesNotThrow()
+    {
+        // Arrange - Baseball hand where wild cards create trips
+        var holeCards = "3h Kd".ToCards();  // 3 is wild in Baseball
+        var openCards = "Ks 7h 5c 2d".ToCards();
+        var downCards = "8s".ToCards();
+
+        var hand = new BaseballHand(holeCards, openCards, downCards);
+        
+        // Act & Assert - Should not throw
+        var act = () => HandDescriptionFormatter.GetHandDescription(hand);
+        act.Should().NotThrow();
+    }
 }
