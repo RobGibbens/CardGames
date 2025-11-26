@@ -146,9 +146,10 @@ internal static class HandDescriptionFormatter
             .FirstOrDefault();
 
         // Handle wild card hands where actual card pattern doesn't match
+        // This occurs when wild cards are used to complete the full house
         if (tripsValue == 0 || pairValue == 0)
         {
-            // Get the two highest distinct values for the description
+            // Use the two highest distinct card values as a best-effort description
             var distinctValues = cards
                 .Select(c => c.Value)
                 .Distinct()
@@ -162,6 +163,7 @@ internal static class HandDescriptionFormatter
                 var lowSymbol = distinctValues[1].ToSymbol();
                 return $"Full House ({GetPluralSymbolName(highSymbol)} full of {GetPluralSymbolName(lowSymbol)})";
             }
+            // Fallback when wild cards make up most of the hand
             return "Full House";
         }
 
