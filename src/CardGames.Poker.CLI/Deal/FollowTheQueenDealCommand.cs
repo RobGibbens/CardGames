@@ -141,14 +141,16 @@ internal class FollowTheQueenDealCommand : Command<DealSettings>
             AnsiConsole.MarkupLine($"[cyan bold]{name}[/]:");
             
             var board = boardCards[name];
-            CardRenderer.RenderMixedCards(board, holeCards[name].Count);
+            
+            // Determine wild cards for current hand (for coloring visible board cards)
+            var allCards = holeCards[name].Concat(board).ToList();
+            var wildCards = WildCardRules.DetermineWildCards(allCards, faceUpCardsInOrder);
+            var wildInBoard = board.Where(c => wildCards.Contains(c)).ToList();
+            
+            CardRenderer.RenderMixedCards(board, holeCards[name].Count, wildCards: wildInBoard);
             
             var holeDisplay = holeCards[name].ToStringRepresentation();
             var boardDisplay = board.ToStringRepresentation();
-            
-            // Determine wild cards for current hand
-            var allCards = holeCards[name].Concat(board).ToList();
-            var wildCards = WildCardRules.DetermineWildCards(allCards, faceUpCardsInOrder);
             
             AnsiConsole.MarkupLine($"[dim](hole: {holeDisplay}) (board: {boardDisplay})[/]");
             if (wildCards.Any())
@@ -198,7 +200,7 @@ internal class FollowTheQueenDealCommand : Command<DealSettings>
             
             AnsiConsole.MarkupLine($"[cyan bold]{name}[/]:");
             var allCards = holeCards[name].Concat(board).ToList();
-            CardRenderer.RenderCards(allCards);
+            CardRenderer.RenderCards(allCards, wildCards: hand.WildCards);
             AnsiConsole.MarkupLine($"[magenta]{description}[/]");
             if (hand.WildCards.Any())
             {
