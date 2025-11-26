@@ -148,7 +148,7 @@ public class BaseballGame
         int smallBet,
         int bigBet,
         int buyCardPrice,
-        bool useBringIn = true)
+        bool useBringIn = false)
     {
         var playerList = players.ToList();
         if (playerList.Count < MinPlayers)
