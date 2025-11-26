@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using CardGames.Core.French.Cards;
 
 namespace CardGames.Poker.CLI.Output;
@@ -10,6 +11,7 @@ internal static class CardAsciiArt
 {
     private const int CardWidth = 9;
     private const int CardHeight = 7;
+    private const string WildCardColor = "green";
 
     /// <summary>
     /// Gets the ASCII art lines for a card showing its face.
@@ -59,6 +61,19 @@ internal static class CardAsciiArt
         Suit.Spades or Suit.Clubs => "white",
         _ => "white"
     };
+
+    /// <summary>
+    /// Gets the Spectre Console color markup for a card, considering wild cards.
+    /// Wild cards are displayed in green regardless of suit.
+    /// </summary>
+    internal static string GetCardColor(Card card, IEnumerable<Card> wildCards = null)
+    {
+        if (wildCards != null && wildCards.Contains(card))
+        {
+            return WildCardColor;
+        }
+        return GetSuitColor(card.Suit);
+    }
 
     /// <summary>
     /// Gets the Unicode character for a suit.

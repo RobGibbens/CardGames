@@ -18,7 +18,10 @@ internal static class CardRenderer
     /// <summary>
     /// Renders a collection of cards side-by-side showing their faces.
     /// </summary>
-    internal static void RenderCards(IEnumerable<Card> cards, string label = null)
+    /// <param name="cards">The cards to render.</param>
+    /// <param name="label">Optional label to display above the cards.</param>
+    /// <param name="wildCards">Optional collection of wild cards to highlight in green.</param>
+    internal static void RenderCards(IEnumerable<Card> cards, string label = null, IEnumerable<Card> wildCards = null)
     {
         var cardList = cards.ToList();
         if (cardList.Count == 0)
@@ -29,7 +32,7 @@ internal static class CardRenderer
             AnsiConsole.MarkupLine($"[dim]{label}[/]");
         }
 
-        RenderCardsGrid(cardList, showFaces: true);
+        RenderCardsGrid(cardList, showFaces: true, wildCards: wildCards);
     }
 
     /// <summary>
@@ -73,10 +76,15 @@ internal static class CardRenderer
     /// <summary>
     /// Renders cards with mixed visibility (some face up, some face down).
     /// </summary>
+    /// <param name="faceUpCards">Cards to show face up.</param>
+    /// <param name="faceDownCount">Number of cards to show face down.</param>
+    /// <param name="label">Optional label to display above the cards.</param>
+    /// <param name="wildCards">Optional collection of wild cards to highlight in green.</param>
     internal static void RenderMixedCards(
         IEnumerable<Card> faceUpCards,
         int faceDownCount,
-        string label = null)
+        string label = null,
+        IEnumerable<Card> wildCards = null)
     {
         var faceUpList = faceUpCards.ToList();
         if (faceUpList.Count == 0 && faceDownCount == 0)
@@ -114,7 +122,7 @@ internal static class CardRenderer
         foreach (var card in faceUpList)
         {
             var cardFace = CardAsciiArt.GetCardFace(card);
-            var color = CardAsciiArt.GetSuitColor(card.Suit);
+            var color = CardAsciiArt.GetCardColor(card, wildCards);
             for (int lineIndex = 0; lineIndex < CardAsciiArt.Height; lineIndex++)
             {
                 if (cardIndex > 0)
@@ -132,7 +140,7 @@ internal static class CardRenderer
         }
     }
 
-    private static void RenderCardsGrid(IReadOnlyList<Card> cards, bool showFaces)
+    private static void RenderCardsGrid(IReadOnlyList<Card> cards, bool showFaces, IEnumerable<Card> wildCards = null)
     {
         var lines = new List<StringBuilder>();
         for (int i = 0; i < CardAsciiArt.Height; i++)
@@ -144,7 +152,7 @@ internal static class CardRenderer
         {
             var card = cards[cardIndex];
             var cardLines = showFaces ? CardAsciiArt.GetCardFace(card) : CardAsciiArt.GetCardBack();
-            var color = showFaces ? CardAsciiArt.GetSuitColor(card.Suit) : CardBackColor;
+            var color = showFaces ? CardAsciiArt.GetCardColor(card, wildCards) : CardBackColor;
 
             for (int lineIndex = 0; lineIndex < CardAsciiArt.Height; lineIndex++)
             {
