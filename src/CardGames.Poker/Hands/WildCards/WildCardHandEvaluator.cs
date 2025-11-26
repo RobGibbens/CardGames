@@ -15,7 +15,7 @@ public static class WildCardHandEvaluator
             .Select(s => new Card(s, v)))
         .ToList();
 
-    public static (HandType Type, long Strength) EvaluateBestHand(
+    public static (HandType Type, long Strength, IReadOnlyCollection<Card> EvaluatedCards) EvaluateBestHand(
         IReadOnlyCollection<Card> allCards,
         IReadOnlyCollection<Card> wildCards,
         HandTypeStrengthRanking ranking)
@@ -24,6 +24,7 @@ public static class WildCardHandEvaluator
 
         HandType bestType = HandType.Incomplete;
         long bestStrength = 0;
+        IReadOnlyCollection<Card> bestCards = new List<Card>();
 
         foreach (var hand in fiveCardHands)
         {
@@ -32,28 +33,31 @@ public static class WildCardHandEvaluator
 
             HandType type;
             long strength;
+            IReadOnlyCollection<Card> evaluatedCards;
 
             if (wildInHand.Any())
             {
-                (type, strength) = EvaluateWithWildCards(handList, wildInHand, ranking);
+                (type, strength, evaluatedCards) = EvaluateWithWildCards(handList, wildInHand, ranking);
             }
             else
             {
                 type = HandTypeDetermination.DetermineHandType(handList);
                 strength = HandStrength.Calculate(handList, type, ranking);
+                evaluatedCards = handList;
             }
 
             if (strength > bestStrength)
             {
                 bestType = type;
                 bestStrength = strength;
+                bestCards = evaluatedCards;
             }
         }
 
-        return (bestType, bestStrength);
+        return (bestType, bestStrength, bestCards);
     }
 
-    private static (HandType Type, long Strength) EvaluateWithWildCards(
+    private static (HandType Type, long Strength, IReadOnlyCollection<Card> EvaluatedCards) EvaluateWithWildCards(
         IReadOnlyCollection<Card> hand,
         IReadOnlyCollection<Card> wildCards,
         HandTypeStrengthRanking ranking)
@@ -63,10 +67,11 @@ public static class WildCardHandEvaluator
 
         if (wildCount == 5)
         {
+            var fiveAces = Enumerable.Repeat(new Card(Suit.Spades, Symbol.Ace), 5).ToList();
             return (HandType.FiveOfAKind, HandStrength.Calculate(
-                Enumerable.Repeat(new Card(Suit.Spades, Symbol.Ace), 5).ToList(),
+                fiveAces,
                 HandType.FiveOfAKind,
-                ranking));
+                ranking), fiveAces);
         }
 
         var result = TryMakeFiveOfAKind(naturalCards, wildCount, ranking);
@@ -99,7 +104,7 @@ public static class WildCardHandEvaluator
         return MakeHighCard(naturalCards, wildCount, ranking);
     }
 
-    private static (HandType, long)? TryMakeFiveOfAKind(
+    private static (HandType, long, IReadOnlyCollection<Card>)? TryMakeFiveOfAKind(
         IReadOnlyCollection<Card> naturalCards,
         int wildCount,
         HandTypeStrengthRanking ranking)
@@ -117,13 +122,13 @@ public static class WildCardHandEvaluator
         if (bestValue.Count + wildCount >= 5)
         {
             var cards = Enumerable.Repeat(new Card(Suit.Spades, bestValue.Value), 5).ToList();
-            return (HandType.FiveOfAKind, HandStrength.Calculate(cards, HandType.FiveOfAKind, ranking));
+            return (HandType.FiveOfAKind, HandStrength.Calculate(cards, HandType.FiveOfAKind, ranking), cards);
         }
 
         return null;
     }
 
-    private static (HandType, long)? TryMakeStraightFlush(
+    private static (HandType, long, IReadOnlyCollection<Card>)? TryMakeStraightFlush(
         IReadOnlyCollection<Card> naturalCards,
         int wildCount,
         HandTypeStrengthRanking ranking)
@@ -138,14 +143,14 @@ public static class WildCardHandEvaluator
                 if (present + wildCount >= 5)
                 {
                     var cards = needed.Select(v => new Card(suit, v)).ToList();
-                    return (HandType.StraightFlush, HandStrength.Calculate(cards, HandType.StraightFlush, ranking));
+                    return (HandType.StraightFlush, HandStrength.Calculate(cards, HandType.StraightFlush, ranking), cards);
                 }
             }
         }
         return null;
     }
 
-    private static (HandType, long)? TryMakeQuads(
+    private static (HandType, long, IReadOnlyCollection<Card>)? TryMakeQuads(
         IReadOnlyCollection<Card> naturalCards,
         int wildCount,
         HandTypeStrengthRanking ranking)
@@ -172,7 +177,7 @@ public static class WildCardHandEvaluator
                     new Card(Suit.Clubs, vc.Value),
                     new Card(Suit.Spades, kicker)
                 };
-                return (HandType.Quads, HandStrength.Calculate(cards, HandType.Quads, ranking));
+                return (HandType.Quads, HandStrength.Calculate(cards, HandType.Quads, ranking), cards);
             }
         }
 
@@ -187,13 +192,13 @@ public static class WildCardHandEvaluator
                 new Card(Suit.Clubs, 14),
                 new Card(Suit.Spades, highestNatural)
             };
-            return (HandType.Quads, HandStrength.Calculate(cards, HandType.Quads, ranking));
+            return (HandType.Quads, HandStrength.Calculate(cards, HandType.Quads, ranking), cards);
         }
 
         return null;
     }
 
-    private static (HandType, long)? TryMakeFullHouse(
+    private static (HandType, long, IReadOnlyCollection<Card>)? TryMakeFullHouse(
         IReadOnlyCollection<Card> naturalCards,
         int wildCount,
         HandTypeStrengthRanking ranking)
@@ -226,7 +231,7 @@ public static class WildCardHandEvaluator
                         new Card(Suit.Spades, pairValue.Value),
                         new Card(Suit.Hearts, pairValue.Value)
                     };
-                    return (HandType.FullHouse, HandStrength.Calculate(cards, HandType.FullHouse, ranking));
+                    return (HandType.FullHouse, HandStrength.Calculate(cards, HandType.FullHouse, ranking), cards);
                 }
             }
         }
@@ -234,7 +239,7 @@ public static class WildCardHandEvaluator
         return null;
     }
 
-    private static (HandType, long)? TryMakeFlush(
+    private static (HandType, long, IReadOnlyCollection<Card>)? TryMakeFlush(
         IReadOnlyCollection<Card> naturalCards,
         int wildCount,
         HandTypeStrengthRanking ranking)
@@ -253,13 +258,13 @@ public static class WildCardHandEvaluator
                     }
                 }
                 flushCards = flushCards.OrderByDescending(c => c.Value).ToList();
-                return (HandType.Flush, HandStrength.Calculate(flushCards, HandType.Flush, ranking));
+                return (HandType.Flush, HandStrength.Calculate(flushCards, HandType.Flush, ranking), flushCards);
             }
         }
         return null;
     }
 
-    private static (HandType, long)? TryMakeStraight(
+    private static (HandType, long, IReadOnlyCollection<Card>)? TryMakeStraight(
         IReadOnlyCollection<Card> naturalCards,
         int wildCount,
         HandTypeStrengthRanking ranking)
@@ -273,13 +278,13 @@ public static class WildCardHandEvaluator
             if (present + wildCount >= 5)
             {
                 var cards = needed.Select(v => new Card(Suit.Spades, v)).ToList();
-                return (HandType.Straight, HandStrength.Calculate(cards, HandType.Straight, ranking));
+                return (HandType.Straight, HandStrength.Calculate(cards, HandType.Straight, ranking), cards);
             }
         }
         return null;
     }
 
-    private static (HandType, long)? TryMakeTrips(
+    private static (HandType, long, IReadOnlyCollection<Card>)? TryMakeTrips(
         IReadOnlyCollection<Card> naturalCards,
         int wildCount,
         HandTypeStrengthRanking ranking)
@@ -321,13 +326,13 @@ public static class WildCardHandEvaluator
                     new Card(Suit.Spades, kickers[0]),
                     new Card(Suit.Hearts, kickers[1])
                 };
-                return (HandType.Trips, HandStrength.Calculate(cards, HandType.Trips, ranking));
+                return (HandType.Trips, HandStrength.Calculate(cards, HandType.Trips, ranking), cards);
             }
         }
         return null;
     }
 
-    private static (HandType, long)? TryMakeTwoPair(
+    private static (HandType, long, IReadOnlyCollection<Card>)? TryMakeTwoPair(
         IReadOnlyCollection<Card> naturalCards,
         int wildCount,
         HandTypeStrengthRanking ranking)
@@ -352,7 +357,7 @@ public static class WildCardHandEvaluator
                 new Card(Suit.Hearts, pairs[1].Value),
                 new Card(Suit.Spades, kicker)
             };
-            return (HandType.TwoPair, HandStrength.Calculate(cards, HandType.TwoPair, ranking));
+            return (HandType.TwoPair, HandStrength.Calculate(cards, HandType.TwoPair, ranking), cards);
         }
 
         if (pairs.Count == 1 && wildCount >= 1)
@@ -373,13 +378,13 @@ public static class WildCardHandEvaluator
                 new Card(Suit.Hearts, secondPairValue),
                 new Card(Suit.Spades, kicker)
             };
-            return (HandType.TwoPair, HandStrength.Calculate(cards, HandType.TwoPair, ranking));
+            return (HandType.TwoPair, HandStrength.Calculate(cards, HandType.TwoPair, ranking), cards);
         }
 
         return null;
     }
 
-    private static (HandType, long)? TryMakePair(
+    private static (HandType, long, IReadOnlyCollection<Card>)? TryMakePair(
         IReadOnlyCollection<Card> naturalCards,
         int wildCount,
         HandTypeStrengthRanking ranking)
@@ -411,7 +416,7 @@ public static class WildCardHandEvaluator
                 new Card(Suit.Hearts, kickers[1]),
                 new Card(Suit.Diamonds, kickers[2])
             };
-            return (HandType.OnePair, HandStrength.Calculate(cards, HandType.OnePair, ranking));
+            return (HandType.OnePair, HandStrength.Calculate(cards, HandType.OnePair, ranking), cards);
         }
 
         var valueCounts = naturalCards
@@ -437,13 +442,13 @@ public static class WildCardHandEvaluator
                 new Card(Suit.Hearts, kickers[1]),
                 new Card(Suit.Diamonds, kickers[2])
             };
-            return (HandType.OnePair, HandStrength.Calculate(cards, HandType.OnePair, ranking));
+            return (HandType.OnePair, HandStrength.Calculate(cards, HandType.OnePair, ranking), cards);
         }
 
         return null;
     }
 
-    private static (HandType, long) MakeHighCard(
+    private static (HandType, long, IReadOnlyCollection<Card>) MakeHighCard(
         IReadOnlyCollection<Card> naturalCards,
         int wildCount,
         HandTypeStrengthRanking ranking)
@@ -460,6 +465,6 @@ public static class WildCardHandEvaluator
         }
         
         cards = cards.OrderByDescending(c => c.Value).Take(5).ToList();
-        return (HandType.HighCard, HandStrength.Calculate(cards, HandType.HighCard, ranking));
+        return (HandType.HighCard, HandStrength.Calculate(cards, HandType.HighCard, ranking), cards);
     }
 }
