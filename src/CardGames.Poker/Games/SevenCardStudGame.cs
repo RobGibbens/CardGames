@@ -55,6 +55,7 @@ public class SevenCardStudGame
     private readonly int _bringIn;
     private readonly int _smallBet;
     private readonly int _bigBet;
+    private readonly bool _useBringIn;
 
     private PotManager _potManager;
     private BettingRound _currentBettingRound;
@@ -72,13 +73,15 @@ public class SevenCardStudGame
     public int BringIn => _bringIn;
     public int SmallBet => _smallBet;
     public int BigBet => _bigBet;
+    public bool UseBringIn => _useBringIn;
 
     public SevenCardStudGame(
         IEnumerable<(string name, int chips)> players,
         int ante,
         int bringIn,
         int smallBet,
-        int bigBet)
+        int bigBet,
+        bool useBringIn = false)
     {
         var playerList = players.ToList();
         if (playerList.Count < MinPlayers)
@@ -100,6 +103,7 @@ public class SevenCardStudGame
         _bringIn = bringIn;
         _smallBet = smallBet;
         _bigBet = bigBet;
+        _useBringIn = useBringIn;
         _dealerPosition = 0;
         CurrentPhase = SevenCardStudPhase.WaitingToStart;
     }
@@ -178,19 +182,32 @@ public class SevenCardStudGame
             gamePlayer.Player.ResetCurrentBet();
         }
 
-        // Determine the bring-in player (lowest upcard)
-        _bringInPlayerIndex = FindBringInPlayer();
+        // Determine the bring-in player (lowest upcard) only if bring-in is enabled
+        if (_useBringIn)
+        {
+            _bringInPlayerIndex = FindBringInPlayer();
+        }
+        else
+        {
+            _bringInPlayerIndex = -1;
+        }
     }
 
     /// <summary>
     /// Posts the bring-in bet for third street.
     /// Returns the bring-in action.
+    /// Throws if bring-in is disabled or not in the correct phase.
     /// </summary>
     public BettingAction PostBringIn()
     {
         if (CurrentPhase != SevenCardStudPhase.ThirdStreet)
         {
             throw new InvalidOperationException("Cannot post bring-in in current phase");
+        }
+
+        if (!_useBringIn)
+        {
+            throw new InvalidOperationException("Bring-in is disabled for this game");
         }
 
         var bringInPlayer = _gamePlayers[_bringInPlayerIndex];
@@ -202,7 +219,8 @@ public class SevenCardStudGame
 
     /// <summary>
     /// Starts the betting round for the current street.
-    /// For third street, starts after the bring-in player.
+    /// For third street with bring-in, starts after the bring-in player.
+    /// For third street without bring-in, starts with best visible hand (like other streets).
     /// For other streets, starts with best visible hand.
     /// </summary>
     public void StartBettingRound()
@@ -216,12 +234,20 @@ public class SevenCardStudGame
         switch (CurrentPhase)
         {
             case SevenCardStudPhase.ThirdStreet:
-                startPosition = _bringInPlayerIndex;
+                if (_useBringIn && _bringInPlayerIndex >= 0)
+                {
+                    startPosition = _bringInPlayerIndex;
+                    // The bring-in creates an initial bet
+                    var bringInPlayer = _gamePlayers[_bringInPlayerIndex].Player;
+                    initialBet = bringInPlayer.CurrentBet;
+                    forcedBetPlayerIndex = _bringInPlayerIndex;
+                }
+                else
+                {
+                    // No bring-in: start with best visible hand
+                    startPosition = GetDealerPositionForFirstActingPlayer(FindBestVisibleHandPosition());
+                }
                 minBet = _smallBet;
-                // The bring-in creates an initial bet
-                var bringInPlayer = _gamePlayers[_bringInPlayerIndex].Player;
-                initialBet = bringInPlayer.CurrentBet;
-                forcedBetPlayerIndex = _bringInPlayerIndex;
                 break;
             case SevenCardStudPhase.FourthStreet:
                 startPosition = GetDealerPositionForFirstActingPlayer(FindBestVisibleHandPosition());

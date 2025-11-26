@@ -379,6 +379,118 @@ public class FollowTheQueenGameTests
         game.FaceUpCardsInOrder.Should().HaveCount(8);
     }
 
+    [Fact]
+    public void UseBringIn_DefaultsToTrue()
+    {
+        var game = CreateTwoPlayerGame();
+
+        game.UseBringIn.Should().BeTrue();
+    }
+
+    [Fact]
+    public void UseBringIn_CanBeSetToFalse()
+    {
+        var players = new List<(string, int)>
+        {
+            ("Alice", 1000),
+            ("Bob", 1000)
+        };
+        var game = new FollowTheQueenGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20, useBringIn: false);
+
+        game.UseBringIn.Should().BeFalse();
+    }
+
+    [Fact]
+    public void GetBringInPlayer_ReturnsNull_WhenBringInDisabled()
+    {
+        var players = new List<(string, int)>
+        {
+            ("Alice", 1000),
+            ("Bob", 1000)
+        };
+        var game = new FollowTheQueenGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20, useBringIn: false);
+        game.StartHand();
+        game.CollectAntes();
+        game.DealThirdStreet();
+
+        var bringInPlayer = game.GetBringInPlayer();
+
+        bringInPlayer.Should().BeNull();
+    }
+
+    [Fact]
+    public void PostBringIn_ThrowsException_WhenBringInDisabled()
+    {
+        var players = new List<(string, int)>
+        {
+            ("Alice", 1000),
+            ("Bob", 1000)
+        };
+        var game = new FollowTheQueenGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20, useBringIn: false);
+        game.StartHand();
+        game.CollectAntes();
+        game.DealThirdStreet();
+
+        var act = () => game.PostBringIn();
+
+        act.Should().Throw<System.InvalidOperationException>()
+            .WithMessage("*Bring-in is disabled*");
+    }
+
+    [Fact]
+    public void StartBettingRound_WorksWithoutBringIn()
+    {
+        var players = new List<(string, int)>
+        {
+            ("Alice", 1000),
+            ("Bob", 1000)
+        };
+        var game = new FollowTheQueenGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20, useBringIn: false);
+        game.StartHand();
+        game.CollectAntes();
+        game.DealThirdStreet();
+
+        // Should not throw and should start betting round without bring-in
+        game.StartBettingRound();
+
+        game.CurrentBettingRound.Should().NotBeNull();
+        game.TotalPot.Should().Be(10); // Only antes, no bring-in
+    }
+
+    [Fact]
+    public void PlayFullHand_WorksWithoutBringIn()
+    {
+        var players = new List<(string, int)>
+        {
+            ("Alice", 1000),
+            ("Bob", 1000)
+        };
+        var game = new FollowTheQueenGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20, useBringIn: false);
+        game.StartHand();
+        game.CollectAntes();
+        game.DealThirdStreet();
+
+        // Skip PostBringIn - directly start betting round
+        game.StartBettingRound();
+
+        // Complete third street betting
+        while (!game.CurrentBettingRound.IsComplete)
+        {
+            var available = game.GetAvailableActions();
+            if (available.CanCheck)
+            {
+                game.ProcessBettingAction(BettingActionType.Check);
+            }
+            else if (available.CanCall)
+            {
+                game.ProcessBettingAction(BettingActionType.Call);
+            }
+        }
+
+        // Verify game progressed to fourth street
+        game.CurrentPhase.Should().Be(FollowTheQueenPhase.FourthStreet);
+    }
+
     private static FollowTheQueenGame CreateTwoPlayerGame()
     {
         var players = new List<(string, int)>
