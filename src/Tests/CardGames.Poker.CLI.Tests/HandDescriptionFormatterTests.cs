@@ -243,4 +243,42 @@ public class HandDescriptionFormatterTests
         var act = () => HandDescriptionFormatter.GetHandDescription(hand);
         act.Should().NotThrow();
     }
+    
+    [Fact]
+    public void GetHandDescription_BaseballHand_QuadsWithWildCards_DisplaysCorrectValue()
+    {
+        // This is the Goose hand from the issue:
+        // (hole: Qd 9d 7d) (board: As Qc Qh 4h 2h) Wild cards: 9d
+        // Has 3 Queens + 1 wild = Four Queens (not Four Aces!)
+        var holeCards = "Qd 7d".ToCards();
+        var openCards = "As Qc Qh 4h 2h".ToCards();
+        var downCards = "9d".ToCards();
+
+        var hand = new BaseballHand(holeCards, openCards, downCards);
+        
+        // Act
+        var description = HandDescriptionFormatter.GetHandDescription(hand);
+        
+        // Assert - Should be "Four of a Kind (Queens)", not "Four of a Kind (Aces)"
+        description.Should().Be("Four of a Kind (Queens)");
+    }
+    
+    [Fact]
+    public void GetHandDescription_BaseballHand_StraightWithWildCards_DisplaysCorrectHighCard()
+    {
+        // This is the Rob hand from the issue:
+        // (hole: 9s 5h 2d) (board: Ks 8c 6h 3c) Wild cards: 9s 3c
+        // Makes a 9-high straight (5-6-7-8-9), not a King-high straight
+        var holeCards = "5h 2d".ToCards();
+        var openCards = "Ks 8c 6h 3c".ToCards();
+        var downCards = "9s".ToCards();
+
+        var hand = new BaseballHand(holeCards, openCards, downCards);
+        
+        // Act
+        var description = HandDescriptionFormatter.GetHandDescription(hand);
+        
+        // Assert - Should be "Straight (Nine-high)", not "Straight (King-high)"
+        description.Should().Be("Straight (Nine-high)");
+    }
 }

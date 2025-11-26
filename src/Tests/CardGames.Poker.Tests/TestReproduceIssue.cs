@@ -18,13 +18,21 @@ public class BaseballHandIssueTests
     }
 
     [Fact]
-    public void Rob_Hand_Should_Be_Three_Kings_Not_Straight()
+    public void Rob_Hand_Should_Be_Nine_High_Straight()
     {
         // From the issue:
         // Rob's hand: (hole: 9s 5h 2d) (board: Ks 8c 6h 3c) Wild cards: 9s 3c
-        // Issue says this was evaluated as "Straight (King-high)" 
-        // But should be "Three Kings" (Ks + 2 wilds = K K K + 2 kickers)
-        // K-high straight would need K-Q-J-T-9, but we only have K and 2 wilds
+        // The issue complained about "Straight (King-high)" but it should be "Straight (Nine-high)"
+        // 
+        // Natural cards: Ks, 8c, 6h, 5h, 2d
+        // Wild cards: 9s, 3c (2 wilds)
+        // 
+        // A 9-high straight (5-6-7-8-9) is possible:
+        // - Natural: 5, 6, 8 (3 cards from the needed sequence)
+        // - Wild cards fill in: 7, 9 (2 cards)
+        // 
+        // A straight beats three of a kind, so this IS the best hand.
+        // The bug was that it was being DISPLAYED as "King-high" instead of "Nine-high"
         var holeCards = "5h 2d".ToCards();
         var openCards = "Ks 8c 6h 3c".ToCards();
         var downCards = "9s".ToCards();
@@ -35,12 +43,15 @@ public class BaseballHandIssueTests
         _output.WriteLine($"Wild cards: {string.Join(" ", hand.WildCards)}");
         _output.WriteLine($"Type: {hand.Type}");
         _output.WriteLine($"Strength: {hand.Strength}");
+        _output.WriteLine($"EvaluatedBestCards: {string.Join(" ", hand.EvaluatedBestCards)}");
         
-        // Natural cards: Ks, 8c, 6h, 5h, 2d
-        // Wild cards: 9s, 3c (2 wilds)
-        // Best hand: Three Kings (Ks + 2 wilds as Kings)
-        // NOT a straight - K-?-?-?-? would need 4 consecutive values
-        hand.Type.Should().Be(HandType.Trips);
+        // The evaluation correctly identifies this as a straight (5-6-7-8-9)
+        // A straight beats trips, so this is the correct best hand
+        hand.Type.Should().Be(HandType.Straight);
+        
+        // The evaluated best cards should reflect the 9-high straight (not King-high)
+        var bestCardValues = hand.EvaluatedBestCards.Select(c => c.Value).OrderByDescending(v => v).ToList();
+        bestCardValues.Should().BeEquivalentTo(new[] { 9, 8, 7, 6, 5 });
     }
 
     [Fact]

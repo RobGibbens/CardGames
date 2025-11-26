@@ -14,9 +14,24 @@ public class KingsAndLowsHand : StudHand
     private IReadOnlyCollection<Card> _wildCards;
     private HandType _evaluatedType;
     private long _evaluatedStrength;
+    private IReadOnlyCollection<Card> _evaluatedBestCards;
     private bool _evaluated;
 
     public IReadOnlyCollection<Card> WildCards => _wildCards ??= DetermineWildCards();
+    
+    /// <summary>
+    /// Gets the evaluated best 5-card hand after applying wild cards.
+    /// This represents what the hand would look like if wild cards were substituted
+    /// for their optimal values.
+    /// </summary>
+    public IReadOnlyCollection<Card> EvaluatedBestCards
+    {
+        get
+        {
+            EvaluateIfNeeded();
+            return _evaluatedBestCards;
+        }
+    }
 
     public KingsAndLowsHand(
         IReadOnlyCollection<Card> holeCards,
@@ -65,12 +80,14 @@ public class KingsAndLowsHand : StudHand
         {
             _evaluatedType = base.DetermineType();
             _evaluatedStrength = base.CalculateStrength();
+            _evaluatedBestCards = Cards.Take(5).ToList();
             return;
         }
 
-        var (type, strength) = WildCardHandEvaluator.EvaluateBestHand(
+        var (type, strength, evaluatedCards) = WildCardHandEvaluator.EvaluateBestHand(
             Cards, WildCards, Ranking);
         _evaluatedType = type;
         _evaluatedStrength = strength;
+        _evaluatedBestCards = evaluatedCards;
     }
 }
