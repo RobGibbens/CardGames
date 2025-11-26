@@ -53,7 +53,7 @@ static void RunPlayMenu()
     var gameType = AnsiConsole.Prompt(
         new SelectionPrompt<string>()
             .Title("[green]Select game type:[/]")
-            .AddChoices("5-Card Draw", "7-Card Stud", "Back"));
+            .AddChoices("5-Card Draw", "7-Card Stud", "Kings and Lows", "Back"));
 
     var app = CreateCommandApp();
     
@@ -64,6 +64,9 @@ static void RunPlayMenu()
             break;
         case "7-Card Stud":
             app.Run(new[] { "play", "stud" });
+            break;
+        case "Kings and Lows":
+            app.Run(new[] { "play", "kings-and-lows" });
             break;
         case "Back":
             RunInteractiveMenu();
@@ -247,6 +250,11 @@ static CommandApp CreateCommandApp()
                 .WithAlias("7cs")
                 .WithAlias("7-card-stud")
                 .WithDescription("Play 7-card Stud with betting.");
+
+            play
+                .AddCommand<KingsAndLowsPlayCommand>("kings-and-lows")
+                .WithAlias("kal")
+                .WithDescription("Play Kings and Lows with drop-or-stay and pot matching.");
         });
     });
     
