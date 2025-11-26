@@ -53,7 +53,7 @@ static void RunPlayMenu()
     var gameType = AnsiConsole.Prompt(
         new SelectionPrompt<string>()
             .Title("[green]Select game type:[/]")
-            .AddChoices("5-Card Draw", "7-Card Stud", "Baseball", "Kings and Lows", "Back"));
+            .AddChoices("5-Card Draw", "7-Card Stud", "Baseball", "Kings and Lows", "Follow the Queen", "Back"));
 
     var app = CreateCommandApp();
     
@@ -70,6 +70,9 @@ static void RunPlayMenu()
             break;
         case "Kings and Lows":
             app.Run(new[] { "play", "kings-and-lows" });
+            break;
+        case "Follow the Queen":
+            app.Run(new[] { "play", "follow-the-queen" });
             break;
         case "Back":
             RunInteractiveMenu();
@@ -262,6 +265,11 @@ static CommandApp CreateCommandApp()
                 .AddCommand<KingsAndLowsPlayCommand>("kings-and-lows")
                 .WithAlias("kal")
                 .WithDescription("Play Kings and Lows with drop-or-stay and pot matching.");
+
+            play
+                .AddCommand<FollowTheQueenPlayCommand>("follow-the-queen")
+                .WithAlias("ftq")
+                .WithDescription("Play Follow the Queen with betting (Queens and following card are wild).");
         });
     });
     
