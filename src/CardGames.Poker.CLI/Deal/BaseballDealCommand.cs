@@ -136,14 +136,17 @@ internal class BaseballDealCommand : Command<DealSettings>
             AnsiConsole.MarkupLine($"[cyan bold]{name}[/]:");
             
             var board = boardCards[name];
-            CardRenderer.RenderMixedCards(board, holeCards[name].Count);
+            
+            // Determine wild cards (3s and 9s) for coloring
+            var wildInBoard = board.Where(c => c.Symbol == Symbol.Three || c.Symbol == Symbol.Nine).ToList();
+            
+            CardRenderer.RenderMixedCards(board, holeCards[name].Count, wildCards: wildInBoard);
             
             var holeDisplay = holeCards[name].ToStringRepresentation();
             var boardDisplay = board.ToStringRepresentation();
             
             // Highlight wild cards (3s and 9s)
             var wildInHole = holeCards[name].Where(c => c.Symbol == Symbol.Three || c.Symbol == Symbol.Nine).ToList();
-            var wildInBoard = board.Where(c => c.Symbol == Symbol.Three || c.Symbol == Symbol.Nine).ToList();
             
             AnsiConsole.MarkupLine($"[dim](hole: {holeDisplay}) (board: {boardDisplay})[/]");
             if (wildInHole.Count + wildInBoard.Count > 0)
@@ -173,7 +176,7 @@ internal class BaseballDealCommand : Command<DealSettings>
             
             AnsiConsole.MarkupLine($"[cyan bold]{name}[/]:");
             var allCards = holeCards[name].Concat(board).ToList();
-            CardRenderer.RenderCards(allCards);
+            CardRenderer.RenderCards(allCards, wildCards: hand.WildCards);
             AnsiConsole.MarkupLine($"[magenta]{description}[/]");
             if (hand.WildCards.Any())
             {
