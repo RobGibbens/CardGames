@@ -7,6 +7,7 @@ using CardGames.Core.French.Cards.Extensions;
 using CardGames.Poker.Betting;
 using CardGames.Poker.CLI.Output;
 using CardGames.Poker.Games;
+using CardGames.Poker.Hands.WildCards;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
@@ -15,6 +16,7 @@ namespace CardGames.Poker.CLI.Play;
 internal class BaseballPlayCommand : Command<BaseballPlaySettings>
 {
     private static readonly SpectreLogger Logger = new();
+    private static readonly BaseballWildCardRules WildCardRules = new();
     private const int MinPlayers = 2;
     private const int MaxPlayers = 8;
 
@@ -408,9 +410,9 @@ internal class BaseballPlayCommand : Command<BaseballPlaySettings>
         var boardCards = gamePlayer.BoardCards.ToList();
         var holeCount = gamePlayer.HoleCards.Count;
 
-        // Determine wild cards (3s and 9s) for coloring
-        var wildInBoard = boardCards.Where(c => c.Symbol == Symbol.Three || c.Symbol == Symbol.Nine).ToList();
-        var wildInHole = gamePlayer.HoleCards.Where(c => c.Symbol == Symbol.Three || c.Symbol == Symbol.Nine).ToList();
+        // Determine wild cards (3s and 9s) for coloring using shared rules
+        var wildInBoard = WildCardRules.DetermineWildCards(boardCards);
+        var wildInHole = WildCardRules.DetermineWildCards(gamePlayer.HoleCards.ToList());
         var allWildCards = wildInHole.Concat(wildInBoard).ToList();
 
         if (showHoleCards)
@@ -453,7 +455,7 @@ internal class BaseballPlayCommand : Command<BaseballPlaySettings>
             if (!gamePlayer.Player.HasFolded)
             {
                 var boardCards = gamePlayer.BoardCards.ToList();
-                var wildInBoard = boardCards.Where(c => c.Symbol == Symbol.Three || c.Symbol == Symbol.Nine).ToList();
+                var wildInBoard = WildCardRules.DetermineWildCards(boardCards);
                 var marker = gamePlayer.Player.Name == currentPlayer.Name ? "►" : " ";
                 var boardDisplay = boardCards.ToStringRepresentation();
                 var wildDisplay = wildInBoard.Any() ? $" [yellow](wild: {wildInBoard.ToStringRepresentation()})[/]" : "";
