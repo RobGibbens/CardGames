@@ -49,7 +49,7 @@ static void RunDealMenu()
     var gameType = AnsiConsole.Prompt(
         new SelectionPrompt<string>()
             .Title("[green]Select game type:[/]")
-            .AddChoices("Texas Holdem", "Omaha", "7-Card Stud", "Back"));
+            .AddChoices("Texas Holdem", "Omaha", "7-Card Stud", "5-Card Draw", "Back"));
 
     var app = CreateCommandApp();
     
@@ -64,6 +64,9 @@ static void RunDealMenu()
         case "7-Card Stud":
             app.Run(new[] { "deal", "stud" });
             break;
+        case "5-Card Draw":
+            app.Run(new[] { "deal", "draw" });
+            break;
         case "Back":
             RunInteractiveMenu();
             break;
@@ -75,7 +78,7 @@ static void RunSimulationMenu()
     var gameType = AnsiConsole.Prompt(
         new SelectionPrompt<string>()
             .Title("[green]Select simulation type:[/]")
-            .AddChoices("Texas Holdem", "Omaha", "7-Card Stud", "Back"));
+            .AddChoices("Texas Holdem", "Omaha", "7-Card Stud", "5-Card Draw", "Back"));
 
     var app = CreateCommandApp();
     
@@ -89,6 +92,9 @@ static void RunSimulationMenu()
             break;
         case "7-Card Stud":
             app.Run(new[] { "sim", "stud" });
+            break;
+        case "5-Card Draw":
+            app.Run(new[] { "sim", "draw" });
             break;
         case "Back":
             RunInteractiveMenu();
@@ -121,6 +127,12 @@ static CommandApp CreateCommandApp()
                 .AddCommand<OmahaSimulationCommand>("omaha")
                 .WithAlias("plo")
                 .WithDescription("Runs an Omaha simulation.");
+
+            sim
+                .AddCommand<FiveCardDrawSimulationCommand>("draw")
+                .WithAlias("5cd")
+                .WithAlias("5-card-draw")
+                .WithDescription("Runs a 5-card Draw simulation.");
         });
         
         configuration.AddBranch<DealSettings>("deal", deal =>
@@ -141,6 +153,12 @@ static CommandApp CreateCommandApp()
                 .WithAlias("7cs")
                 .WithAlias("stud-hi")
                 .WithDescription("Deal a 7-card Stud hand with automated dealer.");
+
+            deal
+                .AddCommand<FiveCardDrawDealCommand>("draw")
+                .WithAlias("5cd")
+                .WithAlias("5-card-draw")
+                .WithDescription("Deal a 5-card Draw hand with automated dealer.");
         });
     });
     
