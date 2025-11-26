@@ -492,5 +492,6 @@ public class ShowdownResult
     public string ErrorMessage { get; init; }
     public Dictionary<string, int> Payouts { get; init; }
     public Dictionary<string, (DrawHand hand, IReadOnlyCollection<Card> cards)> PlayerHands { get; init; }
+    public Dictionary<string, (Hands.StudHands.SevenCardStudHand hand, IReadOnlyCollection<Card> cards)> StudPlayerHands { get; init; }
     public bool WonByFold { get; init; }
 }
