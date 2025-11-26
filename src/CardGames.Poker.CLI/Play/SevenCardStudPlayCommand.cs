@@ -162,14 +162,21 @@ internal class SevenCardStudPlayCommand : Command<SevenCardStudPlaySettings>
 
     private static bool RunBettingRound(SevenCardStudGame game, string roundName)
     {
-        Logger.Paragraph(roundName);
         var minBet = game.GetCurrentMinBet();
-        AnsiConsole.MarkupLine($"[dim]Bet size this street: {minBet}[/]");
 
         while (!game.CurrentBettingRound.IsComplete)
         {
             var currentPlayer = game.GetCurrentPlayer();
             var available = game.GetAvailableActions();
+
+            // Clear screen and show fresh game state for current player
+            Logger.ClearScreen();
+            Logger.Paragraph(roundName);
+            AnsiConsole.MarkupLine($"[dim]Bet size this street: {minBet}[/]");
+
+            // Show all players' board cards (visible to everyone)
+            DisplayAllBoardCards(game, currentPlayer);
+            AnsiConsole.WriteLine();
 
             AnsiConsole.MarkupLine($"[green]Pot: {game.TotalPot}[/] | [yellow]Current Bet: {game.CurrentBettingRound.CurrentBet}[/]");
             DisplayPlayerStatus(game, currentPlayer);
@@ -346,6 +353,24 @@ internal class SevenCardStudPlayCommand : Command<SevenCardStudPlaySettings>
             CardRenderer.RenderMixedCards(boardCards, holeCount);
             var boardDisplay = boardCards.ToStringRepresentation();
             AnsiConsole.MarkupLine($"[dim](board: {boardDisplay})[/]");
+        }
+    }
+
+    /// <summary>
+    /// Displays all players' board (face-up) cards visible on the table.
+    /// </summary>
+    private static void DisplayAllBoardCards(SevenCardStudGame game, PokerPlayer currentPlayer)
+    {
+        AnsiConsole.MarkupLine("[dim]Board cards visible on table:[/]");
+        foreach (var gamePlayer in game.GamePlayers)
+        {
+            if (!gamePlayer.Player.HasFolded)
+            {
+                var boardCards = gamePlayer.BoardCards.ToList();
+                var marker = gamePlayer.Player.Name == currentPlayer.Name ? "►" : " ";
+                var boardDisplay = boardCards.ToStringRepresentation();
+                AnsiConsole.MarkupLine($"[dim]{marker} {gamePlayer.Player.Name}: {boardDisplay}[/]");
+            }
         }
     }
 
