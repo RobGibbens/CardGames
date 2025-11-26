@@ -126,6 +126,9 @@ public class BaseballGame
     // For buy-card phase
     private Queue<(int playerIndex, int boardCardIndex)> _pendingBuyCardOffers = new();
     private (int playerIndex, int boardCardIndex)? _currentBuyCardOffer;
+    
+    // For tracking incremental dealing
+    private int _nextPlayerToDeal = 0;
 
     public BaseballPhase CurrentPhase { get; private set; }
     public IReadOnlyList<BaseballGamePlayer> GamePlayers => _gamePlayers.AsReadOnly();
@@ -225,7 +228,10 @@ public class BaseballGame
     }
 
     /// <summary>
-    /// Deals the third street cards (2 hole cards + 1 board card) to all players.
+    /// Deals the third street cards (2 hole cards + 1 board card) to all players at once.
+    /// This method deals to all players before any buy-card offers are processed.
+    /// For immediate buy-card processing (where each player's 4 offer is handled before 
+    /// dealing to the next player), use StartDealingThirdStreet() and DealThirdStreetToNextPlayer() instead.
     /// </summary>
     public void DealThirdStreet()
     {
@@ -234,18 +240,98 @@ public class BaseballGame
             throw new InvalidOperationException("Cannot deal third street in current phase");
         }
 
-        foreach (var gamePlayer in _gamePlayers)
+        // Clear any existing offers and reset dealing state
+        _pendingBuyCardOffers.Clear();
+        _currentBuyCardOffer = null;
+        _nextPlayerToDeal = 0;
+
+        // Deal to all players
+        while (HasMorePlayersToDeal())
         {
-            if (!gamePlayer.Player.HasFolded)
-            {
-                // Deal 2 hole cards (face down)
-                gamePlayer.AddHoleCard(_dealer.DealCard());
-                gamePlayer.AddHoleCard(_dealer.DealCard());
-                // Deal 1 board card (face up)
-                gamePlayer.AddBoardCard(_dealer.DealCard());
-            }
+            DealThirdStreetToNextPlayer();
         }
 
+        FinishThirdStreetDealing();
+    }
+
+    /// <summary>
+    /// Starts the third street dealing process for incremental dealing.
+    /// Use HasMorePlayersToDeal() and DealThirdStreetToNextPlayer() to deal one player at a time.
+    /// </summary>
+    public void StartDealingThirdStreet()
+    {
+        if (CurrentPhase != BaseballPhase.ThirdStreet)
+        {
+            throw new InvalidOperationException("Cannot deal third street in current phase");
+        }
+
+        // Clear any existing offers and reset dealing state
+        _pendingBuyCardOffers.Clear();
+        _currentBuyCardOffer = null;
+        _nextPlayerToDeal = 0;
+    }
+
+    /// <summary>
+    /// Checks if there are more players to deal to in the current dealing phase.
+    /// </summary>
+    public bool HasMorePlayersToDeal()
+    {
+        return _nextPlayerToDeal < _gamePlayers.Count;
+    }
+
+    /// <summary>
+    /// Deals third street cards (2 hole + 1 board) to the next player.
+    /// Returns true if a 4 was dealt face up (triggering a buy-card offer).
+    /// After dealing, check HasPendingBuyCardOffers() to see if there's an offer to process.
+    /// </summary>
+    /// <returns>True if a 4 was dealt face up, false otherwise.</returns>
+    public bool DealThirdStreetToNextPlayer()
+    {
+        if (CurrentPhase != BaseballPhase.ThirdStreet)
+        {
+            throw new InvalidOperationException("Cannot deal third street in current phase");
+        }
+
+        if (_nextPlayerToDeal >= _gamePlayers.Count)
+        {
+            throw new InvalidOperationException("All players have already been dealt to");
+        }
+
+        // Find the next active player
+        while (_nextPlayerToDeal < _gamePlayers.Count && _gamePlayers[_nextPlayerToDeal].Player.HasFolded)
+        {
+            _nextPlayerToDeal++;
+        }
+
+        if (_nextPlayerToDeal >= _gamePlayers.Count)
+        {
+            return false;
+        }
+
+        var playerIndex = _nextPlayerToDeal;
+        var gamePlayer = _gamePlayers[playerIndex];
+
+        // Deal 2 hole cards (face down)
+        gamePlayer.AddHoleCard(_dealer.DealCard());
+        gamePlayer.AddHoleCard(_dealer.DealCard());
+        // Deal 1 board card (face up)
+        var boardCard = _dealer.DealCard();
+        gamePlayer.AddBoardCard(boardCard);
+
+        // Immediately queue buy-card offer if this player received a 4
+        QueueBuyCardOffersForPlayer(playerIndex);
+
+        _nextPlayerToDeal++;
+
+        return boardCard.Symbol == Symbol.Four;
+    }
+
+    /// <summary>
+    /// Finishes third street dealing by resetting bets and determining the bring-in player.
+    /// Call this after all players have been dealt to and all buy-card offers have been processed.
+    /// </summary>
+    public void FinishThirdStreetDealing()
+    {
         // Reset current bets before betting round
         foreach (var gamePlayer in _gamePlayers)
         {
@@ -261,9 +347,23 @@ public class BaseballGame
         {
             _bringInPlayerIndex = -1;
         }
-        
-        // Queue up any buy-card offers for 4s dealt on third street
-        QueueBuyCardOffers();
+    }
+
+    /// <summary>
+    /// Queues buy-card offers for a specific player's pending 4s.
+    /// </summary>
+    private void QueueBuyCardOffersForPlayer(int playerIndex)
+    {
+        var gamePlayer = _gamePlayers[playerIndex];
+        if (gamePlayer.Player.HasFolded)
+        {
+            return;
+        }
+
+        foreach (var boardCardIndex in gamePlayer.GetPendingFourOffers())
+        {
+            _pendingBuyCardOffers.Enqueue((playerIndex, boardCardIndex));
+        }
     }
 
     /// <summary>
@@ -563,7 +663,10 @@ public class BaseballGame
     }
 
     /// <summary>
-    /// Deals one card for the current street (4th-7th street).
+    /// Deals one card for the current street (4th-7th street) to all players at once.
+    /// This method deals to all players before any buy-card offers are processed.
+    /// For immediate buy-card processing (where each player's 4 offer is handled before 
+    /// dealing to the next player), use StartDealingStreetCard() and DealStreetCardToNextPlayer() instead.
     /// </summary>
     public void DealStreetCard()
     {
@@ -575,33 +678,109 @@ public class BaseballGame
             throw new InvalidOperationException("Cannot deal street card in current phase");
         }
 
-        foreach (var gamePlayer in _gamePlayers)
+        // Clear any existing offers and reset dealing state
+        _pendingBuyCardOffers.Clear();
+        _currentBuyCardOffer = null;
+        _nextPlayerToDeal = 0;
+
+        // Deal to all players
+        while (HasMorePlayersToDeal())
         {
-            if (!gamePlayer.Player.HasFolded)
-            {
-                if (CurrentPhase == BaseballPhase.SeventhStreet)
-                {
-                    // Seventh street card is dealt face down - no buy-card option
-                    gamePlayer.AddHoleCard(_dealer.DealCard());
-                }
-                else
-                {
-                    // 4th, 5th, 6th street cards are dealt face up
-                    gamePlayer.AddBoardCard(_dealer.DealCard());
-                }
-            }
+            DealStreetCardToNextPlayer();
         }
 
+        FinishStreetCardDealing();
+    }
+
+    /// <summary>
+    /// Starts the street card dealing process for incremental dealing.
+    /// Use HasMorePlayersToDeal() and DealStreetCardToNextPlayer() to deal one player at a time.
+    /// </summary>
+    public void StartDealingStreetCard()
+    {
+        if (CurrentPhase is not (BaseballPhase.FourthStreet
+            or BaseballPhase.FifthStreet
+            or BaseballPhase.SixthStreet
+            or BaseballPhase.SeventhStreet))
+        {
+            throw new InvalidOperationException("Cannot deal street card in current phase");
+        }
+
+        // Clear any existing offers and reset dealing state
+        _pendingBuyCardOffers.Clear();
+        _currentBuyCardOffer = null;
+        _nextPlayerToDeal = 0;
+    }
+
+    /// <summary>
+    /// Deals a street card to the next player.
+    /// Returns true if a 4 was dealt face up (triggering a buy-card offer).
+    /// On 7th street, cards are dealt face down and this always returns false.
+    /// After dealing, check HasPendingBuyCardOffers() to see if there's an offer to process.
+    /// </summary>
+    /// <returns>True if a 4 was dealt face up, false otherwise.</returns>
+    public bool DealStreetCardToNextPlayer()
+    {
+        if (CurrentPhase is not (BaseballPhase.FourthStreet
+            or BaseballPhase.FifthStreet
+            or BaseballPhase.SixthStreet
+            or BaseballPhase.SeventhStreet))
+        {
+            throw new InvalidOperationException("Cannot deal street card in current phase");
+        }
+
+        if (_nextPlayerToDeal >= _gamePlayers.Count)
+        {
+            throw new InvalidOperationException("All players have already been dealt to");
+        }
+
+        // Find the next active player
+        while (_nextPlayerToDeal < _gamePlayers.Count && _gamePlayers[_nextPlayerToDeal].Player.HasFolded)
+        {
+            _nextPlayerToDeal++;
+        }
+
+        if (_nextPlayerToDeal >= _gamePlayers.Count)
+        {
+            return false;
+        }
+
+        var playerIndex = _nextPlayerToDeal;
+        var gamePlayer = _gamePlayers[playerIndex];
+        Card card;
+
+        if (CurrentPhase == BaseballPhase.SeventhStreet)
+        {
+            // Seventh street card is dealt face down - no buy-card option
+            card = _dealer.DealCard();
+            gamePlayer.AddHoleCard(card);
+            _nextPlayerToDeal++;
+            return false;
+        }
+        else
+        {
+            // 4th, 5th, 6th street cards are dealt face up
+            card = _dealer.DealCard();
+            gamePlayer.AddBoardCard(card);
+
+            // Immediately queue buy-card offer if this player received a 4
+            QueueBuyCardOffersForPlayer(playerIndex);
+
+            _nextPlayerToDeal++;
+            return card.Symbol == Symbol.Four;
+        }
+    }
+
+    /// <summary>
+    /// Finishes street card dealing by resetting bets.
+    /// Call this after all players have been dealt to and all buy-card offers have been processed.
+    /// </summary>
+    public void FinishStreetCardDealing()
+    {
         // Reset current bets before betting round
         foreach (var gamePlayer in _gamePlayers)
         {
             gamePlayer.Player.ResetCurrentBet();
-        }
-
-        // Queue up any buy-card offers for 4s dealt this street (except 7th street)
-        if (CurrentPhase != BaseballPhase.SeventhStreet)
-        {
-            QueueBuyCardOffers();
         }
     }
 
