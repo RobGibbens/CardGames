@@ -49,7 +49,7 @@ static void RunDealMenu()
     var gameType = AnsiConsole.Prompt(
         new SelectionPrompt<string>()
             .Title("[green]Select game type:[/]")
-            .AddChoices("Texas Holdem", "Omaha", "7-Card Stud", "5-Card Draw", "Back"));
+            .AddChoices("Texas Holdem", "Omaha", "7-Card Stud", "5-Card Draw", "Baseball", "Kings and Lows", "Follow the Queen", "Back"));
 
     var app = CreateCommandApp();
     
@@ -67,6 +67,15 @@ static void RunDealMenu()
         case "5-Card Draw":
             app.Run(new[] { "deal", "draw" });
             break;
+        case "Baseball":
+            app.Run(new[] { "deal", "baseball" });
+            break;
+        case "Kings and Lows":
+            app.Run(new[] { "deal", "kings-and-lows" });
+            break;
+        case "Follow the Queen":
+            app.Run(new[] { "deal", "follow-the-queen" });
+            break;
         case "Back":
             RunInteractiveMenu();
             break;
@@ -78,7 +87,7 @@ static void RunSimulationMenu()
     var gameType = AnsiConsole.Prompt(
         new SelectionPrompt<string>()
             .Title("[green]Select simulation type:[/]")
-            .AddChoices("Texas Holdem", "Omaha", "7-Card Stud", "5-Card Draw", "Back"));
+            .AddChoices("Texas Holdem", "Omaha", "7-Card Stud", "5-Card Draw", "Baseball", "Kings and Lows", "Follow the Queen", "Back"));
 
     var app = CreateCommandApp();
     
@@ -95,6 +104,15 @@ static void RunSimulationMenu()
             break;
         case "5-Card Draw":
             app.Run(new[] { "sim", "draw" });
+            break;
+        case "Baseball":
+            app.Run(new[] { "sim", "baseball" });
+            break;
+        case "Kings and Lows":
+            app.Run(new[] { "sim", "kings-and-lows" });
+            break;
+        case "Follow the Queen":
+            app.Run(new[] { "sim", "follow-the-queen" });
             break;
         case "Back":
             RunInteractiveMenu();
@@ -133,6 +151,20 @@ static CommandApp CreateCommandApp()
                 .WithAlias("5cd")
                 .WithAlias("5-card-draw")
                 .WithDescription("Runs a 5-card Draw simulation.");
+
+            sim
+                .AddCommand<BaseballSimulationCommand>("baseball")
+                .WithDescription("Runs a Baseball simulation (3s and 9s wild, 4s grant extra cards).");
+
+            sim
+                .AddCommand<KingsAndLowsSimulationCommand>("kings-and-lows")
+                .WithAlias("kal")
+                .WithDescription("Runs a Kings and Lows simulation (lowest card is wild).");
+
+            sim
+                .AddCommand<FollowTheQueenSimulationCommand>("follow-the-queen")
+                .WithAlias("ftq")
+                .WithDescription("Runs a Follow the Queen simulation (Queens and following card are wild).");
         });
         
         configuration.AddBranch<DealSettings>("deal", deal =>
@@ -159,6 +191,20 @@ static CommandApp CreateCommandApp()
                 .WithAlias("5cd")
                 .WithAlias("5-card-draw")
                 .WithDescription("Deal a 5-card Draw hand with automated dealer.");
+
+            deal
+                .AddCommand<BaseballDealCommand>("baseball")
+                .WithDescription("Deal a Baseball hand (3s and 9s wild, 4s grant extra cards).");
+
+            deal
+                .AddCommand<KingsAndLowsDealCommand>("kings-and-lows")
+                .WithAlias("kal")
+                .WithDescription("Deal a Kings and Lows hand (lowest card is wild).");
+
+            deal
+                .AddCommand<FollowTheQueenDealCommand>("follow-the-queen")
+                .WithAlias("ftq")
+                .WithDescription("Deal a Follow the Queen hand (Queens and following card are wild).");
         });
     });
     

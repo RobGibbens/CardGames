@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\CardGames.Poker\CardGames.Poker.csproj" />
+    <ProjectReference Include="..\CardGames.Playground\CardGames.Playground.csproj" />
   </ItemGroup>
 
 </Project>
