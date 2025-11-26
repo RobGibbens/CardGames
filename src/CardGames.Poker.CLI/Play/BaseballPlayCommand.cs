@@ -7,6 +7,7 @@ using CardGames.Core.French.Cards.Extensions;
 using CardGames.Poker.Betting;
 using CardGames.Poker.CLI.Output;
 using CardGames.Poker.Games;
+using CardGames.Poker.Hands.WildCards;
 using Spectre.Console;
 using Spectre.Console.Cli;
 
@@ -15,6 +16,7 @@ namespace CardGames.Poker.CLI.Play;
 internal class BaseballPlayCommand : Command<BaseballPlaySettings>
 {
     private static readonly SpectreLogger Logger = new();
+    private static readonly BaseballWildCardRules WildCardRules = new();
     private const int MinPlayers = 2;
     private const int MaxPlayers = 8;
 
@@ -225,14 +227,22 @@ internal class BaseballPlayCommand : Command<BaseballPlaySettings>
 
     private static bool RunBettingRound(BaseballGame game, string roundName)
     {
-        Logger.Paragraph(roundName);
         var minBet = game.GetCurrentMinBet();
-        AnsiConsole.MarkupLine($"[dim]Bet size this street: {minBet}[/]");
 
         while (!game.CurrentBettingRound.IsComplete)
         {
             var currentPlayer = game.GetCurrentPlayer();
             var available = game.GetAvailableActions();
+
+            // Clear screen and show fresh game state for current player
+            Logger.ClearScreen();
+            Logger.Paragraph(roundName);
+            AnsiConsole.MarkupLine($"[dim]Bet size this street: {minBet}[/]");
+            AnsiConsole.MarkupLine("[dim]Wild cards: 3s and 9s. 4s dealt face-up grant extra card.[/]");
+
+            // Show all players' board cards (visible to everyone)
+            DisplayAllBoardCards(game, currentPlayer);
+            AnsiConsole.WriteLine();
 
             AnsiConsole.MarkupLine($"[green]Pot: {game.TotalPot}[/] | [yellow]Current Bet: {game.CurrentBettingRound.CurrentBet}[/]");
             DisplayPlayerStatus(game, currentPlayer);
@@ -400,9 +410,9 @@ internal class BaseballPlayCommand : Command<BaseballPlaySettings>
         var boardCards = gamePlayer.BoardCards.ToList();
         var holeCount = gamePlayer.HoleCards.Count;
 
-        // Determine wild cards (3s and 9s) for coloring
-        var wildInBoard = boardCards.Where(c => c.Symbol == Symbol.Three || c.Symbol == Symbol.Nine).ToList();
-        var wildInHole = gamePlayer.HoleCards.Where(c => c.Symbol == Symbol.Three || c.Symbol == Symbol.Nine).ToList();
+        // Determine wild cards (3s and 9s) for coloring using shared rules
+        var wildInBoard = WildCardRules.DetermineWildCards(boardCards);
+        var wildInHole = WildCardRules.DetermineWildCards(gamePlayer.HoleCards.ToList());
         var allWildCards = wildInHole.Concat(wildInBoard).ToList();
 
         if (showHoleCards)
@@ -430,6 +440,26 @@ internal class BaseballPlayCommand : Command<BaseballPlaySettings>
             if (wildInBoard.Any())
             {
                 AnsiConsole.MarkupLine($"[yellow]Wild cards visible: {wildInBoard.ToStringRepresentation()}[/]");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Displays all players' board (face-up) cards visible on the table.
+    /// </summary>
+    private static void DisplayAllBoardCards(BaseballGame game, PokerPlayer currentPlayer)
+    {
+        AnsiConsole.MarkupLine("[dim]Board cards visible on table:[/]");
+        foreach (var gamePlayer in game.GamePlayers)
+        {
+            if (!gamePlayer.Player.HasFolded)
+            {
+                var boardCards = gamePlayer.BoardCards.ToList();
+                var wildInBoard = WildCardRules.DetermineWildCards(boardCards);
+                var marker = gamePlayer.Player.Name == currentPlayer.Name ? "►" : " ";
+                var boardDisplay = boardCards.ToStringRepresentation();
+                var wildDisplay = wildInBoard.Any() ? $" [yellow](wild: {wildInBoard.ToStringRepresentation()})[/]" : "";
+                AnsiConsole.MarkupLine($"[dim]{marker} {gamePlayer.Player.Name}: {boardDisplay}{wildDisplay}[/]");
             }
         }
     }

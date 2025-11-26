@@ -165,17 +165,24 @@ internal class FollowTheQueenPlayCommand : Command<FollowTheQueenPlaySettings>
 
     private static bool RunBettingRound(FollowTheQueenGame game, string roundName)
     {
-        Logger.Paragraph(roundName);
         var minBet = game.GetCurrentMinBet();
-        AnsiConsole.MarkupLine($"[dim]Bet size this street: {minBet}[/]");
-
-        // Display current wild information
-        DisplayWildCardInfo(game);
 
         while (!game.CurrentBettingRound.IsComplete)
         {
             var currentPlayer = game.GetCurrentPlayer();
             var available = game.GetAvailableActions();
+
+            // Clear screen and show fresh game state for current player
+            Logger.ClearScreen();
+            Logger.Paragraph(roundName);
+            AnsiConsole.MarkupLine($"[dim]Bet size this street: {minBet}[/]");
+
+            // Display current wild information
+            DisplayWildCardInfo(game);
+
+            // Show all players' board cards (visible to everyone)
+            DisplayAllBoardCards(game, currentPlayer);
+            AnsiConsole.WriteLine();
 
             AnsiConsole.MarkupLine($"[green]Pot: {game.TotalPot}[/] | [yellow]Current Bet: {game.CurrentBettingRound.CurrentBet}[/]");
             DisplayPlayerStatus(game, currentPlayer);
@@ -388,6 +395,26 @@ internal class FollowTheQueenPlayCommand : Command<FollowTheQueenPlaySettings>
             if (wildInBoard.Any())
             {
                 AnsiConsole.MarkupLine($"[yellow]  Wild cards visible: {wildInBoard.ToStringRepresentation()}[/]");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Displays all players' board (face-up) cards visible on the table.
+    /// </summary>
+    private static void DisplayAllBoardCards(FollowTheQueenGame game, PokerPlayer currentPlayer)
+    {
+        AnsiConsole.MarkupLine("[dim]Board cards visible on table:[/]");
+        foreach (var gamePlayer in game.GamePlayers)
+        {
+            if (!gamePlayer.Player.HasFolded)
+            {
+                var boardCards = gamePlayer.BoardCards.ToList();
+                var wildCards = WildCardRules.DetermineWildCards(boardCards, game.FaceUpCardsInOrder);
+                var marker = gamePlayer.Player.Name == currentPlayer.Name ? "►" : " ";
+                var boardDisplay = boardCards.ToStringRepresentation();
+                var wildDisplay = wildCards.Any() ? $" [yellow](wild: {wildCards.ToStringRepresentation()})[/]" : "";
+                AnsiConsole.MarkupLine($"[dim]{marker} {gamePlayer.Player.Name}: {boardDisplay}{wildDisplay}[/]");
             }
         }
     }
