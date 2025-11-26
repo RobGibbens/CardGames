@@ -1,5 +1,6 @@
 ﻿using System;
 using CardGames.Poker.CLI.Deal;
+using CardGames.Poker.CLI.Play;
 using CardGames.Poker.CLI.Simulation;
 using Spectre.Console;
 using Spectre.Console.Cli;
@@ -29,10 +30,13 @@ static void RunInteractiveMenu()
     var mode = AnsiConsole.Prompt(
         new SelectionPrompt<string>()
             .Title("[green]What would you like to do?[/]")
-            .AddChoices("Deal Cards (Automated Dealer)", "Run Simulation (Manual Setup)", "Exit"));
+            .AddChoices("Play Poker (With Betting)", "Deal Cards (Automated Dealer)", "Run Simulation (Manual Setup)", "Exit"));
 
     switch (mode)
     {
+        case "Play Poker (With Betting)":
+            RunPlayMenu();
+            break;
         case "Deal Cards (Automated Dealer)":
             RunDealMenu();
             break;
@@ -41,6 +45,26 @@ static void RunInteractiveMenu()
             break;
         case "Exit":
             return;
+    }
+}
+
+static void RunPlayMenu()
+{
+    var gameType = AnsiConsole.Prompt(
+        new SelectionPrompt<string>()
+            .Title("[green]Select game type:[/]")
+            .AddChoices("5-Card Draw", "Back"));
+
+    var app = CreateCommandApp();
+    
+    switch (gameType)
+    {
+        case "5-Card Draw":
+            app.Run(new[] { "play", "draw" });
+            break;
+        case "Back":
+            RunInteractiveMenu();
+            break;
     }
 }
 
@@ -205,6 +229,15 @@ static CommandApp CreateCommandApp()
                 .AddCommand<FollowTheQueenDealCommand>("follow-the-queen")
                 .WithAlias("ftq")
                 .WithDescription("Deal a Follow the Queen hand (Queens and following card are wild).");
+        });
+
+        configuration.AddBranch<PlaySettings>("play", play =>
+        {
+            play
+                .AddCommand<FiveCardDrawPlayCommand>("draw")
+                .WithAlias("5cd")
+                .WithAlias("5-card-draw")
+                .WithDescription("Play 5-card Draw with betting.");
         });
     });
     
