@@ -85,7 +85,7 @@ public class FollowTheQueenGame
         int bringIn,
         int smallBet,
         int bigBet,
-        bool useBringIn = true)
+        bool useBringIn = false)
     {
         var playerList = players.ToList();
         if (playerList.Count < MinPlayers)
