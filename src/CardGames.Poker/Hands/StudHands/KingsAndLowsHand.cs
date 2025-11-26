@@ -80,7 +80,8 @@ public class KingsAndLowsHand : StudHand
         {
             _evaluatedType = base.DetermineType();
             _evaluatedStrength = base.CalculateStrength();
-            _evaluatedBestCards = Cards.Take(5).ToList();
+            // Find the best 5-card hand from all possible hands
+            _evaluatedBestCards = FindBestFiveCardHand();
             return;
         }
 
@@ -89,5 +90,16 @@ public class KingsAndLowsHand : StudHand
         _evaluatedType = type;
         _evaluatedStrength = strength;
         _evaluatedBestCards = evaluatedCards;
+    }
+    
+    private IReadOnlyCollection<Card> FindBestFiveCardHand()
+    {
+        return PossibleHands()
+            .Select(hand => new { hand, type = HandTypeDetermination.DetermineHandType(hand) })
+            .Where(pair => pair.type == Type)
+            .OrderByDescending(pair => HandStrength.Calculate(pair.hand.ToList(), pair.type, Ranking))
+            .First()
+            .hand
+            .ToList();
     }
 }
