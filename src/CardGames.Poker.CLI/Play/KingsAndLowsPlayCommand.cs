@@ -37,13 +37,9 @@ internal class KingsAndLowsPlayCommand : Command<KingsAndLowsPlaySettings>
             ? AnsiConsole.Ask<int>("Ante amount: ", 10)
             : settings.Ante;
 
-        var kingRequired = settings.KingRequired
-            ? true
-            : AnsiConsole.Confirm("Require King to use low card as wild?", false);
+        var kingRequired = settings.KingRequired || AnsiConsole.Confirm("Require King to use low card as wild?", false);
 
-        var anteEveryHand = settings.AnteEveryHand
-            ? true
-            : AnsiConsole.Confirm("Ante every hand (vs single ante at start)?", false);
+        var anteEveryHand = settings.AnteEveryHand || AnsiConsole.Confirm("Ante every hand (vs single ante at start)?", false);
 
         var playerNames = GetPlayerNames(numberOfPlayers);
         var players = playerNames.Select(name => (name, startingChips)).ToList();
