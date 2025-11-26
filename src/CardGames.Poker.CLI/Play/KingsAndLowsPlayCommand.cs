@@ -282,6 +282,7 @@ internal class KingsAndLowsPlayCommand : Command<KingsAndLowsPlaySettings>
         AnsiConsole.MarkupLine("[magenta]Deck's hand:[/]");
         var deckWildCards = game.GetDeckHandWildCards();
         CardRenderer.RenderCards(game.DeckHand, wildCards: deckWildCards);
+        AnsiConsole.MarkupLine("[dim]Card positions: 0, 1, 2, 3, 4[/]");
         AnsiConsole.MarkupLine($"[dim]({game.DeckHand.ToStringRepresentation()})[/]");
         if (deckWildCards.Any())
         {
@@ -289,22 +290,48 @@ internal class KingsAndLowsPlayCommand : Command<KingsAndLowsPlaySettings>
         }
         AnsiConsole.WriteLine();
 
-        // Deck draws
-        AnsiConsole.MarkupLine("[yellow]Deck draws...[/]");
-        var deckDrawResult = game.ProcessDeckDraw();
-        if (deckDrawResult.Success)
+        // Dealer chooses which cards to discard for the deck
+        AnsiConsole.MarkupLine("[yellow]Dealer: Choose which cards to discard for the deck's draw.[/]");
+        var discardInput = AnsiConsole.Ask<string>("Enter positions to discard for deck (0-4, space-separated) or press Enter for deck to stand pat: ", "");
+
+        var discardIndices = new List<int>();
+        if (!string.IsNullOrWhiteSpace(discardInput))
+        {
+            var parts = discardInput.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            foreach (var part in parts)
+            {
+                if (int.TryParse(part, out var index))
+                {
+                    discardIndices.Add(index);
+                }
+            }
+        }
+
+        var deckDrawResult = game.ProcessDeckDrawManual(discardIndices);
+        
+        if (!deckDrawResult.Success)
+        {
+            AnsiConsole.MarkupLine($"[red]{deckDrawResult.ErrorMessage}[/]");
+            return;
+        }
+
+        if (discardIndices.Count > 0)
         {
             AnsiConsole.MarkupLine($"[blue]Deck discards {deckDrawResult.DiscardedCards.Count} card(s) and draws {deckDrawResult.NewCards.Count} card(s)[/]");
-            
-            // Show deck's final hand
-            AnsiConsole.MarkupLine("[magenta]Deck's final hand:[/]");
-            var finalDeckWildCards = game.GetDeckHandWildCards();
-            CardRenderer.RenderCards(game.DeckHand, wildCards: finalDeckWildCards);
-            AnsiConsole.MarkupLine($"[dim]({game.DeckHand.ToStringRepresentation()})[/]");
-            if (finalDeckWildCards.Any())
-            {
-                AnsiConsole.MarkupLine($"[yellow]Wild cards: {finalDeckWildCards.ToStringRepresentation()}[/]");
-            }
+        }
+        else
+        {
+            AnsiConsole.MarkupLine("[blue]Deck stands pat[/]");
+        }
+        
+        // Show deck's final hand
+        AnsiConsole.MarkupLine("[magenta]Deck's final hand:[/]");
+        var finalDeckWildCards = game.GetDeckHandWildCards();
+        CardRenderer.RenderCards(game.DeckHand, wildCards: finalDeckWildCards);
+        AnsiConsole.MarkupLine($"[dim]({game.DeckHand.ToStringRepresentation()})[/]");
+        if (finalDeckWildCards.Any())
+        {
+            AnsiConsole.MarkupLine($"[yellow]Wild cards: {finalDeckWildCards.ToStringRepresentation()}[/]");
         }
         AnsiConsole.WriteLine();
     }

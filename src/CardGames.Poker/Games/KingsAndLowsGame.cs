@@ -473,6 +473,72 @@ public class KingsAndLowsGame
     }
 
     /// <summary>
+    /// Processes a manual draw for the deck hand (in player vs deck scenario).
+    /// The dealer chooses which cards to discard for the deck.
+    /// </summary>
+    public DrawResult ProcessDeckDrawManual(IReadOnlyCollection<int> discardIndices)
+    {
+        if (CurrentPhase != KingsAndLowsPhase.PlayerVsDeck)
+        {
+            return new DrawResult
+            {
+                Success = false,
+                ErrorMessage = "Not in player vs deck phase"
+            };
+        }
+
+        if (_deckHandDrawComplete)
+        {
+            return new DrawResult
+            {
+                Success = false,
+                ErrorMessage = "Deck has already drawn"
+            };
+        }
+
+        if (discardIndices.Count > 5)
+        {
+            return new DrawResult
+            {
+                Success = false,
+                ErrorMessage = "Cannot discard more than 5 cards"
+            };
+        }
+
+        if (discardIndices.Any(i => i < 0 || i >= 5))
+        {
+            return new DrawResult
+            {
+                Success = false,
+                ErrorMessage = "Invalid card index (must be 0-4)"
+            };
+        }
+
+        // Draw replacements
+        var newCards = _dealer.DealCards(discardIndices.Count);
+        var discardedCards = discardIndices.Select(i => _deckHand[i]).ToList();
+
+        // Remove in descending order
+        foreach (var index in discardIndices.OrderByDescending(i => i))
+        {
+            _deckHand.RemoveAt(index);
+        }
+        _deckHand.AddRange(newCards);
+
+        _deckHandDrawComplete = true;
+        CurrentPhase = KingsAndLowsPhase.Showdown;
+
+        return new DrawResult
+        {
+            Success = true,
+            PlayerName = "Deck",
+            DiscardedCards = discardedCards,
+            NewCards = newCards.ToList(),
+            DrawComplete = true
+        };
+    }
+
+    /// <summary>
     /// Processes a draw for the deck hand (in player vs deck scenario).
     /// The deck draws to improve its hand (simple AI: replaces non-wild, non-king cards).
     /// </summary>

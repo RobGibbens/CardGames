@@ -377,4 +377,65 @@ public class KingsAndLowsGameTests
         game.SetPlayerDecision("Bob", DropOrStayDecision.Stay);
         game.FinalizeDropOrStay();
     }
+
+    [Fact]
+    public void ProcessDeckDrawManual_AllowsDealerToChooseDiscards()
+    {
+        var game = CreateTwoPlayerGame();
+        game.StartHand();
+        game.CollectAntes();
+        game.DealHands();
+        game.SetPlayerDecision("Alice", DropOrStayDecision.Stay);
+        game.SetPlayerDecision("Bob", DropOrStayDecision.Drop);
+        game.FinalizeDropOrStay();
+        game.ProcessDraw(new int[] { }); // Alice draws
+
+        // Manually choose to discard positions 0 and 1
+        var result = game.ProcessDeckDrawManual(new int[] { 0, 1 });
+
+        result.Success.Should().BeTrue();
+        result.DiscardedCards.Should().HaveCount(2);
+        result.NewCards.Should().HaveCount(2);
+        game.CurrentPhase.Should().Be(KingsAndLowsPhase.Showdown);
+    }
+
+    [Fact]
+    public void ProcessDeckDrawManual_StandPat_KeepsAllCards()
+    {
+        var game = CreateTwoPlayerGame();
+        game.StartHand();
+        game.CollectAntes();
+        game.DealHands();
+        game.SetPlayerDecision("Alice", DropOrStayDecision.Stay);
+        game.SetPlayerDecision("Bob", DropOrStayDecision.Drop);
+        game.FinalizeDropOrStay();
+        game.ProcessDraw(new int[] { }); // Alice draws
+
+        var originalHand = game.DeckHand.ToList();
+        var result = game.ProcessDeckDrawManual(new int[] { });
+
+        result.Success.Should().BeTrue();
+        result.DiscardedCards.Should().BeEmpty();
+        result.NewCards.Should().BeEmpty();
+        game.DeckHand.Should().BeEquivalentTo(originalHand);
+        game.CurrentPhase.Should().Be(KingsAndLowsPhase.Showdown);
+    }
+
+    [Fact]
+    public void ProcessDeckDrawManual_InvalidIndex_ReturnsFalse()
+    {
+        var game = CreateTwoPlayerGame();
+        game.StartHand();
+        game.CollectAntes();
+        game.DealHands();
+        game.SetPlayerDecision("Alice", DropOrStayDecision.Stay);
+        game.SetPlayerDecision("Bob", DropOrStayDecision.Drop);
+        game.FinalizeDropOrStay();
+        game.ProcessDraw(new int[] { }); // Alice draws
+
+        var result = game.ProcessDeckDrawManual(new int[] { 5 }); // Invalid index
+
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("Invalid card index");
+    }
 }
