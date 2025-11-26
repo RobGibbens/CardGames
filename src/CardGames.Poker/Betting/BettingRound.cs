@@ -60,14 +60,35 @@ public class BettingRound
         PotManager potManager,
         int dealerPosition,
         int minBet)
+        : this(players, potManager, dealerPosition, minBet, 0, -1)
+    {
+    }
+
+    /// <summary>
+    /// Creates a betting round with an initial forced bet (e.g., bring-in).
+    /// </summary>
+    public BettingRound(
+        List<PokerPlayer> players,
+        PotManager potManager,
+        int dealerPosition,
+        int minBet,
+        int initialBet,
+        int forcedBetPlayerIndex)
     {
         _players = players;
         _potManager = potManager;
         _minBet = minBet;
-        _currentBet = 0;
+        _currentBet = initialBet;
         _lastRaiseAmount = minBet;
 
-        // Action starts with first active player to the left of the dealer
+        // Track the forced bet player as having acted
+        if (forcedBetPlayerIndex >= 0)
+        {
+            _playersWhoActed.Add(forcedBetPlayerIndex);
+            _lastAggressorIndex = forcedBetPlayerIndex;
+        }
+
+        // Action starts with first active player to the left of the dealer/forced bet player
         _currentPlayerIndex = FindNextActivePlayer((dealerPosition + 1) % players.Count);
 
         CheckIfRoundComplete();
