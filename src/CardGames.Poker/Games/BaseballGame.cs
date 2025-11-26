@@ -375,16 +375,7 @@ public class BaseballGame
         
         for (int i = 0; i < _gamePlayers.Count; i++)
         {
-            var gamePlayer = _gamePlayers[i];
-            if (gamePlayer.Player.HasFolded)
-            {
-                continue;
-            }
-
-            foreach (var boardCardIndex in gamePlayer.GetPendingFourOffers())
-            {
-                _pendingBuyCardOffers.Enqueue((i, boardCardIndex));
-            }
+            QueueBuyCardOffersForPlayer(i);
         }
     }
 
