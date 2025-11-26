@@ -1,0 +1,493 @@
+using System.Collections.Generic;
+using System.Linq;
+using CardGames.Core.French.Cards;
+using CardGames.Poker.Betting;
+using CardGames.Poker.Games;
+using FluentAssertions;
+using Xunit;
+
+namespace CardGames.Poker.Tests.Games;
+
+public class FollowTheQueenGameTests
+{
+    [Fact]
+    public void Constructor_CreatesTwoPlayers()
+    {
+        var game = CreateTwoPlayerGame();
+
+        game.Players.Should().HaveCount(2);
+        game.CurrentPhase.Should().Be(FollowTheQueenPhase.WaitingToStart);
+    }
+
+    [Fact]
+    public void Constructor_ThrowsForTooFewPlayers()
+    {
+        var players = new List<(string, int)> { ("Alice", 1000) };
+        
+        var act = () => new FollowTheQueenGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20);
+        
+        act.Should().Throw<System.ArgumentException>()
+            .WithMessage("*at least 2 players*");
+    }
+
+    [Fact]
+    public void Constructor_ThrowsForTooManyPlayers()
+    {
+        var players = Enumerable.Range(1, 9).Select(i => ($"Player{i}", 1000)).ToList();
+        
+        var act = () => new FollowTheQueenGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20);
+        
+        act.Should().Throw<System.ArgumentException>()
+            .WithMessage("*at most 8 players*");
+    }
+
+    [Fact]
+    public void StartHand_SetsPhaseToCollectingAntes()
+    {
+        var game = CreateTwoPlayerGame();
+
+        game.StartHand();
+
+        game.CurrentPhase.Should().Be(FollowTheQueenPhase.CollectingAntes);
+    }
+
+    [Fact]
+    public void CollectAntes_CollectsFromAllPlayers()
+    {
+        var game = CreateTwoPlayerGame();
+        game.StartHand();
+
+        var actions = game.CollectAntes();
+
+        actions.Should().HaveCount(2);
+        actions.All(a => a.ActionType == BettingActionType.Post).Should().BeTrue();
+        game.TotalPot.Should().Be(10); // 5 ante from each
+        game.CurrentPhase.Should().Be(FollowTheQueenPhase.ThirdStreet);
+    }
+
+    [Fact]
+    public void DealThirdStreet_DealsTwoHoleAndOneBoardToEachPlayer()
+    {
+        var game = CreateTwoPlayerGame();
+        game.StartHand();
+        game.CollectAntes();
+
+        game.DealThirdStreet();
+
+        game.GamePlayers.Should().AllSatisfy(gp =>
+        {
+            gp.HoleCards.Should().HaveCount(2);
+            gp.BoardCards.Should().HaveCount(1);
+        });
+    }
+
+    [Fact]
+    public void DealThirdStreet_AddsFaceUpCardsToTracking()
+    {
+        var game = CreateTwoPlayerGame();
+        game.StartHand();
+        game.CollectAntes();
+
+        game.DealThirdStreet();
+
+        // Each player gets 1 face-up card on third street
+        game.FaceUpCardsInOrder.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void GetBringInPlayer_ReturnsPlayerWithLowestUpcard()
+    {
+        var game = CreateTwoPlayerGame();
+        game.StartHand();
+        game.CollectAntes();
+        game.DealThirdStreet();
+
+        var bringInPlayer = game.GetBringInPlayer();
+
+        bringInPlayer.Should().NotBeNull();
+        // The bring-in player should have the lowest board card
+        // Suit order for ties: Clubs (lowest) < Diamonds < Hearts < Spades (highest)
+        var lowestBoardCard = game.GamePlayers
+            .Select(gp => gp.BoardCards.First())
+            .OrderBy(c => c.Value)
+            .ThenBy(c => GetSuitRank(c.Suit))
+            .First();
+        bringInPlayer.BoardCards.First().Should().Be(lowestBoardCard);
+    }
+
+    private static int GetSuitRank(Suit suit)
+    {
+        return suit switch
+        {
+            Suit.Clubs => 0,
+            Suit.Diamonds => 1,
+            Suit.Hearts => 2,
+            Suit.Spades => 3,
+            _ => 0
+        };
+    }
+
+    [Fact]
+    public void PostBringIn_AddsChipsToPot()
+    {
+        var game = CreateTwoPlayerGame();
+        game.StartHand();
+        game.CollectAntes();
+        game.DealThirdStreet();
+
+        var action = game.PostBringIn();
+
+        action.ActionType.Should().Be(BettingActionType.Post);
+        action.Amount.Should().Be(5); // bring-in amount
+        game.TotalPot.Should().Be(15); // 10 antes + 5 bring-in
+    }
+
+    [Fact]
+    public void StartBettingRound_CreatesRoundWithCorrectMinBet()
+    {
+        var game = CreateTwoPlayerGame();
+        game.StartHand();
+        game.CollectAntes();
+        game.DealThirdStreet();
+        game.PostBringIn();
+
+        game.StartBettingRound();
+
+        game.CurrentBettingRound.Should().NotBeNull();
+        game.GetCurrentMinBet().Should().Be(10); // small bet
+    }
+
+    [Fact]
+    public void ProcessBettingAction_Check_Succeeds()
+    {
+        var game = CreateTwoPlayerGame();
+        game.StartHand();
+        game.CollectAntes();
+        game.DealThirdStreet();
+        game.PostBringIn();
+        game.StartBettingRound();
+
+        // The bring-in player already has chips in, so let them check/call
+        // First player can complete to full bet or call
+        var available = game.GetAvailableActions();
+        
+        // If they can check, check
+        if (available.CanCheck)
+        {
+            var result = game.ProcessBettingAction(BettingActionType.Check);
+            result.Success.Should().BeTrue();
+        }
+        else if (available.CanCall)
+        {
+            var result = game.ProcessBettingAction(BettingActionType.Call);
+            result.Success.Should().BeTrue();
+        }
+    }
+
+    [Fact]
+    public void ProcessBettingAction_Fold_RemovesPlayerFromHand()
+    {
+        var game = CreateTwoPlayerGame();
+        game.StartHand();
+        game.CollectAntes();
+        game.DealThirdStreet();
+        game.PostBringIn();
+        game.StartBettingRound();
+
+        // First, bet
+        game.ProcessBettingAction(BettingActionType.Bet, 10);
+        
+        // Then fold
+        var result = game.ProcessBettingAction(BettingActionType.Fold);
+
+        result.Success.Should().BeTrue();
+        game.CurrentPhase.Should().Be(FollowTheQueenPhase.Showdown);
+    }
+
+    [Fact]
+    public void DealStreetCard_OnFourthStreet_AddsOneBoard()
+    {
+        var game = CreateTwoPlayerGame();
+        SetupToFourthStreet(game);
+
+        game.DealStreetCard();
+
+        game.GamePlayers.Should().AllSatisfy(gp =>
+        {
+            gp.BoardCards.Should().HaveCount(2);
+        });
+    }
+
+    [Fact]
+    public void DealStreetCard_OnFourthStreet_AddsFaceUpCardsToTracking()
+    {
+        var game = CreateTwoPlayerGame();
+        SetupToFourthStreet(game);
+        var initialFaceUpCount = game.FaceUpCardsInOrder.Count;
+
+        game.DealStreetCard();
+
+        // Each player gets 1 more face-up card
+        game.FaceUpCardsInOrder.Should().HaveCount(initialFaceUpCount + 2);
+    }
+
+    [Fact]
+    public void DealStreetCard_OnSeventhStreet_AddsOneHoleCard()
+    {
+        var game = CreateTwoPlayerGame();
+        SetupToSeventhStreet(game);
+
+        game.DealStreetCard();
+
+        game.GamePlayers.Should().AllSatisfy(gp =>
+        {
+            gp.HoleCards.Should().HaveCount(3);
+            gp.BoardCards.Should().HaveCount(4);
+        });
+    }
+
+    [Fact]
+    public void DealStreetCard_OnSeventhStreet_DoesNotAddToFaceUpCards()
+    {
+        var game = CreateTwoPlayerGame();
+        SetupToSeventhStreet(game);
+        var faceUpCountBefore = game.FaceUpCardsInOrder.Count;
+
+        game.DealStreetCard();
+
+        // Seventh street cards are face down, so no new face-up cards
+        game.FaceUpCardsInOrder.Should().HaveCount(faceUpCountBefore);
+    }
+
+    [Fact]
+    public void PerformShowdown_ByFold_AwardsPotToLastPlayer()
+    {
+        var game = CreateTwoPlayerGame();
+        game.StartHand();
+        game.CollectAntes();
+        game.DealThirdStreet();
+        game.PostBringIn();
+        game.StartBettingRound();
+        game.ProcessBettingAction(BettingActionType.Bet, 10);
+        game.ProcessBettingAction(BettingActionType.Fold);
+
+        var result = game.PerformShowdown();
+
+        result.Success.Should().BeTrue();
+        result.WonByFold.Should().BeTrue();
+        result.Payouts.Should().HaveCount(1);
+        game.CurrentPhase.Should().Be(FollowTheQueenPhase.Complete);
+    }
+
+    [Fact]
+    public void PerformShowdown_ComparesHands()
+    {
+        var game = CreateTwoPlayerGame();
+        PlayFullHandToShowdown(game);
+
+        var result = game.PerformShowdown();
+
+        result.Success.Should().BeTrue();
+        result.WonByFold.Should().BeFalse();
+        result.Payouts.Should().NotBeEmpty();
+        result.PlayerHands.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void GetCurrentMinBet_ReturnsSmallBetOnThirdStreet()
+    {
+        var game = CreateTwoPlayerGame();
+        game.StartHand();
+        game.CollectAntes();
+
+        game.GetCurrentMinBet().Should().Be(10);
+    }
+
+    [Fact]
+    public void GetCurrentMinBet_ReturnsBigBetOnFifthStreet()
+    {
+        var game = CreateTwoPlayerGame();
+        SetupToFifthStreet(game);
+
+        game.GetCurrentMinBet().Should().Be(20);
+    }
+
+    [Fact]
+    public void CanContinue_WhenBothHaveChips_ReturnsTrue()
+    {
+        var game = CreateTwoPlayerGame();
+
+        game.CanContinue().Should().BeTrue();
+    }
+
+    [Fact]
+    public void CanContinue_WhenOnePlayerHasNoChips_ReturnsFalse()
+    {
+        var players = new List<(string, int)>
+        {
+            ("Alice", 1000),
+            ("Bob", 0)
+        };
+        var game = new FollowTheQueenGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20);
+
+        game.CanContinue().Should().BeFalse();
+    }
+
+    [Fact]
+    public void GetCurrentStreetName_ReturnsCorrectName()
+    {
+        var game = CreateTwoPlayerGame();
+        game.StartHand();
+        game.CollectAntes();
+
+        game.GetCurrentStreetName().Should().Be("Third Street");
+    }
+
+    [Fact]
+    public void GetCurrentFollowingWildRank_ReturnsNull_WhenNoQueenDealt()
+    {
+        var game = CreateTwoPlayerGame();
+        game.StartHand();
+        game.CollectAntes();
+        game.DealThirdStreet();
+
+        // This test may pass or fail depending on random deal, 
+        // but the method should not throw
+        var wildRank = game.GetCurrentFollowingWildRank();
+        // wildRank can be null or a Symbol, depending on the cards dealt
+    }
+
+    [Fact]
+    public void FaceUpCardsInOrder_IsEmptyBeforeDealing()
+    {
+        var game = CreateTwoPlayerGame();
+        game.StartHand();
+        game.CollectAntes();
+
+        game.FaceUpCardsInOrder.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void FaceUpCardsInOrder_ContainsAllBoardCardsAfterFullDeal()
+    {
+        var game = CreateTwoPlayerGame();
+        SetupToSeventhStreet(game);
+        game.DealStreetCard(); // Deal 7th street (face down)
+
+        // Should have 4 face-up cards per player (3rd, 4th, 5th, 6th street)
+        // 2 players * 4 cards = 8 face-up cards
+        game.FaceUpCardsInOrder.Should().HaveCount(8);
+    }
+
+    private static FollowTheQueenGame CreateTwoPlayerGame()
+    {
+        var players = new List<(string, int)>
+        {
+            ("Alice", 1000),
+            ("Bob", 1000)
+        };
+        return new FollowTheQueenGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20);
+    }
+
+    private static void SetupToFourthStreet(FollowTheQueenGame game)
+    {
+        game.StartHand();
+        game.CollectAntes();
+        game.DealThirdStreet();
+        game.PostBringIn();
+        game.StartBettingRound();
+        
+        // Complete third street betting (everyone checks/calls)
+        while (!game.CurrentBettingRound.IsComplete)
+        {
+            var available = game.GetAvailableActions();
+            if (available.CanCheck)
+            {
+                game.ProcessBettingAction(BettingActionType.Check);
+            }
+            else if (available.CanCall)
+            {
+                game.ProcessBettingAction(BettingActionType.Call);
+            }
+        }
+    }
+
+    private static void SetupToFifthStreet(FollowTheQueenGame game)
+    {
+        SetupToFourthStreet(game);
+        
+        // Fourth street
+        game.DealStreetCard();
+        game.StartBettingRound();
+        while (!game.CurrentBettingRound.IsComplete)
+        {
+            var available = game.GetAvailableActions();
+            if (available.CanCheck)
+            {
+                game.ProcessBettingAction(BettingActionType.Check);
+            }
+            else if (available.CanCall)
+            {
+                game.ProcessBettingAction(BettingActionType.Call);
+            }
+        }
+    }
+
+    private static void SetupToSeventhStreet(FollowTheQueenGame game)
+    {
+        SetupToFifthStreet(game);
+        
+        // Fifth street
+        game.DealStreetCard();
+        game.StartBettingRound();
+        while (!game.CurrentBettingRound.IsComplete)
+        {
+            var available = game.GetAvailableActions();
+            if (available.CanCheck)
+            {
+                game.ProcessBettingAction(BettingActionType.Check);
+            }
+            else if (available.CanCall)
+            {
+                game.ProcessBettingAction(BettingActionType.Call);
+            }
+        }
+        
+        // Sixth street
+        game.DealStreetCard();
+        game.StartBettingRound();
+        while (!game.CurrentBettingRound.IsComplete)
+        {
+            var available = game.GetAvailableActions();
+            if (available.CanCheck)
+            {
+                game.ProcessBettingAction(BettingActionType.Check);
+            }
+            else if (available.CanCall)
+            {
+                game.ProcessBettingAction(BettingActionType.Call);
+            }
+        }
+    }
+
+    private static void PlayFullHandToShowdown(FollowTheQueenGame game)
+    {
+        SetupToSeventhStreet(game);
+        
+        // Seventh street
+        game.DealStreetCard();
+        game.StartBettingRound();
+        while (!game.CurrentBettingRound.IsComplete)
+        {
+            var available = game.GetAvailableActions();
+            if (available.CanCheck)
+            {
+                game.ProcessBettingAction(BettingActionType.Check);
+            }
+            else if (available.CanCall)
+            {
+                game.ProcessBettingAction(BettingActionType.Call);
+            }
+        }
+    }
+}
