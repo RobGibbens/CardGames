@@ -246,7 +246,7 @@ internal class SevenCardStudPlayCommand : Command<SevenCardStudPlaySettings>
         return (BettingActionType.Fold, 0);
     }
 
-    private static void DisplayShowdownResult(ShowdownResult result, SevenCardStudGame game)
+    private static void DisplayShowdownResult(SevenCardStudShowdownResult result, SevenCardStudGame game)
     {
         Logger.Paragraph("Showdown");
 
@@ -258,9 +258,9 @@ internal class SevenCardStudPlayCommand : Command<SevenCardStudPlaySettings>
         }
 
         // Show all hands
-        if (result.StudPlayerHands != null)
+        if (result.PlayerHands != null)
         {
-            foreach (var (playerName, (hand, cards)) in result.StudPlayerHands)
+            foreach (var (playerName, (hand, cards)) in result.PlayerHands)
             {
                 var handDescription = hand != null ? HandDescriptionFormatter.GetHandDescription(hand) : "Unknown";
                 AnsiConsole.MarkupLine($"[cyan]{playerName}[/]:");

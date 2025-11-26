@@ -251,7 +251,7 @@ public class SevenCardStudGameTests
         result.Success.Should().BeTrue();
         result.WonByFold.Should().BeFalse();
         result.Payouts.Should().NotBeEmpty();
-        result.StudPlayerHands.Should().HaveCount(2);
+        result.PlayerHands.Should().HaveCount(2);
     }
 
     [Fact]
