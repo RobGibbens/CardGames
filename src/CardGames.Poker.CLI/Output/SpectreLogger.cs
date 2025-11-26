@@ -47,6 +47,12 @@ internal class SpectreLogger
     public void Log(string message, string style) 
         => AnsiConsole.MarkupLine($"[{style}]{message}[/]");
 
+    /// <summary>
+    /// Clears the console screen to reduce clutter between player turns and game phases.
+    /// </summary>
+    public void ClearScreen()
+        => AnsiConsole.Clear();
+
     public void Paragraph(string line)
     {
         NewLine();

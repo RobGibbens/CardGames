@@ -133,12 +133,14 @@ internal class FiveCardDrawPlayCommand : Command<PlaySettings>
 
     private static bool RunBettingRound(FiveCardDrawGame game, string roundName)
     {
-        Logger.Paragraph(roundName);
-
         while (!game.CurrentBettingRound.IsComplete)
         {
             var currentPlayer = game.GetCurrentPlayer();
             var available = game.GetAvailableActions();
+
+            // Clear screen and show fresh game state for current player
+            Logger.ClearScreen();
+            Logger.Paragraph(roundName);
 
             AnsiConsole.MarkupLine($"[green]Pot: {game.TotalPot}[/] | [yellow]Current Bet: {game.CurrentBettingRound.CurrentBet}[/]");
             DisplayPlayerStatus(game, currentPlayer);
@@ -218,8 +220,6 @@ internal class FiveCardDrawPlayCommand : Command<PlaySettings>
 
     private static void RunDrawPhase(FiveCardDrawGame game)
     {
-        Logger.Paragraph("Draw Phase");
-
         while (game.CurrentPhase == FiveCardDrawPhase.DrawPhase)
         {
             var drawPlayer = game.GetCurrentDrawPlayer();
@@ -228,6 +228,10 @@ internal class FiveCardDrawPlayCommand : Command<PlaySettings>
                 game.CompleteDrawPhase();
                 break;
             }
+
+            // Clear screen and show fresh game state for draw phase
+            Logger.ClearScreen();
+            Logger.Paragraph("Draw Phase");
 
             AnsiConsole.MarkupLine($"[cyan]{drawPlayer.Player.Name}[/]'s turn to draw:");
             CardRenderer.RenderCards(drawPlayer.Hand);
