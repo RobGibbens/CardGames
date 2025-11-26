@@ -4,6 +4,7 @@ using CardGames.Core.French.Cards;
 using CardGames.Core.French.Cards.Extensions;
 using CardGames.Poker.Hands;
 using CardGames.Poker.Hands.HandTypes;
+using CardGames.Poker.Hands.StudHands;
 
 namespace CardGames.Poker.CLI.Output;
 
@@ -18,7 +19,8 @@ internal static class HandDescriptionFormatter
     /// </summary>
     public static string GetHandDescription(HandBase hand)
     {
-        var cards = hand.Cards.ToList();
+        // For wild card hands, use the evaluated best cards if available
+        var cards = GetCardsForDescription(hand);
         var handType = hand.Type;
 
         return handType switch
@@ -35,6 +37,32 @@ internal static class HandDescriptionFormatter
             HandType.FiveOfAKind => FormatFiveOfAKind(cards),
             _ => "Incomplete Hand"
         };
+    }
+    
+    /// <summary>
+    /// Gets the appropriate cards to use for description.
+    /// For wild card hands, uses the evaluated best cards.
+    /// For regular hands, uses the actual cards.
+    /// </summary>
+    private static IReadOnlyCollection<Card> GetCardsForDescription(HandBase hand)
+    {
+        // Check if this is a wild card hand with evaluated best cards
+        if (hand is BaseballHand baseballHand && baseballHand.WildCards.Any())
+        {
+            return baseballHand.EvaluatedBestCards;
+        }
+        
+        if (hand is KingsAndLowsHand kingsAndLowsHand && kingsAndLowsHand.WildCards.Any())
+        {
+            return kingsAndLowsHand.EvaluatedBestCards;
+        }
+        
+        if (hand is FollowTheQueenHand followTheQueenHand && followTheQueenHand.WildCards.Any())
+        {
+            return followTheQueenHand.EvaluatedBestCards;
+        }
+        
+        return hand.Cards.ToList();
     }
 
     private static string FormatHighCard(IReadOnlyCollection<Card> cards)
