@@ -171,7 +171,8 @@ internal static class LiveOddsRenderer
             if (odds.HandTypeProbabilities.TryGetValue(handType, out var probability))
             {
                 var handName = GetHandTypeName(handType);
-                var barLength = (int)(probability * 20); // Max 20 chars for bar
+                // Min bar length of 1 for any non-zero probability to ensure visibility
+                var barLength = probability > 0 ? System.Math.Max(1, (int)(probability * 20)) : 0;
                 var bar = new string('█', barLength);
                 var color = GetHandTypeColor(handType);
                 lines.Add($"  [{color}]{handName,-16}[/] {FormatPercentage(probability)} [{color}]{bar}[/]");
