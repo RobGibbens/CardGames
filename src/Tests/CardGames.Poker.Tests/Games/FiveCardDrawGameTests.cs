@@ -19,6 +19,28 @@ public class FiveCardDrawGameTests
     }
 
     [Fact]
+    public void Constructor_ThrowsForTooFewPlayers()
+    {
+        var players = new List<(string, int)> { ("Alice", 1000) };
+        
+        var act = () => new FiveCardDrawGame(players, ante: 10, minBet: 20);
+        
+        act.Should().Throw<System.ArgumentException>()
+            .WithMessage("*at least 2 players*");
+    }
+
+    [Fact]
+    public void Constructor_ThrowsForTooManyPlayers()
+    {
+        var players = Enumerable.Range(1, 7).Select(i => ($"Player{i}", 1000)).ToList();
+        
+        var act = () => new FiveCardDrawGame(players, ante: 10, minBet: 20);
+        
+        act.Should().Throw<System.ArgumentException>()
+            .WithMessage("*at most 6 players*");
+    }
+
+    [Fact]
     public void StartHand_SetsPhaseToCollectingAntes()
     {
         var game = CreateTwoPlayerGame();

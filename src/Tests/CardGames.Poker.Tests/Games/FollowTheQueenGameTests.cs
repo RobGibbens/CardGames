@@ -33,12 +33,12 @@ public class FollowTheQueenGameTests
     [Fact]
     public void Constructor_ThrowsForTooManyPlayers()
     {
-        var players = Enumerable.Range(1, 9).Select(i => ($"Player{i}", 1000)).ToList();
+        var players = Enumerable.Range(1, 8).Select(i => ($"Player{i}", 1000)).ToList();
         
         var act = () => new FollowTheQueenGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20);
         
         act.Should().Throw<System.ArgumentException>()
-            .WithMessage("*at most 8 players*");
+            .WithMessage("*at most 7 players*");
     }
 
     [Fact]

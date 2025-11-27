@@ -107,7 +107,11 @@ public class BuyCardResult
 public class BaseballGame
 {
     private const int MinPlayers = 2;
-    private const int MaxPlayers = 8;
+    /// <summary>
+    /// Maximum players limited by deck size: 52 cards / 11 cards per player worst case = 4 players max.
+    /// Baseball allows 7 base cards + up to 4 "buy" cards when face-up 4s are dealt.
+    /// </summary>
+    private const int MaxPlayers = 4;
 
     private readonly List<BaseballGamePlayer> _gamePlayers;
     private readonly FrenchDeckDealer _dealer;
