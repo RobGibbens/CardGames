@@ -8,6 +8,11 @@ namespace CardGames.Poker.Hands.HandTypes;
 
 public static class HandTypeDetermination
 {
+    /// <summary>
+    /// The values that form a wheel straight (A-2-3-4-5).
+    /// </summary>
+    public static readonly int[] WheelValues = { 14, 5, 4, 3, 2 };
+
     public static HandType DetermineHandType(IReadOnlyCollection<Card> cards)
     {
         if (cards.Count < 5)
@@ -26,6 +31,12 @@ public static class HandTypeDetermination
             ? HandTypeOfDistinctValueHand(cards)
             : HandTypeOfDuplicateValueHand(cards, numberOfDistinctValues);
     }
+
+    /// <summary>
+    /// Checks if the given card values form a wheel straight (A-2-3-4-5).
+    /// </summary>
+    public static bool IsWheelStraight(IReadOnlyCollection<int> values)
+        => values.Count == 5 && WheelValues.All(v => values.Contains(v));
 
     private  static HandType HandTypeOfDuplicateValueHand(IReadOnlyCollection<Card> cards, int numberOfDistinctValues)
          => numberOfDistinctValues switch
@@ -60,6 +71,18 @@ public static class HandTypeDetermination
     private static bool IsStraight(IReadOnlyCollection<Card> cards)
     {
         var values = cards.DistinctDescendingValues();
-        return values.Count == 5 && values.Max() - values.Min() == 4;
+        if (values.Count != 5)
+        {
+            return false;
+        }
+
+        // Check for regular straight (e.g., 5-6-7-8-9)
+        if (values.Max() - values.Min() == 4)
+        {
+            return true;
+        }
+
+        // Check for wheel straight (A-2-3-4-5) where Ace (value 14) acts as low
+        return IsWheelStraight(values);
     }
 }

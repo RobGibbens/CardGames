@@ -19,6 +19,8 @@ public class HoldemHandTests
     [InlineData("2s 2c", "7h Jh Kh 6h 5h", HandType.Flush)]
     [InlineData("2s 3h", "8d Jh Td Qh 9c", HandType.Straight)]
     [InlineData("2s 3h", "8d Jh 4d Qh 9c", HandType.HighCard)]
+    [InlineData("8c 4h", "As 2d 3h 7d 5c", HandType.Straight)] // Wheel straight (A-2-3-4-5)
+    [InlineData("4c 5h", "As 2d 3h 7d 9c", HandType.Straight)] // Wheel straight with different hole cards
     public void Determines_Hand_Type(string holeCards, string boardCards, HandType expectedHandType)
     {
         var hand = new HoldemHand(holeCards.ToCards(), boardCards.ToCards());
@@ -94,5 +96,39 @@ public class HoldemHandTests
         tripSevens.Type.Should().Be(HandType.Trips);
         
         tripQueens.Strength.Should().BeGreaterThan(tripSevens.Strength);
+    }
+
+    [Fact]
+    public void Wheel_Straight_Is_Lowest_Straight()
+    {
+        // Wheel straight (A-2-3-4-5) should be the lowest straight (5-high)
+        var wheelBoard = "As 2d 3h 4c 5s".ToCards();
+        var sixHighStraightBoard = "2s 3d 4h 5c 6s".ToCards();
+        
+        var wheelHand = new HoldemHand("7c 8h".ToCards(), wheelBoard);
+        var sixHighHand = new HoldemHand("7c 8h".ToCards(), sixHighStraightBoard);
+        
+        wheelHand.Type.Should().Be(HandType.Straight);
+        sixHighHand.Type.Should().Be(HandType.Straight);
+        
+        // Six-high straight (2-3-4-5-6) should beat wheel straight (A-2-3-4-5)
+        sixHighHand.Strength.Should().BeGreaterThan(wheelHand.Strength);
+    }
+
+    [Fact]
+    public void Ace_High_Straight_Beats_Wheel()
+    {
+        // Ace-high straight (T-J-Q-K-A) should beat wheel straight (A-2-3-4-5)
+        var wheelBoard = "As 2d 3h 4c 5s".ToCards();
+        var aceHighBoard = "Ts Jd Qh Kc As".ToCards();
+        
+        var wheelHand = new HoldemHand("7c 8h".ToCards(), wheelBoard);
+        var aceHighHand = new HoldemHand("7c 8h".ToCards(), aceHighBoard);
+        
+        wheelHand.Type.Should().Be(HandType.Straight);
+        aceHighHand.Type.Should().Be(HandType.Straight);
+        
+        // Ace-high straight should beat wheel
+        aceHighHand.Strength.Should().BeGreaterThan(wheelHand.Strength);
     }
 }
