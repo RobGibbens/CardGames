@@ -1,0 +1,225 @@
+@page "/signalr-demo"
+@rendermode InteractiveServer
+@using CardGames.Poker.Web.Services
+@implements IAsyncDisposable
+@inject GameHubService HubService
+@inject IConfiguration Configuration
+
+<PageTitle>SignalR Demo</PageTitle>
+
+<div class="container mt-4">
+    <h1>🎲 SignalR Real-Time Demo</h1>
+    <p class="lead">Demonstrates real-time event round-trip: trigger → broadcast → receive</p>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Connection Status</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <span class="badge @GetConnectionBadgeClass()">@_connectionStatus</span>
+                        @if (!string.IsNullOrEmpty(_connectionId))
+                        {
+                            <small class="text-muted">ID: @_connectionId</small>
+                        }
+                    </div>
+                    
+                    @if (!HubService.IsConnected)
+                    {
+                        <button class="btn btn-primary" @onclick="ConnectAsync" disabled="@_isConnecting">
+                            @if (_isConnecting)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                            }
+                            Connect to Hub
+                        </button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-danger" @onclick="DisconnectAsync">Disconnect</button>
+                    }
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Send Message</h5>
+                </div>
+                <div class="card-body">
+                    <div class="input-group mb-3">
+                        <input type="text" class="form-control" placeholder="Enter message..." 
+                               @bind="_messageToSend" @bind:event="oninput"
+                               @onkeypress="HandleKeyPress"
+                               disabled="@(!HubService.IsConnected)" />
+                        <button class="btn btn-success" @onclick="SendMessageAsync" 
+                                disabled="@(!HubService.IsConnected || string.IsNullOrWhiteSpace(_messageToSend))">
+                            Send
+                        </button>
+                    </div>
+                    <small class="text-muted">
+                        Messages are sent via SignalR Hub and broadcast to all connected clients.
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">📨 Received Messages</h5>
+                    @if (_messages.Any())
+                    {
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="ClearMessages">Clear</button>
+                    }
+                </div>
+                <div class="card-body">
+                    @if (!_messages.Any())
+                    {
+                        <p class="text-muted mb-0">No messages received yet. Connect and send a message to see the round-trip in action!</p>
+                    }
+                    else
+                    {
+                        <div class="list-group list-group-flush" style="max-height: 400px; overflow-y: auto;">
+                            @foreach (var msg in _messages.AsEnumerable().Reverse())
+                            {
+                                <div class="list-group-item">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <p class="mb-1">@msg.Content</p>
+                                        <small class="text-muted">@msg.Timestamp.ToString("HH:mm:ss")</small>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">ℹ️ How it works</h5>
+                </div>
+                <div class="card-body">
+                    <ol class="mb-0">
+                        <li><strong>Connect:</strong> Blazor client establishes WebSocket connection to SignalR Hub on the API</li>
+                        <li><strong>Send:</strong> Message is sent from client to Hub via <code>SendMessage</code> method</li>
+                        <li><strong>Broadcast:</strong> Hub broadcasts message to all connected clients via <code>ReceiveMessage</code></li>
+                        <li><strong>Receive:</strong> All connected Blazor clients receive and display the message in real-time</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string _connectionStatus = "Disconnected";
+    private string _connectionId = string.Empty;
+    private string _messageToSend = string.Empty;
+    private bool _isConnecting;
+    private readonly List<ReceivedMessage> _messages = new();
+
+    protected override void OnInitialized()
+    {
+        // Subscribe to hub events
+        HubService.OnMessageReceived += HandleMessageReceived;
+        HubService.OnConnectionChanged += HandleConnectionChanged;
+        HubService.OnConnected += HandleConnected;
+    }
+
+    private async Task ConnectAsync()
+    {
+        _isConnecting = true;
+        StateHasChanged();
+
+        try
+        {
+            // Get the API URL from configuration or use default
+            var apiUrl = Configuration["ApiUrl"] ?? "https://localhost:7001";
+            var hubUrl = $"{apiUrl}/gamehub";
+            
+            await HubService.StartAsync(hubUrl);
+        }
+        catch (Exception ex)
+        {
+            _connectionStatus = $"Failed: {ex.Message}";
+        }
+        finally
+        {
+            _isConnecting = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DisconnectAsync()
+    {
+        await HubService.StopAsync();
+        _connectionStatus = "Disconnected";
+        _connectionId = string.Empty;
+        StateHasChanged();
+    }
+
+    private async Task SendMessageAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_messageToSend)) return;
+
+        await HubService.SendMessageAsync(_messageToSend);
+        _messageToSend = string.Empty;
+    }
+
+    private async Task HandleKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await SendMessageAsync();
+        }
+    }
+
+    private void HandleMessageReceived(string message, DateTime timestamp)
+    {
+        _messages.Add(new ReceivedMessage(message, timestamp));
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleConnectionChanged(string status)
+    {
+        _connectionStatus = status;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleConnected(string connectionId)
+    {
+        _connectionId = connectionId;
+        _connectionStatus = "Connected";
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void ClearMessages()
+    {
+        _messages.Clear();
+    }
+
+    private string GetConnectionBadgeClass() => _connectionStatus switch
+    {
+        "Connected" => "bg-success",
+        "Reconnecting" => "bg-warning",
+        "Disconnected" => "bg-secondary",
+        _ => "bg-danger"
+    };
+
+    public async ValueTask DisposeAsync()
+    {
+        HubService.OnMessageReceived -= HandleMessageReceived;
+        HubService.OnConnectionChanged -= HandleConnectionChanged;
+        HubService.OnConnected -= HandleConnected;
+        
+        await HubService.DisposeAsync();
+    }
+
+    private record ReceivedMessage(string Content, DateTime Timestamp);
+}

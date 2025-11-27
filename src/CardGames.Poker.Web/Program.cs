@@ -1,4 +1,5 @@
 using CardGames.Poker.Web.Components;
+using CardGames.Poker.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -7,6 +8,9 @@ builder.AddServiceDefaults();
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+// Register SignalR client service
+builder.Services.AddScoped<GameHubService>();
 
 var app = builder.Build();
 
