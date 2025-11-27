@@ -1,3 +1,6 @@
+using CardGames.Poker.Api.Hubs;
+using Microsoft.AspNetCore.SignalR;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
@@ -5,6 +8,21 @@ builder.AddServiceDefaults();
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+
+// Add SignalR services
+builder.Services.AddSignalR();
+
+// Add CORS for development (allows Blazor to connect)
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.AllowAnyHeader()
+              .AllowAnyMethod()
+              .SetIsOriginAllowed(_ => true)
+              .AllowCredentials();
+    });
+});
 
 var app = builder.Build();
 
@@ -15,6 +33,9 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
+
+// Enable CORS
+app.UseCors();
 
 app.UseHttpsRedirection();
 
@@ -36,6 +57,17 @@ app.MapGet("/weatherforecast", () =>
     return forecast;
 })
 .WithName("GetWeatherForecast");
+
+// Map SignalR hub
+app.MapHub<GameHub>("/gamehub");
+
+// Demo endpoint to trigger a broadcast message
+app.MapPost("/api/broadcast", async (string message, IHubContext<GameHub> hubContext) =>
+{
+    await hubContext.Clients.All.SendAsync("ReceiveMessage", message, DateTime.UtcNow);
+    return Results.Ok(new { Message = "Broadcast sent", Content = message, Timestamp = DateTime.UtcNow });
+})
+.WithName("BroadcastMessage");
 
 app.Run();
 
