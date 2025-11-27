@@ -19,6 +19,28 @@ public class KingsAndLowsGameTests
     }
 
     [Fact]
+    public void Constructor_ThrowsForTooFewPlayers()
+    {
+        var players = new List<(string, int)> { ("Alice", 1000) };
+        
+        var act = () => new KingsAndLowsGame(players, ante: 10);
+        
+        act.Should().Throw<System.ArgumentException>()
+            .WithMessage("*at least 2 players*");
+    }
+
+    [Fact]
+    public void Constructor_ThrowsForTooManyPlayers()
+    {
+        var players = Enumerable.Range(1, 6).Select(i => ($"Player{i}", 1000)).ToList();
+        
+        var act = () => new KingsAndLowsGame(players, ante: 10);
+        
+        act.Should().Throw<System.ArgumentException>()
+            .WithMessage("*at most 5 players*");
+    }
+
+    [Fact]
     public void StartHand_SetsPhaseToCollectingAntes()
     {
         var game = CreateTwoPlayerGame();

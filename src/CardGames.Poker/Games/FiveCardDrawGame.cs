@@ -52,6 +52,13 @@ public class FiveCardDrawGamePlayer
 /// </summary>
 public class FiveCardDrawGame
 {
+    private const int MinPlayers = 2;
+    /// <summary>
+    /// Maximum players limited by deck size: 52 cards / 8 cards per player worst case = 6 players max.
+    /// Each player receives 5 cards and can discard up to 3 cards, requiring 8 cards per player in worst case.
+    /// </summary>
+    private const int MaxPlayers = 6;
+
     private readonly List<FiveCardDrawGamePlayer> _gamePlayers;
     private readonly FrenchDeckDealer _dealer;
     private readonly int _ante;
@@ -75,9 +82,14 @@ public class FiveCardDrawGame
     public FiveCardDrawGame(IEnumerable<(string name, int chips)> players, int ante, int minBet)
     {
         var playerList = players.ToList();
-        if (playerList.Count < 2)
+        if (playerList.Count < MinPlayers)
         {
-            throw new ArgumentException("Five Card Draw requires at least 2 players");
+            throw new ArgumentException($"Five Card Draw requires at least {MinPlayers} players");
+        }
+
+        if (playerList.Count > MaxPlayers)
+        {
+            throw new ArgumentException($"Five Card Draw supports at most {MaxPlayers} players");
         }
 
         _gamePlayers = playerList
