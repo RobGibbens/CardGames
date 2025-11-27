@@ -60,6 +60,19 @@ public static class HandTypeDetermination
     private static bool IsStraight(IReadOnlyCollection<Card> cards)
     {
         var values = cards.DistinctDescendingValues();
-        return values.Count == 5 && values.Max() - values.Min() == 4;
+        if (values.Count != 5)
+        {
+            return false;
+        }
+
+        // Check for regular straight (e.g., 5-6-7-8-9)
+        if (values.Max() - values.Min() == 4)
+        {
+            return true;
+        }
+
+        // Check for wheel straight (A-2-3-4-5) where Ace (value 14) acts as low
+        var wheelValues = new[] { 14, 5, 4, 3, 2 };
+        return wheelValues.All(v => values.Contains(v));
     }
 }
