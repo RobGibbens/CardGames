@@ -176,7 +176,9 @@ internal class HoldEmPlayCommand : Command<HoldEmPlaySettings>
 
             // Show current player's hole cards
             var gamePlayer = game.GamePlayers.First(gp => gp.Player.Name == currentPlayer.Name);
-            AnsiConsole.MarkupLine($"[cyan]{currentPlayer.Name}[/]'s cards:");
+            var positionLabel = GetPositionNameByPlayer(game, currentPlayer.Name);
+            var positionSuffix = string.IsNullOrEmpty(positionLabel) ? "" : $" [yellow]({positionLabel})[/]";
+            AnsiConsole.MarkupLine($"[cyan]{currentPlayer.Name}[/]{positionSuffix}'s cards:");
             CardRenderer.RenderCards(gamePlayer.HoleCards);
             var holeCardsStr = gamePlayer.HoleCards.ToStringRepresentation();
             AnsiConsole.MarkupLine($"[dim]({holeCardsStr})[/]");
@@ -267,7 +269,9 @@ internal class HoldEmPlayCommand : Command<HoldEmPlaySettings>
         if (result.WonByFold)
         {
             var winner = result.Payouts.First();
-            AnsiConsole.MarkupLine($"[bold green]{winner.Key}[/] wins {winner.Value} chips (all others folded)!");
+            var winnerPosition = GetPositionNameByPlayer(game, winner.Key);
+            var positionSuffix = string.IsNullOrEmpty(winnerPosition) ? "" : $" [yellow]({winnerPosition})[/]";
+            AnsiConsole.MarkupLine($"[bold green]{winner.Key}[/]{positionSuffix} wins {winner.Value} chips (all others folded)!");
             return;
         }
 
@@ -282,7 +286,9 @@ internal class HoldEmPlayCommand : Command<HoldEmPlaySettings>
             foreach (var (playerName, (hand, holeCards)) in result.PlayerHands)
             {
                 var handDescription = hand != null ? HandDescriptionFormatter.GetHandDescription(hand) : "Unknown";
-                AnsiConsole.MarkupLine($"[cyan]{playerName}[/]:");
+                var positionLabel = GetPositionNameByPlayer(game, playerName);
+                var positionSuffix = string.IsNullOrEmpty(positionLabel) ? "" : $" [yellow]({positionLabel})[/]";
+                AnsiConsole.MarkupLine($"[cyan]{playerName}[/]{positionSuffix}:");
                 CardRenderer.RenderCards(holeCards.ToList());
                 var holeCardsStr = holeCards.ToStringRepresentation();
                 AnsiConsole.MarkupLine($"[dim]({holeCardsStr})[/] - [magenta]{handDescription}[/]");
@@ -294,7 +300,9 @@ internal class HoldEmPlayCommand : Command<HoldEmPlaySettings>
         Logger.Paragraph("Winners");
         foreach (var (playerName, amount) in result.Payouts)
         {
-            AnsiConsole.MarkupLine($"[bold green]{playerName}[/] wins {amount} chips!");
+            var positionLabel = GetPositionNameByPlayer(game, playerName);
+            var positionSuffix = string.IsNullOrEmpty(positionLabel) ? "" : $" [yellow]({positionLabel})[/]";
+            AnsiConsole.MarkupLine($"[bold green]{playerName}[/]{positionSuffix} wins {amount} chips!");
         }
     }
 
@@ -303,18 +311,44 @@ internal class HoldEmPlayCommand : Command<HoldEmPlaySettings>
         var table = new Table();
         table.AddColumn("Player");
         table.AddColumn("Chips");
+        table.AddColumn("Position");
         table.AddColumn("Status");
 
-        foreach (var gamePlayer in game.GamePlayers)
+        for (int i = 0; i < game.GamePlayers.Count; i++)
         {
+            var gamePlayer = game.GamePlayers[i];
             var player = gamePlayer.Player;
+            var position = GetPositionName(game, i);
             var status = player.HasFolded ? "[red]Folded[/]" :
                         player.IsAllIn ? "[yellow]All-In[/]" :
                         "[green]Active[/]";
-            table.AddRow(player.Name, player.ChipStack.ToString(), status);
+            table.AddRow(player.Name, player.ChipStack.ToString(), position, status);
         }
 
         AnsiConsole.Write(table);
+    }
+
+    private static string GetPositionName(HoldEmGame game, int playerIndex)
+    {
+        if (playerIndex == game.DealerPosition)
+            return "Dealer (BTN)";
+        if (playerIndex == game.GetSmallBlindPosition())
+            return "Small Blind (SB)";
+        if (playerIndex == game.GetBigBlindPosition())
+            return "Big Blind (BB)";
+        return "";
+    }
+
+    private static string GetPositionNameByPlayer(HoldEmGame game, string playerName)
+    {
+        for (int i = 0; i < game.GamePlayers.Count; i++)
+        {
+            if (game.GamePlayers[i].Player.Name == playerName)
+            {
+                return GetPositionName(game, i);
+            }
+        }
+        return "";
     }
 
     private static void DisplayPositions(HoldEmGame game)
