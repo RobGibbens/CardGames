@@ -153,14 +153,12 @@ internal class FiveCardDrawPlayCommand : Command<PlaySettings>
             AnsiConsole.WriteLine();
 
             // Show live odds for the current player
-            var opponentCount = game.GamePlayers.Count(gp => !gp.Player.HasFolded && gp.Player.Name != currentPlayer.Name);
             var deadCards = game.GamePlayers
                 .Where(gp => gp.Player.HasFolded)
                 .SelectMany(gp => gp.Hand)
                 .ToList();
             LiveOddsRenderer.RenderDrawOdds(
                 gamePlayer.Hand.ToList(),
-                opponentCount,
                 deadCards);
             AnsiConsole.WriteLine();
 

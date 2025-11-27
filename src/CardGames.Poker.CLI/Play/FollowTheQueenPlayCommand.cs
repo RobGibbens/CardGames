@@ -193,19 +193,15 @@ internal class FollowTheQueenPlayCommand : Command<FollowTheQueenPlaySettings>
             DisplayPlayerCards(gamePlayer, game, showHoleCards: true);
             AnsiConsole.WriteLine();
 
-            // Show live odds for the current player (uses stud odds as Follow the Queen is a stud variant)
-            var opponents = game.GamePlayers
-                .Where(gp => !gp.Player.HasFolded && gp.Player.Name != currentPlayer.Name)
-                .ToList();
-            var opponentBoardCards = opponents.Select(gp => (IReadOnlyCollection<Card>)gp.BoardCards.ToList()).ToList();
+            // Show live odds for the current player (Follow The Queen has Queens and the following card as wild)
             var deadCards = game.GamePlayers
                 .Where(gp => gp.Player.HasFolded)
                 .SelectMany(gp => gp.HoleCards.Concat(gp.BoardCards))
                 .ToList();
-            LiveOddsRenderer.RenderStudOdds(
+            LiveOddsRenderer.RenderFollowTheQueenOdds(
                 gamePlayer.HoleCards.ToList(),
                 gamePlayer.BoardCards.ToList(),
-                opponentBoardCards,
+                game.FaceUpCardsInOrder.ToList(),
                 deadCards);
             AnsiConsole.WriteLine();
 

@@ -188,10 +188,6 @@ internal class SevenCardStudPlayCommand : Command<SevenCardStudPlaySettings>
             AnsiConsole.WriteLine();
 
             // Show live odds for the current player
-            var opponents = game.GamePlayers
-                .Where(gp => !gp.Player.HasFolded && gp.Player.Name != currentPlayer.Name)
-                .ToList();
-            var opponentBoardCards = opponents.Select(gp => (IReadOnlyCollection<Card>)gp.BoardCards.ToList()).ToList();
             var deadCards = game.GamePlayers
                 .Where(gp => gp.Player.HasFolded)
                 .SelectMany(gp => gp.HoleCards.Concat(gp.BoardCards))
@@ -199,7 +195,6 @@ internal class SevenCardStudPlayCommand : Command<SevenCardStudPlaySettings>
             LiveOddsRenderer.RenderStudOdds(
                 gamePlayer.HoleCards.ToList(),
                 gamePlayer.BoardCards.ToList(),
-                opponentBoardCards,
                 deadCards);
             AnsiConsole.WriteLine();
 

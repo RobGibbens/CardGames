@@ -200,7 +200,6 @@ internal class OmahaPlayCommand : Command<OmahaPlaySettings>
             AnsiConsole.WriteLine();
 
             // Show live odds for the current player
-            var opponentCount = game.GamePlayers.Count(gp => !gp.Player.HasFolded && gp.Player.Name != currentPlayer.Name);
             var deadCards = game.GamePlayers
                 .Where(gp => gp.Player.HasFolded)
                 .SelectMany(gp => gp.HoleCards)
@@ -208,7 +207,6 @@ internal class OmahaPlayCommand : Command<OmahaPlaySettings>
             LiveOddsRenderer.RenderOmahaOdds(
                 gamePlayer.HoleCards.ToList(),
                 game.CommunityCards.ToList(),
-                opponentCount,
                 deadCards);
             AnsiConsole.WriteLine();
 
