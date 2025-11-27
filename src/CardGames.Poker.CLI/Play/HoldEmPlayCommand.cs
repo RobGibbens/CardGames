@@ -328,27 +328,22 @@ internal class HoldEmPlayCommand : Command<HoldEmPlaySettings>
         AnsiConsole.Write(table);
     }
 
-    private static string GetPositionName(HoldEmGame game, int playerIndex)
-    {
-        if (playerIndex == game.DealerPosition)
-            return "Dealer (BTN)";
-        if (playerIndex == game.GetSmallBlindPosition())
-            return "Small Blind (SB)";
-        if (playerIndex == game.GetBigBlindPosition())
-            return "Big Blind (BB)";
-        return "";
-    }
+    private static string GetPositionName(HoldEmGame game, int playerIndex) =>
+        playerIndex switch
+        {
+            _ when playerIndex == game.DealerPosition => "Dealer (BTN)",
+            _ when playerIndex == game.GetSmallBlindPosition() => "Small Blind (SB)",
+            _ when playerIndex == game.GetBigBlindPosition() => "Big Blind (BB)",
+            _ => ""
+        };
 
     private static string GetPositionNameByPlayer(HoldEmGame game, string playerName)
     {
-        for (int i = 0; i < game.GamePlayers.Count; i++)
-        {
-            if (game.GamePlayers[i].Player.Name == playerName)
-            {
-                return GetPositionName(game, i);
-            }
-        }
-        return "";
+        var playerIndex = game.GamePlayers
+            .Select((gp, index) => (gp, index))
+            .FirstOrDefault(x => x.gp.Player.Name == playerName);
+
+        return playerIndex.gp != null ? GetPositionName(game, playerIndex.index) : "";
     }
 
     private static void DisplayPositions(HoldEmGame game)
