@@ -47,7 +47,10 @@ public class SevenCardStudGamePlayer
 public class SevenCardStudGame
 {
     private const int MinPlayers = 2;
-    private const int MaxPlayers = 8;
+    /// <summary>
+    /// Maximum players limited by deck size: 52 cards / 7 cards per player = 7 players max.
+    /// </summary>
+    private const int MaxPlayers = 7;
 
     private readonly List<SevenCardStudGamePlayer> _gamePlayers;
     private readonly FrenchDeckDealer _dealer;
