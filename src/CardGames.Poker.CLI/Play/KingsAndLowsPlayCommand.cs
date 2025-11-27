@@ -179,6 +179,14 @@ internal class KingsAndLowsPlayCommand : Command<KingsAndLowsPlaySettings>
             {
                 AnsiConsole.MarkupLine($"[yellow]Wild cards: {wildCards.ToStringRepresentation()}[/]");
             }
+            AnsiConsole.WriteLine();
+
+            // Show live odds for the player (using draw odds as this is a draw variant)
+            var opponentCount = game.GamePlayers.Count(gp => gp.Player.Name != gamePlayer.Player.Name);
+            LiveOddsRenderer.RenderDrawOdds(
+                gamePlayer.Hand.ToList(),
+                opponentCount);
+            AnsiConsole.WriteLine();
 
             var decision = AnsiConsole.Prompt(
                 new SelectionPrompt<string>()
