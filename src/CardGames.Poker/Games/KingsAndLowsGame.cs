@@ -83,6 +83,13 @@ public class KingsAndLowsGamePlayer
 /// </summary>
 public class KingsAndLowsGame
 {
+    private const int MinPlayers = 2;
+    /// <summary>
+    /// Maximum players limited by deck size: 52 cards / 10 cards per player worst case = 5 players max.
+    /// Each player receives 5 cards and can discard up to 5 cards, requiring 10 cards per player in worst case.
+    /// </summary>
+    private const int MaxPlayers = 5;
+
     private readonly List<KingsAndLowsGamePlayer> _gamePlayers;
     private readonly FrenchDeckDealer _dealer;
     private readonly int _ante;
@@ -133,9 +140,14 @@ public class KingsAndLowsGame
         bool anteEveryHand = false)
     {
         var playerList = players.ToList();
-        if (playerList.Count < 2)
+        if (playerList.Count < MinPlayers)
         {
-            throw new ArgumentException("Kings and Lows requires at least 2 players");
+            throw new ArgumentException($"Kings and Lows requires at least {MinPlayers} players");
+        }
+
+        if (playerList.Count > MaxPlayers)
+        {
+            throw new ArgumentException($"Kings and Lows supports at most {MaxPlayers} players");
         }
 
         _gamePlayers = playerList
