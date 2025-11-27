@@ -12,15 +12,28 @@ builder.Services.AddOpenApi();
 // Add SignalR services
 builder.Services.AddSignalR();
 
-// Add CORS for development (allows Blazor to connect)
+// Add CORS for SignalR (configure properly for production)
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.AllowAnyHeader()
-              .AllowAnyMethod()
-              .SetIsOriginAllowed(_ => true)
-              .AllowCredentials();
+        if (builder.Environment.IsDevelopment())
+        {
+            // Allow any origin in development
+            policy.AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .SetIsOriginAllowed(_ => true)
+                  .AllowCredentials();
+        }
+        else
+        {
+            // In production, restrict to known origins
+            var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+            policy.AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .WithOrigins(allowedOrigins)
+                  .AllowCredentials();
+        }
     });
 });
 
