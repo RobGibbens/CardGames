@@ -1,0 +1,11 @@
+.navbar-brand {
+    font-weight: bold;
+}
+
+.nav-link.active {
+    font-weight: 600;
+}
+
+:global(.nav-link) {
+    white-space: nowrap;
+}
