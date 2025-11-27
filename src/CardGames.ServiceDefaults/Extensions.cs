@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
@@ -20,6 +21,9 @@ public static class Extensions
 
     public static TBuilder AddServiceDefaults<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
+        // Configure environment-specific settings
+        builder.ConfigureEnvironmentSettings();
+
         builder.ConfigureOpenTelemetry();
 
         builder.AddDefaultHealthChecks();
@@ -40,6 +44,31 @@ public static class Extensions
         // {
         //     options.AllowedSchemes = ["https"];
         // });
+
+        return builder;
+    }
+
+    /// <summary>
+    /// Configures environment-specific settings including appsettings.{Environment}.json and user secrets.
+    /// </summary>
+    public static TBuilder ConfigureEnvironmentSettings<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
+    {
+        var env = builder.Environment;
+
+        // Configuration is already set up by the host builder, but we ensure
+        // environment-specific files and secrets are properly loaded
+        builder.Configuration
+            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+            .AddJsonFile($"appsettings.{env.EnvironmentName}.json", optional: true, reloadOnChange: true);
+
+        // Add user secrets in development environment
+        if (env.IsDevelopment())
+        {
+            builder.Configuration.AddUserSecrets(System.Reflection.Assembly.GetEntryAssembly()!, optional: true);
+        }
+
+        // Add environment variables (useful for production deployments)
+        builder.Configuration.AddEnvironmentVariables();
 
         return builder;
     }
