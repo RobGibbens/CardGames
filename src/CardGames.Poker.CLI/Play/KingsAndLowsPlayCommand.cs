@@ -181,11 +181,10 @@ internal class KingsAndLowsPlayCommand : Command<KingsAndLowsPlaySettings>
             }
             AnsiConsole.WriteLine();
 
-            // Show live odds for the player (using draw odds as this is a draw variant)
-            var opponentCount = game.GamePlayers.Count(gp => gp.Player.Name != gamePlayer.Player.Name);
-            LiveOddsRenderer.RenderDrawOdds(
+            // Show live odds for the player (Kings and Lows: Kings + lowest card are wild)
+            LiveOddsRenderer.RenderKingsAndLowsOdds(
                 gamePlayer.Hand.ToList(),
-                opponentCount);
+                game.WildCardRules.KingRequired);
             AnsiConsole.WriteLine();
 
             var decision = AnsiConsole.Prompt(

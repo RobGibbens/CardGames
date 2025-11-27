@@ -288,19 +288,14 @@ internal class BaseballPlayCommand : Command<BaseballPlaySettings>
             DisplayPlayerCards(gamePlayer, showHoleCards: true);
             AnsiConsole.WriteLine();
 
-            // Show live odds for the current player (uses stud odds as Baseball is a stud variant)
-            var opponents = game.GamePlayers
-                .Where(gp => !gp.Player.HasFolded && gp.Player.Name != currentPlayer.Name)
-                .ToList();
-            var opponentBoardCards = opponents.Select(gp => (IReadOnlyCollection<Card>)gp.BoardCards.ToList()).ToList();
+            // Show live odds for the current player (Baseball has 3s and 9s as wild)
             var deadCards = game.GamePlayers
                 .Where(gp => gp.Player.HasFolded)
                 .SelectMany(gp => gp.HoleCards.Concat(gp.BoardCards))
                 .ToList();
-            LiveOddsRenderer.RenderStudOdds(
+            LiveOddsRenderer.RenderBaseballOdds(
                 gamePlayer.HoleCards.ToList(),
                 gamePlayer.BoardCards.ToList(),
-                opponentBoardCards,
                 deadCards);
             AnsiConsole.WriteLine();
 

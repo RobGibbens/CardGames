@@ -9,7 +9,7 @@ namespace CardGames.Poker.CLI.Output;
 
 /// <summary>
 /// Renders live poker hand odds in the CLI using Spectre.Console.
-/// Displays hand type probabilities and win/tie/lose chances.
+/// Displays hand type probabilities for each poker variant.
 /// </summary>
 internal static class LiveOddsRenderer
 {
@@ -19,22 +19,14 @@ internal static class LiveOddsRenderer
     public static void RenderHoldemOdds(
         IReadOnlyCollection<Card> heroHoleCards,
         IReadOnlyCollection<Card> communityCards,
-        int opponentCount,
         IReadOnlyCollection<Card> deadCards = null)
     {
-        if (opponentCount <= 0)
-        {
-            AnsiConsole.MarkupLine("[dim]No opponents - you will win![/]");
-            return;
-        }
-
         AnsiConsole.Status()
             .Start("[yellow]Calculating odds...[/]", ctx =>
             {
                 var odds = OddsCalculator.CalculateHoldemOdds(
                     heroHoleCards,
                     communityCards,
-                    opponentCount,
                     deadCards);
 
                 RenderOddsTable(odds, "Texas Hold'em Odds");
@@ -47,25 +39,79 @@ internal static class LiveOddsRenderer
     public static void RenderStudOdds(
         IReadOnlyCollection<Card> heroHoleCards,
         IReadOnlyCollection<Card> heroBoardCards,
-        IReadOnlyList<IReadOnlyCollection<Card>> opponentBoardCards,
         IReadOnlyCollection<Card> deadCards = null)
     {
-        if (opponentBoardCards == null || opponentBoardCards.Count == 0)
-        {
-            AnsiConsole.MarkupLine("[dim]No opponents - you will win![/]");
-            return;
-        }
-
         AnsiConsole.Status()
             .Start("[yellow]Calculating odds...[/]", ctx =>
             {
                 var odds = OddsCalculator.CalculateStudOdds(
                     heroHoleCards,
                     heroBoardCards,
-                    opponentBoardCards,
                     deadCards: deadCards);
 
                 RenderOddsTable(odds, "Seven Card Stud Odds");
+            });
+    }
+
+    /// <summary>
+    /// Renders the odds display for a Baseball hand (3s and 9s are wild).
+    /// </summary>
+    public static void RenderBaseballOdds(
+        IReadOnlyCollection<Card> heroHoleCards,
+        IReadOnlyCollection<Card> heroBoardCards,
+        IReadOnlyCollection<Card> deadCards = null)
+    {
+        AnsiConsole.Status()
+            .Start("[yellow]Calculating odds...[/]", ctx =>
+            {
+                var odds = OddsCalculator.CalculateBaseballOdds(
+                    heroHoleCards,
+                    heroBoardCards,
+                    deadCards: deadCards);
+
+                RenderOddsTable(odds, "Baseball Odds (3s & 9s Wild)");
+            });
+    }
+
+    /// <summary>
+    /// Renders the odds display for a Follow The Queen hand.
+    /// </summary>
+    public static void RenderFollowTheQueenOdds(
+        IReadOnlyCollection<Card> heroHoleCards,
+        IReadOnlyCollection<Card> heroBoardCards,
+        IReadOnlyCollection<Card> faceUpCardsInOrder,
+        IReadOnlyCollection<Card> deadCards = null)
+    {
+        AnsiConsole.Status()
+            .Start("[yellow]Calculating odds...[/]", ctx =>
+            {
+                var odds = OddsCalculator.CalculateFollowTheQueenOdds(
+                    heroHoleCards,
+                    heroBoardCards,
+                    faceUpCardsInOrder,
+                    deadCards: deadCards);
+
+                RenderOddsTable(odds, "Follow The Queen Odds");
+            });
+    }
+
+    /// <summary>
+    /// Renders the odds display for a Kings and Lows hand.
+    /// </summary>
+    public static void RenderKingsAndLowsOdds(
+        IReadOnlyCollection<Card> heroCards,
+        bool kingRequired = false,
+        IReadOnlyCollection<Card> deadCards = null)
+    {
+        AnsiConsole.Status()
+            .Start("[yellow]Calculating odds...[/]", ctx =>
+            {
+                var odds = OddsCalculator.CalculateKingsAndLowsOdds(
+                    heroCards,
+                    kingRequired,
+                    deadCards);
+
+                RenderOddsTable(odds, "Kings and Lows Odds");
             });
     }
 
@@ -74,22 +120,14 @@ internal static class LiveOddsRenderer
     /// </summary>
     public static void RenderDrawOdds(
         IReadOnlyCollection<Card> heroCards,
-        int opponentCount,
         IReadOnlyCollection<Card> deadCards = null)
     {
-        if (opponentCount <= 0)
-        {
-            AnsiConsole.MarkupLine("[dim]No opponents - you will win![/]");
-            return;
-        }
-
         AnsiConsole.Status()
             .Start("[yellow]Calculating odds...[/]", ctx =>
             {
                 var odds = OddsCalculator.CalculateDrawOdds(
                     heroCards,
-                    opponentCount,
-                    deadCards: deadCards);
+                    deadCards);
 
                 RenderOddsTable(odds, "Five Card Draw Odds");
             });
@@ -101,22 +139,14 @@ internal static class LiveOddsRenderer
     public static void RenderOmahaOdds(
         IReadOnlyCollection<Card> heroHoleCards,
         IReadOnlyCollection<Card> communityCards,
-        int opponentCount,
         IReadOnlyCollection<Card> deadCards = null)
     {
-        if (opponentCount <= 0)
-        {
-            AnsiConsole.MarkupLine("[dim]No opponents - you will win![/]");
-            return;
-        }
-
         AnsiConsole.Status()
             .Start("[yellow]Calculating odds...[/]", ctx =>
             {
                 var odds = OddsCalculator.CalculateOmahaOdds(
                     heroHoleCards,
                     communityCards,
-                    opponentCount,
                     deadCards);
 
                 RenderOddsTable(odds, "Omaha Odds");
@@ -128,7 +158,6 @@ internal static class LiveOddsRenderer
     /// </summary>
     private static void RenderOddsTable(OddsCalculator.OddsResult odds, string title)
     {
-        // Create the main panel
         var panel = new Panel(BuildOddsContent(odds))
             .Header($"[bold cyan]{title}[/]")
             .Border(BoxBorder.Rounded)
@@ -141,20 +170,12 @@ internal static class LiveOddsRenderer
     {
         var lines = new List<string>();
 
-        // Outcome probabilities section
-        lines.Add("[bold yellow]Win/Tie/Lose Probabilities[/]");
-        lines.Add($"  [green]Win:[/]  {FormatPercentage(odds.WinProbability)}");
-        lines.Add($"  [yellow]Tie:[/]  {FormatPercentage(odds.TieProbability)}");
-        lines.Add($"  [red]Lose:[/] {FormatPercentage(odds.LoseProbability)}");
-        lines.Add($"  [cyan]Expected Pot Share:[/] {FormatPercentage(odds.ExpectedPotShare)}");
-        lines.Add("");
-
-        // Hand type probabilities section
         lines.Add("[bold yellow]Hand Probabilities[/]");
         
-        // Order hand types from best to worst
+        // Order hand types from best to worst, including Five of a Kind for wild card games
         var orderedHandTypes = new[]
         {
+            HandType.FiveOfAKind,
             HandType.StraightFlush,
             HandType.Quads,
             HandType.FullHouse,
@@ -171,7 +192,6 @@ internal static class LiveOddsRenderer
             if (odds.HandTypeProbabilities.TryGetValue(handType, out var probability))
             {
                 var handName = GetHandTypeName(handType);
-                // Min bar length of 1 for any non-zero probability to ensure visibility
                 var barLength = probability > 0 ? System.Math.Max(1, (int)(probability * 20)) : 0;
                 var bar = new string('█', barLength);
                 var color = GetHandTypeColor(handType);
@@ -209,6 +229,7 @@ internal static class LiveOddsRenderer
     {
         return handType switch
         {
+            HandType.FiveOfAKind => "fuchsia",
             HandType.StraightFlush => "magenta",
             HandType.Quads => "red",
             HandType.FullHouse => "darkorange",
