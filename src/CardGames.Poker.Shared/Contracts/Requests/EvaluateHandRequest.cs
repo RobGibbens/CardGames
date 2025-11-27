@@ -1,5 +1,3 @@
-using CardGames.Poker.Shared.DTOs;
-
 namespace CardGames.Poker.Shared.Contracts.Requests;
 
 /// <summary>
