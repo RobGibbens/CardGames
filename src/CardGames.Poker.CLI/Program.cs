@@ -21,30 +21,33 @@ else
 
 static void RunInteractiveMenu()
 {
-    AnsiConsole.Write(
-        new FigletText("Poker-CLI")
-            .LeftJustified()
-            .Color(Color.Green));
-    AnsiConsole.Write(new Rule());
-    
-    var mode = AnsiConsole.Prompt(
-        new SelectionPrompt<string>()
-            .Title("[green]What would you like to do?[/]")
-            .AddChoices("Play Poker (With Betting)", "Deal Cards (Automated Dealer)", "Run Simulation (Manual Setup)", "Exit"));
-
-    switch (mode)
+    while (true)
     {
-        case "Play Poker (With Betting)":
-            RunPlayMenu();
-            break;
-        case "Deal Cards (Automated Dealer)":
-            RunDealMenu();
-            break;
-        case "Run Simulation (Manual Setup)":
-            RunSimulationMenu();
-            break;
-        case "Exit":
-            return;
+        AnsiConsole.Write(
+            new FigletText("Poker-CLI")
+                .LeftJustified()
+                .Color(Color.Green));
+        AnsiConsole.Write(new Rule());
+        
+        var mode = AnsiConsole.Prompt(
+            new SelectionPrompt<string>()
+                .Title("[green]What would you like to do?[/]")
+                .AddChoices("Play Poker (With Betting)", "Deal Cards (Automated Dealer)", "Run Simulation (Manual Setup)", "Exit"));
+
+        switch (mode)
+        {
+            case "Play Poker (With Betting)":
+                RunPlayMenu();
+                break;
+            case "Deal Cards (Automated Dealer)":
+                RunDealMenu();
+                break;
+            case "Run Simulation (Manual Setup)":
+                RunSimulationMenu();
+                break;
+            case "Exit":
+                return;
+        }
     }
 }
 
@@ -81,7 +84,6 @@ static void RunPlayMenu()
             app.Run(new[] { "play", "follow-the-queen" });
             break;
         case "Back":
-            RunInteractiveMenu();
             break;
     }
 }
@@ -119,7 +121,6 @@ static void RunDealMenu()
             app.Run(new[] { "deal", "follow-the-queen" });
             break;
         case "Back":
-            RunInteractiveMenu();
             break;
     }
 }
@@ -157,7 +158,6 @@ static void RunSimulationMenu()
             app.Run(new[] { "sim", "follow-the-queen" });
             break;
         case "Back":
-            RunInteractiveMenu();
             break;
     }
 }
