@@ -20,6 +20,9 @@ public static class Extensions
 
     public static TBuilder AddServiceDefaults<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
+        // Configure environment-specific settings
+        builder.ConfigureEnvironmentSettings();
+
         builder.ConfigureOpenTelemetry();
 
         builder.AddDefaultHealthChecks();
@@ -40,6 +43,20 @@ public static class Extensions
         // {
         //     options.AllowedSchemes = ["https"];
         // });
+
+        return builder;
+    }
+
+    /// <summary>
+    /// Configures environment-specific settings including user secrets in development.
+    /// Note: appsettings.json, appsettings.{Environment}.json, and environment variables
+    /// are already configured by the default host builder.
+    /// </summary>
+    public static TBuilder ConfigureEnvironmentSettings<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
+    {
+        // User secrets are automatically loaded when UserSecretsId is set in the project file
+        // and we're in the Development environment. The host builder handles this.
+        // This method is a hook for any additional environment-specific configuration.
 
         return builder;
     }
