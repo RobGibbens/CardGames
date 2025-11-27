@@ -107,13 +107,11 @@ internal class BaseballPlayCommand : Command<BaseballPlaySettings>
         }
         AnsiConsole.MarkupLine($"[green]Pot: {game.TotalPot}[/]");
 
-        // Deal third street
+        // Deal third street - one player at a time with immediate buy-card offers
         Logger.Paragraph("Third Street (2 down, 1 up)");
-        game.DealThirdStreet();
+        DealThirdStreetWithImmediateBuyOffers(game);
+        game.FinishThirdStreetDealing();
         DisplayAllHands(game, showHoleCards: true);
-
-        // Handle buy-card offers after third street
-        ProcessBuyCardOffers(game);
 
         // Post bring-in
         var bringInPlayer = game.GetBringInPlayer();
@@ -150,14 +148,11 @@ internal class BaseballPlayCommand : Command<BaseballPlaySettings>
             }
 
             Logger.Paragraph(streetName);
-            game.DealStreetCard();
+            
+            // Deal street cards - one player at a time with immediate buy-card offers
+            DealStreetCardWithImmediateBuyOffers(game, phase);
+            game.FinishStreetCardDealing();
             DisplayAllHands(game, showHoleCards: phase == BaseballPhase.SeventhStreet);
-
-            // Handle buy-card offers after dealing (except 7th street - cards face down)
-            if (phase != BaseballPhase.SeventhStreet)
-            {
-                ProcessBuyCardOffers(game);
-            }
 
             game.StartBettingRound();
             if (!RunBettingRound(game, $"{streetName} Betting"))
@@ -173,6 +168,46 @@ internal class BaseballPlayCommand : Command<BaseballPlaySettings>
         {
             var result = game.PerformShowdown();
             DisplayShowdownResult(result, game);
+        }
+    }
+
+    /// <summary>
+    /// Deals third street cards one player at a time, processing buy-card offers immediately
+    /// when a 4 is dealt face up.
+    /// </summary>
+    private static void DealThirdStreetWithImmediateBuyOffers(BaseballGame game)
+    {
+        game.StartDealingThirdStreet();
+        
+        while (game.HasMorePlayersToDeal())
+        {
+            bool dealt4 = game.DealThirdStreetToNextPlayer();
+            
+            // If a 4 was dealt, process the buy-card offer immediately
+            if (dealt4)
+            {
+                ProcessBuyCardOffers(game);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Deals street cards one player at a time, processing buy-card offers immediately
+    /// when a 4 is dealt face up.
+    /// </summary>
+    private static void DealStreetCardWithImmediateBuyOffers(BaseballGame game, BaseballPhase phase)
+    {
+        game.StartDealingStreetCard();
+        
+        while (game.HasMorePlayersToDeal())
+        {
+            bool dealt4 = game.DealStreetCardToNextPlayer();
+            
+            // If a 4 was dealt (only possible on streets 4-6), process the buy-card offer immediately
+            if (dealt4 && phase != BaseballPhase.SeventhStreet)
+            {
+                ProcessBuyCardOffers(game);
+            }
         }
     }
 

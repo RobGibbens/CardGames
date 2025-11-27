@@ -458,6 +458,120 @@ public class BaseballGameTests
         game.TotalPot.Should().Be(10); // Only antes, no bring-in
     }
 
+    [Fact]
+    public void StartDealingThirdStreet_InitializesIncrementalDealing()
+    {
+        var game = CreateTwoPlayerGame();
+        game.StartHand();
+        game.CollectAntes();
+
+        game.StartDealingThirdStreet();
+
+        game.HasMorePlayersToDeal().Should().BeTrue();
+    }
+
+    [Fact]
+    public void DealThirdStreetToNextPlayer_DealsCardsToOnePlayer()
+    {
+        var game = CreateTwoPlayerGame();
+        game.StartHand();
+        game.CollectAntes();
+        game.StartDealingThirdStreet();
+
+        game.DealThirdStreetToNextPlayer();
+
+        // First player should have cards, second player should not
+        game.GamePlayers[0].HoleCards.Should().HaveCount(2);
+        game.GamePlayers[0].BoardCards.Should().HaveCount(1);
+        game.GamePlayers[1].HoleCards.Should().BeEmpty();
+        game.GamePlayers[1].BoardCards.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void DealThirdStreetToNextPlayer_AllPlayersDealtAfterLoop()
+    {
+        var game = CreateTwoPlayerGame();
+        game.StartHand();
+        game.CollectAntes();
+        game.StartDealingThirdStreet();
+
+        while (game.HasMorePlayersToDeal())
+        {
+            game.DealThirdStreetToNextPlayer();
+        }
+
+        game.GamePlayers.Should().AllSatisfy(gp =>
+        {
+            gp.HoleCards.Should().HaveCount(2);
+            gp.BoardCards.Should().HaveCount(1);
+        });
+    }
+
+    [Fact]
+    public void FinishThirdStreetDealing_ResetsBetsAndDeterminesBringIn()
+    {
+        var players = new List<(string, int)>
+        {
+            ("Alice", 1000),
+            ("Bob", 1000)
+        };
+        var game = new BaseballGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20, buyCardPrice: 20, useBringIn: true);
+        game.StartHand();
+        game.CollectAntes();
+        game.StartDealingThirdStreet();
+
+        while (game.HasMorePlayersToDeal())
+        {
+            game.DealThirdStreetToNextPlayer();
+        }
+
+        game.FinishThirdStreetDealing();
+
+        // Bring-in player should be set since useBringIn is true
+        game.GetBringInPlayer().Should().NotBeNull();
+    }
+
+    [Fact]
+    public void StartDealingStreetCard_InitializesIncrementalDealing()
+    {
+        var game = CreateTwoPlayerGame();
+        SetupToFourthStreetWithoutBringIn(game);
+
+        game.StartDealingStreetCard();
+
+        game.HasMorePlayersToDeal().Should().BeTrue();
+    }
+
+    [Fact]
+    public void DealStreetCardToNextPlayer_DealsCardToOnePlayer()
+    {
+        var game = CreateTwoPlayerGame();
+        SetupToFourthStreetWithoutBringIn(game);
+        var initialBoardCount = game.GamePlayers[0].BoardCards.Count;
+        game.StartDealingStreetCard();
+
+        game.DealStreetCardToNextPlayer();
+
+        // First player should have one more board card, second player unchanged
+        game.GamePlayers[0].BoardCards.Count.Should().Be(initialBoardCount + 1);
+        game.GamePlayers[1].BoardCards.Count.Should().Be(initialBoardCount);
+    }
+
+    [Fact]
+    public void DealStreetCardToNextPlayer_OnSeventhStreet_DealsHoleCard()
+    {
+        var game = CreateTwoPlayerGame();
+        SetupToSeventhStreetWithoutBringIn(game);
+        var initialHoleCount = game.GamePlayers[0].HoleCards.Count;
+        game.StartDealingStreetCard();
+
+        var dealt4 = game.DealStreetCardToNextPlayer();
+
+        // Seventh street cards are face down (hole cards), so no buy-card offer
+        dealt4.Should().BeFalse();
+        game.GamePlayers[0].HoleCards.Count.Should().Be(initialHoleCount + 1);
+    }
+
     private static BaseballGame CreateTwoPlayerGame()
     {
         var players = new List<(string, int)>
@@ -614,6 +728,104 @@ public class BaseballGameTests
         // Seventh street (no buy card offers - card is face down)
         game.DealStreetCard();
         game.StartBettingRound();
+        while (!game.CurrentBettingRound.IsComplete)
+        {
+            var available = game.GetAvailableActions();
+            if (available.CanCheck)
+            {
+                game.ProcessBettingAction(BettingActionType.Check);
+            }
+            else if (available.CanCall)
+            {
+                game.ProcessBettingAction(BettingActionType.Call);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Sets up to fourth street without requiring bring-in.
+    /// </summary>
+    private static void SetupToFourthStreetWithoutBringIn(BaseballGame game)
+    {
+        game.StartHand();
+        game.CollectAntes();
+        game.DealThirdStreet();
+        
+        // Handle any buy card offers
+        while (game.HasPendingBuyCardOffers())
+        {
+            var offer = game.GetCurrentBuyCardOffer();
+            if (offer != null)
+            {
+                game.ProcessBuyCardDecision(false);
+            }
+            else
+            {
+                break;
+            }
+        }
+        
+        // Skip bring-in since it's disabled by default
+        game.StartBettingRound();
+        
+        while (!game.CurrentBettingRound.IsComplete)
+        {
+            var available = game.GetAvailableActions();
+            if (available.CanCheck)
+            {
+                game.ProcessBettingAction(BettingActionType.Check);
+            }
+            else if (available.CanCall)
+            {
+                game.ProcessBettingAction(BettingActionType.Call);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Sets up to seventh street without requiring bring-in.
+    /// </summary>
+    private static void SetupToSeventhStreetWithoutBringIn(BaseballGame game)
+    {
+        SetupToFourthStreetWithoutBringIn(game);
+        
+        // Fourth street
+        game.DealStreetCard();
+        ClearBuyCardOffers(game);
+        game.StartBettingRound();
+        CompleteCheckingRound(game);
+        
+        // Fifth street
+        game.DealStreetCard();
+        ClearBuyCardOffers(game);
+        game.StartBettingRound();
+        CompleteCheckingRound(game);
+        
+        // Sixth street
+        game.DealStreetCard();
+        ClearBuyCardOffers(game);
+        game.StartBettingRound();
+        CompleteCheckingRound(game);
+    }
+
+    private static void ClearBuyCardOffers(BaseballGame game)
+    {
+        while (game.HasPendingBuyCardOffers())
+        {
+            var offer = game.GetCurrentBuyCardOffer();
+            if (offer != null)
+            {
+                game.ProcessBuyCardDecision(false);
+            }
+            else
+            {
+                break;
+            }
+        }
+    }
+
+    private static void CompleteCheckingRound(BaseballGame game)
+    {
         while (!game.CurrentBettingRound.IsComplete)
         {
             var available = game.GetAvailableActions();
