@@ -150,6 +150,17 @@ internal class FiveCardDrawPlayCommand : Command<PlaySettings>
             AnsiConsole.MarkupLine($"[cyan]{currentPlayer.Name}[/]'s hand:");
             CardRenderer.RenderCards(gamePlayer.Hand);
             AnsiConsole.MarkupLine($"[dim]({gamePlayer.Hand.ToStringRepresentation()})[/]");
+            AnsiConsole.WriteLine();
+
+            // Show live odds for the current player
+            var deadCards = game.GamePlayers
+                .Where(gp => gp.Player.HasFolded)
+                .SelectMany(gp => gp.Hand)
+                .ToList();
+            LiveOddsRenderer.RenderDrawOdds(
+                gamePlayer.Hand.ToList(),
+                deadCards);
+            AnsiConsole.WriteLine();
 
             var action = PromptForAction(currentPlayer, available);
             var result = game.ProcessBettingAction(action.ActionType, action.Amount);

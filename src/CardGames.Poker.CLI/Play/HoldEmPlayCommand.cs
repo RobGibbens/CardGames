@@ -180,6 +180,18 @@ internal class HoldEmPlayCommand : Command<HoldEmPlaySettings>
             CardRenderer.RenderCards(gamePlayer.HoleCards);
             var holeCardsStr = gamePlayer.HoleCards.ToStringRepresentation();
             AnsiConsole.MarkupLine($"[dim]({holeCardsStr})[/]");
+            AnsiConsole.WriteLine();
+
+            // Show live odds for the current player
+            var deadCards = game.GamePlayers
+                .Where(gp => gp.Player.HasFolded)
+                .SelectMany(gp => gp.HoleCards)
+                .ToList();
+            LiveOddsRenderer.RenderHoldemOdds(
+                gamePlayer.HoleCards,
+                game.CommunityCards.ToList(),
+                deadCards);
+            AnsiConsole.WriteLine();
 
             var action = PromptForAction(currentPlayer, available);
             var result = game.ProcessBettingAction(action.ActionType, action.Amount);

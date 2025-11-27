@@ -191,6 +191,19 @@ internal class FollowTheQueenPlayCommand : Command<FollowTheQueenPlaySettings>
             var gamePlayer = game.GamePlayers.First(gp => gp.Player.Name == currentPlayer.Name);
             AnsiConsole.MarkupLine($"[cyan]{currentPlayer.Name}[/]'s cards:");
             DisplayPlayerCards(gamePlayer, game, showHoleCards: true);
+            AnsiConsole.WriteLine();
+
+            // Show live odds for the current player (Follow The Queen has Queens and the following card as wild)
+            var deadCards = game.GamePlayers
+                .Where(gp => gp.Player.HasFolded)
+                .SelectMany(gp => gp.HoleCards.Concat(gp.BoardCards))
+                .ToList();
+            LiveOddsRenderer.RenderFollowTheQueenOdds(
+                gamePlayer.HoleCards.ToList(),
+                gamePlayer.BoardCards.ToList(),
+                game.FaceUpCardsInOrder.ToList(),
+                deadCards);
+            AnsiConsole.WriteLine();
 
             var action = PromptForAction(currentPlayer, available);
             var result = game.ProcessBettingAction(action.ActionType, action.Amount);

@@ -197,6 +197,18 @@ internal class OmahaPlayCommand : Command<OmahaPlaySettings>
             AnsiConsole.MarkupLine($"[cyan]{currentPlayer.Name}[/]'s hole cards:");
             CardRenderer.RenderCards(gamePlayer.HoleCards);
             AnsiConsole.MarkupLine($"[dim]({gamePlayer.HoleCards.ToStringRepresentation()})[/]");
+            AnsiConsole.WriteLine();
+
+            // Show live odds for the current player
+            var deadCards = game.GamePlayers
+                .Where(gp => gp.Player.HasFolded)
+                .SelectMany(gp => gp.HoleCards)
+                .ToList();
+            LiveOddsRenderer.RenderOmahaOdds(
+                gamePlayer.HoleCards.ToList(),
+                game.CommunityCards.ToList(),
+                deadCards);
+            AnsiConsole.WriteLine();
 
             var action = PromptForAction(currentPlayer, available);
             var result = game.ProcessBettingAction(action.ActionType, action.Amount);
