@@ -91,8 +91,9 @@ public static class OddsCalculator
         {
             dealer.Shuffle();
             
-            // Remove known cards from deck
-            foreach (var card in heroHoleCards.Concat(communityCards).Concat(deadCards))
+            // Remove known cards from deck (deduplicate to handle overlapping collections)
+            var knownCards = heroHoleCards.Concat(communityCards).Concat(deadCards).Distinct();
+            foreach (var card in knownCards)
             {
                 dealer.DealSpecific(card);
             }
@@ -168,11 +169,12 @@ public static class OddsCalculator
         {
             dealer.Shuffle();
             
-            // Remove known cards from deck
+            // Remove known cards from deck (deduplicate to handle overlapping collections)
             var allKnownCards = heroHoleCards
                 .Concat(heroBoardCards)
                 .Concat(opponentBoardCards.SelectMany(b => b))
-                .Concat(deadCards);
+                .Concat(deadCards)
+                .Distinct();
                 
             foreach (var card in allKnownCards)
             {
@@ -251,8 +253,9 @@ public static class OddsCalculator
         {
             dealer.Shuffle();
             
-            // Remove known cards from deck
-            foreach (var card in heroCards.Concat(deadCards))
+            // Remove known cards from deck (deduplicate to handle overlapping collections)
+            var knownCards = heroCards.Concat(deadCards).Distinct();
+            foreach (var card in knownCards)
             {
                 dealer.DealSpecific(card);
             }
@@ -316,8 +319,9 @@ public static class OddsCalculator
         {
             dealer.Shuffle();
             
-            // Remove known cards from deck
-            foreach (var card in heroHoleCards.Concat(communityCards).Concat(deadCards))
+            // Remove known cards from deck (deduplicate to handle overlapping collections)
+            var knownCards = heroHoleCards.Concat(communityCards).Concat(deadCards).Distinct();
+            foreach (var card in knownCards)
             {
                 dealer.DealSpecific(card);
             }
@@ -397,21 +401,19 @@ public static class OddsCalculator
 
     private static HandBase CreateStudHand(IReadOnlyCollection<Card> cards, int totalCards)
     {
-        // For 7-card stud: 2 hole cards, 4 board cards, 1 final hole card
-        if (totalCards == 7 && cards.Count >= 7)
+        // Ensure we have at least 7 cards for a valid stud hand
+        if (cards.Count < 7)
         {
-            var cardList = cards.ToList();
-            return new SevenCardStudHand(
-                cardList.Take(2).ToList(),
-                cardList.Skip(2).Take(4).ToList(),
-                cardList.Last());
+            throw new ArgumentException($"Expected at least 7 cards for stud hand, but got {cards.Count}");
         }
         
-        // Fallback for other configurations
+        var cardList = cards.ToList();
+        
+        // For 7-card stud: 2 hole cards, 4 board cards, 1 final hole card
         return new SevenCardStudHand(
-            cards.Take(2).ToList(),
-            cards.Skip(2).Take(4).ToList(),
-            cards.Last());
+            cardList.Take(2).ToList(),
+            cardList.Skip(2).Take(4).ToList(),
+            cardList.Last());
     }
 
     private static OddsResult CreateResult(

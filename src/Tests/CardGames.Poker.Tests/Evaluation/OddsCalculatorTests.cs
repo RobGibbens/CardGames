@@ -176,8 +176,8 @@ public class OddsCalculatorTests
     {
         var heroCards = "As Ah".ToCards();
         var communityCards = "Kc 7h 2s".ToCards();
-        // Dead cards include an Ace, making it harder to improve
-        var deadCards = "Ad Ac".ToCards();
+        // Dead cards include a pair of Queens (folded by opponent)
+        var deadCards = "Qd Qc".ToCards();
         
         var result = OddsCalculator.CalculateHoldemOdds(
             heroCards,
