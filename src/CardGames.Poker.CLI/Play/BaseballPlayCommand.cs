@@ -286,6 +286,18 @@ internal class BaseballPlayCommand : Command<BaseballPlaySettings>
             var gamePlayer = game.GamePlayers.First(gp => gp.Player.Name == currentPlayer.Name);
             AnsiConsole.MarkupLine($"[cyan]{currentPlayer.Name}[/]'s cards:");
             DisplayPlayerCards(gamePlayer, showHoleCards: true);
+            AnsiConsole.WriteLine();
+
+            // Show live odds for the current player (Baseball has 3s and 9s as wild)
+            var deadCards = game.GamePlayers
+                .Where(gp => gp.Player.HasFolded)
+                .SelectMany(gp => gp.HoleCards.Concat(gp.BoardCards))
+                .ToList();
+            LiveOddsRenderer.RenderBaseballOdds(
+                gamePlayer.HoleCards.ToList(),
+                gamePlayer.BoardCards.ToList(),
+                deadCards);
+            AnsiConsole.WriteLine();
 
             var action = PromptForAction(currentPlayer, available);
             var result = game.ProcessBettingAction(action.ActionType, action.Amount);
