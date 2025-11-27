@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
@@ -49,26 +48,15 @@ public static class Extensions
     }
 
     /// <summary>
-    /// Configures environment-specific settings including appsettings.{Environment}.json and user secrets.
+    /// Configures environment-specific settings including user secrets in development.
+    /// Note: appsettings.json, appsettings.{Environment}.json, and environment variables
+    /// are already configured by the default host builder.
     /// </summary>
     public static TBuilder ConfigureEnvironmentSettings<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
-        var env = builder.Environment;
-
-        // Configuration is already set up by the host builder, but we ensure
-        // environment-specific files and secrets are properly loaded
-        builder.Configuration
-            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-            .AddJsonFile($"appsettings.{env.EnvironmentName}.json", optional: true, reloadOnChange: true);
-
-        // Add user secrets in development environment
-        if (env.IsDevelopment())
-        {
-            builder.Configuration.AddUserSecrets(System.Reflection.Assembly.GetEntryAssembly()!, optional: true);
-        }
-
-        // Add environment variables (useful for production deployments)
-        builder.Configuration.AddEnvironmentVariables();
+        // User secrets are automatically loaded when UserSecretsId is set in the project file
+        // and we're in the Development environment. The host builder handles this.
+        // This method is a hook for any additional environment-specific configuration.
 
         return builder;
     }
