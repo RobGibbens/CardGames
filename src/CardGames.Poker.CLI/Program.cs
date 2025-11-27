@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using CardGames.Poker.CLI.Deal;
 using CardGames.Poker.CLI.Play;
 using CardGames.Poker.CLI.Simulation;
@@ -53,7 +53,7 @@ static void RunPlayMenu()
     var gameType = AnsiConsole.Prompt(
         new SelectionPrompt<string>()
             .Title("[green]Select game type:[/]")
-            .AddChoices("5-Card Draw", "7-Card Stud", "Texas Hold 'Em", "Baseball", "Kings and Lows", "Follow the Queen", "Back"));
+            .AddChoices("5-Card Draw", "7-Card Stud", "Texas Hold 'Em", "Omaha", "Baseball", "Kings and Lows", "Follow the Queen", "Back"));
 
     var app = CreateCommandApp();
     
@@ -68,6 +68,9 @@ static void RunPlayMenu()
         case "Texas Hold 'Em":
             app.Run(new[] { "play", "holdem" });
             break;
+        case "Omaha":
+	        app.Run(new[] { "play", "omaha" });
+	        break;
         case "Baseball":
             app.Run(new[] { "play", "baseball" });
             break;
@@ -265,6 +268,11 @@ static CommandApp CreateCommandApp()
                 .WithAlias("nlh")
                 .WithAlias("texas-holdem")
                 .WithDescription("Play Texas Hold 'Em with betting (blinds structure).");
+
+            play
+                .AddCommand<OmahaPlayCommand>("omaha")
+                .WithAlias("plo")
+                .WithDescription("Play Omaha with betting (4 hole cards, must use exactly 2).");
 
             play
                 .AddCommand<BaseballPlayCommand>("baseball")
