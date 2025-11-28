@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\CardGames.ServiceDefaults\CardGames.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\CardGames.Poker.Shared\CardGames.Poker.Shared.csproj" />
   </ItemGroup>
 
   <ItemGroup>
