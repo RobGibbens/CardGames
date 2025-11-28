@@ -1,0 +1,269 @@
+using CardGames.Core.French.Cards;
+using CardGames.Core.French.Cards.Extensions;
+using CardGames.Poker.Hands;
+using CardGames.Poker.Hands.HandTypes;
+using CardGames.Poker.Hands.StudHands;
+
+namespace CardGames.Poker.Api.Extensions;
+
+/// <summary>
+/// Formats hand descriptions for API responses.
+/// Provides human-readable descriptions like "Four of a Kind (Aces)" or "Flush (Hearts)".
+/// </summary>
+public static class HandDescriptionFormatter
+{
+    /// <summary>
+    /// Gets a human-readable description of the hand type with relevant details.
+    /// </summary>
+    public static string GetHandDescription(HandBase hand)
+    {
+        var cards = GetCardsForDescription(hand);
+        var handType = hand.Type;
+
+        return handType switch
+        {
+            HandType.HighCard => FormatHighCard(cards),
+            HandType.OnePair => FormatOnePair(cards),
+            HandType.TwoPair => FormatTwoPair(cards),
+            HandType.Trips => FormatTrips(cards),
+            HandType.Straight => FormatStraight(cards),
+            HandType.Flush => FormatFlush(cards),
+            HandType.FullHouse => FormatFullHouse(cards),
+            HandType.Quads => FormatQuads(cards),
+            HandType.StraightFlush => FormatStraightFlush(cards),
+            HandType.FiveOfAKind => FormatFiveOfAKind(cards),
+            _ => "Incomplete Hand"
+        };
+    }
+
+    private static IReadOnlyCollection<Card> GetCardsForDescription(HandBase hand)
+    {
+        if (hand is BaseballHand baseballHand && baseballHand.WildCards.Any())
+        {
+            return baseballHand.EvaluatedBestCards;
+        }
+
+        if (hand is KingsAndLowsHand kingsAndLowsHand && kingsAndLowsHand.WildCards.Any())
+        {
+            return kingsAndLowsHand.EvaluatedBestCards;
+        }
+
+        if (hand is FollowTheQueenHand followTheQueenHand && followTheQueenHand.WildCards.Any())
+        {
+            return followTheQueenHand.EvaluatedBestCards;
+        }
+
+        return hand.Cards.ToList();
+    }
+
+    private static string FormatHighCard(IReadOnlyCollection<Card> cards)
+    {
+        var highCard = cards.OrderByDescending(c => c.Value).First();
+        return $"High Card ({GetSymbolName(highCard.Symbol)})";
+    }
+
+    private static string FormatOnePair(IReadOnlyCollection<Card> cards)
+    {
+        var pairValue = cards.ValueOfBiggestPair();
+        if (pairValue == 0)
+        {
+            var highCard = cards.OrderByDescending(c => c.Value).First();
+            return $"Pair of {GetPluralSymbolName(highCard.Symbol)}";
+        }
+        var symbol = pairValue.ToSymbol();
+        return $"Pair of {GetPluralSymbolName(symbol)}";
+    }
+
+    private static string FormatTwoPair(IReadOnlyCollection<Card> cards)
+    {
+        var pairs = cards
+            .GroupBy(c => c.Value)
+            .Where(g => g.Count() >= 2)
+            .OrderByDescending(g => g.Key)
+            .Take(2)
+            .Select(g => g.Key.ToSymbol())
+            .ToList();
+
+        if (pairs.Count >= 2)
+        {
+            return $"Two Pair ({GetPluralSymbolName(pairs[0])} and {GetPluralSymbolName(pairs[1])})";
+        }
+        return "Two Pair";
+    }
+
+    private static string FormatTrips(IReadOnlyCollection<Card> cards)
+    {
+        var tripsValue = cards.ValueOfBiggestTrips();
+        if (tripsValue == 0)
+        {
+            var highCard = cards.OrderByDescending(c => c.Value).First();
+            return $"Three of a Kind ({GetPluralSymbolName(highCard.Symbol)})";
+        }
+        var symbol = tripsValue.ToSymbol();
+        return $"Three of a Kind ({GetPluralSymbolName(symbol)})";
+    }
+
+    private static string FormatStraight(IReadOnlyCollection<Card> cards)
+    {
+        var straightHighValue = FindStraightHighValue(cards);
+        var symbol = straightHighValue.ToSymbol();
+        return $"Straight ({GetSymbolName(symbol)}-high)";
+    }
+
+    private static int FindStraightHighValue(IReadOnlyCollection<Card> cards)
+    {
+        var distinctValues = cards.DistinctDescendingValues().ToList();
+
+        for (int i = 0; i <= distinctValues.Count - 5; i++)
+        {
+            var potentialHigh = distinctValues[i];
+            var potentialLow = distinctValues[i + 4];
+
+            if (potentialHigh - potentialLow == 4)
+            {
+                return potentialHigh;
+            }
+        }
+
+        var wheelValues = new[] { 14, 5, 4, 3, 2 };
+        if (wheelValues.All(distinctValues.Contains))
+        {
+            return 5;
+        }
+
+        return distinctValues.First();
+    }
+
+    private static string FormatFlush(IReadOnlyCollection<Card> cards)
+    {
+        var flushSuit = cards
+            .GroupBy(c => c.Suit)
+            .Where(g => g.Count() >= 5)
+            .Select(g => g.Key)
+            .FirstOrDefault();
+
+        var flushCards = cards.Where(c => c.Suit == flushSuit).ToList();
+        var highCard = flushCards.OrderByDescending(c => c.Value).First();
+        return $"Flush ({flushSuit}, {GetSymbolName(highCard.Symbol)}-high)";
+    }
+
+    private static string FormatFullHouse(IReadOnlyCollection<Card> cards)
+    {
+        var tripsValue = cards.ValueOfBiggestTrips();
+        var pairValue = cards
+            .GroupBy(c => c.Value)
+            .Where(g => g.Count() >= 2 && g.Key != tripsValue)
+            .OrderByDescending(g => g.Key)
+            .Select(g => g.Key)
+            .FirstOrDefault();
+
+        if (tripsValue == 0 || pairValue == 0)
+        {
+            var distinctValues = cards
+                .Select(c => c.Value)
+                .Distinct()
+                .OrderByDescending(v => v)
+                .Take(2)
+                .ToList();
+
+            if (distinctValues.Count >= 2)
+            {
+                var highSymbol = distinctValues[0].ToSymbol();
+                var lowSymbol = distinctValues[1].ToSymbol();
+                return $"Full House ({GetPluralSymbolName(highSymbol)} full of {GetPluralSymbolName(lowSymbol)})";
+            }
+            return "Full House";
+        }
+
+        var tripsSymbol = tripsValue.ToSymbol();
+        var pairSymbol = pairValue.ToSymbol();
+        return $"Full House ({GetPluralSymbolName(tripsSymbol)} full of {GetPluralSymbolName(pairSymbol)})";
+    }
+
+    private static string FormatQuads(IReadOnlyCollection<Card> cards)
+    {
+        var quadsValue = cards
+            .GroupBy(c => c.Value)
+            .Where(g => g.Count() >= 4)
+            .Select(g => g.Key)
+            .FirstOrDefault();
+
+        if (quadsValue == 0)
+        {
+            var highCard = cards.OrderByDescending(c => c.Value).First();
+            return $"Four of a Kind ({GetPluralSymbolName(highCard.Symbol)})";
+        }
+
+        var symbol = quadsValue.ToSymbol();
+        return $"Four of a Kind ({GetPluralSymbolName(symbol)})";
+    }
+
+    private static string FormatStraightFlush(IReadOnlyCollection<Card> cards)
+    {
+        var flushSuit = cards
+            .GroupBy(c => c.Suit)
+            .Where(g => g.Count() >= 5)
+            .Select(g => g.Key)
+            .FirstOrDefault();
+
+        var flushCards = cards.Where(c => c.Suit == flushSuit).ToList();
+        var straightHighValue = FindStraightHighValue(flushCards);
+
+        if (straightHighValue == 14)
+        {
+            return $"Royal Flush ({flushSuit})";
+        }
+
+        var symbol = straightHighValue.ToSymbol();
+        return $"Straight Flush ({flushSuit}, {GetSymbolName(symbol)}-high)";
+    }
+
+    private static string FormatFiveOfAKind(IReadOnlyCollection<Card> cards)
+    {
+        var value = cards.First().Value;
+        var symbol = value.ToSymbol();
+        return $"Five of a Kind ({GetPluralSymbolName(symbol)})";
+    }
+
+    private static string GetSymbolName(Symbol symbol)
+    {
+        return symbol switch
+        {
+            Symbol.Ace => "Ace",
+            Symbol.King => "King",
+            Symbol.Queen => "Queen",
+            Symbol.Jack => "Jack",
+            Symbol.Ten => "Ten",
+            Symbol.Nine => "Nine",
+            Symbol.Eight => "Eight",
+            Symbol.Seven => "Seven",
+            Symbol.Six => "Six",
+            Symbol.Five => "Five",
+            Symbol.Four => "Four",
+            Symbol.Three => "Three",
+            Symbol.Deuce => "Deuce",
+            _ => symbol.ToString()
+        };
+    }
+
+    private static string GetPluralSymbolName(Symbol symbol)
+    {
+        return symbol switch
+        {
+            Symbol.Ace => "Aces",
+            Symbol.King => "Kings",
+            Symbol.Queen => "Queens",
+            Symbol.Jack => "Jacks",
+            Symbol.Ten => "Tens",
+            Symbol.Nine => "Nines",
+            Symbol.Eight => "Eights",
+            Symbol.Seven => "Sevens",
+            Symbol.Six => "Sixes",
+            Symbol.Five => "Fives",
+            Symbol.Four => "Fours",
+            Symbol.Three => "Threes",
+            Symbol.Deuce => "Deuces",
+            _ => symbol.ToString()
+        };
+    }
+}

@@ -1,6 +1,57 @@
 @CardGames.Poker.Api_HostAddress = http://localhost:5160
 
-GET {{CardGames.Poker.Api_HostAddress}}/weatherforecast/
-Accept: application/json
+### Deal a Texas Hold'em hand for 4 players
+POST {{CardGames.Poker.Api_HostAddress}}/api/hands/deal
+Content-Type: application/json
+
+{
+    "variant": 0,
+    "numberOfPlayers": 4,
+    "playerNames": ["Alice", "Bob", "Charlie", "Diana"]
+}
+
+### Deal a 5-Card Draw hand for 3 players
+POST {{CardGames.Poker.Api_HostAddress}}/api/hands/deal
+Content-Type: application/json
+
+{
+    "variant": 3,
+    "numberOfPlayers": 3
+}
+
+### Evaluate a poker hand
+POST {{CardGames.Poker.Api_HostAddress}}/api/hands/evaluate
+Content-Type: application/json
+
+{
+    "cards": ["As", "Ks", "Qs", "Js", "Ts"]
+}
+
+### Run a Texas Hold'em simulation
+POST {{CardGames.Poker.Api_HostAddress}}/api/simulations/run
+Content-Type: application/json
+
+{
+    "variant": 0,
+    "numberOfHands": 1000,
+    "players": [
+        { "name": "Player 1", "holeCards": ["As", "Ah"] },
+        { "name": "Player 2", "holeCards": ["Ks", "Kh"] }
+    ]
+}
+
+### Run a simulation with known flop
+POST {{CardGames.Poker.Api_HostAddress}}/api/simulations/run
+Content-Type: application/json
+
+{
+    "variant": 0,
+    "numberOfHands": 1000,
+    "players": [
+        { "name": "Player 1", "holeCards": ["As", "Ah"] },
+        { "name": "Player 2", "holeCards": ["Ks", "Kh"] }
+    ],
+    "flopCards": ["Ac", "7d", "2c"]
+}
 
 ###
