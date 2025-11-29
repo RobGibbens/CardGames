@@ -227,18 +227,20 @@ public static class TablesModule
             return Results.BadRequest(new JoinWaitingListResponse(false, Error: error));
         }
 
+        // Get updated table info to get accurate waiting list count
+        var updatedTable = await tablesRepository.GetTableByIdAsync(tableId);
+        
         // Broadcast waiting list update to table group
         var waitingListEvent = new PlayerJoinedWaitingListEvent(
             tableId,
             DateTime.UtcNow,
             request.PlayerName,
             entry!.Position,
-            entry.Position);
+            updatedTable?.WaitingListCount ?? entry.Position);
 
         await hubContext.Clients.Group(tableId.ToString()).SendAsync("PlayerJoinedWaitingList", waitingListEvent);
 
         // Broadcast seat status change to lobby
-        var updatedTable = await tablesRepository.GetTableByIdAsync(tableId);
         if (updatedTable != null)
         {
             var seatStatusEvent = new TableSeatStatusChangedEvent(
