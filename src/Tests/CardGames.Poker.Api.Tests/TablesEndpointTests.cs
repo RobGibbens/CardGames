@@ -456,4 +456,245 @@ public class TablesEndpointTests : IClassFixture<WebApplicationFactory<Program>>
         result!.Success.Should().BeFalse();
         result.Error.Should().Contain("Password is required");
     }
+
+    [Fact]
+    public async Task JoinTable_PublicTable_Succeeds()
+    {
+        // Arrange - First create a public table
+        var createRequest = new CreateTableRequest(
+            Name: "Join Test Public Table",
+            Variant: PokerVariant.TexasHoldem,
+            SmallBlind: 1,
+            BigBlind: 2,
+            MinBuyIn: 40,
+            MaxBuyIn: 200,
+            MaxSeats: 6,
+            Privacy: TablePrivacy.Public);
+
+        var createResponse = await _client.PostAsJsonAsync("/api/tables", createRequest);
+        var createResult = await createResponse.Content.ReadFromJsonAsync<CreateTableResponse>();
+        var tableId = createResult!.TableId!.Value;
+
+        // Act
+        var joinRequest = new JoinTableRequest(tableId);
+        var response = await _client.PostAsJsonAsync($"/api/tables/{tableId}/join", joinRequest);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<JoinTableResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeTrue();
+        result.TableId.Should().Be(tableId);
+        result.SeatNumber.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task JoinTable_PasswordProtectedTable_WithCorrectPassword_Succeeds()
+    {
+        // Arrange - First create a password-protected table
+        var createRequest = new CreateTableRequest(
+            Name: "Join Test Password Table",
+            Variant: PokerVariant.TexasHoldem,
+            SmallBlind: 1,
+            BigBlind: 2,
+            MinBuyIn: 40,
+            MaxBuyIn: 200,
+            MaxSeats: 6,
+            Privacy: TablePrivacy.Password,
+            Password: "testpass123");
+
+        var createResponse = await _client.PostAsJsonAsync("/api/tables", createRequest);
+        var createResult = await createResponse.Content.ReadFromJsonAsync<CreateTableResponse>();
+        var tableId = createResult!.TableId!.Value;
+
+        // Act
+        var joinRequest = new JoinTableRequest(tableId, Password: "testpass123");
+        var response = await _client.PostAsJsonAsync($"/api/tables/{tableId}/join", joinRequest);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<JoinTableResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeTrue();
+        result.TableId.Should().Be(tableId);
+        result.SeatNumber.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task JoinTable_PasswordProtectedTable_WithWrongPassword_Fails()
+    {
+        // Arrange - First create a password-protected table
+        var createRequest = new CreateTableRequest(
+            Name: "Join Test Wrong Password Table",
+            Variant: PokerVariant.TexasHoldem,
+            SmallBlind: 1,
+            BigBlind: 2,
+            MinBuyIn: 40,
+            MaxBuyIn: 200,
+            MaxSeats: 6,
+            Privacy: TablePrivacy.Password,
+            Password: "correctPassword");
+
+        var createResponse = await _client.PostAsJsonAsync("/api/tables", createRequest);
+        var createResult = await createResponse.Content.ReadFromJsonAsync<CreateTableResponse>();
+        var tableId = createResult!.TableId!.Value;
+
+        // Act
+        var joinRequest = new JoinTableRequest(tableId, Password: "wrongPassword");
+        var response = await _client.PostAsJsonAsync($"/api/tables/{tableId}/join", joinRequest);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var result = await response.Content.ReadFromJsonAsync<JoinTableResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeFalse();
+        result.Error.Should().Contain("Invalid password");
+    }
+
+    [Fact]
+    public async Task JoinTable_PasswordProtectedTable_WithoutPassword_Fails()
+    {
+        // Arrange - First create a password-protected table
+        var createRequest = new CreateTableRequest(
+            Name: "Join Test No Password Provided Table",
+            Variant: PokerVariant.TexasHoldem,
+            SmallBlind: 1,
+            BigBlind: 2,
+            MinBuyIn: 40,
+            MaxBuyIn: 200,
+            MaxSeats: 6,
+            Privacy: TablePrivacy.Password,
+            Password: "secretPass");
+
+        var createResponse = await _client.PostAsJsonAsync("/api/tables", createRequest);
+        var createResult = await createResponse.Content.ReadFromJsonAsync<CreateTableResponse>();
+        var tableId = createResult!.TableId!.Value;
+
+        // Act
+        var joinRequest = new JoinTableRequest(tableId); // No password provided
+        var response = await _client.PostAsJsonAsync($"/api/tables/{tableId}/join", joinRequest);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var result = await response.Content.ReadFromJsonAsync<JoinTableResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeFalse();
+        result.Error.Should().Contain("Password is required");
+    }
+
+    [Fact]
+    public async Task JoinTable_NonExistentTable_Fails()
+    {
+        // Arrange
+        var nonExistentTableId = Guid.NewGuid();
+        var joinRequest = new JoinTableRequest(nonExistentTableId);
+
+        // Act
+        var response = await _client.PostAsJsonAsync($"/api/tables/{nonExistentTableId}/join", joinRequest);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var result = await response.Content.ReadFromJsonAsync<JoinTableResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeFalse();
+        result.Error.Should().Contain("not found");
+    }
+
+    [Fact]
+    public async Task JoinTable_MismatchedTableId_ReturnsBadRequest()
+    {
+        // Arrange - Create a table
+        var createRequest = new CreateTableRequest(
+            Name: "Mismatch Test Table",
+            Variant: PokerVariant.TexasHoldem,
+            SmallBlind: 1,
+            BigBlind: 2,
+            MinBuyIn: 40,
+            MaxBuyIn: 200,
+            MaxSeats: 6,
+            Privacy: TablePrivacy.Public);
+
+        var createResponse = await _client.PostAsJsonAsync("/api/tables", createRequest);
+        var createResult = await createResponse.Content.ReadFromJsonAsync<CreateTableResponse>();
+        var tableId = createResult!.TableId!.Value;
+
+        // Act - Send request with mismatched table ID
+        var differentTableId = Guid.NewGuid();
+        var joinRequest = new JoinTableRequest(differentTableId);
+        var response = await _client.PostAsJsonAsync($"/api/tables/{tableId}/join", joinRequest);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var result = await response.Content.ReadFromJsonAsync<JoinTableResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeFalse();
+        result.Error.Should().Contain("does not match");
+    }
+
+    [Fact]
+    public async Task QuickJoin_WithAvailableTables_ReturnsTable()
+    {
+        // Act
+        var request = new QuickJoinRequest();
+        var response = await _client.PostAsJsonAsync("/api/tables/quick-join", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<QuickJoinResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeTrue();
+        result.TableId.Should().NotBeEmpty();
+        result.SeatNumber.Should().BeGreaterThan(0);
+        result.Table.Should().NotBeNull();
+        result.Table!.Privacy.Should().Be(TablePrivacy.Public);
+    }
+
+    [Fact]
+    public async Task QuickJoin_WithVariantFilter_ReturnsMatchingTable()
+    {
+        // Act
+        var request = new QuickJoinRequest(Variant: PokerVariant.TexasHoldem);
+        var response = await _client.PostAsJsonAsync("/api/tables/quick-join", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<QuickJoinResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeTrue();
+        result.Table.Should().NotBeNull();
+        result.Table!.Variant.Should().Be(PokerVariant.TexasHoldem);
+    }
+
+    [Fact]
+    public async Task QuickJoin_WithStakesFilter_ReturnsMatchingTable()
+    {
+        // Act
+        var request = new QuickJoinRequest(MinSmallBlind: 1, MaxSmallBlind: 5);
+        var response = await _client.PostAsJsonAsync("/api/tables/quick-join", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<QuickJoinResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeTrue();
+        result.Table.Should().NotBeNull();
+        result.Table!.SmallBlind.Should().BeGreaterThanOrEqualTo(1);
+        result.Table.SmallBlind.Should().BeLessThanOrEqualTo(5);
+    }
+
+    [Fact]
+    public async Task QuickJoin_DoesNotJoinPasswordProtectedTables()
+    {
+        // Act - Quick join should only join public tables
+        var request = new QuickJoinRequest();
+        var response = await _client.PostAsJsonAsync("/api/tables/quick-join", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<QuickJoinResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeTrue();
+        result.Table.Should().NotBeNull();
+        result.Table!.Privacy.Should().Be(TablePrivacy.Public);
+    }
 }

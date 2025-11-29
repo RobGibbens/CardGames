@@ -11,10 +11,31 @@
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="mb-0">Game Lobby</h1>
-        <a href="/tables/create" class="btn btn-success">
-            <span class="me-1">+</span> Create Table
-        </a>
+        <div class="d-flex gap-2">
+            <button class="btn btn-primary" @onclick="QuickJoin" disabled="@_isQuickJoining">
+                @if (_isQuickJoining)
+                {
+                    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                    <span>Finding table...</span>
+                }
+                else
+                {
+                    <span class="me-1">⚡</span><span>Quick Join</span>
+                }
+            </button>
+            <a href="/tables/create" class="btn btn-success">
+                <span class="me-1">+</span> Create Table
+            </a>
+        </div>
     </div>
+
+    @if (!string.IsNullOrEmpty(_successMessage))
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @_successMessage
+            <button type="button" class="btn-close" @onclick="() => _successMessage = null" aria-label="Close"></button>
+        </div>
+    }
 
     <div class="row">
         <!-- Filters Panel -->
@@ -142,8 +163,16 @@
                                     </td>
                                     <td>
                                         <button class="btn btn-sm btn-success" 
-                                                disabled="@(table.OccupiedSeats >= table.MaxSeats)">
-                                            Join
+                                                disabled="@(table.OccupiedSeats >= table.MaxSeats || _joiningTableId == table.Id)"
+                                                @onclick="() => HandleJoinClick(table)">
+                                            @if (_joiningTableId == table.Id)
+                                            {
+                                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                            }
+                                            else
+                                            {
+                                                <span>Join</span>
+                                            }
                                         </button>
                                     </td>
                                 </tr>
@@ -156,10 +185,51 @@
     </div>
 </div>
 
+<!-- Password Modal -->
+@if (_showPasswordModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Enter Table Password</h5>
+                    <button type="button" class="btn-close" @onclick="ClosePasswordModal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrEmpty(_passwordError))
+                    {
+                        <div class="alert alert-danger">@_passwordError</div>
+                    }
+                    <p>The table "<strong>@_selectedTable?.Name</strong>" requires a password to join.</p>
+                    <div class="mb-3">
+                        <label class="form-label">Password</label>
+                        <input type="password" class="form-control" @bind="_enteredPassword" @onkeyup="HandlePasswordKeyUp" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="ClosePasswordModal">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="JoinWithPassword" disabled="@_isJoining">
+                        @if (_isJoining)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                            <span>Joining...</span>
+                        }
+                        else
+                        {
+                            <span>Join Table</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private IReadOnlyList<TableSummaryDto>? _tables;
     private bool _isLoading = true;
     private string? _errorMessage;
+    private string? _successMessage;
 
     // Filter state
     private string? _selectedVariant;
@@ -168,6 +238,17 @@
     private int? _minAvailableSeats;
     private bool _hideFullTables;
     private bool _hideEmptyTables;
+
+    // Join state
+    private Guid? _joiningTableId;
+    private bool _isJoining;
+    private bool _isQuickJoining;
+
+    // Password modal state
+    private bool _showPasswordModal;
+    private TableSummaryDto? _selectedTable;
+    private string? _enteredPassword;
+    private string? _passwordError;
 
     protected override async Task OnInitializedAsync()
     {
@@ -224,6 +305,104 @@
     private async Task RefreshTables()
     {
         await LoadTablesAsync();
+    }
+
+    private async Task HandleJoinClick(TableSummaryDto table)
+    {
+        if (table.Privacy == TablePrivacy.Password)
+        {
+            _selectedTable = table;
+            _enteredPassword = null;
+            _passwordError = null;
+            _showPasswordModal = true;
+        }
+        else
+        {
+            await JoinTable(table.Id, null);
+        }
+    }
+
+    private async Task JoinTable(Guid tableId, string? password)
+    {
+        _joiningTableId = tableId;
+        _isJoining = true;
+        _errorMessage = null;
+        StateHasChanged();
+
+        var response = await LobbyService.JoinTableAsync(tableId, password);
+
+        if (response.Success)
+        {
+            _successMessage = $"Successfully joined table! You are in seat {response.SeatNumber}.";
+            ClosePasswordModal();
+            await LoadTablesAsync();
+        }
+        else
+        {
+            if (_showPasswordModal)
+            {
+                _passwordError = response.Error;
+            }
+            else
+            {
+                _errorMessage = response.Error;
+            }
+        }
+
+        _joiningTableId = null;
+        _isJoining = false;
+        StateHasChanged();
+    }
+
+    private async Task JoinWithPassword()
+    {
+        if (_selectedTable == null) return;
+        await JoinTable(_selectedTable.Id, _enteredPassword);
+    }
+
+    private async Task HandlePasswordKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await JoinWithPassword();
+        }
+    }
+
+    private void ClosePasswordModal()
+    {
+        _showPasswordModal = false;
+        _selectedTable = null;
+        _enteredPassword = null;
+        _passwordError = null;
+    }
+
+    private async Task QuickJoin()
+    {
+        _isQuickJoining = true;
+        _errorMessage = null;
+        _successMessage = null;
+        StateHasChanged();
+
+        PokerVariant? variant = null;
+        if (!string.IsNullOrEmpty(_selectedVariant) && Enum.TryParse<PokerVariant>(_selectedVariant, out var parsedVariant))
+        {
+            variant = parsedVariant;
+        }
+
+        var response = await LobbyService.QuickJoinAsync(variant, _minSmallBlind, _maxSmallBlind);
+
+        if (response.Success)
+        {
+            _successMessage = $"Successfully joined '{response.Table?.Name}'! You are in seat {response.SeatNumber}.";
+            await LoadTablesAsync();
+        }
+        else
+        {
+            _errorMessage = response.Error;
+        }
+
+        _isQuickJoining = false;
+        StateHasChanged();
     }
 
     private static string GetVariantDisplayName(PokerVariant variant) => variant switch

@@ -16,6 +16,12 @@ public static class TablesModule
         group.MapPost("", CreateTableAsync)
             .WithName("CreateTable");
 
+        group.MapPost("{tableId:guid}/join", JoinTableAsync)
+            .WithName("JoinTable");
+
+        group.MapPost("quick-join", QuickJoinAsync)
+            .WithName("QuickJoin");
+
         return app;
     }
 
@@ -103,5 +109,59 @@ public static class TablesModule
                 TableId: table.Id,
                 JoinLink: joinLink,
                 Table: table));
+    }
+
+    private static async Task<IResult> JoinTableAsync(
+        Guid tableId,
+        JoinTableRequest request,
+        ITablesRepository tablesRepository)
+    {
+        if (tableId != request.TableId)
+        {
+            return Results.BadRequest(new JoinTableResponse(false, Error: "Table ID in URL does not match request body."));
+        }
+
+        var (success, seatNumber, error) = await tablesRepository.JoinTableAsync(tableId, request.Password);
+
+        if (!success)
+        {
+            return Results.BadRequest(new JoinTableResponse(false, Error: error));
+        }
+
+        return Results.Ok(new JoinTableResponse(
+            Success: true,
+            TableId: tableId,
+            SeatNumber: seatNumber));
+    }
+
+    private static async Task<IResult> QuickJoinAsync(
+        QuickJoinRequest request,
+        ITablesRepository tablesRepository)
+    {
+        var table = await tablesRepository.FindTableForQuickJoinAsync(
+            request.Variant,
+            request.MinSmallBlind,
+            request.MaxSmallBlind);
+
+        if (table == null)
+        {
+            return Results.Ok(new QuickJoinResponse(false, Error: "No suitable table found. Try creating a new table or adjusting your filters."));
+        }
+
+        var (success, seatNumber, error) = await tablesRepository.JoinTableAsync(table.Id, null);
+
+        if (!success)
+        {
+            return Results.BadRequest(new QuickJoinResponse(false, Error: error));
+        }
+
+        // Get updated table info after joining
+        var updatedTable = await tablesRepository.GetTableByIdAsync(table.Id);
+
+        return Results.Ok(new QuickJoinResponse(
+            Success: true,
+            TableId: table.Id,
+            SeatNumber: seatNumber,
+            Table: updatedTable));
     }
 }
