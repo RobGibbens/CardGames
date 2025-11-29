@@ -145,4 +145,94 @@ public class LobbyService
             return new QuickJoinResponse(false, Error: "Failed to find a table. Please try again.");
         }
     }
+
+    public async Task<JoinWaitingListResponse> JoinWaitingListAsync(Guid tableId, string playerName)
+    {
+        try
+        {
+            var request = new JoinWaitingListRequest(tableId, playerName);
+            var response = await _httpClient.PostAsJsonAsync($"/api/tables/{tableId}/waiting-list", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<JoinWaitingListResponse>();
+                return result ?? new JoinWaitingListResponse(false, Error: "Invalid response from server");
+            }
+
+            var errorResponse = await response.Content.ReadFromJsonAsync<JoinWaitingListResponse>();
+            return errorResponse ?? new JoinWaitingListResponse(false, Error: response.ReasonPhrase);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to join waiting list for table {TableId}", tableId);
+            return new JoinWaitingListResponse(false, Error: "Failed to join waiting list. Please try again.");
+        }
+    }
+
+    public async Task<LeaveWaitingListResponse> LeaveWaitingListAsync(Guid tableId, string playerName)
+    {
+        try
+        {
+            var response = await _httpClient.DeleteAsync($"/api/tables/{tableId}/waiting-list/{Uri.EscapeDataString(playerName)}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<LeaveWaitingListResponse>();
+                return result ?? new LeaveWaitingListResponse(false, Error: "Invalid response from server");
+            }
+
+            var errorResponse = await response.Content.ReadFromJsonAsync<LeaveWaitingListResponse>();
+            return errorResponse ?? new LeaveWaitingListResponse(false, Error: response.ReasonPhrase);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to leave waiting list for table {TableId}", tableId);
+            return new LeaveWaitingListResponse(false, Error: "Failed to leave waiting list. Please try again.");
+        }
+    }
+
+    public async Task<GetWaitingListResponse> GetWaitingListAsync(Guid tableId)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"/api/tables/{tableId}/waiting-list");
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<GetWaitingListResponse>();
+                return result ?? new GetWaitingListResponse(false, Error: "Invalid response from server");
+            }
+
+            var errorResponse = await response.Content.ReadFromJsonAsync<GetWaitingListResponse>();
+            return errorResponse ?? new GetWaitingListResponse(false, Error: response.ReasonPhrase);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get waiting list for table {TableId}", tableId);
+            return new GetWaitingListResponse(false, Error: "Failed to get waiting list. Please try again.");
+        }
+    }
+
+    public async Task<LeaveTableResponse> LeaveTableAsync(Guid tableId, string playerName)
+    {
+        try
+        {
+            var request = new LeaveTableRequest(tableId, playerName);
+            var response = await _httpClient.PostAsJsonAsync($"/api/tables/{tableId}/leave", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<LeaveTableResponse>();
+                return result ?? new LeaveTableResponse(false, Error: "Invalid response from server");
+            }
+
+            var errorResponse = await response.Content.ReadFromJsonAsync<LeaveTableResponse>();
+            return errorResponse ?? new LeaveTableResponse(false, Error: response.ReasonPhrase);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to leave table {TableId}", tableId);
+            return new LeaveTableResponse(false, Error: "Failed to leave table. Please try again.");
+        }
+    }
 }

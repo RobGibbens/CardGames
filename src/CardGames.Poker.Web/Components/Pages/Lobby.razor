@@ -133,6 +133,7 @@
                                 <th>Stakes</th>
                                 <th>Buy-In</th>
                                 <th>Seats</th>
+                                <th>Waiting</th>
                                 <th>Privacy</th>
                                 <th>Status</th>
                                 <th></th>
@@ -152,6 +153,16 @@
                                         </span>
                                     </td>
                                     <td>
+                                        @if (table.WaitingListCount > 0)
+                                        {
+                                            <span class="badge bg-info">@table.WaitingListCount waiting</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td>
                                         <span class="badge @GetPrivacyBadgeClass(table.Privacy)">
                                             @GetPrivacyDisplayName(table.Privacy)
                                         </span>
@@ -162,18 +173,36 @@
                                         </span>
                                     </td>
                                     <td>
-                                        <button class="btn btn-sm btn-success" 
-                                                disabled="@(table.OccupiedSeats >= table.MaxSeats || _joiningTableId == table.Id)"
-                                                @onclick="() => HandleJoinClick(table)">
-                                            @if (_joiningTableId == table.Id)
-                                            {
-                                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                                            }
-                                            else
-                                            {
-                                                <span>Join</span>
-                                            }
-                                        </button>
+                                        @if (table.OccupiedSeats >= table.MaxSeats)
+                                        {
+                                            <button class="btn btn-sm btn-outline-warning" 
+                                                    disabled="@(_joiningWaitlistTableId == table.Id)"
+                                                    @onclick="() => HandleJoinWaitingListClick(table)">
+                                                @if (_joiningWaitlistTableId == table.Id)
+                                                {
+                                                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                                }
+                                                else
+                                                {
+                                                    <span>Wait List</span>
+                                                }
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button class="btn btn-sm btn-success" 
+                                                    disabled="@(_joiningTableId == table.Id)"
+                                                    @onclick="() => HandleJoinClick(table)">
+                                                @if (_joiningTableId == table.Id)
+                                                {
+                                                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                                }
+                                                else
+                                                {
+                                                    <span>Join</span>
+                                                }
+                                            </button>
+                                        }
                                     </td>
                                 </tr>
                             }
@@ -225,6 +254,51 @@
     </div>
 }
 
+<!-- Waiting List Modal -->
+@if (_showWaitingListModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Join Waiting List</h5>
+                    <button type="button" class="btn-close" @onclick="CloseWaitingListModal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrEmpty(_waitingListError))
+                    {
+                        <div class="alert alert-danger">@_waitingListError</div>
+                    }
+                    <p>The table "<strong>@_selectedTable?.Name</strong>" is currently full.</p>
+                    <p>You will be notified when a seat becomes available.</p>
+                    @if (_selectedTable?.WaitingListCount > 0)
+                    {
+                        <p class="text-muted">Current waiting list: @_selectedTable.WaitingListCount player(s)</p>
+                    }
+                    <div class="mb-3">
+                        <label class="form-label">Your Name</label>
+                        <input type="text" class="form-control" @bind="_waitingListPlayerName" @onkeyup="HandleWaitingListKeyUp" placeholder="Enter your name" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseWaitingListModal">Cancel</button>
+                    <button type="button" class="btn btn-warning" @onclick="JoinWaitingList" disabled="@_isJoiningWaitlist">
+                        @if (_isJoiningWaitlist)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                            <span>Joining...</span>
+                        }
+                        else
+                        {
+                            <span>Join Waiting List</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private IReadOnlyList<TableSummaryDto>? _tables;
     private bool _isLoading = true;
@@ -249,6 +323,13 @@
     private TableSummaryDto? _selectedTable;
     private string? _enteredPassword;
     private string? _passwordError;
+
+    // Waiting list state
+    private bool _showWaitingListModal;
+    private Guid? _joiningWaitlistTableId;
+    private bool _isJoiningWaitlist;
+    private string? _waitingListPlayerName;
+    private string? _waitingListError;
 
     protected override async Task OnInitializedAsync()
     {
@@ -322,6 +403,14 @@
         }
     }
 
+    private void HandleJoinWaitingListClick(TableSummaryDto table)
+    {
+        _selectedTable = table;
+        _waitingListPlayerName = null;
+        _waitingListError = null;
+        _showWaitingListModal = true;
+    }
+
     private async Task JoinTable(Guid tableId, string? password)
     {
         _joiningTableId = tableId;
@@ -374,6 +463,55 @@
         _selectedTable = null;
         _enteredPassword = null;
         _passwordError = null;
+    }
+
+    private async Task JoinWaitingList()
+    {
+        if (_selectedTable == null) return;
+
+        if (string.IsNullOrWhiteSpace(_waitingListPlayerName))
+        {
+            _waitingListError = "Please enter your name.";
+            return;
+        }
+
+        _joiningWaitlistTableId = _selectedTable.Id;
+        _isJoiningWaitlist = true;
+        _waitingListError = null;
+        StateHasChanged();
+
+        var response = await LobbyService.JoinWaitingListAsync(_selectedTable.Id, _waitingListPlayerName);
+
+        if (response.Success)
+        {
+            _successMessage = $"You have been added to the waiting list for '{_selectedTable.Name}'. Your position: {response.Entry?.Position}. You will be notified when a seat becomes available.";
+            CloseWaitingListModal();
+            await LoadTablesAsync();
+        }
+        else
+        {
+            _waitingListError = response.Error;
+        }
+
+        _joiningWaitlistTableId = null;
+        _isJoiningWaitlist = false;
+        StateHasChanged();
+    }
+
+    private async Task HandleWaitingListKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await JoinWaitingList();
+        }
+    }
+
+    private void CloseWaitingListModal()
+    {
+        _showWaitingListModal = false;
+        _selectedTable = null;
+        _waitingListPlayerName = null;
+        _waitingListError = null;
     }
 
     private async Task QuickJoin()

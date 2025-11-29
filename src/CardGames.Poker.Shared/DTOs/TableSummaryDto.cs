@@ -17,4 +17,5 @@ public record TableSummaryDto(
     int OccupiedSeats,
     GameState State,
     TablePrivacy Privacy,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    int WaitingListCount = 0);

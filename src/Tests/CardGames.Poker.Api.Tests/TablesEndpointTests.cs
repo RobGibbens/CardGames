@@ -697,4 +697,344 @@ public class TablesEndpointTests : IClassFixture<WebApplicationFactory<Program>>
         result.Table.Should().NotBeNull();
         result.Table!.Privacy.Should().Be(TablePrivacy.Public);
     }
+
+    [Fact]
+    public async Task JoinWaitingList_WithValidRequest_Succeeds()
+    {
+        // Arrange - Create a full table
+        var createRequest = new CreateTableRequest(
+            Name: "Full Table Test",
+            Variant: PokerVariant.TexasHoldem,
+            SmallBlind: 1,
+            BigBlind: 2,
+            MinBuyIn: 40,
+            MaxBuyIn: 200,
+            MaxSeats: 2,
+            Privacy: TablePrivacy.Public);
+
+        var createResponse = await _client.PostAsJsonAsync("/api/tables", createRequest);
+        var createResult = await createResponse.Content.ReadFromJsonAsync<CreateTableResponse>();
+        var tableId = createResult!.TableId!.Value;
+
+        // Fill up the table
+        await _client.PostAsJsonAsync($"/api/tables/{tableId}/join", new JoinTableRequest(tableId));
+        await _client.PostAsJsonAsync($"/api/tables/{tableId}/join", new JoinTableRequest(tableId));
+
+        // Act - Join waiting list
+        var waitingListRequest = new JoinWaitingListRequest(tableId, "TestPlayer");
+        var response = await _client.PostAsJsonAsync($"/api/tables/{tableId}/waiting-list", waitingListRequest);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<JoinWaitingListResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeTrue();
+        result.Entry.Should().NotBeNull();
+        result.Entry!.PlayerName.Should().Be("TestPlayer");
+        result.Entry.Position.Should().Be(1);
+        result.Entry.TableId.Should().Be(tableId);
+    }
+
+    [Fact]
+    public async Task JoinWaitingList_WithInvalidPlayerName_ReturnsBadRequest()
+    {
+        // Arrange - Create a table
+        var createRequest = new CreateTableRequest(
+            Name: "Waiting List Invalid Player Test",
+            Variant: PokerVariant.TexasHoldem,
+            SmallBlind: 1,
+            BigBlind: 2,
+            MinBuyIn: 40,
+            MaxBuyIn: 200,
+            MaxSeats: 2,
+            Privacy: TablePrivacy.Public);
+
+        var createResponse = await _client.PostAsJsonAsync("/api/tables", createRequest);
+        var createResult = await createResponse.Content.ReadFromJsonAsync<CreateTableResponse>();
+        var tableId = createResult!.TableId!.Value;
+
+        // Act - Join waiting list with empty player name
+        var waitingListRequest = new JoinWaitingListRequest(tableId, "");
+        var response = await _client.PostAsJsonAsync($"/api/tables/{tableId}/waiting-list", waitingListRequest);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var result = await response.Content.ReadFromJsonAsync<JoinWaitingListResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeFalse();
+        result.Error.Should().Contain("Player name is required");
+    }
+
+    [Fact]
+    public async Task JoinWaitingList_DuplicatePlayer_ReturnsBadRequest()
+    {
+        // Arrange - Create a table
+        var createRequest = new CreateTableRequest(
+            Name: "Waiting List Duplicate Test",
+            Variant: PokerVariant.TexasHoldem,
+            SmallBlind: 1,
+            BigBlind: 2,
+            MinBuyIn: 40,
+            MaxBuyIn: 200,
+            MaxSeats: 2,
+            Privacy: TablePrivacy.Public);
+
+        var createResponse = await _client.PostAsJsonAsync("/api/tables", createRequest);
+        var createResult = await createResponse.Content.ReadFromJsonAsync<CreateTableResponse>();
+        var tableId = createResult!.TableId!.Value;
+
+        // Join waiting list first time
+        await _client.PostAsJsonAsync($"/api/tables/{tableId}/waiting-list", new JoinWaitingListRequest(tableId, "TestPlayer"));
+
+        // Act - Try to join again
+        var response = await _client.PostAsJsonAsync($"/api/tables/{tableId}/waiting-list", new JoinWaitingListRequest(tableId, "TestPlayer"));
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var result = await response.Content.ReadFromJsonAsync<JoinWaitingListResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeFalse();
+        result.Error.Should().Contain("already on the waiting list");
+    }
+
+    [Fact]
+    public async Task GetWaitingList_ReturnsCorrectEntries()
+    {
+        // Arrange - Create a table and add players to waiting list
+        var createRequest = new CreateTableRequest(
+            Name: "Get Waiting List Test",
+            Variant: PokerVariant.TexasHoldem,
+            SmallBlind: 1,
+            BigBlind: 2,
+            MinBuyIn: 40,
+            MaxBuyIn: 200,
+            MaxSeats: 2,
+            Privacy: TablePrivacy.Public);
+
+        var createResponse = await _client.PostAsJsonAsync("/api/tables", createRequest);
+        var createResult = await createResponse.Content.ReadFromJsonAsync<CreateTableResponse>();
+        var tableId = createResult!.TableId!.Value;
+
+        // Add players to waiting list
+        await _client.PostAsJsonAsync($"/api/tables/{tableId}/waiting-list", new JoinWaitingListRequest(tableId, "Player1"));
+        await _client.PostAsJsonAsync($"/api/tables/{tableId}/waiting-list", new JoinWaitingListRequest(tableId, "Player2"));
+
+        // Act
+        var response = await _client.GetAsync($"/api/tables/{tableId}/waiting-list");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<GetWaitingListResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeTrue();
+        result.Entries.Should().NotBeNull();
+        result.Entries!.Count.Should().Be(2);
+        result.Entries.Should().Contain(e => e.PlayerName == "Player1" && e.Position == 1);
+        result.Entries.Should().Contain(e => e.PlayerName == "Player2" && e.Position == 2);
+    }
+
+    [Fact]
+    public async Task GetWaitingList_NonExistentTable_ReturnsNotFound()
+    {
+        // Arrange
+        var nonExistentTableId = Guid.NewGuid();
+
+        // Act
+        var response = await _client.GetAsync($"/api/tables/{nonExistentTableId}/waiting-list");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var result = await response.Content.ReadFromJsonAsync<GetWaitingListResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeFalse();
+        result.Error.Should().Contain("not found");
+    }
+
+    [Fact]
+    public async Task LeaveWaitingList_Succeeds()
+    {
+        // Arrange - Create a table and join waiting list
+        var createRequest = new CreateTableRequest(
+            Name: "Leave Waiting List Test",
+            Variant: PokerVariant.TexasHoldem,
+            SmallBlind: 1,
+            BigBlind: 2,
+            MinBuyIn: 40,
+            MaxBuyIn: 200,
+            MaxSeats: 2,
+            Privacy: TablePrivacy.Public);
+
+        var createResponse = await _client.PostAsJsonAsync("/api/tables", createRequest);
+        var createResult = await createResponse.Content.ReadFromJsonAsync<CreateTableResponse>();
+        var tableId = createResult!.TableId!.Value;
+
+        await _client.PostAsJsonAsync($"/api/tables/{tableId}/waiting-list", new JoinWaitingListRequest(tableId, "TestPlayer"));
+
+        // Act
+        var response = await _client.DeleteAsync($"/api/tables/{tableId}/waiting-list/TestPlayer");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<LeaveWaitingListResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task LeaveWaitingList_UpdatesPositions()
+    {
+        // Arrange - Create a table and add multiple players to waiting list
+        var createRequest = new CreateTableRequest(
+            Name: "Leave Waiting List Position Test",
+            Variant: PokerVariant.TexasHoldem,
+            SmallBlind: 1,
+            BigBlind: 2,
+            MinBuyIn: 40,
+            MaxBuyIn: 200,
+            MaxSeats: 2,
+            Privacy: TablePrivacy.Public);
+
+        var createResponse = await _client.PostAsJsonAsync("/api/tables", createRequest);
+        var createResult = await createResponse.Content.ReadFromJsonAsync<CreateTableResponse>();
+        var tableId = createResult!.TableId!.Value;
+
+        await _client.PostAsJsonAsync($"/api/tables/{tableId}/waiting-list", new JoinWaitingListRequest(tableId, "Player1"));
+        await _client.PostAsJsonAsync($"/api/tables/{tableId}/waiting-list", new JoinWaitingListRequest(tableId, "Player2"));
+        await _client.PostAsJsonAsync($"/api/tables/{tableId}/waiting-list", new JoinWaitingListRequest(tableId, "Player3"));
+
+        // Act - Remove player 1
+        await _client.DeleteAsync($"/api/tables/{tableId}/waiting-list/Player1");
+
+        // Assert - Check positions are updated
+        var response = await _client.GetAsync($"/api/tables/{tableId}/waiting-list");
+        var result = await response.Content.ReadFromJsonAsync<GetWaitingListResponse>();
+        result.Should().NotBeNull();
+        result!.Entries.Should().HaveCount(2);
+        result.Entries!.Should().Contain(e => e.PlayerName == "Player2" && e.Position == 1);
+        result.Entries.Should().Contain(e => e.PlayerName == "Player3" && e.Position == 2);
+    }
+
+    [Fact]
+    public async Task LeaveWaitingList_PlayerNotOnList_ReturnsBadRequest()
+    {
+        // Arrange - Create a table
+        var createRequest = new CreateTableRequest(
+            Name: "Leave Waiting List Not Found Test",
+            Variant: PokerVariant.TexasHoldem,
+            SmallBlind: 1,
+            BigBlind: 2,
+            MinBuyIn: 40,
+            MaxBuyIn: 200,
+            MaxSeats: 2,
+            Privacy: TablePrivacy.Public);
+
+        var createResponse = await _client.PostAsJsonAsync("/api/tables", createRequest);
+        var createResult = await createResponse.Content.ReadFromJsonAsync<CreateTableResponse>();
+        var tableId = createResult!.TableId!.Value;
+
+        // Act - Try to leave waiting list without being on it
+        var response = await _client.DeleteAsync($"/api/tables/{tableId}/waiting-list/NonExistentPlayer");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var result = await response.Content.ReadFromJsonAsync<LeaveWaitingListResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeFalse();
+        result.Error.Should().Contain("not on the waiting list");
+    }
+
+    [Fact]
+    public async Task LeaveTable_Succeeds()
+    {
+        // Arrange - Create a table and join
+        var createRequest = new CreateTableRequest(
+            Name: "Leave Table Test",
+            Variant: PokerVariant.TexasHoldem,
+            SmallBlind: 1,
+            BigBlind: 2,
+            MinBuyIn: 40,
+            MaxBuyIn: 200,
+            MaxSeats: 2,
+            Privacy: TablePrivacy.Public);
+
+        var createResponse = await _client.PostAsJsonAsync("/api/tables", createRequest);
+        var createResult = await createResponse.Content.ReadFromJsonAsync<CreateTableResponse>();
+        var tableId = createResult!.TableId!.Value;
+
+        await _client.PostAsJsonAsync($"/api/tables/{tableId}/join", new JoinTableRequest(tableId));
+
+        // Act
+        var leaveRequest = new LeaveTableRequest(tableId, "TestPlayer");
+        var response = await _client.PostAsJsonAsync($"/api/tables/{tableId}/leave", leaveRequest);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<LeaveTableResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task LeaveTable_EmptyTable_ReturnsBadRequest()
+    {
+        // Arrange - Create a table without joining
+        var createRequest = new CreateTableRequest(
+            Name: "Leave Empty Table Test",
+            Variant: PokerVariant.TexasHoldem,
+            SmallBlind: 1,
+            BigBlind: 2,
+            MinBuyIn: 40,
+            MaxBuyIn: 200,
+            MaxSeats: 2,
+            Privacy: TablePrivacy.Public);
+
+        var createResponse = await _client.PostAsJsonAsync("/api/tables", createRequest);
+        var createResult = await createResponse.Content.ReadFromJsonAsync<CreateTableResponse>();
+        var tableId = createResult!.TableId!.Value;
+
+        // Act - Try to leave an empty table
+        var leaveRequest = new LeaveTableRequest(tableId, "TestPlayer");
+        var response = await _client.PostAsJsonAsync($"/api/tables/{tableId}/leave", leaveRequest);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var result = await response.Content.ReadFromJsonAsync<LeaveTableResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeFalse();
+        result.Error.Should().Contain("no players");
+    }
+
+    [Fact]
+    public async Task TableSummary_IncludesWaitingListCount()
+    {
+        // Arrange - Create a table and add players to waiting list
+        var createRequest = new CreateTableRequest(
+            Name: "Waiting List Count Test",
+            Variant: PokerVariant.TexasHoldem,
+            SmallBlind: 1,
+            BigBlind: 2,
+            MinBuyIn: 40,
+            MaxBuyIn: 200,
+            MaxSeats: 2,
+            Privacy: TablePrivacy.Public);
+
+        var createResponse = await _client.PostAsJsonAsync("/api/tables", createRequest);
+        var createResult = await createResponse.Content.ReadFromJsonAsync<CreateTableResponse>();
+        var tableId = createResult!.TableId!.Value;
+
+        // Add players to waiting list
+        await _client.PostAsJsonAsync($"/api/tables/{tableId}/waiting-list", new JoinWaitingListRequest(tableId, "Player1"));
+        await _client.PostAsJsonAsync($"/api/tables/{tableId}/waiting-list", new JoinWaitingListRequest(tableId, "Player2"));
+
+        // Act - Get tables list
+        var response = await _client.GetAsync("/api/tables");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<TablesListResponse>();
+        result.Should().NotBeNull();
+        var table = result!.Tables!.FirstOrDefault(t => t.Id == tableId);
+        table.Should().NotBeNull();
+        table!.WaitingListCount.Should().Be(2);
+    }
 }
