@@ -76,7 +76,7 @@ public class DealingEventEmitter : IDealingEventEmitter
     public async Task EmitDealCardAsync(Guid gameId, DealResult dealResult, bool hideCard = false)
     {
         var cardDto = hideCard ? null : dealResult.Card.ToDto();
-        var isFaceDown = dealResult.CardType == Poker.Dealing.DealCardType.HoleCard || dealResult.CardType == Poker.Dealing.DealCardType.BurnCard;
+        var isFaceDown = IsCardFaceDown(dealResult.CardType);
 
         var dealCardEvent = new DealCardEvent(
             gameId,
@@ -111,6 +111,23 @@ public class DealingEventEmitter : IDealingEventEmitter
 
         await _hubContext.Clients.Group(gameId.ToString())
             .SendAsync("DealingCompleted", dealingCompletedEvent);
+    }
+
+    /// <summary>
+    /// Determines if a card should be dealt face down based on its type.
+    /// </summary>
+    /// <param name="cardType">The type of card being dealt.</param>
+    /// <returns>True if the card should be face down, false otherwise.</returns>
+    private static bool IsCardFaceDown(Poker.Dealing.DealCardType cardType)
+    {
+        return cardType switch
+        {
+            Poker.Dealing.DealCardType.HoleCard => true,
+            Poker.Dealing.DealCardType.BurnCard => true,
+            Poker.Dealing.DealCardType.FaceUpCard => false,
+            Poker.Dealing.DealCardType.CommunityCard => false,
+            _ => true
+        };
     }
 
     private static Shared.Events.DealCardType MapCardType(Poker.Dealing.DealCardType cardType)

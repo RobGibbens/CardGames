@@ -28,9 +28,10 @@ public class SeededRandomNumberGenerator : IRandomNumberGenerator
 
     /// <summary>
     /// Creates a new seeded random number generator with a random seed.
+    /// Uses multiple entropy sources for better unpredictability.
     /// </summary>
     public SeededRandomNumberGenerator()
-        : this(Environment.TickCount)
+        : this(GenerateRandomSeed())
     {
     }
 
@@ -43,7 +44,19 @@ public class SeededRandomNumberGenerator : IRandomNumberGenerator
     /// </summary>
     public static (SeededRandomNumberGenerator generator, int seed) CreateWithRandomSeed()
     {
-        var seed = Environment.TickCount ^ Guid.NewGuid().GetHashCode();
+        var seed = GenerateRandomSeed();
         return (new SeededRandomNumberGenerator(seed), seed);
+    }
+
+    /// <summary>
+    /// Generates a random seed using multiple entropy sources.
+    /// </summary>
+    private static int GenerateRandomSeed()
+    {
+        // Combine multiple entropy sources for better unpredictability
+        return unchecked(
+            Environment.TickCount64.GetHashCode() ^ 
+            Guid.NewGuid().GetHashCode() ^ 
+            DateTime.UtcNow.Ticks.GetHashCode());
     }
 }
