@@ -1,3 +1,4 @@
+using CardGames.Poker.Shared.Contracts.Lobby;
 using CardGames.Poker.Shared.DTOs;
 using CardGames.Poker.Shared.Enums;
 
@@ -12,6 +13,8 @@ public interface ITablesRepository
         int? minAvailableSeats = null,
         bool? hideFullTables = null,
         bool? hideEmptyTables = null);
+
+    Task<TableSummaryDto> CreateTableAsync(CreateTableRequest request);
 }
 
 public class InMemoryTablesRepository : ITablesRepository
@@ -34,6 +37,7 @@ public class InMemoryTablesRepository : ITablesRepository
                 MaxSeats: 9,
                 OccupiedSeats: 3,
                 State: GameState.WaitingForPlayers,
+                Privacy: TablePrivacy.Public,
                 CreatedAt: DateTime.UtcNow.AddHours(-2)),
 
             new TableSummaryDto(
@@ -47,6 +51,7 @@ public class InMemoryTablesRepository : ITablesRepository
                 MaxSeats: 6,
                 OccupiedSeats: 5,
                 State: GameState.BettingRound,
+                Privacy: TablePrivacy.Public,
                 CreatedAt: DateTime.UtcNow.AddHours(-1)),
 
             new TableSummaryDto(
@@ -60,6 +65,7 @@ public class InMemoryTablesRepository : ITablesRepository
                 MaxSeats: 6,
                 OccupiedSeats: 6,
                 State: GameState.BettingRound,
+                Privacy: TablePrivacy.Private,
                 CreatedAt: DateTime.UtcNow.AddMinutes(-30)),
 
             new TableSummaryDto(
@@ -73,6 +79,7 @@ public class InMemoryTablesRepository : ITablesRepository
                 MaxSeats: 9,
                 OccupiedSeats: 7,
                 State: GameState.Dealing,
+                Privacy: TablePrivacy.Public,
                 CreatedAt: DateTime.UtcNow.AddMinutes(-45)),
 
             new TableSummaryDto(
@@ -86,6 +93,7 @@ public class InMemoryTablesRepository : ITablesRepository
                 MaxSeats: 8,
                 OccupiedSeats: 0,
                 State: GameState.WaitingForPlayers,
+                Privacy: TablePrivacy.Public,
                 CreatedAt: DateTime.UtcNow.AddHours(-3)),
 
             new TableSummaryDto(
@@ -99,6 +107,7 @@ public class InMemoryTablesRepository : ITablesRepository
                 MaxSeats: 6,
                 OccupiedSeats: 2,
                 State: GameState.WaitingForPlayers,
+                Privacy: TablePrivacy.Password,
                 CreatedAt: DateTime.UtcNow.AddMinutes(-15))
         ];
     }
@@ -144,5 +153,26 @@ public class InMemoryTablesRepository : ITablesRepository
         }
 
         return Task.FromResult<IReadOnlyList<TableSummaryDto>>(query.ToList());
+    }
+
+    public Task<TableSummaryDto> CreateTableAsync(CreateTableRequest request)
+    {
+        var table = new TableSummaryDto(
+            Id: Guid.NewGuid(),
+            Name: request.Name,
+            Variant: request.Variant,
+            SmallBlind: request.SmallBlind,
+            BigBlind: request.BigBlind,
+            MinBuyIn: request.MinBuyIn,
+            MaxBuyIn: request.MaxBuyIn,
+            MaxSeats: request.MaxSeats,
+            OccupiedSeats: 0,
+            State: GameState.WaitingForPlayers,
+            Privacy: request.Privacy,
+            CreatedAt: DateTime.UtcNow);
+
+        _tables.Add(table);
+
+        return Task.FromResult(table);
     }
 }

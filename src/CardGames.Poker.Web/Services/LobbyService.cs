@@ -74,4 +74,26 @@ public class LobbyService
             return new TablesListResponse(false, Error: "Failed to get tables list. Please try again.");
         }
     }
+
+    public async Task<CreateTableResponse> CreateTableAsync(CreateTableRequest request)
+    {
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("/api/tables", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<CreateTableResponse>();
+                return result ?? new CreateTableResponse(false, Error: "Invalid response from server");
+            }
+
+            var errorResponse = await response.Content.ReadFromJsonAsync<CreateTableResponse>();
+            return errorResponse ?? new CreateTableResponse(false, Error: response.ReasonPhrase);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to create table");
+            return new CreateTableResponse(false, Error: "Failed to create table. Please try again.");
+        }
+    }
 }
