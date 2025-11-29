@@ -6,6 +6,7 @@ using CardGames.Poker.Api.Features.Friends;
 using CardGames.Poker.Api.Features.Hands;
 using CardGames.Poker.Api.Features.History;
 using CardGames.Poker.Api.Features.Simulations;
+using CardGames.Poker.Api.Features.Tables;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,6 +24,9 @@ builder.Services.AddSingleton<IFriendsRepository, InMemoryFriendsRepository>();
 
 // Add history repository
 builder.Services.AddSingleton<IHistoryRepository, InMemoryHistoryRepository>();
+
+// Add tables repository
+builder.Services.AddSingleton<ITablesRepository, InMemoryTablesRepository>();
 
 // Add SignalR services
 builder.Services.AddSignalR();
@@ -77,6 +81,7 @@ app.MapFriendsEndpoints();
 app.MapHandsEndpoints();
 app.MapHistoryEndpoints();
 app.MapSimulationsEndpoints();
+app.MapTablesEndpoints();
 
 
 // Map SignalR hub
