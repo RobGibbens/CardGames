@@ -64,4 +64,44 @@ public class GameHub : Hub
         _logger.LogInformation("Client {ConnectionId} left game {GameId}", Context.ConnectionId, gameId);
         await Clients.Group(gameId).SendAsync("PlayerLeft", Context.ConnectionId, gameId);
     }
+
+    /// <summary>
+    /// Joins the lobby group to receive table updates.
+    /// </summary>
+    public async Task JoinLobby()
+    {
+        await Groups.AddToGroupAsync(Context.ConnectionId, "lobby");
+        _logger.LogInformation("Client {ConnectionId} joined lobby", Context.ConnectionId);
+        await Clients.Caller.SendAsync("JoinedLobby", Context.ConnectionId);
+    }
+
+    /// <summary>
+    /// Leaves the lobby group.
+    /// </summary>
+    public async Task LeaveLobby()
+    {
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, "lobby");
+        _logger.LogInformation("Client {ConnectionId} left lobby", Context.ConnectionId);
+    }
+
+    /// <summary>
+    /// Joins a table's waiting list group to receive seat notifications.
+    /// </summary>
+    /// <param name="tableId">The table identifier.</param>
+    public async Task JoinWaitingList(string tableId)
+    {
+        await Groups.AddToGroupAsync(Context.ConnectionId, $"{tableId}-waitlist");
+        _logger.LogInformation("Client {ConnectionId} joined waiting list for table {TableId}", Context.ConnectionId, tableId);
+        await Clients.Caller.SendAsync("JoinedWaitingList", tableId);
+    }
+
+    /// <summary>
+    /// Leaves a table's waiting list group.
+    /// </summary>
+    /// <param name="tableId">The table identifier.</param>
+    public async Task LeaveWaitingListGroup(string tableId)
+    {
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"{tableId}-waitlist");
+        _logger.LogInformation("Client {ConnectionId} left waiting list for table {TableId}", Context.ConnectionId, tableId);
+    }
 }

@@ -122,3 +122,63 @@ public record GameEndedEvent(
     DateTime Timestamp,
     string? WinnerName,
     int TotalHandsPlayed) : GameEvent(GameId, Timestamp);
+
+/// <summary>
+/// Event raised when a seat becomes available at a table.
+/// </summary>
+public record SeatAvailableEvent(
+    Guid TableId,
+    DateTime Timestamp,
+    int AvailableSeats,
+    int MaxSeats,
+    int OccupiedSeats,
+    int WaitingListCount) : GameEvent(TableId, Timestamp);
+
+/// <summary>
+/// Event raised when a player's position in the waiting list changes.
+/// </summary>
+public record WaitingListPositionChangedEvent(
+    Guid TableId,
+    DateTime Timestamp,
+    string PlayerName,
+    int OldPosition,
+    int NewPosition) : GameEvent(TableId, Timestamp);
+
+/// <summary>
+/// Event raised when a player is notified that a seat is available.
+/// </summary>
+public record SeatOfferEvent(
+    Guid TableId,
+    DateTime Timestamp,
+    string PlayerName,
+    int SeatNumber,
+    DateTime OfferExpiresAt) : GameEvent(TableId, Timestamp);
+
+/// <summary>
+/// Event raised when the seat status of a table changes (for lobby updates).
+/// </summary>
+public record TableSeatStatusChangedEvent(
+    Guid TableId,
+    DateTime Timestamp,
+    int OccupiedSeats,
+    int MaxSeats,
+    int WaitingListCount) : GameEvent(TableId, Timestamp);
+
+/// <summary>
+/// Event raised when a player joins the waiting list.
+/// </summary>
+public record PlayerJoinedWaitingListEvent(
+    Guid TableId,
+    DateTime Timestamp,
+    string PlayerName,
+    int Position,
+    int WaitingListCount) : GameEvent(TableId, Timestamp);
+
+/// <summary>
+/// Event raised when a player leaves the waiting list.
+/// </summary>
+public record PlayerLeftWaitingListEvent(
+    Guid TableId,
+    DateTime Timestamp,
+    string PlayerName,
+    int WaitingListCount) : GameEvent(TableId, Timestamp);

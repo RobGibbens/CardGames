@@ -1,5 +1,8 @@
+using CardGames.Poker.Api.Hubs;
 using CardGames.Poker.Shared.Contracts.Lobby;
 using CardGames.Poker.Shared.Enums;
+using CardGames.Poker.Shared.Events;
+using Microsoft.AspNetCore.SignalR;
 
 namespace CardGames.Poker.Api.Features.Tables;
 
@@ -21,6 +24,18 @@ public static class TablesModule
 
         group.MapPost("quick-join", QuickJoinAsync)
             .WithName("QuickJoin");
+
+        group.MapPost("{tableId:guid}/waiting-list", JoinWaitingListAsync)
+            .WithName("JoinWaitingList");
+
+        group.MapDelete("{tableId:guid}/waiting-list/{playerName}", LeaveWaitingListAsync)
+            .WithName("LeaveWaitingList");
+
+        group.MapGet("{tableId:guid}/waiting-list", GetWaitingListAsync)
+            .WithName("GetWaitingList");
+
+        group.MapPost("{tableId:guid}/leave", LeaveTableAsync)
+            .WithName("LeaveTable");
 
         return app;
     }
@@ -114,7 +129,8 @@ public static class TablesModule
     private static async Task<IResult> JoinTableAsync(
         Guid tableId,
         JoinTableRequest request,
-        ITablesRepository tablesRepository)
+        ITablesRepository tablesRepository,
+        IHubContext<GameHub> hubContext)
     {
         if (tableId != request.TableId)
         {
@@ -128,6 +144,20 @@ public static class TablesModule
             return Results.BadRequest(new JoinTableResponse(false, Error: error));
         }
 
+        // Broadcast seat status change to lobby
+        var updatedTable = await tablesRepository.GetTableByIdAsync(tableId);
+        if (updatedTable != null)
+        {
+            var seatStatusEvent = new TableSeatStatusChangedEvent(
+                tableId,
+                DateTime.UtcNow,
+                updatedTable.OccupiedSeats,
+                updatedTable.MaxSeats,
+                updatedTable.WaitingListCount);
+
+            await hubContext.Clients.Group("lobby").SendAsync("TableSeatStatusChanged", seatStatusEvent);
+        }
+
         return Results.Ok(new JoinTableResponse(
             Success: true,
             TableId: tableId,
@@ -136,7 +166,8 @@ public static class TablesModule
 
     private static async Task<IResult> QuickJoinAsync(
         QuickJoinRequest request,
-        ITablesRepository tablesRepository)
+        ITablesRepository tablesRepository,
+        IHubContext<GameHub> hubContext)
     {
         var table = await tablesRepository.FindTableForQuickJoinAsync(
             request.Variant,
@@ -158,10 +189,178 @@ public static class TablesModule
         // Get updated table info after joining
         var updatedTable = await tablesRepository.GetTableByIdAsync(table.Id);
 
+        // Broadcast seat status change to lobby
+        if (updatedTable != null)
+        {
+            var seatStatusEvent = new TableSeatStatusChangedEvent(
+                table.Id,
+                DateTime.UtcNow,
+                updatedTable.OccupiedSeats,
+                updatedTable.MaxSeats,
+                updatedTable.WaitingListCount);
+
+            await hubContext.Clients.Group("lobby").SendAsync("TableSeatStatusChanged", seatStatusEvent);
+        }
+
         return Results.Ok(new QuickJoinResponse(
             Success: true,
             TableId: table.Id,
             SeatNumber: seatNumber,
             Table: updatedTable));
+    }
+
+    private static async Task<IResult> JoinWaitingListAsync(
+        Guid tableId,
+        JoinWaitingListRequest request,
+        ITablesRepository tablesRepository,
+        IHubContext<GameHub> hubContext)
+    {
+        if (tableId != request.TableId)
+        {
+            return Results.BadRequest(new JoinWaitingListResponse(false, Error: "Table ID in URL does not match request body."));
+        }
+
+        var (success, entry, error) = await tablesRepository.JoinWaitingListAsync(tableId, request.PlayerName);
+
+        if (!success)
+        {
+            return Results.BadRequest(new JoinWaitingListResponse(false, Error: error));
+        }
+
+        // Get updated table info to get accurate waiting list count
+        var updatedTable = await tablesRepository.GetTableByIdAsync(tableId);
+        
+        // Broadcast waiting list update to table group
+        var waitingListEvent = new PlayerJoinedWaitingListEvent(
+            tableId,
+            DateTime.UtcNow,
+            request.PlayerName,
+            entry!.Position,
+            updatedTable?.WaitingListCount ?? entry.Position);
+
+        await hubContext.Clients.Group(tableId.ToString()).SendAsync("PlayerJoinedWaitingList", waitingListEvent);
+
+        // Broadcast seat status change to lobby
+        if (updatedTable != null)
+        {
+            var seatStatusEvent = new TableSeatStatusChangedEvent(
+                tableId,
+                DateTime.UtcNow,
+                updatedTable.OccupiedSeats,
+                updatedTable.MaxSeats,
+                updatedTable.WaitingListCount);
+
+            await hubContext.Clients.Group("lobby").SendAsync("TableSeatStatusChanged", seatStatusEvent);
+        }
+
+        return Results.Ok(new JoinWaitingListResponse(Success: true, Entry: entry));
+    }
+
+    private static async Task<IResult> LeaveWaitingListAsync(
+        Guid tableId,
+        string playerName,
+        ITablesRepository tablesRepository,
+        IHubContext<GameHub> hubContext)
+    {
+        var (success, error) = await tablesRepository.LeaveWaitingListAsync(tableId, playerName);
+
+        if (!success)
+        {
+            return Results.BadRequest(new LeaveWaitingListResponse(false, Error: error));
+        }
+
+        // Get updated waiting list count
+        var waitingList = await tablesRepository.GetWaitingListAsync(tableId);
+
+        // Broadcast waiting list update to table group
+        var waitingListEvent = new PlayerLeftWaitingListEvent(
+            tableId,
+            DateTime.UtcNow,
+            playerName,
+            waitingList.Count);
+
+        await hubContext.Clients.Group(tableId.ToString()).SendAsync("PlayerLeftWaitingList", waitingListEvent);
+
+        // Broadcast seat status change to lobby
+        var updatedTable = await tablesRepository.GetTableByIdAsync(tableId);
+        if (updatedTable != null)
+        {
+            var seatStatusEvent = new TableSeatStatusChangedEvent(
+                tableId,
+                DateTime.UtcNow,
+                updatedTable.OccupiedSeats,
+                updatedTable.MaxSeats,
+                updatedTable.WaitingListCount);
+
+            await hubContext.Clients.Group("lobby").SendAsync("TableSeatStatusChanged", seatStatusEvent);
+        }
+
+        return Results.Ok(new LeaveWaitingListResponse(Success: true));
+    }
+
+    private static async Task<IResult> GetWaitingListAsync(
+        Guid tableId,
+        ITablesRepository tablesRepository)
+    {
+        var table = await tablesRepository.GetTableByIdAsync(tableId);
+        if (table == null)
+        {
+            return Results.NotFound(new GetWaitingListResponse(false, Error: "Table not found."));
+        }
+
+        var entries = await tablesRepository.GetWaitingListAsync(tableId);
+
+        return Results.Ok(new GetWaitingListResponse(Success: true, Entries: entries));
+    }
+
+    private static async Task<IResult> LeaveTableAsync(
+        Guid tableId,
+        LeaveTableRequest request,
+        ITablesRepository tablesRepository,
+        IHubContext<GameHub> hubContext)
+    {
+        if (tableId != request.TableId)
+        {
+            return Results.BadRequest(new LeaveTableResponse(false, Error: "Table ID in URL does not match request body."));
+        }
+
+        var (success, notifiedPlayer, error) = await tablesRepository.LeaveTableAsync(tableId, request.PlayerName);
+
+        if (!success)
+        {
+            return Results.BadRequest(new LeaveTableResponse(false, Error: error));
+        }
+
+        var updatedTable = await tablesRepository.GetTableByIdAsync(tableId);
+
+        // Broadcast seat availability to waiting players
+        if (notifiedPlayer != null)
+        {
+            var seatAvailableEvent = new SeatAvailableEvent(
+                tableId,
+                DateTime.UtcNow,
+                updatedTable!.MaxSeats - updatedTable.OccupiedSeats,
+                updatedTable.MaxSeats,
+                updatedTable.OccupiedSeats,
+                updatedTable.WaitingListCount);
+
+            // Notify the waiting list group for this table
+            await hubContext.Clients.Group($"{tableId}-waitlist").SendAsync("SeatAvailable", seatAvailableEvent);
+        }
+
+        // Broadcast seat status change to lobby
+        if (updatedTable != null)
+        {
+            var seatStatusEvent = new TableSeatStatusChangedEvent(
+                tableId,
+                DateTime.UtcNow,
+                updatedTable.OccupiedSeats,
+                updatedTable.MaxSeats,
+                updatedTable.WaitingListCount);
+
+            await hubContext.Clients.Group("lobby").SendAsync("TableSeatStatusChanged", seatStatusEvent);
+        }
+
+        return Results.Ok(new LeaveTableResponse(Success: true));
     }
 }

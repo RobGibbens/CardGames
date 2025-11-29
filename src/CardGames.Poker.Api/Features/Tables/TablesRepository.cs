@@ -24,19 +24,32 @@ public interface ITablesRepository
         PokerVariant? variant = null,
         int? minSmallBlind = null,
         int? maxSmallBlind = null);
+
+    Task<(bool Success, WaitingListEntryDto? Entry, string? Error)> JoinWaitingListAsync(Guid tableId, string playerName);
+
+    Task<(bool Success, string? Error)> LeaveWaitingListAsync(Guid tableId, string playerName);
+
+    Task<IReadOnlyList<WaitingListEntryDto>> GetWaitingListAsync(Guid tableId);
+
+    Task<(bool Success, string? NotifiedPlayer, string? Error)> LeaveTableAsync(Guid tableId, string playerName);
+
+    Task<WaitingListEntryDto?> GetNextWaitingPlayerAsync(Guid tableId);
 }
 
 public class InMemoryTablesRepository : ITablesRepository
 {
     private readonly List<TableSummaryDto> _tables;
     private readonly Dictionary<Guid, string?> _tablePasswords;
+    private readonly Dictionary<Guid, List<WaitingListEntryDto>> _waitingLists;
 
     public InMemoryTablesRepository()
     {
         _tablePasswords = new Dictionary<Guid, string?>();
+        _waitingLists = new Dictionary<Guid, List<WaitingListEntryDto>>();
         
         // Seed with sample tables for demonstration
         var passwordProtectedTableId = Guid.NewGuid();
+        var fullTableId = Guid.NewGuid();
         _tables =
         [
             new TableSummaryDto(
@@ -68,7 +81,7 @@ public class InMemoryTablesRepository : ITablesRepository
                 CreatedAt: DateTime.UtcNow.AddHours(-1)),
 
             new TableSummaryDto(
-                Id: Guid.NewGuid(),
+                Id: fullTableId,
                 Name: "High Roller",
                 Variant: PokerVariant.TexasHoldem,
                 SmallBlind: 25,
@@ -78,8 +91,9 @@ public class InMemoryTablesRepository : ITablesRepository
                 MaxSeats: 6,
                 OccupiedSeats: 6,
                 State: GameState.BettingRound,
-                Privacy: TablePrivacy.Private,
-                CreatedAt: DateTime.UtcNow.AddMinutes(-30)),
+                Privacy: TablePrivacy.Public,
+                CreatedAt: DateTime.UtcNow.AddMinutes(-30),
+                WaitingListCount: 2),
 
             new TableSummaryDto(
                 Id: Guid.NewGuid(),
@@ -126,6 +140,13 @@ public class InMemoryTablesRepository : ITablesRepository
         
         // Set password for the password-protected table
         _tablePasswords[passwordProtectedTableId] = "demo123";
+
+        // Seed waiting list for the full table
+        _waitingLists[fullTableId] =
+        [
+            new WaitingListEntryDto(fullTableId, "WaitingPlayer1", DateTime.UtcNow.AddMinutes(-10), 1),
+            new WaitingListEntryDto(fullTableId, "WaitingPlayer2", DateTime.UtcNow.AddMinutes(-5), 2)
+        ];
     }
 
     public Task<IReadOnlyList<TableSummaryDto>> GetTablesAsync(
@@ -269,5 +290,131 @@ public class InMemoryTablesRepository : ITablesRepository
             .FirstOrDefault();
 
         return Task.FromResult(table);
+    }
+
+    public Task<(bool Success, WaitingListEntryDto? Entry, string? Error)> JoinWaitingListAsync(Guid tableId, string playerName)
+    {
+        var table = _tables.FirstOrDefault(t => t.Id == tableId);
+        
+        if (table == null)
+        {
+            return Task.FromResult<(bool, WaitingListEntryDto?, string?)>((false, null, "Table not found."));
+        }
+
+        if (string.IsNullOrWhiteSpace(playerName))
+        {
+            return Task.FromResult<(bool, WaitingListEntryDto?, string?)>((false, null, "Player name is required."));
+        }
+
+        // Check if player is already on the waiting list
+        if (!_waitingLists.TryGetValue(tableId, out var waitingList))
+        {
+            waitingList = [];
+            _waitingLists[tableId] = waitingList;
+        }
+
+        if (waitingList.Any(e => e.PlayerName == playerName))
+        {
+            return Task.FromResult<(bool, WaitingListEntryDto?, string?)>((false, null, "Player is already on the waiting list."));
+        }
+
+        // Add to waiting list
+        var position = waitingList.Count + 1;
+        var entry = new WaitingListEntryDto(tableId, playerName, DateTime.UtcNow, position);
+        waitingList.Add(entry);
+
+        // Update table's waiting list count
+        var index = _tables.FindIndex(t => t.Id == tableId);
+        _tables[index] = table with { WaitingListCount = waitingList.Count };
+
+        return Task.FromResult<(bool, WaitingListEntryDto?, string?)>((true, entry, null));
+    }
+
+    public Task<(bool Success, string? Error)> LeaveWaitingListAsync(Guid tableId, string playerName)
+    {
+        var table = _tables.FirstOrDefault(t => t.Id == tableId);
+        
+        if (table == null)
+        {
+            return Task.FromResult<(bool, string?)>((false, "Table not found."));
+        }
+
+        if (!_waitingLists.TryGetValue(tableId, out var waitingList))
+        {
+            return Task.FromResult<(bool, string?)>((false, "Player is not on the waiting list."));
+        }
+
+        var entry = waitingList.FirstOrDefault(e => e.PlayerName == playerName);
+        if (entry == null)
+        {
+            return Task.FromResult<(bool, string?)>((false, "Player is not on the waiting list."));
+        }
+
+        // Remove from waiting list
+        waitingList.Remove(entry);
+
+        // Update positions for remaining entries
+        for (int i = 0; i < waitingList.Count; i++)
+        {
+            var currentEntry = waitingList[i];
+            if (currentEntry.Position != i + 1)
+            {
+                waitingList[i] = currentEntry with { Position = i + 1 };
+            }
+        }
+
+        // Update table's waiting list count
+        var index = _tables.FindIndex(t => t.Id == tableId);
+        _tables[index] = table with { WaitingListCount = waitingList.Count };
+
+        return Task.FromResult<(bool, string?)>((true, null));
+    }
+
+    public Task<IReadOnlyList<WaitingListEntryDto>> GetWaitingListAsync(Guid tableId)
+    {
+        if (_waitingLists.TryGetValue(tableId, out var waitingList))
+        {
+            return Task.FromResult<IReadOnlyList<WaitingListEntryDto>>(waitingList.OrderBy(e => e.Position).ToList());
+        }
+
+        return Task.FromResult<IReadOnlyList<WaitingListEntryDto>>([]);
+    }
+
+    public Task<(bool Success, string? NotifiedPlayer, string? Error)> LeaveTableAsync(Guid tableId, string playerName)
+    {
+        var table = _tables.FirstOrDefault(t => t.Id == tableId);
+        
+        if (table == null)
+        {
+            return Task.FromResult<(bool, string?, string?)>((false, null, "Table not found."));
+        }
+
+        if (table.OccupiedSeats <= 0)
+        {
+            return Task.FromResult<(bool, string?, string?)>((false, null, "Table has no players."));
+        }
+
+        // Decrease occupied seats
+        var index = _tables.FindIndex(t => t.Id == tableId);
+        _tables[index] = table with { OccupiedSeats = table.OccupiedSeats - 1 };
+
+        // Check if there's someone on the waiting list to notify
+        string? notifiedPlayer = null;
+        if (_waitingLists.TryGetValue(tableId, out var waitingList) && waitingList.Count > 0)
+        {
+            notifiedPlayer = waitingList[0].PlayerName;
+        }
+
+        return Task.FromResult<(bool, string?, string?)>((true, notifiedPlayer, null));
+    }
+
+    public Task<WaitingListEntryDto?> GetNextWaitingPlayerAsync(Guid tableId)
+    {
+        if (_waitingLists.TryGetValue(tableId, out var waitingList) && waitingList.Count > 0)
+        {
+            return Task.FromResult<WaitingListEntryDto?>(waitingList.OrderBy(e => e.Position).First());
+        }
+
+        return Task.FromResult<WaitingListEntryDto?>(null);
     }
 }

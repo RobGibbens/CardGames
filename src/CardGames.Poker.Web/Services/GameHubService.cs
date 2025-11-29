@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.SignalR.Client;
+using CardGames.Poker.Shared.Events;
 
 namespace CardGames.Poker.Web.Services;
 
@@ -37,6 +38,26 @@ public class GameHubService : IAsyncDisposable
     /// Event raised when a player leaves a game.
     /// </summary>
     public event Action<string, string>? OnPlayerLeft;
+
+    /// <summary>
+    /// Event raised when the seat status of a table changes.
+    /// </summary>
+    public event Action<TableSeatStatusChangedEvent>? OnTableSeatStatusChanged;
+
+    /// <summary>
+    /// Event raised when a seat becomes available at a table.
+    /// </summary>
+    public event Action<SeatAvailableEvent>? OnSeatAvailable;
+
+    /// <summary>
+    /// Event raised when a player joins a waiting list.
+    /// </summary>
+    public event Action<PlayerJoinedWaitingListEvent>? OnPlayerJoinedWaitingList;
+
+    /// <summary>
+    /// Event raised when a player leaves a waiting list.
+    /// </summary>
+    public event Action<PlayerLeftWaitingListEvent>? OnPlayerLeftWaitingList;
 
     /// <summary>
     /// Gets the current connection state.
@@ -98,6 +119,33 @@ public class GameHubService : IAsyncDisposable
             {
                 _logger.LogInformation("Player {ConnectionId} left game {GameId}", connectionId, gameId);
                 OnPlayerLeft?.Invoke(connectionId, gameId);
+            });
+
+            _hubConnection.On<TableSeatStatusChangedEvent>("TableSeatStatusChanged", (seatStatusEvent) =>
+            {
+                _logger.LogInformation("Table {TableId} seat status changed: {OccupiedSeats}/{MaxSeats}", 
+                    seatStatusEvent.TableId, seatStatusEvent.OccupiedSeats, seatStatusEvent.MaxSeats);
+                OnTableSeatStatusChanged?.Invoke(seatStatusEvent);
+            });
+
+            _hubConnection.On<SeatAvailableEvent>("SeatAvailable", (seatAvailableEvent) =>
+            {
+                _logger.LogInformation("Seat available at table {TableId}", seatAvailableEvent.TableId);
+                OnSeatAvailable?.Invoke(seatAvailableEvent);
+            });
+
+            _hubConnection.On<PlayerJoinedWaitingListEvent>("PlayerJoinedWaitingList", (waitingListEvent) =>
+            {
+                _logger.LogInformation("Player {PlayerName} joined waiting list at table {TableId}", 
+                    waitingListEvent.PlayerName, waitingListEvent.TableId);
+                OnPlayerJoinedWaitingList?.Invoke(waitingListEvent);
+            });
+
+            _hubConnection.On<PlayerLeftWaitingListEvent>("PlayerLeftWaitingList", (waitingListEvent) =>
+            {
+                _logger.LogInformation("Player {PlayerName} left waiting list at table {TableId}", 
+                    waitingListEvent.PlayerName, waitingListEvent.TableId);
+                OnPlayerLeftWaitingList?.Invoke(waitingListEvent);
             });
 
             // Connection state change handlers
@@ -181,6 +229,64 @@ public class GameHubService : IAsyncDisposable
         }
 
         await _hubConnection.InvokeAsync("LeaveGame", gameId);
+    }
+
+    /// <summary>
+    /// Joins the lobby group to receive table updates.
+    /// </summary>
+    public async Task JoinLobbyAsync()
+    {
+        if (_hubConnection?.State != HubConnectionState.Connected)
+        {
+            _logger.LogWarning("Cannot join lobby - not connected to hub");
+            return;
+        }
+
+        await _hubConnection.InvokeAsync("JoinLobby");
+    }
+
+    /// <summary>
+    /// Leaves the lobby group.
+    /// </summary>
+    public async Task LeaveLobbyAsync()
+    {
+        if (_hubConnection?.State != HubConnectionState.Connected)
+        {
+            _logger.LogWarning("Cannot leave lobby - not connected to hub");
+            return;
+        }
+
+        await _hubConnection.InvokeAsync("LeaveLobby");
+    }
+
+    /// <summary>
+    /// Joins a table's waiting list group to receive seat notifications.
+    /// </summary>
+    /// <param name="tableId">The table identifier.</param>
+    public async Task JoinWaitingListGroupAsync(string tableId)
+    {
+        if (_hubConnection?.State != HubConnectionState.Connected)
+        {
+            _logger.LogWarning("Cannot join waiting list group - not connected to hub");
+            return;
+        }
+
+        await _hubConnection.InvokeAsync("JoinWaitingList", tableId);
+    }
+
+    /// <summary>
+    /// Leaves a table's waiting list group.
+    /// </summary>
+    /// <param name="tableId">The table identifier.</param>
+    public async Task LeaveWaitingListGroupAsync(string tableId)
+    {
+        if (_hubConnection?.State != HubConnectionState.Connected)
+        {
+            _logger.LogWarning("Cannot leave waiting list group - not connected to hub");
+            return;
+        }
+
+        await _hubConnection.InvokeAsync("LeaveWaitingListGroup", tableId);
     }
 
     /// <summary>
