@@ -75,8 +75,8 @@ public static class HistoryModule
             return Results.Unauthorized();
         }
 
-        var record = await historyRepository.GetByIdAsync(id);
-        if (record is null || record.UserId != userId)
+        var record = await historyRepository.GetByIdForUserAsync(id, userId);
+        if (record is null)
         {
             return Results.NotFound(new GameHistoryResponse(false, Error: "Game not found"));
         }

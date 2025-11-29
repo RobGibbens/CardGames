@@ -23,6 +23,7 @@ public interface IHistoryRepository
     Task<IReadOnlyList<GameHistoryRecord>> GetPlayerHistoryAsync(string userId, int page = 1, int pageSize = 20);
     Task<int> GetPlayerGameCountAsync(string userId);
     Task<GameHistoryRecord?> GetByIdAsync(string id);
+    Task<GameHistoryRecord?> GetByIdForUserAsync(string id, string userId);
 }
 
 public class InMemoryHistoryRepository : IHistoryRepository
@@ -85,6 +86,20 @@ public class InMemoryHistoryRepository : IHistoryRepository
         try
         {
             var record = _history.FirstOrDefault(h => h.Id == id);
+            return Task.FromResult(record);
+        }
+        finally
+        {
+            _lock.ExitReadLock();
+        }
+    }
+
+    public Task<GameHistoryRecord?> GetByIdForUserAsync(string id, string userId)
+    {
+        _lock.EnterReadLock();
+        try
+        {
+            var record = _history.FirstOrDefault(h => h.Id == id && h.UserId == userId);
             return Task.FromResult(record);
         }
         finally
