@@ -5,7 +5,7 @@ namespace CardGames.Poker.Api.Features.Auth;
 
 public static class AuthModule
 {
-    private const long DefaultInitialChipBalance = 1000;
+    public const long DefaultInitialChipBalance = 1000;
 
     public static IEndpointRouteBuilder MapAuthEndpoints(this IEndpointRouteBuilder app)
     {

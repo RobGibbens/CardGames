@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using CardGames.Poker.Api.Features.Auth;
 using CardGames.Poker.Shared.Contracts.Auth;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -98,7 +99,7 @@ public class ProfileTests : IClassFixture<WebApplicationFactory<Program>>
     }
 
     [Fact]
-    public async Task UpdateProfile_PreservesExistingValues_WhenNullPassed()
+    public async Task UpdateProfile_PreservesExistingValues_WhenFieldOmitted()
     {
         // Arrange
         var (token, _) = await RegisterAndGetTokenAsync("Original Name");
@@ -108,7 +109,7 @@ public class ProfileTests : IClassFixture<WebApplicationFactory<Program>>
         firstRequest.Content = JsonContent.Create(new UpdateProfileRequest(AvatarUrl: "https://example.com/avatar.png"));
         await _client.SendAsync(firstRequest);
 
-        // Second update - only update display name (avatar should be preserved)
+        // Second update - only update display name (avatar should be preserved when not provided)
         using var secondRequest = CreateAuthenticatedRequest(HttpMethod.Put, "/api/auth/profile", token);
         secondRequest.Content = JsonContent.Create(new UpdateProfileRequest(DisplayName: "New Name"));
         var response = await _client.SendAsync(secondRequest);
@@ -150,7 +151,7 @@ public class ProfileTests : IClassFixture<WebApplicationFactory<Program>>
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var result = await response.Content.ReadFromJsonAsync<ProfileResponse>();
         result.Should().NotBeNull();
-        result!.ChipBalance.Should().Be(1000); // Default initial balance
+        result!.ChipBalance.Should().Be(AuthModule.DefaultInitialChipBalance);
     }
 
     [Fact]

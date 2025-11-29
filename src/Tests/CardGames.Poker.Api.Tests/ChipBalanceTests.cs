@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using CardGames.Poker.Api.Features.Auth;
 using CardGames.Poker.Shared.Contracts.Auth;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -10,7 +11,6 @@ namespace CardGames.Poker.Api.Tests;
 public class ChipBalanceTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly HttpClient _client;
-    private const long DefaultInitialChipBalance = 1000;
 
     public ChipBalanceTests(WebApplicationFactory<Program> factory)
     {
@@ -47,7 +47,7 @@ public class ChipBalanceTests : IClassFixture<WebApplicationFactory<Program>>
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var result = await response.Content.ReadFromJsonAsync<AuthResponse>();
         result.Should().NotBeNull();
-        result!.ChipBalance.Should().Be(DefaultInitialChipBalance);
+        result!.ChipBalance.Should().Be(AuthModule.DefaultInitialChipBalance);
     }
 
     [Fact]
@@ -67,7 +67,7 @@ public class ChipBalanceTests : IClassFixture<WebApplicationFactory<Program>>
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var result = await response.Content.ReadFromJsonAsync<AuthResponse>();
         result.Should().NotBeNull();
-        result!.ChipBalance.Should().Be(DefaultInitialChipBalance);
+        result!.ChipBalance.Should().Be(AuthModule.DefaultInitialChipBalance);
     }
 
     [Fact]
@@ -85,7 +85,7 @@ public class ChipBalanceTests : IClassFixture<WebApplicationFactory<Program>>
         var result = await response.Content.ReadFromJsonAsync<ChipBalanceResponse>();
         result.Should().NotBeNull();
         result!.Success.Should().BeTrue();
-        result.Balance.Should().Be(DefaultInitialChipBalance);
+        result.Balance.Should().Be(AuthModule.DefaultInitialChipBalance);
     }
 
     [Fact]
@@ -115,7 +115,7 @@ public class ChipBalanceTests : IClassFixture<WebApplicationFactory<Program>>
         var result = await response.Content.ReadFromJsonAsync<ChipBalanceResponse>();
         result.Should().NotBeNull();
         result!.Success.Should().BeTrue();
-        result.Balance.Should().Be(DefaultInitialChipBalance + 500);
+        result.Balance.Should().Be(AuthModule.DefaultInitialChipBalance + 500);
     }
 
     [Fact]
@@ -135,7 +135,7 @@ public class ChipBalanceTests : IClassFixture<WebApplicationFactory<Program>>
         var result = await response.Content.ReadFromJsonAsync<ChipBalanceResponse>();
         result.Should().NotBeNull();
         result!.Success.Should().BeTrue();
-        result.Balance.Should().Be(DefaultInitialChipBalance - 300);
+        result.Balance.Should().Be(AuthModule.DefaultInitialChipBalance - 300);
     }
 
     [Fact]
@@ -258,7 +258,7 @@ public class ChipBalanceTests : IClassFixture<WebApplicationFactory<Program>>
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var userInfo = await response.Content.ReadFromJsonAsync<UserInfo>();
         userInfo.Should().NotBeNull();
-        userInfo!.ChipBalance.Should().Be(DefaultInitialChipBalance);
+        userInfo!.ChipBalance.Should().Be(AuthModule.DefaultInitialChipBalance);
     }
 
     [Fact]
