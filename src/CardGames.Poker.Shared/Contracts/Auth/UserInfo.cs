@@ -5,5 +5,7 @@ public record UserInfo(
     string Email,
     string? DisplayName = null,
     bool IsAuthenticated = false,
-    string? AuthProvider = null
+    string? AuthProvider = null,
+    long ChipBalance = 0,
+    string? AvatarUrl = null
 );

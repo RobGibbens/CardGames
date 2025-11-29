@@ -1,9 +1,12 @@
 using CardGames.Poker.Shared.Contracts.Auth;
+using Microsoft.Extensions.Options;
 
 namespace CardGames.Poker.Api.Features.Auth;
 
 public static class AuthModule
 {
+    public const long DefaultInitialChipBalance = 1000;
+
     public static IEndpointRouteBuilder MapAuthEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/auth")
@@ -25,6 +28,22 @@ public static class AuthModule
             .WithName("GetAuthProviders")
             .AllowAnonymous();
 
+        group.MapPut("/profile", UpdateProfileAsync)
+            .WithName("UpdateProfile")
+            .RequireAuthorization();
+
+        group.MapGet("/chips", GetChipBalanceAsync)
+            .WithName("GetChipBalance")
+            .RequireAuthorization();
+
+        group.MapPost("/chips/adjust", AdjustChipBalanceAsync)
+            .WithName("AdjustChipBalance")
+            .RequireAuthorization();
+
+        group.MapPut("/chips", SetChipBalanceAsync)
+            .WithName("SetChipBalance")
+            .RequireAuthorization();
+
         return app;
     }
 
@@ -32,7 +51,8 @@ public static class AuthModule
         RegisterRequest request,
         IUserRepository userRepository,
         IPasswordHasher passwordHasher,
-        ITokenService tokenService)
+        ITokenService tokenService,
+        IOptions<AuthSettings> authSettings)
     {
         if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
         {
@@ -54,8 +74,9 @@ public static class AuthModule
             return Results.Conflict(new AuthResponse(false, Error: "An account with this email already exists"));
         }
 
+        var initialChipBalance = authSettings.Value.InitialChipBalance ?? DefaultInitialChipBalance;
         var passwordHash = passwordHasher.HashPassword(request.Password);
-        var user = await userRepository.CreateAsync(request.Email, passwordHash, request.DisplayName);
+        var user = await userRepository.CreateAsync(request.Email, passwordHash, request.DisplayName, initialChipBalance);
 
         var token = tokenService.GenerateToken(user);
         var expiresAt = tokenService.GetExpiration();
@@ -65,7 +86,9 @@ public static class AuthModule
             Token: token,
             Email: user.Email,
             DisplayName: user.DisplayName,
-            ExpiresAt: expiresAt
+            ExpiresAt: expiresAt,
+            ChipBalance: user.ChipBalance,
+            AvatarUrl: user.AvatarUrl
         ));
     }
 
@@ -99,11 +122,15 @@ public static class AuthModule
             Token: token,
             Email: user.Email,
             DisplayName: user.DisplayName,
-            ExpiresAt: expiresAt
+            ExpiresAt: expiresAt,
+            ChipBalance: user.ChipBalance,
+            AvatarUrl: user.AvatarUrl
         ));
     }
 
-    private static IResult GetCurrentUserAsync(HttpContext context)
+    private static async Task<IResult> GetCurrentUserAsync(
+        HttpContext context,
+        IUserRepository userRepository)
     {
         var user = context.User;
         if (user.Identity?.IsAuthenticated != true)
@@ -113,18 +140,132 @@ public static class AuthModule
 
         var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
             ?? user.FindFirst("sub")?.Value;
-        var email = user.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value
-            ?? user.FindFirst("email")?.Value;
-        var displayName = user.FindFirst("display_name")?.Value;
-        var authProvider = user.FindFirst("auth_provider")?.Value;
+
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Results.Unauthorized();
+        }
+
+        var userRecord = await userRepository.GetByIdAsync(userId);
+        if (userRecord is null)
+        {
+            return Results.Unauthorized();
+        }
 
         return Results.Ok(new UserInfo(
-            Id: userId ?? string.Empty,
-            Email: email ?? string.Empty,
-            DisplayName: displayName,
+            Id: userRecord.Id,
+            Email: userRecord.Email,
+            DisplayName: userRecord.DisplayName,
             IsAuthenticated: true,
-            AuthProvider: authProvider
+            AuthProvider: userRecord.AuthProvider,
+            ChipBalance: userRecord.ChipBalance,
+            AvatarUrl: userRecord.AvatarUrl
         ));
+    }
+
+    private static async Task<IResult> UpdateProfileAsync(
+        UpdateProfileRequest request,
+        HttpContext context,
+        IUserRepository userRepository)
+    {
+        var userId = GetUserId(context);
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Results.Unauthorized();
+        }
+
+        var updatedUser = await userRepository.UpdateProfileAsync(userId, request.DisplayName, request.AvatarUrl);
+        if (updatedUser is null)
+        {
+            return Results.NotFound(new ProfileResponse(false, Error: "User not found"));
+        }
+
+        return Results.Ok(new ProfileResponse(
+            Success: true,
+            Id: updatedUser.Id,
+            Email: updatedUser.Email,
+            DisplayName: updatedUser.DisplayName,
+            AvatarUrl: updatedUser.AvatarUrl,
+            ChipBalance: updatedUser.ChipBalance
+        ));
+    }
+
+    private static async Task<IResult> GetChipBalanceAsync(
+        HttpContext context,
+        IUserRepository userRepository)
+    {
+        var userId = GetUserId(context);
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Results.Unauthorized();
+        }
+
+        var user = await userRepository.GetByIdAsync(userId);
+        if (user is null)
+        {
+            return Results.NotFound(new ChipBalanceResponse(false, Error: "User not found"));
+        }
+
+        return Results.Ok(new ChipBalanceResponse(true, Balance: user.ChipBalance));
+    }
+
+    private static async Task<IResult> AdjustChipBalanceAsync(
+        UpdateChipBalanceRequest request,
+        HttpContext context,
+        IUserRepository userRepository)
+    {
+        var userId = GetUserId(context);
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Results.Unauthorized();
+        }
+
+        try
+        {
+            var updatedUser = await userRepository.AdjustChipBalanceAsync(userId, request.Amount);
+            if (updatedUser is null)
+            {
+                return Results.NotFound(new ChipBalanceResponse(false, Error: "User not found"));
+            }
+
+            return Results.Ok(new ChipBalanceResponse(true, Balance: updatedUser.ChipBalance));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Results.BadRequest(new ChipBalanceResponse(false, Error: ex.Message));
+        }
+    }
+
+    private static async Task<IResult> SetChipBalanceAsync(
+        SetChipBalanceRequest request,
+        HttpContext context,
+        IUserRepository userRepository)
+    {
+        var userId = GetUserId(context);
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Results.Unauthorized();
+        }
+
+        if (request.Balance < 0)
+        {
+            return Results.BadRequest(new ChipBalanceResponse(false, Error: "Chip balance cannot be negative"));
+        }
+
+        try
+        {
+            var updatedUser = await userRepository.UpdateChipBalanceAsync(userId, request.Balance);
+            if (updatedUser is null)
+            {
+                return Results.NotFound(new ChipBalanceResponse(false, Error: "User not found"));
+            }
+
+            return Results.Ok(new ChipBalanceResponse(true, Balance: updatedUser.ChipBalance));
+        }
+        catch (ArgumentException ex)
+        {
+            return Results.BadRequest(new ChipBalanceResponse(false, Error: ex.Message));
+        }
     }
 
     private static IResult GetAuthProvidersAsync()
@@ -136,6 +277,18 @@ public static class AuthModule
         };
 
         return Results.Ok(providers);
+    }
+
+    private static string? GetUserId(HttpContext context)
+    {
+        var user = context.User;
+        if (user.Identity?.IsAuthenticated != true)
+        {
+            return null;
+        }
+
+        return user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+            ?? user.FindFirst("sub")?.Value;
     }
 
     private static bool IsValidEmail(string email)

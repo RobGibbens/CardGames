@@ -1,12 +1,11 @@
 namespace CardGames.Poker.Shared.Contracts.Auth;
 
-public record AuthResponse(
+public record ProfileResponse(
     bool Success,
-    string? Token = null,
+    string? Id = null,
     string? Email = null,
     string? DisplayName = null,
-    string? Error = null,
-    DateTime? ExpiresAt = null,
+    string? AvatarUrl = null,
     long? ChipBalance = null,
-    string? AvatarUrl = null
+    string? Error = null
 );
