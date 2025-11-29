@@ -1,5 +1,6 @@
 using CardGames.Poker.Web.Components;
 using CardGames.Poker.Web.Services;
+using Microsoft.AspNetCore.Components.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,6 +9,19 @@ builder.AddServiceDefaults();
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+// Register authentication services
+builder.Services.AddScoped<AuthStateProvider>();
+builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<AuthStateProvider>());
+builder.Services.AddScoped<AuthService>();
+builder.Services.AddAuthorizationCore();
+
+// Register HTTP client for API calls
+var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "https://localhost:7001";
+builder.Services.AddHttpClient("PokerApi", client =>
+{
+    client.BaseAddress = new Uri(apiBaseUrl);
+});
 
 // Register SignalR client service
 builder.Services.AddScoped<GameHubService>();
