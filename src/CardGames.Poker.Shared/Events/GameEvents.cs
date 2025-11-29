@@ -182,3 +182,52 @@ public record PlayerLeftWaitingListEvent(
     DateTime Timestamp,
     string PlayerName,
     int WaitingListCount) : GameEvent(TableId, Timestamp);
+
+/// <summary>
+/// Specifies the type of card being dealt for animation purposes.
+/// </summary>
+public enum DealCardType
+{
+    /// <summary>A hole card dealt face down to a player.</summary>
+    HoleCard,
+    
+    /// <summary>A face-up card dealt to a player (stud games).</summary>
+    FaceUpCard,
+    
+    /// <summary>A community card visible to all players.</summary>
+    CommunityCard,
+    
+    /// <summary>A burn card discarded before dealing community cards.</summary>
+    BurnCard
+}
+
+/// <summary>
+/// Event raised when a single card is dealt (for client animation).
+/// Clients receive this event to animate card dealing one card at a time.
+/// </summary>
+public record DealCardEvent(
+    Guid GameId,
+    DateTime Timestamp,
+    string Recipient,
+    CardDto? Card,
+    DealCardType CardType,
+    int DealSequence,
+    bool IsFaceDown) : GameEvent(GameId, Timestamp);
+
+/// <summary>
+/// Event raised when dealing for a phase begins (for animation timing).
+/// </summary>
+public record DealingStartedEvent(
+    Guid GameId,
+    DateTime Timestamp,
+    string PhaseName,
+    int TotalCardsToBeDealt,
+    int? ReplaySeed) : GameEvent(GameId, Timestamp);
+
+/// <summary>
+/// Event raised when dealing for a phase completes (for animation timing).
+/// </summary>
+public record DealingCompletedEvent(
+    Guid GameId,
+    DateTime Timestamp,
+    string PhaseName) : GameEvent(GameId, Timestamp);
