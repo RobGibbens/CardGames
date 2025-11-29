@@ -2,6 +2,7 @@ using CardGames.Poker.Api.Hubs;
 using Microsoft.AspNetCore.SignalR;
 
 using CardGames.Poker.Api.Features.Auth;
+using CardGames.Poker.Api.Features.Friends;
 using CardGames.Poker.Api.Features.Hands;
 using CardGames.Poker.Api.Features.Simulations;
 
@@ -15,6 +16,9 @@ builder.Services.AddOpenApi();
 
 // Add authentication services
 builder.Services.AddAuthServices(builder.Configuration);
+
+// Add friends repository
+builder.Services.AddSingleton<IFriendsRepository, InMemoryFriendsRepository>();
 
 // Add SignalR services
 builder.Services.AddSignalR();
@@ -65,6 +69,7 @@ app.UseAuthorization();
 
 // Map feature endpoints
 app.MapAuthEndpoints();
+app.MapFriendsEndpoints();
 app.MapHandsEndpoints();
 app.MapSimulationsEndpoints();
 

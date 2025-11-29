@@ -15,6 +15,7 @@ builder.Services.AddScoped<AuthStateProvider>();
 builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<AuthStateProvider>());
 builder.Services.AddScoped<IAuthStateManager>(sp => sp.GetRequiredService<AuthStateProvider>());
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<FriendsService>();
 builder.Services.AddAuthorizationCore();
 
 // Register HTTP client for API calls
