@@ -95,9 +95,9 @@ public static class TableConfigValidator
             errors.Add("Minimum buy-in must be greater than 0.");
         }
 
-        if (config.MaxBuyIn < 0)
+        if (config.MaxBuyIn <= 0)
         {
-            errors.Add("Maximum buy-in cannot be negative.");
+            errors.Add("Maximum buy-in must be greater than 0.");
         }
 
         if (config.MinBuyIn > 0 && config.MaxBuyIn > 0 && config.MaxBuyIn < config.MinBuyIn)

@@ -160,6 +160,19 @@ public class TableConfigValidatorTests
     }
 
     [Fact]
+    public void Validate_ZeroMaxBuyIn_ReturnsError()
+    {
+        // Arrange
+        var config = CreateValidConfig() with { MaxBuyIn = 0 };
+
+        // Act
+        var errors = TableConfigValidator.Validate(config);
+
+        // Assert
+        errors.Should().Contain(e => e.Contains("Maximum buy-in") && e.Contains("greater than 0"));
+    }
+
+    [Fact]
     public void Validate_SevenCardStudWithMoreThan8Seats_ReturnsError()
     {
         // Arrange
