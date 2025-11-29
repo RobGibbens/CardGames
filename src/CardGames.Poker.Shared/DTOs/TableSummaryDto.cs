@@ -16,4 +16,5 @@ public record TableSummaryDto(
     int MaxSeats,
     int OccupiedSeats,
     GameState State,
+    TablePrivacy Privacy,
     DateTime CreatedAt);

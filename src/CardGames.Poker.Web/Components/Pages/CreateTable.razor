@@ -1,0 +1,240 @@
+@page "/tables/create"
+@using CardGames.Poker.Shared.Contracts.Lobby
+@using CardGames.Poker.Shared.Enums
+@using CardGames.Poker.Web.Services
+@inject LobbyService LobbyService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+
+<PageTitle>Create Table - CardGames Poker</PageTitle>
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <h1 class="mb-4">Create New Table</h1>
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    @_errorMessage
+                    <button type="button" class="btn-close" @onclick="() => _errorMessage = null" aria-label="Close"></button>
+                </div>
+            }
+
+            @if (_tableCreated)
+            {
+                <div class="alert alert-success">
+                    <h4 class="alert-heading">Table Created Successfully!</h4>
+                    <p>Your table "<strong>@_createdTableName</strong>" has been created.</p>
+                    <hr>
+                    <p class="mb-0">
+                        <strong>Join Link:</strong>
+                        <a href="@_joinLink" class="text-break">@_joinLink</a>
+                    </p>
+                    <div class="mt-3">
+                        <button class="btn btn-primary me-2" @onclick="CopyJoinLink">
+                            @(_linkCopied ? "Copied!" : "Copy Link")
+                        </button>
+                        <a href="/lobby" class="btn btn-outline-secondary">Back to Lobby</a>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="card">
+                    <div class="card-body">
+                        <EditForm Model="_formModel" OnValidSubmit="HandleSubmit" FormName="CreateTableForm">
+                            <DataAnnotationsValidator />
+                            
+                            <!-- Table Name -->
+                            <div class="mb-3">
+                                <label class="form-label">Table Name <span class="text-danger">*</span></label>
+                                <InputText class="form-control" @bind-Value="_formModel.Name" maxlength="50" />
+                                <ValidationMessage For="() => _formModel.Name" class="text-danger" />
+                            </div>
+
+                            <!-- Game Variant -->
+                            <div class="mb-3">
+                                <label class="form-label">Game Variant <span class="text-danger">*</span></label>
+                                <InputSelect class="form-select" @bind-Value="_formModel.Variant">
+                                    @foreach (var variant in Enum.GetValues<PokerVariant>())
+                                    {
+                                        <option value="@variant">@GetVariantDisplayName(variant)</option>
+                                    }
+                                </InputSelect>
+                            </div>
+
+                            <!-- Stakes -->
+                            <div class="mb-3">
+                                <label class="form-label">Stakes</label>
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <label class="form-label small text-muted">Small Blind <span class="text-danger">*</span></label>
+                                        <InputNumber class="form-control" @bind-Value="_formModel.SmallBlind" min="1" />
+                                        <ValidationMessage For="() => _formModel.SmallBlind" class="text-danger" />
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label small text-muted">Big Blind <span class="text-danger">*</span></label>
+                                        <InputNumber class="form-control" @bind-Value="_formModel.BigBlind" min="1" />
+                                        <ValidationMessage For="() => _formModel.BigBlind" class="text-danger" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Buy-In -->
+                            <div class="mb-3">
+                                <label class="form-label">Buy-In Range</label>
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <label class="form-label small text-muted">Minimum <span class="text-danger">*</span></label>
+                                        <InputNumber class="form-control" @bind-Value="_formModel.MinBuyIn" min="1" />
+                                        <ValidationMessage For="() => _formModel.MinBuyIn" class="text-danger" />
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label small text-muted">Maximum <span class="text-danger">*</span></label>
+                                        <InputNumber class="form-control" @bind-Value="_formModel.MaxBuyIn" min="1" />
+                                        <ValidationMessage For="() => _formModel.MaxBuyIn" class="text-danger" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Max Seats -->
+                            <div class="mb-3">
+                                <label class="form-label">Number of Seats <span class="text-danger">*</span></label>
+                                <InputSelect class="form-select" @bind-Value="_formModel.MaxSeats">
+                                    @for (int i = 2; i <= 10; i++)
+                                    {
+                                        <option value="@i">@i Players</option>
+                                    }
+                                </InputSelect>
+                            </div>
+
+                            <!-- Privacy -->
+                            <div class="mb-3">
+                                <label class="form-label">Privacy Setting <span class="text-danger">*</span></label>
+                                <InputSelect class="form-select" @bind-Value="_formModel.Privacy">
+                                    <option value="@TablePrivacy.Public">Public - Visible to everyone</option>
+                                    <option value="@TablePrivacy.Private">Private - Join via link only</option>
+                                    <option value="@TablePrivacy.Password">Password Protected</option>
+                                </InputSelect>
+                            </div>
+
+                            <!-- Password (conditional) -->
+                            @if (_formModel.Privacy == TablePrivacy.Password)
+                            {
+                                <div class="mb-3">
+                                    <label class="form-label">Table Password <span class="text-danger">*</span></label>
+                                    <InputText type="password" class="form-control" @bind-Value="_formModel.Password" />
+                                    <ValidationMessage For="() => _formModel.Password" class="text-danger" />
+                                </div>
+                            }
+
+                            <!-- Submit Buttons -->
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary" disabled="@_isSubmitting">
+                                    @if (_isSubmitting)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                        <span>Creating...</span>
+                                    }
+                                    else
+                                    {
+                                        <span>Create Table</span>
+                                    }
+                                </button>
+                                <a href="/lobby" class="btn btn-outline-secondary">Cancel</a>
+                            </div>
+                        </EditForm>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private CreateTableFormModel _formModel = new();
+    private bool _isSubmitting;
+    private string? _errorMessage;
+    private bool _tableCreated;
+    private string? _createdTableName;
+    private string? _joinLink;
+    private bool _linkCopied;
+
+    private async Task HandleSubmit()
+    {
+        _isSubmitting = true;
+        _errorMessage = null;
+
+        try
+        {
+            var request = new CreateTableRequest(
+                Name: _formModel.Name!,
+                Variant: _formModel.Variant,
+                SmallBlind: _formModel.SmallBlind,
+                BigBlind: _formModel.BigBlind,
+                MinBuyIn: _formModel.MinBuyIn,
+                MaxBuyIn: _formModel.MaxBuyIn,
+                MaxSeats: _formModel.MaxSeats,
+                Privacy: _formModel.Privacy,
+                Password: _formModel.Privacy == TablePrivacy.Password ? _formModel.Password : null);
+
+            var response = await LobbyService.CreateTableAsync(request);
+
+            if (response.Success)
+            {
+                _tableCreated = true;
+                _createdTableName = _formModel.Name;
+                _joinLink = response.JoinLink;
+            }
+            else
+            {
+                _errorMessage = response.Error ?? "Failed to create table. Please try again.";
+            }
+        }
+        catch (Exception)
+        {
+            _errorMessage = "An unexpected error occurred. Please try again.";
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private async Task CopyJoinLink()
+    {
+        if (!string.IsNullOrEmpty(_joinLink))
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", _joinLink);
+            _linkCopied = true;
+            StateHasChanged();
+        }
+    }
+
+    private static string GetVariantDisplayName(PokerVariant variant) => variant switch
+    {
+        PokerVariant.TexasHoldem => "Texas Hold'em",
+        PokerVariant.Omaha => "Omaha",
+        PokerVariant.SevenCardStud => "7-Card Stud",
+        PokerVariant.FiveCardDraw => "5-Card Draw",
+        PokerVariant.Baseball => "Baseball",
+        PokerVariant.KingsAndLows => "Kings & Lows",
+        PokerVariant.FollowTheQueen => "Follow the Queen",
+        _ => variant.ToString()
+    };
+
+    private class CreateTableFormModel
+    {
+        public string? Name { get; set; }
+        public PokerVariant Variant { get; set; } = PokerVariant.TexasHoldem;
+        public int SmallBlind { get; set; } = 1;
+        public int BigBlind { get; set; } = 2;
+        public int MinBuyIn { get; set; } = 40;
+        public int MaxBuyIn { get; set; } = 200;
+        public int MaxSeats { get; set; } = 6;
+        public TablePrivacy Privacy { get; set; } = TablePrivacy.Public;
+        public string? Password { get; set; }
+    }
+}

@@ -3,12 +3,18 @@
 @using CardGames.Poker.Shared.Enums
 @using CardGames.Poker.Web.Services
 @inject LobbyService LobbyService
+@inject NavigationManager NavigationManager
 @rendermode InteractiveServer
 
 <PageTitle>Lobby - CardGames Poker</PageTitle>
 
 <div class="container-fluid">
-    <h1 class="mb-4">Game Lobby</h1>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mb-0">Game Lobby</h1>
+        <a href="/tables/create" class="btn btn-success">
+            <span class="me-1">+</span> Create Table
+        </a>
+    </div>
 
     <div class="row">
         <!-- Filters Panel -->
@@ -85,7 +91,7 @@
             else if (_tables == null || _tables.Count == 0)
             {
                 <div class="alert alert-info">
-                    <strong>No tables found.</strong> Try adjusting your filters or check back later.
+                    <strong>No tables found.</strong> Try adjusting your filters or <a href="/tables/create">create a new table</a>.
                 </div>
             }
             else
@@ -106,6 +112,7 @@
                                 <th>Stakes</th>
                                 <th>Buy-In</th>
                                 <th>Seats</th>
+                                <th>Privacy</th>
                                 <th>Status</th>
                                 <th></th>
                             </tr>
@@ -121,6 +128,11 @@
                                     <td>
                                         <span class="@GetSeatsClass(table)">
                                             @table.OccupiedSeats/@table.MaxSeats
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge @GetPrivacyBadgeClass(table.Privacy)">
+                                            @GetPrivacyDisplayName(table.Privacy)
                                         </span>
                                     </td>
                                     <td>
@@ -249,6 +261,22 @@
         GameState.Showdown or GameState.HandComplete => "bg-primary",
         GameState.Paused => "bg-secondary",
         GameState.Ended => "bg-dark",
+        _ => "bg-secondary"
+    };
+
+    private static string GetPrivacyDisplayName(TablePrivacy privacy) => privacy switch
+    {
+        TablePrivacy.Public => "Public",
+        TablePrivacy.Private => "Private",
+        TablePrivacy.Password => "Password",
+        _ => privacy.ToString()
+    };
+
+    private static string GetPrivacyBadgeClass(TablePrivacy privacy) => privacy switch
+    {
+        TablePrivacy.Public => "bg-success",
+        TablePrivacy.Private => "bg-info",
+        TablePrivacy.Password => "bg-warning text-dark",
         _ => "bg-secondary"
     };
 

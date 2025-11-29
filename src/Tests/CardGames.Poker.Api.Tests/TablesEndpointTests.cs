@@ -164,4 +164,296 @@ public class TablesEndpointTests : IClassFixture<WebApplicationFactory<Program>>
         table.OccupiedSeats.Should().BeGreaterThanOrEqualTo(0);
         table.OccupiedSeats.Should().BeLessThanOrEqualTo(table.MaxSeats);
     }
+
+    [Fact]
+    public async Task CreateTable_WithValidRequest_ReturnsCreatedTable()
+    {
+        // Arrange
+        var request = new CreateTableRequest(
+            Name: "Test Table",
+            Variant: PokerVariant.TexasHoldem,
+            SmallBlind: 1,
+            BigBlind: 2,
+            MinBuyIn: 40,
+            MaxBuyIn: 200,
+            MaxSeats: 6,
+            Privacy: TablePrivacy.Public);
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/tables", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var result = await response.Content.ReadFromJsonAsync<CreateTableResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeTrue();
+        result.TableId.Should().NotBeEmpty();
+        result.JoinLink.Should().NotBeNullOrEmpty();
+        result.JoinLink.Should().Contain(result.TableId.ToString());
+        result.Table.Should().NotBeNull();
+        result.Table!.Name.Should().Be("Test Table");
+        result.Table.Variant.Should().Be(PokerVariant.TexasHoldem);
+        result.Table.SmallBlind.Should().Be(1);
+        result.Table.BigBlind.Should().Be(2);
+        result.Table.MinBuyIn.Should().Be(40);
+        result.Table.MaxBuyIn.Should().Be(200);
+        result.Table.MaxSeats.Should().Be(6);
+        result.Table.Privacy.Should().Be(TablePrivacy.Public);
+        result.Table.OccupiedSeats.Should().Be(0);
+        result.Table.State.Should().Be(GameState.WaitingForPlayers);
+    }
+
+    [Fact]
+    public async Task CreateTable_WithPrivateTable_ReturnsCreatedTable()
+    {
+        // Arrange
+        var request = new CreateTableRequest(
+            Name: "Private Test Table",
+            Variant: PokerVariant.Omaha,
+            SmallBlind: 5,
+            BigBlind: 10,
+            MinBuyIn: 100,
+            MaxBuyIn: 500,
+            MaxSeats: 9,
+            Privacy: TablePrivacy.Private);
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/tables", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var result = await response.Content.ReadFromJsonAsync<CreateTableResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeTrue();
+        result.Table!.Privacy.Should().Be(TablePrivacy.Private);
+    }
+
+    [Fact]
+    public async Task CreateTable_WithPasswordProtectedTable_ReturnsCreatedTable()
+    {
+        // Arrange
+        var request = new CreateTableRequest(
+            Name: "Password Test Table",
+            Variant: PokerVariant.SevenCardStud,
+            SmallBlind: 2,
+            BigBlind: 4,
+            MinBuyIn: 80,
+            MaxBuyIn: 400,
+            MaxSeats: 8,
+            Privacy: TablePrivacy.Password,
+            Password: "secret123");
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/tables", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var result = await response.Content.ReadFromJsonAsync<CreateTableResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeTrue();
+        result.Table!.Privacy.Should().Be(TablePrivacy.Password);
+    }
+
+    [Fact]
+    public async Task CreateTable_WithEmptyName_ReturnsBadRequest()
+    {
+        // Arrange
+        var request = new CreateTableRequest(
+            Name: "",
+            Variant: PokerVariant.TexasHoldem,
+            SmallBlind: 1,
+            BigBlind: 2,
+            MinBuyIn: 40,
+            MaxBuyIn: 200,
+            MaxSeats: 6,
+            Privacy: TablePrivacy.Public);
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/tables", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var result = await response.Content.ReadFromJsonAsync<CreateTableResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeFalse();
+        result.Error.Should().Contain("name");
+    }
+
+    [Fact]
+    public async Task CreateTable_WithNameTooLong_ReturnsBadRequest()
+    {
+        // Arrange
+        var request = new CreateTableRequest(
+            Name: new string('a', 51),
+            Variant: PokerVariant.TexasHoldem,
+            SmallBlind: 1,
+            BigBlind: 2,
+            MinBuyIn: 40,
+            MaxBuyIn: 200,
+            MaxSeats: 6,
+            Privacy: TablePrivacy.Public);
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/tables", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var result = await response.Content.ReadFromJsonAsync<CreateTableResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeFalse();
+        result.Error.Should().Contain("50");
+    }
+
+    [Fact]
+    public async Task CreateTable_WithInvalidSmallBlind_ReturnsBadRequest()
+    {
+        // Arrange
+        var request = new CreateTableRequest(
+            Name: "Test Table",
+            Variant: PokerVariant.TexasHoldem,
+            SmallBlind: 0,
+            BigBlind: 2,
+            MinBuyIn: 40,
+            MaxBuyIn: 200,
+            MaxSeats: 6,
+            Privacy: TablePrivacy.Public);
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/tables", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var result = await response.Content.ReadFromJsonAsync<CreateTableResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeFalse();
+        result.Error.Should().Contain("Small blind");
+    }
+
+    [Fact]
+    public async Task CreateTable_WithBigBlindLessThanSmallBlind_ReturnsBadRequest()
+    {
+        // Arrange
+        var request = new CreateTableRequest(
+            Name: "Test Table",
+            Variant: PokerVariant.TexasHoldem,
+            SmallBlind: 5,
+            BigBlind: 2,
+            MinBuyIn: 40,
+            MaxBuyIn: 200,
+            MaxSeats: 6,
+            Privacy: TablePrivacy.Public);
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/tables", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var result = await response.Content.ReadFromJsonAsync<CreateTableResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeFalse();
+        result.Error.Should().Contain("Big blind");
+    }
+
+    [Fact]
+    public async Task CreateTable_WithInvalidMinBuyIn_ReturnsBadRequest()
+    {
+        // Arrange
+        var request = new CreateTableRequest(
+            Name: "Test Table",
+            Variant: PokerVariant.TexasHoldem,
+            SmallBlind: 1,
+            BigBlind: 2,
+            MinBuyIn: 0,
+            MaxBuyIn: 200,
+            MaxSeats: 6,
+            Privacy: TablePrivacy.Public);
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/tables", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var result = await response.Content.ReadFromJsonAsync<CreateTableResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeFalse();
+        result.Error.Should().Contain("Minimum buy-in");
+    }
+
+    [Fact]
+    public async Task CreateTable_WithMaxBuyInLessThanMinBuyIn_ReturnsBadRequest()
+    {
+        // Arrange
+        var request = new CreateTableRequest(
+            Name: "Test Table",
+            Variant: PokerVariant.TexasHoldem,
+            SmallBlind: 1,
+            BigBlind: 2,
+            MinBuyIn: 200,
+            MaxBuyIn: 100,
+            MaxSeats: 6,
+            Privacy: TablePrivacy.Public);
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/tables", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var result = await response.Content.ReadFromJsonAsync<CreateTableResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeFalse();
+        result.Error.Should().Contain("Maximum buy-in");
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(11)]
+    public async Task CreateTable_WithInvalidSeatCount_ReturnsBadRequest(int seatCount)
+    {
+        // Arrange
+        var request = new CreateTableRequest(
+            Name: "Test Table",
+            Variant: PokerVariant.TexasHoldem,
+            SmallBlind: 1,
+            BigBlind: 2,
+            MinBuyIn: 40,
+            MaxBuyIn: 200,
+            MaxSeats: seatCount,
+            Privacy: TablePrivacy.Public);
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/tables", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var result = await response.Content.ReadFromJsonAsync<CreateTableResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeFalse();
+        result.Error.Should().Contain("seats");
+    }
+
+    [Fact]
+    public async Task CreateTable_PasswordProtectedWithoutPassword_ReturnsBadRequest()
+    {
+        // Arrange
+        var request = new CreateTableRequest(
+            Name: "Test Table",
+            Variant: PokerVariant.TexasHoldem,
+            SmallBlind: 1,
+            BigBlind: 2,
+            MinBuyIn: 40,
+            MaxBuyIn: 200,
+            MaxSeats: 6,
+            Privacy: TablePrivacy.Password,
+            Password: null);
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/tables", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var result = await response.Content.ReadFromJsonAsync<CreateTableResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeFalse();
+        result.Error.Should().Contain("Password is required");
+    }
 }
