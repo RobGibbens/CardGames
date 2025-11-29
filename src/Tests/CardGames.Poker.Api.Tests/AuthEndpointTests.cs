@@ -39,6 +39,7 @@ public class AuthEndpointTests : IClassFixture<WebApplicationFactory<Program>>
         result.Email.Should().Be(email);
         result.DisplayName.Should().Be("Test User");
         result.ExpiresAt.Should().BeAfter(DateTime.UtcNow);
+        result.ChipBalance.Should().Be(1000); // Default initial chip balance
     }
 
     [Fact]

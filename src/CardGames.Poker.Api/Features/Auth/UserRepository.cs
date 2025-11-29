@@ -8,15 +8,20 @@ public record UserRecord(
     string PasswordHash,
     string? DisplayName = null,
     string? AuthProvider = null,
-    DateTime CreatedAt = default
+    DateTime CreatedAt = default,
+    long ChipBalance = 0,
+    string? AvatarUrl = null
 );
 
 public interface IUserRepository
 {
     Task<UserRecord?> GetByEmailAsync(string email);
     Task<UserRecord?> GetByIdAsync(string id);
-    Task<UserRecord> CreateAsync(string email, string passwordHash, string? displayName = null);
+    Task<UserRecord> CreateAsync(string email, string passwordHash, string? displayName = null, long initialChipBalance = 0);
     Task<bool> EmailExistsAsync(string email);
+    Task<UserRecord?> UpdateChipBalanceAsync(string userId, long newBalance);
+    Task<UserRecord?> AdjustChipBalanceAsync(string userId, long adjustment);
+    Task<UserRecord?> UpdateProfileAsync(string userId, string? displayName = null, string? avatarUrl = null);
 }
 
 public class InMemoryUserRepository : IUserRepository
@@ -53,7 +58,7 @@ public class InMemoryUserRepository : IUserRepository
         }
     }
 
-    public Task<UserRecord> CreateAsync(string email, string passwordHash, string? displayName = null)
+    public Task<UserRecord> CreateAsync(string email, string passwordHash, string? displayName = null, long initialChipBalance = 0)
     {
         _lock.EnterWriteLock();
         try
@@ -64,7 +69,8 @@ public class InMemoryUserRepository : IUserRepository
                 PasswordHash: passwordHash,
                 DisplayName: displayName,
                 AuthProvider: "local",
-                CreatedAt: DateTime.UtcNow
+                CreatedAt: DateTime.UtcNow,
+                ChipBalance: initialChipBalance
             );
             _users.Add(user);
             return Task.FromResult(user);
@@ -87,6 +93,87 @@ public class InMemoryUserRepository : IUserRepository
         finally
         {
             _lock.ExitReadLock();
+        }
+    }
+
+    public Task<UserRecord?> UpdateChipBalanceAsync(string userId, long newBalance)
+    {
+        if (newBalance < 0)
+        {
+            throw new ArgumentException("Chip balance cannot be negative", nameof(newBalance));
+        }
+
+        _lock.EnterWriteLock();
+        try
+        {
+            var index = _users.FindIndex(u => u.Id == userId);
+            if (index < 0)
+            {
+                return Task.FromResult<UserRecord?>(null);
+            }
+
+            var updatedUser = _users[index] with { ChipBalance = newBalance };
+            _users[index] = updatedUser;
+            return Task.FromResult<UserRecord?>(updatedUser);
+        }
+        finally
+        {
+            _lock.ExitWriteLock();
+        }
+    }
+
+    public Task<UserRecord?> AdjustChipBalanceAsync(string userId, long adjustment)
+    {
+        _lock.EnterWriteLock();
+        try
+        {
+            var index = _users.FindIndex(u => u.Id == userId);
+            if (index < 0)
+            {
+                return Task.FromResult<UserRecord?>(null);
+            }
+
+            var currentUser = _users[index];
+            var newBalance = currentUser.ChipBalance + adjustment;
+            
+            if (newBalance < 0)
+            {
+                throw new InvalidOperationException("Insufficient chip balance");
+            }
+
+            var updatedUser = currentUser with { ChipBalance = newBalance };
+            _users[index] = updatedUser;
+            return Task.FromResult<UserRecord?>(updatedUser);
+        }
+        finally
+        {
+            _lock.ExitWriteLock();
+        }
+    }
+
+    public Task<UserRecord?> UpdateProfileAsync(string userId, string? displayName = null, string? avatarUrl = null)
+    {
+        _lock.EnterWriteLock();
+        try
+        {
+            var index = _users.FindIndex(u => u.Id == userId);
+            if (index < 0)
+            {
+                return Task.FromResult<UserRecord?>(null);
+            }
+
+            var currentUser = _users[index];
+            var updatedUser = currentUser with
+            {
+                DisplayName = displayName ?? currentUser.DisplayName,
+                AvatarUrl = avatarUrl ?? currentUser.AvatarUrl
+            };
+            _users[index] = updatedUser;
+            return Task.FromResult<UserRecord?>(updatedUser);
+        }
+        finally
+        {
+            _lock.ExitWriteLock();
         }
     }
 

@@ -8,6 +8,7 @@ public class AuthSettings
     public string JwtIssuer { get; set; } = "CardGames.Poker.Api";
     public string JwtAudience { get; set; } = "CardGames.Poker.Web";
     public int JwtExpirationMinutes { get; set; } = 60;
+    public long? InitialChipBalance { get; set; }
     
     public AzureB2CSettings? AzureB2C { get; set; }
 }
