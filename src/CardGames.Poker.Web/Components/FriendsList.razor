@@ -1,5 +1,6 @@
 @using CardGames.Poker.Shared.DTOs
 @using CardGames.Poker.Web.Services
+@using CardGames.Poker.Web.Utilities
 @inject FriendsService FriendsService
 
 <div class="friends-list-container">
@@ -235,13 +236,5 @@
     }
 
     private static string GetInitials(FriendDto friend)
-    {
-        var name = friend.DisplayName ?? friend.Email ?? "?";
-        var parts = name.Split(' ', '@');
-        if (parts.Length >= 2 && !string.IsNullOrEmpty(parts[0]) && !string.IsNullOrEmpty(parts[1]))
-        {
-            return $"{parts[0][0]}{parts[1][0]}".ToUpperInvariant();
-        }
-        return name[..Math.Min(2, name.Length)].ToUpperInvariant();
-    }
+        => DisplayHelpers.GetInitials(friend.DisplayName, friend.Email);
 }

@@ -27,6 +27,7 @@ public interface IFriendsRepository
 
 public class InMemoryFriendsRepository : IFriendsRepository
 {
+    private const int SecureIdByteLength = 16;
     private readonly List<FriendshipRecord> _friendships = [];
     private readonly ReaderWriterLockSlim _lock = new();
 
@@ -214,7 +215,7 @@ public class InMemoryFriendsRepository : IFriendsRepository
 
     private static string GenerateSecureId()
     {
-        var bytes = new byte[16];
+        var bytes = new byte[SecureIdByteLength];
         RandomNumberGenerator.Fill(bytes);
         return Convert.ToHexString(bytes).ToLowerInvariant();
     }
