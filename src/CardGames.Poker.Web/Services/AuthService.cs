@@ -116,6 +116,98 @@ public class AuthService
         }
         return null;
     }
+
+    public async Task<ProfileResponse> UpdateProfileAsync(UpdateProfileRequest request)
+    {
+        try
+        {
+            var token = _authStateManager.GetToken();
+            if (string.IsNullOrEmpty(token))
+            {
+                return new ProfileResponse(false, Error: "Not authenticated");
+            }
+
+            using var httpRequest = new HttpRequestMessage(HttpMethod.Put, "/api/auth/profile");
+            httpRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            httpRequest.Content = JsonContent.Create(request);
+            
+            var response = await _httpClient.SendAsync(httpRequest);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<ProfileResponse>();
+                return result ?? new ProfileResponse(false, Error: "Invalid response from server");
+            }
+
+            var errorResponse = await response.Content.ReadFromJsonAsync<ProfileResponse>();
+            return errorResponse ?? new ProfileResponse(false, Error: response.ReasonPhrase);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update profile");
+            return new ProfileResponse(false, Error: "Failed to update profile. Please try again.");
+        }
+    }
+
+    public async Task<PlayerStatsResponse> GetPlayerStatsAsync()
+    {
+        try
+        {
+            var token = _authStateManager.GetToken();
+            if (string.IsNullOrEmpty(token))
+            {
+                return new PlayerStatsResponse(false, Error: "Not authenticated");
+            }
+
+            using var request = new HttpRequestMessage(HttpMethod.Get, "/api/auth/stats");
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            
+            var response = await _httpClient.SendAsync(request);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<PlayerStatsResponse>();
+                return result ?? new PlayerStatsResponse(false, Error: "Invalid response from server");
+            }
+
+            var errorResponse = await response.Content.ReadFromJsonAsync<PlayerStatsResponse>();
+            return errorResponse ?? new PlayerStatsResponse(false, Error: response.ReasonPhrase);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get player stats");
+            return new PlayerStatsResponse(false, Error: "Failed to get stats. Please try again.");
+        }
+    }
+
+    public async Task<AvatarUploadResponse> UploadAvatarAsync(AvatarUploadRequest request)
+    {
+        try
+        {
+            var token = _authStateManager.GetToken();
+            if (string.IsNullOrEmpty(token))
+            {
+                return new AvatarUploadResponse(false, Error: "Not authenticated");
+            }
+
+            using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "/api/auth/avatar");
+            httpRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            httpRequest.Content = JsonContent.Create(request);
+            
+            var response = await _httpClient.SendAsync(httpRequest);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<AvatarUploadResponse>();
+                return result ?? new AvatarUploadResponse(false, Error: "Invalid response from server");
+            }
+
+            var errorResponse = await response.Content.ReadFromJsonAsync<AvatarUploadResponse>();
+            return errorResponse ?? new AvatarUploadResponse(false, Error: response.ReasonPhrase);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to upload avatar");
+            return new AvatarUploadResponse(false, Error: "Failed to upload avatar. Please try again.");
+        }
+    }
 }
 
 public class AuthStateProvider : AuthenticationStateProvider, IAuthStateManager

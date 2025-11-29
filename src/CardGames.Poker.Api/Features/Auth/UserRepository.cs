@@ -10,7 +10,12 @@ public record UserRecord(
     string? AuthProvider = null,
     DateTime CreatedAt = default,
     long ChipBalance = 0,
-    string? AvatarUrl = null
+    string? AvatarUrl = null,
+    int GamesPlayed = 0,
+    int GamesWon = 0,
+    int GamesLost = 0,
+    long TotalChipsWon = 0,
+    long TotalChipsLost = 0
 );
 
 public interface IUserRepository
@@ -22,6 +27,7 @@ public interface IUserRepository
     Task<UserRecord?> UpdateChipBalanceAsync(string userId, long newBalance);
     Task<UserRecord?> AdjustChipBalanceAsync(string userId, long adjustment);
     Task<UserRecord?> UpdateProfileAsync(string userId, string? displayName = null, string? avatarUrl = null);
+    Task<UserRecord?> RecordGameResultAsync(string userId, bool won, long chipsWon, long chipsLost);
 }
 
 public class InMemoryUserRepository : IUserRepository
@@ -167,6 +173,35 @@ public class InMemoryUserRepository : IUserRepository
             {
                 DisplayName = displayName ?? currentUser.DisplayName,
                 AvatarUrl = avatarUrl ?? currentUser.AvatarUrl
+            };
+            _users[index] = updatedUser;
+            return Task.FromResult<UserRecord?>(updatedUser);
+        }
+        finally
+        {
+            _lock.ExitWriteLock();
+        }
+    }
+
+    public Task<UserRecord?> RecordGameResultAsync(string userId, bool won, long chipsWon, long chipsLost)
+    {
+        _lock.EnterWriteLock();
+        try
+        {
+            var index = _users.FindIndex(u => u.Id == userId);
+            if (index < 0)
+            {
+                return Task.FromResult<UserRecord?>(null);
+            }
+
+            var currentUser = _users[index];
+            var updatedUser = currentUser with
+            {
+                GamesPlayed = currentUser.GamesPlayed + 1,
+                GamesWon = won ? currentUser.GamesWon + 1 : currentUser.GamesWon,
+                GamesLost = won ? currentUser.GamesLost : currentUser.GamesLost + 1,
+                TotalChipsWon = currentUser.TotalChipsWon + chipsWon,
+                TotalChipsLost = currentUser.TotalChipsLost + chipsLost
             };
             _users[index] = updatedUser;
             return Task.FromResult<UserRecord?>(updatedUser);

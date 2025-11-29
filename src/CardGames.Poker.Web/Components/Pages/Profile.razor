@@ -1,0 +1,371 @@
+@page "/profile"
+@using CardGames.Poker.Shared.Contracts.Auth
+@using CardGames.Poker.Web.Services
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Profile - CardGames Poker</PageTitle>
+
+<AuthorizeView>
+    <Authorized>
+        <div class="row justify-content-center">
+            <div class="col-md-8 col-lg-6">
+                <div class="card shadow">
+                    <div class="card-body">
+                        <h3 class="card-title text-center mb-4">My Profile</h3>
+
+                        @if (_isLoading)
+                        {
+                            <div class="text-center">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        }
+                        else if (_errorMessage is not null)
+                        {
+                            <div class="alert alert-danger" role="alert">
+                                @_errorMessage
+                            </div>
+                        }
+                        else if (_user is not null)
+                        {
+                            <div class="text-center mb-4">
+                                <div class="avatar-container position-relative d-inline-block">
+                                    @if (!string.IsNullOrEmpty(_user.AvatarUrl))
+                                    {
+                                        <img src="@_user.AvatarUrl" alt="Profile Avatar" class="rounded-circle avatar-image" />
+                                    }
+                                    else
+                                    {
+                                        <div class="rounded-circle avatar-placeholder d-flex align-items-center justify-content-center">
+                                            <span class="avatar-initials">@GetInitials()</span>
+                                        </div>
+                                    }
+                                    <label class="avatar-upload-btn position-absolute" title="Upload new avatar">
+                                        <InputFile OnChange="HandleAvatarUpload" accept="image/*" class="d-none" />
+                                        <span class="btn btn-sm btn-primary rounded-circle">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                                <path d="M10.5 8.5a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0"/>
+                                                <path d="M2 4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-1.172a2 2 0 0 1-1.414-.586l-.828-.828A2 2 0 0 0 9.172 2H6.828a2 2 0 0 0-1.414.586l-.828.828A2 2 0 0 1 3.172 4zm.5 2a.5.5 0 1 1 0-1 .5.5 0 0 1 0 1m9 2.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0"/>
+                                            </svg>
+                                        </span>
+                                    </label>
+                                </div>
+                                @if (_isUploadingAvatar)
+                                {
+                                    <div class="mt-2">
+                                        <span class="spinner-border spinner-border-sm" role="status"></span>
+                                        <span class="ms-1">Uploading...</span>
+                                    </div>
+                                }
+                                @if (!string.IsNullOrEmpty(_avatarError))
+                                {
+                                    <div class="alert alert-warning mt-2 py-1 px-2">@_avatarError</div>
+                                }
+                            </div>
+
+                            <div class="mb-4">
+                                <h5 class="text-muted mb-3">Account Information</h5>
+                                <div class="row mb-2">
+                                    <div class="col-4 text-muted">Email:</div>
+                                    <div class="col-8">@_user.Email</div>
+                                </div>
+                                <div class="row mb-2">
+                                    <div class="col-4 text-muted">Display Name:</div>
+                                    <div class="col-8">
+                                        @if (_isEditingName)
+                                        {
+                                            <div class="input-group input-group-sm">
+                                                <input type="text" class="form-control" @bind="_newDisplayName" />
+                                                <button class="btn btn-outline-success" @onclick="SaveDisplayName" disabled="@_isSavingName">
+                                                    @if (_isSavingName)
+                                                    {
+                                                        <span class="spinner-border spinner-border-sm"></span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span>✓</span>
+                                                    }
+                                                </button>
+                                                <button class="btn btn-outline-secondary" @onclick="CancelEditName" disabled="@_isSavingName">✕</button>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <span>@(_user.DisplayName ?? "Not set")</span>
+                                            <button class="btn btn-link btn-sm p-0 ms-2" @onclick="StartEditName">Edit</button>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <h5 class="text-muted mb-3">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-coin me-2" viewBox="0 0 16 16">
+                                        <path d="M5.5 9.511c.076.954.83 1.697 2.182 1.785V12h.6v-.709c1.4-.098 2.218-.846 2.218-1.932 0-.987-.626-1.496-1.745-1.76l-.473-.112V5.57c.6.068.982.396 1.074.85h1.052c-.076-.919-.864-1.638-2.126-1.716V4h-.6v.719c-1.195.117-2.01.836-2.01 1.853 0 .9.606 1.472 1.613 1.707l.397.098v2.034c-.615-.093-1.022-.43-1.114-.9zm2.177-2.166c-.59-.137-.91-.416-.91-.836 0-.47.345-.822.915-.925v1.76h-.005zm.692 1.193c.717.166 1.048.435 1.048.91 0 .542-.412.914-1.135.982V8.518z"/>
+                                        <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+                                        <path d="M8 13.5a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11m0 .5A6 6 0 1 0 8 2a6 6 0 0 0 0 12"/>
+                                    </svg>
+                                    Chip Balance
+                                </h5>
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h2 class="mb-0 text-success">@_user.ChipBalance.ToString("N0")</h2>
+                                        <small class="text-muted">chips</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <h5 class="text-muted mb-3">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-bar-chart me-2" viewBox="0 0 16 16">
+                                        <path d="M4 11H2v3h2zm5-4H7v7h2zm5-5h-2v12h2zm-2-1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h2a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1zM6 7a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1zm-5 4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1z"/>
+                                    </svg>
+                                    Game Statistics
+                                </h5>
+                                <div class="row g-3">
+                                    <div class="col-6 col-md-4">
+                                        <div class="card bg-light">
+                                            <div class="card-body text-center py-2">
+                                                <h4 class="mb-0">@_user.GamesPlayed</h4>
+                                                <small class="text-muted">Games Played</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6 col-md-4">
+                                        <div class="card bg-light">
+                                            <div class="card-body text-center py-2">
+                                                <h4 class="mb-0 text-success">@_user.GamesWon</h4>
+                                                <small class="text-muted">Wins</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6 col-md-4">
+                                        <div class="card bg-light">
+                                            <div class="card-body text-center py-2">
+                                                <h4 class="mb-0 text-danger">@_user.GamesLost</h4>
+                                                <small class="text-muted">Losses</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6 col-md-6">
+                                        <div class="card bg-light">
+                                            <div class="card-body text-center py-2">
+                                                <h4 class="mb-0 text-success">+@_user.TotalChipsWon.ToString("N0")</h4>
+                                                <small class="text-muted">Total Chips Won</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6 col-md-6">
+                                        <div class="card bg-light">
+                                            <div class="card-body text-center py-2">
+                                                <h4 class="mb-0 text-danger">-@_user.TotalChipsLost.ToString("N0")</h4>
+                                                <small class="text-muted">Total Chips Lost</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                @if (_user.GamesPlayed > 0)
+                                {
+                                    <div class="mt-3">
+                                        <div class="progress" style="height: 25px;">
+                                            <div class="progress-bar bg-success" role="progressbar" 
+                                                 style="width: @(GetWinPercentage())%"
+                                                 aria-valuenow="@(GetWinPercentage())" aria-valuemin="0" aria-valuemax="100">
+                                                @(GetWinPercentage().ToString("F1"))% Win Rate
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </Authorized>
+    <NotAuthorized>
+        <div class="alert alert-warning">
+            <p>Please <a href="/login">login</a> to view your profile.</p>
+        </div>
+    </NotAuthorized>
+</AuthorizeView>
+
+<style>
+    .avatar-container {
+        width: 120px;
+        height: 120px;
+    }
+
+    .avatar-image {
+        width: 120px;
+        height: 120px;
+        object-fit: cover;
+        border: 3px solid #dee2e6;
+    }
+
+    .avatar-placeholder {
+        width: 120px;
+        height: 120px;
+        background-color: #6c757d;
+        border: 3px solid #dee2e6;
+    }
+
+    .avatar-initials {
+        font-size: 2.5rem;
+        color: white;
+        font-weight: bold;
+    }
+
+    .avatar-upload-btn {
+        bottom: 0;
+        right: 0;
+        cursor: pointer;
+    }
+</style>
+
+@code {
+    private UserInfo? _user;
+    private bool _isLoading = true;
+    private string? _errorMessage;
+    private bool _isUploadingAvatar;
+    private string? _avatarError;
+    private bool _isEditingName;
+    private string? _newDisplayName;
+    private bool _isSavingName;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUserProfile();
+    }
+
+    private async Task LoadUserProfile()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            _user = await AuthService.GetCurrentUserAsync();
+            if (_user is null)
+            {
+                _errorMessage = "Failed to load profile. Please try logging in again.";
+            }
+        }
+        catch (Exception)
+        {
+            _errorMessage = "An error occurred while loading your profile.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private string GetInitials()
+    {
+        if (_user is null) return "?";
+        
+        var name = _user.DisplayName ?? _user.Email;
+        if (string.IsNullOrEmpty(name)) return "?";
+
+        var parts = name.Split(' ', '@');
+        if (parts.Length >= 2)
+        {
+            return $"{parts[0][0]}{parts[1][0]}".ToUpperInvariant();
+        }
+        return name[..Math.Min(2, name.Length)].ToUpperInvariant();
+    }
+
+    private double GetWinPercentage()
+    {
+        if (_user is null || _user.GamesPlayed == 0) return 0;
+        return (double)_user.GamesWon / _user.GamesPlayed * 100;
+    }
+
+    private async Task HandleAvatarUpload(InputFileChangeEventArgs e)
+    {
+        _avatarError = null;
+        _isUploadingAvatar = true;
+
+        try
+        {
+            var file = e.File;
+            
+            if (file.Size > 2 * 1024 * 1024)
+            {
+                _avatarError = "Image must be smaller than 2MB";
+                return;
+            }
+
+            if (!file.ContentType.StartsWith("image/"))
+            {
+                _avatarError = "Please select an image file";
+                return;
+            }
+
+            using var stream = file.OpenReadStream(maxAllowedSize: 2 * 1024 * 1024);
+            using var memoryStream = new MemoryStream();
+            await stream.CopyToAsync(memoryStream);
+            var bytes = memoryStream.ToArray();
+            var base64 = Convert.ToBase64String(bytes);
+            var dataUrl = $"data:{file.ContentType};base64,{base64}";
+
+            var request = new AvatarUploadRequest(dataUrl);
+            var response = await AuthService.UploadAvatarAsync(request);
+
+            if (response.Success)
+            {
+                await LoadUserProfile();
+            }
+            else
+            {
+                _avatarError = response.Error ?? "Failed to upload avatar";
+            }
+        }
+        catch (Exception)
+        {
+            _avatarError = "Failed to upload avatar. Please try again.";
+        }
+        finally
+        {
+            _isUploadingAvatar = false;
+        }
+    }
+
+    private void StartEditName()
+    {
+        _isEditingName = true;
+        _newDisplayName = _user?.DisplayName;
+    }
+
+    private void CancelEditName()
+    {
+        _isEditingName = false;
+        _newDisplayName = null;
+    }
+
+    private async Task SaveDisplayName()
+    {
+        if (_user is null) return;
+
+        _isSavingName = true;
+        try
+        {
+            var request = new UpdateProfileRequest(DisplayName: _newDisplayName);
+            var response = await AuthService.UpdateProfileAsync(request);
+
+            if (response.Success)
+            {
+                _isEditingName = false;
+                await LoadUserProfile();
+            }
+        }
+        finally
+        {
+            _isSavingName = false;
+        }
+    }
+}
