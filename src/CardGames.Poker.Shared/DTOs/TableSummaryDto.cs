@@ -18,4 +18,20 @@ public record TableSummaryDto(
     GameState State,
     TablePrivacy Privacy,
     DateTime CreatedAt,
-    int WaitingListCount = 0);
+    int WaitingListCount = 0,
+    LimitType LimitType = LimitType.NoLimit,
+    int Ante = 0)
+{
+    /// <summary>
+    /// Gets the table configuration.
+    /// </summary>
+    public TableConfigDto Config => new(
+        Variant: Variant,
+        MaxSeats: MaxSeats,
+        SmallBlind: SmallBlind,
+        BigBlind: BigBlind,
+        LimitType: LimitType,
+        MinBuyIn: MinBuyIn,
+        MaxBuyIn: MaxBuyIn,
+        Ante: Ante);
+}

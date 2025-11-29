@@ -206,7 +206,9 @@ public class InMemoryTablesRepository : ITablesRepository
             OccupiedSeats: 0,
             State: GameState.WaitingForPlayers,
             Privacy: request.Privacy,
-            CreatedAt: DateTime.UtcNow);
+            CreatedAt: DateTime.UtcNow,
+            LimitType: request.LimitType,
+            Ante: request.Ante);
 
         _tables.Add(table);
         

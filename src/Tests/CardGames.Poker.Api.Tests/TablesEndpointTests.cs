@@ -1037,4 +1037,177 @@ public class TablesEndpointTests : IClassFixture<WebApplicationFactory<Program>>
         table.Should().NotBeNull();
         table!.WaitingListCount.Should().Be(2);
     }
+
+    [Fact]
+    public async Task CreateTable_WithLimitType_ReturnsTableWithCorrectLimitType()
+    {
+        // Arrange
+        var request = new CreateTableRequest(
+            Name: "Pot Limit Table",
+            Variant: PokerVariant.Omaha,
+            SmallBlind: 2,
+            BigBlind: 4,
+            MinBuyIn: 80,
+            MaxBuyIn: 400,
+            MaxSeats: 6,
+            Privacy: TablePrivacy.Public,
+            LimitType: LimitType.PotLimit);
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/tables", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var result = await response.Content.ReadFromJsonAsync<CreateTableResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeTrue();
+        result.Table.Should().NotBeNull();
+        result.Table!.LimitType.Should().Be(LimitType.PotLimit);
+    }
+
+    [Fact]
+    public async Task CreateTable_WithAnte_ReturnsTableWithCorrectAnte()
+    {
+        // Arrange
+        var request = new CreateTableRequest(
+            Name: "Ante Table",
+            Variant: PokerVariant.SevenCardStud,
+            SmallBlind: 1,
+            BigBlind: 2,
+            MinBuyIn: 40,
+            MaxBuyIn: 200,
+            MaxSeats: 8,
+            Privacy: TablePrivacy.Public,
+            Ante: 1);
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/tables", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var result = await response.Content.ReadFromJsonAsync<CreateTableResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeTrue();
+        result.Table.Should().NotBeNull();
+        result.Table!.Ante.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task CreateTable_WithNegativeAnte_ReturnsBadRequest()
+    {
+        // Arrange
+        var request = new CreateTableRequest(
+            Name: "Invalid Ante Table",
+            Variant: PokerVariant.TexasHoldem,
+            SmallBlind: 1,
+            BigBlind: 2,
+            MinBuyIn: 40,
+            MaxBuyIn: 200,
+            MaxSeats: 6,
+            Privacy: TablePrivacy.Public,
+            Ante: -1);
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/tables", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var result = await response.Content.ReadFromJsonAsync<CreateTableResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeFalse();
+        result.Error.Should().Contain("Ante");
+    }
+
+    [Fact]
+    public async Task CreateTable_SevenCardStudWithTooManySeats_ReturnsBadRequest()
+    {
+        // Arrange
+        var request = new CreateTableRequest(
+            Name: "Invalid Stud Table",
+            Variant: PokerVariant.SevenCardStud,
+            SmallBlind: 1,
+            BigBlind: 2,
+            MinBuyIn: 40,
+            MaxBuyIn: 200,
+            MaxSeats: 9, // Seven Card Stud max is 8
+            Privacy: TablePrivacy.Public);
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/tables", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var result = await response.Content.ReadFromJsonAsync<CreateTableResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeFalse();
+        result.Error.Should().Contain("Seven Card Stud");
+    }
+
+    [Fact]
+    public async Task CreateTable_TableResponseIncludesConfig()
+    {
+        // Arrange
+        var request = new CreateTableRequest(
+            Name: "Config Test Table",
+            Variant: PokerVariant.TexasHoldem,
+            SmallBlind: 5,
+            BigBlind: 10,
+            MinBuyIn: 200,
+            MaxBuyIn: 1000,
+            MaxSeats: 9,
+            Privacy: TablePrivacy.Public,
+            LimitType: LimitType.NoLimit,
+            Ante: 2);
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/tables", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var result = await response.Content.ReadFromJsonAsync<CreateTableResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeTrue();
+        result.Table.Should().NotBeNull();
+        
+        var config = result.Table!.Config;
+        config.Should().NotBeNull();
+        config.Variant.Should().Be(PokerVariant.TexasHoldem);
+        config.MaxSeats.Should().Be(9);
+        config.SmallBlind.Should().Be(5);
+        config.BigBlind.Should().Be(10);
+        config.LimitType.Should().Be(LimitType.NoLimit);
+        config.MinBuyIn.Should().Be(200);
+        config.MaxBuyIn.Should().Be(1000);
+        config.Ante.Should().Be(2);
+    }
+
+    [Theory]
+    [InlineData(LimitType.NoLimit)]
+    [InlineData(LimitType.FixedLimit)]
+    [InlineData(LimitType.PotLimit)]
+    [InlineData(LimitType.SpreadLimit)]
+    public async Task CreateTable_AllLimitTypes_AreAccepted(LimitType limitType)
+    {
+        // Arrange
+        var request = new CreateTableRequest(
+            Name: $"Table with {limitType}",
+            Variant: PokerVariant.TexasHoldem,
+            SmallBlind: 1,
+            BigBlind: 2,
+            MinBuyIn: 40,
+            MaxBuyIn: 200,
+            MaxSeats: 6,
+            Privacy: TablePrivacy.Public,
+            LimitType: limitType);
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/api/tables", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var result = await response.Content.ReadFromJsonAsync<CreateTableResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeTrue();
+        result.Table!.LimitType.Should().Be(limitType);
+    }
 }

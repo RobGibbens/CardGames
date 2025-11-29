@@ -2,6 +2,7 @@ using CardGames.Poker.Api.Hubs;
 using CardGames.Poker.Shared.Contracts.Lobby;
 using CardGames.Poker.Shared.Enums;
 using CardGames.Poker.Shared.Events;
+using CardGames.Poker.Shared.Validation;
 using Microsoft.AspNetCore.SignalR;
 
 namespace CardGames.Poker.Api.Features.Tables;
@@ -76,39 +77,17 @@ public static class TablesModule
             return Results.BadRequest(new CreateTableResponse(false, Error: "Table name must be 50 characters or less."));
         }
 
-        if (request.SmallBlind <= 0)
-        {
-            return Results.BadRequest(new CreateTableResponse(false, Error: "Small blind must be greater than 0."));
-        }
-
-        if (request.BigBlind <= 0)
-        {
-            return Results.BadRequest(new CreateTableResponse(false, Error: "Big blind must be greater than 0."));
-        }
-
-        if (request.BigBlind < request.SmallBlind)
-        {
-            return Results.BadRequest(new CreateTableResponse(false, Error: "Big blind must be greater than or equal to small blind."));
-        }
-
-        if (request.MinBuyIn <= 0)
-        {
-            return Results.BadRequest(new CreateTableResponse(false, Error: "Minimum buy-in must be greater than 0."));
-        }
-
-        if (request.MaxBuyIn < request.MinBuyIn)
-        {
-            return Results.BadRequest(new CreateTableResponse(false, Error: "Maximum buy-in must be greater than or equal to minimum buy-in."));
-        }
-
-        if (request.MaxSeats < 2 || request.MaxSeats > 10)
-        {
-            return Results.BadRequest(new CreateTableResponse(false, Error: "Number of seats must be between 2 and 10."));
-        }
-
         if (request.Privacy == TablePrivacy.Password && string.IsNullOrWhiteSpace(request.Password))
         {
             return Results.BadRequest(new CreateTableResponse(false, Error: "Password is required for password-protected tables."));
+        }
+
+        // Validate table configuration using TableConfigValidator
+        var config = request.ToConfig();
+        var configErrors = TableConfigValidator.Validate(config);
+        if (configErrors.Count > 0)
+        {
+            return Results.BadRequest(new CreateTableResponse(false, Error: configErrors[0]));
         }
 
         var table = await tablesRepository.CreateTableAsync(request);
