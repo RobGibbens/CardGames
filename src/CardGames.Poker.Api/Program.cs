@@ -7,6 +7,7 @@ using CardGames.Poker.Api.Features.Hands;
 using CardGames.Poker.Api.Features.History;
 using CardGames.Poker.Api.Features.Simulations;
 using CardGames.Poker.Api.Features.Tables;
+using CardGames.Poker.Api.Features.Variants;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,6 +28,10 @@ builder.Services.AddSingleton<IHistoryRepository, InMemoryHistoryRepository>();
 
 // Add tables repository
 builder.Services.AddSingleton<ITablesRepository, InMemoryTablesRepository>();
+
+// Add game variant factory and built-in variants
+builder.Services.AddGameVariantFactory();
+builder.Services.AddBuiltInVariants();
 
 // Add SignalR services
 builder.Services.AddSignalR();
@@ -82,6 +87,7 @@ app.MapHandsEndpoints();
 app.MapHistoryEndpoints();
 app.MapSimulationsEndpoints();
 app.MapTablesEndpoints();
+app.MapVariantsEndpoints();
 
 
 // Map SignalR hub

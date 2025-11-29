@@ -1,0 +1,121 @@
+using CardGames.Poker.Games;
+using CardGames.Poker.Variants;
+
+namespace CardGames.Poker.Api.Features.Variants;
+
+/// <summary>
+/// Extension methods for registering game variants with dependency injection.
+/// </summary>
+public static class VariantServiceExtensions
+{
+    /// <summary>
+    /// Adds the game variant factory and provider services to the service collection.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddGameVariantFactory(this IServiceCollection services)
+    {
+        // Register the registry as a singleton
+        services.AddSingleton<GameVariantRegistry>();
+
+        // Register the factory (which also implements IGameVariantProvider)
+        services.AddSingleton<GameVariantFactory>();
+        services.AddSingleton<IGameVariantFactory>(sp => sp.GetRequiredService<GameVariantFactory>());
+        services.AddSingleton<IGameVariantProvider>(sp => sp.GetRequiredService<GameVariantFactory>());
+
+        return services;
+    }
+
+    /// <summary>
+    /// Registers the built-in poker variants (Texas Hold'em, Omaha).
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddBuiltInVariants(this IServiceCollection services)
+    {
+        // Use a hosted service to register variants after all services are configured
+        services.AddHostedService<BuiltInVariantRegistrationService>();
+        return services;
+    }
+
+    /// <summary>
+    /// Registers a custom game variant.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="info">The variant metadata.</param>
+    /// <param name="factory">The factory delegate to create game instances.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddGameVariant(
+        this IServiceCollection services,
+        GameVariantInfo info,
+        GameCreationDelegate factory)
+    {
+        services.AddSingleton(new VariantRegistrationRequest(info, factory));
+        return services;
+    }
+}
+
+/// <summary>
+/// Internal class to hold variant registration requests.
+/// </summary>
+internal record VariantRegistrationRequest(GameVariantInfo Info, GameCreationDelegate Factory);
+
+/// <summary>
+/// Hosted service that registers built-in variants on startup.
+/// </summary>
+internal class BuiltInVariantRegistrationService : IHostedService
+{
+    private readonly GameVariantRegistry _registry;
+    private readonly IEnumerable<VariantRegistrationRequest> _registrationRequests;
+
+    public BuiltInVariantRegistrationService(
+        GameVariantRegistry registry,
+        IEnumerable<VariantRegistrationRequest> registrationRequests)
+    {
+        _registry = registry;
+        _registrationRequests = registrationRequests;
+    }
+
+    public Task StartAsync(CancellationToken cancellationToken)
+    {
+        // Register built-in variants
+        RegisterTexasHoldem();
+        RegisterOmaha();
+
+        // Register any custom variants added via AddGameVariant
+        foreach (var request in _registrationRequests)
+        {
+            _registry.RegisterVariant(request.Info, request.Factory);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+    private void RegisterTexasHoldem()
+    {
+        var info = new GameVariantInfo(
+            Id: "texas-holdem",
+            Name: "Texas Hold'em",
+            Description: "The most popular poker variant. Each player receives 2 hole cards and uses them with 5 community cards to make the best 5-card hand.",
+            MinPlayers: 2,
+            MaxPlayers: 10);
+
+        _registry.RegisterVariant(info, (players, smallBlind, bigBlind) =>
+            new HoldEmGame(players, smallBlind, bigBlind));
+    }
+
+    private void RegisterOmaha()
+    {
+        var info = new GameVariantInfo(
+            Id: "omaha",
+            Name: "Omaha",
+            Description: "Omaha poker. Each player receives 4 hole cards and must use exactly 2 of them with exactly 3 community cards to make the best 5-card hand.",
+            MinPlayers: 2,
+            MaxPlayers: 10);
+
+        _registry.RegisterVariant(info, (players, smallBlind, bigBlind) =>
+            new OmahaGame(players, smallBlind, bigBlind));
+    }
+}
