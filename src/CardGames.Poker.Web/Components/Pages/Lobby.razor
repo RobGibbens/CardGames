@@ -1,11 +1,262 @@
 ﻿@page "/lobby"
+@using CardGames.Poker.Shared.DTOs
+@using CardGames.Poker.Shared.Enums
+@using CardGames.Poker.Web.Services
+@inject LobbyService LobbyService
+@rendermode InteractiveServer
 
 <PageTitle>Lobby - CardGames Poker</PageTitle>
 
-<h1>Game Lobby</h1>
+<div class="container-fluid">
+    <h1 class="mb-4">Game Lobby</h1>
 
-<p>Welcome to the CardGames Poker Lobby!</p>
+    <div class="row">
+        <!-- Filters Panel -->
+        <div class="col-md-3 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Filters</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Game Type</label>
+                        <select class="form-select" @bind="_selectedVariant">
+                            <option value="">All Games</option>
+                            @foreach (var variant in Enum.GetValues<PokerVariant>())
+                            {
+                                <option value="@variant">@GetVariantDisplayName(variant)</option>
+                            }
+                        </select>
+                    </div>
 
-<div class="alert alert-info">
-    <strong>Coming Soon:</strong> Browse and join poker games here.
+                    <div class="mb-3">
+                        <label class="form-label">Stakes (Small Blind)</label>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <input type="number" class="form-control" placeholder="Min" @bind="_minSmallBlind" min="0" />
+                            </div>
+                            <div class="col-6">
+                                <input type="number" class="form-control" placeholder="Max" @bind="_maxSmallBlind" min="0" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Available Seats (Min)</label>
+                        <input type="number" class="form-control" @bind="_minAvailableSeats" min="0" max="10" />
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="hideFullTables" @bind="_hideFullTables" />
+                            <label class="form-check-label" for="hideFullTables">Hide Full Tables</label>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="hideEmptyTables" @bind="_hideEmptyTables" />
+                            <label class="form-check-label" for="hideEmptyTables">Hide Empty Tables</label>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary w-100" @onclick="ApplyFilters">Apply Filters</button>
+                    <button class="btn btn-outline-secondary w-100 mt-2" @onclick="ClearFilters">Clear Filters</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tables List -->
+        <div class="col-md-9">
+            @if (_isLoading)
+            {
+                <div class="d-flex justify-content-center align-items-center" style="min-height: 200px;">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            }
+            else if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <div class="alert alert-danger">
+                    <strong>Error:</strong> @_errorMessage
+                </div>
+            }
+            else if (_tables == null || _tables.Count == 0)
+            {
+                <div class="alert alert-info">
+                    <strong>No tables found.</strong> Try adjusting your filters or check back later.
+                </div>
+            }
+            else
+            {
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="text-muted">@_tables.Count table(s) found</span>
+                    <button class="btn btn-outline-primary btn-sm" @onclick="RefreshTables">
+                        <span class="me-1">↻</span> Refresh
+                    </button>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Table Name</th>
+                                <th>Game Type</th>
+                                <th>Stakes</th>
+                                <th>Buy-In</th>
+                                <th>Seats</th>
+                                <th>Status</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var table in _tables)
+                            {
+                                <tr>
+                                    <td><strong>@table.Name</strong></td>
+                                    <td>@GetVariantDisplayName(table.Variant)</td>
+                                    <td>@table.SmallBlind/@table.BigBlind</td>
+                                    <td>@table.MinBuyIn - @table.MaxBuyIn</td>
+                                    <td>
+                                        <span class="@GetSeatsClass(table)">
+                                            @table.OccupiedSeats/@table.MaxSeats
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge @GetStatusBadgeClass(table.State)">
+                                            @GetStatusDisplayName(table.State)
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-success" 
+                                                disabled="@(table.OccupiedSeats >= table.MaxSeats)">
+                                            Join
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
 </div>
+
+@code {
+    private IReadOnlyList<TableSummaryDto>? _tables;
+    private bool _isLoading = true;
+    private string? _errorMessage;
+
+    // Filter state
+    private string? _selectedVariant;
+    private int? _minSmallBlind;
+    private int? _maxSmallBlind;
+    private int? _minAvailableSeats;
+    private bool _hideFullTables;
+    private bool _hideEmptyTables;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTablesAsync();
+    }
+
+    private async Task LoadTablesAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        PokerVariant? variant = null;
+        if (!string.IsNullOrEmpty(_selectedVariant) && Enum.TryParse<PokerVariant>(_selectedVariant, out var parsedVariant))
+        {
+            variant = parsedVariant;
+        }
+
+        var response = await LobbyService.GetTablesAsync(
+            variant,
+            _minSmallBlind,
+            _maxSmallBlind,
+            _minAvailableSeats,
+            _hideFullTables,
+            _hideEmptyTables);
+
+        if (response.Success)
+        {
+            _tables = response.Tables;
+        }
+        else
+        {
+            _errorMessage = response.Error;
+        }
+
+        _isLoading = false;
+    }
+
+    private async Task ApplyFilters()
+    {
+        await LoadTablesAsync();
+    }
+
+    private async Task ClearFilters()
+    {
+        _selectedVariant = null;
+        _minSmallBlind = null;
+        _maxSmallBlind = null;
+        _minAvailableSeats = null;
+        _hideFullTables = false;
+        _hideEmptyTables = false;
+        await LoadTablesAsync();
+    }
+
+    private async Task RefreshTables()
+    {
+        await LoadTablesAsync();
+    }
+
+    private static string GetVariantDisplayName(PokerVariant variant) => variant switch
+    {
+        PokerVariant.TexasHoldem => "Texas Hold'em",
+        PokerVariant.Omaha => "Omaha",
+        PokerVariant.SevenCardStud => "7-Card Stud",
+        PokerVariant.FiveCardDraw => "5-Card Draw",
+        PokerVariant.Baseball => "Baseball",
+        PokerVariant.KingsAndLows => "Kings & Lows",
+        PokerVariant.FollowTheQueen => "Follow the Queen",
+        _ => variant.ToString()
+    };
+
+    private static string GetStatusDisplayName(GameState state) => state switch
+    {
+        GameState.WaitingForPlayers => "Waiting",
+        GameState.ReadyToStart => "Ready",
+        GameState.CollectingBlinds => "Starting",
+        GameState.Dealing => "Dealing",
+        GameState.BettingRound => "In Progress",
+        GameState.DealingCommunityCards => "In Progress",
+        GameState.Showdown => "Showdown",
+        GameState.HandComplete => "Hand Complete",
+        GameState.Paused => "Paused",
+        GameState.Ended => "Ended",
+        _ => state.ToString()
+    };
+
+    private static string GetStatusBadgeClass(GameState state) => state switch
+    {
+        GameState.WaitingForPlayers => "bg-warning text-dark",
+        GameState.ReadyToStart => "bg-info",
+        GameState.BettingRound or GameState.Dealing or GameState.DealingCommunityCards => "bg-success",
+        GameState.Showdown or GameState.HandComplete => "bg-primary",
+        GameState.Paused => "bg-secondary",
+        GameState.Ended => "bg-dark",
+        _ => "bg-secondary"
+    };
+
+    private static string GetSeatsClass(TableSummaryDto table)
+    {
+        var availableSeats = table.MaxSeats - table.OccupiedSeats;
+        if (availableSeats == 0) return "text-danger fw-bold";
+        if (availableSeats <= 2) return "text-warning fw-bold";
+        return "text-success";
+    }
+}
