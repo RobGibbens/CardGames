@@ -182,6 +182,10 @@
                             </div>
 
                             <div class="mb-4">
+                                <GameHistory @ref="_gameHistoryRef" />
+                            </div>
+
+                            <div class="mb-4">
                                 <PendingInvitations @ref="_pendingInvitationsRef" OnInvitationAccepted="OnInvitationAccepted" />
                             </div>
 
@@ -245,6 +249,7 @@
     private bool _isSavingName;
     private PendingInvitations? _pendingInvitationsRef;
     private FriendsList? _friendsListRef;
+    private GameHistory? _gameHistoryRef;
 
     protected override async Task OnInitializedAsync()
     {

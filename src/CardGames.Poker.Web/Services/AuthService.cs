@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using System.Security.Claims;
 using CardGames.Poker.Shared.Contracts.Auth;
+using CardGames.Poker.Shared.Contracts.History;
 using Microsoft.AspNetCore.Components.Authorization;
 
 namespace CardGames.Poker.Web.Services;
@@ -206,6 +207,36 @@ public class AuthService
         {
             _logger.LogError(ex, "Failed to upload avatar");
             return new AvatarUploadResponse(false, Error: "Failed to upload avatar. Please try again.");
+        }
+    }
+
+    public async Task<GameHistoryResponse> GetGameHistoryAsync(int page = 1, int pageSize = 20)
+    {
+        try
+        {
+            var token = _authStateManager.GetToken();
+            if (string.IsNullOrEmpty(token))
+            {
+                return new GameHistoryResponse(false, Error: "Not authenticated");
+            }
+
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"/api/history?page={page}&pageSize={pageSize}");
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            
+            var response = await _httpClient.SendAsync(request);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<GameHistoryResponse>();
+                return result ?? new GameHistoryResponse(false, Error: "Invalid response from server");
+            }
+
+            var errorResponse = await response.Content.ReadFromJsonAsync<GameHistoryResponse>();
+            return errorResponse ?? new GameHistoryResponse(false, Error: response.ReasonPhrase);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get game history");
+            return new GameHistoryResponse(false, Error: "Failed to get game history. Please try again.");
         }
     }
 }
