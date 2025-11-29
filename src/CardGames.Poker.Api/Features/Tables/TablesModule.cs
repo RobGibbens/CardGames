@@ -145,7 +145,7 @@ public static class TablesModule
 
         if (table == null)
         {
-            return Results.NotFound(new QuickJoinResponse(false, Error: "No suitable table found. Try creating a new table or adjusting your filters."));
+            return Results.Ok(new QuickJoinResponse(false, Error: "No suitable table found. Try creating a new table or adjusting your filters."));
         }
 
         var (success, seatNumber, error) = await tablesRepository.JoinTableAsync(table.Id, null);
