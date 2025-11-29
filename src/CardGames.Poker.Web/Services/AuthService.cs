@@ -5,20 +5,28 @@ using Microsoft.AspNetCore.Components.Authorization;
 
 namespace CardGames.Poker.Web.Services;
 
+public interface IAuthStateManager
+{
+    void SetAuthInfo(string token, string? email, string? displayName);
+    void ClearAuthInfo();
+    string? GetToken();
+    bool IsAuthenticated { get; }
+}
+
 public class AuthService
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<AuthService> _logger;
-    private readonly AuthStateProvider _authStateProvider;
+    private readonly IAuthStateManager _authStateManager;
 
     public AuthService(
         IHttpClientFactory httpClientFactory,
         ILogger<AuthService> logger,
-        AuthenticationStateProvider authStateProvider)
+        IAuthStateManager authStateManager)
     {
         _httpClient = httpClientFactory.CreateClient("PokerApi");
         _logger = logger;
-        _authStateProvider = (AuthStateProvider)authStateProvider;
+        _authStateManager = authStateManager;
     }
 
     public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
@@ -32,7 +40,7 @@ public class AuthService
                 var result = await response.Content.ReadFromJsonAsync<AuthResponse>();
                 if (result?.Success == true && result.Token is not null)
                 {
-                    _authStateProvider.SetAuthInfo(result.Token, result.Email, result.DisplayName);
+                    _authStateManager.SetAuthInfo(result.Token, result.Email, result.DisplayName);
                 }
                 return result ?? new AuthResponse(false, Error: "Invalid response from server");
             }
@@ -58,7 +66,7 @@ public class AuthService
                 var result = await response.Content.ReadFromJsonAsync<AuthResponse>();
                 if (result?.Success == true && result.Token is not null)
                 {
-                    _authStateProvider.SetAuthInfo(result.Token, result.Email, result.DisplayName);
+                    _authStateManager.SetAuthInfo(result.Token, result.Email, result.DisplayName);
                 }
                 return result ?? new AuthResponse(false, Error: "Invalid response from server");
             }
@@ -80,14 +88,14 @@ public class AuthService
 
     public void Logout()
     {
-        _authStateProvider.ClearAuthInfo();
+        _authStateManager.ClearAuthInfo();
     }
 
     public async Task<UserInfo?> GetCurrentUserAsync()
     {
         try
         {
-            var token = _authStateProvider.GetToken();
+            var token = _authStateManager.GetToken();
             if (string.IsNullOrEmpty(token))
             {
                 return null;
@@ -110,7 +118,7 @@ public class AuthService
     }
 }
 
-public class AuthStateProvider : AuthenticationStateProvider
+public class AuthStateProvider : AuthenticationStateProvider, IAuthStateManager
 {
     private string? _token;
     private string? _email;

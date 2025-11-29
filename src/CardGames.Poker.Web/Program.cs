@@ -13,6 +13,7 @@ builder.Services.AddRazorComponents()
 // Register authentication services
 builder.Services.AddScoped<AuthStateProvider>();
 builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<AuthStateProvider>());
+builder.Services.AddScoped<IAuthStateManager>(sp => sp.GetRequiredService<AuthStateProvider>());
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddAuthorizationCore();
 

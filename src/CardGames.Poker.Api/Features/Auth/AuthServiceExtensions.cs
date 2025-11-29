@@ -72,7 +72,7 @@ public static class AuthServiceExtensions
                 ValidIssuer = authSettings.JwtIssuer,
                 ValidAudience = authSettings.JwtAudience,
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretProvider.GetSecret())),
-                ClockSkew = TimeSpan.Zero
+                ClockSkew = TimeSpan.FromMinutes(1)
             };
 
             options.Events = new JwtBearerEvents
