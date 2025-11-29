@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.SignalR;
 using CardGames.Poker.Api.Features.Auth;
 using CardGames.Poker.Api.Features.Friends;
 using CardGames.Poker.Api.Features.Hands;
+using CardGames.Poker.Api.Features.History;
 using CardGames.Poker.Api.Features.Simulations;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -19,6 +20,9 @@ builder.Services.AddAuthServices(builder.Configuration);
 
 // Add friends repository
 builder.Services.AddSingleton<IFriendsRepository, InMemoryFriendsRepository>();
+
+// Add history repository
+builder.Services.AddSingleton<IHistoryRepository, InMemoryHistoryRepository>();
 
 // Add SignalR services
 builder.Services.AddSignalR();
@@ -71,6 +75,7 @@ app.UseAuthorization();
 app.MapAuthEndpoints();
 app.MapFriendsEndpoints();
 app.MapHandsEndpoints();
+app.MapHistoryEndpoints();
 app.MapSimulationsEndpoints();
 
 
