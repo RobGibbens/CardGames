@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Web;
 using CardGames.Poker.Shared.Contracts.Lobby;
 using CardGames.Poker.Shared.Enums;
 
@@ -22,40 +23,41 @@ public class LobbyService
         int? minSmallBlind = null,
         int? maxSmallBlind = null,
         int? minAvailableSeats = null,
-        bool? hideFullTables = null,
-        bool? hideEmptyTables = null)
+        bool hideFullTables = false,
+        bool hideEmptyTables = false)
     {
         try
         {
-            var queryParams = new List<string>();
+            var query = HttpUtility.ParseQueryString(string.Empty);
 
             if (variant.HasValue)
             {
-                queryParams.Add($"variant={variant.Value}");
+                query["variant"] = variant.Value.ToString();
             }
             if (minSmallBlind.HasValue)
             {
-                queryParams.Add($"minSmallBlind={minSmallBlind.Value}");
+                query["minSmallBlind"] = minSmallBlind.Value.ToString();
             }
             if (maxSmallBlind.HasValue)
             {
-                queryParams.Add($"maxSmallBlind={maxSmallBlind.Value}");
+                query["maxSmallBlind"] = maxSmallBlind.Value.ToString();
             }
             if (minAvailableSeats.HasValue)
             {
-                queryParams.Add($"minAvailableSeats={minAvailableSeats.Value}");
+                query["minAvailableSeats"] = minAvailableSeats.Value.ToString();
             }
-            if (hideFullTables.HasValue)
+            if (hideFullTables)
             {
-                queryParams.Add($"hideFullTables={hideFullTables.Value}");
+                query["hideFullTables"] = "true";
             }
-            if (hideEmptyTables.HasValue)
+            if (hideEmptyTables)
             {
-                queryParams.Add($"hideEmptyTables={hideEmptyTables.Value}");
+                query["hideEmptyTables"] = "true";
             }
 
-            var queryString = queryParams.Count > 0 ? "?" + string.Join("&", queryParams) : "";
-            var response = await _httpClient.GetAsync($"/api/tables{queryString}");
+            var queryString = query.ToString();
+            var url = string.IsNullOrEmpty(queryString) ? "/api/tables" : $"/api/tables?{queryString}";
+            var response = await _httpClient.GetAsync(url);
 
             if (response.IsSuccessStatusCode)
             {
