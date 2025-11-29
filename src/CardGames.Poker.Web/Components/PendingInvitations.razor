@@ -1,0 +1,222 @@
+@using CardGames.Poker.Shared.DTOs
+@using CardGames.Poker.Web.Services
+@using CardGames.Poker.Web.Utilities
+@inject FriendsService FriendsService
+
+<div class="pending-invitations-container">
+    <h5 class="text-muted mb-3">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-envelope me-2" viewBox="0 0 16 16">
+            <path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2zm2-1a1 1 0 0 0-1 1v.217l7 4.2 7-4.2V4a1 1 0 0 0-1-1zm13 2.383-4.708 2.825L15 11.105zm-.034 6.876-5.64-3.471L8 9.583l-1.326-.795-5.64 3.47A1 1 0 0 0 2 13h12a1 1 0 0 0 .966-.741M1 11.105l4.708-2.897L1 5.383z"/>
+        </svg>
+        Pending Invitations
+        @if (_receivedCount > 0)
+        {
+            <span class="badge bg-primary ms-2">@_receivedCount</span>
+        }
+    </h5>
+
+    @if (_isLoading)
+    {
+        <div class="text-center py-3">
+            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <div class="alert alert-danger py-2" role="alert">
+            @_errorMessage
+            <button type="button" class="btn btn-link btn-sm p-0 ms-2" @onclick="LoadInvitationsAsync">Retry</button>
+        </div>
+    }
+    else
+    {
+        @if (_receivedInvitations?.Count > 0)
+        {
+            <div class="mb-4">
+                <h6 class="text-muted">Received</h6>
+                <div class="list-group">
+                    @foreach (var invitation in _receivedInvitations)
+                    {
+                        <div class="list-group-item">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div class="d-flex align-items-center">
+                                    @if (!string.IsNullOrEmpty(invitation.SenderAvatarUrl))
+                                    {
+                                        <img src="@invitation.SenderAvatarUrl" alt="Avatar" class="rounded-circle me-2" style="width: 40px; height: 40px; object-fit: cover;" />
+                                    }
+                                    else
+                                    {
+                                        <div class="rounded-circle bg-secondary me-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                            <span class="text-white fw-bold">@GetInitials(invitation.SenderDisplayName, invitation.SenderEmail)</span>
+                                        </div>
+                                    }
+                                    <div>
+                                        <strong>@(invitation.SenderDisplayName ?? invitation.SenderEmail)</strong>
+                                        @if (!string.IsNullOrEmpty(invitation.SenderDisplayName) && !string.IsNullOrEmpty(invitation.SenderEmail))
+                                        {
+                                            <br />
+                                            <small class="text-muted">@invitation.SenderEmail</small>
+                                        }
+                                        <br />
+                                        <small class="text-muted">Sent @invitation.CreatedAt.ToLocalTime().ToString("MMM d, yyyy")</small>
+                                    </div>
+                                </div>
+                                <div>
+                                    <button class="btn btn-success btn-sm me-1" @onclick="() => AcceptInvitationAsync(invitation.InvitationId)" disabled="@_isProcessing">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                            <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425z"/>
+                                        </svg>
+                                    </button>
+                                    <button class="btn btn-outline-danger btn-sm" @onclick="() => RejectInvitationAsync(invitation.InvitationId)" disabled="@_isProcessing">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                            <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        @if (_sentInvitations?.Count > 0)
+        {
+            <div class="mb-4">
+                <h6 class="text-muted">Sent</h6>
+                <div class="list-group">
+                    @foreach (var invitation in _sentInvitations)
+                    {
+                        <div class="list-group-item d-flex align-items-center">
+                            @if (!string.IsNullOrEmpty(invitation.ReceiverAvatarUrl))
+                            {
+                                <img src="@invitation.ReceiverAvatarUrl" alt="Avatar" class="rounded-circle me-2" style="width: 40px; height: 40px; object-fit: cover;" />
+                            }
+                            else
+                            {
+                                <div class="rounded-circle bg-secondary me-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                    <span class="text-white fw-bold">@GetInitials(invitation.ReceiverDisplayName, invitation.ReceiverEmail)</span>
+                                </div>
+                            }
+                            <div>
+                                <strong>@(invitation.ReceiverDisplayName ?? invitation.ReceiverEmail)</strong>
+                                @if (!string.IsNullOrEmpty(invitation.ReceiverDisplayName) && !string.IsNullOrEmpty(invitation.ReceiverEmail))
+                                {
+                                    <br />
+                                    <small class="text-muted">@invitation.ReceiverEmail</small>
+                                }
+                                <br />
+                                <small class="text-muted">Sent @invitation.CreatedAt.ToLocalTime().ToString("MMM d, yyyy") - Pending</small>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        @if ((_receivedInvitations is null || _receivedInvitations.Count == 0) && 
+             (_sentInvitations is null || _sentInvitations.Count == 0))
+        {
+            <div class="card bg-light">
+                <div class="card-body text-center py-3">
+                    <p class="text-muted mb-0">No pending invitations</p>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter]
+    public EventCallback OnInvitationAccepted { get; set; }
+
+    private IReadOnlyList<FriendInvitationDto>? _receivedInvitations;
+    private IReadOnlyList<FriendInvitationDto>? _sentInvitations;
+    private bool _isLoading = true;
+    private bool _isProcessing;
+    private string? _errorMessage;
+    private int _receivedCount => _receivedInvitations?.Count ?? 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadInvitationsAsync();
+    }
+
+    public async Task LoadInvitationsAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            var response = await FriendsService.GetPendingInvitationsAsync();
+            if (response.Success)
+            {
+                _receivedInvitations = response.ReceivedInvitations;
+                _sentInvitations = response.SentInvitations;
+            }
+            else
+            {
+                _errorMessage = response.Error ?? "Failed to load invitations";
+            }
+        }
+        catch (Exception)
+        {
+            _errorMessage = "An error occurred while loading invitations.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task AcceptInvitationAsync(string invitationId)
+    {
+        _isProcessing = true;
+
+        try
+        {
+            var response = await FriendsService.AcceptInvitationAsync(invitationId);
+            if (response.Success)
+            {
+                await LoadInvitationsAsync();
+                await OnInvitationAccepted.InvokeAsync();
+            }
+            else
+            {
+                _errorMessage = response.Error ?? "Failed to accept invitation";
+            }
+        }
+        finally
+        {
+            _isProcessing = false;
+        }
+    }
+
+    private async Task RejectInvitationAsync(string invitationId)
+    {
+        _isProcessing = true;
+
+        try
+        {
+            var response = await FriendsService.RejectInvitationAsync(invitationId);
+            if (response.Success)
+            {
+                await LoadInvitationsAsync();
+            }
+            else
+            {
+                _errorMessage = response.Error ?? "Failed to reject invitation";
+            }
+        }
+        finally
+        {
+            _isProcessing = false;
+        }
+    }
+
+    private static string GetInitials(string? displayName, string? email)
+        => DisplayHelpers.GetInitials(displayName, email);
+}

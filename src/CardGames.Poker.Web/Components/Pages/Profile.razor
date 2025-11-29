@@ -180,6 +180,14 @@
                                     </div>
                                 }
                             </div>
+
+                            <div class="mb-4">
+                                <PendingInvitations @ref="_pendingInvitationsRef" OnInvitationAccepted="OnInvitationAccepted" />
+                            </div>
+
+                            <div class="mb-4">
+                                <FriendsList @ref="_friendsListRef" />
+                            </div>
                         }
                     </div>
                 </div>
@@ -235,10 +243,20 @@
     private bool _isEditingName;
     private string? _newDisplayName;
     private bool _isSavingName;
+    private PendingInvitations? _pendingInvitationsRef;
+    private FriendsList? _friendsListRef;
 
     protected override async Task OnInitializedAsync()
     {
         await LoadUserProfile();
+    }
+
+    private async Task OnInvitationAccepted()
+    {
+        if (_friendsListRef is not null)
+        {
+            await _friendsListRef.LoadFriendsAsync();
+        }
     }
 
     private async Task LoadUserProfile()

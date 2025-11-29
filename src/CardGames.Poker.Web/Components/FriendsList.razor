@@ -1,0 +1,240 @@
+@using CardGames.Poker.Shared.DTOs
+@using CardGames.Poker.Web.Services
+@using CardGames.Poker.Web.Utilities
+@inject FriendsService FriendsService
+
+<div class="friends-list-container">
+    <h5 class="text-muted mb-3">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-people me-2" viewBox="0 0 16 16">
+            <path d="M15 14s1 0 1-1-1-4-5-4-5 3-5 4 1 1 1 1zm-7.978-1L7 12.996c.001-.264.167-1.03.76-1.72C8.312 10.629 9.282 10 11 10c1.717 0 2.687.63 3.24 1.276.593.69.758 1.457.76 1.72l-.008.002-.014.002zM11 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4m3-2a3 3 0 1 1-6 0 3 3 0 0 1 6 0M6.936 9.28a6 6 0 0 0-1.23-.247A7 7 0 0 0 5 9c-4 0-5 3-5 4q0 1 1 1h4.216A2.24 2.24 0 0 1 5 13c0-1.01.377-2.042 1.09-2.904.243-.294.526-.569.846-.816M4.92 10A5.5 5.5 0 0 0 4 13H1c0-.26.164-1.03.76-1.724.545-.636 1.492-1.256 3.16-1.275ZM1.5 5.5a3 3 0 1 1 6 0 3 3 0 0 1-6 0m3-2a2 2 0 1 0 0 4 2 2 0 0 0 0-4"/>
+        </svg>
+        Friends
+    </h5>
+
+    @if (_isLoading)
+    {
+        <div class="text-center py-3">
+            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <div class="alert alert-danger py-2" role="alert">
+            @_errorMessage
+            <button type="button" class="btn btn-link btn-sm p-0 ms-2" @onclick="LoadFriendsAsync">Retry</button>
+        </div>
+    }
+    else if (_friends is null || _friends.Count == 0)
+    {
+        <div class="card bg-light">
+            <div class="card-body text-center py-4">
+                <p class="text-muted mb-3">You haven't added any friends yet.</p>
+                <button class="btn btn-primary btn-sm" @onclick="ShowAddFriendModal">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-person-plus me-1" viewBox="0 0 16 16">
+                        <path d="M6 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6m2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0m4 8c0 1-1 1-1 1H1s-1 0-1-1 1-4 6-4 6 3 6 4m-1-.004c-.001-.246-.154-.986-.832-1.664C9.516 10.68 8.289 10 6 10s-3.516.68-4.168 1.332c-.678.678-.83 1.418-.832 1.664z"/>
+                        <path fill-rule="evenodd" d="M13.5 5a.5.5 0 0 1 .5.5V7h1.5a.5.5 0 0 1 0 1H14v1.5a.5.5 0 0 1-1 0V8h-1.5a.5.5 0 0 1 0-1H13V5.5a.5.5 0 0 1 .5-.5"/>
+                    </svg>
+                    Add Friend
+                </button>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="mb-3">
+            <button class="btn btn-outline-primary btn-sm" @onclick="ShowAddFriendModal">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-person-plus me-1" viewBox="0 0 16 16">
+                    <path d="M6 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6m2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0m4 8c0 1-1 1-1 1H1s-1 0-1-1 1-4 6-4 6 3 6 4m-1-.004c-.001-.246-.154-.986-.832-1.664C9.516 10.68 8.289 10 6 10s-3.516.68-4.168 1.332c-.678.678-.83 1.418-.832 1.664z"/>
+                    <path fill-rule="evenodd" d="M13.5 5a.5.5 0 0 1 .5.5V7h1.5a.5.5 0 0 1 0 1H14v1.5a.5.5 0 0 1-1 0V8h-1.5a.5.5 0 0 1 0-1H13V5.5a.5.5 0 0 1 .5-.5"/>
+                </svg>
+                Add Friend
+            </button>
+        </div>
+
+        <div class="list-group">
+            @foreach (var friend in _friends)
+            {
+                <div class="list-group-item d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center">
+                        @if (!string.IsNullOrEmpty(friend.AvatarUrl))
+                        {
+                            <img src="@friend.AvatarUrl" alt="Avatar" class="rounded-circle me-2" style="width: 40px; height: 40px; object-fit: cover;" />
+                        }
+                        else
+                        {
+                            <div class="rounded-circle bg-secondary me-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                <span class="text-white fw-bold">@GetInitials(friend)</span>
+                            </div>
+                        }
+                        <div>
+                            <strong>@(friend.DisplayName ?? friend.Email)</strong>
+                            @if (!string.IsNullOrEmpty(friend.DisplayName) && !string.IsNullOrEmpty(friend.Email))
+                            {
+                                <br />
+                                <small class="text-muted">@friend.Email</small>
+                            }
+                        </div>
+                    </div>
+                    <button class="btn btn-outline-danger btn-sm" @onclick="() => RemoveFriendAsync(friend.UserId)" disabled="@_isProcessing">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5M11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H1.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 4.885 16h6.23a2 2 0 0 0 1.994-1.84l.853-10.66h.538a.5.5 0 0 0 0-1zm1.958 1-.846 10.58a1 1 0 0 1-.997.92h-6.23a1 1 0 0 1-.997-.92L3.042 3.5zm-7.487 1a.5.5 0 0 1 .528.47l.5 8.5a.5.5 0 0 1-.998.06L5 5.03a.5.5 0 0 1 .47-.53Zm5.058 0a.5.5 0 0 1 .47.53l-.5 8.5a.5.5 0 1 1-.998-.06l.5-8.5a.5.5 0 0 1 .528-.47M8 4.5a.5.5 0 0 1 .5.5v8.5a.5.5 0 0 1-1 0V5a.5.5 0 0 1 .5-.5"/>
+                        </svg>
+                    </button>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@if (_showAddFriendModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Friend</h5>
+                    <button type="button" class="btn-close" @onclick="HideAddFriendModal"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrEmpty(_inviteErrorMessage))
+                    {
+                        <div class="alert alert-danger py-2" role="alert">@_inviteErrorMessage</div>
+                    }
+                    @if (!string.IsNullOrEmpty(_inviteSuccessMessage))
+                    {
+                        <div class="alert alert-success py-2" role="alert">@_inviteSuccessMessage</div>
+                    }
+                    <div class="mb-3">
+                        <label for="friendEmail" class="form-label">Friend's Email</label>
+                        <input type="email" class="form-control" id="friendEmail" @bind="_friendEmail" placeholder="Enter email address" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="HideAddFriendModal">Cancel</button>
+                    <button type="button" class="btn btn-primary" @onclick="SendInvitationAsync" disabled="@_isSendingInvitation">
+                        @if (_isSendingInvitation)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                        }
+                        Send Invitation
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private IReadOnlyList<FriendDto>? _friends;
+    private bool _isLoading = true;
+    private bool _isProcessing;
+    private string? _errorMessage;
+    private bool _showAddFriendModal;
+    private string _friendEmail = string.Empty;
+    private bool _isSendingInvitation;
+    private string? _inviteErrorMessage;
+    private string? _inviteSuccessMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadFriendsAsync();
+    }
+
+    public async Task LoadFriendsAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            var response = await FriendsService.GetFriendsListAsync();
+            if (response.Success)
+            {
+                _friends = response.Friends;
+            }
+            else
+            {
+                _errorMessage = response.Error ?? "Failed to load friends list";
+            }
+        }
+        catch (Exception)
+        {
+            _errorMessage = "An error occurred while loading friends.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void ShowAddFriendModal()
+    {
+        _showAddFriendModal = true;
+        _friendEmail = string.Empty;
+        _inviteErrorMessage = null;
+        _inviteSuccessMessage = null;
+    }
+
+    private void HideAddFriendModal()
+    {
+        _showAddFriendModal = false;
+    }
+
+    private async Task SendInvitationAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_friendEmail))
+        {
+            _inviteErrorMessage = "Please enter an email address";
+            return;
+        }
+
+        _isSendingInvitation = true;
+        _inviteErrorMessage = null;
+        _inviteSuccessMessage = null;
+
+        try
+        {
+            var response = await FriendsService.SendInvitationAsync(_friendEmail);
+            if (response.Success)
+            {
+                _inviteSuccessMessage = "Friend invitation sent!";
+                _friendEmail = string.Empty;
+            }
+            else
+            {
+                _inviteErrorMessage = response.Error ?? "Failed to send invitation";
+            }
+        }
+        finally
+        {
+            _isSendingInvitation = false;
+        }
+    }
+
+    private async Task RemoveFriendAsync(string friendId)
+    {
+        _isProcessing = true;
+
+        try
+        {
+            var response = await FriendsService.RemoveFriendAsync(friendId);
+            if (response.Success)
+            {
+                await LoadFriendsAsync();
+            }
+            else
+            {
+                _errorMessage = response.Error ?? "Failed to remove friend";
+            }
+        }
+        finally
+        {
+            _isProcessing = false;
+        }
+    }
+
+    private static string GetInitials(FriendDto friend)
+        => DisplayHelpers.GetInitials(friend.DisplayName, friend.Email);
+}
