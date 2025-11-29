@@ -44,6 +44,14 @@ public static class AuthModule
             .WithName("SetChipBalance")
             .RequireAuthorization();
 
+        group.MapGet("/stats", GetPlayerStatsAsync)
+            .WithName("GetPlayerStats")
+            .RequireAuthorization();
+
+        group.MapPost("/avatar", UploadAvatarAsync)
+            .WithName("UploadAvatar")
+            .RequireAuthorization();
+
         return app;
     }
 
@@ -159,7 +167,12 @@ public static class AuthModule
             IsAuthenticated: true,
             AuthProvider: userRecord.AuthProvider,
             ChipBalance: userRecord.ChipBalance,
-            AvatarUrl: userRecord.AvatarUrl
+            AvatarUrl: userRecord.AvatarUrl,
+            GamesPlayed: userRecord.GamesPlayed,
+            GamesWon: userRecord.GamesWon,
+            GamesLost: userRecord.GamesLost,
+            TotalChipsWon: userRecord.TotalChipsWon,
+            TotalChipsLost: userRecord.TotalChipsLost
         ));
     }
 
@@ -277,6 +290,65 @@ public static class AuthModule
         };
 
         return Results.Ok(providers);
+    }
+
+    private static async Task<IResult> GetPlayerStatsAsync(
+        HttpContext context,
+        IUserRepository userRepository)
+    {
+        var userId = GetUserId(context);
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Results.Unauthorized();
+        }
+
+        var user = await userRepository.GetByIdAsync(userId);
+        if (user is null)
+        {
+            return Results.NotFound(new PlayerStatsResponse(false, Error: "User not found"));
+        }
+
+        return Results.Ok(new PlayerStatsResponse(
+            Success: true,
+            GamesPlayed: user.GamesPlayed,
+            GamesWon: user.GamesWon,
+            GamesLost: user.GamesLost,
+            TotalChipsWon: user.TotalChipsWon,
+            TotalChipsLost: user.TotalChipsLost
+        ));
+    }
+
+    private static async Task<IResult> UploadAvatarAsync(
+        AvatarUploadRequest request,
+        HttpContext context,
+        IUserRepository userRepository)
+    {
+        var userId = GetUserId(context);
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Results.Unauthorized();
+        }
+
+        if (string.IsNullOrWhiteSpace(request.ImageDataUrl))
+        {
+            return Results.BadRequest(new AvatarUploadResponse(false, Error: "Image data is required"));
+        }
+
+        if (!request.ImageDataUrl.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase))
+        {
+            return Results.BadRequest(new AvatarUploadResponse(false, Error: "Invalid image format. Must be a data URL"));
+        }
+
+        var updatedUser = await userRepository.UpdateProfileAsync(userId, avatarUrl: request.ImageDataUrl);
+        if (updatedUser is null)
+        {
+            return Results.NotFound(new AvatarUploadResponse(false, Error: "User not found"));
+        }
+
+        return Results.Ok(new AvatarUploadResponse(
+            Success: true,
+            AvatarUrl: updatedUser.AvatarUrl
+        ));
     }
 
     private static string? GetUserId(HttpContext context)
