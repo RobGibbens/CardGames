@@ -1,0 +1,117 @@
+@page "/login"
+@using CardGames.Poker.Shared.Contracts.Auth
+@using CardGames.Poker.Web.Services
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Login - CardGames Poker</PageTitle>
+
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-4">
+        <div class="card shadow">
+            <div class="card-body">
+                <h3 class="card-title text-center mb-4">Login</h3>
+
+                @if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    <div class="alert alert-danger" role="alert">
+                        @_errorMessage
+                    </div>
+                }
+
+                <EditForm Model="_loginModel" OnValidSubmit="HandleLogin" FormName="loginForm">
+                    <DataAnnotationsValidator />
+
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email address</label>
+                        <InputText id="email" @bind-Value="_loginModel.Email" 
+                                   class="form-control" placeholder="name@example.com" />
+                        <ValidationMessage For="() => _loginModel.Email" class="text-danger" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Password</label>
+                        <InputText id="password" @bind-Value="_loginModel.Password" 
+                                   type="password" class="form-control" />
+                        <ValidationMessage For="() => _loginModel.Password" class="text-danger" />
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary" disabled="@_isLoading">
+                            @if (_isLoading)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                            }
+                            Login
+                        </button>
+                    </div>
+                </EditForm>
+
+                <hr class="my-4" />
+
+                <div class="text-center">
+                    <p class="text-muted mb-2">Or sign in with</p>
+                    <button class="btn btn-outline-secondary" disabled title="Google login coming soon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-google me-2" viewBox="0 0 16 16">
+                            <path d="M15.545 6.558a9.42 9.42 0 0 1 .139 1.626c0 2.434-.87 4.492-2.384 5.885h.002C11.978 15.292 10.158 16 8 16A8 8 0 1 1 8 0a7.689 7.689 0 0 1 5.352 2.082l-2.284 2.284A4.347 4.347 0 0 0 8 3.166c-2.087 0-3.86 1.408-4.492 3.304a4.792 4.792 0 0 0 0 3.063h.003c.635 1.893 2.405 3.301 4.492 3.301 1.078 0 2.004-.276 2.722-.764h-.003a3.702 3.702 0 0 0 1.599-2.431H8v-3.08h7.545z"/>
+                        </svg>
+                        Google
+                    </button>
+                </div>
+
+                <hr class="my-4" />
+
+                <div class="text-center">
+                    <p class="mb-0">
+                        Don't have an account? <a href="/register">Register here</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private LoginFormModel _loginModel = new();
+    private bool _isLoading;
+    private string? _errorMessage;
+
+    private async Task HandleLogin()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            var request = new LoginRequest(_loginModel.Email!, _loginModel.Password!);
+            var result = await AuthService.LoginAsync(request);
+
+            if (result.Success)
+            {
+                Navigation.NavigateTo("/");
+            }
+            else
+            {
+                _errorMessage = result.Error ?? "Login failed";
+            }
+        }
+        catch (Exception)
+        {
+            _errorMessage = "An unexpected error occurred. Please try again.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private class LoginFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Email is required")]
+        [System.ComponentModel.DataAnnotations.EmailAddress(ErrorMessage = "Invalid email format")]
+        public string? Email { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Password is required")]
+        public string? Password { get; set; }
+    }
+}

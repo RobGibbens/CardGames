@@ -1,6 +1,7 @@
 using CardGames.Poker.Api.Hubs;
 using Microsoft.AspNetCore.SignalR;
 
+using CardGames.Poker.Api.Features.Auth;
 using CardGames.Poker.Api.Features.Hands;
 using CardGames.Poker.Api.Features.Simulations;
 
@@ -11,6 +12,9 @@ builder.AddServiceDefaults();
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+
+// Add authentication services
+builder.Services.AddAuthServices(builder.Configuration);
 
 // Add SignalR services
 builder.Services.AddSignalR();
@@ -55,7 +59,12 @@ app.UseCors();
 
 app.UseHttpsRedirection();
 
+// Add authentication and authorization middleware
+app.UseAuthentication();
+app.UseAuthorization();
+
 // Map feature endpoints
+app.MapAuthEndpoints();
 app.MapHandsEndpoints();
 app.MapSimulationsEndpoints();
 
