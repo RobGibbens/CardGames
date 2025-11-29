@@ -96,4 +96,53 @@ public class LobbyService
             return new CreateTableResponse(false, Error: "Failed to create table. Please try again.");
         }
     }
+
+    public async Task<JoinTableResponse> JoinTableAsync(Guid tableId, string? password = null)
+    {
+        try
+        {
+            var request = new JoinTableRequest(tableId, password);
+            var response = await _httpClient.PostAsJsonAsync($"/api/tables/{tableId}/join", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<JoinTableResponse>();
+                return result ?? new JoinTableResponse(false, Error: "Invalid response from server");
+            }
+
+            var errorResponse = await response.Content.ReadFromJsonAsync<JoinTableResponse>();
+            return errorResponse ?? new JoinTableResponse(false, Error: response.ReasonPhrase);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to join table {TableId}", tableId);
+            return new JoinTableResponse(false, Error: "Failed to join table. Please try again.");
+        }
+    }
+
+    public async Task<QuickJoinResponse> QuickJoinAsync(
+        PokerVariant? variant = null,
+        int? minSmallBlind = null,
+        int? maxSmallBlind = null)
+    {
+        try
+        {
+            var request = new QuickJoinRequest(variant, minSmallBlind, maxSmallBlind);
+            var response = await _httpClient.PostAsJsonAsync("/api/tables/quick-join", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<QuickJoinResponse>();
+                return result ?? new QuickJoinResponse(false, Error: "Invalid response from server");
+            }
+
+            var errorResponse = await response.Content.ReadFromJsonAsync<QuickJoinResponse>();
+            return errorResponse ?? new QuickJoinResponse(false, Error: response.ReasonPhrase);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to quick join");
+            return new QuickJoinResponse(false, Error: "Failed to find a table. Please try again.");
+        }
+    }
 }
