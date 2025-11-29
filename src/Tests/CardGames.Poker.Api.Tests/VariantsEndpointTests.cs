@@ -1,0 +1,132 @@
+using System.Net;
+using System.Net.Http.Json;
+using CardGames.Poker.Api.Features.Variants;
+using FluentAssertions;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Xunit;
+
+namespace CardGames.Poker.Api.Tests;
+
+public class VariantsEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+{
+    private readonly HttpClient _client;
+
+    public VariantsEndpointTests(WebApplicationFactory<Program> factory)
+    {
+        _client = factory.CreateClient();
+    }
+
+    [Fact]
+    public async Task GetVariants_ReturnsRegisteredVariants()
+    {
+        // Act
+        var response = await _client.GetAsync("/api/variants");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<VariantsListResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeTrue();
+        result.Variants.Should().NotBeNull();
+        result.Variants!.Count.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task GetVariants_IncludesTexasHoldem()
+    {
+        // Act
+        var response = await _client.GetAsync("/api/variants");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<VariantsListResponse>();
+        result.Should().NotBeNull();
+        result!.Variants.Should().Contain(v => v.Id == "texas-holdem");
+        
+        var holdem = result.Variants!.First(v => v.Id == "texas-holdem");
+        holdem.Name.Should().Be("Texas Hold'em");
+        holdem.Description.Should().NotBeNullOrEmpty();
+        holdem.MinPlayers.Should().Be(2);
+        holdem.MaxPlayers.Should().Be(10);
+    }
+
+    [Fact]
+    public async Task GetVariants_IncludesOmaha()
+    {
+        // Act
+        var response = await _client.GetAsync("/api/variants");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<VariantsListResponse>();
+        result.Should().NotBeNull();
+        result!.Variants.Should().Contain(v => v.Id == "omaha");
+        
+        var omaha = result.Variants!.First(v => v.Id == "omaha");
+        omaha.Name.Should().Be("Omaha");
+        omaha.Description.Should().NotBeNullOrEmpty();
+        omaha.MinPlayers.Should().Be(2);
+        omaha.MaxPlayers.Should().Be(10);
+    }
+
+    [Fact]
+    public async Task GetVariantById_ExistingVariant_ReturnsVariant()
+    {
+        // Act
+        var response = await _client.GetAsync("/api/variants/texas-holdem");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<VariantResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeTrue();
+        result.Variant.Should().NotBeNull();
+        result.Variant!.Id.Should().Be("texas-holdem");
+        result.Variant.Name.Should().Be("Texas Hold'em");
+    }
+
+    [Fact]
+    public async Task GetVariantById_CaseInsensitive_ReturnsVariant()
+    {
+        // Act
+        var response = await _client.GetAsync("/api/variants/TEXAS-HOLDEM");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<VariantResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeTrue();
+        result.Variant.Should().NotBeNull();
+        result.Variant!.Id.Should().Be("texas-holdem");
+    }
+
+    [Fact]
+    public async Task GetVariantById_NonExistentVariant_ReturnsNotFound()
+    {
+        // Act
+        var response = await _client.GetAsync("/api/variants/non-existent-variant");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var result = await response.Content.ReadFromJsonAsync<VariantResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeFalse();
+        result.Error.Should().Contain("not found");
+    }
+
+    [Fact]
+    public async Task GetVariantById_OmahaVariant_ReturnsVariant()
+    {
+        // Act
+        var response = await _client.GetAsync("/api/variants/omaha");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<VariantResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeTrue();
+        result.Variant.Should().NotBeNull();
+        result.Variant!.Id.Should().Be("omaha");
+        result.Variant.Name.Should().Be("Omaha");
+    }
+}
