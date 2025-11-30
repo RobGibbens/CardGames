@@ -1,0 +1,263 @@
+@using CardGames.Poker.Shared.Enums
+
+<div class="blinds-display">
+    <div class="blinds-header">
+        <span class="blinds-title">Blinds</span>
+        @if (Level > 0)
+        {
+            <span class="blinds-level">Level @Level</span>
+        }
+    </div>
+    
+    <div class="blinds-amounts">
+        <div class="blind-item">
+            <span class="blind-label">SB</span>
+            <span class="blind-value">@SmallBlind.ToString("N0")</span>
+            @if (!string.IsNullOrEmpty(SmallBlindPlayer))
+            {
+                <span class="blind-player">@SmallBlindPlayer</span>
+            }
+        </div>
+        <span class="blind-separator">/</span>
+        <div class="blind-item">
+            <span class="blind-label">BB</span>
+            <span class="blind-value">@BigBlind.ToString("N0")</span>
+            @if (!string.IsNullOrEmpty(BigBlindPlayer))
+            {
+                <span class="blind-player">@BigBlindPlayer</span>
+            }
+        </div>
+        @if (Ante > 0)
+        {
+            <span class="blind-separator">+</span>
+            <div class="blind-item">
+                <span class="blind-label">Ante</span>
+                <span class="blind-value">@Ante.ToString("N0")</span>
+            </div>
+        }
+    </div>
+
+    @if (ShowTimer && TimeUntilNextLevel.HasValue && TimeUntilNextLevel.Value.TotalSeconds > 0)
+    {
+        <div class="blind-timer">
+            <span class="timer-label">Next Level:</span>
+            <span class="timer-value">@FormatTimeSpan(TimeUntilNextLevel.Value)</span>
+        </div>
+    }
+
+    @if (PostedBlinds != null && PostedBlinds.Count > 0)
+    {
+        <div class="posted-blinds">
+            <span class="posted-label">Posted:</span>
+            @foreach (var blind in PostedBlinds)
+            {
+                <span class="posted-item @(blind.IsDead ? "dead" : "")">
+                    @blind.PlayerName: @blind.Amount.ToString("N0")
+                    @if (blind.IsDead)
+                    {
+                        <span class="dead-indicator">(dead)</span>
+                    }
+                </span>
+            }
+        </div>
+    }
+</div>
+
+<style>
+    .blinds-display {
+        background: rgba(0, 0, 0, 0.6);
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        color: white;
+        min-width: 150px;
+    }
+
+    .blinds-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        padding-bottom: 0.5rem;
+    }
+
+    .blinds-title {
+        font-weight: bold;
+        font-size: 0.9rem;
+    }
+
+    .blinds-level {
+        font-size: 0.75rem;
+        background: #d4af37;
+        color: #333;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-weight: bold;
+    }
+
+    .blinds-amounts {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .blind-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .blind-label {
+        font-size: 0.65rem;
+        color: rgba(255, 255, 255, 0.7);
+        text-transform: uppercase;
+    }
+
+    .blind-value {
+        font-size: 1.1rem;
+        font-weight: bold;
+        color: #d4af37;
+    }
+
+    .blind-player {
+        font-size: 0.6rem;
+        color: rgba(255, 255, 255, 0.6);
+        max-width: 60px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .blind-separator {
+        color: rgba(255, 255, 255, 0.5);
+        font-size: 1rem;
+    }
+
+    .blind-timer {
+        margin-top: 0.5rem;
+        padding-top: 0.5rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.2);
+        text-align: center;
+    }
+
+    .timer-label {
+        font-size: 0.7rem;
+        color: rgba(255, 255, 255, 0.6);
+    }
+
+    .timer-value {
+        font-size: 0.9rem;
+        font-weight: bold;
+        color: #ff9800;
+        margin-left: 0.25rem;
+    }
+
+    .posted-blinds {
+        margin-top: 0.5rem;
+        padding-top: 0.5rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.2);
+        font-size: 0.7rem;
+    }
+
+    .posted-label {
+        display: block;
+        color: rgba(255, 255, 255, 0.6);
+        margin-bottom: 0.25rem;
+    }
+
+    .posted-item {
+        display: inline-block;
+        background: rgba(255, 255, 255, 0.1);
+        padding: 2px 6px;
+        border-radius: 4px;
+        margin: 2px;
+        font-size: 0.65rem;
+    }
+
+    .posted-item.dead {
+        background: rgba(255, 87, 34, 0.3);
+        color: #ffab91;
+    }
+
+    .dead-indicator {
+        font-style: italic;
+        opacity: 0.8;
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// The small blind amount.
+    /// </summary>
+    [Parameter]
+    public int SmallBlind { get; set; }
+
+    /// <summary>
+    /// The big blind amount.
+    /// </summary>
+    [Parameter]
+    public int BigBlind { get; set; }
+
+    /// <summary>
+    /// The ante amount (0 if no ante).
+    /// </summary>
+    [Parameter]
+    public int Ante { get; set; }
+
+    /// <summary>
+    /// The current blind level.
+    /// </summary>
+    [Parameter]
+    public int Level { get; set; }
+
+    /// <summary>
+    /// Time until the next blind level (for tournaments).
+    /// </summary>
+    [Parameter]
+    public TimeSpan? TimeUntilNextLevel { get; set; }
+
+    /// <summary>
+    /// Whether to show the timer.
+    /// </summary>
+    [Parameter]
+    public bool ShowTimer { get; set; } = true;
+
+    /// <summary>
+    /// The name of the player who posted the small blind.
+    /// </summary>
+    [Parameter]
+    public string? SmallBlindPlayer { get; set; }
+
+    /// <summary>
+    /// The name of the player who posted the big blind.
+    /// </summary>
+    [Parameter]
+    public string? BigBlindPlayer { get; set; }
+
+    /// <summary>
+    /// List of posted blinds with amounts and dead blind status.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<PostedBlindInfo>? PostedBlinds { get; set; }
+
+    private string FormatTimeSpan(TimeSpan time)
+    {
+        if (time.TotalHours >= 1)
+        {
+            return $"{(int)time.TotalHours}:{time.Minutes:D2}:{time.Seconds:D2}";
+        }
+        return $"{time.Minutes}:{time.Seconds:D2}";
+    }
+
+    /// <summary>
+    /// Information about a posted blind.
+    /// </summary>
+    public record PostedBlindInfo(
+        string PlayerName,
+        int Amount,
+        BlindTypeDto BlindType,
+        bool IsDead);
+}

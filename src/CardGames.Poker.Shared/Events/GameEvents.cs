@@ -401,3 +401,96 @@ public record PlayerBoughtInEvent(
     int BuyInAmount) : GameEvent(TableId, Timestamp);
 
 #endregion
+
+#region Dealer Button and Blinds Events
+
+/// <summary>
+/// Event raised when the dealer button position changes.
+/// </summary>
+public record DealerButtonMovedEvent(
+    Guid GameId,
+    DateTime Timestamp,
+    int PreviousPosition,
+    int NewPosition,
+    string? PreviousDealerName,
+    string? NewDealerName,
+    bool IsDeadButton,
+    int HandNumber) : GameEvent(GameId, Timestamp);
+
+/// <summary>
+/// Event raised when a single blind is posted.
+/// </summary>
+public record BlindPostedEvent(
+    Guid GameId,
+    DateTime Timestamp,
+    string PlayerName,
+    int SeatNumber,
+    BlindTypeDto BlindType,
+    int Amount,
+    bool IsDead) : GameEvent(GameId, Timestamp);
+
+/// <summary>
+/// Event raised when an ante is posted by a player.
+/// </summary>
+public record AntePostedEvent(
+    Guid GameId,
+    DateTime Timestamp,
+    string PlayerName,
+    int SeatNumber,
+    int Amount) : GameEvent(GameId, Timestamp);
+
+/// <summary>
+/// Event raised when all antes have been collected.
+/// </summary>
+public record AntesCollectedEvent(
+    Guid GameId,
+    DateTime Timestamp,
+    IReadOnlyList<AntePostedEvent> Antes,
+    int TotalCollected) : GameEvent(GameId, Timestamp);
+
+/// <summary>
+/// Event raised when a player has missed blinds recorded.
+/// </summary>
+public record MissedBlindRecordedEvent(
+    Guid GameId,
+    DateTime Timestamp,
+    string PlayerName,
+    bool MissedSmallBlind,
+    bool MissedBigBlind,
+    int TotalMissedAmount,
+    int HandNumber) : GameEvent(GameId, Timestamp);
+
+/// <summary>
+/// Event raised when a player posts missed blinds upon returning.
+/// </summary>
+public record MissedBlindsPostedEvent(
+    Guid GameId,
+    DateTime Timestamp,
+    string PlayerName,
+    int SeatNumber,
+    int DeadBlindAmount,
+    int LiveBlindAmount,
+    int TotalAmount) : GameEvent(GameId, Timestamp);
+
+/// <summary>
+/// Event raised when a dead button situation is detected.
+/// </summary>
+public record DeadButtonEvent(
+    Guid GameId,
+    DateTime Timestamp,
+    int ButtonPosition,
+    string Reason) : GameEvent(GameId, Timestamp);
+
+/// <summary>
+/// Event containing the current blind level information.
+/// </summary>
+public record BlindLevelInfoEvent(
+    Guid GameId,
+    DateTime Timestamp,
+    int SmallBlind,
+    int BigBlind,
+    int Ante,
+    int Level,
+    TimeSpan? TimeUntilNextLevel) : GameEvent(GameId, Timestamp);
+
+#endregion
