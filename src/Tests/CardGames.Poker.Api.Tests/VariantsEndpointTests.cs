@@ -199,4 +199,39 @@ public class VariantsEndpointTests : IClassFixture<WebApplicationFactory<Program
         result.Variant!.Id.Should().Be("five-card-draw");
         result.Variant.Name.Should().Be("Five Card Draw");
     }
+
+    [Fact]
+    public async Task GetVariants_IncludesFollowTheQueen()
+    {
+        // Act
+        var response = await _client.GetAsync("/api/variants");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<VariantsListResponse>();
+        result.Should().NotBeNull();
+        result!.Variants.Should().Contain(v => v.Id == "follow-the-queen");
+        
+        var followTheQueen = result.Variants!.First(v => v.Id == "follow-the-queen");
+        followTheQueen.Name.Should().Be("Follow the Queen");
+        followTheQueen.Description.Should().NotBeNullOrEmpty();
+        followTheQueen.MinPlayers.Should().Be(2);
+        followTheQueen.MaxPlayers.Should().Be(7);
+    }
+
+    [Fact]
+    public async Task GetVariantById_FollowTheQueenVariant_ReturnsVariant()
+    {
+        // Act
+        var response = await _client.GetAsync("/api/variants/follow-the-queen");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<VariantResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeTrue();
+        result.Variant.Should().NotBeNull();
+        result.Variant!.Id.Should().Be("follow-the-queen");
+        result.Variant.Name.Should().Be("Follow the Queen");
+    }
 }

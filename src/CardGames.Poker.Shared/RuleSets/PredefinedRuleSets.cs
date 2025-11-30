@@ -30,6 +30,11 @@ public static class PredefinedRuleSets
     public static RuleSetDto FiveCardDraw { get; } = CreateFiveCardDraw();
 
     /// <summary>
+    /// Gets the Follow the Queen ruleset.
+    /// </summary>
+    public static RuleSetDto FollowTheQueen { get; } = CreateFollowTheQueen();
+
+    /// <summary>
     /// Gets all predefined rulesets.
     /// </summary>
     public static IReadOnlyDictionary<PokerVariant, RuleSetDto> All { get; } = new Dictionary<PokerVariant, RuleSetDto>
@@ -37,7 +42,8 @@ public static class PredefinedRuleSets
         { PokerVariant.TexasHoldem, TexasHoldem },
         { PokerVariant.Omaha, Omaha },
         { PokerVariant.SevenCardStud, SevenCardStud },
-        { PokerVariant.FiveCardDraw, FiveCardDraw }
+        { PokerVariant.FiveCardDraw, FiveCardDraw },
+        { PokerVariant.FollowTheQueen, FollowTheQueen }
     };
 
     /// <summary>
@@ -377,6 +383,116 @@ public static class PredefinedRuleSets
                 )
             ],
             Description: "A classic draw poker variant. Each player receives 5 cards, then may discard up to 3 cards and draw new ones. Uses antes instead of blinds."
+        );
+
+        return ruleSet;
+    }
+
+    private static RuleSetDto CreateFollowTheQueen()
+    {
+        var ruleSet = new RuleSetDto(
+            SchemaVersion: RuleSetValidator.CurrentSchemaVersion,
+            Id: "follow-the-queen-limit",
+            Name: "Follow the Queen (Limit)",
+            Variant: PokerVariant.FollowTheQueen,
+            DeckComposition: new DeckCompositionDto(
+                DeckType: DeckType.Full52,
+                NumberOfDecks: 1
+            ),
+            CardVisibility: new CardVisibilityDto(
+                HoleCardsPrivate: true,
+                CommunityCardsPublic: false,
+                FaceDownIndices: [0, 1, 6],
+                FaceUpIndices: [2, 3, 4, 5]
+            ),
+            BettingRounds:
+            [
+                new BettingRoundDto(
+                    Name: "Third Street",
+                    Order: 0,
+                    CommunityCardsDealt: 0,
+                    HoleCardsDealt: 3,
+                    DealtFaceUp: false,
+                    MinBetMultiplier: 0.5m
+                ),
+                new BettingRoundDto(
+                    Name: "Fourth Street",
+                    Order: 1,
+                    CommunityCardsDealt: 0,
+                    HoleCardsDealt: 1,
+                    DealtFaceUp: true,
+                    MinBetMultiplier: 0.5m
+                ),
+                new BettingRoundDto(
+                    Name: "Fifth Street",
+                    Order: 2,
+                    CommunityCardsDealt: 0,
+                    HoleCardsDealt: 1,
+                    DealtFaceUp: true,
+                    MinBetMultiplier: 1.0m
+                ),
+                new BettingRoundDto(
+                    Name: "Sixth Street",
+                    Order: 3,
+                    CommunityCardsDealt: 0,
+                    HoleCardsDealt: 1,
+                    DealtFaceUp: true,
+                    MinBetMultiplier: 1.0m
+                ),
+                new BettingRoundDto(
+                    Name: "Seventh Street",
+                    Order: 4,
+                    CommunityCardsDealt: 0,
+                    HoleCardsDealt: 1,
+                    DealtFaceUp: false,
+                    MinBetMultiplier: 1.0m
+                )
+            ],
+            HoleCardRules: new HoleCardRulesDto(
+                Count: 7,
+                MinUsedInHand: 5,
+                MaxUsedInHand: 5,
+                AllowDraw: false,
+                MaxDrawCount: 0
+            ),
+            CommunityCardRules: null,
+            AnteBlindRules: new AnteBlindRulesDto(
+                HasAnte: true,
+                AntePercentage: 10,
+                HasSmallBlind: false,
+                HasBigBlind: false,
+                AllowStraddle: false,
+                ButtonAnte: false
+            ),
+            LimitType: LimitType.FixedLimit,
+            WildcardRules: new WildcardRulesDto(
+                Enabled: true,
+                WildcardCards: ["Qh", "Qd", "Qc", "Qs"],
+                Dynamic: true,
+                DynamicRule: "Queens are always wild. The card following the last dealt face-up Queen (and all cards of that rank) are also wild."
+            ),
+            ShowdownRules: new ShowdownRulesDto(
+                ShowOrder: ShowdownOrder.LastAggressor,
+                AllowMuck: true,
+                ShowAllOnAllIn: true
+            ),
+            HiLoRules: null,
+            SpecialRules:
+            [
+                new SpecialRuleDto(
+                    Id: "bring-in",
+                    Name: "Bring-In",
+                    Description: "The player with the lowest upcard on third street must post a forced bring-in bet.",
+                    Enabled: true
+                ),
+                new SpecialRuleDto(
+                    Id: "follow-the-queen",
+                    Name: "Follow the Queen Wild",
+                    Description: "When a Queen is dealt face up, the next card's rank becomes wild (in addition to Queens). If another Queen is dealt, the new following card replaces the previous wild rank.",
+                    Enabled: true
+                )
+            ],
+            Description: "A seven card stud variant where Queens are always wild, and the card following the last dealt face-up Queen (and all cards of that rank) are also wild. Uses antes and bring-in instead of blinds."
         );
 
         return ruleSet;

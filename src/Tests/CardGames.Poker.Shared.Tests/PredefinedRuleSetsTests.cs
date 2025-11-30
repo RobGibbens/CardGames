@@ -105,7 +105,10 @@ public class PredefinedRuleSetsTests
         // Assert
         PredefinedRuleSets.All.Should().ContainKey(PokerVariant.TexasHoldem);
         PredefinedRuleSets.All.Should().ContainKey(PokerVariant.Omaha);
-        PredefinedRuleSets.All.Should().HaveCount(2);
+        PredefinedRuleSets.All.Should().ContainKey(PokerVariant.SevenCardStud);
+        PredefinedRuleSets.All.Should().ContainKey(PokerVariant.FiveCardDraw);
+        PredefinedRuleSets.All.Should().ContainKey(PokerVariant.FollowTheQueen);
+        PredefinedRuleSets.All.Should().HaveCount(5);
     }
 
     [Fact]
@@ -134,7 +137,7 @@ public class PredefinedRuleSetsTests
     public void GetByVariant_UnknownVariant_ReturnsNull()
     {
         // Act
-        var ruleSet = PredefinedRuleSets.GetByVariant(PokerVariant.SevenCardStud);
+        var ruleSet = PredefinedRuleSets.GetByVariant(PokerVariant.Baseball);
 
         // Assert
         ruleSet.Should().BeNull();
@@ -143,6 +146,9 @@ public class PredefinedRuleSetsTests
     [Theory]
     [InlineData(PokerVariant.TexasHoldem)]
     [InlineData(PokerVariant.Omaha)]
+    [InlineData(PokerVariant.SevenCardStud)]
+    [InlineData(PokerVariant.FiveCardDraw)]
+    [InlineData(PokerVariant.FollowTheQueen)]
     public void AllPredefinedRuleSets_HaveValidSchemaVersion(PokerVariant variant)
     {
         // Arrange
@@ -156,6 +162,9 @@ public class PredefinedRuleSetsTests
     [Theory]
     [InlineData(PokerVariant.TexasHoldem)]
     [InlineData(PokerVariant.Omaha)]
+    [InlineData(PokerVariant.SevenCardStud)]
+    [InlineData(PokerVariant.FiveCardDraw)]
+    [InlineData(PokerVariant.FollowTheQueen)]
     public void AllPredefinedRuleSets_UseStandardDeck(PokerVariant variant)
     {
         // Arrange

@@ -83,6 +83,7 @@ internal class BuiltInVariantRegistrationService : IHostedService
         RegisterOmaha();
         RegisterSevenCardStud();
         RegisterFiveCardDraw();
+        RegisterFollowTheQueen();
 
         // Register any custom variants added via AddGameVariant
         foreach (var request in _registrationRequests)
@@ -157,5 +158,26 @@ internal class BuiltInVariantRegistrationService : IHostedService
                 players,
                 ante: smallBlind,
                 minBet: bigBlind));
+    }
+
+    private void RegisterFollowTheQueen()
+    {
+        var info = new GameVariantInfo(
+            Id: "follow-the-queen",
+            Name: "Follow the Queen",
+            Description: "A seven card stud variant where Queens are always wild, and the card following the last dealt face-up Queen (and all cards of that rank) are also wild.",
+            MinPlayers: 2,
+            MaxPlayers: 7);
+
+        // Map smallBlind to ante and bigBlind to smallBet
+        // bringIn is set to half of smallBet, bigBet is double smallBet
+        _registry.RegisterVariant(info, (players, smallBlind, bigBlind) =>
+            new FollowTheQueenGame(
+                players,
+                ante: smallBlind,
+                bringIn: bigBlind / 2,
+                smallBet: bigBlind,
+                bigBet: bigBlind * 2,
+                useBringIn: true));
     }
 }
