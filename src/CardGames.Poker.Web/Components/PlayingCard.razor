@@ -1,0 +1,257 @@
+@using CardGames.Poker.Shared.DTOs
+
+<div class="card @GetCardClasses()" @onclick="OnClick">
+    @if (IsFaceDown)
+    {
+        <div class="card-back">
+            <div class="card-back-pattern"></div>
+        </div>
+    }
+    else if (Card != null)
+    {
+        <div class="card-front @GetSuitClass()">
+            <div class="card-rank">@Card.Rank</div>
+            <div class="card-suit">@GetSuitSymbol()</div>
+            <div class="card-rank bottom">@Card.Rank</div>
+        </div>
+    }
+    else
+    {
+        <div class="card-empty"></div>
+    }
+</div>
+
+<style>
+    .card {
+        width: var(--card-width, 50px);
+        height: var(--card-height, 70px);
+        border-radius: 6px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        position: relative;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+        cursor: default;
+        user-select: none;
+    }
+
+    .card.clickable {
+        cursor: pointer;
+    }
+
+    .card.clickable:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+    }
+
+    .card.selected {
+        transform: translateY(-8px);
+        box-shadow: 0 6px 12px rgba(212, 175, 55, 0.6);
+        border: 2px solid #d4af37;
+    }
+
+    .card.small {
+        --card-width: 35px;
+        --card-height: 49px;
+    }
+
+    .card.large {
+        --card-width: 70px;
+        --card-height: 98px;
+    }
+
+    .card.dealt {
+        animation: dealCard 0.3s ease-out;
+    }
+
+    @@keyframes dealCard {
+        from {
+            opacity: 0;
+            transform: scale(0.5) translateY(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+        }
+    }
+
+    .card-back {
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #2c3e50 0%, #1a252f 100%);
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid #34495e;
+    }
+
+    .card-back-pattern {
+        width: 80%;
+        height: 80%;
+        background: repeating-linear-gradient(
+            45deg,
+            transparent,
+            transparent 5px,
+            rgba(52, 73, 94, 0.5) 5px,
+            rgba(52, 73, 94, 0.5) 10px
+        );
+        border-radius: 4px;
+        border: 1px solid #34495e;
+    }
+
+    .card-front {
+        width: 100%;
+        height: 100%;
+        background: white;
+        border-radius: 6px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 4px;
+        box-sizing: border-box;
+        border: 1px solid #ddd;
+    }
+
+    .card-front.red {
+        color: #c41e3a;
+    }
+
+    .card-front.black {
+        color: #1a1a1a;
+    }
+
+    .card-rank {
+        font-size: calc(var(--card-width, 50px) * 0.32);
+        font-weight: bold;
+        line-height: 1;
+    }
+
+    .card-rank.bottom {
+        align-self: flex-end;
+        transform: rotate(180deg);
+    }
+
+    .card-suit {
+        font-size: calc(var(--card-width, 50px) * 0.4);
+        align-self: center;
+        line-height: 1;
+    }
+
+    .card-empty {
+        width: 100%;
+        height: 100%;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 6px;
+        border: 2px dashed rgba(255, 255, 255, 0.3);
+    }
+
+    .card.highlighting {
+        animation: cardHighlight 0.5s ease-in-out infinite alternate;
+    }
+
+    @@keyframes cardHighlight {
+        from {
+            box-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+        }
+        to {
+            box-shadow: 0 0 20px rgba(212, 175, 55, 0.8);
+        }
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// The card data to display. Null if unknown/hidden.
+    /// </summary>
+    [Parameter]
+    public CardDto? Card { get; set; }
+
+    /// <summary>
+    /// Whether the card is face down (back showing).
+    /// </summary>
+    [Parameter]
+    public bool IsFaceDown { get; set; }
+
+    /// <summary>
+    /// Whether the card can be clicked/selected.
+    /// </summary>
+    [Parameter]
+    public bool IsClickable { get; set; }
+
+    /// <summary>
+    /// Whether the card is currently selected.
+    /// </summary>
+    [Parameter]
+    public bool IsSelected { get; set; }
+
+    /// <summary>
+    /// Whether the card should show deal animation.
+    /// </summary>
+    [Parameter]
+    public bool ShowDealAnimation { get; set; }
+
+    /// <summary>
+    /// Whether the card should be highlighted.
+    /// </summary>
+    [Parameter]
+    public bool IsHighlighted { get; set; }
+
+    /// <summary>
+    /// Size of the card: "small", "medium" (default), or "large".
+    /// </summary>
+    [Parameter]
+    public string Size { get; set; } = "medium";
+
+    /// <summary>
+    /// Event callback when the card is clicked.
+    /// </summary>
+    [Parameter]
+    public EventCallback<CardDto?> OnCardClick { get; set; }
+
+    private async Task OnClick()
+    {
+        if (IsClickable)
+        {
+            await OnCardClick.InvokeAsync(Card);
+        }
+    }
+
+    private string GetCardClasses()
+    {
+        var classes = new List<string>();
+        
+        if (Size == "small") classes.Add("small");
+        if (Size == "large") classes.Add("large");
+        if (IsClickable) classes.Add("clickable");
+        if (IsSelected) classes.Add("selected");
+        if (ShowDealAnimation) classes.Add("dealt");
+        if (IsHighlighted) classes.Add("highlighting");
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetSuitClass()
+    {
+        if (Card == null) return "";
+        
+        return Card.Suit.ToLowerInvariant() switch
+        {
+            "hearts" or "diamonds" => "red",
+            "clubs" or "spades" => "black",
+            _ => ""
+        };
+    }
+
+    private string GetSuitSymbol()
+    {
+        if (Card == null) return "";
+        
+        return Card.Suit.ToLowerInvariant() switch
+        {
+            "hearts" => "♥",
+            "diamonds" => "♦",
+            "clubs" => "♣",
+            "spades" => "♠",
+            _ => Card.Suit[..1].ToUpperInvariant()
+        };
+    }
+}
