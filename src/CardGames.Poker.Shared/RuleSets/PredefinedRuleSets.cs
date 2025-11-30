@@ -25,13 +25,19 @@ public static class PredefinedRuleSets
     public static RuleSetDto SevenCardStud { get; } = CreateSevenCardStud();
 
     /// <summary>
+    /// Gets the Five Card Draw ruleset.
+    /// </summary>
+    public static RuleSetDto FiveCardDraw { get; } = CreateFiveCardDraw();
+
+    /// <summary>
     /// Gets all predefined rulesets.
     /// </summary>
     public static IReadOnlyDictionary<PokerVariant, RuleSetDto> All { get; } = new Dictionary<PokerVariant, RuleSetDto>
     {
         { PokerVariant.TexasHoldem, TexasHoldem },
         { PokerVariant.Omaha, Omaha },
-        { PokerVariant.SevenCardStud, SevenCardStud }
+        { PokerVariant.SevenCardStud, SevenCardStud },
+        { PokerVariant.FiveCardDraw, FiveCardDraw }
     };
 
     /// <summary>
@@ -300,6 +306,77 @@ public static class PredefinedRuleSets
                 )
             ],
             Description: "A classic stud poker variant. Each player receives 7 cards (3 face-down, 4 face-up) and makes the best 5-card hand. Uses antes and bring-in instead of blinds."
+        );
+
+        return ruleSet;
+    }
+
+    private static RuleSetDto CreateFiveCardDraw()
+    {
+        var ruleSet = new RuleSetDto(
+            SchemaVersion: RuleSetValidator.CurrentSchemaVersion,
+            Id: "five-card-draw-limit",
+            Name: "Five Card Draw (Limit)",
+            Variant: PokerVariant.FiveCardDraw,
+            DeckComposition: new DeckCompositionDto(
+                DeckType: DeckType.Full52,
+                NumberOfDecks: 1
+            ),
+            CardVisibility: new CardVisibilityDto(
+                HoleCardsPrivate: true,
+                CommunityCardsPublic: false
+            ),
+            BettingRounds:
+            [
+                new BettingRoundDto(
+                    Name: "Pre-Draw",
+                    Order: 0,
+                    CommunityCardsDealt: 0,
+                    HoleCardsDealt: 5,
+                    MinBetMultiplier: 1.0m
+                ),
+                new BettingRoundDto(
+                    Name: "Post-Draw",
+                    Order: 1,
+                    CommunityCardsDealt: 0,
+                    HoleCardsDealt: 0,
+                    MinBetMultiplier: 1.0m
+                )
+            ],
+            HoleCardRules: new HoleCardRulesDto(
+                Count: 5,
+                MinUsedInHand: 5,
+                MaxUsedInHand: 5,
+                AllowDraw: true,
+                MaxDrawCount: 3
+            ),
+            CommunityCardRules: null,
+            AnteBlindRules: new AnteBlindRulesDto(
+                HasAnte: true,
+                AntePercentage: 100,
+                HasSmallBlind: false,
+                HasBigBlind: false,
+                AllowStraddle: false,
+                ButtonAnte: false
+            ),
+            LimitType: LimitType.FixedLimit,
+            WildcardRules: null,
+            ShowdownRules: new ShowdownRulesDto(
+                ShowOrder: ShowdownOrder.LastAggressor,
+                AllowMuck: true,
+                ShowAllOnAllIn: true
+            ),
+            HiLoRules: null,
+            SpecialRules:
+            [
+                new SpecialRuleDto(
+                    Id: "draw-phase",
+                    Name: "Draw Phase",
+                    Description: "After the first betting round, players may discard up to 3 cards and draw new ones from the deck.",
+                    Enabled: true
+                )
+            ],
+            Description: "A classic draw poker variant. Each player receives 5 cards, then may discard up to 3 cards and draw new ones. Uses antes instead of blinds."
         );
 
         return ruleSet;

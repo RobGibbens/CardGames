@@ -164,4 +164,39 @@ public class VariantsEndpointTests : IClassFixture<WebApplicationFactory<Program
         result.Variant!.Id.Should().Be("seven-card-stud");
         result.Variant.Name.Should().Be("Seven Card Stud");
     }
+
+    [Fact]
+    public async Task GetVariants_IncludesFiveCardDraw()
+    {
+        // Act
+        var response = await _client.GetAsync("/api/variants");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<VariantsListResponse>();
+        result.Should().NotBeNull();
+        result!.Variants.Should().Contain(v => v.Id == "five-card-draw");
+        
+        var fiveCardDraw = result.Variants!.First(v => v.Id == "five-card-draw");
+        fiveCardDraw.Name.Should().Be("Five Card Draw");
+        fiveCardDraw.Description.Should().NotBeNullOrEmpty();
+        fiveCardDraw.MinPlayers.Should().Be(2);
+        fiveCardDraw.MaxPlayers.Should().Be(6);
+    }
+
+    [Fact]
+    public async Task GetVariantById_FiveCardDrawVariant_ReturnsVariant()
+    {
+        // Act
+        var response = await _client.GetAsync("/api/variants/five-card-draw");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<VariantResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeTrue();
+        result.Variant.Should().NotBeNull();
+        result.Variant!.Id.Should().Be("five-card-draw");
+        result.Variant.Name.Should().Be("Five Card Draw");
+    }
 }
