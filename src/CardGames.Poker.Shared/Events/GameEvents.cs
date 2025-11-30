@@ -300,3 +300,104 @@ public record ShowdownRevealDto(
     IReadOnlyList<CardDto>? Cards,
     HandDto? Hand,
     int? RevealOrder);
+
+#region Seat Events
+
+/// <summary>
+/// Event raised when a seat is taken (player sits down).
+/// </summary>
+public record SeatTakenEvent(
+    Guid TableId,
+    DateTime Timestamp,
+    int SeatNumber,
+    string PlayerName,
+    int ChipStack) : GameEvent(TableId, Timestamp);
+
+/// <summary>
+/// Event raised when a seat is freed (player stands up or leaves).
+/// </summary>
+public record SeatFreedEvent(
+    Guid TableId,
+    DateTime Timestamp,
+    int SeatNumber,
+    string PlayerName,
+    int? CashoutAmount = null) : GameEvent(TableId, Timestamp);
+
+/// <summary>
+/// Event raised when a seat is reserved for a player (pending buy-in).
+/// </summary>
+public record SeatReservedEvent(
+    Guid TableId,
+    DateTime Timestamp,
+    int SeatNumber,
+    string PlayerName,
+    DateTime ReservedUntil) : GameEvent(TableId, Timestamp);
+
+/// <summary>
+/// Event raised when a seat reservation expires.
+/// </summary>
+public record SeatReservationExpiredEvent(
+    Guid TableId,
+    DateTime Timestamp,
+    int SeatNumber,
+    string PlayerName) : GameEvent(TableId, Timestamp);
+
+/// <summary>
+/// Event raised when a player sits out (going away from the table).
+/// </summary>
+public record PlayerSatOutEvent(
+    Guid TableId,
+    DateTime Timestamp,
+    int SeatNumber,
+    string PlayerName) : GameEvent(TableId, Timestamp);
+
+/// <summary>
+/// Event raised when a player sits back in (returns to active play).
+/// </summary>
+public record PlayerSatBackInEvent(
+    Guid TableId,
+    DateTime Timestamp,
+    int SeatNumber,
+    string PlayerName) : GameEvent(TableId, Timestamp);
+
+/// <summary>
+/// Event raised when a player requests a seat change.
+/// </summary>
+public record SeatChangeRequestedEvent(
+    Guid TableId,
+    DateTime Timestamp,
+    string PlayerName,
+    int CurrentSeat,
+    int DesiredSeat) : GameEvent(TableId, Timestamp);
+
+/// <summary>
+/// Event raised when a seat change is completed.
+/// </summary>
+public record SeatChangeCompletedEvent(
+    Guid TableId,
+    DateTime Timestamp,
+    string PlayerName,
+    int OldSeat,
+    int NewSeat) : GameEvent(TableId, Timestamp);
+
+/// <summary>
+/// Event raised when a seat change request is cancelled (seat no longer available).
+/// </summary>
+public record SeatChangeCancelledEvent(
+    Guid TableId,
+    DateTime Timestamp,
+    string PlayerName,
+    int DesiredSeat,
+    string Reason) : GameEvent(TableId, Timestamp);
+
+/// <summary>
+/// Event raised when a player completes buy-in and takes a seat.
+/// </summary>
+public record PlayerBoughtInEvent(
+    Guid TableId,
+    DateTime Timestamp,
+    int SeatNumber,
+    string PlayerName,
+    int BuyInAmount) : GameEvent(TableId, Timestamp);
+
+#endregion

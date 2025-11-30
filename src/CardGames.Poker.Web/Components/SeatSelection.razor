@@ -1,0 +1,382 @@
+@using CardGames.Poker.Shared.DTOs
+@using CardGames.Poker.Shared.Enums
+
+<div class="seat-selection">
+    <h5 class="mb-3">@Title</h5>
+    
+    @if (Seats == null)
+    {
+        <div class="d-flex justify-content-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading seats...</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="poker-table-container">
+            <div class="poker-table">
+                <div class="table-felt">
+                    <div class="table-center">
+                        <span class="table-name">@TableName</span>
+                        <span class="stakes-info">@SmallBlind/@BigBlind</span>
+                    </div>
+                </div>
+                <div class="seats-container">
+                    @foreach (var seat in Seats)
+                    {
+                        <div class="seat seat-@seat.SeatNumber @GetSeatPositionClass(seat.SeatNumber)">
+                            <button class="seat-button @GetSeatButtonClass(seat)"
+                                    disabled="@(!CanSelectSeat(seat))"
+                                    @onclick="() => OnSeatClick(seat)"
+                                    title="@GetSeatTooltip(seat)">
+                                <div class="seat-content">
+                                    @if (seat.Status == SeatStatus.Available)
+                                    {
+                                        <span class="seat-number">@seat.SeatNumber</span>
+                                        <span class="seat-label">Open</span>
+                                    }
+                                    else if (seat.Status == SeatStatus.Reserved)
+                                    {
+                                        <span class="player-name">@seat.PlayerName</span>
+                                        <span class="seat-label">Reserved</span>
+                                        @if (seat.ReservedUntil.HasValue)
+                                        {
+                                            <span class="reservation-timer">@GetTimeRemaining(seat.ReservedUntil.Value)</span>
+                                        }
+                                    }
+                                    else if (seat.Status == SeatStatus.Occupied)
+                                    {
+                                        <span class="player-name">@seat.PlayerName</span>
+                                        <span class="chip-stack">@seat.ChipStack.ToString("N0")</span>
+                                    }
+                                    else if (seat.Status == SeatStatus.SittingOut)
+                                    {
+                                        <span class="player-name">@seat.PlayerName</span>
+                                        <span class="chip-stack">@seat.ChipStack.ToString("N0")</span>
+                                        <span class="seat-label sitting-out">Away</span>
+                                    }
+                                </div>
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mt-3">
+            <span class="text-muted">
+                @GetAvailableSeatsCount() / @Seats.Count seats available
+            </span>
+            <button class="btn btn-outline-primary btn-sm" @onclick="RefreshSeats">
+                <span class="me-1">↻</span> Refresh
+            </button>
+        </div>
+    }
+</div>
+
+<style>
+    .seat-selection {
+        padding: 1rem;
+    }
+
+    .poker-table-container {
+        display: flex;
+        justify-content: center;
+        padding: 2rem 0;
+    }
+
+    .poker-table {
+        position: relative;
+        width: 100%;
+        max-width: 600px;
+    }
+
+    .table-felt {
+        background: linear-gradient(145deg, #2d5a27 0%, #1a4015 100%);
+        border-radius: 50%;
+        padding: 60% 0 0 0;
+        position: relative;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), inset 0 2px 10px rgba(255, 255, 255, 0.1);
+        border: 8px solid #3d2817;
+    }
+
+    .table-center {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        color: rgba(255, 255, 255, 0.8);
+    }
+
+    .table-name {
+        display: block;
+        font-size: 1rem;
+        font-weight: bold;
+        margin-bottom: 0.25rem;
+    }
+
+    .stakes-info {
+        display: block;
+        font-size: 0.875rem;
+        opacity: 0.8;
+    }
+
+    .seats-container {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+    }
+
+    .seat {
+        position: absolute;
+        transform: translate(-50%, -50%);
+    }
+
+    .seat-button {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        border: 3px solid transparent;
+        background: #e0e0e0;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 5px;
+    }
+
+    .seat-button:hover:not(:disabled) {
+        transform: scale(1.1);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    }
+
+    .seat-button:disabled {
+        cursor: not-allowed;
+        opacity: 0.8;
+    }
+
+    .seat-button.available {
+        background: linear-gradient(145deg, #4caf50, #388e3c);
+        border-color: #2e7d32;
+        color: white;
+    }
+
+    .seat-button.available:hover:not(:disabled) {
+        background: linear-gradient(145deg, #66bb6a, #43a047);
+    }
+
+    .seat-button.occupied {
+        background: linear-gradient(145deg, #424242, #303030);
+        border-color: #212121;
+        color: white;
+    }
+
+    .seat-button.reserved {
+        background: linear-gradient(145deg, #ff9800, #f57c00);
+        border-color: #ef6c00;
+        color: white;
+    }
+
+    .seat-button.sitting-out {
+        background: linear-gradient(145deg, #9e9e9e, #757575);
+        border-color: #616161;
+        color: white;
+    }
+
+    .seat-button.selected {
+        border-color: #2196f3;
+        box-shadow: 0 0 15px rgba(33, 150, 243, 0.5);
+    }
+
+    .seat-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        width: 100%;
+        height: 100%;
+    }
+
+    .seat-number {
+        font-size: 1.5rem;
+        font-weight: bold;
+    }
+
+    .player-name {
+        font-size: 0.7rem;
+        font-weight: bold;
+        max-width: 60px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .chip-stack {
+        font-size: 0.65rem;
+        opacity: 0.9;
+    }
+
+    .seat-label {
+        font-size: 0.6rem;
+        text-transform: uppercase;
+        opacity: 0.8;
+    }
+
+    .seat-label.sitting-out {
+        color: #ffeb3b;
+    }
+
+    .reservation-timer {
+        font-size: 0.55rem;
+        color: #ffeb3b;
+    }
+
+    /* Seat positions for 9-max table (oval layout) */
+    .seat-1 { top: 90%; left: 50%; }
+    .seat-2 { top: 80%; left: 20%; }
+    .seat-3 { top: 50%; left: 5%; }
+    .seat-4 { top: 20%; left: 20%; }
+    .seat-5 { top: 10%; left: 50%; }
+    .seat-6 { top: 20%; left: 80%; }
+    .seat-7 { top: 50%; left: 95%; }
+    .seat-8 { top: 80%; left: 80%; }
+    .seat-9 { top: 95%; left: 65%; }
+    .seat-10 { top: 95%; left: 35%; }
+
+    /* Adjustments for 6-max table */
+    .six-max .seat-1 { top: 90%; left: 50%; }
+    .six-max .seat-2 { top: 65%; left: 10%; }
+    .six-max .seat-3 { top: 25%; left: 15%; }
+    .six-max .seat-4 { top: 10%; left: 50%; }
+    .six-max .seat-5 { top: 25%; left: 85%; }
+    .six-max .seat-6 { top: 65%; left: 90%; }
+</style>
+
+@code {
+    [Parameter]
+    public IReadOnlyList<SeatDto>? Seats { get; set; }
+
+    [Parameter]
+    public string Title { get; set; } = "Select a Seat";
+
+    [Parameter]
+    public string TableName { get; set; } = "";
+
+    [Parameter]
+    public int SmallBlind { get; set; }
+
+    [Parameter]
+    public int BigBlind { get; set; }
+
+    [Parameter]
+    public string? CurrentPlayerName { get; set; }
+
+    [Parameter]
+    public int? SelectedSeatNumber { get; set; }
+
+    [Parameter]
+    public bool AllowSelection { get; set; } = true;
+
+    [Parameter]
+    public EventCallback<SeatDto> OnSeatSelected { get; set; }
+
+    [Parameter]
+    public EventCallback OnRefreshRequested { get; set; }
+
+    private async Task OnSeatClick(SeatDto seat)
+    {
+        if (CanSelectSeat(seat) && OnSeatSelected.HasDelegate)
+        {
+            await OnSeatSelected.InvokeAsync(seat);
+        }
+    }
+
+    private async Task RefreshSeats()
+    {
+        if (OnRefreshRequested.HasDelegate)
+        {
+            await OnRefreshRequested.InvokeAsync();
+        }
+    }
+
+    private bool CanSelectSeat(SeatDto seat)
+    {
+        if (!AllowSelection) return false;
+
+        // Can select available seats
+        if (seat.Status == SeatStatus.Available) return true;
+
+        // Can click on own reserved seat to complete buy-in
+        if (seat.Status == SeatStatus.Reserved && seat.PlayerName == CurrentPlayerName) return true;
+
+        // Can request seat change to an occupied seat
+        if (CurrentPlayerName != null && seat.Status == SeatStatus.Occupied && seat.PlayerName != CurrentPlayerName) return true;
+
+        return false;
+    }
+
+    private string GetSeatButtonClass(SeatDto seat)
+    {
+        var classes = new List<string>();
+
+        classes.Add(seat.Status switch
+        {
+            SeatStatus.Available => "available",
+            SeatStatus.Occupied => "occupied",
+            SeatStatus.Reserved => "reserved",
+            SeatStatus.SittingOut => "sitting-out",
+            _ => ""
+        });
+
+        if (SelectedSeatNumber == seat.SeatNumber)
+        {
+            classes.Add("selected");
+        }
+
+        return string.Join(" ", classes);
+    }
+
+    private string GetSeatPositionClass(int seatNumber)
+    {
+        return $"seat-{seatNumber}";
+    }
+
+    private string GetSeatTooltip(SeatDto seat)
+    {
+        return seat.Status switch
+        {
+            SeatStatus.Available => $"Click to select seat {seat.SeatNumber}",
+            SeatStatus.Reserved => seat.PlayerName == CurrentPlayerName 
+                ? "Click to complete buy-in" 
+                : $"Reserved by {seat.PlayerName}",
+            SeatStatus.Occupied => seat.PlayerName == CurrentPlayerName 
+                ? "Your seat" 
+                : $"{seat.PlayerName} - {seat.ChipStack:N0} chips",
+            SeatStatus.SittingOut => $"{seat.PlayerName} is sitting out - {seat.ChipStack:N0} chips",
+            _ => ""
+        };
+    }
+
+    private string GetTimeRemaining(DateTime reservedUntil)
+    {
+        var remaining = reservedUntil - DateTime.UtcNow;
+        if (remaining.TotalSeconds <= 0)
+        {
+            return "Expired";
+        }
+        var minutes = (int)remaining.TotalMinutes;
+        var seconds = (int)remaining.TotalSeconds % 60;
+        return $"{minutes}:{seconds:D2}";
+    }
+
+    private int GetAvailableSeatsCount()
+    {
+        return Seats?.Count(s => s.Status == SeatStatus.Available) ?? 0;
+    }
+}

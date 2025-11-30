@@ -235,4 +235,145 @@ public class LobbyService
             return new LeaveTableResponse(false, Error: "Failed to leave table. Please try again.");
         }
     }
+
+    #region Seat Management
+
+    public async Task<GetSeatsResponse> GetSeatsAsync(Guid tableId)
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"/api/tables/{tableId}/seats");
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<GetSeatsResponse>();
+                return result ?? new GetSeatsResponse(false, Error: "Invalid response from server");
+            }
+
+            var errorResponse = await response.Content.ReadFromJsonAsync<GetSeatsResponse>();
+            return errorResponse ?? new GetSeatsResponse(false, Error: response.ReasonPhrase);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get seats for table {TableId}", tableId);
+            return new GetSeatsResponse(false, Error: "Failed to get seats. Please try again.");
+        }
+    }
+
+    public async Task<SelectSeatResponse> SelectSeatAsync(Guid tableId, int seatNumber, string playerName)
+    {
+        try
+        {
+            var request = new SelectSeatRequest(tableId, seatNumber, playerName);
+            var response = await _httpClient.PostAsJsonAsync($"/api/tables/{tableId}/seats/select", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<SelectSeatResponse>();
+                return result ?? new SelectSeatResponse(false, Error: "Invalid response from server");
+            }
+
+            var errorResponse = await response.Content.ReadFromJsonAsync<SelectSeatResponse>();
+            return errorResponse ?? new SelectSeatResponse(false, Error: response.ReasonPhrase);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to select seat {SeatNumber} at table {TableId}", seatNumber, tableId);
+            return new SelectSeatResponse(false, Error: "Failed to select seat. Please try again.");
+        }
+    }
+
+    public async Task<BuyInResponse> BuyInAsync(Guid tableId, int seatNumber, string playerName, int buyInAmount)
+    {
+        try
+        {
+            var request = new BuyInRequest(tableId, seatNumber, playerName, buyInAmount);
+            var response = await _httpClient.PostAsJsonAsync($"/api/tables/{tableId}/seats/buy-in", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<BuyInResponse>();
+                return result ?? new BuyInResponse(false, Error: "Invalid response from server");
+            }
+
+            var errorResponse = await response.Content.ReadFromJsonAsync<BuyInResponse>();
+            return errorResponse ?? new BuyInResponse(false, Error: response.ReasonPhrase);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to buy in at seat {SeatNumber} at table {TableId}", seatNumber, tableId);
+            return new BuyInResponse(false, Error: "Failed to buy in. Please try again.");
+        }
+    }
+
+    public async Task<SitOutResponse> SitOutAsync(Guid tableId, string playerName, bool sitOut)
+    {
+        try
+        {
+            var request = new SitOutRequest(tableId, playerName, sitOut);
+            var response = await _httpClient.PostAsJsonAsync($"/api/tables/{tableId}/seats/sit-out", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<SitOutResponse>();
+                return result ?? new SitOutResponse(false, Error: "Invalid response from server");
+            }
+
+            var errorResponse = await response.Content.ReadFromJsonAsync<SitOutResponse>();
+            return errorResponse ?? new SitOutResponse(false, Error: response.ReasonPhrase);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update sit out status at table {TableId}", tableId);
+            return new SitOutResponse(false, Error: "Failed to update sit out status. Please try again.");
+        }
+    }
+
+    public async Task<SeatChangeResponse> RequestSeatChangeAsync(Guid tableId, string playerName, int desiredSeatNumber)
+    {
+        try
+        {
+            var request = new SeatChangeRequest(tableId, playerName, desiredSeatNumber);
+            var response = await _httpClient.PostAsJsonAsync($"/api/tables/{tableId}/seats/change", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<SeatChangeResponse>();
+                return result ?? new SeatChangeResponse(false, Error: "Invalid response from server");
+            }
+
+            var errorResponse = await response.Content.ReadFromJsonAsync<SeatChangeResponse>();
+            return errorResponse ?? new SeatChangeResponse(false, Error: response.ReasonPhrase);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to request seat change at table {TableId}", tableId);
+            return new SeatChangeResponse(false, Error: "Failed to request seat change. Please try again.");
+        }
+    }
+
+    public async Task<LeaveTableResponse> StandUpAsync(Guid tableId, string playerName)
+    {
+        try
+        {
+            var request = new LeaveTableRequest(tableId, playerName);
+            var response = await _httpClient.PostAsJsonAsync($"/api/tables/{tableId}/seats/stand-up", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<LeaveTableResponse>();
+                return result ?? new LeaveTableResponse(false, Error: "Invalid response from server");
+            }
+
+            var errorResponse = await response.Content.ReadFromJsonAsync<LeaveTableResponse>();
+            return errorResponse ?? new LeaveTableResponse(false, Error: response.ReasonPhrase);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to stand up at table {TableId}", tableId);
+            return new LeaveTableResponse(false, Error: "Failed to stand up. Please try again.");
+        }
+    }
+
+    #endregion
 }
