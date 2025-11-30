@@ -16,6 +16,8 @@ namespace CardGames.Poker.Api.Tests;
 /// </summary>
 public class HoldEmApiEndToEndTests : IClassFixture<WebApplicationFactory<Program>>
 {
+    private const string TexasHoldemVariantId = "texas-holdem";
+    
     private readonly HttpClient _client;
 
     public HoldEmApiEndToEndTests(WebApplicationFactory<Program> factory)
@@ -37,7 +39,7 @@ public class HoldEmApiEndToEndTests : IClassFixture<WebApplicationFactory<Progra
         result.Should().NotBeNull();
         result!.Success.Should().BeTrue();
         
-        var holdem = result.Variants!.FirstOrDefault(v => v.Id == "texas-holdem");
+        var holdem = result.Variants!.FirstOrDefault(v => v.Id == TexasHoldemVariantId);
         holdem.Should().NotBeNull();
         holdem!.Name.Should().Be("Texas Hold'em");
         holdem.Description.Should().NotBeNullOrEmpty();
@@ -50,7 +52,7 @@ public class HoldEmApiEndToEndTests : IClassFixture<WebApplicationFactory<Progra
     public async Task GetVariantById_TexasHoldem_ReturnsDetailedInfo()
     {
         // Act
-        var response = await _client.GetAsync("/api/variants/texas-holdem");
+        var response = await _client.GetAsync($"/api/variants/{TexasHoldemVariantId}");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -58,7 +60,7 @@ public class HoldEmApiEndToEndTests : IClassFixture<WebApplicationFactory<Progra
         result.Should().NotBeNull();
         result!.Success.Should().BeTrue();
         result.Variant.Should().NotBeNull();
-        result.Variant!.Id.Should().Be("texas-holdem");
+        result.Variant!.Id.Should().Be(TexasHoldemVariantId);
         result.Variant.Name.Should().Be("Texas Hold'em");
     }
 
@@ -360,6 +362,8 @@ public class HoldEmApiEndToEndTests : IClassFixture<WebApplicationFactory<Progra
         table!.OccupiedSeats.Should().Be(1);
 
         // Step 4: Leave the table
+        // Note: The in-memory repository doesn't track player names for seats,
+        // so any name will work. A real implementation would require matching.
         var leaveRequest = new LeaveTableRequest(tableId, "TestPlayer");
         var leaveResponse = await _client.PostAsJsonAsync($"/api/tables/{tableId}/leave", leaveRequest);
         leaveResponse.StatusCode.Should().Be(HttpStatusCode.OK);
