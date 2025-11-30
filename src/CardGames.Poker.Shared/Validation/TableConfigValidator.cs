@@ -113,6 +113,12 @@ public static class TableConfigValidator
         {
             errors.Add("Seven Card Stud supports a maximum of 8 players.");
         }
+
+        // Five Card Draw has max 6 players due to card requirements (52 cards / 8 per player worst case = 6)
+        if (config.Variant == PokerVariant.FiveCardDraw && config.MaxSeats > 6)
+        {
+            errors.Add("Five Card Draw supports a maximum of 6 players.");
+        }
     }
 
     private static void ValidateAnte(TableConfigDto config, List<string> errors)

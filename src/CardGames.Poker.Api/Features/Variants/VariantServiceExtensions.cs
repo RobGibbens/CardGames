@@ -82,6 +82,7 @@ internal class BuiltInVariantRegistrationService : IHostedService
         RegisterTexasHoldem();
         RegisterOmaha();
         RegisterSevenCardStud();
+        RegisterFiveCardDraw();
 
         // Register any custom variants added via AddGameVariant
         foreach (var request in _registrationRequests)
@@ -139,5 +140,22 @@ internal class BuiltInVariantRegistrationService : IHostedService
                 smallBet: bigBlind,
                 bigBet: bigBlind * 2,
                 useBringIn: true));
+    }
+
+    private void RegisterFiveCardDraw()
+    {
+        var info = new GameVariantInfo(
+            Id: "five-card-draw",
+            Name: "Five Card Draw",
+            Description: "A classic draw poker variant. Each player receives 5 cards, then may discard up to 3 cards and draw new ones. Uses antes instead of blinds.",
+            MinPlayers: 2,
+            MaxPlayers: 6);
+
+        // Map smallBlind to ante and bigBlind to minBet
+        _registry.RegisterVariant(info, (players, smallBlind, bigBlind) =>
+            new FiveCardDrawGame(
+                players,
+                ante: smallBlind,
+                minBet: bigBlind));
     }
 }
