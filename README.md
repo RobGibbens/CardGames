@@ -437,12 +437,125 @@ The `PredefinedRuleSets.SevenCardStud` provides the canonical ruleset:
 - Maximum 7 players
 - Last aggressor shows first at showdown
 
+## Kings and Lows (Complete Implementation)
+
+The library includes a full implementation of Kings and Lows (also known as "Kings and Little Ones"), a five card draw variant with wild cards and unique betting mechanics.
+
+### Game Overview
+
+Kings and Lows is a draw poker variant where:
+- **Wild Cards**: Kings are always wild, and the lowest-ranked card in each player's hand is also wild
+- **Multiple Lows**: If a player has multiple cards of the lowest rank, they are all wild
+- **Optional Rule**: "King Required" variant - low cards are only wild if the player has a King
+
+### Game Orchestration
+
+The `KingsAndLowsGame` class provides complete game orchestration:
+
+```cs
+// Create a game with players and ante
+var players = new[] { ("Alice", 1000), ("Bob", 1000), ("Charlie", 1000) };
+var game = new KingsAndLowsGame(
+    players, 
+    ante: 10, 
+    kingRequired: false,  // Optional: require King for lows to be wild
+    anteEveryHand: false);
+
+// Start a hand
+game.StartHand();
+game.CollectAntes();
+game.DealHands();
+
+// Drop or Stay phase - players decide simultaneously
+game.SetPlayerDecision("Alice", DropOrStayDecision.Stay);
+game.SetPlayerDecision("Bob", DropOrStayDecision.Stay);
+game.SetPlayerDecision("Charlie", DropOrStayDecision.Drop);
+game.FinalizeDropOrStay();
+
+// Draw phase - each staying player can discard up to 5 cards
+game.ProcessDraw(new int[] { 0, 1 });  // Discard cards at indices 0 and 1
+game.ProcessDraw(new int[] { });       // Stand pat
+
+// Showdown
+var result = game.PerformShowdown();
+
+// Losers match pot
+if (game.CurrentPhase == KingsAndLowsPhase.PotMatching)
+{
+    game.ProcessPotMatching();
+}
+```
+
+### Game Phases
+
+The game proceeds through well-defined phases:
+1. **WaitingToStart** - Initial state
+2. **CollectingAntes** - Collecting antes from all players
+3. **Dealing** - Dealing 5 cards to each player
+4. **DropOrStay** - Players simultaneously decide to drop (fold) or stay
+5. **DrawPhase** - Staying players discard and draw cards (up to 5)
+6. **PlayerVsDeck** - Special case when only one player stays
+7. **Showdown** - Comparing hands and awarding pot
+8. **PotMatching** - Losers match the pot
+9. **Complete** - Hand is finished
+
+### Special Rules
+
+Kings and Lows has unique rules that differ from standard draw poker:
+
+- **Drop or Stay**: Instead of betting after the deal, players simultaneously decide to drop (fold) or stay
+- **Player vs Deck**: If only one player stays, they compete against a hand dealt from the deck
+- **Losers Match Pot**: After showdown, losing players must match the pot, creating a growing pot for subsequent hands
+- **Wild Card Evaluation**: The hand evaluator supports Five of a Kind (highest possible hand with wild cards)
+
+### Wild Card Rules
+
+```cs
+// Standard rules - Kings and lowest cards are wild
+var game = new KingsAndLowsGame(players, ante: 10, kingRequired: false);
+
+// King Required variant - low cards only wild if player has a King
+var game = new KingsAndLowsGame(players, ante: 10, kingRequired: true);
+
+// Get wild cards for a specific player
+var wildCards = game.GetPlayerWildCards("Alice");
+```
+
+### Variant Registration
+
+Kings and Lows is registered via the variant engine:
+
+```cs
+var registry = new GameVariantRegistry();
+var info = new GameVariantInfo(
+    Id: "kings-and-lows",
+    Name: "Kings and Lows",
+    Description: "A five card draw variant where Kings and low cards are wild.",
+    MinPlayers: 2,
+    MaxPlayers: 5);
+
+registry.RegisterVariant(info, (players, sb, bb) => 
+    new KingsAndLowsGame(players, ante: sb, kingRequired: false, anteEveryHand: false));
+```
+
+### Predefined Rules
+
+The `PredefinedRuleSets.KingsAndLows` provides the canonical ruleset:
+- 52-card deck
+- 5 cards dealt to each player
+- Players can discard up to 5 cards
+- Ante structure (no blinds)
+- Wild cards: Kings + lowest cards in hand
+- Losers match the pot
+- Maximum 5 players
+
 ## Hands
 The library contains domain models for hands in these poker disciplines:
  - 5-card draw
  - Holdem 
  - Omaha
  - Stud 
+ - Kings and Lows (with wild card support)
 
 The Holdem and Omaha hands derive from a more generic hand model called `CommunityCardsHand`, which can be used to model any kind of community card hand (any number of community cards, any number of hole cards, any requirement how many of them have to be used for a hand, and how many must at least be used. So in these parameters, a Holdem hand is (3-5, 2, 0, 2) and a Omaha hand (3-5, 4, 2, 2)). So using this as a basis, it is easy to implement, e.g., 5-card PLO and other lesser known variants.
 
