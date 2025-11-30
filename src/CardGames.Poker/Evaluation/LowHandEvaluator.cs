@@ -175,8 +175,9 @@ public sealed class LowHandEvaluator : IHandEvaluator
             }
 
             // Create complete hand with wild card substitutions
+            // Wild values are stored as low values (Ace=1), but Card needs standard values (Ace=14)
             var completeHand = naturalList
-                .Concat(wildValues.Select(v => new Card(Suit.Spades, v == 1 ? 14 : v)))
+                .Concat(wildValues.Select(v => CreateCardFromLowValue(v)))
                 .ToList();
 
             if (!QualifiesForLow(completeHand))
@@ -243,6 +244,17 @@ public sealed class LowHandEvaluator : IHandEvaluator
     {
         // Ace is low (value 1) in Ace-to-Five lowball
         return card.Value == 14 ? 1 : card.Value;
+    }
+
+    /// <summary>
+    /// Creates a card from a low value (where Ace=1).
+    /// Converts back to standard card value (where Ace=14).
+    /// </summary>
+    private static Card CreateCardFromLowValue(int lowValue)
+    {
+        // Convert low value (Ace=1) back to standard card value (Ace=14)
+        var standardValue = lowValue == 1 ? 14 : lowValue;
+        return new Card(Suit.Spades, standardValue);
     }
 
     private static HandEvaluationResult CreateNoQualifyingLow(IReadOnlyCollection<Card> cards)
