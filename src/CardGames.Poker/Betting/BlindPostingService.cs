@@ -89,9 +89,19 @@ public class MissedBlindInfo
     public int HandNumberMissed { get; set; }
 
     /// <summary>
+    /// The actual small blind amount that was missed.
+    /// </summary>
+    public int MissedSmallBlindAmount { get; set; }
+
+    /// <summary>
+    /// The actual big blind amount that was missed.
+    /// </summary>
+    public int MissedBigBlindAmount { get; set; }
+
+    /// <summary>
     /// Total amount of missed blinds that must be posted.
     /// </summary>
-    public int TotalMissedAmount { get; set; }
+    public int TotalMissedAmount => MissedSmallBlindAmount + MissedBigBlindAmount;
 }
 
 /// <summary>
@@ -244,11 +254,13 @@ public class BlindPostingService
     /// Collects antes from all players.
     /// </summary>
     /// <param name="players">List of players at the table.</param>
+    /// <param name="seatNumbers">The seat numbers corresponding to each player.</param>
     /// <param name="anteAmount">The ante amount per player.</param>
     /// <param name="potManager">The pot manager for the hand.</param>
     /// <returns>Result of the ante collection.</returns>
     public AnteCollectionResult CollectAntes(
         IReadOnlyList<PokerPlayer> players,
+        IReadOnlyList<int> seatNumbers,
         int anteAmount,
         PotManager potManager)
     {
@@ -258,6 +270,15 @@ public class BlindPostingService
             {
                 Success = false,
                 ErrorMessage = "No players to collect antes from."
+            };
+        }
+
+        if (seatNumbers == null || seatNumbers.Count != players.Count)
+        {
+            return new AnteCollectionResult
+            {
+                Success = false,
+                ErrorMessage = "Seat numbers must match the number of players."
             };
         }
 
@@ -277,6 +298,7 @@ public class BlindPostingService
         for (int i = 0; i < players.Count; i++)
         {
             var player = players[i];
+            var seatNumber = seatNumbers[i];
             var actualAnte = Math.Min(anteAmount, player.ChipStack);
 
             if (actualAnte > 0)
@@ -288,7 +310,7 @@ public class BlindPostingService
                 postedAntes.Add(new PostedBlind
                 {
                     PlayerName = player.Name,
-                    SeatNumber = i,
+                    SeatNumber = seatNumber,
                     Type = BlindType.Ante,
                     Amount = antePosted,
                     IsDead = false
@@ -308,6 +330,33 @@ public class BlindPostingService
             PostedAntes = postedAntes,
             TotalCollected = totalCollected
         };
+    }
+
+    /// <summary>
+    /// Collects antes from all players. Uses array index as seat number.
+    /// For games where seat numbers match player index.
+    /// </summary>
+    /// <param name="players">List of players at the table.</param>
+    /// <param name="anteAmount">The ante amount per player.</param>
+    /// <param name="potManager">The pot manager for the hand.</param>
+    /// <returns>Result of the ante collection.</returns>
+    public AnteCollectionResult CollectAntes(
+        IReadOnlyList<PokerPlayer> players,
+        int anteAmount,
+        PotManager potManager)
+    {
+        if (players == null || players.Count == 0)
+        {
+            return new AnteCollectionResult
+            {
+                Success = false,
+                ErrorMessage = "No players to collect antes from."
+            };
+        }
+
+        // Default seat numbers to array indices
+        var seatNumbers = Enumerable.Range(0, players.Count).ToList();
+        return CollectAntes(players, seatNumbers, anteAmount, potManager);
     }
 
     /// <summary>
@@ -336,13 +385,13 @@ public class BlindPostingService
         if (missedSmallBlind && !info.MissedSmallBlind)
         {
             info.MissedSmallBlind = true;
-            info.TotalMissedAmount += smallBlindAmount;
+            info.MissedSmallBlindAmount = smallBlindAmount;
         }
 
         if (missedBigBlind && !info.MissedBigBlind)
         {
             info.MissedBigBlind = true;
-            info.TotalMissedAmount += bigBlindAmount;
+            info.MissedBigBlindAmount = bigBlindAmount;
         }
 
         info.HandNumberMissed = handNumber;
@@ -363,13 +412,11 @@ public class BlindPostingService
     /// </summary>
     /// <param name="player">The returning player.</param>
     /// <param name="seatNumber">The player's seat number.</param>
-    /// <param name="bigBlindAmount">The current big blind amount.</param>
     /// <param name="potManager">The pot manager for the hand.</param>
     /// <returns>List of posted blinds.</returns>
     public IReadOnlyList<PostedBlind> PostMissedBlinds(
         PokerPlayer player,
         int seatNumber,
-        int bigBlindAmount,
         PotManager potManager)
     {
         var info = GetMissedBlinds(player.Name);
@@ -383,7 +430,7 @@ public class BlindPostingService
         // Post missed small blind as a dead blind (goes directly to pot, doesn't count as bet)
         if (info.MissedSmallBlind)
         {
-            var deadAmount = Math.Min(info.TotalMissedAmount - bigBlindAmount, player.ChipStack);
+            var deadAmount = Math.Min(info.MissedSmallBlindAmount, player.ChipStack);
             if (deadAmount > 0)
             {
                 var posted = player.PlaceBet(deadAmount);
@@ -406,7 +453,7 @@ public class BlindPostingService
         // Post missed big blind as a live blind
         if (info.MissedBigBlind)
         {
-            var liveAmount = Math.Min(bigBlindAmount, player.ChipStack);
+            var liveAmount = Math.Min(info.MissedBigBlindAmount, player.ChipStack);
             if (liveAmount > 0)
             {
                 var posted = player.PlaceBet(liveAmount);

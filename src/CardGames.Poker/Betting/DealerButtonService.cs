@@ -49,23 +49,17 @@ public class DealerButtonService
         // Find the next occupied seat clockwise from current position
         var sortedSeats = occupiedSeats.OrderBy(s => s).ToList();
         
-        // Find seats that are clockwise from current position
-        var nextSeat = sortedSeats.FirstOrDefault(s => s > currentPosition);
+        // Find the first seat with a number greater than current position
+        var seatsAfterCurrent = sortedSeats.Where(s => s > currentPosition).ToList();
         
-        if (nextSeat == 0 && !sortedSeats.Contains(0))
+        if (seatsAfterCurrent.Count > 0)
         {
-            // No seat found clockwise, wrap around to the first seat
-            nextSeat = sortedSeats.First();
+            // Found a seat clockwise from current position
+            return seatsAfterCurrent.First();
         }
-        else if (nextSeat == 0 && sortedSeats.Contains(0))
-        {
-            // Seat 0 is occupied and is the next seat
-            // Check if there's a seat greater than current
-            var seatsAfterCurrent = sortedSeats.Where(s => s > currentPosition).ToList();
-            nextSeat = seatsAfterCurrent.Count != 0 ? seatsAfterCurrent.First() : sortedSeats.First();
-        }
-
-        return nextSeat;
+        
+        // No seat found clockwise, wrap around to the first (lowest) seat
+        return sortedSeats.First();
     }
 
     /// <summary>

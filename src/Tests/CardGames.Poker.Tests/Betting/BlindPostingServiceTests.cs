@@ -190,7 +190,7 @@ public class BlindPostingServiceTests
         var potManager = new PotManager();
         _service.RecordMissedBlinds("Alice", true, true, 5, 10, 1);
 
-        var postedBlinds = _service.PostMissedBlinds(player, 0, 10, potManager);
+        var postedBlinds = _service.PostMissedBlinds(player, 0, potManager);
 
         postedBlinds.Should().HaveCount(2);
         
@@ -214,7 +214,7 @@ public class BlindPostingServiceTests
         var potManager = new PotManager();
         _service.RecordMissedBlinds("Alice", true, true, 5, 10, 1);
 
-        _service.PostMissedBlinds(player, 0, 10, potManager);
+        _service.PostMissedBlinds(player, 0, potManager);
 
         _service.HasMissedBlinds("Alice").Should().BeFalse();
     }
@@ -225,7 +225,7 @@ public class BlindPostingServiceTests
         var player = new PokerPlayer("Alice", 1000);
         var potManager = new PotManager();
 
-        var postedBlinds = _service.PostMissedBlinds(player, 0, 10, potManager);
+        var postedBlinds = _service.PostMissedBlinds(player, 0, potManager);
 
         postedBlinds.Should().BeEmpty();
     }
