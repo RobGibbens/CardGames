@@ -164,6 +164,98 @@ This is very useful and increases performance in simulation scenarios where cert
 # CardGames.Poker
 This library utilizes the _French cards_ and proceeds to model Poker variants. It is not yet published as a package as it is not yet mature enough.
 
+## Texas Hold 'Em (Complete Implementation)
+
+The library includes a full implementation of Texas Hold 'Em, the most popular poker variant. The implementation includes:
+
+### Game Orchestration
+
+The `HoldEmGame` class provides complete game orchestration for Texas Hold 'Em:
+
+```cs
+// Create a game with players and blinds
+var players = new[] { ("Alice", 1000), ("Bob", 1000), ("Charlie", 1000) };
+var game = new HoldEmGame(players, smallBlind: 5, bigBlind: 10);
+
+// Start a hand
+game.StartHand();
+game.CollectBlinds();
+game.DealHoleCards();
+game.StartPreFlopBettingRound();
+
+// Process betting actions
+game.ProcessBettingAction(BettingActionType.Call);
+game.ProcessBettingAction(BettingActionType.Check);
+
+// Deal community cards and continue
+game.DealFlop();
+game.StartPostFlopBettingRound();
+// ... continue through Turn, River, and Showdown
+```
+
+### Game Phases
+
+The game proceeds through well-defined phases:
+1. **WaitingToStart** - Initial state
+2. **CollectingBlinds** - Posting small and big blinds
+3. **Dealing** - Dealing 2 hole cards per player
+4. **PreFlop** - Pre-flop betting round
+5. **Flop** - Flop betting round (after 3 community cards)
+6. **Turn** - Turn betting round (after 4th community card)
+7. **River** - River betting round (after 5th community card)
+8. **Showdown** - Comparing hands and awarding pot
+9. **Complete** - Hand is finished
+
+### Betting System
+
+Full betting support including:
+- **No Limit** - Any bet size up to all chips
+- **Fixed Limit** - Predetermined bet sizes
+- **Pot Limit** - Maximum bet is current pot size
+
+### Pot Management
+
+The `PotManager` handles complex pot situations including:
+- Main pot and side pot calculations
+- All-in scenarios with multiple players
+- Split pots for tied hands
+
+### Hand Evaluation
+
+The `HoldemHand` class automatically evaluates the best 5-card hand from 2 hole cards and 5 community cards:
+
+```cs
+var hand = new HoldemHand(holeCards, communityCards);
+Console.WriteLine(hand.Type);      // e.g., HandType.Flush
+Console.WriteLine(hand.Strength);  // Numeric strength for comparison
+```
+
+### Variant Registration
+
+Hold 'Em is registered via the variant engine:
+
+```cs
+var registry = new GameVariantRegistry();
+var info = new GameVariantInfo(
+    Id: "texas-holdem",
+    Name: "Texas Hold'em",
+    Description: "The most popular poker variant.",
+    MinPlayers: 2,
+    MaxPlayers: 10);
+
+registry.RegisterVariant(info, (players, sb, bb) => 
+    new HoldEmGame(players, sb, bb));
+```
+
+### Predefined Rules
+
+The `PredefinedRuleSets.TexasHoldem` provides the canonical ruleset:
+- 52-card deck
+- 2 hole cards (use 0-2 in final hand)
+- 5 community cards (use 0-5 in final hand)
+- Small blind + Big blind structure
+- Last aggressor shows first at showdown
+
 ## Hands
 The library contains domain models for hands in these poker disciplines:
  - 5-card draw
