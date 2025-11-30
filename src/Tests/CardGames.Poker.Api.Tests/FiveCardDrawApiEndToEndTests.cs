@@ -219,7 +219,7 @@ public class FiveCardDrawApiEndToEndTests : IClassFixture<WebApplicationFactory<
     [Fact]
     public async Task CreateTable_FiveCardDraw_TooManyPlayers_Fails()
     {
-        // Arrange - Five Card Draw max is 6 players (6 * 8 cards worst case = 48 cards)
+        // Arrange - Five Card Draw max is 6 players (5 initial cards + up to 3 draw = 8 cards max per player; 6 * 8 = 48 < 52)
         var request = new CreateTableRequest(
             Name: "Too Many Players Table",
             Variant: PokerVariant.FiveCardDraw,

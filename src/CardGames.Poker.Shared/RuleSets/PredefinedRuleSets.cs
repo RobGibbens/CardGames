@@ -353,7 +353,7 @@ public static class PredefinedRuleSets
             CommunityCardRules: null,
             AnteBlindRules: new AnteBlindRulesDto(
                 HasAnte: true,
-                AntePercentage: 100,
+                AntePercentage: 10,
                 HasSmallBlind: false,
                 HasBigBlind: false,
                 AllowStraddle: false,
