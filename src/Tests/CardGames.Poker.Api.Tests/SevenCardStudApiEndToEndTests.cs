@@ -193,7 +193,7 @@ public class SevenCardStudApiEndToEndTests : IClassFixture<WebApplicationFactory
     [Fact]
     public async Task CreateTable_SevenCardStud_TooManyPlayers_Fails()
     {
-        // Arrange - Seven Card Stud max is 8 players (7 * 7 = 49 cards, 8 * 7 = 56 > 52)
+        // Arrange - Seven Card Stud max is 7 players (7 * 7 = 49 cards), 8+ exceeds deck (8 * 7 = 56 > 52)
         var request = new CreateTableRequest(
             Name: "Too Many Players Table",
             Variant: PokerVariant.SevenCardStud,
