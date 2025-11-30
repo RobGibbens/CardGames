@@ -11,5 +11,6 @@ public enum PokerVariant
     FiveCardDraw,
     Baseball,
     KingsAndLows,
-    FollowTheQueen
+    FollowTheQueen,
+    DealersChoice
 }
