@@ -691,11 +691,27 @@ public class GameHubService : IAsyncDisposable
     {
         _heartbeatTimer?.Dispose();
         _heartbeatTimer = new Timer(
-            async _ => await SendHeartbeatAsync(),
+            _ => 
+            {
+                // Fire-and-forget but safely handle exceptions
+                _ = SendHeartbeatSafeAsync();
+            },
             null,
             _heartbeatInterval,
             _heartbeatInterval);
         _logger.LogDebug("Heartbeat timer started with interval {Interval}", _heartbeatInterval);
+    }
+
+    private async Task SendHeartbeatSafeAsync()
+    {
+        try
+        {
+            await SendHeartbeatAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Heartbeat failed - connection may be closing");
+        }
     }
 
     private void StopHeartbeat()
