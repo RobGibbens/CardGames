@@ -341,6 +341,102 @@ The `PredefinedRuleSets.Omaha` provides the canonical ruleset:
 - Pot Limit is the most common betting structure (PLO)
 - Last aggressor shows first at showdown
 
+## Seven Card Stud (Complete Implementation)
+
+The library includes a full implementation of Seven Card Stud, a classic stud poker variant. Unlike Hold 'Em and Omaha, Seven Card Stud does not use community cards - each player receives their own 7 cards (3 face-down, 4 face-up) and makes the best 5-card hand.
+
+### Game Orchestration
+
+The `SevenCardStudGame` class provides complete game orchestration for Seven Card Stud:
+
+```cs
+// Create a game with players and betting structure
+var players = new[] { ("Alice", 1000), ("Bob", 1000), ("Charlie", 1000) };
+var game = new SevenCardStudGame(
+    players, 
+    ante: 5, 
+    bringIn: 10, 
+    smallBet: 20, 
+    bigBet: 40, 
+    useBringIn: true);
+
+// Start a hand
+game.StartHand();
+game.CollectAntes();
+game.DealThirdStreet();
+game.PostBringIn();
+game.StartBettingRound();
+
+// Process betting actions
+game.ProcessBettingAction(BettingActionType.Call);
+game.ProcessBettingAction(BettingActionType.Check);
+
+// Deal more streets and continue betting
+game.DealStreetCard();  // Fourth Street
+game.StartBettingRound();
+// ... continue through Fifth, Sixth, Seventh Street and Showdown
+```
+
+### Game Phases
+
+The game proceeds through well-defined phases:
+1. **WaitingToStart** - Initial state
+2. **CollectingAntes** - Collecting antes from all players
+3. **ThirdStreet** - Deal 2 down cards + 1 up card, bring-in betting round
+4. **FourthStreet** - Deal 1 up card, betting round (small bet)
+5. **FifthStreet** - Deal 1 up card, betting round (big bet)
+6. **SixthStreet** - Deal 1 up card, betting round (big bet)
+7. **SeventhStreet** - Deal 1 down card, final betting round (big bet)
+8. **Showdown** - Comparing hands and awarding pot
+9. **Complete** - Hand is finished
+
+### Stud-Specific Rules
+
+Seven Card Stud has unique rules that differ from community card games:
+- **Ante Structure** - All players post an ante before the hand
+- **Bring-In** - The player with the lowest upcard posts a forced bring-in bet
+- **Visible Cards** - Players can see each other's up cards, affecting strategy
+- **Best Visible Hand** - After third street, the player with the best visible hand acts first
+- **Player Limit** - Maximum 7 players due to card constraints (7 × 7 = 49 cards)
+
+### Hand Evaluation
+
+The `SevenCardStudHand` class evaluates the best 5-card hand from 7 cards:
+
+```cs
+var hand = new SevenCardStudHand(holeCards, boardCards, downCard);
+Console.WriteLine(hand.Type);      // e.g., HandType.Flush
+Console.WriteLine(hand.Strength);  // Numeric strength for comparison
+```
+
+### Variant Registration
+
+Seven Card Stud is registered via the variant engine:
+
+```cs
+var registry = new GameVariantRegistry();
+var info = new GameVariantInfo(
+    Id: "seven-card-stud",
+    Name: "Seven Card Stud",
+    Description: "A classic stud poker variant.",
+    MinPlayers: 2,
+    MaxPlayers: 7);
+
+registry.RegisterVariant(info, (players, sb, bb) => 
+    new SevenCardStudGame(players, ante: sb, bringIn: bb / 2, smallBet: bb, bigBet: bb * 2, useBringIn: true));
+```
+
+### Predefined Rules
+
+The `PredefinedRuleSets.SevenCardStud` provides the canonical ruleset:
+- 52-card deck
+- 7 cards dealt (3 face-down, 4 face-up)
+- Must use exactly 5 cards in final hand
+- Ante + bring-in structure (no blinds)
+- Fixed limit betting (most common)
+- Maximum 7 players
+- Last aggressor shows first at showdown
+
 ## Hands
 The library contains domain models for hands in these poker disciplines:
  - 5-card draw
