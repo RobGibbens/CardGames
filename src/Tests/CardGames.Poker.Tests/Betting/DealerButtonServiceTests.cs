@@ -318,4 +318,77 @@ public class DealerButtonServiceTests
     }
 
     #endregion
+
+    #region Edge Case Tests for Seat 0
+
+    [Fact]
+    public void MoveButtonClockwise_ToSeat0_WorksCorrectly()
+    {
+        // Button at seat 5, next seat clockwise should be seat 0
+        var occupiedSeats = new List<int> { 0, 3, 5 };
+
+        var result = _service.MoveButtonClockwise(5, occupiedSeats, 10);
+
+        result.Should().Be(0); // Should wrap around to seat 0
+    }
+
+    [Fact]
+    public void MoveButtonClockwise_FromSeat0_WorksCorrectly()
+    {
+        // Button at seat 0, next seat clockwise should be next occupied
+        var occupiedSeats = new List<int> { 0, 3, 5 };
+
+        var result = _service.MoveButtonClockwise(0, occupiedSeats, 10);
+
+        result.Should().Be(3);
+    }
+
+    [Fact]
+    public void GetSmallBlindPosition_WhenDealerAtSeat0_ThreePlayers()
+    {
+        var occupiedSeats = new List<int> { 0, 1, 2 };
+        var buttonPosition = 0;
+
+        var result = _service.GetSmallBlindPosition(buttonPosition, occupiedSeats, 10);
+
+        result.Should().Be(1); // Small blind is next after dealer
+    }
+
+    [Fact]
+    public void GetBigBlindPosition_WhenDealerAtSeat0_ThreePlayers()
+    {
+        var occupiedSeats = new List<int> { 0, 1, 2 };
+        var buttonPosition = 0;
+
+        var result = _service.GetBigBlindPosition(buttonPosition, occupiedSeats, 10);
+
+        result.Should().Be(2); // Big blind is 2 positions after dealer
+    }
+
+    [Fact]
+    public void CollectAntes_WithExplicitSeatNumbers_UsesProvidedSeats()
+    {
+        // Arrange
+        var blindService = new BlindPostingService();
+        var players = new List<PokerPlayer>
+        {
+            new("Alice", 1000),
+            new("Bob", 1000),
+            new("Charlie", 1000)
+        };
+        var seatNumbers = new List<int> { 3, 5, 8 }; // Non-consecutive seats
+        var potManager = new PotManager();
+
+        // Act
+        var result = blindService.CollectAntes(players, seatNumbers, 5, potManager);
+
+        // Assert
+        result.Success.Should().BeTrue();
+        result.PostedAntes.Should().HaveCount(3);
+        result.PostedAntes[0].SeatNumber.Should().Be(3);
+        result.PostedAntes[1].SeatNumber.Should().Be(5);
+        result.PostedAntes[2].SeatNumber.Should().Be(8);
+    }
+
+    #endregion
 }
