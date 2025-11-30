@@ -231,3 +231,72 @@ public record DealingCompletedEvent(
     Guid GameId,
     DateTime Timestamp,
     string PhaseName) : GameEvent(GameId, Timestamp);
+
+/// <summary>
+/// Event raised when showdown begins.
+/// </summary>
+public record ShowdownStartedEvent(
+    Guid GameId,
+    DateTime Timestamp,
+    Guid ShowdownId,
+    int HandNumber,
+    IReadOnlyList<string> EligiblePlayers,
+    string? FirstToReveal,
+    bool HadAllInAction) : GameEvent(GameId, Timestamp);
+
+/// <summary>
+/// Event raised when a player reveals their cards at showdown.
+/// </summary>
+public record PlayerRevealedCardsEvent(
+    Guid GameId,
+    DateTime Timestamp,
+    Guid ShowdownId,
+    string PlayerName,
+    IReadOnlyList<CardDto>? Cards,
+    HandDto? Hand,
+    bool WasForcedReveal,
+    int RevealOrder) : GameEvent(GameId, Timestamp);
+
+/// <summary>
+/// Event raised when a player mucks (doesn't show) their cards at showdown.
+/// </summary>
+public record PlayerMuckedCardsEvent(
+    Guid GameId,
+    DateTime Timestamp,
+    Guid ShowdownId,
+    string PlayerName,
+    bool WasAllowedToMuck) : GameEvent(GameId, Timestamp);
+
+/// <summary>
+/// Event raised when it's a player's turn to reveal or muck at showdown.
+/// </summary>
+public record ShowdownTurnEvent(
+    Guid GameId,
+    DateTime Timestamp,
+    Guid ShowdownId,
+    string PlayerName,
+    bool CanMuck,
+    bool MustShow,
+    string? CurrentBestHand) : GameEvent(GameId, Timestamp);
+
+/// <summary>
+/// Event raised when the showdown is complete and winners are determined.
+/// </summary>
+public record ShowdownCompletedEvent(
+    Guid GameId,
+    DateTime Timestamp,
+    Guid ShowdownId,
+    int HandNumber,
+    IReadOnlyList<string> Winners,
+    IReadOnlyDictionary<string, int> Payouts,
+    IReadOnlyList<ShowdownRevealDto> FinalReveals) : GameEvent(GameId, Timestamp);
+
+/// <summary>
+/// DTO for showdown reveal included in events.
+/// </summary>
+public record ShowdownRevealDto(
+    string PlayerName,
+    string Status,
+    IReadOnlyList<CardDto>? Cards,
+    HandDto? Hand,
+    int? RevealOrder);
