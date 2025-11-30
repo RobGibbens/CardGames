@@ -5,6 +5,7 @@ using CardGames.Poker.Api.Features.Auth;
 using CardGames.Poker.Api.Features.Friends;
 using CardGames.Poker.Api.Features.Hands;
 using CardGames.Poker.Api.Features.History;
+using CardGames.Poker.Api.Features.Showdown;
 using CardGames.Poker.Api.Features.Simulations;
 using CardGames.Poker.Api.Features.Tables;
 using CardGames.Poker.Api.Features.Variants;
@@ -32,6 +33,9 @@ builder.Services.AddSingleton<ITablesRepository, InMemoryTablesRepository>();
 // Add game variant factory and built-in variants
 builder.Services.AddGameVariantFactory();
 builder.Services.AddBuiltInVariants();
+
+// Add showdown coordinator services
+builder.Services.AddShowdownServices();
 
 // Add SignalR services
 builder.Services.AddSignalR();
