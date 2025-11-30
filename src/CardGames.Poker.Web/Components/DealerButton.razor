@@ -1,0 +1,170 @@
+@using CardGames.Poker.Shared.Enums
+
+<div class="dealer-button-wrapper @(IsDeadButton ? "dead-button" : "")" 
+     style="@GetPositionStyle()"
+     title="@GetTooltip()">
+    <div class="dealer-button">
+        <span class="button-text">D</span>
+    </div>
+    @if (ShowPlayerName && !string.IsNullOrEmpty(DealerName))
+    {
+        <span class="dealer-name">@DealerName</span>
+    }
+</div>
+
+<style>
+    .dealer-button-wrapper {
+        position: absolute;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        z-index: 100;
+        transition: all 0.5s ease-in-out;
+        transform: translate(-50%, -50%);
+    }
+
+    .dealer-button {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: linear-gradient(145deg, #ffffff, #e6e6e6);
+        border: 2px solid #d4af37;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+        cursor: default;
+    }
+
+    .button-text {
+        font-weight: bold;
+        font-size: 0.9rem;
+        color: #333;
+    }
+
+    .dealer-name {
+        font-size: 0.65rem;
+        color: rgba(255, 255, 255, 0.9);
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+        margin-top: 2px;
+        max-width: 60px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* Dead button styling */
+    .dead-button .dealer-button {
+        background: linear-gradient(145deg, #888, #666);
+        border-color: #444;
+        opacity: 0.7;
+    }
+
+    .dead-button .button-text {
+        color: #ccc;
+    }
+
+    /* Animation for button movement */
+    .dealer-button-wrapper.moving {
+        animation: buttonMove 0.5s ease-in-out;
+    }
+
+    @@keyframes buttonMove {
+        0% { transform: translate(-50%, -50%) scale(1); }
+        50% { transform: translate(-50%, -50%) scale(1.2); }
+        100% { transform: translate(-50%, -50%) scale(1); }
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// The current dealer position (seat number).
+    /// </summary>
+    [Parameter]
+    public int Position { get; set; }
+
+    /// <summary>
+    /// The name of the dealer player.
+    /// </summary>
+    [Parameter]
+    public string? DealerName { get; set; }
+
+    /// <summary>
+    /// Whether to show the dealer's name below the button.
+    /// </summary>
+    [Parameter]
+    public bool ShowPlayerName { get; set; } = false;
+
+    /// <summary>
+    /// Whether this is a dead button situation.
+    /// </summary>
+    [Parameter]
+    public bool IsDeadButton { get; set; }
+
+    /// <summary>
+    /// Total number of seats at the table for positioning.
+    /// </summary>
+    [Parameter]
+    public int TotalSeats { get; set; } = 9;
+
+    /// <summary>
+    /// Custom top offset in percentage (optional).
+    /// </summary>
+    [Parameter]
+    public double? TopOffset { get; set; }
+
+    /// <summary>
+    /// Custom left offset in percentage (optional).
+    /// </summary>
+    [Parameter]
+    public double? LeftOffset { get; set; }
+
+    private string GetPositionStyle()
+    {
+        // If custom offsets are provided, use them
+        if (TopOffset.HasValue && LeftOffset.HasValue)
+        {
+            return $"top: {TopOffset.Value}%; left: {LeftOffset.Value}%;";
+        }
+
+        // Calculate position based on seat number and table layout
+        var (top, left) = GetSeatPosition(Position, TotalSeats);
+        
+        // Offset the button slightly to appear next to the seat
+        return $"top: calc({top}% + 10px); left: calc({left}% + 35px);";
+    }
+
+    private (double top, double left) GetSeatPosition(int seatNumber, int totalSeats)
+    {
+        // Default 9-max table positions (matches SeatSelection.razor)
+        return seatNumber switch
+        {
+            1 => (90, 50),
+            2 => (80, 20),
+            3 => (50, 5),
+            4 => (20, 20),
+            5 => (10, 50),
+            6 => (20, 80),
+            7 => (50, 95),
+            8 => (80, 80),
+            9 => (95, 65),
+            10 => (95, 35),
+            _ => (50, 50)
+        };
+    }
+
+    private string GetTooltip()
+    {
+        if (IsDeadButton)
+        {
+            return "Dead Button - Button is on an empty seat";
+        }
+
+        if (!string.IsNullOrEmpty(DealerName))
+        {
+            return $"Dealer: {DealerName}";
+        }
+
+        return $"Dealer Button - Position {Position}";
+    }
+}

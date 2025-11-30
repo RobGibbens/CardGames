@@ -514,4 +514,112 @@ public class GameHub : Hub
     }
 
     #endregion
+
+    #region Dealer Button and Blinds Events
+
+    /// <summary>
+    /// Notifies the game group that the dealer button has moved.
+    /// </summary>
+    /// <param name="gameId">The game identifier.</param>
+    /// <param name="evt">The dealer button moved event.</param>
+    public async Task NotifyDealerButtonMoved(string gameId, DealerButtonMovedEvent evt)
+    {
+        _logger.LogInformation(
+            "Dealer button moved in game {GameId} from position {PreviousPosition} to {NewPosition}",
+            gameId, evt.PreviousPosition, evt.NewPosition);
+        await Clients.Group(gameId).SendAsync("DealerButtonMoved", evt);
+    }
+
+    /// <summary>
+    /// Notifies the game group that a blind has been posted.
+    /// </summary>
+    /// <param name="gameId">The game identifier.</param>
+    /// <param name="evt">The blind posted event.</param>
+    public async Task NotifyBlindPosted(string gameId, BlindPostedEvent evt)
+    {
+        _logger.LogInformation(
+            "Player {PlayerName} posted {BlindType} of {Amount} in game {GameId}",
+            evt.PlayerName, evt.BlindType, evt.Amount, gameId);
+        await Clients.Group(gameId).SendAsync("BlindPosted", evt);
+    }
+
+    /// <summary>
+    /// Notifies the game group that an ante has been posted.
+    /// </summary>
+    /// <param name="gameId">The game identifier.</param>
+    /// <param name="evt">The ante posted event.</param>
+    public async Task NotifyAntePosted(string gameId, AntePostedEvent evt)
+    {
+        _logger.LogInformation(
+            "Player {PlayerName} posted ante of {Amount} in game {GameId}",
+            evt.PlayerName, evt.Amount, gameId);
+        await Clients.Group(gameId).SendAsync("AntePosted", evt);
+    }
+
+    /// <summary>
+    /// Notifies the game group that all antes have been collected.
+    /// </summary>
+    /// <param name="gameId">The game identifier.</param>
+    /// <param name="evt">The antes collected event.</param>
+    public async Task NotifyAntesCollected(string gameId, AntesCollectedEvent evt)
+    {
+        _logger.LogInformation(
+            "Antes collected in game {GameId}. Total: {Total}",
+            gameId, evt.TotalCollected);
+        await Clients.Group(gameId).SendAsync("AntesCollected", evt);
+    }
+
+    /// <summary>
+    /// Notifies the game group that missed blinds have been recorded for a player.
+    /// </summary>
+    /// <param name="gameId">The game identifier.</param>
+    /// <param name="evt">The missed blind recorded event.</param>
+    public async Task NotifyMissedBlindRecorded(string gameId, MissedBlindRecordedEvent evt)
+    {
+        _logger.LogInformation(
+            "Player {PlayerName} missed blinds recorded in game {GameId}. SB: {MissedSB}, BB: {MissedBB}",
+            evt.PlayerName, gameId, evt.MissedSmallBlind, evt.MissedBigBlind);
+        await Clients.Group(gameId).SendAsync("MissedBlindRecorded", evt);
+    }
+
+    /// <summary>
+    /// Notifies the game group that a player has posted missed blinds.
+    /// </summary>
+    /// <param name="gameId">The game identifier.</param>
+    /// <param name="evt">The missed blinds posted event.</param>
+    public async Task NotifyMissedBlindsPosted(string gameId, MissedBlindsPostedEvent evt)
+    {
+        _logger.LogInformation(
+            "Player {PlayerName} posted missed blinds in game {GameId}. Total: {Total}",
+            evt.PlayerName, gameId, evt.TotalAmount);
+        await Clients.Group(gameId).SendAsync("MissedBlindsPosted", evt);
+    }
+
+    /// <summary>
+    /// Notifies the game group that a dead button situation has occurred.
+    /// </summary>
+    /// <param name="gameId">The game identifier.</param>
+    /// <param name="evt">The dead button event.</param>
+    public async Task NotifyDeadButton(string gameId, DeadButtonEvent evt)
+    {
+        _logger.LogInformation(
+            "Dead button at position {Position} in game {GameId}. Reason: {Reason}",
+            evt.ButtonPosition, gameId, evt.Reason);
+        await Clients.Group(gameId).SendAsync("DeadButton", evt);
+    }
+
+    /// <summary>
+    /// Notifies the game group of the current blind level information.
+    /// </summary>
+    /// <param name="gameId">The game identifier.</param>
+    /// <param name="evt">The blind level info event.</param>
+    public async Task NotifyBlindLevelInfo(string gameId, BlindLevelInfoEvent evt)
+    {
+        _logger.LogInformation(
+            "Blind level in game {GameId}: Level {Level}, SB: {SmallBlind}, BB: {BigBlind}, Ante: {Ante}",
+            gameId, evt.Level, evt.SmallBlind, evt.BigBlind, evt.Ante);
+        await Clients.Group(gameId).SendAsync("BlindLevelInfo", evt);
+    }
+
+    #endregion
 }
