@@ -1,5 +1,6 @@
 using CardGames.Poker.Api.Hubs;
 using CardGames.Poker.Shared.Contracts.Lobby;
+using CardGames.Poker.Shared.DTOs;
 using CardGames.Poker.Shared.Enums;
 using CardGames.Poker.Shared.Events;
 using CardGames.Poker.Shared.Validation;
@@ -37,6 +38,25 @@ public static class TablesModule
 
         group.MapPost("{tableId:guid}/leave", LeaveTableAsync)
             .WithName("LeaveTable");
+
+        // Seat management endpoints
+        group.MapGet("{tableId:guid}/seats", GetSeatsAsync)
+            .WithName("GetSeats");
+
+        group.MapPost("{tableId:guid}/seats/select", SelectSeatAsync)
+            .WithName("SelectSeat");
+
+        group.MapPost("{tableId:guid}/seats/buy-in", BuyInAsync)
+            .WithName("BuyIn");
+
+        group.MapPost("{tableId:guid}/seats/sit-out", SitOutAsync)
+            .WithName("SitOut");
+
+        group.MapPost("{tableId:guid}/seats/change", SeatChangeAsync)
+            .WithName("SeatChange");
+
+        group.MapPost("{tableId:guid}/seats/stand-up", StandUpAsync)
+            .WithName("StandUp");
 
         return app;
     }
@@ -342,4 +362,292 @@ public static class TablesModule
 
         return Results.Ok(new LeaveTableResponse(Success: true));
     }
+
+    #region Seat Management Endpoints
+
+    private static async Task<IResult> GetSeatsAsync(
+        Guid tableId,
+        ITablesRepository tablesRepository)
+    {
+        var table = await tablesRepository.GetTableByIdAsync(tableId);
+        if (table == null)
+        {
+            return Results.NotFound(new GetSeatsResponse(false, Error: "Table not found."));
+        }
+
+        var seats = await tablesRepository.GetSeatsAsync(tableId);
+
+        return Results.Ok(new GetSeatsResponse(Success: true, TableId: tableId, Seats: seats));
+    }
+
+    private static async Task<IResult> SelectSeatAsync(
+        Guid tableId,
+        SelectSeatRequest request,
+        ITablesRepository tablesRepository,
+        IHubContext<GameHub> hubContext)
+    {
+        if (tableId != request.TableId)
+        {
+            return Results.BadRequest(new SelectSeatResponse(false, Error: "Table ID in URL does not match request body."));
+        }
+
+        var (success, seat, reservedUntil, error) = await tablesRepository.SelectSeatAsync(
+            tableId, request.SeatNumber, request.PlayerName);
+
+        if (!success)
+        {
+            return Results.BadRequest(new SelectSeatResponse(false, Error: error));
+        }
+
+        // Broadcast seat reserved event to table
+        var seatReservedEvent = new SeatReservedEvent(
+            tableId,
+            DateTime.UtcNow,
+            request.SeatNumber,
+            request.PlayerName,
+            reservedUntil!.Value);
+
+        await hubContext.Clients.Group(tableId.ToString()).SendAsync("SeatReserved", seatReservedEvent);
+
+        return Results.Ok(new SelectSeatResponse(
+            Success: true,
+            TableId: tableId,
+            SeatNumber: request.SeatNumber,
+            ReservedUntil: reservedUntil,
+            Seat: seat));
+    }
+
+    private static async Task<IResult> BuyInAsync(
+        Guid tableId,
+        BuyInRequest request,
+        ITablesRepository tablesRepository,
+        IHubContext<GameHub> hubContext)
+    {
+        if (tableId != request.TableId)
+        {
+            return Results.BadRequest(new BuyInResponse(false, Error: "Table ID in URL does not match request body."));
+        }
+
+        var (success, seat, error) = await tablesRepository.BuyInAsync(
+            tableId, request.SeatNumber, request.PlayerName, request.BuyInAmount);
+
+        if (!success)
+        {
+            return Results.BadRequest(new BuyInResponse(false, Error: error));
+        }
+
+        // Broadcast seat taken event to table
+        var seatTakenEvent = new SeatTakenEvent(
+            tableId,
+            DateTime.UtcNow,
+            request.SeatNumber,
+            request.PlayerName,
+            request.BuyInAmount);
+
+        await hubContext.Clients.Group(tableId.ToString()).SendAsync("SeatTaken", seatTakenEvent);
+
+        // Broadcast player bought in event
+        var playerBoughtInEvent = new PlayerBoughtInEvent(
+            tableId,
+            DateTime.UtcNow,
+            request.SeatNumber,
+            request.PlayerName,
+            request.BuyInAmount);
+
+        await hubContext.Clients.Group(tableId.ToString()).SendAsync("PlayerBoughtIn", playerBoughtInEvent);
+
+        // Broadcast seat status change to lobby
+        var updatedTable = await tablesRepository.GetTableByIdAsync(tableId);
+        if (updatedTable != null)
+        {
+            var seatStatusEvent = new TableSeatStatusChangedEvent(
+                tableId,
+                DateTime.UtcNow,
+                updatedTable.OccupiedSeats,
+                updatedTable.MaxSeats,
+                updatedTable.WaitingListCount);
+
+            await hubContext.Clients.Group("lobby").SendAsync("TableSeatStatusChanged", seatStatusEvent);
+        }
+
+        return Results.Ok(new BuyInResponse(
+            Success: true,
+            TableId: tableId,
+            SeatNumber: request.SeatNumber,
+            ChipStack: request.BuyInAmount,
+            Seat: seat));
+    }
+
+    private static async Task<IResult> SitOutAsync(
+        Guid tableId,
+        SitOutRequest request,
+        ITablesRepository tablesRepository,
+        IHubContext<GameHub> hubContext)
+    {
+        if (tableId != request.TableId)
+        {
+            return Results.BadRequest(new SitOutResponse(false, Error: "Table ID in URL does not match request body."));
+        }
+
+        var (success, isSittingOut, error) = await tablesRepository.SetSitOutStatusAsync(
+            tableId, request.PlayerName, request.SitOut);
+
+        if (!success)
+        {
+            return Results.BadRequest(new SitOutResponse(false, Error: error));
+        }
+
+        // Broadcast sit out / sit back in event to table
+        var seats = await tablesRepository.GetSeatsAsync(tableId);
+        var playerSeat = seats.FirstOrDefault(s => s.PlayerName == request.PlayerName);
+
+        if (request.SitOut)
+        {
+            var playerSatOutEvent = new PlayerSatOutEvent(
+                tableId,
+                DateTime.UtcNow,
+                playerSeat?.SeatNumber ?? 0,
+                request.PlayerName);
+
+            await hubContext.Clients.Group(tableId.ToString()).SendAsync("PlayerSatOut", playerSatOutEvent);
+        }
+        else
+        {
+            var playerSatBackInEvent = new PlayerSatBackInEvent(
+                tableId,
+                DateTime.UtcNow,
+                playerSeat?.SeatNumber ?? 0,
+                request.PlayerName);
+
+            await hubContext.Clients.Group(tableId.ToString()).SendAsync("PlayerSatBackIn", playerSatBackInEvent);
+        }
+
+        return Results.Ok(new SitOutResponse(
+            Success: true,
+            TableId: tableId,
+            PlayerName: request.PlayerName,
+            IsSittingOut: isSittingOut));
+    }
+
+    private static async Task<IResult> SeatChangeAsync(
+        Guid tableId,
+        SeatChangeRequest request,
+        ITablesRepository tablesRepository,
+        IHubContext<GameHub> hubContext)
+    {
+        if (tableId != request.TableId)
+        {
+            return Results.BadRequest(new SeatChangeResponse(false, Error: "Table ID in URL does not match request body."));
+        }
+
+        var (success, oldSeatNumber, newSeatNumber, seat, isPending, error) = await tablesRepository.RequestSeatChangeAsync(
+            tableId, request.PlayerName, request.DesiredSeatNumber);
+
+        if (!success)
+        {
+            return Results.BadRequest(new SeatChangeResponse(false, Error: error));
+        }
+
+        if (isPending)
+        {
+            // Broadcast seat change requested event
+            var seatChangeRequestedEvent = new SeatChangeRequestedEvent(
+                tableId,
+                DateTime.UtcNow,
+                request.PlayerName,
+                oldSeatNumber!.Value,
+                request.DesiredSeatNumber);
+
+            await hubContext.Clients.Group(tableId.ToString()).SendAsync("SeatChangeRequested", seatChangeRequestedEvent);
+        }
+        else
+        {
+            // Broadcast seat change completed event
+            var seatChangeCompletedEvent = new SeatChangeCompletedEvent(
+                tableId,
+                DateTime.UtcNow,
+                request.PlayerName,
+                oldSeatNumber!.Value,
+                newSeatNumber!.Value);
+
+            await hubContext.Clients.Group(tableId.ToString()).SendAsync("SeatChangeCompleted", seatChangeCompletedEvent);
+        }
+
+        return Results.Ok(new SeatChangeResponse(
+            Success: true,
+            TableId: tableId,
+            OldSeatNumber: oldSeatNumber,
+            NewSeatNumber: newSeatNumber,
+            Seat: seat,
+            IsPending: isPending));
+    }
+
+    private static async Task<IResult> StandUpAsync(
+        Guid tableId,
+        LeaveTableRequest request,
+        ITablesRepository tablesRepository,
+        IHubContext<GameHub> hubContext)
+    {
+        if (tableId != request.TableId)
+        {
+            return Results.BadRequest(new LeaveTableResponse(false, Error: "Table ID in URL does not match request body."));
+        }
+
+        // Get player's seat before standing up
+        var seats = await tablesRepository.GetSeatsAsync(tableId);
+        var playerSeat = seats.FirstOrDefault(s => s.PlayerName == request.PlayerName);
+
+        var (success, cashoutAmount, error) = await tablesRepository.StandUpAsync(tableId, request.PlayerName);
+
+        if (!success)
+        {
+            return Results.BadRequest(new LeaveTableResponse(false, Error: error));
+        }
+
+        // Broadcast seat freed event to table
+        if (playerSeat != null)
+        {
+            var seatFreedEvent = new SeatFreedEvent(
+                tableId,
+                DateTime.UtcNow,
+                playerSeat.SeatNumber,
+                request.PlayerName,
+                cashoutAmount);
+
+            await hubContext.Clients.Group(tableId.ToString()).SendAsync("SeatFreed", seatFreedEvent);
+        }
+
+        // Broadcast seat status change to lobby
+        var updatedTable = await tablesRepository.GetTableByIdAsync(tableId);
+        if (updatedTable != null)
+        {
+            var seatStatusEvent = new TableSeatStatusChangedEvent(
+                tableId,
+                DateTime.UtcNow,
+                updatedTable.OccupiedSeats,
+                updatedTable.MaxSeats,
+                updatedTable.WaitingListCount);
+
+            await hubContext.Clients.Group("lobby").SendAsync("TableSeatStatusChanged", seatStatusEvent);
+
+            // Notify waiting players if there's a seat available
+            var waitingList = await tablesRepository.GetWaitingListAsync(tableId);
+            if (waitingList.Count > 0)
+            {
+                var seatAvailableEvent = new SeatAvailableEvent(
+                    tableId,
+                    DateTime.UtcNow,
+                    updatedTable.MaxSeats - updatedTable.OccupiedSeats,
+                    updatedTable.MaxSeats,
+                    updatedTable.OccupiedSeats,
+                    waitingList.Count);
+
+                await hubContext.Clients.Group($"{tableId}-waitlist").SendAsync("SeatAvailable", seatAvailableEvent);
+            }
+        }
+
+        return Results.Ok(new LeaveTableResponse(Success: true));
+    }
+
+    #endregion
 }
