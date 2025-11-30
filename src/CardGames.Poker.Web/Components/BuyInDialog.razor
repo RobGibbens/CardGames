@@ -230,7 +230,7 @@
 
     private async Task HandleKeyUp(KeyboardEventArgs e)
     {
-        if (e.Key == "Enter" && IsValidAmount())
+        if (e.Key == "Enter" && IsValidAmount() && !_isProcessing)
         {
             await ConfirmBuyIn();
         }

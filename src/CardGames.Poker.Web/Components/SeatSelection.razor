@@ -370,7 +370,9 @@
         {
             return "Expired";
         }
-        return $"{(int)remaining.TotalMinutes}:{remaining.Seconds:D2}";
+        var minutes = (int)remaining.TotalMinutes;
+        var seconds = (int)remaining.TotalSeconds % 60;
+        return $"{minutes}:{seconds:D2}";
     }
 
     private int GetAvailableSeatsCount()

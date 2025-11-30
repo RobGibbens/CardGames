@@ -501,25 +501,29 @@ public static class TablesModule
         var seats = await tablesRepository.GetSeatsAsync(tableId);
         var playerSeat = seats.FirstOrDefault(s => s.PlayerName == request.PlayerName);
 
-        if (request.SitOut)
+        // Only broadcast event if we can determine the seat number
+        if (playerSeat != null)
         {
-            var playerSatOutEvent = new PlayerSatOutEvent(
-                tableId,
-                DateTime.UtcNow,
-                playerSeat?.SeatNumber ?? 0,
-                request.PlayerName);
+            if (request.SitOut)
+            {
+                var playerSatOutEvent = new PlayerSatOutEvent(
+                    tableId,
+                    DateTime.UtcNow,
+                    playerSeat.SeatNumber,
+                    request.PlayerName);
 
-            await hubContext.Clients.Group(tableId.ToString()).SendAsync("PlayerSatOut", playerSatOutEvent);
-        }
-        else
-        {
-            var playerSatBackInEvent = new PlayerSatBackInEvent(
-                tableId,
-                DateTime.UtcNow,
-                playerSeat?.SeatNumber ?? 0,
-                request.PlayerName);
+                await hubContext.Clients.Group(tableId.ToString()).SendAsync("PlayerSatOut", playerSatOutEvent);
+            }
+            else
+            {
+                var playerSatBackInEvent = new PlayerSatBackInEvent(
+                    tableId,
+                    DateTime.UtcNow,
+                    playerSeat.SeatNumber,
+                    request.PlayerName);
 
-            await hubContext.Clients.Group(tableId.ToString()).SendAsync("PlayerSatBackIn", playerSatBackInEvent);
+                await hubContext.Clients.Group(tableId.ToString()).SendAsync("PlayerSatBackIn", playerSatBackInEvent);
+            }
         }
 
         return Results.Ok(new SitOutResponse(

@@ -698,8 +698,7 @@ public class InMemoryTablesRepository : ITablesRepository
 
         var updatedSeat = seat with 
         { 
-            Status = sitOut ? SeatStatus.SittingOut : SeatStatus.Occupied,
-            IsSittingOut = sitOut
+            Status = sitOut ? SeatStatus.SittingOut : SeatStatus.Occupied
         };
 
         seats[seatIndex] = updatedSeat;
@@ -773,8 +772,7 @@ public class InMemoryTablesRepository : ITablesRepository
                 SeatNumber: desiredSeatNumber,
                 Status: currentSeat.Status,
                 PlayerName: playerName,
-                ChipStack: currentSeat.ChipStack,
-                IsSittingOut: currentSeat.IsSittingOut);
+                ChipStack: currentSeat.ChipStack);
 
             seats[currentSeatIndex] = updatedCurrentSeat;
             seats[desiredSeatIndex] = updatedDesiredSeat;

@@ -26,5 +26,4 @@ public record SeatDto(
     SeatStatus Status,
     string? PlayerName = null,
     int ChipStack = 0,
-    bool IsSittingOut = false,
     DateTime? ReservedUntil = null);

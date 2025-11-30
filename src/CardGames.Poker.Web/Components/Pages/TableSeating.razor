@@ -138,7 +138,7 @@
                                 <dt>Chips</dt>
                                 <dd>@_currentPlayer.ChipStack.ToString("N0")</dd>
 
-                                @if (_currentPlayer.IsSittingOut)
+                                @if (_currentPlayer.Status == SeatStatus.SittingOut)
                                 {
                                     <dt>Status</dt>
                                     <dd><span class="badge bg-warning text-dark">Sitting Out</span></dd>
@@ -146,7 +146,7 @@
                             </dl>
 
                             <div class="d-grid gap-2">
-                                @if (_currentPlayer.IsSittingOut)
+                                @if (_currentPlayer.Status == SeatStatus.SittingOut)
                                 {
                                     <button class="btn btn-success" @onclick="SitBackIn" disabled="@_isProcessing">
                                         Sit Back In
@@ -268,16 +268,23 @@
             {
                 _seats = seatsResponse.Seats;
                 
-                // Check if current player is seated
+                // Check if current player is seated - single pass through seats
                 if (!string.IsNullOrWhiteSpace(_playerName))
                 {
-                    _currentPlayer = _seats.FirstOrDefault(s => 
-                        s.PlayerName == _playerName && 
-                        (s.Status == SeatStatus.Occupied || s.Status == SeatStatus.SittingOut));
+                    _currentPlayer = null;
+                    _reservedSeat = null;
                     
-                    _reservedSeat = _seats.FirstOrDefault(s => 
-                        s.PlayerName == _playerName && 
-                        s.Status == SeatStatus.Reserved);
+                    foreach (var seat in _seats.Where(s => s.PlayerName == _playerName))
+                    {
+                        if (seat.Status == SeatStatus.Occupied || seat.Status == SeatStatus.SittingOut)
+                        {
+                            _currentPlayer = seat;
+                        }
+                        else if (seat.Status == SeatStatus.Reserved)
+                        {
+                            _reservedSeat = seat;
+                        }
+                    }
                 }
             }
             else

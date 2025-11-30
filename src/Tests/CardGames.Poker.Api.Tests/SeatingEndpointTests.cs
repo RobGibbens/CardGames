@@ -579,7 +579,7 @@ public class SeatingEndpointTests : IClassFixture<WebApplicationFactory<Program>
     #region StandUp Tests
 
     [Fact]
-    public async Task StandUp_ValidRequest_FreesSeaAndReturnsChips()
+    public async Task StandUp_ValidRequest_FreeSeatAndReturnsChips()
     {
         // Arrange - Create a table, select seat, and buy in
         var createRequest = new CreateTableRequest(
