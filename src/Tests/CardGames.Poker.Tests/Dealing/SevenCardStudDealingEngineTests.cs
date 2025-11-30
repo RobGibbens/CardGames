@@ -262,18 +262,19 @@ public class SevenCardStudDealingEngineTests
         engine.Initialize(TwoPlayers, dealerPosition: 0);
         engine.Shuffle();
         
-        // Third street: 6 cards (2 players × 3 cards)
+        // Third street: 6 cards (2 players × 3 cards = 2 hole + 1 door each)
         engine.DealHoleCards();
-        // Fourth street: 2 cards
+        // Fourth street: 1 face-up card per player = 2 cards
         engine.DealStreet(4, TwoPlayers);
-        // Fifth street: 2 cards
+        // Fifth street: 1 face-up card per player = 2 cards
         engine.DealStreet(5, TwoPlayers);
-        // Sixth street: 2 cards
+        // Sixth street: 1 face-up card per player = 2 cards
         engine.DealStreet(6, TwoPlayers);
-        // Seventh street: 2 cards
+        // Seventh street: 1 face-down card per player = 2 cards
         engine.DealStreet(7, TwoPlayers);
         
-        // Total dealt: 6 + 2 + 2 + 2 + 2 = 14
+        // Total cards dealt per player: 7 (standard seven card stud)
+        // Total dealt: 2 players × 7 cards = 14 cards
         engine.CardsRemaining.Should().Be(52 - 14);
     }
 

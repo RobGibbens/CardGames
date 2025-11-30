@@ -251,7 +251,7 @@
             "diamonds" => "♦",
             "clubs" => "♣",
             "spades" => "♠",
-            _ => Card.Suit[..1].ToUpperInvariant()
+            _ => !string.IsNullOrEmpty(Card.Suit) ? Card.Suit[..1].ToUpperInvariant() : "?"
         };
     }
 }
