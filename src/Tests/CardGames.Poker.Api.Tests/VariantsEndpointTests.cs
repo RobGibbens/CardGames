@@ -129,4 +129,39 @@ public class VariantsEndpointTests : IClassFixture<WebApplicationFactory<Program
         result.Variant!.Id.Should().Be("omaha");
         result.Variant.Name.Should().Be("Omaha");
     }
+
+    [Fact]
+    public async Task GetVariants_IncludesSevenCardStud()
+    {
+        // Act
+        var response = await _client.GetAsync("/api/variants");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<VariantsListResponse>();
+        result.Should().NotBeNull();
+        result!.Variants.Should().Contain(v => v.Id == "seven-card-stud");
+        
+        var sevenCardStud = result.Variants!.First(v => v.Id == "seven-card-stud");
+        sevenCardStud.Name.Should().Be("Seven Card Stud");
+        sevenCardStud.Description.Should().NotBeNullOrEmpty();
+        sevenCardStud.MinPlayers.Should().Be(2);
+        sevenCardStud.MaxPlayers.Should().Be(7);
+    }
+
+    [Fact]
+    public async Task GetVariantById_SevenCardStudVariant_ReturnsVariant()
+    {
+        // Act
+        var response = await _client.GetAsync("/api/variants/seven-card-stud");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<VariantResponse>();
+        result.Should().NotBeNull();
+        result!.Success.Should().BeTrue();
+        result.Variant.Should().NotBeNull();
+        result.Variant!.Id.Should().Be("seven-card-stud");
+        result.Variant.Name.Should().Be("Seven Card Stud");
+    }
 }

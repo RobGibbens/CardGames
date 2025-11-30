@@ -81,6 +81,7 @@ internal class BuiltInVariantRegistrationService : IHostedService
         // Register built-in variants
         RegisterTexasHoldem();
         RegisterOmaha();
+        RegisterSevenCardStud();
 
         // Register any custom variants added via AddGameVariant
         foreach (var request in _registrationRequests)
@@ -117,5 +118,26 @@ internal class BuiltInVariantRegistrationService : IHostedService
 
         _registry.RegisterVariant(info, (players, smallBlind, bigBlind) =>
             new OmahaGame(players, smallBlind, bigBlind));
+    }
+
+    private void RegisterSevenCardStud()
+    {
+        var info = new GameVariantInfo(
+            Id: "seven-card-stud",
+            Name: "Seven Card Stud",
+            Description: "A classic stud poker variant. Each player receives 7 cards (3 face-down, 4 face-up) and makes the best 5-card hand. Uses antes and bring-in instead of blinds.",
+            MinPlayers: 2,
+            MaxPlayers: 7);
+
+        // Map smallBlind to ante and bigBlind to smallBet
+        // bringIn is set to half of smallBet, bigBet is double smallBet
+        _registry.RegisterVariant(info, (players, smallBlind, bigBlind) =>
+            new SevenCardStudGame(
+                players,
+                ante: smallBlind,
+                bringIn: bigBlind / 2,
+                smallBet: bigBlind,
+                bigBet: bigBlind * 2,
+                useBringIn: true));
     }
 }

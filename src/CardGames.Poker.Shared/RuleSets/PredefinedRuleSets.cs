@@ -20,12 +20,18 @@ public static class PredefinedRuleSets
     public static RuleSetDto Omaha { get; } = CreateOmaha();
 
     /// <summary>
+    /// Gets the Seven Card Stud ruleset.
+    /// </summary>
+    public static RuleSetDto SevenCardStud { get; } = CreateSevenCardStud();
+
+    /// <summary>
     /// Gets all predefined rulesets.
     /// </summary>
     public static IReadOnlyDictionary<PokerVariant, RuleSetDto> All { get; } = new Dictionary<PokerVariant, RuleSetDto>
     {
         { PokerVariant.TexasHoldem, TexasHoldem },
-        { PokerVariant.Omaha, Omaha }
+        { PokerVariant.Omaha, Omaha },
+        { PokerVariant.SevenCardStud, SevenCardStud }
     };
 
     /// <summary>
@@ -195,6 +201,105 @@ public static class PredefinedRuleSets
             HiLoRules: null,
             SpecialRules: null,
             Description: "Omaha poker. Each player receives 4 hole cards and must use exactly 2 of them with exactly 3 community cards to make the best 5-card hand."
+        );
+
+        return ruleSet;
+    }
+
+    private static RuleSetDto CreateSevenCardStud()
+    {
+        var ruleSet = new RuleSetDto(
+            SchemaVersion: RuleSetValidator.CurrentSchemaVersion,
+            Id: "seven-card-stud-limit",
+            Name: "Seven Card Stud (Limit)",
+            Variant: PokerVariant.SevenCardStud,
+            DeckComposition: new DeckCompositionDto(
+                DeckType: DeckType.Full52,
+                NumberOfDecks: 1
+            ),
+            CardVisibility: new CardVisibilityDto(
+                HoleCardsPrivate: true,
+                CommunityCardsPublic: false,
+                FaceDownIndices: [0, 1, 6],
+                FaceUpIndices: [2, 3, 4, 5]
+            ),
+            BettingRounds:
+            [
+                new BettingRoundDto(
+                    Name: "Third Street",
+                    Order: 0,
+                    CommunityCardsDealt: 0,
+                    HoleCardsDealt: 3,
+                    DealtFaceUp: false,
+                    MinBetMultiplier: 0.5m
+                ),
+                new BettingRoundDto(
+                    Name: "Fourth Street",
+                    Order: 1,
+                    CommunityCardsDealt: 0,
+                    HoleCardsDealt: 1,
+                    DealtFaceUp: true,
+                    MinBetMultiplier: 0.5m
+                ),
+                new BettingRoundDto(
+                    Name: "Fifth Street",
+                    Order: 2,
+                    CommunityCardsDealt: 0,
+                    HoleCardsDealt: 1,
+                    DealtFaceUp: true,
+                    MinBetMultiplier: 1.0m
+                ),
+                new BettingRoundDto(
+                    Name: "Sixth Street",
+                    Order: 3,
+                    CommunityCardsDealt: 0,
+                    HoleCardsDealt: 1,
+                    DealtFaceUp: true,
+                    MinBetMultiplier: 1.0m
+                ),
+                new BettingRoundDto(
+                    Name: "Seventh Street",
+                    Order: 4,
+                    CommunityCardsDealt: 0,
+                    HoleCardsDealt: 1,
+                    DealtFaceUp: false,
+                    MinBetMultiplier: 1.0m
+                )
+            ],
+            HoleCardRules: new HoleCardRulesDto(
+                Count: 7,
+                MinUsedInHand: 5,
+                MaxUsedInHand: 5,
+                AllowDraw: false,
+                MaxDrawCount: 0
+            ),
+            CommunityCardRules: null,
+            AnteBlindRules: new AnteBlindRulesDto(
+                HasAnte: true,
+                AntePercentage: 10,
+                HasSmallBlind: false,
+                HasBigBlind: false,
+                AllowStraddle: false,
+                ButtonAnte: false
+            ),
+            LimitType: LimitType.FixedLimit,
+            WildcardRules: null,
+            ShowdownRules: new ShowdownRulesDto(
+                ShowOrder: ShowdownOrder.LastAggressor,
+                AllowMuck: true,
+                ShowAllOnAllIn: true
+            ),
+            HiLoRules: null,
+            SpecialRules:
+            [
+                new SpecialRuleDto(
+                    Id: "bring-in",
+                    Name: "Bring-In",
+                    Description: "The player with the lowest upcard on third street must post a forced bring-in bet.",
+                    Enabled: true
+                )
+            ],
+            Description: "A classic stud poker variant. Each player receives 7 cards (3 face-down, 4 face-up) and makes the best 5-card hand. Uses antes and bring-in instead of blinds."
         );
 
         return ruleSet;
