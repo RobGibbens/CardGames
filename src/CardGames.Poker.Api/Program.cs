@@ -40,6 +40,12 @@ builder.Services.AddShowdownServices();
 // Add SignalR services
 builder.Services.AddSignalR();
 
+// Add connection mapping service for player-to-connection tracking
+builder.Services.AddSingleton<IConnectionMappingService, ConnectionMappingService>();
+
+// Add connection health monitoring background service
+builder.Services.AddHostedService<ConnectionHealthMonitorService>();
+
 // Add CORS for SignalR (configure properly for production)
 builder.Services.AddCors(options =>
 {

@@ -13,6 +13,8 @@ public class GameHubService : IAsyncDisposable
     private readonly ILogger<GameHubService> _logger;
     private readonly IConfiguration _configuration;
     private bool _isConnecting;
+    private Timer? _heartbeatTimer;
+    private readonly TimeSpan _heartbeatInterval = TimeSpan.FromSeconds(30);
 
     /// <summary>
     /// Event raised when a message is received from the hub.
@@ -59,6 +61,100 @@ public class GameHubService : IAsyncDisposable
     /// </summary>
     public event Action<PlayerLeftWaitingListEvent>? OnPlayerLeftWaitingList;
 
+    #region New Game Events
+
+    /// <summary>
+    /// Event raised when a player connects to a table.
+    /// </summary>
+    public event Action<PlayerConnectedEvent>? OnPlayerConnected;
+
+    /// <summary>
+    /// Event raised when a player disconnects from a table.
+    /// </summary>
+    public event Action<PlayerDisconnectedEvent>? OnPlayerDisconnected;
+
+    /// <summary>
+    /// Event raised when a player reconnects to a table.
+    /// </summary>
+    public event Action<PlayerReconnectedEvent>? OnPlayerReconnected;
+
+    /// <summary>
+    /// Event raised when a betting action is performed.
+    /// </summary>
+    public event Action<BettingActionEvent>? OnPlayerAction;
+
+    /// <summary>
+    /// Event raised when an action is rejected.
+    /// </summary>
+    public event Action<string>? OnActionRejected;
+
+    /// <summary>
+    /// Event raised when table state synchronization is received.
+    /// </summary>
+    public event Action<TableStateSyncEvent>? OnTableStateSync;
+
+    /// <summary>
+    /// Event raised when private player data is received.
+    /// </summary>
+    public event Action<PrivatePlayerDataEvent>? OnPrivateData;
+
+    /// <summary>
+    /// Event raised when a connection is detected as stale.
+    /// </summary>
+    public event Action<ConnectionStaleEvent>? OnConnectionStale;
+
+    /// <summary>
+    /// Event raised when a heartbeat acknowledgment is received.
+    /// </summary>
+    public event Action<DateTime>? OnHeartbeatAck;
+
+    /// <summary>
+    /// Event raised when a ping request is received from the server.
+    /// </summary>
+    public event Action<DateTime>? OnPingRequest;
+
+    /// <summary>
+    /// Event raised when showdown starts.
+    /// </summary>
+    public event Action<ShowdownStartedEvent>? OnShowdownStarted;
+
+    /// <summary>
+    /// Event raised when a player reveals their cards.
+    /// </summary>
+    public event Action<PlayerRevealedCardsEvent>? OnPlayerRevealedCards;
+
+    /// <summary>
+    /// Event raised when a player mucks their cards.
+    /// </summary>
+    public event Action<PlayerMuckedCardsEvent>? OnPlayerMuckedCards;
+
+    /// <summary>
+    /// Event raised when it's a player's turn at showdown.
+    /// </summary>
+    public event Action<ShowdownTurnEvent>? OnShowdownTurn;
+
+    /// <summary>
+    /// Event raised when showdown is completed.
+    /// </summary>
+    public event Action<ShowdownCompletedEvent>? OnShowdownCompleted;
+
+    /// <summary>
+    /// Event raised when hand starts.
+    /// </summary>
+    public event Action<HandStartedEvent>? OnHandStarted;
+
+    /// <summary>
+    /// Event raised when community cards are dealt.
+    /// </summary>
+    public event Action<CommunityCardsDealtEvent>? OnCommunityCardsDealt;
+
+    /// <summary>
+    /// Event raised when it's a player's turn.
+    /// </summary>
+    public event Action<PlayerTurnEvent>? OnPlayerTurn;
+
+    #endregion
+
     /// <summary>
     /// Gets the current connection state.
     /// </summary>
@@ -68,6 +164,11 @@ public class GameHubService : IAsyncDisposable
     /// Gets whether the connection is established.
     /// </summary>
     public bool IsConnected => _hubConnection?.State == HubConnectionState.Connected;
+
+    /// <summary>
+    /// Gets the current connection ID if connected.
+    /// </summary>
+    public string? ConnectionId { get; private set; }
 
     public GameHubService(ILogger<GameHubService> logger, IConfiguration configuration)
     {
@@ -105,7 +206,9 @@ public class GameHubService : IAsyncDisposable
 
             _hubConnection.On<string>("Connected", (connectionId) =>
             {
+                ConnectionId = connectionId;
                 _logger.LogInformation("Connected to hub with ID: {ConnectionId}", connectionId);
+                StartHeartbeat();
                 OnConnected?.Invoke(connectionId);
             });
 
@@ -146,6 +249,117 @@ public class GameHubService : IAsyncDisposable
                 _logger.LogInformation("Player {PlayerName} left waiting list at table {TableId}", 
                     waitingListEvent.PlayerName, waitingListEvent.TableId);
                 OnPlayerLeftWaitingList?.Invoke(waitingListEvent);
+            });
+
+            // New game event handlers
+            _hubConnection.On<PlayerConnectedEvent>("PlayerConnected", (evt) =>
+            {
+                _logger.LogInformation("Player {PlayerName} connected to table {TableId}", evt.PlayerName, evt.TableId);
+                OnPlayerConnected?.Invoke(evt);
+            });
+
+            _hubConnection.On<PlayerDisconnectedEvent>("PlayerDisconnected", (evt) =>
+            {
+                _logger.LogInformation("Player {PlayerName} disconnected from table {TableId}", evt.PlayerName, evt.TableId);
+                OnPlayerDisconnected?.Invoke(evt);
+            });
+
+            _hubConnection.On<PlayerReconnectedEvent>("PlayerReconnected", (evt) =>
+            {
+                _logger.LogInformation("Player {PlayerName} reconnected to table {TableId}", evt.PlayerName, evt.TableId);
+                OnPlayerReconnected?.Invoke(evt);
+            });
+
+            _hubConnection.On<BettingActionEvent>("PlayerAction", (evt) =>
+            {
+                _logger.LogInformation("Player {PlayerName} performed {ActionType}", evt.Action.PlayerName, evt.Action.ActionType);
+                OnPlayerAction?.Invoke(evt);
+            });
+
+            _hubConnection.On<string>("ActionRejected", (reason) =>
+            {
+                _logger.LogWarning("Action rejected: {Reason}", reason);
+                OnActionRejected?.Invoke(reason);
+            });
+
+            _hubConnection.On<TableStateSyncEvent>("TableStateSync", (evt) =>
+            {
+                _logger.LogDebug("Received table state sync for table {TableId}", evt.TableId);
+                OnTableStateSync?.Invoke(evt);
+            });
+
+            _hubConnection.On<PrivatePlayerDataEvent>("PrivateData", (evt) =>
+            {
+                _logger.LogDebug("Received private data for player {PlayerName}", evt.PlayerName);
+                OnPrivateData?.Invoke(evt);
+            });
+
+            _hubConnection.On<ConnectionStaleEvent>("ConnectionStale", (evt) =>
+            {
+                _logger.LogWarning("Connection stale detected for player {PlayerName}", evt.PlayerName);
+                OnConnectionStale?.Invoke(evt);
+            });
+
+            _hubConnection.On<DateTime>("HeartbeatAck", (timestamp) =>
+            {
+                _logger.LogTrace("Heartbeat acknowledged at {Timestamp}", timestamp);
+                OnHeartbeatAck?.Invoke(timestamp);
+            });
+
+            _hubConnection.On<DateTime>("PingRequest", (timestamp) =>
+            {
+                _logger.LogDebug("Ping request received at {Timestamp}", timestamp);
+                OnPingRequest?.Invoke(timestamp);
+                // Automatically respond with heartbeat
+                _ = SendHeartbeatAsync();
+            });
+
+            _hubConnection.On<ShowdownStartedEvent>("ShowdownStarted", (evt) =>
+            {
+                _logger.LogInformation("Showdown started for game {GameId}", evt.GameId);
+                OnShowdownStarted?.Invoke(evt);
+            });
+
+            _hubConnection.On<PlayerRevealedCardsEvent>("PlayerRevealedCards", (evt) =>
+            {
+                _logger.LogInformation("Player {PlayerName} revealed cards", evt.PlayerName);
+                OnPlayerRevealedCards?.Invoke(evt);
+            });
+
+            _hubConnection.On<PlayerMuckedCardsEvent>("PlayerMuckedCards", (evt) =>
+            {
+                _logger.LogInformation("Player {PlayerName} mucked cards", evt.PlayerName);
+                OnPlayerMuckedCards?.Invoke(evt);
+            });
+
+            _hubConnection.On<ShowdownTurnEvent>("ShowdownTurn", (evt) =>
+            {
+                _logger.LogInformation("Showdown turn for player {PlayerName}", evt.PlayerName);
+                OnShowdownTurn?.Invoke(evt);
+            });
+
+            _hubConnection.On<ShowdownCompletedEvent>("ShowdownCompleted", (evt) =>
+            {
+                _logger.LogInformation("Showdown completed for game {GameId}", evt.GameId);
+                OnShowdownCompleted?.Invoke(evt);
+            });
+
+            _hubConnection.On<HandStartedEvent>("HandStarted", (evt) =>
+            {
+                _logger.LogInformation("Hand {HandNumber} started for game {GameId}", evt.HandNumber, evt.GameId);
+                OnHandStarted?.Invoke(evt);
+            });
+
+            _hubConnection.On<CommunityCardsDealtEvent>("CommunityCardsDealt", (evt) =>
+            {
+                _logger.LogInformation("Community cards dealt: {Street}", evt.StreetName);
+                OnCommunityCardsDealt?.Invoke(evt);
+            });
+
+            _hubConnection.On<PlayerTurnEvent>("PlayerTurn", (evt) =>
+            {
+                _logger.LogInformation("It's {PlayerName}'s turn", evt.PlayerName);
+                OnPlayerTurn?.Invoke(evt);
             });
 
             // Connection state change handlers
@@ -289,11 +503,233 @@ public class GameHubService : IAsyncDisposable
         await _hubConnection.InvokeAsync("LeaveWaitingListGroup", tableId);
     }
 
+    #region Table Actions
+
+    /// <summary>
+    /// Joins a table as a seated player.
+    /// </summary>
+    /// <param name="tableId">The table identifier.</param>
+    /// <param name="playerName">The player's name.</param>
+    public async Task JoinTableAsync(string tableId, string playerName)
+    {
+        if (_hubConnection?.State != HubConnectionState.Connected)
+        {
+            _logger.LogWarning("Cannot join table - not connected to hub");
+            return;
+        }
+
+        await _hubConnection.InvokeAsync("JoinTable", tableId, playerName);
+    }
+
+    /// <summary>
+    /// Leaves a table as a seated player.
+    /// </summary>
+    /// <param name="tableId">The table identifier.</param>
+    public async Task LeaveTableAsync(string tableId)
+    {
+        if (_hubConnection?.State != HubConnectionState.Connected)
+        {
+            _logger.LogWarning("Cannot leave table - not connected to hub");
+            return;
+        }
+
+        await _hubConnection.InvokeAsync("LeaveTable", tableId);
+    }
+
+    /// <summary>
+    /// Performs a fold action.
+    /// </summary>
+    /// <param name="tableId">The table identifier.</param>
+    public async Task FoldAsync(string tableId)
+    {
+        if (_hubConnection?.State != HubConnectionState.Connected)
+        {
+            _logger.LogWarning("Cannot fold - not connected to hub");
+            return;
+        }
+
+        await _hubConnection.InvokeAsync("Fold", tableId);
+    }
+
+    /// <summary>
+    /// Performs a check action.
+    /// </summary>
+    /// <param name="tableId">The table identifier.</param>
+    public async Task CheckAsync(string tableId)
+    {
+        if (_hubConnection?.State != HubConnectionState.Connected)
+        {
+            _logger.LogWarning("Cannot check - not connected to hub");
+            return;
+        }
+
+        await _hubConnection.InvokeAsync("Check", tableId);
+    }
+
+    /// <summary>
+    /// Performs a call action.
+    /// </summary>
+    /// <param name="tableId">The table identifier.</param>
+    /// <param name="amount">The amount to call.</param>
+    public async Task CallAsync(string tableId, int amount)
+    {
+        if (_hubConnection?.State != HubConnectionState.Connected)
+        {
+            _logger.LogWarning("Cannot call - not connected to hub");
+            return;
+        }
+
+        await _hubConnection.InvokeAsync("Call", tableId, amount);
+    }
+
+    /// <summary>
+    /// Performs a bet action.
+    /// </summary>
+    /// <param name="tableId">The table identifier.</param>
+    /// <param name="amount">The amount to bet.</param>
+    public async Task BetAsync(string tableId, int amount)
+    {
+        if (_hubConnection?.State != HubConnectionState.Connected)
+        {
+            _logger.LogWarning("Cannot bet - not connected to hub");
+            return;
+        }
+
+        await _hubConnection.InvokeAsync("Bet", tableId, amount);
+    }
+
+    /// <summary>
+    /// Performs a raise action.
+    /// </summary>
+    /// <param name="tableId">The table identifier.</param>
+    /// <param name="amount">The total amount to raise to.</param>
+    public async Task RaiseAsync(string tableId, int amount)
+    {
+        if (_hubConnection?.State != HubConnectionState.Connected)
+        {
+            _logger.LogWarning("Cannot raise - not connected to hub");
+            return;
+        }
+
+        await _hubConnection.InvokeAsync("Raise", tableId, amount);
+    }
+
+    /// <summary>
+    /// Performs an all-in action.
+    /// </summary>
+    /// <param name="tableId">The table identifier.</param>
+    /// <param name="amount">The player's remaining chip stack.</param>
+    public async Task AllInAsync(string tableId, int amount)
+    {
+        if (_hubConnection?.State != HubConnectionState.Connected)
+        {
+            _logger.LogWarning("Cannot go all-in - not connected to hub");
+            return;
+        }
+
+        await _hubConnection.InvokeAsync("AllIn", tableId, amount);
+    }
+
+    #endregion
+
+    #region Table State Synchronization
+
+    /// <summary>
+    /// Requests full table state synchronization.
+    /// </summary>
+    /// <param name="tableId">The table identifier.</param>
+    public async Task RequestTableStateAsync(string tableId)
+    {
+        if (_hubConnection?.State != HubConnectionState.Connected)
+        {
+            _logger.LogWarning("Cannot request table state - not connected to hub");
+            return;
+        }
+
+        await _hubConnection.InvokeAsync("RequestTableState", tableId);
+    }
+
+    #endregion
+
+    #region Connection Health
+
+    /// <summary>
+    /// Sends a heartbeat to the server to keep the connection alive.
+    /// </summary>
+    public async Task SendHeartbeatAsync()
+    {
+        if (_hubConnection?.State != HubConnectionState.Connected)
+        {
+            return;
+        }
+
+        try
+        {
+            await _hubConnection.InvokeAsync("Heartbeat");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to send heartbeat");
+        }
+    }
+
+    /// <summary>
+    /// Gets connection information from the server.
+    /// </summary>
+    public async Task GetConnectionInfoAsync()
+    {
+        if (_hubConnection?.State != HubConnectionState.Connected)
+        {
+            _logger.LogWarning("Cannot get connection info - not connected to hub");
+            return;
+        }
+
+        await _hubConnection.InvokeAsync("GetConnectionInfo");
+    }
+
+    private void StartHeartbeat()
+    {
+        _heartbeatTimer?.Dispose();
+        _heartbeatTimer = new Timer(
+            _ => 
+            {
+                // Fire-and-forget but safely handle exceptions
+                _ = SendHeartbeatSafeAsync();
+            },
+            null,
+            _heartbeatInterval,
+            _heartbeatInterval);
+        _logger.LogDebug("Heartbeat timer started with interval {Interval}", _heartbeatInterval);
+    }
+
+    private async Task SendHeartbeatSafeAsync()
+    {
+        try
+        {
+            await SendHeartbeatAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Heartbeat failed - connection may be closing");
+        }
+    }
+
+    private void StopHeartbeat()
+    {
+        _heartbeatTimer?.Dispose();
+        _heartbeatTimer = null;
+        _logger.LogDebug("Heartbeat timer stopped");
+    }
+
+    #endregion
+
     /// <summary>
     /// Stops the SignalR connection.
     /// </summary>
     public async Task StopAsync()
     {
+        StopHeartbeat();
+        ConnectionId = null;
         if (_hubConnection is not null)
         {
             await _hubConnection.StopAsync();
@@ -306,6 +742,7 @@ public class GameHubService : IAsyncDisposable
     /// </summary>
     public async ValueTask DisposeAsync()
     {
+        StopHeartbeat();
         if (_hubConnection is not null)
         {
             await _hubConnection.DisposeAsync();

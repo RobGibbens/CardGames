@@ -1,5 +1,6 @@
 using CardGames.Poker.Api.Features.Showdown;
 using CardGames.Poker.Shared.DTOs;
+using CardGames.Poker.Shared.Enums;
 using CardGames.Poker.Shared.Events;
 using Microsoft.AspNetCore.SignalR;
 
@@ -12,11 +13,16 @@ public class GameHub : Hub
 {
     private readonly ILogger<GameHub> _logger;
     private readonly IShowdownAuditLogger _showdownAuditLogger;
+    private readonly IConnectionMappingService _connectionMapping;
 
-    public GameHub(ILogger<GameHub> logger, IShowdownAuditLogger showdownAuditLogger)
+    public GameHub(
+        ILogger<GameHub> logger,
+        IShowdownAuditLogger showdownAuditLogger,
+        IConnectionMappingService connectionMapping)
     {
         _logger = logger;
         _showdownAuditLogger = showdownAuditLogger;
+        _connectionMapping = connectionMapping;
     }
 
     /// <summary>
@@ -34,7 +40,29 @@ public class GameHub : Hub
     /// </summary>
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
-        _logger.LogInformation("Client disconnected: {ConnectionId}", Context.ConnectionId);
+        var connectionId = Context.ConnectionId;
+        var playerInfo = _connectionMapping.GetPlayerInfo(connectionId);
+
+        if (playerInfo is not null)
+        {
+            _connectionMapping.MarkDisconnected(connectionId);
+
+            var evt = new PlayerDisconnectedEvent(
+                Guid.Parse(playerInfo.TableId),
+                DateTime.UtcNow,
+                playerInfo.PlayerName,
+                exception is not null);
+
+            await Clients.Group(playerInfo.TableId).SendAsync("PlayerDisconnected", evt);
+
+            _logger.LogInformation(
+                "Player {PlayerName} disconnected from table {TableId}. Unexpected: {Unexpected}",
+                playerInfo.PlayerName,
+                playerInfo.TableId,
+                exception is not null);
+        }
+
+        _logger.LogInformation("Client disconnected: {ConnectionId}", connectionId);
         await base.OnDisconnectedAsync(exception);
     }
 
@@ -183,6 +211,306 @@ public class GameHub : Hub
     {
         _logger.LogDebug("Sending private hole cards to player {PlayerName}", playerName);
         await Clients.Client(connectionId).SendAsync("PrivateHoleCards", playerName, cards);
+    }
+
+    #endregion
+
+    #region Table Actions
+
+    /// <summary>
+    /// Joins a table as a seated player with connection tracking.
+    /// </summary>
+    /// <param name="tableId">The table identifier.</param>
+    /// <param name="playerName">The player's name.</param>
+    public async Task JoinTable(string tableId, string playerName)
+    {
+        var connectionId = Context.ConnectionId;
+
+        // Check for reconnection
+        var oldInfo = _connectionMapping.TryReconnect(connectionId, playerName, tableId);
+        if (oldInfo is not null)
+        {
+            await Groups.AddToGroupAsync(connectionId, tableId);
+
+            var reconnectDuration = DateTime.UtcNow - (oldInfo.DisconnectedAt ?? DateTime.UtcNow);
+            var evt = new PlayerReconnectedEvent(
+                Guid.Parse(tableId),
+                DateTime.UtcNow,
+                playerName,
+                reconnectDuration);
+
+            await Clients.Group(tableId).SendAsync("PlayerReconnected", evt);
+
+            _logger.LogInformation(
+                "Player {PlayerName} reconnected to table {TableId} after {Duration}",
+                playerName, tableId, reconnectDuration);
+
+            return;
+        }
+
+        // New connection
+        _connectionMapping.AddConnection(connectionId, playerName, tableId);
+        await Groups.AddToGroupAsync(connectionId, tableId);
+
+        var connectedEvent = new PlayerConnectedEvent(
+            Guid.Parse(tableId),
+            DateTime.UtcNow,
+            playerName,
+            connectionId);
+
+        await Clients.Group(tableId).SendAsync("PlayerConnected", connectedEvent);
+
+        _logger.LogInformation(
+            "Player {PlayerName} joined table {TableId} with connection {ConnectionId}",
+            playerName, tableId, connectionId);
+    }
+
+    /// <summary>
+    /// Leaves a table as a seated player.
+    /// </summary>
+    /// <param name="tableId">The table identifier.</param>
+    public async Task LeaveTable(string tableId)
+    {
+        var connectionId = Context.ConnectionId;
+        var playerInfo = _connectionMapping.GetPlayerInfo(connectionId);
+
+        if (playerInfo is not null && playerInfo.TableId == tableId)
+        {
+            _connectionMapping.RemoveConnection(connectionId);
+            await Groups.RemoveFromGroupAsync(connectionId, tableId);
+
+            var evt = new PlayerDisconnectedEvent(
+                Guid.Parse(tableId),
+                DateTime.UtcNow,
+                playerInfo.PlayerName,
+                false);
+
+            await Clients.Group(tableId).SendAsync("PlayerDisconnected", evt);
+
+            _logger.LogInformation(
+                "Player {PlayerName} left table {TableId}",
+                playerInfo.PlayerName, tableId);
+        }
+    }
+
+    /// <summary>
+    /// Performs a fold action.
+    /// </summary>
+    /// <param name="tableId">The table identifier.</param>
+    public async Task Fold(string tableId)
+    {
+        await ProcessPlayerAction(tableId, BettingActionType.Fold, 0);
+    }
+
+    /// <summary>
+    /// Performs a check action.
+    /// </summary>
+    /// <param name="tableId">The table identifier.</param>
+    public async Task Check(string tableId)
+    {
+        await ProcessPlayerAction(tableId, BettingActionType.Check, 0);
+    }
+
+    /// <summary>
+    /// Performs a call action.
+    /// </summary>
+    /// <param name="tableId">The table identifier.</param>
+    /// <param name="amount">The amount to call.</param>
+    public async Task Call(string tableId, int amount)
+    {
+        await ProcessPlayerAction(tableId, BettingActionType.Call, amount);
+    }
+
+    /// <summary>
+    /// Performs a bet action.
+    /// </summary>
+    /// <param name="tableId">The table identifier.</param>
+    /// <param name="amount">The amount to bet.</param>
+    public async Task Bet(string tableId, int amount)
+    {
+        await ProcessPlayerAction(tableId, BettingActionType.Bet, amount);
+    }
+
+    /// <summary>
+    /// Performs a raise action.
+    /// </summary>
+    /// <param name="tableId">The table identifier.</param>
+    /// <param name="amount">The total amount to raise to.</param>
+    public async Task Raise(string tableId, int amount)
+    {
+        await ProcessPlayerAction(tableId, BettingActionType.Raise, amount);
+    }
+
+    /// <summary>
+    /// Performs an all-in action.
+    /// </summary>
+    /// <param name="tableId">The table identifier.</param>
+    /// <param name="amount">The player's remaining chip stack.</param>
+    public async Task AllIn(string tableId, int amount)
+    {
+        await ProcessPlayerAction(tableId, BettingActionType.AllIn, amount);
+    }
+
+    private async Task ProcessPlayerAction(string tableId, BettingActionType actionType, int amount)
+    {
+        var connectionId = Context.ConnectionId;
+        var playerInfo = _connectionMapping.GetPlayerInfo(connectionId);
+
+        if (playerInfo is null || playerInfo.TableId != tableId)
+        {
+            _logger.LogWarning(
+                "Player action rejected: Connection {ConnectionId} is not registered at table {TableId}",
+                connectionId, tableId);
+            await Clients.Caller.SendAsync("ActionRejected", "You are not seated at this table.");
+            return;
+        }
+
+        _connectionMapping.UpdateLastActivity(connectionId);
+
+        var action = new BettingActionDto(
+            playerInfo.PlayerName,
+            actionType,
+            amount,
+            DateTime.UtcNow);
+
+        var evt = new BettingActionEvent(
+            Guid.Parse(tableId),
+            DateTime.UtcNow,
+            action,
+            0); // Pot after action would be calculated by game logic
+
+        await Clients.Group(tableId).SendAsync("PlayerAction", evt);
+
+        _logger.LogInformation(
+            "Player {PlayerName} performed {ActionType} for {Amount} at table {TableId}",
+            playerInfo.PlayerName, actionType, amount, tableId);
+    }
+
+    #endregion
+
+    #region Table State Synchronization
+
+    /// <summary>
+    /// Requests full table state synchronization.
+    /// </summary>
+    /// <param name="tableId">The table identifier.</param>
+    public async Task RequestTableState(string tableId)
+    {
+        var connectionId = Context.ConnectionId;
+        var playerInfo = _connectionMapping.GetPlayerInfo(connectionId);
+
+        _logger.LogInformation(
+            "Table state requested by {ConnectionId} for table {TableId}",
+            connectionId, tableId);
+
+        // The actual state would be fetched from a game service
+        // For now, we send a request event that the server-side game logic can handle
+        await Clients.Caller.SendAsync("TableStateRequested", tableId);
+    }
+
+    /// <summary>
+    /// Sends table state to a specific player (used for sync on reconnect).
+    /// </summary>
+    /// <param name="connectionId">The target connection ID.</param>
+    /// <param name="state">The table state snapshot.</param>
+    public async Task SendTableState(string connectionId, TableStateSyncEvent state)
+    {
+        await Clients.Client(connectionId).SendAsync("TableStateSync", state);
+        _logger.LogDebug("Sent table state to connection {ConnectionId}", connectionId);
+    }
+
+    /// <summary>
+    /// Broadcasts table state to all players at a table.
+    /// </summary>
+    /// <param name="tableId">The table identifier.</param>
+    /// <param name="state">The table state snapshot.</param>
+    public async Task BroadcastTableState(string tableId, TableStateSyncEvent state)
+    {
+        await Clients.Group(tableId).SendAsync("TableStateSync", state);
+        _logger.LogDebug("Broadcast table state to table {TableId}", tableId);
+    }
+
+    #endregion
+
+    #region Private Message Routing
+
+    /// <summary>
+    /// Sends private hole cards to a specific player.
+    /// </summary>
+    /// <param name="tableId">The table identifier.</param>
+    /// <param name="playerName">The target player name.</param>
+    /// <param name="holeCards">The hole cards (as display strings).</param>
+    /// <param name="handDescription">Optional description of the hand.</param>
+    public async Task SendPrivateData(string tableId, string playerName, IReadOnlyList<string> holeCards, string? handDescription = null)
+    {
+        var connectionId = _connectionMapping.GetConnectionId(playerName, tableId);
+        if (connectionId is not null)
+        {
+            var evt = new PrivatePlayerDataEvent(
+                Guid.Parse(tableId),
+                DateTime.UtcNow,
+                playerName,
+                holeCards,
+                handDescription);
+
+            await Clients.Client(connectionId).SendAsync("PrivateData", evt);
+            _logger.LogDebug("Sent private data to player {PlayerName} at table {TableId}", playerName, tableId);
+        }
+    }
+
+    /// <summary>
+    /// Broadcasts a public message to all players at a table except one.
+    /// </summary>
+    /// <param name="tableId">The table identifier.</param>
+    /// <param name="excludePlayerName">The player name to exclude.</param>
+    /// <param name="eventName">The event name.</param>
+    /// <param name="data">The event data.</param>
+    public async Task BroadcastExceptPlayer(string tableId, string excludePlayerName, string eventName, object data)
+    {
+        var excludeConnectionId = _connectionMapping.GetConnectionId(excludePlayerName, tableId);
+        if (excludeConnectionId is not null)
+        {
+            await Clients.GroupExcept(tableId, excludeConnectionId).SendAsync(eventName, data);
+        }
+        else
+        {
+            await Clients.Group(tableId).SendAsync(eventName, data);
+        }
+    }
+
+    #endregion
+
+    #region Connection Health
+
+    /// <summary>
+    /// Handles heartbeat/ping from client to keep connection alive.
+    /// </summary>
+    public async Task Heartbeat()
+    {
+        var connectionId = Context.ConnectionId;
+        _connectionMapping.UpdateLastActivity(connectionId);
+
+        await Clients.Caller.SendAsync("HeartbeatAck", DateTime.UtcNow);
+        _logger.LogTrace("Heartbeat received from {ConnectionId}", connectionId);
+    }
+
+    /// <summary>
+    /// Gets connection information for the current connection.
+    /// </summary>
+    public async Task GetConnectionInfo()
+    {
+        var connectionId = Context.ConnectionId;
+        var playerInfo = _connectionMapping.GetPlayerInfo(connectionId);
+
+        await Clients.Caller.SendAsync("ConnectionInfo", new
+        {
+            ConnectionId = connectionId,
+            PlayerName = playerInfo?.PlayerName,
+            TableId = playerInfo?.TableId,
+            IsConnected = playerInfo is not null,
+            ConnectedAt = playerInfo?.ConnectedAt,
+            LastActivity = playerInfo?.LastActivity
+        });
     }
 
     #endregion
