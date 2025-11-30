@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using CardGames.Poker.Shared.DTOs;
 
 namespace CardGames.Poker.Betting;
 
@@ -76,6 +77,32 @@ public class PotManager
     public int GetPlayerContribution(string playerName)
     {
         return _contributions.TryGetValue(playerName, out var amount) ? amount : 0;
+    }
+
+    /// <summary>
+    /// Gets all player contributions as a read-only dictionary.
+    /// </summary>
+    public IReadOnlyDictionary<string, int> GetContributions()
+    {
+        return _contributions;
+    }
+
+    /// <summary>
+    /// Gets the pot breakdown as a DTO for display or serialization.
+    /// </summary>
+    public PotBreakdownDto GetBreakdown()
+    {
+        var potDtos = _pots.Select((pot, index) => new PotDto(
+            Amount: pot.Amount,
+            EligiblePlayers: pot.EligiblePlayers.ToList(),
+            IsMainPot: index == 0
+        )).ToList();
+
+        return new PotBreakdownDto(
+            TotalAmount: TotalPotAmount,
+            Pots: potDtos,
+            PlayerContributions: _contributions
+        );
     }
 
     /// <summary>

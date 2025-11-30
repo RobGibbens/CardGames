@@ -7,6 +7,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\CardGames.Core.French\CardGames.Core.French.csproj" />
+    <ProjectReference Include="..\CardGames.Poker.Shared\CardGames.Poker.Shared.csproj" />
   </ItemGroup>
 
 </Project>
