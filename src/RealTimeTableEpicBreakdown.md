@@ -203,7 +203,7 @@ Implement real-time multiplayer poker table interaction and gameplay via ASP.NET
 
 | Task ID | Task Title | Description | Estimate | Dependencies |
 |---------|------------|-------------|----------|--------------|
-| 9.1 | Extend Showdown Service | Complete showdown flow with reveal order per variant rules | M | Existing ShowdownService |
+| 9.1 | Extend Showdown Coordinator | Complete showdown flow with reveal order per variant rules | M | Existing ShowdownCoordinator |
 | 9.2 | Implement Muck Option | Allow losing players to muck instead of showing | M | 9.1 |
 | 9.3 | Add Auto-Reveal for Winners | Automatically show winning hand | S | 9.1 |
 | 9.4 | Handle All-In Showdown | Run out board and show all hands when all-in | M | 9.1 |
@@ -337,7 +337,7 @@ Feature 1 (SignalR Infrastructure)
 10. **Feature 7**: Chip Animations
 11. **Feature 8**: Player Chat
 
-### Phase 4: Variants & Testing (Weeks 9-10)
+### Phase 4: Variants & Testing (Weeks 9-11)
 12. **Feature 12**: Variant-Specific Adaptations
 13. **Feature 13**: Documentation & Testing
 
@@ -374,12 +374,12 @@ Feature 1 (SignalR Infrastructure)
 
 ### Existing Infrastructure to Leverage
 
-1. **GameHub.cs**: Already has basic connection, join/leave game, showdown events
-2. **GameEvents.cs**: Comprehensive event records for most game actions
-3. **GameHubService.cs**: Client-side SignalR service with reconnection
-4. **Tables Feature**: Existing table repository and seat management contracts
-5. **Shared DTOs**: CardDto, PlayerDto, HandDto, BettingActionDto, etc.
-6. **RuleSetDto**: Variant configuration schema already defined
+1. **GameHub.cs** (`CardGames.Poker.Api/Hubs/`): Already has basic connection, join/leave game, showdown events
+2. **GameEvents.cs** (`CardGames.Poker.Shared/Events/`): Comprehensive event records for most game actions
+3. **GameHubService.cs** (`CardGames.Poker.Web/Services/`): Client-side SignalR service with reconnection
+4. **Tables Feature** (`CardGames.Poker.Api/Features/Tables/`): Existing table repository and seat management contracts
+5. **Shared DTOs** (`CardGames.Poker.Shared/DTOs/`): CardDto, PlayerDto, HandDto, BettingActionDto, etc.
+6. **RuleSetDto** (`CardGames.Poker.Shared/DTOs/RuleSets/`): Variant configuration schema already defined
 
 ### New Components Needed
 
