@@ -84,6 +84,7 @@ internal class BuiltInVariantRegistrationService : IHostedService
         RegisterSevenCardStud();
         RegisterFiveCardDraw();
         RegisterFollowTheQueen();
+        RegisterBaseball();
 
         // Register any custom variants added via AddGameVariant
         foreach (var request in _registrationRequests)
@@ -178,6 +179,29 @@ internal class BuiltInVariantRegistrationService : IHostedService
                 bringIn: bigBlind / 2,
                 smallBet: bigBlind,
                 bigBet: bigBlind * 2,
+                useBringIn: true));
+    }
+
+    private void RegisterBaseball()
+    {
+        var info = new GameVariantInfo(
+            Id: "baseball",
+            Name: "Baseball",
+            Description: "A seven card stud variant where 3s and 9s are wild. When a 4 is dealt face up, the player may pay a fixed price to receive an extra face-down card.",
+            MinPlayers: 2,
+            MaxPlayers: 4);
+
+        // Map smallBlind to ante and bigBlind to smallBet
+        // bringIn is set to half of smallBet, bigBet is double smallBet
+        // buyCardPrice is set equal to bigBet
+        _registry.RegisterVariant(info, (players, smallBlind, bigBlind) =>
+            new BaseballGame(
+                players,
+                ante: smallBlind,
+                bringIn: bigBlind / 2,
+                smallBet: bigBlind,
+                bigBet: bigBlind * 2,
+                buyCardPrice: bigBlind,
                 useBringIn: true));
     }
 }

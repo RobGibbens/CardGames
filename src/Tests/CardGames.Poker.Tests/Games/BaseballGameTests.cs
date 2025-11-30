@@ -743,7 +743,7 @@ public class BaseballGameTests
     }
 
     /// <summary>
-    /// Sets up to fourth street without requiring bring-in.
+    /// Sets up to fourth street using proper game flow (handles bring-in if enabled).
     /// </summary>
     private static void SetupToFourthStreetWithoutBringIn(BaseballGame game)
     {
@@ -765,7 +765,12 @@ public class BaseballGameTests
             }
         }
         
-        // Skip bring-in since it's disabled by default
+        // Handle bring-in if enabled
+        if (game.UseBringIn)
+        {
+            game.PostBringIn();
+        }
+        
         game.StartBettingRound();
         
         while (!game.CurrentBettingRound.IsComplete)

@@ -108,7 +108,8 @@ public class PredefinedRuleSetsTests
         PredefinedRuleSets.All.Should().ContainKey(PokerVariant.SevenCardStud);
         PredefinedRuleSets.All.Should().ContainKey(PokerVariant.FiveCardDraw);
         PredefinedRuleSets.All.Should().ContainKey(PokerVariant.FollowTheQueen);
-        PredefinedRuleSets.All.Should().HaveCount(5);
+        PredefinedRuleSets.All.Should().ContainKey(PokerVariant.Baseball);
+        PredefinedRuleSets.All.Should().HaveCount(6);
     }
 
     [Fact]
@@ -136,8 +137,8 @@ public class PredefinedRuleSetsTests
     [Fact]
     public void GetByVariant_UnknownVariant_ReturnsNull()
     {
-        // Act
-        var ruleSet = PredefinedRuleSets.GetByVariant(PokerVariant.Baseball);
+        // Act - KingsAndLows is defined in the enum but has no predefined ruleset
+        var ruleSet = PredefinedRuleSets.GetByVariant(PokerVariant.KingsAndLows);
 
         // Assert
         ruleSet.Should().BeNull();
@@ -149,6 +150,7 @@ public class PredefinedRuleSetsTests
     [InlineData(PokerVariant.SevenCardStud)]
     [InlineData(PokerVariant.FiveCardDraw)]
     [InlineData(PokerVariant.FollowTheQueen)]
+    [InlineData(PokerVariant.Baseball)]
     public void AllPredefinedRuleSets_HaveValidSchemaVersion(PokerVariant variant)
     {
         // Arrange
@@ -165,6 +167,7 @@ public class PredefinedRuleSetsTests
     [InlineData(PokerVariant.SevenCardStud)]
     [InlineData(PokerVariant.FiveCardDraw)]
     [InlineData(PokerVariant.FollowTheQueen)]
+    [InlineData(PokerVariant.Baseball)]
     public void AllPredefinedRuleSets_UseStandardDeck(PokerVariant variant)
     {
         // Arrange
