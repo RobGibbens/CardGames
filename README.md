@@ -256,6 +256,91 @@ The `PredefinedRuleSets.TexasHoldem` provides the canonical ruleset:
 - Small blind + Big blind structure
 - Last aggressor shows first at showdown
 
+## Omaha (Complete Implementation)
+
+The library includes a full implementation of Omaha poker, another popular poker variant. The key difference from Texas Hold 'Em is that players receive 4 hole cards and must use exactly 2 of them with exactly 3 community cards to make their best hand.
+
+### Game Orchestration
+
+The `OmahaGame` class provides complete game orchestration for Omaha:
+
+```cs
+// Create a game with players and blinds
+var players = new[] { ("Alice", 1000), ("Bob", 1000), ("Charlie", 1000) };
+var game = new OmahaGame(players, smallBlind: 5, bigBlind: 10);
+
+// Start a hand
+game.StartHand();
+game.PostBlinds();
+game.DealHoleCards();  // Each player receives 4 hole cards
+game.StartBettingRound();
+
+// Process betting actions
+game.ProcessBettingAction(BettingActionType.Call);
+game.ProcessBettingAction(BettingActionType.Check);
+
+// Deal community cards and continue
+game.DealFlop();
+game.StartBettingRound();
+// ... continue through Turn, River, and Showdown
+```
+
+### Game Phases
+
+The game proceeds through well-defined phases:
+1. **WaitingToStart** - Initial state
+2. **PostingBlinds** - Posting small and big blinds
+3. **Preflop** - Pre-flop betting round (after dealing 4 hole cards per player)
+4. **Flop** - Flop betting round (after 3 community cards)
+5. **Turn** - Turn betting round (after 4th community card)
+6. **River** - River betting round (after 5th community card)
+7. **Showdown** - Comparing hands and awarding pot
+8. **Complete** - Hand is finished
+
+### Omaha-Specific Rules
+
+The critical Omaha rule is enforced automatically:
+- Players **must use exactly 2 hole cards** from their 4 hole cards
+- Players **must use exactly 3 community cards** from the 5 community cards
+- This creates a 5-card hand
+
+### Hand Evaluation
+
+The `OmahaHand` class automatically evaluates the best 5-card hand following Omaha rules:
+
+```cs
+var hand = new OmahaHand(holeCards, communityCards);  // holeCards must have 4 cards
+Console.WriteLine(hand.Type);      // e.g., HandType.Flush
+Console.WriteLine(hand.Strength);  // Numeric strength for comparison
+```
+
+### Variant Registration
+
+Omaha is registered via the variant engine:
+
+```cs
+var registry = new GameVariantRegistry();
+var info = new GameVariantInfo(
+    Id: "omaha",
+    Name: "Omaha",
+    Description: "Omaha poker - use exactly 2 hole cards and 3 community cards.",
+    MinPlayers: 2,
+    MaxPlayers: 10);
+
+registry.RegisterVariant(info, (players, sb, bb) => 
+    new OmahaGame(players, sb, bb));
+```
+
+### Predefined Rules
+
+The `PredefinedRuleSets.Omaha` provides the canonical ruleset:
+- 52-card deck
+- 4 hole cards (must use exactly 2 in final hand)
+- 5 community cards (must use exactly 3 in final hand)
+- Small blind + Big blind structure
+- Pot Limit is the most common betting structure (PLO)
+- Last aggressor shows first at showdown
+
 ## Hands
 The library contains domain models for hands in these poker disciplines:
  - 5-card draw
