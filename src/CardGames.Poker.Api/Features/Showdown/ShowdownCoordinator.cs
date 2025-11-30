@@ -110,10 +110,14 @@ public class ShowdownCoordinator : IShowdownCoordinator
         }
         else if (context.LastAggressor != null && context.ShowdownRules.ShowOrder == ShowdownOrder.LastAggressor)
         {
-            startPosition = context.Players.FindIndex(p => p.PlayerName == context.LastAggressor);
-            if (startPosition >= 0)
+            // When using LastAggressor order and no one has revealed yet,
+            // we need to set up the starting position such that the clockwise search
+            // (which starts at startPosition + 1) will find the last aggressor first.
+            // Therefore, we set startPosition to be one position before the last aggressor.
+            var lastAggressorPosition = context.Players.FindIndex(p => p.PlayerName == context.LastAggressor);
+            if (lastAggressorPosition >= 0)
             {
-                startPosition = (startPosition - 1 + context.Players.Count) % context.Players.Count;
+                startPosition = (lastAggressorPosition - 1 + context.Players.Count) % context.Players.Count;
             }
             else
             {
@@ -197,12 +201,16 @@ public class ShowdownCoordinator : IShowdownCoordinator
             return false;
         }
 
-        // If there's currently a best hand shown, player can muck if they can't beat it
+        // If there's currently a best hand shown, player can muck if they can't beat it.
+        // Note: At showdown time, the player hasn't evaluated their hand yet, so this check
+        // only applies when re-evaluating muck eligibility during the showdown process.
+        // In practice, players can muck if there's already a better hand shown.
         var bestHand = GetCurrentBestHand(context);
-        if (bestHand != null && player.Hand != null)
+        if (bestHand != null)
         {
-            // Player can muck if their hand is weaker than the current best
-            return player.Hand.Strength < bestHand.Strength;
+            // If a hand has been shown, any remaining player can choose to muck
+            // since they know they either beat it (and should show) or don't (and can muck)
+            return true;
         }
 
         // If player is all-in, they typically must show
@@ -288,11 +296,15 @@ public class ShowdownCoordinator : IShowdownCoordinator
             return new ShowdownRevealResult(false, $"Not this player's turn. Expected: {nextToReveal}", ShowdownRevealStatus.Pending, nextToReveal, false);
         }
 
+        // Determine if this is a forced reveal BEFORE incrementing the reveal order
+        // This ensures the last aggressor check (CurrentRevealOrder == 0) works correctly
+        var wasForcedReveal = MustPlayerReveal(context, playerName);
+
         context.CurrentRevealOrder++;
         player.RevealOrder = context.CurrentRevealOrder;
         player.Hand = hand;
-        player.WasForcedReveal = MustPlayerReveal(context, playerName);
-        player.Status = player.WasForcedReveal ? ShowdownRevealStatus.ForcedReveal : ShowdownRevealStatus.Shown;
+        player.WasForcedReveal = wasForcedReveal;
+        player.Status = wasForcedReveal ? ShowdownRevealStatus.ForcedReveal : ShowdownRevealStatus.Shown;
 
         _logger?.LogInformation(
             "Player {PlayerName} revealed cards in showdown {ShowdownId}. Hand: {HandType}, Order: {RevealOrder}",
@@ -395,7 +407,7 @@ public class ShowdownCoordinator : IShowdownCoordinator
     {
         var eligiblePlayers = context.Players
             .Where(p => !p.HasFolded && 
-                        p.Status is ShowdownRevealStatus.Shown or ShowdownRevealStatus.ForcedReveal &&
+                        (p.Status is ShowdownRevealStatus.Shown or ShowdownRevealStatus.ForcedReveal) &&
                         p.Hand != null)
             .ToList();
 
