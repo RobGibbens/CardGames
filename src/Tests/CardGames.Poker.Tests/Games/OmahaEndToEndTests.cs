@@ -17,6 +17,16 @@ namespace CardGames.Poker.Tests.Games;
 /// </summary>
 public class OmahaEndToEndTests
 {
+    /// <summary>
+    /// Maximum number of community cards in Omaha (5 cards: 3 flop + 1 turn + 1 river).
+    /// </summary>
+    private const int MaxCommunityCards = 5;
+
+    /// <summary>
+    /// Number of players in the three-player test game scenario.
+    /// </summary>
+    private const int ThreePlayerGameCount = 3;
+
     #region Complete Game Flow Tests
 
     [Fact]
@@ -213,7 +223,7 @@ public class OmahaEndToEndTests
             }
             
             // Safety break to prevent infinite loop in case game doesn't advance
-            if (game.CommunityCards.Count >= 5 && game.CurrentPhase != OmahaPhase.Showdown)
+            if (game.CommunityCards.Count >= MaxCommunityCards && game.CurrentPhase != OmahaPhase.Showdown)
             {
                 // All community cards dealt but not in showdown - this shouldn't happen
                 break;
@@ -244,7 +254,7 @@ public class OmahaEndToEndTests
         
         // Dealer should have moved at end of hand
         var dealerAfterFirstHand = game.DealerPosition;
-        dealerAfterFirstHand.Should().Be((initialDealerPosition + 1) % 3);
+        dealerAfterFirstHand.Should().Be((initialDealerPosition + 1) % ThreePlayerGameCount);
         
         // Start second hand (if players still have chips)
         if (game.CanContinue())
