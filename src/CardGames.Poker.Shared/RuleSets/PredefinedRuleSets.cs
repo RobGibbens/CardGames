@@ -35,6 +35,11 @@ public static class PredefinedRuleSets
     public static RuleSetDto FollowTheQueen { get; } = CreateFollowTheQueen();
 
     /// <summary>
+    /// Gets the Baseball ruleset.
+    /// </summary>
+    public static RuleSetDto Baseball { get; } = CreateBaseball();
+
+    /// <summary>
     /// Gets all predefined rulesets.
     /// </summary>
     public static IReadOnlyDictionary<PokerVariant, RuleSetDto> All { get; } = new Dictionary<PokerVariant, RuleSetDto>
@@ -43,7 +48,8 @@ public static class PredefinedRuleSets
         { PokerVariant.Omaha, Omaha },
         { PokerVariant.SevenCardStud, SevenCardStud },
         { PokerVariant.FiveCardDraw, FiveCardDraw },
-        { PokerVariant.FollowTheQueen, FollowTheQueen }
+        { PokerVariant.FollowTheQueen, FollowTheQueen },
+        { PokerVariant.Baseball, Baseball }
     };
 
     /// <summary>
@@ -493,6 +499,122 @@ public static class PredefinedRuleSets
                 )
             ],
             Description: "A seven card stud variant where Queens are always wild, and the card following the last dealt face-up Queen (and all cards of that rank) are also wild. Uses antes and bring-in instead of blinds."
+        );
+
+        return ruleSet;
+    }
+
+    private static RuleSetDto CreateBaseball()
+    {
+        var ruleSet = new RuleSetDto(
+            SchemaVersion: RuleSetValidator.CurrentSchemaVersion,
+            Id: "baseball-limit",
+            Name: "Baseball (Limit)",
+            Variant: PokerVariant.Baseball,
+            DeckComposition: new DeckCompositionDto(
+                DeckType: DeckType.Full52,
+                NumberOfDecks: 1
+            ),
+            CardVisibility: new CardVisibilityDto(
+                HoleCardsPrivate: true,
+                CommunityCardsPublic: false,
+                FaceDownIndices: [0, 1, 6],
+                FaceUpIndices: [2, 3, 4, 5]
+            ),
+            BettingRounds:
+            [
+                new BettingRoundDto(
+                    Name: "Third Street",
+                    Order: 0,
+                    CommunityCardsDealt: 0,
+                    HoleCardsDealt: 3,
+                    DealtFaceUp: false,
+                    MinBetMultiplier: 0.5m
+                ),
+                new BettingRoundDto(
+                    Name: "Fourth Street",
+                    Order: 1,
+                    CommunityCardsDealt: 0,
+                    HoleCardsDealt: 1,
+                    DealtFaceUp: true,
+                    MinBetMultiplier: 0.5m
+                ),
+                new BettingRoundDto(
+                    Name: "Fifth Street",
+                    Order: 2,
+                    CommunityCardsDealt: 0,
+                    HoleCardsDealt: 1,
+                    DealtFaceUp: true,
+                    MinBetMultiplier: 1.0m
+                ),
+                new BettingRoundDto(
+                    Name: "Sixth Street",
+                    Order: 3,
+                    CommunityCardsDealt: 0,
+                    HoleCardsDealt: 1,
+                    DealtFaceUp: true,
+                    MinBetMultiplier: 1.0m
+                ),
+                new BettingRoundDto(
+                    Name: "Seventh Street",
+                    Order: 4,
+                    CommunityCardsDealt: 0,
+                    HoleCardsDealt: 1,
+                    DealtFaceUp: false,
+                    MinBetMultiplier: 1.0m
+                )
+            ],
+            HoleCardRules: new HoleCardRulesDto(
+                Count: 7,
+                MinUsedInHand: 5,
+                MaxUsedInHand: 5,
+                AllowDraw: false,
+                MaxDrawCount: 0
+            ),
+            CommunityCardRules: null,
+            AnteBlindRules: new AnteBlindRulesDto(
+                HasAnte: true,
+                AntePercentage: 10,
+                HasSmallBlind: false,
+                HasBigBlind: false,
+                AllowStraddle: false,
+                ButtonAnte: false
+            ),
+            LimitType: LimitType.FixedLimit,
+            WildcardRules: new WildcardRulesDto(
+                Enabled: true,
+                WildcardCards: ["3h", "3d", "3c", "3s", "9h", "9d", "9c", "9s"],
+                Dynamic: false,
+                DynamicRule: null
+            ),
+            ShowdownRules: new ShowdownRulesDto(
+                ShowOrder: ShowdownOrder.LastAggressor,
+                AllowMuck: true,
+                ShowAllOnAllIn: true
+            ),
+            HiLoRules: null,
+            SpecialRules:
+            [
+                new SpecialRuleDto(
+                    Id: "bring-in",
+                    Name: "Bring-In",
+                    Description: "The player with the lowest upcard on third street must post a forced bring-in bet.",
+                    Enabled: true
+                ),
+                new SpecialRuleDto(
+                    Id: "wild-threes-nines",
+                    Name: "Wild 3s and 9s",
+                    Description: "All 3s and 9s are wild cards. These numbers are chosen because of their significance in baseball: three strikes, three outs, nine innings.",
+                    Enabled: true
+                ),
+                new SpecialRuleDto(
+                    Id: "buy-card-on-four",
+                    Name: "Buy Card on 4",
+                    Description: "When a player is dealt a 4 face up, they may pay a fixed price (typically equal to the big bet) to receive an extra face-down card.",
+                    Enabled: true
+                )
+            ],
+            Description: "A seven card stud variant where all 3s and 9s are wild. When a 4 is dealt face up, the player may pay a fixed price to receive an extra face-down card. Uses antes and bring-in instead of blinds. Maximum 4 players due to potential extra cards."
         );
 
         return ruleSet;
