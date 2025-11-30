@@ -70,7 +70,7 @@ public enum WildCardType
     /// <summary>All Queens are wild.</summary>
     QueensWild,
 
-    /// <summary>One-eyed Jacks (Jh, Js) are wild.</summary>
+    /// <summary>All Jacks are wild. Note: Traditional one-eyed jacks (Jh, Js only) is not yet supported.</summary>
     OneEyedJacks,
 
     /// <summary>All Jacks are wild.</summary>

@@ -320,7 +320,8 @@ public class DealersChoiceGame
     /// <summary>
     /// Gets the current game as the specified type.
     /// </summary>
-    public T GetCurrentGameAs<T>() where T : class
+    /// <returns>The current game cast to the specified type, or null if the cast fails or no game is active.</returns>
+    public T? GetCurrentGameAs<T>() where T : class
     {
         return _currentGame as T;
     }
@@ -421,7 +422,7 @@ public class DealersChoiceGame
             WildCardType.ThreesAndNines => [3, 9],
             WildCardType.KingsWild => [13],
             WildCardType.QueensWild => [12],
-            WildCardType.OneEyedJacks => [11], // Note: actual one-eyed jacks are Jh and Js
+            WildCardType.OneEyedJacks => [11], // Simplified: actual one-eyed jacks are only Jh and Js. This returns all Jacks.
             WildCardType.JacksWild => [11],
             WildCardType.Custom => _currentHandConfig.WildCards.CustomWildValues,
             _ => []
