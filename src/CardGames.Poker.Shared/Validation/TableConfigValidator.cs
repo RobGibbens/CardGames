@@ -119,6 +119,12 @@ public static class TableConfigValidator
         {
             errors.Add("Five Card Draw supports a maximum of 6 players.");
         }
+
+        // Follow the Queen has max 7 players due to card requirements (52 cards / 7 per player = 7.4)
+        if (config.Variant == PokerVariant.FollowTheQueen && config.MaxSeats > 7)
+        {
+            errors.Add("Follow the Queen supports a maximum of 7 players.");
+        }
     }
 
     private static void ValidateAnte(TableConfigDto config, List<string> errors)

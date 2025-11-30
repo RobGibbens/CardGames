@@ -498,7 +498,7 @@ public class FollowTheQueenGameTests
             ("Alice", 1000),
             ("Bob", 1000)
         };
-        return new FollowTheQueenGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20);
+        return new FollowTheQueenGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20, useBringIn: true);
     }
 
     private static void SetupToFourthStreet(FollowTheQueenGame game)
