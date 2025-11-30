@@ -40,6 +40,11 @@ public static class PredefinedRuleSets
     public static RuleSetDto Baseball { get; } = CreateBaseball();
 
     /// <summary>
+    /// Gets the Kings and Lows ruleset.
+    /// </summary>
+    public static RuleSetDto KingsAndLows { get; } = CreateKingsAndLows();
+
+    /// <summary>
     /// Gets all predefined rulesets.
     /// </summary>
     public static IReadOnlyDictionary<PokerVariant, RuleSetDto> All { get; } = new Dictionary<PokerVariant, RuleSetDto>
@@ -49,7 +54,8 @@ public static class PredefinedRuleSets
         { PokerVariant.SevenCardStud, SevenCardStud },
         { PokerVariant.FiveCardDraw, FiveCardDraw },
         { PokerVariant.FollowTheQueen, FollowTheQueen },
-        { PokerVariant.Baseball, Baseball }
+        { PokerVariant.Baseball, Baseball },
+        { PokerVariant.KingsAndLows, KingsAndLows }
     };
 
     /// <summary>
@@ -615,6 +621,113 @@ public static class PredefinedRuleSets
                 )
             ],
             Description: "A seven card stud variant where all 3s and 9s are wild. When a 4 is dealt face up, the player may pay a fixed price to receive an extra face-down card. Uses antes and bring-in instead of blinds. Maximum 4 players due to potential extra cards."
+        );
+
+        return ruleSet;
+    }
+
+    private static RuleSetDto CreateKingsAndLows()
+    {
+        var ruleSet = new RuleSetDto(
+            SchemaVersion: RuleSetValidator.CurrentSchemaVersion,
+            Id: "kings-and-lows-ante",
+            Name: "Kings and Lows",
+            Variant: PokerVariant.KingsAndLows,
+            DeckComposition: new DeckCompositionDto(
+                DeckType: DeckType.Full52,
+                NumberOfDecks: 1
+            ),
+            CardVisibility: new CardVisibilityDto(
+                HoleCardsPrivate: true,
+                CommunityCardsPublic: false
+            ),
+            BettingRounds:
+            [
+                new BettingRoundDto(
+                    Name: "Drop or Stay",
+                    Order: 0,
+                    CommunityCardsDealt: 0,
+                    HoleCardsDealt: 5,
+                    MinBetMultiplier: 0
+                ),
+                new BettingRoundDto(
+                    Name: "Draw",
+                    Order: 1,
+                    CommunityCardsDealt: 0,
+                    HoleCardsDealt: 0,
+                    MinBetMultiplier: 0
+                ),
+                new BettingRoundDto(
+                    Name: "Showdown",
+                    Order: 2,
+                    CommunityCardsDealt: 0,
+                    HoleCardsDealt: 0,
+                    MinBetMultiplier: 0
+                )
+            ],
+            HoleCardRules: new HoleCardRulesDto(
+                Count: 5,
+                MinUsedInHand: 5,
+                MaxUsedInHand: 5,
+                AllowDraw: true,
+                MaxDrawCount: 5
+            ),
+            CommunityCardRules: null,
+            AnteBlindRules: new AnteBlindRulesDto(
+                HasAnte: true,
+                AntePercentage: 100,
+                HasSmallBlind: false,
+                HasBigBlind: false,
+                AllowStraddle: false,
+                ButtonAnte: false
+            ),
+            LimitType: LimitType.NoLimit,
+            WildcardRules: new WildcardRulesDto(
+                Enabled: true,
+                WildcardCards: ["Kh", "Kd", "Kc", "Ks"],
+                Dynamic: true,
+                DynamicRule: "Kings are always wild. Additionally, the lowest-ranked card in each player's hand (and all cards of that rank in their hand) are also wild."
+            ),
+            ShowdownRules: new ShowdownRulesDto(
+                ShowOrder: ShowdownOrder.LastAggressor,
+                AllowMuck: false,
+                ShowAllOnAllIn: true
+            ),
+            HiLoRules: null,
+            SpecialRules:
+            [
+                new SpecialRuleDto(
+                    Id: "drop-or-stay",
+                    Name: "Drop or Stay",
+                    Description: "After initial deal, each player simultaneously decides to drop (fold) or stay. If only one player stays, they play against the deck.",
+                    Enabled: true
+                ),
+                new SpecialRuleDto(
+                    Id: "losers-match-pot",
+                    Name: "Losers Match Pot",
+                    Description: "After showdown, losing players must match the pot. This creates a growing pot for subsequent hands.",
+                    Enabled: true
+                ),
+                new SpecialRuleDto(
+                    Id: "player-vs-deck",
+                    Name: "Player vs Deck",
+                    Description: "When only one player stays, a hand is dealt from the deck and the player competes against it.",
+                    Enabled: true
+                ),
+                new SpecialRuleDto(
+                    Id: "wild-kings",
+                    Name: "Wild Kings",
+                    Description: "All Kings are wild cards.",
+                    Enabled: true
+                ),
+                new SpecialRuleDto(
+                    Id: "wild-lows",
+                    Name: "Wild Low Cards",
+                    Description: "The lowest-ranked card in each player's hand is wild. If multiple cards share the lowest rank, they are all wild.",
+                    Enabled: true
+                )
+            ],
+            Description: "A five card draw variant where Kings are always wild and the lowest-ranked card in each player's hand is also wild. Features a drop-or-stay phase and losers match the pot. Maximum 5 players due to draw requirements."
         );
 
         return ruleSet;

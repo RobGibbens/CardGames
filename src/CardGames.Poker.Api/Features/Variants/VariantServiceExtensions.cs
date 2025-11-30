@@ -85,6 +85,7 @@ internal class BuiltInVariantRegistrationService : IHostedService
         RegisterFiveCardDraw();
         RegisterFollowTheQueen();
         RegisterBaseball();
+        RegisterKingsAndLows();
 
         // Register any custom variants added via AddGameVariant
         foreach (var request in _registrationRequests)
@@ -203,5 +204,24 @@ internal class BuiltInVariantRegistrationService : IHostedService
                 bigBet: bigBlind * 2,
                 buyCardPrice: bigBlind,
                 useBringIn: true));
+    }
+
+    private void RegisterKingsAndLows()
+    {
+        var info = new GameVariantInfo(
+            Id: "kings-and-lows",
+            Name: "Kings and Lows",
+            Description: "A five card draw variant where Kings are always wild and the lowest-ranked card in each player's hand is also wild. Features a drop-or-stay phase and losers match the pot.",
+            MinPlayers: 2,
+            MaxPlayers: 5);
+
+        // Map smallBlind to ante
+        // Note: KingsAndLows uses ante-based betting, not blinds
+        _registry.RegisterVariant(info, (players, smallBlind, bigBlind) =>
+            new KingsAndLowsGame(
+                players,
+                ante: smallBlind,
+                kingRequired: false,
+                anteEveryHand: false));
     }
 }
