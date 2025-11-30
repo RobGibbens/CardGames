@@ -489,7 +489,7 @@ public class BaseballEndToEndTests
             ("Alice", 1000),
             ("Bob", 1000)
         };
-        return new BaseballGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20, buyCardPrice: 20);
+        return new BaseballGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20, buyCardPrice: 20, useBringIn: true);
     }
 
     private static BaseballGame CreateThreePlayerGame()
@@ -500,7 +500,7 @@ public class BaseballEndToEndTests
             ("Bob", 1000),
             ("Charlie", 1000)
         };
-        return new BaseballGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20, buyCardPrice: 20);
+        return new BaseballGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20, buyCardPrice: 20, useBringIn: true);
     }
 
     private static void ClearBuyCardOffers(BaseballGame game)
