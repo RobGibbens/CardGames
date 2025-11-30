@@ -1,0 +1,477 @@
+@page "/tables/{TableId:guid}/seats"
+@using CardGames.Poker.Shared.DTOs
+@using CardGames.Poker.Shared.Enums
+@using CardGames.Poker.Shared.Contracts.Lobby
+@using CardGames.Poker.Web.Services
+@inject LobbyService LobbyService
+@inject NavigationManager NavigationManager
+@rendermode InteractiveServer
+
+<PageTitle>Select Seat - CardGames Poker</PageTitle>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <a href="/lobby" class="btn btn-outline-secondary btn-sm mb-2">
+                ← Back to Lobby
+            </a>
+            <h1 class="mb-0">@(_table?.Name ?? "Table")</h1>
+            @if (_table != null)
+            {
+                <span class="badge @GetVariantBadgeClass(_table.Variant) me-2">@GetVariantDisplayName(_table.Variant)</span>
+                <span class="text-muted">Stakes: @_table.SmallBlind/@_table.BigBlind</span>
+            }
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(_successMessage))
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            @_successMessage
+            <button type="button" class="btn-close" @onclick="() => _successMessage = null" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            @_errorMessage
+            <button type="button" class="btn-close" @onclick="() => _errorMessage = null" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (_isLoading)
+    {
+        <div class="d-flex justify-content-center align-items-center" style="min-height: 400px;">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else if (_table != null && _seats != null)
+    {
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-body">
+                        <SeatSelection 
+                            Seats="_seats"
+                            Title="@(_currentPlayer != null ? "Your Table" : "Select a Seat")"
+                            TableName="@_table.Name"
+                            SmallBlind="@_table.SmallBlind"
+                            BigBlind="@_table.BigBlind"
+                            CurrentPlayerName="@_currentPlayer?.PlayerName"
+                            SelectedSeatNumber="@_selectedSeat?.SeatNumber"
+                            AllowSelection="@(_currentPlayer == null || _pendingSeatChange != null)"
+                            OnSeatSelected="HandleSeatClick"
+                            OnRefreshRequested="RefreshSeats" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">Table Info</h5>
+                    </div>
+                    <div class="card-body">
+                        <dl class="mb-0">
+                            <dt>Buy-In Range</dt>
+                            <dd>@_table.MinBuyIn.ToString("N0") - @_table.MaxBuyIn.ToString("N0")</dd>
+                            
+                            <dt>Available Seats</dt>
+                            <dd>@GetAvailableSeatsCount() / @_table.MaxSeats</dd>
+
+                            @if (_table.WaitingListCount > 0)
+                            {
+                                <dt>Waiting List</dt>
+                                <dd>@_table.WaitingListCount player(s)</dd>
+                            }
+                        </dl>
+                    </div>
+                </div>
+
+                @if (_currentPlayer == null)
+                {
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h5 class="mb-0">Join Table</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">Your Name</label>
+                                <input type="text" class="form-control" @bind="_playerName" placeholder="Enter your name" />
+                            </div>
+                            @if (_selectedSeat != null)
+                            {
+                                <p class="text-muted mb-3">
+                                    Selected: <strong>Seat @_selectedSeat.SeatNumber</strong>
+                                </p>
+                                <button class="btn btn-success w-100" 
+                                        disabled="@(_isProcessing || string.IsNullOrWhiteSpace(_playerName))"
+                                        @onclick="SelectSeat">
+                                    @if (_isProcessing)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                    }
+                                    Reserve Seat @_selectedSeat.SeatNumber
+                                </button>
+                            }
+                            else
+                            {
+                                <p class="text-muted">Click on an available seat to select it.</p>
+                            }
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="card mb-3">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="mb-0">You're Seated!</h5>
+                        </div>
+                        <div class="card-body">
+                            <dl class="mb-3">
+                                <dt>Seat</dt>
+                                <dd>@_currentPlayer.SeatNumber</dd>
+                                
+                                <dt>Chips</dt>
+                                <dd>@_currentPlayer.ChipStack.ToString("N0")</dd>
+
+                                @if (_currentPlayer.IsSittingOut)
+                                {
+                                    <dt>Status</dt>
+                                    <dd><span class="badge bg-warning text-dark">Sitting Out</span></dd>
+                                }
+                            </dl>
+
+                            <div class="d-grid gap-2">
+                                @if (_currentPlayer.IsSittingOut)
+                                {
+                                    <button class="btn btn-success" @onclick="SitBackIn" disabled="@_isProcessing">
+                                        Sit Back In
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-warning" @onclick="SitOut" disabled="@_isProcessing">
+                                        Sit Out
+                                    </button>
+                                }
+
+                                <button class="btn btn-outline-danger" @onclick="StandUp" disabled="@_isProcessing">
+                                    Stand Up (Cash Out)
+                                </button>
+                            </div>
+
+                            @if (_pendingSeatChange != null)
+                            {
+                                <div class="alert alert-info mt-3 mb-0">
+                                    <small>Pending seat change to seat @_pendingSeatChange.DesiredSeatNumber</small>
+                                    <button class="btn btn-sm btn-outline-secondary ms-2" @onclick="CancelSeatChange">
+                                        Cancel
+                                    </button>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+
+                @if (_reservedSeat != null && _currentPlayer == null)
+                {
+                    <div class="card border-warning">
+                        <div class="card-header bg-warning text-dark">
+                            <h5 class="mb-0">Seat Reserved</h5>
+                        </div>
+                        <div class="card-body">
+                            <p>Seat @_reservedSeat.SeatNumber is reserved for you.</p>
+                            @if (_reservationExpiry.HasValue)
+                            {
+                                <p class="text-muted mb-3">
+                                    <small>Expires in: @GetTimeRemaining(_reservationExpiry.Value)</small>
+                                </p>
+                            }
+                            <button class="btn btn-success w-100" @onclick="OpenBuyInDialog">
+                                Complete Buy-In
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@if (_showBuyInDialog && _reservedSeat != null && _table != null)
+{
+    <BuyInDialog 
+        SeatNumber="@_reservedSeat.SeatNumber"
+        TableName="@_table.Name"
+        SmallBlind="@_table.SmallBlind"
+        BigBlind="@_table.BigBlind"
+        MinBuyIn="@_table.MinBuyIn"
+        MaxBuyIn="@_table.MaxBuyIn"
+        PlayerName="@_playerName"
+        ReservedUntil="@_reservationExpiry"
+        OnConfirm="CompleteBuyIn"
+        OnCancel="CloseBuyInDialog" />
+}
+
+@code {
+    [Parameter]
+    public Guid TableId { get; set; }
+
+    private TableSummaryDto? _table;
+    private IReadOnlyList<SeatDto>? _seats;
+    private SeatDto? _selectedSeat;
+    private SeatDto? _reservedSeat;
+    private SeatDto? _currentPlayer;
+    private DateTime? _reservationExpiry;
+    private SeatChangeRequest? _pendingSeatChange;
+
+    private string? _playerName;
+    private bool _isLoading = true;
+    private bool _isProcessing;
+    private bool _showBuyInDialog;
+    private string? _errorMessage;
+    private string? _successMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTableAndSeats();
+    }
+
+    private async Task LoadTableAndSeats()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            // Load table info
+            var tablesResponse = await LobbyService.GetTablesAsync();
+            if (tablesResponse.Success && tablesResponse.Tables != null)
+            {
+                _table = tablesResponse.Tables.FirstOrDefault(t => t.Id == TableId);
+            }
+
+            if (_table == null)
+            {
+                _errorMessage = "Table not found.";
+                _isLoading = false;
+                return;
+            }
+
+            // Load seats
+            var seatsResponse = await LobbyService.GetSeatsAsync(TableId);
+            if (seatsResponse.Success && seatsResponse.Seats != null)
+            {
+                _seats = seatsResponse.Seats;
+                
+                // Check if current player is seated
+                if (!string.IsNullOrWhiteSpace(_playerName))
+                {
+                    _currentPlayer = _seats.FirstOrDefault(s => 
+                        s.PlayerName == _playerName && 
+                        (s.Status == SeatStatus.Occupied || s.Status == SeatStatus.SittingOut));
+                    
+                    _reservedSeat = _seats.FirstOrDefault(s => 
+                        s.PlayerName == _playerName && 
+                        s.Status == SeatStatus.Reserved);
+                }
+            }
+            else
+            {
+                _errorMessage = seatsResponse.Error ?? "Failed to load seats.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error loading table: {ex.Message}";
+        }
+
+        _isLoading = false;
+    }
+
+    private async Task RefreshSeats()
+    {
+        await LoadTableAndSeats();
+    }
+
+    private void HandleSeatClick(SeatDto seat)
+    {
+        if (_currentPlayer != null)
+        {
+            // Player is already seated - this is a seat change request
+            if (seat.Status == SeatStatus.Available || seat.Status == SeatStatus.Occupied)
+            {
+                _pendingSeatChange = new SeatChangeRequest(TableId, _playerName!, seat.SeatNumber);
+            }
+        }
+        else
+        {
+            // Player is selecting a seat
+            _selectedSeat = seat;
+        }
+    }
+
+    private async Task SelectSeat()
+    {
+        if (_selectedSeat == null || string.IsNullOrWhiteSpace(_playerName)) return;
+
+        _isProcessing = true;
+        _errorMessage = null;
+
+        var response = await LobbyService.SelectSeatAsync(TableId, _selectedSeat.SeatNumber, _playerName);
+
+        if (response.Success)
+        {
+            _reservedSeat = response.Seat;
+            _reservationExpiry = response.ReservedUntil;
+            _successMessage = $"Seat {_selectedSeat.SeatNumber} reserved! Complete your buy-in to take your seat.";
+            _selectedSeat = null;
+            _showBuyInDialog = true;
+        }
+        else
+        {
+            _errorMessage = response.Error ?? "Failed to select seat.";
+        }
+
+        _isProcessing = false;
+        await RefreshSeats();
+    }
+
+    private void OpenBuyInDialog()
+    {
+        _showBuyInDialog = true;
+    }
+
+    private void CloseBuyInDialog()
+    {
+        _showBuyInDialog = false;
+    }
+
+    private async Task CompleteBuyIn(int buyInAmount)
+    {
+        if (_reservedSeat == null || string.IsNullOrWhiteSpace(_playerName)) return;
+
+        var response = await LobbyService.BuyInAsync(TableId, _reservedSeat.SeatNumber, _playerName, buyInAmount);
+
+        if (response.Success)
+        {
+            _showBuyInDialog = false;
+            _reservedSeat = null;
+            _reservationExpiry = null;
+            _currentPlayer = response.Seat;
+            _successMessage = $"Welcome to the table! You have {buyInAmount:N0} chips.";
+        }
+        else
+        {
+            _errorMessage = response.Error ?? "Failed to complete buy-in.";
+        }
+
+        await RefreshSeats();
+    }
+
+    private async Task SitOut()
+    {
+        if (string.IsNullOrWhiteSpace(_playerName)) return;
+
+        _isProcessing = true;
+        var response = await LobbyService.SitOutAsync(TableId, _playerName, true);
+
+        if (response.Success)
+        {
+            _successMessage = "You are now sitting out.";
+        }
+        else
+        {
+            _errorMessage = response.Error ?? "Failed to sit out.";
+        }
+
+        _isProcessing = false;
+        await RefreshSeats();
+    }
+
+    private async Task SitBackIn()
+    {
+        if (string.IsNullOrWhiteSpace(_playerName)) return;
+
+        _isProcessing = true;
+        var response = await LobbyService.SitOutAsync(TableId, _playerName, false);
+
+        if (response.Success)
+        {
+            _successMessage = "You are back in action!";
+        }
+        else
+        {
+            _errorMessage = response.Error ?? "Failed to sit back in.";
+        }
+
+        _isProcessing = false;
+        await RefreshSeats();
+    }
+
+    private async Task StandUp()
+    {
+        if (string.IsNullOrWhiteSpace(_playerName)) return;
+
+        _isProcessing = true;
+        var response = await LobbyService.StandUpAsync(TableId, _playerName);
+
+        if (response.Success)
+        {
+            _currentPlayer = null;
+            _successMessage = "You have cashed out. Thanks for playing!";
+        }
+        else
+        {
+            _errorMessage = response.Error ?? "Failed to stand up.";
+        }
+
+        _isProcessing = false;
+        await RefreshSeats();
+    }
+
+    private void CancelSeatChange()
+    {
+        _pendingSeatChange = null;
+    }
+
+    private int GetAvailableSeatsCount()
+    {
+        return _seats?.Count(s => s.Status == SeatStatus.Available) ?? 0;
+    }
+
+    private string GetTimeRemaining(DateTime expiry)
+    {
+        var remaining = expiry - DateTime.UtcNow;
+        if (remaining.TotalSeconds <= 0)
+        {
+            return "Expired";
+        }
+        return $"{(int)remaining.TotalMinutes}:{remaining.Seconds:D2}";
+    }
+
+    private static string GetVariantDisplayName(PokerVariant variant) => variant switch
+    {
+        PokerVariant.TexasHoldem => "Texas Hold'em",
+        PokerVariant.Omaha => "Omaha",
+        PokerVariant.SevenCardStud => "7-Card Stud",
+        PokerVariant.FiveCardDraw => "5-Card Draw",
+        PokerVariant.Baseball => "Baseball",
+        PokerVariant.KingsAndLows => "Kings & Lows",
+        PokerVariant.FollowTheQueen => "Follow the Queen",
+        _ => variant.ToString()
+    };
+
+    private static string GetVariantBadgeClass(PokerVariant variant) => variant switch
+    {
+        PokerVariant.TexasHoldem => "bg-primary",
+        PokerVariant.Omaha => "bg-success",
+        PokerVariant.SevenCardStud => "bg-info",
+        PokerVariant.FiveCardDraw => "bg-warning text-dark",
+        _ => "bg-secondary"
+    };
+}

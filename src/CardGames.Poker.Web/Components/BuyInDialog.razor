@@ -1,0 +1,238 @@
+@using CardGames.Poker.Shared.DTOs
+
+<div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Buy In - Seat @SeatNumber</h5>
+                <button type="button" class="btn-close" @onclick="Cancel" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                @if (!string.IsNullOrEmpty(_error))
+                {
+                    <div class="alert alert-danger">@_error</div>
+                }
+
+                @if (ReservedUntil.HasValue)
+                {
+                    <div class="alert alert-warning d-flex align-items-center">
+                        <span class="me-2">⏱️</span>
+                        <span>Complete your buy-in within <strong>@GetTimeRemaining()</strong></span>
+                    </div>
+                }
+
+                <div class="table-info mb-4">
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted">Table:</span>
+                        <strong>@TableName</strong>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted">Stakes:</span>
+                        <span>@SmallBlind/@BigBlind</span>
+                    </div>
+                </div>
+
+                <div class="buy-in-section">
+                    <label class="form-label fw-bold">Buy-In Amount</label>
+                    
+                    <div class="buy-in-range mb-3">
+                        <span class="range-label">Min: @MinBuyIn.ToString("N0")</span>
+                        <span class="range-label">Max: @MaxBuyIn.ToString("N0")</span>
+                    </div>
+
+                    <div class="input-group input-group-lg mb-3">
+                        <span class="input-group-text">$</span>
+                        <input type="number" 
+                               class="form-control text-center" 
+                               @bind="_buyInAmount" 
+                               @bind:event="oninput"
+                               min="@MinBuyIn" 
+                               max="@MaxBuyIn"
+                               @onkeyup="HandleKeyUp" />
+                    </div>
+
+                    <input type="range" 
+                           class="form-range mb-3" 
+                           @bind="_buyInAmount" 
+                           @bind:event="oninput"
+                           min="@MinBuyIn" 
+                           max="@MaxBuyIn" 
+                           step="@GetStepSize()" />
+
+                    <div class="quick-amounts d-flex justify-content-between flex-wrap gap-2">
+                        <button class="btn btn-outline-secondary flex-fill" 
+                                @onclick="() => SetAmount(MinBuyIn)">
+                            Min (@MinBuyIn.ToString("N0"))
+                        </button>
+                        <button class="btn btn-outline-secondary flex-fill" 
+                                @onclick="() => SetAmount((MinBuyIn + MaxBuyIn) / 2)">
+                            Half (@((MinBuyIn + MaxBuyIn) / 2).ToString("N0"))
+                        </button>
+                        <button class="btn btn-outline-secondary flex-fill" 
+                                @onclick="() => SetAmount(MaxBuyIn)">
+                            Max (@MaxBuyIn.ToString("N0"))
+                        </button>
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(PlayerName))
+                {
+                    <div class="player-info mt-4 text-center text-muted">
+                        <span>Playing as: <strong>@PlayerName</strong></span>
+                    </div>
+                }
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @onclick="Cancel">Cancel</button>
+                <button type="button" 
+                        class="btn btn-success btn-lg" 
+                        @onclick="ConfirmBuyIn" 
+                        disabled="@(!IsValidAmount() || _isProcessing)">
+                    @if (_isProcessing)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                        <span>Processing...</span>
+                    }
+                    else
+                    {
+                        <span>Buy In for @_buyInAmount.ToString("N0")</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .buy-in-range {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.875rem;
+        color: #6c757d;
+    }
+
+    .range-label {
+        font-weight: 500;
+    }
+
+    .quick-amounts button {
+        min-width: 100px;
+    }
+
+    .table-info {
+        background-color: #f8f9fa;
+        padding: 1rem;
+        border-radius: 0.5rem;
+    }
+
+    .player-info {
+        border-top: 1px solid #dee2e6;
+        padding-top: 1rem;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public int SeatNumber { get; set; }
+
+    [Parameter]
+    public string TableName { get; set; } = "";
+
+    [Parameter]
+    public int SmallBlind { get; set; }
+
+    [Parameter]
+    public int BigBlind { get; set; }
+
+    [Parameter]
+    public int MinBuyIn { get; set; }
+
+    [Parameter]
+    public int MaxBuyIn { get; set; }
+
+    [Parameter]
+    public string? PlayerName { get; set; }
+
+    [Parameter]
+    public DateTime? ReservedUntil { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnConfirm { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    private int _buyInAmount;
+    private bool _isProcessing;
+    private string? _error;
+
+    protected override void OnInitialized()
+    {
+        // Default to max buy-in (or min if max is 0)
+        _buyInAmount = MaxBuyIn > 0 ? MaxBuyIn : MinBuyIn;
+    }
+
+    private void SetAmount(int amount)
+    {
+        _buyInAmount = Math.Max(MinBuyIn, Math.Min(MaxBuyIn, amount));
+    }
+
+    private bool IsValidAmount()
+    {
+        return _buyInAmount >= MinBuyIn && _buyInAmount <= MaxBuyIn;
+    }
+
+    private int GetStepSize()
+    {
+        // Use big blind as step size for convenience
+        return BigBlind > 0 ? BigBlind : 1;
+    }
+
+    private string GetTimeRemaining()
+    {
+        if (!ReservedUntil.HasValue) return "";
+        
+        var remaining = ReservedUntil.Value - DateTime.UtcNow;
+        if (remaining.TotalSeconds <= 0)
+        {
+            return "Expired";
+        }
+        return $"{(int)remaining.TotalMinutes}:{remaining.Seconds:D2}";
+    }
+
+    private async Task ConfirmBuyIn()
+    {
+        if (!IsValidAmount()) return;
+
+        _isProcessing = true;
+        _error = null;
+        StateHasChanged();
+
+        try
+        {
+            await OnConfirm.InvokeAsync(_buyInAmount);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task Cancel()
+    {
+        await OnCancel.InvokeAsync();
+    }
+
+    private async Task HandleKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && IsValidAmount())
+        {
+            await ConfirmBuyIn();
+        }
+    }
+}
