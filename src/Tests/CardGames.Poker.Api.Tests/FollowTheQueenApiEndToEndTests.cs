@@ -194,7 +194,8 @@ public class FollowTheQueenApiEndToEndTests : IClassFixture<WebApplicationFactor
     [Fact]
     public async Task CreateTable_FollowTheQueen_TooManyPlayers_Fails()
     {
-        // Arrange - Follow the Queen max is 7 players (7 * 7 = 49 cards), 8+ exceeds deck (8 * 7 = 56 > 52)
+        // Arrange - Follow the Queen max is 7 players due to card constraints
+        // (7 players × 7 cards = 49 cards fits in deck, 8+ players would exceed 52 cards)
         var request = new CreateTableRequest(
             Name: "Too Many Players Table",
             Variant: PokerVariant.FollowTheQueen,
