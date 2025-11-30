@@ -86,6 +86,7 @@ internal class BuiltInVariantRegistrationService : IHostedService
         RegisterFollowTheQueen();
         RegisterBaseball();
         RegisterKingsAndLows();
+        RegisterDealersChoice();
 
         // Register any custom variants added via AddGameVariant
         foreach (var request in _registrationRequests)
@@ -223,5 +224,22 @@ internal class BuiltInVariantRegistrationService : IHostedService
                 ante: smallBlind,
                 kingRequired: false,
                 anteEveryHand: false));
+    }
+
+    private void RegisterDealersChoice()
+    {
+        var info = new GameVariantInfo(
+            Id: "dealers-choice",
+            Name: "Dealer's Choice",
+            Description: "The dealer selects the variant to play each hand, with optional wild card configurations. Supports multiple poker variants including Hold'em, Omaha, Stud, and Draw games.",
+            MinPlayers: 2,
+            MaxPlayers: 10);
+
+        _registry.RegisterVariant(info, (players, smallBlind, bigBlind) =>
+            new DealersChoiceGame(
+                players,
+                smallBlind,
+                bigBlind,
+                allowWildCards: true));
     }
 }
