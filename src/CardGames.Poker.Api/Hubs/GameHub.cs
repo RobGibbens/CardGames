@@ -622,4 +622,117 @@ public class GameHub : Hub
     }
 
     #endregion
+
+    #region Timer Events
+
+    /// <summary>
+    /// Notifies the game group that a player's turn timer has started.
+    /// </summary>
+    /// <param name="gameId">The game identifier.</param>
+    /// <param name="evt">The turn timer started event.</param>
+    public async Task NotifyTurnTimerStarted(string gameId, TurnTimerStartedEvent evt)
+    {
+        _logger.LogDebug(
+            "Turn timer started for player {PlayerName} in game {GameId}. Duration: {Duration}s, TimeBank: {TimeBank}s",
+            evt.PlayerName, gameId, evt.DurationSeconds, evt.TimeBankRemaining);
+        await Clients.Group(gameId).SendAsync("TurnTimerStarted", evt);
+    }
+
+    /// <summary>
+    /// Notifies the game group of a timer tick (seconds remaining).
+    /// </summary>
+    /// <param name="gameId">The game identifier.</param>
+    /// <param name="evt">The turn timer tick event.</param>
+    public async Task NotifyTurnTimerTick(string gameId, TurnTimerTickEvent evt)
+    {
+        // Only log every 5 seconds to reduce log volume
+        if (evt.SecondsRemaining % 5 == 0)
+        {
+            _logger.LogTrace(
+                "Timer tick for player {PlayerName} in game {GameId}: {Seconds}s remaining",
+                evt.PlayerName, gameId, evt.SecondsRemaining);
+        }
+        await Clients.Group(gameId).SendAsync("TurnTimerTick", evt);
+    }
+
+    /// <summary>
+    /// Notifies the game group that a player's timer is about to expire.
+    /// </summary>
+    /// <param name="gameId">The game identifier.</param>
+    /// <param name="evt">The turn timer warning event.</param>
+    public async Task NotifyTurnTimerWarning(string gameId, TurnTimerWarningEvent evt)
+    {
+        _logger.LogInformation(
+            "Turn timer warning for player {PlayerName} in game {GameId}: {Seconds}s remaining",
+            evt.PlayerName, gameId, evt.SecondsRemaining);
+        await Clients.Group(gameId).SendAsync("TurnTimerWarning", evt);
+    }
+
+    /// <summary>
+    /// Notifies the game group that a player's timer has expired.
+    /// </summary>
+    /// <param name="gameId">The game identifier.</param>
+    /// <param name="evt">The turn timer expired event.</param>
+    public async Task NotifyTurnTimerExpired(string gameId, TurnTimerExpiredEvent evt)
+    {
+        _logger.LogInformation(
+            "Turn timer expired for player {PlayerName} in game {GameId}. Default action: {Action}",
+            evt.PlayerName, gameId, evt.DefaultAction);
+        await Clients.Group(gameId).SendAsync("TurnTimerExpired", evt);
+    }
+
+    /// <summary>
+    /// Notifies the game group that a player has activated their time bank.
+    /// </summary>
+    /// <param name="gameId">The game identifier.</param>
+    /// <param name="evt">The time bank activated event.</param>
+    public async Task NotifyTimeBankActivated(string gameId, TimeBankActivatedEvent evt)
+    {
+        _logger.LogInformation(
+            "Time bank activated by player {PlayerName} in game {GameId}. Added: {Added}s, Remaining: {Remaining}s",
+            evt.PlayerName, gameId, evt.SecondsAdded, evt.TimeBankRemaining);
+        await Clients.Group(gameId).SendAsync("TimeBankActivated", evt);
+    }
+
+    /// <summary>
+    /// Notifies the game group that a player's timer has been stopped.
+    /// </summary>
+    /// <param name="gameId">The game identifier.</param>
+    /// <param name="evt">The turn timer stopped event.</param>
+    public async Task NotifyTurnTimerStopped(string gameId, TurnTimerStoppedEvent evt)
+    {
+        _logger.LogDebug(
+            "Turn timer stopped for player {PlayerName} in game {GameId}",
+            evt.PlayerName, gameId);
+        await Clients.Group(gameId).SendAsync("TurnTimerStopped", evt);
+    }
+
+    /// <summary>
+    /// Requests to use time bank for the calling player.
+    /// </summary>
+    /// <param name="tableId">The table identifier.</param>
+    public async Task UseTimeBank(string tableId)
+    {
+        var connectionId = Context.ConnectionId;
+        var playerInfo = _connectionMapping.GetPlayerInfo(connectionId);
+
+        if (playerInfo is null || playerInfo.TableId != tableId)
+        {
+            _logger.LogWarning(
+                "Time bank request rejected: Connection {ConnectionId} is not registered at table {TableId}",
+                connectionId, tableId);
+            await Clients.Caller.SendAsync("TimeBankRejected", "You are not seated at this table.");
+            return;
+        }
+
+        _logger.LogInformation(
+            "Player {PlayerName} requested time bank at table {TableId}",
+            playerInfo.PlayerName, tableId);
+
+        // The actual time bank activation would be handled by game logic
+        // This sends a request event that the server-side game logic can process
+        await Clients.Caller.SendAsync("TimeBankRequested", tableId, playerInfo.PlayerName);
+    }
+
+    #endregion
 }
