@@ -1,0 +1,278 @@
+@using CardGames.Poker.Shared
+@using CardGames.Poker.Shared.Events
+@using CardGames.Poker.Shared.DTOs
+
+<div class="pot-display @GetSizeClass()" style="@GetPositionStyle()">
+    @if (TotalAmount > 0 || ShowWhenEmpty)
+    {
+        <div class="pot-container @(IsHighlighted ? "highlighted" : "") @(IsAnimating ? "animating" : "")">
+            @if (Pots != null && Pots.Count > 1)
+            {
+                @* Multiple pots (main + side pots) *@
+                <div class="multi-pot-display">
+                    @foreach (var (pot, index) in Pots.Select((p, i) => (p, i)))
+                    {
+                        <div class="pot-item @(pot.IsMainPot ? "main-pot" : "side-pot")">
+                            <ChipStack Amount="@pot.Amount"
+                                       ShowTotal="true"
+                                       ShowChipCount="false"
+                                       Size="@(pot.IsMainPot ? Size : "small")"
+                                       MaxDenominations="3" />
+                            @if (!pot.IsMainPot)
+                            {
+                                <span class="side-pot-label">Side Pot @index</span>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                @* Single pot display *@
+                <ChipStack Amount="@TotalAmount"
+                           ShowTotal="true"
+                           ShowChipCount="@ShowChipCount"
+                           Size="@Size"
+                           IsHighlighted="@IsHighlighted"
+                           MaxDenominations="4" />
+            }
+
+            @if (!string.IsNullOrEmpty(Label))
+            {
+                <div class="pot-label">@Label</div>
+            }
+
+            @if (ShowEligiblePlayers && EligiblePlayers != null && EligiblePlayers.Count > 0)
+            {
+                <div class="eligible-players">
+                    <span class="eligible-label">Eligible:</span>
+                    @foreach (var player in EligiblePlayers.Take(MaxPlayersToShow))
+                    {
+                        <span class="eligible-player">@player</span>
+                    }
+                    @if (EligiblePlayers.Count > MaxPlayersToShow)
+                    {
+                        <span class="eligible-more">+@(EligiblePlayers.Count - MaxPlayersToShow)</span>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<style>
+    .pot-display {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        position: relative;
+    }
+
+    .pot-display.positioned {
+        position: absolute;
+        transform: translate(-50%, -50%);
+    }
+
+    .pot-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background: rgba(0, 0, 0, 0.5);
+        border-radius: 12px;
+        padding: 8px 16px;
+        border: 1px solid rgba(212, 175, 55, 0.3);
+        transition: all 0.3s ease;
+    }
+
+    .pot-container.highlighted {
+        border-color: #d4af37;
+        box-shadow: 0 0 20px rgba(212, 175, 55, 0.5);
+        animation: potPulse 1s ease-in-out infinite;
+    }
+
+    .pot-container.animating {
+        animation: potBounce 0.5s ease-out;
+    }
+
+    @@keyframes potPulse {
+        0%, 100% { 
+            box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+        }
+        50% { 
+            box-shadow: 0 0 25px rgba(212, 175, 55, 0.6);
+        }
+    }
+
+    @@keyframes potBounce {
+        0% { transform: scale(1); }
+        30% { transform: scale(1.1); }
+        100% { transform: scale(1); }
+    }
+
+    .pot-label {
+        font-size: 0.7rem;
+        color: rgba(255, 255, 255, 0.7);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-top: 4px;
+    }
+
+    .multi-pot-display {
+        display: flex;
+        gap: 16px;
+        align-items: flex-end;
+    }
+
+    .pot-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .pot-item.side-pot {
+        opacity: 0.85;
+    }
+
+    .side-pot-label {
+        font-size: 0.6rem;
+        color: rgba(255, 255, 255, 0.6);
+        margin-top: 2px;
+    }
+
+    .eligible-players {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-top: 6px;
+        justify-content: center;
+        max-width: 200px;
+    }
+
+    .eligible-label {
+        font-size: 0.55rem;
+        color: rgba(255, 255, 255, 0.5);
+        width: 100%;
+        text-align: center;
+    }
+
+    .eligible-player {
+        font-size: 0.6rem;
+        background: rgba(255, 255, 255, 0.1);
+        padding: 2px 6px;
+        border-radius: 4px;
+        color: rgba(255, 255, 255, 0.8);
+    }
+
+    .eligible-more {
+        font-size: 0.55rem;
+        color: rgba(255, 255, 255, 0.5);
+    }
+
+    /* Size variations */
+    .pot-display.small .pot-container {
+        padding: 4px 8px;
+    }
+
+    .pot-display.small .pot-label {
+        font-size: 0.6rem;
+    }
+
+    .pot-display.large .pot-container {
+        padding: 12px 24px;
+    }
+
+    .pot-display.large .pot-label {
+        font-size: 0.85rem;
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// The total pot amount.
+    /// </summary>
+    [Parameter]
+    public int TotalAmount { get; set; }
+
+    /// <summary>
+    /// Individual pots (for side pot display).
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<PotDto>? Pots { get; set; }
+
+    /// <summary>
+    /// Label to show below the pot (e.g., "Main Pot", "Total").
+    /// </summary>
+    [Parameter]
+    public string? Label { get; set; }
+
+    /// <summary>
+    /// Whether the pot is highlighted (e.g., during showdown).
+    /// </summary>
+    [Parameter]
+    public bool IsHighlighted { get; set; }
+
+    /// <summary>
+    /// Whether the pot is currently animating (chips being added/removed).
+    /// </summary>
+    [Parameter]
+    public bool IsAnimating { get; set; }
+
+    /// <summary>
+    /// Size of the pot display: "small", "medium", or "large".
+    /// </summary>
+    [Parameter]
+    public string Size { get; set; } = "medium";
+
+    /// <summary>
+    /// Whether to show chip count multipliers.
+    /// </summary>
+    [Parameter]
+    public bool ShowChipCount { get; set; } = false;
+
+    /// <summary>
+    /// Whether to display even when amount is 0.
+    /// </summary>
+    [Parameter]
+    public bool ShowWhenEmpty { get; set; } = false;
+
+    /// <summary>
+    /// List of players eligible for the pot.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<string>? EligiblePlayers { get; set; }
+
+    /// <summary>
+    /// Whether to show eligible players below the pot.
+    /// </summary>
+    [Parameter]
+    public bool ShowEligiblePlayers { get; set; } = false;
+
+    /// <summary>
+    /// Maximum number of player names to display.
+    /// </summary>
+    [Parameter]
+    public int MaxPlayersToShow { get; set; } = 4;
+
+    /// <summary>
+    /// Top position percentage (if positioned absolutely).
+    /// </summary>
+    [Parameter]
+    public double? TopPosition { get; set; }
+
+    /// <summary>
+    /// Left position percentage (if positioned absolutely).
+    /// </summary>
+    [Parameter]
+    public double? LeftPosition { get; set; }
+
+    private string GetSizeClass() => Size;
+
+    private string GetPositionStyle()
+    {
+        if (TopPosition.HasValue && LeftPosition.HasValue)
+        {
+            return $"position: absolute; top: {TopPosition}%; left: {LeftPosition}%; transform: translate(-50%, -50%);";
+        }
+        return "";
+    }
+}
