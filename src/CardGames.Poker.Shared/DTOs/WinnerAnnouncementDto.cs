@@ -10,19 +10,19 @@ public record WinnerInfoDto(
     string PlayerName,
 
     /// <summary>
-    /// The winning hand evaluated.
+    /// The winning hand evaluated (null if won by fold).
     /// </summary>
-    HandDto Hand,
+    HandDto? Hand,
 
     /// <summary>
-    /// The cards that make up the winning hand (5 cards).
+    /// The cards that make up the winning hand (5 cards). Null if won by fold.
     /// </summary>
-    IReadOnlyList<CardDto> WinningCards,
+    IReadOnlyList<CardDto>? WinningCards,
 
     /// <summary>
     /// The hole cards of the winner.
     /// </summary>
-    IReadOnlyList<CardDto> HoleCards,
+    IReadOnlyList<CardDto>? HoleCards,
 
     /// <summary>
     /// The amount won from the pot.

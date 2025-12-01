@@ -139,6 +139,31 @@ public class GameHubService : IAsyncDisposable
     public event Action<ShowdownCompletedEvent>? OnShowdownCompleted;
 
     /// <summary>
+    /// Event raised when a winner is announced.
+    /// </summary>
+    public event Action<WinnerAnnouncementEvent>? OnWinnerAnnouncement;
+
+    /// <summary>
+    /// Event raised when all-in board run-out starts.
+    /// </summary>
+    public event Action<AllInBoardRunOutStartedEvent>? OnAllInBoardRunOutStarted;
+
+    /// <summary>
+    /// Event raised when a community card is revealed during all-in run-out.
+    /// </summary>
+    public event Action<AllInBoardCardRevealedEvent>? OnAllInBoardCardRevealed;
+
+    /// <summary>
+    /// Event raised when a player's hand is auto-revealed.
+    /// </summary>
+    public event Action<AutoRevealEvent>? OnAutoReveal;
+
+    /// <summary>
+    /// Event raised when showdown animation sequence is ready.
+    /// </summary>
+    public event Action<ShowdownAnimationReadyEvent>? OnShowdownAnimationReady;
+
+    /// <summary>
     /// Event raised when hand starts.
     /// </summary>
     public event Action<HandStartedEvent>? OnHandStarted;
@@ -376,6 +401,36 @@ public class GameHubService : IAsyncDisposable
             {
                 _logger.LogInformation("Showdown completed for game {GameId}", evt.GameId);
                 OnShowdownCompleted?.Invoke(evt);
+            });
+
+            _hubConnection.On<WinnerAnnouncementEvent>("WinnerAnnouncement", (evt) =>
+            {
+                _logger.LogInformation("Winner announcement for game {GameId}", evt.GameId);
+                OnWinnerAnnouncement?.Invoke(evt);
+            });
+
+            _hubConnection.On<AllInBoardRunOutStartedEvent>("AllInBoardRunOutStarted", (evt) =>
+            {
+                _logger.LogInformation("All-in board run-out started for game {GameId}", evt.GameId);
+                OnAllInBoardRunOutStarted?.Invoke(evt);
+            });
+
+            _hubConnection.On<AllInBoardCardRevealedEvent>("AllInBoardCardRevealed", (evt) =>
+            {
+                _logger.LogInformation("All-in board card revealed for game {GameId}: {Card}", evt.GameId, evt.Card.DisplayValue);
+                OnAllInBoardCardRevealed?.Invoke(evt);
+            });
+
+            _hubConnection.On<AutoRevealEvent>("AutoReveal", (evt) =>
+            {
+                _logger.LogInformation("Auto-reveal for player {PlayerName} in game {GameId}", evt.PlayerName, evt.GameId);
+                OnAutoReveal?.Invoke(evt);
+            });
+
+            _hubConnection.On<ShowdownAnimationReadyEvent>("ShowdownAnimationReady", (evt) =>
+            {
+                _logger.LogInformation("Showdown animation ready for game {GameId}", evt.GameId);
+                OnShowdownAnimationReady?.Invoke(evt);
             });
 
             _hubConnection.On<HandStartedEvent>("HandStarted", (evt) =>

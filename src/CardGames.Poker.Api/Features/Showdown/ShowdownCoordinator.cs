@@ -579,9 +579,9 @@ public class ShowdownCoordinator : IShowdownCoordinator
 
         var winnerInfos = winners.Select(w => new WinnerInfoDto(
             w.PlayerName,
-            w.Hand!,
-            w.WinningCards ?? [],
-            w.HoleCards ?? [],
+            w.Hand,
+            w.WinningCards,
+            w.HoleCards,
             w.AmountWon,
             w.IsTie,
             w.PotIndex)).ToList();
