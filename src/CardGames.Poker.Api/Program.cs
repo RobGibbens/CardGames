@@ -2,6 +2,7 @@ using CardGames.Poker.Api.Hubs;
 using Microsoft.AspNetCore.SignalR;
 
 using CardGames.Poker.Api.Features.Auth;
+using CardGames.Poker.Api.Features.Chat;
 using CardGames.Poker.Api.Features.Friends;
 using CardGames.Poker.Api.Features.Hands;
 using CardGames.Poker.Api.Features.History;
@@ -36,6 +37,10 @@ builder.Services.AddBuiltInVariants();
 
 // Add showdown coordinator services
 builder.Services.AddShowdownServices();
+
+// Add chat services
+builder.Services.AddSingleton<IChatMessageValidator, ChatMessageValidator>();
+builder.Services.AddSingleton<IChatService, ChatService>();
 
 // Add SignalR services
 builder.Services.AddSignalR();
@@ -92,6 +97,7 @@ app.UseAuthorization();
 
 // Map feature endpoints
 app.MapAuthEndpoints();
+app.MapChatEndpoints();
 app.MapFriendsEndpoints();
 app.MapHandsEndpoints();
 app.MapHistoryEndpoints();

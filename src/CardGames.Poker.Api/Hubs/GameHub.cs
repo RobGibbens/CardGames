@@ -735,4 +735,75 @@ public class GameHub : Hub
     }
 
     #endregion
+
+    #region Chat Events
+
+    /// <summary>
+    /// Notifies the game group that a chat message was received.
+    /// </summary>
+    /// <param name="gameId">The game identifier.</param>
+    /// <param name="evt">The chat message sent event.</param>
+    public async Task NotifyChatMessageReceived(string gameId, ChatMessageSentEvent evt)
+    {
+        _logger.LogDebug("Chat message from {SenderName} in game {GameId}", evt.Message.SenderName, gameId);
+        await Clients.Group(gameId).SendAsync("ChatMessageReceived", evt);
+    }
+
+    /// <summary>
+    /// Notifies a specific player that their chat message was rejected.
+    /// </summary>
+    /// <param name="connectionId">The target connection ID.</param>
+    /// <param name="evt">The chat message rejected event.</param>
+    public async Task NotifyChatMessageRejected(string connectionId, ChatMessageRejectedEvent evt)
+    {
+        _logger.LogDebug("Chat message rejected for {PlayerName}: {Reason}", evt.PlayerName, evt.Reason);
+        await Clients.Client(connectionId).SendAsync("ChatMessageRejected", evt);
+    }
+
+    /// <summary>
+    /// Notifies the game group of a system announcement.
+    /// </summary>
+    /// <param name="gameId">The game identifier.</param>
+    /// <param name="evt">The system announcement event.</param>
+    public async Task NotifySystemAnnouncement(string gameId, SystemAnnouncementEvent evt)
+    {
+        _logger.LogDebug("System announcement in game {GameId}: {Content}", gameId, evt.Content);
+        await Clients.Group(gameId).SendAsync("SystemAnnouncement", evt);
+    }
+
+    /// <summary>
+    /// Notifies the game group that table chat status has changed.
+    /// </summary>
+    /// <param name="gameId">The game identifier.</param>
+    /// <param name="evt">The table chat status changed event.</param>
+    public async Task NotifyTableChatStatusChanged(string gameId, TableChatStatusChangedEvent evt)
+    {
+        _logger.LogInformation("Table chat {Status} for game {GameId} by {ChangedBy}",
+            evt.IsChatEnabled ? "enabled" : "disabled", gameId, evt.ChangedByPlayerName ?? "System");
+        await Clients.Group(gameId).SendAsync("TableChatStatusChanged", evt);
+    }
+
+    /// <summary>
+    /// Notifies a specific player that they muted another player.
+    /// </summary>
+    /// <param name="connectionId">The target connection ID.</param>
+    /// <param name="evt">The player muted event.</param>
+    public async Task NotifyPlayerMuted(string connectionId, PlayerMutedEvent evt)
+    {
+        _logger.LogDebug("Player {PlayerName} muted {MutedPlayer}", evt.PlayerName, evt.MutedPlayerName);
+        await Clients.Client(connectionId).SendAsync("PlayerMuted", evt);
+    }
+
+    /// <summary>
+    /// Notifies a specific player that they unmuted another player.
+    /// </summary>
+    /// <param name="connectionId">The target connection ID.</param>
+    /// <param name="evt">The player unmuted event.</param>
+    public async Task NotifyPlayerUnmuted(string connectionId, PlayerUnmutedEvent evt)
+    {
+        _logger.LogDebug("Player {PlayerName} unmuted {UnmutedPlayer}", evt.PlayerName, evt.UnmutedPlayerName);
+        await Clients.Client(connectionId).SendAsync("PlayerUnmuted", evt);
+    }
+
+    #endregion
 }

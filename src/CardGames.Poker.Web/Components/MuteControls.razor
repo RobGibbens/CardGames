@@ -1,0 +1,85 @@
+@using CardGames.Poker.Shared.Events
+@using CardGames.Poker.Web.Services
+@inject GameHubService HubService
+
+<div class="mute-controls">
+    <h6 class="mb-2">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-volume-mute me-1" viewBox="0 0 16 16">
+            <path d="M6.717 3.55A.5.5 0 0 1 7 4v8a.5.5 0 0 1-.812.39L3.825 10.5H1.5A.5.5 0 0 1 1 10V6a.5.5 0 0 1 .5-.5h2.325l2.363-1.89a.5.5 0 0 1 .529-.06"/>
+            <path d="M10.707 11.182A4.5 4.5 0 0 0 10.025 2.32a.5.5 0 1 0-.707.707 3.5 3.5 0 0 1 .53 6.896.5.5 0 0 0 .707.707 4.5 4.5 0 0 0 .152-9.448"/>
+            <path d="M10.717 4.757a.5.5 0 0 1 .707 0 2.5 2.5 0 0 1 0 3.536.5.5 0 0 1-.707-.708 1.5 1.5 0 0 0 0-2.12.5.5 0 0 1 0-.708"/>
+        </svg>
+        Mute Players
+    </h6>
+
+    @if (Players.Count == 0)
+    {
+        <p class="text-muted small mb-0">No other players at the table.</p>
+    }
+    else
+    {
+        <div class="list-group list-group-flush">
+            @foreach (var player in Players.Where(p => p != CurrentPlayerName))
+            {
+                var isMuted = _mutedPlayers.Contains(player);
+                <div class="list-group-item d-flex justify-content-between align-items-center py-1 px-2">
+                    <span class="@(isMuted ? "text-muted" : "")">
+                        @player
+                        @if (isMuted)
+                        {
+                            <span class="badge bg-secondary ms-1">Muted</span>
+                        }
+                    </span>
+                    <button class="btn btn-sm @(isMuted ? "btn-outline-success" : "btn-outline-secondary")"
+                            @onclick="() => ToggleMute(player)"
+                            title="@(isMuted ? "Unmute" : "Mute")">
+                        @if (isMuted)
+                        {
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                                <path d="M11.536 14.01A8.47 8.47 0 0 0 14.026 8a8.47 8.47 0 0 0-2.49-6.01l-.708.707A7.48 7.48 0 0 1 13.025 8c0 2.071-.84 3.946-2.197 5.303z"/>
+                                <path d="M10.121 12.596A6.48 6.48 0 0 0 12.025 8a6.48 6.48 0 0 0-1.904-4.596l-.707.707A5.48 5.48 0 0 1 11.025 8a5.48 5.48 0 0 1-1.611 3.889z"/>
+                                <path d="M8.707 11.182A4.5 4.5 0 0 0 10.025 8a4.5 4.5 0 0 0-1.318-3.182L8 5.525A3.5 3.5 0 0 1 9.025 8 3.5 3.5 0 0 1 8 10.475zM6.717 3.55A.5.5 0 0 1 7 4v8a.5.5 0 0 1-.812.39L3.825 10.5H1.5A.5.5 0 0 1 1 10V6a.5.5 0 0 1 .5-.5h2.325l2.363-1.89a.5.5 0 0 1 .529-.06"/>
+                            </svg>
+                        }
+                        else
+                        {
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                                <path d="M6.717 3.55A.5.5 0 0 1 7 4v8a.5.5 0 0 1-.812.39L3.825 10.5H1.5A.5.5 0 0 1 1 10V6a.5.5 0 0 1 .5-.5h2.325l2.363-1.89a.5.5 0 0 1 .529-.06m7.137 2.096a.5.5 0 0 1 0 .708L12.207 8l1.647 1.646a.5.5 0 0 1-.708.708L11.5 8.707l-1.646 1.647a.5.5 0 0 1-.708-.708L10.793 8 9.146 6.354a.5.5 0 1 1 .708-.708L11.5 7.293l1.646-1.647a.5.5 0 0 1 .708 0"/>
+                            </svg>
+                        }
+                    </button>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public Guid TableId { get; set; }
+
+    [Parameter]
+    public string CurrentPlayerName { get; set; } = string.Empty;
+
+    [Parameter]
+    public IReadOnlyList<string> Players { get; set; } = Array.Empty<string>();
+
+    [Parameter]
+    public EventCallback<HashSet<string>> OnMuteChanged { get; set; }
+
+    private readonly HashSet<string> _mutedPlayers = new(StringComparer.OrdinalIgnoreCase);
+
+    private async Task ToggleMute(string playerName)
+    {
+        if (_mutedPlayers.Contains(playerName))
+        {
+            _mutedPlayers.Remove(playerName);
+        }
+        else
+        {
+            _mutedPlayers.Add(playerName);
+        }
+
+        await OnMuteChanged.InvokeAsync(_mutedPlayers);
+    }
+}

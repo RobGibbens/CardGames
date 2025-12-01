@@ -155,6 +155,40 @@ public class GameHubService : IAsyncDisposable
 
     #endregion
 
+    #region Chat Events
+
+    /// <summary>
+    /// Event raised when a chat message is received.
+    /// </summary>
+    public event Action<ChatMessageSentEvent>? OnChatMessageReceived;
+
+    /// <summary>
+    /// Event raised when a chat message is rejected.
+    /// </summary>
+    public event Action<ChatMessageRejectedEvent>? OnChatMessageRejected;
+
+    /// <summary>
+    /// Event raised when a system announcement is received.
+    /// </summary>
+    public event Action<SystemAnnouncementEvent>? OnSystemAnnouncement;
+
+    /// <summary>
+    /// Event raised when table chat status changes.
+    /// </summary>
+    public event Action<TableChatStatusChangedEvent>? OnTableChatStatusChanged;
+
+    /// <summary>
+    /// Event raised when a player is muted.
+    /// </summary>
+    public event Action<PlayerMutedEvent>? OnPlayerMuted;
+
+    /// <summary>
+    /// Event raised when a player is unmuted.
+    /// </summary>
+    public event Action<PlayerUnmutedEvent>? OnPlayerUnmuted;
+
+    #endregion
+
     /// <summary>
     /// Gets the current connection state.
     /// </summary>
@@ -360,6 +394,43 @@ public class GameHubService : IAsyncDisposable
             {
                 _logger.LogInformation("It's {PlayerName}'s turn", evt.PlayerName);
                 OnPlayerTurn?.Invoke(evt);
+            });
+
+            // Chat event handlers
+            _hubConnection.On<ChatMessageSentEvent>("ChatMessageReceived", (evt) =>
+            {
+                _logger.LogDebug("Chat message from {SenderName}", evt.Message.SenderName);
+                OnChatMessageReceived?.Invoke(evt);
+            });
+
+            _hubConnection.On<ChatMessageRejectedEvent>("ChatMessageRejected", (evt) =>
+            {
+                _logger.LogWarning("Chat message rejected for {PlayerName}: {Reason}", evt.PlayerName, evt.Reason);
+                OnChatMessageRejected?.Invoke(evt);
+            });
+
+            _hubConnection.On<SystemAnnouncementEvent>("SystemAnnouncement", (evt) =>
+            {
+                _logger.LogDebug("System announcement: {Content}", evt.Content);
+                OnSystemAnnouncement?.Invoke(evt);
+            });
+
+            _hubConnection.On<TableChatStatusChangedEvent>("TableChatStatusChanged", (evt) =>
+            {
+                _logger.LogInformation("Table chat {Status}", evt.IsChatEnabled ? "enabled" : "disabled");
+                OnTableChatStatusChanged?.Invoke(evt);
+            });
+
+            _hubConnection.On<PlayerMutedEvent>("PlayerMuted", (evt) =>
+            {
+                _logger.LogDebug("Player {PlayerName} muted {MutedPlayer}", evt.PlayerName, evt.MutedPlayerName);
+                OnPlayerMuted?.Invoke(evt);
+            });
+
+            _hubConnection.On<PlayerUnmutedEvent>("PlayerUnmuted", (evt) =>
+            {
+                _logger.LogDebug("Player {PlayerName} unmuted {UnmutedPlayer}", evt.PlayerName, evt.UnmutedPlayerName);
+                OnPlayerUnmuted?.Invoke(evt);
             });
 
             // Connection state change handlers
