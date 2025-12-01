@@ -406,8 +406,15 @@ public class StateSyncCoordinator : IStateSyncCoordinator
         {
             _ = Task.Run(async () =>
             {
-                _logger.LogInformation("Reconnected - requesting state sync");
-                await ResyncStateAsync();
+                try
+                {
+                    _logger.LogInformation("Reconnected - requesting state sync");
+                    await ResyncStateAsync();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to resync state after reconnection");
+                }
             });
         }
     }

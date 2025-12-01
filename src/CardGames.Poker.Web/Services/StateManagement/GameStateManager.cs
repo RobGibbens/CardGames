@@ -689,9 +689,10 @@ public class GameStateManager : IGameStateManager
             return new CardDto("?", "?", cardString);
         }
 
-        // Card strings are typically in format like "As" (Ace of spades), "2h" (2 of hearts)
-        var rank = cardString[..^1];
-        var suit = cardString[^1..];
+        // Card strings are in format like "As" (Ace of spades), "2h" (2 of hearts), "10d" (10 of diamonds)
+        // The rank is everything except the last character, the suit is the last character
+        var rank = cardString.Substring(0, cardString.Length - 1);
+        var suit = cardString.Substring(cardString.Length - 1);
         return new CardDto(rank, suit, cardString);
     }
 

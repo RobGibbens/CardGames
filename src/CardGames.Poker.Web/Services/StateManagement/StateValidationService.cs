@@ -140,12 +140,9 @@ public class StateValidationService : IStateValidationService, IDisposable
             return new StateValidationResult(false, [], 0, 0);
         }
 
-        // Request current state from server
-        await _hubService.RequestTableStateAsync(_tableId.ToString());
-
         // Wait for response (with timeout)
         var tcs = new TaskCompletionSource<StateValidationResult>();
-        var timeout = Task.Delay(TimeSpan.FromSeconds(5));
+        var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
 
         void Handler(TableStateSyncEvent evt)
         {
@@ -160,9 +157,14 @@ public class StateValidationService : IStateValidationService, IDisposable
 
         try
         {
-            var completedTask = await Task.WhenAny(tcs.Task, timeout);
+            // Request current state from server after subscribing to ensure we don't miss the response
+            await _hubService.RequestTableStateAsync(_tableId.ToString());
 
-            if (completedTask == timeout)
+            var completedTask = await Task.WhenAny(
+                tcs.Task,
+                Task.Delay(Timeout.Infinite, timeoutCts.Token));
+
+            if (!tcs.Task.IsCompleted)
             {
                 _logger.LogWarning("Validation request timed out for table {TableId}", _tableId);
                 return new StateValidationResult(false, [], _stateManager.StateVersion, 0);
@@ -172,9 +174,15 @@ public class StateValidationService : IStateValidationService, IDisposable
             ProcessValidationResult(result);
             return result;
         }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("Validation request was cancelled for table {TableId}", _tableId);
+            return new StateValidationResult(false, [], _stateManager.StateVersion, 0);
+        }
         finally
         {
             _hubService.OnTableStateSync -= Handler;
+            timeoutCts.Dispose();
         }
     }
 

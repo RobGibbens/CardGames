@@ -99,6 +99,18 @@ public record ActionResult(
     long? NewStateVersion = null);
 
 /// <summary>
+/// Configuration options for the concurrent action handler.
+/// </summary>
+public class ConcurrentActionHandlerOptions
+{
+    /// <summary>
+    /// Gets or sets the timeout for pending actions.
+    /// Default is 10 seconds.
+    /// </summary>
+    public TimeSpan ActionTimeout { get; set; } = TimeSpan.FromSeconds(10);
+}
+
+/// <summary>
 /// Implementation of concurrent action handler.
 /// </summary>
 public class ConcurrentActionHandler : IConcurrentActionHandler
@@ -107,7 +119,7 @@ public class ConcurrentActionHandler : IConcurrentActionHandler
     private readonly IGameStateManager _stateManager;
     private readonly object _lock = new();
     private readonly ConcurrentQueue<PendingAction> _actionQueue = new();
-    private readonly TimeSpan _actionTimeout = TimeSpan.FromSeconds(10);
+    private readonly TimeSpan _actionTimeout;
 
     private PendingAction? _currentPendingAction;
     private string? _currentPlayerName;
@@ -123,9 +135,18 @@ public class ConcurrentActionHandler : IConcurrentActionHandler
     public ConcurrentActionHandler(
         ILogger<ConcurrentActionHandler> logger,
         IGameStateManager stateManager)
+        : this(logger, stateManager, new ConcurrentActionHandlerOptions())
+    {
+    }
+
+    public ConcurrentActionHandler(
+        ILogger<ConcurrentActionHandler> logger,
+        IGameStateManager stateManager,
+        ConcurrentActionHandlerOptions options)
     {
         _logger = logger;
         _stateManager = stateManager;
+        _actionTimeout = options.ActionTimeout;
     }
 
     public bool TryQueueAction(PendingAction action)
