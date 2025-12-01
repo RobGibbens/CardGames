@@ -1,0 +1,342 @@
+@using CardGames.Poker.Shared.DTOs
+@using CardGames.Poker.Shared.Events
+
+<div class="time-bank @GetBankStateClass()">
+    <div class="time-bank-header">
+        <span class="time-bank-icon">⏱️</span>
+        <span class="time-bank-title">Time Bank</span>
+    </div>
+
+    <div class="time-bank-display">
+        <div class="time-bank-bar">
+            <div class="time-bank-fill" style="width: @GetFillPercentage()%"></div>
+        </div>
+        <div class="time-bank-values">
+            <span class="time-bank-remaining">@SecondsRemaining</span>
+            <span class="time-bank-total">/ @TotalSeconds sec</span>
+        </div>
+    </div>
+
+    @if (ShowActivateButton)
+    {
+        <button 
+            class="time-bank-button" 
+            @onclick="OnActivateClickInternal" 
+            disabled="@(!CanActivate)">
+            @if (IsActive)
+            {
+                <span>Active</span>
+            }
+            else if (SecondsRemaining <= 0)
+            {
+                <span>Empty</span>
+            }
+            else
+            {
+                <span>Use Time Bank</span>
+            }
+        </button>
+    }
+
+    @if (!string.IsNullOrEmpty(Message))
+    {
+        <div class="time-bank-message @MessageType">
+            @Message
+        </div>
+    }
+</div>
+
+<style>
+    .time-bank {
+        background: rgba(0, 0, 0, 0.7);
+        border-radius: 8px;
+        padding: 0.75rem;
+        min-width: 120px;
+        transition: all 0.3s ease;
+    }
+
+    .time-bank.active {
+        border: 2px solid #9c27b0;
+        box-shadow: 0 0 12px rgba(156, 39, 176, 0.4);
+    }
+
+    .time-bank.empty {
+        opacity: 0.6;
+    }
+
+    .time-bank.low {
+        animation: pulse-low 1s ease-in-out infinite;
+    }
+
+    @@keyframes pulse-low {
+        0%, 100% { border-color: transparent; }
+        50% { border-color: #ff9800; }
+    }
+
+    .time-bank-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .time-bank-icon {
+        font-size: 1.2rem;
+    }
+
+    .time-bank-title {
+        font-size: 0.8rem;
+        font-weight: bold;
+        color: #ce93d8;
+        text-transform: uppercase;
+    }
+
+    .time-bank-display {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .time-bank-bar {
+        height: 8px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .time-bank-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #9c27b0, #ce93d8);
+        border-radius: 4px;
+        transition: width 0.5s ease;
+    }
+
+    .time-bank.low .time-bank-fill {
+        background: linear-gradient(90deg, #ff9800, #ffb74d);
+    }
+
+    .time-bank.empty .time-bank-fill {
+        background: #666;
+    }
+
+    .time-bank-values {
+        display: flex;
+        align-items: baseline;
+        gap: 0.25rem;
+        justify-content: center;
+    }
+
+    .time-bank-remaining {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #ce93d8;
+    }
+
+    .time-bank.low .time-bank-remaining {
+        color: #ff9800;
+    }
+
+    .time-bank.empty .time-bank-remaining {
+        color: #666;
+    }
+
+    .time-bank-total {
+        font-size: 0.7rem;
+        color: rgba(255, 255, 255, 0.5);
+    }
+
+    .time-bank-button {
+        width: 100%;
+        margin-top: 0.75rem;
+        padding: 0.5rem;
+        border: none;
+        border-radius: 6px;
+        background: linear-gradient(135deg, #9c27b0, #7b1fa2);
+        color: white;
+        font-weight: bold;
+        font-size: 0.8rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-transform: uppercase;
+    }
+
+    .time-bank-button:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(156, 39, 176, 0.4);
+    }
+
+    .time-bank-button:active:not(:disabled) {
+        transform: translateY(0);
+    }
+
+    .time-bank-button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        background: #666;
+    }
+
+    .time-bank.active .time-bank-button {
+        background: linear-gradient(135deg, #4caf50, #388e3c);
+        animation: glow-active 1s ease-in-out infinite alternate;
+    }
+
+    @@keyframes glow-active {
+        from { box-shadow: 0 0 4px rgba(76, 175, 80, 0.4); }
+        to { box-shadow: 0 0 12px rgba(76, 175, 80, 0.6); }
+    }
+
+    .time-bank-message {
+        margin-top: 0.5rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.65rem;
+        text-align: center;
+    }
+
+    .time-bank-message.info {
+        background: rgba(33, 150, 243, 0.2);
+        color: #64b5f6;
+    }
+
+    .time-bank-message.success {
+        background: rgba(76, 175, 80, 0.2);
+        color: #81c784;
+    }
+
+    .time-bank-message.warning {
+        background: rgba(255, 152, 0, 0.2);
+        color: #ffb74d;
+    }
+
+    .time-bank-message.error {
+        background: rgba(244, 67, 54, 0.2);
+        color: #e57373;
+    }
+
+    /* Compact variant */
+    .time-bank.compact {
+        padding: 0.5rem;
+        min-width: 80px;
+    }
+
+    .time-bank.compact .time-bank-header {
+        margin-bottom: 0.25rem;
+    }
+
+    .time-bank.compact .time-bank-title {
+        font-size: 0.65rem;
+    }
+
+    .time-bank.compact .time-bank-remaining {
+        font-size: 1.1rem;
+    }
+
+    .time-bank.compact .time-bank-button {
+        padding: 0.35rem;
+        font-size: 0.7rem;
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// Seconds remaining in the time bank.
+    /// </summary>
+    [Parameter]
+    public int SecondsRemaining { get; set; }
+
+    /// <summary>
+    /// Total time bank seconds (for calculating fill percentage).
+    /// </summary>
+    [Parameter]
+    public int TotalSeconds { get; set; } = 60;
+
+    /// <summary>
+    /// Whether the time bank is currently active (being used this turn).
+    /// </summary>
+    [Parameter]
+    public bool IsActive { get; set; }
+
+    /// <summary>
+    /// Whether the player can activate the time bank.
+    /// </summary>
+    [Parameter]
+    public bool CanActivate { get; set; }
+
+    /// <summary>
+    /// Whether to show the activate button.
+    /// </summary>
+    [Parameter]
+    public bool ShowActivateButton { get; set; } = true;
+
+    /// <summary>
+    /// Whether to use compact styling.
+    /// </summary>
+    [Parameter]
+    public bool Compact { get; set; }
+
+    /// <summary>
+    /// Optional message to display.
+    /// </summary>
+    [Parameter]
+    public string? Message { get; set; }
+
+    /// <summary>
+    /// Type of message: info, success, warning, error.
+    /// </summary>
+    [Parameter]
+    public string MessageType { get; set; } = "info";
+
+    /// <summary>
+    /// Callback when the activate button is clicked.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnActivateClick { get; set; }
+
+    /// <summary>
+    /// Low time threshold (percentage) for visual warning.
+    /// </summary>
+    [Parameter]
+    public int LowThresholdPercent { get; set; } = 25;
+
+    private string GetBankStateClass()
+    {
+        var classes = new List<string>();
+
+        if (Compact)
+        {
+            classes.Add("compact");
+        }
+
+        if (IsActive)
+        {
+            classes.Add("active");
+        }
+        else if (SecondsRemaining <= 0)
+        {
+            classes.Add("empty");
+        }
+        else if (GetFillPercentage() <= LowThresholdPercent)
+        {
+            classes.Add("low");
+        }
+
+        return string.Join(" ", classes);
+    }
+
+    private double GetFillPercentage()
+    {
+        if (TotalSeconds <= 0)
+        {
+            return 0;
+        }
+        return Math.Max(0, Math.Min(100, (double)SecondsRemaining / TotalSeconds * 100));
+    }
+
+    private async Task OnActivateClickInternal()
+    {
+        if (CanActivate && OnActivateClick.HasDelegate)
+        {
+            await OnActivateClick.InvokeAsync();
+        }
+    }
+}

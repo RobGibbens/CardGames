@@ -494,3 +494,62 @@ public record BlindLevelInfoEvent(
     TimeSpan? TimeUntilNextLevel) : GameEvent(GameId, Timestamp);
 
 #endregion
+
+#region Timer Events
+
+/// <summary>
+/// Event raised when a player's turn timer starts.
+/// </summary>
+public record TurnTimerStartedEvent(
+    Guid GameId,
+    DateTime Timestamp,
+    string PlayerName,
+    int DurationSeconds,
+    int TimeBankRemaining) : GameEvent(GameId, Timestamp);
+
+/// <summary>
+/// Event raised every second while a player's timer is running.
+/// </summary>
+public record TurnTimerTickEvent(
+    Guid GameId,
+    DateTime Timestamp,
+    string PlayerName,
+    int SecondsRemaining) : GameEvent(GameId, Timestamp);
+
+/// <summary>
+/// Event raised when a player's timer is about to expire.
+/// </summary>
+public record TurnTimerWarningEvent(
+    Guid GameId,
+    DateTime Timestamp,
+    string PlayerName,
+    int SecondsRemaining) : GameEvent(GameId, Timestamp);
+
+/// <summary>
+/// Event raised when a player's timer expires and a default action is taken.
+/// </summary>
+public record TurnTimerExpiredEvent(
+    Guid GameId,
+    DateTime Timestamp,
+    string PlayerName,
+    string DefaultAction) : GameEvent(GameId, Timestamp);
+
+/// <summary>
+/// Event raised when a player activates their time bank.
+/// </summary>
+public record TimeBankActivatedEvent(
+    Guid GameId,
+    DateTime Timestamp,
+    string PlayerName,
+    int SecondsAdded,
+    int TimeBankRemaining) : GameEvent(GameId, Timestamp);
+
+/// <summary>
+/// Event raised when a player's timer is stopped (player took action).
+/// </summary>
+public record TurnTimerStoppedEvent(
+    Guid GameId,
+    DateTime Timestamp,
+    string PlayerName) : GameEvent(GameId, Timestamp);
+
+#endregion

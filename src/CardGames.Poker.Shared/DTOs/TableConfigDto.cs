@@ -44,4 +44,61 @@ public record TableConfigDto(
     /// <summary>
     /// Ante amount (optional, defaults to 0).
     /// </summary>
-    int Ante = 0);
+    int Ante = 0,
+
+    /// <summary>
+    /// Timer configuration for the table (optional).
+    /// </summary>
+    TimerConfigDto? TimerConfig = null);
+
+/// <summary>
+/// Represents timer configuration settings for a poker table.
+/// </summary>
+public record TimerConfigDto(
+    /// <summary>
+    /// Turn timeout duration in seconds. Set to 0 to disable timers.
+    /// </summary>
+    int TurnTimeoutSeconds = 30,
+
+    /// <summary>
+    /// Warning threshold in seconds before timeout.
+    /// </summary>
+    int WarningThresholdSeconds = 10,
+
+    /// <summary>
+    /// Time bank duration in seconds per player.
+    /// </summary>
+    int TimeBankSeconds = 60,
+
+    /// <summary>
+    /// Whether to automatically perform a default action when the timer expires.
+    /// </summary>
+    bool AutoActOnTimeout = true)
+{
+    /// <summary>
+    /// Default timer configuration for cash games.
+    /// </summary>
+    public static TimerConfigDto CashGame { get; } = new(
+        TurnTimeoutSeconds: 30,
+        WarningThresholdSeconds: 10,
+        TimeBankSeconds: 60,
+        AutoActOnTimeout: true);
+
+    /// <summary>
+    /// Default timer configuration for tournaments.
+    /// </summary>
+    public static TimerConfigDto Tournament { get; } = new(
+        TurnTimeoutSeconds: 15,
+        WarningThresholdSeconds: 5,
+        TimeBankSeconds: 30,
+        AutoActOnTimeout: true);
+
+    /// <summary>
+    /// Disabled timer configuration.
+    /// </summary>
+    public static TimerConfigDto Disabled { get; } = new(
+        TurnTimeoutSeconds: 0,
+        WarningThresholdSeconds: 0,
+        TimeBankSeconds: 0,
+        AutoActOnTimeout: false);
+}
