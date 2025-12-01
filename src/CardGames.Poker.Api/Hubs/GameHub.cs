@@ -213,6 +213,71 @@ public class GameHub : Hub
         await Clients.Client(connectionId).SendAsync("PrivateHoleCards", playerName, cards);
     }
 
+    /// <summary>
+    /// Notifies the game group about a winner announcement.
+    /// </summary>
+    /// <param name="gameId">The game identifier.</param>
+    /// <param name="evt">The winner announcement event.</param>
+    public async Task NotifyWinnerAnnouncement(string gameId, WinnerAnnouncementEvent evt)
+    {
+        _logger.LogInformation(
+            "Winner announcement for game {GameId}, hand {HandNumber}. Winners: {Winners}",
+            gameId, evt.HandNumber, string.Join(", ", evt.Winners.Select(w => w.PlayerName)));
+        await Clients.Group(gameId).SendAsync("WinnerAnnouncement", evt);
+    }
+
+    /// <summary>
+    /// Notifies the game group that an all-in board run-out has started.
+    /// </summary>
+    /// <param name="gameId">The game identifier.</param>
+    /// <param name="evt">The all-in board run-out started event.</param>
+    public async Task NotifyAllInBoardRunOutStarted(string gameId, AllInBoardRunOutStartedEvent evt)
+    {
+        _logger.LogInformation(
+            "All-in board run-out started for game {GameId}, hand {HandNumber}. Cards remaining: {CardsRemaining}",
+            gameId, evt.HandNumber, evt.RemainingCardsToReveal);
+        await Clients.Group(gameId).SendAsync("AllInBoardRunOutStarted", evt);
+    }
+
+    /// <summary>
+    /// Notifies the game group that a community card was revealed during all-in run-out.
+    /// </summary>
+    /// <param name="gameId">The game identifier.</param>
+    /// <param name="evt">The all-in board card revealed event.</param>
+    public async Task NotifyAllInBoardCardRevealed(string gameId, AllInBoardCardRevealedEvent evt)
+    {
+        _logger.LogInformation(
+            "All-in board card revealed for game {GameId}: {Card} ({StreetName})",
+            gameId, evt.Card.DisplayValue, evt.StreetName);
+        await Clients.Group(gameId).SendAsync("AllInBoardCardRevealed", evt);
+    }
+
+    /// <summary>
+    /// Notifies the game group that a player's hand was auto-revealed.
+    /// </summary>
+    /// <param name="gameId">The game identifier.</param>
+    /// <param name="evt">The auto-reveal event.</param>
+    public async Task NotifyAutoReveal(string gameId, AutoRevealEvent evt)
+    {
+        _logger.LogInformation(
+            "Player {PlayerName} auto-revealed in game {GameId}. Reason: {Reason}",
+            evt.PlayerName, gameId, evt.Reason);
+        await Clients.Group(gameId).SendAsync("AutoReveal", evt);
+    }
+
+    /// <summary>
+    /// Notifies the game group that a showdown animation sequence is ready.
+    /// </summary>
+    /// <param name="gameId">The game identifier.</param>
+    /// <param name="evt">The showdown animation ready event.</param>
+    public async Task NotifyShowdownAnimationReady(string gameId, ShowdownAnimationReadyEvent evt)
+    {
+        _logger.LogInformation(
+            "Showdown animation ready for game {GameId}, showdown {ShowdownId}. Duration: {Duration}ms",
+            gameId, evt.ShowdownId, evt.TotalDurationMs);
+        await Clients.Group(gameId).SendAsync("ShowdownAnimationReady", evt);
+    }
+
     #endregion
 
     #region Table Actions

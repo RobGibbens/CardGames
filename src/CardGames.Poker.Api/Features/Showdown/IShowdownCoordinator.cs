@@ -102,6 +102,39 @@ public interface IShowdownCoordinator
     /// Gets the current best revealed hand (for determining if losers can muck).
     /// </summary>
     HandDto? GetCurrentBestHand(ShowdownContext context);
+
+    /// <summary>
+    /// Automatically reveals the winner's cards (when they've won and must show).
+    /// </summary>
+    ShowdownRevealResult AutoRevealWinner(ShowdownContext context, string playerName, HandDto hand);
+
+    /// <summary>
+    /// Processes an all-in showdown where all remaining community cards must be dealt.
+    /// Returns the cards that need to be dealt.
+    /// </summary>
+    AllInShowdownResult ProcessAllInShowdown(ShowdownContext context, int totalCommunityCardsNeeded);
+
+    /// <summary>
+    /// Determines all winners with pot distribution for side pots.
+    /// </summary>
+    IReadOnlyList<WinnerDetermination> DetermineWinnersWithPots(
+        ShowdownContext context,
+        IReadOnlyList<PotInfo> pots);
+
+    /// <summary>
+    /// Builds the winner announcement with all details.
+    /// </summary>
+    WinnerAnnouncementDto BuildWinnerAnnouncement(
+        ShowdownContext context,
+        IReadOnlyList<WinnerDetermination> winners,
+        bool wonByFold);
+
+    /// <summary>
+    /// Builds an animation sequence for the showdown.
+    /// </summary>
+    ShowdownAnimationSequenceDto BuildAnimationSequence(
+        ShowdownContext context,
+        IReadOnlyList<WinnerDetermination> winners);
 }
 
 /// <summary>
@@ -113,3 +146,33 @@ public record ShowdownRevealResult(
     ShowdownRevealStatus NewStatus,
     string? NextToReveal,
     bool ShowdownComplete);
+
+/// <summary>
+/// Result of an all-in showdown processing.
+/// </summary>
+public record AllInShowdownResult(
+    bool Success,
+    string? ErrorMessage,
+    int CommunityCardsNeeded,
+    IReadOnlyList<string> PlayersToAutoReveal);
+
+/// <summary>
+/// Represents information about a pot for winner determination.
+/// </summary>
+public record PotInfo(
+    int PotIndex,
+    int Amount,
+    IReadOnlyList<string> EligiblePlayers,
+    bool IsMainPot);
+
+/// <summary>
+/// Represents a winner determination result including pot share.
+/// </summary>
+public record WinnerDetermination(
+    string PlayerName,
+    HandDto? Hand,
+    IReadOnlyList<CardDto>? WinningCards,
+    IReadOnlyList<CardDto>? HoleCards,
+    int AmountWon,
+    int PotIndex,
+    bool IsTie);

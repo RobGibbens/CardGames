@@ -447,4 +447,232 @@ public class ShowdownCoordinator : IShowdownCoordinator
 
         return revealedHands.OrderByDescending(h => h.Strength).First();
     }
+
+    public ShowdownRevealResult AutoRevealWinner(ShowdownContext context, string playerName, HandDto hand)
+    {
+        var player = context.Players.FirstOrDefault(p => p.PlayerName == playerName);
+        if (player == null)
+        {
+            return new ShowdownRevealResult(false, "Player not found", ShowdownRevealStatus.Pending, null, false);
+        }
+
+        if (player.HasFolded)
+        {
+            return new ShowdownRevealResult(false, "Folded players cannot reveal", ShowdownRevealStatus.Folded, null, false);
+        }
+
+        // Auto-reveal doesn't check turn order - winners must show
+        context.CurrentRevealOrder++;
+        player.RevealOrder = context.CurrentRevealOrder;
+        player.Hand = hand;
+        player.WasForcedReveal = true;
+        player.Status = ShowdownRevealStatus.ForcedReveal;
+
+        _logger?.LogInformation(
+            "Player {PlayerName} auto-revealed (winner) in showdown {ShowdownId}. Hand: {HandType}",
+            playerName, context.ShowdownId, hand.HandType);
+
+        var showdownComplete = IsShowdownComplete(context);
+        if (showdownComplete)
+        {
+            context.IsComplete = true;
+        }
+
+        return new ShowdownRevealResult(
+            true,
+            null,
+            ShowdownRevealStatus.ForcedReveal,
+            GetNextToReveal(context),
+            showdownComplete);
+    }
+
+    public AllInShowdownResult ProcessAllInShowdown(ShowdownContext context, int totalCommunityCardsNeeded)
+    {
+        var currentCommunityCount = context.CommunityCards?.Count ?? 0;
+        var cardsNeeded = Math.Max(0, totalCommunityCardsNeeded - currentCommunityCount);
+
+        // Get all players who need to show (all-in players and players eligible for pot)
+        var playersToAutoReveal = context.Players
+            .Where(p => !p.HasFolded && p.Status == ShowdownRevealStatus.Pending)
+            .Select(p => p.PlayerName)
+            .ToList();
+
+        _logger?.LogInformation(
+            "All-in showdown for game {GameId}. Current community cards: {Current}, Needed: {Needed}, Players to reveal: {Players}",
+            context.GameId, currentCommunityCount, cardsNeeded, string.Join(", ", playersToAutoReveal));
+
+        return new AllInShowdownResult(
+            true,
+            null,
+            cardsNeeded,
+            playersToAutoReveal);
+    }
+
+    public IReadOnlyList<WinnerDetermination> DetermineWinnersWithPots(
+        ShowdownContext context,
+        IReadOnlyList<PotInfo> pots)
+    {
+        var winners = new List<WinnerDetermination>();
+
+        foreach (var pot in pots)
+        {
+            var eligiblePlayers = context.Players
+                .Where(p => !p.HasFolded &&
+                            (p.Status is ShowdownRevealStatus.Shown or ShowdownRevealStatus.ForcedReveal) &&
+                            p.Hand != null &&
+                            pot.EligiblePlayers.Contains(p.PlayerName))
+                .ToList();
+
+            if (eligiblePlayers.Count == 0)
+            {
+                continue;
+            }
+
+            var maxStrength = eligiblePlayers.Max(p => p.Hand!.Strength);
+            var potWinners = eligiblePlayers.Where(p => p.Hand!.Strength == maxStrength).ToList();
+            var shareAmount = pot.Amount / potWinners.Count;
+            var isTie = potWinners.Count > 1;
+
+            foreach (var winner in potWinners)
+            {
+                winners.Add(new WinnerDetermination(
+                    winner.PlayerName,
+                    winner.Hand,
+                    winner.Hand?.Cards,
+                    winner.HoleCards,
+                    shareAmount,
+                    pot.PotIndex,
+                    isTie));
+            }
+        }
+
+        _logger?.LogInformation(
+            "Determined {WinnerCount} winner(s) for showdown {ShowdownId}",
+            winners.Count, context.ShowdownId);
+
+        return winners;
+    }
+
+    public WinnerAnnouncementDto BuildWinnerAnnouncement(
+        ShowdownContext context,
+        IReadOnlyList<WinnerDetermination> winners,
+        bool wonByFold)
+    {
+        var totalPot = winners.Sum(w => w.AmountWon);
+        var uniqueWinners = winners.Select(w => w.PlayerName).Distinct().ToList();
+        var isSplitPot = uniqueWinners.Count > 1 || winners.Any(w => w.IsTie);
+
+        string summary;
+        if (wonByFold)
+        {
+            summary = $"{uniqueWinners.First()} wins {totalPot} (all other players folded)";
+        }
+        else if (isSplitPot)
+        {
+            summary = $"Split pot: {string.Join(", ", uniqueWinners)} each win a share of {totalPot}";
+        }
+        else
+        {
+            var winner = winners.First();
+            summary = $"{winner.PlayerName} wins {totalPot} with {winner.Hand?.HandType ?? "winning hand"}";
+        }
+
+        var winnerInfos = winners.Select(w => new WinnerInfoDto(
+            w.PlayerName,
+            w.Hand,
+            w.WinningCards,
+            w.HoleCards,
+            w.AmountWon,
+            w.IsTie,
+            w.PotIndex)).ToList();
+
+        return new WinnerAnnouncementDto(
+            context.ShowdownId,
+            context.GameId,
+            context.HandNumber,
+            winnerInfos,
+            totalPot,
+            isSplitPot,
+            wonByFold,
+            summary);
+    }
+
+    public ShowdownAnimationSequenceDto BuildAnimationSequence(
+        ShowdownContext context,
+        IReadOnlyList<WinnerDetermination> winners)
+    {
+        var steps = new List<ShowdownAnimationStepDto>();
+        var sequence = 0;
+        const int revealDurationMs = 1000;
+        const int highlightDurationMs = 1500;
+        const int potAwardDurationMs = 1200;
+
+        // Get revealed players in reveal order
+        var revealedPlayers = context.Players
+            .Where(p => p.RevealOrder.HasValue)
+            .OrderBy(p => p.RevealOrder)
+            .ToList();
+
+        // Add reveal steps
+        foreach (var player in revealedPlayers)
+        {
+            var animationType = player.Status == ShowdownRevealStatus.Mucked
+                ? ShowdownAnimationType.PlayerMuck
+                : ShowdownAnimationType.PlayerReveal;
+
+            steps.Add(new ShowdownAnimationStepDto(
+                animationType,
+                sequence++,
+                player.PlayerName,
+                player.Status == ShowdownRevealStatus.Mucked ? null : player.HoleCards,
+                player.Hand,
+                null,
+                revealDurationMs,
+                player.Status == ShowdownRevealStatus.Mucked
+                    ? $"{player.PlayerName} mucks"
+                    : $"{player.PlayerName} shows {player.Hand?.HandType}"));
+        }
+
+        // Add winner highlight steps
+        foreach (var winner in winners)
+        {
+            steps.Add(new ShowdownAnimationStepDto(
+                ShowdownAnimationType.WinnerHighlight,
+                sequence++,
+                winner.PlayerName,
+                winner.WinningCards,
+                winner.Hand,
+                winner.AmountWon,
+                highlightDurationMs,
+                $"{winner.PlayerName} wins with {winner.Hand?.HandType}!"));
+        }
+
+        // Add pot award steps
+        var groupedByPlayer = winners.GroupBy(w => w.PlayerName);
+        foreach (var playerWins in groupedByPlayer)
+        {
+            var totalWon = playerWins.Sum(w => w.AmountWon);
+            steps.Add(new ShowdownAnimationStepDto(
+                ShowdownAnimationType.PotAward,
+                sequence++,
+                playerWins.Key,
+                null,
+                null,
+                totalWon,
+                potAwardDurationMs,
+                $"{playerWins.Key} collects {totalWon}"));
+        }
+
+        var totalDuration = steps.Sum(s => s.DurationMs);
+
+        return new ShowdownAnimationSequenceDto(
+            Guid.NewGuid(),
+            context.ShowdownId,
+            context.GameId,
+            context.HandNumber,
+            steps,
+            totalDuration,
+            context.HadAllInAction,
+            context.CommunityCards);
+    }
 }
