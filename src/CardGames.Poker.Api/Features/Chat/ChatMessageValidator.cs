@@ -29,14 +29,13 @@ public class ChatMessageValidator : IChatMessageValidator
     private readonly int _maxMessagesPerSecond = 2;
     private readonly TimeSpan _rateLimitWindow = TimeSpan.FromMinutes(1);
 
-    // Basic list of inappropriate words to filter (can be extended)
+    // Inappropriate words list for basic content filtering
+    // In production, consider using a more comprehensive third-party content moderation service
     private static readonly HashSet<string> InappropriateWords = new(StringComparer.OrdinalIgnoreCase)
     {
-        // This is a minimal placeholder list - in production, use a more comprehensive solution
+        // This list is intentionally minimal - poker tables should allow most casual conversation
+        // Severe inappropriate content should be handled by a dedicated moderation service
     };
-
-    // Pattern to detect excessive caps (more than 70% uppercase in messages over 10 chars)
-    private static readonly Regex ExcessiveCapsPattern = new(@"^[^a-z]*$", RegexOptions.Compiled);
 
     // Pattern to detect spam-like repeated characters
     private static readonly Regex RepeatedCharsPattern = new(@"(.)\1{4,}", RegexOptions.Compiled);

@@ -3,6 +3,7 @@
 @using CardGames.Poker.Shared.Events
 @using CardGames.Poker.Web.Services
 @inject GameHubService HubService
+@inject ChatApiService ChatApi
 @implements IDisposable
 
 <div class="chat-window-container card">
@@ -296,22 +297,24 @@
 
         _isSending = true;
         _rejectionMessage = null;
+        var messageContent = _newMessage.Trim();
+        _newMessage = string.Empty;
 
         try
         {
-            // The message will be sent via the API, which will broadcast via SignalR
-            // For now, we'll just add it optimistically - in a real app, you'd call an HTTP endpoint
-            var message = new ChatMessageDto(
-                MessageId: Guid.NewGuid(),
-                TableId: TableId,
-                SenderName: CurrentPlayerName,
-                Content: _newMessage.Trim(),
-                MessageType: ChatMessageType.Player,
-                Timestamp: DateTime.UtcNow);
+            var response = await ChatApi.SendMessageAsync(TableId, CurrentPlayerName, messageContent);
             
-            _messages.Add(message);
-            TrimMessages();
-            _newMessage = string.Empty;
+            if (!response.Success)
+            {
+                _rejectionMessage = response.Error ?? "Failed to send message";
+                _newMessage = messageContent; // Restore message so user can retry
+            }
+            // If successful, the message will be received via SignalR broadcast
+        }
+        catch
+        {
+            _rejectionMessage = "Failed to send message. Please try again.";
+            _newMessage = messageContent; // Restore message so user can retry
         }
         finally
         {
