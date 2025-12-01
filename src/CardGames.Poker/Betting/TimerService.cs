@@ -271,9 +271,16 @@ public class TimerService : ITimerService, IDisposable
                     currentSeconds = _secondsRemaining;
                     currentPlayer = _currentPlayerName;
                     
-                    if (currentSeconds <= 0 || currentPlayer == null)
+                    // If no current player (timer was stopped externally), exit silently
+                    if (currentPlayer == null)
                     {
-                        shouldExpire = currentPlayer != null && currentSeconds <= 0;
+                        return;
+                    }
+                    
+                    // If time already expired at start, handle it
+                    if (currentSeconds <= 0)
+                    {
+                        shouldExpire = true;
                         break;
                     }
                 }
@@ -328,12 +335,6 @@ public class TimerService : ITimerService, IDisposable
 
     private void HandleExpiration(string playerName)
     {
-        if (!_config.AutoActOnTimeout)
-        {
-            OnTimerExpired?.Invoke(new TimerExpiredEventArgs(playerName, BettingActionType.Fold));
-            return;
-        }
-
         // Determine default action
         BettingActionType defaultAction;
         if (_defaultActionProvider != null)
