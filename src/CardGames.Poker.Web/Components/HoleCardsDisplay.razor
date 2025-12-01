@@ -1,0 +1,153 @@
+@using CardGames.Poker.Shared.DTOs
+
+<div class="hole-cards-display @GetContainerClasses()">
+    <div class="hole-cards">
+        @foreach (var card in Cards)
+        {
+            <PlayingCard Card="@card"
+                  IsFaceDown="@false"
+                  Size="@CardSize"
+                  IsClickable="@IsClickable"
+                  IsSelected="@IsCardSelected(card)"
+                  ShowDealAnimation="@ShowDealAnimation"
+                  OnCardClick="@HandleCardClick" />
+        }
+        @if (ShowPlaceholders)
+        {
+            @for (int i = Cards.Count; i < ExpectedCardCount; i++)
+            {
+                <PlayingCard Card="@null"
+                      IsFaceDown="@true"
+                      Size="@CardSize" />
+            }
+        }
+    </div>
+    @if (!string.IsNullOrEmpty(HandDescription))
+    {
+        <div class="hand-description">@HandDescription</div>
+    }
+</div>
+
+<style>
+    .hole-cards-display {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .hole-cards-display.compact .hole-cards {
+        gap: 2px;
+    }
+
+    .hole-cards {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+    }
+
+    .hole-cards-display.stacked .hole-cards {
+        position: relative;
+    }
+
+    .hole-cards-display.stacked .hole-cards > :global(.card):not(:first-child) {
+        margin-left: -20px;
+    }
+
+    .hand-description {
+        background: rgba(0, 0, 0, 0.7);
+        color: #d4af37;
+        padding: 4px 12px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// The hole cards to display.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<CardDto> Cards { get; set; } = new List<CardDto>();
+
+    /// <summary>
+    /// Description of the hand (e.g., "Pair of Aces").
+    /// </summary>
+    [Parameter]
+    public string? HandDescription { get; set; }
+
+    /// <summary>
+    /// The expected number of hole cards for the variant.
+    /// </summary>
+    [Parameter]
+    public int ExpectedCardCount { get; set; } = 2;
+
+    /// <summary>
+    /// Whether to show placeholders for missing cards.
+    /// </summary>
+    [Parameter]
+    public bool ShowPlaceholders { get; set; }
+
+    /// <summary>
+    /// Whether cards can be clicked/selected.
+    /// </summary>
+    [Parameter]
+    public bool IsClickable { get; set; }
+
+    /// <summary>
+    /// Currently selected cards.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<CardDto> SelectedCards { get; set; } = new List<CardDto>();
+
+    /// <summary>
+    /// Whether to show deal animation.
+    /// </summary>
+    [Parameter]
+    public bool ShowDealAnimation { get; set; }
+
+    /// <summary>
+    /// Size of the cards.
+    /// </summary>
+    [Parameter]
+    public string CardSize { get; set; } = "medium";
+
+    /// <summary>
+    /// Layout style: "normal", "stacked", or "compact".
+    /// </summary>
+    [Parameter]
+    public string Layout { get; set; } = "normal";
+
+    /// <summary>
+    /// Event callback when a card is clicked.
+    /// </summary>
+    [Parameter]
+    public EventCallback<CardDto> OnCardSelected { get; set; }
+
+    private bool IsCardSelected(CardDto card)
+    {
+        return SelectedCards.Any(c => 
+            c.Rank == card.Rank && c.Suit == card.Suit);
+    }
+
+    private async Task HandleCardClick(CardDto? card)
+    {
+        if (card != null)
+        {
+            await OnCardSelected.InvokeAsync(card);
+        }
+    }
+
+    private string GetContainerClasses()
+    {
+        return Layout.ToLowerInvariant() switch
+        {
+            "stacked" => "stacked",
+            "compact" => "compact",
+            _ => ""
+        };
+    }
+}

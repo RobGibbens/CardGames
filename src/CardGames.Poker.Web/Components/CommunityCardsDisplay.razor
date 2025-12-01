@@ -1,0 +1,172 @@
+@using CardGames.Poker.Shared.DTOs
+
+<div class="community-cards-display">
+    @if (ShowLabel)
+    {
+        <div class="community-label">@Label</div>
+    }
+    
+    <div class="community-cards">
+        @* Flop (3 cards) *@
+        <div class="flop-section @(HasFlop ? "dealt" : "")">
+            @for (int i = 0; i < 3; i++)
+            {
+                var card = i < Cards.Count ? Cards[i] : null;
+                <PlayingCard Card="@card"
+                      IsFaceDown="@(card == null)"
+                      Size="@CardSize"
+                      ShowDealAnimation="@(ShowDealAnimation && i < 3 && IsNewlyDealt(i))"
+                      IsHighlighted="@IsCardHighlighted(i)" />
+            }
+        </div>
+        
+        @* Turn (4th card) *@
+        <div class="turn-section @(HasTurn ? "dealt" : "")">
+            @{
+                var turnCard = Cards.Count > 3 ? Cards[3] : null;
+            }
+            <PlayingCard Card="@turnCard"
+                  IsFaceDown="@(turnCard == null)"
+                  Size="@CardSize"
+                  ShowDealAnimation="@(ShowDealAnimation && Cards.Count == 4 && IsNewlyDealt(3))"
+                  IsHighlighted="@IsCardHighlighted(3)" />
+        </div>
+        
+        @* River (5th card) *@
+        <div class="river-section @(HasRiver ? "dealt" : "")">
+            @{
+                var riverCard = Cards.Count > 4 ? Cards[4] : null;
+            }
+            <PlayingCard Card="@riverCard"
+                  IsFaceDown="@(riverCard == null)"
+                  Size="@CardSize"
+                  ShowDealAnimation="@(ShowDealAnimation && Cards.Count == 5 && IsNewlyDealt(4))"
+                  IsHighlighted="@IsCardHighlighted(4)" />
+        </div>
+    </div>
+    
+    @if (!string.IsNullOrEmpty(CurrentStreet))
+    {
+        <div class="street-indicator">@CurrentStreet</div>
+    }
+</div>
+
+<style>
+    .community-cards-display {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 1rem;
+    }
+
+    .community-label {
+        font-size: 0.75rem;
+        color: rgba(255, 255, 255, 0.6);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .community-cards {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .flop-section,
+    .turn-section,
+    .river-section {
+        display: flex;
+        gap: 4px;
+        opacity: 0.5;
+        transition: opacity 0.3s ease;
+    }
+
+    .flop-section.dealt,
+    .turn-section.dealt,
+    .river-section.dealt {
+        opacity: 1;
+    }
+
+    .turn-section,
+    .river-section {
+        margin-left: 8px;
+    }
+
+    .street-indicator {
+        background: linear-gradient(135deg, #d4af37 0%, #f0d060 100%);
+        color: #1a1a1a;
+        padding: 4px 16px;
+        border-radius: 12px;
+        font-size: 0.7rem;
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-top: 0.5rem;
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// The community cards to display.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<CardDto> Cards { get; set; } = new List<CardDto>();
+
+    /// <summary>
+    /// Whether to show the label above the cards.
+    /// </summary>
+    [Parameter]
+    public bool ShowLabel { get; set; } = true;
+
+    /// <summary>
+    /// The label text to display.
+    /// </summary>
+    [Parameter]
+    public string Label { get; set; } = "Community Cards";
+
+    /// <summary>
+    /// Size of the cards.
+    /// </summary>
+    [Parameter]
+    public string CardSize { get; set; } = "large";
+
+    /// <summary>
+    /// Whether to show deal animation for newly dealt cards.
+    /// </summary>
+    [Parameter]
+    public bool ShowDealAnimation { get; set; }
+
+    /// <summary>
+    /// The current street name (e.g., "Flop", "Turn", "River").
+    /// </summary>
+    [Parameter]
+    public string? CurrentStreet { get; set; }
+
+    /// <summary>
+    /// Indices of cards to highlight (e.g., winning cards).
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<int> HighlightedCardIndices { get; set; } = new List<int>();
+
+    /// <summary>
+    /// Number of cards that were in the previous state (for animation).
+    /// </summary>
+    [Parameter]
+    public int PreviousCardCount { get; set; }
+
+    private bool HasFlop => Cards.Count >= 3;
+    private bool HasTurn => Cards.Count >= 4;
+    private bool HasRiver => Cards.Count >= 5;
+
+    private bool IsNewlyDealt(int index)
+    {
+        return index >= PreviousCardCount && index < Cards.Count;
+    }
+
+    private bool IsCardHighlighted(int index)
+    {
+        return HighlightedCardIndices.Contains(index);
+    }
+}
