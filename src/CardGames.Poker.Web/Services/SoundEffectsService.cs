@@ -52,13 +52,12 @@ public record SoundSettings(
 
 /// <summary>
 /// Service for playing sound effects in the poker game.
-/// Uses JavaScript interop to play audio.
+/// Uses JavaScript interop to play audio via Web Audio API.
 /// </summary>
 public class SoundEffectsService : IAsyncDisposable
 {
     private readonly IJSRuntime _jsRuntime;
     private SoundSettings _settings = new();
-    private IJSObjectReference? _soundModule;
     private bool _isInitialized;
 
     public SoundEffectsService(IJSRuntime jsRuntime)
@@ -67,7 +66,8 @@ public class SoundEffectsService : IAsyncDisposable
     }
 
     /// <summary>
-    /// Initializes the sound effects system.
+    /// Initializes the sound effects system by resuming the audio context.
+    /// Should be called on user interaction to ensure audio is allowed.
     /// </summary>
     public async Task InitializeAsync()
     {
@@ -75,9 +75,7 @@ public class SoundEffectsService : IAsyncDisposable
 
         try
         {
-            _soundModule = await _jsRuntime.InvokeAsync<IJSObjectReference>(
-                "eval",
-                GetSoundModuleScript());
+            await _jsRuntime.InvokeVoidAsync("SoundEffectsModule.resumeContext");
             _isInitialized = true;
         }
         catch
@@ -115,8 +113,10 @@ public class SoundEffectsService : IAsyncDisposable
             var volume = CalculateVolume(effect);
 
             await _jsRuntime.InvokeVoidAsync(
-                "eval",
-                GetPlayToneScript(frequency, duration, volume));
+                "SoundEffectsModule.playTone",
+                frequency,
+                duration,
+                volume);
         }
         catch
         {
@@ -285,63 +285,9 @@ public class SoundEffectsService : IAsyncDisposable
         };
     }
 
-    private static string GetSoundModuleScript()
+    public ValueTask DisposeAsync()
     {
-        return @"
-            (function() {
-                return {
-                    audioContext: null,
-                    getContext: function() {
-                        if (!this.audioContext) {
-                            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                        }
-                        return this.audioContext;
-                    }
-                };
-            })()
-        ";
-    }
-
-    private static string GetPlayToneScript(double frequency, int durationMs, double volume)
-    {
-        return $@"
-            (function() {{
-                try {{
-                    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                    const oscillator = ctx.createOscillator();
-                    const gainNode = ctx.createGain();
-                    
-                    oscillator.connect(gainNode);
-                    gainNode.connect(ctx.destination);
-                    
-                    oscillator.frequency.value = {frequency};
-                    oscillator.type = 'sine';
-                    
-                    const volume = Math.min(1, Math.max(0, {volume}));
-                    gainNode.gain.setValueAtTime(volume * 0.3, ctx.currentTime);
-                    gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + {durationMs / 1000.0});
-                    
-                    oscillator.start(ctx.currentTime);
-                    oscillator.stop(ctx.currentTime + {durationMs / 1000.0});
-                }} catch(e) {{
-                    // Silently fail if audio context not available
-                }}
-            }})()
-        ";
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        if (_soundModule != null)
-        {
-            try
-            {
-                await _soundModule.DisposeAsync();
-            }
-            catch
-            {
-                // Disposal failed - continue silently
-            }
-        }
+        // No resources to dispose - audio context is managed by the browser
+        return ValueTask.CompletedTask;
     }
 }

@@ -38,7 +38,8 @@ public static class TableLayoutService
             8 => Get8MaxPositions(),
             9 => Get9MaxPositions(),
             10 => Get10MaxPositions(),
-            _ => Get9MaxPositions()
+            // This case is unreachable due to the validation above, but included for exhaustiveness
+            _ => throw new ArgumentOutOfRangeException(nameof(playerCount), playerCount, "Player count must be between 2 and 10")
         };
     }
 
