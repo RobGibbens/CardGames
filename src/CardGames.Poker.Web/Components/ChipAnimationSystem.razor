@@ -1,0 +1,422 @@
+@using CardGames.Poker.Shared
+@using CardGames.Poker.Shared.Events
+@implements IDisposable
+
+<div class="chip-animation-container" @ref="containerRef">
+    @foreach (var animation in activeAnimations)
+    {
+        <div class="animated-chip-stack @GetAnimationClass(animation)"
+             style="@GetAnimationStyle(animation)"
+             @key="animation.Id">
+            <ChipStack Chips="@animation.Chips"
+                       Amount="@animation.Amount"
+                       ShowTotal="@ShowAmountDuringAnimation"
+                       ShowChipCount="false"
+                       Size="@AnimationChipSize" />
+        </div>
+    }
+</div>
+
+<style>
+    .chip-animation-container {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 1000;
+        overflow: hidden;
+    }
+
+    .animated-chip-stack {
+        position: absolute;
+        transition-property: left, top, opacity, transform;
+        transition-timing-function: ease-out;
+    }
+
+    .animated-chip-stack.starting {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    .animated-chip-stack.moving {
+        opacity: 1;
+    }
+
+    .animated-chip-stack.arriving {
+        opacity: 1;
+        transform: scale(1.1);
+    }
+
+    .animated-chip-stack.completed {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+
+    /* Animation type-specific styles */
+    .animated-chip-stack.bet-animation {
+        transition-timing-function: cubic-bezier(0.25, 0.1, 0.25, 1);
+    }
+
+    .animated-chip-stack.collect-animation {
+        transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .animated-chip-stack.win-animation {
+        transition-timing-function: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    /* Celebration effect for win animation */
+    .animated-chip-stack.win-animation.arriving {
+        animation: chipWinPulse 0.3s ease-out;
+    }
+
+    @@keyframes chipWinPulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.3); }
+        100% { transform: scale(1.1); }
+    }
+
+    /* Stack effect during collection */
+    .animated-chip-stack.collect-animation.moving {
+        animation: chipFloat 0.5s ease-in-out;
+    }
+
+    @@keyframes chipFloat {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-5px); }
+    }
+</style>
+
+@code {
+    private ElementReference containerRef;
+    private readonly List<ChipAnimationState> activeAnimations = [];
+    private readonly Dictionary<Guid, Timer> animationTimers = new();
+
+    /// <summary>
+    /// Predefined positions for table locations.
+    /// Key is the location identifier, value is (top%, left%).
+    /// </summary>
+    [Parameter]
+    public Dictionary<string, (double Top, double Left)>? Positions { get; set; }
+
+    /// <summary>
+    /// Position for the pot at center of table.
+    /// </summary>
+    [Parameter]
+    public (double Top, double Left) PotPosition { get; set; } = (50, 50);
+
+    /// <summary>
+    /// Whether to show the amount during animation.
+    /// </summary>
+    [Parameter]
+    public bool ShowAmountDuringAnimation { get; set; } = true;
+
+    /// <summary>
+    /// Size of chips during animation.
+    /// </summary>
+    [Parameter]
+    public string AnimationChipSize { get; set; } = "small";
+
+    /// <summary>
+    /// Event callback when an animation completes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<ChipMovementEvent> OnAnimationComplete { get; set; }
+
+    /// <summary>
+    /// Event callback when all animations in a sequence complete.
+    /// </summary>
+    [Parameter]
+    public EventCallback<Guid> OnSequenceComplete { get; set; }
+
+    /// <summary>
+    /// Triggers a chip movement animation.
+    /// </summary>
+    public async Task AnimateChipMovementAsync(ChipMovementEvent movement)
+    {
+        var sourcePos = GetPosition(movement.Source);
+        var destPos = GetPosition(movement.Destination);
+
+        var animation = new ChipAnimationState
+        {
+            Id = Guid.NewGuid(),
+            MovementEvent = movement,
+            Chips = movement.Chips,
+            Amount = movement.Amount,
+            StartPosition = sourcePos,
+            EndPosition = destPos,
+            State = AnimationPhase.Starting,
+            DurationMs = movement.AnimationDurationMs
+        };
+
+        activeAnimations.Add(animation);
+        await InvokeAsync(StateHasChanged);
+
+        // Start the animation sequence
+        await StartAnimationSequenceAsync(animation);
+    }
+
+    /// <summary>
+    /// Triggers a bet animation from a player to their betting area.
+    /// </summary>
+    public async Task AnimateBetAsync(string playerName, int amount, ChipStackDto chips)
+    {
+        var playerPos = GetPlayerPosition(playerName);
+        var bettingAreaPos = GetPlayerBettingAreaPosition(playerName);
+
+        var movement = new ChipMovementEvent(
+            Guid.Empty,
+            DateTime.UtcNow,
+            ChipMovementType.Bet,
+            new ChipPosition(playerName),
+            new ChipPosition($"{playerName}-bet"),
+            amount,
+            chips,
+            0,
+            400
+        );
+
+        await AnimateChipMovementAsync(movement);
+    }
+
+    /// <summary>
+    /// Triggers pot collection animation - chips from all betting areas to pot.
+    /// </summary>
+    public async Task AnimatePotCollectionAsync(IReadOnlyDictionary<string, int> contributions)
+    {
+        var delay = 0;
+        var sequence = 0;
+
+        foreach (var (playerName, amount) in contributions)
+        {
+            if (amount <= 0) continue;
+
+            var chips = ChipDenominationService.ConvertToSimplifiedChipStack(amount);
+            var movement = new ChipMovementEvent(
+                Guid.Empty,
+                DateTime.UtcNow,
+                ChipMovementType.CollectToPot,
+                new ChipPosition($"{playerName}-bet"),
+                new ChipPosition("pot"),
+                amount,
+                chips,
+                sequence++,
+                500
+            );
+
+            // Stagger the animations slightly
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(delay);
+                await InvokeAsync(() => AnimateChipMovementAsync(movement));
+            });
+
+            delay += 100;
+        }
+    }
+
+    /// <summary>
+    /// Triggers win animation - chips from pot to winner(s).
+    /// </summary>
+    public async Task AnimateWinAsync(IReadOnlyDictionary<string, int> payouts)
+    {
+        var delay = 0;
+        var sequence = 0;
+
+        foreach (var (playerName, amount) in payouts)
+        {
+            if (amount <= 0) continue;
+
+            var chips = ChipDenominationService.ConvertToSimplifiedChipStack(amount);
+            var movement = new ChipMovementEvent(
+                Guid.Empty,
+                DateTime.UtcNow,
+                ChipMovementType.Win,
+                new ChipPosition("pot"),
+                new ChipPosition(playerName),
+                amount,
+                chips,
+                sequence++,
+                600
+            );
+
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(delay);
+                await InvokeAsync(() => AnimateChipMovementAsync(movement));
+            });
+
+            delay += 150;
+        }
+    }
+
+    /// <summary>
+    /// Clears all active animations.
+    /// </summary>
+    public void ClearAnimations()
+    {
+        foreach (var timer in animationTimers.Values)
+        {
+            timer.Dispose();
+        }
+        animationTimers.Clear();
+        activeAnimations.Clear();
+        StateHasChanged();
+    }
+
+    private async Task StartAnimationSequenceAsync(ChipAnimationState animation)
+    {
+        // Phase 1: Starting
+        animation.State = AnimationPhase.Starting;
+        await InvokeAsync(StateHasChanged);
+
+        // Small delay before moving
+        await Task.Delay(50);
+
+        // Phase 2: Moving
+        animation.State = AnimationPhase.Moving;
+        await InvokeAsync(StateHasChanged);
+
+        // Wait for movement duration
+        await Task.Delay(animation.DurationMs);
+
+        // Phase 3: Arriving
+        animation.State = AnimationPhase.Arriving;
+        await InvokeAsync(StateHasChanged);
+
+        // Small pause at destination
+        await Task.Delay(200);
+
+        // Phase 4: Completed
+        animation.State = AnimationPhase.Completed;
+        await InvokeAsync(StateHasChanged);
+
+        // Notify completion
+        if (OnAnimationComplete.HasDelegate)
+        {
+            await OnAnimationComplete.InvokeAsync(animation.MovementEvent);
+        }
+
+        // Clean up after fade out
+        await Task.Delay(300);
+        activeAnimations.Remove(animation);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private (double Top, double Left) GetPosition(ChipPosition position)
+    {
+        if (position.LocationId == "pot" || position.LocationId == "table-center")
+        {
+            return PotPosition;
+        }
+
+        if (position.LocationId.EndsWith("-bet"))
+        {
+            var playerName = position.LocationId[..^4];
+            return GetPlayerBettingAreaPosition(playerName);
+        }
+
+        return GetPlayerPosition(position.LocationId);
+    }
+
+    private (double Top, double Left) GetPlayerPosition(string playerName)
+    {
+        if (Positions?.TryGetValue(playerName, out var pos) == true)
+        {
+            return pos;
+        }
+
+        // Default fallback position
+        return (50, 50);
+    }
+
+    private (double Top, double Left) GetPlayerBettingAreaPosition(string playerName)
+    {
+        // Betting area is slightly offset toward center from player position
+        var playerPos = GetPlayerPosition(playerName);
+        
+        // Move 15% toward center (50, 50)
+        var offsetTop = (50 - playerPos.Top) * 0.3;
+        var offsetLeft = (50 - playerPos.Left) * 0.3;
+
+        return (playerPos.Top + offsetTop, playerPos.Left + offsetLeft);
+    }
+
+    private string GetAnimationClass(ChipAnimationState animation)
+    {
+        var classes = new List<string>();
+
+        // Add phase class
+        classes.Add(animation.State.ToString().ToLowerInvariant());
+
+        // Add animation type class
+        var typeClass = animation.MovementEvent.MovementType switch
+        {
+            ChipMovementType.Bet => "bet-animation",
+            ChipMovementType.Blind => "bet-animation",
+            ChipMovementType.CollectToPot => "collect-animation",
+            ChipMovementType.Win => "win-animation",
+            ChipMovementType.Return => "bet-animation",
+            _ => ""
+        };
+
+        if (!string.IsNullOrEmpty(typeClass))
+        {
+            classes.Add(typeClass);
+        }
+
+        return string.Join(" ", classes);
+    }
+
+    private string GetAnimationStyle(ChipAnimationState animation)
+    {
+        var position = animation.State switch
+        {
+            AnimationPhase.Starting => animation.StartPosition,
+            AnimationPhase.Completed => animation.EndPosition,
+            _ => animation.EndPosition
+        };
+
+        var transitionDuration = animation.State == AnimationPhase.Moving 
+            ? animation.DurationMs 
+            : 200;
+
+        return $"top: {position.Top}%; left: {position.Left}%; " +
+               $"transition-duration: {transitionDuration}ms; " +
+               $"transform: translate(-50%, -50%);";
+    }
+
+    public void Dispose()
+    {
+        foreach (var timer in animationTimers.Values)
+        {
+            timer.Dispose();
+        }
+        animationTimers.Clear();
+    }
+
+    /// <summary>
+    /// Internal state for tracking an animation.
+    /// </summary>
+    private class ChipAnimationState
+    {
+        public required Guid Id { get; init; }
+        public required ChipMovementEvent MovementEvent { get; init; }
+        public required ChipStackDto Chips { get; init; }
+        public required int Amount { get; init; }
+        public required (double Top, double Left) StartPosition { get; init; }
+        public required (double Top, double Left) EndPosition { get; init; }
+        public AnimationPhase State { get; set; }
+        public int DurationMs { get; init; }
+    }
+
+    private enum AnimationPhase
+    {
+        Starting,
+        Moving,
+        Arriving,
+        Completed
+    }
+}

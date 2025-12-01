@@ -1,0 +1,395 @@
+@using CardGames.Poker.Shared
+@using CardGames.Poker.Shared.Events
+
+<div class="chip-stack @GetSizeClass() @GetAlignmentClass()" style="@GetCustomStyle()">
+    @if (ShowTotal && Amount > 0)
+    {
+        <div class="chip-total">@FormatAmount(Amount)</div>
+    }
+    
+    <div class="chips-container">
+        @if (Chips != null && Chips.Chips.Count > 0)
+        {
+            @foreach (var chipGroup in GetVisibleChips())
+            {
+                <div class="chip-pile">
+                    @for (var i = 0; i < Math.Min(chipGroup.Count, MaxChipsPerPile); i++)
+                    {
+                        <div class="chip" 
+                             style="background-color: @chipGroup.Color; bottom: @(i * ChipOffset)px;"
+                             title="@ChipDenominationService.GetDenominationLabel(chipGroup.Denomination)">
+                            @if (ShowDenomination && i == Math.Min(chipGroup.Count, MaxChipsPerPile) - 1)
+                            {
+                                <span class="chip-label">@GetChipLabel(chipGroup.Denomination)</span>
+                            }
+                        </div>
+                    }
+                    @if (ShowChipCount && chipGroup.Count > 1)
+                    {
+                        <span class="chip-count">×@chipGroup.Count</span>
+                    }
+                </div>
+            }
+        }
+        else if (Amount > 0)
+        {
+            @* Fallback: Generate chips from amount *@
+            @foreach (var chipGroup in GetChipsFromAmount())
+            {
+                <div class="chip-pile">
+                    @for (var i = 0; i < Math.Min(chipGroup.Count, MaxChipsPerPile); i++)
+                    {
+                        <div class="chip" 
+                             style="background-color: @chipGroup.Color; bottom: @(i * ChipOffset)px;"
+                             title="@ChipDenominationService.GetDenominationLabel(chipGroup.Denomination)">
+                            @if (ShowDenomination && i == Math.Min(chipGroup.Count, MaxChipsPerPile) - 1)
+                            {
+                                <span class="chip-label">@GetChipLabel(chipGroup.Denomination)</span>
+                            }
+                        </div>
+                    }
+                    @if (ShowChipCount && chipGroup.Count > 1)
+                    {
+                        <span class="chip-count">×@chipGroup.Count</span>
+                    }
+                </div>
+            }
+        }
+    </div>
+</div>
+
+<style>
+    .chip-stack {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .chip-stack.align-left {
+        align-items: flex-start;
+    }
+
+    .chip-stack.align-right {
+        align-items: flex-end;
+    }
+
+    .chip-total {
+        font-size: 0.85rem;
+        font-weight: bold;
+        color: #d4af37;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+        background: rgba(0, 0, 0, 0.6);
+        padding: 2px 8px;
+        border-radius: 4px;
+        margin-bottom: 2px;
+    }
+
+    .chips-container {
+        display: flex;
+        gap: 4px;
+        align-items: flex-end;
+    }
+
+    .chip-pile {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .chip {
+        width: var(--chip-size, 24px);
+        height: var(--chip-size, 24px);
+        border-radius: 50%;
+        position: absolute;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform 0.15s ease;
+    }
+
+    .chip::before {
+        content: '';
+        position: absolute;
+        width: 70%;
+        height: 70%;
+        border: 2px dashed rgba(255, 255, 255, 0.4);
+        border-radius: 50%;
+    }
+
+    .chip-label {
+        font-size: calc(var(--chip-size, 24px) * 0.35);
+        font-weight: bold;
+        color: inherit;
+        text-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
+        z-index: 1;
+    }
+
+    /* Light colored chips need dark text */
+    .chip[style*="FFFFFF"] .chip-label,
+    .chip[style*="ffffff"] .chip-label,
+    .chip[style*="FFFF00"] .chip-label,
+    .chip[style*="ffff00"] .chip-label {
+        color: #333;
+        text-shadow: none;
+    }
+
+    .chip-count {
+        position: absolute;
+        bottom: -16px;
+        font-size: 0.65rem;
+        color: rgba(255, 255, 255, 0.8);
+        background: rgba(0, 0, 0, 0.6);
+        padding: 1px 4px;
+        border-radius: 3px;
+    }
+
+    /* Size variations */
+    .chip-stack.small {
+        --chip-size: 18px;
+    }
+
+    .chip-stack.small .chip-total {
+        font-size: 0.7rem;
+    }
+
+    .chip-stack.small .chip-count {
+        font-size: 0.55rem;
+    }
+
+    .chip-stack.medium {
+        --chip-size: 24px;
+    }
+
+    .chip-stack.large {
+        --chip-size: 32px;
+    }
+
+    .chip-stack.large .chip-total {
+        font-size: 1rem;
+    }
+
+    .chip-stack.large .chip-count {
+        font-size: 0.75rem;
+    }
+
+    /* Animation classes */
+    .chip-stack.animate-in .chip {
+        animation: chipAppear 0.3s ease-out forwards;
+    }
+
+    .chip-stack.animate-in .chip-pile:nth-child(2) .chip {
+        animation-delay: 0.1s;
+    }
+
+    .chip-stack.animate-in .chip-pile:nth-child(3) .chip {
+        animation-delay: 0.2s;
+    }
+
+    .chip-stack.animate-in .chip-pile:nth-child(4) .chip {
+        animation-delay: 0.3s;
+    }
+
+    @@keyframes chipAppear {
+        from {
+            opacity: 0;
+            transform: scale(0.5) translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+        }
+    }
+
+    /* Highlight effect */
+    .chip-stack.highlighted .chip {
+        animation: chipHighlight 0.5s ease-in-out infinite alternate;
+    }
+
+    @@keyframes chipHighlight {
+        from {
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+        }
+        to {
+            box-shadow: 0 0 10px rgba(212, 175, 55, 0.8), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+        }
+    }
+
+    /* Pot style - chips arranged in arc */
+    .chip-stack.pot-style .chips-container {
+        position: relative;
+        width: 80px;
+        height: 40px;
+    }
+
+    .chip-stack.pot-style .chip-pile {
+        position: absolute;
+    }
+
+    .chip-stack.pot-style .chip-pile:nth-child(1) { left: 0; }
+    .chip-stack.pot-style .chip-pile:nth-child(2) { left: 20px; }
+    .chip-stack.pot-style .chip-pile:nth-child(3) { left: 40px; }
+    .chip-stack.pot-style .chip-pile:nth-child(4) { left: 60px; }
+</style>
+
+@code {
+    /// <summary>
+    /// The chip stack data to display.
+    /// </summary>
+    [Parameter]
+    public ChipStackDto? Chips { get; set; }
+
+    /// <summary>
+    /// The total amount to display (used if ChipStack is null).
+    /// </summary>
+    [Parameter]
+    public int Amount { get; set; }
+
+    /// <summary>
+    /// Whether to show the total amount above the chips.
+    /// </summary>
+    [Parameter]
+    public bool ShowTotal { get; set; } = true;
+
+    /// <summary>
+    /// Whether to show denomination labels on top chips.
+    /// </summary>
+    [Parameter]
+    public bool ShowDenomination { get; set; } = false;
+
+    /// <summary>
+    /// Whether to show the count multiplier for chip piles.
+    /// </summary>
+    [Parameter]
+    public bool ShowChipCount { get; set; } = true;
+
+    /// <summary>
+    /// Size of the chip stack: "small", "medium", or "large".
+    /// </summary>
+    [Parameter]
+    public string Size { get; set; } = "medium";
+
+    /// <summary>
+    /// Alignment of the chip stack: "center", "left", or "right".
+    /// </summary>
+    [Parameter]
+    public string Alignment { get; set; } = "center";
+
+    /// <summary>
+    /// Whether to animate chips appearing.
+    /// </summary>
+    [Parameter]
+    public bool AnimateIn { get; set; } = false;
+
+    /// <summary>
+    /// Whether chips should be highlighted.
+    /// </summary>
+    [Parameter]
+    public bool IsHighlighted { get; set; } = false;
+
+    /// <summary>
+    /// Maximum number of denominations to display.
+    /// </summary>
+    [Parameter]
+    public int MaxDenominations { get; set; } = 4;
+
+    /// <summary>
+    /// Maximum chips stacked in a single pile visually.
+    /// </summary>
+    [Parameter]
+    public int MaxChipsPerPile { get; set; } = 5;
+
+    /// <summary>
+    /// Display style: "default" or "pot".
+    /// </summary>
+    [Parameter]
+    public string DisplayStyle { get; set; } = "default";
+
+    /// <summary>
+    /// Custom CSS style to apply.
+    /// </summary>
+    [Parameter]
+    public string? CustomStyle { get; set; }
+
+    /// <summary>
+    /// Offset in pixels between stacked chips.
+    /// </summary>
+    private int ChipOffset => Size switch
+    {
+        "small" => 3,
+        "large" => 5,
+        _ => 4
+    };
+
+    private string GetSizeClass() => Size;
+
+    private string GetAlignmentClass() => Alignment switch
+    {
+        "left" => "align-left",
+        "right" => "align-right",
+        _ => ""
+    };
+
+    private string GetCustomStyle()
+    {
+        var styles = new List<string>();
+        
+        if (!string.IsNullOrEmpty(CustomStyle))
+        {
+            styles.Add(CustomStyle);
+        }
+
+        if (AnimateIn)
+        {
+            styles.Add("animation: chipAppear 0.3s ease-out;");
+        }
+
+        return string.Join(" ", styles);
+    }
+
+    private IReadOnlyList<ChipDto> GetVisibleChips()
+    {
+        if (Chips == null || Chips.Chips.Count == 0)
+        {
+            return [];
+        }
+
+        // Limit to MaxDenominations
+        return Chips.Chips.Take(MaxDenominations).ToList();
+    }
+
+    private IReadOnlyList<ChipDto> GetChipsFromAmount()
+    {
+        if (Amount <= 0)
+        {
+            return [];
+        }
+
+        var stack = ChipDenominationService.ConvertToSimplifiedChipStack(Amount, MaxDenominations);
+        return stack.Chips;
+    }
+
+    private string GetChipLabel(int denomination)
+    {
+        return denomination switch
+        {
+            >= 1000000 => $"{denomination / 1000000}M",
+            >= 1000 => $"{denomination / 1000}K",
+            >= 100 => $"{denomination}",
+            _ => $"{denomination}"
+        };
+    }
+
+    private string FormatAmount(int amount)
+    {
+        return amount switch
+        {
+            >= 1000000 => $"${amount / 1000000.0:F1}M",
+            >= 1000 => $"${amount / 1000.0:F1}K",
+            _ => $"${amount:N0}"
+        };
+    }
+}

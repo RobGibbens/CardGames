@@ -1,0 +1,205 @@
+@using CardGames.Poker.Shared
+@using CardGames.Poker.Shared.Events
+
+<div class="player-bet-display @GetAlignmentClass()" style="@GetPositionStyle()">
+    @if (Amount > 0)
+    {
+        <div class="bet-container @(IsAnimating ? "animating" : "") @(IsHighlighted ? "highlighted" : "")">
+            <ChipStack Amount="@Amount"
+                       Chips="@Chips"
+                       ShowTotal="@ShowAmount"
+                       ShowChipCount="false"
+                       Size="small"
+                       MaxDenominations="3" />
+            
+            @if (!string.IsNullOrEmpty(ActionLabel))
+            {
+                <div class="action-label @GetActionClass()">@ActionLabel</div>
+            }
+        </div>
+    }
+</div>
+
+<style>
+    .player-bet-display {
+        position: absolute;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+    }
+
+    .player-bet-display.align-left {
+        align-items: flex-start;
+    }
+
+    .player-bet-display.align-right {
+        align-items: flex-end;
+    }
+
+    .bet-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+    }
+
+    .bet-container.animating {
+        animation: betAppear 0.3s ease-out;
+    }
+
+    .bet-container.highlighted {
+        animation: betHighlight 0.5s ease-in-out infinite alternate;
+    }
+
+    @@keyframes betAppear {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @@keyframes betHighlight {
+        from {
+            filter: brightness(1);
+        }
+        to {
+            filter: brightness(1.2);
+        }
+    }
+
+    .action-label {
+        font-size: 0.6rem;
+        font-weight: bold;
+        text-transform: uppercase;
+        padding: 2px 6px;
+        border-radius: 4px;
+        background: rgba(0, 0, 0, 0.6);
+        color: white;
+        letter-spacing: 0.5px;
+    }
+
+    .action-label.bet {
+        background: rgba(76, 175, 80, 0.8);
+    }
+
+    .action-label.raise {
+        background: rgba(255, 152, 0, 0.8);
+    }
+
+    .action-label.call {
+        background: rgba(33, 150, 243, 0.8);
+    }
+
+    .action-label.all-in {
+        background: rgba(244, 67, 54, 0.8);
+        animation: allInPulse 0.5s ease-in-out infinite alternate;
+    }
+
+    .action-label.blind {
+        background: rgba(156, 39, 176, 0.8);
+    }
+
+    @@keyframes allInPulse {
+        from {
+            box-shadow: 0 0 4px rgba(244, 67, 54, 0.5);
+        }
+        to {
+            box-shadow: 0 0 12px rgba(244, 67, 54, 0.8);
+        }
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// The bet amount to display.
+    /// </summary>
+    [Parameter]
+    public int Amount { get; set; }
+
+    /// <summary>
+    /// Pre-calculated chip stack to display.
+    /// </summary>
+    [Parameter]
+    public ChipStackDto? Chips { get; set; }
+
+    /// <summary>
+    /// Whether to show the amount value.
+    /// </summary>
+    [Parameter]
+    public bool ShowAmount { get; set; } = true;
+
+    /// <summary>
+    /// Label for the action (e.g., "Bet", "Raise", "Call", "All-In").
+    /// </summary>
+    [Parameter]
+    public string? ActionLabel { get; set; }
+
+    /// <summary>
+    /// Action type for styling.
+    /// </summary>
+    [Parameter]
+    public string? ActionType { get; set; }
+
+    /// <summary>
+    /// Whether the bet is currently being animated.
+    /// </summary>
+    [Parameter]
+    public bool IsAnimating { get; set; }
+
+    /// <summary>
+    /// Whether the bet should be highlighted.
+    /// </summary>
+    [Parameter]
+    public bool IsHighlighted { get; set; }
+
+    /// <summary>
+    /// Alignment relative to player: "center", "left", or "right".
+    /// </summary>
+    [Parameter]
+    public string Alignment { get; set; } = "center";
+
+    /// <summary>
+    /// Top position as percentage.
+    /// </summary>
+    [Parameter]
+    public double Top { get; set; }
+
+    /// <summary>
+    /// Left position as percentage.
+    /// </summary>
+    [Parameter]
+    public double Left { get; set; }
+
+    private string GetAlignmentClass() => Alignment switch
+    {
+        "left" => "align-left",
+        "right" => "align-right",
+        _ => ""
+    };
+
+    private string GetPositionStyle()
+    {
+        return $"top: {Top}%; left: {Left}%; transform: translate(-50%, -50%);";
+    }
+
+    private string GetActionClass()
+    {
+        var type = ActionType?.ToLowerInvariant() ?? ActionLabel?.ToLowerInvariant() ?? "";
+        
+        return type switch
+        {
+            "bet" => "bet",
+            "raise" => "raise",
+            "call" => "call",
+            "all-in" or "allin" => "all-in",
+            "blind" or "sb" or "bb" => "blind",
+            _ => ""
+        };
+    }
+}
