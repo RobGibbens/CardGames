@@ -1,0 +1,651 @@
+@using CardGames.Poker.Shared.DTOs
+@using CardGames.Poker.Shared.Enums
+@using CardGames.Poker.Web.Utilities
+
+<div class="player-position @GetPositionClasses()" 
+     style="top: @Position.Top%; left: @Position.Left%;">
+    <div class="player-area @GetPlayerAreaClasses()">
+        @* Player info overlay *@
+        <div class="player-info-overlay">
+            @if (ShowAvatar)
+            {
+                <div class="player-avatar">
+                    @if (!string.IsNullOrEmpty(AvatarUrl))
+                    {
+                        <img src="@AvatarUrl" alt="@Player?.Name" />
+                    }
+                    else
+                    {
+                        <span class="avatar-initial">@GetInitial()</span>
+                    }
+                </div>
+            }
+            <div class="player-details">
+                <span class="player-name" title="@Player?.Name">@TruncateName(Player?.Name ?? "Empty")</span>
+                @if (ChipStack > 0)
+                {
+                    <span class="player-stack">@FormatChips(ChipStack)</span>
+                }
+            </div>
+            @if (!string.IsNullOrEmpty(StatusText))
+            {
+                <div class="player-status @StatusClass">@StatusText</div>
+            }
+        </div>
+
+        @* Cards display *@
+        @if (Player != null && !HasFolded)
+        {
+            <div class="player-cards">
+                @if (ShowCards && Player.HoleCards != null)
+                {
+                    @foreach (var card in Player.HoleCards)
+                    {
+                        <PlayingCard Card="@card"
+                                     IsFaceDown="@false"
+                                     Size="@CardSize"
+                                     ShowDealAnimation="@ShowDealAnimation"
+                                     IsHighlighted="@IsWinner" />
+                    }
+                }
+                else if (HoleCardCount > 0)
+                {
+                    @for (int i = 0; i < HoleCardCount; i++)
+                    {
+                        <PlayingCard Card="@null"
+                                     IsFaceDown="@true"
+                                     Size="@CardSize"
+                                     ShowDealAnimation="@ShowDealAnimation" />
+                    }
+                }
+            </div>
+        }
+
+        @* Timer ring for active player *@
+        @if (IsCurrentPlayer && SecondsRemaining > 0)
+        {
+            <div class="turn-indicator">
+                <TurnTimer SecondsRemaining="@SecondsRemaining"
+                           TotalDurationSeconds="@TotalTurnTime"
+                           PlayerName=""
+                           TimeBankRemaining="@TimeBankRemaining"
+                           IsTimeBankActive="@IsTimeBankActive"
+                           CanUseTimeBank="@CanUseTimeBank"
+                           ShowTimeBank="@ShowTimeBank"
+                           ShowLabel="@false"
+                           Size="small"
+                           OnTimeBankClick="@OnTimeBankClick" />
+            </div>
+        }
+
+        @* Dealer button indicator *@
+        @if (IsDealer)
+        {
+            <div class="dealer-indicator">
+                <DealerButton Position="@SeatNumber"
+                              TotalSeats="@TotalSeats"
+                              TopOffset="@(-10)"
+                              LeftOffset="@(Position.Alignment == "right" ? -15 : 85)" />
+            </div>
+        }
+
+        @* Current action indicator *@
+        @if (!string.IsNullOrEmpty(LastAction))
+        {
+            <div class="action-indicator @GetActionClass()">@LastAction</div>
+        }
+
+        @* Blind indicator *@
+        @if (BlindType != BlindTypeDto.None)
+        {
+            <div class="blind-indicator @BlindType.ToString().ToLowerInvariant()">
+                @GetBlindLabel()
+            </div>
+        }
+    </div>
+</div>
+
+@* Bet display (positioned toward center) *@
+@if (CurrentBet > 0)
+{
+    <PlayerBetDisplay Amount="@CurrentBet"
+                      ActionLabel="@GetBetLabel()"
+                      ActionType="@GetBetType()"
+                      Top="@Position.BetTop"
+                      Left="@Position.BetLeft"
+                      Alignment="@Position.Alignment"
+                      IsAnimating="@IsNewBet" />
+}
+
+<style>
+    .player-position {
+        position: absolute;
+        transform: translate(-50%, -50%);
+        z-index: 10;
+        transition: all 0.3s ease;
+    }
+
+    .player-area {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.5rem;
+        border-radius: 12px;
+        background: rgba(0, 0, 0, 0.5);
+        border: 2px solid transparent;
+        transition: all 0.3s ease;
+        min-width: 100px;
+    }
+
+    /* Current player highlighting */
+    .player-area.current {
+        border-color: #d4af37;
+        box-shadow: 0 0 20px rgba(212, 175, 55, 0.6);
+        animation: currentPlayerPulse 2s ease-in-out infinite;
+    }
+
+    @@keyframes currentPlayerPulse {
+        0%, 100% { 
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.4);
+        }
+        50% { 
+            box-shadow: 0 0 25px rgba(212, 175, 55, 0.8);
+        }
+    }
+
+    /* Folded state */
+    .player-area.folded {
+        opacity: 0.4;
+        filter: grayscale(0.5);
+    }
+
+    /* All-in state */
+    .player-area.all-in {
+        border-color: #f44336;
+        animation: allInGlow 1s ease-in-out infinite alternate;
+    }
+
+    @@keyframes allInGlow {
+        from { box-shadow: 0 0 10px rgba(244, 67, 54, 0.4); }
+        to { box-shadow: 0 0 20px rgba(244, 67, 54, 0.8); }
+    }
+
+    /* Winner state */
+    .player-area.winner {
+        border-color: #4caf50;
+        animation: winnerCelebration 0.5s ease-out;
+    }
+
+    @@keyframes winnerCelebration {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+    }
+
+    /* Hero (bottom center) styling */
+    .player-position.hero .player-area {
+        min-width: 120px;
+        padding: 0.75rem;
+    }
+
+    /* Player info overlay */
+    .player-info-overlay {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        width: 100%;
+    }
+
+    .player-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        overflow: hidden;
+    }
+
+    .player-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .avatar-initial {
+        color: white;
+        font-weight: bold;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+    }
+
+    .player-details {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        flex: 1;
+    }
+
+    .player-name {
+        color: white;
+        font-weight: bold;
+        font-size: 0.75rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 80px;
+    }
+
+    .player-stack {
+        color: #d4af37;
+        font-size: 0.7rem;
+        font-weight: 600;
+    }
+
+    .player-status {
+        font-size: 0.55rem;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+
+    .player-status.sitting-out {
+        background: rgba(255, 152, 0, 0.8);
+        color: white;
+    }
+
+    .player-status.disconnected {
+        background: rgba(158, 158, 158, 0.8);
+        color: white;
+    }
+
+    /* Cards area */
+    .player-cards {
+        display: flex;
+        gap: 2px;
+        justify-content: center;
+    }
+
+    .player-cards > :global(.card):not(:first-child) {
+        margin-left: -12px;
+    }
+
+    /* Turn indicator */
+    .turn-indicator {
+        position: absolute;
+        top: -40px;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+
+    /* Dealer indicator */
+    .dealer-indicator {
+        position: absolute;
+        top: -5px;
+        right: -15px;
+    }
+
+    /* Action indicator */
+    .action-indicator {
+        position: absolute;
+        bottom: -20px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 0.6rem;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-weight: bold;
+        text-transform: uppercase;
+        white-space: nowrap;
+        animation: actionAppear 0.3s ease-out;
+    }
+
+    @@keyframes actionAppear {
+        from {
+            opacity: 0;
+            transform: translateX(-50%) translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+    }
+
+    .action-indicator.fold { background: rgba(158, 158, 158, 0.8); color: white; }
+    .action-indicator.check { background: rgba(76, 175, 80, 0.8); color: white; }
+    .action-indicator.call { background: rgba(33, 150, 243, 0.8); color: white; }
+    .action-indicator.bet { background: rgba(255, 152, 0, 0.8); color: white; }
+    .action-indicator.raise { background: rgba(255, 87, 34, 0.8); color: white; }
+    .action-indicator.all-in { background: rgba(244, 67, 54, 0.8); color: white; }
+
+    /* Blind indicator */
+    .blind-indicator {
+        position: absolute;
+        top: -8px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 0.5rem;
+        padding: 1px 4px;
+        border-radius: 3px;
+        font-weight: bold;
+        text-transform: uppercase;
+        background: rgba(156, 39, 176, 0.8);
+        color: white;
+    }
+
+    .blind-indicator.bigblind { background: rgba(103, 58, 183, 0.9); }
+    .blind-indicator.smallblind { background: rgba(156, 39, 176, 0.8); }
+    .blind-indicator.ante { background: rgba(63, 81, 181, 0.8); }
+
+    /* Responsive adjustments */
+    @@media (max-width: 768px) {
+        .player-area {
+            min-width: 80px;
+            padding: 0.35rem;
+        }
+        
+        .player-avatar {
+            width: 24px;
+            height: 24px;
+        }
+
+        .player-name {
+            font-size: 0.65rem;
+            max-width: 60px;
+        }
+
+        .player-stack {
+            font-size: 0.6rem;
+        }
+    }
+
+    @@media (max-width: 480px) {
+        .player-area {
+            min-width: 60px;
+            padding: 0.25rem;
+        }
+
+        .player-avatar {
+            width: 20px;
+            height: 20px;
+        }
+
+        .player-info-overlay {
+            gap: 0.25rem;
+        }
+
+        .player-name {
+            font-size: 0.55rem;
+            max-width: 45px;
+        }
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// The player data.
+    /// </summary>
+    [Parameter]
+    public PlayerDto? Player { get; set; }
+
+    /// <summary>
+    /// The seat number.
+    /// </summary>
+    [Parameter]
+    public int SeatNumber { get; set; }
+
+    /// <summary>
+    /// Total seats at the table.
+    /// </summary>
+    [Parameter]
+    public int TotalSeats { get; set; } = 9;
+
+    /// <summary>
+    /// The layout position.
+    /// </summary>
+    [Parameter]
+    public PlayerLayoutPosition Position { get; set; } = new(1, 90, 50, 74, 50, "center");
+
+    /// <summary>
+    /// Player's chip stack.
+    /// </summary>
+    [Parameter]
+    public int ChipStack { get; set; }
+
+    /// <summary>
+    /// Current bet amount.
+    /// </summary>
+    [Parameter]
+    public int CurrentBet { get; set; }
+
+    /// <summary>
+    /// Whether this is a new bet (for animation).
+    /// </summary>
+    [Parameter]
+    public bool IsNewBet { get; set; }
+
+    /// <summary>
+    /// Whether this is the current player's turn.
+    /// </summary>
+    [Parameter]
+    public bool IsCurrentPlayer { get; set; }
+
+    /// <summary>
+    /// Whether this seat is the dealer.
+    /// </summary>
+    [Parameter]
+    public bool IsDealer { get; set; }
+
+    /// <summary>
+    /// Whether the player has folded.
+    /// </summary>
+    [Parameter]
+    public bool HasFolded { get; set; }
+
+    /// <summary>
+    /// Whether the player is all-in.
+    /// </summary>
+    [Parameter]
+    public bool IsAllIn { get; set; }
+
+    /// <summary>
+    /// Whether this player is a winner.
+    /// </summary>
+    [Parameter]
+    public bool IsWinner { get; set; }
+
+    /// <summary>
+    /// Whether this is the hero position (main player).
+    /// </summary>
+    [Parameter]
+    public bool IsHero { get; set; }
+
+    /// <summary>
+    /// Whether to show the player's cards.
+    /// </summary>
+    [Parameter]
+    public bool ShowCards { get; set; }
+
+    /// <summary>
+    /// Number of hole cards (when face down).
+    /// </summary>
+    [Parameter]
+    public int HoleCardCount { get; set; } = 2;
+
+    /// <summary>
+    /// Size of the cards.
+    /// </summary>
+    [Parameter]
+    public string CardSize { get; set; } = "small";
+
+    /// <summary>
+    /// Whether to show card deal animation.
+    /// </summary>
+    [Parameter]
+    public bool ShowDealAnimation { get; set; }
+
+    /// <summary>
+    /// Player's last action.
+    /// </summary>
+    [Parameter]
+    public string? LastAction { get; set; }
+
+    /// <summary>
+    /// Blind type for this player.
+    /// </summary>
+    [Parameter]
+    public BlindTypeDto BlindType { get; set; } = BlindTypeDto.None;
+
+    /// <summary>
+    /// Status text (e.g., "Sitting Out", "Disconnected").
+    /// </summary>
+    [Parameter]
+    public string? StatusText { get; set; }
+
+    /// <summary>
+    /// CSS class for status.
+    /// </summary>
+    [Parameter]
+    public string StatusClass { get; set; } = "";
+
+    /// <summary>
+    /// Whether to show the avatar.
+    /// </summary>
+    [Parameter]
+    public bool ShowAvatar { get; set; } = true;
+
+    /// <summary>
+    /// URL for player avatar.
+    /// </summary>
+    [Parameter]
+    public string? AvatarUrl { get; set; }
+
+    /// <summary>
+    /// Seconds remaining on turn timer.
+    /// </summary>
+    [Parameter]
+    public int SecondsRemaining { get; set; }
+
+    /// <summary>
+    /// Total turn time in seconds.
+    /// </summary>
+    [Parameter]
+    public int TotalTurnTime { get; set; } = 30;
+
+    /// <summary>
+    /// Time bank seconds remaining.
+    /// </summary>
+    [Parameter]
+    public int TimeBankRemaining { get; set; }
+
+    /// <summary>
+    /// Whether time bank is active.
+    /// </summary>
+    [Parameter]
+    public bool IsTimeBankActive { get; set; }
+
+    /// <summary>
+    /// Whether the player can use time bank.
+    /// </summary>
+    [Parameter]
+    public bool CanUseTimeBank { get; set; }
+
+    /// <summary>
+    /// Whether to show time bank button.
+    /// </summary>
+    [Parameter]
+    public bool ShowTimeBank { get; set; } = false;
+
+    /// <summary>
+    /// Callback when time bank is clicked.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnTimeBankClick { get; set; }
+
+    private string GetPositionClasses()
+    {
+        var classes = new List<string>();
+        if (IsHero) classes.Add("hero");
+        return string.Join(" ", classes);
+    }
+
+    private string GetPlayerAreaClasses()
+    {
+        var classes = new List<string>();
+        
+        if (IsCurrentPlayer) classes.Add("current");
+        if (HasFolded) classes.Add("folded");
+        if (IsAllIn) classes.Add("all-in");
+        if (IsWinner) classes.Add("winner");
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetInitial()
+    {
+        if (string.IsNullOrEmpty(Player?.Name)) return "?";
+        return Player.Name[..1].ToUpperInvariant();
+    }
+
+    private static string TruncateName(string name)
+    {
+        if (name.Length <= 10) return name;
+        return name[..8] + "...";
+    }
+
+    private static string FormatChips(int amount)
+    {
+        return amount switch
+        {
+            >= 1000000 => $"${amount / 1000000.0:F1}M",
+            >= 1000 => $"${amount / 1000.0:F1}K",
+            _ => $"${amount:N0}"
+        };
+    }
+
+    private string GetActionClass()
+    {
+        if (string.IsNullOrEmpty(LastAction)) return "";
+        
+        return LastAction.ToLowerInvariant() switch
+        {
+            "fold" => "fold",
+            "check" => "check",
+            "call" => "call",
+            "bet" => "bet",
+            "raise" => "raise",
+            "all-in" or "allin" => "all-in",
+            _ => ""
+        };
+    }
+
+    private string GetBlindLabel()
+    {
+        return BlindType switch
+        {
+            BlindTypeDto.SmallBlind => "SB",
+            BlindTypeDto.BigBlind => "BB",
+            BlindTypeDto.Ante => "Ante",
+            _ => ""
+        };
+    }
+
+    private string GetBetLabel()
+    {
+        if (IsAllIn) return "All-In";
+        if (BlindType == BlindTypeDto.SmallBlind) return "SB";
+        if (BlindType == BlindTypeDto.BigBlind) return "BB";
+        return LastAction ?? "";
+    }
+
+    private string GetBetType()
+    {
+        if (IsAllIn) return "all-in";
+        if (BlindType != BlindTypeDto.None) return "blind";
+        return LastAction?.ToLowerInvariant() ?? "";
+    }
+}

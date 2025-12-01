@@ -1,0 +1,711 @@
+@using CardGames.Poker.Shared.DTOs
+@using CardGames.Poker.Shared.Enums
+@using CardGames.Poker.Web.Utilities
+
+<div class="poker-table-wrapper @ThemeClass @GetResponsiveClass()" 
+     style="@GetCustomStyle()">
+    <div class="poker-table-container">
+        <div class="poker-table-surface @GetTableSizeClass()">
+            @* Table felt *@
+            <div class="table-felt" style="@GetFeltStyle()">
+                @* Table center content *@
+                <div class="table-center">
+                    @if (!string.IsNullOrEmpty(TableName))
+                    {
+                        <span class="table-name">@TableName</span>
+                    }
+                    @if (SmallBlind > 0 && BigBlind > 0)
+                    {
+                        <span class="stakes-info">@SmallBlind/@BigBlind</span>
+                    }
+                    @if (!string.IsNullOrEmpty(VariantName))
+                    {
+                        <span class="variant-name">@VariantName</span>
+                    }
+                </div>
+
+                @* Community cards *@
+                @if (ShowCommunityCards)
+                {
+                    <div class="community-cards-area">
+                        <CommunityCardsDisplay Cards="@CommunityCards"
+                                                CardSize="@(IsCompact ? "medium" : "large")"
+                                                ShowLabel="@false"
+                                                ShowDealAnimation="@ShowDealAnimations"
+                                                CurrentStreet="@CurrentStreet"
+                                                HighlightedCardIndices="@HighlightedCommunityCards"
+                                                PreviousCardCount="@PreviousCommunityCardCount" />
+                    </div>
+                }
+
+                @* Main pot display *@
+                @if (Pot > 0 || ShowPotWhenEmpty)
+                {
+                    <PotDisplay TotalAmount="@Pot"
+                                Pots="@Pots"
+                                Label="@GetPotLabel()"
+                                IsHighlighted="@IsPotHighlighted"
+                                IsAnimating="@IsPotAnimating"
+                                Size="@(IsCompact ? "small" : "medium")"
+                                ShowEligiblePlayers="@ShowEligiblePlayers"
+                                EligiblePlayers="@EligiblePlayers"
+                                TopPosition="@(ShowCommunityCards ? 70 : 50)"
+                                LeftPosition="50" />
+                }
+            </div>
+
+            @* Player positions *@
+            <div class="players-container">
+                @foreach (var position in PlayerPositions)
+                {
+                    var player = GetPlayerAtSeat(position.SeatNumber);
+                    var isCurrentPlayer = position.SeatNumber == CurrentPlayerSeat;
+                    var isDealer = position.SeatNumber == DealerSeat;
+                    var hasFolded = FoldedSeats.Contains(position.SeatNumber);
+                    var isAllIn = AllInSeats.Contains(position.SeatNumber);
+                    var isWinner = WinnerSeats.Contains(position.SeatNumber);
+                    var currentBet = GetCurrentBet(position.SeatNumber);
+                    var lastAction = GetLastAction(position.SeatNumber);
+                    var blindType = GetBlindType(position.SeatNumber);
+                    var isHero = position.SeatNumber == HeroSeat;
+                    
+                    <PlayerPosition Player="@player"
+                                    SeatNumber="@position.SeatNumber"
+                                    TotalSeats="@TotalSeats"
+                                    Position="@position"
+                                    ChipStack="@(player?.ChipStack ?? 0)"
+                                    CurrentBet="@currentBet"
+                                    IsNewBet="@IsNewBet(position.SeatNumber)"
+                                    IsCurrentPlayer="@isCurrentPlayer"
+                                    IsDealer="@isDealer"
+                                    HasFolded="@hasFolded"
+                                    IsAllIn="@isAllIn"
+                                    IsWinner="@isWinner"
+                                    IsHero="@isHero"
+                                    ShowCards="@ShouldShowCards(position.SeatNumber)"
+                                    HoleCardCount="@HoleCardCount"
+                                    CardSize="@(IsCompact ? "small" : "medium")"
+                                    ShowDealAnimation="@ShowDealAnimations"
+                                    LastAction="@lastAction"
+                                    BlindType="@blindType"
+                                    StatusText="@GetStatusText(position.SeatNumber)"
+                                    StatusClass="@GetStatusClass(position.SeatNumber)"
+                                    ShowAvatar="@ShowAvatars"
+                                    SecondsRemaining="@(isCurrentPlayer ? SecondsRemaining : 0)"
+                                    TotalTurnTime="@TotalTurnTime"
+                                    TimeBankRemaining="@(isCurrentPlayer ? TimeBankRemaining : 0)"
+                                    IsTimeBankActive="@IsTimeBankActive"
+                                    CanUseTimeBank="@CanUseTimeBank"
+                                    ShowTimeBank="@(isCurrentPlayer && ShowTimeBank)"
+                                    OnTimeBankClick="@OnTimeBankClick" />
+                }
+            </div>
+
+            @* Dealer button *@
+            @if (DealerSeat > 0 && ShowDealerButton)
+            {
+                <DealerButton Position="@DealerSeat"
+                              TotalSeats="@TotalSeats"
+                              DealerName="@GetDealerName()"
+                              ShowPlayerName="@false"
+                              IsDeadButton="@IsDeadButton" />
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .poker-table-wrapper {
+        --felt-color: #0d4a2e;
+        --felt-gradient-start: #1a6b42;
+        --felt-gradient-end: #0d4a2e;
+        --rail-color: #3d2817;
+        --rail-inner-color: #5a3d28;
+        --accent-color: #d4af37;
+        
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 1rem;
+        box-sizing: border-box;
+    }
+
+    /* Theme variations */
+    .poker-table-wrapper.theme-dark {
+        --felt-color: #1a2a1a;
+        --felt-gradient-start: #243624;
+        --felt-gradient-end: #1a2a1a;
+        --rail-color: #2a1f14;
+        --rail-inner-color: #3d2d1f;
+    }
+
+    .poker-table-wrapper.theme-blue {
+        --felt-color: #1a3a5c;
+        --felt-gradient-start: #2a5a8c;
+        --felt-gradient-end: #1a3a5c;
+        --rail-color: #1a1a2e;
+        --rail-inner-color: #2a2a4e;
+    }
+
+    .poker-table-wrapper.theme-red {
+        --felt-color: #5c1a1a;
+        --felt-gradient-start: #8c2a2a;
+        --felt-gradient-end: #5c1a1a;
+        --rail-color: #3d1717;
+        --rail-inner-color: #5a2323;
+    }
+
+    .poker-table-container {
+        position: relative;
+        width: 100%;
+        max-width: 1000px;
+        aspect-ratio: 16 / 10;
+    }
+
+    .poker-table-surface {
+        position: relative;
+        width: 100%;
+        height: 100%;
+    }
+
+    .poker-table-surface.compact {
+        max-width: 800px;
+    }
+
+    .poker-table-surface.large {
+        max-width: 1200px;
+    }
+
+    .table-felt {
+        position: absolute;
+        top: 10%;
+        left: 10%;
+        right: 10%;
+        bottom: 10%;
+        background: linear-gradient(145deg, var(--felt-gradient-start) 0%, var(--felt-gradient-end) 100%);
+        border-radius: 50%;
+        box-shadow: 
+            0 10px 40px rgba(0, 0, 0, 0.5),
+            inset 0 2px 10px rgba(255, 255, 255, 0.1),
+            inset 0 -2px 10px rgba(0, 0, 0, 0.3);
+        border: 12px solid var(--rail-color);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .table-felt::before {
+        content: '';
+        position: absolute;
+        top: -6px;
+        left: -6px;
+        right: -6px;
+        bottom: -6px;
+        border-radius: 50%;
+        border: 3px solid var(--rail-inner-color);
+        pointer-events: none;
+    }
+
+    .table-center {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.25rem;
+        color: rgba(255, 255, 255, 0.6);
+        text-align: center;
+        position: absolute;
+        top: 20%;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+
+    .table-name {
+        font-size: 1rem;
+        font-weight: bold;
+        color: var(--accent-color);
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    }
+
+    .stakes-info {
+        font-size: 0.85rem;
+        opacity: 0.8;
+    }
+
+    .variant-name {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        opacity: 0.7;
+    }
+
+    .community-cards-area {
+        position: absolute;
+        top: 40%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 5;
+    }
+
+    .players-container {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        pointer-events: none;
+    }
+
+    .players-container > :global(*) {
+        pointer-events: auto;
+    }
+
+    /* Responsive breakpoints */
+    .poker-table-wrapper.responsive-mobile .poker-table-container {
+        aspect-ratio: 4 / 5;
+    }
+
+    .poker-table-wrapper.responsive-mobile .table-felt {
+        border-radius: 35%;
+        top: 5%;
+        left: 5%;
+        right: 5%;
+        bottom: 5%;
+        border-width: 8px;
+    }
+
+    .poker-table-wrapper.responsive-tablet .poker-table-container {
+        aspect-ratio: 4 / 3;
+    }
+
+    .poker-table-wrapper.responsive-tablet .table-felt {
+        border-width: 10px;
+    }
+
+    @@media (max-width: 768px) {
+        .poker-table-wrapper {
+            padding: 0.5rem;
+        }
+
+        .table-name {
+            font-size: 0.8rem;
+        }
+
+        .stakes-info {
+            font-size: 0.7rem;
+        }
+
+        .variant-name {
+            font-size: 0.55rem;
+        }
+    }
+
+    @@media (max-width: 480px) {
+        .table-felt {
+            border-width: 6px;
+        }
+
+        .table-center {
+            top: 15%;
+        }
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// Name of the table.
+    /// </summary>
+    [Parameter]
+    public string? TableName { get; set; }
+
+    /// <summary>
+    /// Name of the poker variant.
+    /// </summary>
+    [Parameter]
+    public string? VariantName { get; set; }
+
+    /// <summary>
+    /// Small blind amount.
+    /// </summary>
+    [Parameter]
+    public int SmallBlind { get; set; }
+
+    /// <summary>
+    /// Big blind amount.
+    /// </summary>
+    [Parameter]
+    public int BigBlind { get; set; }
+
+    /// <summary>
+    /// Total number of seats.
+    /// </summary>
+    [Parameter]
+    public int TotalSeats { get; set; } = 9;
+
+    /// <summary>
+    /// List of players at the table.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<PlayerDto> Players { get; set; } = [];
+
+    /// <summary>
+    /// Mapping of seat numbers to players (1-indexed).
+    /// </summary>
+    [Parameter]
+    public IReadOnlyDictionary<int, PlayerDto>? SeatAssignments { get; set; }
+
+    /// <summary>
+    /// Community cards.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<CardDto> CommunityCards { get; set; } = [];
+
+    /// <summary>
+    /// Previous community card count (for animation).
+    /// </summary>
+    [Parameter]
+    public int PreviousCommunityCardCount { get; set; }
+
+    /// <summary>
+    /// Current street name.
+    /// </summary>
+    [Parameter]
+    public string? CurrentStreet { get; set; }
+
+    /// <summary>
+    /// Highlighted community card indices.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<int> HighlightedCommunityCards { get; set; } = [];
+
+    /// <summary>
+    /// Total pot amount.
+    /// </summary>
+    [Parameter]
+    public int Pot { get; set; }
+
+    /// <summary>
+    /// Individual pots (for side pots).
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<PotDto>? Pots { get; set; }
+
+    /// <summary>
+    /// Whether the pot is highlighted.
+    /// </summary>
+    [Parameter]
+    public bool IsPotHighlighted { get; set; }
+
+    /// <summary>
+    /// Whether the pot is animating.
+    /// </summary>
+    [Parameter]
+    public bool IsPotAnimating { get; set; }
+
+    /// <summary>
+    /// Players eligible for the pot.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<string>? EligiblePlayers { get; set; }
+
+    /// <summary>
+    /// Current player's seat number.
+    /// </summary>
+    [Parameter]
+    public int CurrentPlayerSeat { get; set; }
+
+    /// <summary>
+    /// Dealer seat number.
+    /// </summary>
+    [Parameter]
+    public int DealerSeat { get; set; }
+
+    /// <summary>
+    /// The hero's seat number (main player).
+    /// </summary>
+    [Parameter]
+    public int HeroSeat { get; set; } = 1;
+
+    /// <summary>
+    /// Seats that have folded.
+    /// </summary>
+    [Parameter]
+    public IReadOnlySet<int> FoldedSeats { get; set; } = new HashSet<int>();
+
+    /// <summary>
+    /// Seats that are all-in.
+    /// </summary>
+    [Parameter]
+    public IReadOnlySet<int> AllInSeats { get; set; } = new HashSet<int>();
+
+    /// <summary>
+    /// Winning seats.
+    /// </summary>
+    [Parameter]
+    public IReadOnlySet<int> WinnerSeats { get; set; } = new HashSet<int>();
+
+    /// <summary>
+    /// Current bets by seat.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyDictionary<int, int>? CurrentBets { get; set; }
+
+    /// <summary>
+    /// Seats with new bets (for animation).
+    /// </summary>
+    [Parameter]
+    public IReadOnlySet<int> NewBetSeats { get; set; } = new HashSet<int>();
+
+    /// <summary>
+    /// Last actions by seat.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyDictionary<int, string>? LastActions { get; set; }
+
+    /// <summary>
+    /// Blind types by seat.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyDictionary<int, BlindTypeDto>? BlindTypes { get; set; }
+
+    /// <summary>
+    /// Status texts by seat.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyDictionary<int, string>? StatusTexts { get; set; }
+
+    /// <summary>
+    /// Number of hole cards per player.
+    /// </summary>
+    [Parameter]
+    public int HoleCardCount { get; set; } = 2;
+
+    /// <summary>
+    /// Seats where cards should be shown.
+    /// </summary>
+    [Parameter]
+    public IReadOnlySet<int>? VisibleCardSeats { get; set; }
+
+    /// <summary>
+    /// Seconds remaining on current player's turn.
+    /// </summary>
+    [Parameter]
+    public int SecondsRemaining { get; set; }
+
+    /// <summary>
+    /// Total turn time in seconds.
+    /// </summary>
+    [Parameter]
+    public int TotalTurnTime { get; set; } = 30;
+
+    /// <summary>
+    /// Time bank seconds remaining.
+    /// </summary>
+    [Parameter]
+    public int TimeBankRemaining { get; set; }
+
+    /// <summary>
+    /// Whether time bank is active.
+    /// </summary>
+    [Parameter]
+    public bool IsTimeBankActive { get; set; }
+
+    /// <summary>
+    /// Whether the player can use time bank.
+    /// </summary>
+    [Parameter]
+    public bool CanUseTimeBank { get; set; }
+
+    /// <summary>
+    /// Whether to show time bank.
+    /// </summary>
+    [Parameter]
+    public bool ShowTimeBank { get; set; } = true;
+
+    /// <summary>
+    /// Visual theme class.
+    /// </summary>
+    [Parameter]
+    public string ThemeClass { get; set; } = "";
+
+    /// <summary>
+    /// Custom felt color.
+    /// </summary>
+    [Parameter]
+    public string? FeltColor { get; set; }
+
+    /// <summary>
+    /// Responsive breakpoint.
+    /// </summary>
+    [Parameter]
+    public string ResponsiveMode { get; set; } = "auto";
+
+    /// <summary>
+    /// Whether to use compact mode.
+    /// </summary>
+    [Parameter]
+    public bool IsCompact { get; set; }
+
+    /// <summary>
+    /// Whether to show avatars.
+    /// </summary>
+    [Parameter]
+    public bool ShowAvatars { get; set; } = true;
+
+    /// <summary>
+    /// Whether to show dealer button.
+    /// </summary>
+    [Parameter]
+    public bool ShowDealerButton { get; set; } = true;
+
+    /// <summary>
+    /// Whether the dealer button is dead.
+    /// </summary>
+    [Parameter]
+    public bool IsDeadButton { get; set; }
+
+    /// <summary>
+    /// Whether to show community cards.
+    /// </summary>
+    [Parameter]
+    public bool ShowCommunityCards { get; set; } = true;
+
+    /// <summary>
+    /// Whether to show pot when empty.
+    /// </summary>
+    [Parameter]
+    public bool ShowPotWhenEmpty { get; set; }
+
+    /// <summary>
+    /// Whether to show eligible players on pot.
+    /// </summary>
+    [Parameter]
+    public bool ShowEligiblePlayers { get; set; }
+
+    /// <summary>
+    /// Whether to show deal animations.
+    /// </summary>
+    [Parameter]
+    public bool ShowDealAnimations { get; set; } = true;
+
+    /// <summary>
+    /// Callback when time bank is clicked.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnTimeBankClick { get; set; }
+
+    private IReadOnlyList<PlayerLayoutPosition> PlayerPositions => 
+        TableLayoutService.GetPositions(TotalSeats);
+
+    private PlayerDto? GetPlayerAtSeat(int seatNumber)
+    {
+        if (SeatAssignments != null && SeatAssignments.TryGetValue(seatNumber, out var player))
+        {
+            return player;
+        }
+        
+        // Fallback: use index if no seat assignments
+        var index = seatNumber - 1;
+        if (index >= 0 && index < Players.Count)
+        {
+            return Players[index];
+        }
+        
+        return null;
+    }
+
+    private int GetCurrentBet(int seatNumber)
+    {
+        return CurrentBets?.TryGetValue(seatNumber, out var bet) == true ? bet : 0;
+    }
+
+    private bool IsNewBet(int seatNumber)
+    {
+        return NewBetSeats.Contains(seatNumber);
+    }
+
+    private string? GetLastAction(int seatNumber)
+    {
+        return LastActions?.TryGetValue(seatNumber, out var action) == true ? action : null;
+    }
+
+    private BlindTypeDto GetBlindType(int seatNumber)
+    {
+        return BlindTypes?.TryGetValue(seatNumber, out var blind) == true ? blind : BlindTypeDto.None;
+    }
+
+    private string? GetStatusText(int seatNumber)
+    {
+        return StatusTexts?.TryGetValue(seatNumber, out var status) == true ? status : null;
+    }
+
+    private string GetStatusClass(int seatNumber)
+    {
+        var status = GetStatusText(seatNumber)?.ToLowerInvariant();
+        return status switch
+        {
+            "sitting out" or "away" => "sitting-out",
+            "disconnected" => "disconnected",
+            _ => ""
+        };
+    }
+
+    private bool ShouldShowCards(int seatNumber)
+    {
+        // Always show hero's cards
+        if (seatNumber == HeroSeat) return true;
+        
+        // Show if explicitly in visible set
+        if (VisibleCardSeats?.Contains(seatNumber) == true) return true;
+        
+        return false;
+    }
+
+    private string? GetDealerName()
+    {
+        var player = GetPlayerAtSeat(DealerSeat);
+        return player?.Name;
+    }
+
+    private string GetPotLabel()
+    {
+        if (Pots != null && Pots.Count > 1)
+        {
+            return "Main Pot";
+        }
+        return "Pot";
+    }
+
+    private string GetTableSizeClass()
+    {
+        if (IsCompact) return "compact";
+        if (TotalSeats >= 9) return "large";
+        return "";
+    }
+
+    private string GetResponsiveClass()
+    {
+        return ResponsiveMode.ToLowerInvariant() switch
+        {
+            "mobile" => "responsive-mobile",
+            "tablet" => "responsive-tablet",
+            "desktop" => "responsive-desktop",
+            _ => ""
+        };
+    }
+
+    private string GetCustomStyle()
+    {
+        if (string.IsNullOrEmpty(FeltColor)) return "";
+        return $"--felt-color: {FeltColor};";
+    }
+
+    private string GetFeltStyle()
+    {
+        if (string.IsNullOrEmpty(FeltColor)) return "";
+        return $"background: linear-gradient(145deg, {FeltColor} 0%, {FeltColor}88 100%);";
+    }
+}

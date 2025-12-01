@@ -5,6 +5,9 @@ namespace CardGames.Poker.Shared.Enums;
 /// </summary>
 public enum BlindTypeDto
 {
+    /// <summary>No blind.</summary>
+    None,
+
     /// <summary>Small blind.</summary>
     SmallBlind,
 
