@@ -1,0 +1,647 @@
+@using CardGames.Poker.Shared.DTOs
+@using CardGames.Poker.Shared.Enums
+
+<div class="table-settings @(IsOpen ? "open" : "")">
+    <button class="settings-toggle" @onclick="ToggleSettings" title="Table Settings">
+        <span class="settings-icon">⚙️</span>
+    </button>
+
+    @if (IsOpen)
+    {
+        <div class="settings-panel">
+            <div class="settings-header">
+                <h4>Table Settings</h4>
+                <button class="close-btn" @onclick="CloseSettings">×</button>
+            </div>
+
+            <div class="settings-content">
+                @* Theme Selection *@
+                <div class="setting-group">
+                    <label class="setting-label">Table Theme</label>
+                    <div class="theme-options">
+                        <button class="theme-option @(SelectedTheme == "default" ? "active" : "")"
+                                style="--preview-color: #0d4a2e"
+                                @onclick="@(() => SelectTheme(ThemeDefault))"
+                                title="Classic Green">
+                            <span class="theme-preview"></span>
+                            <span class="theme-name">Classic</span>
+                        </button>
+                        <button class="theme-option @(SelectedTheme == "theme-dark" ? "active" : "")"
+                                style="--preview-color: #1a2a1a"
+                                @onclick="@(() => SelectTheme(ThemeDark))"
+                                title="Dark Green">
+                            <span class="theme-preview"></span>
+                            <span class="theme-name">Dark</span>
+                        </button>
+                        <button class="theme-option @(SelectedTheme == "theme-blue" ? "active" : "")"
+                                style="--preview-color: #1a3a5c"
+                                @onclick="@(() => SelectTheme(ThemeBlue))"
+                                title="Blue">
+                            <span class="theme-preview"></span>
+                            <span class="theme-name">Blue</span>
+                        </button>
+                        <button class="theme-option @(SelectedTheme == "theme-red" ? "active" : "")"
+                                style="--preview-color: #5c1a1a"
+                                @onclick="@(() => SelectTheme(ThemeRed))"
+                                title="Red">
+                            <span class="theme-preview"></span>
+                            <span class="theme-name">Red</span>
+                        </button>
+                    </div>
+                </div>
+
+                @* Display Options *@
+                <div class="setting-group">
+                    <label class="setting-label">Display</label>
+                    <div class="toggle-options">
+                        <label class="toggle-option">
+                            <input type="checkbox" @bind="ShowAvatars" @bind:after="OnDisplaySettingChanged" />
+                            <span class="toggle-slider"></span>
+                            <span class="toggle-label">Show Avatars</span>
+                        </label>
+                        <label class="toggle-option">
+                            <input type="checkbox" @bind="ShowDealerButton" @bind:after="OnDisplaySettingChanged" />
+                            <span class="toggle-slider"></span>
+                            <span class="toggle-label">Show Dealer Button</span>
+                        </label>
+                        <label class="toggle-option">
+                            <input type="checkbox" @bind="ShowAnimations" @bind:after="OnDisplaySettingChanged" />
+                            <span class="toggle-slider"></span>
+                            <span class="toggle-label">Show Animations</span>
+                        </label>
+                        <label class="toggle-option">
+                            <input type="checkbox" @bind="CompactMode" @bind:after="OnDisplaySettingChanged" />
+                            <span class="toggle-slider"></span>
+                            <span class="toggle-label">Compact Mode</span>
+                        </label>
+                    </div>
+                </div>
+
+                @* Sound Settings *@
+                <div class="setting-group">
+                    <label class="setting-label">Sound</label>
+                    <div class="toggle-options">
+                        <label class="toggle-option">
+                            <input type="checkbox" @bind="SoundEnabled" @bind:after="OnSoundSettingChanged" />
+                            <span class="toggle-slider"></span>
+                            <span class="toggle-label">Enable Sounds</span>
+                        </label>
+                    </div>
+                    @if (SoundEnabled)
+                    {
+                        <div class="volume-slider">
+                            <label>Volume: @MasterVolume%</label>
+                            <input type="range" min="0" max="100" @bind="MasterVolume" @bind:after="OnVolumeChanged" />
+                        </div>
+                        <div class="toggle-options">
+                            <label class="toggle-option">
+                                <input type="checkbox" @bind="ActionSounds" @bind:after="OnSoundSettingChanged" />
+                                <span class="toggle-slider"></span>
+                                <span class="toggle-label">Action Sounds</span>
+                            </label>
+                            <label class="toggle-option">
+                                <input type="checkbox" @bind="TurnNotifications" @bind:after="OnSoundSettingChanged" />
+                                <span class="toggle-slider"></span>
+                                <span class="toggle-label">Turn Notifications</span>
+                            </label>
+                            <label class="toggle-option">
+                                <input type="checkbox" @bind="WinSounds" @bind:after="OnSoundSettingChanged" />
+                                <span class="toggle-slider"></span>
+                                <span class="toggle-label">Win Sounds</span>
+                            </label>
+                        </div>
+                    }
+                </div>
+
+                @* Timer Settings *@
+                <div class="setting-group">
+                    <label class="setting-label">Timer</label>
+                    <div class="toggle-options">
+                        <label class="toggle-option">
+                            <input type="checkbox" @bind="ShowTimeBank" @bind:after="OnDisplaySettingChanged" />
+                            <span class="toggle-slider"></span>
+                            <span class="toggle-label">Show Time Bank</span>
+                        </label>
+                        <label class="toggle-option">
+                            <input type="checkbox" @bind="AutoFoldOnTimeout" @bind:after="OnDisplaySettingChanged" />
+                            <span class="toggle-slider"></span>
+                            <span class="toggle-label">Auto-Fold on Timeout</span>
+                        </label>
+                    </div>
+                </div>
+
+                @* Card Back Selection *@
+                <div class="setting-group">
+                    <label class="setting-label">Card Back</label>
+                    <div class="card-back-options">
+                        @foreach (var cardBack in CardBackOptions)
+                        {
+                            <button class="card-back-option @(SelectedCardBack == cardBack.Id ? "active" : "")"
+                                    @onclick="() => SelectCardBack(cardBack.Id)"
+                                    title="@cardBack.Name">
+                                <div class="card-back-preview" style="@cardBack.PreviewStyle"></div>
+                            </button>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-footer">
+                <button class="btn-reset" @onclick="ResetToDefaults">Reset to Defaults</button>
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .table-settings {
+        position: fixed;
+        bottom: 1rem;
+        right: 1rem;
+        z-index: 1000;
+    }
+
+    .settings-toggle {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        border: none;
+        background: linear-gradient(145deg, #333, #222);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+    }
+
+    .settings-toggle:hover {
+        transform: scale(1.1);
+        background: linear-gradient(145deg, #444, #333);
+    }
+
+    .settings-icon {
+        font-size: 1.5rem;
+    }
+
+    .table-settings.open .settings-toggle {
+        transform: rotate(90deg);
+    }
+
+    .settings-panel {
+        position: absolute;
+        bottom: 60px;
+        right: 0;
+        width: 320px;
+        max-height: 500px;
+        background: #1a1a1a;
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        border: 1px solid #333;
+        overflow: hidden;
+        animation: slideUp 0.3s ease-out;
+    }
+
+    @@keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .settings-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem;
+        border-bottom: 1px solid #333;
+        background: #222;
+    }
+
+    .settings-header h4 {
+        margin: 0;
+        color: #d4af37;
+        font-size: 1rem;
+    }
+
+    .close-btn {
+        background: none;
+        border: none;
+        color: #888;
+        font-size: 1.5rem;
+        cursor: pointer;
+        padding: 0;
+        line-height: 1;
+    }
+
+    .close-btn:hover {
+        color: white;
+    }
+
+    .settings-content {
+        padding: 1rem;
+        max-height: 380px;
+        overflow-y: auto;
+    }
+
+    .setting-group {
+        margin-bottom: 1.25rem;
+    }
+
+    .setting-group:last-child {
+        margin-bottom: 0;
+    }
+
+    .setting-label {
+        display: block;
+        color: #888;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Theme options */
+    .theme-options {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .theme-option {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.5rem;
+        border: 2px solid transparent;
+        border-radius: 8px;
+        background: #2a2a2a;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .theme-option:hover {
+        border-color: #444;
+    }
+
+    .theme-option.active {
+        border-color: #d4af37;
+    }
+
+    .theme-preview {
+        width: 40px;
+        height: 25px;
+        border-radius: 50%;
+        background-color: var(--preview-color);
+        border: 2px solid #3d2817;
+    }
+
+    .theme-name {
+        font-size: 0.65rem;
+        color: #aaa;
+    }
+
+    /* Toggle options */
+    .toggle-options {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .toggle-option {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        cursor: pointer;
+    }
+
+    .toggle-option input[type="checkbox"] {
+        display: none;
+    }
+
+    .toggle-slider {
+        width: 36px;
+        height: 20px;
+        background: #444;
+        border-radius: 10px;
+        position: relative;
+        transition: background 0.2s ease;
+    }
+
+    .toggle-slider::before {
+        content: '';
+        position: absolute;
+        width: 16px;
+        height: 16px;
+        background: white;
+        border-radius: 50%;
+        top: 2px;
+        left: 2px;
+        transition: transform 0.2s ease;
+    }
+
+    .toggle-option input:checked + .toggle-slider {
+        background: #4caf50;
+    }
+
+    .toggle-option input:checked + .toggle-slider::before {
+        transform: translateX(16px);
+    }
+
+    .toggle-label {
+        color: #ccc;
+        font-size: 0.85rem;
+    }
+
+    /* Volume slider */
+    .volume-slider {
+        margin: 0.75rem 0;
+    }
+
+    .volume-slider label {
+        display: block;
+        color: #888;
+        font-size: 0.75rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .volume-slider input[type="range"] {
+        width: 100%;
+        height: 4px;
+        background: #444;
+        border-radius: 2px;
+        -webkit-appearance: none;
+    }
+
+    .volume-slider input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 16px;
+        height: 16px;
+        background: #d4af37;
+        border-radius: 50%;
+        cursor: pointer;
+    }
+
+    /* Card back options */
+    .card-back-options {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .card-back-option {
+        width: 50px;
+        height: 70px;
+        border: 2px solid transparent;
+        border-radius: 6px;
+        overflow: hidden;
+        cursor: pointer;
+        padding: 0;
+        background: none;
+    }
+
+    .card-back-option:hover {
+        border-color: #444;
+    }
+
+    .card-back-option.active {
+        border-color: #d4af37;
+    }
+
+    .card-back-preview {
+        width: 100%;
+        height: 100%;
+        border-radius: 4px;
+    }
+
+    /* Footer */
+    .settings-footer {
+        padding: 0.75rem 1rem;
+        border-top: 1px solid #333;
+        background: #222;
+    }
+
+    .btn-reset {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid #666;
+        border-radius: 6px;
+        background: transparent;
+        color: #888;
+        cursor: pointer;
+        font-size: 0.8rem;
+        transition: all 0.2s ease;
+    }
+
+    .btn-reset:hover {
+        background: #333;
+        color: white;
+        border-color: #888;
+    }
+
+    /* Responsive */
+    @@media (max-width: 400px) {
+        .settings-panel {
+            width: 280px;
+            right: -0.5rem;
+        }
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// Whether the settings panel is open.
+    /// </summary>
+    [Parameter]
+    public bool IsOpen { get; set; }
+
+    /// <summary>
+    /// Selected theme.
+    /// </summary>
+    [Parameter]
+    public string SelectedTheme { get; set; } = "default";
+
+    /// <summary>
+    /// Whether to show avatars.
+    /// </summary>
+    [Parameter]
+    public bool ShowAvatars { get; set; } = true;
+
+    /// <summary>
+    /// Whether to show dealer button.
+    /// </summary>
+    [Parameter]
+    public bool ShowDealerButton { get; set; } = true;
+
+    /// <summary>
+    /// Whether to show animations.
+    /// </summary>
+    [Parameter]
+    public bool ShowAnimations { get; set; } = true;
+
+    /// <summary>
+    /// Whether compact mode is enabled.
+    /// </summary>
+    [Parameter]
+    public bool CompactMode { get; set; }
+
+    /// <summary>
+    /// Whether to show time bank.
+    /// </summary>
+    [Parameter]
+    public bool ShowTimeBank { get; set; } = true;
+
+    /// <summary>
+    /// Whether to auto-fold on timeout.
+    /// </summary>
+    [Parameter]
+    public bool AutoFoldOnTimeout { get; set; }
+
+    /// <summary>
+    /// Whether sound is enabled.
+    /// </summary>
+    [Parameter]
+    public bool SoundEnabled { get; set; } = true;
+
+    /// <summary>
+    /// Master volume (0-100).
+    /// </summary>
+    [Parameter]
+    public int MasterVolume { get; set; } = 75;
+
+    /// <summary>
+    /// Whether action sounds are enabled.
+    /// </summary>
+    [Parameter]
+    public bool ActionSounds { get; set; } = true;
+
+    /// <summary>
+    /// Whether turn notifications are enabled.
+    /// </summary>
+    [Parameter]
+    public bool TurnNotifications { get; set; } = true;
+
+    /// <summary>
+    /// Whether win sounds are enabled.
+    /// </summary>
+    [Parameter]
+    public bool WinSounds { get; set; } = true;
+
+    /// <summary>
+    /// Selected card back ID.
+    /// </summary>
+    [Parameter]
+    public string SelectedCardBack { get; set; } = "classic";
+
+    /// <summary>
+    /// Callback when settings change.
+    /// </summary>
+    [Parameter]
+    public EventCallback<TableSettingsState> OnSettingsChanged { get; set; }
+
+    /// <summary>
+    /// Callback when panel is toggled.
+    /// </summary>
+    [Parameter]
+    public EventCallback<bool> IsOpenChanged { get; set; }
+
+    // Theme constants
+    private const string ThemeDefault = "default";
+    private const string ThemeDark = "theme-dark";
+    private const string ThemeBlue = "theme-blue";
+    private const string ThemeRed = "theme-red";
+
+    private static readonly List<CardBackOption> CardBackOptions = new()
+    {
+        new("classic", "Classic", "background: linear-gradient(135deg, #2c3e50 0%, #1a252f 100%);"),
+        new("red", "Red", "background: linear-gradient(135deg, #8b0000 0%, #4a0000 100%);"),
+        new("blue", "Blue", "background: linear-gradient(135deg, #1a3a5c 0%, #0a1a2c 100%);"),
+        new("gold", "Gold", "background: linear-gradient(135deg, #d4af37 0%, #8b7020 100%);"),
+    };
+
+    private void ToggleSettings()
+    {
+        IsOpen = !IsOpen;
+        IsOpenChanged.InvokeAsync(IsOpen);
+    }
+
+    private void CloseSettings()
+    {
+        IsOpen = false;
+        IsOpenChanged.InvokeAsync(false);
+    }
+
+    private void SelectTheme(string theme)
+    {
+        SelectedTheme = theme;
+        NotifySettingsChanged();
+    }
+
+    private void SelectCardBack(string cardBackId)
+    {
+        SelectedCardBack = cardBackId;
+        NotifySettingsChanged();
+    }
+
+    private void OnDisplaySettingChanged()
+    {
+        NotifySettingsChanged();
+    }
+
+    private void OnSoundSettingChanged()
+    {
+        NotifySettingsChanged();
+    }
+
+    private void OnVolumeChanged()
+    {
+        NotifySettingsChanged();
+    }
+
+    private void ResetToDefaults()
+    {
+        SelectedTheme = "default";
+        ShowAvatars = true;
+        ShowDealerButton = true;
+        ShowAnimations = true;
+        CompactMode = false;
+        ShowTimeBank = true;
+        AutoFoldOnTimeout = false;
+        SoundEnabled = true;
+        MasterVolume = 75;
+        ActionSounds = true;
+        TurnNotifications = true;
+        WinSounds = true;
+        SelectedCardBack = "classic";
+        
+        NotifySettingsChanged();
+    }
+
+    private void NotifySettingsChanged()
+    {
+        var state = new TableSettingsState(
+            SelectedTheme,
+            ShowAvatars,
+            ShowDealerButton,
+            ShowAnimations,
+            CompactMode,
+            ShowTimeBank,
+            AutoFoldOnTimeout,
+            SoundEnabled,
+            MasterVolume,
+            ActionSounds,
+            TurnNotifications,
+            WinSounds,
+            SelectedCardBack
+        );
+
+        OnSettingsChanged.InvokeAsync(state);
+    }
+
+    private record CardBackOption(string Id, string Name, string PreviewStyle);
+}

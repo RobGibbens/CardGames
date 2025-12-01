@@ -1,0 +1,403 @@
+@page "/table-demo"
+@using CardGames.Poker.Shared.DTOs
+@using CardGames.Poker.Shared.Enums
+@using CardGames.Poker.Web.Utilities
+@rendermode InteractiveServer
+
+<PageTitle>Poker Table Demo - CardGames</PageTitle>
+
+<div class="demo-container">
+    <div class="demo-header">
+        <h1>Poker Table UI Demo</h1>
+        <p>Feature 10: Table UI Layout & Responsive Design</p>
+    </div>
+
+    <div class="demo-controls">
+        <div class="control-group">
+            <label>Player Count:</label>
+            <select @bind="_playerCount">
+                @for (int i = 2; i <= 10; i++)
+                {
+                    <option value="@i">@i Players</option>
+                }
+            </select>
+        </div>
+        <div class="control-group">
+            <label>Theme:</label>
+            <select @bind="_theme">
+                <option value="">Classic Green</option>
+                <option value="theme-dark">Dark</option>
+                <option value="theme-blue">Blue</option>
+                <option value="theme-red">Red</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label>
+                <input type="checkbox" @bind="_showAnimations" />
+                Show Animations
+            </label>
+        </div>
+        <div class="control-group">
+            <label>
+                <input type="checkbox" @bind="_compactMode" />
+                Compact Mode
+            </label>
+        </div>
+    </div>
+
+    <div class="table-demo-area">
+        <PokerTable TableName="Demo Table"
+                    VariantName="Texas Hold'em"
+                    SmallBlind="5"
+                    BigBlind="10"
+                    TotalSeats="@_playerCount"
+                    Players="@_players"
+                    SeatAssignments="@_seatAssignments"
+                    CommunityCards="@_communityCards"
+                    Pot="@_pot"
+                    CurrentPlayerSeat="@_currentPlayerSeat"
+                    DealerSeat="@_dealerSeat"
+                    HeroSeat="1"
+                    FoldedSeats="@_foldedSeats"
+                    AllInSeats="@_allInSeats"
+                    WinnerSeats="@_winnerSeats"
+                    CurrentBets="@_currentBets"
+                    LastActions="@_lastActions"
+                    BlindTypes="@_blindTypes"
+                    HoleCardCount="2"
+                    VisibleCardSeats="@_visibleCardSeats"
+                    SecondsRemaining="@_secondsRemaining"
+                    TotalTurnTime="30"
+                    ThemeClass="@_theme"
+                    ShowDealAnimations="@_showAnimations"
+                    IsCompact="@_compactMode" />
+    </div>
+
+    <TableSettings IsOpen="@_settingsOpen"
+                   IsOpenChanged="@(v => _settingsOpen = v)"
+                   SelectedTheme="@_theme"
+                   ShowAvatars="true"
+                   ShowDealerButton="true"
+                   ShowAnimations="@_showAnimations"
+                   CompactMode="@_compactMode"
+                   OnSettingsChanged="@HandleSettingsChanged" />
+
+    <div class="demo-actions">
+        <button class="btn-action" @onclick="DealCards">Deal Cards</button>
+        <button class="btn-action" @onclick="DealFlop">Deal Flop</button>
+        <button class="btn-action" @onclick="DealTurn">Deal Turn</button>
+        <button class="btn-action" @onclick="DealRiver">Deal River</button>
+        <button class="btn-action" @onclick="SimulateBet">Simulate Bet</button>
+        <button class="btn-action" @onclick="AdvanceAction">Advance Turn</button>
+        <button class="btn-action" @onclick="SimulateFold">Simulate Fold</button>
+        <button class="btn-action" @onclick="SimulateWinner">Show Winner</button>
+        <button class="btn-action btn-reset" @onclick="Reset">Reset</button>
+    </div>
+</div>
+
+<style>
+    .demo-container {
+        min-height: 100vh;
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        padding: 1rem;
+    }
+
+    .demo-header {
+        text-align: center;
+        color: white;
+        margin-bottom: 1rem;
+    }
+
+    .demo-header h1 {
+        color: #d4af37;
+        margin: 0;
+    }
+
+    .demo-header p {
+        opacity: 0.7;
+        margin: 0.5rem 0 0;
+    }
+
+    .demo-controls {
+        display: flex;
+        justify-content: center;
+        gap: 1.5rem;
+        flex-wrap: wrap;
+        margin-bottom: 1rem;
+        padding: 1rem;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 8px;
+    }
+
+    .control-group {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: white;
+    }
+
+    .control-group select {
+        padding: 0.5rem;
+        border-radius: 4px;
+        border: 1px solid #444;
+        background: #2a2a2a;
+        color: white;
+    }
+
+    .table-demo-area {
+        height: 60vh;
+        min-height: 400px;
+        background: #0a0a0a;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .demo-actions {
+        display: flex;
+        justify-content: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        margin-top: 1rem;
+        padding: 1rem;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 8px;
+    }
+
+    .btn-action {
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 6px;
+        background: linear-gradient(145deg, #4caf50, #388e3c);
+        color: white;
+        cursor: pointer;
+        font-weight: bold;
+        transition: all 0.2s ease;
+    }
+
+    .btn-action:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+    }
+
+    .btn-action.btn-reset {
+        background: linear-gradient(145deg, #f44336, #c62828);
+    }
+
+    .btn-action.btn-reset:hover {
+        box-shadow: 0 4px 12px rgba(244, 67, 54, 0.4);
+    }
+</style>
+
+@code {
+    private int _playerCount = 6;
+    private string _theme = "";
+    private bool _showAnimations = true;
+    private bool _compactMode = false;
+    private bool _settingsOpen = false;
+
+    private List<PlayerDto> _players = new();
+    private Dictionary<int, PlayerDto> _seatAssignments = new();
+    private List<CardDto> _communityCards = new();
+    private int _pot = 0;
+    private int _currentPlayerSeat = 1;
+    private int _dealerSeat = 1;
+    private HashSet<int> _foldedSeats = new();
+    private HashSet<int> _allInSeats = new();
+    private HashSet<int> _winnerSeats = new();
+    private Dictionary<int, int> _currentBets = new();
+    private Dictionary<int, string> _lastActions = new();
+    private Dictionary<int, BlindTypeDto> _blindTypes = new();
+    private HashSet<int> _visibleCardSeats = new() { 1 };
+    private int _secondsRemaining = 25;
+
+    private readonly string[] _playerNames = { "Hero", "Alice", "Bob", "Charlie", "Diana", "Eve", "Frank", "Grace", "Henry", "Ivy" };
+
+    protected override void OnInitialized()
+    {
+        InitializePlayers();
+    }
+
+    private void InitializePlayers()
+    {
+        _players.Clear();
+        _seatAssignments.Clear();
+        
+        for (int i = 0; i < _playerCount; i++)
+        {
+            var holeCards = i == 0 ? new List<CardDto>
+            {
+                CreateCard("A", "Spades"),
+                CreateCard("K", "Spades")
+            } : null;
+            
+            var player = new PlayerDto(
+                Name: _playerNames[i],
+                HoleCards: holeCards,
+                ChipStack: 1000 + (i * 100)
+            );
+            
+            _players.Add(player);
+            _seatAssignments[i + 1] = player;
+        }
+
+        // Set blinds
+        _blindTypes.Clear();
+        if (_playerCount >= 2)
+        {
+            _blindTypes[2] = BlindTypeDto.SmallBlind;
+        }
+        if (_playerCount >= 3)
+        {
+            _blindTypes[3] = BlindTypeDto.BigBlind;
+        }
+        else if (_playerCount == 2)
+        {
+            _blindTypes[1] = BlindTypeDto.BigBlind;
+        }
+
+        StateHasChanged();
+    }
+
+    private void DealCards()
+    {
+        // Update hero cards
+        var heroCards = new List<CardDto>
+        {
+            CreateCard("A", "Spades"),
+            CreateCard("K", "Spades")
+        };
+
+        _players[0] = _players[0] with { HoleCards = heroCards };
+        _seatAssignments[1] = _players[0];
+        _visibleCardSeats = new HashSet<int> { 1 };
+        
+        // Post blinds
+        _currentBets[2] = 5;
+        _currentBets[3] = 10;
+        _pot = 15;
+        _currentPlayerSeat = _playerCount >= 4 ? 4 : 1;
+        
+        StateHasChanged();
+    }
+
+    private void DealFlop()
+    {
+        _communityCards = new List<CardDto>
+        {
+            CreateCard("A", "Hearts"),
+            CreateCard("K", "Diamonds"),
+            CreateCard("Q", "Clubs")
+        };
+        _currentBets.Clear();
+        _currentPlayerSeat = 2;
+        StateHasChanged();
+    }
+
+    private void DealTurn()
+    {
+        if (_communityCards.Count < 3) DealFlop();
+        
+        if (_communityCards.Count == 3)
+        {
+            _communityCards = new List<CardDto>(_communityCards)
+            {
+                CreateCard("J", "Spades")
+            };
+        }
+        StateHasChanged();
+    }
+
+    private void DealRiver()
+    {
+        if (_communityCards.Count < 4) DealTurn();
+        
+        if (_communityCards.Count == 4)
+        {
+            _communityCards = new List<CardDto>(_communityCards)
+            {
+                CreateCard("10", "Hearts")
+            };
+        }
+        StateHasChanged();
+    }
+
+    private void SimulateBet()
+    {
+        var bet = 20;
+        _currentBets[_currentPlayerSeat] = bet;
+        _lastActions[_currentPlayerSeat] = "Bet";
+        _pot += bet;
+        AdvanceAction();
+    }
+
+    private void AdvanceAction()
+    {
+        var nextSeat = _currentPlayerSeat;
+        do
+        {
+            nextSeat = (nextSeat % _playerCount) + 1;
+        } while (_foldedSeats.Contains(nextSeat) && nextSeat != _currentPlayerSeat);
+        
+        _currentPlayerSeat = nextSeat;
+        _secondsRemaining = 25;
+        StateHasChanged();
+    }
+
+    private void SimulateFold()
+    {
+        _foldedSeats.Add(_currentPlayerSeat);
+        _lastActions[_currentPlayerSeat] = "Fold";
+        AdvanceAction();
+    }
+
+    private void SimulateWinner()
+    {
+        _winnerSeats = new HashSet<int> { 1 };
+        _visibleCardSeats = new HashSet<int>();
+        for (int i = 1; i <= _playerCount; i++)
+        {
+            if (!_foldedSeats.Contains(i))
+            {
+                _visibleCardSeats.Add(i);
+            }
+        }
+        StateHasChanged();
+    }
+
+    private void Reset()
+    {
+        _communityCards.Clear();
+        _pot = 0;
+        _currentPlayerSeat = 1;
+        _foldedSeats.Clear();
+        _allInSeats.Clear();
+        _winnerSeats.Clear();
+        _currentBets.Clear();
+        _lastActions.Clear();
+        _visibleCardSeats = new HashSet<int> { 1 };
+        _secondsRemaining = 25;
+        
+        InitializePlayers();
+    }
+
+    private void HandleSettingsChanged(TableSettingsState settings)
+    {
+        _theme = settings.Theme;
+        _showAnimations = settings.ShowAnimations;
+        _compactMode = settings.CompactMode;
+        StateHasChanged();
+    }
+
+    private static CardDto CreateCard(string rank, string suit)
+    {
+        var suitSymbol = suit.ToLowerInvariant() switch
+        {
+            "hearts" => "♥",
+            "diamonds" => "♦",
+            "clubs" => "♣",
+            "spades" => "♠",
+            _ => suit[..1]
+        };
+        return new CardDto(rank, suit, $"{rank}{suitSymbol}");
+    }
+}
