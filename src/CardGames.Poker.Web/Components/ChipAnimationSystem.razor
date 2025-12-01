@@ -207,11 +207,7 @@
             );
 
             // Stagger the animations slightly
-            _ = Task.Run(async () =>
-            {
-                await Task.Delay(delay);
-                await InvokeAsync(() => AnimateChipMovementAsync(movement));
-            });
+            _ = ScheduleAnimationWithDelayAsync(movement, delay);
 
             delay += 100;
         }
@@ -242,11 +238,7 @@
                 600
             );
 
-            _ = Task.Run(async () =>
-            {
-                await Task.Delay(delay);
-                await InvokeAsync(() => AnimateChipMovementAsync(movement));
-            });
+            _ = ScheduleAnimationWithDelayAsync(movement, delay);
 
             delay += 150;
         }
@@ -264,6 +256,27 @@
         animationTimers.Clear();
         activeAnimations.Clear();
         StateHasChanged();
+    }
+
+    /// <summary>
+    /// Schedules an animation to run after a delay with proper exception handling.
+    /// </summary>
+    private async Task ScheduleAnimationWithDelayAsync(ChipMovementEvent movement, int delayMs)
+    {
+        try
+        {
+            await Task.Delay(delayMs);
+            await InvokeAsync(() => AnimateChipMovementAsync(movement));
+        }
+        catch (ObjectDisposedException)
+        {
+            // Component was disposed during animation delay - this is expected during cleanup
+        }
+        catch (Exception ex)
+        {
+            // Log the exception in a production environment
+            Console.WriteLine($"Chip animation error: {ex.Message}");
+        }
     }
 
     private async Task StartAnimationSequenceAsync(ChipAnimationState animation)
