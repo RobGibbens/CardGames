@@ -301,6 +301,92 @@ public record ShowdownRevealDto(
     HandDto? Hand,
     int? RevealOrder);
 
+/// <summary>
+/// Event raised when a winner is determined and announced.
+/// </summary>
+public record WinnerAnnouncementEvent(
+    Guid GameId,
+    DateTime Timestamp,
+    Guid ShowdownId,
+    int HandNumber,
+    IReadOnlyList<WinnerDetailDto> Winners,
+    int TotalPotDistributed,
+    bool IsSplitPot,
+    bool WonByFold,
+    string Summary) : GameEvent(GameId, Timestamp);
+
+/// <summary>
+/// DTO for winner details in winner announcement events.
+/// </summary>
+public record WinnerDetailDto(
+    string PlayerName,
+    HandDto? Hand,
+    IReadOnlyList<CardDto>? WinningCards,
+    IReadOnlyList<CardDto>? HoleCards,
+    int AmountWon,
+    bool IsTie,
+    int PotIndex);
+
+/// <summary>
+/// Event raised when an all-in showdown board run-out begins.
+/// </summary>
+public record AllInBoardRunOutStartedEvent(
+    Guid GameId,
+    DateTime Timestamp,
+    Guid ShowdownId,
+    int HandNumber,
+    IReadOnlyList<string> AllInPlayers,
+    IReadOnlyList<CardDto> CurrentCommunityCards,
+    int RemainingCardsToReveal) : GameEvent(GameId, Timestamp);
+
+/// <summary>
+/// Event raised when community cards are revealed during all-in run-out.
+/// </summary>
+public record AllInBoardCardRevealedEvent(
+    Guid GameId,
+    DateTime Timestamp,
+    Guid ShowdownId,
+    CardDto Card,
+    IReadOnlyList<CardDto> AllCommunityCards,
+    string StreetName,
+    int Sequence) : GameEvent(GameId, Timestamp);
+
+/// <summary>
+/// Event raised when a player's hand is automatically revealed (winner, all-in, etc.).
+/// </summary>
+public record AutoRevealEvent(
+    Guid GameId,
+    DateTime Timestamp,
+    Guid ShowdownId,
+    string PlayerName,
+    IReadOnlyList<CardDto> Cards,
+    HandDto Hand,
+    string Reason) : GameEvent(GameId, Timestamp);
+
+/// <summary>
+/// Event raised when a showdown animation sequence is ready for playback.
+/// </summary>
+public record ShowdownAnimationReadyEvent(
+    Guid GameId,
+    DateTime Timestamp,
+    Guid AnimationId,
+    Guid ShowdownId,
+    IReadOnlyList<ShowdownAnimationStepEventDto> Steps,
+    int TotalDurationMs) : GameEvent(GameId, Timestamp);
+
+/// <summary>
+/// DTO for animation steps included in showdown animation events.
+/// </summary>
+public record ShowdownAnimationStepEventDto(
+    string AnimationType,
+    int Sequence,
+    string? PlayerName,
+    IReadOnlyList<CardDto>? Cards,
+    HandDto? Hand,
+    int? Amount,
+    int DurationMs,
+    string? Message);
+
 #region Seat Events
 
 /// <summary>

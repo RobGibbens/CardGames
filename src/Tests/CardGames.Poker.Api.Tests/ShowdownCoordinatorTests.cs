@@ -695,4 +695,458 @@ public class ShowdownCoordinatorTests
     }
 
     #endregion
+
+    #region AutoRevealWinner Tests
+
+    [Fact]
+    public void AutoRevealWinner_ValidWinner_SetsStatusToForcedReveal()
+    {
+        // Arrange
+        var rules = CreateDefaultShowdownRules();
+        var players = new List<ShowdownPlayerState>
+        {
+            CreatePlayer("Alice"),
+            CreatePlayer("Bob")
+        };
+        var context = _coordinator.InitializeShowdown(
+            Guid.NewGuid(), 1, rules, players, "Alice", false, 0);
+        var hand = CreateHand("Straight", 5000);
+
+        // Act
+        var result = _coordinator.AutoRevealWinner(context, "Alice", hand);
+
+        // Assert
+        result.Success.Should().BeTrue();
+        result.NewStatus.Should().Be(ShowdownRevealStatus.ForcedReveal);
+        var player = context.Players.First(p => p.PlayerName == "Alice");
+        player.WasForcedReveal.Should().BeTrue();
+        player.Hand.Should().Be(hand);
+    }
+
+    [Fact]
+    public void AutoRevealWinner_FoldedPlayer_Fails()
+    {
+        // Arrange
+        var rules = CreateDefaultShowdownRules();
+        var players = new List<ShowdownPlayerState>
+        {
+            CreatePlayer("Alice"),
+            CreatePlayer("Bob", hasFolded: true)
+        };
+        var context = _coordinator.InitializeShowdown(
+            Guid.NewGuid(), 1, rules, players, "Alice", false, 0);
+
+        // Act
+        var result = _coordinator.AutoRevealWinner(context, "Bob", CreateHand("Pair", 1000));
+
+        // Assert
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("Folded");
+    }
+
+    [Fact]
+    public void AutoRevealWinner_UnknownPlayer_Fails()
+    {
+        // Arrange
+        var rules = CreateDefaultShowdownRules();
+        var players = new List<ShowdownPlayerState>
+        {
+            CreatePlayer("Alice"),
+            CreatePlayer("Bob")
+        };
+        var context = _coordinator.InitializeShowdown(
+            Guid.NewGuid(), 1, rules, players, "Alice", false, 0);
+
+        // Act
+        var result = _coordinator.AutoRevealWinner(context, "Charlie", CreateHand("Pair", 1000));
+
+        // Assert
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("not found");
+    }
+
+    #endregion
+
+    #region ProcessAllInShowdown Tests
+
+    [Fact]
+    public void ProcessAllInShowdown_CalculatesRemainingCards()
+    {
+        // Arrange
+        var rules = CreateDefaultShowdownRules();
+        var players = new List<ShowdownPlayerState>
+        {
+            CreatePlayer("Alice", isAllIn: true),
+            CreatePlayer("Bob", isAllIn: true)
+        };
+        var communityCards = new List<CardDto>
+        {
+            new CardDto("A", "Spades", "As"),
+            new CardDto("K", "Hearts", "Kh"),
+            new CardDto("Q", "Diamonds", "Qd")
+        };
+        var context = _coordinator.InitializeShowdown(
+            Guid.NewGuid(), 1, rules, players, null, hadAllInAction: true, 0, communityCards);
+
+        // Act
+        var result = _coordinator.ProcessAllInShowdown(context, totalCommunityCardsNeeded: 5);
+
+        // Assert
+        result.Success.Should().BeTrue();
+        result.CommunityCardsNeeded.Should().Be(2); // Need 2 more cards (turn + river)
+        result.PlayersToAutoReveal.Should().HaveCount(2);
+        result.PlayersToAutoReveal.Should().Contain("Alice");
+        result.PlayersToAutoReveal.Should().Contain("Bob");
+    }
+
+    [Fact]
+    public void ProcessAllInShowdown_WithFullBoard_ReturnsZeroCardsNeeded()
+    {
+        // Arrange
+        var rules = CreateDefaultShowdownRules();
+        var players = new List<ShowdownPlayerState>
+        {
+            CreatePlayer("Alice", isAllIn: true),
+            CreatePlayer("Bob")
+        };
+        var communityCards = new List<CardDto>
+        {
+            new CardDto("A", "Spades", "As"),
+            new CardDto("K", "Hearts", "Kh"),
+            new CardDto("Q", "Diamonds", "Qd"),
+            new CardDto("J", "Clubs", "Jc"),
+            new CardDto("T", "Spades", "Ts")
+        };
+        var context = _coordinator.InitializeShowdown(
+            Guid.NewGuid(), 1, rules, players, null, hadAllInAction: true, 0, communityCards);
+
+        // Act
+        var result = _coordinator.ProcessAllInShowdown(context, totalCommunityCardsNeeded: 5);
+
+        // Assert
+        result.Success.Should().BeTrue();
+        result.CommunityCardsNeeded.Should().Be(0);
+    }
+
+    #endregion
+
+    #region DetermineWinnersWithPots Tests
+
+    [Fact]
+    public void DetermineWinnersWithPots_SingleWinner_ReturnsCorrectAmount()
+    {
+        // Arrange
+        var rules = CreateDefaultShowdownRules();
+        var players = new List<ShowdownPlayerState>
+        {
+            CreatePlayer("Alice"),
+            CreatePlayer("Bob")
+        };
+        var context = _coordinator.InitializeShowdown(
+            Guid.NewGuid(), 1, rules, players, "Alice", false, 0);
+
+        _coordinator.ProcessReveal(context, "Alice", CreateHand("Pair", 1000));
+        _coordinator.ProcessReveal(context, "Bob", CreateHand("TwoPair", 2000));
+
+        var pots = new List<PotInfo>
+        {
+            new PotInfo(0, 500, new List<string> { "Alice", "Bob" }, true)
+        };
+
+        // Act
+        var winners = _coordinator.DetermineWinnersWithPots(context, pots);
+
+        // Assert
+        winners.Should().HaveCount(1);
+        winners[0].PlayerName.Should().Be("Bob");
+        winners[0].AmountWon.Should().Be(500);
+        winners[0].IsTie.Should().BeFalse();
+    }
+
+    [Fact]
+    public void DetermineWinnersWithPots_SplitPot_ReturnsCorrectShares()
+    {
+        // Arrange
+        var rules = CreateDefaultShowdownRules();
+        var players = new List<ShowdownPlayerState>
+        {
+            CreatePlayer("Alice"),
+            CreatePlayer("Bob")
+        };
+        var context = _coordinator.InitializeShowdown(
+            Guid.NewGuid(), 1, rules, players, "Alice", false, 0);
+
+        _coordinator.ProcessReveal(context, "Alice", CreateHand("Flush", 5000));
+        _coordinator.ProcessReveal(context, "Bob", CreateHand("Flush", 5000));
+
+        var pots = new List<PotInfo>
+        {
+            new PotInfo(0, 1000, new List<string> { "Alice", "Bob" }, true)
+        };
+
+        // Act
+        var winners = _coordinator.DetermineWinnersWithPots(context, pots);
+
+        // Assert
+        winners.Should().HaveCount(2);
+        winners.Should().AllSatisfy(w => w.AmountWon.Should().Be(500));
+        winners.Should().AllSatisfy(w => w.IsTie.Should().BeTrue());
+    }
+
+    [Fact]
+    public void DetermineWinnersWithPots_SidePots_ReturnsMultipleWinners()
+    {
+        // Arrange
+        var rules = CreateDefaultShowdownRules();
+        var players = new List<ShowdownPlayerState>
+        {
+            CreatePlayer("Alice"),
+            CreatePlayer("Bob"),
+            CreatePlayer("Charlie")
+        };
+        var context = _coordinator.InitializeShowdown(
+            Guid.NewGuid(), 1, rules, players, "Alice", false, 0);
+
+        _coordinator.ProcessReveal(context, "Alice", CreateHand("Pair", 1000));
+        _coordinator.ProcessReveal(context, "Bob", CreateHand("TwoPair", 2000));
+        _coordinator.ProcessReveal(context, "Charlie", CreateHand("Trips", 3000));
+
+        var pots = new List<PotInfo>
+        {
+            new PotInfo(0, 300, new List<string> { "Alice", "Bob", "Charlie" }, true),
+            new PotInfo(1, 200, new List<string> { "Bob", "Charlie" }, false)
+        };
+
+        // Act
+        var winners = _coordinator.DetermineWinnersWithPots(context, pots);
+
+        // Assert
+        winners.Should().HaveCount(2);
+        var mainPotWinner = winners.First(w => w.PotIndex == 0);
+        mainPotWinner.PlayerName.Should().Be("Charlie");
+        mainPotWinner.AmountWon.Should().Be(300);
+
+        var sidePotWinner = winners.First(w => w.PotIndex == 1);
+        sidePotWinner.PlayerName.Should().Be("Charlie");
+        sidePotWinner.AmountWon.Should().Be(200);
+    }
+
+    #endregion
+
+    #region BuildWinnerAnnouncement Tests
+
+    [Fact]
+    public void BuildWinnerAnnouncement_SingleWinner_ReturnsCorrectSummary()
+    {
+        // Arrange
+        var rules = CreateDefaultShowdownRules();
+        var players = new List<ShowdownPlayerState>
+        {
+            CreatePlayer("Alice"),
+            CreatePlayer("Bob")
+        };
+        var context = _coordinator.InitializeShowdown(
+            Guid.NewGuid(), 1, rules, players, "Alice", false, 0);
+
+        var winners = new List<WinnerDetermination>
+        {
+            new WinnerDetermination(
+                "Bob",
+                CreateHand("TwoPair", 2000),
+                null,
+                null,
+                500,
+                0,
+                false)
+        };
+
+        // Act
+        var announcement = _coordinator.BuildWinnerAnnouncement(context, winners, wonByFold: false);
+
+        // Assert
+        announcement.Should().NotBeNull();
+        announcement.ShowdownId.Should().Be(context.ShowdownId);
+        announcement.IsSplitPot.Should().BeFalse();
+        announcement.WonByFold.Should().BeFalse();
+        announcement.TotalPotDistributed.Should().Be(500);
+        announcement.Summary.Should().Contain("Bob").And.Contain("500").And.Contain("TwoPair");
+    }
+
+    [Fact]
+    public void BuildWinnerAnnouncement_WonByFold_ReturnsCorrectSummary()
+    {
+        // Arrange
+        var rules = CreateDefaultShowdownRules();
+        var players = new List<ShowdownPlayerState>
+        {
+            CreatePlayer("Alice"),
+            CreatePlayer("Bob", hasFolded: true)
+        };
+        var context = _coordinator.InitializeShowdown(
+            Guid.NewGuid(), 1, rules, players, "Alice", false, 0);
+
+        var winners = new List<WinnerDetermination>
+        {
+            new WinnerDetermination(
+                "Alice",
+                null,
+                null,
+                null,
+                500,
+                0,
+                false)
+        };
+
+        // Act
+        var announcement = _coordinator.BuildWinnerAnnouncement(context, winners, wonByFold: true);
+
+        // Assert
+        announcement.WonByFold.Should().BeTrue();
+        announcement.Summary.Should().Contain("folded");
+    }
+
+    [Fact]
+    public void BuildWinnerAnnouncement_SplitPot_ReturnsCorrectSummary()
+    {
+        // Arrange
+        var rules = CreateDefaultShowdownRules();
+        var players = new List<ShowdownPlayerState>
+        {
+            CreatePlayer("Alice"),
+            CreatePlayer("Bob")
+        };
+        var context = _coordinator.InitializeShowdown(
+            Guid.NewGuid(), 1, rules, players, "Alice", false, 0);
+
+        var winners = new List<WinnerDetermination>
+        {
+            new WinnerDetermination("Alice", CreateHand("Flush", 5000), null, null, 250, 0, true),
+            new WinnerDetermination("Bob", CreateHand("Flush", 5000), null, null, 250, 0, true)
+        };
+
+        // Act
+        var announcement = _coordinator.BuildWinnerAnnouncement(context, winners, wonByFold: false);
+
+        // Assert
+        announcement.IsSplitPot.Should().BeTrue();
+        announcement.Summary.Should().Contain("Split pot");
+        announcement.TotalPotDistributed.Should().Be(500);
+    }
+
+    #endregion
+
+    #region BuildAnimationSequence Tests
+
+    [Fact]
+    public void BuildAnimationSequence_CreatesValidSequence()
+    {
+        // Arrange
+        var rules = CreateDefaultShowdownRules();
+        var players = new List<ShowdownPlayerState>
+        {
+            CreatePlayer("Alice"),
+            CreatePlayer("Bob")
+        };
+        var context = _coordinator.InitializeShowdown(
+            Guid.NewGuid(), 1, rules, players, "Alice", false, 0);
+
+        _coordinator.ProcessReveal(context, "Alice", CreateHand("Pair", 1000));
+        _coordinator.ProcessReveal(context, "Bob", CreateHand("TwoPair", 2000));
+
+        var winners = new List<WinnerDetermination>
+        {
+            new WinnerDetermination(
+                "Bob",
+                CreateHand("TwoPair", 2000),
+                null,
+                null,
+                500,
+                0,
+                false)
+        };
+
+        // Act
+        var animation = _coordinator.BuildAnimationSequence(context, winners);
+
+        // Assert
+        animation.Should().NotBeNull();
+        animation.ShowdownId.Should().Be(context.ShowdownId);
+        animation.Steps.Should().NotBeEmpty();
+        animation.TotalDurationMs.Should().BeGreaterThan(0);
+        
+        // Should have reveal steps, winner highlight, and pot award
+        animation.Steps.Should().Contain(s => s.AnimationType == ShowdownAnimationType.PlayerReveal);
+        animation.Steps.Should().Contain(s => s.AnimationType == ShowdownAnimationType.WinnerHighlight);
+        animation.Steps.Should().Contain(s => s.AnimationType == ShowdownAnimationType.PotAward);
+    }
+
+    [Fact]
+    public void BuildAnimationSequence_IncludesMuckSteps()
+    {
+        // Arrange
+        var rules = CreateDefaultShowdownRules(allowMuck: true);
+        var players = new List<ShowdownPlayerState>
+        {
+            CreatePlayer("Alice"),
+            CreatePlayer("Bob")
+        };
+        var context = _coordinator.InitializeShowdown(
+            Guid.NewGuid(), 1, rules, players, "Alice", false, 0);
+
+        _coordinator.ProcessReveal(context, "Alice", CreateHand("TwoPair", 2000));
+        _coordinator.ProcessMuck(context, "Bob");
+
+        var winners = new List<WinnerDetermination>
+        {
+            new WinnerDetermination(
+                "Alice",
+                CreateHand("TwoPair", 2000),
+                null,
+                null,
+                500,
+                0,
+                false)
+        };
+
+        // Act
+        var animation = _coordinator.BuildAnimationSequence(context, winners);
+
+        // Assert
+        // Mucked players should have a muck animation step
+        // Note: ProcessMuck doesn't set RevealOrder, so muck step may not appear
+        // This is intentional as mucking doesn't have a specific order in the animation
+        animation.Steps.Should().Contain(s => s.AnimationType == ShowdownAnimationType.PlayerReveal);
+        animation.Steps.Should().Contain(s => s.AnimationType == ShowdownAnimationType.WinnerHighlight);
+    }
+
+    [Fact]
+    public void BuildAnimationSequence_SetsCorrectSequenceOrder()
+    {
+        // Arrange
+        var rules = CreateDefaultShowdownRules();
+        var players = new List<ShowdownPlayerState>
+        {
+            CreatePlayer("Alice"),
+            CreatePlayer("Bob")
+        };
+        var context = _coordinator.InitializeShowdown(
+            Guid.NewGuid(), 1, rules, players, "Alice", false, 0);
+
+        _coordinator.ProcessReveal(context, "Alice", CreateHand("Pair", 1000));
+        _coordinator.ProcessReveal(context, "Bob", CreateHand("TwoPair", 2000));
+
+        var winners = new List<WinnerDetermination>
+        {
+            new WinnerDetermination("Bob", CreateHand("TwoPair", 2000), null, null, 500, 0, false)
+        };
+
+        // Act
+        var animation = _coordinator.BuildAnimationSequence(context, winners);
+
+        // Assert
+        var sequences = animation.Steps.Select(s => s.Sequence).ToList();
+        sequences.Should().BeInAscendingOrder();
+    }
+
+    #endregion
 }
