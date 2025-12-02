@@ -1,6 +1,8 @@
 using CardGames.Poker.Api.Hubs;
 using Microsoft.AspNetCore.SignalR;
 
+using CardGames.Poker.Api.Common;
+using CardGames.Poker.Api.Common.Middleware;
 using CardGames.Poker.Api.Features.Auth;
 using CardGames.Poker.Api.Features.Chat;
 using CardGames.Poker.Api.Features.Friends;
@@ -18,6 +20,9 @@ builder.AddServiceDefaults();
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+
+// Add MediatR with validation behaviors for vertical slice architecture
+builder.Services.AddMediatrWithBehaviors();
 
 // Add authentication services
 builder.Services.AddAuthServices(builder.Configuration);
@@ -77,6 +82,9 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+// Add exception handling middleware for validation exceptions
+app.UseExceptionHandling();
 
 app.MapDefaultEndpoints();
 
