@@ -1,0 +1,351 @@
+@using CardGames.Poker.Shared.DTOs
+
+<div class="draw-selection-display @GetContainerClasses()">
+    @if (ShowInstructions && !DrawPhaseComplete)
+    {
+        <div class="draw-instructions">
+            @if (MaxDrawCount > 0)
+            {
+                <span>Select up to @MaxDrawCount cards to discard</span>
+            }
+            else
+            {
+                <span>No cards can be discarded</span>
+            }
+        </div>
+    }
+
+    <div class="draw-cards">
+        @for (int i = 0; i < Cards.Count; i++)
+        {
+            var card = Cards[i];
+            var index = i;
+            var isSelected = SelectedIndices.Contains(index);
+            var canSelect = CanSelectMore || isSelected;
+
+            <div class="draw-card-wrapper @(isSelected ? "selected" : "") @(!canSelect ? "disabled" : "")"
+                 @onclick="() => HandleCardClick(index)">
+                <PlayingCard Card="@card"
+                      IsFaceDown="@false"
+                      Size="@CardSize"
+                      IsClickable="@canSelect"
+                      IsSelected="@isSelected" />
+                @if (isSelected)
+                {
+                    <div class="discard-badge">DISCARD</div>
+                }
+            </div>
+        }
+    </div>
+
+    @if (ShowControls && !DrawPhaseComplete)
+    {
+        <div class="draw-controls">
+            <button class="draw-button stand-pat"
+                    @onclick="HandleStandPat"
+                    disabled="@IsProcessing">
+                Stand Pat
+            </button>
+            <button class="draw-button draw"
+                    @onclick="HandleDraw"
+                    disabled="@(!HasSelection || IsProcessing)">
+                Draw @SelectionCount @(SelectionCount == 1 ? "Card" : "Cards")
+            </button>
+        </div>
+    }
+
+    @if (DrawPhaseComplete && DrawnCards.Count > 0)
+    {
+        <div class="drawn-cards-display">
+            <span class="drawn-label">New cards:</span>
+            <div class="drawn-cards">
+                @foreach (var card in DrawnCards)
+                {
+                    <PlayingCard Card="@card"
+                          IsFaceDown="@false"
+                          Size="@CardSize"
+                          ShowDealAnimation="@true" />
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .draw-selection-display {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+    }
+
+    .draw-instructions {
+        background: rgba(0, 0, 0, 0.6);
+        color: #d4af37;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        text-align: center;
+    }
+
+    .draw-cards {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .draw-card-wrapper {
+        position: relative;
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .draw-card-wrapper:hover:not(.disabled) {
+        transform: translateY(-5px);
+    }
+
+    .draw-card-wrapper.selected {
+        transform: translateY(-15px);
+    }
+
+    .draw-card-wrapper.selected::after {
+        content: '';
+        position: absolute;
+        inset: -4px;
+        border: 3px solid #ff5722;
+        border-radius: 8px;
+        pointer-events: none;
+    }
+
+    .draw-card-wrapper.disabled {
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+
+    .discard-badge {
+        position: absolute;
+        bottom: -10px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #ff5722;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.65rem;
+        font-weight: bold;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+    }
+
+    .draw-controls {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+
+    .draw-button {
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .draw-button.stand-pat {
+        background: linear-gradient(145deg, #666 0%, #444 100%);
+        color: white;
+    }
+
+    .draw-button.stand-pat:hover:not(:disabled) {
+        background: linear-gradient(145deg, #777 0%, #555 100%);
+    }
+
+    .draw-button.draw {
+        background: linear-gradient(145deg, #4caf50 0%, #388e3c 100%);
+        color: white;
+    }
+
+    .draw-button.draw:hover:not(:disabled) {
+        background: linear-gradient(145deg, #66bb6a 0%, #43a047 100%);
+    }
+
+    .draw-button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .drawn-cards-display {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 1rem;
+    }
+
+    .drawn-label {
+        color: #4caf50;
+        font-size: 0.85rem;
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+
+    .drawn-cards {
+        display: flex;
+        gap: 8px;
+    }
+
+    /* Compact mode */
+    .draw-selection-display.compact .draw-cards {
+        gap: 4px;
+    }
+
+    .draw-selection-display.compact .draw-controls {
+        gap: 0.5rem;
+    }
+
+    .draw-selection-display.compact .draw-button {
+        padding: 0.5rem 1rem;
+        font-size: 0.85rem;
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// The player's current hand of cards.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<CardDto> Cards { get; set; } = new List<CardDto>();
+
+    /// <summary>
+    /// Maximum number of cards that can be discarded.
+    /// </summary>
+    [Parameter]
+    public int MaxDrawCount { get; set; } = 3;
+
+    /// <summary>
+    /// Whether to show the draw instructions.
+    /// </summary>
+    [Parameter]
+    public bool ShowInstructions { get; set; } = true;
+
+    /// <summary>
+    /// Whether to show the draw controls (Stand Pat / Draw buttons).
+    /// </summary>
+    [Parameter]
+    public bool ShowControls { get; set; } = true;
+
+    /// <summary>
+    /// Size of the cards.
+    /// </summary>
+    [Parameter]
+    public string CardSize { get; set; } = "medium";
+
+    /// <summary>
+    /// Whether to use compact mode.
+    /// </summary>
+    [Parameter]
+    public bool IsCompact { get; set; }
+
+    /// <summary>
+    /// Whether an action is currently being processed.
+    /// </summary>
+    [Parameter]
+    public bool IsProcessing { get; set; }
+
+    /// <summary>
+    /// Whether the draw phase is complete.
+    /// </summary>
+    [Parameter]
+    public bool DrawPhaseComplete { get; set; }
+
+    /// <summary>
+    /// The cards that were drawn (to show after drawing).
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<CardDto> DrawnCards { get; set; } = new List<CardDto>();
+
+    /// <summary>
+    /// Event callback when the player chooses to stand pat (draw no cards).
+    /// </summary>
+    [Parameter]
+    public EventCallback OnStandPat { get; set; }
+
+    /// <summary>
+    /// Event callback when the player chooses to draw cards.
+    /// The parameter contains the indices of cards to discard.
+    /// </summary>
+    [Parameter]
+    public EventCallback<IReadOnlyList<int>> OnDraw { get; set; }
+
+    /// <summary>
+    /// Event callback when the selection changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<IReadOnlyList<int>> OnSelectionChanged { get; set; }
+
+    private HashSet<int> SelectedIndices { get; set; } = new();
+
+    private bool HasSelection => SelectedIndices.Count > 0;
+    private int SelectionCount => SelectedIndices.Count;
+    private bool CanSelectMore => SelectedIndices.Count < MaxDrawCount;
+
+    private async Task HandleCardClick(int index)
+    {
+        if (DrawPhaseComplete || IsProcessing)
+        {
+            return;
+        }
+
+        if (SelectedIndices.Contains(index))
+        {
+            SelectedIndices.Remove(index);
+        }
+        else if (CanSelectMore)
+        {
+            SelectedIndices.Add(index);
+        }
+
+        await OnSelectionChanged.InvokeAsync(SelectedIndices.ToList());
+    }
+
+    private async Task HandleStandPat()
+    {
+        if (IsProcessing)
+        {
+            return;
+        }
+
+        SelectedIndices.Clear();
+        await OnStandPat.InvokeAsync();
+    }
+
+    private async Task HandleDraw()
+    {
+        if (IsProcessing || !HasSelection)
+        {
+            return;
+        }
+
+        await OnDraw.InvokeAsync(SelectedIndices.ToList());
+    }
+
+    private string GetContainerClasses()
+    {
+        var classes = new List<string>();
+        if (IsCompact) classes.Add("compact");
+        return string.Join(" ", classes);
+    }
+
+    /// <summary>
+    /// Resets the selection state.
+    /// </summary>
+    public void ResetSelection()
+    {
+        SelectedIndices.Clear();
+        StateHasChanged();
+    }
+}
