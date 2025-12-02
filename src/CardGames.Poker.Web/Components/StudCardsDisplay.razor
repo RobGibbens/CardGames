@@ -1,0 +1,303 @@
+@using CardGames.Poker.Shared.DTOs
+
+<div class="stud-cards-display @GetContainerClasses()">
+    @if (!string.IsNullOrEmpty(PlayerName))
+    {
+        <div class="player-name">@PlayerName</div>
+    }
+
+    <div class="stud-cards">
+        @* Face-down (hole) cards first *@
+        <div class="hole-cards-section">
+            @foreach (var _ in Enumerable.Range(0, FaceDownCount))
+            {
+                <PlayingCard Card="@null"
+                      IsFaceDown="@true"
+                      Size="@CardSize"
+                      ShowDealAnimation="@ShowDealAnimation" />
+            }
+        </div>
+
+        @* Face-up (board) cards *@
+        <div class="board-cards-section">
+            @foreach (var card in FaceUpCards)
+            {
+                <PlayingCard Card="@card"
+                      IsFaceDown="@false"
+                      Size="@CardSize"
+                      ShowDealAnimation="@ShowDealAnimation"
+                      IsHighlighted="@IsWinningHand" />
+            }
+            @* Show placeholders for remaining face-up cards *@
+            @if (ShowPlaceholders)
+            {
+                @for (int i = FaceUpCards.Count; i < ExpectedFaceUpCount; i++)
+                {
+                    <PlayingCard Card="@null"
+                          IsFaceDown="@true"
+                          Size="@CardSize" />
+                }
+            }
+        </div>
+
+        @* River card (face down) for 7-card stud *@
+        @if (ShowRiverCard)
+        {
+            <div class="river-card-section">
+                @if (HasRiverCard)
+                {
+                    <PlayingCard Card="@null"
+                          IsFaceDown="@true"
+                          Size="@CardSize"
+                          ShowDealAnimation="@ShowDealAnimation" />
+                }
+                else if (ShowPlaceholders)
+                {
+                    <PlayingCard Card="@null"
+                          IsFaceDown="@true"
+                          Size="@CardSize" />
+                }
+            </div>
+        }
+    </div>
+
+    @if (HasFolded)
+    {
+        <div class="folded-indicator">FOLDED</div>
+    }
+    else if (!string.IsNullOrEmpty(HandDescription) && ShowHandDescription)
+    {
+        <div class="hand-description @(IsWinningHand ? "winner" : "")">@HandDescription</div>
+    }
+
+    @if (IsBringIn)
+    {
+        <div class="bring-in-indicator">BRING-IN</div>
+    }
+</div>
+
+<style>
+    .stud-cards-display {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .stud-cards-display.folded {
+        opacity: 0.4;
+    }
+
+    .player-name {
+        font-size: 0.7rem;
+        color: rgba(255, 255, 255, 0.8);
+        font-weight: bold;
+        max-width: 100px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .stud-cards {
+        display: flex;
+        gap: 2px;
+        justify-content: center;
+        align-items: flex-end;
+    }
+
+    .hole-cards-section,
+    .board-cards-section,
+    .river-card-section {
+        display: flex;
+        gap: 2px;
+    }
+
+    .hole-cards-section {
+        position: relative;
+    }
+
+    /* Stack the hole cards slightly */
+    .hole-cards-section > :global(.card):not(:first-child) {
+        margin-left: -15px;
+    }
+
+    /* Add a separator between hole cards and board cards */
+    .board-cards-section {
+        margin-left: 8px;
+        padding-left: 8px;
+        border-left: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    /* River card has a separator too */
+    .river-card-section {
+        margin-left: 8px;
+        padding-left: 8px;
+        border-left: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .folded-indicator {
+        background: rgba(255, 87, 34, 0.8);
+        color: white;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.6rem;
+        font-weight: bold;
+        letter-spacing: 0.5px;
+    }
+
+    .hand-description {
+        background: rgba(0, 0, 0, 0.7);
+        color: #d4af37;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.6rem;
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+
+    .hand-description.winner {
+        background: linear-gradient(135deg, #d4af37 0%, #f0d060 100%);
+        color: #1a1a1a;
+    }
+
+    .bring-in-indicator {
+        background: rgba(33, 150, 243, 0.8);
+        color: white;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.6rem;
+        font-weight: bold;
+        letter-spacing: 0.5px;
+    }
+
+    /* Compact mode */
+    .stud-cards-display.compact .stud-cards {
+        gap: 1px;
+    }
+
+    .stud-cards-display.compact .board-cards-section,
+    .stud-cards-display.compact .river-card-section {
+        margin-left: 4px;
+        padding-left: 4px;
+    }
+
+    /* Hero view - shows all cards face up */
+    .stud-cards-display.hero .hole-cards-section > :global(.card) {
+        margin-left: 0;
+    }
+
+    .stud-cards-display.hero .stud-cards {
+        gap: 4px;
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// The player's name.
+    /// </summary>
+    [Parameter]
+    public string? PlayerName { get; set; }
+
+    /// <summary>
+    /// Number of face-down (hole) cards to show.
+    /// For 7-card stud, this is typically 2 at the start.
+    /// </summary>
+    [Parameter]
+    public int FaceDownCount { get; set; } = 2;
+
+    /// <summary>
+    /// Face-up (board) cards to display.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<CardDto> FaceUpCards { get; set; } = new List<CardDto>();
+
+    /// <summary>
+    /// Expected number of face-up cards (for placeholders).
+    /// For 7-card stud, this is 4.
+    /// </summary>
+    [Parameter]
+    public int ExpectedFaceUpCount { get; set; } = 4;
+
+    /// <summary>
+    /// Whether to show the river card section (for 7-card stud).
+    /// </summary>
+    [Parameter]
+    public bool ShowRiverCard { get; set; } = true;
+
+    /// <summary>
+    /// Whether the player has received the river card.
+    /// </summary>
+    [Parameter]
+    public bool HasRiverCard { get; set; }
+
+    /// <summary>
+    /// Whether to show placeholders for missing cards.
+    /// </summary>
+    [Parameter]
+    public bool ShowPlaceholders { get; set; }
+
+    /// <summary>
+    /// Whether the player has folded.
+    /// </summary>
+    [Parameter]
+    public bool HasFolded { get; set; }
+
+    /// <summary>
+    /// Description of the hand (shown at showdown).
+    /// </summary>
+    [Parameter]
+    public string? HandDescription { get; set; }
+
+    /// <summary>
+    /// Whether to show the hand description.
+    /// </summary>
+    [Parameter]
+    public bool ShowHandDescription { get; set; }
+
+    /// <summary>
+    /// Whether this is a winning hand.
+    /// </summary>
+    [Parameter]
+    public bool IsWinningHand { get; set; }
+
+    /// <summary>
+    /// Whether this player has the bring-in.
+    /// </summary>
+    [Parameter]
+    public bool IsBringIn { get; set; }
+
+    /// <summary>
+    /// Size of the cards.
+    /// </summary>
+    [Parameter]
+    public string CardSize { get; set; } = "small";
+
+    /// <summary>
+    /// Whether to show deal animation.
+    /// </summary>
+    [Parameter]
+    public bool ShowDealAnimation { get; set; }
+
+    /// <summary>
+    /// Whether this is the hero's view (shows all cards).
+    /// </summary>
+    [Parameter]
+    public bool IsHeroView { get; set; }
+
+    /// <summary>
+    /// Whether to use compact mode.
+    /// </summary>
+    [Parameter]
+    public bool IsCompact { get; set; }
+
+    private string GetContainerClasses()
+    {
+        var classes = new List<string>();
+
+        if (HasFolded) classes.Add("folded");
+        if (IsHeroView) classes.Add("hero");
+        if (IsCompact) classes.Add("compact");
+
+        return string.Join(" ", classes.Where(c => !string.IsNullOrEmpty(c)));
+    }
+}

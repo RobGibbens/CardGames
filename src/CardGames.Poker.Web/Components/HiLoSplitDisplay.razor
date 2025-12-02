@@ -1,0 +1,432 @@
+@using CardGames.Poker.Shared.DTOs
+
+<div class="hilo-split-display @GetContainerClasses()">
+    <div class="split-header">
+        <span class="split-title">@Title</span>
+        @if (!string.IsNullOrEmpty(QualifierText))
+        {
+            <span class="qualifier-text">@QualifierText</span>
+        }
+    </div>
+
+    <div class="split-pots">
+        @* High Pot Section *@
+        <div class="pot-section high-pot @(HighlightHigh ? "highlighted" : "")">
+            <div class="pot-label">HIGH</div>
+            <div class="pot-amount">@FormatChips(HighPotAmount)</div>
+            @if (HighWinners.Count > 0)
+            {
+                <div class="winners">
+                    @foreach (var winner in HighWinners)
+                    {
+                        <div class="winner-entry">
+                            <span class="winner-name">@winner.PlayerName</span>
+                            @if (!string.IsNullOrEmpty(winner.HandDescription))
+                            {
+                                <span class="hand-desc">@winner.HandDescription</span>
+                            }
+                            @if (winner.WinAmount > 0)
+                            {
+                                <span class="win-amount">+@FormatChips(winner.WinAmount)</span>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+            else if (ShowNoWinner)
+            {
+                <div class="no-winner">No High Winner</div>
+            }
+        </div>
+
+        <div class="pot-divider">
+            <div class="divider-line"></div>
+            <span class="divider-text">SPLIT</span>
+            <div class="divider-line"></div>
+        </div>
+
+        @* Low Pot Section *@
+        <div class="pot-section low-pot @(HighlightLow ? "highlighted" : "") @(NoLowQualified ? "no-qualifier" : "")">
+            <div class="pot-label">LOW</div>
+            @if (NoLowQualified)
+            {
+                <div class="no-qualifier-message">
+                    No qualifying low
+                </div>
+                <div class="pot-amount dimmed">@FormatChips(LowPotAmount)</div>
+                <div class="scooped-message">Goes to high winner</div>
+            }
+            else
+            {
+                <div class="pot-amount">@FormatChips(LowPotAmount)</div>
+                @if (LowWinners.Count > 0)
+                {
+                    <div class="winners">
+                        @foreach (var winner in LowWinners)
+                        {
+                            <div class="winner-entry">
+                                <span class="winner-name">@winner.PlayerName</span>
+                                @if (!string.IsNullOrEmpty(winner.HandDescription))
+                                {
+                                    <span class="hand-desc">@winner.HandDescription</span>
+                                }
+                                @if (winner.WinAmount > 0)
+                                {
+                                    <span class="win-amount">+@FormatChips(winner.WinAmount)</span>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+                else if (ShowNoWinner)
+                {
+                    <div class="no-winner">No Low Winner</div>
+                }
+            }
+        </div>
+    </div>
+
+    @if (IsScooped && !string.IsNullOrEmpty(ScoopedByPlayer))
+    {
+        <div class="scoop-banner">
+            <span class="scoop-icon">🏆</span>
+            <span class="scoop-text">@ScoopedByPlayer SCOOPS!</span>
+        </div>
+    }
+
+    @if (TotalPotAmount > 0 && ShowTotalPot)
+    {
+        <div class="total-pot">
+            Total Pot: @FormatChips(TotalPotAmount)
+        </div>
+    }
+</div>
+
+<style>
+    .hilo-split-display {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 1rem;
+        background: rgba(0, 0, 0, 0.5);
+        border-radius: 12px;
+        min-width: 300px;
+    }
+
+    .split-header {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .split-title {
+        font-size: 1.1rem;
+        font-weight: bold;
+        color: #d4af37;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .qualifier-text {
+        font-size: 0.75rem;
+        color: rgba(255, 255, 255, 0.6);
+    }
+
+    .split-pots {
+        display: flex;
+        align-items: stretch;
+        gap: 1rem;
+        width: 100%;
+    }
+
+    .pot-section {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.05);
+        transition: all 0.3s ease;
+    }
+
+    .pot-section.highlighted {
+        background: rgba(255, 255, 255, 0.1);
+        box-shadow: 0 0 15px rgba(212, 175, 55, 0.3);
+    }
+
+    .pot-section.no-qualifier {
+        opacity: 0.7;
+    }
+
+    .pot-label {
+        font-size: 0.85rem;
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .high-pot .pot-label {
+        color: #f44336;
+    }
+
+    .low-pot .pot-label {
+        color: #2196f3;
+    }
+
+    .pot-amount {
+        font-size: 1.25rem;
+        font-weight: bold;
+        color: #d4af37;
+    }
+
+    .pot-amount.dimmed {
+        opacity: 0.5;
+        text-decoration: line-through;
+    }
+
+    .no-qualifier-message {
+        font-size: 0.75rem;
+        color: #ff9800;
+        font-style: italic;
+    }
+
+    .scooped-message {
+        font-size: 0.7rem;
+        color: rgba(255, 255, 255, 0.5);
+    }
+
+    .winners {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        width: 100%;
+    }
+
+    .winner-entry {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.125rem;
+        padding: 0.25rem;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 4px;
+    }
+
+    .winner-name {
+        font-size: 0.85rem;
+        font-weight: bold;
+        color: white;
+    }
+
+    .hand-desc {
+        font-size: 0.7rem;
+        color: rgba(255, 255, 255, 0.7);
+    }
+
+    .win-amount {
+        font-size: 0.8rem;
+        font-weight: bold;
+        color: #4caf50;
+    }
+
+    .no-winner {
+        font-size: 0.75rem;
+        color: rgba(255, 255, 255, 0.4);
+        font-style: italic;
+    }
+
+    .pot-divider {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.25rem;
+    }
+
+    .divider-line {
+        width: 2px;
+        height: 30px;
+        background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.3), transparent);
+    }
+
+    .divider-text {
+        font-size: 0.65rem;
+        color: rgba(255, 255, 255, 0.5);
+        font-weight: bold;
+    }
+
+    .scoop-banner {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        background: linear-gradient(135deg, #d4af37 0%, #f0d060 100%);
+        border-radius: 8px;
+        animation: scoop-pulse 1s ease-in-out infinite alternate;
+    }
+
+    @@keyframes scoop-pulse {
+        from {
+            box-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+        }
+        to {
+            box-shadow: 0 0 20px rgba(212, 175, 55, 0.8);
+        }
+    }
+
+    .scoop-icon {
+        font-size: 1.25rem;
+    }
+
+    .scoop-text {
+        font-size: 1rem;
+        font-weight: bold;
+        color: #1a1a1a;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .total-pot {
+        font-size: 0.85rem;
+        color: rgba(255, 255, 255, 0.6);
+    }
+
+    /* Compact mode */
+    .hilo-split-display.compact {
+        padding: 0.75rem;
+        min-width: 250px;
+    }
+
+    .hilo-split-display.compact .split-title {
+        font-size: 0.9rem;
+    }
+
+    .hilo-split-display.compact .pot-amount {
+        font-size: 1rem;
+    }
+
+    .hilo-split-display.compact .pot-section {
+        padding: 0.5rem;
+    }
+
+    /* Horizontal layout */
+    .hilo-split-display.horizontal .split-pots {
+        flex-direction: row;
+    }
+</style>
+
+@code {
+    /// <summary>
+    /// Title for the display (e.g., "Hi/Lo Split" or "Omaha Hi/Lo").
+    /// </summary>
+    [Parameter]
+    public string Title { get; set; } = "Hi/Lo Split";
+
+    /// <summary>
+    /// Text explaining the low qualifier (e.g., "8 or Better").
+    /// </summary>
+    [Parameter]
+    public string? QualifierText { get; set; } = "8 or Better";
+
+    /// <summary>
+    /// Amount in the high pot.
+    /// </summary>
+    [Parameter]
+    public int HighPotAmount { get; set; }
+
+    /// <summary>
+    /// Amount in the low pot.
+    /// </summary>
+    [Parameter]
+    public int LowPotAmount { get; set; }
+
+    /// <summary>
+    /// Total pot amount.
+    /// </summary>
+    [Parameter]
+    public int TotalPotAmount { get; set; }
+
+    /// <summary>
+    /// Winners of the high pot.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<HiLoWinnerInfoDto> HighWinners { get; set; } = new List<HiLoWinnerInfoDto>();
+
+    /// <summary>
+    /// Winners of the low pot.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<HiLoWinnerInfoDto> LowWinners { get; set; } = new List<HiLoWinnerInfoDto>();
+
+    /// <summary>
+    /// Whether no low hand qualified.
+    /// </summary>
+    [Parameter]
+    public bool NoLowQualified { get; set; }
+
+    /// <summary>
+    /// Whether a player scooped the entire pot.
+    /// </summary>
+    [Parameter]
+    public bool IsScooped { get; set; }
+
+    /// <summary>
+    /// Name of the player who scooped (if applicable).
+    /// </summary>
+    [Parameter]
+    public string? ScoopedByPlayer { get; set; }
+
+    /// <summary>
+    /// Whether to highlight the high pot section.
+    /// </summary>
+    [Parameter]
+    public bool HighlightHigh { get; set; }
+
+    /// <summary>
+    /// Whether to highlight the low pot section.
+    /// </summary>
+    [Parameter]
+    public bool HighlightLow { get; set; }
+
+    /// <summary>
+    /// Whether to show "No Winner" when there are no winners.
+    /// </summary>
+    [Parameter]
+    public bool ShowNoWinner { get; set; }
+
+    /// <summary>
+    /// Whether to show the total pot.
+    /// </summary>
+    [Parameter]
+    public bool ShowTotalPot { get; set; } = true;
+
+    /// <summary>
+    /// Whether to use compact mode.
+    /// </summary>
+    [Parameter]
+    public bool IsCompact { get; set; }
+
+    private string GetContainerClasses()
+    {
+        var classes = new List<string>();
+        if (IsCompact) classes.Add("compact");
+        return string.Join(" ", classes);
+    }
+
+    private string FormatChips(int amount)
+    {
+        if (amount >= 1000000)
+        {
+            return $"{amount / 1000000.0:F1}M";
+        }
+        if (amount >= 1000)
+        {
+            return $"{amount / 1000.0:F1}K";
+        }
+        return amount.ToString("N0");
+    }
+}
