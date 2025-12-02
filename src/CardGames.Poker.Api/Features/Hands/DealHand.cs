@@ -34,7 +34,7 @@ public sealed class DealHandCommandValidator : AbstractValidator<DealHandCommand
             .WithMessage("Number of players must be between 2 and 10");
 
         RuleFor(x => x.PlayerNames)
-            .Must((cmd, names) => names == null || names.Count == cmd.NumberOfPlayers)
+            .Must((cmd, names) => names!.Count == cmd.NumberOfPlayers)
             .When(x => x.PlayerNames != null)
             .WithMessage("Number of player names must match number of players");
     }
