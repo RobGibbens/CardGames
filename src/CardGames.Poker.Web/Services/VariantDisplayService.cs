@@ -207,6 +207,11 @@ public class VariantDisplayService
             return variant.ToString();
         }
 
+        if (string.IsNullOrEmpty(config.LimitTypeAbbreviation))
+        {
+            return config.Name;
+        }
+
         return $"{config.LimitTypeAbbreviation} {config.Name}";
     }
 
