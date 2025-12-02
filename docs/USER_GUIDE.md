@@ -81,12 +81,12 @@ A classic stud poker variant:
 A five card draw variant with wild cards:
 - **Kings are always wild**
 - **Lowest card(s) in your hand are also wild**
-- Players can discard up to 5 cards and draw new ones
+- **Players can discard up to 5 cards and draw new ones**
 
 **Special Rules:**
-- Drop or Stay: Instead of betting, players simultaneously choose to stay in or drop out
-- Player vs Deck: If only one player stays, they compete against a hand from the deck
-- Losers Match Pot: Losing players must match the pot for the next hand
+- **Drop or Stay:** Instead of betting, players simultaneously choose to stay in or drop out
+- **Player vs Deck:** If only one player stays, they compete against a hand from the deck
+- **Losers Match Pot:** Losing players must match the pot for the next hand
 
 ---
 
