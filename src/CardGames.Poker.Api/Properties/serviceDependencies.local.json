@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "identityapp1": {
+      "connectionInfo": "App registration: cardgames, Tenant: Gibbens B2C (gibbensb2c.onmicrosoft.com - AAD B2C)",
+      "type": "identityapp.default"
+    }
+  }
+}
