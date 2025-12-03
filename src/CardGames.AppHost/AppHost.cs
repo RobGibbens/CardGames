@@ -1,8 +1,19 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
-var api = builder.AddProject<Projects.CardGames_Poker_Api>("api");
+var postgres = builder.AddPostgres("postgres")
+	.WithPgAdmin()
+	.WithDataVolume();
 
-builder.AddProject<Projects.CardGames_Poker_Web>("web")
+var martenDb = postgres.AddDatabase("marten");
+
+var api = builder.AddProject<Projects.CardGames_Poker_Api>("api")
+	.WithReference(martenDb);
+
+var web = builder.AddProject<Projects.CardGames_Poker_Web>("web")
+	.WithReference(api)
+	.WaitFor(api);
+
+var cli = builder.AddProject<Projects.CardGames_Poker_CLI>("cli")
 	.WithReference(api)
 	.WaitFor(api);
 
