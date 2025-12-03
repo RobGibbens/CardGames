@@ -1,30 +1,31 @@
 using Asp.Versioning;
+using CardGames.Poker.Api.Features;
+using CardGames.Poker.Api.Infrastructure;
+using CardGames.Poker.Api.Infrastructure.Middleware;
 using FluentValidation;
 using FluentValidation.AspNetCore;
-using Microsoft.AspNetCore.Authentication;
+using JasperFx;
+using Marten;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.FileProviders;
-using Microsoft.Identity.Abstractions;
 using Microsoft.Identity.Web;
-using Microsoft.Identity.Web.Resource;
-using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Scalar.AspNetCore;
 using System.Threading.RateLimiting;
-using CardGames.Poker.Api.Features;
-using CardGames.Poker.Api.Infrastructure;
-using CardGames.Poker.Api.Infrastructure.Middleware;
 using Wolverine;
+using Wolverine.Http;
+using Wolverine.Marten;
 using ZiggyCreatures.Caching.Fusion;
 using ZiggyCreatures.Caching.Fusion.Serialization.SystemTextJson;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
+
+builder.AddNpgsqlDataSource("marten");
 
 // Add services to the container.
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -144,12 +145,34 @@ builder.Services.AddApiVersioning(
 	// you should remove this configuration.
 	.EnableApiVersionBinding();
 
-builder.Host.UseWolverine();
+builder.Services.AddMarten(opts =>
+	{
+		var connectionString = builder.Configuration.GetConnectionString("Marten");
+		opts.Connection(connectionString);
+		opts.DatabaseSchemaName = "incidents";
+	})
+
+// This adds configuration with Wolverine's transactional outbox and
+// Marten middleware support to Wolverine
+	.IntegrateWithWolverine();
+
+
+builder.Host.UseWolverine(opts =>
+{
+	// This is almost an automatic default to have
+	// Wolverine apply transactional middleware to any
+	// endpoint or handler that uses persistence services
+	opts.Policies.AutoApplyTransactions();
+});
+
+// To add Wolverine.HTTP services to the IoC container
+builder.Services.AddWolverineHttp();
 
 var app = builder.Build();
 
 app.MapDefaultEndpoints();
 
+app.MapWolverineEndpoints();
 app.AddFeatureEndpoints();
 
 app.UseStaticFiles(new StaticFileOptions
@@ -183,5 +206,5 @@ app.MapGet("/", () => "Card Games");
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.Run();
+return await app.RunJasperFxCommands(args);
 
