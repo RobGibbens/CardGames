@@ -129,3 +129,7 @@ orleans.codegen.cs
 NDependOut/
 **/*.ndproj
 *.orig
+
+src/.idea/.idea.CardGames/.idea/projectSettingsUpdater.xml
+
+src/.idea/.idea.CardGames/.idea/workspace.xml
