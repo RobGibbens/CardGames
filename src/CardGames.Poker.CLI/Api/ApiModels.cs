@@ -61,6 +61,19 @@ public record GetPlayerCardsResponse(
 	int CardCount
 );
 
+public record DealCardsResponse(
+	bool Success,
+	string Phase,
+	List<PlayerCardCountResponse> PlayerCardCounts,
+	Guid? CurrentPlayerToAct
+);
+
+public record PlayerCardCountResponse(
+	Guid PlayerId,
+	string PlayerName,
+	int CardCount
+);
+
 public record GetAvailableActionsResponse(
 	Guid PlayerId,
 	bool IsCurrentPlayer,

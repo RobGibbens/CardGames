@@ -1,4 +1,5 @@
-﻿using CardGames.Poker.Api.Features.Games.Domain.Enums;
+﻿using CardGames.Core.French.Cards.Extensions;
+using CardGames.Poker.Api.Features.Games.Domain.Enums;
 using CardGames.Poker.Api.Features.Games.Domain.Events;
 using CardGames.Poker.Betting;
 using CardGames.Poker.Games;
@@ -115,6 +116,19 @@ public class PokerGameAggregate
 		CurrentPlayerToAct = GetFirstPlayerToAct();
 	}
 
+	public void Apply(CardsDealtInternal @event)
+	{
+		// Store the actual cards for each player
+		foreach (var (playerId, cards) in @event.PlayerCards)
+		{
+			var player = Players.FirstOrDefault(p => p.PlayerId == playerId);
+			if (player != null)
+			{
+				player.Cards = cards;
+			}
+		}
+	}
+
 	public void Apply(BettingActionPerformed @event)
 	{
 		TotalPot = @event.NewPot;
@@ -148,6 +162,95 @@ public class PokerGameAggregate
 		return (Status == GameStatus.ReadyToStart || Status == GameStatus.InProgress)
 			&& CurrentPhase == HandPhase.None
 			&& Players.Count(p => p.ChipStack > 0) >= 2;
+	}
+
+	/// <summary>
+	/// Collects antes from all players.
+	/// </summary>
+	public CollectAntesResult CollectAntes()
+	{
+		if (CurrentPhase != HandPhase.CollectingAntes)
+		{
+			return new CollectAntesResult { Success = false, ErrorMessage = "Cannot collect antes in current phase." };
+		}
+
+		if (_gameInstance == null)
+		{
+			return new CollectAntesResult { Success = false, ErrorMessage = "No active hand." };
+		}
+
+		_gameInstance.StartHand();
+		var actions = _gameInstance.CollectAntes();
+
+		var playerAntes = new Dictionary<Guid, int>();
+		var totalCollected = 0;
+
+		foreach (var action in actions)
+		{
+			if (_playerNameToId.TryGetValue(action.PlayerName, out var playerId))
+			{
+				playerAntes[playerId] = action.Amount;
+				totalCollected += action.Amount;
+			}
+		}
+
+		CurrentPhase = HandPhase.Dealing;
+		TotalPot = totalCollected;
+
+		return new CollectAntesResult
+		{
+			Success = true,
+			PlayerAntes = playerAntes,
+			TotalCollected = totalCollected
+		};
+	}
+
+	/// <summary>
+	/// Deals cards to all active players.
+	/// </summary>
+	public DealCardsResult DealCards()
+	{
+		if (CurrentPhase != HandPhase.Dealing)
+		{
+			return new DealCardsResult { Success = false, ErrorMessage = "Cannot deal in current phase." };
+		}
+
+		if (_gameInstance == null)
+		{
+			return new DealCardsResult { Success = false, ErrorMessage = "No active hand." };
+		}
+
+		_gameInstance.DealHands();
+
+		var playerCardCounts = new Dictionary<Guid, int>();
+		var playerCards = new Dictionary<Guid, List<string>>();
+
+		foreach (var gamePlayer in _gameInstance.GamePlayers)
+		{
+			if (_playerNameToId.TryGetValue(gamePlayer.Player.Name, out var playerId))
+			{
+				var cards = gamePlayer.Hand.Select(c => c.ToShortString()).ToList();
+				playerCards[playerId] = cards;
+				playerCardCounts[playerId] = cards.Count;
+
+				// Update the aggregate's player cards
+				var player = Players.FirstOrDefault(p => p.PlayerId == playerId);
+				if (player != null)
+				{
+					player.Cards = cards;
+				}
+			}
+		}
+
+		CurrentPhase = HandPhase.FirstBettingRound;
+		CurrentPlayerToAct = GetFirstPlayerToAct();
+
+		return new DealCardsResult
+		{
+			Success = true,
+			PlayerCardCounts = playerCardCounts,
+			PlayerCards = playerCards
+		};
 	}
 
 	public int GetNextDealerPosition()

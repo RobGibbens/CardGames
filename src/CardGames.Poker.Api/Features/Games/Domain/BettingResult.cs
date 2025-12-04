@@ -14,3 +14,25 @@ public class BettingResult
 	public string? NewPhase { get; init; }
 	public int PlayerChipStack { get; init; }
 }
+
+/// <summary>
+/// Result of collecting antes from all players.
+/// </summary>
+public class CollectAntesResult
+{
+	public bool Success { get; init; }
+	public string? ErrorMessage { get; init; }
+	public Dictionary<Guid, int> PlayerAntes { get; init; } = [];
+	public int TotalCollected { get; init; }
+}
+
+/// <summary>
+/// Result of dealing cards to players.
+/// </summary>
+public class DealCardsResult
+{
+	public bool Success { get; init; }
+	public string? ErrorMessage { get; init; }
+	public Dictionary<Guid, int> PlayerCardCounts { get; init; } = [];
+	public Dictionary<Guid, List<string>> PlayerCards { get; init; } = [];
+}

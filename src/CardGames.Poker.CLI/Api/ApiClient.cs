@@ -73,6 +73,16 @@ public class ApiClient : IDisposable
 	}
 
 	/// <summary>
+	/// Deals cards to all active players.
+	/// </summary>
+	public async Task<DealCardsResponse?> DealCardsAsync(Guid gameId)
+	{
+		var response = await _httpClient.PostAsync($"/api/v1/games/{gameId}/hands/current/deal", null);
+		response.EnsureSuccessStatusCode();
+		return await response.Content.ReadFromJsonAsync<DealCardsResponse>(_jsonOptions);
+	}
+
+	/// <summary>
 	/// Gets available actions for a player.
 	/// </summary>
 	public async Task<GetAvailableActionsResponse?> GetAvailableActionsAsync(Guid gameId, Guid playerId)
