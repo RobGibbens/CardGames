@@ -1,5 +1,4 @@
 ﻿using CardGames.Poker.Api.Features.Games.Domain.Enums;
-using Microsoft.IdentityModel.Tokens;
 
 namespace CardGames.Poker.Api.Features.Games.Domain.Events;
 

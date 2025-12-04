@@ -15,6 +15,7 @@ public static class GetGameStateEndpoint
 	/// Gets the current state of a poker game.
 	/// </summary>
 	[WolverineGet("/api/v1/games/{gameId}")]
+	[EndpointName("GetGameState")]
 	public static async Task<Results<Ok<GetGameStateResponse>, NotFound<string>>> Get(
 		Guid gameId,
 		IDocumentSession session,

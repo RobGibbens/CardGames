@@ -15,6 +15,7 @@ public static class CreateGameEndpoint
 	/// Creates a new poker game and starts an event stream.
 	/// </summary>
 	[WolverinePost("/api/v1/games")]
+	[EndpointName("CreateGame")]
 	public static async Task<CreateGameResponse> Post(
 		CreateGameRequest request,
 		IDocumentSession session,

@@ -15,7 +15,87 @@ public enum GameType
 	KingsAndLows,
 	FollowTheQueen
 }
+// Betting action type enum (matches API)
+public enum BettingActionType
+{
+	Check,
+	Bet,
+	Call,
+	Raise,
+	Fold,
+	AllIn,
+	Post
+}
 
+// Hand lifecycle request/response DTOs
+public record StartHandResponse(
+	Guid HandId,
+	int HandNumber,
+	string Phase,
+	int DealerPosition,
+	int Pot,
+	Guid? NextPlayerToAct
+);
+
+public record GetCurrentHandResponse(
+	Guid HandId,
+	string Phase,
+	int Pot,
+	Guid? CurrentPlayerToAct,
+	int CurrentBet,
+	List<HandPlayerStateResponse> Players
+);
+
+public record HandPlayerStateResponse(
+	Guid PlayerId,
+	string Name,
+	int ChipStack,
+	int CurrentBet,
+	string Status,
+	int CardCount
+);
+
+public record GetPlayerCardsResponse(
+	Guid PlayerId,
+	List<string> Cards,
+	int CardCount
+);
+
+public record GetAvailableActionsResponse(
+	Guid PlayerId,
+	bool IsCurrentPlayer,
+	AvailableActionsDto Actions
+);
+
+public record AvailableActionsDto(
+	bool CanCheck,
+	bool CanBet,
+	bool CanCall,
+	bool CanRaise,
+	bool CanFold,
+	bool CanAllIn,
+	int MinBet,
+	int MaxBet,
+	int CallAmount,
+	int MinRaise
+);
+
+public record PlaceActionRequest(
+	Guid PlayerId,
+	BettingActionType ActionType,
+	int Amount = 0
+);
+
+public record PlaceActionResponse(
+	bool Success,
+	string ActionDescription,
+	int NewPot,
+	Guid? NextPlayerToAct,
+	bool RoundComplete,
+	bool PhaseAdvanced,
+	string CurrentPhase,
+	string? ErrorMessage = null
+);
 // Request DTOs
 public record CreateGameRequest(
 	GameType GameType,
