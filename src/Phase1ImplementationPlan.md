@@ -1104,7 +1104,7 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiPlaySettings>
     {
         Logger.LogApplicationStart();
         
-        var apiUrl = settings.ApiUrl ?? "https://localhost:5001";
+        var apiUrl = settings.ApiUrl ?? "https://localhost:7034";
         using var apiClient = new ApiClient(apiUrl);
         
         try
@@ -1302,7 +1302,7 @@ Add new menu function:
 ```csharp
 static void RunApiPlayMenu()
 {
-    var apiUrl = AnsiConsole.Ask("API URL:", "https://localhost:5001");
+    var apiUrl = AnsiConsole.Ask("API URL:", "https://localhost:7034");
     
     var gameType = AnsiConsole.Prompt(
         new SelectionPrompt<string>()

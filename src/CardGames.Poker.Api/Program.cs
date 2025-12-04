@@ -1,11 +1,13 @@
 using Asp.Versioning;
 using CardGames.Poker.Api.Features;
+using CardGames.Poker.Api.Features.Games.Domain;
 using CardGames.Poker.Api.Infrastructure;
 using CardGames.Poker.Api.Infrastructure.Middleware;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using JasperFx;
 using Marten;
+using Marten.Events.Projections;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.FileProviders;
@@ -105,6 +107,13 @@ builder.Services.AddProblemDetails().AddErrorObjects();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
+// Configure JSON serialization to support string enums
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+	options.SerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+	options.SerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+});
+
 
 builder.Services.AddApiVersioning(
 		options =>
@@ -150,6 +159,9 @@ builder.Services.AddMarten(opts =>
 		var connectionString = builder.Configuration.GetConnectionString("Marten");
 		opts.Connection(connectionString);
 		opts.DatabaseSchemaName = "incidents";
+
+		// Register the aggregate for event sourcing
+		opts.Projections.Snapshot<PokerGameAggregate>(SnapshotLifecycle.Inline);
 	})
 
 // This adds configuration with Wolverine's transactional outbox and

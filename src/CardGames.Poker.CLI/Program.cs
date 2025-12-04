@@ -8,6 +8,9 @@ using Spectre.Console.Cli;
 // Ensure UTF-8 encoding is set for proper Unicode character display
 Console.OutputEncoding = System.Text.Encoding.UTF8;
 
+// Clear the terminal for a clean start
+AnsiConsole.Clear();
+
 // If no arguments provided, show interactive menu
 if (args.Length == 0)
 {
@@ -32,14 +35,17 @@ static void RunInteractiveMenu()
         var mode = AnsiConsole.Prompt(
             new SelectionPrompt<string>()
                 .Title("[green]What would you like to do?[/]")
-                .AddChoices("Play Poker (With Betting)", "Deal Cards (Automated Dealer)", "Run Simulation (Manual Setup)", "Exit"));
+                .AddChoices("Play Poker (With Betting)", "Play via API (Multiplayer)", "Deal Cards (Automated Dealer)", "Run Simulation (Manual Setup)", "Exit"));
 
         switch (mode)
         {
             case "Play Poker (With Betting)":
                 RunPlayMenu();
                 break;
-            case "Deal Cards (Automated Dealer)":
+            case "Play via API (Multiplayer)":
+	            RunApiPlayMenu();
+	            break;
+			case "Deal Cards (Automated Dealer)":
                 RunDealMenu();
                 break;
             case "Run Simulation (Manual Setup)":
@@ -50,7 +56,21 @@ static void RunInteractiveMenu()
         }
     }
 }
+static void RunApiPlayMenu()
+{
+	var apiUrl = AnsiConsole.Ask("API URL:", "https://localhost:7034");
 
+	var gameType = AnsiConsole.Prompt(
+		new SelectionPrompt<string>()
+			.Title("[green]Select game type:[/]")
+			.AddChoices("5-Card Draw", "Back"));
+
+	if (gameType == "5-Card Draw")
+	{
+		var app = CreateCommandApp();
+		app.Run(new[] { "api", "draw", "--api-url", apiUrl });
+	}
+}
 static void RunPlayMenu()
 {
     var gameType = AnsiConsole.Prompt(
@@ -249,7 +269,16 @@ static CommandApp CreateCommandApp()
                 .WithDescription("Deal a Follow the Queen hand (Queens and following card are wild).");
         });
 
-        configuration.AddBranch<PlaySettings>("play", play =>
+        configuration.AddBranch<ApiPlaySettings>("api", api =>
+        {
+	        api
+		        .AddCommand<ApiFiveCardDrawPlayCommand>("draw")
+		        .WithAlias("5cd")
+		        .WithAlias("5-card-draw")
+		        .WithDescription("Play 5-card Draw via the Web API.");
+        });
+
+		configuration.AddBranch<PlaySettings>("play", play =>
         {
             play
                 .AddCommand<FiveCardDrawPlayCommand>("draw")
