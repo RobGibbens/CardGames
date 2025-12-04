@@ -43,6 +43,66 @@ public class ApiClient : IDisposable
 	}
 
 	/// <summary>
+	/// Starts a new hand in the game.
+	/// </summary>
+	public async Task<StartHandResponse?> StartHandAsync(Guid gameId)
+	{
+		var response = await _httpClient.PostAsync($"/api/v1/games/{gameId}/hands", null);
+		response.EnsureSuccessStatusCode();
+		return await response.Content.ReadFromJsonAsync<StartHandResponse>(_jsonOptions);
+	}
+
+	/// <summary>
+	/// Gets the current hand state.
+	/// </summary>
+	public async Task<GetCurrentHandResponse?> GetCurrentHandAsync(Guid gameId)
+	{
+		return await _httpClient.GetFromJsonAsync<GetCurrentHandResponse>(
+			$"/api/v1/games/{gameId}/hands/current",
+			_jsonOptions);
+	}
+
+	/// <summary>
+	/// Gets a player's cards.
+	/// </summary>
+	public async Task<GetPlayerCardsResponse?> GetPlayerCardsAsync(Guid gameId, Guid playerId)
+	{
+		return await _httpClient.GetFromJsonAsync<GetPlayerCardsResponse>(
+			$"/api/v1/games/{gameId}/players/{playerId}/cards",
+			_jsonOptions);
+	}
+
+	/// <summary>
+	/// Gets available actions for a player.
+	/// </summary>
+	public async Task<GetAvailableActionsResponse?> GetAvailableActionsAsync(Guid gameId, Guid playerId)
+	{
+		return await _httpClient.GetFromJsonAsync<GetAvailableActionsResponse>(
+			$"/api/v1/games/{gameId}/players/{playerId}/available-actions",
+			_jsonOptions);
+	}
+
+	/// <summary>
+	/// Places a betting action.
+	/// </summary>
+	public async Task<PlaceActionResponse?> PlaceActionAsync(Guid gameId, PlaceActionRequest request)
+	{
+		var response = await _httpClient.PostAsJsonAsync(
+			$"/api/v1/games/{gameId}/hands/current/actions",
+			request,
+			_jsonOptions);
+
+		if (!response.IsSuccessStatusCode)
+		{
+			var error = await response.Content.ReadAsStringAsync();
+			return new PlaceActionResponse(false, "", 0, null, false, false, "", error);
+		}
+
+		return await response.Content.ReadFromJsonAsync<PlaceActionResponse>(_jsonOptions);
+	}
+
+
+	/// <summary>
 	/// Joins an existing game.
 	/// </summary>
 	public async Task<JoinGameResponse?> JoinGameAsync(Guid gameId, JoinGameRequest request)

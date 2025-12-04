@@ -10,6 +10,7 @@ using Marten;
 using Marten.Events.Projections;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Identity.Web;
 using OpenTelemetry.Metrics;
@@ -105,7 +106,23 @@ builder.Services.AddRateLimiter(limiterOptions => limiterOptions
 	}));
 builder.Services.AddProblemDetails().AddErrorObjects();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(options =>
+{
+	// Use endpoint name as operationId for cleaner API documentation
+	options.AddOperationTransformer((operation, context, cancellationToken) =>
+	{
+		var endpointName = context.Description.ActionDescriptor.EndpointMetadata
+			.OfType<EndpointNameAttribute>()
+			.FirstOrDefault()?.EndpointName;
+
+		if (!string.IsNullOrEmpty(endpointName))
+		{
+			operation.OperationId = endpointName;
+		}
+
+		return Task.CompletedTask;
+	});
+});
 
 // Configure JSON serialization to support string enums
 builder.Services.ConfigureHttpJsonOptions(options =>

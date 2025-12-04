@@ -15,6 +15,7 @@ public static class JoinGameEndpoint
 	/// Adds a player to an existing game.
 	/// </summary>
 	[WolverinePost("/api/v1/games/{gameId}/players")]
+	[EndpointName("JoinGame")]
 	public static async Task<Results<Ok<JoinGameResponse>, NotFound<string>, BadRequest<string>>> Post(
 		Guid gameId,
 		JoinGameRequest request,
