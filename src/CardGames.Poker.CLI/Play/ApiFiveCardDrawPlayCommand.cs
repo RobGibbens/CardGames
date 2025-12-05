@@ -19,6 +19,7 @@ using System.Threading.Tasks;
 internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiPlaySettings>
 {
 	private static readonly SpectreLogger Logger = new();
+	private const int DrawPhaseDelayMs = 500;
 
 	protected override async Task<int> ExecuteAsync(CommandContext context, ApiPlaySettings settings, CancellationToken cancellationToken)
 	{
@@ -292,7 +293,7 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiPlaySettings>
 			}
 
 			// Brief pause before next player
-			await Task.Delay(500);
+			await Task.Delay(DrawPhaseDelayMs);
 		}
 	}
 
@@ -325,7 +326,7 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiPlaySettings>
 		var indices = input.Split(' ', StringSplitOptions.RemoveEmptyEntries)
 			.Select(s =>
 			{
-				if (int.TryParse(s, out var num) && num >= 1 && num <= 5)
+				if (int.TryParse(s, out var num) && num >= 1 && num <= cards.Count)
 				{
 					return num - 1; // Convert to 0-indexed
 				}
