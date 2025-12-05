@@ -36,3 +36,44 @@ public class DealCardsResult
 	public Dictionary<Guid, int> PlayerCardCounts { get; init; } = [];
 	public Dictionary<Guid, List<string>> PlayerCards { get; init; } = [];
 }
+
+/// <summary>
+/// Result of drawing cards (discard and draw) for a player.
+/// </summary>
+public class DrawCardsApiResult
+{
+	public bool Success { get; init; }
+	public string? ErrorMessage { get; init; }
+	public Guid PlayerId { get; init; }
+	public string PlayerName { get; init; } = "";
+	public int CardsDiscarded { get; init; }
+	public List<string> NewCards { get; init; } = [];
+	public List<string> NewHand { get; init; } = [];
+	public bool DrawPhaseComplete { get; init; }
+	public Guid? NextPlayerToAct { get; init; }
+}
+
+/// <summary>
+/// Result of a showdown.
+/// </summary>
+public class ShowdownApiResult
+{
+	public bool Success { get; init; }
+	public string? ErrorMessage { get; init; }
+	public bool WonByFold { get; init; }
+	public List<ShowdownPlayerResult> Results { get; init; } = [];
+}
+
+/// <summary>
+/// Result for a single player in the showdown.
+/// </summary>
+public record ShowdownPlayerResult
+{
+	public Guid PlayerId { get; init; }
+	public string PlayerName { get; init; } = "";
+	public List<string> Hand { get; init; } = [];
+	public string HandType { get; init; } = "";
+	public string HandDescription { get; init; } = "";
+	public int Payout { get; init; }
+	public bool IsWinner { get; init; }
+}

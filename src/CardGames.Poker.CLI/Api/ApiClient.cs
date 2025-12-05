@@ -132,6 +132,51 @@ public class ApiClient : IDisposable
 			_jsonOptions);
 	}
 
+	/// <summary>
+	/// Draws cards (discard and replace) in the draw phase.
+	/// </summary>
+	public async Task<DrawCardsApiResponse?> DrawCardsAsync(Guid gameId, DrawCardsApiRequest request)
+	{
+		var response = await _httpClient.PostAsJsonAsync(
+			$"/api/v1/games/{gameId}/hands/current/draw",
+			request,
+			_jsonOptions);
+
+		if (!response.IsSuccessStatusCode)
+		{
+			var error = await response.Content.ReadAsStringAsync();
+			return new DrawCardsApiResponse(false, 0, [], [], false, null, "", error);
+		}
+
+		return await response.Content.ReadFromJsonAsync<DrawCardsApiResponse>(_jsonOptions);
+	}
+
+	/// <summary>
+	/// Performs the showdown and determines winners.
+	/// </summary>
+	public async Task<ShowdownApiResponse?> ShowdownAsync(Guid gameId)
+	{
+		var response = await _httpClient.PostAsync($"/api/v1/games/{gameId}/hands/current/showdown", null);
+
+		if (!response.IsSuccessStatusCode)
+		{
+			var error = await response.Content.ReadAsStringAsync();
+			return new ShowdownApiResponse(false, false, [], error);
+		}
+
+		return await response.Content.ReadFromJsonAsync<ShowdownApiResponse>(_jsonOptions);
+	}
+
+	/// <summary>
+	/// Checks if the game can continue.
+	/// </summary>
+	public async Task<ContinueGameApiResponse?> ContinueGameAsync(Guid gameId)
+	{
+		return await _httpClient.GetFromJsonAsync<ContinueGameApiResponse>(
+			$"/api/v1/games/{gameId}/continue",
+			_jsonOptions);
+	}
+
 	public void Dispose()
 	{
 		_httpClient.Dispose();

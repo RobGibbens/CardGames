@@ -370,4 +370,303 @@ public class PokerGameAggregate
 	{
 		return Players.Count;
 	}
+
+	/// <summary>
+	/// Apply method for DrawCardsPerformed event (Marten convention).
+	/// </summary>
+	public void Apply(DrawCardsPerformed @event)
+	{
+		// Update the player's cards
+		var player = Players.FirstOrDefault(p => p.PlayerId == @event.PlayerId);
+		if (player != null)
+		{
+			player.Cards = @event.NewCards;
+		}
+
+		// Update phase and next player
+		if (@event.DrawPhaseComplete)
+		{
+			CurrentPhase = HandPhase.SecondBettingRound;
+		}
+		CurrentPlayerToAct = @event.NextPlayerToAct;
+	}
+
+	/// <summary>
+	/// Apply method for ShowdownPerformed event (Marten convention).
+	/// </summary>
+	public void Apply(ShowdownPerformed @event)
+	{
+		// Update player chip stacks with payouts
+		foreach (var result in @event.Results)
+		{
+			var player = Players.FirstOrDefault(p => p.PlayerId == result.PlayerId);
+			if (player != null)
+			{
+				player.ChipStack = result.FinalChipStack;
+			}
+		}
+
+		CurrentPhase = HandPhase.Complete;
+		TotalPot = 0;
+		CurrentPlayerToAct = null;
+	}
+
+	/// <summary>
+	/// Gets the current player who needs to draw cards.
+	/// </summary>
+	public (Guid? PlayerId, string? PlayerName) GetCurrentDrawPlayer()
+	{
+		if (_gameInstance == null || CurrentPhase != HandPhase.DrawPhase)
+		{
+			return (null, null);
+		}
+
+		var drawPlayer = _gameInstance.GetCurrentDrawPlayer();
+		if (drawPlayer == null)
+		{
+			return (null, null);
+		}
+
+		if (_playerNameToId.TryGetValue(drawPlayer.Player.Name, out var playerId))
+		{
+			return (playerId, drawPlayer.Player.Name);
+		}
+
+		return (null, null);
+	}
+
+	/// <summary>
+	/// Processes a draw action (discard and draw cards) for a player.
+	/// </summary>
+	public DrawCardsApiResult ProcessDraw(Guid playerId, List<int> discardIndices)
+	{
+		if (_gameInstance == null)
+		{
+			return new DrawCardsApiResult { Success = false, ErrorMessage = "No active hand" };
+		}
+
+		if (CurrentPhase != HandPhase.DrawPhase)
+		{
+			return new DrawCardsApiResult { Success = false, ErrorMessage = "Not in draw phase" };
+		}
+
+		var currentDrawPlayer = _gameInstance.GetCurrentDrawPlayer();
+		if (currentDrawPlayer == null)
+		{
+			return new DrawCardsApiResult { Success = false, ErrorMessage = "No player to draw" };
+		}
+
+		if (!_playerNameToId.TryGetValue(currentDrawPlayer.Player.Name, out var currentPlayerId) || currentPlayerId != playerId)
+		{
+			return new DrawCardsApiResult { Success = false, ErrorMessage = "It is not this player's turn to draw" };
+		}
+
+		var result = _gameInstance.ProcessDraw(discardIndices);
+
+		if (!result.Success)
+		{
+			return new DrawCardsApiResult { Success = false, ErrorMessage = result.ErrorMessage };
+		}
+
+		// Get the new hand for this player
+		var newCards = result.NewCards?.Select(c => c.ToShortString()).ToList() ?? [];
+		var newHand = currentDrawPlayer.Hand.Select(c => c.ToShortString()).ToList();
+
+		// Update aggregate's player cards
+		var player = Players.FirstOrDefault(p => p.PlayerId == playerId);
+		if (player != null)
+		{
+			player.Cards = newHand;
+		}
+
+		// Check if draw phase is complete
+		var drawPhaseComplete = result.DrawComplete;
+		Guid? nextPlayerToAct = null;
+
+		if (drawPhaseComplete)
+		{
+			// Move to second betting round
+			CurrentPhase = HandPhase.SecondBettingRound;
+			var nextBettingPlayer = _gameInstance.GetCurrentPlayer();
+			if (nextBettingPlayer != null && _playerNameToId.TryGetValue(nextBettingPlayer.Name, out var nextId))
+			{
+				nextPlayerToAct = nextId;
+			}
+		}
+		else
+		{
+			// Get next draw player
+			var nextDrawPlayer = _gameInstance.GetCurrentDrawPlayer();
+			if (nextDrawPlayer != null && _playerNameToId.TryGetValue(nextDrawPlayer.Player.Name, out var nextId))
+			{
+				nextPlayerToAct = nextId;
+			}
+		}
+
+		CurrentPlayerToAct = nextPlayerToAct;
+
+		return new DrawCardsApiResult
+		{
+			Success = true,
+			PlayerId = playerId,
+			PlayerName = result.PlayerName ?? "",
+			CardsDiscarded = discardIndices.Count,
+			NewCards = newCards,
+			NewHand = newHand,
+			DrawPhaseComplete = drawPhaseComplete,
+			NextPlayerToAct = nextPlayerToAct
+		};
+	}
+
+	/// <summary>
+	/// Checks if showdown can be performed.
+	/// </summary>
+	public bool CanPerformShowdown()
+	{
+		// Showdown can happen if:
+		// 1. We're in showdown phase, OR
+		// 2. Only one player remains (everyone else folded)
+		if (CurrentPhase == HandPhase.Showdown)
+		{
+			return true;
+		}
+
+		var activePlayersCount = Players.Count(p => !p.HasFolded);
+		return activePlayersCount <= 1 && CurrentHandId != null;
+	}
+
+	/// <summary>
+	/// Performs the showdown and determines winners.
+	/// </summary>
+	public ShowdownApiResult PerformShowdown()
+	{
+		if (_gameInstance == null)
+		{
+			return new ShowdownApiResult { Success = false, ErrorMessage = "No active hand" };
+		}
+
+		// Force showdown phase if not already there
+		if (_gameInstance.CurrentPhase != FiveCardDrawPhase.Showdown)
+		{
+			// Check if we should be in showdown (e.g., only one player left)
+			var activePlayersCount = Players.Count(p => !p.HasFolded);
+			if (activePlayersCount > 1 && CurrentPhase != HandPhase.Showdown)
+			{
+				return new ShowdownApiResult { Success = false, ErrorMessage = "Cannot perform showdown in current phase" };
+			}
+		}
+
+		var result = _gameInstance.PerformShowdown();
+
+		if (!result.Success)
+		{
+			return new ShowdownApiResult { Success = false, ErrorMessage = result.ErrorMessage };
+		}
+
+		var showdownResults = new List<ShowdownPlayerResult>();
+
+		foreach (var (playerName, (hand, cards)) in result.PlayerHands ?? [])
+		{
+			if (_playerNameToId.TryGetValue(playerName, out var playerId))
+			{
+				var payout = result.Payouts?.GetValueOrDefault(playerName, 0) ?? 0;
+				var isWinner = payout > 0;
+				var player = Players.FirstOrDefault(p => p.PlayerId == playerId);
+
+				// Update player chips
+				if (player != null && payout > 0)
+				{
+					player.AddChips(payout);
+				}
+
+				var handDescription = hand != null
+					? GetHandDescription(hand.Type)
+					: (result.WonByFold ? "Win by fold" : "Unknown");
+
+				showdownResults.Add(new ShowdownPlayerResult
+				{
+					PlayerId = playerId,
+					PlayerName = playerName,
+					Hand = cards.Select(c => c.ToShortString()).ToList(),
+					HandType = hand?.Type.ToString() ?? "Unknown",
+					HandDescription = handDescription,
+					Payout = payout,
+					IsWinner = isWinner
+				});
+			}
+		}
+
+		// If won by fold, add the winner
+		if (result.WonByFold && showdownResults.Count == 1)
+		{
+			var winner = showdownResults[0];
+			winner = winner with { HandDescription = "Win by fold - all other players folded" };
+			showdownResults = [winner];
+		}
+
+		CurrentPhase = HandPhase.Complete;
+		TotalPot = 0;
+
+		return new ShowdownApiResult
+		{
+			Success = true,
+			WonByFold = result.WonByFold,
+			Results = showdownResults
+		};
+	}
+
+	/// <summary>
+	/// Resets the hand state for a new hand.
+	/// </summary>
+	public void ResetForNewHand()
+	{
+		CurrentHandId = null;
+		CurrentPhase = HandPhase.None;
+		TotalPot = 0;
+		CurrentBet = 0;
+		CurrentPlayerToAct = null;
+		_gameInstance = null;
+
+		foreach (var player in Players)
+		{
+			player.ResetForNewHand();
+		}
+	}
+
+	/// <summary>
+	/// Checks if the game can continue (at least 2 players have chips).
+	/// </summary>
+	public bool CanContinueGame()
+	{
+		return Players.Count(p => p.ChipStack > 0) >= 2;
+	}
+
+	/// <summary>
+	/// Gets the players who can continue playing (have chips).
+	/// </summary>
+	public List<GamePlayer> GetPlayersWithChips()
+	{
+		return Players.Where(p => p.ChipStack > 0).ToList();
+	}
+
+	/// <summary>
+	/// Gets a human-readable description for a hand type.
+	/// </summary>
+	private static string GetHandDescription(Poker.Hands.HandTypes.HandType handType)
+	{
+		return handType switch
+		{
+			Poker.Hands.HandTypes.HandType.HighCard => "High Card",
+			Poker.Hands.HandTypes.HandType.OnePair => "One Pair",
+			Poker.Hands.HandTypes.HandType.TwoPair => "Two Pair",
+			Poker.Hands.HandTypes.HandType.Trips => "Three of a Kind",
+			Poker.Hands.HandTypes.HandType.Straight => "Straight",
+			Poker.Hands.HandTypes.HandType.Flush => "Flush",
+			Poker.Hands.HandTypes.HandType.FullHouse => "Full House",
+			Poker.Hands.HandTypes.HandType.Quads => "Four of a Kind",
+			Poker.Hands.HandTypes.HandType.StraightFlush => "Straight Flush",
+			Poker.Hands.HandTypes.HandType.FiveOfAKind => "Five of a Kind",
+			_ => "Unknown"
+		};
+	}
 }

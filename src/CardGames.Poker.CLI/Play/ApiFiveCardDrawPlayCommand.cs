@@ -19,6 +19,7 @@ using System.Threading.Tasks;
 internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiPlaySettings>
 {
 	private static readonly SpectreLogger Logger = new();
+	private const int DrawPhaseDelayMs = 500;
 
 	protected override async Task<int> ExecuteAsync(CommandContext context, ApiPlaySettings settings, CancellationToken cancellationToken)
 	{
@@ -36,16 +37,35 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiPlaySettings>
 				return 1;
 			}
 
-			// Phase 2: Play hands
-			do
+			// Phase 2 & 3: Play hands with full game loop
+			var continueGame = true;
+			while (continueGame)
 			{
 				var handResult = await PlayHandAsync(apiClient, gameId.Value, playerIds, cancellationToken);
 				if (handResult != 0)
 				{
 					return handResult;
 				}
+
+				// Check if game can continue
+				var continueStatus = await apiClient.ContinueGameAsync(gameId.Value);
+				if (continueStatus == null || !continueStatus.CanContinue)
+				{
+					if (continueStatus != null && continueStatus.WinnerName != null)
+					{
+						AnsiConsole.MarkupLine($"\n[green bold]Game Over! {continueStatus.WinnerName} wins with {continueStatus.WinnerChips} chips![/]");
+					}
+					else
+					{
+						AnsiConsole.MarkupLine("\n[yellow]Game cannot continue - not enough players with chips.[/]");
+					}
+					continueGame = false;
+				}
+				else
+				{
+					continueGame = AnsiConsole.Confirm("Play another hand?");
+				}
 			}
-			while (AnsiConsole.Confirm("Play another hand?"));
 
 			Logger.Paragraph("Game Over");
 			await DisplayFinalStandingsAsync(apiClient, gameId.Value);
@@ -169,25 +189,155 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiPlaySettings>
 		var firstRoundResult = await RunBettingRoundAsync(apiClient, gameId, playerIds, "First Betting Round");
 		if (!firstRoundResult.continueHand)
 		{
-			await ShowHandResultsAsync(apiClient, gameId);
+			await ShowHandResultsAsync(apiClient, gameId, playerIds);
 			return 0;
 		}
 
-		// Draw phase placeholder
-		AnsiConsole.MarkupLine("[yellow]Draw phase - coming in Phase 3[/]");
+		// Check hand state to determine phase
+		handState = await apiClient.GetCurrentHandAsync(gameId);
+		if (handState?.Phase == "DrawPhase")
+		{
+			// Draw phase
+			var drawResult = await RunDrawPhaseAsync(apiClient, gameId, playerIds);
+			if (!drawResult)
+			{
+				await ShowHandResultsAsync(apiClient, gameId, playerIds);
+				return 0;
+			}
+		}
 
 		// Second betting round
 		var secondRoundResult = await RunBettingRoundAsync(apiClient, gameId, playerIds, "Second Betting Round");
 		if (!secondRoundResult.continueHand)
 		{
-			await ShowHandResultsAsync(apiClient, gameId);
+			await ShowHandResultsAsync(apiClient, gameId, playerIds);
 			return 0;
 		}
 
 		// Showdown
-		await ShowHandResultsAsync(apiClient, gameId);
+		await ShowHandResultsAsync(apiClient, gameId, playerIds);
 
 		return 0;
+	}
+
+	private static async Task<bool> RunDrawPhaseAsync(
+		ApiClient apiClient,
+		Guid gameId,
+		List<(Guid id, string name)> playerIds)
+	{
+		Logger.Paragraph("Draw Phase");
+
+		while (true)
+		{
+			var handState = await apiClient.GetCurrentHandAsync(gameId);
+			if (handState == null)
+			{
+				AnsiConsole.MarkupLine("[red]Failed to get hand state.[/]");
+				return false;
+			}
+
+			// Check if draw phase is complete
+			if (handState.Phase != "DrawPhase")
+			{
+				return true;
+			}
+
+			if (handState.CurrentPlayerToAct == null)
+			{
+				return true;
+			}
+
+			var currentPlayerId = handState.CurrentPlayerToAct.Value;
+			var currentPlayer = playerIds.FirstOrDefault(p => p.id == currentPlayerId);
+
+			// Display game state
+			Logger.ClearScreen();
+			Logger.Paragraph("Draw Phase");
+			AnsiConsole.MarkupLine($"[green]Pot: {handState.Pot}[/]");
+			DisplayHandPlayers(handState.Players, currentPlayerId);
+
+			// Show current player's cards
+			var cards = await apiClient.GetPlayerCardsAsync(gameId, currentPlayerId);
+			if (cards != null && cards.Cards.Count > 0)
+			{
+				AnsiConsole.MarkupLine($"\n[cyan]{currentPlayer.name}[/]'s hand:");
+				DisplayPlayerCards(cards.Cards);
+			}
+
+			// Prompt for cards to discard
+			var discardIndices = PromptForDiscard(currentPlayer.name, cards?.Cards ?? []);
+
+			// Submit draw action
+			var request = new DrawCardsApiRequest(currentPlayerId, discardIndices);
+			var result = await apiClient.DrawCardsAsync(gameId, request);
+
+			if (result == null || !result.Success)
+			{
+				AnsiConsole.MarkupLine($"[red]{result?.ErrorMessage ?? "Failed to process draw"}[/]");
+				continue;
+			}
+
+			AnsiConsole.MarkupLine($"[blue]{currentPlayer.name} discards {result.CardsDiscarded} card(s)[/]");
+			if (result.NewCards.Count > 0)
+			{
+				AnsiConsole.MarkupLine($"[green]Drew: {string.Join(" ", result.NewCards)}[/]");
+			}
+
+			// Show new hand
+			AnsiConsole.MarkupLine($"[cyan]New hand: {string.Join(" ", result.NewHand)}[/]");
+
+			if (result.DrawPhaseComplete)
+			{
+				AnsiConsole.MarkupLine("[green]Draw phase complete![/]");
+				return true;
+			}
+
+			// Brief pause before next player
+			await Task.Delay(DrawPhaseDelayMs);
+		}
+	}
+
+	private static void DisplayPlayerCards(List<string> cards)
+	{
+		var table = new Table();
+		for (int i = 0; i < cards.Count; i++)
+		{
+			table.AddColumn($"[{i + 1}]");
+		}
+
+		table.AddRow(cards.Select(c => $"[bold]{c}[/]").ToArray());
+		AnsiConsole.Write(table);
+	}
+
+	private static List<int> PromptForDiscard(string playerName, List<string> cards)
+	{
+		AnsiConsole.MarkupLine($"\n[cyan]{playerName}[/], select cards to discard (0-3 cards):");
+		AnsiConsole.MarkupLine("[dim]Enter card positions (1-5) separated by spaces, or press Enter to keep all.[/]");
+
+		var input = AnsiConsole.Prompt(
+			new TextPrompt<string>("Cards to discard (e.g., '1 3' or leave blank):")
+				.AllowEmpty());
+
+		if (string.IsNullOrWhiteSpace(input))
+		{
+			return [];
+		}
+
+		var indices = input.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+			.Select(s =>
+			{
+				if (int.TryParse(s, out var num) && num >= 1 && num <= cards.Count)
+				{
+					return num - 1; // Convert to 0-indexed
+				}
+				return -1;
+			})
+			.Where(i => i >= 0 && i < cards.Count)
+			.Distinct()
+			.Take(3) // Max 3 cards
+			.ToList();
+
+		return indices;
 	}
 
 	private static async Task<(bool continueHand, bool success)> RunBettingRoundAsync(
@@ -379,7 +529,7 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiPlaySettings>
 		AnsiConsole.Write(table);
 	}
 
-	private static async Task ShowHandResultsAsync(ApiClient apiClient, Guid gameId)
+	private static async Task ShowHandResultsAsync(ApiClient apiClient, Guid gameId, List<(Guid id, string name)> playerIds)
 	{
 		Logger.Paragraph("Hand Results");
 
@@ -393,34 +543,96 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiPlaySettings>
 		AnsiConsole.MarkupLine($"[green]Final Pot: {handState.Pot}[/]");
 		AnsiConsole.MarkupLine($"[dim]Phase: {handState.Phase}[/]");
 
-		// Display final standings for this hand
+		// Check if we need to do a showdown
 		var activePlayers = handState.Players.Where(p => p.Status != "Folded").ToList();
+		
 		if (activePlayers.Count == 1)
 		{
-			var winner = activePlayers[0];
-			AnsiConsole.MarkupLine($"\n[green bold]{winner.Name} wins the pot![/]");
+			// Player won by fold - call showdown to process pot distribution
+			var showdownResult = await apiClient.ShowdownAsync(gameId);
+			if (showdownResult?.Success == true)
+			{
+				var winner = showdownResult.Results.FirstOrDefault(r => r.IsWinner);
+				if (winner != null)
+				{
+					AnsiConsole.MarkupLine($"\n[green bold]{winner.PlayerName} wins {winner.Payout} chips![/]");
+					AnsiConsole.MarkupLine($"[dim]{winner.HandDescription}[/]");
+				}
+			}
+			else
+			{
+				var winner = activePlayers[0];
+				AnsiConsole.MarkupLine($"\n[green bold]{winner.Name} wins the pot![/]");
+			}
 		}
-		else
+		else if (activePlayers.Count > 1)
 		{
-			AnsiConsole.MarkupLine("\n[yellow]Showdown - Phase 3 will determine winner[/]");
+			// Multiple players - actual showdown
+			var showdownResult = await apiClient.ShowdownAsync(gameId);
+			if (showdownResult?.Success == true)
+			{
+				AnsiConsole.MarkupLine("\n[bold]Showdown Results:[/]");
+
+				var resultsTable = new Table();
+				resultsTable.AddColumn("Player");
+				resultsTable.AddColumn("Hand");
+				resultsTable.AddColumn("Type");
+				resultsTable.AddColumn("Payout");
+
+				foreach (var result in showdownResult.Results.OrderByDescending(r => r.Payout))
+				{
+					var handStr = string.Join(" ", result.Hand);
+					var payoutStr = result.Payout > 0
+						? $"[green]+{result.Payout}[/]"
+						: "-";
+					var winMarker = result.IsWinner ? "[gold1]★[/] " : "";
+
+					resultsTable.AddRow(
+						$"{winMarker}{result.PlayerName}",
+						handStr,
+						result.HandDescription,
+						payoutStr
+					);
+				}
+
+				AnsiConsole.Write(resultsTable);
+
+				var winners = showdownResult.Results.Where(r => r.IsWinner).ToList();
+				if (winners.Count == 1)
+				{
+					AnsiConsole.MarkupLine($"\n[green bold]{winners[0].PlayerName} wins with {winners[0].HandDescription}![/]");
+				}
+				else if (winners.Count > 1)
+				{
+					var winnerNames = string.Join(", ", winners.Select(w => w.PlayerName));
+					AnsiConsole.MarkupLine($"\n[green bold]Split pot between: {winnerNames}[/]");
+				}
+			}
+			else
+			{
+				AnsiConsole.MarkupLine($"[red]Showdown failed: {showdownResult?.ErrorMessage ?? "Unknown error"}[/]");
+			}
 		}
 
-		// Show chip counts
-		var table = new Table();
-		table.AddColumn("Player");
-		table.AddColumn("Chips");
-		table.AddColumn("Status");
-
-		foreach (var player in handState.Players)
+		// Show updated chip counts after showdown
+		var updatedGameState = await apiClient.GetGameStateAsync(gameId);
+		if (updatedGameState != null)
 		{
-			table.AddRow(
-				player.Name,
-				player.ChipStack.ToString(),
-				player.Status
-			);
-		}
+			AnsiConsole.MarkupLine("\n[bold]Chip Counts After Hand:[/]");
+			var chipsTable = new Table();
+			chipsTable.AddColumn("Player");
+			chipsTable.AddColumn("Chips");
 
-		AnsiConsole.Write(table);
+			foreach (var player in updatedGameState.Players.OrderByDescending(p => p.ChipStack))
+			{
+				chipsTable.AddRow(
+					player.Name,
+					player.ChipStack.ToString()
+				);
+			}
+
+			AnsiConsole.Write(chipsTable);
+		}
 	}
 
 	private static async Task DisplayFinalStandingsAsync(ApiClient apiClient, Guid gameId)
