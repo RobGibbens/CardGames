@@ -1,9 +1,12 @@
-﻿namespace CardGames.Poker.Api.Features;
+﻿using CardGames.Poker.Api.Features.Games.FiveCardDraw;
+
+namespace CardGames.Poker.Api.Features;
 
 public static class MapFeatureEndpoints
 {
 	public static void AddFeatureEndpoints(this IEndpointRouteBuilder app)
 	{
+		app.AddFiveCardDrawEndpoints();
 		//app.AddCategoriesEndpoints();
 		//app.AddFavoritesEndpoints();
 		//app.AddIngredientsEndpoints();

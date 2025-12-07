@@ -33,7 +33,7 @@ namespace CardGames.Poker.Api.Migrations
                     IsActive = table.Column<bool>(type: "bit", nullable: false),
                     CreatedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
                     UpdatedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
-                    RowVersion = table.Column<long>(type: "bigint", rowVersion: true, nullable: false)
+                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -59,7 +59,7 @@ namespace CardGames.Poker.Api.Migrations
                     CreatedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
                     UpdatedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
                     LastActiveAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
-                    RowVersion = table.Column<long>(type: "bigint", rowVersion: true, nullable: false)
+                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -93,7 +93,7 @@ namespace CardGames.Poker.Api.Migrations
                     UpdatedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
                     StartedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
                     EndedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
-                    RowVersion = table.Column<long>(type: "bigint", rowVersion: true, nullable: false)
+                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -127,7 +127,7 @@ namespace CardGames.Poker.Api.Migrations
                     IsComplete = table.Column<bool>(type: "bit", nullable: false),
                     StartedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
                     CompletedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
-                    RowVersion = table.Column<long>(type: "bigint", rowVersion: true, nullable: false)
+                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -165,7 +165,7 @@ namespace CardGames.Poker.Api.Migrations
                     VariantState = table.Column<string>(type: "nvarchar(4000)", maxLength: 4000, nullable: true),
                     JoinedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
                     LeftAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
-                    RowVersion = table.Column<long>(type: "bigint", rowVersion: true, nullable: false)
+                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -200,7 +200,7 @@ namespace CardGames.Poker.Api.Migrations
                     WinnerPayouts = table.Column<string>(type: "nvarchar(4000)", maxLength: 4000, nullable: true),
                     WinReason = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
                     CreatedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
-                    RowVersion = table.Column<long>(type: "bigint", rowVersion: true, nullable: false)
+                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -233,7 +233,7 @@ namespace CardGames.Poker.Api.Migrations
                     IsTimeout = table.Column<bool>(type: "bit", nullable: false),
                     Note = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
                     ActionAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
-                    RowVersion = table.Column<long>(type: "bigint", rowVersion: true, nullable: false)
+                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -248,8 +248,7 @@ namespace CardGames.Poker.Api.Migrations
                         name: "FK_BettingActionRecords_GamePlayers_GamePlayerId",
                         column: x => x.GamePlayerId,
                         principalTable: "GamePlayers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -273,7 +272,7 @@ namespace CardGames.Poker.Api.Migrations
                     DrawnAtRound = table.Column<int>(type: "int", nullable: true),
                     IsBuyCard = table.Column<bool>(type: "bit", nullable: false),
                     DealtAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
-                    RowVersion = table.Column<long>(type: "bigint", rowVersion: true, nullable: false)
+                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -282,8 +281,7 @@ namespace CardGames.Poker.Api.Migrations
                         name: "FK_GameCards_GamePlayers_GamePlayerId",
                         column: x => x.GamePlayerId,
                         principalTable: "GamePlayers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.SetNull);
+                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_GameCards_Games_GameId",
                         column: x => x.GameId,
@@ -303,7 +301,7 @@ namespace CardGames.Poker.Api.Migrations
                     IsEligibleToWin = table.Column<bool>(type: "bit", nullable: false),
                     IsPotMatch = table.Column<bool>(type: "bit", nullable: false),
                     ContributedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
-                    RowVersion = table.Column<long>(type: "bigint", rowVersion: true, nullable: false)
+                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {

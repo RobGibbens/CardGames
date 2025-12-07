@@ -53,19 +53,19 @@ public class GamePlayerConfiguration : IEntityTypeConfiguration<GamePlayer>
 			.OnDelete(DeleteBehavior.Restrict);
 
 		builder.HasMany(t => t.Cards)
-			.WithOne(c => c.GamePlayer)
-			.HasForeignKey(c => c.GamePlayerId)
-			.OnDelete(DeleteBehavior.SetNull);
+		.WithOne(c => c.GamePlayer)
+		.HasForeignKey(c => c.GamePlayerId)
+		.OnDelete(DeleteBehavior.NoAction); // Avoid cascade conflict: Game -> GameCards also cascades
 
 		builder.HasMany(t => t.PotContributions)
 			.WithOne(pc => pc.GamePlayer)
 			.HasForeignKey(pc => pc.GamePlayerId)
-			.OnDelete(DeleteBehavior.Cascade);
+			.OnDelete(DeleteBehavior.NoAction); // Avoid cascade conflict: Game -> Pots -> PotContributions also cascades
 
 		builder.HasMany(t => t.BettingActions)
 			.WithOne(ba => ba.GamePlayer)
 			.HasForeignKey(ba => ba.GamePlayerId)
-			.OnDelete(DeleteBehavior.Cascade);
+			.OnDelete(DeleteBehavior.NoAction); // Avoid cascade conflict: Game -> BettingRounds -> BettingActions also cascades
 	}
 }
 
