@@ -45,6 +45,7 @@ internal class FiveCardDrawPlayCommand : Command<PlaySettings>
         var playerNames = GetPlayerNames(numberOfPlayers);
         var players = playerNames.Select(name => (name, startingChips)).ToList();
 
+        //TODO:ROB - Call CreateGame api
         var game = new FiveCardDrawGame(players, ante, minBet);
 
         Logger.Paragraph("Game Started");
@@ -78,12 +79,15 @@ internal class FiveCardDrawPlayCommand : Command<PlaySettings>
         Logger.Paragraph("New Hand");
         DisplayPlayerStacks(game);
 
-        // Start hand
-        game.StartHand();
+        //TODO:ROB - Call api
+		// Start hand
+		game.StartHand();
 
         // Collect antes
         AnsiConsole.MarkupLine("[yellow]Collecting antes...[/]");
-        var anteActions = game.CollectAntes();
+        
+        //TODO:ROB - Call api
+		var anteActions = game.CollectAntes();
         foreach (var action in anteActions)
         {
             AnsiConsole.MarkupLine($"[dim]{action}[/]");

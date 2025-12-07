@@ -269,15 +269,6 @@ static CommandApp CreateCommandApp()
                 .WithDescription("Deal a Follow the Queen hand (Queens and following card are wild).");
         });
 
-        configuration.AddBranch<ApiPlaySettings>("api", api =>
-        {
-	        api
-		        .AddCommand<ApiFiveCardDrawPlayCommand>("draw")
-		        .WithAlias("5cd")
-		        .WithAlias("5-card-draw")
-		        .WithDescription("Play 5-card Draw via the Web API.");
-        });
-
 		configuration.AddBranch<PlaySettings>("play", play =>
         {
             play
