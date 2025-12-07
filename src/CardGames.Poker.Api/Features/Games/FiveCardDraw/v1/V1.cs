@@ -1,5 +1,6 @@
 ﻿using Asp.Versioning.Builder;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.CreateGame;
+using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Queries.GetGame;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Queries.GetGames;
 using SharpGrip.FluentValidation.AutoValidation.Endpoints.Extensions;
 
@@ -17,6 +18,7 @@ public static class V1
 		mapGroup
 			.MapCreateGame()
 			.MapGetGames()
+			.MapGetGame()
 			//.MapGetCategoryById()
 			//.MapAddCategory()
 			//.MapUpdateCategory()
