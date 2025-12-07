@@ -73,10 +73,11 @@ namespace CardGames.Poker.Api.Migrations
                     b.Property<int>("PotBefore")
                         .HasColumnType("int");
 
-                    b.Property<long>("RowVersion")
+                    b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
+                        .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("bigint");
+                        .HasColumnType("rowversion");
 
                     b.HasKey("Id");
 
@@ -139,10 +140,11 @@ namespace CardGames.Poker.Api.Migrations
                     b.Property<int>("RoundNumber")
                         .HasColumnType("int");
 
-                    b.Property<long>("RowVersion")
+                    b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
+                        .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("bigint");
+                        .HasColumnType("rowversion");
 
                     b.Property<DateTimeOffset>("StartedAt")
                         .HasColumnType("datetimeoffset");
@@ -224,10 +226,11 @@ namespace CardGames.Poker.Api.Migrations
                     b.Property<int?>("RandomSeed")
                         .HasColumnType("int");
 
-                    b.Property<long>("RowVersion")
+                    b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
+                        .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("bigint");
+                        .HasColumnType("rowversion");
 
                     b.Property<int?>("SmallBet")
                         .HasColumnType("int");
@@ -305,10 +308,11 @@ namespace CardGames.Poker.Api.Migrations
                     b.Property<int>("Location")
                         .HasColumnType("int");
 
-                    b.Property<long>("RowVersion")
+                    b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
+                        .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("bigint");
+                        .HasColumnType("rowversion");
 
                     b.Property<int>("Suit")
                         .HasColumnType("int");
@@ -381,10 +385,11 @@ namespace CardGames.Poker.Api.Migrations
                     b.Property<Guid>("PlayerId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<long>("RowVersion")
+                    b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
+                        .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("bigint");
+                        .HasColumnType("rowversion");
 
                     b.Property<int>("SeatPosition")
                         .HasColumnType("int");
@@ -471,10 +476,11 @@ namespace CardGames.Poker.Api.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<long>("RowVersion")
+                    b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
+                        .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("bigint");
+                        .HasColumnType("rowversion");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("datetimeoffset");
@@ -531,10 +537,11 @@ namespace CardGames.Poker.Api.Migrations
                         .HasMaxLength(4000)
                         .HasColumnType("nvarchar(4000)");
 
-                    b.Property<long>("RowVersion")
+                    b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
+                        .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("bigint");
+                        .HasColumnType("rowversion");
 
                     b.Property<long>("TotalChipsLost")
                         .HasColumnType("bigint");
@@ -603,10 +610,11 @@ namespace CardGames.Poker.Api.Migrations
                     b.Property<int>("PotType")
                         .HasColumnType("int");
 
-                    b.Property<long>("RowVersion")
+                    b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
+                        .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("bigint");
+                        .HasColumnType("rowversion");
 
                     b.Property<string>("WinReason")
                         .HasMaxLength(500)
@@ -650,10 +658,11 @@ namespace CardGames.Poker.Api.Migrations
                     b.Property<Guid>("PotId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<long>("RowVersion")
+                    b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
+                        .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("bigint");
+                        .HasColumnType("rowversion");
 
                     b.HasKey("Id");
 
@@ -678,7 +687,7 @@ namespace CardGames.Poker.Api.Migrations
                     b.HasOne("CardGames.Poker.Api.Data.Entities.GamePlayer", "GamePlayer")
                         .WithMany("BettingActions")
                         .HasForeignKey("GamePlayerId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.Navigation("BettingRound");
@@ -719,7 +728,7 @@ namespace CardGames.Poker.Api.Migrations
                     b.HasOne("CardGames.Poker.Api.Data.Entities.GamePlayer", "GamePlayer")
                         .WithMany("Cards")
                         .HasForeignKey("GamePlayerId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.Navigation("Game");
 

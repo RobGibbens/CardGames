@@ -21,14 +21,14 @@ var migrations = builder.AddProject<Projects.CardGames_MigrationService>("migrat
 	.WaitFor(sqldb);
 
 var api = builder.AddProject<Projects.CardGames_Poker_Api>("api")
-	.WithReference(serviceBus)
-	.WaitFor(serviceBus)
-	.WithReference(cache)
-	.WaitFor(cache)
-	.WithReference(sqlServer)
-	.WaitFor(sqlServer)
-	.WithReference(migrations)
-	.WaitForCompletion(migrations);
+.WithReference(serviceBus)
+.WaitFor(serviceBus)
+.WithReference(cache)
+.WaitFor(cache)
+.WithReference(sqldb)
+.WaitFor(sqldb)
+.WithReference(migrations)
+.WaitForCompletion(migrations);
 
 var web = builder.AddProject<Projects.CardGames_Poker_Web>("web")
 	.WithReference(api)

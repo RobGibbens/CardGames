@@ -49,9 +49,9 @@ public class GameCardConfiguration : IEntityTypeConfiguration<GameCard>
 			.OnDelete(DeleteBehavior.Cascade);
 
 		builder.HasOne(t => t.GamePlayer)
-			.WithMany(gp => gp.Cards)
-			.HasForeignKey(t => t.GamePlayerId)
-			.OnDelete(DeleteBehavior.SetNull);
+		.WithMany(gp => gp.Cards)
+		.HasForeignKey(t => t.GamePlayerId)
+		.OnDelete(DeleteBehavior.NoAction); // Avoid cascade conflict: Game -> GameCards also cascades
 	}
 }
 
