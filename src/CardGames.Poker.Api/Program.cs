@@ -203,7 +203,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.MapScalarApiReference(o =>
-	o.WithTheme(ScalarTheme.Moon)
+	o.WithTheme(ScalarTheme.Alternate)
 );
 app.UseRateLimiter();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
