@@ -1,10 +1,11 @@
-﻿using System;
+﻿using CardGames.Core.French.Cards.Extensions;
 using CardGames.Poker.Api.Clients;
 using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.CLI.Output;
 using CardGames.Poker.Games;
 using Spectre.Console;
 using Spectre.Console.Cli;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -117,10 +118,10 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 
 		//Deal hands
 		AnsiConsole.MarkupLine("[yellow]Dealing cards...[/]");
-		//game.DealHands();
-
-		////Display hands(in a real game, only show current player's hand)
-		//DisplayAllHands(game);
+		var dealHandsResponse = await _fiveCardDrawApi.DealHandsAsync(gameId);
+		
+		//Display hands(in a real game, only show current player's hand)
+		DisplayAllHands(game);
 
 		////First betting round
 		//if (!RunBettingRound(game, "First Betting Round"))
@@ -176,5 +177,22 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 		}
 
 		AnsiConsole.Write(table);
+	}
+
+	private async Task DisplayAllHands(Guid gameId)
+	{
+		var playersResponse = await _fiveCardDrawApi.GetGamePlayersAsync(gameId);
+		var players = playersResponse.Content;
+
+		foreach (var gamePlayer in players)
+		{
+			if (!gamePlayer.HasFolded)
+			{
+				//AnsiConsole.MarkupLine($"[cyan bold]{gamePlayer.Name}[/]'s hand:");
+				//CardRenderer.RenderCards(gamePlayer.Hand);
+				//AnsiConsole.MarkupLine($"[dim]({gamePlayer.Hand.ToStringRepresentation()})[/]");
+				AnsiConsole.WriteLine();
+			}
+		}
 	}
 }

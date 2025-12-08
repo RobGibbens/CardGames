@@ -1,6 +1,7 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.CreateGame;
+using CardGames.Poker.Games;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;

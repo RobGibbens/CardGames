@@ -119,6 +119,37 @@ namespace CardGames.Poker.Api.Clients
         [Post("/api/v1/games/five-card-draw/{gameId}/hands/antes")]
         Task<IApiResponse<CollectAntesSuccessful>> CollectAntesAsync(System.Guid gameId, CancellationToken cancellationToken = default);
 
+        /// <summary>Deal Hands</summary>
+        /// <remarks>Deals five cards to each active player from the shuffled deck and initiates the first betting round. After dealing, the game transitions to the FirstBettingRound phase. This method deals 5 cards to each player who has not folded, resets all players' current bet amounts for the new betting round, and automatically starts the first betting round.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// <item>
+        /// <term>422</term>
+        /// <description>Unprocessable Entity</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Post("/api/v1/games/five-card-draw/{gameId}/hands/deal")]
+        Task<IApiResponse<DealHandsSuccessful>> DealHandsAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
         /// <summary>GetGame</summary>
         /// <remarks>Retrieve a specific game by its identifier.</remarks>
         /// <returns>
@@ -252,6 +283,69 @@ namespace CardGames.Poker.Api.Contracts
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public enum CardSuit
+    {
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Hearts")]
+        Hearts = 0,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Diamonds")]
+        Diamonds = 1,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Spades")]
+        Spades = 2,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Clubs")]
+        Clubs = 3,
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public enum CardSymbol
+    {
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Deuce")]
+        Deuce = 0,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Three")]
+        Three = 1,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Four")]
+        Four = 2,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Five")]
+        Five = 3,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Six")]
+        Six = 4,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Seven")]
+        Seven = 5,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Eight")]
+        Eight = 6,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Nine")]
+        Nine = 7,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Ten")]
+        Ten = 8,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Jack")]
+        Jack = 9,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Queen")]
+        Queen = 10,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"King")]
+        King = 11,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Ace")]
+        Ace = 12,
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial record CollectAntesSuccessful
     {
         [JsonConstructor]
@@ -308,6 +402,67 @@ namespace CardGames.Poker.Api.Contracts
         [JsonPropertyName("players")]
         [System.ComponentModel.DataAnnotations.Required]
         public ICollection<PlayerInfo> Players { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record DealHandsSuccessful
+    {
+        [JsonConstructor]
+        public DealHandsSuccessful(string @currentPhase, int? @currentPlayerIndex, string @currentPlayerName, System.Guid? @gameId, int? @handNumber, ICollection<PlayerDealtCards> @playerHands)
+        {
+            this.GameId = @gameId;
+            this.CurrentPhase = @currentPhase;
+            this.HandNumber = @handNumber;
+            this.CurrentPlayerIndex = @currentPlayerIndex;
+            this.CurrentPlayerName = @currentPlayerName;
+            this.PlayerHands = @playerHands;
+        }
+
+        [JsonPropertyName("gameId")]
+        public System.Guid? GameId { get; init; }
+
+        [JsonPropertyName("currentPhase")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string CurrentPhase { get; init; }
+
+        [JsonPropertyName("handNumber")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? HandNumber { get; init; }
+
+        [JsonPropertyName("currentPlayerIndex")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? CurrentPlayerIndex { get; init; }
+
+        [JsonPropertyName("currentPlayerName")]
+        public string CurrentPlayerName { get; init; }
+
+        [JsonPropertyName("playerHands")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public ICollection<PlayerDealtCards> PlayerHands { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record DealtCard
+    {
+        [JsonConstructor]
+        public DealtCard(int? @dealOrder, CardSuit? @suit, CardSymbol? @symbol)
+        {
+            this.Suit = @suit;
+            this.Symbol = @symbol;
+            this.DealOrder = @dealOrder;
+        }
+
+        [JsonPropertyName("suit")]
+        public CardSuit? Suit { get; init; }
+
+        [JsonPropertyName("symbol")]
+        public CardSymbol? Symbol { get; init; }
+
+        [JsonPropertyName("dealOrder")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? DealOrder { get; init; }
 
     }
 
@@ -612,6 +767,31 @@ namespace CardGames.Poker.Api.Contracts
         [JsonPropertyName("rowVersion")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string RowVersion { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record PlayerDealtCards
+    {
+        [JsonConstructor]
+        public PlayerDealtCards(ICollection<DealtCard> @cards, string @playerName, int? @seatPosition)
+        {
+            this.PlayerName = @playerName;
+            this.SeatPosition = @seatPosition;
+            this.Cards = @cards;
+        }
+
+        [JsonPropertyName("playerName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string PlayerName { get; init; }
+
+        [JsonPropertyName("seatPosition")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? SeatPosition { get; init; }
+
+        [JsonPropertyName("cards")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public ICollection<DealtCard> Cards { get; init; }
 
     }
 
