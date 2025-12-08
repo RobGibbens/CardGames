@@ -45,7 +45,6 @@ internal class FiveCardDrawPlayCommand : Command<PlaySettings>
         var playerNames = GetPlayerNames(numberOfPlayers);
         var players = playerNames.Select(name => (name, startingChips)).ToList();
 
-        //TODO:ROB - Call CreateGame api
         var game = new FiveCardDrawGame(players, ante, minBet);
 
         Logger.Paragraph("Game Started");

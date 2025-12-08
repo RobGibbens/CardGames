@@ -13,13 +13,13 @@ public static class CreateGameEndpoint
 					var result = await mediator.Send(command, cancellationToken);
 
 					return result.Match(
-						success => Results.Created($"/api/games/{success.GameId}", new { success.GameId })
+						success => Results.Created($"/api/games/five-card-draw/{success.GameId}", new { success.GameId })
 					);
 				})
 			.WithName(nameof(MapCreateGame).TrimPrefix("Map"))
 			.WithSummary(nameof(MapCreateGame).TrimPrefix("Map"))
-			.WithDescription("Add a new category.")
-			.Produces(StatusCodes.Status201Created)
+			.WithDescription("Create a new game.")
+			.Produces(StatusCodes.Status201Created, typeof(Guid))
 			.ProducesProblem(StatusCodes.Status400BadRequest);
 
 		return group;
