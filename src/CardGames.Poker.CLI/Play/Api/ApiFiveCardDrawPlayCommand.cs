@@ -81,8 +81,6 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 
 		return 0;
 
-
-
 		//return result.IsSuccessful ? 0 : 1;
 	}
 
@@ -96,85 +94,87 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 		}
 		return names;
 	}
-	//private async Task PlayHand(Guid gameId)
-	//{
-	//	Logger.Paragraph("New Hand");
-	//	DisplayPlayerStacks(gameId);
 
-	//	//TODO: ROB - Call api
-	//	//Start hand
-	//	var startHandResponse = await _fiveCardDrawApi.StartHandAsync(gameId);
+	private async Task PlayHand(Guid gameId)
+	{
+		Logger.Paragraph("New Hand");
+		DisplayPlayerStacksAsync(gameId);
 
-	//	//Collect antes
-	//	AnsiConsole.MarkupLine("[yellow]Collecting antes...[/]");
+		//Start hand
+		var startHandResponse = await _fiveCardDrawApi.StartHandAsync(gameId);
 
-	//	//TODO: ROB - Call api
-	//	var collectAntesResponse = await _fiveCardDrawApi.CollectAntesAsync(gameId);
-	//	var collectAntesSuccessful = collectAntesResponse.Content;
+		//Collect antes
+		AnsiConsole.MarkupLine("[yellow]Collecting antes...[/]");
+
+		var collectAntesResponse = await _fiveCardDrawApi.CollectAntesAsync(gameId);
+		var collectAntesSuccessful = collectAntesResponse.Content;
+
+		foreach (var anteContribution in collectAntesSuccessful.AnteContributions)
+		{
+			AnsiConsole.MarkupLine($"[dim]{anteContribution.PlayerName} : {anteContribution.Amount}[/]");
+		}
+		AnsiConsole.MarkupLine($"[green]Pot: {collectAntesSuccessful.TotalAntesCollected}[/]");
+
+		//Deal hands
+		AnsiConsole.MarkupLine("[yellow]Dealing cards...[/]");
+		//game.DealHands();
+
+		////Display hands(in a real game, only show current player's hand)
+		//DisplayAllHands(game);
+
+		////First betting round
+		//if (!RunBettingRound(game, "First Betting Round"))
+		//{
+		//	//Hand ended due to folds
+		//	var result = game.PerformShowdown();
+		//	DisplayShowdownResult(result);
+		//	return;
+		//}
+
+		////Draw phase
+		//if (game.CurrentPhase == FiveCardDrawPhase.DrawPhase)
+		//{
+		//	RunDrawPhase(game);
+		//}
+
+		////Second betting round
+		//if (game.CurrentPhase == FiveCardDrawPhase.SecondBettingRound)
+		//{
+		//	if (!RunBettingRound(game, "Second Betting Round"))
+		//	{
+		//		var result = game.PerformShowdown();
+		//		DisplayShowdownResult(result);
+		//		return;
+		//	}
+		//}
+
+		////Showdown
+		//if (game.CurrentPhase == FiveCardDrawPhase.Showdown)
+		//{
+		//	var result = game.PerformShowdown();
+		//	DisplayShowdownResult(result);
+		//}
+	}
+
+	private async Task DisplayPlayerStacksAsync(Guid gameId)
+	{
+		var table = new Table();
+		table.AddColumn("Player");
+		table.AddColumn("Chips");
+		table.AddColumn("Status");
 		
-	//	foreach (var anteContribution in collectAntesSuccessful.AnteContributions)
-	//	{
-	//		AnsiConsole.MarkupLine($"[dim]{anteContribution.PlayerName} : {anteContribution.Amount}[/]");
-	//	}
-	//	AnsiConsole.MarkupLine($"[green]Pot: {collectAntesSuccessful.TotalAntesCollected}[/]");
+		var playersResponse = await _fiveCardDrawApi.GetGamePlayersAsync(gameId);
+		var players = playersResponse.Content;
 
-	//	//Deal hands
-	//	AnsiConsole.MarkupLine("[yellow]Dealing cards...[/]");
-	//	game.DealHands();
+		foreach (var gamePlayer in players)
+		{
+			var status = gamePlayer.HasFolded ? "[red]Folded[/]" :
+				gamePlayer.IsAllIn ? "[yellow]All-In[/]" :
+				"[green]Active[/]";
 
-	//	//Display hands(in a real game, only show current player's hand)
-	//	DisplayAllHands(game);
+			table.AddRow(gamePlayer.PlayerName, gamePlayer.ChipStack.ToString(), status);
+		}
 
-	//	//First betting round
-	//	if (!RunBettingRound(game, "First Betting Round"))
-	//	{
-	//		//Hand ended due to folds
-	//		var result = game.PerformShowdown();
-	//		DisplayShowdownResult(result);
-	//		return;
-	//	}
-
-	//	//Draw phase
-	//	if (game.CurrentPhase == FiveCardDrawPhase.DrawPhase)
-	//	{
-	//		RunDrawPhase(game);
-	//	}
-
-	//	//Second betting round
-	//	if (game.CurrentPhase == FiveCardDrawPhase.SecondBettingRound)
-	//	{
-	//		if (!RunBettingRound(game, "Second Betting Round"))
-	//		{
-	//			var result = game.PerformShowdown();
-	//			DisplayShowdownResult(result);
-	//			return;
-	//		}
-	//	}
-
-	//	//Showdown
-	//	if (game.CurrentPhase == FiveCardDrawPhase.Showdown)
-	//	{
-	//		var result = game.PerformShowdown();
-	//		DisplayShowdownResult(result);
-	//	}
-	//}
-
-	//private static void DisplayPlayerStacks(Guid gameId)
-	//{
-	//	var table = new Table();
-	//	table.AddColumn("Player");
-	//	table.AddColumn("Chips");
-	//	table.AddColumn("Status");
-
-	//	foreach (var gamePlayer in game.GamePlayers)
-	//	{
-	//		var player = gamePlayer.Player;
-	//		var status = player.HasFolded ? "[red]Folded[/]" :
-	//			player.IsAllIn ? "[yellow]All-In[/]" :
-	//			"[green]Active[/]";
-	//		table.AddRow(player.Name, player.ChipStack.ToString(), status);
-	//	}
-
-	//	AnsiConsole.Write(table);
-	//}
+		AnsiConsole.Write(table);
+	}
 }

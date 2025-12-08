@@ -145,6 +145,29 @@ namespace CardGames.Poker.Api.Clients
         [Headers("Accept: application/json, application/problem+json")]
         [Get("/api/v1/games/five-card-draw/{gameId}")]
         Task<IApiResponse<GetGameResponse>> GetGameAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
+        /// <summary>GetGamePlayers</summary>
+        /// <remarks>Retrieve all players in a specific game.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Get("/api/v1/games/five-card-draw/{gameId}/players")]
+        Task<IApiResponse<ICollection<GetGamePlayersResponse>>> GetGamePlayersAsync(System.Guid gameId, CancellationToken cancellationToken = default);
     }
 
     /// <summary>No summary available</summary>
@@ -289,6 +312,27 @@ namespace CardGames.Poker.Api.Contracts
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public enum GamePlayerStatus
+    {
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Active")]
+        Active = 0,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Eliminated")]
+        Eliminated = 1,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Left")]
+        Left = 2,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Disconnected")]
+        Disconnected = 3,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"SittingOut")]
+        SittingOut = 4,
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public enum GameStatus
     {
 
@@ -306,6 +350,100 @@ namespace CardGames.Poker.Api.Contracts
 
         [System.Runtime.Serialization.EnumMember(Value = @"Cancelled")]
         Cancelled = 4,
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record GetGamePlayersResponse
+    {
+        [JsonConstructor]
+        public GetGamePlayersResponse(int @chipStack, int @currentBet, System.Guid @gameId, bool @hasDrawnThisRound, bool @hasFolded, System.Guid @id, bool @isAllIn, bool @isConnected, bool @isSittingOut, System.DateTimeOffset @joinedAt, System.Guid @playerId, string @playerName, string @rowVersion, int @seatPosition, int @startingChips, GamePlayerStatus @status, int @totalContributedThisHand)
+        {
+            this.Id = @id;
+            this.GameId = @gameId;
+            this.PlayerId = @playerId;
+            this.PlayerName = @playerName;
+            this.SeatPosition = @seatPosition;
+            this.ChipStack = @chipStack;
+            this.StartingChips = @startingChips;
+            this.CurrentBet = @currentBet;
+            this.TotalContributedThisHand = @totalContributedThisHand;
+            this.HasFolded = @hasFolded;
+            this.IsAllIn = @isAllIn;
+            this.IsConnected = @isConnected;
+            this.IsSittingOut = @isSittingOut;
+            this.HasDrawnThisRound = @hasDrawnThisRound;
+            this.Status = @status;
+            this.JoinedAt = @joinedAt;
+            this.RowVersion = @rowVersion;
+        }
+
+        [JsonPropertyName("id")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid Id { get; init; }
+
+        [JsonPropertyName("gameId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid GameId { get; init; }
+
+        [JsonPropertyName("playerId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid PlayerId { get; init; }
+
+        [JsonPropertyName("playerName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string PlayerName { get; init; }
+
+        [JsonPropertyName("seatPosition")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int SeatPosition { get; init; }
+
+        [JsonPropertyName("chipStack")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int ChipStack { get; init; }
+
+        [JsonPropertyName("startingChips")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int StartingChips { get; init; }
+
+        [JsonPropertyName("currentBet")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int CurrentBet { get; init; }
+
+        [JsonPropertyName("totalContributedThisHand")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int TotalContributedThisHand { get; init; }
+
+        [JsonPropertyName("hasFolded")]
+        public bool HasFolded { get; init; }
+
+        [JsonPropertyName("isAllIn")]
+        public bool IsAllIn { get; init; }
+
+        [JsonPropertyName("isConnected")]
+        public bool IsConnected { get; init; }
+
+        [JsonPropertyName("isSittingOut")]
+        public bool IsSittingOut { get; init; }
+
+        [JsonPropertyName("hasDrawnThisRound")]
+        public bool HasDrawnThisRound { get; init; }
+
+        [JsonPropertyName("status")]
+        public GamePlayerStatus Status { get; init; }
+
+        [JsonPropertyName("joinedAt")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.DateTimeOffset JoinedAt { get; init; }
+
+        [JsonPropertyName("rowVersion")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string RowVersion { get; init; }
 
     }
 
