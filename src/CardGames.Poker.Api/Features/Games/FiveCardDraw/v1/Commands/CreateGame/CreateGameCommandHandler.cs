@@ -1,6 +1,7 @@
 ﻿using Azure.Messaging.ServiceBus;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Games;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -160,23 +161,4 @@ public class CreateGameCommandHandler(CardsDbContext context,
 		context.Players.Add(player);
 		return player;
 	}
-}
-
-
-
-public record PlayerInfo(string Name, int StartingChips);
-
-
-
-// Phase enum for reference (matches FiveCardDrawPhase from game logic)
-public enum FiveCardDrawPhase
-{
-	WaitingToStart,
-	CollectingAntes,
-	Dealing,
-	FirstBettingRound,
-	DrawPhase,
-	SecondBettingRound,
-	Showdown,
-	Complete
 }
