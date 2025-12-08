@@ -92,6 +92,33 @@ namespace CardGames.Poker.Api.Clients
         [Post("/api/v1/games/five-card-draw/{gameId}/hands")]
         Task<IApiResponse<StartHandSuccessful>> StartHandAsync(System.Guid gameId, CancellationToken cancellationToken = default);
 
+        /// <summary>Collect Antes</summary>
+        /// <remarks>Collects the mandatory ante bet from all players to seed the pot before dealing. Each player contributes the ante amount (or their remaining chips if short-stacked). After collection, the game transitions to the Dealing phase. Players with fewer chips than the ante will contribute their entire stack (going all-in on the ante).</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Post("/api/v1/games/five-card-draw/{gameId}/hands/antes")]
+        Task<IApiResponse<CollectAntesSuccessful>> CollectAntesAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
         /// <summary>GetGame</summary>
         /// <remarks>Retrieve a specific game by its identifier.</remarks>
         /// <returns>
@@ -171,6 +198,64 @@ namespace CardGames.Poker.Api.Contracts
     using System = global::System;
 
     
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record AnteContribution
+    {
+        [JsonConstructor]
+        public AnteContribution(int? @amount, string @playerName, int? @remainingChips, bool? @wentAllIn)
+        {
+            this.PlayerName = @playerName;
+            this.Amount = @amount;
+            this.RemainingChips = @remainingChips;
+            this.WentAllIn = @wentAllIn;
+        }
+
+        [JsonPropertyName("playerName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string PlayerName { get; init; }
+
+        [JsonPropertyName("amount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? Amount { get; init; }
+
+        [JsonPropertyName("remainingChips")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? RemainingChips { get; init; }
+
+        [JsonPropertyName("wentAllIn")]
+        public bool? WentAllIn { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record CollectAntesSuccessful
+    {
+        [JsonConstructor]
+        public CollectAntesSuccessful(ICollection<AnteContribution> @anteContributions, string @currentPhase, System.Guid? @gameId, int? @totalAntesCollected)
+        {
+            this.GameId = @gameId;
+            this.TotalAntesCollected = @totalAntesCollected;
+            this.CurrentPhase = @currentPhase;
+            this.AnteContributions = @anteContributions;
+        }
+
+        [JsonPropertyName("gameId")]
+        public System.Guid? GameId { get; init; }
+
+        [JsonPropertyName("totalAntesCollected")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? TotalAntesCollected { get; init; }
+
+        [JsonPropertyName("currentPhase")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string CurrentPhase { get; init; }
+
+        [JsonPropertyName("anteContributions")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public ICollection<AnteContribution> AnteContributions { get; init; }
+
+    }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial record CreateGameCommand
