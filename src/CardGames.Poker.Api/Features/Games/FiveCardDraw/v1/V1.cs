@@ -3,6 +3,7 @@ using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.CollectAntes;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.CreateGame;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.StartHand;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Queries.GetGame;
+using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Queries.GetGamePlayers;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Queries.GetGames;
 using SharpGrip.FluentValidation.AutoValidation.Endpoints.Extensions;
 
@@ -23,6 +24,7 @@ public static class V1
 			.MapCollectAntes()
 			.MapGetGames()
 			.MapGetGame()
+			.MapGetGamePlayers()
 			//.MapGetCategoryById()
 			//.MapAddCategory()
 			//.MapUpdateCategory()
