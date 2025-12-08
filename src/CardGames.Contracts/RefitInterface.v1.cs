@@ -61,6 +61,37 @@ namespace CardGames.Poker.Api.Clients
         [Get("/api/v1/games/five-card-draw")]
         Task<IApiResponse<ICollection<GetGamesResponse>>> GetGamesAsync(CancellationToken cancellationToken = default);
 
+        /// <summary>Start Hand</summary>
+        /// <remarks>Starts a new hand by shuffling the deck, creating a fresh pot, and resetting all player states. This endpoint must be called before each hand to prepare the game for play. After calling this endpoint, the game transitions to the CollectingAntes phase.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Post("/api/v1/games/five-card-draw/{gameId}/hands")]
+        Task<IApiResponse<StartHandSuccessful>> StartHandAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
         /// <summary>GetGame</summary>
         /// <remarks>Retrieve a specific game by its identifier.</remarks>
         /// <returns>
@@ -410,6 +441,35 @@ namespace CardGames.Poker.Api.Contracts
 
         [JsonPropertyName("instance")]
         public string Instance { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record StartHandSuccessful
+    {
+        [JsonConstructor]
+        public StartHandSuccessful(int? @activePlayerCount, string @currentPhase, System.Guid? @gameId, int? @handNumber)
+        {
+            this.GameId = @gameId;
+            this.HandNumber = @handNumber;
+            this.CurrentPhase = @currentPhase;
+            this.ActivePlayerCount = @activePlayerCount;
+        }
+
+        [JsonPropertyName("gameId")]
+        public System.Guid? GameId { get; init; }
+
+        [JsonPropertyName("handNumber")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? HandNumber { get; init; }
+
+        [JsonPropertyName("currentPhase")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string CurrentPhase { get; init; }
+
+        [JsonPropertyName("activePlayerCount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ActivePlayerCount { get; init; }
 
     }
 
