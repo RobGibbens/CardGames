@@ -16,4 +16,10 @@
       </PackageReference>
     </ItemGroup>
 
+    <Target Name="CopyRefitInterface" AfterTargets="GenerateBuildSources">
+        <Copy SourceFiles="$(ProjectDir)RefitInterface.v1.cs"
+              DestinationFolder="$(ProjectDir)..\CardGames.Contracts"
+              OverwriteReadOnlyFiles="true" />
+    </Target>
+
 </Project>

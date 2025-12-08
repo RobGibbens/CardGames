@@ -1,6 +1,6 @@
-﻿using CardGames.Core.French.Cards.Extensions;
-using CardGames.Poker.Api.Clients;
+﻿using CardGames.Poker.Api.Clients;
 using CardGames.Poker.Api.Contracts;
+using CardGames.Poker.CLI.Extensions;
 using CardGames.Poker.CLI.Output;
 using CardGames.Poker.Games;
 using Spectre.Console;
@@ -99,7 +99,7 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 	private async Task PlayHand(Guid gameId)
 	{
 		Logger.Paragraph("New Hand");
-		DisplayPlayerStacksAsync(gameId);
+		await DisplayPlayerStacksAsync(gameId);
 
 		//Start hand
 		var startHandResponse = await _fiveCardDrawApi.StartHandAsync(gameId);
@@ -121,16 +121,16 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 		var dealHandsResponse = await _fiveCardDrawApi.DealHandsAsync(gameId);
 		
 		//Display hands(in a real game, only show current player's hand)
-		DisplayAllHands(game);
+		await DisplayAllHandsAsync(gameId);
 
-		////First betting round
-		//if (!RunBettingRound(game, "First Betting Round"))
-		//{
-		//	//Hand ended due to folds
-		//	var result = game.PerformShowdown();
-		//	DisplayShowdownResult(result);
-		//	return;
-		//}
+		//First betting round
+		if (!RunBettingRound(gameId, "First Betting Round"))
+		{
+			//Hand ended due to folds
+			//var result = game.PerformShowdown();
+			//DisplayShowdownResult(result);
+			return;
+		}
 
 		////Draw phase
 		//if (game.CurrentPhase == FiveCardDrawPhase.DrawPhase)
@@ -179,7 +179,7 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 		AnsiConsole.Write(table);
 	}
 
-	private async Task DisplayAllHands(Guid gameId)
+	private async Task DisplayAllHandsAsync(Guid gameId)
 	{
 		var playersResponse = await _fiveCardDrawApi.GetGamePlayersAsync(gameId);
 		var players = playersResponse.Content;
@@ -188,11 +188,63 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 		{
 			if (!gamePlayer.HasFolded)
 			{
-				//AnsiConsole.MarkupLine($"[cyan bold]{gamePlayer.Name}[/]'s hand:");
-				//CardRenderer.RenderCards(gamePlayer.Hand);
-				//AnsiConsole.MarkupLine($"[dim]({gamePlayer.Hand.ToStringRepresentation()})[/]");
+				AnsiConsole.MarkupLine($"[cyan bold]{gamePlayer.PlayerName}[/]'s hand:");
+				ApiCardRenderer.RenderCards(gamePlayer.Hand);
+				AnsiConsole.MarkupLine($"[dim]({gamePlayer.Hand.ToStringRepresentation()})[/]");
 				AnsiConsole.WriteLine();
 			}
 		}
+	}
+
+	private static bool RunBettingRound(Guid gameId, string roundName)
+	{
+		while (!game.CurrentBettingRound.IsComplete)
+		{
+			var currentPlayer = game.GetCurrentPlayer();
+			var available = game.GetAvailableActions();
+
+			// Clear screen and show fresh game state for current player
+			Logger.ClearScreen();
+			Logger.Paragraph(roundName);
+
+			AnsiConsole.MarkupLine($"[green]Pot: {game.TotalPot}[/] | [yellow]Current Bet: {game.CurrentBettingRound.CurrentBet}[/]");
+			DisplayPlayerStatus(game, currentPlayer);
+
+			// Show current player's hand
+			var gamePlayer = game.GamePlayers.First(gp => gp.Player.Name == currentPlayer.Name);
+			AnsiConsole.MarkupLine($"[cyan]{currentPlayer.Name}[/]'s hand:");
+			CardRenderer.RenderCards(gamePlayer.Hand);
+			AnsiConsole.MarkupLine($"[dim]({gamePlayer.Hand.ToStringRepresentation()})[/]");
+			AnsiConsole.WriteLine();
+
+			// Show live odds for the current player
+			var deadCards = game.GamePlayers
+				.Where(gp => gp.Player.HasFolded)
+				.SelectMany(gp => gp.Hand)
+				.ToList();
+			LiveOddsRenderer.RenderDrawOdds(
+				gamePlayer.Hand.ToList(),
+				deadCards);
+			AnsiConsole.WriteLine();
+
+			var action = PromptForAction(currentPlayer, available);
+			var result = game.ProcessBettingAction(action.ActionType, action.Amount);
+
+			if (!result.Success)
+			{
+				AnsiConsole.MarkupLine($"[red]{result.ErrorMessage}[/]");
+				continue;
+			}
+
+			AnsiConsole.MarkupLine($"[blue]{result.Action}[/]");
+
+			// Check if only one player remains
+			if (game.CurrentBettingRound.PlayersInHand <= 1)
+			{
+				return false;
+			}
+		}
+
+		return true;
 	}
 }

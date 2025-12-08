@@ -19,6 +19,7 @@ public class GetGamePlayersQueryHandler(CardsDbContext context, HybridCache hybr
 				await context.GamePlayers
 					.Where(gp => gp.GameId == request.GameId)
 					.Include(gp => gp.Player)
+					.Include(gp => gp.Cards)
 					.OrderBy(gp => gp.SeatPosition)
 					.AsNoTracking()
 					.ProjectToResponse()
