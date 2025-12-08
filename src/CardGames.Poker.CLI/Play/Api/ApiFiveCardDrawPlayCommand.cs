@@ -69,7 +69,7 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 		Logger.Paragraph("Game Started");
 		AnsiConsole.MarkupLine($"[dim]Ante: {ante} | Min Bet: {minBet}[/]");
 
-	
+
 		//do
 		//{
 		//	await PlayHand(gameId);
@@ -101,44 +101,46 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 	//	Logger.Paragraph("New Hand");
 	//	DisplayPlayerStacks(gameId);
 
-	//TODO: ROB - Call api
-	// Start hand
-	//var startHandResponse = await _fiveCardDrawApi.StartHandAsync(gameId);
+	//	//TODO: ROB - Call api
+	//	//Start hand
+	//	var startHandResponse = await _fiveCardDrawApi.StartHandAsync(gameId);
 
-	//	Collect antes
+	//	//Collect antes
 	//	AnsiConsole.MarkupLine("[yellow]Collecting antes...[/]");
 
-	//TODO: ROB - Call api
-	//var anteActions = game.CollectAntes();
-	//	foreach (var action in anteActions)
+	//	//TODO: ROB - Call api
+	//	var collectAntesResponse = await _fiveCardDrawApi.CollectAntesAsync(gameId);
+	//	var collectAntesSuccessful = collectAntesResponse.Content;
+		
+	//	foreach (var anteContribution in collectAntesSuccessful.AnteContributions)
 	//	{
-	//		AnsiConsole.MarkupLine($"[dim]{action}[/]");
+	//		AnsiConsole.MarkupLine($"[dim]{anteContribution.PlayerName} : {anteContribution.Amount}[/]");
 	//	}
-	//	AnsiConsole.MarkupLine($"[green]Pot: {game.TotalPot}[/]");
+	//	AnsiConsole.MarkupLine($"[green]Pot: {collectAntesSuccessful.TotalAntesCollected}[/]");
 
-	//	Deal hands
+	//	//Deal hands
 	//	AnsiConsole.MarkupLine("[yellow]Dealing cards...[/]");
 	//	game.DealHands();
 
-	//	Display hands(in a real game, only show current player's hand)
+	//	//Display hands(in a real game, only show current player's hand)
 	//	DisplayAllHands(game);
 
-	//	First betting round
+	//	//First betting round
 	//	if (!RunBettingRound(game, "First Betting Round"))
 	//	{
-	//		Hand ended due to folds
-	//	   var result = game.PerformShowdown();
+	//		//Hand ended due to folds
+	//		var result = game.PerformShowdown();
 	//		DisplayShowdownResult(result);
 	//		return;
 	//	}
 
-	//	Draw phase
+	//	//Draw phase
 	//	if (game.CurrentPhase == FiveCardDrawPhase.DrawPhase)
 	//	{
 	//		RunDrawPhase(game);
 	//	}
 
-	//	Second betting round
+	//	//Second betting round
 	//	if (game.CurrentPhase == FiveCardDrawPhase.SecondBettingRound)
 	//	{
 	//		if (!RunBettingRound(game, "Second Betting Round"))
@@ -149,7 +151,7 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 	//		}
 	//	}
 
-	//	Showdown
+	//	//Showdown
 	//	if (game.CurrentPhase == FiveCardDrawPhase.Showdown)
 	//	{
 	//		var result = game.PerformShowdown();

@@ -1,4 +1,5 @@
 ﻿using Asp.Versioning.Builder;
+using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.CollectAntes;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.CreateGame;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.StartHand;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Queries.GetGame;
@@ -19,6 +20,7 @@ public static class V1
 	mapGroup
 			.MapCreateGame()
 			.MapStartHand()
+			.MapCollectAntes()
 			.MapGetGames()
 			.MapGetGame()
 			//.MapGetCategoryById()
