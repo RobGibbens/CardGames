@@ -1,4 +1,5 @@
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.DealHands;
 
 namespace CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Queries.GetGamePlayers;
 
@@ -22,5 +23,6 @@ public record GetGamePlayersResponse(
 	bool HasDrawnThisRound,
 	GamePlayerStatus Status,
 	DateTimeOffset JoinedAt,
-	string RowVersion
+	string RowVersion,
+	IReadOnlyList<DealtCard> Hand
 );

@@ -512,7 +512,7 @@ namespace CardGames.Poker.Api.Contracts
     public partial record GetGamePlayersResponse
     {
         [JsonConstructor]
-        public GetGamePlayersResponse(int @chipStack, int @currentBet, System.Guid @gameId, bool @hasDrawnThisRound, bool @hasFolded, System.Guid @id, bool @isAllIn, bool @isConnected, bool @isSittingOut, System.DateTimeOffset @joinedAt, System.Guid @playerId, string @playerName, string @rowVersion, int @seatPosition, int @startingChips, GamePlayerStatus @status, int @totalContributedThisHand)
+        public GetGamePlayersResponse(int @chipStack, int @currentBet, System.Guid @gameId, ICollection<DealtCard> @hand, bool @hasDrawnThisRound, bool @hasFolded, System.Guid @id, bool @isAllIn, bool @isConnected, bool @isSittingOut, System.DateTimeOffset @joinedAt, System.Guid @playerId, string @playerName, string @rowVersion, int @seatPosition, int @startingChips, GamePlayerStatus @status, int @totalContributedThisHand)
         {
             this.Id = @id;
             this.GameId = @gameId;
@@ -531,6 +531,7 @@ namespace CardGames.Poker.Api.Contracts
             this.Status = @status;
             this.JoinedAt = @joinedAt;
             this.RowVersion = @rowVersion;
+            this.Hand = @hand;
         }
 
         [JsonPropertyName("id")]
@@ -599,6 +600,10 @@ namespace CardGames.Poker.Api.Contracts
         [JsonPropertyName("rowVersion")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string RowVersion { get; init; }
+
+        [JsonPropertyName("hand")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public ICollection<DealtCard> Hand { get; init; }
 
     }
 
