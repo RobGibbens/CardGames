@@ -131,8 +131,10 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 		if (!(await RunBettingRoundAsync(gameId, "First Betting Round")))
 		{
 			//Hand ended due to folds
-			//var result = game.PerformShowdown();
-			//DisplayShowdownResult(result);
+			var showdownResponse = await _fiveCardDrawApi.PerformShowdownAsync(gameId);
+			var showdownResult = showdownResponse.Content;
+
+			DisplayShowdownResult(showdownResult);
 			return;
 		}
 
@@ -183,6 +185,35 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 		AnsiConsole.Write(table);
 	}
 
+	private static void DisplayShowdownResult(PerformShowdownSuccessful result)
+	{
+		Logger.Paragraph("Showdown");
+
+		if (result.WonByFold == true)
+		{
+			var winner = result.Payouts.First();
+			AnsiConsole.MarkupLine($"[bold green]{winner.Key}[/] wins {winner.Value} chips (all others folded)!");
+			return;
+		}
+
+		// Show all hands
+		foreach (var playerHand in result.PlayerHands)
+		{
+			//TODO:ROB - var handDescription = hand != null ? HandDescriptionFormatter.GetHandDescription(hand) : "Unknown";
+			AnsiConsole.MarkupLine($"[cyan]{playerHand.PlayerName}[/]:");
+			ApiCardRenderer.RenderCards(playerHand.Cards);
+			//TODO:ROB - AnsiConsole.MarkupLine($"[magenta]{handDescription}[/]");
+			AnsiConsole.WriteLine();
+		}
+
+		// Show winners
+		Logger.Paragraph("Winners");
+		foreach (var (playerName, amount) in result.Payouts)
+		{
+			AnsiConsole.MarkupLine($"[bold green]{playerName}[/] wins {amount} chips!");
+		}
+	}
+	
 	private async Task DisplayAllHandsAsync(Guid gameId)
 	{
 		var playersResponse = await _fiveCardDrawApi.GetGamePlayersAsync(gameId);

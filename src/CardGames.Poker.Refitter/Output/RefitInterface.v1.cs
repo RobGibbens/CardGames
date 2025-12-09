@@ -196,6 +196,46 @@ namespace CardGames.Poker.Api.Clients
         [Post("/api/v1/games/five-card-draw/{gameId}/betting/actions")]
         Task<IApiResponse<ProcessBettingActionSuccessful>> ProcessBettingActionAsync(System.Guid gameId, [Body] ProcessBettingActionRequest body, CancellationToken cancellationToken = default);
 
+        /// <summary>Perform Showdown</summary>
+        /// <remarks>
+        /// Performs the showdown phase to evaluate all remaining players' hands and award the pot(s) to the winner(s). After the showdown completes, the game transitions to the Complete phase and the dealer button moves to the next position.
+        /// 
+        /// **Showdown Scenarios:**
+        /// - **Win by fold:** If only one player remains (all others folded), they win the entire pot without showing cards
+        /// - **Single winner:** The player with the highest-ranking hand wins the entire pot
+        /// - **Split pot:** If multiple players tie with the same hand strength, the pot is divided equally among winners
+        /// - **Side pots:** When players are all-in for different amounts, side pots are calculated and awarded separately
+        /// 
+        /// **Response includes:**
+        /// - Payouts to each winning player
+        /// - Evaluated hand information for all participating players
+        /// - Whether the hand was won by fold (no showdown required)
+        /// </remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Post("/api/v1/games/five-card-draw/{gameId}/showdown")]
+        Task<IApiResponse<PerformShowdownSuccessful>> PerformShowdownAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
         /// <summary>GetGame</summary>
         /// <remarks>Retrieve a specific game by its identifier.</remarks>
         /// <returns>
@@ -1223,6 +1263,39 @@ namespace CardGames.Poker.Api.Contracts
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record PerformShowdownSuccessful
+    {
+        [JsonConstructor]
+        public PerformShowdownSuccessful(string @currentPhase, System.Guid? @gameId, IDictionary<string, int> @payouts, ICollection<ShowdownPlayerHand> @playerHands, bool? @wonByFold)
+        {
+            this.GameId = @gameId;
+            this.WonByFold = @wonByFold;
+            this.CurrentPhase = @currentPhase;
+            this.Payouts = @payouts;
+            this.PlayerHands = @playerHands;
+        }
+
+        [JsonPropertyName("gameId")]
+        public System.Guid? GameId { get; init; }
+
+        [JsonPropertyName("wonByFold")]
+        public bool? WonByFold { get; init; }
+
+        [JsonPropertyName("currentPhase")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string CurrentPhase { get; init; }
+
+        [JsonPropertyName("payouts")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public IDictionary<string, int> Payouts { get; init; }
+
+        [JsonPropertyName("playerHands")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public ICollection<ShowdownPlayerHand> PlayerHands { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial record PlayerDealtCards
     {
         [JsonConstructor]
@@ -1362,6 +1435,62 @@ namespace CardGames.Poker.Api.Contracts
         [JsonPropertyName("currentBet")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? CurrentBet { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record ShowdownCard
+    {
+        [JsonConstructor]
+        public ShowdownCard(CardSuit? @suit, CardSymbol? @symbol)
+        {
+            this.Suit = @suit;
+            this.Symbol = @symbol;
+        }
+
+        [JsonPropertyName("suit")]
+        public CardSuit? Suit { get; init; }
+
+        [JsonPropertyName("symbol")]
+        public CardSymbol? Symbol { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record ShowdownPlayerHand
+    {
+        [JsonConstructor]
+        public ShowdownPlayerHand(int? @amountWon, ICollection<ShowdownCard> @cards, long? @handStrength, string @handType, bool? @isWinner, string @playerName)
+        {
+            this.PlayerName = @playerName;
+            this.Cards = @cards;
+            this.HandType = @handType;
+            this.HandStrength = @handStrength;
+            this.IsWinner = @isWinner;
+            this.AmountWon = @amountWon;
+        }
+
+        [JsonPropertyName("playerName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string PlayerName { get; init; }
+
+        [JsonPropertyName("cards")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public ICollection<ShowdownCard> Cards { get; init; }
+
+        [JsonPropertyName("handType")]
+        public string HandType { get; init; }
+
+        [JsonPropertyName("handStrength")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public long? HandStrength { get; init; }
+
+        [JsonPropertyName("isWinner")]
+        public bool? IsWinner { get; init; }
+
+        [JsonPropertyName("amountWon")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? AmountWon { get; init; }
 
     }
 
