@@ -10,6 +10,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using CardGames.Core.French.Cards;
+using CardGames.Poker.CLI.Api;
 
 namespace CardGames.Poker.CLI.Play.Api;
 
@@ -22,6 +24,7 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 	{
 		_fiveCardDrawApi = fiveCardDrawApi;
 	}
+	
 	protected override async Task<int> ExecuteAsync(CommandContext context, ApiSettings settings, CancellationToken cancellationToken)
 	{
 		Logger.LogApplicationStart();
@@ -96,7 +99,7 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 		return names;
 	}
 
-	private async Task PlayHand(Guid gameId)
+	private async Task PlayHandAsync(Guid gameId)
 	{
 		Logger.Paragraph("New Hand");
 		await DisplayPlayerStacksAsync(gameId);
@@ -205,6 +208,8 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 
 		while (!currentBettingRoundIsComplete)
 		{
+			var gamePlayersResponse = await _fiveCardDrawApi.GetGamePlayersAsync(gameId);
+			var gamePlayers = gamePlayersResponse.Content;
 			var currentPlayerTurnResponse = await _fiveCardDrawApi.GetCurrentPlayerTurnAsync(gameId);
 			var currentPlayerTurn = currentPlayerTurnResponse.Content;
 			var currentPlayer = currentPlayerTurn.Player;
@@ -215,26 +220,28 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 			Logger.Paragraph(roundName);
 
 			AnsiConsole.MarkupLine($"[green]Pot: {currentBettingRound.TotalPot}[/] | [yellow]Current Bet: {currentBettingRound.CurrentBet}[/]");
-			//DisplayPlayerStatus(game, currentPlayer);
+			DisplayPlayerStatus(gamePlayers, currentPlayer.PlayerName);
 
-			//// Show current player's hand
-			//var gamePlayer = game.GamePlayers.First(gp => gp.Player.Name == currentPlayer.Name);
-			//AnsiConsole.MarkupLine($"[cyan]{currentPlayer.Name}[/]'s hand:");
-			//CardRenderer.RenderCards(gamePlayer.Hand);
-			//AnsiConsole.MarkupLine($"[dim]({gamePlayer.Hand.ToStringRepresentation()})[/]");
-			//AnsiConsole.WriteLine();
+			// Show current player's hand
+			var gamePlayer = gamePlayers.First(gp => gp.PlayerName == currentPlayer.PlayerName);
+			AnsiConsole.MarkupLine($"[cyan]{currentPlayer.PlayerName}[/]'s hand:");
+			ApiCardRenderer.RenderCards(gamePlayer.Hand);
+			AnsiConsole.MarkupLine($"[dim]({gamePlayer.Hand.ToStringRepresentation()})[/]");
+			AnsiConsole.WriteLine();
 
-			//// Show live odds for the current player
-			//var deadCards = game.GamePlayers
-			//	.Where(gp => gp.Player.HasFolded)
-			//	.SelectMany(gp => gp.Hand)
-			//	.ToList();
-			//LiveOddsRenderer.RenderDrawOdds(
-			//	gamePlayer.Hand.ToList(),
-			//	deadCards);
-			//AnsiConsole.WriteLine();
+			// Show live odds for the current player
+			var deadCards = gamePlayers
+				.Where(gp => gp.HasFolded)
+				.SelectMany(gp => gp.Hand)
+				.ToList();
+			
+			LiveOddsRenderer.RenderDrawOdds(
+				gamePlayer.Hand.Select(dc => new Card((Suit)dc.Suit!.Value, (Symbol)dc.Symbol!.Value)).ToList(),
+				deadCards.Select(dc => new Card((Suit)dc.Suit!.Value, (Symbol)dc.Symbol!.Value)).ToList());
 
-			//var action = PromptForAction(currentPlayer, available);
+			AnsiConsole.WriteLine();
+
+			var action = PromptForAction(currentPlayer, available);
 			//var result = game.ProcessBettingAction(action.ActionType, action.Amount);
 
 			//if (!result.Success)
@@ -257,5 +264,65 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 		}
 
 		return true;
+	}
+	
+	private void DisplayPlayerStatus(ICollection<GetGamePlayersResponse> gamePlayers, string currentPlayerName)
+	{
+		var playersInfo = gamePlayers.Select(gp =>
+		{
+			var marker = gp.PlayerName == currentPlayerName ? "►" : " ";
+			var status = gp.HasFolded ? "(folded)" :
+				gp.IsAllIn ? "(all-in)" : "";
+			var bet = gp.CurrentBet > 0 ? $"bet: {gp.CurrentBet}" : "";
+			return $"{marker} {gp.PlayerName}: {gp.ChipStack} chips {bet} {status}";
+		});
+
+		AnsiConsole.MarkupLine($"[dim]{string.Join(" | ", playersInfo)}[/]");
+	}
+	
+	private static (BettingActionType ActionType, int Amount) PromptForAction(CurrentPlayerResponse player, AvailableActionsResponse available)
+	{
+		var choices = new List<string>();
+
+		if (available.CanCheck) choices.Add("Check");
+		if (available.CanBet) choices.Add($"Bet ({available.MinBet}-{available.MaxBet})");
+		if (available.CanCall) choices.Add($"Call {available.CallAmount}");
+		if (available.CanRaise) choices.Add($"Raise (min {available.MinRaise})");
+		if (available.CanFold) choices.Add("Fold");
+		if (available.CanAllIn) choices.Add($"All-In ({available.MaxBet})");
+
+		var choice = AnsiConsole.Prompt(
+			new SelectionPrompt<string>()
+				.Title($"[cyan]{player.PlayerName}[/] ({player.ChipStack} chips) - Your action:")
+				.AddChoices(choices));
+
+		if (choice == "Check")
+		{
+			return (BettingActionType.Check, 0);
+		}
+		else if (choice.StartsWith("Call"))
+		{
+			return (BettingActionType.Call, available.CallAmount);
+		}
+		else if (choice == "Fold")
+		{
+			return (BettingActionType.Fold, 0);
+		}
+		else if (choice.StartsWith("All-In"))
+		{
+			return (BettingActionType.AllIn, available.MaxBet);
+		}
+		else if (choice.StartsWith("Bet"))
+		{
+			var amount = AnsiConsole.Ask<int>($"Bet amount ({available.MinBet}-{available.MaxBet}): ");
+			return (BettingActionType.Bet, amount);
+		}
+		else if (choice.StartsWith("Raise"))
+		{
+			var amount = AnsiConsole.Ask<int>($"Raise to (min {available.MinRaise}): ");
+			return (BettingActionType.Raise, amount);
+		}
+
+		return (BettingActionType.Fold, 0);
 	}
 }
