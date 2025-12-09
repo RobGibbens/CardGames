@@ -170,4 +170,48 @@ internal static class ApiCardRenderer
             AnsiConsole.MarkupLine(line.ToString());
         }
     }
+
+    public static void RenderCards(ICollection<ShowdownCard> cards, string label = null, IEnumerable<DealtCard> wildCards = null)
+    {
+        var cardList = cards.ToList();
+        if (cardList.Count == 0)
+            return;
+
+        if (!string.IsNullOrEmpty(label))
+        {
+            AnsiConsole.MarkupLine($"[dim]{label}[/]");
+        }
+
+        RenderCardsGrid(cardList, showFaces: true, wildCards: wildCards);
+    }
+
+    private static void RenderCardsGrid(List<ShowdownCard> cards, bool showFaces, IEnumerable<DealtCard> wildCards = null)
+    {
+        var lines = new List<StringBuilder>();
+        for (int i = 0; i < CardAsciiArt.Height; i++)
+        {
+            lines.Add(new StringBuilder());
+        }
+
+        for (int cardIndex = 0; cardIndex < cards.Count; cardIndex++)
+        {
+            var card = cards[cardIndex];
+            var cardLines = showFaces ? ApiCardAsciiArt.GetCardFace(new DealtCard(0, card.Suit, card.Symbol)) : CardAsciiArt.GetCardBack();
+            var color = showFaces ? ApiCardAsciiArt.GetCardColor(new DealtCard(0, card.Suit, card.Symbol), wildCards) : CardBackColor;
+
+            for (int lineIndex = 0; lineIndex < CardAsciiArt.Height; lineIndex++)
+            {
+                if (cardIndex > 0)
+                {
+                    lines[lineIndex].Append(new string(' ', CardSpacing));
+                }
+                lines[lineIndex].Append($"[{color}]{Markup.Escape(cardLines[lineIndex])}[/]");
+            }
+        }
+
+        foreach (var line in lines)
+        {
+            AnsiConsole.MarkupLine(line.ToString());
+        }
+    }
 }
