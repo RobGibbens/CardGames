@@ -11,20 +11,26 @@
 		<PackageReference Include="Asp.Versioning.Http" Version="8.1.0" />
 		<PackageReference Include="Asp.Versioning.Mvc" Version="8.1.0" />
 		<PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" Version="8.1.0" />
-		<PackageReference Include="Aspire.Npgsql" Version="13.0.1" />
-		<PackageReference Include="Aspire.StackExchange.Redis.DistributedCaching" Version="13.0.0" />
+		<PackageReference Include="Aspire.Microsoft.EntityFrameworkCore.SqlServer" Version="13.0.2" />
+		<PackageReference Include="Aspire.StackExchange.Redis.DistributedCaching" Version="13.0.2" />
 		<PackageReference Include="FluentValidation.AspNetCore" Version="11.3.1" />
-		<PackageReference Include="LinqKit.Microsoft.EntityFrameworkCore" Version="9.0.8" />
+		<PackageReference Include="LinqKit.Microsoft.EntityFrameworkCore" Version="10.0.9" />
+		<PackageReference Include="MediatR" Version="14.0.0" />
 
 		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" NoWarn="NU1605" />
 		<PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="10.0.0" NoWarn="NU1605" />
 		<PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0">
+		  <PrivateAssets>all</PrivateAssets>
+		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
 		<PackageReference Include="Microsoft.Identity.Web" Version="4.1.1" />
 		<PackageReference Include="Microsoft.Identity.Web.DownstreamApi" Version="4.1.1" />
 		<PackageReference Include="Microsoft.Identity.Web.UI" Version="4.1.1" />
 
 		<PackageReference Include="OneOf" Version="3.0.271" />
-
+		<PackageReference Include="Aspire.Azure.Messaging.ServiceBus" Version="13.0.2" />
+		<PackageReference Include="Azure.Messaging.ServiceBus" Version="7.20.1" />
 		<PackageReference Include="OpenTelemetry" Version="1.14.0" />
 		<PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.14.0" />
 		<PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.14.0" />
@@ -32,15 +38,10 @@
 		<PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.14.0" />
 		<PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.14.0" />
 		<PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.14.0" />
-		<PackageReference Include="Scalar.AspNetCore" Version="2.10.3" />
+		<PackageReference Include="Riok.Mapperly" Version="4.3.1-next.0" />
+		<PackageReference Include="Scalar.AspNetCore" Version="2.11.1" />
 		<PackageReference Include="SharpGrip.FluentValidation.AutoValidation.Endpoints" Version="1.5.0" />
 		<PackageReference Include="Swashbuckle.AspNetCore" Version="10.0.1" />
-
-
-		<PackageReference Include="WolverineFx" Version="5.5.0" />
-
-
-		<PackageReference Include="WolverineFx.Http.Marten" Version="5.5.0" />
 
 		<PackageReference Include="ZiggyCreatures.FusionCache" Version="2.4.0" />
 		<PackageReference Include="ZiggyCreatures.FusionCache.OpenTelemetry" Version="2.4.0" />
@@ -49,11 +50,15 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<ProjectReference Include="..\CardGames.Poker.Events\CardGames.Poker.Events.csproj" />
 		<ProjectReference Include="..\CardGames.ServiceDefaults\CardGames.ServiceDefaults.csproj" />
 		<ProjectReference Include="..\CardGames.Poker\CardGames.Poker.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>
+	  <Folder Include="Data\Extensions\" />
+	  <Folder Include="Features\Games\FiveCardDraw\v1\Queries\GetCurrentPlayer\" />
+	  <Folder Include="Migrations\" />
 	  <Folder Include="swagger-ui\" />
 	</ItemGroup>
 

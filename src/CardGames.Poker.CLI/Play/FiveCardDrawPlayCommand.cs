@@ -78,12 +78,15 @@ internal class FiveCardDrawPlayCommand : Command<PlaySettings>
         Logger.Paragraph("New Hand");
         DisplayPlayerStacks(game);
 
-        // Start hand
-        game.StartHand();
+        //TODO:ROB - Call api
+		// Start hand
+		game.StartHand();
 
         // Collect antes
         AnsiConsole.MarkupLine("[yellow]Collecting antes...[/]");
-        var anteActions = game.CollectAntes();
+        
+        //TODO:ROB - Call api
+		var anteActions = game.CollectAntes();
         foreach (var action in anteActions)
         {
             AnsiConsole.MarkupLine($"[dim]{action}[/]");

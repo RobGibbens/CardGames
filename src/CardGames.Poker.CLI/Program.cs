@@ -1,9 +1,14 @@
-using System;
+using CardGames.Poker.Api.Clients;
 using CardGames.Poker.CLI.Deal;
+using CardGames.Poker.CLI.Infrastructure;
 using CardGames.Poker.CLI.Play;
+using CardGames.Poker.CLI.Play.Api;
 using CardGames.Poker.CLI.Simulation;
+using Microsoft.Extensions.DependencyInjection;
 using Spectre.Console;
 using Spectre.Console.Cli;
+using System;
+
 
 // Ensure UTF-8 encoding is set for proper Unicode character display
 Console.OutputEncoding = System.Text.Encoding.UTF8;
@@ -184,7 +189,10 @@ static void RunSimulationMenu()
 
 static CommandApp CreateCommandApp()
 {
-    var app = new CommandApp();
+	var services = new ServiceCollection();
+	services.ConfigureRefitClients(new Uri("https://localhost:7034"));
+	var registrar = new TypeRegistrar(services);
+	var app = new CommandApp(registrar);
     app.Configure(configuration => 
     {
         configuration.SetApplicationName("poker-cli");
@@ -269,16 +277,16 @@ static CommandApp CreateCommandApp()
                 .WithDescription("Deal a Follow the Queen hand (Queens and following card are wild).");
         });
 
-        configuration.AddBranch<ApiPlaySettings>("api", api =>
+        configuration.AddBranch<ApiSettings>("api", play =>
         {
-	        api
+	        play
 		        .AddCommand<ApiFiveCardDrawPlayCommand>("draw")
 		        .WithAlias("5cd")
 		        .WithAlias("5-card-draw")
-		        .WithDescription("Play 5-card Draw via the Web API.");
+		        .WithDescription("API: Play 5-card Draw with betting.");
         });
 
-		configuration.AddBranch<PlaySettings>("play", play =>
+        configuration.AddBranch<PlaySettings>("play", play =>
         {
             play
                 .AddCommand<FiveCardDrawPlayCommand>("draw")
