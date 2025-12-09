@@ -12,6 +12,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using CardGames.Core.French.Cards;
 using CardGames.Poker.CLI.Api;
+using BettingActionType = CardGames.Poker.Api.Contracts.BettingActionType;
 
 namespace CardGames.Poker.CLI.Play.Api;
 
@@ -242,25 +243,28 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 			AnsiConsole.WriteLine();
 
 			var action = PromptForAction(currentPlayer, available);
-			//var result = game.ProcessBettingAction(action.ActionType, action.Amount);
+			
+			var request = new ProcessBettingActionRequest(action.ActionType, action.Amount);
+			var processActionResponse = await _fiveCardDrawApi.ProcessBettingActionAsync(gameId, request);
+			var processActionResult = processActionResponse.Content;
 
-			//if (!result.Success)
-			//{
-			//	AnsiConsole.MarkupLine($"[red]{result.ErrorMessage}[/]");
-			//	continue;
-			//}
+			// if (!result.Success)
+			// {
+			// 	AnsiConsole.MarkupLine($"[red]{result.ErrorMessage}[/]");
+			// 	continue;
+			// }
 
-			//AnsiConsole.MarkupLine($"[blue]{result.Action}[/]");
+			AnsiConsole.MarkupLine($"[blue]{processActionResult.Action}[/]");
 
-			//// Check if only one player remains
-			//if (game.CurrentBettingRound.PlayersInHand <= 1)
-			//{
-			//	return false;
-			//}
+			// Check if only one player remains
+			if (currentBettingRound.PlayersInHand <= 1)
+			{
+				return false;
+			}
 
-			//currentBettingRoundResponse = await _fiveCardDrawApi.GetCurrentBettingRoundAsync(gameId);
-			//currentBettingRound = currentBettingRoundResponse.Content;
-			//currentBettingRoundIsComplete = currentBettingRound.IsComplete;
+			currentBettingRoundResponse = await _fiveCardDrawApi.GetCurrentBettingRoundAsync(gameId);
+			currentBettingRound = currentBettingRoundResponse.Content;
+			currentBettingRoundIsComplete = currentBettingRound.IsComplete;
 		}
 
 		return true;

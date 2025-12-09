@@ -150,6 +150,52 @@ namespace CardGames.Poker.Api.Clients
         [Post("/api/v1/games/five-card-draw/{gameId}/hands/deal")]
         Task<IApiResponse<DealHandsSuccessful>> DealHandsAsync(System.Guid gameId, CancellationToken cancellationToken = default);
 
+        /// <summary>Process Betting Action</summary>
+        /// <remarks>
+        /// Processes a betting action from the current player and advances the game state accordingly. If the betting round completes (all players have acted and bets are equalized), the game automatically advances to the next phase.
+        /// 
+        /// **Action Types:**
+        /// - `Check` (0): Pass without betting when no bet has been made
+        /// - `Bet` (1): Make an initial bet in the current betting round
+        /// - `Call` (2): Match the current highest bet
+        /// - `Raise` (3): Increase the current bet amount (amount is total to put in, not increment)
+        /// - `Fold` (4): Give up the hand
+        /// - `AllIn` (5): Bet all remaining chips
+        /// 
+        /// **Phase Transitions:**
+        /// - After first betting round completes: transitions to draw phase
+        /// - After second betting round completes: transitions to showdown
+        /// - If only one player remains (all others folded): transitions directly to showdown
+        /// </remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// <item>
+        /// <term>422</term>
+        /// <description>Unprocessable Entity</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/games/five-card-draw/{gameId}/betting/actions")]
+        Task<IApiResponse<ProcessBettingActionSuccessful>> ProcessBettingActionAsync(System.Guid gameId, [Body] ProcessBettingActionRequest body, CancellationToken cancellationToken = default);
+
         /// <summary>GetGame</summary>
         /// <remarks>Retrieve a specific game by its identifier.</remarks>
         /// <returns>
@@ -391,6 +437,62 @@ namespace CardGames.Poker.Api.Contracts
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int MinRaise { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record BettingActionResult
+    {
+        [JsonConstructor]
+        public BettingActionResult(BettingActionType? @actionType, int? @amount, int? @chipStackAfter, string @playerName)
+        {
+            this.PlayerName = @playerName;
+            this.ActionType = @actionType;
+            this.Amount = @amount;
+            this.ChipStackAfter = @chipStackAfter;
+        }
+
+        [JsonPropertyName("playerName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string PlayerName { get; init; }
+
+        [JsonPropertyName("actionType")]
+        public BettingActionType? ActionType { get; init; }
+
+        [JsonPropertyName("amount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? Amount { get; init; }
+
+        [JsonPropertyName("chipStackAfter")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ChipStackAfter { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public enum BettingActionType
+    {
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Check")]
+        Check = 0,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Bet")]
+        Bet = 1,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Call")]
+        Call = 2,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Raise")]
+        Raise = 3,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Fold")]
+        Fold = 4,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"AllIn")]
+        AllIn = 5,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Post")]
+        Post = 6,
 
     }
 
@@ -1194,6 +1296,72 @@ namespace CardGames.Poker.Api.Contracts
 
         [JsonPropertyName("instance")]
         public string Instance { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record ProcessBettingActionRequest
+    {
+        [JsonConstructor]
+        public ProcessBettingActionRequest(BettingActionType? @actionType, int? @amount)
+        {
+            this.ActionType = @actionType;
+            this.Amount = @amount;
+        }
+
+        [JsonPropertyName("actionType")]
+        public BettingActionType? ActionType { get; init; }
+
+        [JsonPropertyName("amount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? Amount { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record ProcessBettingActionSuccessful
+    {
+        [JsonConstructor]
+        public ProcessBettingActionSuccessful(BettingActionResult @action, int? @currentBet, string @currentPhase, System.Guid? @gameId, int? @nextPlayerIndex, string @nextPlayerName, int? @potTotal, bool? @roundComplete)
+        {
+            this.GameId = @gameId;
+            this.RoundComplete = @roundComplete;
+            this.CurrentPhase = @currentPhase;
+            this.Action = @action;
+            this.NextPlayerIndex = @nextPlayerIndex;
+            this.NextPlayerName = @nextPlayerName;
+            this.PotTotal = @potTotal;
+            this.CurrentBet = @currentBet;
+        }
+
+        [JsonPropertyName("gameId")]
+        public System.Guid? GameId { get; init; }
+
+        [JsonPropertyName("roundComplete")]
+        public bool? RoundComplete { get; init; }
+
+        [JsonPropertyName("currentPhase")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string CurrentPhase { get; init; }
+
+        [JsonPropertyName("action")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public BettingActionResult Action { get; init; }
+
+        [JsonPropertyName("nextPlayerIndex")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? NextPlayerIndex { get; init; }
+
+        [JsonPropertyName("nextPlayerName")]
+        public string NextPlayerName { get; init; }
+
+        [JsonPropertyName("potTotal")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? PotTotal { get; init; }
+
+        [JsonPropertyName("currentBet")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? CurrentBet { get; init; }
 
     }
 
