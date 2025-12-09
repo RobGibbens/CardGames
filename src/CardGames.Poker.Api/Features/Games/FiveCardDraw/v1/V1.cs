@@ -2,6 +2,7 @@
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.CollectAntes;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.CreateGame;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.DealHands;
+using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.ProcessBettingAction;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.StartHand;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Queries.GetCurrentBettingRound;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Queries.GetCurrentPlayerTurn;
@@ -26,6 +27,7 @@ public static class V1
 			.MapStartHand()
 			.MapCollectAntes()
 			.MapDealHands()
+			.MapProcessBettingAction()
 			.MapGetGames()
 			.MapGetGame()
 			.MapGetGamePlayers()
