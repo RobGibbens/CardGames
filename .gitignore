@@ -133,3 +133,7 @@ NDependOut/
 src/.idea/.idea.CardGames/.idea/projectSettingsUpdater.xml
 
 src/.idea/.idea.CardGames/.idea/workspace.xml
+
+.DS_Store
+
+src/.idea/.idea.CardGames/.idea/
