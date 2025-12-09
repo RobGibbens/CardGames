@@ -168,3 +168,55 @@ public record PlayerStateResponse(
 	int Position,
 	string Status
 );
+
+// Phase 3: Draw Cards DTOs
+public record DrawCardsApiRequest(
+	Guid PlayerId,
+	List<int> DiscardIndices
+);
+
+public record DrawCardsApiResponse(
+	bool Success,
+	int CardsDiscarded,
+	List<string> NewCards,
+	List<string> NewHand,
+	bool DrawPhaseComplete,
+	Guid? NextPlayerToAct,
+	string CurrentPhase,
+	string? ErrorMessage = null
+);
+
+// Phase 3: Showdown DTOs
+public record ShowdownApiResponse(
+	bool Success,
+	bool WonByFold,
+	List<ShowdownPlayerApiResponse> Results,
+	string? ErrorMessage = null
+);
+
+public record ShowdownPlayerApiResponse(
+	Guid PlayerId,
+	string PlayerName,
+	List<string> Hand,
+	string HandType,
+	string HandDescription,
+	int Payout,
+	bool IsWinner
+);
+
+// Phase 3: Continue Game DTOs
+public record ContinueGameApiResponse(
+	bool CanContinue,
+	string Status,
+	int PlayersWithChips,
+	List<PlayerChipStatusApiResponse> Players,
+	string? WinnerName = null,
+	int? WinnerChips = null
+);
+
+public record PlayerChipStatusApiResponse(
+	Guid PlayerId,
+	string Name,
+	int ChipStack,
+	bool CanPlay
+);

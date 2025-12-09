@@ -26,6 +26,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <ProjectReference Include="..\CardGames.Contracts\CardGames.Contracts.csproj" />
 	  <ProjectReference Include="..\CardGames.Core\CardGames.Core.csproj" />
 	</ItemGroup>
 
