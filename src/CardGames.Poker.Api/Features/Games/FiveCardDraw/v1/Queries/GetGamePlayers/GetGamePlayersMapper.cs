@@ -8,23 +8,40 @@ namespace CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Queries.GetGamePlay
 [Mapper(RequiredMappingStrategy = RequiredMappingStrategy.Target)]
 public static partial class GetGamePlayersMapper
 {
-	[MapProperty(nameof(GamePlayer.Player) + "." + nameof(Player.Name), nameof(GetGamePlayersResponse.PlayerName))]
-	[MapProperty(nameof(GamePlayer.Cards), nameof(GetGamePlayersResponse.Hand))]
-	public static partial GetGamePlayersResponse ToResponse(this GamePlayer model);
+       [MapProperty(nameof(GamePlayer.Player) + "." + nameof(Player.Name), nameof(GetGamePlayersResponse.PlayerName))]
+       public static GetGamePlayersResponse ToResponse(GamePlayer model, int currentHandNumber)
+       {
+               return new GetGamePlayersResponse(
+                       model.Id,
+                       model.GameId,
+                       model.PlayerId,
+                       model.Player.Name,
+                       model.SeatPosition,
+                       model.ChipStack,
+                       model.StartingChips,
+                       model.CurrentBet,
+                       model.TotalContributedThisHand,
+                       model.HasFolded,
+                       model.IsAllIn,
+                       model.IsConnected,
+                       model.IsSittingOut,
+                       model.HasDrawnThisRound,
+                       model.Status,
+                       model.JoinedAt,
+                       model.RowVersion.ToBase64String(),
+                       MapCards(model.Cards, currentHandNumber)
+               );
+       }
 
-	public static partial IQueryable<GetGamePlayersResponse> ProjectToResponse(this IQueryable<GamePlayer> query);
-
-	private static string MapRowVersion(byte[] rowVersion) => rowVersion.ToBase64String();
-
-	private static IReadOnlyList<DealtCard> MapCards(ICollection<GameCard> cards) =>
-		cards
-			.Where(c => !c.IsDiscarded)
-			.OrderBy(c => c.DealOrder)
-			.Select(c => new DealtCard
-			{
-				Suit = c.Suit,
-				Symbol = c.Symbol,
-				DealOrder = c.DealOrder
-			})
-			.ToList();
+       private static IReadOnlyList<DealtCard> MapCards(ICollection<GameCard> cards, int currentHandNumber) =>
+               cards
+                       .Where(c => !c.IsDiscarded && c.HandNumber == currentHandNumber)
+                       .OrderBy(c => c.DealOrder)
+                       .Select(c => new DealtCard
+                       {
+                               Suit = c.Suit,
+                               Symbol = c.Symbol,
+                               DealOrder = c.DealOrder
+                       })
+                       .ToList();
 }

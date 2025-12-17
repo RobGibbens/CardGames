@@ -20,8 +20,4 @@
     </PackageReference>
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\..\CardGames.Poker.CLI\CardGames.Poker.CLI.csproj" />
-  </ItemGroup>
-
 </Project>

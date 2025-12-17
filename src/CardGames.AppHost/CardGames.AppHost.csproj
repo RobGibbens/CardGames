@@ -24,7 +24,6 @@
   <ItemGroup>
     <ProjectReference Include="..\CardGames.MigrationService\CardGames.MigrationService.csproj" />
     <ProjectReference Include="..\CardGames.Poker.Api\CardGames.Poker.Api.csproj" />
-    <ProjectReference Include="..\CardGames.Poker.CLI\CardGames.Poker.CLI.csproj" />
     <ProjectReference Include="..\CardGames.Poker.Events\CardGames.Poker.Events.csproj" IsAspireProjectResource="false" />
     <ProjectReference Include="..\CardGames.Poker.Web\CardGames.Poker.Web.csproj" />
   </ItemGroup>

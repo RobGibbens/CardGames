@@ -4,8 +4,10 @@ using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.CreateGame;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.DealHands;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.PerformShowdown;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.ProcessBettingAction;
+using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.ProcessDraw;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.StartHand;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Queries.GetCurrentBettingRound;
+using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Queries.GetCurrentDrawPlayer;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Queries.GetCurrentPlayerTurn;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Queries.GetGame;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Queries.GetGamePlayers;
@@ -29,12 +31,14 @@ public static class V1
 			.MapCollectAntes()
 			.MapDealHands()
 			.MapProcessBettingAction()
+			.MapProcessDraw()
 			.MapPerformShowdown()
 			.MapGetGames()
 			.MapGetGame()
 			.MapGetGamePlayers()
 			.MapGetCurrentPlayerTurn()
-			.MapGetCurrentBettingRound()
+				.MapGetCurrentDrawPlayer()
+				.MapGetCurrentBettingRound()
 			//.MapGetCategoryById()
 			//.MapAddCategory()
 			//.MapUpdateCategory()
