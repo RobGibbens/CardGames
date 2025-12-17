@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="CardGames.Contracts/CardGames.Contracts.csproj" />
+  <Project Path="CardGames.Core.French/CardGames.Core.French.csproj" />
+  <Project Path="CardGames.Core/CardGames.Core.csproj" />
+  <Project Path="CardGames.Playground/CardGames.Playground.csproj" />
+  <Project Path="CardGames.Poker.CLI/CardGames.Poker.CLI.csproj" />
+  <Project Path="CardGames.Poker/CardGames.Poker.csproj" />
+</Solution>

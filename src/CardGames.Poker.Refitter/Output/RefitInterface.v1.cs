@@ -196,6 +196,49 @@ namespace CardGames.Poker.Api.Clients
         [Post("/api/v1/games/five-card-draw/{gameId}/betting/actions")]
         Task<IApiResponse<ProcessBettingActionSuccessful>> ProcessBettingActionAsync(System.Guid gameId, [Body] ProcessBettingActionRequest body, CancellationToken cancellationToken = default);
 
+        /// <summary>Process Draw Action</summary>
+        /// <remarks>
+        /// Processes a draw action for the current player, allowing them to discard unwanted cards and receive replacement cards from the deck. After all players have drawn, the game automatically advances to the second betting round.
+        /// 
+        /// **Standard Five Card Draw rules apply:**
+        /// - Players may discard 0-3 cards
+        /// - Pass an empty array to "stand pat" (keep all cards)
+        /// - Discarded cards are replaced with new cards from the deck
+        /// - Card indices must be between 0 and 4 (inclusive)
+        /// 
+        /// **Phase Transitions:**
+        /// - After all players draw: transitions to second betting round
+        /// - Players who have folded or are all-in are automatically skipped
+        /// </remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// <item>
+        /// <term>422</term>
+        /// <description>Unprocessable Entity</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/games/five-card-draw/{gameId}/draw")]
+        Task<IApiResponse<ProcessDrawSuccessful>> ProcessDrawAsync(System.Guid gameId, [Body] ProcessDrawRequest body, CancellationToken cancellationToken = default);
+
         /// <summary>Perform Showdown</summary>
         /// <remarks>
         /// Performs the showdown phase to evaluate all remaining players' hands and award the pot(s) to the winner(s). After the showdown completes, the game transitions to the Complete phase and the dealer button moves to the next position.
@@ -312,6 +355,33 @@ namespace CardGames.Poker.Api.Clients
         [Headers("Accept: application/json, application/problem+json")]
         [Get("/api/v1/games/five-card-draw/{gameId}/current-turn")]
         Task<IApiResponse<GetCurrentPlayerTurnResponse>> GetCurrentPlayerTurnAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
+        /// <summary>GetCurrentDrawPlayer</summary>
+        /// <remarks>Retrieve the current player who must act during the draw phase. Returns 404 if not in draw phase or no eligible players remain.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Get("/api/v1/games/five-card-draw/{gameId}/draw-player")]
+        Task<IApiResponse<GetCurrentDrawPlayerResponse>> GetCurrentDrawPlayerAsync(System.Guid gameId, CancellationToken cancellationToken = default);
 
         /// <summary>GetCurrentBettingRound</summary>
         /// <remarks>Retrieve the current betting round for a specific game.</remarks>
@@ -533,6 +603,29 @@ namespace CardGames.Poker.Api.Contracts
 
         [System.Runtime.Serialization.EnumMember(Value = @"Post")]
         Post = 6,
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record CardInfo
+    {
+        [JsonConstructor]
+        public CardInfo(string @display, CardSuit? @suit, CardSymbol? @symbol)
+        {
+            this.Suit = @suit;
+            this.Symbol = @symbol;
+            this.Display = @display;
+        }
+
+        [JsonPropertyName("suit")]
+        public CardSuit? Suit { get; init; }
+
+        [JsonPropertyName("symbol")]
+        public CardSymbol? Symbol { get; init; }
+
+        [JsonPropertyName("display")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Display { get; init; }
 
     }
 
@@ -973,6 +1066,105 @@ namespace CardGames.Poker.Api.Contracts
         [JsonPropertyName("rowVersion")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string RowVersion { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record GetCurrentDrawPlayerResponse
+    {
+        [JsonConstructor]
+        public GetCurrentDrawPlayerResponse(int @chipStack, int @currentBet, System.Guid @gameId, ICollection<DealtCard> @hand, bool @hasDrawnThisRound, bool @hasFolded, System.Guid @id, bool @isAllIn, bool @isConnected, bool @isSittingOut, System.DateTimeOffset @joinedAt, System.Guid @playerId, string @playerName, string @rowVersion, int @seatPosition, int @startingChips, GamePlayerStatus @status, int @totalContributedThisHand)
+        {
+            this.Id = @id;
+            this.GameId = @gameId;
+            this.PlayerId = @playerId;
+            this.PlayerName = @playerName;
+            this.SeatPosition = @seatPosition;
+            this.ChipStack = @chipStack;
+            this.StartingChips = @startingChips;
+            this.CurrentBet = @currentBet;
+            this.TotalContributedThisHand = @totalContributedThisHand;
+            this.HasFolded = @hasFolded;
+            this.IsAllIn = @isAllIn;
+            this.IsConnected = @isConnected;
+            this.IsSittingOut = @isSittingOut;
+            this.HasDrawnThisRound = @hasDrawnThisRound;
+            this.Status = @status;
+            this.JoinedAt = @joinedAt;
+            this.RowVersion = @rowVersion;
+            this.Hand = @hand;
+        }
+
+        [JsonPropertyName("id")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid Id { get; init; }
+
+        [JsonPropertyName("gameId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid GameId { get; init; }
+
+        [JsonPropertyName("playerId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid PlayerId { get; init; }
+
+        [JsonPropertyName("playerName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string PlayerName { get; init; }
+
+        [JsonPropertyName("seatPosition")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int SeatPosition { get; init; }
+
+        [JsonPropertyName("chipStack")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int ChipStack { get; init; }
+
+        [JsonPropertyName("startingChips")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int StartingChips { get; init; }
+
+        [JsonPropertyName("currentBet")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int CurrentBet { get; init; }
+
+        [JsonPropertyName("totalContributedThisHand")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int TotalContributedThisHand { get; init; }
+
+        [JsonPropertyName("hasFolded")]
+        public bool HasFolded { get; init; }
+
+        [JsonPropertyName("isAllIn")]
+        public bool IsAllIn { get; init; }
+
+        [JsonPropertyName("isConnected")]
+        public bool IsConnected { get; init; }
+
+        [JsonPropertyName("isSittingOut")]
+        public bool IsSittingOut { get; init; }
+
+        [JsonPropertyName("hasDrawnThisRound")]
+        public bool HasDrawnThisRound { get; init; }
+
+        [JsonPropertyName("status")]
+        public GamePlayerStatus Status { get; init; }
+
+        [JsonPropertyName("joinedAt")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.DateTimeOffset JoinedAt { get; init; }
+
+        [JsonPropertyName("rowVersion")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string RowVersion { get; init; }
+
+        [JsonPropertyName("hand")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public ICollection<DealtCard> Hand { get; init; }
 
     }
 
@@ -1435,6 +1627,67 @@ namespace CardGames.Poker.Api.Contracts
         [JsonPropertyName("currentBet")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? CurrentBet { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record ProcessDrawRequest
+    {
+        [JsonConstructor]
+        public ProcessDrawRequest(ICollection<int> @discardIndices)
+        {
+            this.DiscardIndices = @discardIndices;
+        }
+
+        [JsonPropertyName("discardIndices")]
+        public ICollection<int> DiscardIndices { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record ProcessDrawSuccessful
+    {
+        [JsonConstructor]
+        public ProcessDrawSuccessful(string @currentPhase, ICollection<CardInfo> @discardedCards, bool? @drawComplete, System.Guid? @gameId, ICollection<CardInfo> @newCards, int? @nextDrawPlayerIndex, string @nextDrawPlayerName, string @playerName)
+        {
+            this.GameId = @gameId;
+            this.PlayerName = @playerName;
+            this.DiscardedCards = @discardedCards;
+            this.NewCards = @newCards;
+            this.DrawComplete = @drawComplete;
+            this.CurrentPhase = @currentPhase;
+            this.NextDrawPlayerIndex = @nextDrawPlayerIndex;
+            this.NextDrawPlayerName = @nextDrawPlayerName;
+        }
+
+        [JsonPropertyName("gameId")]
+        public System.Guid? GameId { get; init; }
+
+        [JsonPropertyName("playerName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string PlayerName { get; init; }
+
+        [JsonPropertyName("discardedCards")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public ICollection<CardInfo> DiscardedCards { get; init; }
+
+        [JsonPropertyName("newCards")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public ICollection<CardInfo> NewCards { get; init; }
+
+        [JsonPropertyName("drawComplete")]
+        public bool? DrawComplete { get; init; }
+
+        [JsonPropertyName("currentPhase")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string CurrentPhase { get; init; }
+
+        [JsonPropertyName("nextDrawPlayerIndex")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? NextDrawPlayerIndex { get; init; }
+
+        [JsonPropertyName("nextDrawPlayerName")]
+        public string NextDrawPlayerName { get; init; }
 
     }
 

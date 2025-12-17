@@ -13,7 +13,7 @@ public static class CreateGameEndpoint
 					var result = await mediator.Send(command, cancellationToken);
 
 					return result.Match(
-						success => Results.Created($"/api/games/five-card-draw/{success.GameId}", new { success.GameId })
+						success => Results.Created($"/api/games/five-card-draw/{success.GameId}", success.GameId)
 					);
 				})
 			.WithName(nameof(MapCreateGame).TrimPrefix("Map"))

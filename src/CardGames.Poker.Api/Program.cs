@@ -42,7 +42,8 @@ builder.AddSqlServerDbContext<CardsDbContext>("cardsdb");
 
 builder.Services.AddFusionCache()
 	.WithSerializer(new FusionCacheSystemTextJsonSerializer())
-	.WithDefaultEntryOptions(options => options.Duration = TimeSpan.FromMinutes(5))
+	//TODO:ROB = .WithDefaultEntryOptions(options => options.Duration = TimeSpan.FromMinutes(5))
+	.WithDefaultEntryOptions(options => options.Duration = TimeSpan.FromMilliseconds(2))
 	.WithRegisteredDistributedCache()
 	.AsHybridCache();
 
