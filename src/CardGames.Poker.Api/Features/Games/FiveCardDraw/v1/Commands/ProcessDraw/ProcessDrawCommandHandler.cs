@@ -137,6 +137,9 @@ public class ProcessDrawCommandHandler(CardsDbContext context)
 			}
 		}
 
+		// Mark that the current player has drawn this round
+		currentDrawPlayer.HasDrawnThisRound = true;
+
 		// Reverse to maintain original order
 		discardedCards.Reverse();
 
@@ -243,37 +246,26 @@ public class ProcessDrawCommandHandler(CardsDbContext context)
 
 	private static int FindNextDrawPlayer(Game game, List<GamePlayer> activePlayers, int currentIndex)
 	{
-		var totalPlayers = game.GamePlayers.Count;
-		var searchIndex = (currentIndex + 1) % totalPlayers;
+		// Only consider active players who have not folded, are not all-in, and have not drawn this round
+		var eligiblePlayers = activePlayers
+			.Where(p => !p.HasFolded && !p.IsAllIn && !p.HasDrawnThisRound)
+			.OrderBy(p => p.SeatPosition)
+			.ToList();
 
-		for (var i = 0; i < totalPlayers; i++)
+		if (!eligiblePlayers.Any())
 		{
-			var player = activePlayers.FirstOrDefault(p => p.SeatPosition == searchIndex);
-
-			// Check if this player can act (not folded, not all-in, and hasn't drawn yet)
-			// Players who have already drawn will have HasDrawn = true or we track via CurrentDrawPlayerIndex
-			if (player is not null && !player.HasFolded && !player.IsAllIn)
-			{
-				// If this player's index is less than or equal to the initial draw player,
-				// they've already had their turn (we've gone around the table)
-				if (searchIndex <= game.CurrentDrawPlayerIndex && searchIndex != currentIndex)
-				{
-					// Check if we've completed a full loop
-					var initialDrawPlayer = (game.DealerPosition + 1) % totalPlayers;
-					if (searchIndex < initialDrawPlayer || currentIndex >= initialDrawPlayer)
-					{
-						return searchIndex;
-					}
-				}
-				else
-				{
-					return searchIndex;
-				}
-			}
-			searchIndex = (searchIndex + 1) % totalPlayers;
+			return -1; // All players have drawn
 		}
 
-		return -1; // No more players to draw
+		// Find the next eligible player after currentIndex
+		var next = eligiblePlayers.FirstOrDefault(p => p.SeatPosition > currentIndex);
+		if (next != null)
+		{
+			return next.SeatPosition;
+		}
+
+		// If none found after currentIndex, wrap around to the first eligible
+		return eligiblePlayers.First().SeatPosition;
 	}
 
 	private void StartSecondBettingRound(Game game, List<GamePlayer> activePlayers, DateTimeOffset now)
