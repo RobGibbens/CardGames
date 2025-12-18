@@ -26,7 +26,8 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 	{
 		_fiveCardDrawApi = fiveCardDrawApi;
 	}
-	
+
+	private bool _canContinue = true;
 	protected override async Task<int> ExecuteAsync(CommandContext context, ApiSettings settings, CancellationToken cancellationToken)
 	{
 		Logger.LogApplicationStart();
@@ -75,20 +76,16 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 		Logger.Paragraph("Game Started");
 		AnsiConsole.MarkupLine($"[dim]Ante: {ante} | Min Bet: {minBet}[/]");
 
-
 		do
 		{
 			await PlayHandAsync(gameId);
 		}
-		//while (game.CanContinue() && AnsiConsole.Confirm("Play another hand?"));
-		while (true); //TODO:ROB - implement CanContinue check
+		while (_canContinue && await AnsiConsole.ConfirmAsync("Play another hand?"));
 
 		Logger.Paragraph("Game Over");
-		//TODO:DisplayFinalStandings(game);
-
+		await DisplayFinalStandings(gameId);
+		
 		return 0;
-
-		//return result.IsSuccessful ? 0 : 1;
 	}
 
 	private static List<string> GetPlayerNames(int numberOfPlayers)
@@ -155,18 +152,27 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 		{
 			if (!(await RunBettingRoundAsync(gameId, "Second Betting Round")))
 			{
-				var result = game.PerformShowdown();
+				var performShowdownResponse = await _fiveCardDrawApi.PerformShowdownAsync(gameId);
+				var result = performShowdownResponse.Content;
+				//var result = game.PerformShowdown();
 				DisplayShowdownResult(result);
 				return;
 			}
 		}
 
 		//Showdown
-		if (game.CurrentPhase == FiveCardDrawPhase.Showdown)
+		currentGameResponse = await _fiveCardDrawApi.GetGameAsync(gameId);
+		currentGame = currentGameResponse.Content;
+		if (currentGame.CurrentPhase == FiveCardDrawPhase.Showdown.ToString())
 		{
-			var result = game.PerformShowdown();
+			var performShowdownResponse = await _fiveCardDrawApi.PerformShowdownAsync(gameId);
+			var result = performShowdownResponse.Content;
 			DisplayShowdownResult(result);
 		}
+
+		currentGameResponse = await _fiveCardDrawApi.GetGameAsync(gameId);
+		currentGame = currentGameResponse.Content;
+		_canContinue = currentGame.CanContinue;
 	}
 
 	private async Task DisplayPlayerStacksAsync(Guid gameId)
@@ -438,5 +444,28 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 		}
 
 		return (BettingActionType.Fold, 0);
+	}
+
+	private async Task DisplayFinalStandings(Guid gameId)
+	{
+		var gamePlayersResponse = await _fiveCardDrawApi.GetGamePlayersAsync(gameId);
+		var gamePlayers = gamePlayersResponse.Content;
+
+		var standings = gamePlayers
+			.OrderByDescending(gp => gp.ChipStack)
+			.Select((gp, index) => new { Rank = index + 1, gp.PlayerName, Chips = gp.ChipStack })
+			.ToList();
+
+		var table = new Table();
+		table.AddColumn("Rank");
+		table.AddColumn("Player");
+		table.AddColumn("Chips");
+
+		foreach (var standing in standings)
+		{
+			table.AddRow(standing.Rank.ToString(), standing.PlayerName, standing.Chips.ToString());
+		}
+
+		AnsiConsole.Write(table);
 	}
 }
