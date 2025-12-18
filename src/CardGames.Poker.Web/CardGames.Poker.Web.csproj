@@ -13,9 +13,16 @@
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.0" />
+    <PackageReference Include="Refit" Version="9.0.2" />
+    <PackageReference Include="Refit.HttpClientFactory" Version="9.0.2" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\CardGames.Contracts\CardGames.Contracts.csproj" />
+    <ProjectReference Include="..\CardGames.Core.French\CardGames.Core.French.csproj" />
+    <ProjectReference Include="..\CardGames.Core\CardGames.Core.csproj" />
+    <ProjectReference Include="..\CardGames.Poker.Events\CardGames.Poker.Events.csproj" />
+    <ProjectReference Include="..\CardGames.Poker\CardGames.Poker.csproj" />
     <ProjectReference Include="..\CardGames.ServiceDefaults\CardGames.ServiceDefaults.csproj" />
   </ItemGroup>
 

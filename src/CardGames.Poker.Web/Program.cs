@@ -1,14 +1,16 @@
-using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
+using CardGames.Poker.Api.Clients;
 using CardGames.Poker.Web.Components;
 using CardGames.Poker.Web.Components.Account;
 using CardGames.Poker.Web.Data;
+using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Refit;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
-
+builder.Services.AddServiceDiscovery();
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
@@ -16,6 +18,16 @@ builder.Services.AddRazorComponents()
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<IdentityRedirectManager>();
 builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
+builder.Services.ConfigureHttpClientDefaults(http =>
+{
+	http.AddServiceDiscovery();
+});
+
+builder.Services
+	.AddRefitClient<IFiveCardDrawApi>(
+		settingsAction: _ => new RefitSettings(),
+		httpClientName: "fiveCardDrawApi")
+	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"));
 
 builder.Services.AddAuthentication(options =>
     {
