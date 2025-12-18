@@ -1290,7 +1290,7 @@ namespace CardGames.Poker.Api.Contracts
     public partial record GetGameResponse
     {
         [JsonConstructor]
-        public GetGameResponse(int? @ante, int? @bigBet, int? @bigBlind, int? @bringIn, int @bringInPlayerIndex, System.DateTimeOffset @createdAt, int @currentDrawPlayerIndex, int @currentHandNumber, string @currentPhase, int @currentPlayerIndex, int @dealerPosition, System.DateTimeOffset? @endedAt, string @gameSettings, System.Guid @gameTypeId, System.Guid @id, int? @minBet, string @name, int? @randomSeed, string @rowVersion, int? @smallBet, int? @smallBlind, System.DateTimeOffset? @startedAt, GameStatus @status, System.DateTimeOffset @updatedAt)
+        public GetGameResponse(int? @ante, int? @bigBet, int? @bigBlind, int? @bringIn, int @bringInPlayerIndex, bool @canContinue, System.DateTimeOffset @createdAt, int @currentDrawPlayerIndex, int @currentHandNumber, string @currentPhase, int @currentPlayerIndex, int @dealerPosition, System.DateTimeOffset? @endedAt, string @gameSettings, System.Guid @gameTypeId, System.Guid @id, int? @minBet, string @name, int? @randomSeed, string @rowVersion, int? @smallBet, int? @smallBlind, System.DateTimeOffset? @startedAt, GameStatus @status, System.DateTimeOffset @updatedAt)
         {
             this.Id = @id;
             this.GameTypeId = @gameTypeId;
@@ -1315,6 +1315,7 @@ namespace CardGames.Poker.Api.Contracts
             this.UpdatedAt = @updatedAt;
             this.StartedAt = @startedAt;
             this.EndedAt = @endedAt;
+            this.CanContinue = @canContinue;
             this.RowVersion = @rowVersion;
         }
 
@@ -1409,6 +1410,9 @@ namespace CardGames.Poker.Api.Contracts
 
         [JsonPropertyName("endedAt")]
         public System.DateTimeOffset? EndedAt { get; init; }
+
+        [JsonPropertyName("canContinue")]
+        public bool CanContinue { get; init; }
 
         [JsonPropertyName("rowVersion")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
