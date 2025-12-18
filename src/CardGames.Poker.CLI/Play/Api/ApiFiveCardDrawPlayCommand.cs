@@ -149,22 +149,24 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 		}
 
 		////Second betting round
-		//if (game.CurrentPhase == FiveCardDrawPhase.SecondBettingRound)
-		//{
-		//	if (!RunBettingRoundAsync(game, "Second Betting Round"))
-		//	{
-		//		var result = game.PerformShowdown();
-		//		DisplayShowdownResult(result);
-		//		return;
-		//	}
-		//}
+		currentGameResponse = await _fiveCardDrawApi.GetGameAsync(gameId);
+		currentGame = currentGameResponse.Content;
+		if (currentGame.CurrentPhase == FiveCardDrawPhase.SecondBettingRound.ToString())
+		{
+			if (!(await RunBettingRoundAsync(gameId, "Second Betting Round")))
+			{
+				var result = game.PerformShowdown();
+				DisplayShowdownResult(result);
+				return;
+			}
+		}
 
-		////Showdown
-		//if (game.CurrentPhase == FiveCardDrawPhase.Showdown)
-		//{
-		//	var result = game.PerformShowdown();
-		//	DisplayShowdownResult(result);
-		//}
+		//Showdown
+		if (game.CurrentPhase == FiveCardDrawPhase.Showdown)
+		{
+			var result = game.PerformShowdown();
+			DisplayShowdownResult(result);
+		}
 	}
 
 	private async Task DisplayPlayerStacksAsync(Guid gameId)
@@ -372,7 +374,7 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 
 			currentBettingRoundResponse = await _fiveCardDrawApi.GetCurrentBettingRoundAsync(gameId);
 			currentBettingRound = currentBettingRoundResponse.Content;
-			currentBettingRoundIsComplete = currentBettingRound.IsComplete;
+			currentBettingRoundIsComplete = currentBettingRound?.IsComplete ?? true;
 		}
 
 		return true;
