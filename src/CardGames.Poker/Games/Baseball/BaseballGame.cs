@@ -22,7 +22,8 @@ namespace CardGames.Poker.Games.Baseball;
 	"Baseball",
 	"A seven-card stud variant with wild 3s and 9s, and buy-card options on 4s.",
 	2,
-	6)]
+	6,
+	"baseball.png")]
 public class BaseballGame : IPokerGame
 {
 	public string Name { get; } = "Baseball";

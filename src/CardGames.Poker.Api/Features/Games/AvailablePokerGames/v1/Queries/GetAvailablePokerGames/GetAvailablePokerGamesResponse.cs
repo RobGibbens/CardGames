@@ -7,5 +7,6 @@ public record GetAvailablePokerGamesResponse(
 	string Name,
 	string Description,
 	int MinimumNumberOfPlayers,
-	int MaximumNumberOfPlayers
+	int MaximumNumberOfPlayers,
+	string? ImageName = null
 );
