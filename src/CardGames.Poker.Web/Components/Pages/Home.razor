@@ -1,77 +1,416 @@
 ﻿@page "/"
-@using CardGames.Poker.Api.Clients
-@using CardGames.Poker.Api.Contracts
-@inject IFiveCardDrawApi FiveCardDrawApi
+@rendermode InteractiveServer
+@inject IJSRuntime JSRuntime
 
-<PageTitle>Home</PageTitle>
+<PageTitle>CardGames Poker - Play Online Poker with Friends</PageTitle>
 
-@if (_loading)
-{
-    <p>Loading...</p>
-}
-else if (!string.IsNullOrWhiteSpace(_error))
-{
-    <div class="alert alert-danger">@_error</div>
-}
-else if (_games.Count == 0)
-{
-    <p>No games found.</p>
-}
-else
-{
-    <table class="table table-striped table-hover align-middle">
-        <thead>
-        <tr>
-            <th>Name</th>
-            <th>Status</th>
-            <th>Phase</th>
-            <th>Created</th>
-            <th>Id</th>
-        </tr>
-        </thead>
-        <tbody>
-        @foreach (var g in _games)
-        {
-            <tr>
-                <td>@g.Name</td>
-                <td>@g.Status</td>
-                <td>@g.CurrentPhase</td>
-                <td>@g.CreatedAt.ToLocalTime().ToString("g")</td>
-                <td><code>@g.Id</code></td>
-            </tr>
-        }
-        </tbody>
-    </table>
-}
+<!-- Navigation Header -->
+<header class="nav-header">
+    <nav class="nav-container">
+        <a href="/" class="nav-logo">
+            <span class="nav-logo-icon">♠</span>
+            <span>CardGames</span>
+        </a>
+
+        <ul class="nav-links" id="navLinks">
+            <li><a href="#features">Features</a></li>
+            <li><a href="#how-it-works">How It Works</a></li>
+            <li><a href="#variants">Game Variants</a></li>
+        </ul>
+
+        <div class="nav-actions">
+            <button class="theme-toggle" @onclick="ToggleTheme" title="Toggle theme" aria-label="Toggle dark/light theme">
+                @if (isDarkMode)
+                {
+                    <span>☀️</span>
+                }
+                else
+                {
+                    <span>🌙</span>
+                }
+            </button>
+            <a href="/Account/Login" class="btn btn-secondary btn-sm">Sign In</a>
+            <a href="/Account/Register" class="btn btn-primary btn-sm">Get Started</a>
+            <button class="mobile-menu-toggle" @onclick="ToggleMobileMenu" aria-label="Toggle menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </nav>
+</header>
+
+<!-- Hero Section -->
+<section class="hero">
+    <div class="hero-cards">
+        <span class="floating-card">♠</span>
+        <span class="floating-card">♥</span>
+        <span class="floating-card">♦</span>
+        <span class="floating-card">♣</span>
+        <span class="floating-card">🃏</span>
+        <span class="floating-card">♠</span>
+    </div>
+
+    <div class="hero-content">
+        <div class="hero-badge">
+            <span class="hero-badge-dot"></span>
+            <span>Real-time multiplayer poker</span>
+        </div>
+
+        <h1 class="hero-title">
+            Play Poker <span class="hero-title-accent">Your Way</span>
+        </h1>
+
+        <p class="hero-subtitle">
+            Create private tables, invite friends, and enjoy real-time poker games.
+            Multiple variants, seamless reconnection, and a beautiful experience on any device.
+        </p>
+
+        <div class="hero-actions">
+            <a href="/Account/Register" class="btn btn-primary btn-lg">
+                <span>🎰</span> Start Playing Free
+            </a>
+            <a href="#features" class="btn btn-outline btn-lg">
+                <span>📖</span> Learn More
+            </a>
+        </div>
+
+        <div class="hero-stats">
+            <div class="hero-stat">
+                <span class="hero-stat-value">4+</span>
+                <span class="hero-stat-label">Game Variants</span>
+            </div>
+            <div class="hero-stat">
+                <span class="hero-stat-value">Real-time</span>
+                <span class="hero-stat-label">Multiplayer</span>
+            </div>
+            <div class="hero-stat">
+                <span class="hero-stat-value">100%</span>
+                <span class="hero-stat-label">Free to Play</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section class="section features" id="features">
+    <div class="section-container">
+        <div class="section-header">
+            <span class="section-badge">Features</span>
+            <h2 class="section-title">Everything You Need for the Perfect Game</h2>
+            <p class="section-subtitle">
+                Built for poker enthusiasts who want a premium, private gaming experience
+            </p>
+        </div>
+
+        <div class="features-grid">
+            <div class="feature-card animate-fade-in-up">
+                <div class="feature-icon">
+                    <span>🔐</span>
+                </div>
+                <h3 class="feature-title">Private Tables</h3>
+                <p class="feature-description">
+                    Create invite-only games with shareable links. Control who joins your table
+                    and enjoy poker with people you know and trust.
+                </p>
+            </div>
+
+            <div class="feature-card animate-fade-in-up animate-delay-1">
+                <div class="feature-icon">
+                    <span>⚡</span>
+                </div>
+                <h3 class="feature-title">Real-Time Gameplay</h3>
+                <p class="feature-description">
+                    Low-latency action propagation ensures smooth, responsive gameplay.
+                    Every fold, call, and raise happens instantly across all players.
+                </p>
+            </div>
+
+            <div class="feature-card animate-fade-in-up animate-delay-2">
+                <div class="feature-icon">
+                    <span>🔄</span>
+                </div>
+                <h3 class="feature-title">Seamless Reconnection</h3>
+                <p class="feature-description">
+                    Lost connection? No problem. Rejoin your game and pick up exactly
+                    where you left off with your cards and position intact.
+                </p>
+            </div>
+
+            <div class="feature-card animate-fade-in-up animate-delay-3">
+                <div class="feature-icon">
+                    <span>🎯</span>
+                </div>
+                <h3 class="feature-title">Authoritative Server</h3>
+                <p class="feature-description">
+                    All game logic runs on the server for fair, cheat-resistant gameplay.
+                    Every action is validated before being broadcast to players.
+                </p>
+            </div>
+
+            <div class="feature-card animate-fade-in-up animate-delay-4">
+                <div class="feature-icon">
+                    <span>📱</span>
+                </div>
+                <h3 class="feature-title">Play Anywhere</h3>
+                <p class="feature-description">
+                    Responsive design works beautifully on desktop, tablet, and mobile.
+                    Switch devices without missing a hand.
+                </p>
+            </div>
+
+            <div class="feature-card animate-fade-in-up animate-delay-5">
+                <div class="feature-icon">
+                    <span>📜</span>
+                </div>
+                <h3 class="feature-title">Hand History</h3>
+                <p class="feature-description">
+                    Review your past hands to analyze plays and improve your strategy.
+                    Every hand is recorded for your reference.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- How It Works Section -->
+<section class="section how-it-works" id="how-it-works">
+    <div class="section-container">
+        <div class="section-header">
+            <span class="section-badge">How It Works</span>
+            <h2 class="section-title">From Sign Up to Showdown in Minutes</h2>
+            <p class="section-subtitle">
+                Getting started is quick and easy. Here's how to host your first game.
+            </p>
+        </div>
+
+        <div class="steps-container">
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <h3 class="step-title">Create Your Account</h3>
+                    <p class="step-description">
+                        Sign up with your email or use OAuth for quick registration.
+                        Verify your email and you're ready to start hosting games.
+                    </p>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <h3 class="step-title">Set Up Your Table</h3>
+                    <p class="step-description">
+                        Choose your poker variant, configure the settings like blinds and seat count,
+                        and customize the rules to match your group's preferences.
+                    </p>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <h3 class="step-title">Invite Your Friends</h3>
+                    <p class="step-description">
+                        Share a unique invite link or send in-app invitations. Players can join
+                        with a single click and take their seats at your table.
+                    </p>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                    <h3 class="step-title">Start the Game</h3>
+                    <p class="step-description">
+                        Once everyone's seated and ready, start the game. The server handles
+                        dealing, betting rounds, and showdowns automatically.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Variants Section -->
+<section class="section variants" id="variants">
+    <div class="section-container">
+        <div class="section-header">
+            <span class="section-badge">Game Variants</span>
+            <h2 class="section-title">Play Your Favorite Poker Style</h2>
+            <p class="section-subtitle">
+                Our extensible game engine supports multiple poker variants with more coming soon.
+            </p>
+        </div>
+
+        <div class="variants-grid">
+            <div class="variant-card">
+                <div class="variant-icon">🃏</div>
+                <h3 class="variant-name">Texas Hold'em</h3>
+                <p class="variant-description">The world's most popular poker variant</p>
+                <span class="variant-badge">Available</span>
+            </div>
+
+            <div class="variant-card">
+                <div class="variant-icon">🎴</div>
+                <h3 class="variant-name">Five Card Draw</h3>
+                <p class="variant-description">Classic draw poker simplicity</p>
+                <span class="variant-badge">Available</span>
+            </div>
+
+            <div class="variant-card">
+                <div class="variant-icon">♠️</div>
+                <h3 class="variant-name">Omaha</h3>
+                <p class="variant-description">Four hole cards, bigger hands</p>
+                <span class="variant-badge" style="background: var(--text-muted);">Coming Soon</span>
+            </div>
+
+            <div class="variant-card">
+                <div class="variant-icon">♦️</div>
+                <h3 class="variant-name">Seven Card Stud</h3>
+                <p class="variant-description">The original poker classic</p>
+                <span class="variant-badge" style="background: var(--text-muted);">Coming Soon</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA Section -->
+<section class="section cta">
+    <div class="section-container">
+        <div class="cta-content">
+            <h2 class="cta-title">Ready to Deal?</h2>
+            <p class="cta-subtitle">
+                Join the community and start hosting your own private poker games today.
+                No downloads, no payments — just pure poker fun.
+            </p>
+            <div class="cta-actions">
+                <a href="/Account/Register" class="btn btn-primary btn-lg">
+                    <span>🚀</span> Create Free Account
+                </a>
+                <a href="#features" class="btn btn-secondary btn-lg">
+                    <span>📖</span> Explore Features
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+    <div class="footer-container">
+        <div class="footer-grid">
+            <div class="footer-brand">
+                <div class="footer-logo">
+                    <span class="footer-logo-icon">♠</span>
+                    <span>CardGames</span>
+                </div>
+                <p class="footer-description">
+                    The ultimate platform for private online poker games.
+                    Play your favorite variants with friends in real-time.
+                </p>
+            </div>
+
+            <div class="footer-column">
+                <h4>Product</h4>
+                <ul class="footer-links">
+                    <li><a href="#features">Features</a></li>
+                    <li><a href="#variants">Game Variants</a></li>
+                    <li><a href="#how-it-works">How It Works</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-column">
+                <h4>Account</h4>
+                <ul class="footer-links">
+                    <li><a href="/Account/Login">Sign In</a></li>
+                    <li><a href="/Account/Register">Create Account</a></li>
+                    <li><a href="/Account/Manage">Settings</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-column">
+                <h4>Legal</h4>
+                <ul class="footer-links">
+                    <li><a href="/privacy">Privacy Policy</a></li>
+                    <li><a href="/terms">Terms of Service</a></li>
+                    <li><a href="/responsible-gaming">Responsible Gaming</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            <p class="footer-copyright">
+                © @DateTime.Now.Year CardGames. All rights reserved.
+            </p>
+            <div class="footer-social">
+                <a href="#" title="GitHub" aria-label="GitHub">
+                    <span>🔗</span>
+                </a>
+                <a href="#" title="Twitter" aria-label="Twitter">
+                    <span>🐦</span>
+                </a>
+                <a href="#" title="Discord" aria-label="Discord">
+                    <span>💬</span>
+                </a>
+            </div>
+        </div>
+    </div>
+</footer>
 
 @code {
+    private bool isDarkMode = false;
+    private bool isMobileMenuOpen = false;
 
-    private bool _loading = true;
-    private string? _error;
-    private List<GetGamesResponse> _games = new();
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                // Check for saved theme preference or system preference
+                var savedTheme = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "theme");
+                if (!string.IsNullOrEmpty(savedTheme))
+                {
+                    isDarkMode = savedTheme == "dark";
+                }
+                else
+                {
+                    // Check system preference
+                    isDarkMode = await JSRuntime.InvokeAsync<bool>("matchMedia", "(prefers-color-scheme: dark)");
+                }
+                await ApplyTheme();
+                StateHasChanged();
+            }
+            catch
+            {
+                // Ignore errors during SSR
+            }
+        }
+    }
 
-    protected override async Task OnInitializedAsync()
+    private async Task ToggleTheme()
+    {
+        isDarkMode = !isDarkMode;
+        await ApplyTheme();
+    }
+
+    private async Task ApplyTheme()
     {
         try
         {
-            var gamesResponse = await FiveCardDrawApi.GetGamesAsync();
-            if (gamesResponse.IsSuccessStatusCode)
-            {
-                _games = gamesResponse.Content.ToList();
-            }
-            
+            var theme = isDarkMode ? "dark" : "light";
+            await JSRuntime.InvokeVoidAsync("document.documentElement.setAttribute", "data-theme", theme);
+            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "theme", theme);
         }
-        catch (Refit.ApiException ex)
+        catch
         {
-            _error = $"API error: {(int)ex.StatusCode} {ex.StatusCode}";
+            // Ignore errors during SSR
         }
-        catch (Exception ex)
-        {
-            _error = ex.Message;
-        }
-        finally
-        {
-            _loading = false;
-        }
+    }
+
+    private void ToggleMobileMenu()
+    {
+        isMobileMenuOpen = !isMobileMenuOpen;
     }
 }
