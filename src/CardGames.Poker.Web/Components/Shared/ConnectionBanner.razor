@@ -1,0 +1,41 @@
+@namespace CardGames.Poker.Web.Components.Shared
+
+@if (!IsConnected || IsReconnecting)
+{
+    <div class="connection-banner @(IsReconnecting ? "reconnecting" : "disconnected")">
+        <div class="connection-banner-content">
+            @if (IsReconnecting)
+            {
+                <span class="connection-spinner"></span>
+                <span class="connection-message">Reconnecting to server...</span>
+            }
+            else
+            {
+                <span class="connection-icon">??</span>
+                <span class="connection-message">Connection lost. Actions are disabled.</span>
+                <button class="btn btn-sm btn-secondary" @onclick="OnReconnectClick">
+                    Retry
+                </button>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool IsConnected { get; set; } = true;
+
+    [Parameter]
+    public bool IsReconnecting { get; set; }
+
+    [Parameter]
+    public EventCallback OnReconnect { get; set; }
+
+    private async Task OnReconnectClick()
+    {
+        if (OnReconnect.HasDelegate)
+        {
+            await OnReconnect.InvokeAsync();
+        }
+    }
+}
