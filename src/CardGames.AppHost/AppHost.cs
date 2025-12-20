@@ -31,6 +31,8 @@ var api = builder.AddProject<Projects.CardGames_Poker_Api>("api")
 .WaitForCompletion(migrations);
 
 var web = builder.AddProject<Projects.CardGames_Poker_Web>("web")
+	.WithReference(sqldb)
+	.WaitFor(sqldb)
 	.WithReference(api)
 	.WaitFor(api);
 
