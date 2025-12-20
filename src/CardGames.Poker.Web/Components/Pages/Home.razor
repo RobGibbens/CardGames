@@ -1,6 +1,8 @@
 ﻿@page "/"
 @rendermode InteractiveServer
 @inject IJSRuntime JSRuntime
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Http.Extensions
 
 <PageTitle>CardGames Poker - Play Online Poker with Friends</PageTitle>
 
@@ -29,8 +31,21 @@
                     <span>🌙</span>
                 }
             </button>
-            <a href="/Account/Login" class="btn btn-secondary btn-sm">Sign In</a>
-            <a href="/Account/Register" class="btn btn-primary btn-sm">Get Started</a>
+
+            <AuthorizeView>
+                <Authorized>
+                    <a href="/Account/Manage" class="btn btn-secondary btn-sm">@context.User.Identity?.Name</a>
+                    <form method="post" action="/Account/Logout" style="display:inline;">
+                        <input type="hidden" name="ReturnUrl" value="@GetReturnUrl()" />
+                        <button type="submit" class="btn btn-primary btn-sm">Sign Out</button>
+                    </form>
+                </Authorized>
+                <NotAuthorized>
+                    <a href="/Account/Login" class="btn btn-secondary btn-sm">Sign In</a>
+                    <a href="/Account/Register" class="btn btn-primary btn-sm">Get Started</a>
+                </NotAuthorized>
+            </AuthorizeView>
+
             <button class="mobile-menu-toggle" @onclick="ToggleMobileMenu" aria-label="Toggle menu">
                 <span></span>
                 <span></span>
@@ -361,6 +376,15 @@
 @code {
     private bool isDarkMode = false;
     private bool isMobileMenuOpen = false;
+
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    private string GetReturnUrl()
+    {
+        var pathAndQuery = HttpContext?.Request.GetEncodedPathAndQuery();
+        return string.IsNullOrWhiteSpace(pathAndQuery) ? string.Empty : pathAndQuery.TrimStart('/');
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {

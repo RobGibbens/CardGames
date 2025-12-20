@@ -1,0 +1,47 @@
+@namespace CardGames.Poker.Web.Components.Account
+
+<div class="auth-page">
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <a href="/" class="auth-logo">
+                    <span class="auth-logo-icon">?</span>
+                    <span>CardGames</span>
+                </a>
+
+                @if (!string.IsNullOrWhiteSpace(Title))
+                {
+                    <h1 class="auth-title">@Title</h1>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(Subtitle))
+                {
+                    <p class="auth-subtitle">@Subtitle</p>
+                }
+            </div>
+
+            @ChildContent
+
+            @if (FooterContent is not null)
+            {
+                <div class="auth-shell-footer">
+                    @FooterContent
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string? Title { get; set; }
+
+    [Parameter]
+    public string? Subtitle { get; set; }
+
+    [Parameter]
+    public RenderFragment ChildContent { get; set; } = default!;
+
+    [Parameter]
+    public RenderFragment? FooterContent { get; set; }
+}

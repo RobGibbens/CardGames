@@ -11,9 +11,10 @@
 
 <PageTitle>Confirm email change</PageTitle>
 
-<h1>Confirm email change</h1>
-
-<StatusMessage Message="@message" />
+<AccountShell Title="Confirm email change" Subtitle="Verifying your new email address">
+    <StatusMessage Message="@message" />
+    <p class="auth-footer"><a href="/Account/Manage">Go to account settings</a></p>
+</AccountShell>
 
 @code {
     private string? message;
