@@ -18,7 +18,8 @@ namespace CardGames.Poker.Games.HoldEm;
 	"Texas Hold 'Em",
 	"A popular variant of poker where players are dealt two hole cards and share five community cards, with four betting rounds.",
 	2,
-	14)]
+	14,
+	"holdem.png")]
 public class HoldEmGame : IPokerGame
 {
 	public string Name { get; } = "Texas Hold 'Em";

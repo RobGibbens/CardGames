@@ -1,59 +1,14 @@
 ﻿@page "/"
 @rendermode InteractiveServer
 @inject IJSRuntime JSRuntime
+@inject CardGames.Poker.Api.Clients.IAvailablePokerGamesApi AvailablePokerGamesApi
+@using CardGames.Poker.Api.Contracts
+@using Refit
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Http.Extensions
 
 <PageTitle>Friday Night Poker - Play Online Poker with Friends</PageTitle>
 <CardGames.Poker.Web.Components.Shared.SiteNavBar />
-<!-- Navigation Header -->
-@* <header class="nav-header">
-    <nav class="nav-container">
-        <a href="/" class="nav-logo">
-            <span class="nav-logo-icon">♠</span>
-            <span>CardGames</span>
-        </a>
-
-        <ul class="nav-links" id="navLinks">
-            <li><a href="#features">Features</a></li>
-            <li><a href="#how-it-works">How It Works</a></li>
-            <li><a href="#variants">Game Variants</a></li>
-        </ul>
-
-        <div class="nav-actions">
-            <button class="theme-toggle" @onclick="ToggleTheme" title="Toggle theme" aria-label="Toggle dark/light theme">
-                @if (isDarkMode)
-                {
-                    <span>☀️</span>
-                }
-                else
-                {
-                    <span>🌙</span>
-                }
-            </button>
-
-            <AuthorizeView>
-                <Authorized>
-                    <a href="/Account/Manage" class="btn btn-secondary btn-sm">@context.User.Identity?.Name</a>
-                    <form method="post" action="/Account/Logout" style="display:inline;">
-                        <input type="hidden" name="ReturnUrl" value="@GetReturnUrl()" />
-                        <button type="submit" class="btn btn-primary btn-sm">Sign Out</button>
-                    </form>
-                </Authorized>
-                <NotAuthorized>
-                    <a href="/Account/Login" class="btn btn-secondary btn-sm">Sign In</a>
-                    <a href="/Account/Register" class="btn btn-primary btn-sm">Get Started</a>
-                </NotAuthorized>
-            </AuthorizeView>
-
-            <button class="mobile-menu-toggle" @onclick="ToggleMobileMenu" aria-label="Toggle menu">
-                <span></span>
-                <span></span>
-                <span></span>
-            </button>
-        </div>
-    </nav>
-</header> *@
 
 <!-- Hero Section -->
 <section class="hero">
@@ -259,33 +214,54 @@
         </div>
 
         <div class="variants-grid">
-            <div class="variant-card">
-                <div class="variant-icon">🃏</div>
-                <h3 class="variant-name">Texas Hold'em</h3>
-                <p class="variant-description">The world's most popular poker variant</p>
-                <span class="variant-badge">Available</span>
-            </div>
-
-            <div class="variant-card">
-                <div class="variant-icon">🎴</div>
-                <h3 class="variant-name">Five Card Draw</h3>
-                <p class="variant-description">Classic draw poker simplicity</p>
-                <span class="variant-badge">Available</span>
-            </div>
-
-            <div class="variant-card">
-                <div class="variant-icon">♠️</div>
-                <h3 class="variant-name">Omaha</h3>
-                <p class="variant-description">Four hole cards, bigger hands</p>
-                <span class="variant-badge" style="background: var(--text-muted);">Coming Soon</span>
-            </div>
-
-            <div class="variant-card">
-                <div class="variant-icon">♦️</div>
-                <h3 class="variant-name">Seven Card Stud</h3>
-                <p class="variant-description">The original poker classic</p>
-                <span class="variant-badge" style="background: var(--text-muted);">Coming Soon</span>
-            </div>
+            @if (_isLoadingAvailableGames)
+            {
+                <div class="variant-card">
+                    <div class="variant-icon">🃏</div>
+                    <h3 class="variant-name">Loading…</h3>
+                    <p class="variant-description">Fetching available poker variants.</p>
+                    <span class="variant-badge" style="background: var(--text-muted);">Loading</span>
+                </div>
+            }
+            else if (!string.IsNullOrWhiteSpace(_availableGamesErrorMessage))
+            {
+                <div class="variant-card">
+                    <div class="variant-icon">🃏</div>
+                    <h3 class="variant-name">Unable to load variants</h3>
+                    <p class="variant-description">@_availableGamesErrorMessage</p>
+                    <span class="variant-badge" style="background: var(--text-muted);">Unavailable</span>
+                </div>
+            }
+            else if ((_availableGames?.Count ?? 0) == 0)
+            {
+                <div class="variant-card">
+                    <div class="variant-icon">🃏</div>
+                    <h3 class="variant-name">No variants available</h3>
+                    <p class="variant-description">No poker variants are currently available.</p>
+                    <span class="variant-badge" style="background: var(--text-muted);">Unavailable</span>
+                </div>
+            }
+            else
+            {
+                @foreach (var game in _availableGames!)
+                {
+                    <div class="variant-card">
+                        <div class="variant-icon">
+                            @if (!string.IsNullOrWhiteSpace(game.ImageName))
+                            {
+                                <img class="variant-icon-image" src="@($"/images/games/{game.ImageName}")" alt="@game.Name" loading="lazy" />
+                            }
+                            else
+                            {
+                                <span class="variant-icon-fallback" aria-hidden="true">🃏</span>
+                            }
+                        </div>
+                        <h3 class="variant-name">@game.Name</h3>
+                        <p class="variant-description">@game.Description</p>
+                        <span class="variant-badge">@($"{game.MinimumNumberOfPlayers}-{game.MaximumNumberOfPlayers} players")</span>
+                    </div>
+                }
+            }
         </div>
     </div>
 </section>
@@ -377,6 +353,10 @@
     private bool isDarkMode = false;
     private bool isMobileMenuOpen = false;
 
+    private ICollection<GetAvailablePokerGamesResponse>? _availableGames;
+    private bool _isLoadingAvailableGames;
+    private string? _availableGamesErrorMessage;
+
     [CascadingParameter]
     private HttpContext? HttpContext { get; set; }
 
@@ -410,6 +390,30 @@
             {
                 // Ignore errors during SSR
             }
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isLoadingAvailableGames = true;
+        try
+        {
+            var response = await AvailablePokerGamesApi.GetAvailablePokerGamesAsync();
+            if (response.IsSuccessStatusCode)
+            {
+                _availableGames = response.Content ?? Array.Empty<GetAvailablePokerGamesResponse>();
+                return;
+            }
+
+            _availableGamesErrorMessage = response.Error?.Content ?? "The server returned an error.";
+        }
+        catch (ApiException ex)
+        {
+            _availableGamesErrorMessage = ex.Content ?? ex.Message;
+        }
+        finally
+        {
+            _isLoadingAvailableGames = false;
         }
     }
 

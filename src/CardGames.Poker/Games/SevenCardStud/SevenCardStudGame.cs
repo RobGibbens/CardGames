@@ -15,7 +15,8 @@ namespace CardGames.Poker.Games.SevenCardStud;
 	"Seven Card Stud",
 	"A classic poker variant where players receive seven cards individually, with betting rounds after the third, fourth, fifth, and sixth cards.",
 	2,
-	7)]
+	7,
+	"sevencardstud.png")]
 public class SevenCardStudGame : IPokerGame
 {
 	public string Name { get; } = "Seven Card Stud";

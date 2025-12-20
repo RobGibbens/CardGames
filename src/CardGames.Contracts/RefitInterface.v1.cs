@@ -986,17 +986,21 @@ namespace CardGames.Poker.Api.Contracts
     public partial record GetAvailablePokerGamesResponse
     {
         [JsonConstructor]
-        public GetAvailablePokerGamesResponse(string @description, int @maximumNumberOfPlayers, int @minimumNumberOfPlayers, string @name)
+        public GetAvailablePokerGamesResponse(string @description, int @maximumNumberOfPlayers, int @minimumNumberOfPlayers, string @name, string? @imageName)
         {
             this.Name = @name;
             this.Description = @description;
             this.MinimumNumberOfPlayers = @minimumNumberOfPlayers;
             this.MaximumNumberOfPlayers = @maximumNumberOfPlayers;
-        }
-
+            this.ImageName = @imageName;
+		}
         [JsonPropertyName("name")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string Name { get; init; }
+
+		[JsonPropertyName("imageName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string ImageName { get; init; }
 
         [JsonPropertyName("description")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]

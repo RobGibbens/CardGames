@@ -23,7 +23,8 @@ namespace CardGames.Poker.Games.KingsAndLows;
 	"Kings and Lows",
 	"A five-card draw poker variant where kings and the lowest card are wild. Players ante, decide to drop or stay, draw cards, and losers match the pot.",
 	2,
-	5)]
+	5,
+	"kingsandlows.png")]
 public class KingsAndLowsGame : IPokerGame
 {
 	public string Name { get; } = "Kings and Lows";

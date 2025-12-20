@@ -15,7 +15,8 @@ namespace CardGames.Poker.Games.FiveCardDraw;
 	"Five Card Draw",
 	"A classic poker variant where players are dealt five cards, have a draw phase to exchange cards, and engage in two betting rounds before showdown.",
 	2,
-	6)]
+	6,
+	"fivecarddraw.png")]
 public class FiveCardDrawGame : IPokerGame
 {
 	public string Name { get; } = "Five Card Draw";

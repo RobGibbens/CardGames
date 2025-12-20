@@ -56,7 +56,8 @@ public class GetAvailablePokerGamesQueryHandler(HybridCache hybridCache)
 					metadata.Name,
 					metadata.Description,
 					metadata.MinimumNumberOfPlayers,
-					metadata.MaximumNumberOfPlayers
+					metadata.MaximumNumberOfPlayers,
+					metadata.ImageName
 				);
 			}
 

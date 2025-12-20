@@ -16,7 +16,8 @@ namespace CardGames.Poker.Games.Omaha;
 	"Omaha",
 	"A popular variant of poker where players are dealt four hole cards and share five community cards, with four betting rounds.",
 	2,
-	11)]
+	11,
+	"omaha.png")]
 public class OmahaGame : IPokerGame
 {
 	public string Name { get; } = "Omaha";

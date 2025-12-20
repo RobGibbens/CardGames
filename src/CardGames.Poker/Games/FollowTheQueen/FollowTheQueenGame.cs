@@ -17,7 +17,8 @@ namespace CardGames.Poker.Games.FollowTheQueen;
 	"Follow the Queen",
 	"A seven card stud poker variant where Queens are wild, and the card following the last face-up Queen also becomes wild.",
 	2,
-	7)]
+	7,
+	"followthequeen.png")]
 public class FollowTheQueenGame : IPokerGame
 {
 	public string Name { get; } = "Follow the Queen";
