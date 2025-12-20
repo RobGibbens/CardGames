@@ -1,0 +1,419 @@
+@page "/table/{TableId:guid}"
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+@using CardGames.Poker.Web.Components.Shared
+@using Microsoft.AspNetCore.Authorization
+
+@inject NavigationManager NavigationManager
+
+<PageTitle>Table - Friday Night Poker</PageTitle>
+
+<!-- Connection Banner -->
+<ConnectionBanner IsConnected="@isConnected" IsReconnecting="@isReconnecting" />
+
+<main class="table-play-main">
+    <!-- Leave Table / Controls Strip -->
+    <div class="table-controls-strip">
+        <button class="btn btn-secondary btn-sm leave-table-btn" @onclick="LeaveTableAsync">
+            <i class="fa-regular fa-arrow-left"></i>
+            Leave Table
+        </button>
+
+        <div class="table-info-strip">
+            <span class="table-name">@tableName</span>
+            <span class="table-blinds">Ante: @ante · Min Bet: @minBet</span>
+        </div>
+
+        <div class="table-controls-right">
+            @if (isHost)
+            {
+                <div class="host-controls">
+                    @if (gamePhase == GamePhase.WaitingForPlayers)
+                    {
+                        <button class="btn btn-primary btn-sm" @onclick="StartGameAsync" disabled="@(!canStartGame)">
+                            <i class="fa-regular fa-play"></i>
+                            Start Game
+                        </button>
+                    }
+                    else if (gamePhase != GamePhase.Ended)
+                    {
+                        @if (isPaused)
+                        {
+                            <button class="btn btn-secondary btn-sm" @onclick="ResumeGameAsync">
+                                <i class="fa-regular fa-play"></i>
+                                Resume
+                            </button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-secondary btn-sm" @onclick="PauseGameAsync">
+                                <i class="fa-regular fa-pause"></i>
+                                Pause
+                            </button>
+                        }
+                        <button class="btn btn-outline btn-sm" @onclick="EndGameAsync">
+                            <i class="fa-regular fa-stop"></i>
+                            End Game
+                        </button>
+                    }
+                </div>
+            }
+            <div class="connection-indicator @(isConnected ? "connected" : "disconnected")" title="@(isConnected ? "Connected" : "Disconnected")">
+                <span class="connection-dot"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Table Area -->
+    <div class="table-play-area">
+        <TableCanvas 
+            Seats="@seats"
+            Pot="@pot"
+            CurrentPhase="@gamePhase"
+            CurrentActorSeatIndex="@currentActorSeatIndex"
+            DealerSeatIndex="@dealerSeatIndex"
+            OnSeatClick="HandleSeatClickAsync"
+            CurrentPlayerSeatIndex="@currentPlayerSeatIndex" />
+    </div>
+
+    <!-- Action Panel (only shown when it's player's turn) -->
+    @if (isPlayerTurn && gamePhase != GamePhase.WaitingForPlayers && gamePhase != GamePhase.Ended)
+    {
+        <ActionPanel 
+            LegalActions="@legalActions"
+            MinBet="@currentMinBet"
+            MaxBet="@currentMaxBet"
+            CurrentBetToCall="@currentBetToCall"
+            PlayerChips="@playerChips"
+            TurnTimeRemaining="@turnTimeRemaining"
+            OnAction="HandlePlayerActionAsync"
+            IsSubmitting="@isSubmittingAction" />
+    }
+
+    <!-- Waiting/Pre-game overlay -->
+    @if (gamePhase == GamePhase.WaitingForPlayers)
+    {
+        <div class="table-overlay waiting-overlay">
+            <div class="overlay-content">
+                <div class="overlay-icon">??</div>
+                <h2>Waiting for Players</h2>
+                <p>@seatedPlayerCount / @minPlayersRequired players seated</p>
+                <div class="ready-status">
+                    @foreach (var seat in seats.Where(s => s.IsOccupied))
+                    {
+                        <div class="ready-player @(seat.IsReady ? "is-ready" : "")">
+                            <span class="ready-avatar">@GetInitials(seat.PlayerName)</span>
+                            <span class="ready-name">@seat.PlayerName</span>
+                            @if (seat.IsReady)
+                            {
+                                <span class="ready-badge">? Ready</span>
+                            }
+                        </div>
+                    }
+                </div>
+                @if (!isSeated)
+                {
+                    <p class="overlay-hint">Click an empty seat to join the table</p>
+                }
+                else if (!isReady)
+                {
+                    <button class="btn btn-primary btn-lg" @onclick="SetReadyAsync">
+                        <i class="fa-regular fa-check"></i>
+                        I'm Ready
+                    </button>
+                }
+                else
+                {
+                    <p class="overlay-hint">Waiting for other players...</p>
+                }
+            </div>
+        </div>
+    }
+
+    <!-- Game Ended overlay -->
+    @if (gamePhase == GamePhase.Ended)
+    {
+        <div class="table-overlay ended-overlay">
+            <div class="overlay-content">
+                <div class="overlay-icon">??</div>
+                <h2>Game Over</h2>
+                <p>Thanks for playing!</p>
+                <div class="final-standings">
+                    @foreach (var seat in seats.Where(s => s.IsOccupied).OrderByDescending(s => s.Chips))
+                    {
+                        <div class="standing-row">
+                            <span class="standing-avatar">@GetInitials(seat.PlayerName)</span>
+                            <span class="standing-name">@seat.PlayerName</span>
+                            <span class="standing-chips">@seat.Chips.ToString("N0") chips</span>
+                        </div>
+                    }
+                </div>
+                <button class="btn btn-primary btn-lg" @onclick="LeaveTableAsync">
+                    Return to Lobby
+                </button>
+            </div>
+        </div>
+    }
+
+    <!-- Paused overlay -->
+    @if (isPaused && gamePhase != GamePhase.WaitingForPlayers && gamePhase != GamePhase.Ended)
+    {
+        <div class="table-overlay paused-overlay">
+            <div class="overlay-content">
+                <div class="overlay-icon">??</div>
+                <h2>Game Paused</h2>
+                <p>The host has paused the game</p>
+            </div>
+        </div>
+    }
+</main>
+
+@code {
+    [Parameter]
+    public Guid TableId { get; set; }
+
+    // Connection state
+    private bool isConnected = true;
+    private bool isReconnecting;
+
+    // Table info
+    private string tableName = "Friday Night Poker";
+    private int ante = 5;
+    private int minBet = 10;
+    private int minPlayersRequired = 2;
+
+    // Game state
+    private GamePhase gamePhase = GamePhase.WaitingForPlayers;
+    private bool isPaused;
+    private int pot;
+    private int dealerSeatIndex = 0;
+    private int currentActorSeatIndex = -1;
+
+    // Player state
+    private bool isHost = true; // TODO: Get from server
+    private bool isSeated;
+    private bool isReady;
+    private int currentPlayerSeatIndex = -1;
+    private int playerChips = 1000;
+    private bool isPlayerTurn;
+    private bool isSubmittingAction;
+
+    // Action state
+    private List<PlayerAction> legalActions = [];
+    private int currentMinBet = 10;
+    private int currentMaxBet = 1000;
+    private int currentBetToCall;
+    private int turnTimeRemaining = 30;
+
+    // Seats (8 seats for a full table)
+    private List<SeatInfo> seats = [];
+
+    private int seatedPlayerCount => seats.Count(s => s.IsOccupied);
+    private bool canStartGame => seatedPlayerCount >= minPlayersRequired && seats.Where(s => s.IsOccupied).All(s => s.IsReady);
+
+    protected override void OnInitialized()
+    {
+        // Initialize empty seats
+        InitializeSeats();
+        
+        // TODO: Connect to SignalR hub and load table state
+        // For demo purposes, add some mock data
+        LoadMockData();
+    }
+
+    private void InitializeSeats()
+    {
+        seats = Enumerable.Range(0, 8)
+            .Select(i => new SeatInfo { SeatIndex = i })
+            .ToList();
+    }
+
+    private void LoadMockData()
+    {
+        // Demo data - in real implementation, this comes from SignalR
+        seats[0] = new SeatInfo 
+        { 
+            SeatIndex = 0, 
+            IsOccupied = true, 
+            PlayerName = "You", 
+            Chips = 1000, 
+            IsReady = true,
+            IsCurrentPlayer = true
+        };
+        seats[2] = new SeatInfo 
+        { 
+            SeatIndex = 2, 
+            IsOccupied = true, 
+            PlayerName = "Alice", 
+            Chips = 1500, 
+            IsReady = true 
+        };
+        seats[4] = new SeatInfo 
+        { 
+            SeatIndex = 4, 
+            IsOccupied = true, 
+            PlayerName = "Bob", 
+            Chips = 800, 
+            IsReady = false 
+        };
+
+        isSeated = true;
+        isReady = true;
+        currentPlayerSeatIndex = 0;
+    }
+
+    private async Task LeaveTableAsync()
+    {
+        // TODO: Send leave request to server via SignalR
+        NavigationManager.NavigateTo("/lobby");
+        await Task.CompletedTask;
+    }
+
+    private async Task HandleSeatClickAsync(int seatIndex)
+    {
+        if (isSeated || seats[seatIndex].IsOccupied)
+            return;
+
+        // TODO: Send take seat request to server
+        seats[seatIndex] = new SeatInfo
+        {
+            SeatIndex = seatIndex,
+            IsOccupied = true,
+            PlayerName = "You", // TODO: Get from auth
+            Chips = 1000,
+            IsCurrentPlayer = true
+        };
+        isSeated = true;
+        currentPlayerSeatIndex = seatIndex;
+        
+        await Task.CompletedTask;
+    }
+
+    private async Task SetReadyAsync()
+    {
+        // TODO: Send ready request to server
+        isReady = true;
+        if (currentPlayerSeatIndex >= 0)
+        {
+            seats[currentPlayerSeatIndex].IsReady = true;
+        }
+        await Task.CompletedTask;
+    }
+
+    private async Task StartGameAsync()
+    {
+        if (!isHost || !canStartGame)
+            return;
+
+        // TODO: Send start game request to server
+        gamePhase = GamePhase.Dealing;
+        await Task.CompletedTask;
+    }
+
+    private async Task PauseGameAsync()
+    {
+        if (!isHost)
+            return;
+
+        // TODO: Send pause request to server
+        isPaused = true;
+        await Task.CompletedTask;
+    }
+
+    private async Task ResumeGameAsync()
+    {
+        if (!isHost)
+            return;
+
+        // TODO: Send resume request to server
+        isPaused = false;
+        await Task.CompletedTask;
+    }
+
+    private async Task EndGameAsync()
+    {
+        if (!isHost)
+            return;
+
+        // TODO: Send end game request to server
+        gamePhase = GamePhase.Ended;
+        await Task.CompletedTask;
+    }
+
+    private async Task HandlePlayerActionAsync(PlayerActionRequest action)
+    {
+        if (!isPlayerTurn || isSubmittingAction)
+            return;
+
+        isSubmittingAction = true;
+        
+        // TODO: Send action to server
+        // Server will respond with ActionApplied event
+        
+        await Task.Delay(500); // Simulate network
+        isSubmittingAction = false;
+        isPlayerTurn = false;
+    }
+
+    private static string GetInitials(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return "?";
+        
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length switch
+        {
+            0 => "?",
+            1 => parts[0][..1].ToUpperInvariant(),
+            _ => $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant()
+        };
+    }
+
+    // Enums and Models
+    public enum GamePhase
+    {
+        WaitingForPlayers,
+        Dealing,
+        PreDraw,
+        Drawing,
+        PostDraw,
+        Showdown,
+        Ended
+    }
+
+    public enum PlayerAction
+    {
+        Fold,
+        Check,
+        Call,
+        Bet,
+        Raise,
+        AllIn
+    }
+
+    public record SeatInfo
+    {
+        public int SeatIndex { get; init; }
+        public bool IsOccupied { get; set; }
+        public string? PlayerName { get; set; }
+        public int Chips { get; set; }
+        public bool IsReady { get; set; }
+        public bool IsCurrentPlayer { get; set; }
+        public bool IsFolded { get; set; }
+        public bool IsAllIn { get; set; }
+        public bool IsDisconnected { get; set; }
+        public int CurrentBet { get; set; }
+        public List<CardInfo> Cards { get; set; } = [];
+    }
+
+    public record CardInfo
+    {
+        public string? Rank { get; init; }
+        public string? Suit { get; init; }
+        public bool IsFaceUp { get; init; }
+        public bool IsSelected { get; init; }
+    }
+
+    public record PlayerActionRequest(PlayerAction Action, int? Amount);
+}

@@ -1,0 +1,157 @@
+@namespace CardGames.Poker.Web.Components.Shared
+
+@using static CardGames.Poker.Web.Components.Pages.TablePlay
+
+<div class="table-canvas">
+    <!-- Poker table background -->
+    <div class="poker-table">
+        <div class="poker-table-felt">
+            <!-- Center area with pot and phase -->
+            <div class="table-center">
+                @if (Pot > 0)
+                {
+                    <div class="pot-display">
+                        <span class="pot-icon">??</span>
+                        <span class="pot-amount">@Pot.ToString("N0")</span>
+                    </div>
+                }
+
+                @if (CurrentPhase != GamePhase.WaitingForPlayers && CurrentPhase != GamePhase.Ended)
+                {
+                    <div class="phase-indicator">
+                        @GetPhaseLabel()
+                    </div>
+                }
+
+                <!-- Community cards area (for future variants like Hold'em) -->
+                <div class="community-cards">
+                    @* This will be populated for Hold'em/Omaha variants *@
+                </div>
+            </div>
+
+            <!-- Dealer button -->
+            @if (DealerSeatIndex >= 0 && CurrentPhase != GamePhase.WaitingForPlayers)
+            {
+                <div class="dealer-button" style="@GetDealerButtonPosition()">
+                    D
+                </div>
+            }
+        </div>
+
+        <!-- Seats around the table -->
+        @foreach (var seat in Seats)
+        {
+            <div class="table-seat @GetSeatPositionClass(seat.SeatIndex) @GetSeatStateClass(seat)"
+                 @onclick="() => HandleSeatClick(seat)">
+                
+                <TableSeat 
+                    Seat="seat"
+                    IsDealer="@(seat.SeatIndex == DealerSeatIndex)"
+                    IsCurrentActor="@(seat.SeatIndex == CurrentActorSeatIndex)"
+                    IsCurrentPlayer="@(seat.SeatIndex == CurrentPlayerSeatIndex)"
+                    ShowCards="@(CurrentPhase != GamePhase.WaitingForPlayers)" />
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public List<SeatInfo> Seats { get; set; } = [];
+
+    [Parameter]
+    public int Pot { get; set; }
+
+    [Parameter]
+    public GamePhase CurrentPhase { get; set; }
+
+    [Parameter]
+    public int CurrentActorSeatIndex { get; set; } = -1;
+
+    [Parameter]
+    public int DealerSeatIndex { get; set; } = -1;
+
+    [Parameter]
+    public int CurrentPlayerSeatIndex { get; set; } = -1;
+
+    [Parameter]
+    public EventCallback<int> OnSeatClick { get; set; }
+
+    private async Task HandleSeatClick(SeatInfo seat)
+    {
+        if (!seat.IsOccupied && OnSeatClick.HasDelegate)
+        {
+            await OnSeatClick.InvokeAsync(seat.SeatIndex);
+        }
+    }
+
+    private string GetPhaseLabel()
+    {
+        return CurrentPhase switch
+        {
+            GamePhase.Dealing => "Dealing...",
+            GamePhase.PreDraw => "First Betting Round",
+            GamePhase.Drawing => "Draw Phase",
+            GamePhase.PostDraw => "Final Betting Round",
+            GamePhase.Showdown => "Showdown!",
+            _ => ""
+        };
+    }
+
+    private string GetSeatPositionClass(int seatIndex)
+    {
+        // 8 seats around an oval table
+        return $"seat-position-{seatIndex}";
+    }
+
+    private string GetSeatStateClass(SeatInfo seat)
+    {
+        var classes = new List<string>();
+
+        if (!seat.IsOccupied)
+            classes.Add("seat-empty");
+        else
+            classes.Add("seat-occupied");
+
+        if (seat.IsCurrentPlayer)
+            classes.Add("seat-current-player");
+
+        if (seat.SeatIndex == CurrentActorSeatIndex)
+            classes.Add("seat-active-turn");
+
+        if (seat.IsFolded)
+            classes.Add("seat-folded");
+
+        if (seat.IsAllIn)
+            classes.Add("seat-all-in");
+
+        if (seat.IsDisconnected)
+            classes.Add("seat-disconnected");
+
+        return string.Join(" ", classes);
+    }
+
+    private string GetDealerButtonPosition()
+    {
+        // Position the dealer button near the dealer's seat
+        // Using CSS custom properties to position based on seat
+        var positions = new Dictionary<int, (double left, double top)>
+        {
+            { 0, (50, 85) },   // Bottom center
+            { 1, (20, 75) },   // Bottom left
+            { 2, (8, 50) },    // Left
+            { 3, (20, 25) },   // Top left
+            { 4, (50, 15) },   // Top center
+            { 5, (80, 25) },   // Top right
+            { 6, (92, 50) },   // Right
+            { 7, (80, 75) }    // Bottom right
+        };
+
+        if (positions.TryGetValue(DealerSeatIndex, out var pos))
+        {
+            return $"left: {pos.left}%; top: {pos.top}%;";
+        }
+
+        return "display: none;";
+    }
+}
