@@ -63,6 +63,10 @@ app.MapDefaultEndpoints();
 if (app.Environment.IsDevelopment())
 {
     app.UseMigrationsEndPoint();
+
+    //await using var scope = app.Services.CreateAsyncScope();
+    //var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    //await dbContext.Database.MigrateAsync();
 }
 else
 {
