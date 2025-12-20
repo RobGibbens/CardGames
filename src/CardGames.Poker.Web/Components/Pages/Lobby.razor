@@ -1,0 +1,299 @@
+﻿@page "/lobby"
+@page "/lobby/{Tab}"
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+@using CardGames.Poker.Web.Components.Shared
+@using Microsoft.AspNetCore.Authorization
+
+<PageTitle>Lobby - Friday Night Poker</PageTitle>
+
+<AuthenticatedNavBar />
+
+<main class="lobby-main">
+    <div class="lobby-container">
+        <!-- Lobby Header -->
+        <div class="lobby-header">
+            <div class="lobby-header-content">
+                <h1 class="lobby-title">
+                    <i class="fa-regular fa-house"></i>
+                    Game Lobby
+                </h1>
+                <p class="lobby-subtitle">Find a table or create your own private game</p>
+            </div>
+            <a href="/table/create" class="btn btn-primary btn-lg lobby-create-btn">
+                <i class="fa-regular fa-add"></i> Create New Table
+            </a>
+        </div>
+
+        <!-- Tab Navigation -->
+        <div class="lobby-tabs">
+            <a href="/lobby" class="lobby-tab @(IsActiveTab("") ? "active" : "")">
+                <span class="lobby-tab-icon">🎯</span>
+                <span class="lobby-tab-text">My Tables</span>
+                <span class="lobby-tab-badge">@myTablesCount</span>
+            </a>
+            <a href="/lobby/invited" class="lobby-tab @(IsActiveTab("invited") ? "active" : "")">
+                <span class="lobby-tab-icon">✉️</span>
+                <span class="lobby-tab-text">Invited</span>
+                @if (invitedCount > 0)
+                {
+                    <span class="lobby-tab-badge badge-highlight">@invitedCount</span>
+                }
+            </a>
+            <a href="/lobby/recent" class="lobby-tab @(IsActiveTab("recent") ? "active" : "")">
+                <span class="lobby-tab-icon">🕐</span>
+                <span class="lobby-tab-text">Recent</span>
+            </a>
+            <a href="/lobby/public" class="lobby-tab @(IsActiveTab("public") ? "active" : "")">
+                <span class="lobby-tab-icon">🌐</span>
+                <span class="lobby-tab-text">Public Tables</span>
+            </a>
+        </div>
+
+        <!-- Filters Section -->
+        <div class="lobby-filters">
+            <div class="filter-group">
+                <label class="filter-label">Variant</label>
+                <select class="filter-select" @bind="selectedVariant">
+                    <option value="">All Variants</option>
+                    <option value="texasholdem">Texas Hold'em</option>
+                    <option value="fivecarddraw">Five Card Draw</option>
+                    <option value="omaha">Omaha</option>
+                    <option value="sevencardstud">Seven Card Stud</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Seats</label>
+                <select class="filter-select" @bind="selectedSeats">
+                    <option value="">Any Size</option>
+                    <option value="2">Heads Up (2)</option>
+                    <option value="6">6-Max</option>
+                    <option value="9">Full Ring (9)</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Status</label>
+                <select class="filter-select" @bind="selectedStatus">
+                    <option value="">All</option>
+                    <option value="waiting">Waiting for Players</option>
+                    <option value="inprogress">In Progress</option>
+                </select>
+            </div>
+            <button class="filter-clear-btn" @onclick="ClearFilters">
+                <span>✕</span> Clear Filters
+            </button>
+        </div>
+
+        <!-- Tables Grid -->
+        <div class="lobby-content">
+            @if (isLoading)
+            {
+                <div class="lobby-loading">
+                    <div class="loading-spinner"></div>
+                    <p>Loading tables...</p>
+                </div>
+            }
+            else if (filteredTables.Count == 0)
+            {
+                <div class="lobby-empty">
+                    <div class="empty-icon">@GetEmptyIcon()</div>
+                    <h3 class="empty-title">@GetEmptyTitle()</h3>
+                    <p class="empty-description">@GetEmptyDescription()</p>
+                    @if (IsActiveTab("") || IsActiveTab("public"))
+                    {
+                        <a href="/table/create" class="btn btn-primary">
+                            <span>➕</span> Create a Table
+                        </a>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="tables-grid">
+                    @foreach (var table in filteredTables)
+                    {
+                        <TableCard Table="table" />
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</main>
+
+@code {
+    [Parameter]
+    public string? Tab { get; set; }
+
+    private bool isLoading = true;
+    private string selectedVariant = "";
+    private string selectedSeats = "";
+    private string selectedStatus = "";
+
+    private int myTablesCount;
+    private int invitedCount;
+
+    private List<TableInfo> allTables = [];
+    private List<TableInfo> filteredTables = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTablesAsync();
+    }
+
+    protected override void OnParametersSet()
+    {
+        ApplyFilters();
+    }
+
+    private async Task LoadTablesAsync()
+    {
+        isLoading = true;
+
+        // TODO: Replace with actual data fetching from API/service
+        await Task.Delay(500); // Simulate loading
+
+        // Mock data for demonstration
+        allTables =
+        [
+            new TableInfo
+            {
+                Id = Guid.NewGuid(),
+                Name = "Friday Night Hold'em",
+                Variant = "Texas Hold'em",
+                MaxSeats = 6,
+                CurrentPlayers = 4,
+                Status = TableStatus.Waiting,
+                HostName = "JohnDoe",
+                IsPrivate = true,
+                Category = TableCategory.MyTables
+            },
+            new TableInfo
+            {
+                Id = Guid.NewGuid(),
+                Name = "Weekend Warriors",
+                Variant = "Five Card Draw",
+                MaxSeats = 5,
+                CurrentPlayers = 3,
+                Status = TableStatus.InProgress,
+                HostName = "PokerPro",
+                IsPrivate = false,
+                Category = TableCategory.Public
+            },
+            new TableInfo
+            {
+                Id = Guid.NewGuid(),
+                Name = "High Stakes Night",
+                Variant = "Texas Hold'em",
+                MaxSeats = 9,
+                CurrentPlayers = 2,
+                Status = TableStatus.Waiting,
+                HostName = "CardShark",
+                IsPrivate = true,
+                Category = TableCategory.Invited
+            }
+        ];
+
+        myTablesCount = allTables.Count(t => t.Category == TableCategory.MyTables);
+        invitedCount = allTables.Count(t => t.Category == TableCategory.Invited);
+
+        ApplyFilters();
+        isLoading = false;
+    }
+
+    private void ApplyFilters()
+    {
+        var category = Tab?.ToLowerInvariant() switch
+        {
+            "invited" => TableCategory.Invited,
+            "recent" => TableCategory.Recent,
+            "public" => TableCategory.Public,
+            _ => TableCategory.MyTables
+        };
+
+        filteredTables = allTables
+            .Where(t => t.Category == category)
+            .Where(t => string.IsNullOrEmpty(selectedVariant) ||
+                        t.Variant.Contains(selectedVariant, StringComparison.OrdinalIgnoreCase))
+            .Where(t => string.IsNullOrEmpty(selectedSeats) ||
+                        t.MaxSeats.ToString() == selectedSeats)
+            .Where(t => string.IsNullOrEmpty(selectedStatus) ||
+                        (selectedStatus == "waiting" && t.Status == TableStatus.Waiting) ||
+                        (selectedStatus == "inprogress" && t.Status == TableStatus.InProgress))
+            .ToList();
+    }
+
+    private void ClearFilters()
+    {
+        selectedVariant = "";
+        selectedSeats = "";
+        selectedStatus = "";
+        ApplyFilters();
+    }
+
+    private bool IsActiveTab(string tab)
+    {
+        return string.Equals(Tab ?? "", tab, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private string GetEmptyIcon()
+    {
+        return Tab?.ToLowerInvariant() switch
+        {
+            "invited" => "✉️",
+            "recent" => "🕐",
+            "public" => "🌐",
+            _ => "🎯"
+        };
+    }
+
+    private string GetEmptyTitle()
+    {
+        return Tab?.ToLowerInvariant() switch
+        {
+            "invited" => "No Invitations",
+            "recent" => "No Recent Tables",
+            "public" => "No Public Tables",
+            _ => "No Tables Yet"
+        };
+    }
+
+    private string GetEmptyDescription()
+    {
+        return Tab?.ToLowerInvariant() switch
+        {
+            "invited" => "You haven't been invited to any tables. Ask a friend to invite you!",
+            "recent" => "You haven't played at any tables recently.",
+            "public" => "There are no public tables available right now. Create one to get started!",
+            _ => "You haven't created any tables yet. Create your first table to start playing!"
+        };
+    }
+
+    public record TableInfo
+    {
+        public Guid Id { get; init; }
+        public required string Name { get; init; }
+        public required string Variant { get; init; }
+        public int MaxSeats { get; init; }
+        public int CurrentPlayers { get; init; }
+        public TableStatus Status { get; init; }
+        public required string HostName { get; init; }
+        public bool IsPrivate { get; init; }
+        public TableCategory Category { get; init; }
+    }
+
+    public enum TableStatus
+    {
+        Waiting,
+        InProgress,
+        Finished
+    }
+
+    public enum TableCategory
+    {
+        MyTables,
+        Invited,
+        Recent,
+        Public
+    }
+}

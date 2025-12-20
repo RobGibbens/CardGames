@@ -1,0 +1,117 @@
+@namespace CardGames.Poker.Web.Components.Shared
+
+@using static CardGames.Poker.Web.Components.Pages.Lobby
+
+<div class="table-card @GetStatusClass()">
+    <div class="table-card-header">
+        <div class="table-card-variant">
+            <span class="variant-icon">@GetVariantIcon()</span>
+            <span class="variant-name">@Table.Variant</span>
+        </div>
+        @if (Table.IsPrivate)
+        {
+            <span class="table-card-badge badge-private" title="Private table">??</span>
+        }
+        else
+        {
+            <span class="table-card-badge badge-public" title="Public table">??</span>
+        }
+    </div>
+
+    <h3 class="table-card-name">@Table.Name</h3>
+
+    <div class="table-card-info">
+        <div class="info-item">
+            <span class="info-icon">??</span>
+            <span class="info-label">Host:</span>
+            <span class="info-value">@Table.HostName</span>
+        </div>
+        <div class="info-item">
+            <span class="info-icon">??</span>
+            <span class="info-label">Seats:</span>
+            <span class="info-value">@Table.CurrentPlayers / @Table.MaxSeats</span>
+        </div>
+    </div>
+
+    <div class="table-card-status">
+        <span class="status-dot @GetStatusDotClass()"></span>
+        <span class="status-text">@GetStatusText()</span>
+    </div>
+
+    <div class="table-card-seats">
+        @for (int i = 0; i < Table.MaxSeats; i++)
+        {
+            <div class="seat-indicator @(i < Table.CurrentPlayers ? "seat-filled" : "seat-empty")">
+                @if (i < Table.CurrentPlayers)
+                {
+                    <span>??</span>
+                }
+            </div>
+        }
+    </div>
+
+    <div class="table-card-actions">
+        @if (Table.Status == TableStatus.Waiting && Table.CurrentPlayers < Table.MaxSeats)
+        {
+            <a href="/table/@Table.Id/join" class="btn btn-primary table-action-btn">
+                <span>??</span> Join Table
+            </a>
+        }
+        else
+        {
+            <a href="/table/@Table.Id" class="btn btn-secondary table-action-btn">
+                <span>???</span> View Table
+            </a>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public required TableInfo Table { get; set; }
+
+    private string GetVariantIcon()
+    {
+        return Table.Variant.ToLowerInvariant() switch
+        {
+            "texas hold'em" => "??",
+            "five card draw" => "??",
+            "omaha" => "??",
+            "seven card stud" => "??",
+            _ => "??"
+        };
+    }
+
+    private string GetStatusClass()
+    {
+        return Table.Status switch
+        {
+            TableStatus.Waiting => "status-waiting",
+            TableStatus.InProgress => "status-inprogress",
+            TableStatus.Finished => "status-finished",
+            _ => ""
+        };
+    }
+
+    private string GetStatusDotClass()
+    {
+        return Table.Status switch
+        {
+            TableStatus.Waiting => "dot-waiting",
+            TableStatus.InProgress => "dot-inprogress",
+            TableStatus.Finished => "dot-finished",
+            _ => ""
+        };
+    }
+
+    private string GetStatusText()
+    {
+        return Table.Status switch
+        {
+            TableStatus.Waiting => "Waiting for players",
+            TableStatus.InProgress => "Game in progress",
+            TableStatus.Finished => "Game finished",
+            _ => "Unknown"
+        };
+    }
+}
