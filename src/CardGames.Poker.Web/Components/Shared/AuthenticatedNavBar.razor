@@ -1,0 +1,187 @@
+﻿@namespace CardGames.Poker.Web.Components.Shared
+@rendermode InteractiveServer
+
+@inject IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager
+
+@using Microsoft.AspNetCore.Components.Authorization
+
+<!-- Authenticated Navigation Header -->
+<header class="nav-header">
+    <nav class="nav-container">
+        <a href="/lobby" class="nav-logo">
+            <span class="nav-logo-icon">♠</span>
+            <span>Friday Night Poker</span>
+        </a>
+
+        <ul class="nav-links @(isMobileMenuOpen ? "nav-links-open" : "")" id="navLinks">
+            <li>
+                <a href="/lobby" class="@GetActiveClass("/lobby")">
+                    <i class="fa-solid fa-bullseye-arrow"></i>
+                    My Tables
+                </a>
+            </li>
+            <li>
+                <a href="/lobby/invited" class="@GetActiveClass("/lobby/invited")">
+                    <i class="fa-solid fa-envelope"></i>
+                    Invited
+                </a>
+            </li>
+            <li>
+                <a href="/lobby/recent" class="@GetActiveClass("/lobby/recent")">
+                    <i class="fa-solid fa-clock"></i>
+                    Recent
+                </a>
+            </li>
+            <li>
+                <a href="/lobby/public" class="@GetActiveClass("/lobby/public")">
+                    <i class="fa-solid fa-globe"></i>
+                    Public Tables
+                </a>
+            </li>
+        </ul>
+
+        <div class="nav-actions">
+            <a href="/table/create" class="btn btn-primary btn-sm nav-create-btn">
+                <span>➕</span> Create Table
+            </a>
+
+            <button class="theme-toggle" @onclick="ToggleThemeAsync" title="Toggle theme" aria-label="Toggle dark/light theme">
+                @if (isDarkMode)
+                {
+                    <span>☀️</span>
+                }
+                else
+                {
+                    <span>🌙</span>
+                }
+            </button>
+
+            <AuthorizeView>
+                <Authorized>
+                    <div class="user-menu">
+                        <button class="user-menu-trigger" @onclick="ToggleUserMenu" @onclick:stopPropagation="true">
+                            <span class="user-avatar">@GetUserInitial(context.User.Identity?.Name)</span>
+                            <span class="user-name">@context.User.Identity?.Name</span>
+                            <span class="user-menu-arrow">▼</span>
+                        </button>
+                        @if (isUserMenuOpen)
+                        {
+                            <div class="user-menu-dropdown">
+                                <a href="/Account/Manage" class="user-menu-item">
+                                    <span>⚙️</span> Settings
+                                </a>
+                                <a href="/Account/Manage/Email" class="user-menu-item">
+                                    <span>📧</span> Email
+                                </a>
+                                <a href="/Account/Manage/ChangePassword" class="user-menu-item">
+                                    <span>🔒</span> Password
+                                </a>
+                                <hr class="user-menu-divider" />
+                                <form method="post" action="/Account/Logout">
+                                    <input type="hidden" name="ReturnUrl" value="/" />
+                                    <button type="submit" class="user-menu-item user-menu-logout">
+                                        <span>🚪</span> Sign Out
+                                    </button>
+                                </form>
+                            </div>
+                        }
+                    </div>
+                </Authorized>
+            </AuthorizeView>
+
+            <button class="mobile-menu-toggle" @onclick="ToggleMobileMenu" aria-label="Toggle menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </nav>
+</header>
+
+@code {
+    private bool isDarkMode;
+    private bool isMobileMenuOpen;
+    private bool isUserMenuOpen;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        try
+        {
+            var savedTheme = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "theme");
+            if (!string.IsNullOrEmpty(savedTheme))
+            {
+                isDarkMode = savedTheme == "dark";
+            }
+            else
+            {
+                isDarkMode = await JSRuntime.InvokeAsync<bool>("matchMedia", "(prefers-color-scheme: dark)");
+            }
+
+            await ApplyThemeAsync();
+            StateHasChanged();
+        }
+        catch
+        {
+            // Ignore errors during SSR
+        }
+    }
+
+    private async Task ToggleThemeAsync()
+    {
+        isDarkMode = !isDarkMode;
+        await ApplyThemeAsync();
+    }
+
+    private async Task ApplyThemeAsync()
+    {
+        try
+        {
+            var theme = isDarkMode ? "dark" : "light";
+            await JSRuntime.InvokeVoidAsync("document.documentElement.setAttribute", "data-theme", theme);
+            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "theme", theme);
+        }
+        catch
+        {
+            // Ignore errors during SSR
+        }
+    }
+
+    private void ToggleMobileMenu()
+    {
+        isMobileMenuOpen = !isMobileMenuOpen;
+    }
+
+    private void ToggleUserMenu()
+    {
+        isUserMenuOpen = !isUserMenuOpen;
+    }
+
+    private string GetActiveClass(string path)
+    {
+        var currentUri = NavigationManager.Uri;
+        var relativePath = NavigationManager.ToBaseRelativePath(currentUri);
+
+        if (string.IsNullOrEmpty(relativePath) && path == "/lobby")
+        {
+            return "";
+        }
+
+        return ("/" + relativePath).StartsWith(path, StringComparison.OrdinalIgnoreCase) ? "active" : "";
+    }
+
+    private static string GetUserInitial(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return "?";
+        }
+
+        return name[0].ToString().ToUpperInvariant();
+    }
+}

@@ -5,7 +5,7 @@ using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.CLI.Api;
 using CardGames.Poker.CLI.Extensions;
 using CardGames.Poker.CLI.Output;
-using CardGames.Poker.Games;
+using CardGames.Poker.Games.FiveCardDraw;
 using Spectre.Console;
 using Spectre.Console.Cli;
 using System;

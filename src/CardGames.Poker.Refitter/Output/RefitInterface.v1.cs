@@ -14,6 +14,34 @@ using CardGames.Poker.Api.Contracts;
 
 namespace CardGames.Poker.Api.Clients
 {
+    /// <summary>GetAvailablePokerGames</summary>
+    [System.CodeDom.Compiler.GeneratedCode("Refitter", "1.7.0.0")]
+    public partial interface IAvailablePokerGamesApi
+    {
+        /// <summary>GetAvailablePokerGames</summary>
+        /// <remarks>Retrieve a list of all available poker game types.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Get("/api/v1/games/available")]
+        Task<IApiResponse<ICollection<GetAvailablePokerGamesResponse>>> GetAvailablePokerGamesAsync(CancellationToken cancellationToken = default);
+    }
+
     /// <summary>CreateGame</summary>
     [System.CodeDom.Compiler.GeneratedCode("Refitter", "1.7.0.0")]
     public partial interface IFiveCardDrawApi
@@ -955,6 +983,38 @@ namespace CardGames.Poker.Api.Contracts
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record GetAvailablePokerGamesResponse
+    {
+        [JsonConstructor]
+        public GetAvailablePokerGamesResponse(string @description, int @maximumNumberOfPlayers, int @minimumNumberOfPlayers, string @name)
+        {
+            this.Name = @name;
+            this.Description = @description;
+            this.MinimumNumberOfPlayers = @minimumNumberOfPlayers;
+            this.MaximumNumberOfPlayers = @maximumNumberOfPlayers;
+        }
+
+        [JsonPropertyName("name")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Name { get; init; }
+
+        [JsonPropertyName("description")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Description { get; init; }
+
+        [JsonPropertyName("minimumNumberOfPlayers")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int MinimumNumberOfPlayers { get; init; }
+
+        [JsonPropertyName("maximumNumberOfPlayers")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int MaximumNumberOfPlayers { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial record GetCurrentBettingRoundResponse
     {
         [JsonConstructor]
@@ -1816,6 +1876,23 @@ namespace CardGames.Poker.Api.Clients
             Action<IHttpClientBuilder>? builder = default, 
             RefitSettings? settings = default)
         {
+            var clientBuilderIAvailablePokerGamesApi = services
+                .AddRefitClient<IAvailablePokerGamesApi>(settings)
+                .ConfigureHttpClient(c => c.BaseAddress = baseUrl);
+
+            clientBuilderIAvailablePokerGamesApi
+                .AddStandardResilienceHandler(config =>
+                {
+                    config.Retry = new HttpRetryStrategyOptions
+                    {
+                        UseJitter = true,
+                        MaxRetryAttempts = 3,
+                        Delay = TimeSpan.FromSeconds(0.5)
+                    };
+                });
+
+            builder?.Invoke(clientBuilderIAvailablePokerGamesApi);
+
             var clientBuilderIFiveCardDrawApi = services
                 .AddRefitClient<IFiveCardDrawApi>(settings)
                 .ConfigureHttpClient(c => c.BaseAddress = baseUrl);

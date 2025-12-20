@@ -29,6 +29,13 @@ builder.Services
 		httpClientName: "fiveCardDrawApi")
 	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"));
 
+builder.Services
+	.AddRefitClient<IAvailablePokerGamesApi>(
+		settingsAction: _ => new RefitSettings(),
+		httpClientName: "availablePokerGamesApi")
+	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"));
+
+
 builder.Services.AddAuthentication(options =>
     {
         options.DefaultScheme = IdentityConstants.ApplicationScheme;
@@ -63,10 +70,6 @@ app.MapDefaultEndpoints();
 if (app.Environment.IsDevelopment())
 {
     app.UseMigrationsEndPoint();
-
-    //await using var scope = app.Services.CreateAsyncScope();
-    //var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    //await dbContext.Database.MigrateAsync();
 }
 else
 {
@@ -76,7 +79,7 @@ else
 }
 app.UseHttpsRedirection();
 
-app.UseAntiforgery();
+
 
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
@@ -86,5 +89,5 @@ app.MapRazorComponents<App>()
 app.MapAdditionalIdentityEndpoints();
 
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
-
+app.UseAntiforgery();
 app.Run();

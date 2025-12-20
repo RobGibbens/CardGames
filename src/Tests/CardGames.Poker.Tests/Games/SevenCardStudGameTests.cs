@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using CardGames.Core.French.Cards;
 using CardGames.Poker.Betting;
-using CardGames.Poker.Games;
+using CardGames.Poker.Games.SevenCardStud;
 using FluentAssertions;
 using Xunit;
 
