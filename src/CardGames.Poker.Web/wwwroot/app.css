@@ -38,6 +38,13 @@
     --transition-slow: 0.5s ease;
 }
 
+/* ===== Table Play Action Panel ===== */
+/*
+   NOTE: `.action-panel` is used by the Table Play page.
+   Keep all rules for it in the Table Play section below.
+   (This early block previously conflicted with the later Table Play rules.)
+*/
+
 /* Dark theme */
 [data-theme="dark"] {
     --bg-primary: #0a0a0a;
@@ -2807,14 +2814,15 @@ a:hover {
 /* ===== Action Panel ===== */
 .action-panel {
     position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    right: 1.25rem;
+    bottom: 1.25rem;
+    z-index: 2000;
+    width: min(480px, calc(100vw - 2.5rem));
     background: rgba(0, 0, 0, 0.95);
     backdrop-filter: blur(20px);
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
     padding: 1rem 1.5rem;
-    z-index: 100;
     animation: fadeInUp 0.3s ease-out;
 }
 
