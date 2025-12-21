@@ -9,6 +9,8 @@ public record GetGameResponse(
 Guid Id,
 Guid GameTypeId,
 string? Name,
+int MinimumNumberOfPlayers,
+int MaximumNumberOfPlayers,
 string CurrentPhase,
 int CurrentHandNumber,
 int DealerPosition,

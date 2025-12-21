@@ -35,6 +35,12 @@ builder.Services
 		httpClientName: "availablePokerGamesApi")
 	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"));
 
+builder.Services
+	.AddRefitClient<IActiveGamesApi>(
+		settingsAction: _ => new RefitSettings(),
+		httpClientName: "activeGamesApi")
+	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"));
+
 
 builder.Services.AddAuthentication(options =>
     {

@@ -3,6 +3,8 @@
 @attribute [Authorize]
 @rendermode InteractiveServer
 
+@using CardGames.Poker.Api.Clients
+@using CardGames.Poker.Api.Contracts
 @using CardGames.Poker.Web.Components.Shared
 @using Microsoft.AspNetCore.Authorization
 
@@ -32,22 +34,6 @@
                 <span class="lobby-tab-icon">🎯</span>
                 <span class="lobby-tab-text">My Tables</span>
                 <span class="lobby-tab-badge">@myTablesCount</span>
-            </a>
-            <a href="/lobby/invited" class="lobby-tab @(IsActiveTab("invited") ? "active" : "")">
-                <span class="lobby-tab-icon">✉️</span>
-                <span class="lobby-tab-text">Invited</span>
-                @if (invitedCount > 0)
-                {
-                    <span class="lobby-tab-badge badge-highlight">@invitedCount</span>
-                }
-            </a>
-            <a href="/lobby/recent" class="lobby-tab @(IsActiveTab("recent") ? "active" : "")">
-                <span class="lobby-tab-icon">🕐</span>
-                <span class="lobby-tab-text">Recent</span>
-            </a>
-            <a href="/lobby/public" class="lobby-tab @(IsActiveTab("public") ? "active" : "")">
-                <span class="lobby-tab-icon">🌐</span>
-                <span class="lobby-tab-text">Public Tables</span>
             </a>
         </div>
 
@@ -100,7 +86,7 @@
                     <div class="empty-icon">@GetEmptyIcon()</div>
                     <h3 class="empty-title">@GetEmptyTitle()</h3>
                     <p class="empty-description">@GetEmptyDescription()</p>
-                    @if (IsActiveTab("") || IsActiveTab("public"))
+                    @if (IsActiveTab(""))
                     {
                         <a href="/table/create" class="btn btn-primary">
                             <span>➕</span> Create a Table
@@ -125,16 +111,18 @@
     [Parameter]
     public string? Tab { get; set; }
 
+    [Inject]
+    private IActiveGamesApi ActiveGamesApi { get; set; } = default!;
+
     private bool isLoading = true;
     private string selectedVariant = "";
     private string selectedSeats = "";
     private string selectedStatus = "";
 
     private int myTablesCount;
-    private int invitedCount;
 
-    private List<TableInfo> allTables = [];
-    private List<TableInfo> filteredTables = [];
+    private List<GetActiveGamesResponse> allTables = [];
+    private List<GetActiveGamesResponse> filteredTables = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -150,52 +138,9 @@
     {
         isLoading = true;
 
-        // TODO: Replace with actual data fetching from API/service
-        await Task.Delay(500); // Simulate loading
-
-        // Mock data for demonstration
-        allTables =
-        [
-            new TableInfo
-            {
-                Id = Guid.NewGuid(),
-                Name = "Friday Night Hold'em",
-                Variant = "Texas Hold'em",
-                MaxSeats = 6,
-                CurrentPlayers = 4,
-                Status = TableStatus.Waiting,
-                HostName = "JohnDoe",
-                IsPrivate = true,
-                Category = TableCategory.MyTables
-            },
-            new TableInfo
-            {
-                Id = Guid.NewGuid(),
-                Name = "Weekend Warriors",
-                Variant = "Five Card Draw",
-                MaxSeats = 5,
-                CurrentPlayers = 3,
-                Status = TableStatus.InProgress,
-                HostName = "PokerPro",
-                IsPrivate = false,
-                Category = TableCategory.Public
-            },
-            new TableInfo
-            {
-                Id = Guid.NewGuid(),
-                Name = "High Stakes Night",
-                Variant = "Texas Hold'em",
-                MaxSeats = 9,
-                CurrentPlayers = 2,
-                Status = TableStatus.Waiting,
-                HostName = "CardShark",
-                IsPrivate = true,
-                Category = TableCategory.Invited
-            }
-        ];
-
-        myTablesCount = allTables.Count(t => t.Category == TableCategory.MyTables);
-        invitedCount = allTables.Count(t => t.Category == TableCategory.Invited);
+        var response = await ActiveGamesApi.GetActiveGamesAsync();
+        allTables = response.Content?.ToList() ?? [];
+        myTablesCount = allTables.Count;
 
         ApplyFilters();
         isLoading = false;
@@ -203,23 +148,13 @@
 
     private void ApplyFilters()
     {
-        var category = Tab?.ToLowerInvariant() switch
-        {
-            "invited" => TableCategory.Invited,
-            "recent" => TableCategory.Recent,
-            "public" => TableCategory.Public,
-            _ => TableCategory.MyTables
-        };
-
         filteredTables = allTables
-            .Where(t => t.Category == category)
             .Where(t => string.IsNullOrEmpty(selectedVariant) ||
-                        t.Variant.Contains(selectedVariant, StringComparison.OrdinalIgnoreCase))
-            .Where(t => string.IsNullOrEmpty(selectedSeats) ||
-                        t.MaxSeats.ToString() == selectedSeats)
+                        t.GameTypeCode.Contains(selectedVariant, StringComparison.OrdinalIgnoreCase) ||
+                        t.GameTypeName.Contains(selectedVariant, StringComparison.OrdinalIgnoreCase))
             .Where(t => string.IsNullOrEmpty(selectedStatus) ||
-                        (selectedStatus == "waiting" && t.Status == TableStatus.Waiting) ||
-                        (selectedStatus == "inprogress" && t.Status == TableStatus.InProgress))
+                        t.Status.ToString().Contains(selectedStatus, StringComparison.OrdinalIgnoreCase) ||
+                        t.CurrentPhase.Contains(selectedStatus, StringComparison.OrdinalIgnoreCase))
             .ToList();
     }
 
@@ -238,62 +173,16 @@
 
     private string GetEmptyIcon()
     {
-        return Tab?.ToLowerInvariant() switch
-        {
-            "invited" => "✉️",
-            "recent" => "🕐",
-            "public" => "🌐",
-            _ => "🎯"
-        };
+        return "🎯";
     }
 
     private string GetEmptyTitle()
     {
-        return Tab?.ToLowerInvariant() switch
-        {
-            "invited" => "No Invitations",
-            "recent" => "No Recent Tables",
-            "public" => "No Public Tables",
-            _ => "No Tables Yet"
-        };
+        return "No Tables Yet";
     }
 
     private string GetEmptyDescription()
     {
-        return Tab?.ToLowerInvariant() switch
-        {
-            "invited" => "You haven't been invited to any tables. Ask a friend to invite you!",
-            "recent" => "You haven't played at any tables recently.",
-            "public" => "There are no public tables available right now. Create one to get started!",
-            _ => "You haven't created any tables yet. Create your first table to start playing!"
-        };
-    }
-
-    public record TableInfo
-    {
-        public Guid Id { get; init; }
-        public required string Name { get; init; }
-        public required string Variant { get; init; }
-        public int MaxSeats { get; init; }
-        public int CurrentPlayers { get; init; }
-        public TableStatus Status { get; init; }
-        public required string HostName { get; init; }
-        public bool IsPrivate { get; init; }
-        public TableCategory Category { get; init; }
-    }
-
-    public enum TableStatus
-    {
-        Waiting,
-        InProgress,
-        Finished
-    }
-
-    public enum TableCategory
-    {
-        MyTables,
-        Invited,
-        Recent,
-        Public
+        return "No active games found.";
     }
 }

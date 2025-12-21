@@ -16,7 +16,7 @@
                     </div>
                 }
 
-                @if (CurrentPhase != GamePhase.WaitingForPlayers && CurrentPhase != GamePhase.Ended)
+                @if (CurrentPhase != GamePhase.WaitingForPlayers.ToString() && CurrentPhase != GamePhase.Ended.ToString())
                 {
                     <div class="phase-indicator">
                         @GetPhaseLabel()
@@ -30,7 +30,7 @@
             </div>
 
             <!-- Dealer button -->
-            @if (DealerSeatIndex >= 0 && CurrentPhase != GamePhase.WaitingForPlayers)
+            @if (DealerSeatIndex >= 0 && CurrentPhase != GamePhase.WaitingForPlayers.ToString())
             {
                 <div class="dealer-button" style="@GetDealerButtonPosition()">
                     D
@@ -49,7 +49,7 @@
                     IsDealer="@(seat.SeatIndex == DealerSeatIndex)"
                     IsCurrentActor="@(seat.SeatIndex == CurrentActorSeatIndex)"
                     IsCurrentPlayer="@(seat.SeatIndex == CurrentPlayerSeatIndex)"
-                    ShowCards="@(CurrentPhase != GamePhase.WaitingForPlayers)" />
+                           ShowCards="@(CurrentPhase != GamePhase.WaitingForPlayers.ToString())" />
             </div>
         }
     </div>
@@ -63,7 +63,7 @@
     public int Pot { get; set; }
 
     [Parameter]
-    public GamePhase CurrentPhase { get; set; }
+    public string CurrentPhase { get; set; }
 
     [Parameter]
     public int CurrentActorSeatIndex { get; set; } = -1;
@@ -87,15 +87,7 @@
 
     private string GetPhaseLabel()
     {
-        return CurrentPhase switch
-        {
-            GamePhase.Dealing => "Dealing...",
-            GamePhase.PreDraw => "First Betting Round",
-            GamePhase.Drawing => "Draw Phase",
-            GamePhase.PostDraw => "Final Betting Round",
-            GamePhase.Showdown => "Showdown!",
-            _ => ""
-        };
+        return CurrentPhase;
     }
 
     private string GetSeatPositionClass(int seatIndex)
