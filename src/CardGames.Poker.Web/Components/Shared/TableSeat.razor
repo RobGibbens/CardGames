@@ -74,7 +74,7 @@
                         @if (card.IsFaceUp)
                         {
                             <span class="card-value @GetSuitColorClass(card.Suit)">
-                                @card.Rank@GetSuitSymbol(card.Suit)
+                                @card.Rank <i class="fa-regular @GetSuitSymbol(card.Suit)"></i>
                             </span>
                         }
                         else
@@ -92,7 +92,7 @@
                 @for (int i = 0; i < 5; i++)
                 {
                     <div class="playing-card face-down placeholder">
-                        <span class="card-back">??</span>
+                        <span class="card-back"></span>
                     </div>
                 }
             </div>
@@ -170,10 +170,10 @@
     {
         return suit?.ToLowerInvariant() switch
         {
-            "hearts" or "h" => "?",
-            "diamonds" or "d" => "?",
-            "clubs" or "c" => "?",
-            "spades" or "s" => "?",
+            "hearts" or "h" => "fa-heart",
+            "diamonds" or "d" => "fa-diamond",
+            "clubs" or "c" => "fa-club",
+            "spades" or "s" => "fa-spade",
             _ => ""
         };
     }

@@ -1,5 +1,6 @@
 @namespace CardGames.Poker.Web.Components.Shared
 
+@using CardGames.Poker.Api.Contracts
 @using static CardGames.Poker.Web.Components.Pages.TablePlay
 
 <div class="action-panel @(IsSubmitting ? "submitting" : "")">
@@ -13,57 +14,57 @@
 
     <!-- Action buttons -->
     <div class="action-buttons">
-        @if (LegalActions.Contains(PlayerAction.Fold))
+        @if (LegalActions.Contains(BettingActionType.Fold))
         {
-            <button class="action-btn fold-btn" @onclick="() => SubmitAction(PlayerAction.Fold)" disabled="@IsSubmitting">
-                <span class="action-icon">??</span>
+            <button class="action-btn fold-btn" @onclick="() => SubmitAction(BettingActionType.Fold)" disabled="@IsSubmitting">
+                <i class="action-icon fa-duotone fa-solid fa-down-from-bracket"></i>
                 <span class="action-label">Fold</span>
             </button>
         }
 
-        @if (LegalActions.Contains(PlayerAction.Check))
+        @if (LegalActions.Contains(BettingActionType.Check))
         {
-            <button class="action-btn check-btn" @onclick="() => SubmitAction(PlayerAction.Check)" disabled="@IsSubmitting">
-                <span class="action-icon">?</span>
+            <button class="action-btn check-btn" @onclick="() => SubmitAction(BettingActionType.Check)" disabled="@IsSubmitting">
+                <i class="action-icon fa-duotone fa-solid fa-check"></i>
                 <span class="action-label">Check</span>
             </button>
         }
 
-        @if (LegalActions.Contains(PlayerAction.Call))
+        @if (LegalActions.Contains(BettingActionType.Call))
         {
-            <button class="action-btn call-btn" @onclick="() => SubmitAction(PlayerAction.Call)" disabled="@IsSubmitting">
-                <span class="action-icon">??</span>
+            <button class="action-btn call-btn" @onclick="() => SubmitAction(BettingActionType.Call)" disabled="@IsSubmitting">
+                <i class="action-icon fa-duotone fa-solid fa-equal"></i>
                 <span class="action-label">Call @CurrentBetToCall</span>
             </button>
         }
 
-        @if (LegalActions.Contains(PlayerAction.Bet))
+        @if (LegalActions.Contains(BettingActionType.Bet))
         {
-            <button class="action-btn bet-btn" @onclick="() => SubmitAction(PlayerAction.Bet, betAmount)" disabled="@IsSubmitting">
-                <span class="action-icon">??</span>
+            <button class="action-btn bet-btn" @onclick="() => SubmitAction(BettingActionType.Bet, betAmount)" disabled="@IsSubmitting">
+                <i class="action-icon fa-duotone fa-solid fa-coins"></i>
                 <span class="action-label">Bet @betAmount</span>
             </button>
         }
 
-        @if (LegalActions.Contains(PlayerAction.Raise))
+        @if (LegalActions.Contains(BettingActionType.Raise))
         {
-            <button class="action-btn raise-btn" @onclick="() => SubmitAction(PlayerAction.Raise, betAmount)" disabled="@IsSubmitting">
-                <span class="action-icon">??</span>
+            <button class="action-btn raise-btn" @onclick="() => SubmitAction(BettingActionType.Raise, betAmount)" disabled="@IsSubmitting">
+                <i class="action-icon fa-duotone fa-solid fa-plus"></i>
                 <span class="action-label">Raise to @betAmount</span>
             </button>
         }
 
-        @if (LegalActions.Contains(PlayerAction.AllIn))
+        @if (LegalActions.Contains(BettingActionType.AllIn))
         {
-            <button class="action-btn allin-btn" @onclick="() => SubmitAction(PlayerAction.AllIn)" disabled="@IsSubmitting">
-                <span class="action-icon">??</span>
+            <button class="action-btn allin-btn" @onclick="() => SubmitAction(BettingActionType.AllIn)" disabled="@IsSubmitting">
+                <i class="action-icon fa-duotone fa-solid fa-infinity"></i>
                 <span class="action-label">All In!</span>
             </button>
         }
     </div>
 
     <!-- Bet sizing controls (shown when bet/raise is available) -->
-    @if (LegalActions.Contains(PlayerAction.Bet) || LegalActions.Contains(PlayerAction.Raise))
+    @if (LegalActions.Contains(BettingActionType.Bet) || LegalActions.Contains(BettingActionType.Raise))
     {
         <div class="bet-controls">
             <div class="bet-slider-container">
@@ -108,7 +109,7 @@
 
 @code {
     [Parameter]
-    public List<PlayerAction> LegalActions { get; set; } = [];
+    public List<BettingActionType> LegalActions { get; set; } = [];
 
     [Parameter]
     public int MinBet { get; set; } = 10;
@@ -146,7 +147,7 @@
         }
     }
 
-    private async Task SubmitAction(PlayerAction action, int? amount = null)
+    private async Task SubmitAction(BettingActionType action, int? amount = null)
     {
         if (IsSubmitting)
             return;

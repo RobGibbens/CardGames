@@ -49,7 +49,7 @@
                     IsDealer="@(seat.SeatIndex == DealerSeatIndex)"
                     IsCurrentActor="@(seat.SeatIndex == CurrentActorSeatIndex)"
                     IsCurrentPlayer="@(seat.SeatIndex == CurrentPlayerSeatIndex)"
-                           ShowCards="@(CurrentPhase != GamePhase.WaitingForPlayers.ToString())" />
+                           ShowCards="@(CurrentPhase != GamePhase.WaitingForPlayers.ToString() && CurrentPhase != GamePhase.WaitingToStart.ToString())" />
             </div>
         }
     </div>
