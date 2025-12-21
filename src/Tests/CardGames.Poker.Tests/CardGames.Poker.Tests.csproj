@@ -26,4 +26,8 @@
     <ProjectReference Include="..\..\CardGames.Playground\CardGames.Playground.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Api\Features\Games\FiveCardDraw\v1\Queries\GetGame\" />
+  </ItemGroup>
+
 </Project>
