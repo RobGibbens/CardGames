@@ -206,6 +206,64 @@
                 </div>
             </div>
         }
+
+        @if (IsShowdownPhase && _showShowdownOverlay && _showdownResult is not null)
+        {
+            <div class="table-overlay showdown-overlay">
+                <div class="overlay-content showdown-content @(_showdownWon ? "showdown-win" : _showdownLost ? "showdown-lose" : "")">
+                    <button type="button" class="showdown-close" @onclick="CloseShowdownOverlay" aria-label="Close showdown">
+                        &times;
+                    </button>
+                    <div class="overlay-icon">
+                        @if (_showdownWon)
+                        {
+                            <i class="fa-solid fa-crown"></i>
+                        }
+                        else
+                        {
+                            <i class="fa-regular fa-face-grin-tears"></i>
+                        }
+                    </div>
+                    <h2>Showdown</h2>
+
+                    @if (_showdownResult.WonByFold == true)
+                    {
+                        var winner = _showdownResult.Payouts.FirstOrDefault();
+                        <p><strong>@winner.Key</strong> wins @winner.Value chips (all others folded).</p>
+                    }
+                    else
+                    {
+                        <div class="showdown-winners">
+                            <h3>Winners</h3>
+                            @foreach (var payout in _showdownResult.Payouts)
+                            {
+                                <div class="showdown-winner-row">
+                                    <span class="winner-name">@payout.Key</span>
+                                    <span class="winner-amount">+@payout.Value</span>
+                                </div>
+                            }
+                        </div>
+
+                        <div class="showdown-hands">
+                            <h3>Hands</h3>
+                            @foreach (var hand in _showdownResult.PlayerHands.OrderByDescending(h => h.IsWinner == true))
+                            {
+                                <div class="showdown-hand-row @(hand.IsWinner == true ? "is-winner" : "")">
+                                    <span class="player">@hand.PlayerName</span>
+                                    <span class="hand-type">@hand.HandType</span>
+                                    @if (hand.AmountWon > 0)
+                                    {
+                                        <span class="won">+@hand.AmountWon</span>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    <p class="showdown-hint">Next hand will start automatically.</p>
+                </div>
+            </div>
+        }
     }
 </main>
 
@@ -263,6 +321,12 @@
     private List<CardInfo> currentPlayerDrawCards = [];
     private GetCurrentDrawPlayerResponse? _currentDrawPlayer;
 
+    // Showdown state
+    private PerformShowdownSuccessful? _showdownResult;
+    private bool _showShowdownOverlay;
+    private bool _showdownWon;
+    private bool _showdownLost;
+
     private List<SeatInfo> seats = [];
 
     private int seatedPlayerCount;
@@ -273,6 +337,12 @@
     private bool _pollingStarted;
 
     private string? _loggedInUserEmail;
+
+    private bool IsCompletePhase => string.Equals(_gameResponse?.CurrentPhase, "Complete", StringComparison.OrdinalIgnoreCase);
+
+    private bool IsShowdownPhase => string.Equals(_gameResponse?.CurrentPhase, GamePhase.Showdown.ToString(), StringComparison.OrdinalIgnoreCase)
+                                  || string.Equals(_gameResponse?.CurrentPhase, "Showdown", StringComparison.OrdinalIgnoreCase)
+                                  || IsCompletePhase;
 
     protected override async Task OnInitializedAsync()
     {
@@ -321,13 +391,21 @@
 
             await GetPlayersAndUpdateSeatsAsync();
 
+            if (IsCompletePhase)
+            {
+                await TryLoadShowdownAsync();
+            }
+
             if (_gameResponse is not null &&
-                _gameResponse.CurrentPhase != GamePhase.WaitingForPlayers.ToString() &&
-                _gameResponse.CurrentPhase != GamePhase.WaitingToStart.ToString() &&
-                _gameResponse.CurrentPhase != GamePhase.Ended.ToString())
+                _gameResponse.CurrentPhase != GamePhase.Ended.ToString() &&
+                !string.Equals(_gameResponse.CurrentPhase, "Complete", StringComparison.OrdinalIgnoreCase))
             {
                 await RefreshGameStateAsync();
                 StartPollingIfNeeded();
+            }
+            else
+            {
+                await RefreshGameStateAsync();
             }
         }
         finally
@@ -458,6 +536,7 @@
         }
 
         await RefreshGameStateAsync();
+        await TryLoadShowdownAsync();
         StartPollingIfNeeded();
     }
 
@@ -493,7 +572,20 @@
                     return;
                 }
 
+                if (IsCompletePhase)
+                {
+                    await TryLoadShowdownAsync();
+                    await InvokeAsync(StateHasChanged);
+                    return;
+                }
+
                 await RefreshGameStateAsync();
+
+                if (IsShowdownPhase)
+                {
+                    await TryLoadShowdownAsync();
+                    await InvokeAsync(StateHasChanged);
+                }
             }
             catch (Exception ex)
             {
@@ -613,7 +705,49 @@
             selectedDiscardIndices.Clear();
         }
 
+        await TryLoadShowdownAsync();
+
         await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task TryLoadShowdownAsync()
+    {
+        if (!IsShowdownPhase)
+        {
+            return;
+        }
+
+        if (_showdownResult is not null)
+        {
+            return;
+        }
+
+        _loggedInUserEmail ??= await GetLoggedInUserEmailAsync();
+
+        var showdownResponse = await FiveCardDrawApiClient.PerformShowdownAsync(GameId);
+        if (showdownResponse is not { IsSuccessStatusCode: true, Content: not null })
+        {
+            return;
+        }
+
+        _showdownResult = showdownResponse.Content;
+        _showShowdownOverlay = true;
+
+        if (string.IsNullOrWhiteSpace(_loggedInUserEmail))
+        {
+            _showdownWon = false;
+            _showdownLost = false;
+            return;
+        }
+
+        var iWon = _showdownResult.Payouts?.Keys.Any(p => string.Equals(p, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase)) == true;
+        _showdownWon = iWon;
+        _showdownLost = !iWon;
+    }
+
+    private void CloseShowdownOverlay()
+    {
+        _showShowdownOverlay = false;
     }
 
     private static List<BettingActionType> MapLegalActions(AvailableActionsResponse available)
