@@ -80,6 +80,145 @@ body {
     overflow-x: hidden;
 }
 
+/* ===== Table Play: Showdown Overlay ===== */
+.showdown-overlay {
+    backdrop-filter: blur(6px);
+}
+
+.showdown-content {
+    max-width: 640px;
+    width: min(92vw, 640px);
+    text-align: center;
+    position: relative;
+}
+
+.showdown-close {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.75);
+    color: var(--text-primary);
+    font-size: 22px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform var(--transition-fast), background var(--transition-fast);
+}
+
+[data-theme="dark"] .showdown-close {
+    background: rgba(20, 20, 20, 0.75);
+}
+
+.showdown-close:hover {
+    transform: scale(1.06);
+    background: rgba(255, 255, 255, 0.92);
+}
+
+[data-theme="dark"] .showdown-close:hover {
+    background: rgba(20, 20, 20, 0.92);
+}
+
+.showdown-winners,
+.showdown-hands {
+    margin-top: 1rem;
+    text-align: left;
+}
+
+.showdown-winner-row,
+.showdown-hand-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="dark"] .showdown-winner-row,
+[data-theme="dark"] .showdown-hand-row {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.showdown-hand-row.is-winner {
+    border: 1px solid rgba(34, 197, 94, 0.55);
+}
+
+.showdown-hint {
+    margin-top: 1rem;
+    color: var(--text-muted);
+}
+
+.showdown-win {
+    position: relative;
+    border: 1px solid rgba(250, 204, 21, 0.55);
+    box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.15), 0 18px 60px rgba(250, 204, 21, 0.18);
+    animation: showdownWinPop 900ms ease-out both;
+}
+
+.showdown-win::before {
+    content: "";
+    position: absolute;
+    inset: -12px;
+    border-radius: 22px;
+    background: radial-gradient(circle at 20% 20%, rgba(250, 204, 21, 0.20), transparent 55%),
+        radial-gradient(circle at 80% 30%, rgba(34, 197, 94, 0.14), transparent 60%),
+        radial-gradient(circle at 50% 85%, rgba(59, 130, 246, 0.12), transparent 60%);
+    filter: blur(8px);
+    opacity: 0;
+    animation: showdownSparkle 1500ms ease-out 120ms both;
+    pointer-events: none;
+}
+
+.showdown-lose {
+    border: 1px solid rgba(96, 165, 250, 0.45);
+    animation: showdownWobble 1000ms ease-in-out both;
+}
+
+.showdown-lose .overlay-icon {
+    animation: showdownTears 1200ms ease-in-out infinite;
+}
+
+@keyframes showdownWinPop {
+    0% {
+        transform: scale(0.92);
+        filter: saturate(0.92);
+    }
+    55% {
+        transform: scale(1.03);
+        filter: saturate(1.2);
+    }
+    100% {
+        transform: scale(1);
+        filter: saturate(1);
+    }
+}
+
+@keyframes showdownSparkle {
+    0% { opacity: 0; transform: translateY(8px) scale(0.98); }
+    35% { opacity: 1; }
+    100% { opacity: 0; transform: translateY(-8px) scale(1.02); }
+}
+
+@keyframes showdownWobble {
+    0% { transform: rotate(0deg) scale(0.98); }
+    20% { transform: rotate(-1.8deg) scale(1.01); }
+    40% { transform: rotate(1.8deg) scale(1.01); }
+    60% { transform: rotate(-1.2deg) scale(1); }
+    80% { transform: rotate(1.2deg) scale(1); }
+    100% { transform: rotate(0deg) scale(1); }
+}
+
+@keyframes showdownTears {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(2px); }
+}
+
 h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-display);
     font-weight: 700;
