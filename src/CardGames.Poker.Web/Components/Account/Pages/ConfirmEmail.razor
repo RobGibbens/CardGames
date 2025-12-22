@@ -10,8 +10,10 @@
 
 <PageTitle>Confirm email</PageTitle>
 
-<h1>Confirm email</h1>
-<StatusMessage Message="@statusMessage" />
+<AccountShell Title="Confirm email" Subtitle="Final step before you can play">
+    <StatusMessage Message="@statusMessage" />
+    <p class="auth-footer"><a href="/Account/Login">Continue to login</a></p>
+</AccountShell>
 
 @code {
     private string? statusMessage;

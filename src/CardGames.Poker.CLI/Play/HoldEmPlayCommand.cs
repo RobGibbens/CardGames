@@ -5,7 +5,7 @@ using System.Threading;
 using CardGames.Core.French.Cards.Extensions;
 using CardGames.Poker.Betting;
 using CardGames.Poker.CLI.Output;
-using CardGames.Poker.Games;
+using CardGames.Poker.Games.HoldEm;
 using Spectre.Console;
 using Spectre.Console.Cli;
 

@@ -9,6 +9,8 @@ public record GetGameResponse(
 Guid Id,
 Guid GameTypeId,
 string? Name,
+int MinimumNumberOfPlayers,
+int MaximumNumberOfPlayers,
 string CurrentPhase,
 int CurrentHandNumber,
 int DealerPosition,
@@ -29,6 +31,8 @@ DateTimeOffset CreatedAt,
 DateTimeOffset UpdatedAt,
 DateTimeOffset? StartedAt,
 DateTimeOffset? EndedAt,
+string? CreatedById,
+string? CreatedByName,
 bool CanContinue,
 string RowVersion
 );

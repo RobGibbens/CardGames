@@ -4,7 +4,8 @@ using OneOf;
 namespace CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.CreateGame;
 
 public record CreateGameCommand(
+	Guid GameId,
 	string? GameName,
 	int Ante,
 	int MinBet,
-	IReadOnlyList<PlayerInfo> Players) : IRequest<OneOf<CreateGameSuccessful>>;
+	IReadOnlyList<PlayerInfo> Players) : IRequest<OneOf<CreateGameSuccessful, CreateGameConflict>>;

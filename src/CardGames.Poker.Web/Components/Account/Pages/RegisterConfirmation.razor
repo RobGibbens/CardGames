@@ -12,21 +12,25 @@
 
 <PageTitle>Register confirmation</PageTitle>
 
-<h1>Register confirmation</h1>
+<AccountShell Title="Confirm your email" Subtitle="One more click and you're in">
+    <StatusMessage Message="@statusMessage" />
 
-<StatusMessage Message="@statusMessage" />
+    @if (emailConfirmationLink is not null)
+    {
+        <p class="auth-footer">
+            This app does not currently have a real email sender registered, see <a href="https://aka.ms/aspaccountconf">these docs</a>.
+        </p>
+        <p class="auth-footer">
+            Normally this would be emailed: <a href="@emailConfirmationLink">Click here to confirm your account</a>
+        </p>
+    }
+    else
+    {
+        <p class="auth-footer" role="alert">Please check your email to confirm your account.</p>
+    }
 
-@if (emailConfirmationLink is not null)
-{
-    <p>
-        This app does not currently have a real email sender registered, see <a href="https://aka.ms/aspaccountconf">these docs</a> for how to configure a real email sender.
-        Normally this would be emailed: <a href="@emailConfirmationLink">Click here to confirm your account</a>
-    </p>
-}
-else
-{
-    <p role="alert">Please check your email to confirm your account.</p>
-}
+    <p class="auth-footer"><a href="/Account/Login">Back to login</a></p>
+</AccountShell>
 
 @code {
     private string? emailConfirmationLink;

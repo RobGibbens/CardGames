@@ -1,0 +1,1001 @@
+@page "/table/{GameId:guid}"
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+@using CardGames.Poker.Api.Clients
+@using CardGames.Poker.Api.Contracts
+@using CardGames.Poker.Web.Components.Shared
+@using CardGames.Poker.Web.Extensions
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
+
+@inject NavigationManager NavigationManager
+@inject IFiveCardDrawApi FiveCardDrawApiClient
+@inject AuthenticationStateProvider AuthenticationStateProvider
+<PageTitle>Table - Friday Night Poker</PageTitle>
+
+<!-- Connection Banner -->
+<ConnectionBanner IsConnected="@isConnected" IsReconnecting="@isReconnecting" />
+
+<main class="table-play-main">
+    <!-- Leave Table / Controls Strip -->
+    <div class="table-controls-strip">
+        <button class="btn btn-secondary btn-sm leave-table-btn" @onclick="LeaveTableAsync">
+            <i class="fa-regular fa-arrow-left"></i>
+            Leave Table
+        </button>
+
+        <div class="table-info-strip">
+            <span class="table-name">@_gameResponse?.Name</span>
+            <span class="table-blinds">Ante: @ante � Min Bet: @_gameResponse?.MinBet</span>
+        </div>
+
+        <div class="table-controls-right">
+            @if (!_isLoading)
+            {
+                if (isHost)
+                {
+                    <div class="host-controls">
+                        @{
+                            var x = "";
+                        }
+                        @if (_gameResponse.CurrentPhase == GamePhase.WaitingForPlayers.ToString() || _gameResponse.CurrentPhase == GamePhase.WaitingToStart.ToString())
+                        {
+                            <button class="btn btn-primary btn-sm" @onclick="StartGameAsync" disabled="@(!canStartGame)">
+                                <i class="fa-regular fa-play"></i>
+                                Start Game
+                            </button>
+                        }
+                        else if (_gameResponse.CurrentPhase != GamePhase.Ended.ToString())
+                        {
+                            @if (isPaused)
+                            {
+                                <button class="btn btn-secondary btn-sm" @onclick="ResumeGameAsync">
+                                    <i class="fa-regular fa-play"></i>
+                                    Resume
+                                </button>
+                            }
+                            else
+                            {
+                                <button class="btn btn-secondary btn-sm" @onclick="PauseGameAsync">
+                                    <i class="fa-regular fa-pause"></i>
+                                    Pause
+                                </button>
+                            }
+
+                            <button class="btn btn-sm btn-end-game" @onclick="EndGameAsync">
+                                <i class="fa-solid fa-octagon"></i>
+                                End Game
+                            </button>
+                        }
+                    </div>
+                }
+            }
+            <div class="connection-indicator @(isConnected ? "connected" : "disconnected")" title="@(isConnected ? "Connected" : "Disconnected")">
+                <span class="connection-dot"></span>
+            </div>
+        </div>
+    </div>
+
+    @if (!_isLoading)
+    {
+        var temp = "";
+        <!-- Main Table Area -->
+        <div class="table-play-area">
+            <TableCanvas Seats="@seats"
+                         Pot="@pot"
+                         CurrentPhase="@_gameResponse.CurrentPhase"
+                         CurrentActorSeatIndex="@currentActorSeatIndex"
+                         DealerSeatIndex="@dealerSeatIndex"
+                         OnSeatClick="HandleSeatClickAsync"
+                         CurrentPlayerSeatIndex="@currentPlayerSeatIndex" />
+        </div>
+
+        <!-- Action Panel (only shown when it's player's turn during betting) -->
+        @if (isPlayerTurn && !isDrawPhase && _gameResponse.CurrentPhase != GamePhase.WaitingForPlayers.ToString() && _gameResponse.CurrentPhase != GamePhase.Ended.ToString())
+        {
+            <ActionPanel LegalActions="@legalActions"
+                         MinBet="@currentMinBet"
+                         MaxBet="@currentMaxBet"
+                         CurrentBetToCall="@currentBetToCall"
+                         PlayerChips="@playerChips"
+                         TurnTimeRemaining="@turnTimeRemaining"
+                         OnAction="HandlePlayerActionAsync"
+                         IsSubmitting="@isSubmittingAction" />
+        }
+
+        <!-- Draw Panel (only shown when it's player's turn during draw phase) -->
+        @if (isDrawPhase && isPlayerDrawTurn)
+        {
+            <DrawPanel Cards="@currentPlayerDrawCards"
+                       SelectedIndices="@selectedDiscardIndices"
+                       OnToggleSelection="ToggleDiscardSelectionAsync"
+                       OnDraw="HandleDrawActionAsync"
+                       IsSubmitting="@isSubmittingDraw"
+                       IsAnimating="@isDrawAnimating"
+                       IsDiscarding="@isDiscardingCards"
+                       IsDrawing="@isDrawingNewCards"
+                       NewCardIndices="@newCardIndices" />
+        }
+
+        <!-- Draw Phase Waiting Indicator (shown to other players during draw phase) -->
+        @if (isDrawPhase && !isPlayerDrawTurn && _currentDrawPlayer is not null)
+        {
+            <div class="draw-phase-indicator">
+                <div class="draw-phase-content">
+                    <i class="fa-regular fa-cards fa-spin-pulse"></i>
+                    <span>@_currentDrawPlayer.PlayerName is drawing...</span>
+                </div>
+            </div>
+        }
+
+        <!-- Waiting/Pre-game overlay -->
+        @if (_gameResponse.CurrentPhase == GamePhase.WaitingForPlayers.ToString())
+        {
+            <div class="table-overlay waiting-overlay">
+                <div class="overlay-content">
+                    <div class="overlay-icon"><i class="fa-solid fa-clock"></i></div>
+                    <h2>Waiting for Players</h2>
+                    <p>@seatedPlayerCount / @_gameResponse.MinimumNumberOfPlayers players seated</p>
+                    <div class="ready-status">
+                        @foreach (var seat in seats.Where(s => s.IsOccupied))
+                        {
+                            <div class="ready-player @(seat.IsReady ? "is-ready" : "")">
+                                <span class="ready-avatar">@GetInitials(seat.PlayerName)</span>
+                                <span class="ready-name">@seat.PlayerName</span>
+                                @if (seat.IsReady)
+                                {
+                                    <span class="ready-badge">? Ready</span>
+                                }
+                            </div>
+                        }
+                    </div>
+                    @if (!isSeated)
+                    {
+                        <p class="overlay-hint">Click an empty seat to join the table</p>
+                    }
+                    else if (!isReady)
+                    {
+                        <button class="btn btn-primary btn-lg" @onclick="SetReadyAsync">
+                            <i class="fa-regular fa-check"></i>
+                            I'm Ready
+                        </button>
+                    }
+                    else
+                    {
+                        <p class="overlay-hint">Waiting for other players...</p>
+                    }
+                </div>
+            </div>
+        }
+
+        <!-- Game Ended overlay -->
+        @if (_gameResponse.CurrentPhase == GamePhase.Ended.ToString())
+        {
+            <div class="table-overlay ended-overlay">
+                <div class="overlay-content">
+                    <div class="overlay-icon"><i class="fa-solid fa-circle-xmark"></i></div>
+                    <h2>Game Over</h2>
+                    <p>Thanks for playing!</p>
+                    <div class="final-standings">
+                        @foreach (var seat in seats.Where(s => s.IsOccupied).OrderByDescending(s => s.Chips))
+                        {
+                            <div class="standing-row">
+                                <span class="standing-avatar">@GetInitials(seat.PlayerName)</span>
+                                <span class="standing-name">@seat.PlayerName</span>
+                                <span class="standing-chips">@seat.Chips.ToString("N0") chips</span>
+                            </div>
+                        }
+                    </div>
+                    <button class="btn btn-primary btn-lg" @onclick="LeaveTableAsync">
+                        Return to Lobby
+                    </button>
+                </div>
+            </div>
+        }
+
+        <!-- Paused overlay -->
+        @if (isPaused && _gameResponse.CurrentPhase != GamePhase.WaitingForPlayers.ToString() && _gameResponse.CurrentPhase != GamePhase.Ended.ToString())
+        {
+            <div class="table-overlay paused-overlay">
+                <div class="overlay-content">
+                    <div class="overlay-icon"><i class="fa-solid fa-circle-pause"></i></div>
+                    <h2>Game Paused</h2>
+                    <p>The host has paused the game</p>
+                </div>
+            </div>
+        }
+
+        @if (IsShowdownPhase && _showShowdownOverlay && _showdownResult is not null)
+        {
+            <div class="table-overlay showdown-overlay">
+                <div class="overlay-content showdown-content @(_showdownWon ? "showdown-win" : _showdownLost ? "showdown-lose" : "")">
+                    <button type="button" class="showdown-close" @onclick="CloseShowdownOverlay" aria-label="Close showdown">
+                        &times;
+                    </button>
+                    <div class="overlay-icon">
+                        @if (_showdownWon)
+                        {
+                            <i class="fa-solid fa-crown"></i>
+                        }
+                        else
+                        {
+                            <i class="fa-regular fa-face-grin-tears"></i>
+                        }
+                    </div>
+                    <h2>Showdown</h2>
+
+                    @if (_showdownResult.WonByFold == true)
+                    {
+                        var winner = _showdownResult.Payouts.FirstOrDefault();
+                        <p><strong>@winner.Key</strong> wins @winner.Value chips (all others folded).</p>
+                    }
+                    else
+                    {
+                        <div class="showdown-winners">
+                            <h3>Winners</h3>
+                            @foreach (var payout in _showdownResult.Payouts)
+                            {
+                                <div class="showdown-winner-row">
+                                    <span class="winner-name">@payout.Key</span>
+                                    <span class="winner-amount">+@payout.Value</span>
+                                </div>
+                            }
+                        </div>
+
+                        <div class="showdown-hands">
+                            <h3>Hands</h3>
+                            @foreach (var hand in _showdownResult.PlayerHands.OrderByDescending(h => h.IsWinner == true))
+                            {
+                                <div class="showdown-hand-row @(hand.IsWinner == true ? "is-winner" : "")">
+                                    <span class="player">@hand.PlayerName</span>
+                                    <span class="hand-type">@hand.HandType</span>
+                                    @if (hand.AmountWon > 0)
+                                    {
+                                        <span class="won">+@hand.AmountWon</span>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    <p class="showdown-hint">Next hand will start automatically.</p>
+                </div>
+            </div>
+        }
+    }
+</main>
+
+@code {
+    [Parameter]
+    public Guid GameId { get; set; }
+
+    // Connection state
+    private bool isConnected = true;
+    private bool isReconnecting;
+
+    private bool _isLoading = true;
+
+    // Table info
+    private int ante = 5;
+
+    // Game state
+    private bool isPaused;
+    private int pot; // TODO: Get from server
+    private int dealerSeatIndex = 0;
+    private int currentActorSeatIndex = -1;
+
+    // Player state
+    private bool isHost; // Determined from game creator
+    private bool isSeated;
+    private bool isReady;
+    private int currentPlayerSeatIndex = -1;
+    private int playerChips = 1000; // TODO: Get from server
+    private bool isPlayerTurn;
+    private bool isSubmittingAction;
+
+    private string? currentPlayerName; // TODO: Get from auth
+
+    private string? _lastPollingError;
+
+    // Action state
+    private List<BettingActionType> legalActions = [];
+    private int currentMinBet;
+    private int currentMaxBet;
+    private int currentBetToCall;
+    private int turnTimeRemaining = 30; // TODO: Get from server
+
+    private AvailableActionsResponse? _availableActions;
+    private GetCurrentBettingRoundResponse? _currentBettingRound;
+
+    // Draw phase state
+    private bool isDrawPhase;
+    private bool isPlayerDrawTurn;
+    private bool isSubmittingDraw;
+    private bool isDrawAnimating;
+    private bool isDiscardingCards;
+    private bool isDrawingNewCards;
+    private List<int> newCardIndices = [];
+    private HashSet<int> selectedDiscardIndices = [];
+    private List<CardInfo> currentPlayerDrawCards = [];
+    private GetCurrentDrawPlayerResponse? _currentDrawPlayer;
+
+    // Showdown state
+    private PerformShowdownSuccessful? _showdownResult;
+    private bool _showShowdownOverlay;
+    private bool _showdownWon;
+    private bool _showdownLost;
+
+    private List<SeatInfo> seats = [];
+
+    private int seatedPlayerCount;
+    private bool canStartGame;
+
+    private bool _initialized;
+
+    private bool _pollingStarted;
+
+    private string? _loggedInUserEmail;
+
+    private bool IsCompletePhase => string.Equals(_gameResponse?.CurrentPhase, "Complete", StringComparison.OrdinalIgnoreCase);
+
+    private bool IsShowdownPhase => string.Equals(_gameResponse?.CurrentPhase, GamePhase.Showdown.ToString(), StringComparison.OrdinalIgnoreCase)
+                                  || string.Equals(_gameResponse?.CurrentPhase, "Showdown", StringComparison.OrdinalIgnoreCase)
+                                  || IsCompletePhase;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (_initialized)
+        {
+            return;
+        }
+
+        _initialized = true;
+        InitializeSeats();
+        await LoadDataAsync();
+    }
+
+    private async Task<string?> GetLoggedInUserEmailAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated != true)
+        {
+            return null;
+        }
+
+        // Common claim locations across providers.
+        return user.FindFirstValue(ClaimTypes.Email)
+               ?? user.FindFirstValue("email")
+               ?? user.FindFirstValue("preferred_username")
+               ?? user.Identity?.Name;
+    }
+
+    private void InitializeSeats()
+    {
+        seats = Enumerable.Range(0, 8)
+            .Select(i => new SeatInfo { SeatIndex = i })
+            .ToList();
+    }
+
+    private GetGameResponse? _gameResponse;
+    private async Task LoadDataAsync()
+    {
+        try
+        {
+            _loggedInUserEmail ??= await GetLoggedInUserEmailAsync();
+            var gameResponse = await FiveCardDrawApiClient.GetGameAsync(GameId);
+            _gameResponse = gameResponse.Content;
+
+            await GetPlayersAndUpdateSeatsAsync();
+
+            if (IsCompletePhase)
+            {
+                await TryLoadShowdownAsync();
+            }
+
+            if (_gameResponse is not null &&
+                _gameResponse.CurrentPhase != GamePhase.Ended.ToString() &&
+                !string.Equals(_gameResponse.CurrentPhase, "Complete", StringComparison.OrdinalIgnoreCase))
+            {
+                await RefreshGameStateAsync();
+                StartPollingIfNeeded();
+            }
+            else
+            {
+                await RefreshGameStateAsync();
+            }
+        }
+        finally
+        {
+            seatedPlayerCount = seats.Count(s => s.IsOccupied);
+            canStartGame = seatedPlayerCount >= (_gameResponse?.MinimumNumberOfPlayers ?? 2) && seats.Where(s => s.IsOccupied).All(s => s.IsReady);
+
+            // Determine if current user is the host (game creator)
+            isHost = !string.IsNullOrWhiteSpace(_loggedInUserEmail) &&
+                     !string.IsNullOrWhiteSpace(_gameResponse?.CreatedByName) &&
+                     string.Equals(_loggedInUserEmail, _gameResponse.CreatedByName, StringComparison.OrdinalIgnoreCase);
+
+            // Determine current player seat by matching logged-in email to seat PlayerName (case-insensitive).
+            currentPlayerName ??= _loggedInUserEmail;
+            currentPlayerSeatIndex = seats.FirstOrDefault(s => s.IsOccupied &&
+                                                          !string.IsNullOrWhiteSpace(currentPlayerName) &&
+                                                          string.Equals(s.PlayerName, currentPlayerName, StringComparison.OrdinalIgnoreCase))?.SeatIndex ?? -1;
+
+            isSeated = currentPlayerSeatIndex >= 0;
+            isReady = isSeated && seats[currentPlayerSeatIndex].IsReady;
+            _isLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task GetPlayersAndUpdateSeatsAsync()
+    {
+        var playersResponse = await FiveCardDrawApiClient.GetGamePlayersAsync(GameId);
+        if (playersResponse is { IsSuccessStatusCode: true, Content: not null })
+        {
+            var players = playersResponse.Content.ToList();
+            //TODO:ROB - Check for nulls and errors
+            for (int i = 0; i < players.Count && i < seats.Count; i++)
+            {
+                var isCurrentPlayer = !string.IsNullOrWhiteSpace(_loggedInUserEmail) &&
+                                      string.Equals(players[i].PlayerName, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase);
+
+                seats[i] = new SeatInfo
+                {
+                    SeatIndex = i,
+                    IsOccupied = true,
+                    PlayerName = players[i].PlayerName,
+                    Chips = players[i].StartingChips,
+                    IsReady = players[i].Status == GamePlayerStatus.Active,
+                    IsCurrentPlayer = isCurrentPlayer,
+                    Cards = players[i].Hand.OrderBy(c => c.DealOrder).Select(c => new CardInfo
+                    {
+                        Rank = c.Symbol.ToCardRankString(),
+                        Suit = c.Suit.ToCardSuitString(),
+                        IsFaceUp = isCurrentPlayer,
+                        IsSelected = false
+                    }).ToList()
+                };
+            }
+
+            currentPlayerSeatIndex = seats.FirstOrDefault(s => s.IsCurrentPlayer)?.SeatIndex ?? currentPlayerSeatIndex;
+        }
+        else
+        {
+            // Handle error (e.g., show message)
+        }
+    }
+
+    private async Task LeaveTableAsync()
+    {
+        // TODO: Send leave request to server via SignalR
+        NavigationManager.NavigateTo("/lobby");
+        await Task.CompletedTask;
+    }
+
+    private async Task HandleSeatClickAsync(int seatIndex)
+    {
+        if (isSeated || seats[seatIndex].IsOccupied)
+            return;
+
+        // TODO: Send take seat request to server
+        seats[seatIndex] = new SeatInfo
+        {
+            SeatIndex = seatIndex,
+            IsOccupied = true,
+            PlayerName = "You", // TODO: Get from auth
+            Chips = 1000,
+            IsCurrentPlayer = true
+        };
+        isSeated = true;
+        currentPlayerSeatIndex = seatIndex;
+
+        await Task.CompletedTask;
+    }
+
+    private async Task SetReadyAsync()
+    {
+        // TODO: Send ready request to server
+        isReady = true;
+        if (currentPlayerSeatIndex >= 0)
+        {
+            seats[currentPlayerSeatIndex].IsReady = true;
+        }
+        await Task.CompletedTask;
+    }
+
+    private async Task StartGameAsync()
+    {
+        if (!isHost || !canStartGame)
+        {
+            return;
+        }
+
+        isSubmittingAction = false;
+        isPlayerTurn = false;
+
+        var startHandResponse = await FiveCardDrawApiClient.StartHandAsync(GameId);
+        if (!startHandResponse.IsSuccessStatusCode)
+        {
+            return;
+        }
+
+        var collectAntesResponse = await FiveCardDrawApiClient.CollectAntesAsync(GameId);
+        if (!collectAntesResponse.IsSuccessStatusCode)
+        {
+            return;
+        }
+
+        var dealHandsResponse = await FiveCardDrawApiClient.DealHandsAsync(GameId);
+        if (!dealHandsResponse.IsSuccessStatusCode)
+        {
+            return;
+        }
+
+        await RefreshGameStateAsync();
+        await TryLoadShowdownAsync();
+        StartPollingIfNeeded();
+    }
+
+    private void StartPollingIfNeeded()
+    {
+        if (_pollingStarted)
+        {
+            return;
+        }
+
+        _pollingStarted = true;
+        _ = Task.Run(PollGameStateAsync);
+    }
+
+    private async Task PollGameStateAsync()
+    {
+        while (true)
+        {
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(1));
+
+                if (_isLoading)
+                {
+                    continue;
+                }
+
+                if (_gameResponse?.CurrentPhase == GamePhase.Ended.ToString())
+                {
+                    isPlayerTurn = false;
+                    legalActions = [];
+                    await InvokeAsync(StateHasChanged);
+                    return;
+                }
+
+                if (IsCompletePhase)
+                {
+                    await TryLoadShowdownAsync();
+                    await InvokeAsync(StateHasChanged);
+                    return;
+                }
+
+                await RefreshGameStateAsync();
+
+                if (IsShowdownPhase)
+                {
+                    await TryLoadShowdownAsync();
+                    await InvokeAsync(StateHasChanged);
+                }
+            }
+            catch (Exception ex)
+            {
+                _lastPollingError = ex.Message;
+            }
+        }
+    }
+
+    private async Task RefreshGameStateAsync()
+    {
+        _loggedInUserEmail ??= await GetLoggedInUserEmailAsync();
+
+        var gameResponse = await FiveCardDrawApiClient.GetGameAsync(GameId);
+        if (gameResponse is { IsSuccessStatusCode: true, Content: not null })
+        {
+            _gameResponse = gameResponse.Content;
+        }
+
+        await GetPlayersAndUpdateSeatsAsync();
+
+        var bettingRoundResponse = await FiveCardDrawApiClient.GetCurrentBettingRoundAsync(GameId);
+        _currentBettingRound = bettingRoundResponse.IsSuccessStatusCode ? bettingRoundResponse.Content : null;
+
+        var turnResponse = await FiveCardDrawApiClient.GetCurrentPlayerTurnAsync(GameId);
+        if (turnResponse is { IsSuccessStatusCode: true, Content: not null })
+        {
+            var turn = turnResponse.Content;
+            _availableActions = turn.AvailableActions;
+
+            currentPlayerName ??= _loggedInUserEmail;
+            var isMyTurn = !string.IsNullOrWhiteSpace(currentPlayerName) &&
+                           string.Equals(turn.Player.PlayerName, currentPlayerName, StringComparison.OrdinalIgnoreCase);
+
+            // Only set betting turn state if we have available actions (i.e., in a betting phase)
+            if (turn.AvailableActions is not null)
+            {
+                isPlayerTurn = isMyTurn;
+                currentActorSeatIndex = seats.FirstOrDefault(s => s.PlayerName == turn.Player.PlayerName)?.SeatIndex ?? -1;
+                playerChips = turn.Player.ChipStack;
+
+                if (isMyTurn)
+                {
+                    legalActions = MapLegalActions(turn.AvailableActions);
+                    currentMinBet = Math.Max(_gameResponse?.MinBet ?? 0, turn.AvailableActions.MinBet);
+                    currentMaxBet = turn.AvailableActions.MaxBet;
+                    currentBetToCall = turn.AvailableActions.CallAmount;
+                }
+                else
+                {
+                    legalActions = [];
+                    currentBetToCall = 0;
+                    currentMinBet = 0;
+                    currentMaxBet = 0;
+                }
+            }
+            else
+            {
+                // No betting actions available (e.g., during draw phase)
+                isPlayerTurn = false;
+                legalActions = [];
+                currentBetToCall = 0;
+                currentMinBet = 0;
+                currentMaxBet = 0;
+                // Still update player chips from the turn response
+                playerChips = turn.Player.ChipStack;
+            }
+        }
+        else
+        {
+            isPlayerTurn = false;
+            legalActions = [];
+        }
+
+        pot = _currentBettingRound?.TotalPot ?? pot;
+
+        // Handle Draw Phase
+        isDrawPhase = _gameResponse?.CurrentPhase == "DrawPhase";
+        if (isDrawPhase && !isSubmittingDraw)
+        {
+            var drawPlayerResponse = await FiveCardDrawApiClient.GetCurrentDrawPlayerAsync(GameId);
+            if (drawPlayerResponse is { IsSuccessStatusCode: true, Content: not null })
+            {
+                _currentDrawPlayer = drawPlayerResponse.Content;
+
+                currentPlayerName ??= _loggedInUserEmail;
+                var isMyDrawTurn = !string.IsNullOrWhiteSpace(currentPlayerName) &&
+                                   string.Equals(_currentDrawPlayer.PlayerName, currentPlayerName, StringComparison.OrdinalIgnoreCase);
+
+                isPlayerDrawTurn = isMyDrawTurn;
+                currentActorSeatIndex = seats.FirstOrDefault(s => s.PlayerName == _currentDrawPlayer.PlayerName)?.SeatIndex ?? -1;
+
+                if (isMyDrawTurn && !isDrawAnimating)
+                {
+                    // Update the draw cards for selection
+                    currentPlayerDrawCards = _currentDrawPlayer.Hand
+                        .OrderBy(c => c.DealOrder)
+                        .Select((c, i) => new CardInfo
+                        {
+                            Rank = c.Symbol.ToCardRankString(),
+                            Suit = c.Suit.ToCardSuitString(),
+                            IsFaceUp = true,
+                            IsSelected = selectedDiscardIndices.Contains(i)
+                        }).ToList();
+                }
+            }
+            else
+            {
+                isPlayerDrawTurn = false;
+                _currentDrawPlayer = null;
+            }
+        }
+        else if (!isDrawPhase)
+        {
+            isPlayerDrawTurn = false;
+            _currentDrawPlayer = null;
+            currentPlayerDrawCards = [];
+            selectedDiscardIndices.Clear();
+        }
+
+        await TryLoadShowdownAsync();
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task TryLoadShowdownAsync()
+    {
+        if (!IsShowdownPhase)
+        {
+            return;
+        }
+
+        if (_showdownResult is not null)
+        {
+            return;
+        }
+
+        _loggedInUserEmail ??= await GetLoggedInUserEmailAsync();
+
+        var showdownResponse = await FiveCardDrawApiClient.PerformShowdownAsync(GameId);
+        if (showdownResponse is not { IsSuccessStatusCode: true, Content: not null })
+        {
+            return;
+        }
+
+        _showdownResult = showdownResponse.Content;
+        _showShowdownOverlay = true;
+
+        if (string.IsNullOrWhiteSpace(_loggedInUserEmail))
+        {
+            _showdownWon = false;
+            _showdownLost = false;
+            return;
+        }
+
+        var iWon = _showdownResult.Payouts?.Keys.Any(p => string.Equals(p, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase)) == true;
+        _showdownWon = iWon;
+        _showdownLost = !iWon;
+    }
+
+    private void CloseShowdownOverlay()
+    {
+        _showShowdownOverlay = false;
+    }
+
+    private static List<BettingActionType> MapLegalActions(AvailableActionsResponse available)
+    {
+        var actions = new List<BettingActionType>();
+
+        if (available.CanFold) actions.Add(BettingActionType.Fold);
+        if (available.CanCheck) actions.Add(BettingActionType.Check);
+        if (available.CanCall) actions.Add(BettingActionType.Call);
+        if (available.CanBet) actions.Add(BettingActionType.Bet);
+        if (available.CanRaise) actions.Add(BettingActionType.Raise);
+        if (available.CanAllIn) actions.Add(BettingActionType.AllIn);
+
+        return actions;
+    }
+
+    private async Task PauseGameAsync()
+    {
+        if (!isHost)
+        {
+            return;
+        }
+
+        // TODO: Send pause request to server
+        isPaused = true;
+        await Task.CompletedTask;
+    }
+
+    private async Task ResumeGameAsync()
+    {
+        if (!isHost)
+            return;
+
+        // TODO: Send resume request to server
+        isPaused = false;
+        await Task.CompletedTask;
+    }
+
+    private async Task EndGameAsync()
+    {
+        if (!isHost)
+            return;
+
+        //TODO: Send end game request to server
+        //_gameResponse.CurrentPhase = GamePhase.Ended;
+        await Task.CompletedTask;
+    }
+
+    private async Task HandlePlayerActionAsync(PlayerActionRequest action)
+    {
+        if (!isPlayerTurn || isSubmittingAction)
+            return;
+
+        isSubmittingAction = true;
+
+        try
+        {
+            var request = new ProcessBettingActionRequest(action.Action, action.Amount ?? 0);
+            var response = await FiveCardDrawApiClient.ProcessBettingActionAsync(GameId, request);
+            if (!response.IsSuccessStatusCode)
+            {
+                return;
+            }
+
+            await RefreshGameStateAsync();
+        }
+        finally
+        {
+            isSubmittingAction = false;
+        }
+    }
+
+    private async Task HandleDrawActionAsync(List<int> discardIndices)
+    {
+        if (!isPlayerDrawTurn || isSubmittingDraw)
+            return;
+
+        selectedDiscardIndices.Clear();
+        foreach (var i in discardIndices)
+        {
+            selectedDiscardIndices.Add(i);
+        }
+
+        isSubmittingDraw = true;
+        isDrawAnimating = true;
+
+        try
+        {
+            // Start discard animation
+            if (discardIndices.Count > 0)
+            {
+                isDiscardingCards = true;
+
+                // Mark selected cards visually for animation
+                for (int i = 0; i < currentPlayerDrawCards.Count; i++)
+                {
+                    if (discardIndices.Contains(i))
+                    {
+                        currentPlayerDrawCards[i] = currentPlayerDrawCards[i] with { IsSelected = true };
+                    }
+                }
+                await InvokeAsync(StateHasChanged);
+
+                // Wait for discard animation
+                await Task.Delay(600);
+            }
+
+            // Make the API call
+            var request = new ProcessDrawRequest(discardIndices);
+            var response = await FiveCardDrawApiClient.ProcessDrawAsync(GameId, request);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                // Reset state on failure
+                isDiscardingCards = false;
+                isDrawAnimating = false;
+                isSubmittingDraw = false;
+                return;
+            }
+
+            var result = response.Content;
+
+            // Transition to drawing new cards animation
+            isDiscardingCards = false;
+
+            if (discardIndices.Count > 0)
+            {
+                // Swap in the newly dealt cards before the draw-in animation starts
+                // so the cards that animate back in display the new values.
+                if (result is not null)
+                {
+                    var newCards = result.NewCards?.ToList() ?? [];
+
+                    for (var i = 0; i < discardIndices.Count && i < newCards.Count; i++)
+                    {
+                        var targetIndex = discardIndices[i];
+                        if (targetIndex < 0 || targetIndex >= currentPlayerDrawCards.Count)
+                        {
+                            continue;
+                        }
+
+                        var newCard = newCards[i];
+
+                        currentPlayerDrawCards[targetIndex] = new CardInfo
+                        {
+                            Rank = newCard.Symbol?.ToCardRankString(),
+                            Suit = newCard.Suit?.ToCardSuitString(),
+                            IsFaceUp = true,
+                            IsSelected = false
+                        };
+                    }
+
+                    await InvokeAsync(StateHasChanged);
+                }
+
+                isDrawingNewCards = true;
+                newCardIndices = discardIndices;
+                await InvokeAsync(StateHasChanged);
+
+                // Wait for draw animation
+                await Task.Delay(800);
+
+                isDrawingNewCards = false;
+                newCardIndices = [];
+            }
+
+            // Clear animation state and refresh
+            isDrawAnimating = false;
+            currentPlayerDrawCards = [];
+            selectedDiscardIndices.Clear();
+
+            await RefreshGameStateAsync();
+        }
+        finally
+        {
+            isSubmittingDraw = false;
+            isDiscardingCards = false;
+            isDrawingNewCards = false;
+            isDrawAnimating = false;
+        }
+    }
+
+    private Task ToggleDiscardSelectionAsync(int index)
+    {
+        if (index < 0 || index >= currentPlayerDrawCards.Count)
+        {
+            return Task.CompletedTask;
+        }
+
+        if (!selectedDiscardIndices.Add(index))
+        {
+            selectedDiscardIndices.Remove(index);
+        }
+
+        currentPlayerDrawCards[index] = currentPlayerDrawCards[index] with { IsSelected = selectedDiscardIndices.Contains(index) };
+
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private static string GetInitials(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return "?";
+
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length switch
+        {
+            0 => "?",
+            1 => parts[0][..1].ToUpperInvariant(),
+            _ => $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant()
+        };
+    }
+
+    // Enums and Models
+    public enum GamePhase
+    {
+        WaitingForPlayers,
+        Dealing,
+        PreDraw,
+        Drawing,
+        PostDraw,
+        Showdown,
+        Ended,
+        WaitingToStart
+    }
+
+    public record SeatInfo
+    {
+        public int SeatIndex { get; init; }
+        public bool IsOccupied { get; set; }
+        public string? PlayerName { get; set; }
+        public int Chips { get; set; }
+        public bool IsReady { get; set; }
+        public bool IsCurrentPlayer { get; set; }
+        public bool IsFolded { get; set; }
+        public bool IsAllIn { get; set; }
+        public bool IsDisconnected { get; set; }
+        public int CurrentBet { get; set; }
+        public List<CardInfo> Cards { get; set; } = [];
+    }
+
+    public record CardInfo
+    {
+        public string? Rank { get; init; }
+        public string? Suit { get; init; }
+        public bool IsFaceUp { get; init; }
+        public bool IsSelected { get; init; }
+    }
+
+    public record PlayerActionRequest(BettingActionType Action, int? Amount);
+}
