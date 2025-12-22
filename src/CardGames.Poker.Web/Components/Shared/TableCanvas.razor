@@ -11,7 +11,7 @@
                 @if (Pot > 0)
                 {
                     <div class="pot-display">
-                        <span class="pot-icon">??</span>
+                        <span class="pot-icon"><i class="fa-regular fa-coins"></i></span>
                         <span class="pot-amount">@Pot.ToString("N0")</span>
                     </div>
                 }
@@ -49,7 +49,7 @@
                     IsDealer="@(seat.SeatIndex == DealerSeatIndex)"
                     IsCurrentActor="@(seat.SeatIndex == CurrentActorSeatIndex)"
                     IsCurrentPlayer="@(seat.SeatIndex == CurrentPlayerSeatIndex)"
-                           ShowCards="@(CurrentPhase != GamePhase.WaitingForPlayers.ToString() && CurrentPhase != GamePhase.WaitingToStart.ToString())" />
+                    ShowCards="@(CurrentPhase != GamePhase.WaitingForPlayers.ToString() && CurrentPhase != GamePhase.WaitingToStart.ToString())" />
             </div>
         }
     </div>
@@ -100,9 +100,9 @@
     {
         var classes = new List<string>();
 
-        if (!seat.IsOccupied)
+        @* if (!seat.IsOccupied)
             classes.Add("seat-empty");
-        else
+        else *@
             classes.Add("seat-occupied");
 
         if (seat.IsCurrentPlayer)

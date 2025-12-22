@@ -6,10 +6,13 @@
 @using CardGames.Poker.Api.Contracts
 @using CardGames.Poker.Web.Components.Shared
 @using CardGames.Poker.Web.Extensions
+@using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
 
 @inject NavigationManager NavigationManager
 @inject IFiveCardDrawApi FiveCardDrawApiClient
+@inject AuthenticationStateProvider AuthenticationStateProvider
 <PageTitle>Table - Friday Night Poker</PageTitle>
 
 <!-- Connection Banner -->
@@ -25,7 +28,7 @@
 
         <div class="table-info-strip">
             <span class="table-name">@_gameResponse?.Name</span>
-            <span class="table-blinds">Ante: @ante · Min Bet: @_gameResponse?.MinBet</span>
+            <span class="table-blinds">Ante: @ante ï¿½ Min Bet: @_gameResponse?.MinBet</span>
         </div>
 
         <div class="table-controls-right">
@@ -61,8 +64,8 @@
                                 </button>
                             }
 
-                            <button class="btn btn-outline btn-sm" @onclick="EndGameAsync">
-                                <i class="fa-solid fa-stop"></i>
+                            <button class="btn btn-sm btn-end-game" @onclick="EndGameAsync">
+                                <i class="fa-solid fa-octagon"></i>
                                 End Game
                             </button>
                         }
@@ -107,7 +110,7 @@
         {
             <div class="table-overlay waiting-overlay">
                 <div class="overlay-content">
-                    <div class="overlay-icon">??</div>
+                    <div class="overlay-icon"><i class="fa-solid fa-clock"></i></div>
                     <h2>Waiting for Players</h2>
                     <p>@seatedPlayerCount / @_gameResponse.MinimumNumberOfPlayers players seated</p>
                     <div class="ready-status">
@@ -147,7 +150,7 @@
         {
             <div class="table-overlay ended-overlay">
                 <div class="overlay-content">
-                    <div class="overlay-icon">??</div>
+                    <div class="overlay-icon"><i class="fa-solid fa-circle-xmark"></i></div>
                     <h2>Game Over</h2>
                     <p>Thanks for playing!</p>
                     <div class="final-standings">
@@ -172,7 +175,7 @@
         {
             <div class="table-overlay paused-overlay">
                 <div class="overlay-content">
-                    <div class="overlay-icon">??</div>
+                    <div class="overlay-icon"><i class="fa-solid fa-circle-pause"></i></div>
                     <h2>Game Paused</h2>
                     <p>The host has paused the game</p>
                 </div>
@@ -232,6 +235,8 @@
 
     private bool _pollingStarted;
 
+    private string? _loggedInUserEmail;
+
     protected override async Task OnInitializedAsync()
     {
         if (_initialized)
@@ -242,6 +247,23 @@
         _initialized = true;
         InitializeSeats();
         await LoadDataAsync();
+    }
+
+    private async Task<string?> GetLoggedInUserEmailAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated != true)
+        {
+            return null;
+        }
+
+        // Common claim locations across providers.
+        return user.FindFirstValue(ClaimTypes.Email)
+               ?? user.FindFirstValue("email")
+               ?? user.FindFirstValue("preferred_username")
+               ?? user.Identity?.Name;
     }
 
     private void InitializeSeats()
@@ -256,6 +278,7 @@
     {
         try
         {
+            _loggedInUserEmail ??= await GetLoggedInUserEmailAsync();
             var gameResponse = await FiveCardDrawApiClient.GetGameAsync(GameId);
             _gameResponse = gameResponse.Content;
 
@@ -274,9 +297,15 @@
         {
             seatedPlayerCount = seats.Count(s => s.IsOccupied);
             canStartGame = seatedPlayerCount >= (_gameResponse?.MinimumNumberOfPlayers ?? 2) && seats.Where(s => s.IsOccupied).All(s => s.IsReady);
-            isSeated = true;
-            isReady = true;
-            currentPlayerSeatIndex = 0;
+
+            // Determine current player seat by matching logged-in email to seat PlayerName (case-insensitive).
+            currentPlayerName ??= _loggedInUserEmail;
+            currentPlayerSeatIndex = seats.FirstOrDefault(s => s.IsOccupied &&
+                                                          !string.IsNullOrWhiteSpace(currentPlayerName) &&
+                                                          string.Equals(s.PlayerName, currentPlayerName, StringComparison.OrdinalIgnoreCase))?.SeatIndex ?? -1;
+
+            isSeated = currentPlayerSeatIndex >= 0;
+            isReady = isSeated && seats[currentPlayerSeatIndex].IsReady;
             _isLoading = false;
             await InvokeAsync(StateHasChanged);
         }
@@ -291,6 +320,9 @@
             //TODO:ROB - Check for nulls and errors
             for (int i = 0; i < players.Count && i < seats.Count; i++)
             {
+                var isCurrentPlayer = !string.IsNullOrWhiteSpace(_loggedInUserEmail) &&
+                                      string.Equals(players[i].PlayerName, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase);
+
                 seats[i] = new SeatInfo
                 {
                     SeatIndex = i,
@@ -298,16 +330,18 @@
                     PlayerName = players[i].PlayerName,
                     Chips = players[i].StartingChips,
                     IsReady = players[i].Status == GamePlayerStatus.Active,
-                    IsCurrentPlayer = string.Equals(players[i].PlayerName, "Rob", StringComparison.OrdinalIgnoreCase), //TODO:ROB - Get from auth
+                    IsCurrentPlayer = isCurrentPlayer,
                     Cards = players[i].Hand.OrderBy(c => c.DealOrder).Select(c => new CardInfo
                     {
                         Rank = c.Symbol.ToCardRankString(),
                         Suit = c.Suit.ToCardSuitString(),
-                        IsFaceUp = i == 0, //TODO:ROB - This should check if the current person is logged in
+                        IsFaceUp = isCurrentPlayer,
                         IsSelected = false
                     }).ToList()
                 };
             }
+
+            currentPlayerSeatIndex = seats.FirstOrDefault(s => s.IsCurrentPlayer)?.SeatIndex ?? currentPlayerSeatIndex;
         }
         else
         {
@@ -428,6 +462,8 @@
 
     private async Task RefreshGameStateAsync()
     {
+        _loggedInUserEmail ??= await GetLoggedInUserEmailAsync();
+
         var gameResponse = await FiveCardDrawApiClient.GetGameAsync(GameId);
         if (gameResponse is { IsSuccessStatusCode: true, Content: not null })
         {
@@ -445,7 +481,7 @@
             var turn = turnResponse.Content;
             _availableActions = turn.AvailableActions;
 
-            currentPlayerName ??= seats.FirstOrDefault(s => s.IsCurrentPlayer)?.PlayerName;
+            currentPlayerName ??= _loggedInUserEmail;
             var isMyTurn = !string.IsNullOrWhiteSpace(currentPlayerName) &&
                            string.Equals(turn.Player.PlayerName, currentPlayerName, StringComparison.OrdinalIgnoreCase);
 

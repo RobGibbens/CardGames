@@ -17,7 +17,7 @@
         @if (LegalActions.Contains(BettingActionType.Fold))
         {
             <button class="action-btn fold-btn" @onclick="() => SubmitAction(BettingActionType.Fold)" disabled="@IsSubmitting">
-                <i class="action-icon fa-duotone fa-solid fa-down-from-bracket"></i>
+                <i class="action-icon fa-solid fa-down-from-bracket"></i>
                 <span class="action-label">Fold</span>
             </button>
         }
@@ -25,7 +25,7 @@
         @if (LegalActions.Contains(BettingActionType.Check))
         {
             <button class="action-btn check-btn" @onclick="() => SubmitAction(BettingActionType.Check)" disabled="@IsSubmitting">
-                <i class="action-icon fa-duotone fa-solid fa-check"></i>
+                <i class="action-icon fa-solid fa-check"></i>
                 <span class="action-label">Check</span>
             </button>
         }
@@ -33,7 +33,7 @@
         @if (LegalActions.Contains(BettingActionType.Call))
         {
             <button class="action-btn call-btn" @onclick="() => SubmitAction(BettingActionType.Call)" disabled="@IsSubmitting">
-                <i class="action-icon fa-duotone fa-solid fa-equal"></i>
+                <i class="action-icon fa-solid fa-equal"></i>
                 <span class="action-label">Call @CurrentBetToCall</span>
             </button>
         }
@@ -41,7 +41,7 @@
         @if (LegalActions.Contains(BettingActionType.Bet))
         {
             <button class="action-btn bet-btn" @onclick="() => SubmitAction(BettingActionType.Bet, betAmount)" disabled="@IsSubmitting">
-                <i class="action-icon fa-duotone fa-solid fa-coins"></i>
+                <i class="action-icon fa-solid fa-coins"></i>
                 <span class="action-label">Bet @betAmount</span>
             </button>
         }
@@ -49,7 +49,7 @@
         @if (LegalActions.Contains(BettingActionType.Raise))
         {
             <button class="action-btn raise-btn" @onclick="() => SubmitAction(BettingActionType.Raise, betAmount)" disabled="@IsSubmitting">
-                <i class="action-icon fa-duotone fa-solid fa-plus"></i>
+                <i class="action-icon fa-solid fa-plus"></i>
                 <span class="action-label">Raise to @betAmount</span>
             </button>
         }
@@ -57,7 +57,7 @@
         @if (LegalActions.Contains(BettingActionType.AllIn))
         {
             <button class="action-btn allin-btn" @onclick="() => SubmitAction(BettingActionType.AllIn)" disabled="@IsSubmitting">
-                <i class="action-icon fa-duotone fa-solid fa-infinity"></i>
+                <i class="action-icon fa-solid fa-infinity"></i>
                 <span class="action-label">All In!</span>
             </button>
         }
@@ -91,7 +91,7 @@
 
             <div class="bet-quick-buttons">
                 <button class="quick-bet-btn" @onclick="() => SetBetAmount(MinBet)">Min</button>
-                <button class="quick-bet-btn" @onclick="() => SetBetAmount(GetPotBet(0.5))">½ Pot</button>
+                <button class="quick-bet-btn" @onclick="() => SetBetAmount(GetPotBet(0.5))">ï¿½ Pot</button>
                 <button class="quick-bet-btn" @onclick="() => SetBetAmount(GetPotBet(1.0))">Pot</button>
                 <button class="quick-bet-btn" @onclick="() => SetBetAmount(MaxBet)">Max</button>
             </div>

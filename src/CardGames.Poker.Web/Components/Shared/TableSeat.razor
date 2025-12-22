@@ -2,7 +2,7 @@
 
 @using static CardGames.Poker.Web.Components.Pages.TablePlay
 
-<div class="seat-content @(Seat.IsOccupied ? "" : "empty")">
+<div class="seat-content @(Seat.IsOccupied ? "" : "")">
     @if (Seat.IsOccupied)
     {
         <!-- Player avatar -->
@@ -29,7 +29,7 @@
 
         <!-- Chips display -->
         <div class="seat-chips">
-            <span class="chips-icon">??</span>
+            <span class="chips-icon"><i class="fa-regular fa-coins"></i></span>
             <span class="chips-amount">@Seat.Chips.ToString("N0")</span>
         </div>
 
@@ -38,7 +38,7 @@
         {
             <div class="seat-bet">
                 <div class="bet-chips">
-                    <span class="bet-icon">??</span>
+                    <span class="bet-icon"><i class="fa-solid fa-hand-holding-circle-dollar"></i></span>
                     <span class="bet-amount">@Seat.CurrentBet</span>
                 </div>
             </div>
@@ -79,7 +79,7 @@
                         }
                         else
                         {
-                            <span class="card-back">??</span>
+                            <span class="card-back"><i class="fa-solid fa-crown"></i></span>
                         }
                     </div>
                 }
@@ -106,11 +106,14 @@
     }
     else
     {
-        <!-- Empty seat -->
+        <div class="seat-name" title="Take a seat">
+            Take a seat
+        </div>
+        @* <!-- Empty seat -->
         <div class="empty-seat-content">
             <span class="empty-seat-icon">?</span>
-            <span class="empty-seat-text">Sit Here</span>
-        </div>
+            <span class="empty-seat-text">Take a seat</span>
+        </div> *@
     }
 </div>
 
