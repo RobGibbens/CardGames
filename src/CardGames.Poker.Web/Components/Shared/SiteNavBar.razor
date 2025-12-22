@@ -1,0 +1,124 @@
+@namespace CardGames.Poker.Web.Components.Shared
+@rendermode InteractiveServer
+
+@inject IJSRuntime JSRuntime
+
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Http.Extensions
+
+<!-- Navigation Header -->
+<header class="nav-header">
+    <nav class="nav-container">
+        <a href="/" class="nav-logo">
+            <span class="nav-logo-icon">?</span>
+            <span>Friday Night Poker</span>
+        </a>
+
+        <ul class="nav-links" id="navLinks">
+            <li><a href="/lobby">Lobby</a></li>
+            <li><a href="/#features">Features</a></li>
+            <li><a href="/#how-it-works">How It Works</a></li>
+            <li><a href="/#variants">Game Variants</a></li>
+        </ul>
+
+        <div class="nav-actions">
+            <button class="theme-toggle" @onclick="ToggleTheme" title="Toggle theme" aria-label="Toggle dark/light theme">
+                @if (isDarkMode)
+                {
+                    <span><i class="fa-solid fa-moon"></i></span>
+                }
+                else
+                {
+                    <span><i class="fa-solid fa-sun"></i></span>
+                }
+            </button>
+
+            <AuthorizeView>
+                <Authorized>
+                    <a href="/Account/Manage" class="btn btn-secondary btn-sm">@context.User.Identity?.Name</a>
+                    <form method="post" action="/Account/Logout" style="display:inline;">
+                        <input type="hidden" name="ReturnUrl" value="@GetReturnUrl()" />
+                        <button type="submit" class="btn btn-primary btn-sm">Sign Out</button>
+                    </form>
+                </Authorized>
+                <NotAuthorized>
+                    <a href="/Account/Login" class="btn btn-secondary btn-sm">Sign In</a>
+                    <a href="/Account/Register" class="btn btn-primary btn-sm">Get Started</a>
+                </NotAuthorized>
+            </AuthorizeView>
+
+            <button class="mobile-menu-toggle" @onclick="ToggleMobileMenu" aria-label="Toggle menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </nav>
+</header>
+
+@code {
+    private bool isDarkMode;
+    private bool isMobileMenuOpen;
+
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    private string GetReturnUrl()
+    {
+        var pathAndQuery = HttpContext?.Request.GetEncodedPathAndQuery();
+        return string.IsNullOrWhiteSpace(pathAndQuery) ? string.Empty : pathAndQuery.TrimStart('/');
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        try
+        {
+            var savedTheme = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "theme");
+            if (!string.IsNullOrEmpty(savedTheme))
+            {
+                isDarkMode = savedTheme == "dark";
+            }
+            else
+            {
+                isDarkMode = await JSRuntime.InvokeAsync<bool>("matchMedia", "(prefers-color-scheme: dark)");
+            }
+
+            await ApplyTheme();
+            StateHasChanged();
+        }
+        catch
+        {
+            // Ignore errors during SSR
+        }
+    }
+
+    private async Task ToggleTheme()
+    {
+        isDarkMode = !isDarkMode;
+        await ApplyTheme();
+    }
+
+    private async Task ApplyTheme()
+    {
+        try
+        {
+            var theme = isDarkMode ? "dark" : "light";
+            await JSRuntime.InvokeVoidAsync("document.documentElement.setAttribute", "data-theme", theme);
+            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "theme", theme);
+        }
+        catch
+        {
+            // Ignore errors during SSR
+        }
+    }
+
+    private void ToggleMobileMenu()
+    {
+        isMobileMenuOpen = !isMobileMenuOpen;
+    }
+}

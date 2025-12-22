@@ -1,4 +1,5 @@
 ﻿using CardGames.Poker.Api.Data.Entities;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace CardGames.Poker.Api.Data;
@@ -22,7 +23,7 @@ namespace CardGames.Poker.Api.Data;
 /// Entity configurations are applied automatically from the assembly.
 /// </para>
 /// </remarks>
-public class CardsDbContext(DbContextOptions<CardsDbContext> options) : DbContext(options)
+public class CardsDbContext(DbContextOptions<CardsDbContext> options) : IdentityDbContext<ApplicationUser>(options)
 {
 	/// <summary>
 	/// Gets the set of game type definitions.
@@ -71,6 +72,7 @@ public class CardsDbContext(DbContextOptions<CardsDbContext> options) : DbContex
 
 	protected override void OnModelCreating(ModelBuilder model)
 	{
+		base.OnModelCreating(model);
 		model.ApplyConfigurationsFromAssembly(typeof(CardsDbContext).Assembly);
 	}
 }

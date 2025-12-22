@@ -2,7 +2,9 @@ using CardGames.Poker.Api.Clients;
 using CardGames.Poker.Web.Components;
 using CardGames.Poker.Web.Components.Account;
 using CardGames.Poker.Web.Data;
+using CardGames.Poker.Web.Infrastructure;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Server.Circuits;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Refit;
@@ -18,6 +20,12 @@ builder.Services.AddRazorComponents()
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<IdentityRedirectManager>();
 builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
+
+// Register services for forwarding user identity to backend API
+builder.Services.AddScoped<CircuitServicesAccessor>();
+builder.Services.AddScoped<CircuitHandler, CircuitServicesActivityHandler>();
+builder.Services.AddTransient<AuthenticationStateHandler>();
+
 builder.Services.ConfigureHttpClientDefaults(http =>
 {
 	http.AddServiceDiscovery();
@@ -27,7 +35,23 @@ builder.Services
 	.AddRefitClient<IFiveCardDrawApi>(
 		settingsAction: _ => new RefitSettings(),
 		httpClientName: "fiveCardDrawApi")
-	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"));
+	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"))
+	.AddHttpMessageHandler<AuthenticationStateHandler>();
+
+builder.Services
+	.AddRefitClient<IAvailablePokerGamesApi>(
+		settingsAction: _ => new RefitSettings(),
+		httpClientName: "availablePokerGamesApi")
+	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"))
+	.AddHttpMessageHandler<AuthenticationStateHandler>();
+
+builder.Services
+	.AddRefitClient<IActiveGamesApi>(
+		settingsAction: _ => new RefitSettings(),
+		httpClientName: "activeGamesApi")
+	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"))
+	.AddHttpMessageHandler<AuthenticationStateHandler>();
+
 
 builder.Services.AddAuthentication(options =>
     {
@@ -36,7 +60,10 @@ builder.Services.AddAuthentication(options =>
     })
     .AddIdentityCookies();
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+var connectionString = builder.Configuration.GetConnectionString("cardsdb")
+	?? builder.Configuration.GetConnectionString("DefaultConnection")
+	?? throw new InvalidOperationException("Connection string 'cardsdb' (Aspire) or 'DefaultConnection' not found.");
+
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
@@ -69,7 +96,7 @@ else
 }
 app.UseHttpsRedirection();
 
-app.UseAntiforgery();
+
 
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
@@ -79,5 +106,5 @@ app.MapRazorComponents<App>()
 app.MapAdditionalIdentityEndpoints();
 
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
-
+app.UseAntiforgery();
 app.Run();

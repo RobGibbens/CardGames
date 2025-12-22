@@ -1,0 +1,183 @@
+@namespace CardGames.Poker.Web.Components.Shared
+
+@using static CardGames.Poker.Web.Components.Pages.TablePlay
+
+<div class="draw-panel @(IsSubmitting ? "submitting" : "") @(IsAnimating ? "animating" : "")">
+    <!-- Header -->
+    <div class="draw-panel-header">
+        <div class="draw-panel-title">
+            <i class="fa-regular fa-cards"></i>
+            <span>Draw Phase</span>
+        </div>
+        <div class="draw-panel-subtitle">
+            Select cards to discard (0-3 cards)
+        </div>
+    </div>
+
+    <!-- Cards Display -->
+    <div class="draw-cards-container">
+        @for (int i = 0; i < Cards.Count; i++)
+        {
+            var index = i;
+            var card = Cards[i];
+            var isSelected = SelectedIndices.Contains(index);
+
+            <div class="draw-card-wrapper @(isSelected ? "selected" : "") @(IsDiscarding && isSelected ? "discarding" : "") @(IsDrawing && NewCardIndices.Contains(index) ? "drawing" : "")"
+                 @onclick="() => ToggleCardSelectionAsync(index)">
+                <div class="draw-card @(isSelected ? "selected" : "")">
+                    <span class="draw-card-value @GetSuitColorClass(card.Suit)">
+                        @card.Rank <i class="fa-regular @GetSuitSymbol(card.Suit)"></i>
+                    </span>
+                </div>
+                <div class="card-index">@(index + 1)</div>
+                @if (isSelected)
+                {
+                    <div class="discard-badge">
+                        <i class="fa-solid fa-xmark"></i>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    <!-- Selection Info -->
+    <div class="draw-selection-info">
+        @if (SelectedCount == 0)
+        {
+            <span class="selection-hint">Click cards to select them for discard, or stand pat</span>
+        }
+        else
+        {
+            <span class="selection-count">@SelectedCount card(s) selected for discard</span>
+        }
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="draw-actions">
+        <button class="draw-btn stand-pat-btn" 
+                @onclick="HandleStandPat" 
+                disabled="@(IsSubmitting || SelectedCount > 0)">
+            <i class="fa-regular fa-hand"></i>
+            <span>Stand Pat</span>
+        </button>
+
+        <button class="draw-btn discard-btn @(SelectedCount > 0 ? "active" : "")" 
+                @onclick="HandleDiscard" 
+                disabled="@(IsSubmitting || SelectedCount == 0 || SelectedCount > 3)">
+            <i class="fa-regular fa-arrows-rotate"></i>
+            <span>Discard @SelectedCount & Draw</span>
+        </button>
+    </div>
+
+    @if (SelectedCount > 3)
+    {
+        <div class="draw-warning">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            Maximum 3 cards can be discarded
+        </div>
+    }
+
+    @if (IsSubmitting)
+    {
+        <div class="draw-submitting">
+            <span class="loading-spinner-small"></span>
+            @if (IsDiscarding)
+            {
+                <span>Discarding cards...</span>
+            }
+            else if (IsDrawing)
+            {
+                <span>Drawing new cards...</span>
+            }
+            else
+            {
+                <span>Processing...</span>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public List<CardInfo> Cards { get; set; } = [];
+
+    [Parameter]
+    public HashSet<int> SelectedIndices { get; set; } = [];
+
+    [Parameter]
+    public EventCallback<int> OnToggleSelection { get; set; }
+
+    [Parameter]
+    public EventCallback<List<int>> OnDraw { get; set; }
+
+    [Parameter]
+    public bool IsSubmitting { get; set; }
+
+    [Parameter]
+    public bool IsAnimating { get; set; }
+
+    [Parameter]
+    public bool IsDiscarding { get; set; }
+
+    [Parameter]
+    public bool IsDrawing { get; set; }
+
+    [Parameter]
+    public List<int> NewCardIndices { get; set; } = [];
+
+    private int SelectedCount => SelectedIndices.Count;
+
+    private async Task ToggleCardSelectionAsync(int index)
+    {
+        if (IsSubmitting || IsAnimating)
+            return;
+
+        if (OnToggleSelection.HasDelegate)
+        {
+            await OnToggleSelection.InvokeAsync(index);
+        }
+    }
+
+    private async Task HandleStandPat()
+    {
+        if (IsSubmitting || SelectedCount > 0)
+            return;
+
+        await OnDraw.InvokeAsync([]);
+    }
+
+    private async Task HandleDiscard()
+    {
+        if (IsSubmitting || SelectedCount == 0 || SelectedCount > 3)
+            return;
+
+        var selectedIndices = Cards
+            .Select((c, i) => (Card: c, Index: i))
+            .Where(x => SelectedIndices.Contains(x.Index))
+            .Select(x => x.Index)
+            .ToList();
+
+        await OnDraw.InvokeAsync(selectedIndices);
+    }
+
+    private static string GetSuitColorClass(string? suit)
+    {
+        return suit?.ToLower() switch
+        {
+            "hearts" or "diamonds" => "suit-red",
+            _ => "suit-black"
+        };
+    }
+
+    private static string GetSuitSymbol(string? suit)
+    {
+        return suit?.ToLower() switch
+        {
+            "hearts" => "fa-heart",
+            "diamonds" => "fa-diamond",
+            "clubs" => "fa-club",
+            "spades" => "fa-spade",
+            _ => "fa-question"
+        };
+    }
+}

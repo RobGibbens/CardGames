@@ -7,7 +7,7 @@ namespace CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Queries.GetGame;
 [Mapper(RequiredMappingStrategy = RequiredMappingStrategy.Target)]
 public static partial class GetGameMapper
 {
-	public static GetGameResponse ToResponse(this Game model)
+	public static GetGameResponse ToResponse(this Game model, int minimumNumberOfPlayers, int maximumNumberOfPlayers)
 	{
 		// This is a simplified logic. You may need to reconstruct FiveCardDrawGame from model for full logic.
 		// Here, we use GamePlayers and chip stacks to determine CanContinue.
@@ -16,6 +16,8 @@ public static partial class GetGameMapper
 			model.Id,
 			model.GameTypeId,
 			model.Name,
+			minimumNumberOfPlayers,
+			maximumNumberOfPlayers,
 			model.CurrentPhase,
 			model.CurrentHandNumber,
 			model.DealerPosition,
@@ -36,14 +38,16 @@ public static partial class GetGameMapper
 			model.UpdatedAt,
 			model.StartedAt,
 			model.EndedAt,
+			model.CreatedById,
+			model.CreatedByName,
 			activePlayers >= 2,
 			MapRowVersion(model.RowVersion)
 		);
 	}
 
-	public static IQueryable<GetGameResponse> ProjectToResponse(this IQueryable<Game> query)
+	public static IQueryable<GetGameResponse> ProjectToResponse(this IQueryable<Game> query, int minimumNumberOfPlayers, int maximumNumberOfPlayers)
 	{
-		return query.Select(model => ToResponse(model));
+		return query.Select(model => ToResponse(model, minimumNumberOfPlayers, maximumNumberOfPlayers));
 	}
 
 	private static string MapRowVersion(byte[] rowVersion) => rowVersion.ToBase64String();

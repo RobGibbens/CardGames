@@ -25,7 +25,7 @@ public class Game : EntityWithRowVersion
 	/// <summary>
 	/// Unique identifier for the game session.
 	/// </summary>
-	public Guid Id { get; set; } = Guid.CreateVersion7();
+	public Guid Id { get; set; }
 
 	/// <summary>
 	/// Foreign key to the game type definition.
@@ -152,6 +152,16 @@ public class Game : EntityWithRowVersion
 	/// The date and time when the game ended.
 	/// </summary>
 	public DateTimeOffset? EndedAt { get; set; }
+
+	/// <summary>
+	/// The unique identifier of the user who created this game (host).
+	/// </summary>
+	public string? CreatedById { get; set; }
+
+	/// <summary>
+	/// The name or email of the user who created this game (host).
+	/// </summary>
+	public string? CreatedByName { get; set; }
 
 	/// <summary>
 	/// Navigation property for players in this game.

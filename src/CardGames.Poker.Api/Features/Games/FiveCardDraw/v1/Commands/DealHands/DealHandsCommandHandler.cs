@@ -2,7 +2,7 @@ using CardGames.Core.French.Cards;
 using CardGames.Core.French.Dealers;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
-using CardGames.Poker.Games;
+using CardGames.Poker.Games.FiveCardDraw;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
