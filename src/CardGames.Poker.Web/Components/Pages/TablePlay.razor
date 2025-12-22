@@ -77,7 +77,7 @@
             </div>
         </div>
     </div>
-    
+
     @if (!_isLoading)
     {
         var temp = "";
@@ -89,11 +89,11 @@
                          CurrentActorSeatIndex="@currentActorSeatIndex"
                          DealerSeatIndex="@dealerSeatIndex"
                          OnSeatClick="HandleSeatClickAsync"
-                         CurrentPlayerSeatIndex="@currentPlayerSeatIndex"/>
+                         CurrentPlayerSeatIndex="@currentPlayerSeatIndex" />
         </div>
 
-        <!-- Action Panel (only shown when it's player's turn) -->
-        @if (isPlayerTurn && _gameResponse.CurrentPhase != GamePhase.WaitingForPlayers.ToString() && _gameResponse.CurrentPhase != GamePhase.Ended.ToString())
+        <!-- Action Panel (only shown when it's player's turn during betting) -->
+        @if (isPlayerTurn && !isDrawPhase && _gameResponse.CurrentPhase != GamePhase.WaitingForPlayers.ToString() && _gameResponse.CurrentPhase != GamePhase.Ended.ToString())
         {
             <ActionPanel LegalActions="@legalActions"
                          MinBet="@currentMinBet"
@@ -102,7 +102,32 @@
                          PlayerChips="@playerChips"
                          TurnTimeRemaining="@turnTimeRemaining"
                          OnAction="HandlePlayerActionAsync"
-                         IsSubmitting="@isSubmittingAction"/>
+                         IsSubmitting="@isSubmittingAction" />
+        }
+
+        <!-- Draw Panel (only shown when it's player's turn during draw phase) -->
+        @if (isDrawPhase && isPlayerDrawTurn)
+        {
+            <DrawPanel Cards="@currentPlayerDrawCards"
+                       SelectedIndices="@selectedDiscardIndices"
+                       OnToggleSelection="ToggleDiscardSelectionAsync"
+                       OnDraw="HandleDrawActionAsync"
+                       IsSubmitting="@isSubmittingDraw"
+                       IsAnimating="@isDrawAnimating"
+                       IsDiscarding="@isDiscardingCards"
+                       IsDrawing="@isDrawingNewCards"
+                       NewCardIndices="@newCardIndices" />
+        }
+
+        <!-- Draw Phase Waiting Indicator (shown to other players during draw phase) -->
+        @if (isDrawPhase && !isPlayerDrawTurn && _currentDrawPlayer is not null)
+        {
+            <div class="draw-phase-indicator">
+                <div class="draw-phase-content">
+                    <i class="fa-regular fa-cards fa-spin-pulse"></i>
+                    <span>@_currentDrawPlayer.PlayerName is drawing...</span>
+                </div>
+            </div>
         }
 
         <!-- Waiting/Pre-game overlay -->
@@ -226,10 +251,22 @@
     private AvailableActionsResponse? _availableActions;
     private GetCurrentBettingRoundResponse? _currentBettingRound;
 
+    // Draw phase state
+    private bool isDrawPhase;
+    private bool isPlayerDrawTurn;
+    private bool isSubmittingDraw;
+    private bool isDrawAnimating;
+    private bool isDiscardingCards;
+    private bool isDrawingNewCards;
+    private List<int> newCardIndices = [];
+    private HashSet<int> selectedDiscardIndices = [];
+    private List<CardInfo> currentPlayerDrawCards = [];
+    private GetCurrentDrawPlayerResponse? _currentDrawPlayer;
+
     private List<SeatInfo> seats = [];
 
     private int seatedPlayerCount;
-    private bool canStartGame; 
+    private bool canStartGame;
 
     private bool _initialized;
 
@@ -490,23 +527,38 @@
             var isMyTurn = !string.IsNullOrWhiteSpace(currentPlayerName) &&
                            string.Equals(turn.Player.PlayerName, currentPlayerName, StringComparison.OrdinalIgnoreCase);
 
-            isPlayerTurn = isMyTurn;
-            currentActorSeatIndex = seats.FirstOrDefault(s => s.PlayerName == turn.Player.PlayerName)?.SeatIndex ?? -1;
-            playerChips = turn.Player.ChipStack;
-
-            if (isMyTurn)
+            // Only set betting turn state if we have available actions (i.e., in a betting phase)
+            if (turn.AvailableActions is not null)
             {
-                legalActions = MapLegalActions(turn.AvailableActions);
-                currentMinBet = Math.Max(_gameResponse?.MinBet ?? 0, turn.AvailableActions.MinBet);
-                currentMaxBet = turn.AvailableActions.MaxBet;
-                currentBetToCall = turn.AvailableActions.CallAmount;
+                isPlayerTurn = isMyTurn;
+                currentActorSeatIndex = seats.FirstOrDefault(s => s.PlayerName == turn.Player.PlayerName)?.SeatIndex ?? -1;
+                playerChips = turn.Player.ChipStack;
+
+                if (isMyTurn)
+                {
+                    legalActions = MapLegalActions(turn.AvailableActions);
+                    currentMinBet = Math.Max(_gameResponse?.MinBet ?? 0, turn.AvailableActions.MinBet);
+                    currentMaxBet = turn.AvailableActions.MaxBet;
+                    currentBetToCall = turn.AvailableActions.CallAmount;
+                }
+                else
+                {
+                    legalActions = [];
+                    currentBetToCall = 0;
+                    currentMinBet = 0;
+                    currentMaxBet = 0;
+                }
             }
             else
             {
+                // No betting actions available (e.g., during draw phase)
+                isPlayerTurn = false;
                 legalActions = [];
                 currentBetToCall = 0;
                 currentMinBet = 0;
                 currentMaxBet = 0;
+                // Still update player chips from the turn response
+                playerChips = turn.Player.ChipStack;
             }
         }
         else
@@ -516,6 +568,50 @@
         }
 
         pot = _currentBettingRound?.TotalPot ?? pot;
+
+        // Handle Draw Phase
+        isDrawPhase = _gameResponse?.CurrentPhase == "DrawPhase";
+        if (isDrawPhase && !isSubmittingDraw)
+        {
+            var drawPlayerResponse = await FiveCardDrawApiClient.GetCurrentDrawPlayerAsync(GameId);
+            if (drawPlayerResponse is { IsSuccessStatusCode: true, Content: not null })
+            {
+                _currentDrawPlayer = drawPlayerResponse.Content;
+
+                currentPlayerName ??= _loggedInUserEmail;
+                var isMyDrawTurn = !string.IsNullOrWhiteSpace(currentPlayerName) &&
+                                   string.Equals(_currentDrawPlayer.PlayerName, currentPlayerName, StringComparison.OrdinalIgnoreCase);
+
+                isPlayerDrawTurn = isMyDrawTurn;
+                currentActorSeatIndex = seats.FirstOrDefault(s => s.PlayerName == _currentDrawPlayer.PlayerName)?.SeatIndex ?? -1;
+
+                if (isMyDrawTurn && !isDrawAnimating)
+                {
+                    // Update the draw cards for selection
+                    currentPlayerDrawCards = _currentDrawPlayer.Hand
+                        .OrderBy(c => c.DealOrder)
+                        .Select((c, i) => new CardInfo
+                        {
+                            Rank = c.Symbol.ToCardRankString(),
+                            Suit = c.Suit.ToCardSuitString(),
+                            IsFaceUp = true,
+                            IsSelected = selectedDiscardIndices.Contains(i)
+                        }).ToList();
+                }
+            }
+            else
+            {
+                isPlayerDrawTurn = false;
+                _currentDrawPlayer = null;
+            }
+        }
+        else if (!isDrawPhase)
+        {
+            isPlayerDrawTurn = false;
+            _currentDrawPlayer = null;
+            currentPlayerDrawCards = [];
+            selectedDiscardIndices.Clear();
+        }
 
         await InvokeAsync(StateHasChanged);
     }
@@ -588,6 +684,133 @@
         {
             isSubmittingAction = false;
         }
+    }
+
+    private async Task HandleDrawActionAsync(List<int> discardIndices)
+    {
+        if (!isPlayerDrawTurn || isSubmittingDraw)
+            return;
+
+        selectedDiscardIndices.Clear();
+        foreach (var i in discardIndices)
+        {
+            selectedDiscardIndices.Add(i);
+        }
+
+        isSubmittingDraw = true;
+        isDrawAnimating = true;
+
+        try
+        {
+            // Start discard animation
+            if (discardIndices.Count > 0)
+            {
+                isDiscardingCards = true;
+
+                // Mark selected cards visually for animation
+                for (int i = 0; i < currentPlayerDrawCards.Count; i++)
+                {
+                    if (discardIndices.Contains(i))
+                    {
+                        currentPlayerDrawCards[i] = currentPlayerDrawCards[i] with { IsSelected = true };
+                    }
+                }
+                await InvokeAsync(StateHasChanged);
+
+                // Wait for discard animation
+                await Task.Delay(600);
+            }
+
+            // Make the API call
+            var request = new ProcessDrawRequest(discardIndices);
+            var response = await FiveCardDrawApiClient.ProcessDrawAsync(GameId, request);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                // Reset state on failure
+                isDiscardingCards = false;
+                isDrawAnimating = false;
+                isSubmittingDraw = false;
+                return;
+            }
+
+            var result = response.Content;
+
+            // Transition to drawing new cards animation
+            isDiscardingCards = false;
+
+            if (discardIndices.Count > 0)
+            {
+                // Swap in the newly dealt cards before the draw-in animation starts
+                // so the cards that animate back in display the new values.
+                if (result is not null)
+                {
+                    var newCards = result.NewCards?.ToList() ?? [];
+
+                    for (var i = 0; i < discardIndices.Count && i < newCards.Count; i++)
+                    {
+                        var targetIndex = discardIndices[i];
+                        if (targetIndex < 0 || targetIndex >= currentPlayerDrawCards.Count)
+                        {
+                            continue;
+                        }
+
+                        var newCard = newCards[i];
+
+                        currentPlayerDrawCards[targetIndex] = new CardInfo
+                        {
+                            Rank = newCard.Symbol?.ToCardRankString(),
+                            Suit = newCard.Suit?.ToCardSuitString(),
+                            IsFaceUp = true,
+                            IsSelected = false
+                        };
+                    }
+
+                    await InvokeAsync(StateHasChanged);
+                }
+
+                isDrawingNewCards = true;
+                newCardIndices = discardIndices;
+                await InvokeAsync(StateHasChanged);
+
+                // Wait for draw animation
+                await Task.Delay(800);
+
+                isDrawingNewCards = false;
+                newCardIndices = [];
+            }
+
+            // Clear animation state and refresh
+            isDrawAnimating = false;
+            currentPlayerDrawCards = [];
+            selectedDiscardIndices.Clear();
+
+            await RefreshGameStateAsync();
+        }
+        finally
+        {
+            isSubmittingDraw = false;
+            isDiscardingCards = false;
+            isDrawingNewCards = false;
+            isDrawAnimating = false;
+        }
+    }
+
+    private Task ToggleDiscardSelectionAsync(int index)
+    {
+        if (index < 0 || index >= currentPlayerDrawCards.Count)
+        {
+            return Task.CompletedTask;
+        }
+
+        if (!selectedDiscardIndices.Add(index))
+        {
+            selectedDiscardIndices.Remove(index);
+        }
+
+        currentPlayerDrawCards[index] = currentPlayerDrawCards[index] with { IsSelected = selectedDiscardIndices.Contains(index) };
+
+        return InvokeAsync(StateHasChanged);
     }
 
     private static string GetInitials(string? name)
