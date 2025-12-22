@@ -31,6 +31,8 @@ DateTimeOffset CreatedAt,
 DateTimeOffset UpdatedAt,
 DateTimeOffset? StartedAt,
 DateTimeOffset? EndedAt,
+string? CreatedById,
+string? CreatedByName,
 bool CanContinue,
 string RowVersion
 );

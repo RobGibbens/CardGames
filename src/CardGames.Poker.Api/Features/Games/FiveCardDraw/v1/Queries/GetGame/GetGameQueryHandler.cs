@@ -24,7 +24,7 @@ public class GetGameQueryHandler(CardsDbContext context, HybridCache hybridCache
 		{
 			return null;
 		}
-
+		
 		return await hybridCache.GetOrCreateAsync(
 			$"{Feature.Version}-{request.CacheKey}",
 			async _ =>

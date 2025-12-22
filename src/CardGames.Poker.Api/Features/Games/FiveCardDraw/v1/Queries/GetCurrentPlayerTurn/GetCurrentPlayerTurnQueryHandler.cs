@@ -42,10 +42,19 @@ public class GetCurrentPlayerTurnQueryHandler(CardsDbContext context, HybridCach
 				var playerResponse = gamePlayer.ToCurrentPlayerResponse();
 
 				// Get the current betting round to calculate available actions
-				var bettingRound = await context.BettingRounds
-					.Where(br => br.GameId == request.GameId && br.HandNumber == game.CurrentHandNumber && !br.IsComplete)
-					.AsNoTracking()
-					.FirstOrDefaultAsync(cancellationToken);
+				BettingRound? bettingRound = null;
+				try
+				{
+					bettingRound = await context.BettingRounds
+						.Where(br => br.GameId == request.GameId && br.HandNumber == game.CurrentHandNumber && !br.IsComplete)
+						.AsNoTracking()
+						.FirstOrDefaultAsync(cancellationToken);
+				}
+				catch (Exception e)
+				{
+					Console.WriteLine(e);
+					throw;
+				}
 
 				var availableActions = CalculateAvailableActions(playerResponse, bettingRound);
 
