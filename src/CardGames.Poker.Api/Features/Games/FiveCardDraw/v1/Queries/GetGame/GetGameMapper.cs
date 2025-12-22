@@ -38,6 +38,8 @@ public static partial class GetGameMapper
 			model.UpdatedAt,
 			model.StartedAt,
 			model.EndedAt,
+			model.CreatedById,
+			model.CreatedByName,
 			activePlayers >= 2,
 			MapRowVersion(model.RowVersion)
 		);

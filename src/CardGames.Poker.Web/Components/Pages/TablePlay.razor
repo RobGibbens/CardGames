@@ -204,7 +204,7 @@
     private int currentActorSeatIndex = -1;
 
     // Player state
-    private bool isHost = true; // TODO: Get from server
+    private bool isHost; // Determined from game creator
     private bool isSeated;
     private bool isReady;
     private int currentPlayerSeatIndex = -1;
@@ -297,6 +297,11 @@
         {
             seatedPlayerCount = seats.Count(s => s.IsOccupied);
             canStartGame = seatedPlayerCount >= (_gameResponse?.MinimumNumberOfPlayers ?? 2) && seats.Where(s => s.IsOccupied).All(s => s.IsReady);
+
+            // Determine if current user is the host (game creator)
+            isHost = !string.IsNullOrWhiteSpace(_loggedInUserEmail) &&
+                     !string.IsNullOrWhiteSpace(_gameResponse?.CreatedByName) &&
+                     string.Equals(_loggedInUserEmail, _gameResponse.CreatedByName, StringComparison.OrdinalIgnoreCase);
 
             // Determine current player seat by matching logged-in email to seat PlayerName (case-insensitive).
             currentPlayerName ??= _loggedInUserEmail;

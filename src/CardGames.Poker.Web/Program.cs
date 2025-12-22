@@ -2,7 +2,9 @@ using CardGames.Poker.Api.Clients;
 using CardGames.Poker.Web.Components;
 using CardGames.Poker.Web.Components.Account;
 using CardGames.Poker.Web.Data;
+using CardGames.Poker.Web.Infrastructure;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Server.Circuits;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Refit;
@@ -18,6 +20,12 @@ builder.Services.AddRazorComponents()
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<IdentityRedirectManager>();
 builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
+
+// Register services for forwarding user identity to backend API
+builder.Services.AddScoped<CircuitServicesAccessor>();
+builder.Services.AddScoped<CircuitHandler, CircuitServicesActivityHandler>();
+builder.Services.AddTransient<AuthenticationStateHandler>();
+
 builder.Services.ConfigureHttpClientDefaults(http =>
 {
 	http.AddServiceDiscovery();
@@ -27,19 +35,22 @@ builder.Services
 	.AddRefitClient<IFiveCardDrawApi>(
 		settingsAction: _ => new RefitSettings(),
 		httpClientName: "fiveCardDrawApi")
-	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"));
+	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"))
+	.AddHttpMessageHandler<AuthenticationStateHandler>();
 
 builder.Services
 	.AddRefitClient<IAvailablePokerGamesApi>(
 		settingsAction: _ => new RefitSettings(),
 		httpClientName: "availablePokerGamesApi")
-	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"));
+	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"))
+	.AddHttpMessageHandler<AuthenticationStateHandler>();
 
 builder.Services
 	.AddRefitClient<IActiveGamesApi>(
 		settingsAction: _ => new RefitSettings(),
 		httpClientName: "activeGamesApi")
-	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"));
+	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"))
+	.AddHttpMessageHandler<AuthenticationStateHandler>();
 
 
 builder.Services.AddAuthentication(options =>

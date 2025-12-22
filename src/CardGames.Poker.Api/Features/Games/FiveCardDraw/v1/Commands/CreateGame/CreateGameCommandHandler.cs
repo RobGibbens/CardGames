@@ -1,6 +1,7 @@
 ﻿using Azure.Messaging.ServiceBus;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Infrastructure;
 using CardGames.Poker.Games.FiveCardDraw;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -10,13 +11,35 @@ using OneOf;
 namespace CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.CreateGame;
 
 public class CreateGameCommandHandler(CardsDbContext context,
-	ServiceBusClient sbClient, HybridCache hybridCache)
-	: IRequestHandler<CreateGameCommand, OneOf<CreateGameSuccessful>>
+	ServiceBusClient sbClient, HybridCache hybridCache, ICurrentUserService currentUserService)
+	: IRequestHandler<CreateGameCommand, OneOf<CreateGameSuccessful, CreateGameConflict>>
 {
 	private const string FiveCardDrawCode = "FIVECARDDRAW";
 
-	public async Task<OneOf<CreateGameSuccessful>> Handle(CreateGameCommand command, CancellationToken cancellationToken)
+	public async Task<OneOf<CreateGameSuccessful, CreateGameConflict>> Handle(CreateGameCommand command, CancellationToken cancellationToken)
 	{
+		if (command.GameId == Guid.Empty)
+		{
+			return new CreateGameConflict
+			{
+				GameId = command.GameId,
+				Reason = "GameId must be a non-empty GUID."
+			};
+		}
+
+		var existingGame = await context.Games
+			.AsNoTracking()
+			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
+
+		if (existingGame is not null)
+		{
+			return new CreateGameConflict
+			{
+				GameId = command.GameId,
+				Reason = "A game with the supplied GameId already exists."
+			};
+		}
+
 		var now = DateTimeOffset.UtcNow;
 
 		// 1. Get or create the Five Card Draw game type
@@ -25,6 +48,7 @@ public class CreateGameCommandHandler(CardsDbContext context,
 		// 2. Create the game session
 		var game = new Game
 		{
+			Id = command.GameId,
 			GameTypeId = gameType.Id,
 			Name = command.GameName,
 			CurrentPhase = nameof(FiveCardDrawPhase.WaitingToStart),
@@ -35,6 +59,8 @@ public class CreateGameCommandHandler(CardsDbContext context,
 			Status = GameStatus.WaitingForPlayers,
 			CurrentPlayerIndex = -1,
 			CurrentDrawPlayerIndex = -1,
+			CreatedById = currentUserService.UserId,
+			CreatedByName = currentUserService.UserName,
 			CreatedAt = now,
 			UpdatedAt = now
 		};

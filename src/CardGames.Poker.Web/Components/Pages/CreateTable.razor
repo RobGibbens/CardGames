@@ -346,11 +346,13 @@
 
         try
         {
+			var gameId = Guid.CreateVersion7();
+
             var playerInfos = players
                 .Select(p => new PlayerInfo(p.Name, p.StartingChips))
                 .ToList();
 
-            var command = new CreateGameCommand(ante, tableName, minBet, playerInfos);
+            var command = new CreateGameCommand(ante, gameId, tableName, minBet, playerInfos);
 
             var response = await FiveCardDrawApi.CreateGameAsync(command);
 
