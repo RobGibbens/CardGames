@@ -6,6 +6,7 @@ using CardGames.Poker.Api.Infrastructure;
 using CardGames.Poker.Api.Infrastructure.Middleware;
 using FluentValidation;
 using FluentValidation.AspNetCore;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Routing;
@@ -20,23 +21,56 @@ using CardGames.Poker.Api.Infrastructure.PipelineBehaviors;
 using MediatR;
 using ZiggyCreatures.Caching.Fusion;
 using ZiggyCreatures.Caching.Fusion.Serialization.SystemTextJson;
+using CardGames.Poker.Api.Hubs;
+using CardGames.Poker.Api.Services;
+using Microsoft.AspNetCore.SignalR;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 
 // Add services to the container.
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+builder.Services.AddAuthentication(options =>
+	{
+		// Default to JWT for API endpoints
+		options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+		options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+	})
 	.AddMicrosoftIdentityWebApi(builder.Configuration.GetSection("AzureAd"));
+
+// Add header-based auth scheme for SignalR from Blazor frontend (separate registration)
+builder.Services.AddAuthentication()
+	.AddScheme<AuthenticationSchemeOptions, HeaderAuthenticationHandler>(
+		HeaderAuthenticationHandler.SchemeName, _ => { });
+
+// Configure authorization with multiple schemes
 builder.Services.AddAuthorization();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
-builder.Services.AddCors();
+
+// Configure CORS for SignalR (requires credentials support)
+builder.Services.AddCors(options =>
+{
+	options.AddPolicy("SignalRPolicy", policy =>
+	{
+		policy.SetIsOriginAllowed(_ => true) // Allow any origin for development
+			.AllowAnyMethod()
+			.AllowAnyHeader()
+			.AllowCredentials();
+	});
+});
 builder.Services.AddResponseCompression();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<IValidationMarker>();
 builder.Services.AddFluentValidationAutoValidation();
+
+// Add SignalR services
+builder.Services.AddSignalR();
+builder.Services.AddSingleton<IUserIdProvider, SignalRUserIdProvider>();
+builder.Services.AddScoped<ITableStateBuilder, TableStateBuilder>();
+builder.Services.AddScoped<IGameStateBroadcaster, GameStateBroadcaster>();
+builder.Services.AddScoped<ILobbyBroadcaster, LobbyBroadcaster>();
 
 builder.AddRedisDistributedCache("cache");
 
@@ -61,7 +95,9 @@ builder.Services.AddMediatR(cfg =>
 		cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly());
 		cfg.LicenseKey = "eyJhbGciOiJSUzI1NiIsImtpZCI6Ikx1Y2t5UGVubnlTb2Z0d2FyZUxpY2Vuc2VLZXkvYmJiMTNhY2I1OTkwNGQ4OWI0Y2IxYzg1ZjA4OGNjZjkiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2x1Y2t5cGVubnlzb2Z0d2FyZS5jb20iLCJhdWQiOiJMdWNreVBlbm55U29mdHdhcmUiLCJleHAiOiIxNzg2NTc5MjAwIiwiaWF0IjoiMTc1NTA1Mjg0NSIsImFjY291bnRfaWQiOiIwMTk3ZDFlN2Q4ZmQ3NWRjYmIwODA1OWVlZGEyZDU0ZCIsImN1c3RvbWVyX2lkIjoiY3RtXzAxano4eWdiMmJ4cTY3N2VhdmNqcmR6cTg1Iiwic3ViX2lkIjoiLSIsImVkaXRpb24iOiIwIiwidHlwZSI6IjIifQ.CpYPuTeHrEmaVt4v2sk5dDH9UGc-QkA7ThBphJcUFA8jr27yDsvD6Ts_CYiySDRzEQdbXeorGfx2ce1Ue5vZ8pk3c7qAj717cU-BP4qdk18dz1LXXkDgQj6v61hvg3OTdGUfV6wxR0Mq2NITiKIPz7q5v052KDXfaXSlwECSRTGwVGuTrn8q0JpcKuS8ZtcM9x32YiEXyiFR3f4cPiMePLMZvOZO-TOeMdVHUJDbAxbra-j5nScamIWbpnrlp4-8SQLYo9VR8xajnmQAiql6Vc5Zk_sKziZSmYcQmr52BFfP5K15STtgA3u9YQ4qQMNFcQ9jEK0BnTFCE45iHvcC3A";
 	})
-	.AddScoped(typeof(IPipelineBehavior<,>), typeof(LoggingPipelineBehavior<,>));
+	.AddScoped(typeof(IPipelineBehavior<,>), typeof(LoggingPipelineBehavior<,>))
+	.AddScoped(typeof(IPipelineBehavior<,>), typeof(GameStateBroadcastingBehavior<,>))
+	.AddScoped(typeof(IPipelineBehavior<,>), typeof(LobbyStateBroadcastingBehavior<,>));
 
 builder.Services.AddDistributedMemoryCache();
 
@@ -199,7 +235,7 @@ app.UseStaticFiles(new StaticFileOptions
 
 app.UseResponseCompression();
 app.MapPrometheusScrapingEndpoint();
-app.UseCors(policy => policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+app.UseCors("SignalRPolicy");
 if (app.Environment.IsDevelopment())
 {
 	app.MapOpenApi();
@@ -220,6 +256,10 @@ app.MapGet("/", () => "Card Games");
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Map SignalR hubs with header-based auth for Blazor clients
+app.MapHub<GameHub>("/hubs/game");
+app.MapHub<LobbyHub>("/hubs/lobby");
 
 app.Run();
 

@@ -28,16 +28,19 @@ public class GetActiveGamesQueryHandler(CardsDbContext context, HybridCache hybr
 				return results
 					.Select(r =>
 					{
+						var phaseDescription = PhaseDescriptionResolver.TryResolve(r.GameTypeCode, r.CurrentPhase);
+
 						if (!PokerGameMetadataRegistry.TryGet(r.GameTypeCode, out var metadata) || metadata is null)
 						{
-							return r;
+							return r with { CurrentPhaseDescription = phaseDescription };
 						}
 
 						return r with
 						{
-						GameTypeMetadataName = metadata.Name,
+							GameTypeMetadataName = metadata.Name,
 							GameTypeDescription = metadata.Description,
-							GameTypeImageName = metadata.ImageName
+							GameTypeImageName = metadata.ImageName,
+							CurrentPhaseDescription = phaseDescription
 						};
 					})
 					.ToList();

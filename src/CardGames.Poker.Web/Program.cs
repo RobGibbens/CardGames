@@ -3,6 +3,7 @@ using CardGames.Poker.Web.Components;
 using CardGames.Poker.Web.Components.Account;
 using CardGames.Poker.Web.Data;
 using CardGames.Poker.Web.Infrastructure;
+using CardGames.Poker.Web.Services;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Server.Circuits;
 using Microsoft.AspNetCore.Identity;
@@ -25,6 +26,12 @@ builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuth
 builder.Services.AddScoped<CircuitServicesAccessor>();
 builder.Services.AddScoped<CircuitHandler, CircuitServicesActivityHandler>();
 builder.Services.AddTransient<AuthenticationStateHandler>();
+
+// Register SignalR game hub client (scoped per Blazor circuit)
+builder.Services.AddScoped<GameHubClient>();
+
+// Register SignalR lobby hub client (scoped per Blazor circuit)
+builder.Services.AddScoped<LobbyHubClient>();
 
 builder.Services.ConfigureHttpClientDefaults(http =>
 {

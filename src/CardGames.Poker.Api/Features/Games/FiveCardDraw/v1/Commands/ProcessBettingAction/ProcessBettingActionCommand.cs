@@ -1,4 +1,5 @@
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Infrastructure;
 using MediatR;
 using OneOf;
 
@@ -15,5 +16,5 @@ public record ProcessBettingActionCommand(
 	Guid GameId,
 	BettingActionType ActionType,
 	int Amount = 0
-) : IRequest<OneOf<ProcessBettingActionSuccessful, ProcessBettingActionError>>;
+) : IRequest<OneOf<ProcessBettingActionSuccessful, ProcessBettingActionError>>, IGameStateChangingCommand;
 

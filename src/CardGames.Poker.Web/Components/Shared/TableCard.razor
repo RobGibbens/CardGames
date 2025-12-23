@@ -23,7 +23,7 @@
             <div class="info-item">
                 <i class="fa-regular fa-user"></i>
                 <span class="info-label">Host:</span>
-                <span class="info-value">-</span>
+                <span class="info-value">@(string.IsNullOrWhiteSpace(Table.CreatedByName) ? "-" : Table.CreatedByName)</span>
             </div>
         </div>
 
@@ -59,6 +59,8 @@
 
     private string GetStatusText()
     {
-        return $"{Table.Status} · {Table.CurrentPhase}";
+		return string.IsNullOrWhiteSpace(Table.CurrentPhaseDescription)
+			? $"{Table.CurrentPhase}"
+			: $"{Table.CurrentPhaseDescription}";
     }
 }

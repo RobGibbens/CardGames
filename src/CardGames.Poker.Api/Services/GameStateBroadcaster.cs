@@ -1,0 +1,104 @@
+using CardGames.Poker.Api.Hubs;
+using Microsoft.AspNetCore.SignalR;
+
+namespace CardGames.Poker.Api.Services;
+
+/// <summary>
+/// Broadcasts game state updates to connected SignalR clients.
+/// </summary>
+public sealed class GameStateBroadcaster : IGameStateBroadcaster
+{
+    private readonly IHubContext<GameHub> _hubContext;
+    private readonly ITableStateBuilder _tableStateBuilder;
+    private readonly ILogger<GameStateBroadcaster> _logger;
+
+    /// <summary>
+    /// Group name prefix for game groups.
+    /// </summary>
+    private const string GameGroupPrefix = "game:";
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="GameStateBroadcaster"/> class.
+    /// </summary>
+    public GameStateBroadcaster(
+        IHubContext<GameHub> hubContext,
+        ITableStateBuilder tableStateBuilder,
+        ILogger<GameStateBroadcaster> logger)
+    {
+        _hubContext = hubContext;
+        _tableStateBuilder = tableStateBuilder;
+        _logger = logger;
+    }
+
+    /// <inheritdoc />
+    public async Task BroadcastGameStateAsync(Guid gameId, CancellationToken cancellationToken = default)
+    {
+        var groupName = GetGroupName(gameId);
+
+        try
+        {
+            // Build and send public state to the entire group
+            var publicState = await _tableStateBuilder.BuildPublicStateAsync(gameId, cancellationToken);
+            if (publicState is not null)
+            {
+                await _hubContext.Clients.Group(groupName)
+                    .SendAsync("TableStateUpdated", publicState, cancellationToken);
+
+                _logger.LogDebug("Broadcast public state to group {GroupName}", groupName);
+            }
+
+            // Get all player user IDs and send private state to each
+            var playerUserIds = await _tableStateBuilder.GetPlayerUserIdsAsync(gameId, cancellationToken);
+            foreach (var userId in playerUserIds)
+            {
+                await SendPrivateStateToUserAsync(gameId, userId, cancellationToken);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error broadcasting game state for game {GameId}", gameId);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task BroadcastGameStateToUserAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
+    {
+        var groupName = GetGroupName(gameId);
+
+        try
+        {
+            // Send public state to the user
+            var publicState = await _tableStateBuilder.BuildPublicStateAsync(gameId, cancellationToken);
+            if (publicState is not null)
+            {
+                await _hubContext.Clients.User(userId)
+                    .SendAsync("TableStateUpdated", publicState, cancellationToken);
+            }
+
+            // Send private state to the user
+            await SendPrivateStateToUserAsync(gameId, userId, cancellationToken);
+
+            _logger.LogDebug("Broadcast state to user {UserId} for game {GameId}", userId, gameId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error broadcasting game state to user {UserId} for game {GameId}", userId, gameId);
+            throw;
+        }
+    }
+
+    private async Task SendPrivateStateToUserAsync(Guid gameId, string userId, CancellationToken cancellationToken)
+    {
+        var privateState = await _tableStateBuilder.BuildPrivateStateAsync(gameId, userId, cancellationToken);
+        if (privateState is not null)
+        {
+            await _hubContext.Clients.User(userId)
+                .SendAsync("PrivateStateUpdated", privateState, cancellationToken);
+
+            _logger.LogDebug("Sent private state to user {UserId} for game {GameId}", userId, gameId);
+        }
+    }
+
+    private static string GetGroupName(Guid gameId) => $"{GameGroupPrefix}{gameId}";
+}

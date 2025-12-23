@@ -12,7 +12,10 @@ public record GetActiveGamesResponse(
 	string? GameTypeImageName,
 	string? Name,
 	string CurrentPhase,
+	string? CurrentPhaseDescription,
 	GameStatus Status,
 	DateTimeOffset CreatedAt,
+	string CreatedById,
+	string CreatedByName,
 	string RowVersion
 );

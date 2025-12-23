@@ -9,6 +9,8 @@ public static partial class GetActiveGamesMapper
 {
 	public static GetActiveGamesResponse ToResponse(this Game model)
 	{
+		var currentPhaseDescription = PhaseDescriptionResolver.TryResolve(model.GameType?.Code, model.CurrentPhase);
+
 		return new GetActiveGamesResponse(
 			model.Id,
 			model.GameTypeId,
@@ -19,8 +21,11 @@ public static partial class GetActiveGamesMapper
 			null,
 			model.Name,
 			model.CurrentPhase,
+			currentPhaseDescription,
 			model.Status,
 			model.CreatedAt,
+			model.CreatedById ?? string.Empty,
+			model.CreatedByName ?? string.Empty,
 			MapRowVersion(model.RowVersion)
 		);
 	}

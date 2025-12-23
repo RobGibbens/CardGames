@@ -1,11 +1,15 @@
 @page "/table/{GameId:guid}"
 @attribute [Authorize]
 @rendermode InteractiveServer
+@implements IAsyncDisposable
 
+@using System.ComponentModel
+@using CardGames.Contracts.SignalR
 @using CardGames.Poker.Api.Clients
 @using CardGames.Poker.Api.Contracts
 @using CardGames.Poker.Web.Components.Shared
 @using CardGames.Poker.Web.Extensions
+@using CardGames.Poker.Web.Services
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Authorization
 @using System.Security.Claims
@@ -13,6 +17,8 @@
 @inject NavigationManager NavigationManager
 @inject IFiveCardDrawApi FiveCardDrawApiClient
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject GameHubClient GameHubClient
+@inject ILogger<TablePlay> Logger
 <PageTitle>Table - Friday Night Poker</PageTitle>
 
 <!-- Connection Banner -->
@@ -271,8 +277,8 @@
     [Parameter]
     public Guid GameId { get; set; }
 
-    // Connection state
-    private bool isConnected = true;
+    // Connection state (driven by SignalR)
+    private bool isConnected = false;
     private bool isReconnecting;
 
     private bool _isLoading = true;
@@ -296,8 +302,6 @@
     private bool isSubmittingAction;
 
     private string? currentPlayerName; // TODO: Get from auth
-
-    private string? _lastPollingError;
 
     // Action state
     private List<BettingActionType> legalActions = [];
@@ -334,8 +338,6 @@
 
     private bool _initialized;
 
-    private bool _pollingStarted;
-
     private string? _loggedInUserEmail;
 
     private bool IsCompletePhase => string.Equals(_gameResponse?.CurrentPhase, "Complete", StringComparison.OrdinalIgnoreCase);
@@ -353,7 +355,271 @@
 
         _initialized = true;
         InitializeSeats();
+
+        // Subscribe to SignalR events
+        GameHubClient.OnTableStateUpdated += HandleTableStateUpdatedAsync;
+        GameHubClient.OnPrivateStateUpdated += HandlePrivateStateUpdatedAsync;
+        GameHubClient.OnConnectionStateChanged += HandleConnectionStateChanged;
+
+        // Connect to SignalR hub and join game
+        await ConnectAndJoinGameAsync();
+
+        // Load initial data (fallback in case SignalR initial snapshot takes time)
         await LoadDataAsync();
+    }
+
+    private async Task ConnectAndJoinGameAsync()
+    {
+        try
+        {
+            await GameHubClient.ConnectAsync();
+            isConnected = GameHubClient.IsConnected;
+            await GameHubClient.JoinGameAsync(GameId);
+            Logger.LogInformation("Connected to SignalR and joined game {GameId}", GameId);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to connect to SignalR hub for game {GameId}", GameId);
+            isConnected = false;
+        }
+    }
+
+    private void HandleConnectionStateChanged(Microsoft.AspNetCore.SignalR.Client.HubConnectionState state)
+    {
+        isConnected = state == Microsoft.AspNetCore.SignalR.Client.HubConnectionState.Connected;
+        isReconnecting = state == Microsoft.AspNetCore.SignalR.Client.HubConnectionState.Reconnecting;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private async Task HandleTableStateUpdatedAsync(TableStatePublicDto state)
+    {
+        if (state.GameId != GameId)
+        {
+            return;
+        }
+
+        Logger.LogDebug("Received table state update for game {GameId}, phase: {Phase}", state.GameId, state.CurrentPhase);
+
+        // Update game response fields from public state
+        // Handle case where _gameResponse is not yet loaded from API
+        if (_gameResponse is not null)
+        {
+            _gameResponse = _gameResponse with
+            {
+                CurrentPhase = state.CurrentPhase,
+                CurrentPhaseDescription = state?.CurrentPhaseDescription ?? "",
+                Name = state.Name ?? _gameResponse.Name,
+                Ante = state.Ante,
+                MinBet = state.MinBet,
+                DealerPosition = state.DealerSeatIndex,
+                CurrentPlayerIndex = state.CurrentActorSeatIndex
+            };
+        }
+        else
+        {
+            // SignalR update arrived before LoadDataAsync completed - defer to initial load
+            Logger.LogDebug("Received SignalR update before initial data loaded, skipping state update");
+            return;
+        }
+
+        ante = state.Ante;
+        pot = state.TotalPot;
+        dealerSeatIndex = state.DealerSeatIndex;
+        currentActorSeatIndex = state.CurrentActorSeatIndex;
+        isPaused = state.IsPaused;
+
+            // Update seats from public state
+            UpdateSeatsFromPublicState(state.Seats);
+
+            // Handle showdown state - check if entering showdown/complete phase
+            if (state.Showdown is not null)
+            {
+                UpdateShowdownFromPublicState(state.Showdown);
+            }
+
+            // If entering showdown or complete phase, load showdown results via API
+            if (IsShowdownPhase && _showdownResult is null)
+            {
+                await TryLoadShowdownAsync();
+            }
+
+            // Update phase-dependent state
+            isDrawPhase = state.CurrentPhase == "DrawPhase";
+
+            // Recalculate derived state
+            seatedPlayerCount = seats.Count(s => s.IsOccupied);
+            canStartGame = seatedPlayerCount >= (_gameResponse?.MinimumNumberOfPlayers ?? 2) &&
+                           seats.Where(s => s.IsOccupied).All(s => s.IsReady);
+
+            // Update current player info
+            currentPlayerSeatIndex = seats.FirstOrDefault(s => s.IsOccupied &&
+                !string.IsNullOrWhiteSpace(_loggedInUserEmail) &&
+                string.Equals(s.PlayerName, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase))?.SeatIndex ?? -1;
+
+            isSeated = currentPlayerSeatIndex >= 0;
+            isReady = isSeated && seats[currentPlayerSeatIndex].IsReady;
+
+            await InvokeAsync(StateHasChanged);
+        }
+
+        private async Task HandlePrivateStateUpdatedAsync(PrivateStateDto state)
+        {
+            if (state.GameId != GameId)
+        {
+            return;
+        }
+
+        Logger.LogDebug("Received private state update for player {PlayerName}", state.PlayerName);
+
+        // Update player's cards
+        if (currentPlayerSeatIndex >= 0 && currentPlayerSeatIndex < seats.Count)
+        {
+            seats[currentPlayerSeatIndex].Cards = state.Hand.Select(c => new CardInfo
+            {
+                Rank = c.Rank,
+                Suit = c.Suit,
+                IsFaceUp = true,
+                IsSelected = false
+            }).ToList();
+        }
+
+        // Update available actions
+        if (state.AvailableActions is not null)
+        {
+            _availableActions = new AvailableActionsResponse(
+                callAmount: state.AvailableActions.CallAmount,
+                canAllIn: state.AvailableActions.CanAllIn,
+                canBet: state.AvailableActions.CanBet,
+                canCall: state.AvailableActions.CanCall,
+                canCheck: state.AvailableActions.CanCheck,
+                canFold: state.AvailableActions.CanFold,
+                canRaise: state.AvailableActions.CanRaise,
+                maxBet: state.AvailableActions.MaxBet,
+                minBet: state.AvailableActions.MinBet,
+                minRaise: state.AvailableActions.MinRaise
+            );
+
+            isPlayerTurn = state.IsMyTurn;
+            if (state.IsMyTurn)
+            {
+                legalActions = MapLegalActionsFromPrivateState(state.AvailableActions);
+                currentMinBet = Math.Max(_gameResponse?.MinBet ?? 0, state.AvailableActions.MinBet);
+                currentMaxBet = state.AvailableActions.MaxBet;
+                currentBetToCall = state.AvailableActions.CallAmount;
+            }
+        }
+        else
+        {
+            isPlayerTurn = state.IsMyTurn && isDrawPhase; // May be draw turn
+            if (!isDrawPhase)
+            {
+                legalActions = [];
+            }
+        }
+
+        // Update draw phase state
+        if (state.Draw is not null)
+        {
+            isPlayerDrawTurn = state.Draw.IsMyTurnToDraw;
+            if (state.Draw.IsMyTurnToDraw && !isDrawAnimating)
+            {
+                currentPlayerDrawCards = state.Hand.Select((c, i) => new CardInfo
+                {
+                    Rank = c.Rank,
+                    Suit = c.Suit,
+                    IsFaceUp = true,
+                    IsSelected = selectedDiscardIndices.Contains(i)
+                }).ToList();
+            }
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void UpdateSeatsFromPublicState(IReadOnlyList<SeatPublicDto> publicSeats)
+    {
+        foreach (var publicSeat in publicSeats)
+        {
+            if (publicSeat.SeatIndex >= 0 && publicSeat.SeatIndex < seats.Count)
+            {
+                var isCurrentPlayer = !string.IsNullOrWhiteSpace(_loggedInUserEmail) &&
+                    string.Equals(publicSeat.PlayerName, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase);
+
+                // Preserve face-up cards for current player (will be updated by private state)
+                var existingCards = seats[publicSeat.SeatIndex].Cards;
+                var cards = isCurrentPlayer && existingCards.Any()
+                    ? existingCards
+                    : publicSeat.Cards.Select(c => new CardInfo
+                    {
+                        Rank = c.IsFaceUp ? c.Rank : null,
+                        Suit = c.IsFaceUp ? c.Suit : null,
+                        IsFaceUp = c.IsFaceUp,
+                        IsSelected = false
+                    }).ToList();
+
+                seats[publicSeat.SeatIndex] = new SeatInfo
+                {
+                    SeatIndex = publicSeat.SeatIndex,
+                    IsOccupied = publicSeat.IsOccupied,
+                    PlayerName = publicSeat.PlayerName,
+                    Chips = publicSeat.Chips,
+                    IsReady = publicSeat.IsReady,
+                    IsCurrentPlayer = isCurrentPlayer,
+                    IsFolded = publicSeat.IsFolded,
+                    IsAllIn = publicSeat.IsAllIn,
+                    IsDisconnected = publicSeat.IsDisconnected,
+                    CurrentBet = publicSeat.CurrentBet,
+                    Cards = cards
+                };
+            }
+        }
+    }
+
+    private void UpdateShowdownFromPublicState(ShowdownPublicDto showdown)
+    {
+        if (_showdownResult is null && showdown.IsComplete)
+        {
+            // Convert to existing showdown format using constructor
+            var payouts = showdown.PlayerResults
+                .Where(r => r.IsWinner)
+                .ToDictionary(r => r.PlayerName, r => r.AmountWon);
+
+            var playerHands = showdown.PlayerResults.Select(r => new ShowdownPlayerHand(
+                amountWon: r.AmountWon,
+                cards: [], // Cards are displayed separately
+                handStrength: null,
+                handType: r.HandRanking,
+                isWinner: r.IsWinner,
+                playerName: r.PlayerName
+            )).ToList();
+
+            _showdownResult = new PerformShowdownSuccessful(
+                currentPhase: "Complete",
+                gameId: GameId,
+                payouts: payouts,
+                playerHands: playerHands,
+                wonByFold: false
+            );
+
+            _showShowdownOverlay = true;
+            _showdownWon = _showdownResult.Payouts?.Keys.Any(p =>
+                string.Equals(p, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase)) == true;
+            _showdownLost = !_showdownWon;
+        }
+    }
+
+    private static List<BettingActionType> MapLegalActionsFromPrivateState(AvailableActionsDto available)
+    {
+        var actions = new List<BettingActionType>();
+
+        if (available.CanFold) actions.Add(BettingActionType.Fold);
+        if (available.CanCheck) actions.Add(BettingActionType.Check);
+        if (available.CanCall) actions.Add(BettingActionType.Call);
+        if (available.CanBet) actions.Add(BettingActionType.Bet);
+        if (available.CanRaise) actions.Add(BettingActionType.Raise);
+        if (available.CanAllIn) actions.Add(BettingActionType.AllIn);
+
+        return actions;
     }
 
     private async Task<string?> GetLoggedInUserEmailAsync()
@@ -396,17 +662,8 @@
                 await TryLoadShowdownAsync();
             }
 
-            if (_gameResponse is not null &&
-                _gameResponse.CurrentPhase != GamePhase.Ended.ToString() &&
-                !string.Equals(_gameResponse.CurrentPhase, "Complete", StringComparison.OrdinalIgnoreCase))
-            {
-                await RefreshGameStateAsync();
-                StartPollingIfNeeded();
-            }
-            else
-            {
-                await RefreshGameStateAsync();
-            }
+            // SignalR will handle state updates - no polling needed
+            // Initial state snapshot is sent when joining the game via SignalR
         }
         finally
         {
@@ -471,9 +728,9 @@
 
     private async Task LeaveTableAsync()
     {
-        // TODO: Send leave request to server via SignalR
+        // Leave SignalR game group before navigating away
+        await GameHubClient.LeaveGameAsync(GameId);
         NavigationManager.NavigateTo("/lobby");
-        await Task.CompletedTask;
     }
 
     private async Task HandleSeatClickAsync(int seatIndex)
@@ -535,180 +792,11 @@
             return;
         }
 
-        await RefreshGameStateAsync();
+        // SignalR will broadcast the updated state - no need to refresh manually
         await TryLoadShowdownAsync();
-        StartPollingIfNeeded();
     }
 
-    private void StartPollingIfNeeded()
-    {
-        if (_pollingStarted)
-        {
-            return;
-        }
-
-        _pollingStarted = true;
-        _ = Task.Run(PollGameStateAsync);
-    }
-
-    private async Task PollGameStateAsync()
-    {
-        while (true)
-        {
-            try
-            {
-                await Task.Delay(TimeSpan.FromSeconds(1));
-
-                if (_isLoading)
-                {
-                    continue;
-                }
-
-                if (_gameResponse?.CurrentPhase == GamePhase.Ended.ToString())
-                {
-                    isPlayerTurn = false;
-                    legalActions = [];
-                    await InvokeAsync(StateHasChanged);
-                    return;
-                }
-
-                if (IsCompletePhase)
-                {
-                    await TryLoadShowdownAsync();
-                    await InvokeAsync(StateHasChanged);
-                    return;
-                }
-
-                await RefreshGameStateAsync();
-
-                if (IsShowdownPhase)
-                {
-                    await TryLoadShowdownAsync();
-                    await InvokeAsync(StateHasChanged);
-                }
-            }
-            catch (Exception ex)
-            {
-                _lastPollingError = ex.Message;
-            }
-        }
-    }
-
-    private async Task RefreshGameStateAsync()
-    {
-        _loggedInUserEmail ??= await GetLoggedInUserEmailAsync();
-
-        var gameResponse = await FiveCardDrawApiClient.GetGameAsync(GameId);
-        if (gameResponse is { IsSuccessStatusCode: true, Content: not null })
-        {
-            _gameResponse = gameResponse.Content;
-        }
-
-        await GetPlayersAndUpdateSeatsAsync();
-
-        var bettingRoundResponse = await FiveCardDrawApiClient.GetCurrentBettingRoundAsync(GameId);
-        _currentBettingRound = bettingRoundResponse.IsSuccessStatusCode ? bettingRoundResponse.Content : null;
-
-        var turnResponse = await FiveCardDrawApiClient.GetCurrentPlayerTurnAsync(GameId);
-        if (turnResponse is { IsSuccessStatusCode: true, Content: not null })
-        {
-            var turn = turnResponse.Content;
-            _availableActions = turn.AvailableActions;
-
-            currentPlayerName ??= _loggedInUserEmail;
-            var isMyTurn = !string.IsNullOrWhiteSpace(currentPlayerName) &&
-                           string.Equals(turn.Player.PlayerName, currentPlayerName, StringComparison.OrdinalIgnoreCase);
-
-            // Only set betting turn state if we have available actions (i.e., in a betting phase)
-            if (turn.AvailableActions is not null)
-            {
-                isPlayerTurn = isMyTurn;
-                currentActorSeatIndex = seats.FirstOrDefault(s => s.PlayerName == turn.Player.PlayerName)?.SeatIndex ?? -1;
-                playerChips = turn.Player.ChipStack;
-
-                if (isMyTurn)
-                {
-                    legalActions = MapLegalActions(turn.AvailableActions);
-                    currentMinBet = Math.Max(_gameResponse?.MinBet ?? 0, turn.AvailableActions.MinBet);
-                    currentMaxBet = turn.AvailableActions.MaxBet;
-                    currentBetToCall = turn.AvailableActions.CallAmount;
-                }
-                else
-                {
-                    legalActions = [];
-                    currentBetToCall = 0;
-                    currentMinBet = 0;
-                    currentMaxBet = 0;
-                }
-            }
-            else
-            {
-                // No betting actions available (e.g., during draw phase)
-                isPlayerTurn = false;
-                legalActions = [];
-                currentBetToCall = 0;
-                currentMinBet = 0;
-                currentMaxBet = 0;
-                // Still update player chips from the turn response
-                playerChips = turn.Player.ChipStack;
-            }
-        }
-        else
-        {
-            isPlayerTurn = false;
-            legalActions = [];
-        }
-
-        pot = _currentBettingRound?.TotalPot ?? pot;
-
-        // Handle Draw Phase
-        isDrawPhase = _gameResponse?.CurrentPhase == "DrawPhase";
-        if (isDrawPhase && !isSubmittingDraw)
-        {
-            var drawPlayerResponse = await FiveCardDrawApiClient.GetCurrentDrawPlayerAsync(GameId);
-            if (drawPlayerResponse is { IsSuccessStatusCode: true, Content: not null })
-            {
-                _currentDrawPlayer = drawPlayerResponse.Content;
-
-                currentPlayerName ??= _loggedInUserEmail;
-                var isMyDrawTurn = !string.IsNullOrWhiteSpace(currentPlayerName) &&
-                                   string.Equals(_currentDrawPlayer.PlayerName, currentPlayerName, StringComparison.OrdinalIgnoreCase);
-
-                isPlayerDrawTurn = isMyDrawTurn;
-                currentActorSeatIndex = seats.FirstOrDefault(s => s.PlayerName == _currentDrawPlayer.PlayerName)?.SeatIndex ?? -1;
-
-                if (isMyDrawTurn && !isDrawAnimating)
-                {
-                    // Update the draw cards for selection
-                    currentPlayerDrawCards = _currentDrawPlayer.Hand
-                        .OrderBy(c => c.DealOrder)
-                        .Select((c, i) => new CardInfo
-                        {
-                            Rank = c.Symbol.ToCardRankString(),
-                            Suit = c.Suit.ToCardSuitString(),
-                            IsFaceUp = true,
-                            IsSelected = selectedDiscardIndices.Contains(i)
-                        }).ToList();
-                }
-            }
-            else
-            {
-                isPlayerDrawTurn = false;
-                _currentDrawPlayer = null;
-            }
-        }
-        else if (!isDrawPhase)
-        {
-            isPlayerDrawTurn = false;
-            _currentDrawPlayer = null;
-            currentPlayerDrawCards = [];
-            selectedDiscardIndices.Clear();
-        }
-
-        await TryLoadShowdownAsync();
-
-        await InvokeAsync(StateHasChanged);
-    }
+    // Polling methods removed - SignalR handles state updates
 
     private async Task TryLoadShowdownAsync()
     {
@@ -812,7 +900,7 @@
                 return;
             }
 
-            await RefreshGameStateAsync();
+            // SignalR will broadcast the updated state - no need to refresh manually
         }
         finally
         {
@@ -914,12 +1002,12 @@
                 newCardIndices = [];
             }
 
-            // Clear animation state and refresh
+            // Clear animation state
             isDrawAnimating = false;
             currentPlayerDrawCards = [];
             selectedDiscardIndices.Clear();
 
-            await RefreshGameStateAsync();
+            // SignalR will broadcast the updated state - no need to refresh manually
         }
         finally
         {
@@ -964,14 +1052,19 @@
     // Enums and Models
     public enum GamePhase
     {
-        WaitingForPlayers,
-        Dealing,
-        PreDraw,
-        Drawing,
-        PostDraw,
-        Showdown,
-        Ended,
-        WaitingToStart
+        [Description("Waiting for Players")] WaitingForPlayers,
+        [Description("Betting Round")] Dealing,
+        [Description("Pre-Draw")] PreDraw,
+        [Description("Drawing")] Drawing,
+        [Description("Post-Draw")] PostDraw,
+        [Description("Showdown")] Showdown,
+        [Description("Ended")] Ended,
+        [Description("Waiting to Start")] WaitingToStart,
+        [Description("Complete")] Complete,
+        [Description("Second Betting Round")]  SecondBettingRound,
+        [Description("Draw Phase")] DrawPhase,
+        [Description("First Betting Round")]  FirstBettingRound,
+        [Description("Collecting Antes")] CollectingAntes,
     }
 
     public record SeatInfo
@@ -998,4 +1091,20 @@
     }
 
     public record PlayerActionRequest(BettingActionType Action, int? Amount);
+
+    public async ValueTask DisposeAsync()
+    {
+        // Unsubscribe from SignalR events
+        GameHubClient.OnTableStateUpdated -= HandleTableStateUpdatedAsync;
+        GameHubClient.OnPrivateStateUpdated -= HandlePrivateStateUpdatedAsync;
+        GameHubClient.OnConnectionStateChanged -= HandleConnectionStateChanged;
+
+        // Leave the game and disconnect
+        if (_currentGameId.HasValue)
+        {
+            await GameHubClient.LeaveGameAsync(_currentGameId.Value);
+        }
+    }
+
+    private Guid? _currentGameId => GameId;
 }
