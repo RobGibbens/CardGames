@@ -21,4 +21,19 @@ public interface IGameStateBroadcaster
     /// <param name="userId">The user identifier to send state to.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     Task BroadcastGameStateToUserAsync(Guid gameId, string userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Broadcasts a player joined notification to all players in the game except the joining player.
+    /// </summary>
+    /// <param name="gameId">The unique identifier of the game.</param>
+    /// <param name="playerName">The name of the player who joined.</param>
+    /// <param name="seatIndex">The seat index the player joined at.</param>
+    /// <param name="canPlayCurrentHand">Whether the player can participate in the current hand.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task BroadcastPlayerJoinedAsync(
+        Guid gameId,
+        string playerName,
+        int seatIndex,
+        bool canPlayCurrentHand,
+        CancellationToken cancellationToken = default);
 }

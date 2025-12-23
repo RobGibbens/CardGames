@@ -121,6 +121,71 @@ namespace CardGames.Poker.Api.Clients
         [Get("/api/v1/games/five-card-draw")]
         Task<IApiResponse<ICollection<GetGamesResponse>>> GetGamesAsync(CancellationToken cancellationToken = default);
 
+        /// <summary>Join Game</summary>
+        /// <remarks>
+        /// Adds the currently authenticated player to a game at the specified seat. Players can join a game at any time as long as the game hasn't ended and there are seats available. If joining mid-hand, the player will sit out the current hand and join play on the next hand.
+        /// 
+        /// **Validations:**
+        /// - Game must exist and not be ended
+        /// - Seat must be available (not already occupied)
+        /// - Player must not already be seated elsewhere in the game
+        /// - Game must not have reached maximum player count
+        /// 
+        /// **Response:**
+        /// - `CanPlayCurrentHand`: true if joining during WaitingToStart/WaitingForPlayers phase
+        /// </remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/games/five-card-draw/{gameId}/players")]
+        Task<IApiResponse<JoinGameSuccessful>> JoinGameAsync(System.Guid gameId, [Body] JoinGameRequest body, CancellationToken cancellationToken = default);
+
+        /// <summary>GetGamePlayers</summary>
+        /// <remarks>Retrieve all players in a specific game.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Get("/api/v1/games/five-card-draw/{gameId}/players")]
+        Task<IApiResponse<ICollection<GetGamePlayersResponse>>> GetGamePlayersAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
         /// <summary>Start Hand</summary>
         /// <remarks>Starts a new hand by shuffling the deck, creating a fresh pot, and resetting all player states. This endpoint must be called before each hand to prepare the game for play. After calling this endpoint, the game transitions to the CollectingAntes phase.</remarks>
         /// <returns>
@@ -365,29 +430,6 @@ namespace CardGames.Poker.Api.Clients
         [Headers("Accept: application/json, application/problem+json")]
         [Get("/api/v1/games/five-card-draw/{gameId}")]
         Task<IApiResponse<GetGameResponse>> GetGameAsync(System.Guid gameId, CancellationToken cancellationToken = default);
-
-        /// <summary>GetGamePlayers</summary>
-        /// <remarks>Retrieve all players in a specific game.</remarks>
-        /// <returns>
-        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
-        /// <list type="table">
-        /// <listheader>
-        /// <term>Status</term>
-        /// <description>Description</description>
-        /// </listheader>
-        /// <item>
-        /// <term>200</term>
-        /// <description>OK</description>
-        /// </item>
-        /// <item>
-        /// <term>400</term>
-        /// <description>Bad Request</description>
-        /// </item>
-        /// </list>
-        /// </returns>
-        [Headers("Accept: application/json, application/problem+json")]
-        [Get("/api/v1/games/five-card-draw/{gameId}/players")]
-        Task<IApiResponse<ICollection<GetGamePlayersResponse>>> GetGamePlayersAsync(System.Guid gameId, CancellationToken cancellationToken = default);
 
         /// <summary>GetCurrentPlayerTurn</summary>
         /// <remarks>Retrieve the current player's turn state for a specific game, including available actions.</remarks>
@@ -1659,6 +1701,57 @@ namespace CardGames.Poker.Api.Contracts
         [JsonPropertyName("rowVersion")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string RowVersion { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record JoinGameRequest
+    {
+        [JsonConstructor]
+        public JoinGameRequest(int @seatIndex, int? @startingChips)
+        {
+            this.SeatIndex = @seatIndex;
+            this.StartingChips = @startingChips;
+        }
+
+        [JsonPropertyName("seatIndex")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int SeatIndex { get; init; }
+
+        [JsonPropertyName("startingChips")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? StartingChips { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record JoinGameSuccessful
+    {
+        [JsonConstructor]
+        public JoinGameSuccessful(bool @canPlayCurrentHand, System.Guid @gameId, string @playerName, int @seatIndex)
+        {
+            this.GameId = @gameId;
+            this.SeatIndex = @seatIndex;
+            this.PlayerName = @playerName;
+            this.CanPlayCurrentHand = @canPlayCurrentHand;
+        }
+
+        [JsonPropertyName("gameId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid GameId { get; init; }
+
+        [JsonPropertyName("seatIndex")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int SeatIndex { get; init; }
+
+        [JsonPropertyName("playerName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string PlayerName { get; init; }
+
+        [JsonPropertyName("canPlayCurrentHand")]
+        public bool CanPlayCurrentHand { get; init; }
 
     }
 
