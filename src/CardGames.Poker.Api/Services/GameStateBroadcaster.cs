@@ -1,3 +1,4 @@
+using CardGames.Contracts.SignalR;
 using CardGames.Poker.Api.Hubs;
 using Microsoft.AspNetCore.SignalR;
 
@@ -88,17 +89,56 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
         }
     }
 
-    private async Task SendPrivateStateToUserAsync(Guid gameId, string userId, CancellationToken cancellationToken)
-    {
-        var privateState = await _tableStateBuilder.BuildPrivateStateAsync(gameId, userId, cancellationToken);
-        if (privateState is not null)
+        private async Task SendPrivateStateToUserAsync(Guid gameId, string userId, CancellationToken cancellationToken)
         {
-            await _hubContext.Clients.User(userId)
-                .SendAsync("PrivateStateUpdated", privateState, cancellationToken);
+            var privateState = await _tableStateBuilder.BuildPrivateStateAsync(gameId, userId, cancellationToken);
+            if (privateState is not null)
+            {
+                await _hubContext.Clients.User(userId)
+                    .SendAsync("PrivateStateUpdated", privateState, cancellationToken);
 
-            _logger.LogDebug("Sent private state to user {UserId} for game {GameId}", userId, gameId);
+                _logger.LogDebug("Sent private state to user {UserId} for game {GameId}", userId, gameId);
+            }
         }
-    }
 
-    private static string GetGroupName(Guid gameId) => $"{GameGroupPrefix}{gameId}";
-}
+        /// <inheritdoc />
+        public async Task BroadcastPlayerJoinedAsync(
+            Guid gameId,
+            string playerName,
+            int seatIndex,
+            bool canPlayCurrentHand,
+                CancellationToken cancellationToken = default)
+            {
+                var groupName = GetGroupName(gameId);
+
+                try
+                {
+                    var notification = new PlayerJoinedDto
+                    {
+                        GameId = gameId,
+                        PlayerName = playerName,
+                        SeatIndex = seatIndex,
+                        CanPlayCurrentHand = canPlayCurrentHand,
+                        Message = canPlayCurrentHand
+                            ? $"{playerName} has joined the table!"
+                            : $"{playerName} has joined and will play next hand."
+                    };
+
+                    // Send to all in the group except the player who just joined
+                    await _hubContext.Clients.GroupExcept(groupName, [playerName])
+                        .SendAsync("PlayerJoined", notification, cancellationToken);
+
+                    _logger.LogInformation(
+                        "Broadcast PlayerJoined notification for {PlayerName} at seat {SeatIndex} in game {GameId}",
+                        playerName, seatIndex, gameId);
+                }
+                catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Failed to broadcast PlayerJoined notification for game {GameId}", gameId);
+                // Don't throw - the join was successful, just the notification failed
+            }
+        }
+
+        private static string GetGroupName(Guid gameId) => $"{GameGroupPrefix}{gameId}";
+    }

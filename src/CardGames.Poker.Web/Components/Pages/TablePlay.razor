@@ -5,8 +5,11 @@
 
 @using System.ComponentModel
 @using CardGames.Contracts.SignalR
+@using CardGames.Core.French.Cards
 @using CardGames.Poker.Api.Clients
 @using CardGames.Poker.Api.Contracts
+@using CardGames.Poker.Evaluation
+@using CardGames.Poker.Hands.HandTypes
 @using CardGames.Poker.Web.Components.Shared
 @using CardGames.Poker.Web.Extensions
 @using CardGames.Poker.Web.Services
@@ -23,6 +26,19 @@
 
 <!-- Connection Banner -->
 <ConnectionBanner IsConnected="@isConnected" IsReconnecting="@isReconnecting" />
+
+<!-- Toast notifications -->
+@if (_toastMessages.Count > 0)
+{
+    <div class="toast-container">
+        @foreach (var toast in _toastMessages)
+        {
+            <div class="toast-notification @toast.Type">
+                <span class="toast-message">@toast.Message</span>
+            </div>
+        }
+    </div>
+}
 
 <main class="table-play-main">
     <!-- Leave Table / Controls Strip -->
@@ -96,8 +112,17 @@
                          CurrentActorSeatIndex="@currentActorSeatIndex"
                          DealerSeatIndex="@dealerSeatIndex"
                          OnSeatClick="HandleSeatClickAsync"
+                         DisableSeatSelectionForCurrentUser="@isSeated"
                          CurrentPlayerSeatIndex="@currentPlayerSeatIndex" />
         </div>
+
+        <!-- Hand Odds Panel (shown when player is seated and has cards) -->
+        @if (isSeated && currentPlayerSeatIndex >= 0 && seats[currentPlayerSeatIndex].Cards.Count > 0)
+        {
+            <HandOddsPanel HandOdds="@handOdds" 
+                           IsExpanded="@isHandOddsPanelExpanded" 
+                           IsExpandedChanged="@(value => isHandOddsPanelExpanded = value)" />
+        }
 
         <!-- Action Panel (only shown when it's player's turn during betting) -->
         @if (isPlayerTurn && !isDrawPhase && _gameResponse.CurrentPhase != GamePhase.WaitingForPlayers.ToString() && _gameResponse.CurrentPhase != GamePhase.Ended.ToString())
@@ -332,6 +357,13 @@
     private bool _showdownWon;
     private bool _showdownLost;
 
+    // Hand odds state
+    private List<HandTypeOddsDto> handOdds = [];
+    private bool isHandOddsPanelExpanded = true;
+
+    // Toast notification state
+    private List<ToastMessage> _toastMessages = [];
+
     private List<SeatInfo> seats = [];
 
     private int seatedPlayerCount;
@@ -360,13 +392,16 @@
         // Subscribe to SignalR events
         GameHubClient.OnTableStateUpdated += HandleTableStateUpdatedAsync;
         GameHubClient.OnPrivateStateUpdated += HandlePrivateStateUpdatedAsync;
+        GameHubClient.OnPlayerJoined += HandlePlayerJoinedAsync;
         GameHubClient.OnConnectionStateChanged += HandleConnectionStateChanged;
 
-        // Connect to SignalR hub and join game
-        await ConnectAndJoinGameAsync();
-
-        // Load initial data (fallback in case SignalR initial snapshot takes time)
+        // Load initial data FIRST so seats and _gameResponse are populated
+        // before SignalR sends its state snapshot
         await LoadDataAsync();
+
+        // Connect to SignalR hub and join game - the snapshot will now
+        // be processed correctly since seats are already populated
+        await ConnectAndJoinGameAsync();
     }
 
     private async Task ConnectAndJoinGameAsync()
@@ -390,6 +425,34 @@
         isConnected = state == Microsoft.AspNetCore.SignalR.Client.HubConnectionState.Connected;
         isReconnecting = state == Microsoft.AspNetCore.SignalR.Client.HubConnectionState.Reconnecting;
         _ = InvokeAsync(StateHasChanged);
+    }
+
+    private async Task HandlePlayerJoinedAsync(PlayerJoinedDto notification)
+    {
+        if (notification.GameId != GameId)
+        {
+            return;
+        }
+
+        Logger.LogDebug("Player {PlayerName} joined at seat {SeatIndex}", notification.PlayerName, notification.SeatIndex);
+
+        // Show toast notification to other players
+        await ShowToastAsync(notification.Message, "info");
+    }
+
+    private async Task ShowToastAsync(string message, string type = "info", int durationMs = 4000)
+    {
+        var toast = new ToastMessage(message, type);
+        _toastMessages.Add(toast);
+        await InvokeAsync(StateHasChanged);
+
+        // Auto-dismiss after duration
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(durationMs);
+            _toastMessages.Remove(toast);
+            await InvokeAsync(StateHasChanged);
+        });
     }
 
     private async Task HandleTableStateUpdatedAsync(TableStatePublicDto state)
@@ -472,6 +535,23 @@
 
         Logger.LogDebug("Received private state update for player {PlayerName}", state.PlayerName);
 
+        // Ensure we know which seat is the current player before applying private hand state.
+        // When joining a game already in progress, the private snapshot can arrive before the
+        // page has resolved `currentPlayerSeatIndex` via public state.
+        if (currentPlayerSeatIndex < 0 && !string.IsNullOrWhiteSpace(state.PlayerName))
+        {
+            currentPlayerSeatIndex = seats.FindIndex(s => s.IsOccupied
+                && !string.IsNullOrWhiteSpace(s.PlayerName)
+                && string.Equals(s.PlayerName, state.PlayerName, StringComparison.OrdinalIgnoreCase));
+
+            if (currentPlayerSeatIndex >= 0)
+            {
+                isSeated = true;
+                currentPlayerName = state.PlayerName;
+                seats[currentPlayerSeatIndex].IsCurrentPlayer = true;
+            }
+        }
+
         // Update player's cards
         if (currentPlayerSeatIndex >= 0 && currentPlayerSeatIndex < seats.Count)
         {
@@ -518,24 +598,27 @@
             }
         }
 
-        // Update draw phase state
-        if (state.Draw is not null)
-        {
-            isPlayerDrawTurn = state.Draw.IsMyTurnToDraw;
-            if (state.Draw.IsMyTurnToDraw && !isDrawAnimating)
+            // Update draw phase state
+            if (state.Draw is not null)
             {
-                currentPlayerDrawCards = state.Hand.Select((c, i) => new CardInfo
+                isPlayerDrawTurn = state.Draw.IsMyTurnToDraw;
+                if (state.Draw.IsMyTurnToDraw && !isDrawAnimating)
                 {
-                    Rank = c.Rank,
-                    Suit = c.Suit,
-                    IsFaceUp = true,
-                    IsSelected = selectedDiscardIndices.Contains(i)
-                }).ToList();
+                    currentPlayerDrawCards = state.Hand.Select((c, i) => new CardInfo
+                    {
+                        Rank = c.Rank,
+                        Suit = c.Suit,
+                        IsFaceUp = true,
+                        IsSelected = selectedDiscardIndices.Contains(i)
+                    }).ToList();
+                }
             }
-        }
 
-        await InvokeAsync(StateHasChanged);
-    }
+            // Calculate hand odds from current cards
+            CalculateHandOdds(state.Hand);
+
+            await InvokeAsync(StateHasChanged);
+        }
 
     private void UpdateSeatsFromPublicState(IReadOnlyList<SeatPublicDto> publicSeats)
     {
@@ -698,8 +781,9 @@
             //TODO:ROB - Check for nulls and errors
             for (int i = 0; i < players.Count && i < seats.Count; i++)
             {
-                var isCurrentPlayer = !string.IsNullOrWhiteSpace(_loggedInUserEmail) &&
-                                      string.Equals(players[i].PlayerName, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase);
+                var currentUserMatch = currentPlayerName ?? _loggedInUserEmail;
+                var isCurrentPlayer = !string.IsNullOrWhiteSpace(currentUserMatch) &&
+                                      string.Equals(players[i].PlayerName, currentUserMatch, StringComparison.OrdinalIgnoreCase);
 
                 seats[i] = new SeatInfo
                 {
@@ -739,19 +823,42 @@
         if (isSeated || seats[seatIndex].IsOccupied)
             return;
 
-        // TODO: Send take seat request to server
-        seats[seatIndex] = new SeatInfo
+        try
         {
-            SeatIndex = seatIndex,
-            IsOccupied = true,
-            PlayerName = "You", // TODO: Get from auth
-            Chips = 1000,
-            IsCurrentPlayer = true
-        };
-        isSeated = true;
-        currentPlayerSeatIndex = seatIndex;
+            // Call the API to join the game at this seat
+            var request = new CardGames.Poker.Api.Clients.JoinGameRequest(seatIndex, 1000);
+            var response = await FiveCardDrawApiClient.JoinGameAsync(GameId, request);
 
-        await Task.CompletedTask;
+            if (!response.IsSuccessStatusCode)
+            {
+                Logger.LogWarning(
+                    "Failed to join game at seat {SeatIndex}: {StatusCode} - {Error}",
+                    seatIndex, response.StatusCode, response.Error?.Content);
+                return;
+            }
+
+            // Update local state - SignalR will also broadcast the update
+            _loggedInUserEmail ??= await GetLoggedInUserEmailAsync();
+            seats[seatIndex] = new SeatInfo
+            {
+                SeatIndex = seatIndex,
+                IsOccupied = true,
+                PlayerName = response.Content?.PlayerName ?? _loggedInUserEmail ?? "You",
+                Chips = 1000,
+                IsCurrentPlayer = true,
+                IsReady = false
+            };
+            isSeated = true;
+            currentPlayerSeatIndex = seatIndex;
+
+            Logger.LogInformation(
+                "Successfully joined game {GameId} at seat {SeatIndex}. CanPlayCurrentHand: {CanPlay}",
+                GameId, seatIndex, response.Content?.CanPlayCurrentHand);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error joining game at seat {SeatIndex}", seatIndex);
+        }
     }
 
     private async Task SetReadyAsync()
@@ -1093,19 +1200,153 @@
 
     public record PlayerActionRequest(BettingActionType Action, int? Amount);
 
+    public record ToastMessage(string Message, string Type);
+
     public async ValueTask DisposeAsync()
     {
         // Unsubscribe from SignalR events
         GameHubClient.OnTableStateUpdated -= HandleTableStateUpdatedAsync;
         GameHubClient.OnPrivateStateUpdated -= HandlePrivateStateUpdatedAsync;
+        GameHubClient.OnPlayerJoined -= HandlePlayerJoinedAsync;
         GameHubClient.OnConnectionStateChanged -= HandleConnectionStateChanged;
 
         // Leave the game and disconnect
         if (_currentGameId.HasValue)
-        {
-            await GameHubClient.LeaveGameAsync(_currentGameId.Value);
-        }
-    }
+                {
+                    await GameHubClient.LeaveGameAsync(_currentGameId.Value);
+                }
+            }
 
-    private Guid? _currentGameId => GameId;
-}
+            private Guid? _currentGameId => GameId;
+
+            /// <summary>
+            /// Calculates the hand odds locally using the OddsCalculator.
+            /// </summary>
+            private void CalculateHandOdds(IReadOnlyList<CardPrivateDto> playerCards)
+            {
+                if (playerCards.Count == 0)
+                {
+                    handOdds = [];
+                    return;
+                }
+
+                try
+                {
+                    // Convert CardPrivateDto to Card
+                    var coreCards = playerCards
+                        .Select(c => ConvertToCard(c.Rank, c.Suit))
+                        .Where(c => c is not null)
+                        .Cast<Card>()
+                        .ToList();
+
+                    if (coreCards.Count == 0)
+                    {
+                        handOdds = [];
+                        return;
+                    }
+
+                    // Get dead cards from folded players' visible cards
+                    var deadCards = seats
+                        .Where(s => s.IsFolded && s.Cards.Any())
+                        .SelectMany(s => s.Cards)
+                        .Where(c => c.IsFaceUp && c.Rank is not null && c.Suit is not null)
+                        .Select(c => ConvertToCard(c.Rank!, c.Suit!))
+                        .Where(c => c is not null)
+                        .Cast<Card>()
+                        .ToList();
+
+                    var result = OddsCalculator.CalculateDrawOdds(coreCards, deadCards);
+
+                    handOdds = ConvertToHandTypeOddsDtos(result);
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogWarning(ex, "Failed to calculate hand odds");
+                    handOdds = [];
+                }
+            }
+
+            private static Card? ConvertToCard(string rank, string suit)
+            {
+                var symbolValue = rank.ToUpperInvariant() switch
+                {
+                    "A" => 14,
+                    "K" => 13,
+                    "Q" => 12,
+                    "J" => 11,
+                    "10" or "T" => 10,
+                    "9" => 9,
+                    "8" => 8,
+                    "7" => 7,
+                    "6" => 6,
+                    "5" => 5,
+                    "4" => 4,
+                    "3" => 3,
+                    "2" => 2,
+                    _ => 0
+                };
+
+                if (symbolValue == 0)
+                {
+                    return null;
+                }
+
+                var suitValue = suit.ToLowerInvariant() switch
+                {
+                    "hearts" => Suit.Hearts,
+                    "diamonds" => Suit.Diamonds,
+                    "spades" => Suit.Spades,
+                    "clubs" => Suit.Clubs,
+                    _ => (Suit?)null
+                };
+
+                if (suitValue is null)
+                {
+                    return null;
+                }
+
+                return new Card(suitValue.Value, symbolValue);
+            }
+
+            private static List<HandTypeOddsDto> ConvertToHandTypeOddsDtos(OddsCalculator.OddsResult result)
+            {
+                // Order hand types from best to worst for display
+                var orderedHandTypes = new[]
+                {
+                    HandType.FiveOfAKind,
+                    HandType.StraightFlush,
+                    HandType.Quads,
+                    HandType.FullHouse,
+                    HandType.Flush,
+                    HandType.Straight,
+                    HandType.Trips,
+                    HandType.TwoPair,
+                    HandType.OnePair,
+                    HandType.HighCard
+                };
+
+                return orderedHandTypes
+                    .Where(ht => result.HandTypeProbabilities.ContainsKey(ht))
+                    .Select(ht => new HandTypeOddsDto(
+                        HandType: ht.ToString(),
+                        DisplayName: GetHandTypeDisplayName(ht),
+                        Probability: result.HandTypeProbabilities[ht]
+                    ))
+                    .ToList();
+            }
+
+            private static string GetHandTypeDisplayName(HandType handType) => handType switch
+            {
+                HandType.HighCard => "High Card",
+                HandType.OnePair => "One Pair",
+                HandType.TwoPair => "Two Pair",
+                HandType.Trips => "Three of a Kind",
+                HandType.Straight => "Straight",
+                HandType.Flush => "Flush",
+                HandType.FullHouse => "Full House",
+                HandType.Quads => "Four of a Kind",
+                HandType.StraightFlush => "Straight Flush",
+                HandType.FiveOfAKind => "Five of a Kind",
+                _ => handType.ToString()
+            };
+        }

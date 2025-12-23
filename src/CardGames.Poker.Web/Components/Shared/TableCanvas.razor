@@ -49,7 +49,8 @@
                     IsDealer="@(seat.SeatIndex == DealerSeatIndex)"
                     IsCurrentActor="@(seat.SeatIndex == CurrentActorSeatIndex)"
                     IsCurrentPlayer="@(seat.SeatIndex == CurrentPlayerSeatIndex)"
-                    ShowCards="@(CurrentPhase != GamePhase.WaitingForPlayers.ToString() && CurrentPhase != GamePhase.WaitingToStart.ToString())" />
+                    IsSeatSelectionDisabledForCurrentUser="@(DisableSeatSelectionForCurrentUser && !seat.IsOccupied)"
+                    ShowCards="@(CurrentPhase != GamePhase.WaitingForPlayers.ToString() && CurrentPhase != GamePhase.WaitingToStart.ToString() && seat.Cards.Count > 0)" />
             </div>
         }
     </div>
@@ -78,10 +79,18 @@
     public int CurrentPlayerSeatIndex { get; set; } = -1;
 
     [Parameter]
+    public bool DisableSeatSelectionForCurrentUser { get; set; }
+
+    [Parameter]
     public EventCallback<int> OnSeatClick { get; set; }
 
     private async Task HandleSeatClick(SeatInfo seat)
     {
+        if (DisableSeatSelectionForCurrentUser)
+        {
+            return;
+        }
+
         if (!seat.IsOccupied && OnSeatClick.HasDelegate)
         {
             await OnSeatClick.InvokeAsync(seat.SeatIndex);

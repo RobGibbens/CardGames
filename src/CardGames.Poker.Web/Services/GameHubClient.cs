@@ -30,6 +30,11 @@ public sealed class GameHubClient : IAsyncDisposable
     public event Func<PrivateStateDto, Task>? OnPrivateStateUpdated;
 
     /// <summary>
+    /// Fired when a player joins the game.
+    /// </summary>
+    public event Func<PlayerJoinedDto, Task>? OnPlayerJoined;
+
+    /// <summary>
     /// Fired when the connection state changes.
     /// </summary>
     public event Action<HubConnectionState>? OnConnectionStateChanged;
@@ -109,6 +114,7 @@ public sealed class GameHubClient : IAsyncDisposable
         // Subscribe to hub messages
         _hubConnection.On<TableStatePublicDto>("TableStateUpdated", HandleTableStateUpdated);
         _hubConnection.On<PrivateStateDto>("PrivateStateUpdated", HandlePrivateStateUpdated);
+        _hubConnection.On<PlayerJoinedDto>("PlayerJoined", HandlePlayerJoined);
 
         try
         {
@@ -333,6 +339,17 @@ public sealed class GameHubClient : IAsyncDisposable
         if (OnPrivateStateUpdated is not null)
         {
             await OnPrivateStateUpdated(state);
+        }
+    }
+
+    private async Task HandlePlayerJoined(PlayerJoinedDto notification)
+    {
+        _logger.LogDebug("Received PlayerJoined for game {GameId}, player {PlayerName} at seat {SeatIndex}",
+            notification.GameId, notification.PlayerName, notification.SeatIndex);
+
+        if (OnPlayerJoined is not null)
+        {
+            await OnPlayerJoined(notification);
         }
     }
 

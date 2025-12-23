@@ -106,8 +106,8 @@
     }
     else
     {
-        <div class="seat-name" title="Take a seat">
-            Take a seat
+        <div class="seat-name" title="@(IsSeatSelectionDisabledForCurrentUser ? "Empty seat" : "Take a seat")">
+            @(IsSeatSelectionDisabledForCurrentUser ? "Empty seat" : "Take a seat")
         </div>
     }
 </div>
@@ -127,6 +127,9 @@
 
     [Parameter]
     public bool ShowCards { get; set; }
+
+    [Parameter]
+    public bool IsSeatSelectionDisabledForCurrentUser { get; set; }
 
     private string GetAvatarStateClass()
     {

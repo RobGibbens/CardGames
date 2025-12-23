@@ -41,24 +41,37 @@ public class GetCurrentPlayerTurnQueryHandler(CardsDbContext context, HybridCach
 
 				var playerResponse = gamePlayer.ToCurrentPlayerResponse();
 
-				// Get the current betting round to calculate available actions
-				BettingRound? bettingRound = null;
-				try
-				{
-					bettingRound = await context.BettingRounds
-						.Where(br => br.GameId == request.GameId && br.HandNumber == game.CurrentHandNumber && !br.IsComplete)
+					// Get the current betting round to calculate available actions
+					BettingRound? bettingRound = null;
+					try
+					{
+						bettingRound = await context.BettingRounds
+							.Where(br => br.GameId == request.GameId && br.HandNumber == game.CurrentHandNumber && !br.IsComplete)
+							.AsNoTracking()
+							.FirstOrDefaultAsync(cancellationToken);
+					}
+					catch (Exception e)
+					{
+						Console.WriteLine(e);
+						throw;
+					}
+
+					var availableActions = CalculateAvailableActions(playerResponse, bettingRound);
+
+					// Calculate hand odds
+					// Get dead cards from folded players
+					var deadCards = await context.GameCards
+						.Where(gc => gc.GamePlayer.GameId == request.GameId 
+							&& gc.GamePlayer.HasFolded 
+							&& !gc.IsDiscarded)
 						.AsNoTracking()
-						.FirstOrDefaultAsync(cancellationToken);
-				}
-				catch (Exception e)
-				{
-					Console.WriteLine(e);
-					throw;
-				}
+						.ToListAsync(cancellationToken);
 
-				var availableActions = CalculateAvailableActions(playerResponse, bettingRound);
+					var handOdds = HandOddsCalculationService.CalculateDrawOdds(
+						gamePlayer.Cards,
+						deadCards);
 
-				return new GetCurrentPlayerTurnResponse(playerResponse, availableActions);
+					return new GetCurrentPlayerTurnResponse(playerResponse, availableActions, handOdds);
 			},
 			cancellationToken: cancellationToken,
 			tags: [Feature.Version, Feature.Name, nameof(GetCurrentPlayerTurnQuery)]

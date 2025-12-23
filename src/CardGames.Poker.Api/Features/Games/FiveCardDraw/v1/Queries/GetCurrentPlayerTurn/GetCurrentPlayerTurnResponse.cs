@@ -9,5 +9,6 @@ namespace CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Queries.GetCurrentP
 /// </summary>
 public record GetCurrentPlayerTurnResponse(
 	CurrentPlayerResponse Player,
-	AvailableActionsResponse? AvailableActions = null
+	AvailableActionsResponse? AvailableActions = null,
+	HandOddsResponse? HandOdds = null
 );
