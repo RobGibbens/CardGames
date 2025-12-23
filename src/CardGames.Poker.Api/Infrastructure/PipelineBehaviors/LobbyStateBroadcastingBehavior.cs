@@ -1,5 +1,6 @@
 using CardGames.Contracts.SignalR;
 using CardGames.Poker.Api.Data;
+using CardGames.Poker.Api.Extensions;
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Api.Services;
 using MediatR;
@@ -43,8 +44,13 @@ public sealed class LobbyStateBroadcastingBehavior<TRequest, TResponse> : IPipel
         // Execute the handler first
         var response = await next();
 
-        // Only broadcast for lobby state-changing commands
-        if (request is not ILobbyStateChangingCommand lobbyCommand)
+        // Only broadcast for commands that can affect lobby-visible state.
+        // This includes both lobby operations (create/delete) and game state changes
+        // that update status/phase shown on lobby table cards.
+        var lobbyCommand = request as ILobbyStateChangingCommand;
+        var gameCommand = request as IGameStateChangingCommand;
+        var gameId = lobbyCommand?.GameId ?? gameCommand?.GameId;
+        if (gameId is null)
         {
             return response;
         }
@@ -62,22 +68,22 @@ public sealed class LobbyStateBroadcastingBehavior<TRequest, TResponse> : IPipel
         {
             _logger.LogDebug(
                 "Broadcasting lobby update for game {GameId} after {CommandType}",
-                lobbyCommand.GameId, typeof(TRequest).Name);
+                gameId.Value, typeof(TRequest).Name);
 
-            var gameCreatedDto = await BuildGameCreatedDtoAsync(lobbyCommand.GameId, cancellationToken);
+            var gameCreatedDto = await BuildGameCreatedDtoAsync(gameId.Value, cancellationToken);
             if (gameCreatedDto is not null)
             {
                 await _broadcaster.BroadcastGameCreatedAsync(gameCreatedDto, cancellationToken);
 
                 _logger.LogInformation(
                     "Successfully broadcast lobby update for game {GameId} after {CommandType}",
-                    lobbyCommand.GameId, typeof(TRequest).Name);
+                    gameId.Value, typeof(TRequest).Name);
             }
             else
             {
                 _logger.LogWarning(
                     "Could not build GameCreatedDto for game {GameId} - game not found",
-                    lobbyCommand.GameId);
+                    gameId.Value);
             }
         }
         catch (Exception ex)
@@ -85,7 +91,7 @@ public sealed class LobbyStateBroadcastingBehavior<TRequest, TResponse> : IPipel
             // Log but don't fail the command - the state change was successful
             _logger.LogError(ex,
                 "Failed to broadcast lobby update for game {GameId} after {CommandType}",
-                lobbyCommand.GameId, typeof(TRequest).Name);
+                gameId.Value, typeof(TRequest).Name);
         }
 
         return response;
@@ -128,7 +134,10 @@ public sealed class LobbyStateBroadcastingBehavior<TRequest, TResponse> : IPipel
                 GameTypeDescription = description,
                 GameTypeImageName = imageName,
                 CurrentPhase = game.CurrentPhase,
-                Status = game.Status.ToString(),
+				CurrentPhaseDescription = PokerGamePhaseRegistry.TryResolve(gameTypeCode, game.CurrentPhase, out var phase)
+					? phase!.GetDescriptionOrName()
+					: game.CurrentPhase,
+				Status = game.Status.ToString(),
                 CreatedAt = game.CreatedAt,
                 Ante = game.Ante ?? 0,
                 MinBet = game.MinBet ?? 0,

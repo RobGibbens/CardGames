@@ -34,11 +34,12 @@ public sealed record GameCreatedDto
     /// The current phase of the game.
     /// </summary>
     public required string CurrentPhase { get; init; }
+    public required string CurrentPhaseDescription { get; init; }
 
-    /// <summary>
-    /// The status of the game.
-    /// </summary>
-    public required string Status { get; init; }
+	/// <summary>
+	/// The status of the game.
+	/// </summary>
+	public required string Status { get; init; }
 
     /// <summary>
     /// When the game was created.
