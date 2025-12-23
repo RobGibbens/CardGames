@@ -1023,7 +1023,7 @@ namespace CardGames.Poker.Api.Contracts
     public partial record GetActiveGamesResponse
     {
         [JsonConstructor]
-        public GetActiveGamesResponse(System.DateTimeOffset @createdAt, string @currentPhase, string @gameTypeCode, string @gameTypeDescription, System.Guid @gameTypeId, string @gameTypeImageName, string @gameTypeMetadataName, string @gameTypeName, System.Guid @id, string @name, string @rowVersion, GameStatus @status)
+        public GetActiveGamesResponse(System.DateTimeOffset @createdAt, string @createdById, string @createdByName, string @currentPhase, string @currentPhaseDescription, string @gameTypeCode, string @gameTypeDescription, System.Guid @gameTypeId, string @gameTypeImageName, string @gameTypeMetadataName, string @gameTypeName, System.Guid @id, string @name, string @rowVersion, GameStatus @status)
         {
             this.Id = @id;
             this.GameTypeId = @gameTypeId;
@@ -1034,8 +1034,11 @@ namespace CardGames.Poker.Api.Contracts
             this.GameTypeImageName = @gameTypeImageName;
             this.Name = @name;
             this.CurrentPhase = @currentPhase;
+            this.CurrentPhaseDescription = @currentPhaseDescription;
             this.Status = @status;
             this.CreatedAt = @createdAt;
+            this.CreatedById = @createdById;
+            this.CreatedByName = @createdByName;
             this.RowVersion = @rowVersion;
         }
 
@@ -1071,12 +1074,23 @@ namespace CardGames.Poker.Api.Contracts
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string CurrentPhase { get; init; }
 
+        [JsonPropertyName("currentPhaseDescription")]
+        public string CurrentPhaseDescription { get; init; }
+
         [JsonPropertyName("status")]
         public GameStatus Status { get; init; }
 
         [JsonPropertyName("createdAt")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public System.DateTimeOffset CreatedAt { get; init; }
+
+        [JsonPropertyName("createdById")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string CreatedById { get; init; }
+
+        [JsonPropertyName("createdByName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string CreatedByName { get; init; }
 
         [JsonPropertyName("rowVersion")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]

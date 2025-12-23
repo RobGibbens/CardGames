@@ -57,6 +57,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<ProjectReference Include="..\CardGames.Contracts\CardGames.Contracts.csproj" />
 		<ProjectReference Include="..\CardGames.Poker.Events\CardGames.Poker.Events.csproj" />
 		<ProjectReference Include="..\CardGames.ServiceDefaults\CardGames.ServiceDefaults.csproj" />
 		<ProjectReference Include="..\CardGames.Poker\CardGames.Poker.csproj" />

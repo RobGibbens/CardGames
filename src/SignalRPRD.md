@@ -346,20 +346,20 @@ Authentication must be compatible with SignalR negotiate:
 ## 9. Implementation Checklist (MVP)
 
 ### API
-1. Add SignalR services + map `GameHub`.
-2. Implement `GameHub.JoinGame/LeaveGame` with group membership.
-3. Create DTOs for public/private table state.
-4. Create a table state builder service.
-5. Create `IGameStateBroadcaster` using `IHubContext<GameHub>`.
-6. Broadcast after each state-changing HTTP endpoint completes.
+1. [x] Add SignalR services + map `GameHub`.
+2. [x] Implement `GameHub.JoinGame/LeaveGame` with group membership.
+3. [x] Create DTOs for public/private table state.
+4. [x] Create a table state builder service.
+5. [x] Create `IGameStateBroadcaster` using `IHubContext<GameHub>`.
+6. [x] Broadcast after each state-changing HTTP endpoint completes.
 
 ### Web
-1. Add SignalR client package.
-2. Implement `GameHubClient` (scoped).
-3. In `TablePlay.razor`, connect on init, call join.
-4. Subscribe to `TableStateUpdated` + `PrivateStateUpdated`.
-5. Remove polling loop.
-6. Keep HTTP commands but remove post-command refresh.
+1. [x] Add SignalR client package.
+2. [x] Implement `GameHubClient` (scoped).
+3. [x] In `TablePlay.razor`, connect on init, call join.
+4. [x] Subscribe to `TableStateUpdated` + `PrivateStateUpdated`.
+5. [x] Remove polling loop.
+6. [x] Keep HTTP commands but remove post-command refresh.
 
 ---
 

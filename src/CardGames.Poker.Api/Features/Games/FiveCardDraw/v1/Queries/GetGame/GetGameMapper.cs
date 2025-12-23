@@ -1,5 +1,6 @@
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Extensions;
+using CardGames.Poker.Api.Features.Games.ActiveGames.v1.Queries.GetActiveGames;
 using Riok.Mapperly.Abstractions;
 
 namespace CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Queries.GetGame;
@@ -19,6 +20,7 @@ public static partial class GetGameMapper
 			minimumNumberOfPlayers,
 			maximumNumberOfPlayers,
 			model.CurrentPhase,
+			PhaseDescriptionResolver.TryResolve(model.GameType?.Code, model.CurrentPhase),
 			model.CurrentHandNumber,
 			model.DealerPosition,
 			model.Ante,
