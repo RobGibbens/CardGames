@@ -63,8 +63,11 @@
     public int Pot { get; set; }
 
     [Parameter]
-    public string CurrentPhase { get; set; }
-
+    public string? CurrentPhase { get; set; }
+    
+    [Parameter]
+    public string? CurrentPhaseDescription { get; set; }
+    
     [Parameter]
     public int CurrentActorSeatIndex { get; set; } = -1;
 
@@ -87,7 +90,7 @@
 
     private string GetPhaseLabel()
     {
-        return CurrentPhase;
+        return CurrentPhaseDescription ?? "Unknown";
     }
 
     private string GetSeatPositionClass(int seatIndex)

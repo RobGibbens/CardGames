@@ -29,6 +29,7 @@ public class GetGameQueryHandler(CardsDbContext context, HybridCache hybridCache
 			$"{Feature.Version}-{request.CacheKey}",
 			async _ =>
 				await context.Games
+					.Include(g => g.GameType)
 					.Where(g => g.Id == request.GameId)
 					.AsNoTracking()
 					.ProjectToResponse(metadata.MinimumNumberOfPlayers, metadata.MaximumNumberOfPlayers)
