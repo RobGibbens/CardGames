@@ -101,6 +101,10 @@ public sealed class GameHubClient : IAsyncDisposable
                     {
                         options.Headers["X-User-Name"] = userInfo.Value.UserName;
                     }
+                    if (!string.IsNullOrEmpty(userInfo.Value.UserEmail))
+                    {
+                        options.Headers["X-User-Email"] = userInfo.Value.UserEmail;
+                    }
                 }
             })
             .WithAutomaticReconnect(new[] { TimeSpan.Zero, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30) })
@@ -213,7 +217,7 @@ public sealed class GameHubClient : IAsyncDisposable
         OnConnectionStateChanged?.Invoke(HubConnectionState.Disconnected);
     }
 
-    private string GetHubUrl((string? UserId, string? UserName)? userInfo)
+    private string GetHubUrl((string? UserId, string? UserName, string? UserEmail)? userInfo)
     {
         // Use service discovery URL pattern matching the API client configuration
         // The API is accessible at "https+http://api" via Aspire service discovery
@@ -236,13 +240,17 @@ public sealed class GameHubClient : IAsyncDisposable
             {
                 queryParams.Add($"userName={HttpUtility.UrlEncode(userInfo.Value.UserName)}");
             }
+            if (!string.IsNullOrEmpty(userInfo.Value.UserEmail))
+            {
+                queryParams.Add($"userEmail={HttpUtility.UrlEncode(userInfo.Value.UserEmail)}");
+            }
             url = $"{url}?{string.Join("&", queryParams)}";
         }
 
         return url;
     }
 
-    private async Task<(string? UserId, string? UserName)?> GetUserInfoAsync()
+    private async Task<(string? UserId, string? UserName, string? UserEmail)?> GetUserInfoAsync()
     {
         try
         {
@@ -257,12 +265,21 @@ public sealed class GameHubClient : IAsyncDisposable
             var userId = user.FindFirstValue(ClaimTypes.NameIdentifier)
                          ?? user.FindFirstValue("sub");
 
-            var userName = user.FindFirstValue(ClaimTypes.Email)
-                           ?? user.FindFirstValue("email")
+            var userEmail = user.FindFirstValue(ClaimTypes.Email)
+                         ?? user.FindFirstValue("email");
+
+            var userName = userEmail
                            ?? user.FindFirstValue("preferred_username")
                            ?? user.Identity?.Name;
 
-            return (userId, userName);
+            // If the IdP doesn't expose an email claim, fall back to treating the username
+            // as an email if it looks like one. This enables server-side SignalR routing
+            // via IUserIdProvider when the database uses email/name as the stable key.
+            userEmail ??= (!string.IsNullOrWhiteSpace(userName) && userName.Contains('@'))
+                ? userName
+                : null;
+
+            return (userId, userName, userEmail);
         }
         catch (Exception ex)
         {
