@@ -16,20 +16,19 @@ public class CurrentUserService(IHttpContextAccessor httpContextAccessor) : ICur
 	{
 		get
 		{
-			// First try claims from JWT authentication
 			var claimUserId = User?.FindFirstValue(ClaimTypes.NameIdentifier)
-							  ?? User?.FindFirstValue("oid")  // Azure AD Object ID
-							  ?? User?.FindFirstValue("sub"); // JWT subject claim
+				?? User?.FindFirstValue("oid")
+				?? User?.FindFirstValue("sub");
 
 			if (!string.IsNullOrWhiteSpace(claimUserId))
 			{
 				return claimUserId;
 			}
 
-			// Fallback to custom header from Blazor frontend
 			if (HttpContext?.Request.Headers.TryGetValue("X-User-Id", out var headerUserId) == true)
 			{
-				return headerUserId.ToString();
+				var value = headerUserId.ToString();
+				return string.IsNullOrWhiteSpace(value) ? null : value;
 			}
 
 			return null;
@@ -41,21 +40,43 @@ public class CurrentUserService(IHttpContextAccessor httpContextAccessor) : ICur
 	{
 		get
 		{
-			// First try claims from JWT authentication
 			var claimUserName = User?.FindFirstValue(ClaimTypes.Email)
-								?? User?.FindFirstValue("email")
-								?? User?.FindFirstValue("preferred_username")
-								?? User?.Identity?.Name;
+				?? User?.FindFirstValue("email")
+				?? User?.FindFirstValue("preferred_username")
+				?? User?.Identity?.Name;
 
 			if (!string.IsNullOrWhiteSpace(claimUserName))
 			{
 				return claimUserName;
 			}
 
-			// Fallback to custom header from Blazor frontend
 			if (HttpContext?.Request.Headers.TryGetValue("X-User-Name", out var headerUserName) == true)
 			{
-				return headerUserName.ToString();
+				var value = headerUserName.ToString();
+				return string.IsNullOrWhiteSpace(value) ? null : value;
+			}
+
+			return null;
+		}
+	}
+
+	/// <inheritdoc />
+	public string? UserEmail
+	{
+		get
+		{
+			var claimEmail = User?.FindFirstValue(ClaimTypes.Email)
+				?? User?.FindFirstValue("email");
+
+			if (!string.IsNullOrWhiteSpace(claimEmail))
+			{
+				return claimEmail;
+			}
+
+			if (HttpContext?.Request.Headers.TryGetValue("X-User-Email", out var headerEmail) == true)
+			{
+				var value = headerEmail.ToString();
+				return string.IsNullOrWhiteSpace(value) ? null : value;
 			}
 
 			return null;
@@ -67,13 +88,11 @@ public class CurrentUserService(IHttpContextAccessor httpContextAccessor) : ICur
 	{
 		get
 		{
-			// Check JWT authentication first
 			if (User?.Identity?.IsAuthenticated == true)
 			{
 				return true;
 			}
 
-			// Fallback to custom header from Blazor frontend
 			if (HttpContext?.Request.Headers.TryGetValue("X-User-Authenticated", out var headerAuth) == true)
 			{
 				return string.Equals(headerAuth.ToString(), "true", StringComparison.OrdinalIgnoreCase);

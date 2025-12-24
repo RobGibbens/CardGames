@@ -1,9 +1,9 @@
-- Start a new hand when one completes
 - Check that setting the ante works correctly
 - Add the ability to edit table settings if the table isn't started yet
-- Hide the results overlay after a timer
 - Make the results overlay look better
 - Show current standings
 - Show hand history
-- Show the user's avatar on TableSeat
+- Show the user's avatar on TableSeat and their name
+- Always make the logged in player the bottom seat
 - Have the ability for someone to take a seat and be dealt into the next hand
+- When already logged in, take them to the Lobby

@@ -4,6 +4,7 @@ using CardGames.Poker.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CardGames.Poker.Api.Migrations
 {
     [DbContext(typeof(CardsDbContext))]
-    partial class CardsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251224171055_AddContinuousPlayFields")]
+    partial class AddContinuousPlayFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -344,13 +347,9 @@ namespace CardGames.Poker.Api.Migrations
 
                     b.HasIndex("GameTypeId");
 
-                    b.HasIndex("NextHandStartsAt");
-
                     b.HasIndex("Status");
 
                     b.HasIndex("Status", "CreatedAt");
-
-                    b.HasIndex("CurrentPhase", "Status", "NextHandStartsAt");
 
                     b.ToTable("Games");
                 });

@@ -65,19 +65,31 @@ builder.Services.AddValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<IValidationMarker>();
 builder.Services.AddFluentValidationAutoValidation();
 
-// Add SignalR services
-builder.Services.AddSignalR();
+// Add SignalR services with JSON options to handle circular references
+builder.Services.AddSignalR()
+	.AddJsonProtocol(options =>
+	{
+		options.PayloadSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+		options.PayloadSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+	});
 builder.Services.AddSingleton<IUserIdProvider, SignalRUserIdProvider>();
 builder.Services.AddScoped<ITableStateBuilder, TableStateBuilder>();
 builder.Services.AddScoped<IGameStateBroadcaster, GameStateBroadcaster>();
 builder.Services.AddScoped<ILobbyBroadcaster, LobbyBroadcaster>();
+
+// Add background service for continuous play (auto-start next hands)
+builder.Services.AddHostedService<ContinuousPlayBackgroundService>();
 
 builder.AddRedisDistributedCache("cache");
 
 builder.AddSqlServerDbContext<CardsDbContext>("cardsdb");
 
 builder.Services.AddFusionCache()
-	.WithSerializer(new FusionCacheSystemTextJsonSerializer())
+	.WithSerializer(new FusionCacheSystemTextJsonSerializer(new System.Text.Json.JsonSerializerOptions
+	{
+		ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles,
+		PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
+	}))
 	//TODO:ROB = .WithDefaultEntryOptions(options => options.Duration = TimeSpan.FromMinutes(5))
 	.WithDefaultEntryOptions(options => options.Duration = TimeSpan.FromMilliseconds(2))
 	.WithRegisteredDistributedCache()
@@ -173,11 +185,12 @@ builder.Services.AddOpenApi(options =>
 	});
 });
 
-// Configure JSON serialization to support string enums
+// Configure JSON serialization to support string enums and handle circular references
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
 	options.SerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
 	options.SerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+	options.SerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
 });
 
 

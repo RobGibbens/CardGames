@@ -144,6 +144,10 @@
                 "{Name} logged in with {LoginProvider} provider.",
                 externalLoginInfo.Principal.Identity?.Name,
                 externalLoginInfo.LoginProvider);
+
+            // Update profile fields from OAuth claims if they are missing.
+            await UpdateUserProfileFromClaimsAsync(externalLoginInfo);
+
             RedirectManager.RedirectTo(ReturnUrl);
             return;
         }
@@ -281,5 +285,79 @@
 		}
 
 		return null;
+	}
+
+	/// <summary>
+	/// Updates the user's profile fields from OAuth claims if they are missing.
+	/// Ensures existing users have their profile populated after login.
+	/// </summary>
+	private async Task UpdateUserProfileFromClaimsAsync(ExternalLoginInfo loginInfo)
+	{
+		var user = await UserManager.FindByLoginAsync(loginInfo.LoginProvider, loginInfo.ProviderKey);
+		if (user is null)
+		{
+			return;
+		}
+
+		var needsUpdate = false;
+
+		if (string.IsNullOrWhiteSpace(user.FirstName))
+		{
+			var firstName = GetFirstClaimValue(loginInfo.Principal,
+				ClaimTypes.GivenName,
+				"given_name",
+				"first_name");
+			if (!string.IsNullOrWhiteSpace(firstName))
+			{
+				user.FirstName = firstName.Trim();
+				needsUpdate = true;
+			}
+		}
+
+		if (string.IsNullOrWhiteSpace(user.LastName))
+		{
+			var lastName = GetFirstClaimValue(loginInfo.Principal,
+				ClaimTypes.Surname,
+				"family_name",
+				"last_name");
+			if (!string.IsNullOrWhiteSpace(lastName))
+			{
+				user.LastName = lastName.Trim();
+				needsUpdate = true;
+			}
+		}
+
+		if (string.IsNullOrWhiteSpace(user.AvatarUrl))
+		{
+			var avatarUrl = GetFirstClaimValue(loginInfo.Principal,
+				"picture",
+				"avatar_url",
+				"urn:google:picture");
+			if (!string.IsNullOrWhiteSpace(avatarUrl))
+			{
+				user.AvatarUrl = avatarUrl.Trim();
+				needsUpdate = true;
+			}
+		}
+
+		if (needsUpdate)
+		{
+			var updateResult = await UserManager.UpdateAsync(user);
+			if (!updateResult.Succeeded)
+			{
+				Logger.LogWarning(
+					"Failed to update profile for user {UserId} from {LoginProvider} claims: {Errors}",
+					user.Id,
+					loginInfo.LoginProvider,
+					string.Join(", ", updateResult.Errors.Select(e => e.Description)));
+			}
+			else
+			{
+				Logger.LogInformation(
+					"Updated profile fields for user {UserId} from {LoginProvider} claims",
+					user.Id,
+					loginInfo.LoginProvider);
+			}
+		}
 	}
 }

@@ -73,11 +73,35 @@ public sealed record TableStatePublicDto
     /// </summary>
     public required IReadOnlyList<SeatPublicDto> Seats { get; init; }
 
-    /// <summary>
-    /// Showdown information, if the game is in showdown phase.
-    /// </summary>
-    public ShowdownPublicDto? Showdown { get; init; }
-}
+        /// <summary>
+        /// Showdown information, if the game is in showdown phase.
+        /// </summary>
+        public ShowdownPublicDto? Showdown { get; init; }
+
+        /// <summary>
+        /// The UTC timestamp when the current hand was completed.
+        /// Used by clients to synchronize the results display period.
+        /// </summary>
+        public DateTimeOffset? HandCompletedAtUtc { get; init; }
+
+        /// <summary>
+        /// The UTC timestamp when the next hand is scheduled to start.
+        /// Clients can use this for countdown display.
+        /// </summary>
+        public DateTimeOffset? NextHandStartsAtUtc { get; init; }
+
+        /// <summary>
+        /// Whether the game is currently in the results display phase
+        /// (hand completed, showing results before next hand starts).
+        /// </summary>
+        public bool IsResultsPhase { get; init; }
+
+        /// <summary>
+        /// The number of seconds remaining until the next hand starts.
+        /// Only populated during the results phase.
+        /// </summary>
+        public int? SecondsUntilNextHand { get; init; }
+    }
 
 /// <summary>
 /// Public state for a single seat at the table.
@@ -99,6 +123,16 @@ public sealed record SeatPublicDto
     /// The name of the player in this seat, if occupied.
     /// </summary>
     public string? PlayerName { get; init; }
+
+    /// <summary>
+    /// The player's first name, if known.
+    /// </summary>
+    public string? PlayerFirstName { get; init; }
+
+    /// <summary>
+    /// The player's avatar URL, if they have configured one.
+    /// </summary>
+    public string? PlayerAvatarUrl { get; init; }
 
     /// <summary>
     /// The player's current chip stack.
@@ -124,6 +158,17 @@ public sealed record SeatPublicDto
     /// Whether the player is disconnected.
     /// </summary>
     public bool IsDisconnected { get; init; }
+
+    /// <summary>
+    /// Whether the player is sitting out (not participating in the current hand).
+    /// </summary>
+    public bool IsSittingOut { get; init; }
+
+    /// <summary>
+    /// The reason why the player is sitting out, if applicable.
+    /// Examples: "Insufficient chips", "Voluntarily sitting out".
+    /// </summary>
+    public string? SittingOutReason { get; init; }
 
     /// <summary>
     /// The player's current bet amount in this betting round.

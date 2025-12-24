@@ -1413,12 +1413,18 @@ namespace CardGames.Poker.Api.Contracts
     public partial record GetGamePlayersResponse
     {
         [JsonConstructor]
-        public GetGamePlayersResponse(int @chipStack, int @currentBet, System.Guid @gameId, ICollection<DealtCard> @hand, bool @hasDrawnThisRound, bool @hasFolded, System.Guid @id, bool @isAllIn, bool @isConnected, bool @isSittingOut, System.DateTimeOffset @joinedAt, System.Guid @playerId, string @playerName, string @rowVersion, int @seatPosition, int @startingChips, GamePlayerStatus @status, int @totalContributedThisHand)
+        public GetGamePlayersResponse(int chipStack, int currentBet, Guid gameId, ICollection<DealtCard> hand,
+	        bool hasDrawnThisRound, bool hasFolded, Guid id, bool isAllIn, bool isConnected, bool isSittingOut,
+	        DateTimeOffset joinedAt, Guid playerId, string playerName, string rowVersion, int seatPosition,
+	        int startingChips, GamePlayerStatus status, int totalContributedThisHand, string playerFirstName,
+	        string playerAvatarUrl)
         {
             this.Id = @id;
             this.GameId = @gameId;
             this.PlayerId = @playerId;
-            this.PlayerName = @playerName;
+            this.PlayerFirstName = @playerFirstName;
+            this.PlayerAvatarUrl = @playerAvatarUrl;
+			this.PlayerName = @playerName;
             this.SeatPosition = @seatPosition;
             this.ChipStack = @chipStack;
             this.StartingChips = @startingChips;
@@ -1435,7 +1441,8 @@ namespace CardGames.Poker.Api.Contracts
             this.Hand = @hand;
         }
 
-        [JsonPropertyName("id")]
+
+		[JsonPropertyName("id")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public System.Guid Id { get; init; }
 
@@ -1447,7 +1454,16 @@ namespace CardGames.Poker.Api.Contracts
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public System.Guid PlayerId { get; init; }
 
-        [JsonPropertyName("playerName")]
+        [JsonPropertyName("playerFirstName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string? PlayerFirstName { get; init; }
+
+        [JsonPropertyName("playerAvatarUrl")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string? PlayerAvatarUrl { get; init; }
+
+
+		[JsonPropertyName("playerName")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string PlayerName { get; init; }
 
@@ -1729,12 +1745,15 @@ namespace CardGames.Poker.Api.Contracts
     public partial record JoinGameSuccessful
     {
         [JsonConstructor]
-        public JoinGameSuccessful(bool @canPlayCurrentHand, System.Guid @gameId, string @playerName, int @seatIndex)
+        public JoinGameSuccessful(bool canPlayCurrentHand, Guid gameId, string playerName, int seatIndex,
+	        string playerAvatarUrl, string playerFirstName)
         {
             this.GameId = @gameId;
             this.SeatIndex = @seatIndex;
             this.PlayerName = @playerName;
-            this.CanPlayCurrentHand = @canPlayCurrentHand;
+            this.PlayerAvatarUrl = @playerAvatarUrl;
+            this.PlayerFirstName = @playerFirstName;
+			this.CanPlayCurrentHand = @canPlayCurrentHand;
         }
 
         [JsonPropertyName("gameId")]
@@ -1746,9 +1765,25 @@ namespace CardGames.Poker.Api.Contracts
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int SeatIndex { get; init; }
 
-        [JsonPropertyName("playerName")]
+        [JsonPropertyName("playerAvatarUrl")]
+
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string PlayerAvatarUrl { get; init; }
+        
+        [JsonPropertyName("playerFirstName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string PlayerFirstName { get; init; }
+
+
+
+
+		[JsonPropertyName("playerName")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string PlayerName { get; init; }
+
+
+
+
 
         [JsonPropertyName("canPlayCurrentHand")]
         public bool CanPlayCurrentHand { get; init; }

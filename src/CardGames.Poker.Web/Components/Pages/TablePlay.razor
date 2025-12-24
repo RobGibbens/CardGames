@@ -276,28 +276,37 @@
                             }
                         </div>
 
-                        <div class="showdown-hands">
-                            <h3>Hands</h3>
-                            @foreach (var hand in _showdownResult.PlayerHands.OrderByDescending(h => h.IsWinner == true))
-                            {
-                                <div class="showdown-hand-row @(hand.IsWinner == true ? "is-winner" : "")">
-                                    <span class="player">@hand.PlayerName</span>
-                                    <span class="hand-type">@hand.HandType</span>
-                                    @if (hand.AmountWon > 0)
-                                    {
-                                        <span class="won">+@hand.AmountWon</span>
-                                    }
-                                </div>
-                            }
-                        </div>
-                    }
+                                                <div class="showdown-hands">
+                                                    <h3>Hands</h3>
+                                                    @foreach (var hand in _showdownResult.PlayerHands.OrderByDescending(h => h.IsWinner == true))
+                                                    {
+                                                        <div class="showdown-hand-row @(hand.IsWinner == true ? "is-winner" : "")">
+                                                            <span class="player">@hand.PlayerName</span>
+                                                            <span class="hand-type">@hand.HandType</span>
+                                                            @if (hand.AmountWon > 0)
+                                                            {
+                                                                <span class="won">+@hand.AmountWon</span>
+                                                            }
+                                                        </div>
+                                                    }
+                                                </div>
+                                            }
 
-                    <p class="showdown-hint">Next hand will start automatically.</p>
-                </div>
-            </div>
-        }
-    }
-</main>
+                                            <div class="showdown-countdown">
+                                                @if (_secondsUntilNextHand > 0)
+                                                {
+                                                    <p class="showdown-hint">Next hand starts in <strong>@_secondsUntilNextHand</strong> seconds...</p>
+                                                }
+                                                else
+                                                {
+                                                    <p class="showdown-hint">Starting next hand...</p>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            }
+                        </main>
 
 @code {
     [Parameter]
@@ -356,6 +365,11 @@
     private bool _showShowdownOverlay;
     private bool _showdownWon;
     private bool _showdownLost;
+
+    // Continuous play state
+    private int _secondsUntilNextHand;
+    private bool _isResultsPhase;
+    private System.Threading.Timer? _countdownTimer;
 
     // Hand odds state
     private List<HandTypeOddsDto> handOdds = [];
@@ -507,6 +521,25 @@
                 await TryLoadShowdownAsync();
             }
 
+            // Handle continuous play countdown
+            _isResultsPhase = state.IsResultsPhase;
+            _secondsUntilNextHand = state.SecondsUntilNextHand ?? 0;
+
+            if (_isResultsPhase && _secondsUntilNextHand > 0)
+            {
+                StartCountdownTimer();
+            }
+            else if (!_isResultsPhase)
+            {
+                StopCountdownTimer();
+                // Clear showdown overlay when new hand starts
+                if (state.CurrentPhase != "Complete" && state.CurrentPhase != "Showdown")
+                {
+                    _showShowdownOverlay = false;
+                    _showdownResult = null;
+                }
+            }
+
             // Update phase-dependent state
             isDrawPhase = state.CurrentPhase == "DrawPhase";
 
@@ -648,12 +681,16 @@
                     SeatIndex = publicSeat.SeatIndex,
                     IsOccupied = publicSeat.IsOccupied,
                     PlayerName = publicSeat.PlayerName,
+                    PlayerAvatarUrl = publicSeat.PlayerAvatarUrl,
+                    PlayerFirstName = publicSeat.PlayerFirstName,
                     Chips = publicSeat.Chips,
                     IsReady = publicSeat.IsReady,
                     IsCurrentPlayer = isCurrentPlayer,
                     IsFolded = publicSeat.IsFolded,
                     IsAllIn = publicSeat.IsAllIn,
                     IsDisconnected = publicSeat.IsDisconnected,
+                    IsSittingOut = publicSeat.IsSittingOut,
+                    SittingOutReason = publicSeat.SittingOutReason,
                     CurrentBet = publicSeat.CurrentBet,
                     Cards = cards
                 };
@@ -792,6 +829,8 @@
                     SeatIndex = i,
                     IsOccupied = true,
                     PlayerName = players[i].PlayerName,
+                    PlayerAvatarUrl = players[i].PlayerAvatarUrl,
+                    PlayerFirstName = players[i].PlayerFirstName,
                     Chips = players[i].StartingChips,
                     IsReady = players[i].Status == GamePlayerStatus.Active,
                     IsCurrentPlayer = isCurrentPlayer,
@@ -846,6 +885,8 @@
                 SeatIndex = seatIndex,
                 IsOccupied = true,
                 PlayerName = response.Content?.PlayerName ?? _loggedInUserEmail ?? "You",
+                PlayerAvatarUrl = response.Content?.PlayerAvatarUrl,
+                PlayerFirstName = response.Content?.PlayerFirstName,
                 Chips = 1000,
                 IsCurrentPlayer = true,
                 IsReady = false
@@ -1233,21 +1274,25 @@
         [Description("Collecting Antes")] CollectingAntes,
     }
 
-    public record SeatInfo
-    {
-        public int SeatIndex { get; init; }
-        public bool IsOccupied { get; set; }
-        public string? PlayerName { get; set; }
-        public int Chips { get; set; }
-        public bool IsReady { get; set; }
-        public bool IsCurrentPlayer { get; set; }
-        public bool IsFolded { get; set; }
-        public bool IsAllIn { get; set; }
-        public bool IsDisconnected { get; set; }
-        public int CurrentBet { get; set; }
-        public List<CardInfo> Cards { get; set; } = [];
+	public record SeatInfo
+	{
+		public int SeatIndex { get; init; }
+		public bool IsOccupied { get; set; }
+		public string? PlayerName { get; set; }
+		public string? PlayerFirstName { get; set; }
+		public string? PlayerAvatarUrl { get; set; }
+		public int Chips { get; set; }
+		public bool IsReady { get; set; }
+		public bool IsCurrentPlayer { get; set; }
+		public bool IsFolded { get; set; }
+		public bool IsAllIn { get; set; }
+		public bool IsDisconnected { get; set; }
+		public bool IsSittingOut { get; set; }
+		public string? SittingOutReason { get; set; }
+		public int CurrentBet { get; set; }
+		public List<CardInfo> Cards { get; set; } = [];
 		public string? HandEvaluationDescription { get; set; }
-    }
+	}
 
     public record CardInfo
     {
@@ -1261,8 +1306,39 @@
 
     public record ToastMessage(string Message, string Type);
 
+    private void StartCountdownTimer()
+    {
+        // Only start if not already running
+        if (_countdownTimer is not null)
+        {
+            return;
+        }
+
+        _countdownTimer = new System.Threading.Timer(async _ =>
+        {
+            if (_secondsUntilNextHand > 0)
+            {
+                _secondsUntilNextHand--;
+                await InvokeAsync(StateHasChanged);
+            }
+            else
+            {
+                StopCountdownTimer();
+            }
+        }, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+    }
+
+    private void StopCountdownTimer()
+    {
+        _countdownTimer?.Dispose();
+        _countdownTimer = null;
+    }
+
     public async ValueTask DisposeAsync()
     {
+        // Stop countdown timer
+        StopCountdownTimer();
+
         // Unsubscribe from SignalR events
         GameHubClient.OnTableStateUpdated -= HandleTableStateUpdatedAsync;
         GameHubClient.OnPrivateStateUpdated -= HandlePrivateStateUpdatedAsync;

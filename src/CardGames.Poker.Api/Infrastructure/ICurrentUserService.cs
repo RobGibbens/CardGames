@@ -18,6 +18,12 @@ public interface ICurrentUserService
 	string? UserName { get; }
 
 	/// <summary>
+	/// Gets the email address of the currently authenticated user.
+	/// </summary>
+	/// <returns>The user's email, or null if not available.</returns>
+	string? UserEmail { get; }
+
+	/// <summary>
 	/// Gets a value indicating whether the user is authenticated.
 	/// </summary>
 	bool IsAuthenticated { get; }

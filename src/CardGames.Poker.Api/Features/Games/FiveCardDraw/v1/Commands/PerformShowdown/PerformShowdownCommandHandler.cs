@@ -1,6 +1,7 @@
 using CardGames.Core.French.Cards;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Services;
 using CardGames.Poker.Games.FiveCardDraw;
 using CardGames.Poker.Hands.DrawHands;
 using MediatR;
@@ -40,6 +41,9 @@ public class PerformShowdownCommandHandler(CardsDbContext context)
 			};
 		}
 
+		// Filter pots to current hand (in case there are old unawarded pots from edge cases)
+		var currentHandPots = game.Pots.Where(p => p.HandNumber == game.CurrentHandNumber).ToList();
+
 		// 2. Validate game is in showdown phase
 		if (game.CurrentPhase != nameof(FiveCardDrawPhase.Showdown))
 		{
@@ -69,8 +73,8 @@ public class PerformShowdownCommandHandler(CardsDbContext context)
 			.GroupBy(c => c.GamePlayerId!.Value)
 			.ToDictionary(g => g.Key, g => g.ToList());
 
-		// 5. Calculate total pot
-		var totalPot = game.Pots.Sum(p => p.Amount);
+		// 5. Calculate total pot (only from current hand's pots)
+		var totalPot = currentHandPots.Sum(p => p.Amount);
 
 		// 6. Handle win by fold (only one player remaining)
 		if (playersInHand.Count == 1)
@@ -79,7 +83,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context)
 			winner.ChipStack += totalPot;
 
 			// Mark pots as awarded
-			foreach (var pot in game.Pots)
+			foreach (var pot in currentHandPots)
 			{
 				pot.IsAwarded = true;
 				pot.AwardedAt = now;
@@ -88,6 +92,8 @@ public class PerformShowdownCommandHandler(CardsDbContext context)
 
 			game.CurrentPhase = nameof(FiveCardDrawPhase.Complete);
 			game.UpdatedAt = now;
+			game.HandCompletedAt = now;
+			game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);
 			MoveDealer(game);
 
 			await context.SaveChangesAsync(cancellationToken);
@@ -169,7 +175,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context)
 			? $"Split pot - {playerHandEvaluations[winners[0]].hand.Type}"
 			: playerHandEvaluations[winners[0]].hand.Type.ToString();
 
-		foreach (var pot in game.Pots)
+		foreach (var pot in currentHandPots)
 		{
 			pot.IsAwarded = true;
 			pot.AwardedAt = now;
@@ -179,6 +185,8 @@ public class PerformShowdownCommandHandler(CardsDbContext context)
 		// 12. Update game state
 		game.CurrentPhase = nameof(FiveCardDrawPhase.Complete);
 		game.UpdatedAt = now;
+		game.HandCompletedAt = now;
+		game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);
 		MoveDealer(game);
 
 		await context.SaveChangesAsync(cancellationToken);
@@ -207,24 +215,50 @@ public class PerformShowdownCommandHandler(CardsDbContext context)
 			GameId = game.Id,
 			WonByFold = false,
 			CurrentPhase = game.CurrentPhase,
-			Payouts = payouts,
-			PlayerHands = playerHandsList
-		};
-	}
+					Payouts = payouts,
+					PlayerHands = playerHandsList
+				};
+				}
 
-	/// <summary>
-	/// Moves the dealer button to the next position.
-	/// </summary>
-	private static void MoveDealer(Game game)
-	{
-		var totalPlayers = game.GamePlayers.Count;
-		game.DealerPosition = (game.DealerPosition + 1) % totalPlayers;
-	}
+			/// <summary>
+			/// Moves the dealer button to the next occupied seat position (clockwise).
+			/// Skips empty seats but allows sitting-out players to hold the button.
+			/// </summary>
+			private static void MoveDealer(Game game)
+			{
+				var occupiedSeats = game.GamePlayers
+					.Where(gp => gp.Status == GamePlayerStatus.Active)
+					.OrderBy(gp => gp.SeatPosition)
+					.Select(gp => gp.SeatPosition)
+					.ToList();
 
-	/// <summary>
-	/// Maps entity CardSuit to core library Suit.
-	/// </summary>
-	private static Suit MapSuit(CardSuit suit) => suit switch
+				if (occupiedSeats.Count == 0)
+				{
+					return;
+				}
+
+				var currentPosition = game.DealerPosition;
+
+				// Find next occupied seat clockwise from current position
+				// Look for seats with higher position numbers first
+				var seatsAfterCurrent = occupiedSeats.Where(pos => pos > currentPosition).ToList();
+
+				if (seatsAfterCurrent.Count > 0)
+				{
+					// Found a seat after the current dealer position
+					game.DealerPosition = seatsAfterCurrent.First();
+				}
+				else
+				{
+					// No seats after current position, wrap around to first occupied seat
+					game.DealerPosition = occupiedSeats.First();
+				}
+			}
+
+			/// <summary>
+			/// Maps entity CardSuit to core library Suit.
+			/// </summary>
+			private static Suit MapSuit(CardSuit suit) => suit switch
 	{
 		CardSuit.Hearts => Suit.Hearts,
 		CardSuit.Diamonds => Suit.Diamonds,

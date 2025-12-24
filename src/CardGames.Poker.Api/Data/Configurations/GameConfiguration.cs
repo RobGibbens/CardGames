@@ -45,7 +45,11 @@ public class GameConfiguration : IEntityTypeConfiguration<Game>
 
 		builder.HasIndex(t => t.CreatedAt);
 
+		builder.HasIndex(t => t.NextHandStartsAt);
+
 		builder.HasIndex(t => new { t.Status, t.CreatedAt });
+
+		builder.HasIndex(t => new { t.CurrentPhase, t.Status, t.NextHandStartsAt });
 
 		// Relationships
 		builder.HasOne(t => t.GameType)

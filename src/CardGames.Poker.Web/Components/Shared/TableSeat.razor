@@ -7,11 +7,15 @@
     {
         <!-- Player avatar -->
         <div class="seat-avatar @GetAvatarStateClass()">
-            <span class="avatar-initials">@GetInitials(Seat.PlayerName)</span>
-            @if (IsDealer)
-            {
-                <span class="dealer-chip" title="Dealer">D</span>
-            }
+			@if (!string.IsNullOrWhiteSpace(Seat.PlayerAvatarUrl))
+			{
+				<img class="avatar-image" src="@Seat.PlayerAvatarUrl" alt="@GetDisplayName()" />
+			}
+			else
+			{
+				<span class="avatar-initials">@GetInitials(GetDisplayName())</span>
+			}
+
             @if (Seat.IsDisconnected)
             {
                 <span class="disconnected-icon" title="Disconnected">?</span>
@@ -20,7 +24,7 @@
 
         <!-- Player name -->
         <div class="seat-name" title="@Seat.PlayerName">
-            @Seat.PlayerName
+            @GetDisplayName()
             @if (IsCurrentPlayer)
             {
                 <span class="you-badge">(You)</span>
@@ -46,7 +50,13 @@
 
         <!-- Player status badges -->
         <div class="seat-status">
-            @if (Seat.IsFolded)
+            @if (Seat.IsSittingOut)
+            {
+                <span class="status-badge sitting-out" title="@(Seat.SittingOutReason ?? "Sitting out")">
+                    @(string.IsNullOrWhiteSpace(Seat.SittingOutReason) ? "Sitting Out" : Seat.SittingOutReason)
+                </span>
+            }
+            else if (Seat.IsFolded)
             {
                 <span class="status-badge folded">Folded</span>
             }
@@ -144,15 +154,18 @@
 
         if (IsCurrentActor)
             classes.Add("active-turn");
-        
+
         if (Seat.IsFolded)
             classes.Add("folded");
-        
+
         if (Seat.IsAllIn)
             classes.Add("all-in");
 
         if (Seat.IsDisconnected)
             classes.Add("disconnected");
+
+        if (Seat.IsSittingOut)
+            classes.Add("sitting-out");
 
         if (IsCurrentPlayer)
             classes.Add("current-player");
@@ -173,6 +186,29 @@
             _ => $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant()
         };
     }
+
+	private string GetDisplayName()
+	{
+		if (!string.IsNullOrWhiteSpace(Seat.PlayerFirstName))
+		{
+			return Seat.PlayerFirstName;
+		}
+
+		var name = Seat.PlayerName;
+		if (string.IsNullOrWhiteSpace(name))
+		{
+			return "?";
+		}
+
+		var atIndex = name.IndexOf("@", StringComparison.Ordinal);
+		if (atIndex > 0)
+		{
+			return name[..atIndex];
+		}
+
+		var spaceIndex = name.IndexOf(' ', StringComparison.Ordinal);
+		return spaceIndex > 0 ? name[..spaceIndex] : name;
+	}
 
     private static string GetSuitSymbol(string? suit)
     {

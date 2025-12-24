@@ -11,4 +11,6 @@ public record JoinGameSuccessful(
     Guid GameId,
     int SeatIndex,
     string PlayerName,
-    bool CanPlayCurrentHand);
+    string? PlayerAvatarUrl,
+    string? PlayerFirstName,
+	bool CanPlayCurrentHand);

@@ -154,6 +154,18 @@ public class Game : EntityWithRowVersion
 	public DateTimeOffset? EndedAt { get; set; }
 
 	/// <summary>
+	/// The date and time when the current hand was completed (showdown finished).
+	/// Used to track the start of the results display period.
+	/// </summary>
+	public DateTimeOffset? HandCompletedAt { get; set; }
+
+	/// <summary>
+	/// The date and time when the next hand is scheduled to start.
+	/// Calculated as HandCompletedAt + results display duration (typically 7 seconds).
+	/// </summary>
+	public DateTimeOffset? NextHandStartsAt { get; set; }
+
+	/// <summary>
 	/// The unique identifier of the user who created this game (host).
 	/// </summary>
 	public string? CreatedById { get; set; }
@@ -162,7 +174,7 @@ public class Game : EntityWithRowVersion
 	/// The name or email of the user who created this game (host).
 	/// </summary>
 	public string? CreatedByName { get; set; }
-
+		
 	/// <summary>
 	/// Navigation property for players in this game.
 	/// </summary>
