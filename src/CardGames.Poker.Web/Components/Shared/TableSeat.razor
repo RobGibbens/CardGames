@@ -1,0 +1,257 @@
+@namespace CardGames.Poker.Web.Components.Shared
+
+@using static CardGames.Poker.Web.Components.Pages.TablePlay
+
+<div class="seat-content @(Seat.IsOccupied ? "" : "")">
+    @if (Seat.IsOccupied)
+    {
+        <!-- Player avatar -->
+        <div class="seat-avatar @GetAvatarStateClass()">
+            <span class="avatar-initials">@GetInitials(Seat.PlayerName)</span>
+            @if (IsDealer)
+            {
+                <span class="dealer-chip" title="Dealer">D</span>
+            }
+            @if (Seat.IsDisconnected)
+            {
+                <span class="disconnected-icon" title="Disconnected">?</span>
+            }
+        </div>
+
+        <!-- Player name -->
+        <div class="seat-name" title="@Seat.PlayerName">
+            @Seat.PlayerName
+            @if (IsCurrentPlayer)
+            {
+                <span class="you-badge">(You)</span>
+            }
+        </div>
+
+        <!-- Chips display -->
+        <div class="seat-chips">
+            <span class="chips-icon"><i class="fa-regular fa-coins"></i></span>
+            <span class="chips-amount">@Seat.Chips.ToString("N0")</span>
+        </div>
+
+        <!-- Current bet (if any) -->
+        @if (Seat.CurrentBet > 0)
+        {
+            <div class="seat-bet">
+                <div class="bet-chips">
+                    <span class="bet-icon"><i class="fa-solid fa-hand-holding-circle-dollar"></i></span>
+                    <span class="bet-amount">@Seat.CurrentBet</span>
+                </div>
+            </div>
+        }
+
+        <!-- Player status badges -->
+        <div class="seat-status">
+            @if (Seat.IsFolded)
+            {
+                <span class="status-badge folded">Folded</span>
+            }
+            else if (Seat.IsAllIn)
+            {
+                <span class="status-badge all-in">ALL IN</span>
+            }
+            else if (!Seat.IsReady && !ShowCards)
+            {
+                <span class="status-badge waiting">Waiting...</span>
+            }
+            else if (Seat.IsReady && !ShowCards)
+            {
+                <span class="status-badge ready">Ready ?</span>
+            }
+        </div>
+
+        <!-- Cards -->
+        @if (ShowCards && Seat.Cards.Count > 0)
+        {
+            <div class="seat-cards">
+                @foreach (var card in GetOrderedCards())
+                {
+                    <div class="playing-card @(card.IsFaceUp ? "face-up" : "face-down") @(card.IsSelected ? "selected" : "")">
+                        @if (card.IsFaceUp)
+                        {
+                            <span class="card-value @GetSuitColorClass(card.Suit)">
+                                @card.Rank <i class="fa-regular @GetSuitSymbol(card.Suit)"></i>
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="card-back"><i class="fa-solid fa-crown"></i></span>
+                        }
+                    </div>
+                }
+            </div>
+
+			@if (IsCurrentPlayer && !string.IsNullOrWhiteSpace(Seat.HandEvaluationDescription))
+			{
+				<div class="seat-hand-eval" title="Hand evaluation">
+					@Seat.HandEvaluationDescription
+				</div>
+			}
+        }
+        else if (ShowCards && !Seat.IsFolded)
+        {
+            <!-- Placeholder cards when game is active but no cards dealt yet -->
+            <div class="seat-cards placeholder">
+                @for (int i = 0; i < 5; i++)
+                {
+                    <div class="playing-card face-down placeholder">
+                        <span class="card-back"></span>
+                    </div>
+                }
+            </div>
+        }
+
+        <!-- Turn indicator glow -->
+        @if (IsCurrentActor)
+        {
+            <div class="turn-indicator-glow"></div>
+        }
+    }
+    else
+    {
+        <div class="seat-name" title="@(IsSeatSelectionDisabledForCurrentUser ? "Empty seat" : "Take a seat")">
+            @(IsSeatSelectionDisabledForCurrentUser ? "Empty seat" : "Take a seat")
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public required SeatInfo Seat { get; set; }
+
+    [Parameter]
+    public bool IsDealer { get; set; }
+
+    [Parameter]
+    public bool IsCurrentActor { get; set; }
+
+    [Parameter]
+    public bool IsCurrentPlayer { get; set; }
+
+    [Parameter]
+    public bool ShowCards { get; set; }
+
+    [Parameter]
+    public bool IsSeatSelectionDisabledForCurrentUser { get; set; }
+
+    private string GetAvatarStateClass()
+    {
+        var classes = new List<string>();
+
+        if (IsCurrentActor)
+            classes.Add("active-turn");
+        
+        if (Seat.IsFolded)
+            classes.Add("folded");
+        
+        if (Seat.IsAllIn)
+            classes.Add("all-in");
+
+        if (Seat.IsDisconnected)
+            classes.Add("disconnected");
+
+        if (IsCurrentPlayer)
+            classes.Add("current-player");
+
+        return string.Join(" ", classes);
+    }
+
+    private static string GetInitials(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return "?";
+
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length switch
+        {
+            0 => "?",
+            1 => parts[0][..1].ToUpperInvariant(),
+            _ => $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant()
+        };
+    }
+
+    private static string GetSuitSymbol(string? suit)
+    {
+        return suit?.ToLowerInvariant() switch
+        {
+            "hearts" or "h" => "fa-heart",
+            "diamonds" or "d" => "fa-diamond",
+            "clubs" or "c" => "fa-club",
+            "spades" or "s" => "fa-spade",
+            _ => ""
+        };
+    }
+
+    private static string GetSuitColorClass(string? suit)
+    {
+        return suit?.ToLowerInvariant() switch
+        {
+            "hearts" or "h" or "diamonds" or "d" => "suit-red",
+            _ => "suit-black"
+        };
+    }
+
+    private IEnumerable<CardInfo> GetOrderedCards()
+    {
+        if (Seat.Cards.Count == 0)
+        {
+            return [];
+        }
+
+        // Sort face-up known cards by value (2..A). Keep unknown/face-down cards stable.
+        return Seat.Cards
+            .Select((card, index) => new { card, index })
+            .OrderBy(x => string.IsNullOrWhiteSpace(x.card.Rank) ? 1 : 0)
+            .ThenBy(x => GetRankValue(x.card.Rank))
+            .ThenBy(x => GetSuitValue(x.card.Suit))
+            .ThenBy(x => x.index)
+            .Select(x => x.card);
+    }
+
+    private static int GetRankValue(string? rank)
+    {
+        if (string.IsNullOrWhiteSpace(rank))
+        {
+            return int.MaxValue;
+        }
+
+        return rank.Trim().ToUpperInvariant() switch
+        {
+            "2" or "TWO" or "DEUCE" => 2,
+            "3" or "THREE" => 3,
+            "4" or "FOUR" => 4,
+            "5" or "FIVE" => 5,
+            "6" or "SIX" => 6,
+            "7" or "SEVEN" => 7,
+            "8" or "EIGHT" => 8,
+            "9" or "NINE" => 9,
+            "10" or "T" or "TEN" => 10,
+            "J" or "JACK" => 11,
+            "Q" or "QUEEN" => 12,
+            "K" or "KING" => 13,
+            "A" or "ACE" => 14,
+            _ => int.MaxValue
+        };
+    }
+
+    private static int GetSuitValue(string? suit)
+    {
+        if (string.IsNullOrWhiteSpace(suit))
+        {
+            return int.MaxValue;
+        }
+
+        return suit.Trim().ToLowerInvariant() switch
+        {
+            "clubs" or "c" => 0,
+            "diamonds" or "d" => 1,
+            "hearts" or "h" => 2,
+            "spades" or "s" => 3,
+            _ => int.MaxValue
+        };
+    }
+}

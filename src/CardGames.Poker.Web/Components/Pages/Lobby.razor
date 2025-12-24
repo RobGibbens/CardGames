@@ -1,0 +1,298 @@
+﻿@page "/lobby"
+@page "/lobby/{Tab}"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@implements IAsyncDisposable
+
+@using CardGames.Contracts.SignalR
+@using CardGames.Poker.Api.Clients
+@using CardGames.Poker.Api.Contracts
+@using CardGames.Poker.Web.Components.Shared
+@using CardGames.Poker.Web.Services
+@using Microsoft.AspNetCore.Authorization
+
+<PageTitle>Lobby - Friday Night Poker</PageTitle>
+
+<AuthenticatedNavBar />
+
+<main class="lobby-main">
+    <div class="lobby-container">
+        <!-- Lobby Header -->
+        <div class="lobby-header">
+            <div class="lobby-header-content">
+                <h1 class="lobby-title">
+                    <i class="fa-regular fa-house"></i>
+                    Game Lobby
+                    @if (LobbyHubClient.IsInLobby)
+                    {
+                        <span class="connection-indicator connected" title="Real-time updates enabled">●</span>
+                    }
+                    else if (LobbyHubClient.IsConnected)
+                    {
+                        <span class="connection-indicator connecting" title="Connecting...">●</span>
+                    }
+                </h1>
+                <p class="lobby-subtitle">Find a table or create your own private game</p>
+            </div>
+            <a href="/table/create" class="btn btn-primary btn-lg lobby-create-btn">
+                <i class="fa-regular fa-add"></i> Create New Table
+            </a>
+        </div>
+
+        <!-- Tab Navigation -->
+        <div class="lobby-tabs">
+            <a href="/lobby" class="lobby-tab @(IsActiveTab("") ? "active" : "")">
+                <span class="lobby-tab-icon">🎯</span>
+                <span class="lobby-tab-text">My Tables</span>
+                <span class="lobby-tab-badge">@myTablesCount</span>
+            </a>
+        </div>
+
+        <!-- Filters Section -->
+        <div class="lobby-filters">
+            <div class="filter-group">
+                <label class="filter-label">Variant</label>
+                <select class="filter-select" @bind="selectedVariant">
+                    <option value="">All Variants</option>
+                    <option value="texasholdem">Texas Hold'em</option>
+                    <option value="fivecarddraw">Five Card Draw</option>
+                    <option value="omaha">Omaha</option>
+                    <option value="sevencardstud">Seven Card Stud</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Seats</label>
+                <select class="filter-select" @bind="selectedSeats">
+                    <option value="">Any Size</option>
+                    <option value="2">Heads Up (2)</option>
+                    <option value="6">6-Max</option>
+                    <option value="9">Full Ring (9)</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">Status</label>
+                <select class="filter-select" @bind="selectedStatus">
+                    <option value="">All</option>
+                    <option value="waiting">Waiting for Players</option>
+                    <option value="inprogress">In Progress</option>
+                </select>
+            </div>
+            <button class="filter-clear-btn" @onclick="ClearFilters">
+                <span>✕</span> Clear Filters
+            </button>
+        </div>
+
+        <!-- Tables Grid -->
+        <div class="lobby-content">
+            @if (isLoading)
+            {
+                <div class="lobby-loading">
+                    <div class="loading-spinner"></div>
+                    <p>Loading tables...</p>
+                </div>
+            }
+            else if (filteredTables.Count == 0)
+            {
+                <div class="lobby-empty">
+                    <div class="empty-icon">@GetEmptyIcon()</div>
+                    <h3 class="empty-title">@GetEmptyTitle()</h3>
+                    <p class="empty-description">@GetEmptyDescription()</p>
+                    @if (IsActiveTab(""))
+                    {
+                        <a href="/table/create" class="btn btn-primary">
+                            <span>➕</span> Create a Table
+                        </a>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="tables-grid">
+                    @foreach (var table in filteredTables)
+                    {
+                        <TableCard Table="table" />
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</main>
+
+@code {
+    [Parameter]
+    public string? Tab { get; set; }
+
+    [Inject]
+    private IActiveGamesApi ActiveGamesApi { get; set; } = default!;
+
+    [Inject]
+    private LobbyHubClient LobbyHubClient { get; set; } = default!;
+
+    [Inject]
+    private ILogger<Lobby> Logger { get; set; } = default!;
+
+    private bool isLoading = true;
+    private string selectedVariant = "";
+    private string selectedSeats = "";
+    private string selectedStatus = "";
+
+    private int myTablesCount;
+
+    private List<GetActiveGamesResponse> allTables = [];
+    private List<GetActiveGamesResponse> filteredTables = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTablesAsync();
+        await ConnectToLobbyHubAsync();
+    }
+
+    private async Task ConnectToLobbyHubAsync()
+    {
+        try
+        {
+            LobbyHubClient.OnGameCreated += HandleGameCreatedAsync;
+            LobbyHubClient.OnGameDeleted += HandleGameDeletedAsync;
+
+            await LobbyHubClient.ConnectAsync();
+            await LobbyHubClient.JoinLobbyAsync();
+
+            Logger.LogInformation("Connected to lobby hub and joined lobby group");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to connect to lobby hub");
+            // Continue without real-time updates - the page will still work with initial data
+        }
+    }
+
+    private async Task HandleGameCreatedAsync(GameCreatedDto gameCreated)
+    {
+        Logger.LogInformation("Received new game: {GameId} ({GameName})", gameCreated.GameId, gameCreated.Name);
+
+        // Check if game already exists in the list
+        var existingIndex = allTables.FindIndex(t => t.Id == gameCreated.GameId);
+
+        // Convert GameCreatedDto to GetActiveGamesResponse and add to the list
+        // The constructor takes parameters in alphabetical order (generated by NSwag)
+        var newTable = new GetActiveGamesResponse(
+            createdAt: gameCreated.CreatedAt,
+            createdById: gameCreated.CreatedById ?? string.Empty,
+            createdByName: gameCreated.CreatedByName ?? string.Empty,
+            currentPhase: gameCreated.CurrentPhase,
+			currentPhaseDescription: gameCreated.CurrentPhaseDescription,
+            gameTypeCode: gameCreated.GameTypeCode,
+            gameTypeDescription: gameCreated.GameTypeDescription,
+            gameTypeId: gameCreated.GameTypeId,
+            gameTypeImageName: gameCreated.GameTypeImageName,
+            gameTypeMetadataName: gameCreated.GameTypeMetadataName,
+            gameTypeName: gameCreated.GameTypeName,
+            id: gameCreated.GameId,
+            name: gameCreated.Name!,
+            rowVersion: string.Empty,
+            status: Enum.TryParse<GameStatus>(gameCreated.Status, out var status)
+                ? status
+                : GameStatus.WaitingForPlayers);
+
+        if (existingIndex >= 0)
+        {
+            allTables[existingIndex] = newTable;
+        }
+        else
+        {
+            allTables.Insert(0, newTable);
+        }
+        myTablesCount = allTables.Count;
+        ApplyFilters();
+
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task HandleGameDeletedAsync(Guid gameId)
+    {
+        Logger.LogInformation("Game deleted: {GameId}", gameId);
+
+        var tableToRemove = allTables.FirstOrDefault(t => t.Id == gameId);
+        if (tableToRemove is not null)
+        {
+            allTables.Remove(tableToRemove);
+            myTablesCount = allTables.Count;
+            ApplyFilters();
+
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        ApplyFilters();
+    }
+
+    private async Task LoadTablesAsync()
+    {
+        isLoading = true;
+
+        var response = await ActiveGamesApi.GetActiveGamesAsync();
+        allTables = response.Content?.ToList() ?? [];
+        myTablesCount = allTables.Count;
+
+        ApplyFilters();
+        isLoading = false;
+    }
+
+    private void ApplyFilters()
+    {
+        filteredTables = allTables
+            .Where(t => string.IsNullOrEmpty(selectedVariant) ||
+                        t.GameTypeCode.Contains(selectedVariant, StringComparison.OrdinalIgnoreCase) ||
+                        t.GameTypeName.Contains(selectedVariant, StringComparison.OrdinalIgnoreCase))
+            .Where(t => string.IsNullOrEmpty(selectedStatus) ||
+                        t.Status.ToString().Contains(selectedStatus, StringComparison.OrdinalIgnoreCase) ||
+                        t.CurrentPhase.Contains(selectedStatus, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+    }
+
+    private void ClearFilters()
+    {
+        selectedVariant = "";
+        selectedSeats = "";
+        selectedStatus = "";
+        ApplyFilters();
+    }
+
+    private bool IsActiveTab(string tab)
+    {
+        return string.Equals(Tab ?? "", tab, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private string GetEmptyIcon()
+    {
+        return "🎯";
+    }
+
+    private string GetEmptyTitle()
+    {
+        return "No Tables Yet";
+    }
+
+    private string GetEmptyDescription()
+    {
+        return "No active games found.";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        LobbyHubClient.OnGameCreated -= HandleGameCreatedAsync;
+        LobbyHubClient.OnGameDeleted -= HandleGameDeletedAsync;
+
+        try
+        {
+            await LobbyHubClient.LeaveLobbyAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error leaving lobby on dispose");
+        }
+    }
+}

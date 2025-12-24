@@ -1,0 +1,249 @@
+@namespace CardGames.Poker.Web.Components.Shared
+
+@using static CardGames.Poker.Web.Components.Pages.TablePlay
+
+<div class="draw-panel @(IsSubmitting ? "submitting" : "") @(IsAnimating ? "animating" : "")">
+    <!-- Header -->
+    <div class="draw-panel-header">
+        <div class="draw-panel-title">
+            <i class="fa-regular fa-cards"></i>
+            <span>Draw Phase</span>
+        </div>
+        <div class="draw-panel-subtitle">
+            Select cards to discard (0-3 cards)
+        </div>
+    </div>
+
+    <!-- Cards Display -->
+    <div class="draw-cards-container">
+        @{
+            var orderedCards = GetOrderedCards().ToList();
+        }
+
+        @for (var i = 0; i < orderedCards.Count; i++)
+        {
+            var displayIndex = i;
+            var index = orderedCards[i].Index;
+            var card = orderedCards[i].Card;
+            var isSelected = SelectedIndices.Contains(index);
+
+            <div class="draw-card-wrapper @(isSelected ? "selected" : "") @(IsDiscarding && isSelected ? "discarding" : "") @(IsDrawing && NewCardIndices.Contains(index) ? "drawing" : "")"
+                 @onclick="() => ToggleCardSelectionAsync(index)">
+                <div class="draw-card @(isSelected ? "selected" : "")">
+                    <span class="draw-card-value @GetSuitColorClass(card.Suit)">
+                        @card.Rank <i class="fa-regular @GetSuitSymbol(card.Suit)"></i>
+                    </span>
+                </div>
+                <div class="card-index">@(displayIndex + 1)</div>
+                @if (isSelected)
+                {
+                    <div class="discard-badge">
+                        <i class="fa-solid fa-xmark"></i>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    <!-- Selection Info -->
+    <div class="draw-selection-info">
+        @if (SelectedCount == 0)
+        {
+            <span class="selection-hint">Click cards to select them for discard, or stand pat</span>
+        }
+        else
+        {
+            <span class="selection-count">@SelectedCount card(s) selected for discard</span>
+        }
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="draw-actions">
+        <button class="draw-btn stand-pat-btn" 
+                @onclick="HandleStandPat" 
+                disabled="@(IsSubmitting || SelectedCount > 0)">
+            <i class="fa-regular fa-hand"></i>
+            <span>Stand Pat</span>
+        </button>
+
+        <button class="draw-btn discard-btn @(SelectedCount > 0 ? "active" : "")" 
+                @onclick="HandleDiscard" 
+                disabled="@(IsSubmitting || SelectedCount == 0 || SelectedCount > 3)">
+            <i class="fa-regular fa-arrows-rotate"></i>
+            <span>Discard @SelectedCount & Draw</span>
+        </button>
+    </div>
+
+    @if (SelectedCount > 3)
+    {
+        <div class="draw-warning">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            Maximum 3 cards can be discarded
+        </div>
+    }
+
+    @if (IsSubmitting)
+    {
+        <div class="draw-submitting">
+            <span class="loading-spinner-small"></span>
+            @if (IsDiscarding)
+            {
+                <span>Discarding cards...</span>
+            }
+            else if (IsDrawing)
+            {
+                <span>Drawing new cards...</span>
+            }
+            else
+            {
+                <span>Processing...</span>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public List<CardInfo> Cards { get; set; } = [];
+
+    [Parameter]
+    public HashSet<int> SelectedIndices { get; set; } = [];
+
+    [Parameter]
+    public EventCallback<int> OnToggleSelection { get; set; }
+
+    [Parameter]
+    public EventCallback<List<int>> OnDraw { get; set; }
+
+    [Parameter]
+    public bool IsSubmitting { get; set; }
+
+    [Parameter]
+    public bool IsAnimating { get; set; }
+
+    [Parameter]
+    public bool IsDiscarding { get; set; }
+
+    [Parameter]
+    public bool IsDrawing { get; set; }
+
+    [Parameter]
+    public List<int> NewCardIndices { get; set; } = [];
+
+    private int SelectedCount => SelectedIndices.Count;
+
+    private async Task ToggleCardSelectionAsync(int index)
+    {
+        if (IsSubmitting || IsAnimating)
+            return;
+
+        if (OnToggleSelection.HasDelegate)
+        {
+            await OnToggleSelection.InvokeAsync(index);
+        }
+    }
+
+    private async Task HandleStandPat()
+    {
+        if (IsSubmitting || SelectedCount > 0)
+            return;
+
+        await OnDraw.InvokeAsync([]);
+    }
+
+    private async Task HandleDiscard()
+    {
+        if (IsSubmitting || SelectedCount == 0 || SelectedCount > 3)
+            return;
+
+        var selectedIndices = Cards
+            .Select((c, i) => (Card: c, Index: i))
+            .Where(x => SelectedIndices.Contains(x.Index))
+            .Select(x => x.Index)
+            .ToList();
+
+        await OnDraw.InvokeAsync(selectedIndices);
+    }
+
+    private static string GetSuitColorClass(string? suit)
+    {
+        return suit?.ToLower() switch
+        {
+            "hearts" or "diamonds" => "suit-red",
+            _ => "suit-black"
+        };
+    }
+
+    private static string GetSuitSymbol(string? suit)
+    {
+        return suit?.ToLower() switch
+        {
+            "hearts" => "fa-heart",
+            "diamonds" => "fa-diamond",
+            "clubs" => "fa-club",
+            "spades" => "fa-spade",
+            _ => "fa-question"
+        };
+    }
+
+    private IEnumerable<IndexedCard> GetOrderedCards()
+    {
+        if (Cards.Count == 0)
+        {
+            return [];
+        }
+
+        // Sort known face-up cards by value (2..A). Keep unknown/blank ranks stable.
+        return Cards
+            .Select((card, index) => new IndexedCard(card, index))
+            .OrderBy(x => string.IsNullOrWhiteSpace(x.Card.Rank) ? 1 : 0)
+            .ThenBy(x => GetRankValue(x.Card.Rank))
+            .ThenBy(x => GetSuitValue(x.Card.Suit))
+            .ThenBy(x => x.Index);
+    }
+
+    private static int GetRankValue(string? rank)
+    {
+        if (string.IsNullOrWhiteSpace(rank))
+        {
+            return int.MaxValue;
+        }
+
+        return rank.Trim().ToUpperInvariant() switch
+        {
+            "2" or "TWO" or "DEUCE" => 2,
+            "3" or "THREE" => 3,
+            "4" or "FOUR" => 4,
+            "5" or "FIVE" => 5,
+            "6" or "SIX" => 6,
+            "7" or "SEVEN" => 7,
+            "8" or "EIGHT" => 8,
+            "9" or "NINE" => 9,
+            "10" or "T" or "TEN" => 10,
+            "J" or "JACK" => 11,
+            "Q" or "QUEEN" => 12,
+            "K" or "KING" => 13,
+            "A" or "ACE" => 14,
+            _ => int.MaxValue
+        };
+    }
+
+    private static int GetSuitValue(string? suit)
+    {
+        if (string.IsNullOrWhiteSpace(suit))
+        {
+            return int.MaxValue;
+        }
+
+        return suit.Trim().ToLowerInvariant() switch
+        {
+            "clubs" or "c" => 0,
+            "diamonds" or "d" => 1,
+            "hearts" or "h" => 2,
+            "spades" or "s" => 3,
+            _ => int.MaxValue
+        };
+    }
+
+    private sealed record IndexedCard(CardInfo Card, int Index);
+}

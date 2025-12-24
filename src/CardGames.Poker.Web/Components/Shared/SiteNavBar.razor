@@ -1,0 +1,265 @@
+@namespace CardGames.Poker.Web.Components.Shared
+@rendermode InteractiveServer
+
+@inject IJSRuntime JSRuntime
+@inject UserManager<ApplicationUser> UserManager
+
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Http.Extensions
+@using CardGames.Poker.Web.Data
+@using System.Security.Claims
+
+<!-- Navigation Header -->
+<header class="nav-header">
+    <nav class="nav-container">
+        <a href="/" class="nav-logo">
+            <span class="nav-logo-icon">♠</span>
+            <span>Friday Night Poker</span>
+        </a>
+
+        <ul class="nav-links" id="navLinks">
+            <li><a href="/lobby">Lobby</a></li>
+            <li><a href="/#features">Features</a></li>
+            <li><a href="/#how-it-works">How It Works</a></li>
+            <li><a href="/#variants">Game Variants</a></li>
+        </ul>
+
+        <div class="nav-actions">
+            <button class="theme-toggle" @onclick="ToggleTheme" title="Toggle theme" aria-label="Toggle dark/light theme">
+                @if (isDarkMode)
+                {
+                    <span><i class="fa-solid fa-moon"></i></span>
+                }
+                else
+                {
+                    <span><i class="fa-solid fa-sun"></i></span>
+                }
+            </button>
+
+            <AuthorizeView>
+                <Authorized>
+                    <div class="user-menu">
+                        <button class="user-menu-trigger" @onclick="ToggleUserMenu" @onclick:stopPropagation="true">
+                            <span class="user-avatar">
+                                @if (!string.IsNullOrWhiteSpace(CurrentUserAvatarUrl))
+                                {
+                                    <img class="user-avatar-img" src="@CurrentUserAvatarUrl" alt="" referrerpolicy="no-referrer" />
+                                }
+                                else
+                                {
+                                    @GetUserInitial(CurrentUserName ?? context.User.Identity?.Name)
+                                }
+                            </span>
+                            <span class="user-name">@(CurrentUserName ?? context.User.Identity?.Name)</span>
+                            <span class="user-menu-arrow">▼</span>
+                        </button>
+                        @if (isUserMenuOpen)
+                        {
+                            <div class="user-menu-dropdown">
+                                <a href="/Account/Manage" class="user-menu-item">
+                                    <span>⚙️</span> Settings
+                                </a>
+                                <a href="/Account/Manage/Email" class="user-menu-item">
+                                    <span>📧</span> Email
+                                </a>
+                                <a href="/Account/Manage" class="user-menu-item">
+                                    <span>👤</span> Profile
+                                </a>
+                                <hr class="user-menu-divider" />
+                                <form method="post" action="/Account/Logout">
+                                    <AntiforgeryToken />
+                                    <input type="hidden" name="ReturnUrl" value="@GetReturnUrl()" />
+                                    <button type="submit" class="user-menu-item user-menu-logout">
+                                        <span>🚪</span> Sign Out
+                                    </button>
+                                </form>
+                            </div>
+                        }
+                    </div>
+                </Authorized>
+                <NotAuthorized>
+                    <a href="/Account/Login" class="btn btn-secondary btn-sm">Sign In</a>
+                    <a href="/Account/Register" class="btn btn-primary btn-sm">Get Started</a>
+                </NotAuthorized>
+            </AuthorizeView>
+
+            <button class="mobile-menu-toggle" @onclick="ToggleMobileMenu" aria-label="Toggle menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </nav>
+</header>
+
+@code {
+    private bool isDarkMode;
+    private bool isMobileMenuOpen;
+    private bool isUserMenuOpen;
+
+    private string? loadedUserId;
+    private string? CurrentUserAvatarUrl;
+    private string? CurrentUserName;
+
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
+
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    private string GetReturnUrl()
+    {
+        var pathAndQuery = HttpContext?.Request.GetEncodedPathAndQuery();
+        return string.IsNullOrWhiteSpace(pathAndQuery) ? string.Empty : pathAndQuery.TrimStart('/');
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        try
+        {
+            var savedTheme = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "theme");
+            if (!string.IsNullOrEmpty(savedTheme))
+            {
+                isDarkMode = savedTheme == "dark";
+            }
+            else
+            {
+                isDarkMode = await JSRuntime.InvokeAsync<bool>("matchMedia", "(prefers-color-scheme: dark)");
+            }
+
+            await ApplyTheme();
+            StateHasChanged();
+        }
+        catch
+        {
+            // Ignore errors during SSR
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var authState = await AuthenticationStateTask;
+        var principal = authState.User;
+
+        var userId = UserManager.GetUserId(principal);
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            loadedUserId = null;
+            CurrentUserAvatarUrl = null;
+            CurrentUserName = null;
+            return;
+        }
+
+        if (string.Equals(loadedUserId, userId, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        loadedUserId = userId;
+
+        var user = await UserManager.GetUserAsync(principal);
+        CurrentUserName = PreferFirstName(user?.FirstName) ?? principal.Identity?.Name;
+
+        var avatarFromClaims = GetFirstClaimValue(principal, "picture", "avatar_url", "urn:google:picture");
+        CurrentUserAvatarUrl = NormalizeAvatarUrl(user?.AvatarUrl) ?? NormalizeAvatarUrl(avatarFromClaims);
+    }
+
+    private async Task ToggleTheme()
+    {
+        isDarkMode = !isDarkMode;
+        await ApplyTheme();
+    }
+
+    private async Task ApplyTheme()
+    {
+        try
+        {
+            var theme = isDarkMode ? "dark" : "light";
+            await JSRuntime.InvokeVoidAsync("document.documentElement.setAttribute", "data-theme", theme);
+            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "theme", theme);
+        }
+        catch
+        {
+            // Ignore errors during SSR
+        }
+    }
+
+    private void ToggleMobileMenu()
+    {
+        isMobileMenuOpen = !isMobileMenuOpen;
+    }
+
+    private void ToggleUserMenu()
+    {
+        isUserMenuOpen = !isUserMenuOpen;
+    }
+
+    private static string GetUserInitial(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return "?";
+        }
+
+        return name[0].ToString().ToUpperInvariant();
+    }
+
+    private static string? GetFirstClaimValue(ClaimsPrincipal principal, params string[] claimTypes)
+    {
+        foreach (var claimType in claimTypes)
+        {
+            var value = principal.FindFirstValue(claimType);
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                return value;
+            }
+        }
+
+        return null;
+    }
+
+    private static string? NormalizeAvatarUrl(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return null;
+        }
+
+        url = url.Trim();
+
+        // Allow app-local absolute paths like /images/avatar.png
+        if (url.StartsWith("/", StringComparison.Ordinal))
+        {
+            return url;
+        }
+
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+        {
+            return null;
+        }
+
+        // Only allow https for external images.
+        if (!string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        return uri.ToString();
+    }
+
+    private static string? PreferFirstName(string? firstName)
+    {
+        if (string.IsNullOrWhiteSpace(firstName))
+        {
+            return null;
+        }
+
+        return firstName.Trim();
+    }
+}

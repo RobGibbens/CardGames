@@ -14,6 +14,62 @@ using CardGames.Poker.Api.Contracts;
 
 namespace CardGames.Poker.Api.Clients
 {
+    /// <summary>GetActiveGames</summary>
+    [System.CodeDom.Compiler.GeneratedCode("Refitter", "1.7.0.0")]
+    public partial interface IActiveGamesApi
+    {
+        /// <summary>GetActiveGames</summary>
+        /// <remarks>Retrieve a list of all non-complete games.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Get("/api/v1/games/active")]
+        Task<IApiResponse<ICollection<GetActiveGamesResponse>>> GetActiveGamesAsync(CancellationToken cancellationToken = default);
+    }
+
+    /// <summary>GetAvailablePokerGames</summary>
+    [System.CodeDom.Compiler.GeneratedCode("Refitter", "1.7.0.0")]
+    public partial interface IAvailablePokerGamesApi
+    {
+        /// <summary>GetAvailablePokerGames</summary>
+        /// <remarks>Retrieve a list of all available poker game types.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Get("/api/v1/games/available")]
+        Task<IApiResponse<ICollection<GetAvailablePokerGamesResponse>>> GetAvailablePokerGamesAsync(CancellationToken cancellationToken = default);
+    }
+
     /// <summary>CreateGame</summary>
     [System.CodeDom.Compiler.GeneratedCode("Refitter", "1.7.0.0")]
     public partial interface IFiveCardDrawApi
@@ -31,6 +87,10 @@ namespace CardGames.Poker.Api.Clients
         /// <item>
         /// <term>400</term>
         /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
         /// </item>
         /// </list>
         /// </exception>
@@ -60,6 +120,71 @@ namespace CardGames.Poker.Api.Clients
         [Headers("Accept: application/json, application/problem+json")]
         [Get("/api/v1/games/five-card-draw")]
         Task<IApiResponse<ICollection<GetGamesResponse>>> GetGamesAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>Join Game</summary>
+        /// <remarks>
+        /// Adds the currently authenticated player to a game at the specified seat. Players can join a game at any time as long as the game hasn't ended and there are seats available. If joining mid-hand, the player will sit out the current hand and join play on the next hand.
+        /// 
+        /// **Validations:**
+        /// - Game must exist and not be ended
+        /// - Seat must be available (not already occupied)
+        /// - Player must not already be seated elsewhere in the game
+        /// - Game must not have reached maximum player count
+        /// 
+        /// **Response:**
+        /// - `CanPlayCurrentHand`: true if joining during WaitingToStart/WaitingForPlayers phase
+        /// </remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/games/five-card-draw/{gameId}/players")]
+        Task<IApiResponse<JoinGameSuccessful>> JoinGameAsync(System.Guid gameId, [Body] JoinGameRequest body, CancellationToken cancellationToken = default);
+
+        /// <summary>GetGamePlayers</summary>
+        /// <remarks>Retrieve all players in a specific game.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Get("/api/v1/games/five-card-draw/{gameId}/players")]
+        Task<IApiResponse<ICollection<GetGamePlayersResponse>>> GetGamePlayersAsync(System.Guid gameId, CancellationToken cancellationToken = default);
 
         /// <summary>Start Hand</summary>
         /// <remarks>Starts a new hand by shuffling the deck, creating a fresh pot, and resetting all player states. This endpoint must be called before each hand to prepare the game for play. After calling this endpoint, the game transitions to the CollectingAntes phase.</remarks>
@@ -305,29 +430,6 @@ namespace CardGames.Poker.Api.Clients
         [Headers("Accept: application/json, application/problem+json")]
         [Get("/api/v1/games/five-card-draw/{gameId}")]
         Task<IApiResponse<GetGameResponse>> GetGameAsync(System.Guid gameId, CancellationToken cancellationToken = default);
-
-        /// <summary>GetGamePlayers</summary>
-        /// <remarks>Retrieve all players in a specific game.</remarks>
-        /// <returns>
-        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
-        /// <list type="table">
-        /// <listheader>
-        /// <term>Status</term>
-        /// <description>Description</description>
-        /// </listheader>
-        /// <item>
-        /// <term>200</term>
-        /// <description>OK</description>
-        /// </item>
-        /// <item>
-        /// <term>400</term>
-        /// <description>Bad Request</description>
-        /// </item>
-        /// </list>
-        /// </returns>
-        [Headers("Accept: application/json, application/problem+json")]
-        [Get("/api/v1/games/five-card-draw/{gameId}/players")]
-        Task<IApiResponse<ICollection<GetGamePlayersResponse>>> GetGamePlayersAsync(System.Guid gameId, CancellationToken cancellationToken = default);
 
         /// <summary>GetCurrentPlayerTurn</summary>
         /// <remarks>Retrieve the current player's turn state for a specific game, including available actions.</remarks>
@@ -725,13 +827,18 @@ namespace CardGames.Poker.Api.Contracts
     public partial record CreateGameCommand
     {
         [JsonConstructor]
-        public CreateGameCommand(int @ante, string @gameName, int @minBet, ICollection<PlayerInfo> @players)
+        public CreateGameCommand(int @ante, System.Guid @gameId, string @gameName, int @minBet, ICollection<PlayerInfo> @players)
         {
+            this.GameId = @gameId;
             this.GameName = @gameName;
             this.Ante = @ante;
             this.MinBet = @minBet;
             this.Players = @players;
         }
+
+        [JsonPropertyName("gameId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid GameId { get; init; }
 
         [JsonPropertyName("gameName")]
         public string GameName { get; init; }
@@ -951,6 +1058,121 @@ namespace CardGames.Poker.Api.Contracts
 
         [System.Runtime.Serialization.EnumMember(Value = @"Cancelled")]
         Cancelled = 4,
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record GetActiveGamesResponse
+    {
+        [JsonConstructor]
+        public GetActiveGamesResponse(System.DateTimeOffset @createdAt, string @createdById, string @createdByName, string @currentPhase, string @currentPhaseDescription, string @gameTypeCode, string @gameTypeDescription, System.Guid @gameTypeId, string @gameTypeImageName, string @gameTypeMetadataName, string @gameTypeName, System.Guid @id, string @name, string @rowVersion, GameStatus @status)
+        {
+            this.Id = @id;
+            this.GameTypeId = @gameTypeId;
+            this.GameTypeCode = @gameTypeCode;
+            this.GameTypeName = @gameTypeName;
+            this.GameTypeMetadataName = @gameTypeMetadataName;
+            this.GameTypeDescription = @gameTypeDescription;
+            this.GameTypeImageName = @gameTypeImageName;
+            this.Name = @name;
+            this.CurrentPhase = @currentPhase;
+            this.CurrentPhaseDescription = @currentPhaseDescription;
+            this.Status = @status;
+            this.CreatedAt = @createdAt;
+            this.CreatedById = @createdById;
+            this.CreatedByName = @createdByName;
+            this.RowVersion = @rowVersion;
+        }
+
+        [JsonPropertyName("id")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid Id { get; init; }
+
+        [JsonPropertyName("gameTypeId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid GameTypeId { get; init; }
+
+        [JsonPropertyName("gameTypeCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string GameTypeCode { get; init; }
+
+        [JsonPropertyName("gameTypeName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string GameTypeName { get; init; }
+
+        [JsonPropertyName("gameTypeMetadataName")]
+        public string GameTypeMetadataName { get; init; }
+
+        [JsonPropertyName("gameTypeDescription")]
+        public string GameTypeDescription { get; init; }
+
+        [JsonPropertyName("gameTypeImageName")]
+        public string GameTypeImageName { get; init; }
+
+        [JsonPropertyName("name")]
+        public string Name { get; init; }
+
+        [JsonPropertyName("currentPhase")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string CurrentPhase { get; init; }
+
+        [JsonPropertyName("currentPhaseDescription")]
+        public string CurrentPhaseDescription { get; init; }
+
+        [JsonPropertyName("status")]
+        public GameStatus Status { get; init; }
+
+        [JsonPropertyName("createdAt")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.DateTimeOffset CreatedAt { get; init; }
+
+        [JsonPropertyName("createdById")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string CreatedById { get; init; }
+
+        [JsonPropertyName("createdByName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string CreatedByName { get; init; }
+
+        [JsonPropertyName("rowVersion")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string RowVersion { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record GetAvailablePokerGamesResponse
+    {
+        [JsonConstructor]
+        public GetAvailablePokerGamesResponse(string @description, string @imageName, int @maximumNumberOfPlayers, int @minimumNumberOfPlayers, string @name)
+        {
+            this.Name = @name;
+            this.Description = @description;
+            this.MinimumNumberOfPlayers = @minimumNumberOfPlayers;
+            this.MaximumNumberOfPlayers = @maximumNumberOfPlayers;
+            this.ImageName = @imageName;
+        }
+
+        [JsonPropertyName("name")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Name { get; init; }
+
+        [JsonPropertyName("description")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Description { get; init; }
+
+        [JsonPropertyName("minimumNumberOfPlayers")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int MinimumNumberOfPlayers { get; init; }
+
+        [JsonPropertyName("maximumNumberOfPlayers")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int MaximumNumberOfPlayers { get; init; }
+
+        [JsonPropertyName("imageName")]
+        public string ImageName { get; init; }
 
     }
 
@@ -1290,12 +1512,15 @@ namespace CardGames.Poker.Api.Contracts
     public partial record GetGameResponse
     {
         [JsonConstructor]
-        public GetGameResponse(int? @ante, int? @bigBet, int? @bigBlind, int? @bringIn, int @bringInPlayerIndex, bool @canContinue, System.DateTimeOffset @createdAt, int @currentDrawPlayerIndex, int @currentHandNumber, string @currentPhase, int @currentPlayerIndex, int @dealerPosition, System.DateTimeOffset? @endedAt, string @gameSettings, System.Guid @gameTypeId, System.Guid @id, int? @minBet, string @name, int? @randomSeed, string @rowVersion, int? @smallBet, int? @smallBlind, System.DateTimeOffset? @startedAt, GameStatus @status, System.DateTimeOffset @updatedAt)
+        public GetGameResponse(int? @ante, int? @bigBet, int? @bigBlind, int? @bringIn, int @bringInPlayerIndex, bool @canContinue, System.DateTimeOffset @createdAt, string @createdById, string @createdByName, int @currentDrawPlayerIndex, int @currentHandNumber, string @currentPhase, string @currentPhaseDescription, int @currentPlayerIndex, int @dealerPosition, System.DateTimeOffset? @endedAt, string @gameSettings, System.Guid @gameTypeId, System.Guid @id, int @maximumNumberOfPlayers, int? @minBet, int @minimumNumberOfPlayers, string @name, int? @randomSeed, string @rowVersion, int? @smallBet, int? @smallBlind, System.DateTimeOffset? @startedAt, GameStatus @status, System.DateTimeOffset @updatedAt)
         {
             this.Id = @id;
             this.GameTypeId = @gameTypeId;
             this.Name = @name;
+            this.MinimumNumberOfPlayers = @minimumNumberOfPlayers;
+            this.MaximumNumberOfPlayers = @maximumNumberOfPlayers;
             this.CurrentPhase = @currentPhase;
+            this.CurrentPhaseDescription = @currentPhaseDescription;
             this.CurrentHandNumber = @currentHandNumber;
             this.DealerPosition = @dealerPosition;
             this.Ante = @ante;
@@ -1315,6 +1540,8 @@ namespace CardGames.Poker.Api.Contracts
             this.UpdatedAt = @updatedAt;
             this.StartedAt = @startedAt;
             this.EndedAt = @endedAt;
+            this.CreatedById = @createdById;
+            this.CreatedByName = @createdByName;
             this.CanContinue = @canContinue;
             this.RowVersion = @rowVersion;
         }
@@ -1330,9 +1557,22 @@ namespace CardGames.Poker.Api.Contracts
         [JsonPropertyName("name")]
         public string Name { get; init; }
 
+        [JsonPropertyName("minimumNumberOfPlayers")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int MinimumNumberOfPlayers { get; init; }
+
+        [JsonPropertyName("maximumNumberOfPlayers")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int MaximumNumberOfPlayers { get; init; }
+
         [JsonPropertyName("currentPhase")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string CurrentPhase { get; init; }
+
+        [JsonPropertyName("currentPhaseDescription")]
+        public string CurrentPhaseDescription { get; init; }
 
         [JsonPropertyName("currentHandNumber")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
@@ -1411,6 +1651,12 @@ namespace CardGames.Poker.Api.Contracts
         [JsonPropertyName("endedAt")]
         public System.DateTimeOffset? EndedAt { get; init; }
 
+        [JsonPropertyName("createdById")]
+        public string CreatedById { get; init; }
+
+        [JsonPropertyName("createdByName")]
+        public string CreatedByName { get; init; }
+
         [JsonPropertyName("canContinue")]
         public bool CanContinue { get; init; }
 
@@ -1455,6 +1701,57 @@ namespace CardGames.Poker.Api.Contracts
         [JsonPropertyName("rowVersion")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string RowVersion { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record JoinGameRequest
+    {
+        [JsonConstructor]
+        public JoinGameRequest(int @seatIndex, int? @startingChips)
+        {
+            this.SeatIndex = @seatIndex;
+            this.StartingChips = @startingChips;
+        }
+
+        [JsonPropertyName("seatIndex")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int SeatIndex { get; init; }
+
+        [JsonPropertyName("startingChips")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? StartingChips { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record JoinGameSuccessful
+    {
+        [JsonConstructor]
+        public JoinGameSuccessful(bool @canPlayCurrentHand, System.Guid @gameId, string @playerName, int @seatIndex)
+        {
+            this.GameId = @gameId;
+            this.SeatIndex = @seatIndex;
+            this.PlayerName = @playerName;
+            this.CanPlayCurrentHand = @canPlayCurrentHand;
+        }
+
+        [JsonPropertyName("gameId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid GameId { get; init; }
+
+        [JsonPropertyName("seatIndex")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int SeatIndex { get; init; }
+
+        [JsonPropertyName("playerName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string PlayerName { get; init; }
+
+        [JsonPropertyName("canPlayCurrentHand")]
+        public bool CanPlayCurrentHand { get; init; }
 
     }
 
@@ -1816,6 +2113,40 @@ namespace CardGames.Poker.Api.Clients
             Action<IHttpClientBuilder>? builder = default, 
             RefitSettings? settings = default)
         {
+            var clientBuilderIActiveGamesApi = services
+                .AddRefitClient<IActiveGamesApi>(settings)
+                .ConfigureHttpClient(c => c.BaseAddress = baseUrl);
+
+            clientBuilderIActiveGamesApi
+                .AddStandardResilienceHandler(config =>
+                {
+                    config.Retry = new HttpRetryStrategyOptions
+                    {
+                        UseJitter = true,
+                        MaxRetryAttempts = 3,
+                        Delay = TimeSpan.FromSeconds(0.5)
+                    };
+                });
+
+            builder?.Invoke(clientBuilderIActiveGamesApi);
+
+            var clientBuilderIAvailablePokerGamesApi = services
+                .AddRefitClient<IAvailablePokerGamesApi>(settings)
+                .ConfigureHttpClient(c => c.BaseAddress = baseUrl);
+
+            clientBuilderIAvailablePokerGamesApi
+                .AddStandardResilienceHandler(config =>
+                {
+                    config.Retry = new HttpRetryStrategyOptions
+                    {
+                        UseJitter = true,
+                        MaxRetryAttempts = 3,
+                        Delay = TimeSpan.FromSeconds(0.5)
+                    };
+                });
+
+            builder?.Invoke(clientBuilderIAvailablePokerGamesApi);
+
             var clientBuilderIFiveCardDrawApi = services
                 .AddRefitClient<IFiveCardDrawApi>(settings)
                 .ConfigureHttpClient(c => c.BaseAddress = baseUrl);

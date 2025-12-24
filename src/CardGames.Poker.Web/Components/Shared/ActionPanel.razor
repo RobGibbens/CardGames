@@ -1,0 +1,186 @@
+@namespace CardGames.Poker.Web.Components.Shared
+
+@using CardGames.Poker.Api.Contracts
+@using static CardGames.Poker.Web.Components.Pages.TablePlay
+
+<div class="action-panel @(IsSubmitting ? "submitting" : "")">
+    <!-- Turn timer -->
+    <div class="turn-timer">
+        <div class="timer-bar">
+            <div class="timer-fill" style="width: @GetTimerPercentage()%"></div>
+        </div>
+        <span class="timer-text">@TurnTimeRemaining s</span>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="action-buttons">
+        @if (LegalActions.Contains(BettingActionType.Fold))
+        {
+            <button class="action-btn fold-btn" @onclick="() => SubmitAction(BettingActionType.Fold)" disabled="@IsSubmitting">
+                <i class="action-icon fa-solid fa-down-from-bracket"></i>
+                <span class="action-label">Fold</span>
+            </button>
+        }
+
+        @if (LegalActions.Contains(BettingActionType.Check))
+        {
+            <button class="action-btn check-btn" @onclick="() => SubmitAction(BettingActionType.Check)" disabled="@IsSubmitting">
+                <i class="action-icon fa-solid fa-check"></i>
+                <span class="action-label">Check</span>
+            </button>
+        }
+
+        @if (LegalActions.Contains(BettingActionType.Call))
+        {
+            <button class="action-btn call-btn" @onclick="() => SubmitAction(BettingActionType.Call)" disabled="@IsSubmitting">
+                <i class="action-icon fa-solid fa-equal"></i>
+                <span class="action-label">Call @CurrentBetToCall</span>
+            </button>
+        }
+
+        @if (LegalActions.Contains(BettingActionType.Bet))
+        {
+            <button class="action-btn bet-btn" @onclick="() => SubmitAction(BettingActionType.Bet, betAmount)" disabled="@IsSubmitting">
+                <i class="action-icon fa-solid fa-coins"></i>
+                <span class="action-label">Bet @betAmount</span>
+            </button>
+        }
+
+        @if (LegalActions.Contains(BettingActionType.Raise))
+        {
+            <button class="action-btn raise-btn" @onclick="() => SubmitAction(BettingActionType.Raise, betAmount)" disabled="@IsSubmitting">
+                <i class="action-icon fa-solid fa-plus"></i>
+                <span class="action-label">Raise to @betAmount</span>
+            </button>
+        }
+
+        @if (LegalActions.Contains(BettingActionType.AllIn))
+        {
+            <button class="action-btn allin-btn" @onclick="() => SubmitAction(BettingActionType.AllIn)" disabled="@IsSubmitting">
+                <i class="action-icon fa-solid fa-infinity"></i>
+                <span class="action-label">All In!</span>
+            </button>
+        }
+    </div>
+
+    <!-- Bet sizing controls (shown when bet/raise is available) -->
+    @if (LegalActions.Contains(BettingActionType.Bet) || LegalActions.Contains(BettingActionType.Raise))
+    {
+        <div class="bet-controls">
+            <div class="bet-slider-container">
+                <input type="range" 
+                       class="bet-slider" 
+                       min="@MinBet" 
+                       max="@MaxBet" 
+                       step="@GetBetStep()"
+                       @bind="betAmount"
+                       @bind:event="oninput" />
+                <div class="bet-slider-labels">
+                    <span>@MinBet</span>
+                    <span>@MaxBet</span>
+                </div>
+            </div>
+
+            <div class="bet-input-group">
+                <input type="number" 
+                       class="bet-input" 
+                       min="@MinBet" 
+                       max="@MaxBet"
+                       @bind="betAmount" />
+            </div>
+
+            <div class="bet-quick-buttons">
+                <button class="quick-bet-btn" @onclick="() => SetBetAmount(MinBet)">Min</button>
+                <button class="quick-bet-btn" @onclick="() => SetBetAmount(GetPotBet(0.5))">� Pot</button>
+                <button class="quick-bet-btn" @onclick="() => SetBetAmount(GetPotBet(1.0))">Pot</button>
+                <button class="quick-bet-btn" @onclick="() => SetBetAmount(MaxBet)">Max</button>
+            </div>
+        </div>
+    }
+
+    @if (IsSubmitting)
+    {
+        <div class="action-submitting">
+            <span class="loading-spinner-small"></span>
+            Submitting...
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public List<BettingActionType> LegalActions { get; set; } = [];
+
+    [Parameter]
+    public int MinBet { get; set; } = 10;
+
+    [Parameter]
+    public int MaxBet { get; set; } = 1000;
+
+    [Parameter]
+    public int CurrentBetToCall { get; set; }
+
+    [Parameter]
+    public int PlayerChips { get; set; }
+
+    [Parameter]
+    public int TurnTimeRemaining { get; set; } = 30;
+
+    [Parameter]
+    public EventCallback<PlayerActionRequest> OnAction { get; set; }
+
+    [Parameter]
+    public bool IsSubmitting { get; set; }
+
+    private int betAmount;
+
+    protected override void OnParametersSet()
+    {
+        // Initialize bet amount to minimum if not set
+        if (betAmount < MinBet)
+        {
+            betAmount = MinBet;
+        }
+        else if (betAmount > MaxBet)
+        {
+            betAmount = MaxBet;
+        }
+    }
+
+    private async Task SubmitAction(BettingActionType action, int? amount = null)
+    {
+        if (IsSubmitting)
+            return;
+
+        await OnAction.InvokeAsync(new PlayerActionRequest(action, amount));
+    }
+
+    private void SetBetAmount(int amount)
+    {
+        betAmount = Math.Clamp(amount, MinBet, MaxBet);
+    }
+
+    private int GetBetStep()
+    {
+        // Step size based on bet range
+        var range = MaxBet - MinBet;
+        if (range < 100) return 1;
+        if (range < 500) return 5;
+        if (range < 1000) return 10;
+        if (range < 5000) return 25;
+        return 50;
+    }
+
+    private int GetPotBet(double multiplier)
+    {
+        // TODO: Get actual pot from parent
+        var potBet = (int)(CurrentBetToCall * 2 * multiplier);
+        return Math.Clamp(potBet, MinBet, MaxBet);
+    }
+
+    private double GetTimerPercentage()
+    {
+        const int maxTime = 30; // Assuming 30 second timer
+        return (TurnTimeRemaining / (double)maxTime) * 100;
+    }
+}
