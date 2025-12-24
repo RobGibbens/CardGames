@@ -4,9 +4,10 @@
 - Show current standings
 - Show hand history
 - [x] Show the user's avatar on TableSeat and their name
-- Always make the logged in player the bottom seat
+- [x] Always make the logged in player the bottom seat
 - Have the ability for someone to take a seat and be dealt into the next hand
 - When already logged in, take them to the Lobby
 - When discarding cards, leave the overlay up with the new cards for a few seconds
 - Draw phase can overlap the hand odds. Move Hand Odds Up (or create a whole expandable console)
 - Test side pots
+- Add Dev Tunnels to Aspire
