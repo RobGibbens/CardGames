@@ -104,8 +104,28 @@
 
     private string GetSeatPositionClass(int seatIndex)
     {
-        // 8 seats around an oval table
-        return $"seat-position-{seatIndex}";
+        // Keep the seat ordering stable, but rotate the visual layout so the current player
+        // is always shown at the bottom (seat-position-0).
+        var positionIndex = MapSeatIndexToDisplayPosition(seatIndex);
+        return $"seat-position-{positionIndex}";
+    }
+
+    private int MapSeatIndexToDisplayPosition(int seatIndex)
+    {
+        const int seatCount = 8;
+        if (seatIndex < 0)
+        {
+            return seatIndex;
+        }
+
+        // If we don't know who the current player is (e.g., spectators), use the natural layout.
+        if (CurrentPlayerSeatIndex < 0)
+        {
+            return seatIndex % seatCount;
+        }
+
+        // Rotate so the current player maps to display position 0.
+        return (seatIndex - CurrentPlayerSeatIndex + seatCount) % seatCount;
     }
 
     private string GetSeatStateClass(SeatInfo seat)
@@ -151,7 +171,8 @@
             { 7, (80, 75) }    // Bottom right
         };
 
-        if (positions.TryGetValue(DealerSeatIndex, out var pos))
+        var dealerDisplayIndex = MapSeatIndexToDisplayPosition(DealerSeatIndex);
+        if (positions.TryGetValue(dealerDisplayIndex, out var pos))
         {
             return $"left: {pos.left}%; top: {pos.top}%;";
         }
