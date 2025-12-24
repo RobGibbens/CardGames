@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using CardGames.Poker.Betting;
-using CardGames.Poker.Games;
+using CardGames.Poker.Games.HoldEm;
 using FluentAssertions;
 using Xunit;
 

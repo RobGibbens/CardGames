@@ -1,0 +1,108 @@
+@namespace CardGames.Poker.Web.Components.Shared
+
+<div class="hand-odds-panel @(IsExpanded ? "expanded" : "collapsed")">
+    <button class="hand-odds-toggle" @onclick="ToggleExpanded" aria-expanded="@IsExpanded" aria-controls="odds-content">
+        <span class="toggle-icon">
+            @if (IsExpanded)
+            {
+                <i class="fa-solid fa-chevron-right"></i>
+            }
+            else
+            {
+                <i class="fa-solid fa-chevron-left"></i>
+            }
+        </span>
+        <span class="toggle-label">@(IsExpanded ? "" : "Odds")</span>
+    </button>
+
+    <div id="odds-content" class="hand-odds-content">
+        <div class="hand-odds-header">
+            <i class="fa-solid fa-chart-simple"></i>
+            <span>Hand Odds</span>
+        </div>
+
+        @if (HandOdds is not null && HandOdds.Any())
+        {
+            <div class="hand-odds-list">
+                @foreach (var odds in HandOdds)
+                {
+                    <div class="hand-odds-row">
+                        <span class="hand-type-name @GetHandTypeClass(odds.HandType)">
+                            @odds.DisplayName
+                        </span>
+                        <div class="probability-bar-container">
+                            <div class="probability-bar @GetHandTypeClass(odds.HandType)" 
+                                 style="width: @GetBarWidth(odds.Probability)%">
+                            </div>
+                        </div>
+                        <span class="probability-value">
+                            @FormatPercentage(odds.Probability)
+                        </span>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="hand-odds-empty">
+                <i class="fa-regular fa-cards"></i>
+                <span>No cards dealt yet</span>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// The hand odds data to display.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<HandTypeOddsDto>? HandOdds { get; set; }
+
+    /// <summary>
+    /// Whether the panel is currently expanded.
+    /// </summary>
+    [Parameter]
+    public bool IsExpanded { get; set; } = true;
+
+    /// <summary>
+    /// Callback when the expanded state changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<bool> IsExpandedChanged { get; set; }
+
+    private async Task ToggleExpanded()
+    {
+        IsExpanded = !IsExpanded;
+        await IsExpandedChanged.InvokeAsync(IsExpanded);
+    }
+
+    private static string FormatPercentage(decimal value)
+    {
+        return $"{value * 100:F1}%";
+    }
+
+    private static double GetBarWidth(decimal probability)
+    {
+        // Scale to make bars more visible (max 100% for probability of 1)
+        return (double)(probability * 100);
+    }
+
+    private static string GetHandTypeClass(string handType)
+    {
+        return handType.ToLowerInvariant() switch
+        {
+                        "fiveofakind" => "five-of-a-kind",
+                        "straightflush" => "straight-flush",
+                        "quads" => "quads",
+                        "fullhouse" => "full-house",
+                        "flush" => "flush",
+                        "straight" => "straight",
+                        "trips" => "trips",
+                        "twopair" => "two-pair",
+                        "onepair" => "one-pair",
+                        "highcard" => "high-card",
+                        _ => "default"
+                    };
+                }
+            }

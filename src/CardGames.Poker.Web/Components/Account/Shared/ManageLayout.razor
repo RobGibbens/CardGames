@@ -1,17 +1,29 @@
 ﻿@inherits LayoutComponentBase
 @layout CardGames.Poker.Web.Components.Layout.MainLayout
 
-<h1>Manage your account</h1>
+<CardGames.Poker.Web.Components.Shared.SiteNavBar />
 
-<div>
-    <h2>Change your account settings</h2>
-    <hr />
-    <div class="row">
-        <div class="col-lg-3">
-            <ManageNavMenu />
+<section class="section" aria-labelledby="manage-title">
+    <div class="section-container">
+        <div class="section-header">
+            <span class="section-badge">Account</span>
+            <h1 id="manage-title" class="section-title">Manage your account</h1>
+            <p class="section-subtitle">Update your profile, security, and sign-in settings.</p>
         </div>
-        <div class="col-lg-9">
-            @Body
+
+        <div class="row">
+            <div class="col-lg-3">
+                <div class="feature-card">
+                    <h2 class="feature-title" style="margin-bottom: .75rem;">Settings</h2>
+                    <ManageNavMenu />
+                </div>
+            </div>
+
+            <div class="col-lg-9">
+                <div class="feature-card">
+                    @Body
+                </div>
+            </div>
         </div>
     </div>
-</div>
+</section>

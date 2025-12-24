@@ -1,0 +1,66 @@
+@namespace CardGames.Poker.Web.Components.Shared
+
+@using CardGames.Poker.Api.Contracts
+
+<div class="table-card @GetStatusClass()">
+    <div class="variant-card">
+        <div class="variant-icon">
+            @if (!string.IsNullOrWhiteSpace(Table.GameTypeImageName))
+            {
+                <img class="variant-icon" src="/images/games/@Table.GameTypeImageName" alt="@Table.GameTypeName" />
+            }
+            else
+            {
+                <span class="variant-icon">?</span>
+            }
+        </div>
+        <h3 class="variant-name">@Table.Name</h3>
+        <h4 class="variant-name">@Table.GameTypeMetadataName</h4>
+        <p class="variant-description">@Table.GameTypeDescription</p>
+        @* <span class="variant-badge">@($"{game.MinimumNumberOfPlayers}-{game.MaximumNumberOfPlayers} players")</span> *@
+        
+        <div class="table-card-info">
+            <div class="info-item">
+                <i class="fa-regular fa-user"></i>
+                <span class="info-label">Host:</span>
+                <span class="info-value">@(string.IsNullOrWhiteSpace(Table.CreatedByName) ? "-" : Table.CreatedByName)</span>
+            </div>
+        </div>
+
+        <div class="table-card-status">
+            <span class="status-dot @GetStatusDotClass()"></span>
+            <span class="status-text">@GetStatusText()</span>
+        </div>
+
+        <div class="table-card-actions">
+            <a href="/table/@Table.Id" class="btn btn-secondary table-action-btn">
+                <i class="fa-regular fa-magnifying-glass"></i> View Table
+            </a>
+        </div>
+    </div>
+    
+ 
+    
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public required GetActiveGamesResponse Table { get; set; }
+
+    private string GetStatusClass()
+    {
+        return "";
+    }
+
+    private string GetStatusDotClass()
+    {
+        return "";
+    }
+
+    private string GetStatusText()
+    {
+		return string.IsNullOrWhiteSpace(Table.CurrentPhaseDescription)
+			? $"{Table.CurrentPhase}"
+			: $"{Table.CurrentPhaseDescription}";
+    }
+}

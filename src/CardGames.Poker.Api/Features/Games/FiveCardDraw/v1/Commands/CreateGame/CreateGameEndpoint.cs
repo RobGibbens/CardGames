@@ -13,13 +13,18 @@ public static class CreateGameEndpoint
 					var result = await mediator.Send(command, cancellationToken);
 
 					return result.Match(
-						success => Results.Created($"/api/games/five-card-draw/{success.GameId}", success.GameId)
+						success => Results.Created($"/api/games/five-card-draw/{success.GameId}", success.GameId),
+						conflict => Results.Problem(
+							title: "Create game conflict",
+							detail: conflict.Reason,
+							statusCode: StatusCodes.Status409Conflict)
 					);
 				})
 			.WithName(nameof(MapCreateGame).TrimPrefix("Map"))
 			.WithSummary(nameof(MapCreateGame).TrimPrefix("Map"))
 			.WithDescription("Create a new game.")
 			.Produces(StatusCodes.Status201Created, typeof(Guid))
+			.ProducesProblem(StatusCodes.Status409Conflict)
 			.ProducesProblem(StatusCodes.Status400BadRequest);
 
 		return group;
