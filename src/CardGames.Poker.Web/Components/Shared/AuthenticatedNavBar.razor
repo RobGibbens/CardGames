@@ -3,8 +3,12 @@
 
 @inject IJSRuntime JSRuntime
 @inject NavigationManager NavigationManager
+@inject UserManager<ApplicationUser> UserManager
 
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
+@using CardGames.Poker.Web.Data
+@using System.Security.Claims
 
 <!-- Authenticated Navigation Header -->
 <header class="nav-header">
@@ -61,8 +65,17 @@
                 <Authorized>
                     <div class="user-menu">
                         <button class="user-menu-trigger" @onclick="ToggleUserMenu" @onclick:stopPropagation="true">
-                            <span class="user-avatar">@GetUserInitial(context.User.Identity?.Name)</span>
-                            <span class="user-name">@context.User.Identity?.Name</span>
+                            <span class="user-avatar">
+                                @if (!string.IsNullOrWhiteSpace(CurrentUserAvatarUrl))
+                                {
+                                    <img class="user-avatar-img" src="@CurrentUserAvatarUrl" alt="" referrerpolicy="no-referrer" />
+                                }
+                                else
+                                {
+                                    @GetUserInitial(CurrentUserName ?? context.User.Identity?.Name)
+                                }
+                            </span>
+                            <span class="user-name">@(CurrentUserName ?? context.User.Identity?.Name)</span>
                             <span class="user-menu-arrow">▼</span>
                         </button>
                         @if (isUserMenuOpen)
@@ -79,6 +92,7 @@
                                 </a>
                                 <hr class="user-menu-divider" />
                                 <form method="post" action="/Account/Logout">
+                                    <AntiforgeryToken />
                                     <input type="hidden" name="ReturnUrl" value="/" />
                                     <button type="submit" class="user-menu-item user-menu-logout">
                                         <span>🚪</span> Sign Out
@@ -103,6 +117,43 @@
     private bool isDarkMode;
     private bool isMobileMenuOpen;
     private bool isUserMenuOpen;
+
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
+
+    private string? loadedUserId;
+    private string? CurrentUserAvatarUrl;
+    private string? CurrentUserName;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var authState = await AuthenticationStateTask;
+        var principal = authState.User;
+
+        var userId = UserManager.GetUserId(principal);
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            loadedUserId = null;
+            CurrentUserAvatarUrl = null;
+            CurrentUserName = null;
+            return;
+        }
+
+        if (string.Equals(loadedUserId, userId, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        loadedUserId = userId;
+
+        // Prefer the app's stored profile fields.
+        var user = await UserManager.GetUserAsync(principal);
+        CurrentUserName = PreferFirstName(user?.FirstName) ?? principal.Identity?.Name;
+
+        // Prefer the app's stored AvatarUrl; fall back to common external provider claims.
+        var avatarFromClaims = GetFirstClaimValue(principal, "picture", "avatar_url", "urn:google:picture");
+        CurrentUserAvatarUrl = NormalizeAvatarUrl(user?.AvatarUrl) ?? NormalizeAvatarUrl(avatarFromClaims);
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -183,5 +234,58 @@
         }
 
         return name[0].ToString().ToUpperInvariant();
+    }
+
+    private static string? GetFirstClaimValue(ClaimsPrincipal principal, params string[] claimTypes)
+    {
+        foreach (var claimType in claimTypes)
+        {
+            var value = principal.FindFirstValue(claimType);
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                return value;
+            }
+        }
+
+        return null;
+    }
+
+    private static string? NormalizeAvatarUrl(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return null;
+        }
+
+        url = url.Trim();
+
+        // Allow app-local absolute paths like /images/avatar.png
+        if (url.StartsWith("/", StringComparison.Ordinal))
+        {
+            return url;
+        }
+
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+        {
+            return null;
+        }
+
+        // Only allow https for external images.
+        if (!string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        return uri.ToString();
+    }
+
+    private static string? PreferFirstName(string? firstName)
+    {
+        if (string.IsNullOrWhiteSpace(firstName))
+        {
+            return null;
+        }
+
+        return firstName.Trim();
     }
 }

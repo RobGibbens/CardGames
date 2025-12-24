@@ -24,6 +24,29 @@
         <DataAnnotationsValidator />
         <ValidationSummary class="text-danger" role="alert" />
 
+        <div class="row g-3 mb-3">
+            <div class="col-12 col-md-6">
+                <div class="form-floating">
+                    <InputText @bind-Value="Input.FirstName" id="Input.FirstName" class="form-control" autocomplete="given-name" aria-required="true" placeholder="First" />
+                    <label for="Input.FirstName">First name</label>
+                    <ValidationMessage For="() => Input.FirstName" class="text-danger" />
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="form-floating">
+                    <InputText @bind-Value="Input.LastName" id="Input.LastName" class="form-control" autocomplete="family-name" aria-required="true" placeholder="Last" />
+                    <label for="Input.LastName">Last name</label>
+                    <ValidationMessage For="() => Input.LastName" class="text-danger" />
+                </div>
+            </div>
+        </div>
+
+        <div class="form-floating mb-3">
+            <InputText @bind-Value="Input.AvatarUrl" id="Input.AvatarUrl" class="form-control" autocomplete="photo" placeholder="https://..." />
+            <label for="Input.AvatarUrl">Avatar URL (optional)</label>
+            <ValidationMessage For="() => Input.AvatarUrl" class="text-danger" />
+        </div>
+
         <div class="form-floating mb-3">
             <InputText @bind-Value="Input.Email" id="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="name@example.com" />
             <label for="Input.Email">Email address</label>
@@ -79,6 +102,10 @@
     public async Task RegisterUser(EditContext editContext)
     {
         var user = CreateUser();
+
+        user.FirstName = Input.FirstName.Trim();
+        user.LastName = Input.LastName.Trim();
+        user.AvatarUrl = string.IsNullOrWhiteSpace(Input.AvatarUrl) ? null : Input.AvatarUrl.Trim();
 
         await UserStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
         var emailStore = GetEmailStore();
@@ -139,6 +166,21 @@
 
     private sealed class InputModel
     {
+        [Required]
+        [StringLength(100)]
+        [Display(Name = "First name")]
+        public string FirstName { get; set; } = "";
+
+        [Required]
+        [StringLength(100)]
+        [Display(Name = "Last name")]
+        public string LastName { get; set; } = "";
+
+        [OptionalUrl]
+        [StringLength(512)]
+        [Display(Name = "Avatar URL")]
+        public string? AvatarUrl { get; set; }
+
         [Required]
         [EmailAddress]
         [Display(Name = "Email")]
