@@ -25,7 +25,7 @@ public class GetGamePlayersQueryHandler(CardsDbContext context, HybridCache hybr
 
                var currentHandNumber = game.CurrentHandNumber;
 
-               return await hybridCache.GetOrCreateAsync(
+			var gamePlayers = await hybridCache.GetOrCreateAsync(
                        $"{Feature.Version}-{request.CacheKey}",
                        async _ =>
                                await context.GamePlayers
@@ -34,10 +34,23 @@ public class GetGamePlayersQueryHandler(CardsDbContext context, HybridCache hybr
                                        .Include(gp => gp.Cards)
                                        .OrderBy(gp => gp.SeatPosition)
                                        .AsNoTracking()
-                                       .Select(gp => GetGamePlayersMapper.ToResponse(gp, currentHandNumber))
-                                       .ToListAsync(cancellationToken),
+								.ToListAsync(cancellationToken),
                        cancellationToken: cancellationToken,
                        tags: [Feature.Version, Feature.Name, nameof(GetGamePlayersQuery)]
                );
+
+		var usersByEmail = await context.Users
+			.AsNoTracking()
+			.Where(u => u.Email != null)
+			.Select(u => new { Email = u.Email!, u.FirstName, u.AvatarUrl })
+			.ToDictionaryAsync(u => u.Email, StringComparer.OrdinalIgnoreCase, cancellationToken);
+
+		return gamePlayers
+			.Select(gp =>
+			{
+				usersByEmail.TryGetValue(gp.Player.Email ?? string.Empty, out var user);
+				return GetGamePlayersMapper.ToResponse(gp, currentHandNumber, user?.FirstName, user?.AvatarUrl);
+			})
+			.ToList();
        }
 }

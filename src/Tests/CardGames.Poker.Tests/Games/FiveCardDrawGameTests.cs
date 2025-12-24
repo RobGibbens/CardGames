@@ -250,6 +250,103 @@ public class FiveCardDrawGameTests
         game.CanContinue().Should().BeFalse();
     }
 
+    [Fact]
+    public void CanContinue_WhenOnlyOnePlayerHasChips_ReturnsFalse()
+    {
+        var players = new List<(string, int)>
+        {
+            ("Alice", 1000),
+            ("Bob", 0),
+            ("Charlie", 0)
+        };
+        var game = new FiveCardDrawGame(players, ante: 10, minBet: 20);
+
+        game.CanContinue().Should().BeFalse();
+    }
+
+    [Fact]
+    public void DealerPosition_RotatesAfterShowdown()
+    {
+        var game = CreateTwoPlayerGame();
+        var initialDealerPosition = game.DealerPosition;
+
+        game.StartHand();
+        game.CollectAntes();
+        game.DealHands();
+        game.ProcessBettingAction(BettingActionType.Check);
+        game.ProcessBettingAction(BettingActionType.Check);
+        game.ProcessDraw([]);
+        game.ProcessDraw([]);
+        game.ProcessBettingAction(BettingActionType.Check);
+        game.ProcessBettingAction(BettingActionType.Check);
+        game.PerformShowdown();
+
+        game.DealerPosition.Should().Be((initialDealerPosition + 1) % 2);
+    }
+
+    [Fact]
+    public void GetPlayersWithChips_ReturnsOnlyPlayersWithPositiveChips()
+    {
+        var players = new List<(string, int)>
+        {
+            ("Alice", 1000),
+            ("Bob", 0),
+            ("Charlie", 500)
+        };
+        var game = new FiveCardDrawGame(players, ante: 10, minBet: 20);
+
+        var playersWithChips = game.GetPlayersWithChips().ToList();
+
+        playersWithChips.Should().HaveCount(2);
+        playersWithChips.Select(p => p.Name).Should().Contain("Alice");
+        playersWithChips.Select(p => p.Name).Should().Contain("Charlie");
+        playersWithChips.Select(p => p.Name).Should().NotContain("Bob");
+    }
+
+    [Fact]
+    public void StartHand_ResetsPlayerStatesForNewHand()
+    {
+        var game = CreateTwoPlayerGame();
+        game.StartHand();
+        game.CollectAntes();
+        game.DealHands();
+        game.ProcessBettingAction(BettingActionType.Fold);
+        game.PerformShowdown();
+
+        // Start a new hand
+        game.StartHand();
+
+        // Verify player states are reset
+        game.Players.Should().AllSatisfy(p =>
+        {
+            p.HasFolded.Should().BeFalse();
+            p.IsAllIn.Should().BeFalse();
+        });
+        game.CurrentPhase.Should().Be(FiveCardDrawPhase.CollectingAntes);
+    }
+
+    [Fact]
+    public void CollectAntes_ShortStackedPlayerGoesAllIn()
+    {
+        var players = new List<(string, int)>
+        {
+            ("Alice", 1000),
+            ("Bob", 5)  // Less than the ante of 10
+        };
+        var game = new FiveCardDrawGame(players, ante: 10, minBet: 20);
+
+        game.StartHand();
+        var actions = game.CollectAntes();
+
+        // Bob should contribute all 5 chips (his entire stack)
+        var bobAction = actions.FirstOrDefault(a => a.PlayerName == "Bob");
+        bobAction.Should().NotBeNull();
+        bobAction.Amount.Should().Be(5);
+
+        // Bob should have 0 chips remaining
+        game.Players.First(p => p.Name == "Bob").ChipStack.Should().Be(0);
+    }
+
     private static FiveCardDrawGame CreateTwoPlayerGame()
     {
         var players = new List<(string, int)>

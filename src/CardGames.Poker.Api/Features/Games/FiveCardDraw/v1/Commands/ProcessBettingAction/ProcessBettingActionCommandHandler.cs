@@ -122,8 +122,8 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 
 		context.BettingActionRecords.Add(actionRecord);
 
-		// 10. Update pot
-		var mainPot = game.Pots.FirstOrDefault(p => p.PotOrder == 0);
+		// 10. Update pot (must filter by current hand number to avoid updating old pots)
+		var mainPot = game.Pots.FirstOrDefault(p => p.PotOrder == 0 && p.HandNumber == game.CurrentHandNumber);
 		if (mainPot is not null)
 		{
 			mainPot.Amount += chipsMoved;

@@ -9,13 +9,19 @@ namespace CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Queries.GetGamePlay
 public static partial class GetGamePlayersMapper
 {
        [MapProperty(nameof(GamePlayer.Player) + "." + nameof(Player.Name), nameof(GetGamePlayersResponse.PlayerName))]
-       public static GetGamePlayersResponse ToResponse(GamePlayer model, int currentHandNumber)
+       public static GetGamePlayersResponse ToResponse(
+		   GamePlayer model,
+		   int currentHandNumber,
+		   string? playerFirstName,
+		   string? playerAvatarUrl)
        {
                return new GetGamePlayersResponse(
                        model.Id,
                        model.GameId,
                        model.PlayerId,
                        model.Player.Name,
+			playerFirstName,
+			playerAvatarUrl,
                        model.SeatPosition,
                        model.ChipStack,
                        model.StartingChips,

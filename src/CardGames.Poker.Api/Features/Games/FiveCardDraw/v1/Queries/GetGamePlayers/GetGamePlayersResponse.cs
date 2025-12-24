@@ -11,6 +11,8 @@ public record GetGamePlayersResponse(
 	Guid GameId,
 	Guid PlayerId,
 	string PlayerName,
+	string? PlayerFirstName,
+	string? PlayerAvatarUrl,
 	int SeatPosition,
 	int ChipStack,
 	int StartingChips,

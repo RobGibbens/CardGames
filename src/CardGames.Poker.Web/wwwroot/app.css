@@ -2754,18 +2754,27 @@ a:hover {
 
 /* Seat avatar */
 .seat-avatar {
-    width: 48px;
-    height: 48px;
+    width: 36px;
+    height: 36px;
     background: var(--gradient-primary);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     position: relative;
+    overflow: hidden;
+}
+
+.seat-avatar .avatar-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    display: block;
 }
 
 .avatar-initials {
-    font-size: 1rem;
+    font-size: 0.875rem;
     font-weight: 700;
     color: white;
 }
@@ -2783,11 +2792,16 @@ a:hover {
 }
 
 .seat-avatar.current-player {
-    border: 3px solid #fbbf24;
+    border: 2px solid #fbbf24;
 }
 
 .seat-avatar.disconnected {
     opacity: 0.5;
+}
+
+.seat-avatar.sitting-out {
+    background: #6b7280;
+    opacity: 0.6;
 }
 
 .dealer-chip {
@@ -2901,6 +2915,12 @@ a:hover {
     background: rgba(220, 38, 38, 0.3);
     color: #ef4444;
     animation: pulse 1.5s infinite;
+}
+
+.status-badge.sitting-out {
+    background: rgba(156, 163, 175, 0.3);
+    color: #d1d5db;
+    font-style: italic;
 }
 
 /* Seat cards */

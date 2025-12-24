@@ -17,6 +17,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
     private readonly CardsDbContext _context;
     private readonly ILogger<TableStateBuilder> _logger;
 
+	private sealed record UserProfile(string? FirstName, string? AvatarUrl);
+
     /// <summary>
     /// Initializes a new instance of the <see cref="TableStateBuilder"/> class.
     /// </summary>
@@ -48,30 +50,56 @@ public sealed class TableStateBuilder : ITableStateBuilder
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
-        // Calculate total pot from current betting round contributions
-        var totalPot = await CalculateTotalPotAsync(gameId, game.CurrentHandNumber, cancellationToken);
+            // Calculate total pot from current betting round contributions
+            var totalPot = await CalculateTotalPotAsync(gameId, game.CurrentHandNumber, cancellationToken);
 
-        // Build seat DTOs with cards hidden (face-down)
-        var seats = gamePlayers.Select(gp => BuildSeatPublicDto(gp, game.CurrentHandNumber)).ToList();
+            // Build seat DTOs with cards hidden (face-down)
+            // Enrich with Identity profile data (first name/avatar) when available.
+			var userProfilesByEmail = await _context.Users
+				.AsNoTracking()
+				.Where(u => u.Email != null)
+				.Select(u => new { Email = u.Email!, u.FirstName, u.AvatarUrl })
+				.ToDictionaryAsync(
+					u => u.Email,
+					u => new UserProfile(u.FirstName, u.AvatarUrl),
+					StringComparer.OrdinalIgnoreCase,
+					cancellationToken);
 
-        return new TableStatePublicDto
-        {
-            GameId = game.Id,
-            Name = game.Name,
-            CurrentPhase = game.CurrentPhase,
-            CurrentPhaseDescription = PhaseDescriptionResolver.TryResolve(game.GameType?.Code, game.CurrentPhase),
-            Ante = game.Ante ?? 0,
-            MinBet = game.MinBet ?? 0,
-            TotalPot = totalPot,
-            DealerSeatIndex = game.DealerPosition,
-            CurrentActorSeatIndex = game.CurrentPlayerIndex,
-            IsPaused = game.Status == GameStatus.BetweenHands,
-            CurrentHandNumber = game.CurrentHandNumber,
-            CreatedByName = game.CreatedByName,
-            Seats = seats,
-            Showdown = BuildShowdownPublicDto(game, gamePlayers)
-        };
-    }
+			var seats = gamePlayers
+				.Select(gp => BuildSeatPublicDto(gp, game.CurrentHandNumber, game.Ante ?? 0, userProfilesByEmail))
+				.ToList();
+
+            // Calculate results phase state
+            var isResultsPhase = game.CurrentPhase == "Complete" && game.HandCompletedAt.HasValue;
+            int? secondsUntilNextHand = null;
+            if (isResultsPhase && game.NextHandStartsAt.HasValue)
+            {
+                var remaining = game.NextHandStartsAt.Value - DateTimeOffset.UtcNow;
+                secondsUntilNextHand = Math.Max(0, (int)remaining.TotalSeconds);
+            }
+
+            return new TableStatePublicDto
+            {
+                GameId = game.Id,
+                Name = game.Name,
+                CurrentPhase = game.CurrentPhase,
+                CurrentPhaseDescription = PhaseDescriptionResolver.TryResolve(game.GameType?.Code, game.CurrentPhase),
+                Ante = game.Ante ?? 0,
+                MinBet = game.MinBet ?? 0,
+                TotalPot = totalPot,
+                DealerSeatIndex = game.DealerPosition,
+                CurrentActorSeatIndex = game.CurrentPlayerIndex,
+                IsPaused = game.Status == GameStatus.BetweenHands,
+                CurrentHandNumber = game.CurrentHandNumber,
+                CreatedByName = game.CreatedByName,
+                Seats = seats,
+                Showdown = BuildShowdownPublicDto(game, gamePlayers),
+                HandCompletedAtUtc = game.HandCompletedAt,
+                NextHandStartsAtUtc = game.NextHandStartsAt,
+                IsResultsPhase = isResultsPhase,
+                SecondsUntilNextHand = secondsUntilNextHand
+            };
+        }
 
     /// <inheritdoc />
     public async Task<PrivateStateDto?> BuildPrivateStateAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
@@ -186,7 +214,11 @@ public sealed class TableStateBuilder : ITableStateBuilder
             .ToListAsync(cancellationToken);
     }
 
-    private SeatPublicDto BuildSeatPublicDto(GamePlayer gamePlayer, int currentHandNumber)
+    private static SeatPublicDto BuildSeatPublicDto(
+		GamePlayer gamePlayer,
+		int currentHandNumber,
+		int ante,
+		IReadOnlyDictionary<string, UserProfile> userProfilesByEmail)
     {
         // Get current hand cards (not discarded)
         var playerCards = gamePlayer.Cards
@@ -202,16 +234,47 @@ public sealed class TableStateBuilder : ITableStateBuilder
             Suit = null
         }).ToList();
 
+        // Determine sitting out reason
+        string? sittingOutReason = null;
+        if (gamePlayer.IsSittingOut)
+        {
+            if (gamePlayer.ChipStack < ante && ante > 0)
+            {
+                sittingOutReason = "Insufficient chips";
+            }
+            else
+            {
+                sittingOutReason = "Sitting out";
+            }
+        }
+
+        string? playerFirstName = null;
+        string? playerAvatarUrl = null;
+
+        if (!string.IsNullOrWhiteSpace(gamePlayer.Player.Email)
+			&& userProfilesByEmail.TryGetValue(gamePlayer.Player.Email, out var profile))
+        {
+			playerFirstName = profile.FirstName;
+			playerAvatarUrl = profile.AvatarUrl;
+        }
+
+		// Fallback for existing/legacy data in the poker player table.
+		playerAvatarUrl ??= gamePlayer.Player.AvatarUrl;
+
         return new SeatPublicDto
         {
             SeatIndex = gamePlayer.SeatPosition,
             IsOccupied = true,
             PlayerName = gamePlayer.Player.Name,
+            PlayerFirstName = string.IsNullOrWhiteSpace(playerFirstName) ? null : playerFirstName.Trim(),
+            PlayerAvatarUrl = string.IsNullOrWhiteSpace(playerAvatarUrl) ? null : playerAvatarUrl.Trim(),
             Chips = gamePlayer.ChipStack,
             IsReady = gamePlayer.Status == GamePlayerStatus.Active && !gamePlayer.IsSittingOut,
             IsFolded = gamePlayer.HasFolded,
             IsAllIn = gamePlayer.IsAllIn,
             IsDisconnected = !gamePlayer.IsConnected,
+            IsSittingOut = gamePlayer.IsSittingOut,
+            SittingOutReason = sittingOutReason,
             CurrentBet = gamePlayer.CurrentBet,
             Cards = publicCards
         };

@@ -78,6 +78,7 @@ public class CreateGameCommandHandler(CardsDbContext context,
 			var gamePlayer = new GamePlayer
 			{
 				GameId = game.Id,
+				Player = player,
 				PlayerId = player.Id,
 				SeatPosition = seatPosition,
 				ChipStack = playerInfo.StartingChips,
@@ -174,6 +175,7 @@ public class CreateGameCommandHandler(CardsDbContext context,
 		player = new Player
 		{
 			Name = name,
+			Email = name,
 			IsActive = true,
 			TotalGamesPlayed = 0,
 			TotalHandsPlayed = 0,
