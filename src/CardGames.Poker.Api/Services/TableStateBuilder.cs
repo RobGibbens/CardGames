@@ -1,7 +1,10 @@
 using CardGames.Contracts.SignalR;
+using CardGames.Core.French.Cards;
+using CardGames.Poker.Evaluation;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.ActiveGames.v1.Queries.GetActiveGames;
+using CardGames.Poker.Hands.DrawHands;
 using Microsoft.EntityFrameworkCore;
 
 namespace CardGames.Poker.Api.Services;
@@ -74,6 +77,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
     public async Task<PrivateStateDto?> BuildPrivateStateAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
     {
         var game = await _context.Games
+            .Include(g => g.GameType)
             .AsNoTracking()
             .FirstOrDefaultAsync(g => g.Id == gameId, cancellationToken);
 
@@ -101,6 +105,56 @@ public sealed class TableStateBuilder : ITableStateBuilder
         }
 
         var hand = BuildPrivateHand(gamePlayer, game.CurrentHandNumber);
+
+        string? handEvaluationDescription = null;
+        try
+        {
+            var playerCards = gamePlayer.Cards
+                .Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber)
+                .OrderBy(c => c.DealOrder)
+                .Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
+                .ToList();
+
+            var communityCards = await _context.GameCards
+                .Where(c => c.GameId == gameId
+                        && !c.IsDiscarded
+                        && c.HandNumber == game.CurrentHandNumber
+                        && c.Location == CardLocation.Community)
+                .OrderBy(c => c.DealOrder)
+                .AsNoTracking()
+                .Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
+                .ToListAsync(cancellationToken);
+
+            var allEvaluationCards = playerCards.Concat(communityCards).ToList();
+
+            // Five Card Draw (exactly 5 known cards).
+            if (playerCards.Count == 5 && communityCards.Count == 0)
+            {
+                var drawHand = new DrawHand(playerCards);
+                handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(drawHand);
+            }
+            // Community-card games (need at least a 3-card board and 5+ total cards).
+            else if (communityCards.Count >= 3 && allEvaluationCards.Count >= 5)
+            {
+                // Hold'em / Short-deck Hold'em style: 2 hole + up to 5 community
+                if (playerCards.Count == 2)
+                {
+                    var holdemHand = new CardGames.Poker.Hands.CommunityCardHands.HoldemHand(playerCards, communityCards);
+                    handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(holdemHand);
+                }
+                // Omaha style: 4 hole + up to 5 community
+                else if (playerCards.Count == 4)
+                {
+                    var omahaHand = new CardGames.Poker.Hands.CommunityCardHands.OmahaHand(playerCards, communityCards);
+                    handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(omahaHand);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to compute hand evaluation description for game {GameId}, player {PlayerName}", gameId, gamePlayer.Player.Name);
+        }
+
         var isMyTurn = game.CurrentPlayerIndex == gamePlayer.SeatPosition;
         var availableActions = isMyTurn
             ? await BuildAvailableActionsAsync(gameId, game, gamePlayer, cancellationToken)
@@ -113,6 +167,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
             PlayerName = gamePlayer.Player.Name,
             SeatPosition = gamePlayer.SeatPosition,
             Hand = hand,
+			HandEvaluationDescription = handEvaluationDescription,
             AvailableActions = availableActions,
             Draw = draw,
             IsMyTurn = isMyTurn

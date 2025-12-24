@@ -16,10 +16,15 @@
 
     <!-- Cards Display -->
     <div class="draw-cards-container">
-        @for (int i = 0; i < Cards.Count; i++)
+        @{
+            var orderedCards = GetOrderedCards().ToList();
+        }
+
+        @for (var i = 0; i < orderedCards.Count; i++)
         {
-            var index = i;
-            var card = Cards[i];
+            var displayIndex = i;
+            var index = orderedCards[i].Index;
+            var card = orderedCards[i].Card;
             var isSelected = SelectedIndices.Contains(index);
 
             <div class="draw-card-wrapper @(isSelected ? "selected" : "") @(IsDiscarding && isSelected ? "discarding" : "") @(IsDrawing && NewCardIndices.Contains(index) ? "drawing" : "")"
@@ -29,7 +34,7 @@
                         @card.Rank <i class="fa-regular @GetSuitSymbol(card.Suit)"></i>
                     </span>
                 </div>
-                <div class="card-index">@(index + 1)</div>
+                <div class="card-index">@(displayIndex + 1)</div>
                 @if (isSelected)
                 {
                     <div class="discard-badge">
@@ -180,4 +185,65 @@
             _ => "fa-question"
         };
     }
+
+    private IEnumerable<IndexedCard> GetOrderedCards()
+    {
+        if (Cards.Count == 0)
+        {
+            return [];
+        }
+
+        // Sort known face-up cards by value (2..A). Keep unknown/blank ranks stable.
+        return Cards
+            .Select((card, index) => new IndexedCard(card, index))
+            .OrderBy(x => string.IsNullOrWhiteSpace(x.Card.Rank) ? 1 : 0)
+            .ThenBy(x => GetRankValue(x.Card.Rank))
+            .ThenBy(x => GetSuitValue(x.Card.Suit))
+            .ThenBy(x => x.Index);
+    }
+
+    private static int GetRankValue(string? rank)
+    {
+        if (string.IsNullOrWhiteSpace(rank))
+        {
+            return int.MaxValue;
+        }
+
+        return rank.Trim().ToUpperInvariant() switch
+        {
+            "2" or "TWO" or "DEUCE" => 2,
+            "3" or "THREE" => 3,
+            "4" or "FOUR" => 4,
+            "5" or "FIVE" => 5,
+            "6" or "SIX" => 6,
+            "7" or "SEVEN" => 7,
+            "8" or "EIGHT" => 8,
+            "9" or "NINE" => 9,
+            "10" or "T" or "TEN" => 10,
+            "J" or "JACK" => 11,
+            "Q" or "QUEEN" => 12,
+            "K" or "KING" => 13,
+            "A" or "ACE" => 14,
+            _ => int.MaxValue
+        };
+    }
+
+    private static int GetSuitValue(string? suit)
+    {
+        if (string.IsNullOrWhiteSpace(suit))
+        {
+            return int.MaxValue;
+        }
+
+        return suit.Trim().ToLowerInvariant() switch
+        {
+            "clubs" or "c" => 0,
+            "diamonds" or "d" => 1,
+            "hearts" or "h" => 2,
+            "spades" or "s" => 3,
+            _ => int.MaxValue
+        };
+    }
+
+    private sealed record IndexedCard(CardInfo Card, int Index);
 }

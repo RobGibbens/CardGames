@@ -27,6 +27,12 @@ public sealed record PrivateStateDto
     public required IReadOnlyList<CardPrivateDto> Hand { get; init; }
 
     /// <summary>
+    /// A human-readable evaluation of the player's current hand (e.g., "Straight to the Ten").
+    /// Only sent to the requesting player.
+    /// </summary>
+    public string? HandEvaluationDescription { get; init; }
+
+    /// <summary>
     /// Available betting actions when it is the player's turn.
     /// Null if not the player's turn.
     /// </summary>

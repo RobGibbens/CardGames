@@ -562,6 +562,8 @@
                 IsFaceUp = true,
                 IsSelected = false
             }).ToList();
+
+			seats[currentPlayerSeatIndex].HandEvaluationDescription = state.HandEvaluationDescription;
         }
 
         // Update available actions
@@ -1244,6 +1246,7 @@
         public bool IsDisconnected { get; set; }
         public int CurrentBet { get; set; }
         public List<CardInfo> Cards { get; set; } = [];
+		public string? HandEvaluationDescription { get; set; }
     }
 
     public record CardInfo
