@@ -68,7 +68,7 @@
         @if (ShowCards && Seat.Cards.Count > 0)
         {
             <div class="seat-cards">
-                @foreach (var card in Seat.Cards)
+                @foreach (var card in GetOrderedCards())
                 {
                     <div class="playing-card @(card.IsFaceUp ? "face-up" : "face-down") @(card.IsSelected ? "selected" : "")">
                         @if (card.IsFaceUp)
@@ -84,6 +84,13 @@
                     </div>
                 }
             </div>
+
+			@if (IsCurrentPlayer && !string.IsNullOrWhiteSpace(Seat.HandEvaluationDescription))
+			{
+				<div class="seat-hand-eval" title="Hand evaluation">
+					@Seat.HandEvaluationDescription
+				</div>
+			}
         }
         else if (ShowCards && !Seat.IsFolded)
         {
@@ -185,6 +192,66 @@
         {
             "hearts" or "h" or "diamonds" or "d" => "suit-red",
             _ => "suit-black"
+        };
+    }
+
+    private IEnumerable<CardInfo> GetOrderedCards()
+    {
+        if (Seat.Cards.Count == 0)
+        {
+            return [];
+        }
+
+        // Sort face-up known cards by value (2..A). Keep unknown/face-down cards stable.
+        return Seat.Cards
+            .Select((card, index) => new { card, index })
+            .OrderBy(x => string.IsNullOrWhiteSpace(x.card.Rank) ? 1 : 0)
+            .ThenBy(x => GetRankValue(x.card.Rank))
+            .ThenBy(x => GetSuitValue(x.card.Suit))
+            .ThenBy(x => x.index)
+            .Select(x => x.card);
+    }
+
+    private static int GetRankValue(string? rank)
+    {
+        if (string.IsNullOrWhiteSpace(rank))
+        {
+            return int.MaxValue;
+        }
+
+        return rank.Trim().ToUpperInvariant() switch
+        {
+            "2" or "TWO" or "DEUCE" => 2,
+            "3" or "THREE" => 3,
+            "4" or "FOUR" => 4,
+            "5" or "FIVE" => 5,
+            "6" or "SIX" => 6,
+            "7" or "SEVEN" => 7,
+            "8" or "EIGHT" => 8,
+            "9" or "NINE" => 9,
+            "10" or "T" or "TEN" => 10,
+            "J" or "JACK" => 11,
+            "Q" or "QUEEN" => 12,
+            "K" or "KING" => 13,
+            "A" or "ACE" => 14,
+            _ => int.MaxValue
+        };
+    }
+
+    private static int GetSuitValue(string? suit)
+    {
+        if (string.IsNullOrWhiteSpace(suit))
+        {
+            return int.MaxValue;
+        }
+
+        return suit.Trim().ToLowerInvariant() switch
+        {
+            "clubs" or "c" => 0,
+            "diamonds" or "d" => 1,
+            "hearts" or "h" => 2,
+            "spades" or "s" => 3,
+            _ => int.MaxValue
         };
     }
 }
