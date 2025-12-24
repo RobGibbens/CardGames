@@ -251,18 +251,51 @@ public static class OddsCalculator
 
     /// <summary>
     /// Calculates odds for a Five Card Draw hand.
+    /// When cardsToKeep contains fewer than 5 cards, simulates drawing replacement cards
+    /// to calculate the probability of ending with each hand type after the draw.
     /// </summary>
+    /// <param name="cardsToKeep">The cards the player is keeping (not discarding).</param>
+    /// <param name="deadCards">Cards that are known to be unavailable (e.g., seen by other players).</param>
+    /// <param name="simulations">Number of Monte Carlo simulations to run.</param>
+    /// <returns>Probabilities for each possible hand type after the draw.</returns>
     public static OddsResult CalculateDrawOdds(
-        IReadOnlyCollection<Card> heroCards,
+        IReadOnlyCollection<Card> cardsToKeep,
         IReadOnlyCollection<Card> deadCards = null,
         int simulations = DefaultSimulations)
     {
         deadCards ??= Array.Empty<Card>();
         var handTypeCounts = InitializeHandTypeCounts();
+        var cardsNeeded = 5 - cardsToKeep.Count;
+
+        // If no cards need to be drawn, just evaluate the hand once
+        if (cardsNeeded == 0)
+        {
+            var heroHand = new DrawHand(cardsToKeep.ToList());
+            handTypeCounts[heroHand.Type] = simulations;
+            return CreateResult(handTypeCounts, simulations);
+        }
+
+        var dealer = FrenchDeckDealer.WithFullDeck();
 
         for (int i = 0; i < simulations; i++)
         {
-            var heroHand = new DrawHand(heroCards.ToList());
+            dealer.Shuffle();
+
+            // Remove known cards from the deck
+            var knownCards = cardsToKeep.Concat(deadCards).Distinct();
+            foreach (var card in knownCards)
+            {
+                dealer.DealSpecific(card);
+            }
+
+            // Build the final hand: kept cards + drawn replacements
+            var finalHand = cardsToKeep.ToList();
+            for (int j = 0; j < cardsNeeded; j++)
+            {
+                finalHand.Add(dealer.DealCard());
+            }
+
+            var heroHand = new DrawHand(finalHand);
             handTypeCounts[heroHand.Type]++;
         }
 

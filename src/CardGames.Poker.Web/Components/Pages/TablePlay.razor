@@ -1140,7 +1140,63 @@
 
         currentPlayerDrawCards[index] = currentPlayerDrawCards[index] with { IsSelected = selectedDiscardIndices.Contains(index) };
 
+        // Recalculate odds based on cards being kept (not selected for discard)
+        RecalculateDrawOddsForSelection();
+
         return InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>
+    /// Recalculates the hand odds based on the current discard selection.
+    /// Cards not selected for discard are kept, and the odds are calculated
+    /// by simulating drawing replacement cards for the discarded ones.
+    /// </summary>
+    private void RecalculateDrawOddsForSelection()
+    {
+        try
+        {
+            // Get the cards being kept (not selected for discard)
+            var cardsToKeep = currentPlayerDrawCards
+                .Where((card, index) => !selectedDiscardIndices.Contains(index))
+                .Select(c => ConvertToCard(c.Rank ?? "", c.Suit ?? ""))
+                .Where(c => c is not null)
+                .Cast<Card>()
+                .ToList();
+
+            if (cardsToKeep.Count == 0)
+            {
+                handOdds = [];
+                return;
+            }
+
+            // Get dead cards: cards selected for discard + folded players' visible cards
+            var discardedCards = currentPlayerDrawCards
+                .Where((card, index) => selectedDiscardIndices.Contains(index))
+                .Select(c => ConvertToCard(c.Rank ?? "", c.Suit ?? ""))
+                .Where(c => c is not null)
+                .Cast<Card>()
+                .ToList();
+
+            var foldedPlayerCards = seats
+                .Where(s => s.IsFolded && s.Cards.Any())
+                .SelectMany(s => s.Cards)
+                .Where(c => c.IsFaceUp && c.Rank is not null && c.Suit is not null)
+                .Select(c => ConvertToCard(c.Rank!, c.Suit!))
+                .Where(c => c is not null)
+                .Cast<Card>()
+                .ToList();
+
+            // Discarded cards are dead cards (they won't be redrawn)
+            var deadCards = discardedCards.Concat(foldedPlayerCards).ToList();
+
+            var result = OddsCalculator.CalculateDrawOdds(cardsToKeep, deadCards);
+            handOdds = ConvertToHandTypeOddsDtos(result);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to recalculate hand odds for discard selection");
+            handOdds = [];
+        }
     }
 
     private static string GetInitials(string? name)
