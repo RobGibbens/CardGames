@@ -21,6 +21,7 @@
 @inject IFiveCardDrawApi FiveCardDrawApiClient
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject GameHubClient GameHubClient
+@inject DashboardState DashboardState
 @inject ILogger<TablePlay> Logger
 <PageTitle>Table - Friday Night Poker</PageTitle>
 
@@ -116,12 +117,31 @@
                          CurrentPlayerSeatIndex="@currentPlayerSeatIndex" />
         </div>
 
-        <!-- Hand Odds Panel (shown when player is seated and has cards) -->
-        @if (isSeated && currentPlayerSeatIndex >= 0 && seats[currentPlayerSeatIndex].Cards.Count > 0)
+        <!-- Dashboard Panel (left side) -->
+        @if (isSeated)
         {
-            <HandOddsPanel HandOdds="@handOdds" 
-                           IsExpanded="@isHandOddsPanelExpanded" 
-                           IsExpandedChanged="@(value => isHandOddsPanelExpanded = value)" />
+            <DashboardPanel>
+                <DashboardSection Title="Leaderboard" 
+                                  Icon="fa-solid fa-trophy"
+                                  IsExpanded="@DashboardState.IsSectionExpanded("Leaderboard")"
+                                  IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("Leaderboard", value))">
+                    <LeaderboardSection Players="@GetLeaderboardPlayers()" />
+                </DashboardSection>
+
+                <DashboardSection Title="Odds" 
+                                  Icon="fa-solid fa-chart-simple"
+                                  IsExpanded="@DashboardState.IsSectionExpanded("Odds")"
+                                  IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("Odds", value))">
+                    <OddsSection HandOdds="@handOdds" />
+                </DashboardSection>
+
+                <DashboardSection Title="Hand History" 
+                                  Icon="fa-solid fa-clock-rotate-left"
+                                  IsExpanded="@DashboardState.IsSectionExpanded("HandHistory")"
+                                  IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("HandHistory", value))">
+                    <HandHistorySection Entries="@_handHistoryEntries" />
+                </DashboardSection>
+            </DashboardPanel>
         }
 
         <!-- Action Panel (only shown when it's player's turn during betting) -->
@@ -373,7 +393,10 @@
 
     // Hand odds state
     private List<HandTypeOddsDto> handOdds = [];
-    private bool isHandOddsPanelExpanded = true;
+
+    // Dashboard / Hand history state
+    private List<HandHistorySection.HandHistoryEntry> _handHistoryEntries = [];
+    private int _handNumber = 0;
 
     // Toast notification state
     private List<ToastMessage> _toastMessages = [];
@@ -1240,6 +1263,21 @@
             Logger.LogWarning(ex, "Failed to recalculate hand odds for discard selection");
             handOdds = [];
         }
+    }
+
+    /// <summary>
+    /// Gets the leaderboard players from the current seats.
+    /// </summary>
+    private IReadOnlyList<LeaderboardSection.LeaderboardPlayer> GetLeaderboardPlayers()
+    {
+        return seats
+            .Where(s => s.IsOccupied && s.PlayerName is not null)
+            .Select(s => new LeaderboardSection.LeaderboardPlayer(
+                PlayerId: s.SeatIndex.ToString(),
+                PlayerName: s.PlayerName!,
+                Chips: s.Chips))
+            .OrderByDescending(p => p.Chips)
+            .ToList();
     }
 
     private static string GetInitials(string? name)

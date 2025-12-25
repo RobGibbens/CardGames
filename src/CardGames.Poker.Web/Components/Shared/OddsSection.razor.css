@@ -1,0 +1,103 @@
+/* Odds Section styles - matches HandOddsPanel styling */
+.odds-section {
+    display: flex;
+    flex-direction: column;
+}
+
+.odds-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.odds-row {
+    display: grid;
+    grid-template-columns: 1fr 60px 45px;
+    gap: 8px;
+    align-items: center;
+}
+
+.hand-type-name {
+    font-size: 12px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Hand type colors */
+.hand-type-name.five-of-a-kind { color: #f0abfc; }
+.hand-type-name.straight-flush { color: #e879f9; }
+.hand-type-name.quads { color: #f87171; }
+.hand-type-name.full-house { color: #fb923c; }
+.hand-type-name.flush { color: #60a5fa; }
+.hand-type-name.straight { color: #4ade80; }
+.hand-type-name.trips { color: #22d3d1; }
+.hand-type-name.two-pair { color: #facc15; }
+.hand-type-name.one-pair { color: rgba(255, 255, 255, 0.85); }
+.hand-type-name.high-card { color: rgba(255, 255, 255, 0.5); }
+
+/* Probability bar */
+.probability-bar-container {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.probability-bar {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s ease;
+    min-width: 2px;
+}
+
+/* Bar colors matching hand types */
+.probability-bar.five-of-a-kind { background: linear-gradient(90deg, #f0abfc, #e879f9); }
+.probability-bar.straight-flush { background: linear-gradient(90deg, #e879f9, #c026d3); }
+.probability-bar.quads { background: linear-gradient(90deg, #f87171, #dc2626); }
+.probability-bar.full-house { background: linear-gradient(90deg, #fb923c, #ea580c); }
+.probability-bar.flush { background: linear-gradient(90deg, #60a5fa, #2563eb); }
+.probability-bar.straight { background: linear-gradient(90deg, #4ade80, #16a34a); }
+.probability-bar.trips { background: linear-gradient(90deg, #22d3d1, #0d9488); }
+.probability-bar.two-pair { background: linear-gradient(90deg, #facc15, #ca8a04); }
+.probability-bar.one-pair { background: linear-gradient(90deg, rgba(255,255,255,0.6), rgba(255,255,255,0.3)); }
+.probability-bar.high-card { background: linear-gradient(90deg, rgba(255,255,255,0.3), rgba(255,255,255,0.1)); }
+.probability-bar.default { background: rgba(255, 255, 255, 0.3); }
+
+/* Probability value */
+.probability-value {
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+    text-align: right;
+    font-family: 'Consolas', 'Monaco', monospace;
+}
+
+/* Empty state */
+.odds-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 24px 16px;
+    color: rgba(255, 255, 255, 0.4);
+    text-align: center;
+}
+
+.odds-empty i {
+    font-size: 28px;
+}
+
+.odds-empty span {
+    font-size: 12px;
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+    .probability-bar {
+        transition: none;
+    }
+}

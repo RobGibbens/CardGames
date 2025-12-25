@@ -1,0 +1,63 @@
+@namespace CardGames.Poker.Web.Components.Shared
+
+<div class="dashboard-section @(IsExpanded ? "expanded" : "collapsed")">
+    <button class="dashboard-section-header" 
+            @onclick="ToggleExpanded" 
+            aria-expanded="@IsExpanded" 
+            aria-controls="@ContentId">
+        <span class="section-title">
+            @if (!string.IsNullOrEmpty(Icon))
+            {
+                <i class="@Icon"></i>
+            }
+            @Title
+        </span>
+        <span class="section-chevron">
+            <i class="fa-solid @(IsExpanded ? "fa-chevron-up" : "fa-chevron-down")"></i>
+        </span>
+    </button>
+
+    <div id="@ContentId" class="dashboard-section-content">
+        @ChildContent
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// The section title displayed in the header.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Optional FontAwesome icon class for the section header.
+    /// </summary>
+    [Parameter]
+    public string? Icon { get; set; }
+
+    /// <summary>
+    /// Whether the section is currently expanded.
+    /// </summary>
+    [Parameter]
+    public bool IsExpanded { get; set; } = true;
+
+    /// <summary>
+    /// Callback when the expanded state changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<bool> IsExpandedChanged { get; set; }
+
+    /// <summary>
+    /// The content to display inside the section.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private string ContentId => $"section-{Title.ToLowerInvariant().Replace(" ", "-")}-content";
+
+    private async Task ToggleExpanded()
+    {
+        IsExpanded = !IsExpanded;
+        await IsExpandedChanged.InvokeAsync(IsExpanded);
+    }
+}

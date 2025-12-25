@@ -36,6 +36,9 @@ builder.Services.AddScoped<GameHubClient>();
 // Register SignalR lobby hub client (scoped per Blazor circuit)
 builder.Services.AddScoped<LobbyHubClient>();
 
+// Register Dashboard UI state service (scoped per Blazor circuit)
+builder.Services.AddScoped<DashboardState>();
+
 builder.Services.ConfigureHttpClientDefaults(http =>
 {
 	http.AddServiceDiscovery();

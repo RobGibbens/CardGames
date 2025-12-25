@@ -1,0 +1,160 @@
+/* Dashboard Panel - Left-side slide-in panel */
+.dashboard-panel {
+    position: fixed;
+    top: 50%;
+    left: 0;
+    transform: translateY(-50%);
+    z-index: 100;
+    display: flex;
+    flex-direction: row-reverse;
+    align-items: stretch;
+    transition: transform 0.3s ease-in-out;
+}
+
+.dashboard-panel.collapsed {
+    transform: translateY(-50%) translateX(calc(-100% + 36px));
+}
+
+.dashboard-panel.collapsed .dashboard-content {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.dashboard-panel.expanded .dashboard-content {
+    opacity: 1;
+}
+
+/* Toggle button */
+.dashboard-toggle {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    min-height: 80px;
+    padding: 8px 4px;
+    background: linear-gradient(135deg, rgba(30, 58, 95, 0.95), rgba(20, 40, 70, 0.95));
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-left: none;
+    border-radius: 0 8px 8px 0;
+    color: rgba(255, 255, 255, 0.85);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.dashboard-toggle:hover {
+    background: linear-gradient(135deg, rgba(40, 70, 110, 0.98), rgba(30, 50, 85, 0.98));
+    color: white;
+}
+
+.dashboard-toggle:focus {
+    outline: 2px solid rgba(96, 165, 250, 0.5);
+    outline-offset: 2px;
+}
+
+.dashboard-toggle .toggle-icon {
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+.dashboard-toggle .toggle-label {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Content panel */
+.dashboard-content {
+    background: linear-gradient(135deg, rgba(30, 58, 95, 0.95), rgba(20, 40, 70, 0.95));
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 0 8px 8px 0;
+    min-width: 280px;
+    max-width: 340px;
+    max-height: 80vh;
+    overflow-y: auto;
+    backdrop-filter: blur(12px);
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3);
+    transition: opacity 0.3s ease-in-out;
+}
+
+/* Custom scrollbar for dashboard content */
+.dashboard-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.dashboard-content::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+}
+
+.dashboard-content::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+}
+
+.dashboard-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Header */
+.dashboard-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.dashboard-header i {
+    color: #60a5fa;
+    font-size: 16px;
+}
+
+/* Sections container */
+.dashboard-sections {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .dashboard-panel {
+        top: auto;
+        bottom: 160px;
+        left: 0;
+        transform: translateX(0);
+    }
+
+    .dashboard-panel.collapsed {
+        transform: translateX(calc(-100% + 36px));
+    }
+
+    .dashboard-content {
+        min-width: 260px;
+        max-width: 75vw;
+        max-height: 50vh;
+    }
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+    .dashboard-panel {
+        transition: none;
+    }
+    
+    .dashboard-content {
+        transition: none;
+    }
+    
+    .dashboard-toggle {
+        transition: none;
+    }
+}

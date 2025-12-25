@@ -1,0 +1,65 @@
+@namespace CardGames.Poker.Web.Components.Shared
+
+@*
+    Hand History Section - Placeholder implementation
+    TODO: Implement data binding to hand completion events when available:
+    - HandNumber/timestamp
+    - Winner(s) and amounts
+    - Winning hand description
+    - Current player's hole cards
+    See Dashboard.md section 5.3 for full requirements.
+*@
+
+<div class="hand-history-section">
+    @if (Entries is not null && Entries.Any())
+    {
+        <div class="history-list">
+            @foreach (var entry in Entries.OrderByDescending(e => e.HandNumber))
+            {
+                <div class="history-entry">
+                    <div class="history-header">
+                        <span class="hand-number">Hand #@entry.HandNumber</span>
+                    </div>
+                    <div class="history-details">
+                        <div class="winner-info">
+                            <span class="winner-name">@entry.WinnerName</span>
+                            @if (entry.AmountWon > 0)
+                            {
+                                <span class="amount-won">+@entry.AmountWon.ToString("N0")</span>
+                            }
+                        </div>
+                        @if (!string.IsNullOrEmpty(entry.WinningHandDescription))
+                        {
+                            <div class="winning-hand">@entry.WinningHandDescription</div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="history-empty">
+            <i class="fa-regular fa-clock-rotate-left"></i>
+            <span>No hands yet</span>
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// The list of hand history entries to display.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<HandHistoryEntry>? Entries { get; set; }
+
+    /// <summary>
+    /// Represents a completed hand entry in the history.
+    /// </summary>
+    public record HandHistoryEntry(
+        int HandNumber,
+        string WinnerName,
+        int AmountWon,
+        string? WinningHandDescription = null,
+        string? PlayerHoleCards = null);
+}

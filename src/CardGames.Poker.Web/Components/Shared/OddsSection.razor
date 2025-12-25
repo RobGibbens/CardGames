@@ -1,0 +1,73 @@
+@namespace CardGames.Poker.Web.Components.Shared
+
+@*
+    Odds Section - Displays hand odds in the dashboard panel.
+    Reuses the same display logic as the right-side HandOddsPanel.
+*@
+
+<div class="odds-section">
+    @if (HandOdds is not null && HandOdds.Any())
+    {
+        <div class="odds-list">
+            @foreach (var odds in HandOdds)
+            {
+                <div class="odds-row">
+                    <span class="hand-type-name @GetHandTypeClass(odds.HandType)">
+                        @odds.DisplayName
+                    </span>
+                    <div class="probability-bar-container">
+                        <div class="probability-bar @GetHandTypeClass(odds.HandType)" 
+                             style="width: @GetBarWidth(odds.Probability)%">
+                        </div>
+                    </div>
+                    <span class="probability-value">
+                        @FormatPercentage(odds.Probability)
+                    </span>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="odds-empty">
+            <i class="fa-regular fa-cards"></i>
+            <span>No cards dealt yet</span>
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// The hand odds data to display.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<HandTypeOddsDto>? HandOdds { get; set; }
+
+    private static string FormatPercentage(decimal value)
+    {
+        return $"{value * 100:F1}%";
+    }
+
+    private static double GetBarWidth(decimal probability)
+    {
+        return (double)(probability * 100);
+    }
+
+    private static string GetHandTypeClass(string handType)
+    {
+        return handType.ToLowerInvariant() switch
+        {
+            "fiveofakind" => "five-of-a-kind",
+            "straightflush" => "straight-flush",
+            "quads" => "quads",
+            "fullhouse" => "full-house",
+            "flush" => "flush",
+            "straight" => "straight",
+            "trips" => "trips",
+            "twopair" => "two-pair",
+            "onepair" => "one-pair",
+            "highcard" => "high-card",
+            _ => "default"
+        };
+    }
+}
