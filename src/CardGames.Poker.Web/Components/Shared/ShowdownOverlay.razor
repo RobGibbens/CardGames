@@ -1,0 +1,87 @@
+@using CardGames.Poker.Api.Contracts
+
+<div class="table-overlay showdown-overlay">
+    <div class="overlay-content showdown-content @(ShowdownWon ? "showdown-win" : ShowdownLost ? "showdown-lose" : "")">
+        <button type="button" class="showdown-close" @onclick="OnClose" aria-label="Close showdown">
+            &times;
+        </button>
+
+        <div class="overlay-icon">
+            @if (ShowdownWon)
+            {
+                <i class="fa-solid fa-crown"></i>
+            }
+            else
+            {
+                <i class="fa-regular fa-face-grin-tears"></i>
+            }
+        </div>
+
+        <h2>Showdown</h2>
+
+        @if (ShowdownResult?.WonByFold == true)
+        {
+            var winner = ShowdownResult.Payouts.FirstOrDefault();
+            <p><strong>@winner.Key</strong> wins @winner.Value chips (all others folded).</p>
+        }
+        else
+        {
+            <div class="showdown-winners">
+                <h3>Winners</h3>
+                @if (ShowdownResult?.Payouts is not null)
+                {
+                    @foreach (var payout in ShowdownResult.Payouts)
+                    {
+                        <div class="showdown-winner-row">
+                            <span class="winner-name">@payout.Key</span>
+                            <span class="winner-amount">+@payout.Value</span>
+                        </div>
+                    }
+                }
+            </div>
+
+            <div class="showdown-hands">
+                <h3>Hands</h3>
+                @foreach (var hand in (ShowdownResult?.PlayerHands ?? []).OrderByDescending(h => h.IsWinner == true))
+                {
+                    <div class="showdown-hand-row @(hand.IsWinner == true ? "is-winner" : "")">
+                        <span class="player">@hand.PlayerName</span>
+                        <span class="hand-type">@hand.HandType</span>
+                        @if (hand.AmountWon > 0)
+                        {
+                            <span class="won">+@hand.AmountWon</span>
+                        }
+                    </div>
+                }
+            </div>
+        }
+
+        <div class="showdown-countdown">
+            @if (SecondsUntilNextHand > 0)
+            {
+                <p class="showdown-hint">Next hand starts in <strong>@SecondsUntilNextHand</strong> seconds...</p>
+            }
+            else
+            {
+                <p class="showdown-hint">Starting next hand...</p>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public PerformShowdownSuccessful? ShowdownResult { get; set; }
+
+    [Parameter]
+    public bool ShowdownWon { get; set; }
+
+    [Parameter]
+    public bool ShowdownLost { get; set; }
+
+    [Parameter]
+    public int SecondsUntilNextHand { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+}

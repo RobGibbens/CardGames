@@ -63,7 +63,8 @@
                         @{
                             var x = "";
                         }
-                        @if (_gameResponse.CurrentPhase == GamePhase.WaitingForPlayers.ToString() || _gameResponse.CurrentPhase == GamePhase.WaitingToStart.ToString())
+                        @if (_gameResponse.CurrentPhase == GamePhase.WaitingForPlayers.ToString() || _gameResponse.CurrentPhase
+                                        == GamePhase.WaitingToStart.ToString())
                         {
                             <button class="btn btn-primary btn-sm" @onclick="StartGameAsync" disabled="@(!canStartGame)">
                                 <i class="fa-regular fa-play"></i>
@@ -95,7 +96,8 @@
                     </div>
                 }
             }
-            <div class="connection-indicator @(isConnected ? "connected" : "disconnected")" title="@(isConnected ? "Connected" : "Disconnected")">
+            <div class="connection-indicator @(isConnected ? "connected" : "disconnected")"
+                title="@(isConnected ? "Connected" : "Disconnected")">
                 <span class="connection-dot"></span>
             </div>
         </div>
@@ -106,70 +108,53 @@
         var temp = "";
         <!-- Main Table Area -->
         <div class="table-play-area">
-            <TableCanvas Seats="@seats"
-                         Pot="@pot"
-                         CurrentPhase="@_gameResponse?.CurrentPhase"
-                         CurrentPhaseDescription="@_gameResponse?.CurrentPhaseDescription"
-                         CurrentActorSeatIndex="@currentActorSeatIndex"
-                         DealerSeatIndex="@dealerSeatIndex"
-                         OnSeatClick="HandleSeatClickAsync"
-                         DisableSeatSelectionForCurrentUser="@isSeated"
-                         CurrentPlayerSeatIndex="@currentPlayerSeatIndex" />
+            <TableCanvas Seats="@seats" Pot="@pot" CurrentPhase="@_gameResponse?.CurrentPhase"
+                CurrentPhaseDescription="@_gameResponse?.CurrentPhaseDescription"
+                CurrentActorSeatIndex="@currentActorSeatIndex" DealerSeatIndex="@dealerSeatIndex"
+                OnSeatClick="HandleSeatClickAsync" DisableSeatSelectionForCurrentUser="@isSeated"
+                CurrentPlayerSeatIndex="@currentPlayerSeatIndex" />
         </div>
 
         <!-- Dashboard Panel (left side) -->
         @if (isSeated)
         {
             <DashboardPanel>
-                <DashboardSection Title="Leaderboard" 
-                                  Icon="fa-solid fa-trophy"
-                                  IsExpanded="@DashboardState.IsSectionExpanded("Leaderboard")"
-                                  IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("Leaderboard", value))">
+                <DashboardSection Title="Leaderboard" Icon="fa-solid fa-trophy"
+                    IsExpanded="@DashboardState.IsSectionExpanded("Leaderboard")"
+                    IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("Leaderboard", value))">
                     <LeaderboardSection Players="@GetLeaderboardPlayers()" />
                 </DashboardSection>
 
-                <DashboardSection Title="Odds" 
-                                  Icon="fa-solid fa-chart-simple"
-                                  IsExpanded="@DashboardState.IsSectionExpanded("Odds")"
-                                  IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("Odds", value))">
+                <DashboardSection Title="Odds" Icon="fa-solid fa-chart-simple"
+                    IsExpanded="@DashboardState.IsSectionExpanded("Odds")"
+                    IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("Odds", value))">
                     <OddsSection HandOdds="@handOdds" />
                 </DashboardSection>
 
-                <DashboardSection Title="Hand History" 
-                                  Icon="fa-solid fa-clock-rotate-left"
-                                  IsExpanded="@DashboardState.IsSectionExpanded("HandHistory")"
-                                  IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("HandHistory", value))">
+                <DashboardSection Title="Hand History" Icon="fa-solid fa-clock-rotate-left"
+                    IsExpanded="@DashboardState.IsSectionExpanded("HandHistory")"
+                    IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("HandHistory", value))">
                     <HandHistorySection Entries="@_handHistoryEntries" />
                 </DashboardSection>
             </DashboardPanel>
         }
 
         <!-- Action Panel (only shown when it's player's turn during betting) -->
-        @if (isPlayerTurn && !isDrawPhase && _gameResponse.CurrentPhase != GamePhase.WaitingForPlayers.ToString() && _gameResponse.CurrentPhase != GamePhase.Ended.ToString())
+        @if (isPlayerTurn && !isDrawPhase && _gameResponse.CurrentPhase != GamePhase.WaitingForPlayers.ToString() &&
+            _gameResponse.CurrentPhase != GamePhase.Ended.ToString())
         {
-            <ActionPanel LegalActions="@legalActions"
-                         MinBet="@currentMinBet"
-                         MaxBet="@currentMaxBet"
-                         CurrentBetToCall="@currentBetToCall"
-                         PlayerChips="@playerChips"
-                         TurnTimeRemaining="@turnTimeRemaining"
-                         OnAction="HandlePlayerActionAsync"
-                         IsSubmitting="@isSubmittingAction" />
+            <ActionPanel LegalActions="@legalActions" MinBet="@currentMinBet" MaxBet="@currentMaxBet"
+                CurrentBetToCall="@currentBetToCall" PlayerChips="@playerChips" TurnTimeRemaining="@turnTimeRemaining"
+                OnAction="HandlePlayerActionAsync" IsSubmitting="@isSubmittingAction" />
         }
 
         <!-- Draw Panel (only shown when it's player's turn during draw phase) -->
         @if (isDrawPhase && (isPlayerDrawTurn || _forceShowDrawPanel))
         {
-            <DrawPanel Cards="@currentPlayerDrawCards"
-                       SelectedIndices="@selectedDiscardIndices"
-                       OnToggleSelection="ToggleDiscardSelectionAsync"
-                       OnDraw="HandleDrawActionAsync"
-                       IsSubmitting="@isSubmittingDraw"
-                       IsAnimating="@isDrawAnimating"
-                       IsDiscarding="@isDiscardingCards"
-                       IsDrawing="@isDrawingNewCards"
-                       CardsDrawn="@cardsDrawn"
-                       NewCardIndices="@newCardIndices" />
+            <DrawPanel Cards="@currentPlayerDrawCards" SelectedIndices="@selectedDiscardIndices"
+                OnToggleSelection="ToggleDiscardSelectionAsync" OnDraw="HandleDrawActionAsync" IsSubmitting="@isSubmittingDraw"
+                IsAnimating="@isDrawAnimating" IsDiscarding="@isDiscardingCards" IsDrawing="@isDrawingNewCards"
+                CardsDrawn="@cardsDrawn" NewCardIndices="@newCardIndices" />
         }
 
         <!-- Draw Phase Waiting Indicator (shown to other players during draw phase) -->
@@ -249,7 +234,8 @@
         }
 
         <!-- Paused overlay -->
-        @if (isPaused && _gameResponse.CurrentPhase != GamePhase.WaitingForPlayers.ToString() && _gameResponse.CurrentPhase != GamePhase.Ended.ToString())
+        @if (isPaused && _gameResponse.CurrentPhase != GamePhase.WaitingForPlayers.ToString() && _gameResponse.CurrentPhase
+            != GamePhase.Ended.ToString())
         {
             <div class="table-overlay paused-overlay">
                 <div class="overlay-content">
@@ -262,72 +248,14 @@
 
         @if (IsShowdownPhase && _showShowdownOverlay && _showdownResult is not null)
         {
-            <div class="table-overlay showdown-overlay">
-                <div class="overlay-content showdown-content @(_showdownWon ? "showdown-win" : _showdownLost ? "showdown-lose" : "")">
-                    <button type="button" class="showdown-close" @onclick="CloseShowdownOverlay" aria-label="Close showdown">
-                        &times;
-                    </button>
-                    <div class="overlay-icon">
-                        @if (_showdownWon)
-                        {
-                            <i class="fa-solid fa-crown"></i>
-                        }
-                        else
-                        {
-                            <i class="fa-regular fa-face-grin-tears"></i>
-                        }
-                    </div>
-                    <h2>Showdown</h2>
-
-                    @if (_showdownResult.WonByFold == true)
-                    {
-                        var winner = _showdownResult.Payouts.FirstOrDefault();
-                        <p><strong>@winner.Key</strong> wins @winner.Value chips (all others folded).</p>
-                    }
-                    else
-                    {
-                        <div class="showdown-winners">
-                            <h3>Winners</h3>
-                            @foreach (var payout in _showdownResult.Payouts)
-                            {
-                                <div class="showdown-winner-row">
-                                    <span class="winner-name">@payout.Key</span>
-                                    <span class="winner-amount">+@payout.Value</span>
-                                </div>
-                            }
-                        </div>
-
-                                                <div class="showdown-hands">
-                                                    <h3>Hands</h3>
-                                                    @foreach (var hand in _showdownResult.PlayerHands.OrderByDescending(h => h.IsWinner == true))
-                                                    {
-                                                        <div class="showdown-hand-row @(hand.IsWinner == true ? "is-winner" : "")">
-                                                            <span class="player">@hand.PlayerName</span>
-                                                            <span class="hand-type">@hand.HandType</span>
-                                                            @if (hand.AmountWon > 0)
-                                                            {
-                                                                <span class="won">+@hand.AmountWon</span>
-                                                            }
-                                                        </div>
-                                                    }
-                                                </div>
-                                            }
-
-                                            <div class="showdown-countdown">
-                                                @if (_secondsUntilNextHand > 0)
-                                                {
-                                                    <p class="showdown-hint">Next hand starts in <strong>@_secondsUntilNextHand</strong> seconds...</p>
-                                                }
-                                                else
-                                                {
-                                                    <p class="showdown-hint">Starting next hand...</p>
-                                                }
-                                            </div>
-                                        </div>
-                                    </div>
-                                }
-                            }
-                        </main>
+            <ShowdownOverlay ShowdownResult="@_showdownResult"
+                            ShowdownWon="@_showdownWon"
+                            ShowdownLost="@_showdownLost"
+                            SecondsUntilNextHand="@_secondsUntilNextHand"
+                            OnClose="@CloseShowdownOverlay" />
+        }
+    }
+</main>
 
 @code {
     [Parameter]
@@ -413,11 +341,13 @@
 
     private string? _loggedInUserEmail;
 
-    private bool IsCompletePhase => string.Equals(_gameResponse?.CurrentPhase, "Complete", StringComparison.OrdinalIgnoreCase);
+    private bool IsCompletePhase => string.Equals(_gameResponse?.CurrentPhase, "Complete",
+    StringComparison.OrdinalIgnoreCase);
 
-    private bool IsShowdownPhase => string.Equals(_gameResponse?.CurrentPhase, GamePhase.Showdown.ToString(), StringComparison.OrdinalIgnoreCase)
-                                  || string.Equals(_gameResponse?.CurrentPhase, "Showdown", StringComparison.OrdinalIgnoreCase)
-                                  || IsCompletePhase;
+    private bool IsShowdownPhase => string.Equals(_gameResponse?.CurrentPhase, GamePhase.Showdown.ToString(),
+    StringComparison.OrdinalIgnoreCase)
+    || string.Equals(_gameResponse?.CurrentPhase, "Showdown", StringComparison.OrdinalIgnoreCase)
+    || IsCompletePhase;
 
     protected override async Task OnInitializedAsync()
     {
@@ -532,68 +462,68 @@
         currentActorSeatIndex = state.CurrentActorSeatIndex;
         isPaused = state.IsPaused;
 
-            // Update seats from public state
-            UpdateSeatsFromPublicState(state.Seats);
+        // Update seats from public state
+        UpdateSeatsFromPublicState(state.Seats);
 
-            // Handle showdown state - check if entering showdown/complete phase
-            if (state.Showdown is not null)
-            {
-                UpdateShowdownFromPublicState(state.Showdown);
-            }
-
-            // If entering showdown or complete phase, load showdown results via API
-            if (IsShowdownPhase && _showdownResult is null)
-            {
-                await TryLoadShowdownAsync();
-            }
-
-            // Handle continuous play countdown
-            _isResultsPhase = state.IsResultsPhase;
-            _secondsUntilNextHand = state.SecondsUntilNextHand ?? 0;
-
-            if (_isResultsPhase && _secondsUntilNextHand > 0)
-            {
-                StartCountdownTimer();
-            }
-            else if (!_isResultsPhase)
-            {
-                StopCountdownTimer();
-                // Clear showdown overlay when new hand starts
-                if (state.CurrentPhase != "Complete" && state.CurrentPhase != "Showdown")
-                {
-                    _showShowdownOverlay = false;
-                    _showdownResult = null;
-                }
-            }
-
-            // Update phase-dependent state
-            isDrawPhase = state.CurrentPhase == "DrawPhase";
-
-            // Update hand history from public state
-            if (state.HandHistory is not null && state.HandHistory.Count > 0)
-            {
-                _handHistoryEntries = state.HandHistory.ToList();
-            }
-
-            // Recalculate derived state
-            seatedPlayerCount = seats.Count(s => s.IsOccupied);
-            canStartGame = seatedPlayerCount >= (_gameResponse?.MinimumNumberOfPlayers ?? 2) &&
-                           seats.Where(s => s.IsOccupied).All(s => s.IsReady);
-
-            // Update current player info
-            currentPlayerSeatIndex = seats.FirstOrDefault(s => s.IsOccupied &&
-                !string.IsNullOrWhiteSpace(_loggedInUserEmail) &&
-                string.Equals(s.PlayerName, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase))?.SeatIndex ?? -1;
-
-            isSeated = currentPlayerSeatIndex >= 0;
-            isReady = isSeated && seats[currentPlayerSeatIndex].IsReady;
-
-            await InvokeAsync(StateHasChanged);
+        // Handle showdown state - check if entering showdown/complete phase
+        if (state.Showdown is not null)
+        {
+            UpdateShowdownFromPublicState(state.Showdown);
         }
 
-        private async Task HandlePrivateStateUpdatedAsync(PrivateStateDto state)
+        // If entering showdown or complete phase, load showdown results via API
+        if (IsShowdownPhase && _showdownResult is null)
         {
-            if (state.GameId != GameId)
+            await TryLoadShowdownAsync();
+        }
+
+        // Handle continuous play countdown
+        _isResultsPhase = state.IsResultsPhase;
+        _secondsUntilNextHand = state.SecondsUntilNextHand ?? 0;
+
+        if (_isResultsPhase && _secondsUntilNextHand > 0)
+        {
+            StartCountdownTimer();
+        }
+        else if (!_isResultsPhase)
+        {
+            StopCountdownTimer();
+            // Clear showdown overlay when new hand starts
+            if (state.CurrentPhase != "Complete" && state.CurrentPhase != "Showdown")
+            {
+                _showShowdownOverlay = false;
+                _showdownResult = null;
+            }
+        }
+
+        // Update phase-dependent state
+        isDrawPhase = state.CurrentPhase == "DrawPhase";
+
+        // Update hand history from public state
+        if (state.HandHistory is not null && state.HandHistory.Count > 0)
+        {
+            _handHistoryEntries = state.HandHistory.ToList();
+        }
+
+        // Recalculate derived state
+        seatedPlayerCount = seats.Count(s => s.IsOccupied);
+        canStartGame = seatedPlayerCount >= (_gameResponse?.MinimumNumberOfPlayers ?? 2) &&
+        seats.Where(s => s.IsOccupied).All(s => s.IsReady);
+
+        // Update current player info
+        currentPlayerSeatIndex = seats.FirstOrDefault(s => s.IsOccupied &&
+        !string.IsNullOrWhiteSpace(_loggedInUserEmail) &&
+        string.Equals(s.PlayerName, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase))?.SeatIndex ?? -1;
+
+        isSeated = currentPlayerSeatIndex >= 0;
+        isReady = isSeated && seats[currentPlayerSeatIndex].IsReady;
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task HandlePrivateStateUpdatedAsync(PrivateStateDto state)
+    {
+        if (state.GameId != GameId)
         {
             return;
         }
@@ -606,8 +536,8 @@
         if (currentPlayerSeatIndex < 0 && !string.IsNullOrWhiteSpace(state.PlayerName))
         {
             currentPlayerSeatIndex = seats.FindIndex(s => s.IsOccupied
-                && !string.IsNullOrWhiteSpace(s.PlayerName)
-                && string.Equals(s.PlayerName, state.PlayerName, StringComparison.OrdinalIgnoreCase));
+            && !string.IsNullOrWhiteSpace(s.PlayerName)
+            && string.Equals(s.PlayerName, state.PlayerName, StringComparison.OrdinalIgnoreCase));
 
             if (currentPlayerSeatIndex >= 0)
             {
@@ -628,23 +558,23 @@
                 IsSelected = false
             }).ToList();
 
-			seats[currentPlayerSeatIndex].HandEvaluationDescription = state.HandEvaluationDescription;
+            seats[currentPlayerSeatIndex].HandEvaluationDescription = state.HandEvaluationDescription;
         }
 
         // Update available actions
         if (state.AvailableActions is not null)
         {
             _availableActions = new AvailableActionsResponse(
-                callAmount: state.AvailableActions.CallAmount,
-                canAllIn: state.AvailableActions.CanAllIn,
-                canBet: state.AvailableActions.CanBet,
-                canCall: state.AvailableActions.CanCall,
-                canCheck: state.AvailableActions.CanCheck,
-                canFold: state.AvailableActions.CanFold,
-                canRaise: state.AvailableActions.CanRaise,
-                maxBet: state.AvailableActions.MaxBet,
-                minBet: state.AvailableActions.MinBet,
-                minRaise: state.AvailableActions.MinRaise
+            callAmount: state.AvailableActions.CallAmount,
+            canAllIn: state.AvailableActions.CanAllIn,
+            canBet: state.AvailableActions.CanBet,
+            canCall: state.AvailableActions.CanCall,
+            canCheck: state.AvailableActions.CanCheck,
+            canFold: state.AvailableActions.CanFold,
+            canRaise: state.AvailableActions.CanRaise,
+            maxBet: state.AvailableActions.MaxBet,
+            minBet: state.AvailableActions.MinBet,
+            minRaise: state.AvailableActions.MinRaise
             );
 
             isPlayerTurn = state.IsMyTurn;
@@ -665,39 +595,39 @@
             }
         }
 
-            // Update draw phase state
-            if (state.Draw is not null)
+        // Update draw phase state
+        if (state.Draw is not null)
+        {
+            isPlayerDrawTurn = state.Draw.IsMyTurnToDraw;
+            if (state.Draw.IsMyTurnToDraw && !isDrawAnimating && !_forceShowDrawPanel)
             {
-                isPlayerDrawTurn = state.Draw.IsMyTurnToDraw;
-                if (state.Draw.IsMyTurnToDraw && !isDrawAnimating && !_forceShowDrawPanel)
+                currentPlayerDrawCards = state.Hand.Select((c, i) => new CardInfo
                 {
-                    currentPlayerDrawCards = state.Hand.Select((c, i) => new CardInfo
-                    {
-                        Rank = c.Rank,
-                        Suit = c.Suit,
-                        IsFaceUp = true,
-                        IsSelected = selectedDiscardIndices.Contains(i)
-                    }).ToList();
-                }
-                else if ((isDrawAnimating || _forceShowDrawPanel) && currentPlayerDrawCards.Count == 0)
-                {
-                    // Preserve whatever is currently being animated. If we lost the list for any reason,
-                    // fall back to the latest private hand state to keep the panel populated.
-                    currentPlayerDrawCards = state.Hand.Select((c, i) => new CardInfo
-                    {
-                        Rank = c.Rank,
-                        Suit = c.Suit,
-                        IsFaceUp = true,
-                        IsSelected = selectedDiscardIndices.Contains(i)
-                    }).ToList();
-                }
+                    Rank = c.Rank,
+                    Suit = c.Suit,
+                    IsFaceUp = true,
+                    IsSelected = selectedDiscardIndices.Contains(i)
+                }).ToList();
             }
-
-            // Calculate hand odds from current cards
-            CalculateHandOdds(state.Hand);
-
-            await InvokeAsync(StateHasChanged);
+            else if ((isDrawAnimating || _forceShowDrawPanel) && currentPlayerDrawCards.Count == 0)
+            {
+                // Preserve whatever is currently being animated. If we lost the list for any reason,
+                // fall back to the latest private hand state to keep the panel populated.
+                currentPlayerDrawCards = state.Hand.Select((c, i) => new CardInfo
+                {
+                    Rank = c.Rank,
+                    Suit = c.Suit,
+                    IsFaceUp = true,
+                    IsSelected = selectedDiscardIndices.Contains(i)
+                }).ToList();
+            }
         }
+
+        // Calculate hand odds from current cards
+        CalculateHandOdds(state.Hand);
+
+        await InvokeAsync(StateHasChanged);
+    }
 
     private void UpdateSeatsFromPublicState(IReadOnlyList<SeatPublicDto> publicSeats)
     {
@@ -706,19 +636,19 @@
             if (publicSeat.SeatIndex >= 0 && publicSeat.SeatIndex < seats.Count)
             {
                 var isCurrentPlayer = !string.IsNullOrWhiteSpace(_loggedInUserEmail) &&
-                    string.Equals(publicSeat.PlayerName, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase);
+                string.Equals(publicSeat.PlayerName, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase);
 
                 // Preserve face-up cards for current player (will be updated by private state)
                 var existingCards = seats[publicSeat.SeatIndex].Cards;
                 var cards = isCurrentPlayer && existingCards.Any()
-                    ? existingCards
-                    : publicSeat.Cards.Select(c => new CardInfo
-                    {
-                        Rank = c.IsFaceUp ? c.Rank : null,
-                        Suit = c.IsFaceUp ? c.Suit : null,
-                        IsFaceUp = c.IsFaceUp,
-                        IsSelected = false
-                    }).ToList();
+                ? existingCards
+                : publicSeat.Cards.Select(c => new CardInfo
+                {
+                    Rank = c.IsFaceUp ? c.Rank : null,
+                    Suit = c.IsFaceUp ? c.Suit : null,
+                    IsFaceUp = c.IsFaceUp,
+                    IsSelected = false
+                }).ToList();
 
                 seats[publicSeat.SeatIndex] = new SeatInfo
                 {
@@ -748,29 +678,29 @@
         {
             // Convert to existing showdown format using constructor
             var payouts = showdown.PlayerResults
-                .Where(r => r.IsWinner)
-                .ToDictionary(r => r.PlayerName, r => r.AmountWon);
+            .Where(r => r.IsWinner)
+            .ToDictionary(r => r.PlayerName, r => r.AmountWon);
 
             var playerHands = showdown.PlayerResults.Select(r => new ShowdownPlayerHand(
-                amountWon: r.AmountWon,
-                cards: [], // Cards are displayed separately
-                handStrength: null,
-                handType: r.HandRanking,
-                isWinner: r.IsWinner,
-                playerName: r.PlayerName
+            amountWon: r.AmountWon,
+            cards: [], // Cards are displayed separately
+            handStrength: null,
+            handType: r.HandRanking,
+            isWinner: r.IsWinner,
+            playerName: r.PlayerName
             )).ToList();
 
             _showdownResult = new PerformShowdownSuccessful(
-                currentPhase: "Complete",
-                gameId: GameId,
-                payouts: payouts,
-                playerHands: playerHands,
-                wonByFold: false
+            currentPhase: "Complete",
+            gameId: GameId,
+            payouts: payouts,
+            playerHands: playerHands,
+            wonByFold: false
             );
 
             _showShowdownOverlay = true;
             _showdownWon = _showdownResult.Payouts?.Keys.Any(p =>
-                string.Equals(p, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase)) == true;
+            string.Equals(p, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase)) == true;
             _showdownLost = !_showdownWon;
         }
     }
@@ -801,16 +731,16 @@
 
         // Common claim locations across providers.
         return user.FindFirstValue(ClaimTypes.Email)
-               ?? user.FindFirstValue("email")
-               ?? user.FindFirstValue("preferred_username")
-               ?? user.Identity?.Name;
+        ?? user.FindFirstValue("email")
+        ?? user.FindFirstValue("preferred_username")
+        ?? user.Identity?.Name;
     }
 
     private void InitializeSeats()
     {
         seats = Enumerable.Range(0, 8)
-            .Select(i => new SeatInfo { SeatIndex = i })
-            .ToList();
+        .Select(i => new SeatInfo { SeatIndex = i })
+        .ToList();
     }
 
     private GetGameResponse? _gameResponse;
@@ -835,18 +765,19 @@
         finally
         {
             seatedPlayerCount = seats.Count(s => s.IsOccupied);
-            canStartGame = seatedPlayerCount >= (_gameResponse?.MinimumNumberOfPlayers ?? 2) && seats.Where(s => s.IsOccupied).All(s => s.IsReady);
+            canStartGame = seatedPlayerCount >= (_gameResponse?.MinimumNumberOfPlayers ?? 2) && seats.Where(s => s.IsOccupied).All(s
+            => s.IsReady);
 
             // Determine if current user is the host (game creator)
             isHost = !string.IsNullOrWhiteSpace(_loggedInUserEmail) &&
-                     !string.IsNullOrWhiteSpace(_gameResponse?.CreatedByName) &&
-                     string.Equals(_loggedInUserEmail, _gameResponse.CreatedByName, StringComparison.OrdinalIgnoreCase);
+            !string.IsNullOrWhiteSpace(_gameResponse?.CreatedByName) &&
+            string.Equals(_loggedInUserEmail, _gameResponse.CreatedByName, StringComparison.OrdinalIgnoreCase);
 
             // Determine current player seat by matching logged-in email to seat PlayerName (case-insensitive).
             currentPlayerName ??= _loggedInUserEmail;
             currentPlayerSeatIndex = seats.FirstOrDefault(s => s.IsOccupied &&
-                                                          !string.IsNullOrWhiteSpace(currentPlayerName) &&
-                                                          string.Equals(s.PlayerName, currentPlayerName, StringComparison.OrdinalIgnoreCase))?.SeatIndex ?? -1;
+            !string.IsNullOrWhiteSpace(currentPlayerName) &&
+            string.Equals(s.PlayerName, currentPlayerName, StringComparison.OrdinalIgnoreCase))?.SeatIndex ?? -1;
 
             isSeated = currentPlayerSeatIndex >= 0;
             isReady = isSeated && seats[currentPlayerSeatIndex].IsReady;
@@ -866,7 +797,7 @@
             {
                 var currentUserMatch = currentPlayerName ?? _loggedInUserEmail;
                 var isCurrentPlayer = !string.IsNullOrWhiteSpace(currentUserMatch) &&
-                                      string.Equals(players[i].PlayerName, currentUserMatch, StringComparison.OrdinalIgnoreCase);
+                string.Equals(players[i].PlayerName, currentUserMatch, StringComparison.OrdinalIgnoreCase);
 
                 seats[i] = new SeatInfo
                 {
@@ -917,8 +848,8 @@
             if (!response.IsSuccessStatusCode)
             {
                 Logger.LogWarning(
-                    "Failed to join game at seat {SeatIndex}: {StatusCode} - {Error}",
-                    seatIndex, response.StatusCode, response.Error?.Content);
+                                    "Failed to join game at seat {SeatIndex}: {StatusCode} - {Error}",
+                seatIndex, response.StatusCode, response.Error?.Content);
                 return;
             }
 
@@ -939,8 +870,8 @@
             currentPlayerSeatIndex = seatIndex;
 
             Logger.LogInformation(
-                "Successfully joined game {GameId} at seat {SeatIndex}. CanPlayCurrentHand: {CanPlay}",
-                GameId, seatIndex, response.Content?.CanPlayCurrentHand);
+                            "Successfully joined game {GameId} at seat {SeatIndex}. CanPlayCurrentHand: {CanPlay}",
+            GameId, seatIndex, response.Content?.CanPlayCurrentHand);
         }
         catch (Exception ex)
         {
@@ -1023,7 +954,8 @@
             return;
         }
 
-        var iWon = _showdownResult.Payouts?.Keys.Any(p => string.Equals(p, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase)) == true;
+        var iWon = _showdownResult.Payouts?.Keys.Any(p => string.Equals(p, _loggedInUserEmail,
+        StringComparison.OrdinalIgnoreCase)) == true;
         _showdownWon = iWon;
         _showdownLost = !iWon;
     }
@@ -1236,7 +1168,10 @@
             selectedDiscardIndices.Remove(index);
         }
 
-        currentPlayerDrawCards[index] = currentPlayerDrawCards[index] with { IsSelected = selectedDiscardIndices.Contains(index) };
+        currentPlayerDrawCards[index] = currentPlayerDrawCards[index] with
+        {
+            IsSelected = selectedDiscardIndices.Contains(index)
+        };
 
         // Recalculate odds based on cards being kept (not selected for discard)
         RecalculateDrawOddsForSelection();
@@ -1255,11 +1190,11 @@
         {
             // Get the cards being kept (not selected for discard)
             var cardsToKeep = currentPlayerDrawCards
-                .Where((card, index) => !selectedDiscardIndices.Contains(index))
-                .Select(c => ConvertToCard(c.Rank ?? "", c.Suit ?? ""))
-                .Where(c => c is not null)
-                .Cast<Card>()
-                .ToList();
+            .Where((card, index) => !selectedDiscardIndices.Contains(index))
+            .Select(c => ConvertToCard(c.Rank ?? "", c.Suit ?? ""))
+            .Where(c => c is not null)
+            .Cast<Card>()
+            .ToList();
 
             if (cardsToKeep.Count == 0)
             {
@@ -1269,20 +1204,20 @@
 
             // Get dead cards: cards selected for discard + folded players' visible cards
             var discardedCards = currentPlayerDrawCards
-                .Where((card, index) => selectedDiscardIndices.Contains(index))
-                .Select(c => ConvertToCard(c.Rank ?? "", c.Suit ?? ""))
-                .Where(c => c is not null)
-                .Cast<Card>()
-                .ToList();
+            .Where((card, index) => selectedDiscardIndices.Contains(index))
+            .Select(c => ConvertToCard(c.Rank ?? "", c.Suit ?? ""))
+            .Where(c => c is not null)
+            .Cast<Card>()
+            .ToList();
 
             var foldedPlayerCards = seats
-                .Where(s => s.IsFolded && s.Cards.Any())
-                .SelectMany(s => s.Cards)
-                .Where(c => c.IsFaceUp && c.Rank is not null && c.Suit is not null)
-                .Select(c => ConvertToCard(c.Rank!, c.Suit!))
-                .Where(c => c is not null)
-                .Cast<Card>()
-                .ToList();
+            .Where(s => s.IsFolded && s.Cards.Any())
+            .SelectMany(s => s.Cards)
+            .Where(c => c.IsFaceUp && c.Rank is not null && c.Suit is not null)
+            .Select(c => ConvertToCard(c.Rank!, c.Suit!))
+            .Where(c => c is not null)
+            .Cast<Card>()
+            .ToList();
 
             // Discarded cards are dead cards (they won't be redrawn)
             var deadCards = discardedCards.Concat(foldedPlayerCards).ToList();
@@ -1303,13 +1238,13 @@
     private IReadOnlyList<LeaderboardSection.LeaderboardPlayer> GetLeaderboardPlayers()
     {
         return seats
-            .Where(s => s.IsOccupied && s.PlayerName is not null)
-            .Select(s => new LeaderboardSection.LeaderboardPlayer(
-                PlayerId: s.SeatIndex.ToString(),
-                PlayerName: s.PlayerName!,
-                Chips: s.Chips))
-            .OrderByDescending(p => p.Chips)
-            .ToList();
+        .Where(s => s.IsOccupied && s.PlayerName is not null)
+        .Select(s => new LeaderboardSection.LeaderboardPlayer(
+        PlayerId: s.SeatIndex.ToString(),
+        PlayerName: s.PlayerName!,
+        Chips: s.Chips))
+        .OrderByDescending(p => p.Chips)
+        .ToList();
     }
 
     private static string GetInitials(string? name)
@@ -1338,31 +1273,31 @@
         [Description("Ended")] Ended,
         [Description("Waiting to Start")] WaitingToStart,
         [Description("Complete")] Complete,
-        [Description("Second Betting Round")]  SecondBettingRound,
+        [Description("Second Betting Round")] SecondBettingRound,
         [Description("Draw Phase")] DrawPhase,
-        [Description("First Betting Round")]  FirstBettingRound,
+        [Description("First Betting Round")] FirstBettingRound,
         [Description("Collecting Antes")] CollectingAntes,
     }
 
-	public record SeatInfo
-	{
-		public int SeatIndex { get; init; }
-		public bool IsOccupied { get; set; }
-		public string? PlayerName { get; set; }
-		public string? PlayerFirstName { get; set; }
-		public string? PlayerAvatarUrl { get; set; }
-		public int Chips { get; set; }
-		public bool IsReady { get; set; }
-		public bool IsCurrentPlayer { get; set; }
-		public bool IsFolded { get; set; }
-		public bool IsAllIn { get; set; }
-		public bool IsDisconnected { get; set; }
-		public bool IsSittingOut { get; set; }
-		public string? SittingOutReason { get; set; }
-		public int CurrentBet { get; set; }
-		public List<CardInfo> Cards { get; set; } = [];
-		public string? HandEvaluationDescription { get; set; }
-	}
+    public record SeatInfo
+    {
+        public int SeatIndex { get; init; }
+        public bool IsOccupied { get; set; }
+        public string? PlayerName { get; set; }
+        public string? PlayerFirstName { get; set; }
+        public string? PlayerAvatarUrl { get; set; }
+        public int Chips { get; set; }
+        public bool IsReady { get; set; }
+        public bool IsCurrentPlayer { get; set; }
+        public bool IsFolded { get; set; }
+        public bool IsAllIn { get; set; }
+        public bool IsDisconnected { get; set; }
+        public bool IsSittingOut { get; set; }
+        public string? SittingOutReason { get; set; }
+        public int CurrentBet { get; set; }
+        public List<CardInfo> Cards { get; set; } = [];
+        public string? HandEvaluationDescription { get; set; }
+    }
 
     public record CardInfo
     {
@@ -1417,141 +1352,141 @@
 
         // Leave the game and disconnect
         if (_currentGameId.HasValue)
-                {
-                    await GameHubClient.LeaveGameAsync(_currentGameId.Value);
-                }
-            }
-
-            private Guid? _currentGameId => GameId;
-
-            /// <summary>
-            /// Calculates the hand odds locally using the OddsCalculator.
-            /// </summary>
-            private void CalculateHandOdds(IReadOnlyList<CardPrivateDto> playerCards)
-            {
-                if (playerCards.Count == 0)
-                {
-                    handOdds = [];
-                    return;
-                }
-
-                try
-                {
-                    // Convert CardPrivateDto to Card
-                    var coreCards = playerCards
-                        .Select(c => ConvertToCard(c.Rank, c.Suit))
-                        .Where(c => c is not null)
-                        .Cast<Card>()
-                        .ToList();
-
-                    if (coreCards.Count == 0)
-                    {
-                        handOdds = [];
-                        return;
-                    }
-
-                    // Get dead cards from folded players' visible cards
-                    var deadCards = seats
-                        .Where(s => s.IsFolded && s.Cards.Any())
-                        .SelectMany(s => s.Cards)
-                        .Where(c => c.IsFaceUp && c.Rank is not null && c.Suit is not null)
-                        .Select(c => ConvertToCard(c.Rank!, c.Suit!))
-                        .Where(c => c is not null)
-                        .Cast<Card>()
-                        .ToList();
-
-                    var result = OddsCalculator.CalculateDrawOdds(coreCards, deadCards);
-
-                    handOdds = ConvertToHandTypeOddsDtos(result);
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogWarning(ex, "Failed to calculate hand odds");
-                    handOdds = [];
-                }
-            }
-
-            private static Card? ConvertToCard(string rank, string suit)
-            {
-                var symbolValue = rank.ToUpperInvariant() switch
-                {
-                    "A" => 14,
-                    "K" => 13,
-                    "Q" => 12,
-                    "J" => 11,
-                    "10" or "T" => 10,
-                    "9" => 9,
-                    "8" => 8,
-                    "7" => 7,
-                    "6" => 6,
-                    "5" => 5,
-                    "4" => 4,
-                    "3" => 3,
-                    "2" => 2,
-                    _ => 0
-                };
-
-                if (symbolValue == 0)
-                {
-                    return null;
-                }
-
-                var suitValue = suit.ToLowerInvariant() switch
-                {
-                    "hearts" => Suit.Hearts,
-                    "diamonds" => Suit.Diamonds,
-                    "spades" => Suit.Spades,
-                    "clubs" => Suit.Clubs,
-                    _ => (Suit?)null
-                };
-
-                if (suitValue is null)
-                {
-                    return null;
-                }
-
-                return new Card(suitValue.Value, symbolValue);
-            }
-
-            private static List<HandTypeOddsDto> ConvertToHandTypeOddsDtos(OddsCalculator.OddsResult result)
-            {
-                // Order hand types from best to worst for display
-                var orderedHandTypes = new[]
-                {
-                    HandType.FiveOfAKind,
-                    HandType.StraightFlush,
-                    HandType.Quads,
-                    HandType.FullHouse,
-                    HandType.Flush,
-                    HandType.Straight,
-                    HandType.Trips,
-                    HandType.TwoPair,
-                    HandType.OnePair,
-                    HandType.HighCard
-                };
-
-                return orderedHandTypes
-                    .Where(ht => result.HandTypeProbabilities.ContainsKey(ht))
-                    .Select(ht => new HandTypeOddsDto(
-                        HandType: ht.ToString(),
-                        DisplayName: GetHandTypeDisplayName(ht),
-                        Probability: result.HandTypeProbabilities[ht]
-                    ))
-                    .ToList();
-            }
-
-            private static string GetHandTypeDisplayName(HandType handType) => handType switch
-            {
-                HandType.HighCard => "High Card",
-                HandType.OnePair => "One Pair",
-                HandType.TwoPair => "Two Pair",
-                HandType.Trips => "Three of a Kind",
-                HandType.Straight => "Straight",
-                HandType.Flush => "Flush",
-                HandType.FullHouse => "Full House",
-                HandType.Quads => "Four of a Kind",
-                HandType.StraightFlush => "Straight Flush",
-                HandType.FiveOfAKind => "Five of a Kind",
-                _ => handType.ToString()
-            };
+        {
+            await GameHubClient.LeaveGameAsync(_currentGameId.Value);
         }
+    }
+
+    private Guid? _currentGameId => GameId;
+
+    /// <summary>
+    /// Calculates the hand odds locally using the OddsCalculator.
+    /// </summary>
+    private void CalculateHandOdds(IReadOnlyList<CardPrivateDto> playerCards)
+    {
+        if (playerCards.Count == 0)
+        {
+            handOdds = [];
+            return;
+        }
+
+        try
+        {
+            // Convert CardPrivateDto to Card
+            var coreCards = playerCards
+            .Select(c => ConvertToCard(c.Rank, c.Suit))
+            .Where(c => c is not null)
+            .Cast<Card>()
+            .ToList();
+
+            if (coreCards.Count == 0)
+            {
+                handOdds = [];
+                return;
+            }
+
+            // Get dead cards from folded players' visible cards
+            var deadCards = seats
+            .Where(s => s.IsFolded && s.Cards.Any())
+            .SelectMany(s => s.Cards)
+            .Where(c => c.IsFaceUp && c.Rank is not null && c.Suit is not null)
+            .Select(c => ConvertToCard(c.Rank!, c.Suit!))
+            .Where(c => c is not null)
+            .Cast<Card>()
+            .ToList();
+
+            var result = OddsCalculator.CalculateDrawOdds(coreCards, deadCards);
+
+            handOdds = ConvertToHandTypeOddsDtos(result);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to calculate hand odds");
+            handOdds = [];
+        }
+    }
+
+    private static Card? ConvertToCard(string rank, string suit)
+    {
+        var symbolValue = rank.ToUpperInvariant() switch
+        {
+            "A" => 14,
+            "K" => 13,
+            "Q" => 12,
+            "J" => 11,
+            "10" or "T" => 10,
+            "9" => 9,
+            "8" => 8,
+            "7" => 7,
+            "6" => 6,
+            "5" => 5,
+            "4" => 4,
+            "3" => 3,
+            "2" => 2,
+            _ => 0
+        };
+
+        if (symbolValue == 0)
+        {
+            return null;
+        }
+
+        var suitValue = suit.ToLowerInvariant() switch
+        {
+            "hearts" => Suit.Hearts,
+            "diamonds" => Suit.Diamonds,
+            "spades" => Suit.Spades,
+            "clubs" => Suit.Clubs,
+            _ => (Suit?)null
+        };
+
+        if (suitValue is null)
+        {
+            return null;
+        }
+
+        return new Card(suitValue.Value, symbolValue);
+    }
+
+    private static List<HandTypeOddsDto> ConvertToHandTypeOddsDtos(OddsCalculator.OddsResult result)
+    {
+        // Order hand types from best to worst for display
+        var orderedHandTypes = new[]
+        {
+HandType.FiveOfAKind,
+HandType.StraightFlush,
+HandType.Quads,
+HandType.FullHouse,
+HandType.Flush,
+HandType.Straight,
+HandType.Trips,
+HandType.TwoPair,
+HandType.OnePair,
+HandType.HighCard
+};
+
+        return orderedHandTypes
+        .Where(ht => result.HandTypeProbabilities.ContainsKey(ht))
+        .Select(ht => new HandTypeOddsDto(
+        HandType: ht.ToString(),
+        DisplayName: GetHandTypeDisplayName(ht),
+        Probability: result.HandTypeProbabilities[ht]
+        ))
+        .ToList();
+    }
+
+    private static string GetHandTypeDisplayName(HandType handType) => handType switch
+    {
+        HandType.HighCard => "High Card",
+        HandType.OnePair => "One Pair",
+        HandType.TwoPair => "Two Pair",
+        HandType.Trips => "Three of a Kind",
+        HandType.Straight => "Straight",
+        HandType.Flush => "Flush",
+        HandType.FullHouse => "Full House",
+        HandType.Quads => "Four of a Kind",
+        HandType.StraightFlush => "Straight Flush",
+        HandType.FiveOfAKind => "Five of a Kind",
+        _ => handType.ToString()
+    };
+}
