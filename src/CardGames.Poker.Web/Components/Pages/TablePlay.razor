@@ -158,7 +158,7 @@
         }
 
         <!-- Draw Panel (only shown when it's player's turn during draw phase) -->
-        @if (isDrawPhase && isPlayerDrawTurn)
+        @if (isDrawPhase && (isPlayerDrawTurn || _forceShowDrawPanel))
         {
             <DrawPanel Cards="@currentPlayerDrawCards"
                        SelectedIndices="@selectedDiscardIndices"
@@ -168,6 +168,7 @@
                        IsAnimating="@isDrawAnimating"
                        IsDiscarding="@isDiscardingCards"
                        IsDrawing="@isDrawingNewCards"
+                       CardsDrawn="@cardsDrawn"
                        NewCardIndices="@newCardIndices" />
         }
 
@@ -375,10 +376,12 @@
     private bool isDrawAnimating;
     private bool isDiscardingCards;
     private bool isDrawingNewCards;
+    private bool cardsDrawn;
     private List<int> newCardIndices = [];
     private HashSet<int> selectedDiscardIndices = [];
     private List<CardInfo> currentPlayerDrawCards = [];
     private GetCurrentDrawPlayerResponse? _currentDrawPlayer;
+    private bool _forceShowDrawPanel;
 
     // Showdown state
     private PerformShowdownSuccessful? _showdownResult;
@@ -660,8 +663,20 @@
             if (state.Draw is not null)
             {
                 isPlayerDrawTurn = state.Draw.IsMyTurnToDraw;
-                if (state.Draw.IsMyTurnToDraw && !isDrawAnimating)
+                if (state.Draw.IsMyTurnToDraw && !isDrawAnimating && !_forceShowDrawPanel)
                 {
+                    currentPlayerDrawCards = state.Hand.Select((c, i) => new CardInfo
+                    {
+                        Rank = c.Rank,
+                        Suit = c.Suit,
+                        IsFaceUp = true,
+                        IsSelected = selectedDiscardIndices.Contains(i)
+                    }).ToList();
+                }
+                else if ((isDrawAnimating || _forceShowDrawPanel) && currentPlayerDrawCards.Count == 0)
+                {
+                    // Preserve whatever is currently being animated. If we lost the list for any reason,
+                    // fall back to the latest private hand state to keep the panel populated.
                     currentPlayerDrawCards = state.Hand.Select((c, i) => new CardInfo
                     {
                         Rank = c.Rank,
@@ -1095,6 +1110,8 @@
 
         isSubmittingDraw = true;
         isDrawAnimating = true;
+        _forceShowDrawPanel = true;
+        cardsDrawn = false;
 
         try
         {
@@ -1169,8 +1186,13 @@
                 newCardIndices = discardIndices;
                 await InvokeAsync(StateHasChanged);
 
-                // Wait for draw animation
-                await Task.Delay(800);
+                // Wait for the draw-in animation to complete, then switch the status out of "Drawing...".
+                await Task.Delay(700);
+                cardsDrawn = true;
+                await InvokeAsync(StateHasChanged);
+
+                // Keep the panel visible for the remainder of the reveal window.
+                await Task.Delay(TimeSpan.FromSeconds(7) - TimeSpan.FromMilliseconds(700));
 
                 isDrawingNewCards = false;
                 newCardIndices = [];
@@ -1180,6 +1202,8 @@
             isDrawAnimating = false;
             currentPlayerDrawCards = [];
             selectedDiscardIndices.Clear();
+            _forceShowDrawPanel = false;
+            cardsDrawn = false;
 
             // SignalR will broadcast the updated state - no need to refresh manually
         }
@@ -1189,6 +1213,8 @@
             isDiscardingCards = false;
             isDrawingNewCards = false;
             isDrawAnimating = false;
+            _forceShowDrawPanel = false;
+            cardsDrawn = false;
         }
     }
 

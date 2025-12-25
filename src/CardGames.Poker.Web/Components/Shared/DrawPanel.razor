@@ -85,17 +85,24 @@
     @if (IsSubmitting)
     {
         <div class="draw-submitting">
-            <span class="loading-spinner-small"></span>
+           
             @if (IsDiscarding)
             {
+                <span class="loading-spinner-small"></span>
                 <span>Discarding cards...</span>
+            }
+            else if (CardsDrawn)
+            {
+                <span>New cards drawn...</span>
             }
             else if (IsDrawing)
             {
+                <span class="loading-spinner-small"></span>
                 <span>Drawing new cards...</span>
             }
             else
             {
+                <span class="loading-spinner-small"></span>
                 <span>Processing...</span>
             }
         </div>
@@ -126,6 +133,9 @@
 
     [Parameter]
     public bool IsDrawing { get; set; }
+
+    [Parameter]
+    public bool CardsDrawn { get; set; }
 
     [Parameter]
     public List<int> NewCardIndices { get; set; } = [];
