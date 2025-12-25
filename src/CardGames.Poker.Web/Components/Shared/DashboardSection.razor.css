@@ -36,12 +36,12 @@
     gap: 8px;
     font-size: 13px;
     font-weight: 600;
-    text-transform: uppercase;
     letter-spacing: 0.5px;
+    color: #ffffff;
 }
 
 .section-title i {
-    color: #60a5fa;
+    color: #ffffff;
     font-size: 14px;
 }
 
