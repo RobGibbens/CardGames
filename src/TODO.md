@@ -7,7 +7,7 @@
 - [x] Always make the logged in player the bottom seat
 - Have the ability for someone to take a seat and be dealt into the next hand
 - When already logged in, take them to the Lobby
-- When discarding cards, leave the overlay up with the new cards for a few seconds
-- Draw phase can overlap the hand odds. Move Hand Odds Up (or create a whole expandable console)
+- [x] When discarding cards, leave the overlay up with the new cards for a few seconds
 - Test side pots
-- Add Dev Tunnels to Aspire
+- [x] Add Dev Tunnels to Aspire
+- The fields on the register page should be wider
