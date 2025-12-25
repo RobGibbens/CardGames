@@ -1,0 +1,49 @@
+@namespace CardGames.Poker.Web.Components.Shared
+
+@* 
+    Leaderboard Section - Placeholder implementation
+    TODO: Implement data binding to player stats when available:
+    - PlayerId, DisplayName, ChipCount
+    - HandsWonPct, ShowdownsSeenPct
+    See Dashboard.md section 5.1 for full requirements.
+*@
+
+<div class="leaderboard-section">
+    @if (Players is not null && Players.Any())
+    {
+        <div class="leaderboard-list">
+            @foreach (var player in Players.OrderByDescending(p => p.Chips))
+            {
+                <div class="leaderboard-row">
+                    <span class="player-name">@player.PlayerName</span>
+                    <span class="player-chips">@player.Chips.ToString("N0")</span>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="leaderboard-empty">
+            <i class="fa-regular fa-users"></i>
+            <span>No players seated</span>
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// The list of players to display in the leaderboard.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<LeaderboardPlayer>? Players { get; set; }
+
+    /// <summary>
+    /// Represents a player entry in the leaderboard.
+    /// </summary>
+    public record LeaderboardPlayer(
+        string PlayerId,
+        string PlayerName,
+        int Chips,
+        decimal? HandsWonPct = null,
+        decimal? ShowdownsSeenPct = null);
+}

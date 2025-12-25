@@ -1,0 +1,83 @@
+/* Leaderboard Section styles */
+.leaderboard-section {
+    display: flex;
+    flex-direction: column;
+}
+
+.leaderboard-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.leaderboard-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    transition: background-color 0.2s ease;
+}
+
+.leaderboard-row:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.player-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 140px;
+}
+
+.player-chips {
+    font-size: 12px;
+    font-weight: 600;
+    color: #4ade80;
+    font-family: 'Consolas', 'Monaco', monospace;
+}
+
+/* Stats columns - shown when data is available */
+.player-stats {
+    display: flex;
+    gap: 12px;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.player-stats .stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.player-stats .stat-label {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+/* Empty state */
+.leaderboard-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 24px 16px;
+    color: rgba(255, 255, 255, 0.4);
+    text-align: center;
+}
+
+.leaderboard-empty i {
+    font-size: 28px;
+}
+
+.leaderboard-empty span {
+    font-size: 12px;
+}
