@@ -1,7 +1,7 @@
 - Check that setting the ante works correctly
 - Add the ability to edit table settings if the table isn't started yet
 - Make the results overlay look better
-- Show current standings
+- [x] Show current standings
 - Show hand history
 - [x] Show the user's avatar on TableSeat and their name
 - [x] Always make the logged in player the bottom seat
