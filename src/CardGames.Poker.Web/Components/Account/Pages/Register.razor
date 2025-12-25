@@ -24,23 +24,16 @@
         <DataAnnotationsValidator />
         <ValidationSummary class="text-danger" role="alert" />
 
-        <div class="row g-3 mb-3">
-            <div class="col-12 col-md-6">
-                <div class="form-floating">
-                    <InputText @bind-Value="Input.FirstName" id="Input.FirstName" class="form-control" autocomplete="given-name" aria-required="true" placeholder="First" />
-                    <label for="Input.FirstName">First name</label>
-                    <ValidationMessage For="() => Input.FirstName" class="text-danger" />
-                </div>
-            </div>
-            <div class="col-12 col-md-6">
-                <div class="form-floating">
-                    <InputText @bind-Value="Input.LastName" id="Input.LastName" class="form-control" autocomplete="family-name" aria-required="true" placeholder="Last" />
-                    <label for="Input.LastName">Last name</label>
-                    <ValidationMessage For="() => Input.LastName" class="text-danger" />
-                </div>
-            </div>
+        <div class="form-floating mb-3">
+            <InputText @bind-Value="Input.FirstName" id="Input.FirstName" class="form-control" autocomplete="given-name" aria-required="true" placeholder="First" />
+            <label for="Input.FirstName">First name</label>
+            <ValidationMessage For="() => Input.FirstName" class="text-danger" />
         </div>
-
+        <div class="form-floating mb-3">
+            <InputText @bind-Value="Input.LastName" id="Input.LastName" class="form-control" autocomplete="family-name" aria-required="true" placeholder="Last" />
+            <label for="Input.LastName">Last name</label>
+            <ValidationMessage For="() => Input.LastName" class="text-danger" />
+        </div>
         <div class="form-floating mb-3">
             <InputText @bind-Value="Input.AvatarUrl" id="Input.AvatarUrl" class="form-control" autocomplete="photo" placeholder="https://..." />
             <label for="Input.AvatarUrl">Avatar URL (optional)</label>

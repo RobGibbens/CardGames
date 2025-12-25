@@ -1,3 +1,5 @@
+using Aspire.Hosting;
+using Aspire.Hosting.DevTunnels;
 using CardGames.AppHost;
 
 var builder = DistributedApplication.CreateBuilder(args);
@@ -35,6 +37,17 @@ var web = builder.AddProject<Projects.CardGames_Poker_Web>("web")
 	.WaitFor(sqldb)
 	.WithReference(api)
 	.WaitFor(api);
+
+var options = new DevTunnelOptions
+{
+	Description = "localhost environment tunnel",
+	Labels = new[] { "qa", "testing" }.ToList(),
+	AllowAnonymous = false
+};
+var tunnel = builder.AddDevTunnel("poker-tunnel", "poker-tunnel", options)
+	.WithReference(web)
+	.WithAnonymousAccess()
+	.WaitFor(web);
 
 //var cli = builder.AddProject<Projects.CardGames_Poker_CLI>("cli")
 //	.WithReference(api)
