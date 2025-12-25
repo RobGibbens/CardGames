@@ -76,6 +76,7 @@ builder.Services.AddSingleton<IUserIdProvider, SignalRUserIdProvider>();
 builder.Services.AddScoped<ITableStateBuilder, TableStateBuilder>();
 builder.Services.AddScoped<IGameStateBroadcaster, GameStateBroadcaster>();
 builder.Services.AddScoped<ILobbyBroadcaster, LobbyBroadcaster>();
+builder.Services.AddScoped<IHandHistoryRecorder, HandHistoryRecorder>();
 
 // Add background service for continuous play (auto-start next hands)
 builder.Services.AddHostedService<ContinuousPlayBackgroundService>();
