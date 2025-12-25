@@ -1,47 +1,40 @@
 @namespace CardGames.Poker.Web.Components.Shared
-
-@*
-    Hand History Section - Placeholder implementation
-    TODO: Implement data binding to hand completion events when available:
-    - HandNumber/timestamp
-    - Winner(s) and amounts
-    - Winning hand description
-    - Current player's hole cards
-    See Dashboard.md section 5.3 for full requirements.
-*@
+@using CardGames.Contracts.SignalR
 
 <div class="hand-history-section">
     @if (Entries is not null && Entries.Any())
     {
-        <div class="history-list">
-            @foreach (var entry in Entries.OrderByDescending(e => e.HandNumber))
-            {
-                <div class="history-entry">
-                    <div class="history-header">
-                        <span class="hand-number">Hand #@entry.HandNumber</span>
-                    </div>
-                    <div class="history-details">
-                        <div class="winner-info">
-                            <span class="winner-name">@entry.WinnerName</span>
-                            @if (entry.AmountWon > 0)
-                            {
-                                <span class="amount-won">+@entry.AmountWon.ToString("N0")</span>
-                            }
+        <div class="history-list" role="table" aria-label="Hand history">
+            <div class="history-header-row" role="row">
+                <span class="header-cell" role="columnheader">Hand</span>
+                <span class="header-cell" role="columnheader">Winner</span>
+                <span class="header-cell header-won" role="columnheader">Won</span>
+                <span class="header-cell" role="columnheader">You</span>
+                <span class="header-cell header-delta" role="columnheader">? Chips</span>
+            </div>
+                    @foreach (var entry in Entries.OrderByDescending(e => e.HandNumber))
+                    {
+                        <div class="history-entry @(entry.CurrentPlayerWon ? "player-won" : "")" role="row" tabindex="0">
+                            <span class="cell hand-number" role="cell">#@entry.HandNumber</span>
+                            <span class="cell winner-name" role="cell" title="@GetWinnerTitle(entry)">
+                                @entry.WinnerName
+                            </span>
+                            <span class="cell amount-won" role="cell">+@entry.AmountWon.ToString("N0")</span>
+                            <span class="cell player-result" role="cell" title="@(entry.CurrentPlayerResultLabel ?? "")">
+                                @(entry.CurrentPlayerResultLabel ?? "—")
+                            </span>
+                            <span class="cell player-delta @GetDeltaClass(entry.CurrentPlayerNetDelta)" role="cell">
+                                @FormatDelta(entry.CurrentPlayerNetDelta)
+                            </span>
                         </div>
-                        @if (!string.IsNullOrEmpty(entry.WinningHandDescription))
-                        {
-                            <div class="winning-hand">@entry.WinningHandDescription</div>
-                        }
-                    </div>
+                    }
                 </div>
             }
-        </div>
-    }
-    else
-    {
-        <div class="history-empty">
-            <i class="fa-regular fa-clock-rotate-left"></i>
-            <span>No hands yet</span>
+            else
+            {
+                <div class="history-empty">
+            <i class="fa-regular fa-clock-rotate-left" aria-hidden="true"></i>
+            <span>No hands played yet</span>
         </div>
     }
 </div>
@@ -49,17 +42,36 @@
 @code {
     /// <summary>
     /// The list of hand history entries to display.
-    /// </summary>
-    [Parameter]
-    public IReadOnlyList<HandHistoryEntry>? Entries { get; set; }
+        /// </summary>
+        [Parameter]
+        public IReadOnlyList<HandHistoryEntryDto>? Entries { get; set; }
 
-    /// <summary>
-    /// Represents a completed hand entry in the history.
-    /// </summary>
-    public record HandHistoryEntry(
-        int HandNumber,
-        string WinnerName,
-        int AmountWon,
-        string? WinningHandDescription = null,
-        string? PlayerHoleCards = null);
-}
+        private static string GetWinnerTitle(HandHistoryEntryDto entry)
+        {
+            if (entry.WinnerCount > 1)
+            {
+                return $"{entry.WinnerName} (Split {entry.WinnerCount}-way)";
+            }
+            return entry.WinnerName;
+        }
+
+        private static string GetDeltaClass(int delta)
+        {
+            return delta switch
+            {
+                > 0 => "delta-positive",
+                < 0 => "delta-negative",
+                _ => "delta-zero"
+            };
+        }
+
+        private static string FormatDelta(int delta)
+        {
+            return delta switch
+            {
+                > 0 => $"+{delta:N0}",
+                < 0 => delta.ToString("N0"),
+                _ => "—"
+            };
+        }
+    }

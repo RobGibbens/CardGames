@@ -70,6 +70,21 @@ public class CardsDbContext(DbContextOptions<CardsDbContext> options) : Identity
 	/// </summary>
 	public DbSet<BettingActionRecord> BettingActionRecords => Set<BettingActionRecord>();
 
+	/// <summary>
+	/// Gets the set of hand history records.
+	/// </summary>
+	public DbSet<HandHistory> HandHistories => Set<HandHistory>();
+
+	/// <summary>
+	/// Gets the set of hand history winners.
+	/// </summary>
+	public DbSet<HandHistoryWinner> HandHistoryWinners => Set<HandHistoryWinner>();
+
+	/// <summary>
+	/// Gets the set of hand history player results.
+	/// </summary>
+	public DbSet<HandHistoryPlayerResult> HandHistoryPlayerResults => Set<HandHistoryPlayerResult>();
+
 	protected override void OnModelCreating(ModelBuilder model)
 	{
 		base.OnModelCreating(model);

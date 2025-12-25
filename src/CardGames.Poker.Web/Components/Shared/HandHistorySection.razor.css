@@ -7,8 +7,8 @@
 .history-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    max-height: 200px;
+    gap: 2px;
+    max-height: 250px;
     overflow-y: auto;
 }
 
@@ -27,21 +27,20 @@
     border-radius: 2px;
 }
 
-.history-entry {
-    padding: 10px 12px;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 6px;
-    border-left: 3px solid #60a5fa;
+/* Header row */
+.history-header-row {
+    display: grid;
+    grid-template-columns: 45px 1fr 65px 85px 65px;
+    gap: 8px;
+    padding: 8px 10px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 4px 4px 0 0;
+    position: sticky;
+    top: 0;
+    z-index: 1;
 }
 
-.history-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 6px;
-}
-
-.hand-number {
+.header-cell {
     font-size: 10px;
     font-weight: 600;
     text-transform: uppercase;
@@ -49,39 +48,82 @@
     color: rgba(255, 255, 255, 0.5);
 }
 
-.history-details {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
+.header-won,
+.header-delta {
+    text-align: right;
 }
 
-.winner-info {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+/* Entry rows */
+.history-entry {
+    display: grid;
+    grid-template-columns: 45px 1fr 65px 85px 65px;
     gap: 8px;
+    padding: 8px 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 4px;
+    transition: background-color 0.15s ease;
 }
 
-.winner-name {
-    font-size: 13px;
-    font-weight: 500;
-    color: rgba(255, 255, 255, 0.9);
+.history-entry:hover,
+.history-entry:focus {
+    background: rgba(255, 255, 255, 0.08);
+    outline: none;
+}
+
+.history-entry:focus-visible {
+    box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.5);
+}
+
+.history-entry.player-won {
+    border-left: 3px solid #4ade80;
+}
+
+/* Cells */
+.cell {
+    font-size: 12px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
+.hand-number {
+    font-family: 'Consolas', 'Monaco', monospace;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.winner-name {
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9);
+}
+
 .amount-won {
-    font-size: 12px;
+    text-align: right;
     font-weight: 600;
     color: #4ade80;
     font-family: 'Consolas', 'Monaco', monospace;
 }
 
-.winning-hand {
+.player-result {
     font-size: 11px;
-    color: rgba(255, 255, 255, 0.6);
-    font-style: italic;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.player-delta {
+    text-align: right;
+    font-weight: 600;
+    font-family: 'Consolas', 'Monaco', monospace;
+}
+
+.delta-positive {
+    color: #4ade80;
+}
+
+.delta-negative {
+    color: #f87171;
+}
+
+.delta-zero {
+    color: rgba(255, 255, 255, 0.4);
 }
 
 /* Empty state */

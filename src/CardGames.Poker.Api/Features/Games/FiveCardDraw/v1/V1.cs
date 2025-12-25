@@ -13,6 +13,7 @@ using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Queries.GetCurrentPlaye
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Queries.GetGame;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Queries.GetGamePlayers;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Queries.GetGames;
+using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Queries.GetHandHistory;
 using SharpGrip.FluentValidation.AutoValidation.Endpoints.Extensions;
 
 namespace CardGames.Poker.Api.Features.Games.FiveCardDraw.v1;
@@ -41,6 +42,7 @@ public static class V1
 			.MapGetCurrentPlayerTurn()
 				.MapGetCurrentDrawPlayer()
 				.MapGetCurrentBettingRound()
+				.MapGetHandHistory()
 			//.MapGetCategoryById()
 			//.MapAddCategory()
 			//.MapUpdateCategory()
