@@ -11,3 +11,13 @@
 - Test side pots
 - [x] Add Dev Tunnels to Aspire
 - The fields on the register page should be wider
+- Make sure the table says what game type it is
+- Add an action timer
+- [x] When winning, the overlay should show the loser's hand, and the payouts. It's showing the wrong winner.
+- Draw Phase overlay should show the current hand, and the new hand
+- The betting action overlay. Raise to X doesn't work
+- [x] SHowdown overlay is not ordering cards
+- Should be able to discard four cards IF you have an ace
+- [x] Showdown does not show the description of the cards for the loser on the loser screen
+- Showdown should use better description of the cards (Pair of Aces vs One Pair)
+- Add animation of dealing the cards

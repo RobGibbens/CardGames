@@ -376,27 +376,75 @@ public sealed class TableStateBuilder : ITableStateBuilder
             return null;
         }
 
-        // For showdown, cards should be visible
+        // Evaluate all hands for players who haven't folded
+        var playerHandEvaluations = new Dictionary<string, (DrawHand hand, GamePlayer gamePlayer, List<GameCard> cards)>();
+
+        foreach (var gp in gamePlayers.Where(p => !p.HasFolded))
+        {
+            var cards = gp.Cards
+                .Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber)
+                .OrderBy(c => c.DealOrder)
+                .ToList();
+
+            if (cards.Count >= 5)
+            {
+                var coreCards = cards.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol)).ToList();
+                var drawHand = new DrawHand(coreCards);
+                playerHandEvaluations[gp.Player.Name] = (drawHand, gp, cards);
+            }
+        }
+
+        // Determine winners (highest hand strength)
+        var winners = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (playerHandEvaluations.Count > 0)
+        {
+            var maxStrength = playerHandEvaluations.Values.Max(h => h.hand.Strength);
+            foreach (var kvp in playerHandEvaluations.Where(k => k.Value.hand.Strength == maxStrength))
+            {
+                winners.Add(kvp.Key);
+            }
+        }
+        else if (gamePlayers.Count(gp => !gp.HasFolded) == 1)
+        {
+            // Only one player remaining (won by fold)
+            var winner = gamePlayers.First(gp => !gp.HasFolded);
+            winners.Add(winner.Player.Name);
+        }
+
+        // Build player results
         var playerResults = gamePlayers
             .Where(gp => !gp.HasFolded)
-            .Select(gp => new ShowdownPlayerResultDto
+            .Select(gp =>
             {
-                PlayerName = gp.Player.Name,
-                SeatPosition = gp.SeatPosition,
-                HandRanking = null, // TODO: Calculate hand ranking from domain logic
-                AmountWon = 0, // TODO: Get from showdown results
-                IsWinner = false, // TODO: Get from showdown results
-                Cards = gp.Cards
-                    .Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber)
-                    .OrderBy(c => c.DealOrder)
-                    .Select(c => new CardPublicDto
-                    {
-                        IsFaceUp = true,
-                        Rank = MapSymbolToRank(c.Symbol),
-                        Suit = c.Suit.ToString()
-                    })
-                    .ToList()
+                var isWinner = winners.Contains(gp.Player.Name);
+                string? handRanking = null;
+
+                if (playerHandEvaluations.TryGetValue(gp.Player.Name, out var eval))
+                {
+                    handRanking = eval.hand.Type.ToString();
+                }
+
+                return new ShowdownPlayerResultDto
+                {
+                    PlayerName = gp.Player.Name,
+                    SeatPosition = gp.SeatPosition,
+                    HandRanking = handRanking,
+                    AmountWon = 0, // Actual payout calculated separately
+                    IsWinner = isWinner,
+                    Cards = gp.Cards
+                        .Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber)
+                        .OrderBy(c => c.DealOrder)
+                        .Select(c => new CardPublicDto
+                        {
+                            IsFaceUp = true,
+                            Rank = MapSymbolToRank(c.Symbol),
+                            Suit = c.Suit.ToString()
+                        })
+                        .ToList()
+                };
             })
+            .OrderByDescending(r => r.IsWinner)
+            .ThenByDescending(r => playerHandEvaluations.TryGetValue(r.PlayerName, out var e) ? e.hand.Strength : 0)
             .ToList();
 
         return new ShowdownPublicDto
