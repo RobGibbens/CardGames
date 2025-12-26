@@ -1,34 +1,74 @@
 @using CardGames.Poker.Api.Contracts
 
-<div class="table-overlay showdown-overlay">
+@using System.Globalization
+
+<div class="table-overlay showdown-overlay" role="dialog" aria-modal="true" aria-label="Showdown results">
     <div class="overlay-content showdown-content @(ShowdownWon ? "showdown-win" : ShowdownLost ? "showdown-lose" : "")">
         <button type="button" class="showdown-close" @onclick="OnClose" aria-label="Close showdown">
             &times;
         </button>
 
-        <div class="overlay-icon">
-            @if (ShowdownWon)
-            {
-                <i class="fa-solid fa-crown"></i>
-            }
-            else
-            {
-                <i class="fa-regular fa-face-grin-tears"></i>
-            }
-        </div>
-
-        <h2>Showdown</h2>
-
-        @if (ShowdownResult?.WonByFold == true)
+        @if (ShowdownWon)
         {
-            var winner = ShowdownResult.Payouts.FirstOrDefault();
-            <p><strong>@winner.Key</strong> wins @winner.Value chips (all others folded).</p>
+            <div class="sd-confetti" aria-hidden="true">
+                @for (var i = 0; i < 28; i++)
+                {
+                    <span class="sd-confetti-piece" style="--i:@i"></span>
+                }
+            </div>
         }
-        else
+
+        <header class="showdown-header">
+            <div class="overlay-icon showdown-icon" aria-hidden="true">
+                @if (ShowdownWon)
+                {
+                    <i class="fa-solid fa-crown"></i>
+                }
+                else
+                {
+                    <i class="fa-regular fa-face-grin-tears"></i>
+                }
+            </div>
+            <div class="showdown-heading">
+                <h2 class="showdown-title">Showdown</h2>
+                <div class="showdown-subtitle">@GetOutcomeSubtitle()</div>
+            </div>
+        </header>
+
+        @if (ShowdownResult is null)
         {
+            <p class="showdown-empty">No showdown data.</p>
+        }
+        else if (ShowdownResult.WonByFold == true)
+        {
+            string? winnerName = null;
+            var winnerChips = 0;
+
+            if (ShowdownResult.Payouts is not null && ShowdownResult.Payouts.Count > 0)
+            {
+                var first = ShowdownResult.Payouts.First();
+                winnerName = first.Key;
+                winnerChips = first.Value;
+            }
+
+            <section class="showdown-winner" aria-label="Winner">
+                <div class="winner-banner">
+                    <div class="winner-nameline">
+                        <span class="winner-first">@FirstName(winnerName)</span>
+                        <span class="winner-rest">wins by fold</span>
+                    </div>
+                    @if (winnerChips > 0)
+                    {
+                        <div class="winner-pills">
+                            <span class="sd-pill sd-pill-gold">+@winnerChips chips</span>
+                        </div>
+                    }
+                </div>
+            </section>
+
             <div class="showdown-winners">
-                <h3>Winners</h3>
-                @if (ShowdownResult?.Payouts is not null)
+                <h3>Payouts</h3>
+                @if (ShowdownResult.Payouts is not null)
                 {
                     @foreach (var payout in ShowdownResult.Payouts)
                     {
@@ -39,19 +79,97 @@
                     }
                 }
             </div>
+        }
+        else
+        {
+            var winnerHand = GetPrimaryWinnerHand(ShowdownResult);
+            var otherHands = GetOtherHands(ShowdownResult, winnerHand);
 
-            <div class="showdown-hands">
-                <h3>Hands</h3>
-                @foreach (var hand in (ShowdownResult?.PlayerHands ?? []).OrderByDescending(h => h.IsWinner == true))
-                {
-                    <div class="showdown-hand-row @(hand.IsWinner == true ? "is-winner" : "")">
-                        <span class="player">@hand.PlayerName</span>
-                        <span class="hand-type">@hand.HandType</span>
-                        @if (hand.AmountWon > 0)
+            @if (winnerHand is not null)
+            {
+                var winnerCards = (winnerHand.Cards?.OrderBy(c => c.Symbol).ToList()) ?? new List<ShowdownCard>();
+                <section class="showdown-winner" aria-label="Winner">
+                    <div class="winner-banner">
+                        <div class="winner-nameline">
+                            <span class="winner-first">@FirstName(winnerHand.PlayerName)</span>
+                            <span class="winner-rest">takes it</span>
+                        </div>
+                        <div class="winner-pills">
+                            @if (!string.IsNullOrWhiteSpace(winnerHand.HandType))
+                            {
+                                <span class="sd-pill sd-pill-green">@HumanizeHandType(winnerHand.HandType)</span>
+                            }
+                            @if (winnerHand.AmountWon.GetValueOrDefault() > 0)
+                            {
+                                <span class="sd-pill sd-pill-gold">+@winnerHand.AmountWon.GetValueOrDefault() chips</span>
+                            }
+                        </div>
+
+                        @if (winnerCards.Count > 0)
                         {
-                            <span class="won">+@hand.AmountWon</span>
+                            <div class="showdown-cards winner-cards" aria-label="Winning cards">
+                                @for (var i = 0; i < winnerCards.Count; i++)
+                                {
+                                    var card = winnerCards[i];
+                                    <div class="sd-card-wrapper" style="--i:@i">
+                                        <div class="draw-card sd-card">
+                                            <span class="draw-card-value @GetSuitColorClass(card.Suit)">
+                                                @GetRankLabel(card.Symbol)
+                                                <i class="fa-regular @GetSuitFaIcon(card.Suit)" aria-hidden="true"></i>
+                                            </span>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
                         }
                     </div>
+                </section>
+            }
+
+            @if (otherHands.Count > 0)
+            {
+                <section class="showdown-others" aria-label="Other hands">
+                    @foreach (var hand in otherHands)
+                    {
+                        var handCards = (hand.Cards?.OrderBy(c => c.Symbol).ToList()) ?? new List<ShowdownCard>();
+                        <div class="other-hand-row">
+                            <div class="other-hand-info">
+                                <span class="other-hand-name">@FirstName(hand.PlayerName)</span>
+                                @if (!string.IsNullOrWhiteSpace(hand.HandType))
+                                {
+                                    <span class="sd-pill sd-pill-muted">@HumanizeHandType(hand.HandType)</span>
+                                }
+                            </div>
+                            @if (handCards.Count > 0)
+                            {
+                                <div class="showdown-cards other-cards">
+                                    @foreach (var c in handCards)
+                                    {
+                                        <div class="draw-card sd-card sd-card-small">
+                                            <span class="draw-card-value @GetSuitColorClass(c.Suit)">
+                                                @GetRankLabel(c.Symbol)
+                                                <i class="fa-regular @GetSuitFaIcon(c.Suit)" aria-hidden="true"></i>
+                                            </span>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                </section>
+            }
+
+            <div class="showdown-winners">
+                <h3>Payouts</h3>
+                @if (ShowdownResult.Payouts is not null)
+                {
+                    @foreach (var payout in ShowdownResult.Payouts)
+                    {
+                        <div class="showdown-winner-row">
+                            <span class="winner-name">@payout.Key</span>
+                            <span class="winner-amount">+@payout.Value</span>
+                        </div>
+                    }
                 }
             </div>
         }
@@ -84,4 +202,129 @@
 
     [Parameter]
     public EventCallback OnClose { get; set; }
+
+    private static ShowdownPlayerHand? GetPrimaryWinnerHand(PerformShowdownSuccessful result)
+    {
+        if (result.PlayerHands is null || result.PlayerHands.Count == 0)
+        {
+            return null;
+        }
+
+        return result.PlayerHands
+            .Where(h => h is not null)
+            .OrderByDescending(h => h.IsWinner == true)
+            .ThenByDescending(h => h.AmountWon ?? 0)
+            .ThenByDescending(h => h.HandStrength ?? 0)
+            .FirstOrDefault();
+    }
+
+    private static List<ShowdownPlayerHand> GetOtherHands(PerformShowdownSuccessful result, ShowdownPlayerHand? primaryWinner)
+    {
+        if (result.PlayerHands is null)
+        {
+            return [];
+        }
+
+        var hands = result.PlayerHands
+            .Where(h => h is not null)
+            .ToList();
+
+        if (primaryWinner is not null)
+        {
+            hands.Remove(primaryWinner);
+        }
+
+        return hands
+            .OrderByDescending(h => h.IsWinner == true)
+            .ThenByDescending(h => h.AmountWon ?? 0)
+            .ThenBy(h => h.PlayerName)
+            .ToList();
+    }
+
+    private string GetOutcomeSubtitle()
+    {
+        if (ShowdownResult?.WonByFold == true)
+        {
+            return "Everyone folded";
+        }
+
+        if (ShowdownWon)
+        {
+            return "You won the hand";
+        }
+
+        if (ShowdownLost)
+        {
+            return "Hand complete";
+        }
+
+        return "Results are in";
+    }
+
+    private static string FirstName(string? fullName)
+    {
+        if (string.IsNullOrWhiteSpace(fullName))
+        {
+            return "Player";
+        }
+
+        var parts = fullName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length > 0 ? parts[0] : fullName;
+    }
+
+    private static string HumanizeHandType(string? handType)
+    {
+        if (string.IsNullOrWhiteSpace(handType))
+        {
+            return "";
+        }
+
+        // Handles values like "FullHouse", "TwoPair", "HighCard".
+        var s = handType.Trim();
+        s = System.Text.RegularExpressions.Regex.Replace(s, "([a-z])([A-Z])", "$1 $2");
+        s = System.Text.RegularExpressions.Regex.Replace(s, "([A-Z])([A-Z][a-z])", "$1 $2");
+        return CultureInfo.InvariantCulture.TextInfo.ToTitleCase(s);
+    }
+
+    private static string GetSuitColorClass(CardSuit? suit)
+    {
+        return suit switch
+        {
+            CardSuit.Hearts or CardSuit.Diamonds => "suit-red",
+            _ => "suit-black"
+        };
+    }
+
+    private static string GetSuitFaIcon(CardSuit? suit)
+    {
+        return suit switch
+        {
+            CardSuit.Hearts => "fa-heart",
+            CardSuit.Diamonds => "fa-diamond",
+            CardSuit.Clubs => "fa-club",
+            CardSuit.Spades => "fa-spade",
+            _ => "fa-question"
+        };
+    }
+
+    private static string GetRankLabel(CardSymbol? symbol)
+    {
+        return symbol switch
+        {
+            CardSymbol.Deuce => "2",
+            CardSymbol.Three => "3",
+            CardSymbol.Four => "4",
+            CardSymbol.Five => "5",
+            CardSymbol.Six => "6",
+            CardSymbol.Seven => "7",
+            CardSymbol.Eight => "8",
+            CardSymbol.Nine => "9",
+            CardSymbol.Ten => "10",
+            CardSymbol.Jack => "J",
+            CardSymbol.Queen => "Q",
+            CardSymbol.King => "K",
+            CardSymbol.Ace => "A",
+            _ => "?"
+        };
+    }
 }

@@ -678,31 +678,93 @@
         {
             // Convert to existing showdown format using constructor
             var payouts = showdown.PlayerResults
-            .Where(r => r.IsWinner)
-            .ToDictionary(r => r.PlayerName, r => r.AmountWon);
+                .Where(r => r.IsWinner)
+                .ToDictionary(r => r.PlayerName, r => r.AmountWon);
 
             var playerHands = showdown.PlayerResults.Select(r => new ShowdownPlayerHand(
-            amountWon: r.AmountWon,
-            cards: [], // Cards are displayed separately
-            handStrength: null,
-            handType: r.HandRanking,
-            isWinner: r.IsWinner,
-            playerName: r.PlayerName
+                amountWon: r.AmountWon,
+                cards: ConvertCardsToShowdownCards(r.Cards),
+                handStrength: null,
+                handType: r.HandRanking ?? "",
+                isWinner: r.IsWinner,
+                playerName: r.PlayerName
             )).ToList();
 
             _showdownResult = new PerformShowdownSuccessful(
-            currentPhase: "Complete",
-            gameId: GameId,
-            payouts: payouts,
-            playerHands: playerHands,
-            wonByFold: false
+                currentPhase: "Complete",
+                gameId: GameId,
+                payouts: payouts,
+                playerHands: playerHands,
+                wonByFold: false
             );
 
             _showShowdownOverlay = true;
+            
+            // Check if current user is a winner by comparing against payout keys
             _showdownWon = _showdownResult.Payouts?.Keys.Any(p =>
-            string.Equals(p, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase)) == true;
+                string.Equals(p, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(p, currentPlayerName, StringComparison.OrdinalIgnoreCase)) == true;
             _showdownLost = !_showdownWon;
         }
+    }
+
+    private static ICollection<ShowdownCard> ConvertCardsToShowdownCards(IReadOnlyList<CardPublicDto>? cards)
+    {
+        if (cards is null || cards.Count == 0)
+        {
+            return [];
+        }
+
+        return cards
+            .Where(c => c.IsFaceUp && !string.IsNullOrWhiteSpace(c.Rank) && !string.IsNullOrWhiteSpace(c.Suit))
+            .Select(c => new ShowdownCard(
+                suit: ParseCardSuit(c.Suit),
+                symbol: ParseCardSymbol(c.Rank)
+            ))
+            .ToList();
+    }
+
+    private static CardSuit? ParseCardSuit(string? suit)
+    {
+        if (string.IsNullOrWhiteSpace(suit))
+        {
+            return null;
+        }
+
+        return suit.Trim().ToLowerInvariant() switch
+        {
+            "hearts" or "h" => CardSuit.Hearts,
+            "diamonds" or "d" => CardSuit.Diamonds,
+            "spades" or "s" => CardSuit.Spades,
+            "clubs" or "c" => CardSuit.Clubs,
+            _ => null
+        };
+    }
+
+    private static CardSymbol? ParseCardSymbol(string? rank)
+    {
+        if (string.IsNullOrWhiteSpace(rank))
+        {
+            return null;
+        }
+
+        return rank.Trim().ToUpperInvariant() switch
+        {
+            "2" or "TWO" or "DEUCE" => CardSymbol.Deuce,
+            "3" or "THREE" => CardSymbol.Three,
+            "4" or "FOUR" => CardSymbol.Four,
+            "5" or "FIVE" => CardSymbol.Five,
+            "6" or "SIX" => CardSymbol.Six,
+            "7" or "SEVEN" => CardSymbol.Seven,
+            "8" or "EIGHT" => CardSymbol.Eight,
+            "9" or "NINE" => CardSymbol.Nine,
+            "10" or "T" or "TEN" => CardSymbol.Ten,
+            "J" or "JACK" => CardSymbol.Jack,
+            "Q" or "QUEEN" => CardSymbol.Queen,
+            "K" or "KING" => CardSymbol.King,
+            "A" or "ACE" => CardSymbol.Ace,
+            _ => null
+        };
     }
 
     private static List<BettingActionType> MapLegalActionsFromPrivateState(AvailableActionsDto available)
@@ -947,15 +1009,17 @@
         _showdownResult = showdownResponse.Content;
         _showShowdownOverlay = true;
 
-        if (string.IsNullOrWhiteSpace(_loggedInUserEmail))
+        if (string.IsNullOrWhiteSpace(_loggedInUserEmail) && string.IsNullOrWhiteSpace(currentPlayerName))
         {
             _showdownWon = false;
             _showdownLost = false;
             return;
         }
 
-        var iWon = _showdownResult.Payouts?.Keys.Any(p => string.Equals(p, _loggedInUserEmail,
-        StringComparison.OrdinalIgnoreCase)) == true;
+        // Check against both email and display name since payout keys may use either
+        var iWon = _showdownResult.Payouts?.Keys.Any(p =>
+            string.Equals(p, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(p, currentPlayerName, StringComparison.OrdinalIgnoreCase)) == true;
         _showdownWon = iWon;
         _showdownLost = !iWon;
     }
