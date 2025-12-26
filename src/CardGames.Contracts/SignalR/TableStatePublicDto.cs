@@ -234,6 +234,11 @@ public sealed record ShowdownPlayerResultDto
     /// </summary>
     public required string PlayerName { get; init; }
 
+	/// <summary>
+	/// The player's first name.
+	/// </summary>
+	public string? PlayerFirstName { get; init; }
+
     /// <summary>
     /// The seat position of the player.
     /// </summary>

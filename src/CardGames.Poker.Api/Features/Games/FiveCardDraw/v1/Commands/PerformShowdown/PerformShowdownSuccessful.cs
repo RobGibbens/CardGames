@@ -46,6 +46,11 @@ public record ShowdownPlayerHand
 	public required string PlayerName { get; init; }
 
 	/// <summary>
+	/// The player's first name.
+	/// </summary>
+	public string? PlayerFirstName { get; init; }
+
+	/// <summary>
 	/// The cards the player held.
 	/// </summary>
 	public required List<ShowdownCard> Cards { get; init; }

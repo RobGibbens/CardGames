@@ -51,10 +51,17 @@
                 winnerChips = first.Value;
             }
 
+            // Prefer first name provided by the API (avoid parsing full display name).
+            var winnerHand = ShowdownResult.PlayerHands?.FirstOrDefault(h => h.IsWinner == true);
+            if (!string.IsNullOrWhiteSpace(winnerHand?.PlayerFirstName))
+            {
+                winnerName = winnerHand.PlayerFirstName;
+            }
+
             <section class="showdown-winner" aria-label="Winner">
                 <div class="winner-banner">
                     <div class="winner-nameline">
-                        <span class="winner-first">@FirstName(winnerName)</span>
+                        <span class="winner-first">@winnerName</span>
                         <span class="winner-rest">wins by fold</span>
                     </div>
                     @if (winnerChips > 0)
@@ -91,7 +98,7 @@
                 <section class="showdown-winner" aria-label="Winner">
                     <div class="winner-banner">
                         <div class="winner-nameline">
-                            <span class="winner-first">@FirstName(winnerHand.PlayerName)</span>
+                            <span class="winner-first">@DisplayFirstName(winnerHand)</span>
                             <span class="winner-rest">takes it</span>
                         </div>
                         <div class="winner-pills">
@@ -134,7 +141,7 @@
                         var handCards = (hand.Cards?.OrderBy(c => c.Symbol).ToList()) ?? new List<ShowdownCard>();
                         <div class="other-hand-row">
                             <div class="other-hand-info">
-                                <span class="other-hand-name">@FirstName(hand.PlayerName)</span>
+                                <span class="other-hand-name">@DisplayFirstName(hand)</span>
                                 @if (!string.IsNullOrWhiteSpace(hand.HandType))
                                 {
                                     <span class="sd-pill sd-pill-muted">@HumanizeHandType(hand.HandType)</span>
@@ -261,15 +268,20 @@
         return "Results are in";
     }
 
-    private static string FirstName(string? fullName)
+    private static string DisplayFirstName(ShowdownPlayerHand? hand)
     {
-        if (string.IsNullOrWhiteSpace(fullName))
+        if (!string.IsNullOrWhiteSpace(hand?.PlayerFirstName))
+        {
+            return hand.PlayerFirstName;
+        }
+
+        if (string.IsNullOrWhiteSpace(hand?.PlayerName))
         {
             return "Player";
         }
 
-        var parts = fullName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        return parts.Length > 0 ? parts[0] : fullName;
+        var parts = hand.PlayerName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length > 0 ? parts[0] : hand.PlayerName;
     }
 
     private static string HumanizeHandType(string? handType)

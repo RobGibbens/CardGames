@@ -2049,15 +2049,19 @@ namespace CardGames.Poker.Api.Contracts
     public partial record ShowdownPlayerHand
     {
         [JsonConstructor]
-        public ShowdownPlayerHand(int? @amountWon, ICollection<ShowdownCard> @cards, long? @handStrength, string @handType, bool? @isWinner, string @playerName)
+        public ShowdownPlayerHand(int? @amountWon, ICollection<ShowdownCard> @cards, long? @handStrength, string @handType, bool? @isWinner, string @playerFirstName, string @playerName)
         {
             this.PlayerName = @playerName;
+            this.PlayerFirstName = @playerFirstName;
             this.Cards = @cards;
             this.HandType = @handType;
             this.HandStrength = @handStrength;
             this.IsWinner = @isWinner;
             this.AmountWon = @amountWon;
         }
+
+        [JsonPropertyName("playerFirstName")]
+        public string? PlayerFirstName { get; init; }
 
         [JsonPropertyName("playerName")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]

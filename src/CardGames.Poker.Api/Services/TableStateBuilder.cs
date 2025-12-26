@@ -97,7 +97,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 						CurrentHandNumber = game.CurrentHandNumber,
 						CreatedByName = game.CreatedByName,
 						Seats = seats,
-						Showdown = BuildShowdownPublicDto(game, gamePlayers),
+						Showdown = BuildShowdownPublicDto(game, gamePlayers, userProfilesByEmail),
 						HandCompletedAtUtc = game.HandCompletedAt,
 						NextHandStartsAtUtc = game.NextHandStartsAt,
 						IsResultsPhase = isResultsPhase,
@@ -369,7 +369,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
     private static ShowdownPublicDto? BuildShowdownPublicDto(
         Game game,
-        List<GamePlayer> gamePlayers)
+        List<GamePlayer> gamePlayers,
+        Dictionary<string, UserProfile> userProfilesByEmail)
     {
         if (game.CurrentPhase != "Showdown" && game.CurrentPhase != "Complete")
         {
@@ -424,9 +425,12 @@ public sealed class TableStateBuilder : ITableStateBuilder
                     handRanking = eval.hand.Type.ToString();
                 }
 
+                userProfilesByEmail.TryGetValue(gp.Player.Email ?? string.Empty, out var userProfile);
+
                 return new ShowdownPlayerResultDto
                 {
                     PlayerName = gp.Player.Name,
+                    PlayerFirstName = userProfile?.FirstName,
                     SeatPosition = gp.SeatPosition,
                     HandRanking = handRanking,
                     AmountWon = 0, // Actual payout calculated separately

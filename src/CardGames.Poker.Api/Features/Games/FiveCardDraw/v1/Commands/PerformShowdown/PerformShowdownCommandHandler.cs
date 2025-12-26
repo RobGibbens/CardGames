@@ -60,6 +60,18 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 			.Where(gp => !gp.HasFolded && gp.Status == GamePlayerStatus.Active)
 			.ToList();
 
+		// Fetch user first names from Users table (matching by email like GetGamePlayersQueryHandler)
+		var playerEmails = game.GamePlayers
+			.Where(gp => gp.Player.Email != null)
+			.Select(gp => gp.Player.Email!)
+			.ToList();
+
+		var usersByEmail = await context.Users
+			.AsNoTracking()
+			.Where(u => u.Email != null && playerEmails.Contains(u.Email))
+			.Select(u => new { Email = u.Email!, u.FirstName })
+			.ToDictionaryAsync(u => u.Email, StringComparer.OrdinalIgnoreCase, cancellationToken);
+
 		// 4. Load cards for players in hand
 		var playerCards = await context.GameCards
 			.Where(c => c.GameId == command.GameId &&
@@ -110,32 +122,34 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 					winningHandDescription: null,
 					cancellationToken);
 
-				var winnerCards = playerCardGroups.GetValueOrDefault(winner.Id, []);
+					var winnerCards = playerCardGroups.GetValueOrDefault(winner.Id, []);
+					usersByEmail.TryGetValue(winner.Player.Email ?? string.Empty, out var winnerUser);
 
-				return new PerformShowdownSuccessful
-				{
-					GameId = game.Id,
-					WonByFold = true,
-					CurrentPhase = game.CurrentPhase,
-					Payouts = new Dictionary<string, int> { { winner.Player.Name, totalPot } },
-					PlayerHands =
-					[
-						new ShowdownPlayerHand
-						{
-							PlayerName = winner.Player.Name,
-							Cards = winnerCards.Select(c => new ShowdownCard
+					return new PerformShowdownSuccessful
+					{
+						GameId = game.Id,
+						WonByFold = true,
+						CurrentPhase = game.CurrentPhase,
+						Payouts = new Dictionary<string, int> { { winner.Player.Name, totalPot } },
+						PlayerHands =
+						[
+							new ShowdownPlayerHand
 							{
-								Suit = c.Suit,
-								Symbol = c.Symbol
-							}).ToList(),
-							HandType = null,
-							HandStrength = null,
-							IsWinner = true,
-							AmountWon = totalPot
-						}
-					]
-				};
-			}
+								PlayerName = winner.Player.Name,
+								PlayerFirstName = winnerUser?.FirstName,
+								Cards = winnerCards.Select(c => new ShowdownCard
+								{
+									Suit = c.Suit,
+									Symbol = c.Symbol
+								}).ToList(),
+								HandType = null,
+								HandStrength = null,
+								IsWinner = true,
+								AmountWon = totalPot
+							}
+						]
+					};
+				}
 
 			// 7. Evaluate all hands
 			var playerHandEvaluations = new Dictionary<string, (DrawHand hand, List<GameCard> cards, GamePlayer gamePlayer)>();
@@ -222,24 +236,26 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 				winningHandDescription: winReason,
 				cancellationToken);
 
-			// 13. Build response
-			var playerHandsList = playerHandEvaluations.Select(kvp =>
-			{
-				var isWinner = winners.Contains(kvp.Key);
-				return new ShowdownPlayerHand
+				// 13. Build response
+				var playerHandsList = playerHandEvaluations.Select(kvp =>
 				{
-					PlayerName = kvp.Key,
-					Cards = kvp.Value.cards.Select(c => new ShowdownCard
+					var isWinner = winners.Contains(kvp.Key);
+					usersByEmail.TryGetValue(kvp.Value.gamePlayer.Player.Email ?? string.Empty, out var user);
+					return new ShowdownPlayerHand
 					{
-						Suit = c.Suit,
-						Symbol = c.Symbol
-					}).ToList(),
-					HandType = kvp.Value.hand.Type.ToString(),
-					HandStrength = kvp.Value.hand.Strength,
-				IsWinner = isWinner,
-				AmountWon = payouts.GetValueOrDefault(kvp.Key, 0)
-			};
-		}).OrderByDescending(h => h.HandStrength ?? 0).ToList();
+						PlayerName = kvp.Key,
+						PlayerFirstName = user?.FirstName,
+						Cards = kvp.Value.cards.Select(c => new ShowdownCard
+						{
+							Suit = c.Suit,
+							Symbol = c.Symbol
+						}).ToList(),
+						HandType = kvp.Value.hand.Type.ToString(),
+						HandStrength = kvp.Value.hand.Strength,
+					IsWinner = isWinner,
+					AmountWon = payouts.GetValueOrDefault(kvp.Key, 0)
+				};
+			}).OrderByDescending(h => h.HandStrength ?? 0).ToList();
 
 		return new PerformShowdownSuccessful
 		{
