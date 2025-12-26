@@ -6,6 +6,7 @@ using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.ActiveGames.v1.Queries.GetActiveGames;
 using CardGames.Poker.Hands.DrawHands;
 using Microsoft.EntityFrameworkCore;
+using Entities = CardGames.Poker.Api.Data.Entities;
 
 namespace CardGames.Poker.Api.Services;
 
@@ -67,39 +68,43 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 			var seats = gamePlayers
 				.Select(gp => BuildSeatPublicDto(gp, game.CurrentHandNumber, game.Ante ?? 0, userProfilesByEmail))
-				.ToList();
+						.ToList();
 
-            // Calculate results phase state
-            var isResultsPhase = game.CurrentPhase == "Complete" && game.HandCompletedAt.HasValue;
-            int? secondsUntilNextHand = null;
-            if (isResultsPhase && game.NextHandStartsAt.HasValue)
-            {
-                var remaining = game.NextHandStartsAt.Value - DateTimeOffset.UtcNow;
-                secondsUntilNextHand = Math.Max(0, (int)remaining.TotalSeconds);
-            }
+					// Calculate results phase state
+					var isResultsPhase = game.CurrentPhase == "Complete" && game.HandCompletedAt.HasValue;
+					int? secondsUntilNextHand = null;
+					if (isResultsPhase && game.NextHandStartsAt.HasValue)
+					{
+						var remaining = game.NextHandStartsAt.Value - DateTimeOffset.UtcNow;
+						secondsUntilNextHand = Math.Max(0, (int)remaining.TotalSeconds);
+					}
 
-            return new TableStatePublicDto
-            {
-                GameId = game.Id,
-                Name = game.Name,
-                CurrentPhase = game.CurrentPhase,
-                CurrentPhaseDescription = PhaseDescriptionResolver.TryResolve(game.GameType?.Code, game.CurrentPhase),
-                Ante = game.Ante ?? 0,
-                MinBet = game.MinBet ?? 0,
-                TotalPot = totalPot,
-                DealerSeatIndex = game.DealerPosition,
-                CurrentActorSeatIndex = game.CurrentPlayerIndex,
-                IsPaused = game.Status == GameStatus.BetweenHands,
-                CurrentHandNumber = game.CurrentHandNumber,
-                CreatedByName = game.CreatedByName,
-                Seats = seats,
-                Showdown = BuildShowdownPublicDto(game, gamePlayers),
-                HandCompletedAtUtc = game.HandCompletedAt,
-                NextHandStartsAtUtc = game.NextHandStartsAt,
-                IsResultsPhase = isResultsPhase,
-                SecondsUntilNextHand = secondsUntilNextHand
-            };
-        }
+					// Get hand history for the dashboard (limited to recent hands)
+					var handHistory = await GetHandHistoryEntriesAsync(gameId, currentUserPlayerId: null, take: 25, cancellationToken);
+
+					return new TableStatePublicDto
+					{
+						GameId = game.Id,
+						Name = game.Name,
+						CurrentPhase = game.CurrentPhase,
+						CurrentPhaseDescription = PhaseDescriptionResolver.TryResolve(game.GameType?.Code, game.CurrentPhase),
+						Ante = game.Ante ?? 0,
+						MinBet = game.MinBet ?? 0,
+						TotalPot = totalPot,
+						DealerSeatIndex = game.DealerPosition,
+						CurrentActorSeatIndex = game.CurrentPlayerIndex,
+						IsPaused = game.Status == GameStatus.BetweenHands,
+						CurrentHandNumber = game.CurrentHandNumber,
+						CreatedByName = game.CreatedByName,
+						Seats = seats,
+						Showdown = BuildShowdownPublicDto(game, gamePlayers),
+						HandCompletedAtUtc = game.HandCompletedAt,
+						NextHandStartsAtUtc = game.NextHandStartsAt,
+						IsResultsPhase = isResultsPhase,
+						SecondsUntilNextHand = secondsUntilNextHand,
+						HandHistory = handHistory
+					};
+				}
 
     /// <inheritdoc />
     public async Task<PrivateStateDto?> BuildPrivateStateAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
@@ -371,27 +376,75 @@ public sealed class TableStateBuilder : ITableStateBuilder
             return null;
         }
 
-        // For showdown, cards should be visible
+        // Evaluate all hands for players who haven't folded
+        var playerHandEvaluations = new Dictionary<string, (DrawHand hand, GamePlayer gamePlayer, List<GameCard> cards)>();
+
+        foreach (var gp in gamePlayers.Where(p => !p.HasFolded))
+        {
+            var cards = gp.Cards
+                .Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber)
+                .OrderBy(c => c.DealOrder)
+                .ToList();
+
+            if (cards.Count >= 5)
+            {
+                var coreCards = cards.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol)).ToList();
+                var drawHand = new DrawHand(coreCards);
+                playerHandEvaluations[gp.Player.Name] = (drawHand, gp, cards);
+            }
+        }
+
+        // Determine winners (highest hand strength)
+        var winners = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (playerHandEvaluations.Count > 0)
+        {
+            var maxStrength = playerHandEvaluations.Values.Max(h => h.hand.Strength);
+            foreach (var kvp in playerHandEvaluations.Where(k => k.Value.hand.Strength == maxStrength))
+            {
+                winners.Add(kvp.Key);
+            }
+        }
+        else if (gamePlayers.Count(gp => !gp.HasFolded) == 1)
+        {
+            // Only one player remaining (won by fold)
+            var winner = gamePlayers.First(gp => !gp.HasFolded);
+            winners.Add(winner.Player.Name);
+        }
+
+        // Build player results
         var playerResults = gamePlayers
             .Where(gp => !gp.HasFolded)
-            .Select(gp => new ShowdownPlayerResultDto
+            .Select(gp =>
             {
-                PlayerName = gp.Player.Name,
-                SeatPosition = gp.SeatPosition,
-                HandRanking = null, // TODO: Calculate hand ranking from domain logic
-                AmountWon = 0, // TODO: Get from showdown results
-                IsWinner = false, // TODO: Get from showdown results
-                Cards = gp.Cards
-                    .Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber)
-                    .OrderBy(c => c.DealOrder)
-                    .Select(c => new CardPublicDto
-                    {
-                        IsFaceUp = true,
-                        Rank = MapSymbolToRank(c.Symbol),
-                        Suit = c.Suit.ToString()
-                    })
-                    .ToList()
+                var isWinner = winners.Contains(gp.Player.Name);
+                string? handRanking = null;
+
+                if (playerHandEvaluations.TryGetValue(gp.Player.Name, out var eval))
+                {
+                    handRanking = eval.hand.Type.ToString();
+                }
+
+                return new ShowdownPlayerResultDto
+                {
+                    PlayerName = gp.Player.Name,
+                    SeatPosition = gp.SeatPosition,
+                    HandRanking = handRanking,
+                    AmountWon = 0, // Actual payout calculated separately
+                    IsWinner = isWinner,
+                    Cards = gp.Cards
+                        .Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber)
+                        .OrderBy(c => c.DealOrder)
+                        .Select(c => new CardPublicDto
+                        {
+                            IsFaceUp = true,
+                            Rank = MapSymbolToRank(c.Symbol),
+                            Suit = c.Suit.ToString()
+                        })
+                        .ToList()
+                };
             })
+            .OrderByDescending(r => r.IsWinner)
+            .ThenByDescending(r => playerHandEvaluations.TryGetValue(r.PlayerName, out var e) ? e.hand.Strength : 0)
             .ToList();
 
         return new ShowdownPublicDto
@@ -410,24 +463,89 @@ public sealed class TableStateBuilder : ITableStateBuilder
         return totalContributions;
     }
 
-    private static string MapSymbolToRank(CardSymbol symbol)
-    {
-        return symbol switch
+        private static string MapSymbolToRank(CardSymbol symbol)
         {
-            CardSymbol.Ace => "A",
-            CardSymbol.King => "K",
-            CardSymbol.Queen => "Q",
-            CardSymbol.Jack => "J",
-            CardSymbol.Ten => "10",
-            CardSymbol.Nine => "9",
-            CardSymbol.Eight => "8",
-            CardSymbol.Seven => "7",
-            CardSymbol.Six => "6",
-            CardSymbol.Five => "5",
-            CardSymbol.Four => "4",
-            CardSymbol.Three => "3",
-            CardSymbol.Deuce => "2",
-            _ => symbol.ToString()
-        };
+            return symbol switch
+            {
+                CardSymbol.Ace => "A",
+                CardSymbol.King => "K",
+                CardSymbol.Queen => "Q",
+                CardSymbol.Jack => "J",
+                CardSymbol.Ten => "10",
+                CardSymbol.Nine => "9",
+                CardSymbol.Eight => "8",
+                CardSymbol.Seven => "7",
+                CardSymbol.Six => "6",
+                CardSymbol.Five => "5",
+                CardSymbol.Four => "4",
+                CardSymbol.Three => "3",
+                CardSymbol.Deuce => "2",
+                _ => symbol.ToString()
+            };
+        }
+
+        /// <summary>
+        /// Retrieves hand history entries for the dashboard.
+        /// </summary>
+        private async Task<List<HandHistoryEntryDto>> GetHandHistoryEntriesAsync(
+            Guid gameId,
+            Guid? currentUserPlayerId,
+            int take,
+            CancellationToken cancellationToken)
+        {
+            var histories = await _context.HandHistories
+                .Where(h => h.GameId == gameId)
+                .OrderByDescending(h => h.CompletedAtUtc)
+                .Take(take)
+                .Include(h => h.Winners)
+                .Include(h => h.PlayerResults)
+                .AsNoTracking()
+                .ToListAsync(cancellationToken);
+
+            return histories.Select(h =>
+            {
+                // Get winner display
+                var winnerDisplay = h.Winners.Count switch
+                {
+                    0 => "Unknown",
+                    1 => h.Winners.First().PlayerName,
+                    _ => $"{h.Winners.First().PlayerName} +{h.Winners.Count - 1}"
+                };
+
+                var totalWinnings = h.Winners.Sum(w => w.AmountWon);
+
+                // Get current player's result if specified
+                string? currentPlayerResultLabel = null;
+                var currentPlayerNetDelta = 0;
+                var currentPlayerWon = false;
+
+                if (currentUserPlayerId.HasValue)
+                {
+                    var currentPlayerResult = h.PlayerResults
+                        .FirstOrDefault(pr => pr.PlayerId == currentUserPlayerId.Value);
+
+                    if (currentPlayerResult != null)
+                    {
+                        currentPlayerResultLabel = currentPlayerResult.GetResultLabel();
+                        currentPlayerNetDelta = currentPlayerResult.NetChipDelta;
+                        currentPlayerWon = currentPlayerResult.ResultType == Entities.PlayerResultType.Won ||
+                                           currentPlayerResult.ResultType == Entities.PlayerResultType.SplitPotWon;
+                    }
+                }
+
+                return new HandHistoryEntryDto
+                {
+                    HandNumber = h.HandNumber,
+                    CompletedAtUtc = h.CompletedAtUtc,
+                    WinnerName = winnerDisplay,
+                    AmountWon = totalWinnings,
+                    WinningHandDescription = h.WinningHandDescription,
+                    WonByFold = h.EndReason == Entities.HandEndReason.FoldedToWinner,
+                    WinnerCount = h.Winners.Count,
+                    CurrentPlayerResultLabel = currentPlayerResultLabel,
+                    CurrentPlayerNetDelta = currentPlayerNetDelta,
+                    CurrentPlayerWon = currentPlayerWon
+                };
+            }).ToList();
+        }
     }
-}

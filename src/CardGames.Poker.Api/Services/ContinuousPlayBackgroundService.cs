@@ -14,7 +14,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
     /// <summary>
     /// Duration in seconds for the results display period before starting the next hand.
     /// </summary>
-    public const int ResultsDisplayDurationSeconds = 7;
+    public const int ResultsDisplayDurationSeconds = 15;
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<ContinuousPlayBackgroundService> _logger;

@@ -82,26 +82,32 @@ public sealed record TableStatePublicDto
         /// The UTC timestamp when the current hand was completed.
         /// Used by clients to synchronize the results display period.
         /// </summary>
-        public DateTimeOffset? HandCompletedAtUtc { get; init; }
+            public DateTimeOffset? HandCompletedAtUtc { get; init; }
 
-        /// <summary>
-        /// The UTC timestamp when the next hand is scheduled to start.
-        /// Clients can use this for countdown display.
-        /// </summary>
-        public DateTimeOffset? NextHandStartsAtUtc { get; init; }
+            /// <summary>
+            /// The UTC timestamp when the next hand is scheduled to start.
+            /// Clients can use this for countdown display.
+            /// </summary>
+            public DateTimeOffset? NextHandStartsAtUtc { get; init; }
 
-        /// <summary>
-        /// Whether the game is currently in the results display phase
-        /// (hand completed, showing results before next hand starts).
-        /// </summary>
-        public bool IsResultsPhase { get; init; }
+            /// <summary>
+            /// Whether the game is currently in the results display phase
+            /// (hand completed, showing results before next hand starts).
+            /// </summary>
+            public bool IsResultsPhase { get; init; }
 
-        /// <summary>
-        /// The number of seconds remaining until the next hand starts.
-        /// Only populated during the results phase.
-        /// </summary>
-        public int? SecondsUntilNextHand { get; init; }
-    }
+            /// <summary>
+            /// The number of seconds remaining until the next hand starts.
+            /// Only populated during the results phase.
+            /// </summary>
+            public int? SecondsUntilNextHand { get; init; }
+
+            /// <summary>
+            /// Hand history entries for the dashboard flyout, sorted newest-first.
+            /// Limited to the most recent entries for performance.
+            /// </summary>
+            public IReadOnlyList<HandHistoryEntryDto>? HandHistory { get; init; }
+        }
 
 /// <summary>
 /// Public state for a single seat at the table.
