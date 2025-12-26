@@ -1,5 +1,6 @@
 using CardGames.Contracts.SignalR;
 using CardGames.Core.French.Cards;
+using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Evaluation;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
@@ -86,6 +87,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					{
 						GameId = game.Id,
 						Name = game.Name,
+						GameTypeName = game.GameType?.Name,
 						CurrentPhase = game.CurrentPhase,
 						CurrentPhaseDescription = PhaseDescriptionResolver.TryResolve(game.GameType?.Code, game.CurrentPhase),
 						Ante = game.Ante ?? 0,
@@ -93,7 +95,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 						TotalPot = totalPot,
 						DealerSeatIndex = game.DealerPosition,
 						CurrentActorSeatIndex = game.CurrentPlayerIndex,
-						IsPaused = game.Status == GameStatus.BetweenHands,
+						IsPaused = game.Status == Entities.GameStatus.BetweenHands,
 						CurrentHandNumber = game.CurrentHandNumber,
 						CreatedByName = game.CreatedByName,
 						Seats = seats,
@@ -274,7 +276,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
             PlayerFirstName = string.IsNullOrWhiteSpace(playerFirstName) ? null : playerFirstName.Trim(),
             PlayerAvatarUrl = string.IsNullOrWhiteSpace(playerAvatarUrl) ? null : playerAvatarUrl.Trim(),
             Chips = gamePlayer.ChipStack,
-            IsReady = gamePlayer.Status == GamePlayerStatus.Active && !gamePlayer.IsSittingOut,
+            IsReady = gamePlayer.Status == Entities.GamePlayerStatus.Active && !gamePlayer.IsSittingOut,
             IsFolded = gamePlayer.HasFolded,
             IsAllIn = gamePlayer.IsAllIn,
             IsDisconnected = !gamePlayer.IsConnected,
@@ -467,23 +469,23 @@ public sealed class TableStateBuilder : ITableStateBuilder
         return totalContributions;
     }
 
-        private static string MapSymbolToRank(CardSymbol symbol)
+        private static string MapSymbolToRank(Entities.CardSymbol symbol)
         {
             return symbol switch
             {
-                CardSymbol.Ace => "A",
-                CardSymbol.King => "K",
-                CardSymbol.Queen => "Q",
-                CardSymbol.Jack => "J",
-                CardSymbol.Ten => "10",
-                CardSymbol.Nine => "9",
-                CardSymbol.Eight => "8",
-                CardSymbol.Seven => "7",
-                CardSymbol.Six => "6",
-                CardSymbol.Five => "5",
-                CardSymbol.Four => "4",
-                CardSymbol.Three => "3",
-                CardSymbol.Deuce => "2",
+                Entities.CardSymbol.Ace => "A",
+                Entities.CardSymbol.King => "K",
+                Entities.CardSymbol.Queen => "Q",
+                Entities.CardSymbol.Jack => "J",
+                Entities.CardSymbol.Ten => "10",
+                Entities.CardSymbol.Nine => "9",
+                Entities.CardSymbol.Eight => "8",
+                Entities.CardSymbol.Seven => "7",
+                Entities.CardSymbol.Six => "6",
+                Entities.CardSymbol.Five => "5",
+                Entities.CardSymbol.Four => "4",
+                Entities.CardSymbol.Three => "3",
+                Entities.CardSymbol.Deuce => "2",
                 _ => symbol.ToString()
             };
         }
@@ -537,19 +539,19 @@ public sealed class TableStateBuilder : ITableStateBuilder
                     }
                 }
 
-                return new HandHistoryEntryDto
-                {
-                    HandNumber = h.HandNumber,
-                    CompletedAtUtc = h.CompletedAtUtc,
-                    WinnerName = winnerDisplay,
-                    AmountWon = totalWinnings,
-                    WinningHandDescription = h.WinningHandDescription,
-                    WonByFold = h.EndReason == Entities.HandEndReason.FoldedToWinner,
-                    WinnerCount = h.Winners.Count,
-                    CurrentPlayerResultLabel = currentPlayerResultLabel,
-                    CurrentPlayerNetDelta = currentPlayerNetDelta,
-                    CurrentPlayerWon = currentPlayerWon
-                };
+
+                return new HandHistoryEntryDto(
+	                amountWon: totalWinnings,
+	                completedAtUtc: h.CompletedAtUtc,
+	                currentPlayerNetDelta: currentPlayerNetDelta,
+	                currentPlayerResultLabel: currentPlayerResultLabel,
+	                currentPlayerWon: currentPlayerWon,
+	                handNumber: h.HandNumber,
+	                winnerCount: h.Winners.Count,
+	                winnerName: winnerDisplay,
+	                winningHandDescription: h.WinningHandDescription,
+	                wonByFold: h.EndReason == Data.Entities.HandEndReason.FoldedToWinner
+                );
             }).ToList();
         }
     }

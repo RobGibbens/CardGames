@@ -16,6 +16,7 @@ public static partial class GetGameMapper
 		return new GetGameResponse(
 			model.Id,
 			model.GameTypeId,
+			model.GameType?.Name,
 			model.Name,
 			minimumNumberOfPlayers,
 			maximumNumberOfPlayers,

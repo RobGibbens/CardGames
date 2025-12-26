@@ -1,5 +1,6 @@
 @namespace CardGames.Poker.Web.Components.Shared
 @using CardGames.Contracts.SignalR
+@using CardGames.Poker.Api.Contracts
 
 <div class="hand-history-section">
     @if (Entries is not null && Entries.Any())
@@ -14,7 +15,7 @@
             </div>
                     @foreach (var entry in Entries.OrderByDescending(e => e.HandNumber))
                     {
-                        <div class="history-entry @(entry.CurrentPlayerWon ? "player-won" : "")" role="row" tabindex="0">
+                        <div class="history-entry @(entry.CurrentPlayerWon ?? false ? "player-won" : "")" role="row" tabindex="0">
                             <span class="cell hand-number" role="cell">#@entry.HandNumber</span>
                             <span class="cell winner-name" role="cell" title="@GetWinnerTitle(entry)">
                                 @entry.WinnerName
@@ -55,7 +56,7 @@
             return entry.WinnerName;
         }
 
-        private static string GetDeltaClass(int delta)
+        private static string GetDeltaClass(int? delta)
         {
             return delta switch
             {
@@ -65,12 +66,12 @@
             };
         }
 
-        private static string FormatDelta(int delta)
+        private static string FormatDelta(int? delta)
         {
             return delta switch
             {
                 > 0 => $"+{delta:N0}",
-                < 0 => delta.ToString("N0"),
+                < 0 => delta.Value.ToString("N0"),
                 _ => "—"
             };
         }

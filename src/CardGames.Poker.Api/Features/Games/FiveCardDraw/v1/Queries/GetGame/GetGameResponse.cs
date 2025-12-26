@@ -8,6 +8,7 @@ namespace CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Queries.GetGame;
 public record GetGameResponse(
 Guid Id,
 Guid GameTypeId,
+string? GameTypeName,
 string? Name,
 int MinimumNumberOfPlayers,
 int MaximumNumberOfPlayers,

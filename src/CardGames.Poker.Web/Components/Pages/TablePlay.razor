@@ -51,7 +51,11 @@
 
         <div class="table-info-strip">
             <span class="table-name">@_gameResponse?.Name</span>
-            <span class="table-blinds">Ante: @ante � Min Bet: @_gameResponse?.MinBet</span>
+            @if (!string.IsNullOrWhiteSpace(_gameResponse?.GameTypeName))
+            {
+                <span class="table-game-type">@_gameResponse.GameTypeName</span>
+            }
+        <span class="table-blinds">Ante: @ante &nbsp; Min Bet: @_gameResponse?.MinBet</span>
         </div>
 
         <div class="table-controls-right">
@@ -443,6 +447,7 @@
                 CurrentPhase = state.CurrentPhase,
                 CurrentPhaseDescription = state?.CurrentPhaseDescription ?? "",
                 Name = state.Name ?? _gameResponse.Name,
+                GameTypeName = state.GameTypeName ?? _gameResponse.GameTypeName,
                 Ante = state.Ante,
                 MinBet = state.MinBet,
                 DealerPosition = state.DealerSeatIndex,

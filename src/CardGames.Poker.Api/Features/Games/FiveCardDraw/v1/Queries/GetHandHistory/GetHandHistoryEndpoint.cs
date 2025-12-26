@@ -1,4 +1,5 @@
 using CardGames.Contracts.SignalR;
+using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Extensions;
 using MediatR;
 

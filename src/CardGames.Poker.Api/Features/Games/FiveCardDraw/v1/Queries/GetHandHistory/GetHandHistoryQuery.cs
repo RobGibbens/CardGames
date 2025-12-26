@@ -1,4 +1,5 @@
 using CardGames.Contracts.SignalR;
+using CardGames.Poker.Api.Contracts;
 using MediatR;
 
 namespace CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Queries.GetHandHistory;

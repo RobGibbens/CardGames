@@ -8,18 +8,20 @@
 - [x] SHowdown overlay is not ordering cards
 - [x] Showdown does not show the description of the cards for the loser on the loser screen
 - [x] Make the results overlay look better
+- [x] Make sure the table says what game type it is
 
-- [ ] Hand history is not displaying correctly
-- [ ] Check that setting the ante works correctly
 - [ ] Add the ability to edit table settings if the table isn't started yet
+- [ ] Draw Phase overlay should show the current hand, and the new hand
+- [ ] Hand history is not displaying correctly
+- [ ] Should be able to discard four cards IF you have an ace
+- [ ] The betting action overlay. Raise to X doesn't work
+- [ ] Add an action timer
+- [ ] Check that setting the ante works correctly
 - [ ] Have the ability for someone to take a seat and be dealt into the next hand
 - [ ] When already logged in, take them to the Lobby
 - [ ] Test side pots
 - [ ] The fields on the register page should be wider
-- [ ] Make sure the table says what game type it is
-- [ ] Add an action timer
-- [ ] Draw Phase overlay should show the current hand, and the new hand
-- [ ] The betting action overlay. Raise to X doesn't work
-- [ ] Should be able to discard four cards IF you have an ace
 - [ ] Showdown should use better description of the cards (Pair of Aces vs One Pair)
 - [ ] Add animation of dealing the cards
+- [ ] Add other game types
+- [ ] I don't like how small the cards are and what they look like

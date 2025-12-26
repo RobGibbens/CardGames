@@ -2525,6 +2525,11 @@ a:hover {
     font-weight: 700;
     color: white;
 }
+.table-game-type {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: white;
+}
 
 .table-blinds {
     font-size: 0.75rem;
