@@ -1,23 +1,25 @@
-- Check that setting the ante works correctly
-- Add the ability to edit table settings if the table isn't started yet
-- Make the results overlay look better
 - [x] Show current standings
 - [x] Show hand history
 - [x] Show the user's avatar on TableSeat and their name
 - [x] Always make the logged in player the bottom seat
-- Have the ability for someone to take a seat and be dealt into the next hand
-- When already logged in, take them to the Lobby
 - [x] When discarding cards, leave the overlay up with the new cards for a few seconds
-- Test side pots
 - [x] Add Dev Tunnels to Aspire
-- The fields on the register page should be wider
-- Make sure the table says what game type it is
-- Add an action timer
 - [x] When winning, the overlay should show the loser's hand, and the payouts. It's showing the wrong winner.
-- Draw Phase overlay should show the current hand, and the new hand
-- The betting action overlay. Raise to X doesn't work
 - [x] SHowdown overlay is not ordering cards
-- Should be able to discard four cards IF you have an ace
 - [x] Showdown does not show the description of the cards for the loser on the loser screen
-- Showdown should use better description of the cards (Pair of Aces vs One Pair)
-- Add animation of dealing the cards
+- [x] Make the results overlay look better
+
+- [ ] Hand history is not displaying correctly
+- [ ] Check that setting the ante works correctly
+- [ ] Add the ability to edit table settings if the table isn't started yet
+- [ ] Have the ability for someone to take a seat and be dealt into the next hand
+- [ ] When already logged in, take them to the Lobby
+- [ ] Test side pots
+- [ ] The fields on the register page should be wider
+- [ ] Make sure the table says what game type it is
+- [ ] Add an action timer
+- [ ] Draw Phase overlay should show the current hand, and the new hand
+- [ ] The betting action overlay. Raise to X doesn't work
+- [ ] Should be able to discard four cards IF you have an ace
+- [ ] Showdown should use better description of the cards (Pair of Aces vs One Pair)
+- [ ] Add animation of dealing the cards
