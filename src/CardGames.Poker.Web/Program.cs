@@ -13,6 +13,7 @@ using Microsoft.EntityFrameworkCore;
 using Refit;
 using System.Security.Claims;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -87,16 +88,16 @@ builder.Services.AddAuthentication(options =>
 		options.ClientId = builder.Configuration["Authentication:Yahoo:ClientId"] ?? throw new InvalidOperationException("Yahoo ClientId not configured");
 		options.ClientSecret = builder.Configuration["Authentication:Yahoo:ClientSecret"] ?? throw new InvalidOperationException("Yahoo ClientSecret not configured");
 
-		options.CallbackPath = "/signin-yahoo";
+		options.CallbackPath = "/signin-oidc";
 
 		// Yahoo OAuth 2.0 endpoints
 		options.AuthorizationEndpoint = "https://api.login.yahoo.com/oauth2/request_auth";
 		options.TokenEndpoint = "https://api.login.yahoo.com/oauth2/get_token";
 		options.UserInformationEndpoint = "https://api.login.yahoo.com/openid/v1/userinfo";
 
-		// Yahoo uses 'openid' scope for basic OIDC. Profile/email may require
-		// specific API permissions configured in your Yahoo Developer app.
-		// Common Yahoo scopes: openid, sdps-r (social profile read)
+		// Yahoo uses 'openid' scope. To get profile/email data, you must enable
+		// "Profile" and "Email" under "OpenID Connect Permissions" in your
+		// Yahoo Developer app settings at https://developer.yahoo.com/apps/
 		options.Scope.Clear();
 		options.Scope.Add("openid");
 
@@ -122,6 +123,19 @@ builder.Services.AddAuthentication(options =>
 
 			var user = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
 			context.RunClaimActions(user);
+
+			// If 'name' claim is missing, try to construct it from given_name + family_name
+			if (context.Principal?.FindFirst(ClaimTypes.Name) is null)
+			{
+				var givenName = user.TryGetProperty("given_name", out var gn) ? gn.GetString() : null;
+				var familyName = user.TryGetProperty("family_name", out var fn) ? fn.GetString() : null;
+				var fullName = string.Join(" ", new[] { givenName, familyName }.Where(s => !string.IsNullOrEmpty(s)));
+
+				if (!string.IsNullOrEmpty(fullName) && context.Principal?.Identity is ClaimsIdentity identity)
+				{
+					identity.AddClaim(new Claim(ClaimTypes.Name, fullName));
+				}
+			}
 		};
 	})
 	.AddIdentityCookies();
