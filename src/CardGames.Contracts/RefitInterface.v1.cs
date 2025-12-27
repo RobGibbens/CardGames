@@ -2353,12 +2353,13 @@ namespace CardGames.Poker.Api.Contracts
     public partial record ShowdownPlayerHand
     {
         [JsonConstructor]
-        public ShowdownPlayerHand(int? @amountWon, ICollection<ShowdownCard> @cards, long? @handStrength, string @handType, bool? @isWinner, string @playerFirstName, string @playerName)
+        public ShowdownPlayerHand(int? @amountWon, ICollection<ShowdownCard> @cards, string @handDescription, long? @handStrength, string @handType, bool? @isWinner, string @playerFirstName, string @playerName)
         {
             this.PlayerName = @playerName;
             this.PlayerFirstName = @playerFirstName;
             this.Cards = @cards;
             this.HandType = @handType;
+            this.HandDescription = @handDescription;
             this.HandStrength = @handStrength;
             this.IsWinner = @isWinner;
             this.AmountWon = @amountWon;
@@ -2377,6 +2378,9 @@ namespace CardGames.Poker.Api.Contracts
 
         [JsonPropertyName("handType")]
         public string HandType { get; init; }
+
+        [JsonPropertyName("handDescription")]
+        public string HandDescription { get; init; }
 
         [JsonPropertyName("handStrength")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]

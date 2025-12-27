@@ -257,6 +257,12 @@ public sealed record ShowdownPlayerResultDto
 	public string? HandRanking { get; init; }
 
 	/// <summary>
+	/// Gets a textual description of the hand.
+	/// </summary>
+	public string? HandDescription { get; init; }
+	
+
+	/// <summary>
 	/// The amount won by this player.
 	/// </summary>
 	public int AmountWon { get; init; }

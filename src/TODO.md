@@ -5,13 +5,12 @@
 - [x] When discarding cards, leave the overlay up with the new cards for a few seconds
 - [x] Add Dev Tunnels to Aspire
 - [x] When winning, the overlay should show the loser's hand, and the payouts. It's showing the wrong winner.
-- [x] SHowdown overlay is not ordering cards
+- [x] Showdown overlay is not ordering cards
 - [x] Showdown does not show the description of the cards for the loser on the loser screen
 - [x] Make the results overlay look better
 - [x] Make sure the table says what game type it is
-
-- [ ] Add the ability to edit table settings if the table isn't started yet
-- [ ] Draw Phase overlay should show the current hand, and the new hand
+- [x] Add the ability to edit table settings if the table isn't started yet
+- [x] Draw Phase overlay should show the current hand, and the new hand
 - [ ] Should be able to discard four cards IF you have an ace
 - [ ] Hand history is not displaying correctly
 - [ ] The betting action overlay. Raise to X doesn't work

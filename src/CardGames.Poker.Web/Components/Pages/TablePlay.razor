@@ -159,7 +159,8 @@
             <DrawPanel Cards="@currentPlayerDrawCards" SelectedIndices="@selectedDiscardIndices"
                 OnToggleSelection="ToggleDiscardSelectionAsync" OnDraw="HandleDrawActionAsync" IsSubmitting="@isSubmittingDraw"
                 IsAnimating="@isDrawAnimating" IsDiscarding="@isDiscardingCards" IsDrawing="@isDrawingNewCards"
-                CardsDrawn="@cardsDrawn" NewCardIndices="@newCardIndices" />
+                CardsDrawn="@cardsDrawn" NewCardIndices="@newCardIndices"
+                HandDescription="@currentPlayerHandEvaluationDescription" />
         }
 
         <!-- Draw Phase Waiting Indicator (shown to other players during draw phase) -->
@@ -315,6 +316,11 @@
     private List<CardInfo> currentPlayerDrawCards = [];
     private GetCurrentDrawPlayerResponse? _currentDrawPlayer;
     private bool _forceShowDrawPanel;
+
+    private string? currentPlayerHandEvaluationDescription =>
+        currentPlayerSeatIndex >= 0 && currentPlayerSeatIndex < seats.Count
+            ? seats[currentPlayerSeatIndex].HandEvaluationDescription
+            : null;
 
     // Showdown state
     private PerformShowdownSuccessful? _showdownResult;
@@ -694,7 +700,8 @@
                 handType: r.HandRanking ?? "",
                 isWinner: r.IsWinner,
                 playerFirstName: r.PlayerFirstName,
-                playerName: r.PlayerName
+                playerName: r.PlayerName,
+                handDescription: r.HandDescription ?? ""
             )).ToList();
 
             _showdownResult = new PerformShowdownSuccessful(

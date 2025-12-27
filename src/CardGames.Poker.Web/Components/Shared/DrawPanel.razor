@@ -12,6 +12,10 @@
         <div class="draw-panel-subtitle">
             Select cards to discard (0-3 cards)
         </div>
+        @if (!string.IsNullOrWhiteSpace(HandDescription))
+        {
+            <div class="draw-panel-hand-eval">@HandDescription</div>
+        }
     </div>
 
     <!-- Cards Display -->
@@ -112,6 +116,9 @@
 @code {
     [Parameter]
     public List<CardInfo> Cards { get; set; } = [];
+
+    [Parameter]
+    public string? HandDescription { get; set; }
 
     [Parameter]
     public HashSet<int> SelectedIndices { get; set; } = [];

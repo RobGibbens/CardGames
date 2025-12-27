@@ -435,7 +435,10 @@ public sealed class TableStateBuilder : ITableStateBuilder
                     PlayerFirstName = userProfile?.FirstName,
                     SeatPosition = gp.SeatPosition,
                     HandRanking = handRanking,
-                    AmountWon = 0, // Actual payout calculated separately
+                    HandDescription = playerHandEvaluations.TryGetValue(gp.Player.Name, out var e)
+                        ? HandDescriptionFormatter.GetHandDescription(e.hand)
+                        : null,
+					AmountWon = 0, // Actual payout calculated separately
                     IsWinner = isWinner,
                     Cards = gp.Cards
                         .Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber)

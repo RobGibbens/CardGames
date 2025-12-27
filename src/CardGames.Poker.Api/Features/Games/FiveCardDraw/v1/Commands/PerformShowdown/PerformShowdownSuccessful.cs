@@ -62,6 +62,12 @@ public record ShowdownPlayerHand
 	public string? HandType { get; init; }
 
 	/// <summary>
+	/// A detailed, human-friendly description of the evaluated hand (e.g., "Ace high", "Pair of Aces", "Straight to the Queen").
+	/// Null if the player won by fold without showing cards.
+	/// </summary>
+	public string? HandDescription { get; init; }
+
+	/// <summary>
 	/// The hand strength value used for comparing hands.
 	/// Higher values indicate stronger hands.
 	/// </summary>
