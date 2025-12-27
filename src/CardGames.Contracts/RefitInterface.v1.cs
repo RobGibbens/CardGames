@@ -534,6 +534,75 @@ namespace CardGames.Poker.Api.Clients
         [Headers("Accept: application/json, application/problem+json")]
         [Get("/api/v1/games/five-card-draw/{gameId}/history")]
         Task<IApiResponse<HandHistoryListDto>> GetHandHistoryAsync(System.Guid gameId, [Query] int? take, [Query] int? skip, [Query] System.Guid? playerId, CancellationToken cancellationToken = default);
+
+        /// <summary>Get Table Settings</summary>
+        /// <remarks>Retrieves the current table settings for a game. Returns configuration details including ante, blinds, and current phase. The `IsEditable` property indicates whether settings can currently be modified.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Get("/api/v1/games/five-card-draw/{gameId}/settings")]
+        Task<IApiResponse<GetTableSettingsResponse>> GetTableSettingsAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
+        /// <summary>Update Table Settings</summary>
+        /// <remarks>
+        /// Updates the table settings for a game. Can only be called when the game is in WaitingToStart or WaitingForPlayers phase. Requires the caller to be the table creator.
+        /// 
+        /// **Validations:**
+        /// - Game must exist
+        /// - Caller must be the table creator
+        /// - Game must be in an editable phase
+        /// - RowVersion must match current value (optimistic concurrency)
+        /// - BigBlind &gt;= SmallBlind if both provided
+        /// - Ante &gt;= 0
+        /// - MinBet &gt; 0
+        /// </remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>403</term>
+        /// <description>Forbidden</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Put("/api/v1/games/five-card-draw/{gameId}/settings")]
+        Task<IApiResponse<UpdateTableSettingsResponse>> UpdateTableSettingsAsync(System.Guid gameId, [Body] UpdateTableSettingsRequest body, CancellationToken cancellationToken = default);
     }
 
     /// <summary>No summary available</summary>
@@ -1744,6 +1813,104 @@ namespace CardGames.Poker.Api.Contracts
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record GetTableSettingsResponse
+    {
+        [JsonConstructor]
+        public GetTableSettingsResponse(int? @ante, int? @bigBlind, string @createdById, string @createdByName, string @currentPhase, System.Guid @gameId, string @gameTypeCode, string @gameTypeName, bool? @isEditable, int? @maxPlayers, int? @minBet, int? @minPlayers, string @name, string @rowVersion, int? @seatedPlayerCount, int? @smallBlind, System.DateTimeOffset? @updatedAt, string @updatedById, string @updatedByName)
+        {
+            this.GameId = @gameId;
+            this.Name = @name;
+            this.GameTypeCode = @gameTypeCode;
+            this.GameTypeName = @gameTypeName;
+            this.CurrentPhase = @currentPhase;
+            this.IsEditable = @isEditable;
+            this.Ante = @ante;
+            this.MinBet = @minBet;
+            this.SmallBlind = @smallBlind;
+            this.BigBlind = @bigBlind;
+            this.MaxPlayers = @maxPlayers;
+            this.MinPlayers = @minPlayers;
+            this.SeatedPlayerCount = @seatedPlayerCount;
+            this.CreatedById = @createdById;
+            this.CreatedByName = @createdByName;
+            this.UpdatedAt = @updatedAt;
+            this.UpdatedById = @updatedById;
+            this.UpdatedByName = @updatedByName;
+            this.RowVersion = @rowVersion;
+        }
+
+        [JsonPropertyName("gameId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid GameId { get; init; }
+
+        [JsonPropertyName("name")]
+        public string Name { get; init; }
+
+        [JsonPropertyName("gameTypeCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string GameTypeCode { get; init; }
+
+        [JsonPropertyName("gameTypeName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string GameTypeName { get; init; }
+
+        [JsonPropertyName("currentPhase")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string CurrentPhase { get; init; }
+
+        [JsonPropertyName("isEditable")]
+        public bool? IsEditable { get; init; }
+
+        [JsonPropertyName("ante")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? Ante { get; init; }
+
+        [JsonPropertyName("minBet")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? MinBet { get; init; }
+
+        [JsonPropertyName("smallBlind")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? SmallBlind { get; init; }
+
+        [JsonPropertyName("bigBlind")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? BigBlind { get; init; }
+
+        [JsonPropertyName("maxPlayers")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? MaxPlayers { get; init; }
+
+        [JsonPropertyName("minPlayers")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? MinPlayers { get; init; }
+
+        [JsonPropertyName("seatedPlayerCount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? SeatedPlayerCount { get; init; }
+
+        [JsonPropertyName("createdById")]
+        public string CreatedById { get; init; }
+
+        [JsonPropertyName("createdByName")]
+        public string CreatedByName { get; init; }
+
+        [JsonPropertyName("updatedAt")]
+        public System.DateTimeOffset? UpdatedAt { get; init; }
+
+        [JsonPropertyName("updatedById")]
+        public string UpdatedById { get; init; }
+
+        [JsonPropertyName("updatedByName")]
+        public string UpdatedByName { get; init; }
+
+        [JsonPropertyName("rowVersion")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string RowVersion { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial record HandHistoryEntryDto
     {
         [JsonConstructor]
@@ -1780,6 +1947,7 @@ namespace CardGames.Poker.Api.Contracts
         public int AmountWon { get; init; }
 
         [JsonPropertyName("winningHandDescription")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string WinningHandDescription { get; init; }
 
         [JsonPropertyName("wonByFold")]
@@ -1790,6 +1958,7 @@ namespace CardGames.Poker.Api.Contracts
         public int? WinnerCount { get; init; }
 
         [JsonPropertyName("currentPlayerResultLabel")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string CurrentPlayerResultLabel { get; init; }
 
         [JsonPropertyName("currentPlayerNetDelta")]
@@ -2248,6 +2417,143 @@ namespace CardGames.Poker.Api.Contracts
         [JsonPropertyName("activePlayerCount")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? ActivePlayerCount { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record UpdateTableSettingsRequest
+    {
+        [JsonConstructor]
+        public UpdateTableSettingsRequest(int? @ante, int? @bigBlind, int? @minBet, string @name, string @rowVersion, int? @smallBlind)
+        {
+            this.Name = @name;
+            this.Ante = @ante;
+            this.MinBet = @minBet;
+            this.SmallBlind = @smallBlind;
+            this.BigBlind = @bigBlind;
+            this.RowVersion = @rowVersion;
+        }
+
+        [JsonPropertyName("name")]
+        public string Name { get; init; }
+
+        [JsonPropertyName("ante")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? Ante { get; init; }
+
+        [JsonPropertyName("minBet")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? MinBet { get; init; }
+
+        [JsonPropertyName("smallBlind")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? SmallBlind { get; init; }
+
+        [JsonPropertyName("bigBlind")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? BigBlind { get; init; }
+
+        [JsonPropertyName("rowVersion")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string RowVersion { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record UpdateTableSettingsResponse
+    {
+        [JsonConstructor]
+        public UpdateTableSettingsResponse(int? @ante, int? @bigBlind, string @createdById, string @createdByName, string @currentPhase, System.Guid @gameId, string @gameTypeCode, string @gameTypeName, bool? @isEditable, int? @maxPlayers, int? @minBet, int? @minPlayers, string @name, string @rowVersion, int? @seatedPlayerCount, int? @smallBlind, System.DateTimeOffset? @updatedAt, string @updatedById, string @updatedByName)
+        {
+            this.GameId = @gameId;
+            this.Name = @name;
+            this.GameTypeCode = @gameTypeCode;
+            this.GameTypeName = @gameTypeName;
+            this.CurrentPhase = @currentPhase;
+            this.IsEditable = @isEditable;
+            this.Ante = @ante;
+            this.MinBet = @minBet;
+            this.SmallBlind = @smallBlind;
+            this.BigBlind = @bigBlind;
+            this.MaxPlayers = @maxPlayers;
+            this.MinPlayers = @minPlayers;
+            this.SeatedPlayerCount = @seatedPlayerCount;
+            this.CreatedById = @createdById;
+            this.CreatedByName = @createdByName;
+            this.UpdatedAt = @updatedAt;
+            this.UpdatedById = @updatedById;
+            this.UpdatedByName = @updatedByName;
+            this.RowVersion = @rowVersion;
+        }
+
+        [JsonPropertyName("gameId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid GameId { get; init; }
+
+        [JsonPropertyName("name")]
+        public string Name { get; init; }
+
+        [JsonPropertyName("gameTypeCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string GameTypeCode { get; init; }
+
+        [JsonPropertyName("gameTypeName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string GameTypeName { get; init; }
+
+        [JsonPropertyName("currentPhase")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string CurrentPhase { get; init; }
+
+        [JsonPropertyName("isEditable")]
+        public bool? IsEditable { get; init; }
+
+        [JsonPropertyName("ante")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? Ante { get; init; }
+
+        [JsonPropertyName("minBet")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? MinBet { get; init; }
+
+        [JsonPropertyName("smallBlind")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? SmallBlind { get; init; }
+
+        [JsonPropertyName("bigBlind")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? BigBlind { get; init; }
+
+        [JsonPropertyName("maxPlayers")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? MaxPlayers { get; init; }
+
+        [JsonPropertyName("minPlayers")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? MinPlayers { get; init; }
+
+        [JsonPropertyName("seatedPlayerCount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? SeatedPlayerCount { get; init; }
+
+        [JsonPropertyName("createdById")]
+        public string CreatedById { get; init; }
+
+        [JsonPropertyName("createdByName")]
+        public string CreatedByName { get; init; }
+
+        [JsonPropertyName("updatedAt")]
+        public System.DateTimeOffset? UpdatedAt { get; init; }
+
+        [JsonPropertyName("updatedById")]
+        public string UpdatedById { get; init; }
+
+        [JsonPropertyName("updatedByName")]
+        public string UpdatedByName { get; init; }
+
+        [JsonPropertyName("rowVersion")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string RowVersion { get; init; }
 
     }
 

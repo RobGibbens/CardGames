@@ -1,0 +1,421 @@
+@page "/table/{GameId:guid}/edit"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@implements IAsyncDisposable
+
+@using CardGames.Contracts.SignalR
+@using CardGames.Poker.Api.Contracts
+@using CardGames.Poker.Api.Clients
+@using CardGames.Poker.Web.Components.Shared
+@using CardGames.Poker.Web.Services
+@using Microsoft.AspNetCore.Authorization
+
+@inject NavigationManager NavigationManager
+@inject IFiveCardDrawApi FiveCardDrawApi
+@inject GameHubClient GameHubClient
+@inject ILogger<EditTable> Logger
+
+<PageTitle>Edit Table - Friday Night Poker</PageTitle>
+
+<AuthenticatedNavBar />
+
+<main class="create-table-main">
+    <div class="create-table-container">
+        <!-- Page Header -->
+        <div class="create-table-header">
+            <a href="/table/@GameId" class="back-link">
+                <i class="fa-regular fa-arrow-left"></i>
+                Back to Table
+            </a>
+            <div class="create-table-header-content">
+                <h1 class="create-table-title">
+                    <i class="fa-regular fa-pen-to-square"></i>
+                    Edit Table Settings
+                </h1>
+                <p class="create-table-subtitle">Modify table configuration before the game starts</p>
+            </div>
+        </div>
+
+        @if (isLoading)
+        {
+            <div class="create-table-loading">
+                <div class="loading-spinner"></div>
+                <p>Loading table settings...</p>
+            </div>
+        }
+        else if (loadError is not null)
+        {
+            <div class="create-table-error">
+                <div class="error-icon">??</div>
+                <h3>Failed to Load</h3>
+                <p>@loadError</p>
+                <button class="btn btn-primary" @onclick="LoadSettingsAsync">Try Again</button>
+            </div>
+        }
+        else if (!isEditable)
+        {
+            <div class="create-table-error">
+                <div class="error-icon">??</div>
+                <h3>Settings Locked</h3>
+                <p>Table settings can only be edited before the game starts.</p>
+                <p class="phase-info">Current phase: @currentPhase</p>
+                <a href="/table/@GameId" class="btn btn-primary">Return to Table</a>
+            </div>
+        }
+        else
+        {
+            <div class="create-table-content">
+                <!-- Settings Form -->
+                <section class="create-step">
+                    <div class="step-header">
+                        <span class="step-number"><i class="fa-regular fa-sliders"></i></span>
+                        <div class="step-info">
+                            <h2 class="step-title">Table Configuration</h2>
+                            <p class="step-description">Update the game settings for @gameTypeName</p>
+                        </div>
+                    </div>
+
+                    <div class="settings-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label" for="tableName">Table Name</label>
+                                <input type="text"
+                                       id="tableName"
+                                       class="form-input"
+                                       placeholder="e.g., Friday Night Poker"
+                                       @bind="tableName"
+                                       maxlength="200" />
+                                <span class="form-hint">Give your table a memorable name</span>
+                            </div>
+                        </div>
+
+                        <div class="form-row two-columns">
+                            <div class="form-group">
+                                <label class="form-label" for="ante">Ante</label>
+                                <input type="number"
+                                       id="ante"
+                                       class="form-input"
+                                       min="0"
+                                       max="10000"
+                                       @bind="ante" />
+                                <span class="form-hint">Mandatory bet before each hand (0 for none)</span>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="minBet">Minimum Bet</label>
+                                <input type="number"
+                                       id="minBet"
+                                       class="form-input"
+                                       min="1"
+                                       max="100000"
+                                       @bind="minBet" />
+                                <span class="form-hint">Minimum bet during play</span>
+                            </div>
+                        </div>
+
+                        @if (hasBlindFields)
+                        {
+                            <div class="form-row two-columns">
+                                <div class="form-group">
+                                    <label class="form-label" for="smallBlind">Small Blind</label>
+                                    <input type="number"
+                                           id="smallBlind"
+                                           class="form-input"
+                                           min="1"
+                                           max="50000"
+                                           @bind="smallBlind" />
+                                    <span class="form-hint">Small blind amount</span>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="bigBlind">Big Blind</label>
+                                    <input type="number"
+                                           id="bigBlind"
+                                           class="form-input"
+                                           min="1"
+                                           max="100000"
+                                           @bind="bigBlind" />
+                                    <span class="form-hint">Must be ? small blind</span>
+                                </div>
+                            </div>
+                        }
+
+                        <!-- Table Info (read-only) -->
+                        <div class="form-row info-row">
+                            <div class="info-item">
+                                <span class="info-label">Game Type</span>
+                                <span class="info-value">@gameTypeName</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Players</span>
+                                <span class="info-value">@seatedPlayerCount / @maxPlayers</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Created By</span>
+                                <span class="info-value">@createdByName</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Conflict Warning -->
+                @if (hasConflict)
+                {
+                    <div class="conflict-warning animate-fade-in-up">
+                        <div class="conflict-icon">??</div>
+                        <div class="conflict-content">
+                            <h4>Settings Changed</h4>
+                            <p>Another user has updated the table settings. Please refresh to see the latest changes.</p>
+                            <button class="btn btn-secondary" @onclick="LoadSettingsAsync">
+                                <i class="fa-regular fa-arrows-rotate"></i>
+                                Refresh Settings
+                            </button>
+                        </div>
+                    </div>
+                }
+
+                <!-- Save Button -->
+                <div class="create-actions animate-fade-in-up animate-delay-1">
+                    @if (saveError is not null)
+                    {
+                        <div class="create-error-message">
+                            <i class="fa-regular fa-circle-exclamation"></i>
+                            @saveError
+                        </div>
+                    }
+                    @if (saveSuccess)
+                    {
+                        <div class="create-success-message">
+                            <i class="fa-regular fa-circle-check"></i>
+                            Settings saved successfully!
+                        </div>
+                    }
+                    <div class="action-buttons">
+                        <a href="/table/@GameId" class="btn btn-secondary btn-lg">
+                            Cancel
+                        </a>
+                        <button class="btn btn-primary btn-lg create-table-btn"
+                                @onclick="SaveSettingsAsync"
+                                disabled="@(isSaving || hasConflict)">
+                            @if (isSaving)
+                            {
+                                <span class="loading-spinner-small"></span>
+                                <span>Saving...</span>
+                            }
+                            else
+                            {
+                                <i class="fa-regular fa-check"></i>
+                                <span>Save Changes</span>
+                            }
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</main>
+
+@code {
+    [Parameter]
+    public Guid GameId { get; set; }
+
+    private bool isLoading = true;
+    private bool isSaving;
+    private bool hasConflict;
+    private bool saveSuccess;
+    private string? loadError;
+    private string? saveError;
+
+    private string? rowVersion;
+    private bool isEditable;
+
+    // Display fields (from API response)
+    private string? gameTypeName;
+    private string? currentPhase;
+    private int seatedPlayerCount;
+    private int maxPlayers;
+    private string? createdByName;
+    private bool hasBlindFields;
+
+    // Form fields
+    private string tableName = "";
+    private int? ante;
+    private int? minBet;
+    private int? smallBlind;
+    private int? bigBlind;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSettingsAsync();
+        await SetupSignalRAsync();
+    }
+
+    private async Task LoadSettingsAsync()
+    {
+        isLoading = true;
+        loadError = null;
+        hasConflict = false;
+        saveSuccess = false;
+        StateHasChanged();
+
+        try
+        {
+            var response = await FiveCardDrawApi.GetTableSettingsAsync(GameId);
+
+            if (response.IsSuccessStatusCode && response.Content is not null)
+            {
+                ApplySettings(response.Content);
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                loadError = "Table not found.";
+            }
+            else
+            {
+                loadError = "Failed to load table settings.";
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading table settings for game {GameId}", GameId);
+            loadError = $"An error occurred: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ApplySettings(GetTableSettingsResponse settings)
+    {
+        isEditable = settings.IsEditable ?? false;
+        rowVersion = settings.RowVersion;
+        gameTypeName = settings.GameTypeName;
+        currentPhase = settings.CurrentPhase;
+        seatedPlayerCount = settings.SeatedPlayerCount ?? 0;
+        maxPlayers = settings.MaxPlayers ?? 0;
+        createdByName = settings.CreatedByName;
+        hasBlindFields = settings.SmallBlind is not null || settings.BigBlind is not null;
+
+        // Populate form fields
+        tableName = settings.Name ?? "";
+        ante = settings.Ante;
+        minBet = settings.MinBet;
+        smallBlind = settings.SmallBlind;
+        bigBlind = settings.BigBlind;
+    }
+
+    private async Task SaveSettingsAsync()
+    {
+        if (string.IsNullOrEmpty(rowVersion) || hasConflict)
+        {
+            return;
+        }
+
+        isSaving = true;
+        saveError = null;
+        saveSuccess = false;
+        StateHasChanged();
+
+        try
+        {
+            var request = new UpdateTableSettingsRequest(
+                name: tableName,
+                ante: ante,
+                minBet: minBet,
+                smallBlind: smallBlind,
+                bigBlind: bigBlind,
+                rowVersion: rowVersion
+            );
+
+            var response = await FiveCardDrawApi.UpdateTableSettingsAsync(GameId, request);
+
+            if (response.IsSuccessStatusCode && response.Content is not null)
+            {
+                // The response from UpdateTableSettings is UpdateTableSettingsResponse,
+                // but we need to reload to get the full settings format
+                await LoadSettingsAsync();
+                saveSuccess = true;
+
+                // Navigate back to table after short delay
+                await Task.Delay(1500);
+                NavigationManager.NavigateTo($"/table/{GameId}");
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
+            {
+                hasConflict = true;
+                saveError = "The settings were modified by another user. Please refresh and try again.";
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+            {
+                saveError = "You are not authorized to edit these settings.";
+            }
+            else
+            {
+                saveError = response.Error?.Content ?? "Failed to save settings.";
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error saving table settings for game {GameId}", GameId);
+            saveError = $"An error occurred: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SetupSignalRAsync()
+    {
+        try
+        {
+            GameHubClient.OnTableSettingsUpdated += HandleTableSettingsUpdated;
+
+            if (!GameHubClient.IsConnected)
+            {
+                await GameHubClient.ConnectAsync();
+            }
+            await GameHubClient.JoinGameAsync(GameId);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to connect to SignalR for game {GameId}", GameId);
+        }
+    }
+
+    private async Task HandleTableSettingsUpdated(TableSettingsUpdatedDto notification)
+    {
+        if (notification.GameId != GameId)
+        {
+            return;
+        }
+
+        await InvokeAsync(() =>
+        {
+            // Check if settings changed from a different row version
+            if (rowVersion != notification.Settings.RowVersion)
+            {
+                hasConflict = true;
+                // Update display fields from SignalR notification
+                isEditable = notification.Settings.IsEditable;
+                currentPhase = notification.Settings.CurrentPhase;
+            }
+            StateHasChanged();
+        });
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        GameHubClient.OnTableSettingsUpdated -= HandleTableSettingsUpdated;
+
+        try
+        {
+            await GameHubClient.LeaveGameAsync(GameId);
+        }
+        catch
+        {
+            // Ignore errors during cleanup
+        }
+    }
+}

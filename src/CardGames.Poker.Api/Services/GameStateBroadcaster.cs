@@ -138,7 +138,33 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
                     "Failed to broadcast PlayerJoined notification for game {GameId}", gameId);
                 // Don't throw - the join was successful, just the notification failed
             }
-        }
+            }
 
-        private static string GetGroupName(Guid gameId) => $"{GameGroupPrefix}{gameId}";
-    }
+            /// <inheritdoc />
+            public async Task BroadcastTableSettingsUpdatedAsync(
+                TableSettingsUpdatedDto notification,
+                CancellationToken cancellationToken = default)
+            {
+                var groupName = GetGroupName(notification.GameId);
+
+                try
+                {
+                    await _hubContext.Clients.Group(groupName)
+                        .SendAsync("TableSettingsUpdated", notification, cancellationToken);
+
+                    _logger.LogInformation(
+                        "Broadcast TableSettingsUpdated notification for game {GameId} by user {UserId}",
+                        notification.GameId,
+                        notification.UpdatedById);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex,
+                        "Failed to broadcast TableSettingsUpdated notification for game {GameId}",
+                        notification.GameId);
+                    throw;
+                }
+            }
+
+            private static string GetGroupName(Guid gameId) => $"{GameGroupPrefix}{gameId}";
+        }

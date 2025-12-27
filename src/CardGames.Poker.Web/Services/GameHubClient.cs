@@ -1,4 +1,5 @@
 using CardGames.Contracts.SignalR;
+using CardGames.Contracts.TableSettings;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.SignalR.Client;
 using System.Security.Claims;
@@ -33,6 +34,11 @@ public sealed class GameHubClient : IAsyncDisposable
     /// Fired when a player joins the game.
     /// </summary>
     public event Func<PlayerJoinedDto, Task>? OnPlayerJoined;
+
+    /// <summary>
+    /// Fired when table settings are updated.
+    /// </summary>
+    public event Func<TableSettingsUpdatedDto, Task>? OnTableSettingsUpdated;
 
     /// <summary>
     /// Fired when the connection state changes.
@@ -119,6 +125,7 @@ public sealed class GameHubClient : IAsyncDisposable
         _hubConnection.On<TableStatePublicDto>("TableStateUpdated", HandleTableStateUpdated);
         _hubConnection.On<PrivateStateDto>("PrivateStateUpdated", HandlePrivateStateUpdated);
         _hubConnection.On<PlayerJoinedDto>("PlayerJoined", HandlePlayerJoined);
+        _hubConnection.On<TableSettingsUpdatedDto>("TableSettingsUpdated", HandleTableSettingsUpdated);
 
         try
         {
@@ -367,6 +374,17 @@ public sealed class GameHubClient : IAsyncDisposable
         if (OnPlayerJoined is not null)
         {
             await OnPlayerJoined(notification);
+        }
+    }
+
+    private async Task HandleTableSettingsUpdated(TableSettingsUpdatedDto notification)
+    {
+        _logger.LogDebug("Received TableSettingsUpdated for game {GameId}, updated by {UpdatedByName}",
+            notification.GameId, notification.UpdatedByName);
+
+        if (OnTableSettingsUpdated is not null)
+        {
+            await OnTableSettingsUpdated(notification);
         }
     }
 

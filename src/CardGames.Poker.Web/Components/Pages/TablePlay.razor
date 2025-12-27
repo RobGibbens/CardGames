@@ -58,56 +58,57 @@
         <span class="table-blinds">Ante: @ante &nbsp; Min Bet: @_gameResponse?.MinBet</span>
         </div>
 
-        <div class="table-controls-right">
-            @if (!_isLoading)
-            {
-                if (isHost)
+            <div class="table-controls-right">
+                @if (!_isLoading)
                 {
-                    <div class="host-controls">
-                        @{
-                            var x = "";
-                        }
-                        @if (_gameResponse.CurrentPhase == GamePhase.WaitingForPlayers.ToString() || _gameResponse.CurrentPhase
-                                        == GamePhase.WaitingToStart.ToString())
-                        {
-                            <button class="btn btn-primary btn-sm" @onclick="StartGameAsync" disabled="@(!canStartGame)">
-                                <i class="fa-regular fa-play"></i>
-                                Start Game
-                            </button>
-                        }
-                        else if (_gameResponse.CurrentPhase != GamePhase.Ended.ToString())
-                        {
-                            @if (isPaused)
+                    if (isHost)
+                    {
+                        <div class="host-controls">
+                            @if (_gameResponse.CurrentPhase == GamePhase.WaitingForPlayers.ToString() || _gameResponse.CurrentPhase
+                                            == GamePhase.WaitingToStart.ToString())
                             {
-                                <button class="btn btn-secondary btn-sm" @onclick="ResumeGameAsync">
+                                <a href="/table/@GameId/edit" class="btn btn-secondary btn-sm">
+                                    <i class="fa-regular fa-pen-to-square"></i>
+                                    Edit Table
+                                </a>
+                                <button class="btn btn-primary btn-sm" @onclick="StartGameAsync" disabled="@(!canStartGame)">
                                     <i class="fa-regular fa-play"></i>
-                                    Resume
+                                    Start Game
                                 </button>
                             }
-                            else
+                            else if (_gameResponse.CurrentPhase != GamePhase.Ended.ToString())
                             {
-                                <button class="btn btn-secondary btn-sm" @onclick="PauseGameAsync">
-                                    <i class="fa-regular fa-pause"></i>
-                                    Pause
+                                @if (isPaused)
+                                {
+                                    <button class="btn btn-secondary btn-sm" @onclick="ResumeGameAsync">
+                                        <i class="fa-regular fa-play"></i>
+                                        Resume
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-secondary btn-sm" @onclick="PauseGameAsync">
+                                        <i class="fa-regular fa-pause"></i>
+                                        Pause
+                                    </button>
+                                }
+
+                                <button class="btn btn-sm btn-end-game" @onclick="EndGameAsync">
+                                    <i class="fa-solid fa-octagon"></i>
+                                    End Game
                                 </button>
                             }
-
-                            <button class="btn btn-sm btn-end-game" @onclick="EndGameAsync">
-                                <i class="fa-solid fa-octagon"></i>
-                                End Game
-                            </button>
-                        }
-                    </div>
+                        </div>
+                    }
                 }
-            }
-            <div class="connection-indicator @(isConnected ? "connected" : "disconnected")"
-                title="@(isConnected ? "Connected" : "Disconnected")">
-                <span class="connection-dot"></span>
+                <div class="connection-indicator @(isConnected ? "connected" : "disconnected")"
+                    title="@(isConnected ? "Connected" : "Disconnected")">
+                    <span class="connection-dot"></span>
+                </div>
             </div>
         </div>
-    </div>
 
-    @if (!_isLoading)
+        @if (!_isLoading)
     {
         var temp = "";
         <!-- Main Table Area -->

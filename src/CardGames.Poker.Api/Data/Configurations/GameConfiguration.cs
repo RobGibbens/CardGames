@@ -35,6 +35,12 @@ public class GameConfiguration : IEntityTypeConfiguration<Game>
 		builder.Property(t => t.CreatedByName)
 			.HasMaxLength(GameFields.CreatedByName.MaxLength);
 
+		builder.Property(t => t.UpdatedById)
+			.HasMaxLength(GameFields.UpdatedById.MaxLength);
+
+		builder.Property(t => t.UpdatedByName)
+			.HasMaxLength(GameFields.UpdatedByName.MaxLength);
+
 		builder.Property(t => t.RowVersion)
 			.IsRowVersion();
 
@@ -113,8 +119,18 @@ public static class GameFields
 			public const int MaxLength = 450;
 		}
 
-		public static class CreatedByName
-		{
-			public const int MaxLength = 256;
+			public static class CreatedByName
+			{
+				public const int MaxLength = 256;
+			}
+
+			public static class UpdatedById
+			{
+				public const int MaxLength = 450;
+			}
+
+			public static class UpdatedByName
+			{
+				public const int MaxLength = 256;
+			}
 		}
-	}

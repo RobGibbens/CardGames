@@ -174,7 +174,17 @@ public class Game : EntityWithRowVersion
 	/// The name or email of the user who created this game (host).
 	/// </summary>
 	public string? CreatedByName { get; set; }
-		
+
+	/// <summary>
+	/// The unique identifier of the user who last updated this game.
+	/// </summary>
+	public string? UpdatedById { get; set; }
+
+	/// <summary>
+	/// The name or email of the user who last updated this game.
+	/// </summary>
+	public string? UpdatedByName { get; set; }
+
 	/// <summary>
 	/// Navigation property for players in this game.
 	/// </summary>

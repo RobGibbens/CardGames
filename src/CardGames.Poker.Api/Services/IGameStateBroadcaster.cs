@@ -1,3 +1,5 @@
+using CardGames.Contracts.SignalR;
+
 namespace CardGames.Poker.Api.Services;
 
 /// <summary>
@@ -35,5 +37,14 @@ public interface IGameStateBroadcaster
         string playerName,
         int seatIndex,
         bool canPlayCurrentHand,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Broadcasts a table settings updated notification to all players in the game.
+    /// </summary>
+    /// <param name="notification">The notification containing updated settings.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task BroadcastTableSettingsUpdatedAsync(
+        TableSettingsUpdatedDto notification,
         CancellationToken cancellationToken = default);
 }
