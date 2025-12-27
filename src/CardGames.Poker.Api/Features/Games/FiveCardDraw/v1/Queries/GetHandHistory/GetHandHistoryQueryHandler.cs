@@ -23,6 +23,7 @@ public class GetHandHistoryQueryHandler(CardsDbContext context)
 		// Get hand history entries, ordered newest-first
 		var histories = await context.HandHistories
 			.Include(h => h.Winners)
+				.ThenInclude(w => w.Player)
 			.Include(h => h.PlayerResults)
 			.Where(h => h.GameId == request.GameId)
 			.OrderByDescending(h => h.CompletedAtUtc)
@@ -32,14 +33,44 @@ public class GetHandHistoryQueryHandler(CardsDbContext context)
 			.AsNoTracking()
 			.ToListAsync(cancellationToken);
 
+		var winnerEmails = histories
+			.SelectMany(h => h.Winners)
+			.Select(w => w.Player.Email)
+			.Where(email => !string.IsNullOrWhiteSpace(email))
+			.Distinct(StringComparer.OrdinalIgnoreCase)
+			.ToList();
+
+		var winnerFirstNamesByEmail = winnerEmails.Count == 0
+			? new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+			: await context.Users
+				.AsNoTracking()
+				.Where(u => u.Email != null && winnerEmails.Contains(u.Email))
+				.Select(u => new { Email = u.Email!, u.FirstName })
+				.ToDictionaryAsync(u => u.Email, u => u.FirstName, StringComparer.OrdinalIgnoreCase, cancellationToken);
+
 		var entries = histories.Select(h =>
 		{
 			// Get winner display
+			string GetWinnerFirstNameOrFallback()
+			{
+				var firstWinner = h.Winners.First();
+				var email = firstWinner.Player.Email;
+
+				if (!string.IsNullOrWhiteSpace(email) &&
+					winnerFirstNamesByEmail.TryGetValue(email, out var firstName) &&
+					!string.IsNullOrWhiteSpace(firstName))
+				{
+					return firstName;
+				}
+
+				return firstWinner.PlayerName;
+			}
+
 			var winnerDisplay = h.Winners.Count switch
 			{
 				0 => "Unknown",
-				1 => h.Winners.First().PlayerName,
-				_ => $"{h.Winners.First().PlayerName} +{h.Winners.Count - 1}"
+				1 => GetWinnerFirstNameOrFallback(),
+				_ => $"{GetWinnerFirstNameOrFallback()} +{h.Winners.Count - 1}"
 			};
 
 			var totalWinnings = h.Winners.Sum(w => w.AmountWon);

@@ -14,7 +14,8 @@
 - [x] Should be able to discard four cards IF you have an ace
 - [x] Add Yahoo as Oauth provider
 - [x] Add Microsoft as Oauth provider
-- [ ] Hand history is not displaying correctly
+- [x] Hand history is not displaying correctly
+- [ ] Dashboard needs to be bigger
 - [ ] The betting action overlay. Raise to X doesn't work
 - [ ] Add an action timer
 - [ ] Check that setting the ante works correctly
@@ -28,3 +29,5 @@
 - [ ] I don't like how small the cards are and what they look like
 - [ ] Add Twos, Jacks, Man with the Axe
 - [ ] Table should be able to scroll if the screen isn't big enough
+- [ ] Rearrange the register and login screens to make OAuth more obvious
+- [ ] Allow them to upload an image when registering
