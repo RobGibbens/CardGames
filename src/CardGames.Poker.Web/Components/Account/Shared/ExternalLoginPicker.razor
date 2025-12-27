@@ -23,7 +23,16 @@ else
             <div class="auth-social">
                 @foreach (var provider in externalLogins)
                 {
-                    <button type="submit" class="auth-social-btn" name="provider" value="@provider.Name" title="Log in using your @provider.DisplayName account">Continue with @provider.DisplayName</button>
+                    <button type="submit" class="auth-social-btn" name="provider" value="@provider.Name" title="Log in using your @provider.DisplayName account">
+                        @{
+                            var iconClass = GetProviderIconClass(provider);
+                        }
+                        @if (!string.IsNullOrWhiteSpace(iconClass))
+                        {
+                            <i class="@iconClass" aria-hidden="true"></i>
+                        }
+                        <span>Continue with @provider.DisplayName</span>
+                    </button>
                 }
             </div>
         </div>
@@ -39,5 +48,39 @@ else
     protected override async Task OnInitializedAsync()
     {
         externalLogins = (await SignInManager.GetExternalAuthenticationSchemesAsync()).ToArray();
+    }
+
+    private static string? GetProviderIconClass(AuthenticationScheme provider)
+    {
+        var name = provider.Name;
+        var display = provider.DisplayName;
+
+        var key = (display ?? name ?? string.Empty).Trim().ToLowerInvariant();
+
+        return key switch
+        {
+            "google" => "fa-brands fa-google",
+            "microsoft" or "microsoft account" or "azuread" or "entra" or "entra id" => "fa-brands fa-microsoft",
+            "facebook" => "fa-brands fa-facebook",
+            "github" => "fa-brands fa-github",
+            "twitter" or "x" => "fa-brands fa-x-twitter",
+            "apple" => "fa-brands fa-apple",
+            "amazon" => "fa-brands fa-amazon",
+            "yahoo" => "fa-brands fa-yahoo",
+            "linkedin" => "fa-brands fa-linkedin",
+            "discord" => "fa-brands fa-discord",
+            "steam" => "fa-brands fa-steam",
+            "twitch" => "fa-brands fa-twitch",
+            "gitlab" => "fa-brands fa-gitlab",
+            "bitbucket" => "fa-brands fa-bitbucket",
+            "paypal" => "fa-brands fa-paypal",
+            "slack" => "fa-brands fa-slack",
+            "spotify" => "fa-brands fa-spotify",
+            "dropbox" => "fa-brands fa-dropbox",
+            "reddit" => "fa-brands fa-reddit",
+            "stack overflow" or "stackoverflow" => "fa-brands fa-stack-overflow",
+            "okta" => "fa-brands fa-okta",
+            _ => null
+        };
     }
 }
