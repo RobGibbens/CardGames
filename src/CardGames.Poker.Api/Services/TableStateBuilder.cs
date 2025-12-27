@@ -361,10 +361,18 @@ public sealed class TableStateBuilder : ITableStateBuilder
             return null;
         }
 
+        // Check if player has an Ace in their current hand to allow 4 discards
+        var playerCards = gamePlayer.Cards
+            .Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber)
+            .ToList();
+
+        var hasAce = playerCards.Any(c => c.Symbol == Data.Entities.CardSymbol.Ace);
+        var maxDiscards = hasAce ? 4 : 3;
+
         return new DrawPrivateDto
         {
             IsMyTurnToDraw = game.CurrentDrawPlayerIndex == gamePlayer.SeatPosition,
-            MaxDiscards = 3, // Standard five card draw rule
+            MaxDiscards = maxDiscards,
             HasDrawnThisRound = gamePlayer.HasDrawnThisRound
         };
     }

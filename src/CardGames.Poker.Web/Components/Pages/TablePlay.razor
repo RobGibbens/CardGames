@@ -160,7 +160,7 @@
                 OnToggleSelection="ToggleDiscardSelectionAsync" OnDraw="HandleDrawActionAsync" IsSubmitting="@isSubmittingDraw"
                 IsAnimating="@isDrawAnimating" IsDiscarding="@isDiscardingCards" IsDrawing="@isDrawingNewCards"
                 CardsDrawn="@cardsDrawn" NewCardIndices="@newCardIndices"
-                HandDescription="@currentPlayerHandEvaluationDescription" />
+                HandDescription="@currentPlayerHandEvaluationDescription" MaxDiscards="@maxDiscards" />
         }
 
         <!-- Draw Phase Waiting Indicator (shown to other players during draw phase) -->
@@ -316,6 +316,7 @@
     private List<CardInfo> currentPlayerDrawCards = [];
     private GetCurrentDrawPlayerResponse? _currentDrawPlayer;
     private bool _forceShowDrawPanel;
+    private int maxDiscards = 3;
 
     private string? currentPlayerHandEvaluationDescription =>
         currentPlayerSeatIndex >= 0 && currentPlayerSeatIndex < seats.Count
@@ -611,6 +612,7 @@
         if (state.Draw is not null)
         {
             isPlayerDrawTurn = state.Draw.IsMyTurnToDraw;
+            maxDiscards = state.Draw.MaxDiscards;
             if (state.Draw.IsMyTurnToDraw && !isDrawAnimating && !_forceShowDrawPanel)
             {
                 currentPlayerDrawCards = state.Hand.Select((c, i) => new CardInfo

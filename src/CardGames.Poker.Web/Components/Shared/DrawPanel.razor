@@ -10,7 +10,14 @@
             <span>Draw Phase</span>
         </div>
         <div class="draw-panel-subtitle">
-            Select cards to discard (0-3 cards)
+            @if (MaxDiscards == 4)
+            {
+                <text>Select cards to discard (0-4 cards – Ace bonus!)</text>
+            }
+            else
+            {
+                <text>Select cards to discard (0-3 cards)</text>
+            }
         </div>
         @if (!string.IsNullOrWhiteSpace(HandDescription))
         {
@@ -70,21 +77,28 @@
             <span>Stand Pat</span>
         </button>
 
-        <button class="draw-btn discard-btn @(SelectedCount > 0 ? "active" : "")" 
-                @onclick="HandleDiscard" 
-                disabled="@(IsSubmitting || SelectedCount == 0 || SelectedCount > 3)">
-            <i class="fa-regular fa-arrows-rotate"></i>
-            <span>Discard @SelectedCount & Draw</span>
-        </button>
-    </div>
-
-    @if (SelectedCount > 3)
-    {
-        <div class="draw-warning">
-            <i class="fa-solid fa-triangle-exclamation"></i>
-            Maximum 3 cards can be discarded
+            <button class="draw-btn discard-btn @(SelectedCount > 0 ? "active" : "")" 
+                    @onclick="HandleDiscard" 
+                    disabled="@(IsSubmitting || SelectedCount == 0 || SelectedCount > MaxDiscards)">
+                <i class="fa-regular fa-arrows-rotate"></i>
+                <span>Discard @SelectedCount & Draw</span>
+            </button>
         </div>
-    }
+
+        @if (SelectedCount > MaxDiscards)
+        {
+            <div class="draw-warning">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                @if (MaxDiscards == 4)
+                {
+                    <text>Maximum 4 cards can be discarded when you hold an Ace</text>
+                }
+                else
+                {
+                    <text>Maximum 3 cards can be discarded</text>
+                }
+            </div>
+        }
 
     @if (IsSubmitting)
     {
@@ -147,6 +161,9 @@
     [Parameter]
     public List<int> NewCardIndices { get; set; } = [];
 
+    [Parameter]
+    public int MaxDiscards { get; set; } = 3;
+
     private int SelectedCount => SelectedIndices.Count;
 
     private async Task ToggleCardSelectionAsync(int index)
@@ -170,7 +187,7 @@
 
     private async Task HandleDiscard()
     {
-        if (IsSubmitting || SelectedCount == 0 || SelectedCount > 3)
+        if (IsSubmitting || SelectedCount == 0 || SelectedCount > MaxDiscards)
             return;
 
         var selectedIndices = Cards

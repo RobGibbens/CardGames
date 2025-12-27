@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using CardGames.Core.French.Cards;
 using CardGames.Poker.Betting;
 using CardGames.Poker.Games.FiveCardDraw;
 using FluentAssertions;
@@ -172,7 +173,7 @@ public class FiveCardDrawGameTests
     }
 
     [Fact]
-    public void ProcessDraw_CannotDiscardMoreThanThree()
+    public void ProcessDraw_CannotDiscardMoreThanThree_WithoutAce()
     {
         var game = CreateTwoPlayerGame();
         game.StartHand();
@@ -181,10 +182,102 @@ public class FiveCardDrawGameTests
         game.ProcessBettingAction(BettingActionType.Check);
         game.ProcessBettingAction(BettingActionType.Check);
 
+        // Ensure the current draw player does NOT have an Ace
+        var currentDrawPlayer = game.GetCurrentDrawPlayer();
+        currentDrawPlayer.SetHand([
+            new Card(Suit.Hearts, Symbol.Deuce),
+            new Card(Suit.Spades, Symbol.Three),
+            new Card(Suit.Diamonds, Symbol.Four),
+            new Card(Suit.Clubs, Symbol.Five),
+            new Card(Suit.Hearts, Symbol.Six)
+        ]);
+
         var result = game.ProcessDraw(new[] { 0, 1, 2, 3 });
 
         result.Success.Should().BeFalse();
         result.ErrorMessage.Should().Contain("3 cards");
+    }
+
+    [Fact]
+    public void ProcessDraw_CanDiscardFour_WithAce()
+    {
+        var game = CreateTwoPlayerGame();
+        game.StartHand();
+        game.CollectAntes();
+        game.DealHands();
+        game.ProcessBettingAction(BettingActionType.Check);
+        game.ProcessBettingAction(BettingActionType.Check);
+
+        // Ensure the current draw player HAS an Ace
+        var currentDrawPlayer = game.GetCurrentDrawPlayer();
+        currentDrawPlayer.SetHand([
+            new Card(Suit.Hearts, Symbol.Ace),
+            new Card(Suit.Spades, Symbol.Three),
+            new Card(Suit.Diamonds, Symbol.Four),
+            new Card(Suit.Clubs, Symbol.Five),
+            new Card(Suit.Hearts, Symbol.Six)
+        ]);
+
+        var result = game.ProcessDraw(new[] { 0, 1, 2, 3 });
+
+        result.Success.Should().BeTrue();
+        result.DiscardedCards.Should().HaveCount(4);
+        result.NewCards.Should().HaveCount(4);
+    }
+
+    [Fact]
+    public void ProcessDraw_CannotDiscardFive_EvenWithAce()
+    {
+        var game = CreateTwoPlayerGame();
+        game.StartHand();
+        game.CollectAntes();
+        game.DealHands();
+        game.ProcessBettingAction(BettingActionType.Check);
+        game.ProcessBettingAction(BettingActionType.Check);
+
+        // Ensure the current draw player HAS an Ace
+        var currentDrawPlayer = game.GetCurrentDrawPlayer();
+        currentDrawPlayer.SetHand([
+            new Card(Suit.Hearts, Symbol.Ace),
+            new Card(Suit.Spades, Symbol.Three),
+            new Card(Suit.Diamonds, Symbol.Four),
+            new Card(Suit.Clubs, Symbol.Five),
+            new Card(Suit.Hearts, Symbol.Six)
+        ]);
+
+        var result = game.ProcessDraw(new[] { 0, 1, 2, 3, 4 });
+
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Contain("4 cards");
+    }
+
+    [Fact]
+    public void ProcessDraw_CanDiscardFour_WhenDiscardingTheAce()
+    {
+        var game = CreateTwoPlayerGame();
+        game.StartHand();
+        game.CollectAntes();
+        game.DealHands();
+        game.ProcessBettingAction(BettingActionType.Check);
+        game.ProcessBettingAction(BettingActionType.Check);
+
+        // Ensure the current draw player HAS an Ace at index 0
+        var currentDrawPlayer = game.GetCurrentDrawPlayer();
+        currentDrawPlayer.SetHand([
+            new Card(Suit.Hearts, Symbol.Ace),
+            new Card(Suit.Spades, Symbol.Three),
+            new Card(Suit.Diamonds, Symbol.Four),
+            new Card(Suit.Clubs, Symbol.Five),
+            new Card(Suit.Hearts, Symbol.Six)
+        ]);
+
+        // Discard 4 cards including the Ace - eligibility is based on pre-discard hand
+        var result = game.ProcessDraw(new[] { 0, 1, 2, 3 });
+
+        result.Success.Should().BeTrue();
+        result.DiscardedCards.Should().HaveCount(4);
+        // The Ace should be among the discarded cards
+        result.DiscardedCards.Should().Contain(c => c.Symbol == Symbol.Ace);
     }
 
     [Fact]

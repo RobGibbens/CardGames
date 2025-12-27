@@ -18,7 +18,6 @@ namespace CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.ProcessDra
 public class ProcessDrawCommandHandler(CardsDbContext context)
 	: IRequestHandler<ProcessDrawCommand, OneOf<ProcessDrawSuccessful, ProcessDrawError>>
 {
-	private const int MaxDiscards = 3;
 	private const int HandSize = 5;
 
 	/// <inheritdoc />
@@ -83,17 +82,7 @@ public class ProcessDrawCommandHandler(CardsDbContext context)
 			};
 		}
 
-		// 4. Validate discard count
-		if (command.DiscardIndices.Count > MaxDiscards)
-		{
-			return new ProcessDrawError
-			{
-				Message = $"Cannot discard more than {MaxDiscards} cards.",
-				Code = ProcessDrawErrorCode.TooManyDiscards
-			};
-		}
-
-		// 5. Validate card indices
+		// 4. Validate card indices are within bounds
 		if (command.DiscardIndices.Any(i => i < 0 || i >= HandSize))
 		{
 			return new ProcessDrawError
@@ -103,7 +92,7 @@ public class ProcessDrawCommandHandler(CardsDbContext context)
 			};
 		}
 
-		// 6. Get the player's current hand cards (not discarded)
+		// 5. Get the player's current hand cards (not discarded)
 		var playerCards = game.GameCards
 			.Where(gc => gc.GamePlayerId == currentDrawPlayer.Id && !gc.IsDiscarded)
 			.OrderBy(gc => gc.DealOrder)
@@ -115,6 +104,19 @@ public class ProcessDrawCommandHandler(CardsDbContext context)
 			{
 				Message = $"Player does not have enough cards. Expected {HandSize}, found {playerCards.Count}.",
 				Code = ProcessDrawErrorCode.InvalidCardIndex
+			};
+		}
+
+		// 6. Validate discard count - allow 4 discards if player has an Ace
+		var hasAce = playerCards.Any(c => c.Symbol == CardSymbol.Ace);
+		var maxDiscards = hasAce ? 4 : 3;
+
+		if (command.DiscardIndices.Count > maxDiscards)
+		{
+			return new ProcessDrawError
+			{
+				Message = $"Cannot discard more than {maxDiscards} cards.",
+				Code = ProcessDrawErrorCode.TooManyDiscards
 			};
 		}
 

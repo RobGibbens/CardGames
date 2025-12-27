@@ -22,6 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\CardGames.Core.French\CardGames.Core.French.csproj" />
     <ProjectReference Include="..\..\CardGames.Poker\CardGames.Poker.csproj" />
     <ProjectReference Include="..\..\CardGames.Poker.Api\CardGames.Poker.Api.csproj" />
     <ProjectReference Include="..\..\CardGames.Playground\CardGames.Playground.csproj" />

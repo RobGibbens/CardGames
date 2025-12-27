@@ -399,7 +399,8 @@ public class FiveCardDrawGame : IPokerGame
     /// the game automatically advances to the second betting round.
     /// </summary>
     /// <param name="discardIndices">Zero-based indices (0-4) of the cards to discard from the player's hand.
-    /// Pass an empty collection to "stand pat" (keep all cards). Maximum of 3 cards can be discarded.</param>
+    /// Pass an empty collection to "stand pat" (keep all cards). Maximum of 3 cards can be discarded,
+    /// or 4 cards if the player holds at least one Ace.</param>
     /// <returns>
     /// A <see cref="DrawResult"/> containing the operation outcome, discarded cards, new cards received,
     /// and whether the draw phase is complete.
@@ -407,7 +408,7 @@ public class FiveCardDrawGame : IPokerGame
     /// <remarks>
     /// Standard Five Card Draw rules apply:
     /// <list type="bullet">
-    /// <item><description>Players may discard 0-3 cards</description></item>
+    /// <item><description>Players may discard 0-3 cards (or 0-4 if the player holds at least one Ace)</description></item>
     /// <item><description>Discarded cards are replaced with new cards from the deck</description></item>
     /// <item><description>Card indices must be between 0 and 4 (inclusive)</description></item>
     /// </list>
@@ -427,12 +428,18 @@ public class FiveCardDrawGame : IPokerGame
 
         var gamePlayer = _gamePlayers[_currentDrawPlayerIndex];
 
-        if (discardIndices.Count > 3)
+        // Allow 4 discards if the player has an Ace in their current hand (pre-discard)
+        var hasAce = gamePlayer.Hand.Any(c => c.Symbol == Symbol.Ace);
+        var maxDiscards = hasAce ? 4 : 3;
+
+        if (discardIndices.Count > maxDiscards)
         {
             return new DrawResult
             {
                 Success = false,
-                ErrorMessage = "Cannot discard more than 3 cards"
+                ErrorMessage = hasAce
+                    ? "Cannot discard more than 4 cards"
+                    : "Cannot discard more than 3 cards"
             };
         }
 

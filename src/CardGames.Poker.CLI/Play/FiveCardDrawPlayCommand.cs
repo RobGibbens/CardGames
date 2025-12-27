@@ -250,9 +250,17 @@ internal class FiveCardDrawPlayCommand : Command<PlaySettings>
             AnsiConsole.MarkupLine($"[cyan]{drawPlayer.Player.Name}[/]'s turn to draw:");
             CardRenderer.RenderCards(drawPlayer.Hand);
 
+            // Check if player has an Ace to show appropriate hint
+            var hasAce = drawPlayer.Hand.Any(c => c.Symbol == Symbol.Ace);
+            var maxDiscards = hasAce ? 4 : 3;
+            var discardHint = hasAce
+                ? $"[dim]You may discard up to {maxDiscards} cards (Ace bonus!)[/]"
+                : $"[dim]You may discard up to {maxDiscards} cards[/]";
+
             // Display cards with indices
             AnsiConsole.MarkupLine("[dim]Card positions: 0, 1, 2, 3, 4[/]");
             AnsiConsole.MarkupLine($"[dim]({drawPlayer.Hand.ToStringRepresentation()})[/]");
+            AnsiConsole.MarkupLine(discardHint);
 
             var discardInput = AnsiConsole.Ask<string>("Enter positions to discard (0-4, space-separated) or press Enter to stand pat: ", "");
 

@@ -11,7 +11,7 @@
 - [x] Make sure the table says what game type it is
 - [x] Add the ability to edit table settings if the table isn't started yet
 - [x] Draw Phase overlay should show the current hand, and the new hand
-- [ ] Should be able to discard four cards IF you have an ace
+- [x] Should be able to discard four cards IF you have an ace
 - [ ] Hand history is not displaying correctly
 - [ ] The betting action overlay. Raise to X doesn't work
 - [ ] Add an action timer
