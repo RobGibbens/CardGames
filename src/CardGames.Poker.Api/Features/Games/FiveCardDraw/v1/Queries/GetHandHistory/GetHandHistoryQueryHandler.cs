@@ -22,12 +22,13 @@ public class GetHandHistoryQueryHandler(CardsDbContext context)
 
 		// Get hand history entries, ordered newest-first
 		var histories = await context.HandHistories
+			.Include(h => h.Winners)
+			.Include(h => h.PlayerResults)
 			.Where(h => h.GameId == request.GameId)
 			.OrderByDescending(h => h.CompletedAtUtc)
 			.Skip(request.Skip)
 			.Take(request.Take)
-			.Include(h => h.Winners)
-			.Include(h => h.PlayerResults)
+			.AsSplitQuery()
 			.AsNoTracking()
 			.ToListAsync(cancellationToken);
 

@@ -2,6 +2,7 @@ using CardGames.Contracts.SignalR;
 using CardGames.Contracts.TableSettings;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.Extensions.DependencyInjection;
 using System.Security.Claims;
 using System.Web;
 
@@ -112,6 +113,11 @@ public sealed class GameHubClient : IAsyncDisposable
                         options.Headers["X-User-Email"] = userInfo.Value.UserEmail;
                     }
                 }
+            })
+            .AddJsonProtocol(options =>
+            {
+                // Match server-side JSON settings for proper deserialization
+                options.PayloadSerializerOptions.PropertyNameCaseInsensitive = true;
             })
             .WithAutomaticReconnect(new[] { TimeSpan.Zero, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(30) })
             .Build();

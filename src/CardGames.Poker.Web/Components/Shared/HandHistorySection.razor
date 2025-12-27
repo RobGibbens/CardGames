@@ -18,8 +18,8 @@
                         <div class="history-entry @(entry.CurrentPlayerWon ?? false ? "player-won" : "")" role="row" tabindex="0">
                             <span class="cell hand-number" role="cell">#@entry.HandNumber</span>
                             <span class="cell winner-name" role="cell" title="@GetWinnerTitle(entry)">
-                                @entry.WinnerName
-                            </span>
+                                    @(string.IsNullOrWhiteSpace(entry.WinnerName) ? "Unknown" : entry.WinnerName)
+                                </span>
                             <span class="cell amount-won" role="cell">+@entry.AmountWon.ToString("N0")</span>
                             <span class="cell player-result" role="cell" title="@(entry.CurrentPlayerResultLabel ?? "")">
                                 @(entry.CurrentPlayerResultLabel ?? "—")

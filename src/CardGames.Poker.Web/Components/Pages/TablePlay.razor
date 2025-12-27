@@ -292,6 +292,7 @@
     private bool isSubmittingAction;
 
     private string? currentPlayerName; // TODO: Get from auth
+    private Guid? _currentPlayerId; // Player ID for API calls (hand history, etc.)
 
     // Action state
     private List<BettingActionType> legalActions = [];
@@ -512,11 +513,8 @@
         // Update phase-dependent state
         isDrawPhase = state.CurrentPhase == "DrawPhase";
 
-        // Update hand history from public state
-        if (state.HandHistory is not null && state.HandHistory.Count > 0)
-        {
-            _handHistoryEntries = state.HandHistory.ToList();
-        }
+        // Note: Hand history is now updated from private state (HandlePrivateStateUpdatedAsync)
+        // because it contains personalized player results (CurrentPlayerResultLabel, CurrentPlayerNetDelta)
 
         // Recalculate derived state
         seatedPlayerCount = seats.Count(s => s.IsOccupied);
@@ -637,11 +635,17 @@
             }
         }
 
-        // Calculate hand odds from current cards
-        CalculateHandOdds(state.Hand);
+            // Calculate hand odds from current cards
+            CalculateHandOdds(state.Hand);
 
-        await InvokeAsync(StateHasChanged);
-    }
+            // Update hand history from private state (contains personalized player results)
+            if (state.HandHistory is not null && state.HandHistory.Count > 0)
+            {
+                _handHistoryEntries = state.HandHistory.ToList();
+            }
+
+            await InvokeAsync(StateHasChanged);
+        }
 
     private void UpdateSeatsFromPublicState(IReadOnlyList<SeatPublicDto> publicSeats)
     {
@@ -832,6 +836,9 @@
 
             await GetPlayersAndUpdateSeatsAsync();
 
+            // Load hand history for the dashboard (requires player ID from GetPlayersAndUpdateSeatsAsync)
+            await LoadHandHistoryAsync();
+
             if (IsCompletePhase)
             {
                 await TryLoadShowdownAsync();
@@ -877,6 +884,12 @@
                 var isCurrentPlayer = !string.IsNullOrWhiteSpace(currentUserMatch) &&
                 string.Equals(players[i].PlayerName, currentUserMatch, StringComparison.OrdinalIgnoreCase);
 
+                // Capture the current player's ID for API calls
+                if (isCurrentPlayer)
+                {
+                    _currentPlayerId = players[i].PlayerId;
+                }
+
                 seats[i] = new SeatInfo
                 {
                     SeatIndex = i,
@@ -897,15 +910,52 @@
                 };
             }
 
-            currentPlayerSeatIndex = seats.FirstOrDefault(s => s.IsCurrentPlayer)?.SeatIndex ?? currentPlayerSeatIndex;
-        }
-        else
-        {
-            // Handle error (e.g., show message)
-        }
-    }
+                    currentPlayerSeatIndex = seats.FirstOrDefault(s => s.IsCurrentPlayer)?.SeatIndex ?? currentPlayerSeatIndex;
+                }
+                else
+                {
+                    // Handle error (e.g., show message)
+                }
+            }
 
-    private async Task LeaveTableAsync()
+            /// <summary>
+            /// Loads hand history from the API for initial page load.
+            /// </summary>
+            private async Task LoadHandHistoryAsync()
+            {
+                try
+                {
+                    var response = await FiveCardDrawApiClient.GetHandHistoryAsync(
+                        GameId,
+                        take: 25,
+                        skip: 0,
+                        playerId: _currentPlayerId);
+
+                    if (response is { IsSuccessStatusCode: true, Content.Entries: not null })
+                    {
+                        _handHistoryEntries = response.Content.Entries.ToList();
+                        Logger.LogInformation("Loaded {Count} hand history entries for game {GameId}", _handHistoryEntries.Count, GameId);
+
+                        // Debug log each entry
+                        foreach (var entry in _handHistoryEntries)
+                        {
+                            Logger.LogInformation("HandHistory API: Hand #{HandNumber}, WinnerName='{WinnerName}', AmountWon={AmountWon}, ResultLabel='{ResultLabel}'",
+                                entry.HandNumber, entry.WinnerName ?? "(null)", entry.AmountWon, entry.CurrentPlayerResultLabel ?? "(null)");
+                        }
+                    }
+                    else
+                    {
+                        Logger.LogWarning("GetHandHistoryAsync returned unsuccessful: StatusCode={StatusCode}, HasContent={HasContent}",
+                            response?.StatusCode, response?.Content is not null);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogWarning(ex, "Failed to load hand history for game {GameId}", GameId);
+                }
+            }
+
+            private async Task LeaveTableAsync()
     {
         // Leave SignalR game group before navigating away
         await GameHubClient.LeaveGameAsync(GameId);

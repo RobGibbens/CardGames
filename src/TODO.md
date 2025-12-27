@@ -26,3 +26,5 @@
 - [ ] Add animation of dealing the cards
 - [ ] Add other game types
 - [ ] I don't like how small the cards are and what they look like
+- [ ] Add Twos, Jacks, Man with the Axe
+- [ ] Table should be able to scroll if the screen isn't big enough

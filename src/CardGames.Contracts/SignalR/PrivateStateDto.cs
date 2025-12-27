@@ -1,3 +1,5 @@
+using CardGames.Poker.Api.Contracts;
+
 namespace CardGames.Contracts.SignalR;
 
 /// <summary>
@@ -43,11 +45,17 @@ public sealed record PrivateStateDto
     /// </summary>
     public DrawPrivateDto? Draw { get; init; }
 
-    /// <summary>
-    /// Whether it is currently this player's turn to act.
-    /// </summary>
-    public bool IsMyTurn { get; init; }
-}
+        /// <summary>
+        /// Whether it is currently this player's turn to act.
+        /// </summary>
+        public bool IsMyTurn { get; init; }
+
+        /// <summary>
+        /// Hand history entries personalized for this player.
+        /// Contains the player's result label and chip delta for each hand.
+        /// </summary>
+        public IReadOnlyList<HandHistoryEntryDto>? HandHistory { get; init; }
+    }
 
 /// <summary>
 /// Private card representation with full card details visible.

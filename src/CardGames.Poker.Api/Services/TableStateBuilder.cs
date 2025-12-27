@@ -190,24 +190,28 @@ public sealed class TableStateBuilder : ITableStateBuilder
             _logger.LogDebug(ex, "Failed to compute hand evaluation description for game {GameId}, player {PlayerName}", gameId, gamePlayer.Player.Name);
         }
 
-        var isMyTurn = game.CurrentPlayerIndex == gamePlayer.SeatPosition;
-        var availableActions = isMyTurn
-            ? await BuildAvailableActionsAsync(gameId, game, gamePlayer, cancellationToken)
-            : null;
-        var draw = BuildDrawPrivateDto(game, gamePlayer);
+			var isMyTurn = game.CurrentPlayerIndex == gamePlayer.SeatPosition;
+			var availableActions = isMyTurn
+				? await BuildAvailableActionsAsync(gameId, game, gamePlayer, cancellationToken)
+				: null;
+			var draw = BuildDrawPrivateDto(game, gamePlayer);
 
-        return new PrivateStateDto
-        {
-            GameId = gameId,
-            PlayerName = gamePlayer.Player.Name,
-            SeatPosition = gamePlayer.SeatPosition,
-            Hand = hand,
-			HandEvaluationDescription = handEvaluationDescription,
-            AvailableActions = availableActions,
-            Draw = draw,
-            IsMyTurn = isMyTurn
-        };
-    }
+			// Get hand history personalized for this player
+			var handHistory = await GetHandHistoryEntriesAsync(gameId, gamePlayer.PlayerId, take: 25, cancellationToken);
+
+			return new PrivateStateDto
+			{
+				GameId = gameId,
+				PlayerName = gamePlayer.Player.Name,
+				SeatPosition = gamePlayer.SeatPosition,
+				Hand = hand,
+				HandEvaluationDescription = handEvaluationDescription,
+				AvailableActions = availableActions,
+				Draw = draw,
+				IsMyTurn = isMyTurn,
+				HandHistory = handHistory
+			};
+		}
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<string>> GetPlayerUserIdsAsync(Guid gameId, CancellationToken cancellationToken = default)
@@ -511,23 +515,32 @@ public sealed class TableStateBuilder : ITableStateBuilder
             CancellationToken cancellationToken)
         {
             var histories = await _context.HandHistories
+                .Include(h => h.Winners)
+                .Include(h => h.PlayerResults)
                 .Where(h => h.GameId == gameId)
                 .OrderByDescending(h => h.CompletedAtUtc)
                 .Take(take)
-                .Include(h => h.Winners)
-                .Include(h => h.PlayerResults)
+                .AsSplitQuery()
                 .AsNoTracking()
-                .ToListAsync(cancellationToken);
+                    .ToListAsync(cancellationToken);
 
-            return histories.Select(h =>
-            {
-                // Get winner display
-                var winnerDisplay = h.Winners.Count switch
+                _logger.LogInformation("GetHandHistoryEntriesAsync: Found {Count} histories for game {GameId}, currentUserPlayerId={PlayerId}",
+                    histories.Count, gameId, currentUserPlayerId);
+
+                return histories.Select(h =>
                 {
-                    0 => "Unknown",
-                    1 => h.Winners.First().PlayerName,
-                    _ => $"{h.Winners.First().PlayerName} +{h.Winners.Count - 1}"
-                };
+                    _logger.LogInformation("HandHistory {HandNumber}: Winners.Count={WinnerCount}, PlayerResults.Count={PlayerResultCount}",
+                        h.HandNumber, h.Winners.Count, h.PlayerResults.Count);
+
+                    // Get winner display
+                    var winnerDisplay = h.Winners.Count switch
+                    {
+                        0 => "Unknown",
+                        1 => h.Winners.First().PlayerName,
+                        _ => $"{h.Winners.First().PlayerName} +{h.Winners.Count - 1}"
+                    };
+
+                    _logger.LogInformation("HandHistory {HandNumber}: winnerDisplay='{WinnerDisplay}'", h.HandNumber, winnerDisplay);
 
                 var totalWinnings = h.Winners.Sum(w => w.AmountWon);
 
