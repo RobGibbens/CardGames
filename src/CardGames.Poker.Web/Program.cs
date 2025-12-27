@@ -83,6 +83,11 @@ builder.Services.AddAuthentication(options =>
 		options.Scope.Add("profile");
 		options.ClaimActions.Add(new JsonKeyClaimAction("picture", ClaimValueTypes.String, "picture"));
 	})
+	.AddMicrosoftAccount(options =>
+	{
+		options.ClientId = builder.Configuration["Authentication:Microsoft:ClientId"] ?? throw new InvalidOperationException("Microsoft ClientId not configured");
+		options.ClientSecret = builder.Configuration["Authentication:Microsoft:ClientSecret"] ?? throw new InvalidOperationException("Microsoft ClientSecret not configured");
+	})
 	.AddOAuth("Yahoo", "Yahoo", options =>
 	{
 		options.ClientId = builder.Configuration["Authentication:Yahoo:ClientId"] ?? throw new InvalidOperationException("Yahoo ClientId not configured");
