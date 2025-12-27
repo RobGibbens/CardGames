@@ -4,6 +4,7 @@ using CardGames.Poker.Web.Components.Account;
 using CardGames.Poker.Web.Data;
 using CardGames.Poker.Web.Infrastructure;
 using CardGames.Poker.Web.Services;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OAuth.Claims;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Server.Circuits;
@@ -68,20 +69,62 @@ builder.Services
 
 
 builder.Services.AddAuthentication(options =>
-    {
-        options.DefaultScheme = IdentityConstants.ApplicationScheme;
-        options.DefaultSignInScheme = IdentityConstants.ExternalScheme;
-    })
-    .AddGoogle(options =>
-    {
-        options.ClientId = builder.Configuration["Authentication:Google:ClientId"] ?? throw new InvalidOperationException("Google ClientId not configured");
-        options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"] ?? throw new InvalidOperationException("Google ClientSecret not configured");
+	{
+		options.DefaultScheme = IdentityConstants.ApplicationScheme;
+		options.DefaultSignInScheme = IdentityConstants.ExternalScheme;
+	})
+	.AddGoogle(options =>
+	{
+		options.ClientId = builder.Configuration["Authentication:Google:ClientId"] ?? throw new InvalidOperationException("Google ClientId not configured");
+		options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"] ?? throw new InvalidOperationException("Google ClientSecret not configured");
 
 		// Pull basic profile fields when available (e.g. given_name, family_name, picture).
 		options.Scope.Add("profile");
 		options.ClaimActions.Add(new JsonKeyClaimAction("picture", ClaimValueTypes.String, "picture"));
-    })
-    .AddIdentityCookies();
+	})
+	.AddOAuth("Yahoo", "Yahoo", options =>
+	{
+		options.ClientId = builder.Configuration["Authentication:Yahoo:ClientId"] ?? throw new InvalidOperationException("Yahoo ClientId not configured");
+		options.ClientSecret = builder.Configuration["Authentication:Yahoo:ClientSecret"] ?? throw new InvalidOperationException("Yahoo ClientSecret not configured");
+
+		options.CallbackPath = "/signin-yahoo";
+
+		// Yahoo OAuth 2.0 endpoints
+		options.AuthorizationEndpoint = "https://api.login.yahoo.com/oauth2/request_auth";
+		options.TokenEndpoint = "https://api.login.yahoo.com/oauth2/get_token";
+		options.UserInformationEndpoint = "https://api.login.yahoo.com/openid/v1/userinfo";
+
+		// Yahoo uses 'openid' scope for basic OIDC. Profile/email may require
+		// specific API permissions configured in your Yahoo Developer app.
+		// Common Yahoo scopes: openid, sdps-r (social profile read)
+		options.Scope.Clear();
+		options.Scope.Add("openid");
+
+		options.SaveTokens = true;
+
+		// Map claims from the userinfo response
+		options.ClaimActions.MapJsonKey(ClaimTypes.NameIdentifier, "sub");
+		options.ClaimActions.MapJsonKey(ClaimTypes.Name, "name");
+		options.ClaimActions.MapJsonKey(ClaimTypes.GivenName, "given_name");
+		options.ClaimActions.MapJsonKey(ClaimTypes.Surname, "family_name");
+		options.ClaimActions.MapJsonKey(ClaimTypes.Email, "email");
+		options.ClaimActions.MapJsonKey("picture", "picture");
+
+		options.Events.OnCreatingTicket = async context =>
+		{
+			// Fetch user info from Yahoo's userinfo endpoint
+			var request = new HttpRequestMessage(HttpMethod.Get, context.Options.UserInformationEndpoint);
+			request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", context.AccessToken);
+			request.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+
+			var response = await context.Backchannel.SendAsync(request, context.HttpContext.RequestAborted);
+			response.EnsureSuccessStatusCode();
+
+			var user = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+			context.RunClaimActions(user);
+		};
+	})
+	.AddIdentityCookies();
 
 var connectionString = builder.Configuration.GetConnectionString("cardsdb")
 	?? builder.Configuration.GetConnectionString("DefaultConnection")
