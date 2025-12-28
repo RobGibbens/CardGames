@@ -16,6 +16,18 @@
 - [x] Add Microsoft as Oauth provider
 - [x] Hand history is not displaying correctly
 - [x] Dashboard needs to be bigger
+- [ ] I don't like how small the cards are and what they look like
+- [ ] Showdown overlay should show new card images
+- [ ] Leaderboard should show first names
+- [ ] Add a chip stack graph in the dashboard
+- [ ] Add sound effects
+- [ ] Add background music
+- [ ] Add a chat box
+- [ ] Add the ability to mute other players in chat
+- [ ] Add the ability to block other players
+- [ ] Add a friends list
+- [ ] Add the ability to invite friends to a table
+- [ ] Add the ability to create private tables
 - [ ] The betting action overlay. Raise to X doesn't work
 - [ ] Add an action timer
 - [ ] Check that setting the ante works correctly
@@ -26,7 +38,6 @@
 - [ ] Showdown should use better description of the cards (Pair of Aces vs One Pair)
 - [ ] Add animation of dealing the cards
 - [ ] Add other game types
-- [ ] I don't like how small the cards are and what they look like
 - [ ] Add Twos, Jacks, Man with the Axe
 - [ ] Table should be able to scroll if the screen isn't big enough
 - [ ] Rearrange the register and login screens to make OAuth more obvious

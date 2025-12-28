@@ -77,6 +77,12 @@
         <!-- Cards -->
         @if (ShowCards && Seat.Cards.Count > 0)
         {
+            @if (IsCurrentPlayer && !string.IsNullOrWhiteSpace(Seat.HandEvaluationDescription))
+            {
+                <div class="seat-hand-eval" title="Hand evaluation">
+                    @Seat.HandEvaluationDescription
+                </div>
+            }
             <div class="seat-cards">
                 @foreach (var card in GetOrderedCards())
                 {
@@ -106,12 +112,7 @@
                 }
             </div>
 
-			@if (IsCurrentPlayer && !string.IsNullOrWhiteSpace(Seat.HandEvaluationDescription))
-			{
-				<div class="seat-hand-eval" title="Hand evaluation">
-					@Seat.HandEvaluationDescription
-				</div>
-			}
+			
         }
         else if (ShowCards && !Seat.IsFolded)
         {
