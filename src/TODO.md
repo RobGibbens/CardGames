@@ -17,10 +17,11 @@
 - [x] Hand history is not displaying correctly
 - [x] Dashboard needs to be bigger
 - [x] I don't like how small the cards are and what they look like
-- [ ] Showdown overlay should show new card images
+- [x] Showdown overlay should show new card images
 - [ ] Draw Panel should show new card images
 - [ ] Leaderboard should show first names
 - [ ] Add a chip stack graph in the dashboard
+- [ ] The bottom of the table goes off the bottom of the screen
 - [ ] Add sound effects
 - [ ] Add background music
 - [ ] Add a chat box

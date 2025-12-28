@@ -38,6 +38,24 @@
     --transition-slow: 0.5s ease;
 }
 
+/* ===== Table Play Info Strip ===== */
+.table-blinds-pill {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px 10px;
+    background-color: #fbbf24;
+    border: 1px solid red;
+    border-radius: 10px;
+    line-height: 1.1;
+}
+
+.table-blinds-line {
+    display: block;
+    white-space: nowrap;
+    color:black;
+}
+
 /* ===== Table Play Action Panel ===== */
 /*
    NOTE: `.action-panel` is used by the Table Play page.
@@ -2515,9 +2533,22 @@ a:hover {
 
 .table-info-strip {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
     gap: 0.25rem;
+}
+
+.table-name {
+    display: inline-flex;
+    align-items: baseline;
+}
+
+.table-blinds {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 0.5rem;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.6);
 }
 
 .table-name {
@@ -2529,11 +2560,6 @@ a:hover {
     font-size: 1.125rem;
     font-weight: 700;
     color: white;
-}
-
-.table-blinds {
-    font-size: 0.75rem;
-    color: rgba(255, 255, 255, 0.6);
 }
 
 .table-controls-right {
@@ -2645,6 +2671,7 @@ a:hover {
 
 .pot-icon {
     font-size: 1.25rem;
+    color: #fbbf24;
 }
 
 .pot-amount {

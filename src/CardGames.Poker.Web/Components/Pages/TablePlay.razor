@@ -50,12 +50,19 @@
         </button>
 
         <div class="table-info-strip">
-            <span class="table-name">@_gameResponse?.Name</span>
-            @if (!string.IsNullOrWhiteSpace(_gameResponse?.GameTypeName))
-            {
-                <span class="table-game-type">@_gameResponse.GameTypeName</span>
-            }
-            <span class="table-blinds">Ante: @ante &nbsp; Min Bet: @_gameResponse?.MinBet</span>
+            <span class="table-name">
+                @_gameResponse?.Name
+                @if (!string.IsNullOrWhiteSpace(_gameResponse?.GameTypeName))
+                {
+                    <span class="table-game-type"> (@_gameResponse.GameTypeName)</span>
+                }
+            </span>
+            <span class="table-blinds">
+                <span class="table-blinds-pill">
+                    <span class="table-blinds-line">Ante: @ante</span>
+                    <span class="table-blinds-line">Min Bet: @_gameResponse?.MinBet</span>
+                </span>
+            </span>
         </div>
 
         <div class="table-controls-right">
