@@ -516,6 +516,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
         {
             var histories = await _context.HandHistories
                 .Include(h => h.Winners)
+                    .ThenInclude(w => w.Player)
                 .Include(h => h.PlayerResults)
                 .Where(h => h.GameId == gameId)
                 .OrderByDescending(h => h.CompletedAtUtc)
@@ -523,6 +524,21 @@ public sealed class TableStateBuilder : ITableStateBuilder
                 .AsSplitQuery()
                 .AsNoTracking()
                     .ToListAsync(cancellationToken);
+
+            var winnerEmails = histories
+                .SelectMany(h => h.Winners)
+                .Select(w => w.Player.Email)
+                .Where(email => !string.IsNullOrWhiteSpace(email))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var winnerFirstNamesByEmail = winnerEmails.Count == 0
+                ? new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+                : await _context.Users
+                    .AsNoTracking()
+                    .Where(u => u.Email != null && winnerEmails.Contains(u.Email))
+                    .Select(u => new { Email = u.Email!, u.FirstName })
+                    .ToDictionaryAsync(u => u.Email, u => u.FirstName, StringComparer.OrdinalIgnoreCase, cancellationToken);
 
                 _logger.LogInformation("GetHandHistoryEntriesAsync: Found {Count} histories for game {GameId}, currentUserPlayerId={PlayerId}",
                     histories.Count, gameId, currentUserPlayerId);
@@ -533,11 +549,26 @@ public sealed class TableStateBuilder : ITableStateBuilder
                         h.HandNumber, h.Winners.Count, h.PlayerResults.Count);
 
                     // Get winner display
+                    string GetWinnerFirstNameOrFallback()
+                    {
+                        var firstWinner = h.Winners.First();
+                        var email = firstWinner.Player.Email;
+
+                        if (!string.IsNullOrWhiteSpace(email) &&
+                            winnerFirstNamesByEmail.TryGetValue(email, out var firstName) &&
+                            !string.IsNullOrWhiteSpace(firstName))
+                        {
+                            return firstName;
+                        }
+
+                        return firstWinner.PlayerName;
+                    }
+
                     var winnerDisplay = h.Winners.Count switch
                     {
                         0 => "Unknown",
-                        1 => h.Winners.First().PlayerName,
-                        _ => $"{h.Winners.First().PlayerName} +{h.Winners.Count - 1}"
+                        1 => GetWinnerFirstNameOrFallback(),
+                        _ => $"{GetWinnerFirstNameOrFallback()} +{h.Winners.Count - 1}"
                     };
 
                     _logger.LogInformation("HandHistory {HandNumber}: winnerDisplay='{WinnerDisplay}'", h.HandNumber, winnerDisplay);
