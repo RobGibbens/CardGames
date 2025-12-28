@@ -122,12 +122,7 @@
                                 {
                                     var card = winnerCards[i];
                                     <div class="sd-card-wrapper" style="--i:@i">
-                                        <div class="draw-card sd-card">
-                                            <span class="draw-card-value @GetSuitColorClass(card.Suit)">
-                                                @GetRankLabel(card.Symbol)
-                                                <i class="fa-regular @GetSuitFaIcon(card.Suit)" aria-hidden="true"></i>
-                                            </span>
-                                        </div>
+                                        <playing-card rank="@GetPlayingCardRank(card)" suit="@GetPlayingCardSuit(card)" style="height:75px;width:75px;filter:drop-shadow(0 10px 18px rgba(0,0,0,.35));"></playing-card>
                                     </div>
                                 }
                             </div>
@@ -155,12 +150,9 @@
                                 <div class="showdown-cards other-cards">
                                     @foreach (var c in handCards)
                                     {
-                                        <div class="draw-card sd-card sd-card-small">
-                                            <span class="draw-card-value @GetSuitColorClass(c.Suit)">
-                                                @GetRankLabel(c.Symbol)
-                                                <i class="fa-regular @GetSuitFaIcon(c.Suit)" aria-hidden="true"></i>
-                                            </span>
-                                        </div>
+                                        <div class="">
+                                            <playing-card rank="@GetPlayingCardRank(c)" suit="@GetPlayingCardSuit(c)" style="height:64px;width:48px;"></playing-card>
+                                            </div>
                                     }
                                 </div>
                             }
@@ -251,6 +243,41 @@
             .ToList();
     }
 
+    private string? GetPlayingCardSuit(ShowdownCard card)
+    {
+        var suit = card.Suit switch
+        {
+            CardSuit.Hearts => "Hearts",
+            CardSuit.Diamonds => "Diamonds",
+            CardSuit.Clubs => "Clubs",
+            CardSuit.Spades => "Spades",
+            _ => ""
+        };
+        return suit;
+    }
+
+    private string? GetPlayingCardRank(ShowdownCard card)
+    {
+        var rank = card.Symbol switch
+        {
+            CardSymbol.Ace => "Ace",
+            CardSymbol.Deuce => "2",
+            CardSymbol.Three => "3",
+            CardSymbol.Four => "4",
+            CardSymbol.Five => "5",
+            CardSymbol.Six => "6",
+            CardSymbol.Seven => "7",
+            CardSymbol.Eight => "8",
+            CardSymbol.Nine => "9",
+            CardSymbol.Ten => "10",
+            CardSymbol.Jack => "Jack",
+            CardSymbol.Queen => "Queen",
+            CardSymbol.King => "King",
+            _ => ""
+        };
+
+        return rank;
+    }
     private string GetOutcomeSubtitle()
     {
         if (ShowdownResult?.WonByFold == true)

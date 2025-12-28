@@ -16,8 +16,9 @@
 - [x] Add Microsoft as Oauth provider
 - [x] Hand history is not displaying correctly
 - [x] Dashboard needs to be bigger
-- [ ] I don't like how small the cards are and what they look like
+- [x] I don't like how small the cards are and what they look like
 - [ ] Showdown overlay should show new card images
+- [ ] Draw Panel should show new card images
 - [ ] Leaderboard should show first names
 - [ ] Add a chip stack graph in the dashboard
 - [ ] Add sound effects
