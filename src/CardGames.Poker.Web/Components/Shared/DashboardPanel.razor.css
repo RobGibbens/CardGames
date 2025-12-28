@@ -1,9 +1,9 @@
 /* Dashboard Panel - Left-side slide-in panel */
 .dashboard-panel {
-    position: fixed;
-    top: 50%;
+    position: absolute;
+    top: 0;
     left: 0;
-    transform: translateY(-50%);
+    bottom: 0;
     z-index: 100;
     display: flex;
     flex-direction: row-reverse;
@@ -12,7 +12,7 @@
 }
 
 .dashboard-panel.collapsed {
-    transform: translateY(-50%) translateX(calc(-100% + 36px));
+    transform: translateX(calc(-100% + 36px));
 }
 
 .dashboard-panel.collapsed .dashboard-content {
@@ -71,9 +71,9 @@
     background: linear-gradient(135deg, rgba(30, 58, 95, 0.95), rgba(20, 40, 70, 0.95));
     border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 0 8px 8px 0;
-    min-width: 280px;
-    max-width: 340px;
-    max-height: 80vh;
+    min-width: 560px;
+    max-width: 680px;
+    height: 100%;
     overflow-y: auto;
     backdrop-filter: blur(12px);
     box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3);
@@ -130,7 +130,7 @@
         top: auto;
         bottom: 160px;
         left: 0;
-        transform: translateX(0);
+        height: auto;
     }
 
     .dashboard-panel.collapsed {
@@ -138,9 +138,10 @@
     }
 
     .dashboard-content {
-        min-width: 260px;
+        min-width: 320px;
         max-width: 75vw;
         max-height: 50vh;
+        height: auto;
     }
 }
 

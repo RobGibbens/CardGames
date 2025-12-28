@@ -55,60 +55,60 @@
             {
                 <span class="table-game-type">@_gameResponse.GameTypeName</span>
             }
-        <span class="table-blinds">Ante: @ante &nbsp; Min Bet: @_gameResponse?.MinBet</span>
+            <span class="table-blinds">Ante: @ante &nbsp; Min Bet: @_gameResponse?.MinBet</span>
         </div>
 
-            <div class="table-controls-right">
-                @if (!_isLoading)
+        <div class="table-controls-right">
+            @if (!_isLoading)
+            {
+                if (isHost)
                 {
-                    if (isHost)
-                    {
-                        <div class="host-controls">
-                            @if (_gameResponse.CurrentPhase == GamePhase.WaitingForPlayers.ToString() || _gameResponse.CurrentPhase
-                                            == GamePhase.WaitingToStart.ToString())
+                    <div class="host-controls">
+                        @if (_gameResponse.CurrentPhase == GamePhase.WaitingForPlayers.ToString() || _gameResponse.CurrentPhase
+                                        == GamePhase.WaitingToStart.ToString())
+                        {
+                            <a href="/table/@GameId/edit" class="btn btn-secondary btn-sm">
+                                <i class="fa-regular fa-pen-to-square"></i>
+                                Edit Table
+                            </a>
+                            <button class="btn btn-primary btn-sm" @onclick="StartGameAsync" disabled="@(!canStartGame)">
+                                <i class="fa-regular fa-play"></i>
+                                Start Game
+                            </button>
+                        }
+                        else if (_gameResponse.CurrentPhase != GamePhase.Ended.ToString())
+                        {
+                            @if (isPaused)
                             {
-                                <a href="/table/@GameId/edit" class="btn btn-secondary btn-sm">
-                                    <i class="fa-regular fa-pen-to-square"></i>
-                                    Edit Table
-                                </a>
-                                <button class="btn btn-primary btn-sm" @onclick="StartGameAsync" disabled="@(!canStartGame)">
+                                <button class="btn btn-secondary btn-sm" @onclick="ResumeGameAsync">
                                     <i class="fa-regular fa-play"></i>
-                                    Start Game
+                                    Resume
                                 </button>
                             }
-                            else if (_gameResponse.CurrentPhase != GamePhase.Ended.ToString())
+                            else
                             {
-                                @if (isPaused)
-                                {
-                                    <button class="btn btn-secondary btn-sm" @onclick="ResumeGameAsync">
-                                        <i class="fa-regular fa-play"></i>
-                                        Resume
-                                    </button>
-                                }
-                                else
-                                {
-                                    <button class="btn btn-secondary btn-sm" @onclick="PauseGameAsync">
-                                        <i class="fa-regular fa-pause"></i>
-                                        Pause
-                                    </button>
-                                }
-
-                                <button class="btn btn-sm btn-end-game" @onclick="EndGameAsync">
-                                    <i class="fa-solid fa-octagon"></i>
-                                    End Game
+                                <button class="btn btn-secondary btn-sm" @onclick="PauseGameAsync">
+                                    <i class="fa-regular fa-pause"></i>
+                                    Pause
                                 </button>
                             }
-                        </div>
-                    }
+
+                            <button class="btn btn-sm btn-end-game" @onclick="EndGameAsync">
+                                <i class="fa-solid fa-octagon"></i>
+                                End Game
+                            </button>
+                        }
+                    </div>
                 }
-                <div class="connection-indicator @(isConnected ? "connected" : "disconnected")"
-                    title="@(isConnected ? "Connected" : "Disconnected")">
-                    <span class="connection-dot"></span>
-                </div>
+            }
+            <div class="connection-indicator @(isConnected ? "connected" : "disconnected")"
+                title="@(isConnected ? "Connected" : "Disconnected")">
+                <span class="connection-dot"></span>
             </div>
         </div>
+    </div>
 
-        @if (!_isLoading)
+    @if (!_isLoading)
     {
         var temp = "";
         <!-- Main Table Area -->
@@ -118,31 +118,31 @@
                 CurrentActorSeatIndex="@currentActorSeatIndex" DealerSeatIndex="@dealerSeatIndex"
                 OnSeatClick="HandleSeatClickAsync" DisableSeatSelectionForCurrentUser="@isSeated"
                 CurrentPlayerSeatIndex="@currentPlayerSeatIndex" />
+
+            <!-- Dashboard Panel (left side) -->
+            @if (isSeated)
+            {
+                <DashboardPanel>
+                    <DashboardSection Title="Leaderboard" Icon="fa-solid fa-trophy"
+                        IsExpanded="@DashboardState.IsSectionExpanded("Leaderboard")"
+                        IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("Leaderboard", value))">
+                        <LeaderboardSection Players="@GetLeaderboardPlayers()" />
+                    </DashboardSection>
+
+                    <DashboardSection Title="Odds" Icon="fa-solid fa-chart-simple"
+                        IsExpanded="@DashboardState.IsSectionExpanded("Odds")"
+                        IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("Odds", value))">
+                        <OddsSection HandOdds="@handOdds" />
+                    </DashboardSection>
+
+                    <DashboardSection Title="Hand History" Icon="fa-solid fa-clock-rotate-left"
+                        IsExpanded="@DashboardState.IsSectionExpanded("HandHistory")"
+                        IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("HandHistory", value))">
+                        <HandHistorySection Entries="@_handHistoryEntries" />
+                    </DashboardSection>
+                </DashboardPanel>
+            }
         </div>
-
-        <!-- Dashboard Panel (left side) -->
-        @if (isSeated)
-        {
-            <DashboardPanel>
-                <DashboardSection Title="Leaderboard" Icon="fa-solid fa-trophy"
-                    IsExpanded="@DashboardState.IsSectionExpanded("Leaderboard")"
-                    IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("Leaderboard", value))">
-                    <LeaderboardSection Players="@GetLeaderboardPlayers()" />
-                </DashboardSection>
-
-                <DashboardSection Title="Odds" Icon="fa-solid fa-chart-simple"
-                    IsExpanded="@DashboardState.IsSectionExpanded("Odds")"
-                    IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("Odds", value))">
-                    <OddsSection HandOdds="@handOdds" />
-                </DashboardSection>
-
-                <DashboardSection Title="Hand History" Icon="fa-solid fa-clock-rotate-left"
-                    IsExpanded="@DashboardState.IsSectionExpanded("HandHistory")"
-                    IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("HandHistory", value))">
-                    <HandHistorySection Entries="@_handHistoryEntries" />
-                </DashboardSection>
-            </DashboardPanel>
-        }
 
         <!-- Action Panel (only shown when it's player's turn during betting) -->
         @if (isPlayerTurn && !isDrawPhase && _gameResponse.CurrentPhase != GamePhase.WaitingForPlayers.ToString() &&
@@ -254,11 +254,8 @@
 
         @if (IsShowdownPhase && _showShowdownOverlay && _showdownResult is not null)
         {
-            <ShowdownOverlay ShowdownResult="@_showdownResult"
-                            ShowdownWon="@_showdownWon"
-                            ShowdownLost="@_showdownLost"
-                            SecondsUntilNextHand="@_secondsUntilNextHand"
-                            OnClose="@CloseShowdownOverlay" />
+            <ShowdownOverlay ShowdownResult="@_showdownResult" ShowdownWon="@_showdownWon" ShowdownLost="@_showdownLost"
+                SecondsUntilNextHand="@_secondsUntilNextHand" OnClose="@CloseShowdownOverlay" />
         }
     }
 </main>
@@ -320,9 +317,9 @@
     private int maxDiscards = 3;
 
     private string? currentPlayerHandEvaluationDescription =>
-        currentPlayerSeatIndex >= 0 && currentPlayerSeatIndex < seats.Count
-            ? seats[currentPlayerSeatIndex].HandEvaluationDescription
-            : null;
+    currentPlayerSeatIndex >= 0 && currentPlayerSeatIndex < seats.Count
+    ? seats[currentPlayerSeatIndex].HandEvaluationDescription
+    : null;
 
     // Showdown state
     private PerformShowdownSuccessful? _showdownResult;
@@ -635,17 +632,17 @@
             }
         }
 
-            // Calculate hand odds from current cards
-            CalculateHandOdds(state.Hand);
+        // Calculate hand odds from current cards
+        CalculateHandOdds(state.Hand);
 
-            // Update hand history from private state (contains personalized player results)
-            if (state.HandHistory is not null && state.HandHistory.Count > 0)
-            {
-                _handHistoryEntries = state.HandHistory.ToList();
-            }
-
-            await InvokeAsync(StateHasChanged);
+        // Update hand history from private state (contains personalized player results)
+        if (state.HandHistory is not null && state.HandHistory.Count > 0)
+        {
+            _handHistoryEntries = state.HandHistory.ToList();
         }
+
+        await InvokeAsync(StateHasChanged);
+    }
 
     private void UpdateSeatsFromPublicState(IReadOnlyList<SeatPublicDto> publicSeats)
     {
@@ -696,34 +693,34 @@
         {
             // Convert to existing showdown format using constructor
             var payouts = showdown.PlayerResults
-                .Where(r => r.IsWinner)
-                .ToDictionary(r => r.PlayerName, r => r.AmountWon);
+            .Where(r => r.IsWinner)
+            .ToDictionary(r => r.PlayerName, r => r.AmountWon);
 
             var playerHands = showdown.PlayerResults.Select(r => new ShowdownPlayerHand(
-                amountWon: r.AmountWon,
-                cards: ConvertCardsToShowdownCards(r.Cards),
-                handStrength: null,
-                handType: r.HandRanking ?? "",
-                isWinner: r.IsWinner,
-                playerFirstName: r.PlayerFirstName,
-                playerName: r.PlayerName,
-                handDescription: r.HandDescription ?? ""
+            amountWon: r.AmountWon,
+            cards: ConvertCardsToShowdownCards(r.Cards),
+            handStrength: null,
+            handType: r.HandRanking ?? "",
+            isWinner: r.IsWinner,
+            playerFirstName: r.PlayerFirstName,
+            playerName: r.PlayerName,
+            handDescription: r.HandDescription ?? ""
             )).ToList();
 
             _showdownResult = new PerformShowdownSuccessful(
-                currentPhase: "Complete",
-                gameId: GameId,
-                payouts: payouts,
-                playerHands: playerHands,
-                wonByFold: false
+            currentPhase: "Complete",
+            gameId: GameId,
+            payouts: payouts,
+            playerHands: playerHands,
+            wonByFold: false
             );
 
             _showShowdownOverlay = true;
-            
+
             // Check if current user is a winner by comparing against payout keys
             _showdownWon = _showdownResult.Payouts?.Keys.Any(p =>
-                string.Equals(p, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(p, currentPlayerName, StringComparison.OrdinalIgnoreCase)) == true;
+            string.Equals(p, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(p, currentPlayerName, StringComparison.OrdinalIgnoreCase)) == true;
             _showdownLost = !_showdownWon;
         }
     }
@@ -736,12 +733,12 @@
         }
 
         return cards
-            .Where(c => c.IsFaceUp && !string.IsNullOrWhiteSpace(c.Rank) && !string.IsNullOrWhiteSpace(c.Suit))
-            .Select(c => new ShowdownCard(
-                suit: ParseCardSuit(c.Suit),
-                symbol: ParseCardSymbol(c.Rank)
-            ))
-            .ToList();
+        .Where(c => c.IsFaceUp && !string.IsNullOrWhiteSpace(c.Rank) && !string.IsNullOrWhiteSpace(c.Suit))
+        .Select(c => new ShowdownCard(
+        suit: ParseCardSuit(c.Suit),
+        symbol: ParseCardSymbol(c.Rank)
+        ))
+        .ToList();
     }
 
     private static CardSuit? ParseCardSuit(string? suit)
@@ -910,52 +907,52 @@
                 };
             }
 
-                    currentPlayerSeatIndex = seats.FirstOrDefault(s => s.IsCurrentPlayer)?.SeatIndex ?? currentPlayerSeatIndex;
-                }
-                else
-                {
-                    // Handle error (e.g., show message)
-                }
-            }
+            currentPlayerSeatIndex = seats.FirstOrDefault(s => s.IsCurrentPlayer)?.SeatIndex ?? currentPlayerSeatIndex;
+        }
+        else
+        {
+            // Handle error (e.g., show message)
+        }
+    }
 
-            /// <summary>
-            /// Loads hand history from the API for initial page load.
-            /// </summary>
-            private async Task LoadHandHistoryAsync()
+    /// <summary>
+    /// Loads hand history from the API for initial page load.
+    /// </summary>
+    private async Task LoadHandHistoryAsync()
+    {
+        try
+        {
+            var response = await FiveCardDrawApiClient.GetHandHistoryAsync(
+            GameId,
+            take: 25,
+            skip: 0,
+            playerId: _currentPlayerId);
+
+            if (response is { IsSuccessStatusCode: true, Content.Entries: not null })
             {
-                try
-                {
-                    var response = await FiveCardDrawApiClient.GetHandHistoryAsync(
-                        GameId,
-                        take: 25,
-                        skip: 0,
-                        playerId: _currentPlayerId);
+                _handHistoryEntries = response.Content.Entries.ToList();
+                Logger.LogInformation("Loaded {Count} hand history entries for game {GameId}", _handHistoryEntries.Count, GameId);
 
-                    if (response is { IsSuccessStatusCode: true, Content.Entries: not null })
-                    {
-                        _handHistoryEntries = response.Content.Entries.ToList();
-                        Logger.LogInformation("Loaded {Count} hand history entries for game {GameId}", _handHistoryEntries.Count, GameId);
-
-                        // Debug log each entry
-                        foreach (var entry in _handHistoryEntries)
-                        {
-                            Logger.LogInformation("HandHistory API: Hand #{HandNumber}, WinnerName='{WinnerName}', AmountWon={AmountWon}, ResultLabel='{ResultLabel}'",
-                                entry.HandNumber, entry.WinnerName ?? "(null)", entry.AmountWon, entry.CurrentPlayerResultLabel ?? "(null)");
-                        }
-                    }
-                    else
-                    {
-                        Logger.LogWarning("GetHandHistoryAsync returned unsuccessful: StatusCode={StatusCode}, HasContent={HasContent}",
-                            response?.StatusCode, response?.Content is not null);
-                    }
-                }
-                catch (Exception ex)
+                // Debug log each entry
+                foreach (var entry in _handHistoryEntries)
                 {
-                    Logger.LogWarning(ex, "Failed to load hand history for game {GameId}", GameId);
+                    Logger.LogInformation("HandHistory API: Hand #{HandNumber}, WinnerName='{WinnerName}', AmountWon={AmountWon}, ResultLabel='{ResultLabel}'",
+                    entry.HandNumber, entry.WinnerName ?? "(null)", entry.AmountWon, entry.CurrentPlayerResultLabel ?? "(null)");
                 }
             }
+            else
+            {
+                Logger.LogWarning("GetHandHistoryAsync returned unsuccessful: StatusCode={StatusCode}, HasContent={HasContent}",
+                response?.StatusCode, response?.Content is not null);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to load hand history for game {GameId}", GameId);
+        }
+    }
 
-            private async Task LeaveTableAsync()
+    private async Task LeaveTableAsync()
     {
         // Leave SignalR game group before navigating away
         await GameHubClient.LeaveGameAsync(GameId);
@@ -976,7 +973,7 @@
             if (!response.IsSuccessStatusCode)
             {
                 Logger.LogWarning(
-                                    "Failed to join game at seat {SeatIndex}: {StatusCode} - {Error}",
+                                                    "Failed to join game at seat {SeatIndex}: {StatusCode} - {Error}",
                 seatIndex, response.StatusCode, response.Error?.Content);
                 return;
             }
@@ -998,7 +995,7 @@
             currentPlayerSeatIndex = seatIndex;
 
             Logger.LogInformation(
-                            "Successfully joined game {GameId} at seat {SeatIndex}. CanPlayCurrentHand: {CanPlay}",
+                                        "Successfully joined game {GameId} at seat {SeatIndex}. CanPlayCurrentHand: {CanPlay}",
             GameId, seatIndex, response.Content?.CanPlayCurrentHand);
         }
         catch (Exception ex)
@@ -1084,8 +1081,8 @@
 
         // Check against both email and display name since payout keys may use either
         var iWon = _showdownResult.Payouts?.Keys.Any(p =>
-            string.Equals(p, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(p, currentPlayerName, StringComparison.OrdinalIgnoreCase)) == true;
+        string.Equals(p, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(p, currentPlayerName, StringComparison.OrdinalIgnoreCase)) == true;
         _showdownWon = iWon;
         _showdownLost = !iWon;
     }
