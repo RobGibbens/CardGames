@@ -15,7 +15,7 @@
 - [x] Add Yahoo as Oauth provider
 - [x] Add Microsoft as Oauth provider
 - [x] Hand history is not displaying correctly
-- [ ] Dashboard needs to be bigger
+- [x] Dashboard needs to be bigger
 - [ ] The betting action overlay. Raise to X doesn't work
 - [ ] Add an action timer
 - [ ] Check that setting the ante works correctly

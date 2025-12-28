@@ -80,18 +80,29 @@
             <div class="seat-cards">
                 @foreach (var card in GetOrderedCards())
                 {
-                    <div class="playing-card @(card.IsFaceUp ? "face-up" : "face-down") @(card.IsSelected ? "selected" : "")">
+                    if (IsCurrentPlayer)
+                    {
                         @if (card.IsFaceUp)
                         {
-                            <span class="card-value @GetSuitColorClass(card.Suit)">
-                                @card.Rank <i class="fa-regular @GetSuitSymbol(card.Suit)"></i>
-                            </span>
+                            <playing-card rank="@GetPlayingCardRank(card)" suit="@card.Suit" style="height:75px;width:75px;"></playing-card>
                         }
                         else
                         {
-                            <span class="card-back"><i class="fa-solid fa-crown"></i></span>
+                            <playing-card rank="0" backcolor="#44F" style="height:75px;width:75px;"></playing-card>
                         }
-                    </div>
+                    }
+                    else
+                    {
+                        @if (card.IsFaceUp)
+                        {
+                            <playing-card rank="@GetPlayingCardRank(card)" suit="@card.Suit" style="height:50px;width:50px;"></playing-card>
+                        }
+                        else
+                        {
+                            <playing-card rank="0" backcolor="#44F" style="height:50px;width:50px;"></playing-card>
+                        }
+                    }
+
                 }
             </div>
 
@@ -290,4 +301,19 @@
             _ => int.MaxValue
         };
     }
+
+    private string? GetPlayingCardRank(CardInfo card)
+    {
+        var rank = card.Rank switch
+        {
+            "J" => "Jack",
+            "Q" => "Queen",
+            "K" => "King",
+            "A" => "Ace",
+            _ => card.Rank
+        };
+
+        return rank;
+    }
+
 }
