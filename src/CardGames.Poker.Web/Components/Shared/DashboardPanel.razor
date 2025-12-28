@@ -1,7 +1,8 @@
 @namespace CardGames.Poker.Web.Components.Shared
 
 @inject Services.DashboardState DashboardState
-@implements IDisposable
+@inject IJSRuntime JSRuntime
+@implements IAsyncDisposable
 
 <div class="dashboard-panel @(DashboardState.IsOpen ? "expanded" : "collapsed")">
     <button class="dashboard-toggle" 
@@ -22,7 +23,12 @@
         <span class="toggle-label">@(DashboardState.IsOpen ? "" : "Stats")</span>
     </button>
 
-    <div id="dashboard-content" class="dashboard-content">
+    <div class="resize-handle" @ref="_resizeHandle" title="Drag to resize"></div>
+
+    <div id="dashboard-content" 
+         class="dashboard-content" 
+         @ref="_panelContent"
+         style="width: @(DashboardState.Width)px;">
         <div class="dashboard-header">
             <i class="fa-solid fa-chart-line"></i>
             <span>Dashboard</span>
@@ -41,13 +47,82 @@
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
 
+    private ElementReference _panelContent;
+    private ElementReference _resizeHandle;
+    private IJSObjectReference? _jsModule;
+    private IJSObjectReference? _resizeInstance;
+    private DotNetObjectReference<DashboardPanel>? _dotNetRef;
+
     protected override void OnInitialized()
     {
         DashboardState.OnStateChanged += StateHasChanged;
     }
 
-    public void Dispose()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _dotNetRef = DotNetObjectReference.Create(this);
+            
+            // Import the JS module
+            _jsModule = await JSRuntime.InvokeAsync<IJSObjectReference>(
+                "import", 
+                "./Components/Shared/DashboardPanel.razor.js");
+            
+            // Get stored width from localStorage and apply to state
+            var storedWidth = await _jsModule.InvokeAsync<int>("getStoredWidth");
+            DashboardState.Width = storedWidth;
+            
+            // Initialize resize functionality
+            _resizeInstance = await _jsModule.InvokeAsync<IJSObjectReference>(
+                "initResize", 
+                _panelContent, 
+                _resizeHandle, 
+                _dotNetRef);
+            
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Called from JavaScript when resize drag operation completes.
+    /// </summary>
+    [JSInvokable]
+    public void OnResizeComplete(int newWidth)
+    {
+        DashboardState.Width = newWidth;
+        StateHasChanged();
+    }
+
+    public async ValueTask DisposeAsync()
     {
         DashboardState.OnStateChanged -= StateHasChanged;
+        
+        if (_resizeInstance is not null)
+        {
+            try
+            {
+                await _resizeInstance.InvokeVoidAsync("dispose");
+                await _resizeInstance.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+                // Circuit disconnected, ignore
+            }
+        }
+        
+        if (_jsModule is not null)
+        {
+            try
+            {
+                await _jsModule.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+                // Circuit disconnected, ignore
+            }
+        }
+        
+        _dotNetRef?.Dispose();
     }
 }

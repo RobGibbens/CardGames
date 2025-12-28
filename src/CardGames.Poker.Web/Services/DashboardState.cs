@@ -7,6 +7,7 @@ namespace CardGames.Poker.Web.Services;
 public sealed class DashboardState
 {
     private bool _isOpen;
+    private int _width = 560;
     private readonly Dictionary<string, bool> _sectionStates = new()
     {
         ["Leaderboard"] = true,
@@ -15,9 +16,41 @@ public sealed class DashboardState
     };
 
     /// <summary>
+    /// Minimum allowed width for the dashboard panel in pixels.
+    /// </summary>
+    public const int MinWidth = 300;
+
+    /// <summary>
+    /// Maximum allowed width for the dashboard panel in pixels.
+    /// </summary>
+    public const int MaxWidth = 800;
+
+    /// <summary>
+    /// Default width for the dashboard panel in pixels.
+    /// </summary>
+    public const int DefaultWidth = 560;
+
+    /// <summary>
     /// Gets whether the dashboard panel is currently open.
     /// </summary>
     public bool IsOpen => _isOpen;
+
+    /// <summary>
+    /// Gets or sets the current width of the dashboard panel in pixels.
+    /// </summary>
+    public int Width
+    {
+        get => _width;
+        set
+        {
+            var clampedValue = Math.Clamp(value, MinWidth, MaxWidth);
+            if (_width != clampedValue)
+            {
+                _width = clampedValue;
+                NotifyStateChanged();
+            }
+        }
+    }
 
     /// <summary>
     /// Fired when any dashboard state changes.

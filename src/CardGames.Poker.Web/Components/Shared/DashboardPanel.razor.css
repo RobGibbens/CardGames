@@ -71,13 +71,51 @@
     background: linear-gradient(135deg, rgba(30, 58, 95, 0.95), rgba(20, 40, 70, 0.95));
     border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 0 8px 8px 0;
-    min-width: 560px;
-    max-width: 680px;
+    width: 560px; /* Default width, overridden by inline style */
+    min-width: 300px;
+    max-width: 800px;
     height: 100%;
     overflow-y: auto;
     backdrop-filter: blur(12px);
     box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3);
     transition: opacity 0.3s ease-in-out;
+}
+
+/* Resize handle */
+.resize-handle {
+    position: relative;
+    width: 8px;
+    height: 100%;
+    cursor: ew-resize;
+    background: transparent;
+    transition: background-color 0.2s ease;
+    flex-shrink: 0;
+}
+
+.resize-handle::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 4px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+    transition: all 0.2s ease;
+}
+
+.resize-handle:hover {
+    background: rgba(96, 165, 250, 0.1);
+}
+
+.resize-handle:hover::before {
+    background: rgba(96, 165, 250, 0.6);
+    height: 60px;
+}
+
+.resize-handle:active::before {
+    background: rgba(96, 165, 250, 0.8);
 }
 
 /* Custom scrollbar for dashboard content */
@@ -142,6 +180,12 @@
         max-width: 75vw;
         max-height: 50vh;
         height: auto;
+        width: auto !important; /* Override inline width on mobile */
+    }
+
+    /* Hide resize handle on mobile */
+    .resize-handle {
+        display: none;
     }
 }
 
