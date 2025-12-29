@@ -20,8 +20,8 @@
 - [x] Showdown overlay should show new card images
 - [x] Draw Panel should show new card images
 - [ ] Leaderboard should show first names
-- [ ] Add a chip stack graph in the dashboard
 - [ ] The bottom of the table goes off the bottom of the screen
+- [ ] Add a chip stack graph in the dashboard
 - [ ] Add sound effects
 - [ ] Add a chat box
 - [ ] Add the ability to mute other players in chat
