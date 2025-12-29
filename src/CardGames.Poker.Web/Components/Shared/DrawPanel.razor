@@ -12,7 +12,7 @@
         <div class="draw-panel-subtitle">
             @if (MaxDiscards == 4)
             {
-                <text>Select cards to discard (0-4 cards – Ace bonus!)</text>
+                <text>Select cards to discard (0-4 cards ï¿½ Ace bonus!)</text>
             }
             else
             {
@@ -40,11 +40,11 @@
 
             <div class="draw-card-wrapper @(isSelected ? "selected" : "") @(IsDiscarding && isSelected ? "discarding" : "") @(IsDrawing && NewCardIndices.Contains(index) ? "drawing" : "")"
                  @onclick="() => ToggleCardSelectionAsync(index)">
+                
                 <div class="draw-card @(isSelected ? "selected" : "")">
-                    <span class="draw-card-value @GetSuitColorClass(card.Suit)">
-                        @card.Rank <i class="fa-regular @GetSuitSymbol(card.Suit)"></i>
-                    </span>
+                    <playing-card rank="@GetPlayingCardRank(card)" suit="@card.Suit" style="height:92px;width:64px;"></playing-card>
                 </div>
+                
                 <div class="card-index">@(displayIndex + 1)</div>
                 @if (isSelected)
                 {
@@ -236,6 +236,20 @@
             .ThenBy(x => x.Index);
     }
 
+    private string? GetPlayingCardRank(CardInfo card)
+    {
+        var rank = card.Rank switch
+        {
+            "J" => "Jack",
+            "Q" => "Queen",
+            "K" => "King",
+            "A" => "Ace",
+            _ => card.Rank
+        };
+
+        return rank;
+    }
+    
     private static int GetRankValue(string? rank)
     {
         if (string.IsNullOrWhiteSpace(rank))

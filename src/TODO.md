@@ -18,12 +18,11 @@
 - [x] Dashboard needs to be bigger
 - [x] I don't like how small the cards are and what they look like
 - [x] Showdown overlay should show new card images
-- [ ] Draw Panel should show new card images
+- [x] Draw Panel should show new card images
 - [ ] Leaderboard should show first names
 - [ ] Add a chip stack graph in the dashboard
 - [ ] The bottom of the table goes off the bottom of the screen
 - [ ] Add sound effects
-- [ ] Add background music
 - [ ] Add a chat box
 - [ ] Add the ability to mute other players in chat
 - [ ] Add the ability to block other players

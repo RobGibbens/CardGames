@@ -3811,9 +3811,9 @@ a:hover {
     .draw-card {
         width: 64px;
         height: 92px;
-        background: linear-gradient(145deg, #ffffff 0%, #f0f0f0 100%);
-        border-radius: 8px;
-        border: 2px solid rgba(255, 255, 255, 0.3);
+        /*background: linear-gradient(145deg, #ffffff 0%, #f0f0f0 100%);*/
+        /*border-radius: 8px;*/
+        /*border: 2px solid rgba(255, 255, 255, 0.3);*/
         display: flex;
         align-items: center;
         justify-content: center;
@@ -3842,10 +3842,11 @@ a:hover {
         transform: translateX(-50%);
         font-size: 0.75rem;
         font-weight: 600;
-        color: rgba(255, 255, 255, 0.5);
-        background: rgba(0, 0, 0, 0.5);
+        color: rgba(0, 0, 0);
+        background: rgba(255, 255, 255);
         padding: 0.125rem 0.5rem;
         border-radius: 10px;
+        border: 2px solid red;
     }
 
     .discard-badge {
