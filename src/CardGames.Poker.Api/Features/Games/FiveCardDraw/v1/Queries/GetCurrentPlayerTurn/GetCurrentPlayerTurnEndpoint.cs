@@ -18,7 +18,7 @@ public static class GetCurrentPlayerTurnEndpoint
 						? Results.NotFound()
 						: Results.Ok(response);
 				})
-			.WithName(nameof(MapGetCurrentPlayerTurn).TrimPrefix("Map"))
+			.WithName($"FiveCardDraw{nameof(MapGetCurrentPlayerTurn).TrimPrefix("Map")}")
 			.WithSummary(nameof(MapGetCurrentPlayerTurn).TrimPrefix("Map"))
 			.WithDescription("Retrieve the current player's turn state for a specific game, including available actions.")
 			.MapToApiVersion(1.0)

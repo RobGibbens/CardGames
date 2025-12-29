@@ -33,7 +33,7 @@ public static class JoinGameEndpoint
                         }
                     );
                 })
-            .WithName(nameof(MapJoinGame).TrimPrefix("Map"))
+            .WithName($"FiveCardDraw{nameof(MapJoinGame).TrimPrefix("Map")}")
             .WithSummary("Join Game")
             .WithDescription(
                 "Adds the currently authenticated player to a game at the specified seat. " +

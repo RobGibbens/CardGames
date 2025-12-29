@@ -22,7 +22,7 @@ public static class GetHandHistoryEndpoint
                     var response = await mediator.Send(query, cancellationToken);
                     return Results.Ok(response);
                 })
-            .WithName(nameof(MapGetHandHistory).TrimPrefix("Map"))
+            .WithName($"FiveCardDraw{nameof(MapGetHandHistory).TrimPrefix("Map")}")
             .WithSummary("Get hand history for a game")
             .WithDescription("Retrieves the hand history for a specific game, ordered newest-first. " +
                            "Optionally provide a playerId to get per-player result context.")

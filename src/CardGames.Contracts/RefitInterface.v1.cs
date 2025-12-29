@@ -96,7 +96,7 @@ namespace CardGames.Poker.Api.Clients
         /// </exception>
         [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
         [Post("/api/v1/games/five-card-draw")]
-        Task<IApiResponse<System.Guid>> CreateGameAsync([Body] CreateGameCommand body, CancellationToken cancellationToken = default);
+        Task<IApiResponse<System.Guid>> FiveCardDrawCreateGameAsync([Body] CreateGameCommand body, CancellationToken cancellationToken = default);
 
         /// <summary>GetGames</summary>
         /// <remarks>Retrieve a list of games.</remarks>
@@ -119,7 +119,7 @@ namespace CardGames.Poker.Api.Clients
         /// </returns>
         [Headers("Accept: application/json, application/problem+json")]
         [Get("/api/v1/games/five-card-draw")]
-        Task<IApiResponse<ICollection<GetGamesResponse>>> GetGamesAsync(CancellationToken cancellationToken = default);
+        Task<IApiResponse<ICollection<GetGamesResponse>>> FiveCardDrawGetGamesAsync(CancellationToken cancellationToken = default);
 
         /// <summary>Join Game</summary>
         /// <remarks>
@@ -161,7 +161,7 @@ namespace CardGames.Poker.Api.Clients
         /// </returns>
         [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
         [Post("/api/v1/games/five-card-draw/{gameId}/players")]
-        Task<IApiResponse<JoinGameSuccessful>> JoinGameAsync(System.Guid gameId, [Body] JoinGameRequest body, CancellationToken cancellationToken = default);
+        Task<IApiResponse<JoinGameSuccessful>> FiveCardDrawJoinGameAsync(System.Guid gameId, [Body] JoinGameRequest body, CancellationToken cancellationToken = default);
 
         /// <summary>GetGamePlayers</summary>
         /// <remarks>Retrieve all players in a specific game.</remarks>
@@ -184,7 +184,7 @@ namespace CardGames.Poker.Api.Clients
         /// </returns>
         [Headers("Accept: application/json, application/problem+json")]
         [Get("/api/v1/games/five-card-draw/{gameId}/players")]
-        Task<IApiResponse<ICollection<GetGamePlayersResponse>>> GetGamePlayersAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+        Task<IApiResponse<ICollection<GetGamePlayersResponse>>> FiveCardDrawGetGamePlayersAsync(System.Guid gameId, CancellationToken cancellationToken = default);
 
         /// <summary>Start Hand</summary>
         /// <remarks>Starts a new hand by shuffling the deck, creating a fresh pot, and resetting all player states. This endpoint must be called before each hand to prepare the game for play. After calling this endpoint, the game transitions to the CollectingAntes phase.</remarks>
@@ -215,7 +215,7 @@ namespace CardGames.Poker.Api.Clients
         /// </returns>
         [Headers("Accept: application/json, application/problem+json")]
         [Post("/api/v1/games/five-card-draw/{gameId}/hands")]
-        Task<IApiResponse<StartHandSuccessful>> StartHandAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+        Task<IApiResponse<StartHandSuccessful>> FiveCardDrawStartHandAsync(System.Guid gameId, CancellationToken cancellationToken = default);
 
         /// <summary>Collect Antes</summary>
         /// <remarks>Collects the mandatory ante bet from all players to seed the pot before dealing. Each player contributes the ante amount (or their remaining chips if short-stacked). After collection, the game transitions to the Dealing phase. Players with fewer chips than the ante will contribute their entire stack (going all-in on the ante).</remarks>
@@ -242,7 +242,7 @@ namespace CardGames.Poker.Api.Clients
         /// </returns>
         [Headers("Accept: application/json, application/problem+json")]
         [Post("/api/v1/games/five-card-draw/{gameId}/hands/antes")]
-        Task<IApiResponse<CollectAntesSuccessful>> CollectAntesAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+        Task<IApiResponse<CollectAntesSuccessful>> FiveCardDrawCollectAntesAsync(System.Guid gameId, CancellationToken cancellationToken = default);
 
         /// <summary>Deal Hands</summary>
         /// <remarks>Deals five cards to each active player from the shuffled deck and initiates the first betting round. After dealing, the game transitions to the FirstBettingRound phase. This method deals 5 cards to each player who has not folded, resets all players' current bet amounts for the new betting round, and automatically starts the first betting round.</remarks>
@@ -273,7 +273,7 @@ namespace CardGames.Poker.Api.Clients
         /// </returns>
         [Headers("Accept: application/json, application/problem+json")]
         [Post("/api/v1/games/five-card-draw/{gameId}/hands/deal")]
-        Task<IApiResponse<DealHandsSuccessful>> DealHandsAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+        Task<IApiResponse<DealHandsSuccessful>> FiveCardDrawDealHandsAsync(System.Guid gameId, CancellationToken cancellationToken = default);
 
         /// <summary>Process Betting Action</summary>
         /// <remarks>
@@ -319,7 +319,7 @@ namespace CardGames.Poker.Api.Clients
         /// </returns>
         [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
         [Post("/api/v1/games/five-card-draw/{gameId}/betting/actions")]
-        Task<IApiResponse<ProcessBettingActionSuccessful>> ProcessBettingActionAsync(System.Guid gameId, [Body] ProcessBettingActionRequest body, CancellationToken cancellationToken = default);
+        Task<IApiResponse<ProcessBettingActionSuccessful>> FiveCardDrawProcessBettingActionAsync(System.Guid gameId, [Body] ProcessBettingActionRequest body, CancellationToken cancellationToken = default);
 
         /// <summary>Process Draw Action</summary>
         /// <remarks>
@@ -362,7 +362,7 @@ namespace CardGames.Poker.Api.Clients
         /// </returns>
         [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
         [Post("/api/v1/games/five-card-draw/{gameId}/draw")]
-        Task<IApiResponse<ProcessDrawSuccessful>> ProcessDrawAsync(System.Guid gameId, [Body] ProcessDrawRequest body, CancellationToken cancellationToken = default);
+        Task<IApiResponse<ProcessDrawSuccessful>> FiveCardDrawProcessDrawAsync(System.Guid gameId, [Body] ProcessDrawRequest body, CancellationToken cancellationToken = default);
 
         /// <summary>Perform Showdown</summary>
         /// <remarks>
@@ -402,7 +402,7 @@ namespace CardGames.Poker.Api.Clients
         /// </returns>
         [Headers("Accept: application/json, application/problem+json")]
         [Post("/api/v1/games/five-card-draw/{gameId}/showdown")]
-        Task<IApiResponse<PerformShowdownSuccessful>> PerformShowdownAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+        Task<IApiResponse<PerformShowdownSuccessful>> FiveCardDrawPerformShowdownAsync(System.Guid gameId, CancellationToken cancellationToken = default);
 
         /// <summary>GetGame</summary>
         /// <remarks>Retrieve a specific game by its identifier.</remarks>
@@ -429,7 +429,7 @@ namespace CardGames.Poker.Api.Clients
         /// </returns>
         [Headers("Accept: application/json, application/problem+json")]
         [Get("/api/v1/games/five-card-draw/{gameId}")]
-        Task<IApiResponse<GetGameResponse>> GetGameAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+        Task<IApiResponse<GetGameResponse>> FiveCardDrawGetGameAsync(System.Guid gameId, CancellationToken cancellationToken = default);
 
         /// <summary>GetCurrentPlayerTurn</summary>
         /// <remarks>Retrieve the current player's turn state for a specific game, including available actions.</remarks>
@@ -456,7 +456,7 @@ namespace CardGames.Poker.Api.Clients
         /// </returns>
         [Headers("Accept: application/json, application/problem+json")]
         [Get("/api/v1/games/five-card-draw/{gameId}/current-turn")]
-        Task<IApiResponse<GetCurrentPlayerTurnResponse>> GetCurrentPlayerTurnAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+        Task<IApiResponse<GetCurrentPlayerTurnResponse>> FiveCardDrawGetCurrentPlayerTurnAsync(System.Guid gameId, CancellationToken cancellationToken = default);
 
         /// <summary>GetCurrentDrawPlayer</summary>
         /// <remarks>Retrieve the current player who must act during the draw phase. Returns 404 if not in draw phase or no eligible players remain.</remarks>
@@ -483,7 +483,7 @@ namespace CardGames.Poker.Api.Clients
         /// </returns>
         [Headers("Accept: application/json, application/problem+json")]
         [Get("/api/v1/games/five-card-draw/{gameId}/draw-player")]
-        Task<IApiResponse<GetCurrentDrawPlayerResponse>> GetCurrentDrawPlayerAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+        Task<IApiResponse<GetCurrentDrawPlayerResponse>> FiveCardDrawGetCurrentDrawPlayerAsync(System.Guid gameId, CancellationToken cancellationToken = default);
 
         /// <summary>GetCurrentBettingRound</summary>
         /// <remarks>Retrieve the current betting round for a specific game.</remarks>
@@ -510,7 +510,7 @@ namespace CardGames.Poker.Api.Clients
         /// </returns>
         [Headers("Accept: application/json, application/problem+json")]
         [Get("/api/v1/games/five-card-draw/{gameId}/betting-round")]
-        Task<IApiResponse<GetCurrentBettingRoundResponse>> GetCurrentBettingRoundAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+        Task<IApiResponse<GetCurrentBettingRoundResponse>> FiveCardDrawGetCurrentBettingRoundAsync(System.Guid gameId, CancellationToken cancellationToken = default);
 
         /// <summary>Get hand history for a game</summary>
         /// <remarks>Retrieves the hand history for a specific game, ordered newest-first. Optionally provide a playerId to get per-player result context.</remarks>
@@ -533,7 +533,7 @@ namespace CardGames.Poker.Api.Clients
         /// </returns>
         [Headers("Accept: application/json, application/problem+json")]
         [Get("/api/v1/games/five-card-draw/{gameId}/history")]
-        Task<IApiResponse<HandHistoryListDto>> GetHandHistoryAsync(System.Guid gameId, [Query] int? take, [Query] int? skip, [Query] System.Guid? playerId, CancellationToken cancellationToken = default);
+        Task<IApiResponse<HandHistoryListDto>> FiveCardDrawGetHandHistoryAsync(System.Guid gameId, [Query] int? take, [Query] int? skip, [Query] System.Guid? playerId, CancellationToken cancellationToken = default);
 
         /// <summary>Get Table Settings</summary>
         /// <remarks>Retrieves the current table settings for a game. Returns configuration details including ante, blinds, and current phase. The `IsEditable` property indicates whether settings can currently be modified.</remarks>
@@ -556,7 +556,7 @@ namespace CardGames.Poker.Api.Clients
         /// </returns>
         [Headers("Accept: application/json, application/problem+json")]
         [Get("/api/v1/games/five-card-draw/{gameId}/settings")]
-        Task<IApiResponse<GetTableSettingsResponse>> GetTableSettingsAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+        Task<IApiResponse<GetTableSettingsResponse>> FiveCardDrawGetTableSettingsAsync(System.Guid gameId, CancellationToken cancellationToken = default);
 
         /// <summary>Update Table Settings</summary>
         /// <remarks>
@@ -602,7 +602,542 @@ namespace CardGames.Poker.Api.Clients
         /// </returns>
         [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
         [Put("/api/v1/games/five-card-draw/{gameId}/settings")]
-        Task<IApiResponse<UpdateTableSettingsResponse>> UpdateTableSettingsAsync(System.Guid gameId, [Body] UpdateTableSettingsRequest body, CancellationToken cancellationToken = default);
+        Task<IApiResponse<UpdateTableSettingsResponse>> FiveCardDrawUpdateTableSettingsAsync(System.Guid gameId, [Body] UpdateTableSettingsRequest body, CancellationToken cancellationToken = default);
+    }
+
+    /// <summary>CreateGame</summary>
+    [System.CodeDom.Compiler.GeneratedCode("Refitter", "1.7.0.0")]
+    public partial interface ITwosJacksManWithTheAxeApi
+    {
+        /// <summary>CreateGame</summary>
+        /// <remarks>Create a new game.</remarks>
+        /// <returns>Created</returns>
+        /// <exception cref="ApiException">
+        /// Thrown when the request returns a non-success status code:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// </list>
+        /// </exception>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/games/twos-jacks-man-with-the-axe")]
+        Task<IApiResponse<System.Guid>> TwosJacksManWithTheAxeCreateGameAsync([Body] CreateGameCommand body, CancellationToken cancellationToken = default);
+
+        /// <summary>GetGames</summary>
+        /// <remarks>Retrieve a list of games.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Get("/api/v1/games/twos-jacks-man-with-the-axe")]
+        Task<IApiResponse<ICollection<GetGamesResponse>>> TwosJacksManWithTheAxeGetGamesAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>Join Game</summary>
+        /// <remarks>
+        /// Adds the currently authenticated player to a game at the specified seat. Players can join a game at any time as long as the game hasn't ended and there are seats available. If joining mid-hand, the player will sit out the current hand and join play on the next hand.
+        /// 
+        /// **Validations:**
+        /// - Game must exist and not be ended
+        /// - Seat must be available (not already occupied)
+        /// - Player must not already be seated elsewhere in the game
+        /// - Game must not have reached maximum player count
+        /// 
+        /// **Response:**
+        /// - `CanPlayCurrentHand`: true if joining during WaitingToStart/WaitingForPlayers phase
+        /// </remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/games/twos-jacks-man-with-the-axe/{gameId}/players")]
+        Task<IApiResponse<JoinGameSuccessful>> TwosJacksManWithTheAxeJoinGameAsync(System.Guid gameId, [Body] JoinGameRequest body, CancellationToken cancellationToken = default);
+
+        /// <summary>GetGamePlayers</summary>
+        /// <remarks>Retrieve all players in a specific game.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Get("/api/v1/games/twos-jacks-man-with-the-axe/{gameId}/players")]
+        Task<IApiResponse<ICollection<GetGamePlayersResponse>>> TwosJacksManWithTheAxeGetGamePlayersAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
+        /// <summary>Start Hand</summary>
+        /// <remarks>Starts a new hand by shuffling the deck, creating a fresh pot, and resetting all player states. This endpoint must be called before each hand to prepare the game for play. After calling this endpoint, the game transitions to the CollectingAntes phase.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Post("/api/v1/games/twos-jacks-man-with-the-axe/{gameId}/hands")]
+        Task<IApiResponse<StartHandSuccessful>> TwosJacksManWithTheAxeStartHandAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
+        /// <summary>Collect Antes</summary>
+        /// <remarks>Collects the mandatory ante bet from all players to seed the pot before dealing. Each player contributes the ante amount (or their remaining chips if short-stacked). After collection, the game transitions to the Dealing phase. Players with fewer chips than the ante will contribute their entire stack (going all-in on the ante).</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Post("/api/v1/games/twos-jacks-man-with-the-axe/{gameId}/hands/antes")]
+        Task<IApiResponse<CollectAntesSuccessful>> TwosJacksManWithTheAxeCollectAntesAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
+        /// <summary>Deal Hands</summary>
+        /// <remarks>Deals five cards to each active player from the shuffled deck and initiates the first betting round. After dealing, the game transitions to the FirstBettingRound phase. This method deals 5 cards to each player who has not folded, resets all players' current bet amounts for the new betting round, and automatically starts the first betting round.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// <item>
+        /// <term>422</term>
+        /// <description>Unprocessable Entity</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Post("/api/v1/games/twos-jacks-man-with-the-axe/{gameId}/hands/deal")]
+        Task<IApiResponse<DealHandsSuccessful>> TwosJacksManWithTheAxeDealHandsAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
+        /// <summary>Process Betting Action</summary>
+        /// <remarks>
+        /// Processes a betting action from the current player and advances the game state accordingly. If the betting round completes (all players have acted and bets are equalized), the game automatically advances to the next phase.
+        /// 
+        /// **Action Types:**
+        /// - `Check` (0): Pass without betting when no bet has been made
+        /// - `Bet` (1): Make an initial bet in the current betting round
+        /// - `Call` (2): Match the current highest bet
+        /// - `Raise` (3): Increase the current bet amount (amount is total to put in, not increment)
+        /// - `Fold` (4): Give up the hand
+        /// - `AllIn` (5): Bet all remaining chips
+        /// 
+        /// **Phase Transitions:**
+        /// - After first betting round completes: transitions to draw phase
+        /// - After second betting round completes: transitions to showdown
+        /// - If only one player remains (all others folded): transitions directly to showdown
+        /// </remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// <item>
+        /// <term>422</term>
+        /// <description>Unprocessable Entity</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/games/twos-jacks-man-with-the-axe/{gameId}/betting/actions")]
+        Task<IApiResponse<ProcessBettingActionSuccessful>> TwosJacksManWithTheAxeProcessBettingActionAsync(System.Guid gameId, [Body] ProcessBettingActionRequest body, CancellationToken cancellationToken = default);
+
+        /// <summary>Process Draw Action</summary>
+        /// <remarks>
+        /// Processes a draw action for the current player, allowing them to discard unwanted cards and receive replacement cards from the deck. After all players have drawn, the game automatically advances to the second betting round.
+        /// 
+        /// **Standard Five Card Draw rules apply:**
+        /// - Players may discard 0-3 cards
+        /// - Pass an empty array to "stand pat" (keep all cards)
+        /// - Discarded cards are replaced with new cards from the deck
+        /// - Card indices must be between 0 and 4 (inclusive)
+        /// 
+        /// **Phase Transitions:**
+        /// - After all players draw: transitions to second betting round
+        /// - Players who have folded or are all-in are automatically skipped
+        /// </remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// <item>
+        /// <term>422</term>
+        /// <description>Unprocessable Entity</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/games/twos-jacks-man-with-the-axe/{gameId}/draw")]
+        Task<IApiResponse<ProcessDrawSuccessful>> TwosJacksManWithTheAxeProcessDrawAsync(System.Guid gameId, [Body] ProcessDrawRequest body, CancellationToken cancellationToken = default);
+
+        /// <summary>Perform Showdown</summary>
+        /// <remarks>
+        /// Performs the showdown phase to evaluate all remaining players' hands and award the pot(s) to the winner(s). After the showdown completes, the game transitions to the Complete phase and the dealer button moves to the next position.
+        /// 
+        /// **Showdown Scenarios:**
+        /// - **Win by fold:** If only one player remains (all others folded), they win the entire pot without showing cards
+        /// - **Single winner:** The player with the highest-ranking hand wins the entire pot
+        /// - **Split pot:** If multiple players tie with the same hand strength, the pot is divided equally among winners
+        /// - **Side pots:** When players are all-in for different amounts, side pots are calculated and awarded separately
+        /// 
+        /// **Response includes:**
+        /// - Payouts to each winning player
+        /// - Evaluated hand information for all participating players
+        /// - Whether the hand was won by fold (no showdown required)
+        /// </remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Post("/api/v1/games/twos-jacks-man-with-the-axe/{gameId}/showdown")]
+        Task<IApiResponse<PerformShowdownSuccessful>> TwosJacksManWithTheAxePerformShowdownAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
+        /// <summary>GetGame</summary>
+        /// <remarks>Retrieve a specific game by its identifier.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Get("/api/v1/games/twos-jacks-man-with-the-axe/{gameId}")]
+        Task<IApiResponse<GetGameResponse>> TwosJacksManWithTheAxeGetGameAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
+        /// <summary>GetCurrentPlayerTurn</summary>
+        /// <remarks>Retrieve the current player's turn state for a specific game, including available actions.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Get("/api/v1/games/twos-jacks-man-with-the-axe/{gameId}/current-turn")]
+        Task<IApiResponse<GetCurrentPlayerTurnResponse>> TwosJacksManWithTheAxeGetCurrentPlayerTurnAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
+        /// <summary>GetCurrentDrawPlayer</summary>
+        /// <remarks>Retrieve the current player who must act during the draw phase. Returns 404 if not in draw phase or no eligible players remain.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Get("/api/v1/games/twos-jacks-man-with-the-axe/{gameId}/draw-player")]
+        Task<IApiResponse<GetCurrentDrawPlayerResponse>> TwosJacksManWithTheAxeGetCurrentDrawPlayerAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
+        /// <summary>GetCurrentBettingRound</summary>
+        /// <remarks>Retrieve the current betting round for a specific game.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Get("/api/v1/games/twos-jacks-man-with-the-axe/{gameId}/betting-round")]
+        Task<IApiResponse<GetCurrentBettingRoundResponse>> TwosJacksManWithTheAxeGetCurrentBettingRoundAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
+        /// <summary>Get hand history for a game</summary>
+        /// <remarks>Retrieves the hand history for a specific game, ordered newest-first. Optionally provide a playerId to get per-player result context.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Get("/api/v1/games/twos-jacks-man-with-the-axe/{gameId}/history")]
+        Task<IApiResponse<HandHistoryListDto>> TwosJacksManWithTheAxeGetHandHistoryAsync(System.Guid gameId, [Query] int? take, [Query] int? skip, [Query] System.Guid? playerId, CancellationToken cancellationToken = default);
+
+        /// <summary>Get Table Settings</summary>
+        /// <remarks>Retrieves the current table settings for a game. Returns configuration details including ante, blinds, and current phase. The `IsEditable` property indicates whether settings can currently be modified.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Get("/api/v1/games/twos-jacks-man-with-the-axe/{gameId}/settings")]
+        Task<IApiResponse<GetTableSettingsResponse>> TwosJacksManWithTheAxeGetTableSettingsAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
+        /// <summary>Update Table Settings</summary>
+        /// <remarks>
+        /// Updates the table settings for a game. Can only be called when the game is in WaitingToStart or WaitingForPlayers phase. Requires the caller to be the table creator.
+        /// 
+        /// **Validations:**
+        /// - Game must exist
+        /// - Caller must be the table creator
+        /// - Game must be in an editable phase
+        /// - RowVersion must match current value (optimistic concurrency)
+        /// - BigBlind &gt;= SmallBlind if both provided
+        /// - Ante &gt;= 0
+        /// - MinBet &gt; 0
+        /// </remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>403</term>
+        /// <description>Forbidden</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Put("/api/v1/games/twos-jacks-man-with-the-axe/{gameId}/settings")]
+        Task<IApiResponse<UpdateTableSettingsResponse>> TwosJacksManWithTheAxeUpdateTableSettingsAsync(System.Guid gameId, [Body] UpdateTableSettingsRequest body, CancellationToken cancellationToken = default);
     }
 
     /// <summary>No summary available</summary>
@@ -2647,6 +3182,23 @@ namespace CardGames.Poker.Api.Clients
                 });
 
             builder?.Invoke(clientBuilderIFiveCardDrawApi);
+
+            var clientBuilderITwosJacksManWithTheAxeApi = services
+                .AddRefitClient<ITwosJacksManWithTheAxeApi>(settings)
+                .ConfigureHttpClient(c => c.BaseAddress = baseUrl);
+
+            clientBuilderITwosJacksManWithTheAxeApi
+                .AddStandardResilienceHandler(config =>
+                {
+                    config.Retry = new HttpRetryStrategyOptions
+                    {
+                        UseJitter = true,
+                        MaxRetryAttempts = 3,
+                        Delay = TimeSpan.FromSeconds(0.5)
+                    };
+                });
+
+            builder?.Invoke(clientBuilderITwosJacksManWithTheAxeApi);
 
             var clientBuilderICardGamesPokerApiApi = services
                 .AddRefitClient<ICardGamesPokerApiApi>(settings)

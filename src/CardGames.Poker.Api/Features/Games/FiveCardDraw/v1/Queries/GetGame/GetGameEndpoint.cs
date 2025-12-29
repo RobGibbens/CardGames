@@ -18,7 +18,7 @@ public static class GetGameEndpoint
 						? Results.NotFound()
 						: Results.Ok(response);
 				})
-			.WithName(nameof(MapGetGame).TrimPrefix("Map"))
+			.WithName($"FiveCardDraw{nameof(MapGetGame).TrimPrefix("Map")}")
 			.WithSummary(nameof(MapGetGame).TrimPrefix("Map"))
 			.WithDescription("Retrieve a specific game by its identifier.")
 			.MapToApiVersion(1.0)

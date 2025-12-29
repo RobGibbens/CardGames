@@ -23,7 +23,7 @@ public static class GetTableSettingsEndpoint
                         ? Results.NotFound(new { Message = $"Game with ID {gameId} not found." })
                         : Results.Ok(result);
                 })
-            .WithName(nameof(MapGetTableSettings).TrimPrefix("Map"))
+            .WithName($"FiveCardDraw{nameof(MapGetTableSettings).TrimPrefix("Map")}")
             .WithSummary("Get Table Settings")
             .WithDescription(
                 "Retrieves the current table settings for a game. " +

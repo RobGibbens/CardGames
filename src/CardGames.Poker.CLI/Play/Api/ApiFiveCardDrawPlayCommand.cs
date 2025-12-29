@@ -64,8 +64,8 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 
 		var gameId = Guid.CreateVersion7();
 		var command = new CreateGameCommand(ante, gameId, "Five Card Draw", minBet, playerInfos);
-		var response = await _fiveCardDrawApi.CreateGameAsync(command, cancellationToken);
-
+		var response = await _fiveCardDrawApi.FiveCardDrawCreateGameAsync(command, cancellationToken);
+		
 		if (!response.IsSuccessStatusCode)
 		{
 			AnsiConsole.MarkupLine("[red]Failed to create game via API.[/]");

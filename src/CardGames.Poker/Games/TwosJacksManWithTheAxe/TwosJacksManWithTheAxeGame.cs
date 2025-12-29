@@ -17,7 +17,7 @@ namespace CardGames.Poker.Games.TwosJacksManWithTheAxe;
 	2,
 	6,
 	"2sJacksManWithTheAxe.png")]
-public class TwosJacksManWithTheAxe : IPokerGame
+public class TwosJacksManWithTheAxeGame : IPokerGame
 {
 	public string Name { get; } = "Twos, Jacks, Man with the Axe";
 	public string Description { get; } = "A five-card draw variant where all 2s, all Jacks, and the King of Diamonds (“Man with the Axe”) are wild, creating big hands and frequent action. Optionally, a player holding a natural pair of 7s can claim half the pot.";
@@ -102,7 +102,7 @@ public class TwosJacksManWithTheAxe : IPokerGame
     /// <param name="minBet">The minimum bet size allowed during betting rounds.
     /// All raises must be at least this amount.</param>
     /// <exception cref="ArgumentException">Thrown when player count is less than 2 or greater than 6.</exception>
-    public TwosJacksManWithTheAxe(IEnumerable<(string name, int chips)> players, int ante, int minBet)
+    public TwosJacksManWithTheAxeGame(IEnumerable<(string name, int chips)> players, int ante, int minBet)
     {
         var playerList = players.ToList();
         if (playerList.Count < MinimumNumberOfPlayers)

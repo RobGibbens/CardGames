@@ -18,7 +18,7 @@ public static class GetCurrentBettingRoundEndpoint
 						? Results.NotFound()
 						: Results.Ok(response);
 				})
-			.WithName(nameof(MapGetCurrentBettingRound).TrimPrefix("Map"))
+			.WithName($"FiveCardDraw{nameof(MapGetCurrentBettingRound).TrimPrefix("Map")}")
 			.WithSummary(nameof(MapGetCurrentBettingRound).TrimPrefix("Map"))
 			.WithDescription("Retrieve the current betting round for a specific game.")
 			.MapToApiVersion(1.0)

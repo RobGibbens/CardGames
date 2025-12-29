@@ -54,7 +54,7 @@ public static class UpdateTableSettingsEndpoint
                         }
                     );
                 })
-            .WithName(nameof(MapUpdateTableSettings).TrimPrefix("Map"))
+            .WithName($"FiveCardDraw{nameof(MapUpdateTableSettings).TrimPrefix("Map")}")
             .WithSummary("Update Table Settings")
             .WithDescription(
                 "Updates the table settings for a game. " +
