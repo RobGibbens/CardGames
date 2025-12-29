@@ -374,7 +374,7 @@
 
             var command = new CreateGameCommand(ante, gameId, tableName, minBet, playerInfos);
 
-            var response = await FiveCardDrawApi.CreateGameAsync(command);
+            var response = await FiveCardDrawApi.FiveCardDrawCreateGameAsync(command);
 
             if (response.IsSuccessStatusCode && response.Content != Guid.Empty)
             {
