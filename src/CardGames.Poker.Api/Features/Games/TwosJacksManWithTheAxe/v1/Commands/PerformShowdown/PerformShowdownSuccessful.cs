@@ -23,7 +23,7 @@ public record PerformShowdownSuccessful
 	public required string CurrentPhase { get; init; }
 
 	/// <summary>
-	/// The chip payouts awarded to each winning player.
+	/// The chip payouts awarded to each winning player (total of sevens pool + high hand pool).
 	/// Keys are player names; values are the chip amounts won.
 	/// Multiple entries indicate a split pot scenario.
 	/// </summary>
@@ -33,6 +33,35 @@ public record PerformShowdownSuccessful
 	/// The evaluated hands for all players who participated in the showdown.
 	/// </summary>
 	public required List<ShowdownPlayerHand> PlayerHands { get; init; }
+
+	/// <summary>
+	/// Player names who won the sevens pool (had a natural pair of 7s).
+	/// Empty if no players qualified for the sevens pool.
+	/// </summary>
+	public List<string> SevensWinners { get; init; } = [];
+
+	/// <summary>
+	/// Player names who won the high hand pool.
+	/// </summary>
+	public List<string> HighHandWinners { get; init; } = [];
+
+	/// <summary>
+	/// Payouts from the sevens pool per player.
+	/// Keys are player names; values are chip amounts won from the sevens pool.
+	/// </summary>
+	public Dictionary<string, int> SevensPayouts { get; init; } = [];
+
+	/// <summary>
+	/// Payouts from the high hand pool per player.
+	/// Keys are player names; values are chip amounts won from the high hand pool.
+	/// </summary>
+	public Dictionary<string, int> HighHandPayouts { get; init; } = [];
+
+	/// <summary>
+	/// Whether the sevens pool was rolled into the high hand pool
+	/// because no players had a natural pair of 7s.
+	/// </summary>
+	public bool SevensPoolRolledOver { get; init; }
 }
 
 /// <summary>
@@ -74,14 +103,40 @@ public record ShowdownPlayerHand
 	public long? HandStrength { get; init; }
 
 	/// <summary>
-	/// Indicates whether this player is a winner.
+	/// Indicates whether this player is a winner (either sevens or high hand).
 	/// </summary>
 	public bool IsWinner { get; init; }
 
 	/// <summary>
-	/// The amount won by this player, if any.
+	/// Indicates whether this player won the sevens pool (had a natural pair of 7s).
+	/// </summary>
+	public bool IsSevensWinner { get; init; }
+
+	/// <summary>
+	/// Indicates whether this player won the high hand pool.
+	/// </summary>
+	public bool IsHighHandWinner { get; init; }
+
+	/// <summary>
+	/// The total amount won by this player (sevens + high hand).
 	/// </summary>
 	public int AmountWon { get; init; }
+
+	/// <summary>
+	/// The amount won from the sevens pool.
+	/// </summary>
+	public int SevensAmountWon { get; init; }
+
+	/// <summary>
+	/// The amount won from the high hand pool.
+	/// </summary>
+	public int HighHandAmountWon { get; init; }
+
+	/// <summary>
+	/// The zero-based indices of cards in the hand that are wild.
+	/// Used by the UI to display wild card indicators.
+	/// </summary>
+	public List<int>? WildCardIndexes { get; init; }
 }
 
 /// <summary>

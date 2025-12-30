@@ -2,8 +2,9 @@ using CardGames.Core.French.Cards;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Services;
-using CardGames.Poker.Games.FiveCardDraw;
+using CardGames.Poker.Games.TwosJacksManWithTheAxe;
 using CardGames.Poker.Hands.DrawHands;
+using CardGames.Poker.Hands.WildCards;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
@@ -45,12 +46,12 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 		var currentHandPots = game.Pots.Where(p => p.HandNumber == game.CurrentHandNumber).ToList();
 
 		// 2. Validate game is in showdown phase
-		if (game.CurrentPhase != nameof(FiveCardDrawPhase.Showdown))
+		if (game.CurrentPhase != nameof(TwosJacksManWithTheAxePhase.Showdown))
 		{
 			return new PerformShowdownError
 			{
 				Message = $"Cannot perform showdown. Game is in '{game.CurrentPhase}' phase. " +
-				          $"Showdown can only be performed when the game is in '{nameof(FiveCardDrawPhase.Showdown)}' phase.",
+				          $"Showdown can only be performed when the game is in '{nameof(TwosJacksManWithTheAxePhase.Showdown)}' phase.",
 				Code = PerformShowdownErrorCode.InvalidGameState
 			};
 		}
@@ -102,7 +103,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 				pot.WinReason = "All others folded";
 			}
 
-			game.CurrentPhase = nameof(FiveCardDrawPhase.Complete);
+			game.CurrentPhase = nameof(TwosJacksManWithTheAxePhase.Complete);
 			game.UpdatedAt = now;
 				game.HandCompletedAt = now;
 				game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);
@@ -151,9 +152,8 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 					};
 				}
 
-			// 7. Evaluate all hands
-			var playerHandEvaluations = new Dictionary<string, (DrawHand hand, List<GameCard> cards, GamePlayer gamePlayer)>();
-
+			// 7. Evaluate all hands using wild-aware evaluation
+			var playerHandEvaluations = new Dictionary<string, (TwosJacksManWithTheAxeDrawHand hand, List<GameCard> cards, GamePlayer gamePlayer, List<int> wildIndexes)>();
 
 		foreach (var gamePlayer in playersInHand)
 		{
@@ -163,31 +163,112 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 			}
 
 			var coreCards = cards.Select(c => new Card(MapSuit(c.Suit), MapSymbol(c.Symbol))).ToList();
-			var drawHand = new DrawHand(coreCards);
-			playerHandEvaluations[gamePlayer.Player.Name] = (drawHand, cards, gamePlayer);
+			var wildHand = new TwosJacksManWithTheAxeDrawHand(coreCards);
+			
+			// Determine wild card indexes for UI display
+			var wildIndexes = new List<int>();
+			for (int i = 0; i < coreCards.Count; i++)
+			{
+				if (TwosJacksManWithTheAxeWildCardRules.IsWild(coreCards[i]))
+				{
+					wildIndexes.Add(i);
+				}
+			}
+			
+			playerHandEvaluations[gamePlayer.Player.Name] = (wildHand, cards, gamePlayer, wildIndexes);
 		}
 
-		// 8. Determine winners (highest strength)
-		var maxStrength = playerHandEvaluations.Values.Max(h => h.hand.Strength);
-		var winners = playerHandEvaluations
-			.Where(kvp => kvp.Value.hand.Strength == maxStrength)
-			.Select(kvp => kvp.Key)
-			.ToList();
+		// 8. Build ordered player list for deterministic remainder distribution (dealer-left first)
+		var orderedPlayerNames = new List<string>();
+		for (int i = 1; i <= game.GamePlayers.Count; i++)
+		{
+			var idx = (game.DealerPosition + i) % game.GamePlayers.Count;
+			var player = game.GamePlayers.OrderBy(gp => gp.SeatPosition).Skip(idx).FirstOrDefault()
+			             ?? game.GamePlayers.OrderBy(gp => gp.SeatPosition).First();
+			if (!player.HasFolded && playerHandEvaluations.ContainsKey(player.Player.Name))
+			{
+				orderedPlayerNames.Add(player.Player.Name);
+			}
+		}
 
-		// 9. Calculate payouts (split pot if multiple winners)
-		var payoutPerWinner = totalPot / winners.Count;
-		var remainder = totalPot % winners.Count;
+		// 9. Apply 7s half-pot + high hand half-pot logic
+		var sevensWinners = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+		var highHandWinners = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+		var sevensPoolRolledOver = false;
+
+		// Determine sevens winners (natural pair of 7s)
+		foreach (var kvp in playerHandEvaluations)
+		{
+			if (kvp.Value.hand.HasNaturalPairOfSevens())
+			{
+				sevensWinners.Add(kvp.Key);
+			}
+		}
+
+		// Determine high hand winners
+		if (playerHandEvaluations.Count > 0)
+		{
+			var maxStrength = playerHandEvaluations.Values.Max(h => h.hand.Strength);
+			foreach (var kvp in playerHandEvaluations.Where(k => k.Value.hand.Strength == maxStrength))
+			{
+				highHandWinners.Add(kvp.Key);
+			}
+		}
+
+		// Calculate payouts using 7s split pot logic
+		var sevensPool = totalPot / 2;
+		var handPool = totalPot - sevensPool;
+
+		// If no sevens winners, roll sevens pool into hand pool
+		if (sevensWinners.Count == 0)
+		{
+			handPool += sevensPool;
+			sevensPool = 0;
+			sevensPoolRolledOver = true;
+		}
+
 		var payouts = new Dictionary<string, int>();
+		var sevensPayouts = new Dictionary<string, int>();
+		var highHandPayouts = new Dictionary<string, int>();
 
-		foreach (var winner in winners)
+		// Award sevens pool
+		if (sevensPool > 0 && sevensWinners.Count > 0)
 		{
-			payouts[winner] = payoutPerWinner;
+			var sevensWinnersList = orderedPlayerNames.Where(n => sevensWinners.Contains(n)).ToList();
+			var share = sevensPool / sevensWinnersList.Count;
+			var remainder = sevensPool % sevensWinnersList.Count;
+
+			foreach (var winner in sevensWinnersList)
+			{
+				var payout = share;
+				if (remainder > 0)
+				{
+					payout++;
+					remainder--;
+				}
+				sevensPayouts[winner] = payout;
+				payouts[winner] = payouts.GetValueOrDefault(winner, 0) + payout;
+			}
 		}
 
-		// Add remainder to first winner (closest to dealer's left)
-		if (remainder > 0 && winners.Count > 0)
+		// Award high hand pool
+		if (handPool > 0 && highHandWinners.Count > 0)
 		{
-			payouts[winners[0]] += remainder;
+			var highHandWinnersList = orderedPlayerNames.Where(n => highHandWinners.Contains(n)).ToList();
+			var share = handPool / highHandWinnersList.Count;
+			var remainder = handPool % highHandWinnersList.Count;
+
+			foreach (var winner in highHandWinnersList)
+			{
+				var payout = share;
+				if (remainder > 0)
+				{
+					payout++;
+					remainder--;
+				}
+				highHandPayouts[winner] = payout;
+				payouts[winner] = payouts.GetValueOrDefault(winner, 0) + payout;
+			}
 		}
 
 		// 10. Update player chip stacks
@@ -198,9 +279,15 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 		}
 
 		// 11. Mark pots as awarded
-		var winReason = winners.Count > 1
-			? $"Split pot - {playerHandEvaluations[winners[0]].hand.Type}"
-			: playerHandEvaluations[winners[0]].hand.Type.ToString();
+		var winnerList = payouts.Keys.ToList();
+		var winReason = winnerList.Count > 1
+			? $"Split pot - {playerHandEvaluations[winnerList[0]].hand.Type}"
+			: playerHandEvaluations[winnerList[0]].hand.Type.ToString();
+
+		if (sevensWinners.Count > 0)
+		{
+			winReason = $"7s: {string.Join(", ", sevensWinners)}; High: {string.Join(", ", highHandWinners)}";
+		}
 
 		foreach (var pot in currentHandPots)
 		{
@@ -210,7 +297,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 			}
 
 			// 12. Update game state
-			game.CurrentPhase = nameof(FiveCardDrawPhase.Complete);
+			game.CurrentPhase = nameof(TwosJacksManWithTheAxePhase.Complete);
 			game.UpdatedAt = now;
 			game.HandCompletedAt = now;
 			game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);
@@ -219,10 +306,10 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 			await context.SaveChangesAsync(cancellationToken);
 
 			// Record hand history for showdown
-			var winnerInfos = winners.Select(w =>
+			var winnerInfos = payouts.Select(kvp =>
 			{
-				var gp = playerHandEvaluations[w].gamePlayer;
-				return (gp.PlayerId, w, payouts[w]);
+				var gp = playerHandEvaluations[kvp.Key].gamePlayer;
+				return (gp.PlayerId, kvp.Key, kvp.Value);
 			}).ToList();
 
 			await RecordHandHistoryAsync(
@@ -232,14 +319,16 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 				totalPot,
 				wonByFold: false,
 				winners: winnerInfos,
-				winnerNames: winners,
+				winnerNames: winnerList,
 				winningHandDescription: winReason,
 				cancellationToken);
 
-				// 13. Build response
+				// 13. Build response with enhanced wild card and split pot info
 				var playerHandsList = playerHandEvaluations.Select(kvp =>
 				{
-					var isWinner = winners.Contains(kvp.Key);
+					var isSevensWinner = sevensWinners.Contains(kvp.Key);
+					var isHighHandWinner = highHandWinners.Contains(kvp.Key);
+					var isWinner = isSevensWinner || isHighHandWinner;
 					usersByEmail.TryGetValue(kvp.Value.gamePlayer.Player.Email ?? string.Empty, out var user);
 					return new ShowdownPlayerHand
 					{
@@ -253,7 +342,12 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 						HandType = kvp.Value.hand.Type.ToString(),
 						HandStrength = kvp.Value.hand.Strength,
 					IsWinner = isWinner,
-					AmountWon = payouts.GetValueOrDefault(kvp.Key, 0)
+					AmountWon = payouts.GetValueOrDefault(kvp.Key, 0),
+					IsSevensWinner = isSevensWinner,
+					IsHighHandWinner = isHighHandWinner,
+					SevensAmountWon = sevensPayouts.GetValueOrDefault(kvp.Key, 0),
+					HighHandAmountWon = highHandPayouts.GetValueOrDefault(kvp.Key, 0),
+					WildCardIndexes = kvp.Value.wildIndexes.Count > 0 ? kvp.Value.wildIndexes : null
 				};
 			}).OrderByDescending(h => h.HandStrength ?? 0).ToList();
 
@@ -263,7 +357,12 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 			WonByFold = false,
 			CurrentPhase = game.CurrentPhase,
 					Payouts = payouts,
-					PlayerHands = playerHandsList
+					PlayerHands = playerHandsList,
+					SevensWinners = sevensWinners.ToList(),
+					HighHandWinners = highHandWinners.ToList(),
+					SevensPoolRolledOver = sevensPoolRolledOver,
+					SevensPayouts = sevensPayouts,
+					HighHandPayouts = highHandPayouts
 				};
 				}
 
@@ -371,7 +470,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 						IsSplitPot = isSplitPot && isWinner,
 						NetChipDelta = netDelta,
 						WentAllIn = gp.IsAllIn,
-						FoldStreet = gp.HasFolded ? "FirstRound" : null // Simplified for Five Card Draw
+						FoldStreet = gp.HasFolded ? "FirstRound" : null // Simplified for Twos/Jacks/Axe
 					};
 				}).ToList();
 
