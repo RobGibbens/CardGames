@@ -42,17 +42,31 @@
 - [ ] The fields on the register page should be wider
 - [ ] Showdown should use better description of the cards (Pair of Aces vs One Pair)
 - [ ] Add animation of dealing the cards
-- [ ] Add other game types
 - [ ] Table should be able to scroll if the screen isn't big enough
 - [ ] Rearrange the register and login screens to make OAuth more obvious
 - [ ] Allow them to upload an image when registering
 
 
 ## Add Games
-- [ ] Add Twos, Jacks, Man with the Axe
-- [ ] Add Razz
-- [ ] Add Screw Your Neighbor
+
+### Hold 'Em Variants
 - [ ] Add Texas Hold'em
 - [ ] Add Omaha
+
+### 7 Card Stud Variants
 - [ ] Add Seven Card Stud
+- [ ] Add baseball
+- [ ] Add Follow the Queen
+
+### 5 Card Stud Variants
 - [ ] Add Five Card Stud
+
+### 5 Card Draw Variants
+- [x] Five card draw
+- [x] Add Twos, Jacks, Man with the Axe
+- [ ] Add Kings and Lows
+
+### Other Poker Variants
+- [ ] Add Razz
+- [ ] Add Screw Your Neighbor
+

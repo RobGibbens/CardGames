@@ -361,15 +361,9 @@
             return HumanizeHandType(hand.HandType);
         }
 
-        // If the server did not provide a description, infer the best formatter.
-        // Twos, Jacks, Man with the Axe has wild cards (all 2s, all Jacks, and Kd).
-        var inferredIsTwosJacks = hand.Cards.Any(c =>
-            c.Symbol is CardSymbol.Deuce or CardSymbol.Jack
-            || (c.Symbol == CardSymbol.King && c.Suit == CardSuit.Diamonds));
-
-        HandBase evaluatedHand = inferredIsTwosJacks
-            ? new TwosJacksManWithTheAxeDrawHand(coreCards)
-            : new DrawHand(coreCards);
+        // If the server did not provide a description, do not try to infer variant rules from card faces.
+        // (A Five Card Draw hand can contain 2s/Jacks/Kd too.)
+        HandBase evaluatedHand = new DrawHand(coreCards);
 
         return HandDescriptionFormatter.GetHandDescription(evaluatedHand);
     }

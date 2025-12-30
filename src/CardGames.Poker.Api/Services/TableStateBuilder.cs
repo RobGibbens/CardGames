@@ -416,7 +416,10 @@ public sealed class TableStateBuilder : ITableStateBuilder
             return null;
         }
 
-        var isTwosJacksAxe = game.GameType?.Code == PokerGameMetadataRegistry.TwosJacksManWithTheAxeCode;
+		var isTwosJacksAxe = string.Equals(
+			game.GameType?.Code,
+			PokerGameMetadataRegistry.TwosJacksManWithTheAxeCode,
+			StringComparison.OrdinalIgnoreCase);
 
         // Evaluate all hands for players who haven't folded
         // Use FiveCardHand as the base type since both DrawHand and TwosJacksManWithTheAxeDrawHand inherit from it

@@ -1660,7 +1660,9 @@
             .Cast<Card>()
             .ToList();
 
-            var result = OddsCalculator.CalculateDrawOdds(coreCards, deadCards);
+            var result = string.Equals(_gameTypeCode, "TWOSJACKSMANWITHTHEAXE", StringComparison.OrdinalIgnoreCase)
+                ? OddsCalculator.CalculateTwosJacksManWithTheAxeDrawOdds(coreCards, deadCards)
+                : OddsCalculator.CalculateDrawOdds(coreCards, deadCards);
 
             handOdds = ConvertToHandTypeOddsDtos(result);
         }
