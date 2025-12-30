@@ -2,6 +2,7 @@ using CardGames.Core.French.Cards;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Services;
+using CardGames.Poker.Evaluation;
 using CardGames.Poker.Games.TwosJacksManWithTheAxe;
 using CardGames.Poker.Hands.DrawHands;
 using CardGames.Poker.Hands.WildCards;
@@ -330,6 +331,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 			var isHighHandWinner = highHandWinners.Contains(kvp.Key);
 			var isWinner = isSevensWinner || isHighHandWinner;
 			usersByEmail.TryGetValue(kvp.Value.gamePlayer.Player.Email ?? string.Empty, out var user);
+			var handDescription = HandDescriptionFormatter.GetHandDescription(kvp.Value.hand);
 			return new ShowdownPlayerHand
 			{
 				PlayerName = kvp.Key,
@@ -340,6 +342,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 					Symbol = c.Symbol
 				}).ToList(),
 				HandType = kvp.Value.hand.Type.ToString(),
+				HandDescription = handDescription,
 				HandStrength = kvp.Value.hand.Strength,
 				IsWinner = isWinner,
 				AmountWon = payouts.GetValueOrDefault(kvp.Key, 0),

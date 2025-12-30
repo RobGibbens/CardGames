@@ -111,7 +111,7 @@
                 }
             }
             <div class="connection-indicator @(isConnected ? "connected" : "disconnected")"
-                title="@(isConnected ? "Connected" : "Disconnected")">
+                 title="@(isConnected ? "Connected" : "Disconnected")">
                 <span class="connection-dot"></span>
             </div>
         </div>
@@ -123,30 +123,30 @@
         <!-- Main Table Area -->
         <div class="table-play-area">
             <TableCanvas Seats="@seats" Pot="@pot" CurrentPhase="@_gameResponse?.CurrentPhase"
-                CurrentPhaseDescription="@_gameResponse?.CurrentPhaseDescription"
-                CurrentActorSeatIndex="@currentActorSeatIndex" DealerSeatIndex="@dealerSeatIndex"
-                OnSeatClick="HandleSeatClickAsync" DisableSeatSelectionForCurrentUser="@isSeated"
-                CurrentPlayerSeatIndex="@currentPlayerSeatIndex" />
+                         CurrentPhaseDescription="@_gameResponse?.CurrentPhaseDescription"
+                         CurrentActorSeatIndex="@currentActorSeatIndex" DealerSeatIndex="@dealerSeatIndex"
+                         OnSeatClick="HandleSeatClickAsync" DisableSeatSelectionForCurrentUser="@isSeated"
+                         CurrentPlayerSeatIndex="@currentPlayerSeatIndex" />
 
             <!-- Dashboard Panel (left side) -->
             @if (isSeated)
             {
                 <DashboardPanel>
                     <DashboardSection Title="Leaderboard" Icon="fa-solid fa-trophy"
-                        IsExpanded="@DashboardState.IsSectionExpanded("Leaderboard")"
-                        IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("Leaderboard", value))">
+                                      IsExpanded="@DashboardState.IsSectionExpanded("Leaderboard")"
+                                      IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("Leaderboard", value))">
                         <LeaderboardSection Players="@GetLeaderboardPlayers()" />
                     </DashboardSection>
 
                     <DashboardSection Title="Odds" Icon="fa-solid fa-chart-simple"
-                        IsExpanded="@DashboardState.IsSectionExpanded("Odds")"
-                        IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("Odds", value))">
+                                      IsExpanded="@DashboardState.IsSectionExpanded("Odds")"
+                                      IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("Odds", value))">
                         <OddsSection HandOdds="@handOdds" />
                     </DashboardSection>
 
                     <DashboardSection Title="Hand History" Icon="fa-solid fa-clock-rotate-left"
-                        IsExpanded="@DashboardState.IsSectionExpanded("HandHistory")"
-                        IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("HandHistory", value))">
+                                      IsExpanded="@DashboardState.IsSectionExpanded("HandHistory")"
+                                      IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("HandHistory", value))">
                         <HandHistorySection Entries="@_handHistoryEntries" />
                     </DashboardSection>
                 </DashboardPanel>
@@ -158,18 +158,18 @@
             _gameResponse.CurrentPhase != GamePhase.Ended.ToString())
         {
             <ActionPanel LegalActions="@legalActions" MinBet="@currentMinBet" MaxBet="@currentMaxBet"
-                CurrentBetToCall="@currentBetToCall" PlayerChips="@playerChips" TurnTimeRemaining="@turnTimeRemaining"
-                OnAction="HandlePlayerActionAsync" IsSubmitting="@isSubmittingAction" />
+                         CurrentBetToCall="@currentBetToCall" PlayerChips="@playerChips" TurnTimeRemaining="@turnTimeRemaining"
+                         OnAction="HandlePlayerActionAsync" IsSubmitting="@isSubmittingAction" />
         }
 
         <!-- Draw Panel (only shown when it's player's turn during draw phase) -->
         @if (isDrawPhase && (isPlayerDrawTurn || _forceShowDrawPanel))
         {
             <DrawPanel Cards="@currentPlayerDrawCards" SelectedIndices="@selectedDiscardIndices"
-                OnToggleSelection="ToggleDiscardSelectionAsync" OnDraw="HandleDrawActionAsync" IsSubmitting="@isSubmittingDraw"
-                IsAnimating="@isDrawAnimating" IsDiscarding="@isDiscardingCards" IsDrawing="@isDrawingNewCards"
-                CardsDrawn="@cardsDrawn" NewCardIndices="@newCardIndices"
-                HandDescription="@currentPlayerHandEvaluationDescription" MaxDiscards="@maxDiscards" />
+                       OnToggleSelection="ToggleDiscardSelectionAsync" OnDraw="HandleDrawActionAsync" IsSubmitting="@isSubmittingDraw"
+                       IsAnimating="@isDrawAnimating" IsDiscarding="@isDiscardingCards" IsDrawing="@isDrawingNewCards"
+                       CardsDrawn="@cardsDrawn" NewCardIndices="@newCardIndices"
+                       HandDescription="@currentPlayerHandEvaluationDescription" MaxDiscards="@maxDiscards" />
         }
 
         <!-- Draw Phase Waiting Indicator (shown to other players during draw phase) -->
@@ -264,7 +264,7 @@
         @if (IsShowdownPhase && _showShowdownOverlay && _showdownResult is not null)
         {
             <ShowdownOverlay ShowdownResult="@_showdownResult" ShowdownWon="@_showdownWon" ShowdownLost="@_showdownLost"
-                SecondsUntilNextHand="@_secondsUntilNextHand" OnClose="@CloseShowdownOverlay" />
+                             SecondsUntilNextHand="@_secondsUntilNextHand" OnClose="@CloseShowdownOverlay" />
         }
     }
 </main>
@@ -716,22 +716,22 @@
             .ToDictionary(r => r.PlayerName, r => r.AmountWon);
 
             var playerHands = showdown.PlayerResults.Select(r => new ShowdownPlayerHand(
-            amountWon: r.AmountWon,
-            cards: ConvertCardsToShowdownCards(r.Cards),
-            handStrength: null,
-            handType: r.HandRanking ?? "",
-            isWinner: r.IsWinner,
-            playerFirstName: r.PlayerFirstName,
-            playerName: r.PlayerName,
-            handDescription: r.HandDescription ?? ""
+                amountWon: r.AmountWon,
+                cards: ConvertCardsToShowdownCards(r.Cards),
+                handStrength: null,
+                handType: r.HandRanking ?? "",
+                isWinner: r.IsWinner,
+                playerFirstName: r.PlayerFirstName,
+                playerName: r.PlayerName,
+                handDescription: r.HandDescription ?? ""
             )).ToList();
 
             _showdownResult = new PerformShowdownSuccessful(
-            currentPhase: "Complete",
-            gameId: GameId,
-            payouts: payouts,
-            playerHands: playerHands,
-            wonByFold: false
+                currentPhase: "Complete",
+                gameId: GameId,
+                payouts: payouts,
+                playerHands: playerHands,
+                wonByFold: false
             );
 
             _showShowdownOverlay = true;
@@ -847,14 +847,14 @@
         try
         {
             _loggedInUserEmail ??= await GetLoggedInUserEmailAsync();
-            
+
             // Use the generic Games API to load game data - it returns the game type code
             var gameResponse = await GamesApiClient.GamesGetGameAsync(GameId);
             if (gameResponse is { IsSuccessStatusCode: true, Content: not null })
             {
                 var gamesResponse = gameResponse.Content;
                 _gameTypeCode = gamesResponse.GameTypeCode;
-                
+
                 // Convert to GetGameResponse format for compatibility with existing code
                 _gameResponse = new GetGameResponse(
                     ante: gamesResponse.Ante,
@@ -939,7 +939,7 @@
         {
             playersResponse = await FiveCardDrawApiClient.FiveCardDrawGetGamePlayersAsync(GameId);
         }
-        
+
         if (playersResponse is { IsSuccessStatusCode: true, Content: not null })
         {
             var players = playersResponse.Content.ToList();
@@ -1184,7 +1184,7 @@
         {
             showdownResponse = await FiveCardDrawApiClient.FiveCardDrawPerformShowdownAsync(GameId);
         }
-        
+
         if (showdownResponse is not { IsSuccessStatusCode: true, Content: not null })
         {
             return;
@@ -1278,7 +1278,7 @@
             {
                 response = await FiveCardDrawApiClient.FiveCardDrawProcessBettingActionAsync(GameId, request);
             }
-            
+
             if (!response.IsSuccessStatusCode)
             {
                 return;

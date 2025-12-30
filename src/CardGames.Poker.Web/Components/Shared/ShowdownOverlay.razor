@@ -1,6 +1,7 @@
 @using CardGames.Poker.Api.Contracts
 @using CardGames.Core.French.Cards
 @using CardGames.Poker.Evaluation
+@using CardGames.Poker.Hands
 @using CardGames.Poker.Hands.DrawHands
 
 @using System.Globalization
@@ -360,8 +361,17 @@
             return HumanizeHandType(hand.HandType);
         }
 
-        var drawHand = new DrawHand(coreCards);
-        return HandDescriptionFormatter.GetHandDescription(drawHand);
+        // If the server did not provide a description, infer the best formatter.
+        // Twos, Jacks, Man with the Axe has wild cards (all 2s, all Jacks, and Kd).
+        var inferredIsTwosJacks = hand.Cards.Any(c =>
+            c.Symbol is CardSymbol.Deuce or CardSymbol.Jack
+            || (c.Symbol == CardSymbol.King && c.Suit == CardSuit.Diamonds));
+
+        HandBase evaluatedHand = inferredIsTwosJacks
+            ? new TwosJacksManWithTheAxeDrawHand(coreCards)
+            : new DrawHand(coreCards);
+
+        return HandDescriptionFormatter.GetHandDescription(evaluatedHand);
     }
 
     private static Suit MapSuit(CardSuit suit) => suit switch

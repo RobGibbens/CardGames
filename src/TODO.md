@@ -19,6 +19,10 @@
 - [x] I don't like how small the cards are and what they look like
 - [x] Showdown overlay should show new card images
 - [x] Draw Panel should show new card images
+- [ ] Showdown overlay should handle ties
+- [ ] Showdown overlay is not showing payouts correctly
+- [ ] Hand history should auto size columns and allow resizing columns
+- [ ] When the Draw Overlay is showing, the cards are not opaque
 - [ ] Leaderboard should show first names
 - [ ] The bottom of the table goes off the bottom of the screen
 - [ ] Add a chip stack graph in the dashboard

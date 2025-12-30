@@ -7,6 +7,7 @@ using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.ActiveGames.v1.Queries.GetActiveGames;
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Hands.DrawHands;
+using CardGames.Poker.Hands;
 using CardGames.Poker.Hands.WildCards;
 using Microsoft.EntityFrameworkCore;
 using Entities = CardGames.Poker.Api.Data.Entities;
@@ -163,12 +164,33 @@ public sealed class TableStateBuilder : ITableStateBuilder
                 .Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
                 .ToListAsync(cancellationToken);
 
+            // Some variants persist dealt draw cards as `GameCards` rather than `GamePlayer.Cards`.
+            // If so, treat them as the player's evaluation cards when they appear to be the only source.
+            if (playerCards.Count == 0 && communityCards.Count >= 5)
+            {
+                playerCards = communityCards;
+                communityCards = [];
+            }
+
             var allEvaluationCards = playerCards.Concat(communityCards).ToList();
 
-            // Five Card Draw (exactly 5 known cards).
-            if (playerCards.Count == 5 && communityCards.Count == 0)
+            // Draw games (no community cards). Provide a description once 5 cards are available.
+            // (During seating / pre-deal phases there may be 0-4 cards and we keep the description null.)
+            if (communityCards.Count == 0 && playerCards.Count >= 5)
             {
-                var drawHand = new DrawHand(playerCards);
+                // Twos, Jacks, Man with the Axe uses wild cards.
+                // The base `DrawHand` evaluator ignores wild substitutions,
+                // so we must use the variant-specific hand type here.
+                HandBase drawHand;
+                if (string.Equals(game.GameType?.Code, "TWOSJACKSMANWITHTHEAXE", StringComparison.OrdinalIgnoreCase))
+                {
+                    drawHand = new CardGames.Poker.Hands.DrawHands.TwosJacksManWithTheAxeDrawHand(playerCards);
+                }
+                else
+                {
+                    drawHand = new DrawHand(playerCards);
+                }
+
                 handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(drawHand);
             }
             // Community-card games (need at least a 3-card board and 5+ total cards).

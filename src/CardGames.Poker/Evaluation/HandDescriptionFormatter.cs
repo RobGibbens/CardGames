@@ -17,7 +17,7 @@ public static class HandDescriptionFormatter
 			throw new ArgumentNullException(nameof(hand));
 		}
 
-		var cards = hand.Cards.ToList();
+		var cards = GetCardsForDescription(hand);
 
 		return hand.Type switch
 		{
@@ -33,6 +33,16 @@ public static class HandDescriptionFormatter
 			HandType.FiveOfAKind => FormatFiveOfAKind(cards),
 			_ => "Incomplete Hand"
 		};
+	}
+
+	private static List<Card> GetCardsForDescription(HandBase hand)
+	{
+		if (hand is Hands.DrawHands.TwosJacksManWithTheAxeDrawHand wildHand)
+		{
+			return wildHand.EvaluatedBestCards.ToList();
+		}
+
+		return hand.Cards.ToList();
 	}
 
 	private static string FormatHighCard(IReadOnlyCollection<Card> cards)
