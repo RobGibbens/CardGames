@@ -70,6 +70,65 @@ namespace CardGames.Poker.Api.Clients
         Task<IApiResponse<ICollection<GetAvailablePokerGamesResponse>>> GetAvailablePokerGamesAsync(CancellationToken cancellationToken = default);
     }
 
+    /// <summary>GetGame</summary>
+    [System.CodeDom.Compiler.GeneratedCode("Refitter", "1.7.0.0")]
+    public partial interface IGamesApi
+    {
+        /// <summary>GetGame</summary>
+        /// <remarks>Retrieve a specific game by its identifier. Works for any game type.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Get("/api/v1/games/{gameId}")]
+        Task<IApiResponse<GetGameResponse>> GamesGetGameAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
+        /// <summary>GetGameRules</summary>
+        /// <remarks>Retrieve game rules metadata for a specific game type by its code.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Get("/api/v1/games/rules/{gameTypeCode}")]
+        Task<IApiResponse<GetGameRulesResponse>> GamesGetGameRulesAsync(string gameTypeCode, CancellationToken cancellationToken = default);
+    }
+
     /// <summary>CreateGame</summary>
     [System.CodeDom.Compiler.GeneratedCode("Refitter", "1.7.0.0")]
     public partial interface IFiveCardDrawApi
@@ -1336,6 +1395,64 @@ namespace CardGames.Poker.Api.Contracts
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record BettingConfig
+    {
+        [JsonConstructor]
+        public BettingConfig(int @bettingRounds, bool @hasAntes, bool? @hasBlinds, string @structure)
+        {
+            this.HasAntes = @hasAntes;
+            this.HasBlinds = @hasBlinds;
+            this.BettingRounds = @bettingRounds;
+            this.Structure = @structure;
+        }
+
+        [JsonPropertyName("hasAntes")]
+        public bool HasAntes { get; init; }
+
+        [JsonPropertyName("hasBlinds")]
+        public bool? HasBlinds { get; init; }
+
+        [JsonPropertyName("bettingRounds")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int BettingRounds { get; init; }
+
+        [JsonPropertyName("structure")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Structure { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record CardDealingConfig
+    {
+        [JsonConstructor]
+        public CardDealingConfig(ICollection<DealingRound> @dealingRounds, bool? @hasCommunityCards, int @initialCards, string @initialVisibility)
+        {
+            this.InitialCards = @initialCards;
+            this.InitialVisibility = @initialVisibility;
+            this.HasCommunityCards = @hasCommunityCards;
+            this.DealingRounds = @dealingRounds;
+        }
+
+        [JsonPropertyName("initialCards")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int InitialCards { get; init; }
+
+        [JsonPropertyName("initialVisibility")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string InitialVisibility { get; init; }
+
+        [JsonPropertyName("hasCommunityCards")]
+        public bool? HasCommunityCards { get; init; }
+
+        [JsonPropertyName("dealingRounds")]
+        public ICollection<DealingRound> DealingRounds { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial record CardInfo
     {
         [JsonConstructor]
@@ -1624,6 +1741,32 @@ namespace CardGames.Poker.Api.Contracts
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record DealingRound
+    {
+        [JsonConstructor]
+        public DealingRound(int @cardCount, string @target, string @visibility)
+        {
+            this.CardCount = @cardCount;
+            this.Visibility = @visibility;
+            this.Target = @target;
+        }
+
+        [JsonPropertyName("cardCount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int CardCount { get; init; }
+
+        [JsonPropertyName("visibility")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Visibility { get; init; }
+
+        [JsonPropertyName("target")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Target { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial record DealtCard
     {
         [JsonConstructor]
@@ -1643,6 +1786,34 @@ namespace CardGames.Poker.Api.Contracts
         [JsonPropertyName("dealOrder")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? DealOrder { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record DrawingConfig
+    {
+        [JsonConstructor]
+        public DrawingConfig(bool @allowsDrawing, int? @drawingRounds, int? @maxDiscards, string @specialRules)
+        {
+            this.AllowsDrawing = @allowsDrawing;
+            this.MaxDiscards = @maxDiscards;
+            this.SpecialRules = @specialRules;
+            this.DrawingRounds = @drawingRounds;
+        }
+
+        [JsonPropertyName("allowsDrawing")]
+        public bool AllowsDrawing { get; init; }
+
+        [JsonPropertyName("maxDiscards")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? MaxDiscards { get; init; }
+
+        [JsonPropertyName("specialRules")]
+        public string SpecialRules { get; init; }
+
+        [JsonPropertyName("drawingRounds")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? DrawingRounds { get; init; }
 
     }
 
@@ -2310,6 +2481,71 @@ namespace CardGames.Poker.Api.Contracts
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record GetGameRulesResponse
+    {
+        [JsonConstructor]
+        public GetGameRulesResponse(BettingConfig @betting, CardDealingConfig @cardDealing, string @description, DrawingConfig @drawing, string @gameTypeCode, string @gameTypeName, int @maxPlayers, int @minPlayers, ICollection<PhaseDescriptor> @phases, ShowdownConfig @showdown, object @specialRules)
+        {
+            this.GameTypeCode = @gameTypeCode;
+            this.GameTypeName = @gameTypeName;
+            this.Description = @description;
+            this.MinPlayers = @minPlayers;
+            this.MaxPlayers = @maxPlayers;
+            this.Phases = @phases;
+            this.CardDealing = @cardDealing;
+            this.Betting = @betting;
+            this.Drawing = @drawing;
+            this.Showdown = @showdown;
+            this.SpecialRules = @specialRules;
+        }
+
+        [JsonPropertyName("gameTypeCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string GameTypeCode { get; init; }
+
+        [JsonPropertyName("gameTypeName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string GameTypeName { get; init; }
+
+        [JsonPropertyName("description")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Description { get; init; }
+
+        [JsonPropertyName("minPlayers")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int MinPlayers { get; init; }
+
+        [JsonPropertyName("maxPlayers")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int MaxPlayers { get; init; }
+
+        [JsonPropertyName("phases")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public ICollection<PhaseDescriptor> Phases { get; init; }
+
+        [JsonPropertyName("cardDealing")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public CardDealingConfig CardDealing { get; init; }
+
+        [JsonPropertyName("betting")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public BettingConfig Betting { get; init; }
+
+        [JsonPropertyName("drawing")]
+        public DrawingConfig Drawing { get; init; }
+
+        [JsonPropertyName("showdown")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public ShowdownConfig Showdown { get; init; }
+
+        [JsonPropertyName("specialRules")]
+        public object SpecialRules { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial record GetGamesResponse
     {
         [JsonConstructor]
@@ -2633,13 +2869,18 @@ namespace CardGames.Poker.Api.Contracts
     public partial record PerformShowdownSuccessful
     {
         [JsonConstructor]
-        public PerformShowdownSuccessful(string @currentPhase, System.Guid? @gameId, IDictionary<string, int> @payouts, ICollection<ShowdownPlayerHand> @playerHands, bool? @wonByFold)
+        public PerformShowdownSuccessful(string @currentPhase, System.Guid? @gameId, IDictionary<string, int> @highHandPayouts, ICollection<string> @highHandWinners, IDictionary<string, int> @payouts, ICollection<ShowdownPlayerHand> @playerHands, IDictionary<string, int> @sevensPayouts, bool? @sevensPoolRolledOver, ICollection<string> @sevensWinners, bool? @wonByFold)
         {
             this.GameId = @gameId;
             this.WonByFold = @wonByFold;
             this.CurrentPhase = @currentPhase;
             this.Payouts = @payouts;
             this.PlayerHands = @playerHands;
+            this.SevensWinners = @sevensWinners;
+            this.HighHandWinners = @highHandWinners;
+            this.SevensPayouts = @sevensPayouts;
+            this.HighHandPayouts = @highHandPayouts;
+            this.SevensPoolRolledOver = @sevensPoolRolledOver;
         }
 
         [JsonPropertyName("gameId")]
@@ -2659,6 +2900,63 @@ namespace CardGames.Poker.Api.Contracts
         [JsonPropertyName("playerHands")]
         [System.ComponentModel.DataAnnotations.Required]
         public ICollection<ShowdownPlayerHand> PlayerHands { get; init; }
+
+        [JsonPropertyName("sevensWinners")]
+        public ICollection<string> SevensWinners { get; init; }
+
+        [JsonPropertyName("highHandWinners")]
+        public ICollection<string> HighHandWinners { get; init; }
+
+        [JsonPropertyName("sevensPayouts")]
+        public IDictionary<string, int> SevensPayouts { get; init; }
+
+        [JsonPropertyName("highHandPayouts")]
+        public IDictionary<string, int> HighHandPayouts { get; init; }
+
+        [JsonPropertyName("sevensPoolRolledOver")]
+        public bool? SevensPoolRolledOver { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record PhaseDescriptor
+    {
+        [JsonConstructor]
+        public PhaseDescriptor(ICollection<string> @availableActions, string @category, string @description, bool? @isTerminal, string @name, string @phaseId, bool @requiresPlayerAction)
+        {
+            this.PhaseId = @phaseId;
+            this.Name = @name;
+            this.Description = @description;
+            this.Category = @category;
+            this.RequiresPlayerAction = @requiresPlayerAction;
+            this.AvailableActions = @availableActions;
+            this.IsTerminal = @isTerminal;
+        }
+
+        [JsonPropertyName("phaseId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string PhaseId { get; init; }
+
+        [JsonPropertyName("name")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Name { get; init; }
+
+        [JsonPropertyName("description")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Description { get; init; }
+
+        [JsonPropertyName("category")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Category { get; init; }
+
+        [JsonPropertyName("requiresPlayerAction")]
+        public bool RequiresPlayerAction { get; init; }
+
+        [JsonPropertyName("availableActions")]
+        public ICollection<string> AvailableActions { get; init; }
+
+        [JsonPropertyName("isTerminal")]
+        public bool? IsTerminal { get; init; }
 
     }
 
@@ -2885,10 +3183,37 @@ namespace CardGames.Poker.Api.Contracts
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record ShowdownConfig
+    {
+        [JsonConstructor]
+        public ShowdownConfig(string @handRanking, bool? @hasSpecialSplitRules, bool? @isHighLow, string @specialSplitDescription)
+        {
+            this.HandRanking = @handRanking;
+            this.IsHighLow = @isHighLow;
+            this.HasSpecialSplitRules = @hasSpecialSplitRules;
+            this.SpecialSplitDescription = @specialSplitDescription;
+        }
+
+        [JsonPropertyName("handRanking")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string HandRanking { get; init; }
+
+        [JsonPropertyName("isHighLow")]
+        public bool? IsHighLow { get; init; }
+
+        [JsonPropertyName("hasSpecialSplitRules")]
+        public bool? HasSpecialSplitRules { get; init; }
+
+        [JsonPropertyName("specialSplitDescription")]
+        public string SpecialSplitDescription { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial record ShowdownPlayerHand
     {
         [JsonConstructor]
-        public ShowdownPlayerHand(int? @amountWon, ICollection<ShowdownCard> @cards, string @handDescription, long? @handStrength, string @handType, bool? @isWinner, string @playerFirstName, string @playerName)
+        public ShowdownPlayerHand(int? @amountWon, ICollection<ShowdownCard> @cards, string @handDescription, long? @handStrength, string @handType, int? @highHandAmountWon, bool? @isHighHandWinner, bool? @isSevensWinner, bool? @isWinner, string @playerFirstName, string @playerName, int? @sevensAmountWon, ICollection<int> @wildCardIndexes)
         {
             this.PlayerName = @playerName;
             this.PlayerFirstName = @playerFirstName;
@@ -2897,7 +3222,12 @@ namespace CardGames.Poker.Api.Contracts
             this.HandDescription = @handDescription;
             this.HandStrength = @handStrength;
             this.IsWinner = @isWinner;
+            this.IsSevensWinner = @isSevensWinner;
+            this.IsHighHandWinner = @isHighHandWinner;
             this.AmountWon = @amountWon;
+            this.SevensAmountWon = @sevensAmountWon;
+            this.HighHandAmountWon = @highHandAmountWon;
+            this.WildCardIndexes = @wildCardIndexes;
         }
 
         [JsonPropertyName("playerName")]
@@ -2924,9 +3254,26 @@ namespace CardGames.Poker.Api.Contracts
         [JsonPropertyName("isWinner")]
         public bool? IsWinner { get; init; }
 
+        [JsonPropertyName("isSevensWinner")]
+        public bool? IsSevensWinner { get; init; }
+
+        [JsonPropertyName("isHighHandWinner")]
+        public bool? IsHighHandWinner { get; init; }
+
         [JsonPropertyName("amountWon")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? AmountWon { get; init; }
+
+        [JsonPropertyName("sevensAmountWon")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? SevensAmountWon { get; init; }
+
+        [JsonPropertyName("highHandAmountWon")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? HighHandAmountWon { get; init; }
+
+        [JsonPropertyName("wildCardIndexes")]
+        public ICollection<int> WildCardIndexes { get; init; }
 
     }
 
@@ -3165,6 +3512,23 @@ namespace CardGames.Poker.Api.Clients
                 });
 
             builder?.Invoke(clientBuilderIAvailablePokerGamesApi);
+
+            var clientBuilderIGamesApi = services
+                .AddRefitClient<IGamesApi>(settings)
+                .ConfigureHttpClient(c => c.BaseAddress = baseUrl);
+
+            clientBuilderIGamesApi
+                .AddStandardResilienceHandler(config =>
+                {
+                    config.Retry = new HttpRetryStrategyOptions
+                    {
+                        UseJitter = true,
+                        MaxRetryAttempts = 3,
+                        Delay = TimeSpan.FromSeconds(0.5)
+                    };
+                });
+
+            builder?.Invoke(clientBuilderIGamesApi);
 
             var clientBuilderIFiveCardDrawApi = services
                 .AddRefitClient<IFiveCardDrawApi>(settings)
