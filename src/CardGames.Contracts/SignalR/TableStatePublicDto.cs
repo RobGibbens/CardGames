@@ -229,6 +229,24 @@ public sealed record ShowdownPublicDto
 	/// Whether the showdown is complete.
 	/// </summary>
 	public bool IsComplete { get; init; }
+
+	/// <summary>
+	/// Player names who won the sevens pool (had a natural pair of 7s).
+	/// Only populated for games with the sevens half-pot rule.
+	/// </summary>
+	public IReadOnlyList<string>? SevensWinners { get; init; }
+
+	/// <summary>
+	/// Player names who won the high hand pool.
+	/// Only populated for games with the sevens half-pot rule.
+	/// </summary>
+	public IReadOnlyList<string>? HighHandWinners { get; init; }
+
+	/// <summary>
+	/// Whether the sevens pool was rolled into the high hand pool
+	/// because no players had a natural pair of 7s.
+	/// </summary>
+	public bool SevensPoolRolledOver { get; init; }
 }
 
 /// <summary>
@@ -263,9 +281,19 @@ public sealed record ShowdownPlayerResultDto
 	
 
 	/// <summary>
-	/// The amount won by this player.
+	/// The amount won by this player (total of sevens + high hand pools).
 	/// </summary>
 	public int AmountWon { get; init; }
+
+	/// <summary>
+	/// The amount won from the sevens pool (for games with sevens half-pot rule).
+	/// </summary>
+	public int SevensAmountWon { get; init; }
+
+	/// <summary>
+	/// The amount won from the high hand pool (for games with sevens half-pot rule).
+	/// </summary>
+	public int HighHandAmountWon { get; init; }
 
 	/// <summary>
 	/// Whether this player won (or split) the pot.
@@ -273,7 +301,23 @@ public sealed record ShowdownPlayerResultDto
 	public bool IsWinner { get; init; }
 
 	/// <summary>
+	/// Whether this player won the sevens pool (had a natural pair of 7s).
+	/// </summary>
+	public bool IsSevensWinner { get; init; }
+
+	/// <summary>
+	/// Whether this player won the high hand pool.
+	/// </summary>
+	public bool IsHighHandWinner { get; init; }
+
+	/// <summary>
 	/// The player's cards (face-up for showdown display).
 	/// </summary>
 	public IReadOnlyList<CardPublicDto> Cards { get; init; } = [];
+
+	/// <summary>
+	/// The zero-based indices of cards in the hand that are wild.
+	/// Used by the UI to display wild card indicators.
+	/// </summary>
+	public IReadOnlyList<int>? WildCardIndexes { get; init; }
 }

@@ -5,7 +5,9 @@ using CardGames.Poker.Evaluation;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.ActiveGames.v1.Queries.GetActiveGames;
+using CardGames.Poker.Api.Games;
 using CardGames.Poker.Hands.DrawHands;
+using CardGames.Poker.Hands.WildCards;
 using Microsoft.EntityFrameworkCore;
 using Entities = CardGames.Poker.Api.Data.Entities;
 
@@ -391,8 +393,11 @@ public sealed class TableStateBuilder : ITableStateBuilder
             return null;
         }
 
+        var isTwosJacksAxe = game.GameType?.Code == PokerGameMetadataRegistry.TwosJacksManWithTheAxeCode;
+
         // Evaluate all hands for players who haven't folded
-        var playerHandEvaluations = new Dictionary<string, (DrawHand hand, GamePlayer gamePlayer, List<GameCard> cards)>();
+        // Use FiveCardHand as the base type since both DrawHand and TwosJacksManWithTheAxeDrawHand inherit from it
+        var playerHandEvaluations = new Dictionary<string, (FiveCardHand hand, TwosJacksManWithTheAxeDrawHand? wildHand, GamePlayer gamePlayer, List<GameCard> cards, List<int> wildIndexes)>();
 
         foreach (var gp in gamePlayers.Where(p => !p.HasFolded))
         {
@@ -404,39 +409,78 @@ public sealed class TableStateBuilder : ITableStateBuilder
             if (cards.Count >= 5)
             {
                 var coreCards = cards.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol)).ToList();
-                var drawHand = new DrawHand(coreCards);
-                playerHandEvaluations[gp.Player.Name] = (drawHand, gp, cards);
+                
+                if (isTwosJacksAxe)
+                {
+                    var wildHand = new TwosJacksManWithTheAxeDrawHand(coreCards);
+                    // Find wild card indexes
+                    var wildIndexes = new List<int>();
+                    for (int i = 0; i < coreCards.Count; i++)
+                    {
+                        if (TwosJacksManWithTheAxeWildCardRules.IsWild(coreCards[i]))
+                        {
+                            wildIndexes.Add(i);
+                        }
+                    }
+                    playerHandEvaluations[gp.Player.Name] = (wildHand, wildHand, gp, cards, wildIndexes);
+                }
+                else
+                {
+                    var drawHand = new DrawHand(coreCards);
+                    playerHandEvaluations[gp.Player.Name] = (drawHand, null, gp, cards, []);
+                }
             }
         }
 
-        // Determine winners (highest hand strength)
-        var winners = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        // Determine winners
+        var highHandWinners = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var sevensWinners = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var sevensPoolRolledOver = false;
+
         if (playerHandEvaluations.Count > 0)
         {
+            // Determine high hand winners (highest hand strength)
             var maxStrength = playerHandEvaluations.Values.Max(h => h.hand.Strength);
             foreach (var kvp in playerHandEvaluations.Where(k => k.Value.hand.Strength == maxStrength))
             {
-                winners.Add(kvp.Key);
+                highHandWinners.Add(kvp.Key);
+            }
+
+            // For Twos/Jacks/Axe, also determine sevens winners
+            if (isTwosJacksAxe)
+            {
+                foreach (var kvp in playerHandEvaluations.Where(k => k.Value.wildHand?.HasNaturalPairOfSevens() == true))
+                {
+                    sevensWinners.Add(kvp.Key);
+                }
+                sevensPoolRolledOver = sevensWinners.Count == 0;
             }
         }
         else if (gamePlayers.Count(gp => !gp.HasFolded) == 1)
         {
             // Only one player remaining (won by fold)
             var winner = gamePlayers.First(gp => !gp.HasFolded);
-            winners.Add(winner.Player.Name);
+            highHandWinners.Add(winner.Player.Name);
         }
+
+        // Combined winners for IsWinner flag
+        var allWinners = highHandWinners.Union(sevensWinners).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         // Build player results
         var playerResults = gamePlayers
             .Where(gp => !gp.HasFolded)
             .Select(gp =>
             {
-                var isWinner = winners.Contains(gp.Player.Name);
+                var isWinner = allWinners.Contains(gp.Player.Name);
+                var isSevensWinner = sevensWinners.Contains(gp.Player.Name);
+                var isHighHandWinner = highHandWinners.Contains(gp.Player.Name);
                 string? handRanking = null;
+                List<int>? wildIndexes = null;
 
                 if (playerHandEvaluations.TryGetValue(gp.Player.Name, out var eval))
                 {
                     handRanking = eval.hand.Type.ToString();
+                    wildIndexes = eval.wildIndexes.Count > 0 ? eval.wildIndexes : null;
                 }
 
                 userProfilesByEmail.TryGetValue(gp.Player.Email ?? string.Empty, out var userProfile);
@@ -452,6 +496,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
                         : null,
 					AmountWon = 0, // Actual payout calculated separately
                     IsWinner = isWinner,
+                    IsSevensWinner = isSevensWinner,
+                    IsHighHandWinner = isHighHandWinner,
+                    WildCardIndexes = wildIndexes,
                     Cards = gp.Cards
                         .Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber)
                         .OrderBy(c => c.DealOrder)
@@ -471,7 +518,10 @@ public sealed class TableStateBuilder : ITableStateBuilder
         return new ShowdownPublicDto
         {
             PlayerResults = playerResults,
-            IsComplete = game.CurrentPhase == "Complete"
+            IsComplete = game.CurrentPhase == "Complete",
+            SevensWinners = isTwosJacksAxe ? sevensWinners.ToList() : null,
+            HighHandWinners = isTwosJacksAxe ? highHandWinners.ToList() : null,
+            SevensPoolRolledOver = sevensPoolRolledOver
         };
     }
 

@@ -539,6 +539,7 @@ public class TwosJacksManWithTheAxeGame : IPokerGame
     /// <item><description><b>Single winner:</b> The player with the highest-ranking hand wins the entire pot</description></item>
     /// <item><description><b>Split pot:</b> If multiple players tie, the pot is divided equally among winners</description></item>
     /// <item><description><b>Side pots:</b> When players are all-in for different amounts, side pots are calculated and awarded separately</description></item>
+    /// <item><description><b>Sevens half-pot:</b> Players with a natural pair of 7s split half the pot; best hand takes the other half</description></item>
     /// </list>
     /// After the showdown, the game phase becomes <see cref="TwosJacksManWithTheAxePhase.Complete"/> and the dealer button moves.
     /// </remarks>
@@ -555,7 +556,7 @@ public class TwosJacksManWithTheAxeGame : IPokerGame
 
         var playersInHand = _gamePlayers.Where(gp => !gp.Player.HasFolded).ToList();
 
-        // If only one player remains, they win by default
+        // If only one player remains, they win by default (no 7s split when won by fold)
         if (playersInHand.Count == 1)
         {
             var winner = playersInHand[0];
@@ -569,33 +570,69 @@ public class TwosJacksManWithTheAxeGame : IPokerGame
             {
                 Success = true,
                 Payouts = new Dictionary<string, int> { { winner.Player.Name, totalPot } },
-                PlayerHands = new Dictionary<string, (DrawHand hand, IReadOnlyCollection<Card> cards)>
+                PlayerHands = new Dictionary<string, (TwosJacksManWithTheAxeDrawHand hand, IReadOnlyCollection<Card> cards)>
                 {
                     { winner.Player.Name, (null, winner.Hand) }
                 },
-                WonByFold = true
+                WonByFold = true,
+                HighHandWinners = [winner.Player.Name],
+                HighHandPayouts = new Dictionary<string, int> { { winner.Player.Name, totalPot } }
             };
         }
 
-        // Evaluate hands
+        // Evaluate hands using wild-aware hand type
         var playerHands = playersInHand.ToDictionary(
             gp => gp.Player.Name,
-            gp => (hand: new DrawHand(gp.Hand), cards: (IReadOnlyCollection<Card>)gp.Hand)
+            gp => (hand: new TwosJacksManWithTheAxeDrawHand(gp.Hand), cards: (IReadOnlyCollection<Card>)gp.Hand)
         );
 
-        // Award pots
-        var payouts = _potManager.AwardPots(eligiblePlayers =>
-        {
-            var eligibleHands = playerHands
-                .Where(kvp => eligiblePlayers.Contains(kvp.Key))
-                .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.hand);
+        // Build wild cards dictionary for UI display
+        var playerWildCards = playersInHand.ToDictionary(
+            gp => gp.Player.Name,
+            gp => playerHands[gp.Player.Name].hand.WildCards
+        );
 
-            var maxStrength = eligibleHands.Values.Max(h => h.Strength);
-            return eligibleHands.Where(kvp => kvp.Value.Strength == maxStrength).Select(kvp => kvp.Key);
-        });
+        // Build ordered player list for deterministic remainder distribution (dealer-left first)
+        var orderedPlayers = new List<string>();
+        for (int i = 1; i <= _gamePlayers.Count; i++)
+        {
+            var idx = (_dealerPosition + i) % _gamePlayers.Count;
+            var player = _gamePlayers[idx];
+            if (!player.Player.HasFolded)
+            {
+                orderedPlayers.Add(player.Player.Name);
+            }
+        }
+
+        // Use split pot logic for 7s half-pot rule
+        var splitResult = _potManager.AwardPotsSplit(
+            // Sevens winners: players with a natural pair of 7s
+            eligiblePlayers =>
+            {
+                return playerHands
+                    .Where(kvp => eligiblePlayers.Contains(kvp.Key) && kvp.Value.hand.HasNaturalPairOfSevens())
+                    .Select(kvp => kvp.Key);
+            },
+            // High hand winners: players with the best hand
+            eligiblePlayers =>
+            {
+                var eligibleHands = playerHands
+                    .Where(kvp => eligiblePlayers.Contains(kvp.Key))
+                    .ToDictionary(kvp => kvp.Key, kvp => kvp.Value.hand);
+
+                if (eligibleHands.Count == 0)
+                {
+                    return Enumerable.Empty<string>();
+                }
+
+                var maxStrength = eligibleHands.Values.Max(h => h.Strength);
+                return eligibleHands.Where(kvp => kvp.Value.Strength == maxStrength).Select(kvp => kvp.Key);
+            },
+            orderedPlayers
+        );
 
         // Add winnings to player stacks
-        foreach (var payout in payouts)
+        foreach (var payout in splitResult.TotalPayouts)
         {
             var gamePlayer = _gamePlayers.First(gp => gp.Player.Name == payout.Key);
             gamePlayer.Player.AddChips(payout.Value);
@@ -607,8 +644,14 @@ public class TwosJacksManWithTheAxeGame : IPokerGame
         return new ShowdownResult
         {
             Success = true,
-            Payouts = payouts,
-            PlayerHands = playerHands
+            Payouts = splitResult.TotalPayouts,
+            PlayerHands = playerHands,
+            SevensWinners = splitResult.SevensWinners,
+            HighHandWinners = splitResult.HighHandWinners,
+            SevensPayouts = splitResult.SevensPayouts,
+            HighHandPayouts = splitResult.HighHandPayouts,
+            SevensPoolRolledOver = splitResult.SevensPoolRolledOver,
+            PlayerWildCards = playerWildCards
         };
     }
 
