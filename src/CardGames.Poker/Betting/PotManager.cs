@@ -299,7 +299,7 @@ public class PotManager
                 continue;
             }
 
-            // Split pot into two halves (hand pool gets the odd chip)
+            // Split pot into two halves (high hand pool gets the odd chip)
             var sevensPool = pot.Amount / 2;
             var handPool = pot.Amount - sevensPool;
 

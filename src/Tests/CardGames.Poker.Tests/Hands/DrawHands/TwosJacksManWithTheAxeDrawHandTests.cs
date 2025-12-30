@@ -83,7 +83,7 @@ public class TwosJacksManWithTheAxeDrawHandTests
     [Fact]
     public void Mixed_Wild_Cards_Create_Strong_Hand()
     {
-        // 2 + Jack + Kd = 3 wilds + Ace + King = at least Quads, but may be higher (wild card evaluator optimizes)
+        // Deuce + Jack + King of Diamonds = 3 wilds + Ace + King = at least Quads
         var cards = "2h Jd Kd Ah Kh".ToCards();
         var hand = new TwosJacksManWithTheAxeDrawHand(cards);
 
