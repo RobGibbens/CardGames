@@ -15,7 +15,7 @@ public sealed class GetGameRulesQueryHandler : IRequestHandler<GetGameRulesQuery
             return Task.FromResult<GetGameRulesResponse?>(null);
         }
 
-        var dto = GameRulesMapper.ToDto(rules);
-        return Task.FromResult<GetGameRulesResponse?>(new GetGameRulesResponse(dto));
+        var response = GameRulesMapper.ToResponse(rules);
+        return Task.FromResult<GetGameRulesResponse?>(response);
     }
 }

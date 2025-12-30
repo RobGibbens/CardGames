@@ -1,37 +1,42 @@
-using CardGames.Contracts.GameRules;
+using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetGameRules;
 using CardGames.Poker.Games.GameFlow;
+using ResponseCardDealingConfig = CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetGameRules.CardDealingConfig;
+using ResponseDealingRound = CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetGameRules.DealingRound;
+using ResponseBettingConfig = CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetGameRules.BettingConfig;
+using ResponseDrawingConfig = CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetGameRules.DrawingConfig;
+using ResponseShowdownConfig = CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetGameRules.ShowdownConfig;
 
 namespace CardGames.Poker.Api.Games;
 
 /// <summary>
-/// Maps game rules domain objects to DTOs.
+/// Maps game rules domain objects to response objects.
 /// </summary>
 public static class GameRulesMapper
 {
     /// <summary>
-    /// Converts a GameRules domain object to a DTO.
+    /// Converts a GameRules domain object to a GetGameRulesResponse.
     /// </summary>
-    public static GameRulesDto ToDto(GameRules rules)
+    public static GetGameRulesResponse ToResponse(GameRules rules)
     {
-        return new GameRulesDto
+        return new GetGameRulesResponse
         {
             GameTypeCode = rules.GameTypeCode,
             GameTypeName = rules.GameTypeName,
             Description = rules.Description,
             MinPlayers = rules.MinPlayers,
             MaxPlayers = rules.MaxPlayers,
-            Phases = rules.Phases.Select(ToDto).ToList(),
-            CardDealing = ToDto(rules.CardDealing),
-            Betting = ToDto(rules.Betting),
-            Drawing = rules.Drawing != null ? ToDto(rules.Drawing) : null,
-            Showdown = ToDto(rules.Showdown),
+            Phases = rules.Phases.Select(ToPhaseDescriptor).ToList(),
+            CardDealing = ToCardDealingConfig(rules.CardDealing),
+            Betting = ToBettingConfig(rules.Betting),
+            Drawing = rules.Drawing != null ? ToDrawingConfig(rules.Drawing) : null,
+            Showdown = ToShowdownConfig(rules.Showdown),
             SpecialRules = rules.SpecialRules
         };
     }
 
-    private static PhaseDescriptorDto ToDto(GamePhaseDescriptor phase)
+    private static PhaseDescriptor ToPhaseDescriptor(GamePhaseDescriptor phase)
     {
-        return new PhaseDescriptorDto
+        return new PhaseDescriptor
         {
             PhaseId = phase.PhaseId,
             Name = phase.Name,
@@ -43,20 +48,20 @@ public static class GameRulesMapper
         };
     }
 
-    private static CardDealingConfigDto ToDto(CardDealingConfig config)
+    private static ResponseCardDealingConfig ToCardDealingConfig(CardGames.Poker.Games.GameFlow.CardDealingConfig config)
     {
-        return new CardDealingConfigDto
+        return new ResponseCardDealingConfig
         {
             InitialCards = config.InitialCards,
             InitialVisibility = config.InitialVisibility.ToString(),
             HasCommunityCards = config.HasCommunityCards,
-            DealingRounds = config.DealingRounds?.Select(ToDto).ToList()
+            DealingRounds = config.DealingRounds?.Select(ToDealingRound).ToList()
         };
     }
 
-    private static DealingRoundDto ToDto(DealingRound round)
+    private static ResponseDealingRound ToDealingRound(CardGames.Poker.Games.GameFlow.DealingRound round)
     {
-        return new DealingRoundDto
+        return new ResponseDealingRound
         {
             CardCount = round.CardCount,
             Visibility = round.Visibility.ToString(),
@@ -64,9 +69,9 @@ public static class GameRulesMapper
         };
     }
 
-    private static BettingConfigDto ToDto(BettingConfig config)
+    private static ResponseBettingConfig ToBettingConfig(CardGames.Poker.Games.GameFlow.BettingConfig config)
     {
-        return new BettingConfigDto
+        return new ResponseBettingConfig
         {
             HasAntes = config.HasAntes,
             HasBlinds = config.HasBlinds,
@@ -75,9 +80,9 @@ public static class GameRulesMapper
         };
     }
 
-    private static DrawingConfigDto ToDto(DrawingConfig config)
+    private static ResponseDrawingConfig ToDrawingConfig(CardGames.Poker.Games.GameFlow.DrawingConfig config)
     {
-        return new DrawingConfigDto
+        return new ResponseDrawingConfig
         {
             AllowsDrawing = config.AllowsDrawing,
             MaxDiscards = config.MaxDiscards,
@@ -86,9 +91,9 @@ public static class GameRulesMapper
         };
     }
 
-    private static ShowdownConfigDto ToDto(ShowdownConfig config)
+    private static ResponseShowdownConfig ToShowdownConfig(CardGames.Poker.Games.GameFlow.ShowdownConfig config)
     {
-        return new ShowdownConfigDto
+        return new ResponseShowdownConfig
         {
             HandRanking = config.HandRanking,
             IsHighLow = config.IsHighLow,
