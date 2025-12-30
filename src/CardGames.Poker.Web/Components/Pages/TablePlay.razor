@@ -1754,26 +1754,4 @@ HandType.HighCard
         HandType.FiveOfAKind => "Five of a Kind",
         _ => handType.ToString()
     };
-
-    /// <summary>
-    /// Determines the game type code from the game type name.
-    /// This is needed because the initial API call doesn't have the code, only the name.
-    /// </summary>
-    private static string? GetGameTypeCodeFromName(string? gameTypeName)
-    {
-        if (string.IsNullOrWhiteSpace(gameTypeName))
-        {
-            return null;
-        }
-
-        return gameTypeName.ToUpperInvariant() switch
-        {
-            "FIVE CARD DRAW" or "FIVECARDDRAW" => "FIVECARDDRAW",
-            "TWOS, JACKS, MAN WITH THE AXE" or "TWOSJACKSMANWITHTHEAXE" => "TWOSJACKSMANWITHTHEAXE",
-            _ => gameTypeName.Contains("Twos", StringComparison.OrdinalIgnoreCase) 
-                && gameTypeName.Contains("Jacks", StringComparison.OrdinalIgnoreCase) 
-                    ? "TWOSJACKSMANWITHTHEAXE" 
-                    : "FIVECARDDRAW"
-        };
-    }
 }
