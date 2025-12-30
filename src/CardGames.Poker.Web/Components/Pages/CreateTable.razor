@@ -9,6 +9,7 @@
 
 @inject IAvailablePokerGamesApi AvailableGamesApi
 @inject IFiveCardDrawApi FiveCardDrawApi
+@inject ITwosJacksManWithTheAxeApi TwosJacksManWithTheAxeApi
 @inject NavigationManager NavigationManager
 
 <PageTitle>Create Table - Friday Night Poker</PageTitle>
@@ -63,7 +64,7 @@
                     <div class="variants-grid">
                         @foreach (var game in VariantCards)
                         {
-                            var isAvailable = game.Name == "Five Card Draw";
+                            var isAvailable = IsGameAvailable(game.Name);
                             <div class="variant-card @(selectedVariant?.Name == game.Name ? "selected" : "") @(!isAvailable ? "disabled" : "")"
                                  @onclick="() => SelectVariant(game, isAvailable)">
                                 <div class="variant-icon">
@@ -374,12 +375,30 @@
 
             var command = new CreateGameCommand(ante, gameId, tableName, minBet, playerInfos);
 
-            var response = await FiveCardDrawApi.FiveCardDrawCreateGameAsync(command);
+            // Call the appropriate API based on the selected variant
+            Guid? createdGameId = null;
+            if (selectedVariant.Name == "Twos, Jacks, Man with the Axe")
+            {
+                var response = await TwosJacksManWithTheAxeApi.TwosJacksManWithTheAxeCreateGameAsync(command);
+                if (response.IsSuccessStatusCode && response.Content != Guid.Empty)
+                {
+                    createdGameId = response.Content;
+                }
+            }
+            else
+            {
+                // Default to Five Card Draw
+                var response = await FiveCardDrawApi.FiveCardDrawCreateGameAsync(command);
+                if (response.IsSuccessStatusCode && response.Content != Guid.Empty)
+                {
+                    createdGameId = response.Content;
+                }
+            }
 
-            if (response.IsSuccessStatusCode && response.Content != Guid.Empty)
+            if (createdGameId.HasValue)
             {
                 // Navigate to the newly created game
-                NavigationManager.NavigateTo($"/table/{response.Content}");
+                NavigationManager.NavigateTo($"/table/{createdGameId.Value}");
             }
             else
             {
@@ -395,6 +414,12 @@
             isCreating = false;
             StateHasChanged();
         }
+    }
+
+    private static bool IsGameAvailable(string gameName)
+    {
+        // Games that are fully implemented and available for play
+        return gameName is "Five Card Draw" or "Twos, Jacks, Man with the Axe";
     }
 
     private record PlayerInput

@@ -75,6 +75,13 @@ builder.Services
 	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"))
 	.AddHttpMessageHandler<AuthenticationStateHandler>();
 
+builder.Services
+	.AddRefitClient<IGamesApi>(
+		settingsAction: _ => new RefitSettings(),
+		httpClientName: "gamesApi")
+	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"))
+	.AddHttpMessageHandler<AuthenticationStateHandler>();
+
 
 builder.Services.AddAuthentication(options =>
 	{

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using CardGames.Poker.Betting;
 using FluentAssertions;
 using Xunit;
@@ -123,5 +124,113 @@ public class PotManagerTests
         potManager.CalculateSidePots(players);
 
         potManager.TotalPotAmount.Should().Be(150);
+    }
+
+    [Fact]
+    public void AwardPotsSplit_SplitsPotBetweenSevensAndHighHand()
+    {
+        var potManager = new PotManager();
+        potManager.AddContribution("Alice", 50);
+        potManager.AddContribution("Bob", 50);
+
+        var result = potManager.AwardPotsSplit(
+            eligible => new[] { "Alice" },      // Alice has sevens
+            eligible => new[] { "Bob" },        // Bob has best hand
+            new[] { "Alice", "Bob" }
+        );
+
+        result.TotalPayouts.Should().ContainKey("Alice");
+        result.TotalPayouts.Should().ContainKey("Bob");
+        result.SevensWinners.Should().Contain("Alice");
+        result.HighHandWinners.Should().Contain("Bob");
+        result.SevensPoolRolledOver.Should().BeFalse();
+        (result.TotalPayouts["Alice"] + result.TotalPayouts["Bob"]).Should().Be(100);
+    }
+
+    [Fact]
+    public void AwardPotsSplit_RollsOverSevensPoolWhenNoWinners()
+    {
+        var potManager = new PotManager();
+        potManager.AddContribution("Alice", 100);
+        potManager.AddContribution("Bob", 100);
+
+        var result = potManager.AwardPotsSplit(
+            eligible => Enumerable.Empty<string>(), // No one has sevens
+            eligible => new[] { "Bob" },            // Bob has best hand
+            new[] { "Alice", "Bob" }
+        );
+
+        result.SevensWinners.Should().BeEmpty();
+        result.HighHandWinners.Should().Contain("Bob");
+        result.SevensPoolRolledOver.Should().BeTrue();
+        result.TotalPayouts["Bob"].Should().Be(200);  // Bob gets entire pot
+        result.SevensPayouts.Should().BeEmpty();
+        result.HighHandPayouts["Bob"].Should().Be(200);
+    }
+
+    [Fact]
+    public void AwardPotsSplit_SamePlayerWinsBothPools()
+    {
+        var potManager = new PotManager();
+        potManager.AddContribution("Alice", 100);
+        potManager.AddContribution("Bob", 100);
+
+        var result = potManager.AwardPotsSplit(
+            eligible => new[] { "Alice" },  // Alice has sevens
+            eligible => new[] { "Alice" },  // Alice also has best hand
+            new[] { "Alice", "Bob" }
+        );
+
+        result.SevensWinners.Should().Contain("Alice");
+        result.HighHandWinners.Should().Contain("Alice");
+        result.TotalPayouts["Alice"].Should().Be(200);  // Alice gets entire pot
+        result.SevensPayouts["Alice"].Should().Be(100);
+        result.HighHandPayouts["Alice"].Should().Be(100);
+    }
+
+    [Fact]
+    public void AwardPotsSplit_MultipleSevensWinnersSplitHalf()
+    {
+        var potManager = new PotManager();
+        potManager.AddContribution("Alice", 100);
+        potManager.AddContribution("Bob", 100);
+        potManager.AddContribution("Charlie", 100);
+
+        var result = potManager.AwardPotsSplit(
+            eligible => new[] { "Alice", "Bob" },  // Both have sevens
+            eligible => new[] { "Charlie" },       // Charlie has best hand
+            new[] { "Alice", "Bob", "Charlie" }
+        );
+
+        result.SevensWinners.Should().Contain("Alice");
+        result.SevensWinners.Should().Contain("Bob");
+        result.HighHandWinners.Should().Contain("Charlie");
+
+        // Sevens pool is 150 (half of 300), split between Alice and Bob = 75 each
+        result.SevensPayouts["Alice"].Should().Be(75);
+        result.SevensPayouts["Bob"].Should().Be(75);
+
+        // High hand pool is 150
+        result.HighHandPayouts["Charlie"].Should().Be(150);
+
+        (result.TotalPayouts["Alice"] + result.TotalPayouts["Bob"] + result.TotalPayouts["Charlie"]).Should().Be(300);
+    }
+
+    [Fact]
+    public void AwardPotsSplit_OddChipGoesToHighHandPool()
+    {
+        var potManager = new PotManager();
+        potManager.AddContribution("Alice", 51);
+        potManager.AddContribution("Bob", 50);
+
+        var result = potManager.AwardPotsSplit(
+            eligible => new[] { "Alice" },
+            eligible => new[] { "Bob" },
+            new[] { "Alice", "Bob" }
+        );
+
+        // Total pot = 101, sevens pool = 50, high hand pool = 51
+        result.SevensPayouts["Alice"].Should().Be(50);
+        result.HighHandPayouts["Bob"].Should().Be(51);
     }
 }

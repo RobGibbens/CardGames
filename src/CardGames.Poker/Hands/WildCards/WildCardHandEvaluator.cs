@@ -67,7 +67,7 @@ public static class WildCardHandEvaluator
 
         if (wildCount == 5)
         {
-            var fiveAces = Enumerable.Repeat(new Card(Suit.Spades, Symbol.Ace), 5).ToList();
+            var fiveAces = Enumerable.Repeat(new Card(Suit.Spades, 14), 5).ToList();
             return (HandType.FiveOfAKind, HandStrength.Calculate(
                 fiveAces,
                 HandType.FiveOfAKind,

@@ -31,7 +31,7 @@ public static class HandOddsCalculationService
 			.Select(ConvertDealtCardToCard)
 			.ToList() ?? [];
 
-		var result = OddsCalculator.CalculateDrawOdds(coreHeroCards, coreDeadCards);
+		var result = OddsCalculator.CalculateTwosJacksManWithTheAxeDrawOdds(coreHeroCards, coreDeadCards);
 
 		return ConvertToResponse(result);
 	}
@@ -55,7 +55,7 @@ public static class HandOddsCalculationService
 			.Select(ConvertGameCardToCard)
 			.ToList() ?? [];
 
-		var result = OddsCalculator.CalculateDrawOdds(coreHeroCards, coreDeadCards);
+		var result = OddsCalculator.CalculateTwosJacksManWithTheAxeDrawOdds(coreHeroCards, coreDeadCards);
 
 		return ConvertToResponse(result);
 	}

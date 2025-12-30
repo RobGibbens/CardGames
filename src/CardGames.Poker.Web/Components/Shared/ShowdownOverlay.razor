@@ -1,6 +1,7 @@
 @using CardGames.Poker.Api.Contracts
 @using CardGames.Core.French.Cards
 @using CardGames.Poker.Evaluation
+@using CardGames.Poker.Hands
 @using CardGames.Poker.Hands.DrawHands
 
 @using System.Globalization
@@ -339,6 +340,12 @@
 
     private static string GetDetailedHandDescription(ShowdownPlayerHand hand)
     {
+        // Prefer server-provided hand description (already handles wild cards)
+        if (!string.IsNullOrWhiteSpace(hand.HandDescription))
+        {
+            return hand.HandDescription;
+        }
+
         if (hand.Cards is null || hand.Cards.Count < 5)
         {
             return HumanizeHandType(hand.HandType);
@@ -354,8 +361,11 @@
             return HumanizeHandType(hand.HandType);
         }
 
-        var drawHand = new DrawHand(coreCards);
-        return HandDescriptionFormatter.GetHandDescription(drawHand);
+        // If the server did not provide a description, do not try to infer variant rules from card faces.
+        // (A Five Card Draw hand can contain 2s/Jacks/Kd too.)
+        HandBase evaluatedHand = new DrawHand(coreCards);
+
+        return HandDescriptionFormatter.GetHandDescription(evaluatedHand);
     }
 
     private static Suit MapSuit(CardSuit suit) => suit switch

@@ -1,8 +1,9 @@
 ﻿using Azure.Messaging.ServiceBus;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Games;
 using CardGames.Poker.Api.Infrastructure;
-using CardGames.Poker.Games.FiveCardDraw;
+using CardGames.Poker.Games.TwosJacksManWithTheAxe;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -14,8 +15,6 @@ public class CreateGameCommandHandler(CardsDbContext context,
 	ServiceBusClient sbClient, HybridCache hybridCache, ICurrentUserService currentUserService)
 	: IRequestHandler<CreateGameCommand, OneOf<CreateGameSuccessful, CreateGameConflict>>
 {
-	private const string FiveCardDrawCode = "FIVECARDDRAW";
-
 	public async Task<OneOf<CreateGameSuccessful, CreateGameConflict>> Handle(CreateGameCommand command, CancellationToken cancellationToken)
 	{
 		if (command.GameId == Guid.Empty)
@@ -42,7 +41,7 @@ public class CreateGameCommandHandler(CardsDbContext context,
 
 		var now = DateTimeOffset.UtcNow;
 
-		// 1. Get or create the Five Card Draw game type
+		// 1. Get or create the Twos, Jacks, Man with the Axe game type
 		var gameType = await GetOrCreateGameTypeAsync(cancellationToken);
 
 		// 2. Create the game session
@@ -51,7 +50,7 @@ public class CreateGameCommandHandler(CardsDbContext context,
 			Id = command.GameId,
 			GameTypeId = gameType.Id,
 			Name = command.GameName,
-			CurrentPhase = nameof(FiveCardDrawPhase.WaitingToStart),
+			CurrentPhase = nameof(TwosJacksManWithTheAxePhase.WaitingToStart),
 			CurrentHandNumber = 0,
 			DealerPosition = 0,
 			Ante = command.Ante,
@@ -127,21 +126,21 @@ public class CreateGameCommandHandler(CardsDbContext context,
 	private async Task<GameType> GetOrCreateGameTypeAsync(CancellationToken cancellationToken)
 	{
 		var gameType = await context.GameTypes
-			.FirstOrDefaultAsync(gt => gt.Code == FiveCardDrawCode, cancellationToken);
+			.FirstOrDefaultAsync(gt => gt.Code == PokerGameMetadataRegistry.TwosJacksManWithTheAxeCode, cancellationToken);
 
 		if (gameType is not null)
 		{
 			return gameType;
 		}
 
-		// Create the Five Card Draw game type definition
+		// Create the Twos, Jacks, Man with the Axe game type definition
 		var now = DateTimeOffset.UtcNow;
 		gameType = new GameType
 		{
-			Name = "Five Card Draw",
-			Code = FiveCardDrawCode,
-			Description = "Classic five card draw poker where players receive 5 cards, " +
-						  "bet, discard up to 3 cards, draw replacements, and bet again.",
+			Name = "Twos, Jacks, Man with the Axe",
+			Code = PokerGameMetadataRegistry.TwosJacksManWithTheAxeCode,
+			Description = "A five-card draw variant where all 2s, all Jacks, and the King of Diamonds " +
+						  "(\"Man with the Axe\") are wild. A player holding a natural pair of 7s can claim half the pot.",
 			BettingStructure = BettingStructure.Ante,
 			MinPlayers = 2,
 			MaxPlayers = 6,
@@ -151,7 +150,7 @@ public class CreateGameCommandHandler(CardsDbContext context,
 			MaxPlayerCards = 5,
 			HasDrawPhase = true,
 			MaxDiscards = 3,
-			WildCardRule = WildCardRule.None,
+			WildCardRule = WildCardRule.FixedRanks,  // 2s, Jacks, and K♦ are wild
 			IsActive = true,
 			CreatedAt = now,
 			UpdatedAt = now

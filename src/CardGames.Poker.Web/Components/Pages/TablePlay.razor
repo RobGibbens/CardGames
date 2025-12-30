@@ -18,7 +18,9 @@
 @using System.Security.Claims
 
 @inject NavigationManager NavigationManager
+@inject IGamesApi GamesApiClient
 @inject IFiveCardDrawApi FiveCardDrawApiClient
+@inject ITwosJacksManWithTheAxeApi TwosJacksManWithTheAxeApi
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject GameHubClient GameHubClient
 @inject DashboardState DashboardState
@@ -109,7 +111,7 @@
                 }
             }
             <div class="connection-indicator @(isConnected ? "connected" : "disconnected")"
-                title="@(isConnected ? "Connected" : "Disconnected")">
+                 title="@(isConnected ? "Connected" : "Disconnected")">
                 <span class="connection-dot"></span>
             </div>
         </div>
@@ -121,30 +123,30 @@
         <!-- Main Table Area -->
         <div class="table-play-area">
             <TableCanvas Seats="@seats" Pot="@pot" CurrentPhase="@_gameResponse?.CurrentPhase"
-                CurrentPhaseDescription="@_gameResponse?.CurrentPhaseDescription"
-                CurrentActorSeatIndex="@currentActorSeatIndex" DealerSeatIndex="@dealerSeatIndex"
-                OnSeatClick="HandleSeatClickAsync" DisableSeatSelectionForCurrentUser="@isSeated"
-                CurrentPlayerSeatIndex="@currentPlayerSeatIndex" />
+                         CurrentPhaseDescription="@_gameResponse?.CurrentPhaseDescription"
+                         CurrentActorSeatIndex="@currentActorSeatIndex" DealerSeatIndex="@dealerSeatIndex"
+                         OnSeatClick="HandleSeatClickAsync" DisableSeatSelectionForCurrentUser="@isSeated"
+                         CurrentPlayerSeatIndex="@currentPlayerSeatIndex" />
 
             <!-- Dashboard Panel (left side) -->
             @if (isSeated)
             {
                 <DashboardPanel>
                     <DashboardSection Title="Leaderboard" Icon="fa-solid fa-trophy"
-                        IsExpanded="@DashboardState.IsSectionExpanded("Leaderboard")"
-                        IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("Leaderboard", value))">
+                                      IsExpanded="@DashboardState.IsSectionExpanded("Leaderboard")"
+                                      IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("Leaderboard", value))">
                         <LeaderboardSection Players="@GetLeaderboardPlayers()" />
                     </DashboardSection>
 
                     <DashboardSection Title="Odds" Icon="fa-solid fa-chart-simple"
-                        IsExpanded="@DashboardState.IsSectionExpanded("Odds")"
-                        IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("Odds", value))">
+                                      IsExpanded="@DashboardState.IsSectionExpanded("Odds")"
+                                      IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("Odds", value))">
                         <OddsSection HandOdds="@handOdds" />
                     </DashboardSection>
 
                     <DashboardSection Title="Hand History" Icon="fa-solid fa-clock-rotate-left"
-                        IsExpanded="@DashboardState.IsSectionExpanded("HandHistory")"
-                        IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("HandHistory", value))">
+                                      IsExpanded="@DashboardState.IsSectionExpanded("HandHistory")"
+                                      IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("HandHistory", value))">
                         <HandHistorySection Entries="@_handHistoryEntries" />
                     </DashboardSection>
                 </DashboardPanel>
@@ -156,18 +158,18 @@
             _gameResponse.CurrentPhase != GamePhase.Ended.ToString())
         {
             <ActionPanel LegalActions="@legalActions" MinBet="@currentMinBet" MaxBet="@currentMaxBet"
-                CurrentBetToCall="@currentBetToCall" PlayerChips="@playerChips" TurnTimeRemaining="@turnTimeRemaining"
-                OnAction="HandlePlayerActionAsync" IsSubmitting="@isSubmittingAction" />
+                         CurrentBetToCall="@currentBetToCall" PlayerChips="@playerChips" TurnTimeRemaining="@turnTimeRemaining"
+                         OnAction="HandlePlayerActionAsync" IsSubmitting="@isSubmittingAction" />
         }
 
         <!-- Draw Panel (only shown when it's player's turn during draw phase) -->
         @if (isDrawPhase && (isPlayerDrawTurn || _forceShowDrawPanel))
         {
             <DrawPanel Cards="@currentPlayerDrawCards" SelectedIndices="@selectedDiscardIndices"
-                OnToggleSelection="ToggleDiscardSelectionAsync" OnDraw="HandleDrawActionAsync" IsSubmitting="@isSubmittingDraw"
-                IsAnimating="@isDrawAnimating" IsDiscarding="@isDiscardingCards" IsDrawing="@isDrawingNewCards"
-                CardsDrawn="@cardsDrawn" NewCardIndices="@newCardIndices"
-                HandDescription="@currentPlayerHandEvaluationDescription" MaxDiscards="@maxDiscards" />
+                       OnToggleSelection="ToggleDiscardSelectionAsync" OnDraw="HandleDrawActionAsync" IsSubmitting="@isSubmittingDraw"
+                       IsAnimating="@isDrawAnimating" IsDiscarding="@isDiscardingCards" IsDrawing="@isDrawingNewCards"
+                       CardsDrawn="@cardsDrawn" NewCardIndices="@newCardIndices"
+                       HandDescription="@currentPlayerHandEvaluationDescription" MaxDiscards="@maxDiscards" />
         }
 
         <!-- Draw Phase Waiting Indicator (shown to other players during draw phase) -->
@@ -262,7 +264,7 @@
         @if (IsShowdownPhase && _showShowdownOverlay && _showdownResult is not null)
         {
             <ShowdownOverlay ShowdownResult="@_showdownResult" ShowdownWon="@_showdownWon" ShowdownLost="@_showdownLost"
-                SecondsUntilNextHand="@_secondsUntilNextHand" OnClose="@CloseShowdownOverlay" />
+                             SecondsUntilNextHand="@_secondsUntilNextHand" OnClose="@CloseShowdownOverlay" />
         }
     }
 </main>
@@ -358,6 +360,10 @@
 
     private string? _loggedInUserEmail;
 
+    // Game type code for routing to correct API client
+    private string? _gameTypeCode;
+    private bool IsTwosJacksManWithTheAxe => string.Equals(_gameTypeCode, "TWOSJACKSMANWITHTHEAXE", StringComparison.OrdinalIgnoreCase);
+
     private bool IsCompletePhase => string.Equals(_gameResponse?.CurrentPhase, "Complete",
     StringComparison.OrdinalIgnoreCase);
 
@@ -450,6 +456,12 @@
         }
 
         Logger.LogDebug("Received table state update for game {GameId}, phase: {Phase}", state.GameId, state.CurrentPhase);
+
+        // Update game type code for routing to correct API
+        if (!string.IsNullOrWhiteSpace(state.GameTypeCode))
+        {
+            _gameTypeCode = state.GameTypeCode;
+        }
 
         // Update game response fields from public state
         // Handle case where _gameResponse is not yet loaded from API
@@ -704,22 +716,22 @@
             .ToDictionary(r => r.PlayerName, r => r.AmountWon);
 
             var playerHands = showdown.PlayerResults.Select(r => new ShowdownPlayerHand(
-            amountWon: r.AmountWon,
-            cards: ConvertCardsToShowdownCards(r.Cards),
-            handStrength: null,
-            handType: r.HandRanking ?? "",
-            isWinner: r.IsWinner,
-            playerFirstName: r.PlayerFirstName,
-            playerName: r.PlayerName,
-            handDescription: r.HandDescription ?? ""
+                amountWon: r.AmountWon,
+                cards: ConvertCardsToShowdownCards(r.Cards),
+                handStrength: null,
+                handType: r.HandRanking ?? "",
+                isWinner: r.IsWinner,
+                playerFirstName: r.PlayerFirstName,
+                playerName: r.PlayerName,
+                handDescription: r.HandDescription ?? ""
             )).ToList();
 
             _showdownResult = new PerformShowdownSuccessful(
-            currentPhase: "Complete",
-            gameId: GameId,
-            payouts: payouts,
-            playerHands: playerHands,
-            wonByFold: false
+                currentPhase: "Complete",
+                gameId: GameId,
+                payouts: payouts,
+                playerHands: playerHands,
+                wonByFold: false
             );
 
             _showShowdownOverlay = true;
@@ -835,8 +847,49 @@
         try
         {
             _loggedInUserEmail ??= await GetLoggedInUserEmailAsync();
-            var gameResponse = await FiveCardDrawApiClient.FiveCardDrawGetGameAsync(GameId);
-            _gameResponse = gameResponse.Content;
+
+            // Use the generic Games API to load game data - it returns the game type code
+            var gameResponse = await GamesApiClient.GamesGetGameAsync(GameId);
+            if (gameResponse is { IsSuccessStatusCode: true, Content: not null })
+            {
+                var gamesResponse = gameResponse.Content;
+                _gameTypeCode = gamesResponse.GameTypeCode;
+
+                // Convert to GetGameResponse format for compatibility with existing code
+                _gameResponse = new GetGameResponse(
+                    ante: gamesResponse.Ante,
+                    bigBet: gamesResponse.BigBet,
+                    bigBlind: gamesResponse.BigBlind,
+                    bringIn: gamesResponse.BringIn,
+                    bringInPlayerIndex: gamesResponse.BringInPlayerIndex,
+                    canContinue: gamesResponse.CanContinue,
+                    createdAt: gamesResponse.CreatedAt,
+                    createdById: gamesResponse.CreatedById,
+                    createdByName: gamesResponse.CreatedByName,
+                    currentDrawPlayerIndex: gamesResponse.CurrentDrawPlayerIndex,
+                    currentHandNumber: gamesResponse.CurrentHandNumber,
+                    currentPhase: gamesResponse.CurrentPhase,
+                    currentPhaseDescription: gamesResponse.CurrentPhaseDescription,
+                    currentPlayerIndex: gamesResponse.CurrentPlayerIndex,
+                    dealerPosition: gamesResponse.DealerPosition,
+                    endedAt: gamesResponse.EndedAt,
+                    gameSettings: gamesResponse.GameSettings,
+                    gameTypeId: gamesResponse.GameTypeId,
+                    gameTypeName: gamesResponse.GameTypeName,
+                    id: gamesResponse.Id,
+                    maximumNumberOfPlayers: gamesResponse.MaximumNumberOfPlayers,
+                    minBet: gamesResponse.MinBet,
+                    minimumNumberOfPlayers: gamesResponse.MinimumNumberOfPlayers,
+                    name: gamesResponse.Name,
+                    randomSeed: gamesResponse.RandomSeed,
+                    rowVersion: gamesResponse.RowVersion,
+                    smallBet: gamesResponse.SmallBet,
+                    smallBlind: gamesResponse.SmallBlind,
+                    startedAt: gamesResponse.StartedAt,
+                    status: gamesResponse.Status,
+                    updatedAt: gamesResponse.UpdatedAt
+                );
+            }
 
             await GetPlayersAndUpdateSeatsAsync();
 
@@ -877,7 +930,16 @@
 
     private async Task GetPlayersAndUpdateSeatsAsync()
     {
-        var playersResponse = await FiveCardDrawApiClient.FiveCardDrawGetGamePlayersAsync(GameId);
+        Refit.IApiResponse<ICollection<GetGamePlayersResponse>>? playersResponse;
+        if (IsTwosJacksManWithTheAxe)
+        {
+            playersResponse = await TwosJacksManWithTheAxeApi.TwosJacksManWithTheAxeGetGamePlayersAsync(GameId);
+        }
+        else
+        {
+            playersResponse = await FiveCardDrawApiClient.FiveCardDrawGetGamePlayersAsync(GameId);
+        }
+
         if (playersResponse is { IsSuccessStatusCode: true, Content: not null })
         {
             var players = playersResponse.Content.ToList();
@@ -929,11 +991,23 @@
     {
         try
         {
-            var response = await FiveCardDrawApiClient.FiveCardDrawGetHandHistoryAsync(
-            GameId,
-            take: 25,
-            skip: 0,
-            playerId: _currentPlayerId);
+            Refit.IApiResponse<HandHistoryListDto>? response;
+            if (IsTwosJacksManWithTheAxe)
+            {
+                response = await TwosJacksManWithTheAxeApi.TwosJacksManWithTheAxeGetHandHistoryAsync(
+                    GameId,
+                    take: 25,
+                    skip: 0,
+                    playerId: _currentPlayerId);
+            }
+            else
+            {
+                response = await FiveCardDrawApiClient.FiveCardDrawGetHandHistoryAsync(
+                    GameId,
+                    take: 25,
+                    skip: 0,
+                    playerId: _currentPlayerId);
+            }
 
             if (response is { IsSuccessStatusCode: true, Content.Entries: not null })
             {
@@ -975,7 +1049,15 @@
         {
             // Call the API to join the game at this seat
             var request = new CardGames.Poker.Api.Clients.JoinGameRequest(seatIndex, 1000);
-            var response = await FiveCardDrawApiClient.FiveCardDrawJoinGameAsync(GameId, request);
+            Refit.IApiResponse<CardGames.Poker.Api.Clients.JoinGameSuccessful>? response;
+            if (IsTwosJacksManWithTheAxe)
+            {
+                response = await TwosJacksManWithTheAxeApi.TwosJacksManWithTheAxeJoinGameAsync(GameId, request);
+            }
+            else
+            {
+                response = await FiveCardDrawApiClient.FiveCardDrawJoinGameAsync(GameId, request);
+            }
 
             if (!response.IsSuccessStatusCode)
             {
@@ -1032,22 +1114,45 @@
         isSubmittingAction = false;
         isPlayerTurn = false;
 
-        var startHandResponse = await FiveCardDrawApiClient.FiveCardDrawStartHandAsync(GameId);
-        if (!startHandResponse.IsSuccessStatusCode)
+        if (IsTwosJacksManWithTheAxe)
         {
-            return;
-        }
+            var startHandResponse = await TwosJacksManWithTheAxeApi.TwosJacksManWithTheAxeStartHandAsync(GameId);
+            if (!startHandResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
 
-        var collectAntesResponse = await FiveCardDrawApiClient.FiveCardDrawCollectAntesAsync(GameId);
-        if (!collectAntesResponse.IsSuccessStatusCode)
-        {
-            return;
-        }
+            var collectAntesResponse = await TwosJacksManWithTheAxeApi.TwosJacksManWithTheAxeCollectAntesAsync(GameId);
+            if (!collectAntesResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
 
-        var dealHandsResponse = await FiveCardDrawApiClient.FiveCardDrawDealHandsAsync(GameId);
-        if (!dealHandsResponse.IsSuccessStatusCode)
+            var dealHandsResponse = await TwosJacksManWithTheAxeApi.TwosJacksManWithTheAxeDealHandsAsync(GameId);
+            if (!dealHandsResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
+        }
+        else
         {
-            return;
+            var startHandResponse = await FiveCardDrawApiClient.FiveCardDrawStartHandAsync(GameId);
+            if (!startHandResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
+
+            var collectAntesResponse = await FiveCardDrawApiClient.FiveCardDrawCollectAntesAsync(GameId);
+            if (!collectAntesResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
+
+            var dealHandsResponse = await FiveCardDrawApiClient.FiveCardDrawDealHandsAsync(GameId);
+            if (!dealHandsResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
         }
 
         // SignalR will broadcast the updated state - no need to refresh manually
@@ -1070,7 +1175,16 @@
 
         _loggedInUserEmail ??= await GetLoggedInUserEmailAsync();
 
-        var showdownResponse = await FiveCardDrawApiClient.FiveCardDrawPerformShowdownAsync(GameId);
+        Refit.IApiResponse<PerformShowdownSuccessful>? showdownResponse;
+        if (IsTwosJacksManWithTheAxe)
+        {
+            showdownResponse = await TwosJacksManWithTheAxeApi.TwosJacksManWithTheAxePerformShowdownAsync(GameId);
+        }
+        else
+        {
+            showdownResponse = await FiveCardDrawApiClient.FiveCardDrawPerformShowdownAsync(GameId);
+        }
+
         if (showdownResponse is not { IsSuccessStatusCode: true, Content: not null })
         {
             return;
@@ -1155,7 +1269,16 @@
         try
         {
             var request = new ProcessBettingActionRequest(action.Action, action.Amount ?? 0);
-            var response = await FiveCardDrawApiClient.FiveCardDrawProcessBettingActionAsync(GameId, request);
+            Refit.IApiResponse<ProcessBettingActionSuccessful>? response;
+            if (IsTwosJacksManWithTheAxe)
+            {
+                response = await TwosJacksManWithTheAxeApi.TwosJacksManWithTheAxeProcessBettingActionAsync(GameId, request);
+            }
+            else
+            {
+                response = await FiveCardDrawApiClient.FiveCardDrawProcessBettingActionAsync(GameId, request);
+            }
+
             if (!response.IsSuccessStatusCode)
             {
                 return;
@@ -1208,7 +1331,15 @@
 
             // Make the API call
             var request = new ProcessDrawRequest(discardIndices);
-            var response = await FiveCardDrawApiClient.FiveCardDrawProcessDrawAsync(GameId, request);
+            Refit.IApiResponse<ProcessDrawSuccessful>? response;
+            if (IsTwosJacksManWithTheAxe)
+            {
+                response = await TwosJacksManWithTheAxeApi.TwosJacksManWithTheAxeProcessDrawAsync(GameId, request);
+            }
+            else
+            {
+                response = await FiveCardDrawApiClient.FiveCardDrawProcessDrawAsync(GameId, request);
+            }
 
             if (!response.IsSuccessStatusCode)
             {
@@ -1529,7 +1660,9 @@
             .Cast<Card>()
             .ToList();
 
-            var result = OddsCalculator.CalculateDrawOdds(coreCards, deadCards);
+            var result = string.Equals(_gameTypeCode, "TWOSJACKSMANWITHTHEAXE", StringComparison.OrdinalIgnoreCase)
+                ? OddsCalculator.CalculateTwosJacksManWithTheAxeDrawOdds(coreCards, deadCards)
+                : OddsCalculator.CalculateDrawOdds(coreCards, deadCards);
 
             handOdds = ConvertToHandTypeOddsDtos(result);
         }
