@@ -1,5 +1,8 @@
 # CardGames
 - [Introduction](#introduction)
+- [Architecture](#architecture)
+  * [Game-Agnostic Design](#game-agnostic-design)
+  * [Adding New Games](#adding-new-games)
 - [CardGames.Core](#cardgamescore)
   * [Overview](#overview)
   * [Card](#card)
@@ -19,6 +22,32 @@ After writing simulations and tools for card games (poker in particular) in the 
 
 ### About the project
 I assume this project will be slow, because of several reasons. First of all, it is a _pure leisure project_. Secondly, because I value design. I try to model the entities and their apis as closely as possible to the real world concepts they represent (albeit adding some convenience apis if they are very useful). I value code quality and readability a lot as well. I'll spend lots of time rewriting algorithmically simple things if I feel I can express them even cleaner, or more performantly. 
+
+# Architecture
+
+## Game-Agnostic Design
+
+The CardGames system uses a **metadata-driven architecture** that allows multiple poker variants to coexist without hardcoding game-specific logic in the UI or API layers. This enables adding new game types without modifying the user interface.
+
+Key features:
+- **Rule-Driven**: Each game variant defines its rules, phases, and mechanics as structured metadata
+- **API-Exposed**: Game rules are available via REST endpoints for dynamic UI adaptation
+- **Extensible**: New games can be added by implementing domain logic and defining rules
+- **Type-Safe**: Strong typing ensures compile-time validation of game configurations
+
+For detailed architecture documentation, see [ARCHITECTURE.md](ARCHITECTURE.md).
+
+## Adding New Games
+
+To add a new poker variant:
+
+1. Implement the game logic in `CardGames.Poker/Games/YourGame/`
+2. Define game rules metadata in a `YourGameRules.cs` factory
+3. Register the game in `PokerGameRulesRegistry`
+
+No UI changes required - the interface adapts automatically based on the game rules.
+
+For a complete guide with examples, see [ADDING_NEW_GAMES.md](ADDING_NEW_GAMES.md).
 
 # CardGames.Core
 Available at Nuget: [EluciusFTW.CardGames.Core](https://www.nuget.org/packages/EluciusFTW.CardGames.Core/)
