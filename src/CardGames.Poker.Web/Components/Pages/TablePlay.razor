@@ -18,6 +18,7 @@
 @using System.Security.Claims
 
 @inject NavigationManager NavigationManager
+@inject IGamesApi GamesApiClient
 @inject IFiveCardDrawApi FiveCardDrawApiClient
 @inject ITwosJacksManWithTheAxeApi TwosJacksManWithTheAxeApi
 @inject AuthenticationStateProvider AuthenticationStateProvider
@@ -847,14 +848,47 @@
         {
             _loggedInUserEmail ??= await GetLoggedInUserEmailAsync();
             
-            // Try to load game data - first attempt with FiveCardDraw, then check game type
-            var gameResponse = await FiveCardDrawApiClient.FiveCardDrawGetGameAsync(GameId);
-            _gameResponse = gameResponse.Content;
-
-            // Determine game type code from game type name for routing subsequent API calls
-            if (_gameResponse is not null)
+            // Use the generic Games API to load game data - it returns the game type code
+            var gameResponse = await GamesApiClient.GamesGetGameAsync(GameId);
+            if (gameResponse is { IsSuccessStatusCode: true, Content: not null })
             {
-                _gameTypeCode = GetGameTypeCodeFromName(_gameResponse.GameTypeName);
+                var gamesResponse = gameResponse.Content;
+                _gameTypeCode = gamesResponse.GameTypeCode;
+                
+                // Convert to GetGameResponse format for compatibility with existing code
+                _gameResponse = new GetGameResponse(
+                    ante: gamesResponse.Ante,
+                    bigBet: gamesResponse.BigBet,
+                    bigBlind: gamesResponse.BigBlind,
+                    bringIn: gamesResponse.BringIn,
+                    bringInPlayerIndex: gamesResponse.BringInPlayerIndex,
+                    canContinue: gamesResponse.CanContinue,
+                    createdAt: gamesResponse.CreatedAt,
+                    createdById: gamesResponse.CreatedById,
+                    createdByName: gamesResponse.CreatedByName,
+                    currentDrawPlayerIndex: gamesResponse.CurrentDrawPlayerIndex,
+                    currentHandNumber: gamesResponse.CurrentHandNumber,
+                    currentPhase: gamesResponse.CurrentPhase,
+                    currentPhaseDescription: gamesResponse.CurrentPhaseDescription,
+                    currentPlayerIndex: gamesResponse.CurrentPlayerIndex,
+                    dealerPosition: gamesResponse.DealerPosition,
+                    endedAt: gamesResponse.EndedAt,
+                    gameSettings: gamesResponse.GameSettings,
+                    gameTypeId: gamesResponse.GameTypeId,
+                    gameTypeName: gamesResponse.GameTypeName,
+                    id: gamesResponse.Id,
+                    maximumNumberOfPlayers: gamesResponse.MaximumNumberOfPlayers,
+                    minBet: gamesResponse.MinBet,
+                    minimumNumberOfPlayers: gamesResponse.MinimumNumberOfPlayers,
+                    name: gamesResponse.Name,
+                    randomSeed: gamesResponse.RandomSeed,
+                    rowVersion: gamesResponse.RowVersion,
+                    smallBet: gamesResponse.SmallBet,
+                    smallBlind: gamesResponse.SmallBlind,
+                    startedAt: gamesResponse.StartedAt,
+                    status: gamesResponse.Status,
+                    updatedAt: gamesResponse.UpdatedAt
+                );
             }
 
             await GetPlayersAndUpdateSeatsAsync();

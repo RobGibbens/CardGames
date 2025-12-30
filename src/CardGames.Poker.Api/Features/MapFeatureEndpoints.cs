@@ -1,5 +1,6 @@
 ﻿using CardGames.Poker.Api.Features.Games.ActiveGames;
 using CardGames.Poker.Api.Features.Games.AvailablePokerGames;
+using CardGames.Poker.Api.Features.Games.Common;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw;
 using CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe;
 
@@ -11,6 +12,7 @@ public static class MapFeatureEndpoints
 	{
 		app.AddActiveGamesEndpoints();
 		app.AddAvailablePokerGamesEndpoints();
+		app.AddGamesEndpoints();
 		app.AddFiveCardDrawEndpoints();
 		app.AddTwosJacksManWithTheAxeEndpoints();
 		//app.AddCategoriesEndpoints();
