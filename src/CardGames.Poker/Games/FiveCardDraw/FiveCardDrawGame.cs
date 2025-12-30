@@ -4,6 +4,7 @@ using System.Linq;
 using CardGames.Core.French.Cards;
 using CardGames.Core.French.Dealers;
 using CardGames.Poker.Betting;
+using CardGames.Poker.Games.GameFlow;
 using CardGames.Poker.Hands.DrawHands;
 
 namespace CardGames.Poker.Games.FiveCardDraw;
@@ -124,6 +125,14 @@ public class FiveCardDrawGame : IPokerGame
         _minBet = minBet;
         _dealerPosition = 0;
         CurrentPhase = FiveCardDrawPhase.WaitingToStart;
+    }
+
+    /// <summary>
+    /// Gets the game rules metadata for Five Card Draw.
+    /// </summary>
+    public GameRules GetGameRules()
+    {
+        return FiveCardDrawRules.CreateGameRules();
     }
 
     /// <summary>

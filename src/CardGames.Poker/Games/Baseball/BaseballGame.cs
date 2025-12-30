@@ -102,6 +102,17 @@ public class BaseballGame : IPokerGame
     }
 
     /// <summary>
+    /// Gets the game rules metadata for Baseball.
+    /// </summary>
+    /// <remarks>
+    /// Full implementation to be completed. For now, returns a placeholder.
+    /// </remarks>
+    public GameFlow.GameRules GetGameRules()
+    {
+        throw new NotImplementedException("Baseball game rules metadata not yet implemented");
+    }
+
+    /// <summary>
     /// Starts a new hand.
     /// </summary>
     public void StartHand()

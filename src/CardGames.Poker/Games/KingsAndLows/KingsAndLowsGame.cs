@@ -5,6 +5,7 @@ using CardGames.Core.French.Cards;
 using CardGames.Core.French.Dealers;
 using CardGames.Poker.Betting;
 using CardGames.Poker.Games.FiveCardDraw;
+using CardGames.Poker.Games.GameFlow;
 using CardGames.Poker.Hands.DrawHands;
 using CardGames.Poker.Hands.WildCards;
 
@@ -104,6 +105,14 @@ public class KingsAndLowsGame : IPokerGame
         _currentPot = 0;
         _initialAntePaid = false;
         CurrentPhase = KingsAndLowsPhase.WaitingToStart;
+    }
+
+    /// <summary>
+    /// Gets the game rules metadata for Kings and Lows.
+    /// </summary>
+    public GameRules GetGameRules()
+    {
+        return KingsAndLowsRules.CreateGameRules();
     }
 
     /// <summary>
