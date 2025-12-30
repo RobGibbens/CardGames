@@ -359,6 +359,10 @@
 
     private string? _loggedInUserEmail;
 
+    // Game type code for routing to correct API client
+    private string? _gameTypeCode;
+    private bool IsTwosJacksManWithTheAxe => string.Equals(_gameTypeCode, "TWOSJACKSMANWITHTHEAXE", StringComparison.OrdinalIgnoreCase);
+
     private bool IsCompletePhase => string.Equals(_gameResponse?.CurrentPhase, "Complete",
     StringComparison.OrdinalIgnoreCase);
 
@@ -451,6 +455,12 @@
         }
 
         Logger.LogDebug("Received table state update for game {GameId}, phase: {Phase}", state.GameId, state.CurrentPhase);
+
+        // Update game type code for routing to correct API
+        if (!string.IsNullOrWhiteSpace(state.GameTypeCode))
+        {
+            _gameTypeCode = state.GameTypeCode;
+        }
 
         // Update game response fields from public state
         // Handle case where _gameResponse is not yet loaded from API
@@ -836,8 +846,16 @@
         try
         {
             _loggedInUserEmail ??= await GetLoggedInUserEmailAsync();
+            
+            // Try to load game data - first attempt with FiveCardDraw, then check game type
             var gameResponse = await FiveCardDrawApiClient.FiveCardDrawGetGameAsync(GameId);
             _gameResponse = gameResponse.Content;
+
+            // Determine game type code from game type name for routing subsequent API calls
+            if (_gameResponse is not null)
+            {
+                _gameTypeCode = GetGameTypeCodeFromName(_gameResponse.GameTypeName);
+            }
 
             await GetPlayersAndUpdateSeatsAsync();
 
@@ -878,7 +896,16 @@
 
     private async Task GetPlayersAndUpdateSeatsAsync()
     {
-        var playersResponse = await FiveCardDrawApiClient.FiveCardDrawGetGamePlayersAsync(GameId);
+        Refit.IApiResponse<ICollection<GetGamePlayersResponse>>? playersResponse;
+        if (IsTwosJacksManWithTheAxe)
+        {
+            playersResponse = await TwosJacksManWithTheAxeApi.TwosJacksManWithTheAxeGetGamePlayersAsync(GameId);
+        }
+        else
+        {
+            playersResponse = await FiveCardDrawApiClient.FiveCardDrawGetGamePlayersAsync(GameId);
+        }
+        
         if (playersResponse is { IsSuccessStatusCode: true, Content: not null })
         {
             var players = playersResponse.Content.ToList();
@@ -930,11 +957,23 @@
     {
         try
         {
-            var response = await FiveCardDrawApiClient.FiveCardDrawGetHandHistoryAsync(
-            GameId,
-            take: 25,
-            skip: 0,
-            playerId: _currentPlayerId);
+            Refit.IApiResponse<HandHistoryListDto>? response;
+            if (IsTwosJacksManWithTheAxe)
+            {
+                response = await TwosJacksManWithTheAxeApi.TwosJacksManWithTheAxeGetHandHistoryAsync(
+                    GameId,
+                    take: 25,
+                    skip: 0,
+                    playerId: _currentPlayerId);
+            }
+            else
+            {
+                response = await FiveCardDrawApiClient.FiveCardDrawGetHandHistoryAsync(
+                    GameId,
+                    take: 25,
+                    skip: 0,
+                    playerId: _currentPlayerId);
+            }
 
             if (response is { IsSuccessStatusCode: true, Content.Entries: not null })
             {
@@ -976,7 +1015,15 @@
         {
             // Call the API to join the game at this seat
             var request = new CardGames.Poker.Api.Clients.JoinGameRequest(seatIndex, 1000);
-            var response = await FiveCardDrawApiClient.FiveCardDrawJoinGameAsync(GameId, request);
+            Refit.IApiResponse<CardGames.Poker.Api.Clients.JoinGameSuccessful>? response;
+            if (IsTwosJacksManWithTheAxe)
+            {
+                response = await TwosJacksManWithTheAxeApi.TwosJacksManWithTheAxeJoinGameAsync(GameId, request);
+            }
+            else
+            {
+                response = await FiveCardDrawApiClient.FiveCardDrawJoinGameAsync(GameId, request);
+            }
 
             if (!response.IsSuccessStatusCode)
             {
@@ -1033,22 +1080,45 @@
         isSubmittingAction = false;
         isPlayerTurn = false;
 
-        var startHandResponse = await FiveCardDrawApiClient.FiveCardDrawStartHandAsync(GameId);
-        if (!startHandResponse.IsSuccessStatusCode)
+        if (IsTwosJacksManWithTheAxe)
         {
-            return;
-        }
+            var startHandResponse = await TwosJacksManWithTheAxeApi.TwosJacksManWithTheAxeStartHandAsync(GameId);
+            if (!startHandResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
 
-        var collectAntesResponse = await FiveCardDrawApiClient.FiveCardDrawCollectAntesAsync(GameId);
-        if (!collectAntesResponse.IsSuccessStatusCode)
-        {
-            return;
-        }
+            var collectAntesResponse = await TwosJacksManWithTheAxeApi.TwosJacksManWithTheAxeCollectAntesAsync(GameId);
+            if (!collectAntesResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
 
-        var dealHandsResponse = await FiveCardDrawApiClient.FiveCardDrawDealHandsAsync(GameId);
-        if (!dealHandsResponse.IsSuccessStatusCode)
+            var dealHandsResponse = await TwosJacksManWithTheAxeApi.TwosJacksManWithTheAxeDealHandsAsync(GameId);
+            if (!dealHandsResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
+        }
+        else
         {
-            return;
+            var startHandResponse = await FiveCardDrawApiClient.FiveCardDrawStartHandAsync(GameId);
+            if (!startHandResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
+
+            var collectAntesResponse = await FiveCardDrawApiClient.FiveCardDrawCollectAntesAsync(GameId);
+            if (!collectAntesResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
+
+            var dealHandsResponse = await FiveCardDrawApiClient.FiveCardDrawDealHandsAsync(GameId);
+            if (!dealHandsResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
         }
 
         // SignalR will broadcast the updated state - no need to refresh manually
@@ -1071,7 +1141,16 @@
 
         _loggedInUserEmail ??= await GetLoggedInUserEmailAsync();
 
-        var showdownResponse = await FiveCardDrawApiClient.FiveCardDrawPerformShowdownAsync(GameId);
+        Refit.IApiResponse<PerformShowdownSuccessful>? showdownResponse;
+        if (IsTwosJacksManWithTheAxe)
+        {
+            showdownResponse = await TwosJacksManWithTheAxeApi.TwosJacksManWithTheAxePerformShowdownAsync(GameId);
+        }
+        else
+        {
+            showdownResponse = await FiveCardDrawApiClient.FiveCardDrawPerformShowdownAsync(GameId);
+        }
+        
         if (showdownResponse is not { IsSuccessStatusCode: true, Content: not null })
         {
             return;
@@ -1156,7 +1235,16 @@
         try
         {
             var request = new ProcessBettingActionRequest(action.Action, action.Amount ?? 0);
-            var response = await FiveCardDrawApiClient.FiveCardDrawProcessBettingActionAsync(GameId, request);
+            Refit.IApiResponse<ProcessBettingActionSuccessful>? response;
+            if (IsTwosJacksManWithTheAxe)
+            {
+                response = await TwosJacksManWithTheAxeApi.TwosJacksManWithTheAxeProcessBettingActionAsync(GameId, request);
+            }
+            else
+            {
+                response = await FiveCardDrawApiClient.FiveCardDrawProcessBettingActionAsync(GameId, request);
+            }
+            
             if (!response.IsSuccessStatusCode)
             {
                 return;
@@ -1209,7 +1297,15 @@
 
             // Make the API call
             var request = new ProcessDrawRequest(discardIndices);
-            var response = await FiveCardDrawApiClient.FiveCardDrawProcessDrawAsync(GameId, request);
+            Refit.IApiResponse<ProcessDrawSuccessful>? response;
+            if (IsTwosJacksManWithTheAxe)
+            {
+                response = await TwosJacksManWithTheAxeApi.TwosJacksManWithTheAxeProcessDrawAsync(GameId, request);
+            }
+            else
+            {
+                response = await FiveCardDrawApiClient.FiveCardDrawProcessDrawAsync(GameId, request);
+            }
 
             if (!response.IsSuccessStatusCode)
             {
@@ -1624,4 +1720,26 @@ HandType.HighCard
         HandType.FiveOfAKind => "Five of a Kind",
         _ => handType.ToString()
     };
+
+    /// <summary>
+    /// Determines the game type code from the game type name.
+    /// This is needed because the initial API call doesn't have the code, only the name.
+    /// </summary>
+    private static string? GetGameTypeCodeFromName(string? gameTypeName)
+    {
+        if (string.IsNullOrWhiteSpace(gameTypeName))
+        {
+            return null;
+        }
+
+        return gameTypeName.ToUpperInvariant() switch
+        {
+            "FIVE CARD DRAW" or "FIVECARDDRAW" => "FIVECARDDRAW",
+            "TWOS, JACKS, MAN WITH THE AXE" or "TWOSJACKSMANWITHTHEAXE" => "TWOSJACKSMANWITHTHEAXE",
+            _ => gameTypeName.Contains("Twos", StringComparison.OrdinalIgnoreCase) 
+                && gameTypeName.Contains("Jacks", StringComparison.OrdinalIgnoreCase) 
+                    ? "TWOSJACKSMANWITHTHEAXE" 
+                    : "FIVECARDDRAW"
+        };
+    }
 }

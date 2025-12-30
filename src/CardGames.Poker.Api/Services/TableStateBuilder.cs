@@ -90,6 +90,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 						GameId = game.Id,
 						Name = game.Name,
 						GameTypeName = game.GameType?.Name,
+						GameTypeCode = game.GameType?.Code,
 						CurrentPhase = game.CurrentPhase,
 						CurrentPhaseDescription = PhaseDescriptionResolver.TryResolve(game.GameType?.Code, game.CurrentPhase),
 						Ante = game.Ante ?? 0,

@@ -339,6 +339,12 @@
 
     private static string GetDetailedHandDescription(ShowdownPlayerHand hand)
     {
+        // Prefer server-provided hand description (already handles wild cards)
+        if (!string.IsNullOrWhiteSpace(hand.HandDescription))
+        {
+            return hand.HandDescription;
+        }
+
         if (hand.Cards is null || hand.Cards.Count < 5)
         {
             return HumanizeHandType(hand.HandType);

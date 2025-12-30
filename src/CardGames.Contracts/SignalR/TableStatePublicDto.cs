@@ -26,6 +26,11 @@ public sealed record TableStatePublicDto
 	public string? GameTypeName { get; init; }
 
 	/// <summary>
+	/// The unique code identifying the game variant (e.g., "FIVECARDDRAW", "TWOSJACKSMANWITHTHEAXE").
+	/// </summary>
+	public string? GameTypeCode { get; init; }
+
+	/// <summary>
 	/// The current phase of the game (e.g., "WaitingToStart", "FirstBettingRound", "DrawPhase").
 	/// </summary>
 	public required string CurrentPhase { get; init; }
