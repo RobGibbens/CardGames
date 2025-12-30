@@ -4,6 +4,7 @@ using CardGames.Poker.Games.HoldEm;
 using CardGames.Poker.Games.KingsAndLows;
 using CardGames.Poker.Games.Omaha;
 using CardGames.Poker.Games.SevenCardStud;
+using CardGames.Poker.Games.TwosJacksManWithTheAxe;
 
 namespace CardGames.Poker.Api.Games;
 
@@ -28,6 +29,8 @@ public static class PokerGamePhaseRegistry
 		{
 			case PokerGameMetadataRegistry.FiveCardDrawCode:
 				return TryResolveEnum<FiveCardDrawPhase>(currentPhase, out phase);
+			case PokerGameMetadataRegistry.TwosJacksManWithTheAxeCode:
+				return TryResolveEnum<TwosJacksManWithTheAxePhase>(currentPhase, out phase);
 			case PokerGameMetadataRegistry.HoldEmCode:
 				return TryResolveEnum<HoldEmPhase>(currentPhase, out phase);
 			case PokerGameMetadataRegistry.OmahaCode:

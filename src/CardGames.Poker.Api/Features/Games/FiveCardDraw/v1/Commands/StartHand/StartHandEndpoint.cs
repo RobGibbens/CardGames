@@ -30,7 +30,7 @@ public static class StartHandEndpoint
 						}
 					);
 				})
-			.WithName(nameof(MapStartHand).TrimPrefix("Map"))
+			.WithName($"FiveCardDraw{nameof(MapStartHand).TrimPrefix("Map")}")
 			.WithSummary("Start Hand")
 			.WithDescription("Starts a new hand by shuffling the deck, creating a fresh pot, and resetting all player states. " +
 			                 "This endpoint must be called before each hand to prepare the game for play. " +

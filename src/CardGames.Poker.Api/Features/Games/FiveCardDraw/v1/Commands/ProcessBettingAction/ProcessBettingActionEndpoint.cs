@@ -33,7 +33,7 @@ public static class ProcessBettingActionEndpoint
 						}
 					);
 				})
-			.WithName(nameof(MapProcessBettingAction).TrimPrefix("Map"))
+			.WithName($"FiveCardDraw{nameof(MapProcessBettingAction).TrimPrefix("Map")}")
 			.WithSummary("Process Betting Action")
 			.WithDescription(
 				"Processes a betting action from the current player and advances the game state accordingly. " +

@@ -30,7 +30,7 @@ public static class DealHandsEndpoint
 						}
 					);
 				})
-			.WithName(nameof(MapDealHands).TrimPrefix("Map"))
+			.WithName($"FiveCardDraw{nameof(MapDealHands).TrimPrefix("Map")}")
 			.WithSummary("Deal Hands")
 			.WithDescription("Deals five cards to each active player from the shuffled deck and initiates the first betting round. " +
 			                 "After dealing, the game transitions to the FirstBettingRound phase. " +

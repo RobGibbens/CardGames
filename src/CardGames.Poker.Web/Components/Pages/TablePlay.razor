@@ -835,7 +835,7 @@
         try
         {
             _loggedInUserEmail ??= await GetLoggedInUserEmailAsync();
-            var gameResponse = await FiveCardDrawApiClient.GetGameAsync(GameId);
+            var gameResponse = await FiveCardDrawApiClient.FiveCardDrawGetGameAsync(GameId);
             _gameResponse = gameResponse.Content;
 
             await GetPlayersAndUpdateSeatsAsync();
@@ -877,7 +877,7 @@
 
     private async Task GetPlayersAndUpdateSeatsAsync()
     {
-        var playersResponse = await FiveCardDrawApiClient.GetGamePlayersAsync(GameId);
+        var playersResponse = await FiveCardDrawApiClient.FiveCardDrawGetGamePlayersAsync(GameId);
         if (playersResponse is { IsSuccessStatusCode: true, Content: not null })
         {
             var players = playersResponse.Content.ToList();
@@ -929,7 +929,7 @@
     {
         try
         {
-            var response = await FiveCardDrawApiClient.GetHandHistoryAsync(
+            var response = await FiveCardDrawApiClient.FiveCardDrawGetHandHistoryAsync(
             GameId,
             take: 25,
             skip: 0,
@@ -975,7 +975,7 @@
         {
             // Call the API to join the game at this seat
             var request = new CardGames.Poker.Api.Clients.JoinGameRequest(seatIndex, 1000);
-            var response = await FiveCardDrawApiClient.JoinGameAsync(GameId, request);
+            var response = await FiveCardDrawApiClient.FiveCardDrawJoinGameAsync(GameId, request);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -1032,19 +1032,19 @@
         isSubmittingAction = false;
         isPlayerTurn = false;
 
-        var startHandResponse = await FiveCardDrawApiClient.StartHandAsync(GameId);
+        var startHandResponse = await FiveCardDrawApiClient.FiveCardDrawStartHandAsync(GameId);
         if (!startHandResponse.IsSuccessStatusCode)
         {
             return;
         }
 
-        var collectAntesResponse = await FiveCardDrawApiClient.CollectAntesAsync(GameId);
+        var collectAntesResponse = await FiveCardDrawApiClient.FiveCardDrawCollectAntesAsync(GameId);
         if (!collectAntesResponse.IsSuccessStatusCode)
         {
             return;
         }
 
-        var dealHandsResponse = await FiveCardDrawApiClient.DealHandsAsync(GameId);
+        var dealHandsResponse = await FiveCardDrawApiClient.FiveCardDrawDealHandsAsync(GameId);
         if (!dealHandsResponse.IsSuccessStatusCode)
         {
             return;
@@ -1070,7 +1070,7 @@
 
         _loggedInUserEmail ??= await GetLoggedInUserEmailAsync();
 
-        var showdownResponse = await FiveCardDrawApiClient.PerformShowdownAsync(GameId);
+        var showdownResponse = await FiveCardDrawApiClient.FiveCardDrawPerformShowdownAsync(GameId);
         if (showdownResponse is not { IsSuccessStatusCode: true, Content: not null })
         {
             return;
@@ -1155,7 +1155,7 @@
         try
         {
             var request = new ProcessBettingActionRequest(action.Action, action.Amount ?? 0);
-            var response = await FiveCardDrawApiClient.ProcessBettingActionAsync(GameId, request);
+            var response = await FiveCardDrawApiClient.FiveCardDrawProcessBettingActionAsync(GameId, request);
             if (!response.IsSuccessStatusCode)
             {
                 return;
@@ -1208,7 +1208,7 @@
 
             // Make the API call
             var request = new ProcessDrawRequest(discardIndices);
-            var response = await FiveCardDrawApiClient.ProcessDrawAsync(GameId, request);
+            var response = await FiveCardDrawApiClient.FiveCardDrawProcessDrawAsync(GameId, request);
 
             if (!response.IsSuccessStatusCode)
             {

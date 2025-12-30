@@ -64,8 +64,8 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 
 		var gameId = Guid.CreateVersion7();
 		var command = new CreateGameCommand(ante, gameId, "Five Card Draw", minBet, playerInfos);
-		var response = await _fiveCardDrawApi.CreateGameAsync(command, cancellationToken);
-
+		var response = await _fiveCardDrawApi.FiveCardDrawCreateGameAsync(command, cancellationToken);
+		
 		if (!response.IsSuccessStatusCode)
 		{
 			AnsiConsole.MarkupLine("[red]Failed to create game via API.[/]");
@@ -104,12 +104,12 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 		await DisplayPlayerStacksAsync(gameId);
 
 		//Start hand
-		var startHandResponse = await _fiveCardDrawApi.StartHandAsync(gameId);
+		var startHandResponse = await _fiveCardDrawApi.FiveCardDrawStartHandAsync(gameId);
 
 		//Collect antes
 		AnsiConsole.MarkupLine("[yellow]Collecting antes...[/]");
 
-		var collectAntesResponse = await _fiveCardDrawApi.CollectAntesAsync(gameId);
+		var collectAntesResponse = await _fiveCardDrawApi.FiveCardDrawCollectAntesAsync(gameId);
 		var collectAntesSuccessful = collectAntesResponse.Content;
 
 		foreach (var anteContribution in collectAntesSuccessful.AnteContributions)
@@ -120,7 +120,7 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 
 		//Deal hands
 		AnsiConsole.MarkupLine("[yellow]Dealing cards...[/]");
-		var dealHandsResponse = await _fiveCardDrawApi.DealHandsAsync(gameId);
+		var dealHandsResponse = await _fiveCardDrawApi.FiveCardDrawDealHandsAsync(gameId);
 		
 		//Display hands(in a real game, only show current player's hand)
 		await DisplayAllHandsAsync(gameId);
@@ -129,14 +129,14 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 		if (!(await RunBettingRoundAsync(gameId, "First Betting Round")))
 		{
 			//Hand ended due to folds
-			var showdownResponse = await _fiveCardDrawApi.PerformShowdownAsync(gameId);
+			var showdownResponse = await _fiveCardDrawApi.FiveCardDrawPerformShowdownAsync(gameId);
 			var showdownResult = showdownResponse.Content;
 
 			DisplayShowdownResult(showdownResult);
 			return;
 		}
 
-		var currentGameResponse = await _fiveCardDrawApi.GetGameAsync(gameId);
+		var currentGameResponse = await _fiveCardDrawApi.FiveCardDrawGetGameAsync(gameId);
 		var currentGame = currentGameResponse.Content;
 		//Draw phase
 		if (currentGame.CurrentPhase == FiveCardDrawPhase.DrawPhase.ToString()) //TODO:ROB - is this evaluating correctly?
@@ -145,13 +145,13 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 		}
 
 		////Second betting round
-		currentGameResponse = await _fiveCardDrawApi.GetGameAsync(gameId);
+		currentGameResponse = await _fiveCardDrawApi.FiveCardDrawGetGameAsync(gameId);
 		currentGame = currentGameResponse.Content;
 		if (currentGame.CurrentPhase == FiveCardDrawPhase.SecondBettingRound.ToString())
 		{
 			if (!(await RunBettingRoundAsync(gameId, "Second Betting Round")))
 			{
-				var performShowdownResponse = await _fiveCardDrawApi.PerformShowdownAsync(gameId);
+				var performShowdownResponse = await _fiveCardDrawApi.FiveCardDrawPerformShowdownAsync(gameId);
 				var result = performShowdownResponse.Content;
 				//var result = game.PerformShowdown();
 				DisplayShowdownResult(result);
@@ -160,16 +160,16 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 		}
 
 		//Showdown
-		currentGameResponse = await _fiveCardDrawApi.GetGameAsync(gameId);
+		currentGameResponse = await _fiveCardDrawApi.FiveCardDrawGetGameAsync(gameId);
 		currentGame = currentGameResponse.Content;
 		if (currentGame.CurrentPhase == FiveCardDrawPhase.Showdown.ToString())
 		{
-			var performShowdownResponse = await _fiveCardDrawApi.PerformShowdownAsync(gameId);
+			var performShowdownResponse = await _fiveCardDrawApi.FiveCardDrawPerformShowdownAsync(gameId);
 			var result = performShowdownResponse.Content;
 			DisplayShowdownResult(result);
 		}
 
-		currentGameResponse = await _fiveCardDrawApi.GetGameAsync(gameId);
+		currentGameResponse = await _fiveCardDrawApi.FiveCardDrawGetGameAsync(gameId);
 		currentGame = currentGameResponse.Content;
 		_canContinue = currentGame.CanContinue;
 	}
@@ -181,7 +181,7 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 		table.AddColumn("Chips");
 		table.AddColumn("Status");
 		
-		var playersResponse = await _fiveCardDrawApi.GetGamePlayersAsync(gameId);
+		var playersResponse = await _fiveCardDrawApi.FiveCardDrawGetGamePlayersAsync(gameId);
 		var players = playersResponse.Content;
 
 		foreach (var gamePlayer in players)
@@ -227,7 +227,7 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 	
 	private async Task DisplayAllHandsAsync(Guid gameId)
 	{
-		var playersResponse = await _fiveCardDrawApi.GetGamePlayersAsync(gameId);
+		var playersResponse = await _fiveCardDrawApi.FiveCardDrawGetGamePlayersAsync(gameId);
 		var players = playersResponse.Content;
 
 		foreach (var gamePlayer in players)
@@ -247,13 +247,13 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 		string currentPhase = FiveCardDrawPhase.DrawPhase.ToString();
 		while (currentPhase == FiveCardDrawPhase.DrawPhase.ToString()) //TODO:ROB - is this evaluating correctly?
 		{
-			var gamePlayersResponse = await _fiveCardDrawApi.GetGamePlayersAsync(gameResponse.Id);
+			var gamePlayersResponse = await _fiveCardDrawApi.FiveCardDrawGetGamePlayersAsync(gameResponse.Id);
 			var gamePlayers = gamePlayersResponse.Content;
-			var currentPlayerTurnResponse = await _fiveCardDrawApi.GetCurrentPlayerTurnAsync(gameResponse.Id);
+			var currentPlayerTurnResponse = await _fiveCardDrawApi.FiveCardDrawGetCurrentPlayerTurnAsync(gameResponse.Id);
 			var currentPlayerTurn = currentPlayerTurnResponse.Content;
 			var currentPlayer = currentPlayerTurn.Player;
 
-			var currentDrawPlayerResponse = await _fiveCardDrawApi.GetCurrentDrawPlayerAsync(gameResponse.Id);
+			var currentDrawPlayerResponse = await _fiveCardDrawApi.FiveCardDrawGetCurrentDrawPlayerAsync(gameResponse.Id);
 			var drawPlayer = currentDrawPlayerResponse.Content;
 
 			// Clear screen and show fresh game state for draw phase
@@ -291,7 +291,7 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 			}
 
 			var request = new ProcessDrawRequest(discardIndices);
-			var drawResponse = await _fiveCardDrawApi.ProcessDrawAsync(gameResponse.Id, request);
+			var drawResponse = await _fiveCardDrawApi.FiveCardDrawProcessDrawAsync(gameResponse.Id, request);
 			var result = drawResponse.Content;
 
 			if (!drawResponse.IsSuccessStatusCode || result is null)
@@ -305,7 +305,7 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 				AnsiConsole.MarkupLine($"[blue]{drawPlayer.PlayerName} discards {discardIndices.Count} card(s) and draws {result.NewCards.Count} card(s)[/]");
 				AnsiConsole.MarkupLine($"New hand:");
 				// Refresh the draw player's hand after drawing
-				var refreshedDrawPlayerResponse = await _fiveCardDrawApi.GetCurrentDrawPlayerAsync(gameResponse.Id);
+				var refreshedDrawPlayerResponse = await _fiveCardDrawApi.FiveCardDrawGetCurrentDrawPlayerAsync(gameResponse.Id);
 				if (refreshedDrawPlayerResponse.IsSuccessStatusCode && refreshedDrawPlayerResponse.Content is not null)
 				{
 					ApiCardRenderer.RenderCards(refreshedDrawPlayerResponse.Content.Hand);
@@ -326,15 +326,15 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 	private async Task<bool> RunBettingRoundAsync(Guid gameId, string roundName)
 	{
 		bool currentBettingRoundIsComplete = false;
-		var currentBettingRoundResponse = await _fiveCardDrawApi.GetCurrentBettingRoundAsync(gameId);
+		var currentBettingRoundResponse = await _fiveCardDrawApi.FiveCardDrawGetCurrentBettingRoundAsync(gameId);
 		var currentBettingRound = currentBettingRoundResponse.Content;
 		currentBettingRoundIsComplete = currentBettingRound.IsComplete;
 
 		while (!currentBettingRoundIsComplete)
 		{
-			var gamePlayersResponse = await _fiveCardDrawApi.GetGamePlayersAsync(gameId);
+			var gamePlayersResponse = await _fiveCardDrawApi.FiveCardDrawGetGamePlayersAsync(gameId);
 			var gamePlayers = gamePlayersResponse.Content;
-			var currentPlayerTurnResponse = await _fiveCardDrawApi.GetCurrentPlayerTurnAsync(gameId);
+			var currentPlayerTurnResponse = await _fiveCardDrawApi.FiveCardDrawGetCurrentPlayerTurnAsync(gameId);
 			var currentPlayerTurn = currentPlayerTurnResponse.Content;
 			var currentPlayer = currentPlayerTurn.Player;
 			var available = currentPlayerTurn.AvailableActions;
@@ -368,7 +368,7 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 			var action = PromptForAction(currentPlayer, available);
 			
 			var request = new ProcessBettingActionRequest(action.ActionType, action.Amount);
-			var processActionResponse = await _fiveCardDrawApi.ProcessBettingActionAsync(gameId, request);
+			var processActionResponse = await _fiveCardDrawApi.FiveCardDrawProcessBettingActionAsync(gameId, request);
 			var processActionResult = processActionResponse.Content;
 
 			// if (!result.Success)
@@ -385,7 +385,7 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 				return false;
 			}
 
-			currentBettingRoundResponse = await _fiveCardDrawApi.GetCurrentBettingRoundAsync(gameId);
+			currentBettingRoundResponse = await _fiveCardDrawApi.FiveCardDrawGetCurrentBettingRoundAsync(gameId);
 			currentBettingRound = currentBettingRoundResponse.Content;
 			currentBettingRoundIsComplete = currentBettingRound?.IsComplete ?? true;
 		}
@@ -455,7 +455,7 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 
 	private async Task DisplayFinalStandings(Guid gameId)
 	{
-		var gamePlayersResponse = await _fiveCardDrawApi.GetGamePlayersAsync(gameId);
+		var gamePlayersResponse = await _fiveCardDrawApi.FiveCardDrawGetGamePlayersAsync(gameId);
 		var gamePlayers = gamePlayersResponse.Content;
 
 		var standings = gamePlayers

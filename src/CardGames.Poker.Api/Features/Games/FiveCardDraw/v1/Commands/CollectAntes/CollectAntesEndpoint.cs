@@ -29,7 +29,7 @@ public static class CollectAntesEndpoint
 						}
 					);
 				})
-			.WithName(nameof(MapCollectAntes).TrimPrefix("Map"))
+			.WithName($"FiveCardDraw{nameof(MapCollectAntes).TrimPrefix("Map")}")
 			.WithSummary("Collect Antes")
 			.WithDescription("Collects the mandatory ante bet from all players to seed the pot before dealing. " +
 			                 "Each player contributes the ante amount (or their remaining chips if short-stacked). " +

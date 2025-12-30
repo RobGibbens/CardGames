@@ -16,7 +16,7 @@ public static class GetGamePlayersEndpoint
 					var response = await mediator.Send(new GetGamePlayersQuery(gameId), cancellationToken);
 					return Results.Ok(response);
 				})
-			.WithName(nameof(MapGetGamePlayers).TrimPrefix("Map"))
+			.WithName($"FiveCardDraw{nameof(MapGetGamePlayers).TrimPrefix("Map")}")
 			.WithSummary(nameof(MapGetGamePlayers).TrimPrefix("Map"))
 			.WithDescription("Retrieve all players in a specific game.")
 			.MapToApiVersion(1.0)

@@ -29,7 +29,7 @@ public static class PerformShowdownEndpoint
 						}
 					);
 				})
-			.WithName(nameof(MapPerformShowdown).TrimPrefix("Map"))
+			.WithName($"FiveCardDraw{nameof(MapPerformShowdown).TrimPrefix("Map")}")
 			.WithSummary("Perform Showdown")
 			.WithDescription(
 				"Performs the showdown phase to evaluate all remaining players' hands and award the pot(s) to the winner(s). " +

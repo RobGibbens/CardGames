@@ -33,7 +33,7 @@ public static class ProcessDrawEndpoint
 						}
 					);
 				})
-			.WithName(nameof(MapProcessDraw).TrimPrefix("Map"))
+			.WithName($"FiveCardDraw{nameof(MapProcessDraw).TrimPrefix("Map")}")
 			.WithSummary("Process Draw Action")
 			.WithDescription(
 				"Processes a draw action for the current player, allowing them to discard unwanted cards " +

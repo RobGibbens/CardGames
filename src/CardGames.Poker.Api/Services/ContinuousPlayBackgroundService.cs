@@ -3,6 +3,7 @@ using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Games.FiveCardDraw;
 using Microsoft.EntityFrameworkCore;
 
+//TODO:ROB - This should not be tied to FiveCardDraw - make it generic for all poker variants
 namespace CardGames.Poker.Api.Services;
 
 /// <summary>

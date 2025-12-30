@@ -7,6 +7,7 @@ using CardGames.Poker.Games.HoldEm;
 using CardGames.Poker.Games.KingsAndLows;
 using CardGames.Poker.Games.Omaha;
 using CardGames.Poker.Games.SevenCardStud;
+using CardGames.Poker.Games.TwosJacksManWithTheAxe;
 
 namespace CardGames.Poker.Api.Games;
 
@@ -14,6 +15,7 @@ public static class PokerGameMetadataRegistry
 {
 	public const string HoldEmCode = "HOLDEM";
 	public const string FiveCardDrawCode = "FIVECARDDRAW";
+	public const string TwosJacksManWithTheAxeCode = "TWOSJACKSMANWITHTHEAXE";
 	public const string OmahaCode = "OMAHA";
 	public const string SevenCardStudCode = "SEVENCARDSTUD";
 	public const string KingsAndLowsCode = "KINGSANDLOWS";
@@ -24,6 +26,7 @@ public static class PokerGameMetadataRegistry
 		{
 			[HoldEmCode] = GetMetadataOrThrow(typeof(HoldEmGame)),
 			[FiveCardDrawCode] = GetMetadataOrThrow(typeof(FiveCardDrawGame)),
+			[TwosJacksManWithTheAxeCode] = GetMetadataOrThrow(typeof(TwosJacksManWithTheAxeGame)),
 			[OmahaCode] = GetMetadataOrThrow(typeof(OmahaGame)),
 			[SevenCardStudCode] = GetMetadataOrThrow(typeof(SevenCardStudGame)),
 			[KingsAndLowsCode] = GetMetadataOrThrow(typeof(KingsAndLowsGame)),

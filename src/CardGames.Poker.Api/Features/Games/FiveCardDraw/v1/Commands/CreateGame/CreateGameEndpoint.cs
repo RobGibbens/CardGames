@@ -20,7 +20,7 @@ public static class CreateGameEndpoint
 							statusCode: StatusCodes.Status409Conflict)
 					);
 				})
-			.WithName(nameof(MapCreateGame).TrimPrefix("Map"))
+			.WithName($"FiveCardDraw{nameof(MapCreateGame).TrimPrefix("Map")}")
 			.WithSummary(nameof(MapCreateGame).TrimPrefix("Map"))
 			.WithDescription("Create a new game.")
 			.Produces(StatusCodes.Status201Created, typeof(Guid))

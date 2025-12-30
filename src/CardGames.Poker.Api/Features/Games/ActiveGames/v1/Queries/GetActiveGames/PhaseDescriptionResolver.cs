@@ -1,11 +1,12 @@
-using CardGames.Poker.Api.Games;
 using CardGames.Poker.Api.Extensions;
+using CardGames.Poker.Api.Games;
 using CardGames.Poker.Games.FiveCardDraw;
 using CardGames.Poker.Games.FollowTheQueen;
 using CardGames.Poker.Games.HoldEm;
 using CardGames.Poker.Games.KingsAndLows;
 using CardGames.Poker.Games.Omaha;
 using CardGames.Poker.Games.SevenCardStud;
+using CardGames.Poker.Games.TwosJacksManWithTheAxe;
 
 namespace CardGames.Poker.Api.Features.Games.ActiveGames.v1.Queries.GetActiveGames;
 
@@ -26,6 +27,7 @@ internal static class PhaseDescriptionResolver
 		return gameTypeCode.ToUpperInvariant() switch
 		{
 			PokerGameMetadataRegistry.FiveCardDrawCode => TryResolveEnumDescription<FiveCardDrawPhase>(currentPhase),
+			PokerGameMetadataRegistry.TwosJacksManWithTheAxeCode => TryResolveEnumDescription<TwosJacksManWithTheAxePhase>(currentPhase),
 			PokerGameMetadataRegistry.HoldEmCode => TryResolveEnumDescription<HoldEmPhase>(currentPhase),
 			PokerGameMetadataRegistry.OmahaCode => TryResolveEnumDescription<OmahaPhase>(currentPhase),
 			PokerGameMetadataRegistry.SevenCardStudCode => TryResolveEnumDescription<SevenCardStudPhase>(currentPhase),

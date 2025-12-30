@@ -18,7 +18,7 @@ public static class GetCurrentDrawPlayerEndpoint
 						? Results.NotFound()
 						: Results.Ok(response);
 				})
-			.WithName(nameof(MapGetCurrentDrawPlayer).TrimPrefix("Map"))
+			.WithName($"FiveCardDraw{nameof(MapGetCurrentDrawPlayer).TrimPrefix("Map")}")
 			.WithSummary(nameof(MapGetCurrentDrawPlayer).TrimPrefix("Map"))
 			.WithDescription("Retrieve the current player who must act during the draw phase. Returns 404 if not in draw phase or no eligible players remain.")
 			.MapToApiVersion(1.0)

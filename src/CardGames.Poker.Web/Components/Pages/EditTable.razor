@@ -258,7 +258,7 @@
 
         try
         {
-            var response = await FiveCardDrawApi.GetTableSettingsAsync(GameId);
+            var response = await FiveCardDrawApi.FiveCardDrawGetTableSettingsAsync(GameId);
 
             if (response.IsSuccessStatusCode && response.Content is not null)
             {
@@ -327,7 +327,7 @@
                 rowVersion: rowVersion
             );
 
-            var response = await FiveCardDrawApi.UpdateTableSettingsAsync(GameId, request);
+            var response = await FiveCardDrawApi.FiveCardDrawUpdateTableSettingsAsync(GameId, request);
 
             if (response.IsSuccessStatusCode && response.Content is not null)
             {

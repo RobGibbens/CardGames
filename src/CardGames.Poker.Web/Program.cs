@@ -55,6 +55,13 @@ builder.Services
 	.AddHttpMessageHandler<AuthenticationStateHandler>();
 
 builder.Services
+	.AddRefitClient<ITwosJacksManWithTheAxeApi>(
+		settingsAction: _ => new RefitSettings(),
+		httpClientName: "twosJacksManWithTheAxeApi")
+	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"))
+	.AddHttpMessageHandler<AuthenticationStateHandler>();
+
+builder.Services
 	.AddRefitClient<IAvailablePokerGamesApi>(
 		settingsAction: _ => new RefitSettings(),
 		httpClientName: "availablePokerGamesApi")

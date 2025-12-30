@@ -13,7 +13,7 @@ public static class GetGamesEndpoint
 					var response = await mediator.Send(new GetGamesQuery(), cancellationToken);
 					return Results.Ok(response);
 				})
-			.WithName(nameof(MapGetGames).TrimPrefix("Map"))
+			.WithName($"FiveCardDraw{nameof(MapGetGames).TrimPrefix("Map")}")
 			.WithSummary(nameof(MapGetGames).TrimPrefix("Map"))
 			.WithDescription("Retrieve a list of games.")
 			.MapToApiVersion(1.0)

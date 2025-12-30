@@ -39,7 +39,16 @@
 - [ ] Showdown should use better description of the cards (Pair of Aces vs One Pair)
 - [ ] Add animation of dealing the cards
 - [ ] Add other game types
-- [ ] Add Twos, Jacks, Man with the Axe
 - [ ] Table should be able to scroll if the screen isn't big enough
 - [ ] Rearrange the register and login screens to make OAuth more obvious
 - [ ] Allow them to upload an image when registering
+
+
+## Add Games
+- [ ] Add Twos, Jacks, Man with the Axe
+- [ ] Add Razz
+- [ ] Add Screw Your Neighbor
+- [ ] Add Texas Hold'em
+- [ ] Add Omaha
+- [ ] Add Seven Card Stud
+- [ ] Add Five Card Stud

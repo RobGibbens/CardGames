@@ -81,7 +81,7 @@ static void RunPlayMenu()
     var gameType = AnsiConsole.Prompt(
         new SelectionPrompt<string>()
             .Title("[green]Select game type:[/]")
-            .AddChoices("5-Card Draw", "7-Card Stud", "Texas Hold 'Em", "Omaha", "Baseball", "Kings and Lows", "Follow the Queen", "Back"));
+            .AddChoices("5-Card Draw", "Twos, Jacks, Man with the Axe", "7-Card Stud", "Texas Hold 'Em", "Omaha", "Baseball", "Kings and Lows", "Follow the Queen", "Back"));
 
     var app = CreateCommandApp();
     
@@ -90,7 +90,10 @@ static void RunPlayMenu()
         case "5-Card Draw":
             app.Run(new[] { "play", "draw" });
             break;
-        case "7-Card Stud":
+        case "Twos, Jacks, Man with the Axe":
+	        app.Run(new[] { "play", "axe" });
+            break;
+		case "7-Card Stud":
             app.Run(new[] { "play", "stud" });
             break;
         case "Texas Hold 'Em":
@@ -118,7 +121,7 @@ static void RunDealMenu()
     var gameType = AnsiConsole.Prompt(
         new SelectionPrompt<string>()
             .Title("[green]Select game type:[/]")
-            .AddChoices("Texas Holdem", "Omaha", "7-Card Stud", "5-Card Draw", "Baseball", "Kings and Lows", "Follow the Queen", "Back"));
+            .AddChoices("Texas Holdem", "Omaha", "7-Card Stud", "5-Card Draw", "Twos, Jacks, Man with the Axe", "Baseball", "Kings and Lows", "Follow the Queen", "Back"));
 
     var app = CreateCommandApp();
     
@@ -136,7 +139,10 @@ static void RunDealMenu()
         case "5-Card Draw":
             app.Run(new[] { "deal", "draw" });
             break;
-        case "Baseball":
+        case "Twos, Jacks, Man with the Axe":
+            app.Run(new[] { "deal", "axe" });
+            break;
+		case "Baseball":
             app.Run(new[] { "deal", "baseball" });
             break;
         case "Kings and Lows":
@@ -155,7 +161,7 @@ static void RunSimulationMenu()
     var gameType = AnsiConsole.Prompt(
         new SelectionPrompt<string>()
             .Title("[green]Select simulation type:[/]")
-            .AddChoices("Texas Holdem", "Omaha", "7-Card Stud", "5-Card Draw", "Baseball", "Kings and Lows", "Follow the Queen", "Back"));
+            .AddChoices("Texas Holdem", "Omaha", "7-Card Stud", "5-Card Draw", "Twos, Jacks, Man with the Axe", "Baseball", "Kings and Lows", "Follow the Queen", "Back"));
 
     var app = CreateCommandApp();
     
@@ -173,7 +179,10 @@ static void RunSimulationMenu()
         case "5-Card Draw":
             app.Run(new[] { "sim", "draw" });
             break;
-        case "Baseball":
+        case "Twos, Jacks, Man with the Axe":
+            app.Run(new[] { "sim", "axe" });
+            break;
+		case "Baseball":
             app.Run(new[] { "sim", "baseball" });
             break;
         case "Kings and Lows":
@@ -223,6 +232,11 @@ static CommandApp CreateCommandApp()
                 .WithDescription("Runs a 5-card Draw simulation.");
 
             sim
+	            .AddCommand<TwosJacksManWithTheAxeSimulationCommand>("axe")
+                .WithAlias("twos-jacks-man-with-the-axe")
+                .WithDescription("Runs a Twos, Jacks, Man with the Axe simulation.");
+
+			sim
                 .AddCommand<BaseballSimulationCommand>("baseball")
                 .WithDescription("Runs a Baseball simulation (3s and 9s wild, 4s grant extra cards).");
 
@@ -263,6 +277,11 @@ static CommandApp CreateCommandApp()
                 .WithDescription("Deal a 5-card Draw hand with automated dealer.");
 
             deal
+	            .AddCommand<TwosJacksManWithTheAxeDealCommand>("axe")
+				.WithAlias("twos-jacks-man-with-the-axe")
+	            .WithDescription("Runs a Twos, Jacks, Man with the Axe simulation.");
+
+			deal
                 .AddCommand<BaseballDealCommand>("baseball")
                 .WithDescription("Deal a Baseball hand (3s and 9s wild, 4s grant extra cards).");
 
@@ -295,6 +314,11 @@ static CommandApp CreateCommandApp()
                 .WithDescription("Play 5-card Draw with betting.");
 
             play
+	            .AddCommand<TwosJacksManWithTheAxePlayCommand>("axe")
+	            .WithAlias("twos-jacks-man-with-the-axe")
+	            .WithDescription("Play Twos, Jacks, Man with the Axe with betting.");
+
+			play
                 .AddCommand<SevenCardStudPlayCommand>("stud")
                 .WithAlias("7cs")
                 .WithAlias("7-card-stud")
