@@ -172,8 +172,11 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 			}
 			else
 			{
-				// Multiple players - go to showdown
+				// Multiple players - go to showdown and automatically perform it
 				game.CurrentPhase = nameof(KingsAndLowsPhase.Showdown);
+				
+				// Auto-perform showdown for multiple staying players
+				await PerformShowdownAndSetupPotMatching(game, gamePlayersList, context, now, cancellationToken);
 			}
 			
 			nextPhase = game.CurrentPhase;
@@ -215,5 +218,105 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 			NextPhase = nextPhase,
 			NextPlayerId = nextPlayerId
 		};
+	}
+
+	/// <summary>
+	/// Performs showdown, determines winner/losers, distributes pot, and transitions to PotMatching phase.
+	/// </summary>
+	private static async Task PerformShowdownAndSetupPotMatching(
+		Game game,
+		List<GamePlayer> gamePlayersList,
+		CardsDbContext context,
+		DateTimeOffset now,
+		CancellationToken cancellationToken)
+	{
+		// Get all cards for staying players
+		var stayingPlayers = gamePlayersList.Where(gp => gp.DropOrStayDecision == Data.Entities.DropOrStayDecision.Stay).ToList();
+		
+		// Load main pot for current hand
+		var mainPot = await context.Pots
+			.FirstOrDefaultAsync(p => p.GameId == game.Id && p.HandNumber == game.CurrentHandNumber, cancellationToken);
+		
+		if (mainPot == null)
+		{
+			// No pot to distribute - just complete the hand
+			game.CurrentPhase = nameof(KingsAndLowsPhase.Complete);
+			return;
+		}
+
+		// Evaluate hands using the KingsAndLowsDrawHand evaluator
+		var playerHandEvaluations = new List<(GamePlayer player, long strength)>();
+		
+		foreach (var player in stayingPlayers)
+		{
+			var playerCards = context.GameCards
+				.Where(gc => gc.GamePlayerId == player.Id && gc.HandNumber == game.CurrentHandNumber)
+				.OrderBy(gc => gc.DealOrder)
+				.Select(gc => new { gc.Suit, gc.Symbol })
+				.ToList();
+
+			if (playerCards.Count == 5)
+			{
+				// Convert to domain Card objects for evaluation
+				var cards = playerCards.Select(c => new CardGames.Core.French.Cards.Card(
+					(CardGames.Core.French.Cards.Suit)(int)c.Suit,
+					(CardGames.Core.French.Cards.Symbol)(int)c.Symbol
+				)).ToList();
+
+				var hand = new CardGames.Poker.Hands.DrawHands.KingsAndLowsDrawHand(cards);
+				playerHandEvaluations.Add((player, hand.Strength));
+			}
+		}
+
+		// Find winner(s)
+		if (playerHandEvaluations.Count == 0)
+		{
+			game.CurrentPhase = nameof(KingsAndLowsPhase.Complete);
+			return;
+		}
+
+		var maxStrength = playerHandEvaluations.Max(h => h.strength);
+		var winners = playerHandEvaluations.Where(h => h.strength == maxStrength).Select(h => h.player).ToList();
+		var losers = stayingPlayers.Where(p => !winners.Contains(p)).ToList();
+
+		// Distribute pot to winner(s)
+		var potAmount = mainPot.Amount;
+		var sharePerWinner = potAmount / winners.Count;
+		var remainder = potAmount % winners.Count;
+
+		foreach (var winner in winners)
+		{
+			var payout = sharePerWinner;
+			if (remainder > 0)
+			{
+				payout++;
+				remainder--;
+			}
+			winner.ChipStack += payout;
+		}
+
+		// Clear the current pot (winners took it)
+		mainPot.Amount = 0;
+
+		// Create a new pot for next hand that will receive losers' matching contributions
+		var newPot = new Pot
+		{
+			GameId = game.Id,
+			HandNumber = game.CurrentHandNumber + 1,
+			Amount = 0,
+			CreatedAt = now
+		};
+		context.Pots.Add(newPot);
+
+		// Transition to PotMatching phase if there are losers
+		if (losers.Any())
+		{
+			game.CurrentPhase = nameof(KingsAndLowsPhase.PotMatching);
+		}
+		else
+		{
+			// No losers (all tied?) - just complete
+			game.CurrentPhase = nameof(KingsAndLowsPhase.Complete);
+		}
 	}
 }
