@@ -174,6 +174,10 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 			{
 				// Multiple players - go to showdown and automatically perform it
 				game.CurrentPhase = nameof(KingsAndLowsPhase.Showdown);
+				game.UpdatedAt = now;
+				
+				// IMPORTANT: Save changes before performing showdown so new cards are in database
+				await context.SaveChangesAsync(cancellationToken);
 				
 				// Auto-perform showdown for multiple staying players
 				await PerformShowdownAndSetupPotMatching(game, gamePlayersList, context, now, cancellationToken);
@@ -203,10 +207,12 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 			}
 		}
 
-		game.UpdatedAt = now;
-
-		// 12. Persist changes
-		await context.SaveChangesAsync(cancellationToken);
+		// 12. Persist changes (if not already saved during showdown)
+		if (!drawPhaseComplete || game.CurrentPhase != nameof(KingsAndLowsPhase.PotMatching))
+		{
+			game.UpdatedAt = now;
+			await context.SaveChangesAsync(cancellationToken);
+		}
 
 		return new DrawCardsSuccessful
 		{
