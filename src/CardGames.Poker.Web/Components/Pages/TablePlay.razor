@@ -154,27 +154,37 @@
             }
         </div>
 
-        <!-- Action Panel (only shown when it's player's turn during betting) -->
-        @if (isPlayerTurn && !isDrawPhase && _gameResponse.CurrentPhase != GamePhase.WaitingForPlayers.ToString() &&
-            _gameResponse.CurrentPhase != GamePhase.Ended.ToString())
+        <!-- Action Panel (only shown when it's player's turn during betting phase) -->
+        @if (isPlayerTurn && IsBettingPhase)
         {
             <ActionPanel LegalActions="@legalActions" MinBet="@currentMinBet" MaxBet="@currentMaxBet"
                          CurrentBetToCall="@currentBetToCall" PlayerChips="@playerChips" TurnTimeRemaining="@turnTimeRemaining"
                          OnAction="HandlePlayerActionAsync" IsSubmitting="@isSubmittingAction" />
         }
 
+        <!-- Decision Panel (shown during decision phase like Drop/Stay) -->
+        @if (isPlayerTurn && IsDecisionPhase)
+        {
+            <DecisionPanel Title="@GetDecisionTitle()"
+                           Subtitle="@GetDecisionSubtitle()"
+                           AvailableActions="@CurrentPhaseAvailableActions"
+                           OnDecision="@HandleDecisionAsync"
+                           IsSubmitting="@isSubmittingAction" />
+        }
+
         <!-- Draw Panel (only shown when it's player's turn during draw phase) -->
-        @if (isDrawPhase && (isPlayerDrawTurn || _forceShowDrawPanel))
+        @if (IsDrawingPhase && (isPlayerDrawTurn || _forceShowDrawPanel))
         {
             <DrawPanel Cards="@currentPlayerDrawCards" SelectedIndices="@selectedDiscardIndices"
                        OnToggleSelection="ToggleDiscardSelectionAsync" OnDraw="HandleDrawActionAsync" IsSubmitting="@isSubmittingDraw"
                        IsAnimating="@isDrawAnimating" IsDiscarding="@isDiscardingCards" IsDrawing="@isDrawingNewCards"
                        CardsDrawn="@cardsDrawn" NewCardIndices="@newCardIndices"
-                       HandDescription="@currentPlayerHandEvaluationDescription" MaxDiscards="@maxDiscards" />
+                       HandDescription="@currentPlayerHandEvaluationDescription" MaxDiscards="@GetMaxDiscards()"
+                       DrawingSpecialRules="@GetDrawingSpecialRules()" />
         }
 
         <!-- Draw Phase Waiting Indicator (shown to other players during draw phase) -->
-        @if (isDrawPhase && !isPlayerDrawTurn && _currentDrawPlayer is not null)
+        @if (IsDrawingPhase && !isPlayerDrawTurn && _currentDrawPlayer is not null)
         {
             <div class="draw-phase-indicator">
                 <div class="draw-phase-content">
@@ -184,8 +194,25 @@
             </div>
         }
 
-        <!-- Waiting/Pre-game overlay -->
-        @if (_gameResponse.CurrentPhase == GamePhase.WaitingForPlayers.ToString())
+        <!-- Special Phase Overlay (for game-specific phases) -->
+        @if (IsSpecialPhase)
+        {
+            <SpecialPhaseOverlay Title="@(_tableState?.CurrentPhaseDescription ?? "Special Phase")"
+                                 Description="@GetSpecialPhaseDescription()"
+                                 IconClass="fa-solid fa-star" />
+        }
+
+        <!-- Pot Matching Overlay (for Kings and Lows) -->
+        @if (HasPotMatching && IsPotMatchingPhase)
+        {
+            <PotMatchingOverlay PotAmount="@pot"
+                                LosingPlayers="@GetLosingPlayers()"
+                                IsPlayerAffected="@IsCurrentPlayerLoser"
+                                OnAcknowledge="@HandlePotMatchAcknowledge" />
+        }
+
+        <!-- Waiting/Pre-game overlay (Setup phase) -->
+        @if (IsSetupPhase || _gameResponse.CurrentPhase == GamePhase.WaitingForPlayers.ToString())
         {
             <div class="table-overlay waiting-overlay">
                 <div class="overlay-content">
@@ -390,6 +417,13 @@
 
     private bool IsSpecialPhase =>
         _tableState?.CurrentPhaseCategory?.Equals("Special", StringComparison.OrdinalIgnoreCase) == true;
+
+    // Pot matching phase detection (for Kings and Lows)
+    private bool IsPotMatchingPhase =>
+        string.Equals(_gameResponse?.CurrentPhase, "PotMatching", StringComparison.OrdinalIgnoreCase);
+
+    // Whether the current player is a loser in pot matching
+    private bool IsCurrentPlayerLoser => false; // TODO: Implement when pot matching is fully supported
 
     // Special rules helper properties - driven by SignalR state
     private bool HasWildCards =>
@@ -1846,4 +1880,169 @@ HandType.HighCard
         HandType.FiveOfAKind => "Five of a Kind",
         _ => handType.ToString()
     };
+
+    // ============== Dynamic UI Helper Methods ==============
+
+    /// <summary>
+    /// Gets the title for the decision panel based on current game phase.
+    /// </summary>
+    private string GetDecisionTitle()
+    {
+        if (HasDropOrStay)
+        {
+            return "Drop or Stay?";
+        }
+        return _tableState?.CurrentPhaseDescription ?? "Make a Decision";
+    }
+
+    /// <summary>
+    /// Gets the subtitle for the decision panel.
+    /// </summary>
+    private string GetDecisionSubtitle()
+    {
+        if (HasDropOrStay)
+        {
+            return "Choose to stay in the hand or drop out";
+        }
+        return "";
+    }
+
+    /// <summary>
+    /// Gets the description for special phases.
+    /// </summary>
+    private string GetSpecialPhaseDescription()
+    {
+        if (HasPotMatching)
+        {
+            return "Losers must match the pot amount.";
+        }
+        return "Please wait for this phase to complete.";
+    }
+
+    /// <summary>
+    /// Handles decision actions (like Drop/Stay).
+    /// </summary>
+    private async Task HandleDecisionAsync(string decision)
+    {
+        if (isSubmittingAction)
+        {
+            return;
+        }
+
+        isSubmittingAction = true;
+        try
+        {
+            // Use the appropriate API based on game type (to be unified in future)
+            // For now, map decision to betting action
+            var actionType = decision.ToUpperInvariant() switch
+            {
+                "DROP" => BettingActionType.Fold,
+                "STAY" => BettingActionType.Check,
+                _ => BettingActionType.Check
+            };
+
+            var request = new ProcessBettingActionRequest(actionType, 0);
+            Refit.IApiResponse<ProcessBettingActionSuccessful>? response;
+
+            if (IsTwosJacksManWithTheAxe)
+            {
+                response = await TwosJacksManWithTheAxeApi.TwosJacksManWithTheAxeProcessBettingActionAsync(GameId, request);
+            }
+            else
+            {
+                response = await FiveCardDrawApiClient.FiveCardDrawProcessBettingActionAsync(GameId, request);
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                Logger.LogWarning("Decision failed: {Error}", response.Error?.Content);
+            }
+            // SignalR will broadcast the updated state
+        }
+        finally
+        {
+            isSubmittingAction = false;
+        }
+    }
+
+    /// <summary>
+    /// Gets the maximum number of discards based on game rules.
+    /// </summary>
+    private int GetMaxDiscards()
+    {
+        // Use drawing config from table state if available
+        return _tableState?.DrawingConfig?.MaxDiscards ?? maxDiscards;
+    }
+
+    /// <summary>
+    /// Gets special drawing rules message for display.
+    /// </summary>
+    private string? GetDrawingSpecialRules()
+    {
+        return _tableState?.DrawingConfig?.SpecialRules;
+    }
+
+    /// <summary>
+    /// Determines if a card is wild based on game rules.
+    /// </summary>
+    private bool IsWildCard(CardInfo card)
+    {
+        var wildRules = _tableState?.SpecialRules?.WildCardRules;
+        if (wildRules is null)
+        {
+            return false;
+        }
+
+        // Check specific cards (e.g., "KD" for King of Diamonds)
+        if (wildRules.SpecificCards is not null && card.Rank is not null && card.Suit is not null)
+        {
+            var cardCode = $"{card.Rank}{GetSuitCode(card.Suit)}";
+            if (wildRules.SpecificCards.Any(c => c.Equals(cardCode, StringComparison.OrdinalIgnoreCase)))
+            {
+                return true;
+            }
+        }
+
+        // Check wild ranks (e.g., all 2s, all Jacks)
+        if (wildRules.WildRanks is not null && card.Rank is not null)
+        {
+            if (wildRules.WildRanks.Any(r => r.Equals(card.Rank, StringComparison.OrdinalIgnoreCase)))
+            {
+                return true;
+            }
+        }
+
+        // Lowest card is wild is handled by server marking the card
+        return false;
+    }
+
+    /// <summary>
+    /// Gets the suit code for wild card comparison.
+    /// </summary>
+    private static string GetSuitCode(string? suit) => suit?.ToUpperInvariant() switch
+    {
+        "CLUBS" => "C",
+        "DIAMONDS" => "D",
+        "HEARTS" => "H",
+        "SPADES" => "S",
+        _ => ""
+    };
+
+    /// <summary>
+    /// Gets the list of losing players for pot matching.
+    /// </summary>
+    private IReadOnlyList<string> GetLosingPlayers()
+    {
+        // TODO: Implement when pot matching phase is fully supported by the API
+        return [];
+    }
+
+    /// <summary>
+    /// Handles pot matching acknowledgment.
+    /// </summary>
+    private async Task HandlePotMatchAcknowledge()
+    {
+        // TODO: Implement when pot matching phase is fully supported by the API
+        await Task.CompletedTask;
+    }
 }

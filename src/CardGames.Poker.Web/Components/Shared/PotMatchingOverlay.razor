@@ -1,0 +1,61 @@
+@namespace CardGames.Poker.Web.Components.Shared
+
+<div class="table-overlay pot-matching-overlay">
+    <div class="overlay-content">
+        <div class="overlay-icon"><i class="fa-solid fa-coins"></i></div>
+        <h2>Pot Matching Required</h2>
+        <p class="pot-amount">Pot: @PotAmount.ToString("N0") chips</p>
+        
+        @if (LosingPlayers.Count > 0)
+        {
+            <div class="losing-players">
+                <p>The following players must match the pot:</p>
+                <ul>
+                    @foreach (var player in LosingPlayers)
+                    {
+                        <li>@player</li>
+                    }
+                </ul>
+            </div>
+        }
+
+        @if (IsPlayerAffected)
+        {
+            <p class="match-warning">You must match the pot to continue playing!</p>
+            <button class="btn btn-primary btn-lg" @onclick="() => OnAcknowledge.InvokeAsync()">
+                <i class="fa-solid fa-check"></i>
+                Acknowledge
+            </button>
+        }
+        else
+        {
+            <p class="waiting-message">Waiting for affected players...</p>
+        }
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// The current pot amount to be matched.
+    /// </summary>
+    [Parameter]
+    public int PotAmount { get; set; }
+
+    /// <summary>
+    /// List of player names who must match the pot.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<string> LosingPlayers { get; set; } = [];
+
+    /// <summary>
+    /// Whether the current player is affected by pot matching.
+    /// </summary>
+    [Parameter]
+    public bool IsPlayerAffected { get; set; }
+
+    /// <summary>
+    /// Callback when the player acknowledges the pot matching requirement.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnAcknowledge { get; set; }
+}
