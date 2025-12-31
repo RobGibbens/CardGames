@@ -1,49 +1,100 @@
 @namespace CardGames.Poker.Web.Components.Shared
 
-<div class="table-overlay drop-or-stay-overlay">
-    <div class="overlay-content">
-        <div class="overlay-icon"><i class="fa-solid fa-hand-pointer"></i></div>
-        <h2>Drop or Stay?</h2>
-        <p class="pot-amount">Current Pot: @PotAmount.ToString("N0") chips</p>
-        <p class="instruction">Choose whether to drop (fold) or stay in this hand.</p>
-        
-        @if (!HasDecided)
+@using static CardGames.Poker.Web.Components.Pages.TablePlay
+
+<div class="drop-or-stay-panel @(IsDeciding ? "submitting" : "")">
+    <!-- Header -->
+    <div class="drop-or-stay-header">
+        <div class="drop-or-stay-title">
+            <i class="fa-solid fa-hand-pointer"></i>
+            <span>Drop or Stay Decision</span>
+        </div>
+        <div class="drop-or-stay-subtitle">
+            Current Pot: @PotAmount.ToString("N0") chips
+        </div>
+        @if (!string.IsNullOrWhiteSpace(HandDescription))
         {
-            <div class="decision-buttons">
-                <button class="btn btn-danger btn-lg" @onclick='() => OnDecision.InvokeAsync("Drop")' disabled="@IsDeciding">
-                    <i class="fa-solid fa-times"></i>
-                    Drop
-                </button>
-                <button class="btn btn-success btn-lg" @onclick='() => OnDecision.InvokeAsync("Stay")' disabled="@IsDeciding">
-                    <i class="fa-solid fa-check"></i>
-                    Stay
-                </button>
-            </div>
-            
-            @if (IsDeciding)
-            {
-                <p class="processing-message"><i class="fa-solid fa-spinner fa-spin"></i> Processing...</p>
-            }
+            <div class="drop-or-stay-hand-eval">@HandDescription</div>
         }
-        else
+    </div>
+
+    <!-- Cards Display -->
+    <div class="drop-or-stay-cards-container">
+        @foreach (var card in Cards)
         {
-            <p class="decided-message">
-                <i class="fa-solid fa-check-circle"></i>
-                You have decided to <strong>@Decision</strong>
-            </p>
-            <p class="waiting-message">Waiting for other players to decide...</p>
-        }
-        
-        @if (PlayersWaiting.Count > 0)
-        {
-            <div class="waiting-players">
-                <p class="small">Waiting for: @string.Join(", ", PlayersWaiting)</p>
+            <div class="drop-or-stay-card-wrapper">
+                <div class="drop-or-stay-card">
+                    <playing-card rank="@GetPlayingCardRank(card)" suit="@card.Suit" style="height:92px;width:64px;"></playing-card>
+                </div>
             </div>
         }
     </div>
+
+    <!-- Decision Info -->
+    <div class="drop-or-stay-info">
+        @if (!HasDecided)
+        {
+            <span class="decision-hint">Choose whether to drop (fold) or stay in this hand</span>
+        }
+        else
+        {
+            <span class="decision-made">
+                <i class="fa-solid fa-check-circle"></i>
+                You have decided to <strong>@Decision</strong> - waiting for other players...
+            </span>
+        }
+    </div>
+
+    <!-- Action Buttons -->
+    @if (!HasDecided)
+    {
+        <div class="drop-or-stay-actions">
+            <button class="drop-or-stay-btn drop-btn" 
+                    @onclick='() => OnDecision.InvokeAsync("Drop")' 
+                    disabled="@IsDeciding">
+                <i class="fa-solid fa-times"></i>
+                <span>Drop</span>
+            </button>
+
+            <button class="drop-or-stay-btn stay-btn @(!IsDeciding ? "active" : "")" 
+                    @onclick='() => OnDecision.InvokeAsync("Stay")' 
+                    disabled="@IsDeciding">
+                <i class="fa-solid fa-check"></i>
+                <span>Stay</span>
+            </button>
+        </div>
+    }
+
+    @if (IsDeciding)
+    {
+        <div class="drop-or-stay-submitting">
+            <span class="loading-spinner-small"></span>
+            <span>Processing decision...</span>
+        </div>
+    }
+
+    @if (PlayersWaiting.Count > 0 && HasDecided)
+    {
+        <div class="drop-or-stay-waiting">
+            <span class="waiting-label">Waiting for:</span>
+            <span class="waiting-names">@string.Join(", ", PlayersWaiting)</span>
+        </div>
+    }
 </div>
 
 @code {
+    /// <summary>
+    /// The player's current hand cards.
+    /// </summary>
+    [Parameter]
+    public List<CardInfo> Cards { get; set; } = [];
+
+    /// <summary>
+    /// The player's hand description/evaluation.
+    /// </summary>
+    [Parameter]
+    public string? HandDescription { get; set; }
+
     /// <summary>
     /// The current pot amount.
     /// </summary>
@@ -79,4 +130,18 @@
     /// </summary>
     [Parameter]
     public EventCallback<string> OnDecision { get; set; }
+
+    private string? GetPlayingCardRank(CardInfo card)
+    {
+        var rank = card.Rank switch
+        {
+            "J" => "Jack",
+            "Q" => "Queen",
+            "K" => "King",
+            "A" => "Ace",
+            _ => card.Rank
+        };
+
+        return rank;
+    }
 }

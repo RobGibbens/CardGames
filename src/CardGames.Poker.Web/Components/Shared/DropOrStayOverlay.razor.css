@@ -1,78 +1,229 @@
-.drop-or-stay-overlay {
-    z-index: 1000;
-}
-
-.drop-or-stay-overlay .overlay-content {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+/* Drop or Stay Panel - Matches DrawPanel styling */
+.drop-or-stay-panel {
+    position: fixed;
+    right: 1.25rem;
+    bottom: 1.25rem;
+    z-index: 2000;
+    width: min(520px, calc(100vw - 2.5rem));
+    background: rgba(0, 0, 0, 0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 20px;
-    padding: 2rem;
-    max-width: 500px;
+    padding: 1.25rem 1.5rem;
+    animation: fadeInUp 0.3s ease-out;
+}
+
+.drop-or-stay-panel.submitting {
+    pointer-events: none;
+}
+
+/* Header */
+.drop-or-stay-header {
     text-align: center;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    margin-bottom: 1.25rem;
 }
 
-.drop-or-stay-overlay .overlay-icon {
-    font-size: 4rem;
-    margin-bottom: 1rem;
-    color: #fff;
-}
-
-.drop-or-stay-overlay h2 {
-    color: #fff;
-    margin-bottom: 1rem;
-    font-size: 2rem;
-}
-
-.drop-or-stay-overlay .pot-amount {
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: #ffd700;
-    margin-bottom: 0.5rem;
-}
-
-.drop-or-stay-overlay .instruction {
-    color: rgba(255, 255, 255, 0.9);
-    margin-bottom: 1.5rem;
-}
-
-.drop-or-stay-overlay .decision-buttons {
+.drop-or-stay-title {
     display: flex;
-    gap: 1rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 0.25rem;
+}
+
+.drop-or-stay-title i {
+    font-size: 1.5rem;
+    color: #fbbf24;
+}
+
+.drop-or-stay-subtitle {
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.drop-or-stay-hand-eval {
+    margin-top: 0.75rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+/* Cards Container */
+.drop-or-stay-cards-container {
+    display: flex;
+    justify-content: center;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+    perspective: 1000px;
+}
+
+.drop-or-stay-card-wrapper {
+    position: relative;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.drop-or-stay-card {
+    border-radius: 8px;
+    background: white;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Info Section */
+.drop-or-stay-info {
+    text-align: center;
+    margin-bottom: 1.25rem;
+    min-height: 2rem;
+}
+
+.decision-hint {
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.decision-made {
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 500;
+}
+
+.decision-made i {
+    color: #10b981;
+    margin-right: 0.25rem;
+}
+
+.decision-made strong {
+    color: #fbbf24;
+}
+
+/* Action Buttons - Matches DrawPanel button style */
+.drop-or-stay-actions {
+    display: flex;
+    gap: 0.75rem;
     justify-content: center;
     margin-bottom: 1rem;
 }
 
-.drop-or-stay-overlay .decision-buttons .btn {
-    min-width: 120px;
-    font-size: 1.2rem;
-    padding: 0.75rem 1.5rem;
+.drop-or-stay-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.875rem 1.75rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    min-width: 140px;
 }
 
-.drop-or-stay-overlay .decided-message {
-    background: rgba(255, 255, 255, 0.2);
-    padding: 1rem;
-    border-radius: 10px;
-    color: #fff;
-    margin-bottom: 1rem;
+.drop-or-stay-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
-.drop-or-stay-overlay .waiting-message {
+.drop-btn {
+    background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+    color: white;
+}
+
+.drop-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(107, 114, 128, 0.4);
+}
+
+.stay-btn {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+}
+
+.stay-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4);
+}
+
+.stay-btn.active {
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Submitting State */
+.drop-or-stay-submitting {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    font-size: 0.875rem;
     color: rgba(255, 255, 255, 0.8);
-    font-style: italic;
 }
 
-.drop-or-stay-overlay .processing-message {
-    color: rgba(255, 255, 255, 0.9);
+/* Waiting Players */
+.drop-or-stay-waiting {
     margin-top: 1rem;
-}
-
-.drop-or-stay-overlay .waiting-players {
-    margin-top: 1.5rem;
     padding-top: 1rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    text-align: center;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.6);
 }
 
-.drop-or-stay-overlay .waiting-players .small {
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 0.9rem;
+.waiting-label {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-weight: 500;
+}
+
+.waiting-names {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* Animations */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4);
+    }
+    50% {
+        transform: scale(1.02);
+        box-shadow: 0 10px 30px rgba(16, 185, 129, 0.6);
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .drop-or-stay-panel {
+        padding: 1rem;
+        width: min(100%, calc(100vw - 2rem));
+        right: 1rem;
+        bottom: 1rem;
+    }
+
+    .drop-or-stay-cards-container {
+        gap: 0.5rem;
+    }
+
+    .drop-or-stay-actions {
+        flex-direction: column;
+    }
+
+    .drop-or-stay-btn {
+        width: 100%;
+    }
 }

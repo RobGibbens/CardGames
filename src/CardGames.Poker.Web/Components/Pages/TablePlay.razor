@@ -198,7 +198,9 @@
         <!-- Drop or Stay Overlay (for Kings and Lows) -->
         @if (HasDropOrStay && IsDropOrStayPhase)
         {
-            <DropOrStayOverlay PotAmount="@pot"
+            <DropOrStayOverlay Cards="@currentPlayerDrawCards"
+                               HandDescription="@currentPlayerHandEvaluationDescription"
+                               PotAmount="@pot"
                                HasDecided="@_hasDropOrStayDecided"
                                Decision="@_dropOrStayDecision"
                                IsDeciding="@_isProcessingDropOrStay"
@@ -779,6 +781,19 @@
                     IsSelected = selectedDiscardIndices.Contains(i)
                 }).ToList();
             }
+        }
+
+        // Update Drop or Stay phase state (Kings and Lows)
+        // Populate cards for display in DropOrStayOverlay
+        if (IsDropOrStayPhase && state.Hand is not null && state.Hand.Count > 0)
+        {
+            currentPlayerDrawCards = state.Hand.Select((c, i) => new CardInfo
+            {
+                Rank = c.Rank,
+                Suit = c.Suit,
+                IsFaceUp = true,
+                IsSelected = false
+            }).ToList();
         }
 
         // Calculate hand odds from current cards
