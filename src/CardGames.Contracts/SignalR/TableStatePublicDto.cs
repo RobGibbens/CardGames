@@ -121,7 +121,7 @@ public sealed record TableStatePublicDto
 	public IReadOnlyList<HandHistoryEntryDto>? HandHistory { get; init; }
 
 	/// <summary>
-	/// The category of the current phase (e.g., "Setup", "Betting", "Drawing", "Decision", "Resolution").
+	/// The category of the current phase (e.g., "Setup", "Betting", "Drawing", "Decision", "Resolution", "Special").
 	/// Used by the UI to determine which overlay or panel to display.
 	/// </summary>
 	public string? CurrentPhaseCategory { get; init; }
