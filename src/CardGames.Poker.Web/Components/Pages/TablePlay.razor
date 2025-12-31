@@ -710,36 +710,66 @@
     {
         if (_showdownResult is null && showdown.IsComplete)
         {
-            // Convert to existing showdown format using constructor
             var payouts = showdown.PlayerResults
-            .Where(r => r.IsWinner)
-            .ToDictionary(r => r.PlayerName, r => r.AmountWon);
+                .Where(r => r.IsWinner)
+                .ToDictionary(r => r.PlayerName, r => r.AmountWon);
 
-            var playerHands = showdown.PlayerResults.Select(r => new ShowdownPlayerHand(
-                amountWon: r.AmountWon,
-                cards: ConvertCardsToShowdownCards(r.Cards),
-                handStrength: null,
-                handType: r.HandRanking ?? "",
-                isWinner: r.IsWinner,
-                playerFirstName: r.PlayerFirstName,
-                playerName: r.PlayerName,
-                handDescription: r.HandDescription ?? ""
-            )).ToList();
+            var highHandPayouts = showdown.PlayerResults
+                .Where(r => r.IsHighHandWinner && r.HighHandAmountWon > 0)
+                .ToDictionary(r => r.PlayerName, r => r.HighHandAmountWon);
+
+            var highHandWinners = showdown.PlayerResults
+                .Where(r => r.IsHighHandWinner && r.HighHandAmountWon > 0)
+                .Select(r => r.PlayerName)
+                .ToList();
+
+            var sevensPayouts = showdown.PlayerResults
+                .Where(r => r.IsSevensWinner && r.SevensAmountWon > 0)
+                .ToDictionary(r => r.PlayerName, r => r.SevensAmountWon);
+
+            var sevensWinners = showdown.PlayerResults
+                .Where(r => r.IsSevensWinner && r.SevensAmountWon > 0)
+                .Select(r => r.PlayerName)
+                .ToList();
+
+            var playerHands = showdown.PlayerResults
+                .Select(r => new ShowdownPlayerHand(
+                    amountWon: r.AmountWon,
+                    cards: ConvertCardsToShowdownCards(r.Cards),
+                    handDescription: r.HandDescription ?? "",
+                    handStrength: null,
+                    handType: r.HandRanking ?? "",
+                    highHandAmountWon: r.HighHandAmountWon,
+                    isHighHandWinner: r.IsHighHandWinner,
+                    isSevensWinner: r.IsSevensWinner,
+                    isWinner: r.IsWinner,
+                    playerFirstName: r.PlayerFirstName,
+                    playerName: r.PlayerName,
+                    sevensAmountWon: r.SevensAmountWon,
+                    wildCardIndexes: r.WildCardIndexes?.ToList() ?? []))
+                .ToList();
 
             _showdownResult = new PerformShowdownSuccessful(
                 currentPhase: "Complete",
                 gameId: GameId,
                 payouts: payouts,
+                highHandWinners: highHandWinners,
+                sevensPoolRolledOver: showdown.SevensPoolRolledOver,
+                highHandPayouts: highHandPayouts,
                 playerHands: playerHands,
-                wonByFold: false
-            );
+                sevensPayouts: sevensPayouts,
+                wonByFold: false,
+                sevensWinners: sevensWinners);
 
             _showShowdownOverlay = true;
 
-            // Check if current user is a winner by comparing against payout keys
             _showdownWon = _showdownResult.Payouts?.Keys.Any(p =>
-            string.Equals(p, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(p, currentPlayerName, StringComparison.OrdinalIgnoreCase)) == true;
+                string.Equals(p, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(p, currentPlayerName, StringComparison.OrdinalIgnoreCase)) == true
+                || highHandWinners.Any(p =>
+                    string.Equals(p, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(p, currentPlayerName, StringComparison.OrdinalIgnoreCase));
+
             _showdownLost = !_showdownWon;
         }
     }
@@ -874,6 +904,7 @@
                     dealerPosition: gamesResponse.DealerPosition,
                     endedAt: gamesResponse.EndedAt,
                     gameSettings: gamesResponse.GameSettings,
+                    gameTypeCode:gamesResponse.GameTypeCode,
                     gameTypeId: gamesResponse.GameTypeId,
                     gameTypeName: gamesResponse.GameTypeName,
                     id: gamesResponse.Id,

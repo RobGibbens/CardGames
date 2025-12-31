@@ -84,6 +84,17 @@ public class SevenCardStudGame : IPokerGame
     }
 
     /// <summary>
+    /// Gets the game rules metadata for Seven Card Stud.
+    /// </summary>
+    /// <remarks>
+    /// Full implementation to be completed. For now, returns a placeholder.
+    /// </remarks>
+    public GameFlow.GameRules GetGameRules()
+    {
+        throw new NotImplementedException("Seven Card Stud game rules metadata not yet implemented");
+    }
+
+    /// <summary>
     /// Starts a new hand.
     /// </summary>
     public void StartHand()

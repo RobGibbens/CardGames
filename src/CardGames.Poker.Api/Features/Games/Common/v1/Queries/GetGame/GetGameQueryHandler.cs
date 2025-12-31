@@ -29,12 +29,21 @@ public class GetGameQueryHandler(CardsDbContext context, HybridCache hybridCache
 		return await hybridCache.GetOrCreateAsync(
 			$"{Feature.Version}-{request.CacheKey}",
 			async _ =>
-				await context.Games
+			{
+				var response = await context.Games
 					.Include(g => g.GameType)
 					.Where(g => g.Id == request.GameId)
 					.AsNoTracking()
 					.ProjectToResponse(metadata.MinimumNumberOfPlayers, metadata.MaximumNumberOfPlayers)
-					.FirstOrDefaultAsync(cancellationToken),
+					.FirstOrDefaultAsync(cancellationToken);
+
+				if (response is null)
+				{
+					return null;
+				}
+				
+				return response;
+			},
 			cancellationToken: cancellationToken,
 			tags: [Feature.Version, Feature.Name, nameof(GetGameQuery)]
 		);

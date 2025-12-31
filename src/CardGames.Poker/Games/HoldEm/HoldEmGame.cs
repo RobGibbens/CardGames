@@ -76,6 +76,17 @@ public class HoldEmGame : IPokerGame
     }
 
     /// <summary>
+    /// Gets the game rules metadata for Hold'em.
+    /// </summary>
+    /// <remarks>
+    /// Full implementation to be completed. For now, returns a placeholder.
+    /// </remarks>
+    public GameFlow.GameRules GetGameRules()
+    {
+        throw new NotImplementedException("Hold'em game rules metadata not yet implemented");
+    }
+
+    /// <summary>
     /// Starts a new hand.
     /// </summary>
     public void StartHand()

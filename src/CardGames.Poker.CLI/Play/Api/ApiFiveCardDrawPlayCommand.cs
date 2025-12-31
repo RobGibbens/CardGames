@@ -19,12 +19,14 @@ namespace CardGames.Poker.CLI.Play.Api;
 
 internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 {
+	private readonly IGamesApi _gamesApi;
 	private readonly IFiveCardDrawApi _fiveCardDrawApi;
 	private static readonly SpectreLogger Logger = new();
 
-	public ApiFiveCardDrawPlayCommand(IFiveCardDrawApi fiveCardDrawApi)
+	public ApiFiveCardDrawPlayCommand(IGamesApi gamesApi, IFiveCardDrawApi fiveCardDrawApi)
 	{
 		_fiveCardDrawApi = fiveCardDrawApi;
+		_gamesApi = gamesApi;
 	}
 
 	private bool _canContinue = true;
@@ -136,7 +138,7 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 			return;
 		}
 
-		var currentGameResponse = await _fiveCardDrawApi.FiveCardDrawGetGameAsync(gameId);
+		var currentGameResponse = await _gamesApi.GamesGetGameAsync(gameId);
 		var currentGame = currentGameResponse.Content;
 		//Draw phase
 		if (currentGame.CurrentPhase == FiveCardDrawPhase.DrawPhase.ToString()) //TODO:ROB - is this evaluating correctly?
@@ -145,7 +147,7 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 		}
 
 		////Second betting round
-		currentGameResponse = await _fiveCardDrawApi.FiveCardDrawGetGameAsync(gameId);
+		currentGameResponse = await _gamesApi.GamesGetGameAsync(gameId);
 		currentGame = currentGameResponse.Content;
 		if (currentGame.CurrentPhase == FiveCardDrawPhase.SecondBettingRound.ToString())
 		{
@@ -160,7 +162,7 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 		}
 
 		//Showdown
-		currentGameResponse = await _fiveCardDrawApi.FiveCardDrawGetGameAsync(gameId);
+		currentGameResponse = await _gamesApi.GamesGetGameAsync(gameId);
 		currentGame = currentGameResponse.Content;
 		if (currentGame.CurrentPhase == FiveCardDrawPhase.Showdown.ToString())
 		{
@@ -169,7 +171,7 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 			DisplayShowdownResult(result);
 		}
 
-		currentGameResponse = await _fiveCardDrawApi.FiveCardDrawGetGameAsync(gameId);
+		currentGameResponse = await _gamesApi.GamesGetGameAsync(gameId);
 		currentGame = currentGameResponse.Content;
 		_canContinue = currentGame.CanContinue;
 	}

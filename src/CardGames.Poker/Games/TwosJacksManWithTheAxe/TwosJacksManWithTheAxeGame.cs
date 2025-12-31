@@ -4,6 +4,7 @@ using System.Linq;
 using CardGames.Core.French.Cards;
 using CardGames.Core.French.Dealers;
 using CardGames.Poker.Betting;
+using CardGames.Poker.Games.GameFlow;
 using CardGames.Poker.Hands.DrawHands;
 
 namespace CardGames.Poker.Games.TwosJacksManWithTheAxe;
@@ -124,6 +125,14 @@ public class TwosJacksManWithTheAxeGame : IPokerGame
         _minBet = minBet;
         _dealerPosition = 0;
         CurrentPhase = TwosJacksManWithTheAxePhase.WaitingToStart;
+    }
+
+    /// <summary>
+    /// Gets the game rules metadata for Twos, Jacks, Man with the Axe.
+    /// </summary>
+    public GameRules GetGameRules()
+    {
+        return TwosJacksManWithTheAxeRules.CreateGameRules();
     }
 
     /// <summary>

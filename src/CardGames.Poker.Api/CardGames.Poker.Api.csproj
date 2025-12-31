@@ -64,8 +64,6 @@
 
 	<ItemGroup>
 	  <Folder Include="Data\Extensions\" />
-	  <Folder Include="Features\Games\TwosJacksManWithTheAxe\v1\Queries\GetCurrentPlayer\" />
-	  <Folder Include="Features\Games\FiveCardDraw\v1\Queries\GetCurrentPlayer\" />
 	  <Folder Include="Migrations\" />
 	  <Folder Include="swagger-ui\" />
 	</ItemGroup>
