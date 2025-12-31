@@ -1,3 +1,4 @@
+using CardGames.Core.French.Cards;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Games.KingsAndLows;
@@ -128,7 +129,89 @@ public class StartHandCommandHandler(CardsDbContext context)
 		// Set StartedAt only on first hand
 		game.StartedAt ??= now;
 
-		// 9. Persist changes
+		// 9. Automatically collect antes if there's an ante
+		if (ante > 0)
+		{
+			foreach (var player in eligiblePlayers)
+			{
+				var anteAmount = Math.Min(ante, player.ChipStack);
+				player.ChipStack -= anteAmount;
+				player.CurrentBet = anteAmount;
+				player.TotalContributedThisHand = anteAmount;
+
+				mainPot.Amount += anteAmount;
+
+				var contribution = new PotContribution
+				{
+					PotId = mainPot.Id,
+					GamePlayerId = player.Id,
+					Amount = anteAmount,
+					ContributedAt = now
+				};
+				context.Set<PotContribution>().Add(contribution);
+
+				if (player.ChipStack == 0)
+				{
+					player.IsAllIn = true;
+				}
+			}
+		}
+
+		// 10. Automatically deal hands - move to Dealing phase then DropOrStay
+		game.CurrentPhase = nameof(KingsAndLowsPhase.Dealing);
+		
+		// Create a standard deck of 52 cards
+		var deck = new List<GameCard>();
+		foreach (var suit in Enum.GetValues<CardSuit>())
+		{
+			foreach (var symbol in Enum.GetValues<CardSymbol>())
+			{
+				deck.Add(new GameCard
+				{
+					GameId = game.Id,
+					HandNumber = game.CurrentHandNumber,
+					Suit = suit,
+					Symbol = symbol,
+					Location = CardLocation.Deck,
+					DealOrder = 0,
+					IsVisible = false,
+					DealtAt = now
+				});
+			}
+		}
+
+		// Shuffle the deck using Fisher-Yates algorithm
+		var random = new Random();
+		for (int i = deck.Count - 1; i > 0; i--)
+		{
+			int j = random.Next(i + 1);
+			(deck[i], deck[j]) = (deck[j], deck[i]);
+		}
+
+		// Deal 5 cards to each eligible player
+		int cardIndex = 0;
+		int dealOrder = 1;
+		for (int round = 0; round < 5; round++)
+		{
+			foreach (var player in eligiblePlayers.OrderBy(p => p.SeatPosition))
+			{
+				if (cardIndex < deck.Count)
+				{
+					var card = deck[cardIndex++];
+					card.Location = CardLocation.Hand;
+					card.GamePlayerId = player.Id;
+					card.IsVisible = false;
+					card.DealOrder = dealOrder++;
+					card.DealtAtPhase = nameof(KingsAndLowsPhase.Dealing);
+					context.GameCards.Add(card);
+				}
+			}
+		}
+
+		// 11. Move to DropOrStay phase - this is where players make their decision
+		game.CurrentPhase = nameof(KingsAndLowsPhase.DropOrStay);
+
+		// 12. Persist changes
 		await context.SaveChangesAsync(cancellationToken);
 
 		return new StartHandSuccessful
