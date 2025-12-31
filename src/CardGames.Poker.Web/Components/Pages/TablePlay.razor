@@ -422,8 +422,9 @@
     private bool IsPotMatchingPhase =>
         string.Equals(_gameResponse?.CurrentPhase, "PotMatching", StringComparison.OrdinalIgnoreCase);
 
-    // Whether the current player is a loser in pot matching
-    private bool IsCurrentPlayerLoser => false; // TODO: Implement when pot matching is fully supported
+    // Whether the current player is a loser in pot matching.
+    // Returns false as placeholder - will be implemented when Kings and Lows API provides loser information.
+    private bool IsCurrentPlayerLoser => false;
 
     // Special rules helper properties - driven by SignalR state
     private bool HasWildCards =>
@@ -2030,19 +2031,22 @@ HandType.HighCard
 
     /// <summary>
     /// Gets the list of losing players for pot matching.
+    /// Returns empty list as placeholder - will be populated when Kings and Lows API provides loser information.
     /// </summary>
     private IReadOnlyList<string> GetLosingPlayers()
     {
-        // TODO: Implement when pot matching phase is fully supported by the API
+        // Placeholder for Kings and Lows pot matching feature
         return [];
     }
 
     /// <summary>
     /// Handles pot matching acknowledgment.
+    /// No-op placeholder - will call API when Kings and Lows pot matching is implemented.
     /// </summary>
     private async Task HandlePotMatchAcknowledge()
     {
-        // TODO: Implement when pot matching phase is fully supported by the API
+        // Placeholder for Kings and Lows pot matching feature
+        Logger.LogDebug("HandlePotMatchAcknowledge called - feature not yet implemented");
         await Task.CompletedTask;
     }
 }
