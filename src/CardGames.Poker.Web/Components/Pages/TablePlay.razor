@@ -24,6 +24,7 @@
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject GameHubClient GameHubClient
 @inject DashboardState DashboardState
+@inject GameRulesService GameRulesService
 @inject ILogger<TablePlay> Logger
 <PageTitle>Table - Friday Night Poker</PageTitle>
 
@@ -364,6 +365,49 @@
     private string? _gameTypeCode;
     private bool IsTwosJacksManWithTheAxe => string.Equals(_gameTypeCode, "TWOSJACKSMANWITHTHEAXE", StringComparison.OrdinalIgnoreCase);
 
+    // Game rules for dynamic UI rendering
+    private GetGameRulesResponse? _gameRules;
+
+    // Current table state (from SignalR)
+    private TableStatePublicDto? _tableState;
+
+    // Phase category helper properties - driven by SignalR state
+    private bool IsBettingPhase =>
+        _tableState?.CurrentPhaseCategory?.Equals("Betting", StringComparison.OrdinalIgnoreCase) == true;
+
+    private bool IsDrawingPhase =>
+        _tableState?.CurrentPhaseCategory?.Equals("Drawing", StringComparison.OrdinalIgnoreCase) == true
+        || isDrawPhase; // Fallback to existing logic
+
+    private bool IsDecisionPhase =>
+        _tableState?.CurrentPhaseCategory?.Equals("Decision", StringComparison.OrdinalIgnoreCase) == true;
+
+    private bool IsSetupPhase =>
+        _tableState?.CurrentPhaseCategory?.Equals("Setup", StringComparison.OrdinalIgnoreCase) == true;
+
+    private bool IsResolutionPhase =>
+        _tableState?.CurrentPhaseCategory?.Equals("Resolution", StringComparison.OrdinalIgnoreCase) == true;
+
+    private bool IsSpecialPhase =>
+        _tableState?.CurrentPhaseCategory?.Equals("Special", StringComparison.OrdinalIgnoreCase) == true;
+
+    // Special rules helper properties - driven by SignalR state
+    private bool HasWildCards =>
+        _tableState?.SpecialRules?.HasWildCards == true;
+
+    private bool HasSevensSplit =>
+        _tableState?.SpecialRules?.HasSevensSplit == true;
+
+    private bool HasDropOrStay =>
+        _tableState?.SpecialRules?.HasDropOrStay == true;
+
+    private bool HasPotMatching =>
+        _tableState?.SpecialRules?.HasPotMatching == true;
+
+    // Get available actions for current phase
+    private IReadOnlyList<string> CurrentPhaseAvailableActions =>
+        _tableState?.CurrentPhaseAvailableActions ?? [];
+
     private bool IsCompletePhase => string.Equals(_gameResponse?.CurrentPhase, "Complete",
     StringComparison.OrdinalIgnoreCase);
 
@@ -457,10 +501,19 @@
 
         Logger.LogDebug("Received table state update for game {GameId}, phase: {Phase}", state.GameId, state.CurrentPhase);
 
+        // Store the table state for phase category checks
+        _tableState = state;
+
         // Update game type code for routing to correct API
         if (!string.IsNullOrWhiteSpace(state.GameTypeCode))
         {
             _gameTypeCode = state.GameTypeCode;
+
+            // Load game rules if not already loaded
+            if (_gameRules is null && !string.IsNullOrWhiteSpace(_gameTypeCode))
+            {
+                _gameRules = await GameRulesService.GetGameRulesAsync(_gameTypeCode);
+            }
         }
 
         // Update game response fields from public state
@@ -923,6 +976,12 @@
             }
 
             await GetPlayersAndUpdateSeatsAsync();
+
+            // Load game rules for dynamic UI rendering
+            if (!string.IsNullOrWhiteSpace(_gameTypeCode))
+            {
+                _gameRules = await GameRulesService.GetGameRulesAsync(_gameTypeCode);
+            }
 
             // Load hand history for the dashboard (requires player ID from GetPlayersAndUpdateSeatsAsync)
             await LoadHandHistoryAsync();

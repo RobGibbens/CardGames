@@ -119,6 +119,32 @@ public sealed record TableStatePublicDto
 	/// Limited to the most recent entries for performance.
 	/// </summary>
 	public IReadOnlyList<HandHistoryEntryDto>? HandHistory { get; init; }
+
+	/// <summary>
+	/// The category of the current phase (e.g., "Setup", "Betting", "Drawing", "Decision", "Resolution").
+	/// Used by the UI to determine which overlay or panel to display.
+	/// </summary>
+	public string? CurrentPhaseCategory { get; init; }
+
+	/// <summary>
+	/// Whether the current phase requires player action.
+	/// </summary>
+	public bool CurrentPhaseRequiresAction { get; init; }
+
+	/// <summary>
+	/// Actions available in the current phase (e.g., ["Check", "Bet", "Call", "Raise", "Fold"]).
+	/// </summary>
+	public IReadOnlyList<string>? CurrentPhaseAvailableActions { get; init; }
+
+	/// <summary>
+	/// Configuration for drawing in the current game (if applicable).
+	/// </summary>
+	public DrawingConfigDto? DrawingConfig { get; init; }
+
+	/// <summary>
+	/// Whether the game has special rules (like Drop/Stay, Pot Matching, etc.).
+	/// </summary>
+	public GameSpecialRulesDto? SpecialRules { get; init; }
 }
 
 /// <summary>
@@ -325,4 +351,93 @@ public sealed record ShowdownPlayerResultDto
 	/// Used by the UI to display wild card indicators.
 	/// </summary>
 	public IReadOnlyList<int>? WildCardIndexes { get; init; }
+}
+
+/// <summary>
+/// Drawing configuration for the current game.
+/// </summary>
+public sealed record DrawingConfigDto
+{
+	/// <summary>
+	/// Whether the game allows drawing cards.
+	/// </summary>
+	public bool AllowsDrawing { get; init; }
+
+	/// <summary>
+	/// Maximum number of cards that can be discarded.
+	/// </summary>
+	public int? MaxDiscards { get; init; }
+
+	/// <summary>
+	/// Special rules for discarding (e.g., "4 cards if holding an Ace").
+	/// </summary>
+	public string? SpecialRules { get; init; }
+
+	/// <summary>
+	/// Number of drawing rounds in the game.
+	/// </summary>
+	public int DrawingRounds { get; init; } = 1;
+}
+
+/// <summary>
+/// Special rules for the current game.
+/// </summary>
+public sealed record GameSpecialRulesDto
+{
+	/// <summary>
+	/// Whether the game has a Drop or Stay decision phase.
+	/// </summary>
+	public bool HasDropOrStay { get; init; }
+
+	/// <summary>
+	/// Whether losers must match the pot (e.g., Kings and Lows).
+	/// </summary>
+	public bool HasPotMatching { get; init; }
+
+	/// <summary>
+	/// Whether the game has wild cards.
+	/// </summary>
+	public bool HasWildCards { get; init; }
+
+	/// <summary>
+	/// Human-readable description of wild card rules.
+	/// </summary>
+	public string? WildCardsDescription { get; init; }
+
+	/// <summary>
+	/// Whether the game has sevens split pot rules.
+	/// </summary>
+	public bool HasSevensSplit { get; init; }
+
+	/// <summary>
+	/// Structured wild card rules for the game.
+	/// </summary>
+	public WildCardRulesDto? WildCardRules { get; init; }
+}
+
+/// <summary>
+/// Defines which cards are wild in the current game.
+/// </summary>
+public sealed record WildCardRulesDto
+{
+	/// <summary>
+	/// List of specific cards that are wild (e.g., "KD" for King of Diamonds).
+	/// Format: "{Rank}{Suit}" where Rank is 2-10, J, Q, K, A and Suit is C, D, H, S.
+	/// </summary>
+	public IReadOnlyList<string>? SpecificCards { get; init; }
+
+	/// <summary>
+	/// List of ranks where all suits are wild (e.g., ["2", "J"] for all 2s and Jacks).
+	/// </summary>
+	public IReadOnlyList<string>? WildRanks { get; init; }
+
+	/// <summary>
+	/// Whether the player's lowest card is wild (for Kings and Lows).
+	/// </summary>
+	public bool LowestCardIsWild { get; init; }
+
+	/// <summary>
+	/// Human-readable description for UI display.
+	/// </summary>
+	public string? Description { get; init; }
 }
