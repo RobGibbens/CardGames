@@ -10,13 +10,17 @@
             <span>Draw Phase</span>
         </div>
         <div class="draw-panel-subtitle">
-            @if (MaxDiscards == 4)
+            @if (!string.IsNullOrWhiteSpace(DrawingSpecialRules))
             {
-                <text>Select cards to discard (0-4 cards � Ace bonus!)</text>
+                <text>@DrawingSpecialRules</text>
+            }
+            else if (MaxDiscards == 4)
+            {
+                <text>Select cards to discard (0-4 cards - Ace bonus!)</text>
             }
             else
             {
-                <text>Select cards to discard (0-3 cards)</text>
+                <text>Select cards to discard (0-@MaxDiscards cards)</text>
             }
         </div>
         @if (!string.IsNullOrWhiteSpace(HandDescription))
@@ -163,6 +167,9 @@
 
     [Parameter]
     public int MaxDiscards { get; set; } = 3;
+
+    [Parameter]
+    public string? DrawingSpecialRules { get; set; }
 
     private int SelectedCount => SelectedIndices.Count;
 

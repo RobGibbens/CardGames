@@ -1,0 +1,99 @@
+@namespace CardGames.Poker.Web.Components.Shared
+
+<div class="decision-panel @(IsSubmitting ? "submitting" : "")">
+    <div class="decision-panel-header">
+        <i class="fa-regular fa-circle-question"></i>
+        <span>@Title</span>
+    </div>
+    
+    @if (!string.IsNullOrWhiteSpace(Subtitle))
+    {
+        <div class="decision-panel-subtitle">@Subtitle</div>
+    }
+
+    <div class="decision-buttons">
+        @foreach (var action in AvailableActions)
+        {
+            <button class="decision-btn @GetButtonClass(action)"
+                    @onclick="() => HandleDecision(action)"
+                    disabled="@IsSubmitting">
+                <i class="@GetButtonIcon(action)"></i>
+                <span>@GetButtonLabel(action)</span>
+            </button>
+        }
+    </div>
+
+    @if (IsSubmitting)
+    {
+        <div class="decision-submitting">
+            <span class="loading-spinner-small"></span>
+            Processing...
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// The title displayed at the top of the decision panel.
+    /// </summary>
+    [Parameter]
+    public string Title { get; set; } = "Make a Decision";
+
+    /// <summary>
+    /// Optional subtitle with additional context.
+    /// </summary>
+    [Parameter]
+    public string? Subtitle { get; set; }
+
+    /// <summary>
+    /// The list of available actions for the player to choose from.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<string> AvailableActions { get; set; } = [];
+
+    /// <summary>
+    /// Callback invoked when the player makes a decision.
+    /// </summary>
+    [Parameter]
+    public EventCallback<string> OnDecision { get; set; }
+
+    /// <summary>
+    /// Whether an action is currently being submitted.
+    /// </summary>
+    [Parameter]
+    public bool IsSubmitting { get; set; }
+
+    private async Task HandleDecision(string action)
+    {
+        if (IsSubmitting)
+        {
+            return;
+        }
+
+        await OnDecision.InvokeAsync(action);
+    }
+
+    private static string GetButtonClass(string action) => action.ToUpperInvariant() switch
+    {
+        "DROP" => "drop-btn",
+        "STAY" => "stay-btn",
+        "FOLD" => "fold-btn",
+        _ => "default-btn"
+    };
+
+    private static string GetButtonIcon(string action) => action.ToUpperInvariant() switch
+    {
+        "DROP" => "fa-solid fa-door-open",
+        "STAY" => "fa-solid fa-hand",
+        "FOLD" => "fa-solid fa-down-from-bracket",
+        _ => "fa-solid fa-circle"
+    };
+
+    private static string GetButtonLabel(string action) => action.ToUpperInvariant() switch
+    {
+        "DROP" => "Drop Out",
+        "STAY" => "Stay In",
+        "FOLD" => "Fold",
+        _ => action
+    };
+}

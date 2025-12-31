@@ -45,6 +45,11 @@ public sealed record PrivateStateDto
     /// </summary>
     public DrawPrivateDto? Draw { get; init; }
 
+    /// <summary>
+    /// Drop or Stay phase information when in decision phase (for Kings and Lows, etc.).
+    /// </summary>
+    public DropOrStayPrivateDto? DropOrStay { get; init; }
+
         /// <summary>
         /// Whether it is currently this player's turn to act.
         /// </summary>
@@ -158,4 +163,20 @@ public sealed record DrawPrivateDto
     /// Whether the player has already drawn this round.
     /// </summary>
     public bool HasDrawnThisRound { get; init; }
+}
+
+/// <summary>
+/// Drop or Stay phase information for the player.
+/// </summary>
+public sealed record DropOrStayPrivateDto
+{
+    /// <summary>
+    /// Whether it is the player's turn to decide.
+    /// </summary>
+    public bool IsMyTurnToDecide { get; init; }
+
+    /// <summary>
+    /// Whether the player has already made their decision this round.
+    /// </summary>
+    public bool HasDecidedThisRound { get; init; }
 }

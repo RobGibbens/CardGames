@@ -1,0 +1,62 @@
+.pot-matching-overlay {
+    /* Inherits from table-overlay */
+}
+
+.pot-matching-overlay .overlay-content {
+    text-align: center;
+    max-width: 420px;
+}
+
+.pot-matching-overlay .overlay-icon {
+    font-size: 4rem;
+    color: #ffc107;
+    margin-bottom: 16px;
+}
+
+.pot-matching-overlay h2 {
+    color: #fff;
+    font-size: 1.75rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+}
+
+.pot-matching-overlay .pot-amount {
+    color: #28a745;
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+}
+
+.pot-matching-overlay .losing-players {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.pot-matching-overlay .losing-players p {
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 8px;
+}
+
+.pot-matching-overlay .losing-players ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.pot-matching-overlay .losing-players li {
+    color: #fff;
+    padding: 4px 0;
+}
+
+.pot-matching-overlay .match-warning {
+    color: #dc3545;
+    font-weight: 600;
+    margin-bottom: 16px;
+}
+
+.pot-matching-overlay .waiting-message {
+    color: rgba(255, 255, 255, 0.7);
+    font-style: italic;
+}

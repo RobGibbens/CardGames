@@ -29,6 +29,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		ContinuousPlay.md = ContinuousPlay.md
 		copilot_instructions.md = copilot_instructions.md
 		Dashboard.md = Dashboard.md
+		..\DYNAMIC_UI_PLAN.md = ..\DYNAMIC_UI_PLAN.md
 		EditTable.md = EditTable.md
 		History.md = History.md
 		..\IMPLEMENTATION_SUMMARY.md = ..\IMPLEMENTATION_SUMMARY.md

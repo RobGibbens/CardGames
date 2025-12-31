@@ -6,6 +6,7 @@ using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.ActiveGames.v1.Queries.GetActiveGames;
 using CardGames.Poker.Api.Games;
+using CardGames.Poker.Games.GameFlow;
 using CardGames.Poker.Hands.DrawHands;
 using CardGames.Poker.Hands;
 using CardGames.Poker.Hands.WildCards;
@@ -86,6 +87,16 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					// Get hand history for the dashboard (limited to recent hands)
 					var handHistory = await GetHandHistoryEntriesAsync(gameId, currentUserPlayerId: null, take: 25, cancellationToken);
 
+					// Get game rules for phase metadata
+					GameRules? rules = null;
+					GamePhaseDescriptor? currentPhaseDescriptor = null;
+					if (PokerGameRulesRegistry.TryGet(game.GameType?.Code, out var r))
+					{
+						rules = r;
+						currentPhaseDescriptor = rules?.Phases
+							.FirstOrDefault(p => p.PhaseId.Equals(game.CurrentPhase, StringComparison.OrdinalIgnoreCase));
+					}
+
 					return new TableStatePublicDto
 					{
 						GameId = game.Id,
@@ -108,7 +119,12 @@ public sealed class TableStateBuilder : ITableStateBuilder
 						NextHandStartsAtUtc = game.NextHandStartsAt,
 						IsResultsPhase = isResultsPhase,
 						SecondsUntilNextHand = secondsUntilNextHand,
-						HandHistory = handHistory
+						HandHistory = handHistory,
+						CurrentPhaseCategory = currentPhaseDescriptor?.Category,
+						CurrentPhaseRequiresAction = currentPhaseDescriptor?.RequiresPlayerAction ?? false,
+						CurrentPhaseAvailableActions = currentPhaseDescriptor?.AvailableActions,
+						DrawingConfig = BuildDrawingConfigDto(rules),
+						SpecialRules = BuildSpecialRulesDto(rules)
 					};
 				}
 
@@ -684,5 +700,83 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	                wonByFold: h.EndReason == Data.Entities.HandEndReason.FoldedToWinner
                 );
             }).ToList();
+        }
+
+        /// <summary>
+        /// Builds the drawing configuration DTO from game rules.
+        /// </summary>
+        private static DrawingConfigDto? BuildDrawingConfigDto(GameRules? rules)
+        {
+            if (rules?.Drawing is null)
+            {
+                return null;
+            }
+
+            return new DrawingConfigDto
+            {
+                AllowsDrawing = rules.Drawing.AllowsDrawing,
+                MaxDiscards = rules.Drawing.MaxDiscards,
+                SpecialRules = rules.Drawing.SpecialRules,
+                DrawingRounds = rules.Drawing.DrawingRounds
+            };
+        }
+
+        /// <summary>
+        /// Builds the special rules DTO from game rules.
+        /// </summary>
+        private static GameSpecialRulesDto? BuildSpecialRulesDto(GameRules? rules)
+        {
+            if (rules?.SpecialRules is null || rules.SpecialRules.Count == 0)
+            {
+                return null;
+            }
+
+            return new GameSpecialRulesDto
+            {
+                HasDropOrStay = rules.SpecialRules.ContainsKey("DropOrStay"),
+                HasPotMatching = rules.SpecialRules.ContainsKey("LosersMatchPot"),
+                HasWildCards = rules.SpecialRules.ContainsKey("WildCards"),
+                WildCardsDescription = rules.SpecialRules.TryGetValue("WildCards", out var wc)
+                    ? wc?.ToString()
+                    : null,
+                HasSevensSplit = rules.SpecialRules.ContainsKey("SevensSplit"),
+                WildCardRules = BuildWildCardRulesDto(rules)
+            };
+        }
+
+        /// <summary>
+        /// Builds structured wild card rules from game rules.
+        /// </summary>
+        private static WildCardRulesDto? BuildWildCardRulesDto(GameRules? rules)
+        {
+            if (rules?.SpecialRules is null || !rules.SpecialRules.TryGetValue("WildCards", out var wildCardsValue))
+            {
+                return null;
+            }
+
+            var description = wildCardsValue?.ToString();
+            var wildRanks = new List<string>();
+            var specificCards = new List<string>();
+            var lowestCardIsWild = false;
+
+            // Parse known patterns into structured rules based on game type
+            if (string.Equals(rules.GameTypeCode, "TWOSJACKSMANWITHTHEAXE", StringComparison.OrdinalIgnoreCase))
+            {
+                wildRanks.AddRange(["2", "J"]);
+                specificCards.Add("KD"); // King of Diamonds
+            }
+            else if (string.Equals(rules.GameTypeCode, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase))
+            {
+                wildRanks.Add("K");
+                lowestCardIsWild = true;
+            }
+
+            return new WildCardRulesDto
+            {
+                WildRanks = wildRanks.Count > 0 ? wildRanks : null,
+                SpecificCards = specificCards.Count > 0 ? specificCards : null,
+                LowestCardIsWild = lowestCardIsWild,
+                Description = description
+            };
         }
     }

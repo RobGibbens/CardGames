@@ -19,6 +19,8 @@
 - [x] I don't like how small the cards are and what they look like
 - [x] Showdown overlay should show new card images
 - [x] Draw Panel should show new card images
+- [ ] FCD - can't draw four with an Ace
+- [ ] During ties, the showdown should show the kicker 
 - [ ] Showdown overlay should handle ties
 - [ ] Showdown overlay is not showing payouts correctly
 - [ ] Hand history should auto size columns and allow resizing columns

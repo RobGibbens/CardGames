@@ -42,6 +42,12 @@ builder.Services.AddScoped<LobbyHubClient>();
 // Register Dashboard UI state service (scoped per Blazor circuit)
 builder.Services.AddScoped<DashboardState>();
 
+// Register memory cache for game rules caching
+builder.Services.AddMemoryCache();
+
+// Register GameRulesService for dynamic UI
+builder.Services.AddScoped<GameRulesService>();
+
 builder.Services.ConfigureHttpClientDefaults(http =>
 {
 	http.AddServiceDiscovery();
