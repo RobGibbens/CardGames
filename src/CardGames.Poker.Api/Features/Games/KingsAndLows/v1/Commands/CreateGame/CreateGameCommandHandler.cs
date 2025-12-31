@@ -1,5 +1,6 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Games;
 using CardGames.Poker.Api.Infrastructure;
 using CardGames.Poker.Games.KingsAndLows;
 using MediatR;
@@ -11,8 +12,6 @@ namespace CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.CreateGame
 public class CreateGameCommandHandler(CardsDbContext context, ICurrentUserService currentUserService)
 	: IRequestHandler<CreateGameCommand, OneOf<CreateGameSuccessful, CreateGameConflict>>
 {
-	private const string KingsAndLowsCode = "KINGSANDLOWS";
-
 	public async Task<OneOf<CreateGameSuccessful, CreateGameConflict>> Handle(CreateGameCommand command, CancellationToken cancellationToken)
 	{
 		if (command.GameId == Guid.Empty)
@@ -124,7 +123,7 @@ public class CreateGameCommandHandler(CardsDbContext context, ICurrentUserServic
 	private async Task<GameType> GetOrCreateGameTypeAsync(CancellationToken cancellationToken)
 	{
 		var gameType = await context.GameTypes
-			.FirstOrDefaultAsync(gt => gt.Code == KingsAndLowsCode, cancellationToken);
+			.FirstOrDefaultAsync(gt => gt.Code == PokerGameMetadataRegistry.KingsAndLowsCode, cancellationToken);
 
 		if (gameType is not null)
 		{
@@ -136,7 +135,7 @@ public class CreateGameCommandHandler(CardsDbContext context, ICurrentUserServic
 		gameType = new GameType
 		{
 			Name = "Kings and Lows",
-			Code = KingsAndLowsCode,
+			Code = PokerGameMetadataRegistry.KingsAndLowsCode,
 			Description = "A five-card draw poker variant where kings and the lowest card are wild. Players ante, decide to drop or stay, draw cards, and losers match the pot.",
 			BettingStructure = BettingStructure.AntePotMatch,
 			MinPlayers = 2,
@@ -171,7 +170,7 @@ public class CreateGameCommandHandler(CardsDbContext context, ICurrentUserServic
 		player = new Player
 		{
 			Name = name,
-			Email = name,
+			Email = $"{name}@localhost", // Placeholder email format
 			IsActive = true,
 			TotalGamesPlayed = 0,
 			TotalHandsPlayed = 0,
