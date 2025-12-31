@@ -195,6 +195,30 @@
             </div>
         }
 
+        <!-- Drop or Stay Overlay (for Kings and Lows) -->
+        @if (HasDropOrStay && IsDropOrStayPhase)
+        {
+            <DropOrStayOverlay PotAmount="@pot"
+                               HasDecided="@_hasDropOrStayDecided"
+                               Decision="@_dropOrStayDecision"
+                               IsDeciding="@_isProcessingDropOrStay"
+                               PlayersWaiting="@GetPlayersWaitingForDropOrStay()"
+                               OnDecision="@HandleDropOrStayDecision" />
+        }
+
+        <!-- Player vs Deck Overlay (for Kings and Lows) -->
+        @if (IsPlayerVsDeckPhase)
+        {
+            <PlayerVsDeckOverlay DeckCards="@GetDeckCards()"
+                                 IsDecisionMaker="@IsCurrentPlayerDeckDecisionMaker"
+                                 DecisionMakerName="@GetDeckDecisionMakerName()"
+                                 HasDrawn="@_hasDeckDrawn"
+                                 IsProcessing="@_isProcessingDeckDraw"
+                                 SelectedIndices="@_deckDrawSelectedIndices"
+                                 OnCardSelectionToggle="@HandleDeckCardSelectionToggle"
+                                 OnConfirmDraw="@HandleDeckDrawConfirm" />
+        }
+
         <!-- Special Phase Overlay (for game-specific phases) -->
         @if (IsSpecialPhase)
         {
@@ -354,6 +378,14 @@
     private bool _forceShowDrawPanel;
     private int maxDiscards = 3;
 
+    // Kings and Lows specific state
+    private bool _hasDropOrStayDecided;
+    private string? _dropOrStayDecision;
+    private bool _isProcessingDropOrStay;
+    private bool _hasDeckDrawn;
+    private bool _isProcessingDeckDraw;
+    private HashSet<int> _deckDrawSelectedIndices = new();
+
     private string? currentPlayerHandEvaluationDescription =>
     currentPlayerSeatIndex >= 0 && currentPlayerSeatIndex < seats.Count
     ? seats[currentPlayerSeatIndex].HandEvaluationDescription
@@ -419,6 +451,14 @@
 
     private bool IsSpecialPhase =>
         _tableState?.CurrentPhaseCategory?.Equals("Special", StringComparison.OrdinalIgnoreCase) == true;
+
+    // Drop or Stay phase detection (for Kings and Lows)
+    private bool IsDropOrStayPhase =>
+        string.Equals(_gameResponse?.CurrentPhase, "DropOrStay", StringComparison.OrdinalIgnoreCase);
+
+    // Player vs Deck phase detection (for Kings and Lows)
+    private bool IsPlayerVsDeckPhase =>
+        string.Equals(_gameResponse?.CurrentPhase, "PlayerVsDeck", StringComparison.OrdinalIgnoreCase);
 
     // Pot matching phase detection (for Kings and Lows)
     private bool IsPotMatchingPhase =>
@@ -2055,12 +2095,183 @@ HandType.HighCard
 
     /// <summary>
     /// Handles pot matching acknowledgment.
-    /// No-op placeholder - will call API when Kings and Lows pot matching is implemented.
+    /// Calls the AcknowledgePotMatch API endpoint.
     /// </summary>
     private async Task HandlePotMatchAcknowledge()
     {
-        // Placeholder for Kings and Lows pot matching feature
-        Logger.LogDebug("HandlePotMatchAcknowledge called - feature not yet implemented");
-        await Task.CompletedTask;
+        if (!IsKingsAndLows)
+        {
+            Logger.LogDebug("HandlePotMatchAcknowledge called for non-Kings and Lows game");
+            return;
+        }
+
+        try
+        {
+            var response = await KingsAndLowsApi.KingsAndLowsAcknowledgePotMatchAsync(GameId);
+            if (response.IsSuccessStatusCode)
+            {
+                Logger.LogDebug("Pot match acknowledged successfully");
+                // SignalR will update the game state
+            }
+            else
+            {
+                Logger.LogError("Failed to acknowledge pot match: {StatusCode}", response.StatusCode);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error acknowledging pot match");
+        }
+    }
+
+    // Kings and Lows - Drop or Stay methods
+
+    /// <summary>
+    /// Gets the list of players waiting to make their drop or stay decision.
+    /// </summary>
+    private IReadOnlyList<string> GetPlayersWaitingForDropOrStay()
+    {
+        // TODO: Get from SignalR state when available
+        return [];
+    }
+
+    /// <summary>
+    /// Handles drop or stay decision from the overlay.
+    /// </summary>
+    private async Task HandleDropOrStayDecision(string decision)
+    {
+        if (!IsKingsAndLows || _isProcessingDropOrStay)
+        {
+            return;
+        }
+
+        _isProcessingDropOrStay = true;
+        StateHasChanged();
+
+        try
+        {
+            var request = new DropOrStayRequest(
+                decision: decision,
+                playerId: _currentPlayerId ?? Guid.Empty
+            );
+
+            var response = await KingsAndLowsApi.KingsAndLowsDropOrStayAsync(GameId, request);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                _hasDropOrStayDecided = true;
+                _dropOrStayDecision = decision;
+                Logger.LogDebug("Drop or stay decision recorded: {Decision}", decision);
+                // SignalR will update the game state
+            }
+            else
+            {
+                Logger.LogError("Failed to record drop or stay decision: {StatusCode}", response.StatusCode);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error recording drop or stay decision");
+        }
+        finally
+        {
+            _isProcessingDropOrStay = false;
+            StateHasChanged();
+        }
+    }
+
+    // Kings and Lows - Player vs Deck methods
+
+    /// <summary>
+    /// Gets the deck's cards for display in the player vs deck overlay.
+    /// </summary>
+    private IReadOnlyList<PlayerVsDeckOverlay.CardDto> GetDeckCards()
+    {
+        // TODO: Get from SignalR state when available
+        return [];
+    }
+
+    /// <summary>
+    /// Checks if the current player is the decision maker for the deck draw.
+    /// </summary>
+    private bool IsCurrentPlayerDeckDecisionMaker
+    {
+        get
+        {
+            // TODO: Implement logic based on game state
+            // The dealer (or player to dealer's left if dealer stayed) makes the decision
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Gets the name of the player who makes the deck draw decision.
+    /// </summary>
+    private string GetDeckDecisionMakerName()
+    {
+        // TODO: Get from SignalR state when available
+        return "Dealer";
+    }
+
+    /// <summary>
+    /// Handles card selection toggle for deck draw.
+    /// </summary>
+    private Task HandleDeckCardSelectionToggle(int index)
+    {
+        if (_deckDrawSelectedIndices.Contains(index))
+        {
+            _deckDrawSelectedIndices.Remove(index);
+        }
+        else
+        {
+            _deckDrawSelectedIndices.Add(index);
+        }
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Handles confirmation of deck draw.
+    /// </summary>
+    private async Task HandleDeckDrawConfirm()
+    {
+        if (!IsKingsAndLows || _isProcessingDeckDraw)
+        {
+            return;
+        }
+
+        _isProcessingDeckDraw = true;
+        StateHasChanged();
+
+        try
+        {
+            var request = new DeckDrawRequest(
+                discardIndices: _deckDrawSelectedIndices.ToList(),
+                playerId: _currentPlayerId ?? Guid.Empty
+            );
+
+            var response = await KingsAndLowsApi.KingsAndLowsDeckDrawAsync(GameId, request);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                _hasDeckDrawn = true;
+                _deckDrawSelectedIndices.Clear();
+                Logger.LogDebug("Deck draw completed");
+                // SignalR will update the game state
+            }
+            else
+            {
+                Logger.LogError("Failed to process deck draw: {StatusCode}", response.StatusCode);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error processing deck draw");
+        }
+        finally
+        {
+            _isProcessingDeckDraw = false;
+            StateHasChanged();
+        }
     }
 }
