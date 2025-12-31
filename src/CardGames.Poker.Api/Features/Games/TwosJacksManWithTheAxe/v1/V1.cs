@@ -11,7 +11,6 @@ using CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe.v1.Commands.Upda
 using CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe.v1.Queries.GetCurrentBettingRound;
 using CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe.v1.Queries.GetCurrentDrawPlayer;
 using CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe.v1.Queries.GetCurrentPlayerTurn;
-using CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe.v1.Queries.GetGame;
 using CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe.v1.Queries.GetGamePlayers;
 using CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe.v1.Queries.GetGames;
 using CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe.v1.Queries.GetHandHistory;
@@ -39,7 +38,6 @@ public static class V1
 			.MapProcessDraw()
 			.MapPerformShowdown()
 			.MapGetGames()
-			.MapGetGame()
 			.MapGetGamePlayers()
 			.MapGetCurrentPlayerTurn()
 			.MapGetCurrentDrawPlayer()

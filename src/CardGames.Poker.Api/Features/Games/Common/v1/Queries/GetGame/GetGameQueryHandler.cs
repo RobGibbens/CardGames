@@ -41,8 +41,7 @@ public class GetGameQueryHandler(CardsDbContext context, HybridCache hybridCache
 				{
 					return null;
 				}
-
-				response.GameTypeCode ??= gameTypeCode;
+				
 				return response;
 			},
 			cancellationToken: cancellationToken,

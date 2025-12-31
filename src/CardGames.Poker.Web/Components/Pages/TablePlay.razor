@@ -883,7 +883,7 @@
             if (gameResponse is { IsSuccessStatusCode: true, Content: not null })
             {
                 var gamesResponse = gameResponse.Content;
-                //_gameTypeCode = gamesResponse.GameTypeCode;
+                _gameTypeCode = gamesResponse.GameTypeCode;
 
                 // Convert to GetGameResponse format for compatibility with existing code
                 _gameResponse = new GetGameResponse(
@@ -904,6 +904,7 @@
                     dealerPosition: gamesResponse.DealerPosition,
                     endedAt: gamesResponse.EndedAt,
                     gameSettings: gamesResponse.GameSettings,
+                    gameTypeCode:gamesResponse.GameTypeCode,
                     gameTypeId: gamesResponse.GameTypeId,
                     gameTypeName: gamesResponse.GameTypeName,
                     id: gamesResponse.Id,

@@ -463,33 +463,6 @@ namespace CardGames.Poker.Api.Clients
         [Post("/api/v1/games/five-card-draw/{gameId}/showdown")]
         Task<IApiResponse<PerformShowdownSuccessful>> FiveCardDrawPerformShowdownAsync(System.Guid gameId, CancellationToken cancellationToken = default);
 
-        /// <summary>GetGame</summary>
-        /// <remarks>Retrieve a specific game by its identifier.</remarks>
-        /// <returns>
-        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
-        /// <list type="table">
-        /// <listheader>
-        /// <term>Status</term>
-        /// <description>Description</description>
-        /// </listheader>
-        /// <item>
-        /// <term>200</term>
-        /// <description>OK</description>
-        /// </item>
-        /// <item>
-        /// <term>400</term>
-        /// <description>Bad Request</description>
-        /// </item>
-        /// <item>
-        /// <term>404</term>
-        /// <description>Not Found</description>
-        /// </item>
-        /// </list>
-        /// </returns>
-        [Headers("Accept: application/json, application/problem+json")]
-        [Get("/api/v1/games/five-card-draw/{gameId}")]
-        Task<IApiResponse<GetGameResponse>> FiveCardDrawGetGameAsync(System.Guid gameId, CancellationToken cancellationToken = default);
-
         /// <summary>GetCurrentPlayerTurn</summary>
         /// <remarks>Retrieve the current player's turn state for a specific game, including available actions.</remarks>
         /// <returns>
@@ -997,33 +970,6 @@ namespace CardGames.Poker.Api.Clients
         [Headers("Accept: application/json, application/problem+json")]
         [Post("/api/v1/games/twos-jacks-man-with-the-axe/{gameId}/showdown")]
         Task<IApiResponse<PerformShowdownSuccessful>> TwosJacksManWithTheAxePerformShowdownAsync(System.Guid gameId, CancellationToken cancellationToken = default);
-
-        /// <summary>GetGame</summary>
-        /// <remarks>Retrieve a specific game by its identifier.</remarks>
-        /// <returns>
-        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
-        /// <list type="table">
-        /// <listheader>
-        /// <term>Status</term>
-        /// <description>Description</description>
-        /// </listheader>
-        /// <item>
-        /// <term>200</term>
-        /// <description>OK</description>
-        /// </item>
-        /// <item>
-        /// <term>400</term>
-        /// <description>Bad Request</description>
-        /// </item>
-        /// <item>
-        /// <term>404</term>
-        /// <description>Not Found</description>
-        /// </item>
-        /// </list>
-        /// </returns>
-        [Headers("Accept: application/json, application/problem+json")]
-        [Get("/api/v1/games/twos-jacks-man-with-the-axe/{gameId}")]
-        Task<IApiResponse<GetGameResponse>> TwosJacksManWithTheAxeGetGameAsync(System.Guid gameId, CancellationToken cancellationToken = default);
 
         /// <summary>GetCurrentPlayerTurn</summary>
         /// <remarks>Retrieve the current player's turn state for a specific game, including available actions.</remarks>
@@ -2322,10 +2268,11 @@ namespace CardGames.Poker.Api.Contracts
     public partial record GetGameResponse
     {
         [JsonConstructor]
-        public GetGameResponse(int? @ante, int? @bigBet, int? @bigBlind, int? @bringIn, int @bringInPlayerIndex, bool @canContinue, System.DateTimeOffset @createdAt, string @createdById, string @createdByName, int @currentDrawPlayerIndex, int @currentHandNumber, string @currentPhase, string @currentPhaseDescription, int @currentPlayerIndex, int @dealerPosition, System.DateTimeOffset? @endedAt, string @gameSettings, System.Guid @gameTypeId, string @gameTypeName, System.Guid @id, int @maximumNumberOfPlayers, int? @minBet, int @minimumNumberOfPlayers, string @name, int? @randomSeed, string @rowVersion, int? @smallBet, int? @smallBlind, System.DateTimeOffset? @startedAt, GameStatus @status, System.DateTimeOffset @updatedAt)
+        public GetGameResponse(int? @ante, int? @bigBet, int? @bigBlind, int? @bringIn, int @bringInPlayerIndex, bool @canContinue, System.DateTimeOffset @createdAt, string @createdById, string @createdByName, int @currentDrawPlayerIndex, int @currentHandNumber, string @currentPhase, string @currentPhaseDescription, int @currentPlayerIndex, int @dealerPosition, System.DateTimeOffset? @endedAt, string @gameSettings, string @gameTypeCode, System.Guid @gameTypeId, string @gameTypeName, System.Guid @id, int @maximumNumberOfPlayers, int? @minBet, int @minimumNumberOfPlayers, string @name, int? @randomSeed, string @rowVersion, int? @smallBet, int? @smallBlind, System.DateTimeOffset? @startedAt, GameStatus @status, System.DateTimeOffset @updatedAt)
         {
             this.Id = @id;
             this.GameTypeId = @gameTypeId;
+            this.GameTypeCode = @gameTypeCode;
             this.GameTypeName = @gameTypeName;
             this.Name = @name;
             this.MinimumNumberOfPlayers = @minimumNumberOfPlayers;
@@ -2364,6 +2311,9 @@ namespace CardGames.Poker.Api.Contracts
         [JsonPropertyName("gameTypeId")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public System.Guid GameTypeId { get; init; }
+
+        [JsonPropertyName("gameTypeCode")]
+        public string GameTypeCode { get; init; }
 
         [JsonPropertyName("gameTypeName")]
         public string GameTypeName { get; init; }

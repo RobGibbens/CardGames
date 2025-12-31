@@ -7,14 +7,12 @@ namespace CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetGame;
 /// Response containing all properties of a specific game, including the game type code.
 /// This is used by the generic Games API which returns games regardless of type.
 /// </summary>
-public sealed class GetGameResponse
+public sealed record GetGameResponse
 {
 	public required Guid Id { get; init; }
 	public required Guid GameTypeId { get; init; }
-	[JsonPropertyName("gameTypeCode")]
-	public string? GameTypeCode { get; set; }
-	[JsonPropertyName("gameTypeName")]
-	public string? GameTypeName { get; init; }
+	public required string? GameTypeCode { get; init; }
+	public required string? GameTypeName { get; init; }
 	public string? Name { get; init; }
 	public required int MinimumNumberOfPlayers { get; init; }
 	public required int MaximumNumberOfPlayers { get; init; }
