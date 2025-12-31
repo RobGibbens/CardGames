@@ -1,5 +1,6 @@
 using Asp.Versioning.Builder;
 using CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.CreateGame;
+using CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.DrawCards;
 using CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.DropOrStay;
 using CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.StartHand;
 using SharpGrip.FluentValidation.AutoValidation.Endpoints.Extensions;
@@ -19,6 +20,7 @@ public static class V1
 			.MapCreateGame()
 			.MapStartHand()
 			.MapDropOrStay()
+			.MapDrawCards()
 			;
 	}
 }
