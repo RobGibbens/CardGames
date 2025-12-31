@@ -21,6 +21,7 @@
 @inject IGamesApi GamesApiClient
 @inject IFiveCardDrawApi FiveCardDrawApiClient
 @inject ITwosJacksManWithTheAxeApi TwosJacksManWithTheAxeApi
+@inject IKingsAndLowsApi KingsAndLowsApi
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject GameHubClient GameHubClient
 @inject DashboardState DashboardState
@@ -391,6 +392,7 @@
     // Game type code for routing to correct API client
     private string? _gameTypeCode;
     private bool IsTwosJacksManWithTheAxe => string.Equals(_gameTypeCode, "TWOSJACKSMANWITHTHEAXE", StringComparison.OrdinalIgnoreCase);
+    private bool IsKingsAndLows => string.Equals(_gameTypeCode, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase);
 
     // Game rules for dynamic UI rendering
     private GetGameRulesResponse? _gameRules;
@@ -1062,6 +1064,7 @@
         }
         else
         {
+            // Kings and Lows and other games use FiveCardDraw API for GetGamePlayers
             playersResponse = await FiveCardDrawApiClient.FiveCardDrawGetGamePlayersAsync(GameId);
         }
 
@@ -1127,6 +1130,7 @@
             }
             else
             {
+                // Kings and Lows and other games use FiveCardDraw API for GetHandHistory
                 response = await FiveCardDrawApiClient.FiveCardDrawGetHandHistoryAsync(
                     GameId,
                     take: 25,
@@ -1181,6 +1185,7 @@
             }
             else
             {
+                // Kings and Lows and other games use FiveCardDraw API for JoinGame
                 response = await FiveCardDrawApiClient.FiveCardDrawJoinGameAsync(GameId, request);
             }
 
@@ -1255,6 +1260,15 @@
 
             var dealHandsResponse = await TwosJacksManWithTheAxeApi.TwosJacksManWithTheAxeDealHandsAsync(GameId);
             if (!dealHandsResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
+        }
+        else if (IsKingsAndLows)
+        {
+            // Kings and Lows has a simpler flow - StartHand handles ante collection and dealing
+            var startHandResponse = await KingsAndLowsApi.KingsAndLowsStartHandAsync(GameId);
+            if (!startHandResponse.IsSuccessStatusCode)
             {
                 return;
             }
