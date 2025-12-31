@@ -785,8 +785,26 @@
 
         // Update Drop or Stay phase state (Kings and Lows)
         // Populate cards for display in DropOrStayOverlay
-        if (IsDropOrStayPhase && state.Hand is not null && state.Hand.Count > 0)
+        // Check both the property AND the phase string directly from state to handle reconnection scenarios
+        // where _gameResponse might not be populated yet
+        var currentPhase = _gameResponse?.CurrentPhase ?? string.Empty;
+        if ((IsDropOrStayPhase || string.Equals(currentPhase, "DropOrStay", StringComparison.OrdinalIgnoreCase)) 
+            && state.Hand is not null && state.Hand.Count > 0)
         {
+            currentPlayerDrawCards = state.Hand.Select((c, i) => new CardInfo
+            {
+                Rank = c.Rank,
+                Suit = c.Suit,
+                IsFaceUp = true,
+                IsSelected = false
+            }).ToList();
+        }
+        // Also populate cards for PlayerVsDeck phase when reconnecting
+        // This ensures the player can see the deck cards after reconnection
+        else if ((IsPlayerVsDeckPhase || string.Equals(currentPhase, "PlayerVsDeck", StringComparison.OrdinalIgnoreCase))
+            && state.Hand is not null && state.Hand.Count > 0 && currentPlayerDrawCards.Count == 0)
+        {
+            // Populate player's own cards for reference during player-vs-deck phase
             currentPlayerDrawCards = state.Hand.Select((c, i) => new CardInfo
             {
                 Rank = c.Rank,
