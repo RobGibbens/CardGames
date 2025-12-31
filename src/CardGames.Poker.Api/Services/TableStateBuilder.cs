@@ -195,12 +195,17 @@ public sealed class TableStateBuilder : ITableStateBuilder
             if (communityCards.Count == 0 && playerCards.Count >= 5)
             {
                 // Twos, Jacks, Man with the Axe uses wild cards.
+                // Kings and Lows uses wild cards (Kings + lowest card).
                 // The base `DrawHand` evaluator ignores wild substitutions,
                 // so we must use the variant-specific hand type here.
                 HandBase drawHand;
                 if (string.Equals(game.GameType?.Code, "TWOSJACKSMANWITHTHEAXE", StringComparison.OrdinalIgnoreCase))
                 {
                     drawHand = new CardGames.Poker.Hands.DrawHands.TwosJacksManWithTheAxeDrawHand(playerCards);
+                }
+                else if (string.Equals(game.GameType?.Code, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase))
+                {
+                    drawHand = new CardGames.Poker.Hands.DrawHands.KingsAndLowsDrawHand(playerCards);
                 }
                 else
                 {
