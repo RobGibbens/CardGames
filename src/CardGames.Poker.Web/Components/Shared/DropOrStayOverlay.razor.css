@@ -1,0 +1,78 @@
+.drop-or-stay-overlay {
+    z-index: 1000;
+}
+
+.drop-or-stay-overlay .overlay-content {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 20px;
+    padding: 2rem;
+    max-width: 500px;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+
+.drop-or-stay-overlay .overlay-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    color: #fff;
+}
+
+.drop-or-stay-overlay h2 {
+    color: #fff;
+    margin-bottom: 1rem;
+    font-size: 2rem;
+}
+
+.drop-or-stay-overlay .pot-amount {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #ffd700;
+    margin-bottom: 0.5rem;
+}
+
+.drop-or-stay-overlay .instruction {
+    color: rgba(255, 255, 255, 0.9);
+    margin-bottom: 1.5rem;
+}
+
+.drop-or-stay-overlay .decision-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-bottom: 1rem;
+}
+
+.drop-or-stay-overlay .decision-buttons .btn {
+    min-width: 120px;
+    font-size: 1.2rem;
+    padding: 0.75rem 1.5rem;
+}
+
+.drop-or-stay-overlay .decided-message {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 1rem;
+    border-radius: 10px;
+    color: #fff;
+    margin-bottom: 1rem;
+}
+
+.drop-or-stay-overlay .waiting-message {
+    color: rgba(255, 255, 255, 0.8);
+    font-style: italic;
+}
+
+.drop-or-stay-overlay .processing-message {
+    color: rgba(255, 255, 255, 0.9);
+    margin-top: 1rem;
+}
+
+.drop-or-stay-overlay .waiting-players {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.drop-or-stay-overlay .waiting-players .small {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+}

@@ -1,0 +1,140 @@
+@namespace CardGames.Poker.Web.Components.Shared
+
+<div class="table-overlay player-vs-deck-overlay">
+    <div class="overlay-content">
+        <div class="overlay-icon"><i class="fa-solid fa-layer-group"></i></div>
+        <h2>Player vs Deck</h2>
+        <p class="scenario-description">Only one player stayed! They now face the deck.</p>
+        
+        <div class="deck-hand">
+            <h3>Deck's Hand</h3>
+            <div class="cards">
+                @if (DeckCards.Count > 0)
+                {
+                    @foreach (var card in DeckCards)
+                    {
+                        <div class="card @GetCardColorClass(card.Suit)">
+                            <div class="card-rank">@card.Rank</div>
+                            <div class="card-suit">@GetSuitSymbol(card.Suit)</div>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <p class="no-cards">Dealing deck hand...</p>
+                }
+            </div>
+        </div>
+
+        @if (IsDecisionMaker && !HasDrawn)
+        {
+            <div class="decision-section">
+                <p class="instruction">Select cards for the deck to discard (click to select/deselect):</p>
+                
+                <div class="card-selection">
+                    @for (int i = 0; i < 5; i++)
+                    {
+                        var index = i;
+                        <button class="card-selector @(SelectedIndices.Contains(index) ? "selected" : "")" 
+                                @onclick="() => ToggleCardSelection(index)"
+                                disabled="@IsProcessing">
+                            Card @(i + 1)
+                        </button>
+                    }
+                </div>
+
+                <button class="btn btn-primary btn-lg" 
+                        @onclick="OnConfirmDraw" 
+                        disabled="@IsProcessing">
+                    <i class="fa-solid fa-@(IsProcessing ? "spinner fa-spin" : "check")"></i>
+                    @(IsProcessing ? "Processing..." : "Confirm Draw")
+                </button>
+            </div>
+        }
+        else if (!IsDecisionMaker)
+        {
+            <p class="waiting-message">Waiting for @DecisionMakerName to choose deck's discards...</p>
+        }
+        else
+        {
+            <p class="completed-message">
+                <i class="fa-solid fa-check-circle"></i>
+                Deck has drawn. Proceeding to showdown...
+            </p>
+        }
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// The deck's visible cards.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<CardDto> DeckCards { get; set; } = [];
+
+    /// <summary>
+    /// Whether the current player is the decision maker for the deck draw.
+    /// </summary>
+    [Parameter]
+    public bool IsDecisionMaker { get; set; }
+
+    /// <summary>
+    /// The name of the player who makes the decision for the deck.
+    /// </summary>
+    [Parameter]
+    public string DecisionMakerName { get; set; } = "Dealer";
+
+    /// <summary>
+    /// Whether the deck has already drawn.
+    /// </summary>
+    [Parameter]
+    public bool HasDrawn { get; set; }
+
+    /// <summary>
+    /// Whether a draw is currently being processed.
+    /// </summary>
+    [Parameter]
+    public bool IsProcessing { get; set; }
+
+    /// <summary>
+    /// Selected card indices for discarding.
+    /// </summary>
+    [Parameter]
+    public HashSet<int> SelectedIndices { get; set; } = new();
+
+    /// <summary>
+    /// Callback when card selection changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<int> OnCardSelectionToggle { get; set; }
+
+    /// <summary>
+    /// Callback when the decision maker confirms the draw.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnConfirmDraw { get; set; }
+
+    private void ToggleCardSelection(int index)
+    {
+        OnCardSelectionToggle.InvokeAsync(index);
+    }
+
+    private string GetCardColorClass(string suit)
+    {
+        return suit is "Hearts" or "Diamonds" ? "red" : "black";
+    }
+
+    private string GetSuitSymbol(string suit)
+    {
+        return suit switch
+        {
+            "Hearts" => "♥",
+            "Diamonds" => "♦",
+            "Clubs" => "♣",
+            "Spades" => "♠",
+            _ => suit
+        };
+    }
+
+    public record CardDto(string Rank, string Suit);
+}

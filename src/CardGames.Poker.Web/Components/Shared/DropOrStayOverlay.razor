@@ -1,0 +1,82 @@
+@namespace CardGames.Poker.Web.Components.Shared
+
+<div class="table-overlay drop-or-stay-overlay">
+    <div class="overlay-content">
+        <div class="overlay-icon"><i class="fa-solid fa-hand-pointer"></i></div>
+        <h2>Drop or Stay?</h2>
+        <p class="pot-amount">Current Pot: @PotAmount.ToString("N0") chips</p>
+        <p class="instruction">Choose whether to drop (fold) or stay in this hand.</p>
+        
+        @if (!HasDecided)
+        {
+            <div class="decision-buttons">
+                <button class="btn btn-danger btn-lg" @onclick='() => OnDecision.InvokeAsync("Drop")' disabled="@IsDeciding">
+                    <i class="fa-solid fa-times"></i>
+                    Drop
+                </button>
+                <button class="btn btn-success btn-lg" @onclick='() => OnDecision.InvokeAsync("Stay")' disabled="@IsDeciding">
+                    <i class="fa-solid fa-check"></i>
+                    Stay
+                </button>
+            </div>
+            
+            @if (IsDeciding)
+            {
+                <p class="processing-message"><i class="fa-solid fa-spinner fa-spin"></i> Processing...</p>
+            }
+        }
+        else
+        {
+            <p class="decided-message">
+                <i class="fa-solid fa-check-circle"></i>
+                You have decided to <strong>@Decision</strong>
+            </p>
+            <p class="waiting-message">Waiting for other players to decide...</p>
+        }
+        
+        @if (PlayersWaiting.Count > 0)
+        {
+            <div class="waiting-players">
+                <p class="small">Waiting for: @string.Join(", ", PlayersWaiting)</p>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// The current pot amount.
+    /// </summary>
+    [Parameter]
+    public int PotAmount { get; set; }
+
+    /// <summary>
+    /// Whether the current player has already decided.
+    /// </summary>
+    [Parameter]
+    public bool HasDecided { get; set; }
+
+    /// <summary>
+    /// The decision made by the current player (Drop or Stay).
+    /// </summary>
+    [Parameter]
+    public string? Decision { get; set; }
+
+    /// <summary>
+    /// Whether a decision is currently being processed.
+    /// </summary>
+    [Parameter]
+    public bool IsDeciding { get; set; }
+
+    /// <summary>
+    /// List of player names who haven't decided yet.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<string> PlayersWaiting { get; set; } = [];
+
+    /// <summary>
+    /// Callback when the player makes a decision.
+    /// </summary>
+    [Parameter]
+    public EventCallback<string> OnDecision { get; set; }
+}
