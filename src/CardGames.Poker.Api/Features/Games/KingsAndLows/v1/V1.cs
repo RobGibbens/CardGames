@@ -1,5 +1,7 @@
 using Asp.Versioning.Builder;
+using CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.AcknowledgePotMatch;
 using CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.CreateGame;
+using CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.DeckDraw;
 using CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.DrawCards;
 using CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.DropOrStay;
 using CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.StartHand;
@@ -21,6 +23,8 @@ public static class V1
 			.MapStartHand()
 			.MapDropOrStay()
 			.MapDrawCards()
+			.MapDeckDraw()
+			.MapAcknowledgePotMatch()
 			;
 	}
 }
