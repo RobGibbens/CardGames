@@ -138,10 +138,10 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 				HandNumber = game.CurrentHandNumber,
 				Suit = suits[random.Next(suits.Length)],
 				Symbol = symbols[random.Next(symbols.Length)],
-				Location = CardLocation.Hole,
+				Location = CardLocation.Hand,
 				DealOrder = playerCards.Count + i + 1,
 				DealtAtPhase = "DrawPhase",
-				IsVisible = false,
+				IsVisible = true,
 				DealtAt = now
 			};
 			context.GameCards.Add(newCard);
