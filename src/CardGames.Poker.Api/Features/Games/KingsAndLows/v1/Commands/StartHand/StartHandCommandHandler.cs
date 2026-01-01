@@ -200,7 +200,7 @@ public class StartHandCommandHandler(CardsDbContext context)
 					var card = deck[cardIndex++];
 					card.Location = CardLocation.Hand;
 					card.GamePlayerId = player.Id;
-					card.IsVisible = false;
+					card.IsVisible = true; // Cards visible to the player in their hand
 					card.DealOrder = dealOrder++;
 					card.DealtAtPhase = nameof(KingsAndLowsPhase.Dealing);
 					context.GameCards.Add(card);
