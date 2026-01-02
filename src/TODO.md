@@ -19,11 +19,18 @@
 - [x] I don't like how small the cards are and what they look like
 - [x] Showdown overlay should show new card images
 - [x] Draw Panel should show new card images
+
+- [ ] Drawing new cards isn't always dealing from the same deck
+- [ ] Kings and Lows - all drops revealed at the same time
+- [ ] Kings and Lows - don't deal to players that don't have enough chips to match the pot
+- [ ] Add chip management to the dashboard (buy in, cash out, add chips)
 - [ ] FCD - can't draw four with an Ace
+- [ ] Be able to soft delete a table if you're the host
 - [ ] During ties, the showdown should show the kicker 
-- [ ] Showdown overlay should handle ties
+- [ ] Showdown overlay should handle split pots better
 - [ ] Showdown overlay is not showing payouts correctly
 - [ ] Hand history should auto size columns and allow resizing columns
+- [ ] Hand history should paginate
 - [ ] When the Draw Overlay is showing, the cards are not opaque
 - [ ] Leaderboard should show first names
 - [ ] The bottom of the table goes off the bottom of the screen
@@ -47,6 +54,10 @@
 - [ ] Table should be able to scroll if the screen isn't big enough
 - [ ] Rearrange the register and login screens to make OAuth more obvious
 - [ ] Allow them to upload an image when registering
+- [ ] Add leagues
+- [ ] Add seasons
+- [ ] Add tournaments
+- [ ] Lobby should filter by game type
 
 
 ## Add Games
@@ -54,11 +65,16 @@
 ### Hold 'Em Variants
 - [ ] Add Texas Hold'em
 - [ ] Add Omaha
+- [ ] Add Pittsburgh
+- [ ] Add Squid Game
 
 ### 7 Card Stud Variants
 - [ ] Add Seven Card Stud
-- [ ] Add baseball
+- [ ] Add Baseball
 - [ ] Add Follow the Queen
+- [ ] The Good, the Bad, and the Ugly
+- [ ] Add Razz
+- [ ] 
 
 ### 5 Card Stud Variants
 - [ ] Add Five Card Stud
@@ -69,6 +85,9 @@
 - [ ] Add Kings and Lows
 
 ### Other Poker Variants
-- [ ] Add Razz
+
 - [ ] Add Screw Your Neighbor
+- [ ] In Between
+- [ ] Add Guts
+- [ ] 
 

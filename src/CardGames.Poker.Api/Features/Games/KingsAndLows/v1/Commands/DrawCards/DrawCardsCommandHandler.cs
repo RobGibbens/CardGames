@@ -24,6 +24,7 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 		// 1. Load the game with its players and cards
 		var game = await context.Games
 			.Include(g => g.GamePlayers)
+				.ThenInclude(gp => gp.Player)
 			.Include(g => g.GameCards)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
@@ -47,8 +48,8 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 			};
 		}
 
-		// 3. Find the player
-		var gamePlayersList = game.GamePlayers.ToList();
+		// 3. Find the player (order by SeatPosition for consistent indexing)
+		var gamePlayersList = game.GamePlayers.OrderBy(gp => gp.SeatPosition).ToList();
 		var gamePlayer = gamePlayersList.FirstOrDefault(gp => gp.PlayerId == command.PlayerId);
 		if (gamePlayer is null)
 		{
@@ -107,18 +108,27 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 			.OrderBy(gc => gc.DealOrder)
 			.ToList();
 
-		// 8. Remove discarded cards
-		var discardedCards = new List<GameCard>();
+		// 8. Remove discarded cards and track them for response
+		var discardedGameCards = new List<GameCard>();
+		var discardedCardInfos = new List<CardInfo>();
 		foreach (var index in discardIndices.OrderByDescending(i => i))
 		{
 			if (index < playerCards.Count)
 			{
 				var card = playerCards[index];
-				discardedCards.Add(card);
+				discardedGameCards.Add(card);
+				discardedCardInfos.Add(new CardInfo
+				{
+					Suit = card.Suit,
+					Symbol = card.Symbol,
+					Display = FormatCard(card.Symbol, card.Suit)
+				});
 				context.GameCards.Remove(card);
 				playerCards.RemoveAt(index);
 			}
 		}
+		// Reverse to maintain original order
+		discardedCardInfos.Reverse();
 
 		// 9. Deal new cards (simulate deck)
 		// In a real implementation, we'd track the deck state
@@ -129,15 +139,18 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 							  CardSymbol.Six, CardSymbol.Seven, CardSymbol.Eight, CardSymbol.Nine, 
 							  CardSymbol.Ten, CardSymbol.Jack, CardSymbol.Queen, CardSymbol.King, CardSymbol.Ace };
 
+		var newCardInfos = new List<CardInfo>();
 		for (int i = 0; i < discardIndices.Count; i++)
 		{
+			var suit = suits[random.Next(suits.Length)];
+			var symbol = symbols[random.Next(symbols.Length)];
 			var newCard = new GameCard
 			{
 				GameId = game.Id,
 				GamePlayerId = gamePlayer.Id,
 				HandNumber = game.CurrentHandNumber,
-				Suit = suits[random.Next(suits.Length)],
-				Symbol = symbols[random.Next(symbols.Length)],
+				Suit = suit,
+				Symbol = symbol,
 				Location = CardLocation.Hand,
 				DealOrder = playerCards.Count + i + 1,
 				DealtAtPhase = "DrawPhase",
@@ -146,6 +159,12 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 			};
 			context.GameCards.Add(newCard);
 			playerCards.Add(newCard);
+			newCardInfos.Add(new CardInfo
+			{
+				Suit = suit,
+				Symbol = symbol,
+				Display = FormatCard(symbol, suit)
+			});
 		}
 
 		// 10. Mark player as having drawn
@@ -159,6 +178,7 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 		bool drawPhaseComplete = stayingPlayers.Count == 0;
 		string? nextPhase = null;
 		Guid? nextPlayerId = null;
+		string? nextPlayerName = null;
 
 		if (drawPhaseComplete)
 		{
@@ -186,45 +206,50 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 			nextPhase = game.CurrentPhase;
 			game.CurrentDrawPlayerIndex = -1;
 		}
-		else
-		{
-			// Find next player to draw (circular, starting after current player)
-			var currentIndex = game.CurrentDrawPlayerIndex;
-			var nextIndex = (currentIndex + 1) % gamePlayersList.Count;
-			var searched = 0;
-
-			while (searched < gamePlayersList.Count)
+			else
 			{
-				var player = gamePlayersList[nextIndex];
-				if (player.DropOrStayDecision == Data.Entities.DropOrStayDecision.Stay && !player.HasDrawnThisRound)
+				// Find next player to draw (circular, starting after current player)
+				var currentIndex = game.CurrentDrawPlayerIndex;
+				var nextIndex = (currentIndex + 1) % gamePlayersList.Count;
+				var searched = 0;
+
+				while (searched < gamePlayersList.Count)
 				{
-					game.CurrentDrawPlayerIndex = nextIndex;
-					nextPlayerId = player.PlayerId;
-					break;
+					var player = gamePlayersList[nextIndex];
+					if (player.DropOrStayDecision == Data.Entities.DropOrStayDecision.Stay && !player.HasDrawnThisRound)
+					{
+						game.CurrentDrawPlayerIndex = nextIndex;
+						nextPlayerId = player.PlayerId;
+						nextPlayerName = player.Player?.Name;
+						break;
+					}
+					nextIndex = (nextIndex + 1) % gamePlayersList.Count;
+					searched++;
 				}
-				nextIndex = (nextIndex + 1) % gamePlayersList.Count;
-				searched++;
 			}
-		}
 
-		// 12. Persist changes (if not already saved during showdown)
-		if (!drawPhaseComplete || game.CurrentPhase != nameof(KingsAndLowsPhase.PotMatching))
-		{
-			game.UpdatedAt = now;
-			await context.SaveChangesAsync(cancellationToken);
-		}
+			// 12. Persist changes (if not already saved during showdown)
+			if (!drawPhaseComplete || game.CurrentPhase != nameof(KingsAndLowsPhase.PotMatching))
+			{
+				game.UpdatedAt = now;
+				await context.SaveChangesAsync(cancellationToken);
+			}
 
-		return new DrawCardsSuccessful
-		{
-			GameId = game.Id,
-			PlayerId = command.PlayerId,
-			CardsDiscarded = discardIndices.Count,
-			CardsDrawn = discardIndices.Count,
-			DrawPhaseComplete = drawPhaseComplete,
-			NextPhase = nextPhase,
-			NextPlayerId = nextPlayerId
-		};
-	}
+			return new DrawCardsSuccessful
+			{
+				GameId = game.Id,
+				PlayerId = command.PlayerId,
+				PlayerName = gamePlayer.Player?.Name,
+				CardsDiscarded = discardIndices.Count,
+				CardsDrawn = discardIndices.Count,
+				DiscardedCards = discardedCardInfos,
+				NewCards = newCardInfos,
+				DrawPhaseComplete = drawPhaseComplete,
+				NextPhase = nextPhase,
+				NextPlayerId = nextPlayerId,
+				NextPlayerName = nextPlayerName
+			};
+		}
 
 	/// <summary>
 	/// Performs showdown, determines winner/losers, distributes pot, and transitions to PotMatching phase.
@@ -302,27 +327,62 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 		}
 
 		// Clear the current pot (winners took it)
-		mainPot.Amount = 0;
+				mainPot.Amount = 0;
 
-		// Create a new pot for next hand that will receive losers' matching contributions
-		var newPot = new Pot
-		{
-			GameId = game.Id,
-			HandNumber = game.CurrentHandNumber + 1,
-			Amount = 0,
-			CreatedAt = now
-		};
-		context.Pots.Add(newPot);
+				// Create a new pot for next hand that will receive losers' matching contributions
+				var newPot = new Pot
+				{
+					GameId = game.Id,
+					HandNumber = game.CurrentHandNumber + 1,
+					Amount = 0,
+					CreatedAt = now
+				};
+				context.Pots.Add(newPot);
 
-		// Transition to PotMatching phase if there are losers
-		if (losers.Any())
-		{
-			game.CurrentPhase = nameof(KingsAndLowsPhase.PotMatching);
+				// Transition to PotMatching phase if there are losers
+				if (losers.Any())
+				{
+					game.CurrentPhase = nameof(KingsAndLowsPhase.PotMatching);
+				}
+				else
+				{
+					// No losers (all tied?) - just complete
+					game.CurrentPhase = nameof(KingsAndLowsPhase.Complete);
+				}
+			}
+
+			/// <summary>
+			/// Formats a card symbol and suit into a display string.
+			/// </summary>
+			private static string FormatCard(CardSymbol symbol, CardSuit suit)
+			{
+				var symbolStr = symbol switch
+				{
+					CardSymbol.Ace => "A",
+					CardSymbol.King => "K",
+					CardSymbol.Queen => "Q",
+					CardSymbol.Jack => "J",
+					CardSymbol.Ten => "10",
+					CardSymbol.Nine => "9",
+					CardSymbol.Eight => "8",
+					CardSymbol.Seven => "7",
+					CardSymbol.Six => "6",
+					CardSymbol.Five => "5",
+					CardSymbol.Four => "4",
+					CardSymbol.Three => "3",
+					CardSymbol.Deuce => "2",
+					_ => "?"
+				};
+
+				var suitStr = suit switch
+				{
+					CardSuit.Hearts => "?",
+					CardSuit.Diamonds => "?",
+					CardSuit.Spades => "?",
+					CardSuit.Clubs => "?",
+					_ => "?"
+				};
+
+				return $"{symbolStr}{suitStr}";
+			}
 		}
-		else
-		{
-			// No losers (all tied?) - just complete
-			game.CurrentPhase = nameof(KingsAndLowsPhase.Complete);
-		}
-	}
-}

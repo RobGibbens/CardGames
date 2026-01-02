@@ -773,6 +773,50 @@ namespace CardGames.Poker.Api.Clients
         [Post("/api/v1/games/kings-and-lows/{gameId}/deck-draw")]
         Task<IApiResponse<DeckDrawSuccessful>> KingsAndLowsDeckDrawAsync(System.Guid gameId, [Body] DeckDrawRequest body, CancellationToken cancellationToken = default);
 
+        /// <summary>Perform Showdown</summary>
+        /// <remarks>
+        /// Performs the showdown phase to evaluate all remaining players' hands and award the pot to the winner(s). Kings and Lows uses wild card evaluation: Kings are always wild, and the lowest non-King card(s) are also wild.
+        /// 
+        /// **Wild Card Rules:**
+        /// - All Kings are wild
+        /// - The lowest-ranked card(s) in each player's hand (excluding Kings) are also wild
+        /// - Wild cards can represent any card to form the best possible hand
+        /// 
+        /// **Showdown Scenarios:**
+        /// - **Win by fold:** If only one player stays, they win the pot without showing cards
+        /// - **Single winner:** The player with the highest-ranking hand wins the pot
+        /// - **Split pot:** If multiple players tie, the pot is divided equally among winners
+        /// 
+        /// **Response includes:**
+        /// - Payouts to each winning player
+        /// - Evaluated hand information with wild card indexes
+        /// - Winners and losers lists (losers must match the pot)
+        /// </remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Post("/api/v1/games/kings-and-lows/{gameId}/showdown")]
+        Task<IApiResponse<PerformShowdownSuccessful>> KingsAndLowsPerformShowdownAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
         /// <summary>AcknowledgePotMatch</summary>
         /// <remarks>Process pot matching in Kings and Lows.</remarks>
         /// <returns>
@@ -2010,15 +2054,19 @@ namespace CardGames.Poker.Api.Contracts
     public partial record DrawCardsSuccessful
     {
         [JsonConstructor]
-        public DrawCardsSuccessful(int @cardsDiscarded, int @cardsDrawn, bool @drawPhaseComplete, System.Guid @gameId, string @nextPhase, System.Guid? @nextPlayerId, System.Guid @playerId)
+        public DrawCardsSuccessful(int @cardsDiscarded, int @cardsDrawn, ICollection<CardInfo> @discardedCards, bool @drawPhaseComplete, System.Guid @gameId, ICollection<CardInfo> @newCards, string @nextPhase, System.Guid? @nextPlayerId, string @nextPlayerName, System.Guid @playerId, string @playerName)
         {
             this.GameId = @gameId;
             this.PlayerId = @playerId;
+            this.PlayerName = @playerName;
             this.CardsDiscarded = @cardsDiscarded;
             this.CardsDrawn = @cardsDrawn;
+            this.DiscardedCards = @discardedCards;
+            this.NewCards = @newCards;
             this.DrawPhaseComplete = @drawPhaseComplete;
             this.NextPhase = @nextPhase;
             this.NextPlayerId = @nextPlayerId;
+            this.NextPlayerName = @nextPlayerName;
         }
 
         [JsonPropertyName("gameId")]
@@ -2028,6 +2076,9 @@ namespace CardGames.Poker.Api.Contracts
         [JsonPropertyName("playerId")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public System.Guid PlayerId { get; init; }
+
+        [JsonPropertyName("playerName")]
+        public string PlayerName { get; init; }
 
         [JsonPropertyName("cardsDiscarded")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
@@ -2039,6 +2090,14 @@ namespace CardGames.Poker.Api.Contracts
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int CardsDrawn { get; init; }
 
+        [JsonPropertyName("discardedCards")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public ICollection<CardInfo> DiscardedCards { get; init; }
+
+        [JsonPropertyName("newCards")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public ICollection<CardInfo> NewCards { get; init; }
+
         [JsonPropertyName("drawPhaseComplete")]
         public bool DrawPhaseComplete { get; init; }
 
@@ -2047,6 +2106,9 @@ namespace CardGames.Poker.Api.Contracts
 
         [JsonPropertyName("nextPlayerId")]
         public System.Guid? NextPlayerId { get; init; }
+
+        [JsonPropertyName("nextPlayerName")]
+        public string NextPlayerName { get; init; }
 
     }
 

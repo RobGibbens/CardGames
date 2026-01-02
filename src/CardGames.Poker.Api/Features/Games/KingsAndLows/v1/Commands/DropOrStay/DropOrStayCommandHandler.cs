@@ -125,7 +125,7 @@ public class DropOrStayCommandHandler(CardsDbContext context)
 			{
 				// Single player stayed - go to draw phase (then player vs deck)
 				game.CurrentPhase = nameof(KingsAndLowsPhase.DrawPhase);
-				var gamePlayersList = game.GamePlayers.ToList();
+				var gamePlayersList = game.GamePlayers.OrderBy(gp => gp.SeatPosition).ToList();
 				game.CurrentDrawPlayerIndex = gamePlayersList.IndexOf(stayingPlayers[0]);
 				nextPhase = game.CurrentPhase;
 			}
@@ -133,9 +133,9 @@ public class DropOrStayCommandHandler(CardsDbContext context)
 			{
 				// Multiple players stayed - go to draw phase
 				game.CurrentPhase = nameof(KingsAndLowsPhase.DrawPhase);
-				// Find first staying player after dealer
+				// Find first staying player after dealer (order by SeatPosition for consistent indexing)
 				var dealerPos = game.DealerPosition;
-				var gamePlayersList = game.GamePlayers.ToList();
+				var gamePlayersList = game.GamePlayers.OrderBy(gp => gp.SeatPosition).ToList();
 				var nextPlayerIndex = (dealerPos + 1) % gamePlayersList.Count;
 				var searched = 0;
 				while (searched < gamePlayersList.Count)

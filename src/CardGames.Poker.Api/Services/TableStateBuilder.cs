@@ -131,6 +131,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
     /// <inheritdoc />
     public async Task<PrivateStateDto?> BuildPrivateStateAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
     {
+        _logger.LogDebug("BuildPrivateStateAsync called for game {GameId}, userId {UserId}", gameId, userId);
+
         var game = await _context.Games
             .Include(g => g.GameType)
             .AsNoTracking()
@@ -138,6 +140,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
         if (game is null)
         {
+            _logger.LogWarning("BuildPrivateStateAsync: Game {GameId} not found", gameId);
             return null;
         }
 
@@ -156,8 +159,33 @@ public sealed class TableStateBuilder : ITableStateBuilder
         if (gamePlayer is null)
         {
             // User is not a player in this game
+            _logger.LogWarning(
+                "BuildPrivateStateAsync: No player found for userId {UserId} in game {GameId}. " +
+                "Checking all players in game...", userId, gameId);
+
+            // Log all players for debugging
+            var allPlayers = await _context.GamePlayers
+                .Where(gp => gp.GameId == gameId)
+                .Include(gp => gp.Player)
+                .AsNoTracking()
+                .Select(gp => new { gp.Player.Email, gp.Player.Name, gp.Player.ExternalId })
+                .ToListAsync(cancellationToken);
+
+            foreach (var p in allPlayers)
+            {
+                _logger.LogWarning(
+                    "  Player in game: Email={Email}, Name={Name}, ExternalId={ExternalId}",
+                    p.Email ?? "(null)", p.Name ?? "(null)", p.ExternalId ?? "(null)");
+            }
+
             return null;
         }
+
+        _logger.LogInformation(
+            "BuildPrivateStateAsync: Found player {PlayerName} at seat {SeatPosition} with {CardCount} cards (hand #{HandNumber})",
+            gamePlayer.Player.Name, gamePlayer.SeatPosition, 
+            gamePlayer.Cards.Count(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber),
+            game.CurrentHandNumber);
 
         var hand = BuildPrivateHand(gamePlayer, game.CurrentHandNumber);
 
@@ -262,13 +290,46 @@ public sealed class TableStateBuilder : ITableStateBuilder
     /// <inheritdoc />
     public async Task<IReadOnlyList<string>> GetPlayerUserIdsAsync(Guid gameId, CancellationToken cancellationToken = default)
     {
-        return await _context.GamePlayers
+        var players = await _context.GamePlayers
             .Where(gp => gp.GameId == gameId)
             .Include(gp => gp.Player)
             .AsNoTracking()
-            // Must align with the key used by SignalR `Clients.User(userId)` - now email-based.
-            .Select(gp => gp.Player.Email ?? gp.Player.Name ?? gp.Player.ExternalId)
+            .Select(gp => new { gp.Player.Email, gp.Player.Name, gp.Player.ExternalId })
             .ToListAsync(cancellationToken);
+
+        // Prefer Name over Email when Email appears malformed (e.g., contains multiple @ symbols).
+        // This handles legacy data where Email may have been incorrectly stored with @localhost appended.
+        var userIds = players
+            .Select(p =>
+            {
+                // If Email looks like a valid single @ email, use it
+                // Otherwise prefer Name (which is typically the clean email)
+                var email = p.Email;
+                var name = p.Name;
+
+                // Check if email is malformed (has more than one @ symbol)
+                var isMalformedEmail = !string.IsNullOrWhiteSpace(email) && email.Count(c => c == '@') > 1;
+
+                if (isMalformedEmail && !string.IsNullOrWhiteSpace(name))
+                {
+                    return name;
+                }
+
+                return email ?? name ?? p.ExternalId;
+            })
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Cast<string>()
+            .ToList();
+
+        _logger.LogInformation(
+            "GetPlayerUserIdsAsync for game {GameId}: {PlayerCount} players, UserIds: [{UserIds}], " +
+            "Raw data: [{RawData}]",
+            gameId,
+            players.Count,
+            string.Join(", ", userIds),
+            string.Join(", ", players.Select(p => $"Email={p.Email ?? "(null)"}, Name={p.Name ?? "(null)"}, ExternalId={p.ExternalId ?? "(null)"}")));
+
+        return userIds;
     }
 
     private static SeatPublicDto BuildSeatPublicDto(
@@ -339,8 +400,21 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
     private List<CardPrivateDto> BuildPrivateHand(GamePlayer gamePlayer, int currentHandNumber)
     {
-        return gamePlayer.Cards
+        var allCards = gamePlayer.Cards?.ToList() ?? [];
+        var filteredCards = allCards
             .Where(c => !c.IsDiscarded && c.HandNumber == currentHandNumber)
+            .ToList();
+
+        _logger.LogInformation(
+            "BuildPrivateHand for player {PlayerId}: Total cards in collection: {TotalCount}, " +
+            "Cards for hand #{HandNumber}: {FilteredCount}, Card hand numbers: [{HandNumbers}]",
+            gamePlayer.Id, 
+            allCards.Count, 
+            currentHandNumber,
+            filteredCards.Count,
+            string.Join(", ", allCards.Select(c => c.HandNumber.ToString())));
+
+        return filteredCards
             .OrderBy(c => c.DealOrder)
             .Select(c => new CardPrivateDto
             {

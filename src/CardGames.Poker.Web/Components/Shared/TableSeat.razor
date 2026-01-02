@@ -86,9 +86,11 @@
             <div class="seat-cards">
                 @foreach (var card in GetOrderedCards())
                 {
-                    if (IsCurrentPlayer)
+                    if 
+                        (IsCurrentPlayer)
                     {
-                        @if (card.IsFaceUp)
+                        @if 
+                            (card.IsFaceUp)
                         {
                             <playing-card rank="@GetPlayingCardRank(card)" suit="@card.Suit" style="height:75px;width:75px;"></playing-card>
                         }
@@ -99,7 +101,8 @@
                     }
                     else
                     {
-                        @if (card.IsFaceUp)
+                        @if 
+                            (card.IsFaceUp)
                         {
                             <playing-card rank="@GetPlayingCardRank(card)" suit="@card.Suit" style="height:50px;width:50px;"></playing-card>
                         }

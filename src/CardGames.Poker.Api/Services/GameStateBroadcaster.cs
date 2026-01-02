@@ -42,6 +42,10 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
             var publicState = await _tableStateBuilder.BuildPublicStateAsync(gameId, cancellationToken);
             if (publicState is not null)
             {
+                _logger.LogInformation(
+                    "Broadcasting public state for game {GameId}, phase: {Phase}, seats: {SeatCount}",
+                    gameId, publicState.CurrentPhase, publicState.Seats.Count);
+
                 await _hubContext.Clients.Group(groupName)
                     .SendAsync("TableStateUpdated", publicState, cancellationToken);
 
@@ -50,6 +54,10 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 
             // Get all player user IDs and send private state to each
             var playerUserIds = await _tableStateBuilder.GetPlayerUserIdsAsync(gameId, cancellationToken);
+            _logger.LogInformation(
+                "Broadcasting private state to {PlayerCount} players: [{PlayerIds}]",
+                playerUserIds.Count, string.Join(", ", playerUserIds));
+
             foreach (var userId in playerUserIds)
             {
                 await SendPrivateStateToUserAsync(gameId, userId, cancellationToken);
@@ -94,10 +102,20 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
             var privateState = await _tableStateBuilder.BuildPrivateStateAsync(gameId, userId, cancellationToken);
             if (privateState is not null)
             {
+                _logger.LogInformation(
+                    "Sending private state to user {UserId} for game {GameId}: {CardCount} cards, seat {SeatPosition}",
+                    userId, gameId, privateState.Hand.Count, privateState.SeatPosition);
+
                 await _hubContext.Clients.User(userId)
                     .SendAsync("PrivateStateUpdated", privateState, cancellationToken);
 
                 _logger.LogDebug("Sent private state to user {UserId} for game {GameId}", userId, gameId);
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "BuildPrivateStateAsync returned null for user {UserId} in game {GameId}",
+                    userId, gameId);
             }
         }
 
