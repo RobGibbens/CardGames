@@ -1,5 +1,6 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Services;
 using CardGames.Poker.Games.KingsAndLows;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -119,6 +120,8 @@ public class DropOrStayCommandHandler(CardsDbContext context)
 				// All players dropped - dead hand
 				game.CurrentPhase = nameof(KingsAndLowsPhase.Complete);
 				game.HandCompletedAt = now;
+				game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);
+				MoveDealer(game);
 				nextPhase = game.CurrentPhase;
 			}
 			else if (stayingPlayers.Count == 1)
@@ -130,27 +133,36 @@ public class DropOrStayCommandHandler(CardsDbContext context)
 				nextPhase = game.CurrentPhase;
 			}
 			else
-			{
-				// Multiple players stayed - go to draw phase
-				game.CurrentPhase = nameof(KingsAndLowsPhase.DrawPhase);
-				// Find first staying player after dealer (order by SeatPosition for consistent indexing)
-				var dealerPos = game.DealerPosition;
-				var gamePlayersList = game.GamePlayers.OrderBy(gp => gp.SeatPosition).ToList();
-				var nextPlayerIndex = (dealerPos + 1) % gamePlayersList.Count;
-				var searched = 0;
-				while (searched < gamePlayersList.Count)
 				{
-					var player = gamePlayersList[nextPlayerIndex];
-					if (player.DropOrStayDecision == Data.Entities.DropOrStayDecision.Stay)
+					// Multiple players stayed - go to draw phase
+					game.CurrentPhase = nameof(KingsAndLowsPhase.DrawPhase);
+					// Find first staying player after dealer (order by SeatPosition for consistent indexing)
+					var dealerSeatPosition = game.DealerPosition;
+					var gamePlayersList = game.GamePlayers.OrderBy(gp => gp.SeatPosition).ToList();
+
+					// Find the index of the dealer in the ordered player list
+					var dealerIndex = gamePlayersList.FindIndex(gp => gp.SeatPosition == dealerSeatPosition);
+					if (dealerIndex < 0)
 					{
-						game.CurrentDrawPlayerIndex = nextPlayerIndex;
-						break;
+						// Dealer seat not occupied, start from seat position 0
+						dealerIndex = 0;
 					}
-					nextPlayerIndex = (nextPlayerIndex + 1) % gamePlayersList.Count;
-					searched++;
+
+					var nextPlayerIndex = (dealerIndex + 1) % gamePlayersList.Count;
+					var searched = 0;
+					while (searched < gamePlayersList.Count)
+					{
+						var player = gamePlayersList[nextPlayerIndex];
+						if (player.DropOrStayDecision == Data.Entities.DropOrStayDecision.Stay)
+						{
+							game.CurrentDrawPlayerIndex = nextPlayerIndex;
+							break;
+						}
+						nextPlayerIndex = (nextPlayerIndex + 1) % gamePlayersList.Count;
+						searched++;
+					}
+					nextPhase = game.CurrentPhase;
 				}
-				nextPhase = game.CurrentPhase;
-			}
 		}
 
 		game.UpdatedAt = now;
@@ -162,11 +174,42 @@ public class DropOrStayCommandHandler(CardsDbContext context)
 		{
 			GameId = game.Id,
 			PlayerId = command.PlayerId,
-			Decision = command.Decision,
-			AllPlayersDecided = allDecided,
-			StayingCount = stayingPlayers.Count,
-			DroppedCount = droppedPlayers.Count,
-			NextPhase = nextPhase
-		};
-	}
-}
+						Decision = command.Decision,
+						AllPlayersDecided = allDecided,
+						StayingCount = stayingPlayers.Count,
+						DroppedCount = droppedPlayers.Count,
+						NextPhase = nextPhase
+					};
+				}
+
+				/// <summary>
+				/// Moves the dealer button to the next occupied seat position (clockwise).
+				/// </summary>
+				private static void MoveDealer(Game game)
+				{
+					var occupiedSeats = game.GamePlayers
+						.Where(gp => gp.Status == GamePlayerStatus.Active)
+						.OrderBy(gp => gp.SeatPosition)
+						.Select(gp => gp.SeatPosition)
+						.ToList();
+
+					if (occupiedSeats.Count == 0)
+					{
+						return;
+					}
+
+					var currentPosition = game.DealerPosition;
+
+					// Find next occupied seat clockwise from current position
+					var seatsAfterCurrent = occupiedSeats.Where(pos => pos > currentPosition).ToList();
+
+					if (seatsAfterCurrent.Count > 0)
+					{
+						game.DealerPosition = seatsAfterCurrent.First();
+					}
+					else
+					{
+						game.DealerPosition = occupiedSeats.First();
+					}
+				}
+			}

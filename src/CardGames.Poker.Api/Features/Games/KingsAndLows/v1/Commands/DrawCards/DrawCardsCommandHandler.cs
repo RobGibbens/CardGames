@@ -1,5 +1,6 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Services;
 using CardGames.Poker.Games.KingsAndLows;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -61,7 +62,7 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 		}
 
 		// 4. Verify it's this player's turn to draw
-		if (game.CurrentDrawPlayerIndex < 0 || 
+		if (game.CurrentDrawPlayerIndex < 0 ||
 			game.CurrentDrawPlayerIndex >= gamePlayersList.Count ||
 			gamePlayersList[game.CurrentDrawPlayerIndex].PlayerId != command.PlayerId)
 		{
@@ -135,8 +136,8 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 		// For now, we'll generate random cards
 		var random = new Random();
 		var suits = new[] { CardSuit.Hearts, CardSuit.Diamonds, CardSuit.Clubs, CardSuit.Spades };
-		var symbols = new[] { CardSymbol.Deuce, CardSymbol.Three, CardSymbol.Four, CardSymbol.Five, 
-							  CardSymbol.Six, CardSymbol.Seven, CardSymbol.Eight, CardSymbol.Nine, 
+		var symbols = new[] { CardSymbol.Deuce, CardSymbol.Three, CardSymbol.Four, CardSymbol.Five,
+							  CardSymbol.Six, CardSymbol.Seven, CardSymbol.Eight, CardSymbol.Nine,
 							  CardSymbol.Ten, CardSymbol.Jack, CardSymbol.Queen, CardSymbol.King, CardSymbol.Ace };
 
 		var newCardInfos = new List<CardInfo>();
@@ -184,7 +185,7 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 		{
 			// All staying players have drawn - determine next phase
 			var totalStaying = gamePlayersList.Count(gp => gp.DropOrStayDecision == Data.Entities.DropOrStayDecision.Stay);
-			
+
 			if (totalStaying == 1)
 			{
 				// Single player stayed - go to player vs deck
@@ -195,61 +196,58 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 				// Multiple players - go to showdown and automatically perform it
 				game.CurrentPhase = nameof(KingsAndLowsPhase.Showdown);
 				game.UpdatedAt = now;
-				
+
 				// IMPORTANT: Save changes before performing showdown so new cards are in database
 				await context.SaveChangesAsync(cancellationToken);
-				
+
 				// Auto-perform showdown for multiple staying players
 				await PerformShowdownAndSetupPotMatching(game, gamePlayersList, context, now, cancellationToken);
 			}
-			
+
 			nextPhase = game.CurrentPhase;
 			game.CurrentDrawPlayerIndex = -1;
 		}
-			else
-			{
-				// Find next player to draw (circular, starting after current player)
-				var currentIndex = game.CurrentDrawPlayerIndex;
-				var nextIndex = (currentIndex + 1) % gamePlayersList.Count;
-				var searched = 0;
+		else
+		{
+			// Find next player to draw (circular, starting after current player)
+			var currentIndex = game.CurrentDrawPlayerIndex;
+			var nextIndex = (currentIndex + 1) % gamePlayersList.Count;
+			var searched = 0;
 
-				while (searched < gamePlayersList.Count)
+			while (searched < gamePlayersList.Count)
+			{
+				var player = gamePlayersList[nextIndex];
+				if (player.DropOrStayDecision == Data.Entities.DropOrStayDecision.Stay && !player.HasDrawnThisRound)
 				{
-					var player = gamePlayersList[nextIndex];
-					if (player.DropOrStayDecision == Data.Entities.DropOrStayDecision.Stay && !player.HasDrawnThisRound)
-					{
-						game.CurrentDrawPlayerIndex = nextIndex;
-						nextPlayerId = player.PlayerId;
-						nextPlayerName = player.Player?.Name;
-						break;
-					}
-					nextIndex = (nextIndex + 1) % gamePlayersList.Count;
-					searched++;
+					game.CurrentDrawPlayerIndex = nextIndex;
+					nextPlayerId = player.PlayerId;
+					nextPlayerName = player.Player?.Name;
+					break;
 				}
+				nextIndex = (nextIndex + 1) % gamePlayersList.Count;
+				searched++;
 			}
-
-			// 12. Persist changes (if not already saved during showdown)
-			if (!drawPhaseComplete || game.CurrentPhase != nameof(KingsAndLowsPhase.PotMatching))
-			{
-				game.UpdatedAt = now;
-				await context.SaveChangesAsync(cancellationToken);
-			}
-
-			return new DrawCardsSuccessful
-			{
-				GameId = game.Id,
-				PlayerId = command.PlayerId,
-				PlayerName = gamePlayer.Player?.Name,
-				CardsDiscarded = discardIndices.Count,
-				CardsDrawn = discardIndices.Count,
-				DiscardedCards = discardedCardInfos,
-				NewCards = newCardInfos,
-				DrawPhaseComplete = drawPhaseComplete,
-				NextPhase = nextPhase,
-				NextPlayerId = nextPlayerId,
-				NextPlayerName = nextPlayerName
-			};
 		}
+
+		// 12. Persist changes
+		game.UpdatedAt = now;
+		await context.SaveChangesAsync(cancellationToken);
+
+		return new DrawCardsSuccessful
+		{
+			GameId = game.Id,
+			PlayerId = command.PlayerId,
+			PlayerName = gamePlayer.Player?.Name,
+			CardsDiscarded = discardIndices.Count,
+			CardsDrawn = discardIndices.Count,
+			DiscardedCards = discardedCardInfos,
+			NewCards = newCardInfos,
+			DrawPhaseComplete = drawPhaseComplete,
+			NextPhase = nextPhase,
+			NextPlayerId = nextPlayerId,
+			NextPlayerName = nextPlayerName
+		};
+	}
 
 	/// <summary>
 	/// Performs showdown, determines winner/losers, distributes pot, and transitions to PotMatching phase.
@@ -263,21 +261,24 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 	{
 		// Get all cards for staying players
 		var stayingPlayers = gamePlayersList.Where(gp => gp.DropOrStayDecision == Data.Entities.DropOrStayDecision.Stay).ToList();
-		
+
 		// Load main pot for current hand
 		var mainPot = await context.Pots
 			.FirstOrDefaultAsync(p => p.GameId == game.Id && p.HandNumber == game.CurrentHandNumber, cancellationToken);
-		
+
 		if (mainPot == null)
 		{
 			// No pot to distribute - just complete the hand
 			game.CurrentPhase = nameof(KingsAndLowsPhase.Complete);
+			game.HandCompletedAt = now;
+			game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);
+			MoveDealer(game);
 			return;
 		}
 
 		// Evaluate hands using the KingsAndLowsDrawHand evaluator
 		var playerHandEvaluations = new List<(GamePlayer player, long strength)>();
-		
+
 		foreach (var player in stayingPlayers)
 		{
 			var playerCards = context.GameCards
@@ -303,6 +304,9 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 		if (playerHandEvaluations.Count == 0)
 		{
 			game.CurrentPhase = nameof(KingsAndLowsPhase.Complete);
+			game.HandCompletedAt = now;
+			game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);
+			MoveDealer(game);
 			return;
 		}
 
@@ -327,62 +331,106 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 		}
 
 		// Clear the current pot (winners took it)
-				mainPot.Amount = 0;
+		mainPot.Amount = 0;
 
-				// Create a new pot for next hand that will receive losers' matching contributions
-				var newPot = new Pot
-				{
-					GameId = game.Id,
-					HandNumber = game.CurrentHandNumber + 1,
-					Amount = 0,
-					CreatedAt = now
-				};
-				context.Pots.Add(newPot);
+		// Auto-perform pot matching: losers must match the pot for the next hand
+		var matchAmount = potAmount; // The amount each loser must match
+		var totalMatched = 0;
 
-				// Transition to PotMatching phase if there are losers
-				if (losers.Any())
-				{
-					game.CurrentPhase = nameof(KingsAndLowsPhase.PotMatching);
-				}
-				else
-				{
-					// No losers (all tied?) - just complete
-					game.CurrentPhase = nameof(KingsAndLowsPhase.Complete);
-				}
-			}
-
-			/// <summary>
-			/// Formats a card symbol and suit into a display string.
-			/// </summary>
-			private static string FormatCard(CardSymbol symbol, CardSuit suit)
-			{
-				var symbolStr = symbol switch
-				{
-					CardSymbol.Ace => "A",
-					CardSymbol.King => "K",
-					CardSymbol.Queen => "Q",
-					CardSymbol.Jack => "J",
-					CardSymbol.Ten => "10",
-					CardSymbol.Nine => "9",
-					CardSymbol.Eight => "8",
-					CardSymbol.Seven => "7",
-					CardSymbol.Six => "6",
-					CardSymbol.Five => "5",
-					CardSymbol.Four => "4",
-					CardSymbol.Three => "3",
-					CardSymbol.Deuce => "2",
-					_ => "?"
-				};
-
-				var suitStr = suit switch
-				{
-					CardSuit.Hearts => "?",
-					CardSuit.Diamonds => "?",
-					CardSuit.Spades => "?",
-					CardSuit.Clubs => "?",
-					_ => "?"
-				};
-
-				return $"{symbolStr}{suitStr}";
-			}
+		foreach (var loser in losers)
+		{
+			// Loser matches the pot (or goes all-in if insufficient chips)
+			var actualMatch = Math.Min(matchAmount, loser.ChipStack);
+			loser.ChipStack -= actualMatch;
+			totalMatched += actualMatch;
 		}
+
+		// Create a new pot for next hand with the matched contributions
+		if (totalMatched > 0)
+		{
+			var newPot = new Pot
+			{
+				GameId = game.Id,
+				HandNumber = game.CurrentHandNumber + 1,
+				PotType = Data.Entities.PotType.Main,
+				PotOrder = 0,
+				Amount = totalMatched,
+				IsAwarded = false,
+				CreatedAt = now
+			};
+			context.Pots.Add(newPot);
+		}
+
+		// Complete the hand
+		game.CurrentPhase = nameof(KingsAndLowsPhase.Complete);
+		game.HandCompletedAt = now;
+		game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);
+		MoveDealer(game);
+	}
+
+	/// <summary>
+	/// Formats a card symbol and suit into a display string.
+	/// </summary>
+	private static string FormatCard(CardSymbol symbol, CardSuit suit)
+	{
+		var symbolStr = symbol switch
+		{
+			CardSymbol.Ace => "A",
+			CardSymbol.King => "K",
+			CardSymbol.Queen => "Q",
+			CardSymbol.Jack => "J",
+			CardSymbol.Ten => "10",
+			CardSymbol.Nine => "9",
+			CardSymbol.Eight => "8",
+			CardSymbol.Seven => "7",
+			CardSymbol.Six => "6",
+			CardSymbol.Five => "5",
+			CardSymbol.Four => "4",
+			CardSymbol.Three => "3",
+			CardSymbol.Deuce => "2",
+			_ => "?"
+		};
+
+		var suitStr = suit switch
+		{
+			CardSuit.Hearts => "?",
+			CardSuit.Diamonds => "?",
+			CardSuit.Spades => "?",
+			CardSuit.Clubs => "?",
+			_ => "?"
+		};
+
+		return $"{symbolStr}{suitStr}";
+	}
+
+	/// <summary>
+	/// Moves the dealer button to the next occupied seat position (clockwise).
+	/// </summary>
+	private static void MoveDealer(Game game)
+	{
+		var occupiedSeats = game.GamePlayers
+			.Where(gp => gp.Status == GamePlayerStatus.Active)
+			.OrderBy(gp => gp.SeatPosition)
+			.Select(gp => gp.SeatPosition)
+			.ToList();
+
+		if (occupiedSeats.Count == 0)
+		{
+			return;
+		}
+
+		var currentPosition = game.DealerPosition;
+
+		// Find next occupied seat clockwise from current position
+		var seatsAfterCurrent = occupiedSeats.Where(pos => pos > currentPosition).ToList();
+
+		if (seatsAfterCurrent.Count > 0)
+		{
+			game.DealerPosition = seatsAfterCurrent.First();
+		}
+		else
+		{
+			game.DealerPosition = occupiedSeats.First();
+		}
+	}
+}

@@ -258,19 +258,29 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
                 br.CompletedAt = now;
             }
 
-            // Create a new main pot for this hand
-            var mainPot = new Pot
-            {
-                GameId = game.Id,
-                HandNumber = game.CurrentHandNumber + 1,
-                PotType = PotType.Main,
-                PotOrder = 0,
-                Amount = 0,
-                IsAwarded = false,
-                CreatedAt = now
-            };
+            // Check if a main pot already exists for the next hand (e.g., from pot matching in Kings and Lows)
+            var existingPot = await context.Pots
+                .FirstOrDefaultAsync(p => p.GameId == game.Id &&
+                                          p.HandNumber == game.CurrentHandNumber + 1 &&
+                                          p.PotType == PotType.Main,
+                                     cancellationToken);
 
-            context.Pots.Add(mainPot);
+            if (existingPot is null)
+            {
+                // Create a new main pot for this hand
+                var mainPot = new Pot
+                {
+                    GameId = game.Id,
+                    HandNumber = game.CurrentHandNumber + 1,
+                    PotType = PotType.Main,
+                    PotOrder = 0,
+                    Amount = 0,
+                    IsAwarded = false,
+                    CreatedAt = now
+                };
+
+                context.Pots.Add(mainPot);
+            }
 
             // NOTE: Dealer rotation is already done in PerformShowdownCommandHandler.MoveDealer()
             // when the previous hand completes. We do NOT rotate again here.

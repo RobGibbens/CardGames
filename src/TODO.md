@@ -20,6 +20,7 @@
 - [x] Showdown overlay should show new card images
 - [x] Draw Panel should show new card images
 
+- [ ] Make sure signalr isn't broadcasting to all players in all games
 - [ ] Drawing new cards isn't always dealing from the same deck
 - [ ] Kings and Lows - all drops revealed at the same time
 - [ ] Kings and Lows - don't deal to players that don't have enough chips to match the pot

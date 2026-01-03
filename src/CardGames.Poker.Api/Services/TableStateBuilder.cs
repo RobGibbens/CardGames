@@ -501,57 +501,77 @@ public sealed class TableStateBuilder : ITableStateBuilder
         };
     }
 
-    private static ShowdownPublicDto? BuildShowdownPublicDto(
-        Game game,
-        List<GamePlayer> gamePlayers,
-        Dictionary<string, UserProfile> userProfilesByEmail)
-    {
-        if (game.CurrentPhase != "Showdown" && game.CurrentPhase != "Complete")
-        {
-            return null;
-        }
+	private static ShowdownPublicDto? BuildShowdownPublicDto(
+		Game game,
+		List<GamePlayer> gamePlayers,
+		Dictionary<string, UserProfile> userProfilesByEmail)
+	{
+		if (game.CurrentPhase != "Showdown" && game.CurrentPhase != "Complete")
+		{
+			return null;
+		}
 
 		var isTwosJacksAxe = string.Equals(
 			game.GameType?.Code,
 			PokerGameMetadataRegistry.TwosJacksManWithTheAxeCode,
 			StringComparison.OrdinalIgnoreCase);
 
-        // Evaluate all hands for players who haven't folded
-        // Use FiveCardHand as the base type since both DrawHand and TwosJacksManWithTheAxeDrawHand inherit from it
-        var playerHandEvaluations = new Dictionary<string, (FiveCardHand hand, TwosJacksManWithTheAxeDrawHand? wildHand, GamePlayer gamePlayer, List<GameCard> cards, List<int> wildIndexes)>();
+		var isKingsAndLows = string.Equals(
+			game.GameType?.Code,
+			PokerGameMetadataRegistry.KingsAndLowsCode,
+			StringComparison.OrdinalIgnoreCase);
 
-        foreach (var gp in gamePlayers.Where(p => !p.HasFolded))
-        {
-            var cards = gp.Cards
-                .Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber)
-                .OrderBy(c => c.DealOrder)
-                .ToList();
+		// Evaluate all hands for players who haven't folded
+		// Use FiveCardHand as the base type since all variant hand types inherit from it
+		var playerHandEvaluations = new Dictionary<string, (FiveCardHand hand, TwosJacksManWithTheAxeDrawHand? twosJacksHand, KingsAndLowsDrawHand? kingsAndLowsHand, GamePlayer gamePlayer, List<GameCard> cards, List<int> wildIndexes)>();
 
-            if (cards.Count >= 5)
-            {
-                var coreCards = cards.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol)).ToList();
-                
-                if (isTwosJacksAxe)
-                {
-                    var wildHand = new TwosJacksManWithTheAxeDrawHand(coreCards);
-                    // Find wild card indexes
-                    var wildIndexes = new List<int>();
-                    for (int i = 0; i < coreCards.Count; i++)
-                    {
-                        if (TwosJacksManWithTheAxeWildCardRules.IsWild(coreCards[i]))
-                        {
-                            wildIndexes.Add(i);
-                        }
-                    }
-                    playerHandEvaluations[gp.Player.Name] = (wildHand, wildHand, gp, cards, wildIndexes);
-                }
-                else
-                {
-                    var drawHand = new DrawHand(coreCards);
-                    playerHandEvaluations[gp.Player.Name] = (drawHand, null, gp, cards, []);
-                }
-            }
-        }
+		foreach (var gp in gamePlayers.Where(p => !p.HasFolded))
+		{
+			var cards = gp.Cards
+				.Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber)
+				.OrderBy(c => c.DealOrder)
+				.ToList();
+
+			if (cards.Count >= 5)
+			{
+				var coreCards = cards.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol)).ToList();
+
+				if (isTwosJacksAxe)
+				{
+					var wildHand = new TwosJacksManWithTheAxeDrawHand(coreCards);
+					// Find wild card indexes
+					var wildIndexes = new List<int>();
+					for (int i = 0; i < coreCards.Count; i++)
+					{
+						if (TwosJacksManWithTheAxeWildCardRules.IsWild(coreCards[i]))
+						{
+							wildIndexes.Add(i);
+						}
+					}
+					playerHandEvaluations[gp.Player.Name] = (wildHand, wildHand, null, gp, cards, wildIndexes);
+				}
+				else if (isKingsAndLows)
+				{
+					var kingsAndLowsHand = new KingsAndLowsDrawHand(coreCards);
+					// Find wild card indexes using Kings and Lows rules (Kings are wild, plus lowest non-King cards)
+					var wildCards = kingsAndLowsHand.WildCards;
+					var wildIndexes = new List<int>();
+					for (int i = 0; i < coreCards.Count; i++)
+					{
+						if (wildCards.Contains(coreCards[i]))
+						{
+							wildIndexes.Add(i);
+						}
+					}
+					playerHandEvaluations[gp.Player.Name] = (kingsAndLowsHand, null, kingsAndLowsHand, gp, cards, wildIndexes);
+				}
+				else
+				{
+					var drawHand = new DrawHand(coreCards);
+					playerHandEvaluations[gp.Player.Name] = (drawHand, null, null, gp, cards, []);
+				}
+			}
+		}
 
         // Determine winners
         var highHandWinners = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -570,7 +590,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
             // For Twos/Jacks/Axe, also determine sevens winners
             if (isTwosJacksAxe)
             {
-                foreach (var kvp in playerHandEvaluations.Where(k => k.Value.wildHand?.HasNaturalPairOfSevens() == true))
+                foreach (var kvp in playerHandEvaluations.Where(k => k.Value.twosJacksHand?.HasNaturalPairOfSevens() == true))
                 {
                     sevensWinners.Add(kvp.Key);
                 }
