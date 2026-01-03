@@ -674,6 +674,12 @@
             {
                 _showShowdownOverlay = false;
                 _showdownResult = null;
+
+                // Reset Kings and Lows specific state for new hand
+                _hasDropOrStayDecided = false;
+                _dropOrStayDecision = null;
+                _hasDeckDrawn = false;
+                _deckDrawSelectedIndices.Clear();
             }
         }
 

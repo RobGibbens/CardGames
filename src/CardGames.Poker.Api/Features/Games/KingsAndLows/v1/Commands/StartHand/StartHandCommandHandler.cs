@@ -90,6 +90,7 @@ public class StartHandCommandHandler(CardsDbContext context)
 			gamePlayer.HasFolded = false;
 			gamePlayer.IsAllIn = false;
 			gamePlayer.HasDrawnThisRound = false;
+			gamePlayer.DropOrStayDecision = null;
 		}
 
 		// 6. Remove any existing cards from previous hand

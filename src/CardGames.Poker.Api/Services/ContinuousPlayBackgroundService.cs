@@ -1,6 +1,7 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Games.FiveCardDraw;
+using CardGames.Poker.Games.KingsAndLows;
 using Microsoft.EntityFrameworkCore;
 
 //TODO:ROB - This should not be tied to FiveCardDraw - make it generic for all poker variants
@@ -71,13 +72,14 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
                 await ProcessAbandonedGamesAsync(context, broadcaster, now, cancellationToken);
 
                 // Find games in Complete phase where the next hand should start
-                var gamesReadyForNextHand = await context.Games
-                    .Where(g => g.CurrentPhase == nameof(FiveCardDrawPhase.Complete) &&
-                                g.NextHandStartsAt != null &&
-                                g.NextHandStartsAt <= now &&
-                                g.Status == GameStatus.InProgress)
-                    .Include(g => g.GamePlayers)
-                    .ToListAsync(cancellationToken);
+                    var gamesReadyForNextHand = await context.Games
+                        .Where(g => g.CurrentPhase == nameof(FiveCardDrawPhase.Complete) &&
+                                    g.NextHandStartsAt != null &&
+                                    g.NextHandStartsAt <= now &&
+                                    g.Status == GameStatus.InProgress)
+                        .Include(g => g.GamePlayers)
+                        .Include(g => g.GameType)
+                        .ToListAsync(cancellationToken);
 
                 foreach (var game in gamesReadyForNextHand)
                 {
@@ -232,6 +234,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
                 gamePlayer.HasFolded = false;
                 gamePlayer.IsAllIn = false;
                 gamePlayer.HasDrawnThisRound = false;
+                gamePlayer.DropOrStayDecision = null;
             }
 
             // Remove any existing cards from previous hand
@@ -412,41 +415,60 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
             player.CurrentBet = 0;
         }
 
-        // Determine first actor (left of dealer among non-folded, non-all-in players)
-        var firstActorIndex = FindFirstActivePlayerAfterDealer(game, eligiblePlayers);
+        // Handle game-type-specific phase transitions after dealing
+        var isKingsAndLows = string.Equals(game.GameType?.Code, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase);
 
-        // Create betting round record - this is required for ProcessBettingAction to work
-        var bettingRound = new Data.Entities.BettingRound
+        if (isKingsAndLows)
         {
-            GameId = game.Id,
-            HandNumber = game.CurrentHandNumber,
-            RoundNumber = 1,
-            Street = nameof(FiveCardDrawPhase.FirstBettingRound),
-            CurrentBet = 0,
-            MinBet = game.MinBet ?? 0,
-            RaiseCount = 0,
-            MaxRaises = 0, // Unlimited raises
-            LastRaiseAmount = 0,
-            PlayersInHand = eligiblePlayers.Count,
-            PlayersActed = 0,
-            CurrentActorIndex = firstActorIndex,
-            LastAggressorIndex = -1,
-            IsComplete = false,
-            StartedAt = now
-        };
+            // Kings and Lows goes to DropOrStay phase after dealing, not betting
+            game.CurrentPhase = nameof(KingsAndLowsPhase.DropOrStay);
+            game.CurrentPlayerIndex = -1; // No current actor - all players decide simultaneously
+            game.UpdatedAt = now;
 
-        context.Set<Data.Entities.BettingRound>().Add(bettingRound);
+            _logger.LogInformation(
+                "Dealt cards for Kings and Lows game {GameId} hand {HandNumber}. Phase set to DropOrStay.",
+                game.Id,
+                game.CurrentHandNumber);
+        }
+        else
+        {
+            // Standard poker variants go to first betting round
+            // Determine first actor (left of dealer among non-folded, non-all-in players)
+            var firstActorIndex = FindFirstActivePlayerAfterDealer(game, eligiblePlayers);
 
-        game.CurrentPhase = nameof(FiveCardDrawPhase.FirstBettingRound);
-        game.CurrentPlayerIndex = firstActorIndex;
-        game.UpdatedAt = now;
+            // Create betting round record - this is required for ProcessBettingAction to work
+            var bettingRound = new Data.Entities.BettingRound
+            {
+                GameId = game.Id,
+                HandNumber = game.CurrentHandNumber,
+                RoundNumber = 1,
+                Street = nameof(FiveCardDrawPhase.FirstBettingRound),
+                CurrentBet = 0,
+                MinBet = game.MinBet ?? 0,
+                RaiseCount = 0,
+                MaxRaises = 0, // Unlimited raises
+                LastRaiseAmount = 0,
+                PlayersInHand = eligiblePlayers.Count,
+                PlayersActed = 0,
+                CurrentActorIndex = firstActorIndex,
+                LastAggressorIndex = -1,
+                IsComplete = false,
+                StartedAt = now
+            };
 
-        _logger.LogInformation(
-            "Dealt cards for game {GameId} hand {HandNumber}. First actor at seat {FirstActorIndex}, dealer at seat {DealerPosition}",
-            game.Id,
-            game.CurrentHandNumber,
-            firstActorIndex,
-            game.DealerPosition);
+            context.Set<Data.Entities.BettingRound>().Add(bettingRound);
+
+            game.CurrentPhase = nameof(FiveCardDrawPhase.FirstBettingRound);
+            game.CurrentPlayerIndex = firstActorIndex;
+            game.UpdatedAt = now;
+
+            _logger.LogInformation(
+                "Dealt cards for game {GameId} hand {HandNumber}. First actor at seat {FirstActorIndex}, dealer at seat {DealerPosition}",
+                game.Id,
+                game.CurrentHandNumber,
+                firstActorIndex,
+                game.DealerPosition);
+        }
 
         await context.SaveChangesAsync(cancellationToken);
     }

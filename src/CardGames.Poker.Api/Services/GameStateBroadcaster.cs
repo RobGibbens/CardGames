@@ -125,64 +125,64 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
             string playerName,
             int seatIndex,
             bool canPlayCurrentHand,
-                CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default)
+        {
+            var groupName = GetGroupName(gameId);
+
+            try
             {
-                var groupName = GetGroupName(gameId);
-
-                try
+                var notification = new PlayerJoinedDto
                 {
-                    var notification = new PlayerJoinedDto
-                    {
-                        GameId = gameId,
-                        PlayerName = playerName,
-                        SeatIndex = seatIndex,
-                        CanPlayCurrentHand = canPlayCurrentHand,
-                        Message = canPlayCurrentHand
-                            ? $"{playerName} has joined the table!"
-                            : $"{playerName} has joined and will play next hand."
-                    };
+                    GameId = gameId,
+                    PlayerName = playerName,
+                    SeatIndex = seatIndex,
+                    CanPlayCurrentHand = canPlayCurrentHand,
+                    Message = canPlayCurrentHand
+                        ? $"{playerName} has joined the table!"
+                        : $"{playerName} has joined and will play next hand."
+                };
 
-                    // Send to all in the group except the player who just joined
-                    await _hubContext.Clients.GroupExcept(groupName, [playerName])
-                        .SendAsync("PlayerJoined", notification, cancellationToken);
+                // Send to all in the group except the player who just joined
+                await _hubContext.Clients.GroupExcept(groupName, [playerName])
+                    .SendAsync("PlayerJoined", notification, cancellationToken);
 
-                    _logger.LogInformation(
-                        "Broadcast PlayerJoined notification for {PlayerName} at seat {SeatIndex} in game {GameId}",
-                        playerName, seatIndex, gameId);
-                }
-                catch (Exception ex)
+                _logger.LogInformation(
+                    "Broadcast PlayerJoined notification for {PlayerName} at seat {SeatIndex} in game {GameId}",
+                    playerName, seatIndex, gameId);
+            }
+            catch (Exception ex)
             {
                 _logger.LogError(ex,
                     "Failed to broadcast PlayerJoined notification for game {GameId}", gameId);
                 // Don't throw - the join was successful, just the notification failed
             }
-            }
-
-            /// <inheritdoc />
-            public async Task BroadcastTableSettingsUpdatedAsync(
-                TableSettingsUpdatedDto notification,
-                CancellationToken cancellationToken = default)
-            {
-                var groupName = GetGroupName(notification.GameId);
-
-                try
-                {
-                    await _hubContext.Clients.Group(groupName)
-                        .SendAsync("TableSettingsUpdated", notification, cancellationToken);
-
-                    _logger.LogInformation(
-                        "Broadcast TableSettingsUpdated notification for game {GameId} by user {UserId}",
-                        notification.GameId,
-                        notification.UpdatedById);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex,
-                        "Failed to broadcast TableSettingsUpdated notification for game {GameId}",
-                        notification.GameId);
-                    throw;
-                }
-            }
-
-            private static string GetGroupName(Guid gameId) => $"{GameGroupPrefix}{gameId}";
         }
+
+                /// <inheritdoc />
+                public async Task BroadcastTableSettingsUpdatedAsync(
+                    TableSettingsUpdatedDto notification,
+                    CancellationToken cancellationToken = default)
+                {
+                    var groupName = GetGroupName(notification.GameId);
+
+                    try
+                    {
+                        await _hubContext.Clients.Group(groupName)
+                            .SendAsync("TableSettingsUpdated", notification, cancellationToken);
+
+                        _logger.LogInformation(
+                            "Broadcast TableSettingsUpdated notification for game {GameId} by user {UserId}",
+                            notification.GameId,
+                            notification.UpdatedById);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex,
+                            "Failed to broadcast TableSettingsUpdated notification for game {GameId}",
+                            notification.GameId);
+                        throw;
+                    }
+                }
+
+                private static string GetGroupName(Guid gameId) => $"{GameGroupPrefix}{gameId}";
+            }
