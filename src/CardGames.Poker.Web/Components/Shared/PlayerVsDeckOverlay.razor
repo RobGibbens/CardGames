@@ -1,61 +1,46 @@
 @namespace CardGames.Poker.Web.Components.Shared
 
+@using static CardGames.Poker.Web.Components.Pages.TablePlay
+
 <div class="table-overlay player-vs-deck-overlay">
     <div class="overlay-content">
         <div class="overlay-icon"><i class="fa-solid fa-layer-group"></i></div>
         <h2>Player vs Deck</h2>
         <p class="scenario-description">Only one player stayed! They now face the deck.</p>
-        
-        <div class="deck-hand">
-            <h3>Deck's Hand</h3>
-            <div class="cards">
-                @if (DeckCards.Count > 0)
-                {
-                    @foreach (var card in DeckCards)
-                    {
-                        <div class="card @GetCardColorClass(card.Suit)">
-                            <div class="card-rank">@card.Rank</div>
-                            <div class="card-suit">@GetSuitSymbol(card.Suit)</div>
-                        </div>
-                    }
-                }
-                else
-                {
-                    <p class="no-cards">Dealing deck hand...</p>
-                }
-            </div>
-        </div>
 
-        @if (IsDecisionMaker && !HasDrawn)
+        @if (DeckCards.Count > 0 || AnimatedCards.Count > 0)
         {
-            <div class="decision-section">
-                <p class="instruction">Select cards for the deck to discard (click to select/deselect):</p>
-                
-                <div class="card-selection">
-                    @for (int i = 0; i < 5; i++)
-                    {
-                        var index = i;
-                        <button class="card-selector @(SelectedIndices.Contains(index) ? "selected" : "")" 
-                                @onclick="() => ToggleCardSelection(index)"
-                                disabled="@IsProcessing">
-                            Card @(i + 1)
-                        </button>
-                    }
-                </div>
-
-                <button class="btn btn-primary btn-lg" 
-                        @onclick="OnConfirmDraw" 
-                        disabled="@IsProcessing">
-                    <i class="fa-solid fa-@(IsProcessing ? "spinner fa-spin" : "check")"></i>
-                    @(IsProcessing ? "Processing..." : "Confirm Draw")
-                </button>
-            </div>
-        }
-        else if (!IsDecisionMaker)
-        {
-            <p class="waiting-message">Waiting for @DecisionMakerName to choose deck's discards...</p>
+            <DrawPanel 
+                Cards="@GetDisplayCards()"
+                SelectedIndices="@SelectedIndices"
+                OnToggleSelection="@HandleToggleSelection"
+                OnDraw="@HandleDraw"
+                IsSubmitting="@IsProcessing"
+                IsAnimating="@IsAnimating"
+                IsDiscarding="@IsDiscarding"
+                IsDrawing="@IsDrawingNewCards"
+                CardsDrawn="@CardsDrawn"
+                NewCardIndices="@NewCardIndices"
+                MaxDiscards="5"
+                Title="Deck's Hand"
+                TitleIcon="fa-solid fa-layer-group"
+                StandPatLabel="Keep All"
+                DiscardLabel="Discard"
+                IsReadOnly="@(!IsDecisionMaker || HasDrawn)"
+                ReadOnlyMessage="@GetReadOnlyMessage()"
+                HandDescription="@HandDescription"
+                HideCardIndices="@(!IsDecisionMaker)"
+                DrawingSpecialRules="@(IsDecisionMaker ? "Kings are wild, plus lowest non-King cards" : null)" />
         }
         else
+        {
+            <div class="deck-loading">
+                <i class="fa-solid fa-spinner fa-spin"></i>
+                <p>Dealing deck hand...</p>
+            </div>
+        }
+
+        @if (HasDrawn && !IsAnimating)
         {
             <p class="completed-message">
                 <i class="fa-solid fa-check-circle"></i>
@@ -67,7 +52,7 @@
 
 @code {
     /// <summary>
-    /// The deck's visible cards.
+    /// The deck's visible cards (from SignalR state).
     /// </summary>
     [Parameter]
     public IReadOnlyList<CardDto> DeckCards { get; set; } = [];
@@ -114,26 +99,111 @@
     [Parameter]
     public EventCallback OnConfirmDraw { get; set; }
 
-    private void ToggleCardSelection(int index)
-    {
-        OnCardSelectionToggle.InvokeAsync(index);
-    }
+    /// <summary>
+    /// Whether the draw animation is currently playing.
+    /// </summary>
+    [Parameter]
+    public bool IsAnimating { get; set; }
 
-    private string GetCardColorClass(string suit)
-    {
-        return suit is "Hearts" or "Diamonds" ? "red" : "black";
-    }
+    /// <summary>
+    /// Whether cards are currently being discarded (animation).
+    /// </summary>
+    [Parameter]
+    public bool IsDiscarding { get; set; }
 
-    private string GetSuitSymbol(string suit)
+    /// <summary>
+    /// Whether new cards are being drawn (animation).
+    /// </summary>
+    [Parameter]
+    public bool IsDrawingNewCards { get; set; }
+
+    /// <summary>
+    /// Whether the draw animation has completed and new cards are shown.
+    /// </summary>
+    [Parameter]
+    public bool CardsDrawn { get; set; }
+
+    /// <summary>
+    /// Indices of newly drawn cards for animation highlighting.
+    /// </summary>
+    [Parameter]
+    public List<int> NewCardIndices { get; set; } = [];
+
+    /// <summary>
+    /// Animated cards to display during/after draw (overrides DeckCards when present).
+    /// </summary>
+    [Parameter]
+    public List<CardInfo> AnimatedCards { get; set; } = [];
+
+    /// <summary>
+    /// The hand description for the deck's hand.
+    /// </summary>
+    [Parameter]
+    public string? HandDescription { get; set; }
+
+    /// <summary>
+    /// Gets the cards to display - animated cards take precedence during animation.
+    /// </summary>
+    private List<CardInfo> GetDisplayCards()
     {
-        return suit switch
+        // During animation, use the animated cards if available
+        if (AnimatedCards.Count > 0)
         {
-            "Hearts" => "♥",
-            "Diamonds" => "♦",
-            "Clubs" => "♣",
-            "Spades" => "♠",
-            _ => suit
-        };
+            return AnimatedCards;
+        }
+
+        // Otherwise, convert DeckCards to CardInfo
+        return DeckCards
+            .Select((card, index) => new CardInfo
+            {
+                Rank = card.Rank,
+                Suit = card.Suit,
+                IsFaceUp = true,
+                IsSelected = SelectedIndices.Contains(index)
+            })
+            .ToList();
+    }
+
+    /// <summary>
+    /// Gets the read-only message for non-decision makers.
+    /// </summary>
+    private string GetReadOnlyMessage()
+    {
+        if (CardsDrawn)
+        {
+            return !string.IsNullOrWhiteSpace(HandDescription) 
+                ? HandDescription 
+                : "Deck draw complete";
+        }
+
+        if (HasDrawn)
+        {
+            return "Deck draw complete";
+        }
+
+        return $"Waiting for {DecisionMakerName} to choose deck's discards...";
+    }
+
+    /// <summary>
+    /// Handles card selection toggle from DrawPanel.
+    /// </summary>
+    private async Task HandleToggleSelection(int index)
+    {
+        if (OnCardSelectionToggle.HasDelegate)
+        {
+            await OnCardSelectionToggle.InvokeAsync(index);
+        }
+    }
+
+    /// <summary>
+    /// Handles the draw action from DrawPanel.
+    /// </summary>
+    private async Task HandleDraw(List<int> discardIndices)
+    {
+        if (OnConfirmDraw.HasDelegate)
+        {
+            await OnConfirmDraw.InvokeAsync();
+        }
     }
 
     public record CardDto(string Rank, string Suit);

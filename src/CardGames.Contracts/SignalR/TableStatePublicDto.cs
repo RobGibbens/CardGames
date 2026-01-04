@@ -136,16 +136,22 @@ public sealed record TableStatePublicDto
 	/// </summary>
 	public IReadOnlyList<string>? CurrentPhaseAvailableActions { get; init; }
 
-	/// <summary>
-	/// Configuration for drawing in the current game (if applicable).
-	/// </summary>
-	public DrawingConfigDto? DrawingConfig { get; init; }
+		/// <summary>
+		/// Configuration for drawing in the current game (if applicable).
+		/// </summary>
+		public DrawingConfigDto? DrawingConfig { get; init; }
 
-	/// <summary>
-	/// Whether the game has special rules (like Drop/Stay, Pot Matching, etc.).
-	/// </summary>
-	public GameSpecialRulesDto? SpecialRules { get; init; }
-}
+		/// <summary>
+		/// Whether the game has special rules (like Drop/Stay, Pot Matching, etc.).
+		/// </summary>
+		public GameSpecialRulesDto? SpecialRules { get; init; }
+
+		/// <summary>
+		/// State for the Player vs Deck scenario (only one player stayed).
+		/// Only populated when the game is in the PlayerVsDeck phase.
+		/// </summary>
+		public PlayerVsDeckStateDto? PlayerVsDeck { get; init; }
+	}
 
 /// <summary>
 /// Public state for a single seat at the table.
@@ -440,4 +446,47 @@ public sealed record WildCardRulesDto
 	/// Human-readable description for UI display.
 	/// </summary>
 	public string? Description { get; init; }
+}
+
+/// <summary>
+/// State for the Player vs Deck scenario in Kings and Lows.
+/// When only one player stays, they must face a hand dealt from the deck.
+/// </summary>
+public sealed record PlayerVsDeckStateDto
+{
+	/// <summary>
+	/// The deck's hand cards, shown face-up to all players.
+	/// </summary>
+	public required IReadOnlyList<CardPublicDto> DeckCards { get; init; }
+
+	/// <summary>
+	/// The seat index of the player who makes the deck draw decision.
+	/// This is the dealer, unless the dealer is the one who stayed.
+	/// </summary>
+	public int DecisionMakerSeatIndex { get; init; }
+
+	/// <summary>
+	/// The name of the player who makes the deck draw decision.
+	/// </summary>
+	public string? DecisionMakerName { get; init; }
+
+	/// <summary>
+	/// The first name of the player who makes the deck draw decision.
+	/// </summary>
+	public string? DecisionMakerFirstName { get; init; }
+
+	/// <summary>
+	/// Whether the deck has already drawn (completed its discard/draw).
+	/// </summary>
+	public bool HasDeckDrawn { get; init; }
+
+	/// <summary>
+	/// The name of the player who stayed (faces the deck).
+	/// </summary>
+	public string? StayingPlayerName { get; init; }
+
+	/// <summary>
+	/// The seat index of the player who stayed.
+	/// </summary>
+	public int StayingPlayerSeatIndex { get; init; }
 }

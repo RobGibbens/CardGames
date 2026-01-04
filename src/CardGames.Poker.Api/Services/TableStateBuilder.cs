@@ -92,41 +92,45 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					GamePhaseDescriptor? currentPhaseDescriptor = null;
 					if (PokerGameRulesRegistry.TryGet(game.GameType?.Code, out var r))
 					{
-						rules = r;
-						currentPhaseDescriptor = rules?.Phases
-							.FirstOrDefault(p => p.PhaseId.Equals(game.CurrentPhase, StringComparison.OrdinalIgnoreCase));
-					}
+								rules = r;
+								currentPhaseDescriptor = rules?.Phases
+									.FirstOrDefault(p => p.PhaseId.Equals(game.CurrentPhase, StringComparison.OrdinalIgnoreCase));
+							}
 
-					return new TableStatePublicDto
-					{
-						GameId = game.Id,
-						Name = game.Name,
-						GameTypeName = game.GameType?.Name,
-						GameTypeCode = game.GameType?.Code,
-						CurrentPhase = game.CurrentPhase,
-						CurrentPhaseDescription = PhaseDescriptionResolver.TryResolve(game.GameType?.Code, game.CurrentPhase),
-						Ante = game.Ante ?? 0,
-						MinBet = game.MinBet ?? 0,
-						TotalPot = totalPot,
-						DealerSeatIndex = game.DealerPosition,
-						CurrentActorSeatIndex = game.CurrentPlayerIndex,
-						IsPaused = game.Status == Entities.GameStatus.BetweenHands,
-						CurrentHandNumber = game.CurrentHandNumber,
-						CreatedByName = game.CreatedByName,
-						Seats = seats,
-						Showdown = BuildShowdownPublicDto(game, gamePlayers, userProfilesByEmail),
-						HandCompletedAtUtc = game.HandCompletedAt,
-						NextHandStartsAtUtc = game.NextHandStartsAt,
-						IsResultsPhase = isResultsPhase,
-						SecondsUntilNextHand = secondsUntilNextHand,
-						HandHistory = handHistory,
-						CurrentPhaseCategory = currentPhaseDescriptor?.Category,
-						CurrentPhaseRequiresAction = currentPhaseDescriptor?.RequiresPlayerAction ?? false,
-						CurrentPhaseAvailableActions = currentPhaseDescriptor?.AvailableActions,
-						DrawingConfig = BuildDrawingConfigDto(rules),
-						SpecialRules = BuildSpecialRulesDto(rules)
-					};
-				}
+							// Build Player vs Deck state (if applicable)
+							var playerVsDeck = await BuildPlayerVsDeckStateAsync(game, gamePlayers, userProfilesByEmail, cancellationToken);
+
+							return new TableStatePublicDto
+							{
+								GameId = game.Id,
+								Name = game.Name,
+								GameTypeName = game.GameType?.Name,
+								GameTypeCode = game.GameType?.Code,
+								CurrentPhase = game.CurrentPhase,
+								CurrentPhaseDescription = PhaseDescriptionResolver.TryResolve(game.GameType?.Code, game.CurrentPhase),
+								Ante = game.Ante ?? 0,
+								MinBet = game.MinBet ?? 0,
+								TotalPot = totalPot,
+								DealerSeatIndex = game.DealerPosition,
+								CurrentActorSeatIndex = game.CurrentPlayerIndex,
+								IsPaused = game.Status == Entities.GameStatus.BetweenHands,
+								CurrentHandNumber = game.CurrentHandNumber,
+								CreatedByName = game.CreatedByName,
+								Seats = seats,
+								Showdown = BuildShowdownPublicDto(game, gamePlayers, userProfilesByEmail),
+								HandCompletedAtUtc = game.HandCompletedAt,
+								NextHandStartsAtUtc = game.NextHandStartsAt,
+								IsResultsPhase = isResultsPhase,
+								SecondsUntilNextHand = secondsUntilNextHand,
+								HandHistory = handHistory,
+								CurrentPhaseCategory = currentPhaseDescriptor?.Category,
+								CurrentPhaseRequiresAction = currentPhaseDescriptor?.RequiresPlayerAction ?? false,
+								CurrentPhaseAvailableActions = currentPhaseDescriptor?.AvailableActions,
+								DrawingConfig = BuildDrawingConfigDto(rules),
+								SpecialRules = BuildSpecialRulesDto(rules),
+								PlayerVsDeck = playerVsDeck
+							};
+						}
 
     /// <inheritdoc />
     public async Task<PrivateStateDto?> BuildPrivateStateAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
@@ -870,12 +874,112 @@ public sealed class TableStateBuilder : ITableStateBuilder
                 lowestCardIsWild = true;
             }
 
-            return new WildCardRulesDto
-            {
-                WildRanks = wildRanks.Count > 0 ? wildRanks : null,
-                SpecificCards = specificCards.Count > 0 ? specificCards : null,
-                LowestCardIsWild = lowestCardIsWild,
-                Description = description
-            };
-        }
-    }
+                    return new WildCardRulesDto
+                    {
+                        WildRanks = wildRanks.Count > 0 ? wildRanks : null,
+                        SpecificCards = specificCards.Count > 0 ? specificCards : null,
+                        LowestCardIsWild = lowestCardIsWild,
+                        Description = description
+                    };
+                }
+
+                /// <summary>
+                /// Builds the Player vs Deck state for games where only one player stayed.
+                /// </summary>
+                private async Task<PlayerVsDeckStateDto?> BuildPlayerVsDeckStateAsync(
+                    Game game,
+                    List<GamePlayer> gamePlayers,
+                    IReadOnlyDictionary<string, UserProfile> userProfilesByEmail,
+                    CancellationToken cancellationToken)
+                {
+                    // Only build for PlayerVsDeck phase
+                    if (!string.Equals(game.CurrentPhase, "PlayerVsDeck", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return null;
+                    }
+
+                    // Get deck cards (cards with no GamePlayerId in this hand)
+                    var deckCards = await _context.GameCards
+                        .Where(gc => gc.GameId == game.Id
+                                 && gc.GamePlayerId == null
+                                 && gc.HandNumber == game.CurrentHandNumber
+                                 && !gc.IsDiscarded)
+                        .OrderBy(gc => gc.DealOrder)
+                        .AsNoTracking()
+                        .ToListAsync(cancellationToken);
+
+                    // Find the staying player
+                    var stayingPlayer = gamePlayers
+                        .FirstOrDefault(gp => gp.DropOrStayDecision == Entities.DropOrStayDecision.Stay);
+
+                    if (stayingPlayer is null)
+                    {
+                        _logger.LogWarning("No staying player found in PlayerVsDeck phase for game {GameId}", game.Id);
+                        return null;
+                    }
+
+                    // Determine decision maker: dealer, unless dealer is the staying player
+                    var dealerSeatPosition = game.DealerPosition;
+                    var orderedPlayers = gamePlayers.OrderBy(gp => gp.SeatPosition).ToList();
+
+                    GamePlayer? decisionMaker = null;
+
+                    // Try dealer first
+                    var dealer = orderedPlayers.FirstOrDefault(gp => gp.SeatPosition == dealerSeatPosition);
+                    if (dealer is not null && dealer.PlayerId != stayingPlayer.PlayerId)
+                    {
+                        decisionMaker = dealer;
+                    }
+                    else
+                    {
+                        // Dealer is the staying player, find first player to dealer's left
+                        var dealerIndex = orderedPlayers.FindIndex(gp => gp.SeatPosition == dealerSeatPosition);
+                        if (dealerIndex < 0) dealerIndex = 0;
+
+                        for (int i = 1; i < orderedPlayers.Count; i++)
+                        {
+                            var nextIndex = (dealerIndex + i) % orderedPlayers.Count;
+                            var candidate = orderedPlayers[nextIndex];
+                            if (candidate.PlayerId != stayingPlayer.PlayerId &&
+                                candidate.Status == Entities.GamePlayerStatus.Active &&
+                                !candidate.IsSittingOut)
+                            {
+                                decisionMaker = candidate;
+                                break;
+                            }
+                        }
+                    }
+
+                    // Fallback: if no other player found, the staying player makes the decision
+                    decisionMaker ??= stayingPlayer;
+
+                    // Get decision maker's first name from user profile
+                    string? decisionMakerFirstName = null;
+                    if (!string.IsNullOrWhiteSpace(decisionMaker.Player?.Email) &&
+                        userProfilesByEmail.TryGetValue(decisionMaker.Player.Email, out var profile))
+                    {
+                        decisionMakerFirstName = profile.FirstName;
+                    }
+
+                    // Check if deck has drawn (by checking if any cards were dealt after the initial 5)
+                    // For simplicity, we'll track this via a flag or by checking draw records
+                    // For now, check if deck has exactly 5 cards and they haven't been modified
+                    var hasDeckDrawn = game.CurrentPhase != "PlayerVsDeck"; // If we've moved past, it's drawn
+
+                    return new PlayerVsDeckStateDto
+                    {
+                        DeckCards = deckCards.Select(c => new CardPublicDto
+                        {
+                            IsFaceUp = true,
+                            Rank = MapSymbolToRank(c.Symbol),
+                            Suit = c.Suit.ToString()
+                        }).ToList(),
+                        DecisionMakerSeatIndex = decisionMaker.SeatPosition,
+                        DecisionMakerName = decisionMaker.Player?.Name,
+                        DecisionMakerFirstName = decisionMakerFirstName,
+                        HasDeckDrawn = hasDeckDrawn,
+                        StayingPlayerName = stayingPlayer.Player?.Name,
+                        StayingPlayerSeatIndex = stayingPlayer.SeatPosition
+                    };
+                }
+            }

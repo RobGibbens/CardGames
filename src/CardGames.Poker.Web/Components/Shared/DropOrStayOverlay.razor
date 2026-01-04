@@ -20,7 +20,7 @@
 
     <!-- Cards Display -->
     <div class="drop-or-stay-cards-container">
-        @foreach (var card in Cards)
+        @foreach (var card in GetOrderedCards())
         {
             <div class="drop-or-stay-card-wrapper">
                 <div class="drop-or-stay-card">
@@ -131,17 +131,76 @@
     [Parameter]
     public EventCallback<string> OnDecision { get; set; }
 
-    private string? GetPlayingCardRank(CardInfo card)
-    {
-        var rank = card.Rank switch
+        private string? GetPlayingCardRank(CardInfo card)
         {
-            "J" => "Jack",
-            "Q" => "Queen",
-            "K" => "King",
-            "A" => "Ace",
-            _ => card.Rank
-        };
+            var rank = card.Rank switch
+            {
+                "J" => "Jack",
+                "Q" => "Queen",
+                "K" => "King",
+                "A" => "Ace",
+                _ => card.Rank
+            };
 
-        return rank;
+            return rank;
+        }
+
+        /// <summary>
+        /// Orders cards by rank value (2..A) then by suit.
+        /// </summary>
+        private IEnumerable<CardInfo> GetOrderedCards()
+        {
+            if (Cards.Count == 0)
+            {
+                return [];
+            }
+
+            return Cards
+                .OrderBy(c => string.IsNullOrWhiteSpace(c.Rank) ? 1 : 0)
+                .ThenBy(c => GetRankValue(c.Rank))
+                .ThenBy(c => GetSuitValue(c.Suit));
+        }
+
+        private static int GetRankValue(string? rank)
+        {
+            if (string.IsNullOrWhiteSpace(rank))
+            {
+                return int.MaxValue;
+            }
+
+            return rank.Trim().ToUpperInvariant() switch
+            {
+                "2" or "TWO" or "DEUCE" => 2,
+                "3" or "THREE" => 3,
+                "4" or "FOUR" => 4,
+                "5" or "FIVE" => 5,
+                "6" or "SIX" => 6,
+                "7" or "SEVEN" => 7,
+                "8" or "EIGHT" => 8,
+                "9" or "NINE" => 9,
+                "10" or "T" or "TEN" => 10,
+                "J" or "JACK" => 11,
+                "Q" or "QUEEN" => 12,
+                "K" or "KING" => 13,
+                "A" or "ACE" => 14,
+                _ => int.MaxValue
+            };
+        }
+
+        private static int GetSuitValue(string? suit)
+        {
+            if (string.IsNullOrWhiteSpace(suit))
+            {
+                return int.MaxValue;
+            }
+
+            return suit.Trim().ToLowerInvariant() switch
+            {
+                "clubs" or "c" => 0,
+                "diamonds" or "d" => 1,
+                "hearts" or "h" => 2,
+                "spades" or "s" => 3,
+                _ => int.MaxValue
+            };
+        }
     }
-}

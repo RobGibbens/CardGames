@@ -190,6 +190,9 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 			{
 				// Single player stayed - go to player vs deck
 				game.CurrentPhase = nameof(KingsAndLowsPhase.PlayerVsDeck);
+
+				// Deal the deck's hand now so it's visible in the overlay
+				await DealDeckHandAsync(game, context, now, cancellationToken);
 			}
 			else
 			{
@@ -403,34 +406,104 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 		return $"{symbolStr}{suitStr}";
 	}
 
-	/// <summary>
-	/// Moves the dealer button to the next occupied seat position (clockwise).
-	/// </summary>
-	private static void MoveDealer(Game game)
-	{
-		var occupiedSeats = game.GamePlayers
-			.Where(gp => gp.Status == GamePlayerStatus.Active)
-			.OrderBy(gp => gp.SeatPosition)
-			.Select(gp => gp.SeatPosition)
-			.ToList();
-
-		if (occupiedSeats.Count == 0)
+		/// <summary>
+		/// Moves the dealer button to the next occupied seat position (clockwise).
+		/// </summary>
+		private static void MoveDealer(Game game)
 		{
-			return;
+			var occupiedSeats = game.GamePlayers
+				.Where(gp => gp.Status == GamePlayerStatus.Active)
+				.OrderBy(gp => gp.SeatPosition)
+				.Select(gp => gp.SeatPosition)
+				.ToList();
+
+			if (occupiedSeats.Count == 0)
+			{
+				return;
+			}
+
+			var currentPosition = game.DealerPosition;
+
+			// Find next occupied seat clockwise from current position
+			var seatsAfterCurrent = occupiedSeats.Where(pos => pos > currentPosition).ToList();
+
+			if (seatsAfterCurrent.Count > 0)
+			{
+				game.DealerPosition = seatsAfterCurrent.First();
+			}
+			else
+			{
+				game.DealerPosition = occupiedSeats.First();
+			}
 		}
 
-		var currentPosition = game.DealerPosition;
-
-		// Find next occupied seat clockwise from current position
-		var seatsAfterCurrent = occupiedSeats.Where(pos => pos > currentPosition).ToList();
-
-		if (seatsAfterCurrent.Count > 0)
+		/// <summary>
+		/// Deals a 5-card hand for the deck in player vs deck scenario.
+		/// Uses cards that haven't been dealt to players yet.
+		/// </summary>
+		private static async Task DealDeckHandAsync(
+			Game game,
+			CardsDbContext dbContext,
+			DateTimeOffset now,
+			CancellationToken cancellationToken)
 		{
-			game.DealerPosition = seatsAfterCurrent.First();
-		}
-		else
-		{
-			game.DealerPosition = occupiedSeats.First();
+			// Get all cards already dealt to players for this hand
+			var dealtCards = await dbContext.GameCards
+				.Where(gc => gc.GameId == game.Id && gc.HandNumber == game.CurrentHandNumber)
+				.Select(gc => new { gc.Suit, gc.Symbol })
+				.ToListAsync(cancellationToken);
+
+			var dealtSet = dealtCards
+				.Select(c => (c.Suit, c.Symbol))
+				.ToHashSet();
+
+			// Build a deck of remaining cards
+			var allSuits = new[] { CardSuit.Hearts, CardSuit.Diamonds, CardSuit.Clubs, CardSuit.Spades };
+			var allSymbols = new[] 
+			{
+				CardSymbol.Deuce, CardSymbol.Three, CardSymbol.Four, CardSymbol.Five,
+				CardSymbol.Six, CardSymbol.Seven, CardSymbol.Eight, CardSymbol.Nine,
+				CardSymbol.Ten, CardSymbol.Jack, CardSymbol.Queen, CardSymbol.King, CardSymbol.Ace
+			};
+
+			var remainingCards = new List<(CardSuit suit, CardSymbol symbol)>();
+			foreach (var suit in allSuits)
+			{
+				foreach (var symbol in allSymbols)
+				{
+					if (!dealtSet.Contains((suit, symbol)))
+					{
+						remainingCards.Add((suit, symbol));
+					}
+				}
+			}
+
+			// Shuffle remaining cards
+			var random = new Random();
+			for (int i = remainingCards.Count - 1; i > 0; i--)
+			{
+				int j = random.Next(i + 1);
+				(remainingCards[i], remainingCards[j]) = (remainingCards[j], remainingCards[i]);
+			}
+
+			// Deal 5 cards to the deck (GamePlayerId = null)
+			for (int i = 0; i < 5 && i < remainingCards.Count; i++)
+			{
+				var (suit, symbol) = remainingCards[i];
+				var deckCard = new GameCard
+				{
+					GameId = game.Id,
+					GamePlayerId = null, // Deck cards have no player
+					HandNumber = game.CurrentHandNumber,
+					Suit = suit,
+					Symbol = symbol,
+					Location = CardLocation.Board, // Board represents deck hand
+					DealOrder = i + 1,
+					DealtAtPhase = "PlayerVsDeck",
+					IsVisible = true, // Deck cards are visible to all
+					DealtAt = now
+				};
+				dbContext.GameCards.Add(deckCard);
+			}
 		}
 	}
-}
