@@ -21,8 +21,10 @@
 - [x] Draw Panel should show new card images
 
 - [ ] Make sure signalr isn't broadcasting to all players in all games
-- [ ] Drawing new cards isn't always dealing from the same deck
-- [ ] Kings and Lows - all drops revealed at the same time
+- [ ] Kings and Lows - make the chips look better
+- [ ] Table - make the table seat look like PokerStars
+- [?] Drawing new cards isn't always dealing from the same deck
+- [x] Kings and Lows - all drops revealed at the same time
 - [ ] Kings and Lows - don't deal to players that don't have enough chips to match the pot
 - [ ] Add chip management to the dashboard (buy in, cash out, add chips)
 - [ ] FCD - can't draw four with an Ace

@@ -14,5 +14,6 @@ public enum DrawCardsErrorCode
 	NotPlayerTurn,
 	InvalidDiscardIndices,
 	TooManyDiscards,
-	PlayerHasAlreadyDrawn
+	PlayerHasAlreadyDrawn,
+	InsufficientCards
 }

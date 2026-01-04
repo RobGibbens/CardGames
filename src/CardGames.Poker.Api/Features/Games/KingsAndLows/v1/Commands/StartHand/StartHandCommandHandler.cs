@@ -1,4 +1,3 @@
-using CardGames.Core.French.Cards;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Games.KingsAndLows;
@@ -161,8 +160,9 @@ public class StartHandCommandHandler(CardsDbContext context)
 		// 10. Automatically deal hands - move to Dealing phase then DropOrStay
 		game.CurrentPhase = nameof(KingsAndLowsPhase.Dealing);
 		
-		// Create a standard deck of 52 cards
+		// Create a standard deck of 52 cards with shuffled order
 		var deck = new List<GameCard>();
+		int deckOrder = 0;
 		foreach (var suit in Enum.GetValues<CardSuit>())
 		{
 			foreach (var symbol in Enum.GetValues<CardSymbol>())
@@ -174,7 +174,7 @@ public class StartHandCommandHandler(CardsDbContext context)
 					Suit = suit,
 					Symbol = symbol,
 					Location = CardLocation.Deck,
-					DealOrder = 0,
+					DealOrder = deckOrder++,
 					IsVisible = false,
 					DealtAt = now
 				});
@@ -189,7 +189,19 @@ public class StartHandCommandHandler(CardsDbContext context)
 			(deck[i], deck[j]) = (deck[j], deck[i]);
 		}
 
-		// Deal 5 cards to each eligible player
+		// Update deck order after shuffle
+		for (int i = 0; i < deck.Count; i++)
+		{
+			deck[i].DealOrder = i;
+		}
+
+		// Add all 52 cards to the context (including those that will remain in the deck)
+		foreach (var card in deck)
+		{
+			context.GameCards.Add(card);
+		}
+
+		// Deal 5 cards to each eligible player from the shuffled deck
 		int cardIndex = 0;
 		int dealOrder = 1;
 		for (int round = 0; round < 5; round++)
@@ -204,7 +216,6 @@ public class StartHandCommandHandler(CardsDbContext context)
 					card.IsVisible = true; // Cards visible to the player in their hand
 					card.DealOrder = dealOrder++;
 					card.DealtAtPhase = nameof(KingsAndLowsPhase.Dealing);
-					context.GameCards.Add(card);
 				}
 			}
 		}

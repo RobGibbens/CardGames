@@ -109,7 +109,7 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 			.OrderBy(gc => gc.DealOrder)
 			.ToList();
 
-		// 8. Remove discarded cards and track them for response
+		// 8. Mark discarded cards and track them for response
 		var discardedGameCards = new List<GameCard>();
 		var discardedCardInfos = new List<CardInfo>();
 		foreach (var index in discardIndices.OrderByDescending(i => i))
@@ -124,47 +124,53 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 					Symbol = card.Symbol,
 					Display = FormatCard(card.Symbol, card.Suit)
 				});
-				context.GameCards.Remove(card);
+				// Mark the card as discarded instead of removing it
+				card.IsDiscarded = true;
+				card.DiscardedAtDrawRound = 1;
+				card.Location = CardLocation.Discarded;
 				playerCards.RemoveAt(index);
 			}
 		}
 		// Reverse to maintain original order
 		discardedCardInfos.Reverse();
 
-		// 9. Deal new cards (simulate deck)
-		// In a real implementation, we'd track the deck state
-		// For now, we'll generate random cards
-		var random = new Random();
-		var suits = new[] { CardSuit.Hearts, CardSuit.Diamonds, CardSuit.Clubs, CardSuit.Spades };
-		var symbols = new[] { CardSymbol.Deuce, CardSymbol.Three, CardSymbol.Four, CardSymbol.Five,
-							  CardSymbol.Six, CardSymbol.Seven, CardSymbol.Eight, CardSymbol.Nine,
-							  CardSymbol.Ten, CardSymbol.Jack, CardSymbol.Queen, CardSymbol.King, CardSymbol.Ace };
+		// 9. Deal new cards from the shared deck
+		// Get cards still in the deck (not yet dealt to any player)
+		var deckCards = game.GameCards
+			.Where(gc => gc.HandNumber == game.CurrentHandNumber && gc.Location == CardLocation.Deck)
+			.OrderBy(gc => gc.DealOrder)
+			.ToList();
+
+		if (deckCards.Count < discardIndices.Count)
+		{
+			return new DrawCardsError
+			{
+				Message = $"Not enough cards remaining in the deck. Need {discardIndices.Count} but only {deckCards.Count} available.",
+				Code = DrawCardsErrorCode.InsufficientCards
+			};
+		}
 
 		var newCardInfos = new List<CardInfo>();
 		for (int i = 0; i < discardIndices.Count; i++)
 		{
-			var suit = suits[random.Next(suits.Length)];
-			var symbol = symbols[random.Next(symbols.Length)];
-			var newCard = new GameCard
-			{
-				GameId = game.Id,
-				GamePlayerId = gamePlayer.Id,
-				HandNumber = game.CurrentHandNumber,
-				Suit = suit,
-				Symbol = symbol,
-				Location = CardLocation.Hand,
-				DealOrder = playerCards.Count + i + 1,
-				DealtAtPhase = "DrawPhase",
-				IsVisible = true,
-				DealtAt = now
-			};
-			context.GameCards.Add(newCard);
-			playerCards.Add(newCard);
+			var cardFromDeck = deckCards[i];
+			
+			// Update the card: move from deck to player's hand
+			cardFromDeck.GamePlayerId = gamePlayer.Id;
+			cardFromDeck.Location = CardLocation.Hand;
+			cardFromDeck.DealOrder = playerCards.Count + i + 1;
+			cardFromDeck.DealtAtPhase = "DrawPhase";
+			cardFromDeck.IsVisible = true;
+			cardFromDeck.IsDrawnCard = true;
+			cardFromDeck.DrawnAtRound = 1; // First draw round
+			cardFromDeck.DealtAt = now;
+			
+			playerCards.Add(cardFromDeck);
 			newCardInfos.Add(new CardInfo
 			{
-				Suit = suit,
-				Symbol = symbol,
-				Display = FormatCard(symbol, suit)
+				Suit = cardFromDeck.Suit,
+				Symbol = cardFromDeck.Symbol,
+				Display = FormatCard(cardFromDeck.Symbol, cardFromDeck.Suit)
 			});
 		}
 
@@ -441,7 +447,7 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 
 		/// <summary>
 		/// Deals a 5-card hand for the deck in player vs deck scenario.
-		/// Uses cards that haven't been dealt to players yet.
+		/// Uses cards from the persisted shuffled deck.
 		/// </summary>
 		private static async Task DealDeckHandAsync(
 			Game game,
@@ -449,63 +455,25 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 			DateTimeOffset now,
 			CancellationToken cancellationToken)
 		{
-			// Get all cards already dealt to players for this hand
-			var dealtCards = await dbContext.GameCards
-				.Where(gc => gc.GameId == game.Id && gc.HandNumber == game.CurrentHandNumber)
-				.Select(gc => new { gc.Suit, gc.Symbol })
+			// Get cards still in the deck (not yet dealt to any player)
+			var deckCards = await dbContext.GameCards
+				.Where(gc => gc.GameId == game.Id && 
+				             gc.HandNumber == game.CurrentHandNumber && 
+				             gc.Location == CardLocation.Deck)
+				.OrderBy(gc => gc.DealOrder)
+				.Take(5)
 				.ToListAsync(cancellationToken);
 
-			var dealtSet = dealtCards
-				.Select(c => (c.Suit, c.Symbol))
-				.ToHashSet();
-
-			// Build a deck of remaining cards
-			var allSuits = new[] { CardSuit.Hearts, CardSuit.Diamonds, CardSuit.Clubs, CardSuit.Spades };
-			var allSymbols = new[] 
+			// Deal 5 cards from the deck to "the deck's hand" (GamePlayerId = null, Location = Board)
+			for (int i = 0; i < deckCards.Count; i++)
 			{
-				CardSymbol.Deuce, CardSymbol.Three, CardSymbol.Four, CardSymbol.Five,
-				CardSymbol.Six, CardSymbol.Seven, CardSymbol.Eight, CardSymbol.Nine,
-				CardSymbol.Ten, CardSymbol.Jack, CardSymbol.Queen, CardSymbol.King, CardSymbol.Ace
-			};
-
-			var remainingCards = new List<(CardSuit suit, CardSymbol symbol)>();
-			foreach (var suit in allSuits)
-			{
-				foreach (var symbol in allSymbols)
-				{
-					if (!dealtSet.Contains((suit, symbol)))
-					{
-						remainingCards.Add((suit, symbol));
-					}
-				}
-			}
-
-			// Shuffle remaining cards
-			var random = new Random();
-			for (int i = remainingCards.Count - 1; i > 0; i--)
-			{
-				int j = random.Next(i + 1);
-				(remainingCards[i], remainingCards[j]) = (remainingCards[j], remainingCards[i]);
-			}
-
-			// Deal 5 cards to the deck (GamePlayerId = null)
-			for (int i = 0; i < 5 && i < remainingCards.Count; i++)
-			{
-				var (suit, symbol) = remainingCards[i];
-				var deckCard = new GameCard
-				{
-					GameId = game.Id,
-					GamePlayerId = null, // Deck cards have no player
-					HandNumber = game.CurrentHandNumber,
-					Suit = suit,
-					Symbol = symbol,
-					Location = CardLocation.Board, // Board represents deck hand
-					DealOrder = i + 1,
-					DealtAtPhase = "PlayerVsDeck",
-					IsVisible = true, // Deck cards are visible to all
-					DealtAt = now
-				};
-				dbContext.GameCards.Add(deckCard);
+				var card = deckCards[i];
+				card.GamePlayerId = null; // Deck cards have no player
+				card.Location = CardLocation.Board; // Board represents deck hand
+				card.DealOrder = i + 1;
+				card.DealtAtPhase = nameof(KingsAndLowsPhase.PlayerVsDeck);
+				card.IsVisible = true; // Deck cards are visible to all
+				card.DealtAt = now;
 			}
 		}
 	}

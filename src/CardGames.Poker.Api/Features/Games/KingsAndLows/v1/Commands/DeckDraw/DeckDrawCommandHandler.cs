@@ -81,43 +81,35 @@ public class DeckDrawCommandHandler(CardsDbContext context)
 			};
 		}
 
-		// 5. Get or create deck's hand cards
-		// For the deck, we use a special GamePlayerId of Guid.Empty or create special "Deck" cards
+		// 5. Get the deck's hand cards (Location = Board with no GamePlayerId)
 		var deckCards = game.GameCards
-			.Where(gc => gc.GamePlayerId == null && gc.HandNumber == game.CurrentHandNumber)
+			.Where(gc => gc.GamePlayerId == null && gc.HandNumber == game.CurrentHandNumber && gc.Location == CardLocation.Board)
 			.OrderBy(gc => gc.DealOrder)
 			.ToList();
 
-		// If deck doesn't have cards yet, deal them now
+		// If deck doesn't have cards yet, deal them from the shared deck
 		if (deckCards.Count == 0)
 		{
-			var random = new Random();
-			var suits = new[] { CardSuit.Hearts, CardSuit.Diamonds, CardSuit.Clubs, CardSuit.Spades };
-			var symbols = new[] { CardSymbol.Deuce, CardSymbol.Three, CardSymbol.Four, CardSymbol.Five, 
-								  CardSymbol.Six, CardSymbol.Seven, CardSymbol.Eight, CardSymbol.Nine, 
-								  CardSymbol.Ten, CardSymbol.Jack, CardSymbol.Queen, CardSymbol.King, CardSymbol.Ace };
+			var cardsInDeck = game.GameCards
+				.Where(gc => gc.HandNumber == game.CurrentHandNumber && gc.Location == CardLocation.Deck)
+				.OrderBy(gc => gc.DealOrder)
+				.Take(5)
+				.ToList();
 
-			for (int i = 0; i < 5; i++)
+			for (int i = 0; i < cardsInDeck.Count; i++)
 			{
-				var deckCard = new GameCard
-				{
-					GameId = game.Id,
-					GamePlayerId = null, // Deck cards have no player
-					HandNumber = game.CurrentHandNumber,
-					Suit = suits[random.Next(suits.Length)],
-					Symbol = symbols[random.Next(symbols.Length)],
-					Location = CardLocation.Board, // Board represents deck hand
-					DealOrder = i + 1,
-					DealtAtPhase = "PlayerVsDeck",
-					IsVisible = true, // Deck cards are visible to all
-					DealtAt = now
-				};
-				context.GameCards.Add(deckCard);
-				deckCards.Add(deckCard);
+				var card = cardsInDeck[i];
+				card.GamePlayerId = null; // Deck hand cards have no player
+				card.Location = CardLocation.Board; // Board represents deck hand
+				card.DealOrder = i + 1;
+				card.DealtAtPhase = "PlayerVsDeck";
+				card.IsVisible = true; // Deck cards are visible to all
+				card.DealtAt = now;
+				deckCards.Add(card);
 			}
 		}
 
-				// 6. Remove discarded cards and track them
+				// 6. Mark discarded cards and track them
 				var discardedCards = new List<GameCard>();
 				var discardedCardInfos = new List<DeckCardInfo>();
 				foreach (var index in discardIndices.OrderByDescending(i => i))
@@ -132,77 +124,49 @@ public class DeckDrawCommandHandler(CardsDbContext context)
 							Symbol = card.Symbol,
 							Display = FormatCard(card.Symbol, card.Suit)
 						});
-						context.GameCards.Remove(card);
+						// Mark the card as discarded instead of removing it
+						card.IsDiscarded = true;
+						card.DiscardedAtDrawRound = 1;
+						card.Location = CardLocation.Discarded;
 						deckCards.RemoveAt(index);
 					}
 				}
 				// Reverse to maintain original order
 				discardedCardInfos.Reverse();
 
-				// 7. Deal new cards for the deck (use remaining cards from virtual deck)
+				// 7. Deal new cards for the deck from the shared deck
 				var newCardInfos = new List<DeckCardInfo>();
 
-				// Get all cards already dealt (to players and deck) to avoid duplicates
-				var allDealtCards = await context.GameCards
-					.Where(gc => gc.GameId == game.Id && gc.HandNumber == game.CurrentHandNumber)
-					.Select(gc => new { gc.Suit, gc.Symbol })
+				// Get cards still in the deck (not yet dealt to any player or the deck hand)
+				var remainingDeckCards = await context.GameCards
+					.Where(gc => gc.GameId == game.Id && 
+					             gc.HandNumber == game.CurrentHandNumber && 
+					             gc.Location == CardLocation.Deck)
+					.OrderBy(gc => gc.DealOrder)
+					.Take(discardIndices.Count)
 					.ToListAsync(cancellationToken);
 
-				var dealtSet = allDealtCards.Select(c => (c.Suit, c.Symbol)).ToHashSet();
-
-				// Build remaining deck
-				var allSuits = new[] { CardSuit.Hearts, CardSuit.Diamonds, CardSuit.Clubs, CardSuit.Spades };
-				var allSymbols = new[]
+				// Deal cards from the deck to the deck's hand
+				for (int i = 0; i < remainingDeckCards.Count; i++)
 				{
-					CardSymbol.Deuce, CardSymbol.Three, CardSymbol.Four, CardSymbol.Five,
-					CardSymbol.Six, CardSymbol.Seven, CardSymbol.Eight, CardSymbol.Nine,
-					CardSymbol.Ten, CardSymbol.Jack, CardSymbol.Queen, CardSymbol.King, CardSymbol.Ace
-				};
-
-				var remainingCards = new List<(CardSuit suit, CardSymbol symbol)>();
-				foreach (var suit in allSuits)
-				{
-					foreach (var symbol in allSymbols)
-					{
-						if (!dealtSet.Contains((suit, symbol)))
-						{
-							remainingCards.Add((suit, symbol));
-						}
-					}
-				}
-
-				// Shuffle remaining cards
-				var random2 = new Random();
-				for (int i = remainingCards.Count - 1; i > 0; i--)
-				{
-					int j = random2.Next(i + 1);
-					(remainingCards[i], remainingCards[j]) = (remainingCards[j], remainingCards[i]);
-				}
-
-				// Deal new cards
-				for (int i = 0; i < discardIndices.Count && i < remainingCards.Count; i++)
-				{
-					var (suit, symbol) = remainingCards[i];
-					var newCard = new GameCard
-					{
-						GameId = game.Id,
-						GamePlayerId = null,
-						HandNumber = game.CurrentHandNumber,
-						Suit = suit,
-						Symbol = symbol,
-						Location = CardLocation.Board,
-						DealOrder = deckCards.Count + i + 1,
-						DealtAtPhase = "PlayerVsDeck",
-						IsVisible = true,
-						DealtAt = now
-					};
-					context.GameCards.Add(newCard);
-					deckCards.Add(newCard);
+					var cardFromDeck = remainingDeckCards[i];
+					
+					// Update the card: move from deck to the deck's hand
+					cardFromDeck.GamePlayerId = null;
+					cardFromDeck.Location = CardLocation.Board;
+					cardFromDeck.DealOrder = deckCards.Count + i + 1;
+					cardFromDeck.DealtAtPhase = "PlayerVsDeck";
+					cardFromDeck.IsVisible = true;
+					cardFromDeck.IsDrawnCard = true;
+					cardFromDeck.DrawnAtRound = 1;
+					cardFromDeck.DealtAt = now;
+					
+					deckCards.Add(cardFromDeck);
 					newCardInfos.Add(new DeckCardInfo
 					{
-						Suit = suit,
-						Symbol = symbol,
-						Display = FormatCard(symbol, suit)
+						Suit = cardFromDeck.Suit,
+						Symbol = cardFromDeck.Symbol,
+						Display = FormatCard(cardFromDeck.Symbol, cardFromDeck.Suit)
 					});
 				}
 

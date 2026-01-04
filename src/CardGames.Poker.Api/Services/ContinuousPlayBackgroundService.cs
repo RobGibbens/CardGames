@@ -598,9 +598,32 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
         DateTimeOffset now,
         CancellationToken cancellationToken)
     {
-        // Create a shuffled deck
+        // Create a shuffled deck and persist all 52 cards with deck order
         var random = new Random();
         var deck = CreateShuffledDeck(random);
+
+        // First, persist all 52 cards in the deck with their shuffled order
+        var deckOrder = 0;
+        var deckCards = new List<GameCard>();
+        foreach (var (suit, symbol) in deck)
+        {
+            var gameCard = new GameCard
+            {
+                GameId = game.Id,
+                GamePlayerId = null,
+                HandNumber = game.CurrentHandNumber,
+                Suit = suit,
+                Symbol = symbol,
+                DealOrder = deckOrder++,
+                Location = CardLocation.Deck,
+                IsVisible = false,
+                IsDiscarded = false,
+                DealtAt = now
+            };
+            deckCards.Add(gameCard);
+            context.GameCards.Add(gameCard);
+        }
+
         var deckIndex = 0;
 
         // Sort players starting from left of dealer for dealing order
@@ -612,33 +635,24 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
             .OrderBy(p => (p.SeatPosition - dealerPosition - 1 + totalSeats) % totalSeats)
             .ToList();
 
-        // Deal 5 cards to each player
+        // Deal 5 cards to each player from the shuffled deck
+        var dealOrder = 1;
         foreach (var player in playersInDealOrder)
         {
             for (var cardIndex = 0; cardIndex < 5; cardIndex++)
             {
-                if (deckIndex >= deck.Count)
+                if (deckIndex >= deckCards.Count)
                 {
                     _logger.LogError("Ran out of cards while dealing for game {GameId}", game.Id);
                     break;
                 }
 
-                var (suit, symbol) = deck[deckIndex++];
-                var gameCard = new GameCard
-                {
-                    GameId = game.Id,
-                    GamePlayerId = player.Id,
-                    HandNumber = game.CurrentHandNumber,
-                    Suit = suit,
-                    Symbol = symbol,
-                    DealOrder = cardIndex,
-                    Location = CardLocation.Hand,
-                    IsVisible = false,
-                    IsDiscarded = false,
-                    DealtAt = now
-                };
-
-                context.GameCards.Add(gameCard);
+                var card = deckCards[deckIndex++];
+                card.GamePlayerId = player.Id;
+                card.Location = CardLocation.Hand;
+                card.DealOrder = dealOrder++;
+                card.IsVisible = false;
+                card.DealtAt = now;
             }
         }
 
