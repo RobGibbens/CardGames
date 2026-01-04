@@ -1,0 +1,145 @@
+.player-vs-deck-overlay {
+    z-index: 1000;
+}
+
+.player-vs-deck-overlay .overlay-content {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    border-radius: 20px;
+    padding: 2rem;
+    max-width: 600px;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+
+.player-vs-deck-overlay .overlay-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    color: #fff;
+}
+
+.player-vs-deck-overlay h2 {
+    color: #fff;
+    margin-bottom: 0.5rem;
+    font-size: 2rem;
+}
+
+.player-vs-deck-overlay .scenario-description {
+    color: rgba(255, 255, 255, 0.9);
+    margin-bottom: 1.5rem;
+    font-size: 1.1rem;
+}
+
+.player-vs-deck-overlay .deck-hand {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 1.5rem;
+    border-radius: 15px;
+    margin-bottom: 1.5rem;
+}
+
+.player-vs-deck-overlay .deck-hand h3 {
+    color: #fff;
+    margin-bottom: 1rem;
+    font-size: 1.3rem;
+}
+
+.player-vs-deck-overlay .cards {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.player-vs-deck-overlay .card {
+    width: 60px;
+    height: 84px;
+    background: white;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.player-vs-deck-overlay .card.red {
+    color: #dc3545;
+}
+
+.player-vs-deck-overlay .card.black {
+    color: #000;
+}
+
+.player-vs-deck-overlay .card-rank {
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+.player-vs-deck-overlay .card-suit {
+    font-size: 1.5rem;
+}
+
+.player-vs-deck-overlay .no-cards {
+    color: rgba(255, 255, 255, 0.8);
+    font-style: italic;
+}
+
+.player-vs-deck-overlay .decision-section {
+    margin-top: 1.5rem;
+}
+
+.player-vs-deck-overlay .instruction {
+    color: rgba(255, 255, 255, 0.9);
+    margin-bottom: 1rem;
+}
+
+.player-vs-deck-overlay .card-selection {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.player-vs-deck-overlay .card-selector {
+    padding: 0.75rem 1rem;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.player-vs-deck-overlay .card-selector:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.8);
+}
+
+.player-vs-deck-overlay .card-selector.selected {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: #fff;
+    font-weight: bold;
+}
+
+.player-vs-deck-overlay .card-selector:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.player-vs-deck-overlay .btn-lg {
+    font-size: 1.2rem;
+    padding: 0.75rem 2rem;
+}
+
+.player-vs-deck-overlay .waiting-message,
+.player-vs-deck-overlay .completed-message {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 1.1rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+}
+
+.player-vs-deck-overlay .completed-message {
+    background: rgba(76, 175, 80, 0.3);
+}

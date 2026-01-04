@@ -1,0 +1,210 @@
+@namespace CardGames.Poker.Web.Components.Shared
+
+@using static CardGames.Poker.Web.Components.Pages.TablePlay
+
+<div class="table-overlay player-vs-deck-overlay">
+    <div class="overlay-content">
+        <div class="overlay-icon"><i class="fa-solid fa-layer-group"></i></div>
+        <h2>Player vs Deck</h2>
+        <p class="scenario-description">Only one player stayed! They now face the deck.</p>
+
+        @if (DeckCards.Count > 0 || AnimatedCards.Count > 0)
+        {
+            <DrawPanel 
+                Cards="@GetDisplayCards()"
+                SelectedIndices="@SelectedIndices"
+                OnToggleSelection="@HandleToggleSelection"
+                OnDraw="@HandleDraw"
+                IsSubmitting="@IsProcessing"
+                IsAnimating="@IsAnimating"
+                IsDiscarding="@IsDiscarding"
+                IsDrawing="@IsDrawingNewCards"
+                CardsDrawn="@CardsDrawn"
+                NewCardIndices="@NewCardIndices"
+                MaxDiscards="5"
+                Title="Deck's Hand"
+                TitleIcon="fa-solid fa-layer-group"
+                StandPatLabel="Keep All"
+                DiscardLabel="Discard"
+                IsReadOnly="@(!IsDecisionMaker || HasDrawn)"
+                ReadOnlyMessage="@GetReadOnlyMessage()"
+                HandDescription="@HandDescription"
+                HideCardIndices="@(!IsDecisionMaker)"
+                DrawingSpecialRules="@(IsDecisionMaker ? "Kings are wild, plus lowest non-King cards" : null)" />
+        }
+        else
+        {
+            <div class="deck-loading">
+                <i class="fa-solid fa-spinner fa-spin"></i>
+                <p>Dealing deck hand...</p>
+            </div>
+        }
+
+        @if (HasDrawn && !IsAnimating)
+        {
+            <p class="completed-message">
+                <i class="fa-solid fa-check-circle"></i>
+                Deck has drawn. Proceeding to showdown...
+            </p>
+        }
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// The deck's visible cards (from SignalR state).
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<CardDto> DeckCards { get; set; } = [];
+
+    /// <summary>
+    /// Whether the current player is the decision maker for the deck draw.
+    /// </summary>
+    [Parameter]
+    public bool IsDecisionMaker { get; set; }
+
+    /// <summary>
+    /// The name of the player who makes the decision for the deck.
+    /// </summary>
+    [Parameter]
+    public string DecisionMakerName { get; set; } = "Dealer";
+
+    /// <summary>
+    /// Whether the deck has already drawn.
+    /// </summary>
+    [Parameter]
+    public bool HasDrawn { get; set; }
+
+    /// <summary>
+    /// Whether a draw is currently being processed.
+    /// </summary>
+    [Parameter]
+    public bool IsProcessing { get; set; }
+
+    /// <summary>
+    /// Selected card indices for discarding.
+    /// </summary>
+    [Parameter]
+    public HashSet<int> SelectedIndices { get; set; } = new();
+
+    /// <summary>
+    /// Callback when card selection changes.
+    /// </summary>
+    [Parameter]
+    public EventCallback<int> OnCardSelectionToggle { get; set; }
+
+    /// <summary>
+    /// Callback when the decision maker confirms the draw.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnConfirmDraw { get; set; }
+
+    /// <summary>
+    /// Whether the draw animation is currently playing.
+    /// </summary>
+    [Parameter]
+    public bool IsAnimating { get; set; }
+
+    /// <summary>
+    /// Whether cards are currently being discarded (animation).
+    /// </summary>
+    [Parameter]
+    public bool IsDiscarding { get; set; }
+
+    /// <summary>
+    /// Whether new cards are being drawn (animation).
+    /// </summary>
+    [Parameter]
+    public bool IsDrawingNewCards { get; set; }
+
+    /// <summary>
+    /// Whether the draw animation has completed and new cards are shown.
+    /// </summary>
+    [Parameter]
+    public bool CardsDrawn { get; set; }
+
+    /// <summary>
+    /// Indices of newly drawn cards for animation highlighting.
+    /// </summary>
+    [Parameter]
+    public List<int> NewCardIndices { get; set; } = [];
+
+    /// <summary>
+    /// Animated cards to display during/after draw (overrides DeckCards when present).
+    /// </summary>
+    [Parameter]
+    public List<CardInfo> AnimatedCards { get; set; } = [];
+
+    /// <summary>
+    /// The hand description for the deck's hand.
+    /// </summary>
+    [Parameter]
+    public string? HandDescription { get; set; }
+
+    /// <summary>
+    /// Gets the cards to display - animated cards take precedence during animation.
+    /// </summary>
+    private List<CardInfo> GetDisplayCards()
+    {
+        // During animation, use the animated cards if available
+        if (AnimatedCards.Count > 0)
+        {
+            return AnimatedCards;
+        }
+
+        // Otherwise, convert DeckCards to CardInfo
+        return DeckCards
+            .Select((card, index) => new CardInfo
+            {
+                Rank = card.Rank,
+                Suit = card.Suit,
+                IsFaceUp = true,
+                IsSelected = SelectedIndices.Contains(index)
+            })
+            .ToList();
+    }
+
+    /// <summary>
+    /// Gets the read-only message for non-decision makers.
+    /// </summary>
+    private string GetReadOnlyMessage()
+    {
+        if (CardsDrawn)
+        {
+            return !string.IsNullOrWhiteSpace(HandDescription) 
+                ? HandDescription 
+                : "Deck draw complete";
+        }
+
+        if (HasDrawn)
+        {
+            return "Deck draw complete";
+        }
+
+        return $"Waiting for {DecisionMakerName} to choose deck's discards...";
+    }
+
+    /// <summary>
+    /// Handles card selection toggle from DrawPanel.
+    /// </summary>
+    private async Task HandleToggleSelection(int index)
+    {
+        if (OnCardSelectionToggle.HasDelegate)
+        {
+            await OnCardSelectionToggle.InvokeAsync(index);
+        }
+    }
+
+    /// <summary>
+    /// Handles the draw action from DrawPanel.
+    /// </summary>
+    private async Task HandleDraw(List<int> discardIndices)
+    {
+        if (OnConfirmDraw.HasDelegate)
+        {
+            await OnConfirmDraw.InvokeAsync();
+        }
+    }
+
+    public record CardDto(string Rank, string Suit);
+}

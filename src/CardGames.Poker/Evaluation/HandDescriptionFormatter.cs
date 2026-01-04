@@ -37,9 +37,14 @@ public static class HandDescriptionFormatter
 
 	private static List<Card> GetCardsForDescription(HandBase hand)
 	{
-		if (hand is Hands.DrawHands.TwosJacksManWithTheAxeDrawHand wildHand)
+		if (hand is Hands.DrawHands.TwosJacksManWithTheAxeDrawHand twosJacksHand)
 		{
-			return wildHand.EvaluatedBestCards.ToList();
+			return twosJacksHand.EvaluatedBestCards.ToList();
+		}
+
+		if (hand is Hands.DrawHands.KingsAndLowsDrawHand kingsAndLowsHand)
+		{
+			return kingsAndLowsHand.EvaluatedBestCards.ToList();
 		}
 
 		return hand.Cards.ToList();

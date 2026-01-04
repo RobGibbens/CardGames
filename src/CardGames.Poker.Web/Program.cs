@@ -68,6 +68,13 @@ builder.Services
 	.AddHttpMessageHandler<AuthenticationStateHandler>();
 
 builder.Services
+	.AddRefitClient<IKingsAndLowsApi>(
+		settingsAction: _ => new RefitSettings(),
+		httpClientName: "kingsAndLowsApi")
+	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"))
+	.AddHttpMessageHandler<AuthenticationStateHandler>();
+
+builder.Services
 	.AddRefitClient<IAvailablePokerGamesApi>(
 		settingsAction: _ => new RefitSettings(),
 		httpClientName: "availablePokerGamesApi")

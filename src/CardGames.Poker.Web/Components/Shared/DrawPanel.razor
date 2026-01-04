@@ -2,12 +2,12 @@
 
 @using static CardGames.Poker.Web.Components.Pages.TablePlay
 
-<div class="draw-panel @(IsSubmitting ? "submitting" : "") @(IsAnimating ? "animating" : "")">
+<div class="draw-panel @(IsSubmitting ? "submitting" : "") @(IsAnimating ? "animating" : "") @(IsReadOnly ? "read-only" : "")">
     <!-- Header -->
     <div class="draw-panel-header">
         <div class="draw-panel-title">
-            <i class="fa-regular fa-cards"></i>
-            <span>Draw Phase</span>
+            <i class="@TitleIcon"></i>
+            <span>@Title</span>
         </div>
         <div class="draw-panel-subtitle">
             @if (!string.IsNullOrWhiteSpace(DrawingSpecialRules))
@@ -18,7 +18,7 @@
             {
                 <text>Select cards to discard (0-4 cards - Ace bonus!)</text>
             }
-            else
+            else if (!IsReadOnly)
             {
                 <text>Select cards to discard (0-@MaxDiscards cards)</text>
             }
@@ -42,14 +42,18 @@
             var card = orderedCards[i].Card;
             var isSelected = SelectedIndices.Contains(index);
 
-            <div class="draw-card-wrapper @(isSelected ? "selected" : "") @(IsDiscarding && isSelected ? "discarding" : "") @(IsDrawing && NewCardIndices.Contains(index) ? "drawing" : "")"
-                 @onclick="() => ToggleCardSelectionAsync(index)">
-                
+            <div class="draw-card-wrapper @(isSelected ? "selected" : "") @(IsDiscarding && isSelected ? "discarding" : "") @(IsDrawing && NewCardIndices.Contains(index) ? "drawing" : "") @(IsReadOnly ? "readonly" : "")"
+                 @onclick="() => ToggleCardSelectionAsync(index)"
+                 @onclick:stopPropagation="@IsReadOnly">
+
                 <div class="draw-card @(isSelected ? "selected" : "")">
                     <playing-card rank="@GetPlayingCardRank(card)" suit="@card.Suit" style="height:92px;width:64px;"></playing-card>
                 </div>
-                
-                <div class="card-index">@(displayIndex + 1)</div>
+
+                @if (!HideCardIndices)
+                {
+                    <div class="card-index">@(displayIndex + 1)</div>
+                }
                 @if (isSelected)
                 {
                     <div class="discard-badge">
@@ -62,7 +66,11 @@
 
     <!-- Selection Info -->
     <div class="draw-selection-info">
-        @if (SelectedCount == 0)
+        @if (IsReadOnly && !string.IsNullOrWhiteSpace(ReadOnlyMessage))
+        {
+            <span class="selection-hint">@ReadOnlyMessage</span>
+        }
+        else if (SelectedCount == 0)
         {
             <span class="selection-hint">Click cards to select them for discard, or stand pat</span>
         }
@@ -72,39 +80,42 @@
         }
     </div>
 
-    <!-- Action Buttons -->
-    <div class="draw-actions">
-        <button class="draw-btn stand-pat-btn" 
-                @onclick="HandleStandPat" 
-                disabled="@(IsSubmitting || SelectedCount > 0)">
-            <i class="fa-regular fa-hand"></i>
-            <span>Stand Pat</span>
-        </button>
-
-            <button class="draw-btn discard-btn @(SelectedCount > 0 ? "active" : "")" 
-                    @onclick="HandleDiscard" 
-                    disabled="@(IsSubmitting || SelectedCount == 0 || SelectedCount > MaxDiscards)">
-                <i class="fa-regular fa-arrows-rotate"></i>
-                <span>Discard @SelectedCount & Draw</span>
+    <!-- Action Buttons (hidden in read-only mode) -->
+    @if (!IsReadOnly)
+    {
+        <div class="draw-actions">
+            <button class="draw-btn stand-pat-btn" 
+                    @onclick="HandleStandPat" 
+                    disabled="@(IsSubmitting || SelectedCount > 0)">
+                <i class="fa-regular fa-hand"></i>
+                <span>@StandPatLabel</span>
             </button>
-        </div>
 
-        @if (SelectedCount > MaxDiscards)
-        {
-            <div class="draw-warning">
-                <i class="fa-solid fa-triangle-exclamation"></i>
-                @if (MaxDiscards == 4)
-                {
-                    <text>Maximum 4 cards can be discarded when you hold an Ace</text>
-                }
-                else
-                {
-                    <text>Maximum 3 cards can be discarded</text>
-                }
-            </div>
-        }
+                    <button class="draw-btn discard-btn @(SelectedCount > 0 ? "active" : "")" 
+                            @onclick="HandleDiscard" 
+                            disabled="@(IsSubmitting || SelectedCount == 0 || SelectedCount > MaxDiscards)">
+                        <i class="fa-regular fa-arrows-rotate"></i>
+                        <span>@DiscardLabel @SelectedCount & Draw</span>
+                    </button>
+                </div>
 
-    @if (IsSubmitting)
+                @if (SelectedCount > MaxDiscards)
+                {
+                    <div class="draw-warning">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        @if (MaxDiscards == 4)
+                        {
+                            <text>Maximum 4 cards can be discarded when you hold an Ace</text>
+                        }
+                        else
+                        {
+                            <text>Maximum 3 cards can be discarded</text>
+                        }
+                    </div>
+                }
+            }
+
+            @if (IsSubmitting)
     {
         <div class="draw-submitting">
            
@@ -171,11 +182,55 @@
     [Parameter]
     public string? DrawingSpecialRules { get; set; }
 
+    /// <summary>
+    /// Custom title for the panel header. Defaults to "Draw Phase".
+    /// </summary>
+    [Parameter]
+    public string Title { get; set; } = "Draw Phase";
+
+    /// <summary>
+    /// Custom icon class for the header. Defaults to "fa-regular fa-cards".
+    /// </summary>
+    [Parameter]
+    public string TitleIcon { get; set; } = "fa-regular fa-cards";
+
+    /// <summary>
+    /// Custom label for the stand pat button. Defaults to "Stand Pat".
+    /// </summary>
+    [Parameter]
+    public string StandPatLabel { get; set; } = "Stand Pat";
+
+    /// <summary>
+    /// Custom label for the discard button (without count). Defaults to "Discard".
+    /// </summary>
+    [Parameter]
+    public string DiscardLabel { get; set; } = "Discard";
+
+    /// <summary>
+    /// When true, hides action buttons and shows cards in read-only mode.
+    /// Used for showing deck cards to non-decision makers.
+    /// </summary>
+    [Parameter]
+    public bool IsReadOnly { get; set; }
+
+    /// <summary>
+    /// Optional message to show in read-only mode (e.g., "Waiting for Player to decide...").
+    /// </summary>
+    [Parameter]
+    public string? ReadOnlyMessage { get; set; }
+
+    /// <summary>
+    /// When true, hides the card index numbers below cards.
+    /// Useful for non-decision makers viewing the deck hand.
+    /// </summary>
+    [Parameter]
+    public bool HideCardIndices { get; set; }
+
     private int SelectedCount => SelectedIndices.Count;
 
     private async Task ToggleCardSelectionAsync(int index)
     {
-        if (IsSubmitting || IsAnimating)
+        if (IsReadOnly || IsSubmitting || IsAnimating)
             return;
 
         if (OnToggleSelection.HasDelegate)
@@ -186,7 +241,7 @@
 
     private async Task HandleStandPat()
     {
-        if (IsSubmitting || SelectedCount > 0)
+        if (IsReadOnly || IsSubmitting || SelectedCount > 0)
             return;
 
         await OnDraw.InvokeAsync([]);
