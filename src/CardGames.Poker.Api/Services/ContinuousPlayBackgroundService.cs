@@ -18,6 +18,12 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
     /// </summary>
     public const int ResultsDisplayDurationSeconds = 15;
 
+    /// <summary>
+    /// Duration in seconds for the draw complete display period before transitioning to showdown.
+    /// This gives all players time to see their new cards.
+    /// </summary>
+    public const int DrawCompleteDisplayDurationSeconds = 5;
+
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<ContinuousPlayBackgroundService> _logger;
     private readonly TimeSpan _checkInterval = TimeSpan.FromSeconds(1);
@@ -70,6 +76,9 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 
                 // Check for abandoned games (all players left after game started)
                 await ProcessAbandonedGamesAsync(context, broadcaster, now, cancellationToken);
+
+                // Process DrawComplete games that are ready to transition to Showdown
+                await ProcessDrawCompleteGamesAsync(context, broadcaster, now, cancellationToken);
 
                 // Find games in Complete phase where the next hand should start
                     var gamesReadyForNextHand = await context.Games
@@ -147,6 +156,221 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
                         await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
                     }
                 }
+            }
+
+            /// <summary>
+            /// Processes Kings and Lows games in DrawComplete phase that are ready to transition to Showdown.
+            /// This allows players to see their new cards for a few seconds before showdown begins.
+            /// </summary>
+            private async Task ProcessDrawCompleteGamesAsync(
+                CardsDbContext context,
+                IGameStateBroadcaster broadcaster,
+                DateTimeOffset now,
+                CancellationToken cancellationToken)
+            {
+                var drawCompleteDeadline = now.AddSeconds(-DrawCompleteDisplayDurationSeconds);
+
+                // Find Kings and Lows games in DrawComplete phase where the display period has expired
+                var gamesReadyForShowdown = await context.Games
+                    .Where(g => g.CurrentPhase == nameof(KingsAndLowsPhase.DrawComplete) &&
+                                g.DrawCompletedAt != null &&
+                                g.DrawCompletedAt <= drawCompleteDeadline &&
+                                g.Status == GameStatus.InProgress)
+                    .Include(g => g.GamePlayers)
+                        .ThenInclude(gp => gp.Player)
+                    .Include(g => g.GameCards)
+                    .ToListAsync(cancellationToken);
+
+                foreach (var game in gamesReadyForShowdown)
+                {
+                    try
+                    {
+                        _logger.LogInformation(
+                            "Game {GameId} DrawComplete display period expired, transitioning to Showdown",
+                            game.Id);
+
+                        await TransitionToShowdownAsync(context, broadcaster, game, now, cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to transition game {GameId} from DrawComplete to Showdown", game.Id);
+                    }
+                }
+            }
+
+            /// <summary>
+            /// Transitions a Kings and Lows game from DrawComplete to Showdown phase,
+            /// performs the showdown, and sets up pot matching.
+            /// </summary>
+            private async Task TransitionToShowdownAsync(
+                CardsDbContext context,
+                IGameStateBroadcaster broadcaster,
+                Game game,
+                DateTimeOffset now,
+                CancellationToken cancellationToken)
+            {
+                var gamePlayersList = game.GamePlayers.OrderBy(gp => gp.SeatPosition).ToList();
+
+                // Transition to Showdown phase
+                game.CurrentPhase = nameof(KingsAndLowsPhase.Showdown);
+                game.UpdatedAt = now;
+                game.DrawCompletedAt = null; // Clear the draw completed timestamp
+
+                await context.SaveChangesAsync(cancellationToken);
+
+                // Perform showdown and set up pot matching
+                await PerformKingsAndLowsShowdownAsync(context, game, gamePlayersList, now, cancellationToken);
+
+                // Broadcast updated state to all players
+                await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
+            }
+
+            /// <summary>
+            /// Performs showdown for Kings and Lows, determines winner/losers, distributes pot, and transitions to Complete phase.
+            /// </summary>
+            private async Task PerformKingsAndLowsShowdownAsync(
+                CardsDbContext context,
+                Game game,
+                List<GamePlayer> gamePlayersList,
+                DateTimeOffset now,
+                CancellationToken cancellationToken)
+            {
+                // Get all cards for staying players
+                var stayingPlayers = gamePlayersList
+                    .Where(gp => gp.DropOrStayDecision == Data.Entities.DropOrStayDecision.Stay)
+                    .ToList();
+
+                // Load main pot for current hand
+                var mainPot = await context.Pots
+                    .FirstOrDefaultAsync(p => p.GameId == game.Id && p.HandNumber == game.CurrentHandNumber, cancellationToken);
+
+                if (mainPot == null)
+                {
+                    // No pot to distribute - just complete the hand
+                    game.CurrentPhase = nameof(KingsAndLowsPhase.Complete);
+                    game.HandCompletedAt = now;
+                    game.NextHandStartsAt = now.AddSeconds(ResultsDisplayDurationSeconds);
+                    MoveDealer(game);
+                    await context.SaveChangesAsync(cancellationToken);
+                    return;
+                }
+
+                // Evaluate hands using the KingsAndLowsDrawHand evaluator
+                var playerHandEvaluations = new List<(GamePlayer player, long strength)>();
+
+                foreach (var player in stayingPlayers)
+                {
+                    var playerCards = game.GameCards
+                        .Where(gc => gc.GamePlayerId == player.Id && gc.HandNumber == game.CurrentHandNumber)
+                        .OrderBy(gc => gc.DealOrder)
+                        .Select(gc => new { gc.Suit, gc.Symbol })
+                        .ToList();
+
+                    if (playerCards.Count == 5)
+                    {
+                        // Convert to domain Card objects for evaluation
+                        var cards = playerCards.Select(c => new CardGames.Core.French.Cards.Card(
+                            (CardGames.Core.French.Cards.Suit)(int)c.Suit,
+                            (CardGames.Core.French.Cards.Symbol)(int)c.Symbol
+                        )).ToList();
+
+                        var hand = new CardGames.Poker.Hands.DrawHands.KingsAndLowsDrawHand(cards);
+                        playerHandEvaluations.Add((player, hand.Strength));
+                    }
+                }
+
+                // Find winner(s)
+                if (playerHandEvaluations.Count == 0)
+                {
+                    game.CurrentPhase = nameof(KingsAndLowsPhase.Complete);
+                    game.HandCompletedAt = now;
+                    game.NextHandStartsAt = now.AddSeconds(ResultsDisplayDurationSeconds);
+                    MoveDealer(game);
+                    await context.SaveChangesAsync(cancellationToken);
+                    return;
+                }
+
+                var maxStrength = playerHandEvaluations.Max(h => h.strength);
+                var winners = playerHandEvaluations.Where(h => h.strength == maxStrength).Select(h => h.player).ToList();
+                var losers = stayingPlayers.Where(p => !winners.Contains(p)).ToList();
+
+                // Distribute pot to winner(s)
+                var potAmount = mainPot.Amount;
+                var sharePerWinner = potAmount / winners.Count;
+                var remainder = potAmount % winners.Count;
+
+                foreach (var winner in winners)
+                {
+                    var payout = sharePerWinner;
+                    if (remainder > 0)
+                    {
+                        payout++;
+                        remainder--;
+                    }
+                    winner.ChipStack += payout;
+                }
+
+                // Clear the current pot (winners took it)
+                mainPot.Amount = 0;
+
+                // Auto-perform pot matching: losers must match the pot for the next hand
+                var matchAmount = potAmount;
+                var totalMatched = 0;
+
+                foreach (var loser in losers)
+                {
+                    var actualMatch = Math.Min(matchAmount, loser.ChipStack);
+                    loser.ChipStack -= actualMatch;
+                    totalMatched += actualMatch;
+                }
+
+                // Create a new pot for next hand with the matched contributions
+                if (totalMatched > 0)
+                {
+                    var newPot = new Pot
+                    {
+                        GameId = game.Id,
+                        HandNumber = game.CurrentHandNumber + 1,
+                        PotType = PotType.Main,
+                        PotOrder = 0,
+                        Amount = totalMatched,
+                        IsAwarded = false,
+                        CreatedAt = now
+                    };
+                    context.Pots.Add(newPot);
+                }
+
+                // Complete the hand
+                game.CurrentPhase = nameof(KingsAndLowsPhase.Complete);
+                game.HandCompletedAt = now;
+                game.NextHandStartsAt = now.AddSeconds(ResultsDisplayDurationSeconds);
+                MoveDealer(game);
+
+                await context.SaveChangesAsync(cancellationToken);
+            }
+
+            /// <summary>
+            /// Moves the dealer button to the next occupied seat position (clockwise).
+            /// </summary>
+            private static void MoveDealer(Game game)
+            {
+                var occupiedSeats = game.GamePlayers
+                    .Where(gp => gp.Status == GamePlayerStatus.Active)
+                    .OrderBy(gp => gp.SeatPosition)
+                    .Select(gp => gp.SeatPosition)
+                    .ToList();
+
+                if (occupiedSeats.Count == 0)
+                {
+                    return;
+                }
+
+                var currentPosition = game.DealerPosition;
+                var seatsAfterCurrent = occupiedSeats.Where(pos => pos > currentPosition).ToList();
+
+                game.DealerPosition = seatsAfterCurrent.Count > 0
+                    ? seatsAfterCurrent.First()
+                    : occupiedSeats.First();
             }
 
     private async Task StartNextHandAsync(

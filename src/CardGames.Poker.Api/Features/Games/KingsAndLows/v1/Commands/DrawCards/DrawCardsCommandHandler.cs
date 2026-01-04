@@ -196,15 +196,17 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 			}
 			else
 			{
-				// Multiple players - go to showdown and automatically perform it
-				game.CurrentPhase = nameof(KingsAndLowsPhase.Showdown);
+				// Multiple players - go to DrawComplete phase first
+				// The ContinuousPlayBackgroundService will transition to Showdown after a delay
+				// so all players can see their new cards
+				game.CurrentPhase = nameof(KingsAndLowsPhase.DrawComplete);
+				game.DrawCompletedAt = now;
 				game.UpdatedAt = now;
 
-				// IMPORTANT: Save changes before performing showdown so new cards are in database
+				// Save changes so new cards are in database and state is broadcast
 				await context.SaveChangesAsync(cancellationToken);
 
-				// Auto-perform showdown for multiple staying players
-				await PerformShowdownAndSetupPotMatching(game, gamePlayersList, context, now, cancellationToken);
+				// Note: Showdown will be performed by ContinuousPlayBackgroundService after delay
 			}
 
 			nextPhase = game.CurrentPhase;

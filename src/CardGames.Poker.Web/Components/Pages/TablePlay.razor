@@ -178,16 +178,18 @@
                            IsSubmitting="@isSubmittingAction" />
         }
 
-        <!-- Draw Panel (only shown when it's player's turn during draw phase) -->
+        <!-- Draw Panel (only shown when it's player's turn during draw phase, or forced visible during animation/DrawComplete) -->
         @if 
-            (IsDrawingPhase && (isPlayerDrawTurn || _forceShowDrawPanel))
+            ((IsDrawingPhase && isPlayerDrawTurn) || _forceShowDrawPanel || IsDrawCompletePhase)
         {
             <DrawPanel Cards="@currentPlayerDrawCards" SelectedIndices="@selectedDiscardIndices"
                        OnToggleSelection="ToggleDiscardSelectionAsync" OnDraw="HandleDrawActionAsync" IsSubmitting="@isSubmittingDraw"
                        IsAnimating="@isDrawAnimating" IsDiscarding="@isDiscardingCards" IsDrawing="@isDrawingNewCards"
                        CardsDrawn="@cardsDrawn" NewCardIndices="@newCardIndices"
                        HandDescription="@currentPlayerHandEvaluationDescription" MaxDiscards="@GetMaxDiscards()"
-                       DrawingSpecialRules="@GetDrawingSpecialRules()" />
+                       DrawingSpecialRules="@GetDrawingSpecialRules()" 
+                       IsReadOnly="@(IsDrawCompletePhase || cardsDrawn)"
+                       ReadOnlyMessage="@(IsDrawCompletePhase ? "Waiting for showdown..." : "New cards drawn!")" />
         }
 
         <!-- Draw Phase Waiting Indicator (shown to other players during draw phase) -->
@@ -419,6 +421,7 @@
     private string? _deckHandDescription;
     private bool _delayShowdownOverlay; // Delay showdown after deck draw animation
     private DateTimeOffset? _showdownDelayUntil; // When the delay expires
+    private string? _previousPhaseCategory; // Track phase category for transition detection
 
     private IReadOnlyList<CardInfo> CurrentPlayerHandCards =>
         currentPlayerSeatIndex >= 0 && currentPlayerSeatIndex < seats.Count
@@ -494,6 +497,10 @@
     // Drop or Stay phase detection (for Kings and Lows)
     private bool IsDropOrStayPhase =>
         string.Equals(_gameResponse?.CurrentPhase, "DropOrStay", StringComparison.OrdinalIgnoreCase);
+
+    // Draw Complete phase detection (for Kings and Lows - delay before showdown)
+    private bool IsDrawCompletePhase =>
+        string.Equals(_gameResponse?.CurrentPhase, "DrawComplete", StringComparison.OrdinalIgnoreCase);
 
     // Player vs Deck phase detection (for Kings and Lows)
     private bool IsPlayerVsDeckPhase =>
@@ -664,19 +671,21 @@
         // Update seats from public state
         UpdateSeatsFromPublicState(state.Seats);
 
+        // Update previous phase category for next state update
+        var currentPhaseCategory = state.CurrentPhaseCategory;
+        _previousPhaseCategory = currentPhaseCategory;
+
         // Handle showdown state - check if entering showdown/complete phase
+        // Pass whether we should delay showing the overlay (only for deck draw animation now)
+        var shouldDelayShowdownOverlay = _delayShowdownOverlay || 
+            (_showdownDelayUntil.HasValue && DateTimeOffset.UtcNow < _showdownDelayUntil.Value);
         if (state.Showdown is not null)
         {
-            UpdateShowdownFromPublicState(state.Showdown);
+            UpdateShowdownFromPublicState(state.Showdown, shouldDelayShowdownOverlay);
         }
 
         // If entering showdown or complete phase, load showdown results via API
-        // But delay showing the overlay if we're coming from a deck draw animation
-        // or if the delay timer hasn't expired yet
-        var shouldDelayShowdown = _delayShowdownOverlay || 
-            (_showdownDelayUntil.HasValue && DateTimeOffset.UtcNow < _showdownDelayUntil.Value);
-
-        if (IsShowdownPhase && _showdownResult is null && !shouldDelayShowdown)
+        if (IsShowdownPhase && _showdownResult is null && !shouldDelayShowdownOverlay)
         {
             await TryLoadShowdownAsync();
         }
@@ -694,11 +703,13 @@
             {
                 await Task.Delay(TimeSpan.FromSeconds(5));
                 _showdownDelayUntil = null;
-                if (IsShowdownPhase && _showdownResult is null)
+                // Load showdown results if not already loaded, then show the overlay
+                if (_showdownResult is null && IsShowdownPhase)
                 {
                     await TryLoadShowdownAsync();
-                    await InvokeAsync(StateHasChanged);
                 }
+                _showShowdownOverlay = true;
+                await InvokeAsync(StateHasChanged);
             });
         }
 
@@ -726,6 +737,19 @@
                 _deckDrawSelectedIndices.Clear();
                 _delayShowdownOverlay = false;
                 _showdownDelayUntil = null;
+                _previousPhaseCategory = null;
+
+                // Reset DrawPanel state for new hand
+                selectedDiscardIndices.Clear();
+                currentPlayerDrawCards = [];
+                cardsDrawn = false;
+                isPlayerDrawTurn = false;
+                isDrawAnimating = false;
+                isDiscardingCards = false;
+                isDrawingNewCards = false;
+                isSubmittingDraw = false;
+                _forceShowDrawPanel = false;
+                newCardIndices = [];
             }
         }
 
@@ -900,6 +924,19 @@
                 IsSelected = false
             }).ToList();
         }
+        // Populate cards for DrawComplete phase so all players can see their new hands
+        else if ((IsDrawCompletePhase || string.Equals(currentPhase, "DrawComplete", StringComparison.OrdinalIgnoreCase))
+            && state.Hand is not null && state.Hand.Count > 0)
+        {
+            // Show the player's new hand during DrawComplete phase
+            currentPlayerDrawCards = state.Hand.Select((c, i) => new CardInfo
+            {
+                Rank = c.Rank,
+                Suit = c.Suit,
+                IsFaceUp = true,
+                IsSelected = false
+            }).ToList();
+        }
 
         // Calculate hand odds from current cards
         CalculateHandOdds(state.Hand);
@@ -980,7 +1017,7 @@
         }
     }
 
-    private void UpdateShowdownFromPublicState(ShowdownPublicDto showdown)
+    private void UpdateShowdownFromPublicState(ShowdownPublicDto showdown, bool delayShowingOverlay = false)
     {
         if (_showdownResult is null && showdown.IsComplete)
         {
@@ -1035,7 +1072,11 @@
                 wonByFold: false,
                 sevensWinners: sevensWinners);
 
-            _showShowdownOverlay = true;
+            // Only show overlay immediately if we're not delaying
+            if (!delayShowingOverlay)
+            {
+                _showShowdownOverlay = true;
+            }
 
             _showdownWon = _showdownResult.Payouts?.Keys.Any(p =>
                 string.Equals(p, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase) ||
@@ -1491,8 +1532,10 @@
             return;
         }
 
+        // If showdown result is already loaded (e.g., from SignalR update), just show the overlay
         if (_showdownResult is not null)
         {
+            _showShowdownOverlay = true;
             return;
         }
 
@@ -1633,6 +1676,7 @@
         isSubmittingDraw = true;
         isDrawAnimating = true;
         _forceShowDrawPanel = true;
+        _delayShowdownOverlay = true; // Delay showdown until animation completes
         cardsDrawn = false;
 
         try
@@ -1691,15 +1735,16 @@
 
                 // Use the new card data from the DrawCardsSuccessful response
                 var content = typedResponse.Content;
-                if (content?.NewCards is { Count: > 0 })
+                if (content is not null)
                 {
-                    Logger.LogInformation("Kings and Lows DrawCards: NewCards count = {Count}", content.NewCards.Count);
+                    Logger.LogInformation("Kings and Lows DrawCards: NewCards count = {Count}, DrawPhaseComplete = {Complete}", 
+                        content.NewCards?.Count ?? 0, content.DrawPhaseComplete);
                     result = new ProcessDrawSuccessful(
                         currentPhase: content.NextPhase ?? "DrawPhase",
                         discardedCards: content.DiscardedCards,
                         drawComplete: content.DrawPhaseComplete,
                         gameId: content.GameId,
-                        newCards: content.NewCards,
+                        newCards: content.NewCards ?? [],
                         nextDrawPlayerIndex: -1,
                         nextDrawPlayerName: content.NextPlayerName,
                         playerName: content.PlayerName ?? ""
@@ -1707,7 +1752,7 @@
                 }
                 else
                 {
-                    Logger.LogWarning("Kings and Lows DrawCards: Content is null or NewCards is empty. Content={Content}", content);
+                    Logger.LogWarning("Kings and Lows DrawCards: Content is null");
                 }
             }
             else
@@ -1729,13 +1774,10 @@
 
             if (IsKingsAndLows && result is null)
             {
-                // Fallback: Kings and Lows draw with no discards (stand pat) - no cards to animate.
-                // Let SignalR refresh the player's hand, and immediately close the draw panel.
+                // Fallback: API call failed - let SignalR refresh the player's hand
                 isDrawAnimating = false;
                 isDrawingNewCards = false;
                 isDiscardingCards = false;
-                currentPlayerDrawCards = [];
-                selectedDiscardIndices.Clear();
                 _forceShowDrawPanel = false;
                 cardsDrawn = false;
                 await InvokeAsync(StateHasChanged);
@@ -1745,6 +1787,36 @@
             // Transition to drawing new cards animation
             isDiscardingCards = false;
 
+            // Handle stand pat (0 discards) case
+            if (discardIndices.Count == 0)
+            {
+                // No cards to animate - just mark as complete
+                cardsDrawn = true;
+                await InvokeAsync(StateHasChanged);
+                
+                // If draw phase is complete (we're now in DrawComplete phase), keep cards visible
+                if (result?.DrawComplete == true)
+                {
+                    isDrawAnimating = false;
+                    _forceShowDrawPanel = false;
+                    _delayShowdownOverlay = false;
+                    // Cards stay in currentPlayerDrawCards for DrawComplete phase display
+                    await InvokeAsync(StateHasChanged);
+                    return;
+                }
+                
+                // Not the last player - brief delay then clear
+                await Task.Delay(500);
+                isDrawAnimating = false;
+                currentPlayerDrawCards = [];
+                selectedDiscardIndices.Clear();
+                _forceShowDrawPanel = false;
+                cardsDrawn = false;
+                await InvokeAsync(StateHasChanged);
+                return;
+            }
+            
+            // Handle discards (1+ cards) case
             if (discardIndices.Count > 0)
             {
                 // Swap in the newly dealt cards before the draw-in animation starts
@@ -1784,19 +1856,47 @@
                 cardsDrawn = true;
                 await InvokeAsync(StateHasChanged);
 
-                // Keep the panel visible for the remainder of the reveal window.
-                await Task.Delay(TimeSpan.FromSeconds(7) - TimeSpan.FromMilliseconds(700));
+                // If this was the last player to draw (DrawComplete phase), the server handles the delay
+                // Just show the cards briefly then let SignalR updates take over
+                if (result?.DrawComplete == true)
+                {
+                    // Short delay to let the "cards drawn" state show, then let SignalR handle the rest
+                    await Task.Delay(500);
+                }
+                else
+                {
+                    // Not the last player - keep the panel visible for the remainder of the reveal window
+                    await Task.Delay(TimeSpan.FromSeconds(7) - TimeSpan.FromMilliseconds(700));
+                }
 
                 isDrawingNewCards = false;
                 newCardIndices = [];
             }
 
-            // Clear animation state
+            // If draw phase is complete (we're now in DrawComplete phase), keep the cards visible
+            // and let SignalR updates handle the transition to showdown
+            if (result?.DrawComplete == true)
+            {
+                // Don't clear the cards - they'll be displayed during DrawComplete phase
+                isDrawAnimating = false;
+                _forceShowDrawPanel = false;
+                cardsDrawn = false;
+                _delayShowdownOverlay = false;
+                // Cards stay in currentPlayerDrawCards for DrawComplete phase display
+                await InvokeAsync(StateHasChanged);
+                return;
+            }
+
+            // Clear animation state (for non-last players)
             isDrawAnimating = false;
             currentPlayerDrawCards = [];
             selectedDiscardIndices.Clear();
             _forceShowDrawPanel = false;
             cardsDrawn = false;
+
+            // Now show the showdown overlay after animation is complete
+            _delayShowdownOverlay = false;
+            await TryLoadShowdownAsync();
 
             // SignalR will broadcast the updated state - no need to refresh manually
         }
@@ -1806,8 +1906,15 @@
             isDiscardingCards = false;
             isDrawingNewCards = false;
             isDrawAnimating = false;
-            _forceShowDrawPanel = false;
-            cardsDrawn = false;
+            _delayShowdownOverlay = false; // Clear delay on completion or error
+            
+            // Only clear draw panel state if we're not in DrawComplete phase
+            // During DrawComplete, we want the cards to remain visible
+            if (!IsDrawCompletePhase)
+            {
+                _forceShowDrawPanel = false;
+                cardsDrawn = false;
+            }
         }
     }
 
