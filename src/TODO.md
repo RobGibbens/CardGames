@@ -1,31 +1,12 @@
-- [x] Show current standings
-- [x] Show hand history
-- [x] Show the user's avatar on TableSeat and their name
-- [x] Always make the logged in player the bottom seat
-- [x] When discarding cards, leave the overlay up with the new cards for a few seconds
-- [x] Add Dev Tunnels to Aspire
-- [x] When winning, the overlay should show the loser's hand, and the payouts. It's showing the wrong winner.
-- [x] Showdown overlay is not ordering cards
-- [x] Showdown does not show the description of the cards for the loser on the loser screen
-- [x] Make the results overlay look better
-- [x] Make sure the table says what game type it is
-- [x] Add the ability to edit table settings if the table isn't started yet
-- [x] Draw Phase overlay should show the current hand, and the new hand
-- [x] Should be able to discard four cards IF you have an ace
-- [x] Add Yahoo as Oauth provider
-- [x] Add Microsoft as Oauth provider
-- [x] Hand history is not displaying correctly
-- [x] Dashboard needs to be bigger
-- [x] I don't like how small the cards are and what they look like
-- [x] Showdown overlay should show new card images
-- [x] Draw Panel should show new card images
+# TODO
+
+## Still to do
 
 - [ ] Make sure signalr isn't broadcasting to all players in all games
+- [ ] Table settings should be dynamic when creating a table. Not all games have an ante or a minimum bet.
+- [ ] Kings and lows - can not join a table already in progress
 - [ ] Kings and Lows - make the chips look better
-- [ ] Kings and Lows - odds aren't working right
 - [ ] Table - make the table seat look like PokerStars
-- [?] Drawing new cards isn't always dealing from the same deck
-- [x] Kings and Lows - all drops revealed at the same time
 - [ ] Kings and Lows - don't deal to players that don't have enough chips to match the pot
 - [ ] Add chip management to the dashboard (buy in, cash out, add chips)
 - [ ] FCD - can't draw four with an Ace
@@ -52,6 +33,7 @@
 - [ ] Have the ability for someone to take a seat and be dealt into the next hand
 - [ ] When already logged in, take them to the Lobby
 - [ ] Test side pots
+- [ ] Have option on lobby for a list, not graphics
 - [ ] The fields on the register page should be wider
 - [ ] Showdown should use better description of the cards (Pair of Aces vs One Pair)
 - [ ] Add animation of dealing the cards
@@ -95,3 +77,32 @@
 - [ ] Add Guts
 - [ ] 
 
+
+
+
+## Completed
+- [x] Show current standings
+- [x] Show hand history
+- [x] Show the user's avatar on TableSeat and their name
+- [x] Always make the logged in player the bottom seat
+- [x] When discarding cards, leave the overlay up with the new cards for a few seconds
+- [x] Add Dev Tunnels to Aspire
+- [x] When winning, the overlay should show the loser's hand, and the payouts. It's showing the wrong winner.
+- [x] Showdown overlay is not ordering cards
+- [x] Showdown does not show the description of the cards for the loser on the loser screen
+- [x] Make the results overlay look better
+- [x] Make sure the table says what game type it is
+- [x] Add the ability to edit table settings if the table isn't started yet
+- [x] Draw Phase overlay should show the current hand, and the new hand
+- [x] Should be able to discard four cards IF you have an ace
+- [x] Add Yahoo as Oauth provider
+- [x] Add Microsoft as Oauth provider
+- [x] Hand history is not displaying correctly
+- [x] Dashboard needs to be bigger
+- [x] I don't like how small the cards are and what they look like
+- [x] Showdown overlay should show new card images
+- [x] Kings and lows - setting an ante when creating the table doesn't come over
+- [x] Draw Panel should show new card images
+- [?] Drawing new cards isn't always dealing from the same deck
+- [x] Kings and Lows - all drops revealed at the same time
+- [x] Kings and Lows - odds aren't working right
