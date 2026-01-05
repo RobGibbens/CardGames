@@ -291,6 +291,9 @@ namespace CardGames.Poker.Api.Migrations
                     b.Property<int>("DealerPosition")
                         .HasColumnType("int");
 
+                    b.Property<DateTimeOffset?>("DrawCompletedAt")
+                        .HasColumnType("datetimeoffset");
+
                     b.Property<DateTimeOffset?>("EndedAt")
                         .HasColumnType("datetimeoffset");
 

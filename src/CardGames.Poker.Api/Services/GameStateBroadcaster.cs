@@ -42,6 +42,10 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
             var publicState = await _tableStateBuilder.BuildPublicStateAsync(gameId, cancellationToken);
             if (publicState is not null)
             {
+                _logger.LogInformation(
+                    "Broadcasting public state for game {GameId}, phase: {Phase}, seats: {SeatCount}",
+                    gameId, publicState.CurrentPhase, publicState.Seats.Count);
+
                 await _hubContext.Clients.Group(groupName)
                     .SendAsync("TableStateUpdated", publicState, cancellationToken);
 
@@ -50,6 +54,10 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 
             // Get all player user IDs and send private state to each
             var playerUserIds = await _tableStateBuilder.GetPlayerUserIdsAsync(gameId, cancellationToken);
+            _logger.LogInformation(
+                "Broadcasting private state to {PlayerCount} players: [{PlayerIds}]",
+                playerUserIds.Count, string.Join(", ", playerUserIds));
+
             foreach (var userId in playerUserIds)
             {
                 await SendPrivateStateToUserAsync(gameId, userId, cancellationToken);
@@ -94,10 +102,20 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
             var privateState = await _tableStateBuilder.BuildPrivateStateAsync(gameId, userId, cancellationToken);
             if (privateState is not null)
             {
+                _logger.LogInformation(
+                    "Sending private state to user {UserId} for game {GameId}: {CardCount} cards, seat {SeatPosition}",
+                    userId, gameId, privateState.Hand.Count, privateState.SeatPosition);
+
                 await _hubContext.Clients.User(userId)
                     .SendAsync("PrivateStateUpdated", privateState, cancellationToken);
 
                 _logger.LogDebug("Sent private state to user {UserId} for game {GameId}", userId, gameId);
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "BuildPrivateStateAsync returned null for user {UserId} in game {GameId}",
+                    userId, gameId);
             }
         }
 
@@ -107,64 +125,64 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
             string playerName,
             int seatIndex,
             bool canPlayCurrentHand,
-                CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default)
+        {
+            var groupName = GetGroupName(gameId);
+
+            try
             {
-                var groupName = GetGroupName(gameId);
-
-                try
+                var notification = new PlayerJoinedDto
                 {
-                    var notification = new PlayerJoinedDto
-                    {
-                        GameId = gameId,
-                        PlayerName = playerName,
-                        SeatIndex = seatIndex,
-                        CanPlayCurrentHand = canPlayCurrentHand,
-                        Message = canPlayCurrentHand
-                            ? $"{playerName} has joined the table!"
-                            : $"{playerName} has joined and will play next hand."
-                    };
+                    GameId = gameId,
+                    PlayerName = playerName,
+                    SeatIndex = seatIndex,
+                    CanPlayCurrentHand = canPlayCurrentHand,
+                    Message = canPlayCurrentHand
+                        ? $"{playerName} has joined the table!"
+                        : $"{playerName} has joined and will play next hand."
+                };
 
-                    // Send to all in the group except the player who just joined
-                    await _hubContext.Clients.GroupExcept(groupName, [playerName])
-                        .SendAsync("PlayerJoined", notification, cancellationToken);
+                // Send to all in the group except the player who just joined
+                await _hubContext.Clients.GroupExcept(groupName, [playerName])
+                    .SendAsync("PlayerJoined", notification, cancellationToken);
 
-                    _logger.LogInformation(
-                        "Broadcast PlayerJoined notification for {PlayerName} at seat {SeatIndex} in game {GameId}",
-                        playerName, seatIndex, gameId);
-                }
-                catch (Exception ex)
+                _logger.LogInformation(
+                    "Broadcast PlayerJoined notification for {PlayerName} at seat {SeatIndex} in game {GameId}",
+                    playerName, seatIndex, gameId);
+            }
+            catch (Exception ex)
             {
                 _logger.LogError(ex,
                     "Failed to broadcast PlayerJoined notification for game {GameId}", gameId);
                 // Don't throw - the join was successful, just the notification failed
             }
-            }
-
-            /// <inheritdoc />
-            public async Task BroadcastTableSettingsUpdatedAsync(
-                TableSettingsUpdatedDto notification,
-                CancellationToken cancellationToken = default)
-            {
-                var groupName = GetGroupName(notification.GameId);
-
-                try
-                {
-                    await _hubContext.Clients.Group(groupName)
-                        .SendAsync("TableSettingsUpdated", notification, cancellationToken);
-
-                    _logger.LogInformation(
-                        "Broadcast TableSettingsUpdated notification for game {GameId} by user {UserId}",
-                        notification.GameId,
-                        notification.UpdatedById);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex,
-                        "Failed to broadcast TableSettingsUpdated notification for game {GameId}",
-                        notification.GameId);
-                    throw;
-                }
-            }
-
-            private static string GetGroupName(Guid gameId) => $"{GameGroupPrefix}{gameId}";
         }
+
+                /// <inheritdoc />
+                public async Task BroadcastTableSettingsUpdatedAsync(
+                    TableSettingsUpdatedDto notification,
+                    CancellationToken cancellationToken = default)
+                {
+                    var groupName = GetGroupName(notification.GameId);
+
+                    try
+                    {
+                        await _hubContext.Clients.Group(groupName)
+                            .SendAsync("TableSettingsUpdated", notification, cancellationToken);
+
+                        _logger.LogInformation(
+                            "Broadcast TableSettingsUpdated notification for game {GameId} by user {UserId}",
+                            notification.GameId,
+                            notification.UpdatedById);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex,
+                            "Failed to broadcast TableSettingsUpdated notification for game {GameId}",
+                            notification.GameId);
+                        throw;
+                    }
+                }
+
+                private static string GetGroupName(Guid gameId) => $"{GameGroupPrefix}{gameId}";
+            }

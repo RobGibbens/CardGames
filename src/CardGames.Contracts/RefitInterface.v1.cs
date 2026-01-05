@@ -639,6 +639,214 @@ namespace CardGames.Poker.Api.Clients
 
     /// <summary>CreateGame</summary>
     [System.CodeDom.Compiler.GeneratedCode("Refitter", "1.7.0.0")]
+    public partial interface IKingsAndLowsApi
+    {
+        /// <summary>CreateGame</summary>
+        /// <remarks>Create a new Kings and Lows game.</remarks>
+        /// <returns>Created</returns>
+        /// <exception cref="ApiException">
+        /// Thrown when the request returns a non-success status code:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// </list>
+        /// </exception>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/games/kings-and-lows")]
+        Task<IApiResponse<System.Guid>> KingsAndLowsCreateGameAsync([Body] CreateGameCommand body, CancellationToken cancellationToken = default);
+
+        /// <summary>StartHand</summary>
+        /// <remarks>Start a new hand in a Kings and Lows game.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Post("/api/v1/games/kings-and-lows/{gameId}/start-hand")]
+        Task<IApiResponse<StartHandSuccessful>> KingsAndLowsStartHandAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
+        /// <summary>DropOrStay</summary>
+        /// <remarks>Record a player's drop or stay decision in Kings and Lows.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/games/kings-and-lows/{gameId}/drop-or-stay")]
+        Task<IApiResponse<DropOrStaySuccessful>> KingsAndLowsDropOrStayAsync(System.Guid gameId, [Body] DropOrStayRequest body, CancellationToken cancellationToken = default);
+
+        /// <summary>DrawCards</summary>
+        /// <remarks>Process a player's draw action in Kings and Lows.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/games/kings-and-lows/{gameId}/draw")]
+        Task<IApiResponse<DrawCardsSuccessful>> KingsAndLowsDrawCardsAsync(System.Guid gameId, [Body] DrawCardsRequest body, CancellationToken cancellationToken = default);
+
+        /// <summary>DeckDraw</summary>
+        /// <remarks>Process the deck's draw in player-vs-deck scenario.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/games/kings-and-lows/{gameId}/deck-draw")]
+        Task<IApiResponse<DeckDrawSuccessful>> KingsAndLowsDeckDrawAsync(System.Guid gameId, [Body] DeckDrawRequest body, CancellationToken cancellationToken = default);
+
+        /// <summary>Perform Showdown</summary>
+        /// <remarks>
+        /// Performs the showdown phase to evaluate all remaining players' hands and award the pot to the winner(s). Kings and Lows uses wild card evaluation: Kings are always wild, and the lowest non-King card(s) are also wild.
+        /// 
+        /// **Wild Card Rules:**
+        /// - All Kings are wild
+        /// - The lowest-ranked card(s) in each player's hand (excluding Kings) are also wild
+        /// - Wild cards can represent any card to form the best possible hand
+        /// 
+        /// **Showdown Scenarios:**
+        /// - **Win by fold:** If only one player stays, they win the pot without showing cards
+        /// - **Single winner:** The player with the highest-ranking hand wins the pot
+        /// - **Split pot:** If multiple players tie, the pot is divided equally among winners
+        /// 
+        /// **Response includes:**
+        /// - Payouts to each winning player
+        /// - Evaluated hand information with wild card indexes
+        /// - Winners and losers lists (losers must match the pot)
+        /// </remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Post("/api/v1/games/kings-and-lows/{gameId}/showdown")]
+        Task<IApiResponse<PerformShowdownSuccessful>> KingsAndLowsPerformShowdownAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
+        /// <summary>AcknowledgePotMatch</summary>
+        /// <remarks>Process pot matching in Kings and Lows.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Post("/api/v1/games/kings-and-lows/{gameId}/acknowledge-pot-match")]
+        Task<IApiResponse<AcknowledgePotMatchSuccessful>> KingsAndLowsAcknowledgePotMatchAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+    }
+
+    /// <summary>CreateGame</summary>
+    [System.CodeDom.Compiler.GeneratedCode("Refitter", "1.7.0.0")]
     public partial interface ITwosJacksManWithTheAxeApi
     {
         /// <summary>CreateGame</summary>
@@ -1198,6 +1406,43 @@ namespace CardGames.Poker.Api.Contracts
     
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record AcknowledgePotMatchSuccessful
+    {
+        [JsonConstructor]
+        public AcknowledgePotMatchSuccessful(System.Guid @gameId, IDictionary<string, int> @matchAmounts, int @newPotAmount, string @nextPhase, int @totalMatched)
+        {
+            this.GameId = @gameId;
+            this.TotalMatched = @totalMatched;
+            this.NewPotAmount = @newPotAmount;
+            this.NextPhase = @nextPhase;
+            this.MatchAmounts = @matchAmounts;
+        }
+
+        [JsonPropertyName("gameId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid GameId { get; init; }
+
+        [JsonPropertyName("totalMatched")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int TotalMatched { get; init; }
+
+        [JsonPropertyName("newPotAmount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int NewPotAmount { get; init; }
+
+        [JsonPropertyName("nextPhase")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string NextPhase { get; init; }
+
+        [JsonPropertyName("matchAmounts")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public IDictionary<string, int> MatchAmounts { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial record AnteContribution
     {
         [JsonConstructor]
@@ -1736,6 +1981,137 @@ namespace CardGames.Poker.Api.Contracts
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record DeckDrawRequest
+    {
+        [JsonConstructor]
+        public DeckDrawRequest(ICollection<int> @discardIndices, System.Guid @playerId)
+        {
+            this.PlayerId = @playerId;
+            this.DiscardIndices = @discardIndices;
+        }
+
+        [JsonPropertyName("playerId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid PlayerId { get; init; }
+
+        [JsonPropertyName("discardIndices")]
+        public ICollection<int> DiscardIndices { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record DeckDrawSuccessful
+    {
+        [JsonConstructor]
+        public DeckDrawSuccessful(int @cardsDiscarded, int @cardsDrawn, System.Guid @gameId, string @nextPhase)
+        {
+            this.GameId = @gameId;
+            this.CardsDiscarded = @cardsDiscarded;
+            this.CardsDrawn = @cardsDrawn;
+            this.NextPhase = @nextPhase;
+        }
+
+        [JsonPropertyName("gameId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid GameId { get; init; }
+
+        [JsonPropertyName("cardsDiscarded")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int CardsDiscarded { get; init; }
+
+        [JsonPropertyName("cardsDrawn")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int CardsDrawn { get; init; }
+
+        [JsonPropertyName("nextPhase")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string NextPhase { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record DrawCardsRequest
+    {
+        [JsonConstructor]
+        public DrawCardsRequest(ICollection<int> @discardIndices, System.Guid @playerId)
+        {
+            this.PlayerId = @playerId;
+            this.DiscardIndices = @discardIndices;
+        }
+
+        [JsonPropertyName("playerId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid PlayerId { get; init; }
+
+        [JsonPropertyName("discardIndices")]
+        public ICollection<int> DiscardIndices { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record DrawCardsSuccessful
+    {
+        [JsonConstructor]
+        public DrawCardsSuccessful(int @cardsDiscarded, int @cardsDrawn, ICollection<CardInfo> @discardedCards, bool @drawPhaseComplete, System.Guid @gameId, ICollection<CardInfo> @newCards, string @nextPhase, System.Guid? @nextPlayerId, string @nextPlayerName, System.Guid @playerId, string @playerName)
+        {
+            this.GameId = @gameId;
+            this.PlayerId = @playerId;
+            this.PlayerName = @playerName;
+            this.CardsDiscarded = @cardsDiscarded;
+            this.CardsDrawn = @cardsDrawn;
+            this.DiscardedCards = @discardedCards;
+            this.NewCards = @newCards;
+            this.DrawPhaseComplete = @drawPhaseComplete;
+            this.NextPhase = @nextPhase;
+            this.NextPlayerId = @nextPlayerId;
+            this.NextPlayerName = @nextPlayerName;
+        }
+
+        [JsonPropertyName("gameId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid GameId { get; init; }
+
+        [JsonPropertyName("playerId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid PlayerId { get; init; }
+
+        [JsonPropertyName("playerName")]
+        public string PlayerName { get; init; }
+
+        [JsonPropertyName("cardsDiscarded")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int CardsDiscarded { get; init; }
+
+        [JsonPropertyName("cardsDrawn")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int CardsDrawn { get; init; }
+
+        [JsonPropertyName("discardedCards")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public ICollection<CardInfo> DiscardedCards { get; init; }
+
+        [JsonPropertyName("newCards")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public ICollection<CardInfo> NewCards { get; init; }
+
+        [JsonPropertyName("drawPhaseComplete")]
+        public bool DrawPhaseComplete { get; init; }
+
+        [JsonPropertyName("nextPhase")]
+        public string NextPhase { get; init; }
+
+        [JsonPropertyName("nextPlayerId")]
+        public System.Guid? NextPlayerId { get; init; }
+
+        [JsonPropertyName("nextPlayerName")]
+        public string NextPlayerName { get; init; }
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial record DrawingConfig
     {
         [JsonConstructor]
@@ -1760,6 +2136,71 @@ namespace CardGames.Poker.Api.Contracts
         [JsonPropertyName("drawingRounds")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? DrawingRounds { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record DropOrStayRequest
+    {
+        [JsonConstructor]
+        public DropOrStayRequest(string @decision, System.Guid @playerId)
+        {
+            this.PlayerId = @playerId;
+            this.Decision = @decision;
+        }
+
+        [JsonPropertyName("playerId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid PlayerId { get; init; }
+
+        [JsonPropertyName("decision")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Decision { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record DropOrStaySuccessful
+    {
+        [JsonConstructor]
+        public DropOrStaySuccessful(bool @allPlayersDecided, string @decision, int @droppedCount, System.Guid @gameId, string @nextPhase, System.Guid @playerId, int @stayingCount)
+        {
+            this.GameId = @gameId;
+            this.PlayerId = @playerId;
+            this.Decision = @decision;
+            this.AllPlayersDecided = @allPlayersDecided;
+            this.StayingCount = @stayingCount;
+            this.DroppedCount = @droppedCount;
+            this.NextPhase = @nextPhase;
+        }
+
+        [JsonPropertyName("gameId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid GameId { get; init; }
+
+        [JsonPropertyName("playerId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid PlayerId { get; init; }
+
+        [JsonPropertyName("decision")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Decision { get; init; }
+
+        [JsonPropertyName("allPlayersDecided")]
+        public bool AllPlayersDecided { get; init; }
+
+        [JsonPropertyName("stayingCount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int StayingCount { get; init; }
+
+        [JsonPropertyName("droppedCount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int DroppedCount { get; init; }
+
+        [JsonPropertyName("nextPhase")]
+        public string NextPhase { get; init; }
 
     }
 
@@ -3496,6 +3937,23 @@ namespace CardGames.Poker.Api.Clients
                 });
 
             builder?.Invoke(clientBuilderIFiveCardDrawApi);
+
+            var clientBuilderIKingsAndLowsApi = services
+                .AddRefitClient<IKingsAndLowsApi>(settings)
+                .ConfigureHttpClient(c => c.BaseAddress = baseUrl);
+
+            clientBuilderIKingsAndLowsApi
+                .AddStandardResilienceHandler(config =>
+                {
+                    config.Retry = new HttpRetryStrategyOptions
+                    {
+                        UseJitter = true,
+                        MaxRetryAttempts = 3,
+                        Delay = TimeSpan.FromSeconds(0.5)
+                    };
+                });
+
+            builder?.Invoke(clientBuilderIKingsAndLowsApi);
 
             var clientBuilderITwosJacksManWithTheAxeApi = services
                 .AddRefitClient<ITwosJacksManWithTheAxeApi>(settings)

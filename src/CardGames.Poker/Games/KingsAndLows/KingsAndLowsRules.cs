@@ -63,6 +63,14 @@ public static class KingsAndLowsRules
                 },
                 new() 
                 { 
+                    PhaseId = "DrawComplete", 
+                    Name = "Draw Complete", 
+                    Description = "All players have drawn - viewing new cards",
+                    Category = "Drawing",
+                    RequiresPlayerAction = false
+                },
+                new() 
+                { 
                     PhaseId = "PlayerVsDeck", 
                     Name = "Player vs Deck", 
                     Description = "Single remaining player competes against the deck",

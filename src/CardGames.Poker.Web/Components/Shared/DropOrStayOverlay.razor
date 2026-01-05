@@ -1,0 +1,206 @@
+@namespace CardGames.Poker.Web.Components.Shared
+
+@using static CardGames.Poker.Web.Components.Pages.TablePlay
+
+<div class="drop-or-stay-panel @(IsDeciding ? "submitting" : "")">
+    <!-- Header -->
+    <div class="drop-or-stay-header">
+        <div class="drop-or-stay-title">
+            <i class="fa-solid fa-hand-pointer"></i>
+            <span>Drop or Stay Decision</span>
+        </div>
+        <div class="drop-or-stay-subtitle">
+            Current Pot: @PotAmount.ToString("N0") chips
+        </div>
+        @if (!string.IsNullOrWhiteSpace(HandDescription))
+        {
+            <div class="drop-or-stay-hand-eval">@HandDescription</div>
+        }
+    </div>
+
+    <!-- Cards Display -->
+    <div class="drop-or-stay-cards-container">
+        @foreach (var card in GetOrderedCards())
+        {
+            <div class="drop-or-stay-card-wrapper">
+                <div class="drop-or-stay-card">
+                    <playing-card rank="@GetPlayingCardRank(card)" suit="@card.Suit" style="height:92px;width:64px;"></playing-card>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- Decision Info -->
+    <div class="drop-or-stay-info">
+        @if (!HasDecided)
+        {
+            <span class="decision-hint">Choose whether to drop (fold) or stay in this hand</span>
+        }
+        else
+        {
+            <span class="decision-made">
+                <i class="fa-solid fa-check-circle"></i>
+                You have decided to <strong>@Decision</strong> - waiting for other players...
+            </span>
+        }
+    </div>
+
+    <!-- Action Buttons -->
+    @if (!HasDecided)
+    {
+        <div class="drop-or-stay-actions">
+            <button class="drop-or-stay-btn drop-btn" 
+                    @onclick='() => OnDecision.InvokeAsync("Drop")' 
+                    disabled="@IsDeciding">
+                <i class="fa-solid fa-times"></i>
+                <span>Drop</span>
+            </button>
+
+            <button class="drop-or-stay-btn stay-btn @(!IsDeciding ? "active" : "")" 
+                    @onclick='() => OnDecision.InvokeAsync("Stay")' 
+                    disabled="@IsDeciding">
+                <i class="fa-solid fa-check"></i>
+                <span>Stay</span>
+            </button>
+        </div>
+    }
+
+    @if (IsDeciding)
+    {
+        <div class="drop-or-stay-submitting">
+            <span class="loading-spinner-small"></span>
+            <span>Processing decision...</span>
+        </div>
+    }
+
+    @if (PlayersWaiting.Count > 0 && HasDecided)
+    {
+        <div class="drop-or-stay-waiting">
+            <span class="waiting-label">Waiting for:</span>
+            <span class="waiting-names">@string.Join(", ", PlayersWaiting)</span>
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// The player's current hand cards.
+    /// </summary>
+    [Parameter]
+    public List<CardInfo> Cards { get; set; } = [];
+
+    /// <summary>
+    /// The player's hand description/evaluation.
+    /// </summary>
+    [Parameter]
+    public string? HandDescription { get; set; }
+
+    /// <summary>
+    /// The current pot amount.
+    /// </summary>
+    [Parameter]
+    public int PotAmount { get; set; }
+
+    /// <summary>
+    /// Whether the current player has already decided.
+    /// </summary>
+    [Parameter]
+    public bool HasDecided { get; set; }
+
+    /// <summary>
+    /// The decision made by the current player (Drop or Stay).
+    /// </summary>
+    [Parameter]
+    public string? Decision { get; set; }
+
+    /// <summary>
+    /// Whether a decision is currently being processed.
+    /// </summary>
+    [Parameter]
+    public bool IsDeciding { get; set; }
+
+    /// <summary>
+    /// List of player names who haven't decided yet.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<string> PlayersWaiting { get; set; } = [];
+
+    /// <summary>
+    /// Callback when the player makes a decision.
+    /// </summary>
+    [Parameter]
+    public EventCallback<string> OnDecision { get; set; }
+
+        private string? GetPlayingCardRank(CardInfo card)
+        {
+            var rank = card.Rank switch
+            {
+                "J" => "Jack",
+                "Q" => "Queen",
+                "K" => "King",
+                "A" => "Ace",
+                _ => card.Rank
+            };
+
+            return rank;
+        }
+
+        /// <summary>
+        /// Orders cards by rank value (2..A) then by suit.
+        /// </summary>
+        private IEnumerable<CardInfo> GetOrderedCards()
+        {
+            if (Cards.Count == 0)
+            {
+                return [];
+            }
+
+            return Cards
+                .OrderBy(c => string.IsNullOrWhiteSpace(c.Rank) ? 1 : 0)
+                .ThenBy(c => GetRankValue(c.Rank))
+                .ThenBy(c => GetSuitValue(c.Suit));
+        }
+
+        private static int GetRankValue(string? rank)
+        {
+            if (string.IsNullOrWhiteSpace(rank))
+            {
+                return int.MaxValue;
+            }
+
+            return rank.Trim().ToUpperInvariant() switch
+            {
+                "2" or "TWO" or "DEUCE" => 2,
+                "3" or "THREE" => 3,
+                "4" or "FOUR" => 4,
+                "5" or "FIVE" => 5,
+                "6" or "SIX" => 6,
+                "7" or "SEVEN" => 7,
+                "8" or "EIGHT" => 8,
+                "9" or "NINE" => 9,
+                "10" or "T" or "TEN" => 10,
+                "J" or "JACK" => 11,
+                "Q" or "QUEEN" => 12,
+                "K" or "KING" => 13,
+                "A" or "ACE" => 14,
+                _ => int.MaxValue
+            };
+        }
+
+        private static int GetSuitValue(string? suit)
+        {
+            if (string.IsNullOrWhiteSpace(suit))
+            {
+                return int.MaxValue;
+            }
+
+            return suit.Trim().ToLowerInvariant() switch
+            {
+                "clubs" or "c" => 0,
+                "diamonds" or "d" => 1,
+                "hearts" or "h" => 2,
+                "spades" or "s" => 3,
+                _ => int.MaxValue
+            };
+        }
+    }

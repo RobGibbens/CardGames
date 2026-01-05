@@ -21,6 +21,12 @@ public enum KingsAndLowsPhase
     DrawPhase,
 
     /// <summary>
+    /// Draw complete - all players have drawn their cards.
+    /// This is a brief display phase before showdown begins.
+    /// </summary>
+    DrawComplete,
+
+    /// <summary>
     /// Special case: Only one player stayed - they play against the deck.
     /// Dealer deals a dummy hand from remaining cards.
     /// </summary>

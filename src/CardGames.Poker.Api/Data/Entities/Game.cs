@@ -166,6 +166,12 @@ public class Game : EntityWithRowVersion
 	public DateTimeOffset? NextHandStartsAt { get; set; }
 
 	/// <summary>
+	/// The date and time when the draw phase was completed.
+	/// Used to track the start of the draw results display period before showdown.
+	/// </summary>
+	public DateTimeOffset? DrawCompletedAt { get; set; }
+
+	/// <summary>
 	/// The unique identifier of the user who created this game (host).
 	/// </summary>
 	public string? CreatedById { get; set; }

@@ -21,6 +21,7 @@
 @inject IGamesApi GamesApiClient
 @inject IFiveCardDrawApi FiveCardDrawApiClient
 @inject ITwosJacksManWithTheAxeApi TwosJacksManWithTheAxeApi
+@inject IKingsAndLowsApi KingsAndLowsApi
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject GameHubClient GameHubClient
 @inject DashboardState DashboardState
@@ -74,8 +75,9 @@
                 if (isHost)
                 {
                     <div class="host-controls">
-                        @if (_gameResponse.CurrentPhase == GamePhase.WaitingForPlayers.ToString() || _gameResponse.CurrentPhase
-                                        == GamePhase.WaitingToStart.ToString())
+                        @if 
+                            (_gameResponse.CurrentPhase == GamePhase.WaitingForPlayers.ToString() || _gameResponse.CurrentPhase
+                             == GamePhase.WaitingToStart.ToString())
                         {
                             <a href="/table/@GameId/edit" class="btn btn-secondary btn-sm">
                                 <i class="fa-regular fa-pen-to-square"></i>
@@ -86,7 +88,8 @@
                                 Start Game
                             </button>
                         }
-                        else if (_gameResponse.CurrentPhase != GamePhase.Ended.ToString())
+                        else if 
+                            (_gameResponse.CurrentPhase != GamePhase.Ended.ToString())
                         {
                             @if (isPaused)
                             {
@@ -155,7 +158,8 @@
         </div>
 
         <!-- Action Panel (only shown when it's player's turn during betting phase) -->
-        @if (isPlayerTurn && IsBettingPhase)
+        @if 
+            (isPlayerTurn && IsBettingPhase)
         {
             <ActionPanel LegalActions="@legalActions" MinBet="@currentMinBet" MaxBet="@currentMaxBet"
                          CurrentBetToCall="@currentBetToCall" PlayerChips="@playerChips" TurnTimeRemaining="@turnTimeRemaining"
@@ -163,7 +167,9 @@
         }
 
         <!-- Decision Panel (shown during decision phase like Drop/Stay) -->
-        @if (isPlayerTurn && IsDecisionPhase)
+        <!-- Note: Kings and Lows DropOrStay has its own overlay, so exclude it here -->
+        @if 
+            (isPlayerTurn && IsDecisionPhase && !(HasDropOrStay && IsDropOrStayPhase))
         {
             <DecisionPanel Title="@GetDecisionTitle()"
                            Subtitle="@GetDecisionSubtitle()"
@@ -172,19 +178,23 @@
                            IsSubmitting="@isSubmittingAction" />
         }
 
-        <!-- Draw Panel (only shown when it's player's turn during draw phase) -->
-        @if (IsDrawingPhase && (isPlayerDrawTurn || _forceShowDrawPanel))
+        <!-- Draw Panel (only shown when it's player's turn during draw phase, or forced visible during animation/DrawComplete) -->
+        @if 
+            ((IsDrawingPhase && isPlayerDrawTurn) || _forceShowDrawPanel || IsDrawCompletePhase)
         {
             <DrawPanel Cards="@currentPlayerDrawCards" SelectedIndices="@selectedDiscardIndices"
                        OnToggleSelection="ToggleDiscardSelectionAsync" OnDraw="HandleDrawActionAsync" IsSubmitting="@isSubmittingDraw"
                        IsAnimating="@isDrawAnimating" IsDiscarding="@isDiscardingCards" IsDrawing="@isDrawingNewCards"
                        CardsDrawn="@cardsDrawn" NewCardIndices="@newCardIndices"
                        HandDescription="@currentPlayerHandEvaluationDescription" MaxDiscards="@GetMaxDiscards()"
-                       DrawingSpecialRules="@GetDrawingSpecialRules()" />
+                       DrawingSpecialRules="@GetDrawingSpecialRules()" 
+                       IsReadOnly="@(IsDrawCompletePhase || cardsDrawn)"
+                       ReadOnlyMessage="@(IsDrawCompletePhase ? "Waiting for showdown..." : "New cards drawn!")" />
         }
 
         <!-- Draw Phase Waiting Indicator (shown to other players during draw phase) -->
-        @if (IsDrawingPhase && !isPlayerDrawTurn && _currentDrawPlayer is not null)
+        @if 
+            (IsDrawingPhase && !isPlayerDrawTurn && _currentDrawPlayer is not null)
         {
             <div class="draw-phase-indicator">
                 <div class="draw-phase-content">
@@ -194,8 +204,44 @@
             </div>
         }
 
+        <!-- Drop or Stay Overlay (for Kings and Lows) -->
+        @if 
+            (HasDropOrStay && IsDropOrStayPhase)
+        {
+            <DropOrStayOverlay Cards="@currentPlayerDrawCards"
+                               HandDescription="@currentPlayerHandEvaluationDescription"
+                               PotAmount="@pot"
+                               HasDecided="@_hasDropOrStayDecided"
+                               Decision="@_dropOrStayDecision"
+                               IsDeciding="@_isProcessingDropOrStay"
+                               PlayersWaiting="@GetPlayersWaitingForDropOrStay()"
+                               OnDecision="@HandleDropOrStayDecision" />
+        }
+
+        <!-- Player vs Deck Overlay (for Kings and Lows) -->
+        @if 
+            (IsPlayerVsDeckPhase)
+        {
+            <PlayerVsDeckOverlay DeckCards="@GetDeckCards()"
+                                 IsDecisionMaker="@IsCurrentPlayerDeckDecisionMaker"
+                                 DecisionMakerName="@GetDeckDecisionMakerName()"
+                                 HasDrawn="@(_tableState?.PlayerVsDeck?.HasDeckDrawn ?? _hasDeckDrawn)"
+                                 IsProcessing="@_isProcessingDeckDraw"
+                                 SelectedIndices="@_deckDrawSelectedIndices"
+                                 OnCardSelectionToggle="@HandleDeckCardSelectionToggle"
+                                 OnConfirmDraw="@HandleDeckDrawConfirm"
+                                 IsAnimating="@_isDeckDrawAnimating"
+                                 IsDiscarding="@_isDeckDiscardingCards"
+                                 IsDrawingNewCards="@_isDeckDrawingNewCards"
+                                 CardsDrawn="@_deckCardsDrawn"
+                                 NewCardIndices="@_deckNewCardIndices"
+                                 AnimatedCards="@_deckDrawCards"
+                                 HandDescription="@_deckHandDescription" />
+        }
+
         <!-- Special Phase Overlay (for game-specific phases) -->
-        @if (IsSpecialPhase)
+        @if 
+            (IsSpecialPhase)
         {
             <SpecialPhaseOverlay Title="@(_tableState?.CurrentPhaseDescription ?? "Special Phase")"
                                  Description="@GetSpecialPhaseDescription()"
@@ -203,7 +249,8 @@
         }
 
         <!-- Pot Matching Overlay (for Kings and Lows) -->
-        @if (HasPotMatching && IsPotMatchingPhase)
+        @if 
+            (HasPotMatching && IsPotMatchingPhase)
         {
             <PotMatchingOverlay PotAmount="@pot"
                                 LosingPlayers="@GetLosingPlayers()"
@@ -212,7 +259,8 @@
         }
 
         <!-- Waiting/Pre-game overlay (only when waiting for more players, not when game is ready to start) -->
-        @if (_gameResponse.CurrentPhase == GamePhase.WaitingForPlayers.ToString())
+        @if 
+            (_gameResponse.CurrentPhase == GamePhase.WaitingForPlayers.ToString())
         {
             <div class="table-overlay waiting-overlay">
                 <div class="overlay-content">
@@ -252,7 +300,8 @@
         }
 
         <!-- Game Ended overlay -->
-        @if (_gameResponse.CurrentPhase == GamePhase.Ended.ToString())
+        @if 
+            (_gameResponse.CurrentPhase == GamePhase.Ended.ToString())
         {
             <div class="table-overlay ended-overlay">
                 <div class="overlay-content">
@@ -289,7 +338,8 @@
             </div>
         }
 
-        @if (IsShowdownPhase && _showShowdownOverlay && _showdownResult is not null)
+        @if 
+            (IsShowdownPhase && _showShowdownOverlay && _showdownResult is not null)
         {
             <ShowdownOverlay ShowdownResult="@_showdownResult" ShowdownWon="@_showdownWon" ShowdownLost="@_showdownLost"
                              SecondsUntilNextHand="@_secondsUntilNextHand" OnClose="@CloseShowdownOverlay" />
@@ -353,6 +403,31 @@
     private bool _forceShowDrawPanel;
     private int maxDiscards = 3;
 
+    // Kings and Lows specific state
+    private bool _hasDropOrStayDecided;
+    private string? _dropOrStayDecision;
+    private bool _isProcessingDropOrStay;
+    private bool _hasDeckDrawn;
+    private bool _isProcessingDeckDraw;
+    private HashSet<int> _deckDrawSelectedIndices = new();
+
+    // Deck draw animation state
+    private bool _isDeckDrawAnimating;
+    private bool _isDeckDiscardingCards;
+    private bool _isDeckDrawingNewCards;
+    private bool _deckCardsDrawn;
+    private List<int> _deckNewCardIndices = [];
+    private List<CardInfo> _deckDrawCards = [];
+    private string? _deckHandDescription;
+    private bool _delayShowdownOverlay; // Delay showdown after deck draw animation
+    private DateTimeOffset? _showdownDelayUntil; // When the delay expires
+    private string? _previousPhaseCategory; // Track phase category for transition detection
+
+    private IReadOnlyList<CardInfo> CurrentPlayerHandCards =>
+        currentPlayerSeatIndex >= 0 && currentPlayerSeatIndex < seats.Count
+            ? seats[currentPlayerSeatIndex].Cards
+            : [];
+
     private string? currentPlayerHandEvaluationDescription =>
     currentPlayerSeatIndex >= 0 && currentPlayerSeatIndex < seats.Count
     ? seats[currentPlayerSeatIndex].HandEvaluationDescription
@@ -391,6 +466,7 @@
     // Game type code for routing to correct API client
     private string? _gameTypeCode;
     private bool IsTwosJacksManWithTheAxe => string.Equals(_gameTypeCode, "TWOSJACKSMANWITHTHEAXE", StringComparison.OrdinalIgnoreCase);
+    private bool IsKingsAndLows => string.Equals(_gameTypeCode, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase);
 
     // Game rules for dynamic UI rendering
     private GetGameRulesResponse? _gameRules;
@@ -417,6 +493,18 @@
 
     private bool IsSpecialPhase =>
         _tableState?.CurrentPhaseCategory?.Equals("Special", StringComparison.OrdinalIgnoreCase) == true;
+
+    // Drop or Stay phase detection (for Kings and Lows)
+    private bool IsDropOrStayPhase =>
+        string.Equals(_gameResponse?.CurrentPhase, "DropOrStay", StringComparison.OrdinalIgnoreCase);
+
+    // Draw Complete phase detection (for Kings and Lows - delay before showdown)
+    private bool IsDrawCompletePhase =>
+        string.Equals(_gameResponse?.CurrentPhase, "DrawComplete", StringComparison.OrdinalIgnoreCase);
+
+    // Player vs Deck phase detection (for Kings and Lows)
+    private bool IsPlayerVsDeckPhase =>
+        string.Equals(_gameResponse?.CurrentPhase, "PlayerVsDeck", StringComparison.OrdinalIgnoreCase);
 
     // Pot matching phase detection (for Kings and Lows)
     private bool IsPotMatchingPhase =>
@@ -583,16 +671,46 @@
         // Update seats from public state
         UpdateSeatsFromPublicState(state.Seats);
 
+        // Update previous phase category for next state update
+        var currentPhaseCategory = state.CurrentPhaseCategory;
+        _previousPhaseCategory = currentPhaseCategory;
+
         // Handle showdown state - check if entering showdown/complete phase
+        // Pass whether we should delay showing the overlay (only for deck draw animation now)
+        var shouldDelayShowdownOverlay = _delayShowdownOverlay || 
+            (_showdownDelayUntil.HasValue && DateTimeOffset.UtcNow < _showdownDelayUntil.Value);
         if (state.Showdown is not null)
         {
-            UpdateShowdownFromPublicState(state.Showdown);
+            UpdateShowdownFromPublicState(state.Showdown, shouldDelayShowdownOverlay);
         }
 
         // If entering showdown or complete phase, load showdown results via API
-        if (IsShowdownPhase && _showdownResult is null)
+        if (IsShowdownPhase && _showdownResult is null && !shouldDelayShowdownOverlay)
         {
             await TryLoadShowdownAsync();
+        }
+
+        // If deck just finished drawing (via SignalR update from another player's action),
+        // set a delay for showing the showdown overlay
+        if (state.PlayerVsDeck?.HasDeckDrawn == true && !_hasDeckDrawn && !_showdownDelayUntil.HasValue)
+        {
+            // Non-decision maker: delay showdown overlay by 5 seconds to let them see the animation
+            _showdownDelayUntil = DateTimeOffset.UtcNow.AddSeconds(5);
+            _hasDeckDrawn = true;
+
+            // Schedule the showdown to appear after delay
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(TimeSpan.FromSeconds(5));
+                _showdownDelayUntil = null;
+                // Load showdown results if not already loaded, then show the overlay
+                if (_showdownResult is null && IsShowdownPhase)
+                {
+                    await TryLoadShowdownAsync();
+                }
+                _showShowdownOverlay = true;
+                await InvokeAsync(StateHasChanged);
+            });
         }
 
         // Handle continuous play countdown
@@ -611,6 +729,27 @@
             {
                 _showShowdownOverlay = false;
                 _showdownResult = null;
+
+                // Reset Kings and Lows specific state for new hand
+                _hasDropOrStayDecided = false;
+                _dropOrStayDecision = null;
+                _hasDeckDrawn = false;
+                _deckDrawSelectedIndices.Clear();
+                _delayShowdownOverlay = false;
+                _showdownDelayUntil = null;
+                _previousPhaseCategory = null;
+
+                // Reset DrawPanel state for new hand
+                selectedDiscardIndices.Clear();
+                currentPlayerDrawCards = [];
+                cardsDrawn = false;
+                isPlayerDrawTurn = false;
+                isDrawAnimating = false;
+                isDiscardingCards = false;
+                isDrawingNewCards = false;
+                isSubmittingDraw = false;
+                _forceShowDrawPanel = false;
+                newCardIndices = [];
             }
         }
 
@@ -643,29 +782,37 @@
             return;
         }
 
-        Logger.LogDebug("Received private state update for player {PlayerName}", state.PlayerName);
+        Logger.LogDebug("Received private state update for player {PlayerName} at seat {SeatPosition}", 
+            state.PlayerName, state.SeatPosition);
 
-        // Ensure we know which seat is the current player before applying private hand state.
-        // When joining a game already in progress, the private snapshot can arrive before the
-        // page has resolved `currentPlayerSeatIndex` via public state.
-        if (currentPlayerSeatIndex < 0 && !string.IsNullOrWhiteSpace(state.PlayerName))
+        // Use the seat position from private state as the authoritative source.
+        // This is more reliable than name matching since the server knows the exact seat.
+        var targetSeatIndex = state.SeatPosition;
+
+        // Update currentPlayerSeatIndex if not set or if it differs from the authoritative position
+        if (currentPlayerSeatIndex < 0 || currentPlayerSeatIndex != targetSeatIndex)
         {
-            currentPlayerSeatIndex = seats.FindIndex(s => s.IsOccupied
-            && !string.IsNullOrWhiteSpace(s.PlayerName)
-            && string.Equals(s.PlayerName, state.PlayerName, StringComparison.OrdinalIgnoreCase));
+            currentPlayerSeatIndex = targetSeatIndex;
+            currentPlayerName = state.PlayerName;
+            isSeated = true;
 
-            if (currentPlayerSeatIndex >= 0)
+            // Mark the correct seat as current player
+            if (targetSeatIndex >= 0 && targetSeatIndex < seats.Count)
             {
-                isSeated = true;
-                currentPlayerName = state.PlayerName;
-                seats[currentPlayerSeatIndex].IsCurrentPlayer = true;
+                seats[targetSeatIndex].IsCurrentPlayer = true;
             }
         }
 
-        // Update player's cards
-        if (currentPlayerSeatIndex >= 0 && currentPlayerSeatIndex < seats.Count)
+        // Update player's cards using the authoritative seat position
+        if (targetSeatIndex >= 0 && targetSeatIndex < seats.Count && state.Hand is { Count: > 0 })
         {
-            seats[currentPlayerSeatIndex].Cards = state.Hand.Select(c => new CardInfo
+            Logger.LogInformation(
+                "Updating seat {SeatIndex} cards from private state: {CardCount} cards, first card: {FirstCard}",
+                targetSeatIndex, 
+                state.Hand.Count,
+                state.Hand.Count > 0 ? $"{state.Hand[0].Rank} of {state.Hand[0].Suit}" : "none");
+
+            seats[targetSeatIndex].Cards = state.Hand.Select(c => new CardInfo
             {
                 Rank = c.Rank,
                 Suit = c.Suit,
@@ -673,7 +820,15 @@
                 IsSelected = false
             }).ToList();
 
-            seats[currentPlayerSeatIndex].HandEvaluationDescription = state.HandEvaluationDescription;
+            seats[targetSeatIndex].HandEvaluationDescription = state.HandEvaluationDescription;
+            seats[targetSeatIndex].IsCurrentPlayer = true;
+        }
+        else
+        {
+            Logger.LogWarning(
+                "Private state update skipped for seat {SeatIndex}: Hand is null or empty. Hand count: {HandCount}",
+                targetSeatIndex,
+                state.Hand?.Count ?? 0);
         }
 
         // Update available actions
@@ -739,6 +894,50 @@
             }
         }
 
+        // Update Drop or Stay phase state (Kings and Lows)
+        // Populate cards for display in DropOrStayOverlay
+        // Check both the property AND the phase string directly from state to handle reconnection scenarios
+        // where _gameResponse might not be populated yet
+        var currentPhase = _gameResponse?.CurrentPhase ?? string.Empty;
+        if ((IsDropOrStayPhase || string.Equals(currentPhase, "DropOrStay", StringComparison.OrdinalIgnoreCase)) 
+            && state.Hand is not null && state.Hand.Count > 0)
+        {
+            currentPlayerDrawCards = state.Hand.Select((c, i) => new CardInfo
+            {
+                Rank = c.Rank,
+                Suit = c.Suit,
+                IsFaceUp = true,
+                IsSelected = false
+            }).ToList();
+        }
+        // Also populate cards for PlayerVsDeck phase when reconnecting
+        // This ensures the player can see the deck cards after reconnection
+        else if ((IsPlayerVsDeckPhase || string.Equals(currentPhase, "PlayerVsDeck", StringComparison.OrdinalIgnoreCase))
+            && state.Hand is not null && state.Hand.Count > 0 && currentPlayerDrawCards.Count == 0)
+        {
+            // Populate player's own cards for reference during player-vs-deck phase
+            currentPlayerDrawCards = state.Hand.Select((c, i) => new CardInfo
+            {
+                Rank = c.Rank,
+                Suit = c.Suit,
+                IsFaceUp = true,
+                IsSelected = false
+            }).ToList();
+        }
+        // Populate cards for DrawComplete phase so all players can see their new hands
+        else if ((IsDrawCompletePhase || string.Equals(currentPhase, "DrawComplete", StringComparison.OrdinalIgnoreCase))
+            && state.Hand is not null && state.Hand.Count > 0)
+        {
+            // Show the player's new hand during DrawComplete phase
+            currentPlayerDrawCards = state.Hand.Select((c, i) => new CardInfo
+            {
+                Rank = c.Rank,
+                Suit = c.Suit,
+                IsFaceUp = true,
+                IsSelected = false
+            }).ToList();
+        }
+
         // Calculate hand odds from current cards
         CalculateHandOdds(state.Hand);
 
@@ -753,24 +952,48 @@
 
     private void UpdateSeatsFromPublicState(IReadOnlyList<SeatPublicDto> publicSeats)
     {
+        Logger.LogDebug("UpdateSeatsFromPublicState: Processing {SeatCount} seats", publicSeats.Count);
+
         foreach (var publicSeat in publicSeats)
         {
             if (publicSeat.SeatIndex >= 0 && publicSeat.SeatIndex < seats.Count)
             {
-                var isCurrentPlayer = !string.IsNullOrWhiteSpace(_loggedInUserEmail) &&
-                string.Equals(publicSeat.PlayerName, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase);
+                // Check if this is the current player by multiple criteria:
+                // 1. Email match (primary)
+                // 2. Seat index match (for when Player.Name differs from email)
+                // 3. Player name match against currentPlayerName (set from private state)
+                var isCurrentPlayerByEmail = !string.IsNullOrWhiteSpace(_loggedInUserEmail) &&
+                    string.Equals(publicSeat.PlayerName, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase);
+                var isCurrentPlayerBySeatIndex = currentPlayerSeatIndex >= 0 && 
+                    publicSeat.SeatIndex == currentPlayerSeatIndex;
+                var isCurrentPlayerByName = !string.IsNullOrWhiteSpace(currentPlayerName) &&
+                    string.Equals(publicSeat.PlayerName, currentPlayerName, StringComparison.OrdinalIgnoreCase);
+                var isCurrentPlayer = isCurrentPlayerByEmail || isCurrentPlayerBySeatIndex || isCurrentPlayerByName;
 
                 // Preserve face-up cards for current player (will be updated by private state)
+                // This prevents briefly showing face-down cards before private state arrives
                 var existingCards = seats[publicSeat.SeatIndex].Cards;
-                var cards = isCurrentPlayer && existingCards.Any()
-                ? existingCards
-                : publicSeat.Cards.Select(c => new CardInfo
-                {
-                    Rank = c.IsFaceUp ? c.Rank : null,
-                    Suit = c.IsFaceUp ? c.Suit : null,
-                    IsFaceUp = c.IsFaceUp,
-                    IsSelected = false
-                }).ToList();
+                var shouldPreserveCards = isCurrentPlayer && existingCards.Any(c => c.IsFaceUp);
+
+                Logger.LogDebug(
+                    "UpdateSeatsFromPublicState: Seat {SeatIndex}, PlayerName={PlayerName}, " +
+                    "isCurrentPlayerByEmail={ByEmail}, isCurrentPlayerBySeatIndex={BySeat}, " +
+                    "isCurrentPlayerByName={ByName}, existingCards={ExistingCount}, " +
+                    "existingFaceUp={FaceUpCount}, shouldPreserve={ShouldPreserve}, publicCardCount={PublicCount}",
+                    publicSeat.SeatIndex, publicSeat.PlayerName,
+                    isCurrentPlayerByEmail, isCurrentPlayerBySeatIndex, isCurrentPlayerByName,
+                    existingCards.Count, existingCards.Count(c => c.IsFaceUp),
+                    shouldPreserveCards, publicSeat.Cards.Count);
+
+                var cards = shouldPreserveCards
+                    ? existingCards
+                    : publicSeat.Cards.Select(c => new CardInfo
+                    {
+                        Rank = c.IsFaceUp ? c.Rank : null,
+                        Suit = c.IsFaceUp ? c.Suit : null,
+                        IsFaceUp = c.IsFaceUp,
+                        IsSelected = false
+                    }).ToList();
 
                 seats[publicSeat.SeatIndex] = new SeatInfo
                 {
@@ -794,7 +1017,7 @@
         }
     }
 
-    private void UpdateShowdownFromPublicState(ShowdownPublicDto showdown)
+    private void UpdateShowdownFromPublicState(ShowdownPublicDto showdown, bool delayShowingOverlay = false)
     {
         if (_showdownResult is null && showdown.IsComplete)
         {
@@ -849,7 +1072,11 @@
                 wonByFold: false,
                 sevensWinners: sevensWinners);
 
-            _showShowdownOverlay = true;
+            // Only show overlay immediately if we're not delaying
+            if (!delayShowingOverlay)
+            {
+                _showShowdownOverlay = true;
+            }
 
             _showdownWon = _showdownResult.Payouts?.Keys.Any(p =>
                 string.Equals(p, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase) ||
@@ -1062,6 +1289,7 @@
         }
         else
         {
+            // Kings and Lows and other games use FiveCardDraw API for GetGamePlayers
             playersResponse = await FiveCardDrawApiClient.FiveCardDrawGetGamePlayersAsync(GameId);
         }
 
@@ -1127,6 +1355,7 @@
             }
             else
             {
+                // Kings and Lows and other games use FiveCardDraw API for GetHandHistory
                 response = await FiveCardDrawApiClient.FiveCardDrawGetHandHistoryAsync(
                     GameId,
                     take: 25,
@@ -1181,6 +1410,7 @@
             }
             else
             {
+                // Kings and Lows and other games use FiveCardDraw API for JoinGame
                 response = await FiveCardDrawApiClient.FiveCardDrawJoinGameAsync(GameId, request);
             }
 
@@ -1259,6 +1489,15 @@
                 return;
             }
         }
+        else if (IsKingsAndLows)
+        {
+            // Kings and Lows has a simpler flow - StartHand handles ante collection and dealing
+            var startHandResponse = await KingsAndLowsApi.KingsAndLowsStartHandAsync(GameId);
+            if (!startHandResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
+        }
         else
         {
             var startHandResponse = await FiveCardDrawApiClient.FiveCardDrawStartHandAsync(GameId);
@@ -1293,8 +1532,10 @@
             return;
         }
 
+        // If showdown result is already loaded (e.g., from SignalR update), just show the overlay
         if (_showdownResult is not null)
         {
+            _showShowdownOverlay = true;
             return;
         }
 
@@ -1304,6 +1545,10 @@
         if (IsTwosJacksManWithTheAxe)
         {
             showdownResponse = await TwosJacksManWithTheAxeApi.TwosJacksManWithTheAxePerformShowdownAsync(GameId);
+        }
+        else if (IsKingsAndLows)
+        {
+            showdownResponse = await KingsAndLowsApi.KingsAndLowsPerformShowdownAsync(GameId);
         }
         else
         {
@@ -1431,6 +1676,7 @@
         isSubmittingDraw = true;
         isDrawAnimating = true;
         _forceShowDrawPanel = true;
+        _delayShowdownOverlay = true; // Delay showdown until animation completes
         cardsDrawn = false;
 
         try
@@ -1455,18 +1701,69 @@
             }
 
             // Make the API call
-            var request = new ProcessDrawRequest(discardIndices);
-            Refit.IApiResponse<ProcessDrawSuccessful>? response;
+            Refit.IApiResponse? response;
+            ProcessDrawSuccessful? result = null;
+
             if (IsTwosJacksManWithTheAxe)
             {
-                response = await TwosJacksManWithTheAxeApi.TwosJacksManWithTheAxeProcessDrawAsync(GameId, request);
+                var request = new ProcessDrawRequest(discardIndices);
+                var typedResponse = await TwosJacksManWithTheAxeApi.TwosJacksManWithTheAxeProcessDrawAsync(GameId, request);
+                response = typedResponse;
+                result = typedResponse.Content;
+            }
+            else if (IsKingsAndLows)
+            {
+                var playerId = _currentPlayerId ?? Guid.Empty;
+                Logger.LogInformation("Kings and Lows DrawCards request: GameId={GameId}, PlayerId={PlayerId}, DiscardCount={Count}",
+                    GameId, playerId, discardIndices.Count);
+
+                var request = new DrawCardsRequest(discardIndices, playerId);
+                var typedResponse = await KingsAndLowsApi.KingsAndLowsDrawCardsAsync(GameId, request);
+                response = typedResponse;
+
+                // Log response details for debugging
+                Logger.LogInformation("Kings and Lows DrawCards response: IsSuccess={IsSuccess}, StatusCode={StatusCode}, HasContent={HasContent}, HasError={HasError}",
+                    typedResponse.IsSuccessStatusCode,
+                    typedResponse.StatusCode,
+                    typedResponse.Content is not null,
+                    typedResponse.Error is not null);
+
+                if (typedResponse.Error is not null)
+                {
+                    Logger.LogWarning("Kings and Lows DrawCards error: {Error}", typedResponse.Error.Content);
+                }
+
+                // Use the new card data from the DrawCardsSuccessful response
+                var content = typedResponse.Content;
+                if (content is not null)
+                {
+                    Logger.LogInformation("Kings and Lows DrawCards: NewCards count = {Count}, DrawPhaseComplete = {Complete}", 
+                        content.NewCards?.Count ?? 0, content.DrawPhaseComplete);
+                    result = new ProcessDrawSuccessful(
+                        currentPhase: content.NextPhase ?? "DrawPhase",
+                        discardedCards: content.DiscardedCards,
+                        drawComplete: content.DrawPhaseComplete,
+                        gameId: content.GameId,
+                        newCards: content.NewCards ?? [],
+                        nextDrawPlayerIndex: -1,
+                        nextDrawPlayerName: content.NextPlayerName,
+                        playerName: content.PlayerName ?? ""
+                    );
+                }
+                else
+                {
+                    Logger.LogWarning("Kings and Lows DrawCards: Content is null");
+                }
             }
             else
             {
-                response = await FiveCardDrawApiClient.FiveCardDrawProcessDrawAsync(GameId, request);
+                var request = new ProcessDrawRequest(discardIndices);
+                var typedResponse = await FiveCardDrawApiClient.FiveCardDrawProcessDrawAsync(GameId, request);
+                response = typedResponse;
+                result = typedResponse.Content;
             }
 
-            if (!response.IsSuccessStatusCode)
+            if (response is null || !response.IsSuccessStatusCode)
             {
                 // Reset state on failure
                 isDiscardingCards = false;
@@ -1475,11 +1772,51 @@
                 return;
             }
 
-            var result = response.Content;
+            if (IsKingsAndLows && result is null)
+            {
+                // Fallback: API call failed - let SignalR refresh the player's hand
+                isDrawAnimating = false;
+                isDrawingNewCards = false;
+                isDiscardingCards = false;
+                _forceShowDrawPanel = false;
+                cardsDrawn = false;
+                await InvokeAsync(StateHasChanged);
+                return;
+            }
 
             // Transition to drawing new cards animation
             isDiscardingCards = false;
 
+            // Handle stand pat (0 discards) case
+            if (discardIndices.Count == 0)
+            {
+                // No cards to animate - just mark as complete
+                cardsDrawn = true;
+                await InvokeAsync(StateHasChanged);
+                
+                // If draw phase is complete (we're now in DrawComplete phase), keep cards visible
+                if (result?.DrawComplete == true)
+                {
+                    isDrawAnimating = false;
+                    _forceShowDrawPanel = false;
+                    _delayShowdownOverlay = false;
+                    // Cards stay in currentPlayerDrawCards for DrawComplete phase display
+                    await InvokeAsync(StateHasChanged);
+                    return;
+                }
+                
+                // Not the last player - brief delay then clear
+                await Task.Delay(500);
+                isDrawAnimating = false;
+                currentPlayerDrawCards = [];
+                selectedDiscardIndices.Clear();
+                _forceShowDrawPanel = false;
+                cardsDrawn = false;
+                await InvokeAsync(StateHasChanged);
+                return;
+            }
+            
+            // Handle discards (1+ cards) case
             if (discardIndices.Count > 0)
             {
                 // Swap in the newly dealt cards before the draw-in animation starts
@@ -1519,19 +1856,47 @@
                 cardsDrawn = true;
                 await InvokeAsync(StateHasChanged);
 
-                // Keep the panel visible for the remainder of the reveal window.
-                await Task.Delay(TimeSpan.FromSeconds(7) - TimeSpan.FromMilliseconds(700));
+                // If this was the last player to draw (DrawComplete phase), the server handles the delay
+                // Just show the cards briefly then let SignalR updates take over
+                if (result?.DrawComplete == true)
+                {
+                    // Short delay to let the "cards drawn" state show, then let SignalR handle the rest
+                    await Task.Delay(500);
+                }
+                else
+                {
+                    // Not the last player - keep the panel visible for the remainder of the reveal window
+                    await Task.Delay(TimeSpan.FromSeconds(7) - TimeSpan.FromMilliseconds(700));
+                }
 
                 isDrawingNewCards = false;
                 newCardIndices = [];
             }
 
-            // Clear animation state
+            // If draw phase is complete (we're now in DrawComplete phase), keep the cards visible
+            // and let SignalR updates handle the transition to showdown
+            if (result?.DrawComplete == true)
+            {
+                // Don't clear the cards - they'll be displayed during DrawComplete phase
+                isDrawAnimating = false;
+                _forceShowDrawPanel = false;
+                cardsDrawn = false;
+                _delayShowdownOverlay = false;
+                // Cards stay in currentPlayerDrawCards for DrawComplete phase display
+                await InvokeAsync(StateHasChanged);
+                return;
+            }
+
+            // Clear animation state (for non-last players)
             isDrawAnimating = false;
             currentPlayerDrawCards = [];
             selectedDiscardIndices.Clear();
             _forceShowDrawPanel = false;
             cardsDrawn = false;
+
+            // Now show the showdown overlay after animation is complete
+            _delayShowdownOverlay = false;
+            await TryLoadShowdownAsync();
 
             // SignalR will broadcast the updated state - no need to refresh manually
         }
@@ -1541,8 +1906,15 @@
             isDiscardingCards = false;
             isDrawingNewCards = false;
             isDrawAnimating = false;
-            _forceShowDrawPanel = false;
-            cardsDrawn = false;
+            _delayShowdownOverlay = false; // Clear delay on completion or error
+            
+            // Only clear draw panel state if we're not in DrawComplete phase
+            // During DrawComplete, we want the cards to remain visible
+            if (!IsDrawCompletePhase)
+            {
+                _forceShowDrawPanel = false;
+                cardsDrawn = false;
+            }
         }
     }
 
@@ -1612,7 +1984,11 @@
             // Discarded cards are dead cards (they won't be redrawn)
             var deadCards = discardedCards.Concat(foldedPlayerCards).ToList();
 
-            var result = OddsCalculator.CalculateDrawOdds(cardsToKeep, deadCards);
+            var result = IsTwosJacksManWithTheAxe
+                ? OddsCalculator.CalculateTwosJacksManWithTheAxeDrawOdds(cardsToKeep, deadCards)
+                : IsKingsAndLows
+                    ? OddsCalculator.CalculateKingsAndLowsDrawOdds(cardsToKeep, deadCards)
+                    : OddsCalculator.CalculateDrawOdds(cardsToKeep, deadCards);
             handOdds = ConvertToHandTypeOddsDtos(result);
         }
         catch (Exception ex)
@@ -1635,9 +2011,9 @@
         Chips: s.Chips))
         .OrderByDescending(p => p.Chips)
         .ToList();
-    }
+        }
 
-    private static string GetInitials(string? name)
+        private static string GetInitials(string? name)
     {
         if (string.IsNullOrWhiteSpace(name))
             return "?";
@@ -1785,9 +2161,11 @@
             .Cast<Card>()
             .ToList();
 
-            var result = string.Equals(_gameTypeCode, "TWOSJACKSMANWITHTHEAXE", StringComparison.OrdinalIgnoreCase)
+            var result = IsTwosJacksManWithTheAxe
                 ? OddsCalculator.CalculateTwosJacksManWithTheAxeDrawOdds(coreCards, deadCards)
-                : OddsCalculator.CalculateDrawOdds(coreCards, deadCards);
+                : IsKingsAndLows
+                    ? OddsCalculator.CalculateKingsAndLowsDrawOdds(coreCards, deadCards)
+                    : OddsCalculator.CalculateDrawOdds(coreCards, deadCards);
 
             handOdds = ConvertToHandTypeOddsDtos(result);
         }
@@ -1933,30 +2311,54 @@ HandType.HighCard
         isSubmittingAction = true;
         try
         {
-            // Use the appropriate API based on game type (to be unified in future)
-            // For now, map decision to betting action
-            var actionType = decision.ToUpperInvariant() switch
+            // Route to the correct API based on game type
+            if (IsKingsAndLows && IsDropOrStayPhase)
             {
-                "DROP" => BettingActionType.Fold,
-                "STAY" => BettingActionType.Check,
-                _ => BettingActionType.Check
-            };
+                // Use the dedicated Kings and Lows DropOrStay endpoint
+                var request = new DropOrStayRequest(
+                    decision: decision,
+                    playerId: _currentPlayerId ?? Guid.Empty
+                );
 
-            var request = new ProcessBettingActionRequest(actionType, 0);
-            Refit.IApiResponse<ProcessBettingActionSuccessful>? response;
+                var response = await KingsAndLowsApi.KingsAndLowsDropOrStayAsync(GameId, request);
 
-            if (IsTwosJacksManWithTheAxe)
-            {
-                response = await TwosJacksManWithTheAxeApi.TwosJacksManWithTheAxeProcessBettingActionAsync(GameId, request);
+                if (response.IsSuccessStatusCode)
+                {
+                    _hasDropOrStayDecided = true;
+                    _dropOrStayDecision = decision;
+                    Logger.LogDebug("Drop or stay decision recorded via HandleDecisionAsync: {Decision}", decision);
+                }
+                else
+                {
+                    Logger.LogWarning("Decision failed: {Error}", response.Error?.Content);
+                }
             }
             else
             {
-                response = await FiveCardDrawApiClient.FiveCardDrawProcessBettingActionAsync(GameId, request);
-            }
+                // For other game types, map decision to betting action
+                var actionType = decision.ToUpperInvariant() switch
+                {
+                    "DROP" => BettingActionType.Fold,
+                    "STAY" => BettingActionType.Check,
+                    _ => BettingActionType.Check
+                };
 
-            if (!response.IsSuccessStatusCode)
-            {
-                Logger.LogWarning("Decision failed: {Error}", response.Error?.Content);
+                var request = new ProcessBettingActionRequest(actionType, 0);
+                Refit.IApiResponse<ProcessBettingActionSuccessful>? response;
+
+                if (IsTwosJacksManWithTheAxe)
+                {
+                    response = await TwosJacksManWithTheAxeApi.TwosJacksManWithTheAxeProcessBettingActionAsync(GameId, request);
+                }
+                else
+                {
+                    response = await FiveCardDrawApiClient.FiveCardDrawProcessBettingActionAsync(GameId, request);
+                }
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    Logger.LogWarning("Decision failed: {Error}", response.Error?.Content);
+                }
             }
             // SignalR will broadcast the updated state
         }
@@ -2041,12 +2443,274 @@ HandType.HighCard
 
     /// <summary>
     /// Handles pot matching acknowledgment.
-    /// No-op placeholder - will call API when Kings and Lows pot matching is implemented.
+    /// Calls the AcknowledgePotMatch API endpoint.
     /// </summary>
     private async Task HandlePotMatchAcknowledge()
     {
-        // Placeholder for Kings and Lows pot matching feature
-        Logger.LogDebug("HandlePotMatchAcknowledge called - feature not yet implemented");
-        await Task.CompletedTask;
+        if (!IsKingsAndLows)
+        {
+            Logger.LogDebug("HandlePotMatchAcknowledge called for non-Kings and Lows game");
+            return;
+        }
+
+        try
+        {
+            var response = await KingsAndLowsApi.KingsAndLowsAcknowledgePotMatchAsync(GameId);
+            if (response.IsSuccessStatusCode)
+            {
+                Logger.LogDebug("Pot match acknowledged successfully");
+                // SignalR will update the game state
+            }
+            else
+            {
+                Logger.LogError("Failed to acknowledge pot match: {StatusCode}", response.StatusCode);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error acknowledging pot match");
+        }
     }
-}
+
+    // Kings and Lows - Drop or Stay methods
+
+    /// <summary>
+    /// Gets the list of players waiting to make their drop or stay decision.
+    /// </summary>
+    private IReadOnlyList<string> GetPlayersWaitingForDropOrStay()
+    {
+        // TODO: Get from SignalR state when available
+        return [];
+    }
+
+    /// <summary>
+    /// Handles drop or stay decision from the overlay.
+    /// </summary>
+    private async Task HandleDropOrStayDecision(string decision)
+    {
+        if (!IsKingsAndLows || _isProcessingDropOrStay)
+        {
+            return;
+        }
+
+        _isProcessingDropOrStay = true;
+        StateHasChanged();
+
+        try
+        {
+            var request = new DropOrStayRequest(
+                decision: decision,
+                playerId: _currentPlayerId ?? Guid.Empty
+            );
+
+            var response = await KingsAndLowsApi.KingsAndLowsDropOrStayAsync(GameId, request);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                _hasDropOrStayDecided = true;
+                _dropOrStayDecision = decision;
+                Logger.LogDebug("Drop or stay decision recorded: {Decision}", decision);
+                // SignalR will update the game state
+            }
+            else
+            {
+                Logger.LogError("Failed to record drop or stay decision: {StatusCode}", response.StatusCode);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error recording drop or stay decision");
+        }
+        finally
+        {
+            _isProcessingDropOrStay = false;
+            StateHasChanged();
+        }
+        }
+
+        // Kings and Lows - Player vs Deck methods
+
+        /// <summary>
+        /// Gets the deck's cards for display in the player vs deck overlay.
+        /// </summary>
+        private IReadOnlyList<PlayerVsDeckOverlay.CardDto> GetDeckCards()
+        {
+            var deckCards = _tableState?.PlayerVsDeck?.DeckCards;
+            if (deckCards is null || deckCards.Count == 0)
+            {
+                return [];
+            }
+
+            return deckCards
+                .Select(c => new PlayerVsDeckOverlay.CardDto(c.Rank ?? "?", c.Suit ?? "Unknown"))
+                .ToList();
+        }
+
+        /// <summary>
+        /// Checks if the current player is the decision maker for the deck draw.
+        /// </summary>
+        private bool IsCurrentPlayerDeckDecisionMaker
+        {
+            get
+            {
+                var playerVsDeck = _tableState?.PlayerVsDeck;
+                if (playerVsDeck is null)
+                {
+                    return false;
+                }
+
+                // The current player is the decision maker if their seat matches
+                return currentPlayerSeatIndex == playerVsDeck.DecisionMakerSeatIndex;
+            }
+        }
+
+        /// <summary>
+        /// Gets the name of the player who makes the deck draw decision.
+        /// </summary>
+        private string GetDeckDecisionMakerName()
+        {
+            var playerVsDeck = _tableState?.PlayerVsDeck;
+            if (playerVsDeck is null)
+            {
+                return "Dealer";
+            }
+
+            // Prefer first name for a friendlier display
+            return !string.IsNullOrWhiteSpace(playerVsDeck.DecisionMakerFirstName)
+                ? playerVsDeck.DecisionMakerFirstName
+                : playerVsDeck.DecisionMakerName ?? "Dealer";
+        }
+
+        /// <summary>
+        /// Handles card selection toggle for deck draw.
+        /// </summary>
+        private Task HandleDeckCardSelectionToggle(int index)
+        {
+            if (_deckDrawSelectedIndices.Contains(index))
+            {
+                _deckDrawSelectedIndices.Remove(index);
+            }
+            else
+            {
+                _deckDrawSelectedIndices.Add(index);
+            }
+            StateHasChanged();
+            return Task.CompletedTask;
+        }
+
+                /// <summary>
+                /// Handles confirmation of deck draw.
+                /// </summary>
+                private async Task HandleDeckDrawConfirm()
+                {
+                    if (!IsKingsAndLows || _isProcessingDeckDraw)
+                    {
+                        return;
+                    }
+
+                            var discardIndices = _deckDrawSelectedIndices.ToList();
+
+                            _isProcessingDeckDraw = true;
+                            _isDeckDrawAnimating = true;
+                            _deckCardsDrawn = false;
+                            _delayShowdownOverlay = true; // Delay showdown until animation completes
+
+                            // Initialize deck draw cards from current SignalR state for animation
+                            var currentDeckCards = GetDeckCards();
+                            _deckDrawCards = currentDeckCards
+                                .Select((c, i) => new CardInfo
+                                {
+                                    Rank = c.Rank,
+                                    Suit = c.Suit,
+                                    IsFaceUp = true,
+                                    IsSelected = discardIndices.Contains(i)
+                                })
+                                .ToList();
+
+                            StateHasChanged();
+
+                            try
+                            {
+                                // Start discard animation if there are cards to discard
+                                if (discardIndices.Count > 0)
+                                {
+                                    _isDeckDiscardingCards = true;
+                                    await InvokeAsync(StateHasChanged);
+
+                                    // Wait for discard animation
+                                    await Task.Delay(600);
+                                }
+
+                                var request = new DeckDrawRequest(
+                                    discardIndices: discardIndices,
+                                    playerId: _currentPlayerId ?? Guid.Empty
+                                );
+
+                                var response = await KingsAndLowsApi.KingsAndLowsDeckDrawAsync(GameId, request);
+
+                                if (response.IsSuccessStatusCode)
+                                {
+                                    // Transition to drawing new cards animation
+                                    _isDeckDiscardingCards = false;
+
+                                    if (discardIndices.Count > 0)
+                                    {
+                                        _isDeckDrawingNewCards = true;
+                                        _deckNewCardIndices = discardIndices;
+                                        await InvokeAsync(StateHasChanged);
+
+                                        // Wait for draw animation
+                                        await Task.Delay(700);
+
+                                        _deckCardsDrawn = true;
+                                        await InvokeAsync(StateHasChanged);
+
+                                        // Keep the panel visible to show the results
+                                        // SignalR will update the deck cards with final hand
+                                        await Task.Delay(TimeSpan.FromSeconds(5));
+
+                                        _isDeckDrawingNewCards = false;
+                                        _deckNewCardIndices = [];
+                                    }
+                                    else
+                                    {
+                                        // Stand pat - just mark as complete
+                                        _deckCardsDrawn = true;
+                                        await InvokeAsync(StateHasChanged);
+
+                                        // Keep visible briefly
+                                        await Task.Delay(TimeSpan.FromSeconds(3));
+                                    }
+
+                                    _hasDeckDrawn = true;
+                                    _deckDrawSelectedIndices.Clear();
+                                    _deckDrawCards = []; // Clear so SignalR state takes over
+                                    Logger.LogDebug("Deck draw completed");
+
+                                    // Now show the showdown overlay after animation is complete
+                                    _delayShowdownOverlay = false;
+                                    await TryLoadShowdownAsync();
+                                }
+                                else
+                                {
+                                    Logger.LogError("Failed to process deck draw: {StatusCode}", response.StatusCode);
+                                    _delayShowdownOverlay = false; // Clear delay on error
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Logger.LogError(ex, "Error processing deck draw");
+                                _delayShowdownOverlay = false; // Clear delay on error
+                            }
+                            finally
+                            {
+                                _isProcessingDeckDraw = false;
+                                _isDeckDrawAnimating = false;
+                                _isDeckDiscardingCards = false;
+                                _isDeckDrawingNewCards = false;
+                                _deckCardsDrawn = false;
+                                _deckDrawCards = [];
+                                StateHasChanged();
+                            }
+                        }
+                    }

@@ -51,19 +51,34 @@ builder.Services.AddScoped<GameRulesService>();
 builder.Services.ConfigureHttpClientDefaults(http =>
 {
 	http.AddServiceDiscovery();
+	http.ConfigureHttpClient(c =>
+	{
+		c.Timeout = TimeSpan.FromSeconds(600); //TODO: Make configurable
+	});
 });
 
 builder.Services
 	.AddRefitClient<IFiveCardDrawApi>(
 		settingsAction: _ => new RefitSettings(),
 		httpClientName: "fiveCardDrawApi")
-	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"))
+	.ConfigureHttpClient(c =>
+	{
+		c.BaseAddress = new Uri("https+http://api");
+		c.Timeout = TimeSpan.FromSeconds(600); //TODO: Make configurable
+	})
 	.AddHttpMessageHandler<AuthenticationStateHandler>();
 
 builder.Services
 	.AddRefitClient<ITwosJacksManWithTheAxeApi>(
 		settingsAction: _ => new RefitSettings(),
 		httpClientName: "twosJacksManWithTheAxeApi")
+	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"))
+	.AddHttpMessageHandler<AuthenticationStateHandler>();
+
+builder.Services
+	.AddRefitClient<IKingsAndLowsApi>(
+		settingsAction: _ => new RefitSettings(),
+		httpClientName: "kingsAndLowsApi")
 	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"))
 	.AddHttpMessageHandler<AuthenticationStateHandler>();
 
