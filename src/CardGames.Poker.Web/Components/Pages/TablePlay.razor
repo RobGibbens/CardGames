@@ -1984,7 +1984,11 @@
             // Discarded cards are dead cards (they won't be redrawn)
             var deadCards = discardedCards.Concat(foldedPlayerCards).ToList();
 
-            var result = OddsCalculator.CalculateDrawOdds(cardsToKeep, deadCards);
+            var result = IsTwosJacksManWithTheAxe
+                ? OddsCalculator.CalculateTwosJacksManWithTheAxeDrawOdds(cardsToKeep, deadCards)
+                : IsKingsAndLows
+                    ? OddsCalculator.CalculateKingsAndLowsDrawOdds(cardsToKeep, deadCards)
+                    : OddsCalculator.CalculateDrawOdds(cardsToKeep, deadCards);
             handOdds = ConvertToHandTypeOddsDtos(result);
         }
         catch (Exception ex)
@@ -2157,9 +2161,11 @@
             .Cast<Card>()
             .ToList();
 
-            var result = string.Equals(_gameTypeCode, "TWOSJACKSMANWITHTHEAXE", StringComparison.OrdinalIgnoreCase)
+            var result = IsTwosJacksManWithTheAxe
                 ? OddsCalculator.CalculateTwosJacksManWithTheAxeDrawOdds(coreCards, deadCards)
-                : OddsCalculator.CalculateDrawOdds(coreCards, deadCards);
+                : IsKingsAndLows
+                    ? OddsCalculator.CalculateKingsAndLowsDrawOdds(coreCards, deadCards)
+                    : OddsCalculator.CalculateDrawOdds(coreCards, deadCards);
 
             handOdds = ConvertToHandTypeOddsDtos(result);
         }

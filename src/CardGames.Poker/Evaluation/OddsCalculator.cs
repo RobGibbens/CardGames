@@ -128,6 +128,61 @@ public static class OddsCalculator
     }
 
     /// <summary>
+    /// Calculates odds for a Kings and Lows five-card draw hand.
+    /// Wild cards: all Kings and the lowest card(s) in the hand.
+    /// </summary>
+    /// <param name="cardsToKeep">The cards the player is keeping (not discarding).</param>
+    /// <param name="deadCards">Cards that are known to be unavailable (e.g., seen by other players).</param>
+    /// <param name="simulations">Number of Monte Carlo simulations to run.</param>
+    /// <returns>Probabilities for each possible hand type after the draw.</returns>
+    public static OddsResult CalculateKingsAndLowsDrawOdds(
+        IReadOnlyCollection<Card> cardsToKeep,
+        IReadOnlyCollection<Card> deadCards = null,
+        int simulations = DefaultSimulations)
+    {
+        deadCards ??= Array.Empty<Card>();
+        var handTypeCounts = InitializeHandTypeCounts();
+        var cardsNeeded = 5 - cardsToKeep.Count;
+
+        if (cardsNeeded < 0)
+        {
+            throw new ArgumentException($"Expected at most 5 cards to keep, but got {cardsToKeep.Count}");
+        }
+
+        // If no cards need to be drawn, just evaluate the current hand once.
+        if (cardsNeeded == 0)
+        {
+            var heroHand = new KingsAndLowsDrawHand(cardsToKeep.ToList());
+            handTypeCounts[heroHand.Type] = simulations;
+            return CreateResult(handTypeCounts, simulations);
+        }
+
+        var dealer = FrenchDeckDealer.WithFullDeck();
+
+        for (int i = 0; i < simulations; i++)
+        {
+            dealer.Shuffle();
+
+            var knownCards = cardsToKeep.Concat(deadCards).Distinct();
+            foreach (var card in knownCards)
+            {
+                dealer.DealSpecific(card);
+            }
+
+            var finalHand = cardsToKeep.ToList();
+            for (int j = 0; j < cardsNeeded; j++)
+            {
+                finalHand.Add(dealer.DealCard());
+            }
+
+            var heroHand = new KingsAndLowsDrawHand(finalHand);
+            handTypeCounts[heroHand.Type]++;
+        }
+
+        return CreateResult(handTypeCounts, simulations);
+    }
+
+    /// <summary>
     /// Calculates odds for a Seven Card Stud hand.
     /// </summary>
     public static OddsResult CalculateStudOdds(
