@@ -10,7 +10,7 @@
 - [ ] Add chip management to the dashboard (buy in, cash out, add chips)
 
 - [ ] Lobby should filter by game type
-- [ ] Have option on lobby for a list, not graphics
+- [x] Have option on lobby for a list, not graphics
 
 
 - [ ] Search for code == "KINGSANDLOWS" and refactor

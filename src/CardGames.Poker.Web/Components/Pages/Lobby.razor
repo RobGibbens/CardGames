@@ -44,7 +44,7 @@
             <a href="/lobby" class="lobby-tab @(IsActiveTab("") ? "active" : "")">
                 <span class="lobby-tab-icon">🎯</span>
                 <span class="lobby-tab-text">My Tables</span>
-                <span class="lobby-tab-badge">@myTablesCount</span>
+                <span class="lobby-tab-badge">@_myTablesCount</span>
             </a>
         </div>
 
@@ -52,7 +52,7 @@
         <div class="lobby-filters">
             <div class="filter-group">
                 <label class="filter-label">Variant</label>
-                <select class="filter-select" @bind="selectedVariant">
+                <select class="filter-select" @bind="_selectedVariant">
                     <option value="">All Variants</option>
                     <option value="texasholdem">Texas Hold'em</option>
                     <option value="fivecarddraw">Five Card Draw</option>
@@ -62,7 +62,7 @@
             </div>
             <div class="filter-group">
                 <label class="filter-label">Seats</label>
-                <select class="filter-select" @bind="selectedSeats">
+                <select class="filter-select" @bind="_selectedSeats">
                     <option value="">Any Size</option>
                     <option value="2">Heads Up (2)</option>
                     <option value="6">6-Max</option>
@@ -71,7 +71,7 @@
             </div>
             <div class="filter-group">
                 <label class="filter-label">Status</label>
-                <select class="filter-select" @bind="selectedStatus">
+                <select class="filter-select" @bind="_selectedStatus">
                     <option value="">All</option>
                     <option value="waiting">Waiting for Players</option>
                     <option value="inprogress">In Progress</option>
@@ -80,18 +80,26 @@
             <button class="filter-clear-btn" @onclick="ClearFilters">
                 <span>✕</span> Clear Filters
             </button>
+            <div class="view-toggle-group" style="margin-left: auto; display: flex; gap: 0.5rem;">
+                <button class="btn btn-view-toggle @(_viewMode == "grid" ? "active" : "")" @onclick="@(() => _viewMode = "grid")" title="Grid View">
+                    <i class="fa-solid fa-th-large"></i>
+                </button>
+                <button class="btn btn-view-toggle @(_viewMode == "list" ? "active" : "")" @onclick="@(() => _viewMode = "list")" title="List View">
+                    <i class="fa-solid fa-list"></i>
+                </button>
+            </div>
         </div>
 
         <!-- Tables Grid -->
         <div class="lobby-content">
-            @if (isLoading)
+            @if (_isLoading)
             {
                 <div class="lobby-loading">
                     <div class="loading-spinner"></div>
                     <p>Loading tables...</p>
                 </div>
             }
-            else if (filteredTables.Count == 0)
+            else if (_filteredTables.Count == 0)
             {
                 <div class="lobby-empty">
                     <div class="empty-icon">@GetEmptyIcon()</div>
@@ -107,12 +115,45 @@
             }
             else
             {
-                <div class="tables-grid">
-                    @foreach (var table in filteredTables)
-                    {
-                        <TableCard Table="table" />
-                    }
-                </div>
+                @if (_viewMode == "grid")
+                {
+                    <div class="tables-grid">
+                        @foreach (var table in _filteredTables)
+                        {
+                            <TableCard Table="table" />
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="tables-list">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th></th>
+                                    <th>Game Type</th>
+                                    <th>Table Name</th>
+                                    <th>Host</th>
+                                    <th>Phase</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var table in _filteredTables)
+                                {
+                                    <tr>
+                                        <td class="text-end">
+                                            <a href="/table/@table.Id" class="btn btn-sm btn-primary">Join</a>
+                                        </td>
+                                        <td>@table.GameTypeName</td>
+                                        <td>@table.Name</td>
+                                        <td>@table.CreatedByName</td>
+                                        <td>@table.CurrentPhaseDescription</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
             }
         </div>
     </div>
@@ -131,15 +172,16 @@
     [Inject]
     private ILogger<Lobby> Logger { get; set; } = default!;
 
-    private bool isLoading = true;
-    private string selectedVariant = "";
-    private string selectedSeats = "";
-    private string selectedStatus = "";
+    private bool _isLoading = true;
+    private string _viewMode = "list";
+    private string _selectedVariant = "";
+    private string _selectedSeats = "";
+    private string _selectedStatus = "";
 
-    private int myTablesCount;
+    private int _myTablesCount;
 
-    private List<GetActiveGamesResponse> allTables = [];
-    private List<GetActiveGamesResponse> filteredTables = [];
+    private List<GetActiveGamesResponse> _allTables = [];
+    private List<GetActiveGamesResponse> _filteredTables = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -171,7 +213,7 @@
         Logger.LogInformation("Received new game: {GameId} ({GameName})", gameCreated.GameId, gameCreated.Name);
 
         // Check if game already exists in the list
-        var existingIndex = allTables.FindIndex(t => t.Id == gameCreated.GameId);
+        var existingIndex = _allTables.FindIndex(t => t.Id == gameCreated.GameId);
 
         // Convert GameCreatedDto to GetActiveGamesResponse and add to the list
         // The constructor takes parameters in alphabetical order (generated by NSwag)
@@ -180,7 +222,7 @@
             createdById: gameCreated.CreatedById ?? string.Empty,
             createdByName: gameCreated.CreatedByName ?? string.Empty,
             currentPhase: gameCreated.CurrentPhase,
-			currentPhaseDescription: gameCreated.CurrentPhaseDescription,
+            currentPhaseDescription: gameCreated.CurrentPhaseDescription,
             gameTypeCode: gameCreated.GameTypeCode,
             gameTypeDescription: gameCreated.GameTypeDescription,
             gameTypeId: gameCreated.GameTypeId,
@@ -196,13 +238,13 @@
 
         if (existingIndex >= 0)
         {
-            allTables[existingIndex] = newTable;
+            _allTables[existingIndex] = newTable;
         }
         else
         {
-            allTables.Insert(0, newTable);
+            _allTables.Insert(0, newTable);
         }
-        myTablesCount = allTables.Count;
+        _myTablesCount = _allTables.Count;
         ApplyFilters();
 
 
@@ -213,11 +255,11 @@
     {
         Logger.LogInformation("Game deleted: {GameId}", gameId);
 
-        var tableToRemove = allTables.FirstOrDefault(t => t.Id == gameId);
+        var tableToRemove = _allTables.FirstOrDefault(t => t.Id == gameId);
         if (tableToRemove is not null)
         {
-            allTables.Remove(tableToRemove);
-            myTablesCount = allTables.Count;
+            _allTables.Remove(tableToRemove);
+            _myTablesCount = _allTables.Count;
             ApplyFilters();
 
             await InvokeAsync(StateHasChanged);
@@ -231,33 +273,33 @@
 
     private async Task LoadTablesAsync()
     {
-        isLoading = true;
+        _isLoading = true;
 
         var response = await ActiveGamesApi.GetActiveGamesAsync();
-        allTables = response.Content?.ToList() ?? [];
-        myTablesCount = allTables.Count;
+        _allTables = response.Content?.ToList() ?? [];
+        _myTablesCount = _allTables.Count;
 
         ApplyFilters();
-        isLoading = false;
+        _isLoading = false;
     }
 
     private void ApplyFilters()
     {
-        filteredTables = allTables
-            .Where(t => string.IsNullOrEmpty(selectedVariant) ||
-                        t.GameTypeCode.Contains(selectedVariant, StringComparison.OrdinalIgnoreCase) ||
-                        t.GameTypeName.Contains(selectedVariant, StringComparison.OrdinalIgnoreCase))
-            .Where(t => string.IsNullOrEmpty(selectedStatus) ||
-                        t.Status.ToString().Contains(selectedStatus, StringComparison.OrdinalIgnoreCase) ||
-                        t.CurrentPhase.Contains(selectedStatus, StringComparison.OrdinalIgnoreCase))
+        _filteredTables = _allTables
+            .Where(t => string.IsNullOrEmpty(_selectedVariant) ||
+                        t.GameTypeCode.Contains(_selectedVariant, StringComparison.OrdinalIgnoreCase) ||
+                        t.GameTypeName.Contains(_selectedVariant, StringComparison.OrdinalIgnoreCase))
+            .Where(t => string.IsNullOrEmpty(_selectedStatus) ||
+                        t.Status.ToString().Contains(_selectedStatus, StringComparison.OrdinalIgnoreCase) ||
+                        t.CurrentPhase.Contains(_selectedStatus, StringComparison.OrdinalIgnoreCase))
             .ToList();
     }
 
     private void ClearFilters()
     {
-        selectedVariant = "";
-        selectedSeats = "";
-        selectedStatus = "";
+        _selectedVariant = "";
+        _selectedSeats = "";
+        _selectedStatus = "";
         ApplyFilters();
     }
 
