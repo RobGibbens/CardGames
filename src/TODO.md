@@ -1,16 +1,24 @@
 # TODO
 
 ## Still to do
+- [ ] Kings and lows - can not join a table already in progress
+- [ ] FiveCardDraw - can't draw four with an Ace
+- [ ] Kings and Lows - don't deal to players that don't have enough chips to match the pot
 
+- [ ] Be able to soft delete a table if you're the host
+- [ ] Make sure all calls are idempotent
+- [ ] Add chip management to the dashboard (buy in, cash out, add chips)
+
+- [ ] Lobby should filter by game type
+- [ ] Have option on lobby for a list, not graphics
+
+
+- [ ] Search for code == "KINGSANDLOWS" and refactor
+- [ ] Creating a deck and dealing is done in the StartHandCommandHandler, but it should be using CardGames.Core.Dealer;
 - [ ] Make sure signalr isn't broadcasting to all players in all games
 - [ ] Table settings should be dynamic when creating a table. Not all games have an ante or a minimum bet.
-- [ ] Kings and lows - can not join a table already in progress
-- [ ] Kings and Lows - make the chips look better
+- [ ] Make the chips look better
 - [ ] Table - make the table seat look like PokerStars
-- [ ] Kings and Lows - don't deal to players that don't have enough chips to match the pot
-- [ ] Add chip management to the dashboard (buy in, cash out, add chips)
-- [ ] FCD - can't draw four with an Ace
-- [ ] Be able to soft delete a table if you're the host
 - [ ] During ties, the showdown should show the kicker 
 - [ ] Showdown overlay should handle split pots better
 - [ ] Showdown overlay is not showing payouts correctly
@@ -29,11 +37,9 @@
 - [ ] Add the ability to create private tables
 - [ ] The betting action overlay. Raise to X doesn't work
 - [ ] Add an action timer
-- [ ] Check that setting the ante works correctly
 - [ ] Have the ability for someone to take a seat and be dealt into the next hand
 - [ ] When already logged in, take them to the Lobby
 - [ ] Test side pots
-- [ ] Have option on lobby for a list, not graphics
 - [ ] The fields on the register page should be wider
 - [ ] Showdown should use better description of the cards (Pair of Aces vs One Pair)
 - [ ] Add animation of dealing the cards
@@ -43,7 +49,6 @@
 - [ ] Add leagues
 - [ ] Add seasons
 - [ ] Add tournaments
-- [ ] Lobby should filter by game type
 
 
 ## Add Games
@@ -89,6 +94,7 @@
 - [x] Add Dev Tunnels to Aspire
 - [x] When winning, the overlay should show the loser's hand, and the payouts. It's showing the wrong winner.
 - [x] Showdown overlay is not ordering cards
+- [x] Check that setting the ante works correctly
 - [x] Showdown does not show the description of the cards for the loser on the loser screen
 - [x] Make the results overlay look better
 - [x] Make sure the table says what game type it is

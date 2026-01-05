@@ -1,3 +1,4 @@
+using System.Text.Json;
 using CardGames.Core.French.Cards;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
@@ -218,20 +219,31 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 			gamePlayer.ChipStack += payout.Value;
 		}
 
-		// 11. Mark pots as awarded
+		// 11. Mark pots as awarded and store winner information
 		var winReason = winners.Count > 1
 			? $"Split pot - {playerHandEvaluations[winners[0]].hand.Type}"
 			: playerHandEvaluations[winners[0]].hand.Type.ToString();
+
+		// Serialize winner payouts for pot matching phase
+		var winnerPayoutsList = payouts.Select(p =>
+		{
+			var gp = playerHandEvaluations[p.Key].gamePlayer;
+			return new { playerId = gp.PlayerId.ToString(), playerName = p.Key, amount = p.Value };
+		}).ToList();
+		var winnerPayoutsJson = JsonSerializer.Serialize(winnerPayoutsList);
 
 		foreach (var pot in currentHandPots)
 		{
 			pot.IsAwarded = true;
 			pot.AwardedAt = now;
 			pot.WinReason = winReason;
+			pot.WinnerPayouts = winnerPayoutsJson;
 		}
 
-		// 12. Update game state
-		game.CurrentPhase = nameof(KingsAndLowsPhase.Complete);
+		// 12. Update game state - transition to PotMatching if there are losers
+		game.CurrentPhase = losers.Count > 0
+			? nameof(KingsAndLowsPhase.PotMatching)
+			: nameof(KingsAndLowsPhase.Complete);
 		game.UpdatedAt = now;
 		game.HandCompletedAt = now;
 		game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Services;
@@ -46,25 +47,56 @@ public class AcknowledgePotMatchCommandHandler(CardsDbContext context)
 			};
 		}
 
-		// 3. Get current pot for this hand
-		var currentPot = game.Pots
-			.Where(p => p.HandNumber == game.CurrentHandNumber && !p.IsAwarded)
-			.Sum(p => p.Amount);
+		// 3. Get the awarded pot for this hand to determine the pot amount and winners
+		var awardedPot = game.Pots
+			.FirstOrDefault(p => p.HandNumber == game.CurrentHandNumber && p.IsAwarded);
 
-		// 4. Determine losers - all staying players who didn't win
-		// For simplicity in this implementation, we'll assume losers need to match the pot
-		// In a real implementation, we'd need to determine winners from showdown results
+		if (awardedPot is null)
+		{
+			return new AcknowledgePotMatchError
+			{
+				Message = "No awarded pot found for the current hand. Showdown must complete before pot matching.",
+				Code = AcknowledgePotMatchErrorCode.InvalidPhase
+			};
+		}
+
+		var currentPot = awardedPot.Amount;
+
+		// 4. Determine winners from the awarded pot's WinnerPayouts
+		var winnerPlayerIds = new HashSet<Guid>();
+		if (!string.IsNullOrEmpty(awardedPot.WinnerPayouts))
+		{
+			try
+			{
+				using var doc = JsonDocument.Parse(awardedPot.WinnerPayouts);
+				foreach (var element in doc.RootElement.EnumerateArray())
+				{
+					if (element.TryGetProperty("playerId", out var playerIdProp) &&
+						Guid.TryParse(playerIdProp.GetString(), out var playerId))
+					{
+						winnerPlayerIds.Add(playerId);
+					}
+				}
+			}
+			catch (JsonException)
+			{
+				// If parsing fails, proceed with empty winners (all staying players match)
+			}
+		}
+
+		// 5. Determine losers - staying players who are NOT winners
 		var gamePlayersList = game.GamePlayers.ToList();
-		var stayingPlayers = gamePlayersList
-			.Where(gp => gp.DropOrStayDecision == Data.Entities.DropOrStayDecision.Stay)
+		var losers = gamePlayersList
+			.Where(gp => gp.DropOrStayDecision == Data.Entities.DropOrStayDecision.Stay &&
+						 !winnerPlayerIds.Contains(gp.PlayerId))
 			.ToList();
 
 		// Calculate match amounts for each loser
 		var matchAmounts = new Dictionary<string, int>();
 		var totalMatched = 0;
 
-		// In Kings and Lows, losers match the pot amount (or go all-in)
-		foreach (var loser in stayingPlayers)
+		// In Kings and Lows, only losers match the pot amount (or go all-in)
+		foreach (var loser in losers)
 		{
 			var matchAmount = Math.Min(currentPot, loser.ChipStack);
 			if (matchAmount > 0)
@@ -80,7 +112,7 @@ public class AcknowledgePotMatchCommandHandler(CardsDbContext context)
 		{
 			GameId = game.Id,
 			HandNumber = game.CurrentHandNumber + 1,
-			PotType = Data.Entities.PotType.Main,
+			PotType = PotType.Main,
 			PotOrder = 0,
 			Amount = totalMatched,
 			IsAwarded = false,

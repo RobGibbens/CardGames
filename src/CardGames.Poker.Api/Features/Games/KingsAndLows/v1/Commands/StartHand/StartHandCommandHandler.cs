@@ -102,23 +102,33 @@ public class StartHandCommandHandler(CardsDbContext context)
 			context.GameCards.RemoveRange(existingCards);
 		}
 
-		// 7. Create a new main pot for this hand
-		var mainPot = new Pot
+		// 7. Determine if this is the first hand (antes only collected on first hand in Kings and Lows)
+		var isFirstHand = game.CurrentHandNumber == 0;
+
+		// 8. Create a new main pot for this hand only if it's the first hand
+		// For subsequent hands, the pot is created by AcknowledgePotMatchCommandHandler
+		Pot? mainPot = null;
+		if (isFirstHand)
 		{
-			GameId = game.Id,
-			HandNumber = game.CurrentHandNumber + 1,
-			PotType = PotType.Main,
-			PotOrder = 0,
-			Amount = 0,
-			IsAwarded = false,
-			CreatedAt = now
-		};
+			mainPot = new Pot
+			{
+				GameId = game.Id,
+				HandNumber = game.CurrentHandNumber + 1,
+				PotType = PotType.Main,
+				PotOrder = 0,
+				Amount = 0,
+				IsAwarded = false,
+				CreatedAt = now
+			};
 
-		context.Pots.Add(mainPot);
+			context.Pots.Add(mainPot);
+		}
 
-		// 8. Update game state - Kings and Lows starts with CollectingAntes
+		// 9. Update game state - Kings and Lows starts with CollectingAntes (first hand) or Dealing (subsequent hands)
 		game.CurrentHandNumber++;
-		game.CurrentPhase = nameof(KingsAndLowsPhase.CollectingAntes);
+		game.CurrentPhase = isFirstHand
+			? nameof(KingsAndLowsPhase.CollectingAntes)
+			: nameof(KingsAndLowsPhase.Dealing);
 		game.Status = GameStatus.InProgress;
 		game.CurrentPlayerIndex = -1;
 		game.CurrentDrawPlayerIndex = -1;
@@ -129,12 +139,12 @@ public class StartHandCommandHandler(CardsDbContext context)
 		// Set StartedAt only on first hand
 		game.StartedAt ??= now;
 
-		// 9. Automatically collect antes if there's an ante
-		if (ante > 0)
+		// 10. Automatically collect antes only on first hand (Kings and Lows rule)
+		if (isFirstHand && ante > 0 && mainPot is not null)
 		{
 			foreach (var player in eligiblePlayers)
 			{
-				var anteAmount = Math.Min(ante, player.ChipStack);
+				var anteAmount = Math.Min(ante, player.ChipStack); //TODO:ROB - Don't let them play if they don't have enough
 				player.ChipStack -= anteAmount;
 				player.CurrentBet = anteAmount;
 				player.TotalContributedThisHand = anteAmount;
@@ -157,7 +167,7 @@ public class StartHandCommandHandler(CardsDbContext context)
 			}
 		}
 
-		// 10. Automatically deal hands - move to Dealing phase then DropOrStay
+		// 11. Automatically deal hands - move to Dealing phase then DropOrStay
 		game.CurrentPhase = nameof(KingsAndLowsPhase.Dealing);
 		
 		// Create a standard deck of 52 cards with shuffled order

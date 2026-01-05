@@ -20,490 +20,490 @@ namespace CardGames.Poker.Api.Services;
 /// </summary>
 public sealed class TableStateBuilder : ITableStateBuilder
 {
-    private readonly CardsDbContext _context;
-    private readonly ILogger<TableStateBuilder> _logger;
+	private readonly CardsDbContext _context;
+	private readonly ILogger<TableStateBuilder> _logger;
 
 	private sealed record UserProfile(string? FirstName, string? AvatarUrl);
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="TableStateBuilder"/> class.
-    /// </summary>
-    public TableStateBuilder(CardsDbContext context, ILogger<TableStateBuilder> logger)
-    {
-        _context = context;
-        _logger = logger;
-    }
+	/// <summary>
+	/// Initializes a new instance of the <see cref="TableStateBuilder"/> class.
+	/// </summary>
+	public TableStateBuilder(CardsDbContext context, ILogger<TableStateBuilder> logger)
+	{
+		_context = context;
+		_logger = logger;
+	}
 
-    /// <inheritdoc />
-    public async Task<TableStatePublicDto?> BuildPublicStateAsync(Guid gameId, CancellationToken cancellationToken = default)
-    {
-        var game = await _context.Games
-            .Include(g => g.GameType)
-            .AsNoTracking()
-            .FirstOrDefaultAsync(g => g.Id == gameId, cancellationToken);
+	/// <inheritdoc />
+	public async Task<TableStatePublicDto?> BuildPublicStateAsync(Guid gameId, CancellationToken cancellationToken = default)
+	{
+		var game = await _context.Games
+			.Include(g => g.GameType)
+			.AsNoTracking()
+			.FirstOrDefaultAsync(g => g.Id == gameId, cancellationToken);
 
-        if (game is null)
-        {
-            _logger.LogWarning("Game {GameId} not found when building public state", gameId);
-            return null;
-        }
-
-        var gamePlayers = await _context.GamePlayers
-            .Where(gp => gp.GameId == gameId)
-            .Include(gp => gp.Player)
-            .Include(gp => gp.Cards)
-            .OrderBy(gp => gp.SeatPosition)
-            .AsNoTracking()
-            .ToListAsync(cancellationToken);
-
-            // Calculate total pot from current betting round contributions
-            var totalPot = await CalculateTotalPotAsync(gameId, game.CurrentHandNumber, cancellationToken);
-
-            // Build seat DTOs with cards hidden (face-down)
-            // Enrich with Identity profile data (first name/avatar) when available.
-			var userProfilesByEmail = await _context.Users
-				.AsNoTracking()
-				.Where(u => u.Email != null)
-				.Select(u => new { Email = u.Email!, u.FirstName, u.AvatarUrl })
-				.ToDictionaryAsync(
-					u => u.Email,
-					u => new UserProfile(u.FirstName, u.AvatarUrl),
-					StringComparer.OrdinalIgnoreCase,
-					cancellationToken);
-
-			var seats = gamePlayers
-				.Select(gp => BuildSeatPublicDto(gp, game.CurrentHandNumber, game.Ante ?? 0, userProfilesByEmail))
-						.ToList();
-
-					// Calculate results phase state
-					var isResultsPhase = game.CurrentPhase == "Complete" && game.HandCompletedAt.HasValue;
-					int? secondsUntilNextHand = null;
-					if (isResultsPhase && game.NextHandStartsAt.HasValue)
-					{
-						var remaining = game.NextHandStartsAt.Value - DateTimeOffset.UtcNow;
-						secondsUntilNextHand = Math.Max(0, (int)remaining.TotalSeconds);
-					}
-
-					// Get hand history for the dashboard (limited to recent hands)
-					var handHistory = await GetHandHistoryEntriesAsync(gameId, currentUserPlayerId: null, take: 25, cancellationToken);
-
-					// Get game rules for phase metadata
-					GameRules? rules = null;
-					GamePhaseDescriptor? currentPhaseDescriptor = null;
-					if (PokerGameRulesRegistry.TryGet(game.GameType?.Code, out var r))
-					{
-								rules = r;
-								currentPhaseDescriptor = rules?.Phases
-									.FirstOrDefault(p => p.PhaseId.Equals(game.CurrentPhase, StringComparison.OrdinalIgnoreCase));
-							}
-
-							// Build Player vs Deck state (if applicable)
-							var playerVsDeck = await BuildPlayerVsDeckStateAsync(game, gamePlayers, userProfilesByEmail, cancellationToken);
-
-							return new TableStatePublicDto
-							{
-								GameId = game.Id,
-								Name = game.Name,
-								GameTypeName = game.GameType?.Name,
-								GameTypeCode = game.GameType?.Code,
-								CurrentPhase = game.CurrentPhase,
-								CurrentPhaseDescription = PhaseDescriptionResolver.TryResolve(game.GameType?.Code, game.CurrentPhase),
-								Ante = game.Ante ?? 0,
-								MinBet = game.MinBet ?? 0,
-								TotalPot = totalPot,
-								DealerSeatIndex = game.DealerPosition,
-								CurrentActorSeatIndex = game.CurrentPlayerIndex,
-								IsPaused = game.Status == Entities.GameStatus.BetweenHands,
-								CurrentHandNumber = game.CurrentHandNumber,
-								CreatedByName = game.CreatedByName,
-								Seats = seats,
-								Showdown = BuildShowdownPublicDto(game, gamePlayers, userProfilesByEmail),
-								HandCompletedAtUtc = game.HandCompletedAt,
-								NextHandStartsAtUtc = game.NextHandStartsAt,
-								IsResultsPhase = isResultsPhase,
-								SecondsUntilNextHand = secondsUntilNextHand,
-								HandHistory = handHistory,
-								CurrentPhaseCategory = currentPhaseDescriptor?.Category,
-								CurrentPhaseRequiresAction = currentPhaseDescriptor?.RequiresPlayerAction ?? false,
-								CurrentPhaseAvailableActions = currentPhaseDescriptor?.AvailableActions,
-								DrawingConfig = BuildDrawingConfigDto(rules),
-								SpecialRules = BuildSpecialRulesDto(rules),
-								PlayerVsDeck = playerVsDeck
-							};
-						}
-
-    /// <inheritdoc />
-    public async Task<PrivateStateDto?> BuildPrivateStateAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
-    {
-        _logger.LogDebug("BuildPrivateStateAsync called for game {GameId}, userId {UserId}", gameId, userId);
-
-        var game = await _context.Games
-            .Include(g => g.GameType)
-            .AsNoTracking()
-            .FirstOrDefaultAsync(g => g.Id == gameId, cancellationToken);
-
-        if (game is null)
-        {
-            _logger.LogWarning("BuildPrivateStateAsync: Game {GameId} not found", gameId);
-            return null;
-        }
-
-        // Find the player by matching the authenticated user id.
-        // SignalR `Clients.User(userId)` now routes by email claim, so prefer email/name matching.
-        var gamePlayer = await _context.GamePlayers
-            .Where(gp => gp.GameId == gameId)
-            .Include(gp => gp.Player)
-            .Include(gp => gp.Cards)
-            .AsNoTracking()
-            .FirstOrDefaultAsync(gp =>
-                gp.Player.Email == userId ||
-                gp.Player.Name == userId ||
-                gp.Player.ExternalId == userId, cancellationToken);
-
-        if (gamePlayer is null)
-        {
-            // User is not a player in this game
-            _logger.LogWarning(
-                "BuildPrivateStateAsync: No player found for userId {UserId} in game {GameId}. " +
-                "Checking all players in game...", userId, gameId);
-
-            // Log all players for debugging
-            var allPlayers = await _context.GamePlayers
-                .Where(gp => gp.GameId == gameId)
-                .Include(gp => gp.Player)
-                .AsNoTracking()
-                .Select(gp => new { gp.Player.Email, gp.Player.Name, gp.Player.ExternalId })
-                .ToListAsync(cancellationToken);
-
-            foreach (var p in allPlayers)
-            {
-                _logger.LogWarning(
-                    "  Player in game: Email={Email}, Name={Name}, ExternalId={ExternalId}",
-                    p.Email ?? "(null)", p.Name ?? "(null)", p.ExternalId ?? "(null)");
-            }
-
-            return null;
-        }
-
-        _logger.LogInformation(
-            "BuildPrivateStateAsync: Found player {PlayerName} at seat {SeatPosition} with {CardCount} cards (hand #{HandNumber})",
-            gamePlayer.Player.Name, gamePlayer.SeatPosition, 
-            gamePlayer.Cards.Count(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber),
-            game.CurrentHandNumber);
-
-        var hand = BuildPrivateHand(gamePlayer, game.CurrentHandNumber);
-
-        string? handEvaluationDescription = null;
-        try
-        {
-            var playerCards = gamePlayer.Cards
-                .Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber)
-                .OrderBy(c => c.DealOrder)
-                .Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
-                .ToList();
-
-            var communityCards = await _context.GameCards
-                .Where(c => c.GameId == gameId
-                        && !c.IsDiscarded
-                        && c.HandNumber == game.CurrentHandNumber
-                        && c.Location == CardLocation.Community)
-                .OrderBy(c => c.DealOrder)
-                .AsNoTracking()
-                .Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
-                .ToListAsync(cancellationToken);
-
-            // Some variants persist dealt draw cards as `GameCards` rather than `GamePlayer.Cards`.
-            // If so, treat them as the player's evaluation cards when they appear to be the only source.
-            if (playerCards.Count == 0 && communityCards.Count >= 5)
-            {
-                playerCards = communityCards;
-                communityCards = [];
-            }
-
-            var allEvaluationCards = playerCards.Concat(communityCards).ToList();
-
-            // Draw games (no community cards). Provide a description once 5 cards are available.
-            // (During seating / pre-deal phases there may be 0-4 cards and we keep the description null.)
-            if (communityCards.Count == 0 && playerCards.Count >= 5)
-            {
-                // Twos, Jacks, Man with the Axe uses wild cards.
-                // Kings and Lows uses wild cards (Kings + lowest card).
-                // The base `DrawHand` evaluator ignores wild substitutions,
-                // so we must use the variant-specific hand type here.
-                HandBase drawHand;
-                if (string.Equals(game.GameType?.Code, "TWOSJACKSMANWITHTHEAXE", StringComparison.OrdinalIgnoreCase))
-                {
-                    drawHand = new CardGames.Poker.Hands.DrawHands.TwosJacksManWithTheAxeDrawHand(playerCards);
-                }
-                else if (string.Equals(game.GameType?.Code, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase))
-                {
-                    drawHand = new CardGames.Poker.Hands.DrawHands.KingsAndLowsDrawHand(playerCards);
-                }
-                else
-                {
-                    drawHand = new DrawHand(playerCards);
-                }
-
-                handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(drawHand);
-            }
-            // Community-card games (need at least a 3-card board and 5+ total cards).
-            else if (communityCards.Count >= 3 && allEvaluationCards.Count >= 5)
-            {
-                // Hold'em / Short-deck Hold'em style: 2 hole + up to 5 community
-                if (playerCards.Count == 2)
-                {
-                    var holdemHand = new CardGames.Poker.Hands.CommunityCardHands.HoldemHand(playerCards, communityCards);
-                    handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(holdemHand);
-                }
-                // Omaha style: 4 hole + up to 5 community
-                else if (playerCards.Count == 4)
-                {
-                    var omahaHand = new CardGames.Poker.Hands.CommunityCardHands.OmahaHand(playerCards, communityCards);
-                    handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(omahaHand);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogDebug(ex, "Failed to compute hand evaluation description for game {GameId}, player {PlayerName}", gameId, gamePlayer.Player.Name);
-        }
-
-			var isMyTurn = game.CurrentPlayerIndex == gamePlayer.SeatPosition;
-			var availableActions = isMyTurn
-				? await BuildAvailableActionsAsync(gameId, game, gamePlayer, cancellationToken)
-				: null;
-			var draw = BuildDrawPrivateDto(game, gamePlayer);
-
-			// Get hand history personalized for this player
-			var handHistory = await GetHandHistoryEntriesAsync(gameId, gamePlayer.PlayerId, take: 25, cancellationToken);
-
-			return new PrivateStateDto
-			{
-				GameId = gameId,
-				PlayerName = gamePlayer.Player.Name,
-				SeatPosition = gamePlayer.SeatPosition,
-				Hand = hand,
-				HandEvaluationDescription = handEvaluationDescription,
-				AvailableActions = availableActions,
-				Draw = draw,
-				IsMyTurn = isMyTurn,
-				HandHistory = handHistory
-			};
+		if (game is null)
+		{
+			_logger.LogWarning("Game {GameId} not found when building public state", gameId);
+			return null;
 		}
 
-    /// <inheritdoc />
-    public async Task<IReadOnlyList<string>> GetPlayerUserIdsAsync(Guid gameId, CancellationToken cancellationToken = default)
-    {
-        var players = await _context.GamePlayers
-            .Where(gp => gp.GameId == gameId)
-            .Include(gp => gp.Player)
-            .AsNoTracking()
-            .Select(gp => new { gp.Player.Email, gp.Player.Name, gp.Player.ExternalId })
-            .ToListAsync(cancellationToken);
+		var gamePlayers = await _context.GamePlayers
+			.Where(gp => gp.GameId == gameId)
+			.Include(gp => gp.Player)
+			.Include(gp => gp.Cards)
+			.OrderBy(gp => gp.SeatPosition)
+			.AsNoTracking()
+			.ToListAsync(cancellationToken);
 
-        // Prefer Name over Email when Email appears malformed (e.g., contains multiple @ symbols).
-        // This handles legacy data where Email may have been incorrectly stored with @localhost appended.
-        var userIds = players
-            .Select(p =>
-            {
-                // If Email looks like a valid single @ email, use it
-                // Otherwise prefer Name (which is typically the clean email)
-                var email = p.Email;
-                var name = p.Name;
+		// Calculate total pot from current betting round contributions
+		var totalPot = await CalculateTotalPotAsync(game, game.CurrentHandNumber, cancellationToken);
 
-                // Check if email is malformed (has more than one @ symbol)
-                var isMalformedEmail = !string.IsNullOrWhiteSpace(email) && email.Count(c => c == '@') > 1;
+		// Build seat DTOs with cards hidden (face-down)
+		// Enrich with Identity profile data (first name/avatar) when available.
+		var userProfilesByEmail = await _context.Users
+			.AsNoTracking()
+			.Where(u => u.Email != null)
+			.Select(u => new { Email = u.Email!, u.FirstName, u.AvatarUrl })
+			.ToDictionaryAsync(
+				u => u.Email,
+				u => new UserProfile(u.FirstName, u.AvatarUrl),
+				StringComparer.OrdinalIgnoreCase,
+				cancellationToken);
 
-                if (isMalformedEmail && !string.IsNullOrWhiteSpace(name))
-                {
-                    return name;
-                }
+		var seats = gamePlayers
+			.Select(gp => BuildSeatPublicDto(gp, game.CurrentHandNumber, game.Ante ?? 0, userProfilesByEmail))
+					.ToList();
 
-                return email ?? name ?? p.ExternalId;
-            })
-            .Where(id => !string.IsNullOrWhiteSpace(id))
-            .Cast<string>()
-            .ToList();
+		// Calculate results phase state
+		var isResultsPhase = game.CurrentPhase == "Complete" && game.HandCompletedAt.HasValue;
+		int? secondsUntilNextHand = null;
+		if (isResultsPhase && game.NextHandStartsAt.HasValue)
+		{
+			var remaining = game.NextHandStartsAt.Value - DateTimeOffset.UtcNow;
+			secondsUntilNextHand = Math.Max(0, (int)remaining.TotalSeconds);
+		}
 
-        _logger.LogInformation(
-            "GetPlayerUserIdsAsync for game {GameId}: {PlayerCount} players, UserIds: [{UserIds}], " +
-            "Raw data: [{RawData}]",
-            gameId,
-            players.Count,
-            string.Join(", ", userIds),
-            string.Join(", ", players.Select(p => $"Email={p.Email ?? "(null)"}, Name={p.Name ?? "(null)"}, ExternalId={p.ExternalId ?? "(null)"}")));
+		// Get hand history for the dashboard (limited to recent hands)
+		var handHistory = await GetHandHistoryEntriesAsync(gameId, currentUserPlayerId: null, take: 25, cancellationToken);
 
-        return userIds;
-    }
+		// Get game rules for phase metadata
+		GameRules? rules = null;
+		GamePhaseDescriptor? currentPhaseDescriptor = null;
+		if (PokerGameRulesRegistry.TryGet(game.GameType?.Code, out var r))
+		{
+			rules = r;
+			currentPhaseDescriptor = rules?.Phases
+				.FirstOrDefault(p => p.PhaseId.Equals(game.CurrentPhase, StringComparison.OrdinalIgnoreCase));
+		}
 
-    private static SeatPublicDto BuildSeatPublicDto(
+		// Build Player vs Deck state (if applicable)
+		var playerVsDeck = await BuildPlayerVsDeckStateAsync(game, gamePlayers, userProfilesByEmail, cancellationToken);
+
+		return new TableStatePublicDto
+		{
+			GameId = game.Id,
+			Name = game.Name,
+			GameTypeName = game.GameType?.Name,
+			GameTypeCode = game.GameType?.Code,
+			CurrentPhase = game.CurrentPhase,
+			CurrentPhaseDescription = PhaseDescriptionResolver.TryResolve(game.GameType?.Code, game.CurrentPhase),
+			Ante = game.Ante ?? 0,
+			MinBet = game.MinBet ?? 0,
+			TotalPot = totalPot,
+			DealerSeatIndex = game.DealerPosition,
+			CurrentActorSeatIndex = game.CurrentPlayerIndex,
+			IsPaused = game.Status == Entities.GameStatus.BetweenHands,
+			CurrentHandNumber = game.CurrentHandNumber,
+			CreatedByName = game.CreatedByName,
+			Seats = seats,
+			Showdown = BuildShowdownPublicDto(game, gamePlayers, userProfilesByEmail),
+			HandCompletedAtUtc = game.HandCompletedAt,
+			NextHandStartsAtUtc = game.NextHandStartsAt,
+			IsResultsPhase = isResultsPhase,
+			SecondsUntilNextHand = secondsUntilNextHand,
+			HandHistory = handHistory,
+			CurrentPhaseCategory = currentPhaseDescriptor?.Category,
+			CurrentPhaseRequiresAction = currentPhaseDescriptor?.RequiresPlayerAction ?? false,
+			CurrentPhaseAvailableActions = currentPhaseDescriptor?.AvailableActions,
+			DrawingConfig = BuildDrawingConfigDto(rules),
+			SpecialRules = BuildSpecialRulesDto(rules),
+			PlayerVsDeck = playerVsDeck
+		};
+	}
+
+	/// <inheritdoc />
+	public async Task<PrivateStateDto?> BuildPrivateStateAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
+	{
+		_logger.LogDebug("BuildPrivateStateAsync called for game {GameId}, userId {UserId}", gameId, userId);
+
+		var game = await _context.Games
+			.Include(g => g.GameType)
+			.AsNoTracking()
+			.FirstOrDefaultAsync(g => g.Id == gameId, cancellationToken);
+
+		if (game is null)
+		{
+			_logger.LogWarning("BuildPrivateStateAsync: Game {GameId} not found", gameId);
+			return null;
+		}
+
+		// Find the player by matching the authenticated user id.
+		// SignalR `Clients.User(userId)` now routes by email claim, so prefer email/name matching.
+		var gamePlayer = await _context.GamePlayers
+			.Where(gp => gp.GameId == gameId)
+			.Include(gp => gp.Player)
+			.Include(gp => gp.Cards)
+			.AsNoTracking()
+			.FirstOrDefaultAsync(gp =>
+				gp.Player.Email == userId ||
+				gp.Player.Name == userId ||
+				gp.Player.ExternalId == userId, cancellationToken);
+
+		if (gamePlayer is null)
+		{
+			// User is not a player in this game
+			_logger.LogWarning(
+				"BuildPrivateStateAsync: No player found for userId {UserId} in game {GameId}. " +
+				"Checking all players in game...", userId, gameId);
+
+			// Log all players for debugging
+			var allPlayers = await _context.GamePlayers
+				.Where(gp => gp.GameId == gameId)
+				.Include(gp => gp.Player)
+				.AsNoTracking()
+				.Select(gp => new { gp.Player.Email, gp.Player.Name, gp.Player.ExternalId })
+				.ToListAsync(cancellationToken);
+
+			foreach (var p in allPlayers)
+			{
+				_logger.LogWarning(
+					"  Player in game: Email={Email}, Name={Name}, ExternalId={ExternalId}",
+					p.Email ?? "(null)", p.Name ?? "(null)", p.ExternalId ?? "(null)");
+			}
+
+			return null;
+		}
+
+		_logger.LogInformation(
+			"BuildPrivateStateAsync: Found player {PlayerName} at seat {SeatPosition} with {CardCount} cards (hand #{HandNumber})",
+			gamePlayer.Player.Name, gamePlayer.SeatPosition,
+			gamePlayer.Cards.Count(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber),
+			game.CurrentHandNumber);
+
+		var hand = BuildPrivateHand(gamePlayer, game.CurrentHandNumber);
+
+		string? handEvaluationDescription = null;
+		try
+		{
+			var playerCards = gamePlayer.Cards
+				.Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber)
+				.OrderBy(c => c.DealOrder)
+				.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
+				.ToList();
+
+			var communityCards = await _context.GameCards
+				.Where(c => c.GameId == gameId
+						&& !c.IsDiscarded
+						&& c.HandNumber == game.CurrentHandNumber
+						&& c.Location == CardLocation.Community)
+				.OrderBy(c => c.DealOrder)
+				.AsNoTracking()
+				.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
+				.ToListAsync(cancellationToken);
+
+			// Some variants persist dealt draw cards as `GameCards` rather than `GamePlayer.Cards`.
+			// If so, treat them as the player's evaluation cards when they appear to be the only source.
+			if (playerCards.Count == 0 && communityCards.Count >= 5)
+			{
+				playerCards = communityCards;
+				communityCards = [];
+			}
+
+			var allEvaluationCards = playerCards.Concat(communityCards).ToList();
+
+			// Draw games (no community cards). Provide a description once 5 cards are available.
+			// (During seating / pre-deal phases there may be 0-4 cards and we keep the description null.)
+			if (communityCards.Count == 0 && playerCards.Count >= 5)
+			{
+				// Twos, Jacks, Man with the Axe uses wild cards.
+				// Kings and Lows uses wild cards (Kings + lowest card).
+				// The base `DrawHand` evaluator ignores wild substitutions,
+				// so we must use the variant-specific hand type here.
+				HandBase drawHand;
+				if (string.Equals(game.GameType?.Code, "TWOSJACKSMANWITHTHEAXE", StringComparison.OrdinalIgnoreCase))
+				{
+					drawHand = new CardGames.Poker.Hands.DrawHands.TwosJacksManWithTheAxeDrawHand(playerCards);
+				}
+				else if (string.Equals(game.GameType?.Code, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase))
+				{
+					drawHand = new CardGames.Poker.Hands.DrawHands.KingsAndLowsDrawHand(playerCards);
+				}
+				else
+				{
+					drawHand = new DrawHand(playerCards);
+				}
+
+				handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(drawHand);
+			}
+			// Community-card games (need at least a 3-card board and 5+ total cards).
+			else if (communityCards.Count >= 3 && allEvaluationCards.Count >= 5)
+			{
+				// Hold'em / Short-deck Hold'em style: 2 hole + up to 5 community
+				if (playerCards.Count == 2)
+				{
+					var holdemHand = new CardGames.Poker.Hands.CommunityCardHands.HoldemHand(playerCards, communityCards);
+					handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(holdemHand);
+				}
+				// Omaha style: 4 hole + up to 5 community
+				else if (playerCards.Count == 4)
+				{
+					var omahaHand = new CardGames.Poker.Hands.CommunityCardHands.OmahaHand(playerCards, communityCards);
+					handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(omahaHand);
+				}
+			}
+		}
+		catch (Exception ex)
+		{
+			_logger.LogDebug(ex, "Failed to compute hand evaluation description for game {GameId}, player {PlayerName}", gameId, gamePlayer.Player.Name);
+		}
+
+		var isMyTurn = game.CurrentPlayerIndex == gamePlayer.SeatPosition;
+		var availableActions = isMyTurn
+			? await BuildAvailableActionsAsync(gameId, game, gamePlayer, cancellationToken)
+			: null;
+		var draw = BuildDrawPrivateDto(game, gamePlayer);
+
+		// Get hand history personalized for this player
+		var handHistory = await GetHandHistoryEntriesAsync(gameId, gamePlayer.PlayerId, take: 25, cancellationToken);
+
+		return new PrivateStateDto
+		{
+			GameId = gameId,
+			PlayerName = gamePlayer.Player.Name,
+			SeatPosition = gamePlayer.SeatPosition,
+			Hand = hand,
+			HandEvaluationDescription = handEvaluationDescription,
+			AvailableActions = availableActions,
+			Draw = draw,
+			IsMyTurn = isMyTurn,
+			HandHistory = handHistory
+		};
+	}
+
+	/// <inheritdoc />
+	public async Task<IReadOnlyList<string>> GetPlayerUserIdsAsync(Guid gameId, CancellationToken cancellationToken = default)
+	{
+		var players = await _context.GamePlayers
+			.Where(gp => gp.GameId == gameId)
+			.Include(gp => gp.Player)
+			.AsNoTracking()
+			.Select(gp => new { gp.Player.Email, gp.Player.Name, gp.Player.ExternalId })
+			.ToListAsync(cancellationToken);
+
+		// Prefer Name over Email when Email appears malformed (e.g., contains multiple @ symbols).
+		// This handles legacy data where Email may have been incorrectly stored with @localhost appended.
+		var userIds = players
+			.Select(p =>
+			{
+				// If Email looks like a valid single @ email, use it
+				// Otherwise prefer Name (which is typically the clean email)
+				var email = p.Email;
+				var name = p.Name;
+
+				// Check if email is malformed (has more than one @ symbol)
+				var isMalformedEmail = !string.IsNullOrWhiteSpace(email) && email.Count(c => c == '@') > 1;
+
+				if (isMalformedEmail && !string.IsNullOrWhiteSpace(name))
+				{
+					return name;
+				}
+
+				return email ?? name ?? p.ExternalId;
+			})
+			.Where(id => !string.IsNullOrWhiteSpace(id))
+			.Cast<string>()
+			.ToList();
+
+		_logger.LogInformation(
+			"GetPlayerUserIdsAsync for game {GameId}: {PlayerCount} players, UserIds: [{UserIds}], " +
+			"Raw data: [{RawData}]",
+			gameId,
+			players.Count,
+			string.Join(", ", userIds),
+			string.Join(", ", players.Select(p => $"Email={p.Email ?? "(null)"}, Name={p.Name ?? "(null)"}, ExternalId={p.ExternalId ?? "(null)"}")));
+
+		return userIds;
+	}
+
+	private static SeatPublicDto BuildSeatPublicDto(
 		GamePlayer gamePlayer,
 		int currentHandNumber,
 		int ante,
 		IReadOnlyDictionary<string, UserProfile> userProfilesByEmail)
-    {
-        // Get current hand cards (not discarded)
-        var playerCards = gamePlayer.Cards
-            .Where(c => !c.IsDiscarded && c.HandNumber == currentHandNumber)
-            .OrderBy(c => c.DealOrder)
-            .ToList();
+	{
+		// Get current hand cards (not discarded)
+		var playerCards = gamePlayer.Cards
+			.Where(c => !c.IsDiscarded && c.HandNumber == currentHandNumber)
+			.OrderBy(c => c.DealOrder)
+			.ToList();
 
-        // Cards are shown face-down (as placeholders) in public view
-        var publicCards = playerCards.Select(_ => new CardPublicDto
-        {
-            IsFaceUp = false,
-            Rank = null,
-            Suit = null
-        }).ToList();
+		// Cards are shown face-down (as placeholders) in public view
+		var publicCards = playerCards.Select(_ => new CardPublicDto
+		{
+			IsFaceUp = false,
+			Rank = null,
+			Suit = null
+		}).ToList();
 
-        // Determine sitting out reason
-        string? sittingOutReason = null;
-        if (gamePlayer.IsSittingOut)
-        {
-            if (gamePlayer.ChipStack < ante && ante > 0)
-            {
-                sittingOutReason = "Insufficient chips";
-            }
-            else
-            {
-                sittingOutReason = "Sitting out";
-            }
-        }
+		// Determine sitting out reason
+		string? sittingOutReason = null;
+		if (gamePlayer.IsSittingOut)
+		{
+			if (gamePlayer.ChipStack < ante && ante > 0)
+			{
+				sittingOutReason = "Insufficient chips";
+			}
+			else
+			{
+				sittingOutReason = "Sitting out";
+			}
+		}
 
-        string? playerFirstName = null;
-        string? playerAvatarUrl = null;
+		string? playerFirstName = null;
+		string? playerAvatarUrl = null;
 
-        if (!string.IsNullOrWhiteSpace(gamePlayer.Player.Email)
+		if (!string.IsNullOrWhiteSpace(gamePlayer.Player.Email)
 			&& userProfilesByEmail.TryGetValue(gamePlayer.Player.Email, out var profile))
-        {
+		{
 			playerFirstName = profile.FirstName;
 			playerAvatarUrl = profile.AvatarUrl;
-        }
+		}
 
 		// Fallback for existing/legacy data in the poker player table.
 		playerAvatarUrl ??= gamePlayer.Player.AvatarUrl;
 
-        return new SeatPublicDto
-        {
-            SeatIndex = gamePlayer.SeatPosition,
-            IsOccupied = true,
-            PlayerName = gamePlayer.Player.Name,
-            PlayerFirstName = string.IsNullOrWhiteSpace(playerFirstName) ? null : playerFirstName.Trim(),
-            PlayerAvatarUrl = string.IsNullOrWhiteSpace(playerAvatarUrl) ? null : playerAvatarUrl.Trim(),
-            Chips = gamePlayer.ChipStack,
-            IsReady = gamePlayer.Status == Entities.GamePlayerStatus.Active && !gamePlayer.IsSittingOut,
-            IsFolded = gamePlayer.HasFolded,
-            IsAllIn = gamePlayer.IsAllIn,
-            IsDisconnected = !gamePlayer.IsConnected,
-            IsSittingOut = gamePlayer.IsSittingOut,
-            SittingOutReason = sittingOutReason,
-            CurrentBet = gamePlayer.CurrentBet,
-            Cards = publicCards
-        };
-    }
+		return new SeatPublicDto
+		{
+			SeatIndex = gamePlayer.SeatPosition,
+			IsOccupied = true,
+			PlayerName = gamePlayer.Player.Name,
+			PlayerFirstName = string.IsNullOrWhiteSpace(playerFirstName) ? null : playerFirstName.Trim(),
+			PlayerAvatarUrl = string.IsNullOrWhiteSpace(playerAvatarUrl) ? null : playerAvatarUrl.Trim(),
+			Chips = gamePlayer.ChipStack,
+			IsReady = gamePlayer.Status == Entities.GamePlayerStatus.Active && !gamePlayer.IsSittingOut,
+			IsFolded = gamePlayer.HasFolded,
+			IsAllIn = gamePlayer.IsAllIn,
+			IsDisconnected = !gamePlayer.IsConnected,
+			IsSittingOut = gamePlayer.IsSittingOut,
+			SittingOutReason = sittingOutReason,
+			CurrentBet = gamePlayer.CurrentBet,
+			Cards = publicCards
+		};
+	}
 
-    private List<CardPrivateDto> BuildPrivateHand(GamePlayer gamePlayer, int currentHandNumber)
-    {
-        var allCards = gamePlayer.Cards?.ToList() ?? [];
-        var filteredCards = allCards
-            .Where(c => !c.IsDiscarded && c.HandNumber == currentHandNumber)
-            .ToList();
+	private List<CardPrivateDto> BuildPrivateHand(GamePlayer gamePlayer, int currentHandNumber)
+	{
+		var allCards = gamePlayer.Cards?.ToList() ?? [];
+		var filteredCards = allCards
+			.Where(c => !c.IsDiscarded && c.HandNumber == currentHandNumber)
+			.ToList();
 
-        _logger.LogInformation(
-            "BuildPrivateHand for player {PlayerId}: Total cards in collection: {TotalCount}, " +
-            "Cards for hand #{HandNumber}: {FilteredCount}, Card hand numbers: [{HandNumbers}]",
-            gamePlayer.Id, 
-            allCards.Count, 
-            currentHandNumber,
-            filteredCards.Count,
-            string.Join(", ", allCards.Select(c => c.HandNumber.ToString())));
+		_logger.LogInformation(
+			"BuildPrivateHand for player {PlayerId}: Total cards in collection: {TotalCount}, " +
+			"Cards for hand #{HandNumber}: {FilteredCount}, Card hand numbers: [{HandNumbers}]",
+			gamePlayer.Id,
+			allCards.Count,
+			currentHandNumber,
+			filteredCards.Count,
+			string.Join(", ", allCards.Select(c => c.HandNumber.ToString())));
 
-        return filteredCards
-            .OrderBy(c => c.DealOrder)
-            .Select(c => new CardPrivateDto
-            {
-                Rank = MapSymbolToRank(c.Symbol),
-                Suit = c.Suit.ToString(),
-                DealOrder = c.DealOrder,
-                IsSelectedForDiscard = false
-            })
-            .ToList();
-    }
+		return filteredCards
+			.OrderBy(c => c.DealOrder)
+			.Select(c => new CardPrivateDto
+			{
+				Rank = MapSymbolToRank(c.Symbol),
+				Suit = c.Suit.ToString(),
+				DealOrder = c.DealOrder,
+				IsSelectedForDiscard = false
+			})
+			.ToList();
+	}
 
-    private async Task<AvailableActionsDto?> BuildAvailableActionsAsync(
-        Guid gameId,
-        Game game,
-        GamePlayer gamePlayer,
-        CancellationToken cancellationToken)
-    {
-        // Only provide actions during betting phases
-        var bettingPhases = new[] { "FirstBettingRound", "SecondBettingRound" };
-        if (!bettingPhases.Contains(game.CurrentPhase))
-        {
-            return null;
-        }
+	private async Task<AvailableActionsDto?> BuildAvailableActionsAsync(
+		Guid gameId,
+		Game game,
+		GamePlayer gamePlayer,
+		CancellationToken cancellationToken)
+	{
+		// Only provide actions during betting phases
+		var bettingPhases = new[] { "FirstBettingRound", "SecondBettingRound" };
+		if (!bettingPhases.Contains(game.CurrentPhase))
+		{
+			return null;
+		}
 
-        // No actions for folded or all-in players
-        if (gamePlayer.HasFolded || gamePlayer.IsAllIn)
-        {
-            return null;
-        }
+		// No actions for folded or all-in players
+		if (gamePlayer.HasFolded || gamePlayer.IsAllIn)
+		{
+			return null;
+		}
 
-        var bettingRound = await _context.BettingRounds
-            .Where(br => br.GameId == gameId && br.HandNumber == game.CurrentHandNumber && !br.IsComplete)
-            .AsNoTracking()
-            .FirstOrDefaultAsync(cancellationToken);
+		var bettingRound = await _context.BettingRounds
+			.Where(br => br.GameId == gameId && br.HandNumber == game.CurrentHandNumber && !br.IsComplete)
+			.AsNoTracking()
+			.FirstOrDefaultAsync(cancellationToken);
 
-        if (bettingRound is null)
-        {
-            return null;
-        }
+		if (bettingRound is null)
+		{
+			return null;
+		}
 
-        var currentBet = bettingRound.CurrentBet;
-        var minBet = bettingRound.MinBet;
-        var lastRaiseAmount = bettingRound.LastRaiseAmount > 0 ? bettingRound.LastRaiseAmount : minBet;
-        var amountToCall = currentBet - gamePlayer.CurrentBet;
-        var canAffordCall = gamePlayer.ChipStack >= amountToCall;
+		var currentBet = bettingRound.CurrentBet;
+		var minBet = bettingRound.MinBet;
+		var lastRaiseAmount = bettingRound.LastRaiseAmount > 0 ? bettingRound.LastRaiseAmount : minBet;
+		var amountToCall = currentBet - gamePlayer.CurrentBet;
+		var canAffordCall = gamePlayer.ChipStack >= amountToCall;
 
-        return new AvailableActionsDto
-        {
-            CanCheck = currentBet == gamePlayer.CurrentBet,
-            CanBet = currentBet == 0 && gamePlayer.ChipStack >= minBet,
-            CanCall = currentBet > gamePlayer.CurrentBet && canAffordCall && amountToCall < gamePlayer.ChipStack,
-            CanRaise = currentBet > 0 && gamePlayer.ChipStack > amountToCall,
-            CanFold = currentBet > gamePlayer.CurrentBet,
-            CanAllIn = gamePlayer.ChipStack > 0,
-            MinBet = minBet,
-            MaxBet = gamePlayer.ChipStack,
-            CallAmount = Math.Min(amountToCall, gamePlayer.ChipStack),
-            MinRaise = currentBet + lastRaiseAmount
-        };
-    }
+		return new AvailableActionsDto
+		{
+			CanCheck = currentBet == gamePlayer.CurrentBet,
+			CanBet = currentBet == 0 && gamePlayer.ChipStack >= minBet,
+			CanCall = currentBet > gamePlayer.CurrentBet && canAffordCall && amountToCall < gamePlayer.ChipStack,
+			CanRaise = currentBet > 0 && gamePlayer.ChipStack > amountToCall,
+			CanFold = currentBet > gamePlayer.CurrentBet,
+			CanAllIn = gamePlayer.ChipStack > 0,
+			MinBet = minBet,
+			MaxBet = gamePlayer.ChipStack,
+			CallAmount = Math.Min(amountToCall, gamePlayer.ChipStack),
+			MinRaise = currentBet + lastRaiseAmount
+		};
+	}
 
-    private static DrawPrivateDto? BuildDrawPrivateDto(
-        Game game,
-        GamePlayer gamePlayer)
-    {
-        if (game.CurrentPhase != "DrawPhase")
-        {
-            return null;
-        }
+	private static DrawPrivateDto? BuildDrawPrivateDto(
+		Game game,
+		GamePlayer gamePlayer)
+	{
+		if (game.CurrentPhase != "DrawPhase")
+		{
+			return null;
+		}
 
-        // Check if player has an Ace in their current hand to allow 4 discards
-        var playerCards = gamePlayer.Cards
-            .Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber)
-            .ToList();
+		// Check if player has an Ace in their current hand to allow 4 discards
+		var playerCards = gamePlayer.Cards
+			.Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber)
+			.ToList();
 
-        var hasAce = playerCards.Any(c => c.Symbol == Data.Entities.CardSymbol.Ace);
-        var maxDiscards = hasAce ? 4 : 3;
+		var hasAce = playerCards.Any(c => c.Symbol == Data.Entities.CardSymbol.Ace);
+		var maxDiscards = hasAce ? 4 : 3;
 
-        return new DrawPrivateDto
-        {
-            IsMyTurnToDraw = game.CurrentDrawPlayerIndex == gamePlayer.SeatPosition,
-            MaxDiscards = maxDiscards,
-            HasDrawnThisRound = gamePlayer.HasDrawnThisRound
-        };
-    }
+		return new DrawPrivateDto
+		{
+			IsMyTurnToDraw = game.CurrentDrawPlayerIndex == gamePlayer.SeatPosition,
+			MaxDiscards = maxDiscards,
+			HasDrawnThisRound = gamePlayer.HasDrawnThisRound
+		};
+	}
 
 	private static ShowdownPublicDto? BuildShowdownPublicDto(
 		Game game,
@@ -577,409 +577,420 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			}
 		}
 
-        // Determine winners
-        var highHandWinners = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var sevensWinners = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var sevensPoolRolledOver = false;
+		// Determine winners
+		var highHandWinners = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+		var sevensWinners = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+		var sevensPoolRolledOver = false;
 
-        if (playerHandEvaluations.Count > 0)
-        {
-            // Determine high hand winners (highest hand strength)
-            var maxStrength = playerHandEvaluations.Values.Max(h => h.hand.Strength);
-            foreach (var kvp in playerHandEvaluations.Where(k => k.Value.hand.Strength == maxStrength))
-            {
-                highHandWinners.Add(kvp.Key);
-            }
+		if (playerHandEvaluations.Count > 0)
+		{
+			// Determine high hand winners (highest hand strength)
+			var maxStrength = playerHandEvaluations.Values.Max(h => h.hand.Strength);
+			foreach (var kvp in playerHandEvaluations.Where(k => k.Value.hand.Strength == maxStrength))
+			{
+				highHandWinners.Add(kvp.Key);
+			}
 
-            // For Twos/Jacks/Axe, also determine sevens winners
-            if (isTwosJacksAxe)
-            {
-                foreach (var kvp in playerHandEvaluations.Where(k => k.Value.twosJacksHand?.HasNaturalPairOfSevens() == true))
-                {
-                    sevensWinners.Add(kvp.Key);
-                }
-                sevensPoolRolledOver = sevensWinners.Count == 0;
-            }
-        }
-        else if (gamePlayers.Count(gp => !gp.HasFolded) == 1)
-        {
-            // Only one player remaining (won by fold)
-            var winner = gamePlayers.First(gp => !gp.HasFolded);
-            highHandWinners.Add(winner.Player.Name);
-        }
+			// For Twos/Jacks/Axe, also determine sevens winners
+			if (isTwosJacksAxe)
+			{
+				foreach (var kvp in playerHandEvaluations.Where(k => k.Value.twosJacksHand?.HasNaturalPairOfSevens() == true))
+				{
+					sevensWinners.Add(kvp.Key);
+				}
+				sevensPoolRolledOver = sevensWinners.Count == 0;
+			}
+		}
+		else if (gamePlayers.Count(gp => !gp.HasFolded) == 1)
+		{
+			// Only one player remaining (won by fold)
+			var winner = gamePlayers.First(gp => !gp.HasFolded);
+			highHandWinners.Add(winner.Player.Name);
+		}
 
-        // Combined winners for IsWinner flag
-        var allWinners = highHandWinners.Union(sevensWinners).ToHashSet(StringComparer.OrdinalIgnoreCase);
+		// Combined winners for IsWinner flag
+		var allWinners = highHandWinners.Union(sevensWinners).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        // Build player results
-        var playerResults = gamePlayers
-            .Where(gp => !gp.HasFolded)
-            .Select(gp =>
-            {
-                var isWinner = allWinners.Contains(gp.Player.Name);
-                var isSevensWinner = sevensWinners.Contains(gp.Player.Name);
-                var isHighHandWinner = highHandWinners.Contains(gp.Player.Name);
-                string? handRanking = null;
-                List<int>? wildIndexes = null;
+		// Build player results
+		var playerResults = gamePlayers
+			.Where(gp => !gp.HasFolded)
+			.Select(gp =>
+			{
+				var isWinner = allWinners.Contains(gp.Player.Name);
+				var isSevensWinner = sevensWinners.Contains(gp.Player.Name);
+				var isHighHandWinner = highHandWinners.Contains(gp.Player.Name);
+				string? handRanking = null;
+				List<int>? wildIndexes = null;
 
-                if (playerHandEvaluations.TryGetValue(gp.Player.Name, out var eval))
-                {
-                    handRanking = eval.hand.Type.ToString();
-                    wildIndexes = eval.wildIndexes.Count > 0 ? eval.wildIndexes : null;
-                }
+				if (playerHandEvaluations.TryGetValue(gp.Player.Name, out var eval))
+				{
+					handRanking = eval.hand.Type.ToString();
+					wildIndexes = eval.wildIndexes.Count > 0 ? eval.wildIndexes : null;
+				}
 
-                userProfilesByEmail.TryGetValue(gp.Player.Email ?? string.Empty, out var userProfile);
+				userProfilesByEmail.TryGetValue(gp.Player.Email ?? string.Empty, out var userProfile);
 
-                return new ShowdownPlayerResultDto
-                {
-                    PlayerName = gp.Player.Name,
-                    PlayerFirstName = userProfile?.FirstName,
-                    SeatPosition = gp.SeatPosition,
-                    HandRanking = handRanking,
-                    HandDescription = playerHandEvaluations.TryGetValue(gp.Player.Name, out var e)
-                        ? HandDescriptionFormatter.GetHandDescription(e.hand)
-                        : null,
+				return new ShowdownPlayerResultDto
+				{
+					PlayerName = gp.Player.Name,
+					PlayerFirstName = userProfile?.FirstName,
+					SeatPosition = gp.SeatPosition,
+					HandRanking = handRanking,
+					HandDescription = playerHandEvaluations.TryGetValue(gp.Player.Name, out var e)
+						? HandDescriptionFormatter.GetHandDescription(e.hand)
+						: null,
 					AmountWon = 0, // Actual payout calculated separately
-                    IsWinner = isWinner,
-                    IsSevensWinner = isSevensWinner,
-                    IsHighHandWinner = isHighHandWinner,
-                    WildCardIndexes = wildIndexes,
-                    Cards = gp.Cards
-                        .Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber)
-                        .OrderBy(c => c.DealOrder)
-                        .Select(c => new CardPublicDto
-                        {
-                            IsFaceUp = true,
-                            Rank = MapSymbolToRank(c.Symbol),
-                            Suit = c.Suit.ToString()
-                        })
-                        .ToList()
-                };
-            })
-            .OrderByDescending(r => r.IsWinner)
-            .ThenByDescending(r => playerHandEvaluations.TryGetValue(r.PlayerName, out var e) ? e.hand.Strength : 0)
-            .ToList();
+					IsWinner = isWinner,
+					IsSevensWinner = isSevensWinner,
+					IsHighHandWinner = isHighHandWinner,
+					WildCardIndexes = wildIndexes,
+					Cards = gp.Cards
+						.Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber)
+						.OrderBy(c => c.DealOrder)
+						.Select(c => new CardPublicDto
+						{
+							IsFaceUp = true,
+							Rank = MapSymbolToRank(c.Symbol),
+							Suit = c.Suit.ToString()
+						})
+						.ToList()
+				};
+			})
+			.OrderByDescending(r => r.IsWinner)
+			.ThenByDescending(r => playerHandEvaluations.TryGetValue(r.PlayerName, out var e) ? e.hand.Strength : 0)
+			.ToList();
 
-        return new ShowdownPublicDto
-        {
-            PlayerResults = playerResults,
-            IsComplete = game.CurrentPhase == "Complete",
-            SevensWinners = isTwosJacksAxe ? sevensWinners.ToList() : null,
-            HighHandWinners = isTwosJacksAxe ? highHandWinners.ToList() : null,
-            SevensPoolRolledOver = sevensPoolRolledOver
-        };
-    }
+		return new ShowdownPublicDto
+		{
+			PlayerResults = playerResults,
+			IsComplete = game.CurrentPhase == "Complete",
+			SevensWinners = isTwosJacksAxe ? sevensWinners.ToList() : null,
+			HighHandWinners = isTwosJacksAxe ? highHandWinners.ToList() : null,
+			SevensPoolRolledOver = sevensPoolRolledOver
+		};
+	}
 
-    private async Task<int> CalculateTotalPotAsync(Guid gameId, int handNumber, CancellationToken cancellationToken)
-    {
-        var totalContributions = await _context.GamePlayers
-            .Where(gp => gp.GameId == gameId)
-            .SumAsync(gp => gp.TotalContributedThisHand, cancellationToken);
+	private async Task<int> CalculateTotalPotAsync(Game game, int handNumber, CancellationToken cancellationToken)
+	{
 
-        return totalContributions;
-    }
+		if (game.GameType.Code == "KINGSANDLOWS")
+		{
+			var latestPot = await _context.Pots
+				.Where(br => br.GameId == game.Id && br.HandNumber == handNumber)
+				.AsNoTracking()
+				.Select(br => br.Amount)
+				.FirstOrDefaultAsync(cancellationToken);
+			return latestPot;
+		}
 
-        private static string MapSymbolToRank(Entities.CardSymbol symbol)
-        {
-            return symbol switch
-            {
-                Entities.CardSymbol.Ace => "A",
-                Entities.CardSymbol.King => "K",
-                Entities.CardSymbol.Queen => "Q",
-                Entities.CardSymbol.Jack => "J",
-                Entities.CardSymbol.Ten => "10",
-                Entities.CardSymbol.Nine => "9",
-                Entities.CardSymbol.Eight => "8",
-                Entities.CardSymbol.Seven => "7",
-                Entities.CardSymbol.Six => "6",
-                Entities.CardSymbol.Five => "5",
-                Entities.CardSymbol.Four => "4",
-                Entities.CardSymbol.Three => "3",
-                Entities.CardSymbol.Deuce => "2",
-                _ => symbol.ToString()
-            };
-        }
+		var totalContributions = await _context.GamePlayers
+			.Where(gp => gp.GameId == game.Id)
+			.SumAsync(gp => gp.TotalContributedThisHand, cancellationToken);
 
-        /// <summary>
-        /// Retrieves hand history entries for the dashboard.
-        /// </summary>
-        private async Task<List<HandHistoryEntryDto>> GetHandHistoryEntriesAsync(
-            Guid gameId,
-            Guid? currentUserPlayerId,
-            int take,
-            CancellationToken cancellationToken)
-        {
-            var histories = await _context.HandHistories
-                .Include(h => h.Winners)
-                    .ThenInclude(w => w.Player)
-                .Include(h => h.PlayerResults)
-                .Where(h => h.GameId == gameId)
-                .OrderByDescending(h => h.CompletedAtUtc)
-                .Take(take)
-                .AsSplitQuery()
-                .AsNoTracking()
-                    .ToListAsync(cancellationToken);
+		return totalContributions;
+	}
 
-            var winnerEmails = histories
-                .SelectMany(h => h.Winners)
-                .Select(w => w.Player.Email)
-                .Where(email => !string.IsNullOrWhiteSpace(email))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
+	private static string MapSymbolToRank(Entities.CardSymbol symbol)
+	{
+		return symbol switch
+		{
+			Entities.CardSymbol.Ace => "A",
+			Entities.CardSymbol.King => "K",
+			Entities.CardSymbol.Queen => "Q",
+			Entities.CardSymbol.Jack => "J",
+			Entities.CardSymbol.Ten => "10",
+			Entities.CardSymbol.Nine => "9",
+			Entities.CardSymbol.Eight => "8",
+			Entities.CardSymbol.Seven => "7",
+			Entities.CardSymbol.Six => "6",
+			Entities.CardSymbol.Five => "5",
+			Entities.CardSymbol.Four => "4",
+			Entities.CardSymbol.Three => "3",
+			Entities.CardSymbol.Deuce => "2",
+			_ => symbol.ToString()
+		};
+	}
 
-            var winnerFirstNamesByEmail = winnerEmails.Count == 0
-                ? new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
-                : await _context.Users
-                    .AsNoTracking()
-                    .Where(u => u.Email != null && winnerEmails.Contains(u.Email))
-                    .Select(u => new { Email = u.Email!, u.FirstName })
-                    .ToDictionaryAsync(u => u.Email, u => u.FirstName, StringComparer.OrdinalIgnoreCase, cancellationToken);
+	/// <summary>
+	/// Retrieves hand history entries for the dashboard.
+	/// </summary>
+	private async Task<List<HandHistoryEntryDto>> GetHandHistoryEntriesAsync(
+		Guid gameId,
+		Guid? currentUserPlayerId,
+		int take,
+		CancellationToken cancellationToken)
+	{
+		var histories = await _context.HandHistories
+			.Include(h => h.Winners)
+				.ThenInclude(w => w.Player)
+			.Include(h => h.PlayerResults)
+			.Where(h => h.GameId == gameId)
+			.OrderByDescending(h => h.CompletedAtUtc)
+			.Take(take)
+			.AsSplitQuery()
+			.AsNoTracking()
+				.ToListAsync(cancellationToken);
 
-                _logger.LogInformation("GetHandHistoryEntriesAsync: Found {Count} histories for game {GameId}, currentUserPlayerId={PlayerId}",
-                    histories.Count, gameId, currentUserPlayerId);
+		var winnerEmails = histories
+			.SelectMany(h => h.Winners)
+			.Select(w => w.Player.Email)
+			.Where(email => !string.IsNullOrWhiteSpace(email))
+			.Distinct(StringComparer.OrdinalIgnoreCase)
+			.ToList();
 
-                return histories.Select(h =>
-                {
-                    _logger.LogInformation("HandHistory {HandNumber}: Winners.Count={WinnerCount}, PlayerResults.Count={PlayerResultCount}",
-                        h.HandNumber, h.Winners.Count, h.PlayerResults.Count);
+		var winnerFirstNamesByEmail = winnerEmails.Count == 0
+			? new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+			: await _context.Users
+				.AsNoTracking()
+				.Where(u => u.Email != null && winnerEmails.Contains(u.Email))
+				.Select(u => new { Email = u.Email!, u.FirstName })
+				.ToDictionaryAsync(u => u.Email, u => u.FirstName, StringComparer.OrdinalIgnoreCase, cancellationToken);
 
-                    // Get winner display
-                    string GetWinnerFirstNameOrFallback()
-                    {
-                        var firstWinner = h.Winners.First();
-                        var email = firstWinner.Player.Email;
+		_logger.LogInformation("GetHandHistoryEntriesAsync: Found {Count} histories for game {GameId}, currentUserPlayerId={PlayerId}",
+			histories.Count, gameId, currentUserPlayerId);
 
-                        if (!string.IsNullOrWhiteSpace(email) &&
-                            winnerFirstNamesByEmail.TryGetValue(email, out var firstName) &&
-                            !string.IsNullOrWhiteSpace(firstName))
-                        {
-                            return firstName;
-                        }
+		return histories.Select(h =>
+		{
+			_logger.LogInformation("HandHistory {HandNumber}: Winners.Count={WinnerCount}, PlayerResults.Count={PlayerResultCount}",
+				h.HandNumber, h.Winners.Count, h.PlayerResults.Count);
 
-                        return firstWinner.PlayerName;
-                    }
+			// Get winner display
+			string GetWinnerFirstNameOrFallback()
+			{
+				var firstWinner = h.Winners.First();
+				var email = firstWinner.Player.Email;
 
-                    var winnerDisplay = h.Winners.Count switch
-                    {
-                        0 => "Unknown",
-                        1 => GetWinnerFirstNameOrFallback(),
-                        _ => $"{GetWinnerFirstNameOrFallback()} +{h.Winners.Count - 1}"
-                    };
+				if (!string.IsNullOrWhiteSpace(email) &&
+					winnerFirstNamesByEmail.TryGetValue(email, out var firstName) &&
+					!string.IsNullOrWhiteSpace(firstName))
+				{
+					return firstName;
+				}
 
-                    _logger.LogInformation("HandHistory {HandNumber}: winnerDisplay='{WinnerDisplay}'", h.HandNumber, winnerDisplay);
+				return firstWinner.PlayerName;
+			}
 
-                var totalWinnings = h.Winners.Sum(w => w.AmountWon);
+			var winnerDisplay = h.Winners.Count switch
+			{
+				0 => "Unknown",
+				1 => GetWinnerFirstNameOrFallback(),
+				_ => $"{GetWinnerFirstNameOrFallback()} +{h.Winners.Count - 1}"
+			};
 
-                // Get current player's result if specified
-                string? currentPlayerResultLabel = null;
-                var currentPlayerNetDelta = 0;
-                var currentPlayerWon = false;
+			_logger.LogInformation("HandHistory {HandNumber}: winnerDisplay='{WinnerDisplay}'", h.HandNumber, winnerDisplay);
 
-                if (currentUserPlayerId.HasValue)
-                {
-                    var currentPlayerResult = h.PlayerResults
-                        .FirstOrDefault(pr => pr.PlayerId == currentUserPlayerId.Value);
+			var totalWinnings = h.Winners.Sum(w => w.AmountWon);
 
-                    if (currentPlayerResult != null)
-                    {
-                        currentPlayerResultLabel = currentPlayerResult.GetResultLabel();
-                        currentPlayerNetDelta = currentPlayerResult.NetChipDelta;
-                        currentPlayerWon = currentPlayerResult.ResultType == Entities.PlayerResultType.Won ||
-                                           currentPlayerResult.ResultType == Entities.PlayerResultType.SplitPotWon;
-                    }
-                }
+			// Get current player's result if specified
+			string? currentPlayerResultLabel = null;
+			var currentPlayerNetDelta = 0;
+			var currentPlayerWon = false;
+
+			if (currentUserPlayerId.HasValue)
+			{
+				var currentPlayerResult = h.PlayerResults
+							.FirstOrDefault(pr => pr.PlayerId == currentUserPlayerId.Value);
+
+				if (currentPlayerResult != null)
+				{
+					currentPlayerResultLabel = currentPlayerResult.GetResultLabel();
+					currentPlayerNetDelta = currentPlayerResult.NetChipDelta;
+					currentPlayerWon = currentPlayerResult.ResultType == Entities.PlayerResultType.Won ||
+											   currentPlayerResult.ResultType == Entities.PlayerResultType.SplitPotWon;
+				}
+			}
 
 
-                return new HandHistoryEntryDto(
-	                amountWon: totalWinnings,
-	                completedAtUtc: h.CompletedAtUtc,
-	                currentPlayerNetDelta: currentPlayerNetDelta,
-	                currentPlayerResultLabel: currentPlayerResultLabel,
-	                currentPlayerWon: currentPlayerWon,
-	                handNumber: h.HandNumber,
-	                winnerCount: h.Winners.Count,
-	                winnerName: winnerDisplay,
-	                winningHandDescription: h.WinningHandDescription,
-	                wonByFold: h.EndReason == Data.Entities.HandEndReason.FoldedToWinner
-                );
-            }).ToList();
-        }
+			return new HandHistoryEntryDto(
+						amountWon: totalWinnings,
+						completedAtUtc: h.CompletedAtUtc,
+						currentPlayerNetDelta: currentPlayerNetDelta,
+						currentPlayerResultLabel: currentPlayerResultLabel,
+						currentPlayerWon: currentPlayerWon,
+						handNumber: h.HandNumber,
+						winnerCount: h.Winners.Count,
+						winnerName: winnerDisplay,
+						winningHandDescription: h.WinningHandDescription,
+						wonByFold: h.EndReason == Data.Entities.HandEndReason.FoldedToWinner
+					);
+		}).ToList();
+	}
 
-        /// <summary>
-        /// Builds the drawing configuration DTO from game rules.
-        /// </summary>
-        private static DrawingConfigDto? BuildDrawingConfigDto(GameRules? rules)
-        {
-            if (rules?.Drawing is null)
-            {
-                return null;
-            }
+	/// <summary>
+	/// Builds the drawing configuration DTO from game rules.
+	/// </summary>
+	private static DrawingConfigDto? BuildDrawingConfigDto(GameRules? rules)
+	{
+		if (rules?.Drawing is null)
+		{
+			return null;
+		}
 
-            return new DrawingConfigDto
-            {
-                AllowsDrawing = rules.Drawing.AllowsDrawing,
-                MaxDiscards = rules.Drawing.MaxDiscards,
-                SpecialRules = rules.Drawing.SpecialRules,
-                DrawingRounds = rules.Drawing.DrawingRounds
-            };
-        }
+		return new DrawingConfigDto
+		{
+			AllowsDrawing = rules.Drawing.AllowsDrawing,
+			MaxDiscards = rules.Drawing.MaxDiscards,
+			SpecialRules = rules.Drawing.SpecialRules,
+			DrawingRounds = rules.Drawing.DrawingRounds
+		};
+	}
 
-        /// <summary>
-        /// Builds the special rules DTO from game rules.
-        /// </summary>
-        private static GameSpecialRulesDto? BuildSpecialRulesDto(GameRules? rules)
-        {
-            if (rules?.SpecialRules is null || rules.SpecialRules.Count == 0)
-            {
-                return null;
-            }
+	/// <summary>
+	/// Builds the special rules DTO from game rules.
+	/// </summary>
+	private static GameSpecialRulesDto? BuildSpecialRulesDto(GameRules? rules)
+	{
+		if (rules?.SpecialRules is null || rules.SpecialRules.Count == 0)
+		{
+			return null;
+		}
 
-            return new GameSpecialRulesDto
-            {
-                HasDropOrStay = rules.SpecialRules.ContainsKey("DropOrStay"),
-                HasPotMatching = rules.SpecialRules.ContainsKey("LosersMatchPot"),
-                HasWildCards = rules.SpecialRules.ContainsKey("WildCards"),
-                WildCardsDescription = rules.SpecialRules.TryGetValue("WildCards", out var wc)
-                    ? wc?.ToString()
-                    : null,
-                HasSevensSplit = rules.SpecialRules.ContainsKey("SevensSplit"),
-                WildCardRules = BuildWildCardRulesDto(rules)
-            };
-        }
+		return new GameSpecialRulesDto
+		{
+			HasDropOrStay = rules.SpecialRules.ContainsKey("DropOrStay"),
+			HasPotMatching = rules.SpecialRules.ContainsKey("LosersMatchPot"),
+			HasWildCards = rules.SpecialRules.ContainsKey("WildCards"),
+			WildCardsDescription = rules.SpecialRules.TryGetValue("WildCards", out var wc)
+				? wc?.ToString()
+				: null,
+			HasSevensSplit = rules.SpecialRules.ContainsKey("SevensSplit"),
+			WildCardRules = BuildWildCardRulesDto(rules)
+		};
+	}
 
-        /// <summary>
-        /// Builds structured wild card rules from game rules.
-        /// </summary>
-        private static WildCardRulesDto? BuildWildCardRulesDto(GameRules? rules)
-        {
-            if (rules?.SpecialRules is null || !rules.SpecialRules.TryGetValue("WildCards", out var wildCardsValue))
-            {
-                return null;
-            }
+	/// <summary>
+	/// Builds structured wild card rules from game rules.
+	/// </summary>
+	private static WildCardRulesDto? BuildWildCardRulesDto(GameRules? rules)
+	{
+		if (rules?.SpecialRules is null || !rules.SpecialRules.TryGetValue("WildCards", out var wildCardsValue))
+		{
+			return null;
+		}
 
-            var description = wildCardsValue?.ToString();
-            var wildRanks = new List<string>();
-            var specificCards = new List<string>();
-            var lowestCardIsWild = false;
+		var description = wildCardsValue?.ToString();
+		var wildRanks = new List<string>();
+		var specificCards = new List<string>();
+		var lowestCardIsWild = false;
 
-            // Parse known patterns into structured rules based on game type
-            if (string.Equals(rules.GameTypeCode, "TWOSJACKSMANWITHTHEAXE", StringComparison.OrdinalIgnoreCase))
-            {
-                wildRanks.AddRange(["2", "J"]);
-                specificCards.Add("KD"); // King of Diamonds
-            }
-            else if (string.Equals(rules.GameTypeCode, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase))
-            {
-                wildRanks.Add("K");
-                lowestCardIsWild = true;
-            }
+		// Parse known patterns into structured rules based on game type
+		if (string.Equals(rules.GameTypeCode, "TWOSJACKSMANWITHTHEAXE", StringComparison.OrdinalIgnoreCase))
+		{
+			wildRanks.AddRange(["2", "J"]);
+			specificCards.Add("KD"); // King of Diamonds
+		}
+		else if (string.Equals(rules.GameTypeCode, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase))
+		{
+			wildRanks.Add("K");
+			lowestCardIsWild = true;
+		}
 
-                    return new WildCardRulesDto
-                    {
-                        WildRanks = wildRanks.Count > 0 ? wildRanks : null,
-                        SpecificCards = specificCards.Count > 0 ? specificCards : null,
-                        LowestCardIsWild = lowestCardIsWild,
-                        Description = description
-                    };
-                }
+		return new WildCardRulesDto
+		{
+			WildRanks = wildRanks.Count > 0 ? wildRanks : null,
+			SpecificCards = specificCards.Count > 0 ? specificCards : null,
+			LowestCardIsWild = lowestCardIsWild,
+			Description = description
+		};
+	}
 
-                /// <summary>
-                /// Builds the Player vs Deck state for games where only one player stayed.
-                /// </summary>
-                private async Task<PlayerVsDeckStateDto?> BuildPlayerVsDeckStateAsync(
-                    Game game,
-                    List<GamePlayer> gamePlayers,
-                    IReadOnlyDictionary<string, UserProfile> userProfilesByEmail,
-                    CancellationToken cancellationToken)
-                {
-                    // Only build for PlayerVsDeck phase
-                    if (!string.Equals(game.CurrentPhase, "PlayerVsDeck", StringComparison.OrdinalIgnoreCase))
-                    {
-                        return null;
-                    }
+	/// <summary>
+	/// Builds the Player vs Deck state for games where only one player stayed.
+	/// </summary>
+	private async Task<PlayerVsDeckStateDto?> BuildPlayerVsDeckStateAsync(
+		Game game,
+		List<GamePlayer> gamePlayers,
+		IReadOnlyDictionary<string, UserProfile> userProfilesByEmail,
+		CancellationToken cancellationToken)
+	{
+		// Only build for PlayerVsDeck phase
+		if (!string.Equals(game.CurrentPhase, "PlayerVsDeck", StringComparison.OrdinalIgnoreCase))
+		{
+			return null;
+		}
 
-                    // Get deck cards (cards with no GamePlayerId in this hand)
-                    var deckCards = await _context.GameCards
-                        .Where(gc => gc.GameId == game.Id
-                                 && gc.GamePlayerId == null
-                                 && gc.HandNumber == game.CurrentHandNumber
-                                 && !gc.IsDiscarded)
-                        .OrderBy(gc => gc.DealOrder)
-                        .AsNoTracking()
-                        .ToListAsync(cancellationToken);
+		// Get deck cards (cards with no GamePlayerId in this hand)
+		var deckCards = await _context.GameCards
+			.Where(gc => gc.GameId == game.Id
+					 && gc.GamePlayerId == null
+					 && gc.HandNumber == game.CurrentHandNumber
+					 && !gc.IsDiscarded)
+			.OrderBy(gc => gc.DealOrder)
+			.AsNoTracking()
+			.ToListAsync(cancellationToken);
 
-                    // Find the staying player
-                    var stayingPlayer = gamePlayers
-                        .FirstOrDefault(gp => gp.DropOrStayDecision == Entities.DropOrStayDecision.Stay);
+		// Find the staying player
+		var stayingPlayer = gamePlayers
+			.FirstOrDefault(gp => gp.DropOrStayDecision == Entities.DropOrStayDecision.Stay);
 
-                    if (stayingPlayer is null)
-                    {
-                        _logger.LogWarning("No staying player found in PlayerVsDeck phase for game {GameId}", game.Id);
-                        return null;
-                    }
+		if (stayingPlayer is null)
+		{
+			_logger.LogWarning("No staying player found in PlayerVsDeck phase for game {GameId}", game.Id);
+			return null;
+		}
 
-                    // Determine decision maker: dealer, unless dealer is the staying player
-                    var dealerSeatPosition = game.DealerPosition;
-                    var orderedPlayers = gamePlayers.OrderBy(gp => gp.SeatPosition).ToList();
+		// Determine decision maker: dealer, unless dealer is the staying player
+		var dealerSeatPosition = game.DealerPosition;
+		var orderedPlayers = gamePlayers.OrderBy(gp => gp.SeatPosition).ToList();
 
-                    GamePlayer? decisionMaker = null;
+		GamePlayer? decisionMaker = null;
 
-                    // Try dealer first
-                    var dealer = orderedPlayers.FirstOrDefault(gp => gp.SeatPosition == dealerSeatPosition);
-                    if (dealer is not null && dealer.PlayerId != stayingPlayer.PlayerId)
-                    {
-                        decisionMaker = dealer;
-                    }
-                    else
-                    {
-                        // Dealer is the staying player, find first player to dealer's left
-                        var dealerIndex = orderedPlayers.FindIndex(gp => gp.SeatPosition == dealerSeatPosition);
-                        if (dealerIndex < 0) dealerIndex = 0;
+		// Try dealer first
+		var dealer = orderedPlayers.FirstOrDefault(gp => gp.SeatPosition == dealerSeatPosition);
+		if (dealer is not null && dealer.PlayerId != stayingPlayer.PlayerId)
+		{
+			decisionMaker = dealer;
+		}
+		else
+		{
+			// Dealer is the staying player, find first player to dealer's left
+			var dealerIndex = orderedPlayers.FindIndex(gp => gp.SeatPosition == dealerSeatPosition);
+			if (dealerIndex < 0) dealerIndex = 0;
 
-                        for (int i = 1; i < orderedPlayers.Count; i++)
-                        {
-                            var nextIndex = (dealerIndex + i) % orderedPlayers.Count;
-                            var candidate = orderedPlayers[nextIndex];
-                            if (candidate.PlayerId != stayingPlayer.PlayerId &&
-                                candidate.Status == Entities.GamePlayerStatus.Active &&
-                                !candidate.IsSittingOut)
-                            {
-                                decisionMaker = candidate;
-                                break;
-                            }
-                        }
-                    }
+			for (int i = 1; i < orderedPlayers.Count; i++)
+			{
+				var nextIndex = (dealerIndex + i) % orderedPlayers.Count;
+				var candidate = orderedPlayers[nextIndex];
+				if (candidate.PlayerId != stayingPlayer.PlayerId &&
+					candidate.Status == Entities.GamePlayerStatus.Active &&
+					!candidate.IsSittingOut)
+				{
+					decisionMaker = candidate;
+					break;
+				}
+			}
+		}
 
-                    // Fallback: if no other player found, the staying player makes the decision
-                    decisionMaker ??= stayingPlayer;
+		// Fallback: if no other player found, the staying player makes the decision
+		decisionMaker ??= stayingPlayer;
 
-                    // Get decision maker's first name from user profile
-                    string? decisionMakerFirstName = null;
-                    if (!string.IsNullOrWhiteSpace(decisionMaker.Player?.Email) &&
-                        userProfilesByEmail.TryGetValue(decisionMaker.Player.Email, out var profile))
-                    {
-                        decisionMakerFirstName = profile.FirstName;
-                    }
+		// Get decision maker's first name from user profile
+		string? decisionMakerFirstName = null;
+		if (!string.IsNullOrWhiteSpace(decisionMaker.Player?.Email) &&
+			userProfilesByEmail.TryGetValue(decisionMaker.Player.Email, out var profile))
+		{
+			decisionMakerFirstName = profile.FirstName;
+		}
 
-                    // Check if deck has drawn (by checking if any cards were dealt after the initial 5)
-                    // For simplicity, we'll track this via a flag or by checking draw records
-                    // For now, check if deck has exactly 5 cards and they haven't been modified
-                    var hasDeckDrawn = game.CurrentPhase != "PlayerVsDeck"; // If we've moved past, it's drawn
+		// Check if deck has drawn (by checking if any cards were dealt after the initial 5)
+		// For simplicity, we'll track this via a flag or by checking draw records
+		// For now, check if deck has exactly 5 cards and they haven't been modified
+		var hasDeckDrawn = game.CurrentPhase != "PlayerVsDeck"; // If we've moved past, it's drawn
 
-                    return new PlayerVsDeckStateDto
-                    {
-                        DeckCards = deckCards.Select(c => new CardPublicDto
-                        {
-                            IsFaceUp = true,
-                            Rank = MapSymbolToRank(c.Symbol),
-                            Suit = c.Suit.ToString()
-                        }).ToList(),
-                        DecisionMakerSeatIndex = decisionMaker.SeatPosition,
-                        DecisionMakerName = decisionMaker.Player?.Name,
-                        DecisionMakerFirstName = decisionMakerFirstName,
-                        HasDeckDrawn = hasDeckDrawn,
-                        StayingPlayerName = stayingPlayer.Player?.Name,
-                        StayingPlayerSeatIndex = stayingPlayer.SeatPosition
-                    };
-                }
-            }
+		return new PlayerVsDeckStateDto
+		{
+			DeckCards = deckCards.Select(c => new CardPublicDto
+			{
+				IsFaceUp = true,
+				Rank = MapSymbolToRank(c.Symbol),
+				Suit = c.Suit.ToString()
+			}).ToList(),
+			DecisionMakerSeatIndex = decisionMaker.SeatPosition,
+			DecisionMakerName = decisionMaker.Player?.Name,
+			DecisionMakerFirstName = decisionMakerFirstName,
+			HasDeckDrawn = hasDeckDrawn,
+			StayingPlayerName = stayingPlayer.Player?.Name,
+			StayingPlayerSeatIndex = stayingPlayer.SeatPosition
+		};
+	}
+}

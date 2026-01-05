@@ -97,18 +97,18 @@ public class CreateGameCommandHandler(CardsDbContext context, ICurrentUserServic
 		}
 
 		// 4. Create the initial main pot (empty, will be populated when antes are collected)
-		var mainPot = new Pot
-		{
-			GameId = game.Id,
-			HandNumber = 1,
-			PotType = PotType.Main,
-			PotOrder = 0,
-			Amount = 0,
-			IsAwarded = false,
-			CreatedAt = now
-		};
+		//var mainPot = new Pot
+		//{
+		//	GameId = game.Id,
+		//	HandNumber = 1,
+		//	PotType = PotType.Main,
+		//	PotOrder = 0,
+		//	Amount = 0,
+		//	IsAwarded = false,
+		//	CreatedAt = now
+		//};
 
-		context.Pots.Add(mainPot);
+		//context.Pots.Add(mainPot);
 
 		await context.SaveChangesAsync(cancellationToken);
 
