@@ -66,7 +66,7 @@
         <div class="lobby-filters">
             <div class="filter-group">
                 <label class="filter-label">Variant</label>
-                <select class="filter-select" @bind="_selectedVariant">
+                <select class="filter-select" @bind="_selectedVariant" @bind:after="OnSelectedVariantChangedAsync">
                     <option value="">All Variants</option>
                     @foreach (var gameType in _availableGameTypes)
                     {
@@ -329,7 +329,7 @@
     {
         _isLoading = true;
 
-        var response = await ActiveGamesApi.GetActiveGamesAsync();
+        var response = await ActiveGamesApi.GetActiveGamesAsync(_selectedVariant);
         _allTables = response.Content?.ToList() ?? [];
         _myTablesCount = _allTables.Count;
 
@@ -353,6 +353,11 @@
         }
     }
 
+    private async Task OnSelectedVariantChangedAsync()
+    {
+        await LoadTablesAsync();
+    }
+
     private void ApplyFilters()
     {
         _filteredTables = _allTables
@@ -365,12 +370,13 @@
             .ToList();
     }
 
-    private void ClearFilters()
+    private async Task ClearFilters()
     {
         _selectedVariant = "";
         _selectedSeats = "";
         _selectedStatus = "";
         ApplyFilters();
+        await LoadAvailableGamesAsync();
     }
 
     private bool IsActiveTab(string tab)

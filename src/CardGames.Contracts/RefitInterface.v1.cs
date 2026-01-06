@@ -39,7 +39,7 @@ namespace CardGames.Poker.Api.Clients
         /// </returns>
         [Headers("Accept: application/json, application/problem+json")]
         [Get("/api/v1/games/active")]
-        Task<IApiResponse<ICollection<GetActiveGamesResponse>>> GetActiveGamesAsync(CancellationToken cancellationToken = default);
+        Task<IApiResponse<ICollection<GetActiveGamesResponse>>> GetActiveGamesAsync(string? variant = null, CancellationToken cancellationToken = default);
     }
 
     /// <summary>GetAvailablePokerGames</summary>
@@ -67,7 +67,7 @@ namespace CardGames.Poker.Api.Clients
         /// </returns>
         [Headers("Accept: application/json, application/problem+json")]
         [Get("/api/v1/games/available")]
-        Task<IApiResponse<ICollection<GetAvailablePokerGamesResponse>>> GetAvailablePokerGamesAsync(CancellationToken cancellationToken = default);
+        Task<IApiResponse<ICollection<GetAvailablePokerGamesResponse>>> GetAvailablePokerGamesAsync(string? variant = null, CancellationToken cancellationToken = default);
     }
 
     /// <summary>GetGame</summary>

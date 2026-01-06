@@ -17,10 +17,17 @@ public class GetActiveGamesQueryHandler(CardsDbContext context, HybridCache hybr
 			$"{Feature.Version}-{request.CacheKey}",
 			async _ =>
 			{
-				var results = await context.Games
+				var query = context.Games
 					.Include(g => g.GameType)
 					.Where(g => !g.IsDeleted)
-					.Where(g => g.CurrentPhase != CompletePhase)
+					.Where(g => g.CurrentPhase != CompletePhase);
+
+				if (!string.IsNullOrWhiteSpace(request.Variant))
+				{
+					query = query.Where(g => g.GameType.Name == request.Variant || g.GameType.Code == request.Variant);
+				}
+
+				var results = await query
 					.OrderBy(g => g.Name)
 					.AsNoTracking()
 					.ProjectToResponse()

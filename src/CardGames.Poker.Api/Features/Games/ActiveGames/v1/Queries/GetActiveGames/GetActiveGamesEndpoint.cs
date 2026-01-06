@@ -8,9 +8,9 @@ public static class GetActiveGamesEndpoint
 	public static RouteGroupBuilder MapGetActiveGames(this RouteGroupBuilder group)
 	{
 		group.MapGet("",
-				async (IMediator mediator, CancellationToken cancellationToken) =>
+				async (string? variant, IMediator mediator, CancellationToken cancellationToken) =>
 				{
-					var response = await mediator.Send(new GetActiveGamesQuery(), cancellationToken);
+					var response = await mediator.Send(new GetActiveGamesQuery(variant), cancellationToken);
 					return Results.Ok(response);
 				})
 			.WithName(nameof(MapGetActiveGames).TrimPrefix("Map"))

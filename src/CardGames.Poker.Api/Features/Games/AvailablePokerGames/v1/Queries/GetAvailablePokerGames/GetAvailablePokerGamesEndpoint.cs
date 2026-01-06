@@ -8,9 +8,9 @@ public static class GetAvailablePokerGamesEndpoint
 	public static RouteGroupBuilder MapGetAvailablePokerGames(this RouteGroupBuilder group)
 	{
 		group.MapGet("",
-				async (IMediator mediator, CancellationToken cancellationToken) =>
+				async (string? variant, IMediator mediator, CancellationToken cancellationToken) =>
 				{
-					var response = await mediator.Send(new GetAvailablePokerGamesQuery(), cancellationToken);
+					var response = await mediator.Send(new GetAvailablePokerGamesQuery(variant), cancellationToken);
 					return Results.Ok(response);
 				})
 			.WithName(nameof(MapGetAvailablePokerGames).TrimPrefix("Map"))

@@ -8,9 +8,6 @@
 - [ ] Make sure all calls are idempotent
 - [ ] Add chip management to the dashboard (buy in, cash out, add chips)
 
-- [x] Lobby should filter by game type
-
-
 - [ ] Search for code == "KINGSANDLOWS" and refactor
 - [ ] Creating a deck and dealing is done in the StartHandCommandHandler, but it should be using CardGames.Core.Dealer;
 - [ ] Make sure signalr isn't broadcasting to all players in all games
@@ -112,3 +109,4 @@
 - [x] Kings and Lows - odds aren't working right
 - [x] Have option on lobby for a list, not graphics
 - [x] Be able to soft delete a table if you're the host
+- [x] Lobby should filter by game type

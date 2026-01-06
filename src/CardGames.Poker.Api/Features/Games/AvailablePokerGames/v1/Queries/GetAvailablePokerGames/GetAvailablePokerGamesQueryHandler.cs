@@ -34,6 +34,7 @@ public class GetAvailablePokerGamesQueryHandler(HybridCache hybridCache)
 					.Select(CreateGameResponse)
 					.Where(g => g is not null)
 					.Cast<GetAvailablePokerGamesResponse>()
+					.Where(g => string.IsNullOrWhiteSpace(request.Variant) || g.Name.Equals(request.Variant, StringComparison.OrdinalIgnoreCase))
 					.OrderBy(g => g.Name)
 					.ToList();
 
