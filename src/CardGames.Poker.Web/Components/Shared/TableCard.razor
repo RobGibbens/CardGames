@@ -4,6 +4,15 @@
 
 <div class="table-card @GetStatusClass()">
     <div class="variant-card">
+        @if (CanDelete)
+        {
+            <button class="table-card-delete-btn" 
+                    @onclick="HandleDeleteClick"
+                    @onclick:stopPropagation="true"
+                    title="Delete table">
+                <i class="fa-regular fa-trash"></i>
+            </button>
+        }
         <div class="variant-icon">
             @if (!string.IsNullOrWhiteSpace(Table.GameTypeImageName))
             {
@@ -46,6 +55,23 @@
 @code {
     [Parameter, EditorRequired]
     public required GetActiveGamesResponse Table { get; set; }
+
+    [Parameter]
+    public string? CurrentUserId { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid> OnDelete { get; set; }
+
+    private bool CanDelete => !string.IsNullOrEmpty(CurrentUserId) && 
+                              string.Equals(Table.CreatedById, CurrentUserId, StringComparison.OrdinalIgnoreCase);
+
+    private async Task HandleDeleteClick()
+    {
+        if (OnDelete.HasDelegate)
+        {
+            await OnDelete.InvokeAsync(Table.Id);
+        }
+    }
 
     private string GetStatusClass()
     {

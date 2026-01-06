@@ -1,4 +1,5 @@
 using Asp.Versioning.Builder;
+using CardGames.Poker.Api.Features.Games.Common.v1.Commands.DeleteGame;
 using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetGame;
 using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetGameRules;
 using SharpGrip.FluentValidation.AutoValidation.Endpoints.Extensions;
@@ -16,5 +17,6 @@ public static class V1
 
 		mapGroup.MapGetGame();
 		mapGroup.MapGetGameRules();
+		mapGroup.MapDeleteGame();
 	}
 }

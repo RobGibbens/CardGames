@@ -19,6 +19,7 @@ public class GetActiveGamesQueryHandler(CardsDbContext context, HybridCache hybr
 			{
 				var results = await context.Games
 					.Include(g => g.GameType)
+					.Where(g => !g.IsDeleted)
 					.Where(g => g.CurrentPhase != CompletePhase)
 					.OrderBy(g => g.Name)
 					.AsNoTracking()

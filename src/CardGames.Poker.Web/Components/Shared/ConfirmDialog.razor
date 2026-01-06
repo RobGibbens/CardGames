@@ -1,0 +1,102 @@
+@namespace CardGames.Poker.Web.Components.Shared
+
+@if (IsVisible)
+{
+    <div class="confirm-dialog-overlay" @onclick="HandleOverlayClick">
+        <div class="confirm-dialog" @onclick:stopPropagation>
+            <div class="confirm-dialog-header">
+                <i class="fa-regular @IconClass confirm-dialog-icon"></i>
+                <h3 class="confirm-dialog-title">@Title</h3>
+            </div>
+            <div class="confirm-dialog-body">
+                <p class="confirm-dialog-message">@Message</p>
+            </div>
+            <div class="confirm-dialog-footer">
+                <button class="btn btn-secondary confirm-dialog-btn" @onclick="HandleCancel" disabled="@IsProcessing">
+                    @CancelText
+                </button>
+                <button class="btn @ConfirmButtonClass confirm-dialog-btn" @onclick="HandleConfirm" disabled="@IsProcessing">
+                    @if (IsProcessing)
+                    {
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        <span>@ProcessingText</span>
+                    }
+                    else
+                    {
+                        @ConfirmText
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool IsVisible { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> IsVisibleChanged { get; set; }
+
+    [Parameter]
+    public string Title { get; set; } = "Confirm Action";
+
+    [Parameter]
+    public string Message { get; set; } = "Are you sure you want to proceed?";
+
+    [Parameter]
+    public string ConfirmText { get; set; } = "Confirm";
+
+    [Parameter]
+    public string CancelText { get; set; } = "Cancel";
+
+    [Parameter]
+    public string ProcessingText { get; set; } = "Processing...";
+
+    [Parameter]
+    public string IconClass { get; set; } = "fa-triangle-exclamation";
+
+    [Parameter]
+    public string ConfirmButtonClass { get; set; } = "btn-danger";
+
+    [Parameter]
+    public bool IsProcessing { get; set; }
+
+    [Parameter]
+    public EventCallback OnConfirm { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    private async Task HandleConfirm()
+    {
+        if (OnConfirm.HasDelegate)
+        {
+            await OnConfirm.InvokeAsync();
+        }
+    }
+
+    private async Task HandleCancel()
+    {
+        await CloseDialog();
+        if (OnCancel.HasDelegate)
+        {
+            await OnCancel.InvokeAsync();
+        }
+    }
+
+    private async Task HandleOverlayClick()
+    {
+        if (!IsProcessing)
+        {
+            await HandleCancel();
+        }
+    }
+
+    private async Task CloseDialog()
+    {
+        IsVisible = false;
+        await IsVisibleChanged.InvokeAsync(false);
+    }
+}
+

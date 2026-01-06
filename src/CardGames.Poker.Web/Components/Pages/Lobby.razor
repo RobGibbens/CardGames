@@ -10,8 +10,22 @@
 @using CardGames.Poker.Web.Components.Shared
 @using CardGames.Poker.Web.Services
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
 
 <PageTitle>Lobby - Friday Night Poker</PageTitle>
+
+<ConfirmDialog @bind-IsVisible="_showDeleteConfirmation"
+               Title="Delete Table"
+               Message="@_deleteConfirmationMessage"
+               ConfirmText="Delete"
+               CancelText="Cancel"
+               ProcessingText="Deleting..."
+               IconClass="fa-trash"
+               ConfirmButtonClass="btn-danger"
+               IsProcessing="_isDeleting"
+               OnConfirm="ConfirmDeleteTableAsync"
+               OnCancel="CancelDelete" />
 
 <AuthenticatedNavBar />
 
@@ -120,7 +134,7 @@
                     <div class="tables-grid">
                         @foreach (var table in _filteredTables)
                         {
-                            <TableCard Table="table" />
+                            <TableCard Table="table" CurrentUserId="@_currentUserId" OnDelete="HandleDeleteTableAsync" />
                         }
                     </div>
                 }
@@ -135,6 +149,7 @@
                                     <th>Table Name</th>
                                     <th>Host</th>
                                     <th>Phase</th>
+                                    <th></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -148,6 +163,17 @@
                                         <td>@table.Name</td>
                                         <td>@table.CreatedByName</td>
                                         <td>@table.CurrentPhaseDescription</td>
+                                        <td class="text-end">
+                                            @if (CanDeleteTable(table))
+                                            {
+                                                <button class="btn btn-sm btn-primary" 
+                                                        @onclick="() => HandleDeleteTableAsync(table.Id)"
+                                                        disabled="@_isDeleting"
+                                                        title="Delete table">
+                                                    <i class="fa-regular fa-trash"></i>
+                                                </button>
+                                            }
+                                        </td>
                                     </tr>
                                 }
                             </tbody>
@@ -172,11 +198,22 @@
     [Inject]
     private ILogger<Lobby> Logger { get; set; } = default!;
 
+    [Inject]
+    private IGamesApi GamesApi { get; set; } = default!;
+
+    [Inject]
+    private AuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;
+
     private bool _isLoading = true;
     private string _viewMode = "list";
     private string _selectedVariant = "";
     private string _selectedSeats = "";
     private string _selectedStatus = "";
+    private string? _currentUserId;
+    private bool _isDeleting;
+    private bool _showDeleteConfirmation;
+    private Guid? _gameIdToDelete;
+    private string _deleteConfirmationMessage = "Are you sure you want to delete this table? This action cannot be undone.";
 
     private int _myTablesCount;
 
@@ -185,8 +222,19 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadCurrentUserAsync();
         await LoadTablesAsync();
         await ConnectToLobbyHubAsync();
+    }
+
+    private async Task LoadCurrentUserAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            _currentUserId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+        }
     }
 
     private async Task ConnectToLobbyHubAsync()
@@ -321,6 +369,67 @@
     private string GetEmptyDescription()
     {
         return "No active games found.";
+    }
+
+    private bool CanDeleteTable(GetActiveGamesResponse table)
+    {
+        return !string.IsNullOrEmpty(_currentUserId) && 
+               string.Equals(table.CreatedById, _currentUserId, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task HandleDeleteTableAsync(Guid gameId)
+    {
+        // Find the table to get its name for the confirmation message
+        var table = _allTables.FirstOrDefault(t => t.Id == gameId);
+        if (table is not null)
+        {
+            _deleteConfirmationMessage = $"Are you sure you want to delete \"{table.Name}\"? This action cannot be undone.";
+        }
+        else
+        {
+            _deleteConfirmationMessage = "Are you sure you want to delete this table? This action cannot be undone.";
+        }
+
+        _gameIdToDelete = gameId;
+        _showDeleteConfirmation = true;
+        await Task.CompletedTask;
+    }
+
+    private async Task ConfirmDeleteTableAsync()
+    {
+        if (_gameIdToDelete is null || _isDeleting)
+            return;
+
+        _isDeleting = true;
+        try
+        {
+            var response = await GamesApi.GamesDeleteGameAsync(_gameIdToDelete.Value);
+            if (response.IsSuccessStatusCode)
+            {
+                Logger.LogInformation("Successfully deleted game {GameId}", _gameIdToDelete.Value);
+                // The SignalR broadcast will handle removing from the list
+            }
+            else
+            {
+                Logger.LogWarning("Failed to delete game {GameId}: {StatusCode}", _gameIdToDelete.Value, response.StatusCode);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error deleting game {GameId}", _gameIdToDelete.Value);
+        }
+        finally
+        {
+            _isDeleting = false;
+            _showDeleteConfirmation = false;
+            _gameIdToDelete = null;
+        }
+    }
+
+    private void CancelDelete()
+    {
+        _gameIdToDelete = null;
+        _showDeleteConfirmation = false;
     }
 
     public async ValueTask DisposeAsync()

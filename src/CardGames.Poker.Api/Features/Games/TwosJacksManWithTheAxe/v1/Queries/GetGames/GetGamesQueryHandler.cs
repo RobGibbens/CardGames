@@ -1,4 +1,4 @@
-﻿using CardGames.Poker.Api.Data;
+﻿﻿using CardGames.Poker.Api.Data;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -14,6 +14,7 @@ public class GetGamesQueryHandler(CardsDbContext context, HybridCache hybridCach
 			$"{Feature.Version}-{request.CacheKey}",
 			async _ =>
 				await context.Games
+					.Where(g => !g.IsDeleted)
 					.OrderBy(c => c.Name)
 					.AsNoTracking()
 					.ProjectToResponse()

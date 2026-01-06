@@ -16,7 +16,7 @@ public class GetGameQueryHandler(CardsDbContext context, HybridCache hybridCache
 	public async Task<GetGameResponse?> Handle(GetGameQuery request, CancellationToken cancellationToken)
 	{
 		var gameTypeCode = await context.Games
-			.Where(g => g.Id == request.GameId)
+			.Where(g => g.Id == request.GameId && !g.IsDeleted)
 			.Select(g => g.GameType.Code)
 			.AsNoTracking()
 			.FirstOrDefaultAsync(cancellationToken);

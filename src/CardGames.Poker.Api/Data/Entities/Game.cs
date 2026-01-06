@@ -192,6 +192,26 @@ public class Game : EntityWithRowVersion
 	public string? UpdatedByName { get; set; }
 
 	/// <summary>
+	/// Indicates whether the game has been soft deleted.
+	/// </summary>
+	public bool IsDeleted { get; set; }
+
+	/// <summary>
+	/// The date and time when the game was deleted.
+	/// </summary>
+	public DateTimeOffset? DeletedAt { get; set; }
+
+	/// <summary>
+	/// The unique identifier of the user who deleted this game.
+	/// </summary>
+	public string? DeletedById { get; set; }
+
+	/// <summary>
+	/// The name or email of the user who deleted this game.
+	/// </summary>
+	public string? DeletedByName { get; set; }
+
+	/// <summary>
 	/// Navigation property for players in this game.
 	/// </summary>
 	public ICollection<GamePlayer> GamePlayers { get; set; } = [];

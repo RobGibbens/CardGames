@@ -101,6 +101,44 @@ namespace CardGames.Poker.Api.Clients
         [Get("/api/v1/games/{gameId}")]
         Task<IApiResponse<GetGameResponse>> GamesGetGameAsync(System.Guid gameId, CancellationToken cancellationToken = default);
 
+        /// <summary>Delete Game</summary>
+        /// <remarks>
+        /// Soft deletes a game. Can only be called by the user who created the game.
+        /// 
+        /// **Validations:**
+        /// - Game must exist
+        /// - Caller must be the game creator
+        /// - Game must not already be deleted
+        /// </remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>204</term>
+        /// <description>No Content</description>
+        /// </item>
+        /// <item>
+        /// <term>403</term>
+        /// <description>Forbidden</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>410</term>
+        /// <description>Gone</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/problem+json")]
+        [Delete("/api/v1/games/{gameId}")]
+        Task<IApiResponse> GamesDeleteGameAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
         /// <summary>GetGameRules</summary>
         /// <remarks>Retrieve game rules metadata for a specific game type by its code.</remarks>
         /// <returns>
@@ -1981,6 +2019,29 @@ namespace CardGames.Poker.Api.Contracts
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record DeckCardInfo
+    {
+        [JsonConstructor]
+        public DeckCardInfo(string @display, CardSuit? @suit, CardSymbol? @symbol)
+        {
+            this.Suit = @suit;
+            this.Symbol = @symbol;
+            this.Display = @display;
+        }
+
+        [JsonPropertyName("suit")]
+        public CardSuit? Suit { get; init; }
+
+        [JsonPropertyName("symbol")]
+        public CardSymbol? Symbol { get; init; }
+
+        [JsonPropertyName("display")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Display { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial record DeckDrawRequest
     {
         [JsonConstructor]
@@ -2003,12 +2064,16 @@ namespace CardGames.Poker.Api.Contracts
     public partial record DeckDrawSuccessful
     {
         [JsonConstructor]
-        public DeckDrawSuccessful(int @cardsDiscarded, int @cardsDrawn, System.Guid @gameId, string @nextPhase)
+        public DeckDrawSuccessful(int @cardsDiscarded, int @cardsDrawn, ICollection<DeckCardInfo> @discardedCards, ICollection<DeckCardInfo> @finalHand, System.Guid @gameId, string @handDescription, ICollection<DeckCardInfo> @newCards, string @nextPhase)
         {
             this.GameId = @gameId;
             this.CardsDiscarded = @cardsDiscarded;
             this.CardsDrawn = @cardsDrawn;
             this.NextPhase = @nextPhase;
+            this.DiscardedCards = @discardedCards;
+            this.NewCards = @newCards;
+            this.FinalHand = @finalHand;
+            this.HandDescription = @handDescription;
         }
 
         [JsonPropertyName("gameId")]
@@ -2028,6 +2093,18 @@ namespace CardGames.Poker.Api.Contracts
         [JsonPropertyName("nextPhase")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string NextPhase { get; init; }
+
+        [JsonPropertyName("discardedCards")]
+        public ICollection<DeckCardInfo> DiscardedCards { get; init; }
+
+        [JsonPropertyName("newCards")]
+        public ICollection<DeckCardInfo> NewCards { get; init; }
+
+        [JsonPropertyName("finalHand")]
+        public ICollection<DeckCardInfo> FinalHand { get; init; }
+
+        [JsonPropertyName("handDescription")]
+        public string HandDescription { get; init; }
 
     }
 
@@ -2109,6 +2186,7 @@ namespace CardGames.Poker.Api.Contracts
 
         [JsonPropertyName("nextPlayerName")]
         public string NextPlayerName { get; init; }
+
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
