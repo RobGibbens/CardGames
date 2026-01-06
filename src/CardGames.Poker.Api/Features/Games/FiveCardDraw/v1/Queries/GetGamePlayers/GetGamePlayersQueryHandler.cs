@@ -49,7 +49,13 @@ public class GetGamePlayersQueryHandler(CardsDbContext context, HybridCache hybr
 			.Select(gp =>
 			{
 				usersByEmail.TryGetValue(gp.Player.Email ?? string.Empty, out var user);
-				return GetGamePlayersMapper.ToResponse(gp, currentHandNumber, user?.FirstName, user?.AvatarUrl);
+				
+				// Use user profile avatar if available, otherwise fallback to player record
+				var avatarUrl = !string.IsNullOrWhiteSpace(user?.AvatarUrl) 
+					? user.AvatarUrl 
+					: gp.Player.AvatarUrl;
+					
+				return GetGamePlayersMapper.ToResponse(gp, currentHandNumber, user?.FirstName, avatarUrl);
 			})
 			.ToList();
        }

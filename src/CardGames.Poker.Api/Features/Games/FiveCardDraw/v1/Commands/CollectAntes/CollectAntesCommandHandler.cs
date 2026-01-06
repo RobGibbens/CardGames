@@ -42,7 +42,7 @@ public class CollectAntesCommandHandler(CardsDbContext context)
 			return new CollectAntesError
 			{
 				Message = $"Cannot collect antes. Game is in '{game.CurrentPhase}' phase. " +
-				          $"Antes can only be collected when the game is in '{nameof(FiveCardDrawPhase.CollectingAntes)}' phase.",
+						  $"Antes can only be collected when the game is in '{nameof(FiveCardDrawPhase.CollectingAntes)}' phase.",
 				Code = CollectAntesErrorCode.InvalidGameState
 			};
 		}
@@ -50,8 +50,8 @@ public class CollectAntesCommandHandler(CardsDbContext context)
 		// 3. Get the main pot for this hand
 		var mainPot = await context.Pots
 			.FirstOrDefaultAsync(p => p.GameId == game.Id &&
-			                          p.HandNumber == game.CurrentHandNumber &&
-			                          p.PotType == PotType.Main,
+									  p.HandNumber == game.CurrentHandNumber &&
+									  p.PotType == PotType.Main,
 				cancellationToken);
 
 		if (mainPot is null)
@@ -70,7 +70,7 @@ public class CollectAntesCommandHandler(CardsDbContext context)
 			context.Pots.Add(mainPot);
 		}
 
-	// 4. Collect antes from each active player (mirrors FiveCardDrawGame.CollectAntes)
+		// 4. Collect antes from each active player (mirrors FiveCardDrawGame.CollectAntes)
 		var anteContributions = new List<AnteContribution>();
 		var totalCollected = 0;
 		var gameAnte = game.Ante ?? 0;

@@ -5,15 +5,16 @@
 - [ ] FiveCardDraw - can't draw four with an Ace
 - [ ] Kings and Lows - don't deal to players that don't have enough chips to match the pot
 
+- [ ] Table - make the table seat look like PokerStars
+
 - [ ] Make sure all calls are idempotent
 - [ ] Add chip management to the dashboard (buy in, cash out, add chips)
 
 - [ ] Search for code == "KINGSANDLOWS" and refactor
 - [ ] Creating a deck and dealing is done in the StartHandCommandHandler, but it should be using CardGames.Core.Dealer;
-- [ ] Make sure signalr isn't broadcasting to all players in all games
 - [ ] Table settings should be dynamic when creating a table. Not all games have an ante or a minimum bet.
 - [ ] Make the chips look better
-- [ ] Table - make the table seat look like PokerStars
+
 - [ ] During ties, the showdown should show the kicker 
 - [ ] Showdown overlay should handle split pots better
 - [ ] Showdown overlay is not showing payouts correctly
@@ -44,6 +45,7 @@
 - [ ] Add leagues
 - [ ] Add seasons
 - [ ] Add tournaments
+- [ ] Endpoints shouldn't use generic Error responses
 
 
 ## Add Games
@@ -60,7 +62,6 @@
 - [ ] Add Follow the Queen
 - [ ] The Good, the Bad, and the Ugly
 - [ ] Add Razz
-- [ ] 
 
 ### 5 Card Stud Variants
 - [ ] Add Five Card Stud
@@ -75,10 +76,6 @@
 - [ ] Add Screw Your Neighbor
 - [ ] In Between
 - [ ] Add Guts
-- [ ] 
-
-
-
 
 ## Completed
 - [x] Show current standings
@@ -110,3 +107,4 @@
 - [x] Have option on lobby for a list, not graphics
 - [x] Be able to soft delete a table if you're the host
 - [x] Lobby should filter by game type
+- [x] Make sure signalr isn't broadcasting to all players in all games

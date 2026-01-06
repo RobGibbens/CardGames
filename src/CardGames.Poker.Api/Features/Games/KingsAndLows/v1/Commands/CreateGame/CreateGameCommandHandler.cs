@@ -170,7 +170,7 @@ public class CreateGameCommandHandler(CardsDbContext context, ICurrentUserServic
 		player = new Player
 		{
 			Name = name,
-			Email = $"{name}@localhost", // Placeholder email format
+			Email = $"{name}", // Placeholder email format
 			IsActive = true,
 			TotalGamesPlayed = 0,
 			TotalHandsPlayed = 0,

@@ -1,146 +1,126 @@
 @namespace CardGames.Poker.Web.Components.Shared
-
 @using static CardGames.Poker.Web.Components.Pages.TablePlay
 
-<div class="seat-content @(Seat.IsOccupied ? "" : "")">
+<div class="seat-container @(IsCurrentPlayer ? "current-player-layout" : "remote-player-layout") @(Seat.IsOccupied ? "occupied" : "empty")">
     @if (Seat.IsOccupied)
     {
-        <!-- Player avatar -->
-        <div class="seat-avatar @GetAvatarStateClass()">
-			@if (!string.IsNullOrWhiteSpace(Seat.PlayerAvatarUrl))
-			{
-				<img class="avatar-image" src="@Seat.PlayerAvatarUrl" alt="@GetDisplayName()" />
-			}
-			else
-			{
-				<span class="avatar-initials">@GetInitials(GetDisplayName())</span>
-			}
+        <!-- Main Player Display (Avatar + Info Pill) -->
+        <div class="seat-visuals">
+            
+            <!-- Avatar Circle -->
+            <div class="avatar-circle @GetAvatarStateClass()">
+                @if (!string.IsNullOrWhiteSpace(Seat.PlayerAvatarUrl))
+                {
+                    <img class="avatar-img" src="@Seat.PlayerAvatarUrl" alt="@GetDisplayName()" />
+                }
+                else
+                {
+                    <span class="avatar-initials">@GetInitials(GetDisplayName())</span>
+                }
 
-            @if (Seat.IsDisconnected)
-            {
-                <span class="disconnected-icon" title="Disconnected">?</span>
-            }
+                @if (Seat.IsDisconnected)
+                {
+                    <div class="status-overlay disconnected" title="Disconnected">?</div>
+                }
+                else if (Seat.IsSittingOut)
+                {
+                    <div class="status-overlay sitting-out" title="@(Seat.SittingOutReason ?? "Sitting out")">
+                        <i class="fa-solid fa-chair"></i>
+                    </div>
+                }
+            </div>
+
+            <!-- Info Pill -->
+            <div class="info-pill">
+                <div class="pill-top-row @GetPillStatusClass()">
+                    @if (IsCurrentActor)
+                    {
+                        <span class="status-text glow-text">Waiting</span>
+                    }
+                    else
+                    {
+                        <span class="player-name" title="@Seat.PlayerName">@GetDisplayName()</span>
+                    }
+                </div>
+                <div class="pill-bottom-row">
+                    <span class="chip-count">@Seat.Chips.ToString("N0")</span>
+                </div>
+            </div>
+
         </div>
 
-        <!-- Player name -->
-        <div class="seat-name" title="@Seat.PlayerName">
-            @GetDisplayName()
-            @if (IsCurrentPlayer)
-            {
-                <span class="you-badge">(You)</span>
-            }
-        </div>
+        <!-- External Elements (Cards, Bets, Badges) -->
 
-        <!-- Chips display -->
-        <div class="seat-chips">
-            <span class="chips-icon"><i class="fa-regular fa-coins"></i></span>
-            <span class="chips-amount">@Seat.Chips.ToString("N0")</span>
-        </div>
-
-        <!-- Current bet (if any) -->
         @if (Seat.CurrentBet > 0)
         {
-            <div class="seat-bet">
-                <div class="bet-chips">
-                    <span class="bet-icon"><i class="fa-solid fa-hand-holding-circle-dollar"></i></span>
-                    <span class="bet-amount">@Seat.CurrentBet</span>
-                </div>
+            <div class="seat-bet-bubble">
+                <i class="fa-solid fa-coins"></i> @Seat.CurrentBet.ToString("N0")
             </div>
         }
 
-        <!-- Player status badges -->
-        <div class="seat-status">
-            @if (Seat.IsSittingOut)
-            {
-                <span class="status-badge sitting-out" title="@(Seat.SittingOutReason ?? "Sitting out")">
-                    @(string.IsNullOrWhiteSpace(Seat.SittingOutReason) ? "Sitting Out" : Seat.SittingOutReason)
-                </span>
-            }
-            else if (Seat.IsFolded)
-            {
-                <span class="status-badge folded">Folded</span>
-            }
-            else if (Seat.IsAllIn)
-            {
-                <span class="status-badge all-in">ALL IN</span>
-            }
-            else if (!Seat.IsReady && !ShowCards)
-            {
-                <span class="status-badge waiting">Waiting...</span>
-            }
-            else if (Seat.IsReady && !ShowCards)
-            {
-                <span class="status-badge ready">Ready</span>
-            }
-        </div>
+        <!-- Hand Eval Tooltip (Shown on hover) -->
+        @if (IsCurrentPlayer && ShowCards && Seat.Cards.Count > 0 && !string.IsNullOrWhiteSpace(Seat.HandEvaluationDescription))
+        {
+            <div class="hand-eval-tooltip">
+                @Seat.HandEvaluationDescription
+            </div>
+        }
 
         <!-- Cards -->
         @if (ShowCards && Seat.Cards.Count > 0)
         {
-            @if (IsCurrentPlayer && !string.IsNullOrWhiteSpace(Seat.HandEvaluationDescription))
-            {
-                <div class="seat-hand-eval" title="Hand evaluation">
-                    @Seat.HandEvaluationDescription
+            <div class="seat-cards-container">
+
+                <div class="cards-fan">
+                    @foreach (var card in GetOrderedCards())
+                    {
+                        var rank = GetPlayingCardRank(card);
+                        // Logic from original: current player sees own cards, others see face up only if face up
+                        
+                        if (IsCurrentPlayer)
+                        {
+                             if (card.IsFaceUp)
+                             {
+                                <playing-card rank="@rank" suit="@card.Suit" class="poker-card"></playing-card>
+                             }
+                             else
+                             {
+                                <playing-card rank="0" backcolor="#44F" class="poker-card"></playing-card>
+                             }
+                        }
+                        else
+                        {
+                             if (card.IsFaceUp)
+                             {
+                                <playing-card rank="@rank" suit="@card.Suit" class="poker-card small"></playing-card>
+                             }
+                             else
+                             {
+                                <playing-card rank="0" backcolor="#44F" class="poker-card small"></playing-card>
+                             }
+                        }
+                    }
                 </div>
-            }
-            <div class="seat-cards">
-                @foreach (var card in GetOrderedCards())
-                {
-                    if 
-                        (IsCurrentPlayer)
-                    {
-                        @if 
-                            (card.IsFaceUp)
-                        {
-                            <playing-card rank="@GetPlayingCardRank(card)" suit="@card.Suit" style="height:75px;width:75px;"></playing-card>
-                        }
-                        else
-                        {
-                            <playing-card rank="0" backcolor="#44F" style="height:75px;width:75px;"></playing-card>
-                        }
-                    }
-                    else
-                    {
-                        @if 
-                            (card.IsFaceUp)
-                        {
-                            <playing-card rank="@GetPlayingCardRank(card)" suit="@card.Suit" style="height:50px;width:50px;"></playing-card>
-                        }
-                        else
-                        {
-                            <playing-card rank="0" backcolor="#44F" style="height:50px;width:50px;"></playing-card>
-                        }
-                    }
-
-                }
             </div>
-
-			
         }
         else if (ShowCards && !Seat.IsFolded)
         {
-            <!-- Placeholder cards when game is active but no cards dealt yet -->
-            <div class="seat-cards placeholder">
-                @for (int i = 0; i < 5; i++)
-                {
-                    <div class="playing-card face-down placeholder">
-                        <span class="card-back"></span>
-                    </div>
-                }
+             <!-- Placeholder cards -->
+            <div class="seat-cards-container placeholder">
+                <div class="cards-fan">
+                    @for (int i = 0; i < 5; i++)
+                    {
+                         <div class="playing-card-placeholder"></div>
+                    }
+                </div>
             </div>
-        }
-
-        <!-- Turn indicator glow -->
-        @if (IsCurrentActor)
-        {
-            <div class="turn-indicator-glow"></div>
         }
     }
     else
     {
-        <div class="seat-name" title="@(IsSeatSelectionDisabledForCurrentUser ? "Empty seat" : "Take a seat")">
-            @(IsSeatSelectionDisabledForCurrentUser ? "Empty seat" : "Take a seat")
-        </div>
+        <button class="empty-seat-button" disabled="@IsSeatSelectionDisabledForCurrentUser" title="@(IsSeatSelectionDisabledForCurrentUser ? "Empty seat" : "Take a seat")">
+            @(IsSeatSelectionDisabledForCurrentUser ? "Empty" : "Sit Here")
+        </button>
     }
 </div>
 
@@ -168,24 +148,32 @@
         var classes = new List<string>();
 
         if (IsCurrentActor)
-            classes.Add("active-turn");
+            classes.Add("active-turn-ring");
 
         if (Seat.IsFolded)
             classes.Add("folded");
 
-        if (Seat.IsAllIn)
-            classes.Add("all-in");
-
-        if (Seat.IsDisconnected)
-            classes.Add("disconnected");
-
-        if (Seat.IsSittingOut)
-            classes.Add("sitting-out");
-
         if (IsCurrentPlayer)
-            classes.Add("current-player");
+            classes.Add("is-me");
 
         return string.Join(" ", classes);
+    }
+
+    private string GetPillStatusClass()
+    {
+        if (IsCurrentActor)
+            return "status-orange";
+
+        if (Seat.IsFolded)
+            return "status-red";
+
+        if (Seat.IsAllIn)
+            return "status-gold";
+
+        if (Seat.IsReady && !ShowCards)
+            return "status-green";
+
+        return string.Empty;
     }
 
     private static string GetInitials(string? name)
@@ -225,27 +213,6 @@
 		return spaceIndex > 0 ? name[..spaceIndex] : name;
 	}
 
-    private static string GetSuitSymbol(string? suit)
-    {
-        return suit?.ToLowerInvariant() switch
-        {
-            "hearts" or "h" => "fa-heart",
-            "diamonds" or "d" => "fa-diamond",
-            "clubs" or "c" => "fa-club",
-            "spades" or "s" => "fa-spade",
-            _ => ""
-        };
-    }
-
-    private static string GetSuitColorClass(string? suit)
-    {
-        return suit?.ToLowerInvariant() switch
-        {
-            "hearts" or "h" or "diamonds" or "d" => "suit-red",
-            _ => "suit-black"
-        };
-    }
-
     private IEnumerable<CardInfo> GetOrderedCards()
     {
         if (Seat.Cards.Count == 0)
@@ -253,10 +220,9 @@
             return [];
         }
 
-        // Sort face-up known cards by value (2..A). Keep unknown/face-down cards stable.
         return Seat.Cards
             .Select((card, index) => new { card, index })
-            .OrderBy(x => string.IsNullOrWhiteSpace(x.card.Rank) ? 1 : 0)
+            .OrderBy(x => string.IsNullOrWhiteSpace(x.card.Rank) ? 1 : 0) // Face down/unknown last or stable
             .ThenBy(x => GetRankValue(x.card.Rank))
             .ThenBy(x => GetSuitValue(x.card.Suit))
             .ThenBy(x => x.index)
@@ -265,11 +231,7 @@
 
     private static int GetRankValue(string? rank)
     {
-        if (string.IsNullOrWhiteSpace(rank))
-        {
-            return int.MaxValue;
-        }
-
+        if (string.IsNullOrWhiteSpace(rank)) return int.MaxValue;
         return rank.Trim().ToUpperInvariant() switch
         {
             "2" or "TWO" or "DEUCE" => 2,
@@ -291,11 +253,7 @@
 
     private static int GetSuitValue(string? suit)
     {
-        if (string.IsNullOrWhiteSpace(suit))
-        {
-            return int.MaxValue;
-        }
-
+        if (string.IsNullOrWhiteSpace(suit)) return int.MaxValue;
         return suit.Trim().ToLowerInvariant() switch
         {
             "clubs" or "c" => 0,
@@ -308,7 +266,7 @@
 
     private string? GetPlayingCardRank(CardInfo card)
     {
-        var rank = card.Rank switch
+        return card.Rank switch
         {
             "J" => "Jack",
             "Q" => "Queen",
@@ -316,8 +274,5 @@
             "A" => "Ace",
             _ => card.Rank
         };
-
-        return rank;
     }
-
 }

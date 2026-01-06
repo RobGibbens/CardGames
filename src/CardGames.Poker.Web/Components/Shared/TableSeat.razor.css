@@ -1,0 +1,295 @@
+/* Container for the entire seat area (visuals + cards + badges) */
+.seat-container {
+    position: relative;
+    width: 220px;
+    height: 140px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: 10px;
+}
+
+/* --- Seat Visuals Flex Layout --- */
+.seat-visuals {
+    display: flex;
+    align-items: center;
+    position: relative;
+    z-index: 10; /* Above cards */
+}
+
+/* Reverse order for remote players: Info Left, Avatar Right */
+.remote-player-layout .seat-visuals {
+    flex-direction: row-reverse;
+}
+
+/* Normal order for current player: Avatar Left, Info Right */
+.current-player-layout .seat-visuals {
+    flex-direction: row;
+}
+
+/* --- Avatar Styling --- */
+.avatar-circle {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background-color: #333;
+    border: 2px solid #555;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 12;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+}
+
+/* Overlap the pill slightly */
+.remote-player-layout .avatar-circle {
+    margin-left: -30px; 
+}
+.current-player-layout .avatar-circle {
+    margin-right: -30px;
+}
+
+.avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.avatar-initials {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #fff;
+    font-family: sans-serif;
+}
+
+/* Active Turn Ring */
+.active-turn-ring {
+    border-color: #ffcc00; /* Gold */
+    box-shadow: 0 0 10px #ffcc00, 0 0 2px #ffcc00 inset;
+}
+
+.avatar-circle.folded {
+    opacity: 0.5;
+    filter: grayscale(100%);
+}
+
+/* Status Overlays on Avatar */
+.status-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: #ccc;
+}
+
+/* --- Info Pill Styling --- */
+.info-pill {
+    width: 180px;
+    height: 50px;
+    background: #1a1a1a; /* Dark background */
+    border: 1px solid #444;
+    border-radius: 25px; /* Pill shape */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+    z-index: 11;
+}
+
+/* Adjust size for current player pill if needed, 
+   but requirements imply opponent style for everyone except orientation */
+
+.pill-top-row {
+    flex: 1;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-bottom: 1px solid #333;
+    padding: 0 10px;
+}
+
+.pill-bottom-row {
+    flex: 1;
+    background: #252525;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 10px;
+}
+
+.player-name {
+    font-size: 0.85rem;
+    color: #aaa;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    font-family: sans-serif;
+}
+
+.chip-count {
+    font-size: 0.95rem;
+    color: #fff;
+    font-weight: 600;
+    font-family: monospace;
+}
+
+.status-text {
+    font-size: 0.8rem;
+    color: #ff9900;
+    text-transform: uppercase;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+}
+
+.glow-text {
+    animation: pulse-text 1.5s infinite;
+}
+
+@keyframes pulse-text {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+/* --- External Elements --- */
+
+.seat-bet-bubble {
+    position: absolute;
+    bottom: -15px; /* Position below seat */
+    background: rgba(0,0,0,0.8);
+    border: 1px solid #666;
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    z-index: 20;
+    white-space: nowrap;
+}
+
+/* Hand Evaluation Tooltip - visible on seat hover */
+.hand-eval-tooltip {
+    position: absolute;
+    top: -70px; /* Position above cards */
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(20, 20, 20, 0.95);
+    color: #ffd700; /* Gold text */
+    border: 1px solid #555;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    pointer-events: none;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+    z-index: 100;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.6);
+}
+
+.seat-container:hover .hand-eval-tooltip {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-5px);
+}
+
+/* Status Colors for pill-top-row */
+.pill-top-row.status-orange {
+    background-color: #ff9900;
+    border-bottom-color: #cc7a00;
+}
+.pill-top-row.status-orange .status-text {
+    color: #000;
+    text-shadow: none;
+}
+
+.pill-top-row.status-red {
+    background-color: #d32f2f;
+    border-bottom-color: #b71c1c;
+}
+.pill-top-row.status-red .player-name {
+    color: #fff;
+}
+
+.pill-top-row.status-gold {
+    background-color: #ffd700;
+    border-bottom-color: #e6c200;
+}
+.pill-top-row.status-gold .player-name {
+    color: #333;
+    font-weight: bold;
+}
+
+.pill-top-row.status-green {
+    background-color: #2e7d32;
+    border-bottom-color: #1b5e20;
+}
+.pill-top-row.status-green .player-name {
+    color: #fff;
+}
+
+/* --- Cards --- */
+.seat-cards-container {
+    position: absolute;
+    top: -40px; /* Cards sit above the seat details */
+    /* top: 40%; left: 50%; transform: translate(-50%, -50%); /* Alternative center placement */
+    z-index: 5;
+    pointer-events: none;
+}
+
+.placeholder .playing-card-placeholder {
+    width: 30px; height: 45px;
+    background: rgba(255,255,255,0.1);
+    border: 1px dashed rgba(255,255,255,0.3);
+    margin: 0 2px;
+    border-radius: 3px;
+}
+
+.cards-fan {
+    display: flex;
+    justify-content: center;
+}
+
+/* Element Styles for injected playing-card component support */
+::deep playing-card {
+    margin: 0 -15px; /* Overlap cards */
+    transition: transform 0.2s;
+    transform-origin: bottom center;
+}
+::deep playing-card:hover {
+    transform: translateY(-10px) scale(1.1);
+    z-index: 100;
+}
+::deep playing-card.small {
+    /* Styles for scaling small cards if component supports vars, or just override via style attribute in razor */
+    height: 50px !important;
+    width: 35px !important;
+}
+::deep playing-card.poker-card {
+    height: 70px;
+    width: 50px;
+}
+
+/* Empty Seat */
+.empty-seat-button {
+    background: transparent;
+    border: 2px dashed #444;
+    color: #666;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.empty-seat-button:hover:not(:disabled) {
+    border-color: #888;
+    color: #888;
+    background: rgba(255,255,255,0.05);
+}
