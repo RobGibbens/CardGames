@@ -273,8 +273,8 @@
     width: 35px !important;
 }
 ::deep playing-card.poker-card {
-    height: 70px;
-    width: 50px;
+    height: 140px;
+    width: 80px;
 }
 
 /* Empty Seat */
