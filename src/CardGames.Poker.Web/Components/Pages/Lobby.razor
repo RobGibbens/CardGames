@@ -68,10 +68,10 @@
                 <label class="filter-label">Variant</label>
                 <select class="filter-select" @bind="_selectedVariant">
                     <option value="">All Variants</option>
-                    <option value="texasholdem">Texas Hold'em</option>
-                    <option value="fivecarddraw">Five Card Draw</option>
-                    <option value="omaha">Omaha</option>
-                    <option value="sevencardstud">Seven Card Stud</option>
+                    @foreach (var gameType in _availableGameTypes)
+                    {
+                        <option value="@gameType.Name">@gameType.Name</option>
+                    }
                 </select>
             </div>
             <div class="filter-group">
@@ -202,6 +202,9 @@
     private IGamesApi GamesApi { get; set; } = default!;
 
     [Inject]
+    private IAvailablePokerGamesApi AvailablePokerGamesApi { get; set; } = default!;
+
+    [Inject]
     private AuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;
 
     private bool _isLoading = true;
@@ -219,11 +222,14 @@
 
     private List<GetActiveGamesResponse> _allTables = [];
     private List<GetActiveGamesResponse> _filteredTables = [];
+    private List<GetAvailablePokerGamesResponse> _availableGameTypes = [];
 
     protected override async Task OnInitializedAsync()
     {
         await LoadCurrentUserAsync();
-        await LoadTablesAsync();
+        var loadTablesTask = LoadTablesAsync();
+        var loadAvailableGamesTask = LoadAvailableGamesAsync();
+        await Task.WhenAll(loadTablesTask, loadAvailableGamesTask);
         await ConnectToLobbyHubAsync();
     }
 
@@ -329,6 +335,22 @@
 
         ApplyFilters();
         _isLoading = false;
+    }
+
+    private async Task LoadAvailableGamesAsync()
+    {
+        try
+        {
+            var response = await AvailablePokerGamesApi.GetAvailablePokerGamesAsync();
+            if (response.IsSuccessStatusCode && response.Content != null)
+            {
+                _availableGameTypes = response.Content.OrderBy(g => g.Name).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load available game types");
+        }
     }
 
     private void ApplyFilters()

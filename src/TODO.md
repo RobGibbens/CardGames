@@ -5,12 +5,10 @@
 - [ ] FiveCardDraw - can't draw four with an Ace
 - [ ] Kings and Lows - don't deal to players that don't have enough chips to match the pot
 
-- [ ] Be able to soft delete a table if you're the host
 - [ ] Make sure all calls are idempotent
 - [ ] Add chip management to the dashboard (buy in, cash out, add chips)
 
-- [ ] Lobby should filter by game type
-- [x] Have option on lobby for a list, not graphics
+- [x] Lobby should filter by game type
 
 
 - [ ] Search for code == "KINGSANDLOWS" and refactor
@@ -112,3 +110,5 @@
 - [?] Drawing new cards isn't always dealing from the same deck
 - [x] Kings and Lows - all drops revealed at the same time
 - [x] Kings and Lows - odds aren't working right
+- [x] Have option on lobby for a list, not graphics
+- [x] Be able to soft delete a table if you're the host
