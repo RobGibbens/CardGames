@@ -37,14 +37,30 @@ public interface IGameStateBroadcaster
         string playerName,
         int seatIndex,
         bool canPlayCurrentHand,
-        CancellationToken cancellationToken = default);
+                CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Broadcasts a table settings updated notification to all players in the game.
-    /// </summary>
-    /// <param name="notification">The notification containing updated settings.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    Task BroadcastTableSettingsUpdatedAsync(
-        TableSettingsUpdatedDto notification,
-        CancellationToken cancellationToken = default);
-}
+            /// <summary>
+            /// Broadcasts a table settings updated notification to all players in the game.
+            /// </summary>
+            /// <param name="notification">The notification containing updated settings.</param>
+            /// <param name="cancellationToken">Cancellation token.</param>
+            Task BroadcastTableSettingsUpdatedAsync(
+                TableSettingsUpdatedDto notification,
+                CancellationToken cancellationToken = default);
+
+            /// <summary>
+            /// Broadcasts a player action notification to all players in the game.
+            /// The action will be displayed temporarily in the player's seat pill.
+            /// </summary>
+            /// <param name="gameId">The unique identifier of the game.</param>
+            /// <param name="seatIndex">The seat index of the player who performed the action.</param>
+            /// <param name="playerName">The name of the player who performed the action.</param>
+            /// <param name="actionDescription">The display description of the action (e.g., "Checked", "Raised 50").</param>
+            /// <param name="cancellationToken">Cancellation token.</param>
+            Task BroadcastPlayerActionAsync(
+                Guid gameId,
+                int seatIndex,
+                string? playerName,
+                string actionDescription,
+                CancellationToken cancellationToken = default);
+        }

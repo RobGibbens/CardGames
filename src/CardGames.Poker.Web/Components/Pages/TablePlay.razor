@@ -558,6 +558,7 @@
         GameHubClient.OnPlayerJoined += HandlePlayerJoinedAsync;
         GameHubClient.OnConnectionStateChanged += HandleConnectionStateChanged;
         GameHubClient.OnActionTimerUpdated += HandleActionTimerUpdatedAsync;
+        GameHubClient.OnPlayerActionPerformed += HandlePlayerActionPerformedAsync;
 
         // Load initial data FIRST so seats and _gameResponse are populated
         // before SignalR sends its state snapshot
@@ -2071,6 +2072,16 @@
         public int CurrentBet { get; set; }
         public List<CardInfo> Cards { get; set; } = [];
         public string? HandEvaluationDescription { get; set; }
+        /// <summary>
+        /// The last action performed by this player (e.g., "Checked", "Raised 50").
+        /// Displayed temporarily in the seat pill.
+        /// </summary>
+        public string? LastActionDescription { get; set; }
+        /// <summary>
+        /// The UTC time when the last action was performed.
+        /// Used to determine when to hide the action display.
+        /// </summary>
+        public DateTimeOffset? LastActionTime { get; set; }
     }
 
     public record CardInfo
@@ -2124,6 +2135,7 @@
         GameHubClient.OnPlayerJoined -= HandlePlayerJoinedAsync;
         GameHubClient.OnConnectionStateChanged -= HandleConnectionStateChanged;
         GameHubClient.OnActionTimerUpdated -= HandleActionTimerUpdatedAsync;
+        GameHubClient.OnPlayerActionPerformed -= HandlePlayerActionPerformedAsync;
 
         // Leave the game and disconnect
         if (_currentGameId.HasValue)
@@ -2139,6 +2151,52 @@
     {
         _actionTimerState = timerState;
         await InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>
+    /// Handles player action performed notifications from SignalR.
+    /// Updates the seat's last action display and starts a timer to clear it.
+    /// </summary>
+    private async Task HandlePlayerActionPerformedAsync(PlayerActionPerformedDto notification)
+    {
+        if (notification.GameId != GameId)
+        {
+            return;
+        }
+
+        var seatIndex = notification.SeatIndex;
+        if (seatIndex < 0 || seatIndex >= seats.Count)
+        {
+            return;
+        }
+
+        Logger.LogDebug("Player action performed at seat {SeatIndex}: {Action}",
+            seatIndex, notification.ActionDescription);
+
+        // Update the seat with the action
+        seats[seatIndex].LastActionDescription = notification.ActionDescription;
+        seats[seatIndex].LastActionTime = notification.PerformedAtUtc;
+
+        await InvokeAsync(StateHasChanged);
+
+        // Schedule the action to be cleared after the display duration
+        var displayDuration = notification.DisplayDurationSeconds > 0
+            ? notification.DisplayDurationSeconds
+            : 5;
+
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(TimeSpan.FromSeconds(displayDuration));
+
+            // Only clear if this is still the same action (hasn't been replaced)
+            if (seatIndex >= 0 && seatIndex < seats.Count &&
+                seats[seatIndex].LastActionTime == notification.PerformedAtUtc)
+            {
+                seats[seatIndex].LastActionDescription = null;
+                seats[seatIndex].LastActionTime = null;
+                await InvokeAsync(StateHasChanged);
+            }
+        });
     }
 
     private Guid? _currentGameId => GameId;

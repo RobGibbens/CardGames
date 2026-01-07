@@ -47,6 +47,12 @@ public sealed class GameHubClient : IAsyncDisposable
     public event Func<ActionTimerStateDto, Task>? OnActionTimerUpdated;
 
     /// <summary>
+    /// Fired when a player performs an action (bet, call, fold, etc.).
+    /// Used to display the action temporarily in the player's seat pill.
+    /// </summary>
+    public event Func<PlayerActionPerformedDto, Task>? OnPlayerActionPerformed;
+
+    /// <summary>
     /// Fired when the connection state changes.
     /// </summary>
     public event Action<HubConnectionState>? OnConnectionStateChanged;
@@ -132,25 +138,26 @@ public sealed class GameHubClient : IAsyncDisposable
         _hubConnection.Reconnected += OnReconnected;
         _hubConnection.Closed += OnClosed;
 
-        // Subscribe to hub messages
-        _hubConnection.On<TableStatePublicDto>("TableStateUpdated", HandleTableStateUpdated);
-        _hubConnection.On<PrivateStateDto>("PrivateStateUpdated", HandlePrivateStateUpdated);
-        _hubConnection.On<PlayerJoinedDto>("PlayerJoined", HandlePlayerJoined);
-        _hubConnection.On<TableSettingsUpdatedDto>("TableSettingsUpdated", HandleTableSettingsUpdated);
-        _hubConnection.On<ActionTimerStateDto>("ActionTimerUpdated", HandleActionTimerUpdated);
+            // Subscribe to hub messages
+            _hubConnection.On<TableStatePublicDto>("TableStateUpdated", HandleTableStateUpdated);
+            _hubConnection.On<PrivateStateDto>("PrivateStateUpdated", HandlePrivateStateUpdated);
+            _hubConnection.On<PlayerJoinedDto>("PlayerJoined", HandlePlayerJoined);
+            _hubConnection.On<TableSettingsUpdatedDto>("TableSettingsUpdated", HandleTableSettingsUpdated);
+            _hubConnection.On<ActionTimerStateDto>("ActionTimerUpdated", HandleActionTimerUpdated);
+            _hubConnection.On<PlayerActionPerformedDto>("PlayerActionPerformed", HandlePlayerActionPerformed);
 
-        try
-        {
-            await _hubConnection.StartAsync(cancellationToken);
-            _logger.LogInformation("Connected to game hub");
-            OnConnectionStateChanged?.Invoke(HubConnectionState.Connected);
+            try
+            {
+                await _hubConnection.StartAsync(cancellationToken);
+                _logger.LogInformation("Connected to game hub");
+                OnConnectionStateChanged?.Invoke(HubConnectionState.Connected);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to connect to game hub");
+                throw;
+            }
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to connect to game hub");
-            throw;
-        }
-    }
 
     /// <summary>
     /// Joins a game group to receive state updates.
@@ -408,6 +415,17 @@ public sealed class GameHubClient : IAsyncDisposable
         if (OnActionTimerUpdated is not null)
         {
             await OnActionTimerUpdated(timerState);
+        }
+    }
+
+    private async Task HandlePlayerActionPerformed(PlayerActionPerformedDto notification)
+    {
+        _logger.LogDebug("Received PlayerActionPerformed for game {GameId}, seat {SeatIndex}: {Action}",
+            notification.GameId, notification.SeatIndex, notification.ActionDescription);
+
+        if (OnPlayerActionPerformed is not null)
+        {
+            await OnPlayerActionPerformed(notification);
         }
     }
 

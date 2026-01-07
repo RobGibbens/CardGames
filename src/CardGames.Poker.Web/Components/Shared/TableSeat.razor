@@ -15,28 +15,28 @@
                     {
                         var rank = GetPlayingCardRank(card);
                         // Logic from original: current player sees own cards, others see face up only if face up
-                        
+
                         if (IsCurrentPlayer)
                         {
-                             if (card.IsFaceUp)
-                             {
+                            if (card.IsFaceUp)
+                            {
                                 <playing-card rank="@rank" suit="@card.Suit" class="poker-card"></playing-card>
-                             }
-                             else
-                             {
+                            }
+                            else
+                            {
                                 <playing-card rank="0" backcolor="#44F" class="poker-card"></playing-card>
-                             }
+                            }
                         }
                         else
                         {
-                             if (card.IsFaceUp)
-                             {
+                            if (card.IsFaceUp)
+                            {
                                 <playing-card rank="@rank" suit="@card.Suit" class="poker-card small"></playing-card>
-                             }
-                             else
-                             {
+                            }
+                            else
+                            {
                                 <playing-card rank="0" backcolor="#44F" class="poker-card small"></playing-card>
-                             }
+                            }
                         }
                     }
                 </div>
@@ -44,12 +44,12 @@
         }
         else if (ShowCards && !Seat.IsFolded)
         {
-             <!-- Placeholder cards -->
+            <!-- Placeholder cards -->
             <div class="seat-cards-container placeholder">
                 <div class="cards-fan">
                     @for (int i = 0; i < 5; i++)
                     {
-                         <div class="playing-card-placeholder"></div>
+                        <div class="playing-card-placeholder"></div>
                     }
                 </div>
             </div>
@@ -57,7 +57,7 @@
 
         <!-- Main Player Display (Avatar + Info Pill) -->
         <div class="seat-visuals">
-            
+
             <!-- Avatar Circle -->
             <div class="avatar-circle @GetAvatarStateClass()">
                 @if (!string.IsNullOrWhiteSpace(Seat.PlayerAvatarUrl) && !_imageLoadError)
@@ -85,7 +85,11 @@
             <div class="info-pill-container">
                 <div class="info-pill">
                     <div class="pill-top-row @GetPillStatusClass()">
-                        @if (IsCurrentActor)
+                        @if (!string.IsNullOrWhiteSpace(Seat.LastActionDescription))
+                        {
+                            <span class="action-text">@Seat.LastActionDescription</span>
+                        }
+                        else if (IsCurrentActor)
                         {
                             <span class="status-text glow-text">Waiting</span>
                         }
@@ -108,7 +112,6 @@
         </div>
 
         <!-- External Elements (Cards, Bets, Badges) -->
-
         @if (Seat.CurrentBet > 0)
         {
             <div class="seat-bet-bubble">
@@ -172,9 +175,9 @@
     {
         if (string.IsNullOrWhiteSpace(Seat.PlayerAvatarUrl)) return "";
         var url = Seat.PlayerAvatarUrl.Trim();
-        
+
         // Return original if it's absolute URL or data URI
-        if (url.StartsWith("http", StringComparison.OrdinalIgnoreCase) || 
+        if (url.StartsWith("http", StringComparison.OrdinalIgnoreCase) ||
             url.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
         {
             return url;
@@ -183,8 +186,8 @@
         // If it starts with /, treat as relative to root, but respect base path
         if (url.StartsWith("/", StringComparison.Ordinal))
         {
-             // Remove leading slash to combine with BaseUri
-             url = url.Substring(1);
+            // Remove leading slash to combine with BaseUri
+            url = url.Substring(1);
         }
 
         try
@@ -215,6 +218,10 @@
 
     private string GetPillStatusClass()
     {
+        // Show action status when player has a recent action to display
+        if (!string.IsNullOrWhiteSpace(Seat.LastActionDescription))
+            return "status-action";
+
         if (IsCurrentActor)
             return "status-orange";
 
@@ -244,28 +251,28 @@
         };
     }
 
-	private string GetDisplayName()
-	{
-		if (!string.IsNullOrWhiteSpace(Seat.PlayerFirstName))
-		{
-			return Seat.PlayerFirstName;
-		}
+    private string GetDisplayName()
+    {
+        if (!string.IsNullOrWhiteSpace(Seat.PlayerFirstName))
+        {
+            return Seat.PlayerFirstName;
+        }
 
-		var name = Seat.PlayerName;
-		if (string.IsNullOrWhiteSpace(name))
-		{
-			return "?";
-		}
+        var name = Seat.PlayerName;
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return "?";
+        }
 
-		var atIndex = name.IndexOf("@", StringComparison.Ordinal);
-		if (atIndex > 0)
-		{
-			return name[..atIndex];
-		}
+        var atIndex = name.IndexOf("@", StringComparison.Ordinal);
+        if (atIndex > 0)
+        {
+            return name[..atIndex];
+        }
 
-		var spaceIndex = name.IndexOf(' ', StringComparison.Ordinal);
-		return spaceIndex > 0 ? name[..spaceIndex] : name;
-	}
+        var spaceIndex = name.IndexOf(' ', StringComparison.Ordinal);
+        return spaceIndex > 0 ? name[..spaceIndex] : name;
+    }
 
     private IEnumerable<CardInfo> GetOrderedCards()
     {

@@ -197,56 +197,97 @@
 
 .seat-container:hover .hand-eval-tooltip {
     opacity: 1;
-    transform: translateX(-50%) translateY(-5px);
-}
+        transform: translateX(-50%) translateY(-5px);
+    }
 
-/* Status Colors for pill-top-row */
-.pill-top-row.status-orange {
-    background-color: #ff9900;
-    border-bottom-color: #cc7a00;
-}
-.pill-top-row.status-orange .status-text {
-    color: #000;
-    text-shadow: none;
-}
+    /* Status Colors for pill-top-row */
+    .pill-top-row.status-orange {
+        background-color: #ff9900;
+        border-bottom-color: #cc7a00;
+    }
+    .pill-top-row.status-orange .status-text {
+        color: #000;
+        text-shadow: none;
+    }
 
-.pill-top-row.status-red {
-    background-color: #d32f2f;
-    border-bottom-color: #b71c1c;
-}
-.pill-top-row.status-red .player-name {
-    color: #fff;
-}
+    .pill-top-row.status-red {
+        background-color: #d32f2f;
+        border-bottom-color: #b71c1c;
+    }
+    .pill-top-row.status-red .player-name {
+        color: #fff;
+    }
 
-.pill-top-row.status-gold {
-    background-color: #ffd700;
-    border-bottom-color: #e6c200;
-}
-.pill-top-row.status-gold .player-name {
-    color: #333;
-    font-weight: bold;
-}
+    .pill-top-row.status-gold {
+        background-color: #ffd700;
+        border-bottom-color: #e6c200;
+    }
+    .pill-top-row.status-gold .player-name {
+        color: #333;
+        font-weight: bold;
+    }
 
-.pill-top-row.status-green {
-    background-color: #2e7d32;
-    border-bottom-color: #1b5e20;
-}
-.pill-top-row.status-green .player-name {
-    color: #fff;
-}
+    .pill-top-row.status-green {
+        background-color: #2e7d32;
+        border-bottom-color: #1b5e20;
+    }
+    .pill-top-row.status-green .player-name {
+        color: #fff;
+    }
 
-/* --- Cards --- */
-.seat-cards-container {
-    position: absolute;
-    top: -40px; /* Cards sit above the seat details */
-    /* top: 40%; left: 50%; transform: translate(-50%, -50%); /* Alternative center placement */
-    z-index: 5;
-    pointer-events: none;
-}
+    /* Action status - shown when player performs an action */
+    .pill-top-row.status-action {
+        background: linear-gradient(135deg, #4fc3f7, #29b6f6);
+        border-bottom-color: #0288d1;
+        animation: action-pulse 0.5s ease-out;
+    }
 
-.remote-player-layout .seat-cards-container {
-    top: 10px;
-}
+    .pill-top-row.status-action .action-text {
+        color: #fff;
+        font-weight: 600;
+        font-size: 0.85rem;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
+        animation: action-fade-in 0.3s ease-out;
+    }
+
+    @keyframes action-pulse {
+        0% {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(79, 195, 247, 0.6);
+        }
+        100% {
+            transform: scale(1);
+            box-shadow: none;
+        }
+    }
+
+    @keyframes action-fade-in {
+        0% {
+            opacity: 0;
+            transform: translateY(-5px);
+        }
+        100% {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* --- Cards --- */
+    .seat-cards-container {
+        position: absolute;
+        top: -40px; /* Cards sit above the seat details */
+        /* top: 40%; left: 50%; transform: translate(-50%, -50%); /* Alternative center placement */
+        z-index: 5;
+        pointer-events: none;
+    }
+
+    .remote-player-layout .seat-cards-container {
+        top: 10px;
+    }
 
 .placeholder .playing-card-placeholder {
     width: 30px; height: 45px;

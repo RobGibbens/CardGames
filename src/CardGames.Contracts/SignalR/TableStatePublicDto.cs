@@ -256,16 +256,37 @@ public sealed record SeatPublicDto
 	/// </summary>
 	public string? SittingOutReason { get; init; }
 
-	/// <summary>
-	/// The player's current bet amount in this betting round.
-	/// </summary>
-	public int CurrentBet { get; init; }
+		/// <summary>
+		/// The player's current bet amount in this betting round.
+		/// </summary>
+		public int CurrentBet { get; init; }
+
+		/// <summary>
+		/// The cards visible at this seat (face-down placeholders for other players).
+		/// </summary>
+		public IReadOnlyList<CardPublicDto> Cards { get; init; } = [];
+
+		/// <summary>
+		/// The last action performed by this player, for temporary display in the UI.
+		/// </summary>
+		public SeatLastActionDto? LastAction { get; init; }
+	}
 
 	/// <summary>
-	/// The cards visible at this seat (face-down placeholders for other players).
+	/// Represents the last action performed by a player for display purposes.
 	/// </summary>
-	public IReadOnlyList<CardPublicDto> Cards { get; init; } = [];
-}
+	public sealed record SeatLastActionDto
+	{
+		/// <summary>
+		/// The display description of the action (e.g., "Checked", "Raised 50", "Folded").
+		/// </summary>
+		public required string ActionDescription { get; init; }
+
+		/// <summary>
+		/// The UTC timestamp when the action was performed.
+		/// </summary>
+		public DateTimeOffset PerformedAtUtc { get; init; }
+	}
 
 /// <summary>
 /// Public representation of a card. When face-down, Rank and Suit are null.

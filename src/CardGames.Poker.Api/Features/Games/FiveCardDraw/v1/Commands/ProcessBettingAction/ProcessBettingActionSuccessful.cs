@@ -1,11 +1,12 @@
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Infrastructure;
 
 namespace CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.ProcessBettingAction;
 
 /// <summary>
 /// Represents a successful betting action result.
 /// </summary>
-public record ProcessBettingActionSuccessful
+public record ProcessBettingActionSuccessful : IPlayerActionResult
 {
 	/// <summary>
 	/// The unique identifier of the game.
@@ -46,6 +47,31 @@ public record ProcessBettingActionSuccessful
 	/// The current bet to match.
 	/// </summary>
 	public int CurrentBet { get; init; }
+
+	/// <summary>
+	/// The seat index of the player who performed the action.
+	/// </summary>
+	public int PlayerSeatIndex { get; init; }
+
+	/// <inheritdoc />
+	string? IPlayerActionResult.PlayerName => Action.PlayerName;
+
+	/// <inheritdoc />
+	string IPlayerActionResult.ActionDescription => GetActionDescription();
+
+	private string GetActionDescription()
+	{
+		return Action.ActionType switch
+		{
+			BettingActionType.Check => "Checked",
+			BettingActionType.Call => $"Called {Action.Amount}",
+			BettingActionType.Bet => $"Bet {Action.Amount}",
+			BettingActionType.Raise => $"Raised to {Action.Amount}",
+			BettingActionType.Fold => "Folded",
+			BettingActionType.AllIn => "All In!",
+			_ => Action.ActionType.ToString()
+		};
+	}
 }
 
 /// <summary>

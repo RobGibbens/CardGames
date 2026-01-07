@@ -237,24 +237,62 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
                 {
                     var groupName = GetGroupName(notification.GameId);
 
-                    try
-                    {
-                        await _hubContext.Clients.Group(groupName)
-                            .SendAsync("TableSettingsUpdated", notification, cancellationToken);
+                            try
+                            {
+                                await _hubContext.Clients.Group(groupName)
+                                    .SendAsync("TableSettingsUpdated", notification, cancellationToken);
 
-                        _logger.LogInformation(
-                            "Broadcast TableSettingsUpdated notification for game {GameId} by user {UserId}",
-                            notification.GameId,
-                            notification.UpdatedById);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex,
-                            "Failed to broadcast TableSettingsUpdated notification for game {GameId}",
-                            notification.GameId);
-                        throw;
-                    }
-                }
+                                _logger.LogInformation(
+                                    "Broadcast TableSettingsUpdated notification for game {GameId} by user {UserId}",
+                                    notification.GameId,
+                                    notification.UpdatedById);
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex,
+                                    "Failed to broadcast TableSettingsUpdated notification for game {GameId}",
+                                    notification.GameId);
+                                throw;
+                            }
+                        }
 
-                private static string GetGroupName(Guid gameId) => $"{GameGroupPrefix}{gameId}";
-            }
+                        /// <inheritdoc />
+                        public async Task BroadcastPlayerActionAsync(
+                            Guid gameId,
+                            int seatIndex,
+                            string? playerName,
+                            string actionDescription,
+                            CancellationToken cancellationToken = default)
+                        {
+                            var groupName = GetGroupName(gameId);
+
+                            try
+                            {
+                                var notification = new PlayerActionPerformedDto
+                                {
+                                    GameId = gameId,
+                                    SeatIndex = seatIndex,
+                                    PlayerName = playerName,
+                                    ActionDescription = actionDescription,
+                                    PerformedAtUtc = DateTimeOffset.UtcNow,
+                                    DisplayDurationSeconds = 5
+                                };
+
+                                await _hubContext.Clients.Group(groupName)
+                                    .SendAsync("PlayerActionPerformed", notification, cancellationToken);
+
+                                _logger.LogDebug(
+                                    "Broadcast PlayerActionPerformed for game {GameId}, seat {SeatIndex}: {Action}",
+                                    gameId, seatIndex, actionDescription);
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex,
+                                    "Failed to broadcast PlayerActionPerformed for game {GameId}, seat {SeatIndex}",
+                                    gameId, seatIndex);
+                                // Don't throw - the action was successful, just the notification failed
+                            }
+                        }
+
+                        private static string GetGroupName(Guid gameId) => $"{GameGroupPrefix}{gameId}";
+                    }

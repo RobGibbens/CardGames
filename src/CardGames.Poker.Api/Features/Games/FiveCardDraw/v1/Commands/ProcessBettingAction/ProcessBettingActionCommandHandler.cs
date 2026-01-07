@@ -159,30 +159,31 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 			nextPlayerName = activePlayers.FirstOrDefault(p => p.SeatPosition == nextPlayerIndex)?.Player.Name;
 		}
 
-		// 13. Update timestamps
-		game.UpdatedAt = now;
+			// 13. Update timestamps
+			game.UpdatedAt = now;
 
-		// 14. Persist changes
-		await context.SaveChangesAsync(cancellationToken);
+			// 14. Persist changes
+			await context.SaveChangesAsync(cancellationToken);
 
-		return new ProcessBettingActionSuccessful
-		{
-			GameId = game.Id,
-			RoundComplete = roundComplete,
-			CurrentPhase = game.CurrentPhase,
-			Action = new BettingActionResult
+			return new ProcessBettingActionSuccessful
 			{
-				PlayerName = currentPlayer.Player.Name,
-				ActionType = command.ActionType,
-				Amount = actualAmount,
-				ChipStackAfter = currentPlayer.ChipStack
-			},
-			NextPlayerIndex = nextPlayerIndex,
-			NextPlayerName = nextPlayerName,
-			PotTotal = game.Pots.Sum(p => p.Amount),
-			CurrentBet = bettingRound.CurrentBet
-		};
-	}
+				GameId = game.Id,
+				RoundComplete = roundComplete,
+				CurrentPhase = game.CurrentPhase,
+				Action = new BettingActionResult
+				{
+					PlayerName = currentPlayer.Player.Name,
+					ActionType = command.ActionType,
+					Amount = actualAmount,
+					ChipStackAfter = currentPlayer.ChipStack
+				},
+				PlayerSeatIndex = currentPlayer.SeatPosition,
+				NextPlayerIndex = nextPlayerIndex,
+				NextPlayerName = nextPlayerName,
+				PotTotal = game.Pots.Sum(p => p.Amount),
+				CurrentBet = bettingRound.CurrentBet
+			};
+		}
 
 	private string? ValidateAction(BettingActionType actionType, int amount, GamePlayer player, BettingRound bettingRound)
 	{

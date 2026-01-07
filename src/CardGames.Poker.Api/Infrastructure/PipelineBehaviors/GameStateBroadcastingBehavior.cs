@@ -47,42 +47,98 @@ public sealed class GameStateBroadcastingBehavior<TRequest, TResponse> : IPipeli
         {
             _logger.LogDebug(
                 "Skipping broadcast for {CommandType} - command did not succeed",
-                typeof(TRequest).Name);
-            return response;
-        }
+                            typeof(TRequest).Name);
+                        return response;
+                    }
 
-        try
-        {
-            _logger.LogDebug(
-                "Broadcasting game state for game {GameId} after {CommandType}",
-                gameCommand.GameId, typeof(TRequest).Name);
+                    try
+                    {
+                        _logger.LogDebug(
+                            "Broadcasting game state for game {GameId} after {CommandType}",
+                            gameCommand.GameId, typeof(TRequest).Name);
 
-            await _broadcaster.BroadcastGameStateAsync(gameCommand.GameId, cancellationToken);
+                        // Check if the response contains player action info to broadcast
+                        var actionResult = ExtractPlayerActionResult(response);
+                        if (actionResult is not null)
+                        {
+                            _logger.LogDebug(
+                                "Broadcasting player action for game {GameId}, seat {SeatIndex}: {Action}",
+                                actionResult.GameId, actionResult.PlayerSeatIndex, actionResult.ActionDescription);
 
-            _logger.LogInformation(
-                "Successfully broadcast game state for game {GameId} after {CommandType}",
-                gameCommand.GameId, typeof(TRequest).Name);
-        }
-        catch (Exception ex)
-        {
-            // Log but don't fail the command - the state change was successful
-            _logger.LogError(ex,
-                "Failed to broadcast game state for game {GameId} after {CommandType}",
-                gameCommand.GameId, typeof(TRequest).Name);
-        }
+                            await _broadcaster.BroadcastPlayerActionAsync(
+                                actionResult.GameId,
+                                actionResult.PlayerSeatIndex,
+                                actionResult.PlayerName,
+                                actionResult.ActionDescription,
+                                cancellationToken);
+                        }
 
-        return response;
-    }
+                        await _broadcaster.BroadcastGameStateAsync(gameCommand.GameId, cancellationToken);
 
-    /// <summary>
-    /// Determines if the response indicates a successful command execution.
-    /// Handles OneOf discriminated unions used by command handlers.
-    /// </summary>
-    private static bool IsSuccessfulResponse(TResponse response)
-    {
-        if (response is null)
-        {
-            return false;
+                        _logger.LogInformation(
+                            "Successfully broadcast game state for game {GameId} after {CommandType}",
+                            gameCommand.GameId, typeof(TRequest).Name);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Log but don't fail the command - the state change was successful
+                        _logger.LogError(ex,
+                            "Failed to broadcast game state for game {GameId} after {CommandType}",
+                            gameCommand.GameId, typeof(TRequest).Name);
+                    }
+
+                    return response;
+                }
+
+                /// <summary>
+                /// Extracts the player action result from the response if it implements IPlayerActionResult.
+                /// Handles OneOf discriminated unions by checking the success value.
+                /// </summary>
+                private static IPlayerActionResult? ExtractPlayerActionResult(TResponse response)
+                {
+                    if (response is null)
+                    {
+                        return null;
+                    }
+
+                    // Direct implementation
+                    if (response is IPlayerActionResult actionResult)
+                    {
+                        return actionResult;
+                    }
+
+                    // Handle OneOf<TSuccess, TError> pattern
+                    var responseType = response.GetType();
+                    if (responseType.IsGenericType)
+                    {
+                        var genericTypeDef = responseType.GetGenericTypeDefinition();
+                        if (genericTypeDef.FullName?.StartsWith("OneOf.OneOf") == true)
+                        {
+                            // Get the Value property which returns the active variant
+                            var valueProperty = responseType.GetProperty("Value");
+                            if (valueProperty is not null)
+                            {
+                                var value = valueProperty.GetValue(response);
+                                if (value is IPlayerActionResult result)
+                                {
+                                    return result;
+                                }
+                            }
+                        }
+                    }
+
+                    return null;
+                }
+
+                /// <summary>
+                /// Determines if the response indicates a successful command execution.
+                /// Handles OneOf discriminated unions used by command handlers.
+                /// </summary>
+                private static bool IsSuccessfulResponse(TResponse response)
+                {
+                    if (response is null)
+                    {
+                        return false;
         }
 
         // Handle OneOf<TSuccess, TError> pattern used by command handlers
