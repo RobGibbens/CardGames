@@ -31,20 +31,27 @@
             </div>
 
             <!-- Info Pill -->
-            <div class="info-pill">
-                <div class="pill-top-row @GetPillStatusClass()">
-                    @if (IsCurrentActor)
-                    {
-                        <span class="status-text glow-text">Waiting</span>
-                    }
-                    else
-                    {
-                        <span class="player-name" title="@Seat.PlayerName">@GetDisplayName()</span>
-                    }
+            <div class="info-pill-container">
+                <div class="info-pill">
+                    <div class="pill-top-row @GetPillStatusClass()">
+                        @if (IsCurrentActor)
+                        {
+                            <span class="status-text glow-text">Waiting</span>
+                        }
+                        else
+                        {
+                            <span class="player-name" title="@Seat.PlayerName">@GetDisplayName()</span>
+                        }
+                    </div>
+                    <div class="pill-bottom-row">
+                        <span class="chip-count">@Seat.Chips.ToString("N0")</span>
+                    </div>
                 </div>
-                <div class="pill-bottom-row">
-                    <span class="chip-count">@Seat.Chips.ToString("N0")</span>
-                </div>
+
+                @if (IsDealer)
+                {
+                    <div class="seat-dealer-button" title="Dealer">D</div>
+                }
             </div>
 
         </div>

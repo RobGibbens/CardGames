@@ -293,3 +293,41 @@
     color: #888;
     background: rgba(255,255,255,0.05);
 }
+
+/* --- Info Pill Container --- */
+.info-pill-container {
+    position: relative;
+    /* Ensure it behaves like the original info-pill in flex layout */
+    display: flex;
+    flex-direction: column;
+}
+
+/* --- Dealer Button --- */
+.seat-dealer-button {
+    position: absolute;
+    bottom: -8px;
+    width: 32px;
+    height: 32px;
+    background: radial-gradient(circle at 30% 30%, #ffd700, #e6ac00);
+    border: 1px solid #fff;
+    border-radius: 50%;
+    color: #000;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    z-index: 20;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.6);
+    pointer-events: none;
+}
+
+/* Current Player: Bottom Right */
+.current-player-layout .seat-dealer-button {
+    right: -8px;
+}
+
+/* Remote Player: Bottom Left */
+.remote-player-layout .seat-dealer-button {
+    left: -8px;
+}

@@ -28,14 +28,6 @@
                     @* This will be populated for Hold'em/Omaha variants *@
                 </div>
             </div>
-
-            <!-- Dealer button -->
-            @if (DealerSeatIndex >= 0 && CurrentPhase != GamePhase.WaitingForPlayers.ToString())
-            {
-                <div class="dealer-button" style="@GetDealerButtonPosition()">
-                    D
-                </div>
-            }
         </div>
 
         <!-- Seats around the table -->
@@ -46,7 +38,7 @@
                 
                 <TableSeat 
                     Seat="seat"
-                    IsDealer="@(seat.SeatIndex == DealerSeatIndex)"
+                    IsDealer="@(seat.SeatIndex == DealerSeatIndex && CurrentPhase != GamePhase.WaitingForPlayers.ToString())"
                     IsCurrentActor="@(seat.SeatIndex == CurrentActorSeatIndex)"
                     IsCurrentPlayer="@(seat.SeatIndex == CurrentPlayerSeatIndex)"
                     IsSeatSelectionDisabledForCurrentUser="@(DisableSeatSelectionForCurrentUser && !seat.IsOccupied)"
@@ -153,30 +145,5 @@
             classes.Add("seat-disconnected");
 
         return string.Join(" ", classes);
-    }
-
-    private string GetDealerButtonPosition()
-    {
-        // Position the dealer button near the dealer's seat
-        // Using CSS custom properties to position based on seat
-        var positions = new Dictionary<int, (double left, double top)>
-        {
-            { 0, (50, 85) },   // Bottom center
-            { 1, (20, 75) },   // Bottom left
-            { 2, (8, 50) },    // Left
-            { 3, (20, 25) },   // Top left
-            { 4, (50, 15) },   // Top center
-            { 5, (80, 25) },   // Top right
-            { 6, (92, 50) },   // Right
-            { 7, (80, 75) }    // Bottom right
-        };
-
-        var dealerDisplayIndex = MapSeatIndexToDisplayPosition(DealerSeatIndex);
-        if (positions.TryGetValue(dealerDisplayIndex, out var pos))
-        {
-            return $"left: {pos.left}%; top: {pos.top}%;";
-        }
-
-        return "display: none;";
     }
 }
