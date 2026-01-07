@@ -137,24 +137,60 @@ public sealed record TableStatePublicDto
 	public IReadOnlyList<string>? CurrentPhaseAvailableActions { get; init; }
 
 		/// <summary>
-		/// Configuration for drawing in the current game (if applicable).
-		/// </summary>
-		public DrawingConfigDto? DrawingConfig { get; init; }
+				/// Configuration for drawing in the current game (if applicable).
+				/// </summary>
+				public DrawingConfigDto? DrawingConfig { get; init; }
+
+				/// <summary>
+				/// Whether the game has special rules (like Drop/Stay, Pot Matching, etc.).
+				/// </summary>
+				public GameSpecialRulesDto? SpecialRules { get; init; }
+
+				/// <summary>
+				/// State for the Player vs Deck scenario (only one player stayed).
+				/// Only populated when the game is in the PlayerVsDeck phase.
+				/// </summary>
+				public PlayerVsDeckStateDto? PlayerVsDeck { get; init; }
+
+				/// <summary>
+				/// The action timer state for the current player's turn.
+				/// </summary>
+				public ActionTimerStateDto? ActionTimer { get; init; }
+			}
 
 		/// <summary>
-		/// Whether the game has special rules (like Drop/Stay, Pot Matching, etc.).
+		/// State of the action timer for the current player's turn.
 		/// </summary>
-		public GameSpecialRulesDto? SpecialRules { get; init; }
+		public sealed record ActionTimerStateDto
+		{
+			/// <summary>
+			/// The number of seconds remaining on the timer.
+			/// </summary>
+			public int SecondsRemaining { get; init; }
+
+			/// <summary>
+			/// The total duration of the timer in seconds.
+			/// </summary>
+			public int DurationSeconds { get; init; }
+
+			/// <summary>
+			/// The UTC timestamp when the timer was started.
+			/// </summary>
+			public DateTimeOffset StartedAtUtc { get; init; }
+
+			/// <summary>
+			/// The seat index of the player whose turn it is.
+			/// </summary>
+			public int PlayerSeatIndex { get; init; }
+
+			/// <summary>
+			/// Whether the timer is currently active.
+			/// </summary>
+			public bool IsActive { get; init; }
+		}
 
 		/// <summary>
-		/// State for the Player vs Deck scenario (only one player stayed).
-		/// Only populated when the game is in the PlayerVsDeck phase.
-		/// </summary>
-		public PlayerVsDeckStateDto? PlayerVsDeck { get; init; }
-	}
-
-/// <summary>
-/// Public state for a single seat at the table.
+		/// Public state for a single seat at the table.
 /// Cards are shown face-down unless they should be publicly visible.
 /// </summary>
 public sealed record SeatPublicDto

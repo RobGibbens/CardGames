@@ -161,7 +161,8 @@
         {
             <ActionPanel LegalActions="@legalActions" MinBet="@currentMinBet" MaxBet="@currentMaxBet"
                          CurrentBetToCall="@currentBetToCall" PlayerChips="@playerChips"
-                         OnAction="HandlePlayerActionAsync" IsSubmitting="@isSubmittingAction" />
+                         OnAction="HandlePlayerActionAsync" IsSubmitting="@isSubmittingAction"
+                         ActionTimer="@_actionTimerState" />
         }
 
         <!-- Decision Panel (shown during decision phase like Drop/Stay) -->
@@ -187,7 +188,8 @@
                        HandDescription="@currentPlayerHandEvaluationDescription" MaxDiscards="@GetMaxDiscards()"
                        DrawingSpecialRules="@GetDrawingSpecialRules()"
                        IsReadOnly="@(IsDrawCompletePhase || cardsDrawn)"
-                       ReadOnlyMessage="@(IsDrawCompletePhase ? "Waiting for showdown..." : "New cards drawn!")" />
+                       ReadOnlyMessage="@(IsDrawCompletePhase ? "Waiting for showdown..." : "New cards drawn!")"
+                       ActionTimer="@_actionTimerState" />
         }
 
         <!-- Draw Phase Waiting Indicator (shown to other players during draw phase) -->
@@ -213,7 +215,8 @@
                                Decision="@_dropOrStayDecision"
                                IsDeciding="@_isProcessingDropOrStay"
                                PlayersWaiting="@GetPlayersWaitingForDropOrStay()"
-                               OnDecision="@HandleDropOrStayDecision" />
+                               OnDecision="@HandleDropOrStayDecision"
+                               ActionTimer="@_actionTimerState" />
         }
 
         <!-- Player vs Deck Overlay (for Kings and Lows) -->
@@ -385,6 +388,9 @@
     private AvailableActionsResponse? _availableActions;
     private GetCurrentBettingRoundResponse? _currentBettingRound;
 
+    // Action timer state (from SignalR)
+    private ActionTimerStateDto? _actionTimerState;
+
     // Draw phase state
     private bool isDrawPhase;
     private bool isPlayerDrawTurn;
@@ -551,6 +557,7 @@
         GameHubClient.OnPrivateStateUpdated += HandlePrivateStateUpdatedAsync;
         GameHubClient.OnPlayerJoined += HandlePlayerJoinedAsync;
         GameHubClient.OnConnectionStateChanged += HandleConnectionStateChanged;
+        GameHubClient.OnActionTimerUpdated += HandleActionTimerUpdatedAsync;
 
         // Load initial data FIRST so seats and _gameResponse are populated
         // before SignalR sends its state snapshot
@@ -2116,12 +2123,22 @@
         GameHubClient.OnPrivateStateUpdated -= HandlePrivateStateUpdatedAsync;
         GameHubClient.OnPlayerJoined -= HandlePlayerJoinedAsync;
         GameHubClient.OnConnectionStateChanged -= HandleConnectionStateChanged;
+        GameHubClient.OnActionTimerUpdated -= HandleActionTimerUpdatedAsync;
 
         // Leave the game and disconnect
         if (_currentGameId.HasValue)
         {
             await GameHubClient.LeaveGameAsync(_currentGameId.Value);
         }
+    }
+
+    /// <summary>
+    /// Handles action timer updates from SignalR.
+    /// </summary>
+    private async Task HandleActionTimerUpdatedAsync(ActionTimerStateDto timerState)
+    {
+        _actionTimerState = timerState;
+        await InvokeAsync(StateHasChanged);
     }
 
     private Guid? _currentGameId => GameId;

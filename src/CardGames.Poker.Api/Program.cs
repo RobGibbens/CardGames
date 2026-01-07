@@ -67,19 +67,21 @@ builder.Services.AddFluentValidationAutoValidation();
 
 // Add SignalR services with JSON options to handle circular references
 builder.Services.AddSignalR()
-	.AddJsonProtocol(options =>
-	{
-		options.PayloadSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
-		options.PayloadSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
-	});
-builder.Services.AddSingleton<IUserIdProvider, SignalRUserIdProvider>();
-builder.Services.AddScoped<ITableStateBuilder, TableStateBuilder>();
-builder.Services.AddScoped<IGameStateBroadcaster, GameStateBroadcaster>();
-builder.Services.AddScoped<ILobbyBroadcaster, LobbyBroadcaster>();
-builder.Services.AddScoped<IHandHistoryRecorder, HandHistoryRecorder>();
+		.AddJsonProtocol(options =>
+		{
+			options.PayloadSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+			options.PayloadSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+		});
+	builder.Services.AddSingleton<IUserIdProvider, SignalRUserIdProvider>();
+	builder.Services.AddSingleton<IActionTimerService, ActionTimerService>();
+	builder.Services.AddSingleton<IAutoActionService, AutoActionService>();
+	builder.Services.AddScoped<ITableStateBuilder, TableStateBuilder>();
+	builder.Services.AddScoped<IGameStateBroadcaster, GameStateBroadcaster>();
+	builder.Services.AddScoped<ILobbyBroadcaster, LobbyBroadcaster>();
+	builder.Services.AddScoped<IHandHistoryRecorder, HandHistoryRecorder>();
 
-// Add background service for continuous play (auto-start next hands)
-builder.Services.AddHostedService<ContinuousPlayBackgroundService>();
+	// Add background service for continuous play (auto-start next hands)
+	builder.Services.AddHostedService<ContinuousPlayBackgroundService>();
 
 builder.AddRedisDistributedCache("cache");
 

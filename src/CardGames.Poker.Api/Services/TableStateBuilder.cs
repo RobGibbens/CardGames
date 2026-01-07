@@ -21,6 +21,7 @@ namespace CardGames.Poker.Api.Services;
 public sealed class TableStateBuilder : ITableStateBuilder
 {
 	private readonly CardsDbContext _context;
+	private readonly IActionTimerService _actionTimerService;
 	private readonly ILogger<TableStateBuilder> _logger;
 
 	private sealed record UserProfile(string? FirstName, string? AvatarUrl);
@@ -28,9 +29,10 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	/// <summary>
 	/// Initializes a new instance of the <see cref="TableStateBuilder"/> class.
 	/// </summary>
-	public TableStateBuilder(CardsDbContext context, ILogger<TableStateBuilder> logger)
+	public TableStateBuilder(CardsDbContext context, IActionTimerService actionTimerService, ILogger<TableStateBuilder> logger)
 	{
 		_context = context;
+		_actionTimerService = actionTimerService;
 		_logger = logger;
 	}
 
@@ -97,40 +99,54 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				.FirstOrDefault(p => p.PhaseId.Equals(game.CurrentPhase, StringComparison.OrdinalIgnoreCase));
 		}
 
-		// Build Player vs Deck state (if applicable)
-		var playerVsDeck = await BuildPlayerVsDeckStateAsync(game, gamePlayers, userProfilesByEmail, cancellationToken);
+			// Build Player vs Deck state (if applicable)
+			var playerVsDeck = await BuildPlayerVsDeckStateAsync(game, gamePlayers, userProfilesByEmail, cancellationToken);
 
-		return new TableStatePublicDto
-		{
-			GameId = game.Id,
-			Name = game.Name,
-			GameTypeName = game.GameType?.Name,
-			GameTypeCode = game.GameType?.Code,
-			CurrentPhase = game.CurrentPhase,
-			CurrentPhaseDescription = PhaseDescriptionResolver.TryResolve(game.GameType?.Code, game.CurrentPhase),
-			Ante = game.Ante ?? 0,
-			MinBet = game.MinBet ?? 0,
-			TotalPot = totalPot,
-			DealerSeatIndex = game.DealerPosition,
-			CurrentActorSeatIndex = game.CurrentPlayerIndex,
-			IsPaused = game.Status == Entities.GameStatus.BetweenHands,
-			CurrentHandNumber = game.CurrentHandNumber,
-			CreatedByName = game.CreatedByName,
-			Seats = seats,
-			Showdown = BuildShowdownPublicDto(game, gamePlayers, userProfilesByEmail),
-			HandCompletedAtUtc = game.HandCompletedAt,
-			NextHandStartsAtUtc = game.NextHandStartsAt,
-			IsResultsPhase = isResultsPhase,
-			SecondsUntilNextHand = secondsUntilNextHand,
-			HandHistory = handHistory,
-			CurrentPhaseCategory = currentPhaseDescriptor?.Category,
-			CurrentPhaseRequiresAction = currentPhaseDescriptor?.RequiresPlayerAction ?? false,
-			CurrentPhaseAvailableActions = currentPhaseDescriptor?.AvailableActions,
-			DrawingConfig = BuildDrawingConfigDto(rules),
-			SpecialRules = BuildSpecialRulesDto(rules),
-			PlayerVsDeck = playerVsDeck
-		};
-	}
+			// Get action timer state
+			var actionTimerState = _actionTimerService.GetTimerState(gameId);
+			var actionTimer = actionTimerState is not null
+				? new ActionTimerStateDto
+				{
+					SecondsRemaining = actionTimerState.SecondsRemaining,
+					DurationSeconds = actionTimerState.DurationSeconds,
+					StartedAtUtc = actionTimerState.StartedAtUtc,
+					PlayerSeatIndex = actionTimerState.PlayerSeatIndex,
+					IsActive = !actionTimerState.IsExpired
+				}
+				: null;
+
+			return new TableStatePublicDto
+			{
+				GameId = game.Id,
+				Name = game.Name,
+				GameTypeName = game.GameType?.Name,
+				GameTypeCode = game.GameType?.Code,
+				CurrentPhase = game.CurrentPhase,
+				CurrentPhaseDescription = PhaseDescriptionResolver.TryResolve(game.GameType?.Code, game.CurrentPhase),
+				Ante = game.Ante ?? 0,
+				MinBet = game.MinBet ?? 0,
+				TotalPot = totalPot,
+				DealerSeatIndex = game.DealerPosition,
+				CurrentActorSeatIndex = game.CurrentPlayerIndex,
+				IsPaused = game.Status == Entities.GameStatus.BetweenHands,
+				CurrentHandNumber = game.CurrentHandNumber,
+				CreatedByName = game.CreatedByName,
+				Seats = seats,
+				Showdown = BuildShowdownPublicDto(game, gamePlayers, userProfilesByEmail),
+				HandCompletedAtUtc = game.HandCompletedAt,
+				NextHandStartsAtUtc = game.NextHandStartsAt,
+				IsResultsPhase = isResultsPhase,
+				SecondsUntilNextHand = secondsUntilNextHand,
+				HandHistory = handHistory,
+				CurrentPhaseCategory = currentPhaseDescriptor?.Category,
+				CurrentPhaseRequiresAction = currentPhaseDescriptor?.RequiresPlayerAction ?? false,
+				CurrentPhaseAvailableActions = currentPhaseDescriptor?.AvailableActions,
+				DrawingConfig = BuildDrawingConfigDto(rules),
+				SpecialRules = BuildSpecialRulesDto(rules),
+				PlayerVsDeck = playerVsDeck,
+				ActionTimer = actionTimer
+			};
+		}
 
 	/// <inheritdoc />
 	public async Task<PrivateStateDto?> BuildPrivateStateAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)

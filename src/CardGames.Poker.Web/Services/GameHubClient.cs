@@ -42,6 +42,11 @@ public sealed class GameHubClient : IAsyncDisposable
     public event Func<TableSettingsUpdatedDto, Task>? OnTableSettingsUpdated;
 
     /// <summary>
+    /// Fired when the action timer is updated.
+    /// </summary>
+    public event Func<ActionTimerStateDto, Task>? OnActionTimerUpdated;
+
+    /// <summary>
     /// Fired when the connection state changes.
     /// </summary>
     public event Action<HubConnectionState>? OnConnectionStateChanged;
@@ -132,6 +137,7 @@ public sealed class GameHubClient : IAsyncDisposable
         _hubConnection.On<PrivateStateDto>("PrivateStateUpdated", HandlePrivateStateUpdated);
         _hubConnection.On<PlayerJoinedDto>("PlayerJoined", HandlePlayerJoined);
         _hubConnection.On<TableSettingsUpdatedDto>("TableSettingsUpdated", HandleTableSettingsUpdated);
+        _hubConnection.On<ActionTimerStateDto>("ActionTimerUpdated", HandleActionTimerUpdated);
 
         try
         {
@@ -391,6 +397,17 @@ public sealed class GameHubClient : IAsyncDisposable
         if (OnTableSettingsUpdated is not null)
         {
             await OnTableSettingsUpdated(notification);
+        }
+    }
+
+    private async Task HandleActionTimerUpdated(ActionTimerStateDto timerState)
+    {
+        _logger.LogDebug("Received ActionTimerUpdated: {SecondsRemaining}s remaining, seat {SeatIndex}, active: {IsActive}",
+            timerState.SecondsRemaining, timerState.PlayerSeatIndex, timerState.IsActive);
+
+        if (OnActionTimerUpdated is not null)
+        {
+            await OnActionTimerUpdated(timerState);
         }
     }
 

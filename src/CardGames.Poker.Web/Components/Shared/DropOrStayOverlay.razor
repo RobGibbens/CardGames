@@ -1,6 +1,6 @@
 @namespace CardGames.Poker.Web.Components.Shared
-@implements IDisposable
 
+@using CardGames.Contracts.SignalR
 @using static CardGames.Poker.Web.Components.Pages.TablePlay
 
 <div class="drop-or-stay-panel @(IsDeciding ? "submitting" : "")">
@@ -26,7 +26,7 @@
             <div class="timer-bar">
                 <div class="timer-fill" style="width: @GetTimerPercentage()%"></div>
             </div>
-            <span class="timer-text">@_timeRemaining s</span>
+            <span class="timer-text">@GetSecondsRemaining() s</span>
         </div>
     }
 
@@ -95,13 +95,7 @@
 </div>
 
 @code {
-    private const int TimerDurationSeconds = 60;
-    private const int TimerIntervalMs = 1000;
-
-    private System.Timers.Timer? _timer;
-    private int _timeRemaining = TimerDurationSeconds;
-    private bool _isFirstRender = true;
-    private bool _isDisposed;
+    private const int DefaultTimerDurationSeconds = 60;
 
     /// <summary>
     /// The player's current hand cards.
@@ -151,140 +145,99 @@
     [Parameter]
     public EventCallback<string> OnDecision { get; set; }
 
-    protected override void OnAfterRender(bool firstRender)
+    /// <summary>
+    /// The action timer state from SignalR.
+    /// </summary>
+    [Parameter]
+    public ActionTimerStateDto? ActionTimer { get; set; }
+
+    private int GetSecondsRemaining()
     {
-        if (firstRender && _isFirstRender && !HasDecided)
-        {
-            _isFirstRender = false;
-            StartTimer();
-        }
+        return ActionTimer?.SecondsRemaining ?? DefaultTimerDurationSeconds;
     }
 
-    private void StartTimer()
+    private int GetTimerDuration()
     {
-        _timer?.Dispose();
-        _timeRemaining = TimerDurationSeconds;
-
-        _timer = new System.Timers.Timer(TimerIntervalMs);
-        _timer.Elapsed += OnTimerElapsed;
-        _timer.AutoReset = true;
-        _timer.Start();
-    }
-
-    private void OnTimerElapsed(object? sender, System.Timers.ElapsedEventArgs e)
-    {
-        if (_isDisposed || IsDeciding || HasDecided)
-        {
-            return;
-        }
-
-        _timeRemaining--;
-
-        if (_timeRemaining <= 0)
-        {
-            _timer?.Stop();
-            _ = InvokeAsync(PerformAutoDropAsync);
-        }
-        else
-        {
-            _ = InvokeAsync(StateHasChanged);
-        }
-    }
-
-    private async Task PerformAutoDropAsync()
-    {
-        if (_isDisposed || IsDeciding || HasDecided)
-        {
-            return;
-        }
-
-        // Auto-drop when timer expires
-        await OnDecision.InvokeAsync("Drop");
+        return ActionTimer?.DurationSeconds ?? DefaultTimerDurationSeconds;
     }
 
     private double GetTimerPercentage()
     {
-        return (_timeRemaining / (double)TimerDurationSeconds) * 100;
+        var duration = GetTimerDuration();
+        if (duration <= 0) return 100;
+        return (GetSecondsRemaining() / (double)duration) * 100;
     }
 
     private string? GetPlayingCardRank(CardInfo card)
+    {
+        var rank = card.Rank switch
         {
-            var rank = card.Rank switch
-            {
-                "J" => "Jack",
-                "Q" => "Queen",
-                "K" => "King",
-                "A" => "Ace",
-                _ => card.Rank
-            };
+            "J" => "Jack",
+            "Q" => "Queen",
+            "K" => "King",
+            "A" => "Ace",
+            _ => card.Rank
+        };
 
-            return rank;
+        return rank;
+    }
+
+    /// <summary>
+    /// Orders cards by rank value (2..A) then by suit.
+    /// </summary>
+    private IEnumerable<CardInfo> GetOrderedCards()
+    {
+        if (Cards.Count == 0)
+        {
+            return [];
         }
 
-        /// <summary>
-        /// Orders cards by rank value (2..A) then by suit.
-        /// </summary>
-        private IEnumerable<CardInfo> GetOrderedCards()
-        {
-            if (Cards.Count == 0)
-            {
-                return [];
-            }
+        return Cards
+            .OrderBy(c => string.IsNullOrWhiteSpace(c.Rank) ? 1 : 0)
+            .ThenBy(c => GetRankValue(c.Rank))
+            .ThenBy(c => GetSuitValue(c.Suit));
+    }
 
-            return Cards
-                .OrderBy(c => string.IsNullOrWhiteSpace(c.Rank) ? 1 : 0)
-                .ThenBy(c => GetRankValue(c.Rank))
-                .ThenBy(c => GetSuitValue(c.Suit));
+    private static int GetRankValue(string? rank)
+    {
+        if (string.IsNullOrWhiteSpace(rank))
+        {
+            return int.MaxValue;
         }
 
-        private static int GetRankValue(string? rank)
+        return rank.Trim().ToUpperInvariant() switch
         {
-            if (string.IsNullOrWhiteSpace(rank))
-            {
-                return int.MaxValue;
-            }
+            "2" or "TWO" or "DEUCE" => 2,
+            "3" or "THREE" => 3,
+            "4" or "FOUR" => 4,
+            "5" or "FIVE" => 5,
+            "6" or "SIX" => 6,
+            "7" or "SEVEN" => 7,
+            "8" or "EIGHT" => 8,
+            "9" or "NINE" => 9,
+            "10" or "T" or "TEN" => 10,
+            "J" or "JACK" => 11,
+            "Q" or "QUEEN" => 12,
+            "K" or "KING" => 13,
+            "A" or "ACE" => 14,
+            _ => int.MaxValue
+        };
+    }
 
-            return rank.Trim().ToUpperInvariant() switch
-            {
-                "2" or "TWO" or "DEUCE" => 2,
-                "3" or "THREE" => 3,
-                "4" or "FOUR" => 4,
-                "5" or "FIVE" => 5,
-                "6" or "SIX" => 6,
-                "7" or "SEVEN" => 7,
-                "8" or "EIGHT" => 8,
-                "9" or "NINE" => 9,
-                "10" or "T" or "TEN" => 10,
-                "J" or "JACK" => 11,
-                "Q" or "QUEEN" => 12,
-                "K" or "KING" => 13,
-                "A" or "ACE" => 14,
-                _ => int.MaxValue
-            };
+    private static int GetSuitValue(string? suit)
+    {
+        if (string.IsNullOrWhiteSpace(suit))
+        {
+            return int.MaxValue;
         }
 
-        private static int GetSuitValue(string? suit)
+        return suit.Trim().ToLowerInvariant() switch
         {
-            if (string.IsNullOrWhiteSpace(suit))
-            {
-                return int.MaxValue;
-            }
-
-            return suit.Trim().ToLowerInvariant() switch
-            {
-                "clubs" or "c" => 0,
-                "diamonds" or "d" => 1,
-                "hearts" or "h" => 2,
-                "spades" or "s" => 3,
-                            _ => int.MaxValue
-                        };
-                    }
-
-                    public void Dispose()
-                    {
-                        _isDisposed = true;
-                        _timer?.Stop();
-                        _timer?.Dispose();
-                        _timer = null;
-                    }
-                }
+            "clubs" or "c" => 0,
+            "diamonds" or "d" => 1,
+            "hearts" or "h" => 2,
+            "spades" or "s" => 3,
+            _ => int.MaxValue
+        };
+    }
+}

@@ -11,7 +11,20 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 {
     private readonly IHubContext<GameHub> _hubContext;
     private readonly ITableStateBuilder _tableStateBuilder;
+    private readonly IActionTimerService _actionTimerService;
+    private readonly IAutoActionService _autoActionService;
     private readonly ILogger<GameStateBroadcaster> _logger;
+
+    /// <summary>
+    /// Phases that require a player action timer.
+    /// </summary>
+    private static readonly HashSet<string> ActionPhases = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "FirstBettingRound",
+        "SecondBettingRound",
+        "DrawPhase",
+        "DropOrStay"
+    };
 
     /// <summary>
     /// Group name prefix for game groups.
@@ -24,10 +37,14 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
     public GameStateBroadcaster(
         IHubContext<GameHub> hubContext,
         ITableStateBuilder tableStateBuilder,
+        IActionTimerService actionTimerService,
+        IAutoActionService autoActionService,
         ILogger<GameStateBroadcaster> logger)
     {
         _hubContext = hubContext;
         _tableStateBuilder = tableStateBuilder;
+        _actionTimerService = actionTimerService;
+        _autoActionService = autoActionService;
         _logger = logger;
     }
 
@@ -50,6 +67,9 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
                     .SendAsync("TableStateUpdated", publicState, cancellationToken);
 
                 _logger.LogDebug("Broadcast public state to group {GroupName}", groupName);
+
+                // Manage action timer based on current phase and actor
+                ManageActionTimer(gameId, publicState);
             }
 
             // Get all player user IDs and send private state to each
@@ -70,13 +90,65 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
         }
     }
 
-    /// <inheritdoc />
-    public async Task BroadcastGameStateToUserAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Manages the action timer based on the current game state.
+    /// Starts/restarts the timer when a new player needs to act, stops it otherwise.
+    /// </summary>
+    private void ManageActionTimer(Guid gameId, TableStatePublicDto state)
     {
-        var groupName = GetGroupName(gameId);
+        // Check if we're in a phase that requires player action
+        var requiresAction = ActionPhases.Contains(state.CurrentPhase) ||
+                             state.CurrentPhaseRequiresAction;
 
-        try
+        var currentActorSeatIndex = state.CurrentActorSeatIndex;
+
+        if (!requiresAction || currentActorSeatIndex < 0 || state.IsPaused)
         {
+            // Stop timer if no action needed, no actor, or game is paused
+            if (_actionTimerService.IsTimerActive(gameId))
+            {
+                _logger.LogDebug("Stopping action timer for game {GameId} - no action required", gameId);
+                _actionTimerService.StopTimer(gameId);
+            }
+            return;
+        }
+
+            // Check if the current actor has changed
+            var existingTimer = _actionTimerService.GetTimerState(gameId);
+            if (existingTimer is not null && existingTimer.PlayerSeatIndex == currentActorSeatIndex)
+            {
+                // Same player, timer already running - don't restart
+                _logger.LogDebug(
+                    "Action timer already running for game {GameId}, player seat {SeatIndex}",
+                    gameId, currentActorSeatIndex);
+                return;
+            }
+
+            // Start a new timer for the current actor
+            _logger.LogInformation(
+                "Starting action timer for game {GameId}, player seat {SeatIndex}, phase {Phase}",
+                gameId, currentActorSeatIndex, state.CurrentPhase);
+
+            _actionTimerService.StartTimer(
+                gameId,
+                currentActorSeatIndex,
+                durationSeconds: IActionTimerService.DefaultTimerDurationSeconds,
+                onExpired: async (gId, seatIndex) =>
+                {
+                    _logger.LogInformation(
+                        "Timer expired for game {GameId}, player seat {SeatIndex} - performing auto-action",
+                        gId, seatIndex);
+                    await _autoActionService.PerformAutoActionAsync(gId, seatIndex);
+                });
+        }
+
+        /// <inheritdoc />
+        public async Task BroadcastGameStateToUserAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
+        {
+            var groupName = GetGroupName(gameId);
+
+            try
+            {
             // Send public state to the user
             var publicState = await _tableStateBuilder.BuildPublicStateAsync(gameId, cancellationToken);
             if (publicState is not null)

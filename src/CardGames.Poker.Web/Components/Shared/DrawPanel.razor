@@ -1,6 +1,6 @@
 @namespace CardGames.Poker.Web.Components.Shared
-@implements IDisposable
 
+@using CardGames.Contracts.SignalR
 @using static CardGames.Poker.Web.Components.Pages.TablePlay
 
 <div class="draw-panel @(IsSubmitting ? "submitting" : "") @(IsAnimating ? "animating" : "") @(IsReadOnly ? "read-only" : "")">
@@ -37,7 +37,7 @@
             <div class="draw-timer-bar">
                 <div class="draw-timer-fill" style="width: @GetTimerPercentage()%"></div>
             </div>
-            <span class="draw-timer-text">@_timeRemaining s</span>
+            <span class="draw-timer-text">@GetSecondsRemaining() s</span>
         </div>
     }
 
@@ -155,13 +155,7 @@
 </div>
 
 @code {
-    private const int TimerDurationSeconds = 60;
-    private const int TimerIntervalMs = 1000;
-
-    private System.Timers.Timer? _timer;
-    private int _timeRemaining = TimerDurationSeconds;
-    private bool _isFirstRender = true;
-    private bool _isDisposed;
+    private const int DefaultTimerDurationSeconds = 60;
 
     [Parameter]
     public List<CardInfo> Cards { get; set; } = [];
@@ -246,62 +240,29 @@
     [Parameter]
     public bool HideCardIndices { get; set; }
 
+    /// <summary>
+    /// The action timer state from SignalR.
+    /// </summary>
+    [Parameter]
+    public ActionTimerStateDto? ActionTimer { get; set; }
+
     private int SelectedCount => SelectedIndices.Count;
 
-    protected override void OnAfterRender(bool firstRender)
+    private int GetSecondsRemaining()
     {
-        if (firstRender && _isFirstRender && !IsReadOnly)
-        {
-            _isFirstRender = false;
-            StartTimer();
-        }
+        return ActionTimer?.SecondsRemaining ?? DefaultTimerDurationSeconds;
     }
 
-    private void StartTimer()
+    private int GetTimerDuration()
     {
-        _timer?.Dispose();
-        _timeRemaining = TimerDurationSeconds;
-
-        _timer = new System.Timers.Timer(TimerIntervalMs);
-        _timer.Elapsed += OnTimerElapsed;
-        _timer.AutoReset = true;
-        _timer.Start();
-    }
-
-    private void OnTimerElapsed(object? sender, System.Timers.ElapsedEventArgs e)
-    {
-        if (_isDisposed || IsSubmitting || IsAnimating || IsReadOnly)
-        {
-            return;
-        }
-
-        _timeRemaining--;
-
-        if (_timeRemaining <= 0)
-        {
-            _timer?.Stop();
-            _ = InvokeAsync(PerformAutoStandPatAsync);
-        }
-        else
-        {
-            _ = InvokeAsync(StateHasChanged);
-        }
-    }
-
-    private async Task PerformAutoStandPatAsync()
-    {
-        if (_isDisposed || IsSubmitting || IsAnimating || IsReadOnly)
-        {
-            return;
-        }
-
-        // Auto-stand-pat when timer expires (discard no cards)
-        await OnDraw.InvokeAsync([]);
+        return ActionTimer?.DurationSeconds ?? DefaultTimerDurationSeconds;
     }
 
     private double GetTimerPercentage()
     {
-        return (_timeRemaining / (double)TimerDurationSeconds) * 100;
+        var duration = GetTimerDuration();
+        if (duration <= 0) return 100;
+        return (GetSecondsRemaining() / (double)duration) * 100;
     }
 
     private async Task ToggleCardSelectionAsync(int index)
@@ -428,16 +389,8 @@
             "hearts" or "h" => 2,
             "spades" or "s" => 3,
             _ => int.MaxValue
-        };
-    }
+                };
+            }
 
-        private sealed record IndexedCard(CardInfo Card, int Index);
-
-        public void Dispose()
-        {
-            _isDisposed = true;
-            _timer?.Stop();
-            _timer?.Dispose();
-            _timer = null;
+            private sealed record IndexedCard(CardInfo Card, int Index);
         }
-    }
