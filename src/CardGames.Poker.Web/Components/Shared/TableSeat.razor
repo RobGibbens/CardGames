@@ -1,5 +1,6 @@
 @namespace CardGames.Poker.Web.Components.Shared
 @using static CardGames.Poker.Web.Components.Pages.TablePlay
+@inject NavigationManager NavigationManager
 
 <div class="seat-container @(IsCurrentPlayer ? "current-player-layout" : "remote-player-layout") @(Seat.IsOccupied ? "occupied" : "empty")">
     @if (Seat.IsOccupied)
@@ -59,9 +60,9 @@
             
             <!-- Avatar Circle -->
             <div class="avatar-circle @GetAvatarStateClass()">
-                @if (!string.IsNullOrWhiteSpace(Seat.PlayerAvatarUrl))
+                @if (!string.IsNullOrWhiteSpace(Seat.PlayerAvatarUrl) && !_imageLoadError)
                 {
-                    <img class="avatar-img" src="@Seat.PlayerAvatarUrl" alt="@GetDisplayName()" />
+                    <img class="avatar-img" src="@GetSafeAvatarUrl()" alt="@GetDisplayName()" @onerror="OnImageError" />
                 }
                 else
                 {
@@ -149,6 +150,52 @@
 
     [Parameter]
     public bool IsSeatSelectionDisabledForCurrentUser { get; set; }
+
+    private bool _imageLoadError;
+    private string? _lastAvatarUrl;
+
+    protected override void OnParametersSet()
+    {
+        if (Seat.PlayerAvatarUrl != _lastAvatarUrl)
+        {
+            _imageLoadError = false;
+            _lastAvatarUrl = Seat.PlayerAvatarUrl;
+        }
+    }
+
+    private void OnImageError(ErrorEventArgs args)
+    {
+        _imageLoadError = true;
+    }
+
+    private string GetSafeAvatarUrl()
+    {
+        if (string.IsNullOrWhiteSpace(Seat.PlayerAvatarUrl)) return "";
+        var url = Seat.PlayerAvatarUrl.Trim();
+        
+        // Return original if it's absolute URL or data URI
+        if (url.StartsWith("http", StringComparison.OrdinalIgnoreCase) || 
+            url.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+        {
+            return url;
+        }
+
+        // If it starts with /, treat as relative to root, but respect base path
+        if (url.StartsWith("/", StringComparison.Ordinal))
+        {
+             // Remove leading slash to combine with BaseUri
+             url = url.Substring(1);
+        }
+
+        try
+        {
+            return NavigationManager.ToAbsoluteUri(url).ToString();
+        }
+        catch
+        {
+            return url;
+        }
+    }
 
     private string GetAvatarStateClass()
     {
