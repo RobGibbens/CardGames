@@ -244,6 +244,10 @@
     pointer-events: none;
 }
 
+.remote-player-layout .seat-cards-container {
+    top: 10px;
+}
+
 .placeholder .playing-card-placeholder {
     width: 30px; height: 45px;
     background: rgba(255,255,255,0.1);
@@ -269,8 +273,9 @@
 }
 ::deep playing-card.small {
     /* Styles for scaling small cards if component supports vars, or just override via style attribute in razor */
-    height: 50px !important;
-    width: 35px !important;
+    height: 70px !important;
+    width: 50px !important;
+    margin: 0 -16px;
 }
 ::deep playing-card.poker-card {
     height: 140px;

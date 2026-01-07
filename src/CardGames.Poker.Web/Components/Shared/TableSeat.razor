@@ -4,6 +4,56 @@
 <div class="seat-container @(IsCurrentPlayer ? "current-player-layout" : "remote-player-layout") @(Seat.IsOccupied ? "occupied" : "empty")">
     @if (Seat.IsOccupied)
     {
+        <!-- Cards -->
+        @if (ShowCards && Seat.Cards.Count > 0)
+        {
+            <div class="seat-cards-container">
+
+                <div class="cards-fan">
+                    @foreach (var card in GetOrderedCards())
+                    {
+                        var rank = GetPlayingCardRank(card);
+                        // Logic from original: current player sees own cards, others see face up only if face up
+                        
+                        if (IsCurrentPlayer)
+                        {
+                             if (card.IsFaceUp)
+                             {
+                                <playing-card rank="@rank" suit="@card.Suit" class="poker-card"></playing-card>
+                             }
+                             else
+                             {
+                                <playing-card rank="0" backcolor="#44F" class="poker-card"></playing-card>
+                             }
+                        }
+                        else
+                        {
+                             if (card.IsFaceUp)
+                             {
+                                <playing-card rank="@rank" suit="@card.Suit" class="poker-card small"></playing-card>
+                             }
+                             else
+                             {
+                                <playing-card rank="0" backcolor="#44F" class="poker-card small"></playing-card>
+                             }
+                        }
+                    }
+                </div>
+            </div>
+        }
+        else if (ShowCards && !Seat.IsFolded)
+        {
+             <!-- Placeholder cards -->
+            <div class="seat-cards-container placeholder">
+                <div class="cards-fan">
+                    @for (int i = 0; i < 5; i++)
+                    {
+                         <div class="playing-card-placeholder"></div>
+                    }
+                </div>
+            </div>
+        }
+
         <!-- Main Player Display (Avatar + Info Pill) -->
         <div class="seat-visuals">
             
@@ -70,56 +120,6 @@
         {
             <div class="hand-eval-tooltip">
                 @Seat.HandEvaluationDescription
-            </div>
-        }
-
-        <!-- Cards -->
-        @if (ShowCards && Seat.Cards.Count > 0)
-        {
-            <div class="seat-cards-container">
-
-                <div class="cards-fan">
-                    @foreach (var card in GetOrderedCards())
-                    {
-                        var rank = GetPlayingCardRank(card);
-                        // Logic from original: current player sees own cards, others see face up only if face up
-                        
-                        if (IsCurrentPlayer)
-                        {
-                             if (card.IsFaceUp)
-                             {
-                                <playing-card rank="@rank" suit="@card.Suit" class="poker-card"></playing-card>
-                             }
-                             else
-                             {
-                                <playing-card rank="0" backcolor="#44F" class="poker-card"></playing-card>
-                             }
-                        }
-                        else
-                        {
-                             if (card.IsFaceUp)
-                             {
-                                <playing-card rank="@rank" suit="@card.Suit" class="poker-card small"></playing-card>
-                             }
-                             else
-                             {
-                                <playing-card rank="0" backcolor="#44F" class="poker-card small"></playing-card>
-                             }
-                        }
-                    }
-                </div>
-            </div>
-        }
-        else if (ShowCards && !Seat.IsFolded)
-        {
-             <!-- Placeholder cards -->
-            <div class="seat-cards-container placeholder">
-                <div class="cards-fan">
-                    @for (int i = 0; i < 5; i++)
-                    {
-                         <div class="playing-card-placeholder"></div>
-                    }
-                </div>
             </div>
         }
     }
