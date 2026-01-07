@@ -215,9 +215,10 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 				// Note: Showdown will be performed by ContinuousPlayBackgroundService after delay
 			}
 
-			nextPhase = game.CurrentPhase;
-			game.CurrentDrawPlayerIndex = -1;
-		}
+				nextPhase = game.CurrentPhase;
+				game.CurrentDrawPlayerIndex = -1;
+				game.CurrentPlayerIndex = -1;
+			}
 		else
 		{
 			// Find next player to draw (circular, starting after current player)
@@ -231,6 +232,7 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 				if (player.DropOrStayDecision == Data.Entities.DropOrStayDecision.Stay && !player.HasDrawnThisRound)
 				{
 					game.CurrentDrawPlayerIndex = nextIndex;
+					game.CurrentPlayerIndex = player.SeatPosition;
 					nextPlayerId = player.PlayerId;
 					nextPlayerName = player.Player?.Name;
 					break;

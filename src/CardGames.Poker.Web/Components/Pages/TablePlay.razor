@@ -908,7 +908,7 @@
                 IsSelected = false
             }).ToList();
         }
-        // Also populate cards for PlayerVsDeck phase when reconnecting
+        // Also populate cards for PlayerVsDeck phase when reconnection
         // This ensures the player can see the deck cards after reconnection
         else if ((IsPlayerVsDeckPhase || string.Equals(currentPhase, "PlayerVsDeck", StringComparison.OrdinalIgnoreCase))
             && state.Hand is not null && state.Hand.Count > 0 && currentPlayerDrawCards.Count == 0)
@@ -1233,6 +1233,9 @@
                     status: gamesResponse.Status,
                     updatedAt: gamesResponse.UpdatedAt
                 );
+
+                currentActorSeatIndex = _gameResponse.CurrentPlayerIndex;
+                dealerSeatIndex = _gameResponse.DealerPosition;
             }
 
             await GetPlayersAndUpdateSeatsAsync();

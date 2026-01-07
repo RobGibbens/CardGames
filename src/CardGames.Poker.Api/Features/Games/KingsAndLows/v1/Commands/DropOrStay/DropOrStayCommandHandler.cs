@@ -130,6 +130,7 @@ public class DropOrStayCommandHandler(CardsDbContext context)
 				game.CurrentPhase = nameof(KingsAndLowsPhase.DrawPhase);
 				var gamePlayersList = game.GamePlayers.OrderBy(gp => gp.SeatPosition).ToList();
 				game.CurrentDrawPlayerIndex = gamePlayersList.IndexOf(stayingPlayers[0]);
+				game.CurrentPlayerIndex = stayingPlayers[0].SeatPosition;
 				nextPhase = game.CurrentPhase;
 			}
 			else
@@ -156,6 +157,7 @@ public class DropOrStayCommandHandler(CardsDbContext context)
 					if (player.DropOrStayDecision == Data.Entities.DropOrStayDecision.Stay)
 					{
 						game.CurrentDrawPlayerIndex = nextPlayerIndex;
+						game.CurrentPlayerIndex = player.SeatPosition;
 						break;
 					}
 					nextPlayerIndex = (nextPlayerIndex + 1) % gamePlayersList.Count;
