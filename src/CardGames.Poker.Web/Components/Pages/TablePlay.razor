@@ -160,7 +160,7 @@
             (isPlayerTurn && IsBettingPhase)
         {
             <ActionPanel LegalActions="@legalActions" MinBet="@currentMinBet" MaxBet="@currentMaxBet"
-                         CurrentBetToCall="@currentBetToCall" PlayerChips="@playerChips" TurnTimeRemaining="@turnTimeRemaining"
+                         CurrentBetToCall="@currentBetToCall" PlayerChips="@playerChips"
                          OnAction="HandlePlayerActionAsync" IsSubmitting="@isSubmittingAction" />
         }
 
@@ -381,7 +381,6 @@
     private int currentMinBet;
     private int currentMaxBet;
     private int currentBetToCall;
-    private int turnTimeRemaining = 30; // TODO: Get from server
 
     private AvailableActionsResponse? _availableActions;
     private GetCurrentBettingRoundResponse? _currentBettingRound;

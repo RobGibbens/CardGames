@@ -1,4 +1,5 @@
 @namespace CardGames.Poker.Web.Components.Shared
+@implements IDisposable
 
 @using CardGames.Poker.Api.Contracts
 @using static CardGames.Poker.Web.Components.Pages.TablePlay
@@ -9,7 +10,7 @@
         <div class="timer-bar">
             <div class="timer-fill" style="width: @GetTimerPercentage()%"></div>
         </div>
-        <span class="timer-text">@TurnTimeRemaining s</span>
+        <span class="timer-text">@_timeRemaining s</span>
     </div>
 
     <!-- Action buttons -->
@@ -108,6 +109,14 @@
 </div>
 
 @code {
+    private const int TimerDurationSeconds = 60;
+    private const int TimerIntervalMs = 1000;
+
+    private System.Timers.Timer? _timer;
+    private int _timeRemaining = TimerDurationSeconds;
+    private bool _isFirstRender = true;
+    private bool _isDisposed;
+
     [Parameter]
     public List<BettingActionType> LegalActions { get; set; } = [];
 
@@ -122,9 +131,6 @@
 
     [Parameter]
     public int PlayerChips { get; set; }
-
-    [Parameter]
-    public int TurnTimeRemaining { get; set; } = 30;
 
     [Parameter]
     public EventCallback<PlayerActionRequest> OnAction { get; set; }
@@ -144,6 +150,64 @@
         else if (betAmount > MaxBet)
         {
             betAmount = MaxBet;
+        }
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender && _isFirstRender)
+        {
+            _isFirstRender = false;
+            StartTimer();
+        }
+    }
+
+    private void StartTimer()
+    {
+        _timer?.Dispose();
+        _timeRemaining = TimerDurationSeconds;
+
+        _timer = new System.Timers.Timer(TimerIntervalMs);
+        _timer.Elapsed += OnTimerElapsed;
+        _timer.AutoReset = true;
+        _timer.Start();
+    }
+
+    private void OnTimerElapsed(object? sender, System.Timers.ElapsedEventArgs e)
+    {
+        if (_isDisposed || IsSubmitting)
+        {
+            return;
+        }
+
+        _timeRemaining--;
+
+        if (_timeRemaining <= 0)
+        {
+            _timer?.Stop();
+            _ = InvokeAsync(PerformAutoActionAsync);
+        }
+        else
+        {
+            _ = InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task PerformAutoActionAsync()
+    {
+        if (_isDisposed || IsSubmitting)
+        {
+            return;
+        }
+
+        // Check if available, otherwise fold
+        if (LegalActions.Contains(BettingActionType.Check))
+        {
+            await SubmitAction(BettingActionType.Check);
+        }
+        else if (LegalActions.Contains(BettingActionType.Fold))
+        {
+            await SubmitAction(BettingActionType.Fold);
         }
     }
 
@@ -178,9 +242,16 @@
         return Math.Clamp(potBet, MinBet, MaxBet);
     }
 
-    private double GetTimerPercentage()
-    {
-        const int maxTime = 30; // Assuming 30 second timer
-        return (TurnTimeRemaining / (double)maxTime) * 100;
+        private double GetTimerPercentage()
+        {
+            return (_timeRemaining / (double)TimerDurationSeconds) * 100;
+        }
+
+        public void Dispose()
+        {
+            _isDisposed = true;
+            _timer?.Stop();
+            _timer?.Dispose();
+            _timer = null;
+        }
     }
-}

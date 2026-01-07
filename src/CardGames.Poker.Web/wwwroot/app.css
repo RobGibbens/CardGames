@@ -3806,6 +3806,36 @@ a:hover {
     pointer-events: none;
 }
 
+/* Draw Panel Turn Timer */
+.draw-turn-timer {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.draw-timer-bar {
+    flex: 1;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.draw-timer-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #22c55e 0%, #fbbf24 50%, #dc2626 100%);
+    border-radius: 3px;
+    transition: width 1s linear;
+}
+
+.draw-timer-text {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: white;
+    min-width: 35px;
+}
+
 .draw-panel-header {
     text-align: center;
     margin-bottom: 1.25rem;

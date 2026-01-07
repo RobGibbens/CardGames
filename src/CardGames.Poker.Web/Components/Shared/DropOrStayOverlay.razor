@@ -1,4 +1,5 @@
 @namespace CardGames.Poker.Web.Components.Shared
+@implements IDisposable
 
 @using static CardGames.Poker.Web.Components.Pages.TablePlay
 
@@ -17,6 +18,17 @@
             <div class="drop-or-stay-hand-eval">@HandDescription</div>
         }
     </div>
+
+    <!-- Turn timer -->
+    @if (!HasDecided)
+    {
+        <div class="turn-timer">
+            <div class="timer-bar">
+                <div class="timer-fill" style="width: @GetTimerPercentage()%"></div>
+            </div>
+            <span class="timer-text">@_timeRemaining s</span>
+        </div>
+    }
 
     <!-- Cards Display -->
     <div class="drop-or-stay-cards-container">
@@ -83,6 +95,14 @@
 </div>
 
 @code {
+    private const int TimerDurationSeconds = 60;
+    private const int TimerIntervalMs = 1000;
+
+    private System.Timers.Timer? _timer;
+    private int _timeRemaining = TimerDurationSeconds;
+    private bool _isFirstRender = true;
+    private bool _isDisposed;
+
     /// <summary>
     /// The player's current hand cards.
     /// </summary>
@@ -131,7 +151,63 @@
     [Parameter]
     public EventCallback<string> OnDecision { get; set; }
 
-        private string? GetPlayingCardRank(CardInfo card)
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender && _isFirstRender && !HasDecided)
+        {
+            _isFirstRender = false;
+            StartTimer();
+        }
+    }
+
+    private void StartTimer()
+    {
+        _timer?.Dispose();
+        _timeRemaining = TimerDurationSeconds;
+
+        _timer = new System.Timers.Timer(TimerIntervalMs);
+        _timer.Elapsed += OnTimerElapsed;
+        _timer.AutoReset = true;
+        _timer.Start();
+    }
+
+    private void OnTimerElapsed(object? sender, System.Timers.ElapsedEventArgs e)
+    {
+        if (_isDisposed || IsDeciding || HasDecided)
+        {
+            return;
+        }
+
+        _timeRemaining--;
+
+        if (_timeRemaining <= 0)
+        {
+            _timer?.Stop();
+            _ = InvokeAsync(PerformAutoDropAsync);
+        }
+        else
+        {
+            _ = InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task PerformAutoDropAsync()
+    {
+        if (_isDisposed || IsDeciding || HasDecided)
+        {
+            return;
+        }
+
+        // Auto-drop when timer expires
+        await OnDecision.InvokeAsync("Drop");
+    }
+
+    private double GetTimerPercentage()
+    {
+        return (_timeRemaining / (double)TimerDurationSeconds) * 100;
+    }
+
+    private string? GetPlayingCardRank(CardInfo card)
         {
             var rank = card.Rank switch
             {
@@ -200,7 +276,15 @@
                 "diamonds" or "d" => 1,
                 "hearts" or "h" => 2,
                 "spades" or "s" => 3,
-                _ => int.MaxValue
-            };
-        }
-    }
+                            _ => int.MaxValue
+                        };
+                    }
+
+                    public void Dispose()
+                    {
+                        _isDisposed = true;
+                        _timer?.Stop();
+                        _timer?.Dispose();
+                        _timer = null;
+                    }
+                }
