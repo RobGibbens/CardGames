@@ -1,5 +1,6 @@
 using CardGames.Core.French.Cards;
 using CardGames.Core.French.Dealers;
+using CardGames.Core.French.Decks;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Games.FiveCardDraw;
@@ -149,64 +150,104 @@ public class ProcessDrawCommandHandler(CardsDbContext context)
 		var newCards = new List<CardInfo>();
 		if (command.DiscardIndices.Count > 0)
 		{
-			// Get all cards already dealt in this hand to exclude from new deals
-			var usedCards = await context.GameCards
-				.Where(gc => gc.GameId == game.Id && gc.HandNumber == game.CurrentHandNumber)
-				.Select(gc => new { gc.Suit, gc.Symbol })
+			// Check if there are pre-shuffled deck cards available (from ContinuousPlayBackgroundService)
+			// These are cards with GamePlayerId = null and Location = Deck
+			var availableDeckCards = await context.GameCards
+				.Where(gc => gc.GameId == game.Id
+					&& gc.HandNumber == game.CurrentHandNumber
+					&& gc.GamePlayerId == null
+					&& gc.Location == CardLocation.Deck)
+				.OrderBy(gc => gc.DealOrder)
+				.Take(command.DiscardIndices.Count)
 				.ToListAsync(cancellationToken);
 
-			var usedCardSet = usedCards.Select(c => (c.Suit, c.Symbol)).ToHashSet();
-
-			// Create a dealer with remaining cards
-			var dealer = FrenchDeckDealer.WithFullDeck();
-			dealer.Shuffle();
-
-			var cardsDealt = 0;
 			var maxDealOrder = playerCards.Max(c => c.DealOrder);
 
-			while (cardsDealt < command.DiscardIndices.Count)
+			if (availableDeckCards.Count >= command.DiscardIndices.Count)
 			{
-				var card = dealer.DealCards(1).First();
-				var mappedSuit = MapSuit(card.Suit);
-				var mappedSymbol = MapSymbol(card.Symbol);
-
-				// Skip if card was already used
-				if (usedCardSet.Contains((mappedSuit, mappedSymbol)))
+				// Use pre-shuffled deck cards - assign them to the current player
+				foreach (var deckCard in availableDeckCards)
 				{
-					continue;
+					deckCard.GamePlayerId = currentDrawPlayer.Id;
+					deckCard.Location = CardLocation.Hole;
+					deckCard.DealOrder = ++maxDealOrder;
+					deckCard.DealtAtPhase = nameof(FiveCardDrawPhase.DrawPhase);
+					deckCard.IsDrawnCard = true;
+					deckCard.DrawnAtRound = 1;
+					deckCard.DealtAt = now;
+
+					newCards.Add(new CardInfo
+					{
+						Suit = deckCard.Suit,
+						Symbol = deckCard.Symbol,
+						Display = FormatCard(deckCard.Symbol, deckCard.Suit)
+					});
+				}
+			}
+			else
+			{
+				// Fall back to generating new random cards (DealHandsCommandHandler flow)
+				// Get all cards already dealt to players in this hand to exclude from new deals
+				var usedCards = await context.GameCards
+					.Where(gc => gc.GameId == game.Id
+						&& gc.HandNumber == game.CurrentHandNumber
+						&& gc.GamePlayerId != null)
+					.Select(gc => new { gc.Suit, gc.Symbol })
+					.ToListAsync(cancellationToken);
+
+				var usedCardSet = usedCards.Select(c => (c.Suit, c.Symbol)).ToHashSet();
+
+				// Create a full deck and filter out used cards to avoid rejection sampling issues
+				var fullDeck = new FullFrenchDeck();
+				var rng = new Random();
+
+				var cardsToDeal = fullDeck.CardsLeft()
+					.Select(c => new { Card = c, MappedSuit = MapSuit(c.Suit), MappedSymbol = MapSymbol(c.Symbol) })
+					.Where(x => !usedCardSet.Contains((x.MappedSuit, x.MappedSymbol)))
+					.OrderBy(_ => rng.Next())
+					.Take(command.DiscardIndices.Count)
+					.ToList();
+
+				if (cardsToDeal.Count < command.DiscardIndices.Count)
+				{
+					throw new InvalidOperationException($"Not enough cards in the deck to deal {command.DiscardIndices.Count} cards.");
 				}
 
-				// Create new card entity
-				var newGameCard = new GameCard
+				foreach (var item in cardsToDeal)
 				{
-					GameId = game.Id,
-					GamePlayerId = currentDrawPlayer.Id,
-					HandNumber = game.CurrentHandNumber,
-					Suit = mappedSuit,
-					Symbol = mappedSymbol,
-					Location = CardLocation.Hole,
-					DealOrder = ++maxDealOrder,
-					DealtAtPhase = nameof(FiveCardDrawPhase.DrawPhase),
-					IsVisible = false,
-					IsWild = false,
-					IsDiscarded = false,
-					IsDrawnCard = true,
-					DrawnAtRound = 1,
-					IsBuyCard = false,
-					DealtAt = now
-				};
+					var mappedSuit = item.MappedSuit;
+					var mappedSymbol = item.MappedSymbol;
 
-				context.GameCards.Add(newGameCard);
-				usedCardSet.Add((mappedSuit, mappedSymbol));
+					// Create new card entity
+					var newGameCard = new GameCard
+					{
+						GameId = game.Id,
+						GamePlayerId = currentDrawPlayer.Id,
+						HandNumber = game.CurrentHandNumber,
+						Suit = mappedSuit,
+						Symbol = mappedSymbol,
+						Location = CardLocation.Hole,
+						DealOrder = ++maxDealOrder,
+						DealtAtPhase = nameof(FiveCardDrawPhase.DrawPhase),
+						IsVisible = false,
+						IsWild = false,
+						IsDiscarded = false,
+						IsDrawnCard = true,
+						DrawnAtRound = 1,
+						IsBuyCard = false,
+						DealtAt = now
+					};
 
-				newCards.Add(new CardInfo
-				{
-					Suit = mappedSuit,
-					Symbol = mappedSymbol,
-					Display = FormatCard(mappedSymbol, mappedSuit)
-				});
+					context.GameCards.Add(newGameCard);
+					usedCardSet.Add((mappedSuit, mappedSymbol));
 
-				cardsDealt++;
+					newCards.Add(new CardInfo
+					{
+						Suit = mappedSuit,
+						Symbol = mappedSymbol,
+						Display = FormatCard(mappedSymbol, mappedSuit)
+					});
+				}
 			}
 		}
 

@@ -5,15 +5,13 @@
 - [ ] FiveCardDraw - can't draw four with an Ace
 - [ ] Kings and Lows - don't deal to players that don't have enough chips to match the pot
 
-- [ ] Table - make the table seat look like PokerStars
-
+- [ ] Add an action timer
 - [ ] Make sure all calls are idempotent
 - [ ] Add chip management to the dashboard (buy in, cash out, add chips)
 
 - [ ] Search for code == "KINGSANDLOWS" and refactor
 - [ ] Creating a deck and dealing is done in the StartHandCommandHandler, but it should be using CardGames.Core.Dealer;
 - [ ] Table settings should be dynamic when creating a table. Not all games have an ante or a minimum bet.
-- [ ] Make the chips look better
 
 - [ ] During ties, the showdown should show the kicker 
 - [ ] Showdown overlay should handle split pots better
@@ -32,7 +30,6 @@
 - [ ] Add the ability to invite friends to a table
 - [ ] Add the ability to create private tables
 - [ ] The betting action overlay. Raise to X doesn't work
-- [ ] Add an action timer
 - [ ] Have the ability for someone to take a seat and be dealt into the next hand
 - [ ] When already logged in, take them to the Lobby
 - [ ] Test side pots
@@ -108,3 +105,4 @@
 - [x] Be able to soft delete a table if you're the host
 - [x] Lobby should filter by game type
 - [x] Make sure signalr isn't broadcasting to all players in all games
+- [x] Table - make the table seat look like PokerStars
