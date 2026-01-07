@@ -242,25 +242,26 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 			}
 		}
 
-		// 12. Persist changes
-		game.UpdatedAt = now;
-		await context.SaveChangesAsync(cancellationToken);
+			// 12. Persist changes
+			game.UpdatedAt = now;
+			await context.SaveChangesAsync(cancellationToken);
 
-		return new DrawCardsSuccessful
-		{
-			GameId = game.Id,
-			PlayerId = command.PlayerId,
-			PlayerName = gamePlayer.Player?.Name,
-			CardsDiscarded = discardIndices.Count,
-			CardsDrawn = discardIndices.Count,
-			DiscardedCards = discardedCardInfos,
-			NewCards = newCardInfos,
-			DrawPhaseComplete = drawPhaseComplete,
-			NextPhase = nextPhase,
-			NextPlayerId = nextPlayerId,
-			NextPlayerName = nextPlayerName
-		};
-	}
+			return new DrawCardsSuccessful
+			{
+				GameId = game.Id,
+				PlayerId = command.PlayerId,
+				PlayerName = gamePlayer.Player?.Name,
+				PlayerSeatIndex = gamePlayer.SeatPosition,
+				CardsDiscarded = discardIndices.Count,
+				CardsDrawn = discardIndices.Count,
+				DiscardedCards = discardedCardInfos,
+				NewCards = newCardInfos,
+				DrawPhaseComplete = drawPhaseComplete,
+				NextPhase = nextPhase,
+				NextPlayerId = nextPlayerId,
+				NextPlayerName = nextPlayerName
+			};
+		}
 
 	/// <summary>
 	/// Performs showdown, determines winner/losers, distributes pot, and transitions to PotMatching phase.

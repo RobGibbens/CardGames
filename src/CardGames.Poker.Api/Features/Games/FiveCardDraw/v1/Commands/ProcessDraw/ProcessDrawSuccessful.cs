@@ -1,11 +1,12 @@
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Infrastructure;
 
 namespace CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.ProcessDraw;
 
 /// <summary>
 /// Represents a successful draw action result.
 /// </summary>
-public record ProcessDrawSuccessful
+public record ProcessDrawSuccessful : IPlayerActionResult
 {
 	/// <summary>
 	/// The unique identifier of the game.
@@ -16,6 +17,11 @@ public record ProcessDrawSuccessful
 	/// The name of the player who performed the draw action.
 	/// </summary>
 	public required string PlayerName { get; init; }
+
+	/// <summary>
+	/// The seat index of the player who performed the draw action.
+	/// </summary>
+	public int PlayerSeatIndex { get; init; }
 
 	/// <summary>
 	/// The cards that were discarded from the player's hand.
@@ -47,6 +53,23 @@ public record ProcessDrawSuccessful
 	/// The name of the next player to draw, or null if the draw phase is complete.
 	/// </summary>
 	public string? NextDrawPlayerName { get; init; }
+
+	/// <inheritdoc />
+	string? IPlayerActionResult.PlayerName => PlayerName;
+
+	/// <inheritdoc />
+	string IPlayerActionResult.ActionDescription => GetActionDescription();
+
+	private string GetActionDescription()
+	{
+		var discardCount = DiscardedCards.Count;
+		return discardCount switch
+		{
+			0 => "Stood Pat",
+			1 => "Discarded 1",
+			_ => $"Discarded {discardCount}"
+		};
+	}
 }
 
 /// <summary>

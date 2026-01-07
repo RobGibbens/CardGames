@@ -227,24 +227,25 @@ public class ProcessDrawCommandHandler(CardsDbContext context)
 			nextPlayerName = activePlayers.FirstOrDefault(p => p.SeatPosition == nextDrawPlayerIndex)?.Player.Name;
 		}
 
-		// 10. Update timestamps
-		game.UpdatedAt = now;
+			// 10. Update timestamps
+			game.UpdatedAt = now;
 
-		// 11. Persist changes
-		await context.SaveChangesAsync(cancellationToken);
+			// 11. Persist changes
+			await context.SaveChangesAsync(cancellationToken);
 
-		return new ProcessDrawSuccessful
-		{
-			GameId = game.Id,
-			PlayerName = currentDrawPlayer.Player.Name,
-			DiscardedCards = discardedCards,
-			NewCards = newCards,
-			DrawComplete = drawComplete,
-			CurrentPhase = game.CurrentPhase,
-			NextDrawPlayerIndex = nextDrawPlayerIndex,
-			NextDrawPlayerName = nextPlayerName
-		};
-	}
+			return new ProcessDrawSuccessful
+			{
+				GameId = game.Id,
+				PlayerName = currentDrawPlayer.Player.Name,
+				PlayerSeatIndex = currentDrawPlayer.SeatPosition,
+				DiscardedCards = discardedCards,
+				NewCards = newCards,
+				DrawComplete = drawComplete,
+				CurrentPhase = game.CurrentPhase,
+				NextDrawPlayerIndex = nextDrawPlayerIndex,
+				NextDrawPlayerName = nextPlayerName
+			};
+		}
 
 	private static int FindNextDrawPlayer(Game game, List<GamePlayer> activePlayers, int currentIndex)
 	{

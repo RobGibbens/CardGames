@@ -1000,6 +1000,12 @@
                         IsSelected = false
                     }).ToList();
 
+                // Preserve LastActionDescription if it hasn't expired (5 seconds)
+                var existingSeat = seats[publicSeat.SeatIndex];
+                var shouldPreserveAction = !string.IsNullOrWhiteSpace(existingSeat.LastActionDescription) &&
+                    existingSeat.LastActionTime.HasValue &&
+                    (DateTimeOffset.UtcNow - existingSeat.LastActionTime.Value).TotalSeconds < 5;
+
                 seats[publicSeat.SeatIndex] = new SeatInfo
                 {
                     SeatIndex = publicSeat.SeatIndex,
@@ -1016,7 +1022,9 @@
                     IsSittingOut = publicSeat.IsSittingOut,
                     SittingOutReason = publicSeat.SittingOutReason,
                     CurrentBet = publicSeat.CurrentBet,
-                    Cards = cards
+                    Cards = cards,
+                    LastActionDescription = shouldPreserveAction ? existingSeat.LastActionDescription : null,
+                    LastActionTime = shouldPreserveAction ? existingSeat.LastActionTime : null
                 };
             }
         }

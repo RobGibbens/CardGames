@@ -1,11 +1,12 @@
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Infrastructure;
 
 namespace CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.DrawCards;
 
 /// <summary>
 /// Represents a successful draw action result in Kings and Lows.
 /// </summary>
-public class DrawCardsSuccessful
+public class DrawCardsSuccessful : IPlayerActionResult
 {
 	/// <summary>
 	/// The unique identifier of the game.
@@ -21,6 +22,11 @@ public class DrawCardsSuccessful
 	/// The name of the player who performed the draw action.
 	/// </summary>
 	public string? PlayerName { get; init; }
+
+	/// <summary>
+	/// The seat index of the player who performed the draw action.
+	/// </summary>
+	public int PlayerSeatIndex { get; init; }
 
 	/// <summary>
 	/// The number of cards that were discarded.
@@ -61,6 +67,19 @@ public class DrawCardsSuccessful
 	/// The name of the next player to draw, or null if the draw phase is complete.
 	/// </summary>
 	public string? NextPlayerName { get; init; }
+
+	/// <inheritdoc />
+	string IPlayerActionResult.ActionDescription => GetActionDescription();
+
+	private string GetActionDescription()
+	{
+		return CardsDiscarded switch
+		{
+			0 => "Stood Pat",
+			1 => "Discarded 1",
+			_ => $"Discarded {CardsDiscarded}"
+		};
+	}
 }
 
 /// <summary>
