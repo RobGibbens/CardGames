@@ -1,10 +1,12 @@
-﻿namespace CardGames.Core.Random;
+﻿using System;
+
+namespace CardGames.Core.Random;
 
 public class StandardRandomNumberGenerator : IRandomNumberGenerator
 {
-    // Use Random.Shared for thread-safe, properly seeded random number generation
-    // This prevents multiple instances created in quick succession from having identical sequences
-    private readonly System.Random _random = System.Random.Shared;
+    // Use a GUID-based seed to ensure each instance has a unique sequence
+    // This prevents multiple instances from producing identical sequences
+    private readonly System.Random _random = new System.Random(Guid.NewGuid().GetHashCode());
 
     public int Next(int upperBound)
         => _random.Next(upperBound);
