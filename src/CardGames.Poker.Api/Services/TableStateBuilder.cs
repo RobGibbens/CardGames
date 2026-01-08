@@ -376,7 +376,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			return new CardPublicDto
 			{
 				IsFaceUp = shouldShowCard,
-				Rank = shouldShowCard ? GetCardRankString(card.Symbol) : null,
+				Rank = shouldShowCard ? MapSymbolToRank(card.Symbol) : null,
 				Suit = shouldShowCard ? GetCardSuitString(card.Suit) : null
 			};
 		}).ToList();
@@ -734,11 +734,6 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			Entities.CardSymbol.Deuce => "2",
 			_ => symbol.ToString()
 		};
-	}
-
-	private static string GetCardRankString(Entities.CardSymbol symbol)
-	{
-		return MapSymbolToRank(symbol);
 	}
 
 	private static string GetCardSuitString(Entities.CardSuit suit)
