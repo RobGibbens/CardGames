@@ -12,6 +12,7 @@
 @inject IFiveCardDrawApi FiveCardDrawApi
 @inject ITwosJacksManWithTheAxeApi TwosJacksManWithTheAxeApi
 @inject IKingsAndLowsApi KingsAndLowsApi
+@inject ISevenCardStudApi SevenCardStudApi
 @inject NavigationManager NavigationManager
 
 <PageTitle>Create Table - Friday Night Poker</PageTitle>
@@ -403,6 +404,14 @@
                     createdGameId = response.Content;
                 }
             }
+            else if (selectedVariant.Name == "Seven Card Stud")
+            {
+                var response = await SevenCardStudApi.SevenCardStudCreateGameAsync(command);
+                if (response.IsSuccessStatusCode && response.Content != Guid.Empty)
+                {
+                    createdGameId = response.Content;
+                }
+            }
             else
             {
                 // Default to Five Card Draw
@@ -437,7 +446,7 @@
     private static bool IsGameAvailable(string gameName)
     {
         // Games that are fully implemented and available for play
-        return gameName is "Five Card Draw" or "Twos, Jacks, Man with the Axe" or "Kings and Lows";
+        return gameName is "Five Card Draw" or "Twos, Jacks, Man with the Axe" or "Kings and Lows" or "Seven Card Stud";
     }
 
     private record PlayerInput
