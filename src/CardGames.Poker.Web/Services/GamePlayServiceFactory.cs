@@ -13,7 +13,7 @@ public class GamePlayServiceFactory : IGamePlayServiceFactory
 			throw new ArgumentNullException(nameof(services));
 
 		_services = services.ToDictionary(
-			s => s.GameTypeCode.ToUpperInvariant(),
+			s => s.GameTypeCode,
 			s => s,
 			StringComparer.OrdinalIgnoreCase);
 	}
@@ -24,9 +24,7 @@ public class GamePlayServiceFactory : IGamePlayServiceFactory
 		if (string.IsNullOrWhiteSpace(gameTypeCode))
 			throw new ArgumentException("Game type code cannot be null or empty", nameof(gameTypeCode));
 
-		var normalizedCode = gameTypeCode.ToUpperInvariant();
-
-		if (_services.TryGetValue(normalizedCode, out var service))
+		if (_services.TryGetValue(gameTypeCode, out var service))
 		{
 			return service;
 		}

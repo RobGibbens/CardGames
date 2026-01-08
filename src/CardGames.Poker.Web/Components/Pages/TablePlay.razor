@@ -1777,33 +1777,29 @@
             }
 
             // Make the API call
-            Refit.IApiResponse? response;
             ProcessDrawSuccessful? result = null;
+            bool success = false;
 
+            // Use gameplay service if available, otherwise fall back to direct API calls
             if (_gamePlayService is not null && _gamePlayService.SupportsDraw)
             {
-                // Use gameplay service for games that support standard draw
                 try
                 {
                     var request = new ProcessDrawRequest(discardIndices);
                     result = await _gamePlayService.ProcessDrawAsync(GameId, request);
-                    // Mock a success response for compatibility with existing flow
-                    response = null; // Will be checked as null but result is populated
+                    success = result is not null;
                 }
                 catch (Exception ex)
                 {
                     Logger.LogError(ex, "Failed to process draw action via gameplay service");
-                    isDiscardingCards = false;
-                    isDrawAnimating = false;
-                    isSubmittingDraw = false;
-                    return;
+                    success = false;
                 }
             }
             else if (IsTwosJacksManWithTheAxe)
             {
                 var request = new ProcessDrawRequest(discardIndices);
                 var typedResponse = await TwosJacksManWithTheAxeApi.TwosJacksManWithTheAxeProcessDrawAsync(GameId, request);
-                response = typedResponse;
+                success = typedResponse.IsSuccessStatusCode;
                 result = typedResponse.Content;
             }
             else if (IsKingsAndLows)
@@ -1814,7 +1810,7 @@
 
                 var request = new DrawCardsRequest(discardIndices, playerId);
                 var typedResponse = await KingsAndLowsApi.KingsAndLowsDrawCardsAsync(GameId, request);
-                response = typedResponse;
+                success = typedResponse.IsSuccessStatusCode;
 
                 // Log response details for debugging
                 Logger.LogInformation("Kings and Lows DrawCards response: IsSuccess={IsSuccess}, StatusCode={StatusCode}, HasContent={HasContent}, HasError={HasError}",
@@ -1855,11 +1851,11 @@
             {
                 var request = new ProcessDrawRequest(discardIndices);
                 var typedResponse = await FiveCardDrawApiClient.FiveCardDrawProcessDrawAsync(GameId, request);
-                response = typedResponse;
+                success = typedResponse.IsSuccessStatusCode;
                 result = typedResponse.Content;
             }
 
-            if (result is null || (response is not null && !response.IsSuccessStatusCode))
+            if (!success || result is null)
             {
                 // Reset state on failure
                 isDiscardingCards = false;
