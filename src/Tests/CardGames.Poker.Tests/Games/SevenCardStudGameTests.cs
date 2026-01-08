@@ -423,7 +423,7 @@ public class SevenCardStudGameTests
             ("Alice", 1000),
             ("Bob", 1000)
         };
-        return new SevenCardStudGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20);
+        return new SevenCardStudGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20, useBringIn: true);
     }
 
     private static void SetupToFourthStreet(SevenCardStudGame game)
