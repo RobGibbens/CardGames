@@ -341,7 +341,7 @@
     {
         try
         {
-            var response = await AvailablePokerGamesApi.GetAvailablePokerGamesAsync();
+            var response = await AvailablePokerGamesApi.GetAvailablePokerGamesAsync(null);
             if (response.IsSuccessStatusCode && response.Content != null)
             {
                 _availableGameTypes = response.Content.OrderBy(g => g.Name).ToList();
