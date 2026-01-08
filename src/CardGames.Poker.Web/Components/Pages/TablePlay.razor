@@ -2104,6 +2104,7 @@
         public string? Suit { get; init; }
         public bool IsFaceUp { get; init; }
         public bool IsSelected { get; init; }
+        public bool IsPubliclyVisible { get; init; }
     }
 
     public record PlayerActionRequest(BettingActionType Action, int? Amount);

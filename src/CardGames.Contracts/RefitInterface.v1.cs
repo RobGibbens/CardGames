@@ -2123,11 +2123,12 @@ namespace CardGames.Poker.Api.Contracts
     public partial record CardInfo
     {
         [JsonConstructor]
-        public CardInfo(string @display, CardSuit? @suit, CardSymbol? @symbol)
+        public CardInfo(string @display, CardSuit? @suit, CardSymbol? @symbol, bool? @isPubliclyVisible)
         {
             this.Suit = @suit;
             this.Symbol = @symbol;
             this.Display = @display;
+            this.IsPubliclyVisible = @isPubliclyVisible;
         }
 
         [JsonPropertyName("suit")]
@@ -2139,6 +2140,9 @@ namespace CardGames.Poker.Api.Contracts
         [JsonPropertyName("display")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string Display { get; init; }
+
+        [JsonPropertyName("isPubliclyVisible")]
+        public bool? IsPubliclyVisible { get; init; }
 
     }
 
