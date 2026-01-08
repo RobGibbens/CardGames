@@ -130,7 +130,7 @@
                          CurrentActorSeatIndex="@currentActorSeatIndex" DealerSeatIndex="@dealerSeatIndex"
                          OnSeatClick="HandleSeatClickAsync" DisableSeatSelectionForCurrentUser="@isSeated"
                          CurrentPlayerSeatIndex="@currentPlayerSeatIndex"
-                         MaxCardsPerPlayer="@(_gameRules?.CardDealing?.MaxCards ?? 5)" />
+                         MaxCardsPerPlayer="@GetMaxCardsPerPlayer()" />
 
             <!-- Dashboard Panel (left side) -->
             @if (isSeated)
@@ -1034,7 +1034,7 @@
                         Rank = c.IsFaceUp ? c.Rank : null,
                         Suit = c.IsFaceUp ? c.Suit : null,
                         IsFaceUp = c.IsFaceUp,
-                        IsPubliclyVisible = c.IsPubliclyVisible ?? c.IsFaceUp, // Default to IsFaceUp if not specified
+                        IsPubliclyVisible = c.IsPubliclyVisible, // Directly use the value from server
                         IsSelected = false
                     }).ToList();
 
@@ -2097,6 +2097,22 @@
         Chips: s.Chips))
         .OrderByDescending(p => p.Chips)
         .ToList();
+    }
+
+    /// <summary>
+    /// Calculates the maximum number of cards per player based on game rules.
+    /// </summary>
+    private int GetMaxCardsPerPlayer()
+    {
+        if (_gameRules?.CardDealing is null)
+            return 5; // Default for Five Card Draw
+
+        var initialCards = _gameRules.CardDealing.InitialCards;
+        var additionalCards = _gameRules.CardDealing.DealingRounds?
+            .Where(r => r.Target == "Players")
+            .Sum(r => r.CardCount) ?? 0;
+
+        return initialCards + additionalCards;
     }
 
     private static string GetInitials(string? name)

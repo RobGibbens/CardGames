@@ -299,6 +299,14 @@ public sealed record CardPublicDto
 	public bool IsFaceUp { get; init; }
 
 	/// <summary>
+	/// Whether this card is visible to all players (public visibility).
+	/// For stud games, upcards are publicly visible, hole cards are not.
+	/// This flag helps distinguish between physical card orientation (IsFaceUp)
+	/// and actual visibility rules of the game variant.
+	/// </summary>
+	public bool IsPubliclyVisible { get; init; }
+
+	/// <summary>
 	/// The rank of the card (e.g., "A", "K", "10"). Null when face-down.
 	/// </summary>
 	public string? Rank { get; init; }
