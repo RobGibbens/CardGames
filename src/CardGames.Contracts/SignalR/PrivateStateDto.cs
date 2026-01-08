@@ -86,6 +86,19 @@ public sealed record CardPrivateDto
     /// Whether this card is selected for discard (during draw phase).
     /// </summary>
     public bool IsSelectedForDiscard { get; init; }
+
+    /// <summary>
+    /// Whether this card is face up on the table (physical orientation).
+    /// For stud games, upcards are face up, hole cards are face down.
+    /// </summary>
+    public bool IsFaceUp { get; init; }
+
+    /// <summary>
+    /// Whether this card is visible to all players (public visibility).
+    /// For stud games, upcards are publicly visible, hole cards are not.
+    /// The owner can always see their own cards regardless of this flag.
+    /// </summary>
+    public bool IsPubliclyVisible { get; init; }
 }
 
 /// <summary>

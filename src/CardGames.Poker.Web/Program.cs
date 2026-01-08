@@ -48,6 +48,13 @@ builder.Services.AddMemoryCache();
 // Register GameRulesService for dynamic UI
 builder.Services.AddScoped<GameRulesService>();
 
+// Register gameplay services for different poker variants
+builder.Services.AddScoped<IGamePlayService, FiveCardDrawPlayService>();
+builder.Services.AddScoped<IGamePlayService, TwosJacksManWithTheAxePlayService>();
+builder.Services.AddScoped<IGamePlayService, KingsAndLowsPlayService>();
+builder.Services.AddScoped<IGamePlayService, SevenCardStudPlayService>();
+builder.Services.AddScoped<IGamePlayServiceFactory, GamePlayServiceFactory>();
+
 builder.Services.ConfigureHttpClientDefaults(http =>
 {
 	http.AddServiceDiscovery();
@@ -79,6 +86,13 @@ builder.Services
 	.AddRefitClient<IKingsAndLowsApi>(
 		settingsAction: _ => new RefitSettings(),
 		httpClientName: "kingsAndLowsApi")
+	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"))
+	.AddHttpMessageHandler<AuthenticationStateHandler>();
+
+builder.Services
+	.AddRefitClient<ISevenCardStudApi>(
+		settingsAction: _ => new RefitSettings(),
+		httpClientName: "sevenCardStudApi")
 	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"))
 	.AddHttpMessageHandler<AuthenticationStateHandler>();
 

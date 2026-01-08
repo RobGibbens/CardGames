@@ -42,7 +42,8 @@
                     IsCurrentActor="@(seat.SeatIndex == CurrentActorSeatIndex)"
                     IsCurrentPlayer="@(seat.SeatIndex == CurrentPlayerSeatIndex)"
                     IsSeatSelectionDisabledForCurrentUser="@(DisableSeatSelectionForCurrentUser && !seat.IsOccupied)"
-                    ShowCards="@(CurrentPhase != GamePhase.WaitingForPlayers.ToString() && CurrentPhase != GamePhase.WaitingToStart.ToString() && seat.Cards.Count > 0)" />
+                    ShowCards="@(CurrentPhase != GamePhase.WaitingForPlayers.ToString() && CurrentPhase != GamePhase.WaitingToStart.ToString() && seat.Cards.Count > 0)"
+                    MaxCardsPerPlayer="@MaxCardsPerPlayer" />
             </div>
         }
     </div>
@@ -72,6 +73,9 @@
 
     [Parameter]
     public bool DisableSeatSelectionForCurrentUser { get; set; }
+
+    [Parameter]
+    public int MaxCardsPerPlayer { get; set; } = 5;
 
     [Parameter]
     public EventCallback<int> OnSeatClick { get; set; }

@@ -68,9 +68,30 @@ public class DealHandsCommandHandler(CardsDbContext context)
 		var dealer = FrenchDeckDealer.WithFullDeck();
 		dealer.Shuffle();
 
+		// 5. Remove already-dealt cards from the deck to prevent duplicates
+		// This is crucial for Seven Card Stud where cards are dealt across multiple streets
+		var alreadyDealtCards = await context.GameCards
+			.Where(gc => gc.GameId == game.Id &&
+			             gc.HandNumber == game.CurrentHandNumber &&
+			             !gc.IsDiscarded)
+			.ToListAsync(cancellationToken);
+
+		foreach (var dealtCard in alreadyDealtCards)
+		{
+			var coreCard = new Card(MapSuitToCore(dealtCard.Suit), MapSymbolToCore(dealtCard.Symbol));
+			try
+			{
+				dealer.DealSpecific(coreCard);
+			}
+			catch (ArgumentException)
+			{
+				// Card already dealt, continue
+			}
+		}
+
 		var playerHands = new List<PlayerDealtCards>();
 
-		// 5. Deal cards based on street
+		// 6. Deal cards based on street
 		foreach (var gamePlayer in activePlayers)
 		{
 			var dealtCards = new List<DealtCard>();
@@ -182,5 +203,32 @@ public class DealHandsCommandHandler(CardsDbContext context)
 		Symbol.King => CardSymbol.King,
 		Symbol.Ace => CardSymbol.Ace,
 		_ => throw new ArgumentOutOfRangeException(nameof(symbol))
+	};
+
+	private static Symbol MapSymbolToCore(CardSymbol symbol) => symbol switch
+	{
+		CardSymbol.Deuce => Symbol.Deuce,
+		CardSymbol.Three => Symbol.Three,
+		CardSymbol.Four => Symbol.Four,
+		CardSymbol.Five => Symbol.Five,
+		CardSymbol.Six => Symbol.Six,
+		CardSymbol.Seven => Symbol.Seven,
+		CardSymbol.Eight => Symbol.Eight,
+		CardSymbol.Nine => Symbol.Nine,
+		CardSymbol.Ten => Symbol.Ten,
+		CardSymbol.Jack => Symbol.Jack,
+		CardSymbol.Queen => Symbol.Queen,
+		CardSymbol.King => Symbol.King,
+		CardSymbol.Ace => Symbol.Ace,
+		_ => throw new ArgumentOutOfRangeException(nameof(symbol))
+	};
+
+	private static Suit MapSuitToCore(CardSuit suit) => suit switch
+	{
+		CardSuit.Hearts => Suit.Hearts,
+		CardSuit.Diamonds => Suit.Diamonds,
+		CardSuit.Spades => Suit.Spades,
+		CardSuit.Clubs => Suit.Clubs,
+		_ => throw new ArgumentOutOfRangeException(nameof(suit))
 	};
 }
