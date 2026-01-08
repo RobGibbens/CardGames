@@ -4,7 +4,7 @@ using MediatR;
 namespace CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.DealHands;
 
 /// <summary>
-/// Endpoint for dealing hands to all players in a Five Card Draw game.
+/// Endpoint for dealing hands to all players in a Seven Card Stud game.
 /// </summary>
 public static class DealHandsEndpoint
 {

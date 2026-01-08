@@ -4,7 +4,7 @@ using MediatR;
 namespace CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.StartHand;
 
 /// <summary>
-/// Endpoint for starting a new hand in a Five Card Draw game.
+/// Endpoint for starting a new hand in a Seven Card Stud game.
 /// </summary>
 public static class StartHandEndpoint
 {

@@ -371,7 +371,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 						IsSplitPot = isSplitPot && isWinner,
 						NetChipDelta = netDelta,
 						WentAllIn = gp.IsAllIn,
-						FoldStreet = gp.HasFolded ? "FirstRound" : null // Simplified for Five Card Draw
+						FoldStreet = gp.HasFolded ? "FirstRound" : null // Simplified for Seven Card Stud
 					};
 				}).ToList();
 

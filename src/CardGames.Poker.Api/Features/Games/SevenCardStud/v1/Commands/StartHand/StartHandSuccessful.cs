@@ -1,7 +1,7 @@
 namespace CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.StartHand;
 
 /// <summary>
-/// Represents a successful start of a new hand in a Five Card Draw game.
+/// Represents a successful start of a new hand in a Seven Card Stud game.
 /// </summary>
 public record StartHandSuccessful
 {

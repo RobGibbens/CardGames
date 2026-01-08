@@ -14,7 +14,7 @@ namespace CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Queries.GetCurrent
 public static class HandOddsCalculationService
 {
 	/// <summary>
-	/// Calculates the odds of achieving each hand type for a Five Card Draw hand.
+	/// Calculates the odds of achieving each hand type for a Seven Card Stud hand.
 	/// </summary>
 	/// <param name="heroCards">The player's current hand cards.</param>
 	/// <param name="deadCards">Cards that are known to be out of play (e.g., folded players' cards).</param>
@@ -37,7 +37,7 @@ public static class HandOddsCalculationService
 	}
 
 	/// <summary>
-	/// Calculates the odds of achieving each hand type for a Five Card Draw hand.
+	/// Calculates the odds of achieving each hand type for a Seven Card Stud hand.
 	/// </summary>
 	/// <param name="heroCards">The player's current hand cards as GameCard entities.</param>
 	/// <param name="deadCards">Cards that are known to be out of play.</param>

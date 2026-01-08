@@ -4,7 +4,7 @@ using MediatR;
 namespace CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.PerformShowdown;
 
 /// <summary>
-/// Endpoint for performing the showdown in a Five Card Draw game.
+/// Endpoint for performing the showdown in a Seven Card Stud game.
 /// </summary>
 public static class PerformShowdownEndpoint
 {

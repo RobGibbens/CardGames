@@ -5,7 +5,7 @@ using MediatR;
 namespace CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.ProcessBettingAction;
 
 /// <summary>
-/// Endpoint for processing betting actions in a Five Card Draw game.
+/// Endpoint for processing betting actions in a Seven Card Stud game.
 /// </summary>
 public static class ProcessBettingActionEndpoint
 {

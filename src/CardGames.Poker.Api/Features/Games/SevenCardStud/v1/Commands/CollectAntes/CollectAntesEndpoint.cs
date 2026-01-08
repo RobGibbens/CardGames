@@ -4,7 +4,7 @@ using MediatR;
 namespace CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.CollectAntes;
 
 /// <summary>
-/// Endpoint for collecting antes from all players in a Five Card Draw game.
+/// Endpoint for collecting antes from all players in a Seven Card Stud game.
 /// </summary>
 public static class CollectAntesEndpoint
 {

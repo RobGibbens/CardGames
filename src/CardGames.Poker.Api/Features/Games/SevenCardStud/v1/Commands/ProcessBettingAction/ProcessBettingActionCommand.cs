@@ -6,7 +6,7 @@ using OneOf;
 namespace CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.ProcessBettingAction;
 
 /// <summary>
-/// Command to process a betting action from the current player in a Five Card Draw game.
+/// Command to process a betting action from the current player in a Seven Card Stud game.
 /// </summary>
 /// <param name="GameId">The unique identifier of the game.</param>
 /// <param name="ActionType">The type of betting action to perform (check, bet, call, raise, fold, or all-in).</param>

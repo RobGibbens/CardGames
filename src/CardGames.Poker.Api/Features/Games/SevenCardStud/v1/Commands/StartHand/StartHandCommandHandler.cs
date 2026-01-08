@@ -9,7 +9,7 @@ using OneOf;
 namespace CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.StartHand;
 
 /// <summary>
-/// Handles the <see cref="StartHandCommand"/> to start a new hand in a Five Card Draw game.
+/// Handles the <see cref="StartHandCommand"/> to start a new hand in a Seven Card Stud game.
 /// </summary>
 public class StartHandCommandHandler(CardsDbContext context)
 	: IRequestHandler<StartHandCommand, OneOf<StartHandSuccessful, StartHandError>>
