@@ -19,6 +19,7 @@
 
 @inject NavigationManager NavigationManager
 @inject IGamesApi GamesApiClient
+@inject IGamePlayServiceFactory GamePlayServiceFactory
 @inject IFiveCardDrawApi FiveCardDrawApiClient
 @inject ITwosJacksManWithTheAxeApi TwosJacksManWithTheAxeApi
 @inject IKingsAndLowsApi KingsAndLowsApi
@@ -128,7 +129,8 @@
                          CurrentPhaseDescription="@_gameResponse?.CurrentPhaseDescription"
                          CurrentActorSeatIndex="@currentActorSeatIndex" DealerSeatIndex="@dealerSeatIndex"
                          OnSeatClick="HandleSeatClickAsync" DisableSeatSelectionForCurrentUser="@isSeated"
-                         CurrentPlayerSeatIndex="@currentPlayerSeatIndex" />
+                         CurrentPlayerSeatIndex="@currentPlayerSeatIndex"
+                         MaxCardsPerPlayer="@(_gameRules?.CardDealing?.MaxCards ?? 5)" />
 
             <!-- Dashboard Panel (left side) -->
             @if (isSeated)
@@ -468,8 +470,10 @@
 
     // Game type code for routing to correct API client
     private string? _gameTypeCode;
+    private IGamePlayService? _gamePlayService;
     private bool IsTwosJacksManWithTheAxe => string.Equals(_gameTypeCode, "TWOSJACKSMANWITHTHEAXE", StringComparison.OrdinalIgnoreCase);
     private bool IsKingsAndLows => string.Equals(_gameTypeCode, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase);
+    private bool IsSevenCardStud => string.Equals(_gameTypeCode, "SEVENCARDSTUD", StringComparison.OrdinalIgnoreCase);
 
     // Game rules for dynamic UI rendering
     private GetGameRulesResponse? _gameRules;
@@ -636,6 +640,19 @@
         if (!string.IsNullOrWhiteSpace(state.GameTypeCode))
         {
             _gameTypeCode = state.GameTypeCode;
+
+            // Resolve gameplay service if not already resolved
+            if (_gamePlayService is null && !string.IsNullOrWhiteSpace(_gameTypeCode))
+            {
+                try
+                {
+                    _gamePlayService = GamePlayServiceFactory.Resolve(_gameTypeCode);
+                }
+                catch (NotSupportedException ex)
+                {
+                    Logger.LogWarning(ex, "Game type {GameTypeCode} does not have a gameplay service registered", _gameTypeCode);
+                }
+            }
 
             // Load game rules if not already loaded
             if (_gameRules is null && !string.IsNullOrWhiteSpace(_gameTypeCode))
@@ -896,7 +913,8 @@
                 {
                     Rank = c.Rank,
                     Suit = c.Suit,
-                    IsFaceUp = true,
+                    IsFaceUp = c.IsFaceUp,
+                    IsPubliclyVisible = c.IsPubliclyVisible,
                     IsSelected = selectedDiscardIndices.Contains(i)
                 }).ToList();
             }
@@ -908,7 +926,8 @@
                 {
                     Rank = c.Rank,
                     Suit = c.Suit,
-                    IsFaceUp = true,
+                    IsFaceUp = c.IsFaceUp,
+                    IsPubliclyVisible = c.IsPubliclyVisible,
                     IsSelected = selectedDiscardIndices.Contains(i)
                 }).ToList();
             }
@@ -926,7 +945,8 @@
             {
                 Rank = c.Rank,
                 Suit = c.Suit,
-                IsFaceUp = true,
+                IsFaceUp = c.IsFaceUp,
+                IsPubliclyVisible = c.IsPubliclyVisible,
                 IsSelected = false
             }).ToList();
         }
@@ -940,7 +960,8 @@
             {
                 Rank = c.Rank,
                 Suit = c.Suit,
-                IsFaceUp = true,
+                IsFaceUp = c.IsFaceUp,
+                IsPubliclyVisible = c.IsPubliclyVisible,
                 IsSelected = false
             }).ToList();
         }
@@ -953,7 +974,8 @@
             {
                 Rank = c.Rank,
                 Suit = c.Suit,
-                IsFaceUp = true,
+                IsFaceUp = c.IsFaceUp,
+                IsPubliclyVisible = c.IsPubliclyVisible,
                 IsSelected = false
             }).ToList();
         }
@@ -1012,6 +1034,7 @@
                         Rank = c.IsFaceUp ? c.Rank : null,
                         Suit = c.IsFaceUp ? c.Suit : null,
                         IsFaceUp = c.IsFaceUp,
+                        IsPubliclyVisible = c.IsPubliclyVisible ?? c.IsFaceUp, // Default to IsFaceUp if not specified
                         IsSelected = false
                     }).ToList();
 
@@ -1227,6 +1250,19 @@
             {
                 var gamesResponse = gameResponse.Content;
                 _gameTypeCode = gamesResponse.GameTypeCode;
+
+                // Resolve the appropriate gameplay service for this game type
+                if (!string.IsNullOrWhiteSpace(_gameTypeCode))
+                {
+                    try
+                    {
+                        _gamePlayService = GamePlayServiceFactory.Resolve(_gameTypeCode);
+                    }
+                    catch (NotSupportedException ex)
+                    {
+                        Logger.LogWarning(ex, "Game type {GameTypeCode} does not have a gameplay service registered", _gameTypeCode);
+                    }
+                }
 
                 // Convert to GetGameResponse format for compatibility with existing code
                 _gameResponse = new GetGameResponse(
@@ -1670,19 +1706,28 @@
         try
         {
             var request = new ProcessBettingActionRequest(action.Action, action.Amount ?? 0);
-            Refit.IApiResponse<ProcessBettingActionSuccessful>? response;
-            if (IsTwosJacksManWithTheAxe)
+            
+            // Use gameplay service if available, otherwise fall back to direct API calls for backward compatibility
+            if (_gamePlayService is not null)
             {
-                response = await TwosJacksManWithTheAxeApi.TwosJacksManWithTheAxeProcessBettingActionAsync(GameId, request);
+                var result = await _gamePlayService.ProcessBettingActionAsync(GameId, request);
+                // Success - SignalR will broadcast the updated state
+            }
+            else if (IsTwosJacksManWithTheAxe)
+            {
+                var response = await TwosJacksManWithTheAxeApi.TwosJacksManWithTheAxeProcessBettingActionAsync(GameId, request);
+                if (!response.IsSuccessStatusCode)
+                {
+                    return;
+                }
             }
             else
             {
-                response = await FiveCardDrawApiClient.FiveCardDrawProcessBettingActionAsync(GameId, request);
-            }
-
-            if (!response.IsSuccessStatusCode)
-            {
-                return;
+                var response = await FiveCardDrawApiClient.FiveCardDrawProcessBettingActionAsync(GameId, request);
+                if (!response.IsSuccessStatusCode)
+                {
+                    return;
+                }
             }
 
             // SignalR will broadcast the updated state - no need to refresh manually
@@ -1735,7 +1780,26 @@
             Refit.IApiResponse? response;
             ProcessDrawSuccessful? result = null;
 
-            if (IsTwosJacksManWithTheAxe)
+            if (_gamePlayService is not null && _gamePlayService.SupportsDraw)
+            {
+                // Use gameplay service for games that support standard draw
+                try
+                {
+                    var request = new ProcessDrawRequest(discardIndices);
+                    result = await _gamePlayService.ProcessDrawAsync(GameId, request);
+                    // Mock a success response for compatibility with existing flow
+                    response = null; // Will be checked as null but result is populated
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Failed to process draw action via gameplay service");
+                    isDiscardingCards = false;
+                    isDrawAnimating = false;
+                    isSubmittingDraw = false;
+                    return;
+                }
+            }
+            else if (IsTwosJacksManWithTheAxe)
             {
                 var request = new ProcessDrawRequest(discardIndices);
                 var typedResponse = await TwosJacksManWithTheAxeApi.TwosJacksManWithTheAxeProcessDrawAsync(GameId, request);
@@ -1795,7 +1859,7 @@
                 result = typedResponse.Content;
             }
 
-            if (response is null || !response.IsSuccessStatusCode)
+            if (result is null || (response is not null && !response.IsSuccessStatusCode))
             {
                 // Reset state on failure
                 isDiscardingCards = false;

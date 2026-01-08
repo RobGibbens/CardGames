@@ -14,22 +14,21 @@
                     @foreach (var card in GetOrderedCards())
                     {
                         var rank = GetPlayingCardRank(card);
-                        // Logic from original: current player sees own cards, others see face up only if face up
+                        
+                        // Card visibility logic:
+                        // - Current player sees all their own cards (rank/suit visible)
+                        // - Other players only see publicly visible cards
+                        // - Non-publicly-visible cards of other players show as card backs
 
                         if (IsCurrentPlayer)
                         {
-                            if (card.IsFaceUp)
-                            {
-                                <playing-card rank="@rank" suit="@card.Suit" class="poker-card"></playing-card>
-                            }
-                            else
-                            {
-                                <playing-card rank="0" backcolor="#44F" class="poker-card"></playing-card>
-                            }
+                            // Current player always sees their own cards
+                            <playing-card rank="@rank" suit="@card.Suit" class="poker-card"></playing-card>
                         }
                         else
                         {
-                            if (card.IsFaceUp)
+                            // Other players: only show if publicly visible
+                            if (card.IsPubliclyVisible)
                             {
                                 <playing-card rank="@rank" suit="@card.Suit" class="poker-card small"></playing-card>
                             }
@@ -47,7 +46,7 @@
             <!-- Placeholder cards -->
             <div class="seat-cards-container placeholder">
                 <div class="cards-fan">
-                    @for (int i = 0; i < 5; i++)
+                    @for (int i = 0; i < MaxCardsPerPlayer; i++)
                     {
                         <div class="playing-card-placeholder"></div>
                     }
@@ -153,6 +152,9 @@
 
     [Parameter]
     public bool IsSeatSelectionDisabledForCurrentUser { get; set; }
+
+    [Parameter]
+    public int MaxCardsPerPlayer { get; set; } = 5;
 
     private bool _imageLoadError;
     private string? _lastAvatarUrl;
