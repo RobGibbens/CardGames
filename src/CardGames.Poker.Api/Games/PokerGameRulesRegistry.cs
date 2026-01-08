@@ -3,6 +3,7 @@ using CardGames.Poker.Games;
 using CardGames.Poker.Games.FiveCardDraw;
 using CardGames.Poker.Games.GameFlow;
 using CardGames.Poker.Games.KingsAndLows;
+using CardGames.Poker.Games.SevenCardStud;
 using CardGames.Poker.Games.TwosJacksManWithTheAxe;
 
 namespace CardGames.Poker.Api.Games;
@@ -19,6 +20,7 @@ public static class PokerGameRulesRegistry
             [PokerGameMetadataRegistry.FiveCardDrawCode] = FiveCardDrawRules.CreateGameRules,
             [PokerGameMetadataRegistry.TwosJacksManWithTheAxeCode] = TwosJacksManWithTheAxeRules.CreateGameRules,
             [PokerGameMetadataRegistry.KingsAndLowsCode] = KingsAndLowsRules.CreateGameRules,
+            [PokerGameMetadataRegistry.SevenCardStudCode] = SevenCardStudRules.CreateGameRules,
             // Other games will be added as their rules are implemented
         }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
 
