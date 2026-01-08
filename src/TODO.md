@@ -5,7 +5,6 @@
 - [ ] FiveCardDraw - can't draw four with an Ace
 - [ ] Kings and Lows - don't deal to players that don't have enough chips to match the pot
 
-- [ ] Add an action timer
 - [ ] Make sure all calls are idempotent
 - [ ] Add chip management to the dashboard (buy in, cash out, add chips)
 
@@ -106,3 +105,5 @@
 - [x] Lobby should filter by game type
 - [x] Make sure signalr isn't broadcasting to all players in all games
 - [x] Table - make the table seat look like PokerStars
+- [x] Add an action timer
+- 
