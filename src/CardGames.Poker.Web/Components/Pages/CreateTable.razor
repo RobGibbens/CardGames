@@ -276,7 +276,7 @@
 
         try
         {
-            var response = await AvailableGamesApi.GetAvailablePokerGamesAsync();
+            var response = await AvailableGamesApi.GetAvailablePokerGamesAsync(null);
 
             if (response.IsSuccessStatusCode && response.Content is not null)
             {

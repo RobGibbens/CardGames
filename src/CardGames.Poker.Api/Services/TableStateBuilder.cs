@@ -74,7 +74,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				cancellationToken);
 
 		var seats = gamePlayers
-			.Select(gp => BuildSeatPublicDto(gp, game.CurrentHandNumber, game.Ante ?? 0, userProfilesByEmail))
+			.Select(gp => BuildSeatPublicDto(gp, game.CurrentHandNumber, game.Ante ?? 0, game.GameType?.Code, userProfilesByEmail))
 					.ToList();
 
 		// Calculate results phase state
@@ -356,6 +356,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		GamePlayer gamePlayer,
 		int currentHandNumber,
 		int ante,
+		string? gameTypeCode,
 		IReadOnlyDictionary<string, UserProfile> userProfilesByEmail)
 	{
 		// Get current hand cards (not discarded)
@@ -364,12 +365,20 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			.OrderBy(c => c.DealOrder)
 			.ToList();
 
-		// Cards are shown face-down (as placeholders) in public view
-		var publicCards = playerCards.Select(_ => new CardPublicDto
+		// For Seven Card Stud, show visible cards; otherwise show face-down placeholders
+		var isSevenCardStud = string.Equals(gameTypeCode, "SEVENCARDSTUD", StringComparison.OrdinalIgnoreCase);
+		
+		var publicCards = playerCards.Select(card =>
 		{
-			IsFaceUp = false,
-			Rank = null,
-			Suit = null
+			// For stud games, respect the IsVisible flag; otherwise default to face-down
+			var shouldShowCard = isSevenCardStud && card.IsVisible;
+			
+			return new CardPublicDto
+			{
+				IsFaceUp = shouldShowCard,
+				Rank = shouldShowCard ? MapSymbolToRank(card.Symbol) : null,
+				Suit = shouldShowCard ? GetCardSuitString(card.Suit) : null
+			};
 		}).ToList();
 
 		// Determine sitting out reason
@@ -724,6 +733,18 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			Entities.CardSymbol.Three => "3",
 			Entities.CardSymbol.Deuce => "2",
 			_ => symbol.ToString()
+		};
+	}
+
+	private static string GetCardSuitString(Entities.CardSuit suit)
+	{
+		return suit switch
+		{
+			Entities.CardSuit.Hearts => "Hearts",
+			Entities.CardSuit.Diamonds => "Diamonds",
+			Entities.CardSuit.Spades => "Spades",
+			Entities.CardSuit.Clubs => "Clubs",
+			_ => suit.ToString()
 		};
 	}
 

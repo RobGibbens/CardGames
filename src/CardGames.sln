@@ -33,6 +33,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		EditTable.md = EditTable.md
 		History.md = History.md
 		..\IMPLEMENTATION_SUMMARY.md = ..\IMPLEMENTATION_SUMMARY.md
+		LittleCards.png = LittleCards.png
 		MaxDiscards.md = MaxDiscards.md
 		nameline.png = nameline.png
 		plan-twosJacksManWithTheAxe.prompt.md = plan-twosJacksManWithTheAxe.prompt.md
@@ -41,10 +42,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		PokerStars1.png = PokerStars1.png
 		PRD.md = PRD.md
 		..\README.md = ..\README.md
+		sevenCardStudDesignDoc.md = sevenCardStudDesignDoc.md
 		SignalRPRD.md = SignalRPRD.md
 		TODO.md = TODO.md
 		Yahoo.md = Yahoo.md
-		LittleCards.png = LittleCards.png
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CardGames.Playground", "CardGames.Playground\CardGames.Playground.csproj", "{CD33543C-F302-2E9F-4386-870064124019}"

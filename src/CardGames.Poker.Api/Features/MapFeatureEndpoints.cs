@@ -3,6 +3,7 @@ using CardGames.Poker.Api.Features.Games.AvailablePokerGames;
 using CardGames.Poker.Api.Features.Games.Common;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw;
 using CardGames.Poker.Api.Features.Games.KingsAndLows;
+using CardGames.Poker.Api.Features.Games.SevenCardStud;
 using CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe;
 
 namespace CardGames.Poker.Api.Features;
@@ -16,6 +17,7 @@ public static class MapFeatureEndpoints
 		app.AddGamesEndpoints();
 		app.AddFiveCardDrawEndpoints();
 		app.AddKingsAndLowsEndpoints();
+		app.AddSevenCardStudEndpoints();
 		app.AddTwosJacksManWithTheAxeEndpoints();
 		//app.AddCategoriesEndpoints();
 		//app.AddFavoritesEndpoints();
