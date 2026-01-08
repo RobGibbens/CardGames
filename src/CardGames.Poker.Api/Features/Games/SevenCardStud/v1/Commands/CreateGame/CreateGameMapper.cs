@@ -5,6 +5,4 @@ namespace CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.CreateGam
 [Mapper]
 public static partial class CreateGameMapper
 {
-	private static DateTimeOffset GetDateTimeUtc() => DateTimeOffset.UtcNow;
-	private static string GenerateId() => Guid.NewGuid().ToString();
 }

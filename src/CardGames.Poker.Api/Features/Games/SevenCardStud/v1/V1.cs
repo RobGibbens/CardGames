@@ -14,7 +14,6 @@ public static class V1
 			.AddFluentValidationAutoValidation();
 
 		mapGroup
-			.MapCreateGame()
-			;
+			.MapCreateGame();
 	}
 }
