@@ -134,10 +134,10 @@ internal class BaseballPlayCommand : Command<BaseballPlaySettings>
         // Fourth through Seventh streets
         var streets = new[]
         {
-            (BaseballPhase.FourthStreet, "Fourth Street"),
-            (BaseballPhase.FifthStreet, "Fifth Street"),
-            (BaseballPhase.SixthStreet, "Sixth Street"),
-            (BaseballPhase.SeventhStreet, "Seventh Street (River)")
+            (Phases.FourthStreet, "Fourth Street"),
+            (Phases.FifthStreet, "Fifth Street"),
+            (Phases.SixthStreet, "Sixth Street"),
+            (Phases.SeventhStreet, "Seventh Street (River)")
         };
 
         foreach (var (phase, streetName) in streets)
@@ -152,7 +152,7 @@ internal class BaseballPlayCommand : Command<BaseballPlaySettings>
             // Deal street cards - one player at a time with immediate buy-card offers
             DealStreetCardWithImmediateBuyOffers(game, phase);
             game.FinishStreetCardDealing();
-            DisplayAllHands(game, showHoleCards: phase == BaseballPhase.SeventhStreet);
+            DisplayAllHands(game, showHoleCards: phase == Phases.SeventhStreet);
 
             game.StartBettingRound();
             if (!RunBettingRound(game, $"{streetName} Betting"))
@@ -164,7 +164,7 @@ internal class BaseballPlayCommand : Command<BaseballPlaySettings>
         }
 
         // Showdown
-        if (game.CurrentPhase == BaseballPhase.Showdown)
+        if (game.CurrentPhase == Phases.Showdown)
         {
             var result = game.PerformShowdown();
             DisplayShowdownResult(result, game);
@@ -195,7 +195,7 @@ internal class BaseballPlayCommand : Command<BaseballPlaySettings>
     /// Deals street cards one player at a time, processing buy-card offers immediately
     /// when a 4 is dealt face up.
     /// </summary>
-    private static void DealStreetCardWithImmediateBuyOffers(BaseballGame game, BaseballPhase phase)
+    private static void DealStreetCardWithImmediateBuyOffers(BaseballGame game, Phases phase)
     {
         game.StartDealingStreetCard();
         
@@ -204,7 +204,7 @@ internal class BaseballPlayCommand : Command<BaseballPlaySettings>
             bool dealt4 = game.DealStreetCardToNextPlayer();
             
             // If a 4 was dealt (only possible on streets 4-6), process the buy-card offer immediately
-            if (dealt4 && phase != BaseballPhase.SeventhStreet)
+            if (dealt4 && phase != Phases.SeventhStreet)
             {
                 ProcessBuyCardOffers(game);
             }

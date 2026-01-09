@@ -18,7 +18,7 @@ public static class GetGameRulesEndpoint
                         ? Results.NotFound()
                         : Results.Ok(response);
                 })
-            .WithName($"Games{nameof(MapGetGameRules).TrimPrefix("Map")}")
+            .WithName($"{nameof(MapGetGameRules).TrimPrefix("Map")}")
             .WithSummary(nameof(MapGetGameRules).TrimPrefix("Map"))
             .WithDescription("Retrieve game rules metadata for a specific game type by its code.")
             .MapToApiVersion(1.0)

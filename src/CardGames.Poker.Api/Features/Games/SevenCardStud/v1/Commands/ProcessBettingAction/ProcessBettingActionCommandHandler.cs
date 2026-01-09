@@ -1,10 +1,12 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Betting;
 using CardGames.Poker.Games.SevenCardStud;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
 using BettingActionType = CardGames.Poker.Api.Data.Entities.BettingActionType;
+using BettingRound = CardGames.Poker.Api.Data.Entities.BettingRound;
 
 namespace CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.ProcessBettingAction;
 
@@ -42,8 +44,8 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 		// 2. Validate game is in a betting phase
 		var validBettingPhases = new[]
 		{
-			nameof(SevenCardStudPhase.ThirdStreet),
-			nameof(SevenCardStudPhase.FourthStreet)
+			nameof(Phases.ThirdStreet),
+			nameof(Phases.FourthStreet)
 		};
 
 		if (!validBettingPhases.Contains(game.CurrentPhase))
@@ -51,7 +53,7 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 			return new ProcessBettingActionError
 			{
 				Message = $"Cannot process betting action. Game is in '{game.CurrentPhase}' phase. " +
-				          $"Betting is only allowed during '{nameof(SevenCardStudPhase.ThirdStreet)}' or '{nameof(SevenCardStudPhase.FourthStreet)}' phases.",
+				          $"Betting is only allowed during '{nameof(Phases.ThirdStreet)}' or '{nameof(Phases.FourthStreet)}' phases.",
 				Code = ProcessBettingActionErrorCode.InvalidGameState
 			};
 		}
@@ -355,7 +357,7 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 		var playersInHand = activePlayers.Count(gp => !gp.HasFolded);
 		if (playersInHand <= 1)
 		{
-			game.CurrentPhase = nameof(SevenCardStudPhase.Showdown);
+			game.CurrentPhase = nameof(Phases.Showdown);
 			game.CurrentPlayerIndex = -1;
 			return;
 		}
@@ -368,14 +370,14 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 
 		switch (game.CurrentPhase)
 		{
-			case nameof(SevenCardStudPhase.ThirdStreet):
-				game.CurrentPhase = nameof(SevenCardStudPhase.FifthStreet);
+			case nameof(Phases.ThirdStreet):
+				game.CurrentPhase = nameof(Phases.FifthStreet);
 				game.CurrentDrawPlayerIndex = FindFirstActivePlayerAfterDealer(game, activePlayers);
 				game.CurrentPlayerIndex = game.CurrentDrawPlayerIndex;
 				break;
 
-			case nameof(SevenCardStudPhase.FourthStreet):
-				game.CurrentPhase = nameof(SevenCardStudPhase.Showdown);
+			case nameof(Phases.FourthStreet):
+				game.CurrentPhase = nameof(Phases.Showdown);
 				game.CurrentPlayerIndex = -1;
 				break;
 		}

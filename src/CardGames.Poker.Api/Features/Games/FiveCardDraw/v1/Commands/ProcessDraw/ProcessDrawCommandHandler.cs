@@ -3,6 +3,7 @@ using CardGames.Core.French.Dealers;
 using CardGames.Core.French.Decks;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Betting;
 using CardGames.Poker.Games.FiveCardDraw;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -48,12 +49,12 @@ public class ProcessDrawCommandHandler(CardsDbContext context)
 		}
 
 		// 2. Validate game is in draw phase
-		if (game.CurrentPhase != nameof(FiveCardDrawPhase.DrawPhase))
+		if (game.CurrentPhase != nameof(Phases.DrawPhase))
 		{
 			return new ProcessDrawError
 			{
 				Message = $"Cannot process draw. Game is in '{game.CurrentPhase}' phase. " +
-				          $"Draw is only allowed during '{nameof(FiveCardDrawPhase.DrawPhase)}' phase.",
+				          $"Draw is only allowed during '{nameof(Phases.DrawPhase)}' phase.",
 				Code = ProcessDrawErrorCode.NotInDrawPhase
 			};
 		}
@@ -171,7 +172,7 @@ public class ProcessDrawCommandHandler(CardsDbContext context)
 					deckCard.GamePlayerId = currentDrawPlayer.Id;
 					deckCard.Location = CardLocation.Hole;
 					deckCard.DealOrder = ++maxDealOrder;
-					deckCard.DealtAtPhase = nameof(FiveCardDrawPhase.DrawPhase);
+					deckCard.DealtAtPhase = nameof(Phases.DrawPhase);
 					deckCard.IsDrawnCard = true;
 					deckCard.DrawnAtRound = 1;
 					deckCard.DealtAt = now;
@@ -228,7 +229,7 @@ public class ProcessDrawCommandHandler(CardsDbContext context)
 						Symbol = mappedSymbol,
 						Location = CardLocation.Hole,
 						DealOrder = ++maxDealOrder,
-						DealtAtPhase = nameof(FiveCardDrawPhase.DrawPhase),
+						DealtAtPhase = nameof(Phases.DrawPhase),
 						IsVisible = false,
 						IsWild = false,
 						IsDiscarded = false,
@@ -329,7 +330,7 @@ public class ProcessDrawCommandHandler(CardsDbContext context)
 			GameId = game.Id,
 			HandNumber = game.CurrentHandNumber,
 			RoundNumber = 2,
-			Street = nameof(FiveCardDrawPhase.SecondBettingRound),
+			Street = nameof(Phases.SecondBettingRound),
 			CurrentBet = 0,
 			MinBet = game.MinBet ?? 0,
 			RaiseCount = 0,
@@ -346,7 +347,7 @@ public class ProcessDrawCommandHandler(CardsDbContext context)
 		context.BettingRounds.Add(bettingRound);
 
 		// Update game state
-		game.CurrentPhase = nameof(FiveCardDrawPhase.SecondBettingRound);
+		game.CurrentPhase = nameof(Phases.SecondBettingRound);
 		game.CurrentPlayerIndex = firstActorIndex;
 		game.CurrentDrawPlayerIndex = -1;
 	}

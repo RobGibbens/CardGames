@@ -2,6 +2,7 @@ using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Infrastructure;
 using CardGames.Poker.Api.Services;
+using CardGames.Poker.Betting;
 using CardGames.Poker.Games.FiveCardDraw;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -102,7 +103,7 @@ public sealed class JoinGameCommandHandler(
 
 		// Determine if player can play the current hand
 		// They can only play if game is in WaitingToStart or WaitingForPlayers phase
-		var canPlayCurrentHand = game.CurrentPhase == nameof(FiveCardDrawPhase.WaitingToStart) ||
+		var canPlayCurrentHand = game.CurrentPhase == nameof(Phases.WaitingToStart) ||
 								 game.Status == GameStatus.WaitingForPlayers;
 
 		var userEmail = currentUserService.UserEmail;

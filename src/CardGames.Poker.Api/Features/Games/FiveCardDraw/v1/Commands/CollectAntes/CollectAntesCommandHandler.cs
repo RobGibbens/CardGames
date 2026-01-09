@@ -1,10 +1,12 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.CreateGame;
+using CardGames.Poker.Betting;
 using CardGames.Poker.Games.FiveCardDraw;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
+using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 
 namespace CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.CollectAntes;
 
@@ -37,12 +39,12 @@ public class CollectAntesCommandHandler(CardsDbContext context)
 		}
 
 		// 2. Validate game state allows collecting antes
-		if (game.CurrentPhase != nameof(FiveCardDrawPhase.CollectingAntes))
+		if (game.CurrentPhase != nameof(Phases.CollectingAntes))
 		{
 			return new CollectAntesError
 			{
 				Message = $"Cannot collect antes. Game is in '{game.CurrentPhase}' phase. " +
-						  $"Antes can only be collected when the game is in '{nameof(FiveCardDrawPhase.CollectingAntes)}' phase.",
+						  $"Antes can only be collected when the game is in '{nameof(Phases.CollectingAntes)}' phase.",
 				Code = CollectAntesErrorCode.InvalidGameState
 			};
 		}
@@ -127,7 +129,7 @@ public class CollectAntesCommandHandler(CardsDbContext context)
 		}
 
 		// 5. Update game state - transition to Dealing phase
-		game.CurrentPhase = nameof(FiveCardDrawPhase.Dealing);
+		game.CurrentPhase = nameof(Phases.Dealing);
 		game.UpdatedAt = now;
 
 		// 6. Reset current bets for all players (antes don't count toward betting rounds)

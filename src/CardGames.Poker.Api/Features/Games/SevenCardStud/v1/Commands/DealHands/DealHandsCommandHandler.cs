@@ -2,6 +2,7 @@ using CardGames.Core.French.Cards;
 using CardGames.Core.French.Dealers;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Betting;
 using CardGames.Poker.Games.SevenCardStud;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -42,11 +43,11 @@ public class DealHandsCommandHandler(CardsDbContext context)
 		// 2. Validate game state - Seven Card Stud deals cards during street phases
 		var validPhases = new[]
 		{
-			nameof(SevenCardStudPhase.ThirdStreet),
-			nameof(SevenCardStudPhase.FourthStreet),
-			nameof(SevenCardStudPhase.FifthStreet),
-			nameof(SevenCardStudPhase.SixthStreet),
-			nameof(SevenCardStudPhase.SeventhStreet)
+			nameof(Phases.ThirdStreet),
+			nameof(Phases.FourthStreet),
+			nameof(Phases.FifthStreet),
+			nameof(Phases.SixthStreet),
+			nameof(Phases.SeventhStreet)
 			};
 
 		if (!validPhases.Contains(game.CurrentPhase))
@@ -81,7 +82,7 @@ public class DealHandsCommandHandler(CardsDbContext context)
 
 			var dealOrder = existingCardCount + 1;
 
-			if (game.CurrentPhase == nameof(SevenCardStudPhase.ThirdStreet))
+			if (game.CurrentPhase == nameof(Phases.ThirdStreet))
 			{
 				// Deal 2 hole + 1 board
 				for (int i = 0; i < 2; i++)
@@ -97,7 +98,7 @@ public class DealHandsCommandHandler(CardsDbContext context)
 				context.GameCards.Add(boardGameCard);
 				dealtCards.Add(new DealtCard { Suit = boardGameCard.Suit, Symbol = boardGameCard.Symbol, DealOrder = boardGameCard.DealOrder });
 			}
-			else if (game.CurrentPhase == nameof(SevenCardStudPhase.SeventhStreet))
+			else if (game.CurrentPhase == nameof(Phases.SeventhStreet))
 			{
 				// Deal 1 hole card
 				var card = dealer.DealCard();

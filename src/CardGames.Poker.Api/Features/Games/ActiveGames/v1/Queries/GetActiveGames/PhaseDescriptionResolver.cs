@@ -1,5 +1,6 @@
 using CardGames.Poker.Api.Extensions;
 using CardGames.Poker.Api.Games;
+using CardGames.Poker.Betting;
 using CardGames.Poker.Games.FiveCardDraw;
 using CardGames.Poker.Games.FollowTheQueen;
 using CardGames.Poker.Games.HoldEm;
@@ -24,17 +25,7 @@ internal static class PhaseDescriptionResolver
 			return null;
 		}
 
-		return gameTypeCode.ToUpperInvariant() switch
-		{
-			PokerGameMetadataRegistry.FiveCardDrawCode => TryResolveEnumDescription<FiveCardDrawPhase>(currentPhase),
-			PokerGameMetadataRegistry.TwosJacksManWithTheAxeCode => TryResolveEnumDescription<TwosJacksManWithTheAxePhase>(currentPhase),
-			PokerGameMetadataRegistry.HoldEmCode => TryResolveEnumDescription<HoldEmPhase>(currentPhase),
-			PokerGameMetadataRegistry.OmahaCode => TryResolveEnumDescription<OmahaPhase>(currentPhase),
-			PokerGameMetadataRegistry.SevenCardStudCode => TryResolveEnumDescription<SevenCardStudPhase>(currentPhase),
-			PokerGameMetadataRegistry.KingsAndLowsCode => TryResolveEnumDescription<KingsAndLowsPhase>(currentPhase),
-			PokerGameMetadataRegistry.FollowTheQueenCode => TryResolveEnumDescription<FollowTheQueenPhase>(currentPhase),
-			_ => null
-		};
+		return TryResolveEnumDescription<Phases>(currentPhase);
 	}
 
 	private static string? TryResolveEnumDescription<TEnum>(string currentPhase)

@@ -1,6 +1,5 @@
 ﻿using Asp.Versioning.Builder;
 using CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe.v1.Commands.CollectAntes;
-using CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe.v1.Commands.CreateGame;
 using CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe.v1.Commands.DealHands;
 using CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe.v1.Commands.JoinGame;
 using CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe.v1.Commands.PerformShowdown;
@@ -29,7 +28,6 @@ public static class V1
 			.AddFluentValidationAutoValidation();
 
 	mapGroup
-			.MapCreateGame()
 			.MapJoinGame()
 			.MapStartHand()
 			.MapCollectAntes()

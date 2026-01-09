@@ -145,7 +145,7 @@ internal class HoldEmPlayCommand : Command<HoldEmPlaySettings>
         }
 
         // Showdown
-        if (game.CurrentPhase == HoldEmPhase.Showdown)
+        if (game.CurrentPhase == Phases.Showdown)
         {
             var result = game.PerformShowdown();
             DisplayShowdownResult(result, game);

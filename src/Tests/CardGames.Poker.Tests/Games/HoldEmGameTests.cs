@@ -15,7 +15,7 @@ public class HoldEmGameTests
         var game = CreateTwoPlayerGame();
 
         game.Players.Should().HaveCount(2);
-        game.CurrentPhase.Should().Be(HoldEmPhase.WaitingToStart);
+        game.CurrentPhase.Should().Be(Phases.WaitingToStart);
     }
 
     [Fact]
@@ -47,7 +47,7 @@ public class HoldEmGameTests
 
         game.StartHand();
 
-        game.CurrentPhase.Should().Be(HoldEmPhase.CollectingBlinds);
+        game.CurrentPhase.Should().Be(Phases.CollectingBlinds);
     }
 
     [Fact]
@@ -61,7 +61,7 @@ public class HoldEmGameTests
         actions.Should().HaveCount(2);
         actions.All(a => a.ActionType == BettingActionType.Post).Should().BeTrue();
         game.TotalPot.Should().Be(15); // 5 small blind + 10 big blind
-        game.CurrentPhase.Should().Be(HoldEmPhase.Dealing);
+        game.CurrentPhase.Should().Be(Phases.Dealing);
     }
 
     [Fact]
@@ -103,7 +103,7 @@ public class HoldEmGameTests
         {
             gp.HoleCards.Should().HaveCount(2);
         });
-        game.CurrentPhase.Should().Be(HoldEmPhase.PreFlop);
+        game.CurrentPhase.Should().Be(Phases.PreFlop);
     }
 
     [Fact]
@@ -153,7 +153,7 @@ public class HoldEmGameTests
         var result = game.ProcessBettingAction(BettingActionType.Fold);
 
         result.Success.Should().BeTrue();
-        game.CurrentPhase.Should().Be(HoldEmPhase.Showdown);
+        game.CurrentPhase.Should().Be(Phases.Showdown);
     }
 
     [Fact]
@@ -162,7 +162,7 @@ public class HoldEmGameTests
         var game = CreateTwoPlayerGame();
         SetupToFlop(game);
 
-        game.CurrentPhase.Should().Be(HoldEmPhase.Flop);
+        game.CurrentPhase.Should().Be(Phases.Flop);
     }
 
     [Fact]
@@ -182,7 +182,7 @@ public class HoldEmGameTests
         var game = CreateTwoPlayerGame();
         SetupToTurn(game);
 
-        game.CurrentPhase.Should().Be(HoldEmPhase.Turn);
+        game.CurrentPhase.Should().Be(Phases.Turn);
     }
 
     [Fact]
@@ -202,7 +202,7 @@ public class HoldEmGameTests
         var game = CreateTwoPlayerGame();
         SetupToRiver(game);
 
-        game.CurrentPhase.Should().Be(HoldEmPhase.River);
+        game.CurrentPhase.Should().Be(Phases.River);
     }
 
     [Fact]
@@ -222,7 +222,7 @@ public class HoldEmGameTests
         var game = CreateTwoPlayerGame();
         SetupToShowdown(game);
 
-        game.CurrentPhase.Should().Be(HoldEmPhase.Showdown);
+        game.CurrentPhase.Should().Be(Phases.Showdown);
     }
 
     [Fact]
@@ -242,7 +242,7 @@ public class HoldEmGameTests
         result.Success.Should().BeTrue();
         result.WonByFold.Should().BeTrue();
         result.Payouts.Should().HaveCount(1);
-        game.CurrentPhase.Should().Be(HoldEmPhase.Complete);
+        game.CurrentPhase.Should().Be(Phases.Complete);
     }
 
     [Fact]
@@ -380,7 +380,7 @@ public class HoldEmGameTests
         game.StartPreFlopBettingRound();
 
         // Complete pre-flop betting
-        while (!game.CurrentBettingRound.IsComplete && game.CurrentPhase == HoldEmPhase.PreFlop)
+        while (!game.CurrentBettingRound.IsComplete && game.CurrentPhase == Phases.PreFlop)
         {
             var available = game.GetAvailableActions();
             if (available.CanCheck)
@@ -402,7 +402,7 @@ public class HoldEmGameTests
         game.StartPostFlopBettingRound();
 
         // Complete flop betting
-        while (!game.CurrentBettingRound.IsComplete && game.CurrentPhase == HoldEmPhase.Flop)
+        while (!game.CurrentBettingRound.IsComplete && game.CurrentPhase == Phases.Flop)
         {
             var available = game.GetAvailableActions();
             if (available.CanCheck)
@@ -424,7 +424,7 @@ public class HoldEmGameTests
         game.StartPostFlopBettingRound();
 
         // Complete turn betting
-        while (!game.CurrentBettingRound.IsComplete && game.CurrentPhase == HoldEmPhase.Turn)
+        while (!game.CurrentBettingRound.IsComplete && game.CurrentPhase == Phases.Turn)
         {
             var available = game.GetAvailableActions();
             if (available.CanCheck)
@@ -446,7 +446,7 @@ public class HoldEmGameTests
         game.StartPostFlopBettingRound();
 
         // Complete river betting
-        while (!game.CurrentBettingRound.IsComplete && game.CurrentPhase == HoldEmPhase.River)
+        while (!game.CurrentBettingRound.IsComplete && game.CurrentPhase == Phases.River)
         {
             var available = game.GetAvailableActions();
             if (available.CanCheck)

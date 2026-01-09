@@ -110,13 +110,13 @@ internal class FiveCardDrawPlayCommand : Command<PlaySettings>
         }
 
         // Draw phase
-        if (game.CurrentPhase == FiveCardDrawPhase.DrawPhase)
+        if (game.CurrentPhase == Phases.DrawPhase)
         {
             RunDrawPhase(game);
         }
 
         // Second betting round
-        if (game.CurrentPhase == FiveCardDrawPhase.SecondBettingRound)
+        if (game.CurrentPhase == Phases.SecondBettingRound)
         {
             if (!RunBettingRound(game, "Second Betting Round"))
             {
@@ -127,7 +127,7 @@ internal class FiveCardDrawPlayCommand : Command<PlaySettings>
         }
 
         // Showdown
-        if (game.CurrentPhase == FiveCardDrawPhase.Showdown)
+        if (game.CurrentPhase == Phases.Showdown)
         {
             var result = game.PerformShowdown();
             DisplayShowdownResult(result);
@@ -234,7 +234,7 @@ internal class FiveCardDrawPlayCommand : Command<PlaySettings>
 
     private static void RunDrawPhase(FiveCardDrawGame game)
     {
-        while (game.CurrentPhase == FiveCardDrawPhase.DrawPhase)
+        while (game.CurrentPhase == Phases.DrawPhase)
         {
             var drawPlayer = game.GetCurrentDrawPlayer();
             if (drawPlayer == null)

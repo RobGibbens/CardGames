@@ -13,6 +13,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using CardGames.Poker.Betting;
 using BettingActionType = CardGames.Poker.Api.Contracts.BettingActionType;
 
 namespace CardGames.Poker.CLI.Play.Api;
@@ -141,7 +142,7 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 		var currentGameResponse = await _gamesApi.GamesGetGameAsync(gameId);
 		var currentGame = currentGameResponse.Content;
 		//Draw phase
-		if (currentGame.CurrentPhase == FiveCardDrawPhase.DrawPhase.ToString()) //TODO:ROB - is this evaluating correctly?
+		if (currentGame.CurrentPhase == Phases.DrawPhase.ToString()) //TODO:ROB - is this evaluating correctly?
 		{
 			await RunDrawPhaseAsync(currentGame);
 		}
@@ -149,7 +150,7 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 		////Second betting round
 		currentGameResponse = await _gamesApi.GamesGetGameAsync(gameId);
 		currentGame = currentGameResponse.Content;
-		if (currentGame.CurrentPhase == FiveCardDrawPhase.SecondBettingRound.ToString())
+		if (currentGame.CurrentPhase == Phases.SecondBettingRound.ToString())
 		{
 			if (!(await RunBettingRoundAsync(gameId, "Second Betting Round")))
 			{
@@ -164,7 +165,7 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 		//Showdown
 		currentGameResponse = await _gamesApi.GamesGetGameAsync(gameId);
 		currentGame = currentGameResponse.Content;
-		if (currentGame.CurrentPhase == FiveCardDrawPhase.Showdown.ToString())
+		if (currentGame.CurrentPhase == Phases.Showdown.ToString())
 		{
 			var performShowdownResponse = await _fiveCardDrawApi.FiveCardDrawPerformShowdownAsync(gameId);
 			var result = performShowdownResponse.Content;
@@ -246,8 +247,8 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 
 	private async Task RunDrawPhaseAsync(GetGameResponse gameResponse)
 	{
-		string currentPhase = FiveCardDrawPhase.DrawPhase.ToString();
-		while (currentPhase == FiveCardDrawPhase.DrawPhase.ToString()) //TODO:ROB - is this evaluating correctly?
+		string currentPhase = Phases.DrawPhase.ToString();
+		while (currentPhase == Phases.DrawPhase.ToString()) //TODO:ROB - is this evaluating correctly?
 		{
 			var gamePlayersResponse = await _fiveCardDrawApi.FiveCardDrawGetGamePlayersAsync(gameResponse.Id);
 			var gamePlayers = gamePlayersResponse.Content;

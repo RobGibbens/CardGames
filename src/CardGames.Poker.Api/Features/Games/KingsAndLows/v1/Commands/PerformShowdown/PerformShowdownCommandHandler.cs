@@ -3,6 +3,7 @@ using CardGames.Core.French.Cards;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Services;
+using CardGames.Poker.Betting;
 using CardGames.Poker.Evaluation;
 using CardGames.Poker.Games.KingsAndLows;
 using CardGames.Poker.Hands.DrawHands;
@@ -49,13 +50,13 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 		var currentHandPots = game.Pots.Where(p => p.HandNumber == game.CurrentHandNumber).ToList();
 
 		// 2. Validate game is in showdown or complete phase
-		if (game.CurrentPhase != nameof(KingsAndLowsPhase.Showdown) &&
-		    game.CurrentPhase != nameof(KingsAndLowsPhase.Complete))
+		if (game.CurrentPhase != nameof(Phases.Showdown) &&
+		    game.CurrentPhase != nameof(Phases.Complete))
 		{
 			return new PerformShowdownError
 			{
 				Message = $"Cannot perform showdown. Game is in '{game.CurrentPhase}' phase. " +
-				          $"Showdown can only be performed when the game is in '{nameof(KingsAndLowsPhase.Showdown)}' or '{nameof(KingsAndLowsPhase.Complete)}' phase.",
+				          $"Showdown can only be performed when the game is in '{nameof(Phases.Showdown)}' or '{nameof(Phases.Complete)}' phase.",
 				Code = PerformShowdownErrorCode.InvalidGameState
 			};
 		}
@@ -107,7 +108,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 				pot.WinReason = "All others folded";
 			}
 
-			game.CurrentPhase = nameof(KingsAndLowsPhase.Complete);
+			game.CurrentPhase = nameof(Phases.Complete);
 			game.UpdatedAt = now;
 			game.HandCompletedAt = now;
 			game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);
@@ -242,8 +243,8 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 
 		// 12. Update game state - transition to PotMatching if there are losers
 		game.CurrentPhase = losers.Count > 0
-			? nameof(KingsAndLowsPhase.PotMatching)
-			: nameof(KingsAndLowsPhase.Complete);
+			? nameof(Phases.PotMatching)
+			: nameof(Phases.Complete);
 		game.UpdatedAt = now;
 		game.HandCompletedAt = now;
 		game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);

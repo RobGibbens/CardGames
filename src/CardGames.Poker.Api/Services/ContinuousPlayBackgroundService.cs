@@ -1,10 +1,12 @@
 using System.Text.Json;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Betting;
 using CardGames.Poker.Games.FiveCardDraw;
 using CardGames.Poker.Games.KingsAndLows;
 using Microsoft.EntityFrameworkCore;
 using DropOrStayDecision = CardGames.Poker.Api.Data.Entities.DropOrStayDecision;
+using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 
 //TODO:ROB - This should not be tied to FiveCardDraw - make it generic for all poker variants
 namespace CardGames.Poker.Api.Services;
@@ -84,7 +86,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 
 		// Find games in Complete phase where the next hand should start
 		var gamesReadyForNextHand = await context.Games
-			.Where(g => g.CurrentPhase == nameof(FiveCardDrawPhase.Complete) &&
+			.Where(g => g.CurrentPhase == nameof(Phases.Complete) &&
 						g.NextHandStartsAt != null &&
 						g.NextHandStartsAt <= now &&
 						g.Status == GameStatus.InProgress)
@@ -118,13 +120,13 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		// Find in-progress games (not waiting phases)
 		var inProgressPhases = new[]
 		{
-					nameof(FiveCardDrawPhase.CollectingAntes),
-					nameof(FiveCardDrawPhase.Dealing),
-					nameof(FiveCardDrawPhase.FirstBettingRound),
-					nameof(FiveCardDrawPhase.DrawPhase),
-					nameof(FiveCardDrawPhase.SecondBettingRound),
-					nameof(FiveCardDrawPhase.Showdown),
-					nameof(FiveCardDrawPhase.Complete)
+					nameof(Phases.CollectingAntes),
+					nameof(Phases.Dealing),
+					nameof(Phases.FirstBettingRound),
+					nameof(Phases.DrawPhase),
+					nameof(Phases.SecondBettingRound),
+					nameof(Phases.Showdown),
+					nameof(Phases.Complete)
 				};
 
 		var activeGames = await context.Games
@@ -147,7 +149,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 					"Game {GameId} has no remaining players, marking as complete",
 					game.Id);
 
-				game.CurrentPhase = nameof(FiveCardDrawPhase.Complete);
+				game.CurrentPhase = nameof(Phases.Complete);
 				game.Status = GameStatus.Completed;
 				game.EndedAt = now;
 				game.UpdatedAt = now;
@@ -174,7 +176,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 
 		// Find Kings and Lows games in DrawComplete phase where the display period has expired
 		var gamesReadyForShowdown = await context.Games
-			.Where(g => g.CurrentPhase == nameof(KingsAndLowsPhase.DrawComplete) &&
+			.Where(g => g.CurrentPhase == nameof(Phases.DrawComplete) &&
 						g.DrawCompletedAt != null &&
 						g.DrawCompletedAt <= drawCompleteDeadline &&
 						g.Status == GameStatus.InProgress)
@@ -214,7 +216,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		var gamePlayersList = game.GamePlayers.OrderBy(gp => gp.SeatPosition).ToList();
 
 		// Transition to Showdown phase
-		game.CurrentPhase = nameof(KingsAndLowsPhase.Showdown);
+		game.CurrentPhase = nameof(Phases.Showdown);
 		game.UpdatedAt = now;
 		game.DrawCompletedAt = null; // Clear the draw completed timestamp
 
@@ -252,7 +254,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		if (mainPot == null)
 		{
 			// No pot to distribute - just complete the hand
-			game.CurrentPhase = nameof(KingsAndLowsPhase.Complete);
+			game.CurrentPhase = nameof(Phases.Complete);
 			game.HandCompletedAt = now;
 			game.NextHandStartsAt = now.AddSeconds(ResultsDisplayDurationSeconds);
 			MoveDealer(game);
@@ -287,7 +289,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		// Find winner(s)
 		if (playerHandEvaluations.Count == 0)
 		{
-			game.CurrentPhase = nameof(KingsAndLowsPhase.Complete);
+			game.CurrentPhase = nameof(Phases.Complete);
 			game.HandCompletedAt = now;
 			game.NextHandStartsAt = now.AddSeconds(ResultsDisplayDurationSeconds);
 			MoveDealer(game);
@@ -350,7 +352,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		}
 
 		// Complete the hand
-		game.CurrentPhase = nameof(KingsAndLowsPhase.Complete);
+		game.CurrentPhase = nameof(Phases.Complete);
 		game.HandCompletedAt = now;
 		game.NextHandStartsAt = now.AddSeconds(ResultsDisplayDurationSeconds);
 		MoveDealer(game);
@@ -429,7 +431,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 				"Game {GameId} has no remaining players, ending game",
 				game.Id);
 
-			game.CurrentPhase = nameof(FiveCardDrawPhase.Complete);
+			game.CurrentPhase = nameof(Phases.Complete);
 			game.Status = GameStatus.Completed;
 			game.EndedAt = now;
 			game.NextHandStartsAt = null;
@@ -525,8 +527,8 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		game.CurrentHandNumber++;
 		// Kings and Lows only collects antes on first hand; subsequent hands get pot from losers matching
 		game.CurrentPhase = isKingsAndLows
-			? nameof(KingsAndLowsPhase.Dealing)
-			: nameof(FiveCardDrawPhase.CollectingAntes);
+			? nameof(Phases.Dealing)
+			: nameof(Phases.CollectingAntes);
 		game.Status = GameStatus.InProgress;
 		game.CurrentPlayerIndex = -1;
 		game.CurrentDrawPlayerIndex = -1;
@@ -566,7 +568,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 	{
 		if (ante <= 0)
 		{
-			game.CurrentPhase = nameof(FiveCardDrawPhase.Dealing);
+			game.CurrentPhase = nameof(Phases.Dealing);
 			return;
 		}
 
@@ -603,7 +605,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			}
 		}
 
-		game.CurrentPhase = nameof(FiveCardDrawPhase.Dealing);
+		game.CurrentPhase = nameof(Phases.Dealing);
 		game.UpdatedAt = now;
 
 		await context.SaveChangesAsync(cancellationToken);
@@ -687,7 +689,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		if (isKingsAndLows)
 		{
 			// Kings and Lows goes to DropOrStay phase after dealing, not betting
-			game.CurrentPhase = nameof(KingsAndLowsPhase.DropOrStay);
+			game.CurrentPhase = nameof(Phases.DropOrStay);
 			game.CurrentPlayerIndex = -1; // No current actor - all players decide simultaneously
 			game.UpdatedAt = now;
 
@@ -708,7 +710,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 				GameId = game.Id,
 				HandNumber = game.CurrentHandNumber,
 				RoundNumber = 1,
-				Street = nameof(FiveCardDrawPhase.FirstBettingRound),
+				Street = nameof(Phases.FirstBettingRound),
 				CurrentBet = 0,
 				MinBet = game.MinBet ?? 0,
 				RaiseCount = 0,
@@ -724,7 +726,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 
 			context.Set<Data.Entities.BettingRound>().Add(bettingRound);
 
-			game.CurrentPhase = nameof(FiveCardDrawPhase.FirstBettingRound);
+			game.CurrentPhase = nameof(Phases.FirstBettingRound);
 			game.CurrentPlayerIndex = firstActorIndex;
 			game.UpdatedAt = now;
 

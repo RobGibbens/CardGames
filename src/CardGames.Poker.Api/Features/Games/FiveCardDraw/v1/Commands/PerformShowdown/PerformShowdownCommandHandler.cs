@@ -2,6 +2,7 @@ using CardGames.Core.French.Cards;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Services;
+using CardGames.Poker.Betting;
 using CardGames.Poker.Games.FiveCardDraw;
 using CardGames.Poker.Hands.DrawHands;
 using MediatR;
@@ -45,12 +46,12 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 		var currentHandPots = game.Pots.Where(p => p.HandNumber == game.CurrentHandNumber).ToList();
 
 		// 2. Validate game is in showdown phase
-		if (game.CurrentPhase != nameof(FiveCardDrawPhase.Showdown))
+		if (game.CurrentPhase != nameof(Phases.Showdown))
 		{
 			return new PerformShowdownError
 			{
 				Message = $"Cannot perform showdown. Game is in '{game.CurrentPhase}' phase. " +
-				          $"Showdown can only be performed when the game is in '{nameof(FiveCardDrawPhase.Showdown)}' phase.",
+				          $"Showdown can only be performed when the game is in '{nameof(Phases.Showdown)}' phase.",
 				Code = PerformShowdownErrorCode.InvalidGameState
 			};
 		}
@@ -102,7 +103,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 				pot.WinReason = "All others folded";
 			}
 
-			game.CurrentPhase = nameof(FiveCardDrawPhase.Complete);
+			game.CurrentPhase = nameof(Phases.Complete);
 			game.UpdatedAt = now;
 				game.HandCompletedAt = now;
 				game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);
@@ -210,7 +211,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 			}
 
 			// 12. Update game state
-			game.CurrentPhase = nameof(FiveCardDrawPhase.Complete);
+			game.CurrentPhase = nameof(Phases.Complete);
 			game.UpdatedAt = now;
 			game.HandCompletedAt = now;
 			game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);

@@ -1,3 +1,4 @@
+using CardGames.Poker.Betting;
 using CardGames.Poker.Games.FiveCardDraw;
 using CardGames.Poker.Games.FollowTheQueen;
 using CardGames.Poker.Games.HoldEm;
@@ -24,27 +25,7 @@ public static class PokerGamePhaseRegistry
 			phase = null;
 			return false;
 		}
-
-		switch (gameTypeCode.ToUpperInvariant())
-		{
-			case PokerGameMetadataRegistry.FiveCardDrawCode:
-				return TryResolveEnum<FiveCardDrawPhase>(currentPhase, out phase);
-			case PokerGameMetadataRegistry.TwosJacksManWithTheAxeCode:
-				return TryResolveEnum<TwosJacksManWithTheAxePhase>(currentPhase, out phase);
-			case PokerGameMetadataRegistry.HoldEmCode:
-				return TryResolveEnum<HoldEmPhase>(currentPhase, out phase);
-			case PokerGameMetadataRegistry.OmahaCode:
-				return TryResolveEnum<OmahaPhase>(currentPhase, out phase);
-			case PokerGameMetadataRegistry.SevenCardStudCode:
-				return TryResolveEnum<SevenCardStudPhase>(currentPhase, out phase);
-			case PokerGameMetadataRegistry.KingsAndLowsCode:
-				return TryResolveEnum<KingsAndLowsPhase>(currentPhase, out phase);
-			case PokerGameMetadataRegistry.FollowTheQueenCode:
-				return TryResolveEnum<FollowTheQueenPhase>(currentPhase, out phase);
-			default:
-				phase = null;
-				return false;
-		}
+		return TryResolveEnum<Phases>(currentPhase, out phase);
 	}
 
 	/// <summary>

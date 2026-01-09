@@ -1,34 +1,34 @@
-namespace CardGames.Poker.Games.FollowTheQueen;
+//namespace CardGames.Poker.Games.FollowTheQueen;
 
-/// <summary>
-/// Represents the current phase of a Follow the Queen hand.
-/// </summary>
-public enum FollowTheQueenPhase
-{
-    /// <summary>Waiting for hand to start.</summary>
-    WaitingToStart,
+///// <summary>
+///// Represents the current phase of a Follow the Queen hand.
+///// </summary>
+//public enum FollowTheQueenPhase
+//{
+//    /// <summary>Waiting for hand to start.</summary>
+//    WaitingToStart,
 
-    /// <summary>Collecting antes from all players.</summary>
-    CollectingAntes,
+//    /// <summary>Collecting antes from all players.</summary>
+//    CollectingAntes,
 
-    /// <summary>Third street: 2 down cards and 1 up card dealt, bring-in betting round.</summary>
-    ThirdStreet,
+//    /// <summary>Third street: 2 down cards and 1 up card dealt, bring-in betting round.</summary>
+//    ThirdStreet,
 
-    /// <summary>Fourth street: 1 up card dealt, betting round (small bet).</summary>
-    FourthStreet,
+//    /// <summary>Fourth street: 1 up card dealt, betting round (small bet).</summary>
+//    FourthStreet,
 
-    /// <summary>Fifth street: 1 up card dealt, betting round (big bet).</summary>
-    FifthStreet,
+//    /// <summary>Fifth street: 1 up card dealt, betting round (big bet).</summary>
+//    FifthStreet,
 
-    /// <summary>Sixth street: 1 up card dealt, betting round (big bet).</summary>
-    SixthStreet,
+//    /// <summary>Sixth street: 1 up card dealt, betting round (big bet).</summary>
+//    SixthStreet,
 
-    /// <summary>Seventh street (river): 1 down card dealt, final betting round (big bet).</summary>
-    SeventhStreet,
+//    /// <summary>Seventh street (river): 1 down card dealt, final betting round (big bet).</summary>
+//    SeventhStreet,
 
-    /// <summary>Showdown - comparing hands to determine winner.</summary>
-    Showdown,
+//    /// <summary>Showdown - comparing hands to determine winner.</summary>
+//    Showdown,
 
-    /// <summary>Hand is complete.</summary>
-    Complete
-}
+//    /// <summary>Hand is complete.</summary>
+//    Complete
+//}

@@ -13,11 +13,20 @@ namespace CardGames.Poker.Games.TwosJacksManWithTheAxe;
 /// Orchestrates a Twos, Jacks, Man with the Axe poker game with betting.
 /// </summary>
 [PokerGameMetadata(
-	"Twos, Jacks, Man with the Axe",
-	"A five-card draw variant where all 2s, all Jacks, and the King of Diamonds (“Man with the Axe”) are wild, creating big hands and frequent action. Optionally, a player holding a natural pair of 7s can claim half the pot.",
-	2,
-	6,
-	"2sJacksManWithTheAxe.png")]
+    code:"TWOSJACKSMANWITHTHEAXE",
+	name:"Twos, Jacks, Man with the Axe",
+	description:"A five-card draw variant where all 2s, all Jacks, and the King of Diamonds (“Man with the Axe”) are wild, creating big hands and frequent action. Optionally, a player holding a natural pair of 7s can claim half the pot.",
+	minimumNumberOfPlayers:2,
+	maximumNumberOfPlayers:6,
+    initialHoleCards:5,
+    initialBoardCards:0,
+    maxCommunityCards:0,
+    maxPlayerCards:5,
+    hasDrawPhase:true,
+    maxDiscards:3,
+    wildCardRule:WildCardRule.FixedRanks,
+	bettingStructure:BettingStructure.Ante,
+	imageName:"2sJacksManWithTheAxe.png")]
 public class TwosJacksManWithTheAxeGame : IPokerGame
 {
 	public string Name { get; } = "Twos, Jacks, Man with the Axe";
@@ -41,7 +50,7 @@ public class TwosJacksManWithTheAxeGame : IPokerGame
     /// The phase determines which actions are valid and guides the game flow
     /// from dealing through betting rounds to showdown.
     /// </summary>
-    public TwosJacksManWithTheAxePhase CurrentPhase { get; private set; }
+    public Phases CurrentPhase { get; private set; }
 
     /// <summary>
     /// Gets the list of all game players with their hands and game-specific state.
@@ -124,7 +133,7 @@ public class TwosJacksManWithTheAxeGame : IPokerGame
         _ante = ante;
         _minBet = minBet;
         _dealerPosition = 0;
-        CurrentPhase = TwosJacksManWithTheAxePhase.WaitingToStart;
+        CurrentPhase = Phases.WaitingToStart;
     }
 
     /// <summary>
@@ -138,7 +147,7 @@ public class TwosJacksManWithTheAxeGame : IPokerGame
     /// <summary>
     /// Starts a new hand by shuffling the deck, creating a fresh pot, and resetting all player states.
     /// This method must be called before each hand to prepare the game for play.
-    /// After calling this method, the game transitions to the <see cref="TwosJacksManWithTheAxePhase.CollectingAntes"/> phase.
+    /// After calling this method, the game transitions to the <see cref="Phases.CollectingAntes"/> phase.
     /// </summary>
     /// <remarks>
     /// This method performs the following actions:
@@ -160,20 +169,20 @@ public class TwosJacksManWithTheAxeGame : IPokerGame
             gamePlayer.ResetHand();
         }
 
-        CurrentPhase = TwosJacksManWithTheAxePhase.CollectingAntes;
+        CurrentPhase = Phases.CollectingAntes;
     }
 
     /// <summary>
     /// Collects the mandatory ante bet from all players to seed the pot before dealing.
     /// Each player contributes the ante amount (or their remaining chips if short-stacked).
-    /// After collection, the game transitions to the <see cref="TwosJacksManWithTheAxePhase.Dealing"/> phase.
+    /// After collection, the game transitions to the <see cref="Phases.Dealing"/> phase.
     /// </summary>
     /// <returns>
     /// A list of <see cref="BettingAction"/> objects representing each player's ante contribution,
     /// useful for displaying the ante collection to users or logging game history.
     /// </returns>
     /// <exception cref="InvalidOperationException">
-    /// Thrown when called outside the <see cref="TwosJacksManWithTheAxePhase.CollectingAntes"/> phase.
+    /// Thrown when called outside the <see cref="Phases.CollectingAntes"/> phase.
     /// </exception>
     /// <remarks>
     /// Players with fewer chips than the ante will contribute their entire stack (going all-in on the ante).
@@ -181,7 +190,7 @@ public class TwosJacksManWithTheAxeGame : IPokerGame
     /// </remarks>
     public List<BettingAction> CollectAntes()
     {
-        if (CurrentPhase != TwosJacksManWithTheAxePhase.CollectingAntes)
+        if (CurrentPhase != Phases.CollectingAntes)
         {
             throw new InvalidOperationException("Cannot collect antes in current phase");
         }
@@ -201,16 +210,16 @@ public class TwosJacksManWithTheAxeGame : IPokerGame
             }
         }
 
-        CurrentPhase = TwosJacksManWithTheAxePhase.Dealing;
+        CurrentPhase = Phases.Dealing;
         return actions;
     }
 
     /// <summary>
     /// Deals five cards to each active player from the shuffled deck and initiates the first betting round.
-    /// After dealing, the game transitions to the <see cref="TwosJacksManWithTheAxePhase.FirstBettingRound"/> phase.
+    /// After dealing, the game transitions to the <see cref="Phases.FirstBettingRound"/> phase.
     /// </summary>
     /// <exception cref="InvalidOperationException">
-    /// Thrown when called outside the <see cref="TwosJacksManWithTheAxePhase.Dealing"/> phase.
+    /// Thrown when called outside the <see cref="Phases.Dealing"/> phase.
     /// </exception>
     /// <remarks>
     /// This method:
@@ -222,7 +231,7 @@ public class TwosJacksManWithTheAxeGame : IPokerGame
     /// </remarks>
     public void DealHands()
     {
-        if (CurrentPhase != TwosJacksManWithTheAxePhase.Dealing)
+        if (CurrentPhase != Phases.Dealing)
         {
             throw new InvalidOperationException("Cannot deal in current phase");
         }
@@ -243,7 +252,7 @@ public class TwosJacksManWithTheAxeGame : IPokerGame
             gamePlayer.Player.ResetCurrentBet();
         }
 
-        CurrentPhase = TwosJacksManWithTheAxePhase.FirstBettingRound;
+        CurrentPhase = Phases.FirstBettingRound;
         StartBettingRound();
     }
 
@@ -339,7 +348,7 @@ public class TwosJacksManWithTheAxeGame : IPokerGame
         var playersInHand = _gamePlayers.Count(gp => !gp.Player.HasFolded);
         if (playersInHand <= 1)
         {
-            CurrentPhase = TwosJacksManWithTheAxePhase.Showdown;
+            CurrentPhase = Phases.Showdown;
             return;
         }
 
@@ -351,16 +360,16 @@ public class TwosJacksManWithTheAxeGame : IPokerGame
 
         switch (CurrentPhase)
         {
-            case TwosJacksManWithTheAxePhase.FirstBettingRound:
-                CurrentPhase = TwosJacksManWithTheAxePhase.DrawPhase;
+            case Phases.FirstBettingRound:
+                CurrentPhase = Phases.DrawPhase;
                 _currentDrawPlayerIndex = FindFirstActivePlayerAfterDealer();
                 _playersWhoHaveDrawn = [];
                 break;
 
-            case TwosJacksManWithTheAxePhase.SecondBettingRound:
+            case Phases.SecondBettingRound:
                 // Calculate side pots if needed
                 _potManager.CalculateSidePots(_gamePlayers.Select(gp => gp.Player));
-                CurrentPhase = TwosJacksManWithTheAxePhase.Showdown;
+                CurrentPhase = Phases.Showdown;
                 break;
         }
     }
@@ -395,7 +404,7 @@ public class TwosJacksManWithTheAxeGame : IPokerGame
     /// </remarks>
     public TwosJacksManWithTheAxeGamePlayer GetCurrentDrawPlayer()
     {
-        if (CurrentPhase != TwosJacksManWithTheAxePhase.DrawPhase || _currentDrawPlayerIndex < 0)
+        if (CurrentPhase != Phases.DrawPhase || _currentDrawPlayerIndex < 0)
         {
             return null;
         }
@@ -426,7 +435,7 @@ public class TwosJacksManWithTheAxeGame : IPokerGame
     /// </remarks>
     public DrawResult ProcessDraw(IReadOnlyCollection<int> discardIndices)
     {
-        if (CurrentPhase != TwosJacksManWithTheAxePhase.DrawPhase)
+        if (CurrentPhase != Phases.DrawPhase)
         {
             return new DrawResult
             {
@@ -478,7 +487,7 @@ public class TwosJacksManWithTheAxeGame : IPokerGame
             PlayerName = gamePlayer.Player.Name,
             DiscardedCards = discardedCards,
             NewCards = newCards.ToList(),
-            DrawComplete = CurrentPhase != TwosJacksManWithTheAxePhase.DrawPhase
+            DrawComplete = CurrentPhase != Phases.DrawPhase
         };
     }
 
@@ -509,7 +518,7 @@ public class TwosJacksManWithTheAxeGame : IPokerGame
 
     private void StartSecondBettingRound()
     {
-        CurrentPhase = TwosJacksManWithTheAxePhase.SecondBettingRound;
+        CurrentPhase = Phases.SecondBettingRound;
         StartBettingRound();
     }
 
@@ -526,7 +535,7 @@ public class TwosJacksManWithTheAxeGame : IPokerGame
     /// </remarks>
     public void CompleteDrawPhase()
     {
-        if (CurrentPhase == TwosJacksManWithTheAxePhase.DrawPhase)
+        if (CurrentPhase == Phases.DrawPhase)
         {
             StartSecondBettingRound();
         }
@@ -550,11 +559,11 @@ public class TwosJacksManWithTheAxeGame : IPokerGame
     /// <item><description><b>Side pots:</b> When players are all-in for different amounts, side pots are calculated and awarded separately</description></item>
     /// <item><description><b>Sevens half-pot:</b> Players with a natural pair of 7s split half the pot; best hand takes the other half</description></item>
     /// </list>
-    /// After the showdown, the game phase becomes <see cref="TwosJacksManWithTheAxePhase.Complete"/> and the dealer button moves.
+    /// After the showdown, the game phase becomes <see cref="Phases.Complete"/> and the dealer button moves.
     /// </remarks>
     public ShowdownResult PerformShowdown()
     {
-        if (CurrentPhase != TwosJacksManWithTheAxePhase.Showdown)
+        if (CurrentPhase != Phases.Showdown)
         {
             return new ShowdownResult
             {
@@ -572,7 +581,7 @@ public class TwosJacksManWithTheAxeGame : IPokerGame
             var totalPot = _potManager.TotalPotAmount;
             winner.Player.AddChips(totalPot);
 
-            CurrentPhase = TwosJacksManWithTheAxePhase.Complete;
+            CurrentPhase = Phases.Complete;
             MoveDealer();
 
             return new ShowdownResult
@@ -647,7 +656,7 @@ public class TwosJacksManWithTheAxeGame : IPokerGame
             gamePlayer.Player.AddChips(payout.Value);
         }
 
-        CurrentPhase = TwosJacksManWithTheAxePhase.Complete;
+        CurrentPhase = Phases.Complete;
         MoveDealer();
 
         return new ShowdownResult

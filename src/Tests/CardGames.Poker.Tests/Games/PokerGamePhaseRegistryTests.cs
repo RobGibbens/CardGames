@@ -1,4 +1,5 @@
 using CardGames.Poker.Api.Games;
+using CardGames.Poker.Betting;
 using CardGames.Poker.Games.FiveCardDraw;
 using CardGames.Poker.Games.HoldEm;
 using FluentAssertions;
@@ -15,8 +16,8 @@ public sealed class PokerGamePhaseRegistryTests
 
 		result.Should().BeTrue();
 		phase.Should().NotBeNull();
-		phase.Should().BeOfType<HoldEmPhase>();
-		((HoldEmPhase)phase!).Should().Be(HoldEmPhase.Flop);
+		phase.Should().BeOfType<Phases>();
+		((Phases)phase!).Should().Be(Phases.Flop);
 	}
 
 	[Fact]
@@ -44,7 +45,7 @@ public sealed class PokerGamePhaseRegistryTests
 		var result = PokerGamePhaseRegistry.TryResolve(
 			"HOLDEM",
 			"Flop",
-			out FiveCardDrawPhase _);
+			out Phases _);
 
 		result.Should().BeFalse();
 	}

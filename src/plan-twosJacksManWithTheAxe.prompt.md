@@ -99,7 +99,7 @@ Add/extend tests (existing tests exist at `Tests/CardGames.Poker.Tests/Betting/P
 - In [CreateGameCommandHandler.cs](CardGames.Poker.Api/Features/Games/TwosJacksManWithTheAxe/v1/Commands/CreateGame/CreateGameCommandHandler.cs):
   - Stop using `private const string FiveCardDrawCode = "FIVECARDDRAW";`
   - Use `PokerGameMetadataRegistry.TwosJacksManWithTheAxeCode` (from [PokerGameMetadataRegistry.cs](CardGames.Poker.Api/Games/PokerGameMetadataRegistry.cs)).
-  - Set `Game.CurrentPhase` to `nameof(TwosJacksManWithTheAxePhase.WaitingToStart)` (instead of `FiveCardDrawPhase`).
+  - Set `Game.CurrentPhase` to `nameof(Phases.WaitingToStart)` (instead of `FiveCardDrawPhase`).
   - When creating the `GameType`, set:
     - `Name = "Twos, Jacks, Man with the Axe"`
     - `Code = TWOSJACKSMANWITHTHEAXE`

@@ -42,7 +42,7 @@ public static class DeleteGameEndpoint
 						}
 					);
 				})
-			.WithName($"Games{nameof(MapDeleteGame).TrimPrefix("Map")}")
+			.WithName($"{nameof(MapDeleteGame).TrimPrefix("Map")}")
 			.WithSummary("Delete Game")
 			.WithDescription(
 				"Soft deletes a game. " +

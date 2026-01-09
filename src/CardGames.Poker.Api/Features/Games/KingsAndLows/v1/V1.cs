@@ -1,6 +1,5 @@
 using Asp.Versioning.Builder;
 using CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.AcknowledgePotMatch;
-using CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.CreateGame;
 using CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.DeckDraw;
 using CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.DrawCards;
 using CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.DropOrStay;
@@ -20,7 +19,6 @@ public static class V1
 			.AddFluentValidationAutoValidation();
 
 		mapGroup
-			.MapCreateGame()
 			.MapStartHand()
 			.MapDropOrStay()
 			.MapDrawCards()

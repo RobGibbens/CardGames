@@ -1,9 +1,11 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Betting;
 using CardGames.Poker.Games.KingsAndLows;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
+using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 
 namespace CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.StartHand;
 
@@ -36,8 +38,8 @@ public class StartHandCommandHandler(CardsDbContext context)
 		// 2. Validate game state allows starting a new hand
 		var validPhases = new[]
 		{
-			nameof(KingsAndLowsPhase.WaitingToStart),
-			nameof(KingsAndLowsPhase.Complete)
+			nameof(Phases.WaitingToStart),
+			nameof(Phases.Complete)
 		};
 
 		if (!validPhases.Contains(game.CurrentPhase))
@@ -45,8 +47,8 @@ public class StartHandCommandHandler(CardsDbContext context)
 			return new StartHandError
 			{
 				Message = $"Cannot start a new hand. Game is in '{game.CurrentPhase}' phase. " +
-						  $"A new hand can only be started when the game is in '{nameof(KingsAndLowsPhase.WaitingToStart)}' " +
-						  $"or '{nameof(KingsAndLowsPhase.Complete)}' phase.",
+						  $"A new hand can only be started when the game is in '{nameof(Phases.WaitingToStart)}' " +
+						  $"or '{nameof(Phases.Complete)}' phase.",
 				Code = StartHandErrorCode.InvalidGameState
 			};
 		}
@@ -127,8 +129,8 @@ public class StartHandCommandHandler(CardsDbContext context)
 		// 9. Update game state - Kings and Lows starts with CollectingAntes (first hand) or Dealing (subsequent hands)
 		game.CurrentHandNumber++;
 		game.CurrentPhase = isFirstHand
-			? nameof(KingsAndLowsPhase.CollectingAntes)
-			: nameof(KingsAndLowsPhase.Dealing);
+			? nameof(Phases.CollectingAntes)
+			: nameof(Phases.Dealing);
 		game.Status = GameStatus.InProgress;
 		game.CurrentPlayerIndex = -1;
 		game.CurrentDrawPlayerIndex = -1;
@@ -168,7 +170,7 @@ public class StartHandCommandHandler(CardsDbContext context)
 		}
 
 		// 11. Automatically deal hands - move to Dealing phase then DropOrStay
-		game.CurrentPhase = nameof(KingsAndLowsPhase.Dealing);
+		game.CurrentPhase = nameof(Phases.Dealing);
 		
 		// Create a standard deck of 52 cards with shuffled order
 		var deck = new List<GameCard>();
@@ -225,13 +227,13 @@ public class StartHandCommandHandler(CardsDbContext context)
 					card.GamePlayerId = player.Id;
 					card.IsVisible = true; // Cards visible to the player in their hand
 					card.DealOrder = dealOrder++;
-					card.DealtAtPhase = nameof(KingsAndLowsPhase.Dealing);
+					card.DealtAtPhase = nameof(Phases.Dealing);
 				}
 			}
 		}
 
 		// 11. Move to DropOrStay phase - this is where players make their decision
-		game.CurrentPhase = nameof(KingsAndLowsPhase.DropOrStay);
+		game.CurrentPhase = nameof(Phases.DropOrStay);
 
 		// 12. Persist changes
 		await context.SaveChangesAsync(cancellationToken);

@@ -16,7 +16,7 @@ public class FollowTheQueenGameTests
         var game = CreateTwoPlayerGame();
 
         game.Players.Should().HaveCount(2);
-        game.CurrentPhase.Should().Be(FollowTheQueenPhase.WaitingToStart);
+        game.CurrentPhase.Should().Be(Phases.WaitingToStart);
     }
 
     [Fact]
@@ -48,7 +48,7 @@ public class FollowTheQueenGameTests
 
         game.StartHand();
 
-        game.CurrentPhase.Should().Be(FollowTheQueenPhase.CollectingAntes);
+        game.CurrentPhase.Should().Be(Phases.CollectingAntes);
     }
 
     [Fact]
@@ -62,7 +62,7 @@ public class FollowTheQueenGameTests
         actions.Should().HaveCount(2);
         actions.All(a => a.ActionType == BettingActionType.Post).Should().BeTrue();
         game.TotalPot.Should().Be(10); // 5 ante from each
-        game.CurrentPhase.Should().Be(FollowTheQueenPhase.ThirdStreet);
+        game.CurrentPhase.Should().Be(Phases.ThirdStreet);
     }
 
     [Fact]
@@ -201,7 +201,7 @@ public class FollowTheQueenGameTests
         var result = game.ProcessBettingAction(BettingActionType.Fold);
 
         result.Success.Should().BeTrue();
-        game.CurrentPhase.Should().Be(FollowTheQueenPhase.Showdown);
+        game.CurrentPhase.Should().Be(Phases.Showdown);
     }
 
     [Fact]
@@ -276,7 +276,7 @@ public class FollowTheQueenGameTests
         result.Success.Should().BeTrue();
         result.WonByFold.Should().BeTrue();
         result.Payouts.Should().HaveCount(1);
-        game.CurrentPhase.Should().Be(FollowTheQueenPhase.Complete);
+        game.CurrentPhase.Should().Be(Phases.Complete);
     }
 
     [Fact]
@@ -488,7 +488,7 @@ public class FollowTheQueenGameTests
         }
 
         // Verify game progressed to fourth street
-        game.CurrentPhase.Should().Be(FollowTheQueenPhase.FourthStreet);
+        game.CurrentPhase.Should().Be(Phases.FourthStreet);
     }
 
     private static FollowTheQueenGame CreateTwoPlayerGame()

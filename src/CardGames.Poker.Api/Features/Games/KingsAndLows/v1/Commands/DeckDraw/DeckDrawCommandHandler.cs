@@ -1,6 +1,7 @@
 using CardGames.Core.French.Cards;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Betting;
 using CardGames.Poker.Evaluation;
 using CardGames.Poker.Games.KingsAndLows;
 using CardGames.Poker.Hands.DrawHands;
@@ -40,12 +41,12 @@ public class DeckDrawCommandHandler(CardsDbContext context)
 		}
 
 		// 2. Validate game is in PlayerVsDeck phase
-		if (game.CurrentPhase != nameof(KingsAndLowsPhase.PlayerVsDeck))
+		if (game.CurrentPhase != nameof(Phases.PlayerVsDeck))
 		{
 			return new DeckDrawError
 			{
 				Message = $"Cannot process deck draw. Game is in '{game.CurrentPhase}' phase, " +
-						  $"but must be in '{nameof(KingsAndLowsPhase.PlayerVsDeck)}' phase.",
+						  $"but must be in '{nameof(Phases.PlayerVsDeck)}' phase.",
 				Code = DeckDrawErrorCode.InvalidPhase
 			};
 		}
@@ -193,7 +194,7 @@ public class DeckDrawCommandHandler(CardsDbContext context)
 				}
 
 				// 9. Advance to Showdown phase
-				game.CurrentPhase = nameof(KingsAndLowsPhase.Showdown);
+				game.CurrentPhase = nameof(Phases.Showdown);
 				game.UpdatedAt = now;
 
 				// 10. Persist changes

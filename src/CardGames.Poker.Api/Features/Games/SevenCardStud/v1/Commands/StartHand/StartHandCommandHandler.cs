@@ -1,10 +1,10 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
-using CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.CreateGame;
-using CardGames.Poker.Games.SevenCardStud;
+using CardGames.Poker.Betting;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
+using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 
 namespace CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.StartHand;
 
@@ -37,8 +37,8 @@ public class StartHandCommandHandler(CardsDbContext context)
 		// 2. Validate game state allows starting a new hand
 		var validPhases = new[]
 		{
-			nameof(SevenCardStudPhase.WaitingToStart),
-			nameof(SevenCardStudPhase.Complete)
+			nameof(Phases.WaitingToStart),
+			nameof(Phases.Complete)
 		};
 
 				if (!validPhases.Contains(game.CurrentPhase))
@@ -46,8 +46,8 @@ public class StartHandCommandHandler(CardsDbContext context)
 					return new StartHandError
 					{
 						Message = $"Cannot start a new hand. Game is in '{game.CurrentPhase}' phase. " +
-								  $"A new hand can only be started when the game is in '{nameof(SevenCardStudPhase.WaitingToStart)}' " +
-								  $"or '{nameof(SevenCardStudPhase.Complete)}' phase.",
+								  $"A new hand can only be started when the game is in '{nameof(Phases.WaitingToStart)}' " +
+								  $"or '{nameof(Phases.Complete)}' phase.",
 						Code = StartHandErrorCode.InvalidGameState
 					};
 				}
@@ -118,7 +118,7 @@ public class StartHandCommandHandler(CardsDbContext context)
 
 				// 8. Update game state
 				game.CurrentHandNumber++;
-				game.CurrentPhase = nameof(SevenCardStudPhase.CollectingAntes);
+				game.CurrentPhase = nameof(Phases.CollectingAntes);
 				game.Status = GameStatus.InProgress;
 				game.CurrentPlayerIndex = -1;
 				game.CurrentDrawPlayerIndex = -1;

@@ -126,10 +126,10 @@ internal class SevenCardStudPlayCommand : Command<SevenCardStudPlaySettings>
         // Fourth through Seventh streets
         var streets = new[]
         {
-            (SevenCardStudPhase.FourthStreet, "Fourth Street"),
-            (SevenCardStudPhase.FifthStreet, "Fifth Street"),
-            (SevenCardStudPhase.SixthStreet, "Sixth Street"),
-            (SevenCardStudPhase.SeventhStreet, "Seventh Street (River)")
+            (Phases.FourthStreet, "Fourth Street"),
+            (Phases.FifthStreet, "Fifth Street"),
+            (Phases.SixthStreet, "Sixth Street"),
+            (Phases.SeventhStreet, "Seventh Street (River)")
         };
 
         foreach (var (phase, streetName) in streets)
@@ -141,7 +141,7 @@ internal class SevenCardStudPlayCommand : Command<SevenCardStudPlaySettings>
 
             Logger.Paragraph(streetName);
             game.DealStreetCard();
-            DisplayAllHands(game, showHoleCards: phase == SevenCardStudPhase.SeventhStreet);
+            DisplayAllHands(game, showHoleCards: phase == Phases.SeventhStreet);
 
             game.StartBettingRound();
             if (!RunBettingRound(game, $"{streetName} Betting"))
@@ -153,7 +153,7 @@ internal class SevenCardStudPlayCommand : Command<SevenCardStudPlaySettings>
         }
 
         // Showdown
-        if (game.CurrentPhase == SevenCardStudPhase.Showdown)
+        if (game.CurrentPhase == Phases.Showdown)
         {
             var result = game.PerformShowdown();
             DisplayShowdownResult(result, game);

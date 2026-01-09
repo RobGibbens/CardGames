@@ -2,6 +2,7 @@ using CardGames.Core.French.Cards;
 using CardGames.Core.French.Dealers;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Betting;
 using CardGames.Poker.Games.FiveCardDraw;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -43,12 +44,12 @@ public class DealHandsCommandHandler(CardsDbContext context)
 		}
 
 		// 2. Validate game state allows dealing
-		if (game.CurrentPhase != nameof(FiveCardDrawPhase.Dealing))
+		if (game.CurrentPhase != nameof(Phases.Dealing))
 		{
 			return new DealHandsError
 			{
 				Message = $"Cannot deal hands. Game is in '{game.CurrentPhase}' phase. " +
-				          $"Hands can only be dealt when the game is in '{nameof(FiveCardDrawPhase.Dealing)}' phase.",
+				          $"Hands can only be dealt when the game is in '{nameof(Phases.Dealing)}' phase.",
 				Code = DealHandsErrorCode.InvalidGameState
 			};
 		}
@@ -95,7 +96,7 @@ public class DealHandsCommandHandler(CardsDbContext context)
 					Symbol = MapSymbol(card.Symbol),
 					Location = CardLocation.Hole,
 					DealOrder = dealOrder,
-					DealtAtPhase = nameof(FiveCardDrawPhase.Dealing),
+					DealtAtPhase = nameof(Phases.Dealing),
 					IsVisible = false,
 					IsWild = false,
 					IsDiscarded = false,
@@ -139,7 +140,7 @@ public class DealHandsCommandHandler(CardsDbContext context)
 			GameId = game.Id,
 			HandNumber = game.CurrentHandNumber,
 			RoundNumber = 1,
-			Street = nameof(FiveCardDrawPhase.FirstBettingRound),
+			Street = nameof(Phases.FirstBettingRound),
 			CurrentBet = 0,
 			MinBet = game.MinBet ?? 0,
 			RaiseCount = 0,
@@ -156,7 +157,7 @@ public class DealHandsCommandHandler(CardsDbContext context)
 		context.BettingRounds.Add(bettingRound);
 
 		// 9. Update game state - transition to FirstBettingRound phase
-		game.CurrentPhase = nameof(FiveCardDrawPhase.FirstBettingRound);
+		game.CurrentPhase = nameof(Phases.FirstBettingRound);
 		game.CurrentPlayerIndex = firstActorIndex;
 		game.Status = GameStatus.InProgress;
 		game.UpdatedAt = now;

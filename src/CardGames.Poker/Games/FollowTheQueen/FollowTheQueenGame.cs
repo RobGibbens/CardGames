@@ -14,11 +14,20 @@ namespace CardGames.Poker.Games.FollowTheQueen;
 /// and the card following the last face-up Queen also becomes wild (along with all cards of that rank).
 /// </summary>
 [PokerGameMetadata(
-	"Follow the Queen",
-	"A seven card stud poker variant where Queens are wild, and the card following the last face-up Queen also becomes wild.",
-	2,
-	7,
-	"followthequeen.png")]
+    code:"FOLLOWTHEQUEEN",
+	name:"Follow the Queen",
+	description:"A seven card stud poker variant where Queens are wild, and the card following the last face-up Queen also becomes wild.",
+	minimumNumberOfPlayers:2,
+	maximumNumberOfPlayers:7,
+    initialHoleCards:2,
+    initialBoardCards:1,
+    maxCommunityCards:0,
+    maxPlayerCards:7,
+    hasDrawPhase:false,
+    maxDiscards:0,
+    wildCardRule:WildCardRule.Dynamic,
+	bettingStructure:BettingStructure.AnteBringIn,
+	imageName:"followthequeen.png")]
 public class FollowTheQueenGame : IPokerGame
 {
 	public string Name { get; } = "Follow the Queen";
@@ -40,7 +49,7 @@ public class FollowTheQueenGame : IPokerGame
     private int _bringInPlayerIndex;
     private List<Card> _faceUpCardsInOrder = new List<Card>();
 
-    public FollowTheQueenPhase CurrentPhase { get; private set; }
+    public Phases CurrentPhase { get; private set; }
     public IReadOnlyList<FollowTheQueenGamePlayer> GamePlayers => _gamePlayers.AsReadOnly();
     public IReadOnlyList<PokerPlayer> Players => _gamePlayers.Select(gp => gp.Player).ToList().AsReadOnly();
     public int TotalPot => _potManager?.TotalPotAmount ?? 0;
@@ -84,7 +93,7 @@ public class FollowTheQueenGame : IPokerGame
         _bigBet = bigBet;
         _useBringIn = useBringIn;
         _dealerPosition = 0;
-        CurrentPhase = FollowTheQueenPhase.WaitingToStart;
+        CurrentPhase = Phases.WaitingToStart;
     }
 
     /// <summary>
@@ -113,7 +122,7 @@ public class FollowTheQueenGame : IPokerGame
             gamePlayer.ResetHand();
         }
 
-        CurrentPhase = FollowTheQueenPhase.CollectingAntes;
+        CurrentPhase = Phases.CollectingAntes;
     }
 
     /// <summary>
@@ -121,7 +130,7 @@ public class FollowTheQueenGame : IPokerGame
     /// </summary>
     public List<BettingAction> CollectAntes()
     {
-        if (CurrentPhase != FollowTheQueenPhase.CollectingAntes)
+        if (CurrentPhase != Phases.CollectingAntes)
         {
             throw new InvalidOperationException("Cannot collect antes in current phase");
         }
@@ -141,7 +150,7 @@ public class FollowTheQueenGame : IPokerGame
             }
         }
 
-        CurrentPhase = FollowTheQueenPhase.ThirdStreet;
+        CurrentPhase = Phases.ThirdStreet;
         return actions;
     }
 
@@ -150,7 +159,7 @@ public class FollowTheQueenGame : IPokerGame
     /// </summary>
     public void DealThirdStreet()
     {
-        if (CurrentPhase != FollowTheQueenPhase.ThirdStreet)
+        if (CurrentPhase != Phases.ThirdStreet)
         {
             throw new InvalidOperationException("Cannot deal third street in current phase");
         }
@@ -193,7 +202,7 @@ public class FollowTheQueenGame : IPokerGame
     /// </summary>
     public BettingAction PostBringIn()
     {
-        if (CurrentPhase != FollowTheQueenPhase.ThirdStreet)
+        if (CurrentPhase != Phases.ThirdStreet)
         {
             throw new InvalidOperationException("Cannot post bring-in in current phase");
         }
@@ -226,7 +235,7 @@ public class FollowTheQueenGame : IPokerGame
 
         switch (CurrentPhase)
         {
-            case FollowTheQueenPhase.ThirdStreet:
+            case Phases.ThirdStreet:
                 if (_useBringIn && _bringInPlayerIndex >= 0)
                 {
                     startPosition = _bringInPlayerIndex;
@@ -242,13 +251,13 @@ public class FollowTheQueenGame : IPokerGame
                 }
                 minBet = _smallBet;
                 break;
-            case FollowTheQueenPhase.FourthStreet:
+            case Phases.FourthStreet:
                 startPosition = GetDealerPositionForFirstActingPlayer(FindBestVisibleHandPosition());
                 minBet = _smallBet;
                 break;
-            case FollowTheQueenPhase.FifthStreet:
-            case FollowTheQueenPhase.SixthStreet:
-            case FollowTheQueenPhase.SeventhStreet:
+            case Phases.FifthStreet:
+            case Phases.SixthStreet:
+            case Phases.SeventhStreet:
                 startPosition = GetDealerPositionForFirstActingPlayer(FindBestVisibleHandPosition());
                 minBet = _bigBet;
                 break;
@@ -327,7 +336,7 @@ public class FollowTheQueenGame : IPokerGame
         var playersInHand = _gamePlayers.Count(gp => !gp.Player.HasFolded);
         if (playersInHand <= 1)
         {
-            CurrentPhase = FollowTheQueenPhase.Showdown;
+            CurrentPhase = Phases.Showdown;
             return;
         }
 
@@ -339,21 +348,21 @@ public class FollowTheQueenGame : IPokerGame
 
         switch (CurrentPhase)
         {
-            case FollowTheQueenPhase.ThirdStreet:
-                CurrentPhase = FollowTheQueenPhase.FourthStreet;
+            case Phases.ThirdStreet:
+                CurrentPhase = Phases.FourthStreet;
                 break;
-            case FollowTheQueenPhase.FourthStreet:
-                CurrentPhase = FollowTheQueenPhase.FifthStreet;
+            case Phases.FourthStreet:
+                CurrentPhase = Phases.FifthStreet;
                 break;
-            case FollowTheQueenPhase.FifthStreet:
-                CurrentPhase = FollowTheQueenPhase.SixthStreet;
+            case Phases.FifthStreet:
+                CurrentPhase = Phases.SixthStreet;
                 break;
-            case FollowTheQueenPhase.SixthStreet:
-                CurrentPhase = FollowTheQueenPhase.SeventhStreet;
+            case Phases.SixthStreet:
+                CurrentPhase = Phases.SeventhStreet;
                 break;
-            case FollowTheQueenPhase.SeventhStreet:
+            case Phases.SeventhStreet:
                 _potManager.CalculateSidePots(_gamePlayers.Select(gp => gp.Player));
-                CurrentPhase = FollowTheQueenPhase.Showdown;
+                CurrentPhase = Phases.Showdown;
                 break;
         }
     }
@@ -363,10 +372,10 @@ public class FollowTheQueenGame : IPokerGame
     /// </summary>
     public void DealStreetCard()
     {
-        if (CurrentPhase is not (FollowTheQueenPhase.FourthStreet
-            or FollowTheQueenPhase.FifthStreet
-            or FollowTheQueenPhase.SixthStreet
-            or FollowTheQueenPhase.SeventhStreet))
+        if (CurrentPhase is not (Phases.FourthStreet
+            or Phases.FifthStreet
+            or Phases.SixthStreet
+            or Phases.SeventhStreet))
         {
             throw new InvalidOperationException("Cannot deal street card in current phase");
         }
@@ -375,7 +384,7 @@ public class FollowTheQueenGame : IPokerGame
         {
             if (!gamePlayer.Player.HasFolded)
             {
-                if (CurrentPhase == FollowTheQueenPhase.SeventhStreet)
+                if (CurrentPhase == Phases.SeventhStreet)
                 {
                     // Seventh street card is dealt face down
                     gamePlayer.AddHoleCard(_dealer.DealCard());
@@ -402,7 +411,7 @@ public class FollowTheQueenGame : IPokerGame
     /// </summary>
     public FollowTheQueenShowdownResult PerformShowdown()
     {
-        if (CurrentPhase != FollowTheQueenPhase.Showdown)
+        if (CurrentPhase != Phases.Showdown)
         {
             return new FollowTheQueenShowdownResult
             {
@@ -420,7 +429,7 @@ public class FollowTheQueenGame : IPokerGame
             var totalPot = _potManager.TotalPotAmount;
             winner.Player.AddChips(totalPot);
 
-            CurrentPhase = FollowTheQueenPhase.Complete;
+            CurrentPhase = Phases.Complete;
             MoveDealer();
 
             return new FollowTheQueenShowdownResult
@@ -475,7 +484,7 @@ public class FollowTheQueenGame : IPokerGame
             gamePlayer.Player.AddChips(payout.Value);
         }
 
-        CurrentPhase = FollowTheQueenPhase.Complete;
+        CurrentPhase = Phases.Complete;
         MoveDealer();
 
         return new FollowTheQueenShowdownResult
@@ -657,11 +666,11 @@ public class FollowTheQueenGame : IPokerGame
     {
         return CurrentPhase switch
         {
-            FollowTheQueenPhase.ThirdStreet => _smallBet,
-            FollowTheQueenPhase.FourthStreet => _smallBet,
-            FollowTheQueenPhase.FifthStreet => _bigBet,
-            FollowTheQueenPhase.SixthStreet => _bigBet,
-            FollowTheQueenPhase.SeventhStreet => _bigBet,
+            Phases.ThirdStreet => _smallBet,
+            Phases.FourthStreet => _smallBet,
+            Phases.FifthStreet => _bigBet,
+            Phases.SixthStreet => _bigBet,
+            Phases.SeventhStreet => _bigBet,
             _ => _smallBet
         };
     }
@@ -673,11 +682,11 @@ public class FollowTheQueenGame : IPokerGame
     {
         return CurrentPhase switch
         {
-            FollowTheQueenPhase.ThirdStreet => "Third Street",
-            FollowTheQueenPhase.FourthStreet => "Fourth Street",
-            FollowTheQueenPhase.FifthStreet => "Fifth Street",
-            FollowTheQueenPhase.SixthStreet => "Sixth Street",
-            FollowTheQueenPhase.SeventhStreet => "Seventh Street (River)",
+            Phases.ThirdStreet => "Third Street",
+            Phases.FourthStreet => "Fourth Street",
+            Phases.FifthStreet => "Fifth Street",
+            Phases.SixthStreet => "Sixth Street",
+            Phases.SeventhStreet => "Seventh Street (River)",
             _ => CurrentPhase.ToString()
         };
     }

@@ -1,6 +1,7 @@
 using CardGames.Contracts.TableSettings;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Extensions;
+using CardGames.Poker.Betting;
 using CardGames.Poker.Games.FiveCardDraw;
 
 namespace CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe.v1.Queries.GetTableSettings;
@@ -15,7 +16,7 @@ public static class GetTableSettingsMapper
     /// </summary>
     private static readonly HashSet<string> EditablePhases =
     [
-        nameof(FiveCardDrawPhase.WaitingToStart),
+        nameof(Phases.WaitingToStart),
         "WaitingForPlayers"
     ];
 

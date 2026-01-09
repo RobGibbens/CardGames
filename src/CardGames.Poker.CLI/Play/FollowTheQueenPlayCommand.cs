@@ -129,10 +129,10 @@ internal class FollowTheQueenPlayCommand : Command<FollowTheQueenPlaySettings>
         // Fourth through Seventh streets
         var streets = new[]
         {
-            (FollowTheQueenPhase.FourthStreet, "Fourth Street"),
-            (FollowTheQueenPhase.FifthStreet, "Fifth Street"),
-            (FollowTheQueenPhase.SixthStreet, "Sixth Street"),
-            (FollowTheQueenPhase.SeventhStreet, "Seventh Street (River)")
+            (Phases.FourthStreet, "Fourth Street"),
+            (Phases.FifthStreet, "Fifth Street"),
+            (Phases.SixthStreet, "Sixth Street"),
+            (Phases.SeventhStreet, "Seventh Street (River)")
         };
 
         foreach (var (phase, streetName) in streets)
@@ -144,7 +144,7 @@ internal class FollowTheQueenPlayCommand : Command<FollowTheQueenPlaySettings>
 
             Logger.Paragraph(streetName);
             game.DealStreetCard();
-            DisplayAllHands(game, showHoleCards: phase == FollowTheQueenPhase.SeventhStreet);
+            DisplayAllHands(game, showHoleCards: phase == Phases.SeventhStreet);
 
             game.StartBettingRound();
             if (!RunBettingRound(game, $"{streetName} Betting"))
@@ -156,7 +156,7 @@ internal class FollowTheQueenPlayCommand : Command<FollowTheQueenPlaySettings>
         }
 
         // Showdown
-        if (game.CurrentPhase == FollowTheQueenPhase.Showdown)
+        if (game.CurrentPhase == Phases.Showdown)
         {
             var result = game.PerformShowdown();
             DisplayShowdownResult(result, game);

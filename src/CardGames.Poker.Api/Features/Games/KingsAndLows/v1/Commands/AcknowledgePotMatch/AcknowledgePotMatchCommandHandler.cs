@@ -2,6 +2,7 @@ using System.Text.Json;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Services;
+using CardGames.Poker.Betting;
 using CardGames.Poker.Games.KingsAndLows;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -37,12 +38,12 @@ public class AcknowledgePotMatchCommandHandler(CardsDbContext context)
 		}
 
 		// 2. Validate game is in PotMatching phase
-		if (game.CurrentPhase != nameof(KingsAndLowsPhase.PotMatching))
+		if (game.CurrentPhase != nameof(Phases.PotMatching))
 		{
 			return new AcknowledgePotMatchError
 			{
 				Message = $"Cannot process pot matching. Game is in '{game.CurrentPhase}' phase, " +
-						  $"but must be in '{nameof(KingsAndLowsPhase.PotMatching)}' phase.",
+						  $"but must be in '{nameof(Phases.PotMatching)}' phase.",
 				Code = AcknowledgePotMatchErrorCode.InvalidPhase
 			};
 		}
@@ -122,7 +123,7 @@ public class AcknowledgePotMatchCommandHandler(CardsDbContext context)
 		context.Pots.Add(newPot);
 
 		// 6. Mark current hand complete and move to next hand setup
-		game.CurrentPhase = nameof(KingsAndLowsPhase.Complete);
+		game.CurrentPhase = nameof(Phases.Complete);
 		game.HandCompletedAt = now;
 		game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);
 

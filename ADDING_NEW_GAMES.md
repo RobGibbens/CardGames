@@ -54,7 +54,7 @@ public class KingsAndLowsGame : IPokerGame
 Create an enum for your game's phases:
 
 ```csharp
-// KingsAndLowsPhase.cs
+// Phases.cs
 public enum KingsAndLowsPhase
 {
     WaitingToStart,
