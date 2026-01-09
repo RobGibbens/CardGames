@@ -98,8 +98,8 @@ namespace CardGames.Poker.Api.Clients
         [Post("/api/v1/games")]
         Task<IApiResponse<System.Guid>> CreateGameAsync([Body] CreateGameCommand body, CancellationToken cancellationToken = default);
 
-        /// <summary>GetGame</summary>
-        /// <remarks>Retrieve a specific game by its identifier. Works for any game type.</remarks>
+        /// <summary>GetGames</summary>
+        /// <remarks>Retrieve a list of games.</remarks>
         /// <returns>
         /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
         /// <list type="table">
@@ -115,15 +115,11 @@ namespace CardGames.Poker.Api.Clients
         /// <term>400</term>
         /// <description>Bad Request</description>
         /// </item>
-        /// <item>
-        /// <term>404</term>
-        /// <description>Not Found</description>
-        /// </item>
         /// </list>
         /// </returns>
         [Headers("Accept: application/json, application/problem+json")]
-        [Get("/api/v1/games/{gameId}")]
-        Task<IApiResponse<GetGameResponse>> GetGameAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+        [Get("/api/v1/games")]
+        Task<IApiResponse<ICollection<GetGamesResponse>>> GetGamesAsync(CancellationToken cancellationToken = default);
 
         /// <summary>Delete Game</summary>
         /// <remarks>
@@ -163,8 +159,8 @@ namespace CardGames.Poker.Api.Clients
         [Delete("/api/v1/games/{gameId}")]
         Task<IApiResponse> DeleteGameAsync(System.Guid gameId, CancellationToken cancellationToken = default);
 
-        /// <summary>GetGameRules</summary>
-        /// <remarks>Retrieve game rules metadata for a specific game type by its code.</remarks>
+        /// <summary>GetGame</summary>
+        /// <remarks>Retrieve a specific game by its identifier. Works for any game type.</remarks>
         /// <returns>
         /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
         /// <list type="table">
@@ -187,8 +183,8 @@ namespace CardGames.Poker.Api.Clients
         /// </list>
         /// </returns>
         [Headers("Accept: application/json, application/problem+json")]
-        [Get("/api/v1/games/rules/{gameTypeCode}")]
-        Task<IApiResponse<GetGameRulesResponse>> GetGameRulesAsync(string gameTypeCode, CancellationToken cancellationToken = default);
+        [Get("/api/v1/games/{gameId}")]
+        Task<IApiResponse<GetGameResponse>> GetGameAsync(System.Guid gameId, CancellationToken cancellationToken = default);
 
         /// <summary>Update Table Settings</summary>
         /// <remarks>
@@ -258,6 +254,133 @@ namespace CardGames.Poker.Api.Clients
         [Headers("Accept: application/json, application/problem+json")]
         [Get("/api/v1/games/{gameId}/settings")]
         Task<IApiResponse<GetTableSettingsResponse>> GetTableSettingsAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
+        /// <summary>GetCurrentBettingRound</summary>
+        /// <remarks>Retrieve the current betting round for a specific game.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Get("/api/v1/games/{gameId}/betting-round")]
+        Task<IApiResponse<GetCurrentBettingRoundResponse>> GetCurrentBettingRoundAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
+        /// <summary>GetCurrentDrawPlayer</summary>
+        /// <remarks>Retrieve the current player who must act during the draw phase. Returns 404 if not in draw phase or no eligible players remain.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Get("/api/v1/games/{gameId}/draw-player")]
+        Task<IApiResponse<GetCurrentDrawPlayerResponse>> GetCurrentDrawPlayerAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
+        /// <summary>GetGamePlayers</summary>
+        /// <remarks>Retrieve all players in a specific game.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Get("/api/v1/games/{gameId}/players")]
+        Task<IApiResponse<ICollection<GetGamePlayersResponse>>> GetGamePlayersAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
+        /// <summary>GetGameRules</summary>
+        /// <remarks>Retrieve game rules metadata for a specific game type by its code.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Get("/api/v1/games/rules/{gameTypeCode}")]
+        Task<IApiResponse<GetGameRulesResponse>> GetGameRulesAsync(string gameTypeCode, CancellationToken cancellationToken = default);
+
+        /// <summary>Get hand history for a game</summary>
+        /// <remarks>Retrieves the hand history for a specific game, ordered newest-first. Optionally provide a playerId to get per-player result context.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Get("/api/v1/games/{gameId}/history")]
+        Task<IApiResponse<HandHistoryListDto>> GetHandHistoryAsync(System.Guid gameId, [Query] int? take, [Query] int? skip, [Query] System.Guid? playerId, CancellationToken cancellationToken = default);
     }
 
     /// <summary>Join Game</summary>
@@ -305,29 +428,6 @@ namespace CardGames.Poker.Api.Clients
         [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
         [Post("/api/v1/games/five-card-draw/{gameId}/players")]
         Task<IApiResponse<JoinGameSuccessful>> FiveCardDrawJoinGameAsync(System.Guid gameId, [Body] JoinGameRequest body, CancellationToken cancellationToken = default);
-
-        /// <summary>GetGamePlayers</summary>
-        /// <remarks>Retrieve all players in a specific game.</remarks>
-        /// <returns>
-        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
-        /// <list type="table">
-        /// <listheader>
-        /// <term>Status</term>
-        /// <description>Description</description>
-        /// </listheader>
-        /// <item>
-        /// <term>200</term>
-        /// <description>OK</description>
-        /// </item>
-        /// <item>
-        /// <term>400</term>
-        /// <description>Bad Request</description>
-        /// </item>
-        /// </list>
-        /// </returns>
-        [Headers("Accept: application/json, application/problem+json")]
-        [Get("/api/v1/games/five-card-draw/{gameId}/players")]
-        Task<IApiResponse<ICollection<GetGamePlayersResponse>>> FiveCardDrawGetGamePlayersAsync(System.Guid gameId, CancellationToken cancellationToken = default);
 
         /// <summary>Start Hand</summary>
         /// <remarks>Starts a new hand by shuffling the deck, creating a fresh pot, and resetting all player states. This endpoint must be called before each hand to prepare the game for play. After calling this endpoint, the game transitions to the CollectingAntes phase.</remarks>
@@ -547,29 +647,6 @@ namespace CardGames.Poker.Api.Clients
         [Post("/api/v1/games/five-card-draw/{gameId}/showdown")]
         Task<IApiResponse<PerformShowdownSuccessful>> FiveCardDrawPerformShowdownAsync(System.Guid gameId, CancellationToken cancellationToken = default);
 
-        /// <summary>GetGames</summary>
-        /// <remarks>Retrieve a list of games.</remarks>
-        /// <returns>
-        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
-        /// <list type="table">
-        /// <listheader>
-        /// <term>Status</term>
-        /// <description>Description</description>
-        /// </listheader>
-        /// <item>
-        /// <term>200</term>
-        /// <description>OK</description>
-        /// </item>
-        /// <item>
-        /// <term>400</term>
-        /// <description>Bad Request</description>
-        /// </item>
-        /// </list>
-        /// </returns>
-        [Headers("Accept: application/json, application/problem+json")]
-        [Get("/api/v1/games/five-card-draw")]
-        Task<IApiResponse<ICollection<GetGamesResponse>>> FiveCardDrawGetGamesAsync(CancellationToken cancellationToken = default);
-
         /// <summary>GetCurrentPlayerTurn</summary>
         /// <remarks>Retrieve the current player's turn state for a specific game, including available actions.</remarks>
         /// <returns>
@@ -596,83 +673,6 @@ namespace CardGames.Poker.Api.Clients
         [Headers("Accept: application/json, application/problem+json")]
         [Get("/api/v1/games/five-card-draw/{gameId}/current-turn")]
         Task<IApiResponse<GetCurrentPlayerTurnResponse>> FiveCardDrawGetCurrentPlayerTurnAsync(System.Guid gameId, CancellationToken cancellationToken = default);
-
-        /// <summary>GetCurrentDrawPlayer</summary>
-        /// <remarks>Retrieve the current player who must act during the draw phase. Returns 404 if not in draw phase or no eligible players remain.</remarks>
-        /// <returns>
-        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
-        /// <list type="table">
-        /// <listheader>
-        /// <term>Status</term>
-        /// <description>Description</description>
-        /// </listheader>
-        /// <item>
-        /// <term>200</term>
-        /// <description>OK</description>
-        /// </item>
-        /// <item>
-        /// <term>400</term>
-        /// <description>Bad Request</description>
-        /// </item>
-        /// <item>
-        /// <term>404</term>
-        /// <description>Not Found</description>
-        /// </item>
-        /// </list>
-        /// </returns>
-        [Headers("Accept: application/json, application/problem+json")]
-        [Get("/api/v1/games/five-card-draw/{gameId}/draw-player")]
-        Task<IApiResponse<GetCurrentDrawPlayerResponse>> FiveCardDrawGetCurrentDrawPlayerAsync(System.Guid gameId, CancellationToken cancellationToken = default);
-
-        /// <summary>GetCurrentBettingRound</summary>
-        /// <remarks>Retrieve the current betting round for a specific game.</remarks>
-        /// <returns>
-        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
-        /// <list type="table">
-        /// <listheader>
-        /// <term>Status</term>
-        /// <description>Description</description>
-        /// </listheader>
-        /// <item>
-        /// <term>200</term>
-        /// <description>OK</description>
-        /// </item>
-        /// <item>
-        /// <term>400</term>
-        /// <description>Bad Request</description>
-        /// </item>
-        /// <item>
-        /// <term>404</term>
-        /// <description>Not Found</description>
-        /// </item>
-        /// </list>
-        /// </returns>
-        [Headers("Accept: application/json, application/problem+json")]
-        [Get("/api/v1/games/five-card-draw/{gameId}/betting-round")]
-        Task<IApiResponse<GetCurrentBettingRoundResponse>> FiveCardDrawGetCurrentBettingRoundAsync(System.Guid gameId, CancellationToken cancellationToken = default);
-
-        /// <summary>Get hand history for a game</summary>
-        /// <remarks>Retrieves the hand history for a specific game, ordered newest-first. Optionally provide a playerId to get per-player result context.</remarks>
-        /// <returns>
-        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
-        /// <list type="table">
-        /// <listheader>
-        /// <term>Status</term>
-        /// <description>Description</description>
-        /// </listheader>
-        /// <item>
-        /// <term>200</term>
-        /// <description>OK</description>
-        /// </item>
-        /// <item>
-        /// <term>404</term>
-        /// <description>Not Found</description>
-        /// </item>
-        /// </list>
-        /// </returns>
-        [Headers("Accept: application/json, application/problem+json")]
-        [Get("/api/v1/games/five-card-draw/{gameId}/history")]
-        Task<IApiResponse<HandHistoryListDto>> FiveCardDrawGetHandHistoryAsync(System.Guid gameId, [Query] int? take, [Query] int? skip, [Query] System.Guid? playerId, CancellationToken cancellationToken = default);
     }
 
     /// <summary>StartHand</summary>
@@ -905,29 +905,6 @@ namespace CardGames.Poker.Api.Clients
         [Post("/api/v1/games/seven-card-stud/{gameId}/players")]
         Task<IApiResponse<JoinGameSuccessful>> SevenCardStudJoinGameAsync(System.Guid gameId, [Body] JoinGameRequest body, CancellationToken cancellationToken = default);
 
-        /// <summary>GetGamePlayers</summary>
-        /// <remarks>Retrieve all players in a specific game.</remarks>
-        /// <returns>
-        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
-        /// <list type="table">
-        /// <listheader>
-        /// <term>Status</term>
-        /// <description>Description</description>
-        /// </listheader>
-        /// <item>
-        /// <term>200</term>
-        /// <description>OK</description>
-        /// </item>
-        /// <item>
-        /// <term>400</term>
-        /// <description>Bad Request</description>
-        /// </item>
-        /// </list>
-        /// </returns>
-        [Headers("Accept: application/json, application/problem+json")]
-        [Get("/api/v1/games/seven-card-stud/{gameId}/players")]
-        Task<IApiResponse<ICollection<GetGamePlayersResponse>>> SevenCardStudGetGamePlayersAsync(System.Guid gameId, CancellationToken cancellationToken = default);
-
         /// <summary>Start Hand</summary>
         /// <remarks>Starts a new hand by shuffling the deck, creating a fresh pot, and resetting all player states. This endpoint must be called before each hand to prepare the game for play. After calling this endpoint, the game transitions to the CollectingAntes phase.</remarks>
         /// <returns>
@@ -1103,29 +1080,6 @@ namespace CardGames.Poker.Api.Clients
         [Post("/api/v1/games/seven-card-stud/{gameId}/showdown")]
         Task<IApiResponse<PerformShowdownSuccessful>> SevenCardStudPerformShowdownAsync(System.Guid gameId, CancellationToken cancellationToken = default);
 
-        /// <summary>GetGames</summary>
-        /// <remarks>Retrieve a list of games.</remarks>
-        /// <returns>
-        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
-        /// <list type="table">
-        /// <listheader>
-        /// <term>Status</term>
-        /// <description>Description</description>
-        /// </listheader>
-        /// <item>
-        /// <term>200</term>
-        /// <description>OK</description>
-        /// </item>
-        /// <item>
-        /// <term>400</term>
-        /// <description>Bad Request</description>
-        /// </item>
-        /// </list>
-        /// </returns>
-        [Headers("Accept: application/json, application/problem+json")]
-        [Get("/api/v1/games/seven-card-stud")]
-        Task<IApiResponse<ICollection<GetGamesResponse>>> SevenCardStudGetGamesAsync(CancellationToken cancellationToken = default);
-
         /// <summary>GetCurrentPlayerTurn</summary>
         /// <remarks>Retrieve the current player's turn state for a specific game, including available actions.</remarks>
         /// <returns>
@@ -1152,56 +1106,6 @@ namespace CardGames.Poker.Api.Clients
         [Headers("Accept: application/json, application/problem+json")]
         [Get("/api/v1/games/seven-card-stud/{gameId}/current-turn")]
         Task<IApiResponse<GetCurrentPlayerTurnResponse>> SevenCardStudGetCurrentPlayerTurnAsync(System.Guid gameId, CancellationToken cancellationToken = default);
-
-        /// <summary>GetCurrentBettingRound</summary>
-        /// <remarks>Retrieve the current betting round for a specific game.</remarks>
-        /// <returns>
-        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
-        /// <list type="table">
-        /// <listheader>
-        /// <term>Status</term>
-        /// <description>Description</description>
-        /// </listheader>
-        /// <item>
-        /// <term>200</term>
-        /// <description>OK</description>
-        /// </item>
-        /// <item>
-        /// <term>400</term>
-        /// <description>Bad Request</description>
-        /// </item>
-        /// <item>
-        /// <term>404</term>
-        /// <description>Not Found</description>
-        /// </item>
-        /// </list>
-        /// </returns>
-        [Headers("Accept: application/json, application/problem+json")]
-        [Get("/api/v1/games/seven-card-stud/{gameId}/betting-round")]
-        Task<IApiResponse<GetCurrentBettingRoundResponse>> SevenCardStudGetCurrentBettingRoundAsync(System.Guid gameId, CancellationToken cancellationToken = default);
-
-        /// <summary>Get hand history for a game</summary>
-        /// <remarks>Retrieves the hand history for a specific game, ordered newest-first. Optionally provide a playerId to get per-player result context.</remarks>
-        /// <returns>
-        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
-        /// <list type="table">
-        /// <listheader>
-        /// <term>Status</term>
-        /// <description>Description</description>
-        /// </listheader>
-        /// <item>
-        /// <term>200</term>
-        /// <description>OK</description>
-        /// </item>
-        /// <item>
-        /// <term>404</term>
-        /// <description>Not Found</description>
-        /// </item>
-        /// </list>
-        /// </returns>
-        [Headers("Accept: application/json, application/problem+json")]
-        [Get("/api/v1/games/seven-card-stud/{gameId}/history")]
-        Task<IApiResponse<HandHistoryListDto>> SevenCardStudGetHandHistoryAsync(System.Guid gameId, [Query] int? take, [Query] int? skip, [Query] System.Guid? playerId, CancellationToken cancellationToken = default);
     }
 
     /// <summary>Join Game</summary>
@@ -1249,29 +1153,6 @@ namespace CardGames.Poker.Api.Clients
         [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
         [Post("/api/v1/games/twos-jacks-man-with-the-axe/{gameId}/players")]
         Task<IApiResponse<JoinGameSuccessful>> TwosJacksManWithTheAxeJoinGameAsync(System.Guid gameId, [Body] JoinGameRequest body, CancellationToken cancellationToken = default);
-
-        /// <summary>GetGamePlayers</summary>
-        /// <remarks>Retrieve all players in a specific game.</remarks>
-        /// <returns>
-        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
-        /// <list type="table">
-        /// <listheader>
-        /// <term>Status</term>
-        /// <description>Description</description>
-        /// </listheader>
-        /// <item>
-        /// <term>200</term>
-        /// <description>OK</description>
-        /// </item>
-        /// <item>
-        /// <term>400</term>
-        /// <description>Bad Request</description>
-        /// </item>
-        /// </list>
-        /// </returns>
-        [Headers("Accept: application/json, application/problem+json")]
-        [Get("/api/v1/games/twos-jacks-man-with-the-axe/{gameId}/players")]
-        Task<IApiResponse<ICollection<GetGamePlayersResponse>>> TwosJacksManWithTheAxeGetGamePlayersAsync(System.Guid gameId, CancellationToken cancellationToken = default);
 
         /// <summary>Start Hand</summary>
         /// <remarks>Starts a new hand by shuffling the deck, creating a fresh pot, and resetting all player states. This endpoint must be called before each hand to prepare the game for play. After calling this endpoint, the game transitions to the CollectingAntes phase.</remarks>
@@ -1491,29 +1372,6 @@ namespace CardGames.Poker.Api.Clients
         [Post("/api/v1/games/twos-jacks-man-with-the-axe/{gameId}/showdown")]
         Task<IApiResponse<PerformShowdownSuccessful>> TwosJacksManWithTheAxePerformShowdownAsync(System.Guid gameId, CancellationToken cancellationToken = default);
 
-        /// <summary>GetGames</summary>
-        /// <remarks>Retrieve a list of games.</remarks>
-        /// <returns>
-        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
-        /// <list type="table">
-        /// <listheader>
-        /// <term>Status</term>
-        /// <description>Description</description>
-        /// </listheader>
-        /// <item>
-        /// <term>200</term>
-        /// <description>OK</description>
-        /// </item>
-        /// <item>
-        /// <term>400</term>
-        /// <description>Bad Request</description>
-        /// </item>
-        /// </list>
-        /// </returns>
-        [Headers("Accept: application/json, application/problem+json")]
-        [Get("/api/v1/games/twos-jacks-man-with-the-axe")]
-        Task<IApiResponse<ICollection<GetGamesResponse>>> TwosJacksManWithTheAxeGetGamesAsync(CancellationToken cancellationToken = default);
-
         /// <summary>GetCurrentPlayerTurn</summary>
         /// <remarks>Retrieve the current player's turn state for a specific game, including available actions.</remarks>
         /// <returns>
@@ -1541,33 +1399,6 @@ namespace CardGames.Poker.Api.Clients
         [Get("/api/v1/games/twos-jacks-man-with-the-axe/{gameId}/current-turn")]
         Task<IApiResponse<GetCurrentPlayerTurnResponse>> TwosJacksManWithTheAxeGetCurrentPlayerTurnAsync(System.Guid gameId, CancellationToken cancellationToken = default);
 
-        /// <summary>GetCurrentDrawPlayer</summary>
-        /// <remarks>Retrieve the current player who must act during the draw phase. Returns 404 if not in draw phase or no eligible players remain.</remarks>
-        /// <returns>
-        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
-        /// <list type="table">
-        /// <listheader>
-        /// <term>Status</term>
-        /// <description>Description</description>
-        /// </listheader>
-        /// <item>
-        /// <term>200</term>
-        /// <description>OK</description>
-        /// </item>
-        /// <item>
-        /// <term>400</term>
-        /// <description>Bad Request</description>
-        /// </item>
-        /// <item>
-        /// <term>404</term>
-        /// <description>Not Found</description>
-        /// </item>
-        /// </list>
-        /// </returns>
-        [Headers("Accept: application/json, application/problem+json")]
-        [Get("/api/v1/games/twos-jacks-man-with-the-axe/{gameId}/draw-player")]
-        Task<IApiResponse<GetCurrentDrawPlayerResponse>> TwosJacksManWithTheAxeGetCurrentDrawPlayerAsync(System.Guid gameId, CancellationToken cancellationToken = default);
-
         /// <summary>GetCurrentBettingRound</summary>
         /// <remarks>Retrieve the current betting round for a specific game.</remarks>
         /// <returns>
@@ -1594,98 +1425,6 @@ namespace CardGames.Poker.Api.Clients
         [Headers("Accept: application/json, application/problem+json")]
         [Get("/api/v1/games/twos-jacks-man-with-the-axe/{gameId}/betting-round")]
         Task<IApiResponse<GetCurrentBettingRoundResponse>> TwosJacksManWithTheAxeGetCurrentBettingRoundAsync(System.Guid gameId, CancellationToken cancellationToken = default);
-
-        /// <summary>Get hand history for a game</summary>
-        /// <remarks>Retrieves the hand history for a specific game, ordered newest-first. Optionally provide a playerId to get per-player result context.</remarks>
-        /// <returns>
-        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
-        /// <list type="table">
-        /// <listheader>
-        /// <term>Status</term>
-        /// <description>Description</description>
-        /// </listheader>
-        /// <item>
-        /// <term>200</term>
-        /// <description>OK</description>
-        /// </item>
-        /// <item>
-        /// <term>404</term>
-        /// <description>Not Found</description>
-        /// </item>
-        /// </list>
-        /// </returns>
-        [Headers("Accept: application/json, application/problem+json")]
-        [Get("/api/v1/games/twos-jacks-man-with-the-axe/{gameId}/history")]
-        Task<IApiResponse<HandHistoryListDto>> TwosJacksManWithTheAxeGetHandHistoryAsync(System.Guid gameId, [Query] int? take, [Query] int? skip, [Query] System.Guid? playerId, CancellationToken cancellationToken = default);
-
-        /// <summary>Get Table Settings</summary>
-        /// <remarks>Retrieves the current table settings for a game. Returns configuration details including ante, blinds, and current phase. The `IsEditable` property indicates whether settings can currently be modified.</remarks>
-        /// <returns>
-        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
-        /// <list type="table">
-        /// <listheader>
-        /// <term>Status</term>
-        /// <description>Description</description>
-        /// </listheader>
-        /// <item>
-        /// <term>200</term>
-        /// <description>OK</description>
-        /// </item>
-        /// <item>
-        /// <term>404</term>
-        /// <description>Not Found</description>
-        /// </item>
-        /// </list>
-        /// </returns>
-        [Headers("Accept: application/json, application/problem+json")]
-        [Get("/api/v1/games/twos-jacks-man-with-the-axe/{gameId}/settings")]
-        Task<IApiResponse<GetTableSettingsResponse>> TwosJacksManWithTheAxeGetTableSettingsAsync(System.Guid gameId, CancellationToken cancellationToken = default);
-
-        /// <summary>Update Table Settings</summary>
-        /// <remarks>
-        /// Updates the table settings for a game. Can only be called when the game is in WaitingToStart or WaitingForPlayers phase. Requires the caller to be the table creator.
-        /// 
-        /// **Validations:**
-        /// - Game must exist
-        /// - Caller must be the table creator
-        /// - Game must be in an editable phase
-        /// - RowVersion must match current value (optimistic concurrency)
-        /// - BigBlind &gt;= SmallBlind if both provided
-        /// - Ante &gt;= 0
-        /// - MinBet &gt; 0
-        /// </remarks>
-        /// <returns>
-        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
-        /// <list type="table">
-        /// <listheader>
-        /// <term>Status</term>
-        /// <description>Description</description>
-        /// </listheader>
-        /// <item>
-        /// <term>200</term>
-        /// <description>OK</description>
-        /// </item>
-        /// <item>
-        /// <term>400</term>
-        /// <description>Bad Request</description>
-        /// </item>
-        /// <item>
-        /// <term>403</term>
-        /// <description>Forbidden</description>
-        /// </item>
-        /// <item>
-        /// <term>404</term>
-        /// <description>Not Found</description>
-        /// </item>
-        /// <item>
-        /// <term>409</term>
-        /// <description>Conflict</description>
-        /// </item>
-        /// </list>
-        /// </returns>
-        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
-        [Put("/api/v1/games/twos-jacks-man-with-the-axe/{gameId}/settings")]
-        Task<IApiResponse<UpdateTableSettingsResponse>> TwosJacksManWithTheAxeUpdateTableSettingsAsync(System.Guid gameId, [Body] UpdateTableSettingsRequest body, CancellationToken cancellationToken = default);
     }
 
     /// <summary>No summary available</summary>

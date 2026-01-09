@@ -5,6 +5,7 @@ using CardGames.Poker.Evaluation;
 using CardGames.Poker.Hands.HandTypes;
 using CoreSuit = CardGames.Core.French.Cards.Suit;
 using CoreSymbol = CardGames.Core.French.Cards.Symbol;
+using CardGames.Poker.Api.Models;
 
 namespace CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Queries.GetCurrentPlayerTurn;
 

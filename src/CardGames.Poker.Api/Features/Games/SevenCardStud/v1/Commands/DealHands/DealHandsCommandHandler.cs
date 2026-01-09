@@ -27,9 +27,9 @@ public class DealHandsCommandHandler(CardsDbContext context)
 
 		// 1. Load the game with its players
 		var game = await context.Games
-		.Include(g => g.GamePlayers)
-		.ThenInclude(gp => gp.Player)
-		.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
+			.Include(g => g.GamePlayers)
+			.ThenInclude(gp => gp.Player)
+			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
 		{
@@ -48,7 +48,7 @@ public class DealHandsCommandHandler(CardsDbContext context)
 			nameof(Phases.FifthStreet),
 			nameof(Phases.SixthStreet),
 			nameof(Phases.SeventhStreet)
-			};
+		};
 
 		if (!validPhases.Contains(game.CurrentPhase))
 		{

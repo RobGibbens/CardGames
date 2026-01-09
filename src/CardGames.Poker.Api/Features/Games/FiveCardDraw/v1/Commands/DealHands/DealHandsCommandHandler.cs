@@ -10,6 +10,7 @@ using OneOf;
 using BettingRound = CardGames.Poker.Api.Data.Entities.BettingRound;
 using CardSuit = CardGames.Poker.Api.Data.Entities.CardSuit;
 using CardSymbol = CardGames.Poker.Api.Data.Entities.CardSymbol;
+using CardGames.Poker.Api.Models;
 
 namespace CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.DealHands;
 

@@ -5,11 +5,7 @@ using CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.JoinGame;
 using CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.PerformShowdown;
 using CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.ProcessBettingAction;
 using CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.StartHand;
-using CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Queries.GetCurrentBettingRound;
 using CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Queries.GetCurrentPlayerTurn;
-using CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Queries.GetGamePlayers;
-using CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Queries.GetGames;
-using CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Queries.GetHandHistory;
 using SharpGrip.FluentValidation.AutoValidation.Endpoints.Extensions;
 
 namespace CardGames.Poker.Api.Features.Games.SevenCardStud.v1;
@@ -30,10 +26,6 @@ public static class V1
 			.MapDealHands()
 			.MapProcessBettingAction()
 			.MapPerformShowdown()
-			.MapGetGames()
-			.MapGetGamePlayers()
-			.MapGetCurrentPlayerTurn()
-			.MapGetCurrentBettingRound()
-			.MapGetHandHistory();
+			.MapGetCurrentPlayerTurn();
 	}
 }

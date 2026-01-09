@@ -1313,16 +1313,7 @@
 
     private async Task GetPlayersAndUpdateSeatsAsync()
     {
-        Refit.IApiResponse<ICollection<GetGamePlayersResponse>>? playersResponse;
-        if (IsTwosJacksManWithTheAxe)
-        {
-            playersResponse = await TwosJacksManWithTheAxeApi.TwosJacksManWithTheAxeGetGamePlayersAsync(GameId);
-        }
-        else
-        {
-            // Kings and Lows and other games use FiveCardDraw API for GetGamePlayers
-            playersResponse = await FiveCardDrawApiClient.FiveCardDrawGetGamePlayersAsync(GameId);
-        }
+        var playersResponse = await GamesApiClient.GetGamePlayersAsync(GameId);
 
         if (playersResponse is { IsSuccessStatusCode: true, Content: not null })
         {
@@ -1375,24 +1366,11 @@
     {
         try
         {
-            Refit.IApiResponse<HandHistoryListDto>? response;
-            if (IsTwosJacksManWithTheAxe)
-            {
-                response = await TwosJacksManWithTheAxeApi.TwosJacksManWithTheAxeGetHandHistoryAsync(
-                    GameId,
-                    take: 25,
-                    skip: 0,
-                    playerId: _currentPlayerId);
-            }
-            else
-            {
-                // Kings and Lows and other games use FiveCardDraw API for GetHandHistory
-                response = await FiveCardDrawApiClient.FiveCardDrawGetHandHistoryAsync(
-                    GameId,
-                    take: 25,
-                    skip: 0,
-                    playerId: _currentPlayerId);
-            }
+            var response = await GamesApiClient.GetHandHistoryAsync(
+                GameId,
+                take: 25,
+                skip: 0,
+                playerId: _currentPlayerId);
 
             if (response is { IsSuccessStatusCode: true, Content.Entries: not null })
             {
