@@ -1,7 +1,7 @@
 using CardGames.Poker.Api.Extensions;
 using MediatR;
 
-namespace CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.JoinGame;
+namespace CardGames.Poker.Api.Features.Games.Common.v1.Commands.JoinGame;
 
 /// <summary>
 /// Endpoint for joining a game at a specific seat.
@@ -33,7 +33,7 @@ public static class JoinGameEndpoint
                         }
                     );
                 })
-            .WithName($"SevenCardStud{nameof(MapJoinGame).TrimPrefix("Map")}")
+            .WithName($"{nameof(MapJoinGame).TrimPrefix("Map")}")
             .WithSummary("Join Game")
             .WithDescription(
                 "Adds the currently authenticated player to a game at the specified seat. " +

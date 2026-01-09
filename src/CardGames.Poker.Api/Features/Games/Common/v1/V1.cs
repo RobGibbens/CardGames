@@ -1,6 +1,7 @@
 using Asp.Versioning.Builder;
 using CardGames.Poker.Api.Features.Games.Common.v1.Commands.CreateGame;
 using CardGames.Poker.Api.Features.Games.Common.v1.Commands.DeleteGame;
+using CardGames.Poker.Api.Features.Games.Common.v1.Commands.JoinGame;
 using CardGames.Poker.Api.Features.Games.Common.v1.Commands.UpdateTableSettings;
 using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetGame;
 using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetCurrentDrawPlayer;
@@ -26,6 +27,7 @@ public static class V1
 		//Commands
 		mapGroup.MapCreateGame();
 		mapGroup.MapDeleteGame();
+		mapGroup.MapJoinGame();
 		mapGroup.MapUpdateTableSettings();
 		
 		//Queries

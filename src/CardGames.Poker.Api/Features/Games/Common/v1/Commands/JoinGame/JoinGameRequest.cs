@@ -1,4 +1,4 @@
-namespace CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.JoinGame;
+namespace CardGames.Poker.Api.Features.Games.Common.v1.Commands.JoinGame;
 
 /// <summary>
 /// Request model for joining a game.

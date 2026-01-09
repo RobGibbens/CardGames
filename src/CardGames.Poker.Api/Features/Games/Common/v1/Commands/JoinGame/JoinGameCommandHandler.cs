@@ -8,7 +8,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
 
-namespace CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.JoinGame;
+namespace CardGames.Poker.Api.Features.Games.Common.v1.Commands.JoinGame;
 
 /// <summary>
 /// Handles the JoinGame command to add a player to a specific seat in a game.

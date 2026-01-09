@@ -1411,22 +1411,12 @@
         try
         {
             // Call the API to join the game at this seat
-            var request = new CardGames.Poker.Api.Clients.JoinGameRequest(seatIndex, 1000);
-            Refit.IApiResponse<CardGames.Poker.Api.Clients.JoinGameSuccessful>? response;
-            if (IsTwosJacksManWithTheAxe)
-            {
-                response = await TwosJacksManWithTheAxeApi.TwosJacksManWithTheAxeJoinGameAsync(GameId, request);
-            }
-            else
-            {
-                // Kings and Lows and other games use FiveCardDraw API for JoinGame
-                response = await FiveCardDrawApiClient.FiveCardDrawJoinGameAsync(GameId, request);
-            }
-
+            var request = new Api.Clients.JoinGameRequest(seatIndex, 1000);
+            var response = await GamesApiClient.JoinGameAsync(GameId, request);
+            
             if (!response.IsSuccessStatusCode)
             {
-                Logger.LogWarning(
-                                                    "Failed to join game at seat {SeatIndex}: {StatusCode} - {Error}",
+                Logger.LogWarning("Failed to join game at seat {SeatIndex}: {StatusCode} - {Error}",
                 seatIndex, response.StatusCode, response.Error?.Content);
                 return;
             }

@@ -186,6 +186,71 @@ namespace CardGames.Poker.Api.Clients
         [Get("/api/v1/games/{gameId}")]
         Task<IApiResponse<GetGameResponse>> GetGameAsync(System.Guid gameId, CancellationToken cancellationToken = default);
 
+        /// <summary>Join Game</summary>
+        /// <remarks>
+        /// Adds the currently authenticated player to a game at the specified seat. Players can join a game at any time as long as the game hasn't ended and there are seats available. If joining mid-hand, the player will sit out the current hand and join play on the next hand.
+        /// 
+        /// **Validations:**
+        /// - Game must exist and not be ended
+        /// - Seat must be available (not already occupied)
+        /// - Player must not already be seated elsewhere in the game
+        /// - Game must not have reached maximum player count
+        /// 
+        /// **Response:**
+        /// - `CanPlayCurrentHand`: true if joining during WaitingToStart/WaitingForPlayers phase
+        /// </remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/games/{gameId}/players")]
+        Task<IApiResponse<JoinGameSuccessful>> JoinGameAsync(System.Guid gameId, [Body] JoinGameRequest body, CancellationToken cancellationToken = default);
+
+        /// <summary>GetGamePlayers</summary>
+        /// <remarks>Retrieve all players in a specific game.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Get("/api/v1/games/{gameId}/players")]
+        Task<IApiResponse<ICollection<GetGamePlayersResponse>>> GetGamePlayersAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
         /// <summary>Update Table Settings</summary>
         /// <remarks>
         /// Updates the table settings for a game. Can only be called when the game is in WaitingToStart or WaitingForPlayers phase. Requires the caller to be the table creator.
@@ -309,29 +374,6 @@ namespace CardGames.Poker.Api.Clients
         [Get("/api/v1/games/{gameId}/draw-player")]
         Task<IApiResponse<GetCurrentDrawPlayerResponse>> GetCurrentDrawPlayerAsync(System.Guid gameId, CancellationToken cancellationToken = default);
 
-        /// <summary>GetGamePlayers</summary>
-        /// <remarks>Retrieve all players in a specific game.</remarks>
-        /// <returns>
-        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
-        /// <list type="table">
-        /// <listheader>
-        /// <term>Status</term>
-        /// <description>Description</description>
-        /// </listheader>
-        /// <item>
-        /// <term>200</term>
-        /// <description>OK</description>
-        /// </item>
-        /// <item>
-        /// <term>400</term>
-        /// <description>Bad Request</description>
-        /// </item>
-        /// </list>
-        /// </returns>
-        [Headers("Accept: application/json, application/problem+json")]
-        [Get("/api/v1/games/{gameId}/players")]
-        Task<IApiResponse<ICollection<GetGamePlayersResponse>>> GetGamePlayersAsync(System.Guid gameId, CancellationToken cancellationToken = default);
-
         /// <summary>GetGameRules</summary>
         /// <remarks>Retrieve game rules metadata for a specific game type by its code.</remarks>
         /// <returns>
@@ -383,52 +425,10 @@ namespace CardGames.Poker.Api.Clients
         Task<IApiResponse<HandHistoryListDto>> GetHandHistoryAsync(System.Guid gameId, [Query] int? take, [Query] int? skip, [Query] System.Guid? playerId, CancellationToken cancellationToken = default);
     }
 
-    /// <summary>Join Game</summary>
+    /// <summary>Start Hand</summary>
     [System.CodeDom.Compiler.GeneratedCode("Refitter", "1.7.0.0")]
     public partial interface IFiveCardDrawApi
     {
-        /// <summary>Join Game</summary>
-        /// <remarks>
-        /// Adds the currently authenticated player to a game at the specified seat. Players can join a game at any time as long as the game hasn't ended and there are seats available. If joining mid-hand, the player will sit out the current hand and join play on the next hand.
-        /// 
-        /// **Validations:**
-        /// - Game must exist and not be ended
-        /// - Seat must be available (not already occupied)
-        /// - Player must not already be seated elsewhere in the game
-        /// - Game must not have reached maximum player count
-        /// 
-        /// **Response:**
-        /// - `CanPlayCurrentHand`: true if joining during WaitingToStart/WaitingForPlayers phase
-        /// </remarks>
-        /// <returns>
-        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
-        /// <list type="table">
-        /// <listheader>
-        /// <term>Status</term>
-        /// <description>Description</description>
-        /// </listheader>
-        /// <item>
-        /// <term>200</term>
-        /// <description>OK</description>
-        /// </item>
-        /// <item>
-        /// <term>400</term>
-        /// <description>Bad Request</description>
-        /// </item>
-        /// <item>
-        /// <term>404</term>
-        /// <description>Not Found</description>
-        /// </item>
-        /// <item>
-        /// <term>409</term>
-        /// <description>Conflict</description>
-        /// </item>
-        /// </list>
-        /// </returns>
-        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
-        [Post("/api/v1/games/five-card-draw/{gameId}/players")]
-        Task<IApiResponse<JoinGameSuccessful>> FiveCardDrawJoinGameAsync(System.Guid gameId, [Body] JoinGameRequest body, CancellationToken cancellationToken = default);
-
         /// <summary>Start Hand</summary>
         /// <remarks>Starts a new hand by shuffling the deck, creating a fresh pot, and resetting all player states. This endpoint must be called before each hand to prepare the game for play. After calling this endpoint, the game transitions to the CollectingAntes phase.</remarks>
         /// <returns>
@@ -859,52 +859,10 @@ namespace CardGames.Poker.Api.Clients
         Task<IApiResponse<AcknowledgePotMatchSuccessful>> KingsAndLowsAcknowledgePotMatchAsync(System.Guid gameId, CancellationToken cancellationToken = default);
     }
 
-    /// <summary>Join Game</summary>
+    /// <summary>Start Hand</summary>
     [System.CodeDom.Compiler.GeneratedCode("Refitter", "1.7.0.0")]
     public partial interface ISevenCardStudApi
     {
-        /// <summary>Join Game</summary>
-        /// <remarks>
-        /// Adds the currently authenticated player to a game at the specified seat. Players can join a game at any time as long as the game hasn't ended and there are seats available. If joining mid-hand, the player will sit out the current hand and join play on the next hand.
-        /// 
-        /// **Validations:**
-        /// - Game must exist and not be ended
-        /// - Seat must be available (not already occupied)
-        /// - Player must not already be seated elsewhere in the game
-        /// - Game must not have reached maximum player count
-        /// 
-        /// **Response:**
-        /// - `CanPlayCurrentHand`: true if joining during WaitingToStart/WaitingForPlayers phase
-        /// </remarks>
-        /// <returns>
-        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
-        /// <list type="table">
-        /// <listheader>
-        /// <term>Status</term>
-        /// <description>Description</description>
-        /// </listheader>
-        /// <item>
-        /// <term>200</term>
-        /// <description>OK</description>
-        /// </item>
-        /// <item>
-        /// <term>400</term>
-        /// <description>Bad Request</description>
-        /// </item>
-        /// <item>
-        /// <term>404</term>
-        /// <description>Not Found</description>
-        /// </item>
-        /// <item>
-        /// <term>409</term>
-        /// <description>Conflict</description>
-        /// </item>
-        /// </list>
-        /// </returns>
-        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
-        [Post("/api/v1/games/seven-card-stud/{gameId}/players")]
-        Task<IApiResponse<JoinGameSuccessful>> SevenCardStudJoinGameAsync(System.Guid gameId, [Body] JoinGameRequest body, CancellationToken cancellationToken = default);
-
         /// <summary>Start Hand</summary>
         /// <remarks>Starts a new hand by shuffling the deck, creating a fresh pot, and resetting all player states. This endpoint must be called before each hand to prepare the game for play. After calling this endpoint, the game transitions to the CollectingAntes phase.</remarks>
         /// <returns>
@@ -1108,52 +1066,10 @@ namespace CardGames.Poker.Api.Clients
         Task<IApiResponse<GetCurrentPlayerTurnResponse>> SevenCardStudGetCurrentPlayerTurnAsync(System.Guid gameId, CancellationToken cancellationToken = default);
     }
 
-    /// <summary>Join Game</summary>
+    /// <summary>Start Hand</summary>
     [System.CodeDom.Compiler.GeneratedCode("Refitter", "1.7.0.0")]
     public partial interface ITwosJacksManWithTheAxeApi
     {
-        /// <summary>Join Game</summary>
-        /// <remarks>
-        /// Adds the currently authenticated player to a game at the specified seat. Players can join a game at any time as long as the game hasn't ended and there are seats available. If joining mid-hand, the player will sit out the current hand and join play on the next hand.
-        /// 
-        /// **Validations:**
-        /// - Game must exist and not be ended
-        /// - Seat must be available (not already occupied)
-        /// - Player must not already be seated elsewhere in the game
-        /// - Game must not have reached maximum player count
-        /// 
-        /// **Response:**
-        /// - `CanPlayCurrentHand`: true if joining during WaitingToStart/WaitingForPlayers phase
-        /// </remarks>
-        /// <returns>
-        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
-        /// <list type="table">
-        /// <listheader>
-        /// <term>Status</term>
-        /// <description>Description</description>
-        /// </listheader>
-        /// <item>
-        /// <term>200</term>
-        /// <description>OK</description>
-        /// </item>
-        /// <item>
-        /// <term>400</term>
-        /// <description>Bad Request</description>
-        /// </item>
-        /// <item>
-        /// <term>404</term>
-        /// <description>Not Found</description>
-        /// </item>
-        /// <item>
-        /// <term>409</term>
-        /// <description>Conflict</description>
-        /// </item>
-        /// </list>
-        /// </returns>
-        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
-        [Post("/api/v1/games/twos-jacks-man-with-the-axe/{gameId}/players")]
-        Task<IApiResponse<JoinGameSuccessful>> TwosJacksManWithTheAxeJoinGameAsync(System.Guid gameId, [Body] JoinGameRequest body, CancellationToken cancellationToken = default);
-
         /// <summary>Start Hand</summary>
         /// <remarks>Starts a new hand by shuffling the deck, creating a fresh pot, and resetting all player states. This endpoint must be called before each hand to prepare the game for play. After calling this endpoint, the game transitions to the CollectingAntes phase.</remarks>
         /// <returns>

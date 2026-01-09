@@ -1,4 +1,4 @@
-namespace CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe.v1.Commands.JoinGame;
+namespace CardGames.Poker.Api.Features.Games.Common.v1.Commands.JoinGame;
 
 /// <summary>
 /// Response for a successful join game operation.
