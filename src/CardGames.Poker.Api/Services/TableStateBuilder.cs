@@ -462,7 +462,17 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		CancellationToken cancellationToken)
 	{
 		// Only provide actions during betting phases
-		var bettingPhases = new[] { "FirstBettingRound", "SecondBettingRound" };
+		// Includes Five Card Draw phases and Seven Card Stud street phases
+		var bettingPhases = new[]
+		{
+			"FirstBettingRound",
+			"SecondBettingRound",
+			"ThirdStreet",
+			"FourthStreet",
+			"FifthStreet",
+			"SixthStreet",
+			"SeventhStreet"
+		};
 		if (!bettingPhases.Contains(game.CurrentPhase))
 		{
 			return null;
