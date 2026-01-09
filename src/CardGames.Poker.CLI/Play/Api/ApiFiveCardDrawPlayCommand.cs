@@ -66,8 +66,8 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 			.ToList();
 
 		var gameId = Guid.CreateVersion7();
-		var command = new CreateGameCommand(ante, gameId, "Five Card Draw", minBet, playerInfos);
-		var response = await _fiveCardDrawApi.FiveCardDrawCreateGameAsync(command, cancellationToken);
+		var command = new CreateGameCommand(ante, "FIVECARDDRAW", gameId, "Five Card Draw", minBet, playerInfos);
+		var response = await _gamesApi.CreateGameAsync(command, cancellationToken);
 		
 		if (!response.IsSuccessStatusCode)
 		{
@@ -139,7 +139,7 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 			return;
 		}
 
-		var currentGameResponse = await _gamesApi.GamesGetGameAsync(gameId);
+		var currentGameResponse = await _gamesApi.GetGameAsync(gameId);
 		var currentGame = currentGameResponse.Content;
 		//Draw phase
 		if (currentGame.CurrentPhase == Phases.DrawPhase.ToString()) //TODO:ROB - is this evaluating correctly?
@@ -148,7 +148,7 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 		}
 
 		////Second betting round
-		currentGameResponse = await _gamesApi.GamesGetGameAsync(gameId);
+		currentGameResponse = await _gamesApi.GetGameAsync(gameId);
 		currentGame = currentGameResponse.Content;
 		if (currentGame.CurrentPhase == Phases.SecondBettingRound.ToString())
 		{
@@ -163,7 +163,7 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 		}
 
 		//Showdown
-		currentGameResponse = await _gamesApi.GamesGetGameAsync(gameId);
+		currentGameResponse = await _gamesApi.GetGameAsync(gameId);
 		currentGame = currentGameResponse.Content;
 		if (currentGame.CurrentPhase == Phases.Showdown.ToString())
 		{
@@ -172,7 +172,7 @@ internal class ApiFiveCardDrawPlayCommand : AsyncCommand<ApiSettings>
 			DisplayShowdownResult(result);
 		}
 
-		currentGameResponse = await _gamesApi.GamesGetGameAsync(gameId);
+		currentGameResponse = await _gamesApi.GetGameAsync(gameId);
 		currentGame = currentGameResponse.Content;
 		_canContinue = currentGame.CanContinue;
 	}

@@ -1222,7 +1222,7 @@
             _loggedInUserEmail ??= await GetLoggedInUserEmailAsync();
 
             // Use the generic Games API to load game data - it returns the game type code
-            var gameResponse = await GamesApiClient.GamesGetGameAsync(GameId);
+            var gameResponse = await GamesApiClient.GetGameAsync(GameId);
             if (gameResponse is { IsSuccessStatusCode: true, Content: not null })
             {
                 var gamesResponse = gameResponse.Content;

@@ -49,7 +49,7 @@ public sealed class GameRulesService
 
         try
         {
-            var response = await _gamesApi.GamesGetGameRulesAsync(gameTypeCode);
+            var response = await _gamesApi.GetGameRulesAsync(gameTypeCode);
 
             if (response.IsSuccessStatusCode && response.Content is not null)
             {

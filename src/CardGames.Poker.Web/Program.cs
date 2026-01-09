@@ -69,6 +69,17 @@ builder.Services
 	.AddHttpMessageHandler<AuthenticationStateHandler>();
 
 builder.Services
+	.AddRefitClient<ISevenCardStudApi>(
+		settingsAction: _ => new RefitSettings(),
+		httpClientName: "sevenCardStudApi")
+	.ConfigureHttpClient(c =>
+	{
+		c.BaseAddress = new Uri("https+http://api");
+		c.Timeout = TimeSpan.FromSeconds(600); //TODO: Make configurable
+	})
+	.AddHttpMessageHandler<AuthenticationStateHandler>();
+
+builder.Services
 	.AddRefitClient<ITwosJacksManWithTheAxeApi>(
 		settingsAction: _ => new RefitSettings(),
 		httpClientName: "twosJacksManWithTheAxeApi")
