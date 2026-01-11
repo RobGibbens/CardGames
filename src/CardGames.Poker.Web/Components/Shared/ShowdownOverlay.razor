@@ -352,7 +352,7 @@
         }
 
         var coreCards = hand.Cards
-            .Where(c => c is not null && c.Suit is not null && c.Symbol is not null)
+            .Where(c => c is { Suit: not null, Symbol: not null })
             .Select(c => new Card(MapSuit(c.Suit!.Value), MapSymbol(c.Symbol!.Value)))
             .ToList();
 

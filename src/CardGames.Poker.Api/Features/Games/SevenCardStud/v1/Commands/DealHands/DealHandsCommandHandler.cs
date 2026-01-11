@@ -220,10 +220,10 @@ public class DealHandsCommandHandler(
 		else
 		{
 			// Other streets: player with the best visible hand acts first
-				firstActorSeatPosition = FindBestVisibleHandPlayer(activePlayers, game.Id, game.CurrentHandNumber, context);
-			}
+			firstActorSeatPosition = FindBestVisibleHandPlayer(activePlayers, game.Id, game.CurrentHandNumber, context);
+		}
 
-			// 8. Determine min bet based on street (small bet for 3rd/4th, big bet for 5th/6th/7th)
+		// 8. Determine min bet based on street (small bet for 3rd/4th, big bet for 5th/6th/7th)
 		var isSmallBetStreet = game.CurrentPhase == nameof(Phases.ThirdStreet) ||
 							   game.CurrentPhase == nameof(Phases.FourthStreet);
 		var minBet = isSmallBetStreet ? (game.SmallBet ?? game.MinBet ?? 0) : (game.BigBet ?? game.MinBet ?? 0);
@@ -460,26 +460,26 @@ public class DealHandsCommandHandler(
 			strength = strength * 4 + GetSuitRank(cards[0].Suit);
 		}
 
-				return strength;
-			}
+		return strength;
+	}
 
-			/// <summary>
-			/// Assigns a deck card to a player by updating its properties.
-			/// </summary>
-			private static void AssignCardToPlayer(
-				GameCard gameCard,
-				GamePlayer gamePlayer,
-				CardLocation location,
-				int playerDealOrder,
-				bool isVisible,
-				string phase,
-				DateTimeOffset now)
-			{
-				gameCard.GamePlayerId = gamePlayer.Id;
-				gameCard.Location = location;
-				gameCard.DealOrder = playerDealOrder;
-				gameCard.DealtAtPhase = phase;
-				gameCard.IsVisible = isVisible;
-				gameCard.DealtAt = now;
-			}
-		}
+	/// <summary>
+	/// Assigns a deck card to a player by updating its properties.
+	/// </summary>
+	private static void AssignCardToPlayer(
+		GameCard gameCard,
+		GamePlayer gamePlayer,
+		CardLocation location,
+		int playerDealOrder,
+		bool isVisible,
+		string phase,
+		DateTimeOffset now)
+	{
+		gameCard.GamePlayerId = gamePlayer.Id;
+		gameCard.Location = location;
+		gameCard.DealOrder = playerDealOrder;
+		gameCard.DealtAtPhase = phase;
+		gameCard.IsVisible = isVisible;
+		gameCard.DealtAt = now;
+	}
+}

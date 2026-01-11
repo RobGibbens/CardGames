@@ -2243,12 +2243,23 @@
                 .Cast<Card>()
                 .ToList();
 
-            //TODO:ROB - Add SevenCardStud
-            var result = IsTwosJacksManWithTheAxe
-                ? OddsCalculator.CalculateTwosJacksManWithTheAxeDrawOdds(coreCards, deadCards)
-                : IsKingsAndLows
-                    ? OddsCalculator.CalculateKingsAndLowsDrawOdds(coreCards, deadCards)
-                    : OddsCalculator.CalculateDrawOdds(coreCards, deadCards);
+            OddsCalculator.OddsResult? result;
+            if (IsTwosJacksManWithTheAxe)
+            {
+                result = OddsCalculator.CalculateTwosJacksManWithTheAxeDrawOdds(coreCards, deadCards);
+            }
+            else if (IsSevenCardStud)
+            {
+                result = OddsCalculator.CalculateStudOdds(coreCards, deadCards);
+            }
+            else if (IsKingsAndLows)
+            {
+                result = OddsCalculator.CalculateKingsAndLowsDrawOdds(coreCards, deadCards);
+            }
+            else
+            {
+                result = OddsCalculator.CalculateDrawOdds(coreCards, deadCards);
+            }
 
             handOdds = ConvertToHandTypeOddsDtos(result);
         }
