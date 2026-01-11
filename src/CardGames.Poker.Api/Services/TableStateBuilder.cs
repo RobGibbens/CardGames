@@ -9,6 +9,7 @@ using CardGames.Poker.Api.Games;
 using CardGames.Poker.Games.GameFlow;
 using CardGames.Poker.Hands.DrawHands;
 using CardGames.Poker.Hands;
+using CardGames.Poker.Hands.StudHands;
 using CardGames.Poker.Hands.WildCards;
 using Microsoft.EntityFrameworkCore;
 using Entities = CardGames.Poker.Api.Data.Entities;
@@ -99,54 +100,54 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				.FirstOrDefault(p => p.PhaseId.Equals(game.CurrentPhase, StringComparison.OrdinalIgnoreCase));
 		}
 
-			// Build Player vs Deck state (if applicable)
-			var playerVsDeck = await BuildPlayerVsDeckStateAsync(game, gamePlayers, userProfilesByEmail, cancellationToken);
+		// Build Player vs Deck state (if applicable)
+		var playerVsDeck = await BuildPlayerVsDeckStateAsync(game, gamePlayers, userProfilesByEmail, cancellationToken);
 
-			// Get action timer state
-			var actionTimerState = _actionTimerService.GetTimerState(gameId);
-			var actionTimer = actionTimerState is not null
-				? new ActionTimerStateDto
-				{
-					SecondsRemaining = actionTimerState.SecondsRemaining,
-					DurationSeconds = actionTimerState.DurationSeconds,
-					StartedAtUtc = actionTimerState.StartedAtUtc,
-					PlayerSeatIndex = actionTimerState.PlayerSeatIndex,
-					IsActive = !actionTimerState.IsExpired
-				}
-				: null;
-
-			return new TableStatePublicDto
+		// Get action timer state
+		var actionTimerState = _actionTimerService.GetTimerState(gameId);
+		var actionTimer = actionTimerState is not null
+			? new ActionTimerStateDto
 			{
-				GameId = game.Id,
-				Name = game.Name,
-				GameTypeName = game.GameType?.Name,
-				GameTypeCode = game.GameType?.Code,
-				CurrentPhase = game.CurrentPhase,
-				CurrentPhaseDescription = PhaseDescriptionResolver.TryResolve(game.GameType?.Code, game.CurrentPhase),
-				Ante = game.Ante ?? 0,
-				MinBet = game.MinBet ?? 0,
-				TotalPot = totalPot,
-				DealerSeatIndex = game.DealerPosition,
-				CurrentActorSeatIndex = game.CurrentPlayerIndex,
-				IsPaused = game.Status == Entities.GameStatus.BetweenHands,
-				CurrentHandNumber = game.CurrentHandNumber,
-				CreatedByName = game.CreatedByName,
-				Seats = seats,
-				Showdown = BuildShowdownPublicDto(game, gamePlayers, userProfilesByEmail),
-				HandCompletedAtUtc = game.HandCompletedAt,
-				NextHandStartsAtUtc = game.NextHandStartsAt,
-				IsResultsPhase = isResultsPhase,
-				SecondsUntilNextHand = secondsUntilNextHand,
-				HandHistory = handHistory,
-				CurrentPhaseCategory = currentPhaseDescriptor?.Category,
-				CurrentPhaseRequiresAction = currentPhaseDescriptor?.RequiresPlayerAction ?? false,
-				CurrentPhaseAvailableActions = currentPhaseDescriptor?.AvailableActions,
-				DrawingConfig = BuildDrawingConfigDto(rules),
-				SpecialRules = BuildSpecialRulesDto(rules),
-				PlayerVsDeck = playerVsDeck,
-				ActionTimer = actionTimer
-			};
-		}
+				SecondsRemaining = actionTimerState.SecondsRemaining,
+				DurationSeconds = actionTimerState.DurationSeconds,
+				StartedAtUtc = actionTimerState.StartedAtUtc,
+				PlayerSeatIndex = actionTimerState.PlayerSeatIndex,
+				IsActive = !actionTimerState.IsExpired
+			}
+			: null;
+
+		return new TableStatePublicDto
+		{
+			GameId = game.Id,
+			Name = game.Name,
+			GameTypeName = game.GameType?.Name,
+			GameTypeCode = game.GameType?.Code,
+			CurrentPhase = game.CurrentPhase,
+			CurrentPhaseDescription = PhaseDescriptionResolver.TryResolve(game.GameType?.Code, game.CurrentPhase),
+			Ante = game.Ante ?? 0,
+			MinBet = game.MinBet ?? 0,
+			TotalPot = totalPot,
+			DealerSeatIndex = game.DealerPosition,
+			CurrentActorSeatIndex = game.CurrentPlayerIndex,
+			IsPaused = game.Status == Entities.GameStatus.BetweenHands,
+			CurrentHandNumber = game.CurrentHandNumber,
+			CreatedByName = game.CreatedByName,
+			Seats = seats,
+			Showdown = BuildShowdownPublicDto(game, gamePlayers, userProfilesByEmail),
+			HandCompletedAtUtc = game.HandCompletedAt,
+			NextHandStartsAtUtc = game.NextHandStartsAt,
+			IsResultsPhase = isResultsPhase,
+			SecondsUntilNextHand = secondsUntilNextHand,
+			HandHistory = handHistory,
+			CurrentPhaseCategory = currentPhaseDescriptor?.Category,
+			CurrentPhaseRequiresAction = currentPhaseDescriptor?.RequiresPlayerAction ?? false,
+			CurrentPhaseAvailableActions = currentPhaseDescriptor?.AvailableActions,
+			DrawingConfig = BuildDrawingConfigDto(rules),
+			SpecialRules = BuildSpecialRulesDto(rules),
+			PlayerVsDeck = playerVsDeck,
+			ActionTimer = actionTimer
+		};
+	}
 
 	/// <inheritdoc />
 	public async Task<PrivateStateDto?> BuildPrivateStateAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
@@ -367,17 +368,18 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 		// For Seven Card Stud, show visible cards; otherwise show face-down placeholders
 		var isSevenCardStud = string.Equals(gameTypeCode, "SEVENCARDSTUD", StringComparison.OrdinalIgnoreCase);
-		
+
 		var publicCards = playerCards.Select(card =>
 		{
 			// For stud games, respect the IsVisible flag; otherwise default to face-down
 			var shouldShowCard = isSevenCardStud && card.IsVisible;
-			
+
 			return new CardPublicDto
 			{
 				IsFaceUp = shouldShowCard,
 				Rank = shouldShowCard ? MapSymbolToRank(card.Symbol) : null,
-				Suit = shouldShowCard ? GetCardSuitString(card.Suit) : null
+				Suit = shouldShowCard ? GetCardSuitString(card.Suit) : null,
+				DealOrder = card.DealOrder
 			};
 		}).ToList();
 
@@ -555,6 +557,11 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			PokerGameMetadataRegistry.TwosJacksManWithTheAxeCode,
 			StringComparison.OrdinalIgnoreCase);
 
+		var isSevenCardStud = string.Equals(
+			game.GameType?.Code,
+			PokerGameMetadataRegistry.SevenCardStudCode,
+			StringComparison.OrdinalIgnoreCase);
+
 		var isKingsAndLows = string.Equals(
 			game.GameType?.Code,
 			PokerGameMetadataRegistry.KingsAndLowsCode,
@@ -588,6 +595,10 @@ public sealed class TableStateBuilder : ITableStateBuilder
 						}
 					}
 					playerHandEvaluations[gp.Player.Name] = (wildHand, wildHand, null, gp, cards, wildIndexes);
+				}
+				else if (isSevenCardStud)
+				{
+					
 				}
 				else if (isKingsAndLows)
 				{

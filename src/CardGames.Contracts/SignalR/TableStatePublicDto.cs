@@ -307,6 +307,12 @@ public sealed record CardPublicDto
 	/// The suit of the card (e.g., "Hearts", "Spades"). Null when face-down.
 	/// </summary>
 	public string? Suit { get; init; }
+
+	/// <summary>
+	/// The order in which this card was dealt.
+	/// Used for displaying cards in deal order for stud-style games.
+	/// </summary>
+	public int DealOrder { get; init; }
 }
 
 /// <summary>

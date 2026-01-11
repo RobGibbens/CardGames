@@ -79,51 +79,57 @@ public class DealHandsCommandHandler(CardsDbContext context)
 		var playerHands = new List<PlayerDealtCards>();
 
 		foreach (var gamePlayer in activePlayers)
-		{
-			var cards = dealer.DealCards(CardsPerPlayer);
-			var dealtCards = new List<DealtCard>();
-			var dealOrder = 1;
-
-			foreach (var card in cards)
 			{
-				// Create GameCard entity for persistence
-				var gameCard = new GameCard
-				{
-					GameId = game.Id,
-					GamePlayerId = gamePlayer.Id,
-					HandNumber = game.CurrentHandNumber,
-					Suit = MapSuit(card.Suit),
-					Symbol = MapSymbol(card.Symbol),
-					Location = CardLocation.Hole,
-					DealOrder = dealOrder,
-					DealtAtPhase = nameof(Phases.Dealing),
-					IsVisible = false,
-					IsWild = false,
-					IsDiscarded = false,
-					IsDrawnCard = false,
-					IsBuyCard = false,
-					DealtAt = now
-				};
+				var cards = dealer.DealCards(CardsPerPlayer);
+				var dealtCards = new List<DealtCard>();
 
-				context.GameCards.Add(gameCard);
+				// Sort cards by value (descending) then by suit for consistent display order
+				var sortedCards = cards
+					.OrderByDescending(c => GetCardSortValue(c.Symbol))
+					.ThenBy(c => GetSuitSortValue(c.Suit))
+					.ToList();
 
-				dealtCards.Add(new DealtCard
+				var dealOrder = 1;
+				foreach (var card in sortedCards)
 				{
-					Suit = gameCard.Suit,
-					Symbol = gameCard.Symbol,
-					DealOrder = dealOrder
+					// Create GameCard entity for persistence
+					var gameCard = new GameCard
+					{
+						GameId = game.Id,
+						GamePlayerId = gamePlayer.Id,
+						HandNumber = game.CurrentHandNumber,
+						Suit = MapSuit(card.Suit),
+						Symbol = MapSymbol(card.Symbol),
+						Location = CardLocation.Hole,
+						DealOrder = dealOrder,
+						DealtAtPhase = nameof(Phases.Dealing),
+						IsVisible = false,
+						IsWild = false,
+						IsDiscarded = false,
+						IsDrawnCard = false,
+						IsBuyCard = false,
+						DealtAt = now
+					};
+
+					context.GameCards.Add(gameCard);
+
+					dealtCards.Add(new DealtCard
+					{
+						Suit = gameCard.Suit,
+						Symbol = gameCard.Symbol,
+						DealOrder = dealOrder
+					});
+
+					dealOrder++;
+				}
+
+				playerHands.Add(new PlayerDealtCards
+				{
+					PlayerName = gamePlayer.Player.Name,
+					SeatPosition = gamePlayer.SeatPosition,
+					Cards = dealtCards
 				});
-
-				dealOrder++;
 			}
-
-			playerHands.Add(new PlayerDealtCards
-			{
-				PlayerName = gamePlayer.Player.Name,
-				SeatPosition = gamePlayer.SeatPosition,
-				Cards = dealtCards
-			});
-		}
 
 		// 6. Reset current bets for all players before first betting round
 		foreach (var gamePlayer in game.GamePlayers)
@@ -218,21 +224,54 @@ public class DealHandsCommandHandler(CardsDbContext context)
 	/// <summary>
 	/// Maps core library Symbol to entity CardSymbol.
 	/// </summary>
-	private static CardSymbol MapSymbol(Symbol symbol) => symbol switch
-	{
-		Symbol.Deuce => CardSymbol.Deuce,
-		Symbol.Three => CardSymbol.Three,
-		Symbol.Four => CardSymbol.Four,
-		Symbol.Five => CardSymbol.Five,
-		Symbol.Six => CardSymbol.Six,
-		Symbol.Seven => CardSymbol.Seven,
-		Symbol.Eight => CardSymbol.Eight,
-		Symbol.Nine => CardSymbol.Nine,
-		Symbol.Ten => CardSymbol.Ten,
-		Symbol.Jack => CardSymbol.Jack,
-		Symbol.Queen => CardSymbol.Queen,
-		Symbol.King => CardSymbol.King,
-		Symbol.Ace => CardSymbol.Ace,
-		_ => throw new ArgumentOutOfRangeException(nameof(symbol), symbol, "Unknown symbol")
-	};
-}
+		private static CardSymbol MapSymbol(Symbol symbol) => symbol switch
+		{
+			Symbol.Deuce => CardSymbol.Deuce,
+			Symbol.Three => CardSymbol.Three,
+			Symbol.Four => CardSymbol.Four,
+			Symbol.Five => CardSymbol.Five,
+			Symbol.Six => CardSymbol.Six,
+			Symbol.Seven => CardSymbol.Seven,
+			Symbol.Eight => CardSymbol.Eight,
+			Symbol.Nine => CardSymbol.Nine,
+			Symbol.Ten => CardSymbol.Ten,
+			Symbol.Jack => CardSymbol.Jack,
+			Symbol.Queen => CardSymbol.Queen,
+			Symbol.King => CardSymbol.King,
+			Symbol.Ace => CardSymbol.Ace,
+			_ => throw new ArgumentOutOfRangeException(nameof(symbol), symbol, "Unknown symbol")
+		};
+
+		/// <summary>
+		/// Gets the numeric sort value for a card symbol (Ace high = 14).
+		/// </summary>
+		private static int GetCardSortValue(Symbol symbol) => symbol switch
+		{
+			Symbol.Deuce => 2,
+			Symbol.Three => 3,
+			Symbol.Four => 4,
+			Symbol.Five => 5,
+			Symbol.Six => 6,
+			Symbol.Seven => 7,
+			Symbol.Eight => 8,
+			Symbol.Nine => 9,
+			Symbol.Ten => 10,
+			Symbol.Jack => 11,
+			Symbol.Queen => 12,
+			Symbol.King => 13,
+			Symbol.Ace => 14,
+			_ => 0
+		};
+
+		/// <summary>
+		/// Gets the sort value for a suit (for consistent ordering: Clubs, Diamonds, Hearts, Spades).
+		/// </summary>
+		private static int GetSuitSortValue(Suit suit) => suit switch
+		{
+			Suit.Clubs => 0,
+			Suit.Diamonds => 1,
+			Suit.Hearts => 2,
+			Suit.Spades => 3,
+			_ => 0
+		};
+	}

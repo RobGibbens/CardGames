@@ -213,37 +213,84 @@ public class StartHandCommandHandler(CardsDbContext context)
 			context.GameCards.Add(card);
 		}
 
-		// Deal 5 cards to each eligible player from the shuffled deck
-		int cardIndex = 0;
-		int dealOrder = 1;
-		for (int round = 0; round < 5; round++)
-		{
-			foreach (var player in eligiblePlayers.OrderBy(p => p.SeatPosition))
-			{
-				if (cardIndex < deck.Count)
+				// Deal 5 cards to each eligible player from the shuffled deck
+				int cardIndex = 0;
+				for (int round = 0; round < 5; round++)
 				{
-					var card = deck[cardIndex++];
-					card.Location = CardLocation.Hand;
-					card.GamePlayerId = player.Id;
-					card.IsVisible = true; // Cards visible to the player in their hand
-					card.DealOrder = dealOrder++;
-					card.DealtAtPhase = nameof(Phases.Dealing);
+					foreach (var player in eligiblePlayers.OrderBy(p => p.SeatPosition))
+					{
+						if (cardIndex < deck.Count)
+						{
+							var card = deck[cardIndex++];
+							card.Location = CardLocation.Hand;
+							card.GamePlayerId = player.Id;
+							card.IsVisible = true; // Cards visible to the player in their hand
+							card.DealtAtPhase = nameof(Phases.Dealing);
+						}
+					}
 				}
+
+				// Sort each player's cards by value (descending) and assign DealOrder for display
+				foreach (var player in eligiblePlayers)
+				{
+					var playerCards = deck
+						.Where(c => c.GamePlayerId == player.Id)
+						.OrderByDescending(c => GetCardSortValue(c.Symbol))
+						.ThenBy(c => GetSuitSortValue(c.Suit))
+						.ToList();
+
+					var dealOrder = 1;
+					foreach (var card in playerCards)
+					{
+						card.DealOrder = dealOrder++;
+					}
+				}
+
+				// 11. Move to DropOrStay phase - this is where players make their decision
+				game.CurrentPhase = nameof(Phases.DropOrStay);
+
+				// 12. Persist changes
+				await context.SaveChangesAsync(cancellationToken);
+
+				return new StartHandSuccessful
+				{
+					GameId = game.Id,
+					HandNumber = game.CurrentHandNumber,
+					CurrentPhase = game.CurrentPhase,
+					ActivePlayerCount = eligiblePlayers.Count
+				};
 			}
+
+			/// <summary>
+			/// Gets the numeric sort value for a card symbol (Ace high = 14).
+			/// </summary>
+			private static int GetCardSortValue(CardSymbol symbol) => symbol switch
+			{
+				CardSymbol.Deuce => 2,
+				CardSymbol.Three => 3,
+				CardSymbol.Four => 4,
+				CardSymbol.Five => 5,
+				CardSymbol.Six => 6,
+				CardSymbol.Seven => 7,
+				CardSymbol.Eight => 8,
+				CardSymbol.Nine => 9,
+				CardSymbol.Ten => 10,
+				CardSymbol.Jack => 11,
+				CardSymbol.Queen => 12,
+				CardSymbol.King => 13,
+				CardSymbol.Ace => 14,
+				_ => 0
+			};
+
+			/// <summary>
+			/// Gets the sort value for a suit (for consistent ordering: Clubs, Diamonds, Hearts, Spades).
+			/// </summary>
+			private static int GetSuitSortValue(CardSuit suit) => suit switch
+			{
+				CardSuit.Clubs => 0,
+				CardSuit.Diamonds => 1,
+				CardSuit.Hearts => 2,
+				CardSuit.Spades => 3,
+				_ => 0
+			};
 		}
-
-		// 11. Move to DropOrStay phase - this is where players make their decision
-		game.CurrentPhase = nameof(Phases.DropOrStay);
-
-		// 12. Persist changes
-		await context.SaveChangesAsync(cancellationToken);
-
-		return new StartHandSuccessful
-		{
-			GameId = game.Id,
-			HandNumber = game.CurrentHandNumber,
-			CurrentPhase = game.CurrentPhase,
-			ActivePlayerCount = eligiblePlayers.Count
-		};
-	}
-}

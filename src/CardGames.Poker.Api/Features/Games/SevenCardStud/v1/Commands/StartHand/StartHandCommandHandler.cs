@@ -1,3 +1,4 @@
+using CardGames.Core.French.Dealers;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Betting;
@@ -5,6 +6,10 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
 using Pot = CardGames.Poker.Api.Data.Entities.Pot;
+using CardSuit = CardGames.Poker.Api.Data.Entities.CardSuit;
+using CardSymbol = CardGames.Poker.Api.Data.Entities.CardSymbol;
+using Suit = CardGames.Core.French.Cards.Suit;
+using Symbol = CardGames.Core.French.Cards.Symbol;
 
 namespace CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.StartHand;
 
@@ -102,11 +107,45 @@ public class StartHandCommandHandler(CardsDbContext context)
 			context.GameCards.RemoveRange(existingCards);
 		}
 
-		// 7. Create a new main pot for this hand
+		// 7. Create and persist shuffled deck for this hand
+		var dealer = FrenchDeckDealer.WithFullDeck();
+		dealer.Shuffle();
+
+		var newHandNumber = game.CurrentHandNumber + 1;
+		var deckCards = new List<GameCard>();
+		var dealOrder = 1;
+
+		// Deal all 52 cards from the shuffled deck to persist their order
+		var shuffledCards = dealer.DealCards(52);
+		foreach (var card in shuffledCards)
+		{
+			var gameCard = new GameCard
+			{
+				GameId = game.Id,
+				GamePlayerId = null, // Deck cards have no owner
+				HandNumber = newHandNumber,
+				Suit = MapSuit(card.Suit),
+				Symbol = MapSymbol(card.Symbol),
+				Location = CardLocation.Deck,
+				DealOrder = dealOrder++,
+				DealtAtPhase = null,
+				IsVisible = false,
+				IsWild = false,
+				IsDiscarded = false,
+				IsDrawnCard = false,
+				IsBuyCard = false,
+				DealtAt = now
+			};
+			deckCards.Add(gameCard);
+		}
+
+		context.GameCards.AddRange(deckCards);
+
+		// 8. Create a new main pot for this hand
 		var mainPot = new Pot
 		{
 			GameId = game.Id,
-			HandNumber = game.CurrentHandNumber + 1,
+			HandNumber = newHandNumber,
 			PotType = PotType.Main,
 			PotOrder = 0,
 			Amount = 0,
@@ -116,8 +155,8 @@ public class StartHandCommandHandler(CardsDbContext context)
 
 		context.Pots.Add(mainPot);
 
-		// 8. Update game state
-		game.CurrentHandNumber++;
+		// 9. Update game state
+		game.CurrentHandNumber = newHandNumber;
 		game.CurrentPhase = nameof(Phases.CollectingAntes);
 		game.Status = GameStatus.InProgress;
 		game.CurrentPlayerIndex = -1;
@@ -126,18 +165,45 @@ public class StartHandCommandHandler(CardsDbContext context)
 		game.NextHandStartsAt = null;
 		game.UpdatedAt = now;
 
-		// Set StartedAt only on first hand
-		game.StartedAt ??= now;
+				// Set StartedAt only on first hand
+				game.StartedAt ??= now;
 
-		// 9. Persist changes
-		await context.SaveChangesAsync(cancellationToken);
+				// 10. Persist changes
+				await context.SaveChangesAsync(cancellationToken);
 
-		return new StartHandSuccessful
-		{
-			GameId = game.Id,
-			HandNumber = game.CurrentHandNumber,
-			CurrentPhase = game.CurrentPhase,
-			ActivePlayerCount = eligiblePlayers.Count
-		};
-	}
-}
+				return new StartHandSuccessful
+				{
+					GameId = game.Id,
+					HandNumber = game.CurrentHandNumber,
+					CurrentPhase = game.CurrentPhase,
+					ActivePlayerCount = eligiblePlayers.Count
+				};
+			}
+
+			private static CardSuit MapSuit(Suit suit) => suit switch
+			{
+				Suit.Hearts => CardSuit.Hearts,
+				Suit.Diamonds => CardSuit.Diamonds,
+				Suit.Spades => CardSuit.Spades,
+				Suit.Clubs => CardSuit.Clubs,
+				_ => throw new ArgumentOutOfRangeException(nameof(suit))
+			};
+
+			private static CardSymbol MapSymbol(Symbol symbol) => symbol switch
+			{
+				Symbol.Deuce => CardSymbol.Deuce,
+				Symbol.Three => CardSymbol.Three,
+				Symbol.Four => CardSymbol.Four,
+				Symbol.Five => CardSymbol.Five,
+				Symbol.Six => CardSymbol.Six,
+				Symbol.Seven => CardSymbol.Seven,
+				Symbol.Eight => CardSymbol.Eight,
+				Symbol.Nine => CardSymbol.Nine,
+				Symbol.Ten => CardSymbol.Ten,
+				Symbol.Jack => CardSymbol.Jack,
+				Symbol.Queen => CardSymbol.Queen,
+				Symbol.King => CardSymbol.King,
+				Symbol.Ace => CardSymbol.Ace,
+				_ => throw new ArgumentOutOfRangeException(nameof(symbol))
+			};
+		}
