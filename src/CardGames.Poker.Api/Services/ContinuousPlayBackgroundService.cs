@@ -4,6 +4,7 @@ using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Betting;
 using CardGames.Poker.Games.FiveCardDraw;
 using CardGames.Poker.Games.KingsAndLows;
+using CardGames.Poker.Games.SevenCardStud;
 using Microsoft.EntityFrameworkCore;
 using DropOrStayDecision = CardGames.Poker.Api.Data.Entities.DropOrStayDecision;
 using Pot = CardGames.Poker.Api.Data.Entities.Pot;
@@ -520,12 +521,14 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		// NOTE: Dealer rotation is already done in PerformShowdownCommandHandler.MoveDealer()
 		// when the previous hand completes. We do NOT rotate again here.
 
-		// Determine if this is a Kings and Lows game
-		var isKingsAndLows = game.GameType?.Code == "KINGSANDLOWS";
+		// Determine game type
+		var isKingsAndLows = string.Equals(game.GameType?.Code, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase);
+		var isSevenCardStud = string.Equals(game.GameType?.Code, "SEVENCARDSTUD", StringComparison.OrdinalIgnoreCase);
 
 		// Update game state
 		game.CurrentHandNumber++;
 		// Kings and Lows only collects antes on first hand; subsequent hands get pot from losers matching
+		// Seven Card Stud goes through CollectingAntes -> ThirdStreet flow
 		game.CurrentPhase = isKingsAndLows
 			? nameof(Phases.Dealing)
 			: nameof(Phases.CollectingAntes);
@@ -551,8 +554,15 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			await CollectAntesAsync(context, game, eligiblePlayers, ante, now, cancellationToken);
 		}
 
-		// Automatically deal hands
-		await DealHandsAsync(context, game, eligiblePlayers, now, cancellationToken);
+		// Automatically deal hands based on game type
+		if (isSevenCardStud)
+		{
+			await DealSevenCardStudHandsAsync(context, game, eligiblePlayers, now, cancellationToken);
+		}
+		else
+		{
+			await DealHandsAsync(context, game, eligiblePlayers, now, cancellationToken);
+		}
 
 		// Broadcast updated state
 		await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
@@ -768,6 +778,244 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 
 		return -1; // No active player found
 	}
+
+	/// <summary>
+	/// Deals the initial Third Street cards for Seven Card Stud:
+	/// 2 hole cards (face down) + 1 board card (face up) for each player.
+	/// Also sets up the bring-in betting round.
+	/// </summary>
+	private async Task DealSevenCardStudHandsAsync(
+		CardsDbContext context,
+		Game game,
+		List<GamePlayer> eligiblePlayers,
+		DateTimeOffset now,
+		CancellationToken cancellationToken)
+	{
+		// Create a shuffled deck and persist all 52 cards with deck order
+		var random = new Random();
+		var deck = CreateShuffledDeck(random);
+
+		// First, persist all 52 cards in the deck with their shuffled order
+		var deckOrder = 0;
+		var deckCards = new List<GameCard>();
+		foreach (var (suit, symbol) in deck)
+		{
+			var gameCard = new GameCard
+			{
+				GameId = game.Id,
+				GamePlayerId = null,
+				HandNumber = game.CurrentHandNumber,
+				Suit = suit,
+				Symbol = symbol,
+				DealOrder = deckOrder++,
+				Location = CardLocation.Deck,
+				IsVisible = false,
+				IsDiscarded = false,
+				DealtAt = now
+			};
+			deckCards.Add(gameCard);
+			context.GameCards.Add(gameCard);
+		}
+
+		var deckIndex = 0;
+
+		// Sort players starting from left of dealer for dealing order
+		var dealerPosition = game.DealerPosition;
+		var maxSeatPosition = game.GamePlayers.Max(gp => gp.SeatPosition);
+		var totalSeats = maxSeatPosition + 1; // Seats are 0-indexed
+
+		var playersInDealOrder = eligiblePlayers
+			.OrderBy(p => (p.SeatPosition - dealerPosition - 1 + totalSeats) % totalSeats)
+			.ToList();
+
+		// Track each player's up card for bring-in determination
+		var playerUpCards = new List<(GamePlayer Player, GameCard UpCard)>();
+
+		// Deal Third Street: 2 hole cards + 1 board card per player
+		var dealOrder = 1;
+		foreach (var player in playersInDealOrder)
+		{
+			// Deal 2 hole cards (face down)
+			for (var i = 0; i < 2; i++)
+			{
+				if (deckIndex >= deckCards.Count)
+				{
+					_logger.LogError("Ran out of cards while dealing for game {GameId}", game.Id);
+					break;
+				}
+
+				var card = deckCards[deckIndex++];
+				card.GamePlayerId = player.Id;
+				card.Location = CardLocation.Hole;
+				card.DealOrder = dealOrder++;
+				card.IsVisible = false;
+				card.DealtAtPhase = nameof(Phases.ThirdStreet);
+				card.DealtAt = now;
+			}
+
+			// Deal 1 board card (face up)
+			if (deckIndex >= deckCards.Count)
+			{
+				_logger.LogError("Ran out of cards while dealing for game {GameId}", game.Id);
+				break;
+			}
+
+			var boardCard = deckCards[deckIndex++];
+			boardCard.GamePlayerId = player.Id;
+			boardCard.Location = CardLocation.Board;
+			boardCard.DealOrder = dealOrder++;
+			boardCard.IsVisible = true;
+			boardCard.DealtAtPhase = nameof(Phases.ThirdStreet);
+			boardCard.DealtAt = now;
+
+			playerUpCards.Add((player, boardCard));
+		}
+
+		// Reset CurrentBet for all players
+		foreach (var player in game.GamePlayers)
+		{
+			player.CurrentBet = 0;
+		}
+
+		// Determine bring-in player (lowest up card, suit breaks ties: clubs lowest, spades highest)
+		var bringInPlayer = FindBringInPlayer(playerUpCards);
+		var bringInSeatPosition = bringInPlayer?.SeatPosition ?? playersInDealOrder.FirstOrDefault()?.SeatPosition ?? 0;
+
+		// Post the bring-in bet if configured
+		var bringIn = game.BringIn ?? 0;
+		var currentBet = 0;
+		if (bringIn > 0 && bringInPlayer is not null)
+		{
+			var actualBringIn = Math.Min(bringIn, bringInPlayer.ChipStack);
+			bringInPlayer.CurrentBet = actualBringIn;
+			bringInPlayer.ChipStack -= actualBringIn;
+			bringInPlayer.TotalContributedThisHand += actualBringIn;
+			currentBet = actualBringIn;
+
+			// Add bring-in contribution to pot
+			var pot = await context.Pots
+				.FirstOrDefaultAsync(p => p.GameId == game.Id &&
+										  p.HandNumber == game.CurrentHandNumber &&
+										  p.PotType == PotType.Main,
+								 cancellationToken);
+			if (pot is not null)
+			{
+				pot.Amount += actualBringIn;
+			}
+		}
+
+		// Determine min bet based on street (small bet for Third Street)
+		var minBet = game.SmallBet ?? game.MinBet ?? 0;
+
+		// Create betting round record for Third Street
+		var bettingRound = new Data.Entities.BettingRound
+		{
+			GameId = game.Id,
+			HandNumber = game.CurrentHandNumber,
+			RoundNumber = 1,
+			Street = nameof(Phases.ThirdStreet),
+			CurrentBet = currentBet,
+			MinBet = minBet,
+			RaiseCount = 0,
+			MaxRaises = 0, // Unlimited raises
+			LastRaiseAmount = 0,
+			PlayersInHand = eligiblePlayers.Count,
+			PlayersActed = 0,
+			CurrentActorIndex = bringInSeatPosition,
+			LastAggressorIndex = -1,
+			IsComplete = false,
+			StartedAt = now
+		};
+
+		context.Set<Data.Entities.BettingRound>().Add(bettingRound);
+
+		// Update game state
+		game.CurrentPhase = nameof(Phases.ThirdStreet);
+		game.CurrentPlayerIndex = bringInSeatPosition;
+		game.BringInPlayerIndex = bringInSeatPosition;
+		game.UpdatedAt = now;
+
+		_logger.LogInformation(
+			"Dealt Seven Card Stud Third Street for game {GameId} hand {HandNumber}. Bring-in player at seat {BringInSeat}, dealer at seat {DealerPosition}",
+			game.Id,
+			game.CurrentHandNumber,
+			bringInSeatPosition,
+			game.DealerPosition);
+
+		await context.SaveChangesAsync(cancellationToken);
+	}
+
+	/// <summary>
+	/// Finds the player with the lowest up card for bring-in determination.
+	/// Lower card value loses. For ties, use suit order: clubs (lowest) < diamonds < hearts < spades (highest).
+	/// </summary>
+	private static GamePlayer? FindBringInPlayer(List<(GamePlayer Player, GameCard UpCard)> playerUpCards)
+	{
+		if (playerUpCards.Count == 0)
+		{
+			return null;
+		}
+
+		GamePlayer? lowestPlayer = null;
+		GameCard? lowestCard = null;
+
+		foreach (var (player, upCard) in playerUpCards)
+		{
+			if (lowestCard is null || CompareCardsForBringIn(upCard, lowestCard) < 0)
+			{
+				lowestCard = upCard;
+				lowestPlayer = player;
+			}
+		}
+
+		return lowestPlayer;
+	}
+
+	/// <summary>
+	/// Compares two cards for bring-in determination.
+	/// Lower value is "worse" (brings in). For ties, lower suit brings in.
+	/// Suit order: Clubs (0) < Diamonds (1) < Hearts (2) < Spades (3)
+	/// </summary>
+	private static int CompareCardsForBringIn(GameCard a, GameCard b)
+	{
+		var aValue = GetCardValue(a.Symbol);
+		var bValue = GetCardValue(b.Symbol);
+
+		if (aValue != bValue)
+		{
+			return aValue.CompareTo(bValue);
+		}
+
+		// Suit order for ties: Clubs (0) < Diamonds (1) < Hearts (2) < Spades (3)
+		return GetSuitRank(a.Suit).CompareTo(GetSuitRank(b.Suit));
+	}
+
+	private static int GetCardValue(Data.Entities.CardSymbol symbol) => symbol switch
+	{
+		Data.Entities.CardSymbol.Deuce => 2,
+		Data.Entities.CardSymbol.Three => 3,
+		Data.Entities.CardSymbol.Four => 4,
+		Data.Entities.CardSymbol.Five => 5,
+		Data.Entities.CardSymbol.Six => 6,
+		Data.Entities.CardSymbol.Seven => 7,
+		Data.Entities.CardSymbol.Eight => 8,
+		Data.Entities.CardSymbol.Nine => 9,
+		Data.Entities.CardSymbol.Ten => 10,
+		Data.Entities.CardSymbol.Jack => 11,
+		Data.Entities.CardSymbol.Queen => 12,
+		Data.Entities.CardSymbol.King => 13,
+		Data.Entities.CardSymbol.Ace => 14,
+		_ => 0
+	};
+
+	private static int GetSuitRank(Data.Entities.CardSuit suit) => suit switch
+	{
+		Data.Entities.CardSuit.Clubs => 0,
+		Data.Entities.CardSuit.Diamonds => 1,
+		Data.Entities.CardSuit.Hearts => 2,
+		Data.Entities.CardSuit.Spades => 3,
+		_ => 0
+	};
 
 	private static List<(Data.Entities.CardSuit Suit, Data.Entities.CardSymbol Symbol)> CreateShuffledDeck(Random random)
 	{

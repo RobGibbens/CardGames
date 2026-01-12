@@ -1,5 +1,6 @@
 ﻿using CardGames.Core.French.Cards;
 using CardGames.Poker.Hands.Strength;
+using CardGames.Poker.Hands.HandTypes;
 using CardGames.Core.Extensions;
 using System.Collections.Generic;
 using System.Linq;
@@ -29,4 +30,27 @@ public class StudHand : HandBase
         => Cards
             .SubsetsOfSize(5)
             .Select(cards => cards.ToList());
+
+    /// <summary>
+    /// Gets the best 5-card combination from the 7 available cards.
+    /// </summary>
+    /// <returns>The list of cards that make up the best hand.</returns>
+    public IReadOnlyList<Card> GetBestHand()
+    {
+        var possibleHands = PossibleHands()
+            .Select(hand => new
+            {
+                Cards = hand.ToList(),
+                Type = HandTypeDetermination.DetermineHandType(hand)
+            })
+            .ToList();
+
+        var bestType = HandStrength.GetEffectiveType(possibleHands.Select(h => h.Type), Ranking);
+
+        return possibleHands
+            .Where(h => h.Type == bestType)
+            .OrderByDescending(h => HandStrength.Calculate(h.Cards, h.Type, Ranking))
+            .First()
+            .Cards;
+    }
 }

@@ -252,39 +252,62 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 			wonByFold: false,
 			winners: winnerInfos,
 			winnerNames: winners,
-			winningHandDescription: winReason,
-			cancellationToken);
+				winningHandDescription: winReason,
+					cancellationToken);
 
-		// 13. Build response
-		var playerHandsList = playerHandEvaluations.Select(kvp =>
-		{
-			var isWinner = winners.Contains(kvp.Key);
-			usersByEmail.TryGetValue(kvp.Value.gamePlayer.Player.Email ?? string.Empty, out var user);
-			return new ShowdownPlayerHand
-			{
-				PlayerName = kvp.Key,
-				PlayerFirstName = user?.FirstName,
-				Cards = kvp.Value.cards.Select(c => new ShowdownCard
+				// 13. Build response
+				var playerHandsList = playerHandEvaluations.Select(kvp =>
 				{
-					Suit = c.Suit,
-					Symbol = c.Symbol
-				}).ToList(),
-				HandType = kvp.Value.hand.Type.ToString(),
-				HandStrength = kvp.Value.hand.Strength,
-				IsWinner = isWinner,
-				AmountWon = payouts.GetValueOrDefault(kvp.Key, 0)
-			};
-		}).OrderByDescending(h => h.HandStrength ?? 0).ToList();
+					var isWinner = winners.Contains(kvp.Key);
+					usersByEmail.TryGetValue(kvp.Value.gamePlayer.Player.Email ?? string.Empty, out var user);
 
-		return new PerformShowdownSuccessful
-		{
-			GameId = game.Id,
-			WonByFold = false,
-			CurrentPhase = game.CurrentPhase,
-			Payouts = payouts,
-			PlayerHands = playerHandsList
-		};
-	}
+					// Get the best 5-card hand and find their indexes in the original card list
+					var bestHand = kvp.Value.hand.GetBestHand();
+					var cardsList = kvp.Value.cards.ToList();
+					var bestCardIndexes = new List<int>();
+					var usedIndexes = new HashSet<int>();
+
+					foreach (var bestCard in bestHand)
+					{
+						for (var i = 0; i < cardsList.Count; i++)
+						{
+							if (!usedIndexes.Contains(i) &&
+								cardsList[i].Suit == (CardSuit)bestCard.Suit &&
+								cardsList[i].Symbol == (CardSymbol)bestCard.Symbol)
+							{
+								bestCardIndexes.Add(i);
+								usedIndexes.Add(i);
+								break;
+							}
+						}
+					}
+
+					return new ShowdownPlayerHand
+					{
+						PlayerName = kvp.Key,
+						PlayerFirstName = user?.FirstName,
+						Cards = kvp.Value.cards.Select(c => new ShowdownCard
+						{
+							Suit = c.Suit,
+							Symbol = c.Symbol
+						}).ToList(),
+						HandType = kvp.Value.hand.Type.ToString(),
+						HandStrength = kvp.Value.hand.Strength,
+						IsWinner = isWinner,
+						AmountWon = payouts.GetValueOrDefault(kvp.Key, 0),
+						BestCardIndexes = bestCardIndexes
+					};
+				}).OrderByDescending(h => h.HandStrength ?? 0).ToList();
+
+				return new PerformShowdownSuccessful
+				{
+					GameId = game.Id,
+					WonByFold = false,
+					CurrentPhase = game.CurrentPhase,
+					Payouts = payouts,
+					PlayerHands = playerHandsList
+				};
+			}
 
 	/// <summary>
 	/// Moves the dealer button to the next occupied seat position (clockwise).

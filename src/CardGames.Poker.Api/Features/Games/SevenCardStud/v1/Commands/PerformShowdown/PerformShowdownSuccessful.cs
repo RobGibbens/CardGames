@@ -73,16 +73,22 @@ public record ShowdownPlayerHand
 	/// </summary>
 	public long? HandStrength { get; init; }
 
-	/// <summary>
-	/// Indicates whether this player is a winner.
-	/// </summary>
-	public bool IsWinner { get; init; }
+		/// <summary>
+		/// Indicates whether this player is a winner.
+		/// </summary>
+		public bool IsWinner { get; init; }
 
-	/// <summary>
-	/// The amount won by this player, if any.
-	/// </summary>
-	public int AmountWon { get; init; }
-}
+		/// <summary>
+		/// The amount won by this player, if any.
+		/// </summary>
+		public int AmountWon { get; init; }
+
+		/// <summary>
+		/// The zero-based indices of cards in <see cref="Cards"/> that make up the best 5-card hand.
+		/// For Seven Card Stud, players have 7 cards but only 5 count toward the winning hand.
+		/// </summary>
+		public List<int>? BestCardIndexes { get; init; }
+	}
 
 /// <summary>
 /// Represents a card shown at showdown.

@@ -3,6 +3,7 @@
 @using CardGames.Poker.Evaluation
 @using CardGames.Poker.Hands
 @using CardGames.Poker.Hands.DrawHands
+@using CardGames.Poker.Hands.StudHands
 
 @using System.Globalization
 
@@ -98,7 +99,7 @@
 
             @if (winnerHand is not null)
             {
-                var winnerCards = (winnerHand.Cards?.OrderBy(c => c.Symbol).ToList()) ?? new List<ShowdownCard>();
+                var winnerCards = GetDisplayCards(winnerHand);
                 <section class="showdown-winner" aria-label="Winner">
                     <div class="winner-banner">
                         <div class="winner-nameline">
@@ -137,7 +138,7 @@
                 <section class="showdown-others" aria-label="Other hands">
                     @foreach (var hand in otherHands)
                     {
-                        var handCards = (hand.Cards?.OrderBy(c => c.Symbol).ToList()) ?? new List<ShowdownCard>();
+                        var handCards = GetDisplayCards(hand);
                         <div class="other-hand-row">
                             <div class="other-hand-info">
                                 <span class="other-hand-name">@DisplayFirstName(hand)</span>
@@ -153,7 +154,7 @@
                                     {
                                         <div class="">
                                             <playing-card rank="@GetPlayingCardRank(c)" suit="@GetPlayingCardSuit(c)" style="height:64px;width:48px;"></playing-card>
-                                            </div>
+                                        </div>
                                     }
                                 </div>
                             }
@@ -242,6 +243,78 @@
             .ThenByDescending(h => h.AmountWon ?? 0)
             .ThenBy(h => h.PlayerName)
             .ToList();
+    }
+
+    /// <summary>
+    /// Gets the cards to display for a player's hand.
+    /// For Seven Card Stud (7 cards), returns only the best 5 cards.
+    /// Uses BestCardIndexes if provided by API, otherwise computes client-side.
+    /// For other games, returns all cards sorted by symbol.
+    /// </summary>
+    private static List<ShowdownCard> GetDisplayCards(ShowdownPlayerHand hand)
+    {
+        if (hand.Cards is null || hand.Cards.Count == 0)
+        {
+            return [];
+        }
+
+        var cardsList = hand.Cards.ToList();
+
+        // If BestCardIndexes is provided and valid, use only those cards
+        if (hand.BestCardIndexes is not null && hand.BestCardIndexes.Count == 5)
+        {
+            return hand.BestCardIndexes
+                .Where(idx => idx >= 0 && idx < cardsList.Count)
+                .Select(idx => cardsList[idx])
+                .OrderBy(c => c.Symbol)
+                .ToList();
+        }
+
+        // For 7-card hands (Seven Card Stud), compute best 5 cards client-side
+        if (cardsList.Count == 7)
+        {
+            var coreCards = cardsList
+                .Where(c => c is { Suit: not null, Symbol: not null })
+                .Select(c => new Card(MapSuit(c.Suit!.Value), MapSymbol(c.Symbol!.Value)))
+                .ToList();
+
+            if (coreCards.Count == 7)
+            {
+                var studHand = new StudHand([], coreCards, []);
+                var bestCards = studHand.GetBestHand();
+
+                // Map back to ShowdownCards by matching suit and symbol
+                // Use a list to track which cards have been used (to handle potential duplicates)
+                var result = new List<ShowdownCard>();
+                var usedIndexes = new HashSet<int>();
+
+                foreach (var bc in bestCards)
+                {
+                    for (var i = 0; i < cardsList.Count; i++)
+                    {
+                        if (usedIndexes.Contains(i))
+                        {
+                            continue;
+                        }
+
+                        var sc = cardsList[i];
+                        if (sc.Suit.HasValue && sc.Symbol.HasValue &&
+                            MapSuit(sc.Suit.Value) == bc.Suit &&
+                            MapSymbol(sc.Symbol.Value) == bc.Symbol)
+                        {
+                            result.Add(sc);
+                            usedIndexes.Add(i);
+                            break;
+                        }
+                    }
+                }
+
+                return result.OrderBy(c => c.Symbol).ToList();
+            }
+        }
+
+        // Fall back to showing all cards (for 5-card games)
+        return cardsList.OrderBy(c => c.Symbol).ToList();
     }
 
     private string? GetPlayingCardSuit(ShowdownCard card)
@@ -363,7 +436,10 @@
 
         // If the server did not provide a description, do not try to infer variant rules from card faces.
         // (A Five Card Draw hand can contain 2s/Jacks/Kd too.)
-        HandBase evaluatedHand = new DrawHand(coreCards);
+        // For hands with more than 5 cards (e.g., Seven Card Stud with 7), use StudHand to find the best 5-card combination.
+        HandBase evaluatedHand = coreCards.Count == 5
+            ? new DrawHand(coreCards)
+            : new StudHand([], coreCards, []);
 
         return HandDescriptionFormatter.GetHandDescription(evaluatedHand);
     }
