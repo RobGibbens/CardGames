@@ -2471,8 +2471,10 @@ HandType.HighCard
     /// </summary>
     private int GetMaxDiscards()
     {
-        // Use drawing config from table state if available
-        return _tableState?.DrawingConfig?.MaxDiscards ?? _maxDiscards;
+        // Use drawing config from table state if available, but ensure we respect
+        // the personalized limit (e.g., having an Ace allows 4 discards instead of 3)
+        var publicMax = _tableState?.DrawingConfig?.MaxDiscards ?? 3;
+        return Math.Max(publicMax, _maxDiscards);
     }
 
     /// <summary>

@@ -1,22 +1,31 @@
 # TODO
 
 ## Still to do
+
+### P1 - Can't play without these
 - [ ] Kings and lows - can not join a table already in progress
-- [ ] FiveCardDraw - can't draw four with an Ace
 - [ ] Kings and Lows - don't deal to players that don't have enough chips to match the pot
-
-- [ ] Make sure all calls are idempotent
-- [ ] Add chip management to the dashboard (buy in, cash out, add chips)
-
-- [ ] Search for code == "KINGSANDLOWS" and refactor
-- [ ] Creating a deck and dealing is done in the StartHandCommandHandler, but it should be using CardGames.Core.Dealer;
-- [ ] Table settings should be dynamic when creating a table. Not all games have an ante or a minimum bet.
-
 - [ ] Start a game, p1 goes all 1, p2 calls...game freezes
+- [ ] The betting action overlay. Raise to X doesn't work
+- [ ] Add chip management to the dashboard (buy in, cash out, add chips)
+- [ ] Test side pots
+- 
+### P2 - Important but not blocking play
+- [ ] Make sure all calls are idempotent
+
 - [ ] Continuous play should stop if all players disconnect
-- [ ] During ties, the showdown should show the kicker 
+- [ ] During ties, the showdown should show the kicker
 - [ ] Showdown overlay should handle split pots better
 - [ ] Showdown overlay is not showing payouts correctly
+- [ ] Have the ability for someone to take a seat and be dealt into the next hand
+- [ ] Table should be able to scroll if the screen isn't big enough
+- [ ] Allow them to upload an image when registering
+- 
+### P3 - Nice to have
+- [ ] Search for code == "KINGSANDLOWS" and refactor
+- [ ] Creating a deck and dealing is done in the StartHandCommandHandler, but it should be using CardGames.Core.Dealer
+- [ ] Table settings should be dynamic when creating a table. Not all games have an ante or a minimum bet.
+- [ ] There are a lot of extra database calls going on
 - [ ] Hand history should auto size columns and allow resizing columns
 - [ ] Hand history should paginate
 - [ ] When the Draw Overlay is showing, the cards are not opaque
@@ -30,16 +39,10 @@
 - [ ] Add a friends list
 - [ ] Add the ability to invite friends to a table
 - [ ] Add the ability to create private tables
-- [ ] The betting action overlay. Raise to X doesn't work
-- [ ] Have the ability for someone to take a seat and be dealt into the next hand
 - [ ] When already logged in, take them to the Lobby
-- [ ] Test side pots
 - [ ] The fields on the register page should be wider
-- [ ] Showdown should use better description of the cards (Pair of Aces vs One Pair)
 - [ ] Add animation of dealing the cards
-- [ ] Table should be able to scroll if the screen isn't big enough
 - [ ] Rearrange the register and login screens to make OAuth more obvious
-- [ ] Allow them to upload an image when registering
 - [ ] Add leagues
 - [ ] Add seasons
 - [ ] Add tournaments
@@ -55,7 +58,7 @@
 - [ ] Add Squid Game
 
 ### 7 Card Stud Variants
-- [ ] Add Seven Card Stud
+- [x] Add Seven Card Stud
 - [ ] Add Baseball
 - [ ] Add Follow the Queen
 - [ ] The Good, the Bad, and the Ugly
@@ -67,7 +70,7 @@
 ### 5 Card Draw Variants
 - [x] Five card draw
 - [x] Add Twos, Jacks, Man with the Axe
-- [ ] Add Kings and Lows
+- [x] Add Kings and Lows
 
 ### Other Poker Variants
 
@@ -108,4 +111,5 @@
 - [x] Make sure signalr isn't broadcasting to all players in all games
 - [x] Table - make the table seat look like PokerStars
 - [x] Add an action timer
-- 
+- [x] Showdown should use better description of the cards (Pair of Aces vs One Pair)
+- [x] FiveCardDraw - can't draw four with an Ace
