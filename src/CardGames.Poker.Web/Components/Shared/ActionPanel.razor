@@ -51,7 +51,7 @@
         {
             <button class="action-btn raise-btn" @onclick="() => SubmitAction(BettingActionType.Raise, betAmount)" disabled="@IsSubmitting">
                 <i class="action-icon fa-thin fa-circle-plus"></i>
-                <span class="action-label">Raise to @betAmount</span>
+                <span class="action-label">Raise @betAmount</span>
             </button>
         }
 
@@ -71,13 +71,13 @@
             <div class="bet-slider-container">
                 <input type="range" 
                        class="bet-slider" 
-                       min="@MinBet" 
+                       min="@GetEffectiveMinBet()" 
                        max="@MaxBet" 
                        step="@GetBetStep()"
                        @bind="betAmount"
                        @bind:event="oninput" />
                 <div class="bet-slider-labels">
-                    <span>@MinBet</span>
+                    <span>@GetEffectiveMinBet()</span>
                     <span>@MaxBet</span>
                 </div>
             </div>
@@ -85,14 +85,14 @@
             <div class="bet-input-group">
                 <input type="number" 
                        class="bet-input" 
-                       min="@MinBet" 
+                       min="@GetEffectiveMinBet()" 
                        max="@MaxBet"
                        @bind="betAmount" />
             </div>
 
             <div class="bet-quick-buttons">
-                <button class="quick-bet-btn" @onclick="() => SetBetAmount(MinBet)">Min</button>
-                <button class="quick-bet-btn" @onclick="() => SetBetAmount(GetPotBet(0.5))">� Pot</button>
+                <button class="quick-bet-btn" @onclick="() => SetBetAmount(GetEffectiveMinBet())">Min</button>
+                <button class="quick-bet-btn" @onclick="() => SetBetAmount(GetPotBet(0.5))">½ Pot</button>
                 <button class="quick-bet-btn" @onclick="() => SetBetAmount(GetPotBet(1.0))">Pot</button>
                 <button class="quick-bet-btn" @onclick="() => SetBetAmount(MaxBet)">Max</button>
             </div>
@@ -126,6 +126,12 @@
     [Parameter]
     public int PlayerChips { get; set; }
 
+    /// <summary>
+    /// The minimum raise amount (pre-calculated by the server as CurrentBet + LastRaiseAmount).
+    /// </summary>
+    [Parameter]
+    public int MinRaise { get; set; }
+
     [Parameter]
     public EventCallback<PlayerActionRequest> OnAction { get; set; }
 
@@ -142,10 +148,12 @@
 
     protected override void OnParametersSet()
     {
-        // Initialize bet amount to minimum if not set
-        if (betAmount < MinBet)
+        var effectiveMin = GetEffectiveMinBet();
+
+        // Initialize bet amount to minimum if not set or below the effective minimum
+        if (betAmount < effectiveMin)
         {
-            betAmount = MinBet;
+            betAmount = effectiveMin;
         }
         else if (betAmount > MaxBet)
         {
@@ -180,7 +188,23 @@
 
     private void SetBetAmount(int amount)
     {
-        betAmount = Math.Clamp(amount, MinBet, MaxBet);
+        betAmount = Math.Clamp(amount, GetEffectiveMinBet(), MaxBet);
+    }
+
+    /// <summary>
+    /// Gets the effective minimum bet/raise amount.
+    /// For raises, uses the server-provided MinRaise value.
+    /// For bets, the minimum is MinBet.
+    /// </summary>
+    private int GetEffectiveMinBet()
+    {
+        if (LegalActions.Contains(BettingActionType.Raise))
+        {
+            // Use the server-provided minimum raise amount
+            return Math.Max(MinRaise, MinBet);
+        }
+
+        return MinBet;
     }
 
     private int GetBetStep()
@@ -198,6 +222,6 @@
     {
         // TODO: Get actual pot from parent
         var potBet = (int)(CurrentBetToCall * 2 * multiplier);
-        return Math.Clamp(potBet, MinBet, MaxBet);
+        return Math.Clamp(potBet, GetEffectiveMinBet(), MaxBet);
     }
 }

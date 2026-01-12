@@ -161,6 +161,7 @@
         {
             <ActionPanel LegalActions="@_legalActions" MinBet="@_currentMinBet" MaxBet="@_currentMaxBet"
                          CurrentBetToCall="@_currentBetToCall" PlayerChips="@_playerChips"
+                         MinRaise="@(_availableActions?.MinRaise ?? _currentMinBet)"
                          OnAction="HandlePlayerActionAsync" IsSubmitting="@_isSubmittingAction"
                          ActionTimer="@_actionTimerState" />
         }
@@ -378,7 +379,6 @@
     private int _currentBetToCall;
 
     private AvailableActionsResponse? _availableActions;
-    private GetCurrentBettingRoundResponse? _currentBettingRound;
 
     // Action timer state (from SignalR)
     private ActionTimerStateDto? _actionTimerState;
@@ -1673,6 +1673,8 @@
 
             if (!response.IsSuccessStatusCode)
             {
+                var errorMessage = ExtractErrorMessage(response.Error);
+                await ShowToastAsync(errorMessage, "error");
                 return;
             }
 
@@ -1682,6 +1684,45 @@
         {
             _isSubmittingAction = false;
         }
+    }
+
+    /// <summary>
+    /// Extracts the error message from a Refit API exception.
+    /// The API returns errors as JSON objects with a "message" property.
+    /// </summary>
+    private string ExtractErrorMessage(Refit.ApiException? exception)
+    {
+        if (exception is null)
+        {
+            return "An unknown error occurred.";
+        }
+
+        if (string.IsNullOrWhiteSpace(exception.Content))
+        {
+            return exception.Message ?? "An error occurred.";
+        }
+
+        try
+        {
+            // Parse the JSON response: {"message": "..."}
+            using var doc = System.Text.Json.JsonDocument.Parse(exception.Content);
+            if (doc.RootElement.TryGetProperty("message", out var messageElement))
+            {
+                return messageElement.GetString() ?? "An error occurred.";
+            }
+            // Fallback: try "Message" with capital M
+            if (doc.RootElement.TryGetProperty("Message", out var messageElementUpper))
+            {
+                return messageElementUpper.GetString() ?? "An error occurred.";
+            }
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            // If JSON parsing fails, return the raw content
+            return exception.Content;
+        }
+
+        return exception.Message ?? "An error occurred.";
     }
 
     private async Task HandleDrawActionAsync(List<int> discardIndices)
