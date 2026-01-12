@@ -5,10 +5,11 @@
 ### P1 - Can't play without these
 - [ ] Kings and lows - can not join a table already in progress
 - [ ] Kings and Lows - don't deal to players that don't have enough chips to match the pot
-- [ ] Start a game, p1 goes all 1, p2 calls...game freezes
+- [x] Start a game, p1 goes all 1, p2 calls...game freezes
 - [ ] The betting action overlay. Raise to X doesn't work
 - [ ] Add chip management to the dashboard (buy in, cash out, add chips)
 - [ ] Test side pots
+- [ ] Don't auto start a new hand. Add a timer, allow pause, allow people to get out of the game or end the game
 - 
 ### P2 - Important but not blocking play
 - [ ] Make sure all calls are idempotent
