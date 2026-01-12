@@ -1,3 +1,5 @@
+using CardGames.Poker.Betting;
+
 namespace CardGames.Poker.Api.Data.Entities;
 
 /// <summary>
@@ -124,54 +126,5 @@ public class GameType : EntityWithRowVersion
 	public ICollection<Game> Games { get; set; } = [];
 }
 
-/// <summary>
-/// Defines the betting structure used by a poker game variant.
-/// </summary>
-public enum BettingStructure
-{
-	/// <summary>
-	/// Uses ante bets only (e.g., Five Card Draw, Kings and Lows).
-	/// </summary>
-	Ante = 0,
 
-	/// <summary>
-	/// Uses small blind and big blind (e.g., Texas Hold'em, Omaha).
-	/// </summary>
-	Blinds = 1,
 
-	/// <summary>
-	/// Uses ante plus bring-in for lowest visible card (e.g., Seven Card Stud).
-	/// </summary>
-	AnteBringIn = 2,
-
-	/// <summary>
-	/// Uses ante only with drop-or-stay mechanics and pot matching (e.g., Kings and Lows).
-	/// </summary>
-	AntePotMatch = 3
-}
-
-/// <summary>
-/// Defines the wild card rule type for a poker game variant.
-/// </summary>
-public enum WildCardRule
-{
-	/// <summary>
-	/// No wild cards in this game.
-	/// </summary>
-	None = 0,
-
-	/// <summary>
-	/// Specific ranks are always wild (e.g., 3s and 9s in Baseball).
-	/// </summary>
-	FixedRanks = 1,
-
-	/// <summary>
-	/// Dynamic wild cards based on dealt cards (e.g., Follow the Queen).
-	/// </summary>
-	Dynamic = 2,
-
-	/// <summary>
-	/// Lowest card in hand is wild, plus specific ranks (e.g., Kings and Lows).
-	/// </summary>
-	LowestCard = 3
-}

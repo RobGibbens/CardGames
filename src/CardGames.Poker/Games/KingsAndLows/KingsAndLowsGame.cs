@@ -21,11 +21,20 @@ namespace CardGames.Poker.Games.KingsAndLows;
 /// - Losers match the pot after showdown
 /// </summary>
 [PokerGameMetadata(
-	"Kings and Lows",
-	"A five-card draw poker variant where kings and the lowest card are wild. Players ante, decide to drop or stay, draw cards, and losers match the pot.",
-	2,
-	5,
-	"kingsandlows.png")]
+    code:"KINGSANDLOWS",
+	name:"Kings and Lows",
+	description:"A five-card draw poker variant where kings and the lowest card are wild. Players ante, decide to drop or stay, draw cards, and losers match the pot.",
+	minimumNumberOfPlayers:2,
+	maximumNumberOfPlayers:5,
+    initialHoleCards:5,
+    initialBoardCards:0,
+    maxCommunityCards:0,
+    maxPlayerCards:5,
+    hasDrawPhase:true,
+    maxDiscards:5,
+    wildCardRule:WildCardRule.LowestCard,
+	bettingStructure:BettingStructure.AntePotMatch,
+	imageName:"kingsandlows.png")]
 public class KingsAndLowsGame : IPokerGame
 {
 	public string Name { get; } = "Kings and Lows";
@@ -53,7 +62,7 @@ public class KingsAndLowsGame : IPokerGame
     private List<string> _losers;
     private Dictionary<string, int> _potMatchAmounts;
 
-    public KingsAndLowsPhase CurrentPhase { get; private set; }
+    public Phases CurrentPhase { get; private set; }
     public IReadOnlyList<KingsAndLowsGamePlayer> GamePlayers => _gamePlayers.AsReadOnly();
     public IReadOnlyList<PokerPlayer> Players => _gamePlayers.Select(gp => gp.Player).ToList().AsReadOnly();
     public int CurrentPot => _currentPot;
@@ -104,7 +113,7 @@ public class KingsAndLowsGame : IPokerGame
         _dealerPosition = 0;
         _currentPot = 0;
         _initialAntePaid = false;
-        CurrentPhase = KingsAndLowsPhase.WaitingToStart;
+        CurrentPhase = Phases.WaitingToStart;
     }
 
     /// <summary>
@@ -135,12 +144,12 @@ public class KingsAndLowsGame : IPokerGame
         // Determine if we need to collect antes
         if (!_initialAntePaid || _anteEveryHand)
         {
-            CurrentPhase = KingsAndLowsPhase.CollectingAntes;
+            CurrentPhase = Phases.CollectingAntes;
         }
         else
         {
             // Skip ante collection, go straight to dealing
-            CurrentPhase = KingsAndLowsPhase.Dealing;
+            CurrentPhase = Phases.Dealing;
         }
     }
 
@@ -149,7 +158,7 @@ public class KingsAndLowsGame : IPokerGame
     /// </summary>
     public List<BettingAction> CollectAntes()
     {
-        if (CurrentPhase != KingsAndLowsPhase.CollectingAntes)
+        if (CurrentPhase != Phases.CollectingAntes)
         {
             throw new InvalidOperationException("Cannot collect antes in current phase");
         }
@@ -170,7 +179,7 @@ public class KingsAndLowsGame : IPokerGame
         }
 
         _initialAntePaid = true;
-        CurrentPhase = KingsAndLowsPhase.Dealing;
+        CurrentPhase = Phases.Dealing;
         return actions;
     }
 
@@ -179,7 +188,7 @@ public class KingsAndLowsGame : IPokerGame
     /// </summary>
     public void DealHands()
     {
-        if (CurrentPhase != KingsAndLowsPhase.Dealing)
+        if (CurrentPhase != Phases.Dealing)
         {
             throw new InvalidOperationException("Cannot deal in current phase");
         }
@@ -191,7 +200,7 @@ public class KingsAndLowsGame : IPokerGame
             gamePlayer.SetHand(cards);
         }
 
-        CurrentPhase = KingsAndLowsPhase.DropOrStay;
+        CurrentPhase = Phases.DropOrStay;
     }
 
     /// <summary>
@@ -199,7 +208,7 @@ public class KingsAndLowsGame : IPokerGame
     /// </summary>
     public void SetPlayerDecision(string playerName, DropOrStayDecision decision)
     {
-        if (CurrentPhase != KingsAndLowsPhase.DropOrStay)
+        if (CurrentPhase != Phases.DropOrStay)
         {
             throw new InvalidOperationException("Cannot set decision in current phase");
         }
@@ -226,7 +235,7 @@ public class KingsAndLowsGame : IPokerGame
     /// </summary>
     public DropOrStayResult FinalizeDropOrStay()
     {
-        if (CurrentPhase != KingsAndLowsPhase.DropOrStay)
+        if (CurrentPhase != Phases.DropOrStay)
         {
             throw new InvalidOperationException("Cannot finalize drop/stay in current phase");
         }
@@ -254,7 +263,7 @@ public class KingsAndLowsGame : IPokerGame
         if (stayingPlayers.Count == 0)
         {
             // All players dropped - dead hand, keep pot for next hand
-            CurrentPhase = KingsAndLowsPhase.Complete;
+            CurrentPhase = Phases.Complete;
             return new DropOrStayResult
             {
                 Success = true,
@@ -266,7 +275,7 @@ public class KingsAndLowsGame : IPokerGame
         else if (stayingPlayers.Count == 1)
         {
             // Only one player stayed - player vs deck
-            CurrentPhase = KingsAndLowsPhase.DrawPhase;
+            CurrentPhase = Phases.DrawPhase;
             _currentDrawPlayerIndex = _gamePlayers.IndexOf(stayingPlayers[0]);
             _playersWhoHaveDrawn = [];
             return new DropOrStayResult
@@ -281,7 +290,7 @@ public class KingsAndLowsGame : IPokerGame
         else
         {
             // Normal case - multiple players stayed
-            CurrentPhase = KingsAndLowsPhase.DrawPhase;
+            CurrentPhase = Phases.DrawPhase;
             _currentDrawPlayerIndex = FindFirstStayingPlayerAfterDealer();
             _playersWhoHaveDrawn = [];
             return new DropOrStayResult
@@ -315,7 +324,7 @@ public class KingsAndLowsGame : IPokerGame
     /// </summary>
     public KingsAndLowsGamePlayer GetCurrentDrawPlayer()
     {
-        if (CurrentPhase != KingsAndLowsPhase.DrawPhase || _currentDrawPlayerIndex < 0)
+        if (CurrentPhase != Phases.DrawPhase || _currentDrawPlayerIndex < 0)
         {
             return null;
         }
@@ -328,7 +337,7 @@ public class KingsAndLowsGame : IPokerGame
     /// </summary>
     public DrawResult ProcessDraw(IReadOnlyCollection<int> discardIndices)
     {
-        if (CurrentPhase != KingsAndLowsPhase.DrawPhase)
+        if (CurrentPhase != Phases.DrawPhase)
         {
             return new DrawResult
             {
@@ -374,7 +383,7 @@ public class KingsAndLowsGame : IPokerGame
             PlayerName = gamePlayer.Player.Name,
             DiscardedCards = discardedCards,
             NewCards = newCards.ToList(),
-            DrawComplete = CurrentPhase != KingsAndLowsPhase.DrawPhase
+            DrawComplete = CurrentPhase != Phases.DrawPhase
         };
     }
 
@@ -404,13 +413,13 @@ public class KingsAndLowsGame : IPokerGame
         if (stayingCount == 1)
         {
             // Single player stayed - go to player vs deck
-            CurrentPhase = KingsAndLowsPhase.PlayerVsDeck;
+            CurrentPhase = Phases.PlayerVsDeck;
             DealDeckHand();
         }
         else
         {
             // Multiple players - go to showdown
-            CurrentPhase = KingsAndLowsPhase.Showdown;
+            CurrentPhase = Phases.Showdown;
         }
     }
 
@@ -441,7 +450,7 @@ public class KingsAndLowsGame : IPokerGame
     /// </summary>
     public DrawResult ProcessDeckDrawManual(IReadOnlyCollection<int> discardIndices)
     {
-        if (CurrentPhase != KingsAndLowsPhase.PlayerVsDeck)
+        if (CurrentPhase != Phases.PlayerVsDeck)
         {
             return new DrawResult
             {
@@ -489,7 +498,7 @@ public class KingsAndLowsGame : IPokerGame
         _deckHand.AddRange(newCards);
 
         _deckHandDrawComplete = true;
-        CurrentPhase = KingsAndLowsPhase.Showdown;
+        CurrentPhase = Phases.Showdown;
 
         return new DrawResult
         {
@@ -507,7 +516,7 @@ public class KingsAndLowsGame : IPokerGame
     /// </summary>
     public DrawResult ProcessDeckDraw()
     {
-        if (CurrentPhase != KingsAndLowsPhase.PlayerVsDeck)
+        if (CurrentPhase != Phases.PlayerVsDeck)
         {
             return new DrawResult
             {
@@ -563,7 +572,7 @@ public class KingsAndLowsGame : IPokerGame
         _deckHand.AddRange(newCards);
 
         _deckHandDrawComplete = true;
-        CurrentPhase = KingsAndLowsPhase.Showdown;
+        CurrentPhase = Phases.Showdown;
 
         return new DrawResult
         {
@@ -581,7 +590,7 @@ public class KingsAndLowsGame : IPokerGame
     /// </summary>
     public KingsAndLowsShowdownResult PerformShowdown()
     {
-        if (CurrentPhase != KingsAndLowsPhase.Showdown)
+        if (CurrentPhase != Phases.Showdown)
         {
             return new KingsAndLowsShowdownResult
             {
@@ -663,11 +672,11 @@ public class KingsAndLowsGame : IPokerGame
         // Move to pot matching phase if there are losers
         if (_losers.Any())
         {
-            CurrentPhase = KingsAndLowsPhase.PotMatching;
+            CurrentPhase = Phases.PotMatching;
         }
         else
         {
-            CurrentPhase = KingsAndLowsPhase.Complete;
+            CurrentPhase = Phases.Complete;
             MoveDealer();
         }
 
@@ -715,7 +724,7 @@ public class KingsAndLowsGame : IPokerGame
     /// </summary>
     public PotMatchResult ProcessPotMatching()
     {
-        if (CurrentPhase != KingsAndLowsPhase.PotMatching)
+        if (CurrentPhase != Phases.PotMatching)
         {
             return new PotMatchResult
             {
@@ -744,7 +753,7 @@ public class KingsAndLowsGame : IPokerGame
         // The matched amounts form the new pot for the next hand
         _currentPot += totalMatched;
 
-        CurrentPhase = KingsAndLowsPhase.Complete;
+        CurrentPhase = Phases.Complete;
         MoveDealer();
 
         return new PotMatchResult
@@ -760,7 +769,7 @@ public class KingsAndLowsGame : IPokerGame
     /// </summary>
     public void SkipPotMatching()
     {
-        if (CurrentPhase == KingsAndLowsPhase.PotMatching)
+        if (CurrentPhase == Phases.PotMatching)
         {
             // In player vs deck loss, the pot stays and loser matches
             if (_losers != null && _losers.Count == 1)
@@ -774,7 +783,7 @@ public class KingsAndLowsGame : IPokerGame
             }
         }
         
-        CurrentPhase = KingsAndLowsPhase.Complete;
+        CurrentPhase = Phases.Complete;
         MoveDealer();
     }
 

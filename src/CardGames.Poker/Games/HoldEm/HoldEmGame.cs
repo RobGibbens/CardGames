@@ -15,11 +15,20 @@ namespace CardGames.Poker.Games.HoldEm;
 /// Each hand has four betting rounds: pre-flop, flop, turn, and river.
 /// </summary>
 [PokerGameMetadata(
-	"Texas Hold 'Em",
-	"A popular variant of poker where players are dealt two hole cards and share five community cards, with four betting rounds.",
-	2,
-	14,
-	"holdem.png")]
+	code:"HOLDEM",
+	name:"Texas Hold 'Em",
+	description:"A popular variant of poker where players are dealt two hole cards and share five community cards, with four betting rounds.",
+	minimumNumberOfPlayers:2,
+	maximumNumberOfPlayers:14,
+    initialHoleCards:2,
+    initialBoardCards:0,
+    maxCommunityCards:5,
+    maxPlayerCards:2,
+    hasDrawPhase:false,
+	maxDiscards:0,
+	wildCardRule:WildCardRule.None,
+	bettingStructure:BettingStructure.Blinds,
+	imageName:"holdem.png")]
 public class HoldEmGame : IPokerGame
 {
 	public string Name { get; } = "Texas Hold 'Em";
@@ -37,7 +46,7 @@ public class HoldEmGame : IPokerGame
     private int _dealerPosition;
     private List<Card> _communityCards = [];
 
-    public HoldEmPhase CurrentPhase { get; private set; }
+    public Phases CurrentPhase { get; private set; }
     public IReadOnlyList<HoldEmGamePlayer> GamePlayers => _gamePlayers.AsReadOnly();
     public IReadOnlyList<PokerPlayer> Players => _gamePlayers.Select(gp => gp.Player).ToList().AsReadOnly();
     public int TotalPot => _potManager?.TotalPotAmount ?? 0;
@@ -72,7 +81,7 @@ public class HoldEmGame : IPokerGame
         _smallBlind = smallBlind;
         _bigBlind = bigBlind;
         _dealerPosition = 0;
-        CurrentPhase = HoldEmPhase.WaitingToStart;
+        CurrentPhase = Phases.WaitingToStart;
     }
 
     /// <summary>
@@ -101,7 +110,7 @@ public class HoldEmGame : IPokerGame
             gamePlayer.ResetHand();
         }
 
-        CurrentPhase = HoldEmPhase.CollectingBlinds;
+        CurrentPhase = Phases.CollectingBlinds;
     }
 
     /// <summary>
@@ -174,7 +183,7 @@ public class HoldEmGame : IPokerGame
     /// </summary>
     public List<BettingAction> CollectBlinds()
     {
-        if (CurrentPhase != HoldEmPhase.CollectingBlinds)
+        if (CurrentPhase != Phases.CollectingBlinds)
         {
             throw new InvalidOperationException("Cannot collect blinds in current phase");
         }
@@ -203,7 +212,7 @@ public class HoldEmGame : IPokerGame
             actions.Add(new BettingAction(bbPlayer.Name, BettingActionType.Post, actualBb));
         }
 
-        CurrentPhase = HoldEmPhase.Dealing;
+        CurrentPhase = Phases.Dealing;
         return actions;
     }
 
@@ -212,7 +221,7 @@ public class HoldEmGame : IPokerGame
     /// </summary>
     public void DealHoleCards()
     {
-        if (CurrentPhase != HoldEmPhase.Dealing)
+        if (CurrentPhase != Phases.Dealing)
         {
             throw new InvalidOperationException("Cannot deal in current phase");
         }
@@ -227,7 +236,7 @@ public class HoldEmGame : IPokerGame
             }
         }
 
-        CurrentPhase = HoldEmPhase.PreFlop;
+        CurrentPhase = Phases.PreFlop;
     }
 
     /// <summary>
@@ -235,7 +244,7 @@ public class HoldEmGame : IPokerGame
     /// </summary>
     public void StartPreFlopBettingRound()
     {
-        if (CurrentPhase != HoldEmPhase.PreFlop)
+        if (CurrentPhase != Phases.PreFlop)
         {
             throw new InvalidOperationException("Cannot start pre-flop betting in current phase");
         }
@@ -265,7 +274,7 @@ public class HoldEmGame : IPokerGame
     /// </summary>
     public void DealFlop()
     {
-        if (CurrentPhase != HoldEmPhase.Flop)
+        if (CurrentPhase != Phases.Flop)
         {
             throw new InvalidOperationException("Cannot deal flop in current phase");
         }
@@ -279,7 +288,7 @@ public class HoldEmGame : IPokerGame
     /// </summary>
     public void DealTurn()
     {
-        if (CurrentPhase != HoldEmPhase.Turn)
+        if (CurrentPhase != Phases.Turn)
         {
             throw new InvalidOperationException("Cannot deal turn in current phase");
         }
@@ -293,7 +302,7 @@ public class HoldEmGame : IPokerGame
     /// </summary>
     public void DealRiver()
     {
-        if (CurrentPhase != HoldEmPhase.River)
+        if (CurrentPhase != Phases.River)
         {
             throw new InvalidOperationException("Cannot deal river in current phase");
         }
@@ -307,7 +316,7 @@ public class HoldEmGame : IPokerGame
     /// </summary>
     public void StartPostFlopBettingRound()
     {
-        if (CurrentPhase is not (HoldEmPhase.Flop or HoldEmPhase.Turn or HoldEmPhase.River))
+        if (CurrentPhase is not (Phases.Flop or Phases.Turn or Phases.River))
         {
             throw new InvalidOperationException("Cannot start post-flop betting in current phase");
         }
@@ -377,7 +386,7 @@ public class HoldEmGame : IPokerGame
         var playersInHand = _gamePlayers.Count(gp => !gp.Player.HasFolded);
         if (playersInHand <= 1)
         {
-            CurrentPhase = HoldEmPhase.Showdown;
+            CurrentPhase = Phases.Showdown;
             return;
         }
 
@@ -389,18 +398,18 @@ public class HoldEmGame : IPokerGame
 
         switch (CurrentPhase)
         {
-            case HoldEmPhase.PreFlop:
-                CurrentPhase = HoldEmPhase.Flop;
+            case Phases.PreFlop:
+                CurrentPhase = Phases.Flop;
                 break;
-            case HoldEmPhase.Flop:
-                CurrentPhase = HoldEmPhase.Turn;
+            case Phases.Flop:
+                CurrentPhase = Phases.Turn;
                 break;
-            case HoldEmPhase.Turn:
-                CurrentPhase = HoldEmPhase.River;
+            case Phases.Turn:
+                CurrentPhase = Phases.River;
                 break;
-            case HoldEmPhase.River:
+            case Phases.River:
                 _potManager.CalculateSidePots(_gamePlayers.Select(gp => gp.Player));
-                CurrentPhase = HoldEmPhase.Showdown;
+                CurrentPhase = Phases.Showdown;
                 break;
         }
     }
@@ -410,7 +419,7 @@ public class HoldEmGame : IPokerGame
     /// </summary>
     public HoldEmShowdownResult PerformShowdown()
     {
-        if (CurrentPhase != HoldEmPhase.Showdown)
+        if (CurrentPhase != Phases.Showdown)
         {
             return new HoldEmShowdownResult
             {
@@ -428,7 +437,7 @@ public class HoldEmGame : IPokerGame
             var totalPot = _potManager.TotalPotAmount;
             winner.Player.AddChips(totalPot);
 
-            CurrentPhase = HoldEmPhase.Complete;
+            CurrentPhase = Phases.Complete;
             MoveDealer();
 
             return new HoldEmShowdownResult
@@ -473,7 +482,7 @@ public class HoldEmGame : IPokerGame
             gamePlayer.Player.AddChips(payout.Value);
         }
 
-        CurrentPhase = HoldEmPhase.Complete;
+        CurrentPhase = Phases.Complete;
         MoveDealer();
 
         return new HoldEmShowdownResult
@@ -512,10 +521,10 @@ public class HoldEmGame : IPokerGame
     {
         return CurrentPhase switch
         {
-            HoldEmPhase.PreFlop => "Pre-Flop",
-            HoldEmPhase.Flop => "Flop",
-            HoldEmPhase.Turn => "Turn",
-            HoldEmPhase.River => "River",
+            Phases.PreFlop => "Pre-Flop",
+            Phases.Flop => "Flop",
+            Phases.Turn => "Turn",
+            Phases.River => "River",
             _ => CurrentPhase.ToString()
         };
     }

@@ -19,11 +19,20 @@ namespace CardGames.Poker.Games.Baseball;
 /// - Standard seven-card stud betting structure otherwise
 /// </summary>
 [PokerGameMetadata(
-	"Baseball",
-	"A seven-card stud variant with wild 3s and 9s, and buy-card options on 4s.",
-	2,
-	6,
-	"baseball.png")]
+    code:"BASEBALL",
+	name:"Baseball",
+	description:"A seven-card stud variant with wild 3s and 9s, and buy-card options on 4s.",
+ 	minimumNumberOfPlayers: 2,
+	maximumNumberOfPlayers: 6,
+    initialHoleCards: 2,
+    initialBoardCards: 1,
+    maxCommunityCards: 0,
+    maxPlayerCards: 7,
+    hasDrawPhase: false,
+    maxDiscards: 0,
+    wildCardRule: WildCardRule.FixedRanks,
+    bettingStructure: BettingStructure.AnteBringIn,
+	imageName:"baseball.png")]
 public class BaseballGame : IPokerGame
 {
 	public string Name { get; } = "Baseball";
@@ -52,7 +61,7 @@ public class BaseballGame : IPokerGame
     // For tracking incremental dealing
     private int _nextPlayerToDeal = 0;
 
-    public BaseballPhase CurrentPhase { get; private set; }
+    public Phases CurrentPhase { get; private set; }
     public IReadOnlyList<BaseballGamePlayer> GamePlayers => _gamePlayers.AsReadOnly();
     public IReadOnlyList<PokerPlayer> Players => _gamePlayers.Select(gp => gp.Player).ToList().AsReadOnly();
     public int TotalPot => _potManager?.TotalPotAmount ?? 0;
@@ -98,7 +107,7 @@ public class BaseballGame : IPokerGame
         _buyCardPrice = buyCardPrice;
         _useBringIn = useBringIn;
         _dealerPosition = 0;
-        CurrentPhase = BaseballPhase.WaitingToStart;
+        CurrentPhase = Phases.WaitingToStart;
     }
 
     /// <summary>
@@ -128,7 +137,7 @@ public class BaseballGame : IPokerGame
             gamePlayer.ResetHand();
         }
 
-        CurrentPhase = BaseballPhase.CollectingAntes;
+        CurrentPhase = Phases.CollectingAntes;
     }
 
     /// <summary>
@@ -136,7 +145,7 @@ public class BaseballGame : IPokerGame
     /// </summary>
     public List<BettingAction> CollectAntes()
     {
-        if (CurrentPhase != BaseballPhase.CollectingAntes)
+        if (CurrentPhase != Phases.CollectingAntes)
         {
             throw new InvalidOperationException("Cannot collect antes in current phase");
         }
@@ -156,7 +165,7 @@ public class BaseballGame : IPokerGame
             }
         }
 
-        CurrentPhase = BaseballPhase.ThirdStreet;
+        CurrentPhase = Phases.ThirdStreet;
         return actions;
     }
 
@@ -168,7 +177,7 @@ public class BaseballGame : IPokerGame
     /// </summary>
     public void DealThirdStreet()
     {
-        if (CurrentPhase != BaseballPhase.ThirdStreet)
+        if (CurrentPhase != Phases.ThirdStreet)
         {
             throw new InvalidOperationException("Cannot deal third street in current phase");
         }
@@ -193,7 +202,7 @@ public class BaseballGame : IPokerGame
     /// </summary>
     public void StartDealingThirdStreet()
     {
-        if (CurrentPhase != BaseballPhase.ThirdStreet)
+        if (CurrentPhase != Phases.ThirdStreet)
         {
             throw new InvalidOperationException("Cannot deal third street in current phase");
         }
@@ -220,7 +229,7 @@ public class BaseballGame : IPokerGame
     /// <returns>True if a 4 was dealt face up, false otherwise.</returns>
     public bool DealThirdStreetToNextPlayer()
     {
-        if (CurrentPhase != BaseballPhase.ThirdStreet)
+        if (CurrentPhase != Phases.ThirdStreet)
         {
             throw new InvalidOperationException("Cannot deal third street in current phase");
         }
@@ -424,7 +433,7 @@ public class BaseballGame : IPokerGame
     /// </summary>
     public BettingAction PostBringIn()
     {
-        if (CurrentPhase != BaseballPhase.ThirdStreet)
+        if (CurrentPhase != Phases.ThirdStreet)
         {
             throw new InvalidOperationException("Cannot post bring-in in current phase");
         }
@@ -457,7 +466,7 @@ public class BaseballGame : IPokerGame
 
         switch (CurrentPhase)
         {
-            case BaseballPhase.ThirdStreet:
+            case Phases.ThirdStreet:
                 if (_useBringIn && _bringInPlayerIndex >= 0)
                 {
                     startPosition = _bringInPlayerIndex;
@@ -472,13 +481,13 @@ public class BaseballGame : IPokerGame
                 }
                 minBet = _smallBet;
                 break;
-            case BaseballPhase.FourthStreet:
+            case Phases.FourthStreet:
                 startPosition = GetDealerPositionForFirstActingPlayer(FindBestVisibleHandPosition());
                 minBet = _smallBet;
                 break;
-            case BaseballPhase.FifthStreet:
-            case BaseballPhase.SixthStreet:
-            case BaseballPhase.SeventhStreet:
+            case Phases.FifthStreet:
+            case Phases.SixthStreet:
+            case Phases.SeventhStreet:
                 startPosition = GetDealerPositionForFirstActingPlayer(FindBestVisibleHandPosition());
                 minBet = _bigBet;
                 break;
@@ -555,7 +564,7 @@ public class BaseballGame : IPokerGame
         var playersInHand = _gamePlayers.Count(gp => !gp.Player.HasFolded);
         if (playersInHand <= 1)
         {
-            CurrentPhase = BaseballPhase.Showdown;
+            CurrentPhase = Phases.Showdown;
             return;
         }
 
@@ -567,21 +576,21 @@ public class BaseballGame : IPokerGame
 
         switch (CurrentPhase)
         {
-            case BaseballPhase.ThirdStreet:
-                CurrentPhase = BaseballPhase.FourthStreet;
+            case Phases.ThirdStreet:
+                CurrentPhase = Phases.FourthStreet;
                 break;
-            case BaseballPhase.FourthStreet:
-                CurrentPhase = BaseballPhase.FifthStreet;
+            case Phases.FourthStreet:
+                CurrentPhase = Phases.FifthStreet;
                 break;
-            case BaseballPhase.FifthStreet:
-                CurrentPhase = BaseballPhase.SixthStreet;
+            case Phases.FifthStreet:
+                CurrentPhase = Phases.SixthStreet;
                 break;
-            case BaseballPhase.SixthStreet:
-                CurrentPhase = BaseballPhase.SeventhStreet;
+            case Phases.SixthStreet:
+                CurrentPhase = Phases.SeventhStreet;
                 break;
-            case BaseballPhase.SeventhStreet:
+            case Phases.SeventhStreet:
                 _potManager.CalculateSidePots(_gamePlayers.Select(gp => gp.Player));
-                CurrentPhase = BaseballPhase.Showdown;
+                CurrentPhase = Phases.Showdown;
                 break;
         }
     }
@@ -594,10 +603,10 @@ public class BaseballGame : IPokerGame
     /// </summary>
     public void DealStreetCard()
     {
-        if (CurrentPhase is not (BaseballPhase.FourthStreet
-            or BaseballPhase.FifthStreet
-            or BaseballPhase.SixthStreet
-            or BaseballPhase.SeventhStreet))
+        if (CurrentPhase is not (Phases.FourthStreet
+            or Phases.FifthStreet
+            or Phases.SixthStreet
+            or Phases.SeventhStreet))
         {
             throw new InvalidOperationException("Cannot deal street card in current phase");
         }
@@ -622,10 +631,10 @@ public class BaseballGame : IPokerGame
     /// </summary>
     public void StartDealingStreetCard()
     {
-        if (CurrentPhase is not (BaseballPhase.FourthStreet
-            or BaseballPhase.FifthStreet
-            or BaseballPhase.SixthStreet
-            or BaseballPhase.SeventhStreet))
+        if (CurrentPhase is not (Phases.FourthStreet
+            or Phases.FifthStreet
+            or Phases.SixthStreet
+            or Phases.SeventhStreet))
         {
             throw new InvalidOperationException("Cannot deal street card in current phase");
         }
@@ -645,10 +654,10 @@ public class BaseballGame : IPokerGame
     /// <returns>True if a 4 was dealt face up, false otherwise.</returns>
     public bool DealStreetCardToNextPlayer()
     {
-        if (CurrentPhase is not (BaseballPhase.FourthStreet
-            or BaseballPhase.FifthStreet
-            or BaseballPhase.SixthStreet
-            or BaseballPhase.SeventhStreet))
+        if (CurrentPhase is not (Phases.FourthStreet
+            or Phases.FifthStreet
+            or Phases.SixthStreet
+            or Phases.SeventhStreet))
         {
             throw new InvalidOperationException("Cannot deal street card in current phase");
         }
@@ -673,7 +682,7 @@ public class BaseballGame : IPokerGame
         var gamePlayer = _gamePlayers[playerIndex];
         Card card;
 
-        if (CurrentPhase == BaseballPhase.SeventhStreet)
+        if (CurrentPhase == Phases.SeventhStreet)
         {
             // Seventh street card is dealt face down - no buy-card option
             card = _dealer.DealCard();
@@ -713,7 +722,7 @@ public class BaseballGame : IPokerGame
     /// </summary>
     public BaseballShowdownResult PerformShowdown()
     {
-        if (CurrentPhase != BaseballPhase.Showdown)
+        if (CurrentPhase != Phases.Showdown)
         {
             return new BaseballShowdownResult
             {
@@ -731,7 +740,7 @@ public class BaseballGame : IPokerGame
             var totalPot = _potManager.TotalPotAmount;
             winner.Player.AddChips(totalPot);
 
-            CurrentPhase = BaseballPhase.Complete;
+            CurrentPhase = Phases.Complete;
             MoveDealer();
 
             return new BaseballShowdownResult
@@ -780,7 +789,7 @@ public class BaseballGame : IPokerGame
             gamePlayer.Player.AddChips(payout.Value);
         }
 
-        CurrentPhase = BaseballPhase.Complete;
+        CurrentPhase = Phases.Complete;
         MoveDealer();
 
         return new BaseballShowdownResult
@@ -950,11 +959,11 @@ public class BaseballGame : IPokerGame
     {
         return CurrentPhase switch
         {
-            BaseballPhase.ThirdStreet => _smallBet,
-            BaseballPhase.FourthStreet => _smallBet,
-            BaseballPhase.FifthStreet => _bigBet,
-            BaseballPhase.SixthStreet => _bigBet,
-            BaseballPhase.SeventhStreet => _bigBet,
+            Phases.ThirdStreet => _smallBet,
+            Phases.FourthStreet => _smallBet,
+            Phases.FifthStreet => _bigBet,
+            Phases.SixthStreet => _bigBet,
+            Phases.SeventhStreet => _bigBet,
             _ => _smallBet
         };
     }
@@ -966,11 +975,11 @@ public class BaseballGame : IPokerGame
     {
         return CurrentPhase switch
         {
-            BaseballPhase.ThirdStreet => "Third Street",
-            BaseballPhase.FourthStreet => "Fourth Street",
-            BaseballPhase.FifthStreet => "Fifth Street",
-            BaseballPhase.SixthStreet => "Sixth Street",
-            BaseballPhase.SeventhStreet => "Seventh Street (River)",
+            Phases.ThirdStreet => "Third Street",
+            Phases.FourthStreet => "Fourth Street",
+            Phases.FifthStreet => "Fifth Street",
+            Phases.SixthStreet => "Sixth Street",
+            Phases.SeventhStreet => "Seventh Street (River)",
             _ => CurrentPhase.ToString()
         };
     }

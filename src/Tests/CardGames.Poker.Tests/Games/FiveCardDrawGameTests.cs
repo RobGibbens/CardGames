@@ -16,7 +16,7 @@ public class FiveCardDrawGameTests
         var game = CreateTwoPlayerGame();
 
         game.Players.Should().HaveCount(2);
-        game.CurrentPhase.Should().Be(FiveCardDrawPhase.WaitingToStart);
+        game.CurrentPhase.Should().Be(Phases.WaitingToStart);
     }
 
     [Fact]
@@ -48,7 +48,7 @@ public class FiveCardDrawGameTests
 
         game.StartHand();
 
-        game.CurrentPhase.Should().Be(FiveCardDrawPhase.CollectingAntes);
+        game.CurrentPhase.Should().Be(Phases.CollectingAntes);
     }
 
     [Fact]
@@ -62,7 +62,7 @@ public class FiveCardDrawGameTests
         actions.Should().HaveCount(2);
         actions.All(a => a.ActionType == BettingActionType.Post).Should().BeTrue();
         game.TotalPot.Should().Be(20); // 10 ante from each
-        game.CurrentPhase.Should().Be(FiveCardDrawPhase.Dealing);
+        game.CurrentPhase.Should().Be(Phases.Dealing);
     }
 
     [Fact]
@@ -75,7 +75,7 @@ public class FiveCardDrawGameTests
         game.DealHands();
 
         game.GamePlayers.Should().AllSatisfy(gp => gp.Hand.Should().HaveCount(5));
-        game.CurrentPhase.Should().Be(FiveCardDrawPhase.FirstBettingRound);
+        game.CurrentPhase.Should().Be(Phases.FirstBettingRound);
     }
 
     [Fact]
@@ -118,7 +118,7 @@ public class FiveCardDrawGameTests
         game.ProcessBettingAction(BettingActionType.Check);
         game.ProcessBettingAction(BettingActionType.Check);
 
-        game.CurrentPhase.Should().Be(FiveCardDrawPhase.DrawPhase);
+        game.CurrentPhase.Should().Be(Phases.DrawPhase);
     }
 
     [Fact]
@@ -132,7 +132,7 @@ public class FiveCardDrawGameTests
         game.ProcessBettingAction(BettingActionType.Bet, 20);
         game.ProcessBettingAction(BettingActionType.Fold);
 
-        game.CurrentPhase.Should().Be(FiveCardDrawPhase.Showdown);
+        game.CurrentPhase.Should().Be(Phases.Showdown);
     }
 
     [Fact]
@@ -295,7 +295,7 @@ public class FiveCardDrawGameTests
         result.Success.Should().BeTrue();
         result.WonByFold.Should().BeTrue();
         result.Payouts.Should().HaveCount(1);
-        game.CurrentPhase.Should().Be(FiveCardDrawPhase.Complete);
+        game.CurrentPhase.Should().Be(Phases.Complete);
     }
 
     [Fact]
@@ -415,7 +415,7 @@ public class FiveCardDrawGameTests
             p.HasFolded.Should().BeFalse();
             p.IsAllIn.Should().BeFalse();
         });
-        game.CurrentPhase.Should().Be(FiveCardDrawPhase.CollectingAntes);
+        game.CurrentPhase.Should().Be(Phases.CollectingAntes);
     }
 
     [Fact]

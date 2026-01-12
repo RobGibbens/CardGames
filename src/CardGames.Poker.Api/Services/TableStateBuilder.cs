@@ -9,6 +9,7 @@ using CardGames.Poker.Api.Games;
 using CardGames.Poker.Games.GameFlow;
 using CardGames.Poker.Hands.DrawHands;
 using CardGames.Poker.Hands;
+using CardGames.Poker.Hands.StudHands;
 using CardGames.Poker.Hands.WildCards;
 using Microsoft.EntityFrameworkCore;
 using Entities = CardGames.Poker.Api.Data.Entities;
@@ -99,54 +100,54 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				.FirstOrDefault(p => p.PhaseId.Equals(game.CurrentPhase, StringComparison.OrdinalIgnoreCase));
 		}
 
-			// Build Player vs Deck state (if applicable)
-			var playerVsDeck = await BuildPlayerVsDeckStateAsync(game, gamePlayers, userProfilesByEmail, cancellationToken);
+		// Build Player vs Deck state (if applicable)
+		var playerVsDeck = await BuildPlayerVsDeckStateAsync(game, gamePlayers, userProfilesByEmail, cancellationToken);
 
-			// Get action timer state
-			var actionTimerState = _actionTimerService.GetTimerState(gameId);
-			var actionTimer = actionTimerState is not null
-				? new ActionTimerStateDto
-				{
-					SecondsRemaining = actionTimerState.SecondsRemaining,
-					DurationSeconds = actionTimerState.DurationSeconds,
-					StartedAtUtc = actionTimerState.StartedAtUtc,
-					PlayerSeatIndex = actionTimerState.PlayerSeatIndex,
-					IsActive = !actionTimerState.IsExpired
-				}
-				: null;
-
-			return new TableStatePublicDto
+		// Get action timer state
+		var actionTimerState = _actionTimerService.GetTimerState(gameId);
+		var actionTimer = actionTimerState is not null
+			? new ActionTimerStateDto
 			{
-				GameId = game.Id,
-				Name = game.Name,
-				GameTypeName = game.GameType?.Name,
-				GameTypeCode = game.GameType?.Code,
-				CurrentPhase = game.CurrentPhase,
-				CurrentPhaseDescription = PhaseDescriptionResolver.TryResolve(game.GameType?.Code, game.CurrentPhase),
-				Ante = game.Ante ?? 0,
-				MinBet = game.MinBet ?? 0,
-				TotalPot = totalPot,
-				DealerSeatIndex = game.DealerPosition,
-				CurrentActorSeatIndex = game.CurrentPlayerIndex,
-				IsPaused = game.Status == Entities.GameStatus.BetweenHands,
-				CurrentHandNumber = game.CurrentHandNumber,
-				CreatedByName = game.CreatedByName,
-				Seats = seats,
-				Showdown = BuildShowdownPublicDto(game, gamePlayers, userProfilesByEmail),
-				HandCompletedAtUtc = game.HandCompletedAt,
-				NextHandStartsAtUtc = game.NextHandStartsAt,
-				IsResultsPhase = isResultsPhase,
-				SecondsUntilNextHand = secondsUntilNextHand,
-				HandHistory = handHistory,
-				CurrentPhaseCategory = currentPhaseDescriptor?.Category,
-				CurrentPhaseRequiresAction = currentPhaseDescriptor?.RequiresPlayerAction ?? false,
-				CurrentPhaseAvailableActions = currentPhaseDescriptor?.AvailableActions,
-				DrawingConfig = BuildDrawingConfigDto(rules),
-				SpecialRules = BuildSpecialRulesDto(rules),
-				PlayerVsDeck = playerVsDeck,
-				ActionTimer = actionTimer
-			};
-		}
+				SecondsRemaining = actionTimerState.SecondsRemaining,
+				DurationSeconds = actionTimerState.DurationSeconds,
+				StartedAtUtc = actionTimerState.StartedAtUtc,
+				PlayerSeatIndex = actionTimerState.PlayerSeatIndex,
+				IsActive = !actionTimerState.IsExpired
+			}
+			: null;
+
+		return new TableStatePublicDto
+		{
+			GameId = game.Id,
+			Name = game.Name,
+			GameTypeName = game.GameType?.Name,
+			GameTypeCode = game.GameType?.Code,
+			CurrentPhase = game.CurrentPhase,
+			CurrentPhaseDescription = PhaseDescriptionResolver.TryResolve(game.GameType?.Code, game.CurrentPhase),
+			Ante = game.Ante ?? 0,
+			MinBet = game.MinBet ?? 0,
+			TotalPot = totalPot,
+			DealerSeatIndex = game.DealerPosition,
+			CurrentActorSeatIndex = game.CurrentPlayerIndex,
+			IsPaused = game.Status == Entities.GameStatus.BetweenHands,
+			CurrentHandNumber = game.CurrentHandNumber,
+			CreatedByName = game.CreatedByName,
+			Seats = seats,
+			Showdown = BuildShowdownPublicDto(game, gamePlayers, userProfilesByEmail),
+			HandCompletedAtUtc = game.HandCompletedAt,
+			NextHandStartsAtUtc = game.NextHandStartsAt,
+			IsResultsPhase = isResultsPhase,
+			SecondsUntilNextHand = secondsUntilNextHand,
+			HandHistory = handHistory,
+			CurrentPhaseCategory = currentPhaseDescriptor?.Category,
+			CurrentPhaseRequiresAction = currentPhaseDescriptor?.RequiresPlayerAction ?? false,
+			CurrentPhaseAvailableActions = currentPhaseDescriptor?.AvailableActions,
+			DrawingConfig = BuildDrawingConfigDto(rules),
+			SpecialRules = BuildSpecialRulesDto(rules),
+			PlayerVsDeck = playerVsDeck,
+			ActionTimer = actionTimer
+		};
+	}
 
 	/// <inheritdoc />
 	public async Task<PrivateStateDto?> BuildPrivateStateAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
@@ -238,9 +239,50 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 			var allEvaluationCards = playerCards.Concat(communityCards).ToList();
 
+			// Seven Card Stud: Requires 2 hole + up to 4 board + 1 down card (7 total at showdown)
+			if (string.Equals(game.GameType?.Code, "SEVENCARDSTUD", StringComparison.OrdinalIgnoreCase))
+			{
+				// Need to access the original cards with Location info
+				var playerCardEntities = gamePlayer.Cards
+					.Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber)
+					.OrderBy(c => c.DealOrder)
+					.ToList();
+
+				var holeCardEntities = playerCardEntities.Where(c => c.Location == CardLocation.Hole).ToList();
+				var boardCardEntities = playerCardEntities.Where(c => c.Location == CardLocation.Board).ToList();
+
+				// Evaluate once we have at least 5 cards (Third Street: 2 hole + 1 board = 3, need to wait for 5+)
+				if (playerCardEntities.Count >= 5)
+				{
+					var initialHoleCards = holeCardEntities.Take(2)
+						.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
+						.ToList();
+					var openCards = boardCardEntities
+						.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
+						.ToList();
+
+					// If we have 7 cards, the third hole card is the down card (seventh street)
+					if (holeCardEntities.Count >= 3 && initialHoleCards.Count == 2 && openCards.Count <= 4)
+					{
+						var downCard = new Card((Suit)holeCardEntities[2].Suit, (Symbol)holeCardEntities[2].Symbol);
+						var studHand = new SevenCardStudHand(initialHoleCards, openCards, downCard);
+						handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(studHand);
+					}
+					else if (initialHoleCards.Count >= 2)
+					{
+						// Before seventh street, evaluate with a temporary StudHand using all available cards
+						// Use the base StudHand which handles variable card counts
+						var allHoleCards = holeCardEntities
+							.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
+							.ToList();
+						var studHand = new StudHand(initialHoleCards, openCards, allHoleCards.Skip(2).ToList());
+						handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(studHand);
+					}
+				}
+			}
 			// Draw games (no community cards). Provide a description once 5 cards are available.
 			// (During seating / pre-deal phases there may be 0-4 cards and we keep the description null.)
-			if (communityCards.Count == 0 && playerCards.Count >= 5)
+			else if (communityCards.Count == 0 && playerCards.Count >= 5)
 			{
 				// Twos, Jacks, Man with the Axe uses wild cards.
 				// Kings and Lows uses wild cards (Kings + lowest card).
@@ -367,17 +409,18 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 		// For Seven Card Stud, show visible cards; otherwise show face-down placeholders
 		var isSevenCardStud = string.Equals(gameTypeCode, "SEVENCARDSTUD", StringComparison.OrdinalIgnoreCase);
-		
+
 		var publicCards = playerCards.Select(card =>
 		{
 			// For stud games, respect the IsVisible flag; otherwise default to face-down
 			var shouldShowCard = isSevenCardStud && card.IsVisible;
-			
+
 			return new CardPublicDto
 			{
 				IsFaceUp = shouldShowCard,
 				Rank = shouldShowCard ? MapSymbolToRank(card.Symbol) : null,
-				Suit = shouldShowCard ? GetCardSuitString(card.Suit) : null
+				Suit = shouldShowCard ? GetCardSuitString(card.Suit) : null,
+				DealOrder = card.DealOrder
 			};
 		}).ToList();
 
@@ -462,7 +505,17 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		CancellationToken cancellationToken)
 	{
 		// Only provide actions during betting phases
-		var bettingPhases = new[] { "FirstBettingRound", "SecondBettingRound" };
+		// Includes Five Card Draw phases and Seven Card Stud street phases
+		var bettingPhases = new[]
+		{
+			"FirstBettingRound",
+			"SecondBettingRound",
+			"ThirdStreet",
+			"FourthStreet",
+			"FifthStreet",
+			"SixthStreet",
+			"SeventhStreet"
+		};
 		if (!bettingPhases.Contains(game.CurrentPhase))
 		{
 			return null;
@@ -545,14 +598,19 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			PokerGameMetadataRegistry.TwosJacksManWithTheAxeCode,
 			StringComparison.OrdinalIgnoreCase);
 
+		var isSevenCardStud = string.Equals(
+			game.GameType?.Code,
+			PokerGameMetadataRegistry.SevenCardStudCode,
+			StringComparison.OrdinalIgnoreCase);
+
 		var isKingsAndLows = string.Equals(
 			game.GameType?.Code,
 			PokerGameMetadataRegistry.KingsAndLowsCode,
 			StringComparison.OrdinalIgnoreCase);
 
 		// Evaluate all hands for players who haven't folded
-		// Use FiveCardHand as the base type since all variant hand types inherit from it
-		var playerHandEvaluations = new Dictionary<string, (FiveCardHand hand, TwosJacksManWithTheAxeDrawHand? twosJacksHand, KingsAndLowsDrawHand? kingsAndLowsHand, GamePlayer gamePlayer, List<GameCard> cards, List<int> wildIndexes)>();
+		// Use HandBase as the base type since all hand types inherit from it
+		var playerHandEvaluations = new Dictionary<string, (HandBase hand, TwosJacksManWithTheAxeDrawHand? twosJacksHand, KingsAndLowsDrawHand? kingsAndLowsHand, SevenCardStudHand? studHand, GamePlayer gamePlayer, List<GameCard> cards, List<int> wildIndexes)>();
 
 		foreach (var gp in gamePlayers.Where(p => !p.HasFolded))
 		{
@@ -577,7 +635,38 @@ public sealed class TableStateBuilder : ITableStateBuilder
 							wildIndexes.Add(i);
 						}
 					}
-					playerHandEvaluations[gp.Player.Name] = (wildHand, wildHand, null, gp, cards, wildIndexes);
+					playerHandEvaluations[gp.Player.Name] = (wildHand, wildHand, null, null, gp, cards, wildIndexes);
+				}
+				else if (isSevenCardStud)
+				{
+					// Seven Card Stud: 2 hole cards + 4 board cards + 1 down card = 7 cards
+					// Hole cards are Location == Hole, board cards are Location == Board
+					// The final hole card (seventh street) is the down card
+					var holeCards = cards
+						.Where(c => c.Location == CardLocation.Hole)
+						.OrderBy(c => c.DealOrder)
+						.ToList();
+					var boardCards = cards
+						.Where(c => c.Location == CardLocation.Board)
+						.OrderBy(c => c.DealOrder)
+						.ToList();
+
+					// For Seven Card Stud: first 2 hole cards are initial hole cards, 
+					// last hole card (if 3 exist) is the seventh street down card
+					var initialHoleCards = holeCards.Take(2)
+						.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
+						.ToList();
+					var openCards = boardCards
+						.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
+						.ToList();
+
+					// SevenCardStudHand requires exactly 2 hole cards, up to 4 open cards, and 1 down card
+					if (initialHoleCards.Count == 2 && openCards.Count <= 4 && holeCards.Count >= 3)
+					{
+						var downCard = new Card((Suit)holeCards[2].Suit, (Symbol)holeCards[2].Symbol);
+						var studHand = new SevenCardStudHand(initialHoleCards, openCards, downCard);
+						playerHandEvaluations[gp.Player.Name] = (studHand, null, null, studHand, gp, cards, []);
+					}
 				}
 				else if (isKingsAndLows)
 				{
@@ -592,12 +681,12 @@ public sealed class TableStateBuilder : ITableStateBuilder
 							wildIndexes.Add(i);
 						}
 					}
-					playerHandEvaluations[gp.Player.Name] = (kingsAndLowsHand, null, kingsAndLowsHand, gp, cards, wildIndexes);
+					playerHandEvaluations[gp.Player.Name] = (kingsAndLowsHand, null, kingsAndLowsHand, null, gp, cards, wildIndexes);
 				}
 				else
 				{
 					var drawHand = new DrawHand(coreCards);
-					playerHandEvaluations[gp.Player.Name] = (drawHand, null, null, gp, cards, []);
+					playerHandEvaluations[gp.Player.Name] = (drawHand, null, null, null, gp, cards, []);
 				}
 			}
 		}

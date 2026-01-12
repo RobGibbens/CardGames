@@ -112,7 +112,7 @@ internal class OmahaPlayCommand : Command<OmahaPlaySettings>
         }
 
         // Flop
-        if (game.CurrentPhase == OmahaPhase.Flop)
+        if (game.CurrentPhase == Phases.Flop)
         {
             Logger.Paragraph("Flop");
             game.DealFlop();
@@ -128,7 +128,7 @@ internal class OmahaPlayCommand : Command<OmahaPlaySettings>
         }
 
         // Turn
-        if (game.CurrentPhase == OmahaPhase.Turn)
+        if (game.CurrentPhase == Phases.Turn)
         {
             Logger.Paragraph("Turn");
             game.DealTurn();
@@ -144,7 +144,7 @@ internal class OmahaPlayCommand : Command<OmahaPlaySettings>
         }
 
         // River
-        if (game.CurrentPhase == OmahaPhase.River)
+        if (game.CurrentPhase == Phases.River)
         {
             Logger.Paragraph("River");
             game.DealRiver();
@@ -160,7 +160,7 @@ internal class OmahaPlayCommand : Command<OmahaPlaySettings>
         }
 
         // Showdown
-        if (game.CurrentPhase == OmahaPhase.Showdown)
+        if (game.CurrentPhase == Phases.Showdown)
         {
             var result = game.PerformShowdown();
             DisplayShowdownResult(result, game);

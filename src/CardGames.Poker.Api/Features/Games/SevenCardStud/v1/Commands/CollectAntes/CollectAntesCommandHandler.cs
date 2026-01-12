@@ -1,10 +1,10 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
-using CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.CreateGame;
-using CardGames.Poker.Games.SevenCardStud;
+using CardGames.Poker.Betting;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
+using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 
 namespace CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.CollectAntes;
 
@@ -37,12 +37,12 @@ public class CollectAntesCommandHandler(CardsDbContext context)
 		}
 
 		// 2. Validate game state allows collecting antes
-		if (game.CurrentPhase != nameof(SevenCardStudPhase.CollectingAntes))
+		if (game.CurrentPhase != nameof(Phases.CollectingAntes))
 		{
 			return new CollectAntesError
 			{
 				Message = $"Cannot collect antes. Game is in '{game.CurrentPhase}' phase. " +
-						  $"Antes can only be collected when the game is in '{nameof(SevenCardStudPhase.CollectingAntes)}' phase.",
+						  $"Antes can only be collected when the game is in '{nameof(Phases.CollectingAntes)}' phase.",
 				Code = CollectAntesErrorCode.InvalidGameState
 			};
 		}
@@ -127,7 +127,7 @@ public class CollectAntesCommandHandler(CardsDbContext context)
 		}
 
 		// 5. Update game state - transition to ThirdStreet phase
-		game.CurrentPhase = nameof(SevenCardStudPhase.ThirdStreet);
+		game.CurrentPhase = nameof(Phases.ThirdStreet);
 		game.UpdatedAt = now;
 
 		// 6. Reset current bets for all players (antes don't count toward betting rounds)

@@ -16,7 +16,7 @@ public class BaseballGameTests
         var game = CreateTwoPlayerGame();
 
         game.Players.Should().HaveCount(2);
-        game.CurrentPhase.Should().Be(BaseballPhase.WaitingToStart);
+        game.CurrentPhase.Should().Be(Phases.WaitingToStart);
     }
 
     [Fact]
@@ -48,7 +48,7 @@ public class BaseballGameTests
 
         game.StartHand();
 
-        game.CurrentPhase.Should().Be(BaseballPhase.CollectingAntes);
+        game.CurrentPhase.Should().Be(Phases.CollectingAntes);
     }
 
     [Fact]
@@ -62,7 +62,7 @@ public class BaseballGameTests
         actions.Should().HaveCount(2);
         actions.All(a => a.ActionType == BettingActionType.Post).Should().BeTrue();
         game.TotalPot.Should().Be(10); // 5 ante from each
-        game.CurrentPhase.Should().Be(BaseballPhase.ThirdStreet);
+        game.CurrentPhase.Should().Be(Phases.ThirdStreet);
     }
 
     [Fact]
@@ -180,7 +180,7 @@ public class BaseballGameTests
         var result = game.ProcessBettingAction(BettingActionType.Fold);
 
         result.Success.Should().BeTrue();
-        game.CurrentPhase.Should().Be(BaseballPhase.Showdown);
+        game.CurrentPhase.Should().Be(Phases.Showdown);
     }
 
     [Fact]
@@ -229,7 +229,7 @@ public class BaseballGameTests
         result.Success.Should().BeTrue();
         result.WonByFold.Should().BeTrue();
         result.Payouts.Should().HaveCount(1);
-        game.CurrentPhase.Should().Be(BaseballPhase.Complete);
+        game.CurrentPhase.Should().Be(Phases.Complete);
     }
 
     [Fact]

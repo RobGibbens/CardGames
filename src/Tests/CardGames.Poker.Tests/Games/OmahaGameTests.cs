@@ -15,7 +15,7 @@ public class OmahaGameTests
         var game = CreateTwoPlayerGame();
 
         game.Players.Should().HaveCount(2);
-        game.CurrentPhase.Should().Be(OmahaPhase.WaitingToStart);
+        game.CurrentPhase.Should().Be(Phases.WaitingToStart);
     }
 
     [Fact]
@@ -47,7 +47,7 @@ public class OmahaGameTests
 
         game.StartHand();
 
-        game.CurrentPhase.Should().Be(OmahaPhase.PostingBlinds);
+        game.CurrentPhase.Should().Be(Phases.CollectingBlinds);
     }
 
     [Fact]
@@ -61,7 +61,7 @@ public class OmahaGameTests
         actions.Should().HaveCount(2);
         actions.All(a => a.ActionType == BettingActionType.Post).Should().BeTrue();
         game.TotalPot.Should().Be(15); // 5 small blind + 10 big blind
-        game.CurrentPhase.Should().Be(OmahaPhase.Preflop);
+        game.CurrentPhase.Should().Be(Phases.PreFlop);
     }
 
     [Fact]
@@ -148,7 +148,7 @@ public class OmahaGameTests
         var result = game.ProcessBettingAction(BettingActionType.Fold);
 
         result.Success.Should().BeTrue();
-        game.CurrentPhase.Should().Be(OmahaPhase.Showdown);
+        game.CurrentPhase.Should().Be(Phases.Showdown);
     }
 
     [Fact]
@@ -200,7 +200,7 @@ public class OmahaGameTests
         result.Success.Should().BeTrue();
         result.WonByFold.Should().BeTrue();
         result.Payouts.Should().HaveCount(1);
-        game.CurrentPhase.Should().Be(OmahaPhase.Complete);
+        game.CurrentPhase.Should().Be(Phases.Complete);
     }
 
     [Fact]

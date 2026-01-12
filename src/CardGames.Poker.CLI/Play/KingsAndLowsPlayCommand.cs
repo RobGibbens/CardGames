@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using CardGames.Core.French.Cards;
 using CardGames.Core.French.Cards.Extensions;
+using CardGames.Poker.Betting;
 using CardGames.Poker.CLI.Output;
 using CardGames.Poker.Games.KingsAndLows;
 using Spectre.Console;
@@ -90,7 +91,7 @@ internal class KingsAndLowsPlayCommand : Command<KingsAndLowsPlaySettings>
         game.StartHand();
 
         // Collect antes (if in that phase)
-        if (game.CurrentPhase == KingsAndLowsPhase.CollectingAntes)
+        if (game.CurrentPhase == Phases.CollectingAntes)
         {
             AnsiConsole.MarkupLine("[yellow]Collecting antes...[/]");
             var anteActions = game.CollectAntes();
@@ -132,25 +133,25 @@ internal class KingsAndLowsPlayCommand : Command<KingsAndLowsPlaySettings>
         }
 
         // Draw phase
-        if (game.CurrentPhase == KingsAndLowsPhase.DrawPhase)
+        if (game.CurrentPhase == Phases.DrawPhase)
         {
             RunDrawPhase(game);
         }
 
         // Player vs Deck
-        if (game.CurrentPhase == KingsAndLowsPhase.PlayerVsDeck)
+        if (game.CurrentPhase == Phases.PlayerVsDeck)
         {
             RunPlayerVsDeck(game);
         }
 
         // Showdown
-        if (game.CurrentPhase == KingsAndLowsPhase.Showdown)
+        if (game.CurrentPhase == Phases.Showdown)
         {
             var showdownResult = game.PerformShowdown();
             DisplayShowdownResult(showdownResult, game);
 
             // Pot matching
-            if (game.CurrentPhase == KingsAndLowsPhase.PotMatching)
+            if (game.CurrentPhase == Phases.PotMatching)
             {
                 RunPotMatching(game, showdownResult);
             }
@@ -202,7 +203,7 @@ internal class KingsAndLowsPlayCommand : Command<KingsAndLowsPlaySettings>
 
     private static void RunDrawPhase(KingsAndLowsGame game)
     {
-        while (game.CurrentPhase == KingsAndLowsPhase.DrawPhase)
+        while (game.CurrentPhase == Phases.DrawPhase)
         {
             var drawPlayer = game.GetCurrentDrawPlayer();
             if (drawPlayer == null)

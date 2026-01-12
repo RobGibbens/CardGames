@@ -30,6 +30,13 @@ public static class GamesApiServiceCollectionExtensions
 				MaxRetryAttempts = 3,
 				Delay = TimeSpan.FromSeconds(0.5)
 			};
+
+			// Increase timeouts for debugging (default is 30 seconds)
+			config.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(120);
+			config.AttemptTimeout.Timeout = TimeSpan.FromSeconds(120);
+
+			// Circuit breaker sampling duration must be at least double the attempt timeout
+			config.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(300);
 		});
 
 		builder?.Invoke(clientBuilder);

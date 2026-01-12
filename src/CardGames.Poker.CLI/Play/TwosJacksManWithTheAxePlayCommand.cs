@@ -110,13 +110,13 @@ internal class TwosJacksManWithTheAxePlayCommand : Command<PlaySettings>
         }
 
         // Draw phase
-        if (game.CurrentPhase == TwosJacksManWithTheAxePhase.DrawPhase)
+        if (game.CurrentPhase == Phases.DrawPhase)
         {
             RunDrawPhase(game);
         }
 
         // Second betting round
-        if (game.CurrentPhase == TwosJacksManWithTheAxePhase.SecondBettingRound)
+        if (game.CurrentPhase == Phases.SecondBettingRound)
         {
             if (!RunBettingRound(game, "Second Betting Round"))
             {
@@ -127,7 +127,7 @@ internal class TwosJacksManWithTheAxePlayCommand : Command<PlaySettings>
         }
 
         // Showdown
-        if (game.CurrentPhase == TwosJacksManWithTheAxePhase.Showdown)
+        if (game.CurrentPhase == Phases.Showdown)
         {
             var result = game.PerformShowdown();
             DisplayShowdownResult(result);
@@ -234,7 +234,7 @@ internal class TwosJacksManWithTheAxePlayCommand : Command<PlaySettings>
 
     private static void RunDrawPhase(TwosJacksManWithTheAxeGame game)
     {
-        while (game.CurrentPhase == TwosJacksManWithTheAxePhase.DrawPhase)
+        while (game.CurrentPhase == Phases.DrawPhase)
         {
             var drawPlayer = game.GetCurrentDrawPlayer();
             if (drawPlayer == null)

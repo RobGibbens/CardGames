@@ -1,10 +1,12 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Services;
+using CardGames.Poker.Betting;
 using CardGames.Poker.Games.KingsAndLows;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
+using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 
 namespace CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.DrawCards;
 
@@ -39,12 +41,12 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 		}
 
 		// 2. Validate game is in DrawPhase
-		if (game.CurrentPhase != nameof(KingsAndLowsPhase.DrawPhase))
+		if (game.CurrentPhase != nameof(Phases.DrawPhase))
 		{
 			return new DrawCardsError
 			{
 				Message = $"Cannot draw cards. Game is in '{game.CurrentPhase}' phase, " +
-						  $"but must be in '{nameof(KingsAndLowsPhase.DrawPhase)}' phase.",
+						  $"but must be in '{nameof(Phases.DrawPhase)}' phase.",
 				Code = DrawCardsErrorCode.InvalidPhase
 			};
 		}
@@ -195,7 +197,7 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 			if (totalStaying == 1)
 			{
 				// Single player stayed - go to player vs deck
-				game.CurrentPhase = nameof(KingsAndLowsPhase.PlayerVsDeck);
+				game.CurrentPhase = nameof(Phases.PlayerVsDeck);
 
 				// Deal the deck's hand now so it's visible in the overlay
 				await DealDeckHandAsync(game, context, now, cancellationToken);
@@ -205,7 +207,7 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 				// Multiple players - go to DrawComplete phase first
 				// The ContinuousPlayBackgroundService will transition to Showdown after a delay
 				// so all players can see their new cards
-				game.CurrentPhase = nameof(KingsAndLowsPhase.DrawComplete);
+				game.CurrentPhase = nameof(Phases.DrawComplete);
 				game.DrawCompletedAt = now;
 				game.UpdatedAt = now;
 
@@ -283,7 +285,7 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 		if (mainPot == null)
 		{
 			// No pot to distribute - just complete the hand
-			game.CurrentPhase = nameof(KingsAndLowsPhase.Complete);
+			game.CurrentPhase = nameof(Phases.Complete);
 			game.HandCompletedAt = now;
 			game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);
 			MoveDealer(game);
@@ -317,7 +319,7 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 		// Find winner(s)
 		if (playerHandEvaluations.Count == 0)
 		{
-			game.CurrentPhase = nameof(KingsAndLowsPhase.Complete);
+			game.CurrentPhase = nameof(Phases.Complete);
 			game.HandCompletedAt = now;
 			game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);
 			MoveDealer(game);
@@ -376,7 +378,7 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 		}
 
 		// Complete the hand
-		game.CurrentPhase = nameof(KingsAndLowsPhase.Complete);
+		game.CurrentPhase = nameof(Phases.Complete);
 		game.HandCompletedAt = now;
 		game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);
 		MoveDealer(game);
@@ -474,7 +476,7 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 				card.GamePlayerId = null; // Deck cards have no player
 				card.Location = CardLocation.Board; // Board represents deck hand
 				card.DealOrder = i + 1;
-				card.DealtAtPhase = nameof(KingsAndLowsPhase.PlayerVsDeck);
+				card.DealtAtPhase = nameof(Phases.PlayerVsDeck);
 				card.IsVisible = true; // Deck cards are visible to all
 				card.DealtAt = now;
 			}

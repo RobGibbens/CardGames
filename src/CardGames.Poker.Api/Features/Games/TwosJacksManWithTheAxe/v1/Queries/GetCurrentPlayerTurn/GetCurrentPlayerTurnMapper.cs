@@ -2,6 +2,7 @@ using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Extensions;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.DealHands;
 using Riok.Mapperly.Abstractions;
+using CardGames.Poker.Api.Models;
 
 namespace CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe.v1.Queries.GetCurrentPlayerTurn;
 

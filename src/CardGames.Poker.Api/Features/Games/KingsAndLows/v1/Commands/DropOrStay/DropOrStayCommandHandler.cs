@@ -1,6 +1,7 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Services;
+using CardGames.Poker.Betting;
 using CardGames.Poker.Games.KingsAndLows;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -35,12 +36,12 @@ public class DropOrStayCommandHandler(CardsDbContext context)
 		}
 
 		// 2. Validate game is in DropOrStay phase
-		if (game.CurrentPhase != nameof(KingsAndLowsPhase.DropOrStay))
+		if (game.CurrentPhase != nameof(Phases.DropOrStay))
 		{
 			return new DropOrStayError
 			{
 				Message = $"Cannot make drop/stay decision. Game is in '{game.CurrentPhase}' phase, " +
-						  $"but must be in '{nameof(KingsAndLowsPhase.DropOrStay)}' phase.",
+						  $"but must be in '{nameof(Phases.DropOrStay)}' phase.",
 				Code = DropOrStayErrorCode.InvalidPhase
 			};
 		}
@@ -118,7 +119,7 @@ public class DropOrStayCommandHandler(CardsDbContext context)
 			if (stayingPlayers.Count == 0)
 			{
 				// All players dropped - dead hand
-				game.CurrentPhase = nameof(KingsAndLowsPhase.Complete);
+				game.CurrentPhase = nameof(Phases.Complete);
 				game.HandCompletedAt = now;
 				game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);
 				MoveDealer(game);
@@ -127,7 +128,7 @@ public class DropOrStayCommandHandler(CardsDbContext context)
 			else if (stayingPlayers.Count == 1)
 			{
 				// Single player stayed - go to draw phase (then player vs deck)
-				game.CurrentPhase = nameof(KingsAndLowsPhase.DrawPhase);
+				game.CurrentPhase = nameof(Phases.DrawPhase);
 				var gamePlayersList = game.GamePlayers.OrderBy(gp => gp.SeatPosition).ToList();
 				game.CurrentDrawPlayerIndex = gamePlayersList.IndexOf(stayingPlayers[0]);
 				game.CurrentPlayerIndex = stayingPlayers[0].SeatPosition;
@@ -136,7 +137,7 @@ public class DropOrStayCommandHandler(CardsDbContext context)
 			else
 			{
 				// Multiple players stayed - go to draw phase
-				game.CurrentPhase = nameof(KingsAndLowsPhase.DrawPhase);
+				game.CurrentPhase = nameof(Phases.DrawPhase);
 				// Find first staying player after dealer (order by SeatPosition for consistent indexing)
 				var dealerSeatPosition = game.DealerPosition;
 				var gamePlayersList = game.GamePlayers.OrderBy(gp => gp.SeatPosition).ToList();

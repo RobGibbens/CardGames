@@ -1,0 +1,31 @@
+using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.DealHands;
+using CardGames.Poker.Api.Models;
+
+namespace CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetGamePlayers;
+
+/// <summary>
+/// Response containing a player's state within a specific game.
+/// </summary>
+public record GetGamePlayersResponse(
+	Guid Id,
+	Guid GameId,
+	Guid PlayerId,
+	string PlayerName,
+	string? PlayerFirstName,
+	string? PlayerAvatarUrl,
+	int SeatPosition,
+	int ChipStack,
+	int StartingChips,
+	int CurrentBet,
+	int TotalContributedThisHand,
+	bool HasFolded,
+	bool IsAllIn,
+	bool IsConnected,
+	bool IsSittingOut,
+	bool HasDrawnThisRound,
+	GamePlayerStatus Status,
+	DateTimeOffset JoinedAt,
+	string RowVersion,
+	IReadOnlyList<DealtCard> Hand
+);

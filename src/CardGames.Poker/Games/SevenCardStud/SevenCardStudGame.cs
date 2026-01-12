@@ -12,11 +12,20 @@ namespace CardGames.Poker.Games.SevenCardStud;
 /// Orchestrates a Seven Card Stud poker game with betting.
 /// </summary>
 [PokerGameMetadata(
-	"Seven Card Stud",
-	"A classic poker variant where players receive seven cards individually, with betting rounds after the third, fourth, fifth, and sixth cards.",
-	2,
-	7,
-	"sevencardstud.png")]
+    code:"SEVENCARDSTUD",
+	name:"Seven Card Stud",
+	description:"A classic poker variant where players receive seven cards individually, with betting rounds after the third, fourth, fifth, and sixth cards.",
+	minimumNumberOfPlayers:2,
+	maximumNumberOfPlayers:7,
+    initialHoleCards:2,
+    initialBoardCards:1,
+    maxCommunityCards:0,
+    maxPlayerCards:7,
+    hasDrawPhase:false,
+    maxDiscards:0,
+    wildCardRule:WildCardRule.None,
+	bettingStructure:BettingStructure.AnteBringIn,
+	imageName:"sevencardstud.png")]
 public class SevenCardStudGame : IPokerGame
 {
 	public string Name { get; } = "Seven Card Stud";
@@ -37,7 +46,7 @@ public class SevenCardStudGame : IPokerGame
     private int _dealerPosition;
     private int _bringInPlayerIndex;
 
-    public SevenCardStudPhase CurrentPhase { get; private set; }
+    public Phases CurrentPhase { get; private set; }
     public IReadOnlyList<SevenCardStudGamePlayer> GamePlayers => _gamePlayers.AsReadOnly();
     public IReadOnlyList<PokerPlayer> Players => _gamePlayers.Select(gp => gp.Player).ToList().AsReadOnly();
     public int TotalPot => _potManager?.TotalPotAmount ?? 0;
@@ -80,7 +89,7 @@ public class SevenCardStudGame : IPokerGame
         _bigBet = bigBet;
         _useBringIn = useBringIn;
         _dealerPosition = 0;
-        CurrentPhase = SevenCardStudPhase.WaitingToStart;
+        CurrentPhase = Phases.WaitingToStart;
     }
 
     /// <summary>
@@ -105,7 +114,7 @@ public class SevenCardStudGame : IPokerGame
             gamePlayer.ResetHand();
         }
 
-        CurrentPhase = SevenCardStudPhase.CollectingAntes;
+        CurrentPhase = Phases.CollectingAntes;
     }
 
     /// <summary>
@@ -113,7 +122,7 @@ public class SevenCardStudGame : IPokerGame
     /// </summary>
     public List<BettingAction> CollectAntes()
     {
-        if (CurrentPhase != SevenCardStudPhase.CollectingAntes)
+        if (CurrentPhase != Phases.CollectingAntes)
         {
             throw new InvalidOperationException("Cannot collect antes in current phase");
         }
@@ -133,7 +142,7 @@ public class SevenCardStudGame : IPokerGame
             }
         }
 
-        CurrentPhase = SevenCardStudPhase.ThirdStreet;
+        CurrentPhase = Phases.ThirdStreet;
         return actions;
     }
 
@@ -142,7 +151,7 @@ public class SevenCardStudGame : IPokerGame
     /// </summary>
     public void DealThirdStreet()
     {
-        if (CurrentPhase != SevenCardStudPhase.ThirdStreet)
+        if (CurrentPhase != Phases.ThirdStreet)
         {
             throw new InvalidOperationException("Cannot deal third street in current phase");
         }
@@ -183,7 +192,7 @@ public class SevenCardStudGame : IPokerGame
     /// </summary>
     public BettingAction PostBringIn()
     {
-        if (CurrentPhase != SevenCardStudPhase.ThirdStreet)
+        if (CurrentPhase != Phases.ThirdStreet)
         {
             throw new InvalidOperationException("Cannot post bring-in in current phase");
         }
@@ -216,7 +225,7 @@ public class SevenCardStudGame : IPokerGame
 
         switch (CurrentPhase)
         {
-            case SevenCardStudPhase.ThirdStreet:
+            case Phases.ThirdStreet:
                 if (_useBringIn && _bringInPlayerIndex >= 0)
                 {
                     startPosition = _bringInPlayerIndex;
@@ -232,13 +241,13 @@ public class SevenCardStudGame : IPokerGame
                 }
                 minBet = _smallBet;
                 break;
-            case SevenCardStudPhase.FourthStreet:
+            case Phases.FourthStreet:
                 startPosition = GetDealerPositionForFirstActingPlayer(FindBestVisibleHandPosition());
                 minBet = _smallBet;
                 break;
-            case SevenCardStudPhase.FifthStreet:
-            case SevenCardStudPhase.SixthStreet:
-            case SevenCardStudPhase.SeventhStreet:
+            case Phases.FifthStreet:
+            case Phases.SixthStreet:
+            case Phases.SeventhStreet:
                 startPosition = GetDealerPositionForFirstActingPlayer(FindBestVisibleHandPosition());
                 minBet = _bigBet;
                 break;
@@ -317,7 +326,7 @@ public class SevenCardStudGame : IPokerGame
         var playersInHand = _gamePlayers.Count(gp => !gp.Player.HasFolded);
         if (playersInHand <= 1)
         {
-            CurrentPhase = SevenCardStudPhase.Showdown;
+            CurrentPhase = Phases.Showdown;
             return;
         }
 
@@ -329,21 +338,21 @@ public class SevenCardStudGame : IPokerGame
 
         switch (CurrentPhase)
         {
-            case SevenCardStudPhase.ThirdStreet:
-                CurrentPhase = SevenCardStudPhase.FourthStreet;
+            case Phases.ThirdStreet:
+                CurrentPhase = Phases.FourthStreet;
                 break;
-            case SevenCardStudPhase.FourthStreet:
-                CurrentPhase = SevenCardStudPhase.FifthStreet;
+            case Phases.FourthStreet:
+                CurrentPhase = Phases.FifthStreet;
                 break;
-            case SevenCardStudPhase.FifthStreet:
-                CurrentPhase = SevenCardStudPhase.SixthStreet;
+            case Phases.FifthStreet:
+                CurrentPhase = Phases.SixthStreet;
                 break;
-            case SevenCardStudPhase.SixthStreet:
-                CurrentPhase = SevenCardStudPhase.SeventhStreet;
+            case Phases.SixthStreet:
+                CurrentPhase = Phases.SeventhStreet;
                 break;
-            case SevenCardStudPhase.SeventhStreet:
+            case Phases.SeventhStreet:
                 _potManager.CalculateSidePots(_gamePlayers.Select(gp => gp.Player));
-                CurrentPhase = SevenCardStudPhase.Showdown;
+                CurrentPhase = Phases.Showdown;
                 break;
         }
     }
@@ -353,10 +362,10 @@ public class SevenCardStudGame : IPokerGame
     /// </summary>
     public void DealStreetCard()
     {
-        if (CurrentPhase is not (SevenCardStudPhase.FourthStreet
-            or SevenCardStudPhase.FifthStreet
-            or SevenCardStudPhase.SixthStreet
-            or SevenCardStudPhase.SeventhStreet))
+        if (CurrentPhase is not (Phases.FourthStreet
+            or Phases.FifthStreet
+            or Phases.SixthStreet
+            or Phases.SeventhStreet))
         {
             throw new InvalidOperationException("Cannot deal street card in current phase");
         }
@@ -365,7 +374,7 @@ public class SevenCardStudGame : IPokerGame
         {
             if (!gamePlayer.Player.HasFolded)
             {
-                if (CurrentPhase == SevenCardStudPhase.SeventhStreet)
+                if (CurrentPhase == Phases.SeventhStreet)
                 {
                     // Seventh street card is dealt face down
                     gamePlayer.AddHoleCard(_dealer.DealCard());
@@ -390,7 +399,7 @@ public class SevenCardStudGame : IPokerGame
     /// </summary>
     public SevenCardStudShowdownResult PerformShowdown()
     {
-        if (CurrentPhase != SevenCardStudPhase.Showdown)
+        if (CurrentPhase != Phases.Showdown)
         {
             return new SevenCardStudShowdownResult
             {
@@ -408,7 +417,7 @@ public class SevenCardStudGame : IPokerGame
             var totalPot = _potManager.TotalPotAmount;
             winner.Player.AddChips(totalPot);
 
-            CurrentPhase = SevenCardStudPhase.Complete;
+            CurrentPhase = Phases.Complete;
             MoveDealer();
 
             return new SevenCardStudShowdownResult
@@ -462,7 +471,7 @@ public class SevenCardStudGame : IPokerGame
             gamePlayer.Player.AddChips(payout.Value);
         }
 
-        CurrentPhase = SevenCardStudPhase.Complete;
+        CurrentPhase = Phases.Complete;
         MoveDealer();
 
         return new SevenCardStudShowdownResult
@@ -644,11 +653,11 @@ public class SevenCardStudGame : IPokerGame
     {
         return CurrentPhase switch
         {
-            SevenCardStudPhase.ThirdStreet => _smallBet,
-            SevenCardStudPhase.FourthStreet => _smallBet,
-            SevenCardStudPhase.FifthStreet => _bigBet,
-            SevenCardStudPhase.SixthStreet => _bigBet,
-            SevenCardStudPhase.SeventhStreet => _bigBet,
+            Phases.ThirdStreet => _smallBet,
+            Phases.FourthStreet => _smallBet,
+            Phases.FifthStreet => _bigBet,
+            Phases.SixthStreet => _bigBet,
+            Phases.SeventhStreet => _bigBet,
             _ => _smallBet
         };
     }
@@ -660,11 +669,11 @@ public class SevenCardStudGame : IPokerGame
     {
         return CurrentPhase switch
         {
-            SevenCardStudPhase.ThirdStreet => "Third Street",
-            SevenCardStudPhase.FourthStreet => "Fourth Street",
-            SevenCardStudPhase.FifthStreet => "Fifth Street",
-            SevenCardStudPhase.SixthStreet => "Sixth Street",
-            SevenCardStudPhase.SeventhStreet => "Seventh Street (River)",
+            Phases.ThirdStreet => "Third Street",
+            Phases.FourthStreet => "Fourth Street",
+            Phases.FifthStreet => "Fifth Street",
+            Phases.SixthStreet => "Sixth Street",
+            Phases.SeventhStreet => "Seventh Street (River)",
             _ => CurrentPhase.ToString()
         };
     }

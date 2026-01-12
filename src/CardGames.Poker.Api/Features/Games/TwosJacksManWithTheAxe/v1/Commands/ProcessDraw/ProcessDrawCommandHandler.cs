@@ -1,5 +1,6 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Betting;
 using CardGames.Poker.Games.FiveCardDraw;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -45,12 +46,12 @@ public class ProcessDrawCommandHandler(CardsDbContext context)
         }
 
         // 2. Validate game is in draw phase
-        if (game.CurrentPhase != nameof(FiveCardDrawPhase.DrawPhase))
+        if (game.CurrentPhase != nameof(Phases.DrawPhase))
         {
             return new ProcessDrawError
             {
                 Message = $"Cannot process draw. Game is in '{game.CurrentPhase}' phase. " +
-                          $"Draw is only allowed during '{nameof(FiveCardDrawPhase.DrawPhase)}' phase.",
+                          $"Draw is only allowed during '{nameof(Phases.DrawPhase)}' phase.",
                 Code = ProcessDrawErrorCode.NotInDrawPhase
             };
         }
@@ -176,7 +177,7 @@ public class ProcessDrawCommandHandler(CardsDbContext context)
                 card.GamePlayerId = currentDrawPlayer.Id;
                 card.Location = CardLocation.Hole;
                 card.DealOrder = ++maxDealOrder;
-                card.DealtAtPhase = nameof(FiveCardDrawPhase.DrawPhase);
+                card.DealtAtPhase = nameof(Phases.DrawPhase);
                 card.IsDrawnCard = true;
                 card.DrawnAtRound = 1;
                 card.DealtAt = now;
@@ -269,7 +270,7 @@ public class ProcessDrawCommandHandler(CardsDbContext context)
             GameId = game.Id,
             HandNumber = game.CurrentHandNumber,
             RoundNumber = 2,
-            Street = nameof(FiveCardDrawPhase.SecondBettingRound),
+            Street = nameof(Phases.SecondBettingRound),
             CurrentBet = 0,
             MinBet = game.MinBet ?? 0,
             RaiseCount = 0,
@@ -286,7 +287,7 @@ public class ProcessDrawCommandHandler(CardsDbContext context)
         context.BettingRounds.Add(bettingRound);
 
         // Update game state
-        game.CurrentPhase = nameof(FiveCardDrawPhase.SecondBettingRound);
+        game.CurrentPhase = nameof(Phases.SecondBettingRound);
         game.CurrentPlayerIndex = firstActorIndex;
         game.CurrentDrawPlayerIndex = -1;
     }

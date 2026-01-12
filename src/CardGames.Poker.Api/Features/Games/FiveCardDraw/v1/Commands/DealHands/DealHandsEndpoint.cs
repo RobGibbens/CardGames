@@ -1,5 +1,6 @@
 using CardGames.Poker.Api.Extensions;
 using MediatR;
+using CardGames.Poker.Api.Models;
 
 namespace CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.DealHands;
 

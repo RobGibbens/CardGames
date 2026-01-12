@@ -16,7 +16,7 @@ public class SevenCardStudGameTests
         var game = CreateTwoPlayerGame();
 
         game.Players.Should().HaveCount(2);
-        game.CurrentPhase.Should().Be(SevenCardStudPhase.WaitingToStart);
+        game.CurrentPhase.Should().Be(Phases.WaitingToStart);
     }
 
     [Fact]
@@ -48,7 +48,7 @@ public class SevenCardStudGameTests
 
         game.StartHand();
 
-        game.CurrentPhase.Should().Be(SevenCardStudPhase.CollectingAntes);
+        game.CurrentPhase.Should().Be(Phases.CollectingAntes);
     }
 
     [Fact]
@@ -62,7 +62,7 @@ public class SevenCardStudGameTests
         actions.Should().HaveCount(2);
         actions.All(a => a.ActionType == BettingActionType.Post).Should().BeTrue();
         game.TotalPot.Should().Be(10); // 5 ante from each
-        game.CurrentPhase.Should().Be(SevenCardStudPhase.ThirdStreet);
+        game.CurrentPhase.Should().Be(Phases.ThirdStreet);
     }
 
     [Fact]
@@ -188,7 +188,7 @@ public class SevenCardStudGameTests
         var result = game.ProcessBettingAction(BettingActionType.Fold);
 
         result.Success.Should().BeTrue();
-        game.CurrentPhase.Should().Be(SevenCardStudPhase.Showdown);
+        game.CurrentPhase.Should().Be(Phases.Showdown);
     }
 
     [Fact]
@@ -237,7 +237,7 @@ public class SevenCardStudGameTests
         result.Success.Should().BeTrue();
         result.WonByFold.Should().BeTrue();
         result.Payouts.Should().HaveCount(1);
-        game.CurrentPhase.Should().Be(SevenCardStudPhase.Complete);
+        game.CurrentPhase.Should().Be(Phases.Complete);
     }
 
     [Fact]
@@ -413,7 +413,7 @@ public class SevenCardStudGameTests
         }
 
         // Verify game progressed to fourth street
-        game.CurrentPhase.Should().Be(SevenCardStudPhase.FourthStreet);
+        game.CurrentPhase.Should().Be(Phases.FourthStreet);
     }
 
     private static SevenCardStudGame CreateTwoPlayerGame()

@@ -1,17 +1,24 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.DealHands;
+using CardGames.Poker.Betting;
 using CardGames.Poker.Games.SevenCardStud;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using OneOf;
 using BettingActionType = CardGames.Poker.Api.Data.Entities.BettingActionType;
+using BettingRound = CardGames.Poker.Api.Data.Entities.BettingRound;
 
 namespace CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.ProcessBettingAction;
 
 /// <summary>
 /// Handles the <see cref="ProcessBettingActionCommand"/> to process betting actions from players.
 /// </summary>
-public class ProcessBettingActionCommandHandler(CardsDbContext context)
+public class ProcessBettingActionCommandHandler(
+	CardsDbContext context,
+	IMediator mediator,
+	ILogger<ProcessBettingActionCommandHandler> logger)
 	: IRequestHandler<ProcessBettingActionCommand, OneOf<ProcessBettingActionSuccessful, ProcessBettingActionError>>
 {
 	/// <inheritdoc />
@@ -21,12 +28,14 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 	{
 		var now = DateTimeOffset.UtcNow;
 
-		// 1. Load the game with its players and active betting round
+		logger.LogDebug(
+			"Processing betting action for game {GameId}, action type {ActionType}, amount {Amount}",
+			command.GameId, command.ActionType, command.Amount);
+
+		// 1. Load the game with its players and active betting round for the current hand
 		var game = await context.Games
 			.Include(g => g.GamePlayers)
 				.ThenInclude(gp => gp.Player)
-			.Include(g => g.BettingRounds.Where(br => !br.IsComplete))
-				.ThenInclude(br => br.Actions)
 			.Include(g => g.Pots)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
@@ -39,11 +48,32 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 			};
 		}
 
+		logger.LogDebug(
+			"Game loaded: Hand {HandNumber}, Phase {Phase}, PlayerIndex {PlayerIndex}",
+			game.CurrentHandNumber, game.CurrentPhase, game.CurrentPlayerIndex);
+
+		// Load the active betting round for the current hand separately to avoid filtered include issues
+		var bettingRounds = await context.BettingRounds
+			.Where(br => br.GameId == game.Id &&
+						 br.HandNumber == game.CurrentHandNumber &&
+						 !br.IsComplete)
+			.Include(br => br.Actions)
+			.OrderByDescending(br => br.RoundNumber)
+			.ToListAsync(cancellationToken);
+
+		logger.LogDebug(
+			"Loaded {Count} active betting rounds for game {GameId}, hand {HandNumber}",
+			bettingRounds.Count, game.Id, game.CurrentHandNumber);
+
 		// 2. Validate game is in a betting phase
 		var validBettingPhases = new[]
 		{
-			nameof(SevenCardStudPhase.ThirdStreet),
-			nameof(SevenCardStudPhase.FourthStreet)
+			nameof(Phases.ThirdStreet),
+			nameof(Phases.FourthStreet),
+			nameof(Phases.FifthStreet),
+			nameof(Phases.SixthStreet),
+			nameof(Phases.SeventhStreet),
+			nameof(Phases.Showdown)
 		};
 
 		if (!validBettingPhases.Contains(game.CurrentPhase))
@@ -51,18 +81,34 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 			return new ProcessBettingActionError
 			{
 				Message = $"Cannot process betting action. Game is in '{game.CurrentPhase}' phase. " +
-				          $"Betting is only allowed during '{nameof(SevenCardStudPhase.ThirdStreet)}' or '{nameof(SevenCardStudPhase.FourthStreet)}' phases.",
+						  $"Betting is only allowed during '{nameof(Phases.ThirdStreet)}' or '{nameof(Phases.FourthStreet)}' phases.",
 				Code = ProcessBettingActionErrorCode.InvalidGameState
 			};
 		}
 
-		// 3. Get the active betting round
-		var bettingRound = game.BettingRounds.FirstOrDefault(br => !br.IsComplete);
+		// 3. Get the active betting round (already filtered by HandNumber and IsComplete when loaded)
+		var bettingRound = bettingRounds.FirstOrDefault();
 		if (bettingRound is null)
 		{
+			// Log diagnostic information to help debug why no betting round was found
+			var allRoundsForGame = await context.BettingRounds
+				.Where(br => br.GameId == game.Id)
+				.Select(br => new { br.HandNumber, br.RoundNumber, br.Street, br.IsComplete })
+				.ToListAsync(cancellationToken);
+
+			logger.LogWarning(
+				"No active betting round found for game {GameId}, hand {HandNumber}, phase {Phase}. " +
+				"Total betting rounds in game: {TotalRounds}. Rounds: {Rounds}",
+				game.Id,
+				game.CurrentHandNumber,
+				game.CurrentPhase,
+				allRoundsForGame.Count,
+				string.Join(", ", allRoundsForGame.Select(r => $"[Hand:{r.HandNumber}, Round:{r.RoundNumber}, Street:{r.Street}, Complete:{r.IsComplete}]")));
+
 			return new ProcessBettingActionError
 			{
-				Message = "No active betting round found.",
+				Message = $"No active betting round found for hand {game.CurrentHandNumber} in phase '{game.CurrentPhase}'. " +
+						  $"Total betting rounds in database: {allRoundsForGame.Count}.",
 				Code = ProcessBettingActionErrorCode.NoBettingRound
 			};
 		}
@@ -139,7 +185,7 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 
 		// Move to next active player
 		nextPlayerIndex = FindNextActivePlayer(activePlayers, bettingRound.CurrentActorIndex);
-		
+
 		// Check if betting round is complete
 		roundComplete = IsRoundComplete(activePlayers, bettingRound, nextPlayerIndex);
 
@@ -150,40 +196,132 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 			nextPlayerIndex = -1;
 
 			// Advance to next phase
+			var previousPhase = game.CurrentPhase;
 			AdvanceToNextPhase(game, activePlayers);
+
+			logger.LogInformation(
+				"Betting round complete. Advancing from {PreviousPhase} to {NewPhase} for game {GameId}, hand {HandNumber}",
+				previousPhase, game.CurrentPhase, game.Id, game.CurrentHandNumber);
+
+			// 13. Update timestamps
+			game.UpdatedAt = now;
+
+			// 14. Check if we need to deal next street cards
+			var streetPhases = new[]
+			{
+					nameof(Phases.FourthStreet),
+					nameof(Phases.FifthStreet),
+					nameof(Phases.SixthStreet),
+					nameof(Phases.SeventhStreet)
+				};
+
+			if (streetPhases.Contains(game.CurrentPhase))
+			{
+				// Use the execution strategy to handle retries with transactions
+				var executionStrategy = context.Database.CreateExecutionStrategy();
+
+				// Track deal result outside the execution strategy scope
+				OneOf<DealHandsSuccessful, DealHandsError>? dealResultHolder = null;
+
+				try
+				{
+					await executionStrategy.ExecuteAsync(async ct =>
+					{
+						// Use a transaction to ensure the phase transition and dealing happen atomically
+						await using var transaction = await context.Database.BeginTransactionAsync(ct);
+
+						// Persist the completed betting round and phase change
+						await context.SaveChangesAsync(ct);
+
+						logger.LogDebug(
+							"Calling DealHandsCommand for {Phase} on game {GameId}",
+							game.CurrentPhase, game.Id);
+
+						// Deal the next street cards and create the betting round
+						dealResultHolder = await mediator.Send(new DealHandsCommand(game.Id), ct);
+
+						if (dealResultHolder.Value.IsT0) // Success
+						{
+							// Commit the transaction
+							await transaction.CommitAsync(ct);
+						}
+						else
+						{
+							// Deal failed - rollback the transaction
+							await transaction.RollbackAsync(ct);
+						}
+					}, cancellationToken);
+
+					// Process the deal result after the transaction completes
+					if (dealResultHolder?.IsT0 == true)
+					{
+						var dealSuccess = dealResultHolder.Value.AsT0;
+						nextPlayerIndex = dealSuccess.CurrentPlayerIndex;
+						nextPlayerName = dealSuccess.CurrentPlayerName;
+
+						// Update phase from deal result to ensure consistency
+						game.CurrentPhase = dealSuccess.CurrentPhase;
+					}
+					else if (dealResultHolder?.IsT1 == true)
+					{
+						var dealError = dealResultHolder.Value.AsT1;
+						logger.LogError(
+							"Failed to deal next street for game {GameId}, phase {Phase}: {ErrorMessage}",
+							game.Id, game.CurrentPhase, dealError.Message);
+
+						return new ProcessBettingActionError
+						{
+							Message = $"Failed to deal next street: {dealError.Message}",
+							Code = ProcessBettingActionErrorCode.InvalidGameState
+						};
+					}
+				}
+				catch (Exception ex)
+				{
+					logger.LogError(ex,
+						"Exception during phase transition for game {GameId}, phase {Phase}",
+						game.Id, game.CurrentPhase);
+					throw;
+				}
+			}
+			else
+			{
+				// Not advancing to a new street (e.g., going to Showdown), just save
+				await context.SaveChangesAsync(cancellationToken);
+			}
 		}
 		else
 		{
 			bettingRound.CurrentActorIndex = nextPlayerIndex;
 			game.CurrentPlayerIndex = nextPlayerIndex;
 			nextPlayerName = activePlayers.FirstOrDefault(p => p.SeatPosition == nextPlayerIndex)?.Player.Name;
-		}
 
 			// 13. Update timestamps
 			game.UpdatedAt = now;
 
 			// 14. Persist changes
 			await context.SaveChangesAsync(cancellationToken);
-
-			return new ProcessBettingActionSuccessful
-			{
-				GameId = game.Id,
-				RoundComplete = roundComplete,
-				CurrentPhase = game.CurrentPhase,
-				Action = new BettingActionResult
-				{
-					PlayerName = currentPlayer.Player.Name,
-					ActionType = command.ActionType,
-					Amount = actualAmount,
-					ChipStackAfter = currentPlayer.ChipStack
-				},
-				PlayerSeatIndex = currentPlayer.SeatPosition,
-				NextPlayerIndex = nextPlayerIndex,
-				NextPlayerName = nextPlayerName,
-				PotTotal = game.Pots.Sum(p => p.Amount),
-				CurrentBet = bettingRound.CurrentBet
-			};
 		}
+
+		return new ProcessBettingActionSuccessful
+		{
+			GameId = game.Id,
+			RoundComplete = roundComplete,
+			CurrentPhase = game.CurrentPhase,
+			Action = new BettingActionResult
+			{
+				PlayerName = currentPlayer.Player.Name,
+				ActionType = command.ActionType,
+				Amount = actualAmount,
+				ChipStackAfter = currentPlayer.ChipStack
+			},
+			PlayerSeatIndex = currentPlayer.SeatPosition,
+			NextPlayerIndex = nextPlayerIndex,
+			NextPlayerName = nextPlayerName,
+			PotTotal = game.Pots.Sum(p => p.Amount),
+			CurrentBet = bettingRound.CurrentBet
+		};
+	}
 
 	private string? ValidateAction(BettingActionType actionType, int amount, GamePlayer player, BettingRound bettingRound)
 	{
@@ -203,8 +341,8 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 				"Cannot call - no bet to match",
 			BettingActionType.Raise when bettingRound.CurrentBet == 0 =>
 				"Cannot raise - no bet to raise. Use bet instead.",
-			BettingActionType.Raise when amount < bettingRound.CurrentBet + bettingRound.LastRaiseAmount 
-			                             && amount < player.ChipStack + player.CurrentBet =>
+			BettingActionType.Raise when amount < bettingRound.CurrentBet + bettingRound.LastRaiseAmount
+										 && amount < player.ChipStack + player.CurrentBet =>
 				$"Raise must be to at least {bettingRound.CurrentBet + bettingRound.LastRaiseAmount}",
 			BettingActionType.Fold when bettingRound.CurrentBet == player.CurrentBet =>
 				"Cannot fold when you can check",
@@ -276,7 +414,7 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 				var allInAmount = player.ChipStack;
 				actualAmount = allInAmount + player.CurrentBet;
 				chipsMoved = allInAmount;
-				
+
 				// If this is a raise (putting in more than current bet)
 				if (player.CurrentBet + allInAmount > bettingRound.CurrentBet)
 				{
@@ -290,7 +428,7 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 					}
 					bettingRound.CurrentBet = newTotal;
 				}
-				
+
 				player.CurrentBet += allInAmount;
 				player.TotalContributedThisHand += allInAmount;
 				player.ChipStack = 0;
@@ -327,13 +465,13 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 
 		// Round is complete if all non-folded, non-all-in players have matched the current bet
 		var playersWhoCanAct = activePlayers.Where(p => !p.HasFolded && !p.IsAllIn).ToList();
-		
+
 		// If no players can act (all are all-in or folded), round is complete
 		if (playersWhoCanAct.Count == 0) return true;
 
 		// Check if all players have matched the current bet and have had a chance to act
 		var allMatched = playersWhoCanAct.All(p => p.CurrentBet == bettingRound.CurrentBet);
-		
+
 		// If there's a last aggressor, we need to complete the round back to them
 		if (bettingRound.LastAggressorIndex >= 0 && nextPlayerIndex == bettingRound.LastAggressorIndex && allMatched)
 		{
@@ -355,7 +493,7 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 		var playersInHand = activePlayers.Count(gp => !gp.HasFolded);
 		if (playersInHand <= 1)
 		{
-			game.CurrentPhase = nameof(SevenCardStudPhase.Showdown);
+			game.CurrentPhase = nameof(Phases.Showdown);
 			game.CurrentPlayerIndex = -1;
 			return;
 		}
@@ -366,16 +504,40 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 			gamePlayer.CurrentBet = 0;
 		}
 
+		// Seven Card Stud phase progression:
+		// ThirdStreet (betting) -> FourthStreet (deal card, then betting)
+		// FourthStreet (betting) -> FifthStreet (deal card, then betting)
+		// FifthStreet (betting) -> SixthStreet (deal card, then betting)
+		// SixthStreet (betting) -> SeventhStreet (deal card, then betting)
+		// SeventhStreet (betting) -> Showdown
 		switch (game.CurrentPhase)
 		{
-			case nameof(SevenCardStudPhase.ThirdStreet):
-				game.CurrentPhase = nameof(SevenCardStudPhase.FifthStreet);
+			case nameof(Phases.ThirdStreet):
+				game.CurrentPhase = nameof(Phases.FourthStreet);
 				game.CurrentDrawPlayerIndex = FindFirstActivePlayerAfterDealer(game, activePlayers);
 				game.CurrentPlayerIndex = game.CurrentDrawPlayerIndex;
 				break;
 
-			case nameof(SevenCardStudPhase.FourthStreet):
-				game.CurrentPhase = nameof(SevenCardStudPhase.Showdown);
+			case nameof(Phases.FourthStreet):
+				game.CurrentPhase = nameof(Phases.FifthStreet);
+				game.CurrentDrawPlayerIndex = FindFirstActivePlayerAfterDealer(game, activePlayers);
+				game.CurrentPlayerIndex = game.CurrentDrawPlayerIndex;
+				break;
+
+			case nameof(Phases.FifthStreet):
+				game.CurrentPhase = nameof(Phases.SixthStreet);
+				game.CurrentDrawPlayerIndex = FindFirstActivePlayerAfterDealer(game, activePlayers);
+				game.CurrentPlayerIndex = game.CurrentDrawPlayerIndex;
+				break;
+
+			case nameof(Phases.SixthStreet):
+				game.CurrentPhase = nameof(Phases.SeventhStreet);
+				game.CurrentDrawPlayerIndex = FindFirstActivePlayerAfterDealer(game, activePlayers);
+				game.CurrentPlayerIndex = game.CurrentDrawPlayerIndex;
+				break;
+
+			case nameof(Phases.SeventhStreet):
+				game.CurrentPhase = nameof(Phases.Showdown);
 				game.CurrentPlayerIndex = -1;
 				break;
 		}

@@ -1,10 +1,12 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Betting;
 using CardGames.Poker.Games.FiveCardDraw;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
 using BettingActionType = CardGames.Poker.Api.Data.Entities.BettingActionType;
+using BettingRound = CardGames.Poker.Api.Data.Entities.BettingRound;
 
 namespace CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe.v1.Commands.ProcessBettingAction;
 
@@ -42,8 +44,8 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 		// 2. Validate game is in a betting phase
 		var validBettingPhases = new[]
 		{
-			nameof(FiveCardDrawPhase.FirstBettingRound),
-			nameof(FiveCardDrawPhase.SecondBettingRound)
+			nameof(Phases.FirstBettingRound),
+			nameof(Phases.SecondBettingRound)
 		};
 
 		if (!validBettingPhases.Contains(game.CurrentPhase))
@@ -51,7 +53,7 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 			return new ProcessBettingActionError
 			{
 				Message = $"Cannot process betting action. Game is in '{game.CurrentPhase}' phase. " +
-				          $"Betting is only allowed during '{nameof(FiveCardDrawPhase.FirstBettingRound)}' or '{nameof(FiveCardDrawPhase.SecondBettingRound)}' phases.",
+				          $"Betting is only allowed during '{nameof(Phases.FirstBettingRound)}' or '{nameof(Phases.SecondBettingRound)}' phases.",
 				Code = ProcessBettingActionErrorCode.InvalidGameState
 			};
 		}
@@ -355,7 +357,7 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 		var playersInHand = activePlayers.Count(gp => !gp.HasFolded);
 		if (playersInHand <= 1)
 		{
-			game.CurrentPhase = nameof(FiveCardDrawPhase.Showdown);
+			game.CurrentPhase = nameof(Phases.Showdown);
 			game.CurrentPlayerIndex = -1;
 			return;
 		}
@@ -368,14 +370,14 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 
 		switch (game.CurrentPhase)
 		{
-			case nameof(FiveCardDrawPhase.FirstBettingRound):
-				game.CurrentPhase = nameof(FiveCardDrawPhase.DrawPhase);
+			case nameof(Phases.FirstBettingRound):
+				game.CurrentPhase = nameof(Phases.DrawPhase);
 				game.CurrentDrawPlayerIndex = FindFirstActivePlayerAfterDealer(game, activePlayers);
 				game.CurrentPlayerIndex = game.CurrentDrawPlayerIndex;
 				break;
 
-			case nameof(FiveCardDrawPhase.SecondBettingRound):
-				game.CurrentPhase = nameof(FiveCardDrawPhase.Showdown);
+			case nameof(Phases.SecondBettingRound):
+				game.CurrentPhase = nameof(Phases.Showdown);
 				game.CurrentPlayerIndex = -1;
 				break;
 		}

@@ -15,7 +15,7 @@ public class KingsAndLowsGameTests
         var game = CreateTwoPlayerGame();
 
         game.Players.Should().HaveCount(2);
-        game.CurrentPhase.Should().Be(KingsAndLowsPhase.WaitingToStart);
+        game.CurrentPhase.Should().Be(Phases.WaitingToStart);
     }
 
     [Fact]
@@ -47,7 +47,7 @@ public class KingsAndLowsGameTests
 
         game.StartHand();
 
-        game.CurrentPhase.Should().Be(KingsAndLowsPhase.CollectingAntes);
+        game.CurrentPhase.Should().Be(Phases.CollectingAntes);
     }
 
     [Fact]
@@ -61,7 +61,7 @@ public class KingsAndLowsGameTests
         actions.Should().HaveCount(2);
         actions.All(a => a.ActionType == BettingActionType.Post).Should().BeTrue();
         game.CurrentPot.Should().Be(20); // 10 ante from each
-        game.CurrentPhase.Should().Be(KingsAndLowsPhase.Dealing);
+        game.CurrentPhase.Should().Be(Phases.Dealing);
     }
 
     [Fact]
@@ -74,7 +74,7 @@ public class KingsAndLowsGameTests
         game.DealHands();
 
         game.GamePlayers.Should().AllSatisfy(gp => gp.Hand.Should().HaveCount(5));
-        game.CurrentPhase.Should().Be(KingsAndLowsPhase.DropOrStay);
+        game.CurrentPhase.Should().Be(Phases.DropOrStay);
     }
 
     [Fact]
@@ -107,7 +107,7 @@ public class KingsAndLowsGameTests
         result.Success.Should().BeTrue();
         result.AllDropped.Should().BeTrue();
         result.StayingPlayerCount.Should().Be(0);
-        game.CurrentPhase.Should().Be(KingsAndLowsPhase.Complete);
+        game.CurrentPhase.Should().Be(Phases.Complete);
     }
 
     [Fact]
@@ -127,7 +127,7 @@ public class KingsAndLowsGameTests
         result.StayingPlayerCount.Should().Be(1);
         result.StayingPlayerNames.Should().Contain("Alice");
         result.DroppedPlayerNames.Should().Contain("Bob");
-        game.CurrentPhase.Should().Be(KingsAndLowsPhase.DrawPhase);
+        game.CurrentPhase.Should().Be(Phases.DrawPhase);
     }
 
     [Fact]
@@ -145,7 +145,7 @@ public class KingsAndLowsGameTests
         result.Success.Should().BeTrue();
         result.SinglePlayerStayed.Should().BeFalse();
         result.StayingPlayerCount.Should().Be(2);
-        game.CurrentPhase.Should().Be(KingsAndLowsPhase.DrawPhase);
+        game.CurrentPhase.Should().Be(Phases.DrawPhase);
     }
 
     [Fact]
@@ -212,7 +212,7 @@ public class KingsAndLowsGameTests
         game.ProcessDraw(new int[] { }); // Alice draws
         game.ProcessDraw(new int[] { }); // Bob draws
 
-        game.CurrentPhase.Should().Be(KingsAndLowsPhase.Showdown);
+        game.CurrentPhase.Should().Be(Phases.Showdown);
     }
 
     [Fact]
@@ -228,7 +228,7 @@ public class KingsAndLowsGameTests
 
         game.ProcessDraw(new int[] { }); // Alice draws
 
-        game.CurrentPhase.Should().Be(KingsAndLowsPhase.PlayerVsDeck);
+        game.CurrentPhase.Should().Be(Phases.PlayerVsDeck);
         game.DeckHand.Should().HaveCount(5);
     }
 
@@ -247,7 +247,7 @@ public class KingsAndLowsGameTests
         var result = game.ProcessDeckDraw();
 
         result.Success.Should().BeTrue();
-        game.CurrentPhase.Should().Be(KingsAndLowsPhase.Showdown);
+        game.CurrentPhase.Should().Be(Phases.Showdown);
     }
 
     [Fact]
@@ -296,13 +296,13 @@ public class KingsAndLowsGameTests
         var showdownResult = game.PerformShowdown();
 
         // The phase should be PotMatching if there are losers
-        if (game.CurrentPhase == KingsAndLowsPhase.PotMatching)
+        if (game.CurrentPhase == Phases.PotMatching)
         {
             var matchResult = game.ProcessPotMatching();
 
             matchResult.Success.Should().BeTrue();
             matchResult.NewPotAmount.Should().BeGreaterThan(0);
-            game.CurrentPhase.Should().Be(KingsAndLowsPhase.Complete);
+            game.CurrentPhase.Should().Be(Phases.Complete);
         }
     }
 
@@ -349,7 +349,7 @@ public class KingsAndLowsGameTests
         
         // First hand
         game.StartHand();
-        game.CurrentPhase.Should().Be(KingsAndLowsPhase.CollectingAntes);
+        game.CurrentPhase.Should().Be(Phases.CollectingAntes);
         game.CollectAntes();
         game.DealHands();
         game.SetPlayerDecision("Alice", DropOrStayDecision.Drop);
@@ -358,7 +358,7 @@ public class KingsAndLowsGameTests
         
         // Second hand
         game.StartHand();
-        game.CurrentPhase.Should().Be(KingsAndLowsPhase.CollectingAntes);
+        game.CurrentPhase.Should().Be(Phases.CollectingAntes);
     }
 
     [Fact]
@@ -368,7 +368,7 @@ public class KingsAndLowsGameTests
         
         // First hand
         game.StartHand();
-        game.CurrentPhase.Should().Be(KingsAndLowsPhase.CollectingAntes);
+        game.CurrentPhase.Should().Be(Phases.CollectingAntes);
         game.CollectAntes();
         game.DealHands();
         game.SetPlayerDecision("Alice", DropOrStayDecision.Drop);
@@ -377,7 +377,7 @@ public class KingsAndLowsGameTests
         
         // Second hand - should skip ante
         game.StartHand();
-        game.CurrentPhase.Should().Be(KingsAndLowsPhase.Dealing);
+        game.CurrentPhase.Should().Be(Phases.Dealing);
     }
 
     private static KingsAndLowsGame CreateTwoPlayerGame(bool anteEveryHand = false)
@@ -418,7 +418,7 @@ public class KingsAndLowsGameTests
         result.Success.Should().BeTrue();
         result.DiscardedCards.Should().HaveCount(2);
         result.NewCards.Should().HaveCount(2);
-        game.CurrentPhase.Should().Be(KingsAndLowsPhase.Showdown);
+        game.CurrentPhase.Should().Be(Phases.Showdown);
     }
 
     [Fact]
@@ -440,7 +440,7 @@ public class KingsAndLowsGameTests
         result.DiscardedCards.Should().BeEmpty();
         result.NewCards.Should().BeEmpty();
         game.DeckHand.Should().BeEquivalentTo(originalHand);
-        game.CurrentPhase.Should().Be(KingsAndLowsPhase.Showdown);
+        game.CurrentPhase.Should().Be(Phases.Showdown);
     }
 
     [Fact]

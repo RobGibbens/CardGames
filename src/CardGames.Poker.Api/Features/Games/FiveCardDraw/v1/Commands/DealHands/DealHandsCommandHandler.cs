@@ -2,6 +2,7 @@ using CardGames.Core.French.Cards;
 using CardGames.Core.French.Dealers;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Betting;
 using CardGames.Poker.Games.FiveCardDraw;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -9,6 +10,7 @@ using OneOf;
 using BettingRound = CardGames.Poker.Api.Data.Entities.BettingRound;
 using CardSuit = CardGames.Poker.Api.Data.Entities.CardSuit;
 using CardSymbol = CardGames.Poker.Api.Data.Entities.CardSymbol;
+using CardGames.Poker.Api.Models;
 
 namespace CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.DealHands;
 
@@ -43,12 +45,12 @@ public class DealHandsCommandHandler(CardsDbContext context)
 		}
 
 		// 2. Validate game state allows dealing
-		if (game.CurrentPhase != nameof(FiveCardDrawPhase.Dealing))
+		if (game.CurrentPhase != nameof(Phases.Dealing))
 		{
 			return new DealHandsError
 			{
 				Message = $"Cannot deal hands. Game is in '{game.CurrentPhase}' phase. " +
-				          $"Hands can only be dealt when the game is in '{nameof(FiveCardDrawPhase.Dealing)}' phase.",
+				          $"Hands can only be dealt when the game is in '{nameof(Phases.Dealing)}' phase.",
 				Code = DealHandsErrorCode.InvalidGameState
 			};
 		}
@@ -81,9 +83,15 @@ public class DealHandsCommandHandler(CardsDbContext context)
 		{
 			var cards = dealer.DealCards(CardsPerPlayer);
 			var dealtCards = new List<DealtCard>();
-			var dealOrder = 1;
 
-			foreach (var card in cards)
+			// Sort cards by value (descending) then by suit for consistent display order
+			var sortedCards = cards
+				.OrderByDescending(c => GetCardSortValue(c.Symbol))
+				.ThenBy(c => GetSuitSortValue(c.Suit))
+				.ToList();
+
+			var dealOrder = 1;
+			foreach (var card in sortedCards)
 			{
 				// Create GameCard entity for persistence
 				var gameCard = new GameCard
@@ -95,7 +103,7 @@ public class DealHandsCommandHandler(CardsDbContext context)
 					Symbol = MapSymbol(card.Symbol),
 					Location = CardLocation.Hole,
 					DealOrder = dealOrder,
-					DealtAtPhase = nameof(FiveCardDrawPhase.Dealing),
+					DealtAtPhase = nameof(Phases.Dealing),
 					IsVisible = false,
 					IsWild = false,
 					IsDiscarded = false,
@@ -139,7 +147,7 @@ public class DealHandsCommandHandler(CardsDbContext context)
 			GameId = game.Id,
 			HandNumber = game.CurrentHandNumber,
 			RoundNumber = 1,
-			Street = nameof(FiveCardDrawPhase.FirstBettingRound),
+			Street = nameof(Phases.FirstBettingRound),
 			CurrentBet = 0,
 			MinBet = game.MinBet ?? 0,
 			RaiseCount = 0,
@@ -156,7 +164,7 @@ public class DealHandsCommandHandler(CardsDbContext context)
 		context.BettingRounds.Add(bettingRound);
 
 		// 9. Update game state - transition to FirstBettingRound phase
-		game.CurrentPhase = nameof(FiveCardDrawPhase.FirstBettingRound);
+		game.CurrentPhase = nameof(Phases.FirstBettingRound);
 		game.CurrentPlayerIndex = firstActorIndex;
 		game.Status = GameStatus.InProgress;
 		game.UpdatedAt = now;
@@ -219,19 +227,52 @@ public class DealHandsCommandHandler(CardsDbContext context)
 	/// </summary>
 	private static CardSymbol MapSymbol(Symbol symbol) => symbol switch
 	{
-		Symbol.Deuce => CardSymbol.Deuce,
-		Symbol.Three => CardSymbol.Three,
-		Symbol.Four => CardSymbol.Four,
-		Symbol.Five => CardSymbol.Five,
-		Symbol.Six => CardSymbol.Six,
-		Symbol.Seven => CardSymbol.Seven,
-		Symbol.Eight => CardSymbol.Eight,
-		Symbol.Nine => CardSymbol.Nine,
-		Symbol.Ten => CardSymbol.Ten,
-		Symbol.Jack => CardSymbol.Jack,
-		Symbol.Queen => CardSymbol.Queen,
-		Symbol.King => CardSymbol.King,
-		Symbol.Ace => CardSymbol.Ace,
-		_ => throw new ArgumentOutOfRangeException(nameof(symbol), symbol, "Unknown symbol")
-	};
-}
+				Symbol.Deuce => CardSymbol.Deuce,
+				Symbol.Three => CardSymbol.Three,
+				Symbol.Four => CardSymbol.Four,
+				Symbol.Five => CardSymbol.Five,
+				Symbol.Six => CardSymbol.Six,
+				Symbol.Seven => CardSymbol.Seven,
+				Symbol.Eight => CardSymbol.Eight,
+				Symbol.Nine => CardSymbol.Nine,
+				Symbol.Ten => CardSymbol.Ten,
+				Symbol.Jack => CardSymbol.Jack,
+				Symbol.Queen => CardSymbol.Queen,
+				Symbol.King => CardSymbol.King,
+				Symbol.Ace => CardSymbol.Ace,
+				_ => throw new ArgumentOutOfRangeException(nameof(symbol), symbol, "Unknown symbol")
+			};
+
+			/// <summary>
+			/// Gets the numeric sort value for a card symbol (Ace high = 14).
+			/// </summary>
+			private static int GetCardSortValue(Symbol symbol) => symbol switch
+			{
+				Symbol.Deuce => 2,
+				Symbol.Three => 3,
+				Symbol.Four => 4,
+				Symbol.Five => 5,
+				Symbol.Six => 6,
+				Symbol.Seven => 7,
+				Symbol.Eight => 8,
+				Symbol.Nine => 9,
+				Symbol.Ten => 10,
+				Symbol.Jack => 11,
+				Symbol.Queen => 12,
+				Symbol.King => 13,
+				Symbol.Ace => 14,
+				_ => 0
+			};
+
+			/// <summary>
+			/// Gets the sort value for a suit (for consistent ordering: Clubs, Diamonds, Hearts, Spades).
+			/// </summary>
+			private static int GetSuitSortValue(Suit suit) => suit switch
+			{
+				Suit.Clubs => 0,
+				Suit.Diamonds => 1,
+				Suit.Hearts => 2,
+				Suit.Spades => 3,
+				_ => 0
+			};
+		}

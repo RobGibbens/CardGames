@@ -13,11 +13,20 @@ namespace CardGames.Poker.Games.FiveCardDraw;
 /// Orchestrates a Five Card Draw poker game with betting.
 /// </summary>
 [PokerGameMetadata(
-	"Five Card Draw",
-	"A classic poker variant where players are dealt five cards, have a draw phase to exchange cards, and engage in two betting rounds before showdown.",
-	2,
-	6,
-	"fivecarddraw.png")]
+    code:"FIVECARDDRAW",
+	name:"Five Card Draw",
+	description:"A classic poker variant where players are dealt five cards, have a draw phase to exchange cards, and engage in two betting rounds before showdown.",
+	minimumNumberOfPlayers:2,
+	maximumNumberOfPlayers:6,
+    bettingStructure:BettingStructure.Ante,
+	initialHoleCards:5,
+	initialBoardCards:0,
+	maxCommunityCards:0,
+	maxPlayerCards:5,
+	hasDrawPhase:true,
+	maxDiscards:3,
+    wildCardRule:WildCardRule.None,
+	imageName:"fivecarddraw.png")]
 public class FiveCardDrawGame : IPokerGame
 {
 	public string Name { get; } = "Five Card Draw";
@@ -41,7 +50,7 @@ public class FiveCardDrawGame : IPokerGame
     /// The phase determines which actions are valid and guides the game flow
     /// from dealing through betting rounds to showdown.
     /// </summary>
-    public FiveCardDrawPhase CurrentPhase { get; private set; }
+    public Phases CurrentPhase { get; private set; }
 
     /// <summary>
     /// Gets the list of all game players with their hands and game-specific state.
@@ -124,7 +133,7 @@ public class FiveCardDrawGame : IPokerGame
         _ante = ante;
         _minBet = minBet;
         _dealerPosition = 0;
-        CurrentPhase = FiveCardDrawPhase.WaitingToStart;
+        CurrentPhase = Phases.WaitingToStart;
     }
 
     /// <summary>
@@ -138,7 +147,7 @@ public class FiveCardDrawGame : IPokerGame
     /// <summary>
     /// Starts a new hand by shuffling the deck, creating a fresh pot, and resetting all player states.
     /// This method must be called before each hand to prepare the game for play.
-    /// After calling this method, the game transitions to the <see cref="FiveCardDrawPhase.CollectingAntes"/> phase.
+    /// After calling this method, the game transitions to the <see cref="Phases.CollectingAntes"/> phase.
     /// </summary>
     /// <remarks>
     /// This method performs the following actions:
@@ -160,20 +169,20 @@ public class FiveCardDrawGame : IPokerGame
             gamePlayer.ResetHand();
         }
 
-        CurrentPhase = FiveCardDrawPhase.CollectingAntes;
+        CurrentPhase = Phases.CollectingAntes;
     }
 
     /// <summary>
     /// Collects the mandatory ante bet from all players to seed the pot before dealing.
     /// Each player contributes the ante amount (or their remaining chips if short-stacked).
-    /// After collection, the game transitions to the <see cref="FiveCardDrawPhase.Dealing"/> phase.
+    /// After collection, the game transitions to the <see cref="Phases.Dealing"/> phase.
     /// </summary>
     /// <returns>
     /// A list of <see cref="BettingAction"/> objects representing each player's ante contribution,
     /// useful for displaying the ante collection to users or logging game history.
     /// </returns>
     /// <exception cref="InvalidOperationException">
-    /// Thrown when called outside the <see cref="FiveCardDrawPhase.CollectingAntes"/> phase.
+    /// Thrown when called outside the <see cref="Phases.CollectingAntes"/> phase.
     /// </exception>
     /// <remarks>
     /// Players with fewer chips than the ante will contribute their entire stack (going all-in on the ante).
@@ -181,7 +190,7 @@ public class FiveCardDrawGame : IPokerGame
     /// </remarks>
     public List<BettingAction> CollectAntes()
     {
-        if (CurrentPhase != FiveCardDrawPhase.CollectingAntes)
+        if (CurrentPhase != Phases.CollectingAntes)
         {
             throw new InvalidOperationException("Cannot collect antes in current phase");
         }
@@ -201,16 +210,16 @@ public class FiveCardDrawGame : IPokerGame
             }
         }
 
-        CurrentPhase = FiveCardDrawPhase.Dealing;
+        CurrentPhase = Phases.Dealing;
         return actions;
     }
 
     /// <summary>
     /// Deals five cards to each active player from the shuffled deck and initiates the first betting round.
-    /// After dealing, the game transitions to the <see cref="FiveCardDrawPhase.FirstBettingRound"/> phase.
+    /// After dealing, the game transitions to the <see cref="Phases.FirstBettingRound"/> phase.
     /// </summary>
     /// <exception cref="InvalidOperationException">
-    /// Thrown when called outside the <see cref="FiveCardDrawPhase.Dealing"/> phase.
+    /// Thrown when called outside the <see cref="Phases.Dealing"/> phase.
     /// </exception>
     /// <remarks>
     /// This method:
@@ -222,7 +231,7 @@ public class FiveCardDrawGame : IPokerGame
     /// </remarks>
     public void DealHands()
     {
-        if (CurrentPhase != FiveCardDrawPhase.Dealing)
+        if (CurrentPhase != Phases.Dealing)
         {
             throw new InvalidOperationException("Cannot deal in current phase");
         }
@@ -243,7 +252,7 @@ public class FiveCardDrawGame : IPokerGame
             gamePlayer.Player.ResetCurrentBet();
         }
 
-        CurrentPhase = FiveCardDrawPhase.FirstBettingRound;
+        CurrentPhase = Phases.FirstBettingRound;
         StartBettingRound();
     }
 
@@ -339,7 +348,7 @@ public class FiveCardDrawGame : IPokerGame
         var playersInHand = _gamePlayers.Count(gp => !gp.Player.HasFolded);
         if (playersInHand <= 1)
         {
-            CurrentPhase = FiveCardDrawPhase.Showdown;
+            CurrentPhase = Phases.Showdown;
             return;
         }
 
@@ -351,16 +360,16 @@ public class FiveCardDrawGame : IPokerGame
 
         switch (CurrentPhase)
         {
-            case FiveCardDrawPhase.FirstBettingRound:
-                CurrentPhase = FiveCardDrawPhase.DrawPhase;
+            case Phases.FirstBettingRound:
+                CurrentPhase = Phases.DrawPhase;
                 _currentDrawPlayerIndex = FindFirstActivePlayerAfterDealer();
                 _playersWhoHaveDrawn = [];
                 break;
 
-            case FiveCardDrawPhase.SecondBettingRound:
+            case Phases.SecondBettingRound:
                 // Calculate side pots if needed
                 _potManager.CalculateSidePots(_gamePlayers.Select(gp => gp.Player));
-                CurrentPhase = FiveCardDrawPhase.Showdown;
+                CurrentPhase = Phases.Showdown;
                 break;
         }
     }
@@ -395,7 +404,7 @@ public class FiveCardDrawGame : IPokerGame
     /// </remarks>
     public FiveCardDrawGamePlayer GetCurrentDrawPlayer()
     {
-        if (CurrentPhase != FiveCardDrawPhase.DrawPhase || _currentDrawPlayerIndex < 0)
+        if (CurrentPhase != Phases.DrawPhase || _currentDrawPlayerIndex < 0)
         {
             return null;
         }
@@ -426,7 +435,7 @@ public class FiveCardDrawGame : IPokerGame
     /// </remarks>
     public DrawResult ProcessDraw(IReadOnlyCollection<int> discardIndices)
     {
-        if (CurrentPhase != FiveCardDrawPhase.DrawPhase)
+        if (CurrentPhase != Phases.DrawPhase)
         {
             return new DrawResult
             {
@@ -478,7 +487,7 @@ public class FiveCardDrawGame : IPokerGame
             PlayerName = gamePlayer.Player.Name,
             DiscardedCards = discardedCards,
             NewCards = newCards.ToList(),
-            DrawComplete = CurrentPhase != FiveCardDrawPhase.DrawPhase
+            DrawComplete = CurrentPhase != Phases.DrawPhase
         };
     }
 
@@ -509,7 +518,7 @@ public class FiveCardDrawGame : IPokerGame
 
     private void StartSecondBettingRound()
     {
-        CurrentPhase = FiveCardDrawPhase.SecondBettingRound;
+        CurrentPhase = Phases.SecondBettingRound;
         StartBettingRound();
     }
 
@@ -526,7 +535,7 @@ public class FiveCardDrawGame : IPokerGame
     /// </remarks>
     public void CompleteDrawPhase()
     {
-        if (CurrentPhase == FiveCardDrawPhase.DrawPhase)
+        if (CurrentPhase == Phases.DrawPhase)
         {
             StartSecondBettingRound();
         }
@@ -549,11 +558,11 @@ public class FiveCardDrawGame : IPokerGame
     /// <item><description><b>Split pot:</b> If multiple players tie, the pot is divided equally among winners</description></item>
     /// <item><description><b>Side pots:</b> When players are all-in for different amounts, side pots are calculated and awarded separately</description></item>
     /// </list>
-    /// After the showdown, the game phase becomes <see cref="FiveCardDrawPhase.Complete"/> and the dealer button moves.
+    /// After the showdown, the game phase becomes <see cref="Phases.Complete"/> and the dealer button moves.
     /// </remarks>
     public ShowdownResult PerformShowdown()
     {
-        if (CurrentPhase != FiveCardDrawPhase.Showdown)
+        if (CurrentPhase != Phases.Showdown)
         {
             return new ShowdownResult
             {
@@ -571,7 +580,7 @@ public class FiveCardDrawGame : IPokerGame
             var totalPot = _potManager.TotalPotAmount;
             winner.Player.AddChips(totalPot);
 
-            CurrentPhase = FiveCardDrawPhase.Complete;
+            CurrentPhase = Phases.Complete;
             MoveDealer();
 
             return new ShowdownResult
@@ -610,7 +619,7 @@ public class FiveCardDrawGame : IPokerGame
             gamePlayer.Player.AddChips(payout.Value);
         }
 
-        CurrentPhase = FiveCardDrawPhase.Complete;
+        CurrentPhase = Phases.Complete;
         MoveDealer();
 
         return new ShowdownResult

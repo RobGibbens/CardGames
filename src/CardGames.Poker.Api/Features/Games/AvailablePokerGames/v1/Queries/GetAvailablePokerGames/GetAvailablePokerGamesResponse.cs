@@ -4,6 +4,7 @@ namespace CardGames.Poker.Api.Features.Games.AvailablePokerGames.v1.Queries.GetA
 /// Response containing details about an available poker game type.
 /// </summary>
 public record GetAvailablePokerGamesResponse(
+	string Code,
 	string Name,
 	string Description,
 	int MinimumNumberOfPlayers,

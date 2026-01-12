@@ -54,6 +54,7 @@ public class GetAvailablePokerGamesQueryHandler(HybridCache hybridCache)
 			if (metadata is not null)
 			{
 				return new GetAvailablePokerGamesResponse(
+					metadata.Code,
 					metadata.Name,
 					metadata.Description,
 					metadata.MinimumNumberOfPlayers,
@@ -62,16 +63,18 @@ public class GetAvailablePokerGamesQueryHandler(HybridCache hybridCache)
 				);
 			}
 
+			return null;
 			// Back-compat fallback: Try to find a parameterless constructor or create with default values
-			var instance = CreateGameInstance(gameType);
-			return instance is null
-				? null
-				: new GetAvailablePokerGamesResponse(
-					instance.Name,
-					instance.Description,
-					instance.MinimumNumberOfPlayers,
-					instance.MaximumNumberOfPlayers
-				);
+			// var instance = CreateGameInstance(gameType);
+			// return instance is null
+			// 	? null
+			// 	: new GetAvailablePokerGamesResponse(
+			// 		instance.
+			// 		instance.Name,
+			// 		instance.Description,
+			// 		instance.MinimumNumberOfPlayers,
+			// 		instance.MaximumNumberOfPlayers
+			// 	);
 		}
 		catch (TargetInvocationException)
 		{

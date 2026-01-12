@@ -431,7 +431,7 @@
         _isDeleting = true;
         try
         {
-            var response = await GamesApi.GamesDeleteGameAsync(_gameIdToDelete.Value);
+            var response = await GamesApi.DeleteGameAsync(_gameIdToDelete.Value);
             if (response.IsSuccessStatusCode)
             {
                 Logger.LogInformation("Successfully deleted game {GameId}", _gameIdToDelete.Value);
