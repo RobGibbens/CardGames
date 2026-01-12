@@ -12,6 +12,8 @@
 - [ ] Creating a deck and dealing is done in the StartHandCommandHandler, but it should be using CardGames.Core.Dealer;
 - [ ] Table settings should be dynamic when creating a table. Not all games have an ante or a minimum bet.
 
+- [ ] Start a game, p1 goes all 1, p2 calls...game freezes
+- [ ] Continuous play should stop if all players disconnect
 - [ ] During ties, the showdown should show the kicker 
 - [ ] Showdown overlay should handle split pots better
 - [ ] Showdown overlay is not showing payouts correctly
