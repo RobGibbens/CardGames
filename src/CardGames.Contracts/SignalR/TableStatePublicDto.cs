@@ -348,6 +348,11 @@ public sealed record ShowdownPublicDto
 	public IReadOnlyList<string>? HighHandWinners { get; init; }
 
 	/// <summary>
+	/// Player names who lost the showdown (for games with pot-matching rules).
+	/// </summary>
+	public IReadOnlyList<string>? Losers { get; init; }
+
+	/// <summary>
 	/// Whether the sevens pool was rolled into the high hand pool
 	/// because no players had a natural pair of 7s.
 	/// </summary>

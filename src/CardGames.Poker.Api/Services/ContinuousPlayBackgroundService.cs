@@ -267,14 +267,14 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		var playerHandEvaluations = new List<(GamePlayer player, long strength)>();
 
 		foreach (var player in stayingPlayers)
-		{
-			var playerCards = game.GameCards
-				.Where(gc => gc.GamePlayerId == player.Id && gc.HandNumber == game.CurrentHandNumber)
-				.OrderBy(gc => gc.DealOrder)
-				.Select(gc => new { gc.Suit, gc.Symbol })
-				.ToList();
+			{
+				var playerCards = game.GameCards
+					.Where(gc => gc.GamePlayerId == player.Id && gc.HandNumber == game.CurrentHandNumber && !gc.IsDiscarded)
+					.OrderBy(gc => gc.DealOrder)
+					.Select(gc => new { gc.Suit, gc.Symbol })
+					.ToList();
 
-			if (playerCards.Count == 5)
+				if (playerCards.Count >= 5)
 			{
 				// Convert to domain Card objects for evaluation
 				var cards = playerCards.Select(c => new CardGames.Core.French.Cards.Card(

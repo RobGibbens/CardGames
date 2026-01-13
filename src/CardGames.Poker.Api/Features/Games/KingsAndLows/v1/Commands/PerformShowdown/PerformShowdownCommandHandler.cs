@@ -109,6 +109,9 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 					pot.IsAwarded = true;
 					pot.AwardedAt = now;
 					pot.WinReason = "All others folded";
+
+					var winnerPayoutsList = new[] { new { playerId = winner.PlayerId.ToString(), playerName = winner.Player.Name, amount = totalPot } };
+					pot.WinnerPayouts = System.Text.Json.JsonSerializer.Serialize(winnerPayoutsList);
 				}
 
 				game.CurrentPhase = nameof(Phases.Complete);

@@ -507,8 +507,10 @@
         string.Equals(_gameResponse?.CurrentPhase, "PotMatching", StringComparison.OrdinalIgnoreCase);
 
     // Whether the current player is a loser in pot matching.
-    // Returns false as placeholder - will be implemented when Kings and Lows API provides loser information.
-    private bool IsCurrentPlayerLoser => false;
+    private bool IsCurrentPlayerLoser => _showdownResult?.PlayerHands?.Any(h =>
+        (string.Equals(h.PlayerName, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase) ||
+         string.Equals(h.PlayerName, _currentPlayerName, StringComparison.OrdinalIgnoreCase)) &&
+         h.IsWinner == false) == true;
 
     // Helper property to check if current player is participating in the current hand
     private bool IsParticipatingInHand =>
@@ -541,6 +543,7 @@
     private bool IsShowdownPhase => string.Equals(_gameResponse?.CurrentPhase, GamePhase.Showdown.ToString(),
             StringComparison.OrdinalIgnoreCase)
             || string.Equals(_gameResponse?.CurrentPhase, "Showdown", StringComparison.OrdinalIgnoreCase)
+            || IsPotMatchingPhase
             || IsCompletePhase;
 
     protected override async Task OnInitializedAsync()
@@ -738,7 +741,7 @@
             {
                 StopCountdownTimer();
                 // Clear showdown overlay when new hand starts
-                if (state.CurrentPhase != "Complete" && state.CurrentPhase != "Showdown")
+                if (!IsShowdownPhase)
                 {
                     _showShowdownOverlay = false;
                     _showdownResult = null;
@@ -1080,7 +1083,7 @@
 
     private void UpdateShowdownFromPublicState(ShowdownPublicDto showdown, bool delayShowingOverlay = false)
     {
-        if (_showdownResult is null && showdown.IsComplete)
+        if (_showdownResult is null && (showdown.IsComplete || IsPotMatchingPhase))
         {
             var payouts = showdown.PlayerResults
                 .Where(r => r.IsWinner)
@@ -1930,8 +1933,23 @@
                 {
                     _isDrawAnimating = false;
                     _forceShowDrawPanel = false;
+                    _delayShowdownOverlay = false;
                     // Cards stay in currentPlayerDrawCards for DrawComplete phase display
                     await InvokeAsync(StateHasChanged);
+
+                    // Wait for the background service to transition to Showdown/Complete phase
+                    // The background service has a 5-second delay, so we may need to wait
+                    for (int i = 0; i < 10; i++)
+                    {
+                        if (IsShowdownPhase)
+                        {
+                            break;
+                        }
+                        await Task.Delay(500);
+                    }
+
+                    // Now try to load/show showdown
+                    await TryLoadShowdownAsync();
                     return;
                 }
 
@@ -2004,6 +2022,21 @@
                 _delayShowdownOverlay = false;
                 // Cards stay in currentPlayerDrawCards for DrawComplete phase display
                 await InvokeAsync(StateHasChanged);
+
+                // Wait for the background service to transition to Showdown/Complete phase
+                // The background service has a 5-second delay matching our animation delay,
+                // so we may need to wait a bit longer for the phase transition
+                for (int i = 0; i < 10; i++)
+                {
+                    if (IsShowdownPhase)
+                    {
+                        break;
+                    }
+                    await Task.Delay(500);
+                }
+
+                // Now try to load/show showdown
+                await TryLoadShowdownAsync();
                 return;
             }
 
@@ -2176,8 +2209,9 @@
         [Description("Draw Phase")] DrawPhase,
         [Description("First Betting Round")] FirstBettingRound,
         [Description("Collecting Antes")] CollectingAntes,
-        [Description("Drop or Stay")] DropOrStay,
-    }
+            [Description("Drop or Stay")] DropOrStay,
+            [Description("Pot Matching")] PotMatching,
+        }
 
     public record SeatInfo
     {
@@ -2652,14 +2686,31 @@ HandType.HighCard
         _ => ""
     };
 
+    private static string DisplayFirstName(ShowdownPlayerHand? hand)
+    {
+        if (!string.IsNullOrWhiteSpace(hand?.PlayerFirstName))
+        {
+            return hand.PlayerFirstName;
+        }
+
+        if (string.IsNullOrWhiteSpace(hand?.PlayerName))
+        {
+            return "Player";
+        }
+
+        var parts = hand.PlayerName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length > 0 ? parts[0] : hand.PlayerName;
+    }
+
     /// <summary>
-    /// Gets the list of losing players for pot matching.
-    /// Returns empty list as placeholder - will be populated when Kings and Lows API provides loser information.
+    /// Gets the list of player names who lost the showdown and must match the pot.
     /// </summary>
     private IReadOnlyList<string> GetLosingPlayers()
     {
-        // Placeholder for Kings and Lows pot matching feature
-        return [];
+        return _showdownResult?.PlayerHands?
+            .Where(h => h.IsWinner == false)
+            .Select(h => DisplayFirstName(h))
+            .ToList() ?? [];
     }
 
     /// <summary>

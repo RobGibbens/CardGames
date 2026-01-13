@@ -4,6 +4,7 @@ using CardGames.Poker.Betting;
 using CardGames.Poker.Games.KingsAndLows;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using OneOf;
 using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 
@@ -12,7 +13,7 @@ namespace CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.StartHand;
 /// <summary>
 /// Handles the <see cref="StartHandCommand"/> to start a new hand in a Kings and Lows game.
 /// </summary>
-public class StartHandCommandHandler(CardsDbContext context)
+public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCommandHandler> logger)
 	: IRequestHandler<StartHandCommand, OneOf<StartHandSuccessful, StartHandError>>
 {
 	public async Task<OneOf<StartHandSuccessful, StartHandError>> Handle(
@@ -108,10 +109,12 @@ public class StartHandCommandHandler(CardsDbContext context)
 		// 7. Determine if this is the first hand (antes only collected on first hand in Kings and Lows)
 		var isFirstHand = game.CurrentHandNumber == 0;
 
-		// 8. Create a new main pot for this hand only if it's the first hand
-		// For subsequent hands, the pot is created by AcknowledgePotMatchCommandHandler
-		Pot? mainPot = null;
-		if (isFirstHand)
+		// 8. Find or create the main pot for this hand
+		// For subsequent hands, the pot is typically created by AcknowledgePotMatchCommandHandler,
+		// but if a hand ends in a fold-win, we need to create it here.
+		Pot? mainPot = await context.Pots.FirstOrDefaultAsync(p => p.GameId == game.Id && p.HandNumber == game.CurrentHandNumber + 1 && !p.IsAwarded, cancellationToken);
+
+		if (mainPot is null)
 		{
 			mainPot = new Pot
 			{
@@ -127,11 +130,8 @@ public class StartHandCommandHandler(CardsDbContext context)
 			context.Pots.Add(mainPot);
 		}
 
-		// 9. Update game state - Kings and Lows starts with CollectingAntes (first hand) or Dealing (subsequent hands)
+		// 9. Update game state
 		game.CurrentHandNumber++;
-		game.CurrentPhase = isFirstHand
-			? nameof(Phases.CollectingAntes)
-			: nameof(Phases.Dealing);
 		game.Status = GameStatus.InProgress;
 		game.CurrentPlayerIndex = -1;
 		game.CurrentDrawPlayerIndex = -1;
@@ -142,8 +142,10 @@ public class StartHandCommandHandler(CardsDbContext context)
 		// Set StartedAt only on first hand
 		game.StartedAt ??= now;
 
-		// 10. Automatically collect antes only on first hand (Kings and Lows rule)
-		if (isFirstHand && ante > 0 && mainPot is not null)
+		// 10. Automatically collect antes if it's the first hand OR if the pot is empty (Kings and Lows rule)
+		// This ensures the pot never stays at 0 indefinitely.
+		bool collectAntes = isFirstHand || mainPot.Amount == 0;
+		if (collectAntes && ante > 0)
 		{
 			foreach (var player in eligiblePlayers)
 			{
@@ -161,17 +163,21 @@ public class StartHandCommandHandler(CardsDbContext context)
 					Amount = anteAmount,
 					ContributedAt = now
 				};
-				context.Set<PotContribution>().Add(contribution);
+						context.Set<PotContribution>().Add(contribution);
 
-				if (player.ChipStack == 0)
-				{
-					player.IsAllIn = true;
+						if (player.ChipStack == 0)
+						{
+							player.IsAllIn = true;
+						}
+					}
 				}
-			}
-		}
 
-		// 11. Automatically deal hands - move to Dealing phase then DropOrStay
-		game.CurrentPhase = nameof(Phases.Dealing);
+				logger.LogInformation(
+					"Kings and Lows pot created for game {GameId}, hand {HandNumber}: Amount={PotAmount}, Ante={Ante}, CollectAntes={CollectAntes}, IsFirstHand={IsFirstHand}",
+					game.Id, game.CurrentHandNumber, mainPot.Amount, ante, collectAntes, isFirstHand);
+
+				// 11. Automatically deal hands - move to Dealing phase then DropOrStay
+				game.CurrentPhase = collectAntes ? nameof(Phases.CollectingAntes) : nameof(Phases.Dealing);
 		
 		// Create a standard deck of 52 cards with shuffled order
 		var deck = new List<GameCard>();

@@ -1,3 +1,5 @@
+using System;
+using System.Text.Json;
 using CardGames.Contracts.SignalR;
 using CardGames.Core.French.Cards;
 using CardGames.Poker.Api.Contracts;
@@ -42,6 +44,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	{
 		var game = await _context.Games
 			.Include(g => g.GameType)
+			.Include(g => g.Pots)
 			.AsNoTracking()
 			.FirstOrDefaultAsync(g => g.Id == gameId, cancellationToken);
 
@@ -79,7 +82,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					.ToList();
 
 		// Calculate results phase state
-		var isResultsPhase = game.CurrentPhase == "Complete" && game.HandCompletedAt.HasValue;
+		var isResultsPhase = (game.CurrentPhase == "Complete" || game.CurrentPhase == "PotMatching") && game.HandCompletedAt.HasValue;
 		int? secondsUntilNextHand = null;
 		if (isResultsPhase && game.NextHandStartsAt.HasValue)
 		{
@@ -608,7 +611,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		List<GamePlayer> gamePlayers,
 		Dictionary<string, UserProfile> userProfilesByEmail)
 	{
-		if (game.CurrentPhase != "Showdown" && game.CurrentPhase != "Complete")
+		if (game.CurrentPhase != "Showdown" && game.CurrentPhase != "Complete" && game.CurrentPhase != "PotMatching")
 		{
 			return null;
 		}
@@ -716,6 +719,67 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		var sevensWinners = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 		var sevensPoolRolledOver = false;
 
+		// Extract actual payouts from pots if they have been awarded
+		var actualPayouts = new Dictionary<string, (int Total, int Sevens, int High)>(StringComparer.OrdinalIgnoreCase);
+		var awardedHandPots = game.Pots
+			.Where(p => p.HandNumber == game.CurrentHandNumber && p.IsAwarded)
+			.ToList();
+
+		foreach (var pot in awardedHandPots)
+		{
+			if (string.IsNullOrWhiteSpace(pot.WinnerPayouts))
+			{
+				continue;
+			}
+
+			try
+			{
+				using var doc = JsonDocument.Parse(pot.WinnerPayouts);
+				foreach (var element in doc.RootElement.EnumerateArray())
+				{
+					if (element.TryGetProperty("playerName", out var nameProp))
+					{
+						var name = nameProp.GetString();
+						if (string.IsNullOrEmpty(name))
+						{
+							continue;
+						}
+
+						int amount = 0;
+						if (element.TryGetProperty("amount", out var amountProp))
+						{
+							amount = amountProp.GetInt32();
+						}
+
+						int sevensAmount = 0;
+						if (element.TryGetProperty("sevensAmount", out var sProp))
+						{
+							sevensAmount = sProp.GetInt32();
+						}
+
+						int highAmount = 0;
+						if (element.TryGetProperty("highHandAmount", out var hProp))
+						{
+							highAmount = hProp.GetInt32();
+						}
+
+						if (actualPayouts.TryGetValue(name, out var existing))
+						{
+							actualPayouts[name] = (existing.Total + amount, existing.Sevens + sevensAmount, existing.High + highAmount);
+						}
+						else
+						{
+							actualPayouts[name] = (amount, sevensAmount, highAmount);
+						}
+					}
+				}
+			}
+			catch (JsonException)
+			{
+				// Skip invalid JSON
+			}
+		}
+
 		if (playerHandEvaluations.Count > 0)
 		{
 			// Determine high hand winners (highest hand strength)
@@ -745,6 +809,12 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		// Combined winners for IsWinner flag
 		var allWinners = highHandWinners.Union(sevensWinners).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
+		var allLosers = isKingsAndLows
+			? gamePlayers.Where(gp => !gp.HasFolded && !highHandWinners.Contains(gp.Player.Name))
+				.Select(gp => gp.Player.Name)
+				.ToList()
+			: null;
+
 		// Build player results
 		var playerResults = gamePlayers
 			.Where(gp => !gp.HasFolded)
@@ -764,6 +834,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 				userProfilesByEmail.TryGetValue(gp.Player.Email ?? string.Empty, out var userProfile);
 
+				actualPayouts.TryGetValue(gp.Player.Name, out var payouts);
+
 				return new ShowdownPlayerResultDto
 				{
 					PlayerName = gp.Player.Name,
@@ -773,7 +845,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					HandDescription = playerHandEvaluations.TryGetValue(gp.Player.Name, out var e)
 						? HandDescriptionFormatter.GetHandDescription(e.hand)
 						: null,
-					AmountWon = 0, // Actual payout calculated separately
+					AmountWon = payouts.Total,
+					SevensAmountWon = payouts.Sevens,
+					HighHandAmountWon = payouts.High,
 					IsWinner = isWinner,
 					IsSevensWinner = isSevensWinner,
 					IsHighHandWinner = isHighHandWinner,
@@ -800,21 +874,26 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			IsComplete = game.CurrentPhase == "Complete",
 			SevensWinners = isTwosJacksAxe ? sevensWinners.ToList() : null,
 			HighHandWinners = isTwosJacksAxe ? highHandWinners.ToList() : null,
+			Losers = allLosers,
 			SevensPoolRolledOver = sevensPoolRolledOver
 		};
 	}
 
 	private async Task<int> CalculateTotalPotAsync(Game game, int handNumber, CancellationToken cancellationToken)
 	{
-
-		if (game.GameType.Code == "KINGSANDLOWS")
+		// For Kings and Lows, the pot is tracked in the Pots table, not TotalContributedThisHand
+		if (string.Equals(game.GameType?.Code, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase))
 		{
-			var latestPot = await _context.Pots
+			var total = await _context.Pots
 				.Where(br => br.GameId == game.Id && br.HandNumber == handNumber)
 				.AsNoTracking()
-				.Select(br => br.Amount)
-				.FirstOrDefaultAsync(cancellationToken);
-			return latestPot;
+				.SumAsync(br => br.Amount, cancellationToken);
+
+			_logger.LogDebug(
+				"Kings and Lows pot calculation for game {GameId}, hand {HandNumber}: {TotalPot}",
+				game.Id, handNumber, total);
+
+			return total;
 		}
 
 		var totalContributions = await _context.GamePlayers

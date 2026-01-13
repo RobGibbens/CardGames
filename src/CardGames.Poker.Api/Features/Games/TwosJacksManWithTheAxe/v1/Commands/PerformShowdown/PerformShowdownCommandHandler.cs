@@ -104,10 +104,13 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 				// Mark pots as awarded
 				foreach (var pot in currentHandPots)
 				{
-					pot.IsAwarded = true;
-					pot.AwardedAt = now;
-					pot.WinReason = "All others folded";
-				}
+						pot.IsAwarded = true;
+						pot.AwardedAt = now;
+						pot.WinReason = "All others folded";
+
+						var winnerPayoutsList = new[] { new { playerId = winner.PlayerId.ToString(), playerName = winner.Player.Name, amount = totalPot } };
+						pot.WinnerPayouts = System.Text.Json.JsonSerializer.Serialize(winnerPayoutsList);
+					}
 
 				game.CurrentPhase = nameof(Phases.Complete);
 				game.UpdatedAt = now;
@@ -298,11 +301,26 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 				winReason = $"7s: {string.Join(", ", sevensWinners)}; High: {string.Join(", ", highHandWinners)}";
 			}
 
+			var winnerPayoutsList = payouts.Select(p =>
+			{
+				var gp = playerHandEvaluations[p.Key].gamePlayer;
+				return new
+				{
+					playerId = gp.PlayerId.ToString(),
+					playerName = p.Key,
+					amount = p.Value,
+					sevensAmount = sevensPayouts.GetValueOrDefault(p.Key, 0),
+					highHandAmount = highHandPayouts.GetValueOrDefault(p.Key, 0)
+				};
+			}).ToList();
+			var winnerPayoutsJson = System.Text.Json.JsonSerializer.Serialize(winnerPayoutsList);
+
 			foreach (var pot in currentHandPots)
 			{
 				pot.IsAwarded = true;
 				pot.AwardedAt = now;
 				pot.WinReason = winReason;
+				pot.WinnerPayouts = winnerPayoutsJson;
 			}
 
 			// 12. Update game state
