@@ -8,9 +8,10 @@
 - [ ] Add chip management to the dashboard (buy in, cash out, add chips)
 - [ ] Test side pots
 - [ ] Don't auto start a new hand. Add a timer, allow pause, allow people to get out of the game or end the game
+- [ ] Make sure people can leave a table
+- [ ] Make sure people can sit out
 
 ### P2 - Important but not blocking play
-- [ ] Hamburger menu doesn't work
 - [ ] Make sure all calls are idempotent
 - [ ] Continuous play should stop if all players disconnect
 - [ ] During ties, the showdown should show the kicker
@@ -114,3 +115,4 @@
 - [x] The betting action overlay. Raise to X doesn't work
 - [x] The fields on the register page should be wider
 - [x] Showdown overlay is not showing payouts correctly
+- [x] Hamburger menu doesn't work
