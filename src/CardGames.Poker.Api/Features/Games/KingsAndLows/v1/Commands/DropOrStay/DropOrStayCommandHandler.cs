@@ -94,9 +94,22 @@ public class DropOrStayCommandHandler(CardsDbContext context)
 			gamePlayer.HasFolded = true;
 		}
 
+		// 6.5. Explicitly save changes here to ensure the decision is persisted before checking allDecided
+		// This handles concurrency issues where EF might not have updated the local collection yet
+		await context.SaveChangesAsync(cancellationToken);
+
+		// Re-fetch players to ensure we have the latest state including other concurrent updates
+		// and the current player's just-saved decision
+		var refreshedGame = await context.Games
+			.Include(g => g.GamePlayers)
+			.AsNoTracking()
+			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
+            
+        if (refreshedGame == null) return new DropOrStayError { Message = "Game lost", Code = DropOrStayErrorCode.GameNotFound };
+
 		// 7. Check if all players have decided
-		var activePlayers = game.GamePlayers
-			.Where(gp => gp is { Status: GamePlayerStatus.Active, IsSittingOut: false })
+		var activePlayers = refreshedGame.GamePlayers
+			.Where(gp => gp is { Status: GamePlayerStatus.Active, IsSittingOut: false, HasFolded: false })
 			.ToList();
 
 		var allDecided = activePlayers.All(gp =>

@@ -3,7 +3,6 @@ using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Infrastructure;
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
-using CardGames.Poker.Games.FiveCardDraw;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
@@ -130,7 +129,7 @@ public sealed class JoinGameCommandHandler(
 			HasFolded = !canPlayCurrentHand, // If mid-hand, they're folded out of current hand
 			IsAllIn = false,
 			IsConnected = true,
-			IsSittingOut = !canPlayCurrentHand,
+			IsSittingOut = false,
 			HasDrawnThisRound = false,
 			JoinedAtHandNumber = game.CurrentHandNumber,
 			LeftAtHandNumber = -1,

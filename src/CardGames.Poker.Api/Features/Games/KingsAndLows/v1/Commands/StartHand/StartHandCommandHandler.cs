@@ -92,6 +92,7 @@ public class StartHandCommandHandler(CardsDbContext context)
 			gamePlayer.IsAllIn = false;
 			gamePlayer.HasDrawnThisRound = false;
 			gamePlayer.DropOrStayDecision = null;
+			gamePlayer.IsSittingOut = false; // Ensure player is not sitting out if eligible
 		}
 
 		// 6. Remove any existing cards from previous hand

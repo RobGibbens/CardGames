@@ -73,6 +73,12 @@
                 {
                     <div class="status-overlay disconnected" title="Disconnected">?</div>
                 }
+                else if (Seat.SittingOutReason == "Observing")
+                {
+                    <div class="status-overlay observing" title="Observing">
+                        <i class="fa-solid fa-eye"></i>
+                    </div>
+                }
                 else if (Seat.IsSittingOut)
                 {
                     <div class="status-overlay sitting-out" title="@(Seat.SittingOutReason ?? "Sitting out")">
@@ -92,6 +98,10 @@
                         else if (IsCurrentActor)
                         {
                             <span class="status-text glow-text">Waiting</span>
+                        }
+                        else if (Seat.SittingOutReason == "Observing")
+                        {
+                            <span class="status-text" title="@Seat.PlayerName">Observing</span>
                         }
                         else
                         {
@@ -221,6 +231,9 @@
         // Show action status when player has a recent action to display
         if (!string.IsNullOrWhiteSpace(Seat.LastActionDescription))
             return "status-action";
+
+        if (Seat.SittingOutReason == "Observing")
+            return "status-observing";
 
         if (IsCurrentActor)
             return "status-orange";

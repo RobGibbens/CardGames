@@ -437,6 +437,10 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				sittingOutReason = "Sitting out";
 			}
 		}
+		else if (gamePlayer.HasFolded && gamePlayer.JoinedAtHandNumber == currentHandNumber)
+		{
+			sittingOutReason = "Observing";
+		}
 
 		string? playerFirstName = null;
 		string? playerAvatarUrl = null;

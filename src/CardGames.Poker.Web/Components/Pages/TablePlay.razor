@@ -204,7 +204,7 @@
         }
 
         <!-- Drop or Stay Overlay (for Kings and Lows) -->
-        @if (HasDropOrStay && IsDropOrStayPhase)
+        @if (HasDropOrStay && IsDropOrStayPhase && IsParticipatingInHand)
         {
             <DropOrStayOverlay Cards="@_currentPlayerDrawCards"
                                HandDescription="@currentPlayerHandEvaluationDescription"
@@ -509,6 +509,14 @@
     // Whether the current player is a loser in pot matching.
     // Returns false as placeholder - will be implemented when Kings and Lows API provides loser information.
     private bool IsCurrentPlayerLoser => false;
+
+    // Helper property to check if current player is participating in the current hand
+    private bool IsParticipatingInHand =>
+        _isSeated &&
+        _currentPlayerSeatIndex >= 0 &&
+        _currentPlayerSeatIndex < _seats.Count &&
+        !_seats[_currentPlayerSeatIndex].IsFolded &&
+        !_seats[_currentPlayerSeatIndex].IsSittingOut;
 
     // Special rules helper properties - driven by SignalR state
     private bool HasWildCards =>
@@ -1313,30 +1321,40 @@
         if (playersResponse is { IsSuccessStatusCode: true, Content: not null })
         {
             var players = playersResponse.Content.ToList();
-            //TODO:ROB - Check for nulls and errors
-            for (int i = 0; i < players.Count && i < _seats.Count; i++)
+            // Reset seats to ensure clean state
+            InitializeSeats();
+
+            foreach (var player in players)
             {
+                if (player.SeatPosition < 0 || player.SeatPosition >= _seats.Count)
+                {
+                    continue;
+                }
+
                 var currentUserMatch = _currentPlayerName ?? _loggedInUserEmail;
                 var isCurrentPlayer = !string.IsNullOrWhiteSpace(currentUserMatch) &&
-                string.Equals(players[i].PlayerName, currentUserMatch, StringComparison.OrdinalIgnoreCase);
+                string.Equals(player.PlayerName, currentUserMatch, StringComparison.OrdinalIgnoreCase);
 
                 // Capture the current player's ID for API calls
                 if (isCurrentPlayer)
                 {
-                    _currentPlayerId = players[i].PlayerId;
+                    _currentPlayerId = player.PlayerId;
                 }
 
-                _seats[i] = new SeatInfo
+                _seats[player.SeatPosition] = new SeatInfo
                 {
-                    SeatIndex = i,
+                    SeatIndex = player.SeatPosition,
                     IsOccupied = true,
-                    PlayerName = players[i].PlayerName,
-                    PlayerAvatarUrl = players[i].PlayerAvatarUrl,
-                    PlayerFirstName = players[i].PlayerFirstName,
-                    Chips = players[i].StartingChips,
-                    IsReady = players[i].Status == GamePlayerStatus.Active,
+                    PlayerName = player.PlayerName,
+                    PlayerAvatarUrl = player.PlayerAvatarUrl,
+                    PlayerFirstName = player.PlayerFirstName,
+                    Chips = player.StartingChips,
+                    IsReady = player.Status == GamePlayerStatus.Active,
                     IsCurrentPlayer = isCurrentPlayer,
-                    Cards = players[i].Hand.OrderBy(c => c.DealOrder).Select(c => new CardInfo
+                    IsFolded = player.HasFolded,
+                    IsSittingOut = player.IsSittingOut,
+                    SittingOutReason = player.IsSittingOut && player.HasFolded ? "Observing" : (player.IsSittingOut ? "Sitting out" : null),
+                    Cards = player.Hand.OrderBy(c => c.DealOrder).Select(c => new CardInfo
                     {
                         Rank = c.Symbol.ToCardRankString(),
                         Suit = c.Suit.ToCardSuitString(),
@@ -1418,6 +1436,8 @@
 
             // Update local state - SignalR will also broadcast the update
             _loggedInUserEmail ??= await GetLoggedInUserEmailAsync();
+            var canPlay = response.Content?.CanPlayCurrentHand ?? false;
+            
             _seats[seatIndex] = new SeatInfo
             {
                 SeatIndex = seatIndex,
@@ -1427,7 +1447,9 @@
                 PlayerFirstName = response.Content?.PlayerFirstName,
                 Chips = 1000,
                 IsCurrentPlayer = true,
-                IsReady = false
+                IsReady = false,
+                IsFolded = !canPlay,
+                SittingOutReason = !canPlay ? "Observing" : null
             };
             _isSeated = true;
             _currentPlayerSeatIndex = seatIndex;
@@ -2855,3 +2877,6 @@ HandType.HighCard
         }
     }
 }
+
+
+
