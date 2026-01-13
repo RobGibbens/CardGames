@@ -38,7 +38,6 @@
 - [ ] Add the ability to invite friends to a table
 - [ ] Add the ability to create private tables
 - [ ] When already logged in, take them to the Lobby
-- [ ] The fields on the register page should be wider
 - [ ] Add animation of dealing the cards
 - [ ] Rearrange the register and login screens to make OAuth more obvious
 - [ ] Add leagues
@@ -113,3 +112,4 @@
 - [x] FiveCardDraw - can't draw four with an Ace
 - [x] Start a game, p1 goes all 1, p2 calls...game freezes
 - [x] The betting action overlay. Raise to X doesn't work
+- [x] The fields on the register page should be wider

@@ -1164,7 +1164,7 @@ a:hover {
 
 .auth-container {
     width: 100%;
-    max-width: 480px;
+    max-width: 580px;
 }
 
 .auth-card {
@@ -1216,9 +1216,11 @@ a:hover {
 
 .auth-form .form-floating {
     margin-bottom: 1rem;
+    position: relative;
 }
 
 .auth-form .form-control {
+    width: 100%;
     background: var(--bg-tertiary);
     border: 1px solid var(--border-color);
     border-radius: 10px;
@@ -1226,6 +1228,15 @@ a:hover {
     font-size: 1rem;
     color: var(--text-primary);
     transition: all var(--transition-normal);
+}
+
+.auth-form .form-floating {
+    position: relative;
+}
+
+.auth-form .form-floating > .form-control {
+    padding-top: 1.625rem;
+    padding-bottom: 0.625rem;
 }
 
 .auth-form .form-control:focus {
@@ -1236,6 +1247,33 @@ a:hover {
 
 .auth-form .form-floating > label {
     color: var(--text-muted);
+}
+
+.auth-form .form-floating[data-label]::after {
+    content: attr(data-label);
+    position: absolute;
+    top: 50%;
+    left: 1rem;
+    max-width: calc(100% - 2rem);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transform: translateY(-50%);
+    pointer-events: none;
+    transform-origin: 0 0;
+    transition: all .2s ease-in-out;
+    color: var(--text-muted);
+}
+
+.auth-form .form-floating[data-label]:focus-within::after,
+.auth-form .form-floating[data-label]:has(.form-control:not(:placeholder-shown))::after {
+    opacity: 0.65;
+    top: 0;
+    transform: scale(0.85) translateY(0.5rem);
+}
+
+.auth-form .form-floating[data-label] .form-control::placeholder {
+    color: transparent !important;
 }
 
 .auth-form .btn-primary {
@@ -1326,8 +1364,8 @@ a:hover {
 }
 
 .form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {
-    color: var(--bs-secondary-color);
-    text-align: end;
+    color: #C0C0C0;
+    text-align: start;
 }
 
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
@@ -3139,6 +3177,7 @@ a:hover {
 
 .empty-seat-icon {
     font-size: 1.5rem;
+    margin-bottom: 1.5rem;
     opacity: 0.65;
     color: rgba(255, 255, 255, 0.9);
 }
@@ -3702,8 +3741,7 @@ a:hover {
 
     .action-btn {
         min-width: 60px;
-        padding: 0.5rem 0.75rem;
-        font-size: 0.75rem;
+        padding: 0.5rem;
     }
 
     .action-icon {
