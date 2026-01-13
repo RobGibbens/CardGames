@@ -4,6 +4,8 @@
 
 ### P1 - Can't play without these
 - [ ] Kings and lows - can not join a table already in progress
+- [ ] Payouts not showing on Showdown for Kings and Lows
+- [ ] KAL - Waiting for showdown shows for new players
 - [ ] Kings and Lows - don't deal to players that don't have enough chips to match the pot
 - [ ] Add chip management to the dashboard (buy in, cash out, add chips)
 - [ ] Test side pots

@@ -175,8 +175,13 @@ public sealed record DropOrStayPrivateDto
     /// </summary>
     public bool IsMyTurnToDecide { get; init; }
 
-    /// <summary>
-    /// Whether the player has already made their decision this round.
-    /// </summary>
-    public bool HasDecidedThisRound { get; init; }
-}
+        /// <summary>
+        /// Whether the player has already made their decision this round.
+        /// </summary>
+        public bool HasDecidedThisRound { get; init; }
+
+        /// <summary>
+        /// The decision made by the player ("Drop" or "Stay"), if any.
+        /// </summary>
+        public string? Decision { get; init; }
+    }

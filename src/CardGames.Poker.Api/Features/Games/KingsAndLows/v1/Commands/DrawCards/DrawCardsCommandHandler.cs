@@ -65,8 +65,7 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 
 		// 4. Verify it's this player's turn to draw
 		if (game.CurrentDrawPlayerIndex < 0 ||
-			game.CurrentDrawPlayerIndex >= gamePlayersList.Count ||
-			gamePlayersList[game.CurrentDrawPlayerIndex].PlayerId != command.PlayerId)
+			gamePlayer.SeatPosition != game.CurrentDrawPlayerIndex)
 		{
 			return new DrawCardsError
 			{
@@ -224,22 +223,22 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 		else
 		{
 			// Find next player to draw (circular, starting after current player)
-			var currentIndex = game.CurrentDrawPlayerIndex;
-			var nextIndex = (currentIndex + 1) % gamePlayersList.Count;
+			var currentIndexInList = gamePlayersList.IndexOf(gamePlayer);
+			var nextIndexInList = (currentIndexInList + 1) % gamePlayersList.Count;
 			var searched = 0;
 
 			while (searched < gamePlayersList.Count)
 			{
-				var player = gamePlayersList[nextIndex];
+				var player = gamePlayersList[nextIndexInList];
 				if (player.DropOrStayDecision == Data.Entities.DropOrStayDecision.Stay && !player.HasDrawnThisRound)
 				{
-					game.CurrentDrawPlayerIndex = nextIndex;
+					game.CurrentDrawPlayerIndex = player.SeatPosition;
 					game.CurrentPlayerIndex = player.SeatPosition;
 					nextPlayerId = player.PlayerId;
 					nextPlayerName = player.Player?.Name;
 					break;
 				}
-				nextIndex = (nextIndex + 1) % gamePlayersList.Count;
+				nextIndexInList = (nextIndexInList + 1) % gamePlayersList.Count;
 				searched++;
 			}
 		}

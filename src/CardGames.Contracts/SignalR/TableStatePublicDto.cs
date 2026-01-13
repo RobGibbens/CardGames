@@ -262,6 +262,11 @@ public sealed record SeatPublicDto
 		public int CurrentBet { get; init; }
 
 		/// <summary>
+		/// Whether the player has already made their decision in the drop-or-stay phase.
+		/// </summary>
+		public bool HasDecidedDropOrStay { get; init; }
+
+		/// <summary>
 		/// The cards visible at this seat (face-down placeholders for other players).
 		/// </summary>
 		public IReadOnlyList<CardPublicDto> Cards { get; init; } = [];

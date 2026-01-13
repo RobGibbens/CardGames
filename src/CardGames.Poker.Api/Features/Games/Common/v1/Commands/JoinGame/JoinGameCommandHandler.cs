@@ -152,16 +152,17 @@ public sealed class JoinGameCommandHandler(
 			playerName,
 			command.SeatIndex,
 			canPlayCurrentHand,
-			cancellationToken);
+					cancellationToken);
 
-		return new JoinGameSuccessful(
-			GameId: game.Id,
-			SeatIndex: command.SeatIndex,
-			PlayerName: playerName,
-			PlayerAvatarUrl: userProfile?.AvatarUrl ?? player.AvatarUrl,
-			PlayerFirstName: userProfile?.FirstName,
-			CanPlayCurrentHand: canPlayCurrentHand);
-	}
+				return new JoinGameSuccessful(
+					GameId: game.Id,
+					SeatIndex: command.SeatIndex,
+					PlayerId: player.Id,
+					PlayerName: playerName,
+					PlayerAvatarUrl: userProfile?.AvatarUrl ?? player.AvatarUrl,
+					PlayerFirstName: userProfile?.FirstName,
+					CanPlayCurrentHand: canPlayCurrentHand);
+			}
 
 	private async Task<Player> GetOrCreatePlayerAsync(string name, string? email, CancellationToken cancellationToken)
 	{

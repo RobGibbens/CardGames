@@ -179,7 +179,7 @@
 
         <!-- Draw Panel (only shown when it's player's turn during draw phase, or forced visible during animation/DrawComplete) -->
         @if
-            ((IsDrawingPhase && _isPlayerDrawTurn) || _forceShowDrawPanel || IsDrawCompletePhase)
+            (((IsDrawingPhase && _isPlayerDrawTurn) || _forceShowDrawPanel || IsDrawCompletePhase) && IsParticipatingInHand)
         {
             <DrawPanel Cards="@_currentPlayerDrawCards" SelectedIndices="@_selectedDiscardIndices"
                        OnToggleSelection="ToggleDiscardSelectionAsync" OnDraw="HandleDrawActionAsync" IsSubmitting="@_isSubmittingDraw"
@@ -649,6 +649,9 @@
         // Handle case where _gameResponse is not yet loaded from API
         if (_gameResponse is not null)
         {
+            var previousHandNumber = _gameResponse.CurrentHandNumber;
+            var previousPhase = _gameResponse.CurrentPhase;
+
             _gameResponse = _gameResponse with
             {
                 CurrentPhase = state.CurrentPhase,
@@ -658,120 +661,133 @@
                 Ante = state.Ante,
                 MinBet = state.MinBet,
                 DealerPosition = state.DealerSeatIndex,
-                CurrentPlayerIndex = state.CurrentActorSeatIndex
+                CurrentPlayerIndex = state.CurrentActorSeatIndex,
+                CurrentHandNumber = state.CurrentHandNumber
             };
+
+            _ante = state.Ante;
+            _pot = state.TotalPot;
+            _dealerSeatIndex = state.DealerSeatIndex;
+            _currentActorSeatIndex = state.CurrentActorSeatIndex;
+            _isPaused = state.IsPaused;
+
+            // Update seats from public state
+            UpdateSeatsFromPublicState(state.Seats);
+
+            // Update previous phase category for next state update
+            var currentPhaseCategory = state.CurrentPhaseCategory;
+            _previousPhaseCategory = currentPhaseCategory;
+
+            // Handle continuous play state transitions
+            var isStartPhase = state.CurrentPhase == "CollectingAntes" || state.CurrentPhase == "Dealing" ||
+                               state.CurrentPhase == "DropOrStay" || state.CurrentPhase == "WaitingForPlayers";
+
+            var wasStartPhase = previousPhase == "CollectingAntes" || previousPhase == "Dealing" ||
+                                previousPhase == "DropOrStay" || previousPhase == "WaitingForPlayers";
+
+            var handChanged = state.CurrentHandNumber != previousHandNumber;
+
+            // Handle showdown state - check if entering showdown/complete phase
+            // Pass whether we should delay showing the overlay (only for deck draw animation now)
+            var shouldDelayShowdownOverlay = _delayShowdownOverlay ||
+                (_showdownDelayUntil.HasValue && DateTimeOffset.UtcNow < _showdownDelayUntil.Value);
+
+            if (state.Showdown is not null)
+            {
+                UpdateShowdownFromPublicState(state.Showdown, shouldDelayShowdownOverlay);
+            }
+
+            // If entering showdown or complete phase, load showdown results via API
+            if (IsShowdownPhase && _showdownResult is null && !shouldDelayShowdownOverlay)
+            {
+                await TryLoadShowdownAsync();
+            }
+
+            // If deck just finished drawing (via SignalR update from another player's action),
+            // set a delay for showing the showdown overlay
+            if (state.PlayerVsDeck?.HasDeckDrawn == true && !_hasDeckDrawn && !_showdownDelayUntil.HasValue)
+            {
+                // Non-decision maker: delay showdown overlay by 5 seconds to let them see the animation
+                _showdownDelayUntil = DateTimeOffset.UtcNow.AddSeconds(5);
+                _hasDeckDrawn = true;
+
+                // Schedule the showdown to appear after delay
+                _ = Task.Run(async () =>
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(5));
+                    _showdownDelayUntil = null;
+                    // Load showdown results if not already loaded, then show the overlay
+                    if (_showdownResult is null && IsShowdownPhase)
+                    {
+                        await TryLoadShowdownAsync();
+                    }
+                    _showShowdownOverlay = true;
+                    await InvokeAsync(StateHasChanged);
+                });
+            }
+
+            // Handle continuous play countdown
+            _isResultsPhase = state.IsResultsPhase;
+            _secondsUntilNextHand = state.SecondsUntilNextHand ?? 0;
+
+            if (_isResultsPhase && _secondsUntilNextHand > 0)
+            {
+                StartCountdownTimer();
+            }
+            else if (!_isResultsPhase)
+            {
+                StopCountdownTimer();
+                // Clear showdown overlay when new hand starts
+                if (state.CurrentPhase != "Complete" && state.CurrentPhase != "Showdown")
+                {
+                    _showShowdownOverlay = false;
+                    _showdownResult = null;
+
+                    // Only reset game state if we are truly starting a new hand (Setup/Dealing phases)
+                    // This prevents UI state (like visible cards during draw delay) from being cleared
+                    // just because a SignalR update arrived for a subsequent phase like SecondBettingRound
+                    var isNewHand = state.CurrentPhaseCategory?.Equals("Setup", StringComparison.OrdinalIgnoreCase) == true;
+
+                    if (isNewHand || (isStartPhase && !wasStartPhase) || handChanged)
+                    {
+                        isNewHand = true;
+                    }
+                    else
+                    {
+                        isNewHand = false;
+                    }
+
+                    if (isNewHand)
+                    {
+                        // Reset Kings and Lows specific state for new hand
+                        _hasDropOrStayDecided = false;
+                        _dropOrStayDecision = null;
+                        _hasDeckDrawn = false;
+                        _deckDrawSelectedIndices.Clear();
+                        _delayShowdownOverlay = false;
+                        _showdownDelayUntil = null;
+                        _previousPhaseCategory = null;
+
+                        // Reset DrawPanel state for new hand
+                        _selectedDiscardIndices.Clear();
+                        _currentPlayerDrawCards = [];
+                        _cardsDrawn = false;
+                        _isPlayerDrawTurn = false;
+                        _isDrawAnimating = false;
+                        _isDiscardingCards = false;
+                        _isDrawingNewCards = false;
+                        _isSubmittingDraw = false;
+                        _forceShowDrawPanel = false;
+                        _newCardIndices = [];
+                    }
+                }
+            }
         }
         else
         {
             // SignalR update arrived before LoadDataAsync completed - defer to initial load
             Logger.LogDebug("Received SignalR update before initial data loaded, skipping state update");
             return;
-        }
-
-        _ante = state.Ante;
-        _pot = state.TotalPot;
-        _dealerSeatIndex = state.DealerSeatIndex;
-        _currentActorSeatIndex = state.CurrentActorSeatIndex;
-        _isPaused = state.IsPaused;
-
-        // Update seats from public state
-        UpdateSeatsFromPublicState(state.Seats);
-
-        // Update previous phase category for next state update
-        var currentPhaseCategory = state.CurrentPhaseCategory;
-        _previousPhaseCategory = currentPhaseCategory;
-
-        // Handle showdown state - check if entering showdown/complete phase
-        // Pass whether we should delay showing the overlay (only for deck draw animation now)
-        var shouldDelayShowdownOverlay = _delayShowdownOverlay ||
-            (_showdownDelayUntil.HasValue && DateTimeOffset.UtcNow < _showdownDelayUntil.Value);
-        if (state.Showdown is not null)
-        {
-            UpdateShowdownFromPublicState(state.Showdown, shouldDelayShowdownOverlay);
-        }
-
-        // If entering showdown or complete phase, load showdown results via API
-        if (IsShowdownPhase && _showdownResult is null && !shouldDelayShowdownOverlay)
-        {
-            await TryLoadShowdownAsync();
-        }
-
-        // If deck just finished drawing (via SignalR update from another player's action),
-        // set a delay for showing the showdown overlay
-        if (state.PlayerVsDeck?.HasDeckDrawn == true && !_hasDeckDrawn && !_showdownDelayUntil.HasValue)
-        {
-            // Non-decision maker: delay showdown overlay by 5 seconds to let them see the animation
-            _showdownDelayUntil = DateTimeOffset.UtcNow.AddSeconds(5);
-            _hasDeckDrawn = true;
-
-            // Schedule the showdown to appear after delay
-            _ = Task.Run(async () =>
-            {
-                await Task.Delay(TimeSpan.FromSeconds(5));
-                _showdownDelayUntil = null;
-                // Load showdown results if not already loaded, then show the overlay
-                if (_showdownResult is null && IsShowdownPhase)
-                {
-                    await TryLoadShowdownAsync();
-                }
-                _showShowdownOverlay = true;
-                await InvokeAsync(StateHasChanged);
-            });
-        }
-
-        // Handle continuous play countdown
-        _isResultsPhase = state.IsResultsPhase;
-        _secondsUntilNextHand = state.SecondsUntilNextHand ?? 0;
-
-        if (_isResultsPhase && _secondsUntilNextHand > 0)
-        {
-            StartCountdownTimer();
-        }
-        else if (!_isResultsPhase)
-        {
-            StopCountdownTimer();
-            // Clear showdown overlay when new hand starts
-            if (state.CurrentPhase != "Complete" && state.CurrentPhase != "Showdown")
-            {
-                _showShowdownOverlay = false;
-                _showdownResult = null;
-
-                // Only reset game state if we are truly starting a new hand (Setup/Dealing phases)
-                // This prevents UI state (like visible cards during draw delay) from being cleared
-                // just because a SignalR update arrived for a subsequent phase like SecondBettingRound
-                var isNewHand = state.CurrentPhaseCategory?.Equals("Setup", StringComparison.OrdinalIgnoreCase) == true;
-
-                // Also treat specific start-of-hand phases as new hand
-                if (state.CurrentPhase == "CollectingAntes" || state.CurrentPhase == "Dealing" ||
-                    state.CurrentPhase == "DropOrStay" || state.CurrentPhase == "WaitingForPlayers")
-                {
-                    isNewHand = true;
-                }
-
-                if (isNewHand)
-                {
-                    // Reset Kings and Lows specific state for new hand
-                    _hasDropOrStayDecided = false;
-                    _dropOrStayDecision = null;
-                    _hasDeckDrawn = false;
-                    _deckDrawSelectedIndices.Clear();
-                    _delayShowdownOverlay = false;
-                    _showdownDelayUntil = null;
-                    _previousPhaseCategory = null;
-
-                    // Reset DrawPanel state for new hand
-                    _selectedDiscardIndices.Clear();
-                    _currentPlayerDrawCards = [];
-                    _cardsDrawn = false;
-                    _isPlayerDrawTurn = false;
-                    _isDrawAnimating = false;
-                    _isDiscardingCards = false;
-                    _isDrawingNewCards = false;
-                    _isSubmittingDraw = false;
-                    _forceShowDrawPanel = false;
-                    _newCardIndices = [];
-                }
-            }
         }
 
         // Update phase-dependent state
@@ -892,6 +908,13 @@
         {
             _isPlayerDrawTurn = state.Draw.IsMyTurnToDraw;
             _maxDiscards = state.Draw.MaxDiscards;
+
+            // Sync local drawing state with server truth, but preserve local animation state
+            if (!_isDrawAnimating && !_isSubmittingDraw)
+            {
+                _cardsDrawn = state.Draw.HasDrawnThisRound;
+            }
+
             if (state.Draw.IsMyTurnToDraw && !_isDrawAnimating && !_forceShowDrawPanel)
             {
                 _currentPlayerDrawCards = state.Hand.Select((c, i) => new CardInfo
@@ -917,6 +940,12 @@
         }
 
         // Update Drop or Stay phase state (Kings and Lows)
+        if (state.DropOrStay is not null)
+        {
+            _hasDropOrStayDecided = state.DropOrStay.HasDecidedThisRound;
+            _dropOrStayDecision = state.DropOrStay.Decision;
+        }
+
         // Populate cards for display in DropOrStayOverlay
         // Check both the property AND the phase string directly from state to handle reconnection scenarios
         // where _gameResponse might not be populated yet
@@ -1040,6 +1069,7 @@
                     IsSittingOut = publicSeat.IsSittingOut,
                     SittingOutReason = publicSeat.SittingOutReason,
                     CurrentBet = publicSeat.CurrentBet,
+                    HasDecidedDropOrStay = publicSeat.HasDecidedDropOrStay,
                     Cards = cards,
                     LastActionDescription = shouldPreserveAction ? existingSeat.LastActionDescription : null,
                     LastActionTime = shouldPreserveAction ? existingSeat.LastActionTime : null
@@ -1434,35 +1464,38 @@
                 return;
             }
 
-            // Update local state - SignalR will also broadcast the update
-            _loggedInUserEmail ??= await GetLoggedInUserEmailAsync();
-            var canPlay = response.Content?.CanPlayCurrentHand ?? false;
-            
-            _seats[seatIndex] = new SeatInfo
-            {
-                SeatIndex = seatIndex,
-                IsOccupied = true,
-                PlayerName = response.Content?.PlayerName ?? _loggedInUserEmail ?? "You",
-                PlayerAvatarUrl = response.Content?.PlayerAvatarUrl,
-                PlayerFirstName = response.Content?.PlayerFirstName,
-                Chips = 1000,
-                IsCurrentPlayer = true,
-                IsReady = false,
-                IsFolded = !canPlay,
-                SittingOutReason = !canPlay ? "Observing" : null
-            };
-            _isSeated = true;
-            _currentPlayerSeatIndex = seatIndex;
+                    // Update local state - SignalR will also broadcast the update
+                    _loggedInUserEmail ??= await GetLoggedInUserEmailAsync();
+                    var canPlay = response.Content?.CanPlayCurrentHand ?? false;
 
-            Logger.LogInformation(
-                                        "Successfully joined game {GameId} at seat {SeatIndex}. CanPlayCurrentHand: {CanPlay}",
-            GameId, seatIndex, response.Content?.CanPlayCurrentHand);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error joining game at seat {SeatIndex}", seatIndex);
-        }
-    }
+                    // Store the player ID for API calls (e.g., Drop or Stay decision)
+                    _currentPlayerId = response.Content?.PlayerId;
+
+                    _seats[seatIndex] = new SeatInfo
+                    {
+                        SeatIndex = seatIndex,
+                        IsOccupied = true,
+                        PlayerName = response.Content?.PlayerName ?? _loggedInUserEmail ?? "You",
+                        PlayerAvatarUrl = response.Content?.PlayerAvatarUrl,
+                        PlayerFirstName = response.Content?.PlayerFirstName,
+                        Chips = 1000,
+                        IsCurrentPlayer = true,
+                        IsReady = false,
+                        IsFolded = !canPlay,
+                        SittingOutReason = !canPlay ? "Observing" : null
+                    };
+                    _isSeated = true;
+                    _currentPlayerSeatIndex = seatIndex;
+
+                    Logger.LogInformation(
+                                                "Successfully joined game {GameId} at seat {SeatIndex}. CanPlayCurrentHand: {CanPlay}",
+                    GameId, seatIndex, response.Content?.CanPlayCurrentHand);
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Error joining game at seat {SeatIndex}", seatIndex);
+                }
+            }
 
     private async Task SetReadyAsync()
     {
@@ -1764,6 +1797,18 @@
         _delayShowdownOverlay = true; // Delay showdown until animation completes
         _cardsDrawn = false;
 
+        // Initialize draw cards for animation
+        _currentPlayerDrawCards = _currentPlayerDrawCards.Select(c => c with { IsSelected = false }).ToList();
+        foreach (var index in discardIndices)
+        {
+            if (index >= 0 && index < _currentPlayerDrawCards.Count)
+            {
+                _currentPlayerDrawCards[index] = _currentPlayerDrawCards[index] with { IsSelected = true };
+            }
+        }
+
+        StateHasChanged();
+
         try
         {
             // Start discard animation
@@ -1885,7 +1930,6 @@
                 {
                     _isDrawAnimating = false;
                     _forceShowDrawPanel = false;
-                    _delayShowdownOverlay = false;
                     // Cards stay in currentPlayerDrawCards for DrawComplete phase display
                     await InvokeAsync(StateHasChanged);
                     return;
@@ -2060,11 +2104,24 @@
             // Discarded cards are dead cards (they won't be redrawn)
             var deadCards = discardedCards.Concat(foldedPlayerCards).ToList();
 
-            var result = IsTwosJacksManWithTheAxe
-                ? OddsCalculator.CalculateTwosJacksManWithTheAxeDrawOdds(cardsToKeep, deadCards)
-                : IsKingsAndLows
-                    ? OddsCalculator.CalculateKingsAndLowsDrawOdds(cardsToKeep, deadCards)
-                    : OddsCalculator.CalculateDrawOdds(cardsToKeep, deadCards);
+            OddsCalculator.OddsResult? result;
+            if (IsTwosJacksManWithTheAxe)
+            {
+                result = OddsCalculator.CalculateTwosJacksManWithTheAxeDrawOdds(cardsToKeep, deadCards);
+            }
+            else if (IsSevenCardStud)
+            {
+                result = OddsCalculator.CalculateStudOdds(cardsToKeep, deadCards);
+            }
+            else if (IsKingsAndLows)
+            {
+                result = OddsCalculator.CalculateKingsAndLowsDrawOdds(cardsToKeep, deadCards);
+            }
+            else
+            {
+                result = OddsCalculator.CalculateDrawOdds(cardsToKeep, deadCards);
+            }
+
             handOdds = ConvertToHandTypeOddsDtos(result);
         }
         catch (Exception ex)
@@ -2138,6 +2195,7 @@
         public bool IsSittingOut { get; set; }
         public string? SittingOutReason { get; set; }
         public int CurrentBet { get; set; }
+        public bool HasDecidedDropOrStay { get; set; }
         public List<CardInfo> Cards { get; set; } = [];
         public string? HandEvaluationDescription { get; set; }
         /// <summary>
@@ -2642,8 +2700,10 @@ HandType.HighCard
     /// </summary>
     private IReadOnlyList<string> GetPlayersWaitingForDropOrStay()
     {
-        // TODO: Get from SignalR state when available
-        return [];
+        return _seats
+            .Where(s => s.IsOccupied && !s.IsFolded && !s.IsSittingOut && !s.HasDecidedDropOrStay)
+            .Select(s => s.PlayerFirstName ?? s.PlayerName ?? "Unknown")
+            .ToList();
     }
 
     /// <summary>

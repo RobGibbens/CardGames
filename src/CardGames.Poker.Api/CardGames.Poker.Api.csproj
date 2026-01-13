@@ -8,9 +8,9 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Asp.Versioning.Http" Version="8.1.0" />
-		<PackageReference Include="Asp.Versioning.Mvc" Version="8.1.0" />
-		<PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" Version="8.1.0" />
+		<PackageReference Include="Asp.Versioning.Http" Version="8.1.1" />
+		<PackageReference Include="Asp.Versioning.Mvc" Version="8.1.1" />
+		<PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" Version="8.1.1" />
 		<PackageReference Include="Aspire.Microsoft.EntityFrameworkCore.SqlServer" Version="13.1.0" />
 		<PackageReference Include="Aspire.StackExchange.Redis.DistributedCaching" Version="13.1.0" />
 		<PackageReference Include="FluentValidation.AspNetCore" Version="11.3.1" />
@@ -31,9 +31,9 @@
 		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
 		<PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.1" />
-		<PackageReference Include="Microsoft.Identity.Web" Version="4.2.0" />
-		<PackageReference Include="Microsoft.Identity.Web.DownstreamApi" Version="4.2.0" />
-		<PackageReference Include="Microsoft.Identity.Web.UI" Version="4.2.0" />
+		<PackageReference Include="Microsoft.Identity.Web" Version="4.3.0" />
+		<PackageReference Include="Microsoft.Identity.Web.DownstreamApi" Version="4.3.0" />
+		<PackageReference Include="Microsoft.Identity.Web.UI" Version="4.3.0" />
 
 		<PackageReference Include="OneOf" Version="3.0.271" />
 		<PackageReference Include="Aspire.Azure.Messaging.ServiceBus" Version="13.1.0" />
@@ -46,13 +46,13 @@
 		<PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.14.0" />
 		<PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.14.0" />
 		<PackageReference Include="Riok.Mapperly" Version="4.3.1-next.0" />
-		<PackageReference Include="Scalar.AspNetCore" Version="2.11.8" />
+		<PackageReference Include="Scalar.AspNetCore" Version="2.12.6" />
 		<PackageReference Include="SharpGrip.FluentValidation.AutoValidation.Endpoints" Version="1.5.0" />
 		<PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.0" />
 
-		<PackageReference Include="ZiggyCreatures.FusionCache" Version="2.4.0" />
-		<PackageReference Include="ZiggyCreatures.FusionCache.OpenTelemetry" Version="2.4.0" />
-		<PackageReference Include="ZiggyCreatures.FusionCache.Serialization.SystemTextJson" Version="2.4.0" />
+		<PackageReference Include="ZiggyCreatures.FusionCache" Version="2.5.0" />
+		<PackageReference Include="ZiggyCreatures.FusionCache.OpenTelemetry" Version="2.5.0" />
+		<PackageReference Include="ZiggyCreatures.FusionCache.Serialization.SystemTextJson" Version="2.5.0" />
 
 	</ItemGroup>
 

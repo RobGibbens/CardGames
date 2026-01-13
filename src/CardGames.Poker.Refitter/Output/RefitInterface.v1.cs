@@ -3267,10 +3267,11 @@ namespace CardGames.Poker.Api.Contracts
     public partial record JoinGameSuccessful
     {
         [JsonConstructor]
-        public JoinGameSuccessful(bool @canPlayCurrentHand, System.Guid @gameId, string @playerAvatarUrl, string @playerFirstName, string @playerName, int @seatIndex)
+        public JoinGameSuccessful(bool @canPlayCurrentHand, System.Guid @gameId, System.Guid @playerId, string @playerAvatarUrl, string @playerFirstName, string @playerName, int @seatIndex)
         {
             this.GameId = @gameId;
             this.SeatIndex = @seatIndex;
+            this.PlayerId = @playerId;
             this.PlayerName = @playerName;
             this.PlayerAvatarUrl = @playerAvatarUrl;
             this.PlayerFirstName = @playerFirstName;
@@ -3285,6 +3286,10 @@ namespace CardGames.Poker.Api.Contracts
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int SeatIndex { get; init; }
+
+        [JsonPropertyName("playerId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid PlayerId { get; init; }
 
         [JsonPropertyName("playerName")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]

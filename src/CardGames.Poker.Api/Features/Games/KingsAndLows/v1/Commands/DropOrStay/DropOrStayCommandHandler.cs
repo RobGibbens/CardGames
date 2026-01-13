@@ -142,8 +142,7 @@ public class DropOrStayCommandHandler(CardsDbContext context)
 			{
 				// Single player stayed - go to draw phase (then player vs deck)
 				game.CurrentPhase = nameof(Phases.DrawPhase);
-				var gamePlayersList = game.GamePlayers.OrderBy(gp => gp.SeatPosition).ToList();
-				game.CurrentDrawPlayerIndex = gamePlayersList.IndexOf(stayingPlayers[0]);
+				game.CurrentDrawPlayerIndex = stayingPlayers[0].SeatPosition;
 				game.CurrentPlayerIndex = stayingPlayers[0].SeatPosition;
 				nextPhase = game.CurrentPhase;
 			}
@@ -170,7 +169,7 @@ public class DropOrStayCommandHandler(CardsDbContext context)
 					var player = gamePlayersList[nextPlayerIndex];
 					if (player.DropOrStayDecision == Data.Entities.DropOrStayDecision.Stay)
 					{
-						game.CurrentDrawPlayerIndex = nextPlayerIndex;
+						game.CurrentDrawPlayerIndex = player.SeatPosition;
 						game.CurrentPlayerIndex = player.SeatPosition;
 						break;
 					}

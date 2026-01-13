@@ -330,7 +330,16 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		var availableActions = isMyTurn
 			? await BuildAvailableActionsAsync(gameId, game, gamePlayer, cancellationToken)
 			: null;
-		var draw = BuildDrawPrivateDto(game, gamePlayer);
+
+		// Get game rules for metadata
+		GameRules? rules = null;
+		if (PokerGameRulesRegistry.TryGet(game.GameType?.Code, out var r))
+		{
+			rules = r;
+		}
+
+		var draw = BuildDrawPrivateDto(game, gamePlayer, rules);
+		var dropOrStay = BuildDropOrStayPrivateDto(game, gamePlayer);
 
 		// Get hand history personalized for this player
 		var handHistory = await GetHandHistoryEntriesAsync(gameId, gamePlayer.PlayerId, take: 25, cancellationToken);
@@ -344,6 +353,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			HandEvaluationDescription = handEvaluationDescription,
 			AvailableActions = availableActions,
 			Draw = draw,
+			DropOrStay = dropOrStay,
 			IsMyTurn = isMyTurn,
 			HandHistory = handHistory
 		};
@@ -467,11 +477,12 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			IsFolded = gamePlayer.HasFolded,
 			IsAllIn = gamePlayer.IsAllIn,
 			IsDisconnected = !gamePlayer.IsConnected,
-			IsSittingOut = gamePlayer.IsSittingOut,
-			SittingOutReason = sittingOutReason,
-			CurrentBet = gamePlayer.CurrentBet,
-			Cards = publicCards
-		};
+				IsSittingOut = gamePlayer.IsSittingOut,
+				SittingOutReason = sittingOutReason,
+				CurrentBet = gamePlayer.CurrentBet,
+				HasDecidedDropOrStay = gamePlayer.DropOrStayDecision.HasValue && gamePlayer.DropOrStayDecision.Value != Entities.DropOrStayDecision.Undecided,
+				Cards = publicCards
+			};
 	}
 
 	private List<CardPrivateDto> BuildPrivateHand(GamePlayer gamePlayer, int currentHandNumber)
@@ -564,7 +575,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 	private static DrawPrivateDto? BuildDrawPrivateDto(
 		Game game,
-		GamePlayer gamePlayer)
+		GamePlayer gamePlayer,
+		GameRules? rules)
 	{
 		if (game.CurrentPhase != "DrawPhase")
 		{
@@ -576,8 +588,12 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			.Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber)
 			.ToList();
 
-		var hasAce = playerCards.Any(c => c.Symbol == Data.Entities.CardSymbol.Ace);
-		var maxDiscards = hasAce ? 4 : 3;
+		var baseMaxDiscards = rules?.Drawing?.MaxDiscards ?? 3;
+		var hasAce = playerCards.Any(c => c.Symbol == Entities.CardSymbol.Ace);
+
+		// Traditional 5-card draw rules: 3 discards, or 4 if you have an Ace.
+		// If the game rules specify a different MaxDiscards (like 5 in Kings and Lows), respect that.
+		var maxDiscards = (baseMaxDiscards == 3 && hasAce) ? 4 : baseMaxDiscards;
 
 		return new DrawPrivateDto
 		{
@@ -1107,20 +1123,38 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		// For now, check if deck has exactly 5 cards and they haven't been modified
 		var hasDeckDrawn = game.CurrentPhase != "PlayerVsDeck"; // If we've moved past, it's drawn
 
-		return new PlayerVsDeckStateDto
-		{
-			DeckCards = deckCards.Select(c => new CardPublicDto
+				return new PlayerVsDeckStateDto
+				{
+					DeckCards = deckCards.Select(c => new CardPublicDto
+					{
+						IsFaceUp = true,
+						Rank = MapSymbolToRank(c.Symbol),
+						Suit = c.Suit.ToString()
+					}).ToList(),
+					DecisionMakerSeatIndex = decisionMaker.SeatPosition,
+					DecisionMakerName = decisionMaker.Player?.Name,
+					DecisionMakerFirstName = decisionMakerFirstName,
+					HasDeckDrawn = hasDeckDrawn,
+					StayingPlayerName = stayingPlayer.Player?.Name,
+					StayingPlayerSeatIndex = stayingPlayer.SeatPosition
+				};
+			}
+
+			private static DropOrStayPrivateDto? BuildDropOrStayPrivateDto(
+				Game game,
+				GamePlayer gamePlayer)
 			{
-				IsFaceUp = true,
-				Rank = MapSymbolToRank(c.Symbol),
-				Suit = c.Suit.ToString()
-			}).ToList(),
-			DecisionMakerSeatIndex = decisionMaker.SeatPosition,
-			DecisionMakerName = decisionMaker.Player?.Name,
-			DecisionMakerFirstName = decisionMakerFirstName,
-			HasDeckDrawn = hasDeckDrawn,
-			StayingPlayerName = stayingPlayer.Player?.Name,
-			StayingPlayerSeatIndex = stayingPlayer.SeatPosition
-		};
-	}
-}
+				if (game.CurrentPhase != "DropOrStay")
+				{
+					return null;
+				}
+
+				return new DropOrStayPrivateDto
+				{
+					IsMyTurnToDecide = game.CurrentPlayerIndex == gamePlayer.SeatPosition,
+					HasDecidedThisRound = gamePlayer.DropOrStayDecision.HasValue &&
+										  gamePlayer.DropOrStayDecision.Value != Entities.DropOrStayDecision.Undecided,
+					Decision = gamePlayer.DropOrStayDecision?.ToString()
+				};
+			}
+		}
