@@ -30,7 +30,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 		var game = await context.Games
 			.Include(g => g.GamePlayers)
 				.ThenInclude(gp => gp.Player)
-			.Include(g => g.Pots.Where(p => !p.IsAwarded))
+			.Include(g => g.Pots)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
@@ -44,9 +44,10 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 
 		// Filter pots to current hand (in case there are old unawarded pots from edge cases)
 		var currentHandPots = game.Pots.Where(p => p.HandNumber == game.CurrentHandNumber).ToList();
+		var isAlreadyAwarded = currentHandPots.Any(p => p.IsAwarded);
 
 		// 2. Validate game is in showdown phase
-		if (game.CurrentPhase != nameof(Phases.Showdown))
+		if (game.CurrentPhase != nameof(Phases.Showdown) && !isAlreadyAwarded)
 		{
 			return new PerformShowdownError
 			{
@@ -93,35 +94,39 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 		if (playersInHand.Count == 1)
 		{
 			var winner = playersInHand[0];
-			winner.ChipStack += totalPot;
 
-			// Mark pots as awarded
-			foreach (var pot in currentHandPots)
+			if (!isAlreadyAwarded)
 			{
-				pot.IsAwarded = true;
-				pot.AwardedAt = now;
-				pot.WinReason = "All others folded";
+				winner.ChipStack += totalPot;
+
+				// Mark pots as awarded
+				foreach (var pot in currentHandPots)
+				{
+					pot.IsAwarded = true;
+					pot.AwardedAt = now;
+					pot.WinReason = "All others folded";
+				}
+
+				game.CurrentPhase = nameof(Phases.Complete);
+				game.UpdatedAt = now;
+				game.HandCompletedAt = now;
+				game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);
+				MoveDealer(game);
+
+				await context.SaveChangesAsync(cancellationToken);
+
+				// Record hand history for win-by-fold
+				await RecordHandHistoryAsync(
+					game,
+					game.GamePlayers.ToList(),
+					now,
+					totalPot,
+					wonByFold: true,
+					winners: [(winner.PlayerId, winner.Player.Name, totalPot)],
+					winnerNames: [winner.Player.Name],
+					winningHandDescription: null,
+					cancellationToken);
 			}
-
-			game.CurrentPhase = nameof(Phases.Complete);
-			game.UpdatedAt = now;
-			game.HandCompletedAt = now;
-			game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);
-			MoveDealer(game);
-
-			await context.SaveChangesAsync(cancellationToken);
-
-			// Record hand history for win-by-fold
-			await RecordHandHistoryAsync(
-				game,
-				game.GamePlayers.ToList(),
-				now,
-				totalPot,
-				wonByFold: true,
-				winners: [(winner.PlayerId, winner.Player.Name, totalPot)],
-				winnerNames: [winner.Player.Name],
-				winningHandDescription: null,
-				cancellationToken);
 
 			var winnerCards = playerCardGroups.GetValueOrDefault(winner.Id, []);
 			usersByEmail.TryGetValue(winner.Player.Email ?? string.Empty, out var winnerUser);
@@ -210,50 +215,53 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 		}
 
 		// 10. Update player chip stacks
-		foreach (var payout in payouts)
+		if (!isAlreadyAwarded)
 		{
-			var gamePlayer = playerHandEvaluations[payout.Key].gamePlayer;
-			gamePlayer.ChipStack += payout.Value;
-		}
+			foreach (var payout in payouts)
+			{
+				var gamePlayer = playerHandEvaluations[payout.Key].gamePlayer;
+				gamePlayer.ChipStack += payout.Value;
+			}
 
-		// 11. Mark pots as awarded
-		var winReason = winners.Count > 1
-			? $"Split pot - {playerHandEvaluations[winners[0]].hand.Type}"
-			: playerHandEvaluations[winners[0]].hand.Type.ToString();
+			// 11. Mark pots as awarded
+			var winReason = winners.Count > 1
+				? $"Split pot - {playerHandEvaluations[winners[0]].hand.Type}"
+				: playerHandEvaluations[winners[0]].hand.Type.ToString();
 
-		foreach (var pot in currentHandPots)
-		{
-			pot.IsAwarded = true;
-			pot.AwardedAt = now;
-			pot.WinReason = winReason;
-		}
+			foreach (var pot in currentHandPots)
+			{
+				pot.IsAwarded = true;
+				pot.AwardedAt = now;
+				pot.WinReason = winReason;
+			}
 
-		// 12. Update game state
-		game.CurrentPhase = nameof(Phases.Complete);
-		game.UpdatedAt = now;
-		game.HandCompletedAt = now;
-		game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);
-		MoveDealer(game);
+			// 12. Update game state
+			game.CurrentPhase = nameof(Phases.Complete);
+			game.UpdatedAt = now;
+			game.HandCompletedAt = now;
+			game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);
+			MoveDealer(game);
 
-		await context.SaveChangesAsync(cancellationToken);
+			await context.SaveChangesAsync(cancellationToken);
 
-		// Record hand history for showdown
-		var winnerInfos = winners.Select(w =>
-		{
-			var gp = playerHandEvaluations[w].gamePlayer;
-			return (gp.PlayerId, w, payouts[w]);
-		}).ToList();
+			// Record hand history for showdown
+			var winnerInfos = winners.Select(w =>
+			{
+				var gp = playerHandEvaluations[w].gamePlayer;
+				return (gp.PlayerId, w, payouts[w]);
+			}).ToList();
 
-		await RecordHandHistoryAsync(
-			game,
-			game.GamePlayers.ToList(),
-			now,
-			totalPot,
-			wonByFold: false,
-			winners: winnerInfos,
-			winnerNames: winners,
+			await RecordHandHistoryAsync(
+				game,
+				game.GamePlayers.ToList(),
+				now,
+				totalPot,
+				wonByFold: false,
+				winners: winnerInfos,
+				winnerNames: winners,
 				winningHandDescription: winReason,
-					cancellationToken);
+				cancellationToken);
+		}
 
 				// 13. Build response
 				var playerHandsList = playerHandEvaluations.Select(kvp =>

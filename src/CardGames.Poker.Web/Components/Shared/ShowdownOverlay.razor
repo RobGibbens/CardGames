@@ -146,6 +146,10 @@
                                 {
                                     <span class="sd-pill sd-pill-muted">@GetDetailedHandDescription(hand)</span>
                                 }
+                                @if (hand.AmountWon.GetValueOrDefault() > 0)
+                                {
+                                    <span class="sd-pill sd-pill-gold">+@hand.AmountWon.GetValueOrDefault() chips</span>
+                                }
                             </div>
                             @if (handCards.Count > 0)
                             {
@@ -216,6 +220,7 @@
 
         return result.PlayerHands
             .Where(h => h is not null)
+            .Select(h => EnrichHand(h, result.Payouts))
             .OrderByDescending(h => h.IsWinner == true)
             .ThenByDescending(h => h.AmountWon ?? 0)
             .ThenByDescending(h => h.HandStrength ?? 0)
@@ -231,11 +236,17 @@
 
         var hands = result.PlayerHands
             .Where(h => h is not null)
+            .Select(h => EnrichHand(h, result.Payouts))
             .ToList();
 
         if (primaryWinner is not null)
         {
-            hands.Remove(primaryWinner);
+            // Remove primary winner (matching by name)
+            var toRemove = hands.FirstOrDefault(h => h.PlayerName == primaryWinner.PlayerName);
+            if (toRemove is not null)
+            {
+                hands.Remove(toRemove);
+            }
         }
 
         return hands
@@ -243,6 +254,20 @@
             .ThenByDescending(h => h.AmountWon ?? 0)
             .ThenBy(h => h.PlayerName)
             .ToList();
+    }
+
+    private static ShowdownPlayerHand EnrichHand(ShowdownPlayerHand hand, IDictionary<string, int>? payouts)
+    {
+        if (payouts is not null && payouts.TryGetValue(hand.PlayerName, out var amount))
+        {
+            // Always prefer the value in Payouts if it's larger (or if AmountWon is missing/zero)
+            var current = hand.AmountWon ?? 0;
+            if (amount > current)
+            {
+                return hand with { AmountWon = amount };
+            }
+        }
+        return hand;
     }
 
     /// <summary>

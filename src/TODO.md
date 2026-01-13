@@ -8,13 +8,13 @@
 - [ ] Add chip management to the dashboard (buy in, cash out, add chips)
 - [ ] Test side pots
 - [ ] Don't auto start a new hand. Add a timer, allow pause, allow people to get out of the game or end the game
-- 
+
 ### P2 - Important but not blocking play
+- [ ] Hamburger menu doesn't work
 - [ ] Make sure all calls are idempotent
 - [ ] Continuous play should stop if all players disconnect
 - [ ] During ties, the showdown should show the kicker
 - [ ] Showdown overlay should handle split pots better
-- [ ] Showdown overlay is not showing payouts correctly
 - [ ] Have the ability for someone to take a seat and be dealt into the next hand
 - [ ] Table should be able to scroll if the screen isn't big enough
 - [ ] Allow them to upload an image when registering
@@ -113,3 +113,4 @@
 - [x] Start a game, p1 goes all 1, p2 calls...game freezes
 - [x] The betting action overlay. Raise to X doesn't work
 - [x] The fields on the register page should be wider
+- [x] Showdown overlay is not showing payouts correctly
