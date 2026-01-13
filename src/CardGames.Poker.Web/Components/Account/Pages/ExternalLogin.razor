@@ -1,4 +1,4 @@
-﻿@page "/Account/ExternalLogin"
+﻿﻿@page "/Account/ExternalLogin"
 
 @using System.ComponentModel.DataAnnotations
 @using System.Security.Claims
@@ -31,30 +31,26 @@
 
         <div class="row g-3 mb-3">
             <div class="col-12 col-md-6">
-                <div class="form-floating">
+                <div class="form-floating" data-label="First name">
                     <InputText @bind-Value="Input.FirstName" id="Input.FirstName" class="form-control" autocomplete="given-name" aria-required="true" placeholder="First" />
-                    <label for="Input.FirstName" class="form-label">First name</label>
                     <ValidationMessage For="() => Input.FirstName" class="text-danger" />
                 </div>
             </div>
             <div class="col-12 col-md-6">
-                <div class="form-floating">
+                <div class="form-floating" data-label="Last name">
                     <InputText @bind-Value="Input.LastName" id="Input.LastName" class="form-control" autocomplete="family-name" aria-required="true" placeholder="Last" />
-                    <label for="Input.LastName" class="form-label">Last name</label>
                     <ValidationMessage For="() => Input.LastName" class="text-danger" />
                 </div>
             </div>
         </div>
 
-        <div class="form-floating mb-3">
+        <div class="form-floating mb-3" data-label="Avatar URL (optional)">
             <InputText @bind-Value="Input.AvatarUrl" id="Input.AvatarUrl" class="form-control" autocomplete="photo" placeholder="https://..." />
-            <label for="Input.AvatarUrl" class="form-label">Avatar URL (optional)</label>
             <ValidationMessage For="() => Input.AvatarUrl" class="text-danger" />
         </div>
 
-        <div class="form-floating mb-3">
+        <div class="form-floating mb-3" data-label="Email">
             <InputText @bind-Value="Input.Email" id="Input.Email" class="form-control" autocomplete="email" placeholder="name@example.com" />
-            <label for="Input.Email" class="form-label">Email</label>
             <ValidationMessage For="() => Input.Email" class="text-danger" />
         </div>
         <button type="submit" class="btn btn-primary btn-lg">Continue</button>
