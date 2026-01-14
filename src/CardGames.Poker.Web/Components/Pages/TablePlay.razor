@@ -114,7 +114,10 @@
                 }
 
                 @* Sit Out button - available to any seated player after game has started *@
-                @if (_isSeated && _gameResponse?.StartedAt != null && _gameResponse.CurrentPhase != GamePhase.Ended.ToString())
+                @if (_isSeated && _gameResponse?.CurrentPhase != null && 
+                     _gameResponse.CurrentPhase != GamePhase.WaitingForPlayers.ToString() && 
+                     _gameResponse.CurrentPhase != GamePhase.WaitingToStart.ToString() && 
+                     _gameResponse.CurrentPhase != GamePhase.Ended.ToString())
                 {
                     <button class="btn btn-secondary btn-sm sit-out-btn @(_isSittingOut ? "active" : "")" 
                             @onclick="ToggleSittingOutAsync"
@@ -682,12 +685,24 @@
             }
         }
 
-        // Update game response fields from public state
+            // Update game response fields from public state
         // Handle case where _gameResponse is not yet loaded from API
         if (_gameResponse is not null)
         {
             var previousHandNumber = _gameResponse.CurrentHandNumber;
             var previousPhase = _gameResponse.CurrentPhase;
+
+            // Fix for "Sit Out" button visibility issue:
+            // SignalR updates don't include StartedAt, so if it's null (new game) and the phase shows
+            // the game has started, we manually set it so the UI (like Sit Out button) updates correctly.
+            var startedAt = _gameResponse.StartedAt;
+            var isPreGame = state.CurrentPhase == GamePhase.WaitingForPlayers.ToString() ||
+                           state.CurrentPhase == GamePhase.WaitingToStart.ToString();
+
+            if (startedAt == null && !isPreGame)
+            {
+                startedAt = DateTimeOffset.UtcNow;
+            }
 
             _gameResponse = _gameResponse with
             {
@@ -699,7 +714,8 @@
                 MinBet = state.MinBet,
                 DealerPosition = state.DealerSeatIndex,
                 CurrentPlayerIndex = state.CurrentActorSeatIndex,
-                CurrentHandNumber = state.CurrentHandNumber
+                CurrentHandNumber = state.CurrentHandNumber,
+                StartedAt = startedAt
             };
 
             _ante = state.Ante;
@@ -879,32 +895,47 @@
         }
 
         // Update player's cards using the authoritative seat position
-        if (targetSeatIndex >= 0 && targetSeatIndex < _seats.Count && state.Hand is { Count: > 0 })
+        if (targetSeatIndex >= 0 && targetSeatIndex < _seats.Count) 
         {
-            Logger.LogInformation(
-                "Updating seat {SeatIndex} cards from private state: {CardCount} cards, first card: {FirstCard}",
-                targetSeatIndex,
-                state.Hand.Count,
-                state.Hand.Count > 0 ? $"{state.Hand[0].Rank} of {state.Hand[0].Suit}" : "none");
-
-            _seats[targetSeatIndex].Cards = state.Hand.Select(c => new CardInfo
+            if (state.Hand is { Count: > 0 })
             {
-                Rank = c.Rank,
-                Suit = c.Suit,
-                IsFaceUp = true,
-                IsSelected = false,
-                DealOrder = c.DealOrder
-            }).ToList();
+                Logger.LogInformation(
+                    "Updating seat {SeatIndex} cards from private state: {CardCount} cards, first card: {FirstCard}",
+                    targetSeatIndex,
+                    state.Hand.Count,
+                    state.Hand.Count > 0 ? $"{state.Hand[0].Rank} of {state.Hand[0].Suit}" : "none");
 
-            _seats[targetSeatIndex].HandEvaluationDescription = state.HandEvaluationDescription;
-            _seats[targetSeatIndex].IsCurrentPlayer = true;
-        }
-        else
-        {
-            Logger.LogWarning(
-                "Private state update skipped for seat {SeatIndex}: Hand is null or empty. Hand count: {HandCount}",
-                targetSeatIndex,
-                state.Hand?.Count ?? 0);
+                _seats[targetSeatIndex].Cards = state.Hand.Select(c => new CardInfo
+                {
+                    Rank = c.Rank,
+                    Suit = c.Suit,
+                    IsFaceUp = true,
+                    IsSelected = false,
+                    DealOrder = c.DealOrder
+                }).ToList();
+
+                _seats[targetSeatIndex].HandEvaluationDescription = state.HandEvaluationDescription;
+                _seats[targetSeatIndex].IsCurrentPlayer = true;
+            }
+            else
+            {
+                // If hand is empty in private state, it means player has no cards (e.g. sitting out)
+                // We must clear the cards locally so they don't persist from previous hands
+                if (_seats[targetSeatIndex].Cards.Count > 0)
+                {
+                    Logger.LogInformation("Clearing cards for seat {SeatIndex} due to empty hand in private state (likely sitting out)", targetSeatIndex);
+                    _seats[targetSeatIndex].Cards = [];
+                    _seats[targetSeatIndex].HandEvaluationDescription = null;
+                    _seats[targetSeatIndex].IsCurrentPlayer = true;
+                }
+                else
+                {
+                    Logger.LogDebug(
+                        "Private state update skipped for seat {SeatIndex}: Hand is null or empty. Hand count: {HandCount}",
+                        targetSeatIndex,
+                        state.Hand?.Count ?? 0);
+                }
+            }
         }
 
         // Update available actions
@@ -1061,8 +1092,11 @@
 
                 // Preserve face-up cards for current player (will be updated by private state)
                 // This prevents briefly showing face-down cards before private state arrives
+                // BUT only if public state indicates we actually have cards (count > 0)
                 var existingCards = _seats[publicSeat.SeatIndex].Cards;
-                var shouldPreserveCards = isCurrentPlayer && existingCards.Any(c => c.IsFaceUp);
+                var shouldPreserveCards = isCurrentPlayer && 
+                                          existingCards.Any(c => c.IsFaceUp) && 
+                                          publicSeat.Cards.Count > 0;
 
                 Logger.LogDebug(
                     "UpdateSeatsFromPublicState: Seat {SeatIndex}, PlayerName={PlayerName}, " +
