@@ -8,14 +8,13 @@
 - [ ] Test side pots
 - [ ] Don't auto start a new hand. Add a timer, allow pause, allow people to get out of the game or end the game
 - [ ] Make sure people can leave a table
-- [ ] Make sure people can sit out
+- [ ] Make sure timer is working correctly
 
 ### P2 - Important but not blocking play
 - [ ] Make sure all calls are idempotent
 - [ ] Continuous play should stop if all players leave the table or are sitting out for more than 10 minutes. The table should be soft deleted.
 - [ ] During ties, the showdown should show the kicker
 - [ ] Showdown overlay should handle split pots better
-- [ ] Have the ability for someone to take a seat and be dealt into the next hand
 - [ ] Table should be able to scroll if the screen isn't big enough
 - [ ] Allow them to upload an image when registering
 - 
@@ -118,3 +117,5 @@
 - [x] KAL - Waiting for showdown shows for new players
 - [x] Kings and lows - can not join a table already in progress
 - [x] Payouts not showing on Showdown for Kings and Lows
+- [x] Make sure people can sit out
+- [x] Have the ability for someone to take a seat and be dealt into the next hand
