@@ -1,6 +1,7 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Infrastructure;
+using CardGames.Poker.Api.Services;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
@@ -13,6 +14,7 @@ namespace CardGames.Poker.Api.Features.Games.Common.v1.Commands.SetSittingOut;
 public sealed class SetSittingOutCommandHandler(
 	CardsDbContext context,
 	ICurrentUserService currentUserService,
+	IGameStateBroadcaster broadcaster,
 	ILogger<SetSittingOutCommandHandler> logger)
 	: IRequestHandler<SetSittingOutCommand, OneOf<bool, string>>
 {
@@ -38,24 +40,26 @@ public sealed class SetSittingOutCommandHandler(
 			return "Player is not a participant in this game.";
 		}
 
-		// Validate game status - "They can only Sit Out after a game has been started"
-		// Assuming we allow it if the game is in progress or about to start? 
-		// The prompt says "after a game has been started".
+		// Players can only sit out after a game has started
 		if (gamePlayer.Game.StartedAt == null)
 		{
-			// However, if the game is waiting for players, maybe they can't sit out?
-			// IsSittingOut is mainly to skip hands.
-			// Let's stick to the prompt.
-			// "They can only Sit Out after a game has been started"
-			// IsStarted check:
-			// gamePlayer.Game.StartedAt.HasValue
+			return "Cannot sit out before the game has started.";
 		}
 
 		// Update the status
 		gamePlayer.IsSittingOut = request.IsSittingOut;
-		
+
+		logger.LogInformation(
+			"Player {PlayerEmail} set sitting out to {IsSittingOut} in game {GameId}",
+			userEmail,
+			request.IsSittingOut,
+			request.GameId);
+
 		await context.SaveChangesAsync(cancellationToken);
-		
+
+		// Broadcast updated state to all players
+		await broadcaster.BroadcastGameStateAsync(request.GameId, cancellationToken);
+
 		return true;
 	}
 }

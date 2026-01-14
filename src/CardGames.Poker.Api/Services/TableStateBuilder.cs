@@ -329,7 +329,14 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			_logger.LogDebug(ex, "Failed to compute hand evaluation description for game {GameId}, player {PlayerName}", gameId, gamePlayer.Player.Name);
 		}
 
-		var isMyTurn = game.CurrentPlayerIndex == gamePlayer.SeatPosition;
+		// A player's turn only if:
+		// 1. They are at the current player index
+		// 2. They have not folded
+		// Note: A player who clicked "sit out next hand" (IsSittingOut = true) can still
+		// finish the current hand if they have cards. The IsSittingOut flag only affects
+		// whether they are dealt into the NEXT hand (handled in DealHandsCommandHandler).
+		var isMyTurn = game.CurrentPlayerIndex == gamePlayer.SeatPosition &&
+					   !gamePlayer.HasFolded;
 		var availableActions = isMyTurn
 			? await BuildAvailableActionsAsync(gameId, game, gamePlayer, cancellationToken)
 			: null;

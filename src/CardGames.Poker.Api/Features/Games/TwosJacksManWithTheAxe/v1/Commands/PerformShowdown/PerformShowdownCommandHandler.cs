@@ -398,12 +398,12 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 
 	/// <summary>
 	/// Moves the dealer button to the next occupied seat position (clockwise).
-	/// Skips empty seats but allows sitting-out players to hold the button.
+	/// Skips empty seats and sitting-out players.
 	/// </summary>
 	private static void MoveDealer(Game game)
 	{
 		var occupiedSeats = game.GamePlayers
-			.Where(gp => gp.Status == GamePlayerStatus.Active)
+			.Where(gp => gp.Status == GamePlayerStatus.Active && !gp.IsSittingOut)
 			.OrderBy(gp => gp.SeatPosition)
 			.Select(gp => gp.SeatPosition)
 			.ToList();

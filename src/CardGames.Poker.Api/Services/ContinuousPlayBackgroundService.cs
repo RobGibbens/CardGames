@@ -467,10 +467,21 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		{
 			gamePlayer.CurrentBet = 0;
 			gamePlayer.TotalContributedThisHand = 0;
-			gamePlayer.HasFolded = false;
 			gamePlayer.IsAllIn = false;
 			gamePlayer.HasDrawnThisRound = false;
 			gamePlayer.DropOrStayDecision = null;
+			
+			// Only reset HasFolded for players who are not sitting out.
+			// Sitting out players should remain "folded" so they are skipped during the hand.
+			if (!gamePlayer.IsSittingOut)
+			{
+				gamePlayer.HasFolded = false;
+			}
+			else
+			{
+				// Ensure sitting out players are marked as folded for this hand
+				gamePlayer.HasFolded = true;
+			}
 		}
 
 		// Remove any existing cards from previous hand

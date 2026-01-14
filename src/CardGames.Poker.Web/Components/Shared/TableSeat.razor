@@ -3,11 +3,14 @@
 @inject NavigationManager NavigationManager
 
 <div class="seat-container @(IsCurrentPlayer ? "current-player-layout" : "remote-player-layout") @(Seat.IsOccupied ? "occupied" : "empty")">
-    @if (Seat.IsOccupied)
+@if (Seat.IsOccupied)
+{
+    <!-- Cards -->
+    @* Don't show cards for players who are sitting out AND folded - they weren't dealt into this hand.
+       The combination of IsSittingOut && IsFolded means the player chose to sit out before this hand started,
+       so any cards in the list are stale from a previous hand. *@
+    @if (ShowCards && Seat.Cards.Count > 0 && !(Seat.IsSittingOut && Seat.IsFolded))
     {
-        <!-- Cards -->
-        @if (ShowCards && Seat.Cards.Count > 0)
-        {
             <div class="seat-cards-container">
 
                 <div class="cards-fan">
@@ -42,7 +45,7 @@
                 </div>
             </div>
         }
-        else if (ShowCards && !Seat.IsFolded)
+        else if (ShowCards && !Seat.IsFolded && !Seat.IsSittingOut)
         {
             <!-- Placeholder cards -->
             <div class="seat-cards-container placeholder">

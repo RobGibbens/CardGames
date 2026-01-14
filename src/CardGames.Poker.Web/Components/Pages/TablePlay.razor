@@ -27,6 +27,7 @@
 @inject DashboardState DashboardState
 @inject GameRulesService GameRulesService
 @inject ILogger<TablePlay> Logger
+
 <PageTitle>Table - Friday Night Poker</PageTitle>
 
 <!-- Connection Banner -->
@@ -111,6 +112,24 @@
                         }
                     </div>
                 }
+
+                @* Sit Out button - available to any seated player after game has started *@
+                @if (_isSeated && _gameResponse?.StartedAt != null && _gameResponse.CurrentPhase != GamePhase.Ended.ToString())
+                {
+                    <button class="btn btn-secondary btn-sm sit-out-btn @(_isSittingOut ? "active" : "")" 
+                            @onclick="ToggleSittingOutAsync"
+                            disabled="@(_isSubmittingAction)">
+                        <i class="fa-solid fa-chair"></i>
+                        @if (_isSittingOut)
+                        {
+                            <span>I'm back</span>
+                        }
+                        else
+                        {
+                            <span>Sit out next hand</span>
+                        }
+                    </button>
+                }
             }
             <div class="connection-indicator @(_isConnected ? "connected" : "disconnected")"
                  title="@(_isConnected ? "Connected" : "Disconnected")">
@@ -130,51 +149,30 @@
                          OnSeatClick="HandleSeatClickAsync" DisableSeatSelectionForCurrentUser="@_isSeated"
                          CurrentPlayerSeatIndex="@_currentPlayerSeatIndex" />
 
-            <!-- Dashboard Panel (left side) -->
-            @if (_isSeated)
-            {
-                <DashboardPanel>
-                    <!-- Sit Out Toggle -->
-                    @if (_gameResponse?.StartedAt != null && _gameResponse.CurrentPhase != GamePhase.Ended.ToString())
-                    {
-                        <div class="sit-out-container">
-                            <button class="sit-out-btn @(_isSittingOut ? "active" : "")" 
-                                    @onclick="ToggleSittingOutAsync"
-                                    disabled="@(_isSubmittingAction)">
-                                @if (_isSittingOut)
-                                {
-                                    <i class="fa-solid fa-chair"></i>
-                                    <span>I'm back</span>
-                                }
-                                else
-                                {
-                                    <i class="fa-solid fa-chair"></i>
-                                    <span>Sit out the next hand</span>
-                                }
-                            </button>
-                        </div>
-                    }
+                <!-- Dashboard Panel (left side) -->
+                @if (_isSeated)
+                {
+                    <DashboardPanel>
+                        <DashboardSection Title="Leaderboard" Icon="fa-solid fa-trophy"
+                                          IsExpanded="@DashboardState.IsSectionExpanded("Leaderboard")"
+                                          IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("Leaderboard", value))">
+                            <LeaderboardSection Players="@GetLeaderboardPlayers()" />
+                        </DashboardSection>
 
-                    <DashboardSection Title="Leaderboard" Icon="fa-solid fa-trophy"
-                                      IsExpanded="@DashboardState.IsSectionExpanded("Leaderboard")"
-                                      IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("Leaderboard", value))">
-                        <LeaderboardSection Players="@GetLeaderboardPlayers()" />
-                    </DashboardSection>
+                        <DashboardSection Title="Odds" Icon="fa-solid fa-chart-simple"
+                                          IsExpanded="@DashboardState.IsSectionExpanded("Odds")"
+                                          IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("Odds", value))">
+                            <OddsSection HandOdds="@handOdds" />
+                        </DashboardSection>
 
-                    <DashboardSection Title="Odds" Icon="fa-solid fa-chart-simple"
-                                      IsExpanded="@DashboardState.IsSectionExpanded("Odds")"
-                                      IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("Odds", value))">
-                        <OddsSection HandOdds="@handOdds" />
-                    </DashboardSection>
-
-                    <DashboardSection Title="Hand History" Icon="fa-solid fa-clock-rotate-left"
-                                      IsExpanded="@DashboardState.IsSectionExpanded("HandHistory")"
-                                      IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("HandHistory", value))">
-                        <HandHistorySection Entries="@_handHistoryEntries" />
-                    </DashboardSection>
-                </DashboardPanel>
-            }
-        </div>
+                        <DashboardSection Title="Hand History" Icon="fa-solid fa-clock-rotate-left"
+                                          IsExpanded="@DashboardState.IsSectionExpanded("HandHistory")"
+                                          IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("HandHistory", value))">
+                            <HandHistorySection Entries="@_handHistoryEntries" />
+                        </DashboardSection>
+                    </DashboardPanel>
+                }
+            </div>
 
         <!-- Action Panel (only shown when it's player's turn during betting phase) -->
         @if (_isPlayerTurn && IsBettingPhase)
@@ -350,16 +348,21 @@
                     <p>The host has paused the game</p>
                 </div>
             </div>
-        }
+                }
 
-        @if (
-            IsShowdownPhase && _showShowdownOverlay && _showdownResult is not null && !_isSittingOut)
-        {
-            <ShowdownOverlay ShowdownResult="@_showdownResult" ShowdownWon="@_showdownWon" ShowdownLost="@_showdownLost"
-                             SecondsUntilNextHand="@_secondsUntilNextHand" OnClose="@CloseShowdownOverlay" />
-        }
-    }
-</main>
+                @* Show showdown overlay to players who participated in the hand (have cards).
+                   A player who clicked "Sit out next hand" should still see the showdown for the hand they completed. *@
+                @* Show showdown overlay if player is participating OR was in the showdown results.
+                   A player who clicked "Sit out next hand" during a hand should still see the showdown
+                   for that hand because they completed it. IsInShowdownResults handles the case where
+                   IsParticipatingInHand returns false due to card state being cleared. *@
+                @if (IsShowdownPhase && _showShowdownOverlay && _showdownResult is not null && (IsParticipatingInHand || IsInShowdownResults))
+                {
+                    <ShowdownOverlay ShowdownResult="@_showdownResult" ShowdownWon="@_showdownWon" ShowdownLost="@_showdownLost"
+                                     SecondsUntilNextHand="@_secondsUntilNextHand" OnClose="@CloseShowdownOverlay" />
+                }
+            }
+        </main>
 
 @code {
     [Parameter]
@@ -530,16 +533,26 @@
     // Whether the current player is a loser in pot matching.
     private bool IsCurrentPlayerLoser => _showdownResult?.PlayerHands?.Any(h =>
         (string.Equals(h.PlayerName, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase) ||
-         string.Equals(h.PlayerName, _currentPlayerName, StringComparison.OrdinalIgnoreCase)) &&
-         h.IsWinner == false) == true;
+              string.Equals(h.PlayerName, _currentPlayerName, StringComparison.OrdinalIgnoreCase)) &&
+              h.IsWinner == false) == true;
 
-    // Helper property to check if current player is participating in the current hand
-    private bool IsParticipatingInHand =>
-        _isSeated &&
-        _currentPlayerSeatIndex >= 0 &&
-        _currentPlayerSeatIndex < _seats.Count &&
-        !_seats[_currentPlayerSeatIndex].IsFolded &&
-        !_seats[_currentPlayerSeatIndex].IsSittingOut;
+         // Helper property to check if current player is participating in the current hand.
+         // A player who has clicked "Sit out next hand" should still be able to finish the current hand.
+         // They are participating if they have cards and haven't folded, regardless of IsSittingOut status.
+         private bool IsParticipatingInHand =>
+             _isSeated &&
+             _currentPlayerSeatIndex >= 0 &&
+             _currentPlayerSeatIndex < _seats.Count &&
+             !_seats[_currentPlayerSeatIndex].IsFolded &&
+             _seats[_currentPlayerSeatIndex].Cards.Count > 0;
+
+         // Helper property to check if current player appears in the showdown results.
+         // This is used as a fallback for players who completed the hand but may have had their
+         // card state cleared (e.g., after clicking "Sit out next hand").
+         private bool IsInShowdownResults =>
+             _showdownResult?.PlayerHands?.Any(h =>
+                 string.Equals(h.PlayerName, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(h.PlayerName, _currentPlayerName, StringComparison.OrdinalIgnoreCase)) == true;
 
     // Special rules helper properties - driven by SignalR state
     private bool HasWildCards =>
@@ -1364,7 +1377,15 @@
 
             _isSeated = _currentPlayerSeatIndex >= 0;
             _isReady = _isSeated && _seats[_currentPlayerSeatIndex].IsReady;
+            _isSittingOut = _isSeated && _seats[_currentPlayerSeatIndex].IsSittingOut;
             _isLoading = false;
+
+            Logger.LogInformation(
+                "LoadDataAsync complete: _isSeated={IsSeated}, _currentPlayerSeatIndex={SeatIndex}, " +
+                "StartedAt={StartedAt}, CurrentPhase={Phase}, _loggedInUserEmail={Email}",
+                _isSeated, _currentPlayerSeatIndex, 
+                _gameResponse?.StartedAt, _gameResponse?.CurrentPhase, _loggedInUserEmail);
+
             await InvokeAsync(StateHasChanged);
         }
     }
