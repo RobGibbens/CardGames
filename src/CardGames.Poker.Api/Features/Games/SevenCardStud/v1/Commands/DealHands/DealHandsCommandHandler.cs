@@ -77,6 +77,20 @@ public class DealHandsCommandHandler(
 			.OrderBy(gp => gp.SeatPosition)
 			.ToList();
 
+		// For Third Street (initial deal), exclude sitting out players who anted but shouldn't play
+		if (game.CurrentPhase == nameof(Phases.ThirdStreet))
+		{
+			// Mark sitting out players as folded immediately
+			var sittingOutPlayers = activePlayers.Where(gp => gp.IsSittingOut).ToList();
+			foreach (var soPlayer in sittingOutPlayers)
+			{
+				soPlayer.HasFolded = true;
+			}
+			
+			// Remove from deal list
+			activePlayers.RemoveAll(gp => gp.IsSittingOut);
+		}
+		
 		logger.LogDebug(
 			"Active players for dealing: {ActiveCount} (total: {TotalCount})",
 			activePlayers.Count, game.GamePlayers.Count);

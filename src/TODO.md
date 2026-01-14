@@ -12,7 +12,7 @@
 
 ### P2 - Important but not blocking play
 - [ ] Make sure all calls are idempotent
-- [ ] Continuous play should stop if all players disconnect
+- [ ] Continuous play should stop if all players leave the table or are sitting out for more than 10 minutes. The table should be soft deleted.
 - [ ] During ties, the showdown should show the kicker
 - [ ] Showdown overlay should handle split pots better
 - [ ] Have the ability for someone to take a seat and be dealt into the next hand

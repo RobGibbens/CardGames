@@ -253,6 +253,14 @@
         color: #fff;
     }
 
+    .pill-top-row.status-secondary {
+        background-color: #6c757d;
+        border-bottom-color: #545b62;
+    }
+    .pill-top-row.status-secondary .status-text {
+        color: #fff;
+    }
+
     /* Action status - shown when player performs an action */
     .pill-top-row.status-action {
         background: linear-gradient(135deg, #4fc3f7, #29b6f6);

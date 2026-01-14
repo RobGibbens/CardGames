@@ -55,10 +55,17 @@ public class DealHandsCommandHandler(CardsDbContext context)
 		}
 
 		// 3. Get active players who should receive cards
+		// Exclude sitting out players
 		var activePlayers = game.GamePlayers
-			.Where(gp => gp.Status == GamePlayerStatus.Active && !gp.HasFolded)
+			.Where(gp => gp.Status == GamePlayerStatus.Active && !gp.HasFolded && !gp.IsSittingOut)
 			.OrderBy(gp => gp.SeatPosition)
 			.ToList();
+
+		// Mark sitting out players as folded
+		foreach (var sittingOutPlayer in game.GamePlayers.Where(gp => gp.Status == GamePlayerStatus.Active && gp.IsSittingOut))
+		{
+			sittingOutPlayer.HasFolded = true;
+		}
 
 		// 4. Verify we have enough cards
 		var totalCardsNeeded = activePlayers.Count * CardsPerPlayer;

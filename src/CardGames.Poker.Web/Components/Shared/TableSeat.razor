@@ -99,6 +99,10 @@
                         {
                             <span class="status-text glow-text">Waiting</span>
                         }
+                        else if (Seat.IsSittingOut)
+                        {
+                            <span class="status-text" title="@Seat.PlayerName">Sitting Out</span>
+                        }
                         else if (Seat.SittingOutReason == "Observing")
                         {
                             <span class="status-text" title="@Seat.PlayerName">Observing</span>
@@ -217,7 +221,10 @@
         if (IsCurrentActor)
             classes.Add("active-turn-ring");
 
-        if (Seat.IsFolded)
+        if (Seat.IsSittingOut)
+            classes.Add("folded"); // Re-use folded style (desaturated) for sitting out
+
+        if (Seat.IsFolded && !Seat.IsSittingOut)
             classes.Add("folded");
 
         if (IsCurrentPlayer)
@@ -231,6 +238,9 @@
         // Show action status when player has a recent action to display
         if (!string.IsNullOrWhiteSpace(Seat.LastActionDescription))
             return "status-action";
+
+        if (Seat.IsSittingOut)
+            return "status-secondary"; // Gray for sitting out
 
         if (Seat.SittingOutReason == "Observing")
             return "status-observing";

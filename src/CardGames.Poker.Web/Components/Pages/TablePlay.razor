@@ -13,7 +13,6 @@
 @using CardGames.Poker.Web.Components.Shared
 @using CardGames.Poker.Web.Extensions
 @using CardGames.Poker.Web.Services
-@using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Authorization
 @using System.Security.Claims
 
@@ -135,6 +134,27 @@
             @if (_isSeated)
             {
                 <DashboardPanel>
+                    <!-- Sit Out Toggle -->
+                    @if (_gameResponse?.StartedAt != null && _gameResponse.CurrentPhase != GamePhase.Ended.ToString())
+                    {
+                        <div class="sit-out-container">
+                            <button class="sit-out-btn @(_isSittingOut ? "active" : "")" 
+                                    @onclick="ToggleSittingOutAsync"
+                                    disabled="@(_isSubmittingAction)">
+                                @if (_isSittingOut)
+                                {
+                                    <i class="fa-solid fa-chair"></i>
+                                    <span>I'm back</span>
+                                }
+                                else
+                                {
+                                    <i class="fa-solid fa-chair"></i>
+                                    <span>Sit out the next hand</span>
+                                }
+                            </button>
+                        </div>
+                    }
+
                     <DashboardSection Title="Leaderboard" Icon="fa-solid fa-trophy"
                                       IsExpanded="@DashboardState.IsSectionExpanded("Leaderboard")"
                                       IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("Leaderboard", value))">
@@ -246,7 +266,7 @@
         }
 
         <!-- Pot Matching Overlay (for Kings and Lows) -->
-        @if (HasPotMatching && IsPotMatchingPhase)
+        @if (HasPotMatching && IsPotMatchingPhase && !_isSittingOut)
         {
             <PotMatchingOverlay PotAmount="@_pot"
                                 LosingPlayers="@GetLosingPlayers()"
@@ -333,7 +353,7 @@
         }
 
         @if (
-            IsShowdownPhase && _showShowdownOverlay && _showdownResult is not null)
+            IsShowdownPhase && _showShowdownOverlay && _showdownResult is not null && !_isSittingOut)
         {
             <ShowdownOverlay ShowdownResult="@_showdownResult" ShowdownWon="@_showdownWon" ShowdownLost="@_showdownLost"
                              SecondsUntilNextHand="@_secondsUntilNextHand" OnClose="@CloseShowdownOverlay" />
@@ -363,6 +383,7 @@
     // Player state
     private bool _isHost; // Determined from game creator
     private bool _isSeated;
+    private bool _isSittingOut;
     private bool _isReady;
     private int _currentPlayerSeatIndex = -1;
     private int _playerChips = 1000; // TODO: Get from server
@@ -811,6 +832,7 @@
 
         _isSeated = _currentPlayerSeatIndex >= 0;
         _isReady = _isSeated && _seats[_currentPlayerSeatIndex].IsReady;
+        _isSittingOut = _isSeated && _seats[_currentPlayerSeatIndex].IsSittingOut;
 
         await InvokeAsync(StateHasChanged);
     }
@@ -1499,6 +1521,48 @@
                     Logger.LogError(ex, "Error joining game at seat {SeatIndex}", seatIndex);
                 }
             }
+
+    private async Task ToggleSittingOutAsync()
+    {
+        try
+        {
+            var newStatus = !_isSittingOut;
+            // Optimistic UI update
+            _isSittingOut = newStatus;
+            
+            // Temporary update local seat info while waiting for server
+            if (_currentPlayerSeatIndex >= 0 && _currentPlayerSeatIndex < _seats.Count)
+            {
+                _seats[_currentPlayerSeatIndex].IsSittingOut = newStatus;
+            }
+
+            var request = new SetSittingOutRequest(newStatus);
+            var response = await GamesApiClient.SetSittingOutAsync(GameId, request);
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                // Revert if failed
+                _isSittingOut = !newStatus;
+                if (_currentPlayerSeatIndex >= 0 && _currentPlayerSeatIndex < _seats.Count)
+                {
+                    _seats[_currentPlayerSeatIndex].IsSittingOut = !newStatus;
+                }
+                
+                await ShowToastAsync("Failed to update sitting out status", "error");
+            }
+        }
+        catch (Exception ex)
+        {
+            _isSittingOut = !_isSittingOut; // Revert
+            if (_currentPlayerSeatIndex >= 0 && _currentPlayerSeatIndex < _seats.Count)
+            {
+                _seats[_currentPlayerSeatIndex].IsSittingOut = _isSittingOut;
+            }
+                
+            Logger.LogError(ex, "Error updating sitting out status");
+            await ShowToastAsync($"Error updating sitting out status: {ex.Message}", "error");
+        }
+    }
 
     private async Task SetReadyAsync()
     {

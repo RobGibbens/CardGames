@@ -367,7 +367,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 	private static void MoveDealer(Game game)
 	{
 		var occupiedSeats = game.GamePlayers
-			.Where(gp => gp.Status == GamePlayerStatus.Active)
+			.Where(gp => gp.Status == GamePlayerStatus.Active && !gp.IsSittingOut)
 			.OrderBy(gp => gp.SeatPosition)
 			.Select(gp => gp.SeatPosition)
 			.ToList();
@@ -520,6 +520,12 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 
 		// NOTE: Dealer rotation is already done in PerformShowdownCommandHandler.MoveDealer()
 		// when the previous hand completes. We do NOT rotate again here.
+		// HOWEVER, if the player at DealerPosition is now sitting out, we must move to the next eligible player.
+		var dealerPlayer = game.GamePlayers.FirstOrDefault(gp => gp.SeatPosition == game.DealerPosition);
+		if (dealerPlayer != null && dealerPlayer.IsSittingOut)
+		{
+			MoveDealer(game);
+		}
 
 		// Determine game type
 		var isKingsAndLows = string.Equals(game.GameType?.Code, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase);

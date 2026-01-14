@@ -162,6 +162,44 @@
     flex-direction: column;
 }
 
+/* Sit Out Button */
+.sit-out-container {
+    padding: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.sit-out-btn {
+    width: 100%;
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: #4a5568;
+    color: #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.sit-out-btn:hover {
+    background: #2d3748;
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.sit-out-btn.active {
+    background: #ed8936;
+    color: #fff;
+    border-color: #dd6b20;
+}
+
+.sit-out-btn.active:hover {
+    background: #dd6b20;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .dashboard-panel {

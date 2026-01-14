@@ -251,6 +251,33 @@ namespace CardGames.Poker.Api.Clients
         [Get("/api/v1/games/{gameId}/players")]
         Task<IApiResponse<ICollection<GetGamePlayersResponse>>> GetGamePlayersAsync(System.Guid gameId, CancellationToken cancellationToken = default);
 
+        /// <summary>Set Sitting Out Status</summary>
+        /// <remarks>Updates the player's sitting out status.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/games/{gameId}/sit-out")]
+        Task<IApiResponse> SetSittingOutAsync(System.Guid gameId, [Body] SetSittingOutRequest body, CancellationToken cancellationToken = default);
+
         /// <summary>Update Table Settings</summary>
         /// <remarks>
         /// Updates the table settings for a game. Can only be called when the game is in WaitingToStart or WaitingForPlayers phase. Requires the caller to be the table creator.
@@ -3267,7 +3294,7 @@ namespace CardGames.Poker.Api.Contracts
     public partial record JoinGameSuccessful
     {
         [JsonConstructor]
-        public JoinGameSuccessful(bool @canPlayCurrentHand, System.Guid @gameId, System.Guid @playerId, string @playerAvatarUrl, string @playerFirstName, string @playerName, int @seatIndex)
+        public JoinGameSuccessful(bool @canPlayCurrentHand, System.Guid @gameId, string @playerAvatarUrl, string @playerFirstName, System.Guid @playerId, string @playerName, int @seatIndex)
         {
             this.GameId = @gameId;
             this.SeatIndex = @seatIndex;
@@ -3612,6 +3639,20 @@ namespace CardGames.Poker.Api.Contracts
 
         [JsonPropertyName("nextDrawPlayerName")]
         public string NextDrawPlayerName { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record SetSittingOutRequest
+    {
+        [JsonConstructor]
+        public SetSittingOutRequest(bool @isSittingOut)
+        {
+            this.IsSittingOut = @isSittingOut;
+        }
+
+        [JsonPropertyName("isSittingOut")]
+        public bool IsSittingOut { get; init; }
 
     }
 

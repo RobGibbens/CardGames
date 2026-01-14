@@ -85,7 +85,7 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 		}
 
 		// 5. Reset player states for new hand
-		foreach (var gamePlayer in eligiblePlayers)
+		foreach (var gamePlayer in game.GamePlayers.Where(gp => gp.Status == GamePlayerStatus.Active))
 		{
 			gamePlayer.CurrentBet = 0;
 			gamePlayer.TotalContributedThisHand = 0;
@@ -93,7 +93,6 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 			gamePlayer.IsAllIn = false;
 			gamePlayer.HasDrawnThisRound = false;
 			gamePlayer.DropOrStayDecision = null;
-			gamePlayer.IsSittingOut = false; // Ensure player is not sitting out if eligible
 		}
 
 		// 6. Remove any existing cards from previous hand
@@ -147,9 +146,12 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 		bool collectAntes = isFirstHand || mainPot.Amount == 0;
 		if (collectAntes && ante > 0)
 		{
-			foreach (var player in eligiblePlayers)
+			// Collect antes from all active players (including Sitting Out)
+			foreach (var player in game.GamePlayers.Where(gp => gp.Status == GamePlayerStatus.Active))
 			{
 				var anteAmount = Math.Min(ante, player.ChipStack); //TODO:ROB - Don't let them play if they don't have enough
+				if (anteAmount <= 0) continue;
+				
 				player.ChipStack -= anteAmount;
 				player.CurrentBet = anteAmount;
 				player.TotalContributedThisHand = anteAmount;
@@ -163,14 +165,20 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 					Amount = anteAmount,
 					ContributedAt = now
 				};
-						context.Set<PotContribution>().Add(contribution);
+				context.Set<PotContribution>().Add(contribution);
 
-						if (player.ChipStack == 0)
-						{
-							player.IsAllIn = true;
-						}
-					}
+				if (player.ChipStack == 0)
+				{
+					player.IsAllIn = true;
 				}
+			}
+		}
+
+		// Mark sitting out players as folded so they are skipped in game logic
+		foreach (var sittingOutPlayer in game.GamePlayers.Where(gp => gp.IsSittingOut))
+		{
+			sittingOutPlayer.HasFolded = true;
+		}
 
 				logger.LogInformation(
 					"Kings and Lows pot created for game {GameId}, hand {HandNumber}: Amount={PotAmount}, Ante={Ante}, CollectAntes={CollectAntes}, IsFirstHand={IsFirstHand}",
