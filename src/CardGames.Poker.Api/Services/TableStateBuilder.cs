@@ -55,7 +55,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		}
 
 		var gamePlayers = await _context.GamePlayers
-			.Where(gp => gp.GameId == gameId)
+			.Where(gp => gp.GameId == gameId && gp.Status != Entities.GamePlayerStatus.Left)
 			.Include(gp => gp.Player)
 			.Include(gp => gp.Cards)
 			.OrderBy(gp => gp.SeatPosition)
@@ -171,7 +171,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		// Find the player by matching the authenticated user id.
 		// SignalR `Clients.User(userId)` now routes by email claim, so prefer email/name matching.
 		var gamePlayer = await _context.GamePlayers
-			.Where(gp => gp.GameId == gameId)
+			.Where(gp => gp.GameId == gameId && gp.Status != Entities.GamePlayerStatus.Left)
 			.Include(gp => gp.Player)
 			.Include(gp => gp.Cards)
 			.AsNoTracking()

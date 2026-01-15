@@ -228,6 +228,49 @@ namespace CardGames.Poker.Api.Clients
         [Post("/api/v1/games/{gameId}/players")]
         Task<IApiResponse<JoinGameSuccessful>> JoinGameAsync(System.Guid gameId, [Body] JoinGameRequest body, CancellationToken cancellationToken = default);
 
+        /// <summary>Leave Game</summary>
+        /// <remarks>
+        /// Removes the currently authenticated player from a game table. Players can leave at any time:
+        /// 
+        /// **Pre-Game (Not Started):**
+        /// - Player record is completely deleted
+        /// - No history is retained
+        /// - Seat becomes immediately available
+        /// 
+        /// **Mid-Game (Between Hands):**
+        /// - Player is marked as Left and removed from active play
+        /// - Participation record is preserved with final chip count
+        /// - Seat appears empty immediately
+        /// 
+        /// **Mid-Game (During Active Hand):**
+        /// - Player must finish the current hand
+        /// - Leave is queued and executed after hand completes
+        /// - Player receives a message indicating they will leave after the hand
+        /// 
+        /// **Response:**
+        /// - `Immediate`: true if player left immediately, false if queued for end of hand
+        /// </remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Post("/api/v1/games/{gameId}/leave")]
+        Task<IApiResponse<LeaveGameSuccessful>> LeaveGameAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
         /// <summary>GetGamePlayers</summary>
         /// <remarks>Retrieve all players in a specific game.</remarks>
         /// <returns>
@@ -3303,6 +3346,54 @@ namespace CardGames.Poker.Api.Contracts
 
         [JsonPropertyName("canPlayCurrentHand")]
         public bool CanPlayCurrentHand { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record LeaveGameSuccessful
+    {
+        [JsonConstructor]
+        public LeaveGameSuccessful(System.Guid @gameId, System.Guid @playerId, string @playerName, int @leftAtHandNumber, System.DateTimeOffset? @leftAt, int? @finalChipCount, bool @immediate, string @message)
+        {
+            this.GameId = @gameId;
+            this.PlayerId = @playerId;
+            this.PlayerName = @playerName;
+            this.LeftAtHandNumber = @leftAtHandNumber;
+            this.LeftAt = @leftAt;
+            this.FinalChipCount = @finalChipCount;
+            this.Immediate = @immediate;
+            this.Message = @message;
+        }
+
+        [JsonPropertyName("gameId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid GameId { get; init; }
+
+        [JsonPropertyName("playerId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid PlayerId { get; init; }
+
+        [JsonPropertyName("playerName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string PlayerName { get; init; }
+
+        [JsonPropertyName("leftAtHandNumber")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int LeftAtHandNumber { get; init; }
+
+        [JsonPropertyName("leftAt")]
+        public System.DateTimeOffset? LeftAt { get; init; }
+
+        [JsonPropertyName("finalChipCount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? FinalChipCount { get; init; }
+
+        [JsonPropertyName("immediate")]
+        public bool Immediate { get; init; }
+
+        [JsonPropertyName("message")]
+        public string Message { get; init; }
 
     }
 
