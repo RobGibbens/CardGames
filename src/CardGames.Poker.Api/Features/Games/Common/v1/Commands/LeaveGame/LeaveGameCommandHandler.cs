@@ -58,6 +58,9 @@ public sealed class LeaveGameCommandHandler(
 		// 4. Check if game has started
 		var gameStarted = game.StartedAt.HasValue && game.Status == GameStatus.InProgress;
 
+		// Consistent player name for response
+		var playerName = gamePlayer.Player.Email ?? gamePlayer.Player.Name;
+
 		// 5. Handle pre-game departure (complete deletion)
 		if (!gameStarted)
 		{
@@ -72,7 +75,7 @@ public sealed class LeaveGameCommandHandler(
 			return new LeaveGameSuccessful(
 				GameId: game.Id,
 				PlayerId: gamePlayer.PlayerId,
-				PlayerName: gamePlayer.Player.Email ?? gamePlayer.Player.Name,
+				PlayerName: playerName,
 				LeftAtHandNumber: -1,
 				LeftAt: DateTimeOffset.UtcNow,
 				FinalChipCount: null,
@@ -98,7 +101,7 @@ public sealed class LeaveGameCommandHandler(
 			return new LeaveGameSuccessful(
 				GameId: game.Id,
 				PlayerId: gamePlayer.PlayerId,
-				PlayerName: gamePlayer.Player.Email ?? gamePlayer.Player.Name,
+				PlayerName: playerName,
 				LeftAtHandNumber: -1,
 				LeftAt: null,
 				FinalChipCount: null,
@@ -124,7 +127,7 @@ public sealed class LeaveGameCommandHandler(
 		return new LeaveGameSuccessful(
 			GameId: game.Id,
 			PlayerId: gamePlayer.PlayerId,
-			PlayerName: gamePlayer.Player.Email ?? gamePlayer.Player.Name,
+			PlayerName: playerName,
 			LeftAtHandNumber: gamePlayer.LeftAtHandNumber,
 			LeftAt: gamePlayer.LeftAt,
 			FinalChipCount: gamePlayer.FinalChipCount,
