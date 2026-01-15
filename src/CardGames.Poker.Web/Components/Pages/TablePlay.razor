@@ -1442,11 +1442,57 @@
         }
     }
 
+    private bool _isLeavingTable = false;
+
     private async Task LeaveTableAsync()
     {
-        // Leave SignalR game group before navigating away
-        await GameHubClient.LeaveGameAsync(GameId);
-        NavigationManager.NavigateTo("/lobby");
+        if (_isLeavingTable)
+            return; // Prevent double-clicks
+
+        _isLeavingTable = true;
+
+        try
+        {
+            // Call the new Leave Game API endpoint
+            var response = await GamesApiClient.LeaveGameAsync(GameId);
+
+            if (response.IsSuccessStatusCode && response.Content != null)
+            {
+                var result = response.Content;
+
+                if (!result.Immediate)
+                {
+                    // Player is in active hand - show toast message
+                    await ShowToastAsync(
+                        result.Message ?? "You will leave after the current hand completes.",
+                        "info",
+                        durationMs: 6000);
+                    
+                    // Stay on page until hand completes
+                    // Background service will handle actual removal
+                    return;
+                }
+
+                // Immediate leave - disconnect from SignalR and navigate to lobby
+                await GameHubClient.LeaveGameAsync(GameId);
+                NavigationManager.NavigateTo("/lobby");
+            }
+            else
+            {
+                // Show error toast
+                var errorMessage = response.Error?.Content ?? "Failed to leave the table.";
+                await ShowToastAsync(errorMessage, "error");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error leaving table {GameId}", GameId);
+            await ShowToastAsync("An error occurred while leaving the table.", "error");
+        }
+        finally
+        {
+            _isLeavingTable = false;
+        }
     }
 
     private async Task HandleSeatClickAsync(int seatIndex)
