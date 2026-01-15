@@ -392,7 +392,30 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		DateTimeOffset now,
 		CancellationToken cancellationToken)
 	{
-		// Check for eligible players (occupied, not sitting out, chips >= ante, hasn't left)
+		// 1. Finalize leave requests for players who were waiting for the hand to finish
+		var playersLeaving = game.GamePlayers
+			.Where(gp => gp.Status == GamePlayerStatus.Active && gp.LeftAtHandNumber != -1)
+			.ToList();
+
+		foreach (var player in playersLeaving)
+		{
+			player.Status = GamePlayerStatus.Left;
+			player.LeftAt = now;
+			player.FinalChipCount = player.ChipStack;
+			player.IsSittingOut = true;
+			_logger.LogInformation(
+				"Player {PlayerName} finalized leave from game {GameId} after hand {HandNumber}",
+				player.Player?.Name ?? player.PlayerId.ToString(),
+				game.Id,
+				game.CurrentHandNumber);
+		}
+
+		if (playersLeaving.Count > 0)
+		{
+			await context.SaveChangesAsync(cancellationToken);
+		}
+
+		// 2. Check for eligible players (occupied, not sitting out, chips >= ante, hasn't left)
 		var ante = game.Ante ?? 0;
 		var eligiblePlayers = game.GamePlayers
 			.Where(gp => gp.Status == GamePlayerStatus.Active &&

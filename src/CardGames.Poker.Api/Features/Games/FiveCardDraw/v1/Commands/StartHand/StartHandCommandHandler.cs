@@ -54,7 +54,20 @@ public class StartHandCommandHandler(CardsDbContext context)
 			};
 		}
 
-		// 3. Auto-sit-out players with insufficient chips for the ante
+		// 3. Finalize leave requests for players who were waiting for the hand to finish
+		var playersLeaving = game.GamePlayers
+			.Where(gp => gp.Status == GamePlayerStatus.Active && gp.LeftAtHandNumber != -1)
+			.ToList();
+
+		foreach (var player in playersLeaving)
+		{
+			player.Status = GamePlayerStatus.Left;
+			player.LeftAt = now;
+			player.FinalChipCount = player.ChipStack;
+			player.IsSittingOut = true;
+		}
+
+		// 4. Auto-sit-out players with insufficient chips for the ante
 		var ante = game.Ante ?? 0;
 		var playersWithInsufficientChips = game.GamePlayers
 			.Where(gp => gp.Status == GamePlayerStatus.Active &&
@@ -68,7 +81,7 @@ public class StartHandCommandHandler(CardsDbContext context)
 			player.IsSittingOut = true;
 		}
 
-		// 4. Get eligible players (active, not sitting out, chips >= ante or ante is 0)
+		// 5. Get eligible players (active, not sitting out, chips >= ante or ante is 0)
 		var eligiblePlayers = game.GamePlayers
 			.Where(gp => gp.Status == GamePlayerStatus.Active &&
 						 !gp.IsSittingOut &&

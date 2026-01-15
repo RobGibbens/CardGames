@@ -14,6 +14,7 @@ namespace CardGames.Poker.Api.Features.Games.Common.v1.Commands.LeaveGame;
 public sealed class LeaveGameCommandHandler(
 	CardsDbContext context,
 	ICurrentUserService currentUserService,
+	IGameStateBroadcaster broadcaster,
 	ILogger<LeaveGameCommandHandler> logger)
 	: IRequestHandler<LeaveGameCommand, OneOf<LeaveGameSuccessful, LeaveGameError>>
 {
@@ -72,6 +73,8 @@ public sealed class LeaveGameCommandHandler(
 			game.UpdatedAt = DateTimeOffset.UtcNow;
 			await context.SaveChangesAsync(cancellationToken);
 
+			await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
+
 			return new LeaveGameSuccessful(
 				GameId: game.Id,
 				PlayerId: gamePlayer.PlayerId,
@@ -94,9 +97,12 @@ public sealed class LeaveGameCommandHandler(
 
 			// Mark player to sit out (they'll finish current hand and then be marked as Left)
 			gamePlayer.IsSittingOut = true;
+			gamePlayer.LeftAtHandNumber = game.CurrentHandNumber;
 			game.UpdatedAt = DateTimeOffset.UtcNow;
 
 			await context.SaveChangesAsync(cancellationToken);
+
+			await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
 
 			return new LeaveGameSuccessful(
 				GameId: game.Id,
@@ -123,6 +129,8 @@ public sealed class LeaveGameCommandHandler(
 		game.UpdatedAt = now;
 
 		await context.SaveChangesAsync(cancellationToken);
+
+		await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
 
 		return new LeaveGameSuccessful(
 			GameId: game.Id,
