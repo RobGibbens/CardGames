@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using CardGames.Poker.Betting;
@@ -40,6 +41,17 @@ public class PotManagerTests
 
         potManager.TotalPotAmount.Should().Be(150);
         potManager.GetPlayerContribution("Alice").Should().Be(150);
+    }
+
+    [Fact]
+    public void AddContribution_NegativeAmount_Throws()
+    {
+        var potManager = new PotManager();
+
+        var action = () => potManager.AddContribution("Alice", -1);
+
+        action.Should().Throw<ArgumentException>()
+            .WithMessage("*negative*");
     }
 
     [Fact]
@@ -124,6 +136,36 @@ public class PotManagerTests
         potManager.CalculateSidePots(players);
 
         potManager.TotalPotAmount.Should().Be(150);
+    }
+
+    [Fact]
+    public void CalculateSidePots_IncludesFoldedPlayerContributions()
+    {
+        var potManager = new PotManager();
+        var players = new List<PokerPlayer>
+        {
+            new("Alice", 50),
+            new("Bob", 200),
+            new("Charlie", 200),
+        };
+
+        potManager.AddContribution("Alice", 50);
+        potManager.AddContribution("Bob", 100);
+        potManager.AddContribution("Charlie", 100);
+
+        players[0].PlaceBet(50);
+        players[1].PlaceBet(100);
+        players[2].PlaceBet(100);
+        players[1].Fold();
+        potManager.RemovePlayerEligibility("Bob");
+
+        potManager.CalculateSidePots(players);
+
+        potManager.Pots.Should().HaveCount(2);
+        potManager.Pots[0].Amount.Should().Be(150);
+        potManager.Pots[0].EligiblePlayers.Should().BeEquivalentTo(new[] { "Alice", "Charlie" });
+        potManager.Pots[1].Amount.Should().Be(100);
+        potManager.Pots[1].EligiblePlayers.Should().BeEquivalentTo(new[] { "Charlie" });
     }
 
     [Fact]
