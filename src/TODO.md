@@ -7,8 +7,6 @@
 - [ ] Add chip management to the dashboard (buy in, cash out, add chips)
 - [ ] Test side pots
 - [ ] Don't auto start a new hand. Add a timer, allow pause, allow people to get out of the game or end the game
-- [ ] Make sure people can leave a table
-- [ ] Make sure people can sit out
 
 ### P2 - Important but not blocking play
 - [ ] Make sure all calls are idempotent
@@ -118,3 +116,5 @@
 - [x] KAL - Waiting for showdown shows for new players
 - [x] Kings and lows - can not join a table already in progress
 - [x] Payouts not showing on Showdown for Kings and Lows
+- [x] Make sure people can leave a table
+- [x] Make sure people can sit out
