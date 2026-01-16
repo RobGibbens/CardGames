@@ -18,6 +18,8 @@ This document provides a comprehensive specification for implementing side pots 
 10. [Edge Cases and Error Handling](#edge-cases-and-error-handling)
 11. [Testing Requirements](#testing-requirements)
 12. [Implementation Plan](#implementation-plan)
+13. [Implementation Guidance for LLM Code Generation](#implementation-guidance-for-llm-code-generation)
+14. [References and Resources](#references-and-resources)
 
 ---
 
@@ -1208,19 +1210,695 @@ Even though core functionality exists, consider these enhancements:
 
 ---
 
-## 13. References and Resources
+## 13. Implementation Guidance for LLM Code Generation
 
-### 13.1 Internal Documentation
+This section provides detailed, step-by-step guidance for implementing side pots in the current codebase. This guidance is specifically designed for LLM-based code generation tools.
+
+### 13.1 Current State Assessment
+
+**✅ Already Implemented:**
+
+The codebase already has a fully functional side pot implementation:
+
+- **`PotManager` class** (`src/CardGames.Poker/Betting/PotManager.cs`) contains:
+  - `AddContribution(string playerName, int amount)` - Tracks player contributions
+  - `CalculateSidePots(IEnumerable<PokerPlayer> players)` - Creates side pots based on all-in levels
+  - `AwardPots(Func<IEnumerable<string>, IEnumerable<string>> determineWinners)` - Awards pots at showdown
+  - `RemovePlayerEligibility(string playerName)` - Handles folds
+
+- **`BettingRound` class** (`src/CardGames.Poker/Betting/BettingRound.cs`) integrates with PotManager:
+  - Calls `_potManager.AddContribution()` for each bet, call, raise, and all-in action
+  - Calls `_potManager.RemovePlayerEligibility()` when a player folds
+
+- **Game implementations** (e.g., `FiveCardDrawGame.cs`, `HoldEmGame.cs`) use PotManager:
+  - Call `_potManager.CalculateSidePots()` after betting rounds complete
+  - Call `_potManager.AwardPots()` at showdown
+
+### 13.2 What Needs to Be Implemented
+
+The **core logic is complete**. Implementation work focuses on:
+
+1. **API Enhancement**: Expose pot state to clients (main + side pots)
+2. **UI Implementation**: Display side pots in the web interface
+3. **SignalR Events**: Broadcast pot state changes in real-time
+4. **Testing**: Comprehensive test coverage for edge cases
+5. **Documentation**: Update game rules and help documentation
+
+### 13.3 Step-by-Step Implementation Guide
+
+#### Step 1: Add Pot DTOs to Contracts Project
+
+**Location**: `src/CardGames.Contracts/Poker/PotDto.cs` (create new file)
+
+**Action**: Create data transfer objects for exposing pot information to API clients.
+
+**Code Template**:
+```csharp
+namespace CardGames.Contracts.Poker;
+
+/// <summary>
+/// Represents a single pot (main or side pot) in a poker hand.
+/// </summary>
+public class PotDto
+{
+    /// <summary>
+    /// Pot identifier: 0 = main pot, 1+ = side pots
+    /// </summary>
+    public int PotNumber { get; set; }
+    
+    /// <summary>
+    /// Total chips in this pot
+    /// </summary>
+    public int Amount { get; set; }
+    
+    /// <summary>
+    /// Player names eligible to win this pot
+    /// </summary>
+    public List<string> EligiblePlayers { get; set; } = [];
+    
+    /// <summary>
+    /// Human-readable name: "Main Pot", "Side Pot", "Side Pot #2", etc.
+    /// </summary>
+    public string DisplayName { get; set; }
+}
+
+/// <summary>
+/// Current pot state for a poker hand
+/// </summary>
+public class PotStateDto
+{
+    /// <summary>
+    /// Total chips across all pots
+    /// </summary>
+    public int TotalAmount { get; set; }
+    
+    /// <summary>
+    /// List of all pots (main + side pots)
+    /// </summary>
+    public List<PotDto> Pots { get; set; } = [];
+    
+    /// <summary>
+    /// Total contribution per player for current hand
+    /// </summary>
+    public Dictionary<string, int> PlayerContributions { get; set; } = [];
+}
+```
+
+**Implementation Notes**:
+- Place in `CardGames.Contracts` project for shared use between API and Web
+- Keep DTOs simple with public setters for serialization
+- Use `List<>` instead of `IReadOnlyList<>` for JSON serialization compatibility
+
+#### Step 2: Create Pot State Mapper
+
+**Location**: `src/CardGames.Poker/Betting/PotManagerExtensions.cs` (create new file)
+
+**Action**: Add extension method to convert `PotManager` internal state to DTOs.
+
+**Code Template**:
+```csharp
+using CardGames.Contracts.Poker;
+
+namespace CardGames.Poker.Betting;
+
+public static class PotManagerExtensions
+{
+    /// <summary>
+    /// Converts PotManager internal state to a DTO for API/UI consumption.
+    /// </summary>
+    public static PotStateDto ToPotStateDto(this PotManager potManager)
+    {
+        var pots = potManager.Pots;
+        var potDtos = new List<PotDto>();
+        
+        for (int i = 0; i < pots.Count; i++)
+        {
+            var pot = pots[i];
+            var displayName = i == 0 
+                ? "Main Pot" 
+                : pots.Count == 2 
+                    ? "Side Pot" 
+                    : $"Side Pot #{i}";
+            
+            potDtos.Add(new PotDto
+            {
+                PotNumber = i,
+                Amount = pot.Amount,
+                EligiblePlayers = pot.EligiblePlayers.ToList(),
+                DisplayName = displayName
+            });
+        }
+        
+        var contributions = new Dictionary<string, int>();
+        // Note: PotManager doesn't currently expose contributions.
+        // If needed, add a public property to PotManager:
+        // public IReadOnlyDictionary<string, int> GetContributions() => _contributions;
+        
+        return new PotStateDto
+        {
+            TotalAmount = potManager.TotalPotAmount,
+            Pots = potDtos,
+            PlayerContributions = contributions
+        };
+    }
+}
+```
+
+**Implementation Notes**:
+- If you need to expose player contributions, add a method to `PotManager`:
+  ```csharp
+  public IReadOnlyDictionary<string, int> GetPlayerContributions()
+  {
+      return _contributions;
+  }
+  ```
+
+#### Step 3: Enhance Game State Response to Include Pot State
+
+**Location**: Existing game state endpoints in API project
+
+**Action**: Add `PotState` property to game state responses.
+
+**Example for Five Card Draw**:
+
+Find the game state DTO (likely in `CardGames.Contracts` or response models) and add:
+
+```csharp
+public class GameStateResponse
+{
+    // ... existing properties ...
+    
+    /// <summary>
+    /// Current pot state including main pot and side pots
+    /// </summary>
+    public PotStateDto PotState { get; set; }
+}
+```
+
+Update the API endpoint handler to populate this:
+
+```csharp
+// In your API handler where you build game state response
+var response = new GameStateResponse
+{
+    // ... existing mappings ...
+    
+    PotState = game.PotManager.ToPotStateDto()
+};
+```
+
+**Implementation Notes**:
+- The exact location depends on your API structure
+- Look for existing endpoints that return game state (e.g., `GET /api/games/{gameId}`)
+- Ensure `PotManager` instance is accessible from game object
+
+#### Step 4: Add SignalR Event for Pot State Updates
+
+**Location**: SignalR Hub (e.g., `CardGames.Poker.Api/Hubs/GameHub.cs`)
+
+**Action**: Add event broadcasting for pot state changes.
+
+**Code Template**:
+```csharp
+// In your SignalR Hub class
+public async Task BroadcastPotStateUpdate(string gameId, PotStateDto potState)
+{
+    await Clients.Group(gameId).SendAsync("PotStateUpdated", potState);
+}
+```
+
+**Integration Point**: Call this after `CalculateSidePots()` in game logic:
+
+```csharp
+// In game implementation (e.g., FiveCardDrawGame.cs)
+// After this line:
+_potManager.CalculateSidePots(_gamePlayers.Select(gp => gp.Player));
+
+// Add:
+var potState = _potManager.ToPotStateDto();
+await _gameHub.BroadcastPotStateUpdate(GameId, potState);
+```
+
+**Implementation Notes**:
+- Requires dependency injection of the Hub context into game classes
+- Alternative: Raise an event from game that API layer handles
+- Consider using domain events pattern if already in use
+
+#### Step 5: Implement UI Components (Blazor)
+
+**Location**: `src/CardGames.Poker.Web/Components/` (or similar)
+
+**Action**: Create Blazor component to display pots.
+
+**Code Template**:
+
+Create `PotDisplay.razor`:
+```razor
+@if (PotState != null && PotState.Pots.Any())
+{
+    <div class="pot-container">
+        @foreach (var pot in PotState.Pots)
+        {
+            <div class="pot-display @(pot.PotNumber == 0 ? "main-pot" : "side-pot")">
+                <div class="pot-label">@pot.DisplayName</div>
+                <div class="pot-amount">$@pot.Amount</div>
+                @if (ShowEligibility && pot.EligiblePlayers.Any())
+                {
+                    <div class="pot-eligible">
+                        <small>Eligible: @string.Join(", ", pot.EligiblePlayers)</small>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public PotStateDto? PotState { get; set; }
+    
+    [Parameter]
+    public bool ShowEligibility { get; set; } = false;
+}
+```
+
+Create `PotDisplay.razor.css`:
+```css
+.pot-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+    margin: 20px 0;
+}
+
+.pot-display {
+    border: 2px solid #4CAF50;
+    border-radius: 8px;
+    padding: 15px;
+    min-width: 150px;
+    text-align: center;
+    background: rgba(76, 175, 80, 0.1);
+}
+
+.pot-display.side-pot {
+    border-color: #2196F3;
+    background: rgba(33, 150, 243, 0.1);
+}
+
+.pot-label {
+    font-weight: bold;
+    font-size: 14px;
+    color: #666;
+}
+
+.pot-amount {
+    font-size: 24px;
+    font-weight: bold;
+    color: #333;
+    margin: 5px 0;
+}
+
+.pot-eligible {
+    margin-top: 8px;
+    font-size: 12px;
+    color: #666;
+}
+```
+
+**Usage in TablePlay.razor**:
+```razor
+<PotDisplay PotState="@currentGameState?.PotState" ShowEligibility="true" />
+```
+
+**Implementation Notes**:
+- Adjust CSS to match your existing design system
+- Consider adding animations for pot updates
+- May need to adapt for your specific UI framework
+
+#### Step 6: Update SignalR Client to Handle Pot Updates
+
+**Location**: Client-side JavaScript/TypeScript or Blazor code-behind
+
+**Action**: Subscribe to pot state update events.
+
+**For Blazor**:
+```csharp
+// In your page component
+protected override async Task OnInitializedAsync()
+{
+    await hubConnection.On<PotStateDto>("PotStateUpdated", async (potState) =>
+    {
+        currentGameState.PotState = potState;
+        await InvokeAsync(StateHasChanged);
+    });
+}
+```
+
+**For JavaScript**:
+```javascript
+connection.on("PotStateUpdated", (potState) => {
+    updatePotDisplay(potState);
+});
+
+function updatePotDisplay(potState) {
+    // Update DOM elements showing pot information
+    document.getElementById('total-pot').textContent = `$${potState.totalAmount}`;
+    
+    // Clear and rebuild pot list
+    const potList = document.getElementById('pot-list');
+    potList.innerHTML = '';
+    
+    potState.pots.forEach(pot => {
+        const potElement = createPotElement(pot);
+        potList.appendChild(potElement);
+    });
+}
+```
+
+#### Step 7: Update Hand History to Include Pot Details
+
+**Location**: Hand history recording logic
+
+**Action**: Store pot breakdown in hand history.
+
+**Enhancement to Hand History Record**:
+```csharp
+public class HandHistoryEntry
+{
+    // ... existing fields ...
+    
+    /// <summary>
+    /// Pot breakdown at showdown
+    /// </summary>
+    public List<PotHistoryDto> PotBreakdown { get; set; } = [];
+}
+
+public class PotHistoryDto
+{
+    public int PotNumber { get; set; }
+    public int Amount { get; set; }
+    public List<string> EligiblePlayers { get; set; } = [];
+    public List<string> Winners { get; set; } = [];
+    public Dictionary<string, int> Payouts { get; set; } = [];
+}
+```
+
+**In Showdown Logic**:
+```csharp
+// After awarding pots
+var potHistory = new List<PotHistoryDto>();
+for (int i = 0; i < _potManager.Pots.Count; i++)
+{
+    var pot = _potManager.Pots[i];
+    var winners = /* extract winners for this pot */;
+    var payouts = /* extract payouts for this pot */;
+    
+    potHistory.Add(new PotHistoryDto
+    {
+        PotNumber = i,
+        Amount = pot.Amount,
+        EligiblePlayers = pot.EligiblePlayers.ToList(),
+        Winners = winners,
+        Payouts = payouts
+    });
+}
+
+// Add to hand history
+handHistory.PotBreakdown = potHistory;
+```
+
+#### Step 8: Add Comprehensive Tests
+
+**Location**: `src/CardGames.Poker.Tests/Betting/PotManagerTests.cs` (or create)
+
+**Action**: Add test cases for all edge cases documented in Section 10.
+
+**Test Template**:
+```csharp
+using Xunit;
+using CardGames.Poker.Betting;
+
+namespace CardGames.Poker.Tests.Betting;
+
+public class PotManagerTests
+{
+    [Fact]
+    public void CalculateSidePots_SimpleSidePot_OneAllIn_CreatesCorrectPots()
+    {
+        // Arrange
+        var potManager = new PotManager();
+        var players = new[]
+        {
+            new PokerPlayer("Pat", 0) { IsAllIn = true },  // All-in for $30
+            new PokerPlayer("Rob", 70),
+            new PokerPlayer("Sam", 70)
+        };
+        
+        potManager.AddContribution("Pat", 30);
+        potManager.AddContribution("Rob", 100);
+        potManager.AddContribution("Sam", 100);
+        
+        // Act
+        potManager.CalculateSidePots(players.Where(p => !p.HasFolded));
+        
+        // Assert
+        Assert.Equal(2, potManager.Pots.Count);
+        
+        // Main pot: $30 x 3 = $90
+        Assert.Equal(90, potManager.Pots[0].Amount);
+        Assert.Equal(3, potManager.Pots[0].EligiblePlayers.Count);
+        Assert.Contains("Pat", potManager.Pots[0].EligiblePlayers);
+        Assert.Contains("Rob", potManager.Pots[0].EligiblePlayers);
+        Assert.Contains("Sam", potManager.Pots[0].EligiblePlayers);
+        
+        // Side pot: $70 x 2 = $140
+        Assert.Equal(140, potManager.Pots[1].Amount);
+        Assert.Equal(2, potManager.Pots[1].EligiblePlayers.Count);
+        Assert.Contains("Rob", potManager.Pots[1].EligiblePlayers);
+        Assert.Contains("Sam", potManager.Pots[1].EligiblePlayers);
+        Assert.DoesNotContain("Pat", potManager.Pots[1].EligiblePlayers);
+    }
+    
+    [Fact]
+    public void CalculateSidePots_MultipleAllIns_CreatesThreePots()
+    {
+        // Arrange
+        var potManager = new PotManager();
+        var players = new[]
+        {
+            new PokerPlayer("A", 0) { IsAllIn = true },  // $20
+            new PokerPlayer("B", 0) { IsAllIn = true },  // $50
+            new PokerPlayer("C", 0),                      // $100
+            new PokerPlayer("D", 0)                       // $100
+        };
+        
+        potManager.AddContribution("A", 20);
+        potManager.AddContribution("B", 50);
+        potManager.AddContribution("C", 100);
+        potManager.AddContribution("D", 100);
+        
+        // Act
+        potManager.CalculateSidePots(players.Where(p => !p.HasFolded));
+        
+        // Assert
+        Assert.Equal(3, potManager.Pots.Count);
+        
+        // Pot 1: $20 x 4 = $80 (all eligible)
+        Assert.Equal(80, potManager.Pots[0].Amount);
+        Assert.Equal(4, potManager.Pots[0].EligiblePlayers.Count);
+        
+        // Pot 2: $30 x 3 = $90 (B, C, D eligible)
+        Assert.Equal(90, potManager.Pots[1].Amount);
+        Assert.Equal(3, potManager.Pots[1].EligiblePlayers.Count);
+        Assert.DoesNotContain("A", potManager.Pots[1].EligiblePlayers);
+        
+        // Pot 3: $50 x 2 = $100 (C, D eligible)
+        Assert.Equal(100, potManager.Pots[2].Amount);
+        Assert.Equal(2, potManager.Pots[2].EligiblePlayers.Count);
+        Assert.Contains("C", potManager.Pots[2].EligiblePlayers);
+        Assert.Contains("D", potManager.Pots[2].EligiblePlayers);
+    }
+    
+    // Add more tests for:
+    // - Fold handling
+    // - Odd chip division
+    // - All players all-in
+    // - Empty pots
+    // - etc. (see Section 10 for complete list)
+}
+```
+
+**Implementation Notes**:
+- Create test cases for all edge cases in Section 10
+- Test both `CalculateSidePots()` and `AwardPots()` methods
+- Verify pot totals always equal sum of contributions
+
+### 13.4 Integration Checklist
+
+When implementing side pots, follow this checklist:
+
+- [ ] **Step 1**: Add PotDto classes to Contracts project
+- [ ] **Step 2**: Create PotManagerExtensions with ToPotStateDto() method
+- [ ] **Step 3**: Enhance game state API responses with PotState property
+- [ ] **Step 4**: Add SignalR event for pot state broadcasts
+- [ ] **Step 5**: Implement PotDisplay.razor component
+- [ ] **Step 6**: Update SignalR client to handle pot updates
+- [ ] **Step 7**: Enhance hand history with pot breakdown
+- [ ] **Step 8**: Add comprehensive unit tests
+- [ ] **Verification**: Run existing game tests to ensure no regression
+- [ ] **Verification**: Manual test with multiple all-in scenarios
+- [ ] **Documentation**: Update user-facing game rules documentation
+
+### 13.5 Code Locations Reference
+
+Quick reference for where to find and modify code:
+
+| Component | File Path | Action |
+|-----------|-----------|--------|
+| **Core Logic** | `src/CardGames.Poker/Betting/PotManager.cs` | ✅ Already complete - no changes needed |
+| **Betting Integration** | `src/CardGames.Poker/Betting/BettingRound.cs` | ✅ Already integrated - no changes needed |
+| **Game Implementations** | `src/CardGames.Poker/Games/*/Game.cs` | ✅ Already calling CalculateSidePots() - verify all games |
+| **DTOs** | `src/CardGames.Contracts/Poker/PotDto.cs` | ➕ Create new file |
+| **Extensions** | `src/CardGames.Poker/Betting/PotManagerExtensions.cs` | ➕ Create new file |
+| **API Responses** | `src/CardGames.Poker.Api/` | ✏️ Enhance existing game state responses |
+| **SignalR Hub** | `src/CardGames.Poker.Api/Hubs/GameHub.cs` | ✏️ Add pot state broadcast method |
+| **UI Component** | `src/CardGames.Poker.Web/Components/PotDisplay.razor` | ➕ Create new component |
+| **Client Handler** | `src/CardGames.Poker.Web/Pages/TablePlay.razor` | ✏️ Subscribe to pot state updates |
+| **Tests** | `src/CardGames.Poker.Tests/Betting/PotManagerTests.cs` | ➕ Add comprehensive tests |
+
+**Legend**:
+- ✅ Already complete
+- ➕ Create new
+- ✏️ Modify existing
+
+### 13.6 Common Pitfalls and Solutions
+
+**Pitfall 1: Forgetting to Call CalculateSidePots()**
+- **Problem**: Side pots not created even when players are all-in
+- **Solution**: Ensure `CalculateSidePots()` is called after EACH betting round where all-ins occurred
+- **Check**: Look for pattern: after `BettingRound.IsComplete`, call `potManager.CalculateSidePots(players)`
+
+**Pitfall 2: Pot Total Mismatch**
+- **Problem**: Sum of pots doesn't equal total contributions
+- **Solution**: The PotManager already handles this in lines 164-172 of PotManager.cs
+- **Check**: Verify `_potManager.TotalPotAmount` equals sum of all player contributions
+
+**Pitfall 3: Not Removing Folded Players from Eligibility**
+- **Problem**: Folded players still eligible for pots
+- **Solution**: `BettingRound` already calls `RemovePlayerEligibility()` on fold (line 189)
+- **Check**: Verify fold action triggers `_potManager.RemovePlayerEligibility(playerName)`
+
+**Pitfall 4: UI Not Updating After Side Pot Creation**
+- **Problem**: UI shows single pot even after side pots created
+- **Solution**: Ensure SignalR event is broadcast after `CalculateSidePots()`
+- **Check**: Add logging before/after pot calculation to verify events fire
+
+**Pitfall 5: Treating All-In as Fold**
+- **Problem**: All-in players excluded from showdown
+- **Solution**: Check `!player.HasFolded` not `player.CanAct` when determining showdown participants
+- **Check**: All-in players should be in `playersInHand` list at showdown
+
+### 13.7 Testing Strategy
+
+**Unit Test Priority Order**:
+1. Basic side pot creation (1 all-in)
+2. Multiple all-ins with different amounts
+3. Fold handling (before and after all-in)
+4. Pot award with different winners per pot
+5. Edge cases (odd chips, all players all-in, etc.)
+
+**Integration Test Approach**:
+```csharp
+[Fact]
+public async Task IntegrationTest_FullHandWithSidePots()
+{
+    // Setup game with 3 players: short stack, medium, large
+    var game = new FiveCardDrawGame(
+        players: new[] 
+        { 
+            ("Short", 50), 
+            ("Medium", 100), 
+            ("Large", 200) 
+        },
+        ante: 10,
+        minBet: 10
+    );
+    
+    // Play through hand with all-in scenario
+    game.StartNewHand();
+    
+    // First betting round
+    game.ProcessAction("Short", BettingActionType.AllIn); // $50 total
+    game.ProcessAction("Medium", BettingActionType.Raise, 100); // $100 total
+    game.ProcessAction("Large", BettingActionType.Call); // $100 total
+    
+    // Verify side pots created
+    var potState = game.PotManager.ToPotStateDto();
+    Assert.Equal(2, potState.Pots.Count);
+    Assert.Equal(150, potState.Pots[0].Amount); // Main: $50 x 3
+    Assert.Equal(100, potState.Pots[1].Amount); // Side: $50 x 2
+    
+    // Continue to showdown and verify awards
+    // ... (complete betting round, draw, second betting round)
+    
+    var result = game.PerformShowdown();
+    Assert.True(result.Success);
+    
+    // Verify payouts make sense based on hand strengths
+    // Different players can win different pots
+}
+```
+
+**Manual Test Scenarios**:
+1. **Scenario A**: Three players, one short-stacked goes all-in preflop
+2. **Scenario B**: Four players, two different all-in amounts
+3. **Scenario C**: All-in on flop, continued betting on turn/river
+4. **Scenario D**: Player folds after another player is all-in
+
+### 13.8 Debugging Tips
+
+**Enable Detailed Logging**:
+```csharp
+// Add to PotManager.CalculateSidePots()
+_logger.LogDebug("Calculating side pots. Contributions: {Contributions}", 
+    string.Join(", ", _contributions.Select(kvp => $"{kvp.Key}=${kvp.Value}")));
+
+_logger.LogDebug("Created {Count} pots: {Pots}", 
+    _pots.Count,
+    string.Join(", ", _pots.Select((p, i) => 
+        $"Pot {i}: ${p.Amount} (eligible: {string.Join(",", p.EligiblePlayers)})")));
+```
+
+**Verify Pot State at Key Points**:
+1. After each call to `AddContribution()`
+2. After `CalculateSidePots()`
+3. Before `AwardPots()`
+4. After each pot is awarded
+
+**Use Assertions**:
+```csharp
+// Add defensive checks
+System.Diagnostics.Debug.Assert(
+    _potManager.TotalPotAmount == _gamePlayers.Sum(p => p.Player.CurrentBet),
+    "Pot total must equal sum of player bets");
+```
+
+---
+
+## 14. References and Resources
+
+### 14.1 Internal Documentation
 - `ARCHITECTURE.md` - System architecture overview
 - `ADDING_NEW_GAMES.md` - Game implementation guide
 - `LeaveTable.md` - Example of comprehensive requirements document
 
-### 13.2 Code References
+### 14.2 Code References
 - `src/CardGames.Poker/Betting/PotManager.cs` - Current implementation
 - `src/CardGames.Poker/Betting/PokerPlayer.cs` - Player state management
 - `src/CardGames.Poker/Betting/BettingRound.cs` - Betting logic
 
-### 13.3 External Resources
+### 14.3 External Resources
 - Poker game rules and side pot mechanics
 - No-limit hold'em tournament director association rules
 - Mathematical principles of pot distribution
