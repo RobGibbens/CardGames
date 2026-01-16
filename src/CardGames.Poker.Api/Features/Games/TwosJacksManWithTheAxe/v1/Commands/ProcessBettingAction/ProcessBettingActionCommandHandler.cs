@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using OneOf;
 using BettingActionType = CardGames.Poker.Api.Data.Entities.BettingActionType;
 using BettingRound = CardGames.Poker.Api.Data.Entities.BettingRound;
+using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 
 namespace CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe.v1.Commands.ProcessBettingAction;
 
@@ -342,63 +343,308 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 			return true;
 		}
 
-		// If everyone has acted at least once and all bets are matched
-		if (bettingRound.PlayersActed >= playersWhoCanAct.Count && allMatched)
-		{
-			return true;
-		}
-
-		return false;
-	}
-
-	private void AdvanceToNextPhase(Game game, List<GamePlayer> activePlayers)
-	{
-		// Check if only one player remains (all others folded)
-		var playersInHand = activePlayers.Count(gp => !gp.HasFolded);
-		if (playersInHand <= 1)
-		{
-			game.CurrentPhase = nameof(Phases.Showdown);
-			game.CurrentPlayerIndex = -1;
-			return;
-		}
-
-		// Reset current bets for next round
-		foreach (var gamePlayer in activePlayers)
-		{
-			gamePlayer.CurrentBet = 0;
-		}
-
-		switch (game.CurrentPhase)
-		{
-			case nameof(Phases.FirstBettingRound):
-				game.CurrentPhase = nameof(Phases.DrawPhase);
-				game.CurrentDrawPlayerIndex = FindFirstActivePlayerAfterDealer(game, activePlayers);
-				game.CurrentPlayerIndex = game.CurrentDrawPlayerIndex;
-				break;
-
-			case nameof(Phases.SecondBettingRound):
-				game.CurrentPhase = nameof(Phases.Showdown);
-				game.CurrentPlayerIndex = -1;
-				break;
-		}
-	}
-
-	private int FindFirstActivePlayerAfterDealer(Game game, List<GamePlayer> activePlayers)
-	{
-		var totalPlayers = activePlayers.Max(p => p.SeatPosition) + 1;
-		var searchIndex = (game.DealerPosition + 1) % totalPlayers;
-
-		for (var i = 0; i < totalPlayers; i++)
-		{
-			var player = activePlayers.FirstOrDefault(p => p.SeatPosition == searchIndex);
-			if (player is not null && !player.HasFolded && !player.IsAllIn)
+			// If everyone has acted at least once and all bets are matched
+			if (bettingRound.PlayersActed >= playersWhoCanAct.Count && allMatched)
 			{
-				return searchIndex;
+				return true;
 			}
-			searchIndex = (searchIndex + 1) % totalPlayers;
+
+			return false;
 		}
 
-		return -1;
-	}
-}
+				private void AdvanceToNextPhase(Game game, List<GamePlayer> activePlayers)
+				{
+					// Check if only one player remains (all others folded)
+					var playersInHand = activePlayers.Count(gp => !gp.HasFolded);
+					if (playersInHand <= 1)
+					{
+						game.CurrentPhase = nameof(Phases.Showdown);
+						game.CurrentPlayerIndex = -1;
+						return;
+					}
+
+					// Calculate side pots if any players are all-in
+					var hasAllIn = activePlayers.Any(gp => gp.IsAllIn && !gp.HasFolded);
+					if (hasAllIn)
+					{
+						CalculateSidePots(game, activePlayers);
+					}
+
+					// Check if all remaining players are all-in
+					var activePlayersWhoCanAct = activePlayers.Count(gp => !gp.HasFolded && !gp.IsAllIn);
+					var allPlayersAllIn = activePlayersWhoCanAct == 0;
+
+					// Reset current bets for next round
+					foreach (var gamePlayer in activePlayers)
+					{
+						gamePlayer.CurrentBet = 0;
+					}
+
+				switch (game.CurrentPhase)
+				{
+					case nameof(Phases.FirstBettingRound):
+						// In draw poker, players can still draw cards even when all-in
+						// Only skip to showdown if everyone is all-in AND we're past the draw phase
+						game.CurrentPhase = nameof(Phases.DrawPhase);
+						// Use the draw-specific method that includes all-in players
+						game.CurrentDrawPlayerIndex = FindFirstEligibleDrawPlayerAfterDealer(game, activePlayers);
+						game.CurrentPlayerIndex = game.CurrentDrawPlayerIndex;
+						break;
+
+					case nameof(Phases.SecondBettingRound):
+						game.CurrentPhase = nameof(Phases.Showdown);
+						game.CurrentPlayerIndex = -1;
+						break;
+				}
+			}
+
+		/// <summary>
+		/// Finds the first active player after the dealer for betting rounds.
+		/// Excludes folded and all-in players since they cannot participate in betting.
+		/// </summary>
+		private int FindFirstActivePlayerAfterDealerForBetting(Game game, List<GamePlayer> activePlayers)
+		{
+			var totalPlayers = activePlayers.Max(p => p.SeatPosition) + 1;
+			var searchIndex = (game.DealerPosition + 1) % totalPlayers;
+
+			for (var i = 0; i < totalPlayers; i++)
+			{
+				var player = activePlayers.FirstOrDefault(p => p.SeatPosition == searchIndex);
+				if (player is not null && !player.HasFolded && !player.IsAllIn)
+				{
+					return searchIndex;
+				}
+				searchIndex = (searchIndex + 1) % totalPlayers;
+			}
+
+			return -1;
+		}
+
+			/// <summary>
+			/// Finds the first eligible player after the dealer for the draw phase.
+			/// Includes all-in players since they can still draw cards even though they cannot bet.
+			/// </summary>
+			private static int FindFirstEligibleDrawPlayerAfterDealer(Game game, List<GamePlayer> activePlayers)
+			{
+				var totalPlayers = activePlayers.Max(p => p.SeatPosition) + 1;
+				var searchIndex = (game.DealerPosition + 1) % totalPlayers;
+
+				for (var i = 0; i < totalPlayers; i++)
+				{
+					var player = activePlayers.FirstOrDefault(p => p.SeatPosition == searchIndex);
+					// Include all-in players - they can still draw cards
+					if (player is not null && !player.HasFolded)
+					{
+						return searchIndex;
+					}
+					searchIndex = (searchIndex + 1) % totalPlayers;
+				}
+
+				return -1;
+			}
+
+		/// <summary>
+		/// Calculates and creates side pots when players are all-in for different amounts.
+		/// </summary>
+		private void CalculateSidePots(Game game, List<GamePlayer> activePlayers)
+		{
+			var now = DateTimeOffset.UtcNow;
+			var playersInHand = activePlayers.Where(gp => !gp.HasFolded).ToList();
+
+			if (playersInHand.Count < 2)
+			{
+				return;
+			}
+
+			// Get contribution levels from all-in players, sorted ascending
+			var allInLevels = playersInHand
+				.Where(p => p.IsAllIn)
+				.Select(p => p.TotalContributedThisHand)
+				.Where(c => c > 0)
+				.Distinct()
+				.OrderBy(c => c)
+				.ToList();
+
+			if (allInLevels.Count == 0)
+			{
+				return; // No side pots needed
+			}
+
+			// Get current pots for this hand
+			var currentPots = game.Pots.Where(p => p.HandNumber == game.CurrentHandNumber).ToList();
+			var totalContributions = activePlayers.Sum(p => p.TotalContributedThisHand);
+			var currentPotIds = currentPots.Select(p => p.Id).ToList();
+
+			// Delete existing contributions for current hand's pots directly from DbContext
+			// This ensures contributions are properly removed even if not loaded into navigation property
+			if (currentPotIds.Count > 0)
+			{
+				var existingContributions = context.PotContributions
+					.Where(pc => currentPotIds.Contains(pc.PotId))
+					.ToList();
+				context.PotContributions.RemoveRange(existingContributions);
+			}
+
+			// Remove existing pots
+			foreach (var pot in currentPots)
+			{
+				game.Pots.Remove(pot);
+			}
+
+			var previousLevel = 0;
+			var potOrder = 0;
+
+			// Create pots for each all-in level (smallest to largest)
+			foreach (var level in allInLevels)
+			{
+				var potAmount = 0;
+				var eligiblePlayers = new List<GamePlayer>();
+
+				// Calculate pot amount and determine eligible players
+				foreach (var player in activePlayers)
+				{
+					var contribution = player.TotalContributedThisHand;
+					// Player contributes to this pot if they've put in at least 'level' chips
+					if (contribution >= level)
+					{
+						var contributionToThisPot = Math.Min(contribution, level) - previousLevel;
+						if (contributionToThisPot > 0)
+						{
+							potAmount += contributionToThisPot;
+							// Only non-folded players are eligible to win
+							if (!player.HasFolded)
+							{
+								eligiblePlayers.Add(player);
+							}
+						}
+					}
+				}
+
+				if (potAmount > 0)
+				{
+					var pot = new Pot
+					{
+						GameId = game.Id,
+						HandNumber = game.CurrentHandNumber,
+						PotType = potOrder == 0 ? PotType.Main : PotType.Side,
+						PotOrder = potOrder,
+						Amount = potAmount,
+						MaxContributionPerPlayer = level - previousLevel,
+						CreatedAt = now
+					};
+
+					// Add contributions for eligible (non-folded) players
+					foreach (var player in eligiblePlayers)
+					{
+						pot.Contributions.Add(new PotContribution
+						{
+							GamePlayerId = player.Id,
+							Amount = Math.Min(player.TotalContributedThisHand, level) - previousLevel,
+							IsEligibleToWin = true,
+							ContributedAt = now
+						});
+					}
+
+					// Add contributions from folded players (money stays in pot, but not eligible to win)
+					foreach (var player in activePlayers.Where(p => p.HasFolded))
+					{
+						var contribution = player.TotalContributedThisHand;
+						if (contribution >= level)
+						{
+							var contributionToThisPot = Math.Min(contribution, level) - previousLevel;
+							if (contributionToThisPot > 0)
+							{
+								pot.Contributions.Add(new PotContribution
+								{
+									GamePlayerId = player.Id,
+									Amount = contributionToThisPot,
+									IsEligibleToWin = false,
+									ContributedAt = now
+								});
+							}
+						}
+					}
+
+					game.Pots.Add(pot);
+					potOrder++;
+				}
+
+				previousLevel = level;
+			}
+
+			// Create final pot for remaining contributions (above highest all-in level)
+			var maxContribution = activePlayers.Max(p => p.TotalContributedThisHand);
+			if (maxContribution > previousLevel)
+			{
+				var finalPotAmount = 0;
+				var eligibleForFinal = new List<GamePlayer>();
+
+				foreach (var player in activePlayers)
+				{
+					var contribution = player.TotalContributedThisHand;
+					if (contribution > previousLevel)
+					{
+						var contributionToFinal = contribution - previousLevel;
+						finalPotAmount += contributionToFinal;
+						if (!player.HasFolded)
+						{
+							eligibleForFinal.Add(player);
+						}
+					}
+				}
+
+				if (finalPotAmount > 0)
+				{
+					var finalPot = new Pot
+					{
+						GameId = game.Id,
+						HandNumber = game.CurrentHandNumber,
+						PotType = PotType.Side,
+						PotOrder = potOrder,
+						Amount = finalPotAmount,
+						MaxContributionPerPlayer = maxContribution - previousLevel,
+						CreatedAt = now
+					};
+
+					foreach (var player in eligibleForFinal)
+					{
+						finalPot.Contributions.Add(new PotContribution
+						{
+							GamePlayerId = player.Id,
+							Amount = player.TotalContributedThisHand - previousLevel,
+							IsEligibleToWin = true,
+							ContributedAt = now
+						});
+					}
+
+					// Add contributions from folded players
+					foreach (var player in activePlayers.Where(p => p.HasFolded))
+					{
+						var contribution = player.TotalContributedThisHand;
+						if (contribution > previousLevel)
+						{
+							finalPot.Contributions.Add(new PotContribution
+							{
+								GamePlayerId = player.Id,
+								Amount = contribution - previousLevel,
+								IsEligibleToWin = false,
+								ContributedAt = now
+							});
+						}
+					}
+
+					game.Pots.Add(finalPot);
+				}
+			}
+
+			// Verify total equals contributions and adjust if needed
+			var calculatedTotal = game.Pots.Where(p => p.HandNumber == game.CurrentHandNumber).Sum(p => p.Amount);
+			if (calculatedTotal != totalContributions && game.Pots.Any(p => p.HandNumber == game.CurrentHandNumber))
+			{
+				// Adjust last pot to match
+				var lastPot = game.Pots.Where(p => p.HandNumber == game.CurrentHandNumber).OrderByDescending(p => p.PotOrder).First();
+				lastPot.Amount += totalContributions - calculatedTotal;
+			}
+		}
+		}
 

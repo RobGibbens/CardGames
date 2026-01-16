@@ -390,6 +390,22 @@ public class HoldEmGame : IPokerGame
             return;
         }
 
+        // Calculate side pots if any players are all-in
+        var hasAllIn = _gamePlayers.Any(gp => gp.Player.IsAllIn && !gp.Player.HasFolded);
+        if (hasAllIn)
+        {
+            _potManager.CalculateSidePots(_gamePlayers.Select(gp => gp.Player));
+        }
+
+        // Check if all remaining players are all-in (run out the board)
+        var activePlayersWhoCanAct = _gamePlayers.Count(gp => !gp.Player.HasFolded && !gp.Player.IsAllIn);
+        if (activePlayersWhoCanAct == 0)
+        {
+            // All remaining players are all-in - skip to showdown
+            CurrentPhase = Phases.Showdown;
+            return;
+        }
+
         // Reset current bets for next round
         foreach (var gamePlayer in _gamePlayers)
         {
@@ -408,7 +424,6 @@ public class HoldEmGame : IPokerGame
                 CurrentPhase = Phases.River;
                 break;
             case Phases.River:
-                _potManager.CalculateSidePots(_gamePlayers.Select(gp => gp.Player));
                 CurrentPhase = Phases.Showdown;
                 break;
         }

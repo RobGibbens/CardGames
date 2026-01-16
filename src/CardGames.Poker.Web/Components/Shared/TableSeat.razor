@@ -39,23 +39,23 @@
                             }
                         }
                     }
-                </div>
-            </div>
-        }
-        else if (ShowCards && !Seat.IsFolded)
-        {
-            <!-- Placeholder cards -->
-            <div class="seat-cards-container placeholder">
-                <div class="cards-fan">
-                    @for (int i = 0; i < 5; i++)
-                    {
-                        <div class="playing-card-placeholder"></div>
-                    }
-                </div>
-            </div>
-        }
+                        </div>
+                    </div>
+                }
+                else if (ShowCards && !Seat.IsFolded && !Seat.IsSittingOut)
+                {
+                    <!-- Placeholder cards -->
+                    <div class="seat-cards-container placeholder">
+                        <div class="cards-fan">
+                            @for (int i = 0; i < 5; i++)
+                            {
+                                <div class="playing-card-placeholder"></div>
+                            }
+                        </div>
+                    </div>
+                }
 
-        <!-- Main Player Display (Avatar + Info Pill) -->
+                <!-- Main Player Display (Avatar + Info Pill) -->
         <div class="seat-visuals">
 
             <!-- Avatar Circle -->

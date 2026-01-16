@@ -414,7 +414,14 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		string? gameTypeCode,
 		IReadOnlyDictionary<string, UserProfile> userProfilesByEmail)
 	{
+		var firstName = GetPlayerFirstName(gamePlayer, userProfilesByEmail);
+		var avatarUrl = GetPlayerAvatarUrl(gamePlayer, userProfilesByEmail);
+		var sittingOutReason = GetSittingOutReason(gamePlayer, ante, currentHandNumber);
+
 		// Get current hand cards (not discarded)
+		// Note: We filter by hand number to naturally handle sitting out players.
+		// - During Complete phase: player who just lost all chips still has cards from this hand
+		// - During next hand: their old cards are deleted, so they'll have no cards
 		var playerCards = gamePlayer.Cards
 			.Where(c => !c.IsDiscarded && c.HandNumber == currentHandNumber)
 			.OrderBy(c => c.DealOrder)
@@ -437,59 +444,73 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			};
 		}).ToList();
 
-		// Determine sitting out reason
-		string? sittingOutReason = null;
-		if (gamePlayer.IsSittingOut)
-		{
-			if (gamePlayer.ChipStack < ante && ante > 0)
-			{
-				sittingOutReason = "Insufficient chips";
-			}
-			else
-			{
-				sittingOutReason = "Sitting out";
-			}
-		}
-		else if (gamePlayer.HasFolded && gamePlayer.JoinedAtHandNumber == currentHandNumber)
-		{
-			sittingOutReason = "Observing";
-		}
-
-		string? playerFirstName = null;
-		string? playerAvatarUrl = null;
-
-		if (!string.IsNullOrWhiteSpace(gamePlayer.Player.Email)
-			&& userProfilesByEmail.TryGetValue(gamePlayer.Player.Email, out var profile))
-		{
-			playerFirstName = profile.FirstName;
-			playerAvatarUrl = profile.AvatarUrl;
-		}
-
-		// Fallback for existing/legacy data in the poker player table.
-		playerAvatarUrl ??= gamePlayer.Player.AvatarUrl;
-
 		return new SeatPublicDto
 		{
 			SeatIndex = gamePlayer.SeatPosition,
 			IsOccupied = true,
 			PlayerName = gamePlayer.Player.Name,
-			PlayerFirstName = string.IsNullOrWhiteSpace(playerFirstName) ? null : playerFirstName.Trim(),
-			PlayerAvatarUrl = string.IsNullOrWhiteSpace(playerAvatarUrl) ? null : playerAvatarUrl.Trim(),
+			PlayerFirstName = firstName,
+			PlayerAvatarUrl = avatarUrl,
 			Chips = gamePlayer.ChipStack,
 			IsReady = gamePlayer.Status == Entities.GamePlayerStatus.Active && !gamePlayer.IsSittingOut,
 			IsFolded = gamePlayer.HasFolded,
 			IsAllIn = gamePlayer.IsAllIn,
 			IsDisconnected = !gamePlayer.IsConnected,
-				IsSittingOut = gamePlayer.IsSittingOut,
-				SittingOutReason = sittingOutReason,
-				CurrentBet = gamePlayer.CurrentBet,
-				HasDecidedDropOrStay = gamePlayer.DropOrStayDecision.HasValue && gamePlayer.DropOrStayDecision.Value != Entities.DropOrStayDecision.Undecided,
-				Cards = publicCards
-			};
+			IsSittingOut = gamePlayer.IsSittingOut,
+			SittingOutReason = sittingOutReason,
+			CurrentBet = gamePlayer.CurrentBet,
+			HasDecidedDropOrStay = gamePlayer.DropOrStayDecision.HasValue && gamePlayer.DropOrStayDecision.Value != Entities.DropOrStayDecision.Undecided,
+			Cards = publicCards
+		};
+	}
+
+	private static string? GetPlayerFirstName(GamePlayer gamePlayer, IReadOnlyDictionary<string, UserProfile> userProfilesByEmail)
+	{
+		if (!string.IsNullOrWhiteSpace(gamePlayer.Player.Email)
+			&& userProfilesByEmail.TryGetValue(gamePlayer.Player.Email, out var profile))
+		{
+			return !string.IsNullOrWhiteSpace(profile.FirstName) ? profile.FirstName.Trim() : null;
+		}
+		return null;
+	}
+
+	private static string? GetPlayerAvatarUrl(GamePlayer gamePlayer, IReadOnlyDictionary<string, UserProfile> userProfilesByEmail)
+	{
+		string? avatarUrl = null;
+		if (!string.IsNullOrWhiteSpace(gamePlayer.Player.Email)
+			&& userProfilesByEmail.TryGetValue(gamePlayer.Player.Email, out var profile))
+		{
+			avatarUrl = profile.AvatarUrl;
+		}
+
+		avatarUrl ??= gamePlayer.Player.AvatarUrl;
+		return !string.IsNullOrWhiteSpace(avatarUrl) ? avatarUrl.Trim() : null;
+	}
+
+	private static string? GetSittingOutReason(GamePlayer gamePlayer, int ante, int currentHandNumber)
+	{
+		if (gamePlayer.IsSittingOut)
+		{
+			if (gamePlayer.ChipStack < ante && ante > 0)
+			{
+				return "Insufficient chips";
+			}
+			return "Sitting out";
+		}
+
+		if (gamePlayer.HasFolded && gamePlayer.JoinedAtHandNumber == currentHandNumber)
+		{
+			return "Observing";
+		}
+
+		return null;
 	}
 
 	private List<CardPrivateDto> BuildPrivateHand(GamePlayer gamePlayer, int currentHandNumber)
 	{
+		// Filter cards by current hand number to naturally handle sitting out players.
+		// - During Complete phase: player who just lost all chips still has cards from this hand
+		// - During next hand: their old cards are deleted, so they'll have no cards
 		var allCards = gamePlayer.Cards?.ToList() ?? [];
 		var filteredCards = allCards
 			.Where(c => !c.IsDiscarded && c.HandNumber == currentHandNumber)

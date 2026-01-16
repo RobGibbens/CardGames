@@ -3,10 +3,14 @@
 ## Still to do
 
 ### P1 - Can't play without these
+- [ ] Five card draw is not ordering the cards
 - [ ] Kings and Lows - don't deal to players that don't have enough chips to match the pot
 - [ ] Add chip management to the dashboard (buy in, cash out, add chips)
 - [ ] Test side pots
 - [ ] Don't auto start a new hand. Add a timer, allow pause, allow people to get out of the game or end the game
+- [ ] Make sure all game types handle all ins correctly
+- [ ] Five Card Draw - 3 players: 1 folds, 1 loses all chips, showdown says "wins by fold"
+- [ ] Five Card Draw - 3 players: 1 folds, 1 goes all in, still shows action panel even though one player has no remaining chips.
 
 ### P2 - Important but not blocking play
 - [ ] Make sure all calls are idempotent

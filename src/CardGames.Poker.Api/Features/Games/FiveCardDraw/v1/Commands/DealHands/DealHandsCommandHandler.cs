@@ -57,7 +57,7 @@ public class DealHandsCommandHandler(CardsDbContext context)
 
 		// 3. Get active players who should receive cards
 		var activePlayers = game.GamePlayers
-			.Where(gp => gp.Status == GamePlayerStatus.Active && !gp.HasFolded)
+			.Where(gp => gp.Status == GamePlayerStatus.Active && !gp.HasFolded && !gp.IsSittingOut)
 			.OrderBy(gp => gp.SeatPosition)
 			.ToList();
 

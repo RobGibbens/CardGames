@@ -69,16 +69,17 @@ public class StartHandCommandHandler(CardsDbContext context)
 
 		// 4. Auto-sit-out players with insufficient chips for the ante
 		var ante = game.Ante ?? 0;
+		// Include players with 0 chips (or less than ante) who haven't been sat out yet
 		var playersWithInsufficientChips = game.GamePlayers
 			.Where(gp => gp.Status == GamePlayerStatus.Active &&
 						 !gp.IsSittingOut &&
-						 gp.ChipStack > 0 &&
 						 gp.ChipStack < ante)
 			.ToList();
 
 		foreach (var player in playersWithInsufficientChips)
 		{
 			player.IsSittingOut = true;
+			player.Status = GamePlayerStatus.SittingOut;
 		}
 
 		// 5. Get eligible players (active, not sitting out, chips >= ante or ante is 0)
