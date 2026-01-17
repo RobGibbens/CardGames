@@ -289,29 +289,30 @@ public class ProcessDrawCommandHandler(CardsDbContext context)
 			};
 		}
 
-	private static int FindNextDrawPlayer(Game game, List<GamePlayer> activePlayers, int currentIndex)
-	{
-		// Only consider active players who have not folded, are not all-in, and have not drawn this round
-		var eligiblePlayers = activePlayers
-			.Where(p => !p.HasFolded && !p.IsAllIn && !p.HasDrawnThisRound)
-			.OrderBy(p => p.SeatPosition)
-			.ToList();
-
-		if (!eligiblePlayers.Any())
+		private static int FindNextDrawPlayer(Game game, List<GamePlayer> activePlayers, int currentIndex)
 		{
-			return -1; // All players have drawn
-		}
+			// Consider active players who have not folded and have not drawn this round
+			// All-in players are included - they can still draw cards even though they cannot bet
+			var eligiblePlayers = activePlayers
+				.Where(p => !p.HasFolded && !p.HasDrawnThisRound)
+				.OrderBy(p => p.SeatPosition)
+				.ToList();
 
-		// Find the next eligible player after currentIndex
-		var next = eligiblePlayers.FirstOrDefault(p => p.SeatPosition > currentIndex);
-		if (next != null)
-		{
-			return next.SeatPosition;
-		}
+			if (!eligiblePlayers.Any())
+			{
+				return -1; // All players have drawn
+			}
 
-		// If none found after currentIndex, wrap around to the first eligible
-		return eligiblePlayers.First().SeatPosition;
-	}
+			// Find the next eligible player after currentIndex
+			var next = eligiblePlayers.FirstOrDefault(p => p.SeatPosition > currentIndex);
+			if (next != null)
+			{
+				return next.SeatPosition;
+			}
+
+			// If none found after currentIndex, wrap around to the first eligible
+			return eligiblePlayers.First().SeatPosition;
+		}
 
 	private void StartSecondBettingRound(Game game, List<GamePlayer> activePlayers, DateTimeOffset now)
 	{
@@ -321,8 +322,17 @@ public class ProcessDrawCommandHandler(CardsDbContext context)
 			gamePlayer.CurrentBet = 0;
 		}
 
-		// Find first active player after dealer
-		var firstActorIndex = FindFirstActivePlayerAfterDealer(game, activePlayers);
+		// Find first active player after dealer who can bet (not folded, not all-in)
+		var firstActorIndex = FindFirstActivePlayerAfterDealerForBetting(game, activePlayers);
+
+		// If no players can bet (all are all-in or folded), skip directly to showdown
+		if (firstActorIndex < 0)
+		{
+			game.CurrentPhase = nameof(Phases.Showdown);
+			game.CurrentPlayerIndex = -1;
+			game.CurrentDrawPlayerIndex = -1;
+			return;
+		}
 
 		// Create betting round record
 		var bettingRound = new BettingRound
@@ -352,7 +362,11 @@ public class ProcessDrawCommandHandler(CardsDbContext context)
 		game.CurrentDrawPlayerIndex = -1;
 	}
 
-	private static int FindFirstActivePlayerAfterDealer(Game game, List<GamePlayer> activePlayers)
+	/// <summary>
+	/// Finds the first active player after the dealer who can bet.
+	/// Excludes folded and all-in players since they cannot participate in betting.
+	/// </summary>
+	private static int FindFirstActivePlayerAfterDealerForBetting(Game game, List<GamePlayer> activePlayers)
 	{
 		var totalPlayers = game.GamePlayers.Count;
 		var searchIndex = (game.DealerPosition + 1) % totalPlayers;

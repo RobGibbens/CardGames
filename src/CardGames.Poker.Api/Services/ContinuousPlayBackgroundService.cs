@@ -21,7 +21,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 	/// <summary>
 	/// Duration in seconds for the results display period before starting the next hand.
 	/// </summary>
-	public const int ResultsDisplayDurationSeconds = 15;
+	public const int ResultsDisplayDurationSeconds = 8;
 
 	/// <summary>
 	/// Duration in seconds for the draw complete display period before transitioning to showdown.

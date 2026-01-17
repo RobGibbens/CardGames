@@ -361,6 +361,22 @@ public class FiveCardDrawGame : IPokerGame
         switch (CurrentPhase)
         {
             case Phases.FirstBettingRound:
+                // Calculate side pots if any players are all-in
+                var hasAllIn = _gamePlayers.Any(gp => gp.Player.IsAllIn && !gp.Player.HasFolded);
+                if (hasAllIn)
+                {
+                    _potManager.CalculateSidePots(_gamePlayers.Select(gp => gp.Player));
+                }
+
+                // Check if all remaining players are all-in (skip draw phase)
+                var activePlayersWhoCanAct = _gamePlayers.Count(gp => !gp.Player.HasFolded && !gp.Player.IsAllIn);
+                if (activePlayersWhoCanAct == 0)
+                {
+                    // Skip draw phase and go directly to showdown
+                    CurrentPhase = Phases.Showdown;
+                    return;
+                }
+
                 CurrentPhase = Phases.DrawPhase;
                 _currentDrawPlayerIndex = FindFirstActivePlayerAfterDealer();
                 _playersWhoHaveDrawn = [];

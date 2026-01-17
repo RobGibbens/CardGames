@@ -57,6 +57,11 @@ public class PotManager
     /// </summary>
     public void AddContribution(string playerName, int amount)
     {
+        if (amount < 0)
+        {
+            throw new ArgumentException("Contribution amount cannot be negative", nameof(amount));
+        }
+
         if (!_contributions.TryAdd(playerName, amount))
         {
             _contributions[playerName] += amount;
@@ -84,7 +89,8 @@ public class PotManager
     /// </summary>
     public void CalculateSidePots(IEnumerable<PokerPlayer> players)
     {
-        var activePlayers = players.Where(p => !p.HasFolded).ToList();
+        var allPlayers = players.ToList();
+        var activePlayers = allPlayers.Where(p => !p.HasFolded).ToList();
         if (activePlayers.Count < 2)
         {
             return;
@@ -105,7 +111,7 @@ public class PotManager
         }
 
         // Recalculate pots from scratch
-        var totalAmount = _pots.Sum(p => p.Amount);
+        var totalAmount = _contributions.Values.Sum();
         _pots.Clear();
 
         var previousLevel = 0;
@@ -114,7 +120,7 @@ public class PotManager
             var potAmount = 0;
             var eligiblePlayers = new HashSet<string>();
 
-            foreach (var player in activePlayers)
+            foreach (var player in allPlayers)
             {
                 var contribution = _contributions.TryGetValue(player.Name, out var c) ? c : 0;
                 if (contribution >= level)
@@ -123,7 +129,10 @@ public class PotManager
                     if (contributionToThisPot > 0)
                     {
                         potAmount += contributionToThisPot;
-                        eligiblePlayers.Add(player.Name);
+                        if (!player.HasFolded)
+                        {
+                            eligiblePlayers.Add(player.Name);
+                        }
                     }
                 }
             }
@@ -143,14 +152,17 @@ public class PotManager
             var finalPotAmount = 0;
             var eligibleForFinal = new HashSet<string>();
 
-            foreach (var player in activePlayers)
+            foreach (var player in allPlayers)
             {
                 var contribution = _contributions.TryGetValue(player.Name, out var c) ? c : 0;
                 if (contribution > previousLevel)
                 {
                     var contributionToFinal = contribution - previousLevel;
                     finalPotAmount += contributionToFinal;
-                    eligibleForFinal.Add(player.Name);
+                    if (!player.HasFolded)
+                    {
+                        eligibleForFinal.Add(player.Name);
+                    }
                 }
             }
 

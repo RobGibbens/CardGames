@@ -340,6 +340,21 @@ public class FollowTheQueenGame : IPokerGame
             return;
         }
 
+        // Calculate side pots if any players are all-in
+        var hasAllIn = _gamePlayers.Any(gp => gp.Player.IsAllIn && !gp.Player.HasFolded);
+        if (hasAllIn)
+        {
+            _potManager.CalculateSidePots(_gamePlayers.Select(gp => gp.Player));
+        }
+
+        // Check if all remaining players are all-in (skip to showdown)
+        var activePlayersWhoCanAct = _gamePlayers.Count(gp => !gp.Player.HasFolded && !gp.Player.IsAllIn);
+        if (activePlayersWhoCanAct == 0)
+        {
+            CurrentPhase = Phases.Showdown;
+            return;
+        }
+
         // Reset current bets for next round
         foreach (var gamePlayer in _gamePlayers)
         {
@@ -361,7 +376,6 @@ public class FollowTheQueenGame : IPokerGame
                 CurrentPhase = Phases.SeventhStreet;
                 break;
             case Phases.SeventhStreet:
-                _potManager.CalculateSidePots(_gamePlayers.Select(gp => gp.Player));
                 CurrentPhase = Phases.Showdown;
                 break;
         }

@@ -155,7 +155,7 @@ public class BettingRoundTests
         round.IsComplete.Should().BeFalse();
     }
 
-    private static List<PokerPlayer> CreateTwoPlayers(int chipStack = 1000)
+    private static List<PokerPlayer> CreateTwoPlayers(int chipStack = 5000)
     {
         return
         [
