@@ -11,6 +11,20 @@
 - [ ] Make sure all game types handle all ins correctly
 - [ ] Five Card Draw - 3 players: 1 folds, 1 loses all chips, showdown says "wins by fold"
 - [ ] Five Card Draw - 3 players: 1 folds, 1 goes all in, still shows action panel even though one player has no remaining chips.
+- [ ] Kings and Lows - Should make it obvious when someone dropped
+- [ ] Kings and Lows - Things happen too fast
+- [ ] Kings and Lows - Hand history is not working
+- [ ] Kings and Lows - Play for a while and the pot disappears
+- [ ] Should always be able to see people's names
+- [ ] Make hand history more detailed
+- [ ] Showdown disappeared immediately
+- [ ] Dashboard should be scrollable
+- [ ] Sit out button is missing
+- [ ] Seven card stud is ordering cards wrong
+- [ ] SCS - when all players go all in - still need to draw cards
+- [ ] SCS - when a player has no chips, they're still getting dealt and can take action
+- [ ] SCS - odds should calculate based on future cards
+
 
 ### P2 - Important but not blocking play
 - [ ] Make sure all calls are idempotent
