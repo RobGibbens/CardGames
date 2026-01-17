@@ -25,7 +25,7 @@ namespace CardGames.Poker.Games.KingsAndLows;
 	name:"Kings and Lows",
 	description:"A five-card draw poker variant where kings and the lowest card are wild. Players ante, decide to drop or stay, draw cards, and losers match the pot.",
 	minimumNumberOfPlayers:2,
-	maximumNumberOfPlayers:5,
+	maximumNumberOfPlayers:6,
     initialHoleCards:5,
     initialBoardCards:0,
     maxCommunityCards:0,

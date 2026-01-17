@@ -294,9 +294,29 @@
             return [];
         }
 
-        // Sort by deal order to preserve the order in which cards were dealt.
-        // This is important for stud-style games where card order matters.
-        return Seat.Cards.OrderBy(c => c.DealOrder);
+        // Sort by card value (2 lowest, Ace highest) for Five Card Draw display.
+        return Seat.Cards.OrderBy(GetCardValueOrder);
+    }
+
+    private static int GetCardValueOrder(CardInfo card)
+    {
+        return card.Rank switch
+        {
+            "2" => 2,
+            "3" => 3,
+            "4" => 4,
+            "5" => 5,
+            "6" => 6,
+            "7" => 7,
+            "8" => 8,
+            "9" => 9,
+            "10" => 10,
+            "J" => 11,
+            "Q" => 12,
+            "K" => 13,
+            "A" => 14,
+            _ => 0
+        };
     }
 
     private string? GetPlayingCardRank(CardInfo card)

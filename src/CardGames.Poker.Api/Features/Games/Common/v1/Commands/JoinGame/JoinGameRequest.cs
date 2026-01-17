@@ -4,5 +4,5 @@ namespace CardGames.Poker.Api.Features.Games.Common.v1.Commands.JoinGame;
 /// Request model for joining a game.
 /// </summary>
 /// <param name="SeatIndex">The zero-based seat index to occupy.</param>
-/// <param name="StartingChips">The initial chip stack for the player. Defaults to 1000.</param>
-public record JoinGameRequest(int SeatIndex, int StartingChips = 1000);
+/// <param name="StartingChips">The initial chip stack for the player. Defaults to 5000.</param>
+public record JoinGameRequest(int SeatIndex, int StartingChips = 5000);

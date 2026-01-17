@@ -35,7 +35,7 @@ internal class FollowTheQueenPlayCommand : Command<FollowTheQueenPlaySettings>
         }
 
         var startingChips = settings.StartingChips == default
-            ? AnsiConsole.Ask<int>("Starting chips per player: ", 1000)
+            ? AnsiConsole.Ask<int>("Starting chips per player: ", 5000)
             : settings.StartingChips;
 
         var ante = settings.Ante == default

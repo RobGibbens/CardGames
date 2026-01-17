@@ -11,7 +11,7 @@ internal class PlaySettings : CommandSettings
 
     [Description("Starting chips for each player")]
     [CommandOption("-c|--chips")]
-    public int StartingChips { get; set; } = 1000;
+    public int StartingChips { get; set; } = 5000;
 
     [Description("Ante amount")]
     [CommandOption("-a|--ante")]

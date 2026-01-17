@@ -16,408 +16,404 @@
 <AuthenticatedNavBar />
 
 <main class="create-table-main">
-    <div class="create-table-container">
-        <!-- Page Header -->
-        <div class="create-table-header">
-            <a href="/lobby" class="back-link">
-                <i class="fa-regular fa-arrow-left"></i>
-                Back to Lobby
-            </a>
-            <div class="create-table-header-content">
-                <h1 class="create-table-title">
-                    <i class="fa-regular fa-plus"></i>
-                    Create New Table
-                </h1>
-                <p class="create-table-subtitle">Set up your private poker game and invite friends to play</p>
-            </div>
-        </div>
+	<div class="create-table-container">
+		<!-- Page Header -->
+		<div class="create-table-header">
+			<a href="/lobby" class="back-link">
+				<i class="fa-regular fa-arrow-left"></i>
+				Back to Lobby
+			</a>
+			<div class="create-table-header-content">
+				<h1 class="create-table-title">
+					<i class="fa-regular fa-plus"></i>
+					Create New Table
+				</h1>
+				<p class="create-table-subtitle">Set up your private poker game and invite friends to play</p>
+			</div>
+		</div>
 
-        @if (_isLoading)
-        {
-            <div class="create-table-loading">
-                <div class="loading-spinner"></div>
-                <p>Loading game variants...</p>
-            </div>
-        }
-        else if (_loadError is not null)
-        {
-            <div class="create-table-error">
-                <div class="error-icon">⚠️</div>
-                <h3>Failed to Load</h3>
-                <p>@_loadError</p>
-                <button class="btn btn-primary" @onclick="LoadAvailableGamesAsync">Try Again</button>
-            </div>
-        }
-        else
-        {
-            <div class="create-table-content">
-                <!-- Step 1: Choose Variant -->
-                <section class="create-step">
-                    <div class="step-header">
-                        <span class="step-number">1</span>
-                        <div class="step-info">
-                            <h2 class="step-title">Choose Game Variant</h2>
-                            <p class="step-description">Select the poker variant you want to play</p>
-                        </div>
-                    </div>
-                    <div class="variants-grid">
-                        @foreach (var game in VariantCards)
-                        {
-                            var isAvailable = IsGameAvailable(game.Name);
-                            <div class="variant-card @(_selectedVariant?.Name == game.Name ? "selected" : "") @(!isAvailable ? "disabled" : "")"
-                                 @onclick="() => SelectVariant(game, isAvailable)">
-                                <div class="variant-icon">
-                                    @if (!string.IsNullOrEmpty(game.ImageName))
-                                    {
-                                        <img src="/images/games/@(game.ImageName)" alt="@game.Name" class="variant-icon-image" />
-                                    }
-                                    else
-                                    {
-                                        <span class="variant-icon-fallback">🃏</span>
-                                    }
-                                </div>
-                                <h3 class="variant-name">@game.Name</h3>
-                                <p class="variant-description">@game.Description</p>
-                                <div class="variant-meta">
-                                    <span class="variant-players">
-                                        <i class="fa-regular fa-users"></i>
-                                        @game.MinimumNumberOfPlayers-@game.MaximumNumberOfPlayers players
-                                    </span>
-                                </div>
-                                @if (!isAvailable)
-                                {
-                                    <span class="variant-badge coming-soon">Coming Soon</span>
-                                }
-                                @if (_selectedVariant?.Name == game.Name)
-                                {
-                                    <span class="variant-selected-indicator">✓</span>
-                                }
-                            </div>
-                        }
-                    </div>
-                </section>
+		@if (_isLoading)
+		{
+			<div class="create-table-loading">
+				<div class="loading-spinner"></div>
+				<p>Loading game variants...</p>
+			</div>
+		}
+		else if (_loadError is not null)
+		{
+			<div class="create-table-error">
+				<div class="error-icon">⚠️</div>
+				<h3>Failed to Load</h3>
+				<p>@_loadError</p>
+				<button class="btn btn-primary" @onclick="LoadAvailableGamesAsync">Try Again</button>
+			</div>
+		}
+		else
+		{
+			<div class="create-table-content">
+				<!-- Step 1: Choose Variant -->
+				<section class="create-step">
+					<div class="step-header">
+						<span class="step-number">1</span>
+						<div class="step-info">
+							<h2 class="step-title">Choose Game Variant</h2>
+							<p class="step-description">Select the poker variant you want to play</p>
+						</div>
+					</div>
+					<div class="variants-grid">
+						@foreach (var game in VariantCards)
+						{
+							var isAvailable = IsGameAvailable(game.Name);
+							<div class="variant-card @(_selectedVariant?.Name == game.Name ? "selected" : "") @(!isAvailable ? "disabled" : "")"
+								 @onclick="() => SelectVariant(game, isAvailable)">
+								<div class="variant-icon">
+									@if (!string.IsNullOrEmpty(game.ImageName))
+									{
+										<img src="/images/games/@(game.ImageName)" alt="@game.Name" class="variant-icon-image" />
+									}
+									else
+									{
+										<span class="variant-icon-fallback">🃏</span>
+									}
+								</div>
+								<h3 class="variant-name">@game.Name</h3>
+								<p class="variant-description">@game.Description</p>
+								<div class="variant-meta">
+									<span class="variant-players">
+										<i class="fa-regular fa-users"></i>
+										@game.MinimumNumberOfPlayers-@game.MaximumNumberOfPlayers players
+									</span>
+								</div>
+								@if (!isAvailable)
+								{
+									<span class="variant-badge coming-soon">Coming Soon</span>
+								}
+								@if (_selectedVariant?.Name == game.Name)
+								{
+									<span class="variant-selected-indicator">✓</span>
+								}
+							</div>
+						}
+					</div>
+				</section>
 
-                @if (_selectedVariant is not null)
-                {
-                    <!-- Step 2: Table Settings -->
-                    <section class="create-step animate-fade-in-up">
-                        <div class="step-header">
-                            <span class="step-number">2</span>
-                            <div class="step-info">
-                                <h2 class="step-title">Table Settings</h2>
-                                <p class="step-description">Configure your table name and game rules</p>
-                            </div>
-                        </div>
-                        <div class="settings-form">
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label class="form-label" for="tableName">Table Name</label>
-                                    <input type="text"
-                                           id="tableName"
-                                           class="form-input"
-                                           placeholder="e.g., Friday Night Poker"
-                                           @bind="_tableName"
-                                           maxlength="50" />
-                                    <span class="form-hint">Give your table a memorable name</span>
-                                </div>
-                            </div>
-                            <div class="form-row two-columns">
-                                <div class="form-group">
-                                    <label class="form-label" for="ante">Ante</label>
-                                    <input type="number"
-                                           id="ante"
-                                           class="form-input"
-                                           min="1"
-                                           max="100"
-                                           @bind-value="_ante"
-                                           @bind-value:event="oninput" />
-                                    <span class="form-hint">Mandatory bet before each hand</span>
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label" for="minBet">Minimum Bet</label>
-                                    <input type="number"
-                                           id="minBet"
-                                           class="form-input"
-                                           min="1"
-                                           max="1000"
-                                           @bind-value="_minBet"
-                                           @bind-value:event="oninput" />
-                                    <span class="form-hint">Minimum bet during play</span>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
+				@if (_selectedVariant is not null)
+				{
+					<!-- Step 2: Table Settings -->
+					<section class="create-step animate-fade-in-up">
+						<div class="step-header">
+							<span class="step-number">2</span>
+							<div class="step-info">
+								<h2 class="step-title">Table Settings</h2>
+								<p class="step-description">Configure your table name and game rules</p>
+							</div>
+						</div>
+						<div class="settings-form">
+							<div class="form-row">
+								<div class="form-group">
+									<label class="form-label" for="tableName">Table Name</label>
+									<input type="text"
+										   id="tableName"
+										   class="form-input"
+										   placeholder="e.g., Friday Night Poker"
+										   @bind="_tableName"
+										   maxlength="50" />
+									<span class="form-hint">Give your table a memorable name</span>
+								</div>
+							</div>
+							<div class="form-row two-columns">
+								<div class="form-group">
+									<label class="form-label" for="ante">Ante</label>
+									<input type="number"
+										   id="ante"
+										   class="form-input"
+										   min="1"
+										   max="100"
+										   @bind-value="_ante"
+										   @bind-value:event="oninput" />
+									<span class="form-hint">Mandatory bet before each hand</span>
+								</div>
+								<div class="form-group">
+									<label class="form-label" for="minBet">Minimum Bet</label>
+									<input type="number"
+										   id="minBet"
+										   class="form-input"
+										   min="1"
+										   max="1000"
+										   @bind-value="_minBet"
+										   @bind-value:event="oninput" />
+									<span class="form-hint">Minimum bet during play</span>
+								</div>
+							</div>
+						</div>
+					</section>
 
-                    <!-- Step 3: Add Players -->
-                    <section class="create-step animate-fade-in-up animate-delay-1">
-                        <div class="step-header">
-                            <span class="step-number">3</span>
-                            <div class="step-info">
-                                <h2 class="step-title">Add Players</h2>
-                                <p class="step-description">Add players to join your table (@_selectedVariant.MinimumNumberOfPlayers-@_selectedVariant.MaximumNumberOfPlayers players)</p>
-                            </div>
-                        </div>
-                        <div class="players-section">
-                            <div class="players-list">
-                                @for (var i = 0; i < _players.Count; i++)
-                                {
-                                    var index = i;
-                                    <div class="player-row">
-                                        <span class="player-seat">Seat @(i + 1)</span>
-                                        <input type="text"
-                                               class="form-input player-name-input"
-                                               placeholder="Player name"
-                                               value="@_players[index].Name"
-                                               @onchange="@(e => UpdatePlayerName(index, e.Value?.ToString() ?? string.Empty))" />
-                                        <input type="number"
-                                               class="form-input player-chips-input"
-                                               placeholder="Chips"
-                                               min="100"
-                                               max="100000"
-                                               value="@_players[index].StartingChips"
-                                               @onchange="@(e => UpdatePlayerChips(index, e.Value?.ToString() ?? "1000"))" />
-                                        @if (_players.Count > _selectedVariant.MinimumNumberOfPlayers)
-                                        {
-                                            <button type="button" class="btn-icon btn-remove" @onclick="() => RemovePlayer(index)" title="Remove player">
-                                                <i class="fa-regular fa-times"></i>
-                                            </button>
-                                        }
-                                    </div>
-                                }
-                            </div>
-                            @if (_players.Count < _selectedVariant.MaximumNumberOfPlayers)
-                            {
-                                <button type="button" class="btn btn-secondary add-player-btn" @onclick="AddPlayer">
-                                    <i class="fa-regular fa-plus"></i>
-                                    Add Player
-                                </button>
-                            }
-                        </div>
-                    </section>
+					<!-- Step 3: Add Players -->
+					<section class="create-step animate-fade-in-up animate-delay-1">
+						<div class="step-header">
+							<span class="step-number">3</span>
+							<div class="step-info">
+								<h2 class="step-title">Add Players</h2>
+								<p class="step-description">Add players to join your table (@_selectedVariant.MinimumNumberOfPlayers-@_selectedVariant.MaximumNumberOfPlayers players)</p>
+							</div>
+						</div>
+						<div class="players-section">
+							<div class="players-list">
+								@for (var i = 0; i < _players.Count; i++)
+								{
+									var index = i;
+									<div class="player-row">
+										<span class="player-seat">Seat @(i + 1)</span>
+										<input type="text"
+											   class="form-input player-name-input"
+											   placeholder="Player name"
+											   value="@_players[index].Name"
+											   @onchange="@(e => UpdatePlayerName(index, e.Value?.ToString() ?? string.Empty))" />
+										<input type="number"
+											   class="form-input player-chips-input"
+											   placeholder="Chips"
+											   min="100"
+											   max="100000"
+											   value="@_players[index].StartingChips"
+											   @onchange="@(e => UpdatePlayerChips(index, e.Value?.ToString() ?? "5000"))" />
+										<button type="button" class="btn-icon btn-remove" @onclick="() => RemovePlayer(index)" title="Remove player">
+											<i class="fa-regular fa-times"></i>
+										</button>
+									</div>
+								}
+							</div>
+							@if (_players.Count < _selectedVariant.MaximumNumberOfPlayers)
+							{
+								<button type="button" class="btn btn-secondary add-player-btn" @onclick="AddPlayer">
+									<i class="fa-regular fa-plus"></i>
+									Add Player
+								</button>
+							}
+						</div>
+					</section>
 
-                    <!-- Create Button -->
-                    <div class="create-actions animate-fade-in-up animate-delay-2">
-                        @if (_createError is not null)
-                        {
-                            <div class="create-error-message">
-                                <i class="fa-regular fa-circle-exclamation"></i>
-                                @_createError
-                            </div>
-                        }
-                        <button class="btn btn-primary btn-lg create-table-btn"
-                                @onclick="CreateTableAsync"
-                                disabled="@(!CanCreate || _isCreating)">
-                            @if (_isCreating)
-                            {
-                                <span class="loading-spinner-small"></span>
-                                <span>Creating...</span>
-                            }
-                            else
-                            {
-                                <i class="fa-regular fa-check"></i>
-                                <span>Create Table</span>
-                            }
-                        </button>
-                        <p class="create-hint">You'll be able to share an invite link after creating the table</p>
-                    </div>
-                }
-            </div>
-        }
-    </div>
+					<!-- Create Button -->
+					<div class="create-actions animate-fade-in-up animate-delay-2">
+						@if (_createError is not null)
+						{
+							<div class="create-error-message">
+								<i class="fa-regular fa-circle-exclamation"></i>
+								@_createError
+							</div>
+						}
+						<button class="btn btn-primary btn-lg create-table-btn"
+								@onclick="CreateTableAsync"
+								disabled="@(!CanCreate || _isCreating)">
+							@if (_isCreating)
+							{
+								<span class="loading-spinner-small"></span>
+								<span>Creating...</span>
+							}
+							else
+							{
+								<i class="fa-regular fa-check"></i>
+								<span>Create Table</span>
+							}
+						</button>
+						<p class="create-hint">You'll be able to share an invite link after creating the table</p>
+					</div>
+				}
+			</div>
+		}
+	</div>
 </main>
 
 @code {
-    private bool _isLoading = true;
-    private bool _isCreating;
-    private string? _loadError;
-    private string? _createError;
-    private string _tableName = "";
-    private int _ante = 5;
-    private int _minBet = 10;
-    private readonly List<PlayerInput> _players = [];
-    private List<GetAvailablePokerGamesResponse> _availableGames = [];
-    private GetAvailablePokerGamesResponse? _selectedVariant;
+	private bool _isLoading = true;
+	private bool _isCreating;
+	private string? _loadError;
+	private string? _createError;
+	private string _tableName = "";
+	private int _ante = 5;
+	private int _minBet = 10;
+	private readonly List<PlayerInput> _players = [];
+	private List<GetAvailablePokerGamesResponse> _availableGames = [];
+	private GetAvailablePokerGamesResponse? _selectedVariant;
 
-    private IEnumerable<GetAvailablePokerGamesResponse> VariantCards
-    {
-        get
-        {
-            if (_selectedVariant is not null)
-            {
-                return [_selectedVariant];
-            }
+	private IEnumerable<GetAvailablePokerGamesResponse> VariantCards
+	{
+		get
+		{
+			if (_selectedVariant is not null)
+			{
+				return [_selectedVariant];
+			}
 
-            return _availableGames
-                .OrderBy(g => g.Name, StringComparer.OrdinalIgnoreCase);
-        }
-    }
+			return _availableGames
+				.OrderBy(g => g.Name, StringComparer.OrdinalIgnoreCase);
+		}
+	}
 
-    private bool CanCreate =>
-        _selectedVariant is not null &&
-        !string.IsNullOrWhiteSpace(_tableName) &&
-        _players.Count >= (_selectedVariant?.MinimumNumberOfPlayers ?? 2) &&
-        _players.All(p => !string.IsNullOrWhiteSpace(p.Name) && p.StartingChips > 0);
+	private bool CanCreate =>
+		_selectedVariant is not null &&
+		!string.IsNullOrWhiteSpace(_tableName) &&
+		_players.All(p => !string.IsNullOrWhiteSpace(p.Name) && p.StartingChips > 0);
 
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadAvailableGamesAsync();
-    }
+	protected override async Task OnInitializedAsync()
+	{
+		await LoadAvailableGamesAsync();
+	}
 
-    private async Task LoadAvailableGamesAsync()
-    {
-        _isLoading = true;
-        _loadError = null;
-        StateHasChanged();
+	private async Task LoadAvailableGamesAsync()
+	{
+		_isLoading = true;
+		_loadError = null;
+		StateHasChanged();
 
-        try
-        {
-            var response = await AvailableGamesApi.GetAvailablePokerGamesAsync(null);
+		try
+		{
+			var response = await AvailableGamesApi.GetAvailablePokerGamesAsync(null);
 
-            if (response.IsSuccessStatusCode && response.Content is not null)
-            {
-                _availableGames = response.Content.ToList();
-            }
-            else
-            {
-                _loadError = "Unable to load available game variants. Please try again.";
-            }
-        }
-        catch (Exception ex)
-        {
-            _loadError = $"An error occurred: {ex.Message}";
-        }
-        finally
-        {
-            _isLoading = false;
-            StateHasChanged();
-        }
-    }
+			if (response.IsSuccessStatusCode && response.Content is not null)
+			{
+				_availableGames = response.Content.ToList();
+			}
+			else
+			{
+				_loadError = "Unable to load available game variants. Please try again.";
+			}
+		}
+		catch (Exception ex)
+		{
+			_loadError = $"An error occurred: {ex.Message}";
+		}
+		finally
+		{
+			_isLoading = false;
+			StateHasChanged();
+		}
+	}
 
-    private void SelectVariant(GetAvailablePokerGamesResponse variant, bool isAvailable)
-    {
-        if (!isAvailable)
-        {
-            return;
-        }
+	private void SelectVariant(GetAvailablePokerGamesResponse variant, bool isAvailable)
+	{
+		if (!isAvailable)
+		{
+			return;
+		}
 
-        if (_selectedVariant?.Name == variant.Name)
-        {
-            _selectedVariant = null;
-            return;
-        }
+		if (_selectedVariant?.Name == variant.Name)
+		{
+			_selectedVariant = null;
+			return;
+		}
 
-        _selectedVariant = variant;
+		_selectedVariant = variant;
 
-        // Initialize players list with minimum required players
-        //TODO:ROB - Don't hard code this
-        _players.Add(new PlayerInput { Name = $"robgibbens@gmail.com", StartingChips = 1000 });
-        _players.Add(new PlayerInput { Name = $"deangibbens@gmail.com", StartingChips = 1000 });
-        _players.Add(new PlayerInput { Name = $"lynnegibbens@gmail.com", StartingChips = 1000 });
-        _players.Add(new PlayerInput { Name = $"iangibbens@gmail.com", StartingChips = 1000 });
+		// Initialize players list with minimum required players
+		//TODO:ROB - Don't hard code this
+		_players.Add(new PlayerInput { Name = $"robgibbens@gmail.com", StartingChips = 5000 });
+		// _players.Add(new PlayerInput { Name = $"deangibbens@gmail.com", StartingChips = 5000 });
+		// _players.Add(new PlayerInput { Name = $"lynnegibbens@gmail.com", StartingChips = 5000 });
+		// _players.Add(new PlayerInput { Name = $"iangibbens@gmail.com", StartingChips = 5000 });
 
-        // if (players.Count == 0)
-        // {
-        //     players = Enumerable.Range(1, variant.MinimumNumberOfPlayers)
-        //         .Select(i => new PlayerInput { Name = $"Player {i}", StartingChips = 1000 })
-        //         .ToList();
-        // }
-    }
+		// if (players.Count == 0)
+		// {
+		//     players = Enumerable.Range(1, variant.MinimumNumberOfPlayers)
+		//         .Select(i => new PlayerInput { Name = $"Player {i}", StartingChips = 5000 })
+		//         .ToList();
+		// }
+	}
 
-    private void AddPlayer()
-    {
-        if (_selectedVariant is null || _players.Count >= _selectedVariant.MaximumNumberOfPlayers)
-        {
-            return;
-        }
+	private void AddPlayer()
+	{
+		if (_selectedVariant is null || _players.Count >= _selectedVariant.MaximumNumberOfPlayers)
+		{
+			return;
+		}
 
-        _players.Add(new PlayerInput { Name = $"Player {_players.Count + 1}", StartingChips = 1000 });
-    }
+		_players.Add(new PlayerInput { Name = $"Player {_players.Count + 1}", StartingChips = 5000 });
+	}
 
-    private void RemovePlayer(int index)
-    {
-        if (_selectedVariant is null || _players.Count <= _selectedVariant.MinimumNumberOfPlayers)
-        {
-            return;
-        }
+	private void RemovePlayer(int index)
+	{
+		if (_selectedVariant is null)
+		{
+			return;
+		}
 
-        _players.RemoveAt(index);
-    }
+		_players.RemoveAt(index);
+	}
 
-    private void UpdatePlayerName(int index, string name)
-    {
-        if (index >= 0 && index < _players.Count)
-        {
-            _players[index] = _players[index] with { Name = name };
-        }
-    }
+	private void UpdatePlayerName(int index, string name)
+	{
+		if (index >= 0 && index < _players.Count)
+		{
+			_players[index] = _players[index] with { Name = name };
+		}
+	}
 
-    private void UpdatePlayerChips(int index, string chipsStr)
-    {
-        if (index >= 0 && index < _players.Count && int.TryParse(chipsStr, out var chips))
-        {
-            _players[index] = _players[index] with { StartingChips = chips };
-        }
-    }
+	private void UpdatePlayerChips(int index, string chipsStr)
+	{
+		if (index >= 0 && index < _players.Count && int.TryParse(chipsStr, out var chips))
+		{
+			_players[index] = _players[index] with { StartingChips = chips };
+		}
+	}
 
-    private async Task CreateTableAsync()
-    {
-        if (!CanCreate || _selectedVariant is null)
-        {
-            return;
-        }
+	private async Task CreateTableAsync()
+	{
+		if (!CanCreate || _selectedVariant is null)
+		{
+			return;
+		}
 
-        _isCreating = true;
-        _createError = null;
-        StateHasChanged();
+		_isCreating = true;
+		_createError = null;
+		StateHasChanged();
 
-        try
-        {
+		try
+		{
 			var gameId = Guid.CreateVersion7();
 
-            var playerInfos = _players
-                .Select(p => new PlayerInfo(p.Name, p.StartingChips))
-                .ToList();
-            
-            var command = new CreateGameCommand(_ante, _selectedVariant.Code , gameId, _tableName, _minBet, playerInfos);
+			var playerInfos = _players
+				.Select(p => new PlayerInfo(p.Name, p.StartingChips))
+				.ToList();
 
-            // Call the appropriate API based on the selected variant
-            Guid? createdGameId = null;
-            var response = await GamesApi.CreateGameAsync(command);
-            if (response.IsSuccessStatusCode && response.Content != Guid.Empty)
-            {
-                createdGameId = response.Content;
-            }
+			var command = new CreateGameCommand(_ante, _selectedVariant.Code, gameId, _tableName, _minBet, playerInfos);
 
-            if (createdGameId.HasValue)
-            {
-                // Navigate to the newly created game
-                NavigationManager.NavigateTo($"/table/{createdGameId.Value}");
-            }
-            else
-            {
-                _createError = "Failed to create the table. Please check your settings and try again.";
-            }
-        }
-        catch (Exception ex)
-        {
-            _createError = $"An error occurred: {ex.Message}";
-        }
-        finally
-        {
-            _isCreating = false;
-            StateHasChanged();
-        }
-    }
+			// Call the appropriate API based on the selected variant
+			Guid? createdGameId = null;
+			var response = await GamesApi.CreateGameAsync(command);
+			if (response.IsSuccessStatusCode && response.Content != Guid.Empty)
+			{
+				createdGameId = response.Content;
+			}
 
-    private static bool IsGameAvailable(string gameName)
-    {
-        // Games that are fully implemented and available for play
-        return gameName is "Five Card Draw" or "Twos, Jacks, Man with the Axe" or "Kings and Lows" or "Seven Card Stud"; //TODO:ROB - This is a stupid way to do this
-    }
+			if (createdGameId.HasValue)
+			{
+				// Navigate to the newly created game
+				NavigationManager.NavigateTo($"/table/{createdGameId.Value}");
+			}
+			else
+			{
+				_createError = "Failed to create the table. Please check your settings and try again.";
+			}
+		}
+		catch (Exception ex)
+		{
+			_createError = $"An error occurred: {ex.Message}";
+		}
+		finally
+		{
+			_isCreating = false;
+			StateHasChanged();
+		}
+	}
 
-    private record PlayerInput
-    {
-        public string Name { get; init; } = "";
-        public int StartingChips { get; init; } = 1000;
-    }
+	private static bool IsGameAvailable(string gameName)
+	{
+		// Games that are fully implemented and available for play
+		return gameName is "Five Card Draw" or "Twos, Jacks, Man with the Axe" or "Kings and Lows" or "Seven Card Stud"; //TODO:ROB - This is a stupid way to do this
+	}
+
+	private record PlayerInput
+	{
+		public string Name { get; init; } = "";
+		public int StartingChips { get; init; } = 5000;
+	}
 }
