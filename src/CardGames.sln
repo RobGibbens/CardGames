@@ -23,30 +23,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CardGames.Core.Benchmarks",
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{1F3CFDF9-CDB0-4C87-AB9E-45E41E7F933B}"
 	ProjectSection(SolutionItems) = preProject
-		..\ADDING_NEW_GAMES.md = ..\ADDING_NEW_GAMES.md
-		..\ARCHITECTURE.md = ..\ARCHITECTURE.md
-		Avatar.png = Avatar.png
-		ContinuousPlay.md = ContinuousPlay.md
-		copilot_instructions.md = copilot_instructions.md
-		Dashboard.md = Dashboard.md
-		..\DYNAMIC_UI_PLAN.md = ..\DYNAMIC_UI_PLAN.md
-		EditTable.md = EditTable.md
-		History.md = History.md
-		..\IMPLEMENTATION_SUMMARY.md = ..\IMPLEMENTATION_SUMMARY.md
-		LittleCards.png = LittleCards.png
-		MaxDiscards.md = MaxDiscards.md
-		nameline.png = nameline.png
-		plan-twosJacksManWithTheAxe.prompt.md = plan-twosJacksManWithTheAxe.prompt.md
-		PlayPage.md = PlayPage.md
-		PokerStars.png = PokerStars.png
-		PokerStars1.png = PokerStars1.png
-		PRD.md = PRD.md
-		..\README.md = ..\README.md
-		sevenCardStudDesignDoc.md = sevenCardStudDesignDoc.md
-		..\SidePots.md = ..\SidePots.md
-		SignalRPRD.md = SignalRPRD.md
-		TODO.md = TODO.md
-		Yahoo.md = Yahoo.md
+		..\TODO.md = ..\TODO.md
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CardGames.Playground", "CardGames.Playground\CardGames.Playground.csproj", "{CD33543C-F302-2E9F-4386-870064124019}"
@@ -72,6 +49,30 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Main Projects", "Main Projects", "{3D6D91D8-C770-46E0-A3DA-385E18E29E47}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Other Projects", "Other Projects", "{6D6A7AF3-53CB-4251-8906-C1F584CEDDB6}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{07D268B8-C250-4557-A718-A531BB3092C9}"
+	ProjectSection(SolutionItems) = preProject
+		..\docs\ADDING_NEW_GAMES.md = ..\docs\ADDING_NEW_GAMES.md
+		..\docs\ARCHITECTURE.md = ..\docs\ARCHITECTURE.md
+		..\docs\ContinuousPlay.md = ..\docs\ContinuousPlay.md
+		..\docs\Dashboard.md = ..\docs\Dashboard.md
+		..\docs\DYNAMIC_UI_PLAN.md = ..\docs\DYNAMIC_UI_PLAN.md
+		..\docs\EditTable.md = ..\docs\EditTable.md
+		..\docs\History.md = ..\docs\History.md
+		..\docs\IMPLEMENTATION_STATUS.md = ..\docs\IMPLEMENTATION_STATUS.md
+		..\docs\IMPLEMENTATION_SUMMARY.md = ..\docs\IMPLEMENTATION_SUMMARY.md
+		..\docs\KingsAndLowsPlan.md = ..\docs\KingsAndLowsPlan.md
+		..\docs\LeaveTable.md = ..\docs\LeaveTable.md
+		..\docs\MaxDiscards.md = ..\docs\MaxDiscards.md
+		..\docs\plan-sevenCardStud.prompt.md = ..\docs\plan-sevenCardStud.prompt.md
+		..\docs\plan-twosJacksManWithTheAxe.prompt.md = ..\docs\plan-twosJacksManWithTheAxe.prompt.md
+		..\docs\PlayPage.md = ..\docs\PlayPage.md
+		..\docs\PRD.md = ..\docs\PRD.md
+		..\docs\README_KINGS_AND_LOWS.md = ..\docs\README_KINGS_AND_LOWS.md
+		..\docs\sevenCardStudDesignDoc.md = ..\docs\sevenCardStudDesignDoc.md
+		..\docs\SignalRPRD.md = ..\docs\SignalRPRD.md
+		..\docs\Yahoo.md = ..\docs\Yahoo.md
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -322,6 +323,7 @@ Global
 		{B72E712B-163D-1296-D382-CA808701E339} = {6D6A7AF3-53CB-4251-8906-C1F584CEDDB6}
 		{518F0EBE-AE80-474E-9C55-536901337448} = {3D6D91D8-C770-46E0-A3DA-385E18E29E47}
 		{486159E5-09BF-CAF1-4141-B15B109AF838} = {6D6A7AF3-53CB-4251-8906-C1F584CEDDB6}
+		{07D268B8-C250-4557-A718-A531BB3092C9} = {1F3CFDF9-CDB0-4C87-AB9E-45E41E7F933B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {0E8F314E-CFF9-4CE9-8D59-54A58A05FAEA}
