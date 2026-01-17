@@ -1,333 +1,388 @@
 @namespace CardGames.Poker.Web.Components.Shared
 @using static CardGames.Poker.Web.Components.Pages.TablePlay
+@using System.Threading
+@implements IDisposable
 @inject NavigationManager NavigationManager
 
 <div class="seat-container @(IsCurrentPlayer ? "current-player-layout" : "remote-player-layout") @(Seat.IsOccupied ? "occupied" : "empty")">
-    @if (Seat.IsOccupied)
-    {
-        <!-- Cards -->
-        @if (ShowCards && Seat.Cards.Count > 0)
-        {
-            <div class="seat-cards-container">
+	@if (Seat.IsOccupied)
+	{
+		<!-- Cards -->
+		@if (ShowCards && Seat.Cards.Count > 0)
+		{
+			<div class="seat-cards-container">
 
-                <div class="cards-fan">
-                    @foreach (var card in GetOrderedCards())
-                    {
-                        var rank = GetPlayingCardRank(card);
-                        // Logic from original: current player sees own cards, others see face up only if face up
+				<div class="cards-fan">
+					@foreach (var card in GetOrderedCards())
+					{
+						var rank = GetPlayingCardRank(card);
+						// Logic from original: current player sees own cards, others see face up only if face up
 
-                        if (IsCurrentPlayer)
-                        {
-                            if (card.IsFaceUp)
-                            {
-                                <playing-card rank="@rank" suit="@card.Suit" class="poker-card"></playing-card>
-                            }
-                            else
-                            {
-                                <playing-card rank="0" backcolor="#44F" class="poker-card"></playing-card>
-                            }
-                        }
-                        else
-                        {
-                            if (card.IsFaceUp)
-                            {
-                                <playing-card rank="@rank" suit="@card.Suit" class="poker-card small"></playing-card>
-                            }
-                            else
-                            {
-                                <playing-card rank="0" backcolor="#44F" class="poker-card small"></playing-card>
-                            }
-                        }
-                    }
-                        </div>
-                    </div>
-                }
-                else if (ShowCards && !Seat.IsFolded && !Seat.IsSittingOut)
-                {
-                    <!-- Placeholder cards -->
-                    <div class="seat-cards-container placeholder">
-                        <div class="cards-fan">
-                            @for (int i = 0; i < 5; i++)
-                            {
-                                <div class="playing-card-placeholder"></div>
-                            }
-                        </div>
-                    </div>
-                }
+						if (IsCurrentPlayer)
+						{
+							if (card.IsFaceUp)
+							{
+								<playing-card rank="@rank" suit="@card.Suit" class="poker-card"></playing-card>
+							}
+							else
+							{
+								<playing-card rank="0" backcolor="#44F" class="poker-card"></playing-card>
+							}
+						}
+						else
+						{
+							if (card.IsFaceUp)
+							{
+								<playing-card rank="@rank" suit="@card.Suit" class="poker-card small"></playing-card>
+							}
+							else
+							{
+								<playing-card rank="0" backcolor="#44F" class="poker-card small"></playing-card>
+							}
+						}
+					}
+				</div>
+			</div>
+		}
+		else if (ShowCards && !Seat.IsFolded && !Seat.IsSittingOut)
+		{
+			<!-- Placeholder cards -->
+			<div class="seat-cards-container placeholder">
+				<div class="cards-fan">
+					@for (int i = 0; i < 5; i++)
+					{
+						<div class="playing-card-placeholder"></div>
+					}
+				</div>
+			</div>
+		}
 
-                <!-- Main Player Display (Avatar + Info Pill) -->
-        <div class="seat-visuals">
+		<!-- Main Player Display (Avatar + Info Pill) -->
+		<div class="seat-visuals">
 
-            <!-- Avatar Circle -->
-            <div class="avatar-circle @GetAvatarStateClass()">
-                @if (!string.IsNullOrWhiteSpace(Seat.PlayerAvatarUrl) && !_imageLoadError)
-                {
-                    <img class="avatar-img" src="@GetSafeAvatarUrl()" alt="@GetDisplayName()" @onerror="OnImageError" />
-                }
-                else
-                {
-                    <span class="avatar-initials">@GetInitials(GetDisplayName())</span>
-                }
+			<!-- Avatar Circle -->
+			<div class="avatar-circle @GetAvatarStateClass()">
+				@if (!string.IsNullOrWhiteSpace(Seat.PlayerAvatarUrl) && !_imageLoadError)
+				{
+					<img class="avatar-img" src="@GetSafeAvatarUrl()" alt="@GetDisplayName()" @onerror="OnImageError" />
+				}
+				else
+				{
+					<span class="avatar-initials">@GetInitials(GetDisplayName())</span>
+				}
 
-                @if (Seat.IsDisconnected)
-                {
-                    <div class="status-overlay disconnected" title="Disconnected">?</div>
-                }
-                else if (Seat.SittingOutReason == "Observing")
-                {
-                    <div class="status-overlay observing" title="Observing">
-                        <i class="fa-solid fa-eye"></i>
-                    </div>
-                }
-                else if (Seat.IsSittingOut)
-                {
-                    <div class="status-overlay sitting-out" title="@(Seat.SittingOutReason ?? "Sitting out")">
-                        <i class="fa-solid fa-chair"></i>
-                    </div>
-                }
-            </div>
+				@if (Seat.IsDisconnected)
+				{
+					<div class="status-overlay disconnected" title="Disconnected">?</div>
+				}
+				else if (Seat.SittingOutReason == "Observing")
+				{
+					<div class="status-overlay observing" title="Observing">
+						<i class="fa-solid fa-eye"></i>
+					</div>
+				}
+				else if (Seat.IsSittingOut)
+				{
+					<div class="status-overlay sitting-out" title="@(Seat.SittingOutReason ?? "Sitting out")">
+						<i class="fa-solid fa-chair"></i>
+					</div>
+				}
+			</div>
 
-            <!-- Info Pill -->
-            <div class="info-pill-container">
-                <div class="info-pill">
-                    <div class="pill-top-row @GetPillStatusClass()">
-                        @if (!string.IsNullOrWhiteSpace(Seat.LastActionDescription))
-                        {
-                            <span class="action-text">@Seat.LastActionDescription</span>
-                        }
-                        else if (IsCurrentActor)
-                        {
-                            <span class="status-text glow-text">Waiting</span>
-                        }
-                        else if (Seat.SittingOutReason == "Observing")
-                        {
-                            <span class="status-text" title="@Seat.PlayerName">Observing</span>
-                        }
-                        else
-                        {
-                            <span class="player-name" title="@Seat.PlayerName">@GetDisplayName()</span>
-                        }
-                    </div>
-                    <div class="pill-bottom-row">
-                        <span class="chip-count">@Seat.Chips.ToString("N0")</span>
-                    </div>
-                </div>
+			<!-- Info Pill -->
+			<div class="info-pill-container">
+				<div class="info-pill">
+					<div class="pill-top-row @GetPillStatusClass()">
+						@if (ShouldShowStatusText())
+						{
+							if (!string.IsNullOrWhiteSpace(Seat.LastActionDescription))
+							{
+								<span class="action-text">@Seat.LastActionDescription</span>
+							}
+							else if (IsCurrentActor)
+							{
+								<span class="status-text glow-text">Waiting</span>
+							}
+							else if (Seat.SittingOutReason == "Observing")
+							{
+								<span class="status-text" title="@Seat.PlayerName">Observing</span>
+							}
+							else if (Seat.IsSittingOut)
+							{
+								<span class="status-text" title="@Seat.PlayerName">Sitting Out</span>
+							}
+						}
+						else
+						{
+							<span class="player-name" title="@Seat.PlayerName">@GetDisplayName()</span>
+						}
+					</div>
+					<div class="pill-bottom-row">
+						<span class="chip-count">@Seat.Chips.ToString("N0")</span>
+					</div>
+				</div>
 
-                @if (IsDealer)
-                {
-                    <div class="seat-dealer-button" title="Dealer">D</div>
-                }
-            </div>
+				@if (IsDealer)
+				{
+					<div class="seat-dealer-button" title="Dealer">D</div>
+				}
+			</div>
 
-        </div>
+		</div>
 
-        <!-- External Elements (Cards, Bets, Badges) -->
-        @if (Seat.CurrentBet > 0)
-        {
-            <div class="seat-bet-bubble">
-                <i class="fa-solid fa-coins"></i> @Seat.CurrentBet.ToString("N0")
-            </div>
-        }
+		<!-- External Elements (Cards, Bets, Badges) -->
+		@if (Seat.CurrentBet > 0)
+		{
+			<div class="seat-bet-bubble">
+				<i class="fa-solid fa-coins"></i> @Seat.CurrentBet.ToString("N0")
+			</div>
+		}
 
-        <!-- Hand Eval Tooltip (Shown on hover) -->
-        @if (IsCurrentPlayer && ShowCards && Seat.Cards.Count > 0 && !string.IsNullOrWhiteSpace(Seat.HandEvaluationDescription))
-        {
-            <div class="hand-eval-tooltip">
-                @Seat.HandEvaluationDescription
-            </div>
-        }
-    }
-    else
-    {
-        <button class="empty-seat-button" disabled="@IsSeatSelectionDisabledForCurrentUser" title="@(IsSeatSelectionDisabledForCurrentUser ? "Empty seat" : "Take a seat")">
-            @(IsSeatSelectionDisabledForCurrentUser ? "Empty" : "Sit Here")
-        </button>
-    }
+		<!-- Hand Eval Tooltip (Shown on hover) -->
+		@if (IsCurrentPlayer && ShowCards && Seat.Cards.Count > 0 && !string.IsNullOrWhiteSpace(Seat.HandEvaluationDescription))
+		{
+			<div class="hand-eval-tooltip">
+				@Seat.HandEvaluationDescription
+			</div>
+		}
+	}
+	else
+	{
+		<button class="empty-seat-button" disabled="@IsSeatSelectionDisabledForCurrentUser" title="@(IsSeatSelectionDisabledForCurrentUser ? "Empty seat" : "Take a seat")">
+			@(IsSeatSelectionDisabledForCurrentUser ? "Empty" : "Sit Here")
+		</button>
+	}
 </div>
 
 @code {
-    [Parameter, EditorRequired]
-    public required SeatInfo Seat { get; set; }
+	[Parameter, EditorRequired]
+	public required SeatInfo Seat { get; set; }
 
-    [Parameter]
-    public bool IsDealer { get; set; }
+	[Parameter]
+	public bool IsDealer { get; set; }
 
-    [Parameter]
-    public bool IsCurrentActor { get; set; }
+	[Parameter]
+	public bool IsCurrentActor { get; set; }
 
-    [Parameter]
-    public bool IsCurrentPlayer { get; set; }
+	[Parameter]
+	public bool IsCurrentPlayer { get; set; }
 
-    [Parameter]
-    public bool ShowCards { get; set; }
+	[Parameter]
+	public bool ShowCards { get; set; }
 
-    [Parameter]
-    public bool IsSeatSelectionDisabledForCurrentUser { get; set; }
+	[Parameter]
+	public bool IsSeatSelectionDisabledForCurrentUser { get; set; }
 
-    private bool _imageLoadError;
-    private string? _lastAvatarUrl;
+	private bool _imageLoadError;
+	private string? _lastAvatarUrl;
+	private Timer? _alternationTimer;
+	private bool _showAlternateStatus = true;
 
-    protected override void OnParametersSet()
-    {
-        if (Seat.PlayerAvatarUrl != _lastAvatarUrl)
-        {
-            _imageLoadError = false;
-            _lastAvatarUrl = Seat.PlayerAvatarUrl;
-        }
-    }
+	protected override void OnInitialized()
+	{
+		_alternationTimer = new Timer(_ =>
+		{
+			_showAlternateStatus = !_showAlternateStatus;
+			InvokeAsync(StateHasChanged);
+		}, null, 3000, 3000);
+	}
 
-    private void OnImageError(ErrorEventArgs args)
-    {
-        _imageLoadError = true;
-    }
+	public void Dispose()
+	{
+		_alternationTimer?.Dispose();
+	}
 
-    private string GetSafeAvatarUrl()
-    {
-        if (string.IsNullOrWhiteSpace(Seat.PlayerAvatarUrl)) return "";
-        var url = Seat.PlayerAvatarUrl.Trim();
+	protected override void OnParametersSet()
+	{
+		if (Seat.PlayerAvatarUrl != _lastAvatarUrl)
+		{
+			_imageLoadError = false;
+			_lastAvatarUrl = Seat.PlayerAvatarUrl;
+		}
+	}
 
-        // Return original if it's absolute URL or data URI
-        if (url.StartsWith("http", StringComparison.OrdinalIgnoreCase) ||
-            url.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
-        {
-            return url;
-        }
+	private void OnImageError(ErrorEventArgs args)
+	{
+		_imageLoadError = true;
+	}
 
-        // If it starts with /, treat as relative to root, but respect base path
-        if (url.StartsWith("/", StringComparison.Ordinal))
-        {
-            // Remove leading slash to combine with BaseUri
-            url = url.Substring(1);
-        }
+	private string GetSafeAvatarUrl()
+	{
+		if (string.IsNullOrWhiteSpace(Seat.PlayerAvatarUrl)) return "";
+		var url = Seat.PlayerAvatarUrl.Trim();
 
-        try
-        {
-            return NavigationManager.ToAbsoluteUri(url).ToString();
-        }
-        catch
-        {
-            return url;
-        }
-    }
+		// Return original if it's absolute URL or data URI
+		if (url.StartsWith("http", StringComparison.OrdinalIgnoreCase) ||
+			url.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+		{
+			return url;
+		}
 
-    private string GetAvatarStateClass()
-    {
-        var classes = new List<string>();
+		// If it starts with /, treat as relative to root, but respect base path
+		if (url.StartsWith("/", StringComparison.Ordinal))
+		{
+			// Remove leading slash to combine with BaseUri
+			url = url.Substring(1);
+		}
 
-        if (IsCurrentActor)
-            classes.Add("active-turn-ring");
+		try
+		{
+			return NavigationManager.ToAbsoluteUri(url).ToString();
+		}
+		catch
+		{
+			return url;
+		}
+	}
 
-        if (Seat.IsFolded)
-            classes.Add("folded");
+	private string GetAvatarStateClass()
+	{
+		var classes = new List<string>();
 
-        if (IsCurrentPlayer)
-            classes.Add("is-me");
+		if (IsCurrentActor)
+			classes.Add("active-turn-ring");
 
-        return string.Join(" ", classes);
-    }
+		if (Seat.IsFolded)
+			classes.Add("folded");
 
-    private string GetPillStatusClass()
-    {
-        // Show action status when player has a recent action to display
-        if (!string.IsNullOrWhiteSpace(Seat.LastActionDescription))
-            return "status-action";
+		if (IsCurrentPlayer)
+			classes.Add("is-me");
 
-        if (Seat.SittingOutReason == "Observing")
-            return "status-observing";
+		return string.Join(" ", classes);
+	}
 
-        if (IsCurrentActor)
-            return "status-orange";
+	private string GetPillStatusClass()
+	{
+		// Check for statuses that should alternate with the name
+		bool hasAlternateStatus = !string.IsNullOrWhiteSpace(Seat.LastActionDescription) ||
+								  IsCurrentActor ||
+								  Seat.SittingOutReason == "Observing" ||
+								  Seat.IsSittingOut;
 
-        if (Seat.IsFolded)
-            return "status-red";
+		// If we're alternating and currently showing the name, show passive/background status only
+		if (hasAlternateStatus && !_showAlternateStatus)
+		{
+			return GetPassiveStatusClass();
+		}
 
-        if (Seat.IsAllIn)
-            return "status-gold";
+		// Show action status when player has a recent action to display
+		if (!string.IsNullOrWhiteSpace(Seat.LastActionDescription))
+			return "status-action";
 
-        if (Seat.IsReady && !ShowCards)
-            return "status-green";
+		if (Seat.SittingOutReason == "Observing")
+			return "status-observing";
 
-        return string.Empty;
-    }
+		if (Seat.IsSittingOut)
+			return "status-observing";
 
-    private static string GetInitials(string? name)
-    {
-        if (string.IsNullOrWhiteSpace(name))
-            return "?";
+		if (IsCurrentActor)
+			return "status-orange";
 
-        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        return parts.Length switch
-        {
-            0 => "?",
-            1 => parts[0][..1].ToUpperInvariant(),
-            _ => $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant()
-        };
-    }
+		return GetPassiveStatusClass();
+	}
 
-    private string GetDisplayName()
-    {
-        if (!string.IsNullOrWhiteSpace(Seat.PlayerFirstName))
-        {
-            return Seat.PlayerFirstName;
-        }
+	private string GetPassiveStatusClass()
+	{
+		if (Seat.IsFolded)
+			return "status-red";
 
-        var name = Seat.PlayerName;
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            return "?";
-        }
+		if (Seat.IsAllIn)
+			return "status-gold";
 
-        var atIndex = name.IndexOf("@", StringComparison.Ordinal);
-        if (atIndex > 0)
-        {
-            return name[..atIndex];
-        }
+		if (Seat.IsReady && !ShowCards)
+			return "status-green";
 
-        var spaceIndex = name.IndexOf(' ', StringComparison.Ordinal);
-        return spaceIndex > 0 ? name[..spaceIndex] : name;
-    }
+		return string.Empty;
+	}
 
-    private IEnumerable<CardInfo> GetOrderedCards()
-    {
-        if (Seat.Cards.Count == 0)
-        {
-            return [];
-        }
+	private bool ShouldShowStatusText()
+	{
+		if (!_showAlternateStatus) return false;
 
-        // Sort by card value (2 lowest, Ace highest) for Five Card Draw display.
-        return Seat.Cards.OrderBy(GetCardValueOrder);
-    }
+		return !string.IsNullOrWhiteSpace(Seat.LastActionDescription) ||
+			   IsCurrentActor ||
+			   Seat.SittingOutReason == "Observing" ||
+			   Seat.IsSittingOut;
+	}
 
-    private static int GetCardValueOrder(CardInfo card)
-    {
-        return card.Rank switch
-        {
-            "2" => 2,
-            "3" => 3,
-            "4" => 4,
-            "5" => 5,
-            "6" => 6,
-            "7" => 7,
-            "8" => 8,
-            "9" => 9,
-            "10" => 10,
-            "J" => 11,
-            "Q" => 12,
-            "K" => 13,
-            "A" => 14,
-            _ => 0
-        };
-    }
+	private static string GetInitials(string? name)
+	{
+		if (string.IsNullOrWhiteSpace(name))
+			return "?";
 
-    private string? GetPlayingCardRank(CardInfo card)
-    {
-        return card.Rank switch
-        {
-            "J" => "Jack",
-            "Q" => "Queen",
-            "K" => "King",
-            "A" => "Ace",
-            _ => card.Rank
-        };
-    }
+		var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+		return parts.Length switch
+		{
+			0 => "?",
+			1 => parts[0][..1].ToUpperInvariant(),
+			_ => $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant()
+		};
+	}
+
+	private string GetDisplayName()
+	{
+		if (!string.IsNullOrWhiteSpace(Seat.PlayerFirstName))
+		{
+			return Seat.PlayerFirstName;
+		}
+
+		var name = Seat.PlayerName;
+		if (string.IsNullOrWhiteSpace(name))
+		{
+			return "?";
+		}
+
+		var atIndex = name.IndexOf("@", StringComparison.Ordinal);
+		if (atIndex > 0)
+		{
+			return name[..atIndex];
+		}
+
+		var spaceIndex = name.IndexOf(' ', StringComparison.Ordinal);
+		return spaceIndex > 0 ? name[..spaceIndex] : name;
+	}
+
+	private IEnumerable<CardInfo> GetOrderedCards()
+	{
+		if (Seat.Cards.Count == 0)
+		{
+			return [];
+		}
+
+		// Sort by card value (2 lowest, Ace highest) for Five Card Draw display.
+		return Seat.Cards.OrderBy(GetCardValueOrder);
+	}
+
+	private static int GetCardValueOrder(CardInfo card)
+	{
+		return card.Rank switch
+		{
+			"2" => 2,
+			"3" => 3,
+			"4" => 4,
+			"5" => 5,
+			"6" => 6,
+			"7" => 7,
+			"8" => 8,
+			"9" => 9,
+			"10" => 10,
+			"J" => 11,
+			"Q" => 12,
+			"K" => 13,
+			"A" => 14,
+			_ => 0
+		};
+	}
+
+	private string? GetPlayingCardRank(CardInfo card)
+	{
+		return card.Rank switch
+		{
+			"J" => "Jack",
+			"Q" => "Queen",
+			"K" => "King",
+			"A" => "Ace",
+			_ => card.Rank
+		};
+	}
 }

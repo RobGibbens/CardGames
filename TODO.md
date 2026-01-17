@@ -15,7 +15,7 @@
 - [ ] Kings and Lows - Things happen too fast
 - [ ] Kings and Lows - Hand history is not working
 - [ ] Kings and Lows - Play for a while and the pot disappears
-- [ ] Should always be able to see people's names
+- [ ] Kings and Lows - When going against the dealer, weird shit happens
 - [ ] Make hand history more detailed
 - [ ] Showdown disappeared immediately
 - [ ] Dashboard should be scrollable
@@ -136,3 +136,4 @@
 - [x] Payouts not showing on Showdown for Kings and Lows
 - [x] Make sure people can leave a table
 - [x] Make sure people can sit out
+- [x] Should always be able to see people's names
