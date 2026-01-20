@@ -3,25 +3,26 @@
 ## Still to do
 
 ### P1 - Can't play without these
-- [ ] Kings and Lows - don't deal to players that don't have enough chips to match the pot
 - [ ] Add chip management to the dashboard (buy in, cash out, add chips)
 - [ ] Test side pots
 - [ ] Don't auto start a new hand. Add a timer, allow pause, allow people to get out of the game or end the game
 - [ ] Make sure all game types handle all ins correctly
-- [ ] Five Card Draw - 3 players: 1 folds, 1 loses all chips, showdown says "wins by fold"
-- [ ] Five Card Draw - 3 players: 1 folds, 1 goes all in, still shows action panel even though one player has no remaining chips.
+- [?] Five Card Draw - 3 players: 1 folds, 1 goes all in, still shows action panel even though one player has no remaining chips.
+
+- [ ] Kings and Lows - don't deal to players that don't have enough chips to match the pot
 - [ ] Kings and Lows - Should make it obvious when someone dropped
 - [ ] Kings and Lows - Things happen too fast
 - [ ] Kings and Lows - Hand history is not working
 - [ ] Kings and Lows - Play for a while and the pot disappears
 - [ ] Kings and Lows - When going against the dealer, weird shit happens
-- [ ] Make hand history more detailed
 - [ ] Kings and Lows - Showdown disappeared immediately
+
 - [ ] Dashboard should be scrollable
 - [ ] Sit out button is missing
 - [ ] SCS - when all players go all in - still need to draw cards
 - [ ] SCS - when a player has no chips, they're still getting dealt and can take action
 - [ ] SCS - odds should calculate based on future cards
+- [ ] Make hand history more detailed
 
 
 ### P2 - Important but not blocking play
@@ -32,7 +33,7 @@
 - [ ] Have the ability for someone to take a seat and be dealt into the next hand
 - [ ] Table should be able to scroll if the screen isn't big enough
 - [ ] Allow them to upload an image when registering
-- 
+- [ ] When you can't start the game because you're waiting for other players to sit, show a message
 ### P3 - Nice to have
 - [ ] Search for code == "KINGSANDLOWS" and refactor
 - [ ] Creating a deck and dealing is done in the StartHandCommandHandler, but it should be using CardGames.Core.Dealer
@@ -137,3 +138,4 @@
 - [x] Should always be able to see people's names
 - [x] Seven card stud is ordering cards wrong
 - [x] Five card draw is not ordering the cards
+- [x] Five Card Draw - 3 players: 1 folds, 1 loses all chips, showdown says "wins by fold"

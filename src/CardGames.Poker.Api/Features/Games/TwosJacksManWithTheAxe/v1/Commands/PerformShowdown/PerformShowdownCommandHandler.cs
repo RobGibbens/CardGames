@@ -61,7 +61,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 
 		// 3. Get players who have not folded
 		var playersInHand = game.GamePlayers
-			.Where(gp => !gp.HasFolded && gp.Status == GamePlayerStatus.Active)
+			.Where(gp => !gp.HasFolded && (gp.Status == GamePlayerStatus.Active || gp.IsAllIn))
 			.ToList();
 
 		// Fetch user first names from Users table (matching by email like GetGamePlayersQueryHandler)
