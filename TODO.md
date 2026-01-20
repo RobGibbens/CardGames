@@ -3,7 +3,6 @@
 ## Still to do
 
 ### P1 - Can't play without these
-- [ ] Five card draw is not ordering the cards
 - [ ] Kings and Lows - don't deal to players that don't have enough chips to match the pot
 - [ ] Add chip management to the dashboard (buy in, cash out, add chips)
 - [ ] Test side pots
@@ -20,7 +19,6 @@
 - [ ] Kings and Lows - Showdown disappeared immediately
 - [ ] Dashboard should be scrollable
 - [ ] Sit out button is missing
-- [ ] Seven card stud is ordering cards wrong
 - [ ] SCS - when all players go all in - still need to draw cards
 - [ ] SCS - when a player has no chips, they're still getting dealt and can take action
 - [ ] SCS - odds should calculate based on future cards
@@ -137,3 +135,5 @@
 - [x] Make sure people can leave a table
 - [x] Make sure people can sit out
 - [x] Should always be able to see people's names
+- [x] Seven card stud is ordering cards wrong
+- [x] Five card draw is not ordering the cards

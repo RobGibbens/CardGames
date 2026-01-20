@@ -129,7 +129,8 @@
                          CurrentPhaseDescription="@_gameResponse?.CurrentPhaseDescription"
                          CurrentActorSeatIndex="@_currentActorSeatIndex" DealerSeatIndex="@_dealerSeatIndex"
                          OnSeatClick="HandleSeatClickAsync" DisableSeatSelectionForCurrentUser="@_isSeated"
-                         CurrentPlayerSeatIndex="@_currentPlayerSeatIndex" />
+                         CurrentPlayerSeatIndex="@_currentPlayerSeatIndex"
+                         GameTypeCode="@_gameTypeCode" />
 
             <!-- Dashboard Panel (left side) -->
             @if (_isSeated)

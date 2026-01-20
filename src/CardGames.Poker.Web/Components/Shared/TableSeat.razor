@@ -171,6 +171,9 @@
 	public bool ShowCards { get; set; }
 
 	[Parameter]
+	public string? GameTypeCode { get; set; }
+
+	[Parameter]
 	public bool IsSeatSelectionDisabledForCurrentUser { get; set; }
 
 	private bool _imageLoadError;
@@ -347,6 +350,12 @@
 		if (Seat.Cards.Count == 0)
 		{
 			return [];
+		}
+
+		// Seven Card Stud cards should be displayed in deal order (not value order)
+		if (string.Equals(GameTypeCode, "SEVENCARDSTUD", StringComparison.OrdinalIgnoreCase))
+		{
+			return Seat.Cards;
 		}
 
 		// Sort by card value (2 lowest, Ace highest) for Five Card Draw display.
