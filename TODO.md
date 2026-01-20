@@ -17,7 +17,7 @@
 - [ ] Kings and Lows - Play for a while and the pot disappears
 - [ ] Kings and Lows - When going against the dealer, weird shit happens
 - [ ] Make hand history more detailed
-- [ ] Showdown disappeared immediately
+- [ ] Kings and Lows - Showdown disappeared immediately
 - [ ] Dashboard should be scrollable
 - [ ] Sit out button is missing
 - [ ] Seven card stud is ordering cards wrong

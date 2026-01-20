@@ -1092,9 +1092,26 @@
 
                 // Preserve LastActionDescription if it hasn't expired (5 seconds)
                 var existingSeat = _seats[publicSeat.SeatIndex];
-                var shouldPreserveAction = !string.IsNullOrWhiteSpace(existingSeat.LastActionDescription) &&
-                    existingSeat.LastActionTime.HasValue &&
-                    (DateTimeOffset.UtcNow - existingSeat.LastActionTime.Value).TotalSeconds < 5;
+                
+                // For Kings and Lows, show "Dropped" status for folded players throughout the hand
+                string? lastActionDescription = null;
+                DateTimeOffset? lastActionTime = null;
+                
+                if (IsKingsAndLows && publicSeat.IsFolded)
+                {
+                    lastActionDescription = "Dropped";
+                    lastActionTime = existingSeat.LastActionTime ?? DateTimeOffset.UtcNow;
+                }
+                else
+                {
+                    // For other games, preserve the action description for 5 seconds
+                    var shouldPreserveAction = !string.IsNullOrWhiteSpace(existingSeat.LastActionDescription) &&
+                        existingSeat.LastActionTime.HasValue &&
+                        (DateTimeOffset.UtcNow - existingSeat.LastActionTime.Value).TotalSeconds < 5;
+
+                    lastActionDescription = shouldPreserveAction ? existingSeat.LastActionDescription : null;
+                    lastActionTime = shouldPreserveAction ? existingSeat.LastActionTime : null;
+                }
 
                 _seats[publicSeat.SeatIndex] = new SeatInfo
                 {
@@ -1114,8 +1131,8 @@
                     CurrentBet = publicSeat.CurrentBet,
                     HasDecidedDropOrStay = publicSeat.HasDecidedDropOrStay,
                     Cards = cards,
-                    LastActionDescription = shouldPreserveAction ? existingSeat.LastActionDescription : null,
-                    LastActionTime = shouldPreserveAction ? existingSeat.LastActionTime : null
+                    LastActionDescription = lastActionDescription,
+                    LastActionTime = lastActionTime
                 };
             }
         }
