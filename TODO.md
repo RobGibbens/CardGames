@@ -41,7 +41,6 @@
 - [ ] Hand history should auto size columns and allow resizing columns
 - [ ] Hand history should paginate
 - [ ] When the Draw Overlay is showing, the cards are not opaque
-- [ ] Leaderboard should show first names
 - [ ] The bottom of the table goes off the bottom of the screen
 - [ ] Add a chip stack graph in the dashboard
 - [ ] Add sound effects
@@ -140,3 +139,4 @@
 - [x] Five Card Draw - 3 players: 1 folds, 1 loses all chips, showdown says "wins by fold"
 - [x] Five Card Draw - 3 players: 1 folds, 1 goes all in, still shows action panel even though one player has no remaining chips.
 - [x] Sit out button is missing
+- [x] Leaderboard should show first names
