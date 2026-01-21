@@ -15,7 +15,7 @@
             @foreach (var player in Players.OrderByDescending(p => p.Chips))
             {
                 <div class="leaderboard-row">
-                    <span class="player-name">@player.PlayerName</span>
+                    <span class="player-name">@(string.IsNullOrWhiteSpace(player.DisplayName) ? "Unknown" : player.DisplayName)</span>
                     <span class="player-chips">@player.Chips.ToString("N0")</span>
                 </div>
             }
@@ -43,6 +43,7 @@
     public record LeaderboardPlayer(
         string PlayerId,
         string PlayerName,
+        string? DisplayName,
         int Chips,
         decimal? HandsWonPct = null,
         decimal? ShowdownsSeenPct = null);

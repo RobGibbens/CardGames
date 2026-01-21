@@ -2330,6 +2330,7 @@
         .Select(s => new LeaderboardSection.LeaderboardPlayer(
         PlayerId: s.SeatIndex.ToString(),
         PlayerName: s.PlayerName!,
+        DisplayName: s.PlayerFirstName,
         Chips: s.Chips))
         .OrderByDescending(p => p.Chips)
         .ToList();

@@ -3,76 +3,76 @@
 @using CardGames.Poker.Api.Contracts
 
 <div class="hand-history-section">
-    @if (Entries is not null && Entries.Any())
-    {
-        <div class="history-list" role="table" aria-label="Hand history">
-            <div class="history-header-row" role="row">
-                <span class="header-cell" role="columnheader">Hand</span>
-                <span class="header-cell" role="columnheader">Winner</span>
-                <span class="header-cell header-won" role="columnheader">Won</span>
-                <span class="header-cell" role="columnheader">You</span>
-                <span class="header-cell header-delta" role="columnheader">? Chips</span>
-            </div>
-                    @foreach (var entry in Entries.OrderByDescending(e => e.HandNumber))
-                    {
-                        <div class="history-entry @(entry.CurrentPlayerWon ?? false ? "player-won" : "")" role="row" tabindex="0">
-                            <span class="cell hand-number" role="cell">#@entry.HandNumber</span>
-                            <span class="cell winner-name" role="cell" title="@GetWinnerTitle(entry)">
-                                    @(string.IsNullOrWhiteSpace(entry.WinnerName) ? "Unknown" : entry.WinnerName)
-                                </span>
-                            <span class="cell amount-won" role="cell">+@entry.AmountWon.ToString("N0")</span>
-                            <span class="cell player-result" role="cell" title="@(entry.CurrentPlayerResultLabel ?? "")">
-                                @(entry.CurrentPlayerResultLabel ?? "—")
-                            </span>
-                            <span class="cell player-delta @GetDeltaClass(entry.CurrentPlayerNetDelta)" role="cell">
-                                @FormatDelta(entry.CurrentPlayerNetDelta)
-                            </span>
-                        </div>
-                    }
-                </div>
-            }
-            else
-            {
-                <div class="history-empty">
-            <i class="fa-regular fa-clock-rotate-left" aria-hidden="true"></i>
-            <span>No hands played yet</span>
-        </div>
-    }
+	@if (Entries is not null && Entries.Any())
+	{
+		<div class="history-list" role="table" aria-label="Hand history">
+			<div class="history-header-row" role="row">
+				<span class="header-cell" role="columnheader">Hand</span>
+				<span class="header-cell" role="columnheader">Winner</span>
+				<span class="header-cell header-won" role="columnheader">Won</span>
+				<span class="header-cell" role="columnheader">You</span>
+				<span class="header-cell header-delta" role="columnheader">? Chips</span>
+			</div>
+			@foreach (var entry in Entries.OrderByDescending(e => e.HandNumber))
+			{
+				<div class="history-entry @(entry.CurrentPlayerWon ?? false ? "player-won" : "")" role="row" tabindex="0">
+					<span class="cell hand-number" role="cell">#@entry.HandNumber</span>
+					<span class="cell winner-name" role="cell" title="@GetWinnerTitle(entry)">
+						@(string.IsNullOrWhiteSpace(entry.WinnerName) ? "Unknown" : entry.WinnerName)
+					</span>
+					<span class="cell amount-won" role="cell">+@entry.AmountWon.ToString("N0")</span>
+					<span class="cell player-result" role="cell" title="@(entry.CurrentPlayerResultLabel ?? "")">
+						@(entry.CurrentPlayerResultLabel ?? "—")
+					</span>
+					<span class="cell player-delta @GetDeltaClass(entry.CurrentPlayerNetDelta)" role="cell">
+						@FormatDelta(entry.CurrentPlayerNetDelta)
+					</span>
+				</div>
+			}
+		</div>
+	}
+	else
+	{
+		<div class="history-empty">
+			<i class="fa-regular fa-clock-rotate-left" aria-hidden="true"></i>
+			<span>No hands played yet</span>
+		</div>
+	}
 </div>
 
 @code {
-    /// <summary>
-    /// The list of hand history entries to display.
-        /// </summary>
-        [Parameter]
-        public IReadOnlyList<HandHistoryEntryDto>? Entries { get; set; }
+	/// <summary>
+	/// The list of hand history entries to display.
+	/// </summary>
+	[Parameter]
+	public IReadOnlyList<HandHistoryEntryDto>? Entries { get; set; }
 
-        private static string GetWinnerTitle(HandHistoryEntryDto entry)
-        {
-            if (entry.WinnerCount > 1)
-            {
-                return $"{entry.WinnerName} (Split {entry.WinnerCount}-way)";
-            }
-            return entry.WinnerName;
-        }
+	private static string GetWinnerTitle(HandHistoryEntryDto entry)
+	{
+		if (entry.WinnerCount > 1)
+		{
+			return $"{entry.WinnerName} (Split {entry.WinnerCount}-way)";
+		}
+		return entry.WinnerName;
+	}
 
-        private static string GetDeltaClass(int? delta)
-        {
-            return delta switch
-            {
-                > 0 => "delta-positive",
-                < 0 => "delta-negative",
-                _ => "delta-zero"
-            };
-        }
+	private static string GetDeltaClass(int? delta)
+	{
+		return delta switch
+		{
+			> 0 => "delta-positive",
+			< 0 => "delta-negative",
+			_ => "delta-zero"
+		};
+	}
 
-        private static string FormatDelta(int? delta)
-        {
-            return delta switch
-            {
-                > 0 => $"+{delta:N0}",
-                < 0 => delta.Value.ToString("N0"),
-                _ => "—"
-            };
-        }
-    }
+	private static string FormatDelta(int? delta)
+	{
+		return delta switch
+		{
+			> 0 => $"+{delta:N0}",
+			< 0 => delta.Value.ToString("N0"),
+			_ => "—"
+		};
+	}
+}
