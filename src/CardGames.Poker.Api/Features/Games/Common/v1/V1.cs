@@ -3,6 +3,7 @@ using CardGames.Poker.Api.Features.Games.Common.v1.Commands.CreateGame;
 using CardGames.Poker.Api.Features.Games.Common.v1.Commands.DeleteGame;
 using CardGames.Poker.Api.Features.Games.Common.v1.Commands.JoinGame;
 using CardGames.Poker.Api.Features.Games.Common.v1.Commands.LeaveGame;
+using CardGames.Poker.Api.Features.Games.Common.v1.Commands.ToggleSitOut;
 using CardGames.Poker.Api.Features.Games.Common.v1.Commands.UpdateTableSettings;
 using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetGame;
 using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetCurrentDrawPlayer;
@@ -30,6 +31,7 @@ public static class V1
 		mapGroup.MapDeleteGame();
 		mapGroup.MapJoinGame();
 		mapGroup.MapLeaveGame();
+		mapGroup.MapSitOut();
 		mapGroup.MapUpdateTableSettings();
 		
 		//Queries

@@ -271,6 +271,17 @@ namespace CardGames.Poker.Api.Clients
         [Post("/api/v1/games/{gameId}/leave")]
         Task<IApiResponse<LeaveGameSuccessful>> LeaveGameAsync(System.Guid gameId, CancellationToken cancellationToken = default);
 
+        /// <summary>Toggle Sit Out</summary>
+        /// <remarks>
+        /// Updates the sitting out status of the current player for the specified game.
+        /// </remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result.
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/games/{gameId}/sit-out")]
+        Task<IApiResponse<ToggleSitOutSuccessful>> ToggleSitOutAsync(System.Guid gameId, [Body] ToggleSitOutRequest body, CancellationToken cancellationToken = default);
+
         /// <summary>GetGamePlayers</summary>
         /// <remarks>Retrieve all players in a specific game.</remarks>
         /// <returns>
@@ -3983,12 +3994,32 @@ namespace CardGames.Poker.Api.Contracts
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string RowVersion { get; init; }
 
+        }
+
+        [System.CodeDom.Compiler.GeneratedCode("Refitter", "1.7.0.0")]
+        public partial record ToggleSitOutRequest
+        {
+            [JsonPropertyName("isSittingOut")]
+            public bool IsSittingOut { get; init; }
+        }
+
+        [System.CodeDom.Compiler.GeneratedCode("Refitter", "1.7.0.0")]
+        public partial record ToggleSitOutSuccessful
+        {
+            [JsonPropertyName("gameId")]
+            public System.Guid GameId { get; init; }
+
+            [JsonPropertyName("isSittingOut")]
+            public bool IsSittingOut { get; init; }
+
+            [JsonPropertyName("message")]
+            public string Message { get; init; }
+        }
+
+
     }
 
-
-}
-
-#pragma warning restore  108
+    #pragma warning restore  108
 #pragma warning restore  114
 #pragma warning restore  472
 #pragma warning restore  612

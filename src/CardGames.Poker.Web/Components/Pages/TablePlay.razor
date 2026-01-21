@@ -54,6 +54,14 @@
             Leave Table
         </button>
 
+        @if (_isSeated && _gameResponse?.CurrentPhase != GamePhase.WaitingForPlayers.ToString())
+        {
+            <button class="btn btn-secondary btn-sm ms-2" @onclick="ToggleSitOutAsync" title="@(IsSittingOut ? "Join the game" : "Sit out next hand")">
+                <i class="fa-solid @(IsSittingOut ? "fa-user-check" : "fa-user-clock")"></i>
+                @(IsSittingOut ? "I'm Back" : "Sit out next hand")
+            </button>
+        }
+
         <div class="table-info-strip">
             <span class="table-name">
                 @_gameResponse?.Name
@@ -521,6 +529,11 @@
         _currentPlayerSeatIndex < _seats.Count &&
         !_seats[_currentPlayerSeatIndex].IsFolded &&
         (!_seats[_currentPlayerSeatIndex].IsSittingOut || _seats[_currentPlayerSeatIndex].Cards.Count > 0);
+
+    private bool IsSittingOut =>
+        _currentPlayerSeatIndex >= 0 && 
+        _currentPlayerSeatIndex < _seats.Count && 
+        _seats[_currentPlayerSeatIndex].IsSittingOut;
 
     // Special rules helper properties - driven by SignalR state
     private bool HasWildCards =>
@@ -1510,6 +1523,28 @@
     }
 
     private bool _isLeavingTable = false;
+
+    private async Task ToggleSitOutAsync()
+    {
+        try
+        {
+            var newState = !IsSittingOut;
+            var response = await GamesApiClient.ToggleSitOutAsync(
+                GameId,
+                new ToggleSitOutRequest { IsSittingOut = newState });
+
+            if (response.IsSuccessStatusCode && response.Content != null)
+            {
+                var result = response.Content;
+                await ShowToastAsync(result.Message, "info");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to toggle sit out status");
+            await ShowToastAsync("Failed to update status", "error");
+        }
+    }
 
     private async Task LeaveTableAsync()
     {
