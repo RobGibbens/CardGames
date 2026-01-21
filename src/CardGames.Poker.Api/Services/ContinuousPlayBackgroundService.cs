@@ -85,12 +85,12 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		// Process DrawComplete games that are ready to transition to Showdown
 		await ProcessDrawCompleteGamesAsync(context, broadcaster, now, cancellationToken);
 
-		// Find games in Complete phase where the next hand should start
+		// Find games in Complete or WaitingForPlayers phase where the next hand should start
 		var gamesReadyForNextHand = await context.Games
-			.Where(g => g.CurrentPhase == nameof(Phases.Complete) &&
+			.Where(g => (g.CurrentPhase == nameof(Phases.Complete) || g.CurrentPhase == nameof(Phases.WaitingForPlayers)) &&
 						g.NextHandStartsAt != null &&
 						g.NextHandStartsAt <= now &&
-						g.Status == GameStatus.InProgress)
+						(g.Status == GameStatus.InProgress || g.Status == GameStatus.BetweenHands))
 			.Include(g => g.GamePlayers)
 			.Include(g => g.GameType)
 			.ToListAsync(cancellationToken);
@@ -475,7 +475,8 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 				game.Id,
 				eligiblePlayers.Count);
 
-			// Pause continuous play - stay in Complete phase but clear schedule
+			// Pause continuous play - wait for players
+			game.CurrentPhase = nameof(Phases.WaitingForPlayers);
 			game.NextHandStartsAt = null;
 			game.Status = GameStatus.BetweenHands;
 			game.UpdatedAt = now;
@@ -490,7 +491,8 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		{
 			gamePlayer.CurrentBet = 0;
 			gamePlayer.TotalContributedThisHand = 0;
-			gamePlayer.HasFolded = false;
+			// Players sitting out are treated as folded for this hand
+			gamePlayer.HasFolded = gamePlayer.IsSittingOut;
 			gamePlayer.IsAllIn = false;
 			gamePlayer.HasDrawnThisRound = false;
 			gamePlayer.DropOrStayDecision = null;

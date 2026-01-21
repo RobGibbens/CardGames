@@ -105,5 +105,9 @@ public enum Phases
 
 	/// <summary>Hand is complete.</summary>
 	[Description("Complete")]
-	Complete
+	Complete,
+
+	/// <summary>Waiting for players to join.</summary>
+	[Description("Waiting for Players")]
+	WaitingForPlayers
 }

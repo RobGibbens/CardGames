@@ -97,13 +97,13 @@ public class StartHandCommandHandler(CardsDbContext context)
 		}
 
 		// 5. Reset player states for new hand (mirrors FiveCardDrawGame.StartHand)
-		foreach (var gamePlayer in eligiblePlayers)
+		foreach (var gamePlayer in game.GamePlayers.Where(gp => gp.Status == GamePlayerStatus.Active))
 		{
 			gamePlayer.CurrentBet = 0;
 			gamePlayer.TotalContributedThisHand = 0;
-			gamePlayer.HasFolded = false;
 			gamePlayer.IsAllIn = false;
 			gamePlayer.HasDrawnThisRound = false;
+			gamePlayer.HasFolded = gamePlayer.IsSittingOut;
 		}
 
 		// 6. Remove any existing cards from previous hand

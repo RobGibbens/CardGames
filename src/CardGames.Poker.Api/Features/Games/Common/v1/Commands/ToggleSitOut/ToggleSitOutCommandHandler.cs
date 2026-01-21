@@ -53,6 +53,28 @@ public sealed class ToggleSitOutCommandHandler(
 		// Update sit out state
 		gamePlayer.IsSittingOut = command.IsSittingOut;
 
+		// If player is coming back during an active hand, ensure they don't get picked up as active
+		// by confirming they are marked as folded if they don't have cards for this hand.
+		if (!command.IsSittingOut && game.Status == GameStatus.InProgress)
+		{
+			var hasCards = await context.GameCards
+				.AnyAsync(gc => gc.GameId == game.Id && 
+								gc.GamePlayerId == gamePlayer.Id && 
+								gc.HandNumber == game.CurrentHandNumber, 
+					cancellationToken);
+
+			if (!hasCards)
+			{
+				gamePlayer.HasFolded = true;
+			}
+		}
+
+		// If player is coming back and game is waiting for players, schedule next hand check immediately
+		if (!command.IsSittingOut && game.CurrentPhase == nameof(Betting.Phases.WaitingForPlayers))
+		{
+			game.NextHandStartsAt = DateTimeOffset.UtcNow;
+		}
+
 		game.UpdatedAt = DateTimeOffset.UtcNow;
 		await context.SaveChangesAsync(cancellationToken);
 

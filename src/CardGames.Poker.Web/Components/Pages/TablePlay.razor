@@ -54,7 +54,7 @@
             Leave Table
         </button>
 
-        @if (_isSeated && _gameResponse?.CurrentPhase != GamePhase.WaitingForPlayers.ToString())
+        @if (_isSeated)
         {
             <button class="btn btn-secondary btn-sm ms-2" @onclick="ToggleSitOutAsync" title="@(IsSittingOut ? "Join the game" : "Sit out next hand")">
                 <i class="fa-solid @(IsSittingOut ? "fa-user-check" : "fa-user-clock")"></i>
@@ -264,13 +264,13 @@
         }
 
         <!-- Waiting/Pre-game overlay (only when waiting for more players, not when game is ready to start) -->
-        @if (_gameResponse.CurrentPhase == GamePhase.WaitingForPlayers.ToString())
+        @if (_gameResponse.CurrentPhase == GamePhase.WaitingForPlayers.ToString() && (!_isSeated || IsSittingOut || !_isReady))
         {
             <div class="table-overlay waiting-overlay">
                 <div class="overlay-content">
                     <div class="overlay-icon"><i class="fa-solid fa-clock"></i></div>
                     <h2>Waiting for Players</h2>
-                    <p>@_seatedPlayerCount / @_gameResponse.MinimumNumberOfPlayers players seated</p>
+                    
                     <div class="ready-status">
                         @foreach (var seat in _seats.Where(s => s.IsOccupied))
                         {
@@ -816,8 +816,9 @@
 
         // Recalculate derived state
         _seatedPlayerCount = _seats.Count(s => s.IsOccupied);
-        _canStartGame = _seatedPlayerCount >= (_gameResponse?.MinimumNumberOfPlayers ?? 2) &&
-        _seats.Where(s => s.IsOccupied).All(s => s.IsReady);
+        var activePlayers = _seats.Where(s => s.IsOccupied && !s.IsSittingOut);
+        _canStartGame = activePlayers.Count() >= (_gameResponse?.MinimumNumberOfPlayers ?? 2) &&
+            activePlayers.All(s => s.IsReady);
 
         // Update current player info
         _currentPlayerSeatIndex = _seats.FirstOrDefault(s => s.IsOccupied &&
@@ -1406,8 +1407,9 @@
         finally
         {
             _seatedPlayerCount = _seats.Count(s => s.IsOccupied);
-            _canStartGame = _seatedPlayerCount >= (_gameResponse?.MinimumNumberOfPlayers ?? 2) && _seats.Where(s => s.IsOccupied).All(s
-            => s.IsReady);
+            var activePlayers = _seats.Where(s => s.IsOccupied && !s.IsSittingOut);
+            _canStartGame = activePlayers.Count() >= (_gameResponse?.MinimumNumberOfPlayers ?? 2) &&
+                activePlayers.All(s => s.IsReady);
 
             // Determine if current user is the host (game creator)
             _isHost = !string.IsNullOrWhiteSpace(_loggedInUserEmail) &&
@@ -1651,6 +1653,11 @@
 
     private async Task SetReadyAsync()
     {
+        if (IsSittingOut)
+        {
+            await ToggleSitOutAsync();
+        }
+
         // TODO: Send ready request to server
         _isReady = true;
         if (_currentPlayerSeatIndex >= 0)
