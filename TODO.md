@@ -7,6 +7,8 @@
 - [ ] Test side pots
 - [ ] Don't auto start a new hand. Add a timer, allow pause, allow people to get out of the game or end the game
 - [ ] Make sure all game types handle all ins correctly
+- [ ] Make hand history more detailed
+- [ ] Dashboard should be scrollable
 
 - [ ] Kings and Lows - don't deal to players that don't have enough chips to match the pot
 - [ ] Kings and Lows - Should make it obvious when someone dropped
@@ -16,14 +18,13 @@
 - [ ] Kings and Lows - When going against the dealer, weird shit happens
 - [ ] Kings and Lows - Showdown disappeared immediately
 
-- [ ] Dashboard should be scrollable
 - [ ] SCS - when all players go all in - still need to draw cards
 - [ ] SCS - when a player has no chips, they're still getting dealt and can take action
 - [ ] SCS - odds should calculate based on future cards
-- [ ] Make hand history more detailed
 
 ### P2 - Important but not blocking play
-- [ ] Make sure all calls are idempotent
+
+- [ ] - [ ] Make sure all calls are idempotent
 - [ ] Continuous play should stop if all players disconnect
 - [ ] During ties, the showdown should show the kicker
 - [ ] Showdown overlay should handle split pots better
@@ -31,6 +32,7 @@
 - [ ] Table should be able to scroll if the screen isn't big enough
 - [ ] Allow them to upload an image when registering
 - [ ] When you can't start the game because you're waiting for other players to sit, show a message
+
 ### P3 - Nice to have
 - [ ] Search for code == "KINGSANDLOWS" and refactor
 - [ ] Creating a deck and dealing is done in the StartHandCommandHandler, but it should be using CardGames.Core.Dealer
