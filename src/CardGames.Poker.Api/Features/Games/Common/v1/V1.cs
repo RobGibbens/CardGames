@@ -42,6 +42,7 @@ public static class V1
 		mapGroup.MapGetGameRules();
 		mapGroup.MapGetGames();
 		mapGroup.MapGetHandHistory();
+		mapGroup.MapGetHandHistoryWithPlayers();
 		mapGroup.MapGetTableSettings();
 	}
 }

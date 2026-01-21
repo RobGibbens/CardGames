@@ -284,6 +284,13 @@ public class HandHistoryPlayerResult
     public FoldStreet? AllInStreet { get; set; }
 
     /// <summary>
+    /// The final visible cards for this player at hand end.
+    /// Stored as a comma-separated string of card codes (e.g., "As,Kh,Qd").
+    /// Null for folded players (cards not revealed).
+    /// </summary>
+    public string? FinalVisibleCards { get; set; }
+
+    /// <summary>
     /// Generates a UI-ready result label describing the player's outcome.
     /// </summary>
     public string GetResultLabel()

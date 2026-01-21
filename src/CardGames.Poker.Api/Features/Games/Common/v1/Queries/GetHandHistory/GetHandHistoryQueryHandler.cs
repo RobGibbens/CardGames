@@ -1,5 +1,6 @@
-using CardGames.Poker.Api.Contracts;
+using Contracts = CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Data;
+using CardGames.Poker.Api.Data.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,10 +10,10 @@ namespace CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetHandHistory;
 /// Handles the <see cref="GetHandHistoryQuery"/> to retrieve hand history for a game.
 /// </summary>
 public class GetHandHistoryQueryHandler(CardsDbContext context)
-	: IRequestHandler<GetHandHistoryQuery, HandHistoryListDto>
+	: IRequestHandler<GetHandHistoryQuery, Contracts.HandHistoryListDto>
 {
 	/// <inheritdoc />
-	public async Task<HandHistoryListDto> Handle(GetHandHistoryQuery request, CancellationToken cancellationToken)
+	public async Task<Contracts.HandHistoryListDto> Handle(GetHandHistoryQuery request, CancellationToken cancellationToken)
 	{
 		// Get total count
 		var totalCount = await context.HandHistories
@@ -24,6 +25,7 @@ public class GetHandHistoryQueryHandler(CardsDbContext context)
 			.Include(h => h.Winners)
 				.ThenInclude(w => w.Player)
 			.Include(h => h.PlayerResults)
+				.ThenInclude(pr => pr.Player)
 			.Where(h => h.GameId == request.GameId)
 			.OrderByDescending(h => h.CompletedAtUtc)
 			.Skip(request.Skip)
@@ -32,44 +34,42 @@ public class GetHandHistoryQueryHandler(CardsDbContext context)
 			.AsNoTracking()
 			.ToListAsync(cancellationToken);
 
-		var winnerEmails = histories
-			.SelectMany(h => h.Winners)
-			.Select(w => w.Player.Email)
+		// Get all player emails for display name resolution
+		var playerEmails = histories
+			.SelectMany(h => h.PlayerResults)
+			.Select(pr => pr.Player.Email)
+			.Union(histories.SelectMany(h => h.Winners).Select(w => w.Player.Email))
 			.Where(email => !string.IsNullOrWhiteSpace(email))
 			.Distinct(StringComparer.OrdinalIgnoreCase)
 			.ToList();
 
-		var winnerFirstNamesByEmail = winnerEmails.Count == 0
+		var firstNamesByEmail = playerEmails.Count == 0
 			? new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
 			: await context.Users
 				.AsNoTracking()
-				.Where(u => u.Email != null && winnerEmails.Contains(u.Email))
+				.Where(u => u.Email != null && playerEmails.Contains(u.Email))
 				.Select(u => new { Email = u.Email!, u.FirstName })
 				.ToDictionaryAsync(u => u.Email, u => u.FirstName, StringComparer.OrdinalIgnoreCase, cancellationToken);
 
 		var entries = histories.Select(h =>
 		{
 			// Get winner display
-			string GetWinnerFirstNameOrFallback()
+			string GetFirstNameOrFallback(string? email, string fallbackName)
 			{
-				var firstWinner = h.Winners.First();
-				var email = firstWinner.Player.Email;
-
 				if (!string.IsNullOrWhiteSpace(email) &&
-					winnerFirstNamesByEmail.TryGetValue(email, out var firstName) &&
+					firstNamesByEmail.TryGetValue(email, out var firstName) &&
 					!string.IsNullOrWhiteSpace(firstName))
 				{
 					return firstName;
 				}
-
-				return firstWinner.PlayerName;
+				return fallbackName;
 			}
 
 			var winnerDisplay = h.Winners.Count switch
 			{
 				0 => "Unknown",
-				1 => GetWinnerFirstNameOrFallback(),
-				_ => $"{GetWinnerFirstNameOrFallback()} +{h.Winners.Count - 1}"
+				1 => GetFirstNameOrFallback(h.Winners.First().Player.Email, h.Winners.First().PlayerName),
+				_ => $"{GetFirstNameOrFallback(h.Winners.First().Player.Email, h.Winners.First().PlayerName)} +{h.Winners.Count - 1}"
 			};
 
 			var totalWinnings = h.Winners.Sum(w => w.AmountWon);
@@ -88,30 +88,133 @@ public class GetHandHistoryQueryHandler(CardsDbContext context)
 				{
 					currentPlayerResultLabel = currentPlayerResult.GetResultLabel();
 					currentPlayerNetDelta = currentPlayerResult.NetChipDelta;
-					currentPlayerWon = currentPlayerResult.ResultType == Data.Entities.PlayerResultType.Won ||
-									   currentPlayerResult.ResultType == Data.Entities.PlayerResultType.SplitPotWon;
+					currentPlayerWon = currentPlayerResult.ResultType == PlayerResultType.Won ||
+									   currentPlayerResult.ResultType == PlayerResultType.SplitPotWon;
 				}
 			}
 
-			return new HandHistoryEntryDto(
+			// Map all player results for expandable display
+			var playerResults = h.PlayerResults
+				.OrderBy(pr => pr.SeatPosition)
+				.Select(pr => MapToPlayerResultDto(pr, GetFirstNameOrFallback(pr.Player.Email, pr.PlayerName)))
+				.ToList();
+
+			return new Contracts.HandHistoryEntryDto(
 				amountWon: totalWinnings,
 				completedAtUtc: h.CompletedAtUtc,
 				currentPlayerNetDelta: currentPlayerNetDelta,
-				currentPlayerResultLabel: currentPlayerResultLabel,
+				currentPlayerResultLabel: currentPlayerResultLabel ?? string.Empty,
 				currentPlayerWon: currentPlayerWon,
 				handNumber: h.HandNumber,
 				winnerCount: h.Winners.Count,
 				winnerName: winnerDisplay,
-				winningHandDescription: h.WinningHandDescription,
-				wonByFold: h.EndReason == Data.Entities.HandEndReason.FoldedToWinner
-			);
+				winningHandDescription: h.WinningHandDescription ?? string.Empty,
+				wonByFold: h.EndReason == HandEndReason.FoldedToWinner
+			)
+			{
+				PlayerResults = playerResults
+			};
 		}).ToList();
 
-		return new HandHistoryListDto
+		return new Contracts.HandHistoryListDto
 		(
 			entries:entries,
 			hasMore: request.Skip + request.Take < totalCount,
 			totalHands: totalCount
 		);
+	}
+
+	private static Contracts.HandHistoryPlayerResultDto MapToPlayerResultDto(
+		HandHistoryPlayerResult pr,
+		string displayName)
+	{
+		var finalAction = pr.ResultType switch
+		{
+			PlayerResultType.Won => Contracts.PlayerFinalAction.Won,
+			PlayerResultType.SplitPotWon => Contracts.PlayerFinalAction.SplitPot,
+			PlayerResultType.Folded => Contracts.PlayerFinalAction.Folded,
+			PlayerResultType.Lost => Contracts.PlayerFinalAction.Lost,
+			_ => Contracts.PlayerFinalAction.Lost
+		};
+
+		// Parse visible cards if player reached showdown
+		var visibleCards = ParseVisibleCards(pr.FinalVisibleCards, pr.ReachedShowdown);
+
+		return new Contracts.HandHistoryPlayerResultDto
+		{
+			PlayerId = pr.PlayerId,
+			PlayerName = displayName,
+			FinalAction = finalAction,
+			NetAmount = pr.NetChipDelta,
+			FinalVisibleCards = visibleCards,
+			SeatPosition = pr.SeatPosition,
+			ReachedShowdown = pr.ReachedShowdown,
+			ResultLabel = pr.GetResultLabel()
+		};
+	}
+
+	private static IReadOnlyList<Contracts.HandHistoryCardDto>? ParseVisibleCards(string? cardsString, bool reachedShowdown)
+	{
+		// Only show cards for players who reached showdown
+		if (!reachedShowdown || string.IsNullOrWhiteSpace(cardsString))
+		{
+			return null;
+		}
+
+		var cardCodes = cardsString.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+		var cards = new List<Contracts.HandHistoryCardDto>();
+
+		foreach (var code in cardCodes)
+		{
+			var (rank, suit) = ParseCardCode(code);
+			if (rank != null && suit != null)
+			{
+				cards.Add(new Contracts.HandHistoryCardDto { Rank = rank, Suit = suit });
+			}
+		}
+
+		return cards.Count > 0 ? cards : null;
+	}
+
+	private static (string? Rank, string? Suit) ParseCardCode(string code)
+	{
+		if (string.IsNullOrWhiteSpace(code) || code.Length < 2)
+		{
+			return (null, null);
+		}
+
+		// Card codes are like "As", "Kh", "10d", "2c"
+		// Rank is all characters except the last, suit is the last character
+		var suitChar = code[^1];
+		var rankPart = code[..^1];
+
+		var rank = rankPart.ToUpperInvariant() switch
+		{
+			"A" => "A",
+			"K" => "K",
+			"Q" => "Q",
+			"J" => "J",
+			"10" => "10",
+			"9" => "9",
+			"8" => "8",
+			"7" => "7",
+			"6" => "6",
+			"5" => "5",
+			"4" => "4",
+			"3" => "3",
+			"2" => "2",
+			_ => rankPart
+		};
+
+		var suit = char.ToLowerInvariant(suitChar) switch
+		{
+			's' => "Spades",
+			'h' => "Hearts",
+			'd' => "Diamonds",
+			'c' => "Clubs",
+			_ => null
+		};
+
+		return (rank, suit);
 	}
 }

@@ -106,6 +106,9 @@ public class HandHistoryPlayerResultConfiguration : IEntityTypeConfiguration<Han
         builder.Property(pr => pr.AllInStreet)
             .HasConversion<int?>();
 
+        builder.Property(pr => pr.FinalVisibleCards)
+            .HasMaxLength(HandHistoryFields.FinalVisibleCards.MaxLength);
+
         // Indexes
         builder.HasIndex(pr => pr.HandHistoryId);
 
@@ -134,6 +137,13 @@ public static class HandHistoryFields
 
     public static class PlayerName
     {
+        public const int MaxLength = 100;
+    }
+
+    public static class FinalVisibleCards
+    {
+        // Cards stored as comma-separated codes (e.g., "As,Kh,Qd,Jc,Ts")
+        // Max ~50 cards (7 cards * 3 chars + commas = ~28 chars typically)
         public const int MaxLength = 100;
     }
 }

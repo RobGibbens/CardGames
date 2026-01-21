@@ -108,6 +108,11 @@ public sealed class HandHistoryRecorder : IHandHistoryRecorder
             var resultType = DetermineResultType(playerResult);
             var foldStreet = ParseFoldStreet(playerResult.FoldStreet);
 
+            // Only store visible cards for players who reached showdown
+            var finalVisibleCards = playerResult.ReachedShowdown && playerResult.FinalVisibleCards?.Count > 0
+                ? string.Join(",", playerResult.FinalVisibleCards)
+                : null;
+
             handHistory.PlayerResults.Add(new HandHistoryPlayerResult
             {
                 Id = Guid.CreateVersion7(),
@@ -120,7 +125,8 @@ public sealed class HandHistoryRecorder : IHandHistoryRecorder
                 FoldStreet = foldStreet,
                 NetChipDelta = playerResult.NetChipDelta,
                 WentAllIn = playerResult.WentAllIn,
-                AllInStreet = null // Not currently tracked
+                AllInStreet = null, // Not currently tracked
+                FinalVisibleCards = finalVisibleCards
             });
         }
 

@@ -7,8 +7,8 @@
 .history-list {
     display: flex;
     flex-direction: column;
-    gap: 2px;
-    max-height: 250px;
+    gap: 4px;
+    max-height: 350px;
     overflow-y: auto;
 }
 
@@ -27,55 +27,51 @@
     border-radius: 2px;
 }
 
-/* Header row */
-.history-header-row {
-    display: grid;
-    grid-template-columns: 45px 1fr 65px 85px 65px;
-    gap: 8px;
-    padding: 8px 10px;
-    background: rgba(255, 255, 255, 0.08);
-    border-radius: 4px 4px 0 0;
-    position: sticky;
-    top: 0;
-    z-index: 1;
-}
-
-.header-cell {
-    font-size: 10px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: rgba(255, 255, 255, 0.5);
-}
-
-.header-won,
-.header-delta {
-    text-align: right;
-}
-
-/* Entry rows */
-.history-entry {
-    display: grid;
-    grid-template-columns: 45px 1fr 65px 85px 65px;
-    gap: 8px;
-    padding: 8px 10px;
+/* Entry container */
+.history-entry-container {
     background: rgba(255, 255, 255, 0.03);
-    border-radius: 4px;
-    transition: background-color 0.15s ease;
+    border-radius: 6px;
+    overflow: hidden;
 }
 
-.history-entry:hover,
-.history-entry:focus {
+/* Entry header (clickable) */
+.history-entry-header {
+    display: grid;
+    grid-template-columns: 20px 45px 1fr 65px;
+    gap: 8px;
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+    align-items: center;
+}
+
+.history-entry-header:hover,
+.history-entry-header:focus {
     background: rgba(255, 255, 255, 0.08);
     outline: none;
 }
 
-.history-entry:focus-visible {
-    box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.5);
+.history-entry-header:focus-visible {
+    box-shadow: inset 0 0 0 2px rgba(96, 165, 250, 0.5);
 }
 
-.history-entry.player-won {
-    border-left: 3px solid #4ade80;
+.history-entry-header.expanded {
+    background: rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Expand icon */
+.expand-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 10px;
+    transition: color 0.15s ease;
+}
+
+.history-entry-header:hover .expand-icon {
+    color: rgba(255, 255, 255, 0.7);
 }
 
 /* Cells */
@@ -103,27 +99,129 @@
     font-family: 'Consolas', 'Monaco', monospace;
 }
 
-.player-result {
+/* Expanded details */
+.history-entry-details {
+    padding: 8px 12px 12px 12px;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.details-header {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 8px;
     font-size: 11px;
-    color: rgba(255, 255, 255, 0.7);
 }
 
-.player-delta {
-    text-align: right;
-    font-weight: 600;
+.winning-hand {
+    color: #fbbf24;
+    font-weight: 500;
+}
+
+.won-by-fold {
+    color: rgba(255, 255, 255, 0.5);
+    font-style: italic;
+}
+
+/* Player results list */
+.player-results-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.player-result-row {
+    display: grid;
+    grid-template-columns: 1fr 60px 55px auto;
+    gap: 8px;
+    padding: 6px 8px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 4px;
+    font-size: 11px;
+    align-items: center;
+}
+
+.player-result-row.result-won {
+    border-left: 2px solid #4ade80;
+}
+
+.player-result-row.result-split {
+    border-left: 2px solid #fbbf24;
+}
+
+.player-result-row.result-folded {
+    border-left: 2px solid rgba(255, 255, 255, 0.3);
+    opacity: 0.7;
+}
+
+.player-result-row.result-lost {
+    border-left: 2px solid #f87171;
+}
+
+.player-name {
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.player-action {
+    color: rgba(255, 255, 255, 0.6);
+    text-align: center;
+}
+
+.player-net {
     font-family: 'Consolas', 'Monaco', monospace;
+    font-weight: 600;
+    text-align: right;
 }
 
-.delta-positive {
+.net-positive {
     color: #4ade80;
 }
 
-.delta-negative {
+.net-negative {
     color: #f87171;
 }
 
-.delta-zero {
+.net-zero {
     color: rgba(255, 255, 255, 0.4);
+}
+
+/* Player cards */
+.player-cards {
+    display: flex;
+    gap: 3px;
+    flex-wrap: wrap;
+}
+
+.card-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    font-family: 'Consolas', 'Monaco', monospace;
+    background: rgba(255, 255, 255, 0.1);
+    min-width: 22px;
+}
+
+.card-badge.suit-red {
+    color: #ef4444;
+}
+
+.card-badge.suit-black {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.no-player-data {
+    padding: 8px;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 11px;
+    font-style: italic;
 }
 
 /* Empty state */

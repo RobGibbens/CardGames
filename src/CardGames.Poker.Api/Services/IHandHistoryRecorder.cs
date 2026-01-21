@@ -121,6 +121,13 @@ public sealed class PlayerResultInfo
     /// The betting street at which the player folded (null if didn't fold).
     /// </summary>
     public string? FoldStreet { get; init; }
+
+    /// <summary>
+    /// The final visible cards for this player.
+    /// Should only be set for players who reached showdown.
+    /// Cards are stored as a list of card codes (e.g., ["As", "Kh", "Qd"]).
+    /// </summary>
+    public IReadOnlyList<string>? FinalVisibleCards { get; init; }
 }
 
 /// <summary>
