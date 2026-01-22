@@ -453,7 +453,7 @@
     private List<HandTypeOddsDto> handOdds = [];
 
     // Dashboard / Hand history state
-    private List<HandHistoryEntryDto> _handHistoryEntries = [];
+    private List<CardGames.Contracts.SignalR.HandHistoryEntryDto> _handHistoryEntries = [];
     private int _handNumber = 0;
 
     // Toast notification state
@@ -1393,8 +1393,7 @@
                 _gameRules = await GameRulesService.GetGameRulesAsync(_gameTypeCode);
             }
 
-            // Load hand history for the dashboard (requires player ID from GetPlayersAndUpdateSeatsAsync)
-            await LoadHandHistoryAsync();
+            // Hand history is provided via SignalR in the initial state and updates
 
             if (IsCompletePhase)
             {
@@ -1489,7 +1488,10 @@
 
     /// <summary>
     /// Loads hand history from the API for initial page load.
+    /// NOTE: Hand history is now provided via SignalR, so this method is no longer used.
+    /// Keeping for reference in case we need to implement explicit refresh.
     /// </summary>
+    /*
     private async Task LoadHandHistoryAsync()
     {
         try
@@ -1497,20 +1499,13 @@
             var response = await GamesApiClient.GetHandHistoryAsync(
                 GameId,
                 take: 25,
-                skip: 0,
-                playerId: _currentPlayerId);
+                skip: 0);
 
             if (response is { IsSuccessStatusCode: true, Content.Entries: not null })
             {
-                _handHistoryEntries = response.Content.Entries.ToList();
-                Logger.LogInformation("Loaded {Count} hand history entries for game {GameId}", _handHistoryEntries.Count, GameId);
-
-                // Debug log each entry
-                foreach (var entry in _handHistoryEntries)
-                {
-                    Logger.LogInformation("HandHistory API: Hand #{HandNumber}, WinnerName='{WinnerName}', AmountWon={AmountWon}, ResultLabel='{ResultLabel}'",
-                    entry.HandNumber, entry.WinnerName ?? "(null)", entry.AmountWon, entry.CurrentPlayerResultLabel ?? "(null)");
-                }
+                // Map from API type to SignalR type
+                // TODO: Regenerate Refitter client or implement mapping
+                Logger.LogInformation("Loaded {Count} hand history entries for game {GameId}", response.Content.Entries.Count, GameId);
             }
             else
             {
@@ -1523,6 +1518,7 @@
             Logger.LogWarning(ex, "Failed to load hand history for game {GameId}", GameId);
         }
     }
+    */
 
     private bool _isLeavingTable = false;
 
