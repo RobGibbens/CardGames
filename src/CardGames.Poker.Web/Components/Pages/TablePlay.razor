@@ -812,7 +812,7 @@
         _isDrawPhase = state.CurrentPhase == "DrawPhase";
 
         // Note: Hand history is now updated from private state (HandlePrivateStateUpdatedAsync)
-        // because it contains personalized player results (CurrentPlayerResultLabel, CurrentPlayerNetDelta)
+        // because it contains complete player results for all participants in each hand
 
         // Recalculate derived state
         _seatedPlayerCount = _seats.Count(s => s.IsOccupied);
