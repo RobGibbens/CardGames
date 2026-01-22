@@ -1039,7 +1039,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					ResultLabel = pr.GetResultLabel(),
 					NetAmount = pr.NetChipDelta,
 					ReachedShowdown = pr.ReachedShowdown,
-					// TODO: Add visible cards from player's hole cards if reached showdown
+					// NOTE: Visible cards feature deferred - requires storing hole cards in HandHistoryPlayerResult entity
+					// See: https://github.com/RobGibbens/CardGames/issues/XXX (create tracking issue if needed)
 					VisibleCards = pr.ReachedShowdown ? [] : null
 				})
 				.ToList();

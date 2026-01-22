@@ -1486,40 +1486,6 @@
         }
     }
 
-    /// <summary>
-    /// Loads hand history from the API for initial page load.
-    /// NOTE: Hand history is now provided via SignalR, so this method is no longer used.
-    /// Keeping for reference in case we need to implement explicit refresh.
-    /// </summary>
-    /*
-    private async Task LoadHandHistoryAsync()
-    {
-        try
-        {
-            var response = await GamesApiClient.GetHandHistoryAsync(
-                GameId,
-                take: 25,
-                skip: 0);
-
-            if (response is { IsSuccessStatusCode: true, Content.Entries: not null })
-            {
-                // Map from API type to SignalR type
-                // TODO: Regenerate Refitter client or implement mapping
-                Logger.LogInformation("Loaded {Count} hand history entries for game {GameId}", response.Content.Entries.Count, GameId);
-            }
-            else
-            {
-                Logger.LogWarning("GetHandHistoryAsync returned unsuccessful: StatusCode={StatusCode}, HasContent={HasContent}",
-                response?.StatusCode, response?.Content is not null);
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning(ex, "Failed to load hand history for game {GameId}", GameId);
-        }
-    }
-    */
-
     private bool _isLeavingTable = false;
 
     private async Task ToggleSitOutAsync()
