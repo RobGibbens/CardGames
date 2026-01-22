@@ -2,11 +2,11 @@ using System;
 using System.Text.Json;
 using CardGames.Contracts.SignalR;
 using CardGames.Core.French.Cards;
-using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Evaluation;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.ActiveGames.v1.Queries.GetActiveGames;
+using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetHandHistory;
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Games.GameFlow;
 using CardGames.Poker.Hands.DrawHands;
@@ -960,7 +960,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	/// <summary>
 	/// Retrieves hand history entries for the dashboard.
 	/// </summary>
-	private async Task<List<HandHistoryEntryDto>> GetHandHistoryEntriesAsync(
+	private async Task<List<CardGames.Contracts.SignalR.HandHistoryEntryDto>> GetHandHistoryEntriesAsync(
 		Guid gameId,
 		Guid? currentUserPlayerId,
 		int take,
@@ -1027,38 +1027,34 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 			var totalWinnings = h.Winners.Sum(w => w.AmountWon);
 
-			// Get current player's result if specified
-			string? currentPlayerResultLabel = null;
-			var currentPlayerNetDelta = 0;
-			var currentPlayerWon = false;
-
-			if (currentUserPlayerId.HasValue)
-			{
-				var currentPlayerResult = h.PlayerResults
-							.FirstOrDefault(pr => pr.PlayerId == currentUserPlayerId.Value);
-
-				if (currentPlayerResult != null)
+			// Map all player results
+			var playerResults = h.PlayerResults
+				.OrderBy(pr => pr.SeatPosition)
+				.Select(pr => new CardGames.Contracts.SignalR.PlayerHandResultDto
 				{
-					currentPlayerResultLabel = currentPlayerResult.GetResultLabel();
-					currentPlayerNetDelta = currentPlayerResult.NetChipDelta;
-					currentPlayerWon = currentPlayerResult.ResultType == Entities.PlayerResultType.Won ||
-											   currentPlayerResult.ResultType == Entities.PlayerResultType.SplitPotWon;
-				}
-			}
+					PlayerId = pr.PlayerId,
+					PlayerName = pr.PlayerName,
+					SeatPosition = pr.SeatPosition,
+					ResultType = pr.ResultType.ToString(),
+					ResultLabel = pr.GetResultLabel(),
+					NetAmount = pr.NetChipDelta,
+					ReachedShowdown = pr.ReachedShowdown,
+					// TODO: Add visible cards from player's hole cards if reached showdown
+					VisibleCards = pr.ReachedShowdown ? [] : null
+				})
+				.ToList();
 
-
-			return new HandHistoryEntryDto(
-						amountWon: totalWinnings,
-						completedAtUtc: h.CompletedAtUtc,
-						currentPlayerNetDelta: currentPlayerNetDelta,
-						currentPlayerResultLabel: currentPlayerResultLabel,
-						currentPlayerWon: currentPlayerWon,
-						handNumber: h.HandNumber,
-						winnerCount: h.Winners.Count,
-						winnerName: winnerDisplay,
-						winningHandDescription: h.WinningHandDescription,
-						wonByFold: h.EndReason == Data.Entities.HandEndReason.FoldedToWinner
-					);
+			return new CardGames.Contracts.SignalR.HandHistoryEntryDto
+			{
+				HandNumber = h.HandNumber,
+				CompletedAtUtc = h.CompletedAtUtc,
+				WinnerName = winnerDisplay,
+				AmountWon = totalWinnings,
+				WinningHandDescription = h.WinningHandDescription,
+				WonByFold = h.EndReason == Data.Entities.HandEndReason.FoldedToWinner,
+				WinnerCount = h.Winners.Count,
+				PlayerResults = playerResults
+			};
 		}).ToList();
 	}
 

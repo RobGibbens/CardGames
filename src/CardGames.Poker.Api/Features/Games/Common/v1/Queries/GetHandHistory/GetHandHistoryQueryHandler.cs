@@ -1,4 +1,4 @@
-using CardGames.Poker.Api.Contracts;
+using CardGames.Contracts.SignalR;
 using CardGames.Poker.Api.Data;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -74,44 +74,41 @@ public class GetHandHistoryQueryHandler(CardsDbContext context)
 
 			var totalWinnings = h.Winners.Sum(w => w.AmountWon);
 
-			// Get current player's result if specified
-			string? currentPlayerResultLabel = null;
-			var currentPlayerNetDelta = 0;
-			var currentPlayerWon = false;
-
-			if (request.CurrentUserPlayerId.HasValue)
-			{
-				var currentPlayerResult = h.PlayerResults
-					.FirstOrDefault(pr => pr.PlayerId == request.CurrentUserPlayerId.Value);
-
-				if (currentPlayerResult != null)
+			// Map all player results
+			var playerResults = h.PlayerResults
+				.OrderBy(pr => pr.SeatPosition)
+				.Select(pr => new PlayerHandResultDto
 				{
-					currentPlayerResultLabel = currentPlayerResult.GetResultLabel();
-					currentPlayerNetDelta = currentPlayerResult.NetChipDelta;
-					currentPlayerWon = currentPlayerResult.ResultType == Data.Entities.PlayerResultType.Won ||
-									   currentPlayerResult.ResultType == Data.Entities.PlayerResultType.SplitPotWon;
-				}
-			}
+					PlayerId = pr.PlayerId,
+					PlayerName = pr.PlayerName,
+					SeatPosition = pr.SeatPosition,
+					ResultType = pr.ResultType.ToString(),
+					ResultLabel = pr.GetResultLabel(),
+					NetAmount = pr.NetChipDelta,
+					ReachedShowdown = pr.ReachedShowdown,
+					// TODO: Add visible cards from player's hole cards if reached showdown
+					VisibleCards = pr.ReachedShowdown ? [] : null
+				})
+				.ToList();
 
-			return new HandHistoryEntryDto(
-				amountWon: totalWinnings,
-				completedAtUtc: h.CompletedAtUtc,
-				currentPlayerNetDelta: currentPlayerNetDelta,
-				currentPlayerResultLabel: currentPlayerResultLabel,
-				currentPlayerWon: currentPlayerWon,
-				handNumber: h.HandNumber,
-				winnerCount: h.Winners.Count,
-				winnerName: winnerDisplay,
-				winningHandDescription: h.WinningHandDescription,
-				wonByFold: h.EndReason == Data.Entities.HandEndReason.FoldedToWinner
-			);
+			return new HandHistoryEntryDto
+			{
+				HandNumber = h.HandNumber,
+				CompletedAtUtc = h.CompletedAtUtc,
+				WinnerName = winnerDisplay,
+				AmountWon = totalWinnings,
+				WinningHandDescription = h.WinningHandDescription,
+				WonByFold = h.EndReason == Data.Entities.HandEndReason.FoldedToWinner,
+				WinnerCount = h.Winners.Count,
+				PlayerResults = playerResults
+			};
 		}).ToList();
 
 		return new HandHistoryListDto
-		(
-			entries:entries,
-			hasMore: request.Skip + request.Take < totalCount,
-			totalHands: totalCount
-		);
+		{
+			Entries = entries,
+			HasMore = request.Skip + request.Take < totalCount,
+			TotalHands = totalCount
+		};
 	}
 }
