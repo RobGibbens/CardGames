@@ -734,13 +734,18 @@
                 {
                     await Task.Delay(TimeSpan.FromSeconds(5));
                     _showdownDelayUntil = null;
-                    // Load showdown results if not already loaded, then show the overlay
-                    if (_showdownResult is null && IsShowdownPhase)
+                    // Only show overlay if we're still in a showdown-related phase
+                    // (game may have moved to new hand during the delay)
+                    if (IsShowdownPhase)
                     {
-                        await TryLoadShowdownAsync();
+                        // Load showdown results if not already loaded
+                        if (_showdownResult is null)
+                        {
+                            await TryLoadShowdownAsync();
+                        }
+                        _showShowdownOverlay = true;
+                        await InvokeAsync(StateHasChanged);
                     }
-                    _showShowdownOverlay = true;
-                    await InvokeAsync(StateHasChanged);
                 });
             }
 
@@ -748,8 +753,13 @@
             _isResultsPhase = state.IsResultsPhase;
             _secondsUntilNextHand = state.SecondsUntilNextHand ?? 0;
 
+            Logger.LogInformation(
+                "HandleTableStateUpdatedAsync: Phase={Phase}, IsResultsPhase={IsResultsPhase}, SecondsUntilNextHand={Seconds}, HandCompletedAtUtc={HandCompletedAt}, NextHandStartsAtUtc={NextHandStartsAt}",
+                state.CurrentPhase, state.IsResultsPhase, state.SecondsUntilNextHand, state.HandCompletedAtUtc, state.NextHandStartsAtUtc);
+
             if (_isResultsPhase && _secondsUntilNextHand > 0)
             {
+                Logger.LogInformation("Starting countdown timer with {Seconds} seconds", _secondsUntilNextHand);
                 StartCountdownTimer();
             }
             else if (!_isResultsPhase)
@@ -1795,6 +1805,14 @@
         _showdownResult = showdownResponse.Content;
         _showShowdownOverlay = true;
 
+        // After showdown API completes, the server has set IsResultsPhase=True and NextHandStartsAt.
+        // The SignalR broadcast may be queued behind this handler, so we manually start the countdown
+        // to ensure the UI shows the countdown immediately.
+        _isResultsPhase = true;
+        _secondsUntilNextHand = 8; // Default countdown duration (matches ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds)
+        StartCountdownTimer();
+        Logger.LogInformation("TryLoadShowdownAsync: Started countdown timer with {Seconds} seconds after showdown API completed", _secondsUntilNextHand);
+
         if (string.IsNullOrWhiteSpace(_loggedInUserEmail) && string.IsNullOrWhiteSpace(_currentPlayerName))
         {
             _showdownWon = false;
@@ -2410,36 +2428,65 @@
         public int DealOrder { get; init; }
     }
 
+
     public record PlayerActionRequest(BettingActionType Action, int? Amount);
 
     public record ToastMessage(string Message, string Type);
+
 
     private void StartCountdownTimer()
     {
         // Only start if not already running
         if (_countdownTimer is not null)
         {
+            Logger.LogInformation("StartCountdownTimer: Timer already running, skipping");
             return;
         }
 
+        Logger.LogInformation("StartCountdownTimer: Creating timer with {Seconds} seconds", _secondsUntilNextHand);
+
         _countdownTimer = new System.Threading.Timer(async _ =>
         {
-            if (_secondsUntilNextHand > 0)
+            try
             {
-                _secondsUntilNextHand--;
-                await InvokeAsync(StateHasChanged);
+                if (_secondsUntilNextHand > 0)
+                {
+                    _secondsUntilNextHand--;
+                    Logger.LogInformation("CountdownTimer tick: {Seconds} seconds remaining", _secondsUntilNextHand);
+                    await InvokeAsync(StateHasChanged);
+                }
+                else
+                {
+                    Logger.LogInformation("CountdownTimer: Countdown reached 0, hiding overlay");
+                    // Countdown completed - hide the overlay and clear showdown state
+                    // This handles the case where the SignalR broadcast for the new hand
+                    // is delayed or missed
+                    await InvokeAsync(() =>
+                    {
+                        StopCountdownTimer();
+                        _showShowdownOverlay = false;
+                        _showdownResult = null;
+                        _isResultsPhase = false;
+                        Logger.LogInformation("CountdownTimer: Overlay hidden, calling StateHasChanged");
+                        StateHasChanged();
+                    });
+                }
             }
-            else
+            catch (Exception ex)
             {
-                StopCountdownTimer();
+                Logger.LogError(ex, "CountdownTimer callback error");
             }
         }, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
     }
 
     private void StopCountdownTimer()
     {
-        _countdownTimer?.Dispose();
-        _countdownTimer = null;
+        if (_countdownTimer is not null)
+        {
+            Logger.LogInformation("StopCountdownTimer: Disposing timer");
+            _countdownTimer.Dispose();
+            _countdownTimer = null;
+        }
     }
 
     public async ValueTask DisposeAsync()

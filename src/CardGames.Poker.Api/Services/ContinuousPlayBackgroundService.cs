@@ -95,10 +95,20 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			.Include(g => g.GameType)
 			.ToListAsync(cancellationToken);
 
+		if (gamesReadyForNextHand.Count > 0)
+		{
+			_logger.LogInformation(
+				"Found {Count} games ready for next hand at {Now}",
+				gamesReadyForNextHand.Count, now);
+		}
+
 		foreach (var game in gamesReadyForNextHand)
 		{
 			try
 			{
+				_logger.LogInformation(
+					"Starting next hand for game {GameId}: Phase={Phase}, NextHandStartsAt={NextHandStartsAt}, Status={Status}",
+					game.Id, game.CurrentPhase, game.NextHandStartsAt, game.Status);
 				await StartNextHandAsync(context, broadcaster, game, now, cancellationToken);
 			}
 			catch (Exception ex)

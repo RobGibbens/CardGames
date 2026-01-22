@@ -90,8 +90,25 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			secondsUntilNextHand = Math.Max(0, (int)remaining.TotalSeconds);
 		}
 
+		_logger.LogInformation(
+			"BuildPublicStateAsync results phase calculation: GameId={GameId}, Phase={Phase}, HandCompletedAt={HandCompletedAt}, NextHandStartsAt={NextHandStartsAt}, IsResultsPhase={IsResultsPhase}, SecondsUntilNextHand={SecondsUntilNextHand}",
+			gameId, game.CurrentPhase, game.HandCompletedAt, game.NextHandStartsAt, isResultsPhase, secondsUntilNextHand);
+
 		// Get hand history for the dashboard (limited to recent hands)
-		var handHistory = await GetHandHistoryEntriesAsync(gameId, currentUserPlayerId: null, take: 25, cancellationToken);
+		// Wrap in try-catch to prevent hand history loading failures from blocking state broadcasts
+		// (e.g., during results phase when countdown and next hand timing are critical)
+		List<HandHistoryEntryDto> handHistory;
+		try
+		{
+			_logger.LogDebug("BuildPublicStateAsync: Loading hand history for game {GameId}", gameId);
+			handHistory = await GetHandHistoryEntriesAsync(gameId, currentUserPlayerId: null, take: 25, cancellationToken);
+			_logger.LogDebug("BuildPublicStateAsync: Loaded {Count} hand history entries for game {GameId}", handHistory.Count, gameId);
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Failed to load hand history for game {GameId}, continuing with empty list", gameId);
+			handHistory = [];
+		}
 
 		// Get game rules for phase metadata
 		GameRules? rules = null;
@@ -119,7 +136,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			}
 			: null;
 
-		return new TableStatePublicDto
+		var result = new TableStatePublicDto
 		{
 			GameId = game.Id,
 			Name = game.Name,
@@ -150,6 +167,12 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			PlayerVsDeck = playerVsDeck,
 			ActionTimer = actionTimer
 		};
+
+		_logger.LogInformation(
+			"BuildPublicStateAsync completed: GameId={GameId}, Phase={Phase}, IsResultsPhase={IsResultsPhase}, SecondsUntilNextHand={SecondsUntilNextHand}",
+			gameId, result.CurrentPhase, result.IsResultsPhase, result.SecondsUntilNextHand);
+
+		return result;
 	}
 
 	/// <inheritdoc />
@@ -345,7 +368,17 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		var dropOrStay = BuildDropOrStayPrivateDto(game, gamePlayer);
 
 		// Get hand history personalized for this player
-		var handHistory = await GetHandHistoryEntriesAsync(gameId, gamePlayer.PlayerId, take: 25, cancellationToken);
+		// Wrap in try-catch to prevent hand history loading failures from blocking private state broadcasts
+		List<HandHistoryEntryDto> handHistory;
+		try
+		{
+			handHistory = await GetHandHistoryEntriesAsync(gameId, gamePlayer.PlayerId, take: 25, cancellationToken);
+		}
+		catch (Exception ex)
+		{
+			_logger.LogError(ex, "Failed to load hand history for game {GameId}, player {PlayerId}, continuing with empty list", gameId, gamePlayer.PlayerId);
+			handHistory = [];
+		}
 
 		return new PrivateStateDto
 		{

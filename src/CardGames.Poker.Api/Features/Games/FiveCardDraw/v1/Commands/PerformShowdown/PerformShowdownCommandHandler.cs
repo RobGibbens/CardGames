@@ -43,9 +43,61 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 			};
 		}
 
+
 		// Filter pots to current hand (in case there are old unawarded pots from edge cases)
 		var currentHandPots = game.Pots.Where(p => p.HandNumber == game.CurrentHandNumber).ToList();
 		var isAlreadyAwarded = currentHandPots.Any(p => p.IsAwarded);
+
+		// If showdown has already been processed, return early without modifying anything
+		// This prevents concurrency conflicts when multiple clients call showdown simultaneously
+		if (isAlreadyAwarded && game.CurrentPhase == nameof(Phases.Complete))
+		{
+			// Build minimal success response from stored payout data
+			var storedPayouts = new Dictionary<string, int>();
+			var storedWinners = new HashSet<string>();
+			
+			foreach (var pot in currentHandPots.Where(p => p.WinnerPayouts != null))
+			{
+				try
+				{
+					var potPayouts = System.Text.Json.JsonSerializer.Deserialize<List<Dictionary<string, object>>>(pot.WinnerPayouts!);
+					if (potPayouts != null)
+					{
+						foreach (var potPayout in potPayouts)
+						{
+							if (potPayout.TryGetValue("playerName", out var nameObj) && 
+								potPayout.TryGetValue("amount", out var amountObj))
+							{
+								var name = nameObj.ToString()!;
+								var amount = Convert.ToInt32(((System.Text.Json.JsonElement)amountObj).GetInt32());
+								if (storedPayouts.TryGetValue(name, out var existing))
+								{
+									storedPayouts[name] = existing + amount;
+								}
+								else
+								{
+									storedPayouts[name] = amount;
+								}
+								storedWinners.Add(name);
+							}
+						}
+					}
+				}
+				catch
+				{
+					// Ignore parsing errors for legacy data
+				}
+			}
+
+			return new PerformShowdownSuccessful
+			{
+				GameId = game.Id,
+				WonByFold = false,
+				CurrentPhase = game.CurrentPhase,
+				Payouts = storedPayouts,
+				PlayerHands = [] // Minimal response - clients should use cached data
+			};
+		}
 
 		// 2. Validate game is in showdown phase
 		if (game.CurrentPhase != nameof(Phases.Showdown) && !isAlreadyAwarded)
@@ -275,7 +327,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 				// Update player chip stacks
 				foreach (var payout in payouts)
 				{
-					var gamePlayer = playerHandEvaluations[payout.Key].gamePlayer;
+				var gamePlayer = playerHandEvaluations[payout.Key].gamePlayer;
 					gamePlayer.ChipStack += payout.Value;
 				}
 

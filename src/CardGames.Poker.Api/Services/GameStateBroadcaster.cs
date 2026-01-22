@@ -60,8 +60,8 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
             if (publicState is not null)
             {
                 _logger.LogInformation(
-                    "Broadcasting public state for game {GameId}, phase: {Phase}, seats: {SeatCount}",
-                    gameId, publicState.CurrentPhase, publicState.Seats.Count);
+                    "Broadcasting public state for game {GameId}, phase: {Phase}, IsResultsPhase={IsResultsPhase}, SecondsUntilNextHand={Seconds}, seats: {SeatCount}",
+                    gameId, publicState.CurrentPhase, publicState.IsResultsPhase, publicState.SecondsUntilNextHand, publicState.Seats.Count);
 
                 await _hubContext.Clients.Group(groupName)
                     .SendAsync("TableStateUpdated", publicState, cancellationToken);
@@ -80,7 +80,15 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 
             foreach (var userId in playerUserIds)
             {
-                await SendPrivateStateToUserAsync(gameId, userId, cancellationToken);
+                try
+                {
+                    await SendPrivateStateToUserAsync(gameId, userId, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    // Log but continue to other players - don't let one player's failure block others
+                    _logger.LogError(ex, "Failed to send private state to user {UserId} for game {GameId}", userId, gameId);
+                }
             }
         }
         catch (Exception ex)
