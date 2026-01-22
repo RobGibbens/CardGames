@@ -26,7 +26,6 @@ public class GetHandHistoryWithPlayersQueryHandler(CardsDbContext context)
             .Include(h => h.Winners)
                 .ThenInclude(w => w.Player)
             .Include(h => h.PlayerResults)
-                .ThenInclude(pr => pr.Player)
             .Where(h => h.GameId == request.GameId)
             .OrderByDescending(h => h.CompletedAtUtc)
             .Skip(request.Skip)
@@ -35,20 +34,20 @@ public class GetHandHistoryWithPlayersQueryHandler(CardsDbContext context)
             .AsNoTracking()
             .ToListAsync(cancellationToken);
 
-        // Get player first names by email for display
-        var playerEmails = histories
-            .SelectMany(h => h.PlayerResults)
-            .Select(pr => pr.Player.Email)
-            .Union(histories.SelectMany(h => h.Winners).Select(w => w.Player.Email))
+        // Get winner emails for display name resolution
+        var winnerEmails = histories
+            .SelectMany(h => h.Winners)
+            .Where(w => w.Player != null)
+            .Select(w => w.Player.Email)
             .Where(email => !string.IsNullOrWhiteSpace(email))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        var firstNamesByEmail = playerEmails.Count == 0
+        var firstNamesByEmail = winnerEmails.Count == 0
             ? new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
             : await context.Users
                 .AsNoTracking()
-                .Where(u => u.Email != null && playerEmails.Contains(u.Email))
+                .Where(u => u.Email != null && winnerEmails.Contains(u.Email))
                 .Select(u => new { Email = u.Email!, u.FirstName })
                 .ToDictionaryAsync(u => u.Email, u => u.FirstName, StringComparer.OrdinalIgnoreCase, cancellationToken);
 
@@ -66,31 +65,32 @@ public class GetHandHistoryWithPlayersQueryHandler(CardsDbContext context)
         HandHistory h,
         Dictionary<string, string?> firstNamesByEmail)
     {
-        string GetFirstNameOrFallback(string? email, string fallbackName)
+        // Get winner display name
+        string GetWinnerDisplayName(HandHistoryWinner w)
         {
+            var email = w.Player?.Email;
             if (!string.IsNullOrWhiteSpace(email) &&
                 firstNamesByEmail.TryGetValue(email, out var firstName) &&
                 !string.IsNullOrWhiteSpace(firstName))
             {
                 return firstName;
             }
-            return fallbackName;
+            return w.PlayerName;
         }
 
-        // Get winner display name
         var winnerDisplay = h.Winners.Count switch
         {
             0 => "Unknown",
-            1 => GetFirstNameOrFallback(h.Winners.First().Player.Email, h.Winners.First().PlayerName),
-            _ => $"{GetFirstNameOrFallback(h.Winners.First().Player.Email, h.Winners.First().PlayerName)} +{h.Winners.Count - 1}"
+            1 => GetWinnerDisplayName(h.Winners.First()),
+            _ => $"{GetWinnerDisplayName(h.Winners.First())} +{h.Winners.Count - 1}"
         };
 
         var totalPot = h.Winners.Sum(w => w.AmountWon);
 
-        // Map player results
+        // Map player results - use stored PlayerName directly
         var playerResults = h.PlayerResults
             .OrderBy(pr => pr.SeatPosition)
-            .Select(pr => MapToPlayerResultDto(pr, GetFirstNameOrFallback(pr.Player.Email, pr.PlayerName)))
+            .Select(pr => MapToPlayerResultDto(pr, pr.PlayerName))
             .ToList();
 
         return new HandHistoryEntryWithPlayersDto

@@ -970,7 +970,6 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			.Include(h => h.Winners)
 				.ThenInclude(w => w.Player)
 			.Include(h => h.PlayerResults)
-				.ThenInclude(pr => pr.Player)
 			.Where(h => h.GameId == gameId)
 			.OrderByDescending(h => h.CompletedAtUtc)
 			.Take(take)
@@ -978,20 +977,20 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			.AsNoTracking()
 				.ToListAsync(cancellationToken);
 
-		// Get all player emails for display name resolution
-		var playerEmails = histories
-			.SelectMany(h => h.PlayerResults)
-			.Select(pr => pr.Player.Email)
-			.Union(histories.SelectMany(h => h.Winners).Select(w => w.Player.Email))
+		// Get winner emails for display name resolution (only Winners need Player loaded)
+		var winnerEmails = histories
+			.SelectMany(h => h.Winners)
+			.Where(w => w.Player != null)
+			.Select(w => w.Player.Email)
 			.Where(email => !string.IsNullOrWhiteSpace(email))
 			.Distinct(StringComparer.OrdinalIgnoreCase)
 			.ToList();
 
-		var firstNamesByEmail = playerEmails.Count == 0
+		var firstNamesByEmail = winnerEmails.Count == 0
 			? new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
 			: await _context.Users
 				.AsNoTracking()
-				.Where(u => u.Email != null && playerEmails.Contains(u.Email))
+				.Where(u => u.Email != null && winnerEmails.Contains(u.Email))
 				.Select(u => new { Email = u.Email!, u.FirstName })
 				.ToDictionaryAsync(u => u.Email, u => u.FirstName, StringComparer.OrdinalIgnoreCase, cancellationToken);
 
@@ -1003,23 +1002,24 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			_logger.LogInformation("HandHistory {HandNumber}: Winners.Count={WinnerCount}, PlayerResults.Count={PlayerResultCount}",
 				h.HandNumber, h.Winners.Count, h.PlayerResults.Count);
 
-			// Get display name helper
-			string GetFirstNameOrFallback(string? email, string fallbackName)
+			// Get display name helper for winners (they have Player loaded)
+			string GetWinnerDisplayName(Entities.HandHistoryWinner w)
 			{
+				var email = w.Player?.Email;
 				if (!string.IsNullOrWhiteSpace(email) &&
 					firstNamesByEmail.TryGetValue(email, out var firstName) &&
 					!string.IsNullOrWhiteSpace(firstName))
 				{
 					return firstName;
 				}
-				return fallbackName;
+				return w.PlayerName;
 			}
 
 			var winnerDisplay = h.Winners.Count switch
 			{
 				0 => "Unknown",
-				1 => GetFirstNameOrFallback(h.Winners.First().Player.Email, h.Winners.First().PlayerName),
-				_ => $"{GetFirstNameOrFallback(h.Winners.First().Player.Email, h.Winners.First().PlayerName)} +{h.Winners.Count - 1}"
+				1 => GetWinnerDisplayName(h.Winners.First()),
+				_ => $"{GetWinnerDisplayName(h.Winners.First())} +{h.Winners.Count - 1}"
 			};
 
 			_logger.LogInformation("HandHistory {HandNumber}: winnerDisplay='{WinnerDisplay}'", h.HandNumber, winnerDisplay);
@@ -1046,9 +1046,10 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			}
 
 			// Map all player results for expandable display
+			// Use stored PlayerName directly - no need to load Player navigation property
 			var playerResults = h.PlayerResults
 				.OrderBy(pr => pr.SeatPosition)
-				.Select(pr => MapToHandHistoryPlayerResultDto(pr, GetFirstNameOrFallback(pr.Player.Email, pr.PlayerName)))
+				.Select(pr => MapToHandHistoryPlayerResultDto(pr, pr.PlayerName))
 				.ToList();
 
 			return new HandHistoryEntryDto(
