@@ -980,11 +980,10 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		// Get winner emails for display name resolution (only Winners need Player loaded)
 		var winnerEmails = histories
 			.SelectMany(h => h.Winners)
-			.Where(w => w.Player != null)
-			.Select(w => w.Player.Email)
+			.Select(w => w.Player?.Email)
 			.Where(email => !string.IsNullOrWhiteSpace(email))
 			.Distinct(StringComparer.OrdinalIgnoreCase)
-			.ToList();
+			.ToList()!;
 
 		var firstNamesByEmail = winnerEmails.Count == 0
 			? new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
