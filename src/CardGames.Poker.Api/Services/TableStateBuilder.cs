@@ -984,11 +984,20 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			.Distinct()
 			.ToList();
 
+		_logger.LogInformation("[HANDHISTORY-NAMES] Loading player names for {PlayerCount} player IDs: {PlayerIds}", 
+			allPlayerIds.Count, string.Join(", ", allPlayerIds.Take(5)));
+
 		// Load all players separately
 		var playersByIdLookup = await _context.Players
 			.Where(p => allPlayerIds.Contains(p.Id))
 			.AsNoTracking()
 			.ToDictionaryAsync(p => p.Id, p => p.Name, cancellationToken);
+
+		_logger.LogInformation("[HANDHISTORY-NAMES] Loaded {PlayerCount} player names from Players table", playersByIdLookup.Count);
+		foreach (var kvp in playersByIdLookup)
+		{
+			_logger.LogInformation("[HANDHISTORY-NAMES] Player {PlayerId} -> Name: '{PlayerName}'", kvp.Key, kvp.Value);
+		}
 
 		// Get cards for players who reached showdown
 		var handNumbers = histories.Select(h => h.HandNumber).ToHashSet();
@@ -1069,7 +1078,14 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				.Select(pr =>
 				{
 					// Get player's actual name from Players lookup, fallback to stored name if not available
-					var playerName = playersByIdLookup.TryGetValue(pr.PlayerId, out var name) ? name : pr.PlayerName;
+					var foundInLookup = playersByIdLookup.TryGetValue(pr.PlayerId, out var name);
+					var playerName = foundInLookup ? name : pr.PlayerName;
+					
+					if (!foundInLookup)
+					{
+						_logger.LogWarning("[HANDHISTORY-NAMES] Player ID {PlayerId} not found in lookup, using stored name: '{StoredName}'", 
+							pr.PlayerId, pr.PlayerName);
+					}
 
 					// Get cards for this player if they reached showdown
 					List<string>? visibleCards = null;
