@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace CardGames.Poker.Api.Features.Games.Common.v1.Commands.AddChips;
+namespace CardGames.Contracts.AddChips;
 
 /// <summary>
 /// Request to add chips to a player's stack.

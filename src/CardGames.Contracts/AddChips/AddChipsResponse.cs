@@ -1,4 +1,4 @@
-namespace CardGames.Poker.Api.Features.Games.Common.v1.Commands.AddChips;
+namespace CardGames.Contracts.AddChips;
 
 /// <summary>
 /// Successful response when chips are added.

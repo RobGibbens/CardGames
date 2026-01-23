@@ -1,4 +1,4 @@
-using CardGames.Contracts.SignalR;
+using CardGames.Contracts.AddChips;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Infrastructure;

@@ -48,6 +48,9 @@ builder.Services.AddMemoryCache();
 // Register GameRulesService for dynamic UI
 builder.Services.AddScoped<GameRulesService>();
 
+// ApexCharts package is referenced for charting support
+// No explicit service registration required
+
 builder.Services.ConfigureHttpClientDefaults(http =>
 {
 	http.AddServiceDiscovery();

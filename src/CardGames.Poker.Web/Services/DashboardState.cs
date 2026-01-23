@@ -10,6 +10,7 @@ public sealed class DashboardState
     private int _width = 560;
     private readonly Dictionary<string, bool> _sectionStates = new()
     {
+        ["Chips"] = true,
         ["Leaderboard"] = true,
         ["Odds"] = true,
         ["HandHistory"] = true

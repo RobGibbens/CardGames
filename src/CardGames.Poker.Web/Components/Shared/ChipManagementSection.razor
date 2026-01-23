@@ -1,0 +1,181 @@
+@namespace CardGames.Poker.Web.Components.Shared
+@using CardGames.Contracts.SignalR
+@using CardGames.Contracts.AddChips
+@using CardGames.Poker.Api.Clients
+
+@* Chip Management Section - Displays chip stack, add chips interface, and history *@
+
+<div class="chip-management-section">
+    <!-- Current Chip Stack Display -->
+    <div class="chip-stack-display">
+        <div class="chip-stack-label">Current Stack:</div>
+        <div class="chip-stack-value">
+            @(ChipHistory?.CurrentChips.ToString("N0") ?? "0")
+            @if (ChipHistory?.PendingChipsToAdd > 0)
+            {
+                <span class="pending-chips">(+@ChipHistory.PendingChipsToAdd.ToString("N0") pending)</span>
+            }
+        </div>
+    </div>
+
+    <!-- Add Chips Interface -->
+    <div class="add-chips-form">
+        <div class="form-group">
+            <label for="chip-amount">Add Chips:</label>
+            <input type="number" 
+                   id="chip-amount" 
+                   class="form-control" 
+                   @bind="chipAmount" 
+                   min="1" 
+                   step="100" 
+                   placeholder="Enter amount" />
+        </div>
+        <button class="btn btn-primary" 
+                @onclick="AddChipsAsync" 
+                disabled="@(isSubmitting || chipAmount <= 0)">
+            <i class="fa-solid fa-plus"></i>
+            Add Chips
+        </button>
+    </div>
+
+    <!-- Info Message -->
+    @if (!string.IsNullOrEmpty(infoMessage))
+    {
+        <div class="info-message @messageType">
+            <i class="fa-solid @(messageType == "success" ? "fa-circle-check" : "fa-circle-info")"></i>
+            @infoMessage
+        </div>
+    }
+
+    <!-- Game Type Explanation -->
+    <div class="chip-timing-info">
+        @if (IsKingsAndLows)
+        {
+            <i class="fa-solid fa-info-circle"></i>
+            <span>Chips are added immediately in Kings and Lows.</span>
+        }
+        else
+        {
+            <i class="fa-solid fa-clock"></i>
+            <span>Chips will be added at the start of the next hand.</span>
+        }
+    </div>
+
+    <!-- Chip History Summary -->
+    @if (ChipHistory?.History?.Any() == true)
+    {
+        <div class="chip-history-summary">
+            <h4>Recent Hands (Last @ChipHistory.History.Count)</h4>
+            <div class="history-stats">
+                <div class="stat">
+                    <span class="stat-label">Starting:</span>
+                    <span class="stat-value">@ChipHistory.StartingChips.ToString("N0")</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Current:</span>
+                    <span class="stat-value">@ChipHistory.CurrentChips.ToString("N0")</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Change:</span>
+                    <span class="stat-value @(GetChangeClass(ChipHistory.CurrentChips - ChipHistory.StartingChips))">
+                        @FormatChange(ChipHistory.CurrentChips - ChipHistory.StartingChips)
+                    </span>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="no-history">
+            <i class="fa-regular fa-chart-line"></i>
+            <span>No chip history yet. Play some hands to see your progress!</span>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public ChipHistoryDto? ChipHistory { get; set; }
+
+    [Parameter]
+    public Guid GameId { get; set; }
+
+    [Parameter]
+    public Guid PlayerId { get; set; }
+
+    [Parameter]
+    public string? GameTypeCode { get; set; }
+
+    [Parameter]
+    public EventCallback OnChipsAdded { get; set; }
+
+    [Inject]
+    private IGamesApi GamesApiClient { get; set; } = null!;
+
+    [Inject]
+    private ILogger<ChipManagementSection> Logger { get; set; } = null!;
+
+    private int chipAmount = 500;
+    private bool isSubmitting;
+    private string? infoMessage;
+    private string messageType = "info";
+
+    private bool IsKingsAndLows => 
+        string.Equals(GameTypeCode, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase);
+
+    private async Task AddChipsAsync()
+    {
+        if (chipAmount <= 0)
+        {
+            infoMessage = "Please enter a positive amount.";
+            messageType = "error";
+            return;
+        }
+
+        isSubmitting = true;
+        infoMessage = null;
+
+        try
+        {
+            var request = new AddChipsRequest { Amount = chipAmount };
+            var result = await GamesApiClient.AddChipsAsync(GameId, PlayerId, request);
+
+            if (result.IsSuccessStatusCode && result.Content != null)
+            {
+                infoMessage = result.Content.Message;
+                messageType = "success";
+                chipAmount = 500; // Reset to default
+
+                // Notify parent component
+                await OnChipsAdded.InvokeAsync();
+            }
+            else
+            {
+                infoMessage = "Failed to add chips. Please try again.";
+                messageType = "error";
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to add chips");
+            infoMessage = "Failed to add chips. Please try again.";
+            messageType = "error";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private string GetChangeClass(int change)
+    {
+        return change > 0 ? "positive" : change < 0 ? "negative" : "neutral";
+    }
+
+    private string FormatChange(int change)
+    {
+        if (change > 0)
+            return $"+{change:N0}";
+        return change.ToString("N0");
+    }
+}

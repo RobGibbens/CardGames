@@ -477,6 +477,33 @@ namespace CardGames.Poker.Api.Clients
         [Headers("Accept: application/json, application/problem+json")]
         [Get("/api/v1/games/{gameId}/history")]
         Task<IApiResponse<HandHistoryListDto>> GetHandHistoryAsync(System.Guid gameId, [Query] int? take, [Query] int? skip, [Query] System.Guid? playerId, CancellationToken cancellationToken = default);
+
+        /// <summary>Add chips to a player's stack</summary>
+        /// <remarks>Adds chips to a player's stack in the game. For Kings and Lows, chips are added immediately. For other game types, chips are added immediately if the game is between hands, otherwise they are queued and will be added at the start of the next hand.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Post("/api/v1/games/{gameId}/players/{playerId}/add-chips")]
+        Task<IApiResponse<CardGames.Contracts.AddChips.AddChipsResponse>> AddChipsAsync(System.Guid gameId, System.Guid playerId, [Body] CardGames.Contracts.AddChips.AddChipsRequest request, CancellationToken cancellationToken = default);
     }
 
     /// <summary>Start Hand</summary>
