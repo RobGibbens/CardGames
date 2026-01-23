@@ -1366,13 +1366,15 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			// Starting point for the history window
 			var windowStartStack = currentStack - totalDeltaInWindow;
 			
-			// Add initial starting point entry (hand 0) to show the baseline
+			// Add initial starting point entry to show the baseline
+			// Use hand number one less than the first actual hand for proper chronological ordering
+			var baselineHandNumber = recentHands.FirstOrDefault()?.HandNumber - 1 ?? 0;
 			entries.Add(new ChipHistoryEntryDto
 			{
-				HandNumber = 0,
+				HandNumber = baselineHandNumber,
 				ChipStackAfterHand = windowStartStack,
 				ChipsDelta = 0,
-				Timestamp = recentHands.FirstOrDefault()?.CompletedAtUtc ?? DateTimeOffset.UtcNow
+				Timestamp = recentHands.FirstOrDefault()?.CompletedAtUtc.AddSeconds(-1) ?? DateTimeOffset.UtcNow
 			});
 			
 			var runningStack = windowStartStack;
