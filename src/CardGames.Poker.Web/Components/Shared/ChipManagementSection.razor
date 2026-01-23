@@ -61,36 +61,7 @@
         }
     </div>
 
-    <!-- Chip History Summary -->
-    @if (ChipHistory?.History?.Any() == true)
-    {
-        <div class="chip-history-summary">
-            <h4>Recent Hands (Last @ChipHistory.History.Count)</h4>
-            <div class="history-stats">
-                <div class="stat">
-                    <span class="stat-label">Starting:</span>
-                    <span class="stat-value">@ChipHistory.StartingChips.ToString("N0")</span>
-                </div>
-                <div class="stat">
-                    <span class="stat-label">Current:</span>
-                    <span class="stat-value">@ChipHistory.CurrentChips.ToString("N0")</span>
-                </div>
-                <div class="stat">
-                    <span class="stat-label">Change:</span>
-                    <span class="stat-value @(GetChangeClass(ChipHistory.CurrentChips - ChipHistory.StartingChips))">
-                        @FormatChange(ChipHistory.CurrentChips - ChipHistory.StartingChips)
-                    </span>
-                </div>
-            </div>
-        </div>
-    }
-    else
-    {
-        <div class="no-history">
-            <i class="fa-regular fa-chart-line"></i>
-            <span>No chip history yet. Play some hands to see your progress!</span>
-        </div>
-    }
+    
 </div>
 
 @code {
