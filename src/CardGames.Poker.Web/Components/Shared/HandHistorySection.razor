@@ -38,6 +38,7 @@
 								<span class="header-player">Player</span>
 								<span class="header-result">Result</span>
 								<span class="header-amount">Net Amount</span>
+								<span class="header-hand">Hand</span>
 							</div>
 							@foreach (var result in entry.PlayerResults)
 							{
@@ -46,6 +47,7 @@
 									<span class="result-player">@result.PlayerName</span>
 									<span class="result-label">@result.ResultLabel</span>
 									<span class="result-amount">@FormatNetAmount(result.NetAmount)</span>
+									<span class="result-hand">@FormatHand(result.VisibleCards)</span>
 								</div>
 							}
 						</div>
@@ -116,5 +118,15 @@
 			< 0 => netAmount.ToString("N0"),
 			_ => "0"
 		};
+	}
+
+	private static string FormatHand(IReadOnlyList<string>? visibleCards)
+	{
+		if (visibleCards == null || !visibleCards.Any())
+		{
+			return "";
+		}
+
+		return string.Join(", ", visibleCards);
 	}
 }

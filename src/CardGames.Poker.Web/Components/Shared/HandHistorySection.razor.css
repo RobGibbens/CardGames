@@ -124,7 +124,7 @@
 
 .player-results-header {
     display: grid;
-    grid-template-columns: 40px 1fr 120px 90px;
+    grid-template-columns: 40px 1fr 120px 90px 150px;
     gap: 8px;
     padding: 8px 8px;
     font-size: 10px;
@@ -144,10 +144,15 @@
     text-align: right;
 }
 
+.header-hand,
+.result-hand {
+    font-family: 'Consolas', 'Monaco', monospace;
+}
+
 /* Player result rows */
 .player-result-row {
     display: grid;
-    grid-template-columns: 40px 1fr 120px 90px;
+    grid-template-columns: 40px 1fr 120px 90px 150px;
     gap: 8px;
     padding: 6px 8px;
     font-size: 11px;
@@ -180,6 +185,12 @@
 .result-amount {
     font-family: 'Consolas', 'Monaco', monospace;
     font-weight: 600;
+}
+
+.result-hand {
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.7);
 }
 
 /* Result type specific styling */

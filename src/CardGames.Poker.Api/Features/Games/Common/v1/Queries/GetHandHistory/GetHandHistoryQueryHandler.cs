@@ -24,6 +24,7 @@ public class GetHandHistoryQueryHandler(CardsDbContext context)
 			.Include(h => h.Winners)
 				.ThenInclude(w => w.Player)
 			.Include(h => h.PlayerResults)
+				.ThenInclude(pr => pr.Player)
 			.Where(h => h.GameId == request.GameId)
 			.OrderByDescending(h => h.CompletedAtUtc)
 			.Skip(request.Skip)
@@ -31,6 +32,28 @@ public class GetHandHistoryQueryHandler(CardsDbContext context)
 			.AsSplitQuery()
 			.AsNoTracking()
 			.ToListAsync(cancellationToken);
+
+		// Get all player IDs from histories that reached showdown
+		var playerIdsWithShowdown = histories
+			.SelectMany(h => h.PlayerResults.Where(pr => pr.ReachedShowdown).Select(pr => new { pr.PlayerId, h.HandNumber }))
+			.ToList();
+
+		// Get cards for players who reached showdown
+		var handNumbers = histories.Select(h => h.HandNumber).ToHashSet();
+		var gameCards = await context.GameCards
+			.Where(gc => gc.GameId == request.GameId && handNumbers.Contains(gc.HandNumber))
+			.Where(gc => gc.GamePlayerId != null && gc.Location == Data.Entities.CardLocation.Hole)
+			.Include(gc => gc.GamePlayer)
+			.AsNoTracking()
+			.ToListAsync(cancellationToken);
+
+		// Group cards by player and hand number
+		var cardsByPlayerAndHand = gameCards
+			.Where(gc => gc.GamePlayer != null)
+			.GroupBy(gc => new { gc.GamePlayer!.PlayerId, gc.HandNumber })
+			.ToDictionary(
+				g => g.Key,
+				g => g.OrderBy(gc => gc.DealOrder).Select(gc => FormatCard(gc.Symbol, gc.Suit)).ToList());
 
 		var winnerEmails = histories
 			.SelectMany(h => h.Winners)
@@ -77,18 +100,30 @@ public class GetHandHistoryQueryHandler(CardsDbContext context)
 			// Map all player results
 			var playerResults = h.PlayerResults
 				.OrderBy(pr => pr.SeatPosition)
-				.Select(pr => new PlayerHandResultDto
+				.Select(pr =>
 				{
-					PlayerId = pr.PlayerId,
-					PlayerName = pr.PlayerName,
-					SeatPosition = pr.SeatPosition,
-					ResultType = pr.ResultType.ToString(),
-					ResultLabel = pr.GetResultLabel(),
-					NetAmount = pr.NetChipDelta,
-					ReachedShowdown = pr.ReachedShowdown,
-					// NOTE: Visible cards feature deferred - requires storing hole cards in HandHistoryPlayerResult entity
-					// See: https://github.com/RobGibbens/CardGames/issues/XXX (create tracking issue if needed)
-					VisibleCards = pr.ReachedShowdown ? [] : null
+					// Get player's actual name from Player entity, fallback to stored name if not available
+					var playerName = pr.Player?.Name ?? pr.PlayerName;
+
+					// Get cards for this player if they reached showdown
+					List<string>? visibleCards = null;
+					if (pr.ReachedShowdown && 
+						cardsByPlayerAndHand.TryGetValue(new { pr.PlayerId, h.HandNumber }, out var cards))
+					{
+						visibleCards = cards;
+					}
+
+					return new PlayerHandResultDto
+					{
+						PlayerId = pr.PlayerId,
+						PlayerName = playerName,
+						SeatPosition = pr.SeatPosition,
+						ResultType = pr.ResultType.ToString(),
+						ResultLabel = pr.GetResultLabel(),
+						NetAmount = pr.NetChipDelta,
+						ReachedShowdown = pr.ReachedShowdown,
+						VisibleCards = visibleCards
+					};
 				})
 				.ToList();
 
@@ -111,5 +146,40 @@ public class GetHandHistoryQueryHandler(CardsDbContext context)
 			HasMore = request.Skip + request.Take < totalCount,
 			TotalHands = totalCount
 		};
+	}
+
+	/// <summary>
+	/// Formats a card as text (e.g., "3s", "Ah", "10d").
+	/// </summary>
+	private static string FormatCard(Data.Entities.CardSymbol symbol, Data.Entities.CardSuit suit)
+	{
+		var symbolStr = symbol switch
+		{
+			Data.Entities.CardSymbol.Deuce => "2",
+			Data.Entities.CardSymbol.Three => "3",
+			Data.Entities.CardSymbol.Four => "4",
+			Data.Entities.CardSymbol.Five => "5",
+			Data.Entities.CardSymbol.Six => "6",
+			Data.Entities.CardSymbol.Seven => "7",
+			Data.Entities.CardSymbol.Eight => "8",
+			Data.Entities.CardSymbol.Nine => "9",
+			Data.Entities.CardSymbol.Ten => "10",
+			Data.Entities.CardSymbol.Jack => "J",
+			Data.Entities.CardSymbol.Queen => "Q",
+			Data.Entities.CardSymbol.King => "K",
+			Data.Entities.CardSymbol.Ace => "A",
+			_ => "?"
+		};
+
+		var suitStr = suit switch
+		{
+			Data.Entities.CardSuit.Hearts => "h",
+			Data.Entities.CardSuit.Diamonds => "d",
+			Data.Entities.CardSuit.Spades => "s",
+			Data.Entities.CardSuit.Clubs => "c",
+			_ => "?"
+		};
+
+		return $"{symbolStr}{suitStr}";
 	}
 }
