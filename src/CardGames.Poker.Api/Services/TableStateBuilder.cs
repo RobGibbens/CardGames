@@ -1365,9 +1365,19 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			
 			// Starting point for the history window
 			var windowStartStack = currentStack - totalDeltaInWindow;
+			
+			// Add initial starting point entry (hand 0) to show the baseline
+			entries.Add(new ChipHistoryEntryDto
+			{
+				HandNumber = 0,
+				ChipStackAfterHand = windowStartStack,
+				ChipsDelta = 0,
+				Timestamp = recentHands.FirstOrDefault()?.CompletedAtUtc ?? DateTimeOffset.UtcNow
+			});
+			
 			var runningStack = windowStartStack;
 
-			// Build chip history entries
+			// Build chip history entries for each completed hand
 			foreach (var hand in recentHands)
 			{
 				var playerResult = hand.PlayerResults.FirstOrDefault(pr => pr.PlayerId == gamePlayer.PlayerId);
