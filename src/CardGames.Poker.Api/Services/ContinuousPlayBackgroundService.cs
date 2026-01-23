@@ -415,7 +415,29 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			await context.SaveChangesAsync(cancellationToken);
 		}
 
-		// 2. Check for eligible players (occupied, not sitting out, chips >= ante, hasn't left)
+		// 2. Apply pending chips to player stacks
+		var playersWithPendingChips = game.GamePlayers
+			.Where(gp => gp.Status == GamePlayerStatus.Active && gp.PendingChipsToAdd > 0)
+			.ToList();
+
+		foreach (var player in playersWithPendingChips)
+		{
+			player.ChipStack += player.PendingChipsToAdd;
+			_logger.LogInformation(
+				"Applied {PendingChips} pending chips to player {PlayerName} in game {GameId} (new stack: {NewStack})",
+				player.PendingChipsToAdd,
+				player.Player?.Name ?? player.PlayerId.ToString(),
+				game.Id,
+				player.ChipStack);
+			player.PendingChipsToAdd = 0;
+		}
+
+		if (playersWithPendingChips.Count > 0)
+		{
+			await context.SaveChangesAsync(cancellationToken);
+		}
+
+		// 3. Check for eligible players (occupied, not sitting out, chips >= ante, hasn't left)
 		var ante = game.Ante ?? 0;
 		var eligiblePlayers = game.GamePlayers
 			.Where(gp => gp.Status == GamePlayerStatus.Active &&
