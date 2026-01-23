@@ -992,7 +992,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 		// Get cards for players who reached showdown
 		var handNumbers = histories.Select(h => h.HandNumber).ToHashSet();
-		_logger.LogInformation("Loading cards for {HandCount} hands: {HandNumbers}", handNumbers.Count, string.Join(", ", handNumbers));
+		_logger.LogInformation("[HANDHISTORY-CARDS] Loading cards for {HandCount} hands: {HandNumbers}", handNumbers.Count, string.Join(", ", handNumbers));
 		
 		var gameCards = await _context.GameCards
 			.Where(gc => gc.GameId == gameId && handNumbers.Contains(gc.HandNumber))
@@ -1001,7 +1001,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			.AsNoTracking()
 			.ToListAsync(cancellationToken);
 		
-		_logger.LogInformation("Loaded {CardCount} total cards from database", gameCards.Count);
+		_logger.LogInformation("[HANDHISTORY-CARDS] Loaded {CardCount} total hole cards from database for game {GameId}", gameCards.Count, gameId);
 
 		// Group cards by player and hand number
 		var cardsByPlayerAndHand = gameCards
@@ -1011,7 +1011,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				g => g.Key,
 				g => g.OrderBy(gc => gc.DealOrder).Select(gc => FormatCard(gc.Symbol, gc.Suit)).ToList());
 		
-		_logger.LogInformation("Grouped cards into {GroupCount} player-hand combinations", cardsByPlayerAndHand.Count);
+		_logger.LogInformation("[HANDHISTORY-CARDS] Grouped cards into {GroupCount} player-hand combinations", cardsByPlayerAndHand.Count);
 
 		var winnerEmails = histories
 			.SelectMany(h => h.Winners)
@@ -1078,12 +1078,12 @@ public sealed class TableStateBuilder : ITableStateBuilder
 						if (cardsByPlayerAndHand.TryGetValue(new { pr.PlayerId, h.HandNumber }, out var cards))
 						{
 							visibleCards = cards;
-							_logger.LogInformation("Hand {HandNumber}, Player {PlayerName} (Seat {Seat}): Found {CardCount} cards: {Cards}", 
+							_logger.LogInformation("[HANDHISTORY-CARDS] ✓ Hand #{HandNumber}, Player '{PlayerName}' (Seat {Seat}): Found {CardCount} cards: {Cards}", 
 								h.HandNumber, playerName, pr.SeatPosition, cards.Count, string.Join(", ", cards));
 						}
 						else
 						{
-							_logger.LogWarning("Hand {HandNumber}, Player {PlayerName} (Seat {Seat}, PlayerId {PlayerId}): Reached showdown but no cards found in lookup", 
+							_logger.LogWarning("[HANDHISTORY-CARDS] ✗ Hand #{HandNumber}, Player '{PlayerName}' (Seat {Seat}, PlayerId {PlayerId}): Reached showdown but NO CARDS FOUND in lookup dictionary", 
 								h.HandNumber, playerName, pr.SeatPosition, pr.PlayerId);
 						}
 					}
