@@ -81,6 +81,17 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 			player.IsSittingOut = true;
 		}
 
+		// 4. Apply pending chips to player stacks
+		var playersWithPendingChips = game.GamePlayers
+			.Where(gp => gp.Status == GamePlayerStatus.Active && gp.PendingChipsToAdd > 0)
+			.ToList();
+
+		foreach (var player in playersWithPendingChips)
+		{
+			player.ChipStack += player.PendingChipsToAdd;
+			player.PendingChipsToAdd = 0;
+		}
+
 		// 5. Get eligible players (active, not sitting out, chips >= ante or ante is 0)
 		var eligiblePlayers = game.GamePlayers
 			.Where(gp => gp.Status == GamePlayerStatus.Active &&
