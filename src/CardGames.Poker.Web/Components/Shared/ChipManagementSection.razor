@@ -2,6 +2,7 @@
 @using CardGames.Contracts.SignalR
 @using CardGames.Contracts.AddChips
 @using CardGames.Poker.Api.Clients
+@using ApexCharts
 
 @* Chip Management Section - Displays chip stack, add chips interface, and history *@
 
@@ -61,6 +62,31 @@
         </div>
     }
 
+    <!-- Chip History Chart -->
+    @if (ChipHistory?.History?.Any() == true)
+    {
+        <div class="chip-history-chart">
+            <h4>Chip History (Last @ChipHistory.History.Count Hands)</h4>
+            <ApexChart TItem="ChipHistoryEntryDto"
+                       Title=""
+                       Height="300">
+                <ApexPointSeries TItem="ChipHistoryEntryDto"
+                                 Items="ChipHistory.History"
+                                 Name="Chip Stack"
+                                 SeriesType="SeriesType.Line"
+                                 XValue="@(e => (object)e.HandNumber)"
+                                 YValue="@(e => (decimal)e.ChipStackAfterHand)"
+                                 Color="#10b981" />
+            </ApexChart>
+        </div>
+    }
+    else
+    {
+        <div class="no-history">
+            <i class="fa-regular fa-chart-line"></i>
+            <span>No chip history yet. Play some hands to see your progress!</span>
+        </div>
+    }
     
 </div>
 

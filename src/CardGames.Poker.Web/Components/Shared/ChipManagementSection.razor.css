@@ -120,6 +120,17 @@
     color: #4b5563;
 }
 
+.chip-history-chart {
+    margin-top: 1rem;
+}
+
+.chip-history-chart h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: #374151;
+}
+
 .chip-history-summary {
     margin-top: 0.5rem;
 }
