@@ -1346,19 +1346,38 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			IReadOnlyList<CardGames.Contracts.SignalR.HandHistoryEntryDto> handHistory)
 		{
 			var entries = new List<ChipHistoryEntryDto>();
-			var currentStack = gamePlayer.StartingChips;
-
-			// Take last 30 hands and build chip history entries
-			foreach (var hand in handHistory.TakeLast(30))
+			
+			// Take last 30 hands for the history window
+			var recentHands = handHistory.TakeLast(30).ToList();
+			
+			// Calculate the starting stack for this window by working backwards from current chips
+			var currentStack = gamePlayer.ChipStack;
+			var totalDeltaInWindow = 0;
+			
+			foreach (var hand in recentHands)
 			{
 				var playerResult = hand.PlayerResults.FirstOrDefault(pr => pr.PlayerId == gamePlayer.PlayerId);
 				if (playerResult != null)
 				{
-					currentStack += playerResult.NetAmount;
+					totalDeltaInWindow += playerResult.NetAmount;
+				}
+			}
+			
+			// Starting point for the history window
+			var windowStartStack = currentStack - totalDeltaInWindow;
+			var runningStack = windowStartStack;
+
+			// Build chip history entries
+			foreach (var hand in recentHands)
+			{
+				var playerResult = hand.PlayerResults.FirstOrDefault(pr => pr.PlayerId == gamePlayer.PlayerId);
+				if (playerResult != null)
+				{
+					runningStack += playerResult.NetAmount;
 					entries.Add(new ChipHistoryEntryDto
 					{
 						HandNumber = hand.HandNumber,
-						ChipStackAfterHand = currentStack,
+						ChipStackAfterHand = runningStack,
 						ChipsDelta = playerResult.NetAmount,
 						Timestamp = hand.CompletedAtUtc
 					});
