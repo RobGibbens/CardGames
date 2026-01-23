@@ -347,6 +347,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		// Get hand history personalized for this player
 		var handHistory = await GetHandHistoryEntriesAsync(gameId, gamePlayer.PlayerId, take: 25, cancellationToken);
 
+		// Build chip history from hand history
+		var chipHistory = BuildChipHistory(gamePlayer, handHistory);
+
 		return new PrivateStateDto
 		{
 			GameId = gameId,
@@ -358,7 +361,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			Draw = draw,
 			DropOrStay = dropOrStay,
 			IsMyTurn = isMyTurn,
-			HandHistory = handHistory
+			HandHistory = handHistory,
+			ChipHistory = chipHistory
 		};
 	}
 
@@ -1333,4 +1337,40 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					Decision = gamePlayer.DropOrStayDecision?.ToString()
 				};
 			}
+
+		/// <summary>
+		/// Builds the chip history DTO for a player from hand history data.
+		/// </summary>
+		private ChipHistoryDto BuildChipHistory(
+			GamePlayer gamePlayer,
+			IReadOnlyList<CardGames.Contracts.SignalR.HandHistoryEntryDto> handHistory)
+		{
+			var entries = new List<ChipHistoryEntryDto>();
+			var currentStack = gamePlayer.StartingChips;
+
+			// Take last 30 hands and build chip history entries
+			foreach (var hand in handHistory.TakeLast(30))
+			{
+				var playerResult = hand.PlayerResults.FirstOrDefault(pr => pr.PlayerId == gamePlayer.PlayerId);
+				if (playerResult != null)
+				{
+					currentStack += playerResult.NetAmount;
+					entries.Add(new ChipHistoryEntryDto
+					{
+						HandNumber = hand.HandNumber,
+						ChipStackAfterHand = currentStack,
+						ChipsDelta = playerResult.NetAmount,
+						Timestamp = hand.CompletedAtUtc
+					});
+				}
+			}
+
+			return new ChipHistoryDto
+			{
+				CurrentChips = gamePlayer.ChipStack,
+				PendingChipsToAdd = gamePlayer.PendingChipsToAdd,
+				StartingChips = gamePlayer.StartingChips,
+				History = entries
+			};
+		}
 		}

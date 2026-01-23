@@ -60,6 +60,11 @@ public sealed record PrivateStateDto
         /// Contains the player's result label and chip delta for each hand.
         /// </summary>
         public IReadOnlyList<HandHistoryEntryDto>? HandHistory { get; init; }
+
+	/// <summary>
+	/// Chip history and current chip state for this player.
+	/// </summary>
+	public ChipHistoryDto? ChipHistory { get; init; }
     }
 
 /// <summary>
