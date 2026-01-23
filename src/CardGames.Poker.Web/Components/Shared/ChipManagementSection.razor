@@ -38,15 +38,6 @@
         </button>
     </div>
 
-    <!-- Info Message -->
-    @if (!string.IsNullOrEmpty(infoMessage))
-    {
-        <div class="info-message @messageType">
-            <i class="fa-solid @(messageType == "success" ? "fa-circle-check" : "fa-circle-info")"></i>
-            @infoMessage
-        </div>
-    }
-
     <!-- Game Type Explanation -->
     <div class="chip-timing-info">
         @if (IsKingsAndLows)
@@ -60,6 +51,15 @@
             <span>Chips will be added at the start of the next hand.</span>
         }
     </div>
+
+    <!-- Info Message -->
+    @if (!string.IsNullOrEmpty(infoMessage))
+    {
+        <div class="info-message @messageType">
+            <i class="fa-solid @(messageType == "success" ? "fa-circle-check" : "fa-circle-info")"></i>
+            @infoMessage
+        </div>
+    }
 
     
 </div>
@@ -92,9 +92,26 @@
     private bool isSubmitting;
     private string? infoMessage;
     private string messageType = "info";
+    private int? _previousPendingChips;
 
     private bool IsKingsAndLows => 
         string.Equals(GameTypeCode, KingsAndLowsGameTypeCode, StringComparison.OrdinalIgnoreCase);
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+
+        // Clear success message when pending chips have been applied
+        if (ChipHistory != null && _previousPendingChips.HasValue && _previousPendingChips.Value > 0 && ChipHistory.PendingChipsToAdd == 0)
+        {
+            if (messageType == "success")
+            {
+                infoMessage = null;
+            }
+        }
+
+        _previousPendingChips = ChipHistory?.PendingChipsToAdd;
+    }
 
     private async Task AddChipsAsync()
     {
