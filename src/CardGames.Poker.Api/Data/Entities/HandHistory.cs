@@ -284,6 +284,13 @@ public class HandHistoryPlayerResult
     public FoldStreet? AllInStreet { get; set; }
 
     /// <summary>
+    /// JSON-serialized array of cards shown at showdown (e.g., ["Ah", "Kh", "Qh", "Jh", "10h"]).
+    /// Only populated if the player reached showdown and revealed their cards.
+    /// Format: Each card is "{Symbol}{Suit}" where Symbol is 2-10,J,Q,K,A and Suit is h,d,s,c.
+    /// </summary>
+    public string? ShowdownCards { get; set; }
+
+    /// <summary>
     /// Generates a UI-ready result label describing the player's outcome.
     /// </summary>
     public string GetResultLabel()

@@ -130,6 +130,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 					winners: [(winner.PlayerId, winner.Player.Name, totalPot)],
 					winnerNames: [winner.Player.Name],
 					winningHandDescription: null,
+					playerCardGroups: playerCardGroups,
 					cancellationToken);
 			}
 
@@ -305,6 +306,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 					winners: winnerInfos,
 					winnerNames: allWinners.ToList(),
 					winningHandDescription: overallWinReason,
+					playerCardGroups: playerCardGroups,
 					cancellationToken);
 			}
 			else
@@ -470,6 +472,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 		List<(Guid PlayerId, string PlayerName, int AmountWon)> winners,
 		List<string> winnerNames,
 		string? winningHandDescription,
+		Dictionary<Guid, List<GameCard>> playerCardGroups,
 		CancellationToken cancellationToken)
 	{
 		var isSplitPot = winners.Count > 1;
@@ -483,18 +486,30 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 				? winners.First(w => w.PlayerId == gp.PlayerId).AmountWon - gp.TotalContributedThisHand
 				: -gp.TotalContributedThisHand;
 
+			// Get cards for this player if they reached showdown
+			List<string>? showdownCards = null;
+			var reachedShowdown = !gp.HasFolded && !wonByFold;
+			if (reachedShowdown && playerCardGroups.TryGetValue(gp.Id, out var cards) && cards.Any())
+			{
+				showdownCards = cards
+					.OrderBy(c => c.DealOrder)
+					.Select(c => FormatCard(c.Symbol, c.Suit))
+					.ToList();
+			}
+
 			return new PlayerResultInfo
 			{
 				PlayerId = gp.PlayerId,
 				PlayerName = gp.Player.Name,
 				SeatPosition = gp.SeatPosition,
 				HasFolded = gp.HasFolded,
-				ReachedShowdown = !gp.HasFolded && !wonByFold,
+				ReachedShowdown = reachedShowdown,
 				IsWinner = isWinner,
 				IsSplitPot = isSplitPot && isWinner,
 				NetChipDelta = netDelta,
 				WentAllIn = gp.IsAllIn,
-				FoldStreet = gp.HasFolded ? "FirstRound" : null // Simplified for Five Card Draw
+				FoldStreet = gp.HasFolded ? "FirstRound" : null, // Simplified for Five Card Draw
+				ShowdownCards = showdownCards
 			};
 		}).ToList();
 
@@ -518,6 +533,41 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 		};
 
 		await handHistoryRecorder.RecordHandHistoryAsync(parameters, cancellationToken);
+	}
+
+	/// <summary>
+	/// Formats a card as text (e.g., "3s", "Ah", "10d").
+	/// </summary>
+	private static string FormatCard(Data.Entities.CardSymbol symbol, Data.Entities.CardSuit suit)
+	{
+		var symbolStr = symbol switch
+		{
+			Data.Entities.CardSymbol.Deuce => "2",
+			Data.Entities.CardSymbol.Three => "3",
+			Data.Entities.CardSymbol.Four => "4",
+			Data.Entities.CardSymbol.Five => "5",
+			Data.Entities.CardSymbol.Six => "6",
+			Data.Entities.CardSymbol.Seven => "7",
+			Data.Entities.CardSymbol.Eight => "8",
+			Data.Entities.CardSymbol.Nine => "9",
+			Data.Entities.CardSymbol.Ten => "10",
+			Data.Entities.CardSymbol.Jack => "J",
+			Data.Entities.CardSymbol.Queen => "Q",
+			Data.Entities.CardSymbol.King => "K",
+			Data.Entities.CardSymbol.Ace => "A",
+			_ => "?"
+		};
+
+		var suitStr = suit switch
+		{
+			Data.Entities.CardSuit.Hearts => "h",
+			Data.Entities.CardSuit.Diamonds => "d",
+			Data.Entities.CardSuit.Spades => "s",
+			Data.Entities.CardSuit.Clubs => "c",
+			_ => "?"
+		};
+
+		return $"{symbolStr}{suitStr}";
 	}
 }
 

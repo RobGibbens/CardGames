@@ -120,7 +120,10 @@ public sealed class HandHistoryRecorder : IHandHistoryRecorder
                 FoldStreet = foldStreet,
                 NetChipDelta = playerResult.NetChipDelta,
                 WentAllIn = playerResult.WentAllIn,
-                AllInStreet = null // Not currently tracked
+                AllInStreet = null, // Not currently tracked
+                ShowdownCards = playerResult.ShowdownCards != null && playerResult.ShowdownCards.Any()
+                    ? System.Text.Json.JsonSerializer.Serialize(playerResult.ShowdownCards)
+                    : null
             });
         }
 

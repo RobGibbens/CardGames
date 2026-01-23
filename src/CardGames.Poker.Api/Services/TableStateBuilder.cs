@@ -999,28 +999,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			_logger.LogInformation("[HANDHISTORY-NAMES] Player {PlayerId} -> Name: '{PlayerName}'", kvp.Key, kvp.Value);
 		}
 
-		// Get cards for players who reached showdown
-		var handNumbers = histories.Select(h => h.HandNumber).ToHashSet();
-		_logger.LogInformation("[HANDHISTORY-CARDS] Loading cards for {HandCount} hands: {HandNumbers}", handNumbers.Count, string.Join(", ", handNumbers));
-		
-		var gameCards = await _context.GameCards
-			.Where(gc => gc.GameId == gameId && handNumbers.Contains(gc.HandNumber))
-			.Where(gc => gc.GamePlayerId != null && gc.Location == Data.Entities.CardLocation.Hole)
-			.Include(gc => gc.GamePlayer)
-			.AsNoTracking()
-			.ToListAsync(cancellationToken);
-		
-		_logger.LogInformation("[HANDHISTORY-CARDS] Loaded {CardCount} total hole cards from database for game {GameId}", gameCards.Count, gameId);
-
-		// Group cards by player and hand number
-		var cardsByPlayerAndHand = gameCards
-			.Where(gc => gc.GamePlayer != null)
-			.GroupBy(gc => new { gc.GamePlayer!.PlayerId, gc.HandNumber })
-			.ToDictionary(
-				g => g.Key,
-				g => g.OrderBy(gc => gc.DealOrder).Select(gc => FormatCard(gc.Symbol, gc.Suit)).ToList());
-		
-		_logger.LogInformation("[HANDHISTORY-CARDS] Grouped cards into {GroupCount} player-hand combinations", cardsByPlayerAndHand.Count);
+		// Cards are now stored in HandHistoryPlayerResult.ShowdownCards (JSON)
+		// No need to query GameCards table
+		_logger.LogInformation("[HANDHISTORY-CARDS] Cards will be loaded from stored ShowdownCards in HandHistoryPlayerResult");
 
 		var winnerEmails = histories
 			.SelectMany(h => h.Winners)
@@ -1089,19 +1070,32 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 					// Get cards for this player if they reached showdown
 					List<string>? visibleCards = null;
-					if (pr.ReachedShowdown)
+					if (pr.ReachedShowdown && !string.IsNullOrWhiteSpace(pr.ShowdownCards))
 					{
-						if (cardsByPlayerAndHand.TryGetValue(new { pr.PlayerId, h.HandNumber }, out var cards))
+						try
 						{
-							visibleCards = cards;
-							_logger.LogInformation("[HANDHISTORY-CARDS] ✓ Hand #{HandNumber}, Player '{PlayerName}' (Seat {Seat}): Found {CardCount} cards: {Cards}", 
-								h.HandNumber, playerName, pr.SeatPosition, cards.Count, string.Join(", ", cards));
+							visibleCards = System.Text.Json.JsonSerializer.Deserialize<List<string>>(pr.ShowdownCards);
+							if (visibleCards != null && visibleCards.Any())
+							{
+								_logger.LogInformation("[HANDHISTORY-CARDS] ✓ Hand #{HandNumber}, Player '{PlayerName}' (Seat {Seat}): Found {CardCount} cards from ShowdownCards: {Cards}", 
+									h.HandNumber, playerName, pr.SeatPosition, visibleCards.Count, string.Join(", ", visibleCards));
+							}
+							else
+							{
+								_logger.LogWarning("[HANDHISTORY-CARDS] ✗ Hand #{HandNumber}, Player '{PlayerName}' (Seat {Seat}): ShowdownCards deserialized but empty", 
+									h.HandNumber, playerName, pr.SeatPosition);
+							}
 						}
-						else
+						catch (System.Text.Json.JsonException ex)
 						{
-							_logger.LogWarning("[HANDHISTORY-CARDS] ✗ Hand #{HandNumber}, Player '{PlayerName}' (Seat {Seat}, PlayerId {PlayerId}): Reached showdown but NO CARDS FOUND in lookup dictionary", 
-								h.HandNumber, playerName, pr.SeatPosition, pr.PlayerId);
+							_logger.LogError(ex, "[HANDHISTORY-CARDS] ✗ Hand #{HandNumber}, Player '{PlayerName}': Failed to deserialize ShowdownCards: {Json}", 
+								h.HandNumber, playerName, pr.ShowdownCards);
 						}
+					}
+					else if (pr.ReachedShowdown)
+					{
+						_logger.LogWarning("[HANDHISTORY-CARDS] ✗ Hand #{HandNumber}, Player '{PlayerName}' (Seat {Seat}, PlayerId {PlayerId}): Reached showdown but ShowdownCards is null/empty", 
+							h.HandNumber, playerName, pr.SeatPosition, pr.PlayerId);
 					}
 
 					return new CardGames.Contracts.SignalR.PlayerHandResultDto
@@ -1130,41 +1124,6 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				PlayerResults = playerResults
 			};
 		}).ToList();
-	}
-
-	/// <summary>
-	/// Formats a card as text (e.g., "3s", "Ah", "10d").
-	/// </summary>
-	private static string FormatCard(Data.Entities.CardSymbol symbol, Data.Entities.CardSuit suit)
-	{
-		var symbolStr = symbol switch
-		{
-			Data.Entities.CardSymbol.Deuce => "2",
-			Data.Entities.CardSymbol.Three => "3",
-			Data.Entities.CardSymbol.Four => "4",
-			Data.Entities.CardSymbol.Five => "5",
-			Data.Entities.CardSymbol.Six => "6",
-			Data.Entities.CardSymbol.Seven => "7",
-			Data.Entities.CardSymbol.Eight => "8",
-			Data.Entities.CardSymbol.Nine => "9",
-			Data.Entities.CardSymbol.Ten => "10",
-			Data.Entities.CardSymbol.Jack => "J",
-			Data.Entities.CardSymbol.Queen => "Q",
-			Data.Entities.CardSymbol.King => "K",
-			Data.Entities.CardSymbol.Ace => "A",
-			_ => "?"
-		};
-
-		var suitStr = suit switch
-		{
-			Data.Entities.CardSuit.Hearts => "h",
-			Data.Entities.CardSuit.Diamonds => "d",
-			Data.Entities.CardSuit.Spades => "s",
-			Data.Entities.CardSuit.Clubs => "c",
-			_ => "?"
-		};
-
-		return $"{symbolStr}{suitStr}";
 	}
 
 	/// <summary>
