@@ -7,7 +7,6 @@
 - [ ] Test side pots
 - [ ] Don't auto start a new hand. Add a timer, allow pause, allow people to get out of the game or end the game
 - [ ] Make sure all game types handle all ins correctly
-- [ ] Make hand history more detailed
 - [ ] Dashboard should be scrollable
 
 - [ ] Kings and Lows - don't deal to players that don't have enough chips to match the pot
@@ -140,3 +139,4 @@
 - [x] Five Card Draw - 3 players: 1 folds, 1 goes all in, still shows action panel even though one player has no remaining chips.
 - [x] Sit out button is missing
 - [x] Leaderboard should show first names
+- [x] Make hand history more detailed
