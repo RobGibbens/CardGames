@@ -124,7 +124,7 @@
 
 .player-results-header {
     display: grid;
-    grid-template-columns: 40px 1fr 120px 90px 150px;
+    grid-template-columns: 100px 70px 1fr;
     gap: 8px;
     padding: 8px 8px;
     font-size: 10px;
@@ -152,7 +152,7 @@
 /* Player result rows */
 .player-result-row {
     display: grid;
-    grid-template-columns: 40px 1fr 120px 90px 150px;
+    grid-template-columns: 100px 70px 1fr;
     gap: 8px;
     padding: 6px 8px;
     font-size: 11px;

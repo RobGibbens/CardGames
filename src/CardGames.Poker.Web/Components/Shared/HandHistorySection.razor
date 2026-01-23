@@ -1,5 +1,9 @@
 @namespace CardGames.Poker.Web.Components.Shared
 @using CardGames.Contracts.SignalR
+@using CardGames.Core.French.Cards
+@using CardGames.Core.French.Cards.Extensions
+@using CardGames.Poker.Evaluation
+@using CardGames.Poker.Hands.DrawHands
 
 <div class="hand-history-section">
 	@if (Entries is not null && Entries.Any())
@@ -34,20 +38,16 @@
 					{
 						<div class="player-results-container">
 							<div class="player-results-header">
-								<span class="header-seat">Seat</span>
 								<span class="header-player">Player</span>
 								<span class="header-result">Result</span>
-								<span class="header-amount">Net Amount</span>
 								<span class="header-hand">Hand</span>
 							</div>
 							@foreach (var result in entry.PlayerResults)
 							{
 								<div class="player-result-row @GetResultClass(result)">
-									<span class="result-seat">@result.SeatPosition</span>
 									<span class="result-player">@result.PlayerName</span>
-									<span class="result-label">@result.ResultLabel</span>
-									<span class="result-amount">@FormatNetAmount(result.NetAmount)</span>
-									<span class="result-hand">@FormatHand(result.VisibleCards)</span>
+									<span class="result-label">@result.ResultLabel (<span class="result-amount">@FormatNetAmount(result.NetAmount)</span>)</span>
+									<span class="result-hand">@FormatHand(result.VisibleCards, GetPlayerHandDescription(result, entry))</span>
 								</div>
 							}
 						</div>
@@ -120,13 +120,42 @@
 		};
 	}
 
-	private static string FormatHand(IReadOnlyList<string>? visibleCards)
+	private static MarkupString FormatHand(IReadOnlyList<string>? visibleCards, string? handDescription)
 	{
 		if (visibleCards == null || !visibleCards.Any())
 		{
-			return "";
+			return new MarkupString(string.Empty);
 		}
 
-		return string.Join(", ", visibleCards);
+		var cards = string.Join(", ", visibleCards);
+		if (!string.IsNullOrWhiteSpace(handDescription))
+		{
+			return new MarkupString($"{cards}<br/>({handDescription})");
+		}
+		return new MarkupString(cards);
+	}
+
+	private static string? GetPlayerHandDescription(PlayerHandResultDto result, HandHistoryEntryDto entry)
+	{
+		if (result.VisibleCards is not null && result.VisibleCards.Count == 5)
+		{
+			try
+			{
+				var cards = result.VisibleCards.Select(vc => vc.ToCard()).ToList();
+				var hand = new DrawHand(cards);
+				return HandDescriptionFormatter.GetHandDescription(hand);
+			}
+			catch
+			{
+				// Fallback if parsing fails or hand construction is invalid
+			}
+		}
+
+		if (result.ResultType == "Won" || result.ResultType == "SplitPotWon")
+		{
+			return entry.WinningHandDescription;
+		}
+
+		return null;
 	}
 }

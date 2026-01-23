@@ -33,11 +33,11 @@ public sealed record HandPlayerResult(
         {
             PlayerResultType.Folded when FoldStreet.HasValue => $"Folded ({FormatStreet(FoldStreet.Value)})",
             PlayerResultType.Folded => "Folded",
-            PlayerResultType.Won when ReachedShowdown => "Won (Showdown)",
-            PlayerResultType.Won => "Won (No Showdown)",
-            PlayerResultType.SplitPotWon when ReachedShowdown => "Split Pot (Showdown)",
+            PlayerResultType.Won when ReachedShowdown => "Won",
+            PlayerResultType.Won => "Won",
+            PlayerResultType.SplitPotWon when ReachedShowdown => "Split Pot",
             PlayerResultType.SplitPotWon => "Split Pot",
-            PlayerResultType.Lost when ReachedShowdown => "Lost (Showdown)",
+            PlayerResultType.Lost when ReachedShowdown => "Lost",
             PlayerResultType.Lost => "Lost",
             _ => ResultType.ToString()
         };

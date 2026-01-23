@@ -984,37 +984,40 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			.Distinct()
 			.ToList();
 
-		_logger.LogInformation("[HANDHISTORY-NAMES] Loading player names for {PlayerCount} player IDs: {PlayerIds}", 
+		_logger.LogInformation("[HANDHISTORY-NAMES] Loading player names/emails for {PlayerCount} player IDs: {PlayerIds}", 
 			allPlayerIds.Count, string.Join(", ", allPlayerIds.Take(5)));
 
-		// Load all players separately
-		var playersByIdLookup = await _context.Players
+		// Load all players separately to get Names and Emails
+		var playersData = await _context.Players
 			.Where(p => allPlayerIds.Contains(p.Id))
 			.AsNoTracking()
-			.ToDictionaryAsync(p => p.Id, p => p.Name, cancellationToken);
+			.Select(p => new { p.Id, p.Name, p.Email })
+			.ToListAsync(cancellationToken);
+            
+		var playersByIdLookup = playersData.ToDictionary(p => p.Id, p => (Name: p.Name, Email: p.Email));
 
 		_logger.LogInformation("[HANDHISTORY-NAMES] Loaded {PlayerCount} player names from Players table", playersByIdLookup.Count);
 		foreach (var kvp in playersByIdLookup)
 		{
-			_logger.LogInformation("[HANDHISTORY-NAMES] Player {PlayerId} -> Name: '{PlayerName}'", kvp.Key, kvp.Value);
+			_logger.LogInformation("[HANDHISTORY-NAMES] Player {PlayerId} -> Name: '{PlayerName}', Email: '{Email}'", kvp.Key, kvp.Value.Name, kvp.Value.Email);
 		}
 
 		// Cards are now stored in HandHistoryPlayerResult.ShowdownCards (JSON)
 		// No need to query GameCards table
 		_logger.LogInformation("[HANDHISTORY-CARDS] Cards will be loaded from stored ShowdownCards in HandHistoryPlayerResult");
 
-		var winnerEmails = histories
-			.SelectMany(h => h.Winners)
-			.Select(w => w.Player.Email)
+		var allEmails = playersData
+			.Select(p => p.Email)
+			.Concat(histories.SelectMany(h => h.Winners).Select(w => w.Player.Email))
 			.Where(email => !string.IsNullOrWhiteSpace(email))
 			.Distinct(StringComparer.OrdinalIgnoreCase)
 			.ToList();
 
-		var winnerFirstNamesByEmail = winnerEmails.Count == 0
+		var userFirstNamesByEmail = allEmails.Count == 0
 			? new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
 			: await _context.Users
 				.AsNoTracking()
-				.Where(u => u.Email != null && winnerEmails.Contains(u.Email))
+				.Where(u => u.Email != null && allEmails.Contains(u.Email))
 				.Select(u => new { Email = u.Email!, u.FirstName })
 				.ToDictionaryAsync(u => u.Email, u => u.FirstName, StringComparer.OrdinalIgnoreCase, cancellationToken);
 
@@ -1033,7 +1036,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				var email = firstWinner.Player.Email;
 
 				if (!string.IsNullOrWhiteSpace(email) &&
-					winnerFirstNamesByEmail.TryGetValue(email, out var firstName) &&
+					userFirstNamesByEmail.TryGetValue(email, out var firstName) &&
 					!string.IsNullOrWhiteSpace(firstName))
 				{
 					return firstName;
@@ -1059,9 +1062,18 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				.Select(pr =>
 				{
 					// Get player's actual name from Players lookup, fallback to stored name if not available
-					var foundInLookup = playersByIdLookup.TryGetValue(pr.PlayerId, out var name);
-					var playerName = foundInLookup ? name : pr.PlayerName;
+					var foundInLookup = playersByIdLookup.TryGetValue(pr.PlayerId, out var playerInfo);
+					var playerName = foundInLookup ? playerInfo.Name : pr.PlayerName;
 					
+					// Try getting first name (real name) via email if available
+					if (foundInLookup && 
+						!string.IsNullOrWhiteSpace(playerInfo.Email) && 
+						userFirstNamesByEmail.TryGetValue(playerInfo.Email, out var firstName) && 
+						!string.IsNullOrWhiteSpace(firstName))
+					{
+						playerName = firstName;
+					}
+
 					if (!foundInLookup)
 					{
 						_logger.LogWarning("[HANDHISTORY-NAMES] Player ID {PlayerId} not found in lookup, using stored name: '{StoredName}'", 

@@ -26,7 +26,7 @@ public sealed record PlayerHandResultDto
 	public required string ResultType { get; init; }
 
 	/// <summary>
-	/// Human-readable result label (e.g., "Won (Showdown)", "Folded (Preflop)").
+	/// Human-readable result label (e.g., "Won", "Folded (Preflop)").
 	/// </summary>
 	public required string ResultLabel { get; init; }
 
