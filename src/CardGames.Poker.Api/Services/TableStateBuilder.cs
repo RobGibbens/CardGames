@@ -1367,19 +1367,20 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			var windowStartStack = currentStack - totalDeltaInWindow;
 			
 			// Add initial starting point entry to show the baseline
-			// Use hand number one less than the first actual hand for proper chronological ordering
-			var baselineHandNumber = recentHands.FirstOrDefault()?.HandNumber - 1 ?? 0;
+			// Use sequential hand numbering starting from 0 for the baseline
 			entries.Add(new ChipHistoryEntryDto
 			{
-				HandNumber = baselineHandNumber,
+				HandNumber = 0,
 				ChipStackAfterHand = windowStartStack,
 				ChipsDelta = 0,
 				Timestamp = recentHands.FirstOrDefault()?.CompletedAtUtc.AddSeconds(-1) ?? DateTimeOffset.UtcNow
 			});
 			
 			var runningStack = windowStartStack;
+			var sequentialHandNumber = 1; // Start from 1 after the baseline (0)
 
 			// Build chip history entries for each completed hand
+			// Use sequential hand numbers (1, 2, 3...) instead of actual database hand numbers
 			foreach (var hand in recentHands)
 			{
 				var playerResult = hand.PlayerResults.FirstOrDefault(pr => pr.PlayerId == gamePlayer.PlayerId);
@@ -1388,7 +1389,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					runningStack += playerResult.NetAmount;
 					entries.Add(new ChipHistoryEntryDto
 					{
-						HandNumber = hand.HandNumber,
+						HandNumber = sequentialHandNumber++,
 						ChipStackAfterHand = runningStack,
 						ChipsDelta = playerResult.NetAmount,
 						Timestamp = hand.CompletedAtUtc
