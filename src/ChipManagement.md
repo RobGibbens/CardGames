@@ -14,7 +14,7 @@ Add a new collapsible "Chips" section to the Dashboard panel that displays the p
 
 2. **Create `ChipHistoryDto` and extend DTOs** in [CardGames.Contracts/SignalR/](CardGames.Contracts/SignalR/)
    - Add `ChipHistoryEntryDto` with `HandNumber`, `ChipStackAfterHand`, `ChipsDelta`, `Timestamp` properties
-   - Add `ChipHistoryDto` containing `CurrentChips`, `PendingChipsToAdd`, `History` list
+   - Add `ChipHistoryDto` containing `CurrentChips`, `PendingChipsToAdd`, `History` list (last 30 hands)
    - Extend `PrivateStateDto` to include `ChipHistory` for the current game session
    - Populate chip history from `HandHistoryEntryDto.NetAmount` data per hand
 
@@ -23,20 +23,22 @@ Add a new collapsible "Chips" section to the Dashboard panel that displays the p
    - Update `GameHubClient.cs` on web side to handle new event
    - Include pending chip notification in `PrivateStateUpdated` broadcasts
 
-4. **Create `ChipManagementSection.razor`** in [CardGames.Poker.Web/Components/Shared/](CardGames.Poker.Web/Components/Shared/)
-   - Display current chip stack (from `TableStatePublicDto.Seats[playerSeatIndex].Chips`)
+4. **Add Blazor-ApexCharts NuGet package** to [CardGames.Poker.Web/CardGames.Poker.Web.csproj](CardGames.Poker.Web/CardGames.Poker.Web.csproj)
+   - Install `Blazor-ApexCharts` package from https://github.com/apexcharts/Blazor-ApexCharts
+   - Register ApexCharts services in `Program.cs`
+   - Add required CSS/JS references in `App.razor` or `_Host.cshtml`
+
+5. **Create `ChipManagementSection.razor`** in [CardGames.Poker.Web/Components/Shared/](CardGames.Poker.Web/Components/Shared/)
+   - Display current chip stack with pending chips inline: `5,035 (+500 pending)`
    - Add input field for chip amount with validation (positive integers only)
    - Add "Add Chips" button that calls API endpoint
-   - Show pending chips indicator when chips are queued for between-hands application
    - Display info message explaining when chips will be applied based on game type
-
-5. **Create chip history graph component** in `ChipManagementSection.razor`
-   - Use CSS-based bar/line chart following existing `OddsSection.razor` bar pattern
-   - X-axis: Hand numbers (1, 2, 3, ...)
-   - Y-axis: Chip stack value at end of each hand
-   - Highlight positive (green) vs negative (red) chip deltas
-   - Show starting stack as hand 0 baseline
-   - Consider using a simple SVG polyline for the trend line
+   - Create chip history line chart using ApexCharts:
+     - X-axis: Hand numbers (1, 2, 3, ... up to 30)
+     - Y-axis: Chip stack value at end of each hand
+     - Show starting stack as hand 0 baseline
+     - Use green/red color coding for positive/negative trends
+     - Enable scrolling for last 30 hands of history
 
 6. **Integrate into Dashboard** in [CardGames.Poker.Web/Components/Pages/TablePlay.razor](CardGames.Poker.Web/Components/Pages/TablePlay.razor#L144-L165)
    - Add `ChipManagementSection` as first section inside `DashboardPanel`, above Leaderboard
@@ -44,10 +46,10 @@ Add a new collapsible "Chips" section to the Dashboard panel that displays the p
    - Pass `GameTypeCode` to section for determining chip addition timing rules
    - Wire up chip history data from SignalR state updates
 
-### Further Considerations
+### Decisions Made
 
-1. **Pending chips UX**: Should pending chips show as a separate "queued" value or be visually merged with current stack with a pending indicator? Recommend: show separately with "(+X pending)" label.
-
-2. **Chart library vs CSS**: Should we add a chart library (e.g., Chart.js via JS interop) for smoother graphs, or keep it pure CSS/SVG? Recommend: start with CSS/SVG bars matching existing pattern, upgrade later if needed.
-
-3. **History depth**: How many hands of chip history to display? Recommend: last 20 hands with scroll, or the entire current game session if fewer.
+| Decision | Choice |
+|----------|--------|
+| Pending chips display | Show `(+X pending)` inline next to current stack |
+| Chart library | Blazor-ApexCharts |
+| History depth | Last 30 hands with scrolling |
