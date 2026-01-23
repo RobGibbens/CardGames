@@ -121,6 +121,12 @@ public sealed class PlayerResultInfo
     /// The betting street at which the player folded (null if didn't fold).
     /// </summary>
     public string? FoldStreet { get; init; }
+
+    /// <summary>
+    /// List of cards shown at showdown (only if player reached showdown).
+    /// Format: Each card as "{Symbol}{Suit}" (e.g., "Ah", "Kh", "10d").
+    /// </summary>
+    public IReadOnlyList<string>? ShowdownCards { get; init; }
 }
 
 /// <summary>

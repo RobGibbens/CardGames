@@ -1,4 +1,4 @@
-using CardGames.Poker.Api.Contracts;
+using CardGames.Contracts.SignalR;
 using CardGames.Poker.Api.Data;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -31,6 +31,22 @@ public class GetHandHistoryQueryHandler(CardsDbContext context)
 			.AsSplitQuery()
 			.AsNoTracking()
 			.ToListAsync(cancellationToken);
+
+		// Get all player IDs from the histories
+		var allPlayerIds = histories
+			.SelectMany(h => h.PlayerResults)
+			.Select(pr => pr.PlayerId)
+			.Distinct()
+			.ToList();
+
+		// Load all players separately
+		var playersByIdLookup = await context.Players
+			.Where(p => allPlayerIds.Contains(p.Id))
+			.AsNoTracking()
+			.ToDictionaryAsync(p => p.Id, p => p.Name, cancellationToken);
+
+		// Cards are now stored in HandHistoryPlayerResult.ShowdownCards (JSON)
+		// No need to query GameCards table
 
 		var winnerEmails = histories
 			.SelectMany(h => h.Winners)
@@ -74,44 +90,61 @@ public class GetHandHistoryQueryHandler(CardsDbContext context)
 
 			var totalWinnings = h.Winners.Sum(w => w.AmountWon);
 
-			// Get current player's result if specified
-			string? currentPlayerResultLabel = null;
-			var currentPlayerNetDelta = 0;
-			var currentPlayerWon = false;
-
-			if (request.CurrentUserPlayerId.HasValue)
-			{
-				var currentPlayerResult = h.PlayerResults
-					.FirstOrDefault(pr => pr.PlayerId == request.CurrentUserPlayerId.Value);
-
-				if (currentPlayerResult != null)
+			// Map all player results
+			var playerResults = h.PlayerResults
+				.OrderBy(pr => pr.SeatPosition)
+				.Select(pr =>
 				{
-					currentPlayerResultLabel = currentPlayerResult.GetResultLabel();
-					currentPlayerNetDelta = currentPlayerResult.NetChipDelta;
-					currentPlayerWon = currentPlayerResult.ResultType == Data.Entities.PlayerResultType.Won ||
-									   currentPlayerResult.ResultType == Data.Entities.PlayerResultType.SplitPotWon;
-				}
-			}
+					// Get player's actual name from Players lookup, fallback to stored name if not available
+					var playerName = playersByIdLookup.TryGetValue(pr.PlayerId, out var name) ? name : pr.PlayerName;
 
-			return new HandHistoryEntryDto(
-				amountWon: totalWinnings,
-				completedAtUtc: h.CompletedAtUtc,
-				currentPlayerNetDelta: currentPlayerNetDelta,
-				currentPlayerResultLabel: currentPlayerResultLabel,
-				currentPlayerWon: currentPlayerWon,
-				handNumber: h.HandNumber,
-				winnerCount: h.Winners.Count,
-				winnerName: winnerDisplay,
-				winningHandDescription: h.WinningHandDescription,
-				wonByFold: h.EndReason == Data.Entities.HandEndReason.FoldedToWinner
-			);
+					// Get cards for this player if they reached showdown (stored in ShowdownCards JSON)
+					List<string>? visibleCards = null;
+					if (pr.ReachedShowdown && !string.IsNullOrWhiteSpace(pr.ShowdownCards))
+					{
+						try
+						{
+							visibleCards = System.Text.Json.JsonSerializer.Deserialize<List<string>>(pr.ShowdownCards);
+						}
+						catch (System.Text.Json.JsonException)
+						{
+							// Log error but don't fail the request
+							visibleCards = null;
+						}
+					}
+
+					return new PlayerHandResultDto
+					{
+						PlayerId = pr.PlayerId,
+						PlayerName = playerName,
+						SeatPosition = pr.SeatPosition,
+						ResultType = pr.ResultType.ToString(),
+						ResultLabel = pr.GetResultLabel(),
+						NetAmount = pr.NetChipDelta,
+						ReachedShowdown = pr.ReachedShowdown,
+						VisibleCards = visibleCards
+					};
+				})
+				.ToList();
+
+			return new HandHistoryEntryDto
+			{
+				HandNumber = h.HandNumber,
+				CompletedAtUtc = h.CompletedAtUtc,
+				WinnerName = winnerDisplay,
+				AmountWon = totalWinnings,
+				WinningHandDescription = h.WinningHandDescription,
+				WonByFold = h.EndReason == Data.Entities.HandEndReason.FoldedToWinner,
+				WinnerCount = h.Winners.Count,
+				PlayerResults = playerResults
+			};
 		}).ToList();
 
 		return new HandHistoryListDto
-		(
-			entries:entries,
-			hasMore: request.Skip + request.Take < totalCount,
-			totalHands: totalCount
-		);
+		{
+			Entries = entries,
+			HasMore = request.Skip + request.Take < totalCount,
+			TotalHands = totalCount
+		};
 	}
 }

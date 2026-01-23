@@ -2,11 +2,11 @@ using System;
 using System.Text.Json;
 using CardGames.Contracts.SignalR;
 using CardGames.Core.French.Cards;
-using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Evaluation;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.ActiveGames.v1.Queries.GetActiveGames;
+using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetHandHistory;
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Games.GameFlow;
 using CardGames.Poker.Hands.DrawHands;
@@ -960,7 +960,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	/// <summary>
 	/// Retrieves hand history entries for the dashboard.
 	/// </summary>
-	private async Task<List<HandHistoryEntryDto>> GetHandHistoryEntriesAsync(
+	private async Task<List<CardGames.Contracts.SignalR.HandHistoryEntryDto>> GetHandHistoryEntriesAsync(
 		Guid gameId,
 		Guid? currentUserPlayerId,
 		int take,
@@ -977,18 +977,47 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			.AsNoTracking()
 				.ToListAsync(cancellationToken);
 
-		var winnerEmails = histories
-			.SelectMany(h => h.Winners)
-			.Select(w => w.Player.Email)
+		// Get all player IDs from the histories
+		var allPlayerIds = histories
+			.SelectMany(h => h.PlayerResults)
+			.Select(pr => pr.PlayerId)
+			.Distinct()
+			.ToList();
+
+		_logger.LogInformation("[HANDHISTORY-NAMES] Loading player names/emails for {PlayerCount} player IDs: {PlayerIds}", 
+			allPlayerIds.Count, string.Join(", ", allPlayerIds.Take(5)));
+
+		// Load all players separately to get Names and Emails
+		var playersData = await _context.Players
+			.Where(p => allPlayerIds.Contains(p.Id))
+			.AsNoTracking()
+			.Select(p => new { p.Id, p.Name, p.Email })
+			.ToListAsync(cancellationToken);
+            
+		var playersByIdLookup = playersData.ToDictionary(p => p.Id, p => (Name: p.Name, Email: p.Email));
+
+		_logger.LogInformation("[HANDHISTORY-NAMES] Loaded {PlayerCount} player names from Players table", playersByIdLookup.Count);
+		foreach (var kvp in playersByIdLookup)
+		{
+			_logger.LogInformation("[HANDHISTORY-NAMES] Player {PlayerId} -> Name: '{PlayerName}', Email: '{Email}'", kvp.Key, kvp.Value.Name, kvp.Value.Email);
+		}
+
+		// Cards are now stored in HandHistoryPlayerResult.ShowdownCards (JSON)
+		// No need to query GameCards table
+		_logger.LogInformation("[HANDHISTORY-CARDS] Cards will be loaded from stored ShowdownCards in HandHistoryPlayerResult");
+
+		var allEmails = playersData
+			.Select(p => p.Email)
+			.Concat(histories.SelectMany(h => h.Winners).Select(w => w.Player.Email))
 			.Where(email => !string.IsNullOrWhiteSpace(email))
 			.Distinct(StringComparer.OrdinalIgnoreCase)
 			.ToList();
 
-		var winnerFirstNamesByEmail = winnerEmails.Count == 0
+		var userFirstNamesByEmail = allEmails.Count == 0
 			? new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
 			: await _context.Users
 				.AsNoTracking()
-				.Where(u => u.Email != null && winnerEmails.Contains(u.Email))
+				.Where(u => u.Email != null && allEmails.Contains(u.Email))
 				.Select(u => new { Email = u.Email!, u.FirstName })
 				.ToDictionaryAsync(u => u.Email, u => u.FirstName, StringComparer.OrdinalIgnoreCase, cancellationToken);
 
@@ -1007,7 +1036,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				var email = firstWinner.Player.Email;
 
 				if (!string.IsNullOrWhiteSpace(email) &&
-					winnerFirstNamesByEmail.TryGetValue(email, out var firstName) &&
+					userFirstNamesByEmail.TryGetValue(email, out var firstName) &&
 					!string.IsNullOrWhiteSpace(firstName))
 				{
 					return firstName;
@@ -1027,38 +1056,85 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 			var totalWinnings = h.Winners.Sum(w => w.AmountWon);
 
-			// Get current player's result if specified
-			string? currentPlayerResultLabel = null;
-			var currentPlayerNetDelta = 0;
-			var currentPlayerWon = false;
-
-			if (currentUserPlayerId.HasValue)
-			{
-				var currentPlayerResult = h.PlayerResults
-							.FirstOrDefault(pr => pr.PlayerId == currentUserPlayerId.Value);
-
-				if (currentPlayerResult != null)
+			// Map all player results
+			var playerResults = h.PlayerResults
+				.OrderBy(pr => pr.SeatPosition)
+				.Select(pr =>
 				{
-					currentPlayerResultLabel = currentPlayerResult.GetResultLabel();
-					currentPlayerNetDelta = currentPlayerResult.NetChipDelta;
-					currentPlayerWon = currentPlayerResult.ResultType == Entities.PlayerResultType.Won ||
-											   currentPlayerResult.ResultType == Entities.PlayerResultType.SplitPotWon;
-				}
-			}
+					// Get player's actual name from Players lookup, fallback to stored name if not available
+					var foundInLookup = playersByIdLookup.TryGetValue(pr.PlayerId, out var playerInfo);
+					var playerName = foundInLookup ? playerInfo.Name : pr.PlayerName;
+					
+					// Try getting first name (real name) via email if available
+					if (foundInLookup && 
+						!string.IsNullOrWhiteSpace(playerInfo.Email) && 
+						userFirstNamesByEmail.TryGetValue(playerInfo.Email, out var firstName) && 
+						!string.IsNullOrWhiteSpace(firstName))
+					{
+						playerName = firstName;
+					}
 
+					if (!foundInLookup)
+					{
+						_logger.LogWarning("[HANDHISTORY-NAMES] Player ID {PlayerId} not found in lookup, using stored name: '{StoredName}'", 
+							pr.PlayerId, pr.PlayerName);
+					}
 
-			return new HandHistoryEntryDto(
-						amountWon: totalWinnings,
-						completedAtUtc: h.CompletedAtUtc,
-						currentPlayerNetDelta: currentPlayerNetDelta,
-						currentPlayerResultLabel: currentPlayerResultLabel,
-						currentPlayerWon: currentPlayerWon,
-						handNumber: h.HandNumber,
-						winnerCount: h.Winners.Count,
-						winnerName: winnerDisplay,
-						winningHandDescription: h.WinningHandDescription,
-						wonByFold: h.EndReason == Data.Entities.HandEndReason.FoldedToWinner
-					);
+					// Get cards for this player if they reached showdown
+					List<string>? visibleCards = null;
+					if (pr.ReachedShowdown && !string.IsNullOrWhiteSpace(pr.ShowdownCards))
+					{
+						try
+						{
+							visibleCards = System.Text.Json.JsonSerializer.Deserialize<List<string>>(pr.ShowdownCards);
+							if (visibleCards != null && visibleCards.Any())
+							{
+								_logger.LogInformation("[HANDHISTORY-CARDS] ✓ Hand #{HandNumber}, Player '{PlayerName}' (Seat {Seat}): Found {CardCount} cards from ShowdownCards: {Cards}", 
+									h.HandNumber, playerName, pr.SeatPosition, visibleCards.Count, string.Join(", ", visibleCards));
+							}
+							else
+							{
+								_logger.LogWarning("[HANDHISTORY-CARDS] ✗ Hand #{HandNumber}, Player '{PlayerName}' (Seat {Seat}): ShowdownCards deserialized but empty", 
+									h.HandNumber, playerName, pr.SeatPosition);
+							}
+						}
+						catch (System.Text.Json.JsonException ex)
+						{
+							_logger.LogError(ex, "[HANDHISTORY-CARDS] ✗ Hand #{HandNumber}, Player '{PlayerName}': Failed to deserialize ShowdownCards: {Json}", 
+								h.HandNumber, playerName, pr.ShowdownCards);
+						}
+					}
+					else if (pr.ReachedShowdown)
+					{
+						_logger.LogWarning("[HANDHISTORY-CARDS] ✗ Hand #{HandNumber}, Player '{PlayerName}' (Seat {Seat}, PlayerId {PlayerId}): Reached showdown but ShowdownCards is null/empty", 
+							h.HandNumber, playerName, pr.SeatPosition, pr.PlayerId);
+					}
+
+					return new CardGames.Contracts.SignalR.PlayerHandResultDto
+					{
+						PlayerId = pr.PlayerId,
+						PlayerName = playerName,
+						SeatPosition = pr.SeatPosition,
+						ResultType = pr.ResultType.ToString(),
+						ResultLabel = pr.GetResultLabel(),
+						NetAmount = pr.NetChipDelta,
+						ReachedShowdown = pr.ReachedShowdown,
+						VisibleCards = visibleCards
+					};
+				})
+				.ToList();
+
+			return new CardGames.Contracts.SignalR.HandHistoryEntryDto
+			{
+				HandNumber = h.HandNumber,
+				CompletedAtUtc = h.CompletedAtUtc,
+				WinnerName = winnerDisplay,
+				AmountWon = totalWinnings,
+				WinningHandDescription = h.WinningHandDescription,
+				WonByFold = h.EndReason == Data.Entities.HandEndReason.FoldedToWinner,
+				WinnerCount = h.Winners.Count,
+				PlayerResults = playerResults
+			};
 		}).ToList();
 	}
 

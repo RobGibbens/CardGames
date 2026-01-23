@@ -1,4 +1,4 @@
-using CardGames.Poker.Api.Contracts;
+using CardGames.Contracts.SignalR;
 using CardGames.Poker.Api.Extensions;
 using MediatR;
 
@@ -15,16 +15,15 @@ public static class GetHandHistoryEndpoint
     public static RouteGroupBuilder MapGetHandHistory(this RouteGroupBuilder group)
     {
         group.MapGet("{gameId:guid}/history",
-                async (Guid gameId, IMediator mediator, int take = 25, int skip = 0, Guid? playerId = null, CancellationToken cancellationToken = default) =>
+                async (Guid gameId, IMediator mediator, int take = 25, int skip = 0, CancellationToken cancellationToken = default) =>
                 {
-                    var query = new GetHandHistoryQuery(gameId, playerId, take, skip);
+                    var query = new GetHandHistoryQuery(gameId, take, skip);
                     var response = await mediator.Send(query, cancellationToken);
                     return Results.Ok(response);
                 })
             .WithName($"{nameof(MapGetHandHistory).TrimPrefix("Map")}")
             .WithSummary("Get hand history for a game")
-            .WithDescription("Retrieves the hand history for a specific game, ordered newest-first. " +
-                           "Optionally provide a playerId to get per-player result context.")
+            .WithDescription("Retrieves the hand history for a specific game with all player results, ordered newest-first.")
             .MapToApiVersion(1.0)
             .Produces<HandHistoryListDto>(StatusCodes.Status200OK)
             .ProducesProblem(StatusCodes.Status404NotFound);

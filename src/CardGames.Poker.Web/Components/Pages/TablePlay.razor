@@ -453,7 +453,7 @@
     private List<HandTypeOddsDto> handOdds = [];
 
     // Dashboard / Hand history state
-    private List<HandHistoryEntryDto> _handHistoryEntries = [];
+    private List<CardGames.Contracts.SignalR.HandHistoryEntryDto> _handHistoryEntries = [];
     private int _handNumber = 0;
 
     // Toast notification state
@@ -812,7 +812,7 @@
         _isDrawPhase = state.CurrentPhase == "DrawPhase";
 
         // Note: Hand history is now updated from private state (HandlePrivateStateUpdatedAsync)
-        // because it contains personalized player results (CurrentPlayerResultLabel, CurrentPlayerNetDelta)
+        // because it contains complete player results for all participants in each hand
 
         // Recalculate derived state
         _seatedPlayerCount = _seats.Count(s => s.IsOccupied);
@@ -1393,8 +1393,7 @@
                 _gameRules = await GameRulesService.GetGameRulesAsync(_gameTypeCode);
             }
 
-            // Load hand history for the dashboard (requires player ID from GetPlayersAndUpdateSeatsAsync)
-            await LoadHandHistoryAsync();
+            // Hand history is provided via SignalR in the initial state and updates
 
             if (IsCompletePhase)
             {
@@ -1484,43 +1483,6 @@
         else
         {
             // Handle error (e.g., show message)
-        }
-    }
-
-    /// <summary>
-    /// Loads hand history from the API for initial page load.
-    /// </summary>
-    private async Task LoadHandHistoryAsync()
-    {
-        try
-        {
-            var response = await GamesApiClient.GetHandHistoryAsync(
-                GameId,
-                take: 25,
-                skip: 0,
-                playerId: _currentPlayerId);
-
-            if (response is { IsSuccessStatusCode: true, Content.Entries: not null })
-            {
-                _handHistoryEntries = response.Content.Entries.ToList();
-                Logger.LogInformation("Loaded {Count} hand history entries for game {GameId}", _handHistoryEntries.Count, GameId);
-
-                // Debug log each entry
-                foreach (var entry in _handHistoryEntries)
-                {
-                    Logger.LogInformation("HandHistory API: Hand #{HandNumber}, WinnerName='{WinnerName}', AmountWon={AmountWon}, ResultLabel='{ResultLabel}'",
-                    entry.HandNumber, entry.WinnerName ?? "(null)", entry.AmountWon, entry.CurrentPlayerResultLabel ?? "(null)");
-                }
-            }
-            else
-            {
-                Logger.LogWarning("GetHandHistoryAsync returned unsuccessful: StatusCode={StatusCode}, HasContent={HasContent}",
-                response?.StatusCode, response?.Content is not null);
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogWarning(ex, "Failed to load hand history for game {GameId}", GameId);
         }
     }
 
