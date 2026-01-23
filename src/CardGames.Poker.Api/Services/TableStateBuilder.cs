@@ -970,7 +970,6 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			.Include(h => h.Winners)
 				.ThenInclude(w => w.Player)
 			.Include(h => h.PlayerResults)
-				.ThenInclude(pr => pr.Player)
 			.Where(h => h.GameId == gameId)
 			.OrderByDescending(h => h.CompletedAtUtc)
 			.Take(take)
@@ -978,14 +977,31 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			.AsNoTracking()
 				.ToListAsync(cancellationToken);
 
+		// Get all player IDs from the histories
+		var allPlayerIds = histories
+			.SelectMany(h => h.PlayerResults)
+			.Select(pr => pr.PlayerId)
+			.Distinct()
+			.ToList();
+
+		// Load all players separately
+		var playersByIdLookup = await _context.Players
+			.Where(p => allPlayerIds.Contains(p.Id))
+			.AsNoTracking()
+			.ToDictionaryAsync(p => p.Id, p => p.Name, cancellationToken);
+
 		// Get cards for players who reached showdown
 		var handNumbers = histories.Select(h => h.HandNumber).ToHashSet();
+		_logger.LogInformation("Loading cards for {HandCount} hands: {HandNumbers}", handNumbers.Count, string.Join(", ", handNumbers));
+		
 		var gameCards = await _context.GameCards
 			.Where(gc => gc.GameId == gameId && handNumbers.Contains(gc.HandNumber))
 			.Where(gc => gc.GamePlayerId != null && gc.Location == Data.Entities.CardLocation.Hole)
 			.Include(gc => gc.GamePlayer)
 			.AsNoTracking()
 			.ToListAsync(cancellationToken);
+		
+		_logger.LogInformation("Loaded {CardCount} total cards from database", gameCards.Count);
 
 		// Group cards by player and hand number
 		var cardsByPlayerAndHand = gameCards
@@ -994,6 +1010,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			.ToDictionary(
 				g => g.Key,
 				g => g.OrderBy(gc => gc.DealOrder).Select(gc => FormatCard(gc.Symbol, gc.Suit)).ToList());
+		
+		_logger.LogInformation("Grouped cards into {GroupCount} player-hand combinations", cardsByPlayerAndHand.Count);
 
 		var winnerEmails = histories
 			.SelectMany(h => h.Winners)
@@ -1050,15 +1068,24 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				.OrderBy(pr => pr.SeatPosition)
 				.Select(pr =>
 				{
-					// Get player's actual name from Player entity, fallback to stored name if not available
-					var playerName = pr.Player?.Name ?? pr.PlayerName;
+					// Get player's actual name from Players lookup, fallback to stored name if not available
+					var playerName = playersByIdLookup.TryGetValue(pr.PlayerId, out var name) ? name : pr.PlayerName;
 
 					// Get cards for this player if they reached showdown
 					List<string>? visibleCards = null;
-					if (pr.ReachedShowdown && 
-						cardsByPlayerAndHand.TryGetValue(new { pr.PlayerId, h.HandNumber }, out var cards))
+					if (pr.ReachedShowdown)
 					{
-						visibleCards = cards;
+						if (cardsByPlayerAndHand.TryGetValue(new { pr.PlayerId, h.HandNumber }, out var cards))
+						{
+							visibleCards = cards;
+							_logger.LogInformation("Hand {HandNumber}, Player {PlayerName} (Seat {Seat}): Found {CardCount} cards: {Cards}", 
+								h.HandNumber, playerName, pr.SeatPosition, cards.Count, string.Join(", ", cards));
+						}
+						else
+						{
+							_logger.LogWarning("Hand {HandNumber}, Player {PlayerName} (Seat {Seat}, PlayerId {PlayerId}): Reached showdown but no cards found in lookup", 
+								h.HandNumber, playerName, pr.SeatPosition, pr.PlayerId);
+						}
 					}
 
 					return new CardGames.Contracts.SignalR.PlayerHandResultDto

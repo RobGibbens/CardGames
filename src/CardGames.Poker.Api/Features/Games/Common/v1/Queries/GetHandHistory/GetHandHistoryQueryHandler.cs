@@ -24,7 +24,6 @@ public class GetHandHistoryQueryHandler(CardsDbContext context)
 			.Include(h => h.Winners)
 				.ThenInclude(w => w.Player)
 			.Include(h => h.PlayerResults)
-				.ThenInclude(pr => pr.Player)
 			.Where(h => h.GameId == request.GameId)
 			.OrderByDescending(h => h.CompletedAtUtc)
 			.Skip(request.Skip)
@@ -33,10 +32,18 @@ public class GetHandHistoryQueryHandler(CardsDbContext context)
 			.AsNoTracking()
 			.ToListAsync(cancellationToken);
 
-		// Get all player IDs from histories that reached showdown
-		var playerIdsWithShowdown = histories
-			.SelectMany(h => h.PlayerResults.Where(pr => pr.ReachedShowdown).Select(pr => new { pr.PlayerId, h.HandNumber }))
+		// Get all player IDs from the histories
+		var allPlayerIds = histories
+			.SelectMany(h => h.PlayerResults)
+			.Select(pr => pr.PlayerId)
+			.Distinct()
 			.ToList();
+
+		// Load all players separately
+		var playersByIdLookup = await context.Players
+			.Where(p => allPlayerIds.Contains(p.Id))
+			.AsNoTracking()
+			.ToDictionaryAsync(p => p.Id, p => p.Name, cancellationToken);
 
 		// Get cards for players who reached showdown
 		var handNumbers = histories.Select(h => h.HandNumber).ToHashSet();
@@ -102,8 +109,8 @@ public class GetHandHistoryQueryHandler(CardsDbContext context)
 				.OrderBy(pr => pr.SeatPosition)
 				.Select(pr =>
 				{
-					// Get player's actual name from Player entity, fallback to stored name if not available
-					var playerName = pr.Player?.Name ?? pr.PlayerName;
+					// Get player's actual name from Players lookup, fallback to stored name if not available
+					var playerName = playersByIdLookup.TryGetValue(pr.PlayerId, out var name) ? name : pr.PlayerName;
 
 					// Get cards for this player if they reached showdown
 					List<string>? visibleCards = null;
