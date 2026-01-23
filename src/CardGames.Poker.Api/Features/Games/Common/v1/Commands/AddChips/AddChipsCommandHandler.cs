@@ -1,6 +1,7 @@
 using CardGames.Contracts.AddChips;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Games;
 using CardGames.Poker.Api.Infrastructure;
 using CardGames.Poker.Api.Services;
 using MediatR;
@@ -66,7 +67,7 @@ public sealed class AddChipsCommandHandler(
 		// Determine if chips should be applied immediately
 		// Kings and Lows: always immediate
 		// Other games: immediate if BetweenHands, otherwise queue
-		bool applyImmediately = string.Equals(game.GameType.Code, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase)
+		bool applyImmediately = string.Equals(game.GameType.Code, PokerGameMetadataRegistry.KingsAndLowsCode, StringComparison.OrdinalIgnoreCase)
 			|| string.Equals(game.CurrentPhase, "BetweenHands", StringComparison.OrdinalIgnoreCase);
 
 		string message;
@@ -92,10 +93,6 @@ public sealed class AddChipsCommandHandler(
 
 		// Broadcast state update
 		await broadcaster.BroadcastGameStateAsync(command.GameId, cancellationToken);
-
-		// Broadcast chips added notification (optional)
-		// Note: The notification is sent to the specific player via SignalR
-		// This is handled separately in the GameStateBroadcaster
 
 		return new AddChipsResponse
 		{

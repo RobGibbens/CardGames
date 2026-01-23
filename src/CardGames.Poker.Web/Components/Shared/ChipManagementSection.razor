@@ -94,6 +94,8 @@
 </div>
 
 @code {
+    private const string KingsAndLowsGameTypeCode = "KINGSANDLOWS";
+
     [Parameter]
     public ChipHistoryDto? ChipHistory { get; set; }
 
@@ -121,7 +123,7 @@
     private string messageType = "info";
 
     private bool IsKingsAndLows => 
-        string.Equals(GameTypeCode, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase);
+        string.Equals(GameTypeCode, KingsAndLowsGameTypeCode, StringComparison.OrdinalIgnoreCase);
 
     private async Task AddChipsAsync()
     {
