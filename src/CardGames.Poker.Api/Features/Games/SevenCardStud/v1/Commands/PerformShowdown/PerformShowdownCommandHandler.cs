@@ -128,6 +128,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 					winners: [(winner.PlayerId, winner.Player.Name, totalPot)],
 					winnerNames: [winner.Player.Name],
 					winningHandDescription: null,
+					playerHandEvaluations: null,
 					cancellationToken);
 			}
 
@@ -271,6 +272,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 				winners: winnerInfos,
 				winnerNames: winners,
 				winningHandDescription: winReason,
+				playerHandEvaluations: playerHandEvaluations,
 				cancellationToken);
 		}
 
@@ -408,6 +410,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 		List<(Guid PlayerId, string PlayerName, int AmountWon)> winners,
 		List<string> winnerNames,
 		string? winningHandDescription,
+		Dictionary<string, (StudHand hand, List<GameCard> cards, GamePlayer gamePlayer)>? playerHandEvaluations,
 		CancellationToken cancellationToken)
 	{
 		var isSplitPot = winners.Count > 1;
@@ -421,18 +424,32 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 				? winners.First(w => w.PlayerId == gp.PlayerId).AmountWon - gp.TotalContributedThisHand
 				: -gp.TotalContributedThisHand;
 
+			// Get cards for this player if they reached showdown
+			List<string>? showdownCards = null;
+			var reachedShowdown = !gp.HasFolded && !wonByFold;
+			if (reachedShowdown && playerHandEvaluations != null && 
+				playerHandEvaluations.TryGetValue(gp.Player.Name, out var handEvaluation))
+			{
+				// Get the best 5-card hand from the 7 cards
+				var bestHand = handEvaluation.hand.GetBestHand();
+				showdownCards = bestHand
+					.Select(c => FormatCard((CardSymbol)c.Symbol, (CardSuit)c.Suit))
+					.ToList();
+			}
+
 			return new PlayerResultInfo
 			{
 				PlayerId = gp.PlayerId,
 				PlayerName = gp.Player.Name,
 				SeatPosition = gp.SeatPosition,
 				HasFolded = gp.HasFolded,
-				ReachedShowdown = !gp.HasFolded && !wonByFold,
+				ReachedShowdown = reachedShowdown,
 				IsWinner = isWinner,
 				IsSplitPot = isSplitPot && isWinner,
 				NetChipDelta = netDelta,
 				WentAllIn = gp.IsAllIn,
-				FoldStreet = gp.HasFolded ? "FirstRound" : null // Simplified for Seven Card Stud
+				FoldStreet = gp.HasFolded ? "FirstRound" : null, // Simplified for Seven Card Stud
+				ShowdownCards = showdownCards
 			};
 		}).ToList();
 
@@ -456,6 +473,41 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 		};
 
 		await handHistoryRecorder.RecordHandHistoryAsync(parameters, cancellationToken);
+	}
+
+	/// <summary>
+	/// Formats a card as text (e.g., "3s", "Ah", "10d").
+	/// </summary>
+	private static string FormatCard(CardSymbol symbol, CardSuit suit)
+	{
+		var symbolStr = symbol switch
+		{
+			CardSymbol.Deuce => "2",
+			CardSymbol.Three => "3",
+			CardSymbol.Four => "4",
+			CardSymbol.Five => "5",
+			CardSymbol.Six => "6",
+			CardSymbol.Seven => "7",
+			CardSymbol.Eight => "8",
+			CardSymbol.Nine => "9",
+			CardSymbol.Ten => "10",
+			CardSymbol.Jack => "J",
+			CardSymbol.Queen => "Q",
+			CardSymbol.King => "K",
+			CardSymbol.Ace => "A",
+			_ => "?"
+		};
+
+		var suitStr = suit switch
+		{
+			CardSuit.Hearts => "h",
+			CardSuit.Diamonds => "d",
+			CardSuit.Spades => "s",
+			CardSuit.Clubs => "c",
+			_ => "?"
+		};
+
+		return $"{symbolStr}{suitStr}";
 	}
 }
 
