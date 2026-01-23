@@ -476,7 +476,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 	}
 
 	/// <summary>
-	/// Formats a card as text (e.g., "3s", "Ah", "10d").
+	/// Formats a card as text (e.g., "3s", "Ah", "Td").
 	/// </summary>
 	private static string FormatCard(CardSymbol symbol, CardSuit suit)
 	{
@@ -490,7 +490,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 			CardSymbol.Seven => "7",
 			CardSymbol.Eight => "8",
 			CardSymbol.Nine => "9",
-			CardSymbol.Ten => "10",
+			CardSymbol.Ten => "T",
 			CardSymbol.Jack => "J",
 			CardSymbol.Queen => "Q",
 			CardSymbol.King => "K",
