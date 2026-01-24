@@ -1364,9 +1364,11 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			}
 			
 			// Starting point for the history window
-			// If we have no hand history yet, use the player's starting chips
-			// Otherwise, calculate backwards from current stack
-			var windowStartStack = recentHands.Count == 0 
+			// If we have no hand history yet, OR if the first hand in our window is hand #1 (the very first hand),
+			// use the player's actual starting chips to show the true baseline before any antes or bets.
+			// Otherwise, calculate backwards from current stack.
+			var isFirstHandInWindow = recentHands.FirstOrDefault()?.HandNumber == 1;
+			var windowStartStack = (recentHands.Count == 0 || isFirstHandInWindow)
 				? gamePlayer.StartingChips 
 				: currentStack - totalDeltaInWindow;
 			
