@@ -26,14 +26,14 @@
             <input type="number" 
                    id="chip-amount" 
                    class="form-control" 
-                   @bind="chipAmount" 
+                   @bind="_chipAmount" 
                    min="1" 
                    step="100" 
                    placeholder="Enter amount" />
         </div>
         <button class="btn btn-primary" 
                 @onclick="AddChipsAsync" 
-                disabled="@(isSubmitting || chipAmount <= 0)">
+                disabled="@(_isSubmitting || _chipAmount <= 0)">
             <i class="fa-solid fa-plus"></i>
             Add Chips
         </button>
@@ -54,11 +54,11 @@
     </div>
 
     <!-- Info Message -->
-    @if (!string.IsNullOrEmpty(infoMessage))
+    @if (!string.IsNullOrEmpty(_infoMessage))
     {
-        <div class="info-message @messageType">
-            <i class="fa-solid @(messageType == "success" ? "fa-circle-check" : "fa-circle-info")"></i>
-            @infoMessage
+        <div class="info-message @_messageType">
+            <i class="fa-solid @(_messageType == "success" ? "fa-circle-check" : "fa-circle-info")"></i>
+            @_infoMessage
         </div>
     }
 
@@ -69,14 +69,18 @@
             <h4>Chip History (Last @ChipHistory.History.Count Hands)</h4>
             <ApexChart TItem="ChipHistoryEntryDto"
                        Title=""
+                       Options="@_chartOptions"
                        Height="200">
-                <ApexPointSeries TItem="ChipHistoryEntryDto"
-                                 Items="ChipHistory.History"
-                                 Name="Chip Stack"
-                                 SeriesType="SeriesType.Line"
-                                 XValue="@(e => (object)e.HandNumber)"
-                                 YValue="@(e => (decimal)e.ChipStackAfterHand)"
-                                 Color="#10b981" />
+				
+	            <ApexPointSeries TItem="ChipHistoryEntryDto"
+	                             Items="ChipHistory.History"
+	                             Name="Chip Stack"
+	                             SeriesType="SeriesType.Line"
+	                             XValue="@(e => (object)e.HandNumber)"
+	                             YValue="@(e => (decimal)e.ChipStackAfterHand)"
+	                             Color="#10b981">
+
+	            </ApexPointSeries>
             </ApexChart>
         </div>
     }
@@ -113,15 +117,63 @@
 
     [Inject]
     private ILogger<ChipManagementSection> Logger { get; set; } = null!;
-
-    private int chipAmount = 500;
-    private bool isSubmitting;
-    private string? infoMessage;
-    private string messageType = "info";
+    private ApexChartOptions<ChipHistoryEntryDto>? _chartOptions;
+    private int _chipAmount = 500;
+    private bool _isSubmitting;
+    private string? _infoMessage;
+    private string _messageType = "info";
     private int? _previousPendingChips;
 
     private bool IsKingsAndLows => 
         string.Equals(GameTypeCode, KingsAndLowsGameTypeCode, StringComparison.OrdinalIgnoreCase);
+
+    protected override void OnInitialized()
+    {
+        _chartOptions = new ApexChartOptions<ChipHistoryEntryDto>
+	    {
+		    DataLabels = new DataLabels
+		    {
+			    Enabled = true, // Set to true to show point labels
+			    // Optional: Further customization can be added here
+			    // Formatter can be used for custom text/formatting if needed (requires JS for Blazor Server)
+		    },
+		    // --- X-axis Configuration ---
+		    Xaxis = new XAxis
+		    {
+			    // Set the label style
+				Labels = new XAxisLabels
+			    {
+					Style = new AxisLabelStyle
+				    {
+					    Colors = new List<string> { "#FFFFFF" },
+					    FontSize = "12px",
+					    FontFamily = "Arial, sans-serif"
+				    }
+			    },
+			    // Optional: set axis border color
+			    AxisBorder = new AxisBorder
+			    {
+				    Show = true,
+				    Color = "#FF0000"
+			    }
+		    },
+		    // --- Y-axis Configuration ---
+		    Yaxis =
+		    [
+			    new YAxis
+			    {
+				    // Set the label style
+				    Labels = new YAxisLabels
+				    {
+                        Style = new AxisLabelStyle
+					    {
+						    Colors = new List<string> { "#FFFFFF" }
+					    }
+				    },
+			    }
+		    ]
+	    };
+    }
 
     protected override void OnParametersSet()
     {
@@ -130,9 +182,9 @@
         // Clear success message when pending chips have been applied
         if (ChipHistory != null && _previousPendingChips.HasValue && _previousPendingChips.Value > 0 && ChipHistory.PendingChipsToAdd == 0)
         {
-            if (messageType == "success")
+            if (_messageType == "success")
             {
-                infoMessage = null;
+                _infoMessage = null;
             }
         }
 
@@ -141,45 +193,45 @@
 
     private async Task AddChipsAsync()
     {
-        if (chipAmount <= 0)
+        if (_chipAmount <= 0)
         {
-            infoMessage = "Please enter a positive amount.";
-            messageType = "error";
+            _infoMessage = "Please enter a positive amount.";
+            _messageType = "error";
             return;
         }
 
-        isSubmitting = true;
-        infoMessage = null;
+        _isSubmitting = true;
+        _infoMessage = null;
 
         try
         {
-            var request = new AddChipsRequest { Amount = chipAmount };
+            var request = new AddChipsRequest { Amount = _chipAmount };
             var result = await GamesApiClient.AddChipsAsync(GameId, PlayerId, request);
 
             if (result.IsSuccessStatusCode && result.Content != null)
             {
-                infoMessage = result.Content.Message;
-                messageType = "success";
-                chipAmount = 500; // Reset to default
+                _infoMessage = result.Content.Message;
+                _messageType = "success";
+                _chipAmount = 500; // Reset to default
 
                 // Notify parent component
                 await OnChipsAdded.InvokeAsync();
             }
             else
             {
-                infoMessage = "Failed to add chips. Please try again.";
-                messageType = "error";
+                _infoMessage = "Failed to add chips. Please try again.";
+                _messageType = "error";
             }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Failed to add chips");
-            infoMessage = "Failed to add chips. Please try again.";
-            messageType = "error";
+            _infoMessage = "Failed to add chips. Please try again.";
+            _messageType = "error";
         }
         finally
         {
-            isSubmitting = false;
+            _isSubmitting = false;
         }
     }
 
