@@ -3,7 +3,6 @@
 ## Still to do
 
 ### P1 - Can't play without these
-- [ ] Add chip management to the dashboard (buy in, cash out, add chips)
 - [ ] Test side pots
 - [ ] Don't auto start a new hand. Add a timer, allow pause, allow people to get out of the game or end the game
 - [ ] Make sure all game types handle all ins correctly
@@ -23,7 +22,7 @@
 
 ### P2 - Important but not blocking play
 
-- [ ] - [ ] Make sure all calls are idempotent
+- [ ] Make sure all calls are idempotent
 - [ ] Continuous play should stop if all players disconnect
 - [ ] During ties, the showdown should show the kicker
 - [ ] Showdown overlay should handle split pots better
@@ -140,3 +139,4 @@
 - [x] Sit out button is missing
 - [x] Leaderboard should show first names
 - [x] Make hand history more detailed
+- [x] Add chip management to the dashboard (buy in, cash out, add chips)
