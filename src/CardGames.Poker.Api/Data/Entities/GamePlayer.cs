@@ -118,6 +118,12 @@ public class GamePlayer : EntityWithRowVersion
 	public int? FinalChipCount { get; set; }
 
 	/// <summary>
+	/// Chips pending to be added to the player's stack.
+	/// Applied automatically when the game status reaches BetweenHands for certain game types.
+	/// </summary>
+	public int PendingChipsToAdd { get; set; }
+
+	/// <summary>
 	/// The player's current status in the game.
 	/// </summary>
 	public GamePlayerStatus Status { get; set; } = GamePlayerStatus.Active;

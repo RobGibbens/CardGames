@@ -144,6 +144,16 @@
             @if (_isSeated)
             {
                 <DashboardPanel>
+                    <DashboardSection Title="Chips" Icon="fa-solid fa-coins"
+                                      IsExpanded="@DashboardState.IsSectionExpanded("Chips")"
+                                      IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("Chips", value))">
+                        <ChipManagementSection ChipHistory="@_chipHistory"
+                                               GameId="@GameId"
+                                               PlayerId="@(_currentPlayerId ?? Guid.Empty)"
+                                               GameTypeCode="@_gameResponse?.GameTypeCode"
+                                               OnChipsAdded="@OnChipsAddedAsync" />
+                    </DashboardSection>
+
                     <DashboardSection Title="Leaderboard" Icon="fa-solid fa-trophy"
                                       IsExpanded="@DashboardState.IsSectionExpanded("Leaderboard")"
                                       IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("Leaderboard", value))">
@@ -454,6 +464,7 @@
 
     // Dashboard / Hand history state
     private List<CardGames.Contracts.SignalR.HandHistoryEntryDto> _handHistoryEntries = [];
+    private CardGames.Contracts.SignalR.ChipHistoryDto? _chipHistory;
     private int _handNumber = 0;
 
     // Toast notification state
@@ -1049,6 +1060,12 @@
         if (state.HandHistory is not null && state.HandHistory.Count > 0)
         {
             _handHistoryEntries = state.HandHistory.ToList();
+        }
+
+        // Update chip history from private state
+        if (state.ChipHistory is not null)
+        {
+            _chipHistory = state.ChipHistory;
         }
 
         await InvokeAsync(StateHasChanged);
@@ -3105,6 +3122,16 @@ HandType.HighCard
             _deckDrawCards = [];
             StateHasChanged();
         }
+    }
+
+    /// <summary>
+    /// Callback invoked when chips are added through the chip management section.
+    /// State will be automatically updated via SignalR PrivateStateUpdated event.
+    /// </summary>
+    private async Task OnChipsAddedAsync()
+    {
+        // State will be automatically refreshed via SignalR
+        await Task.CompletedTask;
     }
 }
 

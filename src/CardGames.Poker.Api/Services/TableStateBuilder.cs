@@ -347,6 +347,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		// Get hand history personalized for this player
 		var handHistory = await GetHandHistoryEntriesAsync(gameId, gamePlayer.PlayerId, take: 25, cancellationToken);
 
+		// Build chip history from hand history
+		var chipHistory = BuildChipHistory(gamePlayer, handHistory);
+
 		return new PrivateStateDto
 		{
 			GameId = gameId,
@@ -358,7 +361,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			Draw = draw,
 			DropOrStay = dropOrStay,
 			IsMyTurn = isMyTurn,
-			HandHistory = handHistory
+			HandHistory = handHistory,
+			ChipHistory = chipHistory
 		};
 	}
 
@@ -1333,4 +1337,78 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					Decision = gamePlayer.DropOrStayDecision?.ToString()
 				};
 			}
+
+		/// <summary>
+		/// Builds the chip history DTO for a player from hand history data.
+		/// </summary>
+		private ChipHistoryDto BuildChipHistory(
+			GamePlayer gamePlayer,
+			IReadOnlyList<CardGames.Contracts.SignalR.HandHistoryEntryDto> handHistory)
+		{
+			var entries = new List<ChipHistoryEntryDto>();
+			
+			// Take last 30 hands for the history window
+			var recentHands = handHistory.TakeLast(30).ToList();
+			
+			// Calculate the starting stack for this window by working backwards from current chips
+			var currentStack = gamePlayer.ChipStack;
+			var totalDeltaInWindow = 0;
+			
+			foreach (var hand in recentHands)
+			{
+				var playerResult = hand.PlayerResults.FirstOrDefault(pr => pr.PlayerId == gamePlayer.PlayerId);
+				if (playerResult != null)
+				{
+					totalDeltaInWindow += playerResult.NetAmount;
+				}
+			}
+			
+			// Starting point for the history window
+			// If we have no hand history yet, OR if the first hand in our window is hand #1 (the very first hand),
+			// use the player's actual starting chips to show the true baseline before any antes or bets.
+			// Otherwise, calculate backwards from current stack.
+			var isFirstHandInWindow = recentHands.FirstOrDefault()?.HandNumber == 1;
+			var windowStartStack = (recentHands.Count == 0 || isFirstHandInWindow)
+				? gamePlayer.StartingChips 
+				: currentStack - totalDeltaInWindow;
+			
+			// Add initial starting point entry to show the baseline
+			// Use sequential hand numbering starting from 0 for the baseline
+			entries.Add(new ChipHistoryEntryDto
+			{
+				HandNumber = 0,
+				ChipStackAfterHand = windowStartStack,
+				ChipsDelta = 0,
+				Timestamp = recentHands.FirstOrDefault()?.CompletedAtUtc.AddSeconds(-1) ?? DateTimeOffset.UtcNow
+			});
+			
+			var runningStack = windowStartStack;
+			var sequentialHandNumber = 1; // Start from 1 after the baseline (0)
+
+			// Build chip history entries for each completed hand
+			// Use sequential hand numbers (1, 2, 3...) instead of actual database hand numbers
+			foreach (var hand in recentHands)
+			{
+				var playerResult = hand.PlayerResults.FirstOrDefault(pr => pr.PlayerId == gamePlayer.PlayerId);
+				if (playerResult != null)
+				{
+					runningStack += playerResult.NetAmount;
+					entries.Add(new ChipHistoryEntryDto
+					{
+						HandNumber = sequentialHandNumber++,
+						ChipStackAfterHand = runningStack,
+						ChipsDelta = playerResult.NetAmount,
+						Timestamp = hand.CompletedAtUtc
+					});
+				}
+			}
+
+			return new ChipHistoryDto
+			{
+				CurrentChips = gamePlayer.ChipStack,
+				PendingChipsToAdd = gamePlayer.PendingChipsToAdd,
+				StartingChips = gamePlayer.StartingChips,
+				History = entries
+			};
+		}
 		}
