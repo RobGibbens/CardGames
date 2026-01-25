@@ -1,4 +1,5 @@
 using CardGames.Poker.Api.Extensions;
+using CardGames.Poker.Api.Services;
 using MediatR;
 
 namespace CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.PerformShowdown;
@@ -14,19 +15,24 @@ public static class PerformShowdownEndpoint
 	public static RouteGroupBuilder MapPerformShowdown(this RouteGroupBuilder group)
 	{
 		group.MapPost("{gameId:guid}/showdown",
-				async (Guid gameId, IMediator mediator, CancellationToken cancellationToken) =>
+				async (Guid gameId, IMediator mediator, IGameStateBroadcaster broadcaster, CancellationToken cancellationToken) =>
 				{
 					var command = new PerformShowdownCommand(gameId);
 					var result = await mediator.Send(command, cancellationToken);
 
-					return result.Match(
-						success => Results.Ok(success),
-						error => error.Code switch
+					return await result.Match(
+						async success =>
+						{
+							// Broadcast updated game state to all players after showdown
+							await broadcaster.BroadcastGameStateAsync(gameId, cancellationToken);
+							return Results.Ok(success);
+						},
+						error => Task.FromResult(error.Code switch
 						{
 							PerformShowdownErrorCode.GameNotFound => Results.NotFound(new { error.Message }),
 							PerformShowdownErrorCode.InvalidGameState => Results.Conflict(new { error.Message }),
 							_ => Results.Problem(error.Message)
-						}
+						})
 					);
 				})
 			.WithName($"KingsAndLows{nameof(MapPerformShowdown).TrimPrefix("Map")}")

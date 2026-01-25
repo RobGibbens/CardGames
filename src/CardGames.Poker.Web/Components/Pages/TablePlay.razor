@@ -1734,15 +1734,21 @@
 
     private async Task TryLoadShowdownAsync()
     {
+        Logger.LogDebug("TryLoadShowdownAsync called. CurrentPhase={Phase}, IsShowdownPhase={IsShowdown}",
+            _gameResponse?.CurrentPhase, IsShowdownPhase);
+
         if (!IsShowdownPhase)
         {
+            Logger.LogDebug("TryLoadShowdownAsync: Not in showdown phase, returning early");
             return;
         }
 
         // If showdown result is already loaded (e.g., from SignalR update), just show the overlay
         if (_showdownResult is not null)
         {
+            Logger.LogDebug("TryLoadShowdownAsync: Showdown result already loaded, showing overlay");
             _showShowdownOverlay = true;
+            await InvokeAsync(StateHasChanged);
             return;
         }
 
@@ -1766,13 +1772,19 @@
             showdownResponse = await FiveCardDrawApiClient.FiveCardDrawPerformShowdownAsync(GameId);
         }
 
+        Logger.LogDebug("TryLoadShowdownAsync: Showdown API response - IsSuccess={IsSuccess}, HasContent={HasContent}",
+            showdownResponse?.IsSuccessStatusCode, showdownResponse?.Content is not null);
+
         if (showdownResponse is not { IsSuccessStatusCode: true, Content: not null })
         {
+            Logger.LogWarning("TryLoadShowdownAsync: Showdown API failed or returned no content. StatusCode={StatusCode}, Error={Error}",
+                showdownResponse?.StatusCode, showdownResponse?.Error?.Content);
             return;
         }
 
         _showdownResult = showdownResponse.Content;
         _showShowdownOverlay = true;
+        Logger.LogDebug("TryLoadShowdownAsync: Set _showShowdownOverlay=true, _showdownResult loaded");
 
         if (string.IsNullOrWhiteSpace(_loggedInUserEmail) && string.IsNullOrWhiteSpace(_currentPlayerName))
         {
@@ -1787,6 +1799,8 @@
         string.Equals(p, _currentPlayerName, StringComparison.OrdinalIgnoreCase)) == true;
         _showdownWon = iWon;
         _showdownLost = !iWon;
+
+        await InvokeAsync(StateHasChanged);
     }
 
     private void CloseShowdownOverlay()
@@ -3099,7 +3113,23 @@ HandType.HighCard
 
                 // Now show the showdown overlay after animation is complete
                 _delayShowdownOverlay = false;
+
+                // Update the local game phase from the API response so IsShowdownPhase returns true
+                // (SignalR broadcast may not have arrived yet)
+                if (_gameResponse is not null && response.Content is not null)
+                {
+                    Logger.LogDebug("HandleDeckDrawSubmittedAsync: Updating CurrentPhase from {Old} to {New}",
+                        _gameResponse.CurrentPhase, response.Content.NextPhase);
+                    _gameResponse = _gameResponse with { CurrentPhase = response.Content.NextPhase };
+                }
+                else
+                {
+                    Logger.LogWarning("HandleDeckDrawSubmittedAsync: Cannot update phase - _gameResponse={HasResponse}, response.Content={HasContent}",
+                        _gameResponse is not null, response.Content is not null);
+                }
+
                 await TryLoadShowdownAsync();
+                await InvokeAsync(StateHasChanged);
             }
             else
             {
