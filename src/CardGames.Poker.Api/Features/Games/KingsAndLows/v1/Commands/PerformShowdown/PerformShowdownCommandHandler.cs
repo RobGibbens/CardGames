@@ -94,24 +94,177 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 		// 5. Calculate total pot (only from current hand's pots)
 		var totalPot = currentHandPots.Sum(p => p.Amount);
 
-		// 6. Handle win by fold (only one player remaining)
+		// 5a. Load deck cards (for player-vs-deck scenario)
+		var deckCards = await context.GameCards
+			.Where(c => c.GameId == command.GameId &&
+						c.HandNumber == game.CurrentHandNumber &&
+						!c.IsDiscarded &&
+						c.GamePlayerId == null &&
+						c.Location == CardLocation.Board)
+			.OrderBy(c => c.DealOrder)
+			.ToListAsync(cancellationToken);
+
+		// 6. Handle single player remaining
 		if (playersInHand.Count == 1)
 		{
-			var winner = playersInHand[0];
-			
+			var player = playersInHand[0];
+			var playerCardsForHand = playerCardGroups.GetValueOrDefault(player.Id, []);
+			usersByEmail.TryGetValue(player.Player.Email ?? string.Empty, out var playerUser);
+
+			// 6a. Check if this is a player-vs-deck scenario (deck cards exist)
+			if (deckCards.Count >= 5)
+			{
+				// Player vs Deck: evaluate both hands and compare
+				var playerCoreCards = playerCardsForHand.Select(c => new Card(MapSuit(c.Suit), MapSymbol(c.Symbol))).ToList();
+				var deckCoreCards = deckCards.Select(c => new Card(MapSuit(c.Suit), MapSymbol(c.Symbol))).ToList();
+
+				var playerHand = new KingsAndLowsDrawHand(playerCoreCards);
+				var deckHand = new KingsAndLowsDrawHand(deckCoreCards);
+
+				var playerWins = playerHand.Strength > deckHand.Strength;
+				var deckWins = deckHand.Strength > playerHand.Strength;
+				// Tie goes to the player (house rule: player beats deck on tie)
+				var isWinner = !deckWins;
+
+				// Determine wild card indexes for player
+				var playerWildCards = playerHand.WildCards;
+				var playerWildIndexes = new List<int>();
+				for (int i = 0; i < playerCoreCards.Count; i++)
+				{
+					if (playerWildCards.Contains(playerCoreCards[i]))
+					{
+						playerWildIndexes.Add(i);
+					}
+				}
+
+				// Determine wild card indexes for deck
+				var deckWildCards = deckHand.WildCards;
+				var deckWildIndexes = new List<int>();
+				for (int i = 0; i < deckCoreCards.Count; i++)
+				{
+					if (deckWildCards.Contains(deckCoreCards[i]))
+					{
+						deckWildIndexes.Add(i);
+					}
+				}
+
+				var playerHandDescription = HandDescriptionFormatter.GetHandDescription(playerHand);
+				var deckHandDescription = HandDescriptionFormatter.GetHandDescription(deckHand);
+
+				if (!isAlreadyAwarded)
+				{
+					if (isWinner)
+					{
+						player.ChipStack += totalPot;
+					}
+					// If deck wins, pot stays (will be added to next hand)
+
+					// Mark pots as awarded
+					var winReason = isWinner
+						? $"Beat the deck with {playerHandDescription}"
+						: $"Lost to deck's {deckHandDescription}";
+
+					foreach (var pot in currentHandPots)
+					{
+						pot.IsAwarded = true;
+						pot.AwardedAt = now;
+						pot.WinReason = winReason;
+
+						if (isWinner)
+						{
+							var winnerPayoutsList = new[] { new { playerId = player.PlayerId.ToString(), playerName = player.Player.Name, amount = totalPot } };
+							pot.WinnerPayouts = JsonSerializer.Serialize(winnerPayoutsList);
+						}
+					}
+
+					game.CurrentPhase = nameof(Phases.Complete);
+					game.UpdatedAt = now;
+					game.HandCompletedAt = now;
+					game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);
+					MoveDealer(game);
+
+					await context.SaveChangesAsync(cancellationToken);
+
+					// Record hand history for player-vs-deck
+					await RecordHandHistoryAsync(
+						game,
+						game.GamePlayers.ToList(),
+						now,
+						isWinner ? totalPot : 0,
+						wonByFold: false,
+						winners: isWinner ? [(player.PlayerId, player.Player.Name, totalPot)] : [],
+						winnerNames: isWinner ? [player.Player.Name] : [],
+						winningHandDescription: isWinner ? playerHandDescription : deckHandDescription,
+						cancellationToken);
+				}
+
+				// Build player hands list including the deck as a "player"
+				var showdownHands = new List<ShowdownPlayerHand>
+				{
+					new ShowdownPlayerHand
+					{
+						PlayerName = player.Player.Name,
+						PlayerFirstName = playerUser?.FirstName,
+						Cards = playerCardsForHand.Select(c => new ShowdownCard
+						{
+							Suit = c.Suit,
+							Symbol = c.Symbol
+						}).ToList(),
+						HandType = playerHand.Type.ToString(),
+						HandDescription = playerHandDescription,
+						HandRanking = playerHandDescription,
+						HandStrength = playerHand.Strength,
+						IsWinner = isWinner,
+						AmountWon = isWinner ? totalPot : 0,
+						WildCardIndexes = playerWildIndexes
+					},
+					new ShowdownPlayerHand
+					{
+						PlayerName = "The Deck",
+						PlayerFirstName = "Deck",
+						Cards = deckCards.Select(c => new ShowdownCard
+						{
+							Suit = c.Suit,
+							Symbol = c.Symbol
+						}).ToList(),
+						HandType = deckHand.Type.ToString(),
+						HandDescription = deckHandDescription,
+						HandRanking = deckHandDescription,
+						HandStrength = deckHand.Strength,
+						IsWinner = deckWins,
+						AmountWon = 0,
+						WildCardIndexes = deckWildIndexes
+					}
+				};
+
+				return new PerformShowdownSuccessful
+				{
+					GameId = game.Id,
+					WonByFold = false,
+					IsPlayerVsDeck = true,
+					DeckWon = deckWins,
+					CurrentPhase = game.CurrentPhase,
+					Payouts = isWinner ? new Dictionary<string, int> { { player.Player.Name, totalPot } } : new Dictionary<string, int>(),
+					Winners = isWinner ? [player.Player.Name] : [],
+					Losers = isWinner ? [] : [player.Player.Name],
+					PlayerHands = showdownHands
+				};
+			}
+
+			// 6b. True win by fold (no deck cards - all opponents dropped before PlayerVsDeck phase)
 			if (!isAlreadyAwarded)
 			{
-				winner.ChipStack += totalPot;
+				player.ChipStack += totalPot;
 
 				// Mark pots as awarded
 				foreach (var pot in currentHandPots)
 				{
 					pot.IsAwarded = true;
 					pot.AwardedAt = now;
-					pot.WinReason = "All others folded";
+					pot.WinReason = "All others dropped";
 
-					var winnerPayoutsList = new[] { new { playerId = winner.PlayerId.ToString(), playerName = winner.Player.Name, amount = totalPot } };
-					pot.WinnerPayouts = System.Text.Json.JsonSerializer.Serialize(winnerPayoutsList);
+					var winnerPayoutsList = new[] { new { playerId = player.PlayerId.ToString(), playerName = player.Player.Name, amount = totalPot } };
+					pot.WinnerPayouts = JsonSerializer.Serialize(winnerPayoutsList);
 				}
 
 				game.CurrentPhase = nameof(Phases.Complete);
@@ -129,30 +282,27 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 					now,
 					totalPot,
 					wonByFold: true,
-					winners: [(winner.PlayerId, winner.Player.Name, totalPot)],
-					winnerNames: [winner.Player.Name],
+					winners: [(player.PlayerId, player.Player.Name, totalPot)],
+					winnerNames: [player.Player.Name],
 					winningHandDescription: null,
 					cancellationToken);
 			}
-
-			var winnerCards = playerCardGroups.GetValueOrDefault(winner.Id, []);
-			usersByEmail.TryGetValue(winner.Player.Email ?? string.Empty, out var winnerUser);
 
 			return new PerformShowdownSuccessful
 			{
 				GameId = game.Id,
 				WonByFold = true,
 				CurrentPhase = game.CurrentPhase,
-				Payouts = new Dictionary<string, int> { { winner.Player.Name, totalPot } },
-				Winners = [winner.Player.Name],
+				Payouts = new Dictionary<string, int> { { player.Player.Name, totalPot } },
+				Winners = [player.Player.Name],
 				Losers = [],
 				PlayerHands =
 				[
 					new ShowdownPlayerHand
 					{
-						PlayerName = winner.Player.Name,
-						PlayerFirstName = winnerUser?.FirstName,
-						Cards = winnerCards.Select(c => new ShowdownCard
+						PlayerName = player.Player.Name,
+						PlayerFirstName = playerUser?.FirstName,
+						Cards = playerCardsForHand.Select(c => new ShowdownCard
 						{
 							Suit = c.Suit,
 							Symbol = c.Symbol
