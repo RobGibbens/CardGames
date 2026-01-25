@@ -1235,11 +1235,13 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			return null;
 		}
 
-		// Get deck cards (cards with no GamePlayerId in this hand)
+		// Get deck cards (cards with no GamePlayerId in this hand, on the Board)
+		// The deck's hand is stored as cards with no GamePlayerId and Location = Board
 		var deckCards = await _context.GameCards
 			.Where(gc => gc.GameId == game.Id
 					 && gc.GamePlayerId == null
 					 && gc.HandNumber == game.CurrentHandNumber
+					 && gc.Location == Entities.CardLocation.Board
 					 && !gc.IsDiscarded)
 			.OrderBy(gc => gc.DealOrder)
 			.AsNoTracking()
