@@ -2,7 +2,9 @@ using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
+using CardGames.Poker.Evaluation;
 using CardGames.Poker.Games.KingsAndLows;
+using CardGames.Poker.Hands.DrawHands;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
@@ -243,7 +245,19 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 			}
 		}
 
-			// 12. Persist changes
+			// 12. Evaluate the new hand to get the description
+			string? newHandDescription = null;
+			if (playerCards.Count == 5)
+			{
+				var coreCards = playerCards.Select(c => new CardGames.Core.French.Cards.Card(
+					(CardGames.Core.French.Cards.Suit)(int)c.Suit,
+					(CardGames.Core.French.Cards.Symbol)(int)c.Symbol
+				)).ToList();
+				var newHand = new KingsAndLowsDrawHand(coreCards);
+				newHandDescription = HandDescriptionFormatter.GetHandDescription(newHand);
+			}
+
+			// 13. Persist changes
 			game.UpdatedAt = now;
 			await context.SaveChangesAsync(cancellationToken);
 
@@ -260,7 +274,8 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 				DrawPhaseComplete = drawPhaseComplete,
 				NextPhase = nextPhase,
 				NextPlayerId = nextPlayerId,
-				NextPlayerName = nextPlayerName
+				NextPlayerName = nextPlayerName,
+				NewHandDescription = newHandDescription
 			};
 		}
 

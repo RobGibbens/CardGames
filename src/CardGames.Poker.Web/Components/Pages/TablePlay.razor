@@ -204,7 +204,7 @@
                        OnToggleSelection="ToggleDiscardSelectionAsync" OnDraw="HandleDrawActionAsync" IsSubmitting="@_isSubmittingDraw"
                        IsAnimating="@_isDrawAnimating" IsDiscarding="@_isDiscardingCards" IsDrawing="@_isDrawingNewCards"
                        CardsDrawn="@_cardsDrawn" NewCardIndices="@_newCardIndices"
-                       HandDescription="@currentPlayerHandEvaluationDescription" MaxDiscards="@GetMaxDiscards()"
+                       HandDescription="@(_cardsDrawn && !string.IsNullOrWhiteSpace(_newHandDescription) ? _newHandDescription : currentPlayerHandEvaluationDescription)" MaxDiscards="@GetMaxDiscards()"
                        DrawingSpecialRules="@GetDrawingSpecialRules()"
                        IsReadOnly="@(IsDrawCompletePhase || _cardsDrawn)"
                        ReadOnlyMessage="@(IsDrawCompletePhase ? "Waiting for showdown..." : "New cards drawn!")"
@@ -417,6 +417,7 @@
     private GetCurrentDrawPlayerResponse? _currentDrawPlayer;
     private bool _forceShowDrawPanel;
     private int _maxDiscards = 3;
+    private string? _newHandDescription; // Hand description after drawing new cards
 
     // Kings and Lows specific state
     private bool _hasDropOrStayDecided;
@@ -801,6 +802,7 @@
                         _selectedDiscardIndices.Clear();
                         _currentPlayerDrawCards = [];
                         _cardsDrawn = false;
+                        _newHandDescription = null;
                         _isPlayerDrawTurn = false;
                         _isDrawAnimating = false;
                         _isDiscardingCards = false;
@@ -1948,6 +1950,7 @@
         _forceShowDrawPanel = true;
         _delayShowdownOverlay = true; // Delay showdown until animation completes
         _cardsDrawn = false;
+        _newHandDescription = null;
 
         // Initialize draw cards for animation
         _currentPlayerDrawCards = _currentPlayerDrawCards.Select(c => c with { IsSelected = false }).ToList();
@@ -2032,6 +2035,9 @@
                         playerName: content.PlayerName ?? "",
                         playerSeatIndex: content.PlayerSeatIndex
                     );
+                    
+                    // Store the new hand description for display after draw animation
+                    _newHandDescription = content.NewHandDescription;
                 }
                 else
                 {
@@ -2063,6 +2069,7 @@
                 _isDiscardingCards = false;
                 _forceShowDrawPanel = false;
                 _cardsDrawn = false;
+                _newHandDescription = null;
                 await InvokeAsync(StateHasChanged);
                 return;
             }
@@ -2109,6 +2116,7 @@
                 _selectedDiscardIndices.Clear();
                 _forceShowDrawPanel = false;
                 _cardsDrawn = false;
+                _newHandDescription = null;
                 await InvokeAsync(StateHasChanged);
                 return;
             }
@@ -2195,6 +2203,7 @@
             _selectedDiscardIndices.Clear();
             _forceShowDrawPanel = false;
             _cardsDrawn = false;
+            _newHandDescription = null;
 
             // Now show the showdown overlay after animation is complete
             _delayShowdownOverlay = false;
@@ -2216,6 +2225,7 @@
             {
                 _forceShowDrawPanel = false;
                 _cardsDrawn = false;
+                _newHandDescription = null;
             }
         }
     }
