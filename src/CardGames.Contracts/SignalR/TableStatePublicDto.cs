@@ -562,4 +562,14 @@ public sealed record PlayerVsDeckStateDto
 	/// The seat index of the player who stayed.
 	/// </summary>
 	public int StayingPlayerSeatIndex { get; init; }
+
+	/// <summary>
+	/// The staying player's cards, shown face-up to all players during the Player vs Deck phase.
+	/// </summary>
+	public IReadOnlyList<CardPublicDto> StayingPlayerCards { get; init; } = [];
+
+	/// <summary>
+	/// The staying player's hand description (e.g., "Two Pair, Kings and Sevens").
+	/// </summary>
+	public string? StayingPlayerHandDescription { get; init; }
 }

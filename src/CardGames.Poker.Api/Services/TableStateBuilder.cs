@@ -78,7 +78,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				cancellationToken);
 
 		var seats = gamePlayers
-			.Select(gp => BuildSeatPublicDto(gp, game.CurrentHandNumber, game.Ante ?? 0, game.GameType?.Code, userProfilesByEmail))
+			.Select(gp => BuildSeatPublicDto(gp, game.CurrentHandNumber, game.Ante ?? 0, game.GameType?.Code, game.CurrentPhase, userProfilesByEmail))
 					.ToList();
 
 		// Calculate results phase state
@@ -136,7 +136,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			CurrentHandNumber = game.CurrentHandNumber,
 			CreatedByName = game.CreatedByName,
 			Seats = seats,
-			Showdown = BuildShowdownPublicDto(game, gamePlayers, userProfilesByEmail),
+			Showdown = await BuildShowdownPublicDtoAsync(game, gamePlayers, userProfilesByEmail, cancellationToken),
 			HandCompletedAtUtc = game.HandCompletedAt,
 			NextHandStartsAtUtc = game.NextHandStartsAt,
 			IsResultsPhase = isResultsPhase,
@@ -416,11 +416,17 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		int currentHandNumber,
 		int ante,
 		string? gameTypeCode,
+		string? currentPhase,
 		IReadOnlyDictionary<string, UserProfile> userProfilesByEmail)
 	{
 		var firstName = GetPlayerFirstName(gamePlayer, userProfilesByEmail);
 		var avatarUrl = GetPlayerAvatarUrl(gamePlayer, userProfilesByEmail);
 		var sittingOutReason = GetSittingOutReason(gamePlayer, ante, currentHandNumber);
+
+		// Check if we're in a showdown phase where cards should be revealed
+		var isShowdownPhase = string.Equals(currentPhase, "Showdown", StringComparison.OrdinalIgnoreCase) ||
+							  string.Equals(currentPhase, "Complete", StringComparison.OrdinalIgnoreCase) ||
+							  string.Equals(currentPhase, "PotMatching", StringComparison.OrdinalIgnoreCase);
 
 		// Get current hand cards (not discarded)
 		// Note: We filter by hand number to naturally handle sitting out players.
@@ -432,12 +438,18 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			.ToList();
 
 		// For Seven Card Stud, show visible cards; otherwise show face-down placeholders
+		// During showdown phases, show cards face-up for players who haven't folded
 		var isSevenCardStud = string.Equals(gameTypeCode, "SEVENCARDSTUD", StringComparison.OrdinalIgnoreCase);
+		
+		// During showdown, show cards for staying players (not folded)
+		// Folded players should not have their cards revealed
+		var shouldShowCardsForShowdown = isShowdownPhase && !gamePlayer.HasFolded;
 
 		var publicCards = playerCards.Select(card =>
 		{
 			// For stud games, respect the IsVisible flag; otherwise default to face-down
-			var shouldShowCard = isSevenCardStud && card.IsVisible;
+			// During showdown, show face-up cards for staying players
+			var shouldShowCard = (isSevenCardStud && card.IsVisible) || shouldShowCardsForShowdown;
 
 			return new CardPublicDto
 			{
@@ -631,10 +643,11 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		};
 	}
 
-	private static ShowdownPublicDto? BuildShowdownPublicDto(
+	private async Task<ShowdownPublicDto?> BuildShowdownPublicDtoAsync(
 		Game game,
 		List<GamePlayer> gamePlayers,
-		Dictionary<string, UserProfile> userProfilesByEmail)
+		Dictionary<string, UserProfile> userProfilesByEmail,
+		CancellationToken cancellationToken)
 	{
 		if (game.CurrentPhase != "Showdown" && game.CurrentPhase != "Complete" && game.CurrentPhase != "PotMatching")
 		{
@@ -892,6 +905,87 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			.OrderByDescending(r => r.IsWinner)
 			.ThenByDescending(r => playerHandEvaluations.TryGetValue(r.PlayerName, out var e) ? e.hand.Strength : 0)
 			.ToList();
+
+		// For Kings and Lows player-vs-deck scenario, add the deck as a player in the results
+		if (isKingsAndLows && playerResults.Count == 1)
+		{
+			// Check for deck cards (player-vs-deck scenario)
+			var deckCards = await _context.GameCards
+				.Where(c => c.GameId == game.Id &&
+							c.HandNumber == game.CurrentHandNumber &&
+							!c.IsDiscarded &&
+							c.GamePlayerId == null &&
+							c.Location == CardLocation.Board)
+				.OrderBy(c => c.DealOrder)
+				.AsNoTracking()
+				.ToListAsync(cancellationToken);
+
+			if (deckCards.Count >= 5)
+			{
+				// Evaluate the deck's hand
+				var deckCoreCards = deckCards.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol)).ToList();
+				var deckHand = new KingsAndLowsDrawHand(deckCoreCards);
+
+				// Get wild card indexes for the deck
+				var deckWildCards = deckHand.WildCards;
+				var deckWildIndexes = new List<int>();
+				for (int i = 0; i < deckCoreCards.Count; i++)
+				{
+					if (deckWildCards.Contains(deckCoreCards[i]))
+					{
+						deckWildIndexes.Add(i);
+					}
+				}
+
+				// Compare hands to determine winner
+				var playerHand = playerHandEvaluations.Values.FirstOrDefault();
+				var playerWins = playerHand.hand?.Strength >= deckHand.Strength; // Tie goes to player
+				var deckWins = !playerWins;
+
+				// Update the player's winner status if needed
+				if (playerWins && playerResults.Count > 0)
+				{
+					var playerResult = playerResults[0];
+					playerResults[0] = playerResult with { IsWinner = true };
+					highHandWinners.Add(playerResult.PlayerName);
+				}
+				else if (deckWins && playerResults.Count > 0)
+				{
+					// Player loses to the deck
+					var playerResult = playerResults[0];
+					playerResults[0] = playerResult with { IsWinner = false };
+					highHandWinners.Clear();
+					allLosers = [playerResult.PlayerName];
+				}
+
+				// Add the deck as a "player" in the results
+				var deckResult = new ShowdownPlayerResultDto
+				{
+					PlayerName = "The Deck",
+					PlayerFirstName = "Deck",
+					SeatPosition = -1, // Deck has no seat
+					HandRanking = deckHand.Type.ToString(),
+					HandDescription = HandDescriptionFormatter.GetHandDescription(deckHand),
+					AmountWon = 0,
+					SevensAmountWon = 0,
+					HighHandAmountWon = 0,
+					IsWinner = deckWins,
+					IsSevensWinner = false,
+					IsHighHandWinner = deckWins,
+					WildCardIndexes = deckWildIndexes.Count > 0 ? deckWildIndexes : null,
+					Cards = deckCards
+						.Select(c => new CardPublicDto
+						{
+							IsFaceUp = true,
+							Rank = MapSymbolToRank(c.Symbol),
+							Suit = c.Suit.ToString()
+						})
+						.ToList()
+				};
+
+				playerResults.Add(deckResult);
+			}
+		}
 
 		return new ShowdownPublicDto
 		{
@@ -1305,6 +1399,35 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		// For now, check if deck has exactly 5 cards and they haven't been modified
 		var hasDeckDrawn = game.CurrentPhase != "PlayerVsDeck"; // If we've moved past, it's drawn
 
+		// Get the staying player's cards
+		var stayingPlayerCards = await _context.GameCards
+			.Where(gc => gc.GameId == game.Id
+					 && gc.GamePlayerId == stayingPlayer.Id
+					 && gc.HandNumber == game.CurrentHandNumber
+					 && gc.Location == Entities.CardLocation.Hand
+					 && !gc.IsDiscarded)
+			.OrderBy(gc => gc.DealOrder)
+			.AsNoTracking()
+			.ToListAsync(cancellationToken);
+
+		// Evaluate the staying player's hand for the description
+		string? stayingPlayerHandDescription = null;
+		if (stayingPlayerCards.Count >= 5)
+		{
+			try
+			{
+				var cards = stayingPlayerCards
+					.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
+					.ToList();
+				var kingsAndLowsHand = new KingsAndLowsDrawHand(cards);
+				stayingPlayerHandDescription = HandDescriptionFormatter.GetHandDescription(kingsAndLowsHand);
+			}
+			catch
+			{
+				// Ignore evaluation errors
+			}
+		}
+
 				return new PlayerVsDeckStateDto
 				{
 					DeckCards = deckCards.Select(c => new CardPublicDto
@@ -1318,7 +1441,14 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					DecisionMakerFirstName = decisionMakerFirstName,
 					HasDeckDrawn = hasDeckDrawn,
 					StayingPlayerName = stayingPlayer.Player?.Name,
-					StayingPlayerSeatIndex = stayingPlayer.SeatPosition
+					StayingPlayerSeatIndex = stayingPlayer.SeatPosition,
+					StayingPlayerCards = stayingPlayerCards.Select(c => new CardPublicDto
+					{
+						IsFaceUp = true,
+						Rank = MapSymbolToRank(c.Symbol),
+						Suit = c.Suit.ToString()
+					}).ToList(),
+					StayingPlayerHandDescription = stayingPlayerHandDescription
 				};
 			}
 

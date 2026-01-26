@@ -200,6 +200,12 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 				// Single player stayed - go to player vs deck
 				game.CurrentPhase = nameof(Phases.PlayerVsDeck);
 
+				// CRITICAL: Save changes BEFORE dealing deck hand to ensure player's drawn cards
+				// are persisted in the database. DealDeckHandAsync queries the database for 
+				// remaining deck cards, and without this save, the query would return stale data
+				// that could corrupt the player's hand.
+				await context.SaveChangesAsync(cancellationToken);
+
 				// Deal the deck's hand now so it's visible in the overlay
 				await DealDeckHandAsync(game, context, now, cancellationToken);
 			}
@@ -474,11 +480,15 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 			DateTimeOffset now,
 			CancellationToken cancellationToken)
 		{
-			// Get cards still in the deck (not yet dealt to any player)
+			// Get cards still in the deck (not yet dealt to any player or discarded)
+			// IMPORTANT: Filter by GamePlayerId == null to ensure we don't grab cards 
+			// that have been assigned to players during the draw phase
 			var deckCards = await dbContext.GameCards
 				.Where(gc => gc.GameId == game.Id && 
 				             gc.HandNumber == game.CurrentHandNumber && 
-				             gc.Location == CardLocation.Deck)
+				             gc.Location == CardLocation.Deck &&
+				             gc.GamePlayerId == null &&
+				             !gc.IsDiscarded)
 				.OrderBy(gc => gc.DealOrder)
 				.Take(5)
 				.ToListAsync(cancellationToken);

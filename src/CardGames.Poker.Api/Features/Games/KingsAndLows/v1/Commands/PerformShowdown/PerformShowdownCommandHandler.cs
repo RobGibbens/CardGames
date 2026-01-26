@@ -155,26 +155,47 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 				{
 					if (isWinner)
 					{
+						// Player won - award the pot
 						player.ChipStack += totalPot;
-					}
-					// If deck wins, pot stays (will be added to next hand)
 
-					// Mark pots as awarded
-					var winReason = isWinner
-						? $"Beat the deck with {playerHandDescription}"
-						: $"Lost to deck's {deckHandDescription}";
-
-					foreach (var pot in currentHandPots)
-					{
-						pot.IsAwarded = true;
-						pot.AwardedAt = now;
-						pot.WinReason = winReason;
-
-						if (isWinner)
+						// Mark pots as awarded
+						foreach (var pot in currentHandPots)
 						{
+							pot.IsAwarded = true;
+							pot.AwardedAt = now;
+							pot.WinReason = $"Beat the deck with {playerHandDescription}";
 							var winnerPayoutsList = new[] { new { playerId = player.PlayerId.ToString(), playerName = player.Player.Name, amount = totalPot } };
 							pot.WinnerPayouts = JsonSerializer.Serialize(winnerPayoutsList);
 						}
+					}
+					else
+					{
+						// Deck wins - pot carries forward + losing player matches the pot
+						// Mark current pots as awarded (no winner)
+						foreach (var pot in currentHandPots)
+						{
+							pot.IsAwarded = true;
+							pot.AwardedAt = now;
+							pot.WinReason = $"Lost to deck's {deckHandDescription} - pot carries forward";
+						}
+
+						// Pot matching: losing player matches the pot
+						var matchAmount = totalPot;
+						var actualMatch = Math.Min(matchAmount, player.ChipStack);
+						player.ChipStack -= actualMatch;
+
+						// Create new pot for next hand with carried pot + matched amount
+						var nextHandPot = new Data.Entities.Pot
+						{
+							GameId = game.Id,
+							HandNumber = game.CurrentHandNumber + 1,
+							PotType = PotType.Main,
+							PotOrder = 0,
+							Amount = totalPot + actualMatch, // Carried pot + player's match
+							IsAwarded = false,
+							CreatedAt = now
+						};
+						context.Pots.Add(nextHandPot);
 					}
 
 					game.CurrentPhase = nameof(Phases.Complete);

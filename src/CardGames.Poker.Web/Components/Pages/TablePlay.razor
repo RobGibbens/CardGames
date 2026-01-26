@@ -253,7 +253,10 @@
                                  CardsDrawn="@_deckCardsDrawn"
                                  NewCardIndices="@_deckNewCardIndices"
                                  AnimatedCards="@_deckDrawCards"
-                                 HandDescription="@_deckHandDescription" />
+                                 HandDescription="@_deckHandDescription"
+                                 StayingPlayerCards="@GetStayingPlayerCards()"
+                                 StayingPlayerName="@GetStayingPlayerName()"
+                                 StayingPlayerHandDescription="@GetStayingPlayerHandDescription()" />
         }
 
         <!-- Special Phase Overlay (for game-specific phases) -->
@@ -735,7 +738,7 @@
 
             // If deck just finished drawing (via SignalR update from another player's action),
             // set a delay for showing the showdown overlay
-            if (state.PlayerVsDeck?.HasDeckDrawn == true && !_hasDeckDrawn && !_showdownDelayUntil.HasValue)
+            if (state.PlayerVsDeck?.HasDeckDrawn == true && !_hasDeckDrawn && !_showdownDelayUntil.HasValue && !IsCurrentPlayerDeckDecisionMaker)
             {
                 // Non-decision maker: delay showdown overlay by 5 seconds to let them see the animation
                 _showdownDelayUntil = DateTimeOffset.UtcNow.AddSeconds(5);
@@ -1183,7 +1186,20 @@
 
     private void UpdateShowdownFromPublicState(ShowdownPublicDto showdown, bool delayShowingOverlay = false)
     {
-        if (_showdownResult is null && (showdown.IsComplete || IsPotMatchingPhase))
+        // Build showdown result from public state for Showdown, Complete, or PotMatching phases
+        // For Kings and Lows player-vs-deck scenario, showdown data is available immediately after deck draw
+        // IMPORTANT: If we're delaying the overlay (e.g., for animation), don't set _showdownResult
+        // so that TryLoadShowdownAsync can fetch complete data from the API later
+        // Also skip if we're in the middle of processing a deck draw - we want the API data instead
+        if (delayShowingOverlay || _isProcessingDeckDraw)
+        {
+            return;
+        }
+        
+        var shouldProcessShowdown = _showdownResult is null && 
+            (showdown.IsComplete || IsPotMatchingPhase || IsShowdownPhase);
+        
+        if (shouldProcessShowdown)
         {
             var payouts = showdown.PlayerResults
                 .Where(r => r.IsWinner)
@@ -3016,6 +3032,108 @@ HandType.HighCard
     }
 
     /// <summary>
+    /// Gets the staying player's cards for the Player vs Deck overlay.
+    /// </summary>
+    private IReadOnlyList<CardInfo> GetStayingPlayerCards()
+    {
+        var playerVsDeck = _tableState?.PlayerVsDeck;
+        if (playerVsDeck is null)
+        {
+            return [];
+        }
+
+        var stayingPlayerSeatIndex = playerVsDeck.StayingPlayerSeatIndex;
+
+        // If the staying player is the current player and we have draw cards populated,
+        // use those instead (they contain the full hand after the draw phase)
+        if (stayingPlayerSeatIndex == _currentPlayerSeatIndex && _currentPlayerDrawCards.Count > 0)
+        {
+            return _currentPlayerDrawCards;
+        }
+
+        // Use the staying player's cards from the PlayerVsDeck state if available (includes newly drawn cards)
+        if (playerVsDeck.StayingPlayerCards?.Count > 0)
+        {
+            return playerVsDeck.StayingPlayerCards
+                .Select(c => new CardInfo
+                {
+                    Rank = c.Rank,
+                    Suit = c.Suit,
+                    IsFaceUp = c.IsFaceUp,
+                    IsSelected = false
+                })
+                .ToList();
+        }
+
+        // Fallback to seat cards
+        if (stayingPlayerSeatIndex >= 0 && stayingPlayerSeatIndex < _seats.Count)
+        {
+            return _seats[stayingPlayerSeatIndex].Cards;
+        }
+
+        return [];
+    }
+
+    /// <summary>
+    /// Gets the staying player's name for the Player vs Deck overlay.
+    /// </summary>
+    private string? GetStayingPlayerName()
+    {
+        var playerVsDeck = _tableState?.PlayerVsDeck;
+        if (playerVsDeck is null)
+        {
+            return null;
+        }
+
+        var stayingPlayerSeatIndex = playerVsDeck.StayingPlayerSeatIndex;
+        if (stayingPlayerSeatIndex < 0 || stayingPlayerSeatIndex >= _seats.Count)
+        {
+            return playerVsDeck.StayingPlayerName;
+        }
+
+        // Prefer first name for a friendlier display
+        var seat = _seats[stayingPlayerSeatIndex];
+        return !string.IsNullOrWhiteSpace(seat.PlayerFirstName) 
+            ? seat.PlayerFirstName 
+            : seat.PlayerName ?? playerVsDeck.StayingPlayerName;
+    }
+
+    /// <summary>
+    /// Gets the staying player's hand description for the Player vs Deck overlay.
+    /// </summary>
+    private string? GetStayingPlayerHandDescription()
+    {
+        var playerVsDeck = _tableState?.PlayerVsDeck;
+        if (playerVsDeck is null)
+        {
+            return null;
+        }
+
+        var stayingPlayerSeatIndex = playerVsDeck.StayingPlayerSeatIndex;
+
+        // If the staying player is the current player and we have a new hand description from the draw,
+        // use that instead (it reflects the hand after drawing new cards)
+        if (stayingPlayerSeatIndex == _currentPlayerSeatIndex && !string.IsNullOrWhiteSpace(_newHandDescription))
+        {
+            return _newHandDescription;
+        }
+
+        // Use the hand description from the PlayerVsDeck state if available
+        if (!string.IsNullOrWhiteSpace(playerVsDeck.StayingPlayerHandDescription))
+        {
+            return playerVsDeck.StayingPlayerHandDescription;
+        }
+
+        // Fallback to seat's hand evaluation description
+        if (stayingPlayerSeatIndex >= 0 && stayingPlayerSeatIndex < _seats.Count)
+        {
+            return _seats[stayingPlayerSeatIndex].HandEvaluationDescription;
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Handles card selection toggle for deck draw.
     /// </summary>
     private Task HandleDeckCardSelectionToggle(int index)
@@ -3048,6 +3166,11 @@ HandType.HighCard
         _isDeckDrawAnimating = true;
         _deckCardsDrawn = false;
         _delayShowdownOverlay = true; // Delay showdown until animation completes
+        
+        // Clear any existing showdown result so we fetch fresh data from API after deck draw
+        // This prevents stale SignalR data from being used
+        _showdownResult = null;
+        _showShowdownOverlay = false;
 
         // Initialize deck draw cards from current SignalR state for animation
         var currentDeckCards = GetDeckCards();
