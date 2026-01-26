@@ -317,7 +317,7 @@
         }
 
         <!-- Game Ended overlay -->
-        @if (_gameResponse.CurrentPhase == GamePhase.Ended.ToString())
+        @if (_gameResponse.CurrentPhase == GamePhase.Ended.ToString() && !_showShowdownOverlay)
         {
             <div class="table-overlay ended-overlay">
                 <div class="overlay-content">
@@ -358,7 +358,7 @@
             IsShowdownPhase && _showShowdownOverlay && _showdownResult is not null)
         {
             <ShowdownOverlay ShowdownResult="@_showdownResult" ShowdownWon="@_showdownWon" ShowdownLost="@_showdownLost"
-                             SecondsUntilNextHand="@_secondsUntilNextHand" OnClose="@CloseShowdownOverlay" />
+                             SecondsUntilNextHand="@_secondsUntilNextHand" IsGameEnded="@IsEndedPhase" OnClose="@CloseShowdownOverlay" />
         }
     }
 </main>
@@ -570,11 +570,14 @@
     private bool IsCompletePhase => string.Equals(_gameResponse?.CurrentPhase, "Complete",
             StringComparison.OrdinalIgnoreCase);
 
+    private bool IsEndedPhase => string.Equals(_gameResponse?.CurrentPhase, GamePhase.Ended.ToString(), StringComparison.OrdinalIgnoreCase);
+
     private bool IsShowdownPhase => string.Equals(_gameResponse?.CurrentPhase, GamePhase.Showdown.ToString(),
             StringComparison.OrdinalIgnoreCase)
             || string.Equals(_gameResponse?.CurrentPhase, "Showdown", StringComparison.OrdinalIgnoreCase)
             || IsPotMatchingPhase
-            || IsCompletePhase;
+            || IsCompletePhase
+            || IsEndedPhase;
 
     protected override async Task OnInitializedAsync()
     {
@@ -761,13 +764,25 @@
 
             // Handle continuous play countdown
             _isResultsPhase = state.IsResultsPhase;
-            _secondsUntilNextHand = state.SecondsUntilNextHand ?? 0;
 
-            if (_isResultsPhase && _secondsUntilNextHand > 0)
+            if (IsEndedPhase)
+            {
+                // If game ended, enforce a local countdown if none exists
+                if (_secondsUntilNextHand <= 0 && _countdownTimer is null)
+                {
+                    _secondsUntilNextHand = 10;
+                }
+            }
+            else
+            {
+                _secondsUntilNextHand = state.SecondsUntilNextHand ?? 0;
+            }
+
+            if ((_isResultsPhase || IsEndedPhase) && _secondsUntilNextHand > 0)
             {
                 StartCountdownTimer();
             }
-            else if (!_isResultsPhase)
+            else if (!_isResultsPhase && !IsEndedPhase)
             {
                 StopCountdownTimer();
                 // Clear showdown overlay when new hand starts
@@ -2451,6 +2466,13 @@
             else
             {
                 StopCountdownTimer();
+
+                // If game is ended and timer reached 0, redirect to lobby
+                if (IsEndedPhase)
+                {
+                    await GameHubClient.LeaveGameAsync(GameId);
+                    NavigationManager.NavigateTo("/lobby");
+                }
             }
         }, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
     }

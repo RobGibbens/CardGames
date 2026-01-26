@@ -167,6 +167,14 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 							var winnerPayoutsList = new[] { new { playerId = player.PlayerId.ToString(), playerName = player.Player.Name, amount = totalPot } };
 							pot.WinnerPayouts = JsonSerializer.Serialize(winnerPayoutsList);
 						}
+
+						// Game ends when player beats the deck
+						game.CurrentPhase = "Ended";
+						game.Status = GameStatus.Completed;
+						game.UpdatedAt = now;
+						game.HandCompletedAt = now;
+						game.NextHandStartsAt = null;
+						// No need to move dealer if game ends
 					}
 					else
 					{
@@ -196,13 +204,13 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 							CreatedAt = now
 						};
 						context.Pots.Add(nextHandPot);
-					}
 
-					game.CurrentPhase = nameof(Phases.Complete);
-					game.UpdatedAt = now;
-					game.HandCompletedAt = now;
-					game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);
-					MoveDealer(game);
+						game.CurrentPhase = nameof(Phases.Complete);
+						game.UpdatedAt = now;
+						game.HandCompletedAt = now;
+						game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);
+						MoveDealer(game);
+					}
 
 					await context.SaveChangesAsync(cancellationToken);
 

@@ -271,34 +271,41 @@
             </div>
         }
 
-        <div class="showdown-countdown">
-            @if (SecondsUntilNextHand > 0)
-            {
-                <p class="showdown-hint">Next hand starts in <strong>@SecondsUntilNextHand</strong> seconds...</p>
-            }
-            else
-            {
-                <p class="showdown-hint">Starting next hand...</p>
-            }
+                <div class="showdown-countdown">
+                    @if (IsGameEnded)
+                    {
+                        <p class="showdown-hint">Returning to lobby in <strong>@SecondsUntilNextHand</strong> seconds...</p>
+                    }
+                    else if (SecondsUntilNextHand > 0)
+                    {
+                        <p class="showdown-hint">Next hand starts in <strong>@SecondsUntilNextHand</strong> seconds...</p>
+                    }
+                    else
+                    {
+                        <p class="showdown-hint">Starting next hand...</p>
+                    }
+                </div>
+            </div>
         </div>
-    </div>
-</div>
 
-@code {
-    [Parameter]
-    public PerformShowdownSuccessful? ShowdownResult { get; set; }
+        @code {
+            [Parameter]
+            public PerformShowdownSuccessful? ShowdownResult { get; set; }
 
-    [Parameter]
-    public bool ShowdownWon { get; set; }
+            [Parameter]
+            public bool ShowdownWon { get; set; }
 
-    [Parameter]
-    public bool ShowdownLost { get; set; }
+            [Parameter]
+            public bool ShowdownLost { get; set; }
 
-    [Parameter]
-    public int SecondsUntilNextHand { get; set; }
+            [Parameter]
+            public int SecondsUntilNextHand { get; set; }
 
-    [Parameter]
-    public EventCallback OnClose { get; set; }
+            [Parameter]
+            public bool IsGameEnded { get; set; }
+
+            [Parameter]
+            public EventCallback OnClose { get; set; }
 
     private static ShowdownPlayerHand? GetPrimaryWinnerHand(PerformShowdownSuccessful result)
     {
@@ -473,6 +480,10 @@
         {
             var playerHand = GetPlayerHand();
             var playerWon = playerHand?.IsWinner == true;
+            if (IsGameEnded && playerWon)
+            {
+                return "You beat the deck! Game Over";
+            }
             return playerWon ? "You beat the deck!" : "The deck wins this round";
         }
 
@@ -483,12 +494,12 @@
 
         if (ShowdownWon)
         {
-            return "You won the hand";
+            return IsGameEnded ? "You won the game!" : "You won the hand";
         }
 
         if (ShowdownLost)
         {
-            return "Hand complete";
+            return IsGameEnded ? "Game Over" : "Hand complete";
         }
 
         return "Results are in";
