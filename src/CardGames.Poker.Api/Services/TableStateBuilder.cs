@@ -1497,9 +1497,13 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			IReadOnlyList<CardGames.Contracts.SignalR.HandHistoryEntryDto> handHistory)
 		{
 			var entries = new List<ChipHistoryEntryDto>();
-			
-			// Take last 30 hands for the history window
-			var recentHands = handHistory.TakeLast(30).ToList();
+
+			// Take last 30 hands for the history window, sorted chronologically (oldest to newest).
+			// The handHistory comes in descending order (newest first), so we need to reverse for proper chronological display.
+			var recentHands = handHistory
+				.OrderBy(h => h.CompletedAtUtc)
+				.TakeLast(30)
+				.ToList();
 			
 			// Calculate the starting stack for this window by working backwards from current chips
 			var currentStack = gamePlayer.ChipStack;

@@ -12,9 +12,9 @@
 - [ ] Kings and Lows - Should make it obvious when someone dropped
 - [ ] Kings and Lows - Things happen too fast
 - [ ] Kings and Lows - Hand history is not working
-- [ ] Kings and Lows - Play for a while and the pot disappears
-- [ ] Kings and Lows - When going against the dealer, weird shit happens
-- [ ] Kings and Lows - Showdown disappeared immediately
+- [?] Kings and Lows - Play for a while and the pot disappears
+- [x] Kings and Lows - When going against the dealer, weird shit happens
+- [x] Kings and Lows - Showdown disappeared immediately
 
 - [ ] SCS - when all players go all in - still need to draw cards
 - [ ] SCS - when a player has no chips, they're still getting dealt and can take action

@@ -63,6 +63,11 @@ public class AcknowledgePotMatchCommandHandler(CardsDbContext context)
 
 		var currentPot = awardedPot.Amount;
 
+		// Load existing hand history for this hand to update chip losses
+		var handHistory = await context.Set<HandHistory>()
+			.Include(h => h.PlayerResults)
+			.FirstOrDefaultAsync(h => h.GameId == game.Id && h.HandNumber == game.CurrentHandNumber, cancellationToken);
+
 		// 4. Determine winners from the awarded pot's WinnerPayouts
 		var winnerPlayerIds = new HashSet<Guid>();
 		if (!string.IsNullOrEmpty(awardedPot.WinnerPayouts))
@@ -105,6 +110,16 @@ public class AcknowledgePotMatchCommandHandler(CardsDbContext context)
 				matchAmounts[loser.Player?.Name ?? loser.PlayerId.ToString()] = matchAmount;
 				loser.ChipStack -= matchAmount;
 				totalMatched += matchAmount;
+
+				// Update hand history to reflect the chip loss
+				if (handHistory != null)
+				{
+					var result = handHistory.PlayerResults.FirstOrDefault(r => r.PlayerId == loser.PlayerId);
+					if (result != null)
+					{
+						result.NetChipDelta -= matchAmount;
+					}
+				}
 			}
 		}
 

@@ -101,10 +101,70 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 						!c.IsDiscarded &&
 						c.GamePlayerId == null &&
 						c.Location == CardLocation.Board)
-			.OrderBy(c => c.DealOrder)
-			.ToListAsync(cancellationToken);
+				.OrderBy(c => c.DealOrder)
+				.ToListAsync(cancellationToken);
 
-		// 6. Handle single player remaining
+			// 5b. Handle dead hand (everyone dropped)
+			if (playersInHand.Count == 0)
+			{
+				if (!isAlreadyAwarded)
+				{
+					// Mark current pots as awarded (no winner)
+					foreach (var pot in currentHandPots)
+					{
+						pot.IsAwarded = true;
+						pot.AwardedAt = now;
+						pot.WinReason = "Everyone dropped - pot carries forward";
+					}
+
+					// Create new pot for next hand with carried pot
+					var nextHandPot = new Data.Entities.Pot
+					{
+						GameId = game.Id,
+						HandNumber = game.CurrentHandNumber + 1,
+						PotType = PotType.Main,
+						PotOrder = 0,
+						Amount = totalPot, // Carried pot
+						IsAwarded = false,
+						CreatedAt = now
+					};
+					context.Pots.Add(nextHandPot);
+
+					game.CurrentPhase = nameof(Phases.Complete);
+					game.UpdatedAt = now;
+					game.HandCompletedAt = now;
+					game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);
+					MoveDealer(game);
+
+					await context.SaveChangesAsync(cancellationToken);
+
+					// Record hand history for dead hand
+					await RecordHandHistoryAsync(
+						game,
+						game.GamePlayers.ToList(),
+						playerCardGroups,
+						now,
+						totalPot,
+						wonByFold: false,
+						winners: [],
+						winnerNames: [],
+						winningHandDescription: "Everyone dropped",
+						cancellationToken);
+				}
+
+				return new PerformShowdownSuccessful
+				{
+					GameId = game.Id,
+					WonByFold = false,
+					CurrentPhase = game.CurrentPhase,
+					Payouts = new Dictionary<string, int>(),
+					Winners = [],
+					Losers = game.GamePlayers.Where(gp => gp.TotalContributedThisHand > 0).Select(gp => gp.Player.Name).ToList(),
+					PlayerHands = []
+				};
+			}
+
+			// 6. Handle single player remaining
 		if (playersInHand.Count == 1)
 		{
 			var player = playersInHand[0];
@@ -191,6 +251,8 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 						var matchAmount = totalPot;
 						var actualMatch = Math.Min(matchAmount, player.ChipStack);
 						player.ChipStack -= actualMatch;
+						// Update contribution so hand history reflects the loss
+						player.TotalContributedThisHand += actualMatch;
 
 						// Create new pot for next hand with carried pot + matched amount
 						var nextHandPot = new Data.Entities.Pot
@@ -218,6 +280,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 					await RecordHandHistoryAsync(
 						game,
 						game.GamePlayers.ToList(),
+						playerCardGroups,
 						now,
 						isWinner ? totalPot : 0,
 						wonByFold: false,
@@ -308,6 +371,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 				await RecordHandHistoryAsync(
 					game,
 					game.GamePlayers.ToList(),
+					playerCardGroups,
 					now,
 					totalPot,
 					wonByFold: true,
@@ -450,6 +514,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 			await RecordHandHistoryAsync(
 				game,
 				game.GamePlayers.ToList(),
+				playerCardGroups,
 				now,
 				totalPot,
 				wonByFold: false,
@@ -566,6 +631,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 		private async Task RecordHandHistoryAsync(
 			Game game,
 			List<GamePlayer> allPlayers,
+			Dictionary<Guid, List<GameCard>> playerCardGroups,
 			DateTimeOffset completedAt,
 			int totalPot,
 			bool wonByFold,
@@ -585,18 +651,30 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 					? winners.First(w => w.PlayerId == gp.PlayerId).AmountWon - gp.TotalContributedThisHand
 					: -gp.TotalContributedThisHand;
 
+				// Get cards for this player if they reached showdown
+				List<string>? showdownCards = null;
+				var reachedShowdown = !gp.HasFolded && !wonByFold;
+				if (reachedShowdown && playerCardGroups.TryGetValue(gp.Id, out var cards) && cards.Any())
+				{
+					showdownCards = cards
+						.OrderBy(c => c.DealOrder)
+						.Select(c => FormatCard(c.Symbol, c.Suit))
+						.ToList();
+				}
+
 				return new PlayerResultInfo
 				{
 					PlayerId = gp.PlayerId,
 					PlayerName = gp.Player.Name,
 					SeatPosition = gp.SeatPosition,
 					HasFolded = gp.HasFolded,
-					ReachedShowdown = !gp.HasFolded && !wonByFold,
+					ReachedShowdown = reachedShowdown,
 					IsWinner = isWinner,
 					IsSplitPot = isSplitPot && isWinner,
 					NetChipDelta = netDelta,
 					WentAllIn = gp.IsAllIn,
-					FoldStreet = gp.HasFolded ? "DropOrStay" : null
+					FoldStreet = gp.HasFolded ? "DropOrStay" : null,
+					ShowdownCards = showdownCards
 				};
 			}).ToList();
 
@@ -619,6 +697,41 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 				PlayerResults = playerResults
 			};
 
-			await handHistoryRecorder.RecordHandHistoryAsync(parameters, cancellationToken);
-		}
-	}
+						await handHistoryRecorder.RecordHandHistoryAsync(parameters, cancellationToken);
+					}
+
+				/// <summary>
+				/// Formats a card as text (e.g., "3s", "Ah", "10d").
+				/// </summary>
+				private static string FormatCard(CardSymbol symbol, CardSuit suit)
+				{
+					var symbolStr = symbol switch
+					{
+						CardSymbol.Deuce => "2",
+						CardSymbol.Three => "3",
+						CardSymbol.Four => "4",
+						CardSymbol.Five => "5",
+						CardSymbol.Six => "6",
+						CardSymbol.Seven => "7",
+						CardSymbol.Eight => "8",
+						CardSymbol.Nine => "9",
+						CardSymbol.Ten => "10",
+						CardSymbol.Jack => "J",
+						CardSymbol.Queen => "Q",
+						CardSymbol.King => "K",
+						CardSymbol.Ace => "A",
+						_ => "?"
+					};
+
+					var suitStr = suit switch
+					{
+						CardSuit.Hearts => "h",
+						CardSuit.Diamonds => "d",
+						CardSuit.Spades => "s",
+						CardSuit.Clubs => "c",
+						_ => "?"
+					};
+
+					return $"{symbolStr}{suitStr}";
+				}
+			}
