@@ -1428,43 +1428,62 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			}
 		}
 
-				return new PlayerVsDeckStateDto
-				{
-					DeckCards = deckCards.Select(c => new CardPublicDto
-					{
-						IsFaceUp = true,
-						Rank = MapSymbolToRank(c.Symbol),
-						Suit = c.Suit.ToString()
-					}).ToList(),
-					DecisionMakerSeatIndex = decisionMaker.SeatPosition,
-					DecisionMakerName = decisionMaker.Player?.Name,
-					DecisionMakerFirstName = decisionMakerFirstName,
-					HasDeckDrawn = hasDeckDrawn,
-					StayingPlayerName = stayingPlayer.Player?.Name,
-					StayingPlayerSeatIndex = stayingPlayer.SeatPosition,
-					StayingPlayerCards = stayingPlayerCards.Select(c => new CardPublicDto
-					{
-						IsFaceUp = true,
-						Rank = MapSymbolToRank(c.Symbol),
-						Suit = c.Suit.ToString()
-					}).ToList(),
-					StayingPlayerHandDescription = stayingPlayerHandDescription
-				};
-			}
-
-			private static DropOrStayPrivateDto? BuildDropOrStayPrivateDto(
-				Game game,
-				GamePlayer gamePlayer)
+		// Evaluate the deck's hand for the description
+		string? deckHandDescription = null;
+		if (deckCards.Count >= 5)
+		{
+			try
 			{
-				if (game.CurrentPhase != "DropOrStay")
-				{
-					return null;
-				}
+				var cards = deckCards
+					.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
+					.ToList();
+				var kingsAndLowsHand = new KingsAndLowsDrawHand(cards);
+				deckHandDescription = HandDescriptionFormatter.GetHandDescription(kingsAndLowsHand);
+			}
+			catch
+			{
+				// Ignore evaluation errors
+			}
+		}
 
-				return new DropOrStayPrivateDto
-				{
-					IsMyTurnToDecide = game.CurrentPlayerIndex == gamePlayer.SeatPosition,
-					HasDecidedThisRound = gamePlayer.DropOrStayDecision.HasValue &&
+		return new PlayerVsDeckStateDto
+		{
+			DeckCards = deckCards.Select(c => new CardPublicDto
+			{
+				IsFaceUp = true,
+				Rank = MapSymbolToRank(c.Symbol),
+				Suit = c.Suit.ToString()
+			}).ToList(),
+			DecisionMakerSeatIndex = decisionMaker.SeatPosition,
+			DecisionMakerName = decisionMaker.Player?.Name,
+			DecisionMakerFirstName = decisionMakerFirstName,
+			HasDeckDrawn = hasDeckDrawn,
+			StayingPlayerName = stayingPlayer.Player?.Name,
+			StayingPlayerSeatIndex = stayingPlayer.SeatPosition,
+			StayingPlayerCards = stayingPlayerCards.Select(c => new CardPublicDto
+			{
+				IsFaceUp = true,
+				Rank = MapSymbolToRank(c.Symbol),
+				Suit = c.Suit.ToString()
+			}).ToList(),
+			StayingPlayerHandDescription = stayingPlayerHandDescription,
+			DeckHandDescription = deckHandDescription
+		};
+	}
+
+	private static DropOrStayPrivateDto? BuildDropOrStayPrivateDto(
+		Game game,
+		GamePlayer gamePlayer)
+	{
+		if (game.CurrentPhase != "DropOrStay")
+		{
+			return null;
+		}
+
+		return new DropOrStayPrivateDto
+		{
+			IsMyTurnToDecide = game.CurrentPlayerIndex == gamePlayer.SeatPosition,
+			HasDecidedThisRound = gamePlayer.DropOrStayDecision.HasValue &&
 										  gamePlayer.DropOrStayDecision.Value != Entities.DropOrStayDecision.Undecided,
 					Decision = gamePlayer.DropOrStayDecision?.ToString()
 				};

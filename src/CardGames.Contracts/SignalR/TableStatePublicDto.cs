@@ -572,4 +572,9 @@ public sealed record PlayerVsDeckStateDto
 	/// The staying player's hand description (e.g., "Two Pair, Kings and Sevens").
 	/// </summary>
 	public string? StayingPlayerHandDescription { get; init; }
+
+	/// <summary>
+	/// The deck's hand description (e.g., "Full House, Kings over Sevens").
+	/// </summary>
+	public string? DeckHandDescription { get; init; }
 }

@@ -49,6 +49,17 @@
     flex-wrap: wrap;
 }
 
+/* Fix for embedded DrawPanel covering the content */
+::deep .draw-panel {
+    position: relative;
+    right: auto;
+    bottom: auto;
+    width: 100%;
+    margin-top: 1.5rem;
+    z-index: auto;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
 .player-vs-deck-overlay .card {
     width: 60px;
     height: 84px;

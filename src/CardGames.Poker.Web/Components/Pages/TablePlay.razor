@@ -669,6 +669,12 @@
         // Store the table state for phase category checks
         _tableState = state;
 
+        // Update deck hand description from state
+        if (state.PlayerVsDeck is not null)
+        {
+            _deckHandDescription = state.PlayerVsDeck.DeckHandDescription;
+        }
+
         // Update game type code for routing to correct API
         if (!string.IsNullOrWhiteSpace(state.GameTypeCode))
         {
@@ -811,6 +817,7 @@
                         _hasDropOrStayDecided = false;
                         _dropOrStayDecision = null;
                         _hasDeckDrawn = false;
+                        _deckHandDescription = null;
                         _deckDrawSelectedIndices.Clear();
                         _delayShowdownOverlay = false;
                         _showdownDelayUntil = null;
@@ -3242,6 +3249,10 @@ HandType.HighCard
                     await Task.Delay(700);
 
                     _deckCardsDrawn = true;
+                    if (!string.IsNullOrWhiteSpace(response.Content.HandDescription))
+                    {
+                        _deckHandDescription = response.Content.HandDescription;
+                    }
                     await InvokeAsync(StateHasChanged);
 
                     // Keep the panel visible to show the results
