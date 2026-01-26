@@ -132,9 +132,26 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 		// 7. Determine if this is the first hand (antes only collected on first hand in Kings and Lows)
 		var isFirstHand = game.CurrentHandNumber == 0;
 
-		// 8. Find or create the main pot for this hand
-		// For subsequent hands, the pot is typically created by AcknowledgePotMatchCommandHandler,
-		// but if a hand ends in a fold-win, we need to create it here.
+		// 8. Find unawarded pots from the current hand (e.g., if all players dropped) and carry them over
+		var previousHandPots = await context.Pots
+			.Where(p => p.GameId == game.Id && p.HandNumber == game.CurrentHandNumber && !p.IsAwarded)
+			.ToListAsync(cancellationToken);
+
+		var carriedOverAmount = 0;
+		if (previousHandPots.Count > 0)
+		{
+			carriedOverAmount = previousHandPots.Sum(p => p.Amount);
+			foreach (var pot in previousHandPots)
+			{
+				pot.IsAwarded = true;
+				pot.AwardedAt = now;
+				pot.WinReason = "Carried over - all players dropped";
+			}
+		}
+
+		// 9. Find or create the main pot for this hand
+		// For subsequent hands, the pot is typically created by AcknowledgePotMatchCommandHandler (or PerformShowdown),
+		// but if a hand ends in a fold-win or all dropped, we need to create it here.
 		Pot? mainPot = await context.Pots.FirstOrDefaultAsync(p => p.GameId == game.Id && p.HandNumber == game.CurrentHandNumber + 1 && !p.IsAwarded, cancellationToken);
 
 		if (mainPot is null)
@@ -145,15 +162,19 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 				HandNumber = game.CurrentHandNumber + 1,
 				PotType = PotType.Main,
 				PotOrder = 0,
-				Amount = 0,
+				Amount = carriedOverAmount,
 				IsAwarded = false,
 				CreatedAt = now
 			};
 
 			context.Pots.Add(mainPot);
 		}
+		else if (carriedOverAmount > 0)
+		{
+			mainPot.Amount += carriedOverAmount;
+		}
 
-		// 9. Update game state
+		// 10. Update game state
 		game.CurrentHandNumber++;
 		game.Status = GameStatus.InProgress;
 		game.CurrentPlayerIndex = -1;
@@ -165,7 +186,7 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 		// Set StartedAt only on first hand
 		game.StartedAt ??= now;
 
-		// 10. Automatically collect antes if it's the first hand OR if the pot is empty (Kings and Lows rule)
+		// 11. Automatically collect antes if it's the first hand OR if the pot is empty (Kings and Lows rule)
 		// This ensures the pot never stays at 0 indefinitely.
 		bool collectAntes = isFirstHand || mainPot.Amount == 0;
 		if (collectAntes && ante > 0)
@@ -199,7 +220,7 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 					"Kings and Lows pot created for game {GameId}, hand {HandNumber}: Amount={PotAmount}, Ante={Ante}, CollectAntes={CollectAntes}, IsFirstHand={IsFirstHand}",
 					game.Id, game.CurrentHandNumber, mainPot.Amount, ante, collectAntes, isFirstHand);
 
-				// 11. Automatically deal hands - move to Dealing phase then DropOrStay
+				// 12. Automatically deal hands - move to Dealing phase then DropOrStay
 				game.CurrentPhase = collectAntes ? nameof(Phases.CollectingAntes) : nameof(Phases.Dealing);
 		
 		// Create a standard deck of 52 cards with shuffled order
@@ -276,10 +297,10 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 					}
 				}
 
-				// 11. Move to DropOrStay phase - this is where players make their decision
+				// 13. Move to DropOrStay phase - this is where players make their decision
 				game.CurrentPhase = nameof(Phases.DropOrStay);
 
-				// 12. Persist changes
+				// 14. Persist changes
 				await context.SaveChangesAsync(cancellationToken);
 
 				return new StartHandSuccessful

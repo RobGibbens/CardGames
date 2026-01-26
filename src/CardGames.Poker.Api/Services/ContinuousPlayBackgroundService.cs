@@ -267,14 +267,14 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		var playerHandEvaluations = new List<(GamePlayer player, long strength)>();
 
 		foreach (var player in stayingPlayers)
-			{
-				var playerCards = game.GameCards
-					.Where(gc => gc.GamePlayerId == player.Id && gc.HandNumber == game.CurrentHandNumber && !gc.IsDiscarded)
-					.OrderBy(gc => gc.DealOrder)
-					.Select(gc => new { gc.Suit, gc.Symbol })
-					.ToList();
+		{
+			var playerCards = game.GameCards
+				.Where(gc => gc.GamePlayerId == player.Id && gc.HandNumber == game.CurrentHandNumber && !gc.IsDiscarded)
+				.OrderBy(gc => gc.DealOrder)
+				.Select(gc => new { gc.Suit, gc.Symbol })
+				.ToList();
 
-				if (playerCards.Count >= 5)
+			if (playerCards.Count >= 5)
 			{
 				// Convert to domain Card objects for evaluation
 				var cards = playerCards.Select(c => new CardGames.Core.French.Cards.Card(
@@ -541,6 +541,27 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			br.CompletedAt = now;
 		}
 
+		// Find unawarded pots from the current hand (e.g., if all players dropped) and carry them over
+		var previousHandPots = await context.Pots
+			.Where(p => p.GameId == game.Id && p.HandNumber == game.CurrentHandNumber && !p.IsAwarded)
+			.ToListAsync(cancellationToken);
+
+		var carriedOverAmount = 0;
+		if (previousHandPots.Count > 0)
+		{
+			carriedOverAmount = previousHandPots.Sum(p => p.Amount);
+			foreach (var pot in previousHandPots)
+			{
+				pot.IsAwarded = true;
+				pot.AwardedAt = now;
+				pot.WinReason = "Carried over - all players dropped";
+			}
+
+			_logger.LogInformation(
+				"Carrying over {Amount} chips from unawarded pots in game {GameId} hand {HandNumber}",
+				carriedOverAmount, game.Id, game.CurrentHandNumber);
+		}
+
 		// Check if a main pot already exists for the next hand (e.g., from pot matching in Kings and Lows)
 		var existingPot = await context.Pots
 			.FirstOrDefaultAsync(p => p.GameId == game.Id &&
@@ -550,19 +571,24 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 
 		if (existingPot is null)
 		{
-			// Create a new main pot for this hand
+			// Create a new main pot for this hand (with any carried-over amount)
 			var mainPot = new Pot
 			{
 				GameId = game.Id,
 				HandNumber = game.CurrentHandNumber + 1,
 				PotType = PotType.Main,
 				PotOrder = 0,
-				Amount = 0,
+				Amount = carriedOverAmount,
 				IsAwarded = false,
 				CreatedAt = now
 			};
 
 			context.Pots.Add(mainPot);
+		}
+		else if (carriedOverAmount > 0)
+		{
+			// Add carried-over amount to existing pot
+			existingPot.Amount += carriedOverAmount;
 		}
 
 		// NOTE: Dealer rotation is already done in PerformShowdownCommandHandler.MoveDealer()
