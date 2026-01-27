@@ -3,6 +3,7 @@
 ## Still to do
 
 ### P1 - Can't play without these
+- [ ] Kings and Lows - hand history is showing the loser's hand incorrectly
 - [ ] Test side pots
 - [ ] Don't auto start a new hand. Add a timer, allow pause, allow people to get out of the game or end the game
 - [ ] Make sure all game types handle all ins correctly

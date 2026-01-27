@@ -77,6 +77,22 @@ public sealed class AutoActionService : IAutoActionService
             return;
         }
 
+        var currentPhase = game.CurrentPhase;
+        var gameTypeCode = game.GameType?.Code ?? "";
+
+        // Handle simultaneous action timer expiration (seat index -1)
+        if (playerSeatIndex == -1)
+        {
+            if (DropOrStayPhases.Contains(currentPhase))
+            {
+                await PerformAutoDropOrStayForUndecidedPlayersAsync(mediator, context, gameId, gameTypeCode, cancellationToken);
+                return;
+            }
+            
+            _logger.LogWarning("Global timer expired for phase {Phase} but no handler defined", currentPhase);
+            return;
+        }
+
         // Get the player at the specified seat
         var gamePlayer = await context.GamePlayers
             .Include(gp => gp.Player)
@@ -90,9 +106,6 @@ public sealed class AutoActionService : IAutoActionService
                 playerSeatIndex, gameId);
             return;
         }
-
-        var currentPhase = game.CurrentPhase;
-        var gameTypeCode = game.GameType?.Code ?? "";
 
         _logger.LogDebug(
             "Auto-action context: GameId={GameId}, Phase={Phase}, GameType={GameType}, PlayerId={PlayerId}",
@@ -116,6 +129,28 @@ public sealed class AutoActionService : IAutoActionService
             _logger.LogDebug(
                 "No auto-action defined for phase {Phase} in game {GameId}",
                 currentPhase, gameId);
+        }
+    }
+
+    private async Task PerformAutoDropOrStayForUndecidedPlayersAsync(
+        IMediator mediator,
+        CardsDbContext context,
+        Guid gameId,
+        string gameTypeCode,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Performing auto-drop for all undecided players in game {GameId}", gameId);
+        
+        var players = await context.GamePlayers
+            .Where(gp => gp.GameId == gameId && 
+                         gp.Status == GamePlayerStatus.Active && 
+                         !gp.HasFolded && 
+                         (!gp.DropOrStayDecision.HasValue || gp.DropOrStayDecision == Data.Entities.DropOrStayDecision.Undecided))
+            .ToListAsync(cancellationToken);
+            
+        foreach (var player in players)
+        {
+            await PerformAutoDropOrStayActionAsync(mediator, gameId, player.PlayerId, gameTypeCode, cancellationToken);
         }
     }
 
