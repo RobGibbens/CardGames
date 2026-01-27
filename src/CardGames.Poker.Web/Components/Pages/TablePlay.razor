@@ -169,7 +169,7 @@
                     <DashboardSection Title="Hand History" Icon="fa-solid fa-clock-rotate-left"
                                       IsExpanded="@DashboardState.IsSectionExpanded("HandHistory")"
                                       IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("HandHistory", value))">
-                        <HandHistorySection Entries="@_handHistoryEntries" />
+                        <HandHistorySection Entries="@_handHistoryEntries" GameTypeCode="@_gameTypeCode" />
                     </DashboardSection>
                 </DashboardPanel>
             }

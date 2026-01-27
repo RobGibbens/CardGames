@@ -3,6 +3,7 @@
 @using CardGames.Core.French.Cards
 @using CardGames.Core.French.Cards.Extensions
 @using CardGames.Poker.Evaluation
+@using CardGames.Poker.Hands
 @using CardGames.Poker.Hands.DrawHands
 
 <div class="hand-history-section">
@@ -71,7 +72,13 @@
 	/// </summary>
 	[Parameter]
 	public IReadOnlyList<HandHistoryEntryDto>? Entries { get; set; }
-	
+
+	/// <summary>
+	/// The game type code (e.g. KINGSANDLOWS) to use for hand evaluation.
+	/// </summary>
+	[Parameter]
+	public string? GameTypeCode { get; set; }
+
 	/// <summary>
 	/// Set of hand numbers that are currently expanded.
 	/// </summary>
@@ -135,19 +142,39 @@
 		return new MarkupString(cards);
 	}
 
-	private static string? GetPlayerHandDescription(PlayerHandResultDto result, HandHistoryEntryDto entry)
+	private string? GetPlayerHandDescription(PlayerHandResultDto result, HandHistoryEntryDto entry)
 	{
 		if (result.VisibleCards is not null && result.VisibleCards.Count == 5)
 		{
+			List<Card>? cards = null;
 			try
 			{
-				var cards = result.VisibleCards.Select(vc => vc.ToCard()).ToList();
-				var hand = new DrawHand(cards);
+				cards = result.VisibleCards.Select(vc => vc.ToCard()).ToList();
+
+				HandBase hand = GameTypeCode?.ToUpperInvariant() switch
+				{
+					"KINGSANDLOWS" => new KingsAndLowsDrawHand(cards),
+					"TWOSJACKSMANWITHTHEAXE" => new TwosJacksManWithTheAxeDrawHand(cards),
+					_ => new DrawHand(cards)
+				};
+
 				return HandDescriptionFormatter.GetHandDescription(hand);
 			}
 			catch
 			{
-				// Fallback if parsing fails or hand construction is invalid
+				// If specialized hand evaluation fails, fallback to standard poker hand evaluation
+				if (cards is not null)
+				{
+					try
+					{
+						var standardHand = new DrawHand(cards);
+						return HandDescriptionFormatter.GetHandDescription(standardHand);
+					}
+					catch
+					{
+						// Ignore secondary failure
+					}
+				}
 			}
 		}
 

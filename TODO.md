@@ -3,7 +3,6 @@
 ## Still to do
 
 ### P1 - Can't play without these
-- [ ] Kings and Lows - hand history is showing the loser's hand incorrectly
 - [ ] Test side pots
 - [ ] Don't auto start a new hand. Add a timer, allow pause, allow people to get out of the game or end the game
 - [ ] Make sure all game types handle all ins correctly
@@ -12,10 +11,6 @@
 - [ ] Kings and Lows - don't deal to players that don't have enough chips to match the pot
 - [ ] Kings and Lows - Should make it obvious when someone dropped
 - [ ] Kings and Lows - Things happen too fast
-- [ ] Kings and Lows - Hand history is not working
-- [?] Kings and Lows - Play for a while and the pot disappears
-- [x] Kings and Lows - When going against the dealer, weird shit happens
-- [x] Kings and Lows - Showdown disappeared immediately
 
 - [ ] SCS - when all players go all in - still need to draw cards
 - [ ] SCS - when a player has no chips, they're still getting dealt and can take action
@@ -141,3 +136,8 @@
 - [x] Leaderboard should show first names
 - [x] Make hand history more detailed
 - [x] Add chip management to the dashboard (buy in, cash out, add chips)
+- [x] Kings and Lows - hand history is showing the loser's hand incorrectly
+- [x] Kings and Lows - Play for a while and the pot disappears
+- [x] Kings and Lows - When going against the dealer, weird shit happens
+- [x] Kings and Lows - Showdown disappeared immediately
+- [x] Kings and Lows - Hand history is not working
