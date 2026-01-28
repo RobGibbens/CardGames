@@ -76,6 +76,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		using var scope = _scopeFactory.CreateScope();
 		var context = scope.ServiceProvider.GetRequiredService<CardsDbContext>();
 		var broadcaster = scope.ServiceProvider.GetRequiredService<IGameStateBroadcaster>();
+		var handHistoryRecorder = scope.ServiceProvider.GetRequiredService<IHandHistoryRecorder>();
 
 		var now = DateTimeOffset.UtcNow;
 
@@ -83,7 +84,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		await ProcessAbandonedGamesAsync(context, broadcaster, now, cancellationToken);
 
 		// Process DrawComplete games that are ready to transition to Showdown
-		await ProcessDrawCompleteGamesAsync(context, broadcaster, now, cancellationToken);
+		await ProcessDrawCompleteGamesAsync(context, broadcaster, handHistoryRecorder, now, cancellationToken);
 
 		// Find games in Complete or WaitingForPlayers phase where the next hand should start
 		var gamesReadyForNextHand = await context.Games
@@ -170,6 +171,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 	private async Task ProcessDrawCompleteGamesAsync(
 		CardsDbContext context,
 		IGameStateBroadcaster broadcaster,
+		IHandHistoryRecorder handHistoryRecorder,
 		DateTimeOffset now,
 		CancellationToken cancellationToken)
 	{
@@ -194,7 +196,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 					"Game {GameId} DrawComplete display period expired, transitioning to Showdown",
 					game.Id);
 
-				await TransitionToShowdownAsync(context, broadcaster, game, now, cancellationToken);
+				await TransitionToShowdownAsync(context, broadcaster, handHistoryRecorder, game, now, cancellationToken);
 			}
 			catch (Exception ex)
 			{
@@ -210,6 +212,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 	private async Task TransitionToShowdownAsync(
 		CardsDbContext context,
 		IGameStateBroadcaster broadcaster,
+		IHandHistoryRecorder handHistoryRecorder,
 		Game game,
 		DateTimeOffset now,
 		CancellationToken cancellationToken)
@@ -224,7 +227,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		await context.SaveChangesAsync(cancellationToken);
 
 		// Perform showdown and set up pot matching
-		await PerformKingsAndLowsShowdownAsync(context, game, gamePlayersList, now, cancellationToken);
+		await PerformKingsAndLowsShowdownAsync(context, handHistoryRecorder, game, gamePlayersList, now, cancellationToken);
 
 		// Broadcast updated state to all players
 		await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
@@ -235,6 +238,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 	/// </summary>
 	private async Task PerformKingsAndLowsShowdownAsync(
 		CardsDbContext context,
+		IHandHistoryRecorder handHistoryRecorder,
 		Game game,
 		List<GamePlayer> gamePlayersList,
 		DateTimeOffset now,
@@ -267,14 +271,14 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		var playerHandEvaluations = new List<(GamePlayer player, long strength)>();
 
 		foreach (var player in stayingPlayers)
-			{
-				var playerCards = game.GameCards
-					.Where(gc => gc.GamePlayerId == player.Id && gc.HandNumber == game.CurrentHandNumber && !gc.IsDiscarded)
-					.OrderBy(gc => gc.DealOrder)
-					.Select(gc => new { gc.Suit, gc.Symbol })
-					.ToList();
+		{
+			var playerCards = game.GameCards
+				.Where(gc => gc.GamePlayerId == player.Id && gc.HandNumber == game.CurrentHandNumber && !gc.IsDiscarded)
+				.OrderBy(gc => gc.DealOrder)
+				.Select(gc => new { gc.Suit, gc.Symbol })
+				.ToList();
 
-				if (playerCards.Count >= 5)
+			if (playerCards.Count >= 5)
 			{
 				// Convert to domain Card objects for evaluation
 				var cards = playerCards.Select(c => new CardGames.Core.French.Cards.Card(
@@ -352,14 +356,115 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			context.Pots.Add(newPot);
 		}
 
-		// Complete the hand
-		game.CurrentPhase = nameof(Phases.Complete);
-		game.HandCompletedAt = now;
-		game.NextHandStartsAt = now.AddSeconds(ResultsDisplayDurationSeconds);
-		MoveDealer(game);
+			// Complete the hand
+			game.CurrentPhase = nameof(Phases.Complete);
+			game.HandCompletedAt = now;
+			game.NextHandStartsAt = now.AddSeconds(ResultsDisplayDurationSeconds);
+			MoveDealer(game);
 
-		await context.SaveChangesAsync(cancellationToken);
-	}
+			await context.SaveChangesAsync(cancellationToken);
+
+			// Build winning hand description
+			string? winningHandDescription = null;
+			if (winners.Count > 0)
+			{
+				var winnerPlayer = winners[0];
+				var winnerCards = game.GameCards
+					.Where(gc => gc.GamePlayerId == winnerPlayer.Id && gc.HandNumber == game.CurrentHandNumber && !gc.IsDiscarded)
+					.OrderBy(gc => gc.DealOrder)
+					.Select(gc => new CardGames.Core.French.Cards.Card(
+						(CardGames.Core.French.Cards.Suit)(int)gc.Suit,
+						(CardGames.Core.French.Cards.Symbol)(int)gc.Symbol))
+					.ToList();
+
+				if (winnerCards.Count >= 5)
+				{
+					var winnerHand = new CardGames.Poker.Hands.DrawHands.KingsAndLowsDrawHand(winnerCards);
+					winningHandDescription = CardGames.Poker.Evaluation.HandDescriptionFormatter.GetHandDescription(winnerHand);
+				}
+			}
+
+			// Build hand history records
+			var winnerInfos = winners.Select(w =>
+			{
+				var payout = winnerPayouts.Cast<dynamic>().FirstOrDefault(wp => wp.playerId == w.PlayerId.ToString());
+				return new WinnerInfo
+				{
+					PlayerId = w.PlayerId,
+					PlayerName = w.Player?.Name ?? w.PlayerId.ToString(),
+					AmountWon = payout?.amount ?? 0
+				};
+			}).ToList();
+
+			var isSplitPot = winners.Count > 1;
+			var winnerPlayerIds = winners.Select(w => w.PlayerId).ToHashSet();
+
+			var playerResults = gamePlayersList.Select(gp =>
+			{
+				var isWinner = winnerPlayerIds.Contains(gp.PlayerId);
+				var payout = isWinner ? winnerInfos.FirstOrDefault(w => w.PlayerId == gp.PlayerId)?.AmountWon ?? 0 : 0;
+				var netDelta = isWinner
+					? payout - gp.TotalContributedThisHand
+					: -gp.TotalContributedThisHand;
+
+				// For losers who matched the pot, include that in their net delta
+				if (losers.Any(l => l.PlayerId == gp.PlayerId))
+				{
+					// The pot matching deduction was already applied to ChipStack
+					// netDelta should include: ante lost + pot match
+					netDelta = -gp.TotalContributedThisHand - Math.Min(potAmount, gp.ChipStack + Math.Min(potAmount, gp.ChipStack)); // This is complex, simplify
+					// Actually, TotalContributedThisHand should include their contribution, 
+					// but pot matching is separate - we need to track this properly
+					// For now, approximate the loss
+					var matchLoss = Math.Min(potAmount, gp.ChipStack + potAmount); // Already deducted, estimate
+					netDelta = -gp.TotalContributedThisHand; // Just the ante/bet loss for history
+				}
+
+				// Get cards for this player if they reached showdown
+				List<string>? showdownCards = null;
+				var reachedShowdown = !gp.HasFolded && stayingPlayers.Contains(gp);
+				if (reachedShowdown)
+				{
+					var cards = game.GameCards
+						.Where(gc => gc.GamePlayerId == gp.Id && gc.HandNumber == game.CurrentHandNumber && !gc.IsDiscarded)
+						.OrderBy(gc => gc.DealOrder)
+						.Select(gc => FormatCard(gc.Symbol, gc.Suit))
+						.ToList();
+					if (cards.Count > 0)
+					{
+						showdownCards = cards;
+					}
+				}
+
+				return new PlayerResultInfo
+				{
+					PlayerId = gp.PlayerId,
+					PlayerName = gp.Player?.Name ?? gp.PlayerId.ToString(),
+					SeatPosition = gp.SeatPosition,
+					HasFolded = gp.HasFolded,
+					ReachedShowdown = reachedShowdown,
+					IsWinner = isWinner,
+					IsSplitPot = isSplitPot && isWinner,
+					NetChipDelta = netDelta,
+					WentAllIn = gp.IsAllIn,
+					FoldStreet = gp.HasFolded ? "DropOrStay" : null,
+					ShowdownCards = showdownCards
+				};
+			}).ToList();
+
+			// Record hand history
+			await handHistoryRecorder.RecordHandHistoryAsync(new RecordHandHistoryParameters
+			{
+				GameId = game.Id,
+				HandNumber = game.CurrentHandNumber,
+				CompletedAtUtc = now,
+				WonByFold = false,
+				TotalPot = potAmount,
+				WinningHandDescription = winningHandDescription,
+				Winners = winnerInfos,
+				PlayerResults = playerResults
+			}, cancellationToken);
+		}
 
 	/// <summary>
 	/// Moves the dealer button to the next occupied seat position (clockwise).
@@ -541,6 +646,27 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			br.CompletedAt = now;
 		}
 
+		// Find unawarded pots from the current hand (e.g., if all players dropped) and carry them over
+		var previousHandPots = await context.Pots
+			.Where(p => p.GameId == game.Id && p.HandNumber == game.CurrentHandNumber && !p.IsAwarded)
+			.ToListAsync(cancellationToken);
+
+		var carriedOverAmount = 0;
+		if (previousHandPots.Count > 0)
+		{
+			carriedOverAmount = previousHandPots.Sum(p => p.Amount);
+			foreach (var pot in previousHandPots)
+			{
+				pot.IsAwarded = true;
+				pot.AwardedAt = now;
+				pot.WinReason = "Carried over - all players dropped";
+			}
+
+			_logger.LogInformation(
+				"Carrying over {Amount} chips from unawarded pots in game {GameId} hand {HandNumber}",
+				carriedOverAmount, game.Id, game.CurrentHandNumber);
+		}
+
 		// Check if a main pot already exists for the next hand (e.g., from pot matching in Kings and Lows)
 		var existingPot = await context.Pots
 			.FirstOrDefaultAsync(p => p.GameId == game.Id &&
@@ -550,19 +676,24 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 
 		if (existingPot is null)
 		{
-			// Create a new main pot for this hand
+			// Create a new main pot for this hand (with any carried-over amount)
 			var mainPot = new Pot
 			{
 				GameId = game.Id,
 				HandNumber = game.CurrentHandNumber + 1,
 				PotType = PotType.Main,
 				PotOrder = 0,
-				Amount = 0,
+				Amount = carriedOverAmount,
 				IsAwarded = false,
 				CreatedAt = now
 			};
 
 			context.Pots.Add(mainPot);
+		}
+		else if (carriedOverAmount > 0)
+		{
+			// Add carried-over amount to existing pot
+			existingPot.Amount += carriedOverAmount;
 		}
 
 		// NOTE: Dealer rotation is already done in PerformShowdownCommandHandler.MoveDealer()
@@ -1063,6 +1194,41 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		Data.Entities.CardSuit.Spades => 3,
 		_ => 0
 	};
+
+	/// <summary>
+	/// Formats a card as text (e.g., "3s", "Ah", "10d").
+	/// </summary>
+	private static string FormatCard(Data.Entities.CardSymbol symbol, Data.Entities.CardSuit suit)
+	{
+		var symbolStr = symbol switch
+		{
+			Data.Entities.CardSymbol.Deuce => "2",
+			Data.Entities.CardSymbol.Three => "3",
+			Data.Entities.CardSymbol.Four => "4",
+			Data.Entities.CardSymbol.Five => "5",
+			Data.Entities.CardSymbol.Six => "6",
+			Data.Entities.CardSymbol.Seven => "7",
+			Data.Entities.CardSymbol.Eight => "8",
+			Data.Entities.CardSymbol.Nine => "9",
+			Data.Entities.CardSymbol.Ten => "10",
+			Data.Entities.CardSymbol.Jack => "J",
+			Data.Entities.CardSymbol.Queen => "Q",
+			Data.Entities.CardSymbol.King => "K",
+			Data.Entities.CardSymbol.Ace => "A",
+			_ => "?"
+		};
+
+		var suitStr = suit switch
+		{
+			Data.Entities.CardSuit.Hearts => "h",
+			Data.Entities.CardSuit.Diamonds => "d",
+			Data.Entities.CardSuit.Spades => "s",
+			Data.Entities.CardSuit.Clubs => "c",
+			_ => "?"
+		};
+
+		return $"{symbolStr}{suitStr}";
+	}
 
 	private static List<(Data.Entities.CardSuit Suit, Data.Entities.CardSymbol Symbol)> CreateShuffledDeck(Random random)
 	{

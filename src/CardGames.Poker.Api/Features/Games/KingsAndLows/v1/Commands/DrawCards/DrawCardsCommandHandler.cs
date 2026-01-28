@@ -2,7 +2,9 @@ using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
+using CardGames.Poker.Evaluation;
 using CardGames.Poker.Games.KingsAndLows;
+using CardGames.Poker.Hands.DrawHands;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
@@ -198,6 +200,12 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 				// Single player stayed - go to player vs deck
 				game.CurrentPhase = nameof(Phases.PlayerVsDeck);
 
+				// CRITICAL: Save changes BEFORE dealing deck hand to ensure player's drawn cards
+				// are persisted in the database. DealDeckHandAsync queries the database for 
+				// remaining deck cards, and without this save, the query would return stale data
+				// that could corrupt the player's hand.
+				await context.SaveChangesAsync(cancellationToken);
+
 				// Deal the deck's hand now so it's visible in the overlay
 				await DealDeckHandAsync(game, context, now, cancellationToken);
 			}
@@ -243,7 +251,19 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 			}
 		}
 
-			// 12. Persist changes
+			// 12. Evaluate the new hand to get the description
+			string? newHandDescription = null;
+			if (playerCards.Count == 5)
+			{
+				var coreCards = playerCards.Select(c => new CardGames.Core.French.Cards.Card(
+					(CardGames.Core.French.Cards.Suit)(int)c.Suit,
+					(CardGames.Core.French.Cards.Symbol)(int)c.Symbol
+				)).ToList();
+				var newHand = new KingsAndLowsDrawHand(coreCards);
+				newHandDescription = HandDescriptionFormatter.GetHandDescription(newHand);
+			}
+
+			// 13. Persist changes
 			game.UpdatedAt = now;
 			await context.SaveChangesAsync(cancellationToken);
 
@@ -260,7 +280,8 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 				DrawPhaseComplete = drawPhaseComplete,
 				NextPhase = nextPhase,
 				NextPlayerId = nextPlayerId,
-				NextPlayerName = nextPlayerName
+				NextPlayerName = nextPlayerName,
+				NewHandDescription = newHandDescription
 			};
 		}
 
@@ -459,11 +480,15 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 			DateTimeOffset now,
 			CancellationToken cancellationToken)
 		{
-			// Get cards still in the deck (not yet dealt to any player)
+			// Get cards still in the deck (not yet dealt to any player or discarded)
+			// IMPORTANT: Filter by GamePlayerId == null to ensure we don't grab cards 
+			// that have been assigned to players during the draw phase
 			var deckCards = await dbContext.GameCards
 				.Where(gc => gc.GameId == game.Id && 
 				             gc.HandNumber == game.CurrentHandNumber && 
-				             gc.Location == CardLocation.Deck)
+				             gc.Location == CardLocation.Deck &&
+				             gc.GamePlayerId == null &&
+				             !gc.IsDiscarded)
 				.OrderBy(gc => gc.DealOrder)
 				.Take(5)
 				.ToListAsync(cancellationToken);

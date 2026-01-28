@@ -68,6 +68,11 @@ public class DrawCardsSuccessful : IPlayerActionResult
 	/// </summary>
 	public string? NextPlayerName { get; init; }
 
+	/// <summary>
+	/// A description of the player's new hand after the draw (e.g., "Pair of Kings", "Full house, Jacks full of Fives").
+	/// </summary>
+	public string? NewHandDescription { get; init; }
+
 	/// <inheritdoc />
 	string IPlayerActionResult.ActionDescription => GetActionDescription();
 

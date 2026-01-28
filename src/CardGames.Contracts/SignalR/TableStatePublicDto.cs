@@ -152,11 +152,17 @@ public sealed record TableStatePublicDto
 				/// </summary>
 				public PlayerVsDeckStateDto? PlayerVsDeck { get; init; }
 
-				/// <summary>
-				/// The action timer state for the current player's turn.
-				/// </summary>
-				public ActionTimerStateDto? ActionTimer { get; init; }
-			}
+					/// <summary>
+					/// The action timer state for the current player's turn.
+					/// </summary>
+					public ActionTimerStateDto? ActionTimer { get; init; }
+
+					/// <summary>
+					/// State for the all-in runout scenario (all players are all-in, remaining cards are being dealt).
+					/// Only populated when dealing remaining streets after all players go all-in.
+					/// </summary>
+					public AllInRunoutStateDto? AllInRunout { get; init; }
+				}
 
 		/// <summary>
 		/// State of the action timer for the current player's turn.
@@ -562,4 +568,69 @@ public sealed record PlayerVsDeckStateDto
 	/// The seat index of the player who stayed.
 	/// </summary>
 	public int StayingPlayerSeatIndex { get; init; }
-}
+
+	/// <summary>
+	/// The staying player's cards, shown face-up to all players during the Player vs Deck phase.
+	/// </summary>
+	public IReadOnlyList<CardPublicDto> StayingPlayerCards { get; init; } = [];
+
+	/// <summary>
+	/// The staying player's hand description (e.g., "Two Pair, Kings and Sevens").
+	/// </summary>
+	public string? StayingPlayerHandDescription { get; init; }
+
+		/// <summary>
+		/// The deck's hand description (e.g., "Full House, Kings over Sevens").
+		/// </summary>
+		public string? DeckHandDescription { get; init; }
+	}
+
+	/// <summary>
+	/// State for the all-in runout scenario in games like Seven Card Stud.
+	/// When all players go all-in, remaining streets are dealt without betting,
+	/// and this DTO tracks the animated dealing progress.
+	/// </summary>
+	public sealed record AllInRunoutStateDto
+	{
+		/// <summary>
+		/// Whether the all-in runout is currently in progress.
+		/// </summary>
+		public bool IsActive { get; init; }
+
+		/// <summary>
+		/// The current street being dealt (e.g., "FourthStreet", "FifthStreet").
+		/// </summary>
+		public string? CurrentStreet { get; init; }
+
+		/// <summary>
+		/// A human-readable description of the current street (e.g., "Fourth Street").
+		/// </summary>
+		public string? CurrentStreetDescription { get; init; }
+
+		/// <summary>
+		/// The total number of streets to deal in the runout.
+		/// </summary>
+		public int TotalStreets { get; init; }
+
+		/// <summary>
+		/// The number of streets that have been dealt so far.
+		/// </summary>
+		public int StreetsDealt { get; init; }
+
+		/// <summary>
+		/// The cards that have been dealt in this runout, organized by player seat index.
+		/// Key is the seat index, value is the list of cards dealt to that player during the runout.
+		/// </summary>
+		public IReadOnlyDictionary<int, IReadOnlyList<CardPublicDto>>? RunoutCardsBySeat { get; init; }
+
+		/// <summary>
+		/// The seat index of the player currently being dealt to (for animation).
+		/// -1 if not currently dealing.
+		/// </summary>
+		public int CurrentDealingSeatIndex { get; init; }
+
+		/// <summary>
+		/// Whether the runout is complete and the showdown should begin.
+		/// </summary>
+		public bool IsComplete { get; init; }
+	}

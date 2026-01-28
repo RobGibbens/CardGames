@@ -132,10 +132,8 @@ public class DropOrStayCommandHandler(CardsDbContext context)
 			if (stayingPlayers.Count == 0)
 			{
 				// All players dropped - dead hand
-				game.CurrentPhase = nameof(Phases.Complete);
-				game.HandCompletedAt = now;
-				game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);
-				MoveDealer(game);
+				// Transition to Showdown to let PerformShowdown handle pot carry-over and hand history
+				game.CurrentPhase = nameof(Phases.Showdown);
 				nextPhase = game.CurrentPhase;
 			}
 			else if (stayingPlayers.Count == 1)

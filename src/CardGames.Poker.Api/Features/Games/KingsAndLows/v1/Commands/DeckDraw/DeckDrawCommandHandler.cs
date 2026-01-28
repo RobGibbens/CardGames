@@ -139,10 +139,13 @@ public class DeckDrawCommandHandler(CardsDbContext context)
 				var newCardInfos = new List<DeckCardInfo>();
 
 				// Get cards still in the deck (not yet dealt to any player or the deck hand)
+				// Filter by GamePlayerId == null to ensure we don't grab cards assigned to players
 				var remainingDeckCards = await context.GameCards
 					.Where(gc => gc.GameId == game.Id && 
 					             gc.HandNumber == game.CurrentHandNumber && 
-					             gc.Location == CardLocation.Deck)
+					             gc.Location == CardLocation.Deck &&
+					             gc.GamePlayerId == null &&
+					             !gc.IsDiscarded)
 					.OrderBy(gc => gc.DealOrder)
 					.Take(discardIndices.Count)
 					.ToListAsync(cancellationToken);

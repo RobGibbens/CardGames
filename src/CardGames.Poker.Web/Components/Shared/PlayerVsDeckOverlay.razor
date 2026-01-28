@@ -8,6 +8,30 @@
         <h2>Player vs Deck</h2>
         <p class="scenario-description">Only one player stayed! They now face the deck.</p>
 
+        @* Display the staying player's hand *@
+        @if (StayingPlayerCards.Count > 0)
+        {
+            <div class="staying-player-hand">
+                <h3><i class="fa-solid fa-user"></i> @GetStayingPlayerTitle()</h3>
+                <div class="player-cards-display">
+                    @foreach (var card in StayingPlayerCards)
+                    {
+                        <div class="card-item @(card.IsFaceUp ? "face-up" : "face-down")">
+                            @if (card.IsFaceUp)
+                            {
+                                <span class="rank @GetSuitColorClass(card.Suit)">@card.Rank</span>
+                                <span class="suit @GetSuitColorClass(card.Suit)">@GetSuitSymbol(card.Suit)</span>
+                            }
+                        </div>
+                    }
+                </div>
+                @if (!string.IsNullOrWhiteSpace(StayingPlayerHandDescription))
+                {
+                    <p class="hand-description">@StayingPlayerHandDescription</p>
+                }
+            </div>
+        }
+
         @if (DeckCards.Count > 0 || AnimatedCards.Count > 0)
         {
             <DrawPanel 
@@ -142,6 +166,24 @@
     public string? HandDescription { get; set; }
 
     /// <summary>
+    /// The staying player's cards (the player who is facing the deck).
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<CardInfo> StayingPlayerCards { get; set; } = [];
+
+    /// <summary>
+    /// The name of the staying player.
+    /// </summary>
+    [Parameter]
+    public string? StayingPlayerName { get; set; }
+
+    /// <summary>
+    /// The hand description for the staying player's hand.
+    /// </summary>
+    [Parameter]
+    public string? StayingPlayerHandDescription { get; set; }
+
+    /// <summary>
     /// Gets the cards to display - animated cards take precedence during animation.
     /// </summary>
     private List<CardInfo> GetDisplayCards()
@@ -204,6 +246,43 @@
         {
             await OnConfirmDraw.InvokeAsync();
         }
+    }
+
+    /// <summary>
+    /// Gets the title for the staying player's hand section.
+    /// </summary>
+    private string GetStayingPlayerTitle()
+    {
+        return !string.IsNullOrWhiteSpace(StayingPlayerName) 
+            ? $"{StayingPlayerName}'s Hand" 
+            : "Your Hand";
+    }
+
+    /// <summary>
+    /// Gets the CSS class for suit color.
+    /// </summary>
+    private static string GetSuitColorClass(string? suit)
+    {
+        return suit?.ToLowerInvariant() switch
+        {
+            "hearts" or "diamonds" => "red-suit",
+            _ => "black-suit"
+        };
+    }
+
+    /// <summary>
+    /// Gets the symbol for a suit.
+    /// </summary>
+    private static string GetSuitSymbol(string? suit)
+    {
+        return suit?.ToLowerInvariant() switch
+        {
+            "hearts" => "♥",
+            "diamonds" => "♦",
+            "clubs" => "♣",
+            "spades" => "♠",
+            _ => "?"
+        };
     }
 
     public record CardDto(string Rank, string Suit);

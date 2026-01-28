@@ -44,6 +44,95 @@
         {
             <p class="showdown-empty">No showdown data.</p>
         }
+        else if (IsPlayerVsDeckScenario())
+        {
+            // Player vs Deck scenario (Kings and Lows specific)
+            var playerHand = GetPlayerHand();
+            var deckHand = GetDeckHand();
+            var playerWon = playerHand?.IsWinner == true;
+            var winnerChips = playerWon ? (playerHand?.AmountWon ?? 0) : 0;
+
+            <section class="showdown-winner" aria-label="@(playerWon ? "Winner" : "Result")">
+                <div class="winner-banner">
+                    <div class="winner-nameline">
+                        <span class="winner-first">@DisplayFirstName(playerHand)</span>
+                        <span class="winner-rest">@(playerWon ? "beats the deck!" : "lost to the deck")</span>
+                    </div>
+                    @if (playerWon && winnerChips > 0)
+                    {
+                        <div class="winner-pills">
+                            @if (!string.IsNullOrWhiteSpace(playerHand?.HandType))
+                            {
+                                <span class="sd-pill sd-pill-green">@GetDetailedHandDescription(playerHand)</span>
+                            }
+                            <span class="sd-pill sd-pill-gold">+@winnerChips chips</span>
+                        </div>
+                    }
+                    else if (!playerWon)
+                    {
+                        <div class="winner-pills">
+                            @if (!string.IsNullOrWhiteSpace(playerHand?.HandType))
+                            {
+                                <span class="sd-pill sd-pill-muted">@GetDetailedHandDescription(playerHand)</span>
+                            }
+                        </div>
+                    }
+
+                    @if (playerHand?.Cards is { Count: > 0 })
+                    {
+                        <div class="showdown-cards winner-cards" aria-label="Player cards">
+                            @for (var i = 0; i < playerHand.Cards.Count; i++)
+                            {
+                                var card = playerHand.Cards.ElementAt(i);
+                                <div class="sd-card-wrapper" style="--i:@i">
+                                    <playing-card rank="@GetPlayingCardRank(card)" suit="@GetPlayingCardSuit(card)" style="height:75px;width:75px;filter:drop-shadow(0 10px 18px rgba(0,0,0,.35));"></playing-card>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </section>
+
+            @if (deckHand is not null)
+            {
+                <section class="showdown-others" aria-label="The Deck's hand">
+                    <div class="other-hand-row">
+                        <div class="other-hand-info">
+                            <span class="other-hand-name">The Deck</span>
+                            @if (!string.IsNullOrWhiteSpace(deckHand.HandType))
+                            {
+                                <span class="sd-pill @(deckHand.IsWinner == true ? "sd-pill-green" : "sd-pill-muted")">@GetDetailedHandDescription(deckHand)</span>
+                            }
+                        </div>
+                        @if (deckHand.Cards is { Count: > 0 })
+                        {
+                            <div class="showdown-cards other-cards">
+                                @foreach (var c in deckHand.Cards)
+                                {
+                                    <div class="">
+                                        <playing-card rank="@GetPlayingCardRank(c)" suit="@GetPlayingCardSuit(c)" style="height:64px;width:48px;"></playing-card>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </section>
+            }
+
+            @if (playerWon && ShowdownResult.Payouts is { Count: > 0 })
+            {
+                <div class="showdown-winners">
+                    <h3>Payouts</h3>
+                    @foreach (var payout in ShowdownResult.Payouts)
+                    {
+                        <div class="showdown-winner-row">
+                            <span class="winner-name">@payout.Key</span>
+                            <span class="winner-amount">+@payout.Value</span>
+                        </div>
+                    }
+                </div>
+            }
+        }
         else if (ShowdownResult.WonByFold == true)
         {
             string? winnerName = null;
@@ -182,34 +271,41 @@
             </div>
         }
 
-        <div class="showdown-countdown">
-            @if (SecondsUntilNextHand > 0)
-            {
-                <p class="showdown-hint">Next hand starts in <strong>@SecondsUntilNextHand</strong> seconds...</p>
-            }
-            else
-            {
-                <p class="showdown-hint">Starting next hand...</p>
-            }
+                <div class="showdown-countdown">
+                    @if (IsGameEnded)
+                    {
+                        <p class="showdown-hint">Returning to lobby in <strong>@SecondsUntilNextHand</strong> seconds...</p>
+                    }
+                    else if (SecondsUntilNextHand > 0)
+                    {
+                        <p class="showdown-hint">Next hand starts in <strong>@SecondsUntilNextHand</strong> seconds...</p>
+                    }
+                    else
+                    {
+                        <p class="showdown-hint">Starting next hand...</p>
+                    }
+                </div>
+            </div>
         </div>
-    </div>
-</div>
 
-@code {
-    [Parameter]
-    public PerformShowdownSuccessful? ShowdownResult { get; set; }
+        @code {
+            [Parameter]
+            public PerformShowdownSuccessful? ShowdownResult { get; set; }
 
-    [Parameter]
-    public bool ShowdownWon { get; set; }
+            [Parameter]
+            public bool ShowdownWon { get; set; }
 
-    [Parameter]
-    public bool ShowdownLost { get; set; }
+            [Parameter]
+            public bool ShowdownLost { get; set; }
 
-    [Parameter]
-    public int SecondsUntilNextHand { get; set; }
+            [Parameter]
+            public int SecondsUntilNextHand { get; set; }
 
-    [Parameter]
-    public EventCallback OnClose { get; set; }
+            [Parameter]
+            public bool IsGameEnded { get; set; }
+
+            [Parameter]
+            public EventCallback OnClose { get; set; }
 
     private static ShowdownPlayerHand? GetPrimaryWinnerHand(PerformShowdownSuccessful result)
     {
@@ -379,6 +475,18 @@
     }
     private string GetOutcomeSubtitle()
     {
+        // Handle player-vs-deck scenario first
+        if (IsPlayerVsDeckScenario())
+        {
+            var playerHand = GetPlayerHand();
+            var playerWon = playerHand?.IsWinner == true;
+            if (IsGameEnded && playerWon)
+            {
+                return "You beat the deck! Game Over";
+            }
+            return playerWon ? "You beat the deck!" : "The deck wins this round";
+        }
+
         if (ShowdownResult?.WonByFold == true)
         {
             return "Everyone folded";
@@ -386,12 +494,12 @@
 
         if (ShowdownWon)
         {
-            return "You won the hand";
+            return IsGameEnded ? "You won the game!" : "You won the hand";
         }
 
         if (ShowdownLost)
         {
-            return "Hand complete";
+            return IsGameEnded ? "Game Over" : "Hand complete";
         }
 
         return "Results are in";
@@ -496,36 +604,64 @@
         _ => throw new ArgumentOutOfRangeException(nameof(symbol), symbol, "Unknown symbol")
     };
 
-    private static string GetSuitFaIcon(CardSuit? suit)
-    {
-        return suit switch
+        private static string GetSuitFaIcon(CardSuit? suit)
         {
-            CardSuit.Hearts => "fa-heart",
-            CardSuit.Diamonds => "fa-diamond",
-            CardSuit.Clubs => "fa-club",
-            CardSuit.Spades => "fa-spade",
-            _ => "fa-question"
-        };
-    }
+            return suit switch
+            {
+                CardSuit.Hearts => "fa-heart",
+                CardSuit.Diamonds => "fa-diamond",
+                CardSuit.Clubs => "fa-club",
+                CardSuit.Spades => "fa-spade",
+                _ => "fa-question"
+            };
+        }
 
-    private static string GetRankLabel(CardSymbol? symbol)
-    {
-        return symbol switch
+        private static string GetRankLabel(CardSymbol? symbol)
         {
-            CardSymbol.Deuce => "2",
-            CardSymbol.Three => "3",
-            CardSymbol.Four => "4",
-            CardSymbol.Five => "5",
-            CardSymbol.Six => "6",
-            CardSymbol.Seven => "7",
-            CardSymbol.Eight => "8",
-            CardSymbol.Nine => "9",
-            CardSymbol.Ten => "10",
-            CardSymbol.Jack => "J",
-            CardSymbol.Queen => "Q",
-            CardSymbol.King => "K",
-            CardSymbol.Ace => "A",
-            _ => "?"
-        };
+            return symbol switch
+            {
+                CardSymbol.Deuce => "2",
+                CardSymbol.Three => "3",
+                CardSymbol.Four => "4",
+                CardSymbol.Five => "5",
+                CardSymbol.Six => "6",
+                CardSymbol.Seven => "7",
+                CardSymbol.Eight => "8",
+                CardSymbol.Nine => "9",
+                CardSymbol.Ten => "10",
+                CardSymbol.Jack => "J",
+                CardSymbol.Queen => "Q",
+                CardSymbol.King => "K",
+                CardSymbol.Ace => "A",
+                _ => "?"
+            };
+        }
+
+        /// <summary>
+        /// Detects if this is a player-vs-deck scenario (Kings and Lows).
+        /// Identified by having "The Deck" as one of the player hands.
+        /// </summary>
+        private bool IsPlayerVsDeckScenario()
+        {
+            return ShowdownResult?.PlayerHands?.Any(h =>
+                string.Equals(h.PlayerName, "The Deck", StringComparison.OrdinalIgnoreCase)) == true;
+        }
+
+        /// <summary>
+        /// Gets the player's hand in a player-vs-deck scenario.
+        /// </summary>
+        private ShowdownPlayerHand? GetPlayerHand()
+        {
+            return ShowdownResult?.PlayerHands?.FirstOrDefault(h =>
+                !string.Equals(h.PlayerName, "The Deck", StringComparison.OrdinalIgnoreCase));
+        }
+
+        /// <summary>
+        /// Gets the deck's hand in a player-vs-deck scenario.
+        /// </summary>
+        private ShowdownPlayerHand? GetDeckHand()
+        {
+            return ShowdownResult?.PlayerHands?.FirstOrDefault(h =>
+                string.Equals(h.PlayerName, "The Deck", StringComparison.OrdinalIgnoreCase));
+        }
     }
-}

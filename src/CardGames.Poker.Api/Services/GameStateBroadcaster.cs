@@ -101,10 +101,11 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
                              state.CurrentPhaseRequiresAction;
 
         var currentActorSeatIndex = state.CurrentActorSeatIndex;
+        var isSimultaneousAction = string.Equals(state.CurrentPhase, "DropOrStay", StringComparison.OrdinalIgnoreCase);
 
-        if (!requiresAction || currentActorSeatIndex < 0 || state.IsPaused)
+        if (!requiresAction || (currentActorSeatIndex < 0 && !isSimultaneousAction) || state.IsPaused)
         {
-            // Stop timer if no action needed, no actor, or game is paused
+            // Stop timer if no action needed, no actor (and not simultaneous), or game is paused
             if (_actionTimerService.IsTimerActive(gameId))
             {
                 _logger.LogDebug("Stopping action timer for game {GameId} - no action required", gameId);
@@ -113,34 +114,45 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
             return;
         }
 
-            // Check if the current actor has changed
-            var existingTimer = _actionTimerService.GetTimerState(gameId);
-            if (existingTimer is not null && existingTimer.PlayerSeatIndex == currentActorSeatIndex)
-            {
-                // Same player, timer already running - don't restart
-                _logger.LogDebug(
-                    "Action timer already running for game {GameId}, player seat {SeatIndex}",
-                    gameId, currentActorSeatIndex);
-                return;
-            }
-
-            // Start a new timer for the current actor
-            _logger.LogInformation(
-                "Starting action timer for game {GameId}, player seat {SeatIndex}, phase {Phase}",
-                gameId, currentActorSeatIndex, state.CurrentPhase);
-
-            _actionTimerService.StartTimer(
-                gameId,
-                currentActorSeatIndex,
-                durationSeconds: IActionTimerService.DefaultTimerDurationSeconds,
-                onExpired: async (gId, seatIndex) =>
-                {
-                    _logger.LogInformation(
-                        "Timer expired for game {GameId}, player seat {SeatIndex} - performing auto-action",
-                        gId, seatIndex);
-                    await _autoActionService.PerformAutoActionAsync(gId, seatIndex);
-                });
+        // Check if the current actor has changed
+        var effectiveActorSeatIndex = isSimultaneousAction ? -1 : currentActorSeatIndex;
+        var existingTimer = _actionTimerService.GetTimerState(gameId);
+        
+        if (existingTimer is not null && existingTimer.PlayerSeatIndex == effectiveActorSeatIndex)
+        {
+            // Same player/state, timer already running - don't restart
+            _logger.LogDebug(
+                "Action timer already running for game {GameId}, player seat {SeatIndex}",
+                gameId, effectiveActorSeatIndex);
+            return;
         }
+
+        // Start a new timer for the current actor
+        _logger.LogInformation(
+            "Starting action timer for game {GameId}, player seat {SeatIndex}, phase {Phase}",
+            gameId, effectiveActorSeatIndex, state.CurrentPhase);
+
+        var durationSeconds = IActionTimerService.DefaultTimerDurationSeconds;
+
+        // Use 30 seconds for Kings and Lows "Drop or Stay"
+        if (string.Equals(state.GameTypeCode, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase) && 
+            string.Equals(state.CurrentPhase, "DropOrStay", StringComparison.OrdinalIgnoreCase))
+        {
+            durationSeconds = 30;
+        }
+
+        _actionTimerService.StartTimer(
+            gameId,
+            effectiveActorSeatIndex,
+            durationSeconds: durationSeconds,
+            onExpired: async (gId, seatIndex) =>
+            {
+                _logger.LogInformation(
+                    "Timer expired for game {GameId}, player seat {SeatIndex} - performing auto-action",
+                    gId, seatIndex);
+                await _autoActionService.PerformAutoActionAsync(gId, seatIndex);
+            });
+    }
 
         /// <inheritdoc />
         public async Task BroadcastGameStateToUserAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
