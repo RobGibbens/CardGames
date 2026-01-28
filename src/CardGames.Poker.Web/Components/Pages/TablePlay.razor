@@ -354,8 +354,11 @@
             </div>
         }
 
+        @* All-In Runout - cards are dealt on table seats with animation, no overlay *@
+        @* Animation state is tracked via _runoutAnimationInProgress *@
+
         @if (
-            IsShowdownPhase && _showShowdownOverlay && _showdownResult is not null)
+            IsShowdownPhase && _showShowdownOverlay && _showdownResult is not null && !_runoutAnimationInProgress)
         {
             <ShowdownOverlay ShowdownResult="@_showdownResult" ShowdownWon="@_showdownWon" ShowdownLost="@_showdownLost"
                              SecondsUntilNextHand="@_secondsUntilNextHand" IsGameEnded="@IsEndedPhase" OnClose="@CloseShowdownOverlay" />
@@ -457,6 +460,15 @@
     private bool _showShowdownOverlay;
     private bool _showdownWon;
     private bool _showdownLost;
+
+    // All-In Runout state (for animated card dealing on table seats when all players are all-in)
+    private AllInRunoutStateDto? _allInRunoutState;
+    private bool _runoutAnimationInProgress;
+    private Timer? _runoutDealTimer;
+    private int _runoutCurrentStreetIndex; // Which street we're currently dealing (0 = 4th street, etc.)
+    private int _runoutCurrentSeatIndex; // Which seat we're dealing to within the current street
+    private Dictionary<int, int> _runoutVisibleCardCount = new(); // Seat index -> number of runout cards visible
+    private Dictionary<int, int> _runoutInitialCardCounts = new(); // Seat index -> number of cards BEFORE runout started
 
     // Continuous play state
     private int _secondsUntilNextHand;
@@ -713,8 +725,49 @@
             _currentActorSeatIndex = state.CurrentActorSeatIndex;
             _isPaused = state.IsPaused;
 
+            // IMPORTANT: Check for All-In Runout BEFORE updating seats
+            // This ensures we capture initial card counts and set the animation flag
+            // before UpdateSeatsFromPublicState would overwrite cards with full runout cards
+            if (state.AllInRunout is not null && state.AllInRunout.IsActive && !_runoutAnimationInProgress)
+            {
+                _allInRunoutState = state.AllInRunout;
+
+                // Capture the initial card count for each seat BEFORE the runout cards are added
+                // This is the number of cards dealt before everyone went all-in
+                _runoutInitialCardCounts.Clear();
+                foreach (var seatIndex in state.AllInRunout.RunoutCardsBySeat?.Keys ?? [])
+                {
+                    if (seatIndex >= 0 && seatIndex < _seats.Count && _seats[seatIndex].IsOccupied)
+                    {
+                        _runoutInitialCardCounts[seatIndex] = _seats[seatIndex].Cards.Count;
+                    }
+                }
+
+                // Set the animation flag BEFORE UpdateSeatsFromPublicState
+                _runoutAnimationInProgress = true;
+                _runoutCurrentStreetIndex = 0;
+                _runoutCurrentSeatIndex = 0;
+                _runoutVisibleCardCount.Clear();
+
+                // Initialize visible runout card count to 0 for each seat
+                foreach (var seatIndex in state.AllInRunout.RunoutCardsBySeat?.Keys ?? [])
+                {
+                    _runoutVisibleCardCount[seatIndex] = 0;
+                }
+
+                Logger.LogInformation("Detected all-in runout for game {GameId}, starting table animation", state.GameId);
+            }
+
             // Update seats from public state
+            // Note: If _runoutAnimationInProgress is true, this will preserve cards for runout seats
             UpdateSeatsFromPublicState(state.Seats);
+
+            // Start the runout timer AFTER UpdateSeatsFromPublicState (if we just detected runout)
+            if (_runoutAnimationInProgress && _runoutDealTimer is null)
+            {
+                // Start the timer to deal cards one by one (2 second delay before first card)
+                _runoutDealTimer = new Timer(DealNextRunoutCard, null, TimeSpan.FromSeconds(2), Timeout.InfiniteTimeSpan);
+            }
 
             // Update previous phase category for next state update
             var currentPhaseCategory = state.CurrentPhaseCategory;
@@ -734,13 +787,20 @@
             var shouldDelayShowdownOverlay = _delayShowdownOverlay ||
                 (_showdownDelayUntil.HasValue && DateTimeOffset.UtcNow < _showdownDelayUntil.Value);
 
+            // If runout animation is in progress, delay the showdown
+            if (_runoutAnimationInProgress)
+            {
+                shouldDelayShowdownOverlay = true;
+            }
+
             if (state.Showdown is not null)
             {
-                UpdateShowdownFromPublicState(state.Showdown, shouldDelayShowdownOverlay);
+                UpdateShowdownFromPublicState(state.Showdown, shouldDelayShowdownOverlay || _runoutAnimationInProgress);
             }
 
             // If entering showdown or complete phase, load showdown results via API
-            if (IsShowdownPhase && _showdownResult is null && !shouldDelayShowdownOverlay)
+            // But delay if we're showing the all-in runout animation
+            if (IsShowdownPhase && _showdownResult is null && !shouldDelayShowdownOverlay && !_runoutAnimationInProgress)
             {
                 await TryLoadShowdownAsync();
             }
@@ -822,6 +882,16 @@
                         _delayShowdownOverlay = false;
                         _showdownDelayUntil = null;
                         _previousPhaseCategory = null;
+
+                        // Reset All-In Runout state for new hand
+                        _allInRunoutState = null;
+                        _runoutAnimationInProgress = false;
+                        _runoutDealTimer?.Dispose();
+                        _runoutDealTimer = null;
+                        _runoutCurrentStreetIndex = 0;
+                        _runoutCurrentSeatIndex = 0;
+                        _runoutVisibleCardCount.Clear();
+                        _runoutInitialCardCounts.Clear();
 
                         // Reset DrawPanel state for new hand
                         _selectedDiscardIndices.Clear();
@@ -908,9 +978,19 @@
 
         // Update player's cards using the authoritative seat position
         // Always update cards from private state - even if empty (player is sitting out or between hands)
+        // BUT: Skip card updates during runout animation - the animation controls card visibility
         if (targetSeatIndex >= 0 && targetSeatIndex < _seats.Count)
         {
-            if (state.Hand is { Count: > 0 })
+            var isInRunoutAnimation = _runoutAnimationInProgress &&
+                _allInRunoutState?.RunoutCardsBySeat?.ContainsKey(targetSeatIndex) == true;
+
+            if (isInRunoutAnimation)
+            {
+                Logger.LogDebug(
+                    "Skipping private state card update for seat {SeatIndex} during runout animation",
+                    targetSeatIndex);
+            }
+            else if (state.Hand is { Count: > 0 })
             {
                 Logger.LogInformation(
                     "Updating seat {SeatIndex} cards from private state: {CardCount} cards, first card: {FirstCard}",
@@ -1100,7 +1180,8 @@
 
     private void UpdateSeatsFromPublicState(IReadOnlyList<SeatPublicDto> publicSeats)
     {
-        Logger.LogDebug("UpdateSeatsFromPublicState: Processing {SeatCount} seats", publicSeats.Count);
+        Logger.LogDebug("UpdateSeatsFromPublicState: Processing {SeatCount} seats, runoutAnimationInProgress={RunoutInProgress}", 
+            publicSeats.Count, _runoutAnimationInProgress);
 
         var updatedSeatIndices = new HashSet<int>();
 
@@ -1122,21 +1203,27 @@
                     string.Equals(publicSeat.PlayerName, _currentPlayerName, StringComparison.OrdinalIgnoreCase);
                 var isCurrentPlayer = isCurrentPlayerByEmail || isCurrentPlayerBySeatIndex || isCurrentPlayerByName;
 
+                // Check if this seat is part of the runout animation
+                var isInRunoutAnimation = _runoutAnimationInProgress && 
+                    _allInRunoutState?.RunoutCardsBySeat?.ContainsKey(publicSeat.SeatIndex) == true;
+
                 // Preserve face-up cards for current player (will be updated by private state)
                 // This prevents briefly showing face-down cards before private state arrives
                 // BUT: Don't preserve cards if the player is sitting out (they shouldn't have cards)
+                // ALSO: Preserve cards during runout animation - the animation controls card visibility
                 var existingCards = _seats[publicSeat.SeatIndex].Cards;
-                var shouldPreserveCards = isCurrentPlayer && existingCards.Any(c => c.IsFaceUp) && !publicSeat.IsSittingOut;
+                var shouldPreserveCards = (isCurrentPlayer && existingCards.Any(c => c.IsFaceUp) && !publicSeat.IsSittingOut)
+                    || isInRunoutAnimation;
 
                 Logger.LogDebug(
                     "UpdateSeatsFromPublicState: Seat {SeatIndex}, PlayerName={PlayerName}, " +
                     "isCurrentPlayerByEmail={ByEmail}, isCurrentPlayerBySeatIndex={BySeat}, " +
                     "isCurrentPlayerByName={ByName}, existingCards={ExistingCount}, " +
-                    "existingFaceUp={FaceUpCount}, shouldPreserve={ShouldPreserve}, publicCardCount={PublicCount}, isSittingOut={IsSittingOut}",
+                    "existingFaceUp={FaceUpCount}, shouldPreserve={ShouldPreserve}, publicCardCount={PublicCount}, isSittingOut={IsSittingOut}, isInRunout={IsInRunout}",
                     publicSeat.SeatIndex, publicSeat.PlayerName,
                     isCurrentPlayerByEmail, isCurrentPlayerBySeatIndex, isCurrentPlayerByName,
                     existingCards.Count, existingCards.Count(c => c.IsFaceUp),
-                    shouldPreserveCards, publicSeat.Cards.Count, publicSeat.IsSittingOut);
+                    shouldPreserveCards, publicSeat.Cards.Count, publicSeat.IsSittingOut, isInRunoutAnimation);
 
                 var cards = shouldPreserveCards
                     ? existingCards
@@ -1840,15 +1927,181 @@
         _showdownWon = iWon;
         _showdownLost = !iWon;
 
-        await InvokeAsync(StateHasChanged);
-    }
+            await InvokeAsync(StateHasChanged);
+        }
 
-    private void CloseShowdownOverlay()
-    {
-        _showShowdownOverlay = false;
-    }
+        private void CloseShowdownOverlay()
+        {
+            _showShowdownOverlay = false;
+        }
 
-    private static List<BettingActionType> MapLegalActions(AvailableActionsResponse available)
+        // Note: StartRunoutAnimation has been inlined into HandleTableStateUpdatedAsync
+        // to ensure the animation flag is set BEFORE UpdateSeatsFromPublicState is called.
+
+        /// <summary>
+        /// Timer callback that deals the next card in the runout sequence.
+        /// Cards are dealt one at a time to one player at a time with 2-second delays.
+        /// Example: P1 gets card, 2s delay, P2 gets card, 2s delay, P3 gets card, 2s delay, P1 gets next card...
+        /// </summary>
+        private async void DealNextRunoutCard(object? state)
+        {
+            if (_allInRunoutState?.RunoutCardsBySeat is null)
+            {
+                CompleteRunoutAnimation();
+                return;
+            }
+
+            // Get the list of seat indices with cards to deal (sorted for consistent order)
+            var seatIndices = _allInRunoutState.RunoutCardsBySeat.Keys
+                .Where(s => s >= 0 && s < _seats.Count && _seats[s].IsOccupied && !_seats[s].IsFolded)
+                .OrderBy(s => s)
+                .ToList();
+
+            if (seatIndices.Count == 0)
+            {
+                CompleteRunoutAnimation();
+                return;
+            }
+
+            // Calculate how many cards each player needs to receive
+            var maxRunoutCards = _allInRunoutState.RunoutCardsBySeat.Values
+                .Select(cards => cards.Count)
+                .DefaultIfEmpty(0)
+                .Max();
+
+            // Check if we've completed all streets
+            if (_runoutCurrentStreetIndex >= maxRunoutCards)
+            {
+                // All cards dealt - wait 2 seconds then show showdown
+                _runoutDealTimer?.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+                _ = Task.Run(async () =>
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(2));
+                    CompleteRunoutAnimation();
+                    await InvokeAsync(StateHasChanged);
+                });
+                return;
+            }
+
+            // Get the current seat to deal to
+            if (_runoutCurrentSeatIndex >= seatIndices.Count)
+            {
+                // Finished dealing to all players for this street, move to next street
+                _runoutCurrentSeatIndex = 0;
+                _runoutCurrentStreetIndex++;
+
+                // Check again if we've completed all streets
+                if (_runoutCurrentStreetIndex >= maxRunoutCards)
+                {
+                    _runoutDealTimer?.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+                    _ = Task.Run(async () =>
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(2));
+                        CompleteRunoutAnimation();
+                        await InvokeAsync(StateHasChanged);
+                    });
+                    return;
+                }
+            }
+
+            // Deal ONE card to ONE player
+            var currentSeatIndex = seatIndices[_runoutCurrentSeatIndex];
+            if (_allInRunoutState.RunoutCardsBySeat.TryGetValue(currentSeatIndex, out var runoutCards))
+            {
+                var currentVisible = _runoutVisibleCardCount.GetValueOrDefault(currentSeatIndex, 0);
+                if (currentVisible < runoutCards.Count)
+                {
+                    _runoutVisibleCardCount[currentSeatIndex] = currentVisible + 1;
+                    UpdateSeatWithRunoutCards(currentSeatIndex, currentVisible + 1);
+
+                    Logger.LogDebug("Runout: Dealt card {CardNum} to seat {SeatIndex} (street {Street})", 
+                        currentVisible + 1, currentSeatIndex, _runoutCurrentStreetIndex + 1);
+                }
+            }
+
+            // Move to next player
+            _runoutCurrentSeatIndex++;
+
+            await InvokeAsync(StateHasChanged);
+
+            // Schedule the next card deal in 2 seconds
+            _runoutDealTimer?.Change(TimeSpan.FromSeconds(2), Timeout.InfiniteTimeSpan);
+        }
+
+        /// <summary>
+        /// Updates a seat's cards by appending the next visible runout card.
+        /// The initial cards are preserved, and runout cards are added one by one.
+        /// </summary>
+        private void UpdateSeatWithRunoutCards(int seatIndex, int visibleRunoutCards)
+        {
+            if (seatIndex < 0 || seatIndex >= _seats.Count)
+            {
+                return;
+            }
+
+            if (_allInRunoutState?.RunoutCardsBySeat is null ||
+                !_allInRunoutState.RunoutCardsBySeat.TryGetValue(seatIndex, out var runoutCards))
+            {
+                return;
+            }
+
+            // Get the initial card count for this seat (captured when runout started)
+            var initialCardCount = _runoutInitialCardCounts.GetValueOrDefault(seatIndex, 0);
+
+            var seat = _seats[seatIndex];
+            var existingCards = seat.Cards.ToList();
+
+            Logger.LogDebug("UpdateSeatWithRunoutCards: Seat {SeatIndex}, initialCardCount={InitialCount}, existingCards={ExistingCount}, visibleRunoutCards={VisibleRunout}, totalRunoutCards={TotalRunout}",
+                seatIndex, initialCardCount, existingCards.Count, visibleRunoutCards, runoutCards.Count);
+
+            // Build the new cards list: initial cards + visible runout cards
+            var allCards = new List<CardInfo>();
+
+            // First, add the initial cards (cards dealt before runout)
+            // These should already be in existingCards if we're preserving correctly
+            for (var i = 0; i < Math.Min(initialCardCount, existingCards.Count); i++)
+            {
+                allCards.Add(existingCards[i]);
+            }
+
+            // Then add only the VISIBLE runout cards (face up)
+            for (var i = 0; i < visibleRunoutCards && i < runoutCards.Count; i++)
+            {
+                var runoutCard = runoutCards[i];
+                allCards.Add(new CardInfo
+                {
+                    Rank = runoutCard.Rank,
+                    Suit = runoutCard.Suit,
+                    IsFaceUp = true,
+                    IsSelected = false,
+                    DealOrder = initialCardCount + i
+                });
+            }
+
+            _seats[seatIndex].Cards = allCards;
+
+            Logger.LogDebug("UpdateSeatWithRunoutCards: Seat {SeatIndex} now has {CardCount} cards", 
+                seatIndex, allCards.Count);
+        }
+
+        /// <summary>
+        /// Completes the runout animation and triggers the showdown.
+        /// </summary>
+        private async void CompleteRunoutAnimation()
+        {
+            Logger.LogInformation("All-in runout animation complete, transitioning to showdown overlay");
+
+            _runoutAnimationInProgress = false;
+            _runoutDealTimer?.Dispose();
+            _runoutDealTimer = null;
+
+            // Now load and show the showdown overlay
+            await TryLoadShowdownAsync();
+
+            await InvokeAsync(StateHasChanged);
+        }
+
+        private static List<BettingActionType> MapLegalActions(AvailableActionsResponse available)
     {
         var actions = new List<BettingActionType>();
 
@@ -2494,6 +2747,10 @@
     {
         // Stop countdown timer
         StopCountdownTimer();
+
+        // Stop runout animation timer
+        _runoutDealTimer?.Dispose();
+        _runoutDealTimer = null;
 
         // Unsubscribe from SignalR events
         GameHubClient.OnTableStateUpdated -= HandleTableStateUpdatedAsync;

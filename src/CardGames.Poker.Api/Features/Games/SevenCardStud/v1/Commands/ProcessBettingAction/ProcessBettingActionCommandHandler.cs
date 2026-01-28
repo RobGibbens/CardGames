@@ -1,3 +1,4 @@
+using System.Text.Json;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.DealHands;
@@ -631,101 +632,115 @@ public class ProcessBettingActionCommandHandler(
 		return playersWhoCanBet < 2;
 	}
 
-	/// <summary>
-	/// Deals all remaining street cards to players when all players are all-in.
-	/// This allows the hand to run out to showdown without betting.
-	/// </summary>
-	/// <param name="game">The current game.</param>
-	/// <param name="activePlayers">Players who are still in the hand (not folded).</param>
-	/// <param name="currentPhase">The phase to start dealing from.</param>
-	/// <param name="now">The current timestamp.</param>
-	/// <param name="cancellationToken">Cancellation token.</param>
-	private async Task DealRemainingStreetsAsync(
-		Game game,
-		List<GamePlayer> activePlayers,
-		string currentPhase,
-		DateTimeOffset now,
-		CancellationToken cancellationToken)
-	{
-		// Define the street order for Seven Card Stud
-		var streetOrder = new[]
+		/// <summary>
+		/// Deals all remaining street cards to players when all players are all-in.
+		/// This allows the hand to run out to showdown without betting.
+		/// </summary>
+		/// <param name="game">The current game.</param>
+		/// <param name="activePlayers">Players who are still in the hand (not folded).</param>
+		/// <param name="currentPhase">The phase to start dealing from.</param>
+		/// <param name="now">The current timestamp.</param>
+		/// <param name="cancellationToken">Cancellation token.</param>
+		private async Task DealRemainingStreetsAsync(
+			Game game,
+			List<GamePlayer> activePlayers,
+			string currentPhase,
+			DateTimeOffset now,
+			CancellationToken cancellationToken)
 		{
-					nameof(Phases.FourthStreet),
-					nameof(Phases.FifthStreet),
-					nameof(Phases.SixthStreet),
-					nameof(Phases.SeventhStreet)
-				};
-
-		// Find which streets still need to be dealt
-		var startIndex = Array.IndexOf(streetOrder, currentPhase);
-		if (startIndex < 0)
-		{
-			// Already past all streets or not a street phase
-			return;
-		}
-
-		// Get players who haven't folded (they may be all-in)
-		var playersToReceiveCards = activePlayers.Where(p => !p.HasFolded).OrderBy(p => p.SeatPosition).ToList();
-
-		// Load remaining deck cards
-		var deckCards = await context.GameCards
-			.Where(gc => gc.GameId == game.Id &&
-						 gc.HandNumber == game.CurrentHandNumber &&
-						 gc.Location == CardLocation.Deck)
-			.OrderBy(gc => gc.DealOrder)
-			.ToListAsync(cancellationToken);
-
-		var deckIndex = 0;
-
-		// Deal cards for each remaining street
-		for (var streetIdx = startIndex; streetIdx < streetOrder.Length; streetIdx++)
-		{
-			var street = streetOrder[streetIdx];
-
-			foreach (var player in playersToReceiveCards)
+			// Define the street order for Seven Card Stud
+			var streetOrder = new[]
 			{
-				if (deckIndex >= deckCards.Count)
-				{
-					logger.LogWarning(
-						"Not enough cards in deck to deal remaining streets for game {GameId}",
-						game.Id);
-					break;
-				}
+						nameof(Phases.FourthStreet),
+						nameof(Phases.FifthStreet),
+						nameof(Phases.SixthStreet),
+						nameof(Phases.SeventhStreet)
+					};
 
-				var existingCardCount = await context.GameCards
-					.CountAsync(gc => gc.GamePlayerId == player.Id &&
-									  gc.HandNumber == game.CurrentHandNumber &&
-									  gc.Location != CardLocation.Deck &&
-									  !gc.IsDiscarded, cancellationToken);
-
-				var playerDealOrder = existingCardCount + 1;
-				var gameCard = deckCards[deckIndex++];
-
-				// 7th street is a hole card, all others are board cards
-				var location = street == nameof(Phases.SeventhStreet) ? CardLocation.Hole : CardLocation.Board;
-				var isVisible = street != nameof(Phases.SeventhStreet);
-
-				gameCard.GamePlayerId = player.Id;
-				gameCard.Location = location;
-				gameCard.DealOrder = playerDealOrder;
-				gameCard.IsVisible = isVisible;
-				gameCard.DealtAt = now;
-				gameCard.DealtAtPhase = street;
+			// Find which streets still need to be dealt
+			var startIndex = Array.IndexOf(streetOrder, currentPhase);
+			if (startIndex < 0)
+			{
+				// Already past all streets or not a street phase
+				return;
 			}
 
+			// Get players who haven't folded (they may be all-in)
+			var playersToReceiveCards = activePlayers.Where(p => !p.HasFolded).OrderBy(p => p.SeatPosition).ToList();
+
+			// Load remaining deck cards
+			var deckCards = await context.GameCards
+				.Where(gc => gc.GameId == game.Id &&
+							 gc.HandNumber == game.CurrentHandNumber &&
+							 gc.Location == CardLocation.Deck)
+				.OrderBy(gc => gc.DealOrder)
+				.ToListAsync(cancellationToken);
+
+			var deckIndex = 0;
+			var dealtStreets = new List<string>();
+
+			// Deal cards for each remaining street
+			for (var streetIdx = startIndex; streetIdx < streetOrder.Length; streetIdx++)
+			{
+				var street = streetOrder[streetIdx];
+				dealtStreets.Add(street);
+
+				foreach (var player in playersToReceiveCards)
+				{
+					if (deckIndex >= deckCards.Count)
+					{
+						logger.LogWarning(
+							"Not enough cards in deck to deal remaining streets for game {GameId}",
+							game.Id);
+						break;
+					}
+
+					var existingCardCount = await context.GameCards
+						.CountAsync(gc => gc.GamePlayerId == player.Id &&
+										  gc.HandNumber == game.CurrentHandNumber &&
+										  gc.Location != CardLocation.Deck &&
+										  !gc.IsDiscarded, cancellationToken);
+
+					var playerDealOrder = existingCardCount + 1;
+					var gameCard = deckCards[deckIndex++];
+
+					// 7th street is a hole card, all others are board cards
+					var location = street == nameof(Phases.SeventhStreet) ? CardLocation.Hole : CardLocation.Board;
+					var isVisible = street != nameof(Phases.SeventhStreet);
+
+					gameCard.GamePlayerId = player.Id;
+					gameCard.Location = location;
+					gameCard.DealOrder = playerDealOrder;
+					gameCard.IsVisible = isVisible;
+					gameCard.DealtAt = now;
+					gameCard.DealtAtPhase = street;
+				}
+
+				logger.LogInformation(
+					"Dealt {Street} cards without betting (all players all-in) for game {GameId}",
+					street, game.Id);
+			}
+
+			// Store runout information in GameSettings for client-side animation
+			var existingSettings = string.IsNullOrEmpty(game.GameSettings) 
+				? new Dictionary<string, object>() 
+				: JsonSerializer.Deserialize<Dictionary<string, object>>(game.GameSettings) ?? new Dictionary<string, object>();
+
+			existingSettings["allInRunout"] = true;
+			existingSettings["runoutStreets"] = dealtStreets;
+			existingSettings["runoutHandNumber"] = game.CurrentHandNumber;
+			existingSettings["runoutTimestamp"] = now.ToString("O");
+
+			game.GameSettings = JsonSerializer.Serialize(existingSettings);
+
+			// Update game phase to Showdown
+			game.CurrentPhase = nameof(Phases.Showdown);
+			game.CurrentPlayerIndex = -1;
+			game.UpdatedAt = now;
+
 			logger.LogInformation(
-				"Dealt {Street} cards without betting (all players all-in) for game {GameId}",
-				street, game.Id);
+				"All remaining streets dealt ({Streets}). Moving to Showdown for game {GameId}",
+				string.Join(", ", dealtStreets), game.Id);
 		}
-
-		// Update game phase to Showdown
-		game.CurrentPhase = nameof(Phases.Showdown);
-		game.CurrentPlayerIndex = -1;
-		game.UpdatedAt = now;
-
-		logger.LogInformation(
-			"All remaining streets dealt. Moving to Showdown for game {GameId}",
-			game.Id);
 	}
-}
 
