@@ -12,7 +12,7 @@
 - [ ] Kings and Lows - Should make it obvious when someone dropped
 - [ ] Kings and Lows - Things happen too fast
 
-- [ ] SCS - when all players go all in - still need to draw cards
+- [x] SCS - when all players go all in - still need to draw cards
 - [ ] SCS - when a player has no chips, they're still getting dealt and can take action
 - [ ] SCS - odds should calculate based on future cards
 
