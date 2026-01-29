@@ -176,8 +176,8 @@
             }
         </div>
 
-        <!-- Action Panel (only shown when it's player's turn during betting phase) -->
-        @if (_isPlayerTurn && IsBettingPhase)
+        <!-- Action Panel (only shown when it's player's turn during betting phase and player has cards) -->
+        @if (_isPlayerTurn && IsBettingPhase && CurrentPlayerHandCards.Count > 0)
         {
             <ActionPanel LegalActions="@_legalActions" MinBet="@_currentMinBet" MaxBet="@_currentMaxBet"
                          CurrentBetToCall="@_currentBetToCall" PlayerChips="@_playerChips"
@@ -392,6 +392,9 @@
     private bool _isReconnecting;
 
     private bool _isLoading = true;
+
+    // Continuous play constants (must match ContinuousPlayBackgroundService)
+    private const int ContinuousPlayResultsDisplayDurationSeconds = 8;
 
     // Table info
     private int _ante = 5;
@@ -1954,6 +1957,14 @@
         _showdownResult = showdownResponse.Content;
         _showShowdownOverlay = true;
         Logger.LogDebug("TryLoadShowdownAsync: Set _showShowdownOverlay=true, _showdownResult loaded");
+
+        // Initialize countdown timer immediately after successful showdown
+        // The SignalR broadcast will also arrive with the updated state, but we start
+        // the timer proactively to avoid race conditions where the UI shows the overlay
+        // without a countdown.
+        _isResultsPhase = true;
+        _secondsUntilNextHand = ContinuousPlayResultsDisplayDurationSeconds;
+        StartCountdownTimer();
 
         if (string.IsNullOrWhiteSpace(_loggedInUserEmail) && string.IsNullOrWhiteSpace(_currentPlayerName))
         {

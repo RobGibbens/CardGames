@@ -551,12 +551,11 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 						 gp.LeftAtHandNumber == -1)
 			.ToList();
 
-		// Auto-sit-out players with insufficient chips
+		// Auto-sit-out players with insufficient chips (including 0 chips)
 		var insufficientChipPlayers = game.GamePlayers
 			.Where(gp => gp.Status == GamePlayerStatus.Active &&
 						 !gp.IsSittingOut &&
-						 gp.ChipStack < ante &&
-						 gp.ChipStack > 0 &&
+						 (gp.ChipStack <= 0 || (ante > 0 && gp.ChipStack < ante)) &&
 						 gp.LeftAtHandNumber == -1)
 			.ToList();
 

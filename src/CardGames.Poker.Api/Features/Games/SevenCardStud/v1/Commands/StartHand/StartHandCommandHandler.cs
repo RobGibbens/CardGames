@@ -68,13 +68,12 @@ public class StartHandCommandHandler(CardsDbContext context)
 			player.PendingChipsToAdd = 0;
 		}
 
-		// 4. Auto-sit-out players with insufficient chips for the ante
+		// 4. Auto-sit-out players with insufficient chips for the ante (including 0 chips)
 		var ante = game.Ante ?? 0;
 		var playersWithInsufficientChips = game.GamePlayers
 			.Where(gp => gp.Status == GamePlayerStatus.Active &&
 						 !gp.IsSittingOut &&
-						 gp.ChipStack > 0 &&
-						 gp.ChipStack < ante)
+						 (gp.ChipStack <= 0 || (ante > 0 && gp.ChipStack < ante)))
 			.ToList();
 
 		foreach (var player in playersWithInsufficientChips)
@@ -82,7 +81,7 @@ public class StartHandCommandHandler(CardsDbContext context)
 			player.IsSittingOut = true;
 		}
 
-		// 4. Get eligible players (active, not sitting out, chips >= ante or ante is 0)
+		// 5. Get eligible players (active, not sitting out, chips >= ante or ante is 0)
 		var eligiblePlayers = game.GamePlayers
 			.Where(gp => gp.Status == GamePlayerStatus.Active &&
 						 !gp.IsSittingOut &&
@@ -98,7 +97,7 @@ public class StartHandCommandHandler(CardsDbContext context)
 			};
 		}
 
-		// 5. Reset player states for new hand (mirrors SevenCardStudGame.StartHand)
+		// 6. Reset player states for new hand (mirrors SevenCardStudGame.StartHand)
 		foreach (var gamePlayer in game.GamePlayers.Where(gp => gp.Status == GamePlayerStatus.Active))
 		{
 			gamePlayer.CurrentBet = 0;
