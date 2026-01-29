@@ -42,7 +42,7 @@
                     IsCurrentActor="@(seat.SeatIndex == CurrentActorSeatIndex)"
                     IsCurrentPlayer="@(seat.SeatIndex == CurrentPlayerSeatIndex)"
                     IsSeatSelectionDisabledForCurrentUser="@(DisableSeatSelectionForCurrentUser && !seat.IsOccupied)"
-                    ShowCards="@(CurrentPhase != GamePhase.WaitingForPlayers.ToString() && CurrentPhase != GamePhase.WaitingToStart.ToString() && seat.Cards.Count > 0)"
+                    ShowCards="@(!IsPausedForChipCheck && CurrentPhase != GamePhase.WaitingForPlayers.ToString() && CurrentPhase != GamePhase.WaitingToStart.ToString() && seat.Cards.Count > 0)"
                     GameTypeCode="@GameTypeCode" />
             </div>
         }
@@ -76,6 +76,9 @@
 
     [Parameter]
     public bool DisableSeatSelectionForCurrentUser { get; set; }
+
+    [Parameter]
+    public bool IsPausedForChipCheck { get; set; }
 
     [Parameter]
     public EventCallback<int> OnSeatClick { get; set; }

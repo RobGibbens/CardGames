@@ -111,4 +111,66 @@ public class WildCardRulesTests
         wildCards.Should().Contain(c => c.Symbol == Symbol.King && c.Suit == Suit.Diamonds);
         wildCards.Should().Contain(c => c.Symbol == Symbol.Five);
     }
+
+    [Fact]
+    public void DetermineWildCardsWithAceLow_Treats_Ace_As_Lowest()
+    {
+        var rules = new WildCardRules(kingRequired: false);
+        var hand = "Ah 6d 7c 8s 9h".ToCards();
+
+        var wildCards = rules.DetermineWildCardsWithAceLow(hand);
+
+        wildCards.Should().HaveCount(1);
+        wildCards.Should().Contain(c => c.Symbol == Symbol.Ace);
+    }
+
+    [Fact]
+    public void DetermineWildCards_Treats_Ace_As_High()
+    {
+        var rules = new WildCardRules(kingRequired: false);
+        var hand = "Ah 6d 7c 8s 9h".ToCards();
+
+        var wildCards = rules.DetermineWildCards(hand);
+
+        wildCards.Should().HaveCount(1);
+        wildCards.Should().Contain(c => c.Symbol == Symbol.Six);
+    }
+
+    [Fact]
+    public void GetAllPossibleWildCardSets_Returns_Both_When_Ace_Present()
+    {
+        var rules = new WildCardRules(kingRequired: false);
+        var hand = "Ah 6d 7c 8s 9h".ToCards();
+
+        var wildCardSets = rules.GetAllPossibleWildCardSets(hand);
+
+        wildCardSets.Should().HaveCount(2);
+        wildCardSets[0].Should().Contain(c => c.Symbol == Symbol.Six);
+        wildCardSets[1].Should().Contain(c => c.Symbol == Symbol.Ace);
+    }
+
+    [Fact]
+    public void GetAllPossibleWildCardSets_Returns_One_When_No_Ace()
+    {
+        var rules = new WildCardRules(kingRequired: false);
+        var hand = "2h 6d 7c 8s 9h".ToCards();
+
+        var wildCardSets = rules.GetAllPossibleWildCardSets(hand);
+
+        wildCardSets.Should().HaveCount(1);
+        wildCardSets[0].Should().Contain(c => c.Symbol == Symbol.Deuce);
+    }
+
+    [Fact]
+    public void GetAllPossibleWildCardSets_Returns_One_When_Ace_And_Low_Are_Same()
+    {
+        // When only Ace is in hand and no other low cards differ between scenarios
+        var rules = new WildCardRules(kingRequired: false);
+        var hand = "Ah Ad 7c 8s 9h".ToCards();
+
+        var wildCardSets = rules.GetAllPossibleWildCardSets(hand);
+
+        // Ace-high: 7 is low, Ace-low: Ace is low - these are different
+        wildCardSets.Should().HaveCount(2);
+    }
 }

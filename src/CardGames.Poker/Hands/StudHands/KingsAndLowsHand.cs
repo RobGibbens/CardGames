@@ -17,8 +17,18 @@ public class KingsAndLowsHand : StudHand
     private IReadOnlyCollection<Card> _evaluatedBestCards;
     private bool _evaluated;
 
-    public IReadOnlyCollection<Card> WildCards => _wildCards ??= DetermineWildCards();
-    
+    /// <summary>
+    /// Gets the wild cards in this hand (using the optimal Ace evaluation).
+    /// </summary>
+    public IReadOnlyCollection<Card> WildCards
+    {
+        get
+        {
+            EvaluateIfNeeded();
+            return _wildCards;
+        }
+    }
+
     /// <summary>
     /// Gets the evaluated best 5-card hand after applying wild cards.
     /// This represents what the hand would look like if wild cards were substituted
@@ -52,9 +62,6 @@ public class KingsAndLowsHand : StudHand
         _wildCardRules = wildCardRules;
     }
 
-    private IReadOnlyCollection<Card> DetermineWildCards()
-        => _wildCardRules.DetermineWildCards(Cards);
-
     protected override long CalculateStrength()
     {
         EvaluateIfNeeded();
@@ -76,30 +83,58 @@ public class KingsAndLowsHand : StudHand
 
         _evaluated = true;
 
-        if (!WildCards.Any())
+        // Get all possible wild card sets (Ace-high and Ace-low if applicable)
+        var wildCardSets = _wildCardRules.GetAllPossibleWildCardSets(Cards);
+
+        HandType bestType = HandType.Incomplete;
+        long bestStrength = 0;
+        IReadOnlyCollection<Card> bestCards = Cards.Take(5).ToList();
+        IReadOnlyCollection<Card> bestWildCards = Array.Empty<Card>();
+
+        foreach (var wildCards in wildCardSets)
         {
-            _evaluatedType = base.DetermineType();
-            _evaluatedStrength = base.CalculateStrength();
-            // Find the best 5-card hand from all possible hands
-            _evaluatedBestCards = FindBestFiveCardHand();
-            return;
+            HandType type;
+            long strength;
+            IReadOnlyCollection<Card> evaluatedCards;
+
+            if (!wildCards.Any())
+            {
+                // Calculate type and strength directly without going through virtual properties
+                // to avoid circular dependency during evaluation
+                var handsAndTypes = PossibleHands()
+                    .Select(hand => new { hand, handType = HandTypeDetermination.DetermineHandType(hand) })
+                    .ToList();
+
+                type = HandStrength.GetEffectiveType(handsAndTypes.Select(pair => pair.handType), Ranking);
+                strength = handsAndTypes
+                    .Where(pair => pair.handType == type)
+                    .Select(pair => HandStrength.Calculate(pair.hand.ToList(), type, Ranking))
+                    .Max();
+                evaluatedCards = handsAndTypes
+                    .Where(pair => pair.handType == type)
+                    .OrderByDescending(pair => HandStrength.Calculate(pair.hand.ToList(), type, Ranking))
+                    .First()
+                    .hand
+                    .ToList();
+            }
+            else
+            {
+                (type, strength, evaluatedCards) = WildCardHandEvaluator.EvaluateBestHand(
+                    Cards, wildCards, Ranking);
+            }
+
+            if (strength > bestStrength)
+            {
+                bestType = type;
+                bestStrength = strength;
+                bestCards = evaluatedCards;
+                bestWildCards = wildCards;
+            }
         }
 
-        var (type, strength, evaluatedCards) = WildCardHandEvaluator.EvaluateBestHand(
-            Cards, WildCards, Ranking);
-        _evaluatedType = type;
-        _evaluatedStrength = strength;
-        _evaluatedBestCards = evaluatedCards;
-    }
-    
-    private IReadOnlyCollection<Card> FindBestFiveCardHand()
-    {
-        return PossibleHands()
-            .Select(hand => new { hand, type = HandTypeDetermination.DetermineHandType(hand) })
-            .Where(pair => pair.type == Type)
-            .OrderByDescending(pair => HandStrength.Calculate(pair.hand.ToList(), pair.type, Ranking))
-            .First()
-            .hand
-            .ToList();
+        _evaluatedType = bestType;
+        _evaluatedStrength = bestStrength;
+        _evaluatedBestCards = bestCards;
+        _wildCards = bestWildCards;
     }
 }

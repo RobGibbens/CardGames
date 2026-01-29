@@ -138,7 +138,8 @@
                          CurrentActorSeatIndex="@_currentActorSeatIndex" DealerSeatIndex="@_dealerSeatIndex"
                          OnSeatClick="HandleSeatClickAsync" DisableSeatSelectionForCurrentUser="@_isSeated"
                          CurrentPlayerSeatIndex="@_currentPlayerSeatIndex"
-                         GameTypeCode="@_gameTypeCode" />
+                         GameTypeCode="@_gameTypeCode"
+                         IsPausedForChipCheck="@_isPausedForChipCheck" />
 
             <!-- Dashboard Panel (left side) -->
             @if (_isSeated)

@@ -11,6 +11,7 @@ namespace CardGames.Poker.Hands.DrawHands;
 /// <summary>
 /// A five-card draw hand for Kings and Lows variant.
 /// Wild cards: All Kings and all cards with the lowest value in the hand (excluding Kings).
+/// Aces can be treated as low (value 1) when it produces a better hand.
 /// </summary>
 public sealed class KingsAndLowsDrawHand : FiveCardHand
 {
@@ -22,9 +23,16 @@ public sealed class KingsAndLowsDrawHand : FiveCardHand
     private bool _evaluated;
 
     /// <summary>
-    /// Gets the wild cards in this hand.
+    /// Gets the wild cards in this hand (using the optimal Ace evaluation).
     /// </summary>
-    public IReadOnlyCollection<Card> WildCards => _wildCards ??= DetermineWildCards();
+    public IReadOnlyCollection<Card> WildCards
+    {
+        get
+        {
+            EvaluateIfNeeded();
+            return _wildCards;
+        }
+    }
 
     /// <summary>
     /// Gets the evaluated best 5-card hand after applying wild card substitutions.
@@ -50,9 +58,6 @@ public sealed class KingsAndLowsDrawHand : FiveCardHand
         _wildCardRules = new WildCardRules(kingRequired: false);
     }
 
-    private IReadOnlyCollection<Card> DetermineWildCards()
-        => _wildCardRules.DetermineWildCards(Cards);
-
     protected override long CalculateStrength()
     {
         EvaluateIfNeeded();
@@ -74,21 +79,47 @@ public sealed class KingsAndLowsDrawHand : FiveCardHand
 
         _evaluated = true;
 
-        if (!WildCards.Any())
+        // Get all possible wild card sets (Ace-high and Ace-low if applicable)
+        var wildCardSets = _wildCardRules.GetAllPossibleWildCardSets(Cards);
+
+        HandType bestType = HandType.Incomplete;
+        long bestStrength = 0;
+        IReadOnlyCollection<Card> bestCards = Cards;
+        IReadOnlyCollection<Card> bestWildCards = Array.Empty<Card>();
+
+        foreach (var wildCards in wildCardSets)
         {
-            // No wild cards - use standard evaluation
-            _evaluatedType = HandTypeDetermination.DetermineHandType(Cards);
-            _evaluatedStrength = HandStrength.Calculate(Cards.ToList(), _evaluatedType, Ranking);
-            _evaluatedBestCards = Cards;
-            return;
+            HandType type;
+            long strength;
+            IReadOnlyCollection<Card> evaluatedCards;
+
+            if (!wildCards.Any())
+            {
+                // No wild cards - use standard evaluation
+                type = HandTypeDetermination.DetermineHandType(Cards);
+                strength = HandStrength.Calculate(Cards.ToList(), type, Ranking);
+                evaluatedCards = Cards;
+            }
+            else
+            {
+                // Use wild card evaluator for hands with wild cards
+                (type, strength, evaluatedCards) = WildCardHandEvaluator.EvaluateBestHand(
+                    Cards, wildCards, Ranking);
+            }
+
+            if (strength > bestStrength)
+            {
+                bestType = type;
+                bestStrength = strength;
+                bestCards = evaluatedCards;
+                bestWildCards = wildCards;
+            }
         }
 
-        // Use wild card evaluator for hands with wild cards
-        var (type, strength, evaluatedCards) = WildCardHandEvaluator.EvaluateBestHand(
-            Cards, WildCards, Ranking);
-        _evaluatedType = type;
-        _evaluatedStrength = strength;
-        _evaluatedBestCards = evaluatedCards;
+        _evaluatedType = bestType;
+        _evaluatedStrength = bestStrength;
+        _evaluatedBestCards = bestCards;
+        _wildCards = bestWildCards;
     }
 
     protected override IEnumerable<IReadOnlyCollection<Card>> PossibleHands()

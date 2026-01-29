@@ -107,4 +107,39 @@ public class KingsAndLowsHandTests
         hand.WildCards.Should().HaveCount(2);
         hand.WildCards.Should().OnlyContain(c => c.Symbol == Symbol.Deuce);
     }
+
+    [Fact]
+    public void Ace_Treated_As_Low_When_It_Makes_Better_Hand()
+    {
+        // Hand: 6h, 7d, 8c, 9s, Ah
+        // If Ace is HIGH (14): 6 is lowest/wild, hand is 7,8,9,A with one wild - not a straight
+        // If Ace is LOW (1): Ace is lowest/wild, hand is 6,7,8,9 with one wild - makes a 10-high straight
+        var holeCards = "6h 7d".ToCards();
+        var openCards = "8c 9s".ToCards();
+        var downCard = "Ah".ToCard();
+        var rules = new WildCardRules(kingRequired: false);
+
+        var hand = new KingsAndLowsHand(holeCards, openCards, downCard, rules);
+
+        hand.Type.Should().Be(HandType.Straight);
+        hand.WildCards.Should().Contain(c => c.Symbol == Symbol.Ace);
+    }
+
+    [Fact]
+    public void Ace_Treated_As_High_When_It_Makes_Better_Hand()
+    {
+        // Hand: Ah, Ad, Ac, As, 2h with 7 cards for stud
+        // If Ace is HIGH: 2 is lowest/wild, hand is A,A,A,A + 1 wild - Five of a Kind Aces
+        // If Ace is LOW: Aces are lowest/wild, hand is 2 with Ace wilds - worse (would be quads at best)
+        var holeCards = "Ah Ad".ToCards();
+        var openCards = "Ac As 2h 3s".ToCards();
+        var downCard = "4c".ToCard();
+        var rules = new WildCardRules(kingRequired: false);
+
+        var hand = new KingsAndLowsHand(holeCards, openCards, downCard, rules);
+
+        // With Ace high: 2h is wild, 4 Aces + 1 wild = Five of a Kind Aces
+        hand.Type.Should().Be(HandType.FiveOfAKind);
+        hand.WildCards.Should().Contain(c => c.Symbol == Symbol.Deuce);
+    }
 }

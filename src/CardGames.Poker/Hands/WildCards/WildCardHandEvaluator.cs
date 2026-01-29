@@ -136,6 +136,8 @@ public static class WildCardHandEvaluator
         foreach (var suit in new[] { Suit.Spades, Suit.Hearts, Suit.Diamonds, Suit.Clubs })
         {
             var suitCards = naturalCards.Where(c => c.Suit == suit).ToList();
+
+            // Check high straights (A-high down to 6-high)
             for (int highValue = 14; highValue >= 6; highValue--)
             {
                 var needed = Enumerable.Range(highValue - 4, 5).ToList();
@@ -145,6 +147,24 @@ public static class WildCardHandEvaluator
                     var cards = needed.Select(v => new Card(suit, v)).ToList();
                     return (HandType.StraightFlush, HandStrength.Calculate(cards, HandType.StraightFlush, ranking), cards);
                 }
+            }
+
+            // Check wheel (A-2-3-4-5) - Ace counts as 1
+            var wheelValues = new[] { 14, 2, 3, 4, 5 }; // Ace represented as 14 in the card, but used as 1
+            var wheelPresent = suitCards.Count(c => wheelValues.Contains(c.Value));
+            if (wheelPresent + wildCount >= 5)
+            {
+                // For wheel, we use values 1-5 to represent A-2-3-4-5 for strength calculation
+                // but the cards themselves still have Ace as 14
+                var cards = new List<Card>
+                {
+                    new Card(suit, 5),
+                    new Card(suit, 4),
+                    new Card(suit, 3),
+                    new Card(suit, 2),
+                    new Card(suit, 14) // Ace
+                };
+                return (HandType.StraightFlush, HandStrength.Calculate(cards, HandType.StraightFlush, ranking), cards);
             }
         }
         return null;
@@ -270,7 +290,8 @@ public static class WildCardHandEvaluator
         HandTypeStrengthRanking ranking)
     {
         var distinctValues = naturalCards.Select(c => c.Value).Distinct().ToHashSet();
-        
+
+        // Check high straights (A-high down to 6-high)
         for (int highValue = 14; highValue >= 6; highValue--)
         {
             var needed = Enumerable.Range(highValue - 4, 5).ToList();
@@ -283,6 +304,25 @@ public static class WildCardHandEvaluator
                 return (HandType.Straight, HandStrength.Calculate(cards, HandType.Straight, ranking), cards);
             }
         }
+
+        // Check wheel (A-2-3-4-5) - Ace counts as 1
+        var wheelValues = new[] { 14, 2, 3, 4, 5 }; // Ace represented as 14 in the card, but used as 1
+        var wheelPresent = wheelValues.Count(v => distinctValues.Contains(v));
+        if (wheelPresent + wildCount >= 5)
+        {
+            // Use alternating suits to avoid creating a flush
+            var suits = new[] { Suit.Spades, Suit.Hearts, Suit.Diamonds, Suit.Clubs };
+            var cards = new List<Card>
+            {
+                new Card(suits[0], 5),
+                new Card(suits[1], 4),
+                new Card(suits[0], 3),
+                new Card(suits[1], 2),
+                new Card(suits[0], 14) // Ace
+            };
+            return (HandType.Straight, HandStrength.Calculate(cards, HandType.Straight, ranking), cards);
+        }
+
         return null;
     }
 
