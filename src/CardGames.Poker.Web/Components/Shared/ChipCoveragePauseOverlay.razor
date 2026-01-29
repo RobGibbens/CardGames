@@ -1,0 +1,211 @@
+@namespace CardGames.Poker.Web.Components.Shared
+
+@using CardGames.Contracts.SignalR
+@using CardGames.Contracts.AddChips
+@using CardGames.Poker.Api.Clients
+
+<div class="table-overlay chip-coverage-pause-overlay">
+    <div class="overlay-content">
+        <div class="overlay-icon"><i class="fa-solid fa-coins"></i></div>
+        <h2>Not Enough Chips</h2>
+
+        <div class="pot-info">
+            <span class="pot-label">Pot to cover:</span>
+            <span class="pot-value">@PotAmount.ToString("N0") chips</span>
+        </div>
+
+        <div class="your-chips-info">
+            <span class="your-chips-label">Your chips:</span>
+            <span class="your-chips-value">@CurrentPlayerChips.ToString("N0") chips</span>
+        </div>
+
+        <div class="chips-needed-info">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <span>You need <strong>@ChipsNeeded.ToString("N0")</strong> more chips to cover the pot!</span>
+        </div>
+
+        <div class="timer-section">
+            <div class="timer-display">
+                <span class="timer-label">Time remaining:</span>
+                <span class="timer-value @(SecondsRemaining <= 30 ? "urgent" : "")">
+                    @TimeSpan.FromSeconds(SecondsRemaining).ToString(@"m\:ss")
+                </span>
+            </div>
+            <div class="timer-warning">
+                If you don't add chips, you'll automatically drop from the next hand.
+            </div>
+        </div>
+
+        <!-- Add Chips Form -->
+        <div class="add-chips-section">
+            <div class="add-chips-form">
+                <label for="chip-amount">Add Chips:</label>
+                <div class="input-group">
+                    <input type="number" 
+                           id="chip-amount" 
+                           class="form-control chip-input" 
+                           @bind="_chipAmount" 
+                           min="@ChipsNeeded" 
+                           step="10" 
+                           placeholder="@ChipsNeeded" />
+                    <button class="btn btn-primary add-chips-btn" 
+                            @onclick="AddChipsAsync" 
+                            disabled="@(_isSubmitting || _chipAmount < ChipsNeeded)">
+                        @if (_isSubmitting)
+                        {
+                            <span class="spinner"></span>
+                            <span>Adding...</span>
+                        }
+                        else
+                        {
+                            <i class="fa-solid fa-plus"></i>
+                            <span>Add Chips</span>
+                        }
+                    </button>
+                </div>
+                <div class="quick-amounts">
+                    <button class="quick-amount-btn" @onclick="() => SetAmount(ChipsNeeded)">Min (@ChipsNeeded)</button>
+                    <button class="quick-amount-btn" @onclick="() => SetAmount(50)">+50</button>
+                    <button class="quick-amount-btn" @onclick="() => SetAmount(100)">+100</button>
+                    <button class="quick-amount-btn" @onclick="() => SetAmount(200)">+200</button>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(_message))
+            {
+                <div class="message @_messageType">
+                    <i class="fa-solid @(_messageType == "success" ? "fa-circle-check" : "fa-circle-exclamation")"></i>
+                    @_message
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// The current pot amount that players need to cover.
+    /// </summary>
+    [Parameter]
+    public int PotAmount { get; set; }
+
+    /// <summary>
+    /// List of players who need to add chips.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<ShortPlayerInfo> ShortPlayers { get; set; } = [];
+
+    /// <summary>
+    /// Whether the current player is short on chips.
+    /// </summary>
+    [Parameter]
+    public bool IsCurrentPlayerShort { get; set; }
+
+    /// <summary>
+    /// The current player's chip count (if they are short).
+    /// </summary>
+    [Parameter]
+    public int CurrentPlayerChips { get; set; }
+
+    /// <summary>
+    /// The number of seconds remaining on the pause timer.
+    /// </summary>
+    [Parameter]
+    public int SecondsRemaining { get; set; }
+
+    /// <summary>
+    /// The game ID for adding chips.
+    /// </summary>
+    [Parameter]
+    public Guid GameId { get; set; }
+
+    /// <summary>
+    /// The player ID for adding chips.
+    /// </summary>
+    [Parameter]
+    public Guid PlayerId { get; set; }
+
+    /// <summary>
+    /// Callback when chips are successfully added.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnChipsAdded { get; set; }
+
+    [Inject]
+    private IGamesApi GamesApiClient { get; set; } = null!;
+
+    [Inject]
+    private ILogger<ChipCoveragePauseOverlay> Logger { get; set; } = null!;
+
+    private int _chipAmount;
+    private bool _isSubmitting;
+    private string? _message;
+    private string _messageType = "info";
+
+    /// <summary>
+    /// The number of additional chips the current player needs.
+    /// </summary>
+    private int ChipsNeeded => Math.Max(0, PotAmount - CurrentPlayerChips);
+
+    protected override void OnParametersSet()
+    {
+        // Initialize chip amount to the minimum needed if not set
+        if (_chipAmount < ChipsNeeded)
+        {
+            _chipAmount = ChipsNeeded;
+        }
+    }
+
+    private void SetAmount(int amount)
+    {
+        _chipAmount = Math.Max(amount, ChipsNeeded);
+    }
+
+    private async Task AddChipsAsync()
+    {
+        if (_chipAmount < ChipsNeeded)
+        {
+            _message = $"Please add at least {ChipsNeeded} chips to cover the pot.";
+            _messageType = "error";
+            return;
+        }
+
+        _isSubmitting = true;
+        _message = null;
+
+        try
+        {
+            var request = new AddChipsRequest { Amount = _chipAmount };
+            var result = await GamesApiClient.AddChipsAsync(GameId, PlayerId, request);
+
+            if (result.IsSuccessStatusCode && result.Content != null)
+            {
+                _message = $"Added {_chipAmount} chips! You're ready for the next hand.";
+                _messageType = "success";
+
+                // Notify parent component
+                await OnChipsAdded.InvokeAsync();
+            }
+            else
+            {
+                _message = "Failed to add chips. Please try again.";
+                _messageType = "error";
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to add chips");
+            _message = "Failed to add chips. Please try again.";
+            _messageType = "error";
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    /// <summary>
+    /// Information about a player who is short on chips.
+    /// </summary>
+    public record ShortPlayerInfo(string PlayerName, int CurrentChips);
+}

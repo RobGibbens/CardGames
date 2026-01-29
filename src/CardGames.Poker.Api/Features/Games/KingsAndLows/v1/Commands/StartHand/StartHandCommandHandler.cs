@@ -23,9 +23,10 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 		var now = DateTimeOffset.UtcNow;
 
 		// 1. Load the game with its players
-		var game = await context.Games
-			.Include(g => g.GamePlayers)
-			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
+			var game = await context.Games
+				.Include(g => g.GamePlayers)
+					.ThenInclude(gp => gp.Player)
+				.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
 		{
@@ -108,7 +109,114 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 			};
 		}
 
-		// 5. Reset player states for new hand
+		// 5a. Calculate current pot to check chip coverage
+		// For Kings and Lows, players must be able to cover the pot in case they lose
+		// Query for unawarded pots - this includes pots created by AcknowledgePotMatch for the next hand
+		var unawardedPots = await context.Pots
+			.Where(p => p.GameId == game.Id && !p.IsAwarded)
+			.ToListAsync(cancellationToken);
+
+		var currentPotAmount = unawardedPots.Sum(p => p.Amount);
+
+		// Also check specifically for the pot for the upcoming hand (CurrentHandNumber + 1)
+		var nextHandPot = unawardedPots.FirstOrDefault(p => p.HandNumber == game.CurrentHandNumber + 1);
+
+		logger.LogInformation(
+			"[CHIP-CHECK] Game {GameId}, CurrentHandNumber={HandNumber}: Found {PotCount} unawarded pots with total amount {PotAmount}. NextHandPot exists={NextHandPotExists} with amount={NextHandPotAmount}. Pot details: {PotDetails}",
+			game.Id, game.CurrentHandNumber, unawardedPots.Count, currentPotAmount,
+			nextHandPot != null, nextHandPot?.Amount ?? 0,
+			string.Join("; ", unawardedPots.Select(p => $"HandNumber={p.HandNumber}, Amount={p.Amount}")));
+
+		// Log each eligible player's chip stack for debugging
+		foreach (var player in eligiblePlayers)
+		{
+			logger.LogInformation(
+				"[CHIP-CHECK] Game {GameId}: Player {PlayerName} (Seat {Seat}) has {ChipStack} chips, pot is {PotAmount}, CanCover={CanCover}",
+				game.Id, player.Player?.Name ?? "Unknown", player.SeatPosition, player.ChipStack, currentPotAmount, player.ChipStack >= currentPotAmount);
+		}
+
+		// Check if any eligible player cannot cover the pot
+		var playersNeedingChips = eligiblePlayers
+			.Where(p => p.ChipStack < currentPotAmount && !p.AutoDropOnDropOrStay)
+			.ToList();
+
+		logger.LogInformation(
+			"[CHIP-CHECK] Game {GameId}: {ShortPlayerCount} player(s) cannot cover the pot. ShortPlayers: {ShortPlayers}",
+			game.Id, playersNeedingChips.Count,
+			string.Join(", ", playersNeedingChips.Select(p => $"{p.Player?.Name ?? "Unknown"}({p.ChipStack})")));
+
+		// If the game is currently paused for chip check, check if we should resume or expire
+		if (game.IsPausedForChipCheck)
+		{
+			// Check if pause timer has expired
+			if (game.ChipCheckPauseEndsAt.HasValue && now >= game.ChipCheckPauseEndsAt.Value)
+			{
+				// Timer expired - mark short players for auto-drop
+				foreach (var shortPlayer in playersNeedingChips)
+				{
+					shortPlayer.AutoDropOnDropOrStay = true;
+					logger.LogInformation(
+						"Chip check pause expired: Player {PlayerId} at seat {SeatPosition} will auto-drop (chips: {ChipStack}, pot: {PotAmount})",
+						shortPlayer.PlayerId, shortPlayer.SeatPosition, shortPlayer.ChipStack, currentPotAmount);
+				}
+
+				// Clear pause state
+				game.IsPausedForChipCheck = false;
+				game.ChipCheckPauseStartedAt = null;
+				game.ChipCheckPauseEndsAt = null;
+				game.UpdatedAt = now;
+
+				// Re-evaluate eligible players after marking auto-drops
+				// Note: Auto-drop players can still play, they just auto-drop in DropOrStay phase
+			}
+			else
+			{
+				// Still within pause period - check if all players now have enough chips
+				var stillShort = eligiblePlayers.Any(p => p.ChipStack < currentPotAmount && !p.AutoDropOnDropOrStay);
+				if (!stillShort)
+				{
+					// All players now have enough chips - clear pause and continue
+					game.IsPausedForChipCheck = false;
+					game.ChipCheckPauseStartedAt = null;
+					game.ChipCheckPauseEndsAt = null;
+					game.UpdatedAt = now;
+					logger.LogInformation("All players now have sufficient chips, resuming game {GameId}", game.Id);
+				}
+				else
+				{
+					// Still paused - return early
+					await context.SaveChangesAsync(cancellationToken);
+					return new StartHandError
+					{
+						Message = "Game is paused waiting for players to add chips. Resume will occur automatically when all players have sufficient chips or after 2 minutes.",
+						Code = StartHandErrorCode.PausedForChipCheck
+					};
+				}
+			}
+		}
+		else if (currentPotAmount > 0 && playersNeedingChips.Count > 0)
+		{
+			// New chip shortage detected - initiate pause
+			game.IsPausedForChipCheck = true;
+			game.ChipCheckPauseStartedAt = now;
+			game.ChipCheckPauseEndsAt = now.AddMinutes(2);
+			game.UpdatedAt = now;
+
+			var shortPlayerNames = string.Join(", ", playersNeedingChips.Select(p => p.Player?.Name ?? $"Seat {p.SeatPosition}"));
+			logger.LogInformation(
+				"Chip check pause initiated for game {GameId}: {PlayerCount} player(s) cannot cover pot of {PotAmount}. Players: {PlayerNames}",
+				game.Id, playersNeedingChips.Count, currentPotAmount, shortPlayerNames);
+
+			await context.SaveChangesAsync(cancellationToken);
+
+			return new StartHandError
+			{
+				Message = $"Cannot start hand: {playersNeedingChips.Count} player(s) cannot cover the pot of {currentPotAmount} chips. Game is paused for 2 minutes to allow adding chips.",
+				Code = StartHandErrorCode.PausedForChipCheck
+			};
+		}
+
+		// 5b. Reset player states for new hand
 		foreach (var gamePlayer in game.GamePlayers.Where(gp => gp.Status == GamePlayerStatus.Active))
 		{
 			gamePlayer.CurrentBet = 0;

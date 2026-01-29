@@ -4,6 +4,7 @@ using CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.DeckDraw;
 using CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.DrawCards;
 using CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.DropOrStay;
 using CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.PerformShowdown;
+using CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.ResumeAfterChipCheck;
 using CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.StartHand;
 using SharpGrip.FluentValidation.AutoValidation.Endpoints.Extensions;
 
@@ -25,6 +26,7 @@ public static class V1
 			.MapDeckDraw()
 			.MapPerformShowdown()
 			.MapAcknowledgePotMatch()
+			.MapResumeAfterChipCheck()
 			;
 	}
 }

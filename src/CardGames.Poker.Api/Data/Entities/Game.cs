@@ -212,6 +212,25 @@ public class Game : EntityWithRowVersion
 	public string? DeletedByName { get; set; }
 
 	/// <summary>
+	/// Indicates whether the game is paused waiting for players to add chips.
+	/// When true, the game cannot proceed until all players have sufficient chips
+	/// to cover the current pot, or the pause timer expires.
+	/// </summary>
+	public bool IsPausedForChipCheck { get; set; }
+
+	/// <summary>
+	/// The date and time when the chip check pause was initiated.
+	/// Used to track the duration of the pause.
+	/// </summary>
+	public DateTimeOffset? ChipCheckPauseStartedAt { get; set; }
+
+	/// <summary>
+	/// The date and time when the chip check pause will expire.
+	/// After this time, players without sufficient chips will be auto-dropped.
+	/// </summary>
+	public DateTimeOffset? ChipCheckPauseEndsAt { get; set; }
+
+	/// <summary>
 	/// Navigation property for players in this game.
 	/// </summary>
 	public ICollection<GamePlayer> GamePlayers { get; set; } = [];

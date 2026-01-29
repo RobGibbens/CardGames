@@ -561,17 +561,97 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			.ToList();
 
 		foreach (var player in insufficientChipPlayers)
-		{
-			player.IsSittingOut = true;
-			_logger.LogInformation(
-				"Player {PlayerName} auto-sat-out due to insufficient chips ({Chips} < {Ante}) in game {GameId}",
-				player.Player?.Name ?? player.PlayerId.ToString(),
-				player.ChipStack,
-				ante,
-				game.Id);
-		}
+			{
+				player.IsSittingOut = true;
+				_logger.LogInformation(
+					"Player {PlayerName} auto-sat-out due to insufficient chips ({Chips} < {Ante}) in game {GameId}",
+					player.Player?.Name ?? player.PlayerId.ToString(),
+					player.ChipStack,
+					ante,
+					game.Id);
+			}
 
-		// Check if all players have left - end the game
+			// 3a. For Kings and Lows, check if any player cannot cover the current pot
+			var isKingsAndLowsGame = string.Equals(game.GameType?.Code, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase);
+			if (isKingsAndLowsGame)
+			{
+				// Calculate the pot amount for the upcoming hand
+				var currentPotAmount = await context.Pots
+					.Where(p => p.GameId == game.Id && !p.IsAwarded)
+					.SumAsync(p => p.Amount, cancellationToken);
+
+				_logger.LogInformation(
+					"[CHIP-CHECK-BG] Game {GameId}: Checking chip coverage. CurrentPot={PotAmount}, EligiblePlayers={PlayerCount}",
+					game.Id, currentPotAmount, eligiblePlayers.Count);
+
+				// Check if any eligible player cannot cover the pot
+				var playersNeedingChips = eligiblePlayers
+					.Where(p => p.ChipStack < currentPotAmount && !p.AutoDropOnDropOrStay)
+					.ToList();
+
+				if (currentPotAmount > 0 && playersNeedingChips.Count > 0)
+				{
+					// If game is already paused for chip check, check if timer expired
+					if (game.IsPausedForChipCheck)
+					{
+						if (game.ChipCheckPauseEndsAt.HasValue && now >= game.ChipCheckPauseEndsAt.Value)
+						{
+							// Timer expired - mark short players for auto-drop
+							foreach (var shortPlayer in playersNeedingChips)
+							{
+								shortPlayer.AutoDropOnDropOrStay = true;
+								_logger.LogInformation(
+									"[CHIP-CHECK-BG] Chip check pause expired: Player {PlayerName} at seat {Seat} will auto-drop (chips: {ChipStack}, pot: {PotAmount})",
+									shortPlayer.Player?.Name ?? "Unknown", shortPlayer.SeatPosition, shortPlayer.ChipStack, currentPotAmount);
+							}
+
+							// Clear pause state and continue with hand
+							game.IsPausedForChipCheck = false;
+							game.ChipCheckPauseStartedAt = null;
+							game.ChipCheckPauseEndsAt = null;
+							game.UpdatedAt = now;
+							await context.SaveChangesAsync(cancellationToken);
+						}
+						else
+						{
+							// Still within pause period - broadcast state and wait
+							_logger.LogInformation(
+								"[CHIP-CHECK-BG] Game {GameId} still paused for chip check. {Count} player(s) need chips. Ends at {EndTime}",
+								game.Id, playersNeedingChips.Count, game.ChipCheckPauseEndsAt);
+							await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
+							return; // Don't start the hand yet
+						}
+					}
+					else
+					{
+						// New chip shortage detected - initiate pause
+						game.IsPausedForChipCheck = true;
+						game.ChipCheckPauseStartedAt = now;
+						game.ChipCheckPauseEndsAt = now.AddMinutes(2);
+						game.UpdatedAt = now;
+
+						var shortPlayerNames = string.Join(", ", playersNeedingChips.Select(p => $"{p.Player?.Name ?? "Unknown"}({p.ChipStack})"));
+						_logger.LogWarning(
+							"[CHIP-CHECK-BG] Game {GameId}: Pausing for chip check. {PlayerCount} player(s) cannot cover pot of {PotAmount}. Players: {PlayerNames}",
+							game.Id, playersNeedingChips.Count, currentPotAmount, shortPlayerNames);
+
+						await context.SaveChangesAsync(cancellationToken);
+						await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
+						return; // Don't start the hand - wait for players to add chips
+					}
+				}
+				else if (game.IsPausedForChipCheck)
+				{
+					// All players now have enough chips - clear pause
+					game.IsPausedForChipCheck = false;
+					game.ChipCheckPauseStartedAt = null;
+					game.ChipCheckPauseEndsAt = null;
+					game.UpdatedAt = now;
+					_logger.LogInformation("[CHIP-CHECK-BG] Game {GameId}: All players now have sufficient chips, resuming", game.Id);
+				}
+			}
+
+			// Check if all players have left - end the game
 		var remainingPlayers = game.GamePlayers
 			.Where(gp => gp.Status == GamePlayerStatus.Active && gp.LeftAtHandNumber == -1)
 			.ToList();

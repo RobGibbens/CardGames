@@ -72,6 +72,46 @@ public sealed class ActionTimerService : IActionTimerService, IDisposable
     }
 
     /// <inheritdoc />
+    public void StartChipCheckPauseTimer(Guid gameId, int durationSeconds = IActionTimerService.DefaultChipCheckPauseDurationSeconds, Func<Guid, Task>? onExpired = null)
+    {
+        // Stop any existing timer for this game
+        StopTimer(gameId);
+
+        var state = new ActionTimerState
+        {
+            GameId = gameId,
+            PlayerSeatIndex = -1, // No specific player for chip check pause
+            DurationSeconds = durationSeconds,
+            StartedAtUtc = DateTimeOffset.UtcNow,
+            TimerType = ActionTimerType.ChipCheckPause
+        };
+
+        var timerState = new GameTimerState
+        {
+            State = state,
+            OnChipCheckExpired = onExpired
+        };
+
+        // Create the timer that ticks every second
+        var timer = new Timer(
+            callback: async _ => await OnTimerTickAsync(gameId),
+            state: null,
+            dueTime: TimeSpan.FromSeconds(1),
+            period: TimeSpan.FromSeconds(1));
+
+        timerState.Timer = timer;
+
+        _activeTimers[gameId] = timerState;
+
+        _logger.LogInformation(
+            "Started chip check pause timer for game {GameId}, duration {Duration}s",
+            gameId, durationSeconds);
+
+        // Broadcast initial timer state
+        _ = BroadcastTimerStateAsync(gameId, state);
+    }
+
+    /// <inheritdoc />
     public void StopTimer(Guid gameId)
     {
         if (_activeTimers.TryRemove(gameId, out var timerState))
@@ -118,14 +158,25 @@ public sealed class ActionTimerService : IActionTimerService, IDisposable
         if (secondsRemaining <= 0)
         {
             _logger.LogInformation(
-                "Action timer expired for game {GameId}, player seat {SeatIndex}",
-                gameId, state.PlayerSeatIndex);
+                "Action timer expired for game {GameId}, player seat {SeatIndex}, type {TimerType}",
+                gameId, state.PlayerSeatIndex, state.TimerType);
 
             // Stop the timer
             StopTimer(gameId);
 
-            // Invoke expiration callback
-            if (timerState.OnExpired is not null)
+            // Invoke appropriate expiration callback based on timer type
+            if (state.TimerType == ActionTimerType.ChipCheckPause && timerState.OnChipCheckExpired is not null)
+            {
+                try
+                {
+                    await timerState.OnChipCheckExpired(gameId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error in chip check timer expiration callback for game {GameId}", gameId);
+                }
+            }
+            else if (timerState.OnExpired is not null)
             {
                 try
                 {
@@ -210,5 +261,6 @@ public sealed class ActionTimerService : IActionTimerService, IDisposable
         public required ActionTimerState State { get; init; }
         public Timer? Timer { get; set; }
         public Func<Guid, int, Task>? OnExpired { get; init; }
+        public Func<Guid, Task>? OnChipCheckExpired { get; init; }
     }
 }
