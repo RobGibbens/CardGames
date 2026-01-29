@@ -158,11 +158,17 @@ public sealed record TableStatePublicDto
 					public ActionTimerStateDto? ActionTimer { get; init; }
 
 					/// <summary>
-					/// State for the all-in runout scenario (all players are all-in, remaining cards are being dealt).
-					/// Only populated when dealing remaining streets after all players go all-in.
-					/// </summary>
-					public AllInRunoutStateDto? AllInRunout { get; init; }
-				}
+						/// State for the all-in runout scenario (all players are all-in, remaining cards are being dealt).
+						/// Only populated when dealing remaining streets after all players go all-in.
+						/// </summary>
+						public AllInRunoutStateDto? AllInRunout { get; init; }
+
+						/// <summary>
+						/// State for the chip check pause (game is paused waiting for players to add chips).
+						/// Only populated when the game is paused for Kings and Lows pot coverage validation.
+						/// </summary>
+						public ChipCheckPauseStateDto? ChipCheckPause { get; init; }
+					}
 
 		/// <summary>
 		/// State of the action timer for the current player's turn.
@@ -633,4 +639,68 @@ public sealed record PlayerVsDeckStateDto
 		/// Whether the runout is complete and the showdown should begin.
 		/// </summary>
 		public bool IsComplete { get; init; }
+	}
+
+	/// <summary>
+	/// State for the chip check pause in Kings and Lows.
+	/// When a player cannot cover the pot, the game pauses to allow them to add chips.
+	/// </summary>
+	public sealed record ChipCheckPauseStateDto
+	{
+		/// <summary>
+		/// Whether the game is currently paused for chip check.
+		/// </summary>
+		public bool IsPaused { get; init; }
+
+		/// <summary>
+		/// The UTC timestamp when the pause started.
+		/// </summary>
+		public DateTimeOffset? PauseStartedAt { get; init; }
+
+		/// <summary>
+		/// The UTC timestamp when the pause will expire.
+		/// After this time, short players will be auto-dropped.
+		/// </summary>
+		public DateTimeOffset? PauseEndsAt { get; init; }
+
+		/// <summary>
+		/// The pot amount that players need to cover.
+		/// </summary>
+		public int PotAmountToCover { get; init; }
+
+		/// <summary>
+		/// List of players who are short on chips.
+		/// </summary>
+		public IReadOnlyList<ShortPlayerDto>? ShortPlayers { get; init; }
+	}
+
+	/// <summary>
+	/// Information about a player who is short on chips.
+	/// </summary>
+	public sealed record ShortPlayerDto
+	{
+		/// <summary>
+		/// The seat index of the player.
+		/// </summary>
+		public int SeatIndex { get; init; }
+
+		/// <summary>
+		/// The player's name.
+		/// </summary>
+		public required string PlayerName { get; init; }
+
+		/// <summary>
+		/// The player's first name, if available.
+		/// </summary>
+		public string? PlayerFirstName { get; init; }
+
+		/// <summary>
+		/// The player's current chip stack.
+		/// </summary>
+		public int CurrentChips { get; init; }
+
+		/// <summary>
+		/// The number of additional chips needed to cover the pot.
+		/// </summary>
+		public int ChipsNeeded { get; init; }
 	}

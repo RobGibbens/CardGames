@@ -11,6 +11,11 @@ public interface IActionTimerService
     const int DefaultTimerDurationSeconds = 60;
 
     /// <summary>
+    /// The default chip check pause duration in seconds (2 minutes).
+    /// </summary>
+    const int DefaultChipCheckPauseDurationSeconds = 120;
+
+    /// <summary>
     /// Starts or restarts the action timer for a game.
     /// </summary>
     /// <param name="gameId">The game ID.</param>
@@ -18,6 +23,15 @@ public interface IActionTimerService
     /// <param name="durationSeconds">The timer duration in seconds.</param>
     /// <param name="onExpired">Callback invoked when the timer expires.</param>
     void StartTimer(Guid gameId, int playerSeatIndex, int durationSeconds = DefaultTimerDurationSeconds, Func<Guid, int, Task>? onExpired = null);
+
+    /// <summary>
+    /// Starts a chip check pause timer for a game.
+    /// This timer is for game-level pauses when players need to add chips.
+    /// </summary>
+    /// <param name="gameId">The game ID.</param>
+    /// <param name="durationSeconds">The timer duration in seconds (default 2 minutes).</param>
+    /// <param name="onExpired">Callback invoked when the timer expires.</param>
+    void StartChipCheckPauseTimer(Guid gameId, int durationSeconds = DefaultChipCheckPauseDurationSeconds, Func<Guid, Task>? onExpired = null);
 
     /// <summary>
     /// Stops the action timer for a game.
@@ -52,8 +66,14 @@ public sealed record ActionTimerState
 
     /// <summary>
     /// The seat index of the player whose turn it is.
+    /// For chip check pause timers, this is -1.
     /// </summary>
     public required int PlayerSeatIndex { get; init; }
+
+    /// <summary>
+    /// The type of timer (PlayerAction or ChipCheckPause).
+    /// </summary>
+    public ActionTimerType TimerType { get; init; } = ActionTimerType.PlayerAction;
 
     /// <summary>
     /// The total duration of the timer in seconds.
@@ -82,4 +102,20 @@ public sealed record ActionTimerState
     /// Whether the timer has expired.
     /// </summary>
     public bool IsExpired => SecondsRemaining <= 0;
+}
+
+/// <summary>
+/// The type of action timer.
+/// </summary>
+public enum ActionTimerType
+{
+    /// <summary>
+    /// Timer for a player action (betting, drawing, etc.).
+    /// </summary>
+    PlayerAction,
+
+    /// <summary>
+    /// Timer for chip check pause (waiting for players to add chips).
+    /// </summary>
+    ChipCheckPause
 }

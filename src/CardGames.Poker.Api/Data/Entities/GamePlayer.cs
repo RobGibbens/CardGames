@@ -98,6 +98,12 @@ public class GamePlayer : EntityWithRowVersion
 	public DropOrStayDecision? DropOrStayDecision { get; set; }
 
 	/// <summary>
+	/// Indicates whether this player should automatically drop during the DropOrStay phase.
+	/// Set to true when a player fails to add sufficient chips during the chip check pause.
+	/// </summary>
+	public bool AutoDropOnDropOrStay { get; set; }
+
+	/// <summary>
 	/// Indicates whether the player has completed their draw in a draw phase.
 	/// </summary>
 	public bool HasDrawnThisRound { get; set; }

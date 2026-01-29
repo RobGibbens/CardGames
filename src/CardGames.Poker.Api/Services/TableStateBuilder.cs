@@ -103,58 +103,62 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				.FirstOrDefault(p => p.PhaseId.Equals(game.CurrentPhase, StringComparison.OrdinalIgnoreCase));
 		}
 
-			// Build Player vs Deck state (if applicable)
-			var playerVsDeck = await BuildPlayerVsDeckStateAsync(game, gamePlayers, userProfilesByEmail, cancellationToken);
+		// Build Player vs Deck state (if applicable)
+		var playerVsDeck = await BuildPlayerVsDeckStateAsync(game, gamePlayers, userProfilesByEmail, cancellationToken);
 
-			// Build All-In Runout state (if applicable)
-			var allInRunout = await BuildAllInRunoutStateAsync(game, gamePlayers, cancellationToken);
+		// Build All-In Runout state (if applicable)
+		var allInRunout = await BuildAllInRunoutStateAsync(game, gamePlayers, cancellationToken);
 
-			// Get action timer state
-			var actionTimerState = _actionTimerService.GetTimerState(gameId);
-			var actionTimer = actionTimerState is not null
-				? new ActionTimerStateDto
-				{
-					SecondsRemaining = actionTimerState.SecondsRemaining,
-					DurationSeconds = actionTimerState.DurationSeconds,
-					StartedAtUtc = actionTimerState.StartedAtUtc,
-					PlayerSeatIndex = actionTimerState.PlayerSeatIndex,
-					IsActive = !actionTimerState.IsExpired
-				}
-				: null;
+		// Build Chip Check Pause state (for Kings and Lows)
+		var chipCheckPause = BuildChipCheckPauseState(game, gamePlayers, totalPot);
 
-			return new TableStatePublicDto
+		// Get action timer state
+		var actionTimerState = _actionTimerService.GetTimerState(gameId);
+		var actionTimer = actionTimerState is not null
+			? new ActionTimerStateDto
 			{
-				GameId = game.Id,
-				Name = game.Name,
-				GameTypeName = game.GameType?.Name,
-				GameTypeCode = game.GameType?.Code,
-				CurrentPhase = game.CurrentPhase,
-				CurrentPhaseDescription = PhaseDescriptionResolver.TryResolve(game.GameType?.Code, game.CurrentPhase),
-				Ante = game.Ante ?? 0,
-				MinBet = game.MinBet ?? 0,
-				TotalPot = totalPot,
-				DealerSeatIndex = game.DealerPosition,
-				CurrentActorSeatIndex = game.CurrentPlayerIndex,
-				IsPaused = game.Status == Entities.GameStatus.BetweenHands,
-				CurrentHandNumber = game.CurrentHandNumber,
-				CreatedByName = game.CreatedByName,
-				Seats = seats,
-				Showdown = await BuildShowdownPublicDtoAsync(game, gamePlayers, userProfilesByEmail, cancellationToken),
-				HandCompletedAtUtc = game.HandCompletedAt,
-				NextHandStartsAtUtc = game.NextHandStartsAt,
-				IsResultsPhase = isResultsPhase,
-				SecondsUntilNextHand = secondsUntilNextHand,
-				HandHistory = handHistory,
-				CurrentPhaseCategory = currentPhaseDescriptor?.Category,
-				CurrentPhaseRequiresAction = currentPhaseDescriptor?.RequiresPlayerAction ?? false,
-				CurrentPhaseAvailableActions = currentPhaseDescriptor?.AvailableActions,
-				DrawingConfig = BuildDrawingConfigDto(rules),
-				SpecialRules = BuildSpecialRulesDto(rules),
-				PlayerVsDeck = playerVsDeck,
-				ActionTimer = actionTimer,
-				AllInRunout = allInRunout
-			};
-		}
+				SecondsRemaining = actionTimerState.SecondsRemaining,
+				DurationSeconds = actionTimerState.DurationSeconds,
+				StartedAtUtc = actionTimerState.StartedAtUtc,
+				PlayerSeatIndex = actionTimerState.PlayerSeatIndex,
+				IsActive = !actionTimerState.IsExpired
+			}
+			: null;
+
+		return new TableStatePublicDto
+		{
+			GameId = game.Id,
+			Name = game.Name,
+			GameTypeName = game.GameType?.Name,
+			GameTypeCode = game.GameType?.Code,
+			CurrentPhase = game.CurrentPhase,
+			CurrentPhaseDescription = PhaseDescriptionResolver.TryResolve(game.GameType?.Code, game.CurrentPhase),
+			Ante = game.Ante ?? 0,
+			MinBet = game.MinBet ?? 0,
+			TotalPot = totalPot,
+			DealerSeatIndex = game.DealerPosition,
+			CurrentActorSeatIndex = game.CurrentPlayerIndex,
+			IsPaused = game.Status == Entities.GameStatus.BetweenHands,
+			CurrentHandNumber = game.CurrentHandNumber,
+			CreatedByName = game.CreatedByName,
+			Seats = seats,
+			Showdown = await BuildShowdownPublicDtoAsync(game, gamePlayers, userProfilesByEmail, cancellationToken),
+			HandCompletedAtUtc = game.HandCompletedAt,
+			NextHandStartsAtUtc = game.NextHandStartsAt,
+			IsResultsPhase = isResultsPhase,
+			SecondsUntilNextHand = secondsUntilNextHand,
+			HandHistory = handHistory,
+			CurrentPhaseCategory = currentPhaseDescriptor?.Category,
+			CurrentPhaseRequiresAction = currentPhaseDescriptor?.RequiresPlayerAction ?? false,
+			CurrentPhaseAvailableActions = currentPhaseDescriptor?.AvailableActions,
+			DrawingConfig = BuildDrawingConfigDto(rules),
+			SpecialRules = BuildSpecialRulesDto(rules),
+			PlayerVsDeck = playerVsDeck,
+			ActionTimer = actionTimer,
+			AllInRunout = allInRunout,
+			ChipCheckPause = chipCheckPause
+		};
+	}
 
 	/// <inheritdoc />
 	public async Task<PrivateStateDto?> BuildPrivateStateAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
@@ -444,7 +448,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		// For Seven Card Stud, show visible cards; otherwise show face-down placeholders
 		// During showdown phases, show cards face-up for players who haven't folded
 		var isSevenCardStud = string.Equals(gameTypeCode, "SEVENCARDSTUD", StringComparison.OrdinalIgnoreCase);
-		
+
 		// During showdown, show cards for staying players (not folded)
 		// Folded players should not have their cards revealed
 		var shouldShowCardsForShowdown = isShowdownPhase && !gamePlayer.HasFolded;
@@ -1007,14 +1011,34 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		// For Kings and Lows, the pot is tracked in the Pots table, not TotalContributedThisHand
 		if (string.Equals(game.GameType?.Code, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase))
 		{
+			// In Kings and Lows, after a hand completes and losers match the pot,
+			// the new pot is created with HandNumber = CurrentHandNumber + 1.
+			// When the game is in Complete phase or paused for chip check,
+			// we need to show the pot for the UPCOMING hand, not the current hand.
+			var isWaitingForNextHand = game.CurrentPhase == "Complete" || 
+									   game.CurrentPhase == "PotMatching" ||
+									   game.IsPausedForChipCheck;
+
+			var targetHandNumber = isWaitingForNextHand ? handNumber + 1 : handNumber;
+
 			var total = await _context.Pots
-				.Where(br => br.GameId == game.Id && br.HandNumber == handNumber)
+				.Where(br => br.GameId == game.Id && br.HandNumber == targetHandNumber && !br.IsAwarded)
 				.AsNoTracking()
 				.SumAsync(br => br.Amount, cancellationToken);
 
+			// If no pot found for next hand yet, check for unawarded pots from current hand
+			// (e.g., if all players dropped and pot carries over)
+			if (total == 0 && isWaitingForNextHand)
+			{
+				total = await _context.Pots
+					.Where(br => br.GameId == game.Id && br.HandNumber == handNumber && !br.IsAwarded)
+					.AsNoTracking()
+					.SumAsync(br => br.Amount, cancellationToken);
+			}
+
 			_logger.LogDebug(
-				"Kings and Lows pot calculation for game {GameId}, hand {HandNumber}: {TotalPot}",
-				game.Id, handNumber, total);
+				"Kings and Lows pot calculation for game {GameId}, currentHand={HandNumber}, targetHand={TargetHand}, isWaiting={IsWaiting}: {TotalPot}",
+				game.Id, handNumber, targetHandNumber, isWaitingForNextHand, total);
 
 			return total;
 		}
@@ -1086,7 +1110,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			.Distinct()
 			.ToList();
 
-		_logger.LogInformation("[HANDHISTORY-NAMES] Loading player names/emails for {PlayerCount} player IDs: {PlayerIds}", 
+		_logger.LogInformation("[HANDHISTORY-NAMES] Loading player names/emails for {PlayerCount} player IDs: {PlayerIds}",
 			allPlayerIds.Count, string.Join(", ", allPlayerIds.Take(5)));
 
 		// Load all players separately to get Names and Emails
@@ -1095,7 +1119,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			.AsNoTracking()
 			.Select(p => new { p.Id, p.Name, p.Email })
 			.ToListAsync(cancellationToken);
-            
+
 		var playersByIdLookup = playersData.ToDictionary(p => p.Id, p => (Name: p.Name, Email: p.Email));
 
 		_logger.LogInformation("[HANDHISTORY-NAMES] Loaded {PlayerCount} player names from Players table", playersByIdLookup.Count);
@@ -1166,11 +1190,11 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					// Get player's actual name from Players lookup, fallback to stored name if not available
 					var foundInLookup = playersByIdLookup.TryGetValue(pr.PlayerId, out var playerInfo);
 					var playerName = foundInLookup ? playerInfo.Name : pr.PlayerName;
-					
+
 					// Try getting first name (real name) via email if available
-					if (foundInLookup && 
-						!string.IsNullOrWhiteSpace(playerInfo.Email) && 
-						userFirstNamesByEmail.TryGetValue(playerInfo.Email, out var firstName) && 
+					if (foundInLookup &&
+						!string.IsNullOrWhiteSpace(playerInfo.Email) &&
+						userFirstNamesByEmail.TryGetValue(playerInfo.Email, out var firstName) &&
 						!string.IsNullOrWhiteSpace(firstName))
 					{
 						playerName = firstName;
@@ -1178,7 +1202,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 					if (!foundInLookup)
 					{
-						_logger.LogWarning("[HANDHISTORY-NAMES] Player ID {PlayerId} not found in lookup, using stored name: '{StoredName}'", 
+						_logger.LogWarning("[HANDHISTORY-NAMES] Player ID {PlayerId} not found in lookup, using stored name: '{StoredName}'",
 							pr.PlayerId, pr.PlayerName);
 					}
 
@@ -1191,24 +1215,24 @@ public sealed class TableStateBuilder : ITableStateBuilder
 							visibleCards = System.Text.Json.JsonSerializer.Deserialize<List<string>>(pr.ShowdownCards);
 							if (visibleCards != null && visibleCards.Any())
 							{
-								_logger.LogInformation("[HANDHISTORY-CARDS] ✓ Hand #{HandNumber}, Player '{PlayerName}' (Seat {Seat}): Found {CardCount} cards from ShowdownCards: {Cards}", 
+								_logger.LogInformation("[HANDHISTORY-CARDS] ✓ Hand #{HandNumber}, Player '{PlayerName}' (Seat {Seat}): Found {CardCount} cards from ShowdownCards: {Cards}",
 									h.HandNumber, playerName, pr.SeatPosition, visibleCards.Count, string.Join(", ", visibleCards));
 							}
 							else
 							{
-								_logger.LogWarning("[HANDHISTORY-CARDS] ✗ Hand #{HandNumber}, Player '{PlayerName}' (Seat {Seat}): ShowdownCards deserialized but empty", 
+								_logger.LogWarning("[HANDHISTORY-CARDS] ✗ Hand #{HandNumber}, Player '{PlayerName}' (Seat {Seat}): ShowdownCards deserialized but empty",
 									h.HandNumber, playerName, pr.SeatPosition);
 							}
 						}
 						catch (System.Text.Json.JsonException ex)
 						{
-							_logger.LogError(ex, "[HANDHISTORY-CARDS] ✗ Hand #{HandNumber}, Player '{PlayerName}': Failed to deserialize ShowdownCards: {Json}", 
+							_logger.LogError(ex, "[HANDHISTORY-CARDS] ✗ Hand #{HandNumber}, Player '{PlayerName}': Failed to deserialize ShowdownCards: {Json}",
 								h.HandNumber, playerName, pr.ShowdownCards);
 						}
 					}
 					else if (pr.ReachedShowdown)
 					{
-						_logger.LogWarning("[HANDHISTORY-CARDS] ✗ Hand #{HandNumber}, Player '{PlayerName}' (Seat {Seat}, PlayerId {PlayerId}): Reached showdown but ShowdownCards is null/empty", 
+						_logger.LogWarning("[HANDHISTORY-CARDS] ✗ Hand #{HandNumber}, Player '{PlayerName}' (Seat {Seat}, PlayerId {PlayerId}): Reached showdown but ShowdownCards is null/empty",
 							h.HandNumber, playerName, pr.SeatPosition, pr.PlayerId);
 					}
 
@@ -1489,222 +1513,260 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			IsMyTurnToDecide = game.CurrentPlayerIndex == gamePlayer.SeatPosition,
 			HasDecidedThisRound = gamePlayer.DropOrStayDecision.HasValue &&
 										  gamePlayer.DropOrStayDecision.Value != Entities.DropOrStayDecision.Undecided,
-					Decision = gamePlayer.DropOrStayDecision?.ToString()
-				};
-			}
+			Decision = gamePlayer.DropOrStayDecision?.ToString()
+		};
+	}
 
-		/// <summary>
-		/// Builds the chip history DTO for a player from hand history data.
-		/// </summary>
-		private ChipHistoryDto BuildChipHistory(
-			GamePlayer gamePlayer,
-			IReadOnlyList<CardGames.Contracts.SignalR.HandHistoryEntryDto> handHistory)
+	/// <summary>
+	/// Builds the chip history DTO for a player from hand history data.
+	/// </summary>
+	private ChipHistoryDto BuildChipHistory(
+		GamePlayer gamePlayer,
+		IReadOnlyList<CardGames.Contracts.SignalR.HandHistoryEntryDto> handHistory)
+	{
+		var entries = new List<ChipHistoryEntryDto>();
+
+		// Take last 30 hands for the history window, sorted chronologically (oldest to newest).
+		// The handHistory comes in descending order (newest first), so we need to reverse for proper chronological display.
+		var recentHands = handHistory
+			.OrderBy(h => h.CompletedAtUtc)
+			.TakeLast(30)
+			.ToList();
+
+		// Calculate the starting stack for this window by working backwards from current chips
+		var currentStack = gamePlayer.ChipStack;
+		var totalDeltaInWindow = 0;
+
+		foreach (var hand in recentHands)
 		{
-			var entries = new List<ChipHistoryEntryDto>();
+			var playerResult = hand.PlayerResults.FirstOrDefault(pr => pr.PlayerId == gamePlayer.PlayerId);
+			if (playerResult != null)
+			{
+				totalDeltaInWindow += playerResult.NetAmount;
+			}
+		}
 
-			// Take last 30 hands for the history window, sorted chronologically (oldest to newest).
-			// The handHistory comes in descending order (newest first), so we need to reverse for proper chronological display.
-			var recentHands = handHistory
-				.OrderBy(h => h.CompletedAtUtc)
-				.TakeLast(30)
+		// Starting point for the history window
+		// If we have no hand history yet, OR if the first hand in our window is hand #1 (the very first hand),
+		// use the player's actual starting chips to show the true baseline before any antes or bets.
+		// Otherwise, calculate backwards from current stack.
+		var isFirstHandInWindow = recentHands.FirstOrDefault()?.HandNumber == 1;
+		var windowStartStack = (recentHands.Count == 0 || isFirstHandInWindow)
+			? gamePlayer.StartingChips
+			: currentStack - totalDeltaInWindow;
+
+		// Add initial starting point entry to show the baseline
+		// Use sequential hand numbering starting from 0 for the baseline
+		entries.Add(new ChipHistoryEntryDto
+		{
+			HandNumber = 0,
+			ChipStackAfterHand = windowStartStack,
+			ChipsDelta = 0,
+			Timestamp = recentHands.FirstOrDefault()?.CompletedAtUtc.AddSeconds(-1) ?? DateTimeOffset.UtcNow
+		});
+
+		var runningStack = windowStartStack;
+		var sequentialHandNumber = 1; // Start from 1 after the baseline (0)
+
+		// Build chip history entries for each completed hand
+		// Use sequential hand numbers (1, 2, 3...) instead of actual database hand numbers
+		foreach (var hand in recentHands)
+		{
+			var playerResult = hand.PlayerResults.FirstOrDefault(pr => pr.PlayerId == gamePlayer.PlayerId);
+			if (playerResult != null)
+			{
+				runningStack += playerResult.NetAmount;
+				entries.Add(new ChipHistoryEntryDto
+				{
+					HandNumber = sequentialHandNumber++,
+					ChipStackAfterHand = runningStack,
+					ChipsDelta = playerResult.NetAmount,
+					Timestamp = hand.CompletedAtUtc
+				});
+			}
+		}
+
+		return new ChipHistoryDto
+		{
+			CurrentChips = gamePlayer.ChipStack,
+			PendingChipsToAdd = gamePlayer.PendingChipsToAdd,
+			StartingChips = gamePlayer.StartingChips,
+			History = entries
+		};
+	}
+
+	/// <summary>
+	/// Builds the All-In Runout state for games where all players went all-in
+	/// and remaining streets were dealt without betting.
+	/// </summary>
+	private async Task<AllInRunoutStateDto?> BuildAllInRunoutStateAsync(
+		Game game,
+		List<GamePlayer> gamePlayers,
+		CancellationToken cancellationToken)
+	{
+		// Only build for Showdown phase
+		if (!string.Equals(game.CurrentPhase, "Showdown", StringComparison.OrdinalIgnoreCase))
+		{
+			return null;
+		}
+
+		// Check if this is an all-in runout by reading from GameSettings
+		if (string.IsNullOrEmpty(game.GameSettings))
+		{
+			return null;
+		}
+
+		try
+		{
+			using var settingsDoc = JsonDocument.Parse(game.GameSettings);
+			var root = settingsDoc.RootElement;
+
+			// Check for allInRunout flag
+			if (!root.TryGetProperty("allInRunout", out var allInRunoutProp) ||
+				!allInRunoutProp.GetBoolean())
+			{
+				return null;
+			}
+
+			// Verify this is for the current hand
+			if (root.TryGetProperty("runoutHandNumber", out var handNumberProp) &&
+				handNumberProp.GetInt32() != game.CurrentHandNumber)
+			{
+				return null;
+			}
+
+			// Get the streets that were dealt during the runout
+			var runoutStreets = new List<string>();
+			if (root.TryGetProperty("runoutStreets", out var streetsProp) &&
+				streetsProp.ValueKind == JsonValueKind.Array)
+			{
+				foreach (var street in streetsProp.EnumerateArray())
+				{
+					runoutStreets.Add(street.GetString() ?? "");
+				}
+			}
+
+			if (runoutStreets.Count == 0)
+			{
+				return null;
+			}
+
+			// Get the timestamp when the runout occurred
+			DateTimeOffset? runoutTimestamp = null;
+			if (root.TryGetProperty("runoutTimestamp", out var timestampProp))
+			{
+				var timestampStr = timestampProp.GetString();
+				if (!string.IsNullOrEmpty(timestampStr) &&
+					DateTimeOffset.TryParse(timestampStr, out var parsed))
+				{
+					runoutTimestamp = parsed;
+				}
+			}
+
+			// Get players who received cards (not folded)
+			var activePlayersInHand = gamePlayers
+				.Where(gp => !gp.HasFolded)
+				.OrderBy(gp => gp.SeatPosition)
 				.ToList();
-			
-			// Calculate the starting stack for this window by working backwards from current chips
-			var currentStack = gamePlayer.ChipStack;
-			var totalDeltaInWindow = 0;
-			
-			foreach (var hand in recentHands)
-			{
-				var playerResult = hand.PlayerResults.FirstOrDefault(pr => pr.PlayerId == gamePlayer.PlayerId);
-				if (playerResult != null)
-				{
-					totalDeltaInWindow += playerResult.NetAmount;
-				}
-			}
-			
-			// Starting point for the history window
-			// If we have no hand history yet, OR if the first hand in our window is hand #1 (the very first hand),
-			// use the player's actual starting chips to show the true baseline before any antes or bets.
-			// Otherwise, calculate backwards from current stack.
-			var isFirstHandInWindow = recentHands.FirstOrDefault()?.HandNumber == 1;
-			var windowStartStack = (recentHands.Count == 0 || isFirstHandInWindow)
-				? gamePlayer.StartingChips 
-				: currentStack - totalDeltaInWindow;
-			
-			// Add initial starting point entry to show the baseline
-			// Use sequential hand numbering starting from 0 for the baseline
-			entries.Add(new ChipHistoryEntryDto
-			{
-				HandNumber = 0,
-				ChipStackAfterHand = windowStartStack,
-				ChipsDelta = 0,
-				Timestamp = recentHands.FirstOrDefault()?.CompletedAtUtc.AddSeconds(-1) ?? DateTimeOffset.UtcNow
-			});
-			
-			var runningStack = windowStartStack;
-			var sequentialHandNumber = 1; // Start from 1 after the baseline (0)
 
-			// Build chip history entries for each completed hand
-			// Use sequential hand numbers (1, 2, 3...) instead of actual database hand numbers
-			foreach (var hand in recentHands)
+			// Build runout cards by seat
+			var runoutCardsBySeat = new Dictionary<int, IReadOnlyList<CardPublicDto>>();
+
+			foreach (var player in activePlayersInHand)
 			{
-				var playerResult = hand.PlayerResults.FirstOrDefault(pr => pr.PlayerId == gamePlayer.PlayerId);
-				if (playerResult != null)
+				// Get cards dealt during the runout streets for this player
+				var runoutCards = await _context.GameCards
+					.Where(gc => gc.GameId == game.Id
+							 && gc.GamePlayerId == player.Id
+							 && gc.HandNumber == game.CurrentHandNumber
+							 && gc.DealtAtPhase != null
+							 && runoutStreets.Contains(gc.DealtAtPhase)
+							 && !gc.IsDiscarded)
+					.OrderBy(gc => gc.DealtAt)
+					.ThenBy(gc => gc.DealOrder)
+					.AsNoTracking()
+					.ToListAsync(cancellationToken);
+
+				if (runoutCards.Count > 0)
 				{
-					runningStack += playerResult.NetAmount;
-					entries.Add(new ChipHistoryEntryDto
+					runoutCardsBySeat[player.SeatPosition] = runoutCards.Select(c => new CardPublicDto
 					{
-						HandNumber = sequentialHandNumber++,
-						ChipStackAfterHand = runningStack,
-						ChipsDelta = playerResult.NetAmount,
-						Timestamp = hand.CompletedAtUtc
-					});
+						IsFaceUp = c.IsVisible,
+						Rank = MapSymbolToRank(c.Symbol),
+						Suit = c.Suit.ToString(),
+						DealOrder = c.DealOrder
+					}).ToList();
 				}
 			}
 
-				return new ChipHistoryDto
-					{
-						CurrentChips = gamePlayer.ChipStack,
-						PendingChipsToAdd = gamePlayer.PendingChipsToAdd,
-						StartingChips = gamePlayer.StartingChips,
-						History = entries
-					};
-				}
+			// Map street names to friendly descriptions
+			var streetDescriptions = new Dictionary<string, string>
+									{
+										{ "FourthStreet", "Fourth Street" },
+										{ "FifthStreet", "Fifth Street" },
+										{ "SixthStreet", "Sixth Street" },
+										{ "SeventhStreet", "Seventh Street (River)" }
+									};
 
-			/// <summary>
-			/// Builds the All-In Runout state for games where all players went all-in
-			/// and remaining streets were dealt without betting.
-			/// </summary>
-			private async Task<AllInRunoutStateDto?> BuildAllInRunoutStateAsync(
-				Game game,
+			var currentStreet = runoutStreets.LastOrDefault();
+			var currentStreetDescription = currentStreet != null && streetDescriptions.TryGetValue(currentStreet, out var desc)
+				? desc
+				: currentStreet;
+
+			return new AllInRunoutStateDto
+			{
+				IsActive = true,
+				CurrentStreet = currentStreet,
+				CurrentStreetDescription = currentStreetDescription,
+				TotalStreets = runoutStreets.Count,
+				StreetsDealt = runoutStreets.Count,
+				RunoutCardsBySeat = runoutCardsBySeat,
+				CurrentDealingSeatIndex = -1, // Dealing complete
+				IsComplete = true
+			};
+		}
+		catch (JsonException ex)
+		{
+			_logger.LogWarning(ex, "Failed to parse GameSettings JSON for game {GameId}", game.Id);
+			return null;
+		}
+	}
+
+	/// <summary>
+	/// Builds the chip check pause state for Kings and Lows games.
+	/// </summary>
+	private static ChipCheckPauseStateDto? BuildChipCheckPauseState(
+		Game game,
 				List<GamePlayer> gamePlayers,
-				CancellationToken cancellationToken)
+				int currentPot)
+	{
+		if (!game.IsPausedForChipCheck)
+		{
+			return null;
+		}
+
+		var shortPlayers = gamePlayers
+			.Where(gp => gp.Status == Entities.GamePlayerStatus.Active &&
+						 !gp.IsSittingOut &&
+						 gp.ChipStack < currentPot &&
+						 !gp.AutoDropOnDropOrStay)
+			.Select(gp => new ShortPlayerDto
 			{
-				// Only build for Showdown phase
-				if (!string.Equals(game.CurrentPhase, "Showdown", StringComparison.OrdinalIgnoreCase))
-				{
-					return null;
-				}
+				SeatIndex = gp.SeatPosition,
+				PlayerName = gp.Player?.Name ?? $"Seat {gp.SeatPosition}",
+				PlayerFirstName = gp.Player?.Name?.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault(),
+				CurrentChips = gp.ChipStack,
+				ChipsNeeded = currentPot - gp.ChipStack
+			})
+			.ToList();
 
-				// Check if this is an all-in runout by reading from GameSettings
-				if (string.IsNullOrEmpty(game.GameSettings))
-				{
-					return null;
-				}
-
-				try
-				{
-					using var settingsDoc = JsonDocument.Parse(game.GameSettings);
-					var root = settingsDoc.RootElement;
-
-					// Check for allInRunout flag
-					if (!root.TryGetProperty("allInRunout", out var allInRunoutProp) ||
-						!allInRunoutProp.GetBoolean())
-					{
-						return null;
-					}
-
-					// Verify this is for the current hand
-					if (root.TryGetProperty("runoutHandNumber", out var handNumberProp) &&
-						handNumberProp.GetInt32() != game.CurrentHandNumber)
-					{
-						return null;
-					}
-
-					// Get the streets that were dealt during the runout
-					var runoutStreets = new List<string>();
-					if (root.TryGetProperty("runoutStreets", out var streetsProp) && 
-						streetsProp.ValueKind == JsonValueKind.Array)
-					{
-						foreach (var street in streetsProp.EnumerateArray())
-						{
-							runoutStreets.Add(street.GetString() ?? "");
-						}
-					}
-
-					if (runoutStreets.Count == 0)
-					{
-						return null;
-					}
-
-					// Get the timestamp when the runout occurred
-					DateTimeOffset? runoutTimestamp = null;
-					if (root.TryGetProperty("runoutTimestamp", out var timestampProp))
-					{
-						var timestampStr = timestampProp.GetString();
-						if (!string.IsNullOrEmpty(timestampStr) && 
-							DateTimeOffset.TryParse(timestampStr, out var parsed))
-						{
-							runoutTimestamp = parsed;
-						}
-					}
-
-					// Get players who received cards (not folded)
-					var activePlayersInHand = gamePlayers
-						.Where(gp => !gp.HasFolded)
-						.OrderBy(gp => gp.SeatPosition)
-						.ToList();
-
-					// Build runout cards by seat
-					var runoutCardsBySeat = new Dictionary<int, IReadOnlyList<CardPublicDto>>();
-
-					foreach (var player in activePlayersInHand)
-					{
-						// Get cards dealt during the runout streets for this player
-						var runoutCards = await _context.GameCards
-							.Where(gc => gc.GameId == game.Id
-									 && gc.GamePlayerId == player.Id
-									 && gc.HandNumber == game.CurrentHandNumber
-									 && gc.DealtAtPhase != null
-									 && runoutStreets.Contains(gc.DealtAtPhase)
-									 && !gc.IsDiscarded)
-							.OrderBy(gc => gc.DealtAt)
-							.ThenBy(gc => gc.DealOrder)
-							.AsNoTracking()
-							.ToListAsync(cancellationToken);
-
-						if (runoutCards.Count > 0)
-						{
-							runoutCardsBySeat[player.SeatPosition] = runoutCards.Select(c => new CardPublicDto
-							{
-								IsFaceUp = c.IsVisible,
-								Rank = MapSymbolToRank(c.Symbol),
-								Suit = c.Suit.ToString(),
-								DealOrder = c.DealOrder
-							}).ToList();
-						}
-					}
-
-					// Map street names to friendly descriptions
-					var streetDescriptions = new Dictionary<string, string>
-					{
-						{ "FourthStreet", "Fourth Street" },
-						{ "FifthStreet", "Fifth Street" },
-						{ "SixthStreet", "Sixth Street" },
-						{ "SeventhStreet", "Seventh Street (River)" }
-					};
-
-					var currentStreet = runoutStreets.LastOrDefault();
-					var currentStreetDescription = currentStreet != null && streetDescriptions.TryGetValue(currentStreet, out var desc)
-						? desc
-						: currentStreet;
-
-					return new AllInRunoutStateDto
-					{
-						IsActive = true,
-						CurrentStreet = currentStreet,
-						CurrentStreetDescription = currentStreetDescription,
-						TotalStreets = runoutStreets.Count,
-						StreetsDealt = runoutStreets.Count,
-						RunoutCardsBySeat = runoutCardsBySeat,
-						CurrentDealingSeatIndex = -1, // Dealing complete
-						IsComplete = true
-					};
-				}
-				catch (JsonException ex)
-				{
-					_logger.LogWarning(ex, "Failed to parse GameSettings JSON for game {GameId}", game.Id);
-					return null;
-				}
-			}
-				}
+		return new ChipCheckPauseStateDto
+		{
+			IsPaused = true,
+			PauseStartedAt = game.ChipCheckPauseStartedAt,
+			PauseEndsAt = game.ChipCheckPauseEndsAt,
+			PotAmountToCover = currentPot,
+			ShortPlayers = shortPlayers
+		};
+	}
+}

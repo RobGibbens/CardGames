@@ -1,0 +1,360 @@
+.chip-coverage-pause-overlay {
+    /* Inherits from table-overlay */
+}
+
+.chip-coverage-pause-overlay .overlay-content {
+    text-align: center;
+    max-width: 480px;
+    background: linear-gradient(145deg, #2a2a2a 0%, #1a1a1a 100%);
+    border: 2px solid #ffc107;
+    border-radius: 16px;
+    padding: 24px;
+}
+
+.chip-coverage-pause-overlay .overlay-icon {
+    font-size: 4rem;
+    color: #ffc107;
+    margin-bottom: 16px;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+.chip-coverage-pause-overlay h2 {
+    color: #fff;
+    font-size: 1.75rem;
+    font-weight: 600;
+    margin-bottom: 16px;
+}
+
+.chip-coverage-pause-overlay .pot-info {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.chip-coverage-pause-overlay .pot-label {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 1.1rem;
+}
+
+.chip-coverage-pause-overlay .pot-value {
+    color: #28a745;
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.chip-coverage-pause-overlay .short-players {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 20px;
+}
+
+.chip-coverage-pause-overlay .short-players p {
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 12px;
+    font-size: 0.95rem;
+}
+
+.chip-coverage-pause-overlay .short-players ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.chip-coverage-pause-overlay .short-players li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #fff;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.chip-coverage-pause-overlay .short-players li:last-child {
+    border-bottom: none;
+}
+
+.chip-coverage-pause-overlay .player-name {
+    font-weight: 600;
+    flex: 1;
+    text-align: left;
+}
+
+.chip-coverage-pause-overlay .player-chips {
+    color: #ffc107;
+    margin: 0 12px;
+}
+
+.chip-coverage-pause-overlay .chips-needed {
+    color: #dc3545;
+    font-size: 0.9rem;
+}
+
+.chip-coverage-pause-overlay .timer-section {
+    background: rgba(220, 53, 69, 0.2);
+    border: 1px solid rgba(220, 53, 69, 0.4);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 20px;
+}
+
+.chip-coverage-pause-overlay .timer-icon {
+    font-size: 2rem;
+    color: #ffc107;
+    margin-bottom: 8px;
+}
+
+.chip-coverage-pause-overlay .timer-display {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.chip-coverage-pause-overlay .timer-label {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.chip-coverage-pause-overlay .timer-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #fff;
+    font-family: 'Courier New', monospace;
+}
+
+.chip-coverage-pause-overlay .timer-value.urgent {
+    color: #dc3545;
+    animation: blink 1s ease-in-out infinite;
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.chip-coverage-pause-overlay .timer-warning {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+    font-style: italic;
+}
+
+.chip-coverage-pause-overlay .action-section {
+    background: rgba(220, 53, 69, 0.15);
+    border: 1px solid rgba(220, 53, 69, 0.3);
+    border-radius: 8px;
+    padding: 16px;
+}
+
+.chip-coverage-pause-overlay .action-warning {
+    color: #dc3545;
+    font-size: 1.1rem;
+    margin-bottom: 12px;
+}
+
+.chip-coverage-pause-overlay .action-warning i {
+    margin-right: 8px;
+}
+
+.chip-coverage-pause-overlay .action-hint {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: #28a745;
+    font-weight: 600;
+}
+
+.chip-coverage-pause-overlay .action-hint i {
+    animation: point-left 1s ease-in-out infinite;
+}
+
+@keyframes point-left {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(-8px); }
+}
+
+.chip-coverage-pause-overlay .waiting-message {
+    color: rgba(255, 255, 255, 0.7);
+    font-style: italic;
+}
+
+/* Your chips info */
+.chip-coverage-pause-overlay .your-chips-info {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.chip-coverage-pause-overlay .your-chips-label {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 1rem;
+}
+
+.chip-coverage-pause-overlay .your-chips-value {
+    color: #ffc107;
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+/* Chips needed warning */
+.chip-coverage-pause-overlay .chips-needed-info {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: rgba(220, 53, 69, 0.2);
+    border: 1px solid rgba(220, 53, 69, 0.4);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    color: #ff6b6b;
+}
+
+.chip-coverage-pause-overlay .chips-needed-info i {
+    color: #dc3545;
+}
+
+.chip-coverage-pause-overlay .chips-needed-info strong {
+    color: #fff;
+}
+
+/* Add chips section */
+.chip-coverage-pause-overlay .add-chips-section {
+    background: rgba(40, 167, 69, 0.15);
+    border: 1px solid rgba(40, 167, 69, 0.3);
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 16px;
+}
+
+.chip-coverage-pause-overlay .add-chips-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.chip-coverage-pause-overlay .add-chips-form label {
+    color: #fff;
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.chip-coverage-pause-overlay .input-group {
+    display: flex;
+    gap: 8px;
+}
+
+.chip-coverage-pause-overlay .chip-input {
+    flex: 1;
+    padding: 12px 16px;
+    font-size: 1.25rem;
+    font-weight: 600;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.3);
+    color: #fff;
+    text-align: center;
+}
+
+.chip-coverage-pause-overlay .chip-input:focus {
+    outline: none;
+    border-color: #28a745;
+    box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.3);
+}
+
+.chip-coverage-pause-overlay .add-chips-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    background: linear-gradient(145deg, #28a745, #20883a);
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.chip-coverage-pause-overlay .add-chips-btn:hover:not(:disabled) {
+    background: linear-gradient(145deg, #32b54f, #28a745);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+}
+
+.chip-coverage-pause-overlay .add-chips-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.chip-coverage-pause-overlay .add-chips-btn .spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Quick amount buttons */
+.chip-coverage-pause-overlay .quick-amounts {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.chip-coverage-pause-overlay .quick-amount-btn {
+    padding: 8px 16px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 6px;
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.chip-coverage-pause-overlay .quick-amount-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: #28a745;
+}
+
+/* Message display */
+.chip-coverage-pause-overlay .message {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px;
+    border-radius: 8px;
+    margin-top: 12px;
+}
+
+.chip-coverage-pause-overlay .message.success {
+    background: rgba(40, 167, 69, 0.2);
+    border: 1px solid rgba(40, 167, 69, 0.4);
+    color: #28a745;
+}
+
+.chip-coverage-pause-overlay .message.error {
+    background: rgba(220, 53, 69, 0.2);
+    border: 1px solid rgba(220, 53, 69, 0.4);
+    color: #dc3545;
+}

@@ -10,5 +10,10 @@ public enum StartHandErrorCode
 {
 	GameNotFound,
 	InvalidGameState,
-	NotEnoughPlayers
+	NotEnoughPlayers,
+	/// <summary>
+	/// The game is paused because one or more players cannot cover the current pot.
+	/// Players have 2 minutes to add chips before being auto-dropped.
+	/// </summary>
+	PausedForChipCheck
 }

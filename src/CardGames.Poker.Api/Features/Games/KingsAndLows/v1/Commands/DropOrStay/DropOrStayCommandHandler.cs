@@ -36,17 +36,34 @@ public class DropOrStayCommandHandler(CardsDbContext context)
 		}
 
 		// 2. Validate game is in DropOrStay phase
-		if (game.CurrentPhase != nameof(Phases.DropOrStay))
-		{
-			return new DropOrStayError
+			if (game.CurrentPhase != nameof(Phases.DropOrStay))
 			{
-				Message = $"Cannot make drop/stay decision. Game is in '{game.CurrentPhase}' phase, " +
-						  $"but must be in '{nameof(Phases.DropOrStay)}' phase.",
-				Code = DropOrStayErrorCode.InvalidPhase
-			};
-		}
+				return new DropOrStayError
+				{
+					Message = $"Cannot make drop/stay decision. Game is in '{game.CurrentPhase}' phase, " +
+							  $"but must be in '{nameof(Phases.DropOrStay)}' phase.",
+					Code = DropOrStayErrorCode.InvalidPhase
+				};
+			}
 
-		// 3. Find the player
+			// 2b. Process any pending auto-drops from chip check pause timeout
+			// This ensures players who couldn't cover the pot are automatically dropped
+			var pendingAutoDrops = game.GamePlayers
+				.Where(gp => gp.Status == GamePlayerStatus.Active &&
+							 !gp.IsSittingOut &&
+							 !gp.HasFolded &&
+							 gp.AutoDropOnDropOrStay &&
+							 (!gp.DropOrStayDecision.HasValue || gp.DropOrStayDecision.Value == Data.Entities.DropOrStayDecision.Undecided))
+				.ToList();
+
+			foreach (var autoDropPlayer in pendingAutoDrops)
+			{
+				autoDropPlayer.DropOrStayDecision = Data.Entities.DropOrStayDecision.Drop;
+				autoDropPlayer.HasFolded = true;
+				autoDropPlayer.AutoDropOnDropOrStay = false; // Clear the flag
+			}
+
+			// 3. Find the player
 		var gamePlayer = game.GamePlayers.FirstOrDefault(gp => gp.PlayerId == command.PlayerId);
 		if (gamePlayer is null)
 		{
@@ -99,15 +116,36 @@ public class DropOrStayCommandHandler(CardsDbContext context)
 		await context.SaveChangesAsync(cancellationToken);
 
 		// Re-fetch players to ensure we have the latest state including other concurrent updates
-		// and the current player's just-saved decision
-		var refreshedGame = await context.Games
-			.Include(g => g.GamePlayers)
-			.AsNoTracking()
-			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
-            
-        if (refreshedGame == null) return new DropOrStayError { Message = "Game lost", Code = DropOrStayErrorCode.GameNotFound };
+			// and the current player's just-saved decision
+			var refreshedGame = await context.Games
+				.Include(g => g.GamePlayers)
+				.AsNoTracking()
+				.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
-		// 7. Check if all players have decided
+			if (refreshedGame == null) return new DropOrStayError { Message = "Game lost", Code = DropOrStayErrorCode.GameNotFound };
+
+			// 6b. Auto-drop any players flagged with AutoDropOnDropOrStay (from chip check pause timeout)
+			var autoDropPlayers = game.GamePlayers
+				.Where(gp => gp.Status == GamePlayerStatus.Active &&
+							 !gp.IsSittingOut &&
+							 !gp.HasFolded &&
+							 gp.AutoDropOnDropOrStay &&
+							 (!gp.DropOrStayDecision.HasValue || gp.DropOrStayDecision.Value == Data.Entities.DropOrStayDecision.Undecided))
+				.ToList();
+
+			foreach (var autoDropPlayer in autoDropPlayers)
+			{
+				autoDropPlayer.DropOrStayDecision = Data.Entities.DropOrStayDecision.Drop;
+				autoDropPlayer.HasFolded = true;
+				autoDropPlayer.AutoDropOnDropOrStay = false; // Clear the flag after processing
+			}
+
+			if (autoDropPlayers.Count > 0)
+			{
+				await context.SaveChangesAsync(cancellationToken);
+			}
+
+			// 7. Check if all players have decided
 		var activePlayers = refreshedGame.GamePlayers
 			.Where(gp => gp is { Status: GamePlayerStatus.Active, IsSittingOut: false, HasFolded: false })
 			.ToList();

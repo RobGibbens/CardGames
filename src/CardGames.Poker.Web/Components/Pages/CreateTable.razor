@@ -175,7 +175,7 @@
 											   min="100"
 											   max="100000"
 											   value="@_players[index].StartingChips"
-											   @onchange="@(e => UpdatePlayerChips(index, e.Value?.ToString() ?? "5000"))" />
+											   @onchange="@(e => UpdatePlayerChips(index, e.Value?.ToString() ?? "100"))" />  <!-- TODO:ROB - Set this to 50, or better yet, prompt them first -->
 										<button type="button" class="btn-icon btn-remove" @onclick="() => RemovePlayer(index)" title="Remove player">
 											<i class="fa-regular fa-times"></i>
 										</button>
@@ -306,7 +306,7 @@
 
 		// Initialize players list with minimum required players
 		//TODO:ROB - Don't hard code this
-		_players.Add(new PlayerInput { Name = $"robgibbens@gmail.com", StartingChips = 5000 });
+		_players.Add(new PlayerInput { Name = $"robgibbens@gmail.com", StartingChips = 100 });   //TODO:ROB - Set this to 50, or better yet, prompt them first
 		// _players.Add(new PlayerInput { Name = $"deangibbens@gmail.com", StartingChips = 5000 });
 		// _players.Add(new PlayerInput { Name = $"lynnegibbens@gmail.com", StartingChips = 5000 });
 		// _players.Add(new PlayerInput { Name = $"iangibbens@gmail.com", StartingChips = 5000 });
@@ -326,7 +326,7 @@
 			return;
 		}
 
-		_players.Add(new PlayerInput { Name = $"Player {_players.Count + 1}", StartingChips = 5000 });
+		_players.Add(new PlayerInput { Name = $"Player {_players.Count + 1}", StartingChips = 100 });   //TODO:ROB - Set this to 50, or better yet, prompt them first
 	}
 
 	private void RemovePlayer(int index)
@@ -414,6 +414,6 @@
 	private record PlayerInput
 	{
 		public string Name { get; init; } = "";
-		public int StartingChips { get; init; } = 5000;
+		public int StartingChips { get; init; } = 100; //TODO:ROB - Set this to 50, or better yet, prompt them first
 	}
 }
