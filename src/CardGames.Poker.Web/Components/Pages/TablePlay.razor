@@ -880,14 +880,36 @@
             }
             else
             {
-                _secondsUntilNextHand = state.SecondsUntilNextHand ?? 0;
+                // Prefer server value if provided
+                if (state.SecondsUntilNextHand.HasValue && state.SecondsUntilNextHand.Value > 0)
+                {
+                    _secondsUntilNextHand = state.SecondsUntilNextHand.Value;
+                }
+                // Fallback to local countdown if overlay is visible and we have time left
+                else if (_showShowdownOverlay && _secondsUntilNextHand > 0)
+                {
+                    // Keep local value
+                }
+                // Initialize local countdown if overlay is shown (and we have results) but no time set
+                // This handles cases where SignalR populates the showdown but sends no countdown
+                else if (_showShowdownOverlay && _showdownResult is not null)
+                {
+                    _secondsUntilNextHand = ContinuousPlayResultsDisplayDurationSeconds;
+                }
+                else
+                {
+                    _secondsUntilNextHand = 0;
+                }
             }
 
-            if ((_isResultsPhase || IsEndedPhase) && _secondsUntilNextHand > 0)
+            // Keep timer running if we have a local countdown
+            bool keepLocalTimerRunning = _showShowdownOverlay && _secondsUntilNextHand > 0;
+
+            if ((_isResultsPhase || IsEndedPhase || keepLocalTimerRunning) && _secondsUntilNextHand > 0)
             {
                 StartCountdownTimer();
             }
-            else if (!_isResultsPhase && !IsEndedPhase)
+            else if (!_isResultsPhase && !IsEndedPhase && !keepLocalTimerRunning)
             {
                 StopCountdownTimer();
                 // Clear showdown overlay when new hand starts
@@ -1340,8 +1362,15 @@
 
     private void UpdateShowdownFromPublicState(ShowdownPublicDto showdown, bool delayShowingOverlay = false)
     {
-        // Build showdown result from public state for Showdown, Complete, or PotMatching phases
-        // For Kings and Lows player-vs-deck scenario, showdown data is available immediately after deck draw
+        // Build showdown result from public state ONLY when showdown.IsComplete is true.
+        // This means the server has already performed the showdown (PerformShowdown API was called),
+        // set NextHandStartsAt, and transitioned to Complete phase.
+        // 
+        // CRITICAL: Do NOT populate _showdownResult when IsShowdownPhase is true but IsComplete is false!
+        // If we do, TryLoadShowdownAsync will see _showdownResult is not null and skip calling the
+        // PerformShowdown API. This would leave NextHandStartsAt unset and the next hand would never start.
+        //
+        // For Kings and Lows and PotMatching phase, we also allow processing as those have special flows.
         // IMPORTANT: If we're delaying the overlay (e.g., for animation), don't set _showdownResult
         // so that TryLoadShowdownAsync can fetch complete data from the API later
         // Also skip if we're in the middle of processing a deck draw - we want the API data instead
@@ -1350,8 +1379,12 @@
             return;
         }
         
+        // Only process showdown from SignalR when:
+        // 1. We don't already have a result
+        // 2. AND (the showdown is complete (PerformShowdown was called) OR we're in PotMatching phase for Kings and Lows)
+        // Do NOT process when IsShowdownPhase is true but IsComplete is false - let TryLoadShowdownAsync call the API
         var shouldProcessShowdown = _showdownResult is null && 
-            (showdown.IsComplete || IsPotMatchingPhase || IsShowdownPhase);
+            (showdown.IsComplete || IsPotMatchingPhase);
         
         if (shouldProcessShowdown)
         {
@@ -1410,6 +1443,16 @@
             if (!delayShowingOverlay)
             {
                 _showShowdownOverlay = true;
+                
+                // Initialize countdown timer when showdown is loaded from SignalR
+                // This ensures the timer starts even if TryLoadShowdownAsync is never called
+                // or returns early because result is already loaded
+                if (_secondsUntilNextHand <= 0)
+                {
+                    _secondsUntilNextHand = ContinuousPlayResultsDisplayDurationSeconds;
+                }
+                _isResultsPhase = true;
+                StartCountdownTimer();
             }
 
             _showdownWon = _showdownResult.Payouts?.Keys.Any(p =>
@@ -1916,10 +1959,20 @@
         }
 
         // If showdown result is already loaded (e.g., from SignalR update), just show the overlay
+        // and ensure the countdown timer is running
         if (_showdownResult is not null)
         {
             Logger.LogDebug("TryLoadShowdownAsync: Showdown result already loaded, showing overlay");
             _showShowdownOverlay = true;
+            
+            // Ensure countdown timer is initialized (may have been missed if SignalR populated the result)
+            if (_secondsUntilNextHand <= 0)
+            {
+                _secondsUntilNextHand = ContinuousPlayResultsDisplayDurationSeconds;
+            }
+            _isResultsPhase = true;
+            StartCountdownTimer();
+            
             await InvokeAsync(StateHasChanged);
             return;
         }

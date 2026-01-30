@@ -681,6 +681,28 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 				game.Id,
 				eligiblePlayers.Count);
 
+			// Clear cards from previous hand when transitioning to WaitingForPlayers
+			// This prevents the previous hand's cards from being displayed while waiting
+			var existingCardsToRemove = await context.GameCards
+				.Where(gc => gc.GameId == game.Id)
+				.ToListAsync(cancellationToken);
+
+			if (existingCardsToRemove.Count > 0)
+			{
+				context.GameCards.RemoveRange(existingCardsToRemove);
+			}
+
+			// Reset player states (clear folded/all-in flags from previous hand)
+			foreach (var gamePlayer in game.GamePlayers.Where(gp => gp.Status == GamePlayerStatus.Active))
+			{
+				gamePlayer.CurrentBet = 0;
+				gamePlayer.TotalContributedThisHand = 0;
+				gamePlayer.HasFolded = false;
+				gamePlayer.IsAllIn = false;
+				gamePlayer.HasDrawnThisRound = false;
+				gamePlayer.DropOrStayDecision = null;
+			}
+
 			// Pause continuous play - wait for players
 			game.CurrentPhase = nameof(Phases.WaitingForPlayers);
 			game.NextHandStartsAt = null;
