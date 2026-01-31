@@ -4,6 +4,7 @@ using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Betting;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using OneOf;
 using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 using CardSuit = CardGames.Poker.Api.Data.Entities.CardSuit;
@@ -16,7 +17,9 @@ namespace CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.StartHand
 /// <summary>
 /// Handles the <see cref="StartHandCommand"/> to start a new hand in a Seven Card Stud game.
 /// </summary>
-public class StartHandCommandHandler(CardsDbContext context)
+public class StartHandCommandHandler(
+	CardsDbContext context,
+	ILogger<StartHandCommandHandler> logger)
 	: IRequestHandler<StartHandCommand, OneOf<StartHandSuccessful, StartHandError>>
 {
 	public async Task<OneOf<StartHandSuccessful, StartHandError>> Handle(
@@ -114,7 +117,14 @@ public class StartHandCommandHandler(CardsDbContext context)
 
 		if (existingCards.Count > 0)
 		{
+			logger.LogInformation(
+				"StartHand: Removing {Count} existing cards from previous hands for game {GameId}",
+				existingCards.Count, game.Id);
 			context.GameCards.RemoveRange(existingCards);
+		}
+		else
+		{
+			logger.LogInformation("StartHand: No existing cards to remove for game {GameId}", game.Id);
 		}
 
 		// 7. Create and persist shuffled deck for this hand
