@@ -46,8 +46,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CardGames.MigrationService"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CardGames.Contracts", "CardGames.Contracts\CardGames.Contracts.csproj", "{518F0EBE-AE80-474E-9C55-536901337448}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CardGames.Poker.CLI", "CardGames.Poker.CLI\CardGames.Poker.CLI.csproj", "{486159E5-09BF-CAF1-4141-B15B109AF838}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Main Projects", "Main Projects", "{3D6D91D8-C770-46E0-A3DA-385E18E29E47}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Other Projects", "Other Projects", "{6D6A7AF3-53CB-4251-8906-C1F584CEDDB6}"
@@ -60,6 +58,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{07D268B8-C
 		..\docs\Dashboard.md = ..\docs\Dashboard.md
 		..\docs\DYNAMIC_UI_PLAN.md = ..\docs\DYNAMIC_UI_PLAN.md
 		..\docs\EditTable.md = ..\docs\EditTable.md
+		..\docs\GameSpecificFeatureFolders.md = ..\docs\GameSpecificFeatureFolders.md
+		..\docs\GameTypes.md = ..\docs\GameTypes.md
 		..\docs\History.md = ..\docs\History.md
 		..\docs\IMPLEMENTATION_STATUS.md = ..\docs\IMPLEMENTATION_STATUS.md
 		..\docs\IMPLEMENTATION_SUMMARY.md = ..\docs\IMPLEMENTATION_SUMMARY.md
@@ -290,18 +290,6 @@ Global
 		{518F0EBE-AE80-474E-9C55-536901337448}.Release|x64.Build.0 = Release|Any CPU
 		{518F0EBE-AE80-474E-9C55-536901337448}.Release|x86.ActiveCfg = Release|Any CPU
 		{518F0EBE-AE80-474E-9C55-536901337448}.Release|x86.Build.0 = Release|Any CPU
-		{486159E5-09BF-CAF1-4141-B15B109AF838}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{486159E5-09BF-CAF1-4141-B15B109AF838}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{486159E5-09BF-CAF1-4141-B15B109AF838}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{486159E5-09BF-CAF1-4141-B15B109AF838}.Debug|x64.Build.0 = Debug|Any CPU
-		{486159E5-09BF-CAF1-4141-B15B109AF838}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{486159E5-09BF-CAF1-4141-B15B109AF838}.Debug|x86.Build.0 = Debug|Any CPU
-		{486159E5-09BF-CAF1-4141-B15B109AF838}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{486159E5-09BF-CAF1-4141-B15B109AF838}.Release|Any CPU.Build.0 = Release|Any CPU
-		{486159E5-09BF-CAF1-4141-B15B109AF838}.Release|x64.ActiveCfg = Release|Any CPU
-		{486159E5-09BF-CAF1-4141-B15B109AF838}.Release|x64.Build.0 = Release|Any CPU
-		{486159E5-09BF-CAF1-4141-B15B109AF838}.Release|x86.ActiveCfg = Release|Any CPU
-		{486159E5-09BF-CAF1-4141-B15B109AF838}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -324,7 +312,6 @@ Global
 		{A71A3CD9-4950-47B1-A945-B3AE30CC5993} = {6D6A7AF3-53CB-4251-8906-C1F584CEDDB6}
 		{B72E712B-163D-1296-D382-CA808701E339} = {6D6A7AF3-53CB-4251-8906-C1F584CEDDB6}
 		{518F0EBE-AE80-474E-9C55-536901337448} = {3D6D91D8-C770-46E0-A3DA-385E18E29E47}
-		{486159E5-09BF-CAF1-4141-B15B109AF838} = {6D6A7AF3-53CB-4251-8906-C1F584CEDDB6}
 		{07D268B8-C250-4557-A718-A531BB3092C9} = {1F3CFDF9-CDB0-4C87-AB9E-45E41E7F933B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Games;
 using CardGames.Poker.Betting;
 using CardGames.Poker.Games.FiveCardDraw;
 using CardGames.Poker.Games.KingsAndLows;
@@ -571,7 +572,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			}
 
 			// 3a. For Kings and Lows, check if any player cannot cover the current pot
-			var isKingsAndLowsGame = string.Equals(game.GameType?.Code, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase);
+			var isKingsAndLowsGame = PokerGameMetadataRegistry.IsKingsAndLows(game.GameType?.Code);
 			if (isKingsAndLowsGame)
 			{
 				// Calculate the pot amount for the upcoming hand
@@ -801,8 +802,8 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		// when the previous hand completes. We do NOT rotate again here.
 
 		// Determine game type
-		var isKingsAndLows = string.Equals(game.GameType?.Code, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase);
-		var isSevenCardStud = string.Equals(game.GameType?.Code, "SEVENCARDSTUD", StringComparison.OrdinalIgnoreCase);
+		var isKingsAndLows = PokerGameMetadataRegistry.IsKingsAndLows(game.GameType?.Code);
+		var isSevenCardStud = PokerGameMetadataRegistry.IsSevenCardStud(game.GameType?.Code);
 
 		// Update game state
 		game.CurrentHandNumber++;
@@ -973,7 +974,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		}
 
 		// Handle game-type-specific phase transitions after dealing
-		var isKingsAndLows = string.Equals(game.GameType?.Code, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase);
+		var isKingsAndLows = PokerGameMetadataRegistry.IsKingsAndLows(game.GameType?.Code);
 
 		if (isKingsAndLows)
 		{
