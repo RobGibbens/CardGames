@@ -55,31 +55,73 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		}
 
 		var gamePlayers = await _context.GamePlayers
-			.Where(gp => gp.GameId == gameId && gp.Status != Entities.GamePlayerStatus.Left)
-			.Include(gp => gp.Player)
-			.Include(gp => gp.Cards)
-			.OrderBy(gp => gp.SeatPosition)
-			.AsNoTracking()
-			.ToListAsync(cancellationToken);
+				.Where(gp => gp.GameId == gameId && gp.Status != Entities.GamePlayerStatus.Left)
+				.Include(gp => gp.Player)
+				.Include(gp => gp.Cards)
+				.OrderBy(gp => gp.SeatPosition)
+				.AsNoTracking()
+				.ToListAsync(cancellationToken);
 
-		// Calculate total pot from current betting round contributions
-		var totalPot = await CalculateTotalPotAsync(game, game.CurrentHandNumber, cancellationToken);
+			// DEBUG: Log card data before ordering for Seven Card Stud
+			var isSevenCardStudGame = string.Equals(game.GameType?.Code, "SEVENCARDSTUD", StringComparison.OrdinalIgnoreCase);
+			if (isSevenCardStudGame)
+			{
+				foreach (var gp in gamePlayers)
+				{
+					var cardsForHand = gp.Cards
+						.Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber)
+						.ToList();
 
-		// Build seat DTOs with cards hidden (face-down)
-		// Enrich with Identity profile data (first name/avatar) when available.
-		var userProfilesByEmail = await _context.Users
-			.AsNoTracking()
-			.Where(u => u.Email != null)
-			.Select(u => new { Email = u.Email!, u.FirstName, u.AvatarUrl })
-			.ToDictionaryAsync(
-				u => u.Email,
-				u => new UserProfile(u.FirstName, u.AvatarUrl),
-				StringComparer.OrdinalIgnoreCase,
-				cancellationToken);
+					if (cardsForHand.Count > 0)
+					{
+						_logger.LogInformation(
+							"[CARD-ORDER-DEBUG] Player {PlayerName} (Seat {Seat}), Phase {Phase}, Hand #{HandNumber}: " +
+							"RAW cards before ordering: [{RawCards}]",
+							gp.Player.Name,
+							gp.SeatPosition,
+							game.CurrentPhase,
+							game.CurrentHandNumber,
+							string.Join(", ", cardsForHand.Select(c =>
+								$"{MapSymbolToRank(c.Symbol)}{c.Suit.ToString()[0]}(DO={c.DealOrder},Loc={c.Location},Phase={c.DealtAtPhase},Vis={c.IsVisible})")));
 
-		var seats = gamePlayers
-			.Select(gp => BuildSeatPublicDto(gp, game.CurrentHandNumber, game.Ante ?? 0, game.GameType?.Code, game.CurrentPhase, userProfilesByEmail))
-					.ToList();
+						// Also log the computed order keys
+						var orderKeys = cardsForHand.Select(c => new
+						{
+							Card = $"{MapSymbolToRank(c.Symbol)}{c.Suit.ToString()[0]}",
+							OrderKey = GetSevenCardStudOrderKey(c),
+							c.DealOrder,
+							c.Location,
+							c.DealtAtPhase,
+							c.IsVisible
+						}).OrderBy(x => x.OrderKey).ToList();
+
+						_logger.LogInformation(
+							"[CARD-ORDER-DEBUG] Player {PlayerName}: Computed order keys: [{OrderKeys}]",
+							gp.Player.Name,
+							string.Join(", ", orderKeys.Select(x =>
+								$"{x.Card}(Key={x.OrderKey},DO={x.DealOrder},Loc={x.Location},Phase={x.DealtAtPhase})")));
+					}
+				}
+			}
+
+			// Calculate total pot from current betting round contributions
+			var totalPot = await CalculateTotalPotAsync(game, game.CurrentHandNumber, cancellationToken);
+
+			// Build seat DTOs with cards hidden (face-down)
+			// Enrich with Identity profile data (first name/avatar) when available.
+			var userProfilesByEmail = await _context.Users
+				.AsNoTracking()
+				.Where(u => u.Email != null)
+				.Select(u => new { Email = u.Email!, u.FirstName, u.AvatarUrl })
+				.ToDictionaryAsync(
+					u => u.Email,
+					u => new UserProfile(u.FirstName, u.AvatarUrl),
+					StringComparer.OrdinalIgnoreCase,
+					cancellationToken);
+
+			var seats = gamePlayers
+				.Select(gp => BuildSeatPublicDto(gp, game.CurrentHandNumber, game.Ante ?? 0, game.GameType?.Code, game.CurrentPhase, userProfilesByEmail))
+						.ToList();
 
 		// Calculate results phase state
 		var isResultsPhase = (game.CurrentPhase == "Complete" || game.CurrentPhase == "PotMatching") && game.HandCompletedAt.HasValue;
@@ -219,7 +261,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			gamePlayer.Cards.Count(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber),
 			game.CurrentHandNumber);
 
-		var hand = BuildPrivateHand(gamePlayer, game.CurrentHandNumber);
+		var hand = BuildPrivateHand(gamePlayer, game.CurrentHandNumber, game.GameType?.Code);
 
 		string? handEvaluationDescription = null;
 		try
@@ -436,18 +478,19 @@ public sealed class TableStateBuilder : ITableStateBuilder
 							  string.Equals(currentPhase, "Complete", StringComparison.OrdinalIgnoreCase) ||
 							  string.Equals(currentPhase, "PotMatching", StringComparison.OrdinalIgnoreCase);
 
+		// For Seven Card Stud, show visible cards; otherwise show face-down placeholders
+		// During showdown phases, show cards face-up for players who haven't folded
+		var isSevenCardStud = string.Equals(gameTypeCode, "SEVENCARDSTUD", StringComparison.OrdinalIgnoreCase);
+
 		// Get current hand cards (not discarded)
 		// Note: We filter by hand number to naturally handle sitting out players.
 		// - During Complete phase: player who just lost all chips still has cards from this hand
 		// - During next hand: their old cards are deleted, so they'll have no cards
-		var playerCards = gamePlayer.Cards
-			.Where(c => !c.IsDiscarded && c.HandNumber == currentHandNumber)
-			.OrderBy(c => c.DealOrder)
-			.ToList();
+		var filteredCards = gamePlayer.Cards
+			.Where(c => !c.IsDiscarded && c.HandNumber == currentHandNumber);
 
-		// For Seven Card Stud, show visible cards; otherwise show face-down placeholders
-		// During showdown phases, show cards face-up for players who haven't folded
-		var isSevenCardStud = string.Equals(gameTypeCode, "SEVENCARDSTUD", StringComparison.OrdinalIgnoreCase);
+		// Use street-aware ordering for Seven Card Stud to handle multi-street dealing correctly
+		var playerCards = OrderCardsForDisplay(filteredCards, isSevenCardStud).ToList();
 
 		// During showdown, show cards for staying players (not folded)
 		// Folded players should not have their cards revealed
@@ -530,27 +573,27 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		return null;
 	}
 
-	private List<CardPrivateDto> BuildPrivateHand(GamePlayer gamePlayer, int currentHandNumber)
+	private List<CardPrivateDto> BuildPrivateHand(GamePlayer gamePlayer, int currentHandNumber, string? gameTypeCode)
 	{
 		// Filter cards by current hand number to naturally handle sitting out players.
 		// - During Complete phase: player who just lost all chips still has cards from this hand
 		// - During next hand: their old cards are deleted, so they'll have no cards
 		var allCards = gamePlayer.Cards?.ToList() ?? [];
 		var filteredCards = allCards
-			.Where(c => !c.IsDiscarded && c.HandNumber == currentHandNumber)
-			.ToList();
+			.Where(c => !c.IsDiscarded && c.HandNumber == currentHandNumber);
 
-		_logger.LogInformation(
-			"BuildPrivateHand for player {PlayerId}: Total cards in collection: {TotalCount}, " +
-			"Cards for hand #{HandNumber}: {FilteredCount}, Card hand numbers: [{HandNumbers}]",
-			gamePlayer.Id,
-			allCards.Count,
+		// Use street-aware ordering for Seven Card Stud to handle multi-street dealing correctly
+		var isSevenCardStud = string.Equals(gameTypeCode, "SEVENCARDSTUD", StringComparison.OrdinalIgnoreCase);
+		var orderedCards = OrderCardsForDisplay(filteredCards, isSevenCardStud).ToList();
+
+		_logger.LogDebug(
+			"BuildPrivateHand for player {PlayerName}: {FilteredCount} cards for hand #{HandNumber}, ordered: [{OrderedCards}]",
+			gamePlayer.Player.Name,
+			orderedCards.Count,
 			currentHandNumber,
-			filteredCards.Count,
-			string.Join(", ", allCards.Select(c => c.HandNumber.ToString())));
+			string.Join(", ", orderedCards.Select(c => $"{c.Symbol}{c.Suit}(DO={c.DealOrder},Phase={c.DealtAtPhase})")));
 
-		return filteredCards
-			.OrderBy(c => c.DealOrder)
+		return orderedCards
 			.Select(c => new CardPrivateDto
 			{
 				Rank = MapSymbolToRank(c.Symbol),
@@ -683,10 +726,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 		foreach (var gp in gamePlayers.Where(p => !p.HasFolded))
 		{
-			var cards = gp.Cards
-				.Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber)
-				.OrderBy(c => c.DealOrder)
-				.ToList();
+			var filteredCards = gp.Cards
+				.Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber);
+			var cards = OrderCardsForDisplay(filteredCards, isSevenCardStud).ToList();
 
 			if (cards.Count >= 5)
 			{
@@ -898,9 +940,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					IsSevensWinner = isSevensWinner,
 					IsHighHandWinner = isHighHandWinner,
 					WildCardIndexes = wildIndexes,
-					Cards = gp.Cards
-						.Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber)
-						.OrderBy(c => c.DealOrder)
+					Cards = OrderCardsForDisplay(
+							gp.Cards.Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber),
+							isSevenCardStud)
 						.Select(c => new CardPublicDto
 						{
 							IsFaceUp = true,
@@ -1365,7 +1407,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					 && gc.HandNumber == game.CurrentHandNumber
 					 && gc.Location == Entities.CardLocation.Board
 					 && !gc.IsDiscarded)
-			.OrderBy(gc => gc.DealOrder)
+			.OrderBy(gc => gc.DealtAt)
+			.ThenBy(gc => gc.DealOrder)
 			.AsNoTracking()
 			.ToListAsync(cancellationToken);
 
@@ -1434,7 +1477,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					 && gc.HandNumber == game.CurrentHandNumber
 					 && gc.Location == Entities.CardLocation.Hand
 					 && !gc.IsDiscarded)
-			.OrderBy(gc => gc.DealOrder)
+			.OrderBy(gc => gc.DealtAt)
+			.ThenBy(gc => gc.DealOrder)
 			.AsNoTracking()
 			.ToListAsync(cancellationToken);
 
@@ -1768,5 +1812,80 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			PotAmountToCover = currentPot,
 			ShortPlayers = shortPlayers
 		};
+	}
+
+	/// <summary>
+	/// Gets the deal order for a Seven Card Stud street phase.
+	/// Used to ensure consistent card ordering based on when cards were dealt during the hand.
+	/// </summary>
+	/// <param name="phase">The street/phase name (e.g., "ThirdStreet", "FourthStreet").</param>
+	/// <returns>A numeric order value (1-5 for streets, 99 for unknown phases).</returns>
+	private static int GetStreetPhaseOrder(string? phase) => phase switch
+	{
+		"ThirdStreet" => 1,
+		"FourthStreet" => 2,
+		"FifthStreet" => 3,
+		"SixthStreet" => 4,
+		"SeventhStreet" => 5,
+		_ => 99 // Unknown phases sort last, not first
+	};
+
+	/// <summary>
+	/// Computes a composite order key for a Seven Card Stud card that ensures correct display order.
+	/// </summary>
+	/// <remarks>
+	/// Seven Card Stud display order:
+	/// - ThirdStreet: 2 hole cards (face down), then 1 board card (face up) = positions 1, 2, 3
+	/// - FourthStreet: 1 board card (face up) = position 4
+	/// - FifthStreet: 1 board card (face up) = position 5
+	/// - SixthStreet: 1 board card (face up) = position 6
+	/// - SeventhStreet: 1 hole card (face down) = position 7
+	/// 
+	/// This method uses Location to distinguish hole from board cards within ThirdStreet,
+	/// ensuring correct order even if DealOrder values are corrupted.
+	/// </remarks>
+	private static int GetSevenCardStudOrderKey(GameCard card)
+	{
+		var phaseOrder = GetStreetPhaseOrder(card.DealtAtPhase);
+
+		if (phaseOrder == 1) // ThirdStreet
+		{
+			// ThirdStreet has 2 hole cards then 1 board card.
+			// Use Location to ensure holes come before board, then DealOrder for hole ordering.
+			if (card.Location == CardLocation.Hole)
+			{
+				// Hole cards: base 1000 + DealOrder gives 1001, 1002
+				return 1000 + card.DealOrder;
+			}
+			else
+			{
+				// Board card: base 1100 + DealOrder ensures it sorts after all holes
+				return 1100 + card.DealOrder;
+			}
+		}
+
+		// For FourthStreet-SeventhStreet, use phase * 1000 + DealOrder
+		// This maintains phase ordering and uses DealOrder as tiebreaker
+		return phaseOrder * 1000 + card.DealOrder;
+	}
+
+	/// <summary>
+	/// Orders cards in the correct deal sequence, handling Seven Card Stud's multi-street dealing.
+	/// For stud games, uses a composite key based on phase and location; for other games, falls back to DealOrder.
+	/// </summary>
+	/// <param name="cards">The collection of cards to order.</param>
+	/// <param name="isSevenCardStud">Whether this is a Seven Card Stud game.</param>
+	/// <returns>Cards ordered in the correct deal sequence.</returns>
+	private static IOrderedEnumerable<GameCard> OrderCardsForDisplay(IEnumerable<GameCard> cards, bool isSevenCardStud)
+	{
+		if (isSevenCardStud)
+		{
+			// Use composite order key that accounts for Location within ThirdStreet
+			// to handle cases where DealOrder values might be incorrect.
+			return cards.OrderBy(GetSevenCardStudOrderKey);
+		}
+
+		// For other games: Order by DealOrder which should be sequential per player
+		return cards.OrderBy(c => c.DealOrder);
 	}
 }

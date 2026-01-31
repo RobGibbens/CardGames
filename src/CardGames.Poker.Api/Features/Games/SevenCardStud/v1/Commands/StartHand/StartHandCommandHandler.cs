@@ -4,6 +4,7 @@ using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Betting;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using OneOf;
 using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 using CardSuit = CardGames.Poker.Api.Data.Entities.CardSuit;
@@ -16,7 +17,9 @@ namespace CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.StartHand
 /// <summary>
 /// Handles the <see cref="StartHandCommand"/> to start a new hand in a Seven Card Stud game.
 /// </summary>
-public class StartHandCommandHandler(CardsDbContext context)
+public class StartHandCommandHandler(
+	CardsDbContext context,
+	ILogger<StartHandCommandHandler> logger)
 	: IRequestHandler<StartHandCommand, OneOf<StartHandSuccessful, StartHandError>>
 {
 	public async Task<OneOf<StartHandSuccessful, StartHandError>> Handle(
@@ -68,13 +71,12 @@ public class StartHandCommandHandler(CardsDbContext context)
 			player.PendingChipsToAdd = 0;
 		}
 
-		// 4. Auto-sit-out players with insufficient chips for the ante
+		// 4. Auto-sit-out players with insufficient chips for the ante (including 0 chips)
 		var ante = game.Ante ?? 0;
 		var playersWithInsufficientChips = game.GamePlayers
 			.Where(gp => gp.Status == GamePlayerStatus.Active &&
 						 !gp.IsSittingOut &&
-						 gp.ChipStack > 0 &&
-						 gp.ChipStack < ante)
+						 (gp.ChipStack <= 0 || (ante > 0 && gp.ChipStack < ante)))
 			.ToList();
 
 		foreach (var player in playersWithInsufficientChips)
@@ -82,7 +84,7 @@ public class StartHandCommandHandler(CardsDbContext context)
 			player.IsSittingOut = true;
 		}
 
-		// 4. Get eligible players (active, not sitting out, chips >= ante or ante is 0)
+		// 5. Get eligible players (active, not sitting out, chips >= ante or ante is 0)
 		var eligiblePlayers = game.GamePlayers
 			.Where(gp => gp.Status == GamePlayerStatus.Active &&
 						 !gp.IsSittingOut &&
@@ -98,7 +100,7 @@ public class StartHandCommandHandler(CardsDbContext context)
 			};
 		}
 
-		// 5. Reset player states for new hand (mirrors SevenCardStudGame.StartHand)
+		// 6. Reset player states for new hand (mirrors SevenCardStudGame.StartHand)
 		foreach (var gamePlayer in game.GamePlayers.Where(gp => gp.Status == GamePlayerStatus.Active))
 		{
 			gamePlayer.CurrentBet = 0;
@@ -115,7 +117,14 @@ public class StartHandCommandHandler(CardsDbContext context)
 
 		if (existingCards.Count > 0)
 		{
+			logger.LogInformation(
+				"StartHand: Removing {Count} existing cards from previous hands for game {GameId}",
+				existingCards.Count, game.Id);
 			context.GameCards.RemoveRange(existingCards);
+		}
+		else
+		{
+			logger.LogInformation("StartHand: No existing cards to remove for game {GameId}", game.Id);
 		}
 
 		// 7. Create and persist shuffled deck for this hand

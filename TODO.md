@@ -4,7 +4,9 @@
 
 ### P1 - Can't play without these
 - [ ] Test side pots
-- [ ] Kings and Lows - is always treating an Ace as high. (6,7,8,9,A should be a straight)
+- [ ] SCS - Showing the wrong cards (2 down, 1 up)
+- [ ] SCS - Choosing wrong first to act
+- [x] Kings and Lows - is always treating an Ace as high. (6,7,8,9,A should be a straight)
 - [ ] Don't auto start a new hand. Add a timer, allow pause, allow people to get out of the game or end the game
 - [ ] Make sure all game types handle all ins correctly
 - [ ] Dashboard should be scrollable
