@@ -4,18 +4,13 @@
 
 ### P1 - Can't play without these
 - [ ] Test side pots
-- [ ] SCS - Showing the wrong cards (2 down, 1 up)
 - [ ] SCS - Choosing wrong first to act
-- [x] Kings and Lows - is always treating an Ace as high. (6,7,8,9,A should be a straight)
 - [ ] Don't auto start a new hand. Add a timer, allow pause, allow people to get out of the game or end the game
 - [ ] Make sure all game types handle all ins correctly
 - [ ] Dashboard should be scrollable
 
 - [ ] Kings and Lows - Should make it obvious when someone dropped
 - [ ] Kings and Lows - Things happen too fast
-
-- [ ] SCS - when a player has no chips, they're still getting dealt and can take action
-- [ ] SCS - odds should calculate based on future cards
 
 ### P2 - Important but not blocking play
 
@@ -144,3 +139,7 @@
 - [x] Kings and Lows - Hand history is not working
 - [x] Kings and Lows - don't deal to players that don't have enough chips to match the pot
 - [x] SCS - when all players go all in - still need to draw cards
+- [x] SCS - Showing the wrong cards (2 down, 1 up)
+- [x] Kings and Lows - is always treating an Ace as high. (6,7,8,9,A should be a straight)
+- [x] SCS - when a player has no chips, they're still getting dealt and can take action
+- [x] SCS - odds should calculate based on future cards
