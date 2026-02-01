@@ -1,6 +1,7 @@
 using System.Text.Json;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.GameFlow;
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Betting;
 using CardGames.Poker.Games.FiveCardDraw;
@@ -98,17 +99,17 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			.ToListAsync(cancellationToken);
 
 		foreach (var game in gamesReadyForNextHand)
-		{
-			try
 			{
-				await StartNextHandAsync(context, broadcaster, game, now, cancellationToken);
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError(ex, "Failed to start next hand for game {GameId}", game.Id);
+				try
+				{
+					await StartNextHandAsync(scope, context, broadcaster, game, now, cancellationToken);
+				}
+				catch (Exception ex)
+				{
+					_logger.LogError(ex, "Failed to start next hand for game {GameId}", game.Id);
+				}
 			}
 		}
-	}
 
 	/// <summary>
 	/// Checks for games where all players have left after the game started,
@@ -492,6 +493,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 	}
 
 	private async Task StartNextHandAsync(
+		IServiceScope scope,
 		CardsDbContext context,
 		IGameStateBroadcaster broadcaster,
 		Game game,
@@ -520,6 +522,10 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		{
 			await context.SaveChangesAsync(cancellationToken);
 		}
+
+		// Get the game flow handler for this game type (needed for game-specific checks below)
+		var flowHandlerFactory = scope.ServiceProvider.GetRequiredService<IGameFlowHandlerFactory>();
+		var flowHandler = flowHandlerFactory.GetHandler(game.GameType?.Code);
 
 		// 2. Apply pending chips to player stacks
 		var playersWithPendingChips = game.GamePlayers
@@ -571,9 +577,9 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 					game.Id);
 			}
 
-			// 3a. For Kings and Lows, check if any player cannot cover the current pot
-			var isKingsAndLowsGame = PokerGameMetadataRegistry.IsKingsAndLows(game.GameType?.Code);
-			if (isKingsAndLowsGame)
+			// 3a. For games with pot matching (like Kings and Lows), check if any player cannot cover the current pot
+			var hasPotMatchingPhase = flowHandler.SpecialPhases.Contains(nameof(Phases.PotMatching), StringComparer.OrdinalIgnoreCase);
+			if (hasPotMatchingPhase)
 			{
 				// Calculate the pot amount for the upcoming hand
 				var currentPotAmount = await context.Pots
@@ -801,17 +807,13 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		// NOTE: Dealer rotation is already done in PerformShowdownCommandHandler.MoveDealer()
 		// when the previous hand completes. We do NOT rotate again here.
 
-		// Determine game type
-		var isKingsAndLows = PokerGameMetadataRegistry.IsKingsAndLows(game.GameType?.Code);
-		var isSevenCardStud = PokerGameMetadataRegistry.IsSevenCardStud(game.GameType?.Code);
+		// Get dealing configuration from the flow handler
+		var dealingConfig = flowHandler.GetDealingConfiguration();
 
 		// Update game state
 		game.CurrentHandNumber++;
-		// Kings and Lows only collects antes on first hand; subsequent hands get pot from losers matching
-		// Seven Card Stud goes through CollectingAntes -> ThirdStreet flow
-		game.CurrentPhase = isKingsAndLows
-			? nameof(Phases.Dealing)
-			: nameof(Phases.CollectingAntes);
+		// Use flow handler to determine the initial phase for this game type
+		game.CurrentPhase = flowHandler.GetInitialPhase(game);
 		game.Status = GameStatus.InProgress;
 		game.CurrentPlayerIndex = -1;
 		game.CurrentDrawPlayerIndex = -1;
@@ -819,29 +821,34 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		game.NextHandStartsAt = null;
 		game.UpdatedAt = now;
 
+		// Perform game-specific initialization
+		await flowHandler.OnHandStartingAsync(game, cancellationToken);
+
 		await context.SaveChangesAsync(cancellationToken);
 
 		_logger.LogInformation(
-			"Started hand {HandNumber} for game {GameId} with {PlayerCount} eligible players. Dealer at seat {DealerPosition}",
+			"Started hand {HandNumber} for game {GameId} ({GameType}) with {PlayerCount} eligible players. Dealer at seat {DealerPosition}. Initial phase: {InitialPhase}",
 			game.CurrentHandNumber,
 			game.Id,
+			flowHandler.GameTypeCode,
 			eligiblePlayers.Count,
-			game.DealerPosition);
+			game.DealerPosition,
+			game.CurrentPhase);
 
-		// Automatically collect antes (skip for Kings and Lows - ante is only on first hand)
-		if (!isKingsAndLows)
+		// Automatically collect antes (skip if game's flow handler indicates it handles antes differently)
+		if (!flowHandler.SkipsAnteCollection)
 		{
 			await CollectAntesAsync(context, game, eligiblePlayers, ante, now, cancellationToken);
 		}
 
-		// Automatically deal hands based on game type
-		if (isSevenCardStud)
+		// Automatically deal hands based on dealing configuration
+		if (dealingConfig.PatternType == DealingPatternType.StreetBased)
 		{
 			await DealSevenCardStudHandsAsync(context, game, eligiblePlayers, now, cancellationToken);
 		}
 		else
 		{
-			await DealHandsAsync(context, game, eligiblePlayers, now, cancellationToken);
+			await DealHandsAsync(context, game, eligiblePlayers, flowHandler, now, cancellationToken);
 		}
 
 		// Broadcast updated state
@@ -905,6 +912,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		CardsDbContext context,
 		Game game,
 		List<GamePlayer> eligiblePlayers,
+		IGameFlowHandler flowHandler,
 		DateTimeOffset now,
 		CancellationToken cancellationToken)
 	{
@@ -973,20 +981,23 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			player.CurrentBet = 0;
 		}
 
-		// Handle game-type-specific phase transitions after dealing
-		var isKingsAndLows = PokerGameMetadataRegistry.IsKingsAndLows(game.GameType?.Code);
+		// Handle game-type-specific phase transitions after dealing using flow handler
+		var nextPhase = flowHandler.GetNextPhase(game, nameof(Phases.Dealing));
 
-		if (isKingsAndLows)
+		// Check if this game goes to a special phase (like DropOrStay for Kings and Lows)
+		if (flowHandler.SpecialPhases.Contains(nextPhase ?? "", StringComparer.OrdinalIgnoreCase))
 		{
-			// Kings and Lows goes to DropOrStay phase after dealing, not betting
-			game.CurrentPhase = nameof(Phases.DropOrStay);
+			// Special phase handling - no betting round needed, all players act simultaneously
+			game.CurrentPhase = nextPhase!;
 			game.CurrentPlayerIndex = -1; // No current actor - all players decide simultaneously
 			game.UpdatedAt = now;
 
 			_logger.LogInformation(
-				"Dealt cards for Kings and Lows game {GameId} hand {HandNumber}. Phase set to DropOrStay.",
+				"Dealt cards for {GameType} game {GameId} hand {HandNumber}. Phase set to {NextPhase}.",
+				flowHandler.GameTypeCode,
 				game.Id,
-				game.CurrentHandNumber);
+				game.CurrentHandNumber,
+				nextPhase);
 		}
 		else
 		{
@@ -1000,7 +1011,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 				GameId = game.Id,
 				HandNumber = game.CurrentHandNumber,
 				RoundNumber = 1,
-				Street = nameof(Phases.FirstBettingRound),
+				Street = nextPhase ?? nameof(Phases.FirstBettingRound),
 				CurrentBet = 0,
 				MinBet = game.MinBet ?? 0,
 				RaiseCount = 0,
@@ -1016,7 +1027,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 
 			context.Set<Data.Entities.BettingRound>().Add(bettingRound);
 
-			game.CurrentPhase = nameof(Phases.FirstBettingRound);
+			game.CurrentPhase = nextPhase ?? nameof(Phases.FirstBettingRound);
 			game.CurrentPlayerIndex = firstActorIndex;
 			game.UpdatedAt = now;
 

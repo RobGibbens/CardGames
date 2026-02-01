@@ -51,6 +51,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Other Projects", "Other Pro
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{07D268B8-C250-4557-A718-A531BB3092C9}"
 	ProjectSection(SolutionItems) = preProject
+		..\docs\Acey-Deucey Rules.md = ..\docs\Acey-Deucey Rules.md
 		..\docs\ADDING_NEW_GAMES.md = ..\docs\ADDING_NEW_GAMES.md
 		..\docs\ARCHITECTURE.md = ..\docs\ARCHITECTURE.md
 		..\docs\ContinuousPlay.md = ..\docs\ContinuousPlay.md
@@ -70,8 +71,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{07D268B8-C
 		..\docs\PlayPage.md = ..\docs\PlayPage.md
 		..\docs\PRD.md = ..\docs\PRD.md
 		..\docs\README_KINGS_AND_LOWS.md = ..\docs\README_KINGS_AND_LOWS.md
+		..\docs\Screw Your Neighbor rules.md = ..\docs\Screw Your Neighbor rules.md
 		..\docs\sevenCardStudDesignDoc.md = ..\docs\sevenCardStudDesignDoc.md
 		..\docs\SignalRPRD.md = ..\docs\SignalRPRD.md
+		..\docs\Stateless.md = ..\docs\Stateless.md
 		..\docs\Yahoo.md = ..\docs\Yahoo.md
 	EndProjectSection
 EndProject

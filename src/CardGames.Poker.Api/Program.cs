@@ -2,6 +2,7 @@ using System.Reflection;
 using Asp.Versioning;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Features;
+using CardGames.Poker.Api.GameFlow;
 using CardGames.Poker.Api.Infrastructure;
 using CardGames.Poker.Api.Infrastructure.Middleware;
 using FluentValidation;
@@ -79,6 +80,9 @@ builder.Services.AddSignalR()
 	builder.Services.AddScoped<IGameStateBroadcaster, GameStateBroadcaster>();
 	builder.Services.AddScoped<ILobbyBroadcaster, LobbyBroadcaster>();
 	builder.Services.AddScoped<IHandHistoryRecorder, HandHistoryRecorder>();
+
+	// Add game flow handler factory for generic command handler architecture
+	builder.Services.AddSingleton<IGameFlowHandlerFactory, GameFlowHandlerFactory>();
 
 	// Add background service for continuous play (auto-start next hands)
 	builder.Services.AddHostedService<ContinuousPlayBackgroundService>();
