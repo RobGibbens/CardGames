@@ -1,4 +1,6 @@
+using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Services;
 using CardGames.Poker.Games.GameFlow;
 
 namespace CardGames.Poker.Api.GameFlow;
@@ -106,4 +108,127 @@ public interface IGameFlowHandler
     /// or prepare for the next hand.
     /// </remarks>
     Task OnHandCompletedAsync(Game game, CancellationToken cancellationToken = default);
+
+    #region Dealing
+
+    /// <summary>
+    /// Deals cards to players for a new hand.
+    /// </summary>
+    /// <param name="context">The database context.</param>
+    /// <param name="game">The game entity.</param>
+    /// <param name="eligiblePlayers">Players to receive cards.</param>
+    /// <param name="now">The current timestamp.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A task representing the async operation.</returns>
+    /// <remarks>
+    /// Override this in handlers that require non-standard dealing patterns
+    /// (e.g., Seven Card Stud with street-based dealing).
+    /// </remarks>
+    Task DealCardsAsync(
+        CardsDbContext context,
+        Game game,
+        List<GamePlayer> eligiblePlayers,
+        DateTimeOffset now,
+        CancellationToken cancellationToken);
+
+    #endregion
+
+    #region Showdown
+
+    /// <summary>
+    /// Gets whether this game supports inline showdown processing by the background service.
+    /// </summary>
+    /// <remarks>
+    /// When true, the background service can call <see cref="PerformShowdownAsync"/>
+    /// directly during phase transitions (e.g., after DrawComplete in Kings and Lows).
+    /// When false, showdown is handled exclusively by the PerformShowdownCommandHandler.
+    /// </remarks>
+    bool SupportsInlineShowdown { get; }
+
+    /// <summary>
+    /// Performs showdown evaluation, pot distribution, and state updates.
+    /// </summary>
+    /// <param name="context">The database context.</param>
+    /// <param name="game">The game entity.</param>
+    /// <param name="handHistoryRecorder">Service for recording hand history.</param>
+    /// <param name="now">The current timestamp.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A result indicating success or failure.</returns>
+    /// <remarks>
+    /// Only called by the background service when <see cref="SupportsInlineShowdown"/> is true.
+    /// Most games should use the generic PerformShowdownCommandHandler instead.
+    /// </remarks>
+    Task<ShowdownResult> PerformShowdownAsync(
+        CardsDbContext context,
+        Game game,
+        IHandHistoryRecorder handHistoryRecorder,
+        DateTimeOffset now,
+        CancellationToken cancellationToken);
+
+    #endregion
+
+    #region Post-Phase Processing
+
+    /// <summary>
+    /// Processes the DrawComplete phase transition.
+    /// </summary>
+    /// <param name="context">The database context.</param>
+    /// <param name="game">The game entity.</param>
+    /// <param name="handHistoryRecorder">Service for recording hand history.</param>
+    /// <param name="now">The current timestamp.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The next phase to transition to.</returns>
+    /// <remarks>
+    /// Called when a draw phase has completed and all players have drawn.
+    /// Default behavior transitions to SecondBettingRound.
+    /// Override for games with different post-draw behavior.
+    /// </remarks>
+    Task<string> ProcessDrawCompleteAsync(
+        CardsDbContext context,
+        Game game,
+        IHandHistoryRecorder handHistoryRecorder,
+        DateTimeOffset now,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Processes any post-showdown actions.
+    /// </summary>
+    /// <param name="context">The database context.</param>
+    /// <param name="game">The game entity.</param>
+    /// <param name="showdownResult">Results from the showdown.</param>
+    /// <param name="now">The current timestamp.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The next phase to transition to.</returns>
+    /// <remarks>
+    /// Used for games that have additional mechanics after showdown,
+    /// such as pot matching in Kings and Lows.
+    /// </remarks>
+    Task<string> ProcessPostShowdownAsync(
+        CardsDbContext context,
+        Game game,
+        ShowdownResult showdownResult,
+        DateTimeOffset now,
+        CancellationToken cancellationToken);
+
+    #endregion
+
+    #region Chip Check
+
+    /// <summary>
+    /// Gets whether this game requires chip coverage check before starting new hands.
+    /// </summary>
+    /// <remarks>
+    /// Games like Kings and Lows require all players to be able to cover the pot
+    /// before a new hand can start. If a player cannot cover, the game pauses
+    /// for a configurable period to allow chip additions.
+    /// </remarks>
+    bool RequiresChipCoverageCheck { get; }
+
+    /// <summary>
+    /// Gets the chip check configuration for this game type.
+    /// </summary>
+    /// <returns>Configuration specifying pause duration and behavior.</returns>
+    ChipCheckConfiguration GetChipCheckConfiguration();
+
+    #endregion
 }

@@ -1,7 +1,15 @@
+using System.Text.Json;
+using CardGames.Core.French.Cards;
+using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
+using CardGames.Poker.Evaluation;
 using CardGames.Poker.Games.GameFlow;
 using CardGames.Poker.Games.KingsAndLows;
+using CardGames.Poker.Hands.DrawHands;
+using Microsoft.EntityFrameworkCore;
+using DropOrStayDecision = CardGames.Poker.Api.Data.Entities.DropOrStayDecision;
 
 namespace CardGames.Poker.Api.GameFlow;
 
@@ -88,6 +96,347 @@ public sealed class KingsAndLowsFlowHandler : BaseGameFlowHandler
     /// <inheritdoc />
     public override IReadOnlyList<string> SpecialPhases =>
         [nameof(Phases.DropOrStay), nameof(Phases.PotMatching), nameof(Phases.PlayerVsDeck)];
+
+    #region Chip Check
+
+    /// <inheritdoc />
+    public override bool RequiresChipCoverageCheck => true;
+
+    /// <inheritdoc />
+    public override ChipCheckConfiguration GetChipCheckConfiguration() =>
+        ChipCheckConfiguration.KingsAndLowsDefault;
+
+    #endregion
+
+    #region Showdown
+
+    /// <inheritdoc />
+    public override bool SupportsInlineShowdown => true;
+
+    /// <inheritdoc />
+    public override async Task<ShowdownResult> PerformShowdownAsync(
+        CardsDbContext context,
+        Game game,
+        IHandHistoryRecorder handHistoryRecorder,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        var gamePlayersList = game.GamePlayers.OrderBy(gp => gp.SeatPosition).ToList();
+
+        // Find staying players
+        var stayingPlayers = gamePlayersList
+            .Where(gp => !gp.HasFolded &&
+                         gp is { Status: GamePlayerStatus.Active, DropOrStayDecision: DropOrStayDecision.Stay })
+            .ToList();
+
+        // Load main pot
+        var mainPot = await context.Pots
+            .FirstOrDefaultAsync(p => p.GameId == game.Id &&
+                                      p.HandNumber == game.CurrentHandNumber,
+                             cancellationToken);
+
+        if (mainPot == null)
+        {
+            return ShowdownResult.Failure("No pot to award");
+        }
+
+        // Evaluate hands
+        var playerHandEvaluations = new List<(GamePlayer player, long strength)>();
+
+        foreach (var player in stayingPlayers)
+        {
+            var playerCards = game.GameCards
+                .Where(gc => gc.GamePlayerId == player.Id &&
+                             gc.HandNumber == game.CurrentHandNumber &&
+                             !gc.IsDiscarded)
+                .OrderBy(gc => gc.DealOrder)
+                .Select(gc => new Card(
+                    (Suit)(int)gc.Suit,
+                    (Symbol)(int)gc.Symbol))
+                .ToList();
+
+            if (playerCards.Count >= 5)
+            {
+                var hand = new KingsAndLowsDrawHand(playerCards);
+                playerHandEvaluations.Add((player, hand.Strength));
+            }
+        }
+
+        if (playerHandEvaluations.Count == 0)
+        {
+            return ShowdownResult.Failure("No valid hands to evaluate");
+        }
+
+        // Find winners
+        var maxStrength = playerHandEvaluations.Max(h => h.strength);
+        var winners = playerHandEvaluations
+            .Where(h => h.strength == maxStrength)
+            .Select(h => h.player)
+            .ToList();
+        var losers = stayingPlayers.Where(p => !winners.Contains(p)).ToList();
+
+        // Distribute pot
+        var potAmount = mainPot.Amount;
+        var sharePerWinner = potAmount / winners.Count;
+        var remainder = potAmount % winners.Count;
+        var payouts = new List<(Guid playerId, string name, int amount)>();
+
+        foreach (var winner in winners)
+        {
+            var payout = sharePerWinner;
+            if (remainder > 0)
+            {
+                payout++;
+                remainder--;
+            }
+            winner.ChipStack += payout;
+            payouts.Add((winner.PlayerId, winner.Player?.Name ?? "Unknown", payout));
+        }
+
+        // Mark pot as awarded
+        mainPot.IsAwarded = true;
+        mainPot.AwardedAt = now;
+        mainPot.WinnerPayouts = JsonSerializer.Serialize(
+            payouts.Select(p => new { playerId = p.playerId.ToString(), playerName = p.name, amount = p.amount }));
+
+        await context.SaveChangesAsync(cancellationToken);
+
+        // Build winning hand description
+        string? winningHandDescription = null;
+        if (winners.Count > 0)
+        {
+            var winnerPlayer = winners[0];
+            var winnerCards = game.GameCards
+                .Where(gc => gc.GamePlayerId == winnerPlayer.Id &&
+                             gc.HandNumber == game.CurrentHandNumber &&
+                             !gc.IsDiscarded)
+                .OrderBy(gc => gc.DealOrder)
+                .Select(gc => new Card((Suit)(int)gc.Suit, (Symbol)(int)gc.Symbol))
+                .ToList();
+
+            if (winnerCards.Count >= 5)
+            {
+                var winnerHand = new KingsAndLowsDrawHand(winnerCards);
+                winningHandDescription = HandDescriptionFormatter.GetHandDescription(winnerHand);
+            }
+        }
+
+        // Record hand history
+        await RecordHandHistoryAsync(
+            handHistoryRecorder, game, gamePlayersList, stayingPlayers,
+            potAmount, winners, losers, winningHandDescription, payouts, now, cancellationToken);
+
+        return ShowdownResult.Success(
+            winners.Select(w => w.PlayerId).ToList(),
+            losers.Select(l => l.PlayerId).ToList(),
+            potAmount,
+            winningHandDescription);
+    }
+
+    private static async Task RecordHandHistoryAsync(
+        IHandHistoryRecorder handHistoryRecorder,
+        Game game,
+        List<GamePlayer> gamePlayersList,
+        List<GamePlayer> stayingPlayers,
+        int potAmount,
+        List<GamePlayer> winners,
+        List<GamePlayer> losers,
+        string? winningHandDescription,
+        List<(Guid playerId, string name, int amount)> payouts,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        var winnerInfos = winners.Select(w =>
+        {
+            var payout = payouts.FirstOrDefault(p => p.playerId == w.PlayerId);
+            return new WinnerInfo
+            {
+                PlayerId = w.PlayerId,
+                PlayerName = w.Player?.Name ?? w.PlayerId.ToString(),
+                AmountWon = payout.amount
+            };
+        }).ToList();
+
+        var isSplitPot = winners.Count > 1;
+        var winnerPlayerIds = winners.Select(w => w.PlayerId).ToHashSet();
+
+        var playerResults = gamePlayersList.Select(gp =>
+        {
+            var isWinner = winnerPlayerIds.Contains(gp.PlayerId);
+            var payoutAmount = isWinner ? winnerInfos.FirstOrDefault(w => w.PlayerId == gp.PlayerId)?.AmountWon ?? 0 : 0;
+            var netDelta = isWinner
+                ? payoutAmount - gp.TotalContributedThisHand
+                : -gp.TotalContributedThisHand;
+
+            // Get cards for this player if they reached showdown
+            List<string>? showdownCards = null;
+            var reachedShowdown = !gp.HasFolded && stayingPlayers.Contains(gp);
+            if (reachedShowdown)
+            {
+                var cards = game.GameCards
+                    .Where(gc => gc.GamePlayerId == gp.Id && gc.HandNumber == game.CurrentHandNumber && !gc.IsDiscarded)
+                    .OrderBy(gc => gc.DealOrder)
+                    .Select(gc => FormatCard(gc.Symbol, gc.Suit))
+                    .ToList();
+                if (cards.Count > 0)
+                {
+                    showdownCards = cards;
+                }
+            }
+
+            return new PlayerResultInfo
+            {
+                PlayerId = gp.PlayerId,
+                PlayerName = gp.Player?.Name ?? gp.PlayerId.ToString(),
+                SeatPosition = gp.SeatPosition,
+                HasFolded = gp.HasFolded,
+                ReachedShowdown = reachedShowdown,
+                IsWinner = isWinner,
+                IsSplitPot = isSplitPot && isWinner,
+                NetChipDelta = netDelta,
+                WentAllIn = gp.IsAllIn,
+                FoldStreet = gp.HasFolded ? "DropOrStay" : null,
+                ShowdownCards = showdownCards
+            };
+        }).ToList();
+
+        await handHistoryRecorder.RecordHandHistoryAsync(new RecordHandHistoryParameters
+        {
+            GameId = game.Id,
+            HandNumber = game.CurrentHandNumber,
+            CompletedAtUtc = now,
+            WonByFold = false,
+            TotalPot = potAmount,
+            WinningHandDescription = winningHandDescription,
+            Winners = winnerInfos,
+            PlayerResults = playerResults
+        }, cancellationToken);
+    }
+
+    private static string FormatCard(CardSymbol symbol, CardSuit suit)
+    {
+        var symbolStr = symbol switch
+        {
+            CardSymbol.Deuce => "2",
+            CardSymbol.Three => "3",
+            CardSymbol.Four => "4",
+            CardSymbol.Five => "5",
+            CardSymbol.Six => "6",
+            CardSymbol.Seven => "7",
+            CardSymbol.Eight => "8",
+            CardSymbol.Nine => "9",
+            CardSymbol.Ten => "10",
+            CardSymbol.Jack => "J",
+            CardSymbol.Queen => "Q",
+            CardSymbol.King => "K",
+            CardSymbol.Ace => "A",
+            _ => "?"
+        };
+
+        var suitStr = suit switch
+        {
+            CardSuit.Hearts => "h",
+            CardSuit.Diamonds => "d",
+            CardSuit.Spades => "s",
+            CardSuit.Clubs => "c",
+            _ => "?"
+        };
+
+        return $"{symbolStr}{suitStr}";
+    }
+
+    #endregion
+
+    #region Post-Phase Processing
+
+    /// <inheritdoc />
+    public override Task<string> ProcessDrawCompleteAsync(
+        CardsDbContext context,
+        Game game,
+        IHandHistoryRecorder handHistoryRecorder,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        // For Kings and Lows, DrawComplete goes directly to Showdown
+        // Clear the draw completed timestamp
+        game.DrawCompletedAt = null;
+        return Task.FromResult(nameof(Phases.Showdown));
+    }
+
+    /// <inheritdoc />
+    public override async Task<string> ProcessPostShowdownAsync(
+        CardsDbContext context,
+        Game game,
+        ShowdownResult showdownResult,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        // Get loser players
+        var losers = game.GamePlayers
+            .Where(gp => showdownResult.LoserPlayerIds.Contains(gp.PlayerId))
+            .ToList();
+
+        // Pot matching: losers must match the pot for the next hand
+        var matchAmount = showdownResult.TotalPotAwarded;
+        var totalMatched = 0;
+
+        foreach (var loser in losers)
+        {
+            var actualMatch = Math.Min(matchAmount, loser.ChipStack);
+            loser.ChipStack -= actualMatch;
+            totalMatched += actualMatch;
+        }
+
+        // Create pot for next hand with the matched contributions
+        if (totalMatched > 0)
+        {
+            var newPot = new Data.Entities.Pot
+            {
+                GameId = game.Id,
+                HandNumber = game.CurrentHandNumber + 1,
+                PotType = PotType.Main,
+                PotOrder = 0,
+                Amount = totalMatched,
+                IsAwarded = false,
+                CreatedAt = now
+            };
+            context.Pots.Add(newPot);
+        }
+
+        // Complete the hand
+        game.HandCompletedAt = now;
+        game.NextHandStartsAt = now.AddSeconds(ResultsDisplayDurationSeconds);
+
+        MoveDealer(game);
+        await context.SaveChangesAsync(cancellationToken);
+
+        return nameof(Phases.Complete);
+    }
+
+    /// <summary>
+    /// Duration in seconds for the results display period before starting the next hand.
+    /// </summary>
+    private const int ResultsDisplayDurationSeconds = 8;
+
+    private static void MoveDealer(Game game)
+    {
+        var occupiedSeats = game.GamePlayers
+            .Where(gp => gp.Status == GamePlayerStatus.Active)
+            .OrderBy(gp => gp.SeatPosition)
+            .Select(gp => gp.SeatPosition)
+            .ToList();
+
+        if (occupiedSeats.Count == 0) return;
+
+        var currentPosition = game.DealerPosition;
+        var seatsAfterCurrent = occupiedSeats.Where(pos => pos > currentPosition).ToList();
+
+        game.DealerPosition = seatsAfterCurrent.Count > 0
+            ? seatsAfterCurrent.First()
+            : occupiedSeats.First();
+    }
+
+    #endregion
 
     /// <inheritdoc />
     public override Task OnHandStartingAsync(Game game, CancellationToken cancellationToken = default)
