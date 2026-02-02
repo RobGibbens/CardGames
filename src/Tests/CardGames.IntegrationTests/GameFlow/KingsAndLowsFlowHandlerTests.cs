@@ -118,12 +118,18 @@ public class KingsAndLowsFlowHandlerTests : IntegrationTestBase
         var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "KINGSANDLOWS", 4);
 
         // Simulate only one player staying
-        setup.GamePlayers[0].DropOrStayDecision = DropOrStayDecision.Stay;
-        setup.GamePlayers[0].HasFolded = false;
-        for (var i = 1; i < setup.GamePlayers.Count; i++)
+        var gamePlayers = setup.Game.GamePlayers.ToList();
+        var stayer = gamePlayers.OrderBy(p => p.SeatPosition).First();
+        
+        stayer.DropOrStayDecision = DropOrStayDecision.Stay;
+        stayer.HasFolded = false;
+        stayer.Status = GamePlayerStatus.Active;
+        stayer.IsSittingOut = false;
+
+        foreach (var gp in gamePlayers.Where(p => p.Id != stayer.Id))
         {
-            setup.GamePlayers[i].DropOrStayDecision = DropOrStayDecision.Drop;
-            setup.GamePlayers[i].HasFolded = true;
+            gp.DropOrStayDecision = DropOrStayDecision.Drop;
+            gp.HasFolded = true;
         }
         await DbContext.SaveChangesAsync();
 
@@ -142,7 +148,7 @@ public class KingsAndLowsFlowHandlerTests : IntegrationTestBase
         var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "KINGSANDLOWS", 4);
 
         // Simulate all players dropping
-        foreach (var gp in setup.GamePlayers)
+        foreach (var gp in setup.Game.GamePlayers)
         {
             gp.DropOrStayDecision = DropOrStayDecision.Drop;
             gp.HasFolded = true;
@@ -280,7 +286,7 @@ public class KingsAndLowsFlowHandlerTests : IntegrationTestBase
         // Assert - Decisions should be reset
         foreach (var gp in setup.GamePlayers)
         {
-            gp.DropOrStayDecision.Should().BeNull();
+            gp.DropOrStayDecision.Should().Be(DropOrStayDecision.Undecided);
         }
     }
 

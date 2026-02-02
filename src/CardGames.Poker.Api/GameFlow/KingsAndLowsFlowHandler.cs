@@ -444,7 +444,7 @@ public sealed class KingsAndLowsFlowHandler : BaseGameFlowHandler
         // Reset all players' DropOrStay decisions and pot matching status
         foreach (var player in game.GamePlayers)
         {
-            player.DropOrStayDecision = Data.Entities.DropOrStayDecision.Undecided;
+            player.DropOrStayDecision = DropOrStayDecision.Undecided;
         }
 
         return Task.CompletedTask;
@@ -458,9 +458,12 @@ public sealed class KingsAndLowsFlowHandler : BaseGameFlowHandler
     private static string DeterminePostDropPhase(Game game)
     {
         var stayingPlayers = game.GamePlayers
-            .Count(gp => gp.Status == GamePlayerStatus.Active &&
+            .Where(gp => gp.Status == GamePlayerStatus.Active &&
                          !gp.HasFolded &&
-                         !gp.IsSittingOut);
+                         !gp.IsSittingOut &&
+                         gp.DropOrStayDecision == DropOrStayDecision.Stay)
+            .DistinctBy(gp => gp.PlayerId)
+            .Count();
 
         return stayingPlayers switch
         {

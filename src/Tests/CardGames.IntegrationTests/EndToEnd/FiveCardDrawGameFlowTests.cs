@@ -42,12 +42,14 @@ public class FiveCardDrawGameFlowTests : IntegrationTestBase
     {
         // Arrange - Create game with mixed chip stacks
         var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(
-            DbContext, "FIVECARDDRAW", 4, startingChips: 100, ante: 20);
+            DbContext, gameTypeCode:"FIVECARDDRAW", numberOfPlayers:4, startingChips: 100, ante: 20);
         
         // Player 3 has chips less than ante
         setup.GamePlayers[3].ChipStack = 15;
+        
         // Player 2 has exactly ante amount
         setup.GamePlayers[2].ChipStack = 20;
+        
         await DbContext.SaveChangesAsync();
 
         // Act

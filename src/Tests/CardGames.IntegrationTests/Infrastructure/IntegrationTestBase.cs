@@ -4,6 +4,7 @@ using CardGames.Poker.Api.GameFlow;
 using CardGames.Poker.Betting;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -22,6 +23,7 @@ public abstract class IntegrationTestBase : IAsyncLifetime
     protected IGameFlowHandlerFactory FlowHandlerFactory => Scope.ServiceProvider.GetRequiredService<IGameFlowHandlerFactory>();
     
     private readonly string _databaseName = $"TestDb_{Guid.NewGuid():N}";
+    private readonly InMemoryDatabaseRoot _databaseRoot = new();
 
     public virtual async Task InitializeAsync()
     {
@@ -32,7 +34,7 @@ public abstract class IntegrationTestBase : IAsyncLifetime
 
         // Add in-memory database
         services.AddDbContext<CardsDbContext>(options =>
-            options.UseInMemoryDatabase(_databaseName));
+            options.UseInMemoryDatabase(_databaseName, _databaseRoot));
 
         // Add MediatR with handler registrations from the API project
         services.AddMediatR(cfg =>

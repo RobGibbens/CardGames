@@ -237,6 +237,7 @@ public sealed class StartHandCommandHandler(
             .Where(gp => gp.Status == GamePlayerStatus.Active &&
                          !gp.IsSittingOut &&
                          (ante == 0 || gp.ChipStack >= ante))
+            .DistinctBy(gp => gp.Id)
             .ToList();
     }
 

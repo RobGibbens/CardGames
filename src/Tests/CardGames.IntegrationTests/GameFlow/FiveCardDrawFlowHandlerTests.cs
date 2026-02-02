@@ -1,8 +1,3 @@
-using CardGames.IntegrationTests.Infrastructure;
-using CardGames.Poker.Api.Data.Entities;
-using CardGames.Poker.Api.GameFlow;
-using CardGames.Poker.Betting;
-
 namespace CardGames.IntegrationTests.GameFlow;
 
 /// <summary>
@@ -162,8 +157,16 @@ public class FiveCardDrawFlowHandlerTests : IntegrationTestBase
         }
         await DbContext.SaveChangesAsync();
 
+        // Clear tracking to avoid duplication issues and ensure fresh data
+        DbContext.ChangeTracker.Clear();
+        
+        // Fetch fresh game with players
+        var game = await DbContext.Games
+            .Include(g => g.GamePlayers)
+            .FirstOrDefaultAsync(g => g.Id == setup.Game.Id);
+
         // Act
-        var nextPhase = handler.GetNextPhase(setup.Game, nameof(Phases.FirstBettingRound));
+        var nextPhase = handler.GetNextPhase(game!, nameof(Phases.FirstBettingRound));
 
         // Assert
         nextPhase.Should().Be(nameof(Phases.Showdown));

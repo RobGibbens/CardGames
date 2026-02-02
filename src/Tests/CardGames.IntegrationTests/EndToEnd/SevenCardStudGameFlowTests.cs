@@ -240,9 +240,15 @@ public class SevenCardStudGameFlowTests : IntegrationTestBase
             gp.HasFolded = true;
         }
         await DbContext.SaveChangesAsync();
+        DbContext.ChangeTracker.Clear();
+
+        // Reload game to ensure player state is reflected in navigation property
+        var game = await DbContext.Games
+            .Include(g => g.GamePlayers)
+            .FirstAsync(g => g.Id == setup.Game.Id);
 
         // Act - From any street, should skip to showdown
-        var nextPhase = handler.GetNextPhase(setup.Game, nameof(Phases.FifthStreet));
+        var nextPhase = handler.GetNextPhase(game, nameof(Phases.FifthStreet));
 
         // Assert
         nextPhase.Should().Be(nameof(Phases.Showdown));

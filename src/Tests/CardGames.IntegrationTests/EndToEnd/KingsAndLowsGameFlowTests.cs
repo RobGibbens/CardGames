@@ -50,7 +50,7 @@ public class KingsAndLowsGameFlowTests : IntegrationTestBase
             .Where(gp => gp.GameId == setup.Game.Id)
             .ToListAsync();
 
-        players.Should().AllSatisfy(gp => gp.DropOrStayDecision.Should().BeNull());
+        players.Should().AllSatisfy(gp => gp.DropOrStayDecision.Should().Be(DropOrStayDecision.Undecided));
     }
 
     [Fact]
@@ -81,6 +81,8 @@ public class KingsAndLowsGameFlowTests : IntegrationTestBase
             gp.HasFolded = false;
         }
         await DbContext.SaveChangesAsync();
+        
+        await DbContext.Entry(setup.Game).ReloadAsync();
 
         var nextPhaseMultiple = handler.GetNextPhase(setup.Game, nameof(Phases.DropOrStay));
         nextPhaseMultiple.Should().Be(nameof(Phases.DrawPhase));
@@ -92,16 +94,25 @@ public class KingsAndLowsGameFlowTests : IntegrationTestBase
             gp.HasFolded = true;
         }
         await DbContext.SaveChangesAsync();
+        
+        // Reload collection to ensure HasFolded status is updated in the navigation property
+        DbContext.ChangeTracker.Clear();
+        var game = await DbContext.Games.Include(g => g.GamePlayers).FirstAsync(g => g.Id == setup.Game.Id);
 
-        var nextPhaseSingle = handler.GetNextPhase(setup.Game, nameof(Phases.DropOrStay));
+        var nextPhaseSingle = handler.GetNextPhase(game, nameof(Phases.DropOrStay));
         nextPhaseSingle.Should().Be(nameof(Phases.PlayerVsDeck));
 
         // Scenario 3: All players drop
-        setup.GamePlayers[0].DropOrStayDecision = DropOrStayDecision.Drop;
-        setup.GamePlayers[0].HasFolded = true;
+        // We must update the instance in the 'game' variable's collection, OR update DB and reload 'game' again.
+        // Since ChangeTracker was cleared in previous step, setup.GamePlayers are detached. We must fetch the entity.
+        var player0 = await DbContext.GamePlayers.FirstAsync(gp => gp.Id == setup.GamePlayers[0].Id);
+        player0.DropOrStayDecision = DropOrStayDecision.Drop;
+        player0.HasFolded = true;
         await DbContext.SaveChangesAsync();
 
-        var nextPhaseNone = handler.GetNextPhase(setup.Game, nameof(Phases.DropOrStay));
+        game = await DbContext.Games.Include(g => g.GamePlayers).FirstAsync(g => g.Id == setup.Game.Id);
+        
+        var nextPhaseNone = handler.GetNextPhase(game, nameof(Phases.DropOrStay));
         nextPhaseNone.Should().Be(nameof(Phases.Complete));
     }
 
@@ -247,11 +258,17 @@ public class KingsAndLowsGameFlowTests : IntegrationTestBase
         }
         await DbContext.SaveChangesAsync();
 
+        // Refresh game to ensure proper state for phase determination
+        DbContext.ChangeTracker.Clear();
+        var game = await DbContext.Games
+            .Include(g => g.GamePlayers)
+            .FirstAsync(g => g.Id == setup.Game.Id);
+            
         // Act & Assert - Single player goes to PlayerVsDeck
-        handler.GetNextPhase(setup.Game, nameof(Phases.DropOrStay))
+        handler.GetNextPhase(game, nameof(Phases.DropOrStay))
             .Should().Be(nameof(Phases.PlayerVsDeck));
         
-        handler.GetNextPhase(setup.Game, nameof(Phases.PlayerVsDeck))
+        handler.GetNextPhase(game, nameof(Phases.PlayerVsDeck))
             .Should().Be(nameof(Phases.Complete));
     }
 
@@ -283,6 +300,6 @@ public class KingsAndLowsGameFlowTests : IntegrationTestBase
             .Where(gp => gp.GameId == setup.Game.Id)
             .ToListAsync();
         
-        players.Should().AllSatisfy(gp => gp.DropOrStayDecision.Should().BeNull());
+        players.Should().AllSatisfy(gp => gp.DropOrStayDecision.Should().Be(DropOrStayDecision.Undecided));
     }
 }
