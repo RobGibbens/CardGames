@@ -85,8 +85,18 @@ public class KingsAndLowsGame : IPokerGame
     /// </summary>
     public IReadOnlyDictionary<string, int> PotMatchAmounts => _potMatchAmounts;
 
+    /// <summary>
+    /// Constructor for rules discovery only.
+    /// </summary>
+    public KingsAndLowsGame()
+        : this(
+            new[] { ("P1", 100), ("P2", 100) },
+            ante: 0)
+    {
+    }
+
     public KingsAndLowsGame(
-        IEnumerable<(string name, int chips)> players, 
+        IEnumerable<(string name, int chips)> players,
         int ante, 
         bool kingRequired = false,
         bool anteEveryHand = false)

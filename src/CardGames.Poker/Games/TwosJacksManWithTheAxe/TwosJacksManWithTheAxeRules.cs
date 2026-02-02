@@ -63,6 +63,14 @@ public static class TwosJacksManWithTheAxeRules
                 },
                 new() 
                 { 
+                    PhaseId = "DrawComplete", 
+                    Name = "Draw Complete", 
+                    Description = "All players have completed their draws",
+                    Category = "Drawing",
+                    RequiresPlayerAction = false
+                },
+                new() 
+                { 
                     PhaseId = "SecondBettingRound", 
                     Name = "Second Betting Round", 
                     Description = "Final betting round before showdown",

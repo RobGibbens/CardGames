@@ -102,6 +102,17 @@ public class TwosJacksManWithTheAxeGame : IPokerGame
     public int Ante => _ante;
 
     /// <summary>
+    /// Constructor for rules discovery only.
+    /// </summary>
+    public TwosJacksManWithTheAxeGame()
+        : this(
+            new[] { ("P1", 100), ("P2", 100) },
+            ante: 0,
+            minBet: 0)
+    {
+    }
+
+    /// <summary>
     /// Initializes a new Twos, Jacks, Man with the Axe poker game with the specified players and betting parameters.
     /// Creates player instances, initializes the deck dealer, and sets the game to the waiting state.
     /// </summary>

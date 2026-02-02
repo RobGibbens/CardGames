@@ -97,6 +97,18 @@ public sealed class KingsAndLowsFlowHandler : BaseGameFlowHandler
     public override IReadOnlyList<string> SpecialPhases =>
         [nameof(Phases.DropOrStay), nameof(Phases.PotMatching), nameof(Phases.PlayerVsDeck)];
 
+    /// <inheritdoc />
+    public override Task OnHandStartingAsync(Game game, CancellationToken cancellationToken = default)
+    {
+        // Reset all players' DropOrStay decisions and pot matching status
+        foreach (var player in game.GamePlayers)
+        {
+            player.DropOrStayDecision = DropOrStayDecision.Undecided;
+        }
+
+        return Task.CompletedTask;
+    }
+
     #region Chip Check
 
     /// <inheritdoc />
@@ -438,17 +450,6 @@ public sealed class KingsAndLowsFlowHandler : BaseGameFlowHandler
 
     #endregion
 
-    /// <inheritdoc />
-    public override Task OnHandStartingAsync(Game game, CancellationToken cancellationToken = default)
-    {
-        // Reset all players' DropOrStay decisions and pot matching status
-        foreach (var player in game.GamePlayers)
-        {
-            player.DropOrStayDecision = DropOrStayDecision.Undecided;
-        }
-
-        return Task.CompletedTask;
-    }
 
     /// <summary>
     /// Determines the phase to transition to after the DropOrStay phase completes.

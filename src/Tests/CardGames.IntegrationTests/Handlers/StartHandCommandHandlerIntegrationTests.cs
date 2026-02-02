@@ -324,7 +324,7 @@ public class StartHandCommandHandlerIntegrationTests : IntegrationTestBase
 
         gamePlayers.Should().AllSatisfy(gp =>
         {
-            gp.DropOrStayDecision.Should().BeNull();
+            gp.DropOrStayDecision.Should().Be(DropOrStayDecision.Undecided);
         });
     }
 

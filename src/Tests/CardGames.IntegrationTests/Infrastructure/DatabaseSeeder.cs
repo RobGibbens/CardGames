@@ -102,7 +102,6 @@ public static class DatabaseSeeder
         };
 
         context.GamePlayers.Add(gamePlayer);
-        game.GamePlayers.Add(gamePlayer);
         await context.SaveChangesAsync(cancellationToken);
 
         return gamePlayer;

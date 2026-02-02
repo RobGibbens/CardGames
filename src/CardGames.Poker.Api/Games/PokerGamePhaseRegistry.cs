@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using CardGames.Poker.Betting;
 using CardGames.Poker.Games.FiveCardDraw;
 using CardGames.Poker.Games.FollowTheQueen;
@@ -15,12 +17,26 @@ namespace CardGames.Poker.Api.Games;
 /// </summary>
 public static class PokerGamePhaseRegistry
 {
+	private static readonly HashSet<string> ValidGameTypes = new(StringComparer.OrdinalIgnoreCase)
+	{
+		"HOLDEM",
+		"FIVECARDDRAW",
+		"FOLLOWTHEQUEEN",
+		"KINGSANDLOWS",
+		"OMAHA",
+		"SEVENCARDSTUD",
+		"TWOSJACKSMANWITHTHEAXE",
+		"BASEBALL"
+	};
+
 	/// <summary>
 	/// Attempts to parse <paramref name="currentPhase"/> into the correct phase enum, based on <paramref name="gameTypeCode"/>.
 	/// </summary>
 	public static bool TryResolve(string? gameTypeCode, string? currentPhase, out Enum? phase)
 	{
-		if (string.IsNullOrWhiteSpace(gameTypeCode) || string.IsNullOrWhiteSpace(currentPhase))
+		if (string.IsNullOrWhiteSpace(gameTypeCode) || 
+			string.IsNullOrWhiteSpace(currentPhase) ||
+			!ValidGameTypes.Contains(gameTypeCode))
 		{
 			phase = null;
 			return false;

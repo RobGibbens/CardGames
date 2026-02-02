@@ -59,6 +59,19 @@ public class SevenCardStudGame : IPokerGame
     public int BigBet => _bigBet;
     public bool UseBringIn => _useBringIn;
 
+    /// <summary>
+    /// Constructor for rules discovery only.
+    /// </summary>
+    public SevenCardStudGame()
+        : this(
+            new[] { ("P1", 100), ("P2", 100) },
+            ante: 0,
+            bringIn: 0,
+            smallBet: 0,
+            bigBet: 0)
+    {
+    }
+
     public SevenCardStudGame(
         IEnumerable<(string name, int chips)> players,
         int ante,
