@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
@@ -20,6 +22,7 @@ public class ApiWebApplicationFactory : WebApplicationFactory<ApiProgram>
     {
         // Provide dummy connection string to satisfy basic validation if cleanup misses something
         builder.UseSetting("ConnectionStrings:cardsdb", "Server=(localdb)\\mssqllocaldb;Database=TestDb;Trusted_Connection=True;ConnectRetryCount=0");
+        builder.UseSetting("ConnectionStrings:messaging", "Endpoint=sb://localhost/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abcdefghijklmnopqrstuvwxyz0123456789=");
 
         builder.ConfigureTestServices(services =>
         {
@@ -74,17 +77,17 @@ public class ApiWebApplicationFactory : WebApplicationFactory<ApiProgram>
             {
                 services.Remove(d);
             }
-            
-            // Allow resolving IDbContextPool if some internal service still insists on it, but backed by standard context?
-            // No, removing the IScopedDbContextLease should break the chain requiring IDbContextPool.
-            
-            // Note: If using Aspire defaults or AddDbContextPool, EF adds:
-            // - Scoped: CardsDbContext (resolves from lease)
-            // - Scoped: IScopedDbContextLease<CardsDbContext>
-            // - Singleton: IDbContextPool<CardsDbContext>
-            // - Scoped: DbContextOptions<CardsDbContext>
-            
-            // We must remove ALL of these before adding our own.
+
+            // Remove any lingering EF provider/options registrations so only one provider remains.
+            services.RemoveAll<IDatabaseProvider>();
+            services.RemoveAll<DbContextOptions<CardsDbContext>>();
+            services.RemoveAll<DbContextOptions>();
+            services.RemoveAll<CardsDbContext>();
+            services.RemoveAll<IDbContextFactory<CardsDbContext>>();
+            services.RemoveAll(typeof(IConfigureOptions<DbContextOptions<CardsDbContext>>));
+            services.RemoveAll(typeof(IPostConfigureOptions<DbContextOptions<CardsDbContext>>));
+            services.RemoveAll(typeof(IValidateOptions<DbContextOptions<CardsDbContext>>));
+            services.RemoveAll(typeof(IDbContextOptionsConfiguration<CardsDbContext>));
             
             // Add a database context using an in-memory database for testing.
             services.AddDbContext<CardsDbContext>(options =>

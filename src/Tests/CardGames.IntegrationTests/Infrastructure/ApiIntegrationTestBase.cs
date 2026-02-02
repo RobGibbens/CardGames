@@ -1,4 +1,6 @@
 using System.Net.Http.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using CardGames.Poker.Api.Data;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -14,6 +16,10 @@ public abstract class ApiIntegrationTestBase : IClassFixture<ApiWebApplicationFa
     protected HttpClient Client;
     protected IServiceScope Scope;
     protected CardsDbContext DbContext;
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new JsonStringEnumConverter() }
+    };
 
     protected ApiIntegrationTestBase(ApiWebApplicationFactory factory)
     {
@@ -47,11 +53,11 @@ public abstract class ApiIntegrationTestBase : IClassFixture<ApiWebApplicationFa
     // Helper methods
     protected async Task<T?> GetAsync<T>(string url)
     {
-        return await Client.GetFromJsonAsync<T>(url);
+        return await Client.GetFromJsonAsync<T>(url, JsonOptions);
     }
 
     protected async Task<HttpResponseMessage> PostAsync<T>(string url, T content)
     {
-        return await Client.PostAsJsonAsync(url, content);
+        return await Client.PostAsJsonAsync(url, content, JsonOptions);
     }
 }

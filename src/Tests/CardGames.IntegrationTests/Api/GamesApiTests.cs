@@ -5,6 +5,7 @@ using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.Common.v1.Commands.CreateGame;
 using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetGames;
 using CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.StartHand;
+using CardGames.Poker.Api.Games;
 using FluentAssertions;
 
 namespace CardGames.IntegrationTests.Api;
@@ -21,7 +22,7 @@ public class GamesApiTests : ApiIntegrationTestBase
         // Arrange
         var command = new CreateGameCommand(
             Guid.NewGuid(),
-            "TESTGAME",
+            PokerGameMetadataRegistry.HoldEmCode,
             "Test Game",
             10,
             20,
@@ -33,7 +34,7 @@ public class GamesApiTests : ApiIntegrationTestBase
 
         // Act
         var response = await PostAsync("api/v1/games", command);
-
+        var xxx = await response.Content.ReadAsStringAsync();
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var createdId = await response.Content.ReadFromJsonAsync<Guid>();
@@ -50,7 +51,7 @@ public class GamesApiTests : ApiIntegrationTestBase
         // Arrange
         var command = new CreateGameCommand(
             Guid.NewGuid(),
-            "LISTGAME",
+            PokerGameMetadataRegistry.FiveCardDrawCode,
             "List Game",
             10,
             20,
@@ -59,6 +60,8 @@ public class GamesApiTests : ApiIntegrationTestBase
         await PostAsync("api/v1/games", command);
 
         // Act
+        var xxx = await Client.GetAsync("api/v1/games");
+        var dfdf = await xxx.Content.ReadAsStringAsync();
         var result = await GetAsync<List<GetGamesResponse>>("api/v1/games");
 
         // Assert
@@ -95,6 +98,6 @@ public class GamesApiTests : ApiIntegrationTestBase
         var game = await DbContext.Games.FindAsync(gameId);
         game.Should().NotBeNull();
         // Kings And Lows starts with Dealing? Or WaitingForPlayers -> Playing
-        game!.Status.ToString().Should().Be("Playing"); // Assuming enum matches string
+        game!.Status.Should().Be(GameStatus.InProgress);
     }
 }

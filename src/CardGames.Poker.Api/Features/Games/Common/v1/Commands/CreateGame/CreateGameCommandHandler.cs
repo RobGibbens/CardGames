@@ -1,4 +1,4 @@
-﻿using Azure.Messaging.ServiceBus;
+﻿﻿using Azure.Messaging.ServiceBus;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Games;
@@ -44,6 +44,14 @@ public class CreateGameCommandHandler(CardsDbContext context,
 
 		// 1. Get or create the game type
 		var gameType = await GetOrCreateGameTypeAsync(command.GameCode, cancellationToken);
+		if (gameType is null)
+		{
+			return new CreateGameConflict
+			{
+				GameId = command.GameId,
+				Reason = $"Unknown game code '{command.GameCode}'."
+			};
+		}
 
 		// 2. Create the game session
 		var game = new Game
