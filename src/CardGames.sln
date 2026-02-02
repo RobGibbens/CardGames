@@ -55,6 +55,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{07D268B8-C
 		..\docs\ADDING_NEW_GAMES.md = ..\docs\ADDING_NEW_GAMES.md
 		..\docs\ARCHITECTURE.md = ..\docs\ARCHITECTURE.md
 		..\docs\ContinuousPlay.md = ..\docs\ContinuousPlay.md
+		Coverage_CardGamesCoreFrench.json = Coverage_CardGamesCoreFrench.json
 		..\docs\Dashboard.md = ..\docs\Dashboard.md
 		..\docs\DYNAMIC_UI_PLAN.md = ..\docs\DYNAMIC_UI_PLAN.md
 		..\docs\EditTable.md = ..\docs\EditTable.md

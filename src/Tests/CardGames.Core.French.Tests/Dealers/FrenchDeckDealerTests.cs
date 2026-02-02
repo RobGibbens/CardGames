@@ -1,8 +1,12 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using CardGames.Core.Extensions;
 using CardGames.Core.French.Cards;
 using CardGames.Core.French.Dealers;
+using CardGames.Core.French.Decks;
+using CardGames.Core.Random;
 using FluentAssertions;
+using NSubstitute;
 using Xunit;
 
 namespace CardGames.Core.French.Tests.Dealers;
@@ -86,5 +90,38 @@ public class FrenchDeckDealerTests
         var success = dealer.TryDealCardOfValue(value, out _);
 
         success.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Constructor_With_RandomNumberGenerator_Works()
+    {
+        var deck = new FullFrenchDeck();
+        var rng = Substitute.For<IRandomNumberGenerator>();
+        var dealer = new FrenchDeckDealer(deck, rng);
+
+        dealer.Should().NotBeNull();
+        dealer.TryDealCardOfValue(2, out _).Should().BeTrue();
+    }
+
+    [Fact]
+    public void DealSpecific_Deals_Specific_Card()
+    {
+        var dealer = FrenchDeckDealer.WithFullDeck();
+        var cardToDeal = new Card(Suit.Hearts, Symbol.Ace);
+
+        var dealtCard = dealer.DealSpecific(cardToDeal);
+
+        dealtCard.Should().Be(cardToDeal);
+    }
+
+    [Fact]
+    public void DealSpecific_Throws_If_Already_Dealt()
+    {
+         var dealer = FrenchDeckDealer.WithFullDeck();
+         var cardToDeal = new Card(Suit.Hearts, Symbol.Ace);
+         dealer.DealSpecific(cardToDeal);
+         
+         Action act = () => dealer.DealSpecific(cardToDeal);
+         act.Should().Throw<ArgumentException>();
     }
 }

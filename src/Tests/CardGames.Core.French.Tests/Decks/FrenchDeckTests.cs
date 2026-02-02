@@ -83,4 +83,38 @@ public class FrenchDeckTests
             .Should().Throw<ArgumentException>()
             .WithMessage("The card 3s has already been dealt!");
     }
+
+    [Fact]
+    public void Cannot_Return_Already_Dealt_Specified_Card()
+    {
+        var deck = new ShortFrenchDeck();
+        var desiredCard = new Card(Suit.Clubs, Symbol.Jack);
+        _ = deck.GetSpecific(desiredCard);
+
+        Action getSpecific = () => deck.GetSpecific(desiredCard);
+
+        getSpecific.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void NumberOfCardsLeft_Returns_Correct_Count()
+    {
+         var deck = new FullFrenchDeck();
+         deck.NumberOfCardsLeft().Should().Be(52);
+         deck.GetFromRemaining(0);
+         deck.NumberOfCardsLeft().Should().Be(51);
+    }
+
+    [Fact]
+    public void Reset_Restores_Deck()
+    {
+        var deck = new FullFrenchDeck();
+        deck.GetFromRemaining(0);
+        deck.NumberOfCardsLeft().Should().Be(51);
+        
+        deck.Reset();
+        
+        deck.NumberOfCardsLeft().Should().Be(52);
+        deck.CardsLeft().Should().HaveCount(52);
+    }
 }

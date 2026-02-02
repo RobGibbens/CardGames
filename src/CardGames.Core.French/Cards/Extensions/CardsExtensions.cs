@@ -56,7 +56,7 @@ public static class CardsExtensions
         => cards.HighestValueOfNFolds(3);
     
     public static int ValueOfBiggestQuads(this IEnumerable<Card> cards) 
-        => cards.HighestValueOfNFolds(3);
+        => cards.HighestValueOfNFolds(4);
             
     public static bool ContainsValues(this IEnumerable<Card> cards, IEnumerable<int> valuesToContain)
         => valuesToContain.All(cards.Values().Contains);

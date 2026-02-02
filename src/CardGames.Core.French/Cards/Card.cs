@@ -36,7 +36,7 @@ public sealed class Card : IEquatable<Card>
             && Symbol == other.Symbol;
 
     public static bool operator ==(Card left, Card right)
-        => left?.Equals(right) ?? false;
+        => ReferenceEquals(left, right) || (left is not null && left.Equals(right));
 
     public static bool operator !=(Card left, Card right) 
         => !(left == right);
