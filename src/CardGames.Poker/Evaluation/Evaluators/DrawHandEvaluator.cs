@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using CardGames.Core.French.Cards;
+using CardGames.Poker.Evaluation;
 using CardGames.Poker.Hands;
 using CardGames.Poker.Hands.DrawHands;
 
@@ -10,6 +11,7 @@ namespace CardGames.Poker.Evaluation.Evaluators;
 /// Hand evaluator for standard draw poker games (e.g., Five Card Draw).
 /// Uses standard poker hand rankings without wild cards.
 /// </summary>
+[HandEvaluator("FIVECARDDRAW")]
 public sealed class DrawHandEvaluator : IHandEvaluator
 {
     /// <inheritdoc />

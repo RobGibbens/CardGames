@@ -3,6 +3,7 @@ using System.Linq;
 using CardGames.Core.French.Cards;
 using CardGames.Poker.Hands;
 using CardGames.Poker.Hands.DrawHands;
+using CardGames.Poker.Evaluation;
 
 namespace CardGames.Poker.Evaluation.Evaluators;
 
@@ -10,6 +11,7 @@ namespace CardGames.Poker.Evaluation.Evaluators;
 /// Hand evaluator for Kings and Lows variant.
 /// Wild cards: All Kings and all cards with the lowest value in the hand (excluding Kings).
 /// </summary>
+[HandEvaluator("KINGSANDLOWS")]
 public sealed class KingsAndLowsHandEvaluator : IHandEvaluator
 {
     /// <inheritdoc />

@@ -4,6 +4,7 @@ using CardGames.Core.French.Cards;
 using CardGames.Poker.Hands;
 using CardGames.Poker.Hands.DrawHands;
 using CardGames.Poker.Hands.WildCards;
+using CardGames.Poker.Evaluation;
 
 namespace CardGames.Poker.Evaluation.Evaluators;
 
@@ -11,6 +12,7 @@ namespace CardGames.Poker.Evaluation.Evaluators;
 /// Hand evaluator for Twos, Jacks, Man with the Axe variant.
 /// Wild cards: All 2s, all Jacks, and the King of Diamonds (Man with the Axe).
 /// </summary>
+[HandEvaluator("TWOSJACKSMANWITHTHEAXE")]
 public sealed class TwosJacksManWithTheAxeHandEvaluator : IHandEvaluator
 {
     /// <inheritdoc />

@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Frozen;
 using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
 using CardGames.Poker.Evaluation.Evaluators;
 
 namespace CardGames.Poker.Evaluation;
@@ -33,14 +35,34 @@ public sealed class HandEvaluatorFactory : IHandEvaluatorFactory
 
     private static readonly DrawHandEvaluator DefaultEvaluator = new();
 
-    private static readonly FrozenDictionary<string, IHandEvaluator> EvaluatorsByGameCode =
-        new Dictionary<string, IHandEvaluator>(StringComparer.OrdinalIgnoreCase)
+    private static readonly FrozenDictionary<string, IHandEvaluator> EvaluatorsByGameCode;
+
+    static HandEvaluatorFactory()
+    {
+        var evaluators = new Dictionary<string, IHandEvaluator>(StringComparer.OrdinalIgnoreCase);
+
+        var assembly = typeof(IHandEvaluator).Assembly;
+        var evaluatorTypes = assembly.GetTypes()
+            .Where(t => t is { IsClass: true, IsAbstract: false } && typeof(IHandEvaluator).IsAssignableFrom(t));
+
+        foreach (var type in evaluatorTypes)
         {
-            [FiveCardDrawCode] = new DrawHandEvaluator(),
-            [TwosJacksManWithTheAxeCode] = new TwosJacksManWithTheAxeHandEvaluator(),
-            [KingsAndLowsCode] = new KingsAndLowsHandEvaluator(),
-            [SevenCardStudCode] = new SevenCardStudHandEvaluator(),
-        }.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
+            var attributes = type.GetCustomAttributes<HandEvaluatorAttribute>();
+            foreach (var attribute in attributes)
+            {
+                // Only create instance if not already created for this type to save resources? 
+                // But we need one instance per code probably or one instance shared?
+                // Shared instance for multiple codes if same type?
+                // For simplicity, create new instance. They are stateless mostly.
+                if (Activator.CreateInstance(type) is IHandEvaluator instance)
+                {
+                    evaluators[attribute.GameTypeCode] = instance;
+                }
+            }
+        }
+
+        EvaluatorsByGameCode = evaluators.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
+    }
 
     /// <inheritdoc />
     public IHandEvaluator GetEvaluator(string? gameTypeCode)

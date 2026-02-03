@@ -69,6 +69,14 @@ public static class PokerGameMetadataRegistry
 	}
 
 	/// <summary>
+	/// Gets the metadata for the specified game type code, or null if not found.
+	/// </summary>
+	public static PokerGameMetadataAttribute? Get(string? gameTypeCode)
+	{
+		return TryGet(gameTypeCode, out var metadata) ? metadata : null;
+	}
+
+	/// <summary>
 	/// Attempts to get the game type class for the specified game type code.
 	/// </summary>
 	/// <param name="gameTypeCode">The game type code (e.g., "FIVECARDDRAW").</param>
@@ -107,61 +115,5 @@ public static class PokerGameMetadataRegistry
 	public static bool IsRegistered(string? gameTypeCode)
 	{
 		return !string.IsNullOrWhiteSpace(gameTypeCode) && MetadataByGameTypeCode.ContainsKey(gameTypeCode);
-	}
-
-	/// <summary>
-	/// Checks if the game type code matches Kings and Lows.
-	/// </summary>
-	public static bool IsKingsAndLows(string? gameTypeCode)
-	{
-		return string.Equals(gameTypeCode, KingsAndLowsCode, StringComparison.OrdinalIgnoreCase);
-	}
-
-	/// <summary>
-	/// Checks if the game type code matches Seven Card Stud.
-	/// </summary>
-	public static bool IsSevenCardStud(string? gameTypeCode)
-	{
-		return string.Equals(gameTypeCode, SevenCardStudCode, StringComparison.OrdinalIgnoreCase);
-	}
-
-	/// <summary>
-	/// Checks if the game type code matches Twos, Jacks, Man with the Axe.
-	/// </summary>
-	public static bool IsTwosJacksManWithTheAxe(string? gameTypeCode)
-	{
-		return string.Equals(gameTypeCode, TwosJacksManWithTheAxeCode, StringComparison.OrdinalIgnoreCase);
-	}
-
-	/// <summary>
-	/// Checks if the game type code matches Five Card Draw.
-	/// </summary>
-	public static bool IsFiveCardDraw(string? gameTypeCode)
-	{
-		return string.Equals(gameTypeCode, FiveCardDrawCode, StringComparison.OrdinalIgnoreCase);
-	}
-
-	/// <summary>
-	/// Checks if the game type code matches Hold'em.
-	/// </summary>
-	public static bool IsHoldEm(string? gameTypeCode)
-	{
-		return string.Equals(gameTypeCode, HoldEmCode, StringComparison.OrdinalIgnoreCase);
-	}
-
-	/// <summary>
-	/// Checks if the game type code matches Omaha.
-	/// </summary>
-	public static bool IsOmaha(string? gameTypeCode)
-	{
-		return string.Equals(gameTypeCode, OmahaCode, StringComparison.OrdinalIgnoreCase);
-	}
-
-	/// <summary>
-	/// Checks if the game type code matches Follow the Queen.
-	/// </summary>
-	public static bool IsFollowTheQueen(string? gameTypeCode)
-	{
-		return string.Equals(gameTypeCode, FollowTheQueenCode, StringComparison.OrdinalIgnoreCase);
 	}
 }

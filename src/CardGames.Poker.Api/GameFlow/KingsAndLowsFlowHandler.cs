@@ -2,6 +2,8 @@ using System.Text.Json;
 using CardGames.Core.French.Cards;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.DrawCards;
+using CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.DropOrStay;
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
 using CardGames.Poker.Evaluation;
@@ -9,6 +11,7 @@ using CardGames.Poker.Games.GameFlow;
 using CardGames.Poker.Games.KingsAndLows;
 using CardGames.Poker.Hands.DrawHands;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using DropOrStayDecision = CardGames.Poker.Api.Data.Entities.DropOrStayDecision;
 
 namespace CardGames.Poker.Api.GameFlow;
@@ -369,83 +372,101 @@ public sealed class KingsAndLowsFlowHandler : BaseGameFlowHandler
         DateTimeOffset now,
         CancellationToken cancellationToken)
     {
-        // For Kings and Lows, DrawComplete goes directly to Showdown
-        // Clear the draw completed timestamp
-        game.DrawCompletedAt = null;
-        return Task.FromResult(nameof(Phases.Showdown));
+        // After draw, go to Pot Matching
+        return Task.FromResult("PotMatching");
     }
 
     /// <inheritdoc />
-    public override async Task<string> ProcessPostShowdownAsync(
-        CardsDbContext context,
-        Game game,
-        ShowdownResult showdownResult,
-        DateTimeOffset now,
-        CancellationToken cancellationToken)
+    public override async Task PerformAutoActionAsync(AutoActionContext context)
     {
-        // Get loser players
-        var losers = game.GamePlayers
-            .Where(gp => showdownResult.LoserPlayerIds.Contains(gp.PlayerId))
-            .ToList();
-
-        // Pot matching: losers must match the pot for the next hand
-        var matchAmount = showdownResult.TotalPotAwarded;
-        var totalMatched = 0;
-
-        foreach (var loser in losers)
+        if (context.CurrentPhase.Equals("DropOrStay", StringComparison.OrdinalIgnoreCase))
         {
-            var actualMatch = Math.Min(matchAmount, loser.ChipStack);
-            loser.ChipStack -= actualMatch;
-            totalMatched += actualMatch;
+            await PerformAutoDropOrStayAsync(context);
         }
-
-        // Create pot for next hand with the matched contributions
-        if (totalMatched > 0)
+        else
         {
-            var newPot = new Data.Entities.Pot
-            {
-                GameId = game.Id,
-                HandNumber = game.CurrentHandNumber + 1,
-                PotType = PotType.Main,
-                PotOrder = 0,
-                Amount = totalMatched,
-                IsAwarded = false,
-                CreatedAt = now
-            };
-            context.Pots.Add(newPot);
+            await base.PerformAutoActionAsync(context);
         }
-
-        // Complete the hand
-        game.HandCompletedAt = now;
-        game.NextHandStartsAt = now.AddSeconds(ResultsDisplayDurationSeconds);
-
-        MoveDealer(game);
-        await context.SaveChangesAsync(cancellationToken);
-
-        return nameof(Phases.Complete);
     }
 
-    /// <summary>
-    /// Duration in seconds for the results display period before starting the next hand.
-    /// </summary>
-    private const int ResultsDisplayDurationSeconds = 8;
-
-    private static void MoveDealer(Game game)
+    protected override async Task SendDrawActionAsync(AutoActionContext context)
     {
-        var occupiedSeats = game.GamePlayers
-            .Where(gp => gp.Status == GamePlayerStatus.Active)
-            .OrderBy(gp => gp.SeatPosition)
-            .Select(gp => gp.SeatPosition)
-            .ToList();
+        var player = context.Game.GamePlayers.FirstOrDefault(gp => gp.SeatPosition == context.PlayerSeatIndex);
+        if (player is null)
+        {
+            // Try to load from DB if not in memory
+            player = await context.DbContext.GamePlayers
+                .AsNoTracking()
+                .FirstOrDefaultAsync(gp => gp.GameId == context.GameId && gp.SeatPosition == context.PlayerSeatIndex, context.CancellationToken);
+        }
 
-        if (occupiedSeats.Count == 0) return;
+        if (player is null)
+        {
+            context.Logger.LogWarning("Player not found for auto-draw action in KingsAndLows game {GameId}, seat {SeatIndex}", context.GameId, context.PlayerSeatIndex);
+            return;
+        }
 
-        var currentPosition = game.DealerPosition;
-        var seatsAfterCurrent = occupiedSeats.Where(pos => pos > currentPosition).ToList();
+        var command = new DrawCardsCommand(context.GameId, player.PlayerId, []);
+        try
+        {
+            await context.Mediator.Send(command, context.CancellationToken);
+            context.Logger.LogInformation("Auto-stand-pat completed for Kings and Lows game {GameId}", context.GameId);
+        }
+        catch (Exception ex)
+        {
+            context.Logger.LogError(ex, "Auto-stand-pat failed for Kings and Lows game {GameId}", context.GameId);
+        }
+    }
 
-        game.DealerPosition = seatsAfterCurrent.Count > 0
-            ? seatsAfterCurrent.First()
-            : occupiedSeats.First();
+    private async Task PerformAutoDropOrStayAsync(AutoActionContext context)
+    {
+        context.Logger.LogInformation("Performing auto-drop action for game {GameId}", context.GameId);
+
+        if (context.PlayerSeatIndex == -1)
+        {
+            // Global timer - handle all undecided players
+            var players = await context.DbContext.GamePlayers
+                .Where(gp => gp.GameId == context.GameId &&
+                             gp.Status == GamePlayerStatus.Active &&
+                             !gp.HasFolded &&
+                             (!gp.DropOrStayDecision.HasValue || gp.DropOrStayDecision == DropOrStayDecision.Undecided))
+                .ToListAsync(context.CancellationToken);
+
+            foreach (var player in players)
+            {
+                await SendDropCommandAsync(context, player.PlayerId);
+            }
+        }
+        else
+        {
+            // Single player timer
+            var player = context.Game.GamePlayers.FirstOrDefault(gp => gp.SeatPosition == context.PlayerSeatIndex);
+             if (player is null)
+            {
+                player = await context.DbContext.GamePlayers
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(gp => gp.GameId == context.GameId && gp.SeatPosition == context.PlayerSeatIndex, context.CancellationToken);
+            }
+
+             if (player != null)
+             {
+                 await SendDropCommandAsync(context, player.PlayerId);
+             }
+        }
+    }
+
+    private async Task SendDropCommandAsync(AutoActionContext context, Guid playerId)
+    {
+        try
+        {
+            var command = new DropOrStayCommand(context.GameId, playerId, "Drop");
+            await context.Mediator.Send(command, context.CancellationToken);
+            context.Logger.LogInformation("Auto-drop completed for player {PlayerId} in game {GameId}", playerId, context.GameId);
+        }
+        catch (Exception ex)
+        {
+            context.Logger.LogError(ex, "Auto-drop failed for game {GameId}", context.GameId);
+        }
     }
 
     #endregion

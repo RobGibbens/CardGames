@@ -1,8 +1,13 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.ProcessBettingAction;
+using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.ProcessDraw;
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
 using CardGames.Poker.Games.GameFlow;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using BettingActionType = CardGames.Poker.Api.Data.Entities.BettingActionType;
 
 namespace CardGames.Poker.Api.GameFlow;
 
@@ -87,6 +92,122 @@ public abstract class BaseGameFlowHandler : IGameFlowHandler
         // Default: No special cleanup
         return Task.CompletedTask;
     }
+
+    /// <inheritdoc />
+    public virtual async Task PerformAutoActionAsync(AutoActionContext context)
+    {
+        // Default implementation handles standard betting and drawing phases
+        if (IsBettingPhase(context.CurrentPhase) && context.PlayerSeatIndex >= 0)
+        {
+            await PerformAutoBettingActionAsync(context);
+        }
+        else if (IsDrawingPhase(context.CurrentPhase) && context.PlayerSeatIndex >= 0)
+        {
+            await PerformAutoDrawActionAsync(context);
+        }
+    }
+
+    #region Auto Actions
+
+    /// <summary>
+    /// Performs an automatic betting action (Check if possible, otherwise Fold).
+    /// </summary>
+    protected virtual async Task PerformAutoBettingActionAsync(AutoActionContext context)
+    {
+        var gameId = context.GameId;
+        var playerSeatIndex = context.PlayerSeatIndex;
+        var cancellationToken = context.CancellationToken;
+
+        // Get the player's current bet
+        // We can't rely on context.Game.GamePlayers being fully loaded/up-to-date depending on how context was created, 
+        // but AutoActionService passed the game with GameType included. 
+        // Let's assume we need to check current round state carefully.
+        // The implementation in AutoActionService loaded GamePlayers again to be sure? 
+        // No, it used context.Game.GamePlayers if available?
+        // AutoActionService loaded: 
+        // var game = await context.Games.Include(g => g.GameType)...
+        // var gamePlayer = await context.GamePlayers...
+        
+        // We should query DB to be safe as this runs in a fresh scope/timer
+        var gamePlayer = context.Game.GamePlayers.FirstOrDefault(gp => gp.SeatPosition == playerSeatIndex);
+        if (gamePlayer is null)
+        {
+            // If the collection wasn't loaded or player missing, try to fetch
+            gamePlayer = await context.DbContext.GamePlayers
+                .AsNoTracking()
+                .FirstOrDefaultAsync(gp => gp.GameId == gameId && gp.SeatPosition == playerSeatIndex, cancellationToken);
+        }
+
+        if (gamePlayer is null)
+        {
+            return;
+        }
+
+        // Calculate if can check
+        var currentBetInRound = await context.DbContext.GamePlayers
+            .Where(gp => gp.GameId == gameId && gp.Status == GamePlayerStatus.Active && !gp.HasFolded)
+            .Select(gp => gp.CurrentBet)
+            .MaxAsync(cancellationToken);
+
+        var canCheck = currentBetInRound == gamePlayer.CurrentBet;
+        var actionType = canCheck ? BettingActionType.Check : BettingActionType.Fold;
+
+        context.Logger.LogInformation(
+            "Auto-action determined for game {GameId}: {Action} (CanCheck={CanCheck})",
+            gameId, actionType, canCheck);
+
+        await SendBettingActionAsync(context, actionType);
+    }
+
+    /// <summary>
+    /// Sends the betting action command.
+    /// Default implementation sends FiveCardDraw command.
+    /// </summary>
+    protected virtual async Task SendBettingActionAsync(AutoActionContext context, BettingActionType action, int amount = 0)
+    {
+        // Default: Use FiveCardDraw command (legacy behavior)
+        // Games that use different commands MUST override this method
+        var command = new ProcessBettingActionCommand(context.GameId, action, amount);
+        
+        try 
+        {
+            await context.Mediator.Send(command, context.CancellationToken);
+        }
+        catch (Exception ex)
+        {
+            context.Logger.LogError(ex, "Error performing auto-betting action for game {GameId}", context.GameId);
+        }
+    }
+
+    /// <summary>
+    /// Performs an automatic draw action (Stand Pat).
+    /// </summary>
+    protected virtual async Task PerformAutoDrawActionAsync(AutoActionContext context)
+    {
+        context.Logger.LogInformation("Performing auto-draw action (stand pat) for game {GameId}", context.GameId);
+        await SendDrawActionAsync(context);
+    }
+
+    /// <summary>
+    /// Sends the draw action command.
+    /// Default implementation sends FiveCardDraw ProcessDrawCommand (Stand Pat).
+    /// </summary>
+    protected virtual async Task SendDrawActionAsync(AutoActionContext context)
+    {
+        // Default: Use FiveCardDraw command (legacy behavior)
+        var command = new ProcessDrawCommand(context.GameId, []);
+        
+        try
+        {
+            await context.Mediator.Send(command, context.CancellationToken);
+        }
+        catch (Exception ex)
+        {
+             context.Logger.LogError(ex, "Error performing auto-draw action for game {GameId}", context.GameId);
+        }
+    }
+
+    #endregion
 
     #region Dealing
 

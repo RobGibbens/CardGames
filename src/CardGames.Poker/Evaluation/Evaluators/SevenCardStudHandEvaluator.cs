@@ -3,6 +3,7 @@ using System.Linq;
 using CardGames.Core.French.Cards;
 using CardGames.Poker.Hands;
 using CardGames.Poker.Hands.StudHands;
+using CardGames.Poker.Evaluation;
 
 namespace CardGames.Poker.Evaluation.Evaluators;
 
@@ -10,6 +11,7 @@ namespace CardGames.Poker.Evaluation.Evaluators;
 /// Hand evaluator for Seven Card Stud variant.
 /// Uses positional cards (hole cards, board cards, and down card).
 /// </summary>
+[HandEvaluator("SEVENCARDSTUD")]
 public sealed class SevenCardStudHandEvaluator : IHandEvaluator
 {
     /// <inheritdoc />

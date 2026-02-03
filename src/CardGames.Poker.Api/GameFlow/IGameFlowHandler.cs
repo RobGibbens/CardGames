@@ -98,7 +98,14 @@ public interface IGameFlowHandler
     Task OnHandStartingAsync(Game game, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Performs any game-specific cleanup when a hand completes.
+    /// Performs an automatic action for a player or the game when a timer expires.
+    /// </summary>
+    /// <param name="context">The context for the auto action.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    Task PerformAutoActionAsync(AutoActionContext context);
+
+    /// <summary>
+    /// Performs any cleanup or finalization when a hand is completed.
     /// </summary>
     /// <param name="game">The game entity that just completed.</param>
     /// <param name="cancellationToken">Cancellation token for the operation.</param>

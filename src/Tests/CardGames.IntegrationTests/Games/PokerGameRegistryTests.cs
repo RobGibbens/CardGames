@@ -64,30 +64,6 @@ public class PokerGameRegistryTests
         metadata2.Name.Should().Be(metadata3!.Name);
     }
 
-    [Theory]
-    [InlineData(PokerGameMetadataRegistry.SevenCardStudCode, true)]
-    [InlineData(PokerGameMetadataRegistry.FiveCardDrawCode, false)]
-    [InlineData(PokerGameMetadataRegistry.KingsAndLowsCode, false)]
-    [InlineData(PokerGameMetadataRegistry.HoldEmCode, false)]
-    public void IsSevenCardStud_ReturnsCorrectValue(string gameCode, bool expected)
-    {
-        // Act
-        var result = PokerGameMetadataRegistry.IsSevenCardStud(gameCode);
-
-        // Assert
-        result.Should().Be(expected);
-    }
-
-    [Fact]
-    public void IsSevenCardStud_NullCode_ReturnsFalse()
-    {
-        // Act
-        var result = PokerGameMetadataRegistry.IsSevenCardStud(null);
-
-        // Assert
-        result.Should().BeFalse();
-    }
-
     [Fact]
     public void FiveCardDraw_HasDrawPhase()
     {

@@ -584,5 +584,10 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
             ProcessPostShowdownCalled = true;
             return Task.FromResult(PostShowdownPhase);
         }
+
+        public Task PerformAutoActionAsync(AutoActionContext context)
+        {
+            return Task.CompletedTask;
+        }
     }
 }

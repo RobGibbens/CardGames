@@ -1,13 +1,6 @@
 using System;
 using System.Collections.Generic;
 using CardGames.Poker.Betting;
-using CardGames.Poker.Games.FiveCardDraw;
-using CardGames.Poker.Games.FollowTheQueen;
-using CardGames.Poker.Games.HoldEm;
-using CardGames.Poker.Games.KingsAndLows;
-using CardGames.Poker.Games.Omaha;
-using CardGames.Poker.Games.SevenCardStud;
-using CardGames.Poker.Games.TwosJacksManWithTheAxe;
 
 namespace CardGames.Poker.Api.Games;
 
@@ -17,18 +10,6 @@ namespace CardGames.Poker.Api.Games;
 /// </summary>
 public static class PokerGamePhaseRegistry
 {
-	private static readonly HashSet<string> ValidGameTypes = new(StringComparer.OrdinalIgnoreCase)
-	{
-		"HOLDEM",
-		"FIVECARDDRAW",
-		"FOLLOWTHEQUEEN",
-		"KINGSANDLOWS",
-		"OMAHA",
-		"SEVENCARDSTUD",
-		"TWOSJACKSMANWITHTHEAXE",
-		"BASEBALL"
-	};
-
 	/// <summary>
 	/// Attempts to parse <paramref name="currentPhase"/> into the correct phase enum, based on <paramref name="gameTypeCode"/>.
 	/// </summary>
@@ -36,7 +17,7 @@ public static class PokerGamePhaseRegistry
 	{
 		if (string.IsNullOrWhiteSpace(gameTypeCode) || 
 			string.IsNullOrWhiteSpace(currentPhase) ||
-			!ValidGameTypes.Contains(gameTypeCode))
+			!PokerGameMetadataRegistry.IsRegistered(gameTypeCode))
 		{
 			phase = null;
 			return false;
