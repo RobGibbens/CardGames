@@ -168,8 +168,17 @@ public class TableStateBuilderTests : IntegrationTestBase
 
         // Assert
         result.Should().NotBeNull();
-        // Seven Card Stud should show board (up) cards
-        result!.Seats.Should().ContainSingle(s => s.Cards.Any());
+        // Seven Card Stud should show board (up) cards for all players
+        result!.Seats.Should().HaveCount(4);
+        result.Seats.Should().OnlyContain(s => s.Cards.Any());
+        
+        // Check that at least one card is face up (visible) for each player
+        foreach (var seat in result.Seats)
+        {
+            seat.Cards.Should().Contain(c => c.IsFaceUp && c.Rank != null && c.Suit != null);
+            // And ensure we have face-down cards too (Rank/Suit should be null/hidden)
+            seat.Cards.Should().Contain(c => !c.IsFaceUp && c.Rank == null && c.Suit == null);
+        }
     }
 
     [Fact]

@@ -3,6 +3,7 @@ using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
 using CardGames.Poker.Games.KingsAndLows;
+using CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.PerformShowdown;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
@@ -12,7 +13,7 @@ namespace CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.DropOrStay
 /// <summary>
 /// Handles the <see cref="DropOrStayCommand"/> to record a player's drop or stay decision.
 /// </summary>
-public class DropOrStayCommandHandler(CardsDbContext context)
+public class DropOrStayCommandHandler(CardsDbContext context, IMediator mediator)
 	: IRequestHandler<DropOrStayCommand, OneOf<DropOrStaySuccessful, DropOrStayError>>
 {
 	public async Task<OneOf<DropOrStaySuccessful, DropOrStayError>> Handle(
@@ -220,6 +221,14 @@ public class DropOrStayCommandHandler(CardsDbContext context)
 
 		// 9. Persist changes
 		await context.SaveChangesAsync(cancellationToken);
+
+		// If all players dropped, the hand is dead. Automatically perform showdown to handle pot carry-over.
+		if (allDecided && stayingPlayers.Count == 0)
+		{
+			await mediator.Send(
+				new PerformShowdownCommand(game.Id), 
+				cancellationToken);
+		}
 
 		return new DropOrStaySuccessful
 		{

@@ -62,7 +62,7 @@ public class KingsAndLowsCommandTests : IntegrationTestBase
 
         var updatedPlayer = await GetFreshDbContext().GamePlayers
             .FirstAsync(gp => gp.Id == player.Id);
-        updatedPlayer.DropOrStayDecision.Should().Be(Data.Entities.DropOrStayDecision.Stay);
+        updatedPlayer.DropOrStayDecision.Should().Be(DropOrStayDecision.Stay);
         updatedPlayer.HasFolded.Should().BeFalse();
     }
 
@@ -83,7 +83,7 @@ public class KingsAndLowsCommandTests : IntegrationTestBase
 
         var updatedPlayer = await GetFreshDbContext().GamePlayers
             .FirstAsync(gp => gp.Id == player.Id);
-        updatedPlayer.DropOrStayDecision.Should().Be(Data.Entities.DropOrStayDecision.Drop);
+        updatedPlayer.DropOrStayDecision.Should().Be(DropOrStayDecision.Drop);
         updatedPlayer.HasFolded.Should().BeTrue();
     }
 
@@ -134,7 +134,7 @@ public class KingsAndLowsCommandTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task DropOrStay_AllButOneDrop_GoesToPlayerVsDeck()
+    public async Task DropOrStay_AllButOneDrop_GoesToDrawPhase()
     {
         // Arrange
         var (setup, game) = await CreateKingsAndLowsGameInDropOrStayPhaseAsync();
@@ -148,9 +148,9 @@ public class KingsAndLowsCommandTests : IntegrationTestBase
             await Mediator.Send(new DropOrStayCommand(game.Id, setup.GamePlayers[i].PlayerId, "Drop"));
         }
 
-        // Assert - Should go to PlayerVsDeck phase
+        // Assert - Should go to DrawPhase (single player needs to draw before playing vs deck)
         var finalGame = await GetFreshDbContext().Games.FirstAsync(g => g.Id == game.Id);
-        finalGame.CurrentPhase.Should().Be(nameof(Phases.PlayerVsDeck));
+        finalGame.CurrentPhase.Should().Be(nameof(Phases.DrawPhase));
     }
 
     [Fact]
@@ -196,7 +196,7 @@ public class KingsAndLowsCommandTests : IntegrationTestBase
         // Set previous decisions
         foreach (var gp in setup.GamePlayers)
         {
-            gp.DropOrStayDecision = Data.Entities.DropOrStayDecision.Stay;
+            gp.DropOrStayDecision = DropOrStayDecision.Stay;
         }
         await DbContext.SaveChangesAsync();
 
@@ -208,6 +208,6 @@ public class KingsAndLowsCommandTests : IntegrationTestBase
             .Where(gp => gp.GameId == setup.Game.Id)
             .ToListAsync();
 
-        players.Should().AllSatisfy(gp => gp.DropOrStayDecision.Should().Be(Data.Entities.DropOrStayDecision.Undecided));
+        players.Should().AllSatisfy(gp => gp.DropOrStayDecision.Should().Be(DropOrStayDecision.Undecided));
     }
 }

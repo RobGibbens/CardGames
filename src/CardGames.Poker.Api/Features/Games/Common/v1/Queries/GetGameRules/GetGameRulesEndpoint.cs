@@ -26,6 +26,22 @@ public static class GetGameRulesEndpoint
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status400BadRequest);
 
+        group.MapGet("{gameId:guid}/rules",
+                async (Guid gameId, IMediator mediator, CancellationToken cancellationToken) =>
+                {
+                    var response = await mediator.Send(new GetGameRulesByGameIdQuery(gameId), cancellationToken);
+                    return response is null
+                        ? Results.NotFound()
+                        : Results.Ok(response);
+                })
+            .WithName("GetGameRulesByGameId")
+            .WithSummary("GetGameRulesByGameId")
+            .WithDescription("Retrieve game rules metadata for a specific game by its identifier.")
+            .MapToApiVersion(1.0)
+            .Produces<GetGameRulesResponse>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status400BadRequest);
+
         return group;
     }
 }

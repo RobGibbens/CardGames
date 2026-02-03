@@ -13,8 +13,8 @@ public class PokerGameRegistryTests
     [InlineData(PokerGameMetadataRegistry.FiveCardDrawCode, "Five Card Draw")]
     [InlineData(PokerGameMetadataRegistry.SevenCardStudCode, "Seven Card Stud")]
     [InlineData(PokerGameMetadataRegistry.KingsAndLowsCode, "Kings and Lows")]
-    [InlineData(PokerGameMetadataRegistry.TwosJacksManWithTheAxeCode, "Twos, Jacks, and Man with the Axe")]
-    [InlineData(PokerGameMetadataRegistry.HoldEmCode, "Texas Hold'em")]
+    [InlineData(PokerGameMetadataRegistry.TwosJacksManWithTheAxeCode, "Twos, Jacks, Man with the Axe")]
+    [InlineData(PokerGameMetadataRegistry.HoldEmCode, "Texas Hold 'Em")]
     public void TryGet_KnownGameCode_ReturnsMetadata(string gameCode, string expectedName)
     {
         // Act

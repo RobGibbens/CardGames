@@ -126,7 +126,8 @@ public class PerformShowdownCommandHandlerTests : IntegrationTestBase
         await Mediator.Send(new CollectAntesCommand(setup.Game.Id));
         await Mediator.Send(new DealHandsCommand(setup.Game.Id));
 
-        // Two players fold
+        // One player bets, others fold
+        await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingAction.Bet, 10));
         await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingAction.Fold, 0));
         await Mediator.Send(new ProcessBettingActionCommand(setup.Game.Id, BettingAction.Fold, 0));
 

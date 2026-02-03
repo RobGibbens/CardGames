@@ -2,6 +2,9 @@ using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.GameFlow;
 using CardGames.Poker.Betting;
+using CardGames.Poker.Api.Services;
+using CardGames.Poker.Api.Infrastructure;
+using CardGames.IntegrationTests.Infrastructure.Fakes;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -44,6 +47,18 @@ public abstract class IntegrationTestBase : IAsyncLifetime
 
         // Add game flow handler factory
         services.AddSingleton<IGameFlowHandlerFactory, GameFlowHandlerFactory>();
+
+        // Register HybridCache for tests
+#pragma warning disable EXTEXP0018
+        services.AddHybridCache();
+#pragma warning restore EXTEXP0018
+
+        // Add services
+        services.AddSingleton<IActionTimerService, FakeActionTimerService>();
+        services.AddSingleton<IGameStateBroadcaster, FakeGameStateBroadcaster>();
+        services.AddSingleton<IHandHistoryRecorder, FakeHandHistoryRecorder>();
+        services.AddScoped<ICurrentUserService, FakeCurrentUserService>();
+        services.AddScoped<ITableStateBuilder, TableStateBuilder>();
 
         ServiceProvider = services.BuildServiceProvider();
         Scope = ServiceProvider.CreateScope();

@@ -223,7 +223,7 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 			gamePlayer.TotalContributedThisHand = 0;
 			gamePlayer.IsAllIn = false;
 			gamePlayer.HasDrawnThisRound = false;
-			gamePlayer.DropOrStayDecision = null;
+			gamePlayer.DropOrStayDecision = CardGames.Poker.Api.Data.Entities.DropOrStayDecision.Undecided;
 			gamePlayer.HasFolded = gamePlayer.IsSittingOut;
 		}
 

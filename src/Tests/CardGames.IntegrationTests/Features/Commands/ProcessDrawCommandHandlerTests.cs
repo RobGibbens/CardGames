@@ -3,6 +3,7 @@ using CardGames.Poker.Api.Features.Games.Generic.v1.Commands.StartHand;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.CollectAntes;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.DealHands;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.ProcessBettingAction;
+using BettingActionType = CardGames.Poker.Api.Data.Entities.BettingActionType;
 
 namespace CardGames.IntegrationTests.Features.Commands;
 
@@ -51,7 +52,6 @@ public class ProcessDrawCommandHandlerTests : IntegrationTestBase
         // Arrange
         var command = new ProcessDrawCommand(
             Guid.NewGuid(),
-            Guid.NewGuid(),
             new List<int>());
 
         // Act
@@ -69,7 +69,6 @@ public class ProcessDrawCommandHandlerTests : IntegrationTestBase
         var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 4);
         var command = new ProcessDrawCommand(
             setup.Game.Id,
-            setup.Players[0].Id,
             new List<int>());
 
         // Act
@@ -87,7 +86,6 @@ public class ProcessDrawCommandHandlerTests : IntegrationTestBase
         var (setup, game, currentPlayerId) = await CreateGameInDrawPhaseAsync();
         var command = new ProcessDrawCommand(
             game.Id,
-            currentPlayerId,
             new List<int>()); // Empty list = stand pat
 
         // Act
@@ -96,8 +94,8 @@ public class ProcessDrawCommandHandlerTests : IntegrationTestBase
         // Assert
         result.IsT0.Should().BeTrue();
         var success = result.AsT0;
-        success.DiscardsCount.Should().Be(0);
-        success.NewCardsCount.Should().Be(0);
+        success.DiscardedCards.Count.Should().Be(0);
+        success.NewCards.Count.Should().Be(0);
     }
 
     [Fact]
@@ -107,7 +105,6 @@ public class ProcessDrawCommandHandlerTests : IntegrationTestBase
         var (setup, game, currentPlayerId) = await CreateGameInDrawPhaseAsync();
         var command = new ProcessDrawCommand(
             game.Id,
-            currentPlayerId,
             new List<int> { 0 }); // Discard first card
 
         // Act
@@ -116,8 +113,8 @@ public class ProcessDrawCommandHandlerTests : IntegrationTestBase
         // Assert
         result.IsT0.Should().BeTrue();
         var success = result.AsT0;
-        success.DiscardsCount.Should().Be(1);
-        success.NewCardsCount.Should().Be(1);
+        success.DiscardedCards.Count.Should().Be(1);
+        success.NewCards.Count.Should().Be(1);
     }
 
     [Fact]
@@ -127,7 +124,6 @@ public class ProcessDrawCommandHandlerTests : IntegrationTestBase
         var (setup, game, currentPlayerId) = await CreateGameInDrawPhaseAsync();
         var command = new ProcessDrawCommand(
             game.Id,
-            currentPlayerId,
             new List<int> { 0, 1, 2 }); // Discard three cards
 
         // Act
@@ -136,8 +132,8 @@ public class ProcessDrawCommandHandlerTests : IntegrationTestBase
         // Assert
         result.IsT0.Should().BeTrue();
         var success = result.AsT0;
-        success.DiscardsCount.Should().Be(3);
-        success.NewCardsCount.Should().Be(3);
+        success.DiscardedCards.Count.Should().Be(3);
+        success.NewCards.Count.Should().Be(3);
     }
 
     [Fact]
@@ -147,7 +143,6 @@ public class ProcessDrawCommandHandlerTests : IntegrationTestBase
         var (setup, game, currentPlayerId) = await CreateGameInDrawPhaseAsync();
         var command = new ProcessDrawCommand(
             game.Id,
-            currentPlayerId,
             new List<int> { 0, 1, 2, 3, 4 }); // Discard all 5 cards (max is usually 3)
 
         // Act
@@ -165,7 +160,6 @@ public class ProcessDrawCommandHandlerTests : IntegrationTestBase
         var (setup, game, currentPlayerId) = await CreateGameInDrawPhaseAsync();
         var command = new ProcessDrawCommand(
             game.Id,
-            currentPlayerId,
             new List<int> { 10 }); // Invalid index
 
         // Act
@@ -183,7 +177,6 @@ public class ProcessDrawCommandHandlerTests : IntegrationTestBase
         var (setup, game, currentPlayerId) = await CreateGameInDrawPhaseAsync();
         var command = new ProcessDrawCommand(
             game.Id,
-            currentPlayerId,
             new List<int> { -1 }); // Negative index
 
         // Act
@@ -209,7 +202,6 @@ public class ProcessDrawCommandHandlerTests : IntegrationTestBase
 
         var command = new ProcessDrawCommand(
             game.Id,
-            currentPlayerId,
             new List<int> { 0, 2 }); // Discard 1st and 3rd cards
 
         // Act
@@ -233,7 +225,6 @@ public class ProcessDrawCommandHandlerTests : IntegrationTestBase
 
         var command = new ProcessDrawCommand(
             game.Id,
-            currentPlayerId,
             new List<int> { 0, 1, 2 }); // Discard 3 cards
 
         // Act
@@ -263,7 +254,6 @@ public class ProcessDrawCommandHandlerTests : IntegrationTestBase
 
         var command = new ProcessDrawCommand(
             game.Id,
-            currentPlayerId,
             new List<int>());
 
         // Act
@@ -274,9 +264,9 @@ public class ProcessDrawCommandHandlerTests : IntegrationTestBase
         var success = result.AsT0;
         
         // Next player should be different
-        if (!success.DrawPhaseComplete)
+        if (!success.DrawComplete)
         {
-            success.NextPlayerIndex.Should().NotBe(initialDrawIndex);
+            success.NextDrawPlayerIndex.Should().NotBe(initialDrawIndex);
         }
     }
 
@@ -297,7 +287,6 @@ public class ProcessDrawCommandHandlerTests : IntegrationTestBase
             
             await Mediator.Send(new ProcessDrawCommand(
                 game.Id,
-                currentPlayer.PlayerId,
                 new List<int>()));
         }
 
@@ -315,7 +304,6 @@ public class ProcessDrawCommandHandlerTests : IntegrationTestBase
 
         var command = new ProcessDrawCommand(
             game.Id,
-            currentPlayerId,
             new List<int>());
 
         // Act
@@ -336,7 +324,6 @@ public class ProcessDrawCommandHandlerTests : IntegrationTestBase
 
         var command = new ProcessDrawCommand(
             game.Id,
-            currentPlayerId,
             new List<int> { 0, 1 });
 
         // Act

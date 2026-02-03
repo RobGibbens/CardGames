@@ -1,19 +1,16 @@
-﻿﻿using Azure.Messaging.ServiceBus;
-using CardGames.Poker.Api.Data;
+﻿using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Api.Infrastructure;
 using CardGames.Poker.Betting;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Hybrid;
 using OneOf;
 using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 
 namespace CardGames.Poker.Api.Features.Games.Common.v1.Commands.CreateGame;
 
-public class CreateGameCommandHandler(CardsDbContext context,
-	ServiceBusClient sbClient, HybridCache hybridCache, ICurrentUserService currentUserService)
+public class CreateGameCommandHandler(CardsDbContext context, ICurrentUserService currentUserService)
 	: IRequestHandler<CreateGameCommand, OneOf<CreateGameSuccessful, CreateGameConflict>>
 {
 	public async Task<OneOf<CreateGameSuccessful, CreateGameConflict>> Handle(CreateGameCommand command, CancellationToken cancellationToken)

@@ -68,10 +68,10 @@ public class GamesApiExtendedTests : ApiIntegrationTestBase
             new List<PlayerInfo> { new("P1", 1000), new("P2", 1000) });
         
         await PostAsync("api/v1/games", command);
-        await Client.PostAsync($"api/v1/games/five-card-draw/{gameId}/start-hand", null);
+        await Client.PostAsync($"api/v1/games/five-card-draw/{gameId}/hands", null);
 
         // Act
-        var response = await Client.PostAsync($"api/v1/games/five-card-draw/{gameId}/collect-antes", null);
+        var response = await Client.PostAsync($"api/v1/games/five-card-draw/{gameId}/hands/antes", null);
 
         // Assert
         response.StatusCode.Should().BeOneOf(HttpStatusCode.OK, HttpStatusCode.BadRequest);
@@ -91,11 +91,11 @@ public class GamesApiExtendedTests : ApiIntegrationTestBase
             new List<PlayerInfo> { new("P1", 1000), new("P2", 1000) });
         
         await PostAsync("api/v1/games", command);
-        await Client.PostAsync($"api/v1/games/five-card-draw/{gameId}/start-hand", null);
-        await Client.PostAsync($"api/v1/games/five-card-draw/{gameId}/collect-antes", null);
+        await Client.PostAsync($"api/v1/games/five-card-draw/{gameId}/hands", null);
+        await Client.PostAsync($"api/v1/games/five-card-draw/{gameId}/hands/antes", null);
 
         // Act
-        var response = await Client.PostAsync($"api/v1/games/five-card-draw/{gameId}/deal-hands", null);
+        var response = await Client.PostAsync($"api/v1/games/five-card-draw/{gameId}/hands/deal", null);
 
         // Assert
         response.StatusCode.Should().BeOneOf(HttpStatusCode.OK, HttpStatusCode.BadRequest);
@@ -109,7 +109,7 @@ public class GamesApiExtendedTests : ApiIntegrationTestBase
     public async Task GetAvailablePokerGames_ReturnsListOfGameTypes()
     {
         // Act
-        var response = await Client.GetAsync("api/v1/available-poker-games");
+        var response = await Client.GetAsync("api/v1/games/available");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -137,7 +137,7 @@ public class GamesApiExtendedTests : ApiIntegrationTestBase
         await PostAsync("api/v1/games", command);
 
         // Act
-        var response = await Client.GetAsync("api/v1/active-games");
+        var response = await Client.GetAsync("api/v1/games/active");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);

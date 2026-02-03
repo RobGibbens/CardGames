@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 
 // Alias Program to avoid conflict
@@ -78,6 +79,11 @@ public class ApiWebApplicationFactory : WebApplicationFactory<ApiProgram>
                 services.Remove(d);
             }
 
+            // Register HybridCache for tests
+#pragma warning disable EXTEXP0018
+            services.AddHybridCache();
+#pragma warning restore EXTEXP0018
+
             // Remove any lingering EF provider/options registrations so only one provider remains.
             services.RemoveAll<IDatabaseProvider>();
             services.RemoveAll<DbContextOptions<CardsDbContext>>();
@@ -94,6 +100,19 @@ public class ApiWebApplicationFactory : WebApplicationFactory<ApiProgram>
             {
                 options.UseInMemoryDatabase(_databaseName);
                 options.EnableSensitiveDataLogging();
+            });
+
+            // Remove health checks for external services that are replaced/unavailable in tests
+            services.Configure<HealthCheckServiceOptions>(options =>
+            {
+                var checksToRemove = options.Registrations
+                    .Where(r => r.Name != "self")
+                    .ToList();
+
+                foreach (var check in checksToRemove)
+                {
+                    options.Registrations.Remove(check);
+                }
             });
             
             // If we need to bypass authentication, we can add a custom handler here.

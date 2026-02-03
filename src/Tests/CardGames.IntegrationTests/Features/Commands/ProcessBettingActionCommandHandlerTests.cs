@@ -2,6 +2,7 @@ using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.ProcessBetting
 using CardGames.Poker.Api.Features.Games.Generic.v1.Commands.StartHand;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.CollectAntes;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.DealHands;
+using BettingActionType = CardGames.Poker.Api.Data.Entities.BettingActionType;
 
 namespace CardGames.IntegrationTests.Features.Commands;
 
@@ -74,14 +75,17 @@ public class ProcessBettingActionCommandHandlerTests : IntegrationTestBase
     {
         // Arrange
         var (setup, game) = await CreateGameInBettingPhaseAsync();
+
+        // First player bets so there is a bet to fold against
+        await Mediator.Send(new ProcessBettingActionCommand(
+            game.Id,
+            BettingActionType.Bet,
+            10));
+
         var command = new ProcessBettingActionCommand(
             game.Id,
             BettingActionType.Fold,
             0);
-
-        // Get the current actor
-        var bettingRound = game.BettingRounds.First(br => !br.IsComplete);
-        var currentActorIndex = bettingRound.CurrentActorIndex;
 
         // Act
         var result = await Mediator.Send(command);
@@ -93,7 +97,7 @@ public class ProcessBettingActionCommandHandlerTests : IntegrationTestBase
 
         // Verify player is marked as folded
         var player = await GetFreshDbContext().GamePlayers
-            .FirstAsync(gp => gp.GameId == game.Id && gp.SeatPosition == currentActorIndex);
+            .FirstAsync(gp => gp.GameId == game.Id && gp.SeatPosition == success.PlayerSeatIndex);
         player.HasFolded.Should().BeTrue();
     }
 
@@ -329,7 +333,7 @@ public class ProcessBettingActionCommandHandlerTests : IntegrationTestBase
         var player = await GetFreshDbContext().GamePlayers
             .FirstAsync(gp => gp.GameId == game.Id && gp.SeatPosition == currentActorIndex);
         player.CurrentBet.Should().Be(betAmount);
-        player.TotalContributedThisHand.Should().BeGreaterOrEqualTo(betAmount);
+        player.TotalContributedThisHand.Should().BeGreaterThanOrEqualTo(betAmount);
     }
 
     [Fact]
@@ -361,8 +365,13 @@ public class ProcessBettingActionCommandHandlerTests : IntegrationTestBase
         // Arrange
         var (setup, game) = await CreateGameInBettingPhaseAsync(numPlayers: 3);
 
-        // First two players fold
+        // Player 1 bets (to allow others to fold)
+        await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Bet, 10));
+
+        // Player 2 folds
         await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Fold, 0));
+
+        // Player 3 folds
         var result = await Mediator.Send(new ProcessBettingActionCommand(game.Id, BettingActionType.Fold, 0));
 
         // Assert - With only one player remaining, should go to showdown

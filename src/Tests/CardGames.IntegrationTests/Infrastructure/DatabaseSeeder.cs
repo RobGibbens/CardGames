@@ -40,7 +40,8 @@ public static class DatabaseSeeder
             CurrentPlayerIndex = -1,
             CurrentDrawPlayerIndex = -1,
             CreatedAt = DateTimeOffset.UtcNow,
-            UpdatedAt = DateTimeOffset.UtcNow
+            UpdatedAt = DateTimeOffset.UtcNow,
+            RowVersion = Guid.NewGuid().ToByteArray()[..8]
         };
 
         context.Games.Add(game);
@@ -62,7 +63,8 @@ public static class DatabaseSeeder
         {
             Id = Guid.CreateVersion7(),
             Name = name,
-            Email = email ?? $"{name.ToLowerInvariant().Replace(" ", ".")}@test.com"
+            Email = email ?? $"{name.ToLowerInvariant().Replace(" ", ".")}@test.com",
+            RowVersion = Guid.NewGuid().ToByteArray()[..8]
         };
 
         context.Players.Add(player);
@@ -98,7 +100,8 @@ public static class DatabaseSeeder
             IsAllIn = false,
             IsSittingOut = false,
             Status = GamePlayerStatus.Active,
-            JoinedAt = DateTimeOffset.UtcNow
+            JoinedAt = DateTimeOffset.UtcNow,
+            RowVersion = Guid.NewGuid().ToByteArray()[..8]
         };
 
         context.GamePlayers.Add(gamePlayer);
