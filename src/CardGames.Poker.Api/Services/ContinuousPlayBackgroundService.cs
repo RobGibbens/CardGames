@@ -67,7 +67,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		_logger.LogInformation("ContinuousPlayBackgroundService stopped");
 	}
 
-	private async Task ProcessGamesReadyForNextHandAsync(CancellationToken cancellationToken)
+	internal async Task ProcessGamesReadyForNextHandAsync(CancellationToken cancellationToken)
 	{
 		using var scope = _scopeFactory.CreateScope();
 		var context = scope.ServiceProvider.GetRequiredService<CardsDbContext>();
