@@ -13,21 +13,22 @@
 @using CardGames.Poker.Web.Components.Shared
 @using CardGames.Poker.Web.Extensions
 @using CardGames.Poker.Web.Services
-@using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Authorization
 @using System.Security.Claims
 
 @inject NavigationManager NavigationManager
 @inject IGamesApi GamesApiClient
-@inject IFiveCardDrawApi FiveCardDrawApiClient
-@inject ITwosJacksManWithTheAxeApi TwosJacksManWithTheAxeApi
-@inject IKingsAndLowsApi KingsAndLowsApi
-@inject ISevenCardStudApi SevenCardStudApi
+@inject IGameApiRouter GameApiRouter
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject GameHubClient GameHubClient
 @inject DashboardState DashboardState
 @inject GameRulesService GameRulesService
 @inject ILogger<TablePlay> Logger
+@inject ITwosJacksManWithTheAxeApi TwosJacksManWithTheAxeApi
+@inject ISevenCardStudApi SevenCardStudApi
+@inject IKingsAndLowsApi KingsAndLowsApi
+@inject IFiveCardDrawApi FiveCardDrawApiClient
+
 <PageTitle>Table - Friday Night Poker</PageTitle>
 
 <!-- Connection Banner -->
@@ -277,8 +278,8 @@
                                                         OnAcknowledge="@HandlePotMatchAcknowledge" />
                                 }
 
-                                <!-- Chip Coverage Pause Overlay (for Kings and Lows - only shown to the player who is short on chips) -->
-                                @if (_isPausedForChipCheck && IsKingsAndLows && IsCurrentPlayerShortOnChips)
+                                <!-- Chip Coverage Pause Overlay (shown if paused for chip check and player is short) -->
+                                @if (_isPausedForChipCheck && IsCurrentPlayerShortOnChips)
                                 {
                                     <ChipCoveragePauseOverlay PotAmount="@_chipCheckPotAmount"
                                                               ShortPlayers="@GetShortPlayers()"
@@ -2263,23 +2264,11 @@
         try
         {
             var request = new ProcessBettingActionRequest(action.Action, action.Amount ?? 0);
-            Refit.IApiResponse<ProcessBettingActionSuccessful>? response;
-            if (IsTwosJacksManWithTheAxe)
-            {
-                response = await TwosJacksManWithTheAxeApi.TwosJacksManWithTheAxeProcessBettingActionAsync(GameId, request);
-            }
-            else if (IsSevenCardStud)
-            {
-                response = await SevenCardStudApi.SevenCardStudProcessBettingActionAsync(GameId, request);
-            }
-            else
-            {
-                response = await FiveCardDrawApiClient.FiveCardDrawProcessBettingActionAsync(GameId, request);
-            }
+            var response = await GameApiRouter.ProcessBettingActionAsync(_gameTypeCode ?? "", GameId, request);
 
-            if (!response.IsSuccessStatusCode)
+            if (!response.IsSuccess)
             {
-                var errorMessage = ExtractErrorMessage(response.Error);
+                var errorMessage = response.Error ?? "An unknown error occurred.";
                 await ShowToastAsync(errorMessage, "error");
                 return;
             }
@@ -2383,92 +2372,23 @@
             }
 
             // Make the API call
-            Refit.IApiResponse? response;
-            ProcessDrawSuccessful? result = null;
+            var playerId = _currentPlayerId ?? Guid.Empty;
+            var response = await GameApiRouter.ProcessDrawAsync(_gameTypeCode ?? "", GameId, playerId, discardIndices);
 
-            if (IsTwosJacksManWithTheAxe)
-            {
-                var request = new ProcessDrawRequest(discardIndices);
-                var typedResponse = await TwosJacksManWithTheAxeApi.TwosJacksManWithTheAxeProcessDrawAsync(GameId, request);
-                response = typedResponse;
-                result = typedResponse.Content;
-            }
-            else if (IsKingsAndLows)
-            {
-                var playerId = _currentPlayerId ?? Guid.Empty;
-                Logger.LogInformation("Kings and Lows DrawCards request: GameId={GameId}, PlayerId={PlayerId}, DiscardCount={Count}",
-                    GameId, playerId, discardIndices.Count);
-
-                var request = new DrawCardsRequest(discardIndices, playerId);
-                var typedResponse = await KingsAndLowsApi.KingsAndLowsDrawCardsAsync(GameId, request);
-                response = typedResponse;
-
-                // Log response details for debugging
-                Logger.LogInformation("Kings and Lows DrawCards response: IsSuccess={IsSuccess}, StatusCode={StatusCode}, HasContent={HasContent}, HasError={HasError}",
-                    typedResponse.IsSuccessStatusCode,
-                    typedResponse.StatusCode,
-                    typedResponse.Content is not null,
-                    typedResponse.Error is not null);
-
-                if (typedResponse.Error is not null)
-                {
-                    Logger.LogWarning("Kings and Lows DrawCards error: {Error}", typedResponse.Error.Content);
-                }
-
-                // Use the new card data from the DrawCardsSuccessful response
-                var content = typedResponse.Content;
-                if (content is not null)
-                {
-                    Logger.LogInformation("Kings and Lows DrawCards: NewCards count = {Count}, DrawPhaseComplete = {Complete}",
-                        content.NewCards?.Count ?? 0, content.DrawPhaseComplete);
-                    result = new ProcessDrawSuccessful(
-                        currentPhase: content.NextPhase ?? "DrawPhase",
-                        discardedCards: content.DiscardedCards,
-                        drawComplete: content.DrawPhaseComplete,
-                        gameId: content.GameId,
-                        newCards: content.NewCards ?? [],
-                        nextDrawPlayerIndex: -1,
-                        nextDrawPlayerName: content.NextPlayerName,
-                        playerName: content.PlayerName ?? "",
-                        playerSeatIndex: content.PlayerSeatIndex
-                    );
-                    
-                    // Store the new hand description for display after draw animation
-                    _newHandDescription = content.NewHandDescription;
-                }
-                else
-                {
-                    Logger.LogWarning("Kings and Lows DrawCards: Content is null");
-                }
-            }
-            else
-            {
-                var request = new ProcessDrawRequest(discardIndices);
-                var typedResponse = await FiveCardDrawApiClient.FiveCardDrawProcessDrawAsync(GameId, request);
-                response = typedResponse;
-                result = typedResponse.Content;
-            }
-
-            if (response is null || !response.IsSuccessStatusCode)
+            if (!response.IsSuccess || response.Content is null)
             {
                 // Reset state on failure
                 _isDiscardingCards = false;
                 _isDrawAnimating = false;
                 _isSubmittingDraw = false;
+                Logger.LogWarning("Draw action failed: {Error}", response.Error);
                 return;
             }
 
-            if (IsKingsAndLows && result is null)
+            var result = response.Content.Original;
+            if (!string.IsNullOrEmpty(response.Content.NewHandDescription))
             {
-                // Fallback: API call failed - let SignalR refresh the player's hand
-                _isDrawAnimating = false;
-                _isDrawingNewCards = false;
-                _isDiscardingCards = false;
-                _forceShowDrawPanel = false;
-                _cardsDrawn = false;
-                _newHandDescription = null;
-                await InvokeAsync(StateHasChanged);
-                return;
+                _newHandDescription = response.Content.NewHandDescription;
             }
 
             // Transition to drawing new cards animation
@@ -3144,9 +3064,9 @@ HandType.HighCard
                     playerId: _currentPlayerId ?? Guid.Empty
                 );
 
-                var response = await KingsAndLowsApi.KingsAndLowsDropOrStayAsync(GameId, request);
+                var response = await GameApiRouter.DropOrStayAsync(_gameTypeCode ?? "", GameId, request);
 
-                if (response.IsSuccessStatusCode)
+                if (response.IsSuccess)
                 {
                     _hasDropOrStayDecided = true;
                     _dropOrStayDecision = decision;
@@ -3154,7 +3074,7 @@ HandType.HighCard
                 }
                 else
                 {
-                    Logger.LogWarning("Decision failed: {Error}", response.Error?.Content);
+                    Logger.LogWarning("Decision failed: {Error}", response.Error);
                 }
             }
             else
@@ -3168,24 +3088,11 @@ HandType.HighCard
                 };
 
                 var request = new ProcessBettingActionRequest(actionType, 0);
-                Refit.IApiResponse<ProcessBettingActionSuccessful>? response;
+                var response = await GameApiRouter.ProcessBettingActionAsync(_gameTypeCode ?? "", GameId, request);
 
-                if (IsTwosJacksManWithTheAxe)
+                if (!response.IsSuccess)
                 {
-                    response = await TwosJacksManWithTheAxeApi.TwosJacksManWithTheAxeProcessBettingActionAsync(GameId, request);
-                }
-                else if (IsSevenCardStud)
-                {
-                    response = await SevenCardStudApi.SevenCardStudProcessBettingActionAsync(GameId, request);
-                }
-                else
-                {
-                    response = await FiveCardDrawApiClient.FiveCardDrawProcessBettingActionAsync(GameId, request);
-                }
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    Logger.LogWarning("Decision failed: {Error}", response.Error?.Content);
+                    Logger.LogWarning("Decision failed: {Error}", response.Error);
                 }
             }
             // SignalR will broadcast the updated state
@@ -3294,23 +3201,21 @@ HandType.HighCard
     /// </summary>
     private async Task HandlePotMatchAcknowledge()
     {
-        if (!IsKingsAndLows)
-        {
-            Logger.LogDebug("HandlePotMatchAcknowledge called for non-Kings and Lows game");
-            return;
-        }
-
+        // Leverage API router which handles game type checks or throws/returns error if not supported
         try
         {
-            var response = await KingsAndLowsApi.KingsAndLowsAcknowledgePotMatchAsync(GameId);
-            if (response.IsSuccessStatusCode)
+            var response = await GameApiRouter.AcknowledgePotMatchAsync(_gameTypeCode ?? "", GameId);
+            if (response.IsSuccess)
             {
                 Logger.LogDebug("Pot match acknowledged successfully");
                 // SignalR will update the game state
             }
             else
             {
-                Logger.LogError("Failed to acknowledge pot match: {StatusCode}", response.StatusCode);
+                // Only log error if it wasn't just "not supported" for a game that doesn't use it
+                // But this method guarded with !IsKingsAndLows before.
+                // It's cleaner to keep the guard if the UI button is only shown for KingsAndLows.
+                Logger.LogError("Failed to acknowledge pot match: {StatusCode} {Error}", response.StatusCode, response.Error);
             }
         }
         catch (Exception ex)
@@ -3401,7 +3306,8 @@ HandType.HighCard
     /// </summary>
     private async Task HandleDropOrStayDecision(string decision)
     {
-        if (!IsKingsAndLows || _isProcessingDropOrStay)
+        // Don't check GameTypeCode manually, rely on HasDropOrStay rule
+        if (!HasDropOrStay || _isProcessingDropOrStay)
         {
             return;
         }

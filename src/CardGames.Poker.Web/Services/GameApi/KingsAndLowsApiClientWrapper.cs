@@ -61,8 +61,8 @@ public class KingsAndLowsApiClientWrapper(IKingsAndLowsApi client, IFiveCardDraw
 
     public async Task<bool> DropOrStayAsync(Guid gameId, Guid playerId, string decision)
     {
-        var request = new DropOrStayRequest { Decision = decision, PlayerId = playerId };
-        var response = await client.DropOrStayAsync(gameId, request);
+        var request = new DropOrStayRequest(decision, playerId);
+        var response = await client.KingsAndLowsDropOrStayAsync(gameId, request);
         return response.IsSuccessStatusCode;
     }
 }

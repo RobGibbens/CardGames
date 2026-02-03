@@ -61,6 +61,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{07D268B8-C
 		..\docs\EditTable.md = ..\docs\EditTable.md
 		..\docs\GameSpecificFeatureFolders.md = ..\docs\GameSpecificFeatureFolders.md
 		..\docs\GameTypes.md = ..\docs\GameTypes.md
+		..\docs\GameTypes2.md = ..\docs\GameTypes2.md
 		..\docs\History.md = ..\docs\History.md
 		..\docs\IMPLEMENTATION_STATUS.md = ..\docs\IMPLEMENTATION_STATUS.md
 		..\docs\IMPLEMENTATION_SUMMARY.md = ..\docs\IMPLEMENTATION_SUMMARY.md
