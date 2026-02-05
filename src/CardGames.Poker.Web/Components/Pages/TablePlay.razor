@@ -57,7 +57,8 @@
 
         @if (_isSeated)
         {
-            <button class="btn btn-secondary btn-sm ms-2" @onclick="ToggleSitOutAsync" title="@(IsSittingOut ? "Join the game" : "Sit out next hand")">
+            <button class="btn btn-secondary btn-sm ms-2" @onclick="ToggleSitOutAsync"
+                    title="@(IsSittingOut ? "Join the game" : "Sit out next hand")">
                 <i class="fa-solid @(IsSittingOut ? "fa-user-check" : "fa-user-clock")"></i>
                 @(IsSittingOut ? "I'm Back" : "Sit out next hand")
             </button>
@@ -86,7 +87,8 @@
                 {
                     <div class="host-controls">
                         @if
-                                        (_gameResponse.CurrentPhase == GamePhase.WaitingForPlayers.ToString() || _gameResponse.CurrentPhase == GamePhase.WaitingToStart.ToString())
+                                        (_gameResponse.CurrentPhase == GamePhase.WaitingForPlayers.ToString() || _gameResponse.CurrentPhase ==
+                                        GamePhase.WaitingToStart.ToString())
                         {
                             <a href="/table/@GameId/edit" class="btn btn-secondary btn-sm">
                                 <i class="fa-regular fa-pen-to-square"></i>
@@ -138,8 +140,7 @@
                          CurrentPhaseDescription="@_gameResponse?.CurrentPhaseDescription"
                          CurrentActorSeatIndex="@_currentActorSeatIndex" DealerSeatIndex="@_dealerSeatIndex"
                          OnSeatClick="HandleSeatClickAsync" DisableSeatSelectionForCurrentUser="@_isSeated"
-                         CurrentPlayerSeatIndex="@_currentPlayerSeatIndex"
-                         GameTypeCode="@_gameTypeCode"
+                         CurrentPlayerSeatIndex="@_currentPlayerSeatIndex" GameTypeCode="@_gameTypeCode"
                          IsPausedForChipCheck="@_isPausedForChipCheck" />
 
             <!-- Dashboard Panel (left side) -->
@@ -149,10 +150,8 @@
                     <DashboardSection Title="Chips" Icon="fa-solid fa-coins"
                                       IsExpanded="@DashboardState.IsSectionExpanded("Chips")"
                                       IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("Chips", value))">
-                        <ChipManagementSection ChipHistory="@_chipHistory"
-                                               GameId="@GameId"
-                                               PlayerId="@(_currentPlayerId ?? Guid.Empty)"
-                                               GameTypeCode="@_gameResponse?.GameTypeCode"
+                        <ChipManagementSection ChipHistory="@_chipHistory" GameId="@GameId"
+                                               PlayerId="@(_currentPlayerId ?? Guid.Empty)" GameTypeCode="@_gameResponse?.GameTypeCode"
                                                OnChipsAdded="@OnChipsAddedAsync" />
                     </DashboardSection>
 
@@ -182,32 +181,30 @@
         {
             <ActionPanel LegalActions="@_legalActions" MinBet="@_currentMinBet" MaxBet="@_currentMaxBet"
                          CurrentBetToCall="@_currentBetToCall" PlayerChips="@_playerChips"
-                         MinRaise="@(_availableActions?.MinRaise ?? _currentMinBet)"
-                         OnAction="HandlePlayerActionAsync" IsSubmitting="@_isSubmittingAction"
-                         ActionTimer="@_actionTimerState" />
+                         MinRaise="@(_availableActions?.MinRaise ?? _currentMinBet)" OnAction="HandlePlayerActionAsync"
+                         IsSubmitting="@_isSubmittingAction" ActionTimer="@_actionTimerState" />
         }
 
         <!-- Decision Panel (shown during decision phase like Drop/Stay) -->
         <!-- Note: Kings and Lows DropOrStay has its own overlay, so exclude it here -->
         @if (_isPlayerTurn && IsDecisionPhase && !(HasDropOrStay && IsDropOrStayPhase))
         {
-            <DecisionPanel Title="@GetDecisionTitle()"
-                           Subtitle="@GetDecisionSubtitle()"
-                           AvailableActions="@CurrentPhaseAvailableActions"
-                           OnDecision="@HandleDecisionAsync"
+            <DecisionPanel Title="@GetDecisionTitle()" Subtitle="@GetDecisionSubtitle()"
+                           AvailableActions="@CurrentPhaseAvailableActions" OnDecision="@HandleDecisionAsync"
                            IsSubmitting="@_isSubmittingAction" />
         }
 
         <!-- Draw Panel (only shown when it's player's turn during draw phase, or forced visible during animation/DrawComplete) -->
         @if
-            (((IsDrawingPhase && (_isPlayerDrawTurn || _isPlayerTurn)) || _forceShowDrawPanel || IsDrawCompletePhase) && IsParticipatingInHand)
+            (((IsDrawingPhase && (_isPlayerDrawTurn || _isPlayerTurn)) || _forceShowDrawPanel || IsDrawCompletePhase) &&
+            IsParticipatingInHand)
         {
             <DrawPanel Cards="@_currentPlayerDrawCards" SelectedIndices="@_selectedDiscardIndices"
                        OnToggleSelection="ToggleDiscardSelectionAsync" OnDraw="HandleDrawActionAsync" IsSubmitting="@_isSubmittingDraw"
                        IsAnimating="@_isDrawAnimating" IsDiscarding="@_isDiscardingCards" IsDrawing="@_isDrawingNewCards"
                        CardsDrawn="@_cardsDrawn" NewCardIndices="@_newCardIndices"
-                       HandDescription="@(_cardsDrawn && !string.IsNullOrWhiteSpace(_newHandDescription) ? _newHandDescription : currentPlayerHandEvaluationDescription)" MaxDiscards="@GetMaxDiscards()"
-                       DrawingSpecialRules="@GetDrawingSpecialRules()"
+                       HandDescription="@(_cardsDrawn && !string.IsNullOrWhiteSpace(_newHandDescription) ? _newHandDescription : currentPlayerHandEvaluationDescription)"
+                       MaxDiscards="@GetMaxDiscards()" DrawingSpecialRules="@GetDrawingSpecialRules()"
                        IsReadOnly="@(IsDrawCompletePhase || _cardsDrawn)"
                        ReadOnlyMessage="@(IsDrawCompletePhase ? "Waiting for showdown..." : "New cards drawn!")"
                        ActionTimer="@_actionTimerState" />
@@ -227,37 +224,23 @@
         <!-- Drop or Stay Overlay (for Kings and Lows) -->
         @if (HasDropOrStay && IsDropOrStayPhase && IsParticipatingInHand)
         {
-            <DropOrStayOverlay Cards="@_currentPlayerDrawCards"
-                               HandDescription="@currentPlayerHandEvaluationDescription"
-                               PotAmount="@_pot"
-                               HasDecided="@_hasDropOrStayDecided"
-                               Decision="@_dropOrStayDecision"
-                               IsDeciding="@_isProcessingDropOrStay"
-                               PlayersWaiting="@GetPlayersWaitingForDropOrStay()"
-                               OnDecision="@HandleDropOrStayDecision"
-                               ActionTimer="@_actionTimerState" />
+            <DropOrStayOverlay Cards="@_currentPlayerDrawCards" HandDescription="@currentPlayerHandEvaluationDescription"
+                               PotAmount="@_pot" HasDecided="@_hasDropOrStayDecided" Decision="@_dropOrStayDecision"
+                               IsDeciding="@_isProcessingDropOrStay" PlayersWaiting="@GetPlayersWaitingForDropOrStay()"
+                               OnDecision="@HandleDropOrStayDecision" ActionTimer="@_actionTimerState" />
         }
 
         <!-- Player vs Deck Overlay (for Kings and Lows) -->
         @if (IsPlayerVsDeckPhase)
         {
-            <PlayerVsDeckOverlay DeckCards="@GetDeckCards()"
-                                 IsDecisionMaker="@IsCurrentPlayerDeckDecisionMaker"
+            <PlayerVsDeckOverlay DeckCards="@GetDeckCards()" IsDecisionMaker="@IsCurrentPlayerDeckDecisionMaker"
                                  DecisionMakerName="@GetDeckDecisionMakerName()"
-                                 HasDrawn="@(_tableState?.PlayerVsDeck?.HasDeckDrawn ?? _hasDeckDrawn)"
-                                 IsProcessing="@_isProcessingDeckDraw"
-                                 SelectedIndices="@_deckDrawSelectedIndices"
-                                 OnCardSelectionToggle="@HandleDeckCardSelectionToggle"
-                                 OnConfirmDraw="@HandleDeckDrawConfirm"
-                                 IsAnimating="@_isDeckDrawAnimating"
-                                 IsDiscarding="@_isDeckDiscardingCards"
-                                 IsDrawingNewCards="@_isDeckDrawingNewCards"
-                                 CardsDrawn="@_deckCardsDrawn"
-                                 NewCardIndices="@_deckNewCardIndices"
-                                 AnimatedCards="@_deckDrawCards"
-                                 HandDescription="@_deckHandDescription"
-                                 StayingPlayerCards="@GetStayingPlayerCards()"
-                                 StayingPlayerName="@GetStayingPlayerName()"
+                                 HasDrawn="@(_tableState?.PlayerVsDeck?.HasDeckDrawn ?? _hasDeckDrawn)" IsProcessing="@_isProcessingDeckDraw"
+                                 SelectedIndices="@_deckDrawSelectedIndices" OnCardSelectionToggle="@HandleDeckCardSelectionToggle"
+                                 OnConfirmDraw="@HandleDeckDrawConfirm" IsAnimating="@_isDeckDrawAnimating"
+                                 IsDiscarding="@_isDeckDiscardingCards" IsDrawingNewCards="@_isDeckDrawingNewCards" CardsDrawn="@_deckCardsDrawn"
+                                 NewCardIndices="@_deckNewCardIndices" AnimatedCards="@_deckDrawCards" HandDescription="@_deckHandDescription"
+                                 StayingPlayerCards="@GetStayingPlayerCards()" StayingPlayerName="@GetStayingPlayerName()"
                                  StayingPlayerHandDescription="@GetStayingPlayerHandDescription()" />
         }
 
@@ -265,43 +248,40 @@
         @if (IsSpecialPhase)
         {
             <SpecialPhaseOverlay Title="@(_tableState?.CurrentPhaseDescription ?? "Special Phase")"
-                                 Description="@GetSpecialPhaseDescription()"
-                                 IconClass="fa-solid fa-star" />
+                                 Description="@GetSpecialPhaseDescription()" IconClass="fa-solid fa-star" />
         }
 
         <!-- Pot Matching Overlay (for Kings and Lows) -->
         @if (HasPotMatching && IsPotMatchingPhase)
         {
-            <PotMatchingOverlay PotAmount="@_pot"
-                                LosingPlayers="@GetLosingPlayers()"
-                                                    IsPlayerAffected="@IsCurrentPlayerLoser"
-                                                        OnAcknowledge="@HandlePotMatchAcknowledge" />
-                                }
+            <PotMatchingOverlay PotAmount="@_pot" LosingPlayers="@GetLosingPlayers()" 
+                                IsPlayerAffected="@IsCurrentPlayerLoser"
+                                IsLoading="@(_showdownResult is null)"
+                                IsSubmitting="@_isAcknowledgingPotMatch"
+                                OnAcknowledge="@HandlePotMatchAcknowledge" />
+        }
 
-                                <!-- Chip Coverage Pause Overlay (shown if paused for chip check and player is short) -->
-                                @if (_isPausedForChipCheck && IsCurrentPlayerShortOnChips)
-                                {
-                                    <ChipCoveragePauseOverlay PotAmount="@_chipCheckPotAmount"
-                                                              ShortPlayers="@GetShortPlayers()"
-                                                              IsCurrentPlayerShort="@IsCurrentPlayerShortOnChips"
-                                                              CurrentPlayerChips="@GetCurrentPlayerChips()"
-                                                              SecondsRemaining="@GetChipCheckSecondsRemaining()"
-                                                              GameId="@GameId"
-                                                              PlayerId="@(_currentPlayerId ?? Guid.Empty)"
-                                                              OnChipsAdded="@OnChipsAddedAsync" />
-                                }
+        <!-- Chip Coverage Pause Overlay (shown if paused for chip check and player is short) -->
+        @if (_isPausedForChipCheck && IsCurrentPlayerShortOnChips)
+        {
+            <ChipCoveragePauseOverlay PotAmount="@_chipCheckPotAmount" ShortPlayers="@GetShortPlayers()"
+                                      IsCurrentPlayerShort="@IsCurrentPlayerShortOnChips" CurrentPlayerChips="@GetCurrentPlayerChips()"
+                                      SecondsRemaining="@GetChipCheckSecondsRemaining()" GameId="@GameId" PlayerId="@(_currentPlayerId ?? Guid.Empty)"
+                                      OnChipsAdded="@OnChipsAddedAsync" />
+        }
 
-                                <!-- Players who are NOT short on chips just see the normal table -->
-                                <!-- The short player's seat will show "Waiting for chips" status -->
+        <!-- Players who are NOT short on chips just see the normal table -->
+        <!-- The short player's seat will show "Waiting for chips" status -->
 
-                                <!-- Waiting/Pre-game overlay (only when waiting for more players, not when game is ready to start) -->
-                                @if (_gameResponse.CurrentPhase == GamePhase.WaitingForPlayers.ToString() && (!_isSeated || IsSittingOut || !_isReady))
+        <!-- Waiting/Pre-game overlay (only when waiting for more players, not when game is ready to start) -->
+        @if (_gameResponse.CurrentPhase == GamePhase.WaitingForPlayers.ToString() && (!_isSeated || IsSittingOut ||
+            !_isReady))
         {
             <div class="table-overlay waiting-overlay">
                 <div class="overlay-content">
                     <div class="overlay-icon"><i class="fa-solid fa-clock"></i></div>
                     <h2>Waiting for Players</h2>
-                    
+
                     <div class="ready-status">
                         @foreach (var seat in _seats.Where(s => s.IsOccupied))
                         {
@@ -452,6 +432,7 @@
     private bool _isProcessingDropOrStay;
     private bool _hasDeckDrawn;
     private bool _isProcessingDeckDraw;
+    private bool _isAcknowledgingPotMatch;
     private HashSet<int> _deckDrawSelectedIndices = new();
 
     // Chip check pause state (for Kings and Lows)
@@ -472,9 +453,9 @@
     private string? _previousPhaseCategory; // Track phase category for transition detection
 
     private IReadOnlyList<CardInfo> CurrentPlayerHandCards =>
-        _currentPlayerSeatIndex >= 0 && _currentPlayerSeatIndex < _seats.Count
-            ? _seats[_currentPlayerSeatIndex].Cards
-            : [];
+    _currentPlayerSeatIndex >= 0 && _currentPlayerSeatIndex < _seats.Count
+    ? _seats[_currentPlayerSeatIndex].Cards
+    : [];
 
     private string? currentPlayerHandEvaluationDescription =>
     _currentPlayerSeatIndex >= 0 && _currentPlayerSeatIndex < _seats.Count
@@ -523,7 +504,8 @@
 
     // Game type code for routing to correct API client
     private string? _gameTypeCode;
-    private bool IsTwosJacksManWithTheAxe => string.Equals(_gameTypeCode, "TWOSJACKSMANWITHTHEAXE", StringComparison.OrdinalIgnoreCase);
+    private bool IsTwosJacksManWithTheAxe => string.Equals(_gameTypeCode, "TWOSJACKSMANWITHTHEAXE",
+    StringComparison.OrdinalIgnoreCase);
     private bool IsKingsAndLows => string.Equals(_gameTypeCode, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase);
     private bool IsSevenCardStud => string.Equals(_gameTypeCode, "SEVENCARDSTUD", StringComparison.OrdinalIgnoreCase);
 
@@ -535,87 +517,88 @@
 
     // Phase category helper properties - driven by SignalR state
     private bool IsBettingPhase =>
-        _tableState?.CurrentPhaseCategory?.Equals("Betting", StringComparison.OrdinalIgnoreCase) == true;
+    _tableState?.CurrentPhaseCategory?.Equals("Betting", StringComparison.OrdinalIgnoreCase) == true;
 
     private bool IsDrawingPhase =>
-        _tableState?.CurrentPhaseCategory?.Equals("Drawing", StringComparison.OrdinalIgnoreCase) == true
-        || _isDrawPhase; // Fallback to existing logic
+    _tableState?.CurrentPhaseCategory?.Equals("Drawing", StringComparison.OrdinalIgnoreCase) == true
+    || _isDrawPhase; // Fallback to existing logic
 
     private bool IsDecisionPhase =>
-        _tableState?.CurrentPhaseCategory?.Equals("Decision", StringComparison.OrdinalIgnoreCase) == true;
+    _tableState?.CurrentPhaseCategory?.Equals("Decision", StringComparison.OrdinalIgnoreCase) == true;
 
     private bool IsSetupPhase =>
-        _tableState?.CurrentPhaseCategory?.Equals("Setup", StringComparison.OrdinalIgnoreCase) == true;
+    _tableState?.CurrentPhaseCategory?.Equals("Setup", StringComparison.OrdinalIgnoreCase) == true;
 
     private bool IsResolutionPhase =>
-        _tableState?.CurrentPhaseCategory?.Equals("Resolution", StringComparison.OrdinalIgnoreCase) == true;
+    _tableState?.CurrentPhaseCategory?.Equals("Resolution", StringComparison.OrdinalIgnoreCase) == true;
 
     private bool IsSpecialPhase =>
-        _tableState?.CurrentPhaseCategory?.Equals("Special", StringComparison.OrdinalIgnoreCase) == true;
+    _tableState?.CurrentPhaseCategory?.Equals("Special", StringComparison.OrdinalIgnoreCase) == true;
 
     // Drop or Stay phase detection (for Kings and Lows)
     private bool IsDropOrStayPhase =>
-        string.Equals(_gameResponse?.CurrentPhase, "DropOrStay", StringComparison.OrdinalIgnoreCase);
+    string.Equals(_gameResponse?.CurrentPhase, "DropOrStay", StringComparison.OrdinalIgnoreCase);
 
     // Draw Complete phase detection (for Kings and Lows - delay before showdown)
     private bool IsDrawCompletePhase =>
-        string.Equals(_gameResponse?.CurrentPhase, "DrawComplete", StringComparison.OrdinalIgnoreCase);
+    string.Equals(_gameResponse?.CurrentPhase, "DrawComplete", StringComparison.OrdinalIgnoreCase);
 
     // Player vs Deck phase detection (for Kings and Lows)
     private bool IsPlayerVsDeckPhase =>
-        string.Equals(_gameResponse?.CurrentPhase, "PlayerVsDeck", StringComparison.OrdinalIgnoreCase);
+    string.Equals(_gameResponse?.CurrentPhase, "PlayerVsDeck", StringComparison.OrdinalIgnoreCase);
 
     // Pot matching phase detection (for Kings and Lows)
     private bool IsPotMatchingPhase =>
-        string.Equals(_gameResponse?.CurrentPhase, "PotMatching", StringComparison.OrdinalIgnoreCase);
+    string.Equals(_gameResponse?.CurrentPhase, "PotMatching", StringComparison.OrdinalIgnoreCase);
 
     // Whether the current player is a loser in pot matching.
     private bool IsCurrentPlayerLoser => _showdownResult?.PlayerHands?.Any(h =>
-        (string.Equals(h.PlayerName, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase) ||
-         string.Equals(h.PlayerName, _currentPlayerName, StringComparison.OrdinalIgnoreCase)) &&
-         h.IsWinner == false) == true;
+    (string.Equals(h.PlayerName, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase) ||
+    string.Equals(h.PlayerName, _currentPlayerName, StringComparison.OrdinalIgnoreCase)) &&
+    h.IsWinner == false) == true;
 
     // Helper property to check if current player is participating in the current hand
     private bool IsParticipatingInHand =>
-        _isSeated &&
-        _currentPlayerSeatIndex >= 0 &&
-        _currentPlayerSeatIndex < _seats.Count &&
-        !_seats[_currentPlayerSeatIndex].IsFolded &&
-        (!_seats[_currentPlayerSeatIndex].IsSittingOut || _seats[_currentPlayerSeatIndex].Cards.Count > 0);
+    _isSeated &&
+    _currentPlayerSeatIndex >= 0 &&
+    _currentPlayerSeatIndex < _seats.Count &&
+    !_seats[_currentPlayerSeatIndex].IsFolded &&
+    (!_seats[_currentPlayerSeatIndex].IsSittingOut || _seats[_currentPlayerSeatIndex].Cards.Count > 0);
 
     private bool IsSittingOut =>
-        _currentPlayerSeatIndex >= 0 && 
-        _currentPlayerSeatIndex < _seats.Count && 
-        _seats[_currentPlayerSeatIndex].IsSittingOut;
+    _currentPlayerSeatIndex >= 0 &&
+    _currentPlayerSeatIndex < _seats.Count &&
+    _seats[_currentPlayerSeatIndex].IsSittingOut;
 
     // Special rules helper properties - driven by SignalR state
     private bool HasWildCards =>
-        _tableState?.SpecialRules?.HasWildCards == true;
+    _tableState?.SpecialRules?.HasWildCards == true;
 
     private bool HasSevensSplit =>
-        _tableState?.SpecialRules?.HasSevensSplit == true;
+    _tableState?.SpecialRules?.HasSevensSplit == true;
 
     private bool HasDropOrStay =>
-        _tableState?.SpecialRules?.HasDropOrStay == true;
+    _tableState?.SpecialRules?.HasDropOrStay == true;
 
     private bool HasPotMatching =>
-        _tableState?.SpecialRules?.HasPotMatching == true;
+    _tableState?.SpecialRules?.HasPotMatching == true;
 
     // Get available actions for current phase
     private IReadOnlyList<string> CurrentPhaseAvailableActions =>
-        _tableState?.CurrentPhaseAvailableActions ?? [];
+    _tableState?.CurrentPhaseAvailableActions ?? [];
 
     private bool IsCompletePhase => string.Equals(_gameResponse?.CurrentPhase, "Complete",
-            StringComparison.OrdinalIgnoreCase);
+    StringComparison.OrdinalIgnoreCase);
 
-    private bool IsEndedPhase => string.Equals(_gameResponse?.CurrentPhase, GamePhase.Ended.ToString(), StringComparison.OrdinalIgnoreCase);
+    private bool IsEndedPhase => string.Equals(_gameResponse?.CurrentPhase, GamePhase.Ended.ToString(),
+    StringComparison.OrdinalIgnoreCase);
 
     private bool IsShowdownPhase => string.Equals(_gameResponse?.CurrentPhase, GamePhase.Showdown.ToString(),
-            StringComparison.OrdinalIgnoreCase)
-            || string.Equals(_gameResponse?.CurrentPhase, "Showdown", StringComparison.OrdinalIgnoreCase)
-            || IsPotMatchingPhase
-            || IsCompletePhase
-            || IsEndedPhase;
+    StringComparison.OrdinalIgnoreCase)
+    || string.Equals(_gameResponse?.CurrentPhase, "Showdown", StringComparison.OrdinalIgnoreCase)
+    || IsPotMatchingPhase
+    || IsCompletePhase
+    || IsEndedPhase;
 
     protected override async Task OnInitializedAsync()
     {
@@ -815,17 +798,17 @@
 
             // Handle continuous play state transitions
             var isStartPhase = state.CurrentPhase == "CollectingAntes" || state.CurrentPhase == "Dealing" ||
-                               state.CurrentPhase == "DropOrStay" || state.CurrentPhase == "WaitingForPlayers";
+            state.CurrentPhase == "DropOrStay" || state.CurrentPhase == "WaitingForPlayers";
 
             var wasStartPhase = previousPhase == "CollectingAntes" || previousPhase == "Dealing" ||
-                                previousPhase == "DropOrStay" || previousPhase == "WaitingForPlayers";
+            previousPhase == "DropOrStay" || previousPhase == "WaitingForPlayers";
 
             var handChanged = state.CurrentHandNumber != previousHandNumber;
 
             // Handle showdown state - check if entering showdown/complete phase
             // Pass whether we should delay showing the overlay (only for deck draw animation now)
             var shouldDelayShowdownOverlay = _delayShowdownOverlay ||
-                (_showdownDelayUntil.HasValue && DateTimeOffset.UtcNow < _showdownDelayUntil.Value);
+            (_showdownDelayUntil.HasValue && DateTimeOffset.UtcNow < _showdownDelayUntil.Value);
 
             // If runout animation is in progress, delay the showdown
             if (_runoutAnimationInProgress)
@@ -847,7 +830,8 @@
 
             // If deck just finished drawing (via SignalR update from another player's action),
             // set a delay for showing the showdown overlay
-            if (state.PlayerVsDeck?.HasDeckDrawn == true && !_hasDeckDrawn && !_showdownDelayUntil.HasValue && !IsCurrentPlayerDeckDecisionMaker)
+            if (state.PlayerVsDeck?.HasDeckDrawn == true && !_hasDeckDrawn && !_showdownDelayUntil.HasValue &&
+            !IsCurrentPlayerDeckDecisionMaker)
             {
                 // Non-decision maker: delay showdown overlay by 5 seconds to let them see the animation
                 _showdownDelayUntil = DateTimeOffset.UtcNow.AddSeconds(5);
@@ -944,6 +928,7 @@
                         _delayShowdownOverlay = false;
                         _showdownDelayUntil = null;
                         _previousPhaseCategory = null;
+                        _isAcknowledgingPotMatch = false;
 
                         // Reset All-In Runout state for new hand
                         _allInRunoutState = null;
@@ -988,27 +973,27 @@
         _seatedPlayerCount = _seats.Count(s => s.IsOccupied);
         var activePlayers = _seats.Where(s => s.IsOccupied && !s.IsSittingOut);
         _canStartGame = activePlayers.Count() >= (_gameResponse?.MinimumNumberOfPlayers ?? 2) &&
-            activePlayers.All(s => s.IsReady);
+        activePlayers.All(s => s.IsReady);
 
         // Update current player info
         _currentPlayerSeatIndex = _seats.FirstOrDefault(s => s.IsOccupied &&
         !string.IsNullOrWhiteSpace(_loggedInUserEmail) &&
         string.Equals(s.PlayerName, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase))?.SeatIndex ?? -1;
 
-            _isSeated = _currentPlayerSeatIndex >= 0;
-            _isReady = _isSeated && _seats[_currentPlayerSeatIndex].IsReady;
+        _isSeated = _currentPlayerSeatIndex >= 0;
+        _isReady = _isSeated && _seats[_currentPlayerSeatIndex].IsReady;
 
-            // Redirect if the player requested to leave and is no longer seated (hand completed)
-            if (_hasRequestedLeave && !_isSeated)
-            {
-                _hasRequestedLeave = false;
-                await GameHubClient.LeaveGameAsync(GameId);
-                NavigationManager.NavigateTo("/lobby");
-                return;
-            }
-
-            await InvokeAsync(StateHasChanged);
+        // Redirect if the player requested to leave and is no longer seated (hand completed)
+        if (_hasRequestedLeave && !_isSeated)
+        {
+            _hasRequestedLeave = false;
+            await GameHubClient.LeaveGameAsync(GameId);
+            NavigationManager.NavigateTo("/lobby");
+            return;
         }
+
+        await InvokeAsync(StateHasChanged);
+    }
 
     private async Task HandlePrivateStateUpdatedAsync(PrivateStateDto state)
     {
@@ -1018,7 +1003,7 @@
         }
 
         Logger.LogDebug("Received private state update for player {PlayerName} at seat {SeatPosition}",
-            state.PlayerName, state.SeatPosition);
+        state.PlayerName, state.SeatPosition);
 
         // Use the seat position from private state as the authoritative source.
         // This is more reliable than name matching since the server knows the exact seat.
@@ -1044,21 +1029,21 @@
         if (targetSeatIndex >= 0 && targetSeatIndex < _seats.Count)
         {
             var isInRunoutAnimation = _runoutAnimationInProgress &&
-                _allInRunoutState?.RunoutCardsBySeat?.ContainsKey(targetSeatIndex) == true;
+            _allInRunoutState?.RunoutCardsBySeat?.ContainsKey(targetSeatIndex) == true;
 
             if (isInRunoutAnimation)
             {
                 Logger.LogDebug(
-                    "Skipping private state card update for seat {SeatIndex} during runout animation",
-                    targetSeatIndex);
+                "Skipping private state card update for seat {SeatIndex} during runout animation",
+                targetSeatIndex);
             }
             else if (state.Hand is { Count: > 0 })
             {
                 Logger.LogInformation(
-                    "Updating seat {SeatIndex} cards from private state: {CardCount} cards, first card: {FirstCard}",
-                    targetSeatIndex,
-                    state.Hand.Count,
-                    $"{state.Hand[0].Rank} of {state.Hand[0].Suit}");
+                "Updating seat {SeatIndex} cards from private state: {CardCount} cards, first card: {FirstCard}",
+                targetSeatIndex,
+                state.Hand.Count,
+                $"{state.Hand[0].Rank} of {state.Hand[0].Suit}");
 
                 _seats[targetSeatIndex].Cards = state.Hand.Select(c => new CardInfo
                 {
@@ -1075,8 +1060,8 @@
             {
                 // Clear cards when hand is empty (player is sitting out or new hand hasn't dealt yet)
                 Logger.LogInformation(
-                    "Clearing seat {SeatIndex} cards from private state: Hand is empty",
-                    targetSeatIndex);
+                "Clearing seat {SeatIndex} cards from private state: Hand is empty",
+                targetSeatIndex);
 
                 _seats[targetSeatIndex].Cards = [];
                 _seats[targetSeatIndex].HandEvaluationDescription = null;
@@ -1160,7 +1145,8 @@
             _isPlayerDrawTurn = state.IsMyTurn;
 
             // Ensure DrawPanel has cards if it's the player's turn to draw but state.Draw was null
-            if (_isPlayerDrawTurn && !_isDrawAnimating && !_forceShowDrawPanel && _currentPlayerDrawCards.Count == 0 && state.Hand is not null)
+            if (_isPlayerDrawTurn && !_isDrawAnimating && !_forceShowDrawPanel && _currentPlayerDrawCards.Count == 0 && state.Hand
+            is not null)
             {
                 _currentPlayerDrawCards = state.Hand.Select((c, i) => new CardInfo
                 {
@@ -1184,7 +1170,7 @@
         // where _gameResponse might not be populated yet
         var currentPhase = _gameResponse?.CurrentPhase ?? string.Empty;
         if ((IsDropOrStayPhase || string.Equals(currentPhase, "DropOrStay", StringComparison.OrdinalIgnoreCase))
-            && state.Hand is not null && state.Hand.Count > 0)
+        && state.Hand is not null && state.Hand.Count > 0)
         {
             _currentPlayerDrawCards = state.Hand.Select((c, i) => new CardInfo
             {
@@ -1197,7 +1183,7 @@
         // Also populate cards for PlayerVsDeck phase when reconnection
         // This ensures the player can see the deck cards after reconnection
         else if ((IsPlayerVsDeckPhase || string.Equals(currentPhase, "PlayerVsDeck", StringComparison.OrdinalIgnoreCase))
-            && state.Hand is not null && state.Hand.Count > 0 && _currentPlayerDrawCards.Count == 0)
+        && state.Hand is not null && state.Hand.Count > 0 && _currentPlayerDrawCards.Count == 0)
         {
             // Populate player's own cards for reference during player-vs-deck phase
             _currentPlayerDrawCards = state.Hand.Select((c, i) => new CardInfo
@@ -1210,7 +1196,7 @@
         }
         // Populate cards for DrawComplete phase so all players can see their new hands
         else if ((IsDrawCompletePhase || string.Equals(currentPhase, "DrawComplete", StringComparison.OrdinalIgnoreCase))
-            && state.Hand is not null && state.Hand.Count > 0)
+        && state.Hand is not null && state.Hand.Count > 0)
         {
             // Show the player's new hand during DrawComplete phase
             _currentPlayerDrawCards = state.Hand.Select((c, i) => new CardInfo
@@ -1242,8 +1228,8 @@
 
     private void UpdateSeatsFromPublicState(IReadOnlyList<SeatPublicDto> publicSeats)
     {
-        Logger.LogDebug("UpdateSeatsFromPublicState: Processing {SeatCount} seats, runoutAnimationInProgress={RunoutInProgress}", 
-            publicSeats.Count, _runoutAnimationInProgress);
+        Logger.LogDebug("UpdateSeatsFromPublicState: Processing {SeatCount} seats, runoutAnimationInProgress={RunoutInProgress}",
+        publicSeats.Count, _runoutAnimationInProgress);
 
         var updatedSeatIndices = new HashSet<int>();
 
@@ -1258,16 +1244,16 @@
                 // 2. Seat index match (for when Player.Name differs from email)
                 // 3. Player name match against currentPlayerName (set from private state)
                 var isCurrentPlayerByEmail = !string.IsNullOrWhiteSpace(_loggedInUserEmail) &&
-                    string.Equals(publicSeat.PlayerName, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase);
+                string.Equals(publicSeat.PlayerName, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase);
                 var isCurrentPlayerBySeatIndex = _currentPlayerSeatIndex >= 0 &&
-                    publicSeat.SeatIndex == _currentPlayerSeatIndex;
+                publicSeat.SeatIndex == _currentPlayerSeatIndex;
                 var isCurrentPlayerByName = !string.IsNullOrWhiteSpace(_currentPlayerName) &&
-                    string.Equals(publicSeat.PlayerName, _currentPlayerName, StringComparison.OrdinalIgnoreCase);
+                string.Equals(publicSeat.PlayerName, _currentPlayerName, StringComparison.OrdinalIgnoreCase);
                 var isCurrentPlayer = isCurrentPlayerByEmail || isCurrentPlayerBySeatIndex || isCurrentPlayerByName;
 
                 // Check if this seat is part of the runout animation
-                var isInRunoutAnimation = _runoutAnimationInProgress && 
-                    _allInRunoutState?.RunoutCardsBySeat?.ContainsKey(publicSeat.SeatIndex) == true;
+                var isInRunoutAnimation = _runoutAnimationInProgress &&
+                _allInRunoutState?.RunoutCardsBySeat?.ContainsKey(publicSeat.SeatIndex) == true;
 
                 // Preserve face-up cards for current player (will be updated by private state)
                 // This prevents briefly showing face-down cards before private state arrives
@@ -1275,53 +1261,53 @@
                 // ALSO: Preserve cards during runout animation - the animation controls card visibility
                 var existingCards = _seats[publicSeat.SeatIndex].Cards;
                 var shouldPreserveCards = (isCurrentPlayer && existingCards.Any(c => c.IsFaceUp) && !publicSeat.IsSittingOut)
-                    || isInRunoutAnimation;
+                || isInRunoutAnimation;
 
                 Logger.LogDebug(
-                    "UpdateSeatsFromPublicState: Seat {SeatIndex}, PlayerName={PlayerName}, " +
-                    "isCurrentPlayerByEmail={ByEmail}, isCurrentPlayerBySeatIndex={BySeat}, " +
-                    "isCurrentPlayerByName={ByName}, existingCards={ExistingCount}, " +
-                    "existingFaceUp={FaceUpCount}, shouldPreserve={ShouldPreserve}, publicCardCount={PublicCount}, isSittingOut={IsSittingOut}, isInRunout={IsInRunout}",
-                    publicSeat.SeatIndex, publicSeat.PlayerName,
-                    isCurrentPlayerByEmail, isCurrentPlayerBySeatIndex, isCurrentPlayerByName,
-                    existingCards.Count, existingCards.Count(c => c.IsFaceUp),
-                    shouldPreserveCards, publicSeat.Cards.Count, publicSeat.IsSittingOut, isInRunoutAnimation);
+                "UpdateSeatsFromPublicState: Seat {SeatIndex}, PlayerName={PlayerName}, " +
+                "isCurrentPlayerByEmail={ByEmail}, isCurrentPlayerBySeatIndex={BySeat}, " +
+                "isCurrentPlayerByName={ByName}, existingCards={ExistingCount}, " +
+                "existingFaceUp={FaceUpCount}, shouldPreserve={ShouldPreserve}, publicCardCount={PublicCount}, isSittingOut={IsSittingOut}, isInRunout={IsInRunout}",
+                publicSeat.SeatIndex, publicSeat.PlayerName,
+                isCurrentPlayerByEmail, isCurrentPlayerBySeatIndex, isCurrentPlayerByName,
+                existingCards.Count, existingCards.Count(c => c.IsFaceUp),
+                shouldPreserveCards, publicSeat.Cards.Count, publicSeat.IsSittingOut, isInRunoutAnimation);
 
                 var cards = shouldPreserveCards
-                    ? existingCards
-                    : publicSeat.Cards.Select(c => new CardInfo
-                    {
-                        Rank = c.IsFaceUp ? c.Rank : null,
-                        Suit = c.IsFaceUp ? c.Suit : null,
-                        IsFaceUp = c.IsFaceUp,
-                        IsSelected = false,
-                        DealOrder = c.DealOrder
-                    }).ToList();
+                ? existingCards
+                : publicSeat.Cards.Select(c => new CardInfo
+                {
+                    Rank = c.IsFaceUp ? c.Rank : null,
+                    Suit = c.IsFaceUp ? c.Suit : null,
+                    IsFaceUp = c.IsFaceUp,
+                    IsSelected = false,
+                    DealOrder = c.DealOrder
+                }).ToList();
 
                 // Preserve LastActionDescription if it hasn't expired (5 seconds)
                 var existingSeat = _seats[publicSeat.SeatIndex];
-                
+
                 // For Kings and Lows, show "Dropped" status for folded players throughout the hand
                 string? lastActionDescription = null;
                 DateTimeOffset? lastActionTime = null;
-                
+
                 if (IsKingsAndLows && publicSeat.IsFolded)
-                    {
-                        lastActionDescription = "Dropped";
-                        lastActionTime = existingSeat.LastActionTime ?? DateTimeOffset.UtcNow;
-                    }
-                    else if (IsKingsAndLows && _isPausedForChipCheck && IsPlayerShortOnChips(publicSeat.SeatIndex, publicSeat.Chips))
-                    {
-                        // Show "Waiting for chips" status for players who are short during chip check pause
-                        lastActionDescription = "Waiting for chips";
-                        lastActionTime = DateTimeOffset.UtcNow;
-                    }
-                    else
-                    {
+                {
+                    lastActionDescription = "Dropped";
+                    lastActionTime = existingSeat.LastActionTime ?? DateTimeOffset.UtcNow;
+                }
+                else if (IsKingsAndLows && _isPausedForChipCheck && IsPlayerShortOnChips(publicSeat.SeatIndex, publicSeat.Chips))
+                {
+                    // Show "Waiting for chips" status for players who are short during chip check pause
+                    lastActionDescription = "Waiting for chips";
+                    lastActionTime = DateTimeOffset.UtcNow;
+                }
+                else
+                {
                     // For other games, preserve the action description for 5 seconds
                     var shouldPreserveAction = !string.IsNullOrWhiteSpace(existingSeat.LastActionDescription) &&
-                        existingSeat.LastActionTime.HasValue &&
-                        (DateTimeOffset.UtcNow - existingSeat.LastActionTime.Value).TotalSeconds < 5;
+                    existingSeat.LastActionTime.HasValue &&
+                    (DateTimeOffset.UtcNow - existingSeat.LastActionTime.Value).TotalSeconds < 5;
 
                     lastActionDescription = shouldPreserveAction ? existingSeat.LastActionDescription : null;
                     lastActionTime = shouldPreserveAction ? existingSeat.LastActionTime : null;
@@ -1366,7 +1352,7 @@
         // Build showdown result from public state ONLY when showdown.IsComplete is true.
         // This means the server has already performed the showdown (PerformShowdown API was called),
         // set NextHandStartsAt, and transitioned to Complete phase.
-        // 
+        //
         // CRITICAL: Do NOT populate _showdownResult when IsShowdownPhase is true but IsComplete is false!
         // If we do, TryLoadShowdownAsync will see _showdownResult is not null and skip calling the
         // PerformShowdown API. This would leave NextHandStartsAt unset and the next hand would never start.
@@ -1379,72 +1365,72 @@
         {
             return;
         }
-        
+
         // Only process showdown from SignalR when:
         // 1. We don't already have a result
         // 2. AND (the showdown is complete (PerformShowdown was called) OR we're in PotMatching phase for Kings and Lows)
         // Do NOT process when IsShowdownPhase is true but IsComplete is false - let TryLoadShowdownAsync call the API
-        var shouldProcessShowdown = _showdownResult is null && 
-            (showdown.IsComplete || IsPotMatchingPhase);
-        
+        var shouldProcessShowdown = _showdownResult is null &&
+        (showdown.IsComplete || IsPotMatchingPhase);
+
         if (shouldProcessShowdown)
         {
             var payouts = showdown.PlayerResults
-                .Where(r => r.IsWinner)
-                .ToDictionary(r => r.PlayerName, r => r.AmountWon);
+            .Where(r => r.IsWinner)
+            .ToDictionary(r => r.PlayerName, r => r.AmountWon);
 
             var highHandPayouts = showdown.PlayerResults
-                .Where(r => r.IsHighHandWinner && r.HighHandAmountWon > 0)
-                .ToDictionary(r => r.PlayerName, r => r.HighHandAmountWon);
+            .Where(r => r.IsHighHandWinner && r.HighHandAmountWon > 0)
+            .ToDictionary(r => r.PlayerName, r => r.HighHandAmountWon);
 
             var highHandWinners = showdown.PlayerResults
-                .Where(r => r.IsHighHandWinner && r.HighHandAmountWon > 0)
-                .Select(r => r.PlayerName)
-                .ToList();
+            .Where(r => r.IsHighHandWinner && r.HighHandAmountWon > 0)
+            .Select(r => r.PlayerName)
+            .ToList();
 
             var sevensPayouts = showdown.PlayerResults
-                .Where(r => r.IsSevensWinner && r.SevensAmountWon > 0)
-                .ToDictionary(r => r.PlayerName, r => r.SevensAmountWon);
+            .Where(r => r.IsSevensWinner && r.SevensAmountWon > 0)
+            .ToDictionary(r => r.PlayerName, r => r.SevensAmountWon);
 
             var sevensWinners = showdown.PlayerResults
-                .Where(r => r.IsSevensWinner && r.SevensAmountWon > 0)
-                .Select(r => r.PlayerName)
-                .ToList();
+            .Where(r => r.IsSevensWinner && r.SevensAmountWon > 0)
+            .Select(r => r.PlayerName)
+            .ToList();
 
             var playerHands = showdown.PlayerResults
-                .Select(r => new ShowdownPlayerHand(
-                    amountWon: r.AmountWon,
-                    cards: ConvertCardsToShowdownCards(r.Cards),
-                    handDescription: r.HandDescription ?? "",
-                    handStrength: null,
-                    handType: r.HandRanking ?? "",
-                    highHandAmountWon: r.HighHandAmountWon,
-                    isHighHandWinner: r.IsHighHandWinner,
-                    isSevensWinner: r.IsSevensWinner,
-                    isWinner: r.IsWinner,
-                    playerFirstName: r.PlayerFirstName,
-                    playerName: r.PlayerName,
-                    sevensAmountWon: r.SevensAmountWon,
-                    wildCardIndexes: r.WildCardIndexes?.ToList() ?? []))
-                .ToList();
+            .Select(r => new ShowdownPlayerHand(
+            amountWon: r.AmountWon,
+            cards: ConvertCardsToShowdownCards(r.Cards),
+            handDescription: r.HandDescription ?? "",
+            handStrength: null,
+            handType: r.HandRanking ?? "",
+            highHandAmountWon: r.HighHandAmountWon,
+            isHighHandWinner: r.IsHighHandWinner,
+            isSevensWinner: r.IsSevensWinner,
+            isWinner: r.IsWinner,
+            playerFirstName: r.PlayerFirstName,
+            playerName: r.PlayerName,
+            sevensAmountWon: r.SevensAmountWon,
+            wildCardIndexes: r.WildCardIndexes?.ToList() ?? []))
+            .ToList();
 
             _showdownResult = new PerformShowdownSuccessful(
-                currentPhase: "Complete",
-                gameId: GameId,
-                payouts: payouts,
-                highHandWinners: highHandWinners,
-                sevensPoolRolledOver: showdown.SevensPoolRolledOver,
-                highHandPayouts: highHandPayouts,
-                playerHands: playerHands,
-                sevensPayouts: sevensPayouts,
-                wonByFold: false,
-                sevensWinners: sevensWinners);
+            currentPhase: "Complete",
+            gameId: GameId,
+            payouts: payouts,
+            highHandWinners: highHandWinners,
+            sevensPoolRolledOver: showdown.SevensPoolRolledOver,
+            highHandPayouts: highHandPayouts,
+            playerHands: playerHands,
+            sevensPayouts: sevensPayouts,
+            wonByFold: false,
+            sevensWinners: sevensWinners);
 
             // Only show overlay immediately if we're not delaying
             if (!delayShowingOverlay)
             {
                 _showShowdownOverlay = true;
-                
+
                 // Initialize countdown timer when showdown is loaded from SignalR
                 // This ensures the timer starts even if TryLoadShowdownAsync is never called
                 // or returns early because result is already loaded
@@ -1457,11 +1443,11 @@
             }
 
             _showdownWon = _showdownResult.Payouts?.Keys.Any(p =>
-                string.Equals(p, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(p, _currentPlayerName, StringComparison.OrdinalIgnoreCase)) == true
-                || highHandWinners.Any(p =>
-                    string.Equals(p, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(p, _currentPlayerName, StringComparison.OrdinalIgnoreCase));
+            string.Equals(p, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(p, _currentPlayerName, StringComparison.OrdinalIgnoreCase)) == true
+            || highHandWinners.Any(p =>
+            string.Equals(p, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(p, _currentPlayerName, StringComparison.OrdinalIgnoreCase));
 
             _showdownLost = !_showdownWon;
         }
@@ -1475,11 +1461,11 @@
         }
 
         return cards
-            .Where(c => c.IsFaceUp && !string.IsNullOrWhiteSpace(c.Rank) && !string.IsNullOrWhiteSpace(c.Suit))
-            .Select(c => new ShowdownCard(
-                suit: ParseCardSuit(c.Suit),
-                symbol: ParseCardSymbol(c.Rank)
-            ))
+        .Where(c => c.IsFaceUp && !string.IsNullOrWhiteSpace(c.Rank) && !string.IsNullOrWhiteSpace(c.Suit))
+        .Select(c => new ShowdownCard(
+        suit: ParseCardSuit(c.Suit),
+        symbol: ParseCardSymbol(c.Rank)
+        ))
         .ToList();
     }
 
@@ -1580,38 +1566,38 @@
 
                 // Convert to GetGameResponse format for compatibility with existing code
                 _gameResponse = new GetGameResponse(
-                    ante: gamesResponse.Ante,
-                    bigBet: gamesResponse.BigBet,
-                    bigBlind: gamesResponse.BigBlind,
-                    bringIn: gamesResponse.BringIn,
-                    bringInPlayerIndex: gamesResponse.BringInPlayerIndex,
-                    canContinue: gamesResponse.CanContinue,
-                    createdAt: gamesResponse.CreatedAt,
-                    createdById: gamesResponse.CreatedById,
-                    createdByName: gamesResponse.CreatedByName,
-                    currentDrawPlayerIndex: gamesResponse.CurrentDrawPlayerIndex,
-                    currentHandNumber: gamesResponse.CurrentHandNumber,
-                    currentPhase: gamesResponse.CurrentPhase,
-                    currentPhaseDescription: gamesResponse.CurrentPhaseDescription,
-                    currentPlayerIndex: gamesResponse.CurrentPlayerIndex,
-                    dealerPosition: gamesResponse.DealerPosition,
-                    endedAt: gamesResponse.EndedAt,
-                    gameSettings: gamesResponse.GameSettings,
-                    gameTypeCode: gamesResponse.GameTypeCode,
-                    gameTypeId: gamesResponse.GameTypeId,
-                    gameTypeName: gamesResponse.GameTypeName,
-                    id: gamesResponse.Id,
-                    maximumNumberOfPlayers: gamesResponse.MaximumNumberOfPlayers,
-                    minBet: gamesResponse.MinBet,
-                    minimumNumberOfPlayers: gamesResponse.MinimumNumberOfPlayers,
-                    name: gamesResponse.Name,
-                    randomSeed: gamesResponse.RandomSeed,
-                    rowVersion: gamesResponse.RowVersion,
-                    smallBet: gamesResponse.SmallBet,
-                    smallBlind: gamesResponse.SmallBlind,
-                    startedAt: gamesResponse.StartedAt,
-                    status: gamesResponse.Status,
-                    updatedAt: gamesResponse.UpdatedAt
+                ante: gamesResponse.Ante,
+                bigBet: gamesResponse.BigBet,
+                bigBlind: gamesResponse.BigBlind,
+                bringIn: gamesResponse.BringIn,
+                bringInPlayerIndex: gamesResponse.BringInPlayerIndex,
+                canContinue: gamesResponse.CanContinue,
+                createdAt: gamesResponse.CreatedAt,
+                createdById: gamesResponse.CreatedById,
+                createdByName: gamesResponse.CreatedByName,
+                currentDrawPlayerIndex: gamesResponse.CurrentDrawPlayerIndex,
+                currentHandNumber: gamesResponse.CurrentHandNumber,
+                currentPhase: gamesResponse.CurrentPhase,
+                currentPhaseDescription: gamesResponse.CurrentPhaseDescription,
+                currentPlayerIndex: gamesResponse.CurrentPlayerIndex,
+                dealerPosition: gamesResponse.DealerPosition,
+                endedAt: gamesResponse.EndedAt,
+                gameSettings: gamesResponse.GameSettings,
+                gameTypeCode: gamesResponse.GameTypeCode,
+                gameTypeId: gamesResponse.GameTypeId,
+                gameTypeName: gamesResponse.GameTypeName,
+                id: gamesResponse.Id,
+                maximumNumberOfPlayers: gamesResponse.MaximumNumberOfPlayers,
+                minBet: gamesResponse.MinBet,
+                minimumNumberOfPlayers: gamesResponse.MinimumNumberOfPlayers,
+                name: gamesResponse.Name,
+                randomSeed: gamesResponse.RandomSeed,
+                rowVersion: gamesResponse.RowVersion,
+                smallBet: gamesResponse.SmallBet,
+                smallBlind: gamesResponse.SmallBlind,
+                startedAt: gamesResponse.StartedAt,
+                status: gamesResponse.Status,
+                updatedAt: gamesResponse.UpdatedAt
                 );
 
                 _currentActorSeatIndex = _gameResponse.CurrentPlayerIndex;
@@ -1628,7 +1614,7 @@
 
             // Hand history is provided via SignalR in the initial state and updates
 
-            if (IsCompletePhase)
+            if (IsShowdownPhase)
             {
                 await TryLoadShowdownAsync();
             }
@@ -1641,7 +1627,7 @@
             _seatedPlayerCount = _seats.Count(s => s.IsOccupied);
             var activePlayers = _seats.Where(s => s.IsOccupied && !s.IsSittingOut);
             _canStartGame = activePlayers.Count() >= (_gameResponse?.MinimumNumberOfPlayers ?? 2) &&
-                activePlayers.All(s => s.IsReady);
+            activePlayers.All(s => s.IsReady);
 
             // Determine if current user is the host (game creator)
             _isHost = !string.IsNullOrWhiteSpace(_loggedInUserEmail) &&
@@ -1727,8 +1713,8 @@
         {
             var newState = !IsSittingOut;
             var response = await GamesApiClient.ToggleSitOutAsync(
-                GameId,
-                new ToggleSitOutRequest { IsSittingOut = newState });
+            GameId,
+            new ToggleSitOutRequest { IsSittingOut = newState });
 
             if (response.IsSuccessStatusCode && response.Content != null)
             {
@@ -1764,10 +1750,10 @@
                     // Player is in active hand - show toast message
                     _hasRequestedLeave = true;
                     await ShowToastAsync(
-                        result.Message ?? "You will leave after the current hand completes.",
-                        "info",
-                        durationMs: 6000);
-                    
+                    result.Message ?? "You will leave after the current hand completes.",
+                    "info",
+                    durationMs: 6000);
+
                     // Stay on page until hand completes
                     // Background service will handle actual removal
                     return;
@@ -1804,6 +1790,7 @@
         {
             // Call the API to join the game at this seat
             var request = new Api.Clients.JoinGameRequest(seatIndex, 100);//TODO:ROB - Set this to 50, or better yet, prompt them first
+
             var response = await GamesApiClient.JoinGameAsync(GameId, request);
 
             if (!response.IsSuccessStatusCode)
@@ -1813,38 +1800,38 @@
                 return;
             }
 
-                    // Update local state - SignalR will also broadcast the update
-                    _loggedInUserEmail ??= await GetLoggedInUserEmailAsync();
-                    var canPlay = response.Content?.CanPlayCurrentHand ?? false;
+            // Update local state - SignalR will also broadcast the update
+            _loggedInUserEmail ??= await GetLoggedInUserEmailAsync();
+            var canPlay = response.Content?.CanPlayCurrentHand ?? false;
 
-                    // Store the player ID for API calls (e.g., Drop or Stay decision)
-                    _currentPlayerId = response.Content?.PlayerId;
+            // Store the player ID for API calls (e.g., Drop or Stay decision)
+            _currentPlayerId = response.Content?.PlayerId;
 
-                    _seats[seatIndex] = new SeatInfo
-                    {
-                        SeatIndex = seatIndex,
-                        IsOccupied = true,
-                        PlayerName = response.Content?.PlayerName ?? _loggedInUserEmail ?? "You",
-                        PlayerAvatarUrl = response.Content?.PlayerAvatarUrl,
-                        PlayerFirstName = response.Content?.PlayerFirstName,
+            _seats[seatIndex] = new SeatInfo
+            {
+                SeatIndex = seatIndex,
+                IsOccupied = true,
+                PlayerName = response.Content?.PlayerName ?? _loggedInUserEmail ?? "You",
+                PlayerAvatarUrl = response.Content?.PlayerAvatarUrl,
+                PlayerFirstName = response.Content?.PlayerFirstName,
                 Chips = 100, //TODO:ROB - Set this to 50, or better yet, prompt them first
-                        IsCurrentPlayer = true,
-                        IsReady = false,
-                        IsFolded = !canPlay,
-                        SittingOutReason = !canPlay ? "Observing" : null
-                    };
-                    _isSeated = true;
-                    _currentPlayerSeatIndex = seatIndex;
+                IsCurrentPlayer = true,
+                IsReady = false,
+                IsFolded = !canPlay,
+                SittingOutReason = !canPlay ? "Observing" : null
+            };
+            _isSeated = true;
+            _currentPlayerSeatIndex = seatIndex;
 
-                    Logger.LogInformation(
-                                                "Successfully joined game {GameId} at seat {SeatIndex}. CanPlayCurrentHand: {CanPlay}",
-                    GameId, seatIndex, response.Content?.CanPlayCurrentHand);
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogError(ex, "Error joining game at seat {SeatIndex}", seatIndex);
-                }
-            }
+            Logger.LogInformation(
+            "Successfully joined game {GameId} at seat {SeatIndex}. CanPlayCurrentHand: {CanPlay}",
+            GameId, seatIndex, response.Content?.CanPlayCurrentHand);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error joining game at seat {SeatIndex}", seatIndex);
+        }
+    }
 
     private async Task SetReadyAsync()
     {
@@ -1951,7 +1938,7 @@
     private async Task TryLoadShowdownAsync()
     {
         Logger.LogDebug("TryLoadShowdownAsync called. CurrentPhase={Phase}, IsShowdownPhase={IsShowdown}",
-            _gameResponse?.CurrentPhase, IsShowdownPhase);
+        _gameResponse?.CurrentPhase, IsShowdownPhase);
 
         if (!IsShowdownPhase)
         {
@@ -1965,7 +1952,7 @@
         {
             Logger.LogDebug("TryLoadShowdownAsync: Showdown result already loaded, showing overlay");
             _showShowdownOverlay = true;
-            
+
             // Ensure countdown timer is initialized (may have been missed if SignalR populated the result)
             if (_secondsUntilNextHand <= 0)
             {
@@ -1973,7 +1960,7 @@
             }
             _isResultsPhase = true;
             StartCountdownTimer();
-            
+
             await InvokeAsync(StateHasChanged);
             return;
         }
@@ -1999,12 +1986,12 @@
         }
 
         Logger.LogDebug("TryLoadShowdownAsync: Showdown API response - IsSuccess={IsSuccess}, HasContent={HasContent}",
-            showdownResponse?.IsSuccessStatusCode, showdownResponse?.Content is not null);
+        showdownResponse?.IsSuccessStatusCode, showdownResponse?.Content is not null);
 
         if (showdownResponse is not { IsSuccessStatusCode: true, Content: not null })
         {
             Logger.LogWarning("TryLoadShowdownAsync: Showdown API failed or returned no content. StatusCode={StatusCode}, Error={Error}",
-                showdownResponse?.StatusCode, showdownResponse?.Error?.Content);
+            showdownResponse?.StatusCode, showdownResponse?.Error?.Content);
             return;
         }
 
@@ -2034,52 +2021,72 @@
         _showdownWon = iWon;
         _showdownLost = !iWon;
 
-            await InvokeAsync(StateHasChanged);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void CloseShowdownOverlay()
+    {
+        _showShowdownOverlay = false;
+    }
+
+    // Note: StartRunoutAnimation has been inlined into HandleTableStateUpdatedAsync
+    // to ensure the animation flag is set BEFORE UpdateSeatsFromPublicState is called.
+
+    /// <summary>
+    /// Timer callback that deals the next card in the runout sequence.
+    /// Cards are dealt one at a time to one player at a time with 2-second delays.
+    /// Example: P1 gets card, 2s delay, P2 gets card, 2s delay, P3 gets card, 2s delay, P1 gets next card...
+    /// </summary>
+    private async void DealNextRunoutCard(object? state)
+    {
+        if (_allInRunoutState?.RunoutCardsBySeat is null)
+        {
+            CompleteRunoutAnimation();
+            return;
         }
 
-        private void CloseShowdownOverlay()
+        // Get the list of seat indices with cards to deal (sorted for consistent order)
+        var seatIndices = _allInRunoutState.RunoutCardsBySeat.Keys
+        .Where(s => s >= 0 && s < _seats.Count && _seats[s].IsOccupied && !_seats[s].IsFolded)
+        .OrderBy(s => s)
+        .ToList();
+
+        if (seatIndices.Count == 0)
         {
-            _showShowdownOverlay = false;
+            CompleteRunoutAnimation();
+            return;
         }
 
-        // Note: StartRunoutAnimation has been inlined into HandleTableStateUpdatedAsync
-        // to ensure the animation flag is set BEFORE UpdateSeatsFromPublicState is called.
+        // Calculate how many cards each player needs to receive
+        var maxRunoutCards = _allInRunoutState.RunoutCardsBySeat.Values
+        .Select(cards => cards.Count)
+        .DefaultIfEmpty(0)
+        .Max();
 
-        /// <summary>
-        /// Timer callback that deals the next card in the runout sequence.
-        /// Cards are dealt one at a time to one player at a time with 2-second delays.
-        /// Example: P1 gets card, 2s delay, P2 gets card, 2s delay, P3 gets card, 2s delay, P1 gets next card...
-        /// </summary>
-        private async void DealNextRunoutCard(object? state)
+        // Check if we've completed all streets
+        if (_runoutCurrentStreetIndex >= maxRunoutCards)
         {
-            if (_allInRunoutState?.RunoutCardsBySeat is null)
+            // All cards dealt - wait 2 seconds then show showdown
+            _runoutDealTimer?.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+            _ = Task.Run(async () =>
             {
+                await Task.Delay(TimeSpan.FromSeconds(2));
                 CompleteRunoutAnimation();
-                return;
-            }
+                await InvokeAsync(StateHasChanged);
+            });
+            return;
+        }
 
-            // Get the list of seat indices with cards to deal (sorted for consistent order)
-            var seatIndices = _allInRunoutState.RunoutCardsBySeat.Keys
-                .Where(s => s >= 0 && s < _seats.Count && _seats[s].IsOccupied && !_seats[s].IsFolded)
-                .OrderBy(s => s)
-                .ToList();
+        // Get the current seat to deal to
+        if (_runoutCurrentSeatIndex >= seatIndices.Count)
+        {
+            // Finished dealing to all players for this street, move to next street
+            _runoutCurrentSeatIndex = 0;
+            _runoutCurrentStreetIndex++;
 
-            if (seatIndices.Count == 0)
-            {
-                CompleteRunoutAnimation();
-                return;
-            }
-
-            // Calculate how many cards each player needs to receive
-            var maxRunoutCards = _allInRunoutState.RunoutCardsBySeat.Values
-                .Select(cards => cards.Count)
-                .DefaultIfEmpty(0)
-                .Max();
-
-            // Check if we've completed all streets
+            // Check again if we've completed all streets
             if (_runoutCurrentStreetIndex >= maxRunoutCards)
             {
-                // All cards dealt - wait 2 seconds then show showdown
                 _runoutDealTimer?.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
                 _ = Task.Run(async () =>
                 {
@@ -2089,126 +2096,106 @@
                 });
                 return;
             }
-
-            // Get the current seat to deal to
-            if (_runoutCurrentSeatIndex >= seatIndices.Count)
-            {
-                // Finished dealing to all players for this street, move to next street
-                _runoutCurrentSeatIndex = 0;
-                _runoutCurrentStreetIndex++;
-
-                // Check again if we've completed all streets
-                if (_runoutCurrentStreetIndex >= maxRunoutCards)
-                {
-                    _runoutDealTimer?.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
-                    _ = Task.Run(async () =>
-                    {
-                        await Task.Delay(TimeSpan.FromSeconds(2));
-                        CompleteRunoutAnimation();
-                        await InvokeAsync(StateHasChanged);
-                    });
-                    return;
-                }
-            }
-
-            // Deal ONE card to ONE player
-            var currentSeatIndex = seatIndices[_runoutCurrentSeatIndex];
-            if (_allInRunoutState.RunoutCardsBySeat.TryGetValue(currentSeatIndex, out var runoutCards))
-            {
-                var currentVisible = _runoutVisibleCardCount.GetValueOrDefault(currentSeatIndex, 0);
-                if (currentVisible < runoutCards.Count)
-                {
-                    _runoutVisibleCardCount[currentSeatIndex] = currentVisible + 1;
-                    UpdateSeatWithRunoutCards(currentSeatIndex, currentVisible + 1);
-
-                    Logger.LogDebug("Runout: Dealt card {CardNum} to seat {SeatIndex} (street {Street})", 
-                        currentVisible + 1, currentSeatIndex, _runoutCurrentStreetIndex + 1);
-                }
-            }
-
-            // Move to next player
-            _runoutCurrentSeatIndex++;
-
-            await InvokeAsync(StateHasChanged);
-
-            // Schedule the next card deal in 2 seconds
-            _runoutDealTimer?.Change(TimeSpan.FromSeconds(2), Timeout.InfiniteTimeSpan);
         }
 
-        /// <summary>
-        /// Updates a seat's cards by appending the next visible runout card.
-        /// The initial cards are preserved, and runout cards are added one by one.
-        /// </summary>
-        private void UpdateSeatWithRunoutCards(int seatIndex, int visibleRunoutCards)
+        // Deal ONE card to ONE player
+        var currentSeatIndex = seatIndices[_runoutCurrentSeatIndex];
+        if (_allInRunoutState.RunoutCardsBySeat.TryGetValue(currentSeatIndex, out var runoutCards))
         {
-            if (seatIndex < 0 || seatIndex >= _seats.Count)
+            var currentVisible = _runoutVisibleCardCount.GetValueOrDefault(currentSeatIndex, 0);
+            if (currentVisible < runoutCards.Count)
             {
-                return;
+                _runoutVisibleCardCount[currentSeatIndex] = currentVisible + 1;
+                UpdateSeatWithRunoutCards(currentSeatIndex, currentVisible + 1);
+
+                Logger.LogDebug("Runout: Dealt card {CardNum} to seat {SeatIndex} (street {Street})",
+                currentVisible + 1, currentSeatIndex, _runoutCurrentStreetIndex + 1);
             }
-
-            if (_allInRunoutState?.RunoutCardsBySeat is null ||
-                !_allInRunoutState.RunoutCardsBySeat.TryGetValue(seatIndex, out var runoutCards))
-            {
-                return;
-            }
-
-            // Get the initial card count for this seat (captured when runout started)
-            var initialCardCount = _runoutInitialCardCounts.GetValueOrDefault(seatIndex, 0);
-
-            var seat = _seats[seatIndex];
-            var existingCards = seat.Cards.ToList();
-
-            Logger.LogDebug("UpdateSeatWithRunoutCards: Seat {SeatIndex}, initialCardCount={InitialCount}, existingCards={ExistingCount}, visibleRunoutCards={VisibleRunout}, totalRunoutCards={TotalRunout}",
-                seatIndex, initialCardCount, existingCards.Count, visibleRunoutCards, runoutCards.Count);
-
-            // Build the new cards list: initial cards + visible runout cards
-            var allCards = new List<CardInfo>();
-
-            // First, add the initial cards (cards dealt before runout)
-            // These should already be in existingCards if we're preserving correctly
-            for (var i = 0; i < Math.Min(initialCardCount, existingCards.Count); i++)
-            {
-                allCards.Add(existingCards[i]);
-            }
-
-            // Then add only the VISIBLE runout cards (face up)
-            for (var i = 0; i < visibleRunoutCards && i < runoutCards.Count; i++)
-            {
-                var runoutCard = runoutCards[i];
-                allCards.Add(new CardInfo
-                {
-                    Rank = runoutCard.Rank,
-                    Suit = runoutCard.Suit,
-                    IsFaceUp = true,
-                    IsSelected = false,
-                    DealOrder = initialCardCount + i
-                });
-            }
-
-            _seats[seatIndex].Cards = allCards;
-
-            Logger.LogDebug("UpdateSeatWithRunoutCards: Seat {SeatIndex} now has {CardCount} cards", 
-                seatIndex, allCards.Count);
         }
 
-        /// <summary>
-        /// Completes the runout animation and triggers the showdown.
-        /// </summary>
-        private async void CompleteRunoutAnimation()
+        // Move to next player
+        _runoutCurrentSeatIndex++;
+
+        await InvokeAsync(StateHasChanged);
+
+        // Schedule the next card deal in 2 seconds
+        _runoutDealTimer?.Change(TimeSpan.FromSeconds(2), Timeout.InfiniteTimeSpan);
+    }
+
+    /// <summary>
+    /// Updates a seat's cards by appending the next visible runout card.
+    /// The initial cards are preserved, and runout cards are added one by one.
+    /// </summary>
+    private void UpdateSeatWithRunoutCards(int seatIndex, int visibleRunoutCards)
+    {
+        if (seatIndex < 0 || seatIndex >= _seats.Count)
         {
-            Logger.LogInformation("All-in runout animation complete, transitioning to showdown overlay");
-
-            _runoutAnimationInProgress = false;
-            _runoutDealTimer?.Dispose();
-            _runoutDealTimer = null;
-
-            // Now load and show the showdown overlay
-            await TryLoadShowdownAsync();
-
-            await InvokeAsync(StateHasChanged);
+            return;
         }
 
-        private static List<BettingActionType> MapLegalActions(AvailableActionsResponse available)
+        if (_allInRunoutState?.RunoutCardsBySeat is null ||
+        !_allInRunoutState.RunoutCardsBySeat.TryGetValue(seatIndex, out var runoutCards))
+        {
+            return;
+        }
+
+        // Get the initial card count for this seat (captured when runout started)
+        var initialCardCount = _runoutInitialCardCounts.GetValueOrDefault(seatIndex, 0);
+
+        var seat = _seats[seatIndex];
+        var existingCards = seat.Cards.ToList();
+
+        Logger.LogDebug("UpdateSeatWithRunoutCards: Seat {SeatIndex}, initialCardCount={InitialCount}, existingCards={ExistingCount}, visibleRunoutCards={VisibleRunout}, totalRunoutCards={TotalRunout}",
+        seatIndex, initialCardCount, existingCards.Count, visibleRunoutCards, runoutCards.Count);
+
+        // Build the new cards list: initial cards + visible runout cards
+        var allCards = new List<CardInfo>();
+
+        // First, add the initial cards (cards dealt before runout)
+        // These should already be in existingCards if we're preserving correctly
+        for (var i = 0; i < Math.Min(initialCardCount, existingCards.Count); i++)
+        {
+            allCards.Add(existingCards[i]);
+        }
+
+        // Then add only the VISIBLE runout cards (face up)
+        for (var i = 0; i < visibleRunoutCards && i < runoutCards.Count; i++)
+        {
+            var runoutCard = runoutCards[i];
+            allCards.Add(new CardInfo
+            {
+                Rank = runoutCard.Rank,
+                Suit = runoutCard.Suit,
+                IsFaceUp = true,
+                IsSelected = false,
+                DealOrder = initialCardCount + i
+            });
+        }
+
+        _seats[seatIndex].Cards = allCards;
+
+        Logger.LogDebug("UpdateSeatWithRunoutCards: Seat {SeatIndex} now has {CardCount} cards",
+        seatIndex, allCards.Count);
+    }
+
+    /// <summary>
+    /// Completes the runout animation and triggers the showdown.
+    /// </summary>
+    private async void CompleteRunoutAnimation()
+    {
+        Logger.LogInformation("All-in runout animation complete, transitioning to showdown overlay");
+
+        _runoutAnimationInProgress = false;
+        _runoutDealTimer?.Dispose();
+        _runoutDealTimer = null;
+
+        // Now load and show the showdown overlay
+        await TryLoadShowdownAsync();
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private static List<BettingActionType> MapLegalActions(AvailableActionsResponse available)
     {
         var actions = new List<BettingActionType>();
 
@@ -2581,11 +2568,11 @@
         {
             // Get the cards being kept (not selected for discard)
             var cardsToKeep = _currentPlayerDrawCards
-                .Where((card, index) => !_selectedDiscardIndices.Contains(index))
-                .Select(c => ConvertToCard(c.Rank ?? "", c.Suit ?? ""))
-                .Where(c => c is not null)
-                .Cast<Card>()
-                .ToList();
+            .Where((card, index) => !_selectedDiscardIndices.Contains(index))
+            .Select(c => ConvertToCard(c.Rank ?? "", c.Suit ?? ""))
+            .Where(c => c is not null)
+            .Cast<Card>()
+            .ToList();
 
             if (cardsToKeep.Count == 0)
             {
@@ -2595,20 +2582,20 @@
 
             // Get dead cards: cards selected for discard + folded players' visible cards
             var discardedCards = _currentPlayerDrawCards
-                .Where((card, index) => _selectedDiscardIndices.Contains(index))
-                .Select(c => ConvertToCard(c.Rank ?? "", c.Suit ?? ""))
-                .Where(c => c is not null)
-                .Cast<Card>()
-                .ToList();
+            .Where((card, index) => _selectedDiscardIndices.Contains(index))
+            .Select(c => ConvertToCard(c.Rank ?? "", c.Suit ?? ""))
+            .Where(c => c is not null)
+            .Cast<Card>()
+            .ToList();
 
             var foldedPlayerCards = _seats
-                .Where(s => s.IsFolded && s.Cards.Any())
-                .SelectMany(s => s.Cards)
-                .Where(c => c.IsFaceUp && c.Rank is not null && c.Suit is not null)
-                .Select(c => ConvertToCard(c.Rank!, c.Suit!))
-                .Where(c => c is not null)
-                .Cast<Card>()
-                .ToList();
+            .Where(s => s.IsFolded && s.Cards.Any())
+            .SelectMany(s => s.Cards)
+            .Where(c => c.IsFaceUp && c.Rank is not null && c.Suit is not null)
+            .Select(c => ConvertToCard(c.Rank!, c.Suit!))
+            .Where(c => c is not null)
+            .Cast<Card>()
+            .ToList();
 
             // Discarded cards are dead cards (they won't be redrawn)
             var deadCards = discardedCards.Concat(foldedPlayerCards).ToList();
@@ -2686,9 +2673,9 @@
         [Description("Draw Phase")] DrawPhase,
         [Description("First Betting Round")] FirstBettingRound,
         [Description("Collecting Antes")] CollectingAntes,
-            [Description("Drop or Stay")] DropOrStay,
-            [Description("Pot Matching")] PotMatching,
-        }
+        [Description("Drop or Stay")] DropOrStay,
+        [Description("Pot Matching")] PotMatching,
+    }
 
     public record SeatInfo
     {
@@ -2827,7 +2814,7 @@
         }
 
         Logger.LogDebug("Player action performed at seat {SeatIndex}: {Action}",
-            seatIndex, notification.ActionDescription);
+        seatIndex, notification.ActionDescription);
 
         // Update the seat with the action
         _seats[seatIndex].LastActionDescription = notification.ActionDescription;
@@ -2837,8 +2824,8 @@
 
         // Schedule the action to be cleared after the display duration
         var displayDuration = notification.DisplayDurationSeconds > 0
-            ? notification.DisplayDurationSeconds
-            : 5;
+        ? notification.DisplayDurationSeconds
+        : 5;
 
         _ = Task.Run(async () =>
         {
@@ -2846,7 +2833,7 @@
 
             // Only clear if this is still the same action (hasn't been replaced)
             if (seatIndex >= 0 && seatIndex < _seats.Count &&
-                _seats[seatIndex].LastActionTime == notification.PerformedAtUtc)
+    _seats[seatIndex].LastActionTime == notification.PerformedAtUtc)
             {
                 _seats[seatIndex].LastActionDescription = null;
                 _seats[seatIndex].LastActionTime = null;
@@ -2872,10 +2859,10 @@
         {
             // Convert CardPrivateDto to Card
             var coreCards = playerCards
-                .Select(c => ConvertToCard(c.Rank, c.Suit))
-                .Where(c => c is not null)
-                .Cast<Card>()
-                .ToList();
+            .Select(c => ConvertToCard(c.Rank, c.Suit))
+            .Where(c => c is not null)
+            .Cast<Card>()
+            .ToList();
 
             if (coreCards.Count == 0)
             {
@@ -2885,13 +2872,13 @@
 
             // Get dead cards from folded players' visible cards
             var deadCards = _seats
-                .Where(s => s.IsFolded && s.Cards.Any())
-                .SelectMany(s => s.Cards)
-                .Where(c => c.IsFaceUp && c.Rank is not null && c.Suit is not null)
-                .Select(c => ConvertToCard(c.Rank!, c.Suit!))
-                .Where(c => c is not null)
-                .Cast<Card>()
-                .ToList();
+            .Where(s => s.IsFolded && s.Cards.Any())
+            .SelectMany(s => s.Cards)
+            .Where(c => c.IsFaceUp && c.Rank is not null && c.Suit is not null)
+            .Select(c => ConvertToCard(c.Rank!, c.Suit!))
+            .Where(c => c is not null)
+            .Cast<Card>()
+            .ToList();
 
             OddsCalculator.OddsResult? result;
             if (IsTwosJacksManWithTheAxe)
@@ -3060,8 +3047,8 @@ HandType.HighCard
             {
                 // Use the dedicated Kings and Lows DropOrStay endpoint
                 var request = new DropOrStayRequest(
-                    decision: decision,
-                    playerId: _currentPlayerId ?? Guid.Empty
+                decision: decision,
+                playerId: _currentPlayerId ?? Guid.Empty
                 );
 
                 var response = await GameApiRouter.DropOrStayAsync(_gameTypeCode ?? "", GameId, request);
@@ -3201,6 +3188,14 @@ HandType.HighCard
     /// </summary>
     private async Task HandlePotMatchAcknowledge()
     {
+        if (_isAcknowledgingPotMatch)
+        {
+            return;
+        }
+
+        _isAcknowledgingPotMatch = true;
+        await InvokeAsync(StateHasChanged);
+
         // Leverage API router which handles game type checks or throws/returns error if not supported
         try
         {
@@ -3216,11 +3211,21 @@ HandType.HighCard
                 // But this method guarded with !IsKingsAndLows before.
                 // It's cleaner to keep the guard if the UI button is only shown for KingsAndLows.
                 Logger.LogError("Failed to acknowledge pot match: {StatusCode} {Error}", response.StatusCode, response.Error);
+                await ShowToastAsync("Failed to acknowledge pot match.", "error");
+                
+                // On error, reset the flag so user can try again
+                _isAcknowledgingPotMatch = false;
+                await InvokeAsync(StateHasChanged);
             }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error acknowledging pot match");
+            await ShowToastAsync("An error occurred while acknowledging.", "error");
+            
+            // On error, reset the flag so user can try again
+            _isAcknowledgingPotMatch = false;
+            await InvokeAsync(StateHasChanged);
         }
     }
 
@@ -3230,10 +3235,10 @@ HandType.HighCard
     /// Gets whether the current player is short on chips for the pot.
     /// </summary>
     private bool IsCurrentPlayerShortOnChips =>
-        _isSeated &&
-        _currentPlayerSeatIndex >= 0 &&
-        _currentPlayerSeatIndex < _seats.Count &&
-        _seats[_currentPlayerSeatIndex].Chips < _chipCheckPotAmount;
+    _isSeated &&
+    _currentPlayerSeatIndex >= 0 &&
+    _currentPlayerSeatIndex < _seats.Count &&
+    _seats[_currentPlayerSeatIndex].Chips < _chipCheckPotAmount;
 
     /// <summary>
     /// Checks if a specific player (by seat index) is short on chips for the pot.
@@ -3267,11 +3272,11 @@ HandType.HighCard
     private IReadOnlyList<ChipCoveragePauseOverlay.ShortPlayerInfo> GetShortPlayers()
     {
         return _seats
-            .Where(s => s.IsOccupied && !s.IsSittingOut && s.Chips < _chipCheckPotAmount)
-            .Select(s => new ChipCoveragePauseOverlay.ShortPlayerInfo(
-                s.PlayerFirstName ?? s.PlayerName ?? "Unknown",
-                s.Chips))
-            .ToList();
+        .Where(s => s.IsOccupied && !s.IsSittingOut && s.Chips < _chipCheckPotAmount)
+        .Select(s => new ChipCoveragePauseOverlay.ShortPlayerInfo(
+        s.PlayerFirstName ?? s.PlayerName ?? "Unknown",
+        s.Chips))
+        .ToList();
     }
 
     /// <summary>
@@ -3296,9 +3301,9 @@ HandType.HighCard
     private IReadOnlyList<string> GetPlayersWaitingForDropOrStay()
     {
         return _seats
-            .Where(s => s.IsOccupied && !s.IsFolded && !s.IsSittingOut && !s.HasDecidedDropOrStay)
-            .Select(s => s.PlayerFirstName ?? s.PlayerName ?? "Unknown")
-            .ToList();
+        .Where(s => s.IsOccupied && !s.IsFolded && !s.IsSittingOut && !s.HasDecidedDropOrStay)
+        .Select(s => s.PlayerFirstName ?? s.PlayerName ?? "Unknown")
+        .ToList();
     }
 
     /// <summary>
@@ -3318,8 +3323,8 @@ HandType.HighCard
         try
         {
             var request = new DropOrStayRequest(
-                decision: decision,
-                playerId: _currentPlayerId ?? Guid.Empty
+            decision: decision,
+            playerId: _currentPlayerId ?? Guid.Empty
             );
 
             var response = await KingsAndLowsApi.KingsAndLowsDropOrStayAsync(GameId, request);
@@ -3361,8 +3366,8 @@ HandType.HighCard
         }
 
         return deckCards
-            .Select(c => new PlayerVsDeckOverlay.CardDto(c.Rank ?? "?", c.Suit ?? "Unknown"))
-            .ToList();
+        .Select(c => new PlayerVsDeckOverlay.CardDto(c.Rank ?? "?", c.Suit ?? "Unknown"))
+        .ToList();
     }
 
     /// <summary>
@@ -3396,8 +3401,8 @@ HandType.HighCard
 
         // Prefer first name for a friendlier display
         return !string.IsNullOrWhiteSpace(playerVsDeck.DecisionMakerFirstName)
-            ? playerVsDeck.DecisionMakerFirstName
-            : playerVsDeck.DecisionMakerName ?? "Dealer";
+        ? playerVsDeck.DecisionMakerFirstName
+        : playerVsDeck.DecisionMakerName ?? "Dealer";
     }
 
     /// <summary>
@@ -3424,14 +3429,14 @@ HandType.HighCard
         if (playerVsDeck.StayingPlayerCards?.Count > 0)
         {
             return playerVsDeck.StayingPlayerCards
-                .Select(c => new CardInfo
-                {
-                    Rank = c.Rank,
-                    Suit = c.Suit,
-                    IsFaceUp = c.IsFaceUp,
-                    IsSelected = false
-                })
-                .ToList();
+            .Select(c => new CardInfo
+            {
+                Rank = c.Rank,
+                Suit = c.Suit,
+                IsFaceUp = c.IsFaceUp,
+                IsSelected = false
+            })
+            .ToList();
         }
 
         // Fallback to seat cards
@@ -3462,9 +3467,9 @@ HandType.HighCard
 
         // Prefer first name for a friendlier display
         var seat = _seats[stayingPlayerSeatIndex];
-        return !string.IsNullOrWhiteSpace(seat.PlayerFirstName) 
-            ? seat.PlayerFirstName 
-            : seat.PlayerName ?? playerVsDeck.StayingPlayerName;
+        return !string.IsNullOrWhiteSpace(seat.PlayerFirstName)
+        ? seat.PlayerFirstName
+        : seat.PlayerName ?? playerVsDeck.StayingPlayerName;
     }
 
     /// <summary>
@@ -3535,7 +3540,7 @@ HandType.HighCard
         _isDeckDrawAnimating = true;
         _deckCardsDrawn = false;
         _delayShowdownOverlay = true; // Delay showdown until animation completes
-        
+
         // Clear any existing showdown result so we fetch fresh data from API after deck draw
         // This prevents stale SignalR data from being used
         _showdownResult = null;
@@ -3544,14 +3549,14 @@ HandType.HighCard
         // Initialize deck draw cards from current SignalR state for animation
         var currentDeckCards = GetDeckCards();
         _deckDrawCards = currentDeckCards
-            .Select((c, i) => new CardInfo
-            {
-                Rank = c.Rank,
-                Suit = c.Suit,
-                IsFaceUp = true,
-                IsSelected = discardIndices.Contains(i)
-            })
-            .ToList();
+        .Select((c, i) => new CardInfo
+        {
+            Rank = c.Rank,
+            Suit = c.Suit,
+            IsFaceUp = true,
+            IsSelected = discardIndices.Contains(i)
+        })
+        .ToList();
 
         StateHasChanged();
 
@@ -3568,8 +3573,8 @@ HandType.HighCard
             }
 
             var request = new DeckDrawRequest(
-                discardIndices: discardIndices,
-                playerId: _currentPlayerId ?? Guid.Empty
+            discardIndices: discardIndices,
+            playerId: _currentPlayerId ?? Guid.Empty
             );
 
             var response = await KingsAndLowsApi.KingsAndLowsDeckDrawAsync(GameId, request);
@@ -3625,13 +3630,13 @@ HandType.HighCard
                 if (_gameResponse is not null && response.Content is not null)
                 {
                     Logger.LogDebug("HandleDeckDrawSubmittedAsync: Updating CurrentPhase from {Old} to {New}",
-                        _gameResponse.CurrentPhase, response.Content.NextPhase);
+                    _gameResponse.CurrentPhase, response.Content.NextPhase);
                     _gameResponse = _gameResponse with { CurrentPhase = response.Content.NextPhase };
                 }
                 else
                 {
                     Logger.LogWarning("HandleDeckDrawSubmittedAsync: Cannot update phase - _gameResponse={HasResponse}, response.Content={HasContent}",
-                        _gameResponse is not null, response.Content is not null);
+                    _gameResponse is not null, response.Content is not null);
                 }
 
                 await TryLoadShowdownAsync();
@@ -3670,6 +3675,3 @@ HandType.HighCard
         await Task.CompletedTask;
     }
 }
-
-
-
