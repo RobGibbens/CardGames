@@ -1149,6 +1149,46 @@ namespace CardGames.Poker.Api.Clients
 
     /// <summary>Start Hand</summary>
     [System.CodeDom.Compiler.GeneratedCode("Refitter", "1.7.0.0")]
+    public partial interface IBaseballApi
+    {
+        /// <summary>Start Hand</summary>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Post("/api/v1/games/baseball/{gameId}/hands")]
+        Task<IApiResponse<StartHandSuccessful>> BaseballStartHandAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
+        /// <summary>Collect Antes</summary>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Post("/api/v1/games/baseball/{gameId}/hands/antes")]
+        Task<IApiResponse<CollectAntesSuccessful>> BaseballCollectAntesAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
+        /// <summary>Deal Hands</summary>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Post("/api/v1/games/baseball/{gameId}/hands/deal")]
+        Task<IApiResponse<DealHandsSuccessful>> BaseballDealHandsAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
+        /// <summary>Process Betting Action</summary>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/games/baseball/{gameId}/betting/actions")]
+        Task<IApiResponse<ProcessBettingActionSuccessful>> BaseballProcessBettingActionAsync(System.Guid gameId, [Body] ProcessBettingActionRequest body, CancellationToken cancellationToken = default);
+
+        /// <summary>Process Buy Card</summary>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/games/baseball/{gameId}/buy-card")]
+        Task<IApiResponse<ProcessBuyCardSuccessful>> BaseballProcessBuyCardAsync(System.Guid gameId, [Body] ProcessBuyCardRequest body, CancellationToken cancellationToken = default);
+
+        /// <summary>Perform Showdown</summary>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Post("/api/v1/games/baseball/{gameId}/showdown")]
+        Task<IApiResponse<PerformShowdownSuccessful>> BaseballPerformShowdownAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
+        /// <summary>GetCurrentPlayerTurn</summary>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Get("/api/v1/games/baseball/{gameId}/current-turn")]
+        Task<IApiResponse<GetCurrentPlayerTurnResponse>> BaseballGetCurrentPlayerTurnAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+    }
+
+    /// <summary>Start Hand</summary>
+    [System.CodeDom.Compiler.GeneratedCode("Refitter", "1.7.0.0")]
     public partial interface ITwosJacksManWithTheAxeApi
     {
         /// <summary>Start Hand</summary>
@@ -3623,6 +3663,50 @@ namespace CardGames.Poker.Api.Contracts
         [JsonPropertyName("amount")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? Amount { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record ProcessBuyCardRequest
+    {
+        [JsonConstructor]
+        public ProcessBuyCardRequest(System.Guid? @playerId, bool? @accept)
+        {
+            this.PlayerId = @playerId;
+            this.Accept = @accept;
+        }
+
+        [JsonPropertyName("playerId")]
+        public System.Guid? PlayerId { get; init; }
+
+        [JsonPropertyName("accept")]
+        public bool? Accept { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record ProcessBuyCardSuccessful
+    {
+        [JsonConstructor]
+        public ProcessBuyCardSuccessful(bool? @accepted, string @currentPhase, System.Guid? @gameId, System.Guid? @playerId)
+        {
+            this.GameId = @gameId;
+            this.PlayerId = @playerId;
+            this.Accepted = @accepted;
+            this.CurrentPhase = @currentPhase;
+        }
+
+        [JsonPropertyName("gameId")]
+        public System.Guid? GameId { get; init; }
+
+        [JsonPropertyName("playerId")]
+        public System.Guid? PlayerId { get; init; }
+
+        [JsonPropertyName("accepted")]
+        public bool? Accepted { get; init; }
+
+        [JsonPropertyName("currentPhase")]
+        public string CurrentPhase { get; init; }
 
     }
 

@@ -391,6 +391,12 @@
                 .ToList();
         }
 
+        // For wild-card hands, show all cards to avoid incorrect best-5 selection client-side
+        if (hand.WildCardIndexes is not null && hand.WildCardIndexes.Count > 0 && cardsList.Count > 5)
+        {
+            return cardsList.OrderBy(c => c.Symbol).ToList();
+        }
+
         // For 7-card hands (Seven Card Stud), compute best 5 cards client-side
         if (cardsList.Count == 7)
         {

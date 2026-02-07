@@ -84,6 +84,17 @@ builder.Services
 	.AddHttpMessageHandler<AuthenticationStateHandler>();
 
 builder.Services
+	.AddRefitClient<IBaseballApi>(
+		settingsAction: _ => new RefitSettings(),
+		httpClientName: "baseballApi")
+	.ConfigureHttpClient(c =>
+	{
+		c.BaseAddress = new Uri("https+http://api");
+		c.Timeout = TimeSpan.FromSeconds(600);
+	})
+	.AddHttpMessageHandler<AuthenticationStateHandler>();
+
+builder.Services
 	.AddRefitClient<ITwosJacksManWithTheAxeApi>(
 		settingsAction: _ => new RefitSettings(),
 		httpClientName: "twosJacksManWithTheAxeApi")

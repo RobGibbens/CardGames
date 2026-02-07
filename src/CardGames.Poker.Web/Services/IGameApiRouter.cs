@@ -18,6 +18,8 @@ public interface IGameApiRouter
         Guid playerId,
         List<int> discardIndices);
 
+    Task<RouterResponse<Unit>> ProcessBuyCardAsync(string gameCode, Guid gameId, ProcessBuyCardRequest request);
+
     Task<RouterResponse<Unit>> DropOrStayAsync(string gameCode, Guid gameId, DropOrStayRequest request);
 
     Task<RouterResponse<Unit>> AcknowledgePotMatchAsync(string gameCode, Guid gameId);
@@ -92,17 +94,20 @@ public class GameApiRouter : IGameApiRouter
     private readonly ITwosJacksManWithTheAxeApi _twosJacksManWithTheAxeApi;
     private readonly IKingsAndLowsApi _kingsAndLowsApi;
     private readonly ISevenCardStudApi _sevenCardStudApi;
+    private readonly IBaseballApi _baseballApi;
 
     public GameApiRouter(
         IFiveCardDrawApi fiveCardDrawApi,
         ITwosJacksManWithTheAxeApi twosJacksManWithTheAxeApi,
         IKingsAndLowsApi kingsAndLowsApi,
-        ISevenCardStudApi sevenCardStudApi)
+        ISevenCardStudApi sevenCardStudApi,
+        IBaseballApi baseballApi)
     {
         _fiveCardDrawApi = fiveCardDrawApi;
         _twosJacksManWithTheAxeApi = twosJacksManWithTheAxeApi;
         _kingsAndLowsApi = kingsAndLowsApi;
         _sevenCardStudApi = sevenCardStudApi;
+        _baseballApi = baseballApi;
     }
 
     public async Task<RouterResponse<ProcessBettingActionSuccessful>> ProcessBettingActionAsync(
@@ -119,6 +124,11 @@ public class GameApiRouter : IGameApiRouter
         {
             return RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
                 await _sevenCardStudApi.SevenCardStudProcessBettingActionAsync(gameId, request));
+        }
+        else if (string.Equals(gameCode, "BASEBALL", StringComparison.OrdinalIgnoreCase))
+        {
+            return RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
+                await _baseballApi.BaseballProcessBettingActionAsync(gameId, request));
         }
         
         // Default to Five Card Draw (handles KingsAndLows fallback logic)
@@ -175,6 +185,17 @@ public class GameApiRouter : IGameApiRouter
             return RouterResponse<Unit>.FromRefit(response);
         }
         
+        return RouterResponse<Unit>.Failure("Not supported for this game type", HttpStatusCode.BadRequest);
+    }
+
+    public async Task<RouterResponse<Unit>> ProcessBuyCardAsync(string gameCode, Guid gameId, ProcessBuyCardRequest request)
+    {
+        if (string.Equals(gameCode, "BASEBALL", StringComparison.OrdinalIgnoreCase))
+        {
+            var response = await _baseballApi.BaseballProcessBuyCardAsync(gameId, request);
+            return RouterResponse<Unit>.FromRefit(response);
+        }
+
         return RouterResponse<Unit>.Failure("Not supported for this game type", HttpStatusCode.BadRequest);
     }
 
