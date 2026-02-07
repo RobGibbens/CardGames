@@ -22,6 +22,7 @@ public static class PokerGameMetadataRegistry
 	public const string SevenCardStudCode = "SEVENCARDSTUD";
 	public const string KingsAndLowsCode = "KINGSANDLOWS";
 	public const string FollowTheQueenCode = "FOLLOWTHEQUEEN";
+	public const string BaseballCode = "BASEBALL";
 
 	private static readonly FrozenDictionary<string, PokerGameMetadataAttribute> MetadataByGameTypeCode;
 	private static readonly FrozenDictionary<string, Type> GameTypeByCode;
