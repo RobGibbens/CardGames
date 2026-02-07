@@ -23,8 +23,8 @@ namespace CardGames.Poker.Games.Baseball;
 	name:"Baseball",
 	description:"A seven-card stud variant with wild 3s and 9s, and buy-card options on 4s.",
  	minimumNumberOfPlayers: 2,
-	maximumNumberOfPlayers: 6,
-    initialHoleCards: 2,
+	maximumNumberOfPlayers: 4,
+	initialHoleCards: 2,
     initialBoardCards: 1,
     maxCommunityCards: 0,
     maxPlayerCards: 7,
@@ -75,6 +75,20 @@ public class BaseballGame : IPokerGame
     public int BuyCardPrice => _buyCardPrice;
     public bool UseBringIn => _useBringIn;
 
+    /// <summary>
+    /// Constructor for rules discovery only.
+    /// </summary>
+    public BaseballGame()
+        : this(
+            new[] { ("P1", 100), ("P2", 100) },
+            ante: 0,
+            bringIn: 0,
+            smallBet: 0,
+            bigBet: 0,
+            buyCardPrice: 0)
+    {
+    }
+
     public BaseballGame(
         IEnumerable<(string name, int chips)> players,
         int ante,
@@ -82,7 +96,7 @@ public class BaseballGame : IPokerGame
         int smallBet,
         int bigBet,
         int buyCardPrice,
-        bool useBringIn = false)
+        bool useBringIn = true)
     {
         var playerList = players.ToList();
         if (playerList.Count < MinimumNumberOfPlayers)
@@ -113,12 +127,56 @@ public class BaseballGame : IPokerGame
     /// <summary>
     /// Gets the game rules metadata for Baseball.
     /// </summary>
-    /// <remarks>
-    /// Full implementation to be completed. For now, returns a placeholder.
-    /// </remarks>
     public GameFlow.GameRules GetGameRules()
     {
-        throw new NotImplementedException("Baseball game rules metadata not yet implemented");
+        return new GameFlow.GameRules
+        {
+            GameTypeCode = "BASEBALL",
+            GameTypeName = "Baseball",
+            Description = "A seven-card stud variant with wild 3s and 9s, and buy-card options on 4s.",
+            MinPlayers = 2,
+            MaxPlayers = 6,
+            Phases = new List<GameFlow.GamePhaseDescriptor>
+            {
+                new() { PhaseId = "WaitingToStart", Name = "Waiting to Start", Description = "Waiting for players", Category = "Setup", RequiresPlayerAction = false },
+                new() { PhaseId = "CollectingAntes", Name = "Collecting Antes", Description = "Collecting ante bets", Category = "Setup", RequiresPlayerAction = false },
+                new() { PhaseId = "ThirdStreet", Name = "Third Street", Description = "2 down, 1 up, bring-in", Category = "Betting", RequiresPlayerAction = true },
+                new() { PhaseId = "FourthStreet", Name = "Fourth Street", Description = "1 up card, bet", Category = "Betting", RequiresPlayerAction = true },
+                new() { PhaseId = "FifthStreet", Name = "Fifth Street", Description = "1 up card, bet", Category = "Betting", RequiresPlayerAction = true },
+                new() { PhaseId = "SixthStreet", Name = "Sixth Street", Description = "1 up card, bet", Category = "Betting", RequiresPlayerAction = true },
+                new() { PhaseId = "SeventhStreet", Name = "Seventh Street", Description = "1 down card, final bet", Category = "Betting", RequiresPlayerAction = true },
+                new() { PhaseId = "Showdown", Name = "Showdown", Description = "Determine winner", Category = "Resolution", RequiresPlayerAction = false },
+                new() { PhaseId = "Complete", Name = "Complete", Description = "Hand complete", Category = "Resolution", RequiresPlayerAction = false, IsTerminal = true }
+            },
+            CardDealing = new GameFlow.CardDealingConfig
+            {
+                InitialCards = 3,
+                InitialVisibility = GameFlow.CardVisibility.Mixed,
+                HasCommunityCards = false,
+                DealingRounds = new List<GameFlow.DealingRound>
+                {
+                    new() { CardCount = 2, Visibility = GameFlow.CardVisibility.FaceDown, Target = GameFlow.DealingTarget.Players },
+                    new() { CardCount = 1, Visibility = GameFlow.CardVisibility.FaceUp, Target = GameFlow.DealingTarget.Players },
+                    new() { CardCount = 1, Visibility = GameFlow.CardVisibility.FaceUp, Target = GameFlow.DealingTarget.Players },
+                    new() { CardCount = 1, Visibility = GameFlow.CardVisibility.FaceUp, Target = GameFlow.DealingTarget.Players },
+                    new() { CardCount = 1, Visibility = GameFlow.CardVisibility.FaceUp, Target = GameFlow.DealingTarget.Players },
+                    new() { CardCount = 1, Visibility = GameFlow.CardVisibility.FaceDown, Target = GameFlow.DealingTarget.Players }
+                }
+            },
+            Betting = new GameFlow.BettingConfig
+            {
+                HasAntes = true,
+                HasBlinds = false,
+                BettingRounds = 5,
+                Structure = "Fixed Limit"
+            },
+            Showdown = new GameFlow.ShowdownConfig
+            {
+                HandRanking = "Standard",
+                IsHighLow = false,
+                HasSpecialSplitRules = false
+            }
+        };
     }
 
     /// <summary>

@@ -33,12 +33,12 @@ public class BaseballGameTests
     [Fact]
     public void Constructor_ThrowsForTooManyPlayers()
     {
-        var players = Enumerable.Range(1, 5).Select(i => ($"Player{i}", 1000)).ToList();
+        var players = Enumerable.Range(1, 7).Select(i => ($"Player{i}", 1000)).ToList();
         
         var act = () => new BaseballGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20, buyCardPrice: 20);
         
         act.Should().Throw<System.ArgumentException>()
-            .WithMessage("*at most 4 players*");
+            .WithMessage("*at most 6 players*");
     }
 
     [Fact]

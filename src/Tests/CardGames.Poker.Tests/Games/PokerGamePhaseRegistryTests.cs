@@ -45,7 +45,7 @@ public sealed class PokerGamePhaseRegistryTests
 		var result = PokerGamePhaseRegistry.TryResolve(
 			"HOLDEM",
 			"Flop",
-			out Phases _);
+			out System.DayOfWeek _);
 
 		result.Should().BeFalse();
 	}

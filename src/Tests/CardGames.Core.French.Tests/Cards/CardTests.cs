@@ -29,4 +29,27 @@ public class CardTests
 
         card.Value.Should().Be(expectedValue);
     }
+
+    [Fact]
+    public void Equality_Check()
+    {
+        var card1 = new Card(Suit.Hearts, Symbol.Ace);
+        var card2 = new Card(Suit.Hearts, Symbol.Ace);
+        var card3 = new Card(Suit.Spades, Symbol.Ace);
+        var card4 = new Card(Suit.Hearts, Symbol.King);
+
+        card1.Should().Be(card2);
+        card1.Should().NotBe(card3);
+        card1.Should().NotBe(card4);
+
+        (card1 == card2).Should().BeTrue();
+        (card1 != card2).Should().BeFalse();
+        (card1 == card3).Should().BeFalse();
+        (card1 != card3).Should().BeTrue();
+
+        Card nullCard = null;
+        (card1 == nullCard).Should().BeFalse();
+        (nullCard == card1).Should().BeFalse();
+        (nullCard == nullCard).Should().BeTrue();
+    }
 }

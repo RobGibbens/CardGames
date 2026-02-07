@@ -1,0 +1,825 @@
+﻿{
+  "DotCoverVersion": "2025.3.2",
+  "Kind": "SolutionRoot",
+  "CoveredStatements": 242,
+  "TotalStatements": 37362,
+  "CoveragePercent": 1,
+  "Children": [
+    {
+      "Kind": "SolutionFolder",
+      "Name": "Other Projects",
+      "CoveredStatements": 135,
+      "TotalStatements": 6611,
+      "CoveragePercent": 2,
+      "Children": [
+        {
+          "Kind": "Project",
+          "Name": "CardGames.Core.French",
+          "CoveredStatements": 119,
+          "TotalStatements": 175,
+          "CoveragePercent": 68,
+          "Children": [
+            {
+              "Kind": "Namespace",
+              "Name": "CardGames.Core.French",
+              "CoveredStatements": 119,
+              "TotalStatements": 175,
+              "CoveragePercent": 68,
+              "Children": [
+                {
+                  "Kind": "Namespace",
+                  "Name": "Cards",
+                  "CoveredStatements": 63,
+                  "TotalStatements": 113,
+                  "CoveragePercent": 56,
+                  "Children": [
+                    {
+                      "Kind": "Namespace",
+                      "Name": "Extensions",
+                      "CoveredStatements": 48,
+                      "TotalStatements": 96,
+                      "CoveragePercent": 50,
+                      "Children": [
+                        {
+                          "Kind": "Type",
+                          "Name": "CardsExtensions",
+                          "CoveredStatements": 0,
+                          "TotalStatements": 26,
+                          "CoveragePercent": 0,
+                          "Children": [
+                            {
+                              "Kind": "Method",
+                              "Name": "ByDescendingValue(IEnumerable<Card>):IReadOnlyCollection<Card>",
+                              "CoveredStatements": 0,
+                              "TotalStatements": 2,
+                              "CoveragePercent": 0,
+                              "Children": [
+                                {
+                                  "Kind": "OwnCoverage",
+                                  "CoveredStatements": 0,
+                                  "TotalStatements": 1,
+                                  "CoveragePercent": 0
+                                },
+                                {
+                                  "Kind": "AnonymousMethod",
+                                  "Name": "(Card):int",
+                                  "CoveredStatements": 0,
+                                  "TotalStatements": 1,
+                                  "CoveragePercent": 0
+                                }
+                              ]
+                            },
+                            {
+                              "Kind": "Method",
+                              "Name": "ContainsValue(IEnumerable<Card>,int):bool",
+                              "CoveredStatements": 0,
+                              "TotalStatements": 1,
+                              "CoveragePercent": 0
+                            },
+                            {
+                              "Kind": "Method",
+                              "Name": "ContainsValues(IEnumerable<Card>,IEnumerable<int>):bool",
+                              "CoveredStatements": 0,
+                              "TotalStatements": 1,
+                              "CoveragePercent": 0
+                            },
+                            {
+                              "Kind": "Method",
+                              "Name": "DescendingValues(IEnumerable<Card>):IReadOnlyCollection<int>",
+                              "CoveredStatements": 0,
+                              "TotalStatements": 1,
+                              "CoveragePercent": 0
+                            },
+                            {
+                              "Kind": "Method",
+                              "Name": "DistinctDescendingValues(IEnumerable<Card>):IReadOnlyCollection<int>",
+                              "CoveredStatements": 0,
+                              "TotalStatements": 1,
+                              "CoveragePercent": 0
+                            },
+                            {
+                              "Kind": "Method",
+                              "Name": "DistinctSuits(IEnumerable<Card>):IReadOnlyCollection<Suit>",
+                              "CoveredStatements": 0,
+                              "TotalStatements": 2,
+                              "CoveragePercent": 0,
+                              "Children": [
+                                {
+                                  "Kind": "OwnCoverage",
+                                  "CoveredStatements": 0,
+                                  "TotalStatements": 1,
+                                  "CoveragePercent": 0
+                                },
+                                {
+                                  "Kind": "AnonymousMethod",
+                                  "Name": "(Card):Suit",
+                                  "CoveredStatements": 0,
+                                  "TotalStatements": 1,
+                                  "CoveragePercent": 0
+                                }
+                              ]
+                            },
+                            {
+                              "Kind": "Method",
+                              "Name": "DistinctValues(IEnumerable<Card>):IReadOnlyCollection<int>",
+                              "CoveredStatements": 0,
+                              "TotalStatements": 1,
+                              "CoveragePercent": 0
+                            },
+                            {
+                              "Kind": "Method",
+                              "Name": "HighestValue(IEnumerable<Card>):int",
+                              "CoveredStatements": 0,
+                              "TotalStatements": 1,
+                              "CoveragePercent": 0
+                            },
+                            {
+                              "Kind": "Method",
+                              "Name": "HighestValueOfNFolds(IEnumerable<Card>,int):int",
+                              "CoveredStatements": 0,
+                              "TotalStatements": 7,
+                              "CoveragePercent": 0,
+                              "Children": [
+                                {
+                                  "Kind": "OwnCoverage",
+                                  "CoveredStatements": 0,
+                                  "TotalStatements": 4,
+                                  "CoveragePercent": 0
+                                },
+                                {
+                                  "Kind": "AnonymousMethod",
+                                  "Name": "(Card):int",
+                                  "CoveredStatements": 0,
+                                  "TotalStatements": 1,
+                                  "CoveragePercent": 0
+                                },
+                                {
+                                  "Kind": "AnonymousMethod",
+                                  "Name": "(IGrouping<int,Card>):bool",
+                                  "CoveredStatements": 0,
+                                  "TotalStatements": 1,
+                                  "CoveragePercent": 0
+                                },
+                                {
+                                  "Kind": "AnonymousMethod",
+                                  "Name": "(IGrouping<int,Card>):int",
+                                  "CoveredStatements": 0,
+                                  "TotalStatements": 1,
+                                  "CoveragePercent": 0
+                                }
+                              ]
+                            },
+                            {
+                              "Kind": "Method",
+                              "Name": "SuitProjection(IEnumerable<Card>):IEnumerable<Suit>",
+                              "CoveredStatements": 0,
+                              "TotalStatements": 2,
+                              "CoveragePercent": 0,
+                              "Children": [
+                                {
+                                  "Kind": "OwnCoverage",
+                                  "CoveredStatements": 0,
+                                  "TotalStatements": 1,
+                                  "CoveragePercent": 0
+                                },
+                                {
+                                  "Kind": "AnonymousMethod",
+                                  "Name": "(Card):Suit",
+                                  "CoveredStatements": 0,
+                                  "TotalStatements": 1,
+                                  "CoveragePercent": 0
+                                }
+                              ]
+                            },
+                            {
+                              "Kind": "Method",
+                              "Name": "Suits(IEnumerable<Card>):IReadOnlyCollection<Suit>",
+                              "CoveredStatements": 0,
+                              "TotalStatements": 1,
+                              "CoveragePercent": 0
+                            },
+                            {
+                              "Kind": "Method",
+                              "Name": "ValueOfBiggestPair(IEnumerable<Card>):int",
+                              "CoveredStatements": 0,
+                              "TotalStatements": 1,
+                              "CoveragePercent": 0
+                            },
+                            {
+                              "Kind": "Method",
+                              "Name": "ValueOfBiggestQuads(IEnumerable<Card>):int",
+                              "CoveredStatements": 0,
+                              "TotalStatements": 1,
+                              "CoveragePercent": 0
+                            },
+                            {
+                              "Kind": "Method",
+                              "Name": "ValueOfBiggestTrips(IEnumerable<Card>):int",
+                              "CoveredStatements": 0,
+                              "TotalStatements": 1,
+                              "CoveragePercent": 0
+                            },
+                            {
+                              "Kind": "Method",
+                              "Name": "ValueProjection(IEnumerable<Card>):IEnumerable<int>",
+                              "CoveredStatements": 0,
+                              "TotalStatements": 2,
+                              "CoveragePercent": 0,
+                              "Children": [
+                                {
+                                  "Kind": "OwnCoverage",
+                                  "CoveredStatements": 0,
+                                  "TotalStatements": 1,
+                                  "CoveragePercent": 0
+                                },
+                                {
+                                  "Kind": "AnonymousMethod",
+                                  "Name": "(Card):int",
+                                  "CoveredStatements": 0,
+                                  "TotalStatements": 1,
+                                  "CoveragePercent": 0
+                                }
+                              ]
+                            },
+                            {
+                              "Kind": "Method",
+                              "Name": "Values(IEnumerable<Card>):IReadOnlyCollection<int>",
+                              "CoveredStatements": 0,
+                              "TotalStatements": 1,
+                              "CoveragePercent": 0
+                            }
+                          ]
+                        },
+                        {
+                          "Kind": "Type",
+                          "Name": "MappingExtensions",
+                          "CoveredStatements": 25,
+                          "TotalStatements": 36,
+                          "CoveragePercent": 69,
+                          "Children": [
+                            {
+                              "Kind": "Method",
+                              "Name": "ToSuit(char):Suit",
+                              "CoveredStatements": 4,
+                              "TotalStatements": 6,
+                              "CoveragePercent": 67
+                            },
+                            {
+                              "Kind": "Method",
+                              "Name": "ToSymbol(int):Symbol",
+                              "CoveredStatements": 14,
+                              "TotalStatements": 15,
+                              "CoveragePercent": 93
+                            },
+                            {
+                              "Kind": "Method",
+                              "Name": "ToSymbol(char):Symbol",
+                              "CoveredStatements": 7,
+                              "TotalStatements": 15,
+                              "CoveragePercent": 47
+                            }
+                          ]
+                        },
+                        {
+                          "Kind": "Type",
+                          "Name": "SerializationExtensions",
+                          "CoveredStatements": 23,
+                          "TotalStatements": 34,
+                          "CoveragePercent": 68,
+                          "Children": [
+                            {
+                              "Kind": "Constructor",
+                              "Name": "SerializationExtensions()",
+                              "CoveredStatements": 1,
+                              "TotalStatements": 1,
+                              "CoveragePercent": 100
+                            },
+                            {
+                              "Kind": "Method",
+                              "Name": "Hash(Card):int",
+                              "CoveredStatements": 1,
+                              "TotalStatements": 1,
+                              "CoveragePercent": 100
+                            },
+                            {
+                              "Kind": "Method",
+                              "Name": "ToCard(string):Card",
+                              "CoveredStatements": 5,
+                              "TotalStatements": 7,
+                              "CoveragePercent": 71
+                            },
+                            {
+                              "Kind": "Method",
+                              "Name": "ToCardObsolete(string):Card",
+                              "CoveredStatements": 0,
+                              "TotalStatements": 4,
+                              "CoveragePercent": 0
+                            },
+                            {
+                              "Kind": "Method",
+                              "Name": "ToCards(string):IReadOnlyCollection<Card>",
+                              "CoveredStatements": 12,
+                              "TotalStatements": 13,
+                              "CoveragePercent": 92
+                            },
+                            {
+                              "Kind": "Method",
+                              "Name": "ToCardsObsolete(string):IReadOnlyCollection<Card>",
+                              "CoveredStatements": 0,
+                              "TotalStatements": 2,
+                              "CoveragePercent": 0,
+                              "Children": [
+                                {
+                                  "Kind": "OwnCoverage",
+                                  "CoveredStatements": 0,
+                                  "TotalStatements": 1,
+                                  "CoveragePercent": 0
+                                },
+                                {
+                                  "Kind": "AnonymousMethod",
+                                  "Name": "(string):Card",
+                                  "CoveredStatements": 0,
+                                  "TotalStatements": 1,
+                                  "CoveragePercent": 0
+                                }
+                              ]
+                            },
+                            {
+                              "Kind": "Method",
+                              "Name": "ToShortString(Card):string",
+                              "CoveredStatements": 1,
+                              "TotalStatements": 1,
+                              "CoveragePercent": 100
+                            },
+                            {
+                              "Kind": "Method",
+                              "Name": "ToStringRepresentation(IEnumerable<Card>):string",
+                              "CoveredStatements": 3,
+                              "TotalStatements": 3,
+                              "CoveragePercent": 100,
+                              "Children": [
+                                {
+                                  "Kind": "OwnCoverage",
+                                  "CoveredStatements": 1,
+                                  "TotalStatements": 1,
+                                  "CoveragePercent": 100
+                                },
+                                {
+                                  "Kind": "AnonymousMethod",
+                                  "Name": "(Card):int",
+                                  "CoveredStatements": 1,
+                                  "TotalStatements": 1,
+                                  "CoveragePercent": 100
+                                },
+                                {
+                                  "Kind": "AnonymousMethod",
+                                  "Name": "(Card):string",
+                                  "CoveredStatements": 1,
+                                  "TotalStatements": 1,
+                                  "CoveragePercent": 100
+                                }
+                              ]
+                            },
+                            {
+                              "Kind": "Method",
+                              "Name": "ToSuit(int):Suit",
+                              "CoveredStatements": 0,
+                              "TotalStatements": 1,
+                              "CoveragePercent": 0
+                            },
+                            {
+                              "Kind": "Method",
+                              "Name": "ToValue(int):int",
+                              "CoveredStatements": 0,
+                              "TotalStatements": 1,
+                              "CoveragePercent": 0
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "Kind": "Type",
+                      "Name": "Card",
+                      "CoveredStatements": 15,
+                      "TotalStatements": 17,
+                      "CoveragePercent": 88,
+                      "Children": [
+                        {
+                          "Kind": "Constructor",
+                          "Name": "Card(Suit,int)",
+                          "CoveredStatements": 5,
+                          "TotalStatements": 5,
+                          "CoveragePercent": 100
+                        },
+                        {
+                          "Kind": "Constructor",
+                          "Name": "Card(Suit,Symbol)",
+                          "CoveredStatements": 5,
+                          "TotalStatements": 5,
+                          "CoveragePercent": 100
+                        },
+                        {
+                          "Kind": "Property",
+                          "Name": "Value:int",
+                          "CoveredStatements": 1,
+                          "TotalStatements": 1,
+                          "CoveragePercent": 100,
+                          "Children": [
+                            {
+                              "Kind": "PropertyGetter",
+                              "CoveredStatements": 1,
+                              "TotalStatements": 1,
+                              "CoveragePercent": 100
+                            }
+                          ]
+                        },
+                        {
+                          "Kind": "Method",
+                          "Name": "Equals(object):bool",
+                          "CoveredStatements": 1,
+                          "TotalStatements": 1,
+                          "CoveragePercent": 100
+                        },
+                        {
+                          "Kind": "Method",
+                          "Name": "Equals(Card):bool",
+                          "CoveredStatements": 1,
+                          "TotalStatements": 1,
+                          "CoveragePercent": 100
+                        },
+                        {
+                          "Kind": "Method",
+                          "Name": "GetHashCode():int",
+                          "CoveredStatements": 1,
+                          "TotalStatements": 1,
+                          "CoveragePercent": 100
+                        },
+                        {
+                          "Kind": "Method",
+                          "Name": "op_Equality(Card,Card):bool",
+                          "CoveredStatements": 0,
+                          "TotalStatements": 1,
+                          "CoveragePercent": 0
+                        },
+                        {
+                          "Kind": "Method",
+                          "Name": "op_Inequality(Card,Card):bool",
+                          "CoveredStatements": 0,
+                          "TotalStatements": 1,
+                          "CoveragePercent": 0
+                        },
+                        {
+                          "Kind": "Method",
+                          "Name": "ToString():string",
+                          "CoveredStatements": 1,
+                          "TotalStatements": 1,
+                          "CoveragePercent": 100
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "Kind": "Namespace",
+                  "Name": "Dealers",
+                  "CoveredStatements": 24,
+                  "TotalStatements": 28,
+                  "CoveragePercent": 86,
+                  "Children": [
+                    {
+                      "Kind": "Type",
+                      "Name": "FrenchDeckDealer",
+                      "CoveredStatements": 24,
+                      "TotalStatements": 28,
+                      "CoveragePercent": 86,
+                      "Children": [
+                        {
+                          "Kind": "Constructor",
+                          "Name": "FrenchDeckDealer(FrenchDeck)",
+                          "CoveredStatements": 3,
+                          "TotalStatements": 3,
+                          "CoveragePercent": 100
+                        },
+                        {
+                          "Kind": "Constructor",
+                          "Name": "FrenchDeckDealer(FrenchDeck,IRandomNumberGenerator)",
+                          "CoveredStatements": 0,
+                          "TotalStatements": 3,
+                          "CoveragePercent": 0
+                        },
+                        {
+                          "Kind": "Property",
+                          "Name": "SpecificDeck:FrenchDeck",
+                          "CoveredStatements": 1,
+                          "TotalStatements": 1,
+                          "CoveragePercent": 100,
+                          "Children": [
+                            {
+                              "Kind": "PropertyGetter",
+                              "CoveredStatements": 1,
+                              "TotalStatements": 1,
+                              "CoveragePercent": 100
+                            }
+                          ]
+                        },
+                        {
+                          "Kind": "Method",
+                          "Name": "DealSpecific(Card):Card",
+                          "CoveredStatements": 0,
+                          "TotalStatements": 1,
+                          "CoveragePercent": 0
+                        },
+                        {
+                          "Kind": "Method",
+                          "Name": "TryDealCardFrom(Card[],out Card):bool",
+                          "CoveredStatements": 9,
+                          "TotalStatements": 9,
+                          "CoveragePercent": 100
+                        },
+                        {
+                          "Kind": "Method",
+                          "Name": "TryDealCardOfSuit(Suit,out Card):bool",
+                          "CoveredStatements": 4,
+                          "TotalStatements": 4,
+                          "CoveragePercent": 100
+                        },
+                        {
+                          "Kind": "Method",
+                          "Name": "TryDealCardOfSymbol(Symbol,out Card):bool",
+                          "CoveredStatements": 1,
+                          "TotalStatements": 1,
+                          "CoveragePercent": 100
+                        },
+                        {
+                          "Kind": "Method",
+                          "Name": "TryDealCardOfValue(int,out Card):bool",
+                          "CoveredStatements": 4,
+                          "TotalStatements": 4,
+                          "CoveragePercent": 100
+                        },
+                        {
+                          "Kind": "Method",
+                          "Name": "WithFullDeck():FrenchDeckDealer",
+                          "CoveredStatements": 1,
+                          "TotalStatements": 1,
+                          "CoveragePercent": 100
+                        },
+                        {
+                          "Kind": "Method",
+                          "Name": "WithShortDeck():FrenchDeckDealer",
+                          "CoveredStatements": 1,
+                          "TotalStatements": 1,
+                          "CoveragePercent": 100
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "Kind": "Namespace",
+                  "Name": "Decks",
+                  "CoveredStatements": 32,
+                  "TotalStatements": 34,
+                  "CoveragePercent": 94,
+                  "Children": [
+                    {
+                      "Kind": "Type",
+                      "Name": "FrenchDeck",
+                      "CoveredStatements": 24,
+                      "TotalStatements": 26,
+                      "CoveragePercent": 92,
+                      "Children": [
+                        {
+                          "Kind": "Constructor",
+                          "Name": "FrenchDeck()",
+                          "CoveredStatements": 1,
+                          "TotalStatements": 1,
+                          "CoveragePercent": 100
+                        },
+                        {
+                          "Kind": "Indexer",
+                          "Name": "[int]:Card",
+                          "CoveredStatements": 1,
+                          "TotalStatements": 1,
+                          "CoveragePercent": 100,
+                          "Children": [
+                            {
+                              "Kind": "PropertyGetter",
+                              "CoveredStatements": 1,
+                              "TotalStatements": 1,
+                              "CoveragePercent": 100
+                            }
+                          ]
+                        },
+                        {
+                          "Kind": "Method",
+                          "Name": "CardsLeft():IReadOnlyCollection<Card>",
+                          "CoveredStatements": 1,
+                          "TotalStatements": 1,
+                          "CoveragePercent": 100
+                        },
+                        {
+                          "Kind": "Method",
+                          "Name": "CardsLeftInternal():IEnumerable<Card>",
+                          "CoveredStatements": 1,
+                          "TotalStatements": 1,
+                          "CoveragePercent": 100
+                        },
+                        {
+                          "Kind": "Method",
+                          "Name": "CardsLeftOfSuit(Suit):IReadOnlyCollection<Card>",
+                          "CoveredStatements": 2,
+                          "TotalStatements": 2,
+                          "CoveragePercent": 100,
+                          "Children": [
+                            {
+                              "Kind": "OwnCoverage",
+                              "CoveredStatements": 1,
+                              "TotalStatements": 1,
+                              "CoveragePercent": 100
+                            },
+                            {
+                              "Kind": "AnonymousMethod",
+                              "Name": "(Card):bool",
+                              "CoveredStatements": 1,
+                              "TotalStatements": 1,
+                              "CoveragePercent": 100
+                            }
+                          ]
+                        },
+                        {
+                          "Kind": "Method",
+                          "Name": "CardsLeftOfValue(int):IReadOnlyCollection<Card>",
+                          "CoveredStatements": 2,
+                          "TotalStatements": 2,
+                          "CoveragePercent": 100,
+                          "Children": [
+                            {
+                              "Kind": "OwnCoverage",
+                              "CoveredStatements": 1,
+                              "TotalStatements": 1,
+                              "CoveragePercent": 100
+                            },
+                            {
+                              "Kind": "AnonymousMethod",
+                              "Name": "(Card):bool",
+                              "CoveredStatements": 1,
+                              "TotalStatements": 1,
+                              "CoveragePercent": 100
+                            }
+                          ]
+                        },
+                        {
+                          "Kind": "Method",
+                          "Name": "CardsLeftWith(Func<Card,bool>):IReadOnlyCollection<Card>",
+                          "CoveredStatements": 1,
+                          "TotalStatements": 1,
+                          "CoveragePercent": 100
+                        },
+                        {
+                          "Kind": "Method",
+                          "Name": "GetFromRemaining(int):Card",
+                          "CoveredStatements": 5,
+                          "TotalStatements": 5,
+                          "CoveragePercent": 100
+                        },
+                        {
+                          "Kind": "Method",
+                          "Name": "GetSpecific(Card):Card",
+                          "CoveredStatements": 10,
+                          "TotalStatements": 10,
+                          "CoveragePercent": 100
+                        },
+                        {
+                          "Kind": "Method",
+                          "Name": "NumberOfCardsLeft():int",
+                          "CoveredStatements": 0,
+                          "TotalStatements": 1,
+                          "CoveragePercent": 0
+                        },
+                        {
+                          "Kind": "Method",
+                          "Name": "Reset():void",
+                          "CoveredStatements": 0,
+                          "TotalStatements": 1,
+                          "CoveragePercent": 0
+                        }
+                      ]
+                    },
+                    {
+                      "Kind": "Type",
+                      "Name": "FullFrenchDeck",
+                      "CoveredStatements": 4,
+                      "TotalStatements": 4,
+                      "CoveragePercent": 100,
+                      "Children": [
+                        {
+                          "Kind": "Constructor",
+                          "Name": "FullFrenchDeck()",
+                          "CoveredStatements": 1,
+                          "TotalStatements": 1,
+                          "CoveragePercent": 100
+                        },
+                        {
+                          "Kind": "Property",
+                          "Name": "Cards:IReadOnlyCollection<Card>",
+                          "CoveredStatements": 1,
+                          "TotalStatements": 1,
+                          "CoveragePercent": 100,
+                          "Children": [
+                            {
+                              "Kind": "PropertyGetter",
+                              "CoveredStatements": 1,
+                              "TotalStatements": 1,
+                              "CoveragePercent": 100
+                            }
+                          ]
+                        },
+                        {
+                          "Kind": "Method",
+                          "Name": "CardsOfValue(int):IEnumerable<Card>",
+                          "CoveredStatements": 2,
+                          "TotalStatements": 2,
+                          "CoveragePercent": 100,
+                          "Children": [
+                            {
+                              "Kind": "OwnCoverage",
+                              "CoveredStatements": 1,
+                              "TotalStatements": 1,
+                              "CoveragePercent": 100
+                            },
+                            {
+                              "Kind": "AnonymousMethod",
+                              "Name": "(int):Card",
+                              "CoveredStatements": 1,
+                              "TotalStatements": 1,
+                              "CoveragePercent": 100
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "Kind": "Type",
+                      "Name": "ShortFrenchDeck",
+                      "CoveredStatements": 4,
+                      "TotalStatements": 4,
+                      "CoveragePercent": 100,
+                      "Children": [
+                        {
+                          "Kind": "Constructor",
+                          "Name": "ShortFrenchDeck()",
+                          "CoveredStatements": 1,
+                          "TotalStatements": 1,
+                          "CoveragePercent": 100
+                        },
+                        {
+                          "Kind": "Property",
+                          "Name": "Cards:IReadOnlyCollection<Card>",
+                          "CoveredStatements": 1,
+                          "TotalStatements": 1,
+                          "CoveragePercent": 100,
+                          "Children": [
+                            {
+                              "Kind": "PropertyGetter",
+                              "CoveredStatements": 1,
+                              "TotalStatements": 1,
+                              "CoveragePercent": 100
+                            }
+                          ]
+                        },
+                        {
+                          "Kind": "Method",
+                          "Name": "CardsOfValue(int):IEnumerable<Card>",
+                          "CoveredStatements": 2,
+                          "TotalStatements": 2,
+                          "CoveragePercent": 100,
+                          "Children": [
+                            {
+                              "Kind": "OwnCoverage",
+                              "CoveredStatements": 1,
+                              "TotalStatements": 1,
+                              "CoveragePercent": 100
+                            },
+                            {
+                              "Kind": "AnonymousMethod",
+                              "Name": "(int):Card",
+                              "CoveredStatements": 1,
+                              "TotalStatements": 1,
+                              "CoveragePercent": 100
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

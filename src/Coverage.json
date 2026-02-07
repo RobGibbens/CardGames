@@ -1,0 +1,358 @@
+﻿{
+  "DotCoverVersion": "2025.3.2",
+  "Kind": "SolutionRoot",
+  "CoveredStatements": 484,
+  "TotalStatements": 37546,
+  "CoveragePercent": 1,
+  "Children": [
+    {
+      "Kind": "SolutionFolder",
+      "Name": "Other Projects",
+      "CoveredStatements": 193,
+      "TotalStatements": 6611,
+      "CoveragePercent": 3,
+      "Children": [
+        {
+          "Kind": "Project",
+          "Name": "CardGames.Core",
+          "CoveredStatements": 21,
+          "TotalStatements": 85,
+          "CoveragePercent": 25,
+          "Children": [
+            {
+              "Kind": "Namespace",
+              "Name": "CardGames.Core",
+              "CoveredStatements": 21,
+              "TotalStatements": 85,
+              "CoveragePercent": 25,
+              "Children": [
+                {
+                  "Kind": "Namespace",
+                  "Name": "Dealer",
+                  "CoveredStatements": 10,
+                  "TotalStatements": 20,
+                  "CoveragePercent": 50,
+                  "Children": [
+                    {
+                      "Kind": "Type",
+                      "Name": "Dealer<TCardKind>",
+                      "CoveredStatements": 10,
+                      "TotalStatements": 20,
+                      "CoveragePercent": 50,
+                      "Children": [
+                        {
+                          "Kind": "Constructor",
+                          "Name": "Dealer(IDeck<TCardKind>)",
+                          "CoveredStatements": 5,
+                          "TotalStatements": 5,
+                          "CoveragePercent": 100
+                        },
+                        {
+                          "Kind": "Constructor",
+                          "Name": "Dealer(IDeck<TCardKind>,IRandomNumberGenerator)",
+                          "CoveredStatements": 5,
+                          "TotalStatements": 5,
+                          "CoveragePercent": 100
+                        },
+                        {
+                          "Kind": "Method",
+                          "Name": "DealCard():TCardKind",
+                          "CoveredStatements": 0,
+                          "TotalStatements": 8,
+                          "CoveragePercent": 0
+                        },
+                        {
+                          "Kind": "Method",
+                          "Name": "DealCards(int):IReadOnlyCollection<TCardKind>",
+                          "CoveredStatements": 0,
+                          "TotalStatements": 1,
+                          "CoveragePercent": 0
+                        },
+                        {
+                          "Kind": "Method",
+                          "Name": "Shuffle():void",
+                          "CoveredStatements": 0,
+                          "TotalStatements": 1,
+                          "CoveragePercent": 0
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "Kind": "Namespace",
+                  "Name": "Extensions",
+                  "CoveredStatements": 9,
+                  "TotalStatements": 63,
+                  "CoveragePercent": 14,
+                  "Children": [
+                    {
+                      "Kind": "Type",
+                      "Name": "EnumerableExtensions",
+                      "CoveredStatements": 9,
+                      "TotalStatements": 63,
+                      "CoveragePercent": 14,
+                      "Children": [
+                        {
+                          "Kind": "Method",
+                          "Name": "CartesianPower<T>(IEnumerable<T>,int):IEnumerable<IEnumerable<T>>",
+                          "CoveredStatements": 0,
+                          "TotalStatements": 12,
+                          "CoveragePercent": 0,
+                          "Children": [
+                            {
+                              "Kind": "OwnCoverage",
+                              "CoveredStatements": 0,
+                              "TotalStatements": 10,
+                              "CoveragePercent": 0
+                            },
+                            {
+                              "Kind": "AnonymousMethod",
+                              "Name": "(T):IEnumerable<T>",
+                              "CoveredStatements": 0,
+                              "TotalStatements": 1,
+                              "CoveragePercent": 0
+                            },
+                            {
+                              "Kind": "AnonymousMethod",
+                              "Name": "(IEnumerable<IEnumerable<T>>,int):IEnumerable<IEnumerable<T>>",
+                              "CoveredStatements": 0,
+                              "TotalStatements": 1,
+                              "CoveragePercent": 0
+                            }
+                          ]
+                        },
+                        {
+                          "Kind": "Method",
+                          "Name": "CartesianProduct<T>(IEnumerable<T>,IEnumerable<T>):IEnumerable<IEnumerable<T>>",
+                          "CoveredStatements": 0,
+                          "TotalStatements": 3,
+                          "CoveragePercent": 0,
+                          "Children": [
+                            {
+                              "Kind": "OwnCoverage",
+                              "CoveredStatements": 0,
+                              "TotalStatements": 1,
+                              "CoveragePercent": 0
+                            },
+                            {
+                              "Kind": "AnonymousMethod",
+                              "Name": "(T):IEnumerable<T[]>",
+                              "CoveredStatements": 0,
+                              "TotalStatements": 2,
+                              "CoveragePercent": 0,
+                              "Children": [
+                                {
+                                  "Kind": "OwnCoverage",
+                                  "CoveredStatements": 0,
+                                  "TotalStatements": 1,
+                                  "CoveragePercent": 0
+                                },
+                                {
+                                  "Kind": "AnonymousMethod",
+                                  "Name": "(T):T[]",
+                                  "CoveredStatements": 0,
+                                  "TotalStatements": 1,
+                                  "CoveragePercent": 0
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "Kind": "Method",
+                          "Name": "CartesianProduct<T>(IEnumerable<T>,IEnumerable<IEnumerable<T>>):IEnumerable<IEnumerable<T>>",
+                          "CoveredStatements": 0,
+                          "TotalStatements": 3,
+                          "CoveragePercent": 0,
+                          "Children": [
+                            {
+                              "Kind": "OwnCoverage",
+                              "CoveredStatements": 0,
+                              "TotalStatements": 1,
+                              "CoveragePercent": 0
+                            },
+                            {
+                              "Kind": "AnonymousMethod",
+                              "Name": "(T):IEnumerable<IEnumerable<T>>",
+                              "CoveredStatements": 0,
+                              "TotalStatements": 2,
+                              "CoveragePercent": 0,
+                              "Children": [
+                                {
+                                  "Kind": "OwnCoverage",
+                                  "CoveredStatements": 0,
+                                  "TotalStatements": 1,
+                                  "CoveragePercent": 0
+                                },
+                                {
+                                  "Kind": "AnonymousMethod",
+                                  "Name": "(IEnumerable<T>):IEnumerable<T>",
+                                  "CoveredStatements": 0,
+                                  "TotalStatements": 1,
+                                  "CoveragePercent": 0
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "Kind": "Method",
+                          "Name": "ForEach<T>(IEnumerable<T>,Action<T>):void",
+                          "CoveredStatements": 9,
+                          "TotalStatements": 9,
+                          "CoveragePercent": 100
+                        },
+                        {
+                          "Kind": "Method",
+                          "Name": "ForEach<T>(IEnumerable<T>,Action<T,int>):void",
+                          "CoveredStatements": 0,
+                          "TotalStatements": 2,
+                          "CoveragePercent": 0,
+                          "Children": [
+                            {
+                              "Kind": "OwnCoverage",
+                              "CoveredStatements": 0,
+                              "TotalStatements": 1,
+                              "CoveragePercent": 0
+                            },
+                            {
+                              "Kind": "AnonymousMethod",
+                              "Name": "(ValueTuple<T,int>):void",
+                              "CoveredStatements": 0,
+                              "TotalStatements": 1,
+                              "CoveragePercent": 0
+                            }
+                          ]
+                        },
+                        {
+                          "Kind": "Method",
+                          "Name": "Indexed<T>(IEnumerable<T>):IEnumerable<ValueTuple<T,int>>",
+                          "CoveredStatements": 0,
+                          "TotalStatements": 2,
+                          "CoveragePercent": 0,
+                          "Children": [
+                            {
+                              "Kind": "OwnCoverage",
+                              "CoveredStatements": 0,
+                              "TotalStatements": 1,
+                              "CoveragePercent": 0
+                            },
+                            {
+                              "Kind": "AnonymousMethod",
+                              "Name": "(T,int):ValueTuple<T,int>",
+                              "CoveredStatements": 0,
+                              "TotalStatements": 1,
+                              "CoveragePercent": 0
+                            }
+                          ]
+                        },
+                        {
+                          "Kind": "Method",
+                          "Name": "Subsets<T>(IEnumerable<T>):IEnumerable<IEnumerable<T>>",
+                          "CoveredStatements": 0,
+                          "TotalStatements": 1,
+                          "CoveragePercent": 0
+                        },
+                        {
+                          "Kind": "Method",
+                          "Name": "SubsetsInternal<T>(IEnumerable<T>):IEnumerable<IEnumerable<T>>",
+                          "CoveredStatements": 0,
+                          "TotalStatements": 11,
+                          "CoveragePercent": 0,
+                          "Children": [
+                            {
+                              "Kind": "OwnCoverage",
+                              "CoveredStatements": 0,
+                              "TotalStatements": 10,
+                              "CoveragePercent": 0
+                            },
+                            {
+                              "Kind": "AnonymousMethod",
+                              "Name": "(IEnumerable<T>):IEnumerable<T>",
+                              "CoveredStatements": 0,
+                              "TotalStatements": 1,
+                              "CoveragePercent": 0
+                            }
+                          ]
+                        },
+                        {
+                          "Kind": "Method",
+                          "Name": "SubsetsOfSize<T>(IEnumerable<T>,int):IEnumerable<IEnumerable<T>>",
+                          "CoveredStatements": 0,
+                          "TotalStatements": 1,
+                          "CoveragePercent": 0
+                        },
+                        {
+                          "Kind": "Method",
+                          "Name": "SubsetsOfSizeInternal<T>(IReadOnlyCollection<T>,int):IReadOnlyCollection<IEnumerable<T>>",
+                          "CoveredStatements": 0,
+                          "TotalStatements": 19,
+                          "CoveragePercent": 0,
+                          "Children": [
+                            {
+                              "Kind": "OwnCoverage",
+                              "CoveredStatements": 0,
+                              "TotalStatements": 17,
+                              "CoveragePercent": 0
+                            },
+                            {
+                              "Kind": "AnonymousMethod",
+                              "Name": "(T):T[]",
+                              "CoveredStatements": 0,
+                              "TotalStatements": 1,
+                              "CoveragePercent": 0
+                            },
+                            {
+                              "Kind": "AnonymousMethod",
+                              "Name": "(IEnumerable<T>):List<T>",
+                              "CoveredStatements": 0,
+                              "TotalStatements": 1,
+                              "CoveragePercent": 0
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "Kind": "Namespace",
+                  "Name": "Random",
+                  "CoveredStatements": 2,
+                  "TotalStatements": 2,
+                  "CoveragePercent": 100,
+                  "Children": [
+                    {
+                      "Kind": "Type",
+                      "Name": "StandardRandomNumberGenerator",
+                      "CoveredStatements": 2,
+                      "TotalStatements": 2,
+                      "CoveragePercent": 100,
+                      "Children": [
+                        {
+                          "Kind": "Constructor",
+                          "Name": "StandardRandomNumberGenerator()",
+                          "CoveredStatements": 1,
+                          "TotalStatements": 1,
+                          "CoveragePercent": 100
+                        },
+                        {
+                          "Kind": "Method",
+                          "Name": "Next(int):int",
+                          "CoveredStatements": 1,
+                          "TotalStatements": 1,
+                          "CoveragePercent": 100
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

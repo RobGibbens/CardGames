@@ -102,6 +102,17 @@ public class FiveCardDrawGame : IPokerGame
     public int Ante => _ante;
 
     /// <summary>
+    /// Constructor for rules discovery only.
+    /// </summary>
+    public FiveCardDrawGame()
+        : this(
+            new[] { ("P1", 100), ("P2", 100) },
+            ante: 0,
+            minBet: 0)
+    {
+    }
+
+    /// <summary>
     /// Initializes a new Five Card Draw poker game with the specified players and betting parameters.
     /// Creates player instances, initializes the deck dealer, and sets the game to the waiting state.
     /// </summary>

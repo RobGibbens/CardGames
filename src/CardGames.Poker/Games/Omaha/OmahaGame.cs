@@ -32,7 +32,7 @@ public class OmahaGame : IPokerGame
 	public string Name { get; } = "Omaha";
 	public string Description { get; } = "A popular variant of poker where players are dealt four hole cards and share five community cards, with four betting rounds.";
 	public int MinimumNumberOfPlayers { get; } = 2;
-	public int MaximumNumberOfPlayers { get; } = 11;
+	public int MaximumNumberOfPlayers { get; } = 10;
 
 	private const int HoleCardsCount = 4;
 
@@ -56,6 +56,17 @@ public class OmahaGame : IPokerGame
     public PotManager PotManager => _potManager;
     public int SmallBlind => _smallBlind;
     public int BigBlind => _bigBlind;
+
+    /// <summary>
+    /// Constructor for rules discovery only.
+    /// </summary>
+    public OmahaGame()
+        : this(
+            new[] { ("P1", 100), ("P2", 100) },
+            smallBlind: 0,
+            bigBlind: 0)
+    {
+    }
 
     public OmahaGame(
         IEnumerable<(string name, int chips)> players,
@@ -87,12 +98,52 @@ public class OmahaGame : IPokerGame
     /// <summary>
     /// Gets the game rules metadata for Omaha.
     /// </summary>
-    /// <remarks>
-    /// Full implementation to be completed. For now, returns a placeholder.
-    /// </remarks>
     public GameFlow.GameRules GetGameRules()
     {
-        throw new NotImplementedException("Omaha game rules metadata not yet implemented");
+        return new GameFlow.GameRules
+        {
+            GameTypeCode = "OMAHA",
+            GameTypeName = "Omaha",
+            Description = "A popular variant of poker where players are dealt four hole cards and share five community cards, with four betting rounds.",
+            MinPlayers = 2,
+            MaxPlayers = 10,
+            Phases = new List<GameFlow.GamePhaseDescriptor>
+            {
+                new() { PhaseId = "WaitingToStart", Name = "Waiting to Start", Description = "Waiting for players", Category = "Setup", RequiresPlayerAction = false },
+                new() { PhaseId = "PreFlop", Name = "Pre-Flop", Description = "Initial betting round", Category = "Betting", RequiresPlayerAction = true },
+                new() { PhaseId = "Flop", Name = "Flop", Description = "First 3 community cards", Category = "Betting", RequiresPlayerAction = true },
+                new() { PhaseId = "Turn", Name = "Turn", Description = "4th community card", Category = "Betting", RequiresPlayerAction = true },
+                new() { PhaseId = "River", Name = "River", Description = "5th community card", Category = "Betting", RequiresPlayerAction = true },
+                new() { PhaseId = "Showdown", Name = "Showdown", Description = "Determine winner", Category = "Resolution", RequiresPlayerAction = false },
+                new() { PhaseId = "Complete", Name = "Complete", Description = "Hand complete", Category = "Resolution", RequiresPlayerAction = false, IsTerminal = true }
+            },
+            CardDealing = new GameFlow.CardDealingConfig
+            {
+                InitialCards = 4,
+                InitialVisibility = GameFlow.CardVisibility.FaceDown,
+                HasCommunityCards = true,
+                DealingRounds = new List<GameFlow.DealingRound>
+                {
+                    new() { CardCount = 4, Visibility = GameFlow.CardVisibility.FaceDown, Target = GameFlow.DealingTarget.Players },
+                    new() { CardCount = 3, Visibility = GameFlow.CardVisibility.FaceUp, Target = GameFlow.DealingTarget.Community },
+                    new() { CardCount = 1, Visibility = GameFlow.CardVisibility.FaceUp, Target = GameFlow.DealingTarget.Community },
+                    new() { CardCount = 1, Visibility = GameFlow.CardVisibility.FaceUp, Target = GameFlow.DealingTarget.Community }
+                }
+            },
+            Betting = new GameFlow.BettingConfig
+            {
+                HasAntes = false,
+                HasBlinds = true,
+                BettingRounds = 4,
+                Structure = "Pot Limit"
+            },
+            Showdown = new GameFlow.ShowdownConfig
+            {
+                HandRanking = "Omaha",
+                IsHighLow = false,
+                HasSpecialSplitRules = false
+            }
+        };
     }
 
     /// <summary>

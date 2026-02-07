@@ -67,4 +67,43 @@ public class PokerGameRulesRegistryTests
         rules.Should().NotBeNull();
         rules!.GameTypeCode.Should().Be("SEVENCARDSTUD");
     }
+
+    [Theory]
+    [InlineData("SEVENCARDSTUD")]
+    [InlineData("FIVECARDDRAW")]
+    [InlineData("TWOSJACKSMANWITHTHEAXE")]
+    [InlineData("KINGSANDLOWS")]
+    [InlineData("OMAHA")]
+    [InlineData("HOLDEM")]
+    [InlineData("BASEBALL")]
+    [InlineData("FOLLOWTHEQUEEN")]
+    public void Registry_ShouldContainGameType(string gameTypeCode)
+    {
+        // Act
+        var success = PokerGameRulesRegistry.TryGet(gameTypeCode, out var rules);
+
+        // Assert
+        success.Should().BeTrue();
+        rules.Should().NotBeNull();
+        rules!.GameTypeCode.Should().Be(gameTypeCode);
+    }
+
+    [Fact]
+    public void Registry_GetAvailableGameTypeCodes_ShouldIncludeAllGames()
+    {
+        // Act
+        var codes = PokerGameRulesRegistry.GetAvailableGameTypeCodes();
+
+        // Assert
+        codes.Should().Contain(new[] {
+            "SEVENCARDSTUD",
+            "FIVECARDDRAW",
+            "TWOSJACKSMANWITHTHEAXE",
+            "KINGSANDLOWS",
+            "OMAHA",
+            "HOLDEM",
+            "BASEBALL",
+            "FOLLOWTHEQUEEN"
+        });
+    }
 }

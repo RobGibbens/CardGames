@@ -19,12 +19,25 @@
             </div>
         }
 
-        @if (IsPlayerAffected)
+        @if (IsLoading)
+        {
+            <div class="loading-spinner" style="margin: 20px auto; border-color: rgba(255,255,255,0.2); border-top-color: #fff;"></div>
+            <p class="waiting-message">Loading results...</p>
+        }
+        else if (IsPlayerAffected)
         {
             <p class="match-warning">You must match the pot to continue playing!</p>
-            <button class="btn btn-primary btn-lg" @onclick="() => OnAcknowledge.InvokeAsync()">
-                <i class="fa-solid fa-check"></i>
-                Acknowledge
+            <button type="button" class="btn btn-primary btn-lg" @onclick="HandleClick" disabled="@IsSubmitting">
+                @if (IsSubmitting)
+                {
+                    <i class="fa-solid fa-spinner fa-spin"></i>
+                    <span>Processing...</span>
+                }
+                else
+                {
+                    <i class="fa-solid fa-check"></i>
+                    <span>Acknowledge</span>
+                }
             </button>
         }
         else
@@ -42,6 +55,12 @@
     public int PotAmount { get; set; }
 
     /// <summary>
+    /// Whether the results are currently loading.
+    /// </summary>
+    [Parameter]
+    public bool IsLoading { get; set; }
+
+    /// <summary>
     /// List of player names who must match the pot.
     /// </summary>
     [Parameter]
@@ -54,8 +73,20 @@
     public bool IsPlayerAffected { get; set; }
 
     /// <summary>
+    /// Whether the acknowledgement is being submitted.
+    /// </summary>
+    [Parameter]
+    public bool IsSubmitting { get; set; }
+
+    /// <summary>
     /// Callback when the player acknowledges the pot matching requirement.
     /// </summary>
     [Parameter]
     public EventCallback OnAcknowledge { get; set; }
+
+    private async Task HandleClick()
+    {
+        if (IsSubmitting) return;
+        await OnAcknowledge.InvokeAsync();
+    }
 }

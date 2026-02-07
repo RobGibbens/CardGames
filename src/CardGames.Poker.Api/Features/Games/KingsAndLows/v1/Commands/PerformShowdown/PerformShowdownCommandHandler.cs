@@ -51,12 +51,13 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 		var isAlreadyAwarded = currentHandPots.Any(p => p.IsAwarded);
 
 		// 2. Validate game is in showdown phase or pots are already awarded
-		if (game.CurrentPhase != nameof(Phases.Showdown) && !isAlreadyAwarded)
+		if (game.CurrentPhase != nameof(Phases.Showdown) && 
+			!isAlreadyAwarded)
 		{
 			return new PerformShowdownError
 			{
 				Message = $"Cannot perform showdown. Game is in '{game.CurrentPhase}' phase. " +
-				          $"Showdown can only be performed when the game is in '{nameof(Phases.Showdown)}' phase.",
+						  $"Showdown can only be performed when the game is in '{nameof(Phases.Showdown)}' phase.",
 				Code = PerformShowdownErrorCode.InvalidGameState
 			};
 		}
@@ -466,10 +467,43 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 		// 10. Update player chip stacks
 		if (!isAlreadyAwarded)
 		{
+			// Pay winners
 			foreach (var payout in payouts)
 			{
 				var gamePlayer = playerHandEvaluations[payout.Key].gamePlayer;
 				gamePlayer.ChipStack += payout.Value;
+			}
+
+			// Handle pot matching for losers automatically
+			var totalMatched = 0;
+			foreach (var loserName in losers)
+			{
+				var gamePlayer = playerHandEvaluations[loserName].gamePlayer;
+				var matchAmount = Math.Min(totalPot, gamePlayer.ChipStack);
+
+				if (matchAmount > 0)
+				{
+					gamePlayer.ChipStack -= matchAmount;
+					// Update contribution so hand history reflects the loss
+					gamePlayer.TotalContributedThisHand += matchAmount;
+					totalMatched += matchAmount;
+				}
+			}
+
+			// Create pot for next hand if there was any matching
+			if (totalMatched > 0)
+			{
+				var nextHandPot = new Data.Entities.Pot
+				{
+					GameId = game.Id,
+					HandNumber = game.CurrentHandNumber + 1,
+					PotType = PotType.Main,
+					PotOrder = 0,
+					Amount = totalMatched,
+					IsAwarded = false,
+					CreatedAt = now
+				};
+				context.Pots.Add(nextHandPot);
 			}
 
 			// 11. Mark pots as awarded and store winner information
@@ -477,7 +511,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 				? $"Split pot - {playerHandEvaluations[winners[0]].hand.Type}"
 				: playerHandEvaluations[winners[0]].hand.Type.ToString();
 
-			// Serialize winner payouts for pot matching phase
+			// Serialize winner payouts
 			var winnerPayoutsList = payouts.Select(p =>
 			{
 				var gp = playerHandEvaluations[p.Key].gamePlayer;
@@ -493,10 +527,8 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 				pot.WinnerPayouts = winnerPayoutsJson;
 			}
 
-			// 12. Update game state - transition to PotMatching if there are losers
-			game.CurrentPhase = losers.Count > 0
-				? nameof(Phases.PotMatching)
-				: nameof(Phases.Complete);
+			// 12. Update game state - always transition to Complete (auto-match performed)
+			game.CurrentPhase = nameof(Phases.Complete);
 			game.UpdatedAt = now;
 			game.HandCompletedAt = now;
 			game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);

@@ -63,7 +63,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				.ToListAsync(cancellationToken);
 
 			// DEBUG: Log card data before ordering for Seven Card Stud
-			var isSevenCardStudGame = string.Equals(game.GameType?.Code, "SEVENCARDSTUD", StringComparison.OrdinalIgnoreCase);
+			var isSevenCardStudGame = string.Equals(game.GameType?.Code, PokerGameMetadataRegistry.SevenCardStudCode, StringComparison.OrdinalIgnoreCase);
 			if (isSevenCardStudGame)
 			{
 				foreach (var gp in gamePlayers)
@@ -293,7 +293,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			var allEvaluationCards = playerCards.Concat(communityCards).ToList();
 
 			// Seven Card Stud: Requires 2 hole + up to 4 board + 1 down card (7 total at showdown)
-			if (string.Equals(game.GameType?.Code, "SEVENCARDSTUD", StringComparison.OrdinalIgnoreCase))
+			if (string.Equals(game.GameType?.Code, PokerGameMetadataRegistry.SevenCardStudCode, StringComparison.OrdinalIgnoreCase))
 			{
 				// Need to access the original cards with Location info
 				var playerCardEntities = gamePlayer.Cards
@@ -342,11 +342,11 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				// The base `DrawHand` evaluator ignores wild substitutions,
 				// so we must use the variant-specific hand type here.
 				HandBase drawHand;
-				if (string.Equals(game.GameType?.Code, "TWOSJACKSMANWITHTHEAXE", StringComparison.OrdinalIgnoreCase))
+				if (string.Equals(game.GameType?.Code, PokerGameMetadataRegistry.TwosJacksManWithTheAxeCode, StringComparison.OrdinalIgnoreCase))
 				{
 					drawHand = new CardGames.Poker.Hands.DrawHands.TwosJacksManWithTheAxeDrawHand(playerCards);
 				}
-				else if (string.Equals(game.GameType?.Code, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase))
+				else if (string.Equals(game.GameType?.Code, PokerGameMetadataRegistry.KingsAndLowsCode, StringComparison.OrdinalIgnoreCase))
 				{
 					drawHand = new CardGames.Poker.Hands.DrawHands.KingsAndLowsDrawHand(playerCards);
 				}
@@ -480,7 +480,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 		// For Seven Card Stud, show visible cards; otherwise show face-down placeholders
 		// During showdown phases, show cards face-up for players who haven't folded
-		var isSevenCardStud = string.Equals(gameTypeCode, "SEVENCARDSTUD", StringComparison.OrdinalIgnoreCase);
+		var isSevenCardStud = string.Equals(gameTypeCode, PokerGameMetadataRegistry.SevenCardStudCode, StringComparison.OrdinalIgnoreCase);
 
 		// Get current hand cards (not discarded)
 		// Note: We filter by hand number to naturally handle sitting out players.
@@ -583,7 +583,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			.Where(c => !c.IsDiscarded && c.HandNumber == currentHandNumber);
 
 		// Use street-aware ordering for Seven Card Stud to handle multi-street dealing correctly
-		var isSevenCardStud = string.Equals(gameTypeCode, "SEVENCARDSTUD", StringComparison.OrdinalIgnoreCase);
+		var isSevenCardStud = string.Equals(gameTypeCode, PokerGameMetadataRegistry.SevenCardStudCode, StringComparison.OrdinalIgnoreCase);
 		var orderedCards = OrderCardsForDisplay(filteredCards, isSevenCardStud).ToList();
 
 		_logger.LogDebug(
@@ -1051,7 +1051,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	private async Task<int> CalculateTotalPotAsync(Game game, int handNumber, CancellationToken cancellationToken)
 	{
 		// For Kings and Lows, the pot is tracked in the Pots table, not TotalContributedThisHand
-		if (string.Equals(game.GameType?.Code, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase))
+		if (string.Equals(game.GameType?.Code, PokerGameMetadataRegistry.KingsAndLowsCode, StringComparison.OrdinalIgnoreCase))
 		{
 			// In Kings and Lows, after a hand completes and losers match the pot,
 			// the new pot is created with HandNumber = CurrentHandNumber + 1.
@@ -1364,12 +1364,12 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		var lowestCardIsWild = false;
 
 		// Parse known patterns into structured rules based on game type
-		if (string.Equals(rules.GameTypeCode, "TWOSJACKSMANWITHTHEAXE", StringComparison.OrdinalIgnoreCase))
+		if (string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.TwosJacksManWithTheAxeCode, StringComparison.OrdinalIgnoreCase))
 		{
 			wildRanks.AddRange(["2", "J"]);
 			specificCards.Add("KD"); // King of Diamonds
 		}
-		else if (string.Equals(rules.GameTypeCode, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase))
+		else if (string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.KingsAndLowsCode, StringComparison.OrdinalIgnoreCase))
 		{
 			wildRanks.Add("K");
 			lowestCardIsWild = true;

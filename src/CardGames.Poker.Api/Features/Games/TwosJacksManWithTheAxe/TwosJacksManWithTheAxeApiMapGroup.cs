@@ -2,9 +2,10 @@
 
 namespace CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe;
 
+[EndpointMapGroup]
 public static class TwosJacksManWithTheAxeApiMapGroup
 {
-	public static void AddTwosJacksManWithTheAxeEndpoints(this IEndpointRouteBuilder app)
+	public static void MapEndpoints(IEndpointRouteBuilder app)
 	{
 		var api = app.NewVersionedApi("TwosJacksManWithTheAxe");
 		api.MapV1();

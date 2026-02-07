@@ -1,15 +1,11 @@
-using System.Text.Json;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.GameFlow;
+using CardGames.Poker.Api.Games;
 using CardGames.Poker.Betting;
-using CardGames.Poker.Games.FiveCardDraw;
-using CardGames.Poker.Games.KingsAndLows;
-using CardGames.Poker.Games.SevenCardStud;
 using Microsoft.EntityFrameworkCore;
-using DropOrStayDecision = CardGames.Poker.Api.Data.Entities.DropOrStayDecision;
 using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 
-//TODO:ROB - This should not be tied to FiveCardDraw - make it generic for all poker variants
 namespace CardGames.Poker.Api.Services;
 
 /// <summary>
@@ -71,7 +67,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		_logger.LogInformation("ContinuousPlayBackgroundService stopped");
 	}
 
-	private async Task ProcessGamesReadyForNextHandAsync(CancellationToken cancellationToken)
+	internal async Task ProcessGamesReadyForNextHandAsync(CancellationToken cancellationToken)
 	{
 		using var scope = _scopeFactory.CreateScope();
 		var context = scope.ServiceProvider.GetRequiredService<CardsDbContext>();
@@ -97,17 +93,17 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			.ToListAsync(cancellationToken);
 
 		foreach (var game in gamesReadyForNextHand)
-		{
-			try
 			{
-				await StartNextHandAsync(context, broadcaster, game, now, cancellationToken);
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError(ex, "Failed to start next hand for game {GameId}", game.Id);
+				try
+				{
+					await StartNextHandAsync(scope, context, broadcaster, game, now, cancellationToken);
+				}
+				catch (Exception ex)
+				{
+					_logger.LogError(ex, "Failed to start next hand for game {GameId}", game.Id);
+				}
 			}
 		}
-	}
 
 	/// <summary>
 	/// Checks for games where all players have left after the game started,
@@ -177,7 +173,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 	{
 		var drawCompleteDeadline = now.AddSeconds(-DrawCompleteDisplayDurationSeconds);
 
-		// Find Kings and Lows games in DrawComplete phase where the display period has expired
+		// Find games in DrawComplete phase where the display period has expired
 		var gamesReadyForShowdown = await context.Games
 			.Where(g => g.CurrentPhase == nameof(Phases.DrawComplete) &&
 						g.DrawCompletedAt != null &&
@@ -186,7 +182,11 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			.Include(g => g.GamePlayers)
 				.ThenInclude(gp => gp.Player)
 			.Include(g => g.GameCards)
+			.Include(g => g.GameType)
 			.ToListAsync(cancellationToken);
+
+		using var scope = _scopeFactory.CreateScope();
+		var flowHandlerFactory = scope.ServiceProvider.GetRequiredService<IGameFlowHandlerFactory>();
 
 		foreach (var game in gamesReadyForShowdown)
 		{
@@ -196,275 +196,38 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 					"Game {GameId} DrawComplete display period expired, transitioning to Showdown",
 					game.Id);
 
-				await TransitionToShowdownAsync(context, broadcaster, handHistoryRecorder, game, now, cancellationToken);
-			}
-			catch (Exception ex)
-			{
-				_logger.LogError(ex, "Failed to transition game {GameId} from DrawComplete to Showdown", game.Id);
-			}
-		}
-	}
+				// Use flow handler instead of hardcoded game type check
+				var flowHandler = flowHandlerFactory.GetHandler(game.GameType?.Code);
+				var nextPhase = await flowHandler.ProcessDrawCompleteAsync(
+					context, game, handHistoryRecorder, now, cancellationToken);
 
-	/// <summary>
-	/// Transitions a Kings and Lows game from DrawComplete to Showdown phase,
-	/// performs the showdown, and sets up pot matching.
-	/// </summary>
-	private async Task TransitionToShowdownAsync(
-		CardsDbContext context,
-		IGameStateBroadcaster broadcaster,
-		IHandHistoryRecorder handHistoryRecorder,
-		Game game,
-		DateTimeOffset now,
-		CancellationToken cancellationToken)
-	{
-		var gamePlayersList = game.GamePlayers.OrderBy(gp => gp.SeatPosition).ToList();
+				game.CurrentPhase = nextPhase;
+				game.UpdatedAt = now;
 
-		// Transition to Showdown phase
-		game.CurrentPhase = nameof(Phases.Showdown);
-		game.UpdatedAt = now;
-		game.DrawCompletedAt = null; // Clear the draw completed timestamp
-
-		await context.SaveChangesAsync(cancellationToken);
-
-		// Perform showdown and set up pot matching
-		await PerformKingsAndLowsShowdownAsync(context, handHistoryRecorder, game, gamePlayersList, now, cancellationToken);
-
-		// Broadcast updated state to all players
-		await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
-	}
-
-	/// <summary>
-	/// Performs showdown for Kings and Lows, determines winner/losers, distributes pot, and transitions to Complete phase.
-	/// </summary>
-	private async Task PerformKingsAndLowsShowdownAsync(
-		CardsDbContext context,
-		IHandHistoryRecorder handHistoryRecorder,
-		Game game,
-		List<GamePlayer> gamePlayersList,
-		DateTimeOffset now,
-		CancellationToken cancellationToken)
-	{
-		// Get all cards for staying players (active and not folded)
-		// Note: We use !HasFolded instead of DropOrStayDecision because DropOrStayDecision might be null
-		// if the game flow was interrupted or if we're recovering from a state where it wasn't set.
-		// In Kings and Lows, if you are active at showdown, you must have stayed.
-		var stayingPlayers = gamePlayersList
-			.Where(gp => !gp.HasFolded && gp is { Status: GamePlayerStatus.Active, DropOrStayDecision: DropOrStayDecision.Stay })
-			.ToList();
-
-		// Load main pot for current hand
-		var mainPot = await context.Pots
-			.FirstOrDefaultAsync(p => p.GameId == game.Id && p.HandNumber == game.CurrentHandNumber, cancellationToken);
-
-		if (mainPot == null)
-		{
-			// No pot to distribute - just complete the hand
-			game.CurrentPhase = nameof(Phases.Complete);
-			game.HandCompletedAt = now;
-			game.NextHandStartsAt = now.AddSeconds(ResultsDisplayDurationSeconds);
-			MoveDealer(game);
-			await context.SaveChangesAsync(cancellationToken);
-			return;
-		}
-
-		// Evaluate hands using the KingsAndLowsDrawHand evaluator
-		var playerHandEvaluations = new List<(GamePlayer player, long strength)>();
-
-		foreach (var player in stayingPlayers)
-		{
-			var playerCards = game.GameCards
-				.Where(gc => gc.GamePlayerId == player.Id && gc.HandNumber == game.CurrentHandNumber && !gc.IsDiscarded)
-				.OrderBy(gc => gc.DealOrder)
-				.Select(gc => new { gc.Suit, gc.Symbol })
-				.ToList();
-
-			if (playerCards.Count >= 5)
-			{
-				// Convert to domain Card objects for evaluation
-				var cards = playerCards.Select(c => new CardGames.Core.French.Cards.Card(
-					(CardGames.Core.French.Cards.Suit)(int)c.Suit,
-					(CardGames.Core.French.Cards.Symbol)(int)c.Symbol
-				)).ToList();
-
-				var hand = new CardGames.Poker.Hands.DrawHands.KingsAndLowsDrawHand(cards);
-				playerHandEvaluations.Add((player, hand.Strength));
-			}
-		}
-
-		// Find winner(s)
-		if (playerHandEvaluations.Count == 0)
-		{
-			game.CurrentPhase = nameof(Phases.Complete);
-			game.HandCompletedAt = now;
-			game.NextHandStartsAt = now.AddSeconds(ResultsDisplayDurationSeconds);
-			MoveDealer(game);
-			await context.SaveChangesAsync(cancellationToken);
-			return;
-		}
-
-		var maxStrength = playerHandEvaluations.Max(h => h.strength);
-		var winners = playerHandEvaluations.Where(h => h.strength == maxStrength).Select(h => h.player).ToList();
-		var losers = stayingPlayers.Where(p => !winners.Contains(p)).ToList();
-
-		// Distribute pot to winner(s)
-		var potAmount = mainPot.Amount;
-		var sharePerWinner = potAmount / winners.Count;
-		var remainder = potAmount % winners.Count;
-		var winnerPayouts = new List<object>();
-
-		foreach (var winner in winners)
-		{
-			var payout = sharePerWinner;
-			if (remainder > 0)
-			{
-				payout++;
-				remainder--;
-			}
-			winner.ChipStack += payout;
-			winnerPayouts.Add(new { playerId = winner.PlayerId.ToString(), playerName = winner.Player?.Name ?? winner.PlayerId.ToString(), amount = payout });
-		}
-
-		// Mark the pot as awarded (don't clear amount - it's historical record)
-		mainPot.IsAwarded = true;
-		mainPot.AwardedAt = now;
-		mainPot.WinnerPayouts = JsonSerializer.Serialize(winnerPayouts);
-
-		// Auto-perform pot matching: losers must match the pot for the next hand
-		var matchAmount = potAmount;
-		var totalMatched = 0;
-
-		foreach (var loser in losers)
-		{
-			var actualMatch = Math.Min(matchAmount, loser.ChipStack);
-			loser.ChipStack -= actualMatch;
-			totalMatched += actualMatch;
-		}
-
-		// Create a new pot for next hand with the matched contributions
-		if (totalMatched > 0)
-		{
-			var newPot = new Pot
-			{
-				GameId = game.Id,
-				HandNumber = game.CurrentHandNumber + 1,
-				PotType = PotType.Main,
-				PotOrder = 0,
-				Amount = totalMatched,
-				IsAwarded = false,
-				CreatedAt = now
-			};
-			context.Pots.Add(newPot);
-		}
-
-			// Complete the hand
-			game.CurrentPhase = nameof(Phases.Complete);
-			game.HandCompletedAt = now;
-			game.NextHandStartsAt = now.AddSeconds(ResultsDisplayDurationSeconds);
-			MoveDealer(game);
-
-			await context.SaveChangesAsync(cancellationToken);
-
-			// Build winning hand description
-			string? winningHandDescription = null;
-			if (winners.Count > 0)
-			{
-				var winnerPlayer = winners[0];
-				var winnerCards = game.GameCards
-					.Where(gc => gc.GamePlayerId == winnerPlayer.Id && gc.HandNumber == game.CurrentHandNumber && !gc.IsDiscarded)
-					.OrderBy(gc => gc.DealOrder)
-					.Select(gc => new CardGames.Core.French.Cards.Card(
-						(CardGames.Core.French.Cards.Suit)(int)gc.Suit,
-						(CardGames.Core.French.Cards.Symbol)(int)gc.Symbol))
-					.ToList();
-
-				if (winnerCards.Count >= 5)
+				// If transitioning to Showdown and handler supports inline showdown
+				if (nextPhase == nameof(Phases.Showdown) && flowHandler.SupportsInlineShowdown)
 				{
-					var winnerHand = new CardGames.Poker.Hands.DrawHands.KingsAndLowsDrawHand(winnerCards);
-					winningHandDescription = CardGames.Poker.Evaluation.HandDescriptionFormatter.GetHandDescription(winnerHand);
-				}
-			}
+					var showdownResult = await flowHandler.PerformShowdownAsync(
+						context, game, handHistoryRecorder, now, cancellationToken);
 
-			// Build hand history records
-			var winnerInfos = winners.Select(w =>
-			{
-				var payout = winnerPayouts.Cast<dynamic>().FirstOrDefault(wp => wp.playerId == w.PlayerId.ToString());
-				return new WinnerInfo
-				{
-					PlayerId = w.PlayerId,
-					PlayerName = w.Player?.Name ?? w.PlayerId.ToString(),
-					AmountWon = payout?.amount ?? 0
-				};
-			}).ToList();
-
-			var isSplitPot = winners.Count > 1;
-			var winnerPlayerIds = winners.Select(w => w.PlayerId).ToHashSet();
-
-			var playerResults = gamePlayersList.Select(gp =>
-			{
-				var isWinner = winnerPlayerIds.Contains(gp.PlayerId);
-				var payout = isWinner ? winnerInfos.FirstOrDefault(w => w.PlayerId == gp.PlayerId)?.AmountWon ?? 0 : 0;
-				var netDelta = isWinner
-					? payout - gp.TotalContributedThisHand
-					: -gp.TotalContributedThisHand;
-
-				// For losers who matched the pot, include that in their net delta
-				if (losers.Any(l => l.PlayerId == gp.PlayerId))
-				{
-					// The pot matching deduction was already applied to ChipStack
-					// netDelta should include: ante lost + pot match
-					netDelta = -gp.TotalContributedThisHand - Math.Min(potAmount, gp.ChipStack + Math.Min(potAmount, gp.ChipStack)); // This is complex, simplify
-					// Actually, TotalContributedThisHand should include their contribution, 
-					// but pot matching is separate - we need to track this properly
-					// For now, approximate the loss
-					var matchLoss = Math.Min(potAmount, gp.ChipStack + potAmount); // Already deducted, estimate
-					netDelta = -gp.TotalContributedThisHand; // Just the ante/bet loss for history
-				}
-
-				// Get cards for this player if they reached showdown
-				List<string>? showdownCards = null;
-				var reachedShowdown = !gp.HasFolded && stayingPlayers.Contains(gp);
-				if (reachedShowdown)
-				{
-					var cards = game.GameCards
-						.Where(gc => gc.GamePlayerId == gp.Id && gc.HandNumber == game.CurrentHandNumber && !gc.IsDiscarded)
-						.OrderBy(gc => gc.DealOrder)
-						.Select(gc => FormatCard(gc.Symbol, gc.Suit))
-						.ToList();
-					if (cards.Count > 0)
+					if (showdownResult.IsSuccess)
 					{
-						showdownCards = cards;
+						var postShowdownPhase = await flowHandler.ProcessPostShowdownAsync(
+							context, game, showdownResult, now, cancellationToken);
+
+						game.CurrentPhase = postShowdownPhase;
 					}
 				}
 
-				return new PlayerResultInfo
-				{
-					PlayerId = gp.PlayerId,
-					PlayerName = gp.Player?.Name ?? gp.PlayerId.ToString(),
-					SeatPosition = gp.SeatPosition,
-					HasFolded = gp.HasFolded,
-					ReachedShowdown = reachedShowdown,
-					IsWinner = isWinner,
-					IsSplitPot = isSplitPot && isWinner,
-					NetChipDelta = netDelta,
-					WentAllIn = gp.IsAllIn,
-					FoldStreet = gp.HasFolded ? "DropOrStay" : null,
-					ShowdownCards = showdownCards
-				};
-			}).ToList();
-
-			// Record hand history
-			await handHistoryRecorder.RecordHandHistoryAsync(new RecordHandHistoryParameters
+				await context.SaveChangesAsync(cancellationToken);
+				await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
+			}
+			catch (Exception ex)
 			{
-				GameId = game.Id,
-				HandNumber = game.CurrentHandNumber,
-				CompletedAtUtc = now,
-				WonByFold = false,
-				TotalPot = potAmount,
-				WinningHandDescription = winningHandDescription,
-				Winners = winnerInfos,
-				PlayerResults = playerResults
-			}, cancellationToken);
+				_logger.LogError(ex, "Failed to process DrawComplete for game {GameId}", game.Id);
+			}
 		}
+	}
 
 	/// <summary>
 	/// Moves the dealer button to the next occupied seat position (clockwise).
@@ -491,6 +254,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 	}
 
 	private async Task StartNextHandAsync(
+		IServiceScope scope,
 		CardsDbContext context,
 		IGameStateBroadcaster broadcaster,
 		Game game,
@@ -519,6 +283,10 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		{
 			await context.SaveChangesAsync(cancellationToken);
 		}
+
+		// Get the game flow handler for this game type (needed for game-specific checks below)
+		var flowHandlerFactory = scope.ServiceProvider.GetRequiredService<IGameFlowHandlerFactory>();
+		var flowHandler = flowHandlerFactory.GetHandler(game.GameType?.Code);
 
 		// 2. Apply pending chips to player stacks
 		var playersWithPendingChips = game.GamePlayers
@@ -570,83 +338,93 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 					game.Id);
 			}
 
-			// 3a. For Kings and Lows, check if any player cannot cover the current pot
-			var isKingsAndLowsGame = string.Equals(game.GameType?.Code, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase);
-			if (isKingsAndLowsGame)
+			// 3a. For games with chip coverage check requirement, check if any player cannot cover the current pot
+			if (flowHandler.RequiresChipCoverageCheck)
 			{
-				// Calculate the pot amount for the upcoming hand
-				var currentPotAmount = await context.Pots
-					.Where(p => p.GameId == game.Id && !p.IsAwarded)
-					.SumAsync(p => p.Amount, cancellationToken);
-
-				_logger.LogInformation(
-					"[CHIP-CHECK-BG] Game {GameId}: Checking chip coverage. CurrentPot={PotAmount}, EligiblePlayers={PlayerCount}",
-					game.Id, currentPotAmount, eligiblePlayers.Count);
-
-				// Check if any eligible player cannot cover the pot
-				var playersNeedingChips = eligiblePlayers
-					.Where(p => p.ChipStack < currentPotAmount && !p.AutoDropOnDropOrStay)
-					.ToList();
-
-				if (currentPotAmount > 0 && playersNeedingChips.Count > 0)
+				var chipCheckConfig = flowHandler.GetChipCheckConfiguration();
+				if (chipCheckConfig.IsEnabled)
 				{
-					// If game is already paused for chip check, check if timer expired
-					if (game.IsPausedForChipCheck)
-					{
-						if (game.ChipCheckPauseEndsAt.HasValue && now >= game.ChipCheckPauseEndsAt.Value)
-						{
-							// Timer expired - mark short players for auto-drop
-							foreach (var shortPlayer in playersNeedingChips)
-							{
-								shortPlayer.AutoDropOnDropOrStay = true;
-								_logger.LogInformation(
-									"[CHIP-CHECK-BG] Chip check pause expired: Player {PlayerName} at seat {Seat} will auto-drop (chips: {ChipStack}, pot: {PotAmount})",
-									shortPlayer.Player?.Name ?? "Unknown", shortPlayer.SeatPosition, shortPlayer.ChipStack, currentPotAmount);
-							}
+					// Calculate the pot amount for the upcoming hand
+					var currentPotAmount = await context.Pots
+						.Where(p => p.GameId == game.Id && !p.IsAwarded)
+						.SumAsync(p => p.Amount, cancellationToken);
 
-							// Clear pause state and continue with hand
-							game.IsPausedForChipCheck = false;
-							game.ChipCheckPauseStartedAt = null;
-							game.ChipCheckPauseEndsAt = null;
-							game.UpdatedAt = now;
-							await context.SaveChangesAsync(cancellationToken);
+					_logger.LogInformation(
+						"[CHIP-CHECK-BG] Game {GameId}: Checking chip coverage. CurrentPot={PotAmount}, EligiblePlayers={PlayerCount}",
+						game.Id, currentPotAmount, eligiblePlayers.Count);
+
+					// Check if any eligible player cannot cover the pot
+					var playersNeedingChips = eligiblePlayers
+						.Where(p => p.ChipStack < currentPotAmount && !p.AutoDropOnDropOrStay)
+						.ToList();
+
+					if (currentPotAmount > 0 && playersNeedingChips.Count > 0)
+					{
+						// If game is already paused for chip check, check if timer expired
+						if (game.IsPausedForChipCheck)
+						{
+							if (game.ChipCheckPauseEndsAt.HasValue && now >= game.ChipCheckPauseEndsAt.Value)
+							{
+								// Timer expired - apply shortage action
+								foreach (var shortPlayer in playersNeedingChips)
+								{
+									if (chipCheckConfig.ShortageAction == GameFlow.ChipShortageAction.AutoDrop)
+									{
+										shortPlayer.AutoDropOnDropOrStay = true;
+									}
+									else if (chipCheckConfig.ShortageAction == GameFlow.ChipShortageAction.SitOut)
+									{
+										shortPlayer.IsSittingOut = true;
+									}
+									_logger.LogInformation(
+										"[CHIP-CHECK-BG] Chip check pause expired: Player {PlayerName} at seat {Seat} action applied (chips: {ChipStack}, pot: {PotAmount})",
+										shortPlayer.Player?.Name ?? "Unknown", shortPlayer.SeatPosition, shortPlayer.ChipStack, currentPotAmount);
+								}
+
+								// Clear pause state and continue with hand
+								game.IsPausedForChipCheck = false;
+								game.ChipCheckPauseStartedAt = null;
+								game.ChipCheckPauseEndsAt = null;
+								game.UpdatedAt = now;
+								await context.SaveChangesAsync(cancellationToken);
+							}
+							else
+							{
+								// Still within pause period - broadcast state and wait
+								_logger.LogInformation(
+									"[CHIP-CHECK-BG] Game {GameId} still paused for chip check. {Count} player(s) need chips. Ends at {EndTime}",
+									game.Id, playersNeedingChips.Count, game.ChipCheckPauseEndsAt);
+								await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
+								return; // Don't start the hand yet
+							}
 						}
 						else
 						{
-							// Still within pause period - broadcast state and wait
-							_logger.LogInformation(
-								"[CHIP-CHECK-BG] Game {GameId} still paused for chip check. {Count} player(s) need chips. Ends at {EndTime}",
-								game.Id, playersNeedingChips.Count, game.ChipCheckPauseEndsAt);
+							// New chip shortage detected - initiate pause
+							game.IsPausedForChipCheck = true;
+							game.ChipCheckPauseStartedAt = now;
+							game.ChipCheckPauseEndsAt = now.Add(chipCheckConfig.PauseDuration);
+							game.UpdatedAt = now;
+
+							var shortPlayerNames = string.Join(", ", playersNeedingChips.Select(p => $"{p.Player?.Name ?? "Unknown"}({p.ChipStack})"));
+							_logger.LogWarning(
+								"[CHIP-CHECK-BG] Game {GameId}: Pausing for chip check. {PlayerCount} player(s) cannot cover pot of {PotAmount}. Players: {PlayerNames}",
+								game.Id, playersNeedingChips.Count, currentPotAmount, shortPlayerNames);
+
+							await context.SaveChangesAsync(cancellationToken);
 							await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
-							return; // Don't start the hand yet
+							return; // Don't start the hand - wait for players to add chips
 						}
 					}
-					else
+					else if (game.IsPausedForChipCheck)
 					{
-						// New chip shortage detected - initiate pause
-						game.IsPausedForChipCheck = true;
-						game.ChipCheckPauseStartedAt = now;
-						game.ChipCheckPauseEndsAt = now.AddMinutes(2);
+						// All players now have enough chips - clear pause
+						game.IsPausedForChipCheck = false;
+						game.ChipCheckPauseStartedAt = null;
+						game.ChipCheckPauseEndsAt = null;
 						game.UpdatedAt = now;
-
-						var shortPlayerNames = string.Join(", ", playersNeedingChips.Select(p => $"{p.Player?.Name ?? "Unknown"}({p.ChipStack})"));
-						_logger.LogWarning(
-							"[CHIP-CHECK-BG] Game {GameId}: Pausing for chip check. {PlayerCount} player(s) cannot cover pot of {PotAmount}. Players: {PlayerNames}",
-							game.Id, playersNeedingChips.Count, currentPotAmount, shortPlayerNames);
-
-						await context.SaveChangesAsync(cancellationToken);
-						await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
-						return; // Don't start the hand - wait for players to add chips
+						_logger.LogInformation("[CHIP-CHECK-BG] Game {GameId}: All players now have sufficient chips, resuming", game.Id);
 					}
-				}
-				else if (game.IsPausedForChipCheck)
-				{
-					// All players now have enough chips - clear pause
-					game.IsPausedForChipCheck = false;
-					game.ChipCheckPauseStartedAt = null;
-					game.ChipCheckPauseEndsAt = null;
-					game.UpdatedAt = now;
-					_logger.LogInformation("[CHIP-CHECK-BG] Game {GameId}: All players now have sufficient chips, resuming", game.Id);
 				}
 			}
 
@@ -800,17 +578,13 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		// NOTE: Dealer rotation is already done in PerformShowdownCommandHandler.MoveDealer()
 		// when the previous hand completes. We do NOT rotate again here.
 
-		// Determine game type
-		var isKingsAndLows = string.Equals(game.GameType?.Code, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase);
-		var isSevenCardStud = string.Equals(game.GameType?.Code, "SEVENCARDSTUD", StringComparison.OrdinalIgnoreCase);
+		// Get dealing configuration from the flow handler
+		var dealingConfig = flowHandler.GetDealingConfiguration();
 
 		// Update game state
 		game.CurrentHandNumber++;
-		// Kings and Lows only collects antes on first hand; subsequent hands get pot from losers matching
-		// Seven Card Stud goes through CollectingAntes -> ThirdStreet flow
-		game.CurrentPhase = isKingsAndLows
-			? nameof(Phases.Dealing)
-			: nameof(Phases.CollectingAntes);
+		// Use flow handler to determine the initial phase for this game type
+		game.CurrentPhase = flowHandler.GetInitialPhase(game);
 		game.Status = GameStatus.InProgress;
 		game.CurrentPlayerIndex = -1;
 		game.CurrentDrawPlayerIndex = -1;
@@ -818,30 +592,28 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		game.NextHandStartsAt = null;
 		game.UpdatedAt = now;
 
+		// Perform game-specific initialization
+		await flowHandler.OnHandStartingAsync(game, cancellationToken);
+
 		await context.SaveChangesAsync(cancellationToken);
 
 		_logger.LogInformation(
-			"Started hand {HandNumber} for game {GameId} with {PlayerCount} eligible players. Dealer at seat {DealerPosition}",
+			"Started hand {HandNumber} for game {GameId} ({GameType}) with {PlayerCount} eligible players. Dealer at seat {DealerPosition}. Initial phase: {InitialPhase}",
 			game.CurrentHandNumber,
 			game.Id,
+			flowHandler.GameTypeCode,
 			eligiblePlayers.Count,
-			game.DealerPosition);
+			game.DealerPosition,
+			game.CurrentPhase);
 
-		// Automatically collect antes (skip for Kings and Lows - ante is only on first hand)
-		if (!isKingsAndLows)
+		// Automatically collect antes (skip if game's flow handler indicates it handles antes differently)
+		if (!flowHandler.SkipsAnteCollection)
 		{
 			await CollectAntesAsync(context, game, eligiblePlayers, ante, now, cancellationToken);
 		}
 
-		// Automatically deal hands based on game type
-		if (isSevenCardStud)
-		{
-			await DealSevenCardStudHandsAsync(context, game, eligiblePlayers, now, cancellationToken);
-		}
-		else
-		{
-			await DealHandsAsync(context, game, eligiblePlayers, now, cancellationToken);
-		}
+		// Automatically deal hands using the flow handler
+		await flowHandler.DealCardsAsync(context, game, eligiblePlayers, now, cancellationToken);
 
 		// Broadcast updated state
 		await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
@@ -900,136 +672,6 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		await context.SaveChangesAsync(cancellationToken);
 	}
 
-	private async Task DealHandsAsync(
-		CardsDbContext context,
-		Game game,
-		List<GamePlayer> eligiblePlayers,
-		DateTimeOffset now,
-		CancellationToken cancellationToken)
-	{
-		// Create a shuffled deck and persist all 52 cards with deck order
-		var random = new Random();
-		var deck = CreateShuffledDeck(random);
-
-		// First, persist all 52 cards in the deck with their shuffled order
-		var deckOrder = 0;
-		var deckCards = new List<GameCard>();
-		foreach (var (suit, symbol) in deck)
-		{
-			var gameCard = new GameCard
-			{
-				GameId = game.Id,
-				GamePlayerId = null,
-				HandNumber = game.CurrentHandNumber,
-				Suit = suit,
-				Symbol = symbol,
-				DealOrder = deckOrder++,
-				Location = CardLocation.Deck,
-				IsVisible = false,
-				IsDiscarded = false,
-				DealtAt = now
-			};
-			deckCards.Add(gameCard);
-			context.GameCards.Add(gameCard);
-		}
-
-		var deckIndex = 0;
-
-		// Sort players starting from left of dealer for dealing order
-		var dealerPosition = game.DealerPosition;
-		var maxSeatPosition = game.GamePlayers.Max(gp => gp.SeatPosition);
-		var totalSeats = maxSeatPosition + 1; // Seats are 0-indexed
-
-		var playersInDealOrder = eligiblePlayers
-			.OrderBy(p => (p.SeatPosition - dealerPosition - 1 + totalSeats) % totalSeats)
-			.ToList();
-
-		// Deal 5 cards to each player from the shuffled deck
-		var dealOrder = 1;
-		foreach (var player in playersInDealOrder)
-		{
-			for (var cardIndex = 0; cardIndex < 5; cardIndex++)
-			{
-				if (deckIndex >= deckCards.Count)
-				{
-					_logger.LogError("Ran out of cards while dealing for game {GameId}", game.Id);
-					break;
-				}
-
-				var card = deckCards[deckIndex++];
-				card.GamePlayerId = player.Id;
-				card.Location = CardLocation.Hand;
-				card.DealOrder = dealOrder++;
-				card.IsVisible = false;
-				card.DealtAt = now;
-			}
-		}
-
-		// Reset CurrentBet for all players before first betting round
-		// (ante contributions are tracked in TotalContributedThisHand)
-		foreach (var player in game.GamePlayers)
-		{
-			player.CurrentBet = 0;
-		}
-
-		// Handle game-type-specific phase transitions after dealing
-		var isKingsAndLows = string.Equals(game.GameType?.Code, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase);
-
-		if (isKingsAndLows)
-		{
-			// Kings and Lows goes to DropOrStay phase after dealing, not betting
-			game.CurrentPhase = nameof(Phases.DropOrStay);
-			game.CurrentPlayerIndex = -1; // No current actor - all players decide simultaneously
-			game.UpdatedAt = now;
-
-			_logger.LogInformation(
-				"Dealt cards for Kings and Lows game {GameId} hand {HandNumber}. Phase set to DropOrStay.",
-				game.Id,
-				game.CurrentHandNumber);
-		}
-		else
-		{
-			// Standard poker variants go to first betting round
-			// Determine first actor (left of dealer among non-folded, non-all-in players)
-			var firstActorIndex = FindFirstActivePlayerAfterDealer(game, eligiblePlayers);
-
-			// Create betting round record - this is required for ProcessBettingAction to work
-			var bettingRound = new Data.Entities.BettingRound
-			{
-				GameId = game.Id,
-				HandNumber = game.CurrentHandNumber,
-				RoundNumber = 1,
-				Street = nameof(Phases.FirstBettingRound),
-				CurrentBet = 0,
-				MinBet = game.MinBet ?? 0,
-				RaiseCount = 0,
-				MaxRaises = 0, // Unlimited raises
-				LastRaiseAmount = 0,
-				PlayersInHand = eligiblePlayers.Count,
-				PlayersActed = 0,
-				CurrentActorIndex = firstActorIndex,
-				LastAggressorIndex = -1,
-				IsComplete = false,
-				StartedAt = now
-			};
-
-			context.Set<Data.Entities.BettingRound>().Add(bettingRound);
-
-			game.CurrentPhase = nameof(Phases.FirstBettingRound);
-			game.CurrentPlayerIndex = firstActorIndex;
-			game.UpdatedAt = now;
-
-			_logger.LogInformation(
-				"Dealt cards for game {GameId} hand {HandNumber}. First actor at seat {FirstActorIndex}, dealer at seat {DealerPosition}",
-				game.Id,
-				game.CurrentHandNumber,
-				firstActorIndex,
-				game.DealerPosition);
-		}
-
-		await context.SaveChangesAsync(cancellationToken);
-	}
-
 	/// <summary>
 	/// Finds the first active player after the dealer position who can act.
 	/// </summary>
@@ -1056,324 +698,5 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		}
 
 		return -1; // No active player found
-	}
-
-	/// <summary>
-	/// Deals the initial Third Street cards for Seven Card Stud:
-	/// 2 hole cards (face down) + 1 board card (face up) for each player.
-	/// Also sets up the bring-in betting round.
-	/// </summary>
-	private async Task DealSevenCardStudHandsAsync(
-		CardsDbContext context,
-		Game game,
-		List<GamePlayer> eligiblePlayers,
-		DateTimeOffset now,
-		CancellationToken cancellationToken)
-	{
-		// Create a shuffled deck and persist all 52 cards with deck order
-		var random = new Random();
-		var deck = CreateShuffledDeck(random);
-
-		// First, persist all 52 cards in the deck with their shuffled order
-		var deckOrder = 0;
-		var deckCards = new List<GameCard>();
-		foreach (var (suit, symbol) in deck)
-		{
-			var gameCard = new GameCard
-			{
-				GameId = game.Id,
-				GamePlayerId = null,
-				HandNumber = game.CurrentHandNumber,
-				Suit = suit,
-				Symbol = symbol,
-				DealOrder = deckOrder++,
-				Location = CardLocation.Deck,
-				IsVisible = false,
-				IsDiscarded = false,
-				DealtAt = now
-			};
-			deckCards.Add(gameCard);
-			context.GameCards.Add(gameCard);
-		}
-
-		var deckIndex = 0;
-
-		// Sort players starting from left of dealer for dealing order
-		var dealerPosition = game.DealerPosition;
-		var maxSeatPosition = game.GamePlayers.Max(gp => gp.SeatPosition);
-		var totalSeats = maxSeatPosition + 1; // Seats are 0-indexed
-
-		var playersInDealOrder = eligiblePlayers
-			.OrderBy(p => (p.SeatPosition - dealerPosition - 1 + totalSeats) % totalSeats)
-			.ToList();
-
-		// Track each player's up card for bring-in determination
-		var playerUpCards = new List<(GamePlayer Player, GameCard UpCard)>();
-
-		// Deal Third Street: 2 hole cards + 1 board card per player
-		var dealOrder = 1;
-		foreach (var player in playersInDealOrder)
-		{
-			// Deal 2 hole cards (face down)
-			for (var i = 0; i < 2; i++)
-			{
-				if (deckIndex >= deckCards.Count)
-				{
-					_logger.LogError("Ran out of cards while dealing for game {GameId}", game.Id);
-					break;
-				}
-
-				var card = deckCards[deckIndex++];
-				card.GamePlayerId = player.Id;
-				card.Location = CardLocation.Hole;
-				card.DealOrder = dealOrder++;
-				card.IsVisible = false;
-				card.DealtAtPhase = nameof(Phases.ThirdStreet);
-				card.DealtAt = now;
-			}
-
-			// Deal 1 board card (face up)
-			if (deckIndex >= deckCards.Count)
-			{
-				_logger.LogError("Ran out of cards while dealing for game {GameId}", game.Id);
-				break;
-			}
-
-			var boardCard = deckCards[deckIndex++];
-			boardCard.GamePlayerId = player.Id;
-			boardCard.Location = CardLocation.Board;
-			boardCard.DealOrder = dealOrder++;
-			boardCard.IsVisible = true;
-			boardCard.DealtAtPhase = nameof(Phases.ThirdStreet);
-			boardCard.DealtAt = now;
-
-			playerUpCards.Add((player, boardCard));
-		}
-
-		// Reset CurrentBet for all players
-		foreach (var player in game.GamePlayers)
-		{
-			player.CurrentBet = 0;
-		}
-
-		// Determine bring-in player (lowest up card, suit breaks ties: clubs lowest, spades highest)
-		var bringInPlayer = FindBringInPlayer(playerUpCards);
-		var bringInSeatPosition = bringInPlayer?.SeatPosition ?? playersInDealOrder.FirstOrDefault()?.SeatPosition ?? 0;
-
-		// Post the bring-in bet if configured
-		var bringIn = game.BringIn ?? 0;
-		var currentBet = 0;
-		if (bringIn > 0 && bringInPlayer is not null)
-		{
-			var actualBringIn = Math.Min(bringIn, bringInPlayer.ChipStack);
-			bringInPlayer.CurrentBet = actualBringIn;
-			bringInPlayer.ChipStack -= actualBringIn;
-			bringInPlayer.TotalContributedThisHand += actualBringIn;
-			currentBet = actualBringIn;
-
-			// Add bring-in contribution to pot
-			var pot = await context.Pots
-				.FirstOrDefaultAsync(p => p.GameId == game.Id &&
-										  p.HandNumber == game.CurrentHandNumber &&
-										  p.PotType == PotType.Main,
-								 cancellationToken);
-			if (pot is not null)
-			{
-				pot.Amount += actualBringIn;
-			}
-		}
-
-		// Determine min bet based on street (small bet for Third Street)
-		var minBet = game.SmallBet ?? game.MinBet ?? 0;
-
-		// Create betting round record for Third Street
-		var bettingRound = new Data.Entities.BettingRound
-		{
-			GameId = game.Id,
-			HandNumber = game.CurrentHandNumber,
-			RoundNumber = 1,
-			Street = nameof(Phases.ThirdStreet),
-			CurrentBet = currentBet,
-			MinBet = minBet,
-			RaiseCount = 0,
-			MaxRaises = 0, // Unlimited raises
-			LastRaiseAmount = 0,
-			PlayersInHand = eligiblePlayers.Count,
-			PlayersActed = 0,
-			CurrentActorIndex = bringInSeatPosition,
-			LastAggressorIndex = -1,
-			IsComplete = false,
-			StartedAt = now
-		};
-
-		context.Set<Data.Entities.BettingRound>().Add(bettingRound);
-
-		// Update game state
-		game.CurrentPhase = nameof(Phases.ThirdStreet);
-		game.CurrentPlayerIndex = bringInSeatPosition;
-		game.BringInPlayerIndex = bringInSeatPosition;
-		game.UpdatedAt = now;
-
-		_logger.LogInformation(
-			"Dealt Seven Card Stud Third Street for game {GameId} hand {HandNumber}. Bring-in player at seat {BringInSeat}, dealer at seat {DealerPosition}",
-			game.Id,
-			game.CurrentHandNumber,
-			bringInSeatPosition,
-			game.DealerPosition);
-
-		await context.SaveChangesAsync(cancellationToken);
-	}
-
-	/// <summary>
-	/// Finds the player with the lowest up card for bring-in determination.
-	/// Lower card value loses. For ties, use suit order: clubs (lowest) < diamonds < hearts < spades (highest).
-	/// </summary>
-	private static GamePlayer? FindBringInPlayer(List<(GamePlayer Player, GameCard UpCard)> playerUpCards)
-	{
-		if (playerUpCards.Count == 0)
-		{
-			return null;
-		}
-
-		GamePlayer? lowestPlayer = null;
-		GameCard? lowestCard = null;
-
-		foreach (var (player, upCard) in playerUpCards)
-		{
-			if (lowestCard is null || CompareCardsForBringIn(upCard, lowestCard) < 0)
-			{
-				lowestCard = upCard;
-				lowestPlayer = player;
-			}
-		}
-
-		return lowestPlayer;
-	}
-
-	/// <summary>
-	/// Compares two cards for bring-in determination.
-	/// Lower value is "worse" (brings in). For ties, lower suit brings in.
-	/// Suit order: Clubs (0) < Diamonds (1) < Hearts (2) < Spades (3)
-	/// </summary>
-	private static int CompareCardsForBringIn(GameCard a, GameCard b)
-	{
-		var aValue = GetCardValue(a.Symbol);
-		var bValue = GetCardValue(b.Symbol);
-
-		if (aValue != bValue)
-		{
-			return aValue.CompareTo(bValue);
-		}
-
-		// Suit order for ties: Clubs (0) < Diamonds (1) < Hearts (2) < Spades (3)
-		return GetSuitRank(a.Suit).CompareTo(GetSuitRank(b.Suit));
-	}
-
-	private static int GetCardValue(Data.Entities.CardSymbol symbol) => symbol switch
-	{
-		Data.Entities.CardSymbol.Deuce => 2,
-		Data.Entities.CardSymbol.Three => 3,
-		Data.Entities.CardSymbol.Four => 4,
-		Data.Entities.CardSymbol.Five => 5,
-		Data.Entities.CardSymbol.Six => 6,
-		Data.Entities.CardSymbol.Seven => 7,
-		Data.Entities.CardSymbol.Eight => 8,
-		Data.Entities.CardSymbol.Nine => 9,
-		Data.Entities.CardSymbol.Ten => 10,
-		Data.Entities.CardSymbol.Jack => 11,
-		Data.Entities.CardSymbol.Queen => 12,
-		Data.Entities.CardSymbol.King => 13,
-		Data.Entities.CardSymbol.Ace => 14,
-		_ => 0
-	};
-
-	private static int GetSuitRank(Data.Entities.CardSuit suit) => suit switch
-	{
-		Data.Entities.CardSuit.Clubs => 0,
-		Data.Entities.CardSuit.Diamonds => 1,
-		Data.Entities.CardSuit.Hearts => 2,
-		Data.Entities.CardSuit.Spades => 3,
-		_ => 0
-	};
-
-	/// <summary>
-	/// Formats a card as text (e.g., "3s", "Ah", "10d").
-	/// </summary>
-	private static string FormatCard(Data.Entities.CardSymbol symbol, Data.Entities.CardSuit suit)
-	{
-		var symbolStr = symbol switch
-		{
-			Data.Entities.CardSymbol.Deuce => "2",
-			Data.Entities.CardSymbol.Three => "3",
-			Data.Entities.CardSymbol.Four => "4",
-			Data.Entities.CardSymbol.Five => "5",
-			Data.Entities.CardSymbol.Six => "6",
-			Data.Entities.CardSymbol.Seven => "7",
-			Data.Entities.CardSymbol.Eight => "8",
-			Data.Entities.CardSymbol.Nine => "9",
-			Data.Entities.CardSymbol.Ten => "10",
-			Data.Entities.CardSymbol.Jack => "J",
-			Data.Entities.CardSymbol.Queen => "Q",
-			Data.Entities.CardSymbol.King => "K",
-			Data.Entities.CardSymbol.Ace => "A",
-			_ => "?"
-		};
-
-		var suitStr = suit switch
-		{
-			Data.Entities.CardSuit.Hearts => "h",
-			Data.Entities.CardSuit.Diamonds => "d",
-			Data.Entities.CardSuit.Spades => "s",
-			Data.Entities.CardSuit.Clubs => "c",
-			_ => "?"
-		};
-
-		return $"{symbolStr}{suitStr}";
-	}
-
-	private static List<(Data.Entities.CardSuit Suit, Data.Entities.CardSymbol Symbol)> CreateShuffledDeck(Random random)
-	{
-		var suits = new[]
-		{
-			Data.Entities.CardSuit.Clubs,
-			Data.Entities.CardSuit.Diamonds,
-			Data.Entities.CardSuit.Hearts,
-			Data.Entities.CardSuit.Spades
-		};
-
-		var symbols = new[]
-		{
-			Data.Entities.CardSymbol.Deuce,
-			Data.Entities.CardSymbol.Three,
-			Data.Entities.CardSymbol.Four,
-			Data.Entities.CardSymbol.Five,
-			Data.Entities.CardSymbol.Six,
-			Data.Entities.CardSymbol.Seven,
-			Data.Entities.CardSymbol.Eight,
-			Data.Entities.CardSymbol.Nine,
-			Data.Entities.CardSymbol.Ten,
-			Data.Entities.CardSymbol.Jack,
-			Data.Entities.CardSymbol.Queen,
-			Data.Entities.CardSymbol.King,
-			Data.Entities.CardSymbol.Ace
-		};
-
-		var deck = new List<(Data.Entities.CardSuit, Data.Entities.CardSymbol)>();
-		foreach (var suit in suits)
-		{
-			foreach (var symbol in symbols)
-			{
-				deck.Add((suit, symbol));
-			}
-		}
-
-		// Fisher-Yates shuffle
-		for (var i = deck.Count - 1; i > 0; i--)
-		{
-			var j = random.Next(i + 1);
-			(deck[i], deck[j]) = (deck[j], deck[i]);
-		}
-
-		return deck;
 	}
 }

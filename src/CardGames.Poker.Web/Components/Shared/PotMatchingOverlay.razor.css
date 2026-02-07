@@ -5,6 +5,9 @@
 .pot-matching-overlay .overlay-content {
     text-align: center;
     max-width: 420px;
+    background-color: #1a1a1a; /* Enforce dark background for white text */
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .pot-matching-overlay .overlay-icon {
