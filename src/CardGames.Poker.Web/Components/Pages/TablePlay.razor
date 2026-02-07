@@ -3172,10 +3172,16 @@ HandType.HighCard
             return;
         }
 
+        if (!_currentPlayerId.HasValue || _currentPlayerId == Guid.Empty)
+        {
+            await ShowToastAsync("Unable to process buy card decision: player ID not available.", "error");
+            return;
+        }
+
         _isProcessingBuyCard = true;
         try
         {
-            var request = new ProcessBuyCardRequest(_currentPlayerId ?? Guid.Empty, accept);
+            var request = new ProcessBuyCardRequest(_currentPlayerId.Value, accept);
             var response = await GameApiRouter.ProcessBuyCardAsync(_gameTypeCode ?? "", GameId, request);
 
             if (!response.IsSuccess)
