@@ -387,14 +387,14 @@
             return hand.BestCardIndexes
                 .Where(idx => idx >= 0 && idx < cardsList.Count)
                 .Select(idx => cardsList[idx])
-                .OrderBy(c => c.Symbol)
+                .OrderBy(GetCardDisplayOrder)
                 .ToList();
         }
 
         // For wild-card hands, show all cards to avoid incorrect best-5 selection client-side
         if (hand.WildCardIndexes is not null && hand.WildCardIndexes.Count > 0 && cardsList.Count > 5)
         {
-            return cardsList.OrderBy(c => c.Symbol).ToList();
+            return cardsList.OrderBy(GetCardDisplayOrder).ToList();
         }
 
         // For 7-card hands (Seven Card Stud), compute best 5 cards client-side
@@ -548,6 +548,13 @@
             CardSuit.Hearts or CardSuit.Diamonds => "suit-red",
             _ => "suit-black"
         };
+    }
+
+    private static int GetCardDisplayOrder(ShowdownCard card)
+    {
+        var symbolValue = card.Symbol.HasValue ? (int)card.Symbol.Value : 0;
+        var suitValue = card.Suit.HasValue ? (int)card.Suit.Value : 0;
+        return symbolValue * 10 + suitValue;
     }
 
     private static string GetDetailedHandDescription(ShowdownPlayerHand hand)

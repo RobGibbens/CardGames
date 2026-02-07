@@ -283,7 +283,7 @@ public sealed class BaseballFlowHandler : BaseGameFlowHandler
 			}
 
 			await context.Mediator.Send(
-				new ProcessBuyCardCommand(context.GameId, player.PlayerId, Accept: false),
+				new ProcessBuyCardCommand(context.GameId, player.PlayerId, false),
 				context.CancellationToken);
 			return;
 		}

@@ -245,20 +245,20 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 				return (gp.PlayerId, w, payouts[w]);
 			}).ToList();
 
-				await RecordHandHistoryAsync(
-					game,
-					game.GamePlayers.ToList(),
-					now,
-					totalPot,
-					wonByFold: false,
-					winners: winnerInfos,
-					winnerNames: winners,
-					winningHandDescription: winReason,
-					playerHandEvaluations: playerHandEvaluations.ToDictionary(
-						k => k.Key,
-						v => (StudHand)v.Value.hand,
-						StringComparer.OrdinalIgnoreCase),
-					cancellationToken);
+			await RecordHandHistoryAsync(
+				game,
+				game.GamePlayers.ToList(),
+				now,
+				totalPot,
+				wonByFold: false,
+				winners: winnerInfos,
+				winnerNames: winners,
+				winningHandDescription: winReason,
+				playerHandEvaluations: playerHandEvaluations.ToDictionary(
+					k => k.Key,
+					v => (StudHand)v.Value.hand,
+					StringComparer.OrdinalIgnoreCase),
+				cancellationToken);
 		}
 
 		var playerHandsList = playerHandEvaluations.Select(kvp =>

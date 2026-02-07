@@ -10,6 +10,11 @@ public static class ProcessBuyCardEndpoint
 		group.MapPost("{gameId:guid}/buy-card",
 				async (Guid gameId, ProcessBuyCardRequest request, IMediator mediator, CancellationToken cancellationToken) =>
 				{
+					if (request.PlayerId == Guid.Empty)
+					{
+						return Results.BadRequest(new { Message = "PlayerId is required." });
+					}
+
 					var command = new ProcessBuyCardCommand(gameId, request.PlayerId, request.Accept);
 					var result = await mediator.Send(command, cancellationToken);
 
@@ -30,6 +35,7 @@ public static class ProcessBuyCardEndpoint
 			.WithDescription("Processes a buy-card decision for Baseball poker when a 4 is dealt face-up.")
 			.Produces<ProcessBuyCardSuccessful>(StatusCodes.Status200OK)
 			.ProducesProblem(StatusCodes.Status404NotFound)
+			.ProducesProblem(StatusCodes.Status400BadRequest)
 			.ProducesProblem(StatusCodes.Status409Conflict)
 			.ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
