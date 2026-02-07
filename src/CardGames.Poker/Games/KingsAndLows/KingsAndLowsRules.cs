@@ -81,15 +81,7 @@ public static class KingsAndLowsRules
                 { 
                     PhaseId = "Showdown", 
                     Name = "Showdown", 
-                    Description = "Players reveal hands and winner is determined",
-                    Category = "Resolution",
-                    RequiresPlayerAction = false
-                },
-                new() 
-                { 
-                    PhaseId = "PotMatching", 
-                    Name = "Pot Matching", 
-                    Description = "Losers match the pot",
+                    Description = "Players reveal hands and winner is determined. Losers automatically match the pot.",
                     Category = "Resolution",
                     RequiresPlayerAction = false
                 },

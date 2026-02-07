@@ -35,8 +35,7 @@ namespace CardGames.Poker.Api.GameFlow;
 ///     </list>
 ///   </description></item>
 ///   <item><description>Draw Phase → Draw Complete → Showdown</description></item>
-///   <item><description>Showdown → Pot Matching (losers match the pot)</description></item>
-///   <item><description>Pot Matching → Complete</description></item>
+///   <item><description>Showdown → Complete (losers automatically match the pot)</description></item>
 /// </list>
 /// <para>
 /// Wild cards: All Kings and each player's lowest card are wild.
@@ -63,6 +62,7 @@ public sealed class KingsAndLowsFlowHandler : BaseGameFlowHandler
     public override string? GetNextPhase(Game game, string currentPhase)
     {
         // Kings and Lows has a unique non-linear flow based on game state
+        // Pot matching happens automatically in PerformShowdownAsync, so no PotMatching phase needed
         return currentPhase switch
         {
             nameof(Phases.CollectingAntes) => nameof(Phases.Dealing),
@@ -71,8 +71,7 @@ public sealed class KingsAndLowsFlowHandler : BaseGameFlowHandler
             nameof(Phases.DrawPhase) => nameof(Phases.DrawComplete),
             nameof(Phases.DrawComplete) => nameof(Phases.Showdown),
             nameof(Phases.PlayerVsDeck) => nameof(Phases.Complete),
-            nameof(Phases.Showdown) => nameof(Phases.PotMatching),
-            nameof(Phases.PotMatching) => DeterminePostPotMatchingPhase(game),
+            nameof(Phases.Showdown) => nameof(Phases.Complete),
             _ => base.GetNextPhase(game, currentPhase)
         };
     }
@@ -98,7 +97,7 @@ public sealed class KingsAndLowsFlowHandler : BaseGameFlowHandler
 
     /// <inheritdoc />
     public override IReadOnlyList<string> SpecialPhases =>
-        [nameof(Phases.DropOrStay), nameof(Phases.PotMatching), nameof(Phases.PlayerVsDeck)];
+        [nameof(Phases.DropOrStay), nameof(Phases.PlayerVsDeck)];
 
     /// <inheritdoc />
     public override Task OnHandStartingAsync(Game game, CancellationToken cancellationToken = default)
@@ -208,11 +207,48 @@ public sealed class KingsAndLowsFlowHandler : BaseGameFlowHandler
             payouts.Add((winner.PlayerId, winner.Player?.Name ?? "Unknown", payout));
         }
 
+        // Handle pot matching for losers automatically
+        var totalMatched = 0;
+        foreach (var loser in losers)
+        {
+            var matchAmount = Math.Min(potAmount, loser.ChipStack);
+
+            if (matchAmount > 0)
+            {
+                loser.ChipStack -= matchAmount;
+                // Update contribution so hand history reflects the loss
+                loser.TotalContributedThisHand += matchAmount;
+                totalMatched += matchAmount;
+            }
+        }
+
+        // Create pot for next hand if there was any matching
+        if (totalMatched > 0)
+        {
+            var nextHandPot = new Data.Entities.Pot
+            {
+                GameId = game.Id,
+                HandNumber = game.CurrentHandNumber + 1,
+                PotType = PotType.Main,
+                PotOrder = 0,
+                Amount = totalMatched,
+                IsAwarded = false,
+                CreatedAt = now
+            };
+            context.Pots.Add(nextHandPot);
+        }
+
         // Mark pot as awarded
         mainPot.IsAwarded = true;
         mainPot.AwardedAt = now;
         mainPot.WinnerPayouts = JsonSerializer.Serialize(
             payouts.Select(p => new { playerId = p.playerId.ToString(), playerName = p.name, amount = p.amount }));
+
+        // Set timestamps for continuous play - required for background service to start next hand
+        game.HandCompletedAt = now;
+        game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);
+        game.UpdatedAt = now;
+        MoveDealer(game);
 
         await context.SaveChangesAsync(cancellationToken);
 
@@ -372,8 +408,8 @@ public sealed class KingsAndLowsFlowHandler : BaseGameFlowHandler
         DateTimeOffset now,
         CancellationToken cancellationToken)
     {
-        // After draw, go to Pot Matching
-        return Task.FromResult("PotMatching");
+        // After draw, go directly to Showdown (pot matching happens automatically in PerformShowdownAsync)
+        return Task.FromResult(nameof(Phases.Showdown));
     }
 
     /// <inheritdoc />
@@ -496,19 +532,26 @@ public sealed class KingsAndLowsFlowHandler : BaseGameFlowHandler
     }
 
     /// <summary>
-    /// Determines the phase to transition to after pot matching.
+    /// Moves the dealer button to the next occupied seat position (clockwise).
     /// </summary>
-    /// <param name="game">The game entity.</param>
-    /// <returns>The next phase name.</returns>
-    /// <remarks>
-    /// In Kings and Lows, after pot matching, the game transitions to Complete.
-    /// If there's a pot carryover situation (no outright winner), this could
-    /// potentially loop back, but typically the hand is considered complete.
-    /// </remarks>
-    private static string DeterminePostPotMatchingPhase(Game game)
+    private static void MoveDealer(Game game)
     {
-        // After pot matching, the hand is complete
-        // The pot carryover logic is handled by the game state, not phase transitions
-        return nameof(Phases.Complete);
+        var occupiedSeats = game.GamePlayers
+            .Where(gp => gp.Status == GamePlayerStatus.Active)
+            .OrderBy(gp => gp.SeatPosition)
+            .Select(gp => gp.SeatPosition)
+            .ToList();
+
+        if (occupiedSeats.Count == 0)
+        {
+            return;
+        }
+
+        var currentPosition = game.DealerPosition;
+        var seatsAfterCurrent = occupiedSeats.Where(pos => pos > currentPosition).ToList();
+
+        game.DealerPosition = seatsAfterCurrent.Count > 0
+            ? seatsAfterCurrent.First()
+            : occupiedSeats.First();
     }
 }
