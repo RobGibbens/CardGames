@@ -59,6 +59,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{07D268B8-C
 		..\docs\Dashboard.md = ..\docs\Dashboard.md
 		..\docs\DYNAMIC_UI_PLAN.md = ..\docs\DYNAMIC_UI_PLAN.md
 		..\docs\EditTable.md = ..\docs\EditTable.md
+		..\docs\FollowTheQueenPRD.md = ..\docs\FollowTheQueenPRD.md
 		..\docs\GameSpecificFeatureFolders.md = ..\docs\GameSpecificFeatureFolders.md
 		..\docs\GameTypes.md = ..\docs\GameTypes.md
 		..\docs\GameTypes2.md = ..\docs\GameTypes2.md
