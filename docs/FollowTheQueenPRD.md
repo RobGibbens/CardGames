@@ -20,10 +20,12 @@ Add the **Follow the Queen** poker variant as a fully playable game in the exist
 - Rewriting background services or table state builder for generic handling beyond required changes.
 
 ## 3. Current State
-- `FollowTheQueenGame` exists and defines gameplay rules and phases, but the game is not wired into the API/UI.
-- `PokerGameMetadataRegistry` and `PokerGameRulesRegistry` are reflection-based in newer code; but game type constants and fallbacks still exist.
+- `FollowTheQueenGame` exists in `src\CardGames.Poker\Games\FollowTheQueen\FollowTheQueenGame.cs`. It defines gameplay rules and phases but is not fully wired into the API/UI.
+- `PokerGameMetadataRegistry` (`CardGames.Poker.Api\Games\PokerGameMetadataRegistry.cs`) already contains the constant `public const string FollowTheQueenCode = "FOLLOWTHEQUEEN";` and uses reflection for discovery.
+- `Phases` enum (`CardGames.Poker\Betting\Phases.cs`) already contains `ThirdStreet`, `FourthStreet`, `FifthStreet`, `SixthStreet`, `SeventhStreet`.
+- `FollowTheQueenHand` exists at `CardGames.Poker\Hands\StudHands\FollowTheQueenHand.cs`.
 - Several UI and API components still branch by game type code or phase lists.
-- `TableStateBuilder` and `ContinuousPlayBackgroundService` contain hardcoded checks.
+- `TableStateBuilder` and `ContinuousPlayBackgroundService` contain hardcoded checks for Stud/Baseball games but lack checks for Follow the Queen.
 - `TablePlay.razor` does not handle Follow the Queen phases or special rule display.
 
 ## 4. Goals and Success Criteria
@@ -51,93 +53,86 @@ Add the **Follow the Queen** poker variant as a fully playable game in the exist
 
 ### 6.1 Game Registration & Metadata
 - The game must be discoverable from existing metadata registry (reflection).
-- If constants are used for comparisons, define a `FollowTheQueenCode` constant (e.g., `FOLLOWTHEQUEEN`) in the registry or a shared constants file.
 - Ensure the game appears in the “Available Poker Games” endpoint and UI list.
+- Use `PokerGameMetadataRegistry.FollowTheQueenCode` for any code comparisons.
 
 **Required updates**
-- Ensure `FollowTheQueenGame` is discovered by `PokerGameMetadataRegistry` and `PokerGameRulesRegistry`.
-- If there is a centralized game code constants file, add `FOLLOWTHEQUEEN` to avoid string literals.
+- None expected for registration (reflection handles it), but verify `FollowTheQueenGame` has the correct `[PokerGameMetadata]` attribute matching the `FollowTheQueenCode`.
 
 ### 6.2 Game API Routing
 - The UI uses `GameApiRouter` and specific per-game API client wrappers.
 - Follow the Queen requires its own wrapper or routing to generic endpoints.
 
 **Required updates**
-- Add `FollowTheQueenApiClientWrapper` implementing `IGameApiClient` in `CardGames.Poker.Web/Services/GameApi/`.
-- Register wrapper in DI and map it in `GameApiRouter` by game type code.
-- Ensure the wrapper points to the Follow the Queen API endpoints.
+- Create `FollowTheQueenApiClientWrapper.cs` in `CardGames.Poker.Web\Services\GameApi\` implementing `IGameApiClient`.
+- Register the wrapper in DI (`Program.cs` or `ServiceCollectionExtensions.cs`).
+- Map the wrapper in `GameApiRouter` (`CardGames.Poker.Web\Services\GameApi\GameApiRouter.cs`) by `FOLLOWTHEQUEEN` game type code.
 
 ### 6.3 API Endpoints
-Follow the Queen should expose endpoints matching existing game-specific endpoint patterns.
+Follow the Queen should expose endpoints matching existing game-specific endpoint patterns (similar to Seven Card Stud).
 
-**Required new endpoints (API layer)**
-Create `CardGames.Poker.Api/Features/Games/FollowTheQueen/` with standard handlers:
-- `Razz`-style or stud-based equivalents (use Seven Card Stud patterns):
-  - `StartHand`
-  - `CollectAntes`
-  - `DealHands` (Third Street)
-  - `ProcessBettingAction`
-  - `DealStreetCard` for Fourth–Seventh
-  - `PerformShowdown`
-  - `GetCurrentPlayerTurn`
+**Required new file structure (API layer)**
+Create folder `CardGames.Poker.Api\Features\Games\FollowTheQueen\` mimicking `SevenCardStud`:
+- `FollowTheQueenApiMapGroup.cs`: Registers the group (e.g., `/api/games/followthequeen`).
+- `v1\Commands\StartHand\StartFollowTheQueenHandEndpoint.cs`
+- `v1\Commands\CollectAntes\CollectFollowTheQueenAntesEndpoint.cs`
+- `v1\Commands\DealHands\DealFollowTheQueenHandsEndpoint.cs` (Third Street)
+- `v1\Commands\DealStreetCard\DealFollowTheQueenStreetCardEndpoint.cs` (Reusable for 4th-7th streets)
+- `v1\Commands\ProcessBettingAction\ProcessFollowTheQueenBettingActionEndpoint.cs`
+- `v1\Commands\PerformShowdown\PerformFollowTheQueenShowdownEndpoint.cs`
+- `v1\Queries\GetCurrentPlayerTurn\GetFollowTheQueenCurrentPlayerTurnEndpoint.cs`
 
 **Endpoint mapping**
-- Add Follow the Queen endpoint group registration in `MapFeatureEndpoints.cs` or ensure discovery if the mapping is reflection-based.
+- Update `CardGames.Poker.Api\Features\MapFeatureEndpoints.cs` to call `app.AddFollowTheQueenEndpoints()`.
 
 ### 6.4 Game Flow Handler
 The API game flow uses handlers per game type.
 
 **Required updates**
-- Add a `FollowTheQueenFlowHandler` in `CardGames.Poker.Api/GameFlow/`.
-- Register it in `GameFlowHandlerFactory` keyed to `FOLLOWTHEQUEEN`.
-- Ensure it returns correct phase transitions:
+- Create `FollowTheQueenFlowHandler.cs` in `CardGames.Poker.Api\GameFlow\`. It should implement `IGameFlowHandler` (or inherit from a Stud base if available).
+- Register it in `GameFlowHandlerFactory.cs` (`CardGames.Poker.Api\GameFlow\GameFlowHandlerFactory.cs`) keyed to `FOLLOWTHEQUEEN`.
+- Ensure it properly sequences:
   - `WaitingToStart -> CollectingAntes -> ThirdStreet -> FourthStreet -> FifthStreet -> SixthStreet -> SeventhStreet -> Showdown -> Complete`.
-- Ensure `Deal` behavior matches Follow the Queen rules:
-  - Third Street: 2 hole + 1 board card.
-  - Fourth–Sixth: 1 board card each.
-  - Seventh: 1 hole card.
+- Ensure `Deal` methods on the handler delegate to the correct `FollowTheQueenGame` methods (`DealThirdStreet`, `DealStreetCard`).
 
 ### 6.5 Background Service (Continuous Play)
-The background service must not fall back to Five Card Draw behavior.
+The background service (`CardGames.Poker.Api\Services\ContinuousPlayBackgroundService.cs`) must not fall back to Five Card Draw behavior. It currently has hardcoded checks for `SevenCardStud` and `KingsAndLows`.
 
 **Required updates**
-- Add handling for Follow the Queen phases in `ContinuousPlayBackgroundService`:
-  - Include `ThirdStreet`–`SeventhStreet` in “in-progress” phase set if missing.
-  - Ensure dealing flow uses `DealSevenCardStudHandsAsync` equivalent or new Follow the Queen dealing method.
-  - Ensure `CollectAntes` transitions to `ThirdStreet` and not to `Dealing` or `FirstBettingRound`.
-- Ensure showdown and phase transitions do not include Kings and Lows-specific logic for Follow the Queen.
-- Ensure auto action handling for betting uses phase categories or includes Third–Seventh streets.
+- `DealHandsAsync`: Add check for `isFollowTheQueen` and call `DealFollowTheQueenHandsAsync` (which basically calls `game.DealThirdStreet()`).
+- `PerformShowdownAsync`: Add check for `isFollowTheQueen` and call `PerformFollowTheQueenShowdownAsync`.
+- `ProcessGameAsync`: Ensure phase transitions for `ThirdStreet` through `SeventhStreet` are handled correctly (or generalized to use the `GameFlowHandler` if possible, but minimal changes require adding the specific checks).
+- **CRITICAL**: Ensure `CollectAntes` transitions to `ThirdStreet`, NOT `Dealing`.
 
 ### 6.6 Table State Builder
-Follow the Queen must render correct private and public state.
+`CardGames.Poker.Api\Services\TableStateBuilder.cs` needs specific updates to correctly render Stud-like state for Follow the Queen.
 
 **Required updates**
-- Hand evaluation:
-  - Add a Follow the Queen hand type/evaluator in domain layer if not present (`FollowTheQueenHand`).
-  - In `TableStateBuilder`, map Follow the Queen to that hand evaluator.
-- Card visibility:
-  - During Third–Seventh streets, only face-up cards are public.
-  - Player private state includes all hole cards.
-- Showdown:
-  - Add a Follow the Queen hand type in showdown evaluation if needed.
-- Wild card rules:
-  - The game has dynamic wilds (Queens + following rank).
-  - `BuildWildCardRulesDto` should include a Follow the Queen rule using game state (face-up card order).
+- `BuildPrivateStateAsync`:
+  - Allow `FollowTheQueenCode` to enter the "Seven Card Stud / Baseball" logic block (handling hole/board cards).
+  - Use `FollowTheQueenHand` for hand evaluation description in private state.
+- `BuildShowdownPublicDtoAsync`:
+  - Add `FollowTheQueenCode` check.
+  - Instantiate `FollowTheQueenHand` for final showdown evaluation and card display.
+- `BuildWildCardRulesDto` (Line ~1404):
+  - Add logic to extract the "Following Rank" from the `FollowTheQueenGame` state.
+  - Return a `WildCardRulesDto` describing that Queens are wild AND the specific following rank is wild.
 
 ### 6.7 Auto Action Service
-- Ensure betting phases list includes Third–Seventh streets.
-- Ensure draw or special phases do not interfere.
+`CardGames.Poker.Api\Services\AutoActionService.cs`
+- Ensure `BettingPhases` hash set includes `ThirdStreet`, `FourthStreet`, `FifthStreet`, `SixthStreet`, `SeventhStreet`. (Likely already done for Stud, but verify).
 
 ### 6.8 Blazor UI: `TablePlay.razor`
-- Ensure follow-the-queen phases are treated as betting phases.
-- Add a helper boolean for `IsFollowTheQueen` if game-specific UI logic is necessary.
-- Display dynamic wild card info in the table UI (banner or rule text).
-- Ensure card layout (stud-style) shows face-up board cards correctly.
-- Ensure available actions for Third–Seventh streets are enabled.
+`CardGames.Poker.Web\Components\Pages\TablePlay.razor`
+
+**Required updates**
+- Add `private bool IsFollowTheQueen => string.Equals(_gameTypeCode, "FOLLOWTHEQUEEN", StringComparison.OrdinalIgnoreCase);`
+- Update card rendering areas that check `IsSevenCardStud` to also include `IsFollowTheQueen` (so board cards are shown face up, hole cards face down).
+- Ensure "Street" labels are displayed correctly (Third Street, etc.).
+- Add a **Wild Card Banner** component or section that displays: "Queens are Wild" + dynamic "Following Rank: [Rank] is Wild" if applicable.
 
 ### 6.9 Phase Descriptions
 - Ensure `PhaseDescriptionResolver` can resolve all Follow the Queen phases (Third–Seventh).
-- Ensure `Phases.cs` already includes these values; if not, add them.
 
 ## 7. Non-Functional Requirements
 - Must be consistent with existing naming conventions and folder structure.
@@ -147,55 +142,33 @@ Follow the Queen must render correct private and public state.
 ## 8. Detailed Implementation Checklist
 
 ### 8.1 Domain Layer
-1. Ensure `FollowTheQueenHand` exists under `CardGames.Poker/Hands/StudHands/` or create it.
-2. Ensure `FollowTheQueenGamePlayer` exists and contains required card collections.
-3. If not already defined, ensure the game exposes method to identify the current “following rank” for wild cards.
+1. Verify `FollowTheQueenHand` is fully functional.
+2. Ensure `FollowTheQueenGame` exposes `GetCurrentFollowingWildRank()` (it does).
 
 ### 8.2 API Layer
-1. Create `CardGames.Poker.Api/Features/Games/FollowTheQueen/FollowTheQueenApiMapGroup.cs`.
-2. Add `v1/Commands/` for:
-   - `StartHand`
-   - `CollectAntes`
-   - `DealHands` (Third Street)
-   - `DealStreetCard` (Fourth–Seventh)
-   - `ProcessBettingAction`
-   - `PerformShowdown`
-3. Add `v1/Queries/GetCurrentPlayerTurn`.
-4. Update `MapFeatureEndpoints` to include Follow the Queen endpoints (unless using discovery).
+1. Create `FollowTheQueenApiMapGroup.cs` and all command/query endpoints.
+2. Update `MapFeatureEndpoints.cs`.
 
 ### 8.3 Game Flow
-1. Add `FollowTheQueenFlowHandler`.
-2. Update `GameFlowHandlerFactory` to map `FOLLOWTHEQUEEN` to the new handler.
-3. Ensure phase transitions align with game rules and `FollowTheQueenGame`.
+1. Create `FollowTheQueenFlowHandler.cs`.
+2. Register in `GameFlowHandlerFactory.cs`.
 
 ### 8.4 Background Service
-1. Add Follow the Queen phase handling in `ContinuousPlayBackgroundService`.
-2. Ensure dealing uses stud-style logic and does not call draw-related logic.
-3. Ensure showdown uses Follow the Queen hand evaluation.
+1. Update `ContinuousPlayBackgroundService.cs` to handle `FOLLOWTHEQUEEN` logic for dealing (Third Street) and Showdown.
+2. Ensure betting rounds for streets are picked up.
 
 ### 8.5 Table State Builder
-1. Update `BuildPrivateStateAsync` to evaluate Follow the Queen hands.
-2. Update `BuildShowdownPublicDtoAsync` to include Follow the Queen.
-3. Update `BuildWildCardRulesDto` to include dynamic wild rules.
-4. Ensure card ordering is stud-appropriate where necessary.
+1. Update `BuildPrivateStateAsync` to include `FollowTheQueenCode` in the Stud logic block.
+2. Update `BuildShowdownPublicDtoAsync` to handle FTQ hand evaluation.
+3. Update `BuildWildCardRulesDto` to include dynamic FTQ wild info.
 
-### 8.6 Auto Action Service
-1. Add Third–Seventh streets to betting phase lists if they are still hardcoded.
-
-### 8.7 Web UI
-1. Add `FollowTheQueenApiClientWrapper` (or a generic wrapper) and register in DI.
-2. Update `GameApiRouter` mapping.
-3. Update `TablePlay.razor`:
-   - Recognize Follow the Queen phase names.
-   - Display dynamic wild card rules.
-   - Ensure stud card visibility in player and opponent areas.
+### 8.6 Web UI
+1. Create `FollowTheQueenApiClientWrapper.cs`.
+2. Register in `GameApiRouter`.
+3. Update `TablePlay.razor` to support FTQ rendering (stud layout) and Wild Card rules display.
 
 ## 9. Data Contracts and DTOs
-- Ensure any game-specific DTOs or response shapes match existing patterns for stud games.
-- Wild card DTO should include:
-  - `IsDynamic` (bool)
-  - `WildRanks` (list)
-  - `Description` (string)
+- `WildCardRulesDto`: Ensure it can transport the dynamic wild rank (might need a `WildRanks` list or `Description` field).
 
 ## 10. Testing Requirements
 
@@ -214,9 +187,9 @@ Follow the Queen must render correct private and public state.
 
 ## 11. Risks and Mitigations
 - **Risk:** Stud-specific logic may be missing in background service and table state builder.
-  - **Mitigation:** Reuse Seven Card Stud patterns and extend where needed.
+  - **Mitigation:** Copy/adapt Seven Card Stud patterns explicitly.
 - **Risk:** UI may not support dynamic wild cards.
-  - **Mitigation:** Add explicit UI section for wild card rules from DTO.
+  - **Mitigation:** Add specific UI logic in `TablePlay.razor` that reads `WildCardRulesDto` and displays it prominently.
 
 ## 12. Deliverables
 - Fully integrated Follow the Queen game playable via UI.
