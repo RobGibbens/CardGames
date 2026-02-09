@@ -22,6 +22,7 @@ public sealed class ProcessBuyCardCommandHandler(CardsDbContext context)
 			.Include(g => g.GamePlayers)
 				.ThenInclude(gp => gp.Player)
 			.Include(g => g.Pots)
+				.ThenInclude(p => p.Contributions)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
@@ -110,15 +111,23 @@ public sealed class ProcessBuyCardCommandHandler(CardsDbContext context)
 
 			pot.Amount += buyCardPrice;
 
-			context.PotContributions.Add(new PotContribution
+			var contribution = pot.Contributions.FirstOrDefault(c => c.GamePlayerId == player.Id);
+			if (contribution is not null)
 			{
-				PotId = pot.Id,
-				GamePlayerId = player.Id,
-				Amount = buyCardPrice,
-				IsEligibleToWin = true,
-				IsPotMatch = false,
-				ContributedAt = now
-			});
+				contribution.Amount += buyCardPrice;
+			}
+			else
+			{
+				context.PotContributions.Add(new PotContribution
+				{
+					PotId = pot.Id,
+					GamePlayerId = player.Id,
+					Amount = buyCardPrice,
+					IsEligibleToWin = true,
+					IsPotMatch = false,
+					ContributedAt = now
+				});
+			}
 
 			var deckCard = await context.GameCards
 				.Where(gc => gc.GameId == game.Id &&
@@ -129,19 +138,49 @@ public sealed class ProcessBuyCardCommandHandler(CardsDbContext context)
 
 			if (deckCard is not null)
 			{
-				var existingCardCount = await context.GameCards
-					.CountAsync(gc => gc.GamePlayerId == player.Id &&
-									  gc.HandNumber == game.CurrentHandNumber &&
-									  gc.Location != CardLocation.Deck &&
-									  !gc.IsDiscarded, cancellationToken);
+				// Find the card that triggered the offer (the 4)
+				var triggerCard = await context.GameCards
+					.FirstOrDefaultAsync(c => c.Id == currentOffer.CardId, cancellationToken);
+
+				int newDealOrder;
+				if (triggerCard != null)
+				{
+					newDealOrder = triggerCard.DealOrder + 1;
+
+					// Shift subsequent cards to make room for the new card
+					var cardsToShift = await context.GameCards
+						.Where(gc => gc.GameId == game.Id &&
+									 gc.HandNumber == game.CurrentHandNumber &&
+									 gc.GamePlayerId == player.Id &&
+									 gc.DealOrder >= newDealOrder &&
+									 gc.Location != CardLocation.Deck &&
+									 !gc.IsDiscarded)
+						.ToListAsync(cancellationToken);
+
+					foreach (var card in cardsToShift)
+					{
+						card.DealOrder++;
+					}
+				}
+				else
+				{
+					// Fallback: append to end
+					var existingCardCount = await context.GameCards
+						.CountAsync(gc => gc.GamePlayerId == player.Id &&
+										  gc.HandNumber == game.CurrentHandNumber &&
+										  gc.Location != CardLocation.Deck &&
+										  !gc.IsDiscarded, cancellationToken);
+					newDealOrder = existingCardCount + 1;
+				}
 
 				deckCard.GamePlayerId = player.Id;
-				deckCard.Location = CardLocation.Hole;
-				deckCard.IsVisible = false;
+				// Deal face up (Board) instead of face down (Hole)
+				deckCard.Location = CardLocation.Board;
+				deckCard.IsVisible = true;
 				deckCard.DealtAtPhase = currentOffer.Street;
 				deckCard.DealtAt = now;
 				deckCard.IsBuyCard = true;
-				deckCard.DealOrder = existingCardCount + 1;
+				deckCard.DealOrder = newDealOrder;
 			}
 		}
 

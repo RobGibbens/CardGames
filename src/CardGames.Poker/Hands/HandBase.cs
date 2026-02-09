@@ -28,10 +28,6 @@ public abstract class HandBase : IComparable<HandBase>
 
     public HandBase(IReadOnlyCollection<Card> cards)
     {
-        if (cards.Count < 5)
-        {
-            throw new ArgumentException("A poker hand needs at least five cards");
-        }
         Cards = cards;
     }
 

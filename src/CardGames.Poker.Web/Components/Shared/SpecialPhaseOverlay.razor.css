@@ -15,14 +15,14 @@
 }
 
 .special-phase-overlay h2 {
-    color: #fff;
+    color: #000;
     font-size: 1.75rem;
     font-weight: 600;
     margin-bottom: 12px;
 }
 
 .special-phase-overlay p {
-    color: rgba(255, 255, 255, 0.8);
+    color: rgba(0, 0, 0, 0.8);
     font-size: 1rem;
     line-height: 1.5;
     margin-bottom: 16px;

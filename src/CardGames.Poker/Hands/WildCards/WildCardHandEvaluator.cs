@@ -20,7 +20,9 @@ public static class WildCardHandEvaluator
         IReadOnlyCollection<Card> wildCards,
         HandTypeStrengthRanking ranking)
     {
-        var fiveCardHands = allCards.SubsetsOfSize(5);
+        var fiveCardHands = allCards.Count < 5 
+            ? new[] { allCards } 
+            : allCards.SubsetsOfSize(5);
 
         HandType bestType = HandType.Incomplete;
         long bestStrength = 0;

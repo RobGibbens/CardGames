@@ -9,9 +9,5 @@ public abstract class FiveCardHand : HandBase
     protected FiveCardHand(IReadOnlyCollection<Card> cards)
         : base(cards)
     {
-        if (cards.Count != 5)
-        {
-            throw new ArgumentException("A five card hand requires exactly 5 cards!");
-        }
     }
 }

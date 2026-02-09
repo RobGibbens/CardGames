@@ -226,16 +226,16 @@ public class ProcessBettingActionCommandHandler(
 				nameof(Phases.SeventhStreet)
 			};
 
-			if (streetPhases.Contains(game.CurrentPhase))
+			var executionStrategy = context.Database.CreateExecutionStrategy();
+			OneOf<DealHandsSuccessful, DealHandsError>? dealResultHolder = null;
+
+			await executionStrategy.ExecuteAsync(async ct =>
 			{
-				var executionStrategy = context.Database.CreateExecutionStrategy();
-				OneOf<DealHandsSuccessful, DealHandsError>? dealResultHolder = null;
+				await using var transaction = await context.Database.BeginTransactionAsync(ct);
+				await context.SaveChangesAsync(ct);
 
-				await executionStrategy.ExecuteAsync(async ct =>
+				if (streetPhases.Contains(game.CurrentPhase))
 				{
-					await using var transaction = await context.Database.BeginTransactionAsync(ct);
-					await context.SaveChangesAsync(ct);
-
 					dealResultHolder = await mediator.Send(new DealHandsCommand(game.Id), ct);
 
 					if (dealResultHolder.Value.IsT0)
@@ -246,8 +246,16 @@ public class ProcessBettingActionCommandHandler(
 					{
 						await transaction.RollbackAsync(ct);
 					}
-				}, cancellationToken);
+				}
+				else
+				{
+					// For Showdown or other non-dealing phases, just commit the state change
+					await transaction.CommitAsync(ct);
+				}
+			}, cancellationToken);
 
+			if (streetPhases.Contains(game.CurrentPhase))
+			{
 				if (dealResultHolder?.IsT0 == true)
 				{
 					var dealSuccess = dealResultHolder.Value.AsT0;
@@ -268,10 +276,6 @@ public class ProcessBettingActionCommandHandler(
 						Code = ProcessBettingActionErrorCode.InvalidGameState
 					};
 				}
-			}
-			else
-			{
-				await context.SaveChangesAsync(cancellationToken);
 			}
 		}
 		else

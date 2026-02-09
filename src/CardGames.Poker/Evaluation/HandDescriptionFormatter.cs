@@ -47,6 +47,16 @@ public static class HandDescriptionFormatter
 			return kingsAndLowsHand.EvaluatedBestCards.ToList();
 		}
 
+		if (hand is Hands.StudHands.BaseballHand baseballHand)
+		{
+			return baseballHand.EvaluatedBestCards.ToList();
+		}
+
+		if (hand is Hands.StudHands.FollowTheQueenHand followTheQueenHand)
+		{
+			return followTheQueenHand.EvaluatedBestCards.ToList();
+		}
+
 		return hand.Cards.ToList();
 	}
 

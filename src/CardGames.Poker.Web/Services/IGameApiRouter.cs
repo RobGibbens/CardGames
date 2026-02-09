@@ -193,7 +193,7 @@ public class GameApiRouter : IGameApiRouter
         if (string.Equals(gameCode, "BASEBALL", StringComparison.OrdinalIgnoreCase))
         {
             var response = await _baseballApi.BaseballProcessBuyCardAsync(gameId, request);
-            return RouterResponse<Unit>.FromRefit(response);
+            return RouterResponse<Unit>.FromRefit(response, _ => default(Unit));
         }
 
         return RouterResponse<Unit>.Failure("Not supported for this game type", HttpStatusCode.BadRequest);

@@ -310,8 +310,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				var holeCardEntities = playerCardEntities.Where(c => c.Location == CardLocation.Hole).ToList();
 				var boardCardEntities = playerCardEntities.Where(c => c.Location == CardLocation.Board).ToList();
 
-				// Evaluate once we have at least 5 cards (Third Street: 2 hole + 1 board = 3, need to wait for 5+)
-				if (playerCardEntities.Count >= 5)
+				// Evaluate even with partial hands (e.g. 2 hole + 0 board)
+				if (playerCardEntities.Count >= 2)
 				{
 					var initialHoleCards = holeCardEntities.Take(2)
 						.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
@@ -344,9 +344,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					}
 				}
 			}
-			// Draw games (no community cards). Provide a description once 5 cards are available.
+			// Draw games (no community cards). Provide a description for any cards held.
 			// (During seating / pre-deal phases there may be 0-4 cards and we keep the description null.)
-			else if (communityCards.Count == 0 && playerCards.Count >= 5)
+			else if (communityCards.Count == 0 && playerCards.Count > 0)
 			{
 				// Twos, Jacks, Man with the Axe uses wild cards.
 				// Kings and Lows uses wild cards (Kings + lowest card).
@@ -368,8 +368,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 				handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(drawHand);
 			}
-			// Community-card games (need at least a 3-card board and 5+ total cards).
-			else if (communityCards.Count >= 3 && allEvaluationCards.Count >= 5)
+			// Community-card games (start evaluating as soon as player has cards).
+			else if (allEvaluationCards.Count >= 2)
 			{
 				// Hold'em / Short-deck Hold'em style: 2 hole + up to 5 community
 				if (playerCards.Count == 2)
@@ -513,7 +513,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		var publicCards = playerCards.Select(card =>
 		{
 			// For stud games, respect the IsVisible flag; otherwise default to face-down
-			// During showdown, show face-up cards for staying players
+			// During showdown, show cards face-up for staying players
 			var shouldShowCard = (isSevenCardStud && card.IsVisible) || shouldShowCardsForShowdown;
 
 			return new CardPublicDto
