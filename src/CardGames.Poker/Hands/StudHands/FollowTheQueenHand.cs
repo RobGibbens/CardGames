@@ -99,7 +99,7 @@ public class FollowTheQueenHand : StudHand
             return;
         }
 
-        var (type, strength, evaluatedCards) = WildCardHandEvaluator.EvaluateBestHand(
+        var (type, strength, evaluatedCards, _) = WildCardHandEvaluator.EvaluateBestHand(
             Cards, WildCards, Ranking);
         _evaluatedType = type;
         _evaluatedStrength = strength;

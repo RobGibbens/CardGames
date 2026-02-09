@@ -119,7 +119,7 @@ public class KingsAndLowsHand : StudHand
             }
             else
             {
-                (type, strength, evaluatedCards) = WildCardHandEvaluator.EvaluateBestHand(
+                (type, strength, evaluatedCards, _) = WildCardHandEvaluator.EvaluateBestHand(
                     Cards, wildCards, Ranking);
             }
 

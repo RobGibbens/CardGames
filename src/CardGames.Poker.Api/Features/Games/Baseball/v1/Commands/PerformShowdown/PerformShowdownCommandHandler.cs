@@ -266,6 +266,33 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 			var isWinner = winners.Contains(kvp.Key);
 			usersByEmail.TryGetValue(kvp.Value.gamePlayer.Player.Email ?? string.Empty, out var user);
 
+			var bestHandSourceCards = kvp.Value.hand.BestHandSourceCards;
+			var playerGameCards = kvp.Value.cards;
+			var bestCardIndexes = new List<int>();
+			var usedIndices = new HashSet<int>();
+
+			foreach (var bestCard in bestHandSourceCards)
+			{
+				var index = -1;
+				for (var i = 0; i < playerGameCards.Count; i++)
+				{
+					if (usedIndices.Contains(i)) continue;
+
+					var gc = playerGameCards[i];
+					if (MapSuit(gc.Suit) == bestCard.Suit && MapSymbol(gc.Symbol) == bestCard.Symbol)
+					{
+						index = i;
+						break;
+					}
+				}
+
+				if (index != -1)
+				{
+					bestCardIndexes.Add(index);
+					usedIndices.Add(index);
+				}
+			}
+
 			return new ShowdownPlayerHand
 			{
 				PlayerName = kvp.Key,
@@ -281,7 +308,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 				IsWinner = isWinner,
 				AmountWon = payouts.GetValueOrDefault(kvp.Key, 0),
 				WildCardIndexes = kvp.Value.wildIndexes,
-				BestCardIndexes = null
+				BestCardIndexes = bestCardIndexes
 			};
 		}).OrderByDescending(h => h.HandStrength ?? 0).ToList();
 

@@ -103,7 +103,7 @@ public sealed class KingsAndLowsDrawHand : FiveCardHand
             else
             {
                 // Use wild card evaluator for hands with wild cards
-                (type, strength, evaluatedCards) = WildCardHandEvaluator.EvaluateBestHand(
+                (type, strength, evaluatedCards, _) = WildCardHandEvaluator.EvaluateBestHand(
                     Cards, wildCards, Ranking);
             }
 

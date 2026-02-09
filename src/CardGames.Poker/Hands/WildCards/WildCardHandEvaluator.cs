@@ -15,7 +15,7 @@ public static class WildCardHandEvaluator
             .Select(s => new Card(s, v)))
         .ToList();
 
-    public static (HandType Type, long Strength, IReadOnlyCollection<Card> EvaluatedCards) EvaluateBestHand(
+    public static (HandType Type, long Strength, IReadOnlyCollection<Card> EvaluatedCards, IReadOnlyCollection<Card> SourceCards) EvaluateBestHand(
         IReadOnlyCollection<Card> allCards,
         IReadOnlyCollection<Card> wildCards,
         HandTypeStrengthRanking ranking)
@@ -25,6 +25,7 @@ public static class WildCardHandEvaluator
         HandType bestType = HandType.Incomplete;
         long bestStrength = 0;
         IReadOnlyCollection<Card> bestCards = new List<Card>();
+        IReadOnlyCollection<Card> bestSourceCards = new List<Card>();
 
         foreach (var hand in fiveCardHands)
         {
@@ -51,10 +52,11 @@ public static class WildCardHandEvaluator
                 bestType = type;
                 bestStrength = strength;
                 bestCards = evaluatedCards;
+                bestSourceCards = handList;
             }
         }
 
-        return (bestType, bestStrength, bestCards);
+        return (bestType, bestStrength, bestCards, bestSourceCards);
     }
 
     private static (HandType Type, long Strength, IReadOnlyCollection<Card> EvaluatedCards) EvaluateWithWildCards(
