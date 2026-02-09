@@ -95,6 +95,17 @@ builder.Services
 	.AddHttpMessageHandler<AuthenticationStateHandler>();
 
 builder.Services
+	.AddRefitClient<IFollowTheQueenApi>(
+		settingsAction: _ => new RefitSettings(),
+		httpClientName: "followTheQueenApi")
+	.ConfigureHttpClient(c =>
+	{
+		c.BaseAddress = new Uri("https+http://api");
+		c.Timeout = TimeSpan.FromSeconds(600);
+	})
+	.AddHttpMessageHandler<AuthenticationStateHandler>();
+
+builder.Services
 	.AddRefitClient<ITwosJacksManWithTheAxeApi>(
 		settingsAction: _ => new RefitSettings(),
 		httpClientName: "twosJacksManWithTheAxeApi")
@@ -135,6 +146,7 @@ builder.Services
 // Register Game API Client Wrappers and Router
 builder.Services.AddScoped<IGameApiClient, FiveCardDrawApiClientWrapper>();
 builder.Services.AddScoped<IGameApiClient, SevenCardStudApiClientWrapper>();
+builder.Services.AddScoped<IGameApiClient, FollowTheQueenApiClientWrapper>();
 builder.Services.AddScoped<IGameApiClient, KingsAndLowsApiClientWrapper>();
 builder.Services.AddScoped<IGameApiClient, TwosJacksManWithTheAxeApiClientWrapper>();
 builder.Services.AddScoped<CardGames.Poker.Web.Services.IGameApiRouter, CardGames.Poker.Web.Services.GameApiRouter>();
