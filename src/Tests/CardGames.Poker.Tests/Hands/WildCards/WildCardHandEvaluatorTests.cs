@@ -21,7 +21,7 @@ public class WildCardHandEvaluatorTests
         var wildCardRules = new WildCardRules(kingRequired: false);
         var wildCards = wildCardRules.DetermineWildCards(cards);
 
-        var (type, strength, evaluatedCards) = WildCardHandEvaluator.EvaluateBestHand(
+        var (type, strength, evaluatedCards, _) = WildCardHandEvaluator.EvaluateBestHand(
             cards, wildCards, HandTypeStrengthRanking.Classic);
 
         // The best possible hand here is a Straight (A-5 or 2-6)
@@ -42,7 +42,7 @@ public class WildCardHandEvaluatorTests
         var wildCardRules = new WildCardRules(kingRequired: false);
         var wildCards = wildCardRules.DetermineWildCards(cards);
 
-        var (type, strength, evaluatedCards) = WildCardHandEvaluator.EvaluateBestHand(
+        var (type, strength, evaluatedCards, _) = WildCardHandEvaluator.EvaluateBestHand(
             cards, wildCards, HandTypeStrengthRanking.Classic);
 
         // If it's a straight, the evaluated cards should NOT all be the same suit
@@ -62,7 +62,7 @@ public class WildCardHandEvaluatorTests
         var wildCardRules = new WildCardRules(kingRequired: false);
         var wildCards = wildCardRules.DetermineWildCards(cards);
 
-        var (type, strength, evaluatedCards) = WildCardHandEvaluator.EvaluateBestHand(
+        var (type, strength, evaluatedCards, _) = WildCardHandEvaluator.EvaluateBestHand(
             cards, wildCards, HandTypeStrengthRanking.Classic);
 
         // This hand has natural cards 5s, 4s, 3s which are all spades

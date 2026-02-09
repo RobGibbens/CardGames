@@ -17,7 +17,7 @@ public static class HandTypeDetermination
     {
         if (cards.Count < 5)
         {
-            return HandType.Incomplete;
+            return DeterminePartialHandType(cards);
         }
 
         var numberOfDistinctValues = cards.DistinctValues().Count;
@@ -37,6 +37,35 @@ public static class HandTypeDetermination
     /// </summary>
     public static bool IsWheelStraight(IReadOnlyCollection<int> values)
         => values.Count == 5 && WheelValues.All(v => values.Contains(v));
+
+    private static HandType DeterminePartialHandType(IReadOnlyCollection<Card> cards)
+    {
+        if (cards.Count == 0)
+        {
+            return HandType.Incomplete;
+        }
+
+        var groups = cards.GroupBy(c => c.Value).ToList();
+        var maxGroupSize = groups.Max(g => g.Count());
+
+        if (maxGroupSize == 4)
+        {
+            return HandType.Quads;
+        }
+
+        if (maxGroupSize == 3)
+        {
+            return HandType.Trips;
+        }
+
+        if (maxGroupSize == 2)
+        {
+            var pairCount = groups.Count(g => g.Count() == 2);
+            return pairCount >= 2 ? HandType.TwoPair : HandType.OnePair;
+        }
+
+        return HandType.HighCard;
+    }
 
     private  static HandType HandTypeOfDuplicateValueHand(IReadOnlyCollection<Card> cards, int numberOfDistinctValues)
          => numberOfDistinctValues switch

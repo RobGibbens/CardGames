@@ -7,8 +7,10 @@ using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.ActiveGames.v1.Queries.GetActiveGames;
 using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetHandHistory;
+using CardGames.Poker.Api.Features.Games.Baseball;
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Games.GameFlow;
+using CardGames.Poker.Betting;
 using CardGames.Poker.Hands.DrawHands;
 using CardGames.Poker.Hands;
 using CardGames.Poker.Hands.StudHands;
@@ -63,7 +65,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				.ToListAsync(cancellationToken);
 
 			// DEBUG: Log card data before ordering for Seven Card Stud
-			var isSevenCardStudGame = string.Equals(game.GameType?.Code, PokerGameMetadataRegistry.SevenCardStudCode, StringComparison.OrdinalIgnoreCase);
+			var isSevenCardStudGame = string.Equals(game.GameType?.Code, PokerGameMetadataRegistry.SevenCardStudCode, StringComparison.OrdinalIgnoreCase) ||
+			                          string.Equals(game.GameType?.Code, PokerGameMetadataRegistry.BaseballCode, StringComparison.OrdinalIgnoreCase);
 			if (isSevenCardStudGame)
 			{
 				foreach (var gp in gamePlayers)
@@ -292,8 +295,11 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 			var allEvaluationCards = playerCards.Concat(communityCards).ToList();
 
-			// Seven Card Stud: Requires 2 hole + up to 4 board + 1 down card (7 total at showdown)
-			if (string.Equals(game.GameType?.Code, PokerGameMetadataRegistry.SevenCardStudCode, StringComparison.OrdinalIgnoreCase))
+			var isSevenCardStudGame = string.Equals(game.GameType?.Code, PokerGameMetadataRegistry.SevenCardStudCode, StringComparison.OrdinalIgnoreCase);
+			var isBaseballGame = string.Equals(game.GameType?.Code, PokerGameMetadataRegistry.BaseballCode, StringComparison.OrdinalIgnoreCase);
+
+			// Seven Card Stud / Baseball: Requires 2 hole + up to 4 board + 1 down card (7 total at showdown)
+			if (isSevenCardStudGame || isBaseballGame)
 			{
 				// Need to access the original cards with Location info
 				var playerCardEntities = gamePlayer.Cards
@@ -304,8 +310,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				var holeCardEntities = playerCardEntities.Where(c => c.Location == CardLocation.Hole).ToList();
 				var boardCardEntities = playerCardEntities.Where(c => c.Location == CardLocation.Board).ToList();
 
-				// Evaluate once we have at least 5 cards (Third Street: 2 hole + 1 board = 3, need to wait for 5+)
-				if (playerCardEntities.Count >= 5)
+				// Evaluate even with partial hands (e.g. 2 hole + 0 board)
+				if (playerCardEntities.Count >= 2)
 				{
 					var initialHoleCards = holeCardEntities.Take(2)
 						.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
@@ -314,8 +320,15 @@ public sealed class TableStateBuilder : ITableStateBuilder
 						.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
 						.ToList();
 
-					// If we have 7 cards, the third hole card is the down card (seventh street)
-					if (holeCardEntities.Count >= 3 && initialHoleCards.Count == 2 && openCards.Count <= 4)
+					if (isBaseballGame)
+					{
+						var allHoleCards = holeCardEntities
+							.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
+							.ToList();
+						var baseballHand = new BaseballHand(allHoleCards, openCards, []);
+						handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(baseballHand);
+					}
+					else if (holeCardEntities.Count >= 3 && initialHoleCards.Count == 2 && openCards.Count <= 4)
 					{
 						var downCard = new Card((Suit)holeCardEntities[2].Suit, (Symbol)holeCardEntities[2].Symbol);
 						var studHand = new SevenCardStudHand(initialHoleCards, openCards, downCard);
@@ -323,8 +336,6 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					}
 					else if (initialHoleCards.Count >= 2)
 					{
-						// Before seventh street, evaluate with a temporary StudHand using all available cards
-						// Use the base StudHand which handles variable card counts
 						var allHoleCards = holeCardEntities
 							.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
 							.ToList();
@@ -333,9 +344,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					}
 				}
 			}
-			// Draw games (no community cards). Provide a description once 5 cards are available.
+			// Draw games (no community cards). Provide a description for any cards held.
 			// (During seating / pre-deal phases there may be 0-4 cards and we keep the description null.)
-			else if (communityCards.Count == 0 && playerCards.Count >= 5)
+			else if (communityCards.Count == 0 && playerCards.Count > 0)
 			{
 				// Twos, Jacks, Man with the Axe uses wild cards.
 				// Kings and Lows uses wild cards (Kings + lowest card).
@@ -357,8 +368,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 				handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(drawHand);
 			}
-			// Community-card games (need at least a 3-card board and 5+ total cards).
-			else if (communityCards.Count >= 3 && allEvaluationCards.Count >= 5)
+			// Community-card games (start evaluating as soon as player has cards).
+			else if (allEvaluationCards.Count >= 2)
 			{
 				// Hold'em / Short-deck Hold'em style: 2 hole + up to 5 community
 				if (playerCards.Count == 2)
@@ -393,6 +404,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 		var draw = BuildDrawPrivateDto(game, gamePlayer, rules);
 		var dropOrStay = BuildDropOrStayPrivateDto(game, gamePlayer);
+		var buyCardOffer = BuildBuyCardOfferPrivateDto(game, gamePlayer);
 
 		// Get hand history personalized for this player
 		var handHistory = await GetHandHistoryEntriesAsync(gameId, gamePlayer.PlayerId, take: 25, cancellationToken);
@@ -410,6 +422,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			AvailableActions = availableActions,
 			Draw = draw,
 			DropOrStay = dropOrStay,
+			BuyCardOffer = buyCardOffer,
 			IsMyTurn = isMyTurn,
 			HandHistory = handHistory,
 			ChipHistory = chipHistory
@@ -480,7 +493,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 		// For Seven Card Stud, show visible cards; otherwise show face-down placeholders
 		// During showdown phases, show cards face-up for players who haven't folded
-		var isSevenCardStud = string.Equals(gameTypeCode, PokerGameMetadataRegistry.SevenCardStudCode, StringComparison.OrdinalIgnoreCase);
+		var isSevenCardStud = string.Equals(gameTypeCode, PokerGameMetadataRegistry.SevenCardStudCode, StringComparison.OrdinalIgnoreCase) ||
+		                      string.Equals(gameTypeCode, PokerGameMetadataRegistry.BaseballCode, StringComparison.OrdinalIgnoreCase);
 
 		// Get current hand cards (not discarded)
 		// Note: We filter by hand number to naturally handle sitting out players.
@@ -499,7 +513,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		var publicCards = playerCards.Select(card =>
 		{
 			// For stud games, respect the IsVisible flag; otherwise default to face-down
-			// During showdown, show face-up cards for staying players
+			// During showdown, show cards face-up for staying players
 			var shouldShowCard = (isSevenCardStud && card.IsVisible) || shouldShowCardsForShowdown;
 
 			return new CardPublicDto
@@ -583,7 +597,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			.Where(c => !c.IsDiscarded && c.HandNumber == currentHandNumber);
 
 		// Use street-aware ordering for Seven Card Stud to handle multi-street dealing correctly
-		var isSevenCardStud = string.Equals(gameTypeCode, PokerGameMetadataRegistry.SevenCardStudCode, StringComparison.OrdinalIgnoreCase);
+		var isSevenCardStud = string.Equals(gameTypeCode, PokerGameMetadataRegistry.SevenCardStudCode, StringComparison.OrdinalIgnoreCase) ||
+		                      string.Equals(gameTypeCode, PokerGameMetadataRegistry.BaseballCode, StringComparison.OrdinalIgnoreCase);
 		var orderedCards = OrderCardsForDisplay(filteredCards, isSevenCardStud).ToList();
 
 		_logger.LogDebug(
@@ -715,6 +730,11 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			PokerGameMetadataRegistry.SevenCardStudCode,
 			StringComparison.OrdinalIgnoreCase);
 
+		var isBaseball = string.Equals(
+			game.GameType?.Code,
+			PokerGameMetadataRegistry.BaseballCode,
+			StringComparison.OrdinalIgnoreCase);
+
 		var isKingsAndLows = string.Equals(
 			game.GameType?.Code,
 			PokerGameMetadataRegistry.KingsAndLowsCode,
@@ -728,7 +748,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		{
 			var filteredCards = gp.Cards
 				.Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber);
-			var cards = OrderCardsForDisplay(filteredCards, isSevenCardStud).ToList();
+			var cards = OrderCardsForDisplay(filteredCards, isSevenCardStud || isBaseball).ToList();
 
 			if (cards.Count >= 5)
 			{
@@ -747,6 +767,36 @@ public sealed class TableStateBuilder : ITableStateBuilder
 						}
 					}
 					playerHandEvaluations[gp.Player.Name] = (wildHand, wildHand, null, null, gp, cards, wildIndexes);
+				}
+				else if (isBaseball)
+				{
+					var holeCards = cards
+						.Where(c => c.Location == CardLocation.Hole)
+						.OrderBy(c => c.DealOrder)
+						.ToList();
+					var boardCards = cards
+						.Where(c => c.Location == CardLocation.Board)
+						.OrderBy(c => c.DealOrder)
+						.ToList();
+
+					var allHoleCards = holeCards
+						.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
+						.ToList();
+					var openCards = boardCards
+						.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
+						.ToList();
+
+					var baseballHand = new BaseballHand(allHoleCards, openCards, []);
+					var wildCards = baseballHand.WildCards;
+					var wildIndexes = new List<int>();
+					for (int i = 0; i < coreCards.Count; i++)
+					{
+						if (wildCards.Contains(coreCards[i]))
+						{
+							wildIndexes.Add(i);
+						}
+					}
+					playerHandEvaluations[gp.Player.Name] = (baseballHand, null, null, null, gp, cards, wildIndexes);
 				}
 				else if (isSevenCardStud)
 				{
@@ -942,7 +992,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					WildCardIndexes = wildIndexes,
 					Cards = OrderCardsForDisplay(
 							gp.Cards.Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber),
-							isSevenCardStud)
+							isSevenCardStud || isBaseball)
 						.Select(c => new CardPublicDto
 						{
 							IsFaceUp = true,
@@ -1369,6 +1419,10 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			wildRanks.AddRange(["2", "J"]);
 			specificCards.Add("KD"); // King of Diamonds
 		}
+		else if (string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.BaseballCode, StringComparison.OrdinalIgnoreCase))
+		{
+			wildRanks.AddRange(["3", "9"]);
+		}
 		else if (string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.KingsAndLowsCode, StringComparison.OrdinalIgnoreCase))
 		{
 			wildRanks.Add("K");
@@ -1558,6 +1612,47 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			HasDecidedThisRound = gamePlayer.DropOrStayDecision.HasValue &&
 										  gamePlayer.DropOrStayDecision.Value != Entities.DropOrStayDecision.Undecided,
 			Decision = gamePlayer.DropOrStayDecision?.ToString()
+		};
+	}
+
+	private BuyCardOfferPrivateDto? BuildBuyCardOfferPrivateDto(Game game, GamePlayer gamePlayer)
+	{
+		if (!string.Equals(game.GameType?.Code, PokerGameMetadataRegistry.BaseballCode, StringComparison.OrdinalIgnoreCase) ||
+			!string.Equals(game.CurrentPhase, nameof(Phases.BuyCardOffer), StringComparison.OrdinalIgnoreCase))
+		{
+			return null;
+		}
+
+		var buyCardState = BaseballGameSettings.GetState(game, game.MinBet ?? 0);
+		if (buyCardState.PendingOffers.Count == 0)
+		{
+			return null;
+		}
+
+		var currentOffer = buyCardState.PendingOffers.First();
+		if (currentOffer.PlayerId != gamePlayer.PlayerId)
+		{
+			return null;
+		}
+
+		var triggerCard = gamePlayer.Cards?.FirstOrDefault(c => c.Id == currentOffer.CardId);
+		CardPublicDto? triggerCardDto = null;
+		if (triggerCard is not null)
+		{
+			triggerCardDto = new CardPublicDto
+			{
+				IsFaceUp = true,
+				Rank = MapSymbolToRank(triggerCard.Symbol),
+				Suit = triggerCard.Suit.ToString(),
+				DealOrder = triggerCard.DealOrder
+			};
+		}
+
+		return new BuyCardOfferPrivateDto
+		{
+			BuyCardPrice = buyCardState.BuyCardPrice,
+			TriggerCard = triggerCardDto,
+			PendingOfferCount = buyCardState.PendingOffers.Count
 		};
 	}
 

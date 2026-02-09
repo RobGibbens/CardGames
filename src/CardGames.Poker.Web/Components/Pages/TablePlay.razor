@@ -26,6 +26,7 @@
 @inject ILogger<TablePlay> Logger
 @inject ITwosJacksManWithTheAxeApi TwosJacksManWithTheAxeApi
 @inject ISevenCardStudApi SevenCardStudApi
+@inject IBaseballApi BaseballApi
 @inject IKingsAndLowsApi KingsAndLowsApi
 @inject IFiveCardDrawApi FiveCardDrawApiClient
 
@@ -230,6 +231,17 @@
                                OnDecision="@HandleDropOrStayDecision" ActionTimer="@_actionTimerState" />
         }
 
+        <!-- Buy Card Overlay (for Baseball) -->
+        @if (ShouldShowBuyCardOverlay)
+        {
+            <BuyCardOverlay TriggerCard="@GetBuyCardTriggerCard()"
+                            BuyCardPrice="@_buyCardOffer.BuyCardPrice"
+                            PendingOfferCount="@_buyCardOffer.PendingOfferCount"
+                            IsSubmitting="@_isProcessingBuyCard"
+                            OnDecision="@HandleBuyCardDecisionAsync"
+                            ActionTimer="@_actionTimerState" />
+        }
+
         <!-- Player vs Deck Overlay (for Kings and Lows) -->
         @if (IsPlayerVsDeckPhase)
         {
@@ -245,7 +257,7 @@
         }
 
         <!-- Special Phase Overlay (for game-specific phases) -->
-        @if (IsSpecialPhase)
+        @if (IsSpecialPhase && !ShouldShowBuyCardOverlay)
         {
             <SpecialPhaseOverlay Title="@(_tableState?.CurrentPhaseDescription ?? "Special Phase")"
                                  Description="@GetSpecialPhaseDescription()" IconClass="fa-solid fa-star" />
@@ -430,6 +442,8 @@
     private bool _hasDropOrStayDecided;
     private string? _dropOrStayDecision;
     private bool _isProcessingDropOrStay;
+    private BuyCardOfferPrivateDto? _buyCardOffer;
+    private bool _isProcessingBuyCard;
     private bool _hasDeckDrawn;
     private bool _isProcessingDeckDraw;
     private bool _isAcknowledgingPotMatch;
@@ -508,6 +522,7 @@
     StringComparison.OrdinalIgnoreCase);
     private bool IsKingsAndLows => string.Equals(_gameTypeCode, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase);
     private bool IsSevenCardStud => string.Equals(_gameTypeCode, "SEVENCARDSTUD", StringComparison.OrdinalIgnoreCase);
+    private bool IsBaseball => string.Equals(_gameTypeCode, "BASEBALL", StringComparison.OrdinalIgnoreCase);
 
     // Game rules for dynamic UI rendering
     private GetGameRulesResponse? _gameRules;
@@ -534,6 +549,12 @@
 
     private bool IsSpecialPhase =>
     _tableState?.CurrentPhaseCategory?.Equals("Special", StringComparison.OrdinalIgnoreCase) == true;
+
+    private bool IsBuyCardOfferPhase =>
+    string.Equals(_tableState?.CurrentPhase, "BuyCardOffer", StringComparison.OrdinalIgnoreCase);
+
+    private bool ShouldShowBuyCardOverlay =>
+    IsBuyCardOfferPhase && _buyCardOffer is not null && IsParticipatingInHand;
 
     // Drop or Stay phase detection (for Kings and Lows)
     private bool IsDropOrStayPhase =>
@@ -1164,6 +1185,8 @@
             _hasDropOrStayDecided = state.DropOrStay.HasDecidedThisRound;
             _dropOrStayDecision = state.DropOrStay.Decision;
         }
+
+        _buyCardOffer = state.BuyCardOffer;
 
         // Populate cards for display in DropOrStayOverlay
         // Check both the property AND the phase string directly from state to handle reconnection scenarios
@@ -1899,6 +1922,26 @@
                 return;
             }
         }
+        else if (IsBaseball)
+        {
+            var startHandResponse = await BaseballApi.BaseballStartHandAsync(GameId);
+            if (!startHandResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
+
+            var collectAntesResponse = await BaseballApi.BaseballCollectAntesAsync(GameId);
+            if (!collectAntesResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
+
+            var dealHandsResponse = await BaseballApi.BaseballDealHandsAsync(GameId);
+            if (!dealHandsResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
+        }
         else if (IsKingsAndLows)
         {
             // Kings and Lows has a simpler flow - StartHand handles ante collection and dealing
@@ -1975,6 +2018,10 @@
         else if (IsSevenCardStud)
         {
             showdownResponse = await SevenCardStudApi.SevenCardStudPerformShowdownAsync(GameId);
+        }
+        else if (IsBaseball)
+        {
+            showdownResponse = await BaseballApi.BaseballPerformShowdownAsync(GameId);
         }
         else if (IsKingsAndLows)
         {
@@ -2889,6 +2936,13 @@
             {
                 result = OddsCalculator.CalculateStudOdds(coreCards, deadCards);
             }
+            else if (IsBaseball)
+            {
+                var holeCards = coreCards.Take(2).ToList();
+                var boardCards = coreCards.Skip(2).ToList();
+                var totalCards = Math.Max(7, coreCards.Count);
+                result = OddsCalculator.CalculateBaseballOdds(holeCards, boardCards, totalCards, deadCards);
+            }
             else if (IsKingsAndLows)
             {
                 result = OddsCalculator.CalculateKingsAndLowsDrawOdds(coreCards, deadCards);
@@ -3026,7 +3080,28 @@ HandType.HighCard
         {
             return "Losers must match the pot amount.";
         }
+        if (IsBuyCardOfferPhase)
+        {
+            return "Waiting for buy card decisions.";
+        }
         return "Please wait for this phase to complete.";
+    }
+
+    private CardInfo? GetBuyCardTriggerCard()
+    {
+        if (_buyCardOffer?.TriggerCard is null)
+        {
+            return null;
+        }
+
+        return new CardInfo
+        {
+            Rank = _buyCardOffer.TriggerCard.Rank,
+            Suit = _buyCardOffer.TriggerCard.Suit,
+            IsFaceUp = true,
+            IsSelected = false,
+            DealOrder = _buyCardOffer.TriggerCard.DealOrder
+        };
     }
 
     /// <summary>
@@ -3087,6 +3162,36 @@ HandType.HighCard
         finally
         {
             _isSubmittingAction = false;
+        }
+    }
+
+    private async Task HandleBuyCardDecisionAsync(bool accept)
+    {
+        if (_isProcessingBuyCard)
+        {
+            return;
+        }
+
+        if (!_currentPlayerId.HasValue || _currentPlayerId == Guid.Empty)
+        {
+            await ShowToastAsync("Unable to process buy card decision: player ID not available.", "error");
+            return;
+        }
+
+        _isProcessingBuyCard = true;
+        try
+        {
+            var request = new ProcessBuyCardRequest(_currentPlayerId.Value, accept);
+            var response = await GameApiRouter.ProcessBuyCardAsync(_gameTypeCode ?? "", GameId, request);
+
+            if (!response.IsSuccess)
+            {
+                await ShowToastAsync(response.Error ?? "Failed to process buy card decision.", "error");
+            }
+        }
+        finally
+        {
+            _isProcessingBuyCard = false;
         }
     }
 

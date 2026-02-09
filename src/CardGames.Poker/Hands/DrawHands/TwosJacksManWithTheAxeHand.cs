@@ -82,7 +82,7 @@ public sealed class TwosJacksManWithTheAxeDrawHand : FiveCardHand
         }
 
         // Use wild card evaluator for hands with wild cards
-        var (type, strength, evaluatedCards) = WildCardHandEvaluator.EvaluateBestHand(
+        var (type, strength, evaluatedCards, _) = WildCardHandEvaluator.EvaluateBestHand(
             Cards, WildCards, Ranking);
         _evaluatedType = type;
         _evaluatedStrength = strength;

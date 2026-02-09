@@ -45,10 +45,15 @@ public sealed record PrivateStateDto
     /// </summary>
     public DrawPrivateDto? Draw { get; init; }
 
-    /// <summary>
-    /// Drop or Stay phase information when in decision phase (for Kings and Lows, etc.).
-    /// </summary>
-    public DropOrStayPrivateDto? DropOrStay { get; init; }
+	/// <summary>
+	/// Drop or Stay phase information when in decision phase (for Kings and Lows, etc.).
+	/// </summary>
+	public DropOrStayPrivateDto? DropOrStay { get; init; }
+
+	/// <summary>
+	/// Buy card offer information for Baseball (when a 4 is dealt face-up).
+	/// </summary>
+	public BuyCardOfferPrivateDto? BuyCardOffer { get; init; }
 
         /// <summary>
         /// Whether it is currently this player's turn to act.
@@ -66,6 +71,27 @@ public sealed record PrivateStateDto
 	/// </summary>
 	public ChipHistoryDto? ChipHistory { get; init; }
     }
+
+/// <summary>
+/// Private buy-card offer information for Baseball poker.
+/// </summary>
+public sealed record BuyCardOfferPrivateDto
+{
+	/// <summary>
+	/// The buy-card price in chips.
+	/// </summary>
+	public int BuyCardPrice { get; init; }
+
+	/// <summary>
+	/// The face-up card that triggered the buy option.
+	/// </summary>
+	public CardPublicDto? TriggerCard { get; init; }
+
+	/// <summary>
+	/// The number of pending buy-card offers remaining.
+	/// </summary>
+	public int PendingOfferCount { get; init; }
+}
 
 /// <summary>
 /// Private card representation with full card details visible.

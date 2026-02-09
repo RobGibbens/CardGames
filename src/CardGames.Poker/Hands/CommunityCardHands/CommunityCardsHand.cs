@@ -34,6 +34,11 @@ public class CommunityCardsHand : HandBase
 
     protected override IEnumerable<IReadOnlyCollection<Card>> PossibleHands()
     {
+        if (Cards.Count < 5)
+        {
+            return new[] { Cards };
+        }
+
         var nrOfCombos = GreatestNumberOfHoleCardsToBeUsed - LeastNumberOfHoleCardsToBeUsed + 1;
         return Enumerable
             .Range(LeastNumberOfHoleCardsToBeUsed, nrOfCombos)

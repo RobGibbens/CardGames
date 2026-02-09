@@ -27,9 +27,16 @@ public class StudHand : HandBase
     }
 
     protected override IEnumerable<IReadOnlyCollection<Card>> PossibleHands()
-        => Cards
+    {
+        if (Cards.Count < 5)
+        {
+            return new[] { Cards };
+        }
+
+        return Cards
             .SubsetsOfSize(5)
             .Select(cards => cards.ToList());
+    }
 
     /// <summary>
     /// Gets the best 5-card combination from the 7 available cards.

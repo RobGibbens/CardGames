@@ -140,11 +140,12 @@ public class BaseballGame : IPokerGame
             {
                 new() { PhaseId = "WaitingToStart", Name = "Waiting to Start", Description = "Waiting for players", Category = "Setup", RequiresPlayerAction = false },
                 new() { PhaseId = "CollectingAntes", Name = "Collecting Antes", Description = "Collecting ante bets", Category = "Setup", RequiresPlayerAction = false },
-                new() { PhaseId = "ThirdStreet", Name = "Third Street", Description = "2 down, 1 up, bring-in", Category = "Betting", RequiresPlayerAction = true },
-                new() { PhaseId = "FourthStreet", Name = "Fourth Street", Description = "1 up card, bet", Category = "Betting", RequiresPlayerAction = true },
-                new() { PhaseId = "FifthStreet", Name = "Fifth Street", Description = "1 up card, bet", Category = "Betting", RequiresPlayerAction = true },
-                new() { PhaseId = "SixthStreet", Name = "Sixth Street", Description = "1 up card, bet", Category = "Betting", RequiresPlayerAction = true },
-                new() { PhaseId = "SeventhStreet", Name = "Seventh Street", Description = "1 down card, final bet", Category = "Betting", RequiresPlayerAction = true },
+                new() { PhaseId = "ThirdStreet", Name = "Third Street", Description = "2 down, 1 up, bring-in", Category = "Betting", RequiresPlayerAction = true, AvailableActions = new[] { "Call", "Raise", "Fold", "AllIn" } },
+                new() { PhaseId = "BuyCardOffer", Name = "Buy Card Offer", Description = "Offer to buy an extra card after a 4 appears", Category = "Special", RequiresPlayerAction = true, AvailableActions = new[] { "Buy", "Decline" } },
+                new() { PhaseId = "FourthStreet", Name = "Fourth Street", Description = "1 up card, bet", Category = "Betting", RequiresPlayerAction = true, AvailableActions = new[] { "Check", "Bet", "Call", "Raise", "Fold", "AllIn" } },
+                new() { PhaseId = "FifthStreet", Name = "Fifth Street", Description = "1 up card, bet", Category = "Betting", RequiresPlayerAction = true, AvailableActions = new[] { "Check", "Bet", "Call", "Raise", "Fold", "AllIn" } },
+                new() { PhaseId = "SixthStreet", Name = "Sixth Street", Description = "1 up card, bet", Category = "Betting", RequiresPlayerAction = true, AvailableActions = new[] { "Check", "Bet", "Call", "Raise", "Fold", "AllIn" } },
+                new() { PhaseId = "SeventhStreet", Name = "Seventh Street", Description = "1 down card, final bet", Category = "Betting", RequiresPlayerAction = true, AvailableActions = new[] { "Check", "Bet", "Call", "Raise", "Fold", "AllIn" } },
                 new() { PhaseId = "Showdown", Name = "Showdown", Description = "Determine winner", Category = "Resolution", RequiresPlayerAction = false },
                 new() { PhaseId = "Complete", Name = "Complete", Description = "Hand complete", Category = "Resolution", RequiresPlayerAction = false, IsTerminal = true }
             },
@@ -172,9 +173,14 @@ public class BaseballGame : IPokerGame
             },
             Showdown = new GameFlow.ShowdownConfig
             {
-                HandRanking = "Standard",
+                HandRanking = "Standard Poker (High) with Wild Cards",
                 IsHighLow = false,
                 HasSpecialSplitRules = false
+            },
+            SpecialRules = new Dictionary<string, object>
+            {
+                ["WildCards"] = "All 3s and 9s are wild",
+                ["BuyCard"] = true
             }
         };
     }

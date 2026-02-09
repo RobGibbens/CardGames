@@ -1,0 +1,130 @@
+/* Buy Card Overlay - matches Draw/Drop styling */
+.buy-card-panel {
+    position: fixed;
+    right: 1.25rem;
+    bottom: 1.25rem;
+    z-index: 2000;
+    width: min(480px, calc(100vw - 2.5rem));
+    background: rgba(0, 0, 0, 0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid lightgrey;
+    border-radius: 20px;
+    padding: 1.25rem 1.5rem;
+    animation: fadeInUp 0.3s ease-out;
+}
+
+.buy-card-panel.submitting {
+    pointer-events: none;
+}
+
+.buy-card-header {
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.buy-card-title {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: white;
+}
+
+.buy-card-title i {
+    color: #fbbf24;
+}
+
+.buy-card-subtitle {
+    margin-top: 0.35rem;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.buy-card-pending {
+    margin-top: 0.35rem;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.buy-card-timer {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.buy-card-timer-bar {
+    flex: 1;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.buy-card-timer-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #22c55e 0%, #fbbf24 50%, #dc2626 100%);
+    border-radius: 3px;
+    transition: width 1s linear;
+}
+
+.buy-card-timer-text {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: white;
+    min-width: 35px;
+}
+
+.buy-card-card {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1rem;
+}
+
+.buy-card-actions {
+    display: flex;
+    justify-content: center;
+    gap: 0.75rem;
+}
+
+.buy-card-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 140px;
+}
+
+.buy-card-btn.accept {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+}
+
+.buy-card-btn.decline {
+    background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+    color: white;
+}
+
+.buy-card-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.buy-card-submitting {
+    margin-top: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.8);
+}

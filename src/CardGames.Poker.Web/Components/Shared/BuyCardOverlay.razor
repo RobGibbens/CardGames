@@ -1,0 +1,103 @@
+@namespace CardGames.Poker.Web.Components.Shared
+
+@using CardGames.Contracts.SignalR
+@using static CardGames.Poker.Web.Components.Pages.TablePlay
+
+<div class="buy-card-panel @(IsSubmitting ? "submitting" : "")">
+    <div class="buy-card-header">
+        <div class="buy-card-title">
+            <i class="fa-solid fa-baseball"></i>
+            <span>Buy Card Option</span>
+        </div>
+        <div class="buy-card-subtitle">Buy price: @BuyCardPrice.ToString("N0") chips</div>
+        @if (PendingOfferCount > 1)
+        {
+            <div class="buy-card-pending">@PendingOfferCount offers remaining</div>
+        }
+    </div>
+
+    @if (ActionTimer is not null)
+    {
+        <div class="buy-card-timer">
+            <div class="buy-card-timer-bar">
+                <div class="buy-card-timer-fill" style="width: @GetTimerPercentage()%"></div>
+            </div>
+            <span class="buy-card-timer-text">@GetSecondsRemaining() s</span>
+        </div>
+    }
+
+    @if (TriggerCard is not null)
+    {
+        <div class="buy-card-card">
+            <playing-card rank="@GetPlayingCardRank(TriggerCard)" suit="@TriggerCard.Suit" style="height:92px;width:64px;"></playing-card>
+        </div>
+    }
+
+    <div class="buy-card-actions">
+        <button class="buy-card-btn accept"
+                @onclick="() => OnDecision.InvokeAsync(true)"
+                disabled="@IsSubmitting">
+            <i class="fa-solid fa-circle-check"></i>
+            Buy
+        </button>
+        <button class="buy-card-btn decline"
+                @onclick="() => OnDecision.InvokeAsync(false)"
+                disabled="@IsSubmitting">
+            <i class="fa-solid fa-circle-xmark"></i>
+            Decline
+        </button>
+    </div>
+
+    @if (IsSubmitting)
+    {
+        <div class="buy-card-submitting">
+            <span class="loading-spinner-small"></span>
+            <span>Processing decision...</span>
+        </div>
+    }
+</div>
+
+@code {
+    private const int DefaultTimerDurationSeconds = 30;
+
+    [Parameter]
+    public CardInfo? TriggerCard { get; set; }
+
+    [Parameter]
+    public int BuyCardPrice { get; set; }
+
+    [Parameter]
+    public int PendingOfferCount { get; set; }
+
+    [Parameter]
+    public bool IsSubmitting { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> OnDecision { get; set; }
+
+    [Parameter]
+    public ActionTimerStateDto? ActionTimer { get; set; }
+
+    private int GetSecondsRemaining() => ActionTimer?.SecondsRemaining ?? DefaultTimerDurationSeconds;
+
+    private int GetTimerDuration() => ActionTimer?.DurationSeconds ?? DefaultTimerDurationSeconds;
+
+    private double GetTimerPercentage()
+    {
+        var duration = GetTimerDuration();
+        if (duration <= 0) return 100;
+        return (GetSecondsRemaining() / (double)duration) * 100;
+    }
+
+    private string? GetPlayingCardRank(CardInfo card)
+    {
+        return card.Rank switch
+        {
+            "J" => "Jack",
+            "Q" => "Queen",
+            "K" => "King",
+            "A" => "Ace",
+            _ => card.Rank
+        };
+    }
+}

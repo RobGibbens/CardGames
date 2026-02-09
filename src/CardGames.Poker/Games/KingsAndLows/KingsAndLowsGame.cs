@@ -714,7 +714,7 @@ public class KingsAndLowsGame : IPokerGame
         
         if (wildCards.Any())
         {
-            var (type, strength, evaluatedCards) = WildCardHandEvaluator.EvaluateBestHand(
+            var (type, strength, evaluatedCards, _) = WildCardHandEvaluator.EvaluateBestHand(
                 cards, wildCards, Hands.Strength.HandTypeStrengthRanking.Classic);
             
             // Create a DrawHand for display purposes (using evaluated cards)
