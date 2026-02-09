@@ -32,11 +32,11 @@ public static class DealHandsEndpoint
 				})
 			.WithName($"FollowTheQueen{nameof(MapDealHands).TrimPrefix("Map")}")
 			.WithSummary("Deal Hands")
-			.WithDescription("Deals five cards to each active player from the shuffled deck and initiates the first betting round. " +
-			                 "After dealing, the game transitions to the FirstBettingRound phase. " +
-			                 "This method deals 5 cards to each player who has not folded, " +
-			                 "resets all players' current bet amounts for the new betting round, " +
-			                 "and automatically starts the first betting round.")
+			.WithDescription("Deals cards for the current street in Follow the Queen. " +
+			                 "Third Street: deals 2 hole cards (face-down) + 1 board card (face-up) to each player. " +
+			                 "Fourth-Sixth Street: deals 1 board card (face-up) to each player. " +
+			                 "Seventh Street: deals 1 hole card (face-down) to each player. " +
+			                 "After dealing, the game transitions to the appropriate betting phase.")
 			.Produces<DealHandsSuccessful>(StatusCodes.Status200OK)
 			.ProducesProblem(StatusCodes.Status404NotFound)
 			.ProducesProblem(StatusCodes.Status409Conflict)

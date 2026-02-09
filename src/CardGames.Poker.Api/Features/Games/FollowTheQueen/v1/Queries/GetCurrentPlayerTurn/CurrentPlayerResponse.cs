@@ -1,5 +1,5 @@
 using CardGames.Poker.Api.Data.Entities;
-using CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.DealHands;
+using CardGames.Poker.Api.Features.Games.FollowTheQueen.v1.Commands.DealHands;
 
 namespace CardGames.Poker.Api.Features.Games.FollowTheQueen.v1.Queries.GetCurrentPlayerTurn;
 
