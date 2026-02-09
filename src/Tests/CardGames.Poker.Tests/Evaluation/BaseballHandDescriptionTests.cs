@@ -23,6 +23,6 @@ public class BaseballHandDescriptionTests
 
         var description = HandDescriptionFormatter.GetHandDescription(hand);
 
-        description.Should().Be("Straight flush to the 8");
+        description.Should().Be("Straight flush to the Eight");
     }
 }
