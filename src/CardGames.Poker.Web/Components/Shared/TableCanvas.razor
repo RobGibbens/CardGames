@@ -8,6 +8,14 @@
         <div class="poker-table-felt">
             <!-- Center area with pot and phase -->
             <div class="table-center">
+                <!-- Deck visualization -->
+                <div class="deck-stack">
+                    @for (var i = 0; i < 5; i++)
+                    {
+                        <playing-card rank="0" backcolor="#44F" class="deck-card" style="--deck-offset: @i"></playing-card>
+                    }
+                </div>
+
                 @if (Pot > 0)
                 {
                     <div class="pot-display">
