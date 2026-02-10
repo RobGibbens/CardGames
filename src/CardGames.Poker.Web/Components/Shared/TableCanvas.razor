@@ -9,7 +9,7 @@
             <!-- Center area with pot and phase -->
             <div class="table-center">
                 <!-- Deck visualization -->
-                <div class="deck-stack">
+                <div class="deck-stack" @ref="_deckRef">
                     @for (var i = 0; i < 5; i++)
                     {
                         <playing-card rank="0" backcolor="#44F" class="deck-card" style="--deck-offset: @i"></playing-card>
@@ -54,6 +54,28 @@
                     GameTypeCode="@GameTypeCode" />
             </div>
         }
+
+        <!-- Flying card animation overlay -->
+        @if (FlyingCard is not null)
+        {
+            var targetPosition = MapSeatIndexToDisplayPosition(FlyingCard.TargetSeatIndex);
+            var isCurrentPlayerTarget = FlyingCard.TargetSeatIndex == CurrentPlayerSeatIndex;
+            <div class="flying-card-container">
+                <div class="flying-card @(isCurrentPlayerTarget ? "to-current-player" : "to-remote-player")"
+                     style="--target-position: @targetPosition; --card-index: @FlyingCard.CardIndex;">
+                    @if (FlyingCard.IsFaceUp && !string.IsNullOrWhiteSpace(FlyingCard.Rank))
+                    {
+                        <playing-card rank="@GetPlayingCardRank(FlyingCard.Rank)" 
+                                      suit="@FlyingCard.Suit" 
+                                      class="flying-card-element"></playing-card>
+                    }
+                    else
+                    {
+                        <playing-card rank="0" backcolor="#44F" class="flying-card-element"></playing-card>
+                    }
+                </div>
+            </div>
+        }
     </div>
 </div>
 
@@ -66,10 +88,10 @@
 
     [Parameter]
     public string? CurrentPhase { get; set; }
-    
+
     [Parameter]
     public string? CurrentPhaseDescription { get; set; }
-    
+
     [Parameter]
     public int CurrentActorSeatIndex { get; set; } = -1;
 
@@ -90,6 +112,25 @@
 
     [Parameter]
     public EventCallback<int> OnSeatClick { get; set; }
+
+    /// <summary>
+    /// The currently flying card being animated from deck to player.
+    /// </summary>
+    [Parameter]
+    public FlyingCardInfo? FlyingCard { get; set; }
+
+    private ElementReference _deckRef;
+
+    /// <summary>
+    /// Represents a card being animated from the deck to a player's hand.
+    /// </summary>
+    public record FlyingCardInfo(
+        int TargetSeatIndex,
+        int CardIndex,
+        string? Rank,
+        string? Suit,
+        bool IsFaceUp
+    );
 
     private async Task HandleSeatClick(SeatInfo seat)
     {
@@ -160,5 +201,34 @@
             classes.Add("seat-disconnected");
 
         return string.Join(" ", classes);
+    }
+
+    /// <summary>
+    /// Converts a rank string to the playing-card web component rank attribute value.
+    /// </summary>
+    private static string GetPlayingCardRank(string? rank)
+    {
+        if (string.IsNullOrWhiteSpace(rank))
+        {
+            return "0";
+        }
+
+        return rank.ToUpperInvariant() switch
+        {
+            "A" => "1",
+            "2" => "2",
+            "3" => "3",
+            "4" => "4",
+            "5" => "5",
+            "6" => "6",
+            "7" => "7",
+            "8" => "8",
+            "9" => "9",
+            "10" or "T" => "10",
+            "J" => "11",
+            "Q" => "12",
+            "K" => "13",
+            _ => "0"
+        };
     }
 }

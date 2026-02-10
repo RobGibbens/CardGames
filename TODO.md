@@ -3,9 +3,7 @@
 ## Still to do
 
 - [ ] FTQ should show what cards are wild
-- [x] FTQ second third street doesn't delay
 - [ ] FTQ is misremembering other wild card after action
-- [ ] Spin cards 
 
 ### P1 - Can't play without these
 - [ ] Test side pots
@@ -29,7 +27,6 @@
 - [ ] When you can't start the game because you're waiting for other players to sit, show a message
 
 ### P3 - Nice to have
-- [x] Search for code == "KINGSANDLOWS" and refactor
 - [ ] Creating a deck and dealing is done in the StartHandCommandHandler, but it should be using CardGames.Core.Dealer
 - [ ] Table settings should be dynamic when creating a table. Not all games have an ante or a minimum bet.
 - [ ] There are a lot of extra database calls going on
@@ -37,7 +34,6 @@
 - [ ] Hand history should paginate
 - [ ] When the Draw Overlay is showing, the cards are not opaque
 - [ ] The bottom of the table goes off the bottom of the screen
-- [x] Add a chip stack graph in the dashboard
 - [ ] Add sound effects
 - [ ] Add a chat box
 - [ ] Add the ability to mute other players in chat
@@ -84,6 +80,10 @@
 - [ ] Add Guts
 
 ## Completed
+- [x] FTQ second third street doesn't delay
+- [x] Spin cards 
+- [x] Search for code == "KINGSANDLOWS" and refactor
+- [x] Add a chip stack graph in the dashboard
 - [x] Show current standings
 - [x] Show hand history
 - [x] Show the user's avatar on TableSeat and their name

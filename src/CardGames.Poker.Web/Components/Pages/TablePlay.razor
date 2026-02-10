@@ -143,7 +143,8 @@
                          CurrentActorSeatIndex="@_currentActorSeatIndex" DealerSeatIndex="@_dealerSeatIndex"
                          OnSeatClick="HandleSeatClickAsync" DisableSeatSelectionForCurrentUser="@_isSeated"
                          CurrentPlayerSeatIndex="@_currentPlayerSeatIndex" GameTypeCode="@_gameTypeCode"
-                         IsPausedForChipCheck="@_isPausedForChipCheck" />
+                         IsPausedForChipCheck="@_isPausedForChipCheck"
+                         FlyingCard="@_flyingCard" />
 
             <!-- Dashboard Panel (left side) -->
             @if (_isSeated)
@@ -502,6 +503,10 @@
     private int _dealTargetEndIndex; // Stop dealing when _dealCurrentCardIndex reaches this
     private int _dealCurrentSeatIdx; // Index into _dealOrderedSeatIndices
     private Dictionary<int, List<CardInfo>> _dealTargetCards = new(); // SeatIndex -> Full Public Cards list
+
+    // Flying card animation state (visual card flying from deck to player)
+    private TableCanvas.FlyingCardInfo? _flyingCard;
+    private Timer? _flyingCardTimer;
 
 
     // Continuous play state
@@ -2245,6 +2250,25 @@
             var currentVisible = _runoutVisibleCardCount.GetValueOrDefault(currentSeatIndex, 0);
             if (currentVisible < runoutCards.Count)
             {
+                var runoutCard = runoutCards[currentVisible];
+
+                // Start flying card animation for runout
+                _flyingCard = new TableCanvas.FlyingCardInfo(
+                    TargetSeatIndex: currentSeatIndex,
+                    CardIndex: currentVisible,
+                    Rank: runoutCard.Rank,
+                    Suit: runoutCard.Suit,
+                    IsFaceUp: true
+                );
+
+                await InvokeAsync(StateHasChanged);
+
+                // Wait for the flying animation to complete
+                await Task.Delay(550);
+
+                // Clear the flying card
+                _flyingCard = null;
+
                 _runoutVisibleCardCount[currentSeatIndex] = currentVisible + 1;
                 UpdateSeatWithRunoutCards(currentSeatIndex, currentVisible + 1);
 
@@ -2366,6 +2390,9 @@
     {
         if (!_dealAnimationInProgress) return;
 
+        // Clear any previous flying card
+        _flyingCard = null;
+
         // If we've completed all players for the current card index
         if (_dealCurrentSeatIdx >= _dealOrderedSeatIndices.Count)
         {
@@ -2379,6 +2406,7 @@
         {
             await InvokeAsync(() =>
             {
+                _flyingCard = null;
                 CompleteCardDealAnimation();
                 StateHasChanged();
             });
@@ -2408,6 +2436,23 @@
                 suit = targetCard.Suit;
                 isFaceUp = targetCard.IsFaceUp;
             }
+
+            // Start flying card animation
+            _flyingCard = new TableCanvas.FlyingCardInfo(
+                TargetSeatIndex: seatIndex,
+                CardIndex: _dealCurrentCardIndex,
+                Rank: rank,
+                Suit: suit,
+                IsFaceUp: isFaceUp
+            );
+
+            await InvokeAsync(StateHasChanged);
+
+            // Wait for the flying animation to complete (600ms matches CSS animation duration)
+            await Task.Delay(550);
+
+            // Clear the flying card and add card to the seat
+            _flyingCard = null;
 
             // Create the card
             var newCard = new CardInfo
@@ -2451,6 +2496,7 @@
         _dealAnimationInProgress = false;
         _dealTimer?.Dispose();
         _dealTimer = null;
+        _flyingCard = null;
 
         // Sync with Pending State
         if (_dealTargetState != null)
@@ -2477,6 +2523,7 @@
         _runoutAnimationInProgress = false;
         _runoutDealTimer?.Dispose();
         _runoutDealTimer = null;
+        _flyingCard = null;
 
         // Now load and show the showdown overlay
         await TryLoadShowdownAsync();
@@ -3064,6 +3111,11 @@
         // Stop card deal animation timer
         _dealTimer?.Dispose();
         _dealTimer = null;
+
+        // Stop flying card timer
+        _flyingCardTimer?.Dispose();
+        _flyingCardTimer = null;
+        _flyingCard = null;
 
         // Unsubscribe from SignalR events
         GameHubClient.OnTableStateUpdated -= HandleTableStateUpdatedAsync;

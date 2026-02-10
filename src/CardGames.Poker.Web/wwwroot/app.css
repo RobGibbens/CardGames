@@ -2855,6 +2855,207 @@ a:hover {
     border-radius: 6px;
 }
 
+/* Flying card animation */
+.flying-card-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 100;
+}
+
+.flying-card {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    animation: fly-to-player 0.6s ease-out forwards;
+}
+
+.flying-card .flying-card-element {
+    width: 60px;
+    height: 84px;
+    font-size: 60px;
+    animation: card-spin-and-scale 0.6s ease-out forwards;
+}
+
+/* Animation to current player (bottom center - larger cards) */
+.flying-card.to-current-player .flying-card-element {
+    animation: card-spin-and-scale-large 0.6s ease-out forwards;
+}
+
+/* Animation to remote player (smaller cards) */
+.flying-card.to-remote-player .flying-card-element {
+    animation: card-spin-and-scale-small 0.6s ease-out forwards;
+}
+
+/* Position-based flying animations - uses CSS custom property --target-position */
+/* Position 0: Bottom center (current player) */
+@keyframes fly-to-position-0 {
+    0% {
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+    100% {
+        top: 95%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+}
+
+/* Position 1: Bottom left */
+@keyframes fly-to-position-1 {
+    0% {
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+    100% {
+        top: 80%;
+        left: 15%;
+        transform: translate(-50%, -50%);
+    }
+}
+
+/* Position 2: Left */
+@keyframes fly-to-position-2 {
+    0% {
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+    100% {
+        top: 50%;
+        left: 3%;
+        transform: translate(-50%, -50%);
+    }
+}
+
+/* Position 3: Top left */
+@keyframes fly-to-position-3 {
+    0% {
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+    100% {
+        top: 20%;
+        left: 15%;
+        transform: translate(-50%, -50%);
+    }
+}
+
+/* Position 4: Top center */
+@keyframes fly-to-position-4 {
+    0% {
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+    100% {
+        top: 5%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+}
+
+/* Position 5: Top right */
+@keyframes fly-to-position-5 {
+    0% {
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+    100% {
+        top: 20%;
+        left: 85%;
+        transform: translate(-50%, -50%);
+    }
+}
+
+/* Position 6: Right */
+@keyframes fly-to-position-6 {
+    0% {
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+    100% {
+        top: 50%;
+        left: 97%;
+        transform: translate(-50%, -50%);
+    }
+}
+
+/* Position 7: Bottom right */
+@keyframes fly-to-position-7 {
+    0% {
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+    100% {
+        top: 80%;
+        left: 85%;
+        transform: translate(-50%, -50%);
+    }
+}
+
+/* Apply position-specific animation based on --target-position */
+.flying-card[style*="--target-position: 0"] { animation-name: fly-to-position-0; }
+.flying-card[style*="--target-position: 1"] { animation-name: fly-to-position-1; }
+.flying-card[style*="--target-position: 2"] { animation-name: fly-to-position-2; }
+.flying-card[style*="--target-position: 3"] { animation-name: fly-to-position-3; }
+.flying-card[style*="--target-position: 4"] { animation-name: fly-to-position-4; }
+.flying-card[style*="--target-position: 5"] { animation-name: fly-to-position-5; }
+.flying-card[style*="--target-position: 6"] { animation-name: fly-to-position-6; }
+.flying-card[style*="--target-position: 7"] { animation-name: fly-to-position-7; }
+
+/* Card spin and scale animation for remote players (smaller target) */
+@keyframes card-spin-and-scale-small {
+    0% {
+        transform: rotate(0deg) scale(1);
+    }
+    50% {
+        transform: rotate(360deg) scale(0.8);
+    }
+    100% {
+        transform: rotate(720deg) scale(0.55);
+        opacity: 0;
+    }
+}
+
+/* Card spin and scale animation for current player (larger target) */
+@keyframes card-spin-and-scale-large {
+    0% {
+        transform: rotate(0deg) scale(1);
+    }
+    50% {
+        transform: rotate(360deg) scale(1.2);
+    }
+    100% {
+        transform: rotate(720deg) scale(1.4);
+        opacity: 0;
+    }
+}
+
+/* Default spin animation */
+@keyframes card-spin-and-scale {
+    0% {
+        transform: rotate(0deg) scale(1);
+    }
+    50% {
+        transform: rotate(360deg) scale(0.9);
+    }
+    100% {
+        transform: rotate(720deg) scale(0.7);
+        opacity: 0;
+    }
+}
+
 /* Dealer button */
 .dealer-button {
     position: absolute;
