@@ -788,6 +788,16 @@
                 _chipCheckPotAmount = 0;
             }
 
+            // Clean up old hand cards when starting a new hand to ensure animations work correctly
+            if (state.CurrentHandNumber != previousHandNumber)
+            {
+                foreach (var s in _seats)
+                {
+                    s.Cards = [];
+                    s.HandEvaluationDescription = null;
+                }
+            }
+
             // Check for Card Deal Animation trigger (Stud/Baseball/Queens)
             // Detect ANY increase in cards for active players
             var isStudGame = IsSevenCardStud || IsBaseball || IsFollowTheQueen;

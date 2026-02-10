@@ -3,7 +3,9 @@
 ## Still to do
 
 - [ ] FTQ should show what cards are wild
-- [ ] FTW second third street doesn't delay
+- [x] FTQ second third street doesn't delay
+- [ ] FTQ is misremembering other wild card after action
+- [ ] Spin cards 
 
 ### P1 - Can't play without these
 - [ ] Test side pots
