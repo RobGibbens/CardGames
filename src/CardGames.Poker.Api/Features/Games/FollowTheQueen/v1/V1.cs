@@ -4,6 +4,7 @@ using CardGames.Poker.Api.Features.Games.FollowTheQueen.v1.Commands.DealHands;
 using CardGames.Poker.Api.Features.Games.FollowTheQueen.v1.Commands.PerformShowdown;
 using CardGames.Poker.Api.Features.Games.FollowTheQueen.v1.Commands.ProcessBettingAction;
 using CardGames.Poker.Api.Features.Games.FollowTheQueen.v1.Commands.StartHand;
+using CardGames.Poker.Api.Features.Games.FollowTheQueen.v1.Queries.GetCurrentPlayerTurn;
 using SharpGrip.FluentValidation.AutoValidation.Endpoints.Extensions;
 
 namespace CardGames.Poker.Api.Features.Games.FollowTheQueen.v1;
@@ -22,6 +23,7 @@ public static class V1
 			.MapCollectAntes()
 			.MapDealHands()
 			.MapProcessBettingAction()
-			.MapPerformShowdown();
+			.MapPerformShowdown()
+			.MapGetCurrentPlayerTurn();
 	}
 }
