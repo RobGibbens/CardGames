@@ -88,6 +88,12 @@ public record ShowdownPlayerHand
 	/// For Follow the Queen, players have 7 cards but only 5 count toward the winning hand.
 	/// </summary>
 	public List<int>? BestCardIndexes { get; init; }
+
+	/// <summary>
+	/// The zero-based indices of cards in the hand that are wild.
+	/// Used by the UI to display wild card indicators.
+	/// </summary>
+	public List<int>? WildCardIndexes { get; init; }
 }
 
 /// <summary>

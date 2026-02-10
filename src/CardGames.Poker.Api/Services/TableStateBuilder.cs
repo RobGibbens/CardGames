@@ -196,8 +196,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			CurrentPhaseRequiresAction = currentPhaseDescriptor?.RequiresPlayerAction ?? false,
 			CurrentPhaseAvailableActions = currentPhaseDescriptor?.AvailableActions,
 			DrawingConfig = BuildDrawingConfigDto(rules),
-			SpecialRules = BuildSpecialRulesDto(rules),
-			PlayerVsDeck = playerVsDeck,
+				SpecialRules = await BuildSpecialRulesDtoAsync(rules, game, cancellationToken),
+				PlayerVsDeck = playerVsDeck,
 			ActionTimer = actionTimer,
 			AllInRunout = allInRunout,
 			ChipCheckPause = chipCheckPause
@@ -1455,7 +1455,93 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	}
 
 	/// <summary>
-	/// Builds the special rules DTO from game rules.
+	/// Builds the special rules DTO from game rules, with dynamic wild card computation for Follow the Queen.
+	/// </summary>
+	private async Task<GameSpecialRulesDto?> BuildSpecialRulesDtoAsync(
+		GameRules? rules,
+		Entities.Game game,
+		CancellationToken cancellationToken)
+	{
+		if (rules?.SpecialRules is null || rules.SpecialRules.Count == 0)
+		{
+			return null;
+		}
+
+		var isFollowTheQueen = string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.FollowTheQueenCode, StringComparison.OrdinalIgnoreCase);
+
+		// For Follow the Queen, compute dynamic wild ranks from face-up cards
+		IReadOnlyList<string>? dynamicWildRanks = null;
+		if (isFollowTheQueen)
+		{
+			dynamicWildRanks = await ComputeFollowTheQueenWildRanksAsync(game, cancellationToken);
+		}
+
+		return new GameSpecialRulesDto
+		{
+			HasDropOrStay = rules.SpecialRules.ContainsKey("DropOrStay"),
+			HasPotMatching = rules.SpecialRules.ContainsKey("LosersMatchPot"),
+			HasWildCards = rules.SpecialRules.ContainsKey("WildCards"),
+			WildCardsDescription = rules.SpecialRules.TryGetValue("WildCards", out var wc)
+				? wc?.ToString()
+				: null,
+			HasSevensSplit = rules.SpecialRules.ContainsKey("SevensSplit"),
+			WildCardRules = BuildWildCardRulesDto(rules, dynamicWildRanks)
+		};
+	}
+
+	/// <summary>
+	/// Computes the current wild card ranks for Follow the Queen based on face-up cards dealt so far.
+	/// Queens are always wild. The rank following the last face-up Queen is also wild.
+	/// </summary>
+	private async Task<IReadOnlyList<string>> ComputeFollowTheQueenWildRanksAsync(
+		Entities.Game game,
+		CancellationToken cancellationToken)
+	{
+		var faceUpCards = await _context.GameCards
+			.Where(c => c.GameId == game.Id &&
+						c.HandNumber == game.CurrentHandNumber &&
+						c.IsVisible &&
+						!c.IsDiscarded)
+			.Include(c => c.GamePlayer)
+			.OrderBy(c => c.DealOrder)
+			.ThenBy(c => c.GamePlayer!.SeatPosition)
+			.Select(c => new { c.Symbol })
+			.ToListAsync(cancellationToken);
+
+		var wildRanks = new List<string> { "Q" }; // Queens are always wild
+
+		// Find the "follow" rank: the rank of the card dealt immediately after the last face-up Queen
+		int? followingWildSymbol = null;
+		for (var i = 0; i < faceUpCards.Count; i++)
+		{
+			if (faceUpCards[i].Symbol == Entities.CardSymbol.Queen)
+			{
+				if (i + 1 < faceUpCards.Count)
+				{
+					followingWildSymbol = (int)faceUpCards[i + 1].Symbol;
+				}
+				else
+				{
+					// Queen is the last face-up card, no following wild rank
+					followingWildSymbol = null;
+				}
+			}
+		}
+
+		if (followingWildSymbol.HasValue)
+		{
+			var followRank = MapSymbolToRank((Entities.CardSymbol)followingWildSymbol.Value);
+			if (followRank is not null)
+			{
+				wildRanks.Add(followRank);
+			}
+		}
+
+		return wildRanks;
+	}
+
+	/// <summary>
+	/// Builds the special rules DTO from game rules (static version for non-dynamic games).
 	/// </summary>
 	private static GameSpecialRulesDto? BuildSpecialRulesDto(GameRules? rules)
 	{
@@ -1480,7 +1566,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	/// <summary>
 	/// Builds structured wild card rules from game rules.
 	/// </summary>
-	private static WildCardRulesDto? BuildWildCardRulesDto(GameRules? rules)
+	/// <param name="rules">The game rules.</param>
+	/// <param name="dynamicWildRanks">Optional pre-computed wild ranks for dynamic wild card games (e.g., Follow the Queen).</param>
+	private static WildCardRulesDto? BuildWildCardRulesDto(GameRules? rules, IReadOnlyList<string>? dynamicWildRanks = null)
 	{
 		if (rules?.SpecialRules is null || !rules.SpecialRules.TryGetValue("WildCards", out var wildCardsValue))
 		{
@@ -1506,6 +1594,18 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		{
 			wildRanks.Add("K");
 			lowestCardIsWild = true;
+		}
+		else if (string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.FollowTheQueenCode, StringComparison.OrdinalIgnoreCase))
+		{
+			// Follow the Queen: Queens are always wild, plus the dynamic "follow" rank
+			if (dynamicWildRanks is { Count: > 0 })
+			{
+				wildRanks.AddRange(dynamicWildRanks);
+			}
+			else
+			{
+				wildRanks.Add("Q"); // Fallback: at minimum Queens are always wild
+			}
 		}
 
 		return new WildCardRulesDto

@@ -179,7 +179,7 @@
         </div>
 
         <!-- Action Panel (only shown when it's player's turn during betting phase and player has cards) -->
-        @if (_isPlayerTurn && IsBettingPhase && CurrentPlayerHandCards.Count > 0)
+        @if (_isPlayerTurn && IsBettingPhase && CurrentPlayerHandCards.Count > 0 && !_dealAnimationInProgress)
         {
             <ActionPanel LegalActions="@_legalActions" MinBet="@_currentMinBet" MaxBet="@_currentMaxBet"
                          CurrentBetToCall="@_currentBetToCall" PlayerChips="@_playerChips"
@@ -492,6 +492,18 @@
     private Dictionary<int, int> _runoutVisibleCardCount = new(); // Seat index -> number of runout cards visible
     private Dictionary<int, int> _runoutInitialCardCounts = new(); // Seat index -> number of cards BEFORE runout started
 
+    // Card Deal Animation state (for Stud/Baseball/Queens)
+    private bool _dealAnimationInProgress;
+    private Timer? _dealTimer;
+    private TableStatePublicDto? _dealTargetState;
+    private PrivateStateDto? _dealPendingPrivateState;
+    private List<int> _dealOrderedSeatIndices = [];
+    private int _dealCurrentCardIndex; // Which card index we are dealing (0, 1, 2 for initial; 3, 4...)
+    private int _dealTargetEndIndex; // Stop dealing when _dealCurrentCardIndex reaches this
+    private int _dealCurrentSeatIdx; // Index into _dealOrderedSeatIndices
+    private Dictionary<int, List<CardInfo>> _dealTargetCards = new(); // SeatIndex -> Full Public Cards list
+
+
     // Continuous play state
     private int _secondsUntilNextHand;
     private bool _isResultsPhase;
@@ -713,6 +725,11 @@
         // Store the table state for phase category checks
         _tableState = state;
 
+        if (_dealAnimationInProgress)
+        {
+            _dealTargetState = state;
+        }
+
         // Update deck hand description from state
         if (state.PlayerVsDeck is not null)
         {
@@ -769,6 +786,43 @@
                 _isPausedForChipCheck = false;
                 _chipCheckPauseEndsAt = null;
                 _chipCheckPotAmount = 0;
+            }
+
+            // Check for Card Deal Animation trigger (Stud/Baseball/Queens)
+            // Detect ANY increase in cards for active players
+            var isStudGame = IsSevenCardStud || IsBaseball || IsFollowTheQueen;
+            if (isStudGame && !_dealAnimationInProgress && !_runoutAnimationInProgress)
+            {
+                // Identify active players who are not folded in the NEW state (since if folded, they don't get new cards)
+                var activeSeatIndices = _seats
+                    .Where(s => s.IsOccupied && !s.IsSittingOut)
+                    .Select(s => s.SeatIndex)
+                    .ToList();
+
+                if (activeSeatIndices.Count > 0)
+                {
+                    // Find a player who is active in both states and check if their card count increased
+                    foreach (var seatIdx in activeSeatIndices)
+                    {
+                        var currentSeat = _seats.FirstOrDefault(s => s.SeatIndex == seatIdx);
+                        var newSeat = state.Seats.FirstOrDefault(s => s.SeatIndex == seatIdx);
+
+                        // Only consider non-folded players in the new state (folded players stop receiving cards)
+                        // Exception: Initial deal (current count 0) everyone gets cards even if technically not "folded" yet
+                        if (currentSeat != null && newSeat != null && !newSeat.IsFolded)
+                        {
+                            var currentCount = currentSeat.Cards.Count;
+                            var newCount = newSeat.Cards.Count;
+
+                            if (newCount > currentCount)
+                            {
+                                // Trigger animation for the difference
+                                StartCardDealAnimation(state, currentCount, newCount - currentCount);
+                                break; // Only trigger once
+                            }
+                        }
+                    }
+                }
             }
 
             // IMPORTANT: Check for All-In Runout BEFORE updating seats
@@ -1054,11 +1108,16 @@
             var isInRunoutAnimation = _runoutAnimationInProgress &&
             _allInRunoutState?.RunoutCardsBySeat?.ContainsKey(targetSeatIndex) == true;
 
-            if (isInRunoutAnimation)
+            if (isInRunoutAnimation || _dealAnimationInProgress)
             {
                 Logger.LogDebug(
-                "Skipping private state card update for seat {SeatIndex} during runout animation",
-                targetSeatIndex);
+                "Skipping private state card update for seat {SeatIndex} during animation (Runout={Runout}, Deal={Deal})",
+                targetSeatIndex, isInRunoutAnimation, _dealAnimationInProgress);
+
+                if (_dealAnimationInProgress && state.Hand is { Count: > 0 })
+                {
+                    _dealPendingPrivateState = state;
+                }
             }
             else if (state.Hand is { Count: > 0 })
             {
@@ -1284,19 +1343,21 @@
                 // This prevents briefly showing face-down cards before private state arrives
                 // BUT: Don't preserve cards if the player is sitting out (they shouldn't have cards)
                 // ALSO: Preserve cards during runout animation - the animation controls card visibility
+                // ALSO: Preserve cards during initial deal animation - the animation controls card visibility
                 var existingCards = _seats[publicSeat.SeatIndex].Cards;
                 var shouldPreserveCards = (isCurrentPlayer && existingCards.Any(c => c.IsFaceUp) && !publicSeat.IsSittingOut)
-                || isInRunoutAnimation;
+                || isInRunoutAnimation
+                || _dealAnimationInProgress;
 
                 Logger.LogDebug(
                 "UpdateSeatsFromPublicState: Seat {SeatIndex}, PlayerName={PlayerName}, " +
                 "isCurrentPlayerByEmail={ByEmail}, isCurrentPlayerBySeatIndex={BySeat}, " +
                 "isCurrentPlayerByName={ByName}, existingCards={ExistingCount}, " +
-                "existingFaceUp={FaceUpCount}, shouldPreserve={ShouldPreserve}, publicCardCount={PublicCount}, isSittingOut={IsSittingOut}, isInRunout={IsInRunout}",
+                "existingFaceUp={FaceUpCount}, shouldPreserve={ShouldPreserve}, publicCardCount={PublicCount}, isSittingOut={IsSittingOut}, isInRunout={IsInRunout}, isDealAnim={IsDealAnim}",
                 publicSeat.SeatIndex, publicSeat.PlayerName,
                 isCurrentPlayerByEmail, isCurrentPlayerBySeatIndex, isCurrentPlayerByName,
                 existingCards.Count, existingCards.Count(c => c.IsFaceUp),
-                shouldPreserveCards, publicSeat.Cards.Count, publicSeat.IsSittingOut, isInRunoutAnimation);
+                shouldPreserveCards, publicSeat.Cards.Count, publicSeat.IsSittingOut, isInRunoutAnimation, _dealAnimationInProgress);
 
                 var cards = shouldPreserveCards
                 ? existingCards
@@ -2247,6 +2308,155 @@
         seatIndex, allCards.Count);
     }
 
+    private void StartCardDealAnimation(TableStatePublicDto state, int startCardIndex, int numberOfCardsToDeal)
+    {
+        Logger.LogInformation("Starting card deal animation for game {GameId}. StartIdx={Start}, Count={Count}", 
+            GameId, startCardIndex, numberOfCardsToDeal);
+
+        _dealAnimationInProgress = true;
+        _dealTargetState = state;
+        _dealCurrentCardIndex = startCardIndex; // Start dealing at this card index (e.g., 0 for initial, 3 for 4th street)
+        _dealTargetEndIndex = startCardIndex + numberOfCardsToDeal; // Stop when index reaches this value
+        _dealCurrentSeatIdx = 0;
+
+        // Determine deal order: Start from Dealer + 1
+        // Filter to seats that are occupied, not sitting out, AND NOT Folded in the NEW state
+        // (Folded players do not receive new cards in Stud, except initially everyone is not folded)
+        var activePublicSeats = state.Seats
+            .Where(s => s.IsOccupied && !s.IsSittingOut && !s.IsFolded)
+            .ToList();
+
+        if (activePublicSeats.Count == 0)
+        {
+            CompleteCardDealAnimation();
+            return;
+        }
+
+        // Create ordered list starting after dealer
+        var dealerPos = state.DealerSeatIndex;
+        _dealOrderedSeatIndices = activePublicSeats
+            .Select(s => s.SeatIndex)
+            .OrderBy(idx => (idx - dealerPos - 1 + 8) % 8) // Circular order after dealer
+            .ToList();
+
+        // Cache target cards from the NEW state to know rank/suit/faceup status
+        _dealTargetCards.Clear();
+        foreach (var seat in activePublicSeats)
+        {
+            _dealTargetCards[seat.SeatIndex] = seat.Cards
+                .Select(c => new CardInfo { Rank = c.Rank, Suit = c.Suit, IsFaceUp = c.IsFaceUp })
+                .ToList();
+        }
+
+        // Start Timer - 2000ms delay between cards per player
+        _dealTimer = new Timer(DealNextCard, null, 100, 2000);
+    }
+
+    private async void DealNextCard(object? state)
+    {
+        if (!_dealAnimationInProgress) return;
+
+        // If we've completed all players for the current card index
+        if (_dealCurrentSeatIdx >= _dealOrderedSeatIndices.Count)
+        {
+            // Move to next card in the sequence (e.g. from 1st card to 2nd card)
+            _dealCurrentCardIndex++;
+            _dealCurrentSeatIdx = 0;
+        }
+
+        // Check if we are done dealing all assigned cards
+        if (_dealCurrentCardIndex >= _dealTargetEndIndex)
+        {
+            await InvokeAsync(() =>
+            {
+                CompleteCardDealAnimation();
+                StateHasChanged();
+            });
+            return;
+        }
+
+        // Deal card to current seat
+        var seatIndex = _dealOrderedSeatIndices[_dealCurrentSeatIdx];
+
+        // Find the seat in the current display state
+        var seatListIndex = _seats.FindIndex(s => s.SeatIndex == seatIndex);
+
+        if (seatListIndex >= 0)
+        {
+            var seat = _seats[seatListIndex];
+
+            // Determine properties from the TARGET state
+            string? rank = null;
+            string? suit = null;
+            bool isFaceUp = false;
+
+            if (_dealTargetCards.TryGetValue(seatIndex, out var targetCards) && 
+                _dealCurrentCardIndex < targetCards.Count)
+            {
+                var targetCard = targetCards[_dealCurrentCardIndex];
+                rank = targetCard.Rank;
+                suit = targetCard.Suit;
+                isFaceUp = targetCard.IsFaceUp;
+            }
+
+            // Create the card
+            var newCard = new CardInfo
+            {
+                Rank = rank,
+                Suit = suit,
+                IsFaceUp = isFaceUp,
+                IsSelected = false,
+                DealOrder = _dealCurrentCardIndex
+            };
+
+            // Safely add card. Check if we are replacing or adding.
+            // Normally adding. But safeguard if list is somehow already large?
+            // Since we preserved existingCards, usually we just append.
+            var newHand = seat.Cards.ToList();
+            if (newHand.Count > _dealCurrentCardIndex)
+            {
+                // This shouldn't happen if logic is correct, but if it does, update existing
+                newHand[_dealCurrentCardIndex] = newCard;
+            }
+            else
+            {
+                newHand.Add(newCard);
+            }
+
+            _seats[seatListIndex] = seat with { Cards = newHand };
+
+            Logger.LogDebug("Deal Animation: CardIdx {CardIdx}, Seat {SeatIndex}, FaceUp={FaceUp}",
+                _dealCurrentCardIndex, seatIndex, isFaceUp);
+        }
+
+        _dealCurrentSeatIdx++;
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void CompleteCardDealAnimation()
+    {
+        Logger.LogInformation("Card deal animation complete");
+
+        _dealAnimationInProgress = false;
+        _dealTimer?.Dispose();
+        _dealTimer = null;
+
+        // Sync with Pending State
+        if (_dealTargetState != null)
+        {
+            UpdateSeatsFromPublicState(_dealTargetState.Seats);
+            _dealTargetState = null;
+        }
+
+        // Sync with Pending Private State (for current player hole cards)
+        if (_dealPendingPrivateState != null)
+        {
+            _ = HandlePrivateStateUpdatedAsync(_dealPendingPrivateState);
+            _dealPendingPrivateState = null;
+        }
+    }
+
     /// <summary>
     /// Completes the runout animation and triggers the showdown.
     /// </summary>
@@ -2840,6 +3050,10 @@
         // Stop runout animation timer
         _runoutDealTimer?.Dispose();
         _runoutDealTimer = null;
+
+        // Stop card deal animation timer
+        _dealTimer?.Dispose();
+        _dealTimer = null;
 
         // Unsubscribe from SignalR events
         GameHubClient.OnTableStateUpdated -= HandleTableStateUpdatedAsync;

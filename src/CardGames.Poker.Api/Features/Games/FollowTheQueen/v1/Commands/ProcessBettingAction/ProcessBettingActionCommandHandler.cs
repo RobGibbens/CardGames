@@ -2,6 +2,7 @@ using System.Text.Json;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.FollowTheQueen.v1.Commands.DealHands;
+using CardGames.Poker.Api.Features.Games.FollowTheQueen.v1.Commands.PerformShowdown;
 using CardGames.Poker.Betting;
 using CardGames.Poker.Games.SevenCardStud;
 using MediatR;
@@ -216,6 +217,30 @@ public class ProcessBettingActionCommandHandler(
 					await DealRemainingStreetsAsync(game, activePlayers, game.CurrentPhase, now, cancellationToken);
 				}
 
+				if (game.CurrentPhase == nameof(Phases.Showdown))
+				{
+					logger.LogInformation(
+						"Game {GameId} reached Showdown. Performing showdown logic.",
+						game.Id);
+
+					// Perform showdown immediately
+					var showdownResult = await mediator.Send(new PerformShowdownCommand(game.Id), cancellationToken);
+
+					if (showdownResult.IsT0)
+					{
+						// Showdown successful
+						var success = showdownResult.AsT0;
+						game.CurrentPhase = success.CurrentPhase;
+					}
+					else
+					{
+						var error = showdownResult.AsT1;
+						logger.LogError(
+							"Failed to perform showdown for game {GameId}: {ErrorMessage}",
+							game.Id, error.Message);
+					}
+				}
+
 				game.UpdatedAt = now;
 				await context.SaveChangesAsync(cancellationToken);
 
@@ -326,6 +351,29 @@ public class ProcessBettingActionCommandHandler(
 						"Exception during phase transition for game {GameId}, phase {Phase}",
 						game.Id, game.CurrentPhase);
 					throw;
+				}
+			}
+			else if (game.CurrentPhase == nameof(Phases.Showdown))
+			{
+				logger.LogInformation(
+					"Game {GameId} reached Showdown. Performing showdown logic.",
+					game.Id);
+
+				// Perform showdown immediately
+				var showdownResult = await mediator.Send(new PerformShowdownCommand(game.Id), cancellationToken);
+
+				if (showdownResult.IsT0)
+				{
+					// Showdown successful
+					var success = showdownResult.AsT0;
+					game.CurrentPhase = success.CurrentPhase;
+				}
+				else
+				{
+					var error = showdownResult.AsT1;
+					logger.LogError(
+						"Failed to perform showdown for game {GameId}: {ErrorMessage}",
+						game.Id, error.Message);
 				}
 			}
 			else

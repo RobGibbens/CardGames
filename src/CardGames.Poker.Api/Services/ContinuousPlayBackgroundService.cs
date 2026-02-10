@@ -614,6 +614,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 
 		// Automatically deal hands using the flow handler
 		await flowHandler.DealCardsAsync(context, game, eligiblePlayers, now, cancellationToken);
+		await context.SaveChangesAsync(cancellationToken);
 
 		// Broadcast updated state
 		await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);

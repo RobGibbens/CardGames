@@ -128,7 +128,7 @@ public static class FollowTheQueenRules
             },
             SpecialRules = new Dictionary<string, object>
             {
-                ["HasWildCards"] = true,
+                ["WildCards"] = "Queens + Next Card after face-up Queen",
                 ["WildCardRule"] = "Queens + Next Card",
                 ["HasBringIn"] = true
             }

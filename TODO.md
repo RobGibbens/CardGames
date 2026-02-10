@@ -2,6 +2,9 @@
 
 ## Still to do
 
+- [ ] FTQ should show what cards are wild
+- [ ] FTW second third street doesn't delay
+
 ### P1 - Can't play without these
 - [ ] Test side pots
 - [ ] SCS - Choosing wrong first to act
@@ -24,7 +27,7 @@
 - [ ] When you can't start the game because you're waiting for other players to sit, show a message
 
 ### P3 - Nice to have
-- [ ] Search for code == "KINGSANDLOWS" and refactor
+- [x] Search for code == "KINGSANDLOWS" and refactor
 - [ ] Creating a deck and dealing is done in the StartHandCommandHandler, but it should be using CardGames.Core.Dealer
 - [ ] Table settings should be dynamic when creating a table. Not all games have an ante or a minimum bet.
 - [ ] There are a lot of extra database calls going on
@@ -32,7 +35,7 @@
 - [ ] Hand history should paginate
 - [ ] When the Draw Overlay is showing, the cards are not opaque
 - [ ] The bottom of the table goes off the bottom of the screen
-- [ ] Add a chip stack graph in the dashboard
+- [x] Add a chip stack graph in the dashboard
 - [ ] Add sound effects
 - [ ] Add a chat box
 - [ ] Add the ability to mute other players in chat
@@ -59,8 +62,8 @@
 
 ### 7 Card Stud Variants
 - [x] Add Seven Card Stud
-- [ ] Add Baseball
-- [ ] Add Follow the Queen
+- [x] Add Baseball
+- [x] Add Follow the Queen
 - [ ] The Good, the Bad, and the Ugly
 - [ ] Add Razz
 

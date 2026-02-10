@@ -199,6 +199,31 @@ public sealed class FollowTheQueenFlowHandler : BaseGameFlowHandler
         // Set current phase to ThirdStreet (betting round)
         game.CurrentPhase = nameof(Phases.ThirdStreet);
         game.CurrentPlayerIndex = bringInSeatPosition;
+
+        // Create the initial betting round for Third Street
+        var bettingRound = new CardGames.Poker.Api.Data.Entities.BettingRound
+        {
+            GameId = game.Id,
+            HandNumber = game.CurrentHandNumber,
+            RoundNumber = 1,
+            Street = nameof(Phases.ThirdStreet),
+            CurrentBet = currentBet,
+            MinBet = game.SmallBet ?? 0,
+            MaxRaises = 4, // Fixed limit typically caps raises
+            LastRaiseAmount = 0,
+            PlayersInHand = eligiblePlayers.Count,
+            PlayersActed = 0,
+            CurrentActorIndex = bringInSeatPosition,
+            IsComplete = false,
+            StartedAt = now
+        };
+
+        if (currentBet > 0 && bringInPlayer is not null)
+        {
+            bettingRound.LastAggressorIndex = bringInPlayer.SeatPosition;
+        }
+
+        context.Set<CardGames.Poker.Api.Data.Entities.BettingRound>().Add(bettingRound);
     }
 
     /// <summary>

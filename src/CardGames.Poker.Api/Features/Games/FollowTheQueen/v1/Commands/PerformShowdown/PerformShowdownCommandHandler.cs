@@ -5,6 +5,7 @@ using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
 using CardGames.Poker.Games.SevenCardStud;
 using CardGames.Poker.Hands.StudHands;
+using CardGames.Poker.Hands.WildCards;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
@@ -161,9 +162,23 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 			};
 		}
 
-		// 7. Evaluate all hands
-		var playerHandEvaluations = new Dictionary<string, (StudHand hand, List<GameCard> cards, GamePlayer gamePlayer)>();
+		// 7. Load face-up cards in deal order for wild card determination
+		var faceUpCardsInOrder = await context.GameCards
+			.Where(c => c.GameId == command.GameId &&
+						c.HandNumber == game.CurrentHandNumber &&
+						c.IsVisible &&
+						!c.IsDiscarded)
+			.Include(c => c.GamePlayer)
+			.OrderBy(c => c.DealOrder)
+			.ThenBy(c => c.GamePlayer!.SeatPosition)
+			.Select(c => new Card(MapSuit(c.Suit), MapSymbol(c.Symbol)))
+			.ToListAsync(cancellationToken);
 
+		var wildCardRules = new FollowTheQueenWildCardRules();
+		var wildRanks = wildCardRules.DetermineWildRanks(faceUpCardsInOrder);
+
+		// 8. Evaluate all hands
+		var playerHandEvaluations = new Dictionary<string, (FollowTheQueenHand hand, List<GameCard> cards, GamePlayer gamePlayer, List<int> wildIndexes)>();
 
 		foreach (var gamePlayer in playersInHand)
 		{
@@ -178,31 +193,49 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 			// - Down cards: Final face-down card (SeventhStreet, not visible)
 			var holeCards = cards
 				.Where(c => c.Location == CardLocation.Hole && c.DealtAtPhase != nameof(Phases.SeventhStreet))
+				.OrderBy(c => c.DealOrder)
 				.Select(c => new Card(MapSuit(c.Suit), MapSymbol(c.Symbol)))
 				.ToList();
 
 			var openCards = cards
 				.Where(c => c.Location == CardLocation.Board)
+				.OrderBy(c => c.DealOrder)
 				.Select(c => new Card(MapSuit(c.Suit), MapSymbol(c.Symbol)))
 				.ToList();
 
-			var downCards = cards
+			var downCardEntities = cards
 				.Where(c => c.Location == CardLocation.Hole && c.DealtAtPhase == nameof(Phases.SeventhStreet))
-				.Select(c => new Card(MapSuit(c.Suit), MapSymbol(c.Symbol)))
+				.OrderBy(c => c.DealOrder)
 				.ToList();
 
-			var studHand = new StudHand(holeCards, openCards, downCards);
-			playerHandEvaluations[gamePlayer.Player.Name] = (studHand, cards, gamePlayer);
+			var downCard = downCardEntities.Count > 0
+				? new Card(MapSuit(downCardEntities[0].Suit), MapSymbol(downCardEntities[0].Symbol))
+				: (Card?)null;
+
+			var ftqHand = new FollowTheQueenHand(holeCards, openCards, downCard, faceUpCardsInOrder);
+
+			// Determine wild card indexes for this player's hand
+			var allCards = cards.OrderBy(c => c.DealOrder).ToList();
+			var wildIndexes = new List<int>();
+			for (var i = 0; i < allCards.Count; i++)
+			{
+				if (wildRanks.Contains((int)MapSymbol(allCards[i].Symbol)))
+				{
+					wildIndexes.Add(i);
+				}
+			}
+
+			playerHandEvaluations[gamePlayer.Player.Name] = (ftqHand, cards, gamePlayer, wildIndexes);
 		}
 
-		// 8. Determine winners (highest strength)
+		// 9. Determine winners (highest strength)
 		var maxStrength = playerHandEvaluations.Values.Max(h => h.hand.Strength);
 		var winners = playerHandEvaluations
 			.Where(kvp => kvp.Value.hand.Strength == maxStrength)
 			.Select(kvp => kvp.Key)
 			.ToList();
 
-		// 9. Calculate payouts (split pot if multiple winners)
+		// 10. Calculate payouts (split pot if multiple winners)
 		var payoutPerWinner = totalPot / winners.Count;
 		var remainder = totalPot % winners.Count;
 		var payouts = new Dictionary<string, int>();
@@ -218,7 +251,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 			payouts[winners[0]] += remainder;
 		}
 
-		// 10. Update player chip stacks
+		// 11. Update player chip stacks
 		if (!isAlreadyAwarded)
 		{
 			foreach (var payout in payouts)
@@ -227,7 +260,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 				gamePlayer.ChipStack += payout.Value;
 			}
 
-			// 11. Mark pots as awarded
+			// 12. Mark pots as awarded
 			var winReason = winners.Count > 1
 				? $"Split pot - {playerHandEvaluations[winners[0]].hand.Type}"
 				: playerHandEvaluations[winners[0]].hand.Type.ToString();
@@ -247,7 +280,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 				pot.WinnerPayouts = winnerPayoutsJson;
 			}
 
-			// 12. Update game state
+			// 13. Update game state
 			game.CurrentPhase = nameof(Phases.Complete);
 			game.UpdatedAt = now;
 			game.HandCompletedAt = now;
@@ -276,7 +309,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 				cancellationToken);
 		}
 
-		// 13. Build response
+		// 14. Build response
 		var playerHandsList = playerHandEvaluations.Select(kvp =>
 		{
 			var isWinner = winners.Contains(kvp.Key);
@@ -316,7 +349,8 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 				HandStrength = kvp.Value.hand.Strength,
 				IsWinner = isWinner,
 				AmountWon = payouts.GetValueOrDefault(kvp.Key, 0),
-				BestCardIndexes = bestCardIndexes
+				BestCardIndexes = bestCardIndexes,
+				WildCardIndexes = kvp.Value.wildIndexes.Count > 0 ? kvp.Value.wildIndexes : null
 			};
 		}).OrderByDescending(h => h.HandStrength ?? 0).ToList();
 
@@ -410,7 +444,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 		List<(Guid PlayerId, string PlayerName, int AmountWon)> winners,
 		List<string> winnerNames,
 		string? winningHandDescription,
-		Dictionary<string, (StudHand hand, List<GameCard> cards, GamePlayer gamePlayer)>? playerHandEvaluations,
+		Dictionary<string, (FollowTheQueenHand hand, List<GameCard> cards, GamePlayer gamePlayer, List<int> wildIndexes)>? playerHandEvaluations,
 		CancellationToken cancellationToken)
 	{
 		var isSplitPot = winners.Count > 1;

@@ -352,11 +352,12 @@
 			return [];
 		}
 
-		// Seven Card Stud: The API already orders cards correctly using a composite key
+		// Seven Card Stud variants: The API already orders cards correctly using a composite key
 		// (phase + location + deal order). Do NOT re-sort here as DealOrder alone is unreliable
 		// (it can have ties across different streets, causing incorrect interleaving).
 		if (string.Equals(GameTypeCode, "SEVENCARDSTUD", StringComparison.OrdinalIgnoreCase) ||
-			string.Equals(GameTypeCode, "BASEBALL", StringComparison.OrdinalIgnoreCase))
+			string.Equals(GameTypeCode, "BASEBALL", StringComparison.OrdinalIgnoreCase) ||
+			string.Equals(GameTypeCode, "FOLLOWTHEQUEEN", StringComparison.OrdinalIgnoreCase))
 		{
 			// Preserve the API order - cards are already sorted by the server
 			return Seat.Cards;
