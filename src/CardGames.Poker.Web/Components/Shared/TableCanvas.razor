@@ -77,6 +77,54 @@
             </div>
         }
     </div>
+
+    <!-- Wild Cards Panel (top-right corner, outside the table) -->
+    @if (HasWildCards && WildCards is { Count: > 0 })
+    {
+        <div class="wild-cards-panel">
+            <div class="wild-cards-header">
+                <i class="fa-solid fa-star wild-cards-icon"></i>
+                <span class="wild-cards-title">Wild Cards</span>
+            </div>
+            <div class="wild-cards-list">
+                @foreach 
+	                (var wildCard in WildCards)
+                {
+                    <div class="wild-card-item @(wildCard.IsPersonalized ? "personalized" : "")">
+                        @if 
+	                        (!string.IsNullOrWhiteSpace(wildCard.Suit))
+                        {
+                            @* Specific card (e.g., King of Diamonds) *@
+                            <div class="wild-card-visual wild-card-specific">
+                                <playing-card rank="@GetPlayingCardRank(wildCard.Rank)" 
+                                              suit="@wildCard.Suit"></playing-card>
+                            </div>
+                        }
+                        else if 
+	                        (!string.IsNullOrWhiteSpace(wildCard.Rank))
+                        {
+	                        <div class="wild-card-visual wild-card-specific">
+		                        <playing-card rank="@GetPlayingCardRank(wildCard.Rank)" suit="Hearts" suitcolor="white"></playing-card>
+	                        </div>
+
+
+                            @* All cards of a rank (e.g., all 3s) *@
+                            @* <div class="wild-card-visual all-suits">
+                                <span class="wild-card-rank">@GetDisplayRank(wildCard.Rank)</span>
+                                <span class="wild-card-suits">
+                                    <span class="suit-hearts">♥</span>
+                                    <span class="suit-diamonds">♦</span>
+                                    <span class="suit-clubs">♣</span>
+                                    <span class="suit-spades">♠</span>
+                                </span>
+                            </div> *@
+                        }
+                        @* <span class="wild-card-label">@wildCard.Label</span> *@
+                    </div>
+                }
+            </div>
+        </div>
+    }
 </div>
 
 @code {
@@ -118,6 +166,20 @@
     /// </summary>
     [Parameter]
     public FlyingCardInfo? FlyingCard { get; set; }
+
+    /// <summary>
+    /// Wild cards to display in the visualization panel.
+    /// For Baseball: 3s and 9s. For Follow the Queen: Queens + dynamic wild.
+    /// For Kings and Lows: Kings + player's lowest card (personalized).
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<WildCardDisplay>? WildCards { get; set; }
+
+    /// <summary>
+    /// Whether the game has wild cards to display.
+    /// </summary>
+    [Parameter]
+    public bool HasWildCards { get; set; }
 
     private ElementReference _deckRef;
 
@@ -231,4 +293,47 @@
             _ => "0"
         };
     }
+
+    /// <summary>
+    /// Gets a display-friendly rank string for the wild cards panel.
+    /// </summary>
+    private static string GetDisplayRank(string? rank)
+    {
+        if (string.IsNullOrWhiteSpace(rank))
+        {
+            return "?";
+        }
+
+        return rank.ToUpperInvariant() switch
+        {
+            "A" => "A",
+            "2" => "2",
+            "3" => "3",
+            "4" => "4",
+            "5" => "5",
+            "6" => "6",
+            "7" => "7",
+            "8" => "8",
+            "9" => "9",
+            "10" or "T" => "10",
+            "J" => "J",
+            "Q" => "Q",
+            "K" => "K",
+            _ => rank
+        };
+    }
+
+    /// <summary>
+    /// Represents a wild card for display in the wild cards panel.
+    /// </summary>
+    /// <param name="Rank">The rank to display (e.g., "3", "9", "Q", "K"). Null for "Lowest" card.</param>
+    /// <param name="Suit">Optional suit for specific wild cards (e.g., "Diamonds" for King of Diamonds).</param>
+    /// <param name="Label">Display label (e.g., "All 3s", "Queens", "Your Lowest").</param>
+    /// <param name="IsPersonalized">Whether this is a personalized wild (like player's lowest card).</param>
+    public record WildCardDisplay(
+        string? Rank,
+        string? Suit,
+        string Label,
+        bool IsPersonalized = false
+    );
 }

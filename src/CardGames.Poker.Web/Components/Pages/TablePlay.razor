@@ -144,7 +144,9 @@
                          OnSeatClick="HandleSeatClickAsync" DisableSeatSelectionForCurrentUser="@_isSeated"
                          CurrentPlayerSeatIndex="@_currentPlayerSeatIndex" GameTypeCode="@_gameTypeCode"
                          IsPausedForChipCheck="@_isPausedForChipCheck"
-                         FlyingCard="@_flyingCard" />
+                         FlyingCard="@_flyingCard"
+                         HasWildCards="@HasWildCards"
+                         WildCards="@GetWildCardsForDisplay()" />
 
             <!-- Dashboard Panel (left side) -->
             @if (_isSeated)
@@ -3556,6 +3558,158 @@ HandType.HighCard
         "HEARTS" => "H",
         "SPADES" => "S",
         _ => ""
+    };
+
+    /// <summary>
+    /// Gets the wild cards for display in the TableCanvas panel.
+    /// Returns game-specific wild cards:
+    /// - Baseball: 3s and 9s
+    /// - Follow the Queen: Queens + dynamic wild rank
+    /// - Kings and Lows: Kings + player's lowest card (personalized)
+    /// - Twos Jacks Man with the Axe: 2s, Jacks, and King of Diamonds
+    /// </summary>
+    private IReadOnlyList<TableCanvas.WildCardDisplay> GetWildCardsForDisplay()
+    {
+        var wildRules = _tableState?.SpecialRules?.WildCardRules;
+        if (wildRules is null)
+        {
+            return [];
+        }
+
+        var wildCards = new List<TableCanvas.WildCardDisplay>();
+
+        // Add specific cards first (e.g., King of Diamonds for Twos Jacks)
+        if (wildRules.SpecificCards is { Count: > 0 })
+        {
+            foreach (var cardCode in wildRules.SpecificCards)
+            {
+                if (cardCode.Length >= 2)
+                {
+                    var rank = cardCode[..^1]; // Everything except last char
+                    var suitCode = cardCode[^1..]; // Last char
+                    var suitName = suitCode.ToUpperInvariant() switch
+                    {
+                        "C" => "Clubs",
+                        "D" => "Diamonds",
+                        "H" => "Hearts",
+                        "S" => "Spades",
+                        _ => null
+                    };
+
+                    if (suitName is not null)
+                    {
+                        var displayRank = GetDisplayRankName(rank);
+                        wildCards.Add(new TableCanvas.WildCardDisplay(
+                            Rank: rank,
+                            Suit: suitName,
+                            Label: $"{displayRank} of {suitName}"
+                        ));
+                    }
+                }
+            }
+        }
+
+        // Add wild ranks (all cards of certain ranks)
+        if (wildRules.WildRanks is { Count: > 0 })
+        {
+            foreach (var rank in wildRules.WildRanks)
+            {
+                var label = GetWildRankLabel(rank);
+                wildCards.Add(new TableCanvas.WildCardDisplay(
+                    Rank: rank,
+                    Suit: null,
+                    Label: label
+                ));
+            }
+        }
+
+        // Add personalized wild card for "lowest card is wild" (Kings and Lows)
+        if (wildRules.LowestCardIsWild && _isSeated && CurrentPlayerHandCards.Count > 0)
+        {
+            var lowestCard = GetLowestCard(CurrentPlayerHandCards);
+            if (lowestCard is not null)
+            {
+                wildCards.Add(new TableCanvas.WildCardDisplay(
+                    Rank: lowestCard.Rank,
+                    Suit: null,
+                    Label: "Your Lowest",
+                    IsPersonalized: true
+                ));
+            }
+        }
+
+        return wildCards;
+    }
+
+    /// <summary>
+    /// Gets a display-friendly name for a rank.
+    /// </summary>
+    private static string GetDisplayRankName(string? rank) => rank?.ToUpperInvariant() switch
+    {
+        "A" => "Ace",
+        "K" => "King",
+        "Q" => "Queen",
+        "J" => "Jack",
+        "10" or "T" => "10",
+        _ => rank ?? "?"
+    };
+
+    /// <summary>
+    /// Gets a label for a wild rank (e.g., "All 3s", "Queens").
+    /// </summary>
+    private static string GetWildRankLabel(string? rank) => rank?.ToUpperInvariant() switch
+    {
+        "A" => "Aces",
+        "K" => "Kings",
+        "Q" => "Queens",
+        "J" => "Jacks",
+        "2" => "Deuces",
+        "3" => "Threes",
+        "4" => "Fours",
+        "5" => "Fives",
+        "6" => "Sixes",
+        "7" => "Sevens",
+        "8" => "Eights",
+        "9" => "Nines",
+        "10" or "T" => "Tens",
+        _ => $"All {rank}s"
+    };
+
+    /// <summary>
+    /// Gets the lowest card from a collection of cards (for Kings and Lows).
+    /// </summary>
+    private static CardInfo? GetLowestCard(IReadOnlyList<CardInfo> cards)
+    {
+        if (cards.Count == 0)
+        {
+            return null;
+        }
+
+        return cards
+            .Where(c => c.IsFaceUp && !string.IsNullOrWhiteSpace(c.Rank))
+            .OrderBy(c => GetCardValue(c.Rank))
+            .FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Gets the numeric value of a card rank for comparison.
+    /// </summary>
+    private static int GetCardValue(string? rank) => rank?.ToUpperInvariant() switch
+    {
+        "A" => 14,
+        "K" => 13,
+        "Q" => 12,
+        "J" => 11,
+        "10" or "T" => 10,
+        "9" => 9,
+        "8" => 8,
+        "7" => 7,
+        "6" => 6,
+        "5" => 5,
+        "4" => 4,
+        "3" => 3,
+        "2" => 2,
+        _ => 0
     };
 
     private static string DisplayFirstName(ShowdownPlayerHand? hand)

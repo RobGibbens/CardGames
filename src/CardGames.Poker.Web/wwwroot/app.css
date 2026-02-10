@@ -4575,3 +4575,180 @@ a:hover {
     margin-right: 0.5rem;
 }
 
+/* ===== Wild Cards Panel ===== */
+.wild-cards-panel {
+    position: absolute;
+    top: 0;
+    right: -10px;
+    transform: translateX(100%);
+    z-index: 100;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 16px;
+    padding: 0.875rem 1rem;
+    min-width: 140px;
+    max-width: 220px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    animation: fadeIn 0.3s ease-out;
+}
+
+.wild-cards-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.wild-cards-icon {
+    font-size: 1rem;
+    color: #fbbf24;
+}
+
+.wild-cards-title {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #fbbf24;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.wild-cards-list {
+    display: flex;
+    flex-direction: row;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.wild-card-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.wild-card-visual {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.wild-card-visual playing-card {
+    display: block;
+    width: 44px;
+    height: 62px;
+}
+
+.wild-card-visual playing-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.wild-card-visual.all-suits {
+    display: flex;
+    gap: 0.125rem;
+}
+
+.wild-card-rank {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: white;
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.wild-card-suits {
+    display: flex;
+    gap: 0.0625rem;
+    font-size: 0.625rem;
+}
+
+.wild-card-suits .suit-hearts,
+.wild-card-suits .suit-diamonds {
+    color: #ef4444;
+}
+
+.wild-card-suits .suit-spades,
+.wild-card-suits .suit-clubs {
+    color: #9ca3af;
+}
+
+.wild-card-label {
+    font-size: 0.6875rem;
+    color: rgba(255, 255, 255, 0.7);
+    font-weight: 500;
+    text-align: center;
+}
+
+.wild-card-item.personalized .wild-card-label {
+    color: #a78bfa;
+    font-style: italic;
+}
+
+.wild-card-item.personalized .wild-card-rank {
+    background: linear-gradient(135deg, #a78bfa, #8b5cf6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Specific card display (like King of Diamonds) */
+.wild-card-specific playing-card {
+    width: 48px;
+    height: 67px;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .wild-cards-panel {
+        top: 0;
+        right: 0;
+        transform: translateX(100%);
+        min-width: 100px;
+        max-width: 160px;
+        padding: 0.5rem 0.625rem;
+    }
+
+    .wild-cards-header {
+        margin-bottom: 0.5rem;
+        padding-bottom: 0.375rem;
+    }
+
+    .wild-cards-icon {
+        font-size: 0.875rem;
+    }
+
+    .wild-cards-title {
+        font-size: 0.6875rem;
+    }
+
+    .wild-cards-list {
+        gap: 0.375rem;
+    }
+
+    .wild-card-visual playing-card {
+        width: 32px;
+        height: 45px;
+    }
+
+    .wild-card-specific playing-card {
+        width: 36px;
+        height: 50px;
+    }
+
+    .wild-card-rank {
+        font-size: 0.75rem;
+    }
+
+    .wild-card-label {
+        font-size: 0.5625rem;
+    }
+}
+
+
