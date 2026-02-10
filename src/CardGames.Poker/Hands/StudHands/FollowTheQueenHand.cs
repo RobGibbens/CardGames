@@ -44,14 +44,14 @@ public class FollowTheQueenHand : StudHand
     /// </summary>
     /// <param name="holeCards">The player's hole cards (typically 2 cards).</param>
     /// <param name="openCards">The player's face-up board cards (typically 4 cards).</param>
-    /// <param name="downCard">The final face-down card dealt (typically 1 card).</param>
+    /// <param name="downCard">The final face-down card dealt (typically 1 card). Can be null for partial hands.</param>
     /// <param name="faceUpCardsInOrder">All face-up cards dealt to all players in the order they were dealt.</param>
     public FollowTheQueenHand(
         IReadOnlyCollection<Card> holeCards,
         IReadOnlyCollection<Card> openCards,
         Card downCard,
         IReadOnlyCollection<Card> faceUpCardsInOrder)
-        : base(holeCards, openCards, new[] { downCard })
+        : base(holeCards, openCards, downCard != null ? new[] { downCard } : Array.Empty<Card>())
     {
         if (holeCards.Count != 2)
         {
