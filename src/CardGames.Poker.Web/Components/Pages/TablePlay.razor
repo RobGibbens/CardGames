@@ -26,6 +26,7 @@
 @inject ILogger<TablePlay> Logger
 @inject ITwosJacksManWithTheAxeApi TwosJacksManWithTheAxeApi
 @inject ISevenCardStudApi SevenCardStudApi
+@inject IFollowTheQueenApi FollowTheQueenApi
 @inject IBaseballApi BaseballApi
 @inject IKingsAndLowsApi KingsAndLowsApi
 @inject IFiveCardDrawApi FiveCardDrawApiClient
@@ -522,6 +523,7 @@
     StringComparison.OrdinalIgnoreCase);
     private bool IsKingsAndLows => string.Equals(_gameTypeCode, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase);
     private bool IsSevenCardStud => string.Equals(_gameTypeCode, "SEVENCARDSTUD", StringComparison.OrdinalIgnoreCase);
+    private bool IsFollowTheQueen => string.Equals(_gameTypeCode, "FOLLOWTHEQUEEN", StringComparison.OrdinalIgnoreCase);
     private bool IsBaseball => string.Equals(_gameTypeCode, "BASEBALL", StringComparison.OrdinalIgnoreCase);
 
     // Game rules for dynamic UI rendering
@@ -1937,6 +1939,26 @@
             }
 
             var dealHandsResponse = await BaseballApi.BaseballDealHandsAsync(GameId);
+            if (!dealHandsResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
+        }
+        else if (IsFollowTheQueen)
+        {
+            var startHandResponse = await FollowTheQueenApi.FollowTheQueenStartHandAsync(GameId);
+            if (!startHandResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
+
+            var collectAntesResponse = await FollowTheQueenApi.FollowTheQueenCollectAntesAsync(GameId);
+            if (!collectAntesResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
+
+            var dealHandsResponse = await FollowTheQueenApi.FollowTheQueenDealHandsAsync(GameId);
             if (!dealHandsResponse.IsSuccessStatusCode)
             {
                 return;
