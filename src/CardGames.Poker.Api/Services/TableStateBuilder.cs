@@ -294,11 +294,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 			var allEvaluationCards = playerCards.Concat(communityCards).ToList();
 
-			var isBaseballGame = string.Equals(gameTypeCode, PokerGameMetadataRegistry.BaseballCode, StringComparison.OrdinalIgnoreCase);
-			var isFollowTheQueenGame = string.Equals(gameTypeCode, PokerGameMetadataRegistry.FollowTheQueenCode, StringComparison.OrdinalIgnoreCase);
-			var isSevenCardStud = string.Equals(gameTypeCode, PokerGameMetadataRegistry.SevenCardStudCode, StringComparison.OrdinalIgnoreCase) ||
-			                      isBaseballGame ||
-			                      isFollowTheQueenGame;
+			var isBaseballGame = string.Equals(game.GameType?.Code, PokerGameMetadataRegistry.BaseballCode, StringComparison.OrdinalIgnoreCase);
+			var isFollowTheQueenGame = string.Equals(game.GameType?.Code, PokerGameMetadataRegistry.FollowTheQueenCode, StringComparison.OrdinalIgnoreCase);
+			var isSevenCardStud = IsStudGame(game.GameType?.Code);
 
 			// Seven Card Stud / Baseball / Follow The Queen: Requires 2 hole + up to 4 board + 1 down card (7 total at showdown)
 			if (isSevenCardStud)
@@ -524,9 +522,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 		// For Seven Card Stud, show visible cards; otherwise show face-down placeholders
 		// During showdown phases, show cards face-up for players who haven't folded
-		var isSevenCardStud = string.Equals(gameTypeCode, PokerGameMetadataRegistry.SevenCardStudCode, StringComparison.OrdinalIgnoreCase) ||
-		                      string.Equals(gameTypeCode, PokerGameMetadataRegistry.BaseballCode, StringComparison.OrdinalIgnoreCase) ||
-		                      string.Equals(gameTypeCode, PokerGameMetadataRegistry.FollowTheQueenCode, StringComparison.OrdinalIgnoreCase);
+		var isSevenCardStud = IsStudGame(gameTypeCode);
 
 		// Get current hand cards (not discarded)
 		// Note: We filter by hand number to naturally handle sitting out players.
@@ -629,9 +625,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			.Where(c => !c.IsDiscarded && c.HandNumber == currentHandNumber);
 
 		// Use street-aware ordering for Seven Card Stud to handle multi-street dealing correctly
-		var isSevenCardStud = string.Equals(gameTypeCode, PokerGameMetadataRegistry.SevenCardStudCode, StringComparison.OrdinalIgnoreCase) ||
-		                      string.Equals(gameTypeCode, PokerGameMetadataRegistry.BaseballCode, StringComparison.OrdinalIgnoreCase) ||
-		                      string.Equals(gameTypeCode, PokerGameMetadataRegistry.FollowTheQueenCode, StringComparison.OrdinalIgnoreCase);
+		var isSevenCardStud = IsStudGame(gameTypeCode);
 		var orderedCards = OrderCardsForDisplay(filteredCards, isSevenCardStud).ToList();
 
 		_logger.LogDebug(
@@ -2024,6 +2018,13 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	/// This method uses Location to distinguish hole from board cards within ThirdStreet,
 	/// ensuring correct order even if DealOrder values are corrupted.
 	/// </remarks>
+	private static bool IsStudGame(string? gameTypeCode)
+	{
+		return string.Equals(gameTypeCode, PokerGameMetadataRegistry.SevenCardStudCode, StringComparison.OrdinalIgnoreCase) ||
+		       string.Equals(gameTypeCode, PokerGameMetadataRegistry.BaseballCode, StringComparison.OrdinalIgnoreCase) ||
+		       string.Equals(gameTypeCode, PokerGameMetadataRegistry.FollowTheQueenCode, StringComparison.OrdinalIgnoreCase);
+	}
+
 	private static int GetSevenCardStudOrderKey(GameCard card)
 	{
 		var phaseOrder = GetStreetPhaseOrder(card.DealtAtPhase);
