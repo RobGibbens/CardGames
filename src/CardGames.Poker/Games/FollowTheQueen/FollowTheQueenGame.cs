@@ -114,54 +114,7 @@ public class FollowTheQueenGame : IPokerGame
     /// </summary>
     public GameFlow.GameRules GetGameRules()
     {
-        return new GameFlow.GameRules
-        {
-            GameTypeCode = "FOLLOWTHEQUEEN",
-            GameTypeName = "Follow the Queen",
-            Description = "A seven card stud poker variant where Queens are wild, and the card following the last face-up Queen also becomes wild.",
-            MinPlayers = 2,
-            MaxPlayers = 7,
-            Phases = new List<GameFlow.GamePhaseDescriptor>
-            {
-                new() { PhaseId = "WaitingToStart", Name = "Waiting to Start", Description = "Waiting for players", Category = "Setup", RequiresPlayerAction = false },
-                new() { PhaseId = "CollectingAntes", Name = "Collecting Antes", Description = "Collecting ante bets", Category = "Setup", RequiresPlayerAction = false },
-                new() { PhaseId = "ThirdStreet", Name = "Third Street", Description = "2 down, 1 up, bring-in", Category = "Betting", RequiresPlayerAction = true },
-                new() { PhaseId = "FourthStreet", Name = "Fourth Street", Description = "1 up card, bet", Category = "Betting", RequiresPlayerAction = true },
-                new() { PhaseId = "FifthStreet", Name = "Fifth Street", Description = "1 up card, bet", Category = "Betting", RequiresPlayerAction = true },
-                new() { PhaseId = "SixthStreet", Name = "Sixth Street", Description = "1 up card, bet", Category = "Betting", RequiresPlayerAction = true },
-                new() { PhaseId = "SeventhStreet", Name = "Seventh Street", Description = "1 down card, final bet", Category = "Betting", RequiresPlayerAction = true },
-                new() { PhaseId = "Showdown", Name = "Showdown", Description = "Determine winner", Category = "Resolution", RequiresPlayerAction = false },
-                new() { PhaseId = "Complete", Name = "Complete", Description = "Hand complete", Category = "Resolution", RequiresPlayerAction = false, IsTerminal = true }
-            },
-            CardDealing = new GameFlow.CardDealingConfig
-            {
-                InitialCards = 3,
-                InitialVisibility = GameFlow.CardVisibility.Mixed,
-                HasCommunityCards = false,
-                DealingRounds = new List<GameFlow.DealingRound>
-                {
-                    new() { CardCount = 2, Visibility = GameFlow.CardVisibility.FaceDown, Target = GameFlow.DealingTarget.Players },
-                    new() { CardCount = 1, Visibility = GameFlow.CardVisibility.FaceUp, Target = GameFlow.DealingTarget.Players },
-                    new() { CardCount = 1, Visibility = GameFlow.CardVisibility.FaceUp, Target = GameFlow.DealingTarget.Players },
-                    new() { CardCount = 1, Visibility = GameFlow.CardVisibility.FaceUp, Target = GameFlow.DealingTarget.Players },
-                    new() { CardCount = 1, Visibility = GameFlow.CardVisibility.FaceUp, Target = GameFlow.DealingTarget.Players },
-                    new() { CardCount = 1, Visibility = GameFlow.CardVisibility.FaceDown, Target = GameFlow.DealingTarget.Players }
-                }
-            },
-            Betting = new GameFlow.BettingConfig
-            {
-                HasAntes = true,
-                HasBlinds = false,
-                BettingRounds = 5,
-                Structure = "Fixed Limit"
-            },
-            Showdown = new GameFlow.ShowdownConfig
-            {
-                HandRanking = "Standard",
-                IsHighLow = false,
-                HasSpecialSplitRules = false
-            }
-        };
+        return FollowTheQueenRules.CreateGameRules();
     }
 
     /// <summary>
