@@ -174,8 +174,10 @@ public class FollowTheQueenGame : IPokerGame
             throw new InvalidOperationException("Cannot deal third street in current phase");
         }
 
-        foreach (var gamePlayer in _gamePlayers)
+        int startPosition = (_dealerPosition + 1) % _gamePlayers.Count;
+        for (int i = 0; i < _gamePlayers.Count; i++)
         {
+            var gamePlayer = _gamePlayers[(startPosition + i) % _gamePlayers.Count];
             if (!gamePlayer.Player.HasFolded)
             {
                 // Deal 2 hole cards (face down)
@@ -404,8 +406,10 @@ public class FollowTheQueenGame : IPokerGame
             throw new InvalidOperationException("Cannot deal street card in current phase");
         }
 
-        foreach (var gamePlayer in _gamePlayers)
+        int startPosition = (_dealerPosition + 1) % _gamePlayers.Count;
+        for (int i = 0; i < _gamePlayers.Count; i++)
         {
+            var gamePlayer = _gamePlayers[(startPosition + i) % _gamePlayers.Count];
             if (!gamePlayer.Player.HasFolded)
             {
                 if (CurrentPhase == Phases.SeventhStreet)

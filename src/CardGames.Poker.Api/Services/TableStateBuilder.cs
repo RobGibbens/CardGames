@@ -331,16 +331,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					else if (isFollowTheQueenGame)
 					{
 						// Follow The Queen uses wild cards - get face-up cards for wild card determination
-						var faceUpCardsInOrder = await _context.GameCards
-							.Where(c => c.GameId == game.Id &&
-										c.HandNumber == game.CurrentHandNumber &&
-										c.IsVisible &&
-										!c.IsDiscarded)
-							.Include(c => c.GamePlayer)
-							.OrderBy(c => c.DealOrder)
-							.ThenBy(c => c.GamePlayer!.SeatPosition)
-							.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
-							.ToListAsync(cancellationToken);
+						var faceUpCardsInOrder = await GetOrderedFaceUpCardsAsync(game, cancellationToken);
 
 						if (holeCardEntities.Count >= 3 && initialHoleCards.Count == 2 && openCards.Count <= 4)
 						{
@@ -850,16 +841,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 						.ToList();
 
 					// Get face-up cards for wild card determination
-					var faceUpCardsInOrder = await _context.GameCards
-						.Where(c => c.GameId == game.Id &&
-									c.HandNumber == game.CurrentHandNumber &&
-									c.IsVisible &&
-									!c.IsDiscarded)
-						.Include(c => c.GamePlayer)
-						.OrderBy(c => c.DealOrder)
-						.ThenBy(c => c.GamePlayer!.SeatPosition)
-						.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
-						.ToListAsync(cancellationToken);
+					var faceUpCardsInOrder = await GetOrderedFaceUpCardsAsync(game, cancellationToken);
 
 					if (initialHoleCards.Count == 2 && openCards.Count <= 4 && holeCards.Count >= 3)
 					{
@@ -1497,28 +1479,18 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		Entities.Game game,
 		CancellationToken cancellationToken)
 	{
-		var faceUpCards = await _context.GameCards
-			.Where(c => c.GameId == game.Id &&
-						c.HandNumber == game.CurrentHandNumber &&
-						c.IsVisible &&
-						!c.IsDiscarded)
-			.Include(c => c.GamePlayer)
-			.OrderBy(c => c.DealOrder)
-			.ThenBy(c => c.GamePlayer!.SeatPosition)
-			.Select(c => new { c.Symbol })
-			.ToListAsync(cancellationToken);
+		var sortedFaceUpCards = await GetOrderedFaceUpCardsAsync(game, cancellationToken);
 
 		var wildRanks = new List<string> { "Q" }; // Queens are always wild
 
-		// Find the "follow" rank: the rank of the card dealt immediately after the last face-up Queen
 		int? followingWildSymbol = null;
-		for (var i = 0; i < faceUpCards.Count; i++)
+		for (var i = 0; i < sortedFaceUpCards.Count; i++)
 		{
-			if (faceUpCards[i].Symbol == Entities.CardSymbol.Queen)
+			if (sortedFaceUpCards[i].Symbol == Symbol.Queen)
 			{
-				if (i + 1 < faceUpCards.Count)
+				if (i + 1 < sortedFaceUpCards.Count)
 				{
-					followingWildSymbol = (int)faceUpCards[i + 1].Symbol;
+					followingWildSymbol = (int)sortedFaceUpCards[i + 1].Symbol;
 				}
 				else
 				{
@@ -1640,8 +1612,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					 && gc.HandNumber == game.CurrentHandNumber
 					 && gc.Location == Entities.CardLocation.Board
 					 && !gc.IsDiscarded)
-			.OrderBy(gc => gc.DealtAt)
-			.ThenBy(gc => gc.DealOrder)
+			.OrderBy(gc => gc.DealOrder)
 			.AsNoTracking()
 			.ToListAsync(cancellationToken);
 
@@ -2105,7 +2076,39 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	};
 
 	/// <summary>
-	/// Computes a composite order key for a Seven Card Stud card that ensures correct display order.
+	/// Retrieves face-up cards ordered correctly for Follow The Queen wild card determination.
+	/// Accounts for dealing order relative to the Dealer button (Student dealing rotation).
+	/// </summary>
+	private async Task<List<Card>> GetOrderedFaceUpCardsAsync(
+		Entities.Game game,
+		CancellationToken cancellationToken)
+	{
+		var rawFaceUpCards = await _context.GameCards
+			.Where(c => c.GameId == game.Id &&
+						c.HandNumber == game.CurrentHandNumber &&
+						c.IsVisible &&
+						!c.IsDiscarded)
+			.Include(c => c.GamePlayer)
+			.Select(c => new
+			{
+				c.Symbol,
+				c.Suit,
+				c.DealOrder,
+				SeatPosition = c.GamePlayer != null ? c.GamePlayer.SeatPosition : -1
+			})
+			.ToListAsync(cancellationToken);
+
+		// Sort in memory to handle rotation logic (Stud deals start left of Dealer)
+		// We want order: (Dealer+1)...Max, 0...Dealer
+		return rawFaceUpCards
+			.OrderBy(c => c.DealOrder)
+			.ThenBy(c => c.SeatPosition > game.DealerPosition ? c.SeatPosition : c.SeatPosition + 1000)
+			.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
+			.ToList();
+	}
+
+	/// <summary>
+	/// Generates a unique "key" for sorting Seven Card Stud cards.
 	/// </summary>
 	/// <remarks>
 	/// Seven Card Stud display order:
