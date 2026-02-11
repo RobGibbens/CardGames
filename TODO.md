@@ -3,6 +3,7 @@
 ## Still to do
 
 - [ ] FTQ should show what cards are wild
+- [ ] Wild cards is not showing the second wild card in FTQ
 - [ ] FTQ is misremembering other wild card after action
 
 ### P1 - Can't play without these
