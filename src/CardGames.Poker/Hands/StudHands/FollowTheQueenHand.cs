@@ -21,6 +21,7 @@ public class FollowTheQueenHand : StudHand
     private HandType _evaluatedType;
     private long _evaluatedStrength;
     private IReadOnlyCollection<Card> _evaluatedBestCards;
+    private IReadOnlyCollection<Card> _bestHandSourceCards;
     private bool _evaluated;
 
     public IReadOnlyCollection<Card> WildCards => _wildCards ??= DetermineWildCards();
@@ -36,6 +37,18 @@ public class FollowTheQueenHand : StudHand
         {
             EvaluateIfNeeded();
             return _evaluatedBestCards;
+        }
+    }
+
+    /// <summary>
+    /// Gets the original cards from the player's hand that formed the best evaluated hand.
+    /// </summary>
+    public IReadOnlyCollection<Card> BestHandSourceCards
+    {
+        get
+        {
+            EvaluateIfNeeded();
+            return _bestHandSourceCards;
         }
     }
 
@@ -96,14 +109,16 @@ public class FollowTheQueenHand : StudHand
             _evaluatedStrength = base.CalculateStrength();
             // Find the best 5-card hand from all possible hands
             _evaluatedBestCards = FindBestFiveCardHand();
+            _bestHandSourceCards = _evaluatedBestCards;
             return;
         }
 
-        var (type, strength, evaluatedCards, _) = WildCardHandEvaluator.EvaluateBestHand(
+        var (type, strength, evaluatedCards, sourceCards) = WildCardHandEvaluator.EvaluateBestHand(
             Cards, WildCards, Ranking);
         _evaluatedType = type;
         _evaluatedStrength = strength;
         _evaluatedBestCards = evaluatedCards;
+        _bestHandSourceCards = sourceCards;
     }
     
     private IReadOnlyCollection<Card> FindBestFiveCardHand()

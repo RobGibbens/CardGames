@@ -22,7 +22,7 @@
 						{
 							if (card.IsFaceUp)
 							{
-								<playing-card rank="@rank" suit="@card.Suit" class="poker-card"></playing-card>
+								<playing-card rank="@rank" suit="@card.Suit" class="poker-card" suitcolor="@(card.IsWild ? "green" : null)"></playing-card>
 							}
 							else
 							{

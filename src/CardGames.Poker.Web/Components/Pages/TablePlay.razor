@@ -1150,7 +1150,8 @@
                     Suit = c.Suit,
                     IsFaceUp = true,
                     IsSelected = false,
-                    DealOrder = c.DealOrder
+                    DealOrder = c.DealOrder,
+                    IsWild = IsWildCard(c.Rank, c.Suit)
                 }).ToList();
 
                 _seats[targetSeatIndex].HandEvaluationDescription = state.HandEvaluationDescription;
@@ -1377,14 +1378,15 @@
                 shouldPreserveCards, publicSeat.Cards.Count, publicSeat.IsSittingOut, isInRunoutAnimation, _dealAnimationInProgress);
 
                 var cards = shouldPreserveCards
-                ? existingCards
+                ? existingCards.Select(c => c with { IsWild = IsWildCard(c.Rank, c.Suit) }).ToList()
                 : publicSeat.Cards.Select(c => new CardInfo
                 {
                     Rank = c.IsFaceUp ? c.Rank : null,
                     Suit = c.IsFaceUp ? c.Suit : null,
                     IsFaceUp = c.IsFaceUp,
                     IsSelected = false,
-                    DealOrder = c.DealOrder
+                    DealOrder = c.DealOrder,
+                    IsWild = c.IsFaceUp && IsWildCard(c.Rank, c.Suit)
                 }).ToList();
 
                 // Preserve LastActionDescription if it hasn't expired (5 seconds)
@@ -1514,7 +1516,10 @@
             playerFirstName: r.PlayerFirstName,
             playerName: r.PlayerName,
             sevensAmountWon: r.SevensAmountWon,
-            wildCardIndexes: r.WildCardIndexes?.ToList() ?? []))
+            wildCardIndexes: r.WildCardIndexes?.ToList() ?? [])
+            {
+                BestCardIndexes = r.BestCardIndexes?.ToList()
+            })
             .ToList();
 
             _showdownResult = new PerformShowdownSuccessful(
@@ -1795,7 +1800,8 @@
                         Rank = c.Symbol.ToCardRankString(),
                         Suit = c.Suit.ToCardSuitString(),
                         IsFaceUp = isCurrentPlayer,
-                        IsSelected = false
+                        IsSelected = false,
+                        IsWild = isCurrentPlayer && IsWildCard(c.Symbol.ToCardRankString(), c.Suit.ToCardSuitString())
                     }).ToList()
                 };
             }
@@ -2334,7 +2340,8 @@
                 Suit = runoutCard.Suit,
                 IsFaceUp = true,
                 IsSelected = false,
-                DealOrder = initialCardCount + i
+                DealOrder = initialCardCount + i,
+                IsWild = IsWildCard(runoutCard.Rank, runoutCard.Suit)
             });
         }
 
@@ -2463,7 +2470,8 @@
                 Suit = suit,
                 IsFaceUp = isFaceUp,
                 IsSelected = false,
-                DealOrder = _dealCurrentCardIndex
+                DealOrder = _dealCurrentCardIndex,
+                IsWild = IsWildCard(rank, suit)
             };
 
             // Safely add card. Check if we are replacing or adding.
@@ -3053,6 +3061,7 @@
         public bool IsFaceUp { get; init; }
         public bool IsSelected { get; init; }
         public int DealOrder { get; init; }
+        public bool IsWild { get; init; }
     }
 
     public record PlayerActionRequest(BettingActionType Action, int? Amount);
@@ -3517,7 +3526,9 @@ HandType.HighCard
     /// <summary>
     /// Determines if a card is wild based on game rules.
     /// </summary>
-    private bool IsWildCard(CardInfo card)
+    private bool IsWildCard(CardInfo card) => IsWildCard(card.Rank, card.Suit);
+
+    private bool IsWildCard(string? rank, string? suit)
     {
         var wildRules = _tableState?.SpecialRules?.WildCardRules;
         if (wildRules is null)
@@ -3526,9 +3537,9 @@ HandType.HighCard
         }
 
         // Check specific cards (e.g., "KD" for King of Diamonds)
-        if (wildRules.SpecificCards is not null && card.Rank is not null && card.Suit is not null)
+        if (wildRules.SpecificCards is not null && rank is not null && suit is not null)
         {
-            var cardCode = $"{card.Rank}{GetSuitCode(card.Suit)}";
+            var cardCode = $"{rank}{GetSuitCode(suit)}";
             if (wildRules.SpecificCards.Any(c => c.Equals(cardCode, StringComparison.OrdinalIgnoreCase)))
             {
                 return true;
@@ -3536,9 +3547,9 @@ HandType.HighCard
         }
 
         // Check wild ranks (e.g., all 2s, all Jacks)
-        if (wildRules.WildRanks is not null && card.Rank is not null)
+        if (wildRules.WildRanks is not null && rank is not null)
         {
-            if (wildRules.WildRanks.Any(r => r.Equals(card.Rank, StringComparison.OrdinalIgnoreCase)))
+            if (wildRules.WildRanks.Any(r => r.Equals(rank, StringComparison.OrdinalIgnoreCase)))
             {
                 return true;
             }

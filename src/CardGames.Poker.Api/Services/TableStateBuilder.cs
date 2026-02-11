@@ -765,7 +765,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 		// Evaluate all hands for players who haven't folded
 		// Use HandBase as the base type since all hand types inherit from it
-		var playerHandEvaluations = new Dictionary<string, (HandBase hand, TwosJacksManWithTheAxeDrawHand? twosJacksHand, KingsAndLowsDrawHand? kingsAndLowsHand, SevenCardStudHand? studHand, GamePlayer gamePlayer, List<GameCard> cards, List<int> wildIndexes)>();
+		var playerHandEvaluations = new Dictionary<string, (HandBase hand, TwosJacksManWithTheAxeDrawHand? twosJacksHand, KingsAndLowsDrawHand? kingsAndLowsHand, SevenCardStudHand? studHand, GamePlayer gamePlayer, List<GameCard> cards, List<int> wildIndexes, List<int> bestCardIndexes)>();
 
 		foreach (var gp in gamePlayers.Where(p => !p.HasFolded))
 		{
@@ -789,7 +789,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 							wildIndexes.Add(i);
 						}
 					}
-					playerHandEvaluations[gp.Player.Name] = (wildHand, wildHand, null, null, gp, cards, wildIndexes);
+					playerHandEvaluations[gp.Player.Name] = (wildHand, wildHand, null, null, gp, cards, wildIndexes, Enumerable.Range(0, cards.Count).ToList());
 				}
 				else if (isBaseball)
 				{
@@ -819,7 +819,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 							wildIndexes.Add(i);
 						}
 					}
-					playerHandEvaluations[gp.Player.Name] = (baseballHand, null, null, null, gp, cards, wildIndexes);
+					playerHandEvaluations[gp.Player.Name] = (baseballHand, null, null, null, gp, cards, wildIndexes, GetCardIndexes(coreCards, baseballHand.BestHandSourceCards));
 				}
 				else if (isFollowTheQueen)
 				{
@@ -856,7 +856,24 @@ public sealed class TableStateBuilder : ITableStateBuilder
 								wildIndexes.Add(i);
 							}
 						}
-						playerHandEvaluations[gp.Player.Name] = (ftqHand, null, null, null, gp, cards, wildIndexes);
+						playerHandEvaluations[gp.Player.Name] = (ftqHand, null, null, null, gp, cards, wildIndexes, GetCardIndexes(coreCards, ftqHand.BestHandSourceCards));
+					}
+					else if (initialHoleCards.Count >= 2)
+					{
+						// Partial hand (before 7th street)
+						// For Follow The Queen, we must use the specific hand type to get wild card logic
+						// The downCard parameter is nullable/optional in our modified constructor
+						var ftqHand = new FollowTheQueenHand(initialHoleCards, openCards, null, faceUpCardsInOrder);
+						var wildCards = ftqHand.WildCards;
+						var wildIndexes = new List<int>();
+						for (int i = 0; i < coreCards.Count; i++)
+						{
+							if (wildCards.Contains(coreCards[i]))
+							{
+								wildIndexes.Add(i);
+							}
+						}
+						playerHandEvaluations[gp.Player.Name] = (ftqHand, null, null, null, gp, cards, wildIndexes, GetCardIndexes(coreCards, ftqHand.BestHandSourceCards));
 					}
 				}
 				else if (isSevenCardStud)
@@ -887,7 +904,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					{
 						var downCard = new Card((Suit)holeCards[2].Suit, (Symbol)holeCards[2].Symbol);
 						var studHand = new SevenCardStudHand(initialHoleCards, openCards, downCard);
-						playerHandEvaluations[gp.Player.Name] = (studHand, null, null, studHand, gp, cards, []);
+						playerHandEvaluations[gp.Player.Name] = (studHand, null, null, studHand, gp, cards, [], GetCardIndexes(coreCards, studHand.GetBestHand()));
 					}
 				}
 				else if (isKingsAndLows)
@@ -903,12 +920,12 @@ public sealed class TableStateBuilder : ITableStateBuilder
 							wildIndexes.Add(i);
 						}
 					}
-					playerHandEvaluations[gp.Player.Name] = (kingsAndLowsHand, null, kingsAndLowsHand, null, gp, cards, wildIndexes);
+					playerHandEvaluations[gp.Player.Name] = (kingsAndLowsHand, null, kingsAndLowsHand, null, gp, cards, wildIndexes, Enumerable.Range(0, cards.Count).ToList());
 				}
 				else
 				{
 					var drawHand = new DrawHand(coreCards);
-					playerHandEvaluations[gp.Player.Name] = (drawHand, null, null, null, gp, cards, []);
+					playerHandEvaluations[gp.Player.Name] = (drawHand, null, null, null, gp, cards, [], Enumerable.Range(0, cards.Count).ToList());
 				}
 			}
 		}
@@ -1024,11 +1041,13 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				var isHighHandWinner = highHandWinners.Contains(gp.Player.Name);
 				string? handRanking = null;
 				List<int>? wildIndexes = null;
+				List<int>? bestCardIndexes = null;
 
 				if (playerHandEvaluations.TryGetValue(gp.Player.Name, out var eval))
 				{
 					handRanking = eval.hand.Type.ToString();
 					wildIndexes = eval.wildIndexes.Count > 0 ? eval.wildIndexes : null;
+					bestCardIndexes = eval.bestCardIndexes.Count > 0 ? eval.bestCardIndexes : null;
 				}
 
 				userProfilesByEmail.TryGetValue(gp.Player.Email ?? string.Empty, out var userProfile);
@@ -1051,6 +1070,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					IsSevensWinner = isSevensWinner,
 					IsHighHandWinner = isHighHandWinner,
 					WildCardIndexes = wildIndexes,
+					BestCardIndexes = bestCardIndexes,
 					Cards = OrderCardsForDisplay(
 							gp.Cards.Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber),
 							isSevenCardStud || isBaseball || isFollowTheQueen)
@@ -2008,7 +2028,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				CurrentStreet = currentStreet,
 				CurrentStreetDescription = currentStreetDescription,
 				TotalStreets = runoutStreets.Count,
-				StreetsDealt = runoutStreets.Count,
+				StreetsDealt = runoutCardsBySeat.Count,
 				RunoutCardsBySeat = runoutCardsBySeat,
 				CurrentDealingSeatIndex = -1, // Dealing complete
 				IsComplete = true
@@ -2171,5 +2191,27 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 		// For other games: Order by DealOrder which should be sequential per player
 		return cards.OrderBy(c => c.DealOrder);
+	}
+
+	private static List<int> GetCardIndexes(List<Card> allCards, IEnumerable<Card> targetCards)
+	{
+		var indexes = new List<int>();
+		var usedIndexes = new HashSet<int>();
+
+		foreach (var target in targetCards)
+		{
+			for (var i = 0; i < allCards.Count; i++)
+			{
+				if (usedIndexes.Contains(i)) continue;
+
+				if (allCards[i].Equals(target))
+				{
+					indexes.Add(i);
+					usedIndexes.Add(i);
+					break;
+				}
+			}
+		}
+		return indexes;
 	}
 }
