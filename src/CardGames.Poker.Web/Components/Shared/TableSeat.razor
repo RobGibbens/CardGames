@@ -22,11 +22,15 @@
 						{
 							if (card.IsFaceUp)
 							{
-								<playing-card rank="@rank" suit="@card.Suit" class="poker-card" suitcolor="@(card.IsWild ? "green" : null)" rankcolor="@(card.IsWild ? "green" : null)" courtcolor="@(card.IsWild ? "green" : null)"></playing-card>
+								<div class="card-shell face-up">
+									<playing-card rank="@rank" suit="@card.Suit" class="poker-card face-up" suitcolor="@(card.IsWild ? "green" : null)" rankcolor="@(card.IsWild ? "green" : null)" courtcolor="@(card.IsWild ? "green" : null)"></playing-card>
+								</div>
 							}
 							else
 							{
-								<playing-card rank="0" backcolor="#44F" class="poker-card"></playing-card>
+								<div class="card-shell face-down">
+									<playing-card rank="0" backcolor="#44F" class="poker-card face-down"></playing-card>
+								</div>
 							}
 						}
 						else

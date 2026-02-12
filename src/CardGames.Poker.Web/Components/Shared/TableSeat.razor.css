@@ -320,12 +320,36 @@
     justify-content: center;
 }
 
+/* Current player cards are wrapped so we can reliably offset face-up cards */
+.current-player-layout .card-shell {
+    position: relative;
+    top: 0;
+    margin: 0 -15px; /* Keep the same overlap behavior as playing-card had */
+}
+
+.current-player-layout .card-shell.face-up {
+    top: -14px;
+    z-index: 50;
+}
+
+.current-player-layout .card-shell.face-down {
+    z-index: 1;
+}
+
 /* Element Styles for injected playing-card component support */
 ::deep playing-card {
+    position: relative;
+    top: 0;
     margin: 0 -15px; /* Overlap cards */
     transition: transform 0.2s;
     transform-origin: bottom center;
 }
+
+/* In current-player layout, overlap is handled by .card-shell, so remove inner overlap margins */
+.current-player-layout .card-shell ::deep playing-card {
+    margin: 0;
+}
+
 ::deep playing-card:hover {
     transform: translateY(-10px) scale(1.1);
     z-index: 100;
