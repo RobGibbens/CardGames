@@ -72,9 +72,10 @@ public class DealHandsCommandHandler(
 		}
 
 		// 3. Get active players
+		// Sort active players starting from the player to the left of the dealer (DealerPosition + 1)
 		var activePlayers = game.GamePlayers
 			.Where(gp => gp.Status == GamePlayerStatus.Active && !gp.HasFolded)
-			.OrderBy(gp => gp.SeatPosition)
+			.OrderBy(gp => gp.SeatPosition > game.DealerPosition ? gp.SeatPosition : gp.SeatPosition + 1000)
 			.ToList();
 
 		logger.LogDebug(

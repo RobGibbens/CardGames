@@ -65,8 +65,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				.ToListAsync(cancellationToken);
 
 			// DEBUG: Log card data before ordering for Seven Card Stud
-			var isSevenCardStudGame = string.Equals(game.GameType?.Code, PokerGameMetadataRegistry.SevenCardStudCode, StringComparison.OrdinalIgnoreCase) ||
-			                          string.Equals(game.GameType?.Code, PokerGameMetadataRegistry.BaseballCode, StringComparison.OrdinalIgnoreCase);
+			var isSevenCardStudGame = IsStudGame(game.GameType?.Code);
 			if (isSevenCardStudGame)
 			{
 				foreach (var gp in gamePlayers)
@@ -197,8 +196,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			CurrentPhaseRequiresAction = currentPhaseDescriptor?.RequiresPlayerAction ?? false,
 			CurrentPhaseAvailableActions = currentPhaseDescriptor?.AvailableActions,
 			DrawingConfig = BuildDrawingConfigDto(rules),
-			SpecialRules = BuildSpecialRulesDto(rules),
-			PlayerVsDeck = playerVsDeck,
+				SpecialRules = await BuildSpecialRulesDtoAsync(rules, game, cancellationToken),
+				PlayerVsDeck = playerVsDeck,
 			ActionTimer = actionTimer,
 			AllInRunout = allInRunout,
 			ChipCheckPause = chipCheckPause
@@ -295,11 +294,12 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 			var allEvaluationCards = playerCards.Concat(communityCards).ToList();
 
-			var isSevenCardStudGame = string.Equals(game.GameType?.Code, PokerGameMetadataRegistry.SevenCardStudCode, StringComparison.OrdinalIgnoreCase);
 			var isBaseballGame = string.Equals(game.GameType?.Code, PokerGameMetadataRegistry.BaseballCode, StringComparison.OrdinalIgnoreCase);
+			var isFollowTheQueenGame = string.Equals(game.GameType?.Code, PokerGameMetadataRegistry.FollowTheQueenCode, StringComparison.OrdinalIgnoreCase);
+			var isSevenCardStud = IsStudGame(game.GameType?.Code);
 
-			// Seven Card Stud / Baseball: Requires 2 hole + up to 4 board + 1 down card (7 total at showdown)
-			if (isSevenCardStudGame || isBaseballGame)
+			// Seven Card Stud / Baseball / Follow The Queen: Requires 2 hole + up to 4 board + 1 down card (7 total at showdown)
+			if (isSevenCardStud)
 			{
 				// Need to access the original cards with Location info
 				var playerCardEntities = gamePlayer.Cards
@@ -327,6 +327,26 @@ public sealed class TableStateBuilder : ITableStateBuilder
 							.ToList();
 						var baseballHand = new BaseballHand(allHoleCards, openCards, []);
 						handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(baseballHand);
+					}
+					else if (isFollowTheQueenGame)
+					{
+						// Follow The Queen uses wild cards - get face-up cards for wild card determination
+						var faceUpCardsInOrder = await GetOrderedFaceUpCardsAsync(game, cancellationToken);
+
+						if (holeCardEntities.Count >= 3 && initialHoleCards.Count == 2 && openCards.Count <= 4)
+						{
+							var downCard = new Card((Suit)holeCardEntities[2].Suit, (Symbol)holeCardEntities[2].Symbol);
+							var ftqHand = new FollowTheQueenHand(initialHoleCards, openCards, downCard, faceUpCardsInOrder);
+							handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(ftqHand);
+						}
+						else if (initialHoleCards.Count >= 2)
+						{
+							// Partial hand (before 7th street)
+							// For Follow The Queen, we must use the specific hand type to get wild card logic
+							// The downCard parameter is nullable/optional in our modified constructor
+							var ftqHand = new FollowTheQueenHand(initialHoleCards, openCards, null, faceUpCardsInOrder);
+							handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(ftqHand);
+						}
 					}
 					else if (holeCardEntities.Count >= 3 && initialHoleCards.Count == 2 && openCards.Count <= 4)
 					{
@@ -493,8 +513,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 		// For Seven Card Stud, show visible cards; otherwise show face-down placeholders
 		// During showdown phases, show cards face-up for players who haven't folded
-		var isSevenCardStud = string.Equals(gameTypeCode, PokerGameMetadataRegistry.SevenCardStudCode, StringComparison.OrdinalIgnoreCase) ||
-		                      string.Equals(gameTypeCode, PokerGameMetadataRegistry.BaseballCode, StringComparison.OrdinalIgnoreCase);
+		var isSevenCardStud = IsStudGame(gameTypeCode);
 
 		// Get current hand cards (not discarded)
 		// Note: We filter by hand number to naturally handle sitting out players.
@@ -597,8 +616,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			.Where(c => !c.IsDiscarded && c.HandNumber == currentHandNumber);
 
 		// Use street-aware ordering for Seven Card Stud to handle multi-street dealing correctly
-		var isSevenCardStud = string.Equals(gameTypeCode, PokerGameMetadataRegistry.SevenCardStudCode, StringComparison.OrdinalIgnoreCase) ||
-		                      string.Equals(gameTypeCode, PokerGameMetadataRegistry.BaseballCode, StringComparison.OrdinalIgnoreCase);
+		var isSevenCardStud = IsStudGame(gameTypeCode);
 		var orderedCards = OrderCardsForDisplay(filteredCards, isSevenCardStud).ToList();
 
 		_logger.LogDebug(
@@ -614,7 +632,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				Rank = MapSymbolToRank(c.Symbol),
 				Suit = c.Suit.ToString(),
 				DealOrder = c.DealOrder,
-				IsSelectedForDiscard = false
+				IsSelectedForDiscard = false,
+				IsPubliclyVisible = c.IsVisible
 			})
 			.ToList();
 	}
@@ -740,15 +759,20 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			PokerGameMetadataRegistry.KingsAndLowsCode,
 			StringComparison.OrdinalIgnoreCase);
 
+		var isFollowTheQueen = string.Equals(
+			game.GameType?.Code,
+			PokerGameMetadataRegistry.FollowTheQueenCode,
+			StringComparison.OrdinalIgnoreCase);
+
 		// Evaluate all hands for players who haven't folded
 		// Use HandBase as the base type since all hand types inherit from it
-		var playerHandEvaluations = new Dictionary<string, (HandBase hand, TwosJacksManWithTheAxeDrawHand? twosJacksHand, KingsAndLowsDrawHand? kingsAndLowsHand, SevenCardStudHand? studHand, GamePlayer gamePlayer, List<GameCard> cards, List<int> wildIndexes)>();
+		var playerHandEvaluations = new Dictionary<string, (HandBase hand, TwosJacksManWithTheAxeDrawHand? twosJacksHand, KingsAndLowsDrawHand? kingsAndLowsHand, SevenCardStudHand? studHand, GamePlayer gamePlayer, List<GameCard> cards, List<int> wildIndexes, List<int> bestCardIndexes)>();
 
 		foreach (var gp in gamePlayers.Where(p => !p.HasFolded))
 		{
 			var filteredCards = gp.Cards
 				.Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber);
-			var cards = OrderCardsForDisplay(filteredCards, isSevenCardStud || isBaseball).ToList();
+			var cards = OrderCardsForDisplay(filteredCards, isSevenCardStud || isBaseball || isFollowTheQueen).ToList();
 
 			if (cards.Count >= 5)
 			{
@@ -766,7 +790,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 							wildIndexes.Add(i);
 						}
 					}
-					playerHandEvaluations[gp.Player.Name] = (wildHand, wildHand, null, null, gp, cards, wildIndexes);
+					playerHandEvaluations[gp.Player.Name] = (wildHand, wildHand, null, null, gp, cards, wildIndexes, Enumerable.Range(0, cards.Count).ToList());
 				}
 				else if (isBaseball)
 				{
@@ -796,7 +820,62 @@ public sealed class TableStateBuilder : ITableStateBuilder
 							wildIndexes.Add(i);
 						}
 					}
-					playerHandEvaluations[gp.Player.Name] = (baseballHand, null, null, null, gp, cards, wildIndexes);
+					playerHandEvaluations[gp.Player.Name] = (baseballHand, null, null, null, gp, cards, wildIndexes, GetCardIndexes(coreCards, baseballHand.BestHandSourceCards));
+				}
+				else if (isFollowTheQueen)
+				{
+					// Follow The Queen: Similar to Seven Card Stud but with wild cards
+					var holeCards = cards
+						.Where(c => c.Location == CardLocation.Hole)
+						.OrderBy(c => c.DealOrder)
+						.ToList();
+					var boardCards = cards
+						.Where(c => c.Location == CardLocation.Board)
+						.OrderBy(c => c.DealOrder)
+						.ToList();
+
+					var initialHoleCards = holeCards.Take(2)
+						.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
+						.ToList();
+					var openCards = boardCards
+						.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
+						.ToList();
+
+					// Get face-up cards for wild card determination
+					var faceUpCardsInOrder = await GetOrderedFaceUpCardsAsync(game, cancellationToken);
+
+					if (initialHoleCards.Count == 2 && openCards.Count <= 4 && holeCards.Count >= 3)
+					{
+						var downCard = new Card((Suit)holeCards[2].Suit, (Symbol)holeCards[2].Symbol);
+						var ftqHand = new FollowTheQueenHand(initialHoleCards, openCards, downCard, faceUpCardsInOrder);
+						var wildCards = ftqHand.WildCards;
+						var wildIndexes = new List<int>();
+						for (int i = 0; i < coreCards.Count; i++)
+						{
+							if (wildCards.Contains(coreCards[i]))
+							{
+								wildIndexes.Add(i);
+							}
+						}
+						playerHandEvaluations[gp.Player.Name] = (ftqHand, null, null, null, gp, cards, wildIndexes, GetCardIndexes(coreCards, ftqHand.BestHandSourceCards));
+					}
+					else if (initialHoleCards.Count >= 2)
+					{
+						// Partial hand (before 7th street)
+						// For Follow The Queen, we must use the specific hand type to get wild card logic
+						// The downCard parameter is nullable/optional in our modified constructor
+						var ftqHand = new FollowTheQueenHand(initialHoleCards, openCards, null, faceUpCardsInOrder);
+						var wildCards = ftqHand.WildCards;
+						var wildIndexes = new List<int>();
+						for (int i = 0; i < coreCards.Count; i++)
+						{
+							if (wildCards.Contains(coreCards[i]))
+							{
+								wildIndexes.Add(i);
+							}
+						}
+						playerHandEvaluations[gp.Player.Name] = (ftqHand, null, null, null, gp, cards, wildIndexes, GetCardIndexes(coreCards, ftqHand.BestHandSourceCards));
+					}
 				}
 				else if (isSevenCardStud)
 				{
@@ -826,7 +905,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					{
 						var downCard = new Card((Suit)holeCards[2].Suit, (Symbol)holeCards[2].Symbol);
 						var studHand = new SevenCardStudHand(initialHoleCards, openCards, downCard);
-						playerHandEvaluations[gp.Player.Name] = (studHand, null, null, studHand, gp, cards, []);
+						playerHandEvaluations[gp.Player.Name] = (studHand, null, null, studHand, gp, cards, [], GetCardIndexes(coreCards, studHand.GetBestHand()));
 					}
 				}
 				else if (isKingsAndLows)
@@ -842,12 +921,12 @@ public sealed class TableStateBuilder : ITableStateBuilder
 							wildIndexes.Add(i);
 						}
 					}
-					playerHandEvaluations[gp.Player.Name] = (kingsAndLowsHand, null, kingsAndLowsHand, null, gp, cards, wildIndexes);
+					playerHandEvaluations[gp.Player.Name] = (kingsAndLowsHand, null, kingsAndLowsHand, null, gp, cards, wildIndexes, Enumerable.Range(0, cards.Count).ToList());
 				}
 				else
 				{
 					var drawHand = new DrawHand(coreCards);
-					playerHandEvaluations[gp.Player.Name] = (drawHand, null, null, null, gp, cards, []);
+					playerHandEvaluations[gp.Player.Name] = (drawHand, null, null, null, gp, cards, [], Enumerable.Range(0, cards.Count).ToList());
 				}
 			}
 		}
@@ -963,11 +1042,13 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				var isHighHandWinner = highHandWinners.Contains(gp.Player.Name);
 				string? handRanking = null;
 				List<int>? wildIndexes = null;
+				List<int>? bestCardIndexes = null;
 
 				if (playerHandEvaluations.TryGetValue(gp.Player.Name, out var eval))
 				{
 					handRanking = eval.hand.Type.ToString();
 					wildIndexes = eval.wildIndexes.Count > 0 ? eval.wildIndexes : null;
+					bestCardIndexes = eval.bestCardIndexes.Count > 0 ? eval.bestCardIndexes : null;
 				}
 
 				userProfilesByEmail.TryGetValue(gp.Player.Email ?? string.Empty, out var userProfile);
@@ -990,9 +1071,10 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					IsSevensWinner = isSevensWinner,
 					IsHighHandWinner = isHighHandWinner,
 					WildCardIndexes = wildIndexes,
+					BestCardIndexes = bestCardIndexes,
 					Cards = OrderCardsForDisplay(
 							gp.Cards.Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber),
-							isSevenCardStud || isBaseball)
+							isSevenCardStud || isBaseball || isFollowTheQueen)
 						.Select(c => new CardPublicDto
 						{
 							IsFaceUp = true,
@@ -1376,7 +1458,83 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	}
 
 	/// <summary>
-	/// Builds the special rules DTO from game rules.
+	/// Builds the special rules DTO from game rules, with dynamic wild card computation for Follow the Queen.
+	/// </summary>
+	private async Task<GameSpecialRulesDto?> BuildSpecialRulesDtoAsync(
+		GameRules? rules,
+		Entities.Game game,
+		CancellationToken cancellationToken)
+	{
+		if (rules?.SpecialRules is null || rules.SpecialRules.Count == 0)
+		{
+			return null;
+		}
+
+		var isFollowTheQueen = string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.FollowTheQueenCode, StringComparison.OrdinalIgnoreCase);
+
+		// For Follow the Queen, compute dynamic wild ranks from face-up cards
+		IReadOnlyList<string>? dynamicWildRanks = null;
+		if (isFollowTheQueen)
+		{
+			dynamicWildRanks = await ComputeFollowTheQueenWildRanksAsync(game, cancellationToken);
+		}
+
+		return new GameSpecialRulesDto
+		{
+			HasDropOrStay = rules.SpecialRules.ContainsKey("DropOrStay"),
+			HasPotMatching = rules.SpecialRules.ContainsKey("LosersMatchPot"),
+			HasWildCards = rules.SpecialRules.ContainsKey("WildCards"),
+			WildCardsDescription = rules.SpecialRules.TryGetValue("WildCards", out var wc)
+				? wc?.ToString()
+				: null,
+			HasSevensSplit = rules.SpecialRules.ContainsKey("SevensSplit"),
+			WildCardRules = BuildWildCardRulesDto(rules, dynamicWildRanks)
+		};
+	}
+
+	/// <summary>
+	/// Computes the current wild card ranks for Follow the Queen based on face-up cards dealt so far.
+	/// Queens are always wild. The rank following the last face-up Queen is also wild.
+	/// </summary>
+	private async Task<IReadOnlyList<string>> ComputeFollowTheQueenWildRanksAsync(
+		Entities.Game game,
+		CancellationToken cancellationToken)
+	{
+		var sortedFaceUpCards = await GetOrderedFaceUpCardsAsync(game, cancellationToken);
+
+		var wildRanks = new List<string> { "Q" }; // Queens are always wild
+
+		int? followingWildSymbol = null;
+		for (var i = 0; i < sortedFaceUpCards.Count; i++)
+		{
+			if (sortedFaceUpCards[i].Symbol == Symbol.Queen)
+			{
+				if (i + 1 < sortedFaceUpCards.Count)
+				{
+					followingWildSymbol = (int)sortedFaceUpCards[i + 1].Symbol;
+				}
+				else
+				{
+					// Queen is the last face-up card, no following wild rank
+					followingWildSymbol = null;
+				}
+			}
+		}
+
+		if (followingWildSymbol.HasValue)
+		{
+			var followRank = MapSymbolToRank((Entities.CardSymbol)followingWildSymbol.Value);
+			if (followRank is not null)
+			{
+				wildRanks.Add(followRank);
+			}
+		}
+
+		return wildRanks;
+	}
+
+	/// <summary>
+	/// Builds the special rules DTO from game rules (static version for non-dynamic games).
 	/// </summary>
 	private static GameSpecialRulesDto? BuildSpecialRulesDto(GameRules? rules)
 	{
@@ -1401,7 +1559,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	/// <summary>
 	/// Builds structured wild card rules from game rules.
 	/// </summary>
-	private static WildCardRulesDto? BuildWildCardRulesDto(GameRules? rules)
+	/// <param name="rules">The game rules.</param>
+	/// <param name="dynamicWildRanks">Optional pre-computed wild ranks for dynamic wild card games (e.g., Follow the Queen).</param>
+	private static WildCardRulesDto? BuildWildCardRulesDto(GameRules? rules, IReadOnlyList<string>? dynamicWildRanks = null)
 	{
 		if (rules?.SpecialRules is null || !rules.SpecialRules.TryGetValue("WildCards", out var wildCardsValue))
 		{
@@ -1427,6 +1587,18 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		{
 			wildRanks.Add("K");
 			lowestCardIsWild = true;
+		}
+		else if (string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.FollowTheQueenCode, StringComparison.OrdinalIgnoreCase))
+		{
+			// Follow the Queen: Queens are always wild, plus the dynamic "follow" rank
+			if (dynamicWildRanks is { Count: > 0 })
+			{
+				wildRanks.AddRange(dynamicWildRanks);
+			}
+			else
+			{
+				wildRanks.Add("Q"); // Fallback: at minimum Queens are always wild
+			}
 		}
 
 		return new WildCardRulesDto
@@ -1461,8 +1633,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					 && gc.HandNumber == game.CurrentHandNumber
 					 && gc.Location == Entities.CardLocation.Board
 					 && !gc.IsDiscarded)
-			.OrderBy(gc => gc.DealtAt)
-			.ThenBy(gc => gc.DealOrder)
+			.OrderBy(gc => gc.DealOrder)
 			.AsNoTracking()
 			.ToListAsync(cancellationToken);
 
@@ -1858,7 +2029,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				CurrentStreet = currentStreet,
 				CurrentStreetDescription = currentStreetDescription,
 				TotalStreets = runoutStreets.Count,
-				StreetsDealt = runoutStreets.Count,
+				StreetsDealt = runoutCardsBySeat.Count,
 				RunoutCardsBySeat = runoutCardsBySeat,
 				CurrentDealingSeatIndex = -1, // Dealing complete
 				IsComplete = true
@@ -1926,7 +2097,44 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	};
 
 	/// <summary>
-	/// Computes a composite order key for a Seven Card Stud card that ensures correct display order.
+	/// Retrieves face-up cards ordered correctly for Follow The Queen wild card determination.
+	/// Accounts for dealing order relative to the Dealer button (Student dealing rotation).
+	/// </summary>
+	private async Task<List<Card>> GetOrderedFaceUpCardsAsync(
+		Entities.Game game,
+		CancellationToken cancellationToken)
+	{
+		var rawFaceUpCards = await _context.GameCards
+			.Where(c => c.GameId == game.Id &&
+						c.HandNumber == game.CurrentHandNumber &&
+						c.IsVisible &&
+						!c.IsDiscarded)
+			.Include(c => c.GamePlayer)
+			.Select(c => new
+			{
+				c.Symbol,
+				c.Suit,
+				c.DealtAtPhase,
+				c.DealOrder,
+				SeatPosition = c.GamePlayer != null ? c.GamePlayer.SeatPosition : -1
+			})
+			.ToListAsync(cancellationToken);
+
+		// Sort in memory to handle rotation logic (Stud deals start left of Dealer)
+		// IMPORTANT: DealOrder is not guaranteed to be globally unique across streets for stud variants.
+		// To determine the "next card after the last face-up Queen" we must sort by street/phase first,
+		// then by within-street order, then by rotation relative to the dealer.
+		// Rotation order desired: (Dealer+1)...Max, 0...Dealer
+		return rawFaceUpCards
+			.OrderBy(c => GetStreetPhaseOrder(c.DealtAtPhase))
+			.ThenBy(c => c.DealOrder)
+			.ThenBy(c => c.SeatPosition > game.DealerPosition ? c.SeatPosition : c.SeatPosition + 1000)
+			.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
+			.ToList();
+	}
+
+	/// <summary>
+	/// Generates a unique "key" for sorting Seven Card Stud cards.
 	/// </summary>
 	/// <remarks>
 	/// Seven Card Stud display order:
@@ -1939,6 +2147,13 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	/// This method uses Location to distinguish hole from board cards within ThirdStreet,
 	/// ensuring correct order even if DealOrder values are corrupted.
 	/// </remarks>
+	private static bool IsStudGame(string? gameTypeCode)
+	{
+		return string.Equals(gameTypeCode, PokerGameMetadataRegistry.SevenCardStudCode, StringComparison.OrdinalIgnoreCase) ||
+		       string.Equals(gameTypeCode, PokerGameMetadataRegistry.BaseballCode, StringComparison.OrdinalIgnoreCase) ||
+		       string.Equals(gameTypeCode, PokerGameMetadataRegistry.FollowTheQueenCode, StringComparison.OrdinalIgnoreCase);
+	}
+
 	private static int GetSevenCardStudOrderKey(GameCard card)
 	{
 		var phaseOrder = GetStreetPhaseOrder(card.DealtAtPhase);
@@ -1982,5 +2197,27 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 		// For other games: Order by DealOrder which should be sequential per player
 		return cards.OrderBy(c => c.DealOrder);
+	}
+
+	private static List<int> GetCardIndexes(List<Card> allCards, IEnumerable<Card> targetCards)
+	{
+		var indexes = new List<int>();
+		var usedIndexes = new HashSet<int>();
+
+		foreach (var target in targetCards)
+		{
+			for (var i = 0; i < allCards.Count; i++)
+			{
+				if (usedIndexes.Contains(i)) continue;
+
+				if (allCards[i].Equals(target))
+				{
+					indexes.Add(i);
+					usedIndexes.Add(i);
+					break;
+				}
+			}
+		}
+		return indexes;
 	}
 }

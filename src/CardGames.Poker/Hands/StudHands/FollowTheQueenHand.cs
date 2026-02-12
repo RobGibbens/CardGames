@@ -21,6 +21,7 @@ public class FollowTheQueenHand : StudHand
     private HandType _evaluatedType;
     private long _evaluatedStrength;
     private IReadOnlyCollection<Card> _evaluatedBestCards;
+    private IReadOnlyCollection<Card> _bestHandSourceCards;
     private bool _evaluated;
 
     public IReadOnlyCollection<Card> WildCards => _wildCards ??= DetermineWildCards();
@@ -40,18 +41,30 @@ public class FollowTheQueenHand : StudHand
     }
 
     /// <summary>
+    /// Gets the original cards from the player's hand that formed the best evaluated hand.
+    /// </summary>
+    public IReadOnlyCollection<Card> BestHandSourceCards
+    {
+        get
+        {
+            EvaluateIfNeeded();
+            return _bestHandSourceCards;
+        }
+    }
+
+    /// <summary>
     /// Creates a Follow the Queen hand.
     /// </summary>
     /// <param name="holeCards">The player's hole cards (typically 2 cards).</param>
     /// <param name="openCards">The player's face-up board cards (typically 4 cards).</param>
-    /// <param name="downCard">The final face-down card dealt (typically 1 card).</param>
+    /// <param name="downCard">The final face-down card dealt (typically 1 card). Can be null for partial hands.</param>
     /// <param name="faceUpCardsInOrder">All face-up cards dealt to all players in the order they were dealt.</param>
     public FollowTheQueenHand(
         IReadOnlyCollection<Card> holeCards,
         IReadOnlyCollection<Card> openCards,
         Card downCard,
         IReadOnlyCollection<Card> faceUpCardsInOrder)
-        : base(holeCards, openCards, new[] { downCard })
+        : base(holeCards, openCards, downCard != null ? new[] { downCard } : Array.Empty<Card>())
     {
         if (holeCards.Count != 2)
         {
@@ -96,14 +109,16 @@ public class FollowTheQueenHand : StudHand
             _evaluatedStrength = base.CalculateStrength();
             // Find the best 5-card hand from all possible hands
             _evaluatedBestCards = FindBestFiveCardHand();
+            _bestHandSourceCards = _evaluatedBestCards;
             return;
         }
 
-        var (type, strength, evaluatedCards, _) = WildCardHandEvaluator.EvaluateBestHand(
+        var (type, strength, evaluatedCards, sourceCards) = WildCardHandEvaluator.EvaluateBestHand(
             Cards, WildCards, Ranking);
         _evaluatedType = type;
         _evaluatedStrength = strength;
         _evaluatedBestCards = evaluatedCards;
+        _bestHandSourceCards = sourceCards;
     }
     
     private IReadOnlyCollection<Card> FindBestFiveCardHand()

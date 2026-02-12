@@ -1147,6 +1147,47 @@ namespace CardGames.Poker.Api.Clients
         Task<IApiResponse<GetCurrentPlayerTurnResponse>> SevenCardStudGetCurrentPlayerTurnAsync(System.Guid gameId, CancellationToken cancellationToken = default);
     }
 
+    /// <summary>Follow the Queen</summary>
+    [System.CodeDom.Compiler.GeneratedCode("Refitter", "1.7.0.0")]
+    public partial interface IFollowTheQueenApi
+    {
+        /// <summary>Start Hand</summary>
+        /// <remarks>Starts a new hand of Follow the Queen poker.</remarks>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Post("/api/v1/games/follow-the-queen/{gameId}/hands")]
+        Task<IApiResponse<StartHandSuccessful>> FollowTheQueenStartHandAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
+        /// <summary>Collect Antes</summary>
+        /// <remarks>Collects the mandatory ante bet from all players.</remarks>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Post("/api/v1/games/follow-the-queen/{gameId}/hands/antes")]
+        Task<IApiResponse<CollectAntesSuccessful>> FollowTheQueenCollectAntesAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
+        /// <summary>Deal Hands</summary>
+        /// <remarks>Deals Third Street cards (2 hole + 1 board) to all players.</remarks>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Post("/api/v1/games/follow-the-queen/{gameId}/hands/deal")]
+        Task<IApiResponse<DealHandsSuccessful>> FollowTheQueenDealHandsAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
+        /// <summary>Process Betting Action</summary>
+        /// <remarks>Processes a betting action from the current player.</remarks>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/games/follow-the-queen/{gameId}/betting/actions")]
+        Task<IApiResponse<ProcessBettingActionSuccessful>> FollowTheQueenProcessBettingActionAsync(System.Guid gameId, [Body] ProcessBettingActionRequest body, CancellationToken cancellationToken = default);
+
+        /// <summary>Perform Showdown</summary>
+        /// <remarks>Performs the showdown and awards the pot to the winner(s).</remarks>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Post("/api/v1/games/follow-the-queen/{gameId}/showdown")]
+        Task<IApiResponse<PerformShowdownSuccessful>> FollowTheQueenPerformShowdownAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
+        /// <summary>Get Current Player Turn</summary>
+        /// <remarks>Gets information about whose turn it is and available actions.</remarks>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Get("/api/v1/games/follow-the-queen/{gameId}/current-turn")]
+        Task<IApiResponse<GetCurrentPlayerTurnResponse>> FollowTheQueenGetCurrentPlayerTurnAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+    }
+
     /// <summary>Start Hand</summary>
     [System.CodeDom.Compiler.GeneratedCode("Refitter", "1.7.0.0")]
     public partial interface IBaseballApi

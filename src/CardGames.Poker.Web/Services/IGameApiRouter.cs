@@ -95,19 +95,22 @@ public class GameApiRouter : IGameApiRouter
     private readonly IKingsAndLowsApi _kingsAndLowsApi;
     private readonly ISevenCardStudApi _sevenCardStudApi;
     private readonly IBaseballApi _baseballApi;
+    private readonly IFollowTheQueenApi _followTheQueenApi;
 
     public GameApiRouter(
         IFiveCardDrawApi fiveCardDrawApi,
         ITwosJacksManWithTheAxeApi twosJacksManWithTheAxeApi,
         IKingsAndLowsApi kingsAndLowsApi,
         ISevenCardStudApi sevenCardStudApi,
-        IBaseballApi baseballApi)
+        IBaseballApi baseballApi,
+        IFollowTheQueenApi followTheQueenApi)
     {
         _fiveCardDrawApi = fiveCardDrawApi;
         _twosJacksManWithTheAxeApi = twosJacksManWithTheAxeApi;
         _kingsAndLowsApi = kingsAndLowsApi;
         _sevenCardStudApi = sevenCardStudApi;
         _baseballApi = baseballApi;
+        _followTheQueenApi = followTheQueenApi;
     }
 
     public async Task<RouterResponse<ProcessBettingActionSuccessful>> ProcessBettingActionAsync(
@@ -129,6 +132,11 @@ public class GameApiRouter : IGameApiRouter
         {
             return RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
                 await _baseballApi.BaseballProcessBettingActionAsync(gameId, request));
+        }
+        else if (string.Equals(gameCode, "FOLLOWTHEQUEEN", StringComparison.OrdinalIgnoreCase))
+        {
+            return RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
+                await _followTheQueenApi.FollowTheQueenProcessBettingActionAsync(gameId, request));
         }
         
         // Default to Five Card Draw (handles KingsAndLows fallback logic)

@@ -3,6 +3,7 @@ using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Betting;
 using CardGames.Poker.Games.FollowTheQueen;
 using CardGames.Poker.Games.GameFlow;
+using Microsoft.EntityFrameworkCore;
 
 namespace CardGames.Poker.Api.GameFlow;
 
@@ -91,11 +92,11 @@ public sealed class FollowTheQueenFlowHandler : BaseGameFlowHandler
         DateTimeOffset now,
         CancellationToken cancellationToken)
     {
-        // Deal Third Street: 2 down, 1 up
         var deck = CreateShuffledDeck();
         var deckCards = new List<GameCard>();
         var deckOrder = 0;
         
+        // Persist entire shuffled deck
         foreach (var (suit, symbol) in deck)
         {
             var gameCard = new GameCard
@@ -126,59 +127,140 @@ public sealed class FollowTheQueenFlowHandler : BaseGameFlowHandler
             .OrderBy(p => (p.SeatPosition - dealerPosition - 1 + totalSeats) % totalSeats)
             .ToList();
 
-        // Deal 2 face down, 1 face up
-        
-        // 1st Hole Card
-        foreach (var player in playersInDealOrder)
-        {
-             var card = deckCards[deckIndex++];
-             card.GamePlayerId = player.Id;
-             card.Location = CardLocation.Hand;
-             card.DealOrder = 1;
-             card.IsVisible = false;
-        }
+        // Track up cards for bring-in determination
+        var playerUpCards = new List<(GamePlayer Player, GameCard UpCard)>();
 
-        // 2nd Hole Card
+        // Deal Third Street: 2 hole cards + 1 board card per player
+        var dealOrder = 1;
         foreach (var player in playersInDealOrder)
         {
-             var card = deckCards[deckIndex++];
-             card.GamePlayerId = player.Id;
-             card.Location = CardLocation.Hand;
-             card.DealOrder = 2;
-             card.IsVisible = false;
-        }
+            // 2 hole cards (face down)
+            for (var i = 0; i < 2; i++)
+            {
+                if (deckIndex >= deckCards.Count) break;
 
-        // 3rd Card (Door card / Up card)
-        foreach (var player in playersInDealOrder)
-        {
-             var card = deckCards[deckIndex++];
-             card.GamePlayerId = player.Id;
-             card.Location = CardLocation.Hand;
-             card.DealOrder = 3;
-             card.IsVisible = true;
+                var card = deckCards[deckIndex++];
+                card.GamePlayerId = player.Id;
+                card.Location = CardLocation.Hole;
+                card.DealOrder = dealOrder++;
+                card.IsVisible = false;
+                card.DealtAtPhase = nameof(Phases.ThirdStreet);
+                card.DealtAt = now;
+            }
+
+            // 1 board card (face up)
+            if (deckIndex >= deckCards.Count) break;
+
+            var boardCard = deckCards[deckIndex++];
+            boardCard.GamePlayerId = player.Id;
+            boardCard.Location = CardLocation.Board;
+            boardCard.DealOrder = dealOrder++;
+            boardCard.IsVisible = true;
+            boardCard.DealtAtPhase = nameof(Phases.ThirdStreet);
+            boardCard.DealtAt = now;
+
+            playerUpCards.Add((player, boardCard));
         }
         
-        // Reset bets
+        // Reset current bets for all players
         foreach (var player in game.GamePlayers)
         {
             player.CurrentBet = 0;
         }
 
-        // Set next phase
+        // Determine bring-in player (lowest up card)
+        var bringInPlayer = FindBringInPlayer(playerUpCards);
+        var bringInSeatPosition = bringInPlayer?.SeatPosition ??
+            playersInDealOrder.FirstOrDefault()?.SeatPosition ?? 0;
+
+        // Post bring-in bet if configured
+        var bringIn = game.BringIn ?? 0;
+        var currentBet = 0;
+        if (bringIn > 0 && bringInPlayer is not null)
+        {
+            var actualBringIn = Math.Min(bringIn, bringInPlayer.ChipStack);
+            bringInPlayer.CurrentBet = actualBringIn;
+            bringInPlayer.ChipStack -= actualBringIn;
+            bringInPlayer.TotalContributedThisHand += actualBringIn;
+            currentBet = actualBringIn;
+
+            // Add to pot
+            var pot = await context.Pots
+                .FirstOrDefaultAsync(p => p.GameId == game.Id &&
+                                          p.HandNumber == game.CurrentHandNumber &&
+                                          p.PotType == PotType.Main,
+                                 cancellationToken);
+            if (pot is not null)
+            {
+                pot.Amount += actualBringIn;
+            }
+        }
+
+        // Set current phase to ThirdStreet (betting round)
         game.CurrentPhase = nameof(Phases.ThirdStreet);
-        
-        // Set Bring-In logic?
-        // SevenCardStud sets Bring-In player index.
-        // Usually the lowest or highest up card.
-        // BaseGameFlowHandler doesn't know this logic.
-        // But SevenCardStudFlowHandler doesn't seem to implement it in DealCardsAsync either.
-        // It relies on API Command handlers to process "Join" "Start", or maybe just leaves CurrentPlayerIndex as -1 
-        // and expecting client to prompt?
-        
-        // Wait, ContinuousPlayBackgroundService sets CurrentPlayerIndex = -1.
-        // Someone must set the current player.
-        // Usually DetermineFirstPlayer logic.
-        
-        // For now, I'll stick to dealing cards.
+        game.CurrentPlayerIndex = bringInSeatPosition;
+
+        // Create the initial betting round for Third Street
+        var bettingRound = new CardGames.Poker.Api.Data.Entities.BettingRound
+        {
+            GameId = game.Id,
+            HandNumber = game.CurrentHandNumber,
+            RoundNumber = 1,
+            Street = nameof(Phases.ThirdStreet),
+            CurrentBet = currentBet,
+            MinBet = game.SmallBet ?? 0,
+            MaxRaises = 4, // Fixed limit typically caps raises
+            LastRaiseAmount = 0,
+            PlayersInHand = eligiblePlayers.Count,
+            PlayersActed = 0,
+            CurrentActorIndex = bringInSeatPosition,
+            IsComplete = false,
+            StartedAt = now
+        };
+
+        if (currentBet > 0 && bringInPlayer is not null)
+        {
+            bettingRound.LastAggressorIndex = bringInPlayer.SeatPosition;
+        }
+
+        context.Set<CardGames.Poker.Api.Data.Entities.BettingRound>().Add(bettingRound);
     }
+
+    /// <summary>
+    /// Finds the player with the lowest up card for bring-in.
+    /// </summary>
+    private static GamePlayer? FindBringInPlayer(List<(GamePlayer Player, GameCard UpCard)> playerUpCards)
+    {
+        if (playerUpCards.Count == 0) return null;
+
+        // Find lowest card by rank (Ace is low for bring-in)
+        // Then by suit if tied (Clubs < Diamonds < Hearts < Spades)
+        var lowestCard = playerUpCards
+            .OrderBy(p => GetRankValue(p.UpCard.Symbol))
+            .ThenBy(p => p.UpCard.Suit)
+            .First();
+
+        return lowestCard.Player;
+    }
+
+    /// <summary>
+    /// Gets the rank value for bring-in determination (Ace = 1, King = 13).
+    /// </summary>
+    private static int GetRankValue(CardSymbol symbol) => symbol switch
+    {
+        CardSymbol.Ace => 1,
+        CardSymbol.Deuce => 2,
+        CardSymbol.Three => 3,
+        CardSymbol.Four => 4,
+        CardSymbol.Five => 5,
+        CardSymbol.Six => 6,
+        CardSymbol.Seven => 7,
+        CardSymbol.Eight => 8,
+        CardSymbol.Nine => 9,
+        CardSymbol.Ten => 10,
+        CardSymbol.Jack => 11,
+        CardSymbol.Queen => 12,
+        CardSymbol.King => 13,
+        _ => 0
+    };
 }

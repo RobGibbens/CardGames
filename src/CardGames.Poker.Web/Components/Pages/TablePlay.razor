@@ -26,6 +26,7 @@
 @inject ILogger<TablePlay> Logger
 @inject ITwosJacksManWithTheAxeApi TwosJacksManWithTheAxeApi
 @inject ISevenCardStudApi SevenCardStudApi
+@inject IFollowTheQueenApi FollowTheQueenApi
 @inject IBaseballApi BaseballApi
 @inject IKingsAndLowsApi KingsAndLowsApi
 @inject IFiveCardDrawApi FiveCardDrawApiClient
@@ -142,7 +143,10 @@
                          CurrentActorSeatIndex="@_currentActorSeatIndex" DealerSeatIndex="@_dealerSeatIndex"
                          OnSeatClick="HandleSeatClickAsync" DisableSeatSelectionForCurrentUser="@_isSeated"
                          CurrentPlayerSeatIndex="@_currentPlayerSeatIndex" GameTypeCode="@_gameTypeCode"
-                         IsPausedForChipCheck="@_isPausedForChipCheck" />
+                         IsPausedForChipCheck="@_isPausedForChipCheck"
+                         FlyingCard="@_flyingCard"
+                         HasWildCards="@HasWildCards"
+                         WildCards="@GetWildCardsForDisplay()" />
 
             <!-- Dashboard Panel (left side) -->
             @if (_isSeated)
@@ -178,7 +182,7 @@
         </div>
 
         <!-- Action Panel (only shown when it's player's turn during betting phase and player has cards) -->
-        @if (_isPlayerTurn && IsBettingPhase && CurrentPlayerHandCards.Count > 0)
+        @if (_isPlayerTurn && IsBettingPhase && CurrentPlayerHandCards.Count > 0 && !_dealAnimationInProgress)
         {
             <ActionPanel LegalActions="@_legalActions" MinBet="@_currentMinBet" MaxBet="@_currentMaxBet"
                          CurrentBetToCall="@_currentBetToCall" PlayerChips="@_playerChips"
@@ -491,6 +495,22 @@
     private Dictionary<int, int> _runoutVisibleCardCount = new(); // Seat index -> number of runout cards visible
     private Dictionary<int, int> _runoutInitialCardCounts = new(); // Seat index -> number of cards BEFORE runout started
 
+    // Card Deal Animation state (for Stud/Baseball/Queens)
+    private bool _dealAnimationInProgress;
+    private Timer? _dealTimer;
+    private TableStatePublicDto? _dealTargetState;
+    private PrivateStateDto? _dealPendingPrivateState;
+    private List<int> _dealOrderedSeatIndices = [];
+    private int _dealCurrentCardIndex; // Which card index we are dealing (0, 1, 2 for initial; 3, 4...)
+    private int _dealTargetEndIndex; // Stop dealing when _dealCurrentCardIndex reaches this
+    private int _dealCurrentSeatIdx; // Index into _dealOrderedSeatIndices
+    private Dictionary<int, List<CardInfo>> _dealTargetCards = new(); // SeatIndex -> Full Public Cards list
+
+    // Flying card animation state (visual card flying from deck to player)
+    private TableCanvas.FlyingCardInfo? _flyingCard;
+    private Timer? _flyingCardTimer;
+
+
     // Continuous play state
     private int _secondsUntilNextHand;
     private bool _isResultsPhase;
@@ -522,6 +542,7 @@
     StringComparison.OrdinalIgnoreCase);
     private bool IsKingsAndLows => string.Equals(_gameTypeCode, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase);
     private bool IsSevenCardStud => string.Equals(_gameTypeCode, "SEVENCARDSTUD", StringComparison.OrdinalIgnoreCase);
+    private bool IsFollowTheQueen => string.Equals(_gameTypeCode, "FOLLOWTHEQUEEN", StringComparison.OrdinalIgnoreCase);
     private bool IsBaseball => string.Equals(_gameTypeCode, "BASEBALL", StringComparison.OrdinalIgnoreCase);
 
     // Game rules for dynamic UI rendering
@@ -711,6 +732,11 @@
         // Store the table state for phase category checks
         _tableState = state;
 
+        if (_dealAnimationInProgress)
+        {
+            _dealTargetState = state;
+        }
+
         // Update deck hand description from state
         if (state.PlayerVsDeck is not null)
         {
@@ -767,6 +793,53 @@
                 _isPausedForChipCheck = false;
                 _chipCheckPauseEndsAt = null;
                 _chipCheckPotAmount = 0;
+            }
+
+            // Clean up old hand cards when starting a new hand to ensure animations work correctly
+            if (state.CurrentHandNumber != previousHandNumber)
+            {
+                foreach (var s in _seats)
+                {
+                    s.Cards = [];
+                    s.HandEvaluationDescription = null;
+                }
+            }
+
+            // Check for Card Deal Animation trigger (Stud/Baseball/Queens)
+            // Detect ANY increase in cards for active players
+            var isStudGame = IsSevenCardStud || IsBaseball || IsFollowTheQueen;
+            if (isStudGame && !_dealAnimationInProgress && !_runoutAnimationInProgress)
+            {
+                // Identify active players who are not folded in the NEW state (since if folded, they don't get new cards)
+                var activeSeatIndices = _seats
+                    .Where(s => s.IsOccupied && !s.IsSittingOut)
+                    .Select(s => s.SeatIndex)
+                    .ToList();
+
+                if (activeSeatIndices.Count > 0)
+                {
+                    // Find a player who is active in both states and check if their card count increased
+                    foreach (var seatIdx in activeSeatIndices)
+                    {
+                        var currentSeat = _seats.FirstOrDefault(s => s.SeatIndex == seatIdx);
+                        var newSeat = state.Seats.FirstOrDefault(s => s.SeatIndex == seatIdx);
+
+                        // Only consider non-folded players in the new state (folded players stop receiving cards)
+                        // Exception: Initial deal (current count 0) everyone gets cards even if technically not "folded" yet
+                        if (currentSeat != null && newSeat != null && !newSeat.IsFolded)
+                        {
+                            var currentCount = currentSeat.Cards.Count;
+                            var newCount = newSeat.Cards.Count;
+
+                            if (newCount > currentCount)
+                            {
+                                // Trigger animation for the difference
+                                StartCardDealAnimation(state, currentCount, newCount - currentCount);
+                                break; // Only trigger once
+                            }
+                        }
+                    }
+                }
             }
 
             // IMPORTANT: Check for All-In Runout BEFORE updating seats
@@ -1052,11 +1125,16 @@
             var isInRunoutAnimation = _runoutAnimationInProgress &&
             _allInRunoutState?.RunoutCardsBySeat?.ContainsKey(targetSeatIndex) == true;
 
-            if (isInRunoutAnimation)
+            if (isInRunoutAnimation || _dealAnimationInProgress)
             {
                 Logger.LogDebug(
-                "Skipping private state card update for seat {SeatIndex} during runout animation",
-                targetSeatIndex);
+                "Skipping private state card update for seat {SeatIndex} during animation (Runout={Runout}, Deal={Deal})",
+                targetSeatIndex, isInRunoutAnimation, _dealAnimationInProgress);
+
+                if (_dealAnimationInProgress && state.Hand is { Count: > 0 })
+                {
+                    _dealPendingPrivateState = state;
+                }
             }
             else if (state.Hand is { Count: > 0 })
             {
@@ -1071,8 +1149,10 @@
                     Rank = c.Rank,
                     Suit = c.Suit,
                     IsFaceUp = true,
+                    IsPubliclyVisible = c.IsPubliclyVisible,
                     IsSelected = false,
-                    DealOrder = c.DealOrder
+                    DealOrder = c.DealOrder,
+                    IsWild = IsWildCard(c.Rank, c.Suit)
                 }).ToList();
 
                 _seats[targetSeatIndex].HandEvaluationDescription = state.HandEvaluationDescription;
@@ -1282,29 +1362,33 @@
                 // This prevents briefly showing face-down cards before private state arrives
                 // BUT: Don't preserve cards if the player is sitting out (they shouldn't have cards)
                 // ALSO: Preserve cards during runout animation - the animation controls card visibility
+                // ALSO: Preserve cards during initial deal animation - the animation controls card visibility
                 var existingCards = _seats[publicSeat.SeatIndex].Cards;
                 var shouldPreserveCards = (isCurrentPlayer && existingCards.Any(c => c.IsFaceUp) && !publicSeat.IsSittingOut)
-                || isInRunoutAnimation;
+                || isInRunoutAnimation
+                || _dealAnimationInProgress;
 
                 Logger.LogDebug(
                 "UpdateSeatsFromPublicState: Seat {SeatIndex}, PlayerName={PlayerName}, " +
                 "isCurrentPlayerByEmail={ByEmail}, isCurrentPlayerBySeatIndex={BySeat}, " +
                 "isCurrentPlayerByName={ByName}, existingCards={ExistingCount}, " +
-                "existingFaceUp={FaceUpCount}, shouldPreserve={ShouldPreserve}, publicCardCount={PublicCount}, isSittingOut={IsSittingOut}, isInRunout={IsInRunout}",
+                "existingFaceUp={FaceUpCount}, shouldPreserve={ShouldPreserve}, publicCardCount={PublicCount}, isSittingOut={IsSittingOut}, isInRunout={IsInRunout}, isDealAnim={IsDealAnim}",
                 publicSeat.SeatIndex, publicSeat.PlayerName,
                 isCurrentPlayerByEmail, isCurrentPlayerBySeatIndex, isCurrentPlayerByName,
                 existingCards.Count, existingCards.Count(c => c.IsFaceUp),
-                shouldPreserveCards, publicSeat.Cards.Count, publicSeat.IsSittingOut, isInRunoutAnimation);
+                shouldPreserveCards, publicSeat.Cards.Count, publicSeat.IsSittingOut, isInRunoutAnimation, _dealAnimationInProgress);
 
                 var cards = shouldPreserveCards
-                ? existingCards
+                ? existingCards.Select(c => c with { IsWild = IsWildCard(c.Rank, c.Suit) }).ToList()
                 : publicSeat.Cards.Select(c => new CardInfo
                 {
                     Rank = c.IsFaceUp ? c.Rank : null,
                     Suit = c.IsFaceUp ? c.Suit : null,
                     IsFaceUp = c.IsFaceUp,
+                    IsPubliclyVisible = c.IsFaceUp,
                     IsSelected = false,
-                    DealOrder = c.DealOrder
+                    DealOrder = c.DealOrder,
+                    IsWild = c.IsFaceUp && IsWildCard(c.Rank, c.Suit)
                 }).ToList();
 
                 // Preserve LastActionDescription if it hasn't expired (5 seconds)
@@ -1434,7 +1518,10 @@
             playerFirstName: r.PlayerFirstName,
             playerName: r.PlayerName,
             sevensAmountWon: r.SevensAmountWon,
-            wildCardIndexes: r.WildCardIndexes?.ToList() ?? []))
+            wildCardIndexes: r.WildCardIndexes?.ToList() ?? [])
+            {
+                BestCardIndexes = r.BestCardIndexes?.ToList()
+            })
             .ToList();
 
             _showdownResult = new PerformShowdownSuccessful(
@@ -1715,7 +1802,8 @@
                         Rank = c.Symbol.ToCardRankString(),
                         Suit = c.Suit.ToCardSuitString(),
                         IsFaceUp = isCurrentPlayer,
-                        IsSelected = false
+                        IsSelected = false,
+                        IsWild = isCurrentPlayer && IsWildCard(c.Symbol.ToCardRankString(), c.Suit.ToCardSuitString())
                     }).ToList()
                 };
             }
@@ -1942,6 +2030,26 @@
                 return;
             }
         }
+        else if (IsFollowTheQueen)
+        {
+            var startHandResponse = await FollowTheQueenApi.FollowTheQueenStartHandAsync(GameId);
+            if (!startHandResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
+
+            var collectAntesResponse = await FollowTheQueenApi.FollowTheQueenCollectAntesAsync(GameId);
+            if (!collectAntesResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
+
+            var dealHandsResponse = await FollowTheQueenApi.FollowTheQueenDealHandsAsync(GameId);
+            if (!dealHandsResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
+        }
         else if (IsKingsAndLows)
         {
             // Kings and Lows has a simpler flow - StartHand handles ante collection and dealing
@@ -2152,6 +2260,25 @@
             var currentVisible = _runoutVisibleCardCount.GetValueOrDefault(currentSeatIndex, 0);
             if (currentVisible < runoutCards.Count)
             {
+                var runoutCard = runoutCards[currentVisible];
+
+                // Start flying card animation for runout
+                _flyingCard = new TableCanvas.FlyingCardInfo(
+                    TargetSeatIndex: currentSeatIndex,
+                    CardIndex: currentVisible,
+                    Rank: runoutCard.Rank,
+                    Suit: runoutCard.Suit,
+                    IsFaceUp: true
+                );
+
+                await InvokeAsync(StateHasChanged);
+
+                // Wait for the flying animation to complete
+                await Task.Delay(550);
+
+                // Clear the flying card
+                _flyingCard = null;
+
                 _runoutVisibleCardCount[currentSeatIndex] = currentVisible + 1;
                 UpdateSeatWithRunoutCards(currentSeatIndex, currentVisible + 1);
 
@@ -2215,7 +2342,8 @@
                 Suit = runoutCard.Suit,
                 IsFaceUp = true,
                 IsSelected = false,
-                DealOrder = initialCardCount + i
+                DealOrder = initialCardCount + i,
+                IsWild = IsWildCard(runoutCard.Rank, runoutCard.Suit)
             });
         }
 
@@ -2223,6 +2351,178 @@
 
         Logger.LogDebug("UpdateSeatWithRunoutCards: Seat {SeatIndex} now has {CardCount} cards",
         seatIndex, allCards.Count);
+    }
+
+    private void StartCardDealAnimation(TableStatePublicDto state, int startCardIndex, int numberOfCardsToDeal)
+    {
+        Logger.LogInformation("Starting card deal animation for game {GameId}. StartIdx={Start}, Count={Count}", 
+            GameId, startCardIndex, numberOfCardsToDeal);
+
+        _dealAnimationInProgress = true;
+        _dealTargetState = state;
+        _dealCurrentCardIndex = startCardIndex; // Start dealing at this card index (e.g., 0 for initial, 3 for 4th street)
+        _dealTargetEndIndex = startCardIndex + numberOfCardsToDeal; // Stop when index reaches this value
+        _dealCurrentSeatIdx = 0;
+
+        // Determine deal order: Start from Dealer + 1
+        // Filter to seats that are occupied, not sitting out, AND NOT Folded in the NEW state
+        // (Folded players do not receive new cards in Stud, except initially everyone is not folded)
+        var activePublicSeats = state.Seats
+            .Where(s => s.IsOccupied && !s.IsSittingOut && !s.IsFolded)
+            .ToList();
+
+        if (activePublicSeats.Count == 0)
+        {
+            CompleteCardDealAnimation();
+            return;
+        }
+
+        // Create ordered list starting after dealer
+        var dealerPos = state.DealerSeatIndex;
+        _dealOrderedSeatIndices = activePublicSeats
+            .Select(s => s.SeatIndex)
+            .OrderBy(idx => (idx - dealerPos - 1 + 8) % 8) // Circular order after dealer
+            .ToList();
+
+        // Cache target cards from the NEW state to know rank/suit/faceup status
+        _dealTargetCards.Clear();
+        foreach (var seat in activePublicSeats)
+        {
+            _dealTargetCards[seat.SeatIndex] = seat.Cards
+                .Select(c => new CardInfo { Rank = c.Rank, Suit = c.Suit, IsFaceUp = c.IsFaceUp })
+                .ToList();
+        }
+
+        // Start Timer - 2000ms delay between cards per player
+        _dealTimer = new Timer(DealNextCard, null, 100, 2000);
+    }
+
+    private async void DealNextCard(object? state)
+    {
+        if (!_dealAnimationInProgress) return;
+
+        // Clear any previous flying card
+        _flyingCard = null;
+
+        // If we've completed all players for the current card index
+        if (_dealCurrentSeatIdx >= _dealOrderedSeatIndices.Count)
+        {
+            // Move to next card in the sequence (e.g. from 1st card to 2nd card)
+            _dealCurrentCardIndex++;
+            _dealCurrentSeatIdx = 0;
+        }
+
+        // Check if we are done dealing all assigned cards
+        if (_dealCurrentCardIndex >= _dealTargetEndIndex)
+        {
+            await InvokeAsync(() =>
+            {
+                _flyingCard = null;
+                CompleteCardDealAnimation();
+                StateHasChanged();
+            });
+            return;
+        }
+
+        // Deal card to current seat
+        var seatIndex = _dealOrderedSeatIndices[_dealCurrentSeatIdx];
+
+        // Find the seat in the current display state
+        var seatListIndex = _seats.FindIndex(s => s.SeatIndex == seatIndex);
+
+        if (seatListIndex >= 0)
+        {
+            var seat = _seats[seatListIndex];
+
+            // Determine properties from the TARGET state
+            string? rank = null;
+            string? suit = null;
+            bool isFaceUp = false;
+
+            if (_dealTargetCards.TryGetValue(seatIndex, out var targetCards) && 
+                _dealCurrentCardIndex < targetCards.Count)
+            {
+                var targetCard = targetCards[_dealCurrentCardIndex];
+                rank = targetCard.Rank;
+                suit = targetCard.Suit;
+                isFaceUp = targetCard.IsFaceUp;
+            }
+
+            // Start flying card animation
+            _flyingCard = new TableCanvas.FlyingCardInfo(
+                TargetSeatIndex: seatIndex,
+                CardIndex: _dealCurrentCardIndex,
+                Rank: rank,
+                Suit: suit,
+                IsFaceUp: isFaceUp
+            );
+
+            await InvokeAsync(StateHasChanged);
+
+            // Wait for the flying animation to complete (600ms matches CSS animation duration)
+            await Task.Delay(550);
+
+            // Clear the flying card and add card to the seat
+            _flyingCard = null;
+
+            // Create the card
+            var newCard = new CardInfo
+            {
+                Rank = rank,
+                Suit = suit,
+                IsFaceUp = isFaceUp,
+                IsSelected = false,
+                DealOrder = _dealCurrentCardIndex,
+                IsWild = IsWildCard(rank, suit)
+            };
+
+            // Safely add card. Check if we are replacing or adding.
+            // Normally adding. But safeguard if list is somehow already large?
+            // Since we preserved existingCards, usually we just append.
+            var newHand = seat.Cards.ToList();
+            if (newHand.Count > _dealCurrentCardIndex)
+            {
+                // This shouldn't happen if logic is correct, but if it does, update existing
+                newHand[_dealCurrentCardIndex] = newCard;
+            }
+            else
+            {
+                newHand.Add(newCard);
+            }
+
+            _seats[seatListIndex] = seat with { Cards = newHand };
+
+            Logger.LogDebug("Deal Animation: CardIdx {CardIdx}, Seat {SeatIndex}, FaceUp={FaceUp}",
+                _dealCurrentCardIndex, seatIndex, isFaceUp);
+        }
+
+        _dealCurrentSeatIdx++;
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void CompleteCardDealAnimation()
+    {
+        Logger.LogInformation("Card deal animation complete");
+
+        _dealAnimationInProgress = false;
+        _dealTimer?.Dispose();
+        _dealTimer = null;
+        _flyingCard = null;
+
+        // Sync with Pending State
+        if (_dealTargetState != null)
+        {
+            UpdateSeatsFromPublicState(_dealTargetState.Seats);
+            _dealTargetState = null;
+        }
+
+        // Sync with Pending Private State (for current player hole cards)
+        if (_dealPendingPrivateState != null)
+        {
+            _ = HandlePrivateStateUpdatedAsync(_dealPendingPrivateState);
+            _dealPendingPrivateState = null;
+        }
     }
 
     /// <summary>
@@ -2235,6 +2535,7 @@
         _runoutAnimationInProgress = false;
         _runoutDealTimer?.Dispose();
         _runoutDealTimer = null;
+        _flyingCard = null;
 
         // Now load and show the showdown overlay
         await TryLoadShowdownAsync();
@@ -2760,8 +3061,10 @@
         public string? Rank { get; init; }
         public string? Suit { get; init; }
         public bool IsFaceUp { get; init; }
+        public bool IsPubliclyVisible { get; init; }
         public bool IsSelected { get; init; }
         public int DealOrder { get; init; }
+        public bool IsWild { get; init; }
     }
 
     public record PlayerActionRequest(BettingActionType Action, int? Amount);
@@ -2818,6 +3121,15 @@
         // Stop runout animation timer
         _runoutDealTimer?.Dispose();
         _runoutDealTimer = null;
+
+        // Stop card deal animation timer
+        _dealTimer?.Dispose();
+        _dealTimer = null;
+
+        // Stop flying card timer
+        _flyingCardTimer?.Dispose();
+        _flyingCardTimer = null;
+        _flyingCard = null;
 
         // Unsubscribe from SignalR events
         GameHubClient.OnTableStateUpdated -= HandleTableStateUpdatedAsync;
@@ -3217,7 +3529,9 @@ HandType.HighCard
     /// <summary>
     /// Determines if a card is wild based on game rules.
     /// </summary>
-    private bool IsWildCard(CardInfo card)
+    private bool IsWildCard(CardInfo card) => IsWildCard(card.Rank, card.Suit);
+
+    private bool IsWildCard(string? rank, string? suit)
     {
         var wildRules = _tableState?.SpecialRules?.WildCardRules;
         if (wildRules is null)
@@ -3226,9 +3540,9 @@ HandType.HighCard
         }
 
         // Check specific cards (e.g., "KD" for King of Diamonds)
-        if (wildRules.SpecificCards is not null && card.Rank is not null && card.Suit is not null)
+        if (wildRules.SpecificCards is not null && rank is not null && suit is not null)
         {
-            var cardCode = $"{card.Rank}{GetSuitCode(card.Suit)}";
+            var cardCode = $"{rank}{GetSuitCode(suit)}";
             if (wildRules.SpecificCards.Any(c => c.Equals(cardCode, StringComparison.OrdinalIgnoreCase)))
             {
                 return true;
@@ -3236,9 +3550,9 @@ HandType.HighCard
         }
 
         // Check wild ranks (e.g., all 2s, all Jacks)
-        if (wildRules.WildRanks is not null && card.Rank is not null)
+        if (wildRules.WildRanks is not null && rank is not null)
         {
-            if (wildRules.WildRanks.Any(r => r.Equals(card.Rank, StringComparison.OrdinalIgnoreCase)))
+            if (wildRules.WildRanks.Any(r => r.Equals(rank, StringComparison.OrdinalIgnoreCase)))
             {
                 return true;
             }
@@ -3258,6 +3572,158 @@ HandType.HighCard
         "HEARTS" => "H",
         "SPADES" => "S",
         _ => ""
+    };
+
+    /// <summary>
+    /// Gets the wild cards for display in the TableCanvas panel.
+    /// Returns game-specific wild cards:
+    /// - Baseball: 3s and 9s
+    /// - Follow the Queen: Queens + dynamic wild rank
+    /// - Kings and Lows: Kings + player's lowest card (personalized)
+    /// - Twos Jacks Man with the Axe: 2s, Jacks, and King of Diamonds
+    /// </summary>
+    private IReadOnlyList<TableCanvas.WildCardDisplay> GetWildCardsForDisplay()
+    {
+        var wildRules = _tableState?.SpecialRules?.WildCardRules;
+        if (wildRules is null)
+        {
+            return [];
+        }
+
+        var wildCards = new List<TableCanvas.WildCardDisplay>();
+
+        // Add specific cards first (e.g., King of Diamonds for Twos Jacks)
+        if (wildRules.SpecificCards is { Count: > 0 })
+        {
+            foreach (var cardCode in wildRules.SpecificCards)
+            {
+                if (cardCode.Length >= 2)
+                {
+                    var rank = cardCode[..^1]; // Everything except last char
+                    var suitCode = cardCode[^1..]; // Last char
+                    var suitName = suitCode.ToUpperInvariant() switch
+                    {
+                        "C" => "Clubs",
+                        "D" => "Diamonds",
+                        "H" => "Hearts",
+                        "S" => "Spades",
+                        _ => null
+                    };
+
+                    if (suitName is not null)
+                    {
+                        var displayRank = GetDisplayRankName(rank);
+                        wildCards.Add(new TableCanvas.WildCardDisplay(
+                            Rank: rank,
+                            Suit: suitName,
+                            Label: $"{displayRank} of {suitName}"
+                        ));
+                    }
+                }
+            }
+        }
+
+        // Add wild ranks (all cards of certain ranks)
+        if (wildRules.WildRanks is { Count: > 0 })
+        {
+            foreach (var rank in wildRules.WildRanks)
+            {
+                var label = GetWildRankLabel(rank);
+                wildCards.Add(new TableCanvas.WildCardDisplay(
+                    Rank: rank,
+                    Suit: null,
+                    Label: label
+                ));
+            }
+        }
+
+        // Add personalized wild card for "lowest card is wild" (Kings and Lows)
+        if (wildRules.LowestCardIsWild && _isSeated && CurrentPlayerHandCards.Count > 0)
+        {
+            var lowestCard = GetLowestCard(CurrentPlayerHandCards);
+            if (lowestCard is not null)
+            {
+                wildCards.Add(new TableCanvas.WildCardDisplay(
+                    Rank: lowestCard.Rank,
+                    Suit: null,
+                    Label: "Your Lowest",
+                    IsPersonalized: true
+                ));
+            }
+        }
+
+        return wildCards;
+    }
+
+    /// <summary>
+    /// Gets a display-friendly name for a rank.
+    /// </summary>
+    private static string GetDisplayRankName(string? rank) => rank?.ToUpperInvariant() switch
+    {
+        "A" => "Ace",
+        "K" => "King",
+        "Q" => "Queen",
+        "J" => "Jack",
+        "10" or "T" => "10",
+        _ => rank ?? "?"
+    };
+
+    /// <summary>
+    /// Gets a label for a wild rank (e.g., "All 3s", "Queens").
+    /// </summary>
+    private static string GetWildRankLabel(string? rank) => rank?.ToUpperInvariant() switch
+    {
+        "A" => "Aces",
+        "K" => "Kings",
+        "Q" => "Queens",
+        "J" => "Jacks",
+        "2" => "Deuces",
+        "3" => "Threes",
+        "4" => "Fours",
+        "5" => "Fives",
+        "6" => "Sixes",
+        "7" => "Sevens",
+        "8" => "Eights",
+        "9" => "Nines",
+        "10" or "T" => "Tens",
+        _ => $"All {rank}s"
+    };
+
+    /// <summary>
+    /// Gets the lowest card from a collection of cards (for Kings and Lows).
+    /// </summary>
+    private static CardInfo? GetLowestCard(IReadOnlyList<CardInfo> cards)
+    {
+        if (cards.Count == 0)
+        {
+            return null;
+        }
+
+        return cards
+            .Where(c => c.IsFaceUp && !string.IsNullOrWhiteSpace(c.Rank))
+            .OrderBy(c => GetCardValue(c.Rank))
+            .FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Gets the numeric value of a card rank for comparison.
+    /// </summary>
+    private static int GetCardValue(string? rank) => rank?.ToUpperInvariant() switch
+    {
+        "A" => 14,
+        "K" => 13,
+        "Q" => 12,
+        "J" => 11,
+        "10" or "T" => 10,
+        "9" => 9,
+        "8" => 8,
+        "7" => 7,
+        "6" => 6,
+        "5" => 5,
+        "4" => 4,
+        "3" => 3,
+        "2" => 2,
+        _ => 0
     };
 
     private static string DisplayFirstName(ShowdownPlayerHand? hand)

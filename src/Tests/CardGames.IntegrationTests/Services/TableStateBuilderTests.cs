@@ -2,6 +2,7 @@ using CardGames.Poker.Api.Services;
 using CardGames.Poker.Api.Features.Games.Generic.v1.Commands.StartHand;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.CollectAntes;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.DealHands;
+using CardGames.Poker.Api.Data.Entities;
 
 namespace CardGames.IntegrationTests.Services;
 
@@ -194,5 +195,79 @@ public class TableStateBuilderTests : IntegrationTestBase
         // Assert
         result.Should().NotBeNull();
         result!.CurrentPhase.Should().Be(nameof(Phases.DropOrStay));
+    }
+
+    [Fact]
+    public async Task BuildPublicStateAsync_FollowTheQueen_DynamicWildRank_UsesNextCardAfterQueenInGlobalDealOrder()
+    {
+        // Arrange
+        // Repro: If DealOrder resets per street for visible board cards, a later street card can end up
+        // interleaved ahead of earlier street cards when sorting only by DealOrder.
+        // We expect the "follow" wild rank to be the card dealt immediately after the last face-up Queen
+        // in true deal sequence (street order + rotation), not "the next card dealt to the Queen's owner".
+        var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FOLLOWTHEQUEEN", 2);
+
+        var game = setup.Game;
+        game.CurrentHandNumber = 1;
+        game.CurrentPhase = "FourthStreet";
+        game.DealerPosition = 1; // Seat 1 is dealer, so dealing starts at seat 0 (left of dealer)
+        await DbContext.SaveChangesAsync();
+
+        var rob = setup.GamePlayers.Single(gp => gp.SeatPosition == 0);
+        var lynne = setup.GamePlayers.Single(gp => gp.SeatPosition == 1);
+
+        // Third street visible cards (DealOrder 1..N within street)
+        DbContext.GameCards.Add(new GameCard
+        {
+            GameId = game.Id,
+            GamePlayerId = rob.Id,
+            HandNumber = game.CurrentHandNumber,
+            Location = CardLocation.Board,
+            Suit = CardSuit.Clubs,
+            Symbol = CardSymbol.Queen,
+            DealtAtPhase = "ThirdStreet",
+            DealOrder = 1,
+            IsVisible = true
+        });
+        DbContext.GameCards.Add(new GameCard
+        {
+            GameId = game.Id,
+            GamePlayerId = lynne.Id,
+            HandNumber = game.CurrentHandNumber,
+            Location = CardLocation.Board,
+            Suit = CardSuit.Hearts,
+            Symbol = CardSymbol.Four,
+            DealtAtPhase = "ThirdStreet",
+            DealOrder = 2,
+            IsVisible = true
+        });
+
+        // Fourth street visible card with DealOrder reset back to 1
+        DbContext.GameCards.Add(new GameCard
+        {
+            GameId = game.Id,
+            GamePlayerId = rob.Id,
+            HandNumber = game.CurrentHandNumber,
+            Location = CardLocation.Board,
+            Suit = CardSuit.Hearts,
+            Symbol = CardSymbol.Ace,
+            DealtAtPhase = "FourthStreet",
+            DealOrder = 1,
+            IsVisible = true
+        });
+
+        await DbContext.SaveChangesAsync();
+
+        // Act
+        var result = await TableStateBuilder.BuildPublicStateAsync(game.Id);
+
+        // Assert
+        result.Should().NotBeNull();
+        result!.SpecialRules.Should().NotBeNull();
+        result.SpecialRules!.WildCardRules.Should().NotBeNull();
+        result.SpecialRules.WildCardRules!.WildRanks.Should().NotBeNull();
+        result.SpecialRules.WildCardRules.WildRanks!.Should().Contain("Q");
+        result.SpecialRules.WildCardRules.WildRanks!.Should().Contain("4");
+        result.SpecialRules.WildCardRules.WildRanks!.Should().NotContain("A");
     }
 }

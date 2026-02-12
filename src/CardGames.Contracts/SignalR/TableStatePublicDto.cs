@@ -442,6 +442,11 @@ public sealed record ShowdownPlayerResultDto
 	/// Used by the UI to display wild card indicators.
 	/// </summary>
 	public IReadOnlyList<int>? WildCardIndexes { get; init; }
+
+	/// <summary>
+	/// The zero-based indices of cards in the hand that make up the best 5-card hand.
+	/// </summary>
+	public IReadOnlyList<int>? BestCardIndexes { get; init; }
 }
 
 /// <summary>
