@@ -2113,15 +2113,20 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			{
 				c.Symbol,
 				c.Suit,
+				c.DealtAtPhase,
 				c.DealOrder,
 				SeatPosition = c.GamePlayer != null ? c.GamePlayer.SeatPosition : -1
 			})
 			.ToListAsync(cancellationToken);
 
 		// Sort in memory to handle rotation logic (Stud deals start left of Dealer)
-		// We want order: (Dealer+1)...Max, 0...Dealer
+		// IMPORTANT: DealOrder is not guaranteed to be globally unique across streets for stud variants.
+		// To determine the "next card after the last face-up Queen" we must sort by street/phase first,
+		// then by within-street order, then by rotation relative to the dealer.
+		// Rotation order desired: (Dealer+1)...Max, 0...Dealer
 		return rawFaceUpCards
-			.OrderBy(c => c.DealOrder)
+			.OrderBy(c => GetStreetPhaseOrder(c.DealtAtPhase))
+			.ThenBy(c => c.DealOrder)
 			.ThenBy(c => c.SeatPosition > game.DealerPosition ? c.SeatPosition : c.SeatPosition + 1000)
 			.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
 			.ToList();
