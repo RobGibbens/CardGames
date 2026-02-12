@@ -70,6 +70,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{07D268B8-C
 		..\docs\KingsAndLowsPlan.md = ..\docs\KingsAndLowsPlan.md
 		..\docs\LeaveTable.md = ..\docs\LeaveTable.md
 		..\docs\MaxDiscards.md = ..\docs\MaxDiscards.md
+		..\docs\plan-dealing.prompt.md = ..\docs\plan-dealing.prompt.md
 		..\docs\plan-sevenCardStud.prompt.md = ..\docs\plan-sevenCardStud.prompt.md
 		..\docs\plan-twosJacksManWithTheAxe.prompt.md = ..\docs\plan-twosJacksManWithTheAxe.prompt.md
 		..\docs\PlayPage.md = ..\docs\PlayPage.md
