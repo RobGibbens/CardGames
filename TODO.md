@@ -5,6 +5,8 @@
 - [ ] FTQ should show what cards are wild
 - [ ] Wild cards is not showing the second wild card in FTQ
 - [ ] FTQ is misremembering other wild card after action
+- [ ] Make sure it's shuffling correctly
+- [ ] Raise face up cards 
 
 ### P1 - Can't play without these
 - [ ] Test side pots
