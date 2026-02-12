@@ -1149,6 +1149,7 @@
                     Rank = c.Rank,
                     Suit = c.Suit,
                     IsFaceUp = true,
+                    IsPubliclyVisible = c.IsPubliclyVisible,
                     IsSelected = false,
                     DealOrder = c.DealOrder,
                     IsWild = IsWildCard(c.Rank, c.Suit)
@@ -1384,6 +1385,7 @@
                     Rank = c.IsFaceUp ? c.Rank : null,
                     Suit = c.IsFaceUp ? c.Suit : null,
                     IsFaceUp = c.IsFaceUp,
+                    IsPubliclyVisible = c.IsFaceUp,
                     IsSelected = false,
                     DealOrder = c.DealOrder,
                     IsWild = c.IsFaceUp && IsWildCard(c.Rank, c.Suit)
@@ -3059,6 +3061,7 @@
         public string? Rank { get; init; }
         public string? Suit { get; init; }
         public bool IsFaceUp { get; init; }
+        public bool IsPubliclyVisible { get; init; }
         public bool IsSelected { get; init; }
         public int DealOrder { get; init; }
         public bool IsWild { get; init; }

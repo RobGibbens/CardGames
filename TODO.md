@@ -2,11 +2,7 @@
 
 ## Still to do
 
-- [ ] FTQ should show what cards are wild
-- [ ] Wild cards is not showing the second wild card in FTQ
-- [ ] FTQ is misremembering other wild card after action
 - [ ] Make sure it's shuffling correctly
-- [ ] Raise face up cards 
 
 ### P1 - Can't play without these
 - [ ] Test side pots
@@ -151,3 +147,7 @@
 - [x] Kings and Lows - is always treating an Ace as high. (6,7,8,9,A should be a straight)
 - [x] SCS - when a player has no chips, they're still getting dealt and can take action
 - [x] SCS - odds should calculate based on future cards
+- [x] Raise face up cards 
+- [x] FTQ should show what cards are wild
+- [x] Wild cards is not showing the second wild card in FTQ
+- [x] FTQ is misremembering other wild card after action

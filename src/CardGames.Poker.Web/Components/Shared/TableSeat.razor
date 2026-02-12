@@ -20,7 +20,7 @@
 
 						if (IsCurrentPlayer)
 						{
-							if (card.IsFaceUp)
+							if (card.IsPubliclyVisible)
 							{
 								<div class="card-shell face-up">
 									<playing-card rank="@rank" suit="@card.Suit" class="poker-card face-up" suitcolor="@(card.IsWild ? "green" : null)" rankcolor="@(card.IsWild ? "green" : null)" courtcolor="@(card.IsWild ? "green" : null)"></playing-card>
@@ -29,7 +29,7 @@
 							else
 							{
 								<div class="card-shell face-down">
-									<playing-card rank="0" backcolor="#44F" class="poker-card face-down"></playing-card>
+									<playing-card rank="@rank" suit="@card.Suit" class="poker-card face-down" suitcolor="@(card.IsWild ? "green" : null)" rankcolor="@(card.IsWild ? "green" : null)" courtcolor="@(card.IsWild ? "green" : null)"></playing-card>
 								</div>
 							}
 						}
@@ -37,7 +37,7 @@
 						{
 							if (card.IsFaceUp)
 							{
-								<playing-card rank="@rank" suit="@card.Suit" class="poker-card small" suitcolor="@(card.IsWild ? "green" : null)" rankcolor="@(card.IsWild ? "green" : null)" courtcolor="@(card.IsWild ? "green" : null)"></playing-card>
+								<playing-card rank="@rank" suit="@card.Suit" class="poker-card small"></playing-card>
 							}
 							else
 							{

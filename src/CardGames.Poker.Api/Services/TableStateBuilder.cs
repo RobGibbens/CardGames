@@ -632,7 +632,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				Rank = MapSymbolToRank(c.Symbol),
 				Suit = c.Suit.ToString(),
 				DealOrder = c.DealOrder,
-				IsSelectedForDiscard = false
+				IsSelectedForDiscard = false,
+				IsPubliclyVisible = c.IsVisible
 			})
 			.ToList();
 	}

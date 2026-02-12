@@ -117,6 +117,11 @@ public sealed record CardPrivateDto
     /// Whether this card is selected for discard (during draw phase).
     /// </summary>
     public bool IsSelectedForDiscard { get; init; }
+
+    /// <summary>
+    /// Whether this card is publicly visible (face up) to other players.
+    /// </summary>
+    public bool IsPubliclyVisible { get; init; }
 }
 
 /// <summary>
