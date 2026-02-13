@@ -5,6 +5,7 @@ using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.ProcessBetting
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.ProcessDraw;
 using CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.DrawCards;
 using CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.DropOrStay;
+using CardGames.Poker.Api.GameFlow;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -54,7 +55,7 @@ public class AutoActionServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task PerformAutoActionAsync_PlayerNotFound_LogsWarning()
+    public async Task PerformAutoActionAsync_PlayerNotFound_DoesNothing()
     {
         var game = new Game
         {
@@ -67,7 +68,7 @@ public class AutoActionServiceTests : IDisposable
 
         await _service.PerformAutoActionAsync(game.Id, 1);
 
-        _logger.WarningLogs.Should().Contain(l => l.Contains("No player found at seat"));
+        _mediator.SentCommands.Should().BeEmpty();
     }
 
     [Fact]
@@ -114,7 +115,7 @@ public class AutoActionServiceTests : IDisposable
     }
     
     [Fact]
-    public async Task PerformAutoActionAsync_GlobalTimer_OtherPhase_LogsWarning()
+    public async Task PerformAutoActionAsync_GlobalTimer_OtherPhase_DoesNothing()
     {
         var gameId = Guid.NewGuid();
         var game = new Game
@@ -128,7 +129,7 @@ public class AutoActionServiceTests : IDisposable
 
         await _service.PerformAutoActionAsync(gameId, -1);
 
-        _logger.WarningLogs.Should().Contain(l => l.Contains("Global timer expired for phase FirstBettingRound but no handler defined"));
+        _mediator.SentCommands.Should().BeEmpty();
     }
 
     [Fact]
@@ -367,7 +368,7 @@ public class AutoActionServiceTests : IDisposable
     }
     
     [Fact]
-    public async Task PerformAutoActionAsync_MediatorError_LogsWarning()
+    public async Task PerformAutoActionAsync_MediatorError_DoesNotThrowAndSendsCommand()
     {
         var gameId = Guid.NewGuid();
         var playerSeat = 1;
@@ -395,7 +396,8 @@ public class AutoActionServiceTests : IDisposable
 
         await _service.PerformAutoActionAsync(gameId, playerSeat);
 
-        _logger.WarningLogs.Should().Contain(l => l.Contains("failed for game"));
+        _mediator.SentCommands.Should().ContainSingle(c => c is ProcessBettingActionCommand);
+        _logger.ErrorLogs.Should().BeEmpty();
     }
 
     [Fact]
@@ -553,24 +555,26 @@ public class AutoActionServiceTests : IDisposable
     {
         private readonly CardsDbContext _dbContext;
         private readonly IMediator _mediator;
+        private readonly IGameFlowHandlerFactory _gameFlowHandlerFactory;
 
         public FakeServiceScopeFactory(CardsDbContext dbContext, IMediator mediator)
         {
             _dbContext = dbContext;
             _mediator = mediator;
+            _gameFlowHandlerFactory = new GameFlowHandlerFactory();
         }
 
         public IServiceScope CreateScope()
         {
-            return new FakeServiceScope(_dbContext, _mediator);
+            return new FakeServiceScope(_dbContext, _mediator, _gameFlowHandlerFactory);
         }
     }
 
     private class FakeServiceScope : IServiceScope
     {
-        public FakeServiceScope(CardsDbContext dbContext, IMediator mediator)
+        public FakeServiceScope(CardsDbContext dbContext, IMediator mediator, IGameFlowHandlerFactory gameFlowHandlerFactory)
         {
-            ServiceProvider = new FakeServiceProvider(dbContext, mediator);
+            ServiceProvider = new FakeServiceProvider(dbContext, mediator, gameFlowHandlerFactory);
         }
 
         public IServiceProvider ServiceProvider { get; }
@@ -584,11 +588,13 @@ public class AutoActionServiceTests : IDisposable
     {
         private readonly CardsDbContext _dbContext;
         private readonly IMediator _mediator;
+        private readonly IGameFlowHandlerFactory _gameFlowHandlerFactory;
 
-        public FakeServiceProvider(CardsDbContext dbContext, IMediator mediator)
+        public FakeServiceProvider(CardsDbContext dbContext, IMediator mediator, IGameFlowHandlerFactory gameFlowHandlerFactory)
         {
             _dbContext = dbContext;
             _mediator = mediator;
+            _gameFlowHandlerFactory = gameFlowHandlerFactory;
         }
 
         public object? GetService(Type serviceType)
@@ -597,6 +603,8 @@ public class AutoActionServiceTests : IDisposable
                 return _dbContext;
             if (serviceType == typeof(IMediator))
                 return _mediator;
+            if (serviceType == typeof(IGameFlowHandlerFactory))
+                return _gameFlowHandlerFactory;
             return null;
         }
     }

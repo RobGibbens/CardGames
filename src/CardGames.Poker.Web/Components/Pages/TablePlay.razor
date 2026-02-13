@@ -182,7 +182,7 @@
         </div>
 
         <!-- Action Panel (only shown when it's player's turn during betting phase and player has cards) -->
-        @if (_isPlayerTurn && IsBettingPhase && CurrentPlayerHandCards.Count > 0 && !_dealAnimationInProgress)
+        @if (_isPlayerTurn && IsBettingPhase && CurrentPlayerHandCards.Count > 0 && !IsCardDealingVisualInProgress)
         {
             <ActionPanel LegalActions="@_legalActions" MinBet="@_currentMinBet" MaxBet="@_currentMaxBet"
                          CurrentBetToCall="@_currentBetToCall" PlayerChips="@_playerChips"
@@ -192,7 +192,7 @@
 
         <!-- Decision Panel (shown during decision phase like Drop/Stay) -->
         <!-- Note: Kings and Lows DropOrStay has its own overlay, so exclude it here -->
-        @if (_isPlayerTurn && IsDecisionPhase && !(HasDropOrStay && IsDropOrStayPhase))
+        @if (_isPlayerTurn && IsDecisionPhase && !(HasDropOrStay && IsDropOrStayPhase) && !IsCardDealingVisualInProgress)
         {
             <DecisionPanel Title="@GetDecisionTitle()" Subtitle="@GetDecisionSubtitle()"
                            AvailableActions="@CurrentPhaseAvailableActions" OnDecision="@HandleDecisionAsync"
@@ -227,7 +227,7 @@
         }
 
         <!-- Drop or Stay Overlay (for Kings and Lows) -->
-        @if (HasDropOrStay && IsDropOrStayPhase && IsParticipatingInHand)
+        @if (HasDropOrStay && IsDropOrStayPhase && IsParticipatingInHand && !IsCardDealingVisualInProgress)
         {
             <DropOrStayOverlay Cards="@_currentPlayerDrawCards" HandDescription="@currentPlayerHandEvaluationDescription"
                                PotAmount="@_pot" HasDecided="@_hasDropOrStayDecided" Decision="@_dropOrStayDecision"
@@ -495,7 +495,7 @@
     private Dictionary<int, int> _runoutVisibleCardCount = new(); // Seat index -> number of runout cards visible
     private Dictionary<int, int> _runoutInitialCardCounts = new(); // Seat index -> number of cards BEFORE runout started
 
-    // Card Deal Animation state (for Stud/Baseball/Queens)
+    // Card Deal Animation state (for supported game variants)
     private bool _dealAnimationInProgress;
     private Timer? _dealTimer;
     private TableStatePublicDto? _dealTargetState;
@@ -540,10 +540,13 @@
     private string? _gameTypeCode;
     private bool IsTwosJacksManWithTheAxe => string.Equals(_gameTypeCode, "TWOSJACKSMANWITHTHEAXE",
     StringComparison.OrdinalIgnoreCase);
+    private bool IsFiveCardDraw => string.Equals(_gameTypeCode, "FIVECARDDRAW", StringComparison.OrdinalIgnoreCase);
     private bool IsKingsAndLows => string.Equals(_gameTypeCode, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase);
     private bool IsSevenCardStud => string.Equals(_gameTypeCode, "SEVENCARDSTUD", StringComparison.OrdinalIgnoreCase);
     private bool IsFollowTheQueen => string.Equals(_gameTypeCode, "FOLLOWTHEQUEEN", StringComparison.OrdinalIgnoreCase);
     private bool IsBaseball => string.Equals(_gameTypeCode, "BASEBALL", StringComparison.OrdinalIgnoreCase);
+    private bool UsesCardDealAnimation => IsSevenCardStud || IsBaseball || IsFollowTheQueen || IsFiveCardDraw || IsTwosJacksManWithTheAxe || IsKingsAndLows;
+    private int DealAnimationDelayMs => 750;
 
     // Game rules for dynamic UI rendering
     private GetGameRulesResponse? _gameRules;
@@ -576,6 +579,9 @@
 
     private bool ShouldShowBuyCardOverlay =>
     IsBuyCardOfferPhase && _buyCardOffer is not null && IsParticipatingInHand;
+
+    private bool IsCardDealingVisualInProgress =>
+    _dealAnimationInProgress || _flyingCard is not null;
 
     // Drop or Stay phase detection (for Kings and Lows)
     private bool IsDropOrStayPhase =>
@@ -805,10 +811,9 @@
                 }
             }
 
-            // Check for Card Deal Animation trigger (Stud/Baseball/Queens)
+            // Check for Card Deal Animation trigger (all supported variants)
             // Detect ANY increase in cards for active players
-            var isStudGame = IsSevenCardStud || IsBaseball || IsFollowTheQueen;
-            if (isStudGame && !_dealAnimationInProgress && !_runoutAnimationInProgress)
+            if (UsesCardDealAnimation && !_dealAnimationInProgress && !_runoutAnimationInProgress)
             {
                 // Identify active players who are not folded in the NEW state (since if folded, they don't get new cards)
                 var activeSeatIndices = _seats
@@ -1364,7 +1369,7 @@
                 // ALSO: Preserve cards during runout animation - the animation controls card visibility
                 // ALSO: Preserve cards during initial deal animation - the animation controls card visibility
                 var existingCards = _seats[publicSeat.SeatIndex].Cards;
-                var shouldPreserveCards = (isCurrentPlayer && existingCards.Any(c => c.IsFaceUp) && !publicSeat.IsSittingOut)
+                var shouldPreserveCards = (isCurrentPlayer && existingCards.Any(c => c.IsFaceUp || (!string.IsNullOrWhiteSpace(c.Rank) && !string.IsNullOrWhiteSpace(c.Suit))) && !publicSeat.IsSittingOut)
                 || isInRunoutAnimation
                 || _dealAnimationInProgress;
 
@@ -1380,15 +1385,25 @@
 
                 var cards = shouldPreserveCards
                 ? existingCards.Select(c => c with { IsWild = IsWildCard(c.Rank, c.Suit) }).ToList()
-                : publicSeat.Cards.Select(c => new CardInfo
+                : publicSeat.Cards.Select(c =>
                 {
-                    Rank = c.IsFaceUp ? c.Rank : null,
-                    Suit = c.IsFaceUp ? c.Suit : null,
-                    IsFaceUp = c.IsFaceUp,
-                    IsPubliclyVisible = c.IsFaceUp,
-                    IsSelected = false,
-                    DealOrder = c.DealOrder,
-                    IsWild = c.IsFaceUp && IsWildCard(c.Rank, c.Suit)
+                    var existingCard = isCurrentPlayer
+                        ? existingCards.FirstOrDefault(ec => ec.DealOrder == c.DealOrder)
+                        : null;
+
+                    var rank = c.IsFaceUp ? c.Rank : existingCard?.Rank;
+                    var suit = c.IsFaceUp ? c.Suit : existingCard?.Suit;
+
+                    return new CardInfo
+                    {
+                        Rank = rank,
+                        Suit = suit,
+                        IsFaceUp = c.IsFaceUp,
+                        IsPubliclyVisible = c.IsFaceUp,
+                        IsSelected = false,
+                        DealOrder = c.DealOrder,
+                        IsWild = c.IsFaceUp && IsWildCard(c.Rank, c.Suit)
+                    };
                 }).ToList();
 
                 // Preserve LastActionDescription if it hasn't expired (5 seconds)
@@ -2393,8 +2408,8 @@
                 .ToList();
         }
 
-        // Start Timer - 2000ms delay between cards per player
-        _dealTimer = new Timer(DealNextCard, null, 100, 2000);
+        // Start timer with game-specific delay between cards
+        _dealTimer = new Timer(DealNextCard, null, 100, DealAnimationDelayMs);
     }
 
     private async void DealNextCard(object? state)

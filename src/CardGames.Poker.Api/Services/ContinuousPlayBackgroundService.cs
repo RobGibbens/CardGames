@@ -261,6 +261,25 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		DateTimeOffset now,
 		CancellationToken cancellationToken)
 	{
+		// Re-check readiness against the latest database state to avoid races with manual StartHand.
+		await context.Entry(game).ReloadAsync(cancellationToken);
+		var stillReadyForNextHand =
+			(game.CurrentPhase == nameof(Phases.Complete) || game.CurrentPhase == nameof(Phases.WaitingForPlayers)) &&
+			game.NextHandStartsAt != null &&
+			game.NextHandStartsAt <= now &&
+			(game.Status == GameStatus.InProgress || game.Status == GameStatus.BetweenHands);
+
+		if (!stillReadyForNextHand)
+		{
+			_logger.LogDebug(
+				"Skipping StartNextHand for game {GameId}; game no longer ready (Phase={Phase}, Status={Status}, NextHandStartsAt={NextHandStartsAt})",
+				game.Id,
+				game.CurrentPhase,
+				game.Status,
+				game.NextHandStartsAt);
+			return;
+		}
+
 		// 1. Finalize leave requests for players who were waiting for the hand to finish
 		var playersLeaving = game.GamePlayers
 			.Where(gp => gp.Status == GamePlayerStatus.Active && gp.LeftAtHandNumber != -1)

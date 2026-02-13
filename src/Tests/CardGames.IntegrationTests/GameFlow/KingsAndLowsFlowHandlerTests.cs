@@ -8,7 +8,7 @@ namespace CardGames.IntegrationTests.GameFlow;
 
 /// <summary>
 /// Integration tests for <see cref="KingsAndLowsFlowHandler"/>.
-/// Tests unique phase transitions including DropOrStay and PotMatching.
+/// Tests unique phase transitions including DropOrStay and PlayerVsDeck.
 /// </summary>
 public class KingsAndLowsFlowHandlerTests : IntegrationTestBase
 {
@@ -191,7 +191,7 @@ public class KingsAndLowsFlowHandlerTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task GetNextPhase_FromShowdown_ReturnsPotMatching()
+    public async Task GetNextPhase_FromShowdown_ReturnsComplete()
     {
         // Arrange
         var handler = new KingsAndLowsFlowHandler();
@@ -201,7 +201,7 @@ public class KingsAndLowsFlowHandlerTests : IntegrationTestBase
         var nextPhase = handler.GetNextPhase(setup.Game, nameof(Phases.Showdown));
 
         // Assert
-        nextPhase.Should().Be(nameof(Phases.PotMatching));
+        nextPhase.Should().Be(nameof(Phases.Complete));
     }
 
     [Fact]
@@ -219,15 +219,14 @@ public class KingsAndLowsFlowHandlerTests : IntegrationTestBase
     }
 
     [Fact]
-    public void SpecialPhases_ContainsDropOrStayPotMatchingAndPlayerVsDeck()
+    public void SpecialPhases_ContainsDropOrStayAndPlayerVsDeck()
     {
         // Arrange
         var handler = new KingsAndLowsFlowHandler();
 
         // Assert
-        handler.SpecialPhases.Should().HaveCount(3);
+        handler.SpecialPhases.Should().HaveCount(2);
         handler.SpecialPhases.Should().Contain(nameof(Phases.DropOrStay));
-        handler.SpecialPhases.Should().Contain(nameof(Phases.PotMatching));
         handler.SpecialPhases.Should().Contain(nameof(Phases.PlayerVsDeck));
     }
 

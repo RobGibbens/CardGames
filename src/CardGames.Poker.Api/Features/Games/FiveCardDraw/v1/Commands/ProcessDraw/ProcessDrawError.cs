@@ -49,5 +49,10 @@ public enum ProcessDrawErrorCode
 	/// <summary>
 	/// No eligible players to draw (all folded or all-in).
 	/// </summary>
-	NoEligiblePlayers
+	NoEligiblePlayers,
+
+	/// <summary>
+	/// Not enough cards remaining in the persisted deck to fulfill the draw request.
+	/// </summary>
+	InsufficientDeckCards
 }

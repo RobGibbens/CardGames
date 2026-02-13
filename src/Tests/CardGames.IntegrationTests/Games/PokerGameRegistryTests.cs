@@ -192,7 +192,6 @@ public class PokerGameRegistryTests
         // Assert
         rules.Should().NotBeNull();
         rules!.Phases.Should().Contain(p => p.PhaseId == nameof(Phases.DropOrStay));
-        rules.Phases.Should().Contain(p => p.PhaseId == nameof(Phases.PotMatching));
         rules.Phases.Should().Contain(p => p.PhaseId == nameof(Phases.PlayerVsDeck));
     }
 

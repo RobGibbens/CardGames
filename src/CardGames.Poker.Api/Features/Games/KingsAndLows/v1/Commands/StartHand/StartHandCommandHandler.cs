@@ -1,3 +1,4 @@
+using CardGames.Core.French.Dealers;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Betting;
@@ -331,39 +332,26 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 				// 12. Automatically deal hands - move to Dealing phase then DropOrStay
 				game.CurrentPhase = collectAntes ? nameof(Phases.CollectingAntes) : nameof(Phases.Dealing);
 		
-		// Create a standard deck of 52 cards with shuffled order
+		// Create a standard deck of 52 cards with shuffled order using FrenchDeckDealer
+		var frenchDealer = FrenchDeckDealer.WithFullDeck();
+		frenchDealer.Shuffle();
+		var shuffledCards = frenchDealer.DealCards(52);
+
 		var deck = new List<GameCard>();
 		int deckOrder = 0;
-		foreach (var suit in Enum.GetValues<CardSuit>())
+		foreach (var card in shuffledCards)
 		{
-			foreach (var symbol in Enum.GetValues<CardSymbol>())
+			deck.Add(new GameCard
 			{
-				deck.Add(new GameCard
-				{
-					GameId = game.Id,
-					HandNumber = game.CurrentHandNumber,
-					Suit = suit,
-					Symbol = symbol,
-					Location = CardLocation.Deck,
-					DealOrder = deckOrder++,
-					IsVisible = false,
-					DealtAt = now
-				});
-			}
-		}
-
-		// Shuffle the deck using Fisher-Yates algorithm
-		var random = new Random();
-		for (int i = deck.Count - 1; i > 0; i--)
-		{
-			int j = random.Next(i + 1);
-			(deck[i], deck[j]) = (deck[j], deck[i]);
-		}
-
-		// Update deck order after shuffle
-		for (int i = 0; i < deck.Count; i++)
-		{
-			deck[i].DealOrder = i;
+				GameId = game.Id,
+				HandNumber = game.CurrentHandNumber,
+				Suit = (CardSuit)(int)card.Suit,
+				Symbol = (CardSymbol)(int)card.Symbol,
+				Location = CardLocation.Deck,
+				DealOrder = deckOrder++,
+				IsVisible = false,
+				DealtAt = now
+			});
 		}
 
 		// Add all 52 cards to the context (including those that will remain in the deck)
