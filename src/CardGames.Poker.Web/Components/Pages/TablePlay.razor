@@ -546,6 +546,7 @@
     private bool IsFollowTheQueen => string.Equals(_gameTypeCode, "FOLLOWTHEQUEEN", StringComparison.OrdinalIgnoreCase);
     private bool IsBaseball => string.Equals(_gameTypeCode, "BASEBALL", StringComparison.OrdinalIgnoreCase);
     private bool UsesCardDealAnimation => IsSevenCardStud || IsBaseball || IsFollowTheQueen || IsFiveCardDraw || IsTwosJacksManWithTheAxe || IsKingsAndLows;
+    private int DealAnimationDelayMs => IsFiveCardDraw ? 750 : 2000;
 
     // Game rules for dynamic UI rendering
     private GetGameRulesResponse? _gameRules;
@@ -2404,8 +2405,8 @@
                 .ToList();
         }
 
-        // Start Timer - 2000ms delay between cards per player
-        _dealTimer = new Timer(DealNextCard, null, 100, 2000);
+        // Start timer with game-specific delay between cards
+        _dealTimer = new Timer(DealNextCard, null, 100, DealAnimationDelayMs);
     }
 
     private async void DealNextCard(object? state)
