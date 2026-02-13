@@ -495,7 +495,7 @@
     private Dictionary<int, int> _runoutVisibleCardCount = new(); // Seat index -> number of runout cards visible
     private Dictionary<int, int> _runoutInitialCardCounts = new(); // Seat index -> number of cards BEFORE runout started
 
-    // Card Deal Animation state (for Stud/Baseball/Queens)
+    // Card Deal Animation state (for supported game variants)
     private bool _dealAnimationInProgress;
     private Timer? _dealTimer;
     private TableStatePublicDto? _dealTargetState;
@@ -540,10 +540,12 @@
     private string? _gameTypeCode;
     private bool IsTwosJacksManWithTheAxe => string.Equals(_gameTypeCode, "TWOSJACKSMANWITHTHEAXE",
     StringComparison.OrdinalIgnoreCase);
+    private bool IsFiveCardDraw => string.Equals(_gameTypeCode, "FIVECARDDRAW", StringComparison.OrdinalIgnoreCase);
     private bool IsKingsAndLows => string.Equals(_gameTypeCode, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase);
     private bool IsSevenCardStud => string.Equals(_gameTypeCode, "SEVENCARDSTUD", StringComparison.OrdinalIgnoreCase);
     private bool IsFollowTheQueen => string.Equals(_gameTypeCode, "FOLLOWTHEQUEEN", StringComparison.OrdinalIgnoreCase);
     private bool IsBaseball => string.Equals(_gameTypeCode, "BASEBALL", StringComparison.OrdinalIgnoreCase);
+    private bool UsesCardDealAnimation => IsSevenCardStud || IsBaseball || IsFollowTheQueen || IsFiveCardDraw || IsTwosJacksManWithTheAxe || IsKingsAndLows;
 
     // Game rules for dynamic UI rendering
     private GetGameRulesResponse? _gameRules;
@@ -805,10 +807,9 @@
                 }
             }
 
-            // Check for Card Deal Animation trigger (Stud/Baseball/Queens)
+            // Check for Card Deal Animation trigger (all supported variants)
             // Detect ANY increase in cards for active players
-            var isStudGame = IsSevenCardStud || IsBaseball || IsFollowTheQueen;
-            if (isStudGame && !_dealAnimationInProgress && !_runoutAnimationInProgress)
+            if (UsesCardDealAnimation && !_dealAnimationInProgress && !_runoutAnimationInProgress)
             {
                 // Identify active players who are not folded in the NEW state (since if folded, they don't get new cards)
                 var activeSeatIndices = _seats
