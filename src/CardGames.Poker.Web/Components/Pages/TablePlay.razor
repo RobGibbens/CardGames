@@ -1364,7 +1364,7 @@
                 // ALSO: Preserve cards during runout animation - the animation controls card visibility
                 // ALSO: Preserve cards during initial deal animation - the animation controls card visibility
                 var existingCards = _seats[publicSeat.SeatIndex].Cards;
-                var shouldPreserveCards = (isCurrentPlayer && existingCards.Any(c => c.IsFaceUp) && !publicSeat.IsSittingOut)
+                var shouldPreserveCards = (isCurrentPlayer && existingCards.Any(c => c.IsFaceUp || (!string.IsNullOrWhiteSpace(c.Rank) && !string.IsNullOrWhiteSpace(c.Suit))) && !publicSeat.IsSittingOut)
                 || isInRunoutAnimation
                 || _dealAnimationInProgress;
 
@@ -1380,15 +1380,25 @@
 
                 var cards = shouldPreserveCards
                 ? existingCards.Select(c => c with { IsWild = IsWildCard(c.Rank, c.Suit) }).ToList()
-                : publicSeat.Cards.Select(c => new CardInfo
+                : publicSeat.Cards.Select(c =>
                 {
-                    Rank = c.IsFaceUp ? c.Rank : null,
-                    Suit = c.IsFaceUp ? c.Suit : null,
-                    IsFaceUp = c.IsFaceUp,
-                    IsPubliclyVisible = c.IsFaceUp,
-                    IsSelected = false,
-                    DealOrder = c.DealOrder,
-                    IsWild = c.IsFaceUp && IsWildCard(c.Rank, c.Suit)
+                    var existingCard = isCurrentPlayer
+                        ? existingCards.FirstOrDefault(ec => ec.DealOrder == c.DealOrder)
+                        : null;
+
+                    var rank = c.IsFaceUp ? c.Rank : existingCard?.Rank;
+                    var suit = c.IsFaceUp ? c.Suit : existingCard?.Suit;
+
+                    return new CardInfo
+                    {
+                        Rank = rank,
+                        Suit = suit,
+                        IsFaceUp = c.IsFaceUp,
+                        IsPubliclyVisible = c.IsFaceUp,
+                        IsSelected = false,
+                        DealOrder = c.DealOrder,
+                        IsWild = c.IsFaceUp && IsWildCard(c.Rank, c.Suit)
+                    };
                 }).ToList();
 
                 // Preserve LastActionDescription if it hasn't expired (5 seconds)

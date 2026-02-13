@@ -105,28 +105,41 @@ public sealed class BaseballFlowHandler : BaseGameFlowHandler
 		DateTimeOffset now,
 		CancellationToken cancellationToken)
 	{
-		var deck = CreateShuffledDeck();
-		var deckCards = new List<GameCard>();
-		var deckOrder = 0;
+		var deckCards = await context.GameCards
+			.Where(gc => gc.GameId == game.Id &&
+						 gc.HandNumber == game.CurrentHandNumber &&
+						 gc.Location == CardLocation.Deck)
+			.OrderBy(gc => gc.DealOrder)
+			.ToListAsync(cancellationToken);
 
-		foreach (var (suit, symbol) in deck)
+		// If no persisted deck exists for this hand, create and persist one.
+		if (deckCards.Count == 0)
 		{
-			var gameCard = new GameCard
+			var deck = CreateShuffledDeck();
+			var generatedDeckCards = new List<GameCard>();
+			var deckOrder = 0;
+
+			foreach (var (suit, symbol) in deck)
 			{
-				GameId = game.Id,
-				GamePlayerId = null,
-				HandNumber = game.CurrentHandNumber,
-				Suit = suit,
-				Symbol = symbol,
-				DealOrder = deckOrder++,
-				Location = CardLocation.Deck,
-				IsVisible = false,
-				IsDiscarded = false,
-				IsBuyCard = false,
-				DealtAt = now
-			};
-			deckCards.Add(gameCard);
-			context.GameCards.Add(gameCard);
+				var gameCard = new GameCard
+				{
+					GameId = game.Id,
+					GamePlayerId = null,
+					HandNumber = game.CurrentHandNumber,
+					Suit = suit,
+					Symbol = symbol,
+					DealOrder = deckOrder++,
+					Location = CardLocation.Deck,
+					IsVisible = false,
+					IsDiscarded = false,
+					IsBuyCard = false,
+					DealtAt = now
+				};
+				generatedDeckCards.Add(gameCard);
+				context.GameCards.Add(gameCard);
+			}
+
+			deckCards = generatedDeckCards;
 		}
 
 		var deckIndex = 0;

@@ -73,55 +73,83 @@ public class DealHandsCommandHandler(CardsDbContext context)
 			};
 		}
 
-		// 5. Create shuffled deck and deal cards
+		// 5. Create shuffled deck, persist all 52 cards, then deal from the persisted deck
 		var dealer = FrenchDeckDealer.WithFullDeck();
 		dealer.Shuffle();
 
+		var shuffledCards = dealer.DealCards(52);
+		var deckCards = new List<GameCard>();
+		var deckOrder = 1;
+
+		foreach (var card in shuffledCards)
+		{
+			var gameCard = new GameCard
+			{
+				GameId = game.Id,
+				GamePlayerId = null,
+				HandNumber = game.CurrentHandNumber,
+				Suit = MapSuit(card.Suit),
+				Symbol = MapSymbol(card.Symbol),
+				Location = CardLocation.Deck,
+				DealOrder = deckOrder++,
+				DealtAtPhase = null,
+				IsVisible = false,
+				IsWild = false,
+				IsDiscarded = false,
+				IsDrawnCard = false,
+				IsBuyCard = false,
+				DealtAt = now
+			};
+			deckCards.Add(gameCard);
+			context.GameCards.Add(gameCard);
+		}
+
+		// Deal cards to each player from the persisted deck
+		var deckIndex = 0;
 		var playerHands = new List<PlayerDealtCards>();
 
-		foreach (var gamePlayer in activePlayers)
+		// Sort players starting from left of dealer
+		var dealerPosition = game.DealerPosition;
+		var maxSeatPosition = game.GamePlayers.Max(gp => gp.SeatPosition);
+		var totalSeats = maxSeatPosition + 1;
+
+		var playersInDealOrder = activePlayers
+			.OrderBy(p => (p.SeatPosition - dealerPosition - 1 + totalSeats) % totalSeats)
+			.ToList();
+
+		foreach (var gamePlayer in playersInDealOrder)
 		{
-			var cards = dealer.DealCards(CardsPerPlayer);
-			var dealtCards = new List<DealtCard>();
+			var playerCards = new List<GameCard>();
+			for (var cardIndex = 0; cardIndex < CardsPerPlayer; cardIndex++)
+			{
+				if (deckIndex >= deckCards.Count) break;
+
+				var deckCard = deckCards[deckIndex++];
+				deckCard.GamePlayerId = gamePlayer.Id;
+				deckCard.Location = CardLocation.Hole;
+				deckCard.DealtAtPhase = nameof(Phases.Dealing);
+				deckCard.DealtAt = now;
+				playerCards.Add(deckCard);
+			}
 
 			// Sort cards by value (descending) then by suit for consistent display order
-			var sortedCards = cards
+			var sortedCards = playerCards
 				.OrderByDescending(c => GetCardSortValue(c.Symbol))
 				.ThenBy(c => GetSuitSortValue(c.Suit))
 				.ToList();
 
-			var dealOrder = 1;
+			var displayOrder = 1;
+			var dealtCards = new List<DealtCard>();
 			foreach (var card in sortedCards)
 			{
-				// Create GameCard entity for persistence
-				var gameCard = new GameCard
-				{
-					GameId = game.Id,
-					GamePlayerId = gamePlayer.Id,
-					HandNumber = game.CurrentHandNumber,
-					Suit = MapSuit(card.Suit),
-					Symbol = MapSymbol(card.Symbol),
-					Location = CardLocation.Hole,
-					DealOrder = dealOrder,
-					DealtAtPhase = nameof(Phases.Dealing),
-					IsVisible = false,
-					IsWild = false,
-					IsDiscarded = false,
-					IsDrawnCard = false,
-					IsBuyCard = false,
-					DealtAt = now
-				};
-
-				context.GameCards.Add(gameCard);
-
+				card.DealOrder = displayOrder;
 				dealtCards.Add(new DealtCard
 				{
-					Suit = gameCard.Suit,
-					Symbol = gameCard.Symbol,
-					DealOrder = dealOrder
+					Suit = card.Suit,
+					Symbol = card.Symbol,
+					DealOrder = displayOrder
 				});
-
-				dealOrder++;
+				displayOrder++;
 			}
 
 			playerHands.Add(new PlayerDealtCards
@@ -246,33 +274,33 @@ public class DealHandsCommandHandler(CardsDbContext context)
 			/// <summary>
 			/// Gets the numeric sort value for a card symbol (Ace high = 14).
 			/// </summary>
-			private static int GetCardSortValue(Symbol symbol) => symbol switch
+			private static int GetCardSortValue(CardSymbol symbol) => symbol switch
 			{
-				Symbol.Deuce => 2,
-				Symbol.Three => 3,
-				Symbol.Four => 4,
-				Symbol.Five => 5,
-				Symbol.Six => 6,
-				Symbol.Seven => 7,
-				Symbol.Eight => 8,
-				Symbol.Nine => 9,
-				Symbol.Ten => 10,
-				Symbol.Jack => 11,
-				Symbol.Queen => 12,
-				Symbol.King => 13,
-				Symbol.Ace => 14,
+				CardSymbol.Deuce => 2,
+				CardSymbol.Three => 3,
+				CardSymbol.Four => 4,
+				CardSymbol.Five => 5,
+				CardSymbol.Six => 6,
+				CardSymbol.Seven => 7,
+				CardSymbol.Eight => 8,
+				CardSymbol.Nine => 9,
+				CardSymbol.Ten => 10,
+				CardSymbol.Jack => 11,
+				CardSymbol.Queen => 12,
+				CardSymbol.King => 13,
+				CardSymbol.Ace => 14,
 				_ => 0
 			};
 
 			/// <summary>
 			/// Gets the sort value for a suit (for consistent ordering: Clubs, Diamonds, Hearts, Spades).
 			/// </summary>
-			private static int GetSuitSortValue(Suit suit) => suit switch
+			private static int GetSuitSortValue(CardSuit suit) => suit switch
 			{
-				Suit.Clubs => 0,
-				Suit.Diamonds => 1,
-				Suit.Hearts => 2,
-				Suit.Spades => 3,
+				CardSuit.Clubs => 0,
+				CardSuit.Diamonds => 1,
+				CardSuit.Hearts => 2,
+				CardSuit.Spades => 3,
 				_ => 0
 			};
 		}

@@ -1,6 +1,3 @@
-using CardGames.Core.French.Cards;
-using CardGames.Core.French.Dealers;
-using CardGames.Core.French.Decks;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Betting;
@@ -187,68 +184,14 @@ public class ProcessDrawCommandHandler(CardsDbContext context)
 			}
 			else
 			{
-				// Fall back to generating new random cards (DealHandsCommandHandler flow)
-				// Get all cards already dealt to players in this hand to exclude from new deals
-				var usedCards = await context.GameCards
-					.Where(gc => gc.GameId == game.Id
-						&& gc.HandNumber == game.CurrentHandNumber
-						&& gc.GamePlayerId != null)
-					.Select(gc => new { gc.Suit, gc.Symbol })
-					.ToListAsync(cancellationToken);
-
-				var usedCardSet = usedCards.Select(c => (c.Suit, c.Symbol)).ToHashSet();
-
-				// Create a full deck and filter out used cards to avoid rejection sampling issues
-				var fullDeck = new FullFrenchDeck();
-				var rng = new Random();
-
-				var cardsToDeal = fullDeck.CardsLeft()
-					.Select(c => new { Card = c, MappedSuit = MapSuit(c.Suit), MappedSymbol = MapSymbol(c.Symbol) })
-					.Where(x => !usedCardSet.Contains((x.MappedSuit, x.MappedSymbol)))
-					.OrderBy(_ => rng.Next())
-					.Take(command.DiscardIndices.Count)
-					.ToList();
-
-				if (cardsToDeal.Count < command.DiscardIndices.Count)
+				// No pre-shuffled deck cards available — this indicates an inconsistent deck state.
+				// All hands should have a persisted deck generated via FrenchDeckDealer at hand start.
+				return new ProcessDrawError
 				{
-					throw new InvalidOperationException($"Not enough cards in the deck to deal {command.DiscardIndices.Count} cards.");
-				}
-
-				foreach (var item in cardsToDeal)
-				{
-					var mappedSuit = item.MappedSuit;
-					var mappedSymbol = item.MappedSymbol;
-
-					// Create new card entity
-					var newGameCard = new GameCard
-					{
-						GameId = game.Id,
-						GamePlayerId = currentDrawPlayer.Id,
-						HandNumber = game.CurrentHandNumber,
-						Suit = mappedSuit,
-						Symbol = mappedSymbol,
-						Location = CardLocation.Hole,
-						DealOrder = ++maxDealOrder,
-						DealtAtPhase = nameof(Phases.DrawPhase),
-						IsVisible = false,
-						IsWild = false,
-						IsDiscarded = false,
-						IsDrawnCard = true,
-						DrawnAtRound = 1,
-						IsBuyCard = false,
-						DealtAt = now
-					};
-
-					context.GameCards.Add(newGameCard);
-					usedCardSet.Add((mappedSuit, mappedSymbol));
-
-					newCards.Add(new CardInfo
-					{
-						Suit = mappedSuit,
-						Symbol = mappedSymbol,
-						Display = FormatCard(mappedSymbol, mappedSuit)
-					});
-				}
+					Message = $"Not enough cards remaining in the deck to deal {command.DiscardIndices.Count} replacement card(s). " +
+					          $"Available: {availableDeckCards.Count}. This indicates an inconsistent deck state.",
+					Code = ProcessDrawErrorCode.InsufficientDeckCards
+				};
 			}
 		}
 
@@ -415,31 +358,4 @@ public class ProcessDrawCommandHandler(CardsDbContext context)
 
 		return $"{symbolStr}{suitStr}";
 	}
-
-	private static CardSuit MapSuit(Suit suit) => suit switch
-	{
-		Suit.Hearts => CardSuit.Hearts,
-		Suit.Diamonds => CardSuit.Diamonds,
-		Suit.Spades => CardSuit.Spades,
-		Suit.Clubs => CardSuit.Clubs,
-		_ => throw new ArgumentOutOfRangeException(nameof(suit), suit, "Unknown suit")
-	};
-
-	private static CardSymbol MapSymbol(Symbol symbol) => symbol switch
-	{
-		Symbol.Deuce => CardSymbol.Deuce,
-		Symbol.Three => CardSymbol.Three,
-		Symbol.Four => CardSymbol.Four,
-		Symbol.Five => CardSymbol.Five,
-		Symbol.Six => CardSymbol.Six,
-		Symbol.Seven => CardSymbol.Seven,
-		Symbol.Eight => CardSymbol.Eight,
-		Symbol.Nine => CardSymbol.Nine,
-		Symbol.Ten => CardSymbol.Ten,
-		Symbol.Jack => CardSymbol.Jack,
-		Symbol.Queen => CardSymbol.Queen,
-		Symbol.King => CardSymbol.King,
-		Symbol.Ace => CardSymbol.Ace,
-		_ => throw new ArgumentOutOfRangeException(nameof(symbol), symbol, "Unknown symbol")
-	};
 }

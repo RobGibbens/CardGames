@@ -16,6 +16,7 @@
 					@foreach (var card in GetOrderedCards())
 					{
 						var rank = GetPlayingCardRank(card);
+						var hasCardPayload = !string.IsNullOrWhiteSpace(card.Rank) && !string.IsNullOrWhiteSpace(card.Suit);
 						// Logic from original: current player sees own cards, others see face up only if face up
 
 						if (IsCurrentPlayer)
@@ -24,6 +25,12 @@
 							{
 								<div class="card-shell face-up">
 									<playing-card rank="@rank" suit="@card.Suit" class="poker-card face-up" suitcolor="@(card.IsWild ? "green" : null)" rankcolor="@(card.IsWild ? "green" : null)" courtcolor="@(card.IsWild ? "green" : null)"></playing-card>
+								</div>
+							}
+							else if (!hasCardPayload)
+							{
+								<div class="card-shell face-down">
+									<playing-card rank="0" backcolor="#44F" class="poker-card face-down"></playing-card>
 								</div>
 							}
 							else

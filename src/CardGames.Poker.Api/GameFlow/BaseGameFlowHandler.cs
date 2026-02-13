@@ -1,3 +1,4 @@
+using CardGames.Core.French.Dealers;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.ProcessBettingAction;
@@ -346,54 +347,17 @@ public abstract class BaseGameFlowHandler : IGameFlowHandler
     }
 
     /// <summary>
-    /// Creates a shuffled 52-card deck.
+    /// Creates a shuffled 52-card deck using <see cref="FrenchDeckDealer"/>.
     /// </summary>
     /// <returns>A list of (suit, symbol) tuples representing the shuffled deck.</returns>
     protected static List<(CardSuit Suit, CardSymbol Symbol)> CreateShuffledDeck()
     {
-        var suits = new[]
-        {
-            CardSuit.Clubs,
-            CardSuit.Diamonds,
-            CardSuit.Hearts,
-            CardSuit.Spades
-        };
+        var dealer = FrenchDeckDealer.WithFullDeck();
+        dealer.Shuffle();
 
-        var symbols = new[]
-        {
-            CardSymbol.Deuce,
-            CardSymbol.Three,
-            CardSymbol.Four,
-            CardSymbol.Five,
-            CardSymbol.Six,
-            CardSymbol.Seven,
-            CardSymbol.Eight,
-            CardSymbol.Nine,
-            CardSymbol.Ten,
-            CardSymbol.Jack,
-            CardSymbol.Queen,
-            CardSymbol.King,
-            CardSymbol.Ace
-        };
-
-        var deck = new List<(CardSuit, CardSymbol)>();
-        foreach (var suit in suits)
-        {
-            foreach (var symbol in symbols)
-            {
-                deck.Add((suit, symbol));
-            }
-        }
-
-        // Fisher-Yates shuffle
-        var random = Random.Shared;
-        for (var i = deck.Count - 1; i > 0; i--)
-        {
-            var j = random.Next(i + 1);
-            (deck[i], deck[j]) = (deck[j], deck[i]);
-        }
-
-        return deck;
+        return dealer.DealCards(52)
+            .Select(card => ((CardSuit)(int)card.Suit, (CardSymbol)(int)card.Symbol))
+            .ToList();
     }
 
     /// <summary>
