@@ -182,7 +182,7 @@
         </div>
 
         <!-- Action Panel (only shown when it's player's turn during betting phase and player has cards) -->
-        @if (_isPlayerTurn && IsBettingPhase && CurrentPlayerHandCards.Count > 0 && !_dealAnimationInProgress)
+        @if (_isPlayerTurn && IsBettingPhase && CurrentPlayerHandCards.Count > 0 && !IsCardDealingVisualInProgress)
         {
             <ActionPanel LegalActions="@_legalActions" MinBet="@_currentMinBet" MaxBet="@_currentMaxBet"
                          CurrentBetToCall="@_currentBetToCall" PlayerChips="@_playerChips"
@@ -192,7 +192,7 @@
 
         <!-- Decision Panel (shown during decision phase like Drop/Stay) -->
         <!-- Note: Kings and Lows DropOrStay has its own overlay, so exclude it here -->
-        @if (_isPlayerTurn && IsDecisionPhase && !(HasDropOrStay && IsDropOrStayPhase))
+        @if (_isPlayerTurn && IsDecisionPhase && !(HasDropOrStay && IsDropOrStayPhase) && !IsCardDealingVisualInProgress)
         {
             <DecisionPanel Title="@GetDecisionTitle()" Subtitle="@GetDecisionSubtitle()"
                            AvailableActions="@CurrentPhaseAvailableActions" OnDecision="@HandleDecisionAsync"
@@ -227,7 +227,7 @@
         }
 
         <!-- Drop or Stay Overlay (for Kings and Lows) -->
-        @if (HasDropOrStay && IsDropOrStayPhase && IsParticipatingInHand)
+        @if (HasDropOrStay && IsDropOrStayPhase && IsParticipatingInHand && !IsCardDealingVisualInProgress)
         {
             <DropOrStayOverlay Cards="@_currentPlayerDrawCards" HandDescription="@currentPlayerHandEvaluationDescription"
                                PotAmount="@_pot" HasDecided="@_hasDropOrStayDecided" Decision="@_dropOrStayDecision"
@@ -546,7 +546,7 @@
     private bool IsFollowTheQueen => string.Equals(_gameTypeCode, "FOLLOWTHEQUEEN", StringComparison.OrdinalIgnoreCase);
     private bool IsBaseball => string.Equals(_gameTypeCode, "BASEBALL", StringComparison.OrdinalIgnoreCase);
     private bool UsesCardDealAnimation => IsSevenCardStud || IsBaseball || IsFollowTheQueen || IsFiveCardDraw || IsTwosJacksManWithTheAxe || IsKingsAndLows;
-    private int DealAnimationDelayMs => IsFiveCardDraw ? 750 : 2000;
+    private int DealAnimationDelayMs => 750;
 
     // Game rules for dynamic UI rendering
     private GetGameRulesResponse? _gameRules;
@@ -579,6 +579,9 @@
 
     private bool ShouldShowBuyCardOverlay =>
     IsBuyCardOfferPhase && _buyCardOffer is not null && IsParticipatingInHand;
+
+    private bool IsCardDealingVisualInProgress =>
+    _dealAnimationInProgress || _flyingCard is not null;
 
     // Drop or Stay phase detection (for Kings and Lows)
     private bool IsDropOrStayPhase =>

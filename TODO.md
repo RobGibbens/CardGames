@@ -2,7 +2,7 @@
 
 ## Still to do
 
-- [ ] Make sure it's shuffling correctly
+- [ ] https://github.com/leeoades/FunctionalStateMachine
 
 ### P1 - Can't play without these
 - [ ] Test side pots
@@ -20,7 +20,6 @@
 - [ ] Continuous play should stop if all players disconnect
 - [ ] During ties, the showdown should show the kicker
 - [ ] Showdown overlay should handle split pots better
-- [ ] Have the ability for someone to take a seat and be dealt into the next hand
 - [ ] Table should be able to scroll if the screen isn't big enough
 - [ ] Allow them to upload an image when registering
 - [ ] When you can't start the game because you're waiting for other players to sit, show a message
@@ -151,3 +150,5 @@
 - [x] FTQ should show what cards are wild
 - [x] Wild cards is not showing the second wild card in FTQ
 - [x] FTQ is misremembering other wild card after action
+- [x] Make sure it's shuffling correctly
+- [x] Have the ability for someone to take a seat and be dealt into the next hand
