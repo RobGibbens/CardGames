@@ -248,6 +248,10 @@ public class DealHandsCommandHandler(
 			gamePlayer.CurrentBet = 0;
 		}
 
+		// Persist dealt cards before determining first actor so visible-hand evaluation
+		// includes newly dealt up-cards on this street.
+		await context.SaveChangesAsync(cancellationToken);
+
 		// 7. Determine first player to act based on street
 		int firstActorSeatPosition;
 		int currentBet = 0;
@@ -255,8 +259,7 @@ public class DealHandsCommandHandler(
 		if (game.CurrentPhase == nameof(Phases.ThirdStreet))
 		{
 			// Third Street: bring-in player is lowest up card
-			//firstActorSeatPosition = FindBringInPlayer(activePlayers, playerHands);
-			firstActorSeatPosition = FindBestVisibleHandPlayer(activePlayers, game.Id, game.CurrentHandNumber, context);
+			firstActorSeatPosition = FindBringInPlayer(activePlayers, playerHands);
 
 			// Post the bring-in bet if configured
 			var bringIn = game.BringIn ?? 0;

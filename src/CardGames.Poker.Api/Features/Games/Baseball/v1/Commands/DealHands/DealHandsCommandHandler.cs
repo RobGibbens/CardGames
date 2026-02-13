@@ -216,12 +216,16 @@ public class DealHandsCommandHandler(
 			gamePlayer.CurrentBet = 0;
 		}
 
+		// Persist dealt cards before determining first actor so visible-hand evaluation
+		// includes newly dealt up-cards on this street.
+		await context.SaveChangesAsync(cancellationToken);
+
 		int firstActorSeatPosition;
 		int currentBet = 0;
 
 		if (game.CurrentPhase == nameof(Phases.ThirdStreet))
 		{
-			firstActorSeatPosition = FindBestVisibleHandPlayer(activePlayers, game.Id, game.CurrentHandNumber, context);
+			firstActorSeatPosition = FindBringInPlayer(playerHands);
 
 			var bringIn = game.BringIn ?? 0;
 			if (bringIn > 0 && firstActorSeatPosition >= 0)
@@ -323,6 +327,42 @@ public class DealHandsCommandHandler(
 			CurrentPlayerName = currentPlayerName,
 			PlayerHands = playerHands
 		};
+	}
+
+	private static int FindBringInPlayer(List<PlayerDealtCards> playerHands)
+	{
+		int lowestSeatPosition = -1;
+		DealtCard? lowestCard = null;
+
+		foreach (var playerHand in playerHands)
+		{
+			var upCard = playerHand.Cards.LastOrDefault();
+			if (upCard is null)
+			{
+				continue;
+			}
+
+			if (lowestCard is null || CompareCardsForBringIn(upCard, lowestCard) < 0)
+			{
+				lowestCard = upCard;
+				lowestSeatPosition = playerHand.SeatPosition;
+			}
+		}
+
+		return lowestSeatPosition;
+	}
+
+	private static int CompareCardsForBringIn(DealtCard a, DealtCard b)
+	{
+		var aValue = GetCardValue(a.Symbol);
+		var bValue = GetCardValue(b.Symbol);
+
+		if (aValue != bValue)
+		{
+			return aValue.CompareTo(bValue);
+		}
+
+		return GetSuitRank(a.Suit).CompareTo(GetSuitRank(b.Suit));
 	}
 
 	private static void AssignCardToPlayer(

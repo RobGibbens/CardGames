@@ -2356,6 +2356,7 @@
                 Rank = runoutCard.Rank,
                 Suit = runoutCard.Suit,
                 IsFaceUp = true,
+                IsPubliclyVisible = true,
                 IsSelected = false,
                 DealOrder = initialCardCount + i,
                 IsWild = IsWildCard(runoutCard.Rank, runoutCard.Suit)
@@ -2486,6 +2487,7 @@
                 Rank = rank,
                 Suit = suit,
                 IsFaceUp = isFaceUp,
+                IsPubliclyVisible = isFaceUp,
                 IsSelected = false,
                 DealOrder = _dealCurrentCardIndex,
                 IsWild = IsWildCard(rank, suit)
