@@ -156,6 +156,8 @@
 
 @code {
     private const int DefaultTimerDurationSeconds = 60;
+    private string? _autoActionTimerKey;
+    private bool _isAutoActionInFlight;
 
     [Parameter]
     public List<CardInfo> Cards { get; set; } = [];
@@ -248,6 +250,11 @@
 
     private int SelectedCount => SelectedIndices.Count;
 
+    protected override async Task OnParametersSetAsync()
+    {
+        await TrySubmitTimeoutDefaultActionAsync();
+    }
+
     private int GetSecondsRemaining()
     {
         return ActionTimer?.SecondsRemaining ?? DefaultTimerDurationSeconds;
@@ -296,6 +303,38 @@
             .ToList();
 
         await OnDraw.InvokeAsync(selectedIndices);
+    }
+
+    private async Task TrySubmitTimeoutDefaultActionAsync()
+    {
+        if (ActionTimer is null || !ActionTimer.IsActive || ActionTimer.SecondsRemaining > 0 || IsReadOnly)
+        {
+            _autoActionTimerKey = null;
+            return;
+        }
+
+        if (IsSubmitting || IsAnimating || _isAutoActionInFlight)
+        {
+            return;
+        }
+
+        var timerKey = $"{ActionTimer.PlayerSeatIndex}:{ActionTimer.StartedAtUtc.UtcTicks}";
+        if (_autoActionTimerKey == timerKey)
+        {
+            return;
+        }
+
+        _autoActionTimerKey = timerKey;
+        _isAutoActionInFlight = true;
+
+        try
+        {
+            await OnDraw.InvokeAsync([]);
+        }
+        finally
+        {
+            _isAutoActionInFlight = false;
+        }
     }
 
     private static string GetSuitColorClass(string? suit)

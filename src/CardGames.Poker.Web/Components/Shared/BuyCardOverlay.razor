@@ -59,6 +59,8 @@
 
 @code {
     private const int DefaultTimerDurationSeconds = 30;
+    private string? _autoActionTimerKey;
+    private bool _isAutoActionInFlight;
 
     [Parameter]
     public CardInfo? TriggerCard { get; set; }
@@ -77,6 +79,11 @@
 
     [Parameter]
     public ActionTimerStateDto? ActionTimer { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await TrySubmitTimeoutDefaultDecisionAsync();
+    }
 
     private int GetSecondsRemaining() => ActionTimer?.SecondsRemaining ?? DefaultTimerDurationSeconds;
 
@@ -99,5 +106,37 @@
             "A" => "Ace",
             _ => card.Rank
         };
+    }
+
+    private async Task TrySubmitTimeoutDefaultDecisionAsync()
+    {
+        if (ActionTimer is null || !ActionTimer.IsActive || ActionTimer.SecondsRemaining > 0)
+        {
+            _autoActionTimerKey = null;
+            return;
+        }
+
+        if (IsSubmitting || _isAutoActionInFlight)
+        {
+            return;
+        }
+
+        var timerKey = $"{ActionTimer.PlayerSeatIndex}:{ActionTimer.StartedAtUtc.UtcTicks}";
+        if (_autoActionTimerKey == timerKey)
+        {
+            return;
+        }
+
+        _autoActionTimerKey = timerKey;
+        _isAutoActionInFlight = true;
+
+        try
+        {
+            await OnDecision.InvokeAsync(false);
+        }
+        finally
+        {
+            _isAutoActionInFlight = false;
+        }
     }
 }

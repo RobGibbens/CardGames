@@ -116,6 +116,8 @@
 
 @code {
     private const int DefaultTimerDurationSeconds = 60;
+    private string? _autoActionTimerKey;
+    private bool _isAutoActionInFlight;
 
     [Parameter]
     public List<BettingActionType> LegalActions { get; set; } = [];
@@ -155,7 +157,7 @@
 
     private int betAmount;
 
-    protected override void OnParametersSet()
+    protected override async Task OnParametersSetAsync()
     {
         var effectiveMin = GetEffectiveMinBet();
 
@@ -168,6 +170,8 @@
         {
             betAmount = MaxBet;
         }
+
+        await TrySubmitTimeoutDefaultActionAsync();
     }
 
     private int GetSecondsRemaining()
@@ -193,6 +197,61 @@
             return;
 
         await OnAction.InvokeAsync(new PlayerActionRequest(action, amount));
+    }
+
+    private async Task TrySubmitTimeoutDefaultActionAsync()
+    {
+        if (ActionTimer is null || !ActionTimer.IsActive || ActionTimer.SecondsRemaining > 0)
+        {
+            _autoActionTimerKey = null;
+            return;
+        }
+
+        if (IsSubmitting || _isAutoActionInFlight)
+        {
+            return;
+        }
+
+        if (!TryGetTimeoutDefaultAction(out var timeoutAction))
+        {
+            return;
+        }
+
+        var timerKey = $"{ActionTimer.PlayerSeatIndex}:{ActionTimer.StartedAtUtc.UtcTicks}";
+        if (_autoActionTimerKey == timerKey)
+        {
+            return;
+        }
+
+        _autoActionTimerKey = timerKey;
+        _isAutoActionInFlight = true;
+
+        try
+        {
+            await SubmitAction(timeoutAction);
+        }
+        finally
+        {
+            _isAutoActionInFlight = false;
+        }
+    }
+
+    private bool TryGetTimeoutDefaultAction(out BettingActionType action)
+    {
+        if (LegalActions.Contains(BettingActionType.Check))
+        {
+            action = BettingActionType.Check;
+            return true;
+        }
+
+        if (LegalActions.Contains(BettingActionType.Fold))
+        {
+            action = BettingActionType.Fold;
+            return true;
+        }
+
+        action = default;
+        return false;
     }
 
     private void SetBetAmount(int amount)

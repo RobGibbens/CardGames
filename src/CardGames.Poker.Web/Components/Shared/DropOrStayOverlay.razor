@@ -96,6 +96,8 @@
 
 @code {
     private const int DefaultTimerDurationSeconds = 30;
+    private string? _autoActionTimerKey;
+    private bool _isAutoActionInFlight;
 
     /// <summary>
     /// The player's current hand cards.
@@ -151,6 +153,11 @@
     [Parameter]
     public ActionTimerStateDto? ActionTimer { get; set; }
 
+    protected override async Task OnParametersSetAsync()
+    {
+        await TrySubmitTimeoutDefaultDecisionAsync();
+    }
+
     private int GetSecondsRemaining()
     {
         return ActionTimer?.SecondsRemaining ?? DefaultTimerDurationSeconds;
@@ -180,6 +187,38 @@
         };
 
         return rank;
+    }
+
+    private async Task TrySubmitTimeoutDefaultDecisionAsync()
+    {
+        if (HasDecided || ActionTimer is null || !ActionTimer.IsActive || ActionTimer.SecondsRemaining > 0)
+        {
+            _autoActionTimerKey = null;
+            return;
+        }
+
+        if (IsDeciding || _isAutoActionInFlight)
+        {
+            return;
+        }
+
+        var timerKey = $"{ActionTimer.PlayerSeatIndex}:{ActionTimer.StartedAtUtc.UtcTicks}";
+        if (_autoActionTimerKey == timerKey)
+        {
+            return;
+        }
+
+        _autoActionTimerKey = timerKey;
+        _isAutoActionInFlight = true;
+
+        try
+        {
+            await OnDecision.InvokeAsync("Stay");
+        }
+        finally
+        {
+            _isAutoActionInFlight = false;
+        }
     }
 
     /// <summary>
