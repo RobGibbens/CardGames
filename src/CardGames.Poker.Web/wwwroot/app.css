@@ -3461,6 +3461,26 @@ a:hover {
     min-width: 35px;
 }
 
+.action-panel .action-panel-timer {
+    margin-top: 1rem;
+    margin-bottom: 0;
+}
+
+.hand-eval-text {
+    margin-top: 0.75rem;
+    margin-bottom: 0.75rem;
+    text-align: center;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.action-panel-hand-separator {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.12);
+    margin-bottom: 1rem;
+}
+
 /* Action buttons */
 .action-buttons {
     display: flex;
@@ -3503,21 +3523,51 @@ a:hover {
     font-weight: 600;
 }
 
-.fold-btn:hover:not(:disabled) {
-    background: rgba(107, 114, 128, 0.4);
+.fold-btn {
+    background: linear-gradient(135deg, rgba(75, 85, 99, 0.6) 0%, rgba(107, 114, 128, 0.6) 100%);
     border-color: #6b7280;
 }
 
-.check-btn:hover:not(:disabled),
-.call-btn:hover:not(:disabled) {
-    background: rgba(34, 197, 94, 0.4);
+.fold-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(75, 85, 99, 0.8) 0%, rgba(107, 114, 128, 0.8) 100%);
+    border-color: #6b7280;
+    box-shadow: 0 0 12px rgba(107, 114, 128, 0.25);
+}
+
+.check-btn,
+.call-btn {
+    background: linear-gradient(135deg, rgba(22, 163, 74, 0.6) 0%, rgba(34, 197, 94, 0.6) 100%);
     border-color: #22c55e;
 }
 
-.bet-btn:hover:not(:disabled),
-.raise-btn:hover:not(:disabled) {
-    background: rgba(59, 130, 246, 0.4);
+.check-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(22, 163, 74, 0.8) 0%, rgba(34, 197, 94, 0.8) 100%);
+    border-color: #22c55e;
+    box-shadow: 0 0 14px rgba(34, 197, 94, 0.3);
+}
+
+.call-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(22, 163, 74, 0.85) 0%, rgba(34, 197, 94, 0.85) 100%);
+    border-color: #22c55e;
+    box-shadow: 0 0 18px rgba(34, 197, 94, 0.38);
+}
+
+.bet-btn,
+.raise-btn {
+    background: linear-gradient(135deg, rgba(29, 78, 216, 0.6) 0%, rgba(59, 130, 246, 0.6) 100%);
     border-color: #3b82f6;
+}
+
+.bet-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(29, 78, 216, 0.8) 0%, rgba(59, 130, 246, 0.8) 100%);
+    border-color: #3b82f6;
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+}
+
+.raise-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(29, 78, 216, 0.85) 0%, rgba(59, 130, 246, 0.85) 100%);
+    border-color: #3b82f6;
+    box-shadow: 0 0 24px rgba(59, 130, 246, 0.48);
 }
 
 .allin-btn {
@@ -3527,7 +3577,7 @@ a:hover {
 
 .allin-btn:hover:not(:disabled) {
     background: linear-gradient(135deg, rgba(220, 38, 38, 0.8) 0%, rgba(245, 158, 11, 0.8) 100%);
-    box-shadow: 0 0 20px rgba(245, 158, 11, 0.4);
+    box-shadow: 0 0 28px rgba(245, 158, 11, 0.55);
 }
 
 /* Bet controls */
@@ -4119,13 +4169,6 @@ a:hover {
 .draw-panel-subtitle {
     font-size: 0.875rem;
     color: rgba(255, 255, 255, 0.6);
-}
-
-.draw-panel-hand-eval {
-    margin-top: 0.75rem;
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: rgba(255, 255, 255, 0.9);
 }
 
 /* Draw Cards Container */

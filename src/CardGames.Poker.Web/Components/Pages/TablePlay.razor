@@ -187,7 +187,8 @@
             <ActionPanel LegalActions="@_legalActions" MinBet="@_currentMinBet" MaxBet="@_currentMaxBet"
                          CurrentBetToCall="@_currentBetToCall" PlayerChips="@_playerChips"
                          MinRaise="@(_availableActions?.MinRaise ?? _currentMinBet)" OnAction="HandlePlayerActionAsync"
-                         IsSubmitting="@_isSubmittingAction" ActionTimer="@_actionTimerState" />
+                         IsSubmitting="@_isSubmittingAction" ActionTimer="@_actionTimerState"
+                         HandDescription="@currentPlayerHandEvaluationDescription" />
         }
 
         <!-- Decision Panel (shown during decision phase like Drop/Stay) -->

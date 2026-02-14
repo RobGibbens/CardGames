@@ -25,6 +25,11 @@
     margin-bottom: 1rem;
 }
 
+.drop-or-stay-timer {
+    margin-top: 1rem;
+    margin-bottom: 0;
+}
+
 .timer-bar {
     flex: 1;
     height: 6px;
@@ -72,13 +77,6 @@
 .drop-or-stay-subtitle {
     font-size: 0.875rem;
     color: rgba(255, 255, 255, 0.6);
-}
-
-.drop-or-stay-hand-eval {
-    margin-top: 0.75rem;
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: rgba(255, 255, 255, 0.9);
 }
 
 /* Cards Container */

@@ -15,20 +15,9 @@
         </div>
         @if (!string.IsNullOrWhiteSpace(HandDescription))
         {
-            <div class="drop-or-stay-hand-eval">@HandDescription</div>
+            <div class="hand-eval-text">@HandDescription</div>
         }
     </div>
-
-    <!-- Turn timer -->
-    @if (!HasDecided)
-    {
-        <div class="turn-timer">
-            <div class="timer-bar">
-                <div class="timer-fill" style="width: @GetTimerPercentage()%"></div>
-            </div>
-            <span class="timer-text">@GetSecondsRemaining() s</span>
-        </div>
-    }
 
     <!-- Cards Display -->
     <div class="drop-or-stay-cards-container">
@@ -90,6 +79,17 @@
         <div class="drop-or-stay-waiting">
             <span class="waiting-label">Waiting for:</span>
             <span class="waiting-names">@string.Join(", ", PlayersWaiting)</span>
+        </div>
+    }
+
+    <!-- Turn timer -->
+    @if (!HasDecided)
+    {
+        <div class="turn-timer drop-or-stay-timer">
+            <div class="timer-bar">
+                <div class="timer-fill" style="width: @GetTimerPercentage()%"></div>
+            </div>
+            <span class="timer-text">@GetSecondsRemaining() s</span>
         </div>
     }
 </div>

@@ -5,13 +5,11 @@
 @using static CardGames.Poker.Web.Components.Pages.TablePlay
 
 <div class="action-panel @(IsSubmitting ? "submitting" : "")">
-    <!-- Turn timer -->
-    <div class="turn-timer">
-        <div class="timer-bar">
-            <div class="timer-fill" style="width: @GetTimerPercentage()%"></div>
-        </div>
-        <span class="timer-text">@GetSecondsRemaining() s</span>
-    </div>
+    @if (!string.IsNullOrWhiteSpace(HandDescription))
+    {
+        <div class="hand-eval-text">@HandDescription</div>
+        <div class="action-panel-hand-separator" aria-hidden="true"></div>
+    }
 
     <!-- Action buttons -->
     <div class="action-buttons">
@@ -106,6 +104,14 @@
             Submitting...
         </div>
     }
+
+    <!-- Turn timer -->
+    <div class="turn-timer action-panel-timer">
+        <div class="timer-bar">
+            <div class="timer-fill" style="width: @GetTimerPercentage()%"></div>
+        </div>
+        <span class="timer-text">@GetSecondsRemaining() s</span>
+    </div>
 </div>
 
 @code {
@@ -143,6 +149,9 @@
     /// </summary>
     [Parameter]
     public ActionTimerStateDto? ActionTimer { get; set; }
+
+    [Parameter]
+    public string? HandDescription { get; set; }
 
     private int betAmount;
 
