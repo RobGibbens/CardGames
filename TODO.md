@@ -6,7 +6,6 @@
 
 ### P1 - Can't play without these
 - [ ] Test side pots
-- [x] SCS - Choosing wrong first to act
 - [ ] Don't auto start a new hand. Add a timer, allow pause, allow people to get out of the game or end the game
 - [ ] Make sure all game types handle all ins correctly
 - [ ] Dashboard should be scrollable
@@ -22,10 +21,8 @@
 - [ ] Showdown overlay should handle split pots better
 - [ ] Table should be able to scroll if the screen isn't big enough
 - [ ] Allow them to upload an image when registering
-- [ ] When you can't start the game because you're waiting for other players to sit, show a message
 
 ### P3 - Nice to have
-- [ ] Creating a deck and dealing is done in the StartHandCommandHandler, but it should be using CardGames.Core.Dealer
 - [ ] Table settings should be dynamic when creating a table. Not all games have an ante or a minimum bet.
 - [ ] There are a lot of extra database calls going on
 - [ ] Hand history should auto size columns and allow resizing columns
@@ -40,7 +37,6 @@
 - [ ] Add the ability to invite friends to a table
 - [ ] Add the ability to create private tables
 - [ ] When already logged in, take them to the Lobby
-- [ ] Add animation of dealing the cards
 - [ ] Rearrange the register and login screens to make OAuth more obvious
 - [ ] Add leagues
 - [ ] Add seasons
@@ -152,3 +148,7 @@
 - [x] FTQ is misremembering other wild card after action
 - [x] Make sure it's shuffling correctly
 - [x] Have the ability for someone to take a seat and be dealt into the next hand
+- [x] When you can't start the game because you're waiting for other players to sit, show a message
+- [x] SCS - Choosing wrong first to act
+- [x] Creating a deck and dealing is done in the StartHandCommandHandler, but it should be using CardGames.Core.Dealer
+- [x] Add animation of dealing the cards
