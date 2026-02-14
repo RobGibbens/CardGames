@@ -373,7 +373,10 @@
         @* Animation state is tracked via _runoutAnimationInProgress *@
 
         @if (
-            IsShowdownPhase && _showShowdownOverlay && _showdownResult is not null && !_runoutAnimationInProgress)
+            _showShowdownOverlay &&
+            _showdownResult is not null &&
+            !_runoutAnimationInProgress &&
+            (IsShowdownPhase || _isResultsPhase || IsEndedPhase || _secondsUntilNextHand > 0))
         {
             <ShowdownOverlay ShowdownResult="@_showdownResult" ShowdownWon="@_showdownWon" ShowdownLost="@_showdownLost"
                              SecondsUntilNextHand="@_secondsUntilNextHand" IsGameEnded="@IsEndedPhase" OnClose="@CloseShowdownOverlay" />

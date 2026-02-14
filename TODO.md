@@ -6,7 +6,7 @@
 
 ### P1 - Can't play without these
 - [ ] Test side pots
-- [ ] SCS - Choosing wrong first to act
+- [x] SCS - Choosing wrong first to act
 - [ ] Don't auto start a new hand. Add a timer, allow pause, allow people to get out of the game or end the game
 - [ ] Make sure all game types handle all ins correctly
 - [ ] Dashboard should be scrollable

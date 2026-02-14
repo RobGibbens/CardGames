@@ -8,31 +8,14 @@
 @using System.Globalization
 
 <div class="table-overlay showdown-overlay" role="dialog" aria-modal="true" aria-label="Showdown results">
-    <div class="overlay-content showdown-content @(ShowdownWon ? "showdown-win" : ShowdownLost ? "showdown-lose" : "")">
+    <div class="overlay-content showdown-content @(ShowdownWon ? "showdown-won" : "")">
         <button type="button" class="showdown-close" @onclick="OnClose" aria-label="Close showdown">
             &times;
         </button>
 
-        @if (ShowdownWon)
-        {
-            <div class="sd-confetti" aria-hidden="true">
-                @for (var i = 0; i < 28; i++)
-                {
-                    <span class="sd-confetti-piece" style="--i:@i"></span>
-                }
-            </div>
-        }
-
         <header class="showdown-header">
-            <div class="overlay-icon showdown-icon" aria-hidden="true">
-                @if (ShowdownWon)
-                {
-                    <i class="fa-solid fa-crown"></i>
-                }
-                else
-                {
-                    <i class="fa-regular fa-face-grin-tears"></i>
-                }
+            <div class="showdown-icon" aria-hidden="true">
+                <i class="fa-solid fa-trophy"></i>
             </div>
             <div class="showdown-heading">
                 <h2 class="showdown-title">Showdown</h2>
@@ -44,48 +27,62 @@
         {
             <p class="showdown-empty">No showdown data.</p>
         }
-        else if (IsPlayerVsDeckScenario())
+        else
         {
-            // Player vs Deck scenario (Kings and Lows specific)
-            var playerHand = GetPlayerHand();
-            var deckHand = GetDeckHand();
-            var playerWon = playerHand?.IsWinner == true;
-            var winnerChips = playerWon ? (playerHand?.AmountWon ?? 0) : 0;
+            var winnerHand = GetPrimaryWinnerHand(ShowdownResult);
+            var otherHands = GetLoserHands(ShowdownResult, winnerHand);
+            var winnerCards = winnerHand is not null ? GetDisplayCards(winnerHand) : [];
+            var winnerName = GetWinnerDisplayName(ShowdownResult, winnerHand);
+            var winnerDescription = GetWinnerDescription(ShowdownResult, winnerHand);
+            var winnerAmount = GetWinnerAmount(ShowdownResult, winnerHand);
+            var winnerVerb = GetWinnerVerb(ShowdownResult, winnerHand);
 
-            <section class="showdown-winner" aria-label="@(playerWon ? "Winner" : "Result")">
-                <div class="winner-banner">
-                    <div class="winner-nameline">
-                        <span class="winner-first">@DisplayFirstName(playerHand)</span>
-                        <span class="winner-rest">@(playerWon ? "beats the deck!" : "lost to the deck")</span>
+            <section class="showdown-winner" aria-label="Winner">
+                <div class="winner-banner @(ShowdownWon ? "winner-banner-celebrate" : "")">
+                    @if (ShowdownWon)
+                    {
+                        <div class="winner-celebration" aria-hidden="true">
+                            <span class="winner-ribbon">Winner</span>
+                            <i class="fa-solid fa-sparkles celebration-star celebration-star-left"></i>
+                            <i class="fa-solid fa-sparkles celebration-star celebration-star-right"></i>
+                            @for (var i = 0; i < 14; i++)
+                            {
+                                <span class="celebration-confetti" style="--i:@i"></span>
+                            }
+                        </div>
+                    }
+
+                    <div class="winner-headline">
+                        @if (ShowdownWon)
+                        {
+                            <span class="winner-crown" aria-hidden="true"><i class="fa-solid fa-crown"></i></span>
+                        }
+                        <h3 class="winner-first">@winnerName</h3>
+                        <span class="winner-rest">@winnerVerb</span>
                     </div>
-                    @if (playerWon && winnerChips > 0)
+
+                    @if (!string.IsNullOrWhiteSpace(winnerDescription) || winnerAmount > 0)
                     {
                         <div class="winner-pills">
-                            @if (!string.IsNullOrWhiteSpace(playerHand?.HandType))
+                            @if (!string.IsNullOrWhiteSpace(winnerDescription))
                             {
-                                <span class="sd-pill sd-pill-green">@GetDetailedHandDescription(playerHand)</span>
+                                <span class="sd-pill sd-pill-muted">@winnerDescription</span>
                             }
-                            <span class="sd-pill sd-pill-gold">+@winnerChips chips</span>
-                        </div>
-                    }
-                    else if (!playerWon)
-                    {
-                        <div class="winner-pills">
-                            @if (!string.IsNullOrWhiteSpace(playerHand?.HandType))
+                            @if (winnerAmount > 0)
                             {
-                                <span class="sd-pill sd-pill-muted">@GetDetailedHandDescription(playerHand)</span>
+                                <span class="sd-pill sd-pill-gold">+@winnerAmount chips</span>
                             }
                         </div>
                     }
 
-                    @if (playerHand?.Cards is { Count: > 0 })
+                    @if (winnerCards.Count > 0)
                     {
-                        <div class="showdown-cards winner-cards" aria-label="Player cards">
-                            @for (var i = 0; i < playerHand.Cards.Count; i++)
+                        <div class="showdown-cards winner-cards" aria-label="Winning cards">
+                            @for (var i = 0; i < winnerCards.Count; i++)
                             {
-                                var card = playerHand.Cards.ElementAt(i);
+                                var card = winnerCards[i];
                                 <div class="sd-card-wrapper" style="--i:@i">
-                                    <playing-card rank="@GetPlayingCardRank(card)" suit="@GetPlayingCardSuit(card)" style="height:75px;width:75px;filter:drop-shadow(0 10px 18px rgba(0,0,0,.35));"></playing-card>
+                                    <playing-card class="showdown-card showdown-card-winner" rank="@GetPlayingCardRank(card)" suit="@GetPlayingCardSuit(card)"></playing-card>
                                 </div>
                             }
                         </div>
@@ -93,145 +90,17 @@
                 </div>
             </section>
 
-            @if (deckHand is not null)
-            {
-                <section class="showdown-others" aria-label="The Deck's hand">
-                    <div class="other-hand-row">
-                        <div class="other-hand-info">
-                            <span class="other-hand-name">The Deck</span>
-                            @if (!string.IsNullOrWhiteSpace(deckHand.HandType))
-                            {
-                                <span class="sd-pill @(deckHand.IsWinner == true ? "sd-pill-green" : "sd-pill-muted")">@GetDetailedHandDescription(deckHand)</span>
-                            }
-                        </div>
-                        @if (deckHand.Cards is { Count: > 0 })
-                        {
-                            <div class="showdown-cards other-cards">
-                                @foreach (var c in deckHand.Cards)
-                                {
-                                    <div class="">
-                                        <playing-card rank="@GetPlayingCardRank(c)" suit="@GetPlayingCardSuit(c)" style="height:64px;width:48px;"></playing-card>
-                                    </div>
-                                }
-                            </div>
-                        }
-                    </div>
-                </section>
-            }
-
-            @if (playerWon && ShowdownResult.Payouts is { Count: > 0 })
-            {
-                <div class="showdown-winners">
-                    <h3>Payouts</h3>
-                    @foreach (var payout in ShowdownResult.Payouts)
-                    {
-                        <div class="showdown-winner-row">
-                            <span class="winner-name">@payout.Key</span>
-                            <span class="winner-amount">+@payout.Value</span>
-                        </div>
-                    }
-                </div>
-            }
-        }
-        else if (ShowdownResult.WonByFold == true)
-        {
-            string? winnerName = null;
-            var winnerChips = 0;
-
-            if (ShowdownResult.Payouts is not null && ShowdownResult.Payouts.Count > 0)
-            {
-                var first = ShowdownResult.Payouts.First();
-                winnerName = first.Key;
-                winnerChips = first.Value;
-            }
-
-            // Prefer first name provided by the API (avoid parsing full display name).
-            var winnerHand = ShowdownResult.PlayerHands?.FirstOrDefault(h => h.IsWinner == true);
-            if (!string.IsNullOrWhiteSpace(winnerHand?.PlayerFirstName))
-            {
-                winnerName = winnerHand.PlayerFirstName;
-            }
-
-            <section class="showdown-winner" aria-label="Winner">
-                <div class="winner-banner">
-                    <div class="winner-nameline">
-                        <span class="winner-first">@winnerName</span>
-                        <span class="winner-rest">wins by fold</span>
-                    </div>
-                    @if (winnerChips > 0)
-                    {
-                        <div class="winner-pills">
-                            <span class="sd-pill sd-pill-gold">+@winnerChips chips</span>
-                        </div>
-                    }
-                </div>
-            </section>
-
-            <div class="showdown-winners">
-                <h3>Payouts</h3>
-                @if (ShowdownResult.Payouts is not null)
-                {
-                    @foreach (var payout in ShowdownResult.Payouts)
-                    {
-                        <div class="showdown-winner-row">
-                            <span class="winner-name">@payout.Key</span>
-                            <span class="winner-amount">+@payout.Value</span>
-                        </div>
-                    }
-                }
-            </div>
-        }
-        else
-        {
-            var winnerHand = GetPrimaryWinnerHand(ShowdownResult);
-            var otherHands = GetOtherHands(ShowdownResult, winnerHand);
-
-            @if (winnerHand is not null)
-            {
-                var winnerCards = GetDisplayCards(winnerHand);
-                <section class="showdown-winner" aria-label="Winner">
-                    <div class="winner-banner">
-                        <div class="winner-nameline">
-                            <span class="winner-first">@DisplayFirstName(winnerHand)</span>
-                            <span class="winner-rest">takes it</span>
-                        </div>
-                        <div class="winner-pills">
-                            @if (!string.IsNullOrWhiteSpace(winnerHand.HandType))
-                            {
-                                <span class="sd-pill sd-pill-green">@GetDetailedHandDescription(winnerHand)</span>
-                            }
-                            @if (winnerHand.AmountWon.GetValueOrDefault() > 0)
-                            {
-                                <span class="sd-pill sd-pill-gold">+@winnerHand.AmountWon.GetValueOrDefault() chips</span>
-                            }
-                        </div>
-
-                        @if (winnerCards.Count > 0)
-                        {
-                            <div class="showdown-cards winner-cards" aria-label="Winning cards">
-                                @for (var i = 0; i < winnerCards.Count; i++)
-                                {
-                                    var card = winnerCards[i];
-                                    <div class="sd-card-wrapper" style="--i:@i">
-                                        <playing-card rank="@GetPlayingCardRank(card)" suit="@GetPlayingCardSuit(card)" style="height:75px;width:75px;filter:drop-shadow(0 10px 18px rgba(0,0,0,.35));"></playing-card>
-                                    </div>
-                                }
-                            </div>
-                        }
-                    </div>
-                </section>
-            }
-
             @if (otherHands.Count > 0)
             {
                 <section class="showdown-others" aria-label="Other hands">
+                    <h3 class="showdown-section-title">Other Hands</h3>
                     @foreach (var hand in otherHands)
                     {
                         var handCards = GetDisplayCards(hand);
                         <div class="other-hand-row">
                             <div class="other-hand-info">
                                 <span class="other-hand-name">@DisplayFirstName(hand)</span>
-                                @if (!string.IsNullOrWhiteSpace(hand.HandType))
+                                @if (!string.IsNullOrWhiteSpace(hand.HandType) || !string.IsNullOrWhiteSpace(hand.HandDescription))
                                 {
                                     <span class="sd-pill sd-pill-muted">@GetDetailedHandDescription(hand)</span>
                                 }
@@ -245,8 +114,8 @@
                                 <div class="showdown-cards other-cards">
                                     @foreach (var c in handCards)
                                     {
-                                        <div class="">
-                                            <playing-card rank="@GetPlayingCardRank(c)" suit="@GetPlayingCardSuit(c)" style="height:64px;width:48px;"></playing-card>
+                                        <div>
+                                            <playing-card class="showdown-card showdown-card-loser" rank="@GetPlayingCardRank(c)" suit="@GetPlayingCardSuit(c)"></playing-card>
                                         </div>
                                     }
                                 </div>
@@ -255,40 +124,26 @@
                     }
                 </section>
             }
-
-            <div class="showdown-winners">
-                <h3>Payouts</h3>
-                @if (ShowdownResult.Payouts is not null)
-                {
-                    @foreach (var payout in ShowdownResult.Payouts)
-                    {
-                        <div class="showdown-winner-row">
-                            <span class="winner-name">@payout.Key</span>
-                            <span class="winner-amount">+@payout.Value</span>
-                        </div>
-                    }
-                }
-            </div>
         }
 
-                <div class="showdown-countdown">
-                    @if (IsGameEnded)
-                    {
-                        <p class="showdown-hint">Returning to lobby in <strong>@SecondsUntilNextHand</strong> seconds...</p>
-                    }
-                    else if (SecondsUntilNextHand > 0)
-                    {
-                        <p class="showdown-hint">Next hand starts in <strong>@SecondsUntilNextHand</strong> seconds...</p>
-                    }
-                    else
-                    {
-                        <p class="showdown-hint">Starting next hand...</p>
-                    }
-                </div>
-            </div>
+        <div class="showdown-countdown">
+            @if (IsGameEnded)
+            {
+                <p class="showdown-hint">Returning to lobby in <strong>@SecondsUntilNextHand</strong> seconds...</p>
+            }
+            else if (SecondsUntilNextHand > 0)
+            {
+                <p class="showdown-hint">Next hand starts in <strong>@SecondsUntilNextHand</strong> seconds...</p>
+            }
+            else
+            {
+                <p class="showdown-hint">Starting next hand...</p>
+            }
         </div>
+    </div>
+</div>
 
-        @code {
+@code {
             [Parameter]
             public PerformShowdownSuccessful? ShowdownResult { get; set; }
 
@@ -323,7 +178,7 @@
             .FirstOrDefault();
     }
 
-    private static List<ShowdownPlayerHand> GetOtherHands(PerformShowdownSuccessful result, ShowdownPlayerHand? primaryWinner)
+    private static List<ShowdownPlayerHand> GetLoserHands(PerformShowdownSuccessful result, ShowdownPlayerHand? winner)
     {
         if (result.PlayerHands is null)
         {
@@ -335,21 +190,90 @@
             .Select(h => EnrichHand(h, result.Payouts))
             .ToList();
 
-        if (primaryWinner is not null)
+        if (winner is not null)
         {
-            // Remove primary winner (matching by name)
-            var toRemove = hands.FirstOrDefault(h => h.PlayerName == primaryWinner.PlayerName);
+            var toRemove = hands.FirstOrDefault(h => h.PlayerName == winner.PlayerName);
             if (toRemove is not null)
             {
                 hands.Remove(toRemove);
             }
+
+            hands = hands.Where(h => h.IsWinner != true).ToList();
+        }
+        else
+        {
+            hands = hands.Where(h => h.IsWinner != true).ToList();
         }
 
         return hands
-            .OrderByDescending(h => h.IsWinner == true)
-            .ThenByDescending(h => h.AmountWon ?? 0)
+            .OrderByDescending(h => h.AmountWon ?? 0)
             .ThenBy(h => h.PlayerName)
             .ToList();
+    }
+
+    private static string GetWinnerDisplayName(PerformShowdownSuccessful result, ShowdownPlayerHand? winnerHand)
+    {
+        if (winnerHand is not null)
+        {
+            return DisplayFirstName(winnerHand);
+        }
+
+        if (result.Payouts is not null && result.Payouts.Count > 0)
+        {
+            var winnerName = result.Payouts.First().Key;
+            if (!string.IsNullOrWhiteSpace(winnerName))
+            {
+                var parts = winnerName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                return parts.Length > 0 ? parts[0] : winnerName;
+            }
+        }
+
+        return "Winner";
+    }
+
+    private static int GetWinnerAmount(PerformShowdownSuccessful result, ShowdownPlayerHand? winnerHand)
+    {
+        if (winnerHand?.AmountWon is > 0)
+        {
+            return winnerHand.AmountWon.Value;
+        }
+
+        if (result.Payouts is not null && result.Payouts.Count > 0)
+        {
+            return result.Payouts.First().Value;
+        }
+
+        return 0;
+    }
+
+    private static string GetWinnerDescription(PerformShowdownSuccessful result, ShowdownPlayerHand? winnerHand)
+    {
+        if (winnerHand is not null)
+        {
+            return GetDetailedHandDescription(winnerHand);
+        }
+
+        return result.WonByFold == true ? "Won by fold" : string.Empty;
+    }
+
+    private static string GetWinnerVerb(PerformShowdownSuccessful result, ShowdownPlayerHand? winnerHand)
+    {
+        if (result.WonByFold == true)
+        {
+            return "wins by fold";
+        }
+
+        if (IsDeckHand(winnerHand))
+        {
+            return "wins this hand";
+        }
+
+        return "wins the hand";
+    }
+
+    private static bool IsDeckHand(ShowdownPlayerHand? hand)
+    {
+        return string.Equals(hand?.PlayerName, "The Deck", StringComparison.OrdinalIgnoreCase);
     }
 
     private static ShowdownPlayerHand EnrichHand(ShowdownPlayerHand hand, IDictionary<string, int>? payouts)
