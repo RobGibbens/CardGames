@@ -26,6 +26,7 @@ using CardGames.Poker.Api.Hubs;
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Evaluation;
 using Microsoft.AspNetCore.SignalR;
+using CardGames.Poker.Api.Infrastructure.Storage;
 
 namespace CardGames.Poker.Api;
 
@@ -181,6 +182,11 @@ public class Program
                 options.QueueLimit = 2;
             }));
         builder.Services.AddProblemDetails().AddErrorObjects();
+        builder.AddAzureBlobServiceClient("blobs");
+        builder.Services
+            .AddOptions<AvatarStorageOptions>()
+            .Bind(builder.Configuration.GetSection(AvatarStorageOptions.SectionName));
+        builder.Services.AddSingleton<IAvatarStorageService, AvatarStorageService>();
         // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
         builder.Services.AddOpenApi(options =>
         {

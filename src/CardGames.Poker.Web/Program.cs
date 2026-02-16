@@ -143,6 +143,12 @@ builder.Services
 	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"))
 	.AddHttpMessageHandler<AuthenticationStateHandler>();
 
+builder.Services
+	.AddRefitClient<IProfileApi>(
+		settingsAction: _ => new RefitSettings(),
+		httpClientName: "profileApi")
+	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"));
+
 // Register Game API Client Wrappers and Router
 builder.Services.AddScoped<IGameApiClient, FiveCardDrawApiClientWrapper>();
 builder.Services.AddScoped<IGameApiClient, SevenCardStudApiClientWrapper>();

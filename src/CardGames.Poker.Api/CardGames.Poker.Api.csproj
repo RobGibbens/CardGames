@@ -42,6 +42,7 @@
 		<PackageReference Include="Microsoft.Identity.Web.UI" Version="4.3.0" />
 
 		<PackageReference Include="OneOf" Version="3.0.271" />
+		<PackageReference Include="Aspire.Azure.Storage.Blobs" Version="13.1.1" />
 		<PackageReference Include="Aspire.Azure.Messaging.ServiceBus" Version="13.1.1" />
 		<PackageReference Include="Azure.Messaging.ServiceBus" Version="7.20.1" />
 		<PackageReference Include="OpenTelemetry" Version="1.15.0" />

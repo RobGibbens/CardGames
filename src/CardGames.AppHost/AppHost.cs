@@ -10,6 +10,15 @@ var cache = builder
 	.AddRedis("cache")
 	.WithLifetime(ContainerLifetime.Persistent);
 
+var blobs = builder
+	.AddAzureStorage("storage")
+	.RunAsEmulator(azurite =>
+	{
+		azurite.WithLifetime(ContainerLifetime.Persistent)
+			.WithDataVolume();
+	})
+	.AddBlobs("blobs");
+
 var sqlServer = builder.AddAzureSqlServer("sqlserver")
 	.RunAsContainer(c =>
 	{
@@ -27,6 +36,8 @@ var api = builder.AddProject<Projects.CardGames_Poker_Api>("api")
 .WaitFor(serviceBus)
 .WithReference(cache)
 .WaitFor(cache)
+	.WithReference(blobs)
+	.WaitFor(blobs)
 .WithReference(sqldb)
 .WaitFor(sqldb)
 .WithReference(migrations)

@@ -244,13 +244,20 @@
             return null;
         }
 
-        // Only allow https for external images.
-        if (!string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+        // Prefer https for external images.
+        // Allow local http URLs for development/emulator scenarios (e.g., Azurite).
+        if (string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
         {
-            return null;
+            return uri.ToString();
         }
 
-        return uri.ToString();
+        if (string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)
+            && (uri.IsLoopback || string.Equals(uri.Host, "localhost", StringComparison.OrdinalIgnoreCase)))
+        {
+            return uri.ToString();
+        }
+
+        return null;
     }
 
     private static string? PreferFirstName(string? firstName)
