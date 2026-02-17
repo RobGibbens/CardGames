@@ -29,18 +29,21 @@
 - [ ] When the Draw Overlay is showing, the cards are not opaque
 - [ ] The bottom of the table goes off the bottom of the screen
 - [ ] Add sound effects
-- [ ] Add a chat box
-- [ ] Add the ability to mute other players in chat
-- [ ] Add the ability to block other players
-- [ ] Add a friends list
-- [ ] Add the ability to invite friends to a table
-- [ ] Add the ability to create private tables
 - [ ] When already logged in, take them to the Lobby
 - [ ] Rearrange the register and login screens to make OAuth more obvious
 - [ ] Add leagues
 - [ ] Add seasons
 - [ ] Add tournaments
 - [ ] Endpoints shouldn't use generic Error responses
+
+## When expanding beyond my friends
+
+- [ ] Add a chat box
+- [ ] Add the ability to mute other players in chat
+- [ ] Add the ability to block other players
+- [ ] Add a friends list
+- [ ] Add the ability to invite friends to a table
+- [ ] Add the ability to create private tables
 
 
 ## Add Games
