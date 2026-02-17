@@ -153,7 +153,7 @@
                     return;
                 }
 
-                avatarUrl = uploadResponse.Content.AvatarUrl;
+                avatarUrl = ResolveUploadedAvatarUrl(uploadResponse.Content.AvatarUrl);
             }
             catch (ApiException)
             {
@@ -230,6 +230,35 @@
             throw new NotSupportedException("The default UI requires a user store with email support.");
         }
         return (IUserEmailStore<ApplicationUser>)UserStore;
+    }
+
+    private string ResolveUploadedAvatarUrl(string avatarUrl)
+    {
+        if (!Uri.TryCreate(avatarUrl, UriKind.Absolute, out var avatarUri))
+        {
+            return avatarUrl;
+        }
+
+        var isLocalHost = avatarUri.IsLoopback || string.Equals(avatarUri.Host, "localhost", StringComparison.OrdinalIgnoreCase);
+        if (!isLocalHost)
+        {
+            return avatarUrl;
+        }
+
+        var currentUri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        if (!string.Equals(currentUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+        {
+            return avatarUrl;
+        }
+
+        var rewrittenAvatarUri = new UriBuilder(avatarUri)
+        {
+            Scheme = currentUri.Scheme,
+            Host = currentUri.Host,
+            Port = currentUri.IsDefaultPort ? -1 : currentUri.Port
+        };
+
+        return rewrittenAvatarUri.Uri.ToString();
     }
 
     private sealed class InputModel

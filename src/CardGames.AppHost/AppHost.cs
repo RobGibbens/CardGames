@@ -57,6 +57,7 @@ var options = new DevTunnelOptions
 };
 var tunnel = builder.AddDevTunnel("poker-tunnel", "poker-tunnel", options)
 	.WithReference(web)
+	.WithReference(api)
 	.WithAnonymousAccess()
 	.WaitFor(web);
 
