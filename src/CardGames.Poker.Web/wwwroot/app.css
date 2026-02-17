@@ -1283,6 +1283,10 @@ a:hover {
     margin-top: 0.5rem;
 }
 
+.auth-action-row {
+    margin-top: 0.75rem;
+}
+
 .auth-divider {
     display: flex;
     align-items: center;
