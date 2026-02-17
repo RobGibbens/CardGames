@@ -3,26 +3,23 @@
 
 <CardGames.Poker.Web.Components.Shared.SiteNavBar />
 
-<section class="section" aria-labelledby="manage-title">
+<section class="section account-manage-section" aria-labelledby="manage-title">
     <div class="section-container">
-        <div class="section-header">
+        <div class="section-header account-manage-header">
             <span class="section-badge">Account</span>
             <h1 id="manage-title" class="section-title">Manage your account</h1>
             <p class="section-subtitle">Update your profile, security, and sign-in settings.</p>
         </div>
 
-        <div class="row">
-            <div class="col-lg-3">
-                <div class="feature-card">
-                    <h2 class="feature-title" style="margin-bottom: .75rem;">Settings</h2>
-                    <ManageNavMenu />
-                </div>
-            </div>
+        <div class="account-manage-grid">
+            <aside class="feature-card account-manage-nav-card">
+                <h2 class="feature-title">Settings</h2>
+                <p class="account-manage-nav-description">Choose a section to update your profile, security, and account preferences.</p>
+                <ManageNavMenu />
+            </aside>
 
-            <div class="col-lg-9">
-                <div class="feature-card">
-                    @Body
-                </div>
+            <div class="feature-card account-manage-content-card">
+                @Body
             </div>
         </div>
     </div>

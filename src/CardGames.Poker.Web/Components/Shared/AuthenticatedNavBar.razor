@@ -8,7 +8,6 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Identity
 @using CardGames.Poker.Web.Data
-@using System.Security.Claims
 
 <!-- Authenticated Navigation Header -->
 <header class="nav-header">
@@ -69,7 +68,7 @@
                                 }
                                 else
                                 {
-                                    @GetUserInitial(CurrentUserName ?? context.User.Identity?.Name)
+                                    @UserProfileDisplayHelpers.GetUserInitial(CurrentUserName ?? context.User.Identity?.Name)
                                 }
                             </span>
                             <span class="user-name">@(CurrentUserName ?? context.User.Identity?.Name)</span>
@@ -127,7 +126,7 @@
         var authState = await AuthenticationStateTask;
         var principal = authState.User;
 
-        var userId = UserManager.GetUserId(principal);
+        var userId = UserProfileDisplayHelpers.GetUserId(principal);
         if (string.IsNullOrWhiteSpace(userId))
         {
             loadedUserId = null;
@@ -136,20 +135,15 @@
             return;
         }
 
-        if (string.Equals(loadedUserId, userId, StringComparison.Ordinal))
-        {
-            return;
-        }
-
         loadedUserId = userId;
 
         // Prefer the app's stored profile fields.
         var user = await UserManager.GetUserAsync(principal);
-        CurrentUserName = PreferFirstName(user?.FirstName) ?? principal.Identity?.Name;
+        CurrentUserName = UserProfileDisplayHelpers.PreferFirstName(user?.FirstName) ?? principal.Identity?.Name;
 
         // Prefer the app's stored AvatarUrl; fall back to common external provider claims.
-        var avatarFromClaims = GetFirstClaimValue(principal, "picture", "avatar_url", "urn:google:picture");
-        CurrentUserAvatarUrl = NormalizeAvatarUrl(user?.AvatarUrl) ?? NormalizeAvatarUrl(avatarFromClaims);
+        var avatarFromClaims = UserProfileDisplayHelpers.GetFirstClaimValue(principal, "picture", "avatar_url", "urn:google:picture");
+        CurrentUserAvatarUrl = UserProfileDisplayHelpers.NormalizeAvatarUrl(user?.AvatarUrl) ?? UserProfileDisplayHelpers.NormalizeAvatarUrl(avatarFromClaims);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -223,73 +217,4 @@
         return ("/" + relativePath).StartsWith(path, StringComparison.OrdinalIgnoreCase) ? "active" : "";
     }
 
-    private static string GetUserInitial(string? name)
-    {
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            return "?";
-        }
-
-        return name[0].ToString().ToUpperInvariant();
-    }
-
-    private static string? GetFirstClaimValue(ClaimsPrincipal principal, params string[] claimTypes)
-    {
-        foreach (var claimType in claimTypes)
-        {
-            var value = principal.FindFirstValue(claimType);
-            if (!string.IsNullOrWhiteSpace(value))
-            {
-                return value;
-            }
-        }
-
-        return null;
-    }
-
-    private static string? NormalizeAvatarUrl(string? url)
-    {
-        if (string.IsNullOrWhiteSpace(url))
-        {
-            return null;
-        }
-
-        url = url.Trim();
-
-        // Allow app-local absolute paths like /images/avatar.png
-        if (url.StartsWith("/", StringComparison.Ordinal))
-        {
-            return url;
-        }
-
-        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
-        {
-            return null;
-        }
-
-        // Prefer https for external images.
-        // Allow local http URLs for development/emulator scenarios (e.g., Azurite).
-        if (string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
-        {
-            return uri.ToString();
-        }
-
-        if (string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)
-            && (uri.IsLoopback || string.Equals(uri.Host, "localhost", StringComparison.OrdinalIgnoreCase)))
-        {
-            return uri.ToString();
-        }
-
-        return null;
-    }
-
-    private static string? PreferFirstName(string? firstName)
-    {
-        if (string.IsNullOrWhiteSpace(firstName))
-        {
-            return null;
-        }
-
-        return firstName.Trim();
-    }
 }
