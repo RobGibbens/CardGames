@@ -20,7 +20,6 @@
 - [ ] During ties, the showdown should show the kicker
 - [ ] Showdown overlay should handle split pots better
 - [ ] Table should be able to scroll if the screen isn't big enough
-- [ ] Allow them to upload an image when registering
 
 ### P3 - Nice to have
 - [ ] Table settings should be dynamic when creating a table. Not all games have an ante or a minimum bet.
@@ -152,3 +151,4 @@
 - [x] SCS - Choosing wrong first to act
 - [x] Creating a deck and dealing is done in the StartHandCommandHandler, but it should be using CardGames.Core.Dealer
 - [x] Add animation of dealing the cards
+- [x] Allow them to upload an image when registering
