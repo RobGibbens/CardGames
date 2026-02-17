@@ -14,6 +14,7 @@
 @using CardGames.Poker.Web.Extensions
 @using CardGames.Poker.Web.Services
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.JSInterop
 @using System.Security.Claims
 
 @inject NavigationManager NavigationManager
@@ -30,6 +31,7 @@
 @inject IBaseballApi BaseballApi
 @inject IKingsAndLowsApi KingsAndLowsApi
 @inject IFiveCardDrawApi FiveCardDrawApiClient
+@inject IJSRuntime JSRuntime
 
 <PageTitle>Table - Friday Night Poker</PageTitle>
 
@@ -65,6 +67,12 @@
                 @(IsSittingOut ? "I'm Back" : "Sit out next hand")
             </button>
         }
+
+        <button class="btn btn-secondary btn-sm ms-2" @onclick="ToggleDealSoundMuteAsync"
+                title="@(_isDealSoundMuted ? "Unmute deal sounds" : "Mute deal sounds")">
+            <i class="fa-solid @(_isDealSoundMuted ? "fa-volume-xmark" : "fa-volume-high")"></i>
+            @(_isDealSoundMuted ? "Unmute" : "Mute")
+        </button>
 
         <div class="table-info-strip">
             <span class="table-name">
@@ -534,6 +542,8 @@
     // Toast notification state
     private List<ToastMessage> _toastMessages = [];
 
+    private bool _isDealSoundMuted;
+
     private List<SeatInfo> _seats = [];
 
     private int _seatedPlayerCount;
@@ -680,6 +690,24 @@
         // Connect to SignalR hub and join game - the snapshot will now
         // be processed correctly since seats are already populated
         await ConnectAndJoinGameAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        try
+        {
+            _isDealSoundMuted = await JSRuntime.InvokeAsync<bool>("cardGamesAudio.getMuted");
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "Unable to load persisted deal-card mute state");
+        }
     }
 
     private async Task ConnectAndJoinGameAsync()
@@ -1134,6 +1162,8 @@
         // BUT: Skip card updates during runout animation - the animation controls card visibility
         if (targetSeatIndex >= 0 && targetSeatIndex < _seats.Count)
         {
+            var previousCardCount = _seats[targetSeatIndex].Cards.Count;
+
             var isInRunoutAnimation = _runoutAnimationInProgress &&
             _allInRunoutState?.RunoutCardsBySeat?.ContainsKey(targetSeatIndex) == true;
 
@@ -1168,6 +1198,12 @@
                 }).ToList();
 
                 _seats[targetSeatIndex].HandEvaluationDescription = state.HandEvaluationDescription;
+
+                var newlyDealtCardCount = Math.Max(0, state.Hand.Count - previousCardCount);
+                if (targetSeatIndex == _currentPlayerSeatIndex && newlyDealtCardCount > 0)
+                {
+                    await PlayDealCardSoundAsync(newlyDealtCardCount);
+                }
             }
             else
             {
@@ -2516,6 +2552,11 @@
 
             _seats[seatListIndex] = seat with { Cards = newHand };
 
+            if (seatIndex == _currentPlayerSeatIndex)
+            {
+                await PlayDealCardSoundAsync(1);
+            }
+
             Logger.LogDebug("Deal Animation: CardIdx {CardIdx}, Seat {SeatIndex}, FaceUp={FaceUp}",
                 _dealCurrentCardIndex, seatIndex, isFaceUp);
         }
@@ -2523,6 +2564,37 @@
         _dealCurrentSeatIdx++;
 
         await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task PlayDealCardSoundAsync(int cardCount)
+    {
+        if (cardCount <= 0 || _isDealSoundMuted)
+        {
+            return;
+        }
+
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("cardGamesAudio.playDealCard", cardCount);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "Unable to play deal-card sound effect");
+        }
+    }
+
+    private async Task ToggleDealSoundMuteAsync()
+    {
+        _isDealSoundMuted = !_isDealSoundMuted;
+
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("cardGamesAudio.setMuted", _isDealSoundMuted);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "Unable to toggle deal-card sound mute state");
+        }
     }
 
     private void CompleteCardDealAnimation()
