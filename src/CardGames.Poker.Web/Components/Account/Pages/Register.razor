@@ -10,6 +10,7 @@
 @using Microsoft.AspNetCore.WebUtilities
 @using CardGames.Poker.Web.Data
 @using Refit
+@using Microsoft.AspNetCore.Http
 
 @inject UserManager<ApplicationUser> UserManager
 @inject IUserStore<ApplicationUser> UserStore
@@ -25,7 +26,7 @@
 <AccountShell Title="Create your account" Subtitle="Join the tables in seconds">
     <StatusMessage Message="@Message" />
 
-    <EditForm Model="Input" method="post" OnValidSubmit="RegisterUser" FormName="register" class="auth-form">
+    <EditForm Model="Input" method="post" OnValidSubmit="RegisterUser" FormName="register" class="auth-form" enctype="multipart/form-data">
         <DataAnnotationsValidator />
         <ValidationSummary class="text-danger" role="alert" />
 
@@ -60,7 +61,7 @@
 
         <div class="mb-3">
             <label class="form-label" for="Input.AvatarFile">Upload avatar image (optional)</label>
-            <InputFile id="Input.AvatarFile" class="form-control" accept="image/jpeg,image/png,image/gif,image/webp" OnChange="OnAvatarFileSelected" />
+            <input type="file" id="Input.AvatarFile" name="Input.AvatarFile" class="form-control" accept="image/jpeg,image/png,image/gif,image/webp" />
         </div>
         
         <button type="submit" class="btn btn-primary btn-lg">
@@ -83,7 +84,6 @@
 
 @code {
     private IEnumerable<IdentityError>? identityErrors;
-    private IBrowserFile? avatarFile;
 
     private const long MaxAvatarUploadBytes = 5 * 1024 * 1024;
 
@@ -106,7 +106,7 @@
 
         var avatarUrl = string.IsNullOrWhiteSpace(Input.AvatarUrl) ? null : Input.AvatarUrl.Trim();
 
-        if (!string.IsNullOrWhiteSpace(avatarUrl) && avatarFile is not null)
+        if (!string.IsNullOrWhiteSpace(avatarUrl) && Input.AvatarFile is not null)
         {
             identityErrors =
             [
@@ -119,12 +119,25 @@
             return;
         }
 
-        if (avatarFile is not null)
+        if (Input.AvatarFile is not null)
         {
+            if (Input.AvatarFile.Length > MaxAvatarUploadBytes)
+            {
+                identityErrors =
+                [
+                    new IdentityError
+                    {
+                        Description = "Avatar upload exceeded the maximum allowed size."
+                    }
+                ];
+
+                return;
+            }
+
             try
             {
-                await using var fileStream = avatarFile.OpenReadStream(MaxAvatarUploadBytes);
-                var file = new StreamPart(fileStream, avatarFile.Name, avatarFile.ContentType);
+                await using var fileStream = Input.AvatarFile.OpenReadStream();
+                var file = new StreamPart(fileStream, Input.AvatarFile.FileName, Input.AvatarFile.ContentType);
                 var uploadResponse = await ProfileApi.UploadAvatarAsync(file, CancellationToken.None);
 
                 if (!uploadResponse.IsSuccessStatusCode || uploadResponse.Content is null)
@@ -149,18 +162,6 @@
                     new IdentityError
                     {
                         Description = "Avatar upload failed. Please try again."
-                    }
-                ];
-
-                return;
-            }
-            catch (IOException)
-            {
-                identityErrors =
-                [
-                    new IdentityError
-                    {
-                        Description = "Avatar upload exceeded the maximum allowed size."
                     }
                 ];
 
@@ -231,11 +232,6 @@
         return (IUserEmailStore<ApplicationUser>)UserStore;
     }
 
-    private void OnAvatarFileSelected(InputFileChangeEventArgs e)
-    {
-        avatarFile = e.FileCount > 0 ? e.File : null;
-    }
-
     private sealed class InputModel
     {
         [Required]
@@ -252,6 +248,9 @@
         [StringLength(512)]
         [Display(Name = "Avatar URL")]
         public string? AvatarUrl { get; set; }
+
+        [Display(Name = "Avatar image")]
+        public IFormFile? AvatarFile { get; set; }
 
         [Required]
         [EmailAddress]

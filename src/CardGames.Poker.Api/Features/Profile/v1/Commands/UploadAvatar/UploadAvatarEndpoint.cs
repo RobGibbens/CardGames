@@ -46,10 +46,15 @@ public static class UploadAvatarEndpoint
 					{
 						return Results.Problem(title: "Avatar upload configuration error", detail: ex.Message, statusCode: StatusCodes.Status500InternalServerError);
 					}
+					catch (Exception ex)
+					{
+						return Results.Problem(title: "Avatar upload failed", detail: ex.Message, statusCode: StatusCodes.Status500InternalServerError);
+					}
 				})
 			.WithName("UploadAvatar")
 			.WithSummary("Upload avatar")
 			.WithDescription("Upload an avatar image to blob storage and return the resulting URL.")
+			.DisableAntiforgery()
 			.Accepts<IFormFile>("multipart/form-data")
 			.Produces<UploadAvatarResponse>(StatusCodes.Status200OK)
 			.ProducesProblem(StatusCodes.Status400BadRequest)
