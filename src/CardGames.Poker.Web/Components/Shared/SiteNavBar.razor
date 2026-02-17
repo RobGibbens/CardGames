@@ -161,9 +161,7 @@
 
         var user = await LoadUserAsync(principal);
         CurrentUserName = UserProfileDisplayHelpers.PreferFirstName(user?.FirstName) ?? principal.Identity?.Name;
-
-        var avatarFromClaims = UserProfileDisplayHelpers.GetFirstClaimValue(principal, "picture", "avatar_url", "urn:google:picture");
-        CurrentUserAvatarUrl = UserProfileDisplayHelpers.NormalizeAvatarUrl(user?.AvatarUrl) ?? UserProfileDisplayHelpers.NormalizeAvatarUrl(avatarFromClaims);
+        CurrentUserAvatarUrl = UserProfileDisplayHelpers.BuildAvatarApiPath(userId);
     }
 
     private async Task<ApplicationUser?> LoadUserAsync(ClaimsPrincipal principal)

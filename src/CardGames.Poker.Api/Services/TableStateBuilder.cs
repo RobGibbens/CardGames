@@ -5,6 +5,7 @@ using CardGames.Core.French.Cards;
 using CardGames.Poker.Evaluation;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Features.Profile;
 using CardGames.Poker.Api.Features.Games.ActiveGames.v1.Queries.GetActiveGames;
 using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetHandHistory;
 using CardGames.Poker.Api.Features.Games.Baseball;
@@ -29,7 +30,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	private readonly IActionTimerService _actionTimerService;
 	private readonly ILogger<TableStateBuilder> _logger;
 
-	private sealed record UserProfile(string? FirstName, string? AvatarUrl);
+	private sealed record UserProfile(string UserId, string? FirstName, string? AvatarUrl);
 
 	/// <summary>
 	/// Initializes a new instance of the <see cref="TableStateBuilder"/> class.
@@ -114,10 +115,10 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			var userProfilesByEmail = await _context.Users
 				.AsNoTracking()
 				.Where(u => u.Email != null)
-				.Select(u => new { Email = u.Email!, u.FirstName, u.AvatarUrl })
+				.Select(u => new { u.Id, Email = u.Email!, u.FirstName, u.AvatarUrl })
 				.ToDictionaryAsync(
 					u => u.Email,
-					u => new UserProfile(u.FirstName, u.AvatarUrl),
+					u => new UserProfile(u.Id, u.FirstName, u.AvatarUrl),
 					StringComparer.OrdinalIgnoreCase,
 					cancellationToken);
 
@@ -576,15 +577,28 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 	private static string? GetPlayerAvatarUrl(GamePlayer gamePlayer, IReadOnlyDictionary<string, UserProfile> userProfilesByEmail)
 	{
-		string? avatarUrl = null;
 		if (!string.IsNullOrWhiteSpace(gamePlayer.Player.Email)
 			&& userProfilesByEmail.TryGetValue(gamePlayer.Player.Email, out var profile))
 		{
-			avatarUrl = profile.AvatarUrl;
+			return BuildAvatarUrl(profile.UserId, profile.AvatarUrl);
 		}
 
-		avatarUrl ??= gamePlayer.Player.AvatarUrl;
-		return !string.IsNullOrWhiteSpace(avatarUrl) ? avatarUrl.Trim() : null;
+		return BuildAvatarUrl(userId: null, gamePlayer.Player.AvatarUrl);
+	}
+
+	private static string? BuildAvatarUrl(string? userId, string? avatarUrl)
+	{
+		if (string.IsNullOrWhiteSpace(avatarUrl))
+		{
+			return null;
+		}
+
+		if (string.IsNullOrWhiteSpace(userId))
+		{
+			return null;
+		}
+
+		return ProfileAvatarRoutes.BuildAvatarPath(userId);
 	}
 
 	private static string? GetSittingOutReason(GamePlayer gamePlayer, int ante, int currentHandNumber)

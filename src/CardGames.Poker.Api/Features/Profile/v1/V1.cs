@@ -1,4 +1,5 @@
 using Asp.Versioning.Builder;
+using CardGames.Poker.Api.Features.Profile.v1.Queries.GetAvatar;
 using CardGames.Poker.Api.Features.Profile.v1.Commands.UploadAvatar;
 
 namespace CardGames.Poker.Api.Features.Profile.v1;
@@ -12,5 +13,6 @@ public static class V1
 			.WithTags([Feature.Name]);
 
 		mapGroup.MapUploadAvatar();
+		mapGroup.MapGetAvatar();
 	}
 }

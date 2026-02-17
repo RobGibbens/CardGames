@@ -40,7 +40,6 @@ public static class UploadAvatarEndpoint
 					try
 					{
 						var avatarUrl = await avatarStorageService.UploadAsync(stream, file.FileName, file.ContentType, cancellationToken);
-						avatarUrl = ResolvePublicAvatarUrl(avatarUrl, options.PublicBaseUrl);
 						return Results.Ok(new UploadAvatarResponse(avatarUrl));
 					}
 					catch (InvalidOperationException ex)
@@ -63,42 +62,6 @@ public static class UploadAvatarEndpoint
 			.AllowAnonymous();
 
 		return group;
-	}
-
-	private static string ResolvePublicAvatarUrl(string avatarUrl, string? publicBaseUrl)
-	{
-		if (string.IsNullOrWhiteSpace(publicBaseUrl))
-		{
-			return avatarUrl;
-		}
-
-		if (!Uri.TryCreate(avatarUrl, UriKind.Absolute, out var avatarUri))
-		{
-			return avatarUrl;
-		}
-
-		if (!Uri.TryCreate(publicBaseUrl, UriKind.Absolute, out var publicBaseUri))
-		{
-			return avatarUrl;
-		}
-
-		if (!string.Equals(publicBaseUri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)
-			&& !string.Equals(publicBaseUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
-		{
-			return avatarUrl;
-		}
-
-		var normalizedBase = publicBaseUri.AbsoluteUri.EndsWith("/", StringComparison.Ordinal)
-			? publicBaseUri
-			: new Uri(publicBaseUri.AbsoluteUri + "/", UriKind.Absolute);
-
-		var relativeAvatarPath = avatarUri.PathAndQuery.TrimStart('/');
-		if (string.IsNullOrWhiteSpace(relativeAvatarPath))
-		{
-			return avatarUrl;
-		}
-
-		return new Uri(normalizedBase, relativeAvatarPath).ToString();
 	}
 }
 

@@ -140,10 +140,7 @@
         // Prefer the app's stored profile fields.
         var user = await UserManager.GetUserAsync(principal);
         CurrentUserName = UserProfileDisplayHelpers.PreferFirstName(user?.FirstName) ?? principal.Identity?.Name;
-
-        // Prefer the app's stored AvatarUrl; fall back to common external provider claims.
-        var avatarFromClaims = UserProfileDisplayHelpers.GetFirstClaimValue(principal, "picture", "avatar_url", "urn:google:picture");
-        CurrentUserAvatarUrl = UserProfileDisplayHelpers.NormalizeAvatarUrl(user?.AvatarUrl) ?? UserProfileDisplayHelpers.NormalizeAvatarUrl(avatarFromClaims);
+        CurrentUserAvatarUrl = UserProfileDisplayHelpers.BuildAvatarApiPath(userId);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

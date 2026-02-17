@@ -3,6 +3,7 @@
 @using System.ComponentModel.DataAnnotations
 @using CardGames.Poker.Api.Clients
 @using CardGames.Poker.Web.Infrastructure.Validation
+@using CardGames.Poker.Web.Components.Shared
 @using Microsoft.AspNetCore.Http
 @using Microsoft.AspNetCore.Identity
 @using CardGames.Poker.Web.Data
@@ -89,6 +90,7 @@
     private const long MaxAvatarUploadBytes = 5 * 1024 * 1024;
 
     private ApplicationUser? user;
+    private string? userId;
     private string? username;
     private string? phoneNumber;
     private string? avatarUrl;
@@ -113,6 +115,7 @@
         }
 
         username = await UserManager.GetUserNameAsync(user);
+        userId = await UserManager.GetUserIdAsync(user);
         phoneNumber = await UserManager.GetPhoneNumberAsync(user);
         avatarUrl = NormalizeStoredAvatar(user.AvatarUrl);
         firstName = NormalizeStoredText(user.FirstName);
@@ -207,7 +210,22 @@
         RedirectManager.RedirectToCurrentPageWithStatus("Your profile has been updated", HttpContext);
     }
 
-    private string? CurrentAvatarUrl => NormalizeAvatarUrl(Input?.AvatarUrl) ?? NormalizeAvatarUrl(avatarUrl);
+    private string? CurrentAvatarUrl
+    {
+        get
+        {
+            var inputAvatarUrl = NormalizeAvatarUrl(Input?.AvatarUrl);
+            var storedAvatarUrl = NormalizeAvatarUrl(avatarUrl);
+
+            if (!string.IsNullOrWhiteSpace(inputAvatarUrl)
+                && !string.Equals(inputAvatarUrl, storedAvatarUrl, StringComparison.Ordinal))
+            {
+                return inputAvatarUrl;
+            }
+
+            return UserProfileDisplayHelpers.BuildPreferredAvatarUrl(userId, storedAvatarUrl);
+        }
+    }
 
     private string AvatarFallback => GetUserInitial(username);
 
