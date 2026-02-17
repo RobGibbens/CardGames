@@ -1,4 +1,5 @@
 using CardGames.Poker.Api.Data;
+using CardGames.Poker.Api.Features.Profile;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -42,21 +43,43 @@ public class GetGamePlayersQueryHandler(CardsDbContext context, HybridCache hybr
 		var usersByEmail = await context.Users
 			.AsNoTracking()
 			.Where(u => u.Email != null)
-			.Select(u => new { Email = u.Email!, u.FirstName, u.AvatarUrl })
+                        .Select(u => new { u.Id, Email = u.Email!, u.FirstName, u.AvatarUrl })
 			.ToDictionaryAsync(u => u.Email, StringComparer.OrdinalIgnoreCase, cancellationToken);
 
 		return gamePlayers
 			.Select(gp =>
 			{
 				usersByEmail.TryGetValue(gp.Player.Email ?? string.Empty, out var user);
-				
-				// Use user profile avatar if available, otherwise fallback to player record
-				var avatarUrl = !string.IsNullOrWhiteSpace(user?.AvatarUrl) 
-					? user.AvatarUrl 
-					: gp.Player.AvatarUrl;
+
+                                var avatarUrl = BuildAvatarUrl(user?.Id, user?.AvatarUrl ?? gp.Player.AvatarUrl);
 					
 				return GetGamePlayersMapper.ToResponse(gp, currentHandNumber, user?.FirstName, avatarUrl);
 			})
 			.ToList();
        }
+
+        private static string? BuildAvatarUrl(string? userId, string? avatarUrl)
+        {
+                if (string.IsNullOrWhiteSpace(avatarUrl))
+                {
+                        return null;
+                }
+
+                avatarUrl = avatarUrl.Trim();
+                if (Uri.TryCreate(avatarUrl, UriKind.Absolute, out var absoluteUri))
+                {
+                        var isLocalHost = absoluteUri.IsLoopback || string.Equals(absoluteUri.Host, "localhost", StringComparison.OrdinalIgnoreCase);
+                        if (!isLocalHost && string.Equals(absoluteUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+                        {
+                                return absoluteUri.ToString();
+                        }
+                }
+
+                if (string.IsNullOrWhiteSpace(userId))
+                {
+                        return null;
+                }
+
+                return ProfileAvatarRoutes.BuildAvatarPath(userId);
+        }
 }

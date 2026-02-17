@@ -3,9 +3,14 @@
 @using System.ComponentModel.DataAnnotations
 @using System.Text
 @using System.Text.Encodings.Web
+@using CardGames.Poker.Api.Clients
+@using CardGames.Poker.Api.Contracts
 @using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.WebUtilities
 @using CardGames.Poker.Web.Data
+@using Refit
+@using Microsoft.AspNetCore.Http
 
 @inject UserManager<ApplicationUser> UserManager
 @inject IUserStore<ApplicationUser> UserStore
@@ -14,13 +19,14 @@
 @inject ILogger<Register> Logger
 @inject NavigationManager NavigationManager
 @inject IdentityRedirectManager RedirectManager
+@inject IProfileApi ProfileApi
 
 <PageTitle>Create Account - Friday Night Poker</PageTitle>
 
 <AccountShell Title="Create your account" Subtitle="Join the tables in seconds">
     <StatusMessage Message="@Message" />
 
-    <EditForm Model="Input" method="post" OnValidSubmit="RegisterUser" FormName="register" class="auth-form">
+    <EditForm Model="Input" method="post" OnValidSubmit="RegisterUser" FormName="register" class="auth-form" enctype="multipart/form-data">
         <DataAnnotationsValidator />
         <ValidationSummary class="text-danger" role="alert" />
 
@@ -52,6 +58,11 @@
             <InputText @bind-Value="Input.AvatarUrl" id="Input.AvatarUrl" class="form-control" autocomplete="photo" placeholder="https://..." />
             <ValidationMessage For="() => Input.AvatarUrl" class="text-danger" />
         </div>
+
+        <div class="mb-3">
+            <label class="form-label" for="Input.AvatarFile">Upload avatar image (optional)</label>
+            <input type="file" id="Input.AvatarFile" name="Input.AvatarFile" class="form-control" accept="image/jpeg,image/png,image/gif,image/webp" />
+        </div>
         
         <button type="submit" class="btn btn-primary btn-lg">
             <span>🚀</span> Create Account
@@ -74,6 +85,8 @@
 @code {
     private IEnumerable<IdentityError>? identityErrors;
 
+    private const long MaxAvatarUploadBytes = 5 * 1024 * 1024;
+
     [SupplyParameterFromForm]
     private InputModel Input { get; set; } = default!;
 
@@ -89,11 +102,78 @@
 
     public async Task RegisterUser(EditContext editContext)
     {
+        identityErrors = null;
+
+        var avatarUrl = string.IsNullOrWhiteSpace(Input.AvatarUrl) ? null : Input.AvatarUrl.Trim();
+
+        if (!string.IsNullOrWhiteSpace(avatarUrl) && Input.AvatarFile is not null)
+        {
+            identityErrors =
+            [
+                new IdentityError
+                {
+                    Description = "Please provide either an avatar URL or an uploaded avatar image, not both."
+                }
+            ];
+
+            return;
+        }
+
+        if (Input.AvatarFile is not null)
+        {
+            if (Input.AvatarFile.Length > MaxAvatarUploadBytes)
+            {
+                identityErrors =
+                [
+                    new IdentityError
+                    {
+                        Description = "Avatar upload exceeded the maximum allowed size."
+                    }
+                ];
+
+                return;
+            }
+
+            try
+            {
+                await using var fileStream = Input.AvatarFile.OpenReadStream();
+                var file = new StreamPart(fileStream, Input.AvatarFile.FileName, Input.AvatarFile.ContentType);
+                var uploadResponse = await ProfileApi.UploadAvatarAsync(file, CancellationToken.None);
+
+                if (!uploadResponse.IsSuccessStatusCode || uploadResponse.Content is null)
+                {
+                    identityErrors =
+                    [
+                        new IdentityError
+                        {
+                            Description = "Unable to upload avatar image. Please try a different file."
+                        }
+                    ];
+
+                    return;
+                }
+
+                avatarUrl = ResolveUploadedAvatarUrl(uploadResponse.Content.AvatarUrl);
+            }
+            catch (ApiException)
+            {
+                identityErrors =
+                [
+                    new IdentityError
+                    {
+                        Description = "Avatar upload failed. Please try again."
+                    }
+                ];
+
+                return;
+            }
+        }
+
         var user = CreateUser();
 
         user.FirstName = Input.FirstName.Trim();
         user.LastName = Input.LastName.Trim();
-        user.AvatarUrl = string.IsNullOrWhiteSpace(Input.AvatarUrl) ? null : Input.AvatarUrl.Trim();
+        user.AvatarUrl = avatarUrl;
 
         await UserStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
         var emailStore = GetEmailStore();
@@ -152,6 +232,35 @@
         return (IUserEmailStore<ApplicationUser>)UserStore;
     }
 
+    private string ResolveUploadedAvatarUrl(string avatarUrl)
+    {
+        if (!Uri.TryCreate(avatarUrl, UriKind.Absolute, out var avatarUri))
+        {
+            return avatarUrl;
+        }
+
+        var isLocalHost = avatarUri.IsLoopback || string.Equals(avatarUri.Host, "localhost", StringComparison.OrdinalIgnoreCase);
+        if (!isLocalHost)
+        {
+            return avatarUrl;
+        }
+
+        var currentUri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+        if (!string.Equals(currentUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+        {
+            return avatarUrl;
+        }
+
+        var rewrittenAvatarUri = new UriBuilder(avatarUri)
+        {
+            Scheme = currentUri.Scheme,
+            Host = currentUri.Host,
+            Port = currentUri.IsDefaultPort ? -1 : currentUri.Port
+        };
+
+        return rewrittenAvatarUri.Uri.ToString();
+    }
+
     private sealed class InputModel
     {
         [Required]
@@ -168,6 +277,9 @@
         [StringLength(512)]
         [Display(Name = "Avatar URL")]
         public string? AvatarUrl { get; set; }
+
+        [Display(Name = "Avatar image")]
+        public IFormFile? AvatarFile { get; set; }
 
         [Required]
         [EmailAddress]

@@ -2,11 +2,12 @@
 @rendermode InteractiveServer
 
 @inject IJSRuntime JSRuntime
-@inject UserManager<ApplicationUser> UserManager
+@inject IServiceScopeFactory ServiceScopeFactory
 
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.AspNetCore.Http.Extensions
+@using Microsoft.Extensions.DependencyInjection
 @using CardGames.Poker.Web.Data
 @using System.Security.Claims
 
@@ -48,7 +49,7 @@
                                 }
                                 else
                                 {
-                                    @GetUserInitial(CurrentUserName ?? context.User.Identity?.Name)
+                                    @UserProfileDisplayHelpers.GetUserInitial(CurrentUserName ?? context.User.Identity?.Name)
                                 }
                             </span>
                             <span class="user-name">@(CurrentUserName ?? context.User.Identity?.Name)</span>
@@ -147,7 +148,7 @@
         var authState = await AuthenticationStateTask;
         var principal = authState.User;
 
-        var userId = UserManager.GetUserId(principal);
+        var userId = UserProfileDisplayHelpers.GetUserId(principal);
         if (string.IsNullOrWhiteSpace(userId))
         {
             loadedUserId = null;
@@ -156,18 +157,18 @@
             return;
         }
 
-        if (string.Equals(loadedUserId, userId, StringComparison.Ordinal))
-        {
-            return;
-        }
-
         loadedUserId = userId;
 
-        var user = await UserManager.GetUserAsync(principal);
-        CurrentUserName = PreferFirstName(user?.FirstName) ?? principal.Identity?.Name;
+        var user = await LoadUserAsync(principal);
+        CurrentUserName = UserProfileDisplayHelpers.PreferFirstName(user?.FirstName) ?? principal.Identity?.Name;
+        CurrentUserAvatarUrl = UserProfileDisplayHelpers.BuildAvatarApiPath(userId);
+    }
 
-        var avatarFromClaims = GetFirstClaimValue(principal, "picture", "avatar_url", "urn:google:picture");
-        CurrentUserAvatarUrl = NormalizeAvatarUrl(user?.AvatarUrl) ?? NormalizeAvatarUrl(avatarFromClaims);
+    private async Task<ApplicationUser?> LoadUserAsync(ClaimsPrincipal principal)
+    {
+        await using var scope = ServiceScopeFactory.CreateAsyncScope();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        return await userManager.GetUserAsync(principal);
     }
 
     private async Task ToggleTheme()
@@ -200,66 +201,4 @@
         isUserMenuOpen = !isUserMenuOpen;
     }
 
-    private static string GetUserInitial(string? name)
-    {
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            return "?";
-        }
-
-        return name[0].ToString().ToUpperInvariant();
-    }
-
-    private static string? GetFirstClaimValue(ClaimsPrincipal principal, params string[] claimTypes)
-    {
-        foreach (var claimType in claimTypes)
-        {
-            var value = principal.FindFirstValue(claimType);
-            if (!string.IsNullOrWhiteSpace(value))
-            {
-                return value;
-            }
-        }
-
-        return null;
-    }
-
-    private static string? NormalizeAvatarUrl(string? url)
-    {
-        if (string.IsNullOrWhiteSpace(url))
-        {
-            return null;
-        }
-
-        url = url.Trim();
-
-        // Allow app-local absolute paths like /images/avatar.png
-        if (url.StartsWith("/", StringComparison.Ordinal))
-        {
-            return url;
-        }
-
-        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
-        {
-            return null;
-        }
-
-        // Only allow https for external images.
-        if (!string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
-        {
-            return null;
-        }
-
-        return uri.ToString();
-    }
-
-    private static string? PreferFirstName(string? firstName)
-    {
-        if (string.IsNullOrWhiteSpace(firstName))
-        {
-            return null;
-        }
-
-        return firstName.Trim();
-    }
 }
