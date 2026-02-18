@@ -1,5 +1,6 @@
 using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Data;
+using CardGames.Poker.Api.Features.Leagues.v1.Queries;
 using CardGames.Poker.Api.Infrastructure;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -41,6 +42,11 @@ public sealed class GetLeagueDetailQueryHandler(
 			.AsNoTracking()
 			.CountAsync(x => x.LeagueId == request.LeagueId && x.IsActive, cancellationToken);
 
+		var displayNamesByUserId = await LeagueUserDisplayNameResolver.GetDisplayNamesByUserIdAsync(
+			context,
+			[league.CreatedByUserId],
+			cancellationToken);
+
 		return new LeagueDetailDto
 		{
 			LeagueId = league.Id,
@@ -48,6 +54,7 @@ public sealed class GetLeagueDetailQueryHandler(
 			Description = league.Description,
 			CreatedAtUtc = league.CreatedAtUtc,
 			CreatedByUserId = league.CreatedByUserId,
+			CreatedByDisplayName = LeagueUserDisplayNameResolver.GetDisplayNameOrFallback(displayNamesByUserId, league.CreatedByUserId),
 			MyRole = (Contracts.LeagueRole)membership.Role,
 			ActiveMemberCount = activeMemberCount
 		};

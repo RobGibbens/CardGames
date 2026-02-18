@@ -4,6 +4,8 @@ public sealed record LeagueMemberDto
 {
 	public required string UserId { get; init; }
 
+	public string? UserDisplayName { get; init; }
+
 	public LeagueRole Role { get; init; }
 
 	public bool IsActive { get; init; }

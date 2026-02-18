@@ -1,5 +1,6 @@
 using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Data;
+using CardGames.Poker.Api.Features.Leagues.v1.Queries;
 using CardGames.Poker.Api.Infrastructure;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -33,17 +34,38 @@ public sealed class GetLeagueMembershipHistoryQueryHandler(
 			.Where(x => x.LeagueId == request.LeagueId)
 			.OrderByDescending(x => x.OccurredAtUtc)
 			.ThenByDescending(x => x.Id)
-			.Select(x => new LeagueMembershipHistoryItemDto
+			.Select(x => new
 			{
 				EventId = x.Id,
 				LeagueId = x.LeagueId,
 				UserId = x.UserId,
 				ActorUserId = x.ActorUserId,
-				EventType = (Contracts.LeagueMembershipHistoryEventType)x.EventType,
+				EventType = x.EventType,
 				OccurredAtUtc = x.OccurredAtUtc
 			})
 			.ToListAsync(cancellationToken);
 
-		return history;
+		var userIds = history
+			.Select(x => x.UserId)
+			.Concat(history.Select(x => x.ActorUserId));
+
+		var displayNamesByUserId = await LeagueUserDisplayNameResolver.GetDisplayNamesByUserIdAsync(
+			context,
+			userIds,
+			cancellationToken);
+
+		return history
+			.Select(x => new LeagueMembershipHistoryItemDto
+			{
+				EventId = x.EventId,
+				LeagueId = x.LeagueId,
+				UserId = x.UserId,
+				UserDisplayName = LeagueUserDisplayNameResolver.GetDisplayNameOrFallback(displayNamesByUserId, x.UserId),
+				ActorUserId = x.ActorUserId,
+				ActorDisplayName = LeagueUserDisplayNameResolver.GetDisplayNameOrFallback(displayNamesByUserId, x.ActorUserId),
+				EventType = (Contracts.LeagueMembershipHistoryEventType)x.EventType,
+				OccurredAtUtc = x.OccurredAtUtc
+			})
+			.ToList();
 	}
 }

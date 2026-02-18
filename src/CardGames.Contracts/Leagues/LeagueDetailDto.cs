@@ -12,6 +12,8 @@ public sealed record LeagueDetailDto
 
 	public required string CreatedByUserId { get; init; }
 
+	public string? CreatedByDisplayName { get; init; }
+
 	public LeagueRole MyRole { get; init; }
 
 	public int ActiveMemberCount { get; init; }

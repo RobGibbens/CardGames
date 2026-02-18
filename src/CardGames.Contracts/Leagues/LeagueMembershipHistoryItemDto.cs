@@ -8,7 +8,11 @@ public sealed record LeagueMembershipHistoryItemDto
 
 	public required string UserId { get; init; }
 
+	public string? UserDisplayName { get; init; }
+
 	public required string ActorUserId { get; init; }
+
+	public string? ActorDisplayName { get; init; }
 
 	public LeagueMembershipHistoryEventType EventType { get; init; }
 

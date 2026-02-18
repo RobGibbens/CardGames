@@ -25,5 +25,6 @@ public class GetLeagueMembersQueryHandlerTests : IntegrationTestBase
 		var queryResult = await Mediator.Send(new GetLeagueMembersQuery(createResult.AsT0.LeagueId));
 		queryResult.IsT0.Should().BeTrue();
 		queryResult.AsT0.Should().ContainSingle(x => x.UserId == "league-member-query-user");
+		queryResult.AsT0.Single(x => x.UserId == "league-member-query-user").UserDisplayName.Should().Be("league-member-query-user");
 	}
 }

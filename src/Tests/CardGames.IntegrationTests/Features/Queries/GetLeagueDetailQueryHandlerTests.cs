@@ -26,5 +26,6 @@ public class GetLeagueDetailQueryHandlerTests : IntegrationTestBase
 		queryResult.IsT0.Should().BeTrue();
 		queryResult.AsT0.LeagueId.Should().Be(createResult.AsT0.LeagueId);
 		queryResult.AsT0.Name.Should().Be("Detail Query League");
+		queryResult.AsT0.CreatedByDisplayName.Should().Be("league-detail-query-user");
 	}
 }

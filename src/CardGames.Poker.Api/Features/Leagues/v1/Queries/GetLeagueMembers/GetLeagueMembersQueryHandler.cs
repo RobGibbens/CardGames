@@ -1,5 +1,6 @@
 using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Data;
+using CardGames.Poker.Api.Features.Leagues.v1.Queries;
 using CardGames.Poker.Api.Infrastructure;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -33,16 +34,31 @@ public sealed class GetLeagueMembersQueryHandler(
 			.Where(x => x.LeagueId == request.LeagueId)
 			.OrderByDescending(x => x.IsActive)
 			.ThenBy(x => x.UserId)
-			.Select(x => new LeagueMemberDto
+			.Select(x => new
 			{
 				UserId = x.UserId,
-				Role = (Contracts.LeagueRole)x.Role,
+				Role = x.Role,
 				IsActive = x.IsActive,
 				JoinedAtUtc = x.JoinedAtUtc,
 				LeftAtUtc = x.LeftAtUtc
 			})
 			.ToListAsync(cancellationToken);
 
-		return members;
+		var displayNamesByUserId = await LeagueUserDisplayNameResolver.GetDisplayNamesByUserIdAsync(
+			context,
+			members.Select(x => x.UserId),
+			cancellationToken);
+
+		return members
+			.Select(x => new LeagueMemberDto
+			{
+				UserId = x.UserId,
+				UserDisplayName = LeagueUserDisplayNameResolver.GetDisplayNameOrFallback(displayNamesByUserId, x.UserId),
+				Role = (Contracts.LeagueRole)x.Role,
+				IsActive = x.IsActive,
+				JoinedAtUtc = x.JoinedAtUtc,
+				LeftAtUtc = x.LeftAtUtc
+			})
+			.ToList();
 	}
 }

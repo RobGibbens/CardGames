@@ -28,6 +28,8 @@ public class GetLeagueMembershipHistoryQueryHandlerTests : IntegrationTestBase
 		queryResult.AsT0.Should().ContainSingle(x =>
 			x.UserId == "league-history-user" &&
 			x.ActorUserId == "league-history-user" &&
+			x.UserDisplayName == "league-history-user" &&
+			x.ActorDisplayName == "league-history-user" &&
 			x.EventType == CardGames.Poker.Api.Contracts.LeagueMembershipHistoryEventType.MemberJoined);
 	}
 

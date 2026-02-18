@@ -1736,6 +1736,63 @@ a:hover {
     justify-content: center;
 }
 
+.league-members-title {
+    margin-top: 1.25rem;
+}
+
+.league-schedule-title {
+    margin-bottom: 0.75rem;
+}
+
+.league-schedule-tabs {
+    display: inline-flex;
+    align-items: stretch;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--bg-tertiary);
+    overflow: hidden;
+}
+
+.league-schedule-tab {
+    border: 0;
+    border-right: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-primary);
+    font-weight: 700;
+    font-size: 1.05rem;
+    line-height: 1;
+    padding: 0.85rem 1.25rem;
+    transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.league-schedule-tab:last-child {
+    border-right: 0;
+}
+
+.league-schedule-tab:hover {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.league-schedule-tab:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: -2px;
+}
+
+.league-schedule-tab-active {
+    background: var(--gradient-button);
+    color: #ffffff;
+}
+
+.league-schedule-tab-active:hover {
+    background: var(--gradient-button-hover);
+    color: #ffffff;
+}
+
+.league-seasons-header {
+    margin-top: 0.75rem;
+}
+
 .cashier-balance-grid {
     display: flex;
     align-items: flex-end;
@@ -4739,6 +4796,231 @@ a:hover {
     width: 90%;
     overflow: hidden;
     animation: slideIn 0.2s ease-out;
+}
+
+.league-form-modal {
+    max-width: 560px;
+}
+
+.invite-modal {
+    max-width: 672px;
+}
+
+.invite-link-text {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.invite-link-text a {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.league-form-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    text-align: left;
+}
+
+.league-modal-close-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.65rem;
+    height: 1.65rem;
+    border: 1px solid #000;
+    border-radius: 0.625rem;
+    background: #000;
+    color: #fff;
+    transition: all var(--transition-fast);
+}
+
+.league-modal-close-btn:hover {
+    background: #111;
+    border-color: #111;
+}
+
+.league-modal-close-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+}
+
+.league-modal-close-btn i {
+    font-size: 0.6rem;
+    line-height: 1;
+}
+
+.league-refresh-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.65rem;
+    height: 1.65rem;
+    border: 1px solid #15803d;
+    border-radius: 0.625rem;
+    background: #16a34a;
+    color: #fff;
+    transition: all var(--transition-fast);
+}
+
+.league-refresh-btn:hover {
+    background: #15803d;
+    border-color: #15803d;
+}
+
+.league-refresh-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.2);
+}
+
+.league-refresh-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.league-refresh-btn i {
+    font-size: 0.6rem;
+    line-height: 1;
+}
+
+.league-form-modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.league-form-field {
+    margin: 0;
+}
+
+.league-form-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.league-form-modal-actions .btn {
+    min-width: 8.5rem;
+}
+
+.league-modal-input,
+.league-modal-date-input {
+    font-family: var(--font-primary);
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+.league-form-modal .league-modal-date-input {
+    width: 100%;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    color: var(--text-primary);
+    font-family: var(--font-primary);
+    font-size: 1rem;
+    line-height: 1.5;
+    padding: 0.75rem 1rem;
+    min-height: calc(1.5em + 1.5rem + 2px);
+    text-align: left;
+    transition: all var(--transition-normal);
+}
+
+.league-form-modal .league-modal-date-input:focus {
+    background: var(--bg-secondary);
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+}
+
+.season-modal .league-form-modal-body,
+.season-event-modal .league-form-modal-body,
+.one-off-event-modal .league-form-modal-body {
+    align-items: stretch;
+    text-align: left;
+}
+
+.season-modal .form-floating,
+.season-event-modal .form-floating,
+.one-off-event-modal .form-floating {
+    width: 100%;
+    position: relative;
+}
+
+.season-modal .form-floating > .form-control,
+.season-modal .form-floating > .form-select,
+.season-event-modal .form-floating > .form-control,
+.season-event-modal .form-floating > .form-select,
+.one-off-event-modal .form-floating > .form-control,
+.one-off-event-modal .form-floating > .form-select {
+    width: 100%;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 1rem;
+    color: var(--text-primary);
+    font-family: var(--font-primary);
+    font-size: 1rem;
+    line-height: 1.5;
+    transition: all var(--transition-normal);
+}
+
+.season-modal .form-floating > .form-control,
+.season-event-modal .form-floating > .form-control,
+.one-off-event-modal .form-floating > .form-control {
+    padding-top: 1.625rem;
+    padding-bottom: 0.625rem;
+}
+
+.season-modal .form-floating[data-label]::after,
+.season-event-modal .form-floating[data-label]::after,
+.one-off-event-modal .form-floating[data-label]::after {
+    content: attr(data-label);
+    position: absolute;
+    top: 50%;
+    left: 1rem;
+    max-width: calc(100% - 2rem);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transform: translateY(-50%);
+    pointer-events: none;
+    transform-origin: 0 0;
+    transition: all .2s ease-in-out;
+    color: var(--text-muted);
+}
+
+.season-modal .form-floating[data-label]:focus-within::after,
+.season-event-modal .form-floating[data-label]:focus-within::after,
+.one-off-event-modal .form-floating[data-label]:focus-within::after,
+.season-modal .form-floating[data-label]:has(.form-control:not(:placeholder-shown))::after,
+.season-event-modal .form-floating[data-label]:has(.form-control:not(:placeholder-shown))::after,
+.one-off-event-modal .form-floating[data-label]:has(.form-control:not(:placeholder-shown))::after,
+.season-modal .form-floating[data-label]:has(select)::after,
+.season-event-modal .form-floating[data-label]:has(select)::after,
+.one-off-event-modal .form-floating[data-label]:has(select)::after {
+    opacity: 0.65;
+    top: 0;
+    transform: scale(0.85) translateY(0.5rem);
+}
+
+.season-modal .form-floating[data-label] .form-control::placeholder,
+.season-event-modal .form-floating[data-label] .form-control::placeholder,
+.one-off-event-modal .form-floating[data-label] .form-control::placeholder {
+    color: transparent !important;
+}
+
+.season-modal .form-floating > .form-control:focus,
+.season-modal .form-floating > .form-select:focus,
+.season-event-modal .form-floating > .form-control:focus,
+.season-event-modal .form-floating > .form-select:focus,
+.one-off-event-modal .form-floating > .form-control:focus,
+.one-off-event-modal .form-floating > .form-select:focus {
+    background: var(--bg-secondary);
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
 }
 
 @keyframes slideIn {

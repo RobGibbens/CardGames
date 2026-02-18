@@ -6,10 +6,12 @@
 @using CardGames.Poker.Api.Contracts
 @using CardGames.Poker.Web.Components.Shared
 @using Microsoft.AspNetCore.Authorization
+@using System.ComponentModel
 
 @inject ILeaguesApi LeaguesApi
 @inject ILogger<LeagueDetail> Logger
 @inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
 
 <PageTitle>League Detail - Friday Night Poker</PageTitle>
 
@@ -21,12 +23,8 @@
 			<div class="lobby-header-content">
 				<h1 class="lobby-title">
 					<i class="fa-solid fa-users"></i>
-					League Detail
+					@(_leagueDetail?.Name ?? "League")
 				</h1>
-				@if (_leagueDetail is not null)
-				{
-					<p class="lobby-subtitle">@_leagueDetail.Name</p>
-				}
 			</div>
 		</div>
 
@@ -40,12 +38,13 @@
 		}
 
 		<section class="cashier-panel">
-			<div class="cashier-panel-body d-flex flex-column gap-2">
+			<div class="cashier-panel-body d-flex flex-column gap-3">
 				<div class="cashier-section-header">
 					<h2 class="cashier-section-title">Overview</h2>
 					<div class="d-flex gap-2">
-						<button class="btn btn-sm btn-outline-secondary league-action-btn" @onclick="LoadAllAsync" disabled="@_isLoading">Refresh</button>
-						<button class="btn btn-sm btn-outline-primary league-action-btn" @onclick="BackToLeagues">Back</button>
+						<button class="league-refresh-btn" aria-label="Refresh" @onclick="LoadAllAsync" disabled="@_isLoading">
+							<i class="fa-solid fa-rotate-right" aria-hidden="true"></i>
+						</button>
 					</div>
 				</div>
 
@@ -60,43 +59,37 @@
 				else
 				{
 					<div class="small text-muted">Role: @_leagueDetail.MyRole • Active members: @_leagueDetail.ActiveMemberCount</div>
-					<div class="small text-muted">Created by @_leagueDetail.CreatedByUserId • @_leagueDetail.CreatedAtUtc.ToLocalTime().ToString("g")</div>
+					<div class="small text-muted">Created by @(_leagueDetail.CreatedByDisplayName ?? _leagueDetail.CreatedByUserId) • @_leagueDetail.CreatedAtUtc.ToLocalTime().ToString("g")</div>
 					@if (!string.IsNullOrWhiteSpace(_leagueDetail.Description))
 					{
 						<div class="text-muted">@_leagueDetail.Description</div>
 					}
-				}
-			</div>
-		</section>
 
-		<section class="cashier-panel">
-			<div class="cashier-panel-body d-flex flex-column gap-3">
-				<h2 class="cashier-section-title">Members</h2>
-				@if (_members.Count == 0)
-				{
-					<p class="mb-0 text-muted">No members found.</p>
-				}
-				else
-				{
-					<ul class="list-group">
-						@foreach (var member in _members)
-						{
-							<li class="list-group-item d-flex justify-content-between align-items-center gap-2">
-								<div>
-									<div class="fw-semibold">@member.UserId</div>
-									<div class="small text-muted">Role: @member.Role • Joined: @member.JoinedAtUtc.ToLocalTime().ToString("g")</div>
-								</div>
-								@if (CanPromote(member))
-								{
-									<button class="btn btn-sm btn-warning" @onclick="() => PromoteMemberAsync(member.UserId)" disabled="@_isSubmittingPromote">Promote</button>
-								}
-							</li>
-						}
-					</ul>
-				}
+					<h3 class="h6 mb-0 league-members-title">Members</h3>
+					@if (_members.Count == 0)
+					{
+						<p class="mb-0 text-muted">No members found.</p>
+					}
+					else
+					{
+						<ul class="list-group">
+							@foreach (var member in _members)
+							{
+								<li class="list-group-item d-flex justify-content-between align-items-center gap-2">
+									<div>
+										<div class="fw-semibold">@(member.UserDisplayName ?? member.UserId)</div>
+										<div class="small text-muted">Role: @member.Role • Joined: @member.JoinedAtUtc.ToLocalTime().ToString("g")</div>
+									</div>
+									@if (CanPromote(member))
+									{
+										<button class="btn btn-sm btn-warning" @onclick="() => PromoteMemberAsync(member.UserId)" disabled="@_isSubmittingPromote">Promote</button>
+									}
+								</li>
+							}
+						</ul>
+					}
 
-				<div>
-					<h3 class="h6">Membership History</h3>
+					<h3 class="h6 mb-0 mt-2">Membership History</h3>
 					@if (_membershipHistory.Count == 0)
 					{
 						<p class="mb-0 text-muted">No membership events yet.</p>
@@ -107,35 +100,24 @@
 							@foreach (var historyItem in _membershipHistory)
 							{
 								<li class="list-group-item small">
-									@historyItem.EventType • User: @historyItem.UserId • Actor: @historyItem.ActorUserId • @historyItem.OccurredAtUtc.ToLocalTime().ToString("g")
+									@GetMembershipHistoryEventTypeDescription(historyItem.EventType) • User: @(historyItem.UserDisplayName ?? historyItem.UserId) • Actor: @(historyItem.ActorDisplayName ?? historyItem.ActorUserId) • @historyItem.OccurredAtUtc.ToLocalTime().ToString("g")
 								</li>
 							}
 						</ul>
 					}
-				</div>
+				}
 			</div>
 		</section>
 
 		<section class="cashier-panel">
 			<div class="cashier-panel-body d-flex flex-column gap-3">
-				<h2 class="cashier-section-title">Invites</h2>
-
-				@if (IsAdmin)
-				{
-					<div class="auth-form">
-						<h3 class="h6">Create Invite Link</h3>
-						<div class="form-floating mb-3" data-label="Expiry (UTC)">
-							<InputDate id="invite-expiry" class="form-control" @bind-Value="_inviteExpiryDate" />
-						</div>
-						<button class="btn btn-sm btn-primary" @onclick="CreateInviteAsync" disabled="@_isSubmittingInvite">Create Invite</button>
-						@if (!string.IsNullOrWhiteSpace(_createdInviteUrl))
-						{
-							<div class="alert alert-success mt-3 mb-0" role="alert">
-								Invite link: <a href="@_createdInviteUrl">@_createdInviteUrl</a>
-							</div>
-						}
-					</div>
-				}
+				<div class="cashier-section-header">
+					<h2 class="cashier-section-title">Invites</h2>
+					@if (IsAdmin)
+					{
+						<button class="btn btn-sm btn-primary league-action-btn" @onclick="OpenInviteModal">Create Invite</button>
+					}
+				</div>
 
 				@if (_invites.Count == 0)
 				{
@@ -161,144 +143,262 @@
 
 		<section class="cashier-panel">
 			<div class="cashier-panel-body d-flex flex-column gap-3">
-				<h2 class="cashier-section-title">Schedule</h2>
-
-				@if (IsAdmin)
-				{
-					<div class="auth-form">
-						<h3 class="h6">Create Season</h3>
-						<div class="form-floating mb-3" data-label="Season name">
-							<InputText id="season-name" class="form-control" @bind-Value="_seasonName" maxlength="120" placeholder="Season name" />
-						</div>
-						<div class="form-floating mb-3" data-label="Planned event count">
-							<InputNumber id="season-planned-count" class="form-control" @bind-Value="_seasonPlannedEventCount" placeholder="Planned event count" />
-						</div>
-						<div class="row g-2 mb-3">
-							<div class="col-md-6">
-								<label class="form-label small">Starts (optional)</label>
-								<InputDate class="form-control" @bind-Value="_seasonStartsDate" />
-							</div>
-							<div class="col-md-6">
-								<label class="form-label small">Ends (optional)</label>
-								<InputDate class="form-control" @bind-Value="_seasonEndsDate" />
-							</div>
-						</div>
-						<button class="btn btn-sm btn-primary" @onclick="CreateSeasonAsync" disabled="@_isSubmittingSeason">Create Season</button>
-					</div>
-				}
-
-				<div>
-					<h3 class="h6">Seasons</h3>
-					@if (_seasons.Count == 0)
-					{
-						<p class="mb-0 text-muted">No seasons yet.</p>
-					}
-					else
-					{
-						<ul class="list-group">
-							@foreach (var season in _seasons)
-							{
-								<li class="list-group-item @(season.SeasonId == _selectedSeasonId ? "border-primary" : string.Empty)">
-									<div class="fw-semibold">@season.Name</div>
-									<div class="small text-muted">Status: @season.Status • Planned events: @(season.PlannedEventCount?.ToString() ?? "-")</div>
-									<div class="small text-muted">Range: @FormatDate(season.StartsAtUtc) - @FormatDate(season.EndsAtUtc)</div>
-									<button class="btn btn-sm btn-outline-primary mt-2 league-action-btn" @onclick="() => SelectSeasonAsync(season.SeasonId)">View Events</button>
-								</li>
-							}
-						</ul>
-					}
+				<h2 class="cashier-section-title league-schedule-title">Schedule</h2>
+				<div class="league-schedule-tabs" role="tablist" aria-label="Schedule sections">
+					<button
+						type="button"
+						class="league-schedule-tab @(_activeScheduleTab == ScheduleTab.Seasons ? "league-schedule-tab-active" : string.Empty)"
+						role="tab"
+						aria-selected="@(_activeScheduleTab == ScheduleTab.Seasons)"
+						@onclick="() => _activeScheduleTab = ScheduleTab.Seasons">
+						Seasons
+					</button>
+					<button
+						type="button"
+						class="league-schedule-tab @(_activeScheduleTab == ScheduleTab.OneOffEvents ? "league-schedule-tab-active" : string.Empty)"
+						role="tab"
+						aria-selected="@(_activeScheduleTab == ScheduleTab.OneOffEvents)"
+						@onclick="() => _activeScheduleTab = ScheduleTab.OneOffEvents">
+						One-Off Events
+					</button>
 				</div>
 
-				@if (_selectedSeasonId.HasValue)
+				@if (_activeScheduleTab == ScheduleTab.Seasons)
 				{
 					<div>
-						<h3 class="h6">Season Events</h3>
-
-						@if (IsAdmin)
+						<div class="cashier-section-header mb-2 league-seasons-header">
+							<h3 class="h6 mb-0">Seasons</h3>
+							@if (IsAdmin)
+							{
+								<button class="btn btn-sm btn-primary league-action-btn" @onclick="OpenSeasonModal">Create Season</button>
+							}
+						</div>
+						@if (_seasons.Count == 0)
 						{
-							<div class="auth-form mb-3">
-								<div class="form-floating mb-3" data-label="Event name">
-									<InputText id="season-event-name" class="form-control" @bind-Value="_seasonEventName" maxlength="120" placeholder="Event name" />
-								</div>
-								<div class="form-floating mb-3" data-label="Sequence (optional)">
-									<InputNumber id="season-event-sequence" class="form-control" @bind-Value="_seasonEventSequence" placeholder="Sequence" />
-								</div>
-								<div class="row g-2 mb-3">
-									<div class="col-md-6">
-										<label class="form-label small">Scheduled (optional, UTC)</label>
-										<InputDate class="form-control" @bind-Value="_seasonEventScheduledDate" />
-									</div>
-								</div>
-								<div class="form-floating mb-3" data-label="Notes (optional)">
-									<InputText id="season-event-notes" class="form-control" @bind-Value="_seasonEventNotes" maxlength="512" placeholder="Notes (optional)" />
-								</div>
-								<button class="btn btn-sm btn-primary" @onclick="CreateSeasonEventAsync" disabled="@_isSubmittingSeasonEvent">Create Season Event</button>
-							</div>
-						}
-
-						@if (_seasonEvents.Count == 0)
-						{
-							<p class="mb-0 text-muted">No season events yet.</p>
+							<p class="mb-0 text-muted">No seasons yet.</p>
 						}
 						else
 						{
 							<ul class="list-group">
-								@foreach (var seasonEvent in _seasonEvents)
+								@foreach (var season in _seasons)
+								{
+									<li class="list-group-item @(season.SeasonId == _selectedSeasonId ? "border-primary" : string.Empty)">
+										<div class="fw-semibold">@season.Name</div>
+										<div class="small text-muted">Status: @season.Status • Planned events: @(season.PlannedEventCount?.ToString() ?? "-")</div>
+										<div class="small text-muted">Range: @FormatDate(season.StartsAtUtc) - @FormatDate(season.EndsAtUtc)</div>
+										<button class="btn btn-sm btn-outline-primary mt-2 league-action-btn" @onclick="() => SelectSeasonAsync(season.SeasonId)">View Events</button>
+									</li>
+								}
+							</ul>
+						}
+					</div>
+
+					@if (_selectedSeasonId.HasValue)
+					{
+						<div>
+							<div class="cashier-section-header mb-2">
+								<h3 class="h6 mb-0">Season Events</h3>
+								@if (IsAdmin)
+								{
+									<button class="btn btn-sm btn-primary league-action-btn" @onclick="OpenSeasonEventModal">Create Season Event</button>
+								}
+							</div>
+
+							@if (_seasonEvents.Count == 0)
+							{
+								<p class="mb-0 text-muted">No season events yet.</p>
+							}
+							else
+							{
+								<ul class="list-group">
+									@foreach (var seasonEvent in _seasonEvents)
+									{
+										<li class="list-group-item small">
+											@seasonEvent.Name • Seq: @(seasonEvent.SequenceNumber?.ToString() ?? "-") • Scheduled: @FormatDate(seasonEvent.ScheduledAtUtc) • Status: @seasonEvent.Status
+										</li>
+									}
+								</ul>
+							}
+						</div>
+					}
+				}
+				else
+				{
+					<div>
+						<div class="cashier-section-header mb-2 league-seasons-header">
+							<h3 class="h6 mb-0">One-off Events</h3>
+							@if (IsAdmin)
+							{
+								<button class="btn btn-sm btn-primary league-action-btn" @onclick="OpenOneOffModal">Create One-Off Event</button>
+							}
+						</div>
+
+						@if (_oneOffEvents.Count == 0)
+						{
+							<p class="mb-0 text-muted">No one-off events yet.</p>
+						}
+						else
+						{
+							<ul class="list-group">
+								@foreach (var oneOff in _oneOffEvents)
 								{
 									<li class="list-group-item small">
-										@seasonEvent.Name • Seq: @(seasonEvent.SequenceNumber?.ToString() ?? "-") • Scheduled: @FormatDate(seasonEvent.ScheduledAtUtc) • Status: @seasonEvent.Status
+										@oneOff.Name • @oneOff.EventType • Scheduled: @oneOff.ScheduledAtUtc.ToLocalTime().ToString("g") • Status: @oneOff.Status
 									</li>
 								}
 							</ul>
 						}
 					</div>
 				}
-
-				<div>
-					<h3 class="h6">One-Off Events</h3>
-
-					@if (IsAdmin)
-					{
-						<div class="auth-form mb-3">
-							<div class="form-floating mb-3" data-label="Event name">
-								<InputText id="one-off-name" class="form-control" @bind-Value="_oneOffName" maxlength="120" placeholder="Event name" />
-							</div>
-							<div class="form-floating mb-3" data-label="Scheduled (UTC)">
-								<InputDate id="one-off-scheduled" class="form-control" @bind-Value="_oneOffScheduledDate" />
-							</div>
-							<div class="form-floating mb-3" data-label="Type">
-								<InputSelect id="one-off-type" class="form-control" @bind-Value="_oneOffType">
-									<option value="@LeagueOneOffEventType.GameNight">Game Night</option>
-									<option value="@LeagueOneOffEventType.Tournament">Tournament</option>
-								</InputSelect>
-							</div>
-							<div class="form-floating mb-3" data-label="Notes (optional)">
-								<InputText id="one-off-notes" class="form-control" @bind-Value="_oneOffNotes" maxlength="512" placeholder="Notes (optional)" />
-							</div>
-							<button class="btn btn-sm btn-primary" @onclick="CreateOneOffAsync" disabled="@_isSubmittingOneOff">Create One-Off Event</button>
-						</div>
-					}
-
-					@if (_oneOffEvents.Count == 0)
-					{
-						<p class="mb-0 text-muted">No one-off events yet.</p>
-					}
-					else
-					{
-						<ul class="list-group">
-							@foreach (var oneOff in _oneOffEvents)
-							{
-								<li class="list-group-item small">
-									@oneOff.Name • @oneOff.EventType • Scheduled: @oneOff.ScheduledAtUtc.ToLocalTime().ToString("g") • Status: @oneOff.Status
-								</li>
-							}
-						</ul>
-					}
-				</div>
 			</div>
 		</section>
 	</div>
 </main>
+
+@if (_showInviteModal)
+{
+	<div class="confirm-dialog-overlay" @onclick="CloseInviteModal">
+		<div class="confirm-dialog league-form-modal invite-modal" @onclick:stopPropagation>
+			<div class="confirm-dialog-header league-form-modal-header">
+				<h3 class="confirm-dialog-title mb-0">Create Invite Link</h3>
+				<button type="button" class="league-modal-close-btn" aria-label="Close" @onclick="CloseInviteModal">
+					<i class="fa-solid fa-xmark" aria-hidden="true"></i>
+				</button>
+			</div>
+			<div class="confirm-dialog-body league-form-modal-body text-start">
+				<div class="league-form-field">
+					<label for="invite-expiry" class="form-label small mb-1">Expiry (UTC)</label>
+					<InputDate id="invite-expiry" class="form-control league-modal-date-input" @bind-Value="_inviteExpiryDate" />
+				</div>
+				<div class="league-form-modal-actions">
+					<button class="btn btn-sm btn-primary league-action-btn" @onclick="CreateInviteAsync" disabled="@_isSubmittingInvite">Create Invite</button>
+				</div>
+				@if (!string.IsNullOrWhiteSpace(_createdInviteUrl))
+				{
+					<div class="alert alert-success mt-3 mb-0" role="alert">
+						<div class="d-flex align-items-center gap-2 flex-wrap">
+							<span class="invite-link-text">Invite link: <a href="@_createdInviteUrl">@_createdInviteUrl</a></span>
+							<button type="button" class="btn btn-sm btn-outline-success league-action-btn" @onclick="CopyCreatedInviteUrlAsync" title="@(_isInviteUrlCopied ? "Copied" : "Copy invite link")" aria-label="@(_isInviteUrlCopied ? "Copied" : "Copy invite link")">
+								@if (_isInviteUrlCopied)
+								{
+									<i class="fa-solid fa-check" aria-hidden="true"></i>
+									<span class="ms-1">Copied</span>
+								}
+								else
+								{
+									<i class="fa-regular fa-copy" aria-hidden="true"></i>
+								}
+							</button>
+						</div>
+					</div>
+				}
+			</div>
+		</div>
+	</div>
+}
+
+@if (_showSeasonModal)
+{
+	<div class="confirm-dialog-overlay" @onclick="CloseSeasonModal">
+		<div class="confirm-dialog league-form-modal season-modal" @onclick:stopPropagation>
+			<div class="confirm-dialog-header league-form-modal-header">
+				<h3 class="confirm-dialog-title mb-0">Create Season</h3>
+				<button type="button" class="league-modal-close-btn" aria-label="Close" @onclick="CloseSeasonModal">
+					<i class="fa-solid fa-xmark" aria-hidden="true"></i>
+				</button>
+			</div>
+			<div class="confirm-dialog-body league-form-modal-body text-start">
+				<div class="form-floating" data-label="Season name">
+					<InputText id="season-name" class="form-control league-modal-input" @bind-Value="_seasonName" maxlength="120" placeholder="Season name" />
+				</div>
+				<div class="form-floating" data-label="Planned event count">
+					<InputNumber id="season-planned-count" class="form-control league-modal-input" @bind-Value="_seasonPlannedEventCount" placeholder="Planned event count" />
+				</div>
+				<div class="row g-2">
+					<div class="col-md-6">
+						<label class="form-label small">Starts (optional)</label>
+						<InputDate class="form-control league-modal-date-input" @bind-Value="_seasonStartsDate" />
+					</div>
+					<div class="col-md-6">
+						<label class="form-label small">Ends (optional)</label>
+						<InputDate class="form-control league-modal-date-input" @bind-Value="_seasonEndsDate" />
+					</div>
+				</div>
+				<div class="league-form-modal-actions">
+					<button class="btn btn-sm btn-primary league-action-btn" @onclick="CreateSeasonAsync" disabled="@_isSubmittingSeason">Create Season</button>
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+@if (_showSeasonEventModal)
+{
+	<div class="confirm-dialog-overlay" @onclick="CloseSeasonEventModal">
+		<div class="confirm-dialog league-form-modal season-event-modal" @onclick:stopPropagation>
+			<div class="confirm-dialog-header league-form-modal-header">
+				<h3 class="confirm-dialog-title mb-0">Create Season Event</h3>
+				<button type="button" class="league-modal-close-btn" aria-label="Close" @onclick="CloseSeasonEventModal">
+					<i class="fa-solid fa-xmark" aria-hidden="true"></i>
+				</button>
+			</div>
+			<div class="confirm-dialog-body league-form-modal-body text-start">
+				<div class="form-floating" data-label="Event name">
+					<InputText id="season-event-name" class="form-control league-modal-input" @bind-Value="_seasonEventName" maxlength="120" placeholder="Event name" />
+				</div>
+				<div class="form-floating" data-label="Sequence (optional)">
+					<InputNumber id="season-event-sequence" class="form-control league-modal-input" @bind-Value="_seasonEventSequence" placeholder="Sequence" />
+				</div>
+				<div class="row g-2">
+					<div class="col-md-6">
+						<label class="form-label small">Scheduled (optional, UTC)</label>
+						<InputDate class="form-control league-modal-date-input" @bind-Value="_seasonEventScheduledDate" />
+					</div>
+				</div>
+				<div class="form-floating" data-label="Notes (optional)">
+					<InputText id="season-event-notes" class="form-control league-modal-input" @bind-Value="_seasonEventNotes" maxlength="512" placeholder="Notes (optional)" />
+				</div>
+				<div class="league-form-modal-actions">
+					<button class="btn btn-sm btn-primary league-action-btn" @onclick="CreateSeasonEventAsync" disabled="@_isSubmittingSeasonEvent">Create Season Event</button>
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+@if (_showOneOffModal)
+{
+	<div class="confirm-dialog-overlay" @onclick="CloseOneOffModal">
+		<div class="confirm-dialog league-form-modal one-off-event-modal" @onclick:stopPropagation>
+			<div class="confirm-dialog-header league-form-modal-header">
+				<h3 class="confirm-dialog-title mb-0">Create One-Off Event</h3>
+				<button type="button" class="league-modal-close-btn" aria-label="Close" @onclick="CloseOneOffModal">
+					<i class="fa-solid fa-xmark" aria-hidden="true"></i>
+				</button>
+			</div>
+			<div class="confirm-dialog-body league-form-modal-body text-start">
+				<div class="form-floating" data-label="Event name">
+					<InputText id="one-off-name" class="form-control league-modal-input" @bind-Value="_oneOffName" maxlength="120" placeholder="Event name" />
+				</div>
+				<div class="form-floating" data-label="Scheduled (UTC)">
+					<InputDate id="one-off-scheduled" class="form-control league-modal-date-input" @bind-Value="_oneOffScheduledDate" />
+				</div>
+				<div class="form-floating" data-label="Type">
+					<InputSelect id="one-off-type" class="form-control league-modal-input" @bind-Value="_oneOffType">
+						<option value="@LeagueOneOffEventType.GameNight">Game Night</option>
+						<option value="@LeagueOneOffEventType.Tournament">Tournament</option>
+					</InputSelect>
+				</div>
+				<div class="form-floating" data-label="Notes (optional)">
+					<InputText id="one-off-notes" class="form-control league-modal-input" @bind-Value="_oneOffNotes" maxlength="512" placeholder="Notes (optional)" />
+				</div>
+				<div class="league-form-modal-actions">
+					<button class="btn btn-sm btn-primary league-action-btn" @onclick="CreateOneOffAsync" disabled="@_isSubmittingOneOff">Create One-Off Event</button>
+				</div>
+			</div>
+		</div>
+	</div>
+}
 
 @code {
 	[Parameter]
@@ -318,6 +418,9 @@
 	private bool _isSubmittingRevokeInvite;
 	private bool _isSubmittingPromote;
 	private string? _createdInviteUrl;
+	private bool _isInviteUrlCopied;
+	private int _inviteCopyFeedbackVersion;
+	private bool _showInviteModal;
 
 	private List<LeagueSeasonDto> _seasons = [];
 	private Guid? _selectedSeasonId;
@@ -329,18 +432,29 @@
 	private DateTime? _seasonStartsDate;
 	private DateTime? _seasonEndsDate;
 	private bool _isSubmittingSeason;
+	private bool _showSeasonModal;
 
 	private string _seasonEventName = string.Empty;
 	private int? _seasonEventSequence;
 	private DateTime? _seasonEventScheduledDate;
 	private string? _seasonEventNotes;
 	private bool _isSubmittingSeasonEvent;
+	private bool _showSeasonEventModal;
 
 	private string _oneOffName = string.Empty;
 	private DateTime _oneOffScheduledDate = DateTime.UtcNow.Date.AddDays(1);
 	private LeagueOneOffEventType _oneOffType = LeagueOneOffEventType.GameNight;
 	private string? _oneOffNotes;
 	private bool _isSubmittingOneOff;
+	private bool _showOneOffModal;
+
+	private ScheduleTab _activeScheduleTab = ScheduleTab.Seasons;
+
+	private enum ScheduleTab
+	{
+		Seasons,
+		OneOffEvents
+	}
 
 	private bool IsAdmin => _leagueDetail?.MyRole == LeagueRole.Admin;
 
@@ -471,6 +585,54 @@
 		}
 	}
 
+	private void OpenInviteModal()
+	{
+		_createdInviteUrl = null;
+		_showInviteModal = true;
+	}
+
+	private async Task CopyCreatedInviteUrlAsync()
+	{
+		if (string.IsNullOrWhiteSpace(_createdInviteUrl))
+		{
+			return;
+		}
+
+		try
+		{
+			await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", _createdInviteUrl);
+			var feedbackVersion = ++_inviteCopyFeedbackVersion;
+			_isInviteUrlCopied = true;
+			_message = "Invite link copied.";
+			_isError = false;
+
+			await Task.Delay(1500);
+			if (feedbackVersion == _inviteCopyFeedbackVersion)
+			{
+				_isInviteUrlCopied = false;
+			}
+		}
+		catch (Exception ex)
+		{
+			Logger.LogWarning(ex, "Failed to copy invite link for league {LeagueId}", LeagueId);
+			_isInviteUrlCopied = false;
+			_message = "Unable to copy invite link.";
+			_isError = true;
+		}
+	}
+
+	private void CloseInviteModal()
+	{
+		if (_isSubmittingInvite)
+		{
+			return;
+		}
+
+		_showInviteModal = false;
+		_createdInviteUrl = null;
+		_isInviteUrlCopied = false;
+	}
+
 	private async Task RevokeInviteAsync(Guid inviteId)
 	{
 		_isSubmittingRevokeInvite = true;
@@ -563,6 +725,7 @@
 				_seasonPlannedEventCount = null;
 				_seasonStartsDate = null;
 				_seasonEndsDate = null;
+				_showSeasonModal = false;
 				_message = "Season created.";
 				_isError = false;
 				await LoadSeasonsAsync();
@@ -583,6 +746,21 @@
 		{
 			_isSubmittingSeason = false;
 		}
+	}
+
+	private void OpenSeasonModal()
+	{
+		_showSeasonModal = true;
+	}
+
+	private void CloseSeasonModal()
+	{
+		if (_isSubmittingSeason)
+		{
+			return;
+		}
+
+		_showSeasonModal = false;
 	}
 
 	private async Task CreateSeasonEventAsync()
@@ -618,6 +796,7 @@
 				_seasonEventSequence = null;
 				_seasonEventScheduledDate = null;
 				_seasonEventNotes = null;
+				_showSeasonEventModal = false;
 				_message = "Season event created.";
 				_isError = false;
 				await LoadSeasonEventsAsync(_selectedSeasonId.Value);
@@ -638,6 +817,24 @@
 		{
 			_isSubmittingSeasonEvent = false;
 		}
+	}
+
+	private void OpenSeasonEventModal()
+	{
+		if (_selectedSeasonId.HasValue)
+		{
+			_showSeasonEventModal = true;
+		}
+	}
+
+	private void CloseSeasonEventModal()
+	{
+		if (_isSubmittingSeasonEvent)
+		{
+			return;
+		}
+
+		_showSeasonEventModal = false;
 	}
 
 	private async Task CreateOneOffAsync()
@@ -666,6 +863,7 @@
 				_oneOffScheduledDate = DateTime.UtcNow.Date.AddDays(1);
 				_oneOffType = LeagueOneOffEventType.GameNight;
 				_oneOffNotes = null;
+				_showOneOffModal = false;
 				_message = "One-off event created.";
 				_isError = false;
 				await LoadOneOffEventsAsync();
@@ -688,13 +886,34 @@
 		}
 	}
 
+	private void OpenOneOffModal()
+	{
+		_showOneOffModal = true;
+	}
+
+	private void CloseOneOffModal()
+	{
+		if (_isSubmittingOneOff)
+		{
+			return;
+		}
+
+		_showOneOffModal = false;
+	}
+
 	private static string FormatDate(DateTimeOffset? value)
 	{
 		return value.HasValue ? value.Value.ToLocalTime().ToString("g") : "-";
 	}
 
-	private void BackToLeagues()
+	private static string GetMembershipHistoryEventTypeDescription(LeagueMembershipHistoryEventType eventType)
 	{
-		NavigationManager.NavigateTo("/leagues");
+		var field = typeof(LeagueMembershipHistoryEventType).GetField(eventType.ToString());
+		var descriptionAttribute = field?.GetCustomAttributes(typeof(DescriptionAttribute), false)
+			.OfType<DescriptionAttribute>()
+			.FirstOrDefault();
+
+		return descriptionAttribute?.Description ?? eventType.ToString();
 	}
+
 }
