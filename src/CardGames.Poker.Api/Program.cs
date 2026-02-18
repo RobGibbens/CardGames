@@ -88,6 +88,7 @@ public class Program
         builder.Services.AddScoped<IGameStateBroadcaster, GameStateBroadcaster>();
         builder.Services.AddScoped<ILobbyBroadcaster, LobbyBroadcaster>();
         builder.Services.AddScoped<IHandHistoryRecorder, HandHistoryRecorder>();
+		builder.Services.AddScoped<IPlayerChipWalletService, PlayerChipWalletService>();
         builder.Services.AddSingleton<IHandEvaluatorFactory, HandEvaluatorFactory>();
 
             // Add game flow handler factory for generic command handler architecture

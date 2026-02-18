@@ -73,6 +73,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		var context = scope.ServiceProvider.GetRequiredService<CardsDbContext>();
 		var broadcaster = scope.ServiceProvider.GetRequiredService<IGameStateBroadcaster>();
 		var handHistoryRecorder = scope.ServiceProvider.GetRequiredService<IHandHistoryRecorder>();
+		var playerChipWalletService = scope.ServiceProvider.GetRequiredService<IPlayerChipWalletService>();
 
 		var now = DateTimeOffset.UtcNow;
 
@@ -96,7 +97,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			{
 				try
 				{
-					await StartNextHandAsync(scope, context, broadcaster, game, now, cancellationToken);
+					await StartNextHandAsync(scope, context, broadcaster, playerChipWalletService, game, now, cancellationToken);
 				}
 				catch (Exception ex)
 				{
@@ -257,6 +258,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		IServiceScope scope,
 		CardsDbContext context,
 		IGameStateBroadcaster broadcaster,
+		IPlayerChipWalletService playerChipWalletService,
 		Game game,
 		DateTimeOffset now,
 		CancellationToken cancellationToken)
@@ -287,6 +289,13 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 
 		foreach (var player in playersLeaving)
 		{
+			await playerChipWalletService.CreditForCashOutAsync(
+				player.PlayerId,
+				player.ChipStack,
+				game.Id,
+				null,
+				cancellationToken);
+
 			player.Status = GamePlayerStatus.Left;
 			player.LeftAt = now;
 			player.FinalChipCount = player.ChipStack;

@@ -38,7 +38,17 @@ public enum JoinGameErrorCode
     InvalidSeatIndex,
 
     /// <summary>
+    /// The requested starting chips amount is invalid.
+    /// </summary>
+    InvalidStartingChips,
+
+    /// <summary>
     /// The game has ended and is no longer accepting players.
     /// </summary>
-    GameEnded
+    GameEnded,
+
+    /// <summary>
+    /// The player does not have enough account chips for the requested buy-in.
+    /// </summary>
+    InsufficientAccountChips
 }

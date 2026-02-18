@@ -13,8 +13,16 @@
 
 <PageTitle>Log in</PageTitle>
 
-<AccountShell Title="Welcome back" Subtitle="Log in to join your tables">
+<AccountShell Title="Welcome back" Subtitle="Prefer Google or Microsoft to join your tables quickly">
     <StatusMessage Message="@errorMessage" />
+
+    <div class="auth-social">
+        <ExternalLoginPicker />
+    </div>
+
+    <div class="auth-divider">
+        <span>or use your local account instead</span>
+    </div>
 
     <EditForm EditContext="editContext" method="post" OnSubmit="LoginUser" FormName="login" class="auth-form">
         <DataAnnotationsValidator />
@@ -33,22 +41,18 @@
                 Remember me
             </label>
         </div>
-        <div>
-            <button type="submit" class="btn btn-primary btn-lg">Log in</button>
+        <div class="auth-action-row">
+            <button type="submit" class="btn btn-primary btn-lg">Log in with email</button>
         </div>
 
         <div class="auth-divider">
-            <span>or continue with</span>
+            <span>or use a passkey</span>
         </div>
 
         <div class="auth-social">
             <PasskeySubmit Operation="PasskeyOperation.Request" Name="Input.Passkey" EmailName="Input.Email" class="auth-social-btn">Log in with a passkey</PasskeySubmit>
         </div>
     </EditForm>
-
-    <div class="auth-social">
-        <ExternalLoginPicker />
-    </div>
 
     <div class="auth-shell-footer">
         <p class="auth-footer"><a href="/Account/ForgotPassword">Forgot your password?</a></p>

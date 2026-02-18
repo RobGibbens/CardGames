@@ -356,6 +356,75 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
         updatedGame.ChipCheckPauseEndsAt.Should().NotBeNull();
         handler.DealCardsCalled.Should().BeFalse(); // Should NOT start hand
     }
+
+    [Fact]
+    public async Task ProcessGamesReadyForNextHandAsync_FinalizesQueuedLeave_CreditsWallet()
+    {
+        // Arrange
+        var now = DateTimeOffset.UtcNow;
+        var leavingPlayer = new Player { Id = Guid.NewGuid(), Name = "Leaving Player", Email = "leaving@test.com" };
+        var stayingPlayer = new Player { Id = Guid.NewGuid(), Name = "Staying Player", Email = "staying@test.com" };
+
+        var game = new Game
+        {
+            Id = Guid.NewGuid(),
+            CurrentPhase = "Complete",
+            Status = GameStatus.InProgress,
+            NextHandStartsAt = now.AddSeconds(-1),
+            CurrentHandNumber = 1,
+            GameType = new GameType { Code = "TESTGAME", Name = "Test Game" }
+        };
+
+        var p1 = new GamePlayer
+        {
+            GameId = game.Id,
+            PlayerId = leavingPlayer.Id,
+            Player = leavingPlayer,
+            Status = GamePlayerStatus.Active,
+            SeatPosition = 0,
+            ChipStack = 250,
+            LeftAtHandNumber = 1
+        };
+
+        var p2 = new GamePlayer
+        {
+            GameId = game.Id,
+            PlayerId = stayingPlayer.Id,
+            Player = stayingPlayer,
+            Status = GamePlayerStatus.Active,
+            SeatPosition = 1,
+            ChipStack = 1000,
+            LeftAtHandNumber = -1
+        };
+
+        game.GamePlayers.Add(p1);
+        game.GamePlayers.Add(p2);
+
+        _dbContext.Players.AddRange(leavingPlayer, stayingPlayer);
+        _dbContext.Games.Add(game);
+        await _dbContext.SaveChangesAsync();
+
+        var handler = _flowHandlerFactory.SetHandlerForCode("TESTGAME");
+        handler.InitialPhase = "Dealing";
+
+        // Act
+        await _service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+
+        // Assert
+        var account = await _dbContext.PlayerChipAccounts.FirstOrDefaultAsync(x => x.PlayerId == leavingPlayer.Id);
+        account.Should().NotBeNull();
+        account!.Balance.Should().Be(250);
+
+        var ledgerEntry = await _dbContext.PlayerChipLedgerEntries
+            .Where(x => x.PlayerId == leavingPlayer.Id && x.Type == PlayerChipLedgerEntryType.CashOut)
+            .FirstOrDefaultAsync();
+        ledgerEntry.Should().NotBeNull();
+        ledgerEntry!.AmountDelta.Should().Be(250);
+
+        var finalizedPlayer = await _dbContext.GamePlayers.FirstAsync(x => x.Id == p1.Id);
+        finalizedPlayer.Status.Should().Be(GamePlayerStatus.Left);
+        finalizedPlayer.FinalChipCount.Should().Be(250);
+    }
     
     // Fakes
     private class FakeLogger<T> : ILogger<T>
@@ -418,6 +487,7 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
         private readonly IGameStateBroadcaster _broadcaster;
         private readonly IHandHistoryRecorder _recorder;
         private readonly IGameFlowHandlerFactory _handlerFactory;
+        private readonly IPlayerChipWalletService _playerChipWalletService;
 
         public FakeServiceProvider(
             CardsDbContext dbContext, 
@@ -429,6 +499,7 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
             _broadcaster = broadcaster;
             _recorder = recorder;
             _handlerFactory = handlerFactory;
+			_playerChipWalletService = new PlayerChipWalletService(_dbContext);
         }
 
         public object? GetService(Type serviceType)
@@ -437,6 +508,7 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
             if (serviceType == typeof(IGameStateBroadcaster)) return _broadcaster;
             if (serviceType == typeof(IHandHistoryRecorder)) return _recorder;
             if (serviceType == typeof(IGameFlowHandlerFactory)) return _handlerFactory;
+			if (serviceType == typeof(IPlayerChipWalletService)) return _playerChipWalletService;
             return null;
         }
     }

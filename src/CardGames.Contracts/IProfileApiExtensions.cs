@@ -9,4 +9,16 @@ public partial interface IProfileApi
 	[Multipart]
 	[Post("/api/v1/profile/avatar")]
 	Task<IApiResponse<UploadAvatarResponse>> UploadAvatarAsync([AliasAs("file")] StreamPart file, CancellationToken cancellationToken = default);
+
+	[Headers("Accept: application/json, application/problem+json")]
+	[Get("/api/v1/profile/cashier/summary")]
+	Task<IApiResponse<CashierSummaryDto>> GetCashierSummaryAsync(CancellationToken cancellationToken = default);
+
+	[Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+	[Post("/api/v1/profile/cashier/add-chips")]
+	Task<IApiResponse<AddAccountChipsResponse>> AddAccountChipsAsync([Body] AddAccountChipsRequest request, CancellationToken cancellationToken = default);
+
+	[Headers("Accept: application/json, application/problem+json")]
+	[Get("/api/v1/profile/cashier/ledger")]
+	Task<IApiResponse<CashierLedgerPageDto>> GetCashierLedgerAsync([Query] int? take = 25, [Query] int? skip = 0, CancellationToken cancellationToken = default);
 }

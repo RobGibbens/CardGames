@@ -23,8 +23,16 @@
 
 <PageTitle>Create Account - Friday Night Poker</PageTitle>
 
-<AccountShell Title="Create your account" Subtitle="Join the tables in seconds">
+<AccountShell Title="Create your account" Subtitle="Prefer Google or Microsoft to join the tables in seconds">
     <StatusMessage Message="@Message" />
+
+    <div class="auth-social">
+        <ExternalLoginPicker />
+    </div>
+
+    <div class="auth-divider">
+        <span>or register with a local account instead</span>
+    </div>
 
     <EditForm Model="Input" method="post" OnValidSubmit="RegisterUser" FormName="register" class="auth-form" enctype="multipart/form-data">
         <DataAnnotationsValidator />
@@ -64,18 +72,12 @@
             <input type="file" id="Input.AvatarFile" name="Input.AvatarFile" class="form-control" accept="image/jpeg,image/png,image/gif,image/webp" />
         </div>
         
-        <button type="submit" class="btn btn-primary btn-lg">
-            <span>🚀</span> Create Account
-        </button>
+        <div class="auth-action-row">
+            <button type="submit" class="btn btn-primary btn-lg">
+                <span>🚀</span> Create Account
+            </button>
+        </div>
     </EditForm>
-
-    <div class="auth-divider">
-        <span>or continue with</span>
-    </div>
-
-    <div class="auth-social">
-        <ExternalLoginPicker />
-    </div>
 
     <p class="auth-footer">
         Already have an account? <a href="/Account/Login">Sign in</a>

@@ -17,7 +17,7 @@ namespace CardGames.Poker.Api.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.1")
+                .HasAnnotation("ProductVersion", "10.0.3")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -836,6 +836,81 @@ namespace CardGames.Poker.Api.Migrations
                     b.ToTable("Players");
                 });
 
+            modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.PlayerChipAccount", b =>
+                {
+                    b.Property<Guid>("PlayerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Balance")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.HasKey("PlayerId");
+
+                    b.ToTable("PlayerChipAccounts");
+                });
+
+            modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.PlayerChipLedgerEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ActorUserId")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<int>("AmountDelta")
+                        .HasColumnType("int");
+
+                    b.Property<int>("BalanceAfter")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset>("OccurredAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("PlayerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
+
+                    b.Property<Guid?>("ReferenceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ReferenceType")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Type");
+
+                    b.HasIndex("PlayerId", "OccurredAtUtc");
+
+                    b.ToTable("PlayerChipLedgerEntries");
+                });
+
             modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.Pot", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1190,6 +1265,28 @@ namespace CardGames.Poker.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("HandHistory");
+
+                    b.Navigation("Player");
+                });
+
+            modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.PlayerChipAccount", b =>
+                {
+                    b.HasOne("CardGames.Poker.Api.Data.Entities.Player", "Player")
+                        .WithMany()
+                        .HasForeignKey("PlayerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Player");
+                });
+
+            modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.PlayerChipLedgerEntry", b =>
+                {
+                    b.HasOne("CardGames.Poker.Api.Data.Entities.Player", "Player")
+                        .WithMany()
+                        .HasForeignKey("PlayerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.Navigation("Player");
                 });

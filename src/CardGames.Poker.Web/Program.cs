@@ -147,7 +147,8 @@ builder.Services
 	.AddRefitClient<IProfileApi>(
 		settingsAction: _ => new RefitSettings(),
 		httpClientName: "profileApi")
-	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"));
+	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"))
+	.AddHttpMessageHandler<AuthenticationStateHandler>();
 
 // Register Game API Client Wrappers and Router
 builder.Services.AddScoped<IGameApiClient, FiveCardDrawApiClientWrapper>();

@@ -15,6 +15,7 @@ namespace CardGames.Poker.Api.Features.Games.Common.v1.Commands.JoinGame;
 public sealed class JoinGameCommandHandler(
 	CardsDbContext context,
 	ICurrentUserService currentUserService,
+	IPlayerChipWalletService playerChipWalletService,
 	IGameStateBroadcaster broadcaster,
 	ILogger<JoinGameCommandHandler> logger)
 	: IRequestHandler<JoinGameCommand, OneOf<JoinGameSuccessful, JoinGameError>>
@@ -40,6 +41,13 @@ public sealed class JoinGameCommandHandler(
 			return new JoinGameError(
 				JoinGameErrorCode.InvalidSeatIndex,
 				$"Seat index must be between 0 and {MaxSeatIndex}.");
+		}
+
+		if (command.StartingChips <= 0)
+		{
+			return new JoinGameError(
+				JoinGameErrorCode.InvalidStartingChips,
+				"Starting chips must be greater than 0.");
 		}
 
 		// Load the game with game type and current players
@@ -115,6 +123,20 @@ public sealed class JoinGameCommandHandler(
 			: null;
 
 		var now = DateTimeOffset.UtcNow;
+
+		var debitResult = await playerChipWalletService.TryDebitForBuyInAsync(
+			player.Id,
+			command.StartingChips,
+			game.Id,
+			currentUserService.UserId,
+			cancellationToken);
+
+		if (!debitResult.Succeeded)
+		{
+			return new JoinGameError(
+				JoinGameErrorCode.InsufficientAccountChips,
+				debitResult.ErrorMessage ?? "Insufficient chips in your account.");
+		}
 
 		// Create the game participation record
 		var gamePlayer = new GamePlayer

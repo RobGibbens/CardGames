@@ -90,12 +90,24 @@ public struct Unit { }
 
 public class GameApiRouter : IGameApiRouter
 {
+    private static readonly StringComparer GameCodeComparer = StringComparer.OrdinalIgnoreCase;
+    private const string TwosJacksManWithTheAxe = "TWOSJACKSMANWITHTHEAXE";
+    private const string KingsAndLows = "KINGSANDLOWS";
+    private const string SevenCardStud = "SEVENCARDSTUD";
+    private const string Baseball = "BASEBALL";
+    private const string FollowTheQueen = "FOLLOWTHEQUEEN";
+
     private readonly IFiveCardDrawApi _fiveCardDrawApi;
     private readonly ITwosJacksManWithTheAxeApi _twosJacksManWithTheAxeApi;
     private readonly IKingsAndLowsApi _kingsAndLowsApi;
     private readonly ISevenCardStudApi _sevenCardStudApi;
     private readonly IBaseballApi _baseballApi;
     private readonly IFollowTheQueenApi _followTheQueenApi;
+    private readonly Dictionary<string, Func<Guid, ProcessBettingActionRequest, Task<RouterResponse<ProcessBettingActionSuccessful>>>> _bettingActionRoutes;
+    private readonly Dictionary<string, Func<Guid, Guid, List<int>, Task<RouterResponse<ProcessDrawResult>>>> _drawRoutes;
+    private readonly Dictionary<string, Func<Guid, DropOrStayRequest, Task<RouterResponse<Unit>>>> _dropOrStayRoutes;
+    private readonly Dictionary<string, Func<Guid, ProcessBuyCardRequest, Task<RouterResponse<Unit>>>> _buyCardRoutes;
+    private readonly Dictionary<string, Func<Guid, Task<RouterResponse<Unit>>>> _acknowledgePotMatchRoutes;
 
     public GameApiRouter(
         IFiveCardDrawApi fiveCardDrawApi,
@@ -111,6 +123,35 @@ public class GameApiRouter : IGameApiRouter
         _sevenCardStudApi = sevenCardStudApi;
         _baseballApi = baseballApi;
         _followTheQueenApi = followTheQueenApi;
+
+        _bettingActionRoutes = new Dictionary<string, Func<Guid, ProcessBettingActionRequest, Task<RouterResponse<ProcessBettingActionSuccessful>>>>(GameCodeComparer)
+        {
+            [TwosJacksManWithTheAxe] = RouteTwosJacksManWithTheAxeBettingActionAsync,
+            [SevenCardStud] = RouteSevenCardStudBettingActionAsync,
+            [Baseball] = RouteBaseballBettingActionAsync,
+            [FollowTheQueen] = RouteFollowTheQueenBettingActionAsync
+        };
+
+        _drawRoutes = new Dictionary<string, Func<Guid, Guid, List<int>, Task<RouterResponse<ProcessDrawResult>>>>(GameCodeComparer)
+        {
+            [TwosJacksManWithTheAxe] = RouteTwosJacksManWithTheAxeDrawAsync,
+            [KingsAndLows] = RouteKingsAndLowsDrawAsync
+        };
+
+        _dropOrStayRoutes = new Dictionary<string, Func<Guid, DropOrStayRequest, Task<RouterResponse<Unit>>>>(GameCodeComparer)
+        {
+            [KingsAndLows] = RouteKingsAndLowsDropOrStayAsync
+        };
+
+        _buyCardRoutes = new Dictionary<string, Func<Guid, ProcessBuyCardRequest, Task<RouterResponse<Unit>>>>(GameCodeComparer)
+        {
+            [Baseball] = RouteBaseballBuyCardAsync
+        };
+
+        _acknowledgePotMatchRoutes = new Dictionary<string, Func<Guid, Task<RouterResponse<Unit>>>>(GameCodeComparer)
+        {
+            [KingsAndLows] = RouteKingsAndLowsAcknowledgePotMatchAsync
+        };
     }
 
     public async Task<RouterResponse<ProcessBettingActionSuccessful>> ProcessBettingActionAsync(
@@ -118,27 +159,11 @@ public class GameApiRouter : IGameApiRouter
         Guid gameId,
         ProcessBettingActionRequest request)
     {
-        if (string.Equals(gameCode, "TWOSJACKSMANWITHTHEAXE", StringComparison.OrdinalIgnoreCase))
+        if (_bettingActionRoutes.TryGetValue(gameCode, out var route))
         {
-            return RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
-                await _twosJacksManWithTheAxeApi.TwosJacksManWithTheAxeProcessBettingActionAsync(gameId, request));
+            return await route(gameId, request);
         }
-        else if (string.Equals(gameCode, "SEVENCARDSTUD", StringComparison.OrdinalIgnoreCase))
-        {
-            return RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
-                await _sevenCardStudApi.SevenCardStudProcessBettingActionAsync(gameId, request));
-        }
-        else if (string.Equals(gameCode, "BASEBALL", StringComparison.OrdinalIgnoreCase))
-        {
-            return RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
-                await _baseballApi.BaseballProcessBettingActionAsync(gameId, request));
-        }
-        else if (string.Equals(gameCode, "FOLLOWTHEQUEEN", StringComparison.OrdinalIgnoreCase))
-        {
-            return RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
-                await _followTheQueenApi.FollowTheQueenProcessBettingActionAsync(gameId, request));
-        }
-        
+
         // Default to Five Card Draw (handles KingsAndLows fallback logic)
         return RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
             await _fiveCardDrawApi.FiveCardDrawProcessBettingActionAsync(gameId, request));
@@ -150,35 +175,11 @@ public class GameApiRouter : IGameApiRouter
         Guid playerId,
         List<int> discardIndices)
     {
-        if (string.Equals(gameCode, "TWOSJACKSMANWITHTHEAXE", StringComparison.OrdinalIgnoreCase))
+        if (_drawRoutes.TryGetValue(gameCode, out var route))
         {
-            var request = new ProcessDrawRequest(discardIndices);
-            return RouterResponse<ProcessDrawResult>.FromRefit(
-                await _twosJacksManWithTheAxeApi.TwosJacksManWithTheAxeProcessDrawAsync(gameId, request),
-                c => new ProcessDrawResult { Original = c });
+            return await route(gameId, playerId, discardIndices);
         }
-        else if (string.Equals(gameCode, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase))
-        {
-            var request = new DrawCardsRequest(discardIndices, playerId);
-            var response = await _kingsAndLowsApi.KingsAndLowsDrawCardsAsync(gameId, request);
-            
-            return RouterResponse<ProcessDrawResult>.FromRefit(response, content => new ProcessDrawResult
-            {
-                Original = new ProcessDrawSuccessful(
-                    currentPhase: content.NextPhase ?? "DrawPhase",
-                    discardedCards: content.DiscardedCards,
-                    drawComplete: content.DrawPhaseComplete,
-                    gameId: content.GameId,
-                    newCards: content.NewCards ?? [],
-                    nextDrawPlayerIndex: -1,
-                    nextDrawPlayerName: content.NextPlayerName,
-                    playerName: content.PlayerName ?? "",
-                    playerSeatIndex: content.PlayerSeatIndex
-                ),
-                NewHandDescription = content.NewHandDescription
-            });
-        }
-        
+
         var fcdRequest = new ProcessDrawRequest(discardIndices);
         return RouterResponse<ProcessDrawResult>.FromRefit(
             await _fiveCardDrawApi.FiveCardDrawProcessDrawAsync(gameId, fcdRequest),
@@ -187,21 +188,19 @@ public class GameApiRouter : IGameApiRouter
 
     public async Task<RouterResponse<Unit>> DropOrStayAsync(string gameCode, Guid gameId, DropOrStayRequest request)
     {
-        if (string.Equals(gameCode, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase))
+        if (_dropOrStayRoutes.TryGetValue(gameCode, out var route))
         {
-            var response = await _kingsAndLowsApi.KingsAndLowsDropOrStayAsync(gameId, request);
-            return RouterResponse<Unit>.FromRefit(response);
+            return await route(gameId, request);
         }
-        
+
         return RouterResponse<Unit>.Failure("Not supported for this game type", HttpStatusCode.BadRequest);
     }
 
     public async Task<RouterResponse<Unit>> ProcessBuyCardAsync(string gameCode, Guid gameId, ProcessBuyCardRequest request)
     {
-        if (string.Equals(gameCode, "BASEBALL", StringComparison.OrdinalIgnoreCase))
+        if (_buyCardRoutes.TryGetValue(gameCode, out var route))
         {
-            var response = await _baseballApi.BaseballProcessBuyCardAsync(gameId, request);
-            return RouterResponse<Unit>.FromRefit(response, _ => default(Unit));
+            return await route(gameId, request);
         }
 
         return RouterResponse<Unit>.Failure("Not supported for this game type", HttpStatusCode.BadRequest);
@@ -209,12 +208,75 @@ public class GameApiRouter : IGameApiRouter
 
     public async Task<RouterResponse<Unit>> AcknowledgePotMatchAsync(string gameCode, Guid gameId)
     {
-        if (string.Equals(gameCode, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase))
+        if (_acknowledgePotMatchRoutes.TryGetValue(gameCode, out var route))
         {
-            var response = await _kingsAndLowsApi.KingsAndLowsAcknowledgePotMatchAsync(gameId);
-            return RouterResponse<Unit>.FromRefit(response);
+            return await route(gameId);
         }
-        
+
         return RouterResponse<Unit>.Failure("Not supported for this game type", HttpStatusCode.BadRequest);
+    }
+
+    private async Task<RouterResponse<ProcessBettingActionSuccessful>> RouteTwosJacksManWithTheAxeBettingActionAsync(Guid gameId, ProcessBettingActionRequest request)
+        => RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
+            await _twosJacksManWithTheAxeApi.TwosJacksManWithTheAxeProcessBettingActionAsync(gameId, request));
+
+    private async Task<RouterResponse<ProcessBettingActionSuccessful>> RouteSevenCardStudBettingActionAsync(Guid gameId, ProcessBettingActionRequest request)
+        => RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
+            await _sevenCardStudApi.SevenCardStudProcessBettingActionAsync(gameId, request));
+
+    private async Task<RouterResponse<ProcessBettingActionSuccessful>> RouteBaseballBettingActionAsync(Guid gameId, ProcessBettingActionRequest request)
+        => RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
+            await _baseballApi.BaseballProcessBettingActionAsync(gameId, request));
+
+    private async Task<RouterResponse<ProcessBettingActionSuccessful>> RouteFollowTheQueenBettingActionAsync(Guid gameId, ProcessBettingActionRequest request)
+        => RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
+            await _followTheQueenApi.FollowTheQueenProcessBettingActionAsync(gameId, request));
+
+    private async Task<RouterResponse<ProcessDrawResult>> RouteTwosJacksManWithTheAxeDrawAsync(Guid gameId, Guid playerId, List<int> discardIndices)
+    {
+        var request = new ProcessDrawRequest(discardIndices);
+        return RouterResponse<ProcessDrawResult>.FromRefit(
+            await _twosJacksManWithTheAxeApi.TwosJacksManWithTheAxeProcessDrawAsync(gameId, request),
+            c => new ProcessDrawResult { Original = c });
+    }
+
+    private async Task<RouterResponse<ProcessDrawResult>> RouteKingsAndLowsDrawAsync(Guid gameId, Guid playerId, List<int> discardIndices)
+    {
+        var request = new DrawCardsRequest(discardIndices, playerId);
+        var response = await _kingsAndLowsApi.KingsAndLowsDrawCardsAsync(gameId, request);
+
+        return RouterResponse<ProcessDrawResult>.FromRefit(response, content => new ProcessDrawResult
+        {
+            Original = new ProcessDrawSuccessful(
+                currentPhase: content.NextPhase ?? "DrawPhase",
+                discardedCards: content.DiscardedCards,
+                drawComplete: content.DrawPhaseComplete,
+                gameId: content.GameId,
+                newCards: content.NewCards ?? [],
+                nextDrawPlayerIndex: -1,
+                nextDrawPlayerName: content.NextPlayerName,
+                playerName: content.PlayerName ?? "",
+                playerSeatIndex: content.PlayerSeatIndex
+            ),
+            NewHandDescription = content.NewHandDescription
+        });
+    }
+
+    private async Task<RouterResponse<Unit>> RouteKingsAndLowsDropOrStayAsync(Guid gameId, DropOrStayRequest request)
+    {
+        var response = await _kingsAndLowsApi.KingsAndLowsDropOrStayAsync(gameId, request);
+        return RouterResponse<Unit>.FromRefit(response);
+    }
+
+    private async Task<RouterResponse<Unit>> RouteBaseballBuyCardAsync(Guid gameId, ProcessBuyCardRequest request)
+    {
+        var response = await _baseballApi.BaseballProcessBuyCardAsync(gameId, request);
+        return RouterResponse<Unit>.FromRefit(response, _ => default(Unit));
+    }
+
+    private async Task<RouterResponse<Unit>> RouteKingsAndLowsAcknowledgePotMatchAsync(Guid gameId)
+    {
+        var response = await _kingsAndLowsApi.KingsAndLowsAcknowledgePotMatchAsync(gameId);
+        return RouterResponse<Unit>.FromRefit(response);
     }
 }

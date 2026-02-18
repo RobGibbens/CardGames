@@ -15,12 +15,12 @@
 
 ### P2 - Important but not blocking play
 
+- [ ] Make sure players can keep a long running chip balance / only bring in a certain amount to a game
 - [ ] Make sure all calls are idempotent
 - [ ] Continuous play should stop if all players disconnect
 - [ ] During ties, the showdown should show the kicker
 - [ ] Showdown overlay should handle split pots better
 - [ ] Table should be able to scroll if the screen isn't big enough
-- [ ] Allow them to upload an image when registering
 
 ### P3 - Nice to have
 - [ ] Table settings should be dynamic when creating a table. Not all games have an ante or a minimum bet.
@@ -30,18 +30,20 @@
 - [ ] When the Draw Overlay is showing, the cards are not opaque
 - [ ] The bottom of the table goes off the bottom of the screen
 - [ ] Add sound effects
+- [ ] When already logged in, take them to the Lobby
+- [ ] Add leagues
+- [ ] Add seasons
+- [ ] Add tournaments
+- [ ] Endpoints shouldn't use generic Error responses
+
+## When expanding beyond my friends
+
 - [ ] Add a chat box
 - [ ] Add the ability to mute other players in chat
 - [ ] Add the ability to block other players
 - [ ] Add a friends list
 - [ ] Add the ability to invite friends to a table
 - [ ] Add the ability to create private tables
-- [ ] When already logged in, take them to the Lobby
-- [ ] Rearrange the register and login screens to make OAuth more obvious
-- [ ] Add leagues
-- [ ] Add seasons
-- [ ] Add tournaments
-- [ ] Endpoints shouldn't use generic Error responses
 
 
 ## Add Games
@@ -152,3 +154,5 @@
 - [x] SCS - Choosing wrong first to act
 - [x] Creating a deck and dealing is done in the StartHandCommandHandler, but it should be using CardGames.Core.Dealer
 - [x] Add animation of dealing the cards
+- [x] Allow them to upload an image when registering
+- [x] Rearrange the register and login screens to make OAuth more obvious

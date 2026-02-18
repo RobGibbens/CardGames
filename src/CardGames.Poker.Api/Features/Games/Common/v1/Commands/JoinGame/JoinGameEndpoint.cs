@@ -28,7 +28,9 @@ public static class JoinGameEndpoint
                             JoinGameErrorCode.AlreadySeated => Results.Conflict(new { error.Message }),
                             JoinGameErrorCode.MaxPlayersReached => Results.Conflict(new { error.Message }),
                             JoinGameErrorCode.InvalidSeatIndex => Results.BadRequest(new { error.Message }),
+                            JoinGameErrorCode.InvalidStartingChips => Results.BadRequest(new { error.Message }),
                             JoinGameErrorCode.GameEnded => Results.Conflict(new { error.Message }),
+                            JoinGameErrorCode.InsufficientAccountChips => Results.Conflict(new { error.Message }),
                             _ => Results.Problem(error.Message)
                         }
                     );
