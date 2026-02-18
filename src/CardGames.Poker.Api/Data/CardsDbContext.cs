@@ -95,6 +95,41 @@ public class CardsDbContext(DbContextOptions<CardsDbContext> options) : Identity
 	/// </summary>
 	public DbSet<PlayerChipLedgerEntry> PlayerChipLedgerEntries => Set<PlayerChipLedgerEntry>();
 
+	/// <summary>
+	/// Gets the set of leagues.
+	/// </summary>
+	public DbSet<League> Leagues => Set<League>();
+
+	/// <summary>
+	/// Gets the set of current league members.
+	/// </summary>
+	public DbSet<LeagueMemberCurrent> LeagueMembersCurrent => Set<LeagueMemberCurrent>();
+
+	/// <summary>
+	/// Gets the set of league membership events.
+	/// </summary>
+	public DbSet<LeagueMembershipEvent> LeagueMembershipEvents => Set<LeagueMembershipEvent>();
+
+	/// <summary>
+	/// Gets the set of league invites.
+	/// </summary>
+	public DbSet<LeagueInvite> LeagueInvites => Set<LeagueInvite>();
+
+	/// <summary>
+	/// Gets the set of league seasons.
+	/// </summary>
+	public DbSet<LeagueSeason> LeagueSeasons => Set<LeagueSeason>();
+
+	/// <summary>
+	/// Gets the set of league season events.
+	/// </summary>
+	public DbSet<LeagueSeasonEvent> LeagueSeasonEvents => Set<LeagueSeasonEvent>();
+
+	/// <summary>
+	/// Gets the set of league one-off events.
+	/// </summary>
+	public DbSet<LeagueOneOffEvent> LeagueOneOffEvents => Set<LeagueOneOffEvent>();
+
 	protected override void OnModelCreating(ModelBuilder model)
 	{
 		base.OnModelCreating(model);

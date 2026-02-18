@@ -1,4 +1,5 @@
 using CardGames.Poker.Api.Data;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -27,6 +28,13 @@ public class ApiWebApplicationFactory : WebApplicationFactory<ApiProgram>
 
         builder.ConfigureTestServices(services =>
         {
+            services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = TestAuthHandler.SchemeName;
+                options.DefaultChallengeScheme = TestAuthHandler.SchemeName;
+                options.DefaultScheme = TestAuthHandler.SchemeName;
+            }).AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, _ => { });
+
             // Remove the app's DbContext registration and pooling
             // Also serve to remove the Aspire configuration options that validate connection strings
             var descriptorsToRemove = services.Where(d =>

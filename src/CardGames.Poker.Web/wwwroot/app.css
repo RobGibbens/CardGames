@@ -1725,6 +1725,17 @@ a:hover {
     color: var(--text-primary);
 }
 
+.cashier-section-title.league-create-title {
+    margin-bottom: 1.25rem;
+}
+
+.league-action-btn {
+    min-width: 6.25rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
 .cashier-balance-grid {
     display: flex;
     align-items: flex-end;

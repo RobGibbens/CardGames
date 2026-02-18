@@ -760,6 +760,319 @@ namespace CardGames.Poker.Api.Migrations
                     b.ToTable("HandHistoryWinners");
                 });
 
+            modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.League", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("CreatedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
+
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAtUtc");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.ToTable("Leagues");
+                });
+
+            modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.LeagueInvite", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("CreatedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTimeOffset>("ExpiresAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("LeagueId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset?>("RevokedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("RevokedByUserId")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("LeagueId", "Status", "ExpiresAtUtc");
+
+                    b.ToTable("LeagueInvites");
+                });
+
+            modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.LeagueMemberCurrent", b =>
+                {
+                    b.Property<Guid>("LeagueId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("UserId")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTimeOffset>("JoinedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset?>("LeftAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<int>("Role")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.HasKey("LeagueId", "UserId");
+
+                    b.HasIndex("UserId", "IsActive");
+
+                    b.HasIndex("LeagueId", "Role", "IsActive");
+
+                    b.ToTable("LeagueMembersCurrent");
+                });
+
+            modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.LeagueMembershipEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ActorUserId")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<int>("EventType")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("LeagueId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("OccurredAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LeagueId", "OccurredAtUtc");
+
+                    b.ToTable("LeagueMembershipEvents");
+                });
+
+            modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.LeagueOneOffEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("CreatedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<int>("EventType")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("LeagueId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<DateTimeOffset>("ScheduledAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LeagueId", "ScheduledAtUtc");
+
+                    b.ToTable("LeagueOneOffEvents");
+                });
+
+            modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.LeagueSeason", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("CreatedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTimeOffset?>("EndsAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("LeagueId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<int?>("PlannedEventCount")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<DateTimeOffset?>("StartsAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LeagueId", "Status", "CreatedAtUtc");
+
+                    b.ToTable("LeagueSeasons");
+                });
+
+            modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.LeagueSeasonEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("CreatedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<Guid>("LeagueId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("LeagueSeasonId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<DateTimeOffset?>("ScheduledAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<int?>("SequenceNumber")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LeagueSeasonId", "SequenceNumber")
+                        .IsUnique()
+                        .HasFilter("[SequenceNumber] IS NOT NULL");
+
+                    b.HasIndex("LeagueId", "LeagueSeasonId", "ScheduledAtUtc");
+
+                    b.ToTable("LeagueSeasonEvents");
+                });
+
             modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.Player", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1269,6 +1582,80 @@ namespace CardGames.Poker.Api.Migrations
                     b.Navigation("Player");
                 });
 
+            modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.LeagueInvite", b =>
+                {
+                    b.HasOne("CardGames.Poker.Api.Data.Entities.League", "League")
+                        .WithMany("Invites")
+                        .HasForeignKey("LeagueId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("League");
+                });
+
+            modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.LeagueMemberCurrent", b =>
+                {
+                    b.HasOne("CardGames.Poker.Api.Data.Entities.League", "League")
+                        .WithMany("Members")
+                        .HasForeignKey("LeagueId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("League");
+                });
+
+            modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.LeagueMembershipEvent", b =>
+                {
+                    b.HasOne("CardGames.Poker.Api.Data.Entities.League", "League")
+                        .WithMany()
+                        .HasForeignKey("LeagueId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("League");
+                });
+
+            modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.LeagueOneOffEvent", b =>
+                {
+                    b.HasOne("CardGames.Poker.Api.Data.Entities.League", "League")
+                        .WithMany("OneOffEvents")
+                        .HasForeignKey("LeagueId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("League");
+                });
+
+            modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.LeagueSeason", b =>
+                {
+                    b.HasOne("CardGames.Poker.Api.Data.Entities.League", "League")
+                        .WithMany("Seasons")
+                        .HasForeignKey("LeagueId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("League");
+                });
+
+            modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.LeagueSeasonEvent", b =>
+                {
+                    b.HasOne("CardGames.Poker.Api.Data.Entities.League", "League")
+                        .WithMany("SeasonEvents")
+                        .HasForeignKey("LeagueId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("CardGames.Poker.Api.Data.Entities.LeagueSeason", "Season")
+                        .WithMany("Events")
+                        .HasForeignKey("LeagueSeasonId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("League");
+
+                    b.Navigation("Season");
+                });
+
             modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.PlayerChipAccount", b =>
                 {
                     b.HasOne("CardGames.Poker.Api.Data.Entities.Player", "Player")
@@ -1407,6 +1794,24 @@ namespace CardGames.Poker.Api.Migrations
                     b.Navigation("PlayerResults");
 
                     b.Navigation("Winners");
+                });
+
+            modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.League", b =>
+                {
+                    b.Navigation("Invites");
+
+                    b.Navigation("Members");
+
+                    b.Navigation("OneOffEvents");
+
+                    b.Navigation("SeasonEvents");
+
+                    b.Navigation("Seasons");
+                });
+
+            modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.LeagueSeason", b =>
+                {
+                    b.Navigation("Events");
                 });
 
             modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.Player", b =>

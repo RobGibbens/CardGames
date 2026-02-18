@@ -26,3 +26,99 @@
 **Why:** Preserves clear boundary between account wallet operations and table/game-phase operations while minimizing implementation risk for MVP and ensuring auditability.
 
 **Reference:** `docs/CashierFeatureDesign.md`
+
+### 2026-02-17: Leagues release gating is P0 invariants-first with telemetry-backed rollout
+**By:** Basher (Tester)
+**Requested by:** Rob Gibbens
+
+**What:** Established a risk-based testing strategy for Leagues that gates release on P0 coverage for (1) creator bootstrap/admin assignment, (2) invite-link lifecycle validation, (3) league-scoped RBAC for admin actions, and (4) temporal membership integrity/idempotency. Defined P1/P2 follow-up coverage for concurrency depth, UI affordances, accessibility, and performance hardening.
+
+**Why:** Leagues introduces high-risk authorization and temporal-state transitions; preventing privilege escalation and data integrity drift is more critical than broad feature breadth for MVP.
+
+**Guardrails:**
+- CI must pass all P0 tests before release.
+- Progressive rollout behind feature flag with cohort expansion after stable metrics windows.
+- Production alerts for unauthorized mutation success, invite-join failure anomalies, and any member with overlapping active league intervals.
+
+**Reference:** `docs/LeaguesTestStrategy.md`
+
+### 2026-02-17: Backend design direction for Leagues MVP
+**By:** Danny (Backend Dev)
+**Requested by:** Rob Gibbens
+**What:** Proposed a Leagues backend design with a dedicated league aggregate boundary (social/membership/admin/invite/schedule only), append-only temporal membership/admin events with current-state projections, revocable+expiring invite-link tokens, and MediatR-based command/query/API surface for create/join/manage/seasons/events.
+**Why:** Delivers required Leagues capabilities while preserving existing poker game-rule/domain boundaries and aligning with repository architecture conventions.
+
+**MVP included:**
+- league create with creator auto-admin bootstrap
+- temporal membership join/leave and admin promotion
+- invite-link lifecycle (active/revoked/expired-by-time)
+- season containers + one-off events (metadata primitives)
+
+**Deferred post-MVP:**
+- standings/leaderboards/scoring aggregation
+- richer invite abuse controls (max uses/single-use/allowlist)
+- public league discovery and expanded moderation flows
+
+**Reference:** `docs/LeaguesBackendDesign.md`
+
+### 2026-02-17: Leagues MVP UX is list/detail with server-driven role gating
+**By:** Linus (Frontend)
+**Requested by:** Rob Gibbens
+**What:** Defined a minimal Blazor UX for Leagues centered on four routes (`/leagues`, `/leagues/{leagueId}`, `/leagues/join/{token}`, create flow from list) with sectioned league detail (Overview, Members, Invites, Schedule). Admin actions (invite create/revoke, promote member, create season, create one-off event) are visible and enabled strictly from server-provided role and membership state.
+**Why:** Keeps Leagues as a social coordination layer, aligns with architecture boundaries, and delivers required create/join/admin/schedule scenarios without adding leaderboard or game-rule complexity in MVP.
+
+**Reference:** `docs/LeaguesUXDesign.md`
+
+### 2026-02-17: League admin RBAC bootstrap and promotion rules
+**By:** Rusty (Lead)
+**Requested by:** Rob Gibbens
+**What:** Set admin policy that league creator is auto-admin, leagues can have multiple admins, and any current admin may promote another active member to admin.
+**Why:** Matches product requirements while enabling shared administration without introducing a separate owner-only bottleneck.
+
+**Review context:** Design Review ceremony (Danny, Linus, Basher)
+
+### 2026-02-17: League join uses revocable shareable invite-link tokens
+**By:** Rusty (Lead)
+**Requested by:** Rob Gibbens
+**What:** Standardized on league-scoped invite URLs backed by tokens that support status (active/revoked) and expiration for MVP, with join validation before membership insertion.
+**Why:** Delivers required shareable join UX while preserving basic abuse controls and admin governance over access.
+
+**Review context:** Design Review ceremony (Danny, Linus, Basher)
+
+### 2026-02-17: Support both season schedules and one-off league events in MVP model
+**By:** Rusty (Lead)
+**Requested by:** Rob Gibbens
+**What:** Decided MVP will model both season containers (e.g., ten tournaments) and one-off events/nights, while deferring advanced standings/leaderboard scoring logic.
+**Why:** Satisfies required league usage modes immediately and controls scope by sequencing event primitives before analytics-heavy ranking features.
+
+**Review context:** Design Review ceremony (Danny, Linus, Basher)
+
+### 2026-02-17: Leagues are social coordination containers, not game-rule containers
+**By:** Rusty (Lead)
+**Requested by:** Rob Gibbens
+**What:** Defined Leagues as account-scoped entities that own membership, admin roles, invite links, and event/season metadata while leaving game rules and hand orchestration in existing poker domain flows.
+**Why:** Preserves architecture boundaries from `docs/ARCHITECTURE.md` and avoids coupling league concerns to game-engine mechanics.
+
+**Review context:** Design Review ceremony (Danny, Linus, Basher)
+
+### 2026-02-17: League membership is temporal and event-backed
+**By:** Rusty (Lead)
+**Requested by:** Rob Gibbens
+**What:** Chose an append-only membership history model with join/leave timestamps and role-change events, with current membership derived from active intervals.
+**Why:** Supports membership changes over time, auditability, and safer conflict handling for concurrent membership/admin updates.
+
+**Review context:** Design Review ceremony (Danny, Linus, Basher)
+
+### 2026-02-17: Consolidated Leagues design artifact is MVP approval baseline
+**By:** Rusty (Lead)
+**Requested by:** Rob Gibbens
+**What:** Adopted `docs/LeaguesFeatureDesign.md` as the consolidated approval baseline for Leagues MVP, including account-scoped social boundary, event-based membership projection, invite security controls, contract-regeneration workflow, and scoped MVP delivery phases.
+**Why:** Aligns backend, UX, and testing directions in a single source of truth while minimizing coupling risk and controlling MVP scope.
+
+**Execution mapping:**
+- Phase 1: domain + persistence
+- Phase 2: API + contracts + authorization
+- Phase 3: Blazor UX
+- Phase 4: tests + rollout hardening
+
+**Reference:** `docs/LeaguesFeatureDesign.md`

@@ -15,6 +15,8 @@ using Refit;
 using System.Security.Claims;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.IdentityModel.Tokens;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -147,6 +149,22 @@ builder.Services
 	.AddRefitClient<IProfileApi>(
 		settingsAction: _ => new RefitSettings(),
 		httpClientName: "profileApi")
+	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"))
+	.AddHttpMessageHandler<AuthenticationStateHandler>();
+
+builder.Services
+	.AddRefitClient<ILeaguesApi>(
+		settingsAction: _ => new RefitSettings
+		{
+			ContentSerializer = new SystemTextJsonContentSerializer(new JsonSerializerOptions(JsonSerializerDefaults.Web)
+			{
+				Converters =
+				{
+					new JsonStringEnumConverter()
+				}
+			})
+		},
+		httpClientName: "leaguesApi")
 	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"))
 	.AddHttpMessageHandler<AuthenticationStateHandler>();
 

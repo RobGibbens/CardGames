@@ -1,0 +1,98 @@
+@page "/leagues/join/{Token}"
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+@using CardGames.Poker.Api.Clients
+@using CardGames.Poker.Api.Contracts
+@using CardGames.Poker.Web.Components.Shared
+@using Microsoft.AspNetCore.Authorization
+
+@inject ILeaguesApi LeaguesApi
+@inject NavigationManager NavigationManager
+@inject ILogger<JoinLeague> Logger
+
+<PageTitle>Join League - Friday Night Poker</PageTitle>
+
+<AuthenticatedNavBar />
+
+<main class="lobby-main">
+	<div class="lobby-container">
+		<section class="cashier-panel">
+			<div class="cashier-panel-body d-flex flex-column gap-3">
+				<h1 class="cashier-section-title">Join League</h1>
+
+				@if (_isLoading)
+				{
+					<p class="mb-0 text-muted">Joining league...</p>
+				}
+				else if (!string.IsNullOrWhiteSpace(_message))
+				{
+					<div class="alert @(_isError ? "alert-warning" : "alert-success") mb-0" role="alert">@_message</div>
+				}
+
+				<div class="d-flex gap-2">
+					<button class="btn btn-primary" @onclick="JoinAsync" disabled="@_isLoading">Join League</button>
+					<a class="btn btn-outline-secondary" href="/leagues">Back to Leagues</a>
+				</div>
+			</div>
+		</section>
+	</div>
+</main>
+
+@code {
+	[Parameter]
+	public string Token { get; set; } = string.Empty;
+
+	private bool _isLoading;
+	private bool _isError;
+	private string? _message;
+
+	protected override async Task OnInitializedAsync()
+	{
+		await JoinAsync();
+	}
+
+	private async Task JoinAsync()
+	{
+		_isLoading = true;
+		_isError = false;
+		_message = null;
+
+		try
+		{
+			var response = await LeaguesApi.JoinLeagueAsync(new JoinLeagueRequest
+			{
+				Token = Token
+			});
+
+			if (response.IsSuccessStatusCode && response.Content is not null)
+			{
+				if (response.Content.AlreadyMember)
+				{
+					_message = "You are already a member of this league.";
+				}
+				else
+				{
+					_message = "League joined successfully.";
+				}
+
+				_isError = false;
+			}
+			else
+			{
+				_message = "This invite is invalid or expired.";
+				_isError = true;
+			}
+		}
+		catch (Exception ex)
+		{
+			Logger.LogError(ex, "Failed to join league using invite token.");
+			_message = "Unable to join league right now.";
+			_isError = true;
+		}
+		finally
+		{
+			_isLoading = false;
+		}
+	}
+}

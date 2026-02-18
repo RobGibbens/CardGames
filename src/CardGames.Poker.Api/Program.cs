@@ -41,9 +41,22 @@ public class Program
         // Add services to the container.
         builder.Services.AddAuthentication(options =>
             {
-                // Default to JWT for API endpoints
-                options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+                // Select auth scheme based on request characteristics
+                options.DefaultScheme = "SmartAuth";
                 options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddPolicyScheme("SmartAuth", "JWT or Header authentication", options =>
+            {
+                options.ForwardDefaultSelector = context =>
+                {
+                    var hasHeaderAuth =
+                        context.Request.Headers.ContainsKey("X-User-Authenticated") ||
+                        context.Request.Headers.ContainsKey("X-User-Id");
+
+                    return hasHeaderAuth
+                        ? HeaderAuthenticationHandler.SchemeName
+                        : JwtBearerDefaults.AuthenticationScheme;
+                };
             })
             .AddMicrosoftIdentityWebApi(builder.Configuration.GetSection("AzureAd"));
 

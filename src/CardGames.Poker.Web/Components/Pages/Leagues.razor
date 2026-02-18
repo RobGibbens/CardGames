@@ -1,0 +1,509 @@
+@page "/leagues"
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+@using CardGames.Poker.Api.Clients
+@using CardGames.Poker.Api.Contracts
+@using CardGames.Poker.Web.Components.Shared
+@using Microsoft.AspNetCore.Authorization
+
+@inject ILeaguesApi LeaguesApi
+@inject ILogger<Leagues> Logger
+@inject NavigationManager NavigationManager
+
+<PageTitle>Leagues - Friday Night Poker</PageTitle>
+
+<AuthenticatedNavBar />
+
+<main class="lobby-main">
+	<div class="lobby-container">
+		<div class="lobby-header">
+			<div class="lobby-header-content">
+				<h1 class="lobby-title">
+					<i class="fa-solid fa-users"></i>
+					Leagues
+				</h1>
+				<p class="lobby-subtitle">Create a league and view leagues where you are a member.</p>
+			</div>
+		</div>
+
+		<section class="cashier-panel">
+			<div class="cashier-panel-body auth-form">
+				<h2 class="cashier-section-title league-create-title">Create League</h2>
+
+				<div class="form-floating mb-3" data-label="League Name">
+					<InputText id="league-name" class="form-control" @bind-Value="_name" maxlength="120" placeholder="League Name" disabled="@_isSubmitting" />
+				</div>
+
+				<div class="form-floating mb-3" data-label="Description (optional)">
+					<InputText id="league-description" class="form-control" @bind-Value="_description" maxlength="512" placeholder="Description (optional)" disabled="@_isSubmitting" />
+				</div>
+
+				<button class="btn btn-primary" @onclick="CreateLeagueAsync" disabled="@_isSubmitting">
+					@if (_isSubmitting)
+					{
+						<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+					}
+					Create
+				</button>
+
+				@if (!string.IsNullOrWhiteSpace(_message))
+				{
+					<div class="alert @(_isError ? "alert-warning" : "alert-success") mt-3 mb-0" role="alert">@_message</div>
+				}
+			</div>
+		</section>
+
+		<section class="cashier-panel">
+			<div class="cashier-panel-body d-flex flex-column gap-3">
+				<div class="cashier-section-header">
+					<h2 class="cashier-section-title">My Leagues</h2>
+					<button class="btn btn-sm btn-outline-secondary" @onclick="LoadLeaguesAsync" disabled="@_isLoading">
+						<i class="fa-solid fa-rotate-right"></i>
+						Refresh
+					</button>
+				</div>
+
+				@if (_isLoading)
+				{
+					<p class="mb-0 text-muted">Loading leagues...</p>
+				}
+				else if (_leagues.Count == 0)
+				{
+					<p class="mb-0 text-muted">You are not in any leagues yet.</p>
+				}
+				else
+				{
+					<ul class="list-group">
+						@foreach (var league in _leagues)
+						{
+							<li class="list-group-item d-flex flex-wrap gap-3 align-items-start @(league.LeagueId == _selectedLeagueId ? "border-primary" : string.Empty)">
+								<div class="d-flex flex-column gap-1 flex-grow-1">
+									<div class="fw-semibold">@league.Name</div>
+									@if (!string.IsNullOrWhiteSpace(league.Description))
+									{
+										<div class="text-muted">@league.Description</div>
+									}
+									<div class="small text-muted">Role: @league.Role • Created @league.CreatedAtUtc.ToLocalTime().ToString("g")</div>
+								</div>
+								<div class="d-flex gap-2 flex-wrap ms-md-auto mt-2 mt-md-0">
+									<button class="btn btn-sm btn-primary league-action-btn" @onclick="() => OpenLeagueDetail(league.LeagueId)">
+										<i class="fa-solid fa-arrow-up-right-from-square me-1" aria-hidden="true"></i>
+										Open
+									</button>
+									<button class="btn btn-sm btn-outline-danger league-action-btn" @onclick="() => LeaveLeagueAsync(league.LeagueId)">
+										<i class="fa-solid fa-right-from-bracket me-1" aria-hidden="true"></i>
+										Leave
+									</button>
+								</div>
+							</li>
+						}
+					</ul>
+				}
+			</div>
+		</section>
+
+		@if (_selectedLeague is not null)
+		{
+			<section class="cashier-panel">
+				<div class="cashier-panel-body d-flex flex-column gap-3">
+					<h2 class="cashier-section-title">Manage @_selectedLeague.Name</h2>
+
+					@if (_leagueDetail is not null)
+					{
+						<div class="small text-muted">
+							Created by @_leagueDetail.CreatedByUserId • Active members: @_leagueDetail.ActiveMemberCount
+						</div>
+					}
+
+					<div>
+						<h3 class="h6">Members</h3>
+						@if (_memberSummaries.Count == 0)
+						{
+							<p class="text-muted mb-0">No members found.</p>
+						}
+						else
+						{
+							<ul class="list-group">
+								@foreach (var member in _memberSummaries)
+								{
+									<li class="list-group-item d-flex justify-content-between align-items-center gap-2">
+										<div>
+											<div class="fw-semibold">@member.UserId</div>
+											<div class="small text-muted">Role: @member.Role • Joined: @member.JoinedAtUtc.ToLocalTime().ToString("g")</div>
+										</div>
+										@if (_selectedLeague.Role == LeagueRole.Admin && member.IsActive && member.Role != LeagueRole.Admin)
+										{
+											<button class="btn btn-sm btn-warning" @onclick="() => PromoteMemberAsync(member.UserId)" disabled="@_isSubmittingPromote">Promote</button>
+										}
+									</li>
+								}
+							</ul>
+						}
+					</div>
+
+					@if (_selectedLeague.Role == LeagueRole.Admin)
+					{
+						<div class="auth-form">
+							<h3 class="h6">Create Invite Link</h3>
+							<div class="form-floating mb-3" data-label="Expiry (UTC)">
+								<InputDate id="invite-expiry" class="form-control" @bind-Value="_inviteExpiryDate" />
+							</div>
+							<button class="btn btn-sm btn-primary" @onclick="CreateInviteAsync" disabled="@_isSubmittingInvite">Create Invite</button>
+							@if (!string.IsNullOrWhiteSpace(_createdInviteUrl))
+							{
+								<div class="alert alert-success mt-3 mb-0" role="alert">
+									Invite link: <a href="@_createdInviteUrl">@_createdInviteUrl</a>
+								</div>
+							}
+						</div>
+					}
+
+					<div>
+						<h3 class="h6">Invites</h3>
+						@if (_inviteSummaries.Count == 0)
+						{
+							<p class="text-muted mb-0">No invites yet.</p>
+						}
+						else
+						{
+							<ul class="list-group">
+								@foreach (var invite in _inviteSummaries)
+								{
+									<li class="list-group-item small">
+										Status: @invite.Status • Expires: @invite.ExpiresAtUtc.ToLocalTime().ToString("g")
+									</li>
+								}
+							</ul>
+						}
+					</div>
+				</div>
+			</section>
+		}
+	</div>
+</main>
+
+@code {
+	private bool _isLoading;
+	private bool _isSubmitting;
+	private bool _isError;
+	private string? _message;
+	private string _name = string.Empty;
+	private string? _description;
+	private List<LeagueSummaryDto> _leagues = [];
+	private LeagueSummaryDto? _selectedLeague;
+	private LeagueDetailDto? _leagueDetail;
+	private Guid? _selectedLeagueId;
+	private DateTime _inviteExpiryDate = DateTime.UtcNow.Date.AddDays(7);
+	private bool _isSubmittingInvite;
+	private bool _isSubmittingPromote;
+	private string? _createdInviteUrl;
+	private List<LeagueMemberDto> _memberSummaries = [];
+	private List<LeagueInviteSummaryDto> _inviteSummaries = [];
+
+	protected override async Task OnInitializedAsync()
+	{
+		await LoadLeaguesAsync();
+	}
+
+	private async Task LoadLeaguesAsync()
+	{
+		_isLoading = true;
+
+		try
+		{
+			var response = await LeaguesApi.GetMyLeaguesAsync();
+			if (response is { IsSuccessStatusCode: true, Content: not null })
+			{
+				_leagues = response.Content.ToList();
+				if (_selectedLeagueId.HasValue)
+				{
+					_selectedLeague = _leagues.FirstOrDefault(x => x.LeagueId == _selectedLeagueId.Value);
+				}
+			}
+			else
+			{
+				_leagues = [];
+				_message = "No leagues right now.";
+				_isError = true;
+			}
+		}
+		catch (Exception ex)
+		{
+			Logger.LogError(ex, "Failed to load leagues");
+			_leagues = [];
+			_message = "Unable to load leagues right now.";
+			_isError = true;
+		}
+		finally
+		{
+			_isLoading = false;
+		}
+	}
+
+	private async Task SelectLeagueAsync(LeagueSummaryDto league)
+	{
+		_selectedLeague = league;
+		_selectedLeagueId = league.LeagueId;
+		_leagueDetail = null;
+		_memberSummaries = [];
+		_createdInviteUrl = null;
+		await LoadLeagueDetailAsync();
+		await LoadMembersAsync();
+		await LoadInvitesAsync();
+	}
+
+	private async Task LoadLeagueDetailAsync()
+	{
+		if (_selectedLeague is null)
+		{
+			_leagueDetail = null;
+			return;
+		}
+
+		try
+		{
+			var response = await LeaguesApi.GetLeagueDetailAsync(_selectedLeague.LeagueId);
+			if (response.IsSuccessStatusCode && response.Content is not null)
+			{
+				_leagueDetail = response.Content;
+			}
+			else
+			{
+				_leagueDetail = null;
+			}
+		}
+		catch (Exception ex)
+		{
+			Logger.LogError(ex, "Failed to load league detail for {LeagueId}", _selectedLeague.LeagueId);
+			_leagueDetail = null;
+		}
+	}
+
+	private async Task LoadMembersAsync()
+	{
+		if (_selectedLeague is null)
+		{
+			_memberSummaries = [];
+			return;
+		}
+
+		try
+		{
+			var response = await LeaguesApi.GetLeagueMembersAsync(_selectedLeague.LeagueId);
+			if (response.IsSuccessStatusCode && response.Content is not null)
+			{
+				_memberSummaries = response.Content.ToList();
+			}
+			else
+			{
+				_memberSummaries = [];
+			}
+		}
+		catch (Exception ex)
+		{
+			Logger.LogError(ex, "Failed to load league members for {LeagueId}", _selectedLeague.LeagueId);
+			_memberSummaries = [];
+		}
+	}
+
+	private async Task LoadInvitesAsync()
+	{
+		if (_selectedLeague is null)
+		{
+			_inviteSummaries = [];
+			return;
+		}
+
+		try
+		{
+			var response = await LeaguesApi.GetInvitesAsync(_selectedLeague.LeagueId);
+			if (response.IsSuccessStatusCode && response.Content is not null)
+			{
+				_inviteSummaries = response.Content.ToList();
+			}
+			else
+			{
+				_inviteSummaries = [];
+			}
+		}
+		catch (Exception ex)
+		{
+			Logger.LogError(ex, "Failed to load invites for league {LeagueId}", _selectedLeague.LeagueId);
+			_inviteSummaries = [];
+		}
+	}
+
+	private async Task CreateInviteAsync()
+	{
+		if (_selectedLeague is null)
+		{
+			return;
+		}
+
+		_isSubmittingInvite = true;
+		try
+		{
+			var expiryUtc = new DateTimeOffset(DateTime.SpecifyKind(_inviteExpiryDate, DateTimeKind.Utc));
+			var response = await LeaguesApi.CreateInviteAsync(_selectedLeague.LeagueId, new CreateLeagueInviteRequest
+			{
+				ExpiresAtUtc = expiryUtc
+			});
+
+			if (response.IsSuccessStatusCode && response.Content is not null)
+			{
+				_createdInviteUrl = NavigationManager.ToAbsoluteUri(response.Content.InviteUrl).ToString();
+				await LoadInvitesAsync();
+				_message = "Invite created.";
+				_isError = false;
+			}
+			else
+			{
+				_message = "Failed to create invite.";
+				_isError = true;
+			}
+		}
+		catch (Exception ex)
+		{
+			Logger.LogError(ex, "Failed to create invite for league {LeagueId}", _selectedLeague.LeagueId);
+			_message = "Failed to create invite.";
+			_isError = true;
+		}
+		finally
+		{
+			_isSubmittingInvite = false;
+		}
+	}
+
+	private async Task PromoteMemberAsync(string memberUserId)
+	{
+		if (_selectedLeague is null || string.IsNullOrWhiteSpace(memberUserId))
+		{
+			return;
+		}
+
+		_isSubmittingPromote = true;
+		try
+		{
+			var response = await LeaguesApi.PromoteMemberToAdminAsync(_selectedLeague.LeagueId, memberUserId.Trim());
+			if (response.IsSuccessStatusCode)
+			{
+				_message = "Member promoted to admin.";
+				_isError = false;
+				await LoadMembersAsync();
+				await LoadLeaguesAsync();
+			}
+			else
+			{
+				_message = "Failed to promote member.";
+				_isError = true;
+			}
+		}
+		catch (Exception ex)
+		{
+			Logger.LogError(ex, "Failed to promote member in league {LeagueId}", _selectedLeague.LeagueId);
+			_message = "Failed to promote member.";
+			_isError = true;
+		}
+		finally
+		{
+			_isSubmittingPromote = false;
+		}
+	}
+
+	private async Task LeaveLeagueAsync(Guid leagueId)
+	{
+		try
+		{
+			var response = await LeaguesApi.LeaveLeagueAsync(leagueId);
+			if (response.IsSuccessStatusCode)
+			{
+				if (_selectedLeagueId == leagueId)
+				{
+					_selectedLeagueId = null;
+					_selectedLeague = null;
+					_leagueDetail = null;
+					_memberSummaries = [];
+					_inviteSummaries = [];
+				}
+
+				_message = "League left.";
+				_isError = false;
+				await LoadLeaguesAsync();
+			}
+			else
+			{
+				_message = "Failed to leave league.";
+				_isError = true;
+			}
+		}
+		catch (Exception ex)
+		{
+			Logger.LogError(ex, "Failed to leave league {LeagueId}", leagueId);
+			_message = "Failed to leave league.";
+			_isError = true;
+		}
+	}
+
+	private async Task CreateLeagueAsync()
+	{
+		_message = null;
+		_isError = false;
+
+		if (string.IsNullOrWhiteSpace(_name))
+		{
+			_message = "League name is required.";
+			_isError = true;
+			return;
+		}
+
+		_isSubmitting = true;
+
+		try
+		{
+			var request = new CreateLeagueRequest
+			{
+				Name = _name.Trim(),
+				Description = string.IsNullOrWhiteSpace(_description) ? null : _description.Trim()
+			};
+
+			var response = await LeaguesApi.CreateLeagueAsync(request);
+			if (response.IsSuccessStatusCode && response.Content is not null)
+			{
+				_name = string.Empty;
+				_description = null;
+				_message = "League created.";
+				_isError = false;
+				await LoadLeaguesAsync();
+			}
+			else
+			{
+				var errorContent = response.Error?.Content;
+				if (string.IsNullOrWhiteSpace(errorContent))
+				{
+					_message = $"Failed to create league (HTTP {(int)response.StatusCode}).";
+				}
+				else
+				{
+					_message = $"Failed to create league (HTTP {(int)response.StatusCode}): {errorContent[..Math.Min(200, errorContent.Length)]}";
+				}
+				_isError = true;
+			}
+		}
+		catch (Exception ex)
+		{
+			Logger.LogError(ex, "Failed to create league");
+			_message = "Failed to create league.";
+			_isError = true;
+		}
+		finally
+		{
+			_isSubmitting = false;
+		}
+	}
+
+	private void OpenLeagueDetail(Guid leagueId)
+	{
+		NavigationManager.NavigateTo($"/leagues/{leagueId}");
+	}
+}
