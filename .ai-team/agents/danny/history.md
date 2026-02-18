@@ -11,3 +11,4 @@
 - 2026-02-17 (Leagues design review): MVP invite links should be revocable + expiring token URLs validated server-side, with join idempotency and hashed token storage.
 - 2026-02-17 (Leagues design review): MVP supports both season containers and one-off events as scheduling primitives; standings/leaderboards are post-MVP.
 - Scribe merged Leagues design-review and backend-design decisions into canonical `.ai-team/decisions.md`; treat that file as the team-approved MVP contract baseline.
+- 2026-02-18 (#216/#224 sync): backend Leagues v1 governance endpoints (transfer ownership, demote admin, remove member) and new membership-history values are now canonicalized in `.ai-team/decisions.md`; API changes should preserve manager/governance-capable invariants and existing moderation/idempotency response semantics expected by integration gates.

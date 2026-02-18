@@ -21,4 +21,6 @@ public sealed record LeagueSeasonEventDto
 	public required string CreatedByUserId { get; init; }
 
 	public DateTimeOffset CreatedAtUtc { get; init; }
+
+	public Guid? LaunchedGameId { get; init; }
 }

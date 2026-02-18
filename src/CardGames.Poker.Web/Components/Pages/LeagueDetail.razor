@@ -80,10 +80,24 @@
 										<div class="fw-semibold">@(member.UserDisplayName ?? member.UserId)</div>
 										<div class="small text-muted">Role: @member.Role • Joined: @member.JoinedAtUtc.ToLocalTime().ToString("g")</div>
 									</div>
-									@if (CanPromote(member))
-									{
-										<button class="btn btn-sm btn-warning" @onclick="() => PromoteMemberAsync(member.UserId)" disabled="@_isSubmittingPromote">Promote</button>
-									}
+									<div class="d-flex gap-2 flex-wrap justify-content-end">
+										@if (CanPromote(member))
+										{
+											<button class="btn btn-sm btn-warning league-action-btn" @onclick="() => PromoteMemberAsync(member.UserId)" disabled="@(_isSubmittingPromote || IsActingOnMember(member.UserId))">Promote</button>
+										}
+										@if (CanDemote(member))
+										{
+											<button class="btn btn-sm btn-outline-warning league-action-btn" @onclick="() => DemoteMemberAsync(member.UserId)" disabled="@(_isSubmittingDemote || IsActingOnMember(member.UserId))">Demote</button>
+										}
+										@if (CanTransferOwnership(member))
+										{
+											<button class="btn btn-sm btn-outline-primary league-action-btn" @onclick="() => TransferOwnershipAsync(member.UserId)" disabled="@(_isSubmittingTransferOwnership || IsActingOnMember(member.UserId))">Transfer Owner</button>
+										}
+										@if (CanRemove(member))
+										{
+											<button class="btn btn-sm btn-outline-danger league-action-btn" @onclick="() => RemoveMemberAsync(member.UserId)" disabled="@(_isSubmittingRemove || IsActingOnMember(member.UserId))">Remove</button>
+										}
+									</div>
 								</li>
 							}
 						</ul>
@@ -113,7 +127,7 @@
 			<div class="cashier-panel-body d-flex flex-column gap-3">
 				<div class="cashier-section-header">
 					<h2 class="cashier-section-title">Invites</h2>
-					@if (IsAdmin)
+					@if (CanManageLeague)
 					{
 						<button class="btn btn-sm btn-primary league-action-btn" @onclick="OpenInviteModal">Create Invite</button>
 					}
@@ -130,10 +144,36 @@
 						{
 							<li class="list-group-item small d-flex justify-content-between align-items-center gap-2">
 								<div>Status: @invite.Status • Expires: @invite.ExpiresAtUtc.ToLocalTime().ToString("g")</div>
-								@if (IsAdmin && invite.Status == LeagueInviteStatus.Active)
+								@if (CanManageLeague && invite.Status == LeagueInviteStatus.Active)
 								{
 									<button class="btn btn-sm btn-outline-danger league-action-btn" @onclick="() => RevokeInviteAsync(invite.InviteId)" disabled="@_isSubmittingRevokeInvite">Revoke</button>
 								}
+							</li>
+						}
+					</ul>
+				}
+			</div>
+		</section>
+
+		<section class="cashier-panel">
+			<div class="cashier-panel-body d-flex flex-column gap-3">
+				<h2 class="cashier-section-title">Standings</h2>
+
+				@if (_standings.Count == 0)
+				{
+					<p class="mb-0 text-muted">No standings yet.</p>
+				}
+				else
+				{
+					<ul class="list-group">
+						@foreach (var standing in _standings)
+						{
+							<li class="list-group-item d-flex justify-content-between align-items-center gap-2">
+								<div>
+									<div class="fw-semibold">#@standing.Rank • @(standing.UserDisplayName ?? standing.UserId)</div>
+									<div class="small text-muted">Events: @standing.TotalEvents • Last place: @(standing.LastPlacement?.ToString() ?? "-")</div>
+								</div>
+								<div class="small text-muted text-end">Pts: @standing.TotalPoints • Chips Δ: @standing.TotalChipsDelta</div>
 							</li>
 						}
 					</ul>
@@ -168,7 +208,7 @@
 					<div>
 						<div class="cashier-section-header mb-2 league-seasons-header">
 							<h3 class="h6 mb-0">Seasons</h3>
-							@if (IsAdmin)
+							@if (CanManageLeague)
 							{
 								<button class="btn btn-sm btn-primary league-action-btn" @onclick="OpenSeasonModal">Create Season</button>
 							}
@@ -198,7 +238,7 @@
 						<div>
 							<div class="cashier-section-header mb-2">
 								<h3 class="h6 mb-0">Season Events</h3>
-								@if (IsAdmin)
+								@if (CanManageLeague)
 								{
 									<button class="btn btn-sm btn-primary league-action-btn" @onclick="OpenSeasonEventModal">Create Season Event</button>
 								}
@@ -213,8 +253,24 @@
 								<ul class="list-group">
 									@foreach (var seasonEvent in _seasonEvents)
 									{
-										<li class="list-group-item small">
-											@seasonEvent.Name • Seq: @(seasonEvent.SequenceNumber?.ToString() ?? "-") • Scheduled: @FormatDate(seasonEvent.ScheduledAtUtc) • Status: @seasonEvent.Status
+										<li class="list-group-item small d-flex justify-content-between align-items-center gap-2">
+											<div>
+												@seasonEvent.Name • Seq: @(seasonEvent.SequenceNumber?.ToString() ?? "-") • Scheduled: @FormatDate(seasonEvent.ScheduledAtUtc) • Status: @seasonEvent.Status
+											</div>
+											<div class="d-flex gap-2">
+												@if (CanManageLeague)
+												{
+													<button class="btn btn-sm btn-outline-success league-action-btn" @onclick="() => OpenRecordResultsModal(seasonEvent)">Record Results</button>
+												}
+												@if (seasonEvent.LaunchedGameId.HasValue)
+												{
+													<button class="btn btn-sm btn-outline-primary league-action-btn" @onclick="() => OpenTable(seasonEvent.LaunchedGameId.Value)">Open Table</button>
+												}
+												else if (CanManageLeague)
+												{
+													<button class="btn btn-sm btn-primary league-action-btn" @onclick="() => LaunchSeasonEventAsync(seasonEvent.EventId)" disabled="@(_launchingSeasonEventId == seasonEvent.EventId)">Launch Play</button>
+												}
+											</div>
 										</li>
 									}
 								</ul>
@@ -227,7 +283,7 @@
 					<div>
 						<div class="cashier-section-header mb-2 league-seasons-header">
 							<h3 class="h6 mb-0">One-off Events</h3>
-							@if (IsAdmin)
+							@if (CanManageLeague)
 							{
 								<button class="btn btn-sm btn-primary league-action-btn" @onclick="OpenOneOffModal">Create One-Off Event</button>
 							}
@@ -242,8 +298,20 @@
 							<ul class="list-group">
 								@foreach (var oneOff in _oneOffEvents)
 								{
-									<li class="list-group-item small">
-										@oneOff.Name • @oneOff.EventType • Scheduled: @oneOff.ScheduledAtUtc.ToLocalTime().ToString("g") • Status: @oneOff.Status
+									<li class="list-group-item small d-flex justify-content-between align-items-center gap-2">
+										<div>
+											@oneOff.Name • @oneOff.EventType • Scheduled: @oneOff.ScheduledAtUtc.ToLocalTime().ToString("g") • Status: @oneOff.Status
+										</div>
+										<div class="d-flex gap-2">
+											@if (oneOff.LaunchedGameId.HasValue)
+											{
+												<button class="btn btn-sm btn-outline-primary league-action-btn" @onclick="() => OpenTable(oneOff.LaunchedGameId.Value)">Open Table</button>
+											}
+											else if (CanManageLeague)
+											{
+												<button class="btn btn-sm btn-primary league-action-btn" @onclick="() => LaunchOneOffEventAsync(oneOff.EventId)" disabled="@(_launchingOneOffEventId == oneOff.EventId)">Launch Play</button>
+											}
+										</div>
 									</li>
 								}
 							</ul>
@@ -400,6 +468,61 @@
 	</div>
 }
 
+@if (_showRecordResultsModal)
+{
+	<div class="confirm-dialog-overlay" @onclick="CloseRecordResultsModal">
+		<div class="confirm-dialog league-form-modal season-event-modal" @onclick:stopPropagation>
+			<div class="confirm-dialog-header league-form-modal-header">
+				<h3 class="confirm-dialog-title mb-0">Record Results — @_recordingSeasonEventName</h3>
+				<button type="button" class="league-modal-close-btn" aria-label="Close" @onclick="CloseRecordResultsModal">
+					<i class="fa-solid fa-xmark" aria-hidden="true"></i>
+				</button>
+			</div>
+			<div class="confirm-dialog-body league-form-modal-body text-start">
+				@if (_resultDrafts.Count == 0)
+				{
+					<p class="mb-0 text-muted">No active members available for result entry.</p>
+				}
+				else
+				{
+					<ul class="list-group">
+						@for (var index = 0; index < _resultDrafts.Count; index++)
+						{
+							var draft = _resultDrafts[index];
+							<li class="list-group-item d-flex flex-column gap-2" @key="draft.MemberUserId">
+								<div class="d-flex justify-content-between align-items-center">
+									<div class="fw-semibold">@draft.MemberDisplayName</div>
+									<div class="form-check mb-0">
+										<input class="form-check-input" type="checkbox" id="result-include-@index" @bind="draft.Include" />
+										<label class="form-check-label small" for="result-include-@index">Include</label>
+									</div>
+								</div>
+								<div class="row g-2">
+									<div class="col-md-4">
+										<label class="form-label small">Placement</label>
+										<InputNumber class="form-control league-modal-input" @bind-Value="draft.Placement" disabled="@(!draft.Include)" />
+									</div>
+									<div class="col-md-4">
+										<label class="form-label small">Points</label>
+										<InputNumber class="form-control league-modal-input" @bind-Value="draft.Points" disabled="@(!draft.Include)" />
+									</div>
+									<div class="col-md-4">
+										<label class="form-label small">Chips Δ</label>
+										<InputNumber class="form-control league-modal-input" @bind-Value="draft.ChipsDelta" disabled="@(!draft.Include)" />
+									</div>
+								</div>
+							</li>
+						}
+					</ul>
+				}
+				<div class="league-form-modal-actions mt-3">
+					<button class="btn btn-sm btn-primary league-action-btn" @onclick="SubmitSeasonEventResultsAsync" disabled="@_isSubmittingResults">Save Results</button>
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
 @code {
 	[Parameter]
 	public Guid LeagueId { get; set; }
@@ -417,6 +540,10 @@
 	private bool _isSubmittingInvite;
 	private bool _isSubmittingRevokeInvite;
 	private bool _isSubmittingPromote;
+	private bool _isSubmittingDemote;
+	private bool _isSubmittingTransferOwnership;
+	private bool _isSubmittingRemove;
+	private string? _actingMemberUserId;
 	private string? _createdInviteUrl;
 	private bool _isInviteUrlCopied;
 	private int _inviteCopyFeedbackVersion;
@@ -426,6 +553,7 @@
 	private Guid? _selectedSeasonId;
 	private List<LeagueSeasonEventDto> _seasonEvents = [];
 	private List<LeagueOneOffEventDto> _oneOffEvents = [];
+	private List<LeagueStandingEntryDto> _standings = [];
 
 	private string _seasonName = string.Empty;
 	private int? _seasonPlannedEventCount;
@@ -447,6 +575,13 @@
 	private string? _oneOffNotes;
 	private bool _isSubmittingOneOff;
 	private bool _showOneOffModal;
+	private Guid? _launchingSeasonEventId;
+	private Guid? _launchingOneOffEventId;
+	private bool _showRecordResultsModal;
+	private bool _isSubmittingResults;
+	private Guid? _recordingSeasonEventId;
+	private string _recordingSeasonEventName = string.Empty;
+	private List<SeasonEventResultDraft> _resultDrafts = [];
 
 	private ScheduleTab _activeScheduleTab = ScheduleTab.Seasons;
 
@@ -456,7 +591,23 @@
 		OneOffEvents
 	}
 
-	private bool IsAdmin => _leagueDetail?.MyRole == LeagueRole.Admin;
+	private sealed class SeasonEventResultDraft
+	{
+		public required string MemberUserId { get; init; }
+
+		public required string MemberDisplayName { get; init; }
+
+		public bool Include { get; set; } = true;
+
+		public int Placement { get; set; }
+
+		public int Points { get; set; }
+
+		public int ChipsDelta { get; set; }
+	}
+
+	private bool IsManager => _leagueDetail?.MyRole == LeagueRole.Manager;
+	private bool CanManageLeague => _leagueDetail?.MyRole == LeagueRole.Admin || _leagueDetail?.MyRole == LeagueRole.Manager;
 
 	protected override async Task OnParametersSetAsync()
 	{
@@ -475,6 +626,7 @@
 			await LoadMembersAsync();
 			await LoadMembershipHistoryAsync();
 			await LoadInvitesAsync();
+			await LoadStandingsAsync();
 			await LoadSeasonsAsync();
 			await LoadOneOffEventsAsync();
 
@@ -541,6 +693,12 @@
 	{
 		var response = await LeaguesApi.GetOneOffEventsAsync(LeagueId);
 		_oneOffEvents = response.IsSuccessStatusCode && response.Content is not null ? response.Content.ToList() : [];
+	}
+
+	private async Task LoadStandingsAsync()
+	{
+		var response = await LeaguesApi.GetLeagueStandingsAsync(LeagueId);
+		_standings = response.IsSuccessStatusCode && response.Content is not null ? response.Content.ToList() : [];
 	}
 
 	private async Task SelectSeasonAsync(Guid seasonId)
@@ -665,11 +823,32 @@
 
 	private bool CanPromote(LeagueMemberDto member)
 	{
-		return IsAdmin && member.IsActive && member.Role != LeagueRole.Admin;
+		return CanManageLeague && member.IsActive && member.Role == LeagueRole.Member;
+	}
+
+	private bool CanDemote(LeagueMemberDto member)
+	{
+		return CanManageLeague && member.IsActive && member.Role == LeagueRole.Admin;
+	}
+
+	private bool CanTransferOwnership(LeagueMemberDto member)
+	{
+		return IsManager && member.IsActive && member.Role != LeagueRole.Manager;
+	}
+
+	private bool CanRemove(LeagueMemberDto member)
+	{
+		return CanManageLeague && member.IsActive;
+	}
+
+	private bool IsActingOnMember(string memberUserId)
+	{
+		return string.Equals(_actingMemberUserId, memberUserId, StringComparison.Ordinal);
 	}
 
 	private async Task PromoteMemberAsync(string memberUserId)
 	{
+		_actingMemberUserId = memberUserId;
 		_isSubmittingPromote = true;
 		try
 		{
@@ -679,6 +858,7 @@
 				_message = "Member promoted to admin.";
 				_isError = false;
 				await LoadMembersAsync();
+				await LoadMembershipHistoryAsync();
 				await LoadDetailAsync();
 			}
 			else
@@ -696,6 +876,109 @@
 		finally
 		{
 			_isSubmittingPromote = false;
+			_actingMemberUserId = null;
+		}
+	}
+
+	private async Task DemoteMemberAsync(string memberUserId)
+	{
+		_actingMemberUserId = memberUserId;
+		_isSubmittingDemote = true;
+		try
+		{
+			var response = await LeaguesApi.DemoteAdminToMemberAsync(LeagueId, memberUserId);
+			if (response.IsSuccessStatusCode)
+			{
+				_message = "Admin demoted to member.";
+				_isError = false;
+				await LoadMembersAsync();
+				await LoadMembershipHistoryAsync();
+				await LoadDetailAsync();
+			}
+			else
+			{
+				_message = "Failed to demote admin.";
+				_isError = true;
+			}
+		}
+		catch (Exception ex)
+		{
+			Logger.LogError(ex, "Failed to demote admin for league {LeagueId}", LeagueId);
+			_message = "Failed to demote admin.";
+			_isError = true;
+		}
+		finally
+		{
+			_isSubmittingDemote = false;
+			_actingMemberUserId = null;
+		}
+	}
+
+	private async Task TransferOwnershipAsync(string memberUserId)
+	{
+		_actingMemberUserId = memberUserId;
+		_isSubmittingTransferOwnership = true;
+		try
+		{
+			var response = await LeaguesApi.TransferOwnershipAsync(LeagueId, memberUserId);
+			if (response.IsSuccessStatusCode)
+			{
+				_message = "Ownership transferred.";
+				_isError = false;
+				await LoadMembersAsync();
+				await LoadMembershipHistoryAsync();
+				await LoadDetailAsync();
+			}
+			else
+			{
+				_message = "Failed to transfer ownership.";
+				_isError = true;
+			}
+		}
+		catch (Exception ex)
+		{
+			Logger.LogError(ex, "Failed to transfer ownership for league {LeagueId}", LeagueId);
+			_message = "Failed to transfer ownership.";
+			_isError = true;
+		}
+		finally
+		{
+			_isSubmittingTransferOwnership = false;
+			_actingMemberUserId = null;
+		}
+	}
+
+	private async Task RemoveMemberAsync(string memberUserId)
+	{
+		_actingMemberUserId = memberUserId;
+		_isSubmittingRemove = true;
+		try
+		{
+			var response = await LeaguesApi.RemoveMemberAsync(LeagueId, memberUserId);
+			if (response.IsSuccessStatusCode)
+			{
+				_message = "Member removed from league.";
+				_isError = false;
+				await LoadMembersAsync();
+				await LoadMembershipHistoryAsync();
+				await LoadDetailAsync();
+			}
+			else
+			{
+				_message = "Failed to remove member.";
+				_isError = true;
+			}
+		}
+		catch (Exception ex)
+		{
+			Logger.LogError(ex, "Failed to remove member for league {LeagueId}", LeagueId);
+			_message = "Failed to remove member.";
+			_isError = true;
+		}
+		finally
+		{
+			_isSubmittingRemove = false;
+			_actingMemberUserId = null;
 		}
 	}
 
@@ -901,6 +1184,111 @@
 		_showOneOffModal = false;
 	}
 
+	private void OpenRecordResultsModal(LeagueSeasonEventDto seasonEvent)
+	{
+		if (!_selectedSeasonId.HasValue)
+		{
+			return;
+		}
+
+		_recordingSeasonEventId = seasonEvent.EventId;
+		_recordingSeasonEventName = seasonEvent.Name;
+		var activeMembers = _members
+			.Where(x => x.IsActive)
+			.OrderBy(x => x.Role)
+			.ThenBy(x => x.UserDisplayName ?? x.UserId)
+			.ToList();
+
+		_resultDrafts = [];
+		for (var index = 0; index < activeMembers.Count; index++)
+		{
+			var member = activeMembers[index];
+			_resultDrafts.Add(new SeasonEventResultDraft
+			{
+				MemberUserId = member.UserId,
+				MemberDisplayName = member.UserDisplayName ?? member.UserId,
+				Placement = index + 1,
+				Points = 0,
+				ChipsDelta = 0
+			});
+		}
+
+		_showRecordResultsModal = true;
+	}
+
+	private void CloseRecordResultsModal()
+	{
+		if (_isSubmittingResults)
+		{
+			return;
+		}
+
+		_showRecordResultsModal = false;
+		_recordingSeasonEventId = null;
+		_recordingSeasonEventName = string.Empty;
+		_resultDrafts = [];
+	}
+
+	private async Task SubmitSeasonEventResultsAsync()
+	{
+		if (!_selectedSeasonId.HasValue || !_recordingSeasonEventId.HasValue)
+		{
+			_message = "Select a season event first.";
+			_isError = true;
+			return;
+		}
+
+		var includedResults = _resultDrafts
+			.Where(x => x.Include)
+			.Select(x => new LeagueSeasonEventResultEntryRequest
+			{
+				MemberUserId = x.MemberUserId,
+				Placement = x.Placement,
+				Points = x.Points,
+				ChipsDelta = x.ChipsDelta
+			})
+			.ToList();
+
+		if (includedResults.Count == 0)
+		{
+			_message = "Include at least one member result.";
+			_isError = true;
+			return;
+		}
+
+		_isSubmittingResults = true;
+		try
+		{
+			var response = await LeaguesApi.IngestSeasonEventResultsAsync(LeagueId, _selectedSeasonId.Value, _recordingSeasonEventId.Value, new IngestLeagueSeasonEventResultsRequest
+			{
+				Results = includedResults
+			});
+
+			if (response.IsSuccessStatusCode)
+			{
+				_message = "Season event results recorded.";
+				_isError = false;
+				CloseRecordResultsModal();
+				await LoadSeasonEventsAsync(_selectedSeasonId.Value);
+				await LoadStandingsAsync();
+				return;
+			}
+
+			_message = "Failed to record season event results.";
+			_isError = true;
+		}
+		catch (Exception ex)
+		{
+			Logger.LogError(ex, "Failed to record season event results for league {LeagueId}", LeagueId);
+			_message = "Failed to record season event results.";
+			_isError = true;
+		}
+		finally
+		{
+			_isSubmittingResults = false;
+		}
+	}
+
 	private static string FormatDate(DateTimeOffset? value)
 	{
 		return value.HasValue ? value.Value.ToLocalTime().ToString("g") : "-";
@@ -914,6 +1302,86 @@
 			.FirstOrDefault();
 
 		return descriptionAttribute?.Description ?? eventType.ToString();
+	}
+
+	private async Task LaunchSeasonEventAsync(Guid eventId)
+	{
+		if (!_selectedSeasonId.HasValue)
+		{
+			_message = "Select a season first.";
+			_isError = true;
+			return;
+		}
+
+		_launchingSeasonEventId = eventId;
+		try
+		{
+			var response = await LeaguesApi.LaunchSeasonEventSessionAsync(LeagueId, _selectedSeasonId.Value, eventId, new LaunchLeagueEventSessionRequest
+			{
+				GameCode = "FIVECARDDRAW",
+				Ante = 10,
+				MinBet = 20,
+				HostStartingChips = 100
+			});
+
+			if (response.IsSuccessStatusCode && response.Content is not null)
+			{
+				NavigationManager.NavigateTo(response.Content.TablePath);
+				return;
+			}
+
+			_message = "Failed to launch table from season event.";
+			_isError = true;
+		}
+		catch (Exception ex)
+		{
+			Logger.LogError(ex, "Failed to launch table from season event {EventId} in league {LeagueId}", eventId, LeagueId);
+			_message = "Failed to launch table from season event.";
+			_isError = true;
+		}
+		finally
+		{
+			_launchingSeasonEventId = null;
+		}
+	}
+
+	private async Task LaunchOneOffEventAsync(Guid eventId)
+	{
+		_launchingOneOffEventId = eventId;
+		try
+		{
+			var response = await LeaguesApi.LaunchOneOffEventSessionAsync(LeagueId, eventId, new LaunchLeagueEventSessionRequest
+			{
+				GameCode = "FIVECARDDRAW",
+				Ante = 10,
+				MinBet = 20,
+				HostStartingChips = 100
+			});
+
+			if (response.IsSuccessStatusCode && response.Content is not null)
+			{
+				NavigationManager.NavigateTo(response.Content.TablePath);
+				return;
+			}
+
+			_message = "Failed to launch table from one-off event.";
+			_isError = true;
+		}
+		catch (Exception ex)
+		{
+			Logger.LogError(ex, "Failed to launch table from one-off event {EventId} in league {LeagueId}", eventId, LeagueId);
+			_message = "Failed to launch table from one-off event.";
+			_isError = true;
+		}
+		finally
+		{
+			_launchingOneOffEventId = null;
+		}
+	}
+
+	private void OpenTable(Guid gameId)
+	{
+		NavigationManager.NavigateTo($"/table/{gameId}");
 	}
 
 }

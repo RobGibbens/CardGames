@@ -55,6 +55,56 @@
 		</section>
 
 		<section class="cashier-panel">
+			<div class="cashier-panel-body auth-form d-flex flex-column gap-3">
+				<h2 class="cashier-section-title">Join League</h2>
+				<p class="mb-0 text-muted small">Enter a league code to preview trust details before submitting your request.</p>
+
+				<div class="form-floating" data-label="League Code">
+					<InputText id="league-code" class="form-control" @bind-Value="_joinCode" maxlength="128" placeholder="League Code" disabled="@_isPreviewLoading" />
+				</div>
+
+				<div class="d-flex flex-wrap gap-2">
+					<button class="btn btn-sm btn-outline-primary" @onclick="LoadJoinPreviewAsync" disabled="@_isPreviewLoading">
+						@if (_isPreviewLoading)
+						{
+							<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+						}
+						Preview
+					</button>
+					@if (_joinPreview is not null)
+					{
+						<button class="btn btn-sm btn-primary" @onclick="SubmitJoinByCodeAsync" disabled="@_isJoinSubmitting">
+							@if (_isJoinSubmitting)
+							{
+								<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+							}
+							Submit Request
+						</button>
+					}
+				</div>
+
+				@if (!string.IsNullOrWhiteSpace(_joinMessage))
+				{
+					<div class="alert @(_isJoinError ? "alert-warning" : "alert-success") mb-0" role="alert">@_joinMessage</div>
+				}
+
+				@if (_joinPreview is not null)
+				{
+					<div class="border rounded p-3 d-flex flex-column gap-1">
+						<div class="fw-semibold">@_joinPreview.LeagueName</div>
+						@if (!string.IsNullOrWhiteSpace(_joinPreview.LeagueDescription))
+						{
+							<div class="small text-muted">@_joinPreview.LeagueDescription</div>
+						}
+						<div class="small text-muted">Manager: @_joinPreview.ManagerDisplayName</div>
+						<div class="small text-muted">Active members: @_joinPreview.ActiveMemberCount</div>
+						<div class="small text-muted">Join policy: @_joinPreview.JoinPolicy</div>
+					</div>
+				}
+			</div>
+		</section>
+
+		<section class="cashier-panel">
 			<div class="cashier-panel-body d-flex flex-column gap-3">
 				<div class="cashier-section-header">
 					<h2 class="cashier-section-title">My Leagues</h2>
@@ -200,6 +250,12 @@
 	private string? _createdInviteUrl;
 	private List<LeagueMemberDto> _memberSummaries = [];
 	private List<LeagueInviteSummaryDto> _inviteSummaries = [];
+	private string _joinCode = string.Empty;
+	private LeagueJoinPreviewDto? _joinPreview;
+	private bool _isPreviewLoading;
+	private bool _isJoinSubmitting;
+	private bool _isJoinError;
+	private string? _joinMessage;
 
 	protected override async Task OnInitializedAsync()
 	{
@@ -505,5 +561,111 @@
 	private void OpenLeagueDetail(Guid leagueId)
 	{
 		NavigationManager.NavigateTo($"/leagues/{leagueId}");
+	}
+
+	private async Task LoadJoinPreviewAsync()
+	{
+		_joinMessage = null;
+		_isJoinError = false;
+		_joinPreview = null;
+
+		var token = _joinCode.Trim();
+		if (string.IsNullOrWhiteSpace(token))
+		{
+			_joinMessage = "Enter a league code to continue.";
+			_isJoinError = true;
+			return;
+		}
+
+		_isPreviewLoading = true;
+		try
+		{
+			var response = await LeaguesApi.GetJoinPreviewAsync(token);
+			if (response.IsSuccessStatusCode && response.Content is not null)
+			{
+				_joinPreview = response.Content;
+				_joinCode = token;
+			}
+			else
+			{
+				_joinMessage = GetJoinErrorMessage(response.Error?.Content, "That code is invalid or expired. Ask the league admin for a new code.");
+				_isJoinError = true;
+			}
+		}
+		catch (Exception ex)
+		{
+			Logger.LogError(ex, "Failed to load league join preview for code flow.");
+			_joinMessage = "Unable to preview this league right now.";
+			_isJoinError = true;
+		}
+		finally
+		{
+			_isPreviewLoading = false;
+		}
+	}
+
+	private async Task SubmitJoinByCodeAsync()
+	{
+		_joinMessage = null;
+		_isJoinError = false;
+
+		var token = _joinCode.Trim();
+		if (_joinPreview is null || string.IsNullOrWhiteSpace(token))
+		{
+			_joinMessage = "Preview a valid code before submitting your request.";
+			_isJoinError = true;
+			return;
+		}
+
+		_isJoinSubmitting = true;
+		try
+		{
+			var response = await LeaguesApi.JoinLeagueAsync(new JoinLeagueRequest
+			{
+				Token = token
+			});
+
+			if (response.IsSuccessStatusCode && response.Content is not null)
+			{
+				var leagueId = response.Content.LeagueId;
+				if (response.Content.AlreadyMember)
+				{
+					_joinMessage = "You are already a member of this league.";
+				}
+				else
+				{
+					_joinMessage = "Join request accepted.";
+				}
+
+				NavigationManager.NavigateTo($"/leagues/{leagueId}");
+			}
+			else
+			{
+				_joinMessage = GetJoinErrorMessage(response.Error?.Content, "Unable to submit your request with this code.");
+				_isJoinError = true;
+			}
+		}
+		catch (Exception ex)
+		{
+			Logger.LogError(ex, "Failed to submit league join request from code flow.");
+			_joinMessage = "Unable to submit your request right now.";
+			_isJoinError = true;
+		}
+		finally
+		{
+			_isJoinSubmitting = false;
+		}
+	}
+
+	private static string GetJoinErrorMessage(string? errorContent, string fallback)
+	{
+		if (string.IsNullOrWhiteSpace(errorContent))
+		{
+			return fallback;
+		}
+
+		return errorContent.Length > 200
+			? errorContent[..200]
+			: errorContent;
 	}
 }

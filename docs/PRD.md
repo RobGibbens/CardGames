@@ -3,6 +3,8 @@
 ## 1. Overview
 Build a web-first Poker product where users can register, authenticate, create/join tables, invite other players, start games, and play hands in real time. The platform must support a wide variety of poker styles by modeling rules and game flow as a configurable/extendable “game definition,” not a single hard-coded variant.
 
+Leagues are a core experience track for private clubs, scheduling, and standings; see [docs/PRD_LEAGUES_ADDENDUM.md](PRD_LEAGUES_ADDENDUM.md).
+
 ## 2. Goals
 - Enable a user to register and join a game quickly.
 - Provide reliable real-time gameplay with an authoritative server.
@@ -201,6 +203,9 @@ A “game definition” should describe:
 - Real-time play with authoritative server.
 - Reconnect support.
 - Basic hand history.
+
+**Leagues (Core Experience Track)**
+- See [docs/PRD_LEAGUES_ADDENDUM.md](PRD_LEAGUES_ADDENDUM.md) for the leagues roadmap (join-by-code, governance, league events → play, results, standings).
 
 **Phase 2**
 - Add variants (Omaha/Stud/Draw).

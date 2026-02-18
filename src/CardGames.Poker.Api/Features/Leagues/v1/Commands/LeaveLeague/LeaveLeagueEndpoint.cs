@@ -17,6 +17,7 @@ public static class LeaveLeagueEndpoint
 						error => error.Code switch
 						{
 							LeaveLeagueErrorCode.Unauthorized => Results.Unauthorized(),
+							LeaveLeagueErrorCode.Conflict => Results.Conflict(new { error.Message }),
 							_ => Results.Problem(error.Message)
 						});
 				})
@@ -25,6 +26,7 @@ public static class LeaveLeagueEndpoint
 			.WithDescription("Leaves the league for the current user. If not active member, returns no-op success.")
 			.Produces<LeaveLeagueResponse>(StatusCodes.Status200OK)
 			.Produces(StatusCodes.Status401Unauthorized)
+			.ProducesProblem(StatusCodes.Status409Conflict)
 			.RequireAuthorization();
 
 		return group;

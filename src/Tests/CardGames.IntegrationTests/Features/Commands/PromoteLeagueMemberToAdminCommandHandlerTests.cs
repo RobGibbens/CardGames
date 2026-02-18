@@ -2,8 +2,6 @@ using CardGames.IntegrationTests.Infrastructure;
 using CardGames.IntegrationTests.Infrastructure.Fakes;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeague;
-using CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueInvite;
-using CardGames.Poker.Api.Features.Leagues.v1.Commands.JoinLeague;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.PromoteLeagueMemberToAdmin;
 using CardGames.Poker.Api.Infrastructure;
 using Microsoft.EntityFrameworkCore;
@@ -26,15 +24,19 @@ public class PromoteLeagueMemberToAdminCommandHandlerTests : IntegrationTestBase
 		}));
 
 		var leagueId = createLeague.AsT0.LeagueId;
-		var createInvite = await Mediator.Send(new CreateLeagueInviteCommand(leagueId, new CardGames.Poker.Api.Contracts.CreateLeagueInviteRequest
+
+		DbContext.LeagueMembersCurrent.Add(new LeagueMemberCurrent
 		{
-			ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(2)
-		}));
+			LeagueId = leagueId,
+			UserId = "league-member",
+			Role = LeagueRole.Member,
+			IsActive = true,
+			JoinedAtUtc = DateTimeOffset.UtcNow,
+			LeftAtUtc = null,
+			UpdatedAtUtc = DateTimeOffset.UtcNow
+		});
 
-		var token = createInvite.AsT0.InviteUrl.Split('/').Last();
-
-		fakeCurrentUser.UserId = "league-member";
-		await Mediator.Send(new JoinLeagueCommand(new CardGames.Poker.Api.Contracts.JoinLeagueRequest { Token = token }));
+		await DbContext.SaveChangesAsync();
 
 		fakeCurrentUser.UserId = "league-admin";
 		var promoteResult = await Mediator.Send(new PromoteLeagueMemberToAdminCommand(leagueId, "league-member"));

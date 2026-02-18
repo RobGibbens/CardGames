@@ -9,7 +9,8 @@ public sealed record LeaveLeagueCommand(Guid LeagueId)
 
 public enum LeaveLeagueErrorCode
 {
-	Unauthorized
+	Unauthorized,
+	Conflict
 }
 
 public sealed record LeaveLeagueError(LeaveLeagueErrorCode Code, string Message);

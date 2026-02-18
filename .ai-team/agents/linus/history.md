@@ -18,3 +18,4 @@
 - Kept league UX server-authoritative for permissions and state (role badges, admin-only actions, invite validity, membership activity) to avoid client-side policy drift.
 - Preserved architecture boundaries by treating Leagues as account-scoped social coordination UI and explicitly excluding game-rule controls and leaderboard/scoring complexity from MVP screens.
 - Leagues UX-aligned decisions are now consolidated in canonical `.ai-team/decisions.md`, including server-driven role gating and invite lifecycle expectations used by UI flows.
+- 2026-02-18 (#216/#224 sync): Leagues governance operations and quality-gate semantics are now canonicalized; UI/admin affordances should align with manager/admin invariants and keep moderation action expectations consistent with API integration test journeys.

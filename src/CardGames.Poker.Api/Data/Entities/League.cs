@@ -3,7 +3,8 @@ namespace CardGames.Poker.Api.Data.Entities;
 public enum LeagueRole
 {
 	Member = 1,
-	Admin = 2
+	Admin = 2,
+	Manager = 3
 }
 
 public enum LeagueMembershipEventType
@@ -17,6 +18,14 @@ public enum LeagueInviteStatus
 {
 	Active = 1,
 	Revoked = 2
+}
+
+public enum LeagueJoinRequestStatus
+{
+	Pending = 1,
+	Approved = 2,
+	Denied = 3,
+	Expired = 4
 }
 
 public enum LeagueSeasonStatus
@@ -64,11 +73,17 @@ public sealed class League : EntityWithRowVersion
 
 	public ICollection<LeagueInvite> Invites { get; set; } = [];
 
+	public ICollection<LeagueJoinRequest> JoinRequests { get; set; } = [];
+
 	public ICollection<LeagueSeason> Seasons { get; set; } = [];
 
 	public ICollection<LeagueSeasonEvent> SeasonEvents { get; set; } = [];
 
 	public ICollection<LeagueOneOffEvent> OneOffEvents { get; set; } = [];
+
+	public ICollection<LeagueSeasonEventResult> SeasonEventResults { get; set; } = [];
+
+	public ICollection<LeagueStandingCurrent> Standings { get; set; } = [];
 }
 
 public sealed class LeagueMemberCurrent : EntityWithRowVersion
@@ -137,6 +152,12 @@ public sealed class LeagueSeasonEvent : EntityWithRowVersion
 
 	public DateTimeOffset CreatedAtUtc { get; set; }
 
+	public Guid? LaunchedGameId { get; set; }
+
+	public string? LaunchedByUserId { get; set; }
+
+	public DateTimeOffset? LaunchedAtUtc { get; set; }
+
 	public League League { get; set; } = null!;
 
 	public LeagueSeason Season { get; set; } = null!;
@@ -161,6 +182,12 @@ public sealed class LeagueOneOffEvent : EntityWithRowVersion
 	public required string CreatedByUserId { get; set; }
 
 	public DateTimeOffset CreatedAtUtc { get; set; }
+
+	public Guid? LaunchedGameId { get; set; }
+
+	public string? LaunchedByUserId { get; set; }
+
+	public DateTimeOffset? LaunchedAtUtc { get; set; }
 
 	public League League { get; set; } = null!;
 }
@@ -201,6 +228,83 @@ public sealed class LeagueInvite : EntityWithRowVersion
 	public DateTimeOffset? RevokedAtUtc { get; set; }
 
 	public string? RevokedByUserId { get; set; }
+
+	public League League { get; set; } = null!;
+}
+
+public sealed class LeagueJoinRequest : EntityWithRowVersion
+{
+	public Guid Id { get; set; } = Guid.CreateVersion7();
+
+	public Guid LeagueId { get; set; }
+
+	public Guid InviteId { get; set; }
+
+	public required string RequesterUserId { get; set; }
+
+	public LeagueJoinRequestStatus Status { get; set; }
+
+	public DateTimeOffset CreatedAtUtc { get; set; }
+
+	public DateTimeOffset UpdatedAtUtc { get; set; }
+
+	public DateTimeOffset ExpiresAtUtc { get; set; }
+
+	public DateTimeOffset? ResolvedAtUtc { get; set; }
+
+	public string? ResolvedByUserId { get; set; }
+
+	public string? ResolutionReason { get; set; }
+
+	public League League { get; set; } = null!;
+
+	public LeagueInvite Invite { get; set; } = null!;
+}
+
+public sealed class LeagueSeasonEventResult : EntityWithRowVersion
+{
+	public Guid LeagueId { get; set; }
+
+	public Guid LeagueSeasonId { get; set; }
+
+	public Guid LeagueSeasonEventId { get; set; }
+
+	public required string UserId { get; set; }
+
+	public int Placement { get; set; }
+
+	public int Points { get; set; }
+
+	public int ChipsDelta { get; set; }
+
+	public required string RecordedByUserId { get; set; }
+
+	public DateTimeOffset RecordedAtUtc { get; set; }
+
+	public League League { get; set; } = null!;
+
+	public LeagueSeason Season { get; set; } = null!;
+
+	public LeagueSeasonEvent SeasonEvent { get; set; } = null!;
+}
+
+public sealed class LeagueStandingCurrent : EntityWithRowVersion
+{
+	public Guid LeagueId { get; set; }
+
+	public required string UserId { get; set; }
+
+	public int TotalEvents { get; set; }
+
+	public int TotalPoints { get; set; }
+
+	public int TotalChipsDelta { get; set; }
+
+	public int? LastPlacement { get; set; }
+
+	public DateTimeOffset? LastEventRecordedAtUtc { get; set; }
+
+	public DateTimeOffset UpdatedAtUtc { get; set; }
 
 	public League League { get; set; } = null!;
 }

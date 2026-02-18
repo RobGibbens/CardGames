@@ -10,7 +10,9 @@ public sealed record JoinLeagueCommand(JoinLeagueRequest Request)
 public enum JoinLeagueErrorCode
 {
 	Unauthorized,
-	InvalidInvite
+	InvalidInvite,
+	InviteRevoked,
+	InviteExpired
 }
 
 public sealed record JoinLeagueError(JoinLeagueErrorCode Code, string Message);

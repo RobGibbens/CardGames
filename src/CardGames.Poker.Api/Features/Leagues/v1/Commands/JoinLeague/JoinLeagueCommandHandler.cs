@@ -5,6 +5,7 @@ using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Infrastructure;
 using MediatR;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
 
@@ -33,9 +34,24 @@ public sealed class JoinLeagueCommandHandler(
 		var invite = await context.LeagueInvites
 			.FirstOrDefaultAsync(x => x.TokenHash == tokenHash, cancellationToken);
 
-		if (invite is null || invite.Status != Data.Entities.LeagueInviteStatus.Active || invite.ExpiresAtUtc <= now)
+		if (invite is null)
 		{
-			return new JoinLeagueError(JoinLeagueErrorCode.InvalidInvite, "Invite is invalid, revoked, or expired.");
+			return new JoinLeagueError(JoinLeagueErrorCode.InvalidInvite, "Invite token is invalid.");
+		}
+
+		if (invite.Status == Data.Entities.LeagueInviteStatus.Revoked)
+		{
+			return new JoinLeagueError(JoinLeagueErrorCode.InviteRevoked, "Invite has been revoked.");
+		}
+
+		if (invite.ExpiresAtUtc <= now)
+		{
+			return new JoinLeagueError(JoinLeagueErrorCode.InviteExpired, "Invite has expired.");
+		}
+
+		if (invite.Status != Data.Entities.LeagueInviteStatus.Active)
+		{
+			return new JoinLeagueError(JoinLeagueErrorCode.InvalidInvite, "Invite token is invalid.");
 		}
 
 		var membership = await context.LeagueMembersCurrent
@@ -46,49 +62,84 @@ public sealed class JoinLeagueCommandHandler(
 			return new JoinLeagueResponse
 			{
 				LeagueId = invite.LeagueId,
+				JoinRequestId = null,
+				JoinRequestStatus = Contracts.LeagueJoinRequestStatus.Approved,
+				RequestSubmitted = false,
 				Joined = false,
 				AlreadyMember = true
 			};
 		}
 
-		if (membership is null)
+		var existingPendingRequest = await context.LeagueJoinRequests
+			.FirstOrDefaultAsync(x =>
+				x.LeagueId == invite.LeagueId &&
+				x.RequesterUserId == currentUserService.UserId &&
+				x.Status == Data.Entities.LeagueJoinRequestStatus.Pending,
+				cancellationToken);
+
+		if (existingPendingRequest is not null && existingPendingRequest.ExpiresAtUtc <= now)
 		{
-			membership = new LeagueMemberCurrent
+			existingPendingRequest.Status = Data.Entities.LeagueJoinRequestStatus.Expired;
+			existingPendingRequest.UpdatedAtUtc = now;
+			existingPendingRequest.ResolvedAtUtc = now;
+			existingPendingRequest.ResolvedByUserId = null;
+			existingPendingRequest.ResolutionReason = "Join request expired before moderation.";
+			existingPendingRequest = null;
+		}
+
+		if (existingPendingRequest is null)
+		{
+			existingPendingRequest = new LeagueJoinRequest
 			{
+				Id = Guid.CreateVersion7(),
 				LeagueId = invite.LeagueId,
-				UserId = currentUserService.UserId,
-				Role = Data.Entities.LeagueRole.Member,
-				IsActive = true,
-				JoinedAtUtc = now,
-				LeftAtUtc = null,
-				UpdatedAtUtc = now
+				InviteId = invite.Id,
+				RequesterUserId = currentUserService.UserId,
+				Status = Data.Entities.LeagueJoinRequestStatus.Pending,
+				CreatedAtUtc = now,
+				UpdatedAtUtc = now,
+				ExpiresAtUtc = invite.ExpiresAtUtc,
+				ResolvedAtUtc = null,
+				ResolvedByUserId = null,
+				ResolutionReason = null
 			};
 
-			context.LeagueMembersCurrent.Add(membership);
+			context.LeagueJoinRequests.Add(existingPendingRequest);
 		}
 		else
 		{
-			membership.IsActive = true;
-			membership.LeftAtUtc = null;
-			membership.UpdatedAtUtc = now;
+			existingPendingRequest.InviteId = invite.Id;
+			existingPendingRequest.ExpiresAtUtc = invite.ExpiresAtUtc;
+			existingPendingRequest.UpdatedAtUtc = now;
 		}
 
-		context.LeagueMembershipEvents.Add(new LeagueMembershipEvent
+		try
 		{
-			Id = Guid.CreateVersion7(),
-			LeagueId = invite.LeagueId,
-			UserId = currentUserService.UserId,
-			ActorUserId = currentUserService.UserId,
-			EventType = LeagueMembershipEventType.MemberJoined,
-			OccurredAtUtc = now
-		});
+			await context.SaveChangesAsync(cancellationToken);
+		}
+		catch (DbUpdateException ex) when (ex.InnerException is SqlException sqlException && (sqlException.Number == 2601 || sqlException.Number == 2627))
+		{
+			existingPendingRequest = await context.LeagueJoinRequests
+				.AsNoTracking()
+				.FirstOrDefaultAsync(x =>
+					x.LeagueId == invite.LeagueId &&
+					x.RequesterUserId == currentUserService.UserId &&
+					x.Status == Data.Entities.LeagueJoinRequestStatus.Pending,
+					cancellationToken);
 
-		await context.SaveChangesAsync(cancellationToken);
+			if (existingPendingRequest is null)
+			{
+				throw;
+			}
+		}
 
 		return new JoinLeagueResponse
 		{
 			LeagueId = invite.LeagueId,
-			Joined = true,
+			JoinRequestId = existingPendingRequest.Id,
+			JoinRequestStatus = Contracts.LeagueJoinRequestStatus.Pending,
+			RequestSubmitted = true,
+			Joined = false,
 			AlreadyMember = false
 		};
 	}

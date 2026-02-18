@@ -9,5 +9,9 @@ public enum LeagueMembershipHistoryEventType
 	[Description("Member left")]
 	MemberLeft = 2,
 	[Description("Member promoted to admin")]
-	MemberPromotedToAdmin = 3
+	MemberPromotedToAdmin = 3,
+	[Description("Member demoted from admin")]
+	MemberDemotedFromAdmin = 4,
+	[Description("League ownership transferred")]
+	LeagueOwnershipTransferred = 5
 }

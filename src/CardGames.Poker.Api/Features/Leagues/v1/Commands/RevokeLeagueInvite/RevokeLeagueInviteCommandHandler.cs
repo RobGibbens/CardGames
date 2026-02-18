@@ -1,4 +1,5 @@
 using CardGames.Poker.Api.Data;
+using CardGames.Poker.Api.Features.Leagues.v1.Governance;
 using CardGames.Poker.Api.Infrastructure;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -18,17 +19,15 @@ public sealed class RevokeLeagueInviteCommandHandler(
 			return new RevokeLeagueInviteError(RevokeLeagueInviteErrorCode.Unauthorized, "User is not authenticated.");
 		}
 
-		var isAdmin = await context.LeagueMembersCurrent
+		var canManageLeague = await context.LeagueMembersCurrent
 			.AsNoTracking()
-			.AnyAsync(x => x.LeagueId == request.LeagueId &&
-				x.UserId == currentUserService.UserId &&
-				x.IsActive &&
-				x.Role == Data.Entities.LeagueRole.Admin,
-				cancellationToken);
+			.Where(x => x.LeagueId == request.LeagueId && x.UserId == currentUserService.UserId && x.IsActive)
+			.GovernanceCapableMembers()
+			.AnyAsync(cancellationToken);
 
-		if (!isAdmin)
+		if (!canManageLeague)
 		{
-			return new RevokeLeagueInviteError(RevokeLeagueInviteErrorCode.Forbidden, "Only league admins can revoke invites.");
+			return new RevokeLeagueInviteError(RevokeLeagueInviteErrorCode.Forbidden, "Only league managers or admins can revoke invites.");
 		}
 
 		var invite = await context.LeagueInvites

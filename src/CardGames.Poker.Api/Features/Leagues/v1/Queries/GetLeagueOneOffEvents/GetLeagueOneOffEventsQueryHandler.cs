@@ -46,7 +46,8 @@ public sealed class GetLeagueOneOffEventsQueryHandler(
 				Status = (Contracts.LeagueOneOffEventStatus)x.Status,
 				Notes = x.Notes,
 				CreatedByUserId = x.CreatedByUserId,
-				CreatedAtUtc = x.CreatedAtUtc
+				CreatedAtUtc = x.CreatedAtUtc,
+				LaunchedGameId = x.LaunchedGameId
 			})
 			.ToListAsync(cancellationToken);
 

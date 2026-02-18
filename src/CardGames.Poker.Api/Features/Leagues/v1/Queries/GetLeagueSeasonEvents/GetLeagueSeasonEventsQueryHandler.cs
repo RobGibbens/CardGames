@@ -58,7 +58,8 @@ public sealed class GetLeagueSeasonEventsQueryHandler(
 				Status = (Contracts.LeagueSeasonEventStatus)x.Status,
 				Notes = x.Notes,
 				CreatedByUserId = x.CreatedByUserId,
-				CreatedAtUtc = x.CreatedAtUtc
+				CreatedAtUtc = x.CreatedAtUtc,
+				LaunchedGameId = x.LaunchedGameId
 			})
 			.ToListAsync(cancellationToken);
 

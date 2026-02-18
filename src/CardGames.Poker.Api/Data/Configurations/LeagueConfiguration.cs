@@ -128,6 +128,49 @@ public sealed class LeagueInviteConfiguration : IEntityTypeConfiguration<LeagueI
 	}
 }
 
+public sealed class LeagueJoinRequestConfiguration : IEntityTypeConfiguration<LeagueJoinRequest>
+{
+	public void Configure(EntityTypeBuilder<LeagueJoinRequest> builder)
+	{
+		builder.HasKey(x => x.Id);
+
+		builder.Property(x => x.Id)
+			.ValueGeneratedNever();
+
+		builder.Property(x => x.RequesterUserId)
+			.HasMaxLength(256)
+			.IsRequired();
+
+		builder.Property(x => x.Status)
+			.HasConversion<int>();
+
+		builder.Property(x => x.ResolvedByUserId)
+			.HasMaxLength(256);
+
+		builder.Property(x => x.ResolutionReason)
+			.HasMaxLength(512);
+
+		builder.Property(x => x.RowVersion)
+			.IsRowVersion();
+
+		builder.HasIndex(x => new { x.LeagueId, x.Status, x.CreatedAtUtc });
+		builder.HasIndex(x => new { x.LeagueId, x.RequesterUserId, x.Status, x.ExpiresAtUtc });
+		builder.HasIndex(x => new { x.LeagueId, x.RequesterUserId })
+			.IsUnique()
+			.HasFilter($"[{nameof(LeagueJoinRequest.Status)}] = {(int)LeagueJoinRequestStatus.Pending}");
+
+		builder.HasOne(x => x.League)
+			.WithMany(x => x.JoinRequests)
+			.HasForeignKey(x => x.LeagueId)
+			.OnDelete(DeleteBehavior.Cascade);
+
+		builder.HasOne(x => x.Invite)
+			.WithMany()
+			.HasForeignKey(x => x.InviteId)
+			.OnDelete(DeleteBehavior.NoAction);
+	}
+}
+
 public sealed class LeagueSeasonConfiguration : IEntityTypeConfiguration<LeagueSeason>
 {
 	public void Configure(EntityTypeBuilder<LeagueSeason> builder)
@@ -190,6 +233,9 @@ public sealed class LeagueSeasonEventConfiguration : IEntityTypeConfiguration<Le
 		builder.HasIndex(x => new { x.LeagueSeasonId, x.SequenceNumber })
 			.IsUnique()
 			.HasFilter("[SequenceNumber] IS NOT NULL");
+		builder.HasIndex(x => x.LaunchedGameId)
+			.IsUnique()
+			.HasFilter("[LaunchedGameId] IS NOT NULL");
 
 		builder.HasOne(x => x.League)
 			.WithMany(x => x.SeasonEvents)
@@ -229,13 +275,78 @@ public sealed class LeagueOneOffEventConfiguration : IEntityTypeConfiguration<Le
 			.HasMaxLength(256)
 			.IsRequired();
 
+		builder.Property(x => x.LaunchedByUserId)
+			.HasMaxLength(256);
+
 		builder.Property(x => x.RowVersion)
 			.IsRowVersion();
 
 		builder.HasIndex(x => new { x.LeagueId, x.ScheduledAtUtc });
+		builder.HasIndex(x => x.LaunchedGameId)
+			.IsUnique()
+			.HasFilter("[LaunchedGameId] IS NOT NULL");
 
 		builder.HasOne(x => x.League)
 			.WithMany(x => x.OneOffEvents)
+			.HasForeignKey(x => x.LeagueId)
+			.OnDelete(DeleteBehavior.Cascade);
+	}
+}
+
+public sealed class LeagueSeasonEventResultConfiguration : IEntityTypeConfiguration<LeagueSeasonEventResult>
+{
+	public void Configure(EntityTypeBuilder<LeagueSeasonEventResult> builder)
+	{
+		builder.HasKey(x => new { x.LeagueSeasonEventId, x.UserId });
+
+		builder.Property(x => x.UserId)
+			.HasMaxLength(256)
+			.IsRequired();
+
+		builder.Property(x => x.RecordedByUserId)
+			.HasMaxLength(256)
+			.IsRequired();
+
+		builder.Property(x => x.RowVersion)
+			.IsRowVersion();
+
+		builder.HasIndex(x => new { x.LeagueId, x.LeagueSeasonId, x.LeagueSeasonEventId });
+		builder.HasIndex(x => new { x.LeagueId, x.UserId });
+
+		builder.HasOne(x => x.League)
+			.WithMany(x => x.SeasonEventResults)
+			.HasForeignKey(x => x.LeagueId)
+			.OnDelete(DeleteBehavior.Cascade);
+
+		builder.HasOne(x => x.Season)
+			.WithMany()
+			.HasForeignKey(x => x.LeagueSeasonId)
+			.OnDelete(DeleteBehavior.NoAction);
+
+		builder.HasOne(x => x.SeasonEvent)
+			.WithMany()
+			.HasForeignKey(x => x.LeagueSeasonEventId)
+			.OnDelete(DeleteBehavior.NoAction);
+	}
+}
+
+public sealed class LeagueStandingCurrentConfiguration : IEntityTypeConfiguration<LeagueStandingCurrent>
+{
+	public void Configure(EntityTypeBuilder<LeagueStandingCurrent> builder)
+	{
+		builder.HasKey(x => new { x.LeagueId, x.UserId });
+
+		builder.Property(x => x.UserId)
+			.HasMaxLength(256)
+			.IsRequired();
+
+		builder.Property(x => x.RowVersion)
+			.IsRowVersion();
+
+		builder.HasIndex(x => new { x.LeagueId, x.TotalPoints, x.TotalChipsDelta });
+
+		builder.HasOne(x => x.League)
+			.WithMany(x => x.Standings)
 			.HasForeignKey(x => x.LeagueId)
 			.OnDelete(DeleteBehavior.Cascade);
 	}

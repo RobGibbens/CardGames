@@ -64,6 +64,40 @@ public sealed class JoinGameCommandHandler(
 				$"Game with ID {command.GameId} was not found.");
 		}
 
+		var linkedLeagueId = await context.LeagueSeasonEvents
+			.AsNoTracking()
+			.Where(x => x.LaunchedGameId == game.Id)
+			.Select(x => (Guid?)x.LeagueId)
+			.FirstOrDefaultAsync(cancellationToken);
+
+		if (!linkedLeagueId.HasValue)
+		{
+			linkedLeagueId = await context.LeagueOneOffEvents
+				.AsNoTracking()
+				.Where(x => x.LaunchedGameId == game.Id)
+				.Select(x => (Guid?)x.LeagueId)
+				.FirstOrDefaultAsync(cancellationToken);
+		}
+
+		if (linkedLeagueId.HasValue)
+		{
+			var isActiveLeagueMember = !string.IsNullOrWhiteSpace(currentUserService.UserId) &&
+				await context.LeagueMembersCurrent
+					.AsNoTracking()
+					.AnyAsync(
+						x => x.LeagueId == linkedLeagueId.Value &&
+							x.UserId == currentUserService.UserId &&
+							x.IsActive,
+						cancellationToken);
+
+			if (!isActiveLeagueMember)
+			{
+				return new JoinGameError(
+					JoinGameErrorCode.LeagueMembershipRequired,
+					"Only active league members can join this league event table.");
+			}
+		}
+
 		// Check if game has ended
 		if (game.Status == GameStatus.Completed || game.Status == GameStatus.Cancelled)
 		{

@@ -1,5 +1,6 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Features.Leagues.v1.Governance;
 using CardGames.Poker.Api.Infrastructure;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -19,16 +20,15 @@ public sealed class PromoteLeagueMemberToAdminCommandHandler(
 			return new PromoteLeagueMemberToAdminError(PromoteLeagueMemberToAdminErrorCode.Unauthorized, "User is not authenticated.");
 		}
 
-		var actorIsAdmin = await context.LeagueMembersCurrent
-			.AnyAsync(x => x.LeagueId == request.LeagueId &&
-				x.UserId == currentUserService.UserId &&
-				x.IsActive &&
-				x.Role == Data.Entities.LeagueRole.Admin,
-				cancellationToken);
+		var actorCanManageLeague = await context.LeagueMembersCurrent
+			.AsNoTracking()
+			.Where(x => x.LeagueId == request.LeagueId && x.UserId == currentUserService.UserId && x.IsActive)
+			.GovernanceCapableMembers()
+			.AnyAsync(cancellationToken);
 
-		if (!actorIsAdmin)
+		if (!actorCanManageLeague)
 		{
-			return new PromoteLeagueMemberToAdminError(PromoteLeagueMemberToAdminErrorCode.Forbidden, "Only league admins can promote members.");
+			return new PromoteLeagueMemberToAdminError(PromoteLeagueMemberToAdminErrorCode.Forbidden, "Only league managers or admins can promote members.");
 		}
 
 		var member = await context.LeagueMembersCurrent
@@ -39,7 +39,7 @@ public sealed class PromoteLeagueMemberToAdminCommandHandler(
 			return new PromoteLeagueMemberToAdminError(PromoteLeagueMemberToAdminErrorCode.MemberNotFound, "Target member was not found in the league.");
 		}
 
-		if (member.Role != Data.Entities.LeagueRole.Admin)
+		if (member.Role == Data.Entities.LeagueRole.Member)
 		{
 			member.Role = Data.Entities.LeagueRole.Admin;
 			member.UpdatedAtUtc = DateTimeOffset.UtcNow;

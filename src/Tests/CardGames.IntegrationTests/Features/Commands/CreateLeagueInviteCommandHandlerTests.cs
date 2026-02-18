@@ -9,7 +9,7 @@ namespace CardGames.IntegrationTests.Features.Commands;
 public class CreateLeagueInviteCommandHandlerTests : IntegrationTestBase
 {
 	[Fact]
-	public async Task Handle_AdminCanCreateInvite()
+	public async Task Handle_ManagerCanCreateInvite()
 	{
 		var fakeCurrentUser = (FakeCurrentUserService)Scope.ServiceProvider.GetRequiredService<ICurrentUserService>();
 		fakeCurrentUser.UserId = "league-admin";

@@ -116,6 +116,11 @@ public class CardsDbContext(DbContextOptions<CardsDbContext> options) : Identity
 	public DbSet<LeagueInvite> LeagueInvites => Set<LeagueInvite>();
 
 	/// <summary>
+	/// Gets the set of league join requests.
+	/// </summary>
+	public DbSet<LeagueJoinRequest> LeagueJoinRequests => Set<LeagueJoinRequest>();
+
+	/// <summary>
 	/// Gets the set of league seasons.
 	/// </summary>
 	public DbSet<LeagueSeason> LeagueSeasons => Set<LeagueSeason>();
@@ -129,6 +134,16 @@ public class CardsDbContext(DbContextOptions<CardsDbContext> options) : Identity
 	/// Gets the set of league one-off events.
 	/// </summary>
 	public DbSet<LeagueOneOffEvent> LeagueOneOffEvents => Set<LeagueOneOffEvent>();
+
+	/// <summary>
+	/// Gets the set of league season event results.
+	/// </summary>
+	public DbSet<LeagueSeasonEventResult> LeagueSeasonEventResults => Set<LeagueSeasonEventResult>();
+
+	/// <summary>
+	/// Gets the set of current league standings.
+	/// </summary>
+	public DbSet<LeagueStandingCurrent> LeagueStandingsCurrent => Set<LeagueStandingCurrent>();
 
 	protected override void OnModelCreating(ModelBuilder model)
 	{

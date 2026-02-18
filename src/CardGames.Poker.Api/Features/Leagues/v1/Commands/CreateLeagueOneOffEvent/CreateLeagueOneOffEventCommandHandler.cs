@@ -1,6 +1,7 @@
 using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Features.Leagues.v1.Governance;
 using CardGames.Poker.Api.Infrastructure;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -39,17 +40,15 @@ public sealed class CreateLeagueOneOffEventCommandHandler(
 			return new CreateLeagueOneOffEventError(CreateLeagueOneOffEventErrorCode.LeagueNotFound, "League not found.");
 		}
 
-		var isAdmin = await context.LeagueMembersCurrent
+		var canManageLeague = await context.LeagueMembersCurrent
 			.AsNoTracking()
-			.AnyAsync(x => x.LeagueId == request.LeagueId &&
-				x.UserId == currentUserService.UserId &&
-				x.IsActive &&
-				x.Role == Data.Entities.LeagueRole.Admin,
-				cancellationToken);
+			.Where(x => x.LeagueId == request.LeagueId && x.UserId == currentUserService.UserId && x.IsActive)
+			.GovernanceCapableMembers()
+			.AnyAsync(cancellationToken);
 
-		if (!isAdmin)
+		if (!canManageLeague)
 		{
-			return new CreateLeagueOneOffEventError(CreateLeagueOneOffEventErrorCode.Forbidden, "Only league admins can create one-off events.");
+			return new CreateLeagueOneOffEventError(CreateLeagueOneOffEventErrorCode.Forbidden, "Only league managers or admins can create one-off events.");
 		}
 
 		var oneOffEvent = new LeagueOneOffEvent

@@ -1,6 +1,7 @@
 using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Features.Leagues.v1.Governance;
 using CardGames.Poker.Api.Infrastructure;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -48,17 +49,15 @@ public sealed class CreateLeagueSeasonEventCommandHandler(
 			return new CreateLeagueSeasonEventError(CreateLeagueSeasonEventErrorCode.SeasonNotFound, "Season not found in league.");
 		}
 
-		var isAdmin = await context.LeagueMembersCurrent
+		var canManageLeague = await context.LeagueMembersCurrent
 			.AsNoTracking()
-			.AnyAsync(x => x.LeagueId == request.LeagueId &&
-				x.UserId == currentUserService.UserId &&
-				x.IsActive &&
-				x.Role == Data.Entities.LeagueRole.Admin,
-				cancellationToken);
+			.Where(x => x.LeagueId == request.LeagueId && x.UserId == currentUserService.UserId && x.IsActive)
+			.GovernanceCapableMembers()
+			.AnyAsync(cancellationToken);
 
-		if (!isAdmin)
+		if (!canManageLeague)
 		{
-			return new CreateLeagueSeasonEventError(CreateLeagueSeasonEventErrorCode.Forbidden, "Only league admins can create season events.");
+			return new CreateLeagueSeasonEventError(CreateLeagueSeasonEventErrorCode.Forbidden, "Only league managers or admins can create season events.");
 		}
 
 		if (request.Request.SequenceNumber.HasValue)

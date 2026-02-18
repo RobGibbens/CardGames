@@ -122,3 +122,15 @@
 - Phase 4: tests + rollout hardening
 
 **Reference:** `docs/LeaguesFeatureDesign.md`
+
+### 2026-02-18: Leagues governance safety operations landed for P0 (#216)
+**By:** Rusty (Lead)
+**Requested by:** Rob Gibbens
+**What:** Added Leagues v1 governance operations for ownership transfer, admin demotion, and member removal using minimal MediatR + endpoint flows; enforced invariants that leagues always retain at least one manager and at least one governance-capable member (manager/admin); extended membership history values for ownership transfer/admin demotion and reused member-leave events for removals.
+**Why:** Provides required governance controls for league administration while preventing lockout or governance loss states in MVP.
+
+### 2026-02-18: Leagues P0 quality gates standardized in integration coverage and CI (#224)
+**By:** Basher (Tester)
+**Requested by:** Rob Gibbens
+**What:** Added API integration coverage for invite-code preview/join-request and moderation approve/deny queue behavior, added event-launch conflict coverage to protect linkage stability, introduced a skipped standings-ingestion scaffold test for future scope visibility, and enforced Leagues P0 checks in `squad-ci` with .NET integration test execution.
+**Why:** Centers release confidence on the highest-risk external behaviors (authz, moderation semantics, idempotency/conflicts) and makes required gates explicit in CI.

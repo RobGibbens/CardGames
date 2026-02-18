@@ -3,6 +3,7 @@ using System.Text;
 using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Features.Leagues.v1.Governance;
 using CardGames.Poker.Api.Infrastructure;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -36,16 +37,15 @@ public sealed class CreateLeagueInviteCommandHandler(
 			return new CreateLeagueInviteError(CreateLeagueInviteErrorCode.LeagueNotFound, "League not found.");
 		}
 
-		var isAdmin = await context.LeagueMembersCurrent
-			.AnyAsync(x => x.LeagueId == request.LeagueId &&
-				x.UserId == currentUserService.UserId &&
-				x.IsActive &&
-				x.Role == Data.Entities.LeagueRole.Admin,
-				cancellationToken);
+		var canManageLeague = await context.LeagueMembersCurrent
+			.AsNoTracking()
+			.Where(x => x.LeagueId == request.LeagueId && x.UserId == currentUserService.UserId && x.IsActive)
+			.GovernanceCapableMembers()
+			.AnyAsync(cancellationToken);
 
-		if (!isAdmin)
+		if (!canManageLeague)
 		{
-			return new CreateLeagueInviteError(CreateLeagueInviteErrorCode.Forbidden, "Only league admins can create invites.");
+			return new CreateLeagueInviteError(CreateLeagueInviteErrorCode.Forbidden, "Only league managers or admins can create invites.");
 		}
 
 		var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));

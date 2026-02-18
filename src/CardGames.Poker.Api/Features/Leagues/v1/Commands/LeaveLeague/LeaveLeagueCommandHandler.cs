@@ -1,6 +1,7 @@
 using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Features.Leagues.v1.Governance;
 using CardGames.Poker.Api.Infrastructure;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -31,6 +32,33 @@ public sealed class LeaveLeagueCommandHandler(
 				Left = false,
 				WasActiveMember = false
 			};
+		}
+
+		var activeMembers = await context.LeagueMembersCurrent
+			.AsNoTracking()
+			.Where(x => x.LeagueId == request.LeagueId && x.IsActive)
+			.Select(x => new { x.UserId, x.Role })
+			.ToListAsync(cancellationToken);
+
+		if (membership.Role == Data.Entities.LeagueRole.Manager)
+		{
+			var hasAnotherManager = activeMembers.Any(x => x.UserId != currentUserService.UserId && x.Role == Data.Entities.LeagueRole.Manager);
+			if (!hasAnotherManager)
+			{
+				return new LeaveLeagueError(LeaveLeagueErrorCode.Conflict, "League must retain at least one manager.");
+			}
+		}
+
+		if (LeagueGovernanceRules.IsGovernanceCapable(membership.Role))
+		{
+			var hasAnotherGovernanceMember = activeMembers.Any(x =>
+				x.UserId != currentUserService.UserId &&
+				LeagueGovernanceRules.IsGovernanceCapable(x.Role));
+
+			if (!hasAnotherGovernanceMember)
+			{
+				return new LeaveLeagueError(LeaveLeagueErrorCode.Conflict, "League must retain at least one manager or admin.");
+			}
 		}
 
 		var now = DateTimeOffset.UtcNow;

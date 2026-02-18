@@ -50,5 +50,10 @@ public enum JoinGameErrorCode
     /// <summary>
     /// The player does not have enough account chips for the requested buy-in.
     /// </summary>
-    InsufficientAccountChips
+    InsufficientAccountChips,
+
+	/// <summary>
+	/// The game is restricted to active members of the associated league.
+	/// </summary>
+	LeagueMembershipRequired
 }

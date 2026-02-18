@@ -43,6 +43,8 @@ public static class JoinLeagueEndpoint
 			{
 				JoinLeagueErrorCode.Unauthorized => Results.Unauthorized(),
 				JoinLeagueErrorCode.InvalidInvite => Results.BadRequest(new { error.Message }),
+				JoinLeagueErrorCode.InviteRevoked => Results.BadRequest(new { error.Message }),
+				JoinLeagueErrorCode.InviteExpired => Results.BadRequest(new { error.Message }),
 				_ => Results.Problem(error.Message)
 			});
 	}
