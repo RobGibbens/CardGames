@@ -1695,6 +1695,177 @@ a:hover {
     flex-shrink: 0;
 }
 
+.cashier-panel {
+    margin-top: 1.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    background: var(--bg-secondary);
+}
+
+.cashier-panel:first-of-type {
+    margin-top: 0;
+}
+
+.cashier-panel-body {
+    padding: 1.25rem;
+}
+
+.cashier-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.cashier-section-title {
+    margin: 0;
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.cashier-balance-grid {
+    display: flex;
+    align-items: flex-end;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.cashier-balance-card {
+    min-width: 240px;
+    padding: 0.875rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--bg-tertiary);
+}
+
+.cashier-last-transaction {
+    min-width: 200px;
+}
+
+.cashier-input-row {
+    margin-top: 0.5rem;
+}
+
+.cashier-add-button-col {
+    padding-top: 0.25rem;
+}
+
+.cashier-ledger-table-wrap {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.cashier-ledger-table {
+    margin-bottom: 0;
+}
+
+.cashier-ledger-table thead th {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.035em;
+    text-transform: uppercase;
+    border-bottom-width: 1px;
+    white-space: nowrap;
+}
+
+.cashier-ledger-table tbody td {
+    padding-top: 0.7rem;
+    padding-bottom: 0.7rem;
+    font-size: 0.95rem;
+}
+
+.cashier-ledger-table th:nth-child(1),
+.cashier-ledger-table td:nth-child(1) {
+    width: 9.5rem;
+    white-space: nowrap;
+}
+
+.cashier-ledger-table th:nth-child(2),
+.cashier-ledger-table td:nth-child(2) {
+    width: 6.5rem;
+    white-space: nowrap;
+}
+
+.cashier-ledger-table th:nth-child(3),
+.cashier-ledger-table td:nth-child(3),
+.cashier-ledger-table th:nth-child(4),
+.cashier-ledger-table td:nth-child(4) {
+    width: 8rem;
+    white-space: nowrap;
+}
+
+.cashier-ledger-table th:nth-child(5),
+.cashier-ledger-table td:nth-child(5) {
+    min-width: 10rem;
+}
+
+.cashier-ledger-table th:nth-child(6),
+.cashier-ledger-table td:nth-child(6) {
+    min-width: 12rem;
+}
+
+.cashier-ledger-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.cashier-ledger-meta {
+    padding-top: 0.25rem;
+}
+
+@media (max-width: 768px) {
+    .cashier-panel-body {
+        padding: 1rem;
+    }
+
+    .cashier-section-header {
+        flex-wrap: wrap;
+        align-items: flex-start;
+    }
+
+    .cashier-section-title {
+        font-size: 1.2rem;
+    }
+
+    .cashier-ledger-table thead th,
+    .cashier-ledger-table tbody td {
+        font-size: 0.85rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .cashier-ledger-table th:nth-child(1),
+    .cashier-ledger-table td:nth-child(1) {
+        width: 7.25rem;
+    }
+
+    .cashier-ledger-table th:nth-child(2),
+    .cashier-ledger-table td:nth-child(2),
+    .cashier-ledger-table th:nth-child(3),
+    .cashier-ledger-table td:nth-child(3),
+    .cashier-ledger-table th:nth-child(4),
+    .cashier-ledger-table td:nth-child(4) {
+        width: 5.5rem;
+    }
+
+    .cashier-ledger-table th:nth-child(5),
+    .cashier-ledger-table td:nth-child(5) {
+        min-width: 7.5rem;
+        white-space: normal;
+    }
+
+    .cashier-ledger-table th:nth-child(6),
+    .cashier-ledger-table td:nth-child(6) {
+        min-width: 8rem;
+        white-space: normal;
+        word-break: break-word;
+    }
+}
+
 /* Lobby Tabs */
 .lobby-tabs {
     display: flex;

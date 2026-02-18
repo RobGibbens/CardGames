@@ -14,6 +14,7 @@ namespace CardGames.Poker.Api.Features.Games.Common.v1.Commands.LeaveGame;
 public sealed class LeaveGameCommandHandler(
 	CardsDbContext context,
 	ICurrentUserService currentUserService,
+	IPlayerChipWalletService playerChipWalletService,
 	IGameStateBroadcaster broadcaster,
 	ILogger<LeaveGameCommandHandler> logger)
 	: IRequestHandler<LeaveGameCommand, OneOf<LeaveGameSuccessful, LeaveGameError>>
@@ -68,6 +69,13 @@ public sealed class LeaveGameCommandHandler(
 			logger.LogInformation(
 				"Player {PlayerName} leaving game {GameId} before game started - removing player record",
 				currentUserName, game.Id);
+
+			await playerChipWalletService.CreditForCashOutAsync(
+				gamePlayer.PlayerId,
+				gamePlayer.ChipStack,
+				game.Id,
+				currentUserId,
+				cancellationToken);
 
 			context.GamePlayers.Remove(gamePlayer);
 			game.UpdatedAt = DateTimeOffset.UtcNow;
@@ -127,6 +135,13 @@ public sealed class LeaveGameCommandHandler(
 		gamePlayer.FinalChipCount = gamePlayer.ChipStack;
 		gamePlayer.IsSittingOut = true;
 		game.UpdatedAt = now;
+
+		await playerChipWalletService.CreditForCashOutAsync(
+			gamePlayer.PlayerId,
+			gamePlayer.ChipStack,
+			game.Id,
+			currentUserId,
+			cancellationToken);
 
 		await context.SaveChangesAsync(cancellationToken);
 

@@ -85,6 +85,16 @@ public class CardsDbContext(DbContextOptions<CardsDbContext> options) : Identity
 	/// </summary>
 	public DbSet<HandHistoryPlayerResult> HandHistoryPlayerResults => Set<HandHistoryPlayerResult>();
 
+	/// <summary>
+	/// Gets the set of account-level chip balances for players.
+	/// </summary>
+	public DbSet<PlayerChipAccount> PlayerChipAccounts => Set<PlayerChipAccount>();
+
+	/// <summary>
+	/// Gets the set of account-level chip ledger entries.
+	/// </summary>
+	public DbSet<PlayerChipLedgerEntry> PlayerChipLedgerEntries => Set<PlayerChipLedgerEntry>();
+
 	protected override void OnModelCreating(ModelBuilder model)
 	{
 		base.OnModelCreating(model);

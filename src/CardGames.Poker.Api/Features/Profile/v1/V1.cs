@@ -1,6 +1,9 @@
 using Asp.Versioning.Builder;
 using CardGames.Poker.Api.Features.Profile.v1.Queries.GetAvatar;
 using CardGames.Poker.Api.Features.Profile.v1.Commands.UploadAvatar;
+using CardGames.Poker.Api.Features.Profile.v1.Commands.AddAccountChips;
+using CardGames.Poker.Api.Features.Profile.v1.Queries.GetCashierLedger;
+using CardGames.Poker.Api.Features.Profile.v1.Queries.GetCashierSummary;
 
 namespace CardGames.Poker.Api.Features.Profile.v1;
 
@@ -14,5 +17,8 @@ public static class V1
 
 		mapGroup.MapUploadAvatar();
 		mapGroup.MapGetAvatar();
+		mapGroup.MapGetCashierSummary();
+		mapGroup.MapGetCashierLedger();
+		mapGroup.MapAddAccountChips();
 	}
 }

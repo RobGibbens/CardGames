@@ -18,3 +18,11 @@
 **Applied in:**
 - `src/CardGames.Poker.Web/Components/Account/Pages/Login.razor`
 - `src/CardGames.Poker.Web/Components/Account/Pages/Register.razor`
+
+### 2026-02-17: Cashier feature architecture and API direction
+**By:** Rusty (Lead)
+**Requested by:** Rob Gibbens
+**What:** Defined Cashier as account-scoped functionality with Profile-based endpoints (`/api/v1/profile/cashier/*`), immediate account wallet add-chips behavior (without game-phase queueing), an MVP ledger using `take/skip` newest-first pagination, and an append-only audited ledger entry model.
+**Why:** Preserves clear boundary between account wallet operations and table/game-phase operations while minimizing implementation risk for MVP and ensuring auditability.
+
+**Reference:** `docs/CashierFeatureDesign.md`

@@ -1,0 +1,339 @@
+@page "/Account/Cashier"
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+@using CardGames.Poker.Api.Clients
+@using CardGames.Poker.Api.Contracts
+@using CardGames.Poker.Web.Components.Shared
+@using Microsoft.AspNetCore.Authorization
+
+@inject IProfileApi ProfileApi
+@inject ILogger<Cashier> Logger
+
+<PageTitle>Cashier - Friday Night Poker</PageTitle>
+
+<AuthenticatedNavBar />
+
+<main class="lobby-main">
+    <div class="lobby-container">
+        <div class="lobby-header">
+            <div class="lobby-header-content">
+                <h1 class="lobby-title">
+                    <i class="fa-solid fa-coins"></i>
+                    Cashier
+                </h1>
+                <p class="lobby-subtitle">Manage your account chips and review your transaction history.</p>
+            </div>
+        </div>
+
+        <section class="cashier-panel">
+            <div class="cashier-panel-body">
+                <div class="cashier-section-header">
+                    <h2 class="cashier-section-title">Chip balance</h2>
+                    <button class="btn btn-sm btn-outline-secondary" @onclick="LoadAsync" disabled="@_isLoading">
+                        <i class="fa-solid fa-rotate-right"></i>
+                        Refresh
+                    </button>
+                </div>
+
+                @if (_isLoading)
+                {
+                    <p class="mb-0 text-muted">Loading cashier data...</p>
+                }
+                else
+                {
+                    <div class="cashier-balance-grid" role="status" aria-live="polite">
+                        <div class="cashier-balance-card">
+                            <div class="small text-muted text-uppercase">Current balance</div>
+                            <div class="display-5 fw-bold mb-0">@((_summary?.CurrentBalance ?? 0).ToString("N0"))</div>
+                        </div>
+                        <div class="cashier-last-transaction">
+                            <div class="small text-muted">Last transaction</div>
+                            <div>@FormatTimestamp(_summary?.LastTransactionAtUtc)</div>
+                        </div>
+                    </div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(_error))
+                {
+                    <div class="alert alert-warning mb-0" role="alert">@_error</div>
+                }
+            </div>
+        </section>
+
+        <section class="cashier-panel">
+            <div class="cashier-panel-body">
+                <h2 class="cashier-section-title">Add chips</h2>
+
+                <div class="row g-3 align-items-end cashier-input-row auth-form">
+                    <div class="col-md-4">
+                        <div class="form-floating mb-3" data-label="Amount">
+                            <InputNumber id="cashier-amount" class="form-control" @bind-Value="_chipAmount" min="1" step="100" placeholder="Amount" disabled="@(_isLoading || _isSubmittingAddChips)" />
+                        </div>
+                    </div>
+                    <div class="col-md-5">
+                        <div class="form-floating mb-3" data-label="Reason (optional)">
+                            <InputText id="cashier-reason" class="form-control" maxlength="120" @bind-Value="_chipReason" placeholder="Reason (optional)" disabled="@(_isLoading || _isSubmittingAddChips)" />
+                        </div>
+                    </div>
+                    <div class="col-md-3 d-grid cashier-add-button-col">
+                        <button class="btn btn-primary" @onclick="SubmitAddChipsAsync" disabled="@(_isLoading || _isSubmittingAddChips)">
+                            @if (_isSubmittingAddChips)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+                            }
+                            Add Chips
+                        </button>
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(_addChipsMessage))
+                {
+                    <div class="alert @(_addChipsMessageIsError ? "alert-warning" : "alert-success") mt-3 mb-0" role="alert">@_addChipsMessage</div>
+                }
+            </div>
+        </section>
+
+        <section class="cashier-panel">
+            <div class="cashier-panel-body d-flex flex-column gap-3">
+                <div class="cashier-section-header">
+                    <h2 class="cashier-section-title">Ledger</h2>
+                    <div class="d-flex align-items-center gap-2">
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="LoadPreviousPageAsync" disabled="@(_isLoading || _skip == 0)">Previous</button>
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="LoadNextPageAsync" disabled="@(_isLoading || !_hasMore)">Next</button>
+                    </div>
+                </div>
+
+                @if (_isLoading)
+                {
+                    <p class="mb-0 text-muted">Loading ledger...</p>
+                }
+                else if (_ledgerEntries.Count == 0)
+                {
+                    <p class="mb-0 text-muted">No chip transactions yet.</p>
+                }
+                else
+                {
+                    <div class="table-responsive cashier-ledger-table-wrap">
+                        <table class="table table-sm table-hover align-middle mb-0 cashier-ledger-table">
+                            <thead>
+                                <tr>
+                                    <th>When</th>
+                                    <th>Type</th>
+                                    <th class="text-end">Delta</th>
+                                    <th class="text-end">Balance After</th>
+                                    <th>Context</th>
+                                    <th>Note</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var entry in _ledgerEntries)
+                                {
+                                    <tr>
+                                        <td>@FormatTimestamp(entry.OccurredAtUtc)</td>
+                                        <td>@entry.Type</td>
+                                        <td class="text-end @GetDeltaClass(entry.AmountDelta)">@FormatDelta(entry.AmountDelta)</td>
+                                        <td class="text-end">@entry.BalanceAfter.ToString("N0")</td>
+                                        <td>@FormatContext(entry)</td>
+                                        <td>@(string.IsNullOrWhiteSpace(entry.Reason) ? "-" : entry.Reason)</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+
+                <div class="small text-muted cashier-ledger-meta">Showing @_ledgerEntries.Count of @_totalCount transactions.</div>
+            </div>
+        </section>
+    </div>
+</main>
+
+@code {
+    private const int PageSize = 25;
+
+    private bool _isLoading;
+    private string? _error;
+    private CashierSummaryDto? _summary;
+    private List<CashierLedgerEntryDto> _ledgerEntries = [];
+    private int _skip;
+    private bool _hasMore;
+    private int _totalCount;
+
+    private int _chipAmount = 500;
+    private string? _chipReason;
+    private bool _isSubmittingAddChips;
+    private string? _addChipsMessage;
+    private bool _addChipsMessageIsError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _error = null;
+
+        try
+        {
+            var summaryResponse = await ProfileApi.GetCashierSummaryAsync();
+            if (summaryResponse.IsSuccessStatusCode && summaryResponse.Content is not null)
+            {
+                _summary = summaryResponse.Content;
+            }
+            else
+            {
+                _summary = new CashierSummaryDto
+                {
+                    CurrentBalance = 0,
+                    PendingBalanceChange = 0,
+                    LastTransactionAtUtc = null
+                };
+                _error = "Cashier summary is not available right now.";
+            }
+
+            var ledgerResponse = await ProfileApi.GetCashierLedgerAsync(PageSize, _skip);
+            if (ledgerResponse.IsSuccessStatusCode && ledgerResponse.Content is not null)
+            {
+                _ledgerEntries = ledgerResponse.Content.Entries.ToList();
+                _hasMore = ledgerResponse.Content.HasMore;
+                _totalCount = ledgerResponse.Content.TotalCount;
+            }
+            else
+            {
+                _ledgerEntries = [];
+                _hasMore = false;
+                _totalCount = 0;
+                _error ??= "Cashier ledger is not available right now.";
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load cashier page data");
+            _summary = new CashierSummaryDto
+            {
+                CurrentBalance = 0,
+                PendingBalanceChange = 0,
+                LastTransactionAtUtc = null
+            };
+            _ledgerEntries = [];
+            _hasMore = false;
+            _totalCount = 0;
+            _error = "Unable to load cashier data right now.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SubmitAddChipsAsync()
+    {
+        _addChipsMessage = null;
+        _addChipsMessageIsError = false;
+
+        if (_chipAmount <= 0)
+        {
+            _addChipsMessage = "Please enter a positive amount.";
+            _addChipsMessageIsError = true;
+            return;
+        }
+
+        _isSubmittingAddChips = true;
+
+        try
+        {
+            var request = new AddAccountChipsRequest
+            {
+                Amount = _chipAmount,
+                Reason = string.IsNullOrWhiteSpace(_chipReason) ? null : _chipReason.Trim()
+            };
+
+            var response = await ProfileApi.AddAccountChipsAsync(request);
+            if (response.IsSuccessStatusCode && response.Content is not null)
+            {
+                _chipAmount = 500;
+                _chipReason = null;
+                _skip = 0;
+                _addChipsMessage = response.Content.Message;
+                await LoadAsync();
+            }
+            else
+            {
+                _addChipsMessage = "Failed to add chips. Please try again.";
+                _addChipsMessageIsError = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to add account chips from cashier");
+            _addChipsMessage = "Failed to add chips. Please try again.";
+            _addChipsMessageIsError = true;
+        }
+        finally
+        {
+            _isSubmittingAddChips = false;
+        }
+    }
+
+    private async Task LoadPreviousPageAsync()
+    {
+        if (_skip == 0)
+        {
+            return;
+        }
+
+        _skip = Math.Max(0, _skip - PageSize);
+        await LoadAsync();
+    }
+
+    private async Task LoadNextPageAsync()
+    {
+        if (!_hasMore)
+        {
+            return;
+        }
+
+        _skip += PageSize;
+        await LoadAsync();
+    }
+
+    private static string GetDeltaClass(int delta)
+    {
+        if (delta > 0)
+        {
+            return "text-success";
+        }
+
+        if (delta < 0)
+        {
+            return "text-danger";
+        }
+
+        return "text-muted";
+    }
+
+    private static string FormatDelta(int delta)
+    {
+        return delta > 0 ? $"+{delta:N0}" : delta.ToString("N0");
+    }
+
+    private static string FormatTimestamp(DateTimeOffset? value)
+    {
+        return value?.ToLocalTime().ToString("g") ?? "-";
+    }
+
+    private static string FormatContext(CashierLedgerEntryDto entry)
+    {
+        if (string.IsNullOrWhiteSpace(entry.ReferenceType))
+        {
+            return "-";
+        }
+
+        return entry.ReferenceId.HasValue
+            ? $"{entry.ReferenceType} ({entry.ReferenceId})"
+            : entry.ReferenceType;
+    }
+}

@@ -59,6 +59,7 @@ public abstract class IntegrationTestBase : IAsyncLifetime
         services.AddSingleton<IHandHistoryRecorder, FakeHandHistoryRecorder>();
         services.AddScoped<ICurrentUserService, FakeCurrentUserService>();
         services.AddScoped<ITableStateBuilder, TableStateBuilder>();
+		services.AddScoped<IPlayerChipWalletService, PlayerChipWalletService>();
 
         ServiceProvider = services.BuildServiceProvider();
         Scope = ServiceProvider.CreateScope();

@@ -42,6 +42,12 @@
                     Public Tables
                 </a>
             </li>
+			<li>
+				<a href="/Account/Cashier" class="@GetActiveClass("/Account/Cashier")">
+					<i class="fa-solid fa-coins"></i>
+					Cashier
+				</a>
+			</li>
         </ul>
 
         <div class="nav-actions">
@@ -77,14 +83,21 @@
                         @if (isUserMenuOpen)
                         {
                             <div class="user-menu-dropdown">
-                                <a href="/Account/Manage" class="user-menu-item">
-                                    <span>⚙️</span> Settings
-                                </a>
-                                <a href="/Account/Manage/Email" class="user-menu-item">
-                                    <span>📧</span> Email
+	                            <a href="/Account/Manage" class="user-menu-item">
+                                    <i class="fa-solid fa-gear"></i>
+                                    Settings
+	                            </a>
+                                <a href="/Account/Cashier" class="user-menu-item">
+		                            <i class="fa-solid fa-coins"></i>
+		                            Cashier
+	                            </a>
+	                            <a href="/Account/Manage/Email" class="user-menu-item">
+		                            <i class="fa-solid fa-envelope"></i>
+		                            Email
                                 </a>
                                 <a href="/Account/Manage/ChangePassword" class="user-menu-item">
-                                    <span>🔒</span> Password
+	                                <i class="fa-solid fa-lock"></i>
+	                                Password
                                 </a>
                                 <hr class="user-menu-divider" />
                                 <form method="post" action="/Account/Logout">
