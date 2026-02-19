@@ -8,11 +8,13 @@
 @using Microsoft.AspNetCore.Authorization
 @using System.ComponentModel
 @using System.Text.Json
+@using System.Security.Claims
 
 @inject ILeaguesApi LeaguesApi
 @inject ILogger<LeagueDetail> Logger
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>League Detail - Friday Night Poker</PageTitle>
 
@@ -232,7 +234,51 @@
 
 		<section class="cashier-panel">
 			<div class="cashier-panel-body d-flex flex-column gap-3">
-				<h2 class="cashier-section-title">Standings</h2>
+				<div class="cashier-section-header">
+					<h2 class="cashier-section-title">Standings</h2>
+					<button class="btn btn-sm btn-outline-secondary league-action-btn" @onclick="LoadStandingsAsync" disabled="@_isLoading">
+						<i class="fa-solid fa-rotate-right me-1" aria-hidden="true"></i>
+						Refresh Standings
+					</button>
+				</div>
+
+				<div class="league-standings-rules">
+					<div class="fw-semibold">Scoring + tie-break rules</div>
+					<ul class="mb-0 small text-muted">
+						<li>Ranked by total points (highest first).</li>
+						<li>Tie-break #1: total chips delta (highest first).</li>
+						<li>Tie-break #2: earliest standings update wins the tie.</li>
+						<li>Standings refresh after season event result ingestion.</li>
+					</ul>
+				</div>
+
+				@if (_myStanding is not null)
+				{
+					<div class="league-my-progress">
+						<div class="league-my-progress-header">
+							<h3 class="h6 mb-0">My Progress</h3>
+							<span class="league-rank-chip @GetRankMovementCssClass(_myStanding.UserId)">@GetRankMovementLabel(_myStanding.UserId)</span>
+						</div>
+						<div class="league-my-progress-grid">
+							<div class="league-progress-item">
+								<div class="league-progress-label">Rank</div>
+								<div class="league-progress-value">#@_myStanding.Rank</div>
+							</div>
+							<div class="league-progress-item">
+								<div class="league-progress-label">Points</div>
+								<div class="league-progress-value">@_myStanding.TotalPoints</div>
+							</div>
+							<div class="league-progress-item">
+								<div class="league-progress-label">Events</div>
+								<div class="league-progress-value">@_myStanding.TotalEvents</div>
+							</div>
+							<div class="league-progress-item">
+								<div class="league-progress-label">Chips Δ</div>
+								<div class="league-progress-value">@FormatChipsDelta(_myStanding.TotalChipsDelta)</div>
+							</div>
+						</div>
+					</div>
+				}
 
 				@if (_standings.Count == 0)
 				{
@@ -240,18 +286,50 @@
 				}
 				else
 				{
-					<ul class="list-group">
+					<ul class="list-group league-standings-list">
 						@foreach (var standing in _standings)
 						{
-							<li class="list-group-item d-flex justify-content-between align-items-center gap-2">
+							<li class="list-group-item d-flex justify-content-between align-items-center gap-2 @GetLeaderboardRowCssClass(standing)">
 								<div>
-									<div class="fw-semibold">#@standing.Rank • @(standing.UserDisplayName ?? standing.UserId)</div>
-									<div class="small text-muted">Events: @standing.TotalEvents • Last place: @(standing.LastPlacement?.ToString() ?? "-")</div>
+									<div class="fw-semibold d-flex align-items-center flex-wrap gap-2">
+										<span>@GetRankPrefix(standing.Rank) #@standing.Rank</span>
+										<span>•</span>
+										<span>@(standing.UserDisplayName ?? standing.UserId)</span>
+										@if (IsCurrentUserStanding(standing))
+										{
+											<span class="league-you-chip">You</span>
+										}
+									</div>
+									<div class="small text-muted">Events: @standing.TotalEvents • Last place: @(standing.LastPlacement?.ToString() ?? "-") • Updated @standing.UpdatedAtUtc.ToLocalTime().ToString("g")</div>
 								</div>
-								<div class="small text-muted text-end">Pts: @standing.TotalPoints • Chips Δ: @standing.TotalChipsDelta</div>
+								<div class="text-end">
+									<div class="fw-semibold">Pts: @standing.TotalPoints</div>
+									<div class="small text-muted">Chips Δ: @FormatChipsDelta(standing.TotalChipsDelta)</div>
+									<div class="small"><span class="league-rank-chip @GetRankMovementCssClass(standing.UserId)">@GetRankMovementLabel(standing.UserId)</span></div>
+								</div>
 							</li>
 						}
 					</ul>
+
+					<div>
+						<h3 class="h6 mb-2">Recent Results</h3>
+						@if (_recentCompletedEvents.Count == 0)
+						{
+							<p class="mb-0 text-muted small">No completed season events yet for the selected season.</p>
+						}
+						else
+						{
+							<ul class="list-group">
+								@foreach (var seasonEvent in _recentCompletedEvents)
+								{
+									<li class="list-group-item small d-flex justify-content-between align-items-center gap-2">
+										<div>@seasonEvent.Name</div>
+										<div class="text-muted">@FormatDate(seasonEvent.ScheduledAtUtc) • @seasonEvent.Status</div>
+									</li>
+								}
+							</ul>
+						}
+					</div>
 				}
 			</div>
 		</section>
@@ -662,6 +740,10 @@
 	private Guid? _recordingSeasonEventId;
 	private string _recordingSeasonEventName = string.Empty;
 	private List<SeasonEventResultDraft> _resultDrafts = [];
+	private string? _currentUserId;
+	private Dictionary<string, int> _rankMovementByUserId = new(StringComparer.Ordinal);
+	private LeagueStandingEntryDto? _myStanding;
+	private List<LeagueSeasonEventDto> _recentCompletedEvents = [];
 
 	private ScheduleTab _activeScheduleTab = ScheduleTab.Seasons;
 
@@ -710,6 +792,7 @@
 
 		try
 		{
+			await LoadCurrentUserAsync();
 			await LoadDetailAsync();
 			await LoadMembersAsync();
 			await LoadMembershipHistoryAsync();
@@ -794,10 +877,21 @@
 		var response = await LeaguesApi.GetSeasonsAsync(LeagueId);
 		_seasons = response.IsSuccessStatusCode && response.Content is not null ? response.Content.ToList() : [];
 
+		if (!_selectedSeasonId.HasValue && _seasons.Count > 0)
+		{
+			var defaultSeason = _seasons
+				.OrderByDescending(x => x.Status == LeagueSeasonStatus.InProgress)
+				.ThenByDescending(x => x.CreatedAtUtc)
+				.First();
+
+			_selectedSeasonId = defaultSeason.SeasonId;
+		}
+
 		if (_selectedSeasonId.HasValue && _seasons.All(x => x.SeasonId != _selectedSeasonId.Value))
 		{
 			_selectedSeasonId = null;
 			_seasonEvents = [];
+			_recentCompletedEvents = [];
 		}
 	}
 
@@ -805,6 +899,11 @@
 	{
 		var response = await LeaguesApi.GetSeasonEventsAsync(LeagueId, seasonId);
 		_seasonEvents = response.IsSuccessStatusCode && response.Content is not null ? response.Content.ToList() : [];
+		_recentCompletedEvents = _seasonEvents
+			.Where(x => x.Status == LeagueSeasonEventStatus.Completed)
+			.OrderByDescending(x => x.ScheduledAtUtc ?? x.CreatedAtUtc)
+			.Take(5)
+			.ToList();
 	}
 
 	private async Task LoadOneOffEventsAsync()
@@ -815,8 +914,45 @@
 
 	private async Task LoadStandingsAsync()
 	{
+		var previousRankByUserId = _standings.ToDictionary(x => x.UserId, x => x.Rank, StringComparer.Ordinal);
+
 		var response = await LeaguesApi.GetLeagueStandingsAsync(LeagueId);
-		_standings = response.IsSuccessStatusCode && response.Content is not null ? response.Content.ToList() : [];
+		if (response.IsSuccessStatusCode && response.Content is not null)
+		{
+			_standings = response.Content.ToList();
+			_rankMovementByUserId = new Dictionary<string, int>(StringComparer.Ordinal);
+
+			foreach (var standing in _standings)
+			{
+				if (previousRankByUserId.TryGetValue(standing.UserId, out var previousRank))
+				{
+					_rankMovementByUserId[standing.UserId] = previousRank - standing.Rank;
+				}
+			}
+
+			_myStanding = _standings.FirstOrDefault(IsCurrentUserStanding);
+			return;
+		}
+
+		_standings = [];
+		_rankMovementByUserId.Clear();
+		_myStanding = null;
+	}
+
+	private async Task LoadCurrentUserAsync()
+	{
+		var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+		var user = authState.User;
+
+		if (user.Identity?.IsAuthenticated != true)
+		{
+			_currentUserId = null;
+			return;
+		}
+
+		_currentUserId = user.FindFirstValue(ClaimTypes.NameIdentifier)
+			?? user.FindFirstValue("sub")
+			?? user.Identity?.Name;
 	}
 
 	private async Task SelectSeasonAsync(Guid seasonId)
@@ -1517,6 +1653,73 @@
 	private static string FormatDate(DateTimeOffset? value)
 	{
 		return value.HasValue ? value.Value.ToLocalTime().ToString("g") : "-";
+	}
+
+	private bool IsCurrentUserStanding(LeagueStandingEntryDto standing)
+	{
+		return !string.IsNullOrWhiteSpace(_currentUserId)
+			&& string.Equals(standing.UserId, _currentUserId, StringComparison.Ordinal);
+	}
+
+	private string GetRankMovementLabel(string userId)
+	{
+		if (!_rankMovementByUserId.TryGetValue(userId, out var movement))
+		{
+			return "No change";
+		}
+
+		if (movement > 0)
+		{
+			return $"▲ {movement}";
+		}
+
+		if (movement < 0)
+		{
+			return $"▼ {Math.Abs(movement)}";
+		}
+
+		return "No change";
+	}
+
+	private string GetRankMovementCssClass(string userId)
+	{
+		if (!_rankMovementByUserId.TryGetValue(userId, out var movement))
+		{
+			return "league-rank-movement-neutral";
+		}
+
+		if (movement > 0)
+		{
+			return "league-rank-movement-up";
+		}
+
+		if (movement < 0)
+		{
+			return "league-rank-movement-down";
+		}
+
+		return "league-rank-movement-neutral";
+	}
+
+	private static string FormatChipsDelta(int chipsDelta)
+	{
+		return chipsDelta >= 0 ? $"+{chipsDelta}" : chipsDelta.ToString();
+	}
+
+	private static string GetLeaderboardRowCssClass(LeagueStandingEntryDto standing)
+	{
+		return standing.Rank <= 3 ? "league-standings-top-row" : string.Empty;
+	}
+
+	private static string GetRankPrefix(int rank)
+	{
+		return rank switch
+		{
+			1 => "🥇",
+			2 => "🥈",
+			3 => "🥉",
+			_ => ""
+		};
 	}
 
 	private static string GetMembershipHistoryEventTypeDescription(LeagueMembershipHistoryEventType eventType)

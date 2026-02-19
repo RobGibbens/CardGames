@@ -1793,6 +1793,115 @@ a:hover {
     margin-top: 0.75rem;
 }
 
+.league-standings-rules {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--bg-tertiary);
+    padding: 0.875rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.league-standings-rules ul {
+    margin-left: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.league-my-progress {
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--bg-secondary);
+    padding: 0.875rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.league-my-progress-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.league-my-progress-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+    gap: 0.75rem;
+}
+
+.league-progress-item {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--bg-tertiary);
+    padding: 0.625rem 0.75rem;
+}
+
+.league-progress-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--text-muted);
+}
+
+.league-progress-value {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.league-standings-list .list-group-item {
+    border-left: 3px solid transparent;
+}
+
+.league-standings-top-row {
+    border-left-color: var(--primary) !important;
+}
+
+.league-you-chip {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--primary);
+    color: var(--primary);
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.1rem 0.45rem;
+    line-height: 1.1;
+}
+
+.league-rank-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    padding: 0.15rem 0.55rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    border: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    min-width: 5.5rem;
+}
+
+.league-rank-movement-up {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.league-rank-movement-down {
+    border-color: var(--primary-dark);
+    color: var(--primary-dark);
+}
+
+.league-rank-movement-neutral {
+    border-color: var(--border-color);
+    color: var(--text-muted);
+}
+
 .cashier-balance-grid {
     display: flex;
     align-items: flex-end;

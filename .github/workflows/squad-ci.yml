@@ -32,4 +32,4 @@ jobs:
         run: dotnet build src/CardGames.sln --configuration Release --no-restore
 
       - name: Leagues P0 Integration Quality Gate
-        run: dotnet test src/Tests/CardGames.IntegrationTests/CardGames.IntegrationTests.csproj --configuration Release --no-build --logger "trx;LogFileName=integration-tests.trx"
+        run: dotnet test src/Tests/CardGames.IntegrationTests/CardGames.IntegrationTests.csproj --configuration Release --no-build --filter "QualityGate=LeaguesP0" --logger "trx;LogFileName=integration-tests.trx"

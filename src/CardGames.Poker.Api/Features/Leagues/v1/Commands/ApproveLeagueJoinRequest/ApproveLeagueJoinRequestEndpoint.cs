@@ -1,4 +1,5 @@
 using CardGames.Poker.Api.Contracts;
+using CardGames.Poker.Api.Features.Leagues.v1;
 using MediatR;
 
 namespace CardGames.Poker.Api.Features.Leagues.v1.Commands.ApproveLeagueJoinRequest;
@@ -29,8 +30,10 @@ public static class ApproveLeagueJoinRequestEndpoint
 			.Produces(StatusCodes.Status204NoContent)
 			.Produces(StatusCodes.Status401Unauthorized)
 			.Produces(StatusCodes.Status403Forbidden)
+			.Produces(StatusCodes.Status429TooManyRequests)
 			.ProducesProblem(StatusCodes.Status400BadRequest)
 			.ProducesProblem(StatusCodes.Status404NotFound)
+			.RequireRateLimiting(LeagueRateLimitPolicies.JoinAndRequestFlow)
 			.RequireAuthorization();
 
 		return group;

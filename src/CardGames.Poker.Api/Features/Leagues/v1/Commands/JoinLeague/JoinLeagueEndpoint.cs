@@ -1,4 +1,5 @@
 using CardGames.Poker.Api.Contracts;
+using CardGames.Poker.Api.Features.Leagues.v1;
 using MediatR;
 
 namespace CardGames.Poker.Api.Features.Leagues.v1.Commands.JoinLeague;
@@ -17,7 +18,9 @@ public static class JoinLeagueEndpoint
 			.WithDescription("Joins a league with a valid invite token.")
 			.Produces<JoinLeagueResponse>(StatusCodes.Status200OK)
 			.Produces(StatusCodes.Status401Unauthorized)
+			.Produces(StatusCodes.Status429TooManyRequests)
 			.ProducesProblem(StatusCodes.Status400BadRequest)
+			.RequireRateLimiting(LeagueRateLimitPolicies.JoinAndRequestFlow)
 			.RequireAuthorization();
 
 		group.MapPost("join-by-invite",
@@ -27,7 +30,9 @@ public static class JoinLeagueEndpoint
 			.WithDescription("Compatibility alias for joining a league with a valid invite token.")
 			.Produces<JoinLeagueResponse>(StatusCodes.Status200OK)
 			.Produces(StatusCodes.Status401Unauthorized)
+			.Produces(StatusCodes.Status429TooManyRequests)
 			.ProducesProblem(StatusCodes.Status400BadRequest)
+			.RequireRateLimiting(LeagueRateLimitPolicies.JoinAndRequestFlow)
 			.RequireAuthorization();
 
 		return group;
