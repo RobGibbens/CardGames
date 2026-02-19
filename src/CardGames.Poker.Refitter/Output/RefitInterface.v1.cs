@@ -14,6 +14,1102 @@ using CardGames.Poker.Api.Contracts;
 
 namespace CardGames.Poker.Api.Clients
 {
+    /// <summary>Upload avatar</summary>
+    [System.CodeDom.Compiler.GeneratedCode("Refitter", "1.7.0.0")]
+    public partial interface IProfileApi
+    {
+        /// <summary>Upload avatar</summary>
+        /// <remarks>Upload an avatar image to blob storage and return the resulting URL.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>500</term>
+        /// <description>Internal Server Error</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Multipart]
+        [Headers("Accept: application/json, application/problem+json")]
+        [Post("/api/v1/profile/avatar")]
+        Task<IApiResponse<UploadAvatarResponse>> UploadAvatarAsync(StreamPart file, CancellationToken cancellationToken = default);
+
+        /// <summary>Get avatar</summary>
+        /// <remarks>Returns the avatar image for the specified user id.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>302</term>
+        /// <description>Found</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/problem+json")]
+        [Get("/api/v1/profile/avatar/{userId}")]
+        Task<IApiResponse> GetAvatarAsync(string userId, CancellationToken cancellationToken = default);
+
+        /// <summary>Get cashier summary</summary>
+        /// <remarks>Retrieves the current account chip balance and latest transaction timestamp for the authenticated player.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json")]
+        [Get("/api/v1/profile/cashier/summary")]
+        Task<IApiResponse<CashierSummaryDto>> GetCashierSummaryAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>Get cashier ledger</summary>
+        /// <remarks>Retrieves a paged, newest-first ledger of account chip transactions for the authenticated player.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json")]
+        [Get("/api/v1/profile/cashier/ledger")]
+        Task<IApiResponse<CashierLedgerPageDto>> GetCashierLedgerAsync([Query] int? take, [Query] int? skip, CancellationToken cancellationToken = default);
+
+        /// <summary>Add account chips</summary>
+        /// <remarks>Adds chips directly to the authenticated player's account balance and records an immutable ledger transaction.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/profile/cashier/add-chips")]
+        Task<IApiResponse<AddAccountChipsResponse>> AddAccountChipsAsync([Body] AddAccountChipsRequest body, CancellationToken cancellationToken = default);
+    }
+
+    /// <summary>Create league</summary>
+    [System.CodeDom.Compiler.GeneratedCode("Refitter", "1.7.0.0")]
+    public partial interface ILeaguesApi
+    {
+        /// <summary>Create league</summary>
+        /// <remarks>Creates a new league and adds the creator as an active admin member.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>201</term>
+        /// <description>Created</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>401</term>
+        /// <description>Unauthorized</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/leagues")]
+        Task<IApiResponse<CreateLeagueResponse>> CreateLeagueAsync([Body] CreateLeagueRequest body, CancellationToken cancellationToken = default);
+
+        /// <summary>Get my leagues</summary>
+        /// <remarks>Returns leagues where the current user is an active member.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>401</term>
+        /// <description>Unauthorized</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json")]
+        [Get("/api/v1/leagues/mine")]
+        Task<IApiResponse<ICollection<LeagueSummaryDto>>> GetMyLeaguesAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>Get league detail</summary>
+        /// <remarks>Returns league detail for active members.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>401</term>
+        /// <description>Unauthorized</description>
+        /// </item>
+        /// <item>
+        /// <term>403</term>
+        /// <description>Forbidden</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Get("/api/v1/leagues/{leagueId}")]
+        Task<IApiResponse<LeagueDetailDto>> GetLeagueDetailAsync(System.Guid leagueId, CancellationToken cancellationToken = default);
+
+        /// <summary>Get league members</summary>
+        /// <remarks>Returns members for an active member of the league.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>401</term>
+        /// <description>Unauthorized</description>
+        /// </item>
+        /// <item>
+        /// <term>403</term>
+        /// <description>Forbidden</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json")]
+        [Get("/api/v1/leagues/{leagueId}/members")]
+        Task<IApiResponse<ICollection<LeagueMemberDto>>> GetLeagueMembersAsync(System.Guid leagueId, CancellationToken cancellationToken = default);
+
+        /// <summary>Get league membership history</summary>
+        /// <remarks>Returns membership timeline events for active members.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>401</term>
+        /// <description>Unauthorized</description>
+        /// </item>
+        /// <item>
+        /// <term>403</term>
+        /// <description>Forbidden</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json")]
+        [Get("/api/v1/leagues/{leagueId}/members/history")]
+        Task<IApiResponse<ICollection<LeagueMembershipHistoryItemDto>>> GetLeagueMembershipHistoryAsync(System.Guid leagueId, CancellationToken cancellationToken = default);
+
+        /// <summary>Create league invite</summary>
+        /// <remarks>Creates a shareable invite URL for league join.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>401</term>
+        /// <description>Unauthorized</description>
+        /// </item>
+        /// <item>
+        /// <term>403</term>
+        /// <description>Forbidden</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/leagues/{leagueId}/invites")]
+        Task<IApiResponse<CreateLeagueInviteResponse>> CreateLeagueInviteAsync(System.Guid leagueId, [Body] CreateLeagueInviteRequest body, CancellationToken cancellationToken = default);
+
+        /// <summary>Get league invites</summary>
+        /// <remarks>Returns league invites for active members.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>401</term>
+        /// <description>Unauthorized</description>
+        /// </item>
+        /// <item>
+        /// <term>403</term>
+        /// <description>Forbidden</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json")]
+        [Get("/api/v1/leagues/{leagueId}/invites")]
+        Task<IApiResponse<ICollection<LeagueInviteSummaryDto>>> GetLeagueInvitesAsync(System.Guid leagueId, CancellationToken cancellationToken = default);
+
+        /// <summary>Revoke league invite</summary>
+        /// <remarks>Revokes a league invite so it can no longer be used.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>204</term>
+        /// <description>No Content</description>
+        /// </item>
+        /// <item>
+        /// <term>401</term>
+        /// <description>Unauthorized</description>
+        /// </item>
+        /// <item>
+        /// <term>403</term>
+        /// <description>Forbidden</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/problem+json")]
+        [Post("/api/v1/leagues/{leagueId}/invites/{inviteId}/revoke")]
+        Task<IApiResponse> RevokeLeagueInviteAsync(System.Guid leagueId, System.Guid inviteId, CancellationToken cancellationToken = default);
+
+        /// <summary>Get league join preview</summary>
+        /// <remarks>Returns trust preview details for a league invite code.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>401</term>
+        /// <description>Unauthorized</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Get("/api/v1/leagues/join-preview")]
+        Task<IApiResponse<LeagueJoinPreviewDto>> GetLeagueJoinPreviewAsync([Query] string token, CancellationToken cancellationToken = default);
+
+        /// <summary>Join league</summary>
+        /// <remarks>Joins a league with a valid invite token.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>401</term>
+        /// <description>Unauthorized</description>
+        /// </item>
+        /// <item>
+        /// <term>429</term>
+        /// <description>Too Many Requests</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/leagues/join")]
+        Task<IApiResponse<JoinLeagueResponse>> JoinLeagueAsync([Body] JoinLeagueRequest body, CancellationToken cancellationToken = default);
+
+        /// <summary>Join league by invite</summary>
+        /// <remarks>Compatibility alias for joining a league with a valid invite token.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>401</term>
+        /// <description>Unauthorized</description>
+        /// </item>
+        /// <item>
+        /// <term>429</term>
+        /// <description>Too Many Requests</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/leagues/join-by-invite")]
+        Task<IApiResponse<JoinLeagueResponse>> JoinLeagueByInviteAsync([Body] JoinLeagueRequest body, CancellationToken cancellationToken = default);
+
+        /// <summary>Get pending league join requests</summary>
+        /// <remarks>Lists pending join requests for league managers and admins.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>401</term>
+        /// <description>Unauthorized</description>
+        /// </item>
+        /// <item>
+        /// <term>403</term>
+        /// <description>Forbidden</description>
+        /// </item>
+        /// <item>
+        /// <term>429</term>
+        /// <description>Too Many Requests</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json")]
+        [Get("/api/v1/leagues/{leagueId}/join-requests/pending")]
+        Task<IApiResponse<ICollection<LeagueJoinRequestQueueItemDto>>> GetPendingLeagueJoinRequestsAsync(System.Guid leagueId, CancellationToken cancellationToken = default);
+
+        /// <summary>Approve league join request</summary>
+        /// <remarks>Approves a pending join request and activates membership.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>204</term>
+        /// <description>No Content</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>401</term>
+        /// <description>Unauthorized</description>
+        /// </item>
+        /// <item>
+        /// <term>403</term>
+        /// <description>Forbidden</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>429</term>
+        /// <description>Too Many Requests</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/leagues/{leagueId}/join-requests/{joinRequestId}/approve")]
+        Task<IApiResponse> ApproveLeagueJoinRequestAsync(System.Guid leagueId, System.Guid joinRequestId, [Body] ModerateLeagueJoinRequestRequest body, CancellationToken cancellationToken = default);
+
+        /// <summary>Deny league join request</summary>
+        /// <remarks>Denies a pending league join request without creating membership.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>204</term>
+        /// <description>No Content</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>401</term>
+        /// <description>Unauthorized</description>
+        /// </item>
+        /// <item>
+        /// <term>403</term>
+        /// <description>Forbidden</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>429</term>
+        /// <description>Too Many Requests</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/leagues/{leagueId}/join-requests/{joinRequestId}/deny")]
+        Task<IApiResponse> DenyLeagueJoinRequestAsync(System.Guid leagueId, System.Guid joinRequestId, [Body] ModerateLeagueJoinRequestRequest body, CancellationToken cancellationToken = default);
+
+        /// <summary>Leave league</summary>
+        /// <remarks>Leaves the league for the current user. If not active member, returns no-op success.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>401</term>
+        /// <description>Unauthorized</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Post("/api/v1/leagues/{leagueId}/leave")]
+        Task<IApiResponse<LeaveLeagueResponse>> LeaveLeagueAsync(System.Guid leagueId, CancellationToken cancellationToken = default);
+
+        /// <summary>Promote league member to admin</summary>
+        /// <remarks>Promotes an active league member to admin role.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>204</term>
+        /// <description>No Content</description>
+        /// </item>
+        /// <item>
+        /// <term>401</term>
+        /// <description>Unauthorized</description>
+        /// </item>
+        /// <item>
+        /// <term>403</term>
+        /// <description>Forbidden</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/problem+json")]
+        [Post("/api/v1/leagues/{leagueId}/members/{memberUserId}/promote-admin")]
+        Task<IApiResponse> PromoteLeagueMemberToAdminAsync(System.Guid leagueId, string memberUserId, CancellationToken cancellationToken = default);
+
+        /// <summary>Demote league admin to member</summary>
+        /// <remarks>Demotes an active league admin to member while preserving league governance invariants.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>204</term>
+        /// <description>No Content</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>401</term>
+        /// <description>Unauthorized</description>
+        /// </item>
+        /// <item>
+        /// <term>403</term>
+        /// <description>Forbidden</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/problem+json")]
+        [Post("/api/v1/leagues/{leagueId}/members/{memberUserId}/demote-admin")]
+        Task<IApiResponse> DemoteLeagueAdminToMemberAsync(System.Guid leagueId, string memberUserId, CancellationToken cancellationToken = default);
+
+        /// <summary>Transfer league ownership</summary>
+        /// <remarks>Transfers manager ownership to another active league member.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>204</term>
+        /// <description>No Content</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>401</term>
+        /// <description>Unauthorized</description>
+        /// </item>
+        /// <item>
+        /// <term>403</term>
+        /// <description>Forbidden</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/problem+json")]
+        [Post("/api/v1/leagues/{leagueId}/members/{memberUserId}/transfer-ownership")]
+        Task<IApiResponse> TransferLeagueOwnershipAsync(System.Guid leagueId, string memberUserId, CancellationToken cancellationToken = default);
+
+        /// <summary>Remove league member</summary>
+        /// <remarks>Removes an active league member while preserving league governance invariants.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>204</term>
+        /// <description>No Content</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>401</term>
+        /// <description>Unauthorized</description>
+        /// </item>
+        /// <item>
+        /// <term>403</term>
+        /// <description>Forbidden</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/problem+json")]
+        [Post("/api/v1/leagues/{leagueId}/members/{memberUserId}/remove")]
+        Task<IApiResponse> RemoveLeagueMemberAsync(System.Guid leagueId, string memberUserId, CancellationToken cancellationToken = default);
+
+        /// <summary>Create league season</summary>
+        /// <remarks>Creates a new season container for a league.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>201</term>
+        /// <description>Created</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>401</term>
+        /// <description>Unauthorized</description>
+        /// </item>
+        /// <item>
+        /// <term>403</term>
+        /// <description>Forbidden</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/leagues/{leagueId}/seasons")]
+        Task<IApiResponse<CreateLeagueSeasonResponse>> CreateLeagueSeasonAsync(System.Guid leagueId, [Body] CreateLeagueSeasonRequest body, CancellationToken cancellationToken = default);
+
+        /// <summary>Get league seasons</summary>
+        /// <remarks>Returns seasons for an active member of a league.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>401</term>
+        /// <description>Unauthorized</description>
+        /// </item>
+        /// <item>
+        /// <term>403</term>
+        /// <description>Forbidden</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json")]
+        [Get("/api/v1/leagues/{leagueId}/seasons")]
+        Task<IApiResponse<ICollection<LeagueSeasonDto>>> GetLeagueSeasonsAsync(System.Guid leagueId, CancellationToken cancellationToken = default);
+
+        /// <summary>Create league season event</summary>
+        /// <remarks>Creates a season-linked event within a league.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>201</term>
+        /// <description>Created</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>401</term>
+        /// <description>Unauthorized</description>
+        /// </item>
+        /// <item>
+        /// <term>403</term>
+        /// <description>Forbidden</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/leagues/{leagueId}/seasons/{seasonId}/events")]
+        Task<IApiResponse<CreateLeagueSeasonEventResponse>> CreateLeagueSeasonEventAsync(System.Guid leagueId, System.Guid seasonId, [Body] CreateLeagueSeasonEventRequest body, CancellationToken cancellationToken = default);
+
+        /// <summary>Get league season events</summary>
+        /// <remarks>Returns season-linked events for an active member of the league.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>401</term>
+        /// <description>Unauthorized</description>
+        /// </item>
+        /// <item>
+        /// <term>403</term>
+        /// <description>Forbidden</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json")]
+        [Get("/api/v1/leagues/{leagueId}/seasons/{seasonId}/events")]
+        Task<IApiResponse<ICollection<LeagueSeasonEventDto>>> GetLeagueSeasonEventsAsync(System.Guid leagueId, System.Guid seasonId, CancellationToken cancellationToken = default);
+
+        /// <summary>Ingest league season event results</summary>
+        /// <remarks>Ingests ranked member results for a season event and updates league standings.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>204</term>
+        /// <description>No Content</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>401</term>
+        /// <description>Unauthorized</description>
+        /// </item>
+        /// <item>
+        /// <term>403</term>
+        /// <description>Forbidden</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/leagues/{leagueId}/seasons/{seasonId}/events/{eventId}/results")]
+        Task<IApiResponse> IngestLeagueSeasonEventResultsAsync(System.Guid leagueId, System.Guid seasonId, System.Guid eventId, [Body] IngestLeagueSeasonEventResultsRequest body, CancellationToken cancellationToken = default);
+
+        /// <summary>Correct league season event results</summary>
+        /// <remarks>Replaces existing season event results with corrected entries, updates standings, and writes an audit record.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>204</term>
+        /// <description>No Content</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>401</term>
+        /// <description>Unauthorized</description>
+        /// </item>
+        /// <item>
+        /// <term>403</term>
+        /// <description>Forbidden</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/problem+json", "Content-Type: application/json")]
+        [Put("/api/v1/leagues/{leagueId}/seasons/{seasonId}/events/{eventId}/results/corrections")]
+        Task<IApiResponse> CorrectLeagueSeasonEventResultsAsync(System.Guid leagueId, System.Guid seasonId, System.Guid eventId, [Body] CorrectLeagueSeasonEventResultsRequest body, CancellationToken cancellationToken = default);
+
+        /// <summary>Create league one-off event</summary>
+        /// <remarks>Creates a one-off event within a league.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>201</term>
+        /// <description>Created</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>401</term>
+        /// <description>Unauthorized</description>
+        /// </item>
+        /// <item>
+        /// <term>403</term>
+        /// <description>Forbidden</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/leagues/{leagueId}/events/one-off")]
+        Task<IApiResponse<CreateLeagueOneOffEventResponse>> CreateLeagueOneOffEventAsync(System.Guid leagueId, [Body] CreateLeagueOneOffEventRequest body, CancellationToken cancellationToken = default);
+
+        /// <summary>Get league one-off events</summary>
+        /// <remarks>Returns one-off events for an active member of the league.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>401</term>
+        /// <description>Unauthorized</description>
+        /// </item>
+        /// <item>
+        /// <term>403</term>
+        /// <description>Forbidden</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json")]
+        [Get("/api/v1/leagues/{leagueId}/events/one-off")]
+        Task<IApiResponse<ICollection<LeagueOneOffEventDto>>> GetLeagueOneOffEventsAsync(System.Guid leagueId, CancellationToken cancellationToken = default);
+
+        /// <summary>Get league standings</summary>
+        /// <remarks>Returns current league standings for active league members.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>401</term>
+        /// <description>Unauthorized</description>
+        /// </item>
+        /// <item>
+        /// <term>403</term>
+        /// <description>Forbidden</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json")]
+        [Get("/api/v1/leagues/{leagueId}/standings")]
+        Task<IApiResponse<ICollection<LeagueStandingEntryDto>>> GetLeagueStandingsAsync(System.Guid leagueId, [Query] System.Guid? seasonId, CancellationToken cancellationToken = default);
+
+        /// <summary>Launch session from league season event</summary>
+        /// <remarks>Creates a playable game session from a season event and links the event to the created table.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>401</term>
+        /// <description>Unauthorized</description>
+        /// </item>
+        /// <item>
+        /// <term>403</term>
+        /// <description>Forbidden</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/leagues/{leagueId}/seasons/{seasonId}/events/{eventId}/launch")]
+        Task<IApiResponse<LaunchLeagueEventSessionResponse>> LaunchLeagueSeasonEventSessionAsync(System.Guid leagueId, System.Guid seasonId, System.Guid eventId, [Body] LaunchLeagueEventSessionRequest body, CancellationToken cancellationToken = default);
+
+        /// <summary>Launch session from league one-off event</summary>
+        /// <remarks>Creates a playable game session from a one-off event and links the event to the created table.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>401</term>
+        /// <description>Unauthorized</description>
+        /// </item>
+        /// <item>
+        /// <term>403</term>
+        /// <description>Forbidden</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/leagues/{leagueId}/events/one-off/{eventId}/launch")]
+        Task<IApiResponse<LaunchLeagueEventSessionResponse>> LaunchLeagueOneOffEventSessionAsync(System.Guid leagueId, System.Guid eventId, [Body] LaunchLeagueEventSessionRequest body, CancellationToken cancellationToken = default);
+    }
+
     /// <summary>Start Hand</summary>
     [System.CodeDom.Compiler.GeneratedCode("Refitter", "1.7.0.0")]
     public partial interface ITwosJacksManWithTheAxeApi
@@ -2005,6 +3101,58 @@ namespace CardGames.Poker.Api.Contracts
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record AddAccountChipsRequest
+    {
+        [JsonConstructor]
+        public AddAccountChipsRequest(int @amount, string @reason)
+        {
+            this.Amount = @amount;
+            this.Reason = @reason;
+        }
+
+        [JsonPropertyName("amount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int Amount { get; init; }
+
+        [JsonPropertyName("reason")]
+        public string Reason { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record AddAccountChipsResponse
+    {
+        [JsonConstructor]
+        public AddAccountChipsResponse(int @appliedAmount, string @message, int @newBalance, System.Guid @transactionId)
+        {
+            this.NewBalance = @newBalance;
+            this.AppliedAmount = @appliedAmount;
+            this.TransactionId = @transactionId;
+            this.Message = @message;
+        }
+
+        [JsonPropertyName("newBalance")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int NewBalance { get; init; }
+
+        [JsonPropertyName("appliedAmount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int AppliedAmount { get; init; }
+
+        [JsonPropertyName("transactionId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid TransactionId { get; init; }
+
+        [JsonPropertyName("message")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Message { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial record AddChipsRequest
     {
         [JsonConstructor]
@@ -2339,6 +3487,105 @@ namespace CardGames.Poker.Api.Contracts
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record CashierLedgerEntryDto
+    {
+        [JsonConstructor]
+        public CashierLedgerEntryDto(int @amountDelta, int @balanceAfter, System.Guid @id, System.DateTimeOffset @occurredAtUtc, string @reason, System.Guid? @referenceId, string @referenceType, string @type)
+        {
+            this.Id = @id;
+            this.OccurredAtUtc = @occurredAtUtc;
+            this.Type = @type;
+            this.AmountDelta = @amountDelta;
+            this.BalanceAfter = @balanceAfter;
+            this.ReferenceType = @referenceType;
+            this.ReferenceId = @referenceId;
+            this.Reason = @reason;
+        }
+
+        [JsonPropertyName("id")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid Id { get; init; }
+
+        [JsonPropertyName("occurredAtUtc")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.DateTimeOffset OccurredAtUtc { get; init; }
+
+        [JsonPropertyName("type")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Type { get; init; }
+
+        [JsonPropertyName("amountDelta")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int AmountDelta { get; init; }
+
+        [JsonPropertyName("balanceAfter")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int BalanceAfter { get; init; }
+
+        [JsonPropertyName("referenceType")]
+        public string ReferenceType { get; init; }
+
+        [JsonPropertyName("referenceId")]
+        public System.Guid? ReferenceId { get; init; }
+
+        [JsonPropertyName("reason")]
+        public string Reason { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record CashierLedgerPageDto
+    {
+        [JsonConstructor]
+        public CashierLedgerPageDto(ICollection<CashierLedgerEntryDto> @entries, bool @hasMore, int @totalCount)
+        {
+            this.Entries = @entries;
+            this.HasMore = @hasMore;
+            this.TotalCount = @totalCount;
+        }
+
+        [JsonPropertyName("entries")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public ICollection<CashierLedgerEntryDto> Entries { get; init; }
+
+        [JsonPropertyName("hasMore")]
+        public bool HasMore { get; init; }
+
+        [JsonPropertyName("totalCount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int TotalCount { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record CashierSummaryDto
+    {
+        [JsonConstructor]
+        public CashierSummaryDto(int @currentBalance, System.DateTimeOffset? @lastTransactionAtUtc, int? @pendingBalanceChange)
+        {
+            this.CurrentBalance = @currentBalance;
+            this.PendingBalanceChange = @pendingBalanceChange;
+            this.LastTransactionAtUtc = @lastTransactionAtUtc;
+        }
+
+        [JsonPropertyName("currentBalance")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int CurrentBalance { get; init; }
+
+        [JsonPropertyName("pendingBalanceChange")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? PendingBalanceChange { get; init; }
+
+        [JsonPropertyName("lastTransactionAtUtc")]
+        public System.DateTimeOffset? LastTransactionAtUtc { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial record CollectAntesSuccessful
     {
         [JsonConstructor]
@@ -2364,6 +3611,26 @@ namespace CardGames.Poker.Api.Contracts
         [JsonPropertyName("anteContributions")]
         [System.ComponentModel.DataAnnotations.Required]
         public ICollection<AnteContribution> AnteContributions { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record CorrectLeagueSeasonEventResultsRequest
+    {
+        [JsonConstructor]
+        public CorrectLeagueSeasonEventResultsRequest(string @reason, ICollection<LeagueSeasonEventResultEntryRequest> @results)
+        {
+            this.Reason = @reason;
+            this.Results = @results;
+        }
+
+        [JsonPropertyName("reason")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Reason { get; init; }
+
+        [JsonPropertyName("results")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public ICollection<LeagueSeasonEventResultEntryRequest> Results { get; init; }
 
     }
 
@@ -2405,6 +3672,349 @@ namespace CardGames.Poker.Api.Contracts
         [JsonPropertyName("players")]
         [System.ComponentModel.DataAnnotations.Required]
         public ICollection<PlayerInfo> Players { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record CreateLeagueInviteRequest
+    {
+        [JsonConstructor]
+        public CreateLeagueInviteRequest(System.DateTimeOffset? @expiresAtUtc)
+        {
+            this.ExpiresAtUtc = @expiresAtUtc;
+        }
+
+        [JsonPropertyName("expiresAtUtc")]
+        public System.DateTimeOffset? ExpiresAtUtc { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record CreateLeagueInviteResponse
+    {
+        [JsonConstructor]
+        public CreateLeagueInviteResponse(System.DateTimeOffset? @expiresAtUtc, System.Guid @inviteId, string @inviteUrl, System.Guid @leagueId, LeagueInviteStatus? @status)
+        {
+            this.InviteId = @inviteId;
+            this.LeagueId = @leagueId;
+            this.InviteUrl = @inviteUrl;
+            this.ExpiresAtUtc = @expiresAtUtc;
+            this.Status = @status;
+        }
+
+        [JsonPropertyName("inviteId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid InviteId { get; init; }
+
+        [JsonPropertyName("leagueId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid LeagueId { get; init; }
+
+        [JsonPropertyName("inviteUrl")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string InviteUrl { get; init; }
+
+        [JsonPropertyName("expiresAtUtc")]
+        public System.DateTimeOffset? ExpiresAtUtc { get; init; }
+
+        [JsonPropertyName("status")]
+        public LeagueInviteStatus? Status { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record CreateLeagueOneOffEventRequest
+    {
+        [JsonConstructor]
+        public CreateLeagueOneOffEventRequest(LeagueOneOffEventType? @eventType, string @name, string @notes, System.DateTimeOffset? @scheduledAtUtc)
+        {
+            this.Name = @name;
+            this.ScheduledAtUtc = @scheduledAtUtc;
+            this.EventType = @eventType;
+            this.Notes = @notes;
+        }
+
+        [JsonPropertyName("name")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Name { get; init; }
+
+        [JsonPropertyName("scheduledAtUtc")]
+        public System.DateTimeOffset? ScheduledAtUtc { get; init; }
+
+        [JsonPropertyName("eventType")]
+        public LeagueOneOffEventType? EventType { get; init; }
+
+        [JsonPropertyName("notes")]
+        public string Notes { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record CreateLeagueOneOffEventResponse
+    {
+        [JsonConstructor]
+        public CreateLeagueOneOffEventResponse(System.DateTimeOffset? @createdAtUtc, string @createdByUserId, System.Guid @eventId, LeagueOneOffEventType? @eventType, System.Guid @leagueId, string @name, string @notes, System.DateTimeOffset? @scheduledAtUtc, LeagueOneOffEventStatus? @status)
+        {
+            this.EventId = @eventId;
+            this.LeagueId = @leagueId;
+            this.Name = @name;
+            this.ScheduledAtUtc = @scheduledAtUtc;
+            this.EventType = @eventType;
+            this.Status = @status;
+            this.Notes = @notes;
+            this.CreatedByUserId = @createdByUserId;
+            this.CreatedAtUtc = @createdAtUtc;
+        }
+
+        [JsonPropertyName("eventId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid EventId { get; init; }
+
+        [JsonPropertyName("leagueId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid LeagueId { get; init; }
+
+        [JsonPropertyName("name")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Name { get; init; }
+
+        [JsonPropertyName("scheduledAtUtc")]
+        public System.DateTimeOffset? ScheduledAtUtc { get; init; }
+
+        [JsonPropertyName("eventType")]
+        public LeagueOneOffEventType? EventType { get; init; }
+
+        [JsonPropertyName("status")]
+        public LeagueOneOffEventStatus? Status { get; init; }
+
+        [JsonPropertyName("notes")]
+        public string Notes { get; init; }
+
+        [JsonPropertyName("createdByUserId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string CreatedByUserId { get; init; }
+
+        [JsonPropertyName("createdAtUtc")]
+        public System.DateTimeOffset? CreatedAtUtc { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record CreateLeagueRequest
+    {
+        [JsonConstructor]
+        public CreateLeagueRequest(string @description, string @name)
+        {
+            this.Name = @name;
+            this.Description = @description;
+        }
+
+        [JsonPropertyName("name")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Name { get; init; }
+
+        [JsonPropertyName("description")]
+        public string Description { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record CreateLeagueResponse
+    {
+        [JsonConstructor]
+        public CreateLeagueResponse(System.DateTimeOffset? @createdAtUtc, string @createdByUserId, string @description, System.Guid @leagueId, LeagueRole? @myRole, string @name)
+        {
+            this.LeagueId = @leagueId;
+            this.Name = @name;
+            this.Description = @description;
+            this.CreatedByUserId = @createdByUserId;
+            this.CreatedAtUtc = @createdAtUtc;
+            this.MyRole = @myRole;
+        }
+
+        [JsonPropertyName("leagueId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid LeagueId { get; init; }
+
+        [JsonPropertyName("name")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Name { get; init; }
+
+        [JsonPropertyName("description")]
+        public string Description { get; init; }
+
+        [JsonPropertyName("createdByUserId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string CreatedByUserId { get; init; }
+
+        [JsonPropertyName("createdAtUtc")]
+        public System.DateTimeOffset? CreatedAtUtc { get; init; }
+
+        [JsonPropertyName("myRole")]
+        public LeagueRole? MyRole { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record CreateLeagueSeasonEventRequest
+    {
+        [JsonConstructor]
+        public CreateLeagueSeasonEventRequest(string @name, string @notes, System.DateTimeOffset? @scheduledAtUtc, int? @sequenceNumber)
+        {
+            this.Name = @name;
+            this.SequenceNumber = @sequenceNumber;
+            this.ScheduledAtUtc = @scheduledAtUtc;
+            this.Notes = @notes;
+        }
+
+        [JsonPropertyName("name")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Name { get; init; }
+
+        [JsonPropertyName("sequenceNumber")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? SequenceNumber { get; init; }
+
+        [JsonPropertyName("scheduledAtUtc")]
+        public System.DateTimeOffset? ScheduledAtUtc { get; init; }
+
+        [JsonPropertyName("notes")]
+        public string Notes { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record CreateLeagueSeasonEventResponse
+    {
+        [JsonConstructor]
+        public CreateLeagueSeasonEventResponse(System.DateTimeOffset? @createdAtUtc, string @createdByUserId, System.Guid @eventId, System.Guid @leagueId, string @name, string @notes, System.DateTimeOffset? @scheduledAtUtc, System.Guid @seasonId, int? @sequenceNumber, LeagueSeasonEventStatus? @status)
+        {
+            this.EventId = @eventId;
+            this.LeagueId = @leagueId;
+            this.SeasonId = @seasonId;
+            this.Name = @name;
+            this.SequenceNumber = @sequenceNumber;
+            this.ScheduledAtUtc = @scheduledAtUtc;
+            this.Status = @status;
+            this.Notes = @notes;
+            this.CreatedByUserId = @createdByUserId;
+            this.CreatedAtUtc = @createdAtUtc;
+        }
+
+        [JsonPropertyName("eventId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid EventId { get; init; }
+
+        [JsonPropertyName("leagueId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid LeagueId { get; init; }
+
+        [JsonPropertyName("seasonId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid SeasonId { get; init; }
+
+        [JsonPropertyName("name")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Name { get; init; }
+
+        [JsonPropertyName("sequenceNumber")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? SequenceNumber { get; init; }
+
+        [JsonPropertyName("scheduledAtUtc")]
+        public System.DateTimeOffset? ScheduledAtUtc { get; init; }
+
+        [JsonPropertyName("status")]
+        public LeagueSeasonEventStatus? Status { get; init; }
+
+        [JsonPropertyName("notes")]
+        public string Notes { get; init; }
+
+        [JsonPropertyName("createdByUserId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string CreatedByUserId { get; init; }
+
+        [JsonPropertyName("createdAtUtc")]
+        public System.DateTimeOffset? CreatedAtUtc { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record CreateLeagueSeasonRequest
+    {
+        [JsonConstructor]
+        public CreateLeagueSeasonRequest(System.DateTimeOffset? @endsAtUtc, string @name, int? @plannedEventCount, System.DateTimeOffset? @startsAtUtc)
+        {
+            this.Name = @name;
+            this.PlannedEventCount = @plannedEventCount;
+            this.StartsAtUtc = @startsAtUtc;
+            this.EndsAtUtc = @endsAtUtc;
+        }
+
+        [JsonPropertyName("name")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Name { get; init; }
+
+        [JsonPropertyName("plannedEventCount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? PlannedEventCount { get; init; }
+
+        [JsonPropertyName("startsAtUtc")]
+        public System.DateTimeOffset? StartsAtUtc { get; init; }
+
+        [JsonPropertyName("endsAtUtc")]
+        public System.DateTimeOffset? EndsAtUtc { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record CreateLeagueSeasonResponse
+    {
+        [JsonConstructor]
+        public CreateLeagueSeasonResponse(System.DateTimeOffset? @createdAtUtc, string @createdByUserId, System.DateTimeOffset? @endsAtUtc, System.Guid @leagueId, string @name, int? @plannedEventCount, System.Guid @seasonId, System.DateTimeOffset? @startsAtUtc, LeagueSeasonStatus? @status)
+        {
+            this.SeasonId = @seasonId;
+            this.LeagueId = @leagueId;
+            this.Name = @name;
+            this.PlannedEventCount = @plannedEventCount;
+            this.StartsAtUtc = @startsAtUtc;
+            this.EndsAtUtc = @endsAtUtc;
+            this.Status = @status;
+            this.CreatedByUserId = @createdByUserId;
+            this.CreatedAtUtc = @createdAtUtc;
+        }
+
+        [JsonPropertyName("seasonId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid SeasonId { get; init; }
+
+        [JsonPropertyName("leagueId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid LeagueId { get; init; }
+
+        [JsonPropertyName("name")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Name { get; init; }
+
+        [JsonPropertyName("plannedEventCount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? PlannedEventCount { get; init; }
+
+        [JsonPropertyName("startsAtUtc")]
+        public System.DateTimeOffset? StartsAtUtc { get; init; }
+
+        [JsonPropertyName("endsAtUtc")]
+        public System.DateTimeOffset? EndsAtUtc { get; init; }
+
+        [JsonPropertyName("status")]
+        public LeagueSeasonStatus? Status { get; init; }
+
+        [JsonPropertyName("createdByUserId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string CreatedByUserId { get; init; }
+
+        [JsonPropertyName("createdAtUtc")]
+        public System.DateTimeOffset? CreatedAtUtc { get; init; }
 
     }
 
@@ -3856,6 +5466,21 @@ namespace CardGames.Poker.Api.Contracts
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record IngestLeagueSeasonEventResultsRequest
+    {
+        [JsonConstructor]
+        public IngestLeagueSeasonEventResultsRequest(ICollection<LeagueSeasonEventResultEntryRequest> @results)
+        {
+            this.Results = @results;
+        }
+
+        [JsonPropertyName("results")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public ICollection<LeagueSeasonEventResultEntryRequest> Results { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial record JoinGameRequest
     {
         [JsonConstructor]
@@ -3920,6 +5545,775 @@ namespace CardGames.Poker.Api.Contracts
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record JoinLeagueRequest
+    {
+        [JsonConstructor]
+        public JoinLeagueRequest(string @token)
+        {
+            this.Token = @token;
+        }
+
+        [JsonPropertyName("token")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Token { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record JoinLeagueResponse
+    {
+        [JsonConstructor]
+        public JoinLeagueResponse(bool? @alreadyMember, bool? @joined, System.Guid? @joinRequestId, JoinRequestStatus @joinRequestStatus, System.Guid @leagueId, bool? @requestSubmitted)
+        {
+            this.LeagueId = @leagueId;
+            this.JoinRequestId = @joinRequestId;
+            this.JoinRequestStatus = @joinRequestStatus;
+            this.RequestSubmitted = @requestSubmitted;
+            this.Joined = @joined;
+            this.AlreadyMember = @alreadyMember;
+        }
+
+        [JsonPropertyName("leagueId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid LeagueId { get; init; }
+
+        [JsonPropertyName("joinRequestId")]
+        public System.Guid? JoinRequestId { get; init; }
+
+        [JsonPropertyName("joinRequestStatus")]
+        public JoinRequestStatus JoinRequestStatus { get; init; }
+
+        [JsonPropertyName("requestSubmitted")]
+        public bool? RequestSubmitted { get; init; }
+
+        [JsonPropertyName("joined")]
+        public bool? Joined { get; init; }
+
+        [JsonPropertyName("alreadyMember")]
+        public bool? AlreadyMember { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record LaunchLeagueEventSessionRequest
+    {
+        [JsonConstructor]
+        public LaunchLeagueEventSessionRequest(int? @ante, string @gameCode, string @gameName, int? @hostStartingChips, int? @minBet)
+        {
+            this.GameCode = @gameCode;
+            this.GameName = @gameName;
+            this.Ante = @ante;
+            this.MinBet = @minBet;
+            this.HostStartingChips = @hostStartingChips;
+        }
+
+        [JsonPropertyName("gameCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string GameCode { get; init; }
+
+        [JsonPropertyName("gameName")]
+        public string GameName { get; init; }
+
+        [JsonPropertyName("ante")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? Ante { get; init; }
+
+        [JsonPropertyName("minBet")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? MinBet { get; init; }
+
+        [JsonPropertyName("hostStartingChips")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? HostStartingChips { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record LaunchLeagueEventSessionResponse
+    {
+        [JsonConstructor]
+        public LaunchLeagueEventSessionResponse(System.Guid @eventId, string @gameCode, System.Guid @gameId, System.DateTimeOffset? @launchedAtUtc, System.Guid @leagueId, string @tablePath)
+        {
+            this.LeagueId = @leagueId;
+            this.EventId = @eventId;
+            this.GameId = @gameId;
+            this.GameCode = @gameCode;
+            this.TablePath = @tablePath;
+            this.LaunchedAtUtc = @launchedAtUtc;
+        }
+
+        [JsonPropertyName("leagueId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid LeagueId { get; init; }
+
+        [JsonPropertyName("eventId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid EventId { get; init; }
+
+        [JsonPropertyName("gameId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid GameId { get; init; }
+
+        [JsonPropertyName("gameCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string GameCode { get; init; }
+
+        [JsonPropertyName("tablePath")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string TablePath { get; init; }
+
+        [JsonPropertyName("launchedAtUtc")]
+        public System.DateTimeOffset? LaunchedAtUtc { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record LeagueDetailDto
+    {
+        [JsonConstructor]
+        public LeagueDetailDto(int? @activeMemberCount, System.DateTimeOffset? @createdAtUtc, string @createdByDisplayName, string @createdByUserId, string @description, System.Guid @leagueId, LeagueRole? @myRole, string @name)
+        {
+            this.LeagueId = @leagueId;
+            this.Name = @name;
+            this.Description = @description;
+            this.CreatedAtUtc = @createdAtUtc;
+            this.CreatedByUserId = @createdByUserId;
+            this.CreatedByDisplayName = @createdByDisplayName;
+            this.MyRole = @myRole;
+            this.ActiveMemberCount = @activeMemberCount;
+        }
+
+        [JsonPropertyName("leagueId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid LeagueId { get; init; }
+
+        [JsonPropertyName("name")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Name { get; init; }
+
+        [JsonPropertyName("description")]
+        public string Description { get; init; }
+
+        [JsonPropertyName("createdAtUtc")]
+        public System.DateTimeOffset? CreatedAtUtc { get; init; }
+
+        [JsonPropertyName("createdByUserId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string CreatedByUserId { get; init; }
+
+        [JsonPropertyName("createdByDisplayName")]
+        public string CreatedByDisplayName { get; init; }
+
+        [JsonPropertyName("myRole")]
+        public LeagueRole? MyRole { get; init; }
+
+        [JsonPropertyName("activeMemberCount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ActiveMemberCount { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public enum LeagueInviteStatus
+    {
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Active")]
+        Active = 0,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Revoked")]
+        Revoked = 1,
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record LeagueInviteSummaryDto
+    {
+        [JsonConstructor]
+        public LeagueInviteSummaryDto(System.DateTimeOffset? @createdAtUtc, System.DateTimeOffset? @expiresAtUtc, System.Guid @inviteId, System.Guid @leagueId, LeagueInviteStatus? @status)
+        {
+            this.InviteId = @inviteId;
+            this.LeagueId = @leagueId;
+            this.Status = @status;
+            this.CreatedAtUtc = @createdAtUtc;
+            this.ExpiresAtUtc = @expiresAtUtc;
+        }
+
+        [JsonPropertyName("inviteId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid InviteId { get; init; }
+
+        [JsonPropertyName("leagueId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid LeagueId { get; init; }
+
+        [JsonPropertyName("status")]
+        public LeagueInviteStatus? Status { get; init; }
+
+        [JsonPropertyName("createdAtUtc")]
+        public System.DateTimeOffset? CreatedAtUtc { get; init; }
+
+        [JsonPropertyName("expiresAtUtc")]
+        public System.DateTimeOffset? ExpiresAtUtc { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record LeagueJoinPreviewDto
+    {
+        [JsonConstructor]
+        public LeagueJoinPreviewDto(int? @activeMemberCount, string @joinPolicy, string @leagueDescription, System.Guid @leagueId, string @leagueName, string @managerDisplayName)
+        {
+            this.LeagueId = @leagueId;
+            this.LeagueName = @leagueName;
+            this.LeagueDescription = @leagueDescription;
+            this.ManagerDisplayName = @managerDisplayName;
+            this.ActiveMemberCount = @activeMemberCount;
+            this.JoinPolicy = @joinPolicy;
+        }
+
+        [JsonPropertyName("leagueId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid LeagueId { get; init; }
+
+        [JsonPropertyName("leagueName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string LeagueName { get; init; }
+
+        [JsonPropertyName("leagueDescription")]
+        public string LeagueDescription { get; init; }
+
+        [JsonPropertyName("managerDisplayName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string ManagerDisplayName { get; init; }
+
+        [JsonPropertyName("activeMemberCount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ActiveMemberCount { get; init; }
+
+        [JsonPropertyName("joinPolicy")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string JoinPolicy { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record LeagueJoinRequestQueueItemDto
+    {
+        [JsonConstructor]
+        public LeagueJoinRequestQueueItemDto(System.DateTimeOffset? @createdAtUtc, System.DateTimeOffset? @expiresAtUtc, System.Guid @inviteId, System.Guid @joinRequestId, System.Guid @leagueId, string @requesterDisplayName, string @requesterUserId, LeagueJoinRequestStatus? @status)
+        {
+            this.JoinRequestId = @joinRequestId;
+            this.LeagueId = @leagueId;
+            this.InviteId = @inviteId;
+            this.RequesterUserId = @requesterUserId;
+            this.RequesterDisplayName = @requesterDisplayName;
+            this.Status = @status;
+            this.CreatedAtUtc = @createdAtUtc;
+            this.ExpiresAtUtc = @expiresAtUtc;
+        }
+
+        [JsonPropertyName("joinRequestId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid JoinRequestId { get; init; }
+
+        [JsonPropertyName("leagueId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid LeagueId { get; init; }
+
+        [JsonPropertyName("inviteId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid InviteId { get; init; }
+
+        [JsonPropertyName("requesterUserId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string RequesterUserId { get; init; }
+
+        [JsonPropertyName("requesterDisplayName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string RequesterDisplayName { get; init; }
+
+        [JsonPropertyName("status")]
+        public LeagueJoinRequestStatus? Status { get; init; }
+
+        [JsonPropertyName("createdAtUtc")]
+        public System.DateTimeOffset? CreatedAtUtc { get; init; }
+
+        [JsonPropertyName("expiresAtUtc")]
+        public System.DateTimeOffset? ExpiresAtUtc { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public enum LeagueJoinRequestStatus
+    {
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Pending")]
+        Pending = 0,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Approved")]
+        Approved = 1,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Denied")]
+        Denied = 2,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Expired")]
+        Expired = 3,
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record LeagueMemberDto
+    {
+        [JsonConstructor]
+        public LeagueMemberDto(bool? @isActive, System.DateTimeOffset? @joinedAtUtc, System.DateTimeOffset? @leftAtUtc, LeagueRole? @role, string @userDisplayName, string @userId)
+        {
+            this.UserId = @userId;
+            this.UserDisplayName = @userDisplayName;
+            this.Role = @role;
+            this.IsActive = @isActive;
+            this.JoinedAtUtc = @joinedAtUtc;
+            this.LeftAtUtc = @leftAtUtc;
+        }
+
+        [JsonPropertyName("userId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string UserId { get; init; }
+
+        [JsonPropertyName("userDisplayName")]
+        public string UserDisplayName { get; init; }
+
+        [JsonPropertyName("role")]
+        public LeagueRole? Role { get; init; }
+
+        [JsonPropertyName("isActive")]
+        public bool? IsActive { get; init; }
+
+        [JsonPropertyName("joinedAtUtc")]
+        public System.DateTimeOffset? JoinedAtUtc { get; init; }
+
+        [JsonPropertyName("leftAtUtc")]
+        public System.DateTimeOffset? LeftAtUtc { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public enum LeagueMembershipHistoryEventType
+    {
+
+        [System.Runtime.Serialization.EnumMember(Value = @"MemberJoined")]
+        MemberJoined = 0,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"MemberLeft")]
+        MemberLeft = 1,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"MemberPromotedToAdmin")]
+        MemberPromotedToAdmin = 2,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"MemberDemotedFromAdmin")]
+        MemberDemotedFromAdmin = 3,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"LeagueOwnershipTransferred")]
+        LeagueOwnershipTransferred = 4,
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record LeagueMembershipHistoryItemDto
+    {
+        [JsonConstructor]
+        public LeagueMembershipHistoryItemDto(string @actorDisplayName, string @actorUserId, System.Guid @eventId, LeagueMembershipHistoryEventType? @eventType, System.Guid @leagueId, System.DateTimeOffset? @occurredAtUtc, string @userDisplayName, string @userId)
+        {
+            this.EventId = @eventId;
+            this.LeagueId = @leagueId;
+            this.UserId = @userId;
+            this.UserDisplayName = @userDisplayName;
+            this.ActorUserId = @actorUserId;
+            this.ActorDisplayName = @actorDisplayName;
+            this.EventType = @eventType;
+            this.OccurredAtUtc = @occurredAtUtc;
+        }
+
+        [JsonPropertyName("eventId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid EventId { get; init; }
+
+        [JsonPropertyName("leagueId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid LeagueId { get; init; }
+
+        [JsonPropertyName("userId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string UserId { get; init; }
+
+        [JsonPropertyName("userDisplayName")]
+        public string UserDisplayName { get; init; }
+
+        [JsonPropertyName("actorUserId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string ActorUserId { get; init; }
+
+        [JsonPropertyName("actorDisplayName")]
+        public string ActorDisplayName { get; init; }
+
+        [JsonPropertyName("eventType")]
+        public LeagueMembershipHistoryEventType? EventType { get; init; }
+
+        [JsonPropertyName("occurredAtUtc")]
+        public System.DateTimeOffset? OccurredAtUtc { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record LeagueOneOffEventDto
+    {
+        [JsonConstructor]
+        public LeagueOneOffEventDto(System.DateTimeOffset? @createdAtUtc, string @createdByUserId, System.Guid @eventId, LeagueOneOffEventType? @eventType, System.Guid? @launchedGameId, System.Guid @leagueId, string @name, string @notes, System.DateTimeOffset? @scheduledAtUtc, LeagueOneOffEventStatus? @status)
+        {
+            this.EventId = @eventId;
+            this.LeagueId = @leagueId;
+            this.Name = @name;
+            this.ScheduledAtUtc = @scheduledAtUtc;
+            this.EventType = @eventType;
+            this.Status = @status;
+            this.Notes = @notes;
+            this.CreatedByUserId = @createdByUserId;
+            this.CreatedAtUtc = @createdAtUtc;
+            this.LaunchedGameId = @launchedGameId;
+        }
+
+        [JsonPropertyName("eventId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid EventId { get; init; }
+
+        [JsonPropertyName("leagueId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid LeagueId { get; init; }
+
+        [JsonPropertyName("name")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Name { get; init; }
+
+        [JsonPropertyName("scheduledAtUtc")]
+        public System.DateTimeOffset? ScheduledAtUtc { get; init; }
+
+        [JsonPropertyName("eventType")]
+        public LeagueOneOffEventType? EventType { get; init; }
+
+        [JsonPropertyName("status")]
+        public LeagueOneOffEventStatus? Status { get; init; }
+
+        [JsonPropertyName("notes")]
+        public string Notes { get; init; }
+
+        [JsonPropertyName("createdByUserId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string CreatedByUserId { get; init; }
+
+        [JsonPropertyName("createdAtUtc")]
+        public System.DateTimeOffset? CreatedAtUtc { get; init; }
+
+        [JsonPropertyName("launchedGameId")]
+        public System.Guid? LaunchedGameId { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public enum LeagueOneOffEventStatus
+    {
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Planned")]
+        Planned = 0,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Completed")]
+        Completed = 1,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Canceled")]
+        Canceled = 2,
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public enum LeagueOneOffEventType
+    {
+
+        [System.Runtime.Serialization.EnumMember(Value = @"GameNight")]
+        GameNight = 0,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Tournament")]
+        Tournament = 1,
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public enum LeagueRole
+    {
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Member")]
+        Member = 0,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Admin")]
+        Admin = 1,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Manager")]
+        Manager = 2,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Owner")]
+        Owner = 3,
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record LeagueSeasonDto
+    {
+        [JsonConstructor]
+        public LeagueSeasonDto(System.DateTimeOffset? @createdAtUtc, string @createdByUserId, System.DateTimeOffset? @endsAtUtc, System.Guid @leagueId, string @name, int? @plannedEventCount, System.Guid @seasonId, System.DateTimeOffset? @startsAtUtc, LeagueSeasonStatus? @status)
+        {
+            this.SeasonId = @seasonId;
+            this.LeagueId = @leagueId;
+            this.Name = @name;
+            this.PlannedEventCount = @plannedEventCount;
+            this.StartsAtUtc = @startsAtUtc;
+            this.EndsAtUtc = @endsAtUtc;
+            this.Status = @status;
+            this.CreatedByUserId = @createdByUserId;
+            this.CreatedAtUtc = @createdAtUtc;
+        }
+
+        [JsonPropertyName("seasonId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid SeasonId { get; init; }
+
+        [JsonPropertyName("leagueId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid LeagueId { get; init; }
+
+        [JsonPropertyName("name")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Name { get; init; }
+
+        [JsonPropertyName("plannedEventCount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? PlannedEventCount { get; init; }
+
+        [JsonPropertyName("startsAtUtc")]
+        public System.DateTimeOffset? StartsAtUtc { get; init; }
+
+        [JsonPropertyName("endsAtUtc")]
+        public System.DateTimeOffset? EndsAtUtc { get; init; }
+
+        [JsonPropertyName("status")]
+        public LeagueSeasonStatus? Status { get; init; }
+
+        [JsonPropertyName("createdByUserId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string CreatedByUserId { get; init; }
+
+        [JsonPropertyName("createdAtUtc")]
+        public System.DateTimeOffset? CreatedAtUtc { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record LeagueSeasonEventDto
+    {
+        [JsonConstructor]
+        public LeagueSeasonEventDto(System.DateTimeOffset? @createdAtUtc, string @createdByUserId, System.Guid @eventId, System.Guid? @launchedGameId, System.Guid @leagueId, string @name, string @notes, System.DateTimeOffset? @scheduledAtUtc, System.Guid @seasonId, int? @sequenceNumber, LeagueSeasonEventStatus? @status)
+        {
+            this.EventId = @eventId;
+            this.LeagueId = @leagueId;
+            this.SeasonId = @seasonId;
+            this.Name = @name;
+            this.SequenceNumber = @sequenceNumber;
+            this.ScheduledAtUtc = @scheduledAtUtc;
+            this.Status = @status;
+            this.Notes = @notes;
+            this.CreatedByUserId = @createdByUserId;
+            this.CreatedAtUtc = @createdAtUtc;
+            this.LaunchedGameId = @launchedGameId;
+        }
+
+        [JsonPropertyName("eventId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid EventId { get; init; }
+
+        [JsonPropertyName("leagueId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid LeagueId { get; init; }
+
+        [JsonPropertyName("seasonId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid SeasonId { get; init; }
+
+        [JsonPropertyName("name")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Name { get; init; }
+
+        [JsonPropertyName("sequenceNumber")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? SequenceNumber { get; init; }
+
+        [JsonPropertyName("scheduledAtUtc")]
+        public System.DateTimeOffset? ScheduledAtUtc { get; init; }
+
+        [JsonPropertyName("status")]
+        public LeagueSeasonEventStatus? Status { get; init; }
+
+        [JsonPropertyName("notes")]
+        public string Notes { get; init; }
+
+        [JsonPropertyName("createdByUserId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string CreatedByUserId { get; init; }
+
+        [JsonPropertyName("createdAtUtc")]
+        public System.DateTimeOffset? CreatedAtUtc { get; init; }
+
+        [JsonPropertyName("launchedGameId")]
+        public System.Guid? LaunchedGameId { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record LeagueSeasonEventResultEntryRequest
+    {
+        [JsonConstructor]
+        public LeagueSeasonEventResultEntryRequest(int? @chipsDelta, string @memberUserId, int? @placement, int? @points)
+        {
+            this.MemberUserId = @memberUserId;
+            this.Placement = @placement;
+            this.Points = @points;
+            this.ChipsDelta = @chipsDelta;
+        }
+
+        [JsonPropertyName("memberUserId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string MemberUserId { get; init; }
+
+        [JsonPropertyName("placement")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? Placement { get; init; }
+
+        [JsonPropertyName("points")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? Points { get; init; }
+
+        [JsonPropertyName("chipsDelta")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ChipsDelta { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public enum LeagueSeasonEventStatus
+    {
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Planned")]
+        Planned = 0,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Completed")]
+        Completed = 1,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Canceled")]
+        Canceled = 2,
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public enum LeagueSeasonStatus
+    {
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Planned")]
+        Planned = 0,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"InProgress")]
+        InProgress = 1,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Completed")]
+        Completed = 2,
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record LeagueStandingEntryDto
+    {
+        [JsonConstructor]
+        public LeagueStandingEntryDto(int? @lastPlacement, int? @rank, int? @totalChipsDelta, int? @totalEvents, int? @totalPoints, System.DateTimeOffset? @updatedAtUtc, string @userDisplayName, string @userId)
+        {
+            this.UserId = @userId;
+            this.UserDisplayName = @userDisplayName;
+            this.Rank = @rank;
+            this.TotalEvents = @totalEvents;
+            this.TotalPoints = @totalPoints;
+            this.TotalChipsDelta = @totalChipsDelta;
+            this.LastPlacement = @lastPlacement;
+            this.UpdatedAtUtc = @updatedAtUtc;
+        }
+
+        [JsonPropertyName("userId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string UserId { get; init; }
+
+        [JsonPropertyName("userDisplayName")]
+        public string UserDisplayName { get; init; }
+
+        [JsonPropertyName("rank")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? Rank { get; init; }
+
+        [JsonPropertyName("totalEvents")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? TotalEvents { get; init; }
+
+        [JsonPropertyName("totalPoints")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? TotalPoints { get; init; }
+
+        [JsonPropertyName("totalChipsDelta")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? TotalChipsDelta { get; init; }
+
+        [JsonPropertyName("lastPlacement")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? LastPlacement { get; init; }
+
+        [JsonPropertyName("updatedAtUtc")]
+        public System.DateTimeOffset? UpdatedAtUtc { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record LeagueSummaryDto
+    {
+        [JsonConstructor]
+        public LeagueSummaryDto(System.DateTimeOffset? @createdAtUtc, string @description, System.Guid @leagueId, string @name, LeagueRole? @role)
+        {
+            this.LeagueId = @leagueId;
+            this.Name = @name;
+            this.Description = @description;
+            this.Role = @role;
+            this.CreatedAtUtc = @createdAtUtc;
+        }
+
+        [JsonPropertyName("leagueId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid LeagueId { get; init; }
+
+        [JsonPropertyName("name")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Name { get; init; }
+
+        [JsonPropertyName("description")]
+        public string Description { get; init; }
+
+        [JsonPropertyName("role")]
+        public LeagueRole? Role { get; init; }
+
+        [JsonPropertyName("createdAtUtc")]
+        public System.DateTimeOffset? CreatedAtUtc { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial record LeaveGameSuccessful
     {
         [JsonConstructor]
@@ -3964,6 +6358,43 @@ namespace CardGames.Poker.Api.Contracts
 
         [JsonPropertyName("message")]
         public string Message { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record LeaveLeagueResponse
+    {
+        [JsonConstructor]
+        public LeaveLeagueResponse(System.Guid @leagueId, bool? @left, bool? @wasActiveMember)
+        {
+            this.LeagueId = @leagueId;
+            this.Left = @left;
+            this.WasActiveMember = @wasActiveMember;
+        }
+
+        [JsonPropertyName("leagueId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid LeagueId { get; init; }
+
+        [JsonPropertyName("left")]
+        public bool? Left { get; init; }
+
+        [JsonPropertyName("wasActiveMember")]
+        public bool? WasActiveMember { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record ModerateLeagueJoinRequestRequest
+    {
+        [JsonConstructor]
+        public ModerateLeagueJoinRequestRequest(string @reason)
+        {
+            this.Reason = @reason;
+        }
+
+        [JsonPropertyName("reason")]
+        public string Reason { get; init; }
 
     }
 
@@ -4707,6 +7138,40 @@ namespace CardGames.Poker.Api.Contracts
 
     }
 
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record UploadAvatarResponse
+    {
+        [JsonConstructor]
+        public UploadAvatarResponse(string @avatarUrl)
+        {
+            this.AvatarUrl = @avatarUrl;
+        }
+
+        [JsonPropertyName("avatarUrl")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string AvatarUrl { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record JoinRequestStatus
+    {
+        [JsonConstructor]
+        public JoinRequestStatus()
+        {
+        }
+
+        private IDictionary<string, object> _additionalProperties;
+
+        [JsonExtensionData]
+        public IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
 
 }
 
@@ -4743,6 +7208,40 @@ namespace CardGames.Poker.Api.Clients
             Action<IHttpClientBuilder>? builder = default, 
             RefitSettings? settings = default)
         {
+            var clientBuilderIProfileApi = services
+                .AddRefitClient<IProfileApi>(settings)
+                .ConfigureHttpClient(c => c.BaseAddress = baseUrl);
+
+            clientBuilderIProfileApi
+                .AddStandardResilienceHandler(config =>
+                {
+                    config.Retry = new HttpRetryStrategyOptions
+                    {
+                        UseJitter = true,
+                        MaxRetryAttempts = 3,
+                        Delay = TimeSpan.FromSeconds(0.5)
+                    };
+                });
+
+            builder?.Invoke(clientBuilderIProfileApi);
+
+            var clientBuilderILeaguesApi = services
+                .AddRefitClient<ILeaguesApi>(settings)
+                .ConfigureHttpClient(c => c.BaseAddress = baseUrl);
+
+            clientBuilderILeaguesApi
+                .AddStandardResilienceHandler(config =>
+                {
+                    config.Retry = new HttpRetryStrategyOptions
+                    {
+                        UseJitter = true,
+                        MaxRetryAttempts = 3,
+                        Delay = TimeSpan.FromSeconds(0.5)
+                    };
+                });
+
+            builder?.Invoke(clientBuilderILeaguesApi);
+
             var clientBuilderITwosJacksManWithTheAxeApi = services
                 .AddRefitClient<ITwosJacksManWithTheAxeApi>(settings)
                 .ConfigureHttpClient(c => c.BaseAddress = baseUrl);

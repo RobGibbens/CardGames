@@ -246,7 +246,7 @@
 											<div class="fw-semibold">@member.UserId</div>
 											<div class="small text-muted">Role: @member.Role • Joined: @member.JoinedAtUtc.ToLocalTime().ToString("g")</div>
 										</div>
-										@if (_selectedLeague.Role == LeagueRole.Admin && member.IsActive && member.Role != LeagueRole.Admin)
+										@if (CanManageSelectedLeague && member.IsActive && member.Role != LeagueRole.Admin)
 										{
 											<button class="btn btn-sm btn-warning" @onclick="() => PromoteMemberAsync(member.UserId)" disabled="@_isSubmittingPromote">Promote</button>
 										}
@@ -256,7 +256,7 @@
 						}
 					</div>
 
-					@if (_selectedLeague.Role == LeagueRole.Admin)
+					@if (CanManageSelectedLeague)
 					{
 						<div class="auth-form">
 							<h3 class="h6">Create Invite Link</h3>
@@ -326,6 +326,12 @@
 	private int _adminClubCount;
 	private int _managerClubCount;
 	private int _totalPendingJoinActions;
+	private bool CanManageSelectedLeague => _selectedLeague is not null && IsLeagueManagementRole(_selectedLeague.Role);
+
+	private static bool IsLeagueManagementRole(LeagueRole role)
+	{
+		return role is LeagueRole.Admin or LeagueRole.Manager or LeagueRole.Owner;
+	}
 
 	protected override async Task OnInitializedAsync()
 	{
@@ -391,7 +397,7 @@
 		_totalPendingJoinActions = 0;
 
 		var manageableLeagues = _leagues
-			.Where(x => x.Role == LeagueRole.Admin || x.Role == LeagueRole.Manager)
+			.Where(x => x.Role == LeagueRole.Admin || x.Role == LeagueRole.Manager || x.Role == LeagueRole.Owner)
 			.Select(x => x.LeagueId)
 			.ToList();
 

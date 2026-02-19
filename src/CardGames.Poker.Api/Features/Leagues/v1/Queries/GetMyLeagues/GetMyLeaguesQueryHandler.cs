@@ -1,5 +1,6 @@
 using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Data;
+using CardGames.Poker.Api.Features.Leagues.v1.Governance;
 using CardGames.Poker.Api.Infrastructure;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -27,7 +28,7 @@ public sealed class GetMyLeaguesQueryHandler(
 				LeagueId = x.LeagueId,
 				Name = x.League.Name,
 				Description = x.League.Description,
-				Role = (CardGames.Poker.Api.Contracts.LeagueRole)x.Role,
+				Role = (CardGames.Poker.Api.Contracts.LeagueRole)LeagueGovernanceRules.ToCurrentUserProjectedRole(x.Role),
 				CreatedAtUtc = x.League.CreatedAtUtc
 			})
 			.OrderByDescending(x => x.CreatedAtUtc)

@@ -259,3 +259,15 @@ Current local variant will remain stable regardless of marketplace availability.
 **Integration:** Works with Linus (Frontend), web-design-reviewer skill, Rusty (Lead), and Basher (Tester). Activation via `/skills` command or `@frontend-design` mentions.
 **Validation:** SKILL.md created with valid structure at `.ai-team/skills/frontend-design/SKILL.md`; team integration documented; activation paths verified.
 **Idempotency:** ✅ Idempotent—Re-running will detect existing SKILL.md and skip creation. Local variant remains stable until marketplace version becomes available.
+
+### 2026-02-19: League creator invite permissions role-projection alignment
+**By:** Danny (Backend Dev)
+**Requested by:** Rob Gibbens
+**What:** Aligned league API role projection so current-user role fields in create/detail/my-leagues responses map persisted `Owner` to projected `Manager`, while leaving persisted membership role unchanged as `Owner`.
+**Why:** Keeps invite/admin UX flows immediately usable for league creators and consistent with management-capable authorization without changing storage semantics.
+
+### 2026-02-19: Governance-capable admins can execute member role administration for #216
+**By:** Rusty (Lead)
+**Requested by:** Rob Gibbens
+**What:** Finalized #216 authority so active admins and managers can execute promote/demote admin membership operations; ownership transfer remains manager-only; no-governance/no-manager safety invariants remain enforced.
+**Why:** Closes remaining member-administration gaps while preserving P0 lockout-prevention guarantees.

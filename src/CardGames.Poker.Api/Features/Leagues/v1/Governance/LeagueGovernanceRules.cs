@@ -4,6 +4,11 @@ namespace CardGames.Poker.Api.Features.Leagues.v1.Governance;
 
 public static class LeagueGovernanceRules
 {
+	public static LeagueRole ToCurrentUserProjectedRole(LeagueRole role)
+	{
+		return role == LeagueRole.Owner ? LeagueRole.Manager : role;
+	}
+
 	public static IQueryable<LeagueMemberCurrent> GovernanceCapableMembers(this IQueryable<LeagueMemberCurrent> members)
 	{
 		return members.Where(x => IsGovernanceCapable(x.Role));

@@ -1,9 +1,11 @@
 using CardGames.IntegrationTests.Infrastructure;
 using CardGames.IntegrationTests.Infrastructure.Fakes;
+using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeague;
 using CardGames.Poker.Api.Features.Leagues.v1.Queries.GetMyLeagues;
 using CardGames.Poker.Api.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
+using ContractsLeagueRole = CardGames.Poker.Api.Contracts.LeagueRole;
 
 namespace CardGames.IntegrationTests.Features.Queries;
 
@@ -33,6 +35,6 @@ public class GetMyLeaguesQueryHandlerTests : IntegrationTestBase
 
 		queryResult.IsT0.Should().BeTrue();
 		var leagues = queryResult.AsT0;
-		leagues.Should().ContainSingle(x => x.Name == "Home Game League");
+		leagues.Should().ContainSingle(x => x.Name == "Home Game League" && x.Role == ContractsLeagueRole.Manager);
 	}
 }

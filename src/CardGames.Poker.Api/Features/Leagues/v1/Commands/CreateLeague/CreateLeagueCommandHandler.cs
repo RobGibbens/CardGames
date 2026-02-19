@@ -1,6 +1,7 @@
 using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Features.Leagues.v1.Governance;
 using CardGames.Poker.Api.Infrastructure;
 using MediatR;
 using OneOf;
@@ -72,7 +73,7 @@ public sealed class CreateLeagueCommandHandler(
 			Description = league.Description,
 			CreatedAtUtc = league.CreatedAtUtc,
 			CreatedByUserId = league.CreatedByUserId,
-			MyRole = (CardGames.Poker.Api.Contracts.LeagueRole)creatorMembership.Role
+			MyRole = (CardGames.Poker.Api.Contracts.LeagueRole)LeagueGovernanceRules.ToCurrentUserProjectedRole(creatorMembership.Role)
 		};
 	}
 }

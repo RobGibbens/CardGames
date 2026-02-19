@@ -1,9 +1,12 @@
 using CardGames.IntegrationTests.Infrastructure;
 using CardGames.IntegrationTests.Infrastructure.Fakes;
+using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeague;
 using CardGames.Poker.Api.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using ContractsLeagueRole = CardGames.Poker.Api.Contracts.LeagueRole;
+using DataLeagueRole = CardGames.Poker.Api.Data.Entities.LeagueRole;
 
 namespace CardGames.IntegrationTests.Features.Commands;
 
@@ -31,6 +34,7 @@ public class CreateLeagueCommandHandlerTests : IntegrationTestBase
 
 		result.IsT0.Should().BeTrue();
 		var success = result.AsT0;
+		success.MyRole.Should().Be(ContractsLeagueRole.Manager);
 
 		var league = await DbContext.Leagues
 			.AsNoTracking()
@@ -44,7 +48,7 @@ public class CreateLeagueCommandHandlerTests : IntegrationTestBase
 			.SingleAsync(x => x.LeagueId == success.LeagueId && x.UserId == "league-user-1");
 
 		member.IsActive.Should().BeTrue();
-		member.Role.Should().Be(LeagueRole.Owner);
+		member.Role.Should().Be(DataLeagueRole.Owner);
 
 		var events = await DbContext.LeagueMembershipEvents
 			.AsNoTracking()

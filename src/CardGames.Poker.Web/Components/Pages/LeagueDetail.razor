@@ -496,7 +496,7 @@
 					<InputDate id="invite-expiry" class="form-control league-modal-date-input" @bind-Value="_inviteExpiryDate" />
 				</div>
 				<div class="league-form-modal-actions">
-					<button class="btn btn-sm btn-primary league-action-btn" @onclick="CreateInviteAsync" disabled="@_isSubmittingInvite">Create Invite</button>
+					<button type="button" class="btn btn-sm btn-primary league-action-btn" @onclick="CreateInviteAsync" disabled="@_isSubmittingInvite">Create Invite</button>
 				</div>
 				@if (!string.IsNullOrWhiteSpace(_createdInviteUrl))
 				{
@@ -772,8 +772,18 @@
 		public int ChipsDelta { get; set; }
 	}
 
-	private bool IsManager => _leagueDetail?.MyRole == LeagueRole.Manager;
-	private bool CanManageLeague => _leagueDetail?.MyRole == LeagueRole.Admin || _leagueDetail?.MyRole == LeagueRole.Manager;
+	private bool IsManager => HasManagerAuthorityRole(_leagueDetail?.MyRole);
+	private bool CanManageLeague => HasLeagueManagementRole(_leagueDetail?.MyRole);
+
+	private static bool HasLeagueManagementRole(LeagueRole? role)
+	{
+		return role is LeagueRole.Admin or LeagueRole.Manager or LeagueRole.Owner;
+	}
+
+	private static bool HasManagerAuthorityRole(LeagueRole? role)
+	{
+		return role is LeagueRole.Manager or LeagueRole.Owner;
+	}
 	private string? SelectedSeasonName => _selectedSeasonId.HasValue
 		? _seasons.FirstOrDefault(x => x.SeasonId == _selectedSeasonId.Value)?.Name
 		: null;

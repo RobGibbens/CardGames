@@ -27,6 +27,34 @@ public class LeaguesApiInviteTests(ApiWebApplicationFactory factory) : ApiIntegr
 	private const int JoinRequestFlowPermitLimit = 10;
 
 	[Fact]
+	public async Task LeagueCreator_DetailProjection_AllowsImmediateInviteCreation()
+	{
+		SetUser("league-detail-owner");
+
+		var createLeagueResponse = await PostAsync("/api/v1/leagues", new CreateLeagueRequest
+		{
+			Name = "API Detail Invite League"
+		});
+
+		createLeagueResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+		var league = await createLeagueResponse.Content.ReadFromJsonAsync<CreateLeagueResponse>(JsonOptions);
+		league.Should().NotBeNull();
+
+		var detailResponse = await Client.GetAsync($"/api/v1/leagues/{league!.LeagueId}");
+		detailResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+		var detail = await detailResponse.Content.ReadFromJsonAsync<LeagueDetailDto>(JsonOptions);
+		detail.Should().NotBeNull();
+		detail!.MyRole.Should().Be(CardGames.Poker.Api.Contracts.LeagueRole.Manager);
+
+		var createInviteResponse = await PostAsync($"/api/v1/leagues/{league.LeagueId}/invites", new CreateLeagueInviteRequest
+		{
+			ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(2)
+		});
+
+		createInviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+	}
+
+	[Fact]
 	public async Task RevokeInvite_Endpoint_RevokesActiveInvite()
 	{
 		SetUser("league-api-admin");
