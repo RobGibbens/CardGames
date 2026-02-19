@@ -1,5 +1,6 @@
 using Asp.Versioning.Builder;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeague;
+using CardGames.Poker.Api.Features.Leagues.v1.Commands.CorrectLeagueSeasonEventResults;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueInvite;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueOneOffEvent;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueSeason;
@@ -60,6 +61,7 @@ public static class V1
 		mapGroup.MapCreateLeagueSeasonEvent();
 		mapGroup.MapGetLeagueSeasonEvents();
 		mapGroup.MapIngestLeagueSeasonEventResults();
+		mapGroup.MapCorrectLeagueSeasonEventResults();
 		mapGroup.MapCreateLeagueOneOffEvent();
 		mapGroup.MapGetLeagueOneOffEvents();
 		mapGroup.MapGetLeagueStandings();
