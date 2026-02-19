@@ -21,6 +21,7 @@ public class LeaguesApiStandingsScaffoldTests(ApiWebApplicationFactory factory) 
 	};
 
 	[Fact]
+	[Trait("QualityGate", "LeaguesP0")]
 	public async Task Journey_ResultIngestion_ToStandings_IsCovered_ByQualityGateTests()
 	{
 		SetUser("standings-manager");
