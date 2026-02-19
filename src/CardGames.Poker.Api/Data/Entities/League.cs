@@ -290,6 +290,33 @@ public sealed class LeagueSeasonEventResult : EntityWithRowVersion
 	public LeagueSeasonEvent SeasonEvent { get; set; } = null!;
 }
 
+public sealed class LeagueSeasonEventResultCorrectionAudit : EntityWithRowVersion
+{
+	public Guid Id { get; set; } = Guid.CreateVersion7();
+
+	public Guid LeagueId { get; set; }
+
+	public Guid LeagueSeasonId { get; set; }
+
+	public Guid LeagueSeasonEventId { get; set; }
+
+	public required string CorrectedByUserId { get; set; }
+
+	public required string Reason { get; set; }
+
+	public required string PreviousResultsSnapshotJson { get; set; }
+
+	public required string NewResultsSnapshotJson { get; set; }
+
+	public DateTimeOffset CorrectedAtUtc { get; set; }
+
+	public League League { get; set; } = null!;
+
+	public LeagueSeason Season { get; set; } = null!;
+
+	public LeagueSeasonEvent SeasonEvent { get; set; } = null!;
+}
+
 public sealed class LeagueStandingCurrent : EntityWithRowVersion
 {
 	public Guid LeagueId { get; set; }

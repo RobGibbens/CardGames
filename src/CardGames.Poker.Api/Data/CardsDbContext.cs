@@ -141,6 +141,11 @@ public class CardsDbContext(DbContextOptions<CardsDbContext> options) : Identity
 	public DbSet<LeagueSeasonEventResult> LeagueSeasonEventResults => Set<LeagueSeasonEventResult>();
 
 	/// <summary>
+	/// Gets the set of league season event result correction audit entries.
+	/// </summary>
+	public DbSet<LeagueSeasonEventResultCorrectionAudit> LeagueSeasonEventResultCorrectionAudits => Set<LeagueSeasonEventResultCorrectionAudit>();
+
+	/// <summary>
 	/// Gets the set of current league standings.
 	/// </summary>
 	public DbSet<LeagueStandingCurrent> LeagueStandingsCurrent => Set<LeagueStandingCurrent>();

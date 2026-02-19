@@ -72,15 +72,6 @@ public sealed class IngestLeagueSeasonEventResultsCommandHandler(
 			return new IngestLeagueSeasonEventResultsError(IngestLeagueSeasonEventResultsErrorCode.MismatchedLeagueOrSeason, "Season event does not belong to the requested league season.");
 		}
 
-		var alreadyIngested = await context.LeagueSeasonEventResults
-			.AsNoTracking()
-			.AnyAsync(x => x.LeagueSeasonEventId == request.EventId, cancellationToken);
-
-		if (alreadyIngested)
-		{
-			return new IngestLeagueSeasonEventResultsError(IngestLeagueSeasonEventResultsErrorCode.ResultsAlreadyIngested, "Results were already ingested for this event.");
-		}
-
 		var duplicateMemberIds = request.Request.Results
 			.GroupBy(x => x.MemberUserId, StringComparer.Ordinal)
 			.Where(x => x.Count() > 1)
@@ -101,6 +92,50 @@ public sealed class IngestLeagueSeasonEventResultsCommandHandler(
 			.Select(x => x.MemberUserId.Trim())
 			.ToArray();
 
+		var existingResults = await context.LeagueSeasonEventResults
+			.AsNoTracking()
+			.Where(x => x.LeagueSeasonEventId == request.EventId)
+			.Select(x => new
+			{
+				x.UserId,
+				x.Placement,
+				x.Points,
+				x.ChipsDelta
+			})
+			.ToListAsync(cancellationToken);
+
+		if (existingResults.Count > 0)
+		{
+			var existingNormalized = existingResults
+				.OrderBy(x => x.UserId, StringComparer.Ordinal)
+				.ThenBy(x => x.Placement)
+				.ThenBy(x => x.Points)
+				.ThenBy(x => x.ChipsDelta)
+				.ToArray();
+
+			var incomingNormalized = request.Request.Results
+				.Select(x => new
+				{
+					UserId = x.MemberUserId.Trim(),
+					x.Placement,
+					x.Points,
+					x.ChipsDelta
+				})
+				.OrderBy(x => x.UserId, StringComparer.Ordinal)
+				.ThenBy(x => x.Placement)
+				.ThenBy(x => x.Points)
+				.ThenBy(x => x.ChipsDelta)
+				.ToArray();
+
+			var isIdempotentReplay = existingNormalized.SequenceEqual(incomingNormalized);
+			if (isIdempotentReplay)
+			{
+				return Unit.Value;
+			}
+
+			return new IngestLeagueSeasonEventResultsError(IngestLeagueSeasonEventResultsErrorCode.ResultsAlreadyIngested, "Results were already ingested for this event. Use correction workflow to change them.");
+		}
+
 		var activeMemberIds = await context.LeagueMembersCurrent
 			.AsNoTracking()
 			.Where(x => x.LeagueId == request.LeagueId && x.IsActive && memberIds.Contains(x.UserId))
@@ -113,9 +148,6 @@ public sealed class IngestLeagueSeasonEventResultsCommandHandler(
 		}
 
 		var now = DateTimeOffset.UtcNow;
-		var standingsByUserId = await context.LeagueStandingsCurrent
-			.Where(x => x.LeagueId == request.LeagueId && memberIds.Contains(x.UserId))
-			.ToDictionaryAsync(x => x.UserId, StringComparer.Ordinal, cancellationToken);
 
 		foreach (var result in request.Request.Results)
 		{
@@ -133,31 +165,13 @@ public sealed class IngestLeagueSeasonEventResultsCommandHandler(
 				RecordedAtUtc = now
 			});
 
-			if (!standingsByUserId.TryGetValue(trimmedMemberUserId, out var standing))
-			{
-				standing = new LeagueStandingCurrent
-				{
-					LeagueId = request.LeagueId,
-					UserId = trimmedMemberUserId,
-					TotalEvents = 0,
-					TotalPoints = 0,
-					TotalChipsDelta = 0,
-					UpdatedAtUtc = now
-				};
-				context.LeagueStandingsCurrent.Add(standing);
-				standingsByUserId[trimmedMemberUserId] = standing;
-			}
-
-			standing.TotalEvents += 1;
-			standing.TotalPoints += result.Points;
-			standing.TotalChipsDelta += result.ChipsDelta;
-			standing.LastPlacement = result.Placement;
-			standing.LastEventRecordedAtUtc = now;
-			standing.UpdatedAtUtc = now;
 		}
 
 		seasonEvent.Status = LeagueSeasonEventStatus.Completed;
 
+		await context.SaveChangesAsync(cancellationToken);
+
+		await LeagueSeasonEventStandingsRecalculator.RebuildForMembersAsync(context, request.LeagueId, memberIds, cancellationToken);
 		await context.SaveChangesAsync(cancellationToken);
 
 		return Unit.Value;

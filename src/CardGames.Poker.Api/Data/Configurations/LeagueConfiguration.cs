@@ -330,6 +330,52 @@ public sealed class LeagueSeasonEventResultConfiguration : IEntityTypeConfigurat
 	}
 }
 
+public sealed class LeagueSeasonEventResultCorrectionAuditConfiguration : IEntityTypeConfiguration<LeagueSeasonEventResultCorrectionAudit>
+{
+	public void Configure(EntityTypeBuilder<LeagueSeasonEventResultCorrectionAudit> builder)
+	{
+		builder.HasKey(x => x.Id);
+
+		builder.Property(x => x.Id)
+			.ValueGeneratedNever();
+
+		builder.Property(x => x.CorrectedByUserId)
+			.HasMaxLength(256)
+			.IsRequired();
+
+		builder.Property(x => x.Reason)
+			.HasMaxLength(1024)
+			.IsRequired();
+
+		builder.Property(x => x.PreviousResultsSnapshotJson)
+			.IsRequired();
+
+		builder.Property(x => x.NewResultsSnapshotJson)
+			.IsRequired();
+
+		builder.Property(x => x.RowVersion)
+			.IsRowVersion();
+
+		builder.HasIndex(x => new { x.LeagueSeasonEventId, x.CorrectedAtUtc });
+		builder.HasIndex(x => new { x.LeagueId, x.LeagueSeasonId, x.LeagueSeasonEventId, x.CorrectedAtUtc });
+
+		builder.HasOne(x => x.League)
+			.WithMany()
+			.HasForeignKey(x => x.LeagueId)
+			.OnDelete(DeleteBehavior.Cascade);
+
+		builder.HasOne(x => x.Season)
+			.WithMany()
+			.HasForeignKey(x => x.LeagueSeasonId)
+			.OnDelete(DeleteBehavior.NoAction);
+
+		builder.HasOne(x => x.SeasonEvent)
+			.WithMany()
+			.HasForeignKey(x => x.LeagueSeasonEventId)
+			.OnDelete(DeleteBehavior.NoAction);
+	}
+}
+
 public sealed class LeagueStandingCurrentConfiguration : IEntityTypeConfiguration<LeagueStandingCurrent>
 {
 	public void Configure(EntityTypeBuilder<LeagueStandingCurrent> builder)
