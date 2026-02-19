@@ -111,7 +111,7 @@ public partial interface ILeaguesApi
 
 	[Headers("Accept: application/json, application/problem+json")]
 	[Get("/api/v1/leagues/{leagueId}/standings")]
-	Task<IApiResponse<IReadOnlyList<LeagueStandingEntryDto>>> GetLeagueStandingsAsync(Guid leagueId, CancellationToken cancellationToken = default);
+	Task<IApiResponse<IReadOnlyList<LeagueStandingEntryDto>>> GetLeagueStandingsAsync(Guid leagueId, [AliasAs("seasonId")] Guid? seasonId = null, CancellationToken cancellationToken = default);
 
 	[Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
 	[Post("/api/v1/leagues/{leagueId}/events/one-off/{eventId}/launch")]

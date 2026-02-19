@@ -1,6 +1,9 @@
 using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Features.Leagues.v1;
+using CardGames.Poker.Api.Features.Leagues.v1.Telemetry;
 using MediatR;
+using Microsoft.AspNetCore.Http.HttpResults;
+using System.Diagnostics;
 
 namespace CardGames.Poker.Api.Features.Leagues.v1.Commands.JoinLeague;
 
@@ -8,8 +11,8 @@ public static class JoinLeagueEndpoint
 {
 	public static RouteGroupBuilder MapJoinLeague(this RouteGroupBuilder group)
 	{
-		Task<IResult> Handler(JoinLeagueRequest request, IMediator mediator, CancellationToken cancellationToken) =>
-			HandleJoinAsync(request, mediator, cancellationToken);
+		Task<IResult> Handler(JoinLeagueRequest request, IMediator mediator, LeaguesTelemetry telemetry, CancellationToken cancellationToken) =>
+			HandleJoinAsync(request, mediator, telemetry, cancellationToken);
 
 		group.MapPost("join",
 				Handler)
@@ -38,11 +41,12 @@ public static class JoinLeagueEndpoint
 		return group;
 	}
 
-	private static async Task<IResult> HandleJoinAsync(JoinLeagueRequest request, IMediator mediator, CancellationToken cancellationToken)
+	private static async Task<IResult> HandleJoinAsync(JoinLeagueRequest request, IMediator mediator, LeaguesTelemetry telemetry, CancellationToken cancellationToken)
 	{
+		var started = Stopwatch.GetTimestamp();
 		var result = await mediator.Send(new JoinLeagueCommand(request), cancellationToken);
 
-		return result.Match(
+		var httpResult = result.Match(
 			success => Results.Ok(success),
 			error => error.Code switch
 			{
@@ -52,5 +56,11 @@ public static class JoinLeagueEndpoint
 				JoinLeagueErrorCode.InviteExpired => Results.BadRequest(new { error.Message }),
 				_ => Results.Problem(error.Message)
 			});
+
+		var statusCode = (httpResult as IStatusCodeHttpResult)?.StatusCode ?? StatusCodes.Status200OK;
+		telemetry.RecordEndpointLatency("join_request", statusCode, Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+		telemetry.RecordFunnelAttempt("request", statusCode < 400 ? "success" : "failure");
+
+		return httpResult;
 	}
 }

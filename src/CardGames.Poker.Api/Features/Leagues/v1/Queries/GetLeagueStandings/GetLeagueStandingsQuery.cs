@@ -4,7 +4,7 @@ using OneOf;
 
 namespace CardGames.Poker.Api.Features.Leagues.v1.Queries.GetLeagueStandings;
 
-public sealed record GetLeagueStandingsQuery(Guid LeagueId)
+public sealed record GetLeagueStandingsQuery(Guid LeagueId, Guid? SeasonId)
 	: IRequest<OneOf<IReadOnlyList<LeagueStandingEntryDto>, GetLeagueStandingsError>>;
 
 public enum GetLeagueStandingsErrorCode

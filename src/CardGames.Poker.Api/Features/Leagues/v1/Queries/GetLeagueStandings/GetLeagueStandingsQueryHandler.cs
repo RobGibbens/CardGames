@@ -28,13 +28,54 @@ public sealed class GetLeagueStandingsQueryHandler(
 			return new GetLeagueStandingsError(GetLeagueStandingsErrorCode.Forbidden, "Only active members can view standings.");
 		}
 
-		var standingRows = await context.LeagueStandingsCurrent
+		var resultsQuery = context.LeagueSeasonEventResults
 			.AsNoTracking()
-			.Where(x => x.LeagueId == request.LeagueId)
+			.Where(x => x.LeagueId == request.LeagueId);
+
+		if (request.SeasonId.HasValue)
+		{
+			resultsQuery = resultsQuery.Where(x => x.LeagueSeasonId == request.SeasonId.Value);
+		}
+
+		var aggregates = await resultsQuery
+			.GroupBy(x => x.UserId)
+			.Select(group => new
+			{
+				UserId = group.Key,
+				TotalEvents = group.Count(),
+				TotalPoints = group.Sum(x => x.Points),
+				TotalChipsDelta = group.Sum(x => x.ChipsDelta),
+				UpdatedAtUtc = group.Max(x => x.RecordedAtUtc)
+			})
+			.ToListAsync(cancellationToken);
+
+		var latestPlacements = await resultsQuery
+			.GroupBy(x => x.UserId)
+			.Select(group => group
+				.OrderByDescending(x => x.RecordedAtUtc)
+				.ThenBy(x => x.Placement)
+				.Select(x => new
+				{
+					x.UserId,
+					x.Placement
+				})
+				.First())
+			.ToDictionaryAsync(x => x.UserId, StringComparer.Ordinal, cancellationToken);
+
+		var standingRows = aggregates
+			.Select(x => new
+			{
+				x.UserId,
+				x.TotalEvents,
+				x.TotalPoints,
+				x.TotalChipsDelta,
+				LastPlacement = latestPlacements.TryGetValue(x.UserId, out var latest) ? latest.Placement : (int?)null,
+				x.UpdatedAtUtc
+			})
 			.OrderByDescending(x => x.TotalPoints)
 			.ThenByDescending(x => x.TotalChipsDelta)
 			.ThenBy(x => x.UpdatedAtUtc)
-			.ToListAsync(cancellationToken);
+			.ToList();
 
 		var userIds = standingRows.Select(x => x.UserId).ToArray();
 		var displayNamesByUserId = await Queries.LeagueUserDisplayNameResolver.GetDisplayNamesByUserIdAsync(context, userIds, cancellationToken);

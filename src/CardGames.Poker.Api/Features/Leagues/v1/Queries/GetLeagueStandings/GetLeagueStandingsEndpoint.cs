@@ -8,9 +8,9 @@ public static class GetLeagueStandingsEndpoint
 	public static RouteGroupBuilder MapGetLeagueStandings(this RouteGroupBuilder group)
 	{
 		group.MapGet("{leagueId:guid}/standings",
-				async (Guid leagueId, IMediator mediator, CancellationToken cancellationToken) =>
+				async (Guid leagueId, Guid? seasonId, IMediator mediator, CancellationToken cancellationToken) =>
 				{
-					var result = await mediator.Send(new GetLeagueStandingsQuery(leagueId), cancellationToken);
+					var result = await mediator.Send(new GetLeagueStandingsQuery(leagueId, seasonId), cancellationToken);
 
 					return result.Match(
 						success => Results.Ok(success),

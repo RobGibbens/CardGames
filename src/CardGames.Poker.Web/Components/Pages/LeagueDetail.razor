@@ -251,6 +251,10 @@
 						<li>Standings refresh after season event result ingestion.</li>
 					</ul>
 				</div>
+				@if (_selectedSeasonId.HasValue)
+				{
+					<div class="small text-muted">Season scope: @(SelectedSeasonName ?? "Selected season")</div>
+				}
 
 				@if (_myStanding is not null)
 				{
@@ -770,6 +774,9 @@
 
 	private bool IsManager => _leagueDetail?.MyRole == LeagueRole.Manager;
 	private bool CanManageLeague => _leagueDetail?.MyRole == LeagueRole.Admin || _leagueDetail?.MyRole == LeagueRole.Manager;
+	private string? SelectedSeasonName => _selectedSeasonId.HasValue
+		? _seasons.FirstOrDefault(x => x.SeasonId == _selectedSeasonId.Value)?.Name
+		: null;
 	private List<LeagueMembershipHistoryItemDto> GovernanceAuditEntries => _membershipHistory
 		.Where(x => x.EventType is LeagueMembershipHistoryEventType.MemberPromotedToAdmin
 			or LeagueMembershipHistoryEventType.MemberDemotedFromAdmin
@@ -916,7 +923,7 @@
 	{
 		var previousRankByUserId = _standings.ToDictionary(x => x.UserId, x => x.Rank, StringComparer.Ordinal);
 
-		var response = await LeaguesApi.GetLeagueStandingsAsync(LeagueId);
+		var response = await LeaguesApi.GetLeagueStandingsAsync(LeagueId, _selectedSeasonId);
 		if (response.IsSuccessStatusCode && response.Content is not null)
 		{
 			_standings = response.Content.ToList();
@@ -959,6 +966,7 @@
 	{
 		_selectedSeasonId = seasonId;
 		await LoadSeasonEventsAsync(seasonId);
+		await LoadStandingsAsync();
 	}
 
 	private async Task CreateInviteAsync()

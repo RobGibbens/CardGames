@@ -1,5 +1,8 @@
 using CardGames.Poker.Api.Contracts;
+using CardGames.Poker.Api.Features.Leagues.v1.Telemetry;
 using MediatR;
+using Microsoft.AspNetCore.Http.HttpResults;
+using System.Diagnostics;
 
 namespace CardGames.Poker.Api.Features.Leagues.v1.Commands.LaunchLeagueEventSession;
 
@@ -8,13 +11,18 @@ public static class LaunchLeagueEventSessionEndpoint
 	public static RouteGroupBuilder MapLaunchLeagueEventSession(this RouteGroupBuilder group)
 	{
 		group.MapPost("{leagueId:guid}/seasons/{seasonId:guid}/events/{eventId:guid}/launch",
-				async (Guid leagueId, Guid seasonId, Guid eventId, LaunchLeagueEventSessionRequest request, IMediator mediator, CancellationToken cancellationToken) =>
+				async (Guid leagueId, Guid seasonId, Guid eventId, LaunchLeagueEventSessionRequest request, IMediator mediator, LeaguesTelemetry telemetry, CancellationToken cancellationToken) =>
 				{
+					var started = Stopwatch.GetTimestamp();
 					var result = await mediator.Send(
 						new LaunchLeagueEventSessionCommand(leagueId, LeagueEventSourceType.Season, eventId, seasonId, request),
 						cancellationToken);
 
-					return ToHttpResult(result);
+					var httpResult = ToHttpResult(result);
+					var statusCode = (httpResult as IStatusCodeHttpResult)?.StatusCode ?? StatusCodes.Status200OK;
+					telemetry.RecordEndpointLatency("first_play_launch_season", statusCode, Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+					telemetry.RecordFunnelAttempt("first_play", statusCode < 400 ? "success" : "failure");
+					return httpResult;
 				})
 			.WithName("LaunchLeagueSeasonEventSession")
 			.WithSummary("Launch session from league season event")
@@ -28,13 +36,18 @@ public static class LaunchLeagueEventSessionEndpoint
 			.RequireAuthorization();
 
 		group.MapPost("{leagueId:guid}/events/one-off/{eventId:guid}/launch",
-				async (Guid leagueId, Guid eventId, LaunchLeagueEventSessionRequest request, IMediator mediator, CancellationToken cancellationToken) =>
+				async (Guid leagueId, Guid eventId, LaunchLeagueEventSessionRequest request, IMediator mediator, LeaguesTelemetry telemetry, CancellationToken cancellationToken) =>
 				{
+					var started = Stopwatch.GetTimestamp();
 					var result = await mediator.Send(
 						new LaunchLeagueEventSessionCommand(leagueId, LeagueEventSourceType.OneOff, eventId, null, request),
 						cancellationToken);
 
-					return ToHttpResult(result);
+					var httpResult = ToHttpResult(result);
+					var statusCode = (httpResult as IStatusCodeHttpResult)?.StatusCode ?? StatusCodes.Status200OK;
+					telemetry.RecordEndpointLatency("first_play_launch_one_off", statusCode, Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+					telemetry.RecordFunnelAttempt("first_play", statusCode < 400 ? "success" : "failure");
+					return httpResult;
 				})
 			.WithName("LaunchLeagueOneOffEventSession")
 			.WithSummary("Launch session from league one-off event")

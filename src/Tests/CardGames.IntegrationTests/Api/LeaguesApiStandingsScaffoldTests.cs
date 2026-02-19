@@ -248,6 +248,127 @@ public class LeaguesApiStandingsScaffoldTests(ApiWebApplicationFactory factory) 
 		auditRows[0].NewResultsSnapshotJson.Should().Contain("standings-member");
 	}
 
+	[Fact]
+	public async Task GetStandings_CanBeScopedToSeason()
+	{
+		SetUser("standings-manager");
+
+		var createLeagueResponse = await PostAsync("/api/v1/leagues", new CreateLeagueRequest
+		{
+			Name = "Season Scoped Standings League"
+		});
+		createLeagueResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+		var league = await createLeagueResponse.Content.ReadFromJsonAsync<CreateLeagueResponse>(JsonOptions);
+		league.Should().NotBeNull();
+
+		DbContext.LeagueMembersCurrent.Add(new LeagueMemberCurrent
+		{
+			LeagueId = league!.LeagueId,
+			UserId = "standings-member",
+			Role = DataLeagueRole.Member,
+			IsActive = true,
+			JoinedAtUtc = DateTimeOffset.UtcNow,
+			UpdatedAtUtc = DateTimeOffset.UtcNow
+		});
+		await DbContext.SaveChangesAsync();
+
+		var createSeasonOneResponse = await PostAsync($"/api/v1/leagues/{league.LeagueId}/seasons", new CreateLeagueSeasonRequest
+		{
+			Name = "Season 1"
+		});
+		createSeasonOneResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+		var seasonOne = await createSeasonOneResponse.Content.ReadFromJsonAsync<CreateLeagueSeasonResponse>(JsonOptions);
+		seasonOne.Should().NotBeNull();
+
+		var createSeasonTwoResponse = await PostAsync($"/api/v1/leagues/{league.LeagueId}/seasons", new CreateLeagueSeasonRequest
+		{
+			Name = "Season 2"
+		});
+		createSeasonTwoResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+		var seasonTwo = await createSeasonTwoResponse.Content.ReadFromJsonAsync<CreateLeagueSeasonResponse>(JsonOptions);
+		seasonTwo.Should().NotBeNull();
+
+		var seasonOneEventResponse = await PostAsync($"/api/v1/leagues/{league.LeagueId}/seasons/{seasonOne!.SeasonId}/events", new CreateLeagueSeasonEventRequest
+		{
+			Name = "Season 1 Week 1",
+			SequenceNumber = 1
+		});
+		seasonOneEventResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+		var seasonOneEvent = await seasonOneEventResponse.Content.ReadFromJsonAsync<CreateLeagueSeasonEventResponse>(JsonOptions);
+		seasonOneEvent.Should().NotBeNull();
+
+		var seasonTwoEventResponse = await PostAsync($"/api/v1/leagues/{league.LeagueId}/seasons/{seasonTwo!.SeasonId}/events", new CreateLeagueSeasonEventRequest
+		{
+			Name = "Season 2 Week 1",
+			SequenceNumber = 1
+		});
+		seasonTwoEventResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+		var seasonTwoEvent = await seasonTwoEventResponse.Content.ReadFromJsonAsync<CreateLeagueSeasonEventResponse>(JsonOptions);
+		seasonTwoEvent.Should().NotBeNull();
+
+		var seasonOneIngestResponse = await PostAsync($"/api/v1/leagues/{league.LeagueId}/seasons/{seasonOne.SeasonId}/events/{seasonOneEvent!.EventId}/results", new IngestLeagueSeasonEventResultsRequest
+		{
+			Results =
+			[
+				new LeagueSeasonEventResultEntryRequest
+				{
+					MemberUserId = "standings-manager",
+					Placement = 1,
+					Points = 10,
+					ChipsDelta = 100
+				},
+				new LeagueSeasonEventResultEntryRequest
+				{
+					MemberUserId = "standings-member",
+					Placement = 2,
+					Points = 6,
+					ChipsDelta = -100
+				}
+			]
+		});
+		seasonOneIngestResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+		var seasonTwoIngestResponse = await PostAsync($"/api/v1/leagues/{league.LeagueId}/seasons/{seasonTwo.SeasonId}/events/{seasonTwoEvent!.EventId}/results", new IngestLeagueSeasonEventResultsRequest
+		{
+			Results =
+			[
+				new LeagueSeasonEventResultEntryRequest
+				{
+					MemberUserId = "standings-manager",
+					Placement = 2,
+					Points = 4,
+					ChipsDelta = -50
+				},
+				new LeagueSeasonEventResultEntryRequest
+				{
+					MemberUserId = "standings-member",
+					Placement = 1,
+					Points = 12,
+					ChipsDelta = 50
+				}
+			]
+		});
+		seasonTwoIngestResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+		var seasonOneStandingsResponse = await Client.GetAsync($"/api/v1/leagues/{league.LeagueId}/standings?seasonId={seasonOne.SeasonId}");
+		seasonOneStandingsResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+		var seasonOneStandings = await seasonOneStandingsResponse.Content.ReadFromJsonAsync<IReadOnlyList<LeagueStandingEntryDto>>(JsonOptions);
+		seasonOneStandings.Should().NotBeNull();
+		seasonOneStandings![0].UserId.Should().Be("standings-manager");
+		seasonOneStandings[0].TotalPoints.Should().Be(10);
+		seasonOneStandings[1].UserId.Should().Be("standings-member");
+		seasonOneStandings[1].TotalPoints.Should().Be(6);
+
+		var seasonTwoStandingsResponse = await Client.GetAsync($"/api/v1/leagues/{league.LeagueId}/standings?seasonId={seasonTwo.SeasonId}");
+		seasonTwoStandingsResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+		var seasonTwoStandings = await seasonTwoStandingsResponse.Content.ReadFromJsonAsync<IReadOnlyList<LeagueStandingEntryDto>>(JsonOptions);
+		seasonTwoStandings.Should().NotBeNull();
+		seasonTwoStandings![0].UserId.Should().Be("standings-member");
+		seasonTwoStandings[0].TotalPoints.Should().Be(12);
+		seasonTwoStandings[1].UserId.Should().Be("standings-manager");
+		seasonTwoStandings[1].TotalPoints.Should().Be(4);
+	}
+
 	private void SetUser(string userId)
 	{
 		Client.DefaultRequestHeaders.Remove(TestAuthHandler.UserHeader);

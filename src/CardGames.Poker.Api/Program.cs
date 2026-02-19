@@ -29,6 +29,7 @@ using Microsoft.AspNetCore.SignalR;
 using CardGames.Poker.Api.Infrastructure.Storage;
 using System.Security.Claims;
 using CardGames.Poker.Api.Features.Leagues.v1;
+using CardGames.Poker.Api.Features.Leagues.v1.Telemetry;
 
 namespace CardGames.Poker.Api;
 
@@ -173,6 +174,7 @@ public class Program
             {
                 x.AddPrometheusExporter();
                 x.AddMeter("Forkful.ApiService");
+                x.AddMeter("CardGames.Poker.Api.Leagues");
                 x.SetResourceBuilder(ResourceBuilder.CreateDefault()
                     .AddService("api"))
                     .AddAspNetCoreInstrumentation() // Captures request metrics
@@ -189,6 +191,7 @@ public class Program
         AppContext.SetSwitch("Azure.Experimental.EnableActivitySource", true);
         builder.Services.ConfigureHttpClientDefaults(http => http.AddStandardResilienceHandler());
         builder.Services.AddMetrics();
+        builder.Services.AddSingleton<LeaguesTelemetry>();
         builder.Services.AddRateLimiter(limiterOptions =>
         {
             limiterOptions.RejectionStatusCode = StatusCodes.Status429TooManyRequests;

@@ -28,4 +28,4 @@ The CI validator fails builds when any of the following are missing or malformed
 ## Why this slice
 
 This establishes measurable go/no-go criteria in source control and blocks drift in pull requests before broad rollout.
-It does not yet emit new endpoint-level domain metrics; that is a follow-up slice.
+Leagues endpoints now emit funnel-attempt and endpoint-latency metrics for `join`, `request`, `approve`, and `first_play` journey steps.
