@@ -27,6 +27,8 @@ using CardGames.Poker.Api.Services;
 using CardGames.Poker.Evaluation;
 using Microsoft.AspNetCore.SignalR;
 using CardGames.Poker.Api.Infrastructure.Storage;
+using System.Security.Claims;
+using CardGames.Poker.Api.Features.Leagues.v1;
 
 namespace CardGames.Poker.Api;
 
@@ -187,14 +189,40 @@ public class Program
         AppContext.SetSwitch("Azure.Experimental.EnableActivitySource", true);
         builder.Services.ConfigureHttpClientDefaults(http => http.AddStandardResilienceHandler());
         builder.Services.AddMetrics();
-        builder.Services.AddRateLimiter(limiterOptions => limiterOptions
-            .AddFixedWindowLimiter(policyName: "fixed", options =>
+        builder.Services.AddRateLimiter(limiterOptions =>
+        {
+            limiterOptions.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+            limiterOptions.OnRejected = static (context, cancellationToken) =>
+            {
+                if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+                {
+                    context.HttpContext.Response.Headers.RetryAfter =
+                        Math.Ceiling(retryAfter.TotalSeconds).ToString(System.Globalization.CultureInfo.InvariantCulture);
+                }
+
+                return ValueTask.CompletedTask;
+            };
+
+            limiterOptions.AddFixedWindowLimiter(policyName: "fixed", options =>
             {
                 options.PermitLimit = 4;
                 options.Window = TimeSpan.FromSeconds(12);
                 options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
                 options.QueueLimit = 2;
-            }));
+            });
+
+            limiterOptions.AddPolicy(LeagueRateLimitPolicies.JoinAndRequestFlow, static httpContext =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: BuildLeagueJoinRequestPartitionKey(httpContext),
+                    factory: _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 10,
+                        Window = TimeSpan.FromMinutes(1),
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 0,
+                        AutoReplenishment = true
+                    }));
+        });
         builder.Services.AddProblemDetails().AddErrorObjects();
         builder.AddAzureBlobServiceClient("blobs");
         builder.Services
@@ -295,7 +323,6 @@ public class Program
         app.MapScalarApiReference(o =>
         o.WithTheme(ScalarTheme.Alternate)
         );
-        app.UseRateLimiter();
         app.UseMiddleware<ExceptionHandlingMiddleware>();
         app.UseMiddleware<TrimStringsMiddleware>();
         app.UseHttpsRedirection();
@@ -306,6 +333,7 @@ public class Program
 
 
         app.UseAuthentication();
+    app.UseRateLimiter();
         app.UseAuthorization();
 
         // Map SignalR hubs with header-based auth for Blazor clients
@@ -313,6 +341,32 @@ public class Program
         app.MapHub<LobbyHub>("/hubs/lobby");
 
         app.Run();
+    }
+
+    private static string BuildLeagueJoinRequestPartitionKey(HttpContext context)
+    {
+        var userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (string.IsNullOrWhiteSpace(userId)
+            && context.Request.Headers.TryGetValue("X-User-Id", out var headerUserId)
+            && !string.IsNullOrWhiteSpace(headerUserId.ToString()))
+        {
+            userId = headerUserId.ToString();
+        }
+
+        if (string.IsNullOrWhiteSpace(userId)
+            && context.Request.Headers.TryGetValue("X-Test-UserId", out var testHeaderUserId)
+            && !string.IsNullOrWhiteSpace(testHeaderUserId.ToString()))
+        {
+            userId = testHeaderUserId.ToString();
+        }
+
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            userId = context.Connection.RemoteIpAddress?.ToString() ?? "anonymous";
+        }
+
+        return $"{LeagueRateLimitPolicies.JoinAndRequestFlow}:{userId}";
     }
 }
 

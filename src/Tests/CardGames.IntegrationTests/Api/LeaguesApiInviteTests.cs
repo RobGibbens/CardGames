@@ -24,6 +24,7 @@ public class LeaguesApiInviteTests(ApiWebApplicationFactory factory) : ApiIntegr
 	private const string JoinRequestNotFoundMessage = "Join request not found.";
 	private const string AlreadyApprovedMessage = "Join request has already been approved.";
 	private const string AlreadyDeniedMessage = "Join request has already been denied.";
+	private const int JoinRequestFlowPermitLimit = 10;
 
 	[Fact]
 	public async Task RevokeInvite_Endpoint_RevokesActiveInvite()
@@ -197,6 +198,92 @@ public class LeaguesApiInviteTests(ApiWebApplicationFactory factory) : ApiIntegr
 			.Count(x => x.LeagueId == league.LeagueId && x.UserId == "league-api-member" && x.IsActive);
 
 		activeMembershipCount.Should().Be(0);
+	}
+
+	[Fact]
+	public async Task Join_Endpoint_EnforcesRateLimit_ForSingleUserFlow()
+	{
+		SetUser("league-rate-join-admin");
+
+		var createLeagueResponse = await PostAsync("/api/v1/leagues", new CreateLeagueRequest
+		{
+			Name = "API Join Rate Limit League"
+		});
+		createLeagueResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+		var league = await createLeagueResponse.Content.ReadFromJsonAsync<CreateLeagueResponse>(JsonOptions);
+		league.Should().NotBeNull();
+
+		var createInviteResponse = await PostAsync($"/api/v1/leagues/{league!.LeagueId}/invites", new CreateLeagueInviteRequest
+		{
+			ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(2)
+		});
+		createInviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+		var invite = await createInviteResponse.Content.ReadFromJsonAsync<CreateLeagueInviteResponse>(JsonOptions);
+		invite.Should().NotBeNull();
+
+		var token = invite!.InviteUrl.Split('/').Last();
+		SetUser("league-rate-join-member");
+
+		for (var i = 0; i < JoinRequestFlowPermitLimit; i++)
+		{
+			var allowed = await PostAsync("/api/v1/leagues/join", new JoinLeagueRequest
+			{
+				Token = token
+			});
+
+			allowed.StatusCode.Should().Be(HttpStatusCode.OK);
+		}
+
+		var rejected = await PostAsync("/api/v1/leagues/join", new JoinLeagueRequest
+		{
+			Token = token
+		});
+
+		rejected.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+		rejected.Headers.Should().Contain(h => h.Key == "Retry-After");
+	}
+
+	[Fact]
+	public async Task PendingJoinRequests_Endpoint_EnforcesRateLimit_ForSingleUserFlow()
+	{
+		SetUser("league-rate-pending-admin");
+
+		var createLeagueResponse = await PostAsync("/api/v1/leagues", new CreateLeagueRequest
+		{
+			Name = "API Pending Rate Limit League"
+		});
+		createLeagueResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+		var league = await createLeagueResponse.Content.ReadFromJsonAsync<CreateLeagueResponse>(JsonOptions);
+		league.Should().NotBeNull();
+
+		var createInviteResponse = await PostAsync($"/api/v1/leagues/{league!.LeagueId}/invites", new CreateLeagueInviteRequest
+		{
+			ExpiresAtUtc = DateTimeOffset.UtcNow.AddHours(2)
+		});
+		createInviteResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+		var invite = await createInviteResponse.Content.ReadFromJsonAsync<CreateLeagueInviteResponse>(JsonOptions);
+		invite.Should().NotBeNull();
+
+		var token = invite!.InviteUrl.Split('/').Last();
+
+		SetUser("league-rate-pending-member");
+		var joinResponse = await PostAsync("/api/v1/leagues/join", new JoinLeagueRequest
+		{
+			Token = token
+		});
+		joinResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+		SetUser("league-rate-pending-admin");
+
+		for (var i = 0; i < JoinRequestFlowPermitLimit; i++)
+		{
+			var allowed = await Client.GetAsync($"/api/v1/leagues/{league.LeagueId}/join-requests/pending");
+			allowed.StatusCode.Should().Be(HttpStatusCode.OK);
+		}
+
+		var rejected = await Client.GetAsync($"/api/v1/leagues/{league.LeagueId}/join-requests/pending");
+		rejected.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+		rejected.Headers.Should().Contain(h => h.Key == "Retry-After");
 	}
 
 	[Fact]
