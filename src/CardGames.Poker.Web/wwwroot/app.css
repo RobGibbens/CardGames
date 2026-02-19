@@ -1751,6 +1751,7 @@ a:hover {
     border-radius: 12px;
     background: var(--bg-tertiary);
     overflow: hidden;
+    margin-bottom: 2.0rem;
 }
 
 .league-schedule-tab {

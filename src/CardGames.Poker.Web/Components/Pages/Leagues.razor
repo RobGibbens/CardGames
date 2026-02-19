@@ -28,77 +28,98 @@
 		</div>
 
 		<section class="cashier-panel">
-			<div class="cashier-panel-body auth-form">
-				<h2 class="cashier-section-title league-create-title">Create League</h2>
-
-				<div class="form-floating mb-3" data-label="League Name">
-					<InputText id="league-name" class="form-control" @bind-Value="_name" maxlength="120" placeholder="League Name" disabled="@_isSubmitting" />
-				</div>
-
-				<div class="form-floating mb-3" data-label="Description (optional)">
-					<InputText id="league-description" class="form-control" @bind-Value="_description" maxlength="512" placeholder="Description (optional)" disabled="@_isSubmitting" />
-				</div>
-
-				<button class="btn btn-primary" @onclick="CreateLeagueAsync" disabled="@_isSubmitting">
-					@if (_isSubmitting)
-					{
-						<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
-					}
-					Create
-				</button>
-
-				@if (!string.IsNullOrWhiteSpace(_message))
-				{
-					<div class="alert @(_isError ? "alert-warning" : "alert-success") mt-3 mb-0" role="alert">@_message</div>
-				}
-			</div>
-		</section>
-
-		<section class="cashier-panel">
-			<div class="cashier-panel-body auth-form d-flex flex-column gap-3">
-				<h2 class="cashier-section-title">Join League</h2>
-				<p class="mb-0 text-muted small">Enter a league code to preview trust details before submitting your request.</p>
-
-				<div class="form-floating" data-label="League Code">
-					<InputText id="league-code" class="form-control" @bind-Value="_joinCode" maxlength="128" placeholder="League Code" disabled="@_isPreviewLoading" />
-				</div>
-
-				<div class="d-flex flex-wrap gap-2">
-					<button class="btn btn-sm btn-outline-primary" @onclick="LoadJoinPreviewAsync" disabled="@_isPreviewLoading">
-						@if (_isPreviewLoading)
-						{
-							<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
-						}
-						Preview
+			<div class="cashier-panel-body d-flex flex-column gap-3">
+				<div class="league-schedule-tabs" role="tablist" aria-label="League actions">
+					<button
+						type="button"
+						class="league-schedule-tab @(_activeActionTab == LeagueActionTab.Create ? "league-schedule-tab-active" : string.Empty)"
+						role="tab"
+						aria-selected="@(_activeActionTab == LeagueActionTab.Create)"
+						@onclick="() => _activeActionTab = LeagueActionTab.Create">
+						Create League
 					</button>
-					@if (_joinPreview is not null)
-					{
-						<button class="btn btn-sm btn-primary" @onclick="SubmitJoinByCodeAsync" disabled="@_isJoinSubmitting">
-							@if (_isJoinSubmitting)
+					<button
+						type="button"
+						class="league-schedule-tab @(_activeActionTab == LeagueActionTab.Join ? "league-schedule-tab-active" : string.Empty)"
+						role="tab"
+						aria-selected="@(_activeActionTab == LeagueActionTab.Join)"
+						@onclick="() => _activeActionTab = LeagueActionTab.Join">
+						Join League
+					</button>
+				</div>
+
+				@if (_activeActionTab == LeagueActionTab.Create)
+				{
+					<div class="auth-form">
+						<div class="form-floating mb-3" data-label="League Name">
+							<InputText id="league-name" class="form-control" @bind-Value="_name" maxlength="120" placeholder="League Name" disabled="@_isSubmitting" />
+						</div>
+
+						<div class="form-floating mb-3" data-label="Description (optional)">
+							<InputText id="league-description" class="form-control" @bind-Value="_description" maxlength="512" placeholder="Description (optional)" disabled="@_isSubmitting" />
+						</div>
+
+						<button class="btn btn-primary" @onclick="CreateLeagueAsync" disabled="@_isSubmitting">
+							@if (_isSubmitting)
 							{
 								<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
 							}
-							Submit Request
+							Create
 						</button>
-					}
-				</div>
 
-				@if (!string.IsNullOrWhiteSpace(_joinMessage))
-				{
-					<div class="alert @(_isJoinError ? "alert-warning" : "alert-success") mb-0" role="alert">@_joinMessage</div>
-				}
-
-				@if (_joinPreview is not null)
-				{
-					<div class="border rounded p-3 d-flex flex-column gap-1">
-						<div class="fw-semibold">@_joinPreview.LeagueName</div>
-						@if (!string.IsNullOrWhiteSpace(_joinPreview.LeagueDescription))
+						@if (!string.IsNullOrWhiteSpace(_message))
 						{
-							<div class="small text-muted">@_joinPreview.LeagueDescription</div>
+							<div class="alert @(_isError ? "alert-warning" : "alert-success") mt-3 mb-0" role="alert">@_message</div>
 						}
-						<div class="small text-muted">Manager: @_joinPreview.ManagerDisplayName</div>
-						<div class="small text-muted">Active members: @_joinPreview.ActiveMemberCount</div>
-						<div class="small text-muted">Join policy: @_joinPreview.JoinPolicy</div>
+					</div>
+				}
+				else
+				{
+					<div class="auth-form d-flex flex-column gap-3">
+						<div class="form-floating" data-label="League Code">
+							<InputText id="league-code" class="form-control" @bind-Value="_joinCode" maxlength="128" placeholder="League Code" disabled="@_isPreviewLoading" />
+						</div>
+
+						<p class="mb-0 text-muted small">Enter a league code to preview trust details before submitting your request.</p>
+
+						<div class="d-flex flex-wrap gap-2">
+							<button class="btn btn-sm btn-outline-primary" @onclick="LoadJoinPreviewAsync" disabled="@_isPreviewLoading">
+								@if (_isPreviewLoading)
+								{
+									<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+								}
+								Preview
+							</button>
+							@if (_joinPreview is not null)
+							{
+								<button class="btn btn-sm btn-primary" @onclick="SubmitJoinByCodeAsync" disabled="@_isJoinSubmitting">
+									@if (_isJoinSubmitting)
+									{
+										<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+									}
+									Submit Request
+								</button>
+							}
+						</div>
+
+						@if (!string.IsNullOrWhiteSpace(_joinMessage))
+						{
+							<div class="alert @(_isJoinError ? "alert-warning" : "alert-success") mb-0" role="alert">@_joinMessage</div>
+						}
+
+						@if (_joinPreview is not null)
+						{
+							<div class="border rounded p-3 d-flex flex-column gap-1">
+								<div class="fw-semibold">@_joinPreview.LeagueName</div>
+								@if (!string.IsNullOrWhiteSpace(_joinPreview.LeagueDescription))
+								{
+									<div class="small text-muted">@_joinPreview.LeagueDescription</div>
+								}
+								<div class="small text-muted">Manager: @_joinPreview.ManagerDisplayName</div>
+								<div class="small text-muted">Active members: @_joinPreview.ActiveMemberCount</div>
+								<div class="small text-muted">Join policy: @_joinPreview.JoinPolicy</div>
+							</div>
+						}
 					</div>
 				}
 			</div>
@@ -107,7 +128,7 @@
 		<section class="cashier-panel">
 			<div class="cashier-panel-body d-flex flex-column gap-3">
 				<div class="cashier-section-header">
-					<h2 class="cashier-section-title">My Clubs Portfolio</h2>
+					<h2 class="cashier-section-title">My Clubs</h2>
 					<button class="btn btn-sm btn-outline-secondary" @onclick="LoadLeaguesAsync" disabled="@_isLoading">
 						<i class="fa-solid fa-rotate-right"></i>
 						Refresh
@@ -304,6 +325,7 @@
 	private string? _message;
 	private string _name = string.Empty;
 	private string? _description;
+	private LeagueActionTab _activeActionTab = LeagueActionTab.Create;
 	private List<LeagueSummaryDto> _leagues = [];
 	private LeagueSummaryDto? _selectedLeague;
 	private LeagueDetailDto? _leagueDetail;
@@ -323,15 +345,20 @@
 	private Dictionary<Guid, int> _pendingJoinActionsByLeagueId = [];
 	private bool _isLoadingPendingActions;
 	private string _quickSwitchLeagueId = string.Empty;
+	// Restored missing fields
 	private int _adminClubCount;
 	private int _managerClubCount;
 	private int _totalPendingJoinActions;
-	private bool CanManageSelectedLeague => _selectedLeague is not null && IsLeagueManagementRole(_selectedLeague.Role);
 
-	private static bool IsLeagueManagementRole(LeagueRole role)
+	private enum LeagueActionTab
 	{
-		return role is LeagueRole.Admin or LeagueRole.Manager or LeagueRole.Owner;
+		Create,
+		Join
 	}
+
+	// Restored computed property
+	private bool CanManageSelectedLeague => _selectedLeague is not null
+		&& (_selectedLeague.Role == LeagueRole.Admin || _selectedLeague.Role == LeagueRole.Manager || _selectedLeague.Role == LeagueRole.Owner);
 
 	protected override async Task OnInitializedAsync()
 	{
