@@ -43,8 +43,8 @@ public class LeaguesApiGovernanceTests(ApiWebApplicationFactory factory) : ApiIn
 
 		var membersResponse = await Client.GetFromJsonAsync<IReadOnlyList<LeagueMemberDto>>($"/api/v1/leagues/{leagueId}/members", JsonOptions);
 		membersResponse.Should().NotBeNull();
-		membersResponse!.Single(x => x.UserId == "league-owner").Role.Should().Be(ContractsLeagueRole.Admin);
-		membersResponse.Single(x => x.UserId == "league-target-member").Role.Should().Be(ContractsLeagueRole.Manager);
+		membersResponse!.Single(x => x.UserId == "league-owner").Role.Should().Be(ContractsLeagueRole.Manager);
+		membersResponse.Single(x => x.UserId == "league-target-member").Role.Should().Be(ContractsLeagueRole.Owner);
 
 		var historyResponse = await Client.GetFromJsonAsync<IReadOnlyList<LeagueMembershipHistoryItemDto>>($"/api/v1/leagues/{leagueId}/members/history", JsonOptions);
 		historyResponse.Should().NotBeNull();
@@ -146,6 +146,49 @@ public class LeaguesApiGovernanceTests(ApiWebApplicationFactory factory) : ApiIn
 		SetUser("league-member-actor");
 		var removeResponse = await Client.PostAsync($"/api/v1/leagues/{leagueId}/members/league-member-target/remove", null);
 		removeResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+	}
+
+	[Fact]
+	public async Task PromoteMember_AdminActor_Succeeds_AndAuditsHistory()
+	{
+		SetUser("league-owner-c");
+		var leagueId = await CreateLeagueAsync("Governance Promote League");
+
+		DbContext.LeagueMembersCurrent.AddRange(
+			new LeagueMemberCurrent
+			{
+				LeagueId = leagueId,
+				UserId = "league-admin-actor",
+				Role = DataLeagueRole.Admin,
+				IsActive = true,
+				JoinedAtUtc = DateTimeOffset.UtcNow,
+				UpdatedAtUtc = DateTimeOffset.UtcNow
+			},
+			new LeagueMemberCurrent
+			{
+				LeagueId = leagueId,
+				UserId = "league-member-promote-target",
+				Role = DataLeagueRole.Member,
+				IsActive = true,
+				JoinedAtUtc = DateTimeOffset.UtcNow,
+				UpdatedAtUtc = DateTimeOffset.UtcNow
+			});
+		await DbContext.SaveChangesAsync();
+
+		SetUser("league-admin-actor");
+		var promoteResponse = await Client.PostAsync($"/api/v1/leagues/{leagueId}/members/league-member-promote-target/promote-admin", null);
+		promoteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+		var membersResponse = await Client.GetFromJsonAsync<IReadOnlyList<LeagueMemberDto>>($"/api/v1/leagues/{leagueId}/members", JsonOptions);
+		membersResponse.Should().NotBeNull();
+		membersResponse!.Single(x => x.UserId == "league-member-promote-target").Role.Should().Be(ContractsLeagueRole.Admin);
+
+		var historyResponse = await Client.GetFromJsonAsync<IReadOnlyList<LeagueMembershipHistoryItemDto>>($"/api/v1/leagues/{leagueId}/members/history", JsonOptions);
+		historyResponse.Should().NotBeNull();
+		historyResponse!.Should().Contain(x =>
+			x.UserId == "league-member-promote-target" &&
+			x.ActorUserId == "league-admin-actor" &&
+			x.EventType == LeagueMembershipHistoryEventType.MemberPromotedToAdmin);
 	}
 
 	private async Task<Guid> CreateLeagueAsync(string leagueName)

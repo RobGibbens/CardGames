@@ -50,9 +50,14 @@ public sealed class RemoveLeagueMemberCommandHandler(
 			.Select(x => x.Role)
 			.ToListAsync(cancellationToken);
 
-		if (member.Role == LeagueRole.Manager && !activeRolesExcludingTarget.HasAtLeastOneManager())
+		if (LeagueGovernanceRules.IsManagerAuthority(member.Role) && !activeRolesExcludingTarget.HasAtLeastOneManager())
 		{
 			return new RemoveLeagueMemberError(RemoveLeagueMemberErrorCode.Conflict, "League must retain at least one manager.");
+		}
+
+		if (member.Role == LeagueRole.Admin && !activeRolesExcludingTarget.HasAtLeastOneAdmin())
+		{
+			return new RemoveLeagueMemberError(RemoveLeagueMemberErrorCode.Conflict, "League must retain at least one admin.");
 		}
 
 		if (LeagueGovernanceRules.IsGovernanceCapable(member.Role) && !activeRolesExcludingTarget.HasAtLeastOneGovernanceCapableMember())

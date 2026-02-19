@@ -24,15 +24,25 @@ public class DemoteLeagueAdminToMemberCommandHandlerTests : IntegrationTestBase
 
 		var leagueId = createLeague.AsT0.LeagueId;
 
-		DbContext.LeagueMembersCurrent.Add(new LeagueMemberCurrent
-		{
-			LeagueId = leagueId,
-			UserId = "league-admin",
-			Role = LeagueRole.Admin,
-			IsActive = true,
-			JoinedAtUtc = DateTimeOffset.UtcNow,
-			UpdatedAtUtc = DateTimeOffset.UtcNow
-		});
+		DbContext.LeagueMembersCurrent.AddRange(
+			new LeagueMemberCurrent
+			{
+				LeagueId = leagueId,
+				UserId = "league-admin",
+				Role = LeagueRole.Admin,
+				IsActive = true,
+				JoinedAtUtc = DateTimeOffset.UtcNow,
+				UpdatedAtUtc = DateTimeOffset.UtcNow
+			},
+			new LeagueMemberCurrent
+			{
+				LeagueId = leagueId,
+				UserId = "league-admin-backup",
+				Role = LeagueRole.Admin,
+				IsActive = true,
+				JoinedAtUtc = DateTimeOffset.UtcNow,
+				UpdatedAtUtc = DateTimeOffset.UtcNow
+			});
 
 		await DbContext.SaveChangesAsync();
 
@@ -56,7 +66,7 @@ public class DemoteLeagueAdminToMemberCommandHandlerTests : IntegrationTestBase
 	}
 
 	[Fact]
-	public async Task Handle_FailsWhenActorIsAdminNotManager()
+	public async Task Handle_AdminDemotesAdmin_WhenGovernanceStillRetained()
 	{
 		var fakeCurrentUser = (FakeCurrentUserService)Scope.ServiceProvider.GetRequiredService<ICurrentUserService>();
 		fakeCurrentUser.UserId = "league-manager";
@@ -94,12 +104,17 @@ public class DemoteLeagueAdminToMemberCommandHandlerTests : IntegrationTestBase
 		fakeCurrentUser.UserId = "league-admin-actor";
 		var demoteResult = await Mediator.Send(new DemoteLeagueAdminToMemberCommand(leagueId, "league-admin-target"));
 
-		demoteResult.IsT1.Should().BeTrue();
-		demoteResult.AsT1.Code.Should().Be(DemoteLeagueAdminToMemberErrorCode.Forbidden);
+		demoteResult.IsT0.Should().BeTrue();
+
+		var membership = await DbContext.LeagueMembersCurrent
+			.AsNoTracking()
+			.SingleAsync(x => x.LeagueId == leagueId && x.UserId == "league-admin-target");
+
+		membership.Role.Should().Be(LeagueRole.Member);
 	}
 
 	[Fact]
-	public async Task Handle_FailsWhenActorIsAdminNotManager_EvenIfSoleGovernanceMember()
+	public async Task Handle_FailsWhenActorIsSoleGovernanceMember()
 	{
 		var fakeCurrentUser = (FakeCurrentUserService)Scope.ServiceProvider.GetRequiredService<ICurrentUserService>();
 		fakeCurrentUser.UserId = "sole-admin";
@@ -130,7 +145,7 @@ public class DemoteLeagueAdminToMemberCommandHandlerTests : IntegrationTestBase
 		var demoteResult = await Mediator.Send(new DemoteLeagueAdminToMemberCommand(league.Id, "sole-admin"));
 
 		demoteResult.IsT1.Should().BeTrue();
-		demoteResult.AsT1.Code.Should().Be(DemoteLeagueAdminToMemberErrorCode.Forbidden);
+		demoteResult.AsT1.Code.Should().Be(DemoteLeagueAdminToMemberErrorCode.Conflict);
 
 		var membership = await DbContext.LeagueMembersCurrent
 			.AsNoTracking()

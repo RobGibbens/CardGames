@@ -22,16 +22,13 @@ public sealed class DemoteLeagueAdminToMemberCommandHandler(
 
 		var actorCanManageLeague = await context.LeagueMembersCurrent
 			.AsNoTracking()
-			.AnyAsync(x =>
-				x.LeagueId == request.LeagueId &&
-				x.UserId == currentUserService.UserId &&
-				x.IsActive &&
-				x.Role == LeagueRole.Manager,
-				cancellationToken);
+			.Where(x => x.LeagueId == request.LeagueId && x.UserId == currentUserService.UserId && x.IsActive)
+			.GovernanceCapableMembers()
+			.AnyAsync(cancellationToken);
 
 		if (!actorCanManageLeague)
 		{
-			return new DemoteLeagueAdminToMemberError(DemoteLeagueAdminToMemberErrorCode.Forbidden, "Only league managers can demote admins.");
+			return new DemoteLeagueAdminToMemberError(DemoteLeagueAdminToMemberErrorCode.Forbidden, "Only league managers or admins can demote admins.");
 		}
 
 		var member = await context.LeagueMembersCurrent
@@ -52,6 +49,11 @@ public sealed class DemoteLeagueAdminToMemberCommandHandler(
 			.Where(x => x.LeagueId == request.LeagueId && x.IsActive && x.UserId != request.MemberUserId)
 			.Select(x => x.Role)
 			.ToListAsync(cancellationToken);
+
+		if (!activeRolesExcludingTarget.HasAtLeastOneAdmin())
+		{
+			return new DemoteLeagueAdminToMemberError(DemoteLeagueAdminToMemberErrorCode.Conflict, "League must retain at least one admin.");
+		}
 
 		if (!activeRolesExcludingTarget.HasAtLeastOneGovernanceCapableMember())
 		{

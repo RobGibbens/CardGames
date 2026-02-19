@@ -28,9 +28,9 @@ public sealed class TransferLeagueOwnershipCommandHandler(
 		var actorMembership = await context.LeagueMembersCurrent
 			.FirstOrDefaultAsync(x => x.LeagueId == request.LeagueId && x.UserId == currentUserService.UserId && x.IsActive, cancellationToken);
 
-		if (actorMembership is null || actorMembership.Role != LeagueRole.Manager)
+		if (actorMembership is null || !LeagueGovernanceRules.IsManagerAuthority(actorMembership.Role))
 		{
-			return new TransferLeagueOwnershipError(TransferLeagueOwnershipErrorCode.Forbidden, "Only league managers can transfer ownership.");
+			return new TransferLeagueOwnershipError(TransferLeagueOwnershipErrorCode.Forbidden, "Only league owners or managers can transfer ownership.");
 		}
 
 		var targetMembership = await context.LeagueMembersCurrent
@@ -42,10 +42,10 @@ public sealed class TransferLeagueOwnershipCommandHandler(
 		}
 
 		var now = DateTimeOffset.UtcNow;
-		actorMembership.Role = LeagueRole.Admin;
+		actorMembership.Role = LeagueRole.Manager;
 		actorMembership.UpdatedAtUtc = now;
 
-		targetMembership.Role = LeagueRole.Manager;
+		targetMembership.Role = LeagueRole.Owner;
 		targetMembership.UpdatedAtUtc = now;
 
 		context.LeagueMembershipEvents.Add(new LeagueMembershipEvent

@@ -48,8 +48,8 @@ public class TransferLeagueOwnershipCommandHandlerTests : IntegrationTestBase
 			.AsNoTracking()
 			.SingleAsync(x => x.LeagueId == leagueId && x.UserId == "target-member");
 
-		managerMembership.Role.Should().Be(LeagueRole.Admin);
-		targetMembership.Role.Should().Be(LeagueRole.Manager);
+		managerMembership.Role.Should().Be(LeagueRole.Manager);
+		targetMembership.Role.Should().Be(LeagueRole.Owner);
 
 		var transferEvent = await DbContext.LeagueMembershipEvents
 			.AsNoTracking()

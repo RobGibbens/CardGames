@@ -44,7 +44,7 @@ public class CreateLeagueCommandHandlerTests : IntegrationTestBase
 			.SingleAsync(x => x.LeagueId == success.LeagueId && x.UserId == "league-user-1");
 
 		member.IsActive.Should().BeTrue();
-		member.Role.Should().Be(LeagueRole.Manager);
+		member.Role.Should().Be(LeagueRole.Owner);
 
 		var events = await DbContext.LeagueMembershipEvents
 			.AsNoTracking()
