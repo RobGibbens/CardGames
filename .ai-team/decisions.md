@@ -316,3 +316,25 @@ Table of 16 refactoring operations with descriptions (Extract Method, Extract Cl
 - Squad agents reference `refactor` skill when improving code structure
 - Monitor refactoring patterns in squad work to identify high-impact improvements
 - Consider extending skill if specialized refactoring needs emerge (e.g., async/await patterns in .NET)
+
+### 2026-02-19: Web Design Reviewer Skill Installation
+**Date:** 2026-02-19  
+**By:** Livingston (DevOps)  
+**Requested by:** Rob Gibbens  
+**What:** Installed the `web-design-reviewer` skill from the `github/awesome-copilot` marketplace to `.ai-team/skills/web-design-reviewer/SKILL.md`.
+**Why:** The CardGames Poker Web UI (`src/CardGames.Poker.Web/`) is built with Blazor. Squad agents equipped with web-design-reviewer skill can autonomously inspect the running application, detect design issues visually (layout, responsive, accessibility, visual consistency), locate problematic components in source code, and apply surgical fixes—reducing friction during UI quality gates and enabling structured design review processes.
+
+**Skill Capabilities:**
+- Multi-framework support: Static HTML/CSS/JS, React, Vue, Angular, Svelte, Next.js, Nuxt, SvelteKit, CMS platforms
+- Issue detection: Layout (overflow/overlap/alignment/spacing/clipping), responsive (mobile-friendliness/breakpoints/touch targets), accessibility (contrast/focus/alt text), visual consistency (fonts/colors/spacing)
+- Automated workflow: Information gathering → Visual inspection → Issue fixing → Re-verification → Completion report
+- Responsive testing at 4 viewports: Mobile (375px), Tablet (768px), Desktop (1280px), Wide (1920px)
+- Browser automation via Playwright MCP (reference) or compatible tools (Selenium, Puppeteer, Cypress)
+- Severity prioritization: P1 (fix immediately), P2 (fix next), P3 (fix if possible)
+
+**Prerequisites:**
+- Target website running (local dev, staging, or production)
+- Browser automation capability available
+- Source code access for fix application
+
+**Scope:** Squad skill only; no build, runtime, or deployment changes
