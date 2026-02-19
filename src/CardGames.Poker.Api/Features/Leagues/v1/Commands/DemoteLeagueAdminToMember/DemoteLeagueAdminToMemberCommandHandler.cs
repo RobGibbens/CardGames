@@ -22,16 +22,13 @@ public sealed class DemoteLeagueAdminToMemberCommandHandler(
 
 		var actorCanManageLeague = await context.LeagueMembersCurrent
 			.AsNoTracking()
-			.AnyAsync(x =>
-				x.LeagueId == request.LeagueId &&
-				x.UserId == currentUserService.UserId &&
-				x.IsActive &&
-				x.Role == LeagueRole.Manager,
-				cancellationToken);
+			.Where(x => x.LeagueId == request.LeagueId && x.UserId == currentUserService.UserId && x.IsActive)
+			.GovernanceCapableMembers()
+			.AnyAsync(cancellationToken);
 
 		if (!actorCanManageLeague)
 		{
-			return new DemoteLeagueAdminToMemberError(DemoteLeagueAdminToMemberErrorCode.Forbidden, "Only league managers can demote admins.");
+			return new DemoteLeagueAdminToMemberError(DemoteLeagueAdminToMemberErrorCode.Forbidden, "Only league managers or admins can demote admins.");
 		}
 
 		var member = await context.LeagueMembersCurrent

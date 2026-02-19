@@ -1,5 +1,6 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Features.Leagues.v1.Governance;
 using CardGames.Poker.Api.Infrastructure;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -21,16 +22,13 @@ public sealed class PromoteLeagueMemberToAdminCommandHandler(
 
 		var actorCanManageLeague = await context.LeagueMembersCurrent
 			.AsNoTracking()
-			.AnyAsync(x =>
-				x.LeagueId == request.LeagueId &&
-				x.UserId == currentUserService.UserId &&
-				x.IsActive &&
-				x.Role == LeagueRole.Manager,
-				cancellationToken);
+			.Where(x => x.LeagueId == request.LeagueId && x.UserId == currentUserService.UserId && x.IsActive)
+			.GovernanceCapableMembers()
+			.AnyAsync(cancellationToken);
 
 		if (!actorCanManageLeague)
 		{
-			return new PromoteLeagueMemberToAdminError(PromoteLeagueMemberToAdminErrorCode.Forbidden, "Only league managers can promote members.");
+			return new PromoteLeagueMemberToAdminError(PromoteLeagueMemberToAdminErrorCode.Forbidden, "Only league managers or admins can promote members.");
 		}
 
 		var member = await context.LeagueMembersCurrent
