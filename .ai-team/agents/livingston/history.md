@@ -46,3 +46,22 @@
 - Requires Microsoft Learn MCP Server integration
 
 **Why:** Enables squad agents to safely verify Microsoft SDK usage, find working patterns, catch hallucinated methods/signatures, and troubleshoot Azure/Microsoft API integration issues directly against official docs.
+
+## 2026-02-19: microsoft-docs skill installed
+
+**Requested by:** Rob Gibbens  
+**Status:** ✅ Complete
+
+**Work:**
+- microsoft-docs plugin not found in configured marketplaces (awesome-copilot, azure-cloud-development, anthropics/skills)
+- Created marketplace skill variant at `.ai-team/skills/microsoft-docs/SKILL.md`
+- Skill provides three capabilities: `microsoft_docs_search`, `microsoft_docs_fetch`, `microsoft_learn_search`
+
+**Skill capabilities:**
+- `microsoft_docs_search` — Search .NET classes, methods, namespaces, Azure SDK references, Microsoft Learn modules
+- `microsoft_docs_fetch` — Retrieve full API pages with signatures, overloads, parameters, exceptions, and deprecation info
+- `microsoft_learn_search` — Discover curated learning paths, modules, tutorials, certifications
+- Supports .NET Framework, .NET Core/.NET 5+, Azure SDKs, and broader Microsoft ecosystem
+- Requires Microsoft Learn MCP Server integration
+
+**Why:** The CardGames repository is built on .NET and Azure services. Having direct access to Microsoft's official documentation enables squad agents to verify SDK method signatures, discover integration patterns, validate authentication/RBAC configs, and self-serve on API reference questions—reducing hallucinated methods, version conflicts, and integration friction during feature work.

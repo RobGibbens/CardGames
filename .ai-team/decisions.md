@@ -157,3 +157,62 @@
 - `microsoft_code_sample_search` — Find working examples by task and language
 - `microsoft_docs_fetch` — Get full API pages with overloads and parameters
 **Scope:** Installation only; no runtime infrastructure or build system changes.
+
+### 2026-02-19: Microsoft Docs Skill Installation
+**Date:** 2026-02-19  
+**By:** Livingston (DevOps)  
+**Requested by:** Rob Gibbens  
+**Status:** ✅ Complete
+
+**Summary**
+
+Installed `microsoft-docs` as a marketplace skill variant (not available as a plugin) to `.ai-team/skills/microsoft-docs/SKILL.md`.
+
+**Context**
+
+The request was to install the `microsoft-docs` plugin from configured marketplaces. Investigation determined that:
+
+1. **Plugin not found** — Scanned all three configured marketplaces:
+   - `awesome-copilot` (github/awesome-copilot) — does not exist
+   - `azure-cloud-development` (github/azure-cloud-development) — no plugins available
+   - `anthropics/skills` (anthropics/skills) — no microsoft-docs skill
+
+2. **Fallback approach** — Per task instructions, created the marketplace skill variant since the plugin package was unavailable.
+
+**Solution**
+
+Created `.ai-team/skills/microsoft-docs/SKILL.md` with three core capabilities:
+
+- **microsoft_docs_search** — Keyword search for .NET APIs, Azure SDKs, Microsoft Learn resources
+- **microsoft_docs_fetch** — Full API page retrieval with signatures, overloads, parameters, exceptions
+- **microsoft_learn_search** — Curated learning paths, modules, tutorials, certifications
+
+Scope: Documentation lookup and reference verification only; does not generate code, modify infrastructure, or replace architectural review.
+
+**Why This Matters**
+
+CardGames is a .NET/Azure project using Aspire, Azure services, and Microsoft SDKs. Squad agents equipped with direct Microsoft documentation access can:
+
+- Verify SDK method signatures and catch hallucinations before implementation
+- Self-serve on API reference questions without context-switching
+- Validate authentication flows and RBAC configurations
+- Identify deprecations and version-specific API changes
+- Discover official integration patterns and working examples
+
+This reduces friction in feature work and improves confidence in Microsoft SDK usage.
+
+**Integration**
+
+- Skill available to all squad agents immediately after squad routing reload
+- Requires Microsoft Learn MCP Server for live documentation fetching
+- No changes to build, runtime infrastructure, or local dev workflow
+
+**Files Created**
+
+- `.ai-team/skills/microsoft-docs/SKILL.md` — Skill definition and capabilities
+
+**Next Steps**
+
+- Squad agents can reference `microsoft-docs` skill in prompts
+- Monitor skill usage patterns to identify documentation gaps or refinements
+- Consider extending capability set if additional reference patterns emerge from usage
