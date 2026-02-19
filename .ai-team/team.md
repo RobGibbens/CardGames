@@ -15,12 +15,12 @@
 
 | Name | Role | Charter | Status |
 |------|------|---------|--------|
-| Rusty | Lead | .ai-team/agents/rusty/charter.md | ✅ Active |
-| Danny | Backend Dev | .ai-team/agents/danny/charter.md | ✅ Active |
-| Linus | Frontend Dev | .ai-team/agents/linus/charter.md | ✅ Active |
-| Basher | Tester | .ai-team/agents/basher/charter.md | ✅ Active |
-| Livingston | DevOps | .ai-team/agents/livingston/charter.md | ✅ Active |
-| Frank | Security Specialist | .ai-team/agents/frank/charter.md | ✅ Active |
-| Tess | Graphic Designer | .ai-team/agents/tess/charter.md | ✅ Active |
+| Aragorn | Lead | .ai-team/agents/rusty/charter.md | ✅ Active |
+| Gimli | Backend Dev | .ai-team/agents/danny/charter.md | ✅ Active |
+| Arwen | Frontend Dev | .ai-team/agents/linus/charter.md | ✅ Active |
+| Legolas | Tester | .ai-team/agents/basher/charter.md | ✅ Active |
+| Boromir | DevOps | .ai-team/agents/livingston/charter.md | ✅ Active |
+| Faramir | Security Specialist | .ai-team/agents/frank/charter.md | ✅ Active |
+| Galadriel | Graphic Designer | .ai-team/agents/tess/charter.md | ✅ Active |
 | Scribe | Session Logger | .ai-team/agents/scribe/charter.md | 📋 Active |
 | Ralph | Work Monitor | .ai-team/agents/ralph/charter.md | 🔄 Monitor |
