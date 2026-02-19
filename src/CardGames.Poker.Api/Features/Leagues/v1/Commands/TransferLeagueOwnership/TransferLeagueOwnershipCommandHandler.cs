@@ -13,8 +13,6 @@ public sealed class TransferLeagueOwnershipCommandHandler(
 	ICurrentUserService currentUserService)
 	: IRequestHandler<TransferLeagueOwnershipCommand, OneOf<Unit, TransferLeagueOwnershipError>>
 {
-	private const int LeagueOwnershipTransferredEventTypeValue = 5;
-
 	public async Task<OneOf<Unit, TransferLeagueOwnershipError>> Handle(TransferLeagueOwnershipCommand request, CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
@@ -56,7 +54,7 @@ public sealed class TransferLeagueOwnershipCommandHandler(
 			LeagueId = request.LeagueId,
 			UserId = request.MemberUserId,
 			ActorUserId = currentUserService.UserId,
-			EventType = (LeagueMembershipEventType)LeagueOwnershipTransferredEventTypeValue,
+			EventType = LeagueMembershipEventType.LeagueOwnershipTransferred,
 			OccurredAtUtc = now
 		});
 

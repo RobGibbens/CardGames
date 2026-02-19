@@ -11,7 +11,9 @@ public enum LeagueMembershipEventType
 {
 	MemberJoined = 1,
 	MemberLeft = 2,
-	MemberPromotedToAdmin = 3
+	MemberPromotedToAdmin = 3,
+	MemberDemotedFromAdmin = 4,
+	LeagueOwnershipTransferred = 5
 }
 
 public enum LeagueInviteStatus
