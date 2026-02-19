@@ -22,6 +22,9 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      - name: Leagues Rollout Gates Policy Check
+        run: python3 .github/scripts/validate_leagues_rollout_gates.py
+
       - name: Restore
         run: dotnet restore src/CardGames.sln
 
