@@ -146,3 +146,14 @@
 **By:** Livingston (DevOps)
 **What:** Sourced the Aspire skill from the `github/awesome-copilot` marketplace and installed it to `.ai-team/skills/aspire/SKILL.md`. The skill covers AppHost orchestration, service discovery, polyglot workload support (C#/.NET, Python, Go, Node.js, Java, etc.), integrations catalog, MCP server setup, dashboard, and deployment patterns for Docker, Kubernetes, and Azure targets.
 **Why:** The CardGames repository uses Aspire AppHost for infrastructure composition and service orchestration. Having the plugin available to squad agents ensures DevOps, backend, and infrastructure work can efficiently reference Aspire patterns, troubleshoot orchestration issues, and leverage the full Aspire ecosystem including MCP-driven documentation lookups.
+
+### 2026-02-19: Microsoft Code Reference skill installed to squad skills
+**By:** Livingston (DevOps)
+**Requested by:** Rob Gibbens
+**What:** Installed the `microsoft-code-reference` skill from the `github/awesome-copilot` marketplace to `.ai-team/skills/microsoft-code-reference/SKILL.md`. The skill provides direct access to Microsoft API references, code samples (in C#, Python, JavaScript, etc.), and verification tools for validating SDK method signatures and identifying deprecated patterns.
+**Why:** The CardGames repository uses Azure services (AppHost, Storage, Service Bus, Identity) and Microsoft SDKs (.NET, Azure SDK libraries). Providing squad agents with microsoft-code-reference capabilities enables: (1) catching hallucinated SDK methods, (2) accessing working patterns from Microsoft Learn, (3) solving version conflicts and deprecation issues, and (4) self-service verification of auth flows, NuGet packages, and RBAC permissions without blocking on human review.
+**Tools Available:**
+- `microsoft_docs_search` — Look up classes, methods, namespaces
+- `microsoft_code_sample_search` — Find working examples by task and language
+- `microsoft_docs_fetch` — Get full API pages with overloads and parameters
+**Scope:** Installation only; no runtime infrastructure or build system changes.
