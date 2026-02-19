@@ -107,12 +107,64 @@
 		<section class="cashier-panel">
 			<div class="cashier-panel-body d-flex flex-column gap-3">
 				<div class="cashier-section-header">
-					<h2 class="cashier-section-title">My Leagues</h2>
+					<h2 class="cashier-section-title">My Clubs Portfolio</h2>
 					<button class="btn btn-sm btn-outline-secondary" @onclick="LoadLeaguesAsync" disabled="@_isLoading">
 						<i class="fa-solid fa-rotate-right"></i>
 						Refresh
 					</button>
 				</div>
+
+				@if (_leagues.Count > 0)
+				{
+					<div class="row g-2">
+						<div class="col-6 col-md-3">
+							<div class="border rounded p-2 h-100">
+								<div class="small text-muted">Total clubs</div>
+								<div class="fw-semibold">@_leagues.Count</div>
+							</div>
+						</div>
+						<div class="col-6 col-md-3">
+							<div class="border rounded p-2 h-100">
+								<div class="small text-muted">Admin clubs</div>
+								<div class="fw-semibold">@_adminClubCount</div>
+							</div>
+						</div>
+						<div class="col-6 col-md-3">
+							<div class="border rounded p-2 h-100">
+								<div class="small text-muted">Manager clubs</div>
+								<div class="fw-semibold">@_managerClubCount</div>
+							</div>
+						</div>
+						<div class="col-6 col-md-3">
+							<div class="border rounded p-2 h-100">
+								<div class="small text-muted">Pending join actions</div>
+								@if (_isLoadingPendingActions)
+								{
+									<div class="small text-muted">Loading...</div>
+								}
+								else
+								{
+									<div class="fw-semibold">@_totalPendingJoinActions</div>
+								}
+							</div>
+						</div>
+					</div>
+
+					<div class="d-flex flex-wrap gap-2 align-items-end">
+						<div class="form-floating flex-grow-1" data-label="Quick switch club">
+							<InputSelect id="quick-switch-club" class="form-control" @bind-Value="_quickSwitchLeagueId">
+								<option value="">Select a club...</option>
+								@foreach (var league in _leagues)
+								{
+									<option value="@league.LeagueId">@league.Name (@league.Role)</option>
+								}
+							</InputSelect>
+						</div>
+						<button class="btn btn-sm btn-primary" @onclick="OpenQuickSwitchLeagueAsync" disabled="@string.IsNullOrWhiteSpace(_quickSwitchLeagueId)">
+							Open club
+						</button>
+					</div>
+				}
 
 				@if (_isLoading)
 				{
@@ -127,9 +179,21 @@
 					<ul class="list-group">
 						@foreach (var league in _leagues)
 						{
+							var pendingJoinActions = GetPendingJoinActionsCount(league.LeagueId);
 							<li class="list-group-item d-flex flex-wrap gap-3 align-items-start @(league.LeagueId == _selectedLeagueId ? "border-primary" : string.Empty)">
 								<div class="d-flex flex-column gap-1 flex-grow-1">
-									<div class="fw-semibold">@league.Name</div>
+									<div class="d-flex align-items-center gap-2 flex-wrap">
+										<div class="fw-semibold">@league.Name</div>
+										<span class="badge text-bg-secondary">@league.Role</span>
+										@if (_isLoadingPendingActions)
+										{
+											<span class="badge text-bg-light">Pending actions: ...</span>
+										}
+										else if (pendingJoinActions > 0)
+										{
+											<span class="badge text-bg-warning">Pending joins: @pendingJoinActions</span>
+										}
+									</div>
 									@if (!string.IsNullOrWhiteSpace(league.Description))
 									{
 										<div class="text-muted">@league.Description</div>
@@ -256,6 +320,12 @@
 	private bool _isJoinSubmitting;
 	private bool _isJoinError;
 	private string? _joinMessage;
+	private Dictionary<Guid, int> _pendingJoinActionsByLeagueId = [];
+	private bool _isLoadingPendingActions;
+	private string _quickSwitchLeagueId = string.Empty;
+	private int _adminClubCount;
+	private int _managerClubCount;
+	private int _totalPendingJoinActions;
 
 	protected override async Task OnInitializedAsync()
 	{
@@ -272,6 +342,14 @@
 			if (response is { IsSuccessStatusCode: true, Content: not null })
 			{
 				_leagues = response.Content.ToList();
+				_adminClubCount = _leagues.Count(x => x.Role == LeagueRole.Admin);
+				_managerClubCount = _leagues.Count(x => x.Role == LeagueRole.Manager);
+				if (string.IsNullOrWhiteSpace(_quickSwitchLeagueId) || !_leagues.Any(x => x.LeagueId.ToString() == _quickSwitchLeagueId))
+				{
+					_quickSwitchLeagueId = _leagues.FirstOrDefault()?.LeagueId.ToString() ?? string.Empty;
+				}
+
+				await LoadPendingJoinActionsAsync();
 				if (_selectedLeagueId.HasValue)
 				{
 					_selectedLeague = _leagues.FirstOrDefault(x => x.LeagueId == _selectedLeagueId.Value);
@@ -280,6 +358,11 @@
 			else
 			{
 				_leagues = [];
+				_pendingJoinActionsByLeagueId = [];
+				_totalPendingJoinActions = 0;
+				_adminClubCount = 0;
+				_managerClubCount = 0;
+				_quickSwitchLeagueId = string.Empty;
 				_message = "No leagues right now.";
 				_isError = true;
 			}
@@ -288,6 +371,11 @@
 		{
 			Logger.LogError(ex, "Failed to load leagues");
 			_leagues = [];
+			_pendingJoinActionsByLeagueId = [];
+			_totalPendingJoinActions = 0;
+			_adminClubCount = 0;
+			_managerClubCount = 0;
+			_quickSwitchLeagueId = string.Empty;
 			_message = "Unable to load leagues right now.";
 			_isError = true;
 		}
@@ -295,6 +383,66 @@
 		{
 			_isLoading = false;
 		}
+	}
+
+	private async Task LoadPendingJoinActionsAsync()
+	{
+		_pendingJoinActionsByLeagueId = [];
+		_totalPendingJoinActions = 0;
+
+		var manageableLeagues = _leagues
+			.Where(x => x.Role == LeagueRole.Admin || x.Role == LeagueRole.Manager)
+			.Select(x => x.LeagueId)
+			.ToList();
+
+		if (manageableLeagues.Count == 0)
+		{
+			return;
+		}
+
+		_isLoadingPendingActions = true;
+		try
+		{
+			foreach (var leagueId in manageableLeagues)
+			{
+				var response = await LeaguesApi.GetPendingJoinRequestsAsync(leagueId);
+				if (response.IsSuccessStatusCode && response.Content is not null)
+				{
+					var pendingCount = response.Content.Count(x => x.Status == LeagueJoinRequestStatus.Pending);
+					_pendingJoinActionsByLeagueId[leagueId] = pendingCount;
+					_totalPendingJoinActions += pendingCount;
+				}
+				else
+				{
+					_pendingJoinActionsByLeagueId[leagueId] = 0;
+				}
+			}
+		}
+		catch (Exception ex)
+		{
+			Logger.LogWarning(ex, "Failed to load pending join requests for one or more leagues.");
+		}
+		finally
+		{
+			_isLoadingPendingActions = false;
+		}
+	}
+
+	private int GetPendingJoinActionsCount(Guid leagueId)
+	{
+		return _pendingJoinActionsByLeagueId.TryGetValue(leagueId, out var count)
+			? count
+			: 0;
+	}
+
+	private Task OpenQuickSwitchLeagueAsync()
+	{
+		if (Guid.TryParse(_quickSwitchLeagueId, out var leagueId))
+		{
+			OpenLeagueDetail(leagueId);
+		}
+
+		return Task.CompletedTask;
 	}
 
 	private async Task SelectLeagueAsync(LeagueSummaryDto league)
