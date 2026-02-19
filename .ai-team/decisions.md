@@ -271,3 +271,358 @@ Current local variant will remain stable regardless of marketplace availability.
 **Requested by:** Rob Gibbens
 **What:** Finalized #216 authority so active admins and managers can execute promote/demote admin membership operations; ownership transfer remains manager-only; no-governance/no-manager safety invariants remain enforced.
 **Why:** Closes remaining member-administration gaps while preserving P0 lockout-prevention guarantees.
+
+### 2026-02-19: Design-review scope lock for My Clubs visual refresh (pre-implementation)
+**By:** Rusty (Lead)
+**Requested by:** Rob Gibbens
+**What:** Approved a look-and-feel-only refresh for the existing `My Clubs` section in `src/CardGames.Poker.Web/Components/Pages/Leagues.razor`, preserving current information architecture, actions, loading/empty states, role badges, pending indicators, and responsive behavior.
+**Why:** Improves readability and hierarchy while preventing scope creep into behavior/API/permission changes.
+
+**Constraints:**
+- Styling/layout refinement only within existing component boundaries and design-system primitives.
+- No new features, controls, data fields, navigation changes, or backend/API/contract updates.
+
+### 2026-02-19: My Clubs refresh constrained to utility-class UI tuning
+**By:** Linus (Frontend)
+**Requested by:** Rob Gibbens
+**What:** Constrained `My Clubs` updates in `src/CardGames.Poker.Web/Components/Pages/Leagues.razor` to Bootstrap/existing utility-class changes for section rhythm, summary tile spacing, quick-switch cohesion, and list-row polish.
+**Why:** Delivers a focused polish pass without altering behavior, bindings, API integration, copy intent, or responsive structure.
+
+### 2026-02-19: My Clubs visual polish guardrails
+**By:** Tess (Graphic Designer)
+**Requested by:** Rob Gibbens
+**What:** Set implementation-ready guardrails for `My Clubs` visual refinement using existing Bootstrap/utility classes only (spacing, hierarchy, grouping, metadata rhythm, badge consistency), with no UX/behavior changes and no new design tokens/components.
+**Why:** Keeps current sprint scope safe while improving readability and preserving accessibility baseline.
+
+### 2026-02-19: My Clubs second-pass visual direction (compact density pass)
+**By:** Tess (Graphic Designer)
+**Requested by:** Rob Gibbens
+**What:** Defined a denser second-pass visual direction for `My Clubs` in `src/CardGames.Poker.Web/Components/Pages/Leagues.razor` using Bootstrap/utility classes only: one bordered summary wrapper for KPI + quick switch, tighter spacing rhythm (`g-2`, reduced padding), stronger KPI value emphasis, cleaner list-row density, and balanced action emphasis for mobile wrap.
+**Why:** Improve hierarchy, grouping, and scanability while preserving behavior, copy, component boundaries, and design-token constraints.
+
+### 2026-02-19: My Clubs second-pass implementation decisions (class-only)
+**By:** Linus (Frontend)
+**Requested by:** Rob Gibbens
+**What:** Applied second-pass class-level polish to `My Clubs` in `Leagues.razor`, including grouped summary/quick-switch container, tightened KPI and list spacing, stronger KPI value weight, quick-switch alignment and outline CTA, and mobile-friendly action width helpers.
+**Why:** Deliver a compact, more readable visual rhythm without changing handlers, bindings, logic, text, permissions, API, or responsive intent.
+
+### 2026-02-19: My Clubs second-pass design review approval
+**By:** Tess (Graphic Designer)
+**Requested by:** Rob Gibbens
+**What:** Approved the second-pass `My Clubs` update, confirming improved coherence across KPI summary, quick switch, and club rows with better hierarchy and action balance.
+**Why:** Confirms quality and scope adherence for the follow-up visual pass while keeping Bootstrap-only, no-behavior-change constraints intact.
+
+### 2026-02-19: User directive
+**By:** Rob Gibbens (via Copilot)
+**What:** Completely rethink how the `My Clubs` section looks and works; do not treat prior small CSS-tweak constraints as limiting for this section.
+**Why:** User feedback indicates prior iterations were too close to the original UX and did not meet redesign expectations.
+
+### 2026-02-19: My Clubs rethink baseline (focused redesign)
+**By:** Rusty (Lead)
+**Requested by:** Rob Gibbens
+**Context:** User explicitly rejected prior iterations and requested a full rethink of the `My Clubs` section look and workflow. This supersedes earlier “small polish only” constraints for this section.
+
+#### Redesign concept
+- Shift `My Clubs` from a mixed “stats + raw list” block into a task-first workspace: orient the section around “where should I go next” and “what needs my attention now.”
+- Promote actionable context to the top (pending join actions, quick-switch/open path), and demote passive metadata to secondary scan lines.
+- Keep all existing data/actions intact, but reorganize into clearer role-based and attention-based groupings to reduce row-by-row hunting.
+
+#### New section structure
+1. **Section header rail:** Keep title and refresh, add short status subtitle (derived from existing counts) that summarizes total clubs and pending actions.
+2. **Attention strip (top priority):** Surface pending join actions first, with clear “review now” affordance via existing `Open` navigation path.
+3. **Quick switch panel:** Keep existing selector and open action, but position directly under attention strip as the primary jump control.
+4. **Club group buckets:** Render clubs in this order using existing `_leagues` data only: Manager/Owner clubs, Admin clubs, Member clubs.
+5. **Club card rows per bucket:** For each club, keep current data points but standardize row anatomy: name+role, optional description, concise meta line, action cluster (`Open`, `Leave`).
+6. **State handling at section bottom:** Preserve existing loading and empty states with updated phrasing/layout only; no logic changes.
+
+#### Must keep
+- Data sources and bindings: `_leagues`, `_adminClubCount`, `_managerClubCount`, `_totalPendingJoinActions`, `_isLoadingPendingActions`, `_quickSwitchLeagueId`, per-league pending count via `GetPendingJoinActionsCount(...)`.
+- Existing actions/handlers: `LoadLeaguesAsync`, `OpenQuickSwitchLeagueAsync`, `OpenLeagueDetail(...)`, `LeaveLeagueAsync(...)`.
+- Current role semantics and display values from `LeagueRole` (`Owner`/`Manager`/`Admin`/member role text as currently projected).
+- Existing loading/empty behavior branches (`_isLoading`, no leagues state) and current navigation destinations (`/leagues/{leagueId}`).
+- No backend/API/contract/domain changes; no new endpoints; no altered request/response flows.
+
+#### Can change
+- Layout and grouping inside `My Clubs`: reorder blocks, bucket clubs by role, and restructure row composition for clearer scanability.
+- Label wording and visual hierarchy: headings, helper text, badge emphasis, density/spacing rhythm, and button prominence.
+- Style implementation details using existing design system primitives/utilities only (no new components, tokens, or backend-driven fields).
+- **Arwen boundary:** implement structural IA changes in `My Clubs` markup (section order, grouping containers, bucket rendering, and conditional block placement) while preserving all existing bindings and handlers.
+- **Galadriel boundary:** implement presentation hierarchy pass (spacing, typography weight, badge/button emphasis, responsive rhythm) on top of Arwen structure without changing behavior, handlers, or data contracts.
+
+### 2026-02-19: My Clubs full redesign spec (task-first IA)
+**By:** Tess (Graphic Designer)
+**Requested by:** Rob Gibbens
+
+**Intent:** Replace the current `My Clubs` composition with a significantly different, action-first structure that improves scanability and reduces the awkward open flow, while keeping existing data, handlers, and contracts unchanged.
+
+## Scope lock (must not change)
+- Keep existing data/state sources: `_leagues`, `_adminClubCount`, `_managerClubCount`, `_totalPendingJoinActions`, `_isLoadingPendingActions`, `_quickSwitchLeagueId`, `GetPendingJoinActionsCount(...)`.
+- Keep existing handlers/actions: `LoadLeaguesAsync`, `OpenQuickSwitchLeagueAsync`, `OpenLeagueDetail(...)`, `LeaveLeagueAsync(...)`.
+- Keep existing loading + empty state behavior branches.
+- No backend/API/data contract/domain changes.
+- No new external dependencies.
+
+## 1) Replacement markup blueprint (section-by-section)
+
+### A. My Clubs command header (single action rail)
+**Goal:** Immediate orientation + one obvious maintenance action.
+
+**Structure:**
+- Left: `h2` title `My Clubs`.
+- Under title: one compact dynamic summary sentence using existing counts (example: "8 clubs · 2 manager/admin clubs · 3 pending joins").
+- Right: small `Refresh` button.
+
+**Bootstrap guidance:**
+- Container: `d-flex flex-wrap justify-content-between align-items-start gap-2`
+- Title block: `d-flex flex-column gap-1`
+- Summary line: `small text-muted`
+- Refresh button: `btn btn-sm btn-outline-secondary`
+
+### B. Priority action strip (new top surface)
+**Goal:** Put urgent workload and “where to go next” first.
+
+**Structure:**
+- Left tile: `Pending join actions` with loading or count.
+- Middle tile: `Manage-capable clubs` (manager + admin total using existing computed counts).
+- Right tile: `Quick Open` control group (selector + `Open club`).
+
+**Important change:** Quick switch moves into this top strip as a primary jump control; it is no longer below KPI tiles.
+
+**Bootstrap guidance:**
+- Strip wrapper: `border rounded p-3 d-flex flex-column gap-3`
+- Desktop layout: inner `row g-2 align-items-end`
+- Tiles: `col-12 col-md-3` + card `border rounded p-2 h-100 d-flex flex-column`
+- Tile labels: `small text-muted`
+- Tile values: `fw-semibold fs-5` (or `fw-bold` if `fs-5` feels too strong)
+- Quick open column: `col-12 col-md-6 d-flex flex-column gap-2`
+- Quick open input row: `d-flex flex-wrap gap-2 align-items-end`
+- Selector wrapper: `form-floating flex-grow-1`
+- Open action: `btn btn-primary btn-sm px-3` (primary in this strip)
+
+### C. Role buckets (replace single flat list)
+**Goal:** Remove row-hunting by grouping clubs by responsibility.
+
+**Render order (fixed):**
+1. `Manager / Owner clubs`
+2. `Admin clubs`
+3. `Member clubs`
+
+**Structure per bucket:**
+- Bucket header row: title + item count badge.
+- Bucket body: list-group of only that role slice.
+- Skip empty buckets entirely (no placeholder noise), except when all buckets empty (use existing empty state branch).
+
+**Bootstrap guidance:**
+- Buckets wrapper: `d-flex flex-column gap-3`
+- Bucket container: `border rounded p-2 p-md-3`
+- Bucket header: `d-flex justify-content-between align-items-center mb-2`
+- Bucket title: `h6 mb-0 fw-semibold`
+- Count pill: `badge text-bg-light text-dark`
+- Bucket list: `ul.list-group`
+
+### D. Club row anatomy (standardized, card-like list item)
+**Goal:** Make every row scan the same way and place actions predictably.
+
+**Row layout:**
+- **Line 1 (identity):** Club name (strong), role badge, optional pending-joins badge.
+- **Line 2 (context):** Description if present.
+- **Line 3 (meta):** Created date (and role text only if needed for clarity).
+- **Right action cluster:** `Open` (primary) then `Leave` (outline-danger).
+
+**Bootstrap guidance:**
+- List item: `list-group-item py-2 px-3 d-flex flex-wrap gap-2 align-items-start`
+- Content stack: `d-flex flex-column gap-1 flex-grow-1`
+- Identity line: `d-flex flex-wrap align-items-center gap-2`
+- Club name: `fw-semibold`
+- Role badge: `badge text-bg-light text-dark`
+- Pending badge loading: `badge text-bg-light text-muted`
+- Pending badge active: `badge text-bg-warning`
+- Description/meta: `small text-muted`
+- Action cluster: `d-flex flex-wrap gap-2 ms-md-auto mt-2 mt-md-0`
+- Open button: `btn btn-sm btn-primary league-action-btn w-100 w-sm-auto`
+- Leave button: `btn btn-sm btn-outline-danger league-action-btn w-100 w-sm-auto`
+
+### E. State branch placement
+**Goal:** Keep state comprehension simple.
+
+**Order:**
+1. If loading: show loading text below command header.
+2. Else if no clubs: show empty text below command header.
+3. Else: show priority strip + role buckets.
+
+This keeps loading/empty from competing with containers that only make sense with content.
+
+## 2) Priority hierarchy (what appears first and why)
+1. **Command header + refresh** — user immediately knows location and can recover stale state.
+2. **Priority action strip** — urgent/decision-driving signals and quick open path are first actionable surface.
+3. **Manager/Owner bucket** — highest responsibility clubs first to support admin-heavy workflows.
+4. **Admin bucket** — secondary governance responsibilities.
+5. **Member bucket** — lowest urgency browsing/entry points.
+
+Rationale: ordering follows action urgency and responsibility, not alphabetic/flat list parity.
+
+## 3) Interaction flow rewrite (open/act without awkward sequence)
+
+### New default path (fast open)
+1. User lands in `My Clubs` and sees quick open in the top strip immediately.
+2. User selects club from quick switch.
+3. User presses `Open club` (or keeps current auto-selected default and presses open).
+4. App navigates via existing `OpenQuickSwitchLeagueAsync` → `OpenLeagueDetail(...)`.
+
+### New responsibility-first path
+1. User scans role buckets top-down.
+2. If pending actions badge appears in a row, user opens that club directly from row `Open`.
+3. If leaving, user triggers `Leave` directly from same row without changing selection context.
+
+### Why this removes awkwardness
+- Current layout forces users through mixed KPI/list rhythm and delayed quick-switch prominence.
+- New layout places jump control and urgency signal before list exploration.
+- Buckets reduce cognitive load from "find my admin clubs in one long list" to "go to first relevant section".
+
+## 4) Class-level guidance Arwen can implement immediately (Razor/Bootstrap)
+
+### Keep
+- Existing iconography and button labels (`Refresh`, `Open club`, `Open`, `Leave`).
+- Existing bindings and conditional logic sources.
+
+### Refactor markup shape in `My Clubs` block
+- Replace the current KPI grid + quick-switch wrapper with the new **Priority action strip**.
+- Add precomputed role slices in Razor code block (or inline LINQ) for three buckets:
+	- manager/owner: `Role == Manager || Role == Owner`
+	- admin: `Role == Admin`
+	- member: everything else
+- Render bucket sections conditionally only when each slice has items.
+
+### Accessibility/responsive notes
+- Preserve semantic headings (`h2` for section, `h6` for bucket headers).
+- Keep buttons as native `<button>` with existing disabled states.
+- Ensure action cluster wraps on small screens (`flex-wrap`, `w-100 w-sm-auto`).
+- Keep muted metadata contrast patterns already in use (`small text-muted`) and avoid color-only meaning by retaining text labels (`Pending joins:`).
+
+## Implementation checklist for Arwen
+- [ ] Rebuild `My Clubs` section into: command header → state branch → priority action strip → role buckets.
+- [ ] Move quick switch into priority strip and keep `OpenQuickSwitchLeagueAsync` wiring unchanged.
+- [ ] Keep refresh button and handler unchanged; place in command header rail.
+- [ ] Partition `_leagues` into manager/owner, admin, member buckets and render in that strict order.
+- [ ] Standardize club row anatomy (identity line, optional description, meta line, action cluster).
+- [ ] Preserve per-row `Open` and `Leave` handlers exactly.
+- [ ] Preserve pending-joins badge behavior and loading variant exactly.
+- [ ] Preserve loading and empty text branches with same behavior.
+- [ ] Validate responsive wrap at mobile widths and keyboard reachability of all controls.
+- [ ] Confirm no backend/API/contracts changed and no new dependencies added.
+
+### 2026-02-19: My Clubs full redesign implementation (task-first IA)
+**By:** Linus (Frontend)
+**Requested by:** Rob Gibbens
+
+**What:** Implemented a substantial structural redesign of the `My Clubs` section in `src/CardGames.Poker.Web/Components/Pages/Leagues.razor` only, replacing the previous flat KPI/list rhythm with a task-first flow:
+1. command header rail with dynamic summary + refresh,
+2. state branch placement (loading / empty before content surfaces),
+3. top priority action strip (pending joins, manage-capable clubs, quick open),
+4. role-bucketed club rendering (Manager/Owner, Admin, Member),
+5. standardized per-row club anatomy and action cluster.
+
+**Why:** User explicitly rejected prior iterations and requested a full rethink. The redesign improves scanability and action-first navigation without changing behavior, data contracts, handlers, or backend flows.
+
+**Functional parity preserved:**
+- `Refresh` button still invokes `LoadLeaguesAsync`.
+- Quick switch dropdown + `Open club` still use `_quickSwitchLeagueId` + `OpenQuickSwitchLeagueAsync`.
+- Per-club `Open` and `Leave` buttons still call `OpenLeagueDetail(...)` and `LeaveLeagueAsync(...)` unchanged.
+- Loading state, empty state, and pending-join count/loading behavior are preserved.
+- Existing data/state sources remain intact (`_leagues`, `_adminClubCount`, `_managerClubCount`, `_totalPendingJoinActions`, `_isLoadingPendingActions`, `GetPendingJoinActionsCount(...)`).
+
+**Out of scope honored:**
+- No backend/API/domain/contract changes.
+- No new dependencies.
+- Existing information remains visible (role, created date, description, pending join indicators).
+
+**Validation:**
+- Error check run on `Leagues.razor` after edit; no errors reported.
+
+### 2026-02-19: My Clubs full redesign review
+**By:** Tess (Graphic Designer)
+**Requested by:** Rob Gibbens
+
+VERDICT: APPROVED
+
+- The information architecture is materially changed from a flatter list presentation to a task-first flow: command header, then state branch, then priority action strip, then role buckets in fixed responsibility order.
+- Quick navigation is materially elevated by moving `Quick Open` into the top priority strip with pending and manage-capable signals, creating a direct “decide then open” path before list scanning.
+- Club entries are materially standardized into consistent identity/context/meta/action anatomy inside role buckets, which improves scanability and responsibility-first findability without changing handlers, data, or contracts.
+
+### 2026-02-19: My Clubs Command Center baseline (card-grid dashboard)
+**By:** Rusty (Lead)
+**Requested by:** Rob Gibbens
+
+**What:** Set a Command Center baseline for `My Clubs` in `src/CardGames.Poker.Web/Components/Pages/Leagues.razor`: consolidated header rail (title + icon refresh), stats pills (`Total`, `Admin`, `Pending`), responsive card-grid body, and uniform card anatomy with full-width `Open Club` action.
+**Why:** Shift from list-heavy scanning to action-first navigation while keeping behavior and data flows stable.
+
+**Guardrails:**
+- No backend/API/domain/contract changes.
+- Preserve existing handlers and bindings (`LoadLeaguesAsync`, `OpenLeagueDetail(...)`, league state sources).
+- Preserve loading and empty state behavior.
+- Remove `Quick Open` and per-card `Leave` from `My Clubs` cards.
+
+### 2026-02-19: My Clubs command-center implementation
+**By:** Linus (Frontend)
+**Requested by:** Rob Gibbens
+
+**What:** Implemented the Command Center baseline in `src/CardGames.Poker.Web/Components/Pages/Leagues.razor` for `My Clubs` only: icon-refresh header, `Total/Admin/Pending` pills, responsive card grid, role badges, truncated descriptions, and open-first card CTA.
+**Why:** Deliver a clearer command surface for many-club scenarios with minimal interaction friction.
+
+**Scope confirmations:**
+- Kept existing loading and empty branches.
+- Kept existing data sources and navigation wiring.
+- No backend/API/contract/domain changes.
+
+### 2026-02-19: My Clubs Command Center review
+**By:** Tess (Graphic Designer)
+**Requested by:** Rob Gibbens
+
+VERDICT: APPROVED
+
+**Review outcome:**
+- Header + icon refresh + stats pills meet command-center structure.
+- `Quick Open` is removed from `My Clubs`; per-card `Leave` is removed.
+- Card grid and card anatomy meet spec (name + role badge, truncated description, full-width `Open Club`).
+- Pending pill state treatment passes loading/zero/positive checks.
+- Behavior parity constraints remain intact and scope is isolated to `Leagues.razor`.
+
+### 2026-02-19: My Clubs pills + card final pass
+**By:** Linus (Frontend Dev)
+**Requested by:** Rob Gibbens
+
+**What:** Implemented a scoped visual refinement of the `My Clubs` section in `src/CardGames.Poker.Web/Components/Pages/Leagues.razor` only:
+1. Replaced text badges under `My Clubs` with capsule pills that include a darker inner count circle:
+	- Clubs: count + `Clubs` label
+	- Manager/Admin: aggregate count from `_adminClubCount + _managerClubCount` + `Manager/Admin` label
+	- Pending: count from `_totalPendingJoinActions` + `Pending` label
+2. Pending pill renders muted when pending is `0` and highlighted when pending is `> 0` (loading state remains represented).
+3. Updated each My Clubs league card:
+	- League name rendered as `H2`
+	- Right-side role pill label shows `Manager/Admin` for management roles; otherwise `Member`
+	- Description shown directly beneath title row
+	- Clear vertical spacing before full-width `Open Club` button
+
+**Why:** Matches requested UX for final pass while keeping implementation minimal and behavior-safe.
+
+**Constraints honored:**
+- No API/backend/contract/logic flow changes.
+- Loading/empty states and open handler behavior unchanged.
+- Quick Open and Leave remain removed from this section.
+- Edits scoped to one file (`Leagues.razor`) for UI plus local helper methods.
+
+### 2026-02-19: My Clubs pills + card final review
+**By:** Tess (Graphic Designer)
+**Requested by:** Rob Gibbens
+
+VERDICT: APPROVED
+
+- Pills include count inside a darker inner circle with labels `Clubs`, `Manager/Admin`, and `Pending`.
+- `Manager/Admin` and `Pending` use the same rounded-pill badge style.
+- Each league entry is wrapped in a card container.
+- League name is rendered as an `H2` element.
+- Right-side role pill shows `Manager/Admin` for management roles and `Member` otherwise.
+- Description appears beneath the league name.
+- Vertical spacing exists before the `Open Club` button.
+- `Open Club` button is full width.
+
