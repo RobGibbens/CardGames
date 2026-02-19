@@ -216,3 +216,13 @@ This reduces friction in feature work and improves confidence in Microsoft SDK u
 - Squad agents can reference `microsoft-docs` skill in prompts
 - Monitor skill usage patterns to identify documentation gaps or refinements
 - Consider extending capability set if additional reference patterns emerge from usage
+
+### 2026-02-19: NuGet Manager Skill Installation
+**By:** Livingston (DevOps)
+**Requested by:** Rob Gibbens
+**What:** Installed `nuget-manager` marketplace skill from `github/awesome-copilot` to `.ai-team/skills/nuget-manager/SKILL.md`. Skill provides CLI-first package management: add, remove, update versions with verification and compatibility validation via `dotnet restore`.
+**Why:** CardGames is a .NET multi-project solution with centralized package management (`Directory.Packages.props`). Equipping squad agents with nuget-manager ensures consistent workflows, prevents direct file edits for add/remove, validates version existence and compatibility, and enables autonomous dependency management without friction.
+**Capabilities:**
+- Add/remove packages: `dotnet add [<PROJECT>] package <PACKAGE_NAME> [--version <VERSION>]`
+- Update versions with centralized or per-project verification
+- Compatibility validation via `dotnet restore` after changes

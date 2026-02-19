@@ -65,3 +65,26 @@
 - Requires Microsoft Learn MCP Server integration
 
 **Why:** The CardGames repository is built on .NET and Azure services. Having direct access to Microsoft's official documentation enables squad agents to verify SDK method signatures, discover integration patterns, validate authentication/RBAC configs, and self-serve on API reference questions—reducing hallucinated methods, version conflicts, and integration friction during feature work.
+
+## 2026-02-19: nuget-manager skill installed
+
+**Requested by:** Rob Gibbens  
+**Status:** ✅ Complete
+
+**Work:**
+- Sourced nuget-manager skill from `github/awesome-copilot` marketplace repository at `skills/nuget-manager/SKILL.md`
+- Installed to `.ai-team/skills/nuget-manager/SKILL.md` (no supporting files required)
+
+**Skill capabilities:**
+- Provides strict NuGet package management procedures: add, remove, update operations
+- Enforces using `dotnet add/remove/package` CLI for add/remove operations
+- Mandates version verification workflow for updates using `dotnet package search`
+- Supports both per-project (`*.csproj`) and centralized (`Directory.Packages.props`) version management
+- Includes `dotnet restore` verification step for compatibility after version changes
+
+**Prerequisites:**
+- .NET SDK (8.0 or later, or solution-compatible version)
+- `dotnet` CLI available on PATH
+- `jq` or PowerShell for version verification
+
+**Why:** The CardGames repository is a .NET multi-project solution with centralized package management. Providing squad agents with nuget-manager skill ensures consistent, safe package operations across the solution—enforcing CLI-first workflows, preventing direct file edits for add/remove operations, and maintaining project integrity through verification steps.

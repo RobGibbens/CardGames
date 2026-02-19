@@ -1,0 +1,3070 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="ebb903af-8b54-4624-a3b5-a4cef970d0b1" name="@Mac 2026-02-18 19:13:15" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-02-18T19:13:15.6739450-05:00" queuing="2026-02-18T19:13:15.6739450-05:00" start="2026-02-18T19:13:12.4273270-05:00" finish="2026-02-18T19:13:16.2519020-05:00" />
+  <TestSettings name="default" id="774ae064-5143-403d-a337-5c32798a66ee">
+    <Deployment runDeploymentRoot="_Mac_2026-02-18_19_13_15" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="42bc2e29-cf3a-43ea-b8a5-718b2d6181af" testId="28aa9621-0424-e664-f963-73dd3cf38af3" testName="CardGames.IntegrationTests.Api.LeaguesApiLaunchEventSessionTests.LaunchSeasonEventSession_Admin_Succeeds_AndPersistsLinkage" computerName="Mac" duration="00:00:01.0290493" startTime="2026-02-18T19:13:14.2372860-05:00" endTime="2026-02-18T19:13:15.2674600-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="42bc2e29-cf3a-43ea-b8a5-718b2d6181af" />
+    <UnitTestResult executionId="8d3fa7e7-bc90-4789-9b8d-ea3a9aafe280" testId="a0c5a41e-c4f5-85fa-569a-f58aff030803" testName="CardGames.IntegrationTests.Api.LeaguesApiInviteTests.Moderation_Endpoints_EnforceAuthorization_ForNonGovernanceMembers" computerName="Mac" duration="00:00:00.7317439" startTime="2026-02-18T19:13:15.3880670-05:00" endTime="2026-02-18T19:13:16.1205970-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="8d3fa7e7-bc90-4789-9b8d-ea3a9aafe280" />
+    <UnitTestResult executionId="5163ed77-90f2-48de-a9a6-7c2e85949d35" testId="2bf23db6-e330-4428-17c5-720282297fbb" testName="CardGames.IntegrationTests.Api.LeaguesApiInviteTests.Moderation_Endpoints_ReturnExpectedErrorSemantics_ForMissingAndInvalidStates" computerName="Mac" duration="00:00:00.0131282" startTime="2026-02-18T19:13:16.2008250-05:00" endTime="2026-02-18T19:13:16.2142600-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="5163ed77-90f2-48de-a9a6-7c2e85949d35" />
+    <UnitTestResult executionId="770289db-49ef-4e9e-a0da-74177981baf6" testId="079384c5-5c3e-a57c-4230-0704b438a5f3" testName="CardGames.IntegrationTests.Api.LeaguesApiInviteTests.Journey_JoinByCode_WithPreview_ThenSubmit_ThenAdminApprove_ActivatesMembership" computerName="Mac" duration="00:00:00.0549959" startTime="2026-02-18T19:13:16.1208070-05:00" endTime="2026-02-18T19:13:16.1766420-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="770289db-49ef-4e9e-a0da-74177981baf6" />
+    <UnitTestResult executionId="b92ac5c2-68e2-42b2-a93c-bf0eb4244098" testId="a9f716d7-4e3e-25ba-2491-013824028c57" testName="CardGames.IntegrationTests.Api.LeaguesApiLaunchEventSessionTests.JoinGame_ForLeagueLaunchedSession_RequiresActiveLeagueMembership" computerName="Mac" duration="00:00:00.0990163" startTime="2026-02-18T19:13:15.2871040-05:00" endTime="2026-02-18T19:13:15.3865050-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="b92ac5c2-68e2-42b2-a93c-bf0eb4244098" />
+    <UnitTestResult executionId="e9a924f3-5264-4167-a4a5-3cb20db8a357" testId="e929036c-a795-d329-b73c-38f0d6495815" testName="CardGames.IntegrationTests.Api.LeaguesApiStandingsScaffoldTests.Journey_ResultIngestion_ToStandings_IsCovered_ByQualityGateTests" computerName="Mac" duration="00:00:01.3883303" startTime="2026-02-18T19:13:12.7939310-05:00" endTime="2026-02-18T19:13:14.2155310-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="e9a924f3-5264-4167-a4a5-3cb20db8a357" />
+    <UnitTestResult executionId="5e66d7a7-f599-4620-97e5-72c7f30295cc" testId="abc48c1f-fa37-5c90-74d4-e63783563661" testName="CardGames.IntegrationTests.Api.LeaguesApiLaunchEventSessionTests.LaunchSeasonEventSession_SameEventTwice_ReturnsConflict_AndPreservesOriginalSessionLinkage" computerName="Mac" duration="00:00:00.0164418" startTime="2026-02-18T19:13:15.2680130-05:00" endTime="2026-02-18T19:13:15.2869500-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="5e66d7a7-f599-4620-97e5-72c7f30295cc" />
+    <UnitTestResult executionId="ea696fed-c4bb-474c-8f34-9575b6b3dcb4" testId="17d9734d-f2a1-8963-f8e7-075ae8055bab" testName="CardGames.IntegrationTests.Api.LeaguesApiInviteTests.Join_Endpoint_IsIdempotent_ForDuplicateSubmissions" computerName="Mac" duration="00:00:00.0081730" startTime="2026-02-18T19:13:16.1922180-05:00" endTime="2026-02-18T19:13:16.2006720-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="ea696fed-c4bb-474c-8f34-9575b6b3dcb4" />
+    <UnitTestResult executionId="f84a7bd3-4887-4df2-968e-d4cc8a83afdc" testId="b6062715-c972-a208-7555-21018ecaff0e" testName="CardGames.IntegrationTests.Api.LeaguesApiInviteTests.Journey_AdminDeny_IsIdempotent_AndDoesNotCreateMembership" computerName="Mac" duration="00:00:00.0149209" startTime="2026-02-18T19:13:16.1768090-05:00" endTime="2026-02-18T19:13:16.1920490-05:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="f84a7bd3-4887-4df2-968e-d4cc8a83afdc" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="CardGames.IntegrationTests.Api.LeaguesApiInviteTests.Journey_JoinByCode_WithPreview_ThenSubmit_ThenAdminApprove_ActivatesMembership" storage="/users/robgibbens/dev/cardgames/src/tests/cardgames.integrationtests/bin/debug/net10.0/cardgames.integrationtests.dll" id="079384c5-5c3e-a57c-4230-0704b438a5f3">
+      <Execution id="770289db-49ef-4e9e-a0da-74177981baf6" />
+      <TestMethod codeBase="/Users/robgibbens/dev/CardGames/src/Tests/CardGames.IntegrationTests/bin/Debug/net10.0/CardGames.IntegrationTests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="CardGames.IntegrationTests.Api.LeaguesApiInviteTests" name="Journey_JoinByCode_WithPreview_ThenSubmit_ThenAdminApprove_ActivatesMembership" />
+    </UnitTest>
+    <UnitTest name="CardGames.IntegrationTests.Api.LeaguesApiInviteTests.Moderation_Endpoints_EnforceAuthorization_ForNonGovernanceMembers" storage="/users/robgibbens/dev/cardgames/src/tests/cardgames.integrationtests/bin/debug/net10.0/cardgames.integrationtests.dll" id="a0c5a41e-c4f5-85fa-569a-f58aff030803">
+      <Execution id="8d3fa7e7-bc90-4789-9b8d-ea3a9aafe280" />
+      <TestMethod codeBase="/Users/robgibbens/dev/CardGames/src/Tests/CardGames.IntegrationTests/bin/Debug/net10.0/CardGames.IntegrationTests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="CardGames.IntegrationTests.Api.LeaguesApiInviteTests" name="Moderation_Endpoints_EnforceAuthorization_ForNonGovernanceMembers" />
+    </UnitTest>
+    <UnitTest name="CardGames.IntegrationTests.Api.LeaguesApiInviteTests.Moderation_Endpoints_ReturnExpectedErrorSemantics_ForMissingAndInvalidStates" storage="/users/robgibbens/dev/cardgames/src/tests/cardgames.integrationtests/bin/debug/net10.0/cardgames.integrationtests.dll" id="2bf23db6-e330-4428-17c5-720282297fbb">
+      <Execution id="5163ed77-90f2-48de-a9a6-7c2e85949d35" />
+      <TestMethod codeBase="/Users/robgibbens/dev/CardGames/src/Tests/CardGames.IntegrationTests/bin/Debug/net10.0/CardGames.IntegrationTests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="CardGames.IntegrationTests.Api.LeaguesApiInviteTests" name="Moderation_Endpoints_ReturnExpectedErrorSemantics_ForMissingAndInvalidStates" />
+    </UnitTest>
+    <UnitTest name="CardGames.IntegrationTests.Api.LeaguesApiInviteTests.Join_Endpoint_IsIdempotent_ForDuplicateSubmissions" storage="/users/robgibbens/dev/cardgames/src/tests/cardgames.integrationtests/bin/debug/net10.0/cardgames.integrationtests.dll" id="17d9734d-f2a1-8963-f8e7-075ae8055bab">
+      <Execution id="ea696fed-c4bb-474c-8f34-9575b6b3dcb4" />
+      <TestMethod codeBase="/Users/robgibbens/dev/CardGames/src/Tests/CardGames.IntegrationTests/bin/Debug/net10.0/CardGames.IntegrationTests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="CardGames.IntegrationTests.Api.LeaguesApiInviteTests" name="Join_Endpoint_IsIdempotent_ForDuplicateSubmissions" />
+    </UnitTest>
+    <UnitTest name="CardGames.IntegrationTests.Api.LeaguesApiStandingsScaffoldTests.Journey_ResultIngestion_ToStandings_IsCovered_ByQualityGateTests" storage="/users/robgibbens/dev/cardgames/src/tests/cardgames.integrationtests/bin/debug/net10.0/cardgames.integrationtests.dll" id="e929036c-a795-d329-b73c-38f0d6495815">
+      <Execution id="e9a924f3-5264-4167-a4a5-3cb20db8a357" />
+      <TestMethod codeBase="/Users/robgibbens/dev/CardGames/src/Tests/CardGames.IntegrationTests/bin/Debug/net10.0/CardGames.IntegrationTests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="CardGames.IntegrationTests.Api.LeaguesApiStandingsScaffoldTests" name="Journey_ResultIngestion_ToStandings_IsCovered_ByQualityGateTests" />
+    </UnitTest>
+    <UnitTest name="CardGames.IntegrationTests.Api.LeaguesApiLaunchEventSessionTests.LaunchSeasonEventSession_SameEventTwice_ReturnsConflict_AndPreservesOriginalSessionLinkage" storage="/users/robgibbens/dev/cardgames/src/tests/cardgames.integrationtests/bin/debug/net10.0/cardgames.integrationtests.dll" id="abc48c1f-fa37-5c90-74d4-e63783563661">
+      <Execution id="5e66d7a7-f599-4620-97e5-72c7f30295cc" />
+      <TestMethod codeBase="/Users/robgibbens/dev/CardGames/src/Tests/CardGames.IntegrationTests/bin/Debug/net10.0/CardGames.IntegrationTests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="CardGames.IntegrationTests.Api.LeaguesApiLaunchEventSessionTests" name="LaunchSeasonEventSession_SameEventTwice_ReturnsConflict_AndPreservesOriginalSessionLinkage" />
+    </UnitTest>
+    <UnitTest name="CardGames.IntegrationTests.Api.LeaguesApiLaunchEventSessionTests.JoinGame_ForLeagueLaunchedSession_RequiresActiveLeagueMembership" storage="/users/robgibbens/dev/cardgames/src/tests/cardgames.integrationtests/bin/debug/net10.0/cardgames.integrationtests.dll" id="a9f716d7-4e3e-25ba-2491-013824028c57">
+      <Execution id="b92ac5c2-68e2-42b2-a93c-bf0eb4244098" />
+      <TestMethod codeBase="/Users/robgibbens/dev/CardGames/src/Tests/CardGames.IntegrationTests/bin/Debug/net10.0/CardGames.IntegrationTests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="CardGames.IntegrationTests.Api.LeaguesApiLaunchEventSessionTests" name="JoinGame_ForLeagueLaunchedSession_RequiresActiveLeagueMembership" />
+    </UnitTest>
+    <UnitTest name="CardGames.IntegrationTests.Api.LeaguesApiInviteTests.Journey_AdminDeny_IsIdempotent_AndDoesNotCreateMembership" storage="/users/robgibbens/dev/cardgames/src/tests/cardgames.integrationtests/bin/debug/net10.0/cardgames.integrationtests.dll" id="b6062715-c972-a208-7555-21018ecaff0e">
+      <Execution id="f84a7bd3-4887-4df2-968e-d4cc8a83afdc" />
+      <TestMethod codeBase="/Users/robgibbens/dev/CardGames/src/Tests/CardGames.IntegrationTests/bin/Debug/net10.0/CardGames.IntegrationTests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="CardGames.IntegrationTests.Api.LeaguesApiInviteTests" name="Journey_AdminDeny_IsIdempotent_AndDoesNotCreateMembership" />
+    </UnitTest>
+    <UnitTest name="CardGames.IntegrationTests.Api.LeaguesApiLaunchEventSessionTests.LaunchSeasonEventSession_Admin_Succeeds_AndPersistsLinkage" storage="/users/robgibbens/dev/cardgames/src/tests/cardgames.integrationtests/bin/debug/net10.0/cardgames.integrationtests.dll" id="28aa9621-0424-e664-f963-73dd3cf38af3">
+      <Execution id="42bc2e29-cf3a-43ea-b8a5-718b2d6181af" />
+      <TestMethod codeBase="/Users/robgibbens/dev/CardGames/src/Tests/CardGames.IntegrationTests/bin/Debug/net10.0/CardGames.IntegrationTests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="CardGames.IntegrationTests.Api.LeaguesApiLaunchEventSessionTests" name="LaunchSeasonEventSession_Admin_Succeeds_AndPersistsLinkage" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="28aa9621-0424-e664-f963-73dd3cf38af3" executionId="42bc2e29-cf3a-43ea-b8a5-718b2d6181af" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="a0c5a41e-c4f5-85fa-569a-f58aff030803" executionId="8d3fa7e7-bc90-4789-9b8d-ea3a9aafe280" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="2bf23db6-e330-4428-17c5-720282297fbb" executionId="5163ed77-90f2-48de-a9a6-7c2e85949d35" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="079384c5-5c3e-a57c-4230-0704b438a5f3" executionId="770289db-49ef-4e9e-a0da-74177981baf6" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="a9f716d7-4e3e-25ba-2491-013824028c57" executionId="b92ac5c2-68e2-42b2-a93c-bf0eb4244098" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="e929036c-a795-d329-b73c-38f0d6495815" executionId="e9a924f3-5264-4167-a4a5-3cb20db8a357" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="abc48c1f-fa37-5c90-74d4-e63783563661" executionId="5e66d7a7-f599-4620-97e5-72c7f30295cc" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="17d9734d-f2a1-8963-f8e7-075ae8055bab" executionId="ea696fed-c4bb-474c-8f34-9575b6b3dcb4" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="b6062715-c972-a208-7555-21018ecaff0e" executionId="f84a7bd3-4887-4df2-968e-d4cc8a83afdc" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Completed">
+    <Counters total="9" executed="9" passed="9" failed="0" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.0)
+[xUnit.net 00:00:00.05]   Discovering: CardGames.IntegrationTests
+[xUnit.net 00:00:00.10]   Discovered:  CardGames.IntegrationTests
+[xUnit.net 00:00:00.11]   Starting:    CardGames.IntegrationTests
+info: CardGames.Poker.Api.Services.ContinuousPlayBackgroundService[0]
+      ContinuousPlayBackgroundService started
+warn: Microsoft.EntityFrameworkCore.Model.Validation[10400]
+      Sensitive data logging is enabled. Log entries and exception messages may include sensitive application data; this mode should only be enabled during development.
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Development
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: /Users/robgibbens/dev/CardGames/src/CardGames.Poker.Api
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 0 entities to in-memory store.
+info: CardGames.Poker.Api.GameFlow.GameFlowHandlerFactory[0]
+      GameFlowHandlerFactory initialized with 8 handlers: FIVECARDDRAW, BASEBALL, FOLLOWTHEQUEEN, HOLDEM, KINGSANDLOWS, OMAHA, SEVENCARDSTUD, TWOSJACKSMANWITHTHEAXE
+warn: Microsoft.AspNetCore.HttpsPolicy.HttpsRedirectionMiddleware[3]
+      Failed to determine the https port for redirect.
+info: LuckyPennySoftware.MediatR.License[0]
+      You have a valid license key for the Lucky Penny software Bundle Community edition. The license expires on 08/13/2026 00:00:00 +00:00.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeague.CreateLeagueCommand at 02/19/2026 00:13:13
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : CreateLeagueRequest { Name = Standings League, Description =  }
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 3 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[CardGames.Poker.Api.Contracts.CreateLeagueResponse, CardGames.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null],[CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeague.CreateLeagueError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:14 (Elapsed: 82ms)
+Activity.TraceId:            9743e5a637361ba529341e81132dc3e8
+Activity.SpanId:             872a32d2bdba013d
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:13.6298400Z
+Activity.Duration:           00:00:00.4319230
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/
+    http.response.status_code: 201
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+     Warning:
+     The component "Fluent Assertions" is governed by the rules defined in the Xceed License Agreement and
+     the Xceed Fluent Assertions Community License. You may use Fluent Assertions free of charge for
+     non-commercial use only. An active subscription is required to use Fluent Assertions for commercial use.
+     Please contact Xceed Sales mailto:sales@xceed.com to acquire a subscription at a very low cost.
+     A paid commercial license supports the development and continued increasing support of
+     Fluent Assertions users under both commercial and community licenses. Help us
+     keep Fluent Assertions at the forefront of unit testing.
+     For more information, visit https://xceed.com/products/unit-testing/fluent-assertions/
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 1 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueSeason.CreateLeagueSeasonCommand at 02/19/2026 00:13:14
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      LeagueId : 019c733e-6172-7f36-a3a1-fa934593e74c
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : CreateLeagueSeasonRequest { Name = Season 1, PlannedEventCount = , StartsAtUtc = , EndsAtUtc =  }
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 1 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[CardGames.Poker.Api.Contracts.CreateLeagueSeasonResponse, CardGames.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null],[CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueSeason.CreateLeagueSeasonError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:14 (Elapsed: 21ms)
+Activity.TraceId:            330a6fdd168566e010093c6142ea14ce
+Activity.SpanId:             4555a6fbb47acdf7
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/{leagueId:guid}/seasons
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:14.0742120Z
+Activity.Duration:           00:00:00.0298170
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues/019c733e-6172-7f36-a3a1-fa934593e74c/seasons
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/seasons
+    http.response.status_code: 201
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueSeasonEvent.CreateLeagueSeasonEventCommand at 02/19/2026 00:13:14
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      LeagueId : 019c733e-6172-7f36-a3a1-fa934593e74c
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      SeasonId : 019c733e-61ea-7420-9170-a3242f82f700
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : CreateLeagueSeasonEventRequest { Name = Week 1, SequenceNumber = 1, ScheduledAtUtc = , Notes =  }
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 1 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[CardGames.Poker.Api.Contracts.CreateLeagueSeasonEventResponse, CardGames.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null],[CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueSeasonEvent.CreateLeagueSeasonEventError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:14 (Elapsed: 23ms)
+Activity.TraceId:            e3aa103a610333c2198b15c4abddc6d3
+Activity.SpanId:             eb0f62e5f151ae67
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/{leagueId:guid}/seasons/{seasonId:guid}/events
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:14.1066280Z
+Activity.Duration:           00:00:00.0317210
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues/019c733e-6172-7f36-a3a1-fa934593e74c/seasons/019c733e-61ea-7420-9170-a3242f82f700/events
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/seasons/{seasonId:guid}/events
+    http.response.status_code: 201
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.IngestLeagueSeasonEventResults.IngestLeagueSeasonEventResultsCommand at 02/19/2026 00:13:14
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      LeagueId : 019c733e-6172-7f36-a3a1-fa934593e74c
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      SeasonId : 019c733e-61ea-7420-9170-a3242f82f700
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      EventId : 019c733e-6209-7e93-b7c9-f9fc787275b4
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : IngestLeagueSeasonEventResultsRequest { Results = System.Collections.Generic.List`1[CardGames.Poker.Api.Contracts.LeagueSeasonEventResultEntryRequest] }
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 5 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[MediatR.Unit, MediatR.Contracts, Version=2.0.1.0, Culture=neutral, PublicKeyToken=bb9a41a5e8aaa7e2],[CardGames.Poker.Api.Features.Leagues.v1.Commands.IngestLeagueSeasonEventResults.IngestLeagueSeasonEventResultsError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:14 (Elapsed: 46ms)
+Activity.TraceId:            dcc974f5cdd48902443f0ea7cc6cd709
+Activity.SpanId:             6add9f9014e7aee6
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/{leagueId:guid}/seasons/{seasonId:guid}/events/{eventId:guid}/results
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:14.1407180Z
+Activity.Duration:           00:00:00.0521280
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues/019c733e-6172-7f36-a3a1-fa934593e74c/seasons/019c733e-61ea-7420-9170-a3242f82f700/events/019c733e-6209-7e93-b7c9-f9fc787275b4/results
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/seasons/{seasonId:guid}/events/{eventId:guid}/results
+    http.response.status_code: 204
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Queries.GetLeagueStandings.GetLeagueStandingsQuery at 02/19/2026 00:13:14
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      LeagueId : 019c733e-6172-7f36-a3a1-fa934593e74c
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[System.Collections.Generic.IReadOnlyList`1[[CardGames.Poker.Api.Contracts.LeagueStandingEntryDto, CardGames.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]], System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[CardGames.Poker.Api.Features.Leagues.v1.Queries.GetLeagueStandings.GetLeagueStandingsError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:14 (Elapsed: 11ms)
+Activity.TraceId:            8a1a4f14590b961f35490ee993e380cf
+Activity.SpanId:             e0f4956826b469b2
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        GET /api/v{version:apiVersion}/leagues/{leagueId:guid}/standings
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:14.1930150Z
+Activity.Duration:           00:00:00.0144490
+Activity.Tags:
+    server.address: localhost
+    http.request.method: GET
+    url.scheme: http
+    url.path: /api/v1/leagues/019c733e-6172-7f36-a3a1-fa934593e74c/standings
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/standings
+    http.response.status_code: 200
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.IngestLeagueSeasonEventResults.IngestLeagueSeasonEventResultsCommand at 02/19/2026 00:13:14
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      LeagueId : 019c733e-6172-7f36-a3a1-fa934593e74c
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      SeasonId : 019c733e-61ea-7420-9170-a3242f82f700
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      EventId : 019c733e-6209-7e93-b7c9-f9fc787275b4
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : IngestLeagueSeasonEventResultsRequest { Results = System.Collections.Generic.List`1[CardGames.Poker.Api.Contracts.LeagueSeasonEventResultEntryRequest] }
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[MediatR.Unit, MediatR.Contracts, Version=2.0.1.0, Culture=neutral, PublicKeyToken=bb9a41a5e8aaa7e2],[CardGames.Poker.Api.Features.Leagues.v1.Commands.IngestLeagueSeasonEventResults.IngestLeagueSeasonEventResultsError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:14 (Elapsed: 0ms)
+Activity.TraceId:            c554bd330ba69b2b3025bb981751edf9
+Activity.SpanId:             647b56e04af1819a
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/{leagueId:guid}/seasons/{seasonId:guid}/events/{eventId:guid}/results
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:14.2101940Z
+Activity.Duration:           00:00:00.0024120
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues/019c733e-6172-7f36-a3a1-fa934593e74c/seasons/019c733e-61ea-7420-9170-a3242f82f700/events/019c733e-6209-7e93-b7c9-f9fc787275b4/results
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/seasons/{seasonId:guid}/events/{eventId:guid}/results
+    http.response.status_code: 409
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: Microsoft.Hosting.Lifetime[0]
+      Application is shutting down...
+Resource associated with Metrics:
+	service.name: api
+	service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.15.0
+Metric Name: dotnet.gc.collections, Description: The number of garbage collections that have occurred since the process has started., Unit: {collection}, Metric Type: LongSum
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:13.1559670Z, 2026-02-19T00:13:14.2261030Z] gc.heap.generation: gen2
+Value: 2
+(2026-02-19T00:13:13.1559670Z, 2026-02-19T00:13:14.2261030Z] gc.heap.generation: gen1
+Value: 3
+(2026-02-19T00:13:13.1559670Z, 2026-02-19T00:13:14.2261030Z] gc.heap.generation: gen0
+Value: 7
+Metric Name: dotnet.process.memory.working_set, Description: The number of bytes of physical memory mapped to the process context., Unit: By, Metric Type: LongSumNonMonotonic
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:13.1561160Z, 2026-02-19T00:13:14.2261130Z]  
+Value: 227065856
+Metric Name: dotnet.gc.heap.total_allocated, Description: The approximate number of bytes allocated on the managed GC heap since the process has started. The returned value does not include any native allocations., Unit: By, Metric Type: LongSum
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:13.1561320Z, 2026-02-19T00:13:14.2261130Z]  
+Value: 105423960
+Metric Name: dotnet.gc.last_collection.memory.committed_size, Description: The amount of committed virtual memory in use by the .NET GC, as observed during the latest garbage collection., Unit: By, Metric Type: LongSumNonMonotonic
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:13.1561410Z, 2026-02-19T00:13:14.2261140Z]  
+Value: 34177024
+Metric Name: dotnet.gc.last_collection.heap.size, Description: The managed GC heap size (including fragmentation), as observed during the latest garbage collection., Unit: By, Metric Type: LongSumNonMonotonic
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:13.1561500Z, 2026-02-19T00:13:14.2261140Z] gc.heap.generation: gen0
+Value: 24
+(2026-02-19T00:13:13.1561500Z, 2026-02-19T00:13:14.2261140Z] gc.heap.generation: gen1
+Value: 2709288
+(2026-02-19T00:13:13.1561500Z, 2026-02-19T00:13:14.2261140Z] gc.heap.generation: gen2
+Value: 12202528
+(2026-02-19T00:13:13.1561500Z, 2026-02-19T00:13:14.2261140Z] gc.heap.generation: loh
+Value: 11272616
+(2026-02-19T00:13:13.1561500Z, 2026-02-19T00:13:14.2261140Z] gc.heap.generation: poh
+Value: 123568
+Metric Name: dotnet.gc.last_collection.heap.fragmentation.size, Description: The heap fragmentation, as observed during the latest garbage collection., Unit: By, Metric Type: LongSumNonMonotonic
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:13.1561630Z, 2026-02-19T00:13:14.2261140Z] gc.heap.generation: gen0
+Value: 0
+(2026-02-19T00:13:13.1561630Z, 2026-02-19T00:13:14.2261140Z] gc.heap.generation: gen1
+Value: 44400
+(2026-02-19T00:13:13.1561630Z, 2026-02-19T00:13:14.2261140Z] gc.heap.generation: gen2
+Value: 11640
+(2026-02-19T00:13:13.1561630Z, 2026-02-19T00:13:14.2261140Z] gc.heap.generation: loh
+Value: 22104
+(2026-02-19T00:13:13.1561630Z, 2026-02-19T00:13:14.2261140Z] gc.heap.generation: poh
+Value: 0
+Metric Name: dotnet.gc.pause.time, Description: The total amount of time paused in GC since the process has started., Unit: s, Metric Type: DoubleSum
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:13.1563320Z, 2026-02-19T00:13:14.2261260Z]  
+Value: 0.047195
+Metric Name: dotnet.jit.compiled_il.size, Description: Count of bytes of intermediate language that have been compiled since the process has started., Unit: By, Metric Type: LongSum
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:13.1563520Z, 2026-02-19T00:13:14.2261260Z]  
+Value: 1446661
+Metric Name: dotnet.jit.compiled_methods, Description: The number of times the JIT compiler (re)compiled methods since the process has started., Unit: {method}, Metric Type: LongSum
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:13.1563650Z, 2026-02-19T00:13:14.2261270Z]  
+Value: 19977
+Metric Name: dotnet.jit.compilation.time, Description: The number of times the JIT compiler (re)compiled methods since the process has started., Unit: s, Metric Type: DoubleSum
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:13.1617040Z, 2026-02-19T00:13:14.2261270Z]  
+Value: 1.5672395
+Metric Name: dotnet.monitor.lock_contentions, Description: The number of times there was contention when trying to acquire a monitor lock since the process has started., Unit: {contention}, Metric Type: LongSum
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:13.1617150Z, 2026-02-19T00:13:14.2261270Z]  
+Value: 5
+Metric Name: dotnet.thread_pool.thread.count, Description: The number of thread pool threads that currently exist., Unit: {thread}, Metric Type: LongSum
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:13.1617260Z, 2026-02-19T00:13:14.2261270Z]  
+Value: 6
+Metric Name: dotnet.thread_pool.work_item.count, Description: The number of work items that the thread pool has completed since the process has started., Unit: {work_item}, Metric Type: LongSum
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:13.1617360Z, 2026-02-19T00:13:14.2261270Z]  
+Value: 93
+Metric Name: dotnet.thread_pool.queue.length, Description: The number of work items that are currently queued to be processed by the thread pool., Unit: {work_item}, Metric Type: LongSum
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:13.1617430Z, 2026-02-19T00:13:14.2261280Z]  
+Value: 0
+Metric Name: dotnet.timer.count, Description: The number of timer instances that are currently active. An active timer is registered to tick at some point in the future and has not yet been canceled., Unit: {timer}, Metric Type: LongSumNonMonotonic
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:13.1617520Z, 2026-02-19T00:13:14.2261280Z]  
+Value: 5
+Metric Name: dotnet.assembly.count, Description: The number of .NET assemblies that are currently loaded., Unit: {assembly}, Metric Type: LongSumNonMonotonic
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:13.1617630Z, 2026-02-19T00:13:14.2261280Z]  
+Value: 249
+Metric Name: dotnet.exceptions, Description: The number of exceptions that have been thrown in managed code., Unit: {exception}, Metric Type: LongSum
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:13.1617700Z, 2026-02-19T00:13:14.2261280Z] error.type: TaskCanceledException
+Value: 2
+Metric Name: dotnet.process.cpu.count, Description: The number of processors available to the process., Unit: {cpu}, Metric Type: LongSumNonMonotonic
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:13.1617770Z, 2026-02-19T00:13:14.2261280Z]  
+Value: 12
+Metric Name: dotnet.process.cpu.time, Description: CPU time used by the process., Unit: s, Metric Type: DoubleSum
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:13.1617840Z, 2026-02-19T00:13:14.2261280Z] cpu.mode: user
+Value: 2.009017
+(2026-02-19T00:13:13.1617840Z, 2026-02-19T00:13:14.2261280Z] cpu.mode: system
+Value: 0.197761
+Metric Name: http.server.active_requests, Description: Number of active HTTP server requests., Unit: {request}, Metric Type: LongSumNonMonotonic
+Instrumentation scope (Meter):
+	Name: Microsoft.AspNetCore.Hosting
+(2026-02-19T00:13:13.1860210Z, 2026-02-19T00:13:14.2267120Z] http.request.method: POST url.scheme: http
+Value: 0
+(2026-02-19T00:13:13.1860210Z, 2026-02-19T00:13:14.2267120Z] http.request.method: GET url.scheme: http
+Value: 0
+Metric Name: http.server.request.duration, Description: Duration of HTTP server requests., Unit: s, Metric Type: Histogram
+Instrumentation scope (Meter):
+	Name: Microsoft.AspNetCore.Hosting
+(2026-02-19T00:13:13.1861960Z, 2026-02-19T00:13:14.2267710Z] http.request.method: POST http.response.status_code: 201 http.route: /api/v{version:apiVersion}/leagues/ network.protocol.version: 1.1 url.scheme: http
+Value: Sum: 0.4348579 Count: 1 Min: 0.4348579 Max: 0.4348579 
+(-Infinity,0.005]:0
+(0.005,0.01]:0
+(0.01,0.025]:0
+(0.025,0.05]:0
+(0.05,0.075]:0
+(0.075,0.1]:0
+(0.1,0.25]:0
+(0.25,0.5]:1
+(0.5,0.75]:0
+(0.75,1]:0
+(1,2.5]:0
+(2.5,5]:0
+(5,7.5]:0
+(7.5,10]:0
+(10,+Infinity]:0
+(2026-02-19T00:13:13.1861960Z, 2026-02-19T00:13:14.2267710Z] http.request.method: POST http.response.status_code: 201 http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/seasons network.protocol.version: 1.1 url.scheme: http
+Value: Sum: 0.0298167 Count: 1 Min: 0.0298167 Max: 0.0298167 
+(-Infinity,0.005]:0
+(0.005,0.01]:0
+(0.01,0.025]:0
+(0.025,0.05]:1
+(0.05,0.075]:0
+(0.075,0.1]:0
+(0.1,0.25]:0
+(0.25,0.5]:0
+(0.5,0.75]:0
+(0.75,1]:0
+(1,2.5]:0
+(2.5,5]:0
+(5,7.5]:0
+(7.5,10]:0
+(10,+Infinity]:0
+(2026-02-19T00:13:13.1861960Z, 2026-02-19T00:13:14.2267710Z] http.request.method: POST http.response.status_code: 201 http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/seasons/{seasonId:guid}/events network.protocol.version: 1.1 url.scheme: http
+Value: Sum: 0.031705 Count: 1 Min: 0.031705 Max: 0.031705 
+(-Infinity,0.005]:0
+(0.005,0.01]:0
+(0.01,0.025]:0
+(0.025,0.05]:1
+(0.05,0.075]:0
+(0.075,0.1]:0
+(0.1,0.25]:0
+(0.25,0.5]:0
+(0.5,0.75]:0
+(0.75,1]:0
+(1,2.5]:0
+(2.5,5]:0
+(5,7.5]:0
+(7.5,10]:0
+(10,+Infinity]:0
+(2026-02-19T00:13:13.1861960Z, 2026-02-19T00:13:14.2267710Z] http.request.method: POST http.response.status_code: 204 http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/seasons/{seasonId:guid}/events/{eventId:guid}/results network.protocol.version: 1.1 url.scheme: http
+Value: Sum: 0.0521118 Count: 1 Min: 0.0521118 Max: 0.0521118 
+(-Infinity,0.005]:0
+(0.005,0.01]:0
+(0.01,0.025]:0
+(0.025,0.05]:0
+(0.05,0.075]:1
+(0.075,0.1]:0
+(0.1,0.25]:0
+(0.25,0.5]:0
+(0.5,0.75]:0
+(0.75,1]:0
+(1,2.5]:0
+(2.5,5]:0
+(5,7.5]:0
+(7.5,10]:0
+(10,+Infinity]:0
+(2026-02-19T00:13:13.1861960Z, 2026-02-19T00:13:14.2267710Z] http.request.method: GET http.response.status_code: 200 http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/standings network.protocol.version: 1.1 url.scheme: http
+Value: Sum: 0.0140555 Count: 1 Min: 0.0140555 Max: 0.0140555 
+(-Infinity,0.005]:0
+(0.005,0.01]:0
+(0.01,0.025]:1
+(0.025,0.05]:0
+(0.05,0.075]:0
+(0.075,0.1]:0
+(0.1,0.25]:0
+(0.25,0.5]:0
+(0.5,0.75]:0
+(0.75,1]:0
+(1,2.5]:0
+(2.5,5]:0
+(5,7.5]:0
+(7.5,10]:0
+(10,+Infinity]:0
+(2026-02-19T00:13:13.1861960Z, 2026-02-19T00:13:14.2267710Z] http.request.method: POST http.response.status_code: 409 http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/seasons/{seasonId:guid}/events/{eventId:guid}/results network.protocol.version: 1.1 url.scheme: http
+Value: Sum: 0.0024145 Count: 1 Min: 0.0024145 Max: 0.0024145 
+(-Infinity,0.005]:1
+(0.005,0.01]:0
+(0.01,0.025]:0
+(0.025,0.05]:0
+(0.05,0.075]:0
+(0.075,0.1]:0
+(0.1,0.25]:0
+(0.25,0.5]:0
+(0.5,0.75]:0
+(0.75,1]:0
+(1,2.5]:0
+(2.5,5]:0
+(5,7.5]:0
+(7.5,10]:0
+(10,+Infinity]:0
+Metric Name: aspnetcore.routing.match_attempts, Description: Number of requests that were attempted to be matched to an endpoint., Unit: {match_attempt}, Metric Type: LongSum
+Instrumentation scope (Meter):
+	Name: Microsoft.AspNetCore.Routing
+(2026-02-19T00:13:13.5715950Z, 2026-02-19T00:13:14.2267750Z] aspnetcore.routing.is_fallback: false aspnetcore.routing.match_status: success http.route: /api/v{version:apiVersion}/leagues/
+Value: 1
+(2026-02-19T00:13:13.5715950Z, 2026-02-19T00:13:14.2267750Z] aspnetcore.routing.is_fallback: false aspnetcore.routing.match_status: success http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/seasons
+Value: 1
+(2026-02-19T00:13:13.5715950Z, 2026-02-19T00:13:14.2267750Z] aspnetcore.routing.is_fallback: false aspnetcore.routing.match_status: success http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/seasons/{seasonId:guid}/events
+Value: 1
+(2026-02-19T00:13:13.5715950Z, 2026-02-19T00:13:14.2267750Z] aspnetcore.routing.is_fallback: false aspnetcore.routing.match_status: success http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/seasons/{seasonId:guid}/events/{eventId:guid}/results
+Value: 2
+(2026-02-19T00:13:13.5715950Z, 2026-02-19T00:13:14.2267750Z] aspnetcore.routing.is_fallback: false aspnetcore.routing.match_status: success http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/standings
+Value: 1
+Metric Name: aspnetcore.authentication.authenticate.duration, Description: The authentication duration for a request., Unit: s, Metric Type: Histogram
+Instrumentation scope (Meter):
+	Name: Microsoft.AspNetCore.Authentication
+(2026-02-19T00:13:13.9247230Z, 2026-02-19T00:13:14.2267770Z] aspnetcore.authentication.result: success aspnetcore.authentication.scheme: TestAuth
+Value: Sum: 0.0018349 Count: 6 Min: 1.64E-05 Max: 0.001598 
+(-Infinity,0.005]:6
+(0.005,0.01]:0
+(0.01,0.025]:0
+(0.025,0.05]:0
+(0.05,0.075]:0
+(0.075,0.1]:0
+(0.1,0.25]:0
+(0.25,0.5]:0
+(0.5,0.75]:0
+(0.75,1]:0
+(1,2.5]:0
+(2.5,5]:0
+(5,7.5]:0
+(7.5,10]:0
+(10,+Infinity]:0
+Metric Name: aspnetcore.authorization.attempts, Description: The total number of authorization attempts., Unit: {attempt}, Metric Type: LongSum
+Instrumentation scope (Meter):
+	Name: Microsoft.AspNetCore.Authorization
+(2026-02-19T00:13:13.9277930Z, 2026-02-19T00:13:14.2267800Z] aspnetcore.authorization.result: success aspnetcore.user.is_authenticated: true
+Value: 6
+info: CardGames.Poker.Api.Services.ContinuousPlayBackgroundService[0]
+      ContinuousPlayBackgroundService started
+info: CardGames.Poker.Api.GameFlow.GameFlowHandlerFactory[0]
+      GameFlowHandlerFactory initialized with 8 handlers: FIVECARDDRAW, BASEBALL, FOLLOWTHEQUEEN, HOLDEM, KINGSANDLOWS, OMAHA, SEVENCARDSTUD, TWOSJACKSMANWITHTHEAXE
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Development
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: /Users/robgibbens/dev/CardGames/src/CardGames.Poker.Api
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 0 entities to in-memory store.
+warn: Microsoft.AspNetCore.HttpsPolicy.HttpsRedirectionMiddleware[3]
+      Failed to determine the https port for redirect.
+info: LuckyPennySoftware.MediatR.License[0]
+      You have a valid license key for the Lucky Penny software Bundle Community edition. The license expires on 08/13/2026 00:00:00 +00:00.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeague.CreateLeagueCommand at 02/19/2026 00:13:14
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : CreateLeagueRequest { Name = Admin Launch League, Description =  }
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 3 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[CardGames.Poker.Api.Contracts.CreateLeagueResponse, CardGames.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null],[CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeague.CreateLeagueError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:14 (Elapsed: 0ms)
+Activity.TraceId:            59e593994951996cb183d2d243c51b90
+Activity.SpanId:             619ac246dcc3b36f
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:14.6733340Z
+Activity.Duration:           00:00:00.2713110
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/
+    http.response.status_code: 201
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueSeason.CreateLeagueSeasonCommand at 02/19/2026 00:13:14
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      LeagueId : 019c733e-653f-7809-8027-b6eb73b4a377
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : CreateLeagueSeasonRequest { Name = Spring 2026, PlannedEventCount = , StartsAtUtc = , EndsAtUtc =  }
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 1 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[CardGames.Poker.Api.Contracts.CreateLeagueSeasonResponse, CardGames.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null],[CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueSeason.CreateLeagueSeasonError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:14 (Elapsed: 0ms)
+Activity.TraceId:            4d5dd33fb5d3a1d0b72c57d2c4b96735
+Activity.SpanId:             123aa741d0cebc2d
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/{leagueId:guid}/seasons
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:14.9459810Z
+Activity.Duration:           00:00:00.0027350
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues/019c733e-653f-7809-8027-b6eb73b4a377/seasons
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/seasons
+    http.response.status_code: 201
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueSeasonEvent.CreateLeagueSeasonEventCommand at 02/19/2026 00:13:14
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      LeagueId : 019c733e-653f-7809-8027-b6eb73b4a377
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      SeasonId : 019c733e-6544-75fa-add4-a11b261f01db
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : CreateLeagueSeasonEventRequest { Name = Week 1, SequenceNumber = 1, ScheduledAtUtc = , Notes =  }
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 1 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[CardGames.Poker.Api.Contracts.CreateLeagueSeasonEventResponse, CardGames.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null],[CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueSeasonEvent.CreateLeagueSeasonEventError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:14 (Elapsed: 1ms)
+Activity.TraceId:            0636557432e3e400b7b7f01783cdb804
+Activity.SpanId:             65862a439f81dd3b
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/{leagueId:guid}/seasons/{seasonId:guid}/events
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:14.9495020Z
+Activity.Duration:           00:00:00.0051340
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues/019c733e-653f-7809-8027-b6eb73b4a377/seasons/019c733e-6544-75fa-add4-a11b261f01db/events
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/seasons/{seasonId:guid}/events
+    http.response.status_code: 201
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.LaunchLeagueEventSession.LaunchLeagueEventSessionCommand at 02/19/2026 00:13:14
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      LeagueId : 019c733e-653f-7809-8027-b6eb73b4a377
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      SourceType : Season
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      EventId : 019c733e-6549-7fb0-9f26-255617702c1d
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      SeasonId : 019c733e-6544-75fa-add4-a11b261f01db
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : LaunchLeagueEventSessionRequest { GameCode = FIVECARDDRAW, GameName = Week 1 Table, Ante = 10, MinBet = 20, HostStartingChips = 300 }
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Games.Common.v1.Commands.CreateGame.CreateGameCommand at 02/19/2026 00:13:14
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      GameId : 019c733e-6550-711d-8f55-8887b613c42e
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      GameCode : FIVECARDDRAW
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      GameName : Week 1 Table
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Ante : 10
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      MinBet : 20
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Players : PlayerInfo { Name = league-launch-admin, StartingChips = 300 }
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 5 entities to in-memory store.
+info: CardGames.Poker.Api.Services.LobbyBroadcaster[0]
+      Broadcast GameCreated for game 019c733e-6550-711d-8f55-8887b613c42e (Week 1 Table) to lobby
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LobbyStateBroadcastingBehavior[0]
+      Successfully broadcast lobby update for game 019c733e-6550-711d-8f55-8887b613c42e after CreateGameCommand
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      [HANDHISTORY-NAMES] Loading player names/emails for 0 player IDs: 
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      [HANDHISTORY-NAMES] Loaded 0 player names from Players table
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      [HANDHISTORY-CARDS] Cards will be loaded from stored ShowdownCards in HandHistoryPlayerResult
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      GetHandHistoryEntriesAsync: Found 0 histories for game 019c733e-6550-711d-8f55-8887b613c42e, currentUserPlayerId=(null)
+info: CardGames.Poker.Api.Services.GameStateBroadcaster[0]
+      Broadcasting public state for game 019c733e-6550-711d-8f55-8887b613c42e, phase: WaitingToStart, seats: 1
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      GetPlayerUserIdsAsync for game 019c733e-6550-711d-8f55-8887b613c42e: 1 players, UserIds: [league-launch-admin], Raw data: [Email=league-launch-admin, Name=league-launch-admin, ExternalId=(null)]
+info: CardGames.Poker.Api.Services.GameStateBroadcaster[0]
+      Broadcasting private state to 1 players: [league-launch-admin]
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      BuildPrivateStateAsync: Found player league-launch-admin at seat 0 with 0 cards (hand #0)
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      [HANDHISTORY-NAMES] Loading player names/emails for 0 player IDs: 
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      [HANDHISTORY-NAMES] Loaded 0 player names from Players table
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      [HANDHISTORY-CARDS] Cards will be loaded from stored ShowdownCards in HandHistoryPlayerResult
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      GetHandHistoryEntriesAsync: Found 0 histories for game 019c733e-6550-711d-8f55-8887b613c42e, currentUserPlayerId=019c733e-65a0-78e6-ae10-0a49291ac4f4
+info: CardGames.Poker.Api.Services.GameStateBroadcaster[0]
+      Sending private state to user league-launch-admin for game 019c733e-6550-711d-8f55-8887b613c42e: 0 cards, seat 0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.GameStateBroadcastingBehavior[0]
+      Successfully broadcast game state for game 019c733e-6550-711d-8f55-8887b613c42e after CreateGameCommand
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[CardGames.Poker.Api.Features.Games.Common.v1.Commands.CreateGame.CreateGameSuccessful, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null],[CardGames.Poker.Api.Features.Games.Common.v1.Commands.CreateGame.CreateGameConflict, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:15 (Elapsed: 287ms)
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 1 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[CardGames.Poker.Api.Contracts.LaunchLeagueEventSessionResponse, CardGames.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null],[CardGames.Poker.Api.Features.Leagues.v1.Commands.LaunchLeagueEventSession.LaunchLeagueEventSessionError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:15 (Elapsed: 292ms)
+Activity.TraceId:            223b30eb2fe4c4c57f18640bd3118330
+Activity.SpanId:             d1165dcd08646f03
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/{leagueId:guid}/seasons/{seasonId:guid}/events/{eventId:guid}/launch
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:14.9560310Z
+Activity.Duration:           00:00:00.2950740
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues/019c733e-653f-7809-8027-b6eb73b4a377/seasons/019c733e-6544-75fa-add4-a11b261f01db/events/019c733e-6549-7fb0-9f26-255617702c1d/launch
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/seasons/{seasonId:guid}/events/{eventId:guid}/launch
+    http.response.status_code: 200
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 0 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeague.CreateLeagueCommand at 02/19/2026 00:13:15
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : CreateLeagueRequest { Name = Launch Twice League, Description =  }
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 3 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[CardGames.Poker.Api.Contracts.CreateLeagueResponse, CardGames.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null],[CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeague.CreateLeagueError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:15 (Elapsed: 0ms)
+Activity.TraceId:            1c44825272161d38285b141c4eca91b9
+Activity.SpanId:             219957e583f53453
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:15.2713410Z
+Activity.Duration:           00:00:00.0013660
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/
+    http.response.status_code: 201
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueSeason.CreateLeagueSeasonCommand at 02/19/2026 00:13:15
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      LeagueId : 019c733e-6687-75c2-815d-e38b9ea9eac4
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : CreateLeagueSeasonRequest { Name = Spring 2026, PlannedEventCount = , StartsAtUtc = , EndsAtUtc =  }
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 1 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[CardGames.Poker.Api.Contracts.CreateLeagueSeasonResponse, CardGames.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null],[CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueSeason.CreateLeagueSeasonError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:15 (Elapsed: 0ms)
+Activity.TraceId:            f0ae73149eafdfb58ecfcd3aac21df02
+Activity.SpanId:             b4e9b49d01da8659
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/{leagueId:guid}/seasons
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:15.2732400Z
+Activity.Duration:           00:00:00.0011270
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues/019c733e-6687-75c2-815d-e38b9ea9eac4/seasons
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/seasons
+    http.response.status_code: 201
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueSeasonEvent.CreateLeagueSeasonEventCommand at 02/19/2026 00:13:15
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      LeagueId : 019c733e-6687-75c2-815d-e38b9ea9eac4
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      SeasonId : 019c733e-668a-71c9-82fd-7bd6909c3f7f
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : CreateLeagueSeasonEventRequest { Name = Week 1, SequenceNumber = 1, ScheduledAtUtc = , Notes =  }
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 1 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[CardGames.Poker.Api.Contracts.CreateLeagueSeasonEventResponse, CardGames.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null],[CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueSeasonEvent.CreateLeagueSeasonEventError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:15 (Elapsed: 0ms)
+Activity.TraceId:            d1426a76d4536428194fd57971faff6d
+Activity.SpanId:             3fa27ef14111d6f0
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/{leagueId:guid}/seasons/{seasonId:guid}/events
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:15.2745580Z
+Activity.Duration:           00:00:00.0012080
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues/019c733e-6687-75c2-815d-e38b9ea9eac4/seasons/019c733e-668a-71c9-82fd-7bd6909c3f7f/events
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/seasons/{seasonId:guid}/events
+    http.response.status_code: 201
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.LaunchLeagueEventSession.LaunchLeagueEventSessionCommand at 02/19/2026 00:13:15
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      LeagueId : 019c733e-6687-75c2-815d-e38b9ea9eac4
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      SourceType : Season
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      EventId : 019c733e-668b-7b01-87d7-b74de4861a50
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      SeasonId : 019c733e-668a-71c9-82fd-7bd6909c3f7f
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : LaunchLeagueEventSessionRequest { GameCode = FIVECARDDRAW, GameName = , Ante = 10, MinBet = 20, HostStartingChips = 250 }
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Games.Common.v1.Commands.CreateGame.CreateGameCommand at 02/19/2026 00:13:15
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      GameId : 019c733e-668d-7391-88f9-342cd629951a
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      GameCode : FIVECARDDRAW
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      GameName : League Event 019c733e668b7b0187d7b74de4861a50
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Ante : 10
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      MinBet : 20
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Players : PlayerInfo { Name = league-launch-twice-admin, StartingChips = 250 }
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 5 entities to in-memory store.
+info: CardGames.Poker.Api.Services.LobbyBroadcaster[0]
+      Broadcast GameCreated for game 019c733e-668d-7391-88f9-342cd629951a (League Event 019c733e668b7b0187d7b74de4861a50) to lobby
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LobbyStateBroadcastingBehavior[0]
+      Successfully broadcast lobby update for game 019c733e-668d-7391-88f9-342cd629951a after CreateGameCommand
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      [HANDHISTORY-NAMES] Loading player names/emails for 0 player IDs: 
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      [HANDHISTORY-NAMES] Loaded 0 player names from Players table
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      [HANDHISTORY-CARDS] Cards will be loaded from stored ShowdownCards in HandHistoryPlayerResult
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      GetHandHistoryEntriesAsync: Found 0 histories for game 019c733e-668d-7391-88f9-342cd629951a, currentUserPlayerId=(null)
+info: CardGames.Poker.Api.Services.GameStateBroadcaster[0]
+      Broadcasting public state for game 019c733e-668d-7391-88f9-342cd629951a, phase: WaitingToStart, seats: 1
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      GetPlayerUserIdsAsync for game 019c733e-668d-7391-88f9-342cd629951a: 1 players, UserIds: [league-launch-twice-admin], Raw data: [Email=league-launch-twice-admin, Name=league-launch-twice-admin, ExternalId=(null)]
+info: CardGames.Poker.Api.Services.GameStateBroadcaster[0]
+      Broadcasting private state to 1 players: [league-launch-twice-admin]
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      BuildPrivateStateAsync: Found player league-launch-twice-admin at seat 0 with 0 cards (hand #0)
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      [HANDHISTORY-NAMES] Loading player names/emails for 0 player IDs: 
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      [HANDHISTORY-NAMES] Loaded 0 player names from Players table
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      [HANDHISTORY-CARDS] Cards will be loaded from stored ShowdownCards in HandHistoryPlayerResult
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      GetHandHistoryEntriesAsync: Found 0 histories for game 019c733e-668d-7391-88f9-342cd629951a, currentUserPlayerId=019c733e-668e-76ca-93d6-96eeaf08af3e
+info: CardGames.Poker.Api.Services.GameStateBroadcaster[0]
+      Sending private state to user league-launch-twice-admin for game 019c733e-668d-7391-88f9-342cd629951a: 0 cards, seat 0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.GameStateBroadcastingBehavior[0]
+      Successfully broadcast game state for game 019c733e-668d-7391-88f9-342cd629951a after CreateGameCommand
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[CardGames.Poker.Api.Features.Games.Common.v1.Commands.CreateGame.CreateGameSuccessful, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null],[CardGames.Poker.Api.Features.Games.Common.v1.Commands.CreateGame.CreateGameConflict, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:15 (Elapsed: 3ms)
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 1 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[CardGames.Poker.Api.Contracts.LaunchLeagueEventSessionResponse, CardGames.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null],[CardGames.Poker.Api.Features.Leagues.v1.Commands.LaunchLeagueEventSession.LaunchLeagueEventSessionError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:15 (Elapsed: 4ms)
+Activity.TraceId:            2fc7d08a97fde71d7d3ca975be61eb99
+Activity.SpanId:             17aeedf835acdf5b
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/{leagueId:guid}/seasons/{seasonId:guid}/events/{eventId:guid}/launch
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:15.2761200Z
+Activity.Duration:           00:00:00.0054390
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues/019c733e-6687-75c2-815d-e38b9ea9eac4/seasons/019c733e-668a-71c9-82fd-7bd6909c3f7f/events/019c733e-668b-7b01-87d7-b74de4861a50/launch
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/seasons/{seasonId:guid}/events/{eventId:guid}/launch
+    http.response.status_code: 200
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.LaunchLeagueEventSession.LaunchLeagueEventSessionCommand at 02/19/2026 00:13:15
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      LeagueId : 019c733e-6687-75c2-815d-e38b9ea9eac4
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      SourceType : Season
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      EventId : 019c733e-668b-7b01-87d7-b74de4861a50
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      SeasonId : 019c733e-668a-71c9-82fd-7bd6909c3f7f
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : LaunchLeagueEventSessionRequest { GameCode = FIVECARDDRAW, GameName = , Ante = 10, MinBet = 20, HostStartingChips = 500 }
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[CardGames.Poker.Api.Contracts.LaunchLeagueEventSessionResponse, CardGames.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null],[CardGames.Poker.Api.Features.Leagues.v1.Commands.LaunchLeagueEventSession.LaunchLeagueEventSessionError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:15 (Elapsed: 1ms)
+Activity.TraceId:            d28c434ae0d7ea0a8f7c2230b778011a
+Activity.SpanId:             ab905d1a3bf46b7a
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/{leagueId:guid}/seasons/{seasonId:guid}/events/{eventId:guid}/launch
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:15.2817640Z
+Activity.Duration:           00:00:00.0044140
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues/019c733e-6687-75c2-815d-e38b9ea9eac4/seasons/019c733e-668a-71c9-82fd-7bd6909c3f7f/events/019c733e-668b-7b01-87d7-b74de4861a50/launch
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/seasons/{seasonId:guid}/events/{eventId:guid}/launch
+    http.response.status_code: 409
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 0 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeague.CreateLeagueCommand at 02/19/2026 00:13:15
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : CreateLeagueRequest { Name = Join Gate League, Description =  }
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 3 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[CardGames.Poker.Api.Contracts.CreateLeagueResponse, CardGames.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null],[CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeague.CreateLeagueError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:15 (Elapsed: 0ms)
+Activity.TraceId:            8873ab5e9db79430f6054d7eccc72c22
+Activity.SpanId:             436247486fa0c510
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:15.2882090Z
+Activity.Duration:           00:00:00.0023730
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/
+    http.response.status_code: 201
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueSeason.CreateLeagueSeasonCommand at 02/19/2026 00:13:15
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      LeagueId : 019c733e-6699-7fb7-a740-b9420cde76fd
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : CreateLeagueSeasonRequest { Name = Spring 2026, PlannedEventCount = , StartsAtUtc = , EndsAtUtc =  }
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 1 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[CardGames.Poker.Api.Contracts.CreateLeagueSeasonResponse, CardGames.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null],[CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueSeason.CreateLeagueSeasonError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:15 (Elapsed: 0ms)
+Activity.TraceId:            6ea9530741182c2dea96932ce0301e7b
+Activity.SpanId:             bf997eab3cb26bc3
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/{leagueId:guid}/seasons
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:15.2910760Z
+Activity.Duration:           00:00:00.0018670
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues/019c733e-6699-7fb7-a740-b9420cde76fd/seasons
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/seasons
+    http.response.status_code: 201
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueSeasonEvent.CreateLeagueSeasonEventCommand at 02/19/2026 00:13:15
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      LeagueId : 019c733e-6699-7fb7-a740-b9420cde76fd
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      SeasonId : 019c733e-669c-7e18-a066-734a15dc43a9
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : CreateLeagueSeasonEventRequest { Name = Week 1, SequenceNumber = 1, ScheduledAtUtc = , Notes =  }
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 1 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[CardGames.Poker.Api.Contracts.CreateLeagueSeasonEventResponse, CardGames.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null],[CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueSeasonEvent.CreateLeagueSeasonEventError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:15 (Elapsed: 0ms)
+Activity.TraceId:            6e2390f674fc57b380367c08d9dd98c7
+Activity.SpanId:             bf70042591cbb46f
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/{leagueId:guid}/seasons/{seasonId:guid}/events
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:15.2930410Z
+Activity.Duration:           00:00:00.0019000
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues/019c733e-6699-7fb7-a740-b9420cde76fd/seasons/019c733e-669c-7e18-a066-734a15dc43a9/events
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/seasons/{seasonId:guid}/events
+    http.response.status_code: 201
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.LaunchLeagueEventSession.LaunchLeagueEventSessionCommand at 02/19/2026 00:13:15
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      LeagueId : 019c733e-6699-7fb7-a740-b9420cde76fd
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      SourceType : Season
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      EventId : 019c733e-669e-77a6-a4f8-79d2e06d2294
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      SeasonId : 019c733e-669c-7e18-a066-734a15dc43a9
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : LaunchLeagueEventSessionRequest { GameCode = FIVECARDDRAW, GameName = , Ante = 10, MinBet = 20, HostStartingChips = 300 }
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Games.Common.v1.Commands.CreateGame.CreateGameCommand at 02/19/2026 00:13:15
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      GameId : 019c733e-669f-7578-8015-2ae04cd8cc7e
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      GameCode : FIVECARDDRAW
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      GameName : League Event 019c733e669e77a6a4f879d2e06d2294
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Ante : 10
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      MinBet : 20
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Players : PlayerInfo { Name = league-join-owner, StartingChips = 300 }
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 5 entities to in-memory store.
+info: CardGames.Poker.Api.Services.LobbyBroadcaster[0]
+      Broadcast GameCreated for game 019c733e-669f-7578-8015-2ae04cd8cc7e (League Event 019c733e669e77a6a4f879d2e06d2294) to lobby
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LobbyStateBroadcastingBehavior[0]
+      Successfully broadcast lobby update for game 019c733e-669f-7578-8015-2ae04cd8cc7e after CreateGameCommand
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      [HANDHISTORY-NAMES] Loading player names/emails for 0 player IDs: 
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      [HANDHISTORY-NAMES] Loaded 0 player names from Players table
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      [HANDHISTORY-CARDS] Cards will be loaded from stored ShowdownCards in HandHistoryPlayerResult
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      GetHandHistoryEntriesAsync: Found 0 histories for game 019c733e-669f-7578-8015-2ae04cd8cc7e, currentUserPlayerId=(null)
+info: CardGames.Poker.Api.Services.GameStateBroadcaster[0]
+      Broadcasting public state for game 019c733e-669f-7578-8015-2ae04cd8cc7e, phase: WaitingToStart, seats: 1
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      GetPlayerUserIdsAsync for game 019c733e-669f-7578-8015-2ae04cd8cc7e: 1 players, UserIds: [league-join-owner], Raw data: [Email=league-join-owner, Name=league-join-owner, ExternalId=(null)]
+info: CardGames.Poker.Api.Services.GameStateBroadcaster[0]
+      Broadcasting private state to 1 players: [league-join-owner]
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      BuildPrivateStateAsync: Found player league-join-owner at seat 0 with 0 cards (hand #0)
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      [HANDHISTORY-NAMES] Loading player names/emails for 0 player IDs: 
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      [HANDHISTORY-NAMES] Loaded 0 player names from Players table
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      [HANDHISTORY-CARDS] Cards will be loaded from stored ShowdownCards in HandHistoryPlayerResult
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      GetHandHistoryEntriesAsync: Found 0 histories for game 019c733e-669f-7578-8015-2ae04cd8cc7e, currentUserPlayerId=019c733e-66a1-7976-9ffb-e29435e77ecb
+info: CardGames.Poker.Api.Services.GameStateBroadcaster[0]
+      Sending private state to user league-join-owner for game 019c733e-669f-7578-8015-2ae04cd8cc7e: 0 cards, seat 0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.GameStateBroadcastingBehavior[0]
+      Successfully broadcast game state for game 019c733e-669f-7578-8015-2ae04cd8cc7e after CreateGameCommand
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[CardGames.Poker.Api.Features.Games.Common.v1.Commands.CreateGame.CreateGameSuccessful, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null],[CardGames.Poker.Api.Features.Games.Common.v1.Commands.CreateGame.CreateGameConflict, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:15 (Elapsed: 2ms)
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 1 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[CardGames.Poker.Api.Contracts.LaunchLeagueEventSessionResponse, CardGames.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null],[CardGames.Poker.Api.Features.Leagues.v1.Commands.LaunchLeagueEventSession.LaunchLeagueEventSessionError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:15 (Elapsed: 4ms)
+Activity.TraceId:            b757d940d76be9f248fd1c9d10c8c873
+Activity.SpanId:             0bf6ed6d8d0f247f
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/{leagueId:guid}/seasons/{seasonId:guid}/events/{eventId:guid}/launch
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:15.2953310Z
+Activity.Duration:           00:00:00.0045380
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues/019c733e-6699-7fb7-a740-b9420cde76fd/seasons/019c733e-669c-7e18-a066-734a15dc43a9/events/019c733e-669e-77a6-a4f8-79d2e06d2294/launch
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/seasons/{seasonId:guid}/events/{eventId:guid}/launch
+    http.response.status_code: 200
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 2 entities to in-memory store.
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 2 entities to in-memory store.
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 1 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Games.Common.v1.Commands.JoinGame.JoinGameCommand at 02/19/2026 00:13:15
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      GameId : 019c733e-669f-7578-8015-2ae04cd8cc7e
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      SeatIndex : 1
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      StartingChips : 100
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[CardGames.Poker.Api.Features.Games.Common.v1.Commands.JoinGame.JoinGameSuccessful, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null],[CardGames.Poker.Api.Features.Games.Common.v1.Commands.JoinGame.JoinGameError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:15 (Elapsed: 35ms)
+info: CardGames.IntegrationTests.Infrastructure.TestAuthHandler[13]
+      AuthenticationScheme: TestAuth was forbidden.
+Activity.TraceId:            2c0ad881b521284d5cabf553334f1e40
+Activity.SpanId:             beebdc6e2bb0156e
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/games/{gameId:guid}/players
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:15.3146470Z
+Activity.Duration:           00:00:00.0428230
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/games/019c733e-669f-7578-8015-2ae04cd8cc7e/players
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/games/{gameId:guid}/players
+    http.response.status_code: 403
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Games.Common.v1.Commands.JoinGame.JoinGameCommand at 02/19/2026 00:13:15
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      GameId : 019c733e-669f-7578-8015-2ae04cd8cc7e
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      SeatIndex : 1
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      StartingChips : 100
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 4 entities to in-memory store.
+info: CardGames.Poker.Api.Features.Games.Common.v1.Commands.JoinGame.JoinGameCommandHandler[0]
+      Player league-active-member joined game 019c733e-669f-7578-8015-2ae04cd8cc7e at seat 1. CanPlayCurrentHand: True
+info: CardGames.Poker.Api.Services.GameStateBroadcaster[0]
+      Broadcast PlayerJoined notification for league-active-member at seat 1 in game 019c733e-669f-7578-8015-2ae04cd8cc7e
+info: CardGames.Poker.Api.Services.LobbyBroadcaster[0]
+      Broadcast GameCreated for game 019c733e-669f-7578-8015-2ae04cd8cc7e (League Event 019c733e669e77a6a4f879d2e06d2294) to lobby
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LobbyStateBroadcastingBehavior[0]
+      Successfully broadcast lobby update for game 019c733e-669f-7578-8015-2ae04cd8cc7e after JoinGameCommand
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      [HANDHISTORY-NAMES] Loading player names/emails for 0 player IDs: 
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      [HANDHISTORY-NAMES] Loaded 0 player names from Players table
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      [HANDHISTORY-CARDS] Cards will be loaded from stored ShowdownCards in HandHistoryPlayerResult
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      GetHandHistoryEntriesAsync: Found 0 histories for game 019c733e-669f-7578-8015-2ae04cd8cc7e, currentUserPlayerId=(null)
+info: CardGames.Poker.Api.Services.GameStateBroadcaster[0]
+      Broadcasting public state for game 019c733e-669f-7578-8015-2ae04cd8cc7e, phase: WaitingToStart, seats: 2
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      GetPlayerUserIdsAsync for game 019c733e-669f-7578-8015-2ae04cd8cc7e: 2 players, UserIds: [league-join-owner, league-active-member], Raw data: [Email=league-join-owner, Name=league-join-owner, ExternalId=(null), Email=league-active-member, Name=league-active-member, ExternalId=(null)]
+info: CardGames.Poker.Api.Services.GameStateBroadcaster[0]
+      Broadcasting private state to 2 players: [league-join-owner, league-active-member]
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      BuildPrivateStateAsync: Found player league-join-owner at seat 0 with 0 cards (hand #0)
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      [HANDHISTORY-NAMES] Loading player names/emails for 0 player IDs: 
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      [HANDHISTORY-NAMES] Loaded 0 player names from Players table
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      [HANDHISTORY-CARDS] Cards will be loaded from stored ShowdownCards in HandHistoryPlayerResult
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      GetHandHistoryEntriesAsync: Found 0 histories for game 019c733e-669f-7578-8015-2ae04cd8cc7e, currentUserPlayerId=019c733e-66a1-7976-9ffb-e29435e77ecb
+info: CardGames.Poker.Api.Services.GameStateBroadcaster[0]
+      Sending private state to user league-join-owner for game 019c733e-669f-7578-8015-2ae04cd8cc7e: 0 cards, seat 0
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      BuildPrivateStateAsync: Found player league-active-member at seat 1 with 0 cards (hand #0)
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      [HANDHISTORY-NAMES] Loading player names/emails for 0 player IDs: 
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      [HANDHISTORY-NAMES] Loaded 0 player names from Players table
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      [HANDHISTORY-CARDS] Cards will be loaded from stored ShowdownCards in HandHistoryPlayerResult
+info: CardGames.Poker.Api.Services.TableStateBuilder[0]
+      GetHandHistoryEntriesAsync: Found 0 histories for game 019c733e-669f-7578-8015-2ae04cd8cc7e, currentUserPlayerId=019c733e-66a8-7350-acc4-d172d67f62f5
+info: CardGames.Poker.Api.Services.GameStateBroadcaster[0]
+      Sending private state to user league-active-member for game 019c733e-669f-7578-8015-2ae04cd8cc7e: 0 cards, seat 1
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.GameStateBroadcastingBehavior[0]
+      Successfully broadcast game state for game 019c733e-669f-7578-8015-2ae04cd8cc7e after JoinGameCommand
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[CardGames.Poker.Api.Features.Games.Common.v1.Commands.JoinGame.JoinGameSuccessful, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null],[CardGames.Poker.Api.Features.Games.Common.v1.Commands.JoinGame.JoinGameError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:15 (Elapsed: 24ms)
+Activity.TraceId:            63901dfe32e2ab5abac661c62a994821
+Activity.SpanId:             18227758991f351e
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/games/{gameId:guid}/players
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:15.3577420Z
+Activity.Duration:           00:00:00.0282480
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/games/019c733e-669f-7578-8015-2ae04cd8cc7e/players
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/games/{gameId:guid}/players
+    http.response.status_code: 200
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: Microsoft.Hosting.Lifetime[0]
+      Application is shutting down...
+Resource associated with Metrics:
+	service.name: api
+	service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.15.0
+Metric Name: dotnet.gc.collections, Description: The number of garbage collections that have occurred since the process has started., Unit: {collection}, Metric Type: LongSum
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:14.3292720Z, 2026-02-19T00:13:15.3872400Z] gc.heap.generation: gen2
+Value: 3
+(2026-02-19T00:13:14.3292720Z, 2026-02-19T00:13:15.3872400Z] gc.heap.generation: gen1
+Value: 5
+(2026-02-19T00:13:14.3292720Z, 2026-02-19T00:13:15.3872400Z] gc.heap.generation: gen0
+Value: 12
+Metric Name: dotnet.process.memory.working_set, Description: The number of bytes of physical memory mapped to the process context., Unit: By, Metric Type: LongSumNonMonotonic
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:14.3292810Z, 2026-02-19T00:13:15.3872400Z]  
+Value: 262406144
+Metric Name: dotnet.gc.heap.total_allocated, Description: The approximate number of bytes allocated on the managed GC heap since the process has started. The returned value does not include any native allocations., Unit: By, Metric Type: LongSum
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:14.3292930Z, 2026-02-19T00:13:15.3872400Z]  
+Value: 173332496
+Metric Name: dotnet.gc.last_collection.memory.committed_size, Description: The amount of committed virtual memory in use by the .NET GC, as observed during the latest garbage collection., Unit: By, Metric Type: LongSumNonMonotonic
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:14.3293040Z, 2026-02-19T00:13:15.3872400Z]  
+Value: 53575680
+Metric Name: dotnet.gc.last_collection.heap.size, Description: The managed GC heap size (including fragmentation), as observed during the latest garbage collection., Unit: By, Metric Type: LongSumNonMonotonic
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:14.3293110Z, 2026-02-19T00:13:15.3872410Z] gc.heap.generation: gen0
+Value: 24
+(2026-02-19T00:13:14.3293110Z, 2026-02-19T00:13:15.3872410Z] gc.heap.generation: gen1
+Value: 8397856
+(2026-02-19T00:13:14.3293110Z, 2026-02-19T00:13:15.3872410Z] gc.heap.generation: gen2
+Value: 23795800
+(2026-02-19T00:13:14.3293110Z, 2026-02-19T00:13:15.3872410Z] gc.heap.generation: loh
+Value: 20815952
+(2026-02-19T00:13:14.3293110Z, 2026-02-19T00:13:15.3872410Z] gc.heap.generation: poh
+Value: 123568
+Metric Name: dotnet.gc.last_collection.heap.fragmentation.size, Description: The heap fragmentation, as observed during the latest garbage collection., Unit: By, Metric Type: LongSumNonMonotonic
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:14.3293180Z, 2026-02-19T00:13:15.3872410Z] gc.heap.generation: gen0
+Value: 0
+(2026-02-19T00:13:14.3293180Z, 2026-02-19T00:13:15.3872410Z] gc.heap.generation: gen1
+Value: 7137944
+(2026-02-19T00:13:14.3293180Z, 2026-02-19T00:13:15.3872410Z] gc.heap.generation: gen2
+Value: 1222528
+(2026-02-19T00:13:14.3293180Z, 2026-02-19T00:13:15.3872410Z] gc.heap.generation: loh
+Value: 24248
+(2026-02-19T00:13:14.3293180Z, 2026-02-19T00:13:15.3872410Z] gc.heap.generation: poh
+Value: 0
+Metric Name: dotnet.gc.pause.time, Description: The total amount of time paused in GC since the process has started., Unit: s, Metric Type: DoubleSum
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:14.3293310Z, 2026-02-19T00:13:15.3872490Z]  
+Value: 0.077177
+Metric Name: dotnet.jit.compiled_il.size, Description: Count of bytes of intermediate language that have been compiled since the process has started., Unit: By, Metric Type: LongSum
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:14.3293390Z, 2026-02-19T00:13:15.3872490Z]  
+Value: 1863494
+Metric Name: dotnet.jit.compiled_methods, Description: The number of times the JIT compiler (re)compiled methods since the process has started., Unit: {method}, Metric Type: LongSum
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:14.3293470Z, 2026-02-19T00:13:15.3872490Z]  
+Value: 24344
+Metric Name: dotnet.jit.compilation.time, Description: The number of times the JIT compiler (re)compiled methods since the process has started., Unit: s, Metric Type: DoubleSum
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:14.3293600Z, 2026-02-19T00:13:15.3872490Z]  
+Value: 2.3647032
+Metric Name: dotnet.monitor.lock_contentions, Description: The number of times there was contention when trying to acquire a monitor lock since the process has started., Unit: {contention}, Metric Type: LongSum
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:14.3293670Z, 2026-02-19T00:13:15.3872500Z]  
+Value: 6
+Metric Name: dotnet.thread_pool.thread.count, Description: The number of thread pool threads that currently exist., Unit: {thread}, Metric Type: LongSum
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:14.3293740Z, 2026-02-19T00:13:15.3872500Z]  
+Value: 7
+Metric Name: dotnet.thread_pool.work_item.count, Description: The number of work items that the thread pool has completed since the process has started., Unit: {work_item}, Metric Type: LongSum
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:14.3293800Z, 2026-02-19T00:13:15.3872500Z]  
+Value: 203
+Metric Name: dotnet.thread_pool.queue.length, Description: The number of work items that are currently queued to be processed by the thread pool., Unit: {work_item}, Metric Type: LongSum
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:14.3293890Z, 2026-02-19T00:13:15.3872500Z]  
+Value: 0
+Metric Name: dotnet.timer.count, Description: The number of timer instances that are currently active. An active timer is registered to tick at some point in the future and has not yet been canceled., Unit: {timer}, Metric Type: LongSumNonMonotonic
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:14.3293960Z, 2026-02-19T00:13:15.3872500Z]  
+Value: 6
+Metric Name: dotnet.assembly.count, Description: The number of .NET assemblies that are currently loaded., Unit: {assembly}, Metric Type: LongSumNonMonotonic
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:14.3294030Z, 2026-02-19T00:13:15.3872500Z]  
+Value: 251
+Metric Name: dotnet.exceptions, Description: The number of exceptions that have been thrown in managed code., Unit: {exception}, Metric Type: LongSum
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:14.3294120Z, 2026-02-19T00:13:15.3872500Z] error.type: TaskCanceledException
+Value: 2
+Metric Name: dotnet.process.cpu.count, Description: The number of processors available to the process., Unit: {cpu}, Metric Type: LongSumNonMonotonic
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:14.3294180Z, 2026-02-19T00:13:15.3872500Z]  
+Value: 12
+Metric Name: dotnet.process.cpu.time, Description: CPU time used by the process., Unit: s, Metric Type: DoubleSum
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:14.3294260Z, 2026-02-19T00:13:15.3872510Z] cpu.mode: user
+Value: 3.097192
+(2026-02-19T00:13:14.3294260Z, 2026-02-19T00:13:15.3872510Z] cpu.mode: system
+Value: 0.313475
+Metric Name: http.server.active_requests, Description: Number of active HTTP server requests., Unit: {request}, Metric Type: LongSumNonMonotonic
+Instrumentation scope (Meter):
+	Name: Microsoft.AspNetCore.Hosting
+(2026-02-19T00:13:14.3405460Z, 2026-02-19T00:13:15.3872570Z] http.request.method: POST url.scheme: http
+Value: 0
+Metric Name: http.server.request.duration, Description: Duration of HTTP server requests., Unit: s, Metric Type: Histogram
+Instrumentation scope (Meter):
+	Name: Microsoft.AspNetCore.Hosting
+(2026-02-19T00:13:14.3405760Z, 2026-02-19T00:13:15.3872590Z] http.request.method: POST http.response.status_code: 201 http.route: /api/v{version:apiVersion}/leagues/ network.protocol.version: 1.1 url.scheme: http
+Value: Sum: 0.275045 Count: 3 Min: 0.0013681 Max: 0.2713042 
+(-Infinity,0.005]:2
+(0.005,0.01]:0
+(0.01,0.025]:0
+(0.025,0.05]:0
+(0.05,0.075]:0
+(0.075,0.1]:0
+(0.1,0.25]:0
+(0.25,0.5]:1
+(0.5,0.75]:0
+(0.75,1]:0
+(1,2.5]:0
+(2.5,5]:0
+(5,7.5]:0
+(7.5,10]:0
+(10,+Infinity]:0
+(2026-02-19T00:13:14.3405760Z, 2026-02-19T00:13:15.3872590Z] http.request.method: POST http.response.status_code: 201 http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/seasons network.protocol.version: 1.1 url.scheme: http
+Value: Sum: 0.005724 Count: 3 Min: 0.0011262 Max: 0.0027317 
+(-Infinity,0.005]:3
+(0.005,0.01]:0
+(0.01,0.025]:0
+(0.025,0.05]:0
+(0.05,0.075]:0
+(0.075,0.1]:0
+(0.1,0.25]:0
+(0.25,0.5]:0
+(0.5,0.75]:0
+(0.75,1]:0
+(1,2.5]:0
+(2.5,5]:0
+(5,7.5]:0
+(7.5,10]:0
+(10,+Infinity]:0
+(2026-02-19T00:13:14.3405760Z, 2026-02-19T00:13:15.3872590Z] http.request.method: POST http.response.status_code: 201 http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/seasons/{seasonId:guid}/events network.protocol.version: 1.1 url.scheme: http
+Value: Sum: 0.0082309 Count: 3 Min: 0.0012114 Max: 0.005124 
+(-Infinity,0.005]:2
+(0.005,0.01]:1
+(0.01,0.025]:0
+(0.025,0.05]:0
+(0.05,0.075]:0
+(0.075,0.1]:0
+(0.1,0.25]:0
+(0.25,0.5]:0
+(0.5,0.75]:0
+(0.75,1]:0
+(1,2.5]:0
+(2.5,5]:0
+(5,7.5]:0
+(7.5,10]:0
+(10,+Infinity]:0
+(2026-02-19T00:13:14.3405760Z, 2026-02-19T00:13:15.3872590Z] http.request.method: POST http.response.status_code: 200 http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/seasons/{seasonId:guid}/events/{eventId:guid}/launch network.protocol.version: 1.1 url.scheme: http
+Value: Sum: 0.3049819 Count: 3 Min: 0.0045155 Max: 0.2950402 
+(-Infinity,0.005]:1
+(0.005,0.01]:1
+(0.01,0.025]:0
+(0.025,0.05]:0
+(0.05,0.075]:0
+(0.075,0.1]:0
+(0.1,0.25]:0
+(0.25,0.5]:1
+(0.5,0.75]:0
+(0.75,1]:0
+(1,2.5]:0
+(2.5,5]:0
+(5,7.5]:0
+(7.5,10]:0
+(10,+Infinity]:0
+(2026-02-19T00:13:14.3405760Z, 2026-02-19T00:13:15.3872590Z] http.request.method: POST http.response.status_code: 409 http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/seasons/{seasonId:guid}/events/{eventId:guid}/launch network.protocol.version: 1.1 url.scheme: http
+Value: Sum: 0.0044064 Count: 1 Min: 0.0044064 Max: 0.0044064 
+(-Infinity,0.005]:1
+(0.005,0.01]:0
+(0.01,0.025]:0
+(0.025,0.05]:0
+(0.05,0.075]:0
+(0.075,0.1]:0
+(0.1,0.25]:0
+(0.25,0.5]:0
+(0.5,0.75]:0
+(0.75,1]:0
+(1,2.5]:0
+(2.5,5]:0
+(5,7.5]:0
+(7.5,10]:0
+(10,+Infinity]:0
+(2026-02-19T00:13:14.3405760Z, 2026-02-19T00:13:15.3872590Z] http.request.method: POST http.response.status_code: 403 http.route: /api/v{version:apiVersion}/games/{gameId:guid}/players network.protocol.version: 1.1 url.scheme: http
+Value: Sum: 0.0427951 Count: 1 Min: 0.0427951 Max: 0.0427951 
+(-Infinity,0.005]:0
+(0.005,0.01]:0
+(0.01,0.025]:0
+(0.025,0.05]:1
+(0.05,0.075]:0
+(0.075,0.1]:0
+(0.1,0.25]:0
+(0.25,0.5]:0
+(0.5,0.75]:0
+(0.75,1]:0
+(1,2.5]:0
+(2.5,5]:0
+(5,7.5]:0
+(7.5,10]:0
+(10,+Infinity]:0
+(2026-02-19T00:13:14.3405760Z, 2026-02-19T00:13:15.3872590Z] http.request.method: POST http.response.status_code: 200 http.route: /api/v{version:apiVersion}/games/{gameId:guid}/players network.protocol.version: 1.1 url.scheme: http
+Value: Sum: 0.0282195 Count: 1 Min: 0.0282195 Max: 0.0282195 
+(-Infinity,0.005]:0
+(0.005,0.01]:0
+(0.01,0.025]:0
+(0.025,0.05]:1
+(0.05,0.075]:0
+(0.075,0.1]:0
+(0.1,0.25]:0
+(0.25,0.5]:0
+(0.5,0.75]:0
+(0.75,1]:0
+(1,2.5]:0
+(2.5,5]:0
+(5,7.5]:0
+(7.5,10]:0
+(10,+Infinity]:0
+Metric Name: aspnetcore.routing.match_attempts, Description: Number of requests that were attempted to be matched to an endpoint., Unit: {match_attempt}, Metric Type: LongSum
+Instrumentation scope (Meter):
+	Name: Microsoft.AspNetCore.Routing
+(2026-02-19T00:13:14.6637310Z, 2026-02-19T00:13:15.3872630Z] aspnetcore.routing.is_fallback: false aspnetcore.routing.match_status: success http.route: /api/v{version:apiVersion}/leagues/
+Value: 3
+(2026-02-19T00:13:14.6637310Z, 2026-02-19T00:13:15.3872630Z] aspnetcore.routing.is_fallback: false aspnetcore.routing.match_status: success http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/seasons
+Value: 3
+(2026-02-19T00:13:14.6637310Z, 2026-02-19T00:13:15.3872630Z] aspnetcore.routing.is_fallback: false aspnetcore.routing.match_status: success http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/seasons/{seasonId:guid}/events
+Value: 3
+(2026-02-19T00:13:14.6637310Z, 2026-02-19T00:13:15.3872630Z] aspnetcore.routing.is_fallback: false aspnetcore.routing.match_status: success http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/seasons/{seasonId:guid}/events/{eventId:guid}/launch
+Value: 4
+(2026-02-19T00:13:14.6637310Z, 2026-02-19T00:13:15.3872630Z] aspnetcore.routing.is_fallback: false aspnetcore.routing.match_status: success http.route: /api/v{version:apiVersion}/games/{gameId:guid}/players
+Value: 2
+Metric Name: aspnetcore.authentication.authenticate.duration, Description: The authentication duration for a request., Unit: s, Metric Type: Histogram
+Instrumentation scope (Meter):
+	Name: Microsoft.AspNetCore.Authentication
+(2026-02-19T00:13:14.9401170Z, 2026-02-19T00:13:15.3872680Z] aspnetcore.authentication.result: success aspnetcore.authentication.scheme: TestAuth
+Value: Sum: 0.0007592000000000001 Count: 15 Min: 9.6E-06 Max: 0.0004354 
+(-Infinity,0.005]:15
+(0.005,0.01]:0
+(0.01,0.025]:0
+(0.025,0.05]:0
+(0.05,0.075]:0
+(0.075,0.1]:0
+(0.1,0.25]:0
+(0.25,0.5]:0
+(0.5,0.75]:0
+(0.75,1]:0
+(1,2.5]:0
+(2.5,5]:0
+(5,7.5]:0
+(7.5,10]:0
+(10,+Infinity]:0
+Metric Name: aspnetcore.authentication.forbids, Description: The total number of times an authenticated user attempts to access a resource they are not permitted to access., Unit: {forbid}, Metric Type: LongSum
+Instrumentation scope (Meter):
+	Name: Microsoft.AspNetCore.Authentication
+(2026-02-19T00:13:14.9401860Z, 2026-02-19T00:13:15.3872690Z]  
+Value: 1
+Metric Name: aspnetcore.authorization.attempts, Description: The total number of authorization attempts., Unit: {attempt}, Metric Type: LongSum
+Instrumentation scope (Meter):
+	Name: Microsoft.AspNetCore.Authorization
+(2026-02-19T00:13:14.9408800Z, 2026-02-19T00:13:15.3872700Z] aspnetcore.authorization.result: success aspnetcore.user.is_authenticated: true
+Value: 13
+info: CardGames.Poker.Api.Services.ContinuousPlayBackgroundService[0]
+      ContinuousPlayBackgroundService started
+info: CardGames.Poker.Api.GameFlow.GameFlowHandlerFactory[0]
+      GameFlowHandlerFactory initialized with 8 handlers: FIVECARDDRAW, BASEBALL, FOLLOWTHEQUEEN, HOLDEM, KINGSANDLOWS, OMAHA, SEVENCARDSTUD, TWOSJACKSMANWITHTHEAXE
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Development
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: /Users/robgibbens/dev/CardGames/src/CardGames.Poker.Api
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 0 entities to in-memory store.
+warn: Microsoft.AspNetCore.HttpsPolicy.HttpsRedirectionMiddleware[3]
+      Failed to determine the https port for redirect.
+info: LuckyPennySoftware.MediatR.License[0]
+      You have a valid license key for the Lucky Penny software Bundle Community edition. The license expires on 08/13/2026 00:00:00 +00:00.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeague.CreateLeagueCommand at 02/19/2026 00:13:16
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : CreateLeagueRequest { Name = League Authz, Description =  }
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 3 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[CardGames.Poker.Api.Contracts.CreateLeagueResponse, CardGames.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null],[CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeague.CreateLeagueError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:16 (Elapsed: 0ms)
+Activity.TraceId:            343c70a227efae0295bbd2c1c6304f43
+Activity.SpanId:             9d70e8920d924517
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:15.7620440Z
+Activity.Duration:           00:00:00.2631270
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/
+    http.response.status_code: 201
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueInvite.CreateLeagueInviteCommand at 02/19/2026 00:13:16
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      LeagueId : 019c733e-6977-7817-a5fa-87b509a4f0c4
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : CreateLeagueInviteRequest { ExpiresAtUtc = 2/19/2026 2:13:16 AM +00:00 }
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 1 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[CardGames.Poker.Api.Contracts.CreateLeagueInviteResponse, CardGames.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null],[CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueInvite.CreateLeagueInviteError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:16 (Elapsed: 24ms)
+Activity.TraceId:            b89d816d6b2621bea706c207e142e597
+Activity.SpanId:             9a21d195b06a248f
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/{leagueId:guid}/invites
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:16.0266910Z
+Activity.Duration:           00:00:00.0335330
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues/019c733e-6977-7817-a5fa-87b509a4f0c4/invites
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/invites
+    http.response.status_code: 200
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.JoinLeague.JoinLeagueCommand at 02/19/2026 00:13:16
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : JoinLeagueRequest { Token = 87E31C04600FE90FE5D44EB75B406B77DAAE6B675957C194CC34C3BBFBF6E55B }
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 1 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[CardGames.Poker.Api.Contracts.JoinLeagueResponse, CardGames.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null],[CardGames.Poker.Api.Features.Leagues.v1.Commands.JoinLeague.JoinLeagueError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:16 (Elapsed: 32ms)
+Activity.TraceId:            5960aef64a910abf4ad4ccea7b227fc7
+Activity.SpanId:             27bed5e2a7470b62
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/join
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:16.0642100Z
+Activity.Duration:           00:00:00.0433220
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues/join
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/join
+    http.response.status_code: 200
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Queries.GetPendingLeagueJoinRequests.GetPendingLeagueJoinRequestsQuery at 02/19/2026 00:13:16
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      LeagueId : 019c733e-6977-7817-a5fa-87b509a4f0c4
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[System.Collections.Generic.IReadOnlyList`1[[CardGames.Poker.Api.Contracts.LeagueJoinRequestQueueItemDto, CardGames.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]], System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[CardGames.Poker.Api.Features.Leagues.v1.Queries.GetPendingLeagueJoinRequests.GetPendingLeagueJoinRequestsError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:16 (Elapsed: 1ms)
+info: CardGames.IntegrationTests.Infrastructure.TestAuthHandler[13]
+      AuthenticationScheme: TestAuth was forbidden.
+Activity.TraceId:            aeed4bcf84c7378e8e43c351ab226dcd
+Activity.SpanId:             26cf2b39e6f3b683
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        GET /api/v{version:apiVersion}/leagues/{leagueId:guid}/join-requests/pending
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:16.1093500Z
+Activity.Duration:           00:00:00.0038760
+Activity.Tags:
+    server.address: localhost
+    http.request.method: GET
+    url.scheme: http
+    url.path: /api/v1/leagues/019c733e-6977-7817-a5fa-87b509a4f0c4/join-requests/pending
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/join-requests/pending
+    http.response.status_code: 403
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.ApproveLeagueJoinRequest.ApproveLeagueJoinRequestCommand at 02/19/2026 00:13:16
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      LeagueId : 019c733e-6977-7817-a5fa-87b509a4f0c4
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      JoinRequestId : 019c733e-69bb-7779-a717-7d25670ea4ce
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : ModerateLeagueJoinRequestRequest { Reason = Should fail }
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[MediatR.Unit, MediatR.Contracts, Version=2.0.1.0, Culture=neutral, PublicKeyToken=bb9a41a5e8aaa7e2],[CardGames.Poker.Api.Features.Leagues.v1.Commands.ApproveLeagueJoinRequest.ApproveLeagueJoinRequestError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:16 (Elapsed: 1ms)
+info: CardGames.IntegrationTests.Infrastructure.TestAuthHandler[13]
+      AuthenticationScheme: TestAuth was forbidden.
+Activity.TraceId:            8f224f10ff40dfef2136cfc03594f3c1
+Activity.SpanId:             87b4922a4e29679f
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/{leagueId:guid}/join-requests/{joinRequestId:guid}/approve
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:16.1136500Z
+Activity.Duration:           00:00:00.0032640
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues/019c733e-6977-7817-a5fa-87b509a4f0c4/join-requests/019c733e-69bb-7779-a717-7d25670ea4ce/approve
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/join-requests/{joinRequestId:guid}/approve
+    http.response.status_code: 403
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.DenyLeagueJoinRequest.DenyLeagueJoinRequestCommand at 02/19/2026 00:13:16
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      LeagueId : 019c733e-6977-7817-a5fa-87b509a4f0c4
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      JoinRequestId : 019c733e-69bb-7779-a717-7d25670ea4ce
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : ModerateLeagueJoinRequestRequest { Reason = Should fail }
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[MediatR.Unit, MediatR.Contracts, Version=2.0.1.0, Culture=neutral, PublicKeyToken=bb9a41a5e8aaa7e2],[CardGames.Poker.Api.Features.Leagues.v1.Commands.DenyLeagueJoinRequest.DenyLeagueJoinRequestError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:16 (Elapsed: 1ms)
+info: CardGames.IntegrationTests.Infrastructure.TestAuthHandler[13]
+      AuthenticationScheme: TestAuth was forbidden.
+Activity.TraceId:            16594aa3c6ea7866aa91f40751552c02
+Activity.SpanId:             b423a9d77c641702
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/{leagueId:guid}/join-requests/{joinRequestId:guid}/deny
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:16.1170400Z
+Activity.Duration:           00:00:00.0028360
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues/019c733e-6977-7817-a5fa-87b509a4f0c4/join-requests/019c733e-69bb-7779-a717-7d25670ea4ce/deny
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/join-requests/{joinRequestId:guid}/deny
+    http.response.status_code: 403
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 0 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeague.CreateLeagueCommand at 02/19/2026 00:13:16
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : CreateLeagueRequest { Name = League Journey Approve, Description =  }
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 3 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[CardGames.Poker.Api.Contracts.CreateLeagueResponse, CardGames.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null],[CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeague.CreateLeagueError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:16 (Elapsed: 0ms)
+Activity.TraceId:            5e2eb51bd4fa6d69f14d11f7c697b748
+Activity.SpanId:             ed426bfb8a85911e
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:16.1234080Z
+Activity.Duration:           00:00:00.0010580
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/
+    http.response.status_code: 201
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueInvite.CreateLeagueInviteCommand at 02/19/2026 00:13:16
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      LeagueId : 019c733e-69db-7795-884c-762ff884ca86
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : CreateLeagueInviteRequest { ExpiresAtUtc = 2/19/2026 2:13:16 AM +00:00 }
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 1 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[CardGames.Poker.Api.Contracts.CreateLeagueInviteResponse, CardGames.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null],[CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueInvite.CreateLeagueInviteError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:16 (Elapsed: 0ms)
+Activity.TraceId:            eb966b952f80165ba4ca953d37847d72
+Activity.SpanId:             b62ef8138d00f3d6
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/{leagueId:guid}/invites
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:16.1250860Z
+Activity.Duration:           00:00:00.0012140
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues/019c733e-69db-7795-884c-762ff884ca86/invites
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/invites
+    http.response.status_code: 200
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Queries.GetLeagueJoinPreview.GetLeagueJoinPreviewQuery at 02/19/2026 00:13:16
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Token : F48E67F038CEE85A46359327F2F30FE4F13398749FDF57987E82ADDEDC08C564
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[CardGames.Poker.Api.Contracts.LeagueJoinPreviewDto, CardGames.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null],[CardGames.Poker.Api.Features.Leagues.v1.Queries.GetLeagueJoinPreview.GetLeagueJoinPreviewError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:16 (Elapsed: 8ms)
+Activity.TraceId:            a981190019b003feac7f63a5470f4786
+Activity.SpanId:             96e97de53ff4068e
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        GET /api/v{version:apiVersion}/leagues/join-preview
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:16.1264070Z
+Activity.Duration:           00:00:00.0108240
+Activity.Tags:
+    server.address: localhost
+    url.query: ?token=Redacted
+    http.request.method: GET
+    url.scheme: http
+    url.path: /api/v1/leagues/join-preview
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/join-preview
+    http.response.status_code: 200
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.JoinLeague.JoinLeagueCommand at 02/19/2026 00:13:16
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : JoinLeagueRequest { Token = F48E67F038CEE85A46359327F2F30FE4F13398749FDF57987E82ADDEDC08C564 }
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 1 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[CardGames.Poker.Api.Contracts.JoinLeagueResponse, CardGames.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null],[CardGames.Poker.Api.Features.Leagues.v1.Commands.JoinLeague.JoinLeagueError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:16 (Elapsed: 0ms)
+Activity.TraceId:            cbc379511f102b383182c8341237cc63
+Activity.SpanId:             3eb28597d570687b
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/join-by-invite
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:16.1381670Z
+Activity.Duration:           00:00:00.0011130
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues/join-by-invite
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/join-by-invite
+    http.response.status_code: 200
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Queries.GetPendingLeagueJoinRequests.GetPendingLeagueJoinRequestsQuery at 02/19/2026 00:13:16
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      LeagueId : 019c733e-69db-7795-884c-762ff884ca86
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[System.Collections.Generic.IReadOnlyList`1[[CardGames.Poker.Api.Contracts.LeagueJoinRequestQueueItemDto, CardGames.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]], System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[CardGames.Poker.Api.Features.Leagues.v1.Queries.GetPendingLeagueJoinRequests.GetPendingLeagueJoinRequestsError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:16 (Elapsed: 8ms)
+Activity.TraceId:            03797d8f26d289738d3726b39bce9473
+Activity.SpanId:             f06468d4a9cc0c5b
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        GET /api/v{version:apiVersion}/leagues/{leagueId:guid}/join-requests/pending
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:16.1407960Z
+Activity.Duration:           00:00:00.0183280
+Activity.Tags:
+    server.address: localhost
+    http.request.method: GET
+    url.scheme: http
+    url.path: /api/v1/leagues/019c733e-69db-7795-884c-762ff884ca86/join-requests/pending
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/join-requests/pending
+    http.response.status_code: 200
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.ApproveLeagueJoinRequest.ApproveLeagueJoinRequestCommand at 02/19/2026 00:13:16
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      LeagueId : 019c733e-69db-7795-884c-762ff884ca86
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      JoinRequestId : 019c733e-69eb-7b04-8cb5-4d6e10d2c688
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : ModerateLeagueJoinRequestRequest { Reason = Approved for league play }
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 3 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[MediatR.Unit, MediatR.Contracts, Version=2.0.1.0, Culture=neutral, PublicKeyToken=bb9a41a5e8aaa7e2],[CardGames.Poker.Api.Features.Leagues.v1.Commands.ApproveLeagueJoinRequest.ApproveLeagueJoinRequestError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:16 (Elapsed: 6ms)
+Activity.TraceId:            7568de41f3e3a808478c8b3517e9f425
+Activity.SpanId:             1fb09b88c297d561
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/{leagueId:guid}/join-requests/{joinRequestId:guid}/approve
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:16.1612170Z
+Activity.Duration:           00:00:00.0076730
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues/019c733e-69db-7795-884c-762ff884ca86/join-requests/019c733e-69eb-7b04-8cb5-4d6e10d2c688/approve
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/join-requests/{joinRequestId:guid}/approve
+    http.response.status_code: 204
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.JoinLeague.JoinLeagueCommand at 02/19/2026 00:13:16
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : JoinLeagueRequest { Token = F48E67F038CEE85A46359327F2F30FE4F13398749FDF57987E82ADDEDC08C564 }
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[CardGames.Poker.Api.Contracts.JoinLeagueResponse, CardGames.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null],[CardGames.Poker.Api.Features.Leagues.v1.Commands.JoinLeague.JoinLeagueError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:16 (Elapsed: 0ms)
+Activity.TraceId:            9ce5a366e1258cecd15b22ecfa880288
+Activity.SpanId:             def8ac39c8cd1c22
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/join
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:16.1728720Z
+Activity.Duration:           00:00:00.0029740
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues/join
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/join
+    http.response.status_code: 200
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 0 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeague.CreateLeagueCommand at 02/19/2026 00:13:16
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : CreateLeagueRequest { Name = League Journey Deny, Description =  }
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 3 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[CardGames.Poker.Api.Contracts.CreateLeagueResponse, CardGames.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null],[CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeague.CreateLeagueError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:16 (Elapsed: 0ms)
+Activity.TraceId:            d453e4039589331147e9509ba6ea2f1f
+Activity.SpanId:             cae8abcd23a1e026
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:16.1784700Z
+Activity.Duration:           00:00:00.0019070
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/
+    http.response.status_code: 201
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueInvite.CreateLeagueInviteCommand at 02/19/2026 00:13:16
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      LeagueId : 019c733e-6a13-70bc-aab8-ecef4286f7f0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : CreateLeagueInviteRequest { ExpiresAtUtc = 2/19/2026 2:13:16 AM +00:00 }
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 1 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[CardGames.Poker.Api.Contracts.CreateLeagueInviteResponse, CardGames.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null],[CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueInvite.CreateLeagueInviteError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:16 (Elapsed: 0ms)
+Activity.TraceId:            c58a2a56eda613951408f067fb437645
+Activity.SpanId:             5261df16b98d1e15
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/{leagueId:guid}/invites
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:16.1810210Z
+Activity.Duration:           00:00:00.0026960
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues/019c733e-6a13-70bc-aab8-ecef4286f7f0/invites
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/invites
+    http.response.status_code: 200
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.JoinLeague.JoinLeagueCommand at 02/19/2026 00:13:16
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : JoinLeagueRequest { Token = DD16A62B0BE32C762610082F7C45AAA7D01022AF8D121856FD0D8F57C0DBEE80 }
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 1 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[CardGames.Poker.Api.Contracts.JoinLeagueResponse, CardGames.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null],[CardGames.Poker.Api.Features.Leagues.v1.Commands.JoinLeague.JoinLeagueError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:16 (Elapsed: 0ms)
+Activity.TraceId:            0fbc57cdc937ce011a3dc5a807805d13
+Activity.SpanId:             4330697113be254b
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/join
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:16.1838920Z
+Activity.Duration:           00:00:00.0007530
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues/join
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/join
+    http.response.status_code: 200
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.DenyLeagueJoinRequest.DenyLeagueJoinRequestCommand at 02/19/2026 00:13:16
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      LeagueId : 019c733e-6a13-70bc-aab8-ecef4286f7f0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      JoinRequestId : 019c733e-6a18-722d-b4ae-01ccf72a7fea
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : ModerateLeagueJoinRequestRequest { Reason = Denied for testing }
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 1 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[MediatR.Unit, MediatR.Contracts, Version=2.0.1.0, Culture=neutral, PublicKeyToken=bb9a41a5e8aaa7e2],[CardGames.Poker.Api.Features.Leagues.v1.Commands.DenyLeagueJoinRequest.DenyLeagueJoinRequestError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:16 (Elapsed: 0ms)
+Activity.TraceId:            2dae7098c07df5966f1c9d78d7908fd4
+Activity.SpanId:             ac67ea3c4940f9fb
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/{leagueId:guid}/join-requests/{joinRequestId:guid}/deny
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:16.1847920Z
+Activity.Duration:           00:00:00.0010690
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues/019c733e-6a13-70bc-aab8-ecef4286f7f0/join-requests/019c733e-6a18-722d-b4ae-01ccf72a7fea/deny
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/join-requests/{joinRequestId:guid}/deny
+    http.response.status_code: 204
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.DenyLeagueJoinRequest.DenyLeagueJoinRequestCommand at 02/19/2026 00:13:16
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      LeagueId : 019c733e-6a13-70bc-aab8-ecef4286f7f0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      JoinRequestId : 019c733e-6a18-722d-b4ae-01ccf72a7fea
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : ModerateLeagueJoinRequestRequest { Reason = Duplicate deny }
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[MediatR.Unit, MediatR.Contracts, Version=2.0.1.0, Culture=neutral, PublicKeyToken=bb9a41a5e8aaa7e2],[CardGames.Poker.Api.Features.Leagues.v1.Commands.DenyLeagueJoinRequest.DenyLeagueJoinRequestError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:16 (Elapsed: 0ms)
+Activity.TraceId:            6c7b277a7b2f4d1bb5d63ecadc495ada
+Activity.SpanId:             34debfd42a160544
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/{leagueId:guid}/join-requests/{joinRequestId:guid}/deny
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:16.1859550Z
+Activity.Duration:           00:00:00.0017030
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues/019c733e-6a13-70bc-aab8-ecef4286f7f0/join-requests/019c733e-6a18-722d-b4ae-01ccf72a7fea/deny
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/join-requests/{joinRequestId:guid}/deny
+    http.response.status_code: 204
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 0 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeague.CreateLeagueCommand at 02/19/2026 00:13:16
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : CreateLeagueRequest { Name = API Join Idempotent League, Description =  }
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 3 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[CardGames.Poker.Api.Contracts.CreateLeagueResponse, CardGames.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null],[CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeague.CreateLeagueError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:16 (Elapsed: 0ms)
+Activity.TraceId:            a495de667710d8105162a21ce69cfcd7
+Activity.SpanId:             de4c64b3138abee2
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:16.1937000Z
+Activity.Duration:           00:00:00.0008780
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/
+    http.response.status_code: 201
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueInvite.CreateLeagueInviteCommand at 02/19/2026 00:13:16
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      LeagueId : 019c733e-6a22-7c49-b505-b56e1049db97
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : CreateLeagueInviteRequest { ExpiresAtUtc = 2/19/2026 2:13:16 AM +00:00 }
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 1 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[CardGames.Poker.Api.Contracts.CreateLeagueInviteResponse, CardGames.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null],[CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueInvite.CreateLeagueInviteError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:16 (Elapsed: 0ms)
+Activity.TraceId:            2964254e73efd613dedeca26452db28c
+Activity.SpanId:             f86aee307c3c0ba4
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/{leagueId:guid}/invites
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:16.1950990Z
+Activity.Duration:           00:00:00.0007610
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues/019c733e-6a22-7c49-b505-b56e1049db97/invites
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/invites
+    http.response.status_code: 200
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.JoinLeague.JoinLeagueCommand at 02/19/2026 00:13:16
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : JoinLeagueRequest { Token = 7C2982951D854EFEEFE05A70A39FBAB3F3D3CCA767214A2BF14D9C16A7FFC7F3 }
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 1 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[CardGames.Poker.Api.Contracts.JoinLeagueResponse, CardGames.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null],[CardGames.Poker.Api.Features.Leagues.v1.Commands.JoinLeague.JoinLeagueError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:16 (Elapsed: 0ms)
+Activity.TraceId:            e6c6e1eb14983ba2c203ea8f3ce168bf
+Activity.SpanId:             e66880c4d0a0a046
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/join
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:16.1959700Z
+Activity.Duration:           00:00:00.0007870
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues/join
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/join
+    http.response.status_code: 200
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.JoinLeague.JoinLeagueCommand at 02/19/2026 00:13:16
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : JoinLeagueRequest { Token = 7C2982951D854EFEEFE05A70A39FBAB3F3D3CCA767214A2BF14D9C16A7FFC7F3 }
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 1 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[CardGames.Poker.Api.Contracts.JoinLeagueResponse, CardGames.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null],[CardGames.Poker.Api.Features.Leagues.v1.Commands.JoinLeague.JoinLeagueError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:16 (Elapsed: 0ms)
+Activity.TraceId:            f62c74e0f106fe394d6f2fb9acf28ef6
+Activity.SpanId:             ce0d992ad2c81377
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/join
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:16.1968180Z
+Activity.Duration:           00:00:00.0009120
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues/join
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/join
+    http.response.status_code: 200
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 0 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeague.CreateLeagueCommand at 02/19/2026 00:13:16
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : CreateLeagueRequest { Name = League Error Semantics, Description =  }
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 3 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[CardGames.Poker.Api.Contracts.CreateLeagueResponse, CardGames.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null],[CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeague.CreateLeagueError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:16 (Elapsed: 0ms)
+Activity.TraceId:            44e1fc3dd1bdf8398efeafee78096aeb
+Activity.SpanId:             6616b119fd7cf2b5
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:16.2027420Z
+Activity.Duration:           00:00:00.0007540
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/
+    http.response.status_code: 201
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.ApproveLeagueJoinRequest.ApproveLeagueJoinRequestCommand at 02/19/2026 00:13:16
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      LeagueId : 019c733e-6a2b-7d79-90b1-ccdc96f6e08e
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      JoinRequestId : ab261e0e-7b86-45ee-8929-53f9dc79d83e
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : ModerateLeagueJoinRequestRequest { Reason = Missing request }
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[MediatR.Unit, MediatR.Contracts, Version=2.0.1.0, Culture=neutral, PublicKeyToken=bb9a41a5e8aaa7e2],[CardGames.Poker.Api.Features.Leagues.v1.Commands.ApproveLeagueJoinRequest.ApproveLeagueJoinRequestError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:16 (Elapsed: 0ms)
+Activity.TraceId:            17cc0424352507821adca06eb303e7aa
+Activity.SpanId:             c8b8e657d34525dd
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/{leagueId:guid}/join-requests/{joinRequestId:guid}/approve
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:16.2041000Z
+Activity.Duration:           00:00:00.0023190
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues/019c733e-6a2b-7d79-90b1-ccdc96f6e08e/join-requests/ab261e0e-7b86-45ee-8929-53f9dc79d83e/approve
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/join-requests/{joinRequestId:guid}/approve
+    http.response.status_code: 404
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueInvite.CreateLeagueInviteCommand at 02/19/2026 00:13:16
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      LeagueId : 019c733e-6a2b-7d79-90b1-ccdc96f6e08e
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : CreateLeagueInviteRequest { ExpiresAtUtc = 2/19/2026 2:13:16 AM +00:00 }
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 1 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[CardGames.Poker.Api.Contracts.CreateLeagueInviteResponse, CardGames.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null],[CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueInvite.CreateLeagueInviteError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:16 (Elapsed: 0ms)
+Activity.TraceId:            63220e0d2e47985c0d81ec867ad08092
+Activity.SpanId:             52d25ac72ba3285c
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/{leagueId:guid}/invites
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:16.2080990Z
+Activity.Duration:           00:00:00.0007720
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues/019c733e-6a2b-7d79-90b1-ccdc96f6e08e/invites
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/invites
+    http.response.status_code: 200
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.JoinLeague.JoinLeagueCommand at 02/19/2026 00:13:16
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : JoinLeagueRequest { Token = E146C4632D518BCE66E1584DCDEECCEBD2F3A75C177047FBFC626AECD0AC5C6B }
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 1 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[CardGames.Poker.Api.Contracts.JoinLeagueResponse, CardGames.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null],[CardGames.Poker.Api.Features.Leagues.v1.Commands.JoinLeague.JoinLeagueError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:16 (Elapsed: 0ms)
+Activity.TraceId:            26158b7ee3acabbd33a0295258d5511e
+Activity.SpanId:             18f015878d30c764
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/join
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:16.2090120Z
+Activity.Duration:           00:00:00.0008940
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues/join
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/join
+    http.response.status_code: 200
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.ApproveLeagueJoinRequest.ApproveLeagueJoinRequestCommand at 02/19/2026 00:13:16
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      LeagueId : 019c733e-6a2b-7d79-90b1-ccdc96f6e08e
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      JoinRequestId : 019c733e-6a31-7027-802c-c74b178256b4
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : ModerateLeagueJoinRequestRequest { Reason = Approve first }
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 3 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[MediatR.Unit, MediatR.Contracts, Version=2.0.1.0, Culture=neutral, PublicKeyToken=bb9a41a5e8aaa7e2],[CardGames.Poker.Api.Features.Leagues.v1.Commands.ApproveLeagueJoinRequest.ApproveLeagueJoinRequestError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:16 (Elapsed: 0ms)
+Activity.TraceId:            cb24b13c5a36caca25731a64881355ad
+Activity.SpanId:             b5b8aec6ec4ac964
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/{leagueId:guid}/join-requests/{joinRequestId:guid}/approve
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:16.2100170Z
+Activity.Duration:           00:00:00.0008270
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues/019c733e-6a2b-7d79-90b1-ccdc96f6e08e/join-requests/019c733e-6a31-7027-802c-c74b178256b4/approve
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/join-requests/{joinRequestId:guid}/approve
+    http.response.status_code: 204
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.DenyLeagueJoinRequest.DenyLeagueJoinRequestCommand at 02/19/2026 00:13:16
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      LeagueId : 019c733e-6a2b-7d79-90b1-ccdc96f6e08e
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      JoinRequestId : 019c733e-6a31-7027-802c-c74b178256b4
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : ModerateLeagueJoinRequestRequest { Reason = Now invalid }
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[MediatR.Unit, MediatR.Contracts, Version=2.0.1.0, Culture=neutral, PublicKeyToken=bb9a41a5e8aaa7e2],[CardGames.Poker.Api.Features.Leagues.v1.Commands.DenyLeagueJoinRequest.DenyLeagueJoinRequestError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:16 (Elapsed: 0ms)
+Activity.TraceId:            bd8ab796dfb448ebef09dc921c268c8c
+Activity.SpanId:             067f15e1ff5e444d
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/{leagueId:guid}/join-requests/{joinRequestId:guid}/deny
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:16.2109110Z
+Activity.Duration:           00:00:00.0007230
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues/019c733e-6a2b-7d79-90b1-ccdc96f6e08e/join-requests/019c733e-6a31-7027-802c-c74b178256b4/deny
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/join-requests/{joinRequestId:guid}/deny
+    http.response.status_code: 400
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.JoinLeague.JoinLeagueCommand at 02/19/2026 00:13:16
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : JoinLeagueRequest { Token = E146C4632D518BCE66E1584DCDEECCEBD2F3A75C177047FBFC626AECD0AC5C6B }
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 1 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[CardGames.Poker.Api.Contracts.JoinLeagueResponse, CardGames.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null],[CardGames.Poker.Api.Features.Leagues.v1.Commands.JoinLeague.JoinLeagueError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:16 (Elapsed: 0ms)
+Activity.TraceId:            6c922916b8f3b713b9028a9df30a1c58
+Activity.SpanId:             058fc3807a354b0d
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/join
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:16.2117700Z
+Activity.Duration:           00:00:00.0006770
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues/join
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/join
+    http.response.status_code: 200
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.DenyLeagueJoinRequest.DenyLeagueJoinRequestCommand at 02/19/2026 00:13:16
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      LeagueId : 019c733e-6a2b-7d79-90b1-ccdc96f6e08e
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      JoinRequestId : 019c733e-6a34-7bdd-93de-91b73cfa7cde
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : ModerateLeagueJoinRequestRequest { Reason = Deny first }
+info: Microsoft.EntityFrameworkCore.Update[30100]
+      Saved 1 entities to in-memory store.
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[MediatR.Unit, MediatR.Contracts, Version=2.0.1.0, Culture=neutral, PublicKeyToken=bb9a41a5e8aaa7e2],[CardGames.Poker.Api.Features.Leagues.v1.Commands.DenyLeagueJoinRequest.DenyLeagueJoinRequestError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:16 (Elapsed: 0ms)
+Activity.TraceId:            2ace4572f1c8553c1de5676392486aed
+Activity.SpanId:             5f678de0f71f1434
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/{leagueId:guid}/join-requests/{joinRequestId:guid}/deny
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:16.2125330Z
+Activity.Duration:           00:00:00.0005400
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues/019c733e-6a2b-7d79-90b1-ccdc96f6e08e/join-requests/019c733e-6a34-7bdd-93de-91b73cfa7cde/deny
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/join-requests/{joinRequestId:guid}/deny
+    http.response.status_code: 204
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handling CardGames.Poker.Api.Features.Leagues.v1.Commands.ApproveLeagueJoinRequest.ApproveLeagueJoinRequestCommand at 02/19/2026 00:13:16
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      LeagueId : 019c733e-6a2b-7d79-90b1-ccdc96f6e08e
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      JoinRequestId : 019c733e-6a34-7bdd-93de-91b73cfa7cde
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Request : ModerateLeagueJoinRequestRequest { Reason = Now invalid }
+info: CardGames.Poker.Api.Infrastructure.PipelineBehaviors.LoggingPipelineBehavior[0]
+      Handled OneOf.OneOf`2[[MediatR.Unit, MediatR.Contracts, Version=2.0.1.0, Culture=neutral, PublicKeyToken=bb9a41a5e8aaa7e2],[CardGames.Poker.Api.Features.Leagues.v1.Commands.ApproveLeagueJoinRequest.ApproveLeagueJoinRequestError, CardGames.Poker.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] at 02/19/2026 00:13:16 (Elapsed: 0ms)
+Activity.TraceId:            fafb7f159bee58dee48fd08ea937f854
+Activity.SpanId:             553c2f6d4bdba3b4
+Activity.TraceFlags:         Recorded
+Activity.DisplayName:        POST /api/v{version:apiVersion}/leagues/{leagueId:guid}/join-requests/{joinRequestId:guid}/approve
+Activity.Kind:               Server
+Activity.StartTime:          2026-02-19T00:13:16.2131280Z
+Activity.Duration:           00:00:00.0006430
+Activity.Tags:
+    server.address: localhost
+    http.request.method: POST
+    url.scheme: http
+    url.path: /api/v1/leagues/019c733e-6a2b-7d79-90b1-ccdc96f6e08e/join-requests/019c733e-6a34-7bdd-93de-91b73cfa7cde/approve
+    network.protocol.version: 1.1
+    http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/join-requests/{joinRequestId:guid}/approve
+    http.response.status_code: 400
+Instrumentation scope (ActivitySource):
+    Name: Microsoft.AspNetCore
+Resource associated with Activity:
+    service.name: api
+    service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+    telemetry.sdk.name: opentelemetry
+    telemetry.sdk.language: dotnet
+    telemetry.sdk.version: 1.15.0
+info: Microsoft.Hosting.Lifetime[0]
+      Application is shutting down...
+Resource associated with Metrics:
+	service.name: api
+	service.instance.id: c0387497-7204-4dce-966f-82f4e6dd0dbe
+	telemetry.sdk.name: opentelemetry
+	telemetry.sdk.language: dotnet
+	telemetry.sdk.version: 1.15.0
+Metric Name: dotnet.gc.collections, Description: The number of garbage collections that have occurred since the process has started., Unit: {collection}, Metric Type: LongSum
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:15.4784420Z, 2026-02-19T00:13:16.2147770Z] gc.heap.generation: gen2
+Value: 3
+(2026-02-19T00:13:15.4784420Z, 2026-02-19T00:13:16.2147770Z] gc.heap.generation: gen1
+Value: 7
+(2026-02-19T00:13:15.4784420Z, 2026-02-19T00:13:16.2147770Z] gc.heap.generation: gen0
+Value: 15
+Metric Name: dotnet.process.memory.working_set, Description: The number of bytes of physical memory mapped to the process context., Unit: By, Metric Type: LongSumNonMonotonic
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:15.4784590Z, 2026-02-19T00:13:16.2147780Z]  
+Value: 275316736
+Metric Name: dotnet.gc.heap.total_allocated, Description: The approximate number of bytes allocated on the managed GC heap since the process has started. The returned value does not include any native allocations., Unit: By, Metric Type: LongSum
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:15.4784710Z, 2026-02-19T00:13:16.2147780Z]  
+Value: 229116752
+Metric Name: dotnet.gc.last_collection.memory.committed_size, Description: The amount of committed virtual memory in use by the .NET GC, as observed during the latest garbage collection., Unit: By, Metric Type: LongSumNonMonotonic
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:15.4784790Z, 2026-02-19T00:13:16.2147780Z]  
+Value: 71909376
+Metric Name: dotnet.gc.last_collection.heap.size, Description: The managed GC heap size (including fragmentation), as observed during the latest garbage collection., Unit: By, Metric Type: LongSumNonMonotonic
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:15.4784860Z, 2026-02-19T00:13:16.2147780Z] gc.heap.generation: gen0
+Value: 24
+(2026-02-19T00:13:15.4784860Z, 2026-02-19T00:13:16.2147780Z] gc.heap.generation: gen1
+Value: 2075192
+(2026-02-19T00:13:15.4784860Z, 2026-02-19T00:13:16.2147780Z] gc.heap.generation: gen2
+Value: 28303208
+(2026-02-19T00:13:15.4784860Z, 2026-02-19T00:13:16.2147780Z] gc.heap.generation: loh
+Value: 31761848
+(2026-02-19T00:13:15.4784860Z, 2026-02-19T00:13:16.2147780Z] gc.heap.generation: poh
+Value: 123568
+Metric Name: dotnet.gc.last_collection.heap.fragmentation.size, Description: The heap fragmentation, as observed during the latest garbage collection., Unit: By, Metric Type: LongSumNonMonotonic
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:15.4784940Z, 2026-02-19T00:13:16.2147780Z] gc.heap.generation: gen0
+Value: 0
+(2026-02-19T00:13:15.4784940Z, 2026-02-19T00:13:16.2147780Z] gc.heap.generation: gen1
+Value: 34200
+(2026-02-19T00:13:15.4784940Z, 2026-02-19T00:13:16.2147780Z] gc.heap.generation: gen2
+Value: 250320
+(2026-02-19T00:13:15.4784940Z, 2026-02-19T00:13:16.2147780Z] gc.heap.generation: loh
+Value: 26712
+(2026-02-19T00:13:15.4784940Z, 2026-02-19T00:13:16.2147780Z] gc.heap.generation: poh
+Value: 0
+Metric Name: dotnet.gc.pause.time, Description: The total amount of time paused in GC since the process has started., Unit: s, Metric Type: DoubleSum
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:15.4785050Z, 2026-02-19T00:13:16.2147790Z]  
+Value: 0.099081
+Metric Name: dotnet.jit.compiled_il.size, Description: Count of bytes of intermediate language that have been compiled since the process has started., Unit: By, Metric Type: LongSum
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:15.4785120Z, 2026-02-19T00:13:16.2147790Z]  
+Value: 2096452
+Metric Name: dotnet.jit.compiled_methods, Description: The number of times the JIT compiler (re)compiled methods since the process has started., Unit: {method}, Metric Type: LongSum
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:15.4785190Z, 2026-02-19T00:13:16.2147790Z]  
+Value: 26303
+Metric Name: dotnet.jit.compilation.time, Description: The number of times the JIT compiler (re)compiled methods since the process has started., Unit: s, Metric Type: DoubleSum
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:15.4785260Z, 2026-02-19T00:13:16.2147790Z]  
+Value: 2.9104111
+Metric Name: dotnet.monitor.lock_contentions, Description: The number of times there was contention when trying to acquire a monitor lock since the process has started., Unit: {contention}, Metric Type: LongSum
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:15.4785380Z, 2026-02-19T00:13:16.2147790Z]  
+Value: 11
+Metric Name: dotnet.thread_pool.thread.count, Description: The number of thread pool threads that currently exist., Unit: {thread}, Metric Type: LongSum
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:15.4785450Z, 2026-02-19T00:13:16.2147800Z]  
+Value: 7
+Metric Name: dotnet.thread_pool.work_item.count, Description: The number of work items that the thread pool has completed since the process has started., Unit: {work_item}, Metric Type: LongSum
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:15.4785520Z, 2026-02-19T00:13:16.2147800Z]  
+Value: 337
+Metric Name: dotnet.thread_pool.queue.length, Description: The number of work items that are currently queued to be processed by the thread pool., Unit: {work_item}, Metric Type: LongSum
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:15.4785590Z, 2026-02-19T00:13:16.2147800Z]  
+Value: 0
+Metric Name: dotnet.timer.count, Description: The number of timer instances that are currently active. An active timer is registered to tick at some point in the future and has not yet been canceled., Unit: {timer}, Metric Type: LongSumNonMonotonic
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:15.4785660Z, 2026-02-19T00:13:16.2147800Z]  
+Value: 7
+Metric Name: dotnet.assembly.count, Description: The number of .NET assemblies that are currently loaded., Unit: {assembly}, Metric Type: LongSumNonMonotonic
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:15.4785720Z, 2026-02-19T00:13:16.2147800Z]  
+Value: 252
+Metric Name: dotnet.exceptions, Description: The number of exceptions that have been thrown in managed code., Unit: {exception}, Metric Type: LongSum
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:15.4785830Z, 2026-02-19T00:13:16.2147800Z] error.type: TaskCanceledException
+Value: 2
+Metric Name: dotnet.process.cpu.count, Description: The number of processors available to the process., Unit: {cpu}, Metric Type: LongSumNonMonotonic
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:15.4785930Z, 2026-02-19T00:13:16.2147800Z]  
+Value: 12
+Metric Name: dotnet.process.cpu.time, Description: CPU time used by the process., Unit: s, Metric Type: DoubleSum
+Instrumentation scope (Meter):
+	Name: System.Runtime
+(2026-02-19T00:13:15.4786010Z, 2026-02-19T00:13:16.2147800Z] cpu.mode: user
+Value: 3.853283
+(2026-02-19T00:13:15.4786010Z, 2026-02-19T00:13:16.2147800Z] cpu.mode: system
+Value: 0.416948
+Metric Name: http.server.active_requests, Description: Number of active HTTP server requests., Unit: {request}, Metric Type: LongSumNonMonotonic
+Instrumentation scope (Meter):
+	Name: Microsoft.AspNetCore.Hosting
+(2026-02-19T00:13:15.4868900Z, 2026-02-19T00:13:16.2147850Z] http.request.method: POST url.scheme: http
+Value: 0
+(2026-02-19T00:13:15.4868900Z, 2026-02-19T00:13:16.2147850Z] http.request.method: GET url.scheme: http
+Value: 0
+Metric Name: http.server.request.duration, Description: Duration of HTTP server requests., Unit: s, Metric Type: Histogram
+Instrumentation scope (Meter):
+	Name: Microsoft.AspNetCore.Hosting
+(2026-02-19T00:13:15.4869160Z, 2026-02-19T00:13:16.2147890Z] http.request.method: POST http.response.status_code: 201 http.route: /api/v{version:apiVersion}/leagues/ network.protocol.version: 1.1 url.scheme: http
+Value: Sum: 0.26775269999999995 Count: 5 Min: 0.000752 Max: 0.2631471 
+(-Infinity,0.005]:4
+(0.005,0.01]:0
+(0.01,0.025]:0
+(0.025,0.05]:0
+(0.05,0.075]:0
+(0.075,0.1]:0
+(0.1,0.25]:0
+(0.25,0.5]:1
+(0.5,0.75]:0
+(0.75,1]:0
+(1,2.5]:0
+(2.5,5]:0
+(5,7.5]:0
+(7.5,10]:0
+(10,+Infinity]:0
+(2026-02-19T00:13:15.4869160Z, 2026-02-19T00:13:16.2147890Z] http.request.method: POST http.response.status_code: 200 http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/invites network.protocol.version: 1.1 url.scheme: http
+Value: Sum: 0.0388166 Count: 5 Min: 0.0007622 Max: 0.0333922 
+(-Infinity,0.005]:4
+(0.005,0.01]:0
+(0.01,0.025]:0
+(0.025,0.05]:1
+(0.05,0.075]:0
+(0.075,0.1]:0
+(0.1,0.25]:0
+(0.25,0.5]:0
+(0.5,0.75]:0
+(0.75,1]:0
+(1,2.5]:0
+(2.5,5]:0
+(5,7.5]:0
+(7.5,10]:0
+(10,+Infinity]:0
+(2026-02-19T00:13:15.4869160Z, 2026-02-19T00:13:16.2147890Z] http.request.method: POST http.response.status_code: 200 http.route: /api/v{version:apiVersion}/leagues/join network.protocol.version: 1.1 url.scheme: http
+Value: Sum: 0.050302700000000006 Count: 7 Min: 0.0006736 Max: 0.0433103 
+(-Infinity,0.005]:6
+(0.005,0.01]:0
+(0.01,0.025]:0
+(0.025,0.05]:1
+(0.05,0.075]:0
+(0.075,0.1]:0
+(0.1,0.25]:0
+(0.25,0.5]:0
+(0.5,0.75]:0
+(0.75,1]:0
+(1,2.5]:0
+(2.5,5]:0
+(5,7.5]:0
+(7.5,10]:0
+(10,+Infinity]:0
+(2026-02-19T00:13:15.4869160Z, 2026-02-19T00:13:16.2147890Z] http.request.method: GET http.response.status_code: 403 http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/join-requests/pending network.protocol.version: 1.1 url.scheme: http
+Value: Sum: 0.0038682 Count: 1 Min: 0.0038682 Max: 0.0038682 
+(-Infinity,0.005]:1
+(0.005,0.01]:0
+(0.01,0.025]:0
+(0.025,0.05]:0
+(0.05,0.075]:0
+(0.075,0.1]:0
+(0.1,0.25]:0
+(0.25,0.5]:0
+(0.5,0.75]:0
+(0.75,1]:0
+(1,2.5]:0
+(2.5,5]:0
+(5,7.5]:0
+(7.5,10]:0
+(10,+Infinity]:0
+(2026-02-19T00:13:15.4869160Z, 2026-02-19T00:13:16.2147890Z] http.request.method: POST http.response.status_code: 403 http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/join-requests/{joinRequestId:guid}/approve network.protocol.version: 1.1 url.scheme: http
+Value: Sum: 0.0032564 Count: 1 Min: 0.0032564 Max: 0.0032564 
+(-Infinity,0.005]:1
+(0.005,0.01]:0
+(0.01,0.025]:0
+(0.025,0.05]:0
+(0.05,0.075]:0
+(0.075,0.1]:0
+(0.1,0.25]:0
+(0.25,0.5]:0
+(0.5,0.75]:0
+(0.75,1]:0
+(1,2.5]:0
+(2.5,5]:0
+(5,7.5]:0
+(7.5,10]:0
+(10,+Infinity]:0
+(2026-02-19T00:13:15.4869160Z, 2026-02-19T00:13:16.2147890Z] http.request.method: POST http.response.status_code: 403 http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/join-requests/{joinRequestId:guid}/deny network.protocol.version: 1.1 url.scheme: http
+Value: Sum: 0.0028284 Count: 1 Min: 0.0028284 Max: 0.0028284 
+(-Infinity,0.005]:1
+(0.005,0.01]:0
+(0.01,0.025]:0
+(0.025,0.05]:0
+(0.05,0.075]:0
+(0.075,0.1]:0
+(0.1,0.25]:0
+(0.25,0.5]:0
+(0.5,0.75]:0
+(0.75,1]:0
+(1,2.5]:0
+(2.5,5]:0
+(5,7.5]:0
+(7.5,10]:0
+(10,+Infinity]:0
+(2026-02-19T00:13:15.4869160Z, 2026-02-19T00:13:16.2147890Z] http.request.method: GET http.response.status_code: 200 http.route: /api/v{version:apiVersion}/leagues/join-preview network.protocol.version: 1.1 url.scheme: http
+Value: Sum: 0.0108105 Count: 1 Min: 0.0108105 Max: 0.0108105 
+(-Infinity,0.005]:0
+(0.005,0.01]:0
+(0.01,0.025]:1
+(0.025,0.05]:0
+(0.05,0.075]:0
+(0.075,0.1]:0
+(0.1,0.25]:0
+(0.25,0.5]:0
+(0.5,0.75]:0
+(0.75,1]:0
+(1,2.5]:0
+(2.5,5]:0
+(5,7.5]:0
+(7.5,10]:0
+(10,+Infinity]:0
+(2026-02-19T00:13:15.4869160Z, 2026-02-19T00:13:16.2147890Z] http.request.method: POST http.response.status_code: 200 http.route: /api/v{version:apiVersion}/leagues/join-by-invite network.protocol.version: 1.1 url.scheme: http
+Value: Sum: 0.001106 Count: 1 Min: 0.001106 Max: 0.001106 
+(-Infinity,0.005]:1
+(0.005,0.01]:0
+(0.01,0.025]:0
+(0.025,0.05]:0
+(0.05,0.075]:0
+(0.075,0.1]:0
+(0.1,0.25]:0
+(0.25,0.5]:0
+(0.5,0.75]:0
+(0.75,1]:0
+(1,2.5]:0
+(2.5,5]:0
+(5,7.5]:0
+(7.5,10]:0
+(10,+Infinity]:0
+(2026-02-19T00:13:15.4869160Z, 2026-02-19T00:13:16.2147890Z] http.request.method: GET http.response.status_code: 200 http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/join-requests/pending network.protocol.version: 1.1 url.scheme: http
+Value: Sum: 0.0183213 Count: 1 Min: 0.0183213 Max: 0.0183213 
+(-Infinity,0.005]:0
+(0.005,0.01]:0
+(0.01,0.025]:1
+(0.025,0.05]:0
+(0.05,0.075]:0
+(0.075,0.1]:0
+(0.1,0.25]:0
+(0.25,0.5]:0
+(0.5,0.75]:0
+(0.75,1]:0
+(1,2.5]:0
+(2.5,5]:0
+(5,7.5]:0
+(7.5,10]:0
+(10,+Infinity]:0
+(2026-02-19T00:13:15.4869160Z, 2026-02-19T00:13:16.2147890Z] http.request.method: POST http.response.status_code: 204 http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/join-requests/{joinRequestId:guid}/approve network.protocol.version: 1.1 url.scheme: http
+Value: Sum: 0.0084972 Count: 2 Min: 0.000829 Max: 0.0076682 
+(-Infinity,0.005]:1
+(0.005,0.01]:1
+(0.01,0.025]:0
+(0.025,0.05]:0
+(0.05,0.075]:0
+(0.075,0.1]:0
+(0.1,0.25]:0
+(0.25,0.5]:0
+(0.5,0.75]:0
+(0.75,1]:0
+(1,2.5]:0
+(2.5,5]:0
+(5,7.5]:0
+(7.5,10]:0
+(10,+Infinity]:0
+(2026-02-19T00:13:15.4869160Z, 2026-02-19T00:13:16.2147890Z] http.request.method: POST http.response.status_code: 204 http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/join-requests/{joinRequestId:guid}/deny network.protocol.version: 1.1 url.scheme: http
+Value: Sum: 0.0032944999999999997 Count: 3 Min: 0.0005378 Max: 0.0017014 
+(-Infinity,0.005]:3
+(0.005,0.01]:0
+(0.01,0.025]:0
+(0.025,0.05]:0
+(0.05,0.075]:0
+(0.075,0.1]:0
+(0.1,0.25]:0
+(0.25,0.5]:0
+(0.5,0.75]:0
+(0.75,1]:0
+(1,2.5]:0
+(2.5,5]:0
+(5,7.5]:0
+(7.5,10]:0
+(10,+Infinity]:0
+(2026-02-19T00:13:15.4869160Z, 2026-02-19T00:13:16.2147890Z] http.request.method: POST http.response.status_code: 404 http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/join-requests/{joinRequestId:guid}/approve network.protocol.version: 1.1 url.scheme: http
+Value: Sum: 0.002311 Count: 1 Min: 0.002311 Max: 0.002311 
+(-Infinity,0.005]:1
+(0.005,0.01]:0
+(0.01,0.025]:0
+(0.025,0.05]:0
+(0.05,0.075]:0
+(0.075,0.1]:0
+(0.1,0.25]:0
+(0.25,0.5]:0
+(0.5,0.75]:0
+(0.75,1]:0
+(1,2.5]:0
+(2.5,5]:0
+(5,7.5]:0
+(7.5,10]:0
+(10,+Infinity]:0
+(2026-02-19T00:13:15.4869160Z, 2026-02-19T00:13:16.2147890Z] http.request.method: POST http.response.status_code: 400 http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/join-requests/{joinRequestId:guid}/deny network.protocol.version: 1.1 url.scheme: http
+Value: Sum: 0.0007125 Count: 1 Min: 0.0007125 Max: 0.0007125 
+(-Infinity,0.005]:1
+(0.005,0.01]:0
+(0.01,0.025]:0
+(0.025,0.05]:0
+(0.05,0.075]:0
+(0.075,0.1]:0
+(0.1,0.25]:0
+(0.25,0.5]:0
+(0.5,0.75]:0
+(0.75,1]:0
+(1,2.5]:0
+(2.5,5]:0
+(5,7.5]:0
+(7.5,10]:0
+(10,+Infinity]:0
+(2026-02-19T00:13:15.4869160Z, 2026-02-19T00:13:16.2147890Z] http.request.method: POST http.response.status_code: 400 http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/join-requests/{joinRequestId:guid}/approve network.protocol.version: 1.1 url.scheme: http
+Value: Sum: 0.0006316 Count: 1 Min: 0.0006316 Max: 0.0006316 
+(-Infinity,0.005]:1
+(0.005,0.01]:0
+(0.01,0.025]:0
+(0.025,0.05]:0
+(0.05,0.075]:0
+(0.075,0.1]:0
+(0.1,0.25]:0
+(0.25,0.5]:0
+(0.5,0.75]:0
+(0.75,1]:0
+(1,2.5]:0
+(2.5,5]:0
+(5,7.5]:0
+(7.5,10]:0
+(10,+Infinity]:0
+Metric Name: aspnetcore.routing.match_attempts, Description: Number of requests that were attempted to be matched to an endpoint., Unit: {match_attempt}, Metric Type: LongSum
+Instrumentation scope (Meter):
+	Name: Microsoft.AspNetCore.Routing
+(2026-02-19T00:13:15.7595810Z, 2026-02-19T00:13:16.2147930Z] aspnetcore.routing.is_fallback: false aspnetcore.routing.match_status: success http.route: /api/v{version:apiVersion}/leagues/
+Value: 5
+(2026-02-19T00:13:15.7595810Z, 2026-02-19T00:13:16.2147930Z] aspnetcore.routing.is_fallback: false aspnetcore.routing.match_status: success http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/invites
+Value: 5
+(2026-02-19T00:13:15.7595810Z, 2026-02-19T00:13:16.2147930Z] aspnetcore.routing.is_fallback: false aspnetcore.routing.match_status: success http.route: /api/v{version:apiVersion}/leagues/join
+Value: 7
+(2026-02-19T00:13:15.7595810Z, 2026-02-19T00:13:16.2147930Z] aspnetcore.routing.is_fallback: false aspnetcore.routing.match_status: success http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/join-requests/pending
+Value: 2
+(2026-02-19T00:13:15.7595810Z, 2026-02-19T00:13:16.2147930Z] aspnetcore.routing.is_fallback: false aspnetcore.routing.match_status: success http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/join-requests/{joinRequestId:guid}/approve
+Value: 5
+(2026-02-19T00:13:15.7595810Z, 2026-02-19T00:13:16.2147930Z] aspnetcore.routing.is_fallback: false aspnetcore.routing.match_status: success http.route: /api/v{version:apiVersion}/leagues/{leagueId:guid}/join-requests/{joinRequestId:guid}/deny
+Value: 5
+(2026-02-19T00:13:15.7595810Z, 2026-02-19T00:13:16.2147930Z] aspnetcore.routing.is_fallback: false aspnetcore.routing.match_status: success http.route: /api/v{version:apiVersion}/leagues/join-preview
+Value: 1
+(2026-02-19T00:13:15.7595810Z, 2026-02-19T00:13:16.2147930Z] aspnetcore.routing.is_fallback: false aspnetcore.routing.match_status: success http.route: /api/v{version:apiVersion}/leagues/join-by-invite
+Value: 1
+Metric Name: aspnetcore.authentication.authenticate.duration, Description: The authentication duration for a request., Unit: s, Metric Type: Histogram
+Instrumentation scope (Meter):
+	Name: Microsoft.AspNetCore.Authentication
+(2026-02-19T00:13:16.0220280Z, 2026-02-19T00:13:16.2147940Z] aspnetcore.authentication.result: success aspnetcore.authentication.scheme: TestAuth
+Value: Sum: 0.0007012000000000001 Count: 31 Min: 7.9E-06 Max: 0.0002004 
+(-Infinity,0.005]:31
+(0.005,0.01]:0
+(0.01,0.025]:0
+(0.025,0.05]:0
+(0.05,0.075]:0
+(0.075,0.1]:0
+(0.1,0.25]:0
+(0.25,0.5]:0
+(0.5,0.75]:0
+(0.75,1]:0
+(1,2.5]:0
+(2.5,5]:0
+(5,7.5]:0
+(7.5,10]:0
+(10,+Infinity]:0
+Metric Name: aspnetcore.authentication.forbids, Description: The total number of times an authenticated user attempts to access a resource they are not permitted to access., Unit: {forbid}, Metric Type: LongSum
+Instrumentation scope (Meter):
+	Name: Microsoft.AspNetCore.Authentication
+(2026-02-19T00:13:16.0220660Z, 2026-02-19T00:13:16.2147990Z]  
+Value: 3
+Metric Name: aspnetcore.authorization.attempts, Description: The total number of authorization attempts., Unit: {attempt}, Metric Type: LongSum
+Instrumentation scope (Meter):
+	Name: Microsoft.AspNetCore.Authorization
+(2026-02-19T00:13:16.0223640Z, 2026-02-19T00:13:16.2148010Z] aspnetcore.authorization.result: success aspnetcore.user.is_authenticated: true
+Value: 31
+[xUnit.net 00:00:03.54]   Finished:    CardGames.IntegrationTests
+</StdOut>
+    </Output>
+  </ResultSummary>
+</TestRun>
