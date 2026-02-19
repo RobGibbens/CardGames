@@ -11,7 +11,7 @@ public static class LeagueGovernanceRules
 
 	public static IQueryable<LeagueMemberCurrent> GovernanceCapableMembers(this IQueryable<LeagueMemberCurrent> members)
 	{
-		return members.Where(x => IsGovernanceCapable(x.Role));
+		return members.Where(x => x.Role == LeagueRole.Owner || x.Role == LeagueRole.Manager || x.Role == LeagueRole.Admin);
 	}
 
 	public static bool HasAtLeastOneManager(this IEnumerable<LeagueRole> roles)
