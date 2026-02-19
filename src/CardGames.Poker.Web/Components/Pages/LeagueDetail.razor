@@ -7,6 +7,7 @@
 @using CardGames.Poker.Web.Components.Shared
 @using Microsoft.AspNetCore.Authorization
 @using System.ComponentModel
+@using System.Text.Json
 
 @inject ILeaguesApi LeaguesApi
 @inject ILogger<LeagueDetail> Logger
@@ -65,7 +66,7 @@
 						<div class="text-muted">@_leagueDetail.Description</div>
 					}
 
-					<h3 class="h6 mb-0 league-members-title">Members</h3>
+					<h3 id="league-members" class="h6 mb-0 league-members-title">Members</h3>
 					@if (_members.Count == 0)
 					{
 						<p class="mb-0 text-muted">No members found.</p>
@@ -122,6 +123,80 @@
 				}
 			</div>
 		</section>
+
+		@if (CanManageLeague)
+		{
+			<section class="cashier-panel">
+				<div class="cashier-panel-body d-flex flex-column gap-3">
+					<h2 class="cashier-section-title">Admin Operations Console</h2>
+
+					<div class="d-flex flex-column gap-2">
+						<h3 class="h6 mb-0">Join Request Queue</h3>
+						@if (_isLoadingJoinRequests)
+						{
+							<p class="mb-0 text-muted">Loading pending requests...</p>
+						}
+						else if (_pendingJoinRequests.Count == 0)
+						{
+							<p class="mb-0 text-muted">No pending join requests.</p>
+						}
+						else
+						{
+							<ul class="list-group">
+								@foreach (var joinRequest in _pendingJoinRequests)
+								{
+									<li class="list-group-item d-flex flex-column gap-2">
+										<div class="d-flex flex-wrap justify-content-between gap-2">
+											<div>
+												<div class="fw-semibold">@joinRequest.RequesterDisplayName</div>
+												<div class="small text-muted">User: @joinRequest.RequesterUserId • Requested: @joinRequest.CreatedAtUtc.ToLocalTime().ToString("g") • Expires: @joinRequest.ExpiresAtUtc.ToLocalTime().ToString("g")</div>
+											</div>
+											<div class="d-flex gap-2">
+												<button class="btn btn-sm btn-outline-success league-action-btn" @onclick="() => ApproveJoinRequestAsync(joinRequest.JoinRequestId)" disabled="@(_isSubmittingJoinRequest && _actingJoinRequestId == joinRequest.JoinRequestId)">Approve</button>
+												<button class="btn btn-sm btn-outline-danger league-action-btn" @onclick="() => DenyJoinRequestAsync(joinRequest.JoinRequestId)" disabled="@(_isSubmittingJoinRequest && _actingJoinRequestId == joinRequest.JoinRequestId)">Deny</button>
+											</div>
+										</div>
+										<input
+											class="form-control form-control-sm"
+											placeholder="Reason (optional)"
+											value="@GetModerationReason(joinRequest.JoinRequestId)"
+											@oninput="e => SetModerationReason(joinRequest.JoinRequestId, e.Value?.ToString())" />
+									</li>
+								}
+							</ul>
+						}
+					</div>
+
+					<div class="d-flex flex-column gap-2">
+						<h3 class="h6 mb-0">Role Management</h3>
+						<div class="small text-muted">Promote, demote, transfer ownership, and remove members from the overview member list.</div>
+						<div class="small text-muted">Active members: @_members.Count(x => x.IsActive) • Managers: @_members.Count(x => x.IsActive && x.Role == LeagueRole.Manager) • Admins: @_members.Count(x => x.IsActive && x.Role == LeagueRole.Admin) • Members: @_members.Count(x => x.IsActive && x.Role == LeagueRole.Member)</div>
+						<div>
+							<a href="#league-members" class="btn btn-sm btn-outline-secondary league-action-btn">Go to Member Controls</a>
+						</div>
+					</div>
+
+					<div class="d-flex flex-column gap-2">
+						<h3 class="h6 mb-0">Governance Audit</h3>
+						@if (GovernanceAuditEntries.Count == 0)
+						{
+							<p class="mb-0 text-muted">No governance actions recorded yet.</p>
+						}
+						else
+						{
+							<ul class="list-group">
+								@foreach (var auditItem in GovernanceAuditEntries)
+								{
+									<li class="list-group-item small">
+										@GetMembershipHistoryEventTypeDescription(auditItem.EventType) • User: @(auditItem.UserDisplayName ?? auditItem.UserId) • Actor: @(auditItem.ActorDisplayName ?? auditItem.ActorUserId) • @auditItem.OccurredAtUtc.ToLocalTime().ToString("g")
+									</li>
+								}
+							</ul>
+						}
+					</div>
+				</div>
+			</section>
+		}
 
 		<section class="cashier-panel">
 			<div class="cashier-panel-body d-flex flex-column gap-3">
@@ -535,6 +610,7 @@
 	private List<LeagueMemberDto> _members = [];
 	private List<LeagueMembershipHistoryItemDto> _membershipHistory = [];
 	private List<LeagueInviteSummaryDto> _invites = [];
+	private List<LeagueJoinRequestQueueItemDto> _pendingJoinRequests = [];
 
 	private DateTime _inviteExpiryDate = DateTime.UtcNow.Date.AddDays(7);
 	private bool _isSubmittingInvite;
@@ -544,6 +620,10 @@
 	private bool _isSubmittingTransferOwnership;
 	private bool _isSubmittingRemove;
 	private string? _actingMemberUserId;
+	private bool _isLoadingJoinRequests;
+	private bool _isSubmittingJoinRequest;
+	private Guid? _actingJoinRequestId;
+	private readonly Dictionary<Guid, string> _joinRequestReasons = [];
 	private string? _createdInviteUrl;
 	private bool _isInviteUrlCopied;
 	private int _inviteCopyFeedbackVersion;
@@ -608,6 +688,14 @@
 
 	private bool IsManager => _leagueDetail?.MyRole == LeagueRole.Manager;
 	private bool CanManageLeague => _leagueDetail?.MyRole == LeagueRole.Admin || _leagueDetail?.MyRole == LeagueRole.Manager;
+	private List<LeagueMembershipHistoryItemDto> GovernanceAuditEntries => _membershipHistory
+		.Where(x => x.EventType is LeagueMembershipHistoryEventType.MemberPromotedToAdmin
+			or LeagueMembershipHistoryEventType.MemberDemotedFromAdmin
+			or LeagueMembershipHistoryEventType.LeagueOwnershipTransferred
+			or LeagueMembershipHistoryEventType.MemberLeft)
+		.OrderByDescending(x => x.OccurredAtUtc)
+		.Take(20)
+		.ToList();
 
 	protected override async Task OnParametersSetAsync()
 	{
@@ -629,6 +717,7 @@
 			await LoadStandingsAsync();
 			await LoadSeasonsAsync();
 			await LoadOneOffEventsAsync();
+			await LoadPendingJoinRequestsAsync();
 
 			if (_selectedSeasonId.HasValue)
 			{
@@ -669,6 +758,35 @@
 	{
 		var response = await LeaguesApi.GetMembershipHistoryAsync(LeagueId);
 		_membershipHistory = response.IsSuccessStatusCode && response.Content is not null ? response.Content.ToList() : [];
+	}
+
+	private async Task LoadPendingJoinRequestsAsync()
+	{
+		if (!CanManageLeague)
+		{
+			_pendingJoinRequests = [];
+			_joinRequestReasons.Clear();
+			return;
+		}
+
+		_isLoadingJoinRequests = true;
+		try
+		{
+			var response = await LeaguesApi.GetPendingJoinRequestsAsync(LeagueId);
+			_pendingJoinRequests = response.IsSuccessStatusCode && response.Content is not null
+				? response.Content.OrderBy(x => x.CreatedAtUtc).ToList()
+				: [];
+
+			var validIds = _pendingJoinRequests.Select(x => x.JoinRequestId).ToHashSet();
+			foreach (var staleId in _joinRequestReasons.Keys.Where(x => !validIds.Contains(x)).ToList())
+			{
+				_joinRequestReasons.Remove(staleId);
+			}
+		}
+		finally
+		{
+			_isLoadingJoinRequests = false;
+		}
 	}
 
 	private async Task LoadSeasonsAsync()
@@ -844,6 +962,113 @@
 	private bool IsActingOnMember(string memberUserId)
 	{
 		return string.Equals(_actingMemberUserId, memberUserId, StringComparison.Ordinal);
+	}
+
+	private string GetModerationReason(Guid joinRequestId)
+	{
+		return _joinRequestReasons.TryGetValue(joinRequestId, out var reason)
+			? reason
+			: string.Empty;
+	}
+
+	private void SetModerationReason(Guid joinRequestId, string? reason)
+	{
+		_joinRequestReasons[joinRequestId] = reason?.Trim() ?? string.Empty;
+	}
+
+	private async Task ApproveJoinRequestAsync(Guid joinRequestId)
+	{
+		await ModerateJoinRequestAsync(
+			joinRequestId,
+			(joinRequestIdValue, request) => LeaguesApi.ApproveJoinRequestAsync(LeagueId, joinRequestIdValue, request),
+			"Join request approved.",
+			"Failed to approve join request.");
+	}
+
+	private async Task DenyJoinRequestAsync(Guid joinRequestId)
+	{
+		await ModerateJoinRequestAsync(
+			joinRequestId,
+			(joinRequestIdValue, request) => LeaguesApi.DenyJoinRequestAsync(LeagueId, joinRequestIdValue, request),
+			"Join request denied.",
+			"Failed to deny join request.");
+	}
+
+	private async Task ModerateJoinRequestAsync(
+		Guid joinRequestId,
+		Func<Guid, ModerateLeagueJoinRequestRequest, Task<Refit.IApiResponse>> moderationAction,
+		string successMessage,
+		string fallbackErrorMessage)
+	{
+		_actingJoinRequestId = joinRequestId;
+		_isSubmittingJoinRequest = true;
+
+		try
+		{
+			var response = await moderationAction(joinRequestId, new ModerateLeagueJoinRequestRequest
+			{
+				Reason = string.IsNullOrWhiteSpace(GetModerationReason(joinRequestId))
+					? null
+					: GetModerationReason(joinRequestId)
+			});
+
+			if (response.IsSuccessStatusCode)
+			{
+				_joinRequestReasons.Remove(joinRequestId);
+				_message = successMessage;
+				_isError = false;
+				await LoadPendingJoinRequestsAsync();
+				await LoadMembersAsync();
+				await LoadMembershipHistoryAsync();
+				await LoadDetailAsync();
+				return;
+			}
+
+			_message = TryExtractApiErrorMessage(response) ?? fallbackErrorMessage;
+			_isError = true;
+		}
+		catch (Exception ex)
+		{
+			Logger.LogError(ex, "Failed to moderate join request {JoinRequestId} for league {LeagueId}", joinRequestId, LeagueId);
+			_message = fallbackErrorMessage;
+			_isError = true;
+		}
+		finally
+		{
+			_isSubmittingJoinRequest = false;
+			_actingJoinRequestId = null;
+		}
+	}
+
+	private static string? TryExtractApiErrorMessage(Refit.IApiResponse response)
+	{
+		var content = response.Error?.Content;
+		if (string.IsNullOrWhiteSpace(content))
+		{
+			return response.Error?.Message;
+		}
+
+		try
+		{
+			using var document = JsonDocument.Parse(content);
+			if (document.RootElement.ValueKind == JsonValueKind.Object)
+			{
+				if (document.RootElement.TryGetProperty("message", out var messageProperty))
+				{
+					return messageProperty.GetString();
+				}
+
+				if (document.RootElement.TryGetProperty("Message", out var messagePascalCaseProperty))
+				{
+					return messagePascalCaseProperty.GetString();
+				}
+			}
+		}
+		catch (JsonException)
+		{
+		}
+
+		return content;
 	}
 
 	private async Task PromoteMemberAsync(string memberUserId)
