@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "featureFlag": "Features:Leagues:Enabled",
+  "slo": {
+    "evaluationWindow": "24h",
+    "endpoints": [
+      {
+        "name": "join",
+        "p95LatencyMs": 750,
+        "errorRatePercent": 1.0
+      },
+      {
+        "name": "request",
+        "p95LatencyMs": 750,
+        "errorRatePercent": 1.0
+      },
+      {
+        "name": "approve",
+        "p95LatencyMs": 1000,
+        "errorRatePercent": 1.0
+      }
+    ]
+  },
+  "integrityMonitors": [
+    "duplicate_active_membership",
+    "orphaned_role_state",
+    "unauthorized_mutation_success",
+    "join_failure_reason_spike"
+  ],
+  "rolloutStages": [
+    {
+      "name": "internal",
+      "maxCohortPercent": 5,
+      "minStableHours": 24,
+      "requiredCriteria": [
+        "p0_ci_gate_green",
+        "slo_within_budget",
+        "integrity_monitors_green"
+      ]
+    },
+    {
+      "name": "beta",
+      "maxCohortPercent": 25,
+      "minStableHours": 24,
+      "requiredCriteria": [
+        "p0_ci_gate_green",
+        "slo_within_budget",
+        "integrity_monitors_green"
+      ]
+    },
+    {
+      "name": "ga",
+      "maxCohortPercent": 100,
+      "minStableHours": 48,
+      "requiredCriteria": [
+        "p0_ci_gate_green",
+        "slo_within_budget",
+        "integrity_monitors_green"
+      ]
+    }
+  ]
+}
