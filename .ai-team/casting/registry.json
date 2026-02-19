@@ -34,6 +34,20 @@
       "created_at": "2026-02-17T00:00:00Z",
       "legacy_named": false,
       "status": "active"
+    },
+    "frank": {
+      "persistent_name": "Frank",
+      "universe": "Ocean's Eleven",
+      "created_at": "2026-02-19T02:53:17Z",
+      "legacy_named": false,
+      "status": "active"
+    },
+    "tess": {
+      "persistent_name": "Tess",
+      "universe": "Ocean's Eleven",
+      "created_at": "2026-02-19T02:56:32Z",
+      "legacy_named": false,
+      "status": "active"
     }
   }
 }

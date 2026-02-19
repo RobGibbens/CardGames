@@ -20,5 +20,7 @@
 | Linus | Frontend Dev | .ai-team/agents/linus/charter.md | ✅ Active |
 | Basher | Tester | .ai-team/agents/basher/charter.md | ✅ Active |
 | Livingston | DevOps | .ai-team/agents/livingston/charter.md | ✅ Active |
+| Frank | Security Specialist | .ai-team/agents/frank/charter.md | ✅ Active |
+| Tess | Graphic Designer | .ai-team/agents/tess/charter.md | ✅ Active |
 | Scribe | Session Logger | .ai-team/agents/scribe/charter.md | 📋 Active |
 | Ralph | Work Monitor | .ai-team/agents/ralph/charter.md | 🔄 Monitor |

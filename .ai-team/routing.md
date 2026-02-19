@@ -7,5 +7,7 @@
 | Blazor UX, web client flow | Linus | Components, pages, client-side integration |
 | Tests, quality, verification | Basher | Unit/integration tests, edge-case coverage |
 | Build/run pipelines, host/infrastructure concerns | Livingston | Solution build issues, host wiring, environment config |
+| Security hardening, auth posture, dependency risk | Frank | Threat review, auth/security guardrails, package vulnerability checks |
+| Visual design, branding, UX polish | Tess | Mockups, visual consistency, design feedback, asset direction |
 | Team memory and decision consolidation | Scribe | Session logs, decision merge, history maintenance |
 | Backlog/work monitoring | Ralph | Queue checks, workflow cadence, open-work tracking |

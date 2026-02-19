@@ -1,0 +1,14 @@
+{
+  "marketplaces": [
+    {
+      "name": "anthropics-skills",
+      "source": "anthropics/skills",
+      "enabled": true
+    },
+    {
+      "name": "github-security-hardening",
+      "source": "github/security-hardening",
+      "enabled": true
+    }
+  ]
+}
