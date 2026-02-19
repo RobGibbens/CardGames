@@ -6,12 +6,17 @@ public static class LeagueGovernanceRules
 {
 	public static IQueryable<LeagueMemberCurrent> GovernanceCapableMembers(this IQueryable<LeagueMemberCurrent> members)
 	{
-		return members.Where(x => x.Role == LeagueRole.Manager || x.Role == LeagueRole.Admin);
+		return members.Where(x => IsGovernanceCapable(x.Role));
 	}
 
 	public static bool HasAtLeastOneManager(this IEnumerable<LeagueRole> roles)
 	{
-		return roles.Any(x => x == LeagueRole.Manager);
+		return roles.Any(IsManagerAuthority);
+	}
+
+	public static bool HasAtLeastOneAdmin(this IEnumerable<LeagueRole> roles)
+	{
+		return roles.Any(x => x == LeagueRole.Admin);
 	}
 
 	public static bool HasAtLeastOneGovernanceCapableMember(this IEnumerable<LeagueRole> roles)
@@ -21,6 +26,11 @@ public static class LeagueGovernanceRules
 
 	public static bool IsGovernanceCapable(LeagueRole role)
 	{
-		return role == LeagueRole.Manager || role == LeagueRole.Admin;
+		return role == LeagueRole.Admin || IsManagerAuthority(role);
+	}
+
+	public static bool IsManagerAuthority(LeagueRole role)
+	{
+		return role == LeagueRole.Manager || role == LeagueRole.Owner;
 	}
 }

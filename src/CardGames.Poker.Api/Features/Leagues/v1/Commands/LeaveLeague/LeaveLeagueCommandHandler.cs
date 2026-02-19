@@ -40,12 +40,24 @@ public sealed class LeaveLeagueCommandHandler(
 			.Select(x => new { x.UserId, x.Role })
 			.ToListAsync(cancellationToken);
 
-		if (membership.Role == Data.Entities.LeagueRole.Manager)
+		if (LeagueGovernanceRules.IsManagerAuthority(membership.Role))
 		{
-			var hasAnotherManager = activeMembers.Any(x => x.UserId != currentUserService.UserId && x.Role == Data.Entities.LeagueRole.Manager);
+			var hasAnotherManager = activeMembers.Any(x =>
+				x.UserId != currentUserService.UserId &&
+				LeagueGovernanceRules.IsManagerAuthority(x.Role));
+
 			if (!hasAnotherManager)
 			{
 				return new LeaveLeagueError(LeaveLeagueErrorCode.Conflict, "League must retain at least one manager.");
+			}
+		}
+
+		if (membership.Role == Data.Entities.LeagueRole.Admin)
+		{
+			var hasAnotherAdmin = activeMembers.Any(x => x.UserId != currentUserService.UserId && x.Role == Data.Entities.LeagueRole.Admin);
+			if (!hasAnotherAdmin)
+			{
+				return new LeaveLeagueError(LeaveLeagueErrorCode.Conflict, "League must retain at least one admin.");
 			}
 		}
 

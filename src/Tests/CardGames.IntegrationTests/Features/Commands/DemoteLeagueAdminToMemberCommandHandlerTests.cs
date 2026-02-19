@@ -24,15 +24,25 @@ public class DemoteLeagueAdminToMemberCommandHandlerTests : IntegrationTestBase
 
 		var leagueId = createLeague.AsT0.LeagueId;
 
-		DbContext.LeagueMembersCurrent.Add(new LeagueMemberCurrent
-		{
-			LeagueId = leagueId,
-			UserId = "league-admin",
-			Role = LeagueRole.Admin,
-			IsActive = true,
-			JoinedAtUtc = DateTimeOffset.UtcNow,
-			UpdatedAtUtc = DateTimeOffset.UtcNow
-		});
+		DbContext.LeagueMembersCurrent.AddRange(
+			new LeagueMemberCurrent
+			{
+				LeagueId = leagueId,
+				UserId = "league-admin",
+				Role = LeagueRole.Admin,
+				IsActive = true,
+				JoinedAtUtc = DateTimeOffset.UtcNow,
+				UpdatedAtUtc = DateTimeOffset.UtcNow
+			},
+			new LeagueMemberCurrent
+			{
+				LeagueId = leagueId,
+				UserId = "league-admin-backup",
+				Role = LeagueRole.Admin,
+				IsActive = true,
+				JoinedAtUtc = DateTimeOffset.UtcNow,
+				UpdatedAtUtc = DateTimeOffset.UtcNow
+			});
 
 		await DbContext.SaveChangesAsync();
 

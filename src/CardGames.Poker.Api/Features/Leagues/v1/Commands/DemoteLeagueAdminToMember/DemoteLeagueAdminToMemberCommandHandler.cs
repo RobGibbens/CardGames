@@ -50,6 +50,11 @@ public sealed class DemoteLeagueAdminToMemberCommandHandler(
 			.Select(x => x.Role)
 			.ToListAsync(cancellationToken);
 
+		if (!activeRolesExcludingTarget.HasAtLeastOneAdmin())
+		{
+			return new DemoteLeagueAdminToMemberError(DemoteLeagueAdminToMemberErrorCode.Conflict, "League must retain at least one admin.");
+		}
+
 		if (!activeRolesExcludingTarget.HasAtLeastOneGovernanceCapableMember())
 		{
 			return new DemoteLeagueAdminToMemberError(DemoteLeagueAdminToMemberErrorCode.Conflict, "League must retain at least one manager or admin.");

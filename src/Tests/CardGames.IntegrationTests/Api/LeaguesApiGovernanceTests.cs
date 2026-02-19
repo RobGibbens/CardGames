@@ -43,8 +43,8 @@ public class LeaguesApiGovernanceTests(ApiWebApplicationFactory factory) : ApiIn
 
 		var membersResponse = await Client.GetFromJsonAsync<IReadOnlyList<LeagueMemberDto>>($"/api/v1/leagues/{leagueId}/members", JsonOptions);
 		membersResponse.Should().NotBeNull();
-		membersResponse!.Single(x => x.UserId == "league-owner").Role.Should().Be(ContractsLeagueRole.Admin);
-		membersResponse.Single(x => x.UserId == "league-target-member").Role.Should().Be(ContractsLeagueRole.Manager);
+		membersResponse!.Single(x => x.UserId == "league-owner").Role.Should().Be(ContractsLeagueRole.Manager);
+		membersResponse.Single(x => x.UserId == "league-target-member").Role.Should().Be(ContractsLeagueRole.Owner);
 
 		var historyResponse = await Client.GetFromJsonAsync<IReadOnlyList<LeagueMembershipHistoryItemDto>>($"/api/v1/leagues/{leagueId}/members/history", JsonOptions);
 		historyResponse.Should().NotBeNull();

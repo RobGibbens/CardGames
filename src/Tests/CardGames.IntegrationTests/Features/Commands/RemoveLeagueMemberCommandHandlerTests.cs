@@ -93,6 +93,6 @@ public class RemoveLeagueMemberCommandHandlerTests : IntegrationTestBase
 			.SingleAsync(x => x.LeagueId == leagueId && x.UserId == "league-manager");
 
 		managerMembership.IsActive.Should().BeTrue();
-		managerMembership.Role.Should().Be(LeagueRole.Manager);
+		managerMembership.Role.Should().Be(LeagueRole.Owner);
 	}
 }

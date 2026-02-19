@@ -42,7 +42,7 @@ public sealed class CreateLeagueCommandHandler(
 		{
 			LeagueId = league.Id,
 			UserId = currentUserService.UserId,
-			Role = CardGames.Poker.Api.Data.Entities.LeagueRole.Manager,
+			Role = CardGames.Poker.Api.Data.Entities.LeagueRole.Owner,
 			IsActive = true,
 			JoinedAtUtc = now,
 			LeftAtUtc = null,
