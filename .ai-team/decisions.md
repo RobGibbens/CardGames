@@ -134,3 +134,15 @@
 **Requested by:** Rob Gibbens
 **What:** Added API integration coverage for invite-code preview/join-request and moderation approve/deny queue behavior, added event-launch conflict coverage to protect linkage stability, introduced a skipped standings-ingestion scaffold test for future scope visibility, and enforced Leagues P0 checks in `squad-ci` with .NET integration test execution.
 **Why:** Centers release confidence on the highest-risk external behaviors (authz, moderation semantics, idempotency/conflicts) and makes required gates explicit in CI.
+
+### 2026-02-18: Issue #216 Governance roles for Leagues
+**By:** Rusty (Lead)
+**Requested by:** Rob Gibbens
+**What:** Added three minimal MediatR/endpoint flows under `Leagues/v1` for ownership transfer (manager-only transfer to another active member), admin demotion (governance-capable actor can demote active admin to member), and member removal (governance-capable actor can remove active member). Enforced governance invariants: leagues must retain at least one manager and at least one governance-capable member (manager/admin). Extended membership event model with new event history values for admin demotion and ownership transfer; reused `MemberLeft` for member removal.
+**Why:** Provides required governance controls while preventing lockout or governance loss states in MVP.
+**Note:** Changes scoped to API Leagues v1 feature, Contracts, and integration tests with no unrelated refactors.
+
+### 2026-02-19: Aspire plugin installed to squad skills
+**By:** Livingston (DevOps)
+**What:** Sourced the Aspire skill from the `github/awesome-copilot` marketplace and installed it to `.ai-team/skills/aspire/SKILL.md`. The skill covers AppHost orchestration, service discovery, polyglot workload support (C#/.NET, Python, Go, Node.js, Java, etc.), integrations catalog, MCP server setup, dashboard, and deployment patterns for Docker, Kubernetes, and Azure targets.
+**Why:** The CardGames repository uses Aspire AppHost for infrastructure composition and service orchestration. Having the plugin available to squad agents ensures DevOps, backend, and infrastructure work can efficiently reference Aspire patterns, troubleshoot orchestration issues, and leverage the full Aspire ecosystem including MCP-driven documentation lookups.

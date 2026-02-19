@@ -4,6 +4,7 @@
 |--------|-------|--------------|
 | Architecture, cross-cutting decisions, reviewer gate | Rusty | Boundaries, major refactors, final technical direction |
 | API, domain orchestration, backend bugs | Danny | MediatR handlers, API endpoints, service wiring |
+| Security, authz, abuse prevention, threat hardening | Frank | Authorization boundaries, rate-limit policy, security review and hardening |
 | Blazor UX, web client flow | Linus | Components, pages, client-side integration |
 | Tests, quality, verification | Basher | Unit/integration tests, edge-case coverage |
 | Build/run pipelines, host/infrastructure concerns | Livingston | Solution build issues, host wiring, environment config |

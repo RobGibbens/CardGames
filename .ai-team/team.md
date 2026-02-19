@@ -17,6 +17,7 @@
 |------|------|---------|--------|
 | Rusty | Lead | .ai-team/agents/rusty/charter.md | ✅ Active |
 | Danny | Backend Dev | .ai-team/agents/danny/charter.md | ✅ Active |
+| Frank | Security Specialist | .ai-team/agents/frank/charter.md | ✅ Active |
 | Linus | Frontend Dev | .ai-team/agents/linus/charter.md | ✅ Active |
 | Basher | Tester | .ai-team/agents/basher/charter.md | ✅ Active |
 | Livingston | DevOps | .ai-team/agents/livingston/charter.md | ✅ Active |

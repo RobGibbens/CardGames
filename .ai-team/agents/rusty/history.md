@@ -14,3 +14,8 @@
 - Design-review decision set for Leagues (boundary, temporal membership, RBAC bootstrap/promotion, invite-link lifecycle, season + one-off event support) was merged into canonical `.ai-team/decisions.md` for implementation reference.
 - Implemented issue #216 governance P0 flows in `Leagues/v1` with minimal MediatR endpoints for ownership transfer, admin demotion, and member removal; enforced manager/governance-capable invariants in each operation and extended membership history auditing with demotion/ownership-transfer event types plus integration coverage for success + safety-conflict paths.
 - Session record updated for #224 quality-gate direction: Leagues release progression now depends on API integration P0 journey coverage and CI enforcement in `squad-ci`, so implementation changes should preserve deterministic moderation and conflict semantics.
+
+## Team Updates
+
+📌 Team update (2026-02-19): Issue #216 Governance roles for Leagues added three MediatR/endpoint flows (ownership transfer, admin demotion, member removal) with governance invariants enforced (leagues retain at least one manager and one governance-capable member) — decided by Rusty
+📌 Team update (2026-02-19): Aspire plugin installed to squad skills — enables squad agents to efficiently reference Aspire patterns, troubleshoot orchestration issues, and leverage the full ecosystem including MCP-driven documentation lookups — decided by Livingston
