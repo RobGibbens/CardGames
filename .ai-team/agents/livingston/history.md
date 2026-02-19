@@ -88,3 +88,40 @@
 - `jq` or PowerShell for version verification
 
 **Why:** The CardGames repository is a .NET multi-project solution with centralized package management. Providing squad agents with nuget-manager skill ensures consistent, safe package operations across the solution—enforcing CLI-first workflows, preventing direct file edits for add/remove operations, and maintaining project integrity through verification steps.
+
+## 2026-02-19: prd skill installed
+
+**Requested by:** Rob Gibbens  
+**Status:** ✅ Complete
+
+**Work:**
+- Sourced prd skill from `github/awesome-copilot` marketplace at `skills/prd/SKILL.md`
+- Installed to `.ai-team/skills/prd/SKILL.md` (no supporting files required)
+
+**Skill capabilities:**
+- Structured PRD generation with discovery-first interview phase
+- Concrete requirements using measurable criteria (not vague language)
+- Strict schema enforcement: Executive Summary → UX/Functionality → AI Systems → Technical Specs → Risks/Roadmap
+- Support for AI-powered feature requirements with evaluation strategies
+- User story and acceptance criteria templates
+
+**Why:** Squad agents equipped with PRD skill can autonomously generate high-quality product requirements documents, bridge business vision to technical execution, and produce specifications suitable for design reviews and implementation kickoff without back-and-forth on format or completeness standards.
+
+## 2026-02-19: Refactor Skill Installation
+
+**Requested by:** Rob Gibbens  
+**Status:** ✅ Complete
+
+**Work:**
+- Sourced refactor skill from `github/awesome-copilot` marketplace repository at `skills/refactor/SKILL.md`
+- Installed to `.ai-team/skills/refactor/SKILL.md` (no supporting files required)
+
+**Skill capabilities:**
+- Covers surgical code refactoring patterns: extract method, extract class, rename, parameter grouping
+- Identifies and fixes common code smells: long methods, duplicated code, large classes, long parameter lists, feature envy, primitive obsession, magic numbers, nested conditionals, dead code, inappropriate intimacy
+- Introduces design patterns: Strategy pattern, Chain of Responsibility
+- Provides comprehensive refactoring checklist covering code quality, structure, type safety, testing
+- Enforces refactoring principles: behavior preservation, small steps, version control discipline, test-driven approach, single change focus
+- Details 16 common refactoring operations with descriptions
+
+**Why:** The CardGames repository undergoes continuous evolution with new features (Leagues, Cashier) and code improvements. Squad agents equipped with refactor skill can autonomously identify code quality issues, apply safe refactoring patterns, and improve maintainability while preserving behavior—reducing friction in feature work and enabling incremental code health improvements without disrupting active development.

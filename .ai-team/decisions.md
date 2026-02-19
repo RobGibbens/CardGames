@@ -226,3 +226,93 @@ This reduces friction in feature work and improves confidence in Microsoft SDK u
 - Add/remove packages: `dotnet add [<PROJECT>] package <PACKAGE_NAME> [--version <VERSION>]`
 - Update versions with centralized or per-project verification
 - Compatibility validation via `dotnet restore` after changes
+
+### 2026-02-19: PRD Skill Installation
+**By:** Livingston (DevOps)
+**Requested by:** Rob Gibbens
+**What:** Installed `prd` skill from the `github/awesome-copilot` marketplace to `.ai-team/skills/prd/SKILL.md`. Skill provides structured Product Requirements Document generation with discovery-first workflow, concrete requirements enforcement, strict schema (Executive Summary → User Experience & Functionality → AI System Requirements → Technical Specifications → Risks & Roadmap), AI-powered feature support, and standardized user story templates.
+**Why:** The CardGames team frequently defines new features (Leagues, Cashier, future enhancements) and needs structured requirements for design reviews and technical execution. Squad agents equipped with PRD skill can produce complete, well-formed specifications autonomously while enforcing quality through concrete requirements and strict schema.
+**Capabilities:**
+- Phase 1: Discovery — Interrogate user on problem, success metrics, constraints
+- Phase 2: Analysis & Scoping — Map user flow, identify dependencies, define non-goals
+- Phase 3: Technical Drafting — Generate PRD using strict schema
+
+### 2026-02-19: Refactor Skill Installation
+**Date:** 2026-02-19  
+**By:** Livingston (DevOps)  
+**Requested by:** Rob Gibbens  
+**Status:** ✅ Complete
+
+**Summary**
+
+Installed the `refactor` skill from the `github/awesome-copilot` marketplace to `.ai-team/skills/refactor/SKILL.md`. The skill enables squad agents to perform surgical code refactoring with confidence—identifying code smells, extracting methods, improving type safety, and applying design patterns while preserving behavior.
+
+**Solution**
+
+**Source:** `github/awesome-copilot` marketplace  
+**File:** `.ai-team/skills/refactor/SKILL.md`  
+**Installation:** Minimal—single SKILL.md file, no build/runtime changes
+
+**Skill Capabilities**
+
+### Refactoring Patterns
+- Extract method/class/interface  
+- Inline method/class  
+- Rename method/variable  
+- Introduce parameter object  
+- Replace conditional with polymorphism  
+- Replace magic number with constant  
+- Guard clause refactoring  
+
+### Code Smells Identification & Fixes
+1. **Long Method/Function** — Break into focused functions
+2. **Duplicated Code** — Extract common logic
+3. **Large Class/Module** — Single responsibility principle
+4. **Long Parameter List** — Group into parameter object
+5. **Feature Envy** — Move logic to object that owns data
+6. **Primitive Obsession** — Use domain types
+7. **Magic Numbers/Strings** — Named constants
+8. **Nested Conditionals** — Guard clauses, early returns
+9. **Dead Code** — Remove unused functions/imports
+10. **Inappropriate Intimacy** — Ask don't tell principle
+
+### Design Patterns
+- **Strategy Pattern** — Encapsulate algorithms
+- **Chain of Responsibility** — Decouple validators
+
+### Process & Checklist
+- Safe refactoring workflow: Prepare → Identify → Refactor → Verify → Clean Up
+- Code quality checklist: function size, single responsibility, duplication, naming, magic values, dead code
+- Structure checklist: module boundaries, dependency flow, circular dependencies
+- Type safety checklist: public API types, no unwarranted `any`, explicit nullability
+- Testing checklist: coverage, edge cases, test pass status
+
+### Common Operations Reference
+Table of 16 refactoring operations with descriptions (Extract Method, Extract Class, Pull Up Method, Push Down Method, etc.)
+
+**Why This Matters**
+
+**CardGames Evolution:**
+- Active feature development (Leagues, Cashier) with continuous codebase changes
+- Aspire AppHost orchestration + multi-project .NET solution complexity
+- Quality gates for P0 test coverage and domain integrity (Leagues MVP)
+
+**Squad Benefits:**
+1. **Code Smell Detection** — Agents can identify problematic patterns autonomously
+2. **Gradual Improvement** — Safe refactoring during normal feature work without disruption
+3. **Behavioral Guarantee** — Strict adherence to "preserve behavior" principle reduces risk
+4. **Pattern Library** — Reference for design patterns (Strategy, Chain of Responsibility) applicable to domain
+5. **Unified Standard** — All squad members follow same refactoring principles and checklist
+
+**Impact**
+
+- **Scope:** Squad skill roster only; no build, runtime, or deployment changes
+- **Enablement:** Squad agents can now reference refactor skill in work prompts
+- **Availability:** Immediate once squad routing reloads
+- **No Prerequisites:** Works with existing .NET toolchain and test infrastructure
+
+**Next Steps**
+
+- Squad agents reference `refactor` skill when improving code structure
+- Monitor refactoring patterns in squad work to identify high-impact improvements
+- Consider extending skill if specialized refactoring needs emerge (e.g., async/await patterns in .NET)
