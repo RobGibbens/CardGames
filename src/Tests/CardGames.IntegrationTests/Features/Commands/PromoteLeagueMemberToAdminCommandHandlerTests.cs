@@ -11,11 +11,11 @@ namespace CardGames.IntegrationTests.Features.Commands;
 public class PromoteLeagueMemberToAdminCommandHandlerTests : IntegrationTestBase
 {
 	[Fact]
-	public async Task Handle_AdminPromotesActiveMemberToAdmin()
+	public async Task Handle_ManagerPromotesActiveMemberToAdmin()
 	{
 		var fakeCurrentUser = (FakeCurrentUserService)Scope.ServiceProvider.GetRequiredService<ICurrentUserService>();
 
-		fakeCurrentUser.UserId = "league-admin";
+		fakeCurrentUser.UserId = "league-manager";
 		fakeCurrentUser.IsAuthenticated = true;
 
 		var createLeague = await Mediator.Send(new CreateLeagueCommand(new CardGames.Poker.Api.Contracts.CreateLeagueRequest
@@ -38,7 +38,7 @@ public class PromoteLeagueMemberToAdminCommandHandlerTests : IntegrationTestBase
 
 		await DbContext.SaveChangesAsync();
 
-		fakeCurrentUser.UserId = "league-admin";
+		fakeCurrentUser.UserId = "league-manager";
 		var promoteResult = await Mediator.Send(new PromoteLeagueMemberToAdminCommand(leagueId, "league-member"));
 
 		promoteResult.IsT0.Should().BeTrue();
@@ -48,5 +48,49 @@ public class PromoteLeagueMemberToAdminCommandHandlerTests : IntegrationTestBase
 			.SingleAsync(x => x.LeagueId == leagueId && x.UserId == "league-member");
 
 		membership.Role.Should().Be(LeagueRole.Admin);
+	}
+
+	[Fact]
+	public async Task Handle_FailsWhenActorIsAdminNotManager()
+	{
+		var fakeCurrentUser = (FakeCurrentUserService)Scope.ServiceProvider.GetRequiredService<ICurrentUserService>();
+
+		fakeCurrentUser.UserId = "league-manager";
+		fakeCurrentUser.IsAuthenticated = true;
+
+		var createLeague = await Mediator.Send(new CreateLeagueCommand(new CardGames.Poker.Api.Contracts.CreateLeagueRequest
+		{
+			Name = "Manager Only Promotion League"
+		}));
+
+		var leagueId = createLeague.AsT0.LeagueId;
+
+		DbContext.LeagueMembersCurrent.AddRange(
+			new LeagueMemberCurrent
+			{
+				LeagueId = leagueId,
+				UserId = "league-admin",
+				Role = LeagueRole.Admin,
+				IsActive = true,
+				JoinedAtUtc = DateTimeOffset.UtcNow,
+				UpdatedAtUtc = DateTimeOffset.UtcNow
+			},
+			new LeagueMemberCurrent
+			{
+				LeagueId = leagueId,
+				UserId = "league-member",
+				Role = LeagueRole.Member,
+				IsActive = true,
+				JoinedAtUtc = DateTimeOffset.UtcNow,
+				UpdatedAtUtc = DateTimeOffset.UtcNow
+			});
+
+		await DbContext.SaveChangesAsync();
+
+		fakeCurrentUser.UserId = "league-admin";
+		var promoteResult = await Mediator.Send(new PromoteLeagueMemberToAdminCommand(leagueId, "league-member"));
+
+		promoteResult.IsT1.Should().BeTrue();
+		promoteResult.AsT1.Code.Should().Be(PromoteLeagueMemberToAdminErrorCode.Forbidden);
 	}
 }

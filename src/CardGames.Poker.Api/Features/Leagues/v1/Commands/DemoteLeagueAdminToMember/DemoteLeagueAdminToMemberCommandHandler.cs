@@ -13,8 +13,6 @@ public sealed class DemoteLeagueAdminToMemberCommandHandler(
 	ICurrentUserService currentUserService)
 	: IRequestHandler<DemoteLeagueAdminToMemberCommand, OneOf<Unit, DemoteLeagueAdminToMemberError>>
 {
-	private const int MemberDemotedFromAdminEventTypeValue = 4;
-
 	public async Task<OneOf<Unit, DemoteLeagueAdminToMemberError>> Handle(DemoteLeagueAdminToMemberCommand request, CancellationToken cancellationToken)
 	{
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
@@ -24,13 +22,16 @@ public sealed class DemoteLeagueAdminToMemberCommandHandler(
 
 		var actorCanManageLeague = await context.LeagueMembersCurrent
 			.AsNoTracking()
-			.Where(x => x.LeagueId == request.LeagueId && x.UserId == currentUserService.UserId && x.IsActive)
-			.GovernanceCapableMembers()
-			.AnyAsync(cancellationToken);
+			.AnyAsync(x =>
+				x.LeagueId == request.LeagueId &&
+				x.UserId == currentUserService.UserId &&
+				x.IsActive &&
+				x.Role == LeagueRole.Manager,
+				cancellationToken);
 
 		if (!actorCanManageLeague)
 		{
-			return new DemoteLeagueAdminToMemberError(DemoteLeagueAdminToMemberErrorCode.Forbidden, "Only league managers or admins can demote admins.");
+			return new DemoteLeagueAdminToMemberError(DemoteLeagueAdminToMemberErrorCode.Forbidden, "Only league managers can demote admins.");
 		}
 
 		var member = await context.LeagueMembersCurrent
@@ -67,7 +68,7 @@ public sealed class DemoteLeagueAdminToMemberCommandHandler(
 			LeagueId = request.LeagueId,
 			UserId = request.MemberUserId,
 			ActorUserId = currentUserService.UserId,
-			EventType = (LeagueMembershipEventType)MemberDemotedFromAdminEventTypeValue,
+			EventType = LeagueMembershipEventType.MemberDemotedFromAdmin,
 			OccurredAtUtc = now
 		});
 

@@ -57,6 +57,6 @@ public class TransferLeagueOwnershipCommandHandlerTests : IntegrationTestBase
 			.FirstAsync(x => x.LeagueId == leagueId && x.UserId == "target-member");
 
 		transferEvent.ActorUserId.Should().Be("league-manager");
-		transferEvent.EventType.Should().Be((LeagueMembershipEventType)5);
+		transferEvent.EventType.Should().Be(LeagueMembershipEventType.LeagueOwnershipTransferred);
 	}
 }

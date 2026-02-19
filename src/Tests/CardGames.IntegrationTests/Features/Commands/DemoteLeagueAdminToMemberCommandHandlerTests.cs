@@ -52,11 +52,54 @@ public class DemoteLeagueAdminToMemberCommandHandlerTests : IntegrationTestBase
 			.FirstAsync(x => x.LeagueId == leagueId && x.UserId == "league-admin");
 
 		demoteEvent.ActorUserId.Should().Be("league-manager");
-		demoteEvent.EventType.Should().Be((LeagueMembershipEventType)4);
+		demoteEvent.EventType.Should().Be(LeagueMembershipEventType.MemberDemotedFromAdmin);
 	}
 
 	[Fact]
-	public async Task Handle_FailsWhenDemotionWouldLeaveNoGovernanceCapableMember()
+	public async Task Handle_FailsWhenActorIsAdminNotManager()
+	{
+		var fakeCurrentUser = (FakeCurrentUserService)Scope.ServiceProvider.GetRequiredService<ICurrentUserService>();
+		fakeCurrentUser.UserId = "league-manager";
+		fakeCurrentUser.IsAuthenticated = true;
+
+		var createLeague = await Mediator.Send(new CreateLeagueCommand(new CardGames.Poker.Api.Contracts.CreateLeagueRequest
+		{
+			Name = "Demote Manager Only League"
+		}));
+
+		var leagueId = createLeague.AsT0.LeagueId;
+
+		DbContext.LeagueMembersCurrent.AddRange(
+			new LeagueMemberCurrent
+			{
+				LeagueId = leagueId,
+				UserId = "league-admin-actor",
+				Role = LeagueRole.Admin,
+				IsActive = true,
+				JoinedAtUtc = DateTimeOffset.UtcNow,
+				UpdatedAtUtc = DateTimeOffset.UtcNow
+			},
+			new LeagueMemberCurrent
+			{
+				LeagueId = leagueId,
+				UserId = "league-admin-target",
+				Role = LeagueRole.Admin,
+				IsActive = true,
+				JoinedAtUtc = DateTimeOffset.UtcNow,
+				UpdatedAtUtc = DateTimeOffset.UtcNow
+			});
+
+		await DbContext.SaveChangesAsync();
+
+		fakeCurrentUser.UserId = "league-admin-actor";
+		var demoteResult = await Mediator.Send(new DemoteLeagueAdminToMemberCommand(leagueId, "league-admin-target"));
+
+		demoteResult.IsT1.Should().BeTrue();
+		demoteResult.AsT1.Code.Should().Be(DemoteLeagueAdminToMemberErrorCode.Forbidden);
+	}
+
+	[Fact]
+	public async Task Handle_FailsWhenActorIsAdminNotManager_EvenIfSoleGovernanceMember()
 	{
 		var fakeCurrentUser = (FakeCurrentUserService)Scope.ServiceProvider.GetRequiredService<ICurrentUserService>();
 		fakeCurrentUser.UserId = "sole-admin";
@@ -87,7 +130,7 @@ public class DemoteLeagueAdminToMemberCommandHandlerTests : IntegrationTestBase
 		var demoteResult = await Mediator.Send(new DemoteLeagueAdminToMemberCommand(league.Id, "sole-admin"));
 
 		demoteResult.IsT1.Should().BeTrue();
-		demoteResult.AsT1.Code.Should().Be(DemoteLeagueAdminToMemberErrorCode.Conflict);
+		demoteResult.AsT1.Code.Should().Be(DemoteLeagueAdminToMemberErrorCode.Forbidden);
 
 		var membership = await DbContext.LeagueMembersCurrent
 			.AsNoTracking()
