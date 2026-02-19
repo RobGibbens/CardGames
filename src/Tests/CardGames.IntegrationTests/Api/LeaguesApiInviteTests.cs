@@ -141,6 +141,7 @@ public class LeaguesApiInviteTests(ApiWebApplicationFactory factory) : ApiIntegr
 	}
 
 	[Fact]
+	[Trait("QualityGate", "LeaguesP0")]
 	public async Task Join_Endpoint_IsIdempotent_ForDuplicateSubmissions()
 	{
 		SetUser("league-api-admin");
@@ -353,6 +354,7 @@ public class LeaguesApiInviteTests(ApiWebApplicationFactory factory) : ApiIntegr
 	}
 
 	[Fact]
+	[Trait("QualityGate", "LeaguesP0")]
 	public async Task Journey_JoinByCode_WithPreview_ThenSubmit_ThenAdminApprove_ActivatesMembership()
 	{
 		SetUser("league-journey-admin");
@@ -425,6 +427,7 @@ public class LeaguesApiInviteTests(ApiWebApplicationFactory factory) : ApiIntegr
 	}
 
 	[Fact]
+	[Trait("QualityGate", "LeaguesP0")]
 	public async Task Journey_AdminDeny_IsIdempotent_AndDoesNotCreateMembership()
 	{
 		SetUser("league-deny-admin");
@@ -477,6 +480,7 @@ public class LeaguesApiInviteTests(ApiWebApplicationFactory factory) : ApiIntegr
 	}
 
 	[Fact]
+	[Trait("QualityGate", "LeaguesP0")]
 	public async Task Moderation_Endpoints_EnforceAuthorization_ForNonGovernanceMembers()
 	{
 		SetUser("league-authz-admin");
@@ -524,6 +528,7 @@ public class LeaguesApiInviteTests(ApiWebApplicationFactory factory) : ApiIntegr
 	}
 
 	[Fact]
+	[Trait("QualityGate", "LeaguesP0")]
 	public async Task Moderation_Endpoints_ReturnExpectedErrorSemantics_ForMissingAndInvalidStates()
 	{
 		SetUser("league-errors-admin");

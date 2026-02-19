@@ -20,6 +20,7 @@ public class LeaguesApiLaunchEventSessionTests(ApiWebApplicationFactory factory)
 	};
 
 	[Fact]
+	[Trait("QualityGate", "LeaguesP0")]
 	public async Task LaunchSeasonEventSession_Admin_Succeeds_AndPersistsLinkage()
 	{
 		SetUser("league-launch-admin");
@@ -129,6 +130,7 @@ public class LeaguesApiLaunchEventSessionTests(ApiWebApplicationFactory factory)
 	}
 
 	[Fact]
+	[Trait("QualityGate", "LeaguesP0")]
 	public async Task JoinGame_ForLeagueLaunchedSession_RequiresActiveLeagueMembership()
 	{
 		SetUser("league-join-owner");
@@ -167,6 +169,7 @@ public class LeaguesApiLaunchEventSessionTests(ApiWebApplicationFactory factory)
 	}
 
 	[Fact]
+	[Trait("QualityGate", "LeaguesP0")]
 	public async Task LaunchSeasonEventSession_SameEventTwice_ReturnsConflict_AndPreservesOriginalSessionLinkage()
 	{
 		SetUser("league-launch-twice-admin");
