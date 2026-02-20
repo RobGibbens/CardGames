@@ -1781,6 +1781,63 @@ a:hover {
     color: var(--text-primary);
 }
 
+/* League club cards */
+.league-club-card {
+    border-radius: 12px;
+    box-shadow: var(--card-shadow);
+    transition: box-shadow 0.2s ease;
+}
+
+.league-club-card .league-club-body {
+    padding: 1rem;
+}
+
+.league-club-card .league-club-footer {
+    padding: 0 1rem 1rem;
+}
+
+.league-club-card:hover {
+    box-shadow: var(--card-shadow-hover);
+}
+
+.league-club-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.5rem;
+    flex-wrap: nowrap;
+}
+
+.league-club-name {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.league-role-badge {
+    flex-shrink: 0;
+}
+
+.league-club-header-inline {
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: nowrap;
+}
+
+.league-club-header-inline .league-club-name {
+    flex: 0 1 auto;
+}
+
+.league-club-title-group {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.league-club-description {
+    margin-top: 0.2rem;
+}
+
 .cashier-section-title.league-create-title {
     margin-bottom: 1.25rem;
 }

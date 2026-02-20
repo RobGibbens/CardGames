@@ -10,6 +10,9 @@
 - [ ] Join League section looks bad
 - [ ] Sharing a link isn't intuitive
 
+### Cashier
+- [ ] Cashier ledger doesn't page
+
 ### P1 - Can't play without these
 - [ ] Test side pots
 - [ ] Don't auto start a new hand. Add a timer, allow pause, allow people to get out of the game or end the game
