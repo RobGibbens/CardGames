@@ -1783,6 +1783,7 @@ a:hover {
 
 /* League club cards */
 .league-club-card {
+    border: 1px solid var(--border-color);
     border-radius: 12px;
     box-shadow: var(--card-shadow);
     transition: box-shadow 0.2s ease;

@@ -77,20 +77,23 @@
 				{
 					<div class="auth-form d-flex flex-column gap-3">
 						<div class="form-floating" data-label="League Code">
-							<InputText id="league-code" class="form-control" @bind-Value="_joinCode" maxlength="128" placeholder="League Code" disabled="@_isPreviewLoading" />
+							<InputText id="league-code" class="form-control" @bind-Value="JoinCode" @bind-Value:event="oninput" maxlength="128" placeholder="League Code" disabled="@_isPreviewLoading" />
 						</div>
 
 						<p class="mb-0 text-muted small">Enter a league code to preview trust details before submitting your request.</p>
 
 						<div class="d-flex flex-wrap gap-2">
-							<button class="btn btn-sm btn-outline-primary" @onclick="LoadJoinPreviewAsync" disabled="@_isPreviewLoading">
-								@if (_isPreviewLoading)
-								{
-									<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
-								}
-								Preview
-							</button>
-							@if (_joinPreview is not null)
+							@if (!IsCurrentCodePreviewed || _isPreviewLoading)
+							{
+								<button class="btn btn-sm btn-outline-primary" @onclick="LoadJoinPreviewAsync" disabled="@_isPreviewLoading">
+									@if (_isPreviewLoading)
+									{
+										<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+									}
+									Preview
+								</button>
+							}
+							@if (_joinPreview is not null && IsCurrentCodePreviewed)
 							{
 								<button class="btn btn-sm btn-primary" @onclick="SubmitJoinByCodeAsync" disabled="@_isJoinSubmitting">
 									@if (_isJoinSubmitting)
@@ -129,18 +132,18 @@
 			<div class="cashier-panel-body d-flex flex-column gap-3">
 				<div class="d-flex flex-column gap-2">
 					<div class="cashier-section-header mb-0">
-						<h2 class="cashier-section-title mb-0 fw-bold">My Clubs</h2>
-						<button class="btn btn-sm btn-outline-secondary" @onclick="LoadLeaguesAsync" disabled="@_isLoading" aria-label="Refresh my clubs" title="Refresh my clubs">
+						<h2 class="cashier-section-title mb-0 fw-bold">My Leagues</h2>
+						<button class="btn btn-sm btn-outline-secondary" @onclick="LoadLeaguesAsync" disabled="@_isLoading" aria-label="Refresh my leagues" title="Refresh my leagues">
 							<i class="fa-solid fa-rotate-right" aria-hidden="true"></i>
 						</button>
 					</div>
-					<div class="d-flex flex-wrap gap-3">
+					<div style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: center;">
 						<span class="stat-pill stat-pill-blue">
 							<span class="stat-circle">@_leagues.Count</span>
-							<span>Clubs</span>
+							<span>Leagues</span>
 						</span>
 						<span class="stat-pill stat-pill-purple">
-							<span class="stat-circle">@(_adminClubCount + _managerClubCount)</span>
+							<span class="stat-circle">@(_adminLeagueCount + _managerLeagueCount)</span>
 							<span>Manager/Admin</span>
 						</span>
 						@if (_isLoadingPendingActions)
@@ -171,11 +174,11 @@
 					}
 					else
 					{
-						<div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-3">
+						<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;">
 							@foreach (var league in _leagues)
 							{
-								<div class="col d-flex">
-									<article class="card league-club-card w-100 h-100">
+								<div>
+									<article class="card league-club-card h-100">
 										<div class="card-body league-club-body d-flex flex-column">
 											<div class="league-club-header league-club-header-inline">
 													<div class="league-club-title-group">
@@ -184,7 +187,7 @@
 													</div>
 												<!-- <span class="badge ms-1 league-role-badge @GetRolePillClass(league.Role)">@GetRolePillLabel(league.Role)</span> -->
 												<span class="stat-pill stat-pill-purple">
-													<!-- <span class="stat-circle">@(_adminClubCount + _managerClubCount)</span> -->
+													<span class="stat-circle">1</span>
 													<span>@league.Role</span>
 												</span>
 											</div>
@@ -192,7 +195,7 @@
 										</div>
 										<div class="card-footer league-club-footer bg-white border-0 pt-0">
 											<button class="btn btn-primary w-100" @onclick="() => OpenLeagueDetail(league.LeagueId)">
-												Open Club
+												Open League
 											</button>
 										</div>
 									</article>
@@ -303,6 +306,7 @@
 	private List<LeagueMemberDto> _memberSummaries = [];
 	private List<LeagueInviteSummaryDto> _inviteSummaries = [];
 	private string _joinCode = string.Empty;
+	private string? _lastPreviewedJoinCode;
 	private LeagueJoinPreviewDto? _joinPreview;
 	private bool _isPreviewLoading;
 	private bool _isJoinSubmitting;
@@ -312,8 +316,8 @@
 	private bool _isLoadingPendingActions;
 	private string _quickSwitchLeagueId = string.Empty;
 	// Restored missing fields
-	private int _adminClubCount;
-	private int _managerClubCount;
+	private int _adminLeagueCount;
+	private int _managerLeagueCount;
 	private int _totalPendingJoinActions;
 
 	private enum LeagueActionTab
@@ -321,6 +325,29 @@
 		Create,
 		Join
 	}
+
+	private string JoinCode
+	{
+		get => _joinCode;
+		set
+		{
+			var normalized = value ?? string.Empty;
+			if (string.Equals(_joinCode, normalized, StringComparison.Ordinal))
+			{
+				return;
+			}
+
+			_joinCode = normalized;
+			_lastPreviewedJoinCode = null;
+			_joinPreview = null;
+			_joinMessage = null;
+			_isJoinError = false;
+		}
+	}
+
+	private bool IsCurrentCodePreviewed =>
+		!string.IsNullOrWhiteSpace(_joinCode)
+		&& string.Equals(_joinCode.Trim(), _lastPreviewedJoinCode, StringComparison.Ordinal);
 
 	// Restored computed property
 	private bool CanManageSelectedLeague => _selectedLeague is not null
@@ -341,8 +368,8 @@
 			if (response is { IsSuccessStatusCode: true, Content: not null })
 			{
 				_leagues = response.Content.ToList();
-				_adminClubCount = _leagues.Count(x => x.Role == LeagueRole.Admin);
-				_managerClubCount = _leagues.Count(x => x.Role == LeagueRole.Manager);
+				_adminLeagueCount = _leagues.Count(x => x.Role == LeagueRole.Admin);
+				_managerLeagueCount = _leagues.Count(x => x.Role == LeagueRole.Manager);
 				if (string.IsNullOrWhiteSpace(_quickSwitchLeagueId) || !_leagues.Any(x => x.LeagueId.ToString() == _quickSwitchLeagueId))
 				{
 					_quickSwitchLeagueId = _leagues.FirstOrDefault()?.LeagueId.ToString() ?? string.Empty;
@@ -359,8 +386,8 @@
 				_leagues = [];
 				_pendingJoinActionsByLeagueId = [];
 				_totalPendingJoinActions = 0;
-				_adminClubCount = 0;
-				_managerClubCount = 0;
+				_adminLeagueCount = 0;
+				_managerLeagueCount = 0;
 				_quickSwitchLeagueId = string.Empty;
 				_message = "No leagues right now.";
 				_isError = true;
@@ -372,8 +399,8 @@
 			_leagues = [];
 			_pendingJoinActionsByLeagueId = [];
 			_totalPendingJoinActions = 0;
-			_adminClubCount = 0;
-			_managerClubCount = 0;
+			_adminLeagueCount = 0;
+			_managerLeagueCount = 0;
 			_quickSwitchLeagueId = string.Empty;
 			_message = "Unable to load leagues right now.";
 			_isError = true;
@@ -743,8 +770,9 @@
 		_joinMessage = null;
 		_isJoinError = false;
 		_joinPreview = null;
+		_lastPreviewedJoinCode = null;
 
-		var token = _joinCode.Trim();
+		var token = (_joinCode ?? string.Empty).Trim();
 		if (string.IsNullOrWhiteSpace(token))
 		{
 			_joinMessage = "Enter a league code to continue.";
@@ -760,6 +788,7 @@
 			{
 				_joinPreview = response.Content;
 				_joinCode = token;
+				_lastPreviewedJoinCode = token;
 			}
 			else
 			{
@@ -784,8 +813,8 @@
 		_joinMessage = null;
 		_isJoinError = false;
 
-		var token = _joinCode.Trim();
-		if (_joinPreview is null || string.IsNullOrWhiteSpace(token))
+		var token = (_joinCode ?? string.Empty).Trim();
+		if (_joinPreview is null || string.IsNullOrWhiteSpace(token) || !IsCurrentCodePreviewed)
 		{
 			_joinMessage = "Preview a valid code before submitting your request.";
 			_isJoinError = true;

@@ -77,7 +77,7 @@
 		_message = null;
 		_preview = null;
 
-		var token = Token.Trim();
+		var token = (Token ?? string.Empty).Trim();
 		if (string.IsNullOrWhiteSpace(token))
 		{
 			_message = "Invite code is missing. Please use a valid invite link.";
@@ -121,6 +121,14 @@
 			return;
 		}
 
+		var token = (Token ?? string.Empty).Trim();
+		if (string.IsNullOrWhiteSpace(token))
+		{
+			_message = "Invite code is missing. Please use a valid invite link.";
+			_isError = true;
+			return;
+		}
+
 		_isSubmitting = true;
 		_isError = false;
 		_message = null;
@@ -129,7 +137,7 @@
 		{
 			var response = await LeaguesApi.JoinLeagueAsync(new JoinLeagueRequest
 			{
-				Token = Token.Trim()
+				Token = token
 			});
 
 			if (response.IsSuccessStatusCode && response.Content is not null)

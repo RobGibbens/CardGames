@@ -11,4 +11,6 @@ public sealed record LeagueInviteSummaryDto
 	public DateTimeOffset CreatedAtUtc { get; init; }
 
 	public DateTimeOffset ExpiresAtUtc { get; init; }
+
+	public string? InviteCode { get; init; }
 }

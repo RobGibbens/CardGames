@@ -220,6 +220,8 @@ public sealed class LeagueInvite : EntityWithRowVersion
 
 	public required string TokenHash { get; set; }
 
+	public string? InviteCode { get; set; }
+
 	public LeagueInviteStatus Status { get; set; }
 
 	public required string CreatedByUserId { get; set; }

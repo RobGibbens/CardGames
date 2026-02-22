@@ -37,7 +37,8 @@ public sealed class GetLeagueInvitesQueryHandler(
 				LeagueId = x.LeagueId,
 				Status = (Contracts.LeagueInviteStatus)x.Status,
 				CreatedAtUtc = x.CreatedAtUtc,
-				ExpiresAtUtc = x.ExpiresAtUtc
+				ExpiresAtUtc = x.ExpiresAtUtc,
+				InviteCode = x.InviteCode
 			})
 			.ToListAsync(cancellationToken);
 

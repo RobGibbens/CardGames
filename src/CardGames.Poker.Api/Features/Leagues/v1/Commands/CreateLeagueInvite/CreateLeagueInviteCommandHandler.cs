@@ -56,6 +56,7 @@ public sealed class CreateLeagueInviteCommandHandler(
 			Id = Guid.CreateVersion7(),
 			LeagueId = request.LeagueId,
 			TokenHash = tokenHash,
+			InviteCode = token,
 			Status = Data.Entities.LeagueInviteStatus.Active,
 			CreatedByUserId = currentUserService.UserId,
 			CreatedAtUtc = DateTimeOffset.UtcNow,
@@ -65,7 +66,15 @@ public sealed class CreateLeagueInviteCommandHandler(
 		};
 
 		context.LeagueInvites.Add(invite);
-		await context.SaveChangesAsync(cancellationToken);
+		try
+		{
+			await context.SaveChangesAsync(cancellationToken);
+		}
+		catch (Exception e)
+		{
+			Console.WriteLine(e);
+			throw;
+		}
 
 		return new CreateLeagueInviteResponse
 		{

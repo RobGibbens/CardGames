@@ -103,6 +103,9 @@ public sealed class LeagueInviteConfiguration : IEntityTypeConfiguration<LeagueI
 			.HasMaxLength(128)
 			.IsRequired();
 
+		builder.Property(x => x.InviteCode)
+			.HasMaxLength(128);
+
 		builder.Property(x => x.Status)
 			.HasConversion<int>();
 
