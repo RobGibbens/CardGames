@@ -1850,8 +1850,138 @@ a:hover {
     justify-content: center;
 }
 
+.league-member-actions {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.league-member-actions > .league-member-action-btn + .league-member-action-btn {
+    margin-left: 0.3rem;
+}
+
+.league-member-action-btn {
+    min-width: auto;
+}
+
+.league-member-actions .league-member-action-promote {
+    background-color: green;
+    color: white;
+    border-color: #20c997;
+}
+
+.league-member-actions .league-member-action-demote {
+    background-color: darkorange;
+    color: black;
+    border-color: #20c997;
+}
+
+.league-member-actions .league-member-action-transfer {
+    background-color: cyan;
+    color: black;
+    border-color: #20c997;
+}
+
+.league-member-actions .league-member-action-remove {
+    background-color: red;
+    color: white;
+    border-color: #20c997;
+}
+
 .league-members-title {
     margin-top: 1.25rem;
+}
+
+.league-membership-history {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.league-membership-history-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.league-membership-history-title {
+    color: var(--text-primary);
+}
+
+.league-membership-history-title-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
+    color: black;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.league-membership-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.league-membership-history-card {
+    margin: 0;
+}
+
+.league-membership-history-card .league-club-body {
+    padding: 1rem;
+}
+
+.league-membership-history-card-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.league-membership-history-event-icon {
+    width: 2.25rem;
+    height: 2.25rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    color: var(--bs-success);
+    background: rgba(var(--bs-success-rgb), 0.14);
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.league-membership-history-event-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
+.league-membership-history-user {
+    line-height: 1.15;
+    color: var(--text-primary);
+}
+
+.league-membership-history-event {
+    line-height: 1.35;
+}
+
+.league-membership-history-time {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    line-height: 1.35;
+}
+
+@media (max-width: 992px) {
 }
 
 .league-schedule-title {

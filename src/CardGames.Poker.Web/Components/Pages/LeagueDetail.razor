@@ -25,10 +25,24 @@
 	<div class="lobby-container">
 		<div class="lobby-header">
 			<div class="lobby-header-content">
-				<h1 class="lobby-title">
-					<i class="fa-solid fa-users"></i>
-					@(_leagueDetail?.Name ?? "League")
-				</h1>
+				<div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+					<h1 class="lobby-title mb-0" style="margin-bottom: 0 !important;">
+						<i class="fa-solid fa-users"></i>
+						@(_leagueDetail?.Name ?? "League")
+					</h1>
+					<span class="stat-pill stat-pill-purple" style="flex-shrink: 0;">
+						<span class="stat-circle"></span>
+						<span>@_leagueDetail?.MyRole</span>
+					</span>
+				</div>
+
+				@if (!string.IsNullOrWhiteSpace(_leagueDetail?.Description))
+				{
+					<h2 class="text-muted mt-1" style="margin-left: 2.9rem;">@_leagueDetail.Description</h2>
+				}
+				
+				<div class="small text-muted" style="text-align: right;">Created by @(_leagueDetail?.CreatedByDisplayName ?? _leagueDetail?.CreatedByUserId) • @(_leagueDetail?.CreatedAtUtc.ToLocalTime().ToString("g"))</div>
+
 			</div>
 		</div>
 
@@ -43,8 +57,7 @@
 
 		<section class="cashier-panel">
 			<div class="cashier-panel-body d-flex flex-column gap-3">
-				<div class="cashier-section-header">
-					<h2 class="cashier-section-title">Overview</h2>
+				<div class="cashier-section-header" style="justify-content: flex-end;">
 					<div class="d-flex gap-2">
 						<button class="league-refresh-btn" aria-label="Refresh" @onclick="LoadAllAsync" disabled="@_isLoading">
 							<i class="fa-solid fa-rotate-right" aria-hidden="true"></i>
@@ -69,67 +82,107 @@
 				}
 				else
 				{
-					<div class="small text-muted">Role: @_leagueDetail.MyRole • Active members: @_leagueDetail.ActiveMemberCount</div>
-					<div class="small text-muted">Created by @(_leagueDetail.CreatedByDisplayName ?? _leagueDetail.CreatedByUserId) • @_leagueDetail.CreatedAtUtc.ToLocalTime().ToString("g")</div>
-					@if (!string.IsNullOrWhiteSpace(_leagueDetail.Description))
-					{
-						<div class="text-muted">@_leagueDetail.Description</div>
-					}
-
-					<h3 id="league-members" class="h6 mb-0 league-members-title">Members</h3>
+					<div class="league-membership-history-header">
+						<div class="league-membership-history-title-icon" aria-hidden="true">
+							<i class="fa-solid fa-users"></i>
+						</div>
+						<h3 id="league-members" class="h6 mb-0 league-members-title d-flex align-items-center gap-2">
+							Members
+							<span class="stat-pill stat-pill-purple">
+								<span class="stat-circle">@_leagueDetail?.ActiveMemberCount</span>
+								<span></span>
+							</span>
+						</h3>
+					</div>
+					
+					
 					@if (_members.Count == 0)
 					{
 						<p class="mb-0 text-muted">No members found.</p>
 					}
 					else
 					{
-						<ul class="list-group">
+						<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 1rem;">
 							@foreach (var member in _members)
 							{
-								<li class="list-group-item d-flex justify-content-between align-items-center gap-2">
-									<div>
-										<div class="fw-semibold">@(member.UserDisplayName ?? member.UserId)</div>
-										<div class="small text-muted">Role: @member.Role • Joined: @member.JoinedAtUtc.ToLocalTime().ToString("g")</div>
+								<article class="card league-club-card h-100">
+									<div class="card-body league-club-body d-flex flex-column" style="position: relative;">
+										<div class="d-flex league-member-actions">
+											@if (CanPromote(member))
+											{
+												<button class="btn btn-sm btn-success league-action-btn league-member-action-btn league-member-action-promote" title="Promote to admin" @onclick="() => PromoteMemberAsync(member.UserId)" disabled="@(_isSubmittingPromote || IsActingOnMember(member.UserId))">
+													<i class="fa-thin fa-person-arrow-up-from-line"></i>
+												</button>
+											}
+											@if (CanDemote(member))
+											{
+												<button class="btn btn-sm btn-warning league-action-btn league-member-action-btn league-member-action-demote" title="Demote to member" @onclick="() => DemoteMemberAsync(member.UserId)" disabled="@(_isSubmittingDemote || IsActingOnMember(member.UserId))">
+													<i class="fa-thin fa-person-arrow-down-to-line"></i>
+												</button>
+											}
+											@if (CanTransferOwnership(member))
+											{
+												<button class="btn btn-sm league-action-btn league-member-action-btn league-member-action-transfer" title="Transfer ownership" @onclick="() => TransferOwnershipAsync(member.UserId)" disabled="@(_isSubmittingTransferOwnership || IsActingOnMember(member.UserId))">
+													<i class="fa-thin fa-arrow-right-from-arc"></i>
+												</button>
+											}
+											@if (CanRemove(member))
+											{
+												<button class="btn btn-sm btn-danger league-action-btn league-member-action-btn league-member-action-remove" title="Remove member" @onclick="() => RemoveMemberAsync(member.UserId)" disabled="@(_isSubmittingRemove || IsActingOnMember(member.UserId))">
+													<i class="fa-thin fa-user-minus"></i>
+												</button>
+											}
+										</div>
+										<h5 class="fw-bold mb-2 text-truncate" style="padding-right: 8rem;" title="@(member.UserDisplayName ?? member.UserId)">
+											@(member.UserDisplayName ?? member.UserId)
+										</h5>
+										<div class="small text-muted">
+											<div>Role: @member.Role</div>
+											<div>Joined: @member.JoinedAtUtc.ToLocalTime().ToString("g")</div>
+										</div>
 									</div>
-									<div class="d-flex gap-2 flex-wrap justify-content-end">
-										@if (CanPromote(member))
-										{
-											<button class="btn btn-sm btn-warning league-action-btn" @onclick="() => PromoteMemberAsync(member.UserId)" disabled="@(_isSubmittingPromote || IsActingOnMember(member.UserId))">Promote</button>
-										}
-										@if (CanDemote(member))
-										{
-											<button class="btn btn-sm btn-outline-warning league-action-btn" @onclick="() => DemoteMemberAsync(member.UserId)" disabled="@(_isSubmittingDemote || IsActingOnMember(member.UserId))">Demote</button>
-										}
-										@if (CanTransferOwnership(member))
-										{
-											<button class="btn btn-sm btn-outline-primary league-action-btn" @onclick="() => TransferOwnershipAsync(member.UserId)" disabled="@(_isSubmittingTransferOwnership || IsActingOnMember(member.UserId))">Transfer Owner</button>
-										}
-										@if (CanRemove(member))
-										{
-											<button class="btn btn-sm btn-outline-danger league-action-btn" @onclick="() => RemoveMemberAsync(member.UserId)" disabled="@(_isSubmittingRemove || IsActingOnMember(member.UserId))">Remove</button>
-										}
-									</div>
-								</li>
+								</article>
 							}
-						</ul>
+						</div>
 					}
 
-					<h3 class="h6 mb-0 mt-2">Membership History</h3>
-					@if (_membershipHistory.Count == 0)
-					{
-						<p class="mb-0 text-muted">No membership events yet.</p>
-					}
-					else
-					{
-						<ul class="list-group">
-							@foreach (var historyItem in _membershipHistory)
-							{
-								<li class="list-group-item small">
-									@GetMembershipHistoryEventTypeDescription(historyItem.EventType) • User: @(historyItem.UserDisplayName ?? historyItem.UserId) • Actor: @(historyItem.ActorDisplayName ?? historyItem.ActorUserId) • @historyItem.OccurredAtUtc.ToLocalTime().ToString("g")
-								</li>
-							}
-						</ul>
-					}
+					<div class="league-membership-history mt-5" >
+						<div class="league-membership-history-header">
+							<div class="league-membership-history-title-icon" aria-hidden="true">
+								<i class="fa-solid fa-rectangle-history-circle-user"></i>
+							</div>
+							<h3 class="h6 mb-0 league-members-title league-membership-history-title" style="margin-top: 2rem">Membership History</h3>
+						</div>
+						@if (_membershipHistory.Count == 0)
+						{
+							<p class="mb-0 text-muted">No membership events yet.</p>
+						}
+						else
+						{
+							<div class="league-membership-history-list">
+								@foreach (var historyItem in _membershipHistory.OrderByDescending(x => x.OccurredAtUtc))
+								{
+									<article class="card league-club-card league-membership-history-card">
+										<div class="card-body league-club-body">
+											<div class="league-membership-history-card-content">
+												<div class="league-membership-history-event-icon" aria-hidden="true">
+													<i class="@GetMembershipHistoryEventIconCssClass(historyItem.EventType)"></i>
+												</div>
+												<div class="league-membership-history-event-details">
+													<div class="league-membership-history-user fw-bold mb-2 text-truncate" title="@(historyItem.UserDisplayName ?? historyItem.UserId)">@(historyItem.UserDisplayName ?? historyItem.UserId)</div>
+													<div class="league-membership-history-event small text-muted">@GetMembershipHistoryEventTypeDescription(historyItem.EventType)</div>
+													<div class="league-membership-history-time small text-muted">
+														<i class="fa-regular fa-calendar" aria-hidden="true"></i>
+														<span>@historyItem.OccurredAtUtc.ToLocalTime().ToString("MMMM d, yyyy 'at' h:mm tt")</span>
+													</div>
+												</div>
+											</div>
+										</div>
+									</article>
+								}
+							</div>
+						}
+					</div>
 				}
 			</div>
 		</section>
@@ -171,13 +224,12 @@
 											var moderationInput = GetModerationReasonInput(joinRequest.JoinRequestId);
 											<div class="d-flex flex-column gap-2">
 												<div class="form-floating">
-													<InputText
-														id="@($"join-request-reason-{joinRequest.JoinRequestId}")"
-														class="form-control"
-														maxlength="512"
-														placeholder="Reason (optional)"
-														@bind-Value="moderationInput.Reason"
-														@bind-Value:event="oninput" />
+													<InputText id="@($"join-request-reason-{joinRequest.JoinRequestId}")"
+															   class="form-control"
+															   maxlength="512"
+															   placeholder="Reason (optional)"
+															   @bind-Value="moderationInput.Reason"
+															   @bind-Value:event="oninput" />
 													<label for="@($"join-request-reason-{joinRequest.JoinRequestId}")">Reason (optional)</label>
 												</div>
 												<div>
@@ -249,13 +301,12 @@
 										<div>Code: <span class="fw-semibold">@(invite.InviteCode ?? "-")</span></div>
 									</div>
 									<div class="d-flex align-items-center gap-2">
-										<button
-											type="button"
-											class="btn btn-sm btn-outline-secondary league-action-btn"
-											@onclick="() => CopyInviteCodeAsync(invite.InviteId, invite.InviteCode)"
-											disabled="@string.IsNullOrWhiteSpace(invite.InviteCode)"
-											title="@(IsInviteCodeCopied(invite.InviteId) ? "Copied" : "Copy invite code")"
-											aria-label="@(IsInviteCodeCopied(invite.InviteId) ? "Copied" : "Copy invite code")">
+										<button type="button"
+												class="btn btn-sm btn-outline-secondary league-action-btn"
+												@onclick="() => CopyInviteCodeAsync(invite.InviteId, invite.InviteCode)"
+												disabled="@string.IsNullOrWhiteSpace(invite.InviteCode)"
+												title="@(IsInviteCodeCopied(invite.InviteId) ? "Copied" : "Copy invite code")"
+												aria-label="@(IsInviteCodeCopied(invite.InviteId) ? "Copied" : "Copy invite code")">
 											@if (IsInviteCodeCopied(invite.InviteId))
 											{
 												<i class="fa-solid fa-check" aria-hidden="true"></i>
@@ -387,20 +438,18 @@
 				<div class="cashier-panel-body d-flex flex-column gap-3">
 					<h2 class="cashier-section-title league-schedule-title">Schedule</h2>
 					<div class="league-schedule-tabs" role="tablist" aria-label="Schedule sections">
-						<button
-							type="button"
-							class="league-schedule-tab @(_activeScheduleTab == ScheduleTab.Seasons ? "league-schedule-tab-active" : string.Empty)"
-							role="tab"
-							aria-selected="@(_activeScheduleTab == ScheduleTab.Seasons)"
-							@onclick="() => _activeScheduleTab = ScheduleTab.Seasons">
+						<button type="button"
+								class="league-schedule-tab @(_activeScheduleTab == ScheduleTab.Seasons ? "league-schedule-tab-active" : string.Empty)"
+								role="tab"
+								aria-selected="@(_activeScheduleTab == ScheduleTab.Seasons)"
+								@onclick="() => _activeScheduleTab = ScheduleTab.Seasons">
 							Seasons
 						</button>
-						<button
-							type="button"
-							class="league-schedule-tab @(_activeScheduleTab == ScheduleTab.OneOffEvents ? "league-schedule-tab-active" : string.Empty)"
-							role="tab"
-							aria-selected="@(_activeScheduleTab == ScheduleTab.OneOffEvents)"
-							@onclick="() => _activeScheduleTab = ScheduleTab.OneOffEvents">
+						<button type="button"
+								class="league-schedule-tab @(_activeScheduleTab == ScheduleTab.OneOffEvents ? "league-schedule-tab-active" : string.Empty)"
+								role="tab"
+								aria-selected="@(_activeScheduleTab == ScheduleTab.OneOffEvents)"
+								@onclick="() => _activeScheduleTab = ScheduleTab.OneOffEvents">
 							One-Off Events
 						</button>
 					</div>
@@ -1089,7 +1138,7 @@
 			var response = await LeaguesApi.CreateInviteAsync(LeagueId, new CreateLeagueInviteRequest
 			{
 				ExpiresAtUtc = expiryUtc
-			}); 
+			});
 
 			if (response.IsSuccessStatusCode && response.Content is not null)
 			{
@@ -1913,6 +1962,19 @@
 			.FirstOrDefault();
 
 		return descriptionAttribute?.Description ?? eventType.ToString();
+	}
+
+	private static string GetMembershipHistoryEventIconCssClass(LeagueMembershipHistoryEventType eventType)
+	{
+		return eventType switch
+		{
+			LeagueMembershipHistoryEventType.MemberJoined => "fa-solid fa-user-plus",
+			LeagueMembershipHistoryEventType.MemberLeft => "fa-solid fa-user-minus",
+			LeagueMembershipHistoryEventType.MemberPromotedToAdmin => "fa-solid fa-user-shield",
+			LeagueMembershipHistoryEventType.MemberDemotedFromAdmin => "fa-solid fa-user",
+			LeagueMembershipHistoryEventType.LeagueOwnershipTransferred => "fa-solid fa-crown",
+			_ => "fa-solid fa-circle-info"
+		};
 	}
 
 	private async Task LaunchSeasonEventAsync(Guid eventId)

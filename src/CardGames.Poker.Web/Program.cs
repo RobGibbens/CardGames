@@ -14,7 +14,6 @@ using Microsoft.EntityFrameworkCore;
 using Refit;
 using System.Security.Claims;
 using Microsoft.AspNetCore.HttpOverrides;
-using Microsoft.IdentityModel.Tokens;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -302,8 +301,6 @@ app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();
-
-
 
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
