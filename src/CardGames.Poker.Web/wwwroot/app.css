@@ -5198,6 +5198,7 @@ a:hover {
     padding-bottom: 0.625rem;
 }
 
+
 .season-modal .form-floating[data-label]::after,
 .season-event-modal .form-floating[data-label]::after,
 .one-off-event-modal .form-floating[data-label]::after {
@@ -5216,6 +5217,7 @@ a:hover {
     color: var(--text-muted);
 }
 
+
 .season-modal .form-floating[data-label]:focus-within::after,
 .season-event-modal .form-floating[data-label]:focus-within::after,
 .one-off-event-modal .form-floating[data-label]:focus-within::after,
@@ -5230,11 +5232,13 @@ a:hover {
     transform: scale(0.85) translateY(0.5rem);
 }
 
+
 .season-modal .form-floating[data-label] .form-control::placeholder,
 .season-event-modal .form-floating[data-label] .form-control::placeholder,
 .one-off-event-modal .form-floating[data-label] .form-control::placeholder {
     color: transparent !important;
 }
+
 
 .season-modal .form-floating > .form-control:focus,
 .season-modal .form-floating > .form-select:focus,
@@ -5246,6 +5250,7 @@ a:hover {
     border-color: var(--primary);
     box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
 }
+
 
 @keyframes slideIn {
     from {
