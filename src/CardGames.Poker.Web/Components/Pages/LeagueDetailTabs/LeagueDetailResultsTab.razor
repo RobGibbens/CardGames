@@ -1,0 +1,101 @@
+@using CardGames.Poker.Api.Contracts
+
+<div class="league-detail-tab-content">
+	<section class="league-detail-card">
+		<div class="league-detail-card-header">
+			<h3><i class="fa-solid fa-trophy"></i> Season Event Results</h3>
+			<div class="league-detail-card-actions">
+				@if (Seasons.Count > 0)
+				{
+					<select class="league-detail-season-select" @onchange="OnSeasonSelectorChanged">
+						@foreach (var season in Seasons)
+						{
+							<option value="@season.SeasonId" selected="@(season.SeasonId == SelectedSeasonId)">@season.Name</option>
+						}
+					</select>
+				}
+				@if (CanManageLeague && SelectedSeasonId.HasValue)
+				{
+					<button class="league-detail-btn league-detail-btn-create" @onclick="OpenSeasonEventModal">
+						<i class="fa-solid fa-plus"></i> Record Results
+					</button>
+				}
+			</div>
+		</div>
+
+		@if (SeasonEvents.Count == 0)
+		{
+			<p class="league-detail-empty">No season events for the selected season.</p>
+		}
+		else
+		{
+			<div class="league-detail-results-table">
+				<div class="league-detail-results-header-row">
+					<span>Event</span>
+					<span>Scheduled</span>
+					<span>Status</span>
+					<span>Actions</span>
+				</div>
+				@foreach (var seasonEvent in SeasonEvents)
+				{
+					<div class="league-detail-results-row">
+						<span class="league-detail-results-name">@seasonEvent.Name</span>
+						<span class="league-detail-results-date">@FormatDate(seasonEvent.ScheduledAtUtc)</span>
+						<span class="league-detail-event-status @(seasonEvent.Status == LeagueSeasonEventStatus.Completed ? "league-detail-event-status-completed" : "")">@seasonEvent.Status</span>
+						<div class="league-detail-results-actions">
+							@if (CanManageLeague)
+							{
+								<button class="btn btn-sm btn-outline-success league-action-btn" @onclick="() => OpenRecordResultsModal.InvokeAsync(seasonEvent)">Record Results</button>
+							}
+							@if (seasonEvent.LaunchedGameId.HasValue)
+							{
+								<button class="btn btn-sm btn-outline-primary league-action-btn" @onclick="() => OpenTable.InvokeAsync(seasonEvent.LaunchedGameId.Value)">Open Table</button>
+							}
+							else if (CanManageLeague)
+							{
+								<button class="btn btn-sm btn-primary league-action-btn" @onclick="() => LaunchSeasonEvent.InvokeAsync(seasonEvent.EventId)" disabled="@(LaunchingSeasonEventId == seasonEvent.EventId)">Launch Play</button>
+							}
+						</div>
+					</div>
+				}
+			</div>
+		}
+	</section>
+</div>
+
+@code {
+	[Parameter, EditorRequired]
+	public List<LeagueSeasonDto> Seasons { get; set; } = [];
+
+	[Parameter]
+	public Guid? SelectedSeasonId { get; set; }
+
+	[Parameter]
+	public bool CanManageLeague { get; set; }
+
+	[Parameter, EditorRequired]
+	public List<LeagueSeasonEventDto> SeasonEvents { get; set; } = [];
+
+	[Parameter]
+	public Guid? LaunchingSeasonEventId { get; set; }
+
+	[Parameter]
+	public EventCallback<ChangeEventArgs> OnSeasonSelectorChanged { get; set; }
+
+	[Parameter]
+	public EventCallback OpenSeasonEventModal { get; set; }
+
+	[Parameter]
+	public EventCallback<LeagueSeasonEventDto> OpenRecordResultsModal { get; set; }
+
+	[Parameter]
+	public EventCallback<Guid> OpenTable { get; set; }
+
+	[Parameter]
+	public EventCallback<Guid> LaunchSeasonEvent { get; set; }
+
+	private static string FormatDate(DateTimeOffset? value)
+	{
+		return value.HasValue ? value.Value.ToLocalTime().ToString("g") : "-";
+	}
+}

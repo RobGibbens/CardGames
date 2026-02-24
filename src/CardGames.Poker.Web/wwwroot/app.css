@@ -14,6 +14,7 @@
 
     /* Brand colors - Red & Black theme */
     --primary: #dc2626;
+    --primary-hover: #b91c1c;
     --primary-dark: #b91c1c;
     --primary-light: #ef4444;
     --accent: #1a1a1a;
