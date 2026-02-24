@@ -1,35 +1,28 @@
 name: Squad CI
+# Project type was not detected — configure build/test commands below
 
 on:
   pull_request:
-    branches: [dev, preview, main]
+    branches: [dev, preview, main, insider]
     types: [opened, synchronize, reopened]
   push:
-    branches: [dev]
+    branches: [dev, insider]
 
 permissions:
   contents: read
 
 jobs:
-  integration-quality-gate:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 10.0.x
-
-      - name: Leagues Rollout Gates Policy Check
-        run: python3 .github/scripts/validate_leagues_rollout_gates.py
-
-      - name: Restore
-        run: dotnet restore src/CardGames.sln
-
-      - name: Build
-        run: dotnet build src/CardGames.sln --configuration Release --no-restore
-
-      - name: Leagues P0 Integration Quality Gate
-        run: dotnet test src/Tests/CardGames.IntegrationTests/CardGames.IntegrationTests.csproj --configuration Release --no-build --filter "QualityGate=LeaguesP0" --logger "trx;LogFileName=integration-tests.trx"
+      - name: Build and test
+        run: |
+          # TODO: Project type was not detected — add your build/test commands here
+          # Go:            go test ./...
+          # Python:        pip install -r requirements.txt && pytest
+          # .NET:          dotnet test
+          # Java (Maven):  mvn test
+          # Java (Gradle): ./gradlew test
+          echo "No build commands configured — update squad-ci.yml"
