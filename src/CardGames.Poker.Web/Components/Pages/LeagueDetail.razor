@@ -212,15 +212,15 @@
 							<ul class="list-group">
 								@foreach (var joinRequest in _pendingJoinRequests)
 								{
-									<li class="list-group-item d-flex flex-column gap-2">
+									<li class="list-group-item d-flex flex-column gap-2" @key="joinRequest.JoinRequestId">
 										<div class="d-flex flex-wrap justify-content-between gap-2">
 											<div>
 												<div class="fw-semibold">@joinRequest.RequesterDisplayName</div>
 												<div class="small text-muted">User: @joinRequest.RequesterUserId • Requested: @joinRequest.CreatedAtUtc.ToLocalTime().ToString("g") • Expires: @joinRequest.ExpiresAtUtc.ToLocalTime().ToString("g")</div>
 											</div>
 											<div class="d-flex gap-2">
-												<button class="btn btn-sm btn-outline-success league-action-btn" @onclick="() => ApproveJoinRequestAsync(joinRequest.JoinRequestId)" disabled="@(_isSubmittingJoinRequest && _actingJoinRequestId == joinRequest.JoinRequestId)">Approve</button>
-												<button class="btn btn-sm btn-outline-danger league-action-btn" @onclick="() => BeginDenyJoinRequest(joinRequest.JoinRequestId)" disabled="@(_isSubmittingJoinRequest && _actingJoinRequestId == joinRequest.JoinRequestId)">Deny</button>
+												<button type="button" class="btn btn-sm btn-outline-success league-action-btn" @onclick="() => ApproveJoinRequestAsync(joinRequest.JoinRequestId)" disabled="@(_isSubmittingJoinRequest && _actingJoinRequestId == joinRequest.JoinRequestId)">Approve</button>
+												<button type="button" class="btn btn-sm btn-outline-danger league-action-btn" @onclick="() => BeginDenyJoinRequest(joinRequest.JoinRequestId)" disabled="@(_isSubmittingJoinRequest && _actingJoinRequestId == joinRequest.JoinRequestId)">Deny</button>
 											</div>
 										</div>
 										@if (IsDenyConfirmationVisible(joinRequest.JoinRequestId))
@@ -237,38 +237,10 @@
 													<label for="@($"join-request-reason-{joinRequest.JoinRequestId}")">Reason (optional)</label>
 												</div>
 												<div>
-													<button class="btn btn-sm btn-danger league-action-btn" @onclick="() => DenyJoinRequestAsync(joinRequest.JoinRequestId)" disabled="@(_isSubmittingJoinRequest && _actingJoinRequestId == joinRequest.JoinRequestId)">Deny</button>
+													<button type="button" class="btn btn-sm btn-danger league-action-btn" @onclick="() => DenyJoinRequestAsync(joinRequest.JoinRequestId)" disabled="@(_isSubmittingJoinRequest && _actingJoinRequestId == joinRequest.JoinRequestId)">Deny</button>
 												</div>
 											</div>
 										}
-									</li>
-								}
-							</ul>
-						}
-					</div>
-
-					<div class="d-flex flex-column gap-2">
-						<h3 class="h6 mb-0">Role Management</h3>
-						<div class="small text-muted">Promote, demote, transfer ownership, and remove members from the overview member list.</div>
-						<div class="small text-muted">Active members: @_members.Count(x => x.IsActive) • Managers: @_members.Count(x => x.IsActive && x.Role == LeagueRole.Manager) • Admins: @_members.Count(x => x.IsActive && x.Role == LeagueRole.Admin) • Members: @_members.Count(x => x.IsActive && x.Role == LeagueRole.Member)</div>
-						<div>
-							<a href="#league-members" class="btn btn-sm btn-outline-secondary league-action-btn">Go to Member Controls</a>
-						</div>
-					</div>
-
-					<div class="d-flex flex-column gap-2">
-						<h3 class="h6 mb-0">Governance Audit</h3>
-						@if (GovernanceAuditEntries.Count == 0)
-						{
-							<p class="mb-0 text-muted">No governance actions recorded yet.</p>
-						}
-						else
-						{
-							<ul class="list-group">
-								@foreach (var auditItem in GovernanceAuditEntries)
-								{
-									<li class="list-group-item small">
-										@GetMembershipHistoryEventTypeDescription(auditItem.EventType) • User: @(auditItem.UserDisplayName ?? auditItem.UserId) • Actor: @(auditItem.ActorDisplayName ?? auditItem.ActorUserId) • @auditItem.OccurredAtUtc.ToLocalTime().ToString("g")
 									</li>
 								}
 							</ul>
@@ -973,6 +945,7 @@
 			}
 			else if (_isLeagueHubSubscriptionInitialized)
 			{
+				await LeagueHubClient.ConnectAsync();
 				await LeagueHubClient.SetManagedLeaguesAsync([]);
 			}
 		}
@@ -1000,12 +973,24 @@
 	{
 		await InvokeAsync(async () =>
 		{
-			if (payload.LeagueId != LeagueId || !HasLeagueAccess || !CanManageLeague)
+			if (payload.LeagueId != LeagueId)
 			{
 				return;
 			}
 
-			await LoadPendingJoinRequestsAsync();
+			if (HasLeagueAccess && CanManageLeague)
+			{
+				await LoadPendingJoinRequestsAsync();
+				StateHasChanged();
+				return;
+			}
+
+			if (!_isAwaitingApproval)
+			{
+				return;
+			}
+
+			await LoadAllAsync();
 			StateHasChanged();
 		});
 	}

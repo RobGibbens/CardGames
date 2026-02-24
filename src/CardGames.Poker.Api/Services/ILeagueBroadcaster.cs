@@ -18,6 +18,10 @@ public interface ILeagueBroadcaster
 	/// Broadcasts that a league join request status was updated.
 	/// </summary>
 	/// <param name="joinRequestUpdated">The updated join request details.</param>
+	/// <param name="requesterUserId">The requester user identifier to notify directly.</param>
 	/// <param name="cancellationToken">Cancellation token.</param>
-	Task BroadcastJoinRequestUpdatedAsync(LeagueJoinRequestUpdatedDto joinRequestUpdated, CancellationToken cancellationToken = default);
+	Task BroadcastJoinRequestUpdatedAsync(
+		LeagueJoinRequestUpdatedDto joinRequestUpdated,
+		string? requesterUserId = null,
+		CancellationToken cancellationToken = default);
 }

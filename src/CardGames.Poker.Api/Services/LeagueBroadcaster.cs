@@ -30,20 +30,31 @@ public sealed class LeagueBroadcaster(
 	}
 
 	/// <inheritdoc />
-	public async Task BroadcastJoinRequestUpdatedAsync(LeagueJoinRequestUpdatedDto joinRequestUpdated, CancellationToken cancellationToken = default)
+	public async Task BroadcastJoinRequestUpdatedAsync(
+		LeagueJoinRequestUpdatedDto joinRequestUpdated,
+		string? requesterUserId = null,
+		CancellationToken cancellationToken = default)
 	{
 		ArgumentNullException.ThrowIfNull(joinRequestUpdated);
 
-		var groupName = LeagueHub.GetManagedLeagueGroupName(joinRequestUpdated.LeagueId);
+		var groupNames = new HashSet<string>(StringComparer.Ordinal)
+		{
+			LeagueHub.GetManagedLeagueGroupName(joinRequestUpdated.LeagueId)
+		};
 
-		await hubContext.Clients.Group(groupName)
+		if (!string.IsNullOrWhiteSpace(requesterUserId))
+		{
+			groupNames.Add(LeagueHub.GetJoinRequesterGroupName(requesterUserId));
+		}
+
+		await hubContext.Clients.Groups(groupNames.ToList())
 			.SendAsync("LeagueJoinRequestUpdated", joinRequestUpdated, cancellationToken);
 
 		logger.LogInformation(
-			"Broadcast LeagueJoinRequestUpdated for league {LeagueId}, request {JoinRequestId} status {Status} to group {GroupName}",
+			"Broadcast LeagueJoinRequestUpdated for league {LeagueId}, request {JoinRequestId} status {Status} to groups {GroupNames}",
 			joinRequestUpdated.LeagueId,
 			joinRequestUpdated.JoinRequestId,
 			joinRequestUpdated.Status,
-			groupName);
+			groupNames);
 	}
 }

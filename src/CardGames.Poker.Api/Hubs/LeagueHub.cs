@@ -15,11 +15,40 @@ namespace CardGames.Poker.Api.Hubs;
 public sealed class LeagueHub(CardsDbContext context, ILogger<LeagueHub> logger) : Hub
 {
 	private const string ManagedLeagueGroupPrefix = "league:managed:";
+	private const string JoinRequesterGroupPrefix = "league:join-requester:";
 
 	/// <summary>
 	/// Gets the group name used for management updates for a given league.
 	/// </summary>
 	public static string GetManagedLeagueGroupName(Guid leagueId) => $"{ManagedLeagueGroupPrefix}{leagueId}";
+
+	/// <summary>
+	/// Gets the group name used for league join-request updates for a requester.
+	/// </summary>
+	public static string GetJoinRequesterGroupName(string requesterUserId)
+	{
+		ArgumentException.ThrowIfNullOrWhiteSpace(requesterUserId);
+		return $"{JoinRequesterGroupPrefix}{requesterUserId}";
+	}
+
+	/// <inheritdoc />
+	public override async Task OnConnectedAsync()
+	{
+		var userId = GetCurrentUserId();
+		if (!string.IsNullOrWhiteSpace(userId))
+		{
+			var groupName = GetJoinRequesterGroupName(userId);
+			await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
+
+			logger.LogInformation(
+				"User {UserId} (connection {ConnectionId}) joined requester group {GroupName}",
+				userId,
+				Context.ConnectionId,
+				groupName);
+		}
+
+		await base.OnConnectedAsync();
+	}
 
 	/// <summary>
 	/// Joins the caller to league management updates for the provided league.

@@ -61,7 +61,7 @@ public sealed class ApproveLeagueJoinRequestCommandHandler(
 					JoinRequestId = joinRequest.Id,
 					Status = LeagueJoinRequestStatus.Expired.ToString(),
 					UpdatedAtUtc = joinRequest.UpdatedAtUtc
-				}, cancellationToken);
+				}, joinRequest.RequesterUserId, cancellationToken);
 			}
 			catch (Exception ex)
 			{
@@ -146,7 +146,7 @@ public sealed class ApproveLeagueJoinRequestCommandHandler(
 				JoinRequestId = joinRequest.Id,
 				Status = LeagueJoinRequestStatus.Approved.ToString(),
 				UpdatedAtUtc = joinRequest.UpdatedAtUtc
-			}, cancellationToken);
+			}, joinRequest.RequesterUserId, cancellationToken);
 		}
 		catch (Exception ex)
 		{
