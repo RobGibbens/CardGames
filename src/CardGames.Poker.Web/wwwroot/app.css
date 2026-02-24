@@ -5808,4 +5808,873 @@ a:hover {
     }
 }
 
+/* ═══════════ LEAGUE DETAIL – Tabbed Redesign ═══════════ */
+
+/* ── Header ── */
+.league-detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1.5rem 0;
+    flex-wrap: wrap;
+}
+
+.league-detail-header-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    min-width: 0;
+}
+
+.league-detail-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    background: var(--gradient-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.league-detail-header-info {
+    min-width: 0;
+}
+
+.league-detail-name {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+    line-height: 1.2;
+    color: var(--text-primary);
+}
+
+.league-detail-description {
+    margin: 0.15rem 0 0;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 420px;
+}
+
+.league-detail-meta {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 0.15rem;
+}
+
+.league-detail-header-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-shrink: 0;
+}
+
+/* ── Overlapping Avatars ── */
+.league-detail-members-avatars {
+    display: flex;
+    align-items: center;
+}
+
+.league-detail-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--gradient-primary);
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--bg-primary);
+    margin-left: -8px;
+    cursor: default;
+    text-transform: uppercase;
+}
+
+.league-detail-avatar:first-child {
+    margin-left: 0;
+}
+
+.league-detail-avatar-more {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    font-size: 0.7rem;
+}
+
+/* ── Role Badge ── */
+.league-detail-role-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.65rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+}
+
+/* ── Header Action Buttons ── */
+.league-detail-header-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.league-detail-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.4rem 0.85rem;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.league-detail-btn:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--text-muted);
+}
+
+.league-detail-btn-share {
+    background: var(--bg-secondary);
+}
+
+.league-detail-btn-create {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+}
+
+.league-detail-btn-create:hover {
+    background: var(--primary-hover);
+    border-color: var(--primary-hover);
+}
+
+.league-detail-btn-refresh {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+/* ── Message Banners ── */
+.league-detail-message {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+}
+
+.league-detail-message-success {
+    background: #f0fdf4;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+}
+
+.league-detail-message-error {
+    background: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+
+/* ── Loading / Awaiting States ── */
+.league-detail-loading,
+.league-detail-awaiting {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 2.5rem 1.5rem;
+    justify-content: center;
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+}
+
+.league-detail-awaiting {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.5rem;
+}
+
+/* ── Tab Content ── */
+.league-detail-tab-content {
+    padding: 1.5rem 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+/* ── Cards ── */
+.league-detail-card {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.25rem;
+}
+
+.league-detail-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.league-detail-card-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.league-detail-card-header h3 i {
+    color: var(--primary);
+}
+
+.league-detail-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.league-detail-empty {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    text-align: center;
+    padding: 1.5rem 0;
+    margin: 0;
+}
+
+/* ── Lobby Grid ── */
+.league-detail-lobby-grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 1.25rem;
+    align-items: start;
+}
+
+.league-detail-lobby-main {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.league-detail-lobby-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+/* ── Event Lists ── */
+.league-detail-event-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.league-detail-event-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.6rem 0.75rem;
+    border-radius: 8px;
+    background: var(--bg-secondary);
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.league-detail-event-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-width: 0;
+}
+
+.league-detail-event-name {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+}
+
+.league-detail-event-date {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.league-detail-event-status {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 0.15rem 0.6rem;
+    border-radius: 999px;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+.league-detail-event-status-completed {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.league-detail-event-row-actions {
+    display: flex;
+    gap: 0.4rem;
+    flex-shrink: 0;
+}
+
+/* ── Season Row Highlight ── */
+.league-detail-season-row {
+    cursor: pointer;
+    transition: border-color 0.15s;
+    border-left: 3px solid transparent;
+}
+
+.league-detail-season-selected {
+    border-left-color: var(--primary);
+    background: var(--bg-tertiary);
+}
+
+/* ── Leaders (Lobby Sidebar) ── */
+.league-detail-leaders-card {}
+
+.league-detail-leaders-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.league-detail-leader-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.league-detail-leader-rank {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.75rem;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+.league-detail-leader-gold {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.league-detail-leader-silver {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.league-detail-leader-bronze {
+    background: #fed7aa;
+    color: #9a3412;
+}
+
+.league-detail-leader-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--gradient-primary);
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.league-detail-leader-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.league-detail-leader-name {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.league-detail-leader-points {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+/* ── My Progress Card ── */
+.league-detail-my-progress-card {}
+
+.league-detail-progress-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.75rem;
+    text-align: center;
+}
+
+.league-detail-progress-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.league-detail-progress-stat-value {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.league-detail-progress-stat-label {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+/* ── Season Selector ── */
+.league-detail-season-select {
+    padding: 0.35rem 0.75rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+    font-size: 0.8rem;
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+.league-detail-season-scope {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+/* ── Results Table ── */
+.league-detail-results-table {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.league-detail-results-header-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1.5fr;
+    padding: 0.6rem 0.75rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.league-detail-results-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1.5fr;
+    padding: 0.6rem 0.75rem;
+    font-size: 0.85rem;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.league-detail-results-row:last-child {
+    border-bottom: none;
+}
+
+.league-detail-results-name {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.league-detail-results-date {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.league-detail-results-actions {
+    display: flex;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+
+/* ── Standings Table ── */
+.league-detail-standings-table {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.league-detail-standings-header-row {
+    display: grid;
+    grid-template-columns: 0.7fr 2fr 1fr 0.8fr 1fr 1fr;
+    padding: 0.6rem 0.75rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.league-detail-standings-row {
+    display: grid;
+    grid-template-columns: 0.7fr 2fr 1fr 0.8fr 1fr 1fr;
+    padding: 0.6rem 0.75rem;
+    font-size: 0.85rem;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.league-detail-standings-row:last-child {
+    border-bottom: none;
+}
+
+.league-detail-standings-top {
+    background: #fffbeb;
+}
+
+.league-detail-standings-me {
+    background: #eff6ff;
+    font-weight: 600;
+}
+
+.league-detail-standings-rank {
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.league-detail-standings-player {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.league-detail-standings-pts {
+    color: var(--primary);
+}
+
+/* ── Rules Box (Standings tab) ── */
+.league-detail-rules-box {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    background: var(--bg-secondary);
+}
+
+.league-detail-rules-icon {
+    font-size: 1.1rem;
+    color: var(--primary);
+    flex-shrink: 0;
+    margin-top: 0.15rem;
+}
+
+.league-detail-rules-list {
+    margin: 0.3rem 0 0;
+    padding-left: 1.1rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    line-height: 1.8;
+}
+
+/* ── Schedule Sub-tabs ── */
+.league-schedule-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+}
+
+.league-schedule-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.league-schedule-tab:hover {
+    background: var(--bg-tertiary);
+}
+
+.league-schedule-tab-active {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+}
+
+.league-schedule-tab-active:hover {
+    background: var(--primary-hover);
+}
+
+/* ── Members Grid ── */
+.league-detail-members-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 0.75rem;
+}
+
+.league-detail-member-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 0.85rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.league-detail-member-card-top {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.league-detail-member-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--gradient-primary);
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.league-detail-member-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.league-detail-member-name {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.league-detail-member-role {
+    font-size: 0.7rem;
+    color: var(--primary);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.league-detail-member-joined {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+.league-detail-member-card-actions {
+    display: flex;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+
+/* ── History List ── */
+.league-detail-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.league-detail-history-item {
+    display: flex;
+    gap: 0.65rem;
+    align-items: flex-start;
+    padding: 0.4rem 0;
+}
+
+.league-detail-history-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--bg-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    flex-shrink: 0;
+    border: 1px solid var(--border-color);
+}
+
+.league-detail-history-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.05rem;
+    min-width: 0;
+}
+
+.league-detail-history-user {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+}
+
+.league-detail-history-event {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.league-detail-history-time {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+/* ── Admin Card ── */
+.league-detail-admin-card {
+    border-left: 3px solid var(--primary);
+}
+
+.league-detail-sub-header {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0.5rem 0;
+}
+
+/* ── Invites List ── */
+.league-detail-invites-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.league-detail-invite-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.6rem 0.75rem;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.league-detail-invite-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.league-detail-invite-code {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.league-detail-invite-actions {
+    display: flex;
+    gap: 0.35rem;
+}
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+    .league-detail-lobby-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .league-detail-results-header-row,
+    .league-detail-results-row {
+        grid-template-columns: 1.5fr 1fr 1fr;
+    }
+
+    .league-detail-results-actions {
+        display: none;
+    }
+
+    .league-detail-standings-header-row,
+    .league-detail-standings-row {
+        grid-template-columns: 0.5fr 1.5fr 1fr 0.7fr;
+    }
+
+    .league-detail-standings-header-row span:nth-child(5),
+    .league-detail-standings-header-row span:nth-child(6),
+    .league-detail-standings-row span:nth-child(5),
+    .league-detail-standings-row span:nth-child(6) {
+        display: none;
+    }
+}
+
+@media (max-width: 640px) {
+    .league-detail-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .league-detail-header-right {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .league-detail-progress-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .league-detail-members-grid {
+        grid-template-columns: 1fr;
+    }
+}
 

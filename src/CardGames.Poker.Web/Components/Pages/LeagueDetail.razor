@@ -27,464 +27,509 @@
 
 <main class="lobby-main">
 	<div class="lobby-container">
-		<div class="lobby-header">
-			<div class="lobby-header-content">
-				<div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-					<h1 class="lobby-title mb-0" style="margin-bottom: 0 !important;">
-						<i class="fa-solid fa-users"></i>
-						@(_leagueDetail?.Name ?? "League")
-					</h1>
-					<span class="stat-pill stat-pill-purple" style="flex-shrink: 0;">
-						<span class="stat-circle"></span>
-						<span>@_leagueDetail?.MyRole</span>
-					</span>
+
+		@* ───── LEAGUE DETAIL HEADER ───── *@
+		<div class="league-detail-header">
+			<div class="league-detail-header-left">
+				<div class="league-detail-icon">
+					<i class="fa-solid fa-shield-halved"></i>
 				</div>
-
-				@if (!string.IsNullOrWhiteSpace(_leagueDetail?.Description))
-				{
-					<h2 class="text-muted mt-1" style="margin-left: 2.9rem;">@_leagueDetail.Description</h2>
-				}
-				
-				<div class="small text-muted" style="text-align: right;">Created by @(_leagueDetail?.CreatedByDisplayName ?? _leagueDetail?.CreatedByUserId) • @(_leagueDetail?.CreatedAtUtc.ToLocalTime().ToString("g"))</div>
-
+				<div class="league-detail-header-info">
+					<h1 class="league-detail-name">@(_leagueDetail?.Name ?? "League")</h1>
+					@if (!string.IsNullOrWhiteSpace(_leagueDetail?.Description))
+					{
+						<p class="league-detail-description">@_leagueDetail.Description</p>
+					}
+					<div class="league-detail-meta">
+						Created by @(_leagueDetail?.CreatedByDisplayName ?? _leagueDetail?.CreatedByUserId) &bull; @(_leagueDetail?.CreatedAtUtc.ToLocalTime().ToString("MMM d, yyyy"))
+					</div>
+				</div>
+			</div>
+			<div class="league-detail-header-right">
+				<div class="league-detail-members-avatars">
+					@if (_members.Count > 0)
+					{
+						@foreach (var member in _members.Take(5))
+						{
+							var initial = (member.UserDisplayName ?? member.UserId)?[..1].ToUpperInvariant() ?? "?";
+							<div class="league-detail-avatar" title="@(member.UserDisplayName ?? member.UserId)">@initial</div>
+						}
+						@if (_leagueDetail?.ActiveMemberCount > 5)
+						{
+							<div class="league-detail-avatar league-detail-avatar-more">+@(_leagueDetail.ActiveMemberCount - 5)</div>
+						}
+					}
+				</div>
+				<span class="league-detail-role-badge">@_leagueDetail?.MyRole</span>
+				<div class="league-detail-header-actions">
+					@if (CanManageLeague)
+					{
+						<button class="league-detail-btn league-detail-btn-share" @onclick="OpenInviteModal">
+							<i class="fa-solid fa-share-nodes"></i>
+							<span>Share</span>
+						</button>
+						<button class="league-detail-btn league-detail-btn-create" @onclick="OpenSeasonModal">
+							<i class="fa-solid fa-plus"></i>
+							<span>Create</span>
+						</button>
+					}
+					<button class="league-detail-btn league-detail-btn-refresh" aria-label="Refresh" @onclick="LoadAllAsync" disabled="@_isLoading">
+						<i class="fa-solid fa-rotate-right"></i>
+					</button>
+				</div>
 			</div>
 		</div>
 
+		@* ───── MESSAGE BANNER ───── *@
 		@if (!string.IsNullOrWhiteSpace(_message))
 		{
-			<section class="cashier-panel">
-				<div class="cashier-panel-body">
-					<div class="alert @(_isError ? "alert-warning" : "alert-success") mb-0" role="alert">@_message</div>
-				</div>
-			</section>
-		}
-
-		<section class="cashier-panel">
-			<div class="cashier-panel-body d-flex flex-column gap-3">
-				<div class="cashier-section-header" style="justify-content: flex-end;">
-					<div class="d-flex gap-2">
-						<button class="league-refresh-btn" aria-label="Refresh" @onclick="LoadAllAsync" disabled="@_isLoading">
-							<i class="fa-solid fa-rotate-right" aria-hidden="true"></i>
-						</button>
-					</div>
-				</div>
-
-				@if (_isLoading)
-				{
-					<p class="mb-0 text-muted">Loading league...</p>
-				}
-				else if (_isAwaitingApproval)
-				{
-					<div class="alert alert-info mb-0" role="alert">
-						<div class="fw-semibold mb-1">Join request submitted</div>
-						<div class="small">Your request to join this league is waiting for manager approval. You’ll be able to view league details after approval.</div>
-					</div>
-				}
-				else if (_leagueDetail is null)
-				{
-					<p class="mb-0 text-muted">Unable to load this league.</p>
-				}
-				else
-				{
-					<div class="league-membership-history-header">
-						<div class="league-membership-history-title-icon" aria-hidden="true">
-							<i class="fa-solid fa-users"></i>
-						</div>
-						<h3 id="league-members" class="h6 mb-0 league-members-title d-flex align-items-center gap-2">
-							Members
-							<span class="stat-pill stat-pill-purple">
-								<span class="stat-circle">@_leagueDetail?.ActiveMemberCount</span>
-								<span></span>
-							</span>
-						</h3>
-					</div>
-					
-					
-					@if (_members.Count == 0)
-					{
-						<p class="mb-0 text-muted">No members found.</p>
-					}
-					else
-					{
-						<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 1rem;">
-							@foreach (var member in _members)
-							{
-								<article class="card league-club-card h-100">
-									<div class="card-body league-club-body d-flex flex-column" style="position: relative;">
-										<div class="d-flex league-member-actions">
-											@if (CanPromote(member))
-											{
-												<button class="btn btn-sm btn-success league-action-btn league-member-action-btn league-member-action-promote" title="Promote to admin" @onclick="() => PromoteMemberAsync(member.UserId)" disabled="@(_isSubmittingPromote || IsActingOnMember(member.UserId))">
-													<i class="fa-thin fa-person-arrow-up-from-line"></i>
-												</button>
-											}
-											@if (CanDemote(member))
-											{
-												<button class="btn btn-sm btn-warning league-action-btn league-member-action-btn league-member-action-demote" title="Demote to member" @onclick="() => DemoteMemberAsync(member.UserId)" disabled="@(_isSubmittingDemote || IsActingOnMember(member.UserId))">
-													<i class="fa-thin fa-person-arrow-down-to-line"></i>
-												</button>
-											}
-											@if (CanTransferOwnership(member))
-											{
-												<button class="btn btn-sm league-action-btn league-member-action-btn league-member-action-transfer" title="Transfer ownership" @onclick="() => TransferOwnershipAsync(member.UserId)" disabled="@(_isSubmittingTransferOwnership || IsActingOnMember(member.UserId))">
-													<i class="fa-thin fa-arrow-right-from-arc"></i>
-												</button>
-											}
-											@if (CanRemove(member))
-											{
-												<button class="btn btn-sm btn-danger league-action-btn league-member-action-btn league-member-action-remove" title="Remove member" @onclick="() => RemoveMemberAsync(member.UserId)" disabled="@(_isSubmittingRemove || IsActingOnMember(member.UserId))">
-													<i class="fa-thin fa-user-minus"></i>
-												</button>
-											}
-										</div>
-										<h4 class="medium fw-bold mb-2 text-truncate" style="padding-right: 8rem;" title="@(member.UserDisplayName ?? member.UserId)">
-											@(member.UserDisplayName ?? member.UserId)
-										</h4>
-										<div class="small text-muted">
-											<div>Role: @member.Role</div>
-											<div>Joined: @member.JoinedAtUtc.ToLocalTime().ToString("g")</div>
-										</div>
-									</div>
-								</article>
-							}
-						</div>
-					}
-
-					<div class="league-membership-history mt-5" >
-						<div class="league-membership-history-header">
-							<div class="league-membership-history-title-icon" aria-hidden="true">
-								<i class="fa-solid fa-rectangle-history-circle-user"></i>
-							</div>
-							<h3 class="h6 mb-0 league-members-title league-membership-history-title" style="margin-top: 2rem">Membership History</h3>
-						</div>
-						@if (_membershipHistory.Count == 0)
-						{
-							<p class="mb-0 text-muted">No membership events yet.</p>
-						}
-						else
-						{
-							<div class="league-membership-history-list">
-								@foreach (var historyItem in _membershipHistory.OrderByDescending(x => x.OccurredAtUtc))
-								{
-									<article class="card league-club-card league-membership-history-card">
-										<div class="card-body league-club-body">
-											<div class="league-membership-history-card-content">
-												<div class="league-membership-history-event-icon" aria-hidden="true">
-													<i class="@GetMembershipHistoryEventIconCssClass(historyItem.EventType)"></i>
-												</div>
-												<div class="league-membership-history-event-details">
-													<div class="league-membership-history-user fw-bold mb-2 text-truncate" title="@(historyItem.UserDisplayName ?? historyItem.UserId)">@(historyItem.UserDisplayName ?? historyItem.UserId)</div>
-													<div class="league-membership-history-event small text-muted">@GetMembershipHistoryEventTypeDescription(historyItem.EventType)</div>
-													<div class="league-membership-history-time small text-muted">
-														<i class="fa-regular fa-calendar" aria-hidden="true"></i>
-														<span>@historyItem.OccurredAtUtc.ToLocalTime().ToString("MMMM d, yyyy 'at' h:mm tt")</span>
-													</div>
-												</div>
-											</div>
-										</div>
-									</article>
-								}
-							</div>
-						}
-					</div>
-				}
+			<div class="league-detail-message @(_isError ? "league-detail-message-error" : "league-detail-message-success")" role="alert">
+				<i class="fa-solid @(_isError ? "fa-triangle-exclamation" : "fa-circle-check")"></i>
+				<span>@_message</span>
 			</div>
-		</section>
+		}
 
-		@if (HasLeagueAccess && CanManageLeague)
+		@* ───── LOADING / AWAITING / ERROR STATES ───── *@
+		@if (_isLoading)
 		{
-			<section class="cashier-panel">
-				<div class="cashier-panel-body d-flex flex-column gap-3">
-					<h2 class="cashier-section-title">Admin Operations Console</h2>
+			<div class="league-detail-loading">
+				<i class="fa-solid fa-spinner fa-spin"></i>
+				<span>Loading league...</span>
+			</div>
+		}
+		else if (_isAwaitingApproval)
+		{
+			<div class="league-detail-awaiting">
+				<i class="fa-solid fa-clock"></i>
+				<div>
+					<div class="fw-semibold mb-1">Join request submitted</div>
+					<div class="small">Your request to join this league is waiting for manager approval. You'll be able to view league details after approval.</div>
+				</div>
+			</div>
+		}
+		else if (_leagueDetail is null)
+		{
+			<div class="league-detail-loading">
+				<i class="fa-solid fa-circle-exclamation"></i>
+				<span>Unable to load this league.</span>
+			</div>
+		}
+		else if (HasLeagueAccess)
+		{
+			@* ───── TAB NAVIGATION ───── *@
+			<nav class="lobby-tabs" role="tablist" aria-label="League sections">
+				<button type="button" class="lobby-tab @(_activeTab == LeagueDetailTab.Lobby ? "active" : "")" role="tab" aria-selected="@(_activeTab == LeagueDetailTab.Lobby)" @onclick="() => _activeTab = LeagueDetailTab.Lobby">
+					<span class="lobby-tab-icon"><i class="fa-solid fa-house"></i></span>
+					<span class="lobby-tab-text">Lobby</span>
+				</button>
+				<button type="button" class="lobby-tab @(_activeTab == LeagueDetailTab.Results ? "active" : "")" role="tab" aria-selected="@(_activeTab == LeagueDetailTab.Results)" @onclick="() => _activeTab = LeagueDetailTab.Results">
+					<span class="lobby-tab-icon"><i class="fa-solid fa-trophy"></i></span>
+					<span class="lobby-tab-text">Results</span>
+					@if (_recentCompletedEvents.Count > 0)
+					{
+						<span class="lobby-tab-badge">@_recentCompletedEvents.Count</span>
+					}
+				</button>
+				<button type="button" class="lobby-tab @(_activeTab == LeagueDetailTab.Standings ? "active" : "")" role="tab" aria-selected="@(_activeTab == LeagueDetailTab.Standings)" @onclick="() => _activeTab = LeagueDetailTab.Standings">
+					<span class="lobby-tab-icon"><i class="fa-solid fa-ranking-star"></i></span>
+					<span class="lobby-tab-text">Standings</span>
+				</button>
+				<button type="button" class="lobby-tab @(_activeTab == LeagueDetailTab.Schedule ? "active" : "")" role="tab" aria-selected="@(_activeTab == LeagueDetailTab.Schedule)" @onclick="() => _activeTab = LeagueDetailTab.Schedule">
+					<span class="lobby-tab-icon"><i class="fa-solid fa-calendar-days"></i></span>
+					<span class="lobby-tab-text">Schedule</span>
+				</button>
+				<button type="button" class="lobby-tab @(_activeTab == LeagueDetailTab.Members ? "active" : "")" role="tab" aria-selected="@(_activeTab == LeagueDetailTab.Members)" @onclick="() => _activeTab = LeagueDetailTab.Members">
+					<span class="lobby-tab-icon"><i class="fa-solid fa-users"></i></span>
+					<span class="lobby-tab-text">Members</span>
+					<span class="lobby-tab-badge">@_leagueDetail?.ActiveMemberCount</span>
+				</button>
+			</nav>
 
-					<div class="d-flex flex-column gap-2">
-						<h3 class="h6 mb-0">Join Request Queue</h3>
-						@if (_isLoadingJoinRequests)
+			@* ═══════════ TAB 1: LOBBY ═══════════ *@
+			@if (_activeTab == LeagueDetailTab.Lobby)
+			{
+				<div class="league-detail-tab-content">
+					<div class="league-detail-lobby-grid">
+						<div class="league-detail-lobby-main">
+							@* Recent Completed Events *@
+							<section class="league-detail-card">
+								<div class="league-detail-card-header">
+									<h3><i class="fa-solid fa-flag-checkered"></i> Recent Results</h3>
+								</div>
+								@if (_recentCompletedEvents.Count == 0)
+								{
+									<p class="league-detail-empty">No completed events yet.</p>
+								}
+								else
+								{
+									<div class="league-detail-event-list">
+										@foreach (var seasonEvent in _recentCompletedEvents)
+										{
+											<div class="league-detail-event-row">
+												<div class="league-detail-event-info">
+													<span class="league-detail-event-name">@seasonEvent.Name</span>
+													<span class="league-detail-event-date">@FormatDate(seasonEvent.ScheduledAtUtc)</span>
+												</div>
+												<span class="league-detail-event-status league-detail-event-status-completed">@seasonEvent.Status</span>
+											</div>
+										}
+									</div>
+								}
+							</section>
+
+							@* Upcoming Events *@
+							<section class="league-detail-card">
+								<div class="league-detail-card-header">
+									<h3><i class="fa-solid fa-calendar-star"></i> Upcoming Events</h3>
+								</div>
+								@{
+									var upcomingSeasonEvents = _seasonEvents.Where(e => e.Status != LeagueSeasonEventStatus.Completed).Take(5).ToList();
+									var upcomingOneOffs = _oneOffEvents.Where(e => e.Status != LeagueOneOffEventStatus.Completed).Take(3).ToList();
+								}
+								@if (upcomingSeasonEvents.Count == 0 && upcomingOneOffs.Count == 0)
+								{
+									<p class="league-detail-empty">No upcoming events scheduled.</p>
+								}
+								else
+								{
+									<div class="league-detail-event-list">
+										@foreach (var se in upcomingSeasonEvents)
+										{
+											<div class="league-detail-event-row">
+												<div class="league-detail-event-info">
+													<span class="league-detail-event-name">@se.Name</span>
+													<span class="league-detail-event-date">@FormatDate(se.ScheduledAtUtc)</span>
+												</div>
+												<span class="league-detail-event-status">@se.Status</span>
+											</div>
+										}
+										@foreach (var oo in upcomingOneOffs)
+										{
+											<div class="league-detail-event-row">
+												<div class="league-detail-event-info">
+													<span class="league-detail-event-name">@oo.Name</span>
+													<span class="league-detail-event-date">@oo.ScheduledAtUtc.ToLocalTime().ToString("g")</span>
+												</div>
+												<span class="league-detail-event-status">@oo.EventType</span>
+											</div>
+										}
+									</div>
+								}
+							</section>
+						</div>
+
+						@* Sidebar: Leaders of the Season *@
+						<aside class="league-detail-lobby-sidebar">
+							<section class="league-detail-card league-detail-leaders-card">
+								<div class="league-detail-card-header">
+									<h3><i class="fa-solid fa-crown"></i> Leaders of the Season</h3>
+								</div>
+								@if (_standings.Count == 0)
+								{
+									<p class="league-detail-empty">No standings yet.</p>
+								}
+								else
+								{
+									<div class="league-detail-leaders-list">
+										@foreach (var leader in _standings.Take(3))
+										{
+											var leaderInitial = (leader.UserDisplayName ?? leader.UserId)?[..1].ToUpperInvariant() ?? "?";
+											var rankColorClass = leader.Rank switch
+											{
+												1 => "league-detail-leader-gold",
+												2 => "league-detail-leader-silver",
+												3 => "league-detail-leader-bronze",
+												_ => ""
+											};
+											<div class="league-detail-leader-row">
+												<div class="league-detail-leader-rank @rankColorClass">@leader.Rank</div>
+												<div class="league-detail-leader-avatar @rankColorClass">@leaderInitial</div>
+												<div class="league-detail-leader-info">
+													<span class="league-detail-leader-name">@(leader.UserDisplayName ?? leader.UserId)</span>
+													<span class="league-detail-leader-points">@leader.TotalPoints pts</span>
+												</div>
+											</div>
+										}
+									</div>
+								}
+							</section>
+
+							@* My Progress mini card *@
+							@if (_myStanding is not null)
+							{
+								<section class="league-detail-card league-detail-my-progress-card">
+									<div class="league-detail-card-header">
+										<h3><i class="fa-solid fa-chart-line"></i> My Progress</h3>
+										<span class="league-rank-chip @GetRankMovementCssClass(_myStanding.UserId)">@GetRankMovementLabel(_myStanding.UserId)</span>
+									</div>
+									<div class="league-detail-progress-stats">
+										<div class="league-detail-progress-stat">
+											<span class="league-detail-progress-stat-value">#@_myStanding.Rank</span>
+											<span class="league-detail-progress-stat-label">Rank</span>
+										</div>
+										<div class="league-detail-progress-stat">
+											<span class="league-detail-progress-stat-value">@_myStanding.TotalPoints</span>
+											<span class="league-detail-progress-stat-label">Points</span>
+										</div>
+										<div class="league-detail-progress-stat">
+											<span class="league-detail-progress-stat-value">@_myStanding.TotalEvents</span>
+											<span class="league-detail-progress-stat-label">Events</span>
+										</div>
+										<div class="league-detail-progress-stat">
+											<span class="league-detail-progress-stat-value">@FormatChipsDelta(_myStanding.TotalChipsDelta)</span>
+											<span class="league-detail-progress-stat-label">Chips</span>
+										</div>
+									</div>
+								</section>
+							}
+						</aside>
+					</div>
+				</div>
+			}
+
+			@* ═══════════ TAB 2: RESULTS ═══════════ *@
+			@if (_activeTab == LeagueDetailTab.Results)
+			{
+				<div class="league-detail-tab-content">
+					<section class="league-detail-card">
+						<div class="league-detail-card-header">
+							<h3><i class="fa-solid fa-trophy"></i> Season Event Results</h3>
+							<div class="league-detail-card-actions">
+								@if (_seasons.Count > 0)
+								{
+									<select class="league-detail-season-select" @onchange="OnSeasonSelectorChanged">
+										@foreach (var season in _seasons)
+										{
+											<option value="@season.SeasonId" selected="@(season.SeasonId == _selectedSeasonId)">@season.Name</option>
+										}
+									</select>
+								}
+								@if (CanManageLeague && _selectedSeasonId.HasValue)
+								{
+									<button class="league-detail-btn league-detail-btn-create" @onclick="OpenSeasonEventModal">
+										<i class="fa-solid fa-plus"></i> Record Results
+									</button>
+								}
+							</div>
+						</div>
+
+						@if (_seasonEvents.Count == 0)
 						{
-							<p class="mb-0 text-muted">Loading pending requests...</p>
-						}
-						else if (_pendingJoinRequests.Count == 0)
-						{
-							<p class="mb-0 text-muted">No pending join requests.</p>
+							<p class="league-detail-empty">No season events for the selected season.</p>
 						}
 						else
 						{
-							<ul class="list-group">
-								@foreach (var joinRequest in _pendingJoinRequests)
+							<div class="league-detail-results-table">
+								<div class="league-detail-results-header-row">
+									<span>Event</span>
+									<span>Scheduled</span>
+									<span>Status</span>
+									<span>Actions</span>
+								</div>
+								@foreach (var seasonEvent in _seasonEvents)
 								{
-									<li class="list-group-item d-flex flex-column gap-2" @key="joinRequest.JoinRequestId">
-										<div class="d-flex flex-wrap justify-content-between gap-2">
-											<div>
-												<div class="fw-semibold">@joinRequest.RequesterDisplayName</div>
-												<div class="small text-muted">User: @joinRequest.RequesterUserId • Requested: @joinRequest.CreatedAtUtc.ToLocalTime().ToString("g") • Expires: @joinRequest.ExpiresAtUtc.ToLocalTime().ToString("g")</div>
-											</div>
-											<div class="d-flex gap-2">
-												<button type="button" class="btn btn-sm btn-outline-success league-action-btn" @onclick="() => ApproveJoinRequestAsync(joinRequest.JoinRequestId)" disabled="@(_isSubmittingJoinRequest && _actingJoinRequestId == joinRequest.JoinRequestId)">Approve</button>
-												<button type="button" class="btn btn-sm btn-outline-danger league-action-btn" @onclick="() => BeginDenyJoinRequest(joinRequest.JoinRequestId)" disabled="@(_isSubmittingJoinRequest && _actingJoinRequestId == joinRequest.JoinRequestId)">Deny</button>
-											</div>
+									<div class="league-detail-results-row">
+										<span class="league-detail-results-name">@seasonEvent.Name</span>
+										<span class="league-detail-results-date">@FormatDate(seasonEvent.ScheduledAtUtc)</span>
+										<span class="league-detail-event-status @(seasonEvent.Status == LeagueSeasonEventStatus.Completed ? "league-detail-event-status-completed" : "")">@seasonEvent.Status</span>
+										<div class="league-detail-results-actions">
+											@if (CanManageLeague)
+											{
+												<button class="btn btn-sm btn-outline-success league-action-btn" @onclick="() => OpenRecordResultsModal(seasonEvent)">Record Results</button>
+											}
+											@if (seasonEvent.LaunchedGameId.HasValue)
+											{
+												<button class="btn btn-sm btn-outline-primary league-action-btn" @onclick="() => OpenTable(seasonEvent.LaunchedGameId.Value)">Open Table</button>
+											}
+											else if (CanManageLeague)
+											{
+												<button class="btn btn-sm btn-primary league-action-btn" @onclick="() => LaunchSeasonEventAsync(seasonEvent.EventId)" disabled="@(_launchingSeasonEventId == seasonEvent.EventId)">Launch Play</button>
+											}
 										</div>
-										@if (IsDenyConfirmationVisible(joinRequest.JoinRequestId))
-										{
-											var moderationInput = GetModerationReasonInput(joinRequest.JoinRequestId);
-											<div class="d-flex flex-column gap-2">
-												<div class="form-floating">
-													<InputText id="@($"join-request-reason-{joinRequest.JoinRequestId}")"
-															   class="form-control"
-															   maxlength="512"
-															   placeholder="Reason (optional)"
-															   @bind-Value="moderationInput.Reason"
-															   @bind-Value:event="oninput" />
-													<label for="@($"join-request-reason-{joinRequest.JoinRequestId}")">Reason (optional)</label>
-												</div>
-												<div>
-													<button type="button" class="btn btn-sm btn-danger league-action-btn" @onclick="() => DenyJoinRequestAsync(joinRequest.JoinRequestId)" disabled="@(_isSubmittingJoinRequest && _actingJoinRequestId == joinRequest.JoinRequestId)">Deny</button>
-												</div>
-											</div>
-										}
-									</li>
+									</div>
 								}
+							</div>
+						}
+					</section>
+				</div>
+			}
+
+			@* ═══════════ TAB 3: STANDINGS ═══════════ *@
+			@if (_activeTab == LeagueDetailTab.Standings)
+			{
+				<div class="league-detail-tab-content">
+					<section class="league-detail-card league-detail-rules-box">
+						<div class="league-detail-rules-icon"><i class="fa-solid fa-scale-balanced"></i></div>
+						<div>
+							<div class="fw-semibold">Scoring &amp; Tie-break Rules</div>
+							<ul class="league-detail-rules-list">
+								<li>Ranked by total points (highest first).</li>
+								<li>Tie-break #1: total chips delta (highest first).</li>
+								<li>Tie-break #2: earliest standings update wins.</li>
+								<li>Standings refresh after result ingestion.</li>
 							</ul>
-						}
-					</div>
-				</div>
-			</section>
-		}
+						</div>
+					</section>
 
-		@if (HasLeagueAccess)
-		{
-			<section class="cashier-panel">
-				<div class="cashier-panel-body d-flex flex-column gap-3">
-					<div class="cashier-section-header">
-						<h2 class="cashier-section-title">Invites</h2>
-						@if (CanManageLeague)
-						{
-							<button class="btn btn-sm btn-primary league-action-btn" @onclick="OpenInviteModal">Create Invite</button>
-						}
-					</div>
-
-					@if (_invites.Count == 0)
-					{
-						<p class="mb-0 text-muted">No invites yet.</p>
-					}
-					else
-					{
-						<ul class="list-group">
-							@foreach (var invite in _invites)
-							{
-								<li class="list-group-item small d-flex justify-content-between align-items-center gap-2">
-									<div class="d-flex flex-column">
-										<div>Status: @invite.Status • Expires: @invite.ExpiresAtUtc.ToLocalTime().ToString("g")</div>
-										<div>Code: <span class="fw-semibold">@(invite.InviteCode ?? "-")</span></div>
-									</div>
-									<div class="d-flex align-items-center gap-2">
-										<button type="button"
-												class="btn btn-sm btn-outline-secondary league-action-btn"
-												@onclick="() => CopyInviteCodeAsync(invite.InviteId, invite.InviteCode)"
-												disabled="@string.IsNullOrWhiteSpace(invite.InviteCode)"
-												title="@(IsInviteCodeCopied(invite.InviteId) ? "Copied" : "Copy invite code")"
-												aria-label="@(IsInviteCodeCopied(invite.InviteId) ? "Copied" : "Copy invite code")">
-											@if (IsInviteCodeCopied(invite.InviteId))
-											{
-												<i class="fa-solid fa-check" aria-hidden="true"></i>
-											}
-											else
-											{
-												<i class="fa-regular fa-copy" aria-hidden="true"></i>
-											}
-										</button>
-										@if (CanManageLeague && invite.Status == LeagueInviteStatus.Active)
-										{
-											<button class="btn btn-sm btn-outline-danger league-action-btn" @onclick="() => RevokeInviteAsync(invite.InviteId)" disabled="@_isSubmittingRevokeInvite">Revoke</button>
-										}
-									</div>
-								</li>
-							}
-						</ul>
-					}
-				</div>
-			</section>
-
-			<section class="cashier-panel">
-				<div class="cashier-panel-body d-flex flex-column gap-3">
-					<div class="cashier-section-header">
-						<h2 class="cashier-section-title">Standings</h2>
-						<button class="btn btn-sm btn-outline-secondary league-action-btn" @onclick="LoadStandingsAsync" disabled="@_isLoading">
-							<i class="fa-solid fa-rotate-right me-1" aria-hidden="true"></i>
-							Refresh Standings
-						</button>
-					</div>
-
-					<div class="league-standings-rules">
-						<div class="fw-semibold">Scoring + tie-break rules</div>
-						<ul class="mb-0 small text-muted">
-							<li>Ranked by total points (highest first).</li>
-							<li>Tie-break #1: total chips delta (highest first).</li>
-							<li>Tie-break #2: earliest standings update wins the tie.</li>
-							<li>Standings refresh after season event result ingestion.</li>
-						</ul>
-					</div>
 					@if (_selectedSeasonId.HasValue)
 					{
-						<div class="small text-muted">Season scope: @(SelectedSeasonName ?? "Selected season")</div>
+						<div class="league-detail-season-scope">Season: @(SelectedSeasonName ?? "Selected season")</div>
 					}
 
 					@if (_myStanding is not null)
 					{
-						<div class="league-my-progress">
-							<div class="league-my-progress-header">
-								<h3 class="h6 mb-0">My Progress</h3>
+						<section class="league-detail-card league-detail-my-progress-card">
+							<div class="league-detail-card-header">
+								<h3><i class="fa-solid fa-chart-line"></i> My Progress</h3>
 								<span class="league-rank-chip @GetRankMovementCssClass(_myStanding.UserId)">@GetRankMovementLabel(_myStanding.UserId)</span>
 							</div>
-							<div class="league-my-progress-grid">
-								<div class="league-progress-item">
-									<div class="league-progress-label">Rank</div>
-									<div class="league-progress-value">#@_myStanding.Rank</div>
+							<div class="league-detail-progress-stats">
+								<div class="league-detail-progress-stat">
+									<span class="league-detail-progress-stat-value">#@_myStanding.Rank</span>
+									<span class="league-detail-progress-stat-label">Rank</span>
 								</div>
-								<div class="league-progress-item">
-									<div class="league-progress-label">Points</div>
-									<div class="league-progress-value">@_myStanding.TotalPoints</div>
+								<div class="league-detail-progress-stat">
+									<span class="league-detail-progress-stat-value">@_myStanding.TotalPoints</span>
+									<span class="league-detail-progress-stat-label">Points</span>
 								</div>
-								<div class="league-progress-item">
-									<div class="league-progress-label">Events</div>
-									<div class="league-progress-value">@_myStanding.TotalEvents</div>
+								<div class="league-detail-progress-stat">
+									<span class="league-detail-progress-stat-value">@_myStanding.TotalEvents</span>
+									<span class="league-detail-progress-stat-label">Events</span>
 								</div>
-								<div class="league-progress-item">
-									<div class="league-progress-label">Chips Δ</div>
-									<div class="league-progress-value">@FormatChipsDelta(_myStanding.TotalChipsDelta)</div>
+								<div class="league-detail-progress-stat">
+									<span class="league-detail-progress-stat-value">@FormatChipsDelta(_myStanding.TotalChipsDelta)</span>
+									<span class="league-detail-progress-stat-label">Chips &Delta;</span>
 								</div>
 							</div>
-						</div>
+						</section>
 					}
 
-					@if (_standings.Count == 0)
-					{
-						<p class="mb-0 text-muted">No standings yet.</p>
-					}
-					else
-					{
-						<ul class="list-group league-standings-list">
-							@foreach (var standing in _standings)
-							{
-								<li class="list-group-item d-flex justify-content-between align-items-center gap-2 @GetLeaderboardRowCssClass(standing)">
-									<div>
-										<div class="fw-semibold d-flex align-items-center flex-wrap gap-2">
-											<span>@GetRankPrefix(standing.Rank) #@standing.Rank</span>
-											<span>•</span>
-											<span>@(standing.UserDisplayName ?? standing.UserId)</span>
+					<section class="league-detail-card">
+						<div class="league-detail-card-header">
+							<h3><i class="fa-solid fa-ranking-star"></i> Leaderboard</h3>
+							<button class="league-detail-btn league-detail-btn-refresh" @onclick="LoadStandingsAsync" disabled="@_isLoading" aria-label="Refresh standings">
+								<i class="fa-solid fa-rotate-right"></i>
+							</button>
+						</div>
+						@if (_standings.Count == 0)
+						{
+							<p class="league-detail-empty">No standings yet.</p>
+						}
+						else
+						{
+							<div class="league-detail-standings-table">
+								<div class="league-detail-standings-header-row">
+									<span>Rank</span>
+									<span>Player</span>
+									<span>Points</span>
+									<span>Events</span>
+									<span>Chips &Delta;</span>
+									<span>Movement</span>
+								</div>
+								@foreach (var standing in _standings)
+								{
+									<div class="league-detail-standings-row @(standing.Rank <= 3 ? "league-detail-standings-top" : "") @(IsCurrentUserStanding(standing) ? "league-detail-standings-me" : "")">
+										<span class="league-detail-standings-rank">@GetRankPrefix(standing.Rank) #@standing.Rank</span>
+										<span class="league-detail-standings-player">
+											@(standing.UserDisplayName ?? standing.UserId)
 											@if (IsCurrentUserStanding(standing))
 											{
 												<span class="league-you-chip">You</span>
 											}
-										</div>
-										<div class="small text-muted">Events: @standing.TotalEvents • Last place: @(standing.LastPlacement?.ToString() ?? "-") • Updated @standing.UpdatedAtUtc.ToLocalTime().ToString("g")</div>
+										</span>
+										<span class="league-detail-standings-pts fw-semibold">@standing.TotalPoints</span>
+										<span>@standing.TotalEvents</span>
+										<span>@FormatChipsDelta(standing.TotalChipsDelta)</span>
+										<span class="league-rank-chip @GetRankMovementCssClass(standing.UserId)">@GetRankMovementLabel(standing.UserId)</span>
 									</div>
-									<div class="text-end">
-										<div class="fw-semibold">Pts: @standing.TotalPoints</div>
-										<div class="small text-muted">Chips Δ: @FormatChipsDelta(standing.TotalChipsDelta)</div>
-										<div class="small"><span class="league-rank-chip @GetRankMovementCssClass(standing.UserId)">@GetRankMovementLabel(standing.UserId)</span></div>
-									</div>
-								</li>
-							}
-						</ul>
-
-						<div>
-							<h3 class="h6 mb-2">Recent Results</h3>
-							@if (_recentCompletedEvents.Count == 0)
-							{
-								<p class="mb-0 text-muted small">No completed season events yet for the selected season.</p>
-							}
-							else
-							{
-								<ul class="list-group">
-									@foreach (var seasonEvent in _recentCompletedEvents)
-									{
-										<li class="list-group-item small d-flex justify-content-between align-items-center gap-2">
-											<div>@seasonEvent.Name</div>
-											<div class="text-muted">@FormatDate(seasonEvent.ScheduledAtUtc) • @seasonEvent.Status</div>
-										</li>
-									}
-								</ul>
-							}
-						</div>
-					}
+								}
+							</div>
+						}
+					</section>
 				</div>
-			</section>
+			}
 
-			<section class="cashier-panel">
-				<div class="cashier-panel-body d-flex flex-column gap-3">
-					<h2 class="cashier-section-title league-schedule-title">Schedule</h2>
+			@* ═══════════ TAB 4: SCHEDULE ═══════════ *@
+			@if (_activeTab == LeagueDetailTab.Schedule)
+			{
+				<div class="league-detail-tab-content">
 					<div class="league-schedule-tabs" role="tablist" aria-label="Schedule sections">
 						<button type="button"
 								class="league-schedule-tab @(_activeScheduleTab == ScheduleTab.Seasons ? "league-schedule-tab-active" : string.Empty)"
 								role="tab"
 								aria-selected="@(_activeScheduleTab == ScheduleTab.Seasons)"
 								@onclick="() => _activeScheduleTab = ScheduleTab.Seasons">
-							Seasons
+							<i class="fa-solid fa-layer-group"></i> Seasons
 						</button>
 						<button type="button"
 								class="league-schedule-tab @(_activeScheduleTab == ScheduleTab.OneOffEvents ? "league-schedule-tab-active" : string.Empty)"
 								role="tab"
 								aria-selected="@(_activeScheduleTab == ScheduleTab.OneOffEvents)"
 								@onclick="() => _activeScheduleTab = ScheduleTab.OneOffEvents">
-							One-Off Events
+							<i class="fa-solid fa-sparkles"></i> One-Off Events
 						</button>
 					</div>
 
 					@if (_activeScheduleTab == ScheduleTab.Seasons)
 					{
-						<div>
-							<div class="cashier-section-header mb-2 league-seasons-header">
-								<h3 class="h6 mb-0">Seasons</h3>
+						<section class="league-detail-card">
+							<div class="league-detail-card-header">
+								<h3><i class="fa-solid fa-layer-group"></i> Seasons</h3>
 								@if (CanManageLeague)
 								{
-									<button class="btn btn-sm btn-primary league-action-btn" @onclick="OpenSeasonModal">Create Season</button>
+									<button class="league-detail-btn league-detail-btn-create" @onclick="OpenSeasonModal">
+										<i class="fa-solid fa-plus"></i> Create Season
+									</button>
 								}
 							</div>
 							@if (_seasons.Count == 0)
 							{
-								<p class="mb-0 text-muted">No seasons yet.</p>
+								<p class="league-detail-empty">No seasons yet.</p>
 							}
 							else
 							{
-								<ul class="list-group">
+								<div class="league-detail-event-list">
 									@foreach (var season in _seasons)
 									{
-										<li class="list-group-item @(season.SeasonId == _selectedSeasonId ? "border-primary" : string.Empty)">
-											<div class="fw-semibold">@season.Name</div>
-											<div class="small text-muted">Status: @season.Status • Planned events: @(season.PlannedEventCount?.ToString() ?? "-")</div>
-											<div class="small text-muted">Range: @FormatDate(season.StartsAtUtc) - @FormatDate(season.EndsAtUtc)</div>
-											<button class="btn btn-sm btn-outline-primary mt-2 league-action-btn" @onclick="() => SelectSeasonAsync(season.SeasonId)">View Events</button>
-										</li>
+										<div class="league-detail-event-row league-detail-season-row @(season.SeasonId == _selectedSeasonId ? "league-detail-season-selected" : "")">
+											<div class="league-detail-event-info">
+												<span class="league-detail-event-name">@season.Name</span>
+												<span class="league-detail-event-date">@season.Status &bull; @(season.PlannedEventCount?.ToString() ?? "-") planned &bull; @FormatDate(season.StartsAtUtc) - @FormatDate(season.EndsAtUtc)</span>
+											</div>
+											<button class="btn btn-sm btn-outline-primary league-action-btn" @onclick="() => SelectSeasonAsync(season.SeasonId)">View Events</button>
+										</div>
 									}
-								</ul>
+								</div>
 							}
-						</div>
+						</section>
 
 						@if (_selectedSeasonId.HasValue)
 						{
-							<div>
-								<div class="cashier-section-header mb-2">
-									<h3 class="h6 mb-0">Season Events</h3>
+							<section class="league-detail-card">
+								<div class="league-detail-card-header">
+									<h3><i class="fa-solid fa-calendar-check"></i> Season Events</h3>
 									@if (CanManageLeague)
 									{
-										<button class="btn btn-sm btn-primary league-action-btn" @onclick="OpenSeasonEventModal">Create Season Event</button>
+										<button class="league-detail-btn league-detail-btn-create" @onclick="OpenSeasonEventModal">
+											<i class="fa-solid fa-plus"></i> Create Event
+										</button>
 									}
 								</div>
-
 								@if (_seasonEvents.Count == 0)
 								{
-									<p class="mb-0 text-muted">No season events yet.</p>
+									<p class="league-detail-empty">No season events yet.</p>
 								}
 								else
 								{
-									<ul class="list-group">
+									<div class="league-detail-event-list">
 										@foreach (var seasonEvent in _seasonEvents)
 										{
-											<li class="list-group-item small d-flex justify-content-between align-items-center gap-2">
-												<div>
-													@seasonEvent.Name • Seq: @(seasonEvent.SequenceNumber?.ToString() ?? "-") • Scheduled: @FormatDate(seasonEvent.ScheduledAtUtc) • Status: @seasonEvent.Status
+											<div class="league-detail-event-row">
+												<div class="league-detail-event-info">
+													<span class="league-detail-event-name">@seasonEvent.Name</span>
+													<span class="league-detail-event-date">Seq: @(seasonEvent.SequenceNumber?.ToString() ?? "-") &bull; @FormatDate(seasonEvent.ScheduledAtUtc) &bull; @seasonEvent.Status</span>
 												</div>
-												<div class="d-flex gap-2">
+												<div class="league-detail-event-row-actions">
 													@if (CanManageLeague)
 													{
 														<button class="btn btn-sm btn-outline-success league-action-btn" @onclick="() => OpenRecordResultsModal(seasonEvent)">Record Results</button>
@@ -498,38 +543,40 @@
 														<button class="btn btn-sm btn-primary league-action-btn" @onclick="() => LaunchSeasonEventAsync(seasonEvent.EventId)" disabled="@(_launchingSeasonEventId == seasonEvent.EventId)">Launch Play</button>
 													}
 												</div>
-											</li>
+											</div>
 										}
-									</ul>
+									</div>
 								}
-							</div>
+							</section>
 						}
 					}
 					else
 					{
-						<div>
-							<div class="cashier-section-header mb-2 league-seasons-header">
-								<h3 class="h6 mb-0">One-off Events</h3>
+						<section class="league-detail-card">
+							<div class="league-detail-card-header">
+								<h3><i class="fa-solid fa-sparkles"></i> One-Off Events</h3>
 								@if (CanManageLeague)
 								{
-									<button class="btn btn-sm btn-primary league-action-btn" @onclick="OpenOneOffModal">Create One-Off Event</button>
+									<button class="league-detail-btn league-detail-btn-create" @onclick="OpenOneOffModal">
+										<i class="fa-solid fa-plus"></i> Create Event
+									</button>
 								}
 							</div>
-
 							@if (_oneOffEvents.Count == 0)
 							{
-								<p class="mb-0 text-muted">No one-off events yet.</p>
+								<p class="league-detail-empty">No one-off events yet.</p>
 							}
 							else
 							{
-								<ul class="list-group">
+								<div class="league-detail-event-list">
 									@foreach (var oneOff in _oneOffEvents)
 									{
-										<li class="list-group-item small d-flex justify-content-between align-items-center gap-2">
-											<div>
-												@oneOff.Name • @oneOff.EventType • Scheduled: @oneOff.ScheduledAtUtc.ToLocalTime().ToString("g") • Status: @oneOff.Status
+										<div class="league-detail-event-row">
+											<div class="league-detail-event-info">
+												<span class="league-detail-event-name">@oneOff.Name</span>
+												<span class="league-detail-event-date">@oneOff.EventType &bull; @oneOff.ScheduledAtUtc.ToLocalTime().ToString("g") &bull; @oneOff.Status</span>
 											</div>
-											<div class="d-flex gap-2">
+											<div class="league-detail-event-row-actions">
 												@if (oneOff.LaunchedGameId.HasValue)
 												{
 													<button class="btn btn-sm btn-outline-primary league-action-btn" @onclick="() => OpenTable(oneOff.LaunchedGameId.Value)">Open Table</button>
@@ -539,14 +586,252 @@
 													<button class="btn btn-sm btn-primary league-action-btn" @onclick="() => LaunchOneOffEventAsync(oneOff.EventId)" disabled="@(_launchingOneOffEventId == oneOff.EventId)">Launch Play</button>
 												}
 											</div>
+										</div>
+									}
+								</div>
+							}
+						</section>
+					}
+				</div>
+			}
+
+			@* ═══════════ TAB 5: MEMBERS ═══════════ *@
+			@if (_activeTab == LeagueDetailTab.Members)
+			{
+				<div class="league-detail-tab-content">
+					<section class="league-detail-card">
+						<div class="league-detail-card-header">
+							<h3><i class="fa-solid fa-users"></i> Members (@_members.Count)</h3>
+						</div>
+						@if (_members.Count == 0)
+						{
+							<p class="league-detail-empty">No members found.</p>
+						}
+						else
+						{
+							<div class="league-detail-members-grid">
+								@foreach (var member in _members)
+								{
+									<article class="league-detail-member-card">
+										<div class="league-detail-member-card-top">
+											@{
+												var memberInitial = (member.UserDisplayName ?? member.UserId)?[..1].ToUpperInvariant() ?? "?";
+											}
+											<div class="league-detail-member-avatar">@memberInitial</div>
+											<div class="league-detail-member-info">
+												<span class="league-detail-member-name" title="@(member.UserDisplayName ?? member.UserId)">@(member.UserDisplayName ?? member.UserId)</span>
+												<span class="league-detail-member-role">@member.Role</span>
+												<span class="league-detail-member-joined">Joined @member.JoinedAtUtc.ToLocalTime().ToString("MMM d, yyyy")</span>
+											</div>
+										</div>
+										<div class="league-detail-member-card-actions">
+											@if (CanPromote(member))
+											{
+												<button class="btn btn-sm btn-success league-action-btn league-member-action-btn" title="Promote to admin" @onclick="() => PromoteMemberAsync(member.UserId)" disabled="@(_isSubmittingPromote || IsActingOnMember(member.UserId))">
+													<i class="fa-thin fa-person-arrow-up-from-line"></i>
+												</button>
+											}
+											@if (CanDemote(member))
+											{
+												<button class="btn btn-sm btn-warning league-action-btn league-member-action-btn" title="Demote to member" @onclick="() => DemoteMemberAsync(member.UserId)" disabled="@(_isSubmittingDemote || IsActingOnMember(member.UserId))">
+													<i class="fa-thin fa-person-arrow-down-to-line"></i>
+												</button>
+											}
+											@if (CanTransferOwnership(member))
+											{
+												<button class="btn btn-sm league-action-btn league-member-action-btn league-member-action-transfer" title="Transfer ownership" @onclick="() => TransferOwnershipAsync(member.UserId)" disabled="@(_isSubmittingTransferOwnership || IsActingOnMember(member.UserId))">
+													<i class="fa-thin fa-arrow-right-from-arc"></i>
+												</button>
+											}
+											@if (CanRemove(member))
+											{
+												<button class="btn btn-sm btn-danger league-action-btn league-member-action-btn" title="Remove member" @onclick="() => RemoveMemberAsync(member.UserId)" disabled="@(_isSubmittingRemove || IsActingOnMember(member.UserId))">
+													<i class="fa-thin fa-user-minus"></i>
+												</button>
+											}
+										</div>
+									</article>
+								}
+							</div>
+						}
+					</section>
+
+					<section class="league-detail-card">
+						<div class="league-detail-card-header">
+							<h3><i class="fa-solid fa-rectangle-history-circle-user"></i> Membership History</h3>
+						</div>
+						@if (_membershipHistory.Count == 0)
+						{
+							<p class="league-detail-empty">No membership events yet.</p>
+						}
+						else
+						{
+							<div class="league-detail-history-list">
+								@foreach (var historyItem in _membershipHistory.OrderByDescending(x => x.OccurredAtUtc))
+								{
+									<div class="league-detail-history-item">
+										<div class="league-detail-history-icon">
+											<i class="@GetMembershipHistoryEventIconCssClass(historyItem.EventType)"></i>
+										</div>
+										<div class="league-detail-history-content">
+											<span class="league-detail-history-user">@(historyItem.UserDisplayName ?? historyItem.UserId)</span>
+											<span class="league-detail-history-event">@GetMembershipHistoryEventTypeDescription(historyItem.EventType)</span>
+											<span class="league-detail-history-time"><i class="fa-regular fa-calendar"></i> @historyItem.OccurredAtUtc.ToLocalTime().ToString("MMMM d, yyyy 'at' h:mm tt")</span>
+										</div>
+									</div>
+								}
+							</div>
+						}
+					</section>
+
+					@if (CanManageLeague)
+					{
+						<section class="league-detail-card league-detail-admin-card">
+							<div class="league-detail-card-header">
+								<h3><i class="fa-solid fa-shield-check"></i> Admin Operations Console</h3>
+							</div>
+
+							<h4 class="league-detail-sub-header">Join Request Queue</h4>
+							@if (_isLoadingJoinRequests)
+							{
+								<p class="league-detail-empty">Loading pending requests...</p>
+							}
+							else if (_pendingJoinRequests.Count == 0)
+							{
+								<p class="league-detail-empty">No pending join requests.</p>
+							}
+							else
+							{
+								<ul class="list-group">
+									@foreach (var joinRequest in _pendingJoinRequests)
+									{
+										<li class="list-group-item d-flex flex-column gap-2" @key="joinRequest.JoinRequestId">
+											<div class="d-flex flex-wrap justify-content-between gap-2">
+												<div>
+													<div class="fw-semibold">@joinRequest.RequesterDisplayName</div>
+													<div class="small text-muted">User: @joinRequest.RequesterUserId &bull; Requested: @joinRequest.CreatedAtUtc.ToLocalTime().ToString("g") &bull; Expires: @joinRequest.ExpiresAtUtc.ToLocalTime().ToString("g")</div>
+												</div>
+												<div class="d-flex gap-2">
+													<button type="button" class="btn btn-sm btn-outline-success league-action-btn" @onclick="() => ApproveJoinRequestAsync(joinRequest.JoinRequestId)" disabled="@(_isSubmittingJoinRequest && _actingJoinRequestId == joinRequest.JoinRequestId)">Approve</button>
+													<button type="button" class="btn btn-sm btn-outline-danger league-action-btn" @onclick="() => BeginDenyJoinRequest(joinRequest.JoinRequestId)" disabled="@(_isSubmittingJoinRequest && _actingJoinRequestId == joinRequest.JoinRequestId)">Deny</button>
+												</div>
+											</div>
+											@if (IsDenyConfirmationVisible(joinRequest.JoinRequestId))
+											{
+												var moderationInput = GetModerationReasonInput(joinRequest.JoinRequestId);
+												<div class="d-flex flex-column gap-2">
+													<div class="form-floating">
+														<InputText id="@($"join-request-reason-{joinRequest.JoinRequestId}")"
+																   class="form-control"
+																   maxlength="512"
+																   placeholder="Reason (optional)"
+																   @bind-Value="moderationInput.Reason"
+																   @bind-Value:event="oninput" />
+														<label for="@($"join-request-reason-{joinRequest.JoinRequestId}")">Reason (optional)</label>
+													</div>
+													<div>
+														<button type="button" class="btn btn-sm btn-danger league-action-btn" @onclick="() => DenyJoinRequestAsync(joinRequest.JoinRequestId)" disabled="@(_isSubmittingJoinRequest && _actingJoinRequestId == joinRequest.JoinRequestId)">Deny</button>
+													</div>
+												</div>
+											}
 										</li>
 									}
 								</ul>
 							}
-						</div>
+						</section>
+
+						<section class="league-detail-card">
+							<div class="league-detail-card-header">
+								<h3><i class="fa-solid fa-envelope-open-text"></i> Invites</h3>
+								<button class="league-detail-btn league-detail-btn-create" @onclick="OpenInviteModal">
+									<i class="fa-solid fa-plus"></i> Create Invite
+								</button>
+							</div>
+							@if (_invites.Count == 0)
+							{
+								<p class="league-detail-empty">No invites yet.</p>
+							}
+							else
+							{
+								<div class="league-detail-invites-list">
+									@foreach (var invite in _invites)
+									{
+										<div class="league-detail-invite-row">
+											<div class="league-detail-invite-info">
+												<span>Status: @invite.Status &bull; Expires: @invite.ExpiresAtUtc.ToLocalTime().ToString("g")</span>
+												<span class="league-detail-invite-code">Code: <strong>@(invite.InviteCode ?? "-")</strong></span>
+											</div>
+											<div class="league-detail-invite-actions">
+												<button type="button"
+														class="btn btn-sm btn-outline-secondary league-action-btn"
+														@onclick="() => CopyInviteCodeAsync(invite.InviteId, invite.InviteCode)"
+														disabled="@string.IsNullOrWhiteSpace(invite.InviteCode)"
+														title="@(IsInviteCodeCopied(invite.InviteId) ? "Copied" : "Copy invite code")"
+														aria-label="@(IsInviteCodeCopied(invite.InviteId) ? "Copied" : "Copy invite code")">
+													@if (IsInviteCodeCopied(invite.InviteId))
+													{
+														<i class="fa-solid fa-check"></i>
+													}
+													else
+													{
+														<i class="fa-regular fa-copy"></i>
+													}
+												</button>
+												@if (invite.Status == LeagueInviteStatus.Active)
+												{
+													<button class="btn btn-sm btn-outline-danger league-action-btn" @onclick="() => RevokeInviteAsync(invite.InviteId)" disabled="@_isSubmittingRevokeInvite">Revoke</button>
+												}
+											</div>
+										</div>
+									}
+								</div>
+							}
+						</section>
+					}
+					else
+					{
+						<section class="league-detail-card">
+							<div class="league-detail-card-header">
+								<h3><i class="fa-solid fa-envelope-open-text"></i> Invites</h3>
+							</div>
+							@if (_invites.Count == 0)
+							{
+								<p class="league-detail-empty">No invites yet.</p>
+							}
+							else
+							{
+								<div class="league-detail-invites-list">
+									@foreach (var invite in _invites)
+									{
+										<div class="league-detail-invite-row">
+											<div class="league-detail-invite-info">
+												<span>Status: @invite.Status &bull; Expires: @invite.ExpiresAtUtc.ToLocalTime().ToString("g")</span>
+												<span class="league-detail-invite-code">Code: <strong>@(invite.InviteCode ?? "-")</strong></span>
+											</div>
+											<div class="league-detail-invite-actions">
+												<button type="button"
+														class="btn btn-sm btn-outline-secondary league-action-btn"
+														@onclick="() => CopyInviteCodeAsync(invite.InviteId, invite.InviteCode)"
+														disabled="@string.IsNullOrWhiteSpace(invite.InviteCode)"
+														title="@(IsInviteCodeCopied(invite.InviteId) ? "Copied" : "Copy invite code")">
+													@if (IsInviteCodeCopied(invite.InviteId))
+													{
+														<i class="fa-solid fa-check"></i>
+													}
+													else
+													{
+														<i class="fa-regular fa-copy"></i>
+													}
+												</button>
+											</div>
+										</div>
+									}
+								</div>
+							}
+						</section>
 					}
 				</div>
-			</section>
+			}
 		}
 	</div>
 </main>
@@ -826,6 +1111,16 @@
 	private bool _isLeagueHubSubscriptionInitialized;
 
 	private ScheduleTab _activeScheduleTab = ScheduleTab.Seasons;
+	private LeagueDetailTab _activeTab = LeagueDetailTab.Lobby;
+
+	private enum LeagueDetailTab
+	{
+		Lobby,
+		Results,
+		Standings,
+		Schedule,
+		Members
+	}
 
 	private enum ScheduleTab
 	{
@@ -1173,6 +1468,12 @@
 		_selectedSeasonId = seasonId;
 		await LoadSeasonEventsAsync(seasonId);
 		await LoadStandingsAsync();
+	}
+
+	private async Task OnSeasonSelectorChanged(ChangeEventArgs e)
+	{
+		if (Guid.TryParse(e.Value?.ToString(), out var seasonId))
+			await SelectSeasonAsync(seasonId);
 	}
 
 	private async Task CreateInviteAsync()
