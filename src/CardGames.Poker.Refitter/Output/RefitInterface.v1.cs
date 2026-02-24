@@ -5729,13 +5729,14 @@ namespace CardGames.Poker.Api.Contracts
     public partial record LeagueInviteSummaryDto
     {
         [JsonConstructor]
-        public LeagueInviteSummaryDto(System.DateTimeOffset? @createdAtUtc, System.DateTimeOffset? @expiresAtUtc, System.Guid @inviteId, System.Guid @leagueId, LeagueInviteStatus? @status)
+        public LeagueInviteSummaryDto(System.DateTimeOffset? @createdAtUtc, System.DateTimeOffset? @expiresAtUtc, string @inviteCode, System.Guid @inviteId, System.Guid @leagueId, LeagueInviteStatus? @status)
         {
             this.InviteId = @inviteId;
             this.LeagueId = @leagueId;
             this.Status = @status;
             this.CreatedAtUtc = @createdAtUtc;
             this.ExpiresAtUtc = @expiresAtUtc;
+            this.InviteCode = @inviteCode;
         }
 
         [JsonPropertyName("inviteId")]
@@ -5754,6 +5755,9 @@ namespace CardGames.Poker.Api.Contracts
 
         [JsonPropertyName("expiresAtUtc")]
         public System.DateTimeOffset? ExpiresAtUtc { get; init; }
+
+        [JsonPropertyName("inviteCode")]
+        public string InviteCode { get; init; }
 
     }
 

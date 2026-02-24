@@ -2,6 +2,8 @@ using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Leagues.v1.Governance;
 using CardGames.Poker.Api.Infrastructure;
+using CardGames.Poker.Api.Services;
+using CardGames.Contracts.SignalR;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
@@ -10,7 +12,9 @@ namespace CardGames.Poker.Api.Features.Leagues.v1.Commands.ApproveLeagueJoinRequ
 
 public sealed class ApproveLeagueJoinRequestCommandHandler(
 	CardsDbContext context,
-	ICurrentUserService currentUserService)
+	ICurrentUserService currentUserService,
+	ILeagueBroadcaster leagueBroadcaster,
+	ILogger<ApproveLeagueJoinRequestCommandHandler> logger)
 	: IRequestHandler<ApproveLeagueJoinRequestCommand, OneOf<Unit, ApproveLeagueJoinRequestError>>
 {
 	public async Task<OneOf<Unit, ApproveLeagueJoinRequestError>> Handle(ApproveLeagueJoinRequestCommand request, CancellationToken cancellationToken)
@@ -48,6 +52,25 @@ public sealed class ApproveLeagueJoinRequestCommandHandler(
 			joinRequest.ResolvedByUserId = null;
 			joinRequest.ResolutionReason = "Join request expired before moderation.";
 			await context.SaveChangesAsync(cancellationToken);
+
+			try
+			{
+				await leagueBroadcaster.BroadcastJoinRequestUpdatedAsync(new LeagueJoinRequestUpdatedDto
+				{
+					LeagueId = request.LeagueId,
+					JoinRequestId = joinRequest.Id,
+					Status = LeagueJoinRequestStatus.Expired.ToString(),
+					UpdatedAtUtc = joinRequest.UpdatedAtUtc
+				}, cancellationToken);
+			}
+			catch (Exception ex)
+			{
+				logger.LogWarning(ex,
+					"Failed to broadcast join request expired update for league {LeagueId}, request {JoinRequestId}",
+					request.LeagueId,
+					joinRequest.Id);
+			}
+
 			return new ApproveLeagueJoinRequestError(ApproveLeagueJoinRequestErrorCode.InvalidState, "Join request has expired.");
 		}
 
@@ -114,6 +137,25 @@ public sealed class ApproveLeagueJoinRequestCommandHandler(
 		joinRequest.ResolutionReason = request.Request.Reason?.Trim();
 
 		await context.SaveChangesAsync(cancellationToken);
+
+		try
+		{
+			await leagueBroadcaster.BroadcastJoinRequestUpdatedAsync(new LeagueJoinRequestUpdatedDto
+			{
+				LeagueId = request.LeagueId,
+				JoinRequestId = joinRequest.Id,
+				Status = LeagueJoinRequestStatus.Approved.ToString(),
+				UpdatedAtUtc = joinRequest.UpdatedAtUtc
+			}, cancellationToken);
+		}
+		catch (Exception ex)
+		{
+			logger.LogWarning(ex,
+				"Failed to broadcast join request approved update for league {LeagueId}, request {JoinRequestId}",
+				request.LeagueId,
+				joinRequest.Id);
+		}
+
 		return Unit.Value;
 	}
 }

@@ -1,9 +1,11 @@
 using System.Security.Cryptography;
 using System.Text;
+using CardGames.Contracts.SignalR;
 using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Infrastructure;
+using CardGames.Poker.Api.Services;
 using MediatR;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -13,7 +15,9 @@ namespace CardGames.Poker.Api.Features.Leagues.v1.Commands.JoinLeague;
 
 public sealed class JoinLeagueCommandHandler(
 	CardsDbContext context,
-	ICurrentUserService currentUserService)
+	ICurrentUserService currentUserService,
+	ILeagueBroadcaster leagueBroadcaster,
+	ILogger<JoinLeagueCommandHandler> logger)
 	: IRequestHandler<JoinLeagueCommand, OneOf<JoinLeagueResponse, JoinLeagueError>>
 {
 	public async Task<OneOf<JoinLeagueResponse, JoinLeagueError>> Handle(JoinLeagueCommand request, CancellationToken cancellationToken)
@@ -133,7 +137,7 @@ public sealed class JoinLeagueCommandHandler(
 			}
 		}
 
-		return new JoinLeagueResponse
+		var response = new JoinLeagueResponse
 		{
 			LeagueId = invite.LeagueId,
 			JoinRequestId = existingPendingRequest.Id,
@@ -142,6 +146,28 @@ public sealed class JoinLeagueCommandHandler(
 			Joined = false,
 			AlreadyMember = false
 		};
+
+		try
+		{
+			await leagueBroadcaster.BroadcastJoinRequestSubmittedAsync(new LeagueJoinRequestSubmittedDto
+			{
+				LeagueId = invite.LeagueId,
+				JoinRequestId = existingPendingRequest.Id,
+				RequesterUserId = currentUserService.UserId!,
+				RequesterDisplayName = currentUserService.UserName,
+				CreatedAtUtc = existingPendingRequest.CreatedAtUtc,
+				ExpiresAtUtc = existingPendingRequest.ExpiresAtUtc
+			}, cancellationToken);
+		}
+		catch (Exception ex)
+		{
+			logger.LogWarning(ex,
+				"Failed to broadcast league join request submission for league {LeagueId}, request {JoinRequestId}",
+				invite.LeagueId,
+				existingPendingRequest.Id);
+		}
+
+		return response;
 	}
 
 	private static string ComputeSha256(string value)

@@ -1,17 +1,21 @@
 @page "/leagues/{LeagueId:guid}"
 @attribute [Authorize]
 @rendermode InteractiveServer
+@implements IAsyncDisposable
 
 @using CardGames.Poker.Api.Clients
 @using CardGames.Poker.Api.Contracts
 @using CardGames.Poker.Web.Components.Shared
+@using CardGames.Poker.Web.Services
 @using Microsoft.AspNetCore.Authorization
 @using System.Net
 @using System.ComponentModel
 @using System.Text.Json
 @using System.Security.Claims
+@using CardGames.Contracts.SignalR
 
 @inject ILeaguesApi LeaguesApi
+@inject LeagueHubClient LeagueHubClient
 @inject ILogger<LeagueDetail> Logger
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
@@ -133,9 +137,9 @@
 												</button>
 											}
 										</div>
-										<h5 class="fw-bold mb-2 text-truncate" style="padding-right: 8rem;" title="@(member.UserDisplayName ?? member.UserId)">
+										<h4 class="medium fw-bold mb-2 text-truncate" style="padding-right: 8rem;" title="@(member.UserDisplayName ?? member.UserId)">
 											@(member.UserDisplayName ?? member.UserId)
-										</h5>
+										</h4>
 										<div class="small text-muted">
 											<div>Role: @member.Role</div>
 											<div>Joined: @member.JoinedAtUtc.ToLocalTime().ToString("g")</div>
@@ -847,6 +851,7 @@
 	private Dictionary<string, int> _rankMovementByUserId = new(StringComparer.Ordinal);
 	private LeagueStandingEntryDto? _myStanding;
 	private List<LeagueSeasonEventDto> _recentCompletedEvents = [];
+	private bool _isLeagueHubSubscriptionInitialized;
 
 	private ScheduleTab _activeScheduleTab = ScheduleTab.Seasons;
 
@@ -945,8 +950,64 @@
 		}
 		finally
 		{
+			await SyncLeagueHubSubscriptionAsync();
 			_isLoading = false;
 		}
+	}
+
+	private async Task SyncLeagueHubSubscriptionAsync()
+	{
+		try
+		{
+			if (!_isLeagueHubSubscriptionInitialized)
+			{
+				LeagueHubClient.OnLeagueJoinRequestSubmitted += HandleLeagueJoinRequestSubmittedAsync;
+				LeagueHubClient.OnLeagueJoinRequestUpdated += HandleLeagueJoinRequestUpdatedAsync;
+				_isLeagueHubSubscriptionInitialized = true;
+			}
+
+			if (HasLeagueAccess && CanManageLeague)
+			{
+				await LeagueHubClient.ConnectAsync();
+				await LeagueHubClient.SetManagedLeaguesAsync([LeagueId]);
+			}
+			else if (_isLeagueHubSubscriptionInitialized)
+			{
+				await LeagueHubClient.SetManagedLeaguesAsync([]);
+			}
+		}
+		catch (Exception ex)
+		{
+			Logger.LogWarning(ex, "Failed syncing league SignalR subscription for league {LeagueId}", LeagueId);
+		}
+	}
+
+	private async Task HandleLeagueJoinRequestSubmittedAsync(LeagueJoinRequestSubmittedDto payload)
+	{
+		await InvokeAsync(async () =>
+		{
+			if (payload.LeagueId != LeagueId || !HasLeagueAccess || !CanManageLeague)
+			{
+				return;
+			}
+
+			await LoadPendingJoinRequestsAsync();
+			StateHasChanged();
+		});
+	}
+
+	private async Task HandleLeagueJoinRequestUpdatedAsync(LeagueJoinRequestUpdatedDto payload)
+	{
+		await InvokeAsync(async () =>
+		{
+			if (payload.LeagueId != LeagueId || !HasLeagueAccess || !CanManageLeague)
+			{
+				return;
+			}
+
+			await LoadPendingJoinRequestsAsync();
+			StateHasChanged();
+		});
 	}
 
 	private async Task LoadDetailAsync()
@@ -2055,6 +2116,26 @@
 	private void OpenTable(Guid gameId)
 	{
 		NavigationManager.NavigateTo($"/table/{gameId}");
+	}
+
+	public async ValueTask DisposeAsync()
+	{
+		if (_isLeagueHubSubscriptionInitialized)
+		{
+			LeagueHubClient.OnLeagueJoinRequestSubmitted -= HandleLeagueJoinRequestSubmittedAsync;
+			LeagueHubClient.OnLeagueJoinRequestUpdated -= HandleLeagueJoinRequestUpdatedAsync;
+			_isLeagueHubSubscriptionInitialized = false;
+		}
+
+		try
+		{
+			await LeagueHubClient.SetManagedLeaguesAsync([]);
+			await LeagueHubClient.DisconnectAsync();
+		}
+		catch (Exception ex)
+		{
+			Logger.LogDebug(ex, "Error disconnecting league hub client for league detail page");
+		}
 	}
 
 }

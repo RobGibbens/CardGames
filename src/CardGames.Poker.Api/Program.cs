@@ -103,6 +103,7 @@ public class Program
         builder.Services.AddScoped<ITableStateBuilder, TableStateBuilder>();
         builder.Services.AddScoped<IGameStateBroadcaster, GameStateBroadcaster>();
         builder.Services.AddScoped<ILobbyBroadcaster, LobbyBroadcaster>();
+		builder.Services.AddScoped<ILeagueBroadcaster, LeagueBroadcaster>();
         builder.Services.AddScoped<IHandHistoryRecorder, HandHistoryRecorder>();
 		builder.Services.AddScoped<IPlayerChipWalletService, PlayerChipWalletService>();
         builder.Services.AddSingleton<IHandEvaluatorFactory, HandEvaluatorFactory>();
@@ -342,6 +343,7 @@ public class Program
         // Map SignalR hubs with header-based auth for Blazor clients
         app.MapHub<GameHub>("/hubs/game");
         app.MapHub<LobbyHub>("/hubs/lobby");
+		app.MapHub<LeagueHub>("/hubs/leagues");
 
         app.Run();
     }
