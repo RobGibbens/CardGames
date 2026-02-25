@@ -35,6 +35,10 @@
 								<span>Started @FormatDate(game.StartedAt)</span>
 							</div>
 							<div class="league-detail-active-game-detail">
+								<i class="fa-solid fa-layer-group"></i>
+								<span>@FormatPhase(game.CurrentPhase)</span>
+							</div>
+							<div class="league-detail-active-game-detail">
 								<i class="fa-solid fa-users"></i>
 								<span>@game.PlayerCount player@(game.PlayerCount != 1 ? "s" : "")</span>
 							</div>
@@ -233,6 +237,7 @@
 				se.Name,
 				"Season Event",
 				se.ScheduledAtUtc ?? se.CreatedAtUtc,
+				details?.CurrentPhase,
 				details?.SeatedPlayerCount ?? 0,
 				creatorName,
 				details?.GameTypeName));
@@ -250,6 +255,7 @@
 				oo.Name,
 				typeLabel,
 				oo.ScheduledAtUtc,
+				details?.CurrentPhase,
 				details?.SeatedPlayerCount ?? 0,
 				creatorName,
 				details?.GameTypeName));
@@ -272,6 +278,7 @@
 		string Name,
 		string EventType,
 		DateTimeOffset? StartedAt,
+		string? CurrentPhase,
 		int PlayerCount,
 		string? CreatedByName,
 		string? GameTypeName);
@@ -279,6 +286,19 @@
 	private static string FormatDate(DateTimeOffset? value)
 	{
 		return value.HasValue ? value.Value.ToLocalTime().ToString("g") : "-";
+	}
+
+	private static string FormatPhase(string? phase)
+	{
+		if (string.IsNullOrWhiteSpace(phase))
+		{
+			return "-";
+		}
+
+		return string.Concat(phase.Select((ch, index) =>
+			index > 0 && char.IsUpper(ch) && !char.IsWhiteSpace(phase[index - 1])
+				? $" {ch}"
+				: ch.ToString()));
 	}
 
 	private static string FormatChipsDelta(int chipsDelta)
