@@ -5290,6 +5290,7 @@ a:hover {
     box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
 }
 
+.league-form-modal .league-form-modal-body,
 .season-modal .league-form-modal-body,
 .season-event-modal .league-form-modal-body,
 .one-off-event-modal .league-form-modal-body {
@@ -5297,6 +5298,7 @@ a:hover {
     text-align: left;
 }
 
+.league-form-modal .form-floating,
 .season-modal .form-floating,
 .season-event-modal .form-floating,
 .one-off-event-modal .form-floating {
@@ -5304,6 +5306,8 @@ a:hover {
     position: relative;
 }
 
+.league-form-modal .form-floating > .form-control,
+.league-form-modal .form-floating > .form-select,
 .season-modal .form-floating > .form-control,
 .season-modal .form-floating > .form-select,
 .season-event-modal .form-floating > .form-control,
@@ -5322,6 +5326,7 @@ a:hover {
     transition: all var(--transition-normal);
 }
 
+.league-form-modal .form-floating > .form-control,
 .season-modal .form-floating > .form-control,
 .season-event-modal .form-floating > .form-control,
 .one-off-event-modal .form-floating > .form-control {
@@ -5330,6 +5335,7 @@ a:hover {
 }
 
 
+.league-form-modal .form-floating[data-label]::after,
 .season-modal .form-floating[data-label]::after,
 .season-event-modal .form-floating[data-label]::after,
 .one-off-event-modal .form-floating[data-label]::after {
@@ -5349,12 +5355,15 @@ a:hover {
 }
 
 
+.league-form-modal .form-floating[data-label]:focus-within::after,
 .season-modal .form-floating[data-label]:focus-within::after,
 .season-event-modal .form-floating[data-label]:focus-within::after,
 .one-off-event-modal .form-floating[data-label]:focus-within::after,
+.league-form-modal .form-floating[data-label]:has(.form-control:not(:placeholder-shown))::after,
 .season-modal .form-floating[data-label]:has(.form-control:not(:placeholder-shown))::after,
 .season-event-modal .form-floating[data-label]:has(.form-control:not(:placeholder-shown))::after,
 .one-off-event-modal .form-floating[data-label]:has(.form-control:not(:placeholder-shown))::after,
+.league-form-modal .form-floating[data-label]:has(select)::after,
 .season-modal .form-floating[data-label]:has(select)::after,
 .season-event-modal .form-floating[data-label]:has(select)::after,
 .one-off-event-modal .form-floating[data-label]:has(select)::after {
@@ -5364,6 +5373,7 @@ a:hover {
 }
 
 
+.league-form-modal .form-floating[data-label] .form-control::placeholder,
 .season-modal .form-floating[data-label] .form-control::placeholder,
 .season-event-modal .form-floating[data-label] .form-control::placeholder,
 .one-off-event-modal .form-floating[data-label] .form-control::placeholder {
@@ -5371,6 +5381,8 @@ a:hover {
 }
 
 
+.league-form-modal .form-floating > .form-control:focus,
+.league-form-modal .form-floating > .form-select:focus,
 .season-modal .form-floating > .form-control:focus,
 .season-modal .form-floating > .form-select:focus,
 .season-event-modal .form-floating > .form-control:focus,
@@ -5447,6 +5459,14 @@ a:hover {
 
 .confirm-dialog-btn .spinner-border {
     margin-right: 0.5rem;
+}
+
+.join-league-dialog-footer .confirm-dialog-btn {
+    max-width: 180px;
+}
+
+.join-league-dialog-footer .join-league-submit-btn {
+    white-space: nowrap;
 }
 
 /* ===== Wild Cards Panel ===== */
