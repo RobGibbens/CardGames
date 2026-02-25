@@ -6199,6 +6199,123 @@ a:hover {
     color: #166534;
 }
 
+/* ── Active Game Cards ── */
+.league-detail-active-games-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.league-detail-active-game-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding: 0.85rem 1rem;
+    border-radius: 10px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.06));
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.league-detail-active-game-card:hover {
+    border-color: var(--primary, #6366f1);
+    box-shadow: 0 0 0 1px var(--primary, #6366f1);
+}
+
+.league-detail-active-game-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.league-detail-active-game-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 0;
+}
+
+.league-detail-active-game-name {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+}
+
+.league-detail-active-game-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    align-items: center;
+}
+
+.league-detail-active-game-meta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    background: var(--bg-tertiary);
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+}
+
+.league-detail-active-game-meta-item i {
+    font-size: 0.65rem;
+    opacity: 0.7;
+}
+
+.league-detail-active-game-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+}
+
+.league-detail-active-game-detail {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+.league-detail-active-game-detail i {
+    font-size: 0.7rem;
+    width: 0.85rem;
+    text-align: center;
+    opacity: 0.6;
+}
+
+.league-detail-active-game-join-btn {
+    align-self: flex-end;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 1rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #fff;
+    background: var(--primary, #6366f1);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+}
+
+.league-detail-active-game-join-btn:hover {
+    background: var(--primary-hover, #4f46e5);
+    transform: translateY(-1px);
+}
+
+.league-detail-active-game-join-btn:active {
+    transform: translateY(0);
+}
+
+.league-detail-active-game-join-btn i {
+    font-size: 0.75rem;
+}
+
 .league-detail-event-row-actions {
     display: flex;
     gap: 0.4rem;

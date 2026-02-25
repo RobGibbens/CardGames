@@ -16,6 +16,7 @@
 @using CardGames.Contracts.SignalR
 
 @inject ILeaguesApi LeaguesApi
+@inject IGamesApi GamesApi
 @inject LeagueHubClient LeagueHubClient
 @inject ILogger<LeagueDetail> Logger
 @inject NavigationManager NavigationManager
@@ -172,7 +173,10 @@
 					OneOffEvents="_oneOffEvents"
 					Standings="_standings"
 					MyStanding="_myStanding"
-					RankMovementByUserId="_rankMovementByUserId" />
+					RankMovementByUserId="_rankMovementByUserId"
+					Members="_members"
+					ActiveGameDetails="_activeGameDetails"
+					OpenTable="OpenTable" />
 			}
 
 			@* ═══════════ TAB 2: RESULTS ═══════════ *@
@@ -474,6 +478,7 @@
 	private List<LeagueSeasonEventDto> _seasonEvents = [];
 	private List<LeagueOneOffEventDto> _oneOffEvents = [];
 	private List<LeagueStandingEntryDto> _standings = [];
+	private Dictionary<Guid, GetTableSettingsResponse> _activeGameDetails = new();
 
 	private string _seasonName = string.Empty;
 	private int? _seasonPlannedEventCount;
@@ -598,6 +603,8 @@
 			{
 				await LoadSeasonEventsAsync(_selectedSeasonId.Value);
 			}
+
+			await LoadActiveGameDetailsAsync();
 		}
 		catch (Exception ex)
 		{
@@ -710,6 +717,7 @@
 		_oneOffEvents = [];
 		_standings = [];
 		_rankMovementByUserId.Clear();
+		_activeGameDetails.Clear();
 		_myStanding = null;
 		_recentCompletedEvents = [];
 		_activeScheduleTab = ScheduleTab.Seasons;
@@ -795,6 +803,42 @@
 		_oneOffEvents = response.IsSuccessStatusCode && response.Content is not null ? response.Content.ToList() : [];
 	}
 
+	private async Task LoadActiveGameDetailsAsync()
+	{
+		_activeGameDetails.Clear();
+
+		var activeGameIds = _seasonEvents
+			.Where(e => e.LaunchedGameId.HasValue && e.Status != LeagueSeasonEventStatus.Completed && e.Status != LeagueSeasonEventStatus.Canceled)
+			.Select(e => e.LaunchedGameId!.Value)
+			.Concat(_oneOffEvents
+				.Where(e => e.LaunchedGameId.HasValue && e.Status != LeagueOneOffEventStatus.Completed && e.Status != LeagueOneOffEventStatus.Canceled)
+				.Select(e => e.LaunchedGameId!.Value))
+			.Distinct()
+			.ToList();
+
+		var tasks = activeGameIds.Select(async gameId =>
+		{
+			try
+			{
+				var response = await GamesApi.GetTableSettingsAsync(gameId);
+				if (response.IsSuccessStatusCode && response.Content is not null)
+					return (gameId, settings: (GetTableSettingsResponse?)response.Content);
+			}
+			catch
+			{
+				// Swallow errors for individual game lookups
+			}
+			return (gameId, settings: (GetTableSettingsResponse?)null);
+		});
+
+		var results = await Task.WhenAll(tasks);
+		foreach (var (gameId, settings) in results)
+		{
+			if (settings is not null)
+				_activeGameDetails[gameId] = settings;
+		}
+	}
+
 	private async Task LoadStandingsAsync()
 	{
 		var previousRankByUserId = _standings.ToDictionary(x => x.UserId, x => x.Rank, StringComparer.Ordinal);
@@ -843,6 +887,7 @@
 		_selectedSeasonId = seasonId;
 		await LoadSeasonEventsAsync(seasonId);
 		await LoadStandingsAsync();
+		await LoadActiveGameDetailsAsync();
 	}
 
 	private async Task OnSeasonSelectorChanged(ChangeEventArgs e)
