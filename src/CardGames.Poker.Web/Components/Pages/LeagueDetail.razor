@@ -374,7 +374,7 @@
 	</div>
 }
 
-<CreateOneOffEventModal
+<CreateLeagueEventModal
 	Show="_showOneOffModal"
 	EventType="_oneOffType"
 	LeagueId="LeagueId"
@@ -1685,11 +1685,13 @@
 		_launchingOneOffEventId = eventId;
 		try
 		{
+			var oneOff = _oneOffEvents.FirstOrDefault(e => e.EventId == eventId);
 			var response = await LeaguesApi.LaunchOneOffEventSessionAsync(LeagueId, eventId, new LaunchLeagueEventSessionRequest
 			{
-				GameCode = "FIVECARDDRAW",
-				Ante = 10,
-				MinBet = 20,
+				GameCode = oneOff?.GameTypeCode ?? "FIVECARDDRAW",
+				GameName = oneOff?.TableName,
+				Ante = oneOff?.Ante ?? 10,
+				MinBet = oneOff?.MinBet ?? 20,
 				HostStartingChips = 100
 			});
 

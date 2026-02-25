@@ -19,4 +19,12 @@ public sealed record CreateLeagueOneOffEventResponse
 	public required string CreatedByUserId { get; init; }
 
 	public DateTimeOffset CreatedAtUtc { get; init; }
+
+	public string? GameTypeCode { get; init; }
+
+	public string? TableName { get; init; }
+
+	public int Ante { get; init; }
+
+	public int MinBet { get; init; }
 }

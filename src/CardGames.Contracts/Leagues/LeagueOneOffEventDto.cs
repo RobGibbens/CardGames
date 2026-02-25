@@ -21,4 +21,12 @@ public sealed record LeagueOneOffEventDto
 	public DateTimeOffset CreatedAtUtc { get; init; }
 
 	public Guid? LaunchedGameId { get; init; }
+
+	public string? GameTypeCode { get; init; }
+
+	public string? TableName { get; init; }
+
+	public int Ante { get; init; }
+
+	public int MinBet { get; init; }
 }
