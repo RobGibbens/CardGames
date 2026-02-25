@@ -5965,6 +5965,63 @@ a:hover {
     border-color: var(--primary-hover);
 }
 
+/* ── Create Dropdown ── */
+.league-detail-create-dropdown-wrapper {
+    position: relative;
+}
+
+.league-detail-create-chevron {
+    font-size: 0.6rem;
+    margin-left: 0.15rem;
+    opacity: 0.85;
+}
+
+.league-detail-create-dropdown-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 99;
+}
+
+.league-detail-create-dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 100;
+    min-width: 200px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+    padding: 0.35rem 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.league-detail-create-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.55rem 1rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: background var(--transition-fast);
+    white-space: nowrap;
+}
+
+.league-detail-create-dropdown-item:hover {
+    background: var(--bg-tertiary);
+}
+
+.league-detail-create-dropdown-item i {
+    width: 1.1rem;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
 .league-detail-btn-refresh {
     width: 36px;
     height: 36px;

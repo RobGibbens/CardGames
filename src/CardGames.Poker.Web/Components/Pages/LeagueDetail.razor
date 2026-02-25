@@ -69,10 +69,27 @@
 							<i class="fa-solid fa-share-nodes"></i>
 							<span>Share</span>
 						</button>
-						<button class="league-detail-btn league-detail-btn-create" @onclick="OpenSeasonModal">
-							<i class="fa-solid fa-plus"></i>
-							<span>Create</span>
-						</button>
+						<div class="league-detail-create-dropdown-wrapper">
+							<button class="league-detail-btn league-detail-btn-create" @onclick="ToggleCreateDropdown" @onclick:stopPropagation>
+								<i class="fa-solid fa-plus"></i>
+								<span>Create</span>
+								<i class="fa-solid fa-chevron-down league-detail-create-chevron"></i>
+							</button>
+							@if (_showCreateDropdown)
+							{
+								<div class="league-detail-create-dropdown-backdrop" @onclick="CloseCreateDropdown"></div>
+								<div class="league-detail-create-dropdown" @onclick:stopPropagation>
+									<button class="league-detail-create-dropdown-item" @onclick="OpenCreateCashGame">
+										<i class="fa-solid fa-coins"></i>
+										<span>Create Cash Game</span>
+									</button>
+									<button class="league-detail-create-dropdown-item" @onclick="OpenCreateTournament">
+										<i class="fa-solid fa-trophy"></i>
+										<span>Create Tournament</span>
+									</button>
+								</div>
+							}
+						</div>
 					}
 					<button class="league-detail-btn league-detail-btn-refresh" aria-label="Refresh" @onclick="LoadAllAsync" disabled="@_isLoading">
 						<i class="fa-solid fa-rotate-right"></i>
@@ -357,39 +374,12 @@
 	</div>
 }
 
-@if (_showOneOffModal)
-{
-	<div class="confirm-dialog-overlay" @onclick="CloseOneOffModal">
-		<div class="confirm-dialog league-form-modal one-off-event-modal" @onclick:stopPropagation>
-			<div class="confirm-dialog-header league-form-modal-header">
-				<h3 class="confirm-dialog-title mb-0">Create One-Off Event</h3>
-				<button type="button" class="league-modal-close-btn" aria-label="Close" @onclick="CloseOneOffModal">
-					<i class="fa-solid fa-xmark" aria-hidden="true"></i>
-				</button>
-			</div>
-			<div class="confirm-dialog-body league-form-modal-body text-start">
-				<div class="form-floating" data-label="Event name">
-					<InputText id="one-off-name" class="form-control league-modal-input" @bind-Value="_oneOffName" maxlength="120" placeholder="Event name" />
-				</div>
-				<div class="form-floating" data-label="Scheduled (UTC)">
-					<InputDate id="one-off-scheduled" class="form-control league-modal-date-input" @bind-Value="_oneOffScheduledDate" />
-				</div>
-				<div class="form-floating" data-label="Type">
-					<InputSelect id="one-off-type" class="form-control league-modal-input" @bind-Value="_oneOffType">
-						<option value="@LeagueOneOffEventType.GameNight">Game Night</option>
-						<option value="@LeagueOneOffEventType.Tournament">Tournament</option>
-					</InputSelect>
-				</div>
-				<div class="form-floating" data-label="Notes (optional)">
-					<InputText id="one-off-notes" class="form-control league-modal-input" @bind-Value="_oneOffNotes" maxlength="512" placeholder="Notes (optional)" />
-				</div>
-				<div class="league-form-modal-actions">
-					<button class="btn btn-sm btn-primary league-action-btn" @onclick="CreateOneOffAsync" disabled="@_isSubmittingOneOff">Create One-Off Event</button>
-				</div>
-			</div>
-		</div>
-	</div>
-}
+<CreateOneOffEventModal
+	Show="_showOneOffModal"
+	EventType="_oneOffType"
+	LeagueId="LeagueId"
+	OnClose="CloseOneOffModal"
+	OnCreated="HandleOneOffCreated" />
 
 @if (_showRecordResultsModal)
 {
@@ -499,12 +489,9 @@
 	private bool _isSubmittingSeasonEvent;
 	private bool _showSeasonEventModal;
 
-	private string _oneOffName = string.Empty;
-	private DateTime _oneOffScheduledDate = DateTime.UtcNow.Date.AddDays(1);
 	private LeagueOneOffEventType _oneOffType = LeagueOneOffEventType.GameNight;
-	private string? _oneOffNotes;
-	private bool _isSubmittingOneOff;
 	private bool _showOneOffModal;
+	private bool _showCreateDropdown;
 	private Guid? _launchingSeasonEventId;
 	private Guid? _launchingOneOffEventId;
 	private bool _showRecordResultsModal;
@@ -1407,68 +1394,49 @@
 		_showSeasonEventModal = false;
 	}
 
-	private async Task CreateOneOffAsync()
-	{
-		if (string.IsNullOrWhiteSpace(_oneOffName))
-		{
-			_message = "One-off event name is required.";
-			_isError = true;
-			return;
-		}
-
-		_isSubmittingOneOff = true;
-		try
-		{
-			var response = await LeaguesApi.CreateOneOffEventAsync(LeagueId, new CreateLeagueOneOffEventRequest
-			{
-				Name = _oneOffName.Trim(),
-				ScheduledAtUtc = new DateTimeOffset(DateTime.SpecifyKind(_oneOffScheduledDate, DateTimeKind.Utc)),
-				EventType = _oneOffType,
-				Notes = string.IsNullOrWhiteSpace(_oneOffNotes) ? null : _oneOffNotes.Trim()
-			});
-
-			if (response.IsSuccessStatusCode)
-			{
-				_oneOffName = string.Empty;
-				_oneOffScheduledDate = DateTime.UtcNow.Date.AddDays(1);
-				_oneOffType = LeagueOneOffEventType.GameNight;
-				_oneOffNotes = null;
-				_showOneOffModal = false;
-				_message = "One-off event created.";
-				_isError = false;
-				await LoadOneOffEventsAsync();
-			}
-			else
-			{
-				_message = "Failed to create one-off event.";
-				_isError = true;
-			}
-		}
-		catch (Exception ex)
-		{
-			Logger.LogError(ex, "Failed to create one-off event for league {LeagueId}", LeagueId);
-			_message = "Failed to create one-off event.";
-			_isError = true;
-		}
-		finally
-		{
-			_isSubmittingOneOff = false;
-		}
-	}
-
 	private void OpenOneOffModal()
 	{
+		_oneOffType = LeagueOneOffEventType.GameNight;
 		_showOneOffModal = true;
 	}
 
 	private void CloseOneOffModal()
 	{
-		if (_isSubmittingOneOff)
-		{
-			return;
-		}
-
 		_showOneOffModal = false;
+	}
+
+	private async Task HandleOneOffCreated()
+	{
+		_showOneOffModal = false;
+		_message = _oneOffType == LeagueOneOffEventType.Tournament
+			? "Tournament created."
+			: "Cash game created.";
+		_isError = false;
+		await LoadOneOffEventsAsync();
+	}
+
+	private void ToggleCreateDropdown()
+	{
+		_showCreateDropdown = !_showCreateDropdown;
+	}
+
+	private void CloseCreateDropdown()
+	{
+		_showCreateDropdown = false;
+	}
+
+	private void OpenCreateCashGame()
+	{
+		_showCreateDropdown = false;
+		_oneOffType = LeagueOneOffEventType.GameNight;
+		_showOneOffModal = true;
+	}
+
+	private void OpenCreateTournament()
+	{
+		_showCreateDropdown = false;
+		_oneOffType = LeagueOneOffEventType.Tournament;
+		_showOneOffModal = true;
 	}
 
 	private void OpenRecordResultsModal(LeagueSeasonEventDto seasonEvent)

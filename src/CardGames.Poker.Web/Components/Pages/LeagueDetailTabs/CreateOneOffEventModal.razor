@@ -1,0 +1,124 @@
+@using CardGames.Poker.Api.Clients
+@using CardGames.Poker.Api.Contracts
+
+@if (Show)
+{
+	<div class="confirm-dialog-overlay" @onclick="Close">
+		<div class="confirm-dialog league-form-modal one-off-event-modal" @onclick:stopPropagation>
+			<div class="confirm-dialog-header league-form-modal-header">
+				<h3 class="confirm-dialog-title mb-0">@ModalTitle</h3>
+				<button type="button" class="league-modal-close-btn" aria-label="Close" @onclick="Close">
+					<i class="fa-solid fa-xmark" aria-hidden="true"></i>
+				</button>
+			</div>
+			<div class="confirm-dialog-body league-form-modal-body text-start">
+				@if (!string.IsNullOrWhiteSpace(_errorMessage))
+				{
+					<div class="alert alert-danger py-2 mb-2" role="alert">@_errorMessage</div>
+				}
+				<div class="form-floating" data-label="Event name">
+					<InputText id="one-off-name" class="form-control league-modal-input" @bind-Value="_name" maxlength="120" placeholder="Event name" />
+				</div>
+				<div class="form-floating" data-label="Scheduled (UTC)">
+					<InputDate id="one-off-scheduled" class="form-control league-modal-date-input" @bind-Value="_scheduledDate" />
+				</div>
+				<div class="form-floating" data-label="Notes (optional)">
+					<InputText id="one-off-notes" class="form-control league-modal-input" @bind-Value="_notes" maxlength="512" placeholder="Notes (optional)" />
+				</div>
+				<div class="league-form-modal-actions">
+					<button class="btn btn-sm btn-primary league-action-btn" @onclick="CreateAsync" disabled="@_isSubmitting">@ModalTitle</button>
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+@code {
+	[Parameter, EditorRequired]
+	public bool Show { get; set; }
+
+	[Parameter, EditorRequired]
+	public LeagueOneOffEventType EventType { get; set; }
+
+	[Parameter, EditorRequired]
+	public Guid LeagueId { get; set; }
+
+	[Parameter]
+	public EventCallback OnClose { get; set; }
+
+	[Parameter]
+	public EventCallback OnCreated { get; set; }
+
+	[Inject]
+	private ILeaguesApi LeaguesApi { get; set; } = default!;
+
+	[Inject]
+	private ILogger<CreateOneOffEventModal> Logger { get; set; } = default!;
+
+	private string _name = string.Empty;
+	private DateTime _scheduledDate = DateTime.UtcNow.Date.AddDays(1);
+	private string? _notes;
+	private bool _isSubmitting;
+	private string? _errorMessage;
+
+	private string ModalTitle => EventType == LeagueOneOffEventType.Tournament
+		? "Create Tournament"
+		: "Create Cash Game";
+
+	private async Task Close()
+	{
+		if (_isSubmitting) return;
+		ResetForm();
+		await OnClose.InvokeAsync();
+	}
+
+	private async Task CreateAsync()
+	{
+		_errorMessage = null;
+
+		if (string.IsNullOrWhiteSpace(_name))
+		{
+			_errorMessage = "Event name is required.";
+			return;
+		}
+
+		_isSubmitting = true;
+		try
+		{
+			var response = await LeaguesApi.CreateOneOffEventAsync(LeagueId, new CreateLeagueOneOffEventRequest
+			{
+				Name = _name.Trim(),
+				ScheduledAtUtc = new DateTimeOffset(DateTime.SpecifyKind(_scheduledDate, DateTimeKind.Utc)),
+				EventType = EventType,
+				Notes = string.IsNullOrWhiteSpace(_notes) ? null : _notes.Trim()
+			});
+
+			if (response.IsSuccessStatusCode)
+			{
+				ResetForm();
+				await OnCreated.InvokeAsync();
+			}
+			else
+			{
+				_errorMessage = "Failed to create event. Please try again.";
+			}
+		}
+		catch (Exception ex)
+		{
+			Logger.LogError(ex, "Failed to create one-off event for league {LeagueId}", LeagueId);
+			_errorMessage = "Failed to create event. Please try again.";
+		}
+		finally
+		{
+			_isSubmitting = false;
+		}
+	}
+
+	private void ResetForm()
+	{
+		_name = string.Empty;
+		_scheduledDate = DateTime.UtcNow.Date.AddDays(1);
+		_notes = null;
+		_errorMessage = null;
+	}
+}
