@@ -2290,13 +2290,14 @@ a:hover {
     }
 }
 
-/* Lobby Tabs */
+/* Lobby Tabs — round-out design */
 .lobby-tabs {
+    --tab-curve: 8px;
     display: flex;
     gap: 0;
-    border-bottom: 2px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
     margin-bottom: 1.5rem;
-    overflow-x: auto;
+    overflow: visible;
 }
 
 .lobby-tab {
@@ -2304,9 +2305,9 @@ a:hover {
     align-items: center;
     gap: 0.5rem;
     padding: 0.875rem 1.5rem;
-    border-radius: 8px 8px 0 0;
-    border-bottom: 3px solid transparent;
-    margin-bottom: -2px;
+    border: 1px solid transparent;
+    border-radius: var(--tab-curve) var(--tab-curve) 0 0;
+    background: transparent;
     color: var(--text-secondary);
     font-weight: 500;
     font-size: 0.95rem;
@@ -2315,7 +2316,7 @@ a:hover {
     white-space: nowrap;
 }
 
-.lobby-tab:hover {
+.lobby-tab:hover:not(.active) {
     color: var(--text-primary);
     background: var(--bg-tertiary);
 }
@@ -2323,7 +2324,54 @@ a:hover {
 .lobby-tab.active {
     color: var(--primary);
     font-weight: 600;
-    border-bottom-color: var(--primary);
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-bottom-color: var(--bg-primary);
+    border-radius: var(--tab-curve) var(--tab-curve) 0 0;
+    margin-bottom: -1px;
+    position: relative;
+    z-index: 1;
+}
+
+/* Inverse (concave) rounded corners at the base of the active tab */
+.lobby-tab.active::before,
+.lobby-tab.active::after {
+    content: "";
+    position: absolute;
+    bottom: -1px;
+    width: var(--tab-curve);
+    height: var(--tab-curve);
+    pointer-events: none;
+}
+
+.lobby-tab.active::before {
+    left: calc(-1 * var(--tab-curve) - 1px);
+    background: radial-gradient(circle at 100% 100%,
+        var(--bg-primary) calc(var(--tab-curve) - 1px),
+        var(--border-color) calc(var(--tab-curve) - 1px),
+        var(--border-color) var(--tab-curve),
+        transparent var(--tab-curve));
+}
+
+.lobby-tab.active::after {
+    right: calc(-1 * var(--tab-curve) - 1px);
+    background: radial-gradient(circle at 0% 100%,
+        var(--bg-primary) calc(var(--tab-curve) - 1px),
+        var(--border-color) calc(var(--tab-curve) - 1px),
+        var(--border-color) var(--tab-curve),
+        transparent var(--tab-curve));
+}
+
+/* Small-screen fallback: hide pseudo-elements, revert to simple scrollable tabs */
+@media (max-width: 576px) {
+    .lobby-tabs {
+        overflow-x: auto;
+    }
+
+    .lobby-tab.active::before,
+    .lobby-tab.active::after {
+        display: none;
+    }
 }
 
 .lobby-tab-icon {
