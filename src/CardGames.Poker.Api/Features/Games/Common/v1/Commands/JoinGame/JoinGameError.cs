@@ -48,6 +48,11 @@ public enum JoinGameErrorCode
     GameEnded,
 
     /// <summary>
+    /// The player's chip account has a zero balance.
+    /// </summary>
+    ZeroAccountBalance,
+
+    /// <summary>
     /// The player does not have enough account chips for the requested buy-in.
     /// </summary>
     InsufficientAccountChips,

@@ -6,9 +6,7 @@
 
 ### Leagues
 - [ ] Pages load too slowly
-- [ ] Go to member controls does nothing
-- [ ] Join League section looks bad
-- [ ] Sharing a link isn't intuitive
+- [ ] Card UI isn't consistent
 
 ### Cashier
 - [ ] Cashier ledger doesn't page
@@ -165,3 +163,4 @@
 - [x] Add animation of dealing the cards
 - [x] Allow them to upload an image when registering
 - [x] Rearrange the register and login screens to make OAuth more obvious
+- [x] Prevent joining a game if not enough chips

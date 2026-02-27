@@ -1,0 +1,11 @@
+# Orchestration Log
+- Agent: Gimli (Backend Dev)
+- Model: claude-sonnet-4.5
+- Mode: background
+- Task: Implement zero-balance guard on join-game flow (backend)
+- Outcome: Success, build clean
+- Changes:
+  - Added `ZeroAccountBalance` error code to error-code enum
+  - Added `GetBalanceAsync` method to wallet service
+  - Added early balance check in `JoinGameCommandHandler` (returns error before seat assignment if balance is zero)
+  - Added `BadRequest` mapping in join-game endpoint for new error code

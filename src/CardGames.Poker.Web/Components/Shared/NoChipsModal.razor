@@ -1,0 +1,58 @@
+@namespace CardGames.Poker.Web.Components.Shared
+
+@inject NavigationManager NavigationManager
+
+@if (IsVisible)
+{
+    <div class="confirm-dialog-overlay" @onclick="HandleOverlayClick">
+        <div class="confirm-dialog" style="min-width: 420px; max-width: 480px;" @onclick:stopPropagation>
+            <div class="confirm-dialog-header">
+                <i class="fa-solid fa-coins confirm-dialog-icon"></i>
+                <h3 class="confirm-dialog-title">You don't have any chips!</h3>
+            </div>
+            <div class="confirm-dialog-body">
+                <p class="confirm-dialog-message">You need chips in your account before you can join a table. Visit the Cashier to add chips to your account.</p>
+            </div>
+            <div class="confirm-dialog-footer">
+                <button class="btn btn-secondary confirm-dialog-btn" @onclick="HandleClose">
+                    Close
+                </button>
+                <button class="btn btn-primary confirm-dialog-btn" style="white-space: nowrap; max-width: none;" @onclick="GoToCashier">
+                    <i class="fa-solid fa-coins"></i> Go to Cashier
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback<bool> IsVisibleChanged { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private async Task GoToCashier()
+    {
+        await CloseDialog();
+        NavigationManager.NavigateTo("/Account/Cashier");
+    }
+
+    private async Task HandleClose()
+    {
+        await CloseDialog();
+        if (OnClose.HasDelegate)
+        {
+            await OnClose.InvokeAsync();
+        }
+    }
+
+    private async Task HandleOverlayClick()
+    {
+        await HandleClose();
+    }
+
+    private async Task CloseDialog()
+    {
+        IsVisible = false;
+        await IsVisibleChanged.InvokeAsync(false);
+    }
+}

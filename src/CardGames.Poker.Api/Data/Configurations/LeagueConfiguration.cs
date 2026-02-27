@@ -274,6 +274,12 @@ public sealed class LeagueOneOffEventConfiguration : IEntityTypeConfiguration<Le
 		builder.Property(x => x.Notes)
 			.HasMaxLength(512);
 
+		builder.Property(x => x.GameTypeCode)
+			.HasMaxLength(50);
+
+		builder.Property(x => x.TableName)
+			.HasMaxLength(120);
+
 		builder.Property(x => x.CreatedByUserId)
 			.HasMaxLength(256)
 			.IsRequired();

@@ -47,7 +47,11 @@ public sealed class GetLeagueOneOffEventsQueryHandler(
 				Notes = x.Notes,
 				CreatedByUserId = x.CreatedByUserId,
 				CreatedAtUtc = x.CreatedAtUtc,
-				LaunchedGameId = x.LaunchedGameId
+				LaunchedGameId = x.LaunchedGameId,
+				GameTypeCode = x.GameTypeCode,
+				TableName = x.TableName,
+				Ante = x.Ante,
+				MinBet = x.MinBet
 			})
 			.ToListAsync(cancellationToken);
 

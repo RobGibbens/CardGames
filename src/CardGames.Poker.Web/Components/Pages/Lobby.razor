@@ -27,6 +27,8 @@
                OnConfirm="ConfirmDeleteTableAsync"
                OnCancel="CancelDelete" />
 
+<NoChipsModal @bind-IsVisible="_showNoChipsModal" OnClose="HandleNoChipsModalClose" />
+
 <AuthenticatedNavBar />
 
 <main class="lobby-main">
@@ -157,7 +159,7 @@
                                 {
                                     <tr>
                                         <td class="text-end">
-                                            <a href="/table/@table.Id" class="btn btn-sm btn-primary">Join</a>
+                                            <button class="btn btn-sm btn-primary" @onclick="() => NavigateToTableWithChipCheckAsync(table.Id)">Join</button>
                                         </td>
                                         <td>@table.GameTypeName</td>
                                         <td>@table.Name</td>
@@ -207,7 +209,14 @@
     [Inject]
     private AuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;
 
+    [Inject]
+    private IProfileApi ProfileApi { get; set; } = default!;
+
+    [Inject]
+    private NavigationManager NavigationManager { get; set; } = default!;
+
     private bool _isLoading = true;
+    private bool _showNoChipsModal;
     private string _viewMode = "list";
     private string _selectedVariant = "";
     private string _selectedSeats = "";
@@ -458,6 +467,29 @@
     {
         _gameIdToDelete = null;
         _showDeleteConfirmation = false;
+    }
+
+    private async Task NavigateToTableWithChipCheckAsync(Guid tableId)
+    {
+        try
+        {
+            var cashierSummary = await ProfileApi.GetCashierSummaryAsync();
+            if (cashierSummary.IsSuccessStatusCode && (cashierSummary.Content?.CurrentBalance ?? 0) <= 0)
+            {
+                _showNoChipsModal = true;
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to check chip balance before joining table");
+        }
+        NavigationManager.NavigateTo($"/table/{tableId}");
+    }
+
+    private void HandleNoChipsModalClose()
+    {
+        _showNoChipsModal = false;
     }
 
     public async ValueTask DisposeAsync()

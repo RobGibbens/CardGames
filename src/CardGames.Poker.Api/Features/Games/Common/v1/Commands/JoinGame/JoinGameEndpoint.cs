@@ -30,6 +30,7 @@ public static class JoinGameEndpoint
                             JoinGameErrorCode.InvalidSeatIndex => Results.BadRequest(new { error.Message }),
                             JoinGameErrorCode.InvalidStartingChips => Results.BadRequest(new { error.Message }),
                             JoinGameErrorCode.GameEnded => Results.Conflict(new { error.Message }),
+                            JoinGameErrorCode.ZeroAccountBalance => Results.BadRequest(new { error.Message }),
                             JoinGameErrorCode.InsufficientAccountChips => Results.Conflict(new { error.Message }),
                             JoinGameErrorCode.LeagueMembershipRequired => Results.Forbid(),
                             _ => Results.Problem(error.Message)

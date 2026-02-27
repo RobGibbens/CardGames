@@ -1,0 +1,348 @@
+@using CardGames.Poker.Api.Contracts
+@using CardGames.Poker.Api.Clients
+
+<div class="league-detail-tab-content">
+	@if (ActiveGames.Count > 0)
+	{
+		<section class="league-detail-card league-detail-active-games-card">
+			<div class="league-detail-card-header">
+				<h3><i class="fa-solid fa-gamepad"></i> Active Games</h3>
+				<span class="lobby-tab-badge">@ActiveGames.Count</span>
+			</div>
+			<div class="league-detail-active-games-list">
+				@foreach (var game in ActiveGames)
+				{
+					<div class="league-detail-active-game-card">
+						<div class="league-detail-active-game-top">
+							<div class="league-detail-active-game-info">
+								<span class="league-detail-active-game-name">@game.Name</span>
+								<div class="league-detail-active-game-meta">
+									@if (!string.IsNullOrEmpty(game.GameTypeName))
+									{
+										<span class="league-detail-active-game-meta-item">
+											<i class="fa-solid fa-cards"></i> @game.GameTypeName
+										</span>
+									}
+									<span class="league-detail-active-game-meta-item">
+										<i class="fa-solid fa-tag"></i> @game.EventType
+									</span>
+								</div>
+							</div>
+						</div>
+						<div class="league-detail-active-game-details">
+							<div class="league-detail-active-game-detail">
+								<i class="fa-solid fa-clock"></i>
+								<span>Started @FormatDate(game.StartedAt)</span>
+							</div>
+							<div class="league-detail-active-game-detail">
+								<i class="fa-solid fa-layer-group"></i>
+								<span>@FormatPhase(game.CurrentPhase)</span>
+							</div>
+							<div class="league-detail-active-game-detail">
+								<i class="fa-solid fa-users"></i>
+								<span>@game.PlayerCount player@(game.PlayerCount != 1 ? "s" : "")</span>
+							</div>
+							@if (!string.IsNullOrEmpty(game.CreatedByName))
+							{
+								<div class="league-detail-active-game-detail">
+									<i class="fa-solid fa-user"></i>
+									<span>Created by @game.CreatedByName</span>
+								</div>
+							}
+						</div>
+						<button class="league-detail-active-game-join-btn" @onclick="() => OpenTable.InvokeAsync(game.GameId)" @onclick:stopPropagation>
+							<i class="fa-solid fa-right-to-bracket"></i> Join
+						</button>
+					</div>
+				}
+			</div>
+		</section>
+	}
+
+	<div class="league-detail-lobby-grid">
+		<div class="league-detail-lobby-main">
+			<section class="league-detail-card">
+				<div class="league-detail-card-header">
+					<h3><i class="fa-solid fa-flag-checkered"></i> Recent Results</h3>
+				</div>
+				@if (RecentCompletedEvents.Count == 0)
+				{
+					<p class="league-detail-empty">No completed events yet.</p>
+				}
+				else
+				{
+					<div class="league-detail-event-list">
+						@foreach (var seasonEvent in RecentCompletedEvents)
+						{
+							<div class="league-detail-event-row">
+								<div class="league-detail-event-info">
+									<span class="league-detail-event-name">@seasonEvent.Name</span>
+									<span class="league-detail-event-date">@FormatDate(seasonEvent.ScheduledAtUtc)</span>
+								</div>
+								<span class="league-detail-event-status league-detail-event-status-completed">@seasonEvent.Status</span>
+							</div>
+						}
+					</div>
+				}
+			</section>
+
+			<section class="league-detail-card">
+				<div class="league-detail-card-header">
+					<h3><i class="fa-solid fa-calendar-star"></i> Upcoming Events</h3>
+				</div>
+				@{
+					var upcomingSeasonEvents = SeasonEvents.Where(e => e.Status != LeagueSeasonEventStatus.Completed).Take(5).ToList();
+					var upcomingOneOffs = OneOffEvents.Where(e => e.Status != LeagueOneOffEventStatus.Completed).Take(3).ToList();
+				}
+				@if (upcomingSeasonEvents.Count == 0 && upcomingOneOffs.Count == 0)
+				{
+					<p class="league-detail-empty">No upcoming events scheduled.</p>
+				}
+				else
+				{
+					<div class="league-detail-event-list">
+						@foreach (var se in upcomingSeasonEvents)
+						{
+							<div class="league-detail-event-row">
+								<div class="league-detail-event-info">
+									<span class="league-detail-event-name">@se.Name</span>
+									<span class="league-detail-event-date">@FormatDate(se.ScheduledAtUtc)</span>
+								</div>
+								<span class="league-detail-event-status">@se.Status</span>
+							</div>
+						}
+						@foreach (var oo in upcomingOneOffs)
+						{
+							<div class="league-detail-event-row">
+								<div class="league-detail-event-info">
+									<span class="league-detail-event-name">@oo.Name</span>
+									<span class="league-detail-event-date">@oo.ScheduledAtUtc.ToLocalTime().ToString("g")</span>
+								</div>
+								<span class="league-detail-event-status">@oo.EventType</span>
+							</div>
+						}
+					</div>
+				}
+			</section>
+		</div>
+
+		<aside class="league-detail-lobby-sidebar">
+			<section class="league-detail-card league-detail-leaders-card">
+				<div class="league-detail-card-header">
+					<h3><i class="fa-solid fa-crown"></i> Leaders of the Season</h3>
+				</div>
+				@if (Standings.Count == 0)
+				{
+					<p class="league-detail-empty">No standings yet.</p>
+				}
+				else
+				{
+					<div class="league-detail-leaders-list">
+						@foreach (var leader in Standings.Take(3))
+						{
+							var leaderInitial = (leader.UserDisplayName ?? leader.UserId)?[..1].ToUpperInvariant() ?? "?";
+							var rankColorClass = leader.Rank switch
+							{
+								1 => "league-detail-leader-gold",
+								2 => "league-detail-leader-silver",
+								3 => "league-detail-leader-bronze",
+								_ => ""
+							};
+							<div class="league-detail-leader-row">
+								<div class="league-detail-leader-rank @rankColorClass">@leader.Rank</div>
+								<div class="league-detail-leader-avatar @rankColorClass">@leaderInitial</div>
+								<div class="league-detail-leader-info">
+									<span class="league-detail-leader-name">@(leader.UserDisplayName ?? leader.UserId)</span>
+									<span class="league-detail-leader-points">@leader.TotalPoints pts</span>
+								</div>
+							</div>
+						}
+					</div>
+				}
+			</section>
+
+			@if (MyStanding is not null)
+			{
+				<section class="league-detail-card league-detail-my-progress-card">
+					<div class="league-detail-card-header">
+						<h3><i class="fa-solid fa-chart-line"></i> My Progress</h3>
+						<span class="league-rank-chip @GetRankMovementCssClass(MyStanding.UserId)">@GetRankMovementLabel(MyStanding.UserId)</span>
+					</div>
+					<div class="league-detail-progress-stats">
+						<div class="league-detail-progress-stat">
+							<span class="league-detail-progress-stat-value">#@MyStanding.Rank</span>
+							<span class="league-detail-progress-stat-label">Rank</span>
+						</div>
+						<div class="league-detail-progress-stat">
+							<span class="league-detail-progress-stat-value">@MyStanding.TotalPoints</span>
+							<span class="league-detail-progress-stat-label">Points</span>
+						</div>
+						<div class="league-detail-progress-stat">
+							<span class="league-detail-progress-stat-value">@MyStanding.TotalEvents</span>
+							<span class="league-detail-progress-stat-label">Events</span>
+						</div>
+						<div class="league-detail-progress-stat">
+							<span class="league-detail-progress-stat-value">@FormatChipsDelta(MyStanding.TotalChipsDelta)</span>
+							<span class="league-detail-progress-stat-label">Chips</span>
+						</div>
+					</div>
+				</section>
+			}
+		</aside>
+	</div>
+</div>
+
+@code {
+	[Parameter, EditorRequired]
+	public List<LeagueSeasonEventDto> RecentCompletedEvents { get; set; } = [];
+
+	[Parameter, EditorRequired]
+	public List<LeagueSeasonEventDto> SeasonEvents { get; set; } = [];
+
+	[Parameter, EditorRequired]
+	public List<LeagueOneOffEventDto> OneOffEvents { get; set; } = [];
+
+	[Parameter, EditorRequired]
+	public List<LeagueStandingEntryDto> Standings { get; set; } = [];
+
+	[Parameter]
+	public EventCallback<Guid> OpenTable { get; set; }
+
+	[Parameter]
+	public LeagueStandingEntryDto? MyStanding { get; set; }
+
+	[Parameter]
+	public Dictionary<string, int> RankMovementByUserId { get; set; } = new(StringComparer.Ordinal);
+
+	[Parameter]
+	public List<LeagueMemberDto> Members { get; set; } = [];
+
+	[Parameter]
+	public Dictionary<Guid, GetTableSettingsResponse> ActiveGameDetails { get; set; } = new();
+
+	private List<ActiveGameViewModel> ActiveGames => GetActiveGames();
+
+	private List<ActiveGameViewModel> GetActiveGames()
+	{
+		var games = new List<ActiveGameViewModel>();
+
+		foreach (var se in SeasonEvents.Where(e => e.LaunchedGameId.HasValue && e.Status != LeagueSeasonEventStatus.Completed && e.Status != LeagueSeasonEventStatus.Canceled))
+		{
+			var gameId = se.LaunchedGameId!.Value;
+			ActiveGameDetails.TryGetValue(gameId, out var details);
+			var creatorName = ResolveCreatorName(se.CreatedByUserId, details?.CreatedByName);
+
+			games.Add(new ActiveGameViewModel(
+				gameId,
+				se.Name,
+				"Season Event",
+				se.ScheduledAtUtc ?? se.CreatedAtUtc,
+				details?.CurrentPhase,
+				details?.SeatedPlayerCount ?? 0,
+				creatorName,
+				details?.GameTypeName));
+		}
+
+		foreach (var oo in OneOffEvents.Where(e => e.LaunchedGameId.HasValue && e.Status != LeagueOneOffEventStatus.Completed && e.Status != LeagueOneOffEventStatus.Canceled))
+		{
+			var gameId = oo.LaunchedGameId!.Value;
+			var typeLabel = oo.EventType == LeagueOneOffEventType.Tournament ? "Tournament" : "Cash Game";
+			ActiveGameDetails.TryGetValue(gameId, out var details);
+			var creatorName = ResolveCreatorName(oo.CreatedByUserId, details?.CreatedByName);
+
+			games.Add(new ActiveGameViewModel(
+				gameId,
+				oo.Name,
+				typeLabel,
+				oo.ScheduledAtUtc,
+				details?.CurrentPhase,
+				details?.SeatedPlayerCount ?? 0,
+				creatorName,
+				details?.GameTypeName));
+		}
+
+		return games;
+	}
+
+	private string? ResolveCreatorName(string? userId, string? fallbackName)
+	{
+		if (string.IsNullOrEmpty(userId))
+			return fallbackName;
+
+		var member = Members.FirstOrDefault(m => m.UserId == userId);
+		return member?.UserDisplayName ?? fallbackName ?? userId;
+	}
+
+	private sealed record ActiveGameViewModel(
+		Guid GameId,
+		string Name,
+		string EventType,
+		DateTimeOffset? StartedAt,
+		string? CurrentPhase,
+		int PlayerCount,
+		string? CreatedByName,
+		string? GameTypeName);
+
+	private static string FormatDate(DateTimeOffset? value)
+	{
+		return value.HasValue ? value.Value.ToLocalTime().ToString("g") : "-";
+	}
+
+	private static string FormatPhase(string? phase)
+	{
+		if (string.IsNullOrWhiteSpace(phase))
+		{
+			return "-";
+		}
+
+		return string.Concat(phase.Select((ch, index) =>
+			index > 0 && char.IsUpper(ch) && !char.IsWhiteSpace(phase[index - 1])
+				? $" {ch}"
+				: ch.ToString()));
+	}
+
+	private static string FormatChipsDelta(int chipsDelta)
+	{
+		return chipsDelta >= 0 ? $"+{chipsDelta}" : chipsDelta.ToString();
+	}
+
+	private string GetRankMovementLabel(string userId)
+	{
+		if (!RankMovementByUserId.TryGetValue(userId, out var movement))
+		{
+			return "No change";
+		}
+
+		if (movement > 0)
+		{
+			return $"▲ {movement}";
+		}
+
+		if (movement < 0)
+		{
+			return $"▼ {Math.Abs(movement)}";
+		}
+
+		return "No change";
+	}
+
+	private string GetRankMovementCssClass(string userId)
+	{
+		if (!RankMovementByUserId.TryGetValue(userId, out var movement))
+		{
+			return "league-rank-movement-neutral";
+		}
+
+		if (movement > 0)
+		{
+			return "league-rank-movement-up";
+		}
+
+		if (movement < 0)
+		{
+			return "league-rank-movement-down";
+		}
+
+		return "league-rank-movement-neutral";
+	}
+}

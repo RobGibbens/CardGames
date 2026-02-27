@@ -1,0 +1,180 @@
+@using CardGames.Poker.Api.Contracts
+
+<div class="league-detail-tab-content">
+	<section class="league-detail-card league-detail-rules-box">
+		<div class="league-detail-rules-icon"><i class="fa-solid fa-scale-balanced"></i></div>
+		<div>
+			<div class="fw-semibold">Scoring &amp; Tie-break Rules</div>
+			<ul class="league-detail-rules-list">
+				<li>Ranked by total points (highest first).</li>
+				<li>Tie-break #1: total chips delta (highest first).</li>
+				<li>Tie-break #2: earliest standings update wins.</li>
+				<li>Standings refresh after result ingestion.</li>
+			</ul>
+		</div>
+	</section>
+
+	@if (SelectedSeasonId.HasValue)
+	{
+		<div class="league-detail-season-scope">Season: @(SelectedSeasonName ?? "Selected season")</div>
+	}
+
+	@if (MyStanding is not null)
+	{
+		<section class="league-detail-card league-detail-my-progress-card">
+			<div class="league-detail-card-header">
+				<h3><i class="fa-solid fa-chart-line"></i> My Progress</h3>
+				<span class="league-rank-chip @GetRankMovementCssClass(MyStanding.UserId)">@GetRankMovementLabel(MyStanding.UserId)</span>
+			</div>
+			<div class="league-detail-progress-stats">
+				<div class="league-detail-progress-stat">
+					<span class="league-detail-progress-stat-value">#@MyStanding.Rank</span>
+					<span class="league-detail-progress-stat-label">Rank</span>
+				</div>
+				<div class="league-detail-progress-stat">
+					<span class="league-detail-progress-stat-value">@MyStanding.TotalPoints</span>
+					<span class="league-detail-progress-stat-label">Points</span>
+				</div>
+				<div class="league-detail-progress-stat">
+					<span class="league-detail-progress-stat-value">@MyStanding.TotalEvents</span>
+					<span class="league-detail-progress-stat-label">Events</span>
+				</div>
+				<div class="league-detail-progress-stat">
+					<span class="league-detail-progress-stat-value">@FormatChipsDelta(MyStanding.TotalChipsDelta)</span>
+					<span class="league-detail-progress-stat-label">Chips &Delta;</span>
+				</div>
+			</div>
+		</section>
+	}
+
+	<section class="league-detail-card">
+		<div class="league-detail-card-header">
+			<h3><i class="fa-solid fa-ranking-star"></i> Leaderboard</h3>
+			<button class="league-detail-btn league-detail-btn-refresh" @onclick="LoadStandings" disabled="@IsLoading" aria-label="Refresh standings">
+				<i class="fa-solid fa-rotate-right"></i>
+			</button>
+		</div>
+		@if (Standings.Count == 0)
+		{
+			<p class="league-detail-empty">No standings yet.</p>
+		}
+		else
+		{
+			<div class="league-detail-standings-table">
+				<div class="league-detail-standings-header-row">
+					<span>Rank</span>
+					<span>Player</span>
+					<span>Points</span>
+					<span>Events</span>
+					<span>Chips &Delta;</span>
+					<span>Movement</span>
+				</div>
+				@foreach (var standing in Standings)
+				{
+					<div class="league-detail-standings-row @(standing.Rank <= 3 ? "league-detail-standings-top" : "") @(IsCurrentUserStanding(standing) ? "league-detail-standings-me" : "")">
+						<span class="league-detail-standings-rank">@GetRankPrefix(standing.Rank) #@standing.Rank</span>
+						<span class="league-detail-standings-player">
+							@(standing.UserDisplayName ?? standing.UserId)
+							@if (IsCurrentUserStanding(standing))
+							{
+								<span class="league-you-chip">You</span>
+							}
+						</span>
+						<span class="league-detail-standings-pts fw-semibold">@standing.TotalPoints</span>
+						<span>@standing.TotalEvents</span>
+						<span>@FormatChipsDelta(standing.TotalChipsDelta)</span>
+						<span class="league-rank-chip @GetRankMovementCssClass(standing.UserId)">@GetRankMovementLabel(standing.UserId)</span>
+					</div>
+				}
+			</div>
+		}
+	</section>
+</div>
+
+@code {
+	[Parameter]
+	public Guid? SelectedSeasonId { get; set; }
+
+	[Parameter]
+	public string? SelectedSeasonName { get; set; }
+
+	[Parameter]
+	public LeagueStandingEntryDto? MyStanding { get; set; }
+
+	[Parameter]
+	public Dictionary<string, int> RankMovementByUserId { get; set; } = new(StringComparer.Ordinal);
+
+	[Parameter, EditorRequired]
+	public List<LeagueStandingEntryDto> Standings { get; set; } = [];
+
+	[Parameter]
+	public bool IsLoading { get; set; }
+
+	[Parameter]
+	public string? CurrentUserId { get; set; }
+
+	[Parameter]
+	public EventCallback LoadStandings { get; set; }
+
+	private bool IsCurrentUserStanding(LeagueStandingEntryDto standing)
+	{
+		return !string.IsNullOrWhiteSpace(CurrentUserId)
+			&& string.Equals(standing.UserId, CurrentUserId, StringComparison.Ordinal);
+	}
+
+	private static string FormatChipsDelta(int chipsDelta)
+	{
+		return chipsDelta >= 0 ? $"+{chipsDelta}" : chipsDelta.ToString();
+	}
+
+	private string GetRankMovementLabel(string userId)
+	{
+		if (!RankMovementByUserId.TryGetValue(userId, out var movement))
+		{
+			return "No change";
+		}
+
+		if (movement > 0)
+		{
+			return $"▲ {movement}";
+		}
+
+		if (movement < 0)
+		{
+			return $"▼ {Math.Abs(movement)}";
+		}
+
+		return "No change";
+	}
+
+	private string GetRankMovementCssClass(string userId)
+	{
+		if (!RankMovementByUserId.TryGetValue(userId, out var movement))
+		{
+			return "league-rank-movement-neutral";
+		}
+
+		if (movement > 0)
+		{
+			return "league-rank-movement-up";
+		}
+
+		if (movement < 0)
+		{
+			return "league-rank-movement-down";
+		}
+
+		return "league-rank-movement-neutral";
+	}
+
+	private static string GetRankPrefix(int rank)
+	{
+		return rank switch
+		{
+			1 => "🥇",
+			2 => "🥈",
+			3 => "🥉",
+			_ => ""
+		};
+	}
+}

@@ -1,0 +1,433 @@
+@using System.ComponentModel
+@using CardGames.Poker.Api.Contracts
+
+<div class="league-detail-tab-content">
+	<section class="league-detail-card">
+		<div class="league-detail-card-header">
+			<h3><i class="fa-solid fa-users"></i> Members (@Members.Count)</h3>
+		</div>
+		@if (Members.Count == 0)
+		{
+			<p class="league-detail-empty">No members found.</p>
+		}
+		else
+		{
+			<div class="league-detail-members-grid">
+				@foreach (var member in Members)
+				{
+					<article class="league-detail-member-card">
+						<div class="league-detail-member-card-top">
+							@{
+								var memberInitial = (member.UserDisplayName ?? member.UserId)?[..1].ToUpperInvariant() ?? "?";
+							}
+							<div class="league-detail-member-avatar">@memberInitial</div>
+							<div class="league-detail-member-info">
+								<span class="league-detail-member-name" title="@(member.UserDisplayName ?? member.UserId)">@(member.UserDisplayName ?? member.UserId)</span>
+								<span class="league-detail-member-role">@member.Role</span>
+								<span class="league-detail-member-joined">Joined @member.JoinedAtUtc.ToLocalTime().ToString("MMM d, yyyy")</span>
+							</div>
+						</div>
+						<div class="league-detail-member-card-actions">
+							@if (CanPromote(member))
+							{
+								<button class="btn btn-sm btn-success league-action-btn league-member-action-btn" title="Promote to admin" @onclick="() => PromoteMember.InvokeAsync(member.UserId)" disabled="@(IsSubmittingPromote || IsActingOnMember(member.UserId))">
+									<i class="fa-thin fa-person-arrow-up-from-line"></i>
+								</button>
+							}
+							@if (CanDemote(member))
+							{
+								<button class="btn btn-sm btn-warning league-action-btn league-member-action-btn" title="Demote to member" @onclick="() => DemoteMember.InvokeAsync(member.UserId)" disabled="@(IsSubmittingDemote || IsActingOnMember(member.UserId))">
+									<i class="fa-thin fa-person-arrow-down-to-line"></i>
+								</button>
+							}
+							@if (CanTransferOwnership(member))
+							{
+								<button class="btn btn-sm league-action-btn league-member-action-btn league-member-action-transfer" title="Transfer ownership" @onclick="() => TransferOwnership.InvokeAsync(member.UserId)" disabled="@(IsSubmittingTransferOwnership || IsActingOnMember(member.UserId))">
+									<i class="fa-thin fa-arrow-right-from-arc"></i>
+								</button>
+							}
+							@if (CanRemove(member))
+							{
+								<button class="btn btn-sm btn-danger league-action-btn league-member-action-btn" title="Remove member" @onclick="() => RemoveMember.InvokeAsync(member.UserId)" disabled="@(IsSubmittingRemove || IsActingOnMember(member.UserId))">
+									<i class="fa-thin fa-user-minus"></i>
+								</button>
+							}
+						</div>
+					</article>
+				}
+			</div>
+		}
+	</section>
+
+	<section class="league-detail-card">
+		<div class="league-detail-card-header">
+			<h3><i class="fa-solid fa-rectangle-history-circle-user"></i> Membership History</h3>
+		</div>
+		@if (MembershipHistory.Count == 0)
+		{
+			<p class="league-detail-empty">No membership events yet.</p>
+		}
+		else
+		{
+			<div class="league-detail-history-list">
+				@foreach (var historyItem in MembershipHistory.OrderByDescending(x => x.OccurredAtUtc))
+				{
+					<div class="league-detail-history-item">
+						<div class="league-detail-history-icon">
+							<i class="@GetMembershipHistoryEventIconCssClass(historyItem.EventType)"></i>
+						</div>
+						<div class="league-detail-history-content">
+							<span class="league-detail-history-user">@(historyItem.UserDisplayName ?? historyItem.UserId)</span>
+							<span class="league-detail-history-event">@GetMembershipHistoryEventTypeDescription(historyItem.EventType)</span>
+							<span class="league-detail-history-time"><i class="fa-regular fa-calendar"></i> @historyItem.OccurredAtUtc.ToLocalTime().ToString("MMMM d, yyyy 'at' h:mm tt")</span>
+						</div>
+					</div>
+				}
+			</div>
+		}
+	</section>
+
+	@if (CanManageLeague)
+	{
+		<section class="league-detail-card league-detail-admin-card">
+			<div class="league-detail-card-header">
+				<h3><i class="fa-solid fa-shield-check"></i> Admin Operations Console</h3>
+			</div>
+
+			<h4 class="league-detail-sub-header">Join Request Queue</h4>
+			@if (IsLoadingJoinRequests)
+			{
+				<p class="league-detail-empty">Loading pending requests...</p>
+			}
+			else if (PendingJoinRequests.Count == 0)
+			{
+				<p class="league-detail-empty">No pending join requests.</p>
+			}
+			else
+			{
+				<ul class="list-group">
+					@foreach (var joinRequest in PendingJoinRequests)
+					{
+						<li class="list-group-item d-flex flex-column gap-2" @key="joinRequest.JoinRequestId">
+							<div class="d-flex flex-wrap justify-content-between gap-2">
+								<div>
+									<div class="fw-semibold">@joinRequest.RequesterDisplayName</div>
+									<div class="small text-muted">User: @joinRequest.RequesterUserId &bull; Requested: @joinRequest.CreatedAtUtc.ToLocalTime().ToString("g") &bull; Expires: @joinRequest.ExpiresAtUtc.ToLocalTime().ToString("g")</div>
+								</div>
+								<div class="d-flex gap-2">
+									<button type="button" class="btn btn-sm btn-outline-success league-action-btn" @onclick="() => ApproveJoinRequest.InvokeAsync(joinRequest.JoinRequestId)" disabled="@(IsSubmittingJoinRequest && ActingJoinRequestId == joinRequest.JoinRequestId)">Approve</button>
+									<button type="button" class="btn btn-sm btn-outline-danger league-action-btn" @onclick="() => BeginDenyJoinRequest(joinRequest.JoinRequestId)" disabled="@(IsSubmittingJoinRequest && ActingJoinRequestId == joinRequest.JoinRequestId)">Deny</button>
+								</div>
+							</div>
+							@if (IsDenyConfirmationVisible(joinRequest.JoinRequestId))
+							{
+								<div class="d-flex flex-column gap-2">
+									<div class="form-floating">
+										<InputText id="@($"join-request-reason-{joinRequest.JoinRequestId}")"
+												   class="form-control"
+												   maxlength="512"
+												   placeholder="Reason (optional)"
+												   @bind-Value="_joinRequestReasons[joinRequest.JoinRequestId]"
+												   @bind-Value:event="oninput" />
+										<label for="@($"join-request-reason-{joinRequest.JoinRequestId}")">Reason (optional)</label>
+									</div>
+									<div>
+										<button type="button" class="btn btn-sm btn-danger league-action-btn" @onclick="() => DenyJoinRequestLocalAsync(joinRequest.JoinRequestId)" disabled="@(IsSubmittingJoinRequest && ActingJoinRequestId == joinRequest.JoinRequestId)">Deny</button>
+									</div>
+								</div>
+							}
+						</li>
+					}
+				</ul>
+			}
+		</section>
+
+		<section class="league-detail-card">
+			<div class="league-detail-card-header">
+				<h3><i class="fa-solid fa-envelope-open-text"></i> Invites</h3>
+				<button class="league-detail-btn league-detail-btn-create" @onclick="OpenInviteModal">
+					<i class="fa-solid fa-plus"></i> Create Invite
+				</button>
+			</div>
+			@if (Invites.Count == 0)
+			{
+				<p class="league-detail-empty">No invites yet.</p>
+			}
+			else
+			{
+				<div class="league-detail-invites-list">
+					@foreach (var invite in Invites)
+					{
+						<div class="league-detail-invite-row">
+							<div class="league-detail-invite-info">
+								<span>Status: @invite.Status &bull; Expires: @invite.ExpiresAtUtc.ToLocalTime().ToString("g")</span>
+								<span class="league-detail-invite-code">Code: <strong>@(invite.InviteCode ?? "-")</strong></span>
+							</div>
+							<div class="league-detail-invite-actions">
+								<button type="button"
+										class="btn btn-sm btn-outline-secondary league-action-btn"
+										@onclick="() => CopyInviteCodeLocalAsync(invite.InviteId, invite.InviteCode)"
+										disabled="@string.IsNullOrWhiteSpace(invite.InviteCode)"
+										title="@(IsInviteCodeCopiedLocal(invite.InviteId) ? "Copied" : "Copy invite code")"
+										aria-label="@(IsInviteCodeCopiedLocal(invite.InviteId) ? "Copied" : "Copy invite code")">
+									@if (IsInviteCodeCopiedLocal(invite.InviteId))
+									{
+										<i class="fa-solid fa-check"></i>
+									}
+									else
+									{
+										<i class="fa-regular fa-copy"></i>
+									}
+								</button>
+								@if (invite.Status == LeagueInviteStatus.Active)
+								{
+									<button class="btn btn-sm btn-outline-danger league-action-btn" @onclick="() => RevokeInvite.InvokeAsync(invite.InviteId)" disabled="@IsSubmittingRevokeInvite">Revoke</button>
+								}
+							</div>
+						</div>
+					}
+				</div>
+			}
+		</section>
+	}
+	else
+	{
+		<section class="league-detail-card">
+			<div class="league-detail-card-header">
+				<h3><i class="fa-solid fa-envelope-open-text"></i> Invites</h3>
+			</div>
+			@if (Invites.Count == 0)
+			{
+				<p class="league-detail-empty">No invites yet.</p>
+			}
+			else
+			{
+				<div class="league-detail-invites-list">
+					@foreach (var invite in Invites)
+					{
+						<div class="league-detail-invite-row">
+							<div class="league-detail-invite-info">
+								<span>Status: @invite.Status &bull; Expires: @invite.ExpiresAtUtc.ToLocalTime().ToString("g")</span>
+								<span class="league-detail-invite-code">Code: <strong>@(invite.InviteCode ?? "-")</strong></span>
+							</div>
+							<div class="league-detail-invite-actions">
+								<button type="button"
+										class="btn btn-sm btn-outline-secondary league-action-btn"
+										@onclick="() => CopyInviteCodeLocalAsync(invite.InviteId, invite.InviteCode)"
+										disabled="@string.IsNullOrWhiteSpace(invite.InviteCode)"
+										title="@(IsInviteCodeCopiedLocal(invite.InviteId) ? "Copied" : "Copy invite code")">
+									@if (IsInviteCodeCopiedLocal(invite.InviteId))
+									{
+										<i class="fa-solid fa-check"></i>
+									}
+									else
+									{
+										<i class="fa-regular fa-copy"></i>
+									}
+								</button>
+							</div>
+						</div>
+					}
+				</div>
+			}
+		</section>
+	}
+</div>
+
+@code {
+	private readonly Dictionary<Guid, string> _joinRequestReasons = [];
+	private Guid? _confirmingDenyJoinRequestId;
+
+	[Parameter, EditorRequired]
+	public List<LeagueMemberDto> Members { get; set; } = [];
+
+	[Parameter, EditorRequired]
+	public List<LeagueMembershipHistoryItemDto> MembershipHistory { get; set; } = [];
+
+	[Parameter]
+	public bool CanManageLeague { get; set; }
+
+	[Parameter]
+	public bool IsManager { get; set; }
+
+	[Parameter]
+	public bool IsSubmittingPromote { get; set; }
+
+	[Parameter]
+	public bool IsSubmittingDemote { get; set; }
+
+	[Parameter]
+	public bool IsSubmittingTransferOwnership { get; set; }
+
+	[Parameter]
+	public bool IsSubmittingRemove { get; set; }
+
+	[Parameter]
+	public string? ActingMemberUserId { get; set; }
+
+	[Parameter]
+	public EventCallback<string> PromoteMember { get; set; }
+
+	[Parameter]
+	public EventCallback<string> DemoteMember { get; set; }
+
+	[Parameter]
+	public EventCallback<string> TransferOwnership { get; set; }
+
+	[Parameter]
+	public EventCallback<string> RemoveMember { get; set; }
+
+	[Parameter]
+	public bool IsLoadingJoinRequests { get; set; }
+
+	[Parameter, EditorRequired]
+	public List<LeagueJoinRequestQueueItemDto> PendingJoinRequests { get; set; } = [];
+
+	[Parameter]
+	public bool IsSubmittingJoinRequest { get; set; }
+
+	[Parameter]
+	public Guid? ActingJoinRequestId { get; set; }
+
+	[Parameter]
+	public EventCallback<Guid> ApproveJoinRequest { get; set; }
+
+	[Parameter]
+	public Func<Guid, string?, Task>? DenyJoinRequestAsync { get; set; }
+
+	[Parameter]
+	public EventCallback OpenInviteModal { get; set; }
+
+	[Parameter, EditorRequired]
+	public List<LeagueInviteSummaryDto> Invites { get; set; } = [];
+
+	[Parameter]
+	public Func<Guid, string?, Task>? CopyInviteCodeAsync { get; set; }
+
+	[Parameter]
+	public Func<Guid, bool>? IsInviteCodeCopied { get; set; }
+
+	[Parameter]
+	public bool IsSubmittingRevokeInvite { get; set; }
+
+	[Parameter]
+	public EventCallback<Guid> RevokeInvite { get; set; }
+
+	protected override void OnParametersSet()
+	{
+		var validIds = PendingJoinRequests.Select(x => x.JoinRequestId).ToHashSet();
+		foreach (var staleId in _joinRequestReasons.Keys.Where(x => !validIds.Contains(x)).ToList())
+		{
+			_joinRequestReasons.Remove(staleId);
+		}
+
+		if (_confirmingDenyJoinRequestId.HasValue && !validIds.Contains(_confirmingDenyJoinRequestId.Value))
+		{
+			_confirmingDenyJoinRequestId = null;
+		}
+
+		foreach (var joinRequest in PendingJoinRequests)
+		{
+			_ = GetModerationReason(joinRequest.JoinRequestId);
+		}
+	}
+
+	private bool CanPromote(LeagueMemberDto member)
+	{
+		return CanManageLeague && member.IsActive && member.Role == LeagueRole.Member;
+	}
+
+	private bool CanDemote(LeagueMemberDto member)
+	{
+		return CanManageLeague && member.IsActive && member.Role == LeagueRole.Admin;
+	}
+
+	private bool CanTransferOwnership(LeagueMemberDto member)
+	{
+		return IsManager && member.IsActive && member.Role != LeagueRole.Manager;
+	}
+
+	private bool CanRemove(LeagueMemberDto member)
+	{
+		return CanManageLeague && member.IsActive;
+	}
+
+	private bool IsActingOnMember(string memberUserId)
+	{
+		return string.Equals(ActingMemberUserId, memberUserId, StringComparison.Ordinal);
+	}
+
+	private bool IsDenyConfirmationVisible(Guid joinRequestId)
+	{
+		return _confirmingDenyJoinRequestId == joinRequestId;
+	}
+
+	private void BeginDenyJoinRequest(Guid joinRequestId)
+	{
+		_confirmingDenyJoinRequestId = joinRequestId;
+	}
+
+	private string GetModerationReason(Guid joinRequestId)
+	{
+		if (_joinRequestReasons.TryGetValue(joinRequestId, out var reason))
+		{
+			return reason;
+		}
+
+		reason = string.Empty;
+		_joinRequestReasons[joinRequestId] = reason;
+		return reason;
+	}
+
+	private async Task DenyJoinRequestLocalAsync(Guid joinRequestId)
+	{
+		if (DenyJoinRequestAsync is null)
+		{
+			return;
+		}
+
+		var reason = _joinRequestReasons.TryGetValue(joinRequestId, out var value)
+			? value?.Trim()
+			: null;
+
+		await DenyJoinRequestAsync.Invoke(joinRequestId, string.IsNullOrWhiteSpace(reason) ? null : reason);
+	}
+
+	private async Task CopyInviteCodeLocalAsync(Guid inviteId, string? inviteCode)
+	{
+		if (CopyInviteCodeAsync is null)
+		{
+			return;
+		}
+
+		await CopyInviteCodeAsync.Invoke(inviteId, inviteCode);
+	}
+
+	private bool IsInviteCodeCopiedLocal(Guid inviteId)
+	{
+		return IsInviteCodeCopied?.Invoke(inviteId) ?? false;
+	}
+
+	private static string GetMembershipHistoryEventTypeDescription(LeagueMembershipHistoryEventType eventType)
+	{
+		var field = typeof(LeagueMembershipHistoryEventType).GetField(eventType.ToString());
+		var descriptionAttribute = field?.GetCustomAttributes(typeof(DescriptionAttribute), false)
+			.OfType<DescriptionAttribute>()
+			.FirstOrDefault();
+
+		return descriptionAttribute?.Description ?? eventType.ToString();
+	}
+
+	private static string GetMembershipHistoryEventIconCssClass(LeagueMembershipHistoryEventType eventType)
+	{
+		return eventType switch
+		{
+			LeagueMembershipHistoryEventType.MemberJoined => "fa-solid fa-user-plus",
+			LeagueMembershipHistoryEventType.MemberLeft => "fa-solid fa-user-minus",
+			LeagueMembershipHistoryEventType.MemberPromotedToAdmin => "fa-solid fa-user-shield",
+			LeagueMembershipHistoryEventType.MemberDemotedFromAdmin => "fa-solid fa-user",
+			LeagueMembershipHistoryEventType.LeagueOwnershipTransferred => "fa-solid fa-crown",
+			_ => "fa-solid fa-circle-info"
+		};
+	}
+}

@@ -20,7 +20,7 @@
 
 <main class="lobby-main">
 	<div class="lobby-container">
-		<div class="lobby-header">
+		<div class="lobby-header" style="position: relative;">
 			<div class="lobby-header-content">
 				<h1 class="lobby-title">
 					<i class="fa-solid fa-users"></i>
@@ -28,63 +28,241 @@
 				</h1>
 				<p class="lobby-subtitle">Create a league and view leagues where you are a member.</p>
 			</div>
+			<div style="position: absolute; top: 1.25rem; right: 1.25rem; display: flex; gap: 0.5rem;">
+				<button class="btn btn-primary btn-sm" @onclick="OpenCreateModal">
+					<i class="fa-solid fa-plus me-1"></i> Create League
+				</button>
+				<button class="btn btn-outline-primary btn-sm" @onclick="OpenJoinModal">
+					<i class="fa-solid fa-right-to-bracket me-1"></i> Join League
+				</button>
+			</div>
 		</div>
 
 		<section class="cashier-panel">
 			<div class="cashier-panel-body d-flex flex-column gap-3">
-				<div class="league-schedule-tabs" role="tablist" aria-label="League actions">
-					<button type="button"
-							class="league-schedule-tab @(_activeActionTab == LeagueActionTab.Create ? "league-schedule-tab-active" : string.Empty)"
-							role="tab" aria-selected="@(_activeActionTab == LeagueActionTab.Create)"
-							@onclick="() => _activeActionTab = LeagueActionTab.Create">
-						Create League
-					</button>
-					<button type="button"
-							class="league-schedule-tab @(_activeActionTab == LeagueActionTab.Join ? "league-schedule-tab-active" : string.Empty)"
-							role="tab" aria-selected="@(_activeActionTab == LeagueActionTab.Join)"
-							@onclick="() => _activeActionTab = LeagueActionTab.Join">
-						Join League
-					</button>
+				<div class="d-flex flex-column gap-2">
+					<div class="cashier-section-header mb-0">
+						<h2 class="cashier-section-title mb-0 fw-bold">My Leagues</h2>
+						<button class="btn btn-sm btn-outline-secondary" @onclick="LoadLeaguesAsync"
+								disabled="@_isLoading" aria-label="Refresh my leagues" title="Refresh my leagues">
+							<i class="fa-solid fa-rotate-right" aria-hidden="true"></i>
+						</button>
+					</div>
+					<div style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: center;">
+						<span class="stat-pill stat-pill-blue">
+							<span class="stat-circle">@_leagues.Count</span>
+							<span>Leagues</span>
+						</span>
+						<span class="stat-pill stat-pill-purple">
+							<span class="stat-circle">@(_adminLeagueCount + _managerLeagueCount)</span>
+							<span>Manager/Admin</span>
+						</span>
+						@if (_isLoadingPendingActions)
+						{
+							<span class="stat-pill stat-pill-grey">
+								<span class="stat-circle">...</span>
+								<span>Pending</span>
+							</span>
+						}
+						else
+						{
+							<span class="stat-pill stat-pill-grey">
+								<span class="stat-circle">@_totalPendingJoinActions</span>
+								<span>Pending</span>
+							</span>
+						}
+					</div>
 				</div>
+				<br>
+				<div class="mt-4">
+					@if (_isLoading)
+					{
+						<p class="mb-0 text-muted">Loading leagues...</p>
+					}
+					else if (_leagues.Count == 0)
+					{
+						<p class="mb-0 text-muted">You are not in any leagues yet.</p>
+					}
+					else
+					{
+						<div
+							style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;">
+							@foreach (var league in _leagues)
+							{
+								<div>
+									<article class="card league-club-card h-100">
+										<div class="card-body league-club-body d-flex flex-column">
+											<div class="league-club-header league-club-header-inline">
+												<div class="league-club-title-group">
+													<h2 class="h5 mb-0 fw-semibold text-break league-club-name">@league.Name
+													</h2>
+													<p class="card-text small text-muted mb-0 league-club-description">
+														@GetTruncatedDescription(league.Description)</p>
+													</div>
+													<!-- <span class="badge ms-1 league-role-badge @GetRolePillClass(league.Role)">@GetRolePillLabel(league.Role)</span> -->
+													<span class="stat-pill stat-pill-purple">
+														<span class="stat-circle">1</span>
+														<span>@league.Role</span>
+													</span>
+												</div>
+												<div class="mt-auto pt-3"></div>
+											</div>
+											<div class="card-footer league-club-footer bg-white border-0 pt-0">
+												<button class="btn btn-primary w-100"
+														@onclick="() => OpenLeagueDetail(league.LeagueId)">
+													Open League
+												</button>
+											</div>
+										</article>
+									</div>
+								}
+							</div>
+						}
+					</div>
+				</div>
+			</section>
 
-				@if (_activeActionTab == LeagueActionTab.Create)
-				{
-					<div class="auth-form">
-						<div class="form-floating mb-3" data-label="League Name">
-							<InputText id="league-name" class="form-control" @bind-Value="_name" maxlength="120"
+			@if (_selectedLeague is not null)
+			{
+				<section class="cashier-panel">
+					<div class="cashier-panel-body d-flex flex-column gap-3">
+						<h2 class="cashier-section-title">Manage @_selectedLeague.Name</h2>
+
+						@if (_leagueDetail is not null)
+						{
+							<div class="small text-muted">
+								Created by @_leagueDetail.CreatedByUserId • Active members: @_leagueDetail.ActiveMemberCount
+							</div>
+						}
+
+						<div>
+							<h3 class="h6">Members</h3>
+							@if (_memberSummaries.Count == 0)
+							{
+								<p class="text-muted mb-0">No members found.</p>
+							}
+							else
+							{
+								<ul class="list-group">
+									@foreach (var member in _memberSummaries)
+									{
+										<li class="list-group-item d-flex justify-content-between align-items-center gap-2">
+											<div>
+												<div class="fw-semibold">@member.UserId</div>
+												<div class="small text-muted">Role: @member.Role • Joined:
+													@member.JoinedAtUtc.ToLocalTime().ToString("g")</div>
+												</div>
+												@if (CanManageSelectedLeague && member.IsActive && member.Role != LeagueRole.Admin)
+												{
+													<button class="btn btn-sm btn-warning" @onclick="() => PromoteMemberAsync(member.UserId)"
+															disabled="@_isSubmittingPromote">Promote</button>
+												}
+											</li>
+										}
+									</ul>
+								}
+							</div>
+
+							@if (CanManageSelectedLeague)
+							{
+								<div class="auth-form">
+									<h3 class="h6">Create Invite Link</h3>
+									<div class="form-floating mb-3" data-label="Expiry (UTC)">
+										<InputDate id="invite-expiry" class="form-control" @bind-Value="_inviteExpiryDate" />
+									</div>
+									<button class="btn btn-sm btn-primary" @onclick="CreateInviteAsync"
+											disabled="@_isSubmittingInvite">Create Invite</button>
+									@if (!string.IsNullOrWhiteSpace(_createdInviteUrl))
+									{
+										<div class="alert alert-success mt-3 mb-0" role="alert">
+											Invite link: <a href="@_createdInviteUrl">@_createdInviteUrl</a>
+										</div>
+									}
+								</div>
+							}
+
+							<div>
+								<h3 class="h6">Invites</h3>
+								@if (_inviteSummaries.Count == 0)
+								{
+									<p class="text-muted mb-0">No invites yet.</p>
+								}
+								else
+								{
+									<ul class="list-group">
+										@foreach (var invite in _inviteSummaries)
+										{
+											<li class="list-group-item small">
+												Status: @invite.Status • Expires: @invite.ExpiresAtUtc.ToLocalTime().ToString("g")
+											</li>
+										}
+									</ul>
+								}
+							</div>
+						</div>
+					</section>
+				}
+			</div>
+		</main>
+
+		@* ── Create League Modal ── *@
+		@if (_showCreateModal)
+		{
+			<div class="confirm-dialog-overlay" @onclick="CloseCreateModal">
+				<div class="confirm-dialog league-form-modal" @onclick:stopPropagation>
+					<div class="confirm-dialog-header league-form-modal-header">
+						<h3 class="confirm-dialog-title mb-0">Create League</h3>
+						<button type="button" class="league-modal-close-btn" aria-label="Close" @onclick="CloseCreateModal">
+							<i class="fa-solid fa-xmark" aria-hidden="true"></i>
+						</button>
+					</div>
+					<div class="confirm-dialog-body league-form-modal-body text-start">
+						@if (!string.IsNullOrWhiteSpace(_message))
+						{
+							<div class="alert @(_isError ? "alert-warning" : "alert-success") py-2 mb-2" role="alert">@_message</div>
+						}
+						<div class="form-floating" data-label="League Name">
+							<InputText id="league-name" class="form-control league-modal-input" @bind-Value="_name" maxlength="120"
 									   placeholder="League Name" disabled="@_isSubmitting" />
 						</div>
-
-						<div class="form-floating mb-3" data-label="Description (optional)">
-							<InputText id="league-description" class="form-control" @bind-Value="_description"
+						<div class="form-floating" data-label="Description (optional)">
+							<InputText id="league-description" class="form-control league-modal-input" @bind-Value="_description"
 									   maxlength="512" placeholder="Description (optional)" disabled="@_isSubmitting" />
 						</div>
-
-						<button class="btn btn-primary" @onclick="CreateLeagueAsync" disabled="@_isSubmitting">
+					</div>
+					<div class="confirm-dialog-footer">
+						<button class="confirm-dialog-btn btn btn-secondary" @onclick="CloseCreateModal"
+								disabled="@_isSubmitting">Cancel</button>
+						<button class="confirm-dialog-btn btn btn-primary" @onclick="CreateLeagueAsync" disabled="@_isSubmitting">
 							@if (_isSubmitting)
 							{
 								<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
 							}
 							Create
 						</button>
-
-						@if (!string.IsNullOrWhiteSpace(_message))
-						{
-							<div class="alert @(_isError ? "alert-warning" : "alert-success") mt-3 mb-0" role="alert">@_message
-							</div>
-						}
 					</div>
-				}
-				else
-				{
-					<div class="auth-form d-flex flex-column gap-3">
+				</div>
+			</div>
+		}
+
+		@* ── Join League Modal ── *@
+		@if (_showJoinModal)
+		{
+			<div class="confirm-dialog-overlay" @onclick="CloseJoinModal">
+				<div class="confirm-dialog league-form-modal" @onclick:stopPropagation>
+					<div class="confirm-dialog-header league-form-modal-header">
+						<h3 class="confirm-dialog-title mb-0">Join League</h3>
+						<button type="button" class="league-modal-close-btn" aria-label="Close" @onclick="CloseJoinModal">
+							<i class="fa-solid fa-xmark" aria-hidden="true"></i>
+						</button>
+					</div>
+					<div class="confirm-dialog-body league-form-modal-body text-start">
 						<div class="form-floating" data-label="League Code">
-							<InputText id="league-code" class="form-control" @bind-Value="JoinCode" maxlength="128"
-									   placeholder="League Code" disabled="@_isPreviewLoading" />
+							<InputText id="league-code" class="form-control league-modal-input" @bind-Value="JoinCode"
+									   maxlength="128" placeholder="League Code" disabled="@_isPreviewLoading" />
 						</div>
 
-
-						<div class="d-flex flex-wrap gap-2">
+						<div class="d-flex flex-wrap gap-2 mt-2">
 							@if (!IsCurrentCodePreviewed || _isPreviewLoading)
 							{
 								<button class="btn btn-sm btn-outline-primary" @onclick="LoadJoinPreviewAsync"
@@ -101,13 +279,8 @@
 							{
 								<article class="card league-club-card h-100">
 									<div class="card-body league-club-body d-flex flex-column" style="position: relative;">
-										<div class="d-flex league-member-actions">
-											<button class="btn btn-sm btn-success league-action-btn league-member-action-btn league-member-action-promote" title="Promote to admin" @onclick="() => SubmitJoinByCodeAsync()" disabled="@_isJoinSubmitting">
-												<i class="fa-solid fa-paper-plane"></i>
-												Submit Request
-											</button>
-										</div>
-										<h4 class="medium fw-bold mb-2 text-truncate" style="padding-right: 8rem;" title="@(_joinPreview.LeagueName)">
+										<h4 class="medium fw-bold mb-2 text-truncate" style="padding-right: 8rem;"
+											title="@(_joinPreview.LeagueName)">
 											@(_joinPreview.LeagueName)
 										</h4>
 										@if (!string.IsNullOrWhiteSpace(_joinPreview.LeagueDescription))
@@ -125,182 +298,23 @@
 
 						@if (!string.IsNullOrWhiteSpace(_joinMessage))
 						{
-							<div class="alert @(_isJoinError ? "alert-warning" : "alert-success") mb-0" role="alert">
+							<div class="alert @(_isJoinError ? "alert-warning" : "alert-success") mt-2 mb-0" role="alert">
 								@_joinMessage</div>
 							}
-
-						
 						</div>
-					}
-				</div>
-			</section>
-
-			<section class="cashier-panel">
-				<div class="cashier-panel-body d-flex flex-column gap-3">
-					<div class="d-flex flex-column gap-2">
-						<div class="cashier-section-header mb-0">
-							<h2 class="cashier-section-title mb-0 fw-bold">My Leagues</h2>
-							<button class="btn btn-sm btn-outline-secondary" @onclick="LoadLeaguesAsync"
-									disabled="@_isLoading" aria-label="Refresh my leagues" title="Refresh my leagues">
-								<i class="fa-solid fa-rotate-right" aria-hidden="true"></i>
+						<div class="confirm-dialog-footer join-league-dialog-footer">
+							<button class="confirm-dialog-btn btn btn-secondary" 
+							   @onclick="CloseJoinModal">Cancel</button>
+							<button
+								class="confirm-dialog-btn btn btn-primary join-league-submit-btn"
+								title="Submit join request" @onclick="() => SubmitJoinByCodeAsync()" disabled="@_isJoinSubmitting">
+								<i class="fa-solid fa-paper-plane"></i>
+								Submit Request
 							</button>
 						</div>
-						<div style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: center;">
-							<span class="stat-pill stat-pill-blue">
-								<span class="stat-circle">@_leagues.Count</span>
-								<span>Leagues</span>
-							</span>
-							<span class="stat-pill stat-pill-purple">
-								<span class="stat-circle">@(_adminLeagueCount + _managerLeagueCount)</span>
-								<span>Manager/Admin</span>
-							</span>
-							@if (_isLoadingPendingActions)
-							{
-								<span class="stat-pill stat-pill-grey">
-									<span class="stat-circle">...</span>
-									<span>Pending</span>
-								</span>
-							}
-							else
-							{
-								<span class="stat-pill stat-pill-grey">
-									<span class="stat-circle">@_totalPendingJoinActions</span>
-									<span>Pending</span>
-								</span>
-							}
-						</div>
 					</div>
-					<br>
-					<div class="mt-4">
-						@if (_isLoading)
-						{
-							<p class="mb-0 text-muted">Loading leagues...</p>
-						}
-						else if (_leagues.Count == 0)
-						{
-							<p class="mb-0 text-muted">You are not in any leagues yet.</p>
-						}
-						else
-						{
-							<div
-								style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;">
-								@foreach (var league in _leagues)
-								{
-									<div>
-										<article class="card league-club-card h-100">
-											<div class="card-body league-club-body d-flex flex-column">
-												<div class="league-club-header league-club-header-inline">
-													<div class="league-club-title-group">
-														<h2 class="h5 mb-0 fw-semibold text-break league-club-name">@league.Name
-														</h2>
-														<p class="card-text small text-muted mb-0 league-club-description">
-															@GetTruncatedDescription(league.Description)</p>
-														</div>
-														<!-- <span class="badge ms-1 league-role-badge @GetRolePillClass(league.Role)">@GetRolePillLabel(league.Role)</span> -->
-														<span class="stat-pill stat-pill-purple">
-															<span class="stat-circle">1</span>
-															<span>@league.Role</span>
-														</span>
-													</div>
-													<div class="mt-auto pt-3"></div>
-												</div>
-												<div class="card-footer league-club-footer bg-white border-0 pt-0">
-													<button class="btn btn-primary w-100"
-															@onclick="() => OpenLeagueDetail(league.LeagueId)">
-														Open League
-													</button>
-												</div>
-											</article>
-										</div>
-									}
-								</div>
-							}
-						</div>
-					</div>
-				</section>
-
-				@if (_selectedLeague is not null)
-				{
-					<section class="cashier-panel">
-						<div class="cashier-panel-body d-flex flex-column gap-3">
-							<h2 class="cashier-section-title">Manage @_selectedLeague.Name</h2>
-
-							@if (_leagueDetail is not null)
-							{
-								<div class="small text-muted">
-									Created by @_leagueDetail.CreatedByUserId • Active members: @_leagueDetail.ActiveMemberCount
-								</div>
-							}
-
-							<div>
-								<h3 class="h6">Members</h3>
-								@if (_memberSummaries.Count == 0)
-								{
-									<p class="text-muted mb-0">No members found.</p>
-								}
-								else
-								{
-									<ul class="list-group">
-										@foreach (var member in _memberSummaries)
-										{
-											<li class="list-group-item d-flex justify-content-between align-items-center gap-2">
-												<div>
-													<div class="fw-semibold">@member.UserId</div>
-													<div class="small text-muted">Role: @member.Role • Joined:
-														@member.JoinedAtUtc.ToLocalTime().ToString("g")</div>
-													</div>
-													@if (CanManageSelectedLeague && member.IsActive && member.Role != LeagueRole.Admin)
-													{
-														<button class="btn btn-sm btn-warning" @onclick="() => PromoteMemberAsync(member.UserId)"
-																disabled="@_isSubmittingPromote">Promote</button>
-													}
-												</li>
-											}
-										</ul>
-									}
-								</div>
-
-								@if (CanManageSelectedLeague)
-								{
-									<div class="auth-form">
-										<h3 class="h6">Create Invite Link</h3>
-										<div class="form-floating mb-3" data-label="Expiry (UTC)">
-											<InputDate id="invite-expiry" class="form-control" @bind-Value="_inviteExpiryDate" />
-										</div>
-										<button class="btn btn-sm btn-primary" @onclick="CreateInviteAsync"
-												disabled="@_isSubmittingInvite">Create Invite</button>
-										@if (!string.IsNullOrWhiteSpace(_createdInviteUrl))
-										{
-											<div class="alert alert-success mt-3 mb-0" role="alert">
-												Invite link: <a href="@_createdInviteUrl">@_createdInviteUrl</a>
-											</div>
-										}
-									</div>
-								}
-
-								<div>
-									<h3 class="h6">Invites</h3>
-									@if (_inviteSummaries.Count == 0)
-									{
-										<p class="text-muted mb-0">No invites yet.</p>
-									}
-									else
-									{
-										<ul class="list-group">
-											@foreach (var invite in _inviteSummaries)
-											{
-												<li class="list-group-item small">
-													Status: @invite.Status • Expires: @invite.ExpiresAtUtc.ToLocalTime().ToString("g")
-												</li>
-											}
-										</ul>
-									}
-								</div>
-							</div>
-						</section>
-					}
 				</div>
-			</main>
+			}
 
 @code {
 	private bool _isLoading;
@@ -309,7 +323,8 @@
 	private string? _message;
 	private string _name = string.Empty;
 	private string? _description;
-	private LeagueActionTab _activeActionTab = LeagueActionTab.Create;
+	private bool _showCreateModal;
+	private bool _showJoinModal;
 	private List<LeagueSummaryDto> _leagues = [];
 	private LeagueSummaryDto? _selectedLeague;
 	private LeagueDetailDto? _leagueDetail;
@@ -335,10 +350,34 @@
 	private int _managerLeagueCount;
 	private int _totalPendingJoinActions;
 
-	private enum LeagueActionTab
+	private void OpenCreateModal()
 	{
-		Create,
-		Join
+		_showJoinModal = false;
+		_name = string.Empty;
+		_description = null;
+		_message = null;
+		_isError = false;
+		_showCreateModal = true;
+	}
+
+	private void CloseCreateModal()
+	{
+		_showCreateModal = false;
+	}
+
+	private void OpenJoinModal()
+	{
+		_showCreateModal = false;
+		JoinCode = string.Empty;
+		_joinPreview = null;
+		_joinMessage = null;
+		_isJoinError = false;
+		_showJoinModal = true;
+	}
+
+	private void CloseJoinModal()
+	{
+		_showJoinModal = false;
 	}
 
 	private string JoinCode
@@ -503,11 +542,13 @@ _quickSwitchLeagueId))
 		_totalPendingJoinActions = _pendingJoinActionsByLeagueId.Values.Sum();
 	}
 
-	private async Task HandleLeagueJoinRequestSubmittedAsync(CardGames.Contracts.SignalR.LeagueJoinRequestSubmittedDto payload)
+	private async Task HandleLeagueJoinRequestSubmittedAsync(CardGames.Contracts.SignalR.LeagueJoinRequestSubmittedDto
+payload)
 	{
 		await InvokeAsync(async () =>
 		{
-			if (!_leagues.Any(x => x.LeagueId == payload.LeagueId && (x.Role == LeagueRole.Admin || x.Role == LeagueRole.Manager || x.Role == LeagueRole.Owner)))
+			if (!_leagues.Any(x => x.LeagueId == payload.LeagueId && (x.Role == LeagueRole.Admin || x.Role == LeagueRole.Manager ||
+x.Role == LeagueRole.Owner)))
 			{
 				return;
 			}
@@ -521,7 +562,8 @@ _quickSwitchLeagueId))
 	{
 		await InvokeAsync(async () =>
 		{
-			if (!_leagues.Any(x => x.LeagueId == payload.LeagueId && (x.Role == LeagueRole.Admin || x.Role == LeagueRole.Manager || x.Role == LeagueRole.Owner)))
+			if (!_leagues.Any(x => x.LeagueId == payload.LeagueId && (x.Role == LeagueRole.Admin || x.Role == LeagueRole.Manager ||
+x.Role == LeagueRole.Owner)))
 			{
 				return;
 			}
@@ -807,8 +849,9 @@ _quickSwitchLeagueId))
 			{
 				_name = string.Empty;
 				_description = null;
-				_message = "League created.";
+				_message = null;
 				_isError = false;
+				_showCreateModal = false;
 				await LoadLeaguesAsync();
 			}
 			else

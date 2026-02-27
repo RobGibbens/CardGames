@@ -3726,12 +3726,16 @@ namespace CardGames.Poker.Api.Contracts
     public partial record CreateLeagueOneOffEventRequest
     {
         [JsonConstructor]
-        public CreateLeagueOneOffEventRequest(LeagueOneOffEventType? @eventType, string @name, string @notes, System.DateTimeOffset? @scheduledAtUtc)
+        public CreateLeagueOneOffEventRequest(int? @ante, LeagueOneOffEventType? @eventType, string @gameTypeCode, int? @minBet, string @name, string @notes, System.DateTimeOffset? @scheduledAtUtc, string @tableName)
         {
             this.Name = @name;
             this.ScheduledAtUtc = @scheduledAtUtc;
             this.EventType = @eventType;
             this.Notes = @notes;
+            this.GameTypeCode = @gameTypeCode;
+            this.TableName = @tableName;
+            this.Ante = @ante;
+            this.MinBet = @minBet;
         }
 
         [JsonPropertyName("name")]
@@ -3747,13 +3751,27 @@ namespace CardGames.Poker.Api.Contracts
         [JsonPropertyName("notes")]
         public string Notes { get; init; }
 
+        [JsonPropertyName("gameTypeCode")]
+        public string GameTypeCode { get; init; }
+
+        [JsonPropertyName("tableName")]
+        public string TableName { get; init; }
+
+        [JsonPropertyName("ante")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? Ante { get; init; }
+
+        [JsonPropertyName("minBet")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? MinBet { get; init; }
+
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial record CreateLeagueOneOffEventResponse
     {
         [JsonConstructor]
-        public CreateLeagueOneOffEventResponse(System.DateTimeOffset? @createdAtUtc, string @createdByUserId, System.Guid @eventId, LeagueOneOffEventType? @eventType, System.Guid @leagueId, string @name, string @notes, System.DateTimeOffset? @scheduledAtUtc, LeagueOneOffEventStatus? @status)
+        public CreateLeagueOneOffEventResponse(int? @ante, System.DateTimeOffset? @createdAtUtc, string @createdByUserId, System.Guid @eventId, LeagueOneOffEventType? @eventType, string @gameTypeCode, System.Guid @leagueId, int? @minBet, string @name, string @notes, System.DateTimeOffset? @scheduledAtUtc, LeagueOneOffEventStatus? @status, string @tableName)
         {
             this.EventId = @eventId;
             this.LeagueId = @leagueId;
@@ -3764,6 +3782,10 @@ namespace CardGames.Poker.Api.Contracts
             this.Notes = @notes;
             this.CreatedByUserId = @createdByUserId;
             this.CreatedAtUtc = @createdAtUtc;
+            this.GameTypeCode = @gameTypeCode;
+            this.TableName = @tableName;
+            this.Ante = @ante;
+            this.MinBet = @minBet;
         }
 
         [JsonPropertyName("eventId")]
@@ -3796,6 +3818,20 @@ namespace CardGames.Poker.Api.Contracts
 
         [JsonPropertyName("createdAtUtc")]
         public System.DateTimeOffset? CreatedAtUtc { get; init; }
+
+        [JsonPropertyName("gameTypeCode")]
+        public string GameTypeCode { get; init; }
+
+        [JsonPropertyName("tableName")]
+        public string TableName { get; init; }
+
+        [JsonPropertyName("ante")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? Ante { get; init; }
+
+        [JsonPropertyName("minBet")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? MinBet { get; init; }
 
     }
 
@@ -5971,7 +6007,7 @@ namespace CardGames.Poker.Api.Contracts
     public partial record LeagueOneOffEventDto
     {
         [JsonConstructor]
-        public LeagueOneOffEventDto(System.DateTimeOffset? @createdAtUtc, string @createdByUserId, System.Guid @eventId, LeagueOneOffEventType? @eventType, System.Guid? @launchedGameId, System.Guid @leagueId, string @name, string @notes, System.DateTimeOffset? @scheduledAtUtc, LeagueOneOffEventStatus? @status)
+        public LeagueOneOffEventDto(int? @ante, System.DateTimeOffset? @createdAtUtc, string @createdByUserId, System.Guid @eventId, LeagueOneOffEventType? @eventType, string @gameTypeCode, System.Guid? @launchedGameId, System.Guid @leagueId, int? @minBet, string @name, string @notes, System.DateTimeOffset? @scheduledAtUtc, LeagueOneOffEventStatus? @status, string @tableName)
         {
             this.EventId = @eventId;
             this.LeagueId = @leagueId;
@@ -5983,6 +6019,10 @@ namespace CardGames.Poker.Api.Contracts
             this.CreatedByUserId = @createdByUserId;
             this.CreatedAtUtc = @createdAtUtc;
             this.LaunchedGameId = @launchedGameId;
+            this.GameTypeCode = @gameTypeCode;
+            this.TableName = @tableName;
+            this.Ante = @ante;
+            this.MinBet = @minBet;
         }
 
         [JsonPropertyName("eventId")]
@@ -6018,6 +6058,20 @@ namespace CardGames.Poker.Api.Contracts
 
         [JsonPropertyName("launchedGameId")]
         public System.Guid? LaunchedGameId { get; init; }
+
+        [JsonPropertyName("gameTypeCode")]
+        public string GameTypeCode { get; init; }
+
+        [JsonPropertyName("tableName")]
+        public string TableName { get; init; }
+
+        [JsonPropertyName("ante")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? Ante { get; init; }
+
+        [JsonPropertyName("minBet")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? MinBet { get; init; }
 
     }
 
