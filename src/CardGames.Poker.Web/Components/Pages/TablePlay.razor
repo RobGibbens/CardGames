@@ -32,11 +32,14 @@
 @inject IKingsAndLowsApi KingsAndLowsApi
 @inject IFiveCardDrawApi FiveCardDrawApiClient
 @inject IJSRuntime JSRuntime
+@inject IProfileApi ProfileApi
 
 <PageTitle>Table - Friday Night Poker</PageTitle>
 
 <!-- Connection Banner -->
 <ConnectionBanner IsConnected="@_isConnected" IsReconnecting="@_isReconnecting" />
+
+<NoChipsModal @bind-IsVisible="_showNoChipsModal" OnClose="HandleNoChipsModalClose" />
 
 <!-- Toast notifications -->
 @if (_toastMessages.Count > 0)
@@ -1894,6 +1897,12 @@
     }
 
     private bool _isLeavingTable = false;
+    private bool _showNoChipsModal;
+
+    private void HandleNoChipsModalClose()
+    {
+        _showNoChipsModal = false;
+    }
 
     private async Task ToggleSitOutAsync()
     {
@@ -1973,6 +1982,20 @@
     {
         if (_isSeated || _seats[seatIndex].IsOccupied)
             return;
+
+        try
+        {
+            var cashierSummary = await ProfileApi.GetCashierSummaryAsync();
+            if (cashierSummary.IsSuccessStatusCode && (cashierSummary.Content?.CurrentBalance ?? 0) <= 0)
+            {
+                _showNoChipsModal = true;
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to check chip balance before joining seat");
+        }
 
         try
         {

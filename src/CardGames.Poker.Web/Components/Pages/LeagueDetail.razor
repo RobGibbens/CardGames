@@ -22,10 +22,13 @@
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IProfileApi ProfileApi
 
 <PageTitle>League Detail - Friday Night Poker</PageTitle>
 
 <AuthenticatedNavBar />
+
+<NoChipsModal @bind-IsVisible="_showNoChipsModal" OnClose="HandleNoChipsModalClose" />
 
 <main class="lobby-main">
 	<div class="lobby-container">
@@ -499,6 +502,7 @@
 	private bool _showCreateDropdown;
 	private Guid? _launchingSeasonEventId;
 	private Guid? _launchingOneOffEventId;
+	private bool _showNoChipsModal;
 	private bool _showRecordResultsModal;
 	private bool _isSubmittingResults;
 	private Guid? _recordingSeasonEventId;
@@ -1761,9 +1765,27 @@
 		}
 	}
 
-	private void OpenTable(Guid gameId)
+	private async Task OpenTable(Guid gameId)
 	{
+		try
+		{
+			var cashierSummary = await ProfileApi.GetCashierSummaryAsync();
+			if (cashierSummary.IsSuccessStatusCode && (cashierSummary.Content?.CurrentBalance ?? 0) <= 0)
+			{
+				_showNoChipsModal = true;
+				return;
+			}
+		}
+		catch (Exception ex)
+		{
+			Logger.LogWarning(ex, "Failed to check chip balance before opening table");
+		}
 		NavigationManager.NavigateTo($"/table/{gameId}");
+	}
+
+	private void HandleNoChipsModalClose()
+	{
+		_showNoChipsModal = false;
 	}
 
 	public async ValueTask DisposeAsync()

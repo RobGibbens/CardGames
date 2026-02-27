@@ -6,6 +6,14 @@ namespace CardGames.Poker.Api.Services;
 
 public sealed class PlayerChipWalletService(CardsDbContext context) : IPlayerChipWalletService
 {
+	public async Task<int> GetBalanceAsync(Guid playerId, CancellationToken cancellationToken)
+	{
+		var account = await context.PlayerChipAccounts
+			.AsNoTracking()
+			.FirstOrDefaultAsync(x => x.PlayerId == playerId, cancellationToken);
+		return account?.Balance ?? 0;
+	}
+
 	public async Task<WalletDebitResult> TryDebitForBuyInAsync(
 		Guid playerId,
 		int amount,

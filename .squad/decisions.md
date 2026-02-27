@@ -228,6 +228,13 @@ Current local variant will remain stable regardless of marketplace availability.
 **Status:** ✅ Implemented
 **What:** Created `.ai-team/plugins/marketplaces.json` with anthropics/skills marketplace source enabled by default, centralizing skill marketplace discovery configuration.
 **Why:** Enables idempotent skill marketplace integration while aligning with existing local skill pattern (web-design-reviewer, refactor, prd, nuget-manager, microsoft-docs). Centralizes marketplace configuration in dedicated plugin registry without duplication.
+
+### 2026-02-24: Create Dropdown on League Detail Header
+**By:** Arwen (Frontend Dev)
+**Requested by:** Rob Gibbens
+**What:** Replaced the single "Create" button on the League Detail page with a dropdown that lets managers choose between creating a Cash Game or Tournament. Extracted the one-off event modal into `CreateOneOffEventModal.razor` under `LeagueDetailTabs/`, with self-contained form state, validation, and inline error display. Click-outside dismissal uses a transparent fixed backdrop (pure Blazor, no JS interop).
+**Why:** Supports multiple event types from the league header without adding JS dependencies or coupling modal state to the parent page.
+**Files:** `LeagueDetail.razor`, `LeagueDetailTabs/CreateOneOffEventModal.razor`, `wwwroot/app.css`
 **Impact:** Skills from anthropics/skills marketplace are now discoverable; team members can reference `@anthropics-skills` or activate skills via marketplace discovery. No impact on existing skills or team configurations.
 
 ### 2026-02-19: Microsoft Code Reference Skill Installation Idempotence

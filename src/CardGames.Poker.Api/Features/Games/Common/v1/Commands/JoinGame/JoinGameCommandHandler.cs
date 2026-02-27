@@ -156,6 +156,15 @@ public sealed class JoinGameCommandHandler(
 			? await context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Email == userEmail, cancellationToken)
 			: null;
 
+		// Check if the player has any chips at all
+		var accountBalance = await playerChipWalletService.GetBalanceAsync(player.Id, cancellationToken);
+		if (accountBalance <= 0)
+		{
+			return new JoinGameError(
+				JoinGameErrorCode.ZeroAccountBalance,
+				"You have no chips in your account. Visit the Cashier to add chips before joining a table.");
+		}
+
 		var now = DateTimeOffset.UtcNow;
 
 		var debitResult = await playerChipWalletService.TryDebitForBuyInAsync(

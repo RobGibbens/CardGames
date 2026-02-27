@@ -82,6 +82,38 @@ public class JoinLeaveWalletCommandTests : IntegrationTestBase
 	}
 
 	[Fact]
+	public async Task JoinGame_WithZeroAccountBalance_ReturnsZeroBalanceErrorAndDoesNotSeatPlayer()
+	{
+		// Arrange
+		var game = await DatabaseSeeder.CreateGameAsync(DbContext, "FIVECARDDRAW");
+		var player = await DatabaseSeeder.CreatePlayerAsync(DbContext, "Broke Player", "broke.player@test.com");
+
+		DbContext.PlayerChipAccounts.Add(new PlayerChipAccount
+		{
+			PlayerId = player.Id,
+			Balance = 0,
+			CreatedAtUtc = DateTimeOffset.UtcNow,
+			UpdatedAtUtc = DateTimeOffset.UtcNow
+		});
+		await DbContext.SaveChangesAsync();
+
+		SetCurrentUser("broke-player-user-id", "Broke Player", "broke.player@test.com");
+
+		// Act
+		var result = await Mediator.Send(new JoinGameCommand(game.Id, SeatIndex: 1, StartingChips: 200));
+
+		// Assert
+		result.IsT1.Should().BeTrue();
+		result.AsT1.Code.Should().Be(JoinGameErrorCode.ZeroAccountBalance);
+
+		var account = await DbContext.PlayerChipAccounts.FirstAsync(x => x.PlayerId == player.Id);
+		account.Balance.Should().Be(0);
+
+		DbContext.GamePlayers.Count(x => x.GameId == game.Id && x.PlayerId == player.Id).Should().Be(0);
+		DbContext.PlayerChipLedgerEntries.Count(x => x.PlayerId == player.Id && x.Type == PlayerChipLedgerEntryType.BuyIn).Should().Be(0);
+	}
+
+	[Fact]
 	public async Task LeaveGame_BetweenHands_CreditsWalletAndCreatesCashOutLedger()
 	{
 		// Arrange

@@ -11,6 +11,8 @@ public readonly record struct WalletDebitResult(bool Succeeded, int? BalanceAfte
 
 public interface IPlayerChipWalletService
 {
+	Task<int> GetBalanceAsync(Guid playerId, CancellationToken cancellationToken);
+
 	Task<WalletDebitResult> TryDebitForBuyInAsync(
 		Guid playerId,
 		int amount,
