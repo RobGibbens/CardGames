@@ -598,7 +598,7 @@ x.Role == LeagueRole.Owner)))
 	{
 		if (string.IsNullOrWhiteSpace(description))
 		{
-			return "No description provided.";
+			return string.Empty;
 		}
 
 		var trimmed = description.Trim();

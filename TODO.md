@@ -3,10 +3,10 @@
 ## Still to do
 
 - [ ] https://github.com/leeoades/FunctionalStateMachine
+- [ ] Card UI isn't consistent
 
 ### Leagues
 - [ ] Pages load too slowly
-- [ ] Card UI isn't consistent
 
 ### Cashier
 - [ ] Cashier ledger doesn't page
