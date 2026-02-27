@@ -46,7 +46,8 @@
 						<p class="league-detail-description">@_leagueDetail.Description</p>
 					}
 					<div class="league-detail-meta">
-						Created by @(_leagueDetail?.CreatedByDisplayName ?? _leagueDetail?.CreatedByUserId) &bull; @(_leagueDetail?.CreatedAtUtc.ToLocalTime().ToString("MMM d, yyyy"))
+						Created by @(_leagueDetail?.CreatedByDisplayName ?? _leagueDetail?.CreatedByUserId) &bull;
+						@(_leagueDetail?.CreatedAtUtc.ToLocalTime().ToString("MMM d, yyyy"))
 					</div>
 				</div>
 			</div>
@@ -61,7 +62,8 @@
 						}
 						@if (_leagueDetail?.ActiveMemberCount > 5)
 						{
-							<div class="league-detail-avatar league-detail-avatar-more">+@(_leagueDetail.ActiveMemberCount - 5)</div>
+							<div class="league-detail-avatar league-detail-avatar-more">+@(_leagueDetail.ActiveMemberCount - 5)
+							</div>
 						}
 					}
 				</div>
@@ -74,7 +76,8 @@
 							<span>Share</span>
 						</button>
 						<div class="league-detail-create-dropdown-wrapper">
-							<button class="league-detail-btn league-detail-btn-create" @onclick="ToggleCreateDropdown" @onclick:stopPropagation>
+							<button class="league-detail-btn league-detail-btn-create" @onclick="ToggleCreateDropdown"
+									@onclick:stopPropagation>
 								<i class="fa-solid fa-plus"></i>
 								<span>Create</span>
 								<i class="fa-solid fa-chevron-down league-detail-create-chevron"></i>
@@ -95,7 +98,8 @@
 							}
 						</div>
 					}
-					<button class="league-detail-btn league-detail-btn-refresh" aria-label="Refresh" @onclick="LoadAllAsync" disabled="@_isLoading">
+					<button class="league-detail-btn league-detail-btn-refresh" aria-label="Refresh"
+							@onclick="LoadAllAsync" disabled="@_isLoading">
 						<i class="fa-solid fa-rotate-right"></i>
 					</button>
 				</div>
@@ -105,7 +109,8 @@
 		@* ───── MESSAGE BANNER ───── *@
 		@if (!string.IsNullOrWhiteSpace(_message))
 		{
-			<div class="league-detail-message @(_isError ? "league-detail-message-error" : "league-detail-message-success")" role="alert">
+			<div class="league-detail-message @(_isError ? "league-detail-message-error" : "league-detail-message-success")"
+				 role="alert">
 				<i class="fa-solid @(_isError ? "fa-triangle-exclamation" : "fa-circle-check")"></i>
 				<span>@_message</span>
 			</div>
@@ -125,323 +130,307 @@
 				<i class="fa-solid fa-clock"></i>
 				<div>
 					<div class="fw-semibold mb-1">Join request submitted</div>
-					<div class="small">Your request to join this league is waiting for manager approval. You'll be able to view league details after approval.</div>
+					<div class="small">Your request to join this league is waiting for manager approval. You'll be able to
+						view league details after approval.</div>
+					</div>
 				</div>
-			</div>
-		}
+			}
 		else if (_leagueDetail is null)
-		{
-			<div class="league-detail-loading">
-				<i class="fa-solid fa-circle-exclamation"></i>
-				<span>Unable to load this league.</span>
-			</div>
-		}
-		else if (HasLeagueAccess)
-		{
-			@* ───── TAB NAVIGATION ───── *@
-			<nav class="lobby-tabs" role="tablist" aria-label="League sections">
-				<button type="button" class="lobby-tab @(_activeTab == LeagueDetailTab.Lobby ? "active" : "")" role="tab" aria-selected="@(_activeTab == LeagueDetailTab.Lobby)" @onclick="() => _activeTab = LeagueDetailTab.Lobby">
-					<span class="lobby-tab-icon"><i class="fa-solid fa-house"></i></span>
-					<span class="lobby-tab-text">Lobby</span>
-				</button>
-				<button type="button" class="lobby-tab @(_activeTab == LeagueDetailTab.Results ? "active" : "")" role="tab" aria-selected="@(_activeTab == LeagueDetailTab.Results)" @onclick="() => _activeTab = LeagueDetailTab.Results">
-					<span class="lobby-tab-icon"><i class="fa-solid fa-trophy"></i></span>
-					<span class="lobby-tab-text">Results</span>
-					@if (_recentCompletedEvents.Count > 0)
-					{
-						<span class="lobby-tab-badge">@_recentCompletedEvents.Count</span>
-					}
-				</button>
-				<button type="button" class="lobby-tab @(_activeTab == LeagueDetailTab.Standings ? "active" : "")" role="tab" aria-selected="@(_activeTab == LeagueDetailTab.Standings)" @onclick="() => _activeTab = LeagueDetailTab.Standings">
-					<span class="lobby-tab-icon"><i class="fa-solid fa-ranking-star"></i></span>
-					<span class="lobby-tab-text">Standings</span>
-				</button>
-				<button type="button" class="lobby-tab @(_activeTab == LeagueDetailTab.Schedule ? "active" : "")" role="tab" aria-selected="@(_activeTab == LeagueDetailTab.Schedule)" @onclick="() => _activeTab = LeagueDetailTab.Schedule">
-					<span class="lobby-tab-icon"><i class="fa-solid fa-calendar-days"></i></span>
-					<span class="lobby-tab-text">Schedule</span>
-				</button>
-				<button type="button" class="lobby-tab @(_activeTab == LeagueDetailTab.Members ? "active" : "")" role="tab" aria-selected="@(_activeTab == LeagueDetailTab.Members)" @onclick="() => _activeTab = LeagueDetailTab.Members">
-					<span class="lobby-tab-icon"><i class="fa-solid fa-users"></i></span>
-					<span class="lobby-tab-text">Members</span>
-					<span class="lobby-tab-badge">@_leagueDetail?.ActiveMemberCount</span>
-				</button>
-			</nav>
-
-			@* ═══════════ TAB 1: LOBBY ═══════════ *@
-			@if (_activeTab == LeagueDetailTab.Lobby)
 			{
-				<LeagueDetailLobbyTab
-					RecentCompletedEvents="_recentCompletedEvents"
-					SeasonEvents="_seasonEvents"
-					OneOffEvents="_oneOffEvents"
-					Standings="_standings"
-					MyStanding="_myStanding"
-					RankMovementByUserId="_rankMovementByUserId"
-					Members="_members"
-					ActiveGameDetails="_activeGameDetails"
-					OpenTable="OpenTable" />
-			}
-
-			@* ═══════════ TAB 2: RESULTS ═══════════ *@
-			@if (_activeTab == LeagueDetailTab.Results)
-			{
-				<LeagueDetailResultsTab
-					Seasons="_seasons"
-					SelectedSeasonId="_selectedSeasonId"
-					CanManageLeague="CanManageLeague"
-					SeasonEvents="_seasonEvents"
-					LaunchingSeasonEventId="_launchingSeasonEventId"
-					OnSeasonSelectorChanged="OnSeasonSelectorChanged"
-					OpenSeasonEventModal="OpenSeasonEventModal"
-					OpenRecordResultsModal="OpenRecordResultsModal"
-					OpenTable="OpenTable"
-					LaunchSeasonEvent="LaunchSeasonEventAsync" />
-			}
-
-			@* ═══════════ TAB 3: STANDINGS ═══════════ *@
-			@if (_activeTab == LeagueDetailTab.Standings)
-			{
-				<LeagueDetailStandingsTab
-					SelectedSeasonId="_selectedSeasonId"
-					SelectedSeasonName="SelectedSeasonName"
-					MyStanding="_myStanding"
-					RankMovementByUserId="_rankMovementByUserId"
-					Standings="_standings"
-					IsLoading="_isLoading"
-					CurrentUserId="_currentUserId"
-					LoadStandings="LoadStandingsAsync" />
-			}
-
-			@* ═══════════ TAB 4: SCHEDULE ═══════════ *@
-			@if (_activeTab == LeagueDetailTab.Schedule)
-			{
-				<LeagueDetailScheduleTab
-					IsSeasonsTabActive="@(_activeScheduleTab == ScheduleTab.Seasons)"
-					ShowSeasonsTab="() => _activeScheduleTab = ScheduleTab.Seasons"
-					ShowOneOffEventsTab="() => _activeScheduleTab = ScheduleTab.OneOffEvents"
-					CanManageLeague="CanManageLeague"
-					Seasons="_seasons"
-					SelectedSeasonId="_selectedSeasonId"
-					SeasonEvents="_seasonEvents"
-					OneOffEvents="_oneOffEvents"
-					LaunchingSeasonEventId="_launchingSeasonEventId"
-					LaunchingOneOffEventId="_launchingOneOffEventId"
-					OpenSeasonModal="OpenSeasonModal"
-					SelectSeason="SelectSeasonAsync"
-					OpenSeasonEventModal="OpenSeasonEventModal"
-					OpenRecordResultsModal="OpenRecordResultsModal"
-					OpenTable="OpenTable"
-					LaunchSeasonEvent="LaunchSeasonEventAsync"
-					OpenOneOffModal="OpenOneOffModal"
-					LaunchOneOffEvent="LaunchOneOffEventAsync" />
-			}
-
-			@* ═══════════ TAB 5: MEMBERS ═══════════ *@
-			@if (_activeTab == LeagueDetailTab.Members)
-			{
-				<LeagueDetailMembersTab
-					Members="_members"
-					MembershipHistory="_membershipHistory"
-					CanManageLeague="CanManageLeague"
-					IsManager="IsManager"
-					IsSubmittingPromote="_isSubmittingPromote"
-					IsSubmittingDemote="_isSubmittingDemote"
-					IsSubmittingTransferOwnership="_isSubmittingTransferOwnership"
-					IsSubmittingRemove="_isSubmittingRemove"
-					ActingMemberUserId="_actingMemberUserId"
-					PromoteMember="PromoteMemberAsync"
-					DemoteMember="DemoteMemberAsync"
-					TransferOwnership="TransferOwnershipAsync"
-					RemoveMember="RemoveMemberAsync"
-					IsLoadingJoinRequests="_isLoadingJoinRequests"
-					PendingJoinRequests="_pendingJoinRequests"
-					IsSubmittingJoinRequest="_isSubmittingJoinRequest"
-					ActingJoinRequestId="_actingJoinRequestId"
-					ApproveJoinRequest="ApproveJoinRequestAsync"
-					DenyJoinRequestAsync="DenyJoinRequestAsync"
-					OpenInviteModal="OpenInviteModal"
-					Invites="_invites"
-					CopyInviteCodeAsync="CopyInviteCodeAsync"
-					IsInviteCodeCopied="IsInviteCodeCopied"
-					IsSubmittingRevokeInvite="_isSubmittingRevokeInvite"
-					RevokeInvite="RevokeInviteAsync" />
-			}
-		}
-	</div>
-</main>
-
-@if (_showInviteModal)
-{
-	<div class="confirm-dialog-overlay" @onclick="CloseInviteModal">
-		<div class="confirm-dialog league-form-modal invite-modal" @onclick:stopPropagation>
-			<div class="confirm-dialog-header league-form-modal-header">
-				<h3 class="confirm-dialog-title mb-0">Create Invite Link</h3>
-				<button type="button" class="league-modal-close-btn" aria-label="Close" @onclick="CloseInviteModal">
-					<i class="fa-solid fa-xmark" aria-hidden="true"></i>
-				</button>
-			</div>
-			<div class="confirm-dialog-body league-form-modal-body text-start">
-				<div class="league-form-field">
-					<label for="invite-expiry" class="form-label small mb-1">Expiry (UTC)</label>
-					<InputDate id="invite-expiry" class="form-control league-modal-date-input" @bind-Value="_inviteExpiryDate" />
+				<div class="league-detail-loading">
+					<i class="fa-solid fa-circle-exclamation"></i>
+					<span>Unable to load this league.</span>
 				</div>
-				<div class="league-form-modal-actions">
-					<button type="button" class="btn btn-sm btn-primary league-action-btn" @onclick="CreateInviteAsync" disabled="@_isSubmittingInvite">Create Invite</button>
-				</div>
-				@if (!string.IsNullOrWhiteSpace(_createdInviteUrl))
+			}
+			else if (HasLeagueAccess)
+			{
+				@* ───── TAB NAVIGATION ───── *@
+				<nav class="lobby-tabs" role="tablist" aria-label="League sections">
+					<button type="button" class="lobby-tab @(_activeTab == LeagueDetailTab.Lobby ? "active" : "")" role="tab"
+							aria-selected="@(_activeTab == LeagueDetailTab.Lobby)"
+							@onclick="() => _activeTab = LeagueDetailTab.Lobby">
+						<span class="lobby-tab-icon"><i class="fa-thin fa-house"></i></span>
+						<span class="lobby-tab-text">Lobby</span>
+					</button>
+					<button type="button" class="lobby-tab @(_activeTab == LeagueDetailTab.Results ? "active" : "")" role="tab"
+							aria-selected="@(_activeTab == LeagueDetailTab.Results)"
+							@onclick="() => _activeTab = LeagueDetailTab.Results">
+						<span class="lobby-tab-icon"><i class="fa-thin fa-trophy"></i></span>
+						<span class="lobby-tab-text">Results</span>
+						@if (_recentCompletedEvents.Count > 0)
+						{
+							<span class="lobby-tab-badge">@_recentCompletedEvents.Count</span>
+						}
+					</button>
+					<button type="button" class="lobby-tab @(_activeTab == LeagueDetailTab.Standings ? "active" : "")"
+							role="tab" aria-selected="@(_activeTab == LeagueDetailTab.Standings)"
+							@onclick="() => _activeTab = LeagueDetailTab.Standings">
+						<span class="lobby-tab-icon"><i class="fa-thin fa-ranking-star"></i></span>
+						<span class="lobby-tab-text">Standings</span>
+					</button>
+					<button type="button" class="lobby-tab @(_activeTab == LeagueDetailTab.Schedule ? "active" : "")" role="tab"
+							aria-selected="@(_activeTab == LeagueDetailTab.Schedule)"
+							@onclick="() => _activeTab = LeagueDetailTab.Schedule">
+						<span class="lobby-tab-icon"><i class="fa-thin fa-calendar-days"></i></span>
+						<span class="lobby-tab-text">Schedule</span>
+					</button>
+					<button type="button" class="lobby-tab @(_activeTab == LeagueDetailTab.Members ? "active" : "")" role="tab"
+							aria-selected="@(_activeTab == LeagueDetailTab.Members)"
+							@onclick="() => _activeTab = LeagueDetailTab.Members">
+						<span class="lobby-tab-icon"><i class="fa-thin fa-users"></i></span>
+						<span class="lobby-tab-text">Members</span>
+						<span class="lobby-tab-badge">@_leagueDetail?.ActiveMemberCount</span>
+					</button>
+				</nav>
+
+				@* ═══════════ TAB 1: LOBBY ═══════════ *@
+				@if (_activeTab == LeagueDetailTab.Lobby)
 				{
-					<div class="alert alert-success mt-3 mb-0" role="alert">
-						<div class="d-flex align-items-center gap-2 flex-wrap">
-							<span class="invite-link-text">Invite link: <a href="@_createdInviteUrl">@_createdInviteUrl</a></span>
-							<button type="button" class="btn btn-sm btn-outline-success league-action-btn" @onclick="CopyCreatedInviteUrlAsync" title="@(_isInviteUrlCopied ? "Copied" : "Copy invite link")" aria-label="@(_isInviteUrlCopied ? "Copied" : "Copy invite link")">
-								@if (_isInviteUrlCopied)
-								{
-									<i class="fa-solid fa-check" aria-hidden="true"></i>
-									<span class="ms-1">Copied</span>
-								}
-								else
-								{
-									<i class="fa-regular fa-copy" aria-hidden="true"></i>
-								}
-							</button>
+					<LeagueDetailLobbyTab RecentCompletedEvents="_recentCompletedEvents" SeasonEvents="_seasonEvents"
+										  OneOffEvents="_oneOffEvents" Standings="_standings" MyStanding="_myStanding"
+										  RankMovementByUserId="_rankMovementByUserId" Members="_members" ActiveGameDetails="_activeGameDetails"
+										  OpenTable="OpenTable" />
+				}
+
+				@* ═══════════ TAB 2: RESULTS ═══════════ *@
+				@if (_activeTab == LeagueDetailTab.Results)
+				{
+					<LeagueDetailResultsTab Seasons="_seasons" SelectedSeasonId="_selectedSeasonId"
+											CanManageLeague="CanManageLeague" SeasonEvents="_seasonEvents"
+											LaunchingSeasonEventId="_launchingSeasonEventId" OnSeasonSelectorChanged="OnSeasonSelectorChanged"
+											OpenSeasonEventModal="OpenSeasonEventModal" OpenRecordResultsModal="OpenRecordResultsModal"
+											OpenTable="OpenTable" LaunchSeasonEvent="LaunchSeasonEventAsync" />
+				}
+
+				@* ═══════════ TAB 3: STANDINGS ═══════════ *@
+				@if (_activeTab == LeagueDetailTab.Standings)
+				{
+					<LeagueDetailStandingsTab SelectedSeasonId="_selectedSeasonId" SelectedSeasonName="SelectedSeasonName"
+											  MyStanding="_myStanding" RankMovementByUserId="_rankMovementByUserId" Standings="_standings"
+											  IsLoading="_isLoading" CurrentUserId="_currentUserId" LoadStandings="LoadStandingsAsync" />
+				}
+
+				@* ═══════════ TAB 4: SCHEDULE ═══════════ *@
+				@if (_activeTab == LeagueDetailTab.Schedule)
+				{
+					<LeagueDetailScheduleTab IsSeasonsTabActive="@(_activeScheduleTab == ScheduleTab.Seasons)"
+											 ShowSeasonsTab="() => _activeScheduleTab = ScheduleTab.Seasons"
+											 ShowOneOffEventsTab="() => _activeScheduleTab = ScheduleTab.OneOffEvents" CanManageLeague="CanManageLeague"
+											 Seasons="_seasons" SelectedSeasonId="_selectedSeasonId" SeasonEvents="_seasonEvents"
+											 OneOffEvents="_oneOffEvents" LaunchingSeasonEventId="_launchingSeasonEventId"
+											 LaunchingOneOffEventId="_launchingOneOffEventId" OpenSeasonModal="OpenSeasonModal"
+											 SelectSeason="SelectSeasonAsync" OpenSeasonEventModal="OpenSeasonEventModal"
+											 OpenRecordResultsModal="OpenRecordResultsModal" OpenTable="OpenTable"
+											 LaunchSeasonEvent="LaunchSeasonEventAsync" OpenOneOffModal="OpenOneOffModal"
+											 LaunchOneOffEvent="LaunchOneOffEventAsync" />
+				}
+
+				@* ═══════════ TAB 5: MEMBERS ═══════════ *@
+				@if (_activeTab == LeagueDetailTab.Members)
+				{
+					<LeagueDetailMembersTab Members="_members" MembershipHistory="_membershipHistory"
+											CanManageLeague="CanManageLeague" IsManager="IsManager" IsSubmittingPromote="_isSubmittingPromote"
+											IsSubmittingDemote="_isSubmittingDemote" IsSubmittingTransferOwnership="_isSubmittingTransferOwnership"
+											IsSubmittingRemove="_isSubmittingRemove" ActingMemberUserId="_actingMemberUserId"
+											PromoteMember="PromoteMemberAsync" DemoteMember="DemoteMemberAsync"
+											TransferOwnership="TransferOwnershipAsync" RemoveMember="RemoveMemberAsync"
+											IsLoadingJoinRequests="_isLoadingJoinRequests" PendingJoinRequests="_pendingJoinRequests"
+											IsSubmittingJoinRequest="_isSubmittingJoinRequest" ActingJoinRequestId="_actingJoinRequestId"
+											ApproveJoinRequest="ApproveJoinRequestAsync" DenyJoinRequestAsync="DenyJoinRequestAsync"
+											OpenInviteModal="OpenInviteModal" Invites="_invites" CopyInviteCodeAsync="CopyInviteCodeAsync"
+											IsInviteCodeCopied="IsInviteCodeCopied" IsSubmittingRevokeInvite="_isSubmittingRevokeInvite"
+											RevokeInvite="RevokeInviteAsync" />
+				}
+			}
+		</div>
+	</main>
+
+	@if (_showInviteModal)
+	{
+		<div class="confirm-dialog-overlay" @onclick="CloseInviteModal">
+			<div class="confirm-dialog league-form-modal invite-modal" @onclick:stopPropagation>
+				<div class="confirm-dialog-header league-form-modal-header">
+					<h3 class="confirm-dialog-title mb-0">Create Invite Link</h3>
+					<button type="button" class="league-modal-close-btn" aria-label="Close" @onclick="CloseInviteModal">
+						<i class="fa-solid fa-xmark" aria-hidden="true"></i>
+					</button>
+				</div>
+				<div class="confirm-dialog-body league-form-modal-body text-start">
+					<div class="league-form-field">
+						<label for="invite-expiry" class="form-label small mb-1">Expiry (UTC)</label>
+						<InputDate id="invite-expiry" class="form-control league-modal-date-input"
+								   @bind-Value="_inviteExpiryDate" />
+					</div>
+					<div class="league-form-modal-actions">
+						<button type="button" class="btn btn-sm btn-primary league-action-btn" @onclick="CreateInviteAsync"
+								disabled="@_isSubmittingInvite">Create Invite</button>
+					</div>
+					@if (!string.IsNullOrWhiteSpace(_createdInviteUrl))
+					{
+						<div class="alert alert-success mt-3 mb-0" role="alert">
+							<div class="d-flex align-items-center gap-2 flex-wrap">
+								<span class="invite-link-text">Invite link: <a
+									href="@_createdInviteUrl">@_createdInviteUrl</a></span>
+									<button type="button" class="btn btn-sm btn-outline-success league-action-btn"
+											@onclick="CopyCreatedInviteUrlAsync"
+											title="@(_isInviteUrlCopied ? "Copied" : "Copy invite link")"
+											aria-label="@(_isInviteUrlCopied ? "Copied" : "Copy invite link")">
+										@if (_isInviteUrlCopied)
+										{
+											<i class="fa-solid fa-check" aria-hidden="true"></i>
+											<span class="ms-1">Copied</span>
+										}
+										else
+										{
+											<i class="fa-regular fa-copy" aria-hidden="true"></i>
+										}
+									</button>
+								</div>
+							</div>
+						}
+					</div>
+				</div>
+			</div>
+		}
+
+		@if (_showSeasonModal)
+		{
+			<div class="confirm-dialog-overlay" @onclick="CloseSeasonModal">
+				<div class="confirm-dialog league-form-modal season-modal" @onclick:stopPropagation>
+					<div class="confirm-dialog-header league-form-modal-header">
+						<h3 class="confirm-dialog-title mb-0">Create Season</h3>
+						<button type="button" class="league-modal-close-btn" aria-label="Close" @onclick="CloseSeasonModal">
+							<i class="fa-solid fa-xmark" aria-hidden="true"></i>
+						</button>
+					</div>
+					<div class="confirm-dialog-body league-form-modal-body text-start">
+						<div class="form-floating" data-label="Season name">
+							<InputText id="season-name" class="form-control league-modal-input" @bind-Value="_seasonName"
+									   maxlength="120" placeholder="Season name" />
+						</div>
+						<div class="form-floating" data-label="Planned event count">
+							<InputNumber id="season-planned-count" class="form-control league-modal-input"
+										 @bind-Value="_seasonPlannedEventCount" placeholder="Planned event count" />
+						</div>
+						<div class="row g-2">
+							<div class="col-md-6">
+								<label class="form-label small">Starts (optional)</label>
+								<InputDate class="form-control league-modal-date-input" @bind-Value="_seasonStartsDate" />
+							</div>
+							<div class="col-md-6">
+								<label class="form-label small">Ends (optional)</label>
+								<InputDate class="form-control league-modal-date-input" @bind-Value="_seasonEndsDate" />
+							</div>
+						</div>
+						<div class="league-form-modal-actions">
+							<button class="btn btn-sm btn-primary league-action-btn" @onclick="CreateSeasonAsync"
+									disabled="@_isSubmittingSeason">Create Season</button>
 						</div>
 					</div>
-				}
+				</div>
 			</div>
-		</div>
-	</div>
-}
+		}
 
-@if (_showSeasonModal)
-{
-	<div class="confirm-dialog-overlay" @onclick="CloseSeasonModal">
-		<div class="confirm-dialog league-form-modal season-modal" @onclick:stopPropagation>
-			<div class="confirm-dialog-header league-form-modal-header">
-				<h3 class="confirm-dialog-title mb-0">Create Season</h3>
-				<button type="button" class="league-modal-close-btn" aria-label="Close" @onclick="CloseSeasonModal">
-					<i class="fa-solid fa-xmark" aria-hidden="true"></i>
-				</button>
-			</div>
-			<div class="confirm-dialog-body league-form-modal-body text-start">
-				<div class="form-floating" data-label="Season name">
-					<InputText id="season-name" class="form-control league-modal-input" @bind-Value="_seasonName" maxlength="120" placeholder="Season name" />
-				</div>
-				<div class="form-floating" data-label="Planned event count">
-					<InputNumber id="season-planned-count" class="form-control league-modal-input" @bind-Value="_seasonPlannedEventCount" placeholder="Planned event count" />
-				</div>
-				<div class="row g-2">
-					<div class="col-md-6">
-						<label class="form-label small">Starts (optional)</label>
-						<InputDate class="form-control league-modal-date-input" @bind-Value="_seasonStartsDate" />
+		@if (_showSeasonEventModal)
+		{
+			<div class="confirm-dialog-overlay" @onclick="CloseSeasonEventModal">
+				<div class="confirm-dialog league-form-modal season-event-modal" @onclick:stopPropagation>
+					<div class="confirm-dialog-header league-form-modal-header">
+						<h3 class="confirm-dialog-title mb-0">Create Season Event</h3>
+						<button type="button" class="league-modal-close-btn" aria-label="Close" @onclick="CloseSeasonEventModal">
+							<i class="fa-solid fa-xmark" aria-hidden="true"></i>
+						</button>
 					</div>
-					<div class="col-md-6">
-						<label class="form-label small">Ends (optional)</label>
-						<InputDate class="form-control league-modal-date-input" @bind-Value="_seasonEndsDate" />
-					</div>
-				</div>
-				<div class="league-form-modal-actions">
-					<button class="btn btn-sm btn-primary league-action-btn" @onclick="CreateSeasonAsync" disabled="@_isSubmittingSeason">Create Season</button>
-				</div>
-			</div>
-		</div>
-	</div>
-}
-
-@if (_showSeasonEventModal)
-{
-	<div class="confirm-dialog-overlay" @onclick="CloseSeasonEventModal">
-		<div class="confirm-dialog league-form-modal season-event-modal" @onclick:stopPropagation>
-			<div class="confirm-dialog-header league-form-modal-header">
-				<h3 class="confirm-dialog-title mb-0">Create Season Event</h3>
-				<button type="button" class="league-modal-close-btn" aria-label="Close" @onclick="CloseSeasonEventModal">
-					<i class="fa-solid fa-xmark" aria-hidden="true"></i>
-				</button>
-			</div>
-			<div class="confirm-dialog-body league-form-modal-body text-start">
-				<div class="form-floating" data-label="Event name">
-					<InputText id="season-event-name" class="form-control league-modal-input" @bind-Value="_seasonEventName" maxlength="120" placeholder="Event name" />
-				</div>
-				<div class="form-floating" data-label="Sequence (optional)">
-					<InputNumber id="season-event-sequence" class="form-control league-modal-input" @bind-Value="_seasonEventSequence" placeholder="Sequence" />
-				</div>
-				<div class="row g-2">
-					<div class="col-md-6">
-						<label class="form-label small">Scheduled (optional, UTC)</label>
-						<InputDate class="form-control league-modal-date-input" @bind-Value="_seasonEventScheduledDate" />
+					<div class="confirm-dialog-body league-form-modal-body text-start">
+						<div class="form-floating" data-label="Event name">
+							<InputText id="season-event-name" class="form-control league-modal-input" @bind-Value="_seasonEventName"
+									   maxlength="120" placeholder="Event name" />
+						</div>
+						<div class="form-floating" data-label="Sequence (optional)">
+							<InputNumber id="season-event-sequence" class="form-control league-modal-input"
+										 @bind-Value="_seasonEventSequence" placeholder="Sequence" />
+						</div>
+						<div class="row g-2">
+							<div class="col-md-6">
+								<label class="form-label small">Scheduled (optional, UTC)</label>
+								<InputDate class="form-control league-modal-date-input" @bind-Value="_seasonEventScheduledDate" />
+							</div>
+						</div>
+						<div class="form-floating" data-label="Notes (optional)">
+							<InputText id="season-event-notes" class="form-control league-modal-input"
+									   @bind-Value="_seasonEventNotes" maxlength="512" placeholder="Notes (optional)" />
+						</div>
+						<div class="league-form-modal-actions">
+							<button class="btn btn-sm btn-primary league-action-btn" @onclick="CreateSeasonEventAsync"
+									disabled="@_isSubmittingSeasonEvent">Create Season Event</button>
+						</div>
 					</div>
 				</div>
-				<div class="form-floating" data-label="Notes (optional)">
-					<InputText id="season-event-notes" class="form-control league-modal-input" @bind-Value="_seasonEventNotes" maxlength="512" placeholder="Notes (optional)" />
-				</div>
-				<div class="league-form-modal-actions">
-					<button class="btn btn-sm btn-primary league-action-btn" @onclick="CreateSeasonEventAsync" disabled="@_isSubmittingSeasonEvent">Create Season Event</button>
-				</div>
 			</div>
-		</div>
-	</div>
-}
+		}
 
-<CreateLeagueEventModal
-	Show="_showOneOffModal"
-	EventType="_oneOffType"
-	LeagueId="LeagueId"
-	OnClose="CloseOneOffModal"
-	OnCreated="HandleOneOffCreated" />
+		<CreateLeagueEventModal Show="_showOneOffModal" EventType="_oneOffType" LeagueId="LeagueId" OnClose="CloseOneOffModal"
+								OnCreated="HandleOneOffCreated" />
 
-@if (_showRecordResultsModal)
-{
-	<div class="confirm-dialog-overlay" @onclick="CloseRecordResultsModal">
-		<div class="confirm-dialog league-form-modal season-event-modal" @onclick:stopPropagation>
-			<div class="confirm-dialog-header league-form-modal-header">
-				<h3 class="confirm-dialog-title mb-0">Record Results — @_recordingSeasonEventName</h3>
-				<button type="button" class="league-modal-close-btn" aria-label="Close" @onclick="CloseRecordResultsModal">
-					<i class="fa-solid fa-xmark" aria-hidden="true"></i>
-				</button>
-			</div>
-			<div class="confirm-dialog-body league-form-modal-body text-start">
-				@if (_resultDrafts.Count == 0)
-				{
-					<p class="mb-0 text-muted">No active members available for result entry.</p>
-				}
-				else
-				{
-					<ul class="list-group">
-						@for (var index = 0; index < _resultDrafts.Count; index++)
+		@if (_showRecordResultsModal)
+		{
+			<div class="confirm-dialog-overlay" @onclick="CloseRecordResultsModal">
+				<div class="confirm-dialog league-form-modal season-event-modal" @onclick:stopPropagation>
+					<div class="confirm-dialog-header league-form-modal-header">
+						<h3 class="confirm-dialog-title mb-0">Record Results — @_recordingSeasonEventName</h3>
+						<button type="button" class="league-modal-close-btn" aria-label="Close" @onclick="CloseRecordResultsModal">
+							<i class="fa-solid fa-xmark" aria-hidden="true"></i>
+						</button>
+					</div>
+					<div class="confirm-dialog-body league-form-modal-body text-start">
+						@if (_resultDrafts.Count == 0)
 						{
-							var draft = _resultDrafts[index];
-							<li class="list-group-item d-flex flex-column gap-2" @key="draft.MemberUserId">
-								<div class="d-flex justify-content-between align-items-center">
-									<div class="fw-semibold">@draft.MemberDisplayName</div>
-									<div class="form-check mb-0">
-										<input class="form-check-input" type="checkbox" id="result-include-@index" @bind="draft.Include" />
-										<label class="form-check-label small" for="result-include-@index">Include</label>
-									</div>
-								</div>
-								<div class="row g-2">
-									<div class="col-md-4">
-										<label class="form-label small">Placement</label>
-										<InputNumber class="form-control league-modal-input" @bind-Value="draft.Placement" disabled="@(!draft.Include)" />
-									</div>
-									<div class="col-md-4">
-										<label class="form-label small">Points</label>
-										<InputNumber class="form-control league-modal-input" @bind-Value="draft.Points" disabled="@(!draft.Include)" />
-									</div>
-									<div class="col-md-4">
-										<label class="form-label small">Chips Δ</label>
-										<InputNumber class="form-control league-modal-input" @bind-Value="draft.ChipsDelta" disabled="@(!draft.Include)" />
-									</div>
-								</div>
-							</li>
+							<p class="mb-0 text-muted">No active members available for result entry.</p>
 						}
-					</ul>
-				}
-				<div class="league-form-modal-actions mt-3">
-					<button class="btn btn-sm btn-primary league-action-btn" @onclick="SubmitSeasonEventResultsAsync" disabled="@_isSubmittingResults">Save Results</button>
+						else
+						{
+							<ul class="list-group">
+								@for (var index = 0; index < _resultDrafts.Count; index++)
+								{
+									var draft = _resultDrafts[index];
+									<li class="list-group-item d-flex flex-column gap-2" @key="draft.MemberUserId">
+										<div class="d-flex justify-content-between align-items-center">
+											<div class="fw-semibold">@draft.MemberDisplayName</div>
+											<div class="form-check mb-0">
+												<input class="form-check-input" type="checkbox" id="result-include-@index"
+													   @bind="draft.Include" />
+												<label class="form-check-label small" for="result-include-@index">Include</label>
+											</div>
+										</div>
+										<div class="row g-2">
+											<div class="col-md-4">
+												<label class="form-label small">Placement</label>
+												<InputNumber class="form-control league-modal-input" @bind-Value="draft.Placement"
+															 disabled="@(!draft.Include)" />
+											</div>
+											<div class="col-md-4">
+												<label class="form-label small">Points</label>
+												<InputNumber class="form-control league-modal-input" @bind-Value="draft.Points"
+															 disabled="@(!draft.Include)" />
+											</div>
+											<div class="col-md-4">
+												<label class="form-label small">Chips Δ</label>
+												<InputNumber class="form-control league-modal-input" @bind-Value="draft.ChipsDelta"
+															 disabled="@(!draft.Include)" />
+											</div>
+										</div>
+									</li>
+								}
+							</ul>
+						}
+						<div class="league-form-modal-actions mt-3">
+							<button class="btn btn-sm btn-primary league-action-btn" @onclick="SubmitSeasonEventResultsAsync"
+									disabled="@_isSubmittingResults">Save Results</button>
+						</div>
+					</div>
 				</div>
 			</div>
-		</div>
-	</div>
-}
+		}
 
 @code {
 	[Parameter]
@@ -812,10 +801,12 @@
 		_activeGameDetails.Clear();
 
 		var activeGameIds = _seasonEvents
-			.Where(e => e.LaunchedGameId.HasValue && e.Status != LeagueSeasonEventStatus.Completed && e.Status != LeagueSeasonEventStatus.Canceled)
+			.Where(e => e.LaunchedGameId.HasValue && e.Status != LeagueSeasonEventStatus.Completed && e.Status !=
+LeagueSeasonEventStatus.Canceled)
 			.Select(e => e.LaunchedGameId!.Value)
 			.Concat(_oneOffEvents
-				.Where(e => e.LaunchedGameId.HasValue && e.Status != LeagueOneOffEventStatus.Completed && e.Status != LeagueOneOffEventStatus.Canceled)
+				.Where(e => e.LaunchedGameId.HasValue && e.Status != LeagueOneOffEventStatus.Completed && e.Status !=
+LeagueOneOffEventStatus.Canceled)
 				.Select(e => e.LaunchedGameId!.Value))
 			.Distinct()
 			.ToList();
@@ -1321,8 +1312,10 @@
 			{
 				Name = _seasonName.Trim(),
 				PlannedEventCount = _seasonPlannedEventCount,
-				StartsAtUtc = _seasonStartsDate.HasValue ? new DateTimeOffset(DateTime.SpecifyKind(_seasonStartsDate.Value, DateTimeKind.Utc)) : null,
-				EndsAtUtc = _seasonEndsDate.HasValue ? new DateTimeOffset(DateTime.SpecifyKind(_seasonEndsDate.Value, DateTimeKind.Utc)) : null
+				StartsAtUtc = _seasonStartsDate.HasValue ? new DateTimeOffset(DateTime.SpecifyKind(_seasonStartsDate.Value,
+DateTimeKind.Utc)) : null,
+				EndsAtUtc = _seasonEndsDate.HasValue ? new DateTimeOffset(DateTime.SpecifyKind(_seasonEndsDate.Value, DateTimeKind.Utc))
+: null
 			});
 
 			if (response.IsSuccessStatusCode && response.Content is not null)
@@ -1388,11 +1381,13 @@
 		_isSubmittingSeasonEvent = true;
 		try
 		{
-			var response = await LeaguesApi.CreateSeasonEventAsync(LeagueId, _selectedSeasonId.Value, new CreateLeagueSeasonEventRequest
+			var response = await LeaguesApi.CreateSeasonEventAsync(LeagueId, _selectedSeasonId.Value, new
+CreateLeagueSeasonEventRequest
 			{
 				Name = _seasonEventName.Trim(),
 				SequenceNumber = _seasonEventSequence,
-				ScheduledAtUtc = _seasonEventScheduledDate.HasValue ? new DateTimeOffset(DateTime.SpecifyKind(_seasonEventScheduledDate.Value, DateTimeKind.Utc)) : null,
+				ScheduledAtUtc = _seasonEventScheduledDate.HasValue ? new
+DateTimeOffset(DateTime.SpecifyKind(_seasonEventScheduledDate.Value, DateTimeKind.Utc)) : null,
 				Notes = string.IsNullOrWhiteSpace(_seasonEventNotes) ? null : _seasonEventNotes.Trim()
 			});
 
@@ -1563,10 +1558,11 @@
 		_isSubmittingResults = true;
 		try
 		{
-			var response = await LeaguesApi.IngestSeasonEventResultsAsync(LeagueId, _selectedSeasonId.Value, _recordingSeasonEventId.Value, new IngestLeagueSeasonEventResultsRequest
-			{
-				Results = includedResults
-			});
+			var response = await LeaguesApi.IngestSeasonEventResultsAsync(LeagueId, _selectedSeasonId.Value,
+_recordingSeasonEventId.Value, new IngestLeagueSeasonEventResultsRequest
+{
+	Results = includedResults
+});
 
 			if (response.IsSuccessStatusCode)
 			{
@@ -1700,7 +1696,8 @@
 		_launchingSeasonEventId = eventId;
 		try
 		{
-			var response = await LeaguesApi.LaunchSeasonEventSessionAsync(LeagueId, _selectedSeasonId.Value, eventId, new LaunchLeagueEventSessionRequest
+			var response = await LeaguesApi.LaunchSeasonEventSessionAsync(LeagueId, _selectedSeasonId.Value, eventId, new
+LaunchLeagueEventSessionRequest
 			{
 				GameCode = "FIVECARDDRAW",
 				Ante = 10,

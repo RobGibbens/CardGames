@@ -4,6 +4,7 @@
 
 - [ ] https://github.com/leeoades/FunctionalStateMachine
 - [ ] Card UI isn't consistent
+- [ ] Tabs suck
 
 ### Leagues
 - [ ] Pages load too slowly
