@@ -4,7 +4,6 @@
 
 - [ ] https://github.com/leeoades/FunctionalStateMachine
 - [ ] Card UI isn't consistent
-- [ ] Tabs suck
 
 ### Leagues
 - [ ] Pages load too slowly
@@ -165,3 +164,4 @@
 - [x] Allow them to upload an image when registering
 - [x] Rearrange the register and login screens to make OAuth more obvious
 - [x] Prevent joining a game if not enough chips
+- [x] Tabs suck
