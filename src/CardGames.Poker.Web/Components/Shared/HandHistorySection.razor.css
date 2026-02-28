@@ -81,7 +81,7 @@
 }
 
 .hand-number {
-    font-family: 'Consolas', 'Monaco', monospace;
+    font-family: var(--font-primary);
     font-weight: 600;
     color: rgba(255, 255, 255, 0.6);
 }
@@ -110,7 +110,7 @@
     text-align: right;
     font-weight: 600;
     color: #4ade80;
-    font-family: 'Consolas', 'Monaco', monospace;
+    font-family: var(--font-primary);
 }
 
 /* Player results container */
@@ -146,7 +146,7 @@
 
 .header-hand,
 .result-hand {
-    font-family: 'Consolas', 'Monaco', monospace;
+    font-family: var(--font-primary);
 }
 
 /* Player result rows */
@@ -165,7 +165,7 @@
 }
 
 .result-seat {
-    font-family: 'Consolas', 'Monaco', monospace;
+    font-family: var(--font-primary);
     color: rgba(255, 255, 255, 0.5);
 }
 
@@ -183,12 +183,12 @@
 }
 
 .result-amount {
-    font-family: 'Consolas', 'Monaco', monospace;
+    font-family: var(--font-primary);
     font-weight: 600;
 }
 
 .result-hand {
-    font-family: 'Consolas', 'Monaco', monospace;
+    font-family: var(--font-primary);
     font-size: 10px;
     color: rgba(255, 255, 255, 0.7);
 }

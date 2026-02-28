@@ -162,7 +162,7 @@
     font-weight: 600;
     color: rgba(255, 255, 255, 0.9);
     text-align: right;
-    font-family: 'Consolas', 'Monaco', monospace;
+    font-family: var(--font-primary);
 }
 
 /* Empty state */

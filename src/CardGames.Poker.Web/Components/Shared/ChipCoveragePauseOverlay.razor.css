@@ -127,7 +127,7 @@
     font-size: 1.75rem;
     font-weight: 700;
     color: #fff;
-    font-family: 'Courier New', monospace;
+    font-family: var(--font-primary);
 }
 
 .chip-coverage-pause-overlay .timer-value.urgent {
@@ -145,7 +145,6 @@
     font-size: 0.9rem;
     font-style: italic;
 }
-
 .chip-coverage-pause-overlay .action-section {
     background: rgba(220, 53, 69, 0.15);
     border: 1px solid rgba(220, 53, 69, 0.3);

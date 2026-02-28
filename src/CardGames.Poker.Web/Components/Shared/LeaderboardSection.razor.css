@@ -38,7 +38,7 @@
     font-size: 12px;
     font-weight: 600;
     color: #4ade80;
-    font-family: 'Consolas', 'Monaco', monospace;
+    font-family: var(--font-primary);
 }
 
 /* Stats columns - shown when data is available */
