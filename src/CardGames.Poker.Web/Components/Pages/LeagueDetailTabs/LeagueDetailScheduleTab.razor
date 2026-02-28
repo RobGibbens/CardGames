@@ -39,19 +39,16 @@
 				<div class="league-detail-event-list">
 					@foreach (var season in Seasons)
 					{
-						<div class="league-detail-event-row league-detail-season-row @(season.SeasonId == SelectedSeasonId ? "league-detail-season-selected" : "")">
+						<div class="league-detail-event-row league-detail-season-row @(season.SeasonId == SelectedSeasonId ? "league-detail-season-selected" : "")" @onclick="() => ToggleSeasonAsync(season.SeasonId)">
 							<div class="league-detail-event-info">
 								<span class="league-detail-event-name">@season.Name</span>
 								<span class="league-detail-event-date">@season.Status &bull; @(season.PlannedEventCount?.ToString() ?? "-") planned &bull; @FormatDate(season.StartsAtUtc) - @FormatDate(season.EndsAtUtc)</span>
 							</div>
 							<div class="league-detail-event-row-actions">
-								<button class="btn btn-sm btn-outline-primary league-action-btn" @onclick="() => ToggleSeasonAsync(season.SeasonId)">
-									@(season.SeasonId == SelectedSeasonId ? "Hide Events" : "View Events")
-								</button>
 								@if (season.SeasonId == SelectedSeasonId && CanManageLeague)
 								{
-									<button class="btn btn-sm btn-outline-success league-action-btn" @onclick="OpenSeasonEventModal">
-										<i class="fa-solid fa-plus"></i> Create Event
+									<button class="btn btn-sm btn-outline-success league-action-btn" @onclick="OpenSeasonEventModal" @onclick:stopPropagation="true">
+											<i class="fa-thin fa-calendar-circle-plus"></i> Create Event
 									</button>
 								}
 							</div>
@@ -74,15 +71,11 @@
 													<span class="league-detail-event-date">Seq: @(seasonEvent.SequenceNumber?.ToString() ?? "-") &bull; @FormatDate(seasonEvent.ScheduledAtUtc) &bull; @seasonEvent.Status</span>
 												</div>
 												<div class="league-detail-event-row-actions">
-													@if (CanManageLeague)
-													{
-														<button class="btn btn-sm btn-outline-success league-action-btn" @onclick="() => OpenRecordResultsModal.InvokeAsync(seasonEvent)">Record Results</button>
-													}
 													@if (seasonEvent.LaunchedGameId.HasValue)
 													{
 														<button class="btn btn-sm btn-outline-primary league-action-btn" @onclick="() => OpenTable.InvokeAsync(seasonEvent.LaunchedGameId.Value)">Open Table</button>
 													}
-													else if (CanManageLeague)
+													else if (CanManageLeague && IsLaunchWindowOpen(seasonEvent.ScheduledAtUtc))
 													{
 														<button class="btn btn-sm btn-primary league-action-btn" @onclick="() => LaunchSeasonEvent.InvokeAsync(seasonEvent.EventId)" disabled="@(LaunchingSeasonEventId == seasonEvent.EventId)">Launch Play</button>
 													}
@@ -129,7 +122,7 @@
 								{
 									<button class="btn btn-sm btn-outline-primary league-action-btn" @onclick="() => OpenTable.InvokeAsync(oneOff.LaunchedGameId.Value)">Open Table</button>
 								}
-								else if (CanManageLeague)
+								else if (CanManageLeague && IsLaunchWindowOpen(oneOff.ScheduledAtUtc))
 								{
 									<button class="btn btn-sm btn-primary league-action-btn" @onclick="() => LaunchOneOffEvent.InvokeAsync(oneOff.EventId)" disabled="@(LaunchingOneOffEventId == oneOff.EventId)">Launch Play</button>
 								}
@@ -183,9 +176,6 @@
 	public EventCallback OpenSeasonEventModal { get; set; }
 
 	[Parameter]
-	public EventCallback<LeagueSeasonEventDto> OpenRecordResultsModal { get; set; }
-
-	[Parameter]
 	public EventCallback<Guid> OpenTable { get; set; }
 
 	[Parameter]
@@ -210,5 +200,13 @@
 	private static string FormatDate(DateTimeOffset? value)
 	{
 		return value.HasValue ? value.Value.ToLocalTime().ToString("g") : "-";
+	}
+
+	private static bool IsLaunchWindowOpen(DateTimeOffset? scheduledAtUtc)
+	{
+		if (!scheduledAtUtc.HasValue)
+			return false;
+
+		return DateTimeOffset.UtcNow >= scheduledAtUtc.Value.AddHours(-2);
 	}
 }

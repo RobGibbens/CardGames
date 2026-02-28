@@ -198,7 +198,7 @@
 					<LeagueDetailResultsTab Seasons="_seasons" SelectedSeasonId="_selectedSeasonId"
 											CanManageLeague="CanManageLeague" SeasonEvents="_seasonEvents"
 											LaunchingSeasonEventId="_launchingSeasonEventId" OnSeasonSelectorChanged="OnSeasonSelectorChanged"
-											OpenSeasonEventModal="OpenSeasonEventModal" OpenRecordResultsModal="OpenRecordResultsModal"
+											OpenSeasonEventModal="OpenSeasonEventModal"
 											OpenTable="OpenTable" LaunchSeasonEvent="LaunchSeasonEventAsync" />
 				}
 
@@ -221,7 +221,7 @@
 											 LaunchingOneOffEventId="_launchingOneOffEventId" OpenSeasonModal="OpenSeasonModal"
 											 SelectSeason="SelectSeasonAsync" DeselectSeason="DeselectSeasonAsync"
 											 OpenSeasonEventModal="OpenSeasonEventModal"
-											 OpenRecordResultsModal="OpenRecordResultsModal" OpenTable="OpenTable"
+											 OpenTable="OpenTable"
 											 LaunchSeasonEvent="LaunchSeasonEventAsync" OpenOneOffModal="OpenOneOffModal"
 											 LaunchOneOffEvent="LaunchOneOffEventAsync" />
 				}
@@ -353,8 +353,8 @@
 						</div>
 						<div class="row g-2">
 							<div class="col-md-6">
-								<label class="form-label small">Scheduled (optional, UTC)</label>
-								<InputDate class="form-control league-modal-date-input" @bind-Value="_seasonEventScheduledDate" />
+								<label class="form-label small">Scheduled (optional, local time)</label>
+								<InputDate Type="InputDateType.DateTimeLocal" class="form-control league-modal-date-input" @bind-Value="_seasonEventScheduledDate" />
 							</div>
 						</div>
 						<div class="form-floating" data-label="Notes (optional)">
@@ -373,65 +373,7 @@
 		<CreateLeagueEventModal Show="_showOneOffModal" EventType="_oneOffType" LeagueId="LeagueId" OnClose="CloseOneOffModal"
 								OnCreated="HandleOneOffCreated" />
 
-		@if (_showRecordResultsModal)
-		{
-			<div class="confirm-dialog-overlay" @onclick="CloseRecordResultsModal">
-				<div class="confirm-dialog league-form-modal season-event-modal" @onclick:stopPropagation>
-					<div class="confirm-dialog-header league-form-modal-header">
-						<h3 class="confirm-dialog-title mb-0">Record Results — @_recordingSeasonEventName</h3>
-						<button type="button" class="league-modal-close-btn" aria-label="Close" @onclick="CloseRecordResultsModal">
-							<i class="fa-solid fa-xmark" aria-hidden="true"></i>
-						</button>
-					</div>
-					<div class="confirm-dialog-body league-form-modal-body text-start">
-						@if (_resultDrafts.Count == 0)
-						{
-							<p class="mb-0 text-muted">No active members available for result entry.</p>
-						}
-						else
-						{
-							<ul class="list-group">
-								@for (var index = 0; index < _resultDrafts.Count; index++)
-								{
-									var draft = _resultDrafts[index];
-									<li class="list-group-item d-flex flex-column gap-2" @key="draft.MemberUserId">
-										<div class="d-flex justify-content-between align-items-center">
-											<div class="fw-semibold">@draft.MemberDisplayName</div>
-											<div class="form-check mb-0">
-												<input class="form-check-input" type="checkbox" id="result-include-@index"
-													   @bind="draft.Include" />
-												<label class="form-check-label small" for="result-include-@index">Include</label>
-											</div>
-										</div>
-										<div class="row g-2">
-											<div class="col-md-4">
-												<label class="form-label small">Placement</label>
-												<InputNumber class="form-control league-modal-input" @bind-Value="draft.Placement"
-															 disabled="@(!draft.Include)" />
-											</div>
-											<div class="col-md-4">
-												<label class="form-label small">Points</label>
-												<InputNumber class="form-control league-modal-input" @bind-Value="draft.Points"
-															 disabled="@(!draft.Include)" />
-											</div>
-											<div class="col-md-4">
-												<label class="form-label small">Chips Δ</label>
-												<InputNumber class="form-control league-modal-input" @bind-Value="draft.ChipsDelta"
-															 disabled="@(!draft.Include)" />
-											</div>
-										</div>
-									</li>
-								}
-							</ul>
-						}
-						<div class="league-form-modal-actions mt-3">
-							<button class="btn btn-sm btn-primary league-action-btn" @onclick="SubmitSeasonEventResultsAsync"
-									disabled="@_isSubmittingResults">Save Results</button>
-						</div>
-					</div>
-				</div>
-			</div>
-		}
+		
 
 @code {
 	[Parameter]
@@ -493,7 +435,6 @@
 	private Guid? _launchingSeasonEventId;
 	private Guid? _launchingOneOffEventId;
 	private bool _showNoChipsModal;
-	private bool _showRecordResultsModal;
 	private bool _isSubmittingResults;
 	private Guid? _recordingSeasonEventId;
 	private string _recordingSeasonEventName = string.Empty;
@@ -503,6 +444,7 @@
 	private LeagueStandingEntryDto? _myStanding;
 	private List<LeagueSeasonEventDto> _recentCompletedEvents = [];
 	private bool _isLeagueHubSubscriptionInitialized;
+	private double _browserUtcOffsetMinutes;
 
 	private ScheduleTab _activeScheduleTab = ScheduleTab.Seasons;
 	private LeagueDetailTab _activeTab = LeagueDetailTab.Lobby;
@@ -562,9 +504,20 @@
 		.Take(20)
 		.ToList();
 
+	private bool _hasResolvedBrowserOffset;
+
 	protected override async Task OnParametersSetAsync()
 	{
 		await LoadAllAsync();
+	}
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (!_hasResolvedBrowserOffset)
+		{
+			_hasResolvedBrowserOffset = true;
+			_browserUtcOffsetMinutes = await JSRuntime.InvokeAsync<double>("eval", "new Date().getTimezoneOffset() * -1");
+		}
 	}
 
 	private async Task LoadAllAsync()
@@ -1393,8 +1346,9 @@ CreateLeagueSeasonEventRequest
 			{
 				Name = _seasonEventName.Trim(),
 				SequenceNumber = _seasonEventSequence,
-				ScheduledAtUtc = _seasonEventScheduledDate.HasValue ? new
-DateTimeOffset(DateTime.SpecifyKind(_seasonEventScheduledDate.Value, DateTimeKind.Utc)) : null,
+				ScheduledAtUtc = _seasonEventScheduledDate.HasValue
+					? new DateTimeOffset(_seasonEventScheduledDate.Value, TimeSpan.FromMinutes(_browserUtcOffsetMinutes)).ToUniversalTime()
+					: null,
 				Notes = string.IsNullOrWhiteSpace(_seasonEventNotes) ? null : _seasonEventNotes.Trim()
 			});
 
@@ -1490,112 +1444,7 @@ DateTimeOffset(DateTime.SpecifyKind(_seasonEventScheduledDate.Value, DateTimeKin
 		_showOneOffModal = true;
 	}
 
-	private void OpenRecordResultsModal(LeagueSeasonEventDto seasonEvent)
-	{
-		if (!_selectedSeasonId.HasValue)
-		{
-			return;
-		}
-
-		_recordingSeasonEventId = seasonEvent.EventId;
-		_recordingSeasonEventName = seasonEvent.Name;
-		var activeMembers = _members
-			.Where(x => x.IsActive)
-			.OrderBy(x => x.Role)
-			.ThenBy(x => x.UserDisplayName ?? x.UserId)
-			.ToList();
-
-		_resultDrafts = [];
-		for (var index = 0; index < activeMembers.Count; index++)
-		{
-			var member = activeMembers[index];
-			_resultDrafts.Add(new SeasonEventResultDraft
-			{
-				MemberUserId = member.UserId,
-				MemberDisplayName = member.UserDisplayName ?? member.UserId,
-				Placement = index + 1,
-				Points = 0,
-				ChipsDelta = 0
-			});
-		}
-
-		_showRecordResultsModal = true;
-	}
-
-	private void CloseRecordResultsModal()
-	{
-		if (_isSubmittingResults)
-		{
-			return;
-		}
-
-		_showRecordResultsModal = false;
-		_recordingSeasonEventId = null;
-		_recordingSeasonEventName = string.Empty;
-		_resultDrafts = [];
-	}
-
-	private async Task SubmitSeasonEventResultsAsync()
-	{
-		if (!_selectedSeasonId.HasValue || !_recordingSeasonEventId.HasValue)
-		{
-			_message = "Select a season event first.";
-			_isError = true;
-			return;
-		}
-
-		var includedResults = _resultDrafts
-			.Where(x => x.Include)
-			.Select(x => new LeagueSeasonEventResultEntryRequest
-			{
-				MemberUserId = x.MemberUserId,
-				Placement = x.Placement,
-				Points = x.Points,
-				ChipsDelta = x.ChipsDelta
-			})
-			.ToList();
-
-		if (includedResults.Count == 0)
-		{
-			_message = "Include at least one member result.";
-			_isError = true;
-			return;
-		}
-
-		_isSubmittingResults = true;
-		try
-		{
-			var response = await LeaguesApi.IngestSeasonEventResultsAsync(LeagueId, _selectedSeasonId.Value,
-_recordingSeasonEventId.Value, new IngestLeagueSeasonEventResultsRequest
-{
-	Results = includedResults
-});
-
-			if (response.IsSuccessStatusCode)
-			{
-				_message = "Season event results recorded.";
-				_isError = false;
-				CloseRecordResultsModal();
-				await LoadSeasonEventsAsync(_selectedSeasonId.Value);
-				await LoadStandingsAsync();
-				return;
-			}
-
-			_message = "Failed to record season event results.";
-			_isError = true;
-		}
-		catch (Exception ex)
-		{
-			Logger.LogError(ex, "Failed to record season event results for league {LeagueId}", LeagueId);
-			_message = "Failed to record season event results.";
-			_isError = true;
-		}
-		finally
-		{
-			_isSubmittingResults = false;
-		}
-	}
-
+	
 	private static string FormatDate(DateTimeOffset? value)
 	{
 		return value.HasValue ? value.Value.ToLocalTime().ToString("g") : "-";

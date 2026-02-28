@@ -43,10 +43,6 @@
 						<span class="league-detail-results-date">@FormatDate(seasonEvent.ScheduledAtUtc)</span>
 						<span class="league-detail-event-status @(seasonEvent.Status == LeagueSeasonEventStatus.Completed ? "league-detail-event-status-completed" : "")">@seasonEvent.Status</span>
 						<div class="league-detail-results-actions">
-							@if (CanManageLeague)
-							{
-								<button class="btn btn-sm btn-outline-success league-action-btn" @onclick="() => OpenRecordResultsModal.InvokeAsync(seasonEvent)">Record Results</button>
-							}
 							@if (seasonEvent.LaunchedGameId.HasValue)
 							{
 								<button class="btn btn-sm btn-outline-primary league-action-btn" @onclick="() => OpenTable.InvokeAsync(seasonEvent.LaunchedGameId.Value)">Open Table</button>
@@ -84,9 +80,6 @@
 
 	[Parameter]
 	public EventCallback OpenSeasonEventModal { get; set; }
-
-	[Parameter]
-	public EventCallback<LeagueSeasonEventDto> OpenRecordResultsModal { get; set; }
 
 	[Parameter]
 	public EventCallback<Guid> OpenTable { get; set; }

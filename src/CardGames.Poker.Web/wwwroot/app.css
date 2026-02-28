@@ -6432,6 +6432,35 @@ a:hover {
     background: rgba(220, 38, 38, 0.06);
 }
 
+/* ── Season Events (nested children) ── */
+.league-season-events-inline {
+    margin-left: 1.5rem;
+    padding-left: 1rem;
+    border-left: 2px solid rgba(220, 38, 38, 0.25);
+    margin-top: -0.25rem;
+    margin-bottom: 0.25rem;
+}
+
+.league-season-events-inline .league-detail-event-row {
+    border-left: 2px solid rgba(220, 38, 38, 0.3);
+    padding: 0.55rem 0.85rem;
+    background: var(--bg-tertiary, rgba(0, 0, 0, 0.02));
+}
+
+.league-season-events-inline .league-detail-event-name {
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.league-season-events-inline .league-detail-event-date {
+    font-size: 0.7rem;
+}
+
+.league-season-events-inline .league-detail-empty {
+    font-size: 0.8rem;
+    padding-left: 0.25rem;
+}
+
 /* ── Leaders (Lobby Sidebar) ── */
 .league-detail-leaders-card {}
 
