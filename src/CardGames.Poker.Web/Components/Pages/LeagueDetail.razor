@@ -219,7 +219,8 @@
 											 Seasons="_seasons" SelectedSeasonId="_selectedSeasonId" SeasonEvents="_seasonEvents"
 											 OneOffEvents="_oneOffEvents" LaunchingSeasonEventId="_launchingSeasonEventId"
 											 LaunchingOneOffEventId="_launchingOneOffEventId" OpenSeasonModal="OpenSeasonModal"
-											 SelectSeason="SelectSeasonAsync" OpenSeasonEventModal="OpenSeasonEventModal"
+											 SelectSeason="SelectSeasonAsync" DeselectSeason="DeselectSeasonAsync"
+											 OpenSeasonEventModal="OpenSeasonEventModal"
 											 OpenRecordResultsModal="OpenRecordResultsModal" OpenTable="OpenTable"
 											 LaunchSeasonEvent="LaunchSeasonEventAsync" OpenOneOffModal="OpenOneOffModal"
 											 LaunchOneOffEvent="LaunchOneOffEventAsync" />
@@ -883,6 +884,12 @@ LeagueOneOffEventStatus.Canceled)
 		await LoadSeasonEventsAsync(seasonId);
 		await LoadStandingsAsync();
 		await LoadActiveGameDetailsAsync();
+	}
+
+	private void DeselectSeasonAsync()
+	{
+		_selectedSeasonId = null;
+		_seasonEvents = [];
 	}
 
 	private async Task OnSeasonSelectorChanged(ChangeEventArgs e)

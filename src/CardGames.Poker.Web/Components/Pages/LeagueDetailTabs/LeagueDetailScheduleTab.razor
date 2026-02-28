@@ -44,59 +44,59 @@
 								<span class="league-detail-event-name">@season.Name</span>
 								<span class="league-detail-event-date">@season.Status &bull; @(season.PlannedEventCount?.ToString() ?? "-") planned &bull; @FormatDate(season.StartsAtUtc) - @FormatDate(season.EndsAtUtc)</span>
 							</div>
-							<button class="btn btn-sm btn-outline-primary league-action-btn" @onclick="() => SelectSeason.InvokeAsync(season.SeasonId)">View Events</button>
+							<div class="league-detail-event-row-actions">
+								<button class="btn btn-sm btn-outline-primary league-action-btn" @onclick="() => ToggleSeasonAsync(season.SeasonId)">
+									@(season.SeasonId == SelectedSeasonId ? "Hide Events" : "View Events")
+								</button>
+								@if (season.SeasonId == SelectedSeasonId && CanManageLeague)
+								{
+									<button class="btn btn-sm btn-outline-success league-action-btn" @onclick="OpenSeasonEventModal">
+										<i class="fa-solid fa-plus"></i> Create Event
+									</button>
+								}
+							</div>
 						</div>
+						@if (season.SeasonId == SelectedSeasonId)
+						{
+							<div class="league-season-events-inline">
+								@if (SeasonEvents.Count == 0)
+								{
+									<p class="league-detail-empty">No season events yet.</p>
+								}
+								else
+								{
+									<div class="league-detail-event-list">
+										@foreach (var seasonEvent in SeasonEvents)
+										{
+											<div class="league-detail-event-row">
+												<div class="league-detail-event-info">
+													<span class="league-detail-event-name">@seasonEvent.Name</span>
+													<span class="league-detail-event-date">Seq: @(seasonEvent.SequenceNumber?.ToString() ?? "-") &bull; @FormatDate(seasonEvent.ScheduledAtUtc) &bull; @seasonEvent.Status</span>
+												</div>
+												<div class="league-detail-event-row-actions">
+													@if (CanManageLeague)
+													{
+														<button class="btn btn-sm btn-outline-success league-action-btn" @onclick="() => OpenRecordResultsModal.InvokeAsync(seasonEvent)">Record Results</button>
+													}
+													@if (seasonEvent.LaunchedGameId.HasValue)
+													{
+														<button class="btn btn-sm btn-outline-primary league-action-btn" @onclick="() => OpenTable.InvokeAsync(seasonEvent.LaunchedGameId.Value)">Open Table</button>
+													}
+													else if (CanManageLeague)
+													{
+														<button class="btn btn-sm btn-primary league-action-btn" @onclick="() => LaunchSeasonEvent.InvokeAsync(seasonEvent.EventId)" disabled="@(LaunchingSeasonEventId == seasonEvent.EventId)">Launch Play</button>
+													}
+												</div>
+											</div>
+										}
+									</div>
+								}
+							</div>
+						}
 					}
 				</div>
 			}
 		</section>
-
-		@if (SelectedSeasonId.HasValue)
-		{
-			<section class="league-detail-card">
-				<div class="league-detail-card-header">
-					<h3><i class="fa-solid fa-calendar-check"></i> Season Events</h3>
-					@if (CanManageLeague)
-					{
-						<button class="league-detail-btn league-detail-btn-create" @onclick="OpenSeasonEventModal">
-							<i class="fa-solid fa-plus"></i> Create Event
-						</button>
-					}
-				</div>
-				@if (SeasonEvents.Count == 0)
-				{
-					<p class="league-detail-empty">No season events yet.</p>
-				}
-				else
-				{
-					<div class="league-detail-event-list">
-						@foreach (var seasonEvent in SeasonEvents)
-						{
-							<div class="league-detail-event-row">
-								<div class="league-detail-event-info">
-									<span class="league-detail-event-name">@seasonEvent.Name</span>
-									<span class="league-detail-event-date">Seq: @(seasonEvent.SequenceNumber?.ToString() ?? "-") &bull; @FormatDate(seasonEvent.ScheduledAtUtc) &bull; @seasonEvent.Status</span>
-								</div>
-								<div class="league-detail-event-row-actions">
-									@if (CanManageLeague)
-									{
-										<button class="btn btn-sm btn-outline-success league-action-btn" @onclick="() => OpenRecordResultsModal.InvokeAsync(seasonEvent)">Record Results</button>
-									}
-									@if (seasonEvent.LaunchedGameId.HasValue)
-									{
-										<button class="btn btn-sm btn-outline-primary league-action-btn" @onclick="() => OpenTable.InvokeAsync(seasonEvent.LaunchedGameId.Value)">Open Table</button>
-									}
-									else if (CanManageLeague)
-									{
-										<button class="btn btn-sm btn-primary league-action-btn" @onclick="() => LaunchSeasonEvent.InvokeAsync(seasonEvent.EventId)" disabled="@(LaunchingSeasonEventId == seasonEvent.EventId)">Launch Play</button>
-									}
-								</div>
-							</div>
-						}
-					</div>
-				}
-			</section>
-		}
 	}
 	else
 	{
@@ -196,6 +196,16 @@
 
 	[Parameter]
 	public EventCallback<Guid> LaunchOneOffEvent { get; set; }
+
+	[Parameter]
+	public EventCallback DeselectSeason { get; set; }
+
+	private Task ToggleSeasonAsync(Guid seasonId)
+	{
+		if (seasonId == SelectedSeasonId)
+			return DeselectSeason.InvokeAsync();
+		return SelectSeason.InvokeAsync(seasonId);
+	}
 
 	private static string FormatDate(DateTimeOffset? value)
 	{
