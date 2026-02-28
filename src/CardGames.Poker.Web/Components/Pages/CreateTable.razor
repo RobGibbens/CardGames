@@ -42,7 +42,7 @@
 		else if (_loadError is not null)
 		{
 			<div class="create-table-error">
-				<div class="error-icon">⚠️</div>
+				<div class="error-icon"><i class="fa-thin fa-triangle-exclamation"></i></div>
 				<h3>Failed to Load</h3>
 				<p>@_loadError</p>
 				<button class="btn btn-primary" @onclick="LoadAvailableGamesAsync">Try Again</button>
@@ -73,7 +73,7 @@
 									}
 									else
 									{
-										<span class="variant-icon-fallback">🃏</span>
+										<span class="variant-icon-fallback"><i class="fa-thin fa-card-club"></i></span>
 									}
 								</div>
 								<h3 class="variant-name">@game.Name</h3>
@@ -90,7 +90,7 @@
 								}
 								@if (_selectedVariant?.Name == game.Name)
 								{
-									<span class="variant-selected-indicator">✓</span>
+									<span class="variant-selected-indicator"><i class="fa-thin fa-check"></i></span>
 								}
 							</div>
 						}

@@ -13,13 +13,11 @@
 <!-- Hero Section -->
 <section class="hero">
     <div class="hero-cards">
-        <span class="floating-card">♠</span>
-        <span class="floating-card">♥</span>
-        <span class="floating-card">♦</span>
-        <span class="floating-card">♣</span>
-        <span class="floating-card">🃏</span>
-        <span class="floating-card">♠</span>
-        
+        <span class="floating-card"><i class="fa-thin fa-spade"></i></span>
+        <span class="floating-card"><i class="fa-thin fa-heart"></i></span>
+        <span class="floating-card"><i class="fa-thin fa-diamond"></i></span>
+        <span class="floating-card"><i class="fa-thin fa-club"></i></span>
+        <span class="floating-card"><i class="fa-thin fa-face-grin-tongue-wink"></i></span>
     </div>
 
     <div class="hero-content">
@@ -39,10 +37,10 @@
 
         <div class="hero-actions">
             <a href="/Account/Register" class="btn btn-primary btn-lg">
-                <span>🎰</span> Start Playing Free
+                <span><i class="fa-thin fa-slot-machine"></i></span> Start Playing Free
             </a>
             <a href="#features" class="btn btn-outline btn-lg">
-                <span>📖</span> Learn More
+                <span><i class="fa-thin fa-book-open"></i></span> Learn More
             </a>
         </div>
 
@@ -77,7 +75,7 @@
         <div class="features-grid">
             <div class="feature-card animate-fade-in-up">
                 <div class="feature-icon">
-                    <span>🔐</span>
+                    <span><i class="fa-thin fa-lock"></i></span>
                 </div>
                 <h3 class="feature-title">Private Tables</h3>
                 <p class="feature-description">
@@ -88,7 +86,7 @@
 
             <div class="feature-card animate-fade-in-up animate-delay-1">
                 <div class="feature-icon">
-                    <span>⚡</span>
+                    <span><i class="fa-thin fa-lightning"></i></span>
                 </div>
                 <h3 class="feature-title">Real-Time Gameplay</h3>
                 <p class="feature-description">
@@ -99,7 +97,7 @@
 
             <div class="feature-card animate-fade-in-up animate-delay-2">
                 <div class="feature-icon">
-                    <span>🔄</span>
+                    <span><i class="fa-thin fa-arrows-rotate"></i></span>
                 </div>
                 <h3 class="feature-title">Seamless Reconnection</h3>
                 <p class="feature-description">
@@ -110,7 +108,7 @@
 
             <div class="feature-card animate-fade-in-up animate-delay-3">
                 <div class="feature-icon">
-                    <span>🎯</span>
+                    <span><i class="fa-thin fa-bullseye"></i></span>
                 </div>
                 <h3 class="feature-title">Authoritative Server</h3>
                 <p class="feature-description">
@@ -121,7 +119,7 @@
 
             <div class="feature-card animate-fade-in-up animate-delay-4">
                 <div class="feature-icon">
-                    <span>📱</span>
+                    <span><i class="fa-thin fa-mobile-notch"></i></span>
                 </div>
                 <h3 class="feature-title">Play Anywhere</h3>
                 <p class="feature-description">
@@ -132,7 +130,7 @@
 
             <div class="feature-card animate-fade-in-up animate-delay-5">
                 <div class="feature-icon">
-                    <span>📜</span>
+                    <span><i class="fa-thin fa-scroll"></i></span>
                 </div>
                 <h3 class="feature-title">Hand History</h3>
                 <p class="feature-description">
@@ -218,7 +216,7 @@
             @if (_isLoadingAvailableGames)
             {
                 <div class="variant-card">
-                    <div class="variant-icon">🃏</div>
+                    <div class="variant-icon"><i class="fa-thin fa-face-grin-tongue-wink"></i></div>
                     <h3 class="variant-name">Loading…</h3>
                     <p class="variant-description">Fetching available poker variants.</p>
                     <span class="variant-badge" style="background: var(--text-muted);">Loading</span>
@@ -227,7 +225,7 @@
             else if (!string.IsNullOrWhiteSpace(_availableGamesErrorMessage))
             {
                 <div class="variant-card">
-                    <div class="variant-icon">🃏</div>
+                    <div class="variant-icon"><i class="fa-thin fa-face-grin-tongue-wink"></i></div>
                     <h3 class="variant-name">Unable to load variants</h3>
                     <p class="variant-description">@_availableGamesErrorMessage</p>
                     <span class="variant-badge" style="background: var(--text-muted);">Unavailable</span>
@@ -236,7 +234,7 @@
             else if ((_availableGames?.Count ?? 0) == 0)
             {
                 <div class="variant-card">
-                    <div class="variant-icon">🃏</div>
+                    <div class="variant-icon"><i class="fa-thin fa-face-grin-tongue-wink"></i></div>
                     <h3 class="variant-name">No variants available</h3>
                     <p class="variant-description">No poker variants are currently available.</p>
                     <span class="variant-badge" style="background: var(--text-muted);">Unavailable</span>
@@ -254,7 +252,7 @@
                             }
                             else
                             {
-                                <span class="variant-icon-fallback" aria-hidden="true">🃏</span>
+                                <span class="variant-icon-fallback" aria-hidden="true"><i class="fa-thin fa-card-club"></i></span>
                             }
                         </div>
                         <h3 class="variant-name">@game.Name</h3>
@@ -278,10 +276,10 @@
             </p>
             <div class="cta-actions">
                 <a href="/Account/Register" class="btn btn-primary btn-lg">
-                    <span>🚀</span> Create Free Account
+                    <span><i class="fa-thin fa-rocket"></i></span> Create Free Account
                 </a>
                 <a href="#features" class="btn btn-secondary btn-lg">
-                    <span>📖</span> Explore Features
+                    <span><i class="fa-thin fa-book-open"></i></span> Explore Features
                 </a>
             </div>
         </div>
@@ -294,7 +292,7 @@
         <div class="footer-grid">
             <div class="footer-brand">
                 <div class="footer-logo">
-                    <span class="footer-logo-icon">♠</span>
+                    <span class="footer-logo-icon"><i class="fa-thin fa-spade"></i></span>
                     <span>Friday Night Poker</span>
                 </div>
                 <p class="footer-description">
@@ -337,13 +335,7 @@
             </p>
             <div class="footer-social">
                 <a href="#" title="GitHub" aria-label="GitHub">
-                    <span>🔗</span>
-                </a>
-                <a href="#" title="Twitter" aria-label="Twitter">
-                    <span>🐦</span>
-                </a>
-                <a href="#" title="Discord" aria-label="Discord">
-                    <span>💬</span>
+                    <span><i class="fa-thin fa-link"></i></span>
                 </a>
             </div>
         </div>

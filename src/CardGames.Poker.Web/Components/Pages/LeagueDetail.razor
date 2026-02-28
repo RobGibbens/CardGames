@@ -1465,12 +1465,12 @@ CreateLeagueSeasonEventRequest
 
 		if (movement > 0)
 		{
-			return $"▲ {movement}";
+			return $"<i class=\"fa-thin fa-chevron-up\"></i> {movement}";
 		}
 
 		if (movement < 0)
 		{
-			return $"▼ {Math.Abs(movement)}";
+			return $"<i class=\"fa-thin fa-chevron-down\"></i> {movement}";
 		}
 
 		return "No change";
@@ -1510,9 +1510,9 @@ CreateLeagueSeasonEventRequest
 	{
 		return rank switch
 		{
-			1 => "🥇",
-			2 => "🥈",
-			3 => "🥉",
+			1 => $"<i class=\"fa-thin fa-award\"></i>",
+			2 => $"<i class=\"fa-thin fa-award\"></i>",
+			3 => $"<i class=\"fa-thin fa-award\"></i>",
 			_ => ""
 		};
 	}

@@ -39,7 +39,7 @@
         </div>
 
         <!-- Seats around the table -->
-        @foreach (var seat in Seats)
+        @foreach (var seat in Seats.ToList())
         {
             <div class="table-seat @GetSeatPositionClass(seat.SeatIndex) @GetSeatStateClass(seat)"
                  @onclick="() => HandleSeatClick(seat)">

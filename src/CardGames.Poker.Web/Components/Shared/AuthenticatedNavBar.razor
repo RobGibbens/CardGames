@@ -13,26 +13,26 @@
 <header class="nav-header">
     <nav class="nav-container">
         <a href="/lobby" class="nav-logo">
-            <span class="nav-logo-icon">♠</span>
+            <span class="nav-logo-icon"><i class="fa-thin fa-spade"></i></span>
             <span>Friday Night Poker</span>
         </a>
 
         <ul class="nav-links @(isMobileMenuOpen ? "active" : "")" id="navLinks">
             <li>
                 <a href="/lobby" class="@GetActiveClass("/lobby")">
-                    <i class="fa-solid fa-bullseye-arrow"></i>
+                    <i class="fa-thin fa-bullseye-arrow"></i>
                     Lobby
                 </a>
             </li>
             <li>
                 <a href="/leagues" class="@GetActiveClass("/leagues")">
-                    <i class="fa-solid fa-users"></i>
+                    <i class="fa-thin fa-users"></i>
                     Leagues
                 </a>
             </li>
 			<li>
 				<a href="/Account/Cashier" class="@GetActiveClass("/Account/Cashier")">
-					<i class="fa-solid fa-coins"></i>
+                    <i class="fa-thin fa-coins"></i>
 					Cashier
 				</a>
 			</li>
@@ -43,11 +43,11 @@
             <button class="theme-toggle" @onclick="ToggleThemeAsync" title="Toggle theme" aria-label="Toggle dark/light theme">
                 @if (isDarkMode)
                 {
-                    <span>☀️</span>
+                    <span><i class="fa-solid fa-sun"></i></span>
                 }
                 else
                 {
-                    <span>🌙</span>
+                    <span><i class="fa-solid fa-moon"></i></span>
                 }
             </button>
 
@@ -66,7 +66,7 @@
                                 }
                             </span>
                             <span class="user-name">@(CurrentUserName ?? context.User.Identity?.Name)</span>
-                            <span class="user-menu-arrow">▼</span>
+                            <span class="user-menu-arrow"><i class="fa-thin fa-chevron-down"></i></span>
                         </button>
                         @if (isUserMenuOpen)
                         {
@@ -92,7 +92,7 @@
                                     <AntiforgeryToken />
                                     <input type="hidden" name="ReturnUrl" value="/" />
                                     <button type="submit" class="user-menu-item user-menu-logout">
-                                        <span>🚪</span> Sign Out
+                                        <i class="fa-solid fa-right-from-bracket"></i> Sign Out
                                     </button>
                                 </form>
                             </div>

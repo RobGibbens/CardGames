@@ -131,7 +131,7 @@
 						@if (_leagueDetail is not null)
 						{
 							<div class="small text-muted">
-								Created by @_leagueDetail.CreatedByUserId • Active members: @_leagueDetail.ActiveMemberCount
+								Created by @_leagueDetail.CreatedByUserId <i class="fa-thin fa-circle"></i> Active members: @_leagueDetail.ActiveMemberCount
 							</div>
 						}
 
@@ -149,7 +149,7 @@
 										<li class="list-group-item d-flex justify-content-between align-items-center gap-2">
 											<div>
 												<div class="fw-semibold">@member.UserId</div>
-												<div class="small text-muted">Role: @member.Role • Joined:
+												<div class="small text-muted">Role: @member.Role <i class="fa-thin fa-circle"></i> Joined:
 													@member.JoinedAtUtc.ToLocalTime().ToString("g")</div>
 												</div>
 												@if (CanManageSelectedLeague && member.IsActive && member.Role != LeagueRole.Admin)
@@ -193,7 +193,7 @@
 										@foreach (var invite in _inviteSummaries)
 										{
 											<li class="list-group-item small">
-												Status: @invite.Status • Expires: @invite.ExpiresAtUtc.ToLocalTime().ToString("g")
+												Status: @invite.Status <i class="fa-thin fa-circle"></i> Expires: @invite.ExpiresAtUtc.ToLocalTime().ToString("g")
 											</li>
 										}
 									</ul>

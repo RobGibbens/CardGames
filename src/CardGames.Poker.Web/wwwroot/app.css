@@ -399,7 +399,8 @@ a:hover {
 
 .nav-links a {
     color: var(--text-secondary);
-    font-weight: 500;
+    font-family: 'Inter', sans-serif;
+    font-weight: 300;
     font-size: 0.95rem;
     transition: color var(--transition-fast);
     position: relative;

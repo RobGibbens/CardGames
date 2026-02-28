@@ -107,18 +107,35 @@
 								<i class="fa-solid fa-layer-group"></i>
 								<span>Season Events</span>
 							</div>
-							<div class="league-detail-event-list">
+							<div class="league-detail-active-games-list">
 								@foreach (var se in upcomingSeasonEvents)
 								{
-									<div class="league-detail-event-row league-event-season">
-										<div class="league-detail-event-info">
-											<span class="league-detail-event-name">
-												<i class="fa-solid fa-trophy league-event-type-icon league-event-type-icon-season"></i>
-												@se.Name
-											</span>
-											<span class="league-detail-event-date">@FormatDate(se.ScheduledAtUtc)</span>
+									<div class="league-detail-active-game-card league-event-season">
+										<div class="league-detail-active-game-top">
+											<div class="league-detail-active-game-info">
+												<span class="league-detail-active-game-name">@se.Name</span>
+												<div class="league-detail-active-game-meta">
+													<span class="league-detail-active-game-meta-item">
+														<i class="fa-solid fa-trophy league-event-type-icon-season"></i> Season Event
+													</span>
+													<span class="league-detail-active-game-meta-item league-event-badge-season">
+														@se.Status
+													</span>
+												</div>
+											</div>
 										</div>
-										<span class="league-detail-event-status league-event-badge-season">@se.Status</span>
+										<div class="league-detail-active-game-details">
+											<div class="league-detail-active-game-detail">
+												<i class="fa-solid fa-calendar"></i>
+												<span>@FormatDate(se.ScheduledAtUtc)</span>
+											</div>
+										</div>
+										@if (se.LaunchedGameId.HasValue)
+										{
+											<button class="league-detail-active-game-join-btn" @onclick="() => OpenTable.InvokeAsync(se.LaunchedGameId.Value)" @onclick:stopPropagation>
+												<i class="fa-solid fa-right-to-bracket"></i> Join
+											</button>
+										}
 									</div>
 								}
 							</div>
@@ -131,18 +148,35 @@
 								<i class="fa-solid fa-sparkles"></i>
 								<span>One-Off Events</span>
 							</div>
-							<div class="league-detail-event-list">
+							<div class="league-detail-active-games-list">
 								@foreach (var oo in upcomingOneOffs)
 								{
-									<div class="league-detail-event-row league-event-oneoff">
-										<div class="league-detail-event-info">
-											<span class="league-detail-event-name">
-												<i class="fa-solid @(oo.EventType == LeagueOneOffEventType.Tournament ? "fa-ranking-star" : "fa-dice") league-event-type-icon league-event-type-icon-oneoff"></i>
-												@oo.Name
-											</span>
-											<span class="league-detail-event-date">@oo.ScheduledAtUtc.ToLocalTime().ToString("g")</span>
+									<div class="league-detail-active-game-card league-event-oneoff">
+										<div class="league-detail-active-game-top">
+											<div class="league-detail-active-game-info">
+												<span class="league-detail-active-game-name">@oo.Name</span>
+												<div class="league-detail-active-game-meta">
+													<span class="league-detail-active-game-meta-item">
+														<i class="fa-solid @(oo.EventType == LeagueOneOffEventType.Tournament ? "fa-ranking-star" : "fa-dice") league-event-type-icon-oneoff"></i> @FormatOneOffEventType(oo.EventType)
+													</span>
+													<span class="league-detail-active-game-meta-item league-event-badge-oneoff">
+														@oo.Status
+													</span>
+												</div>
+											</div>
 										</div>
-										<span class="league-detail-event-status league-event-badge-oneoff">@FormatOneOffEventType(oo.EventType)</span>
+										<div class="league-detail-active-game-details">
+											<div class="league-detail-active-game-detail">
+												<i class="fa-solid fa-calendar"></i>
+												<span>@oo.ScheduledAtUtc.ToLocalTime().ToString("g")</span>
+											</div>
+										</div>
+										@if (oo.LaunchedGameId.HasValue)
+										{
+											<button class="league-detail-active-game-join-btn" @onclick="() => OpenTable.InvokeAsync(oo.LaunchedGameId.Value)" @onclick:stopPropagation>
+												<i class="fa-solid fa-right-to-bracket"></i> Join
+											</button>
+										}
 									</div>
 								}
 							</div>
@@ -351,12 +385,12 @@
 
 		if (movement > 0)
 		{
-			return $"▲ {movement}";
+			return $"<i class=\"fa-thin fa-chevron-up\"></i> {movement}";
 		}
 
 		if (movement < 0)
 		{
-			return $"▼ {Math.Abs(movement)}";
+			return $"<i class=\"fa-thin fa-chevron-down\"></i> {movement}";
 		}
 
 		return "No change";

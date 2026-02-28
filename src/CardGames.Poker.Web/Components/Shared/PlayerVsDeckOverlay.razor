@@ -20,7 +20,7 @@
                             @if (card.IsFaceUp)
                             {
                                 <span class="rank @GetSuitColorClass(card.Suit)">@card.Rank</span>
-                                <span class="suit @GetSuitColorClass(card.Suit)">@GetSuitSymbol(card.Suit)</span>
+                                <span class="suit @GetSuitColorClass(card.Suit)"><i class="fa-thin @GetSuitSymbol(card.Suit)"></i></span>
                             }
                         </div>
                     }
@@ -277,11 +277,11 @@
     {
         return suit?.ToLowerInvariant() switch
         {
-            "hearts" => "♥",
-            "diamonds" => "♦",
-            "clubs" => "♣",
-            "spades" => "♠",
-            _ => "?"
+            "hearts" => "fa-heart",
+            "diamonds" => "fa-diamond",
+            "clubs" => "fa-club",
+            "spades" => "fa-spade",
+            _ => "fa-question"
         };
     }
 

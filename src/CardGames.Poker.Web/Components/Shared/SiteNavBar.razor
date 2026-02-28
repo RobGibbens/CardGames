@@ -15,7 +15,7 @@
 <header class="nav-header">
     <nav class="nav-container">
         <a href="/" class="nav-logo">
-            <span class="nav-logo-icon">♠</span>
+            <span class="nav-logo-icon"><i class="fa-thin fa-spade"></i></span>
             <span>Friday Night Poker</span>
         </a>
 
@@ -53,29 +53,29 @@
                                 }
                             </span>
                             <span class="user-name">@(CurrentUserName ?? context.User.Identity?.Name)</span>
-                            <span class="user-menu-arrow">▼</span>
+                            <span class="user-menu-arrow"><i class="fa-solid fa-angle-down"></i></span>
                         </button>
                         @if (isUserMenuOpen)
                         {
                             <div class="user-menu-dropdown">
                                 <a href="/Account/Manage" class="user-menu-item">
-                                    <span>⚙️</span> Settings
+                                    <i class="fa-thin fa-gear"></i> Settings
                                 </a>
                                 <a href="/Account/Manage/Email" class="user-menu-item">
-                                    <span>📧</span> Email
+                                    <i class="fa-thin fa-envelope"></i> Email
                                 </a>
                                 <a href="/Account/Manage" class="user-menu-item">
-	                                <span>👤</span> Profile
+                                    <i class="fa-thin fa-user"></i> Profile
                                 </a>
                                 <a href="/Account/Cashier" class="user-menu-item">
-	                                <span>👤</span> Cashier
+                                    <i class="fa-thin fa-cash-register"></i> Cashier
                                 </a>
                                 <hr class="user-menu-divider" />
                                 <form method="post" action="/Account/Logout">
                                     <AntiforgeryToken />
                                     <input type="hidden" name="ReturnUrl" value="@GetReturnUrl()" />
                                     <button type="submit" class="user-menu-item user-menu-logout">
-                                        <span>🚪</span> Sign Out
+                                        <i class="fa-solid fa-right-from-bracket"></i> Sign Out
                                     </button>
                                 </form>
                             </div>
