@@ -77,6 +77,7 @@ public class PokerGameRulesRegistryTests
     [InlineData("HOLDEM")]
     [InlineData("BASEBALL")]
     [InlineData("FOLLOWTHEQUEEN")]
+    [InlineData("GOODBADUGLY")]
     public void Registry_ShouldContainGameType(string gameTypeCode)
     {
         // Act
@@ -103,7 +104,8 @@ public class PokerGameRulesRegistryTests
             "OMAHA",
             "HOLDEM",
             "BASEBALL",
-            "FOLLOWTHEQUEEN"
+            "FOLLOWTHEQUEEN",
+            "GOODBADUGLY"
         });
     }
 }

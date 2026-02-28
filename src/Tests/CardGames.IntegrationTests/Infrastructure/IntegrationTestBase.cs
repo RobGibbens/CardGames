@@ -98,7 +98,8 @@ public abstract class IntegrationTestBase : IAsyncLifetime
             CreateGameType("HOLDEM", "Texas Hold'em", 2, 10, 2, 0, 5, 7),
             CreateGameType("OMAHA", "Omaha", 2, 10, 4, 0, 5, 9),
             CreateGameType("FOLLOWTHEQUEEN", "Follow the Queen", 2, 8, 2, 1, 0, 7),
-            CreateGameType("BASEBALL", "Baseball", 2, 8, 2, 1, 0, 7)
+            CreateGameType("BASEBALL", "Baseball", 2, 8, 2, 1, 0, 7),
+            CreateGameType("GOODBADUGLY", "The Good, the Bad, and the Ugly", 2, 7, 2, 1, 0, 7)
         };
 
         await DbContext.GameTypes.AddRangeAsync(gameTypes);

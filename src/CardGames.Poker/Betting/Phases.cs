@@ -98,7 +98,19 @@ public enum Phases
 	/// <summary>Seventh street (river): 1 down card dealt, final betting round (big bet).</summary>
 	[Description("Seventh Street")]
 	SeventhStreet,
-	
+
+	/// <summary>Reveal "The Good" table card — matching ranks become wild.</summary>
+	[Description("Reveal The Good")]
+	RevealTheGood,
+
+	/// <summary>Reveal "The Bad" table card — matching cards must be discarded.</summary>
+	[Description("Reveal The Bad")]
+	RevealTheBad,
+
+	/// <summary>Reveal "The Ugly" table card — players with matching face-up cards are eliminated.</summary>
+	[Description("Reveal The Ugly")]
+	RevealTheUgly,
+
 	/// <summary>Showdown - comparing hands to determine winner.</summary>
 	[Description("Showdown")]
 	Showdown,
