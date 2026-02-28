@@ -6289,6 +6289,76 @@ a:hover {
     color: #166534;
 }
 
+/* ── Upcoming Events: Season vs One-Off Distinction ── */
+.league-upcoming-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.league-upcoming-group:last-child {
+    margin-bottom: 0;
+}
+
+.league-upcoming-group-header {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    padding: 0.25rem 0.25rem 0;
+}
+
+.league-upcoming-group-header i {
+    font-size: 0.65rem;
+    opacity: 0.7;
+}
+
+/* Season event rows — solid left accent using primary */
+.league-event-season {
+    border-left: 3px solid var(--primary);
+}
+
+/* One-off event rows — dashed border with a distinct amber/gold accent */
+.league-event-oneoff {
+    border-left: 3px dashed #d97706;
+}
+
+.league-event-oneoff:hover {
+    border-color: #d97706;
+    box-shadow: 0 0 0 1px #d97706;
+}
+
+/* Type icon inline with event name */
+.league-event-type-icon {
+    font-size: 0.7rem;
+    margin-right: 0.35rem;
+    vertical-align: baseline;
+}
+
+.league-event-type-icon-season {
+    color: var(--primary);
+}
+
+.league-event-type-icon-oneoff {
+    color: #d97706;
+}
+
+/* Status badges per type */
+.league-event-badge-season {
+    background: rgba(220, 38, 38, 0.1);
+    color: var(--primary);
+}
+
+.league-event-badge-oneoff {
+    background: rgba(217, 119, 6, 0.12);
+    color: #92400e;
+}
+
 /* ── Active Game Cards ── */
 .league-detail-active-games-list {
     display: flex;

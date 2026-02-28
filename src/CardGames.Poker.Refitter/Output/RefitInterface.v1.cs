@@ -6094,8 +6094,8 @@ namespace CardGames.Poker.Api.Contracts
     public enum LeagueOneOffEventType
     {
 
-        [System.Runtime.Serialization.EnumMember(Value = @"GameNight")]
-        GameNight = 0,
+        [System.Runtime.Serialization.EnumMember(Value = @"CashGame")]
+        CashGame = 0,
 
         [System.Runtime.Serialization.EnumMember(Value = @"Tournament")]
         Tournament = 1,

@@ -146,13 +146,13 @@ MVP note:
 
 ## One-Off Events UX
 In `Schedule` section, separate list from seasons:
-- Event rows: title, date/time, type (`Game night` or `Tournament`), status.
+- Event rows: title, date/time, type (`Cash game` or `Tournament`), status.
 - Admin CTA: `Create one-off event`.
 
 Create one-off event form (minimal):
 - `Title` (required)
 - `Date/time` (required)
-- `Event type` (`Game night` or `Tournament`)
+- `Event type` (`Cash game` or `Tournament`)
 - Optional notes
 
 ## Components (Conceptual)

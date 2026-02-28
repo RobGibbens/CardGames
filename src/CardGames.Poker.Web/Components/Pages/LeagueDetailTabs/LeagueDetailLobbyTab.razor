@@ -100,28 +100,54 @@
 				}
 				else
 				{
-					<div class="league-detail-event-list">
-						@foreach (var se in upcomingSeasonEvents)
-						{
-							<div class="league-detail-event-row">
-								<div class="league-detail-event-info">
-									<span class="league-detail-event-name">@se.Name</span>
-									<span class="league-detail-event-date">@FormatDate(se.ScheduledAtUtc)</span>
-								</div>
-								<span class="league-detail-event-status">@se.Status</span>
+					@if (upcomingSeasonEvents.Count > 0)
+					{
+						<div class="league-upcoming-group">
+							<div class="league-upcoming-group-header">
+								<i class="fa-solid fa-layer-group"></i>
+								<span>Season Events</span>
 							</div>
-						}
-						@foreach (var oo in upcomingOneOffs)
-						{
-							<div class="league-detail-event-row">
-								<div class="league-detail-event-info">
-									<span class="league-detail-event-name">@oo.Name</span>
-									<span class="league-detail-event-date">@oo.ScheduledAtUtc.ToLocalTime().ToString("g")</span>
-								</div>
-								<span class="league-detail-event-status">@oo.EventType</span>
+							<div class="league-detail-event-list">
+								@foreach (var se in upcomingSeasonEvents)
+								{
+									<div class="league-detail-event-row league-event-season">
+										<div class="league-detail-event-info">
+											<span class="league-detail-event-name">
+												<i class="fa-solid fa-trophy league-event-type-icon league-event-type-icon-season"></i>
+												@se.Name
+											</span>
+											<span class="league-detail-event-date">@FormatDate(se.ScheduledAtUtc)</span>
+										</div>
+										<span class="league-detail-event-status league-event-badge-season">@se.Status</span>
+									</div>
+								}
 							</div>
-						}
-					</div>
+						</div>
+					}
+					@if (upcomingOneOffs.Count > 0)
+					{
+						<div class="league-upcoming-group">
+							<div class="league-upcoming-group-header">
+								<i class="fa-solid fa-sparkles"></i>
+								<span>One-Off Events</span>
+							</div>
+							<div class="league-detail-event-list">
+								@foreach (var oo in upcomingOneOffs)
+								{
+									<div class="league-detail-event-row league-event-oneoff">
+										<div class="league-detail-event-info">
+											<span class="league-detail-event-name">
+												<i class="fa-solid @(oo.EventType == LeagueOneOffEventType.Tournament ? "fa-ranking-star" : "fa-dice") league-event-type-icon league-event-type-icon-oneoff"></i>
+												@oo.Name
+											</span>
+											<span class="league-detail-event-date">@oo.ScheduledAtUtc.ToLocalTime().ToString("g")</span>
+										</div>
+										<span class="league-detail-event-status league-event-badge-oneoff">@FormatOneOffEventType(oo.EventType)</span>
+									</div>
+								}
+							</div>
+						</div>
+					}
 				}
 			</section>
 		</div>
@@ -299,6 +325,16 @@
 			index > 0 && char.IsUpper(ch) && !char.IsWhiteSpace(phase[index - 1])
 				? $" {ch}"
 				: ch.ToString()));
+	}
+
+	private static string FormatOneOffEventType(LeagueOneOffEventType? eventType)
+	{
+		return eventType switch
+		{
+			LeagueOneOffEventType.Tournament => "Tournament",
+			LeagueOneOffEventType.CashGame => "Cash Game",
+			_ => "One-Off"
+		};
 	}
 
 	private static string FormatChipsDelta(int chipsDelta)

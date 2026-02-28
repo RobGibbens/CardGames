@@ -47,7 +47,7 @@ public enum LeagueSeasonEventStatus
 
 public enum LeagueOneOffEventType
 {
-	GameNight = 1,
+	CashGame = 1,
 	Tournament = 2
 }
 

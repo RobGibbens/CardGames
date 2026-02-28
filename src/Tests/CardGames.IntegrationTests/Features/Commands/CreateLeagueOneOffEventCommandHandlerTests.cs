@@ -28,7 +28,7 @@ public class CreateLeagueOneOffEventCommandHandlerTests : IntegrationTestBase
 		{
 			Name = "Friday Night",
 			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(3),
-			EventType = CardGames.Poker.Api.Contracts.LeagueOneOffEventType.GameNight
+			EventType = CardGames.Poker.Api.Contracts.LeagueOneOffEventType.CashGame
 		}));
 
 		result.IsT0.Should().BeTrue();

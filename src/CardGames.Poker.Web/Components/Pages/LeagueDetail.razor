@@ -429,7 +429,7 @@
 	private bool _isSubmittingSeasonEvent;
 	private bool _showSeasonEventModal;
 
-	private LeagueOneOffEventType _oneOffType = LeagueOneOffEventType.GameNight;
+	private LeagueOneOffEventType _oneOffType = LeagueOneOffEventType.CashGame;
 	private bool _showOneOffModal;
 	private bool _showCreateDropdown;
 	private Guid? _launchingSeasonEventId;
@@ -1401,7 +1401,7 @@ CreateLeagueSeasonEventRequest
 
 	private void OpenOneOffModal()
 	{
-		_oneOffType = LeagueOneOffEventType.GameNight;
+		_oneOffType = LeagueOneOffEventType.CashGame;
 		_showOneOffModal = true;
 	}
 
@@ -1433,7 +1433,7 @@ CreateLeagueSeasonEventRequest
 	private void OpenCreateCashGame()
 	{
 		_showCreateDropdown = false;
-		_oneOffType = LeagueOneOffEventType.GameNight;
+		_oneOffType = LeagueOneOffEventType.CashGame;
 		_showOneOffModal = true;
 	}
 
