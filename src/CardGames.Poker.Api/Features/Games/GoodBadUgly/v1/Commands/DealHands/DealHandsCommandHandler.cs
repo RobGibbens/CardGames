@@ -10,7 +10,7 @@ using BettingRoundEntity = CardGames.Poker.Api.Data.Entities.BettingRound;
 using CardSuit = CardGames.Poker.Api.Data.Entities.CardSuit;
 using CardSymbol = CardGames.Poker.Api.Data.Entities.CardSymbol;
 
-namespace CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.DealHands;
+namespace CardGames.Poker.Api.Features.Games.GoodBadUgly.v1.Commands.DealHands;
 
 /// <summary>
 /// Handles the <see cref="DealHandsCommand"/> to deal cards for the current Seven Card Stud street.
@@ -49,24 +49,19 @@ public class DealHandsCommandHandler(
 			"Game loaded for dealing: Phase {Phase}, Hand {HandNumber}, Players {PlayerCount}",
 			game.CurrentPhase, game.CurrentHandNumber, game.GamePlayers.Count);
 
-		if (string.Equals(game.GameType?.Code, "GOODBADUGLY", StringComparison.OrdinalIgnoreCase))
-		{
-			return new DealHandsError
-			{
-				Message = "Good Bad Ugly dealing is handled by the GoodBadUgly endpoint.",
-				Code = DealHandsErrorCode.InvalidGameState
-			};
-		}
+		var isGoodBadUgly = string.Equals(game.GameType?.Code, "GOODBADUGLY", StringComparison.OrdinalIgnoreCase);
 
 		// 2. Validate game state
-		var validPhases = new[]
-		{
-			nameof(Phases.ThirdStreet),
-			nameof(Phases.FourthStreet),
-			nameof(Phases.FifthStreet),
-			nameof(Phases.SixthStreet),
-			nameof(Phases.SeventhStreet)
-		};
+		var validPhases = isGoodBadUgly
+			? new[] { nameof(Phases.ThirdStreet) }
+			: new[]
+			{
+				nameof(Phases.ThirdStreet),
+				nameof(Phases.FourthStreet),
+				nameof(Phases.FifthStreet),
+				nameof(Phases.SixthStreet),
+				nameof(Phases.SeventhStreet)
+			};
 
 		if (!validPhases.Contains(game.CurrentPhase))
 		{
@@ -175,7 +170,26 @@ public class DealHandsCommandHandler(
 				game.CurrentPhase,
 				string.Join(", ", existingCards.Select(c => $"{c.Symbol}{c.Suit}(DO={c.DealOrder})")));
 
-			if (game.CurrentPhase == nameof(Phases.ThirdStreet))
+			if (isGoodBadUgly && game.CurrentPhase == nameof(Phases.ThirdStreet))
+			{
+				// Good Bad Ugly: deal 4 hole cards face-down to each player
+				for (int i = 0; i < 4; i++)
+				{
+					if (deckIndex >= deckCards.Count)
+					{
+						return new DealHandsError
+						{
+							Message = "Not enough cards in deck to complete dealing.",
+							Code = DealHandsErrorCode.InvalidGameState
+						};
+					}
+
+					var gameCard = deckCards[deckIndex++];
+					AssignCardToPlayer(gameCard, gamePlayer, CardLocation.Hole, playerDealOrder++, false, game.CurrentPhase, now);
+					dealtCards.Add(new DealtCard { Suit = gameCard.Suit, Symbol = gameCard.Symbol, DealOrder = gameCard.DealOrder });
+				}
+			}
+			else if (game.CurrentPhase == nameof(Phases.ThirdStreet))
 			{
 				// Deal 2 hole + 1 board
 				for (int i = 0; i < 2; i++)
@@ -253,6 +267,31 @@ public class DealHandsCommandHandler(
 				string.Join(", ", dealtCards.Select(c => $"{c.Symbol}{c.Suit}(DO={c.DealOrder})")));
 		}
 
+		if (isGoodBadUgly)
+		{
+			// Good Bad Ugly: deal 3 face-down community cards (The Good, The Bad, The Ugly)
+			var tablePhases = new[] { "TheGood", "TheBad", "TheUgly" };
+			for (var index = 0; index < tablePhases.Length; index++)
+			{
+				if (deckIndex >= deckCards.Count)
+				{
+					return new DealHandsError
+					{
+						Message = "Not enough cards in deck to complete dealing community cards.",
+						Code = DealHandsErrorCode.InvalidGameState
+					};
+				}
+
+				var communityCard = deckCards[deckIndex++];
+				communityCard.GamePlayerId = null;
+				communityCard.Location = CardLocation.Community;
+				communityCard.DealOrder = index + 1;
+				communityCard.DealtAtPhase = tablePhases[index];
+				communityCard.IsVisible = false;
+				communityCard.DealtAt = now;
+			}
+		}
+
 		// 6. Reset current bets for all players before betting round
 		foreach (var gamePlayer in game.GamePlayers)
 		{
@@ -267,7 +306,11 @@ public class DealHandsCommandHandler(
 		int firstActorSeatPosition;
 		int currentBet = 0;
 
-		if (game.CurrentPhase == nameof(Phases.ThirdStreet))
+		if (isGoodBadUgly)
+		{
+			firstActorSeatPosition = FindFirstActivePlayerAfterDealer(game, activePlayers);
+		}
+		else if (game.CurrentPhase == nameof(Phases.ThirdStreet))
 		{
 			// Third Street: bring-in player is lowest up card
 			firstActorSeatPosition = FindBringInPlayer(activePlayers, playerHands);
@@ -298,16 +341,25 @@ public class DealHandsCommandHandler(
 		var minBet = isSmallBetStreet ? (game.SmallBet ?? game.MinBet ?? 0) : (game.BigBet ?? game.MinBet ?? 0);
 
 		// 9. Create betting round record
-		var roundNumber = game.CurrentPhase switch
-		{
-			nameof(Phases.ThirdStreet) => 1,
-			nameof(Phases.FourthStreet) => 2,
-			nameof(Phases.FifthStreet) => 3,
-			nameof(Phases.SixthStreet) => 4,
-			nameof(Phases.SeventhStreet) => 5,
-			nameof(Phases.Showdown) => 6,
-			_ => 1
-		};
+		var roundNumber = isGoodBadUgly
+			? game.CurrentPhase switch
+			{
+				nameof(Phases.ThirdStreet) => 1,
+				nameof(Phases.FourthStreet) => 2,
+				nameof(Phases.FifthStreet) => 3,
+				nameof(Phases.SixthStreet) => 4,
+				_ => 1
+			}
+			: game.CurrentPhase switch
+			{
+				nameof(Phases.ThirdStreet) => 1,
+				nameof(Phases.FourthStreet) => 2,
+				nameof(Phases.FifthStreet) => 3,
+				nameof(Phases.SixthStreet) => 4,
+				nameof(Phases.SeventhStreet) => 5,
+				nameof(Phases.Showdown) => 6,
+				_ => 1
+			};
 
 		var bettingRound = new BettingRoundEntity
 		{
@@ -336,9 +388,11 @@ public class DealHandsCommandHandler(
 
 		// 10. Update game state - remain in street phase for betting
 		game.CurrentPlayerIndex = firstActorSeatPosition;
-		game.BringInPlayerIndex = game.CurrentPhase == nameof(Phases.ThirdStreet)
-			? firstActorSeatPosition
-			: -1;
+		game.BringInPlayerIndex = isGoodBadUgly
+			? -1
+			: game.CurrentPhase == nameof(Phases.ThirdStreet)
+				? firstActorSeatPosition
+				: -1;
 		game.Status = GameStatus.InProgress;
 		game.UpdatedAt = now;
 
@@ -554,4 +608,28 @@ public class DealHandsCommandHandler(
 		gameCard.DealtAt = now;
 	}
 
+	private static int FindFirstActivePlayerAfterDealer(Game game, List<GamePlayer> activePlayers)
+	{
+		if (activePlayers.Count == 0)
+		{
+			return -1;
+		}
+
+		var maxSeatPosition = activePlayers.Max(p => p.SeatPosition);
+		var totalSeats = maxSeatPosition + 1;
+		var searchIndex = (game.DealerPosition + 1) % totalSeats;
+
+		for (var i = 0; i < totalSeats; i++)
+		{
+			var player = activePlayers.FirstOrDefault(p => p.SeatPosition == searchIndex);
+			if (player is not null && !player.HasFolded && !player.IsAllIn)
+			{
+				return searchIndex;
+			}
+
+			searchIndex = (searchIndex + 1) % totalSeats;
+		}
+
+		return activePlayers[0].SeatPosition;
+	}
 }

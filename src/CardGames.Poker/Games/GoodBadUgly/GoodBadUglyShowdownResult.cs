@@ -39,4 +39,9 @@ public class GoodBadUglyShowdownResult
 	/// Names of players eliminated by "The Ugly".
 	/// </summary>
 	public IReadOnlyList<string> EliminatedPlayers { get; init; }
+
+	/// <summary>
+	/// True when all remaining players were eliminated by "The Ugly" and the pot was split among them.
+	/// </summary>
+	public bool AllRemainingPlayersEliminatedByUgly { get; init; }
 }

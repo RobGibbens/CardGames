@@ -14,9 +14,9 @@ public static class GoodBadUglyRules
         {
             GameTypeCode = "GOODBADUGLY",
             GameTypeName = "The Good, the Bad, and the Ugly",
-            Description = "Seven Card Stud with three table cards. 'The Good' makes a rank wild, 'The Bad' forces discards of matching cards, and 'The Ugly' eliminates players with matching face-up cards.",
+            Description = "Each player receives four hole cards and shares three community cards. The Good sets wild cards, The Bad forces discards, and The Ugly creates dead hands that can still bet.",
             MinPlayers = 2,
-            MaxPlayers = 7,
+            MaxPlayers = 10,
             Phases = new List<GamePhaseDescriptor>
             {
                 new()
@@ -38,17 +38,8 @@ public static class GoodBadUglyRules
                 new()
                 {
                     PhaseId = "ThirdStreet",
-                    Name = "Third Street",
-                    Description = "2 down cards and 1 up card dealt, bring-in betting round",
-                    Category = "Betting",
-                    RequiresPlayerAction = true,
-                    AvailableActions = new[] { "Call", "Raise", "Fold", "AllIn" }
-                },
-                new()
-                {
-                    PhaseId = "FourthStreet",
-                    Name = "Fourth Street",
-                    Description = "1 up card dealt, betting round with small bet",
+                    Name = "Initial Betting",
+                    Description = "After each player is dealt 4 face-down cards and 3 community cards are dealt face-down, betting starts left of dealer",
                     Category = "Betting",
                     RequiresPlayerAction = true,
                     AvailableActions = new[] { "Check", "Bet", "Call", "Raise", "Fold", "AllIn" }
@@ -57,15 +48,15 @@ public static class GoodBadUglyRules
                 {
                     PhaseId = "RevealTheGood",
                     Name = "Reveal The Good",
-                    Description = "First table card is revealed — matching ranks become wild",
+                    Description = "First community card is revealed — matching ranks become wild",
                     Category = "Special",
                     RequiresPlayerAction = false
                 },
                 new()
                 {
-                    PhaseId = "FifthStreet",
-                    Name = "Fifth Street",
-                    Description = "1 up card dealt, betting round with big bet",
+                    PhaseId = "FourthStreet",
+                    Name = "Betting After The Good",
+                    Description = "Betting round after The Good reveal",
                     Category = "Betting",
                     RequiresPlayerAction = true,
                     AvailableActions = new[] { "Check", "Bet", "Call", "Raise", "Fold", "AllIn" }
@@ -74,15 +65,15 @@ public static class GoodBadUglyRules
                 {
                     PhaseId = "RevealTheBad",
                     Name = "Reveal The Bad",
-                    Description = "Second table card is revealed — matching cards in any hand must be discarded",
+                    Description = "Second community card is revealed — matching cards in hand are discarded",
                     Category = "Special",
                     RequiresPlayerAction = false
                 },
                 new()
                 {
-                    PhaseId = "SixthStreet",
-                    Name = "Sixth Street",
-                    Description = "1 up card dealt, betting round with big bet",
+                    PhaseId = "FifthStreet",
+                    Name = "Betting After The Bad",
+                    Description = "Betting round after The Bad reveal",
                     Category = "Betting",
                     RequiresPlayerAction = true,
                     AvailableActions = new[] { "Check", "Bet", "Call", "Raise", "Fold", "AllIn" }
@@ -91,15 +82,15 @@ public static class GoodBadUglyRules
                 {
                     PhaseId = "RevealTheUgly",
                     Name = "Reveal The Ugly",
-                    Description = "Third table card is revealed — players with matching face-up cards are eliminated",
+                    Description = "Third community card is revealed — players with matching cards have dead hands but may still bet",
                     Category = "Special",
                     RequiresPlayerAction = false
                 },
                 new()
                 {
-                    PhaseId = "SeventhStreet",
-                    Name = "Seventh Street (River)",
-                    Description = "1 down card dealt, final betting round with big bet",
+                    PhaseId = "SixthStreet",
+                    Name = "Final Betting",
+                    Description = "Final betting round; players eliminated by The Ugly may still bet to buy the pot",
                     Category = "Betting",
                     RequiresPlayerAction = true,
                     AvailableActions = new[] { "Check", "Bet", "Call", "Raise", "Fold", "AllIn" }
@@ -124,24 +115,20 @@ public static class GoodBadUglyRules
             },
             CardDealing = new CardDealingConfig
             {
-                InitialCards = 3,
-                InitialVisibility = CardVisibility.Mixed,
-                HasCommunityCards = false,
+                InitialCards = 4,
+                InitialVisibility = CardVisibility.FaceDown,
+                HasCommunityCards = true,
                 DealingRounds = new List<DealingRound>
                 {
-                    new() { CardCount = 2, Visibility = CardVisibility.FaceDown, Target = DealingTarget.Players },
-                    new() { CardCount = 1, Visibility = CardVisibility.FaceUp, Target = DealingTarget.Players },
-                    new() { CardCount = 1, Visibility = CardVisibility.FaceUp, Target = DealingTarget.Players },
-                    new() { CardCount = 1, Visibility = CardVisibility.FaceUp, Target = DealingTarget.Players },
-                    new() { CardCount = 1, Visibility = CardVisibility.FaceUp, Target = DealingTarget.Players },
-                    new() { CardCount = 1, Visibility = CardVisibility.FaceDown, Target = DealingTarget.Players }
+                    new() { CardCount = 4, Visibility = CardVisibility.FaceDown, Target = DealingTarget.Players },
+                    new() { CardCount = 3, Visibility = CardVisibility.FaceDown, Target = DealingTarget.Community }
                 }
             },
             Betting = new BettingConfig
             {
                 HasAntes = true,
                 HasBlinds = false,
-                BettingRounds = 5,
+                BettingRounds = 4,
                 Structure = "Fixed Limit"
             },
             Drawing = null,
@@ -149,19 +136,19 @@ public static class GoodBadUglyRules
             {
                 HandRanking = "Standard Poker (High) with Wild Cards",
                 IsHighLow = false,
-                HasSpecialSplitRules = false
+                HasSpecialSplitRules = true
             },
             SpecialRules = new Dictionary<string, object>
             {
-                ["HasBringIn"] = true,
-                ["BringInOnLowestCard"] = true,
-                ["MaxPlayerCards"] = 7,
+                ["HasBringIn"] = false,
+                ["BringInOnLowestCard"] = false,
+                ["MaxPlayerCards"] = 4,
                 ["TableCards"] = 3,
-                ["TheGood"] = "First table card revealed after 4th street — matching ranks become wild",
-                ["TheBad"] = "Second table card revealed after 5th street — matching cards must be discarded",
-                ["TheUgly"] = "Third table card revealed after 6th street — players with matching face-up cards are eliminated",
+                ["TheGood"] = "First community card revealed after the first betting round — matching ranks become wild",
+                ["TheBad"] = "Second community card revealed after the second betting round — matching cards in hand are discarded",
+                ["TheUgly"] = "Third community card revealed after the third betting round — matching hands are dead but can still bet",
                 ["WildCards"] = "Dynamic — determined by The Good table card",
-                ["SuitOrderForBringIn"] = "Clubs, Diamonds, Hearts, Spades (lowest to highest)"
+                ["AllEliminatedSplitRule"] = true
             }
         };
     }

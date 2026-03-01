@@ -55,35 +55,7 @@ public sealed class GoodBadUglyFlowHandler : BaseGameFlowHandler
                 new DealingRoundConfig
                 {
                     PhaseName = nameof(Phases.ThirdStreet),
-                    HoleCards = 2,
-                    BoardCards = 1,
-                    HasBettingAfter = true
-                },
-                new DealingRoundConfig
-                {
-                    PhaseName = nameof(Phases.FourthStreet),
-                    HoleCards = 0,
-                    BoardCards = 1,
-                    HasBettingAfter = true
-                },
-                new DealingRoundConfig
-                {
-                    PhaseName = nameof(Phases.FifthStreet),
-                    HoleCards = 0,
-                    BoardCards = 1,
-                    HasBettingAfter = true
-                },
-                new DealingRoundConfig
-                {
-                    PhaseName = nameof(Phases.SixthStreet),
-                    HoleCards = 0,
-                    BoardCards = 1,
-                    HasBettingAfter = true
-                },
-                new DealingRoundConfig
-                {
-                    PhaseName = nameof(Phases.SeventhStreet),
-                    HoleCards = 1,
+                    HoleCards = 4,
                     BoardCards = 0,
                     HasBettingAfter = true
                 }
@@ -103,14 +75,13 @@ public sealed class GoodBadUglyFlowHandler : BaseGameFlowHandler
         return currentPhase switch
         {
             nameof(Phases.CollectingAntes) => nameof(Phases.ThirdStreet),
-            nameof(Phases.ThirdStreet) => nameof(Phases.FourthStreet),
-            nameof(Phases.FourthStreet) => nameof(Phases.RevealTheGood),
-            nameof(Phases.RevealTheGood) => nameof(Phases.FifthStreet),
-            nameof(Phases.FifthStreet) => nameof(Phases.RevealTheBad),
-            nameof(Phases.RevealTheBad) => nameof(Phases.SixthStreet),
-            nameof(Phases.SixthStreet) => nameof(Phases.RevealTheUgly),
-            nameof(Phases.RevealTheUgly) => nameof(Phases.SeventhStreet),
-            nameof(Phases.SeventhStreet) => nameof(Phases.Showdown),
+            nameof(Phases.ThirdStreet) => nameof(Phases.RevealTheGood),
+            nameof(Phases.RevealTheGood) => nameof(Phases.FourthStreet),
+            nameof(Phases.FourthStreet) => nameof(Phases.RevealTheBad),
+            nameof(Phases.RevealTheBad) => nameof(Phases.FifthStreet),
+            nameof(Phases.FifthStreet) => nameof(Phases.RevealTheUgly),
+            nameof(Phases.RevealTheUgly) => nameof(Phases.SixthStreet),
+            nameof(Phases.SixthStreet) => nameof(Phases.Showdown),
             nameof(Phases.Showdown) => nameof(Phases.Complete),
             _ => base.GetNextPhase(game, currentPhase)
         };
@@ -124,8 +95,7 @@ public sealed class GoodBadUglyFlowHandler : BaseGameFlowHandler
         nameof(Phases.ThirdStreet),
         nameof(Phases.FourthStreet),
         nameof(Phases.FifthStreet),
-        nameof(Phases.SixthStreet),
-        nameof(Phases.SeventhStreet)
+        nameof(Phases.SixthStreet)
     ];
 
     /// <summary>
@@ -210,13 +180,11 @@ public sealed class GoodBadUglyFlowHandler : BaseGameFlowHandler
             .OrderBy(p => (p.SeatPosition - dealerPosition - 1 + totalSeats) % totalSeats)
             .ToList();
 
-        var playerUpCards = new List<(GamePlayer Player, GameCard UpCard)>();
-
-        // Deal Third Street: 2 hole cards + 1 board card per player
+        // Deal Third Street: 4 hole cards per player
         var dealOrder = 10; // Start after table cards
         foreach (var player in playersInDealOrder)
         {
-            for (var i = 0; i < 2; i++)
+            for (var i = 0; i < 4; i++)
             {
                 if (deckIndex >= deckCards.Count) break;
 
@@ -228,18 +196,6 @@ public sealed class GoodBadUglyFlowHandler : BaseGameFlowHandler
                 card.DealtAtPhase = nameof(Phases.ThirdStreet);
                 card.DealtAt = now;
             }
-
-            if (deckIndex >= deckCards.Count) break;
-
-            var boardCard = deckCards[deckIndex++];
-            boardCard.GamePlayerId = player.Id;
-            boardCard.Location = CardLocation.Board;
-            boardCard.DealOrder = dealOrder++;
-            boardCard.IsVisible = true;
-            boardCard.DealtAtPhase = nameof(Phases.ThirdStreet);
-            boardCard.DealtAt = now;
-
-            playerUpCards.Add((player, boardCard));
         }
 
         // Reset CurrentBet for all players
@@ -248,32 +204,7 @@ public sealed class GoodBadUglyFlowHandler : BaseGameFlowHandler
             player.CurrentBet = 0;
         }
 
-        // Determine bring-in player (lowest up card)
-        var bringInPlayer = FindBringInPlayer(playerUpCards);
-        var bringInSeatPosition = bringInPlayer?.SeatPosition ??
-            playersInDealOrder.FirstOrDefault()?.SeatPosition ?? 0;
-
-        // Post bring-in bet if configured
-        var bringIn = game.BringIn ?? 0;
-        var currentBet = 0;
-        if (bringIn > 0 && bringInPlayer is not null)
-        {
-            var actualBringIn = Math.Min(bringIn, bringInPlayer.ChipStack);
-            bringInPlayer.CurrentBet = actualBringIn;
-            bringInPlayer.ChipStack -= actualBringIn;
-            bringInPlayer.TotalContributedThisHand += actualBringIn;
-            currentBet = actualBringIn;
-
-            var pot = await context.Pots
-                .FirstOrDefaultAsync(p => p.GameId == game.Id &&
-                                          p.HandNumber == game.CurrentHandNumber &&
-                                          p.PotType == PotType.Main,
-                                 cancellationToken);
-            if (pot is not null)
-            {
-                pot.Amount += actualBringIn;
-            }
-        }
+        var firstActorSeatPosition = playersInDealOrder.FirstOrDefault()?.SeatPosition ?? -1;
 
         // Create betting round for Third Street
         var minBet = game.SmallBet ?? game.MinBet ?? 0;
@@ -283,14 +214,14 @@ public sealed class GoodBadUglyFlowHandler : BaseGameFlowHandler
             HandNumber = game.CurrentHandNumber,
             RoundNumber = 1,
             Street = nameof(Phases.ThirdStreet),
-            CurrentBet = currentBet,
+            CurrentBet = 0,
             MinBet = minBet,
             RaiseCount = 0,
             MaxRaises = 0,
             LastRaiseAmount = 0,
             PlayersInHand = eligiblePlayers.Count,
             PlayersActed = 0,
-            CurrentActorIndex = bringInSeatPosition,
+            CurrentActorIndex = firstActorSeatPosition,
             LastAggressorIndex = -1,
             IsComplete = false,
             StartedAt = now
@@ -300,8 +231,8 @@ public sealed class GoodBadUglyFlowHandler : BaseGameFlowHandler
 
         // Update game state
         game.CurrentPhase = nameof(Phases.ThirdStreet);
-        game.CurrentPlayerIndex = bringInSeatPosition;
-        game.BringInPlayerIndex = bringInSeatPosition;
+        game.CurrentPlayerIndex = firstActorSeatPosition;
+        game.BringInPlayerIndex = -1;
         game.UpdatedAt = now;
 
         await context.SaveChangesAsync(cancellationToken);

@@ -1,7 +1,7 @@
 using System.Text.Json;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
-using CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.DealHands;
+using CardGames.Poker.Api.Features.Games.GoodBadUgly.v1.Commands.DealHands;
 using CardGames.Poker.Betting;
 using CardGames.Poker.Games.SevenCardStud;
 using MediatR;
@@ -11,7 +11,7 @@ using OneOf;
 using BettingActionType = CardGames.Poker.Api.Data.Entities.BettingActionType;
 using BettingRound = CardGames.Poker.Api.Data.Entities.BettingRound;
 
-namespace CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.ProcessBettingAction;
+namespace CardGames.Poker.Api.Features.Games.GoodBadUgly.v1.Commands.ProcessBettingAction;
 
 /// <summary>
 /// Handles the <see cref="ProcessBettingActionCommand"/> to process betting actions from players.
@@ -54,14 +54,7 @@ public class ProcessBettingActionCommandHandler(
 			"Game loaded: Hand {HandNumber}, Phase {Phase}, PlayerIndex {PlayerIndex}",
 			game.CurrentHandNumber, game.CurrentPhase, game.CurrentPlayerIndex);
 
-		if (string.Equals(game.GameType?.Code, "GOODBADUGLY", StringComparison.OrdinalIgnoreCase))
-		{
-			return new ProcessBettingActionError
-			{
-				Message = "Good Bad Ugly betting actions are handled by the GoodBadUgly endpoint.",
-				Code = ProcessBettingActionErrorCode.InvalidGameState
-			};
-		}
+		var isGoodBadUgly = string.Equals(game.GameType?.Code, "GOODBADUGLY", StringComparison.OrdinalIgnoreCase);
 
 		// Load the active betting round for the current hand separately to avoid filtered include issues
 		var bettingRounds = await context.BettingRounds
@@ -77,15 +70,24 @@ public class ProcessBettingActionCommandHandler(
 			bettingRounds.Count, game.Id, game.CurrentHandNumber);
 
 		// 2. Validate game is in a betting phase
-		var validBettingPhases = new[]
-		{
-			nameof(Phases.ThirdStreet),
-			nameof(Phases.FourthStreet),
-			nameof(Phases.FifthStreet),
-			nameof(Phases.SixthStreet),
-			nameof(Phases.SeventhStreet),
-			nameof(Phases.Showdown)
-		};
+		var validBettingPhases = isGoodBadUgly
+			? new[]
+			{
+				nameof(Phases.ThirdStreet),
+				nameof(Phases.FourthStreet),
+				nameof(Phases.FifthStreet),
+				nameof(Phases.SixthStreet),
+				nameof(Phases.Showdown)
+			}
+			: new[]
+			{
+				nameof(Phases.ThirdStreet),
+				nameof(Phases.FourthStreet),
+				nameof(Phases.FifthStreet),
+				nameof(Phases.SixthStreet),
+				nameof(Phases.SeventhStreet),
+				nameof(Phases.Showdown)
+			};
 
 		if (!validBettingPhases.Contains(game.CurrentPhase))
 		{
@@ -205,6 +207,94 @@ public class ProcessBettingActionCommandHandler(
 			bettingRound.IsComplete = true;
 			bettingRound.CompletedAt = now;
 			nextPlayerIndex = -1;
+
+			if (isGoodBadUgly)
+			{
+				var allPlayersAllInForGbu = AreAllPlayersAllIn(activePlayers);
+				if (allPlayersAllInForGbu)
+				{
+					AdvanceToNextPhaseGoodBadUgly(game, activePlayers);
+					await ResolveGoodBadUglySpecialPhasesAsync(game, activePlayers, now, cancellationToken);
+					game.CurrentPhase = nameof(Phases.Showdown);
+					game.CurrentPlayerIndex = -1;
+					nextPlayerName = null;
+					game.UpdatedAt = now;
+					await context.SaveChangesAsync(cancellationToken);
+
+					return new ProcessBettingActionSuccessful
+					{
+						GameId = game.Id,
+						RoundComplete = true,
+						CurrentPhase = game.CurrentPhase,
+						Action = new BettingActionResult
+						{
+							PlayerName = currentPlayer.Player.Name,
+							ActionType = command.ActionType,
+							Amount = actualAmount,
+							ChipStackAfter = currentPlayer.ChipStack
+						},
+						PlayerSeatIndex = currentPlayer.SeatPosition,
+						NextPlayerIndex = -1,
+						NextPlayerName = null,
+						PotTotal = game.Pots.Sum(p => p.Amount),
+						CurrentBet = bettingRound.CurrentBet
+					};
+				}
+
+				AdvanceToNextPhaseGoodBadUgly(game, activePlayers);
+				await ResolveGoodBadUglySpecialPhasesAsync(game, activePlayers, now, cancellationToken);
+
+				if (game.CurrentPhase is nameof(Phases.ThirdStreet) or nameof(Phases.FourthStreet) or nameof(Phases.FifthStreet) or nameof(Phases.SixthStreet))
+				{
+					var firstActor = FindFirstActivePlayerAfterDealer(game, activePlayers);
+					nextPlayerIndex = firstActor;
+					game.CurrentPlayerIndex = firstActor;
+					nextPlayerName = activePlayers.FirstOrDefault(p => p.SeatPosition == firstActor)?.Player.Name;
+
+					var minBet = game.CurrentPhase is nameof(Phases.ThirdStreet) or nameof(Phases.FourthStreet)
+						? (game.SmallBet ?? game.MinBet ?? 0)
+						: (game.BigBet ?? game.MinBet ?? 0);
+
+					var roundNumber = game.CurrentPhase switch
+					{
+						nameof(Phases.ThirdStreet) => 1,
+						nameof(Phases.FourthStreet) => 2,
+						nameof(Phases.FifthStreet) => 3,
+						nameof(Phases.SixthStreet) => 4,
+						_ => 1
+					};
+
+					context.BettingRounds.Add(new BettingRound
+					{
+						GameId = game.Id,
+						HandNumber = game.CurrentHandNumber,
+						RoundNumber = roundNumber,
+						Street = game.CurrentPhase,
+						CurrentBet = 0,
+						MinBet = minBet,
+						RaiseCount = 0,
+						MaxRaises = 0,
+						LastRaiseAmount = 0,
+						PlayersInHand = activePlayers.Count(p => !p.HasFolded),
+						PlayersActed = 0,
+						CurrentActorIndex = firstActor,
+						LastAggressorIndex = -1,
+						IsComplete = false,
+						StartedAt = now
+					});
+				}
+				else
+				{
+					nextPlayerIndex = -1;
+					nextPlayerName = null;
+					game.CurrentPlayerIndex = -1;
+				}
+
+				game.UpdatedAt = now;
+				await context.SaveChangesAsync(cancellationToken);
+			}
+			else
+			{
 
 			// Check if all players are all-in (fewer than 2 players can bet)
 			// If so, deal remaining cards without betting and go to showdown
@@ -342,6 +432,7 @@ public class ProcessBettingActionCommandHandler(
 			{
 				// Not advancing to a new street (e.g., going to Showdown), just save
 				await context.SaveChangesAsync(cancellationToken);
+			}
 			}
 		}
 		else
@@ -594,6 +685,129 @@ public class ProcessBettingActionCommandHandler(
 				game.CurrentPhase = nameof(Phases.Showdown);
 				game.CurrentPlayerIndex = -1;
 				break;
+		}
+	}
+
+	private static void AdvanceToNextPhaseGoodBadUgly(Game game, List<GamePlayer> activePlayers)
+	{
+		var playersInHand = activePlayers.Count(gp => !gp.HasFolded);
+		if (playersInHand <= 1)
+		{
+			game.CurrentPhase = nameof(Phases.Showdown);
+			game.CurrentPlayerIndex = -1;
+			return;
+		}
+
+		foreach (var gamePlayer in activePlayers)
+		{
+			gamePlayer.CurrentBet = 0;
+		}
+
+		game.CurrentPhase = game.CurrentPhase switch
+		{
+			nameof(Phases.ThirdStreet) => nameof(Phases.RevealTheGood),
+			nameof(Phases.FourthStreet) => nameof(Phases.RevealTheBad),
+			nameof(Phases.FifthStreet) => nameof(Phases.RevealTheUgly),
+			nameof(Phases.SixthStreet) => nameof(Phases.Showdown),
+			_ => game.CurrentPhase
+		};
+	}
+
+	private async Task ResolveGoodBadUglySpecialPhasesAsync(
+		Game game,
+		List<GamePlayer> activePlayers,
+		DateTimeOffset now,
+		CancellationToken cancellationToken)
+	{
+		while (game.CurrentPhase is nameof(Phases.RevealTheGood) or nameof(Phases.RevealTheBad) or nameof(Phases.RevealTheUgly))
+		{
+			if (game.CurrentPhase == nameof(Phases.RevealTheGood))
+			{
+				var goodCard = await context.GameCards.FirstOrDefaultAsync(
+					c => c.GameId == game.Id &&
+						 c.HandNumber == game.CurrentHandNumber &&
+						 c.Location == CardLocation.Community &&
+						 c.DealtAtPhase == "TheGood",
+					cancellationToken);
+
+				if (goodCard is not null)
+				{
+					goodCard.IsVisible = true;
+					goodCard.DealtAt = now;
+				}
+
+				game.CurrentPhase = nameof(Phases.FourthStreet);
+				continue;
+			}
+
+			if (game.CurrentPhase == nameof(Phases.RevealTheBad))
+			{
+				var badCard = await context.GameCards.FirstOrDefaultAsync(
+					c => c.GameId == game.Id &&
+						 c.HandNumber == game.CurrentHandNumber &&
+						 c.Location == CardLocation.Community &&
+						 c.DealtAtPhase == "TheBad",
+					cancellationToken);
+
+				if (badCard is not null)
+				{
+					badCard.IsVisible = true;
+					badCard.DealtAt = now;
+
+					var matchingPlayerCards = await context.GameCards
+						.Where(c => c.GameId == game.Id &&
+									c.HandNumber == game.CurrentHandNumber &&
+									c.GamePlayerId != null &&
+									!c.IsDiscarded &&
+									c.Symbol == badCard.Symbol)
+						.ToListAsync(cancellationToken);
+
+					foreach (var playerCard in matchingPlayerCards)
+					{
+						playerCard.IsDiscarded = true;
+						playerCard.Location = CardLocation.Discarded;
+						playerCard.DealtAt = now;
+					}
+				}
+
+				game.CurrentPhase = nameof(Phases.FifthStreet);
+				continue;
+			}
+
+			var uglyCard = await context.GameCards.FirstOrDefaultAsync(
+				c => c.GameId == game.Id &&
+					 c.HandNumber == game.CurrentHandNumber &&
+					 c.Location == CardLocation.Community &&
+					 c.DealtAtPhase == "TheUgly",
+				cancellationToken);
+
+			if (uglyCard is not null)
+			{
+				uglyCard.IsVisible = true;
+				uglyCard.DealtAt = now;
+
+				var playerCards = await context.GameCards
+					.Where(c => c.GameId == game.Id &&
+								c.HandNumber == game.CurrentHandNumber &&
+								c.GamePlayerId != null &&
+								!c.IsDiscarded)
+					.ToListAsync(cancellationToken);
+
+				var playerCardsByOwner = playerCards
+					.GroupBy(c => c.GamePlayerId!.Value)
+					.ToDictionary(g => g.Key, g => g.ToList());
+
+				foreach (var player in activePlayers.Where(p => !p.HasFolded))
+				{
+					if (playerCardsByOwner.TryGetValue(player.Id, out var ownedCards) &&
+						ownedCards.Any(c => c.Symbol == uglyCard.Symbol))
+					{
+						player.VariantState = "UGLY_ELIMINATED";
+					}
+				}
+			}
+
+			game.CurrentPhase = nameof(Phases.SixthStreet);
 		}
 	}
 

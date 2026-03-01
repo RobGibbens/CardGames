@@ -23,18 +23,17 @@ public class GoodBadUglyRulesTests
         var rules = GoodBadUglyRules.CreateGameRules();
 
         rules.MinPlayers.Should().Be(2);
-        rules.MaxPlayers.Should().Be(7);
+        rules.MaxPlayers.Should().Be(10);
     }
 
     [Fact]
     public void CreateGameRules_ShouldHaveCorrectPhaseCount()
     {
-        // WaitingToStart, CollectingAntes, ThirdStreet, FourthStreet, RevealTheGood,
-        // FifthStreet, RevealTheBad, SixthStreet, RevealTheUgly, SeventhStreet,
-        // Showdown, Complete = 12 phases
+        // WaitingToStart, CollectingAntes, ThirdStreet, RevealTheGood, FourthStreet,
+        // RevealTheBad, FifthStreet, RevealTheUgly, SixthStreet, Showdown, Complete = 11 phases
         var rules = GoodBadUglyRules.CreateGameRules();
 
-        rules.Phases.Should().HaveCount(12);
+        rules.Phases.Should().HaveCount(11);
     }
 
     [Fact]
@@ -45,15 +44,14 @@ public class GoodBadUglyRulesTests
         rules.Phases[0].PhaseId.Should().Be("WaitingToStart");
         rules.Phases[1].PhaseId.Should().Be("CollectingAntes");
         rules.Phases[2].PhaseId.Should().Be("ThirdStreet");
-        rules.Phases[3].PhaseId.Should().Be("FourthStreet");
-        rules.Phases[4].PhaseId.Should().Be("RevealTheGood");
-        rules.Phases[5].PhaseId.Should().Be("FifthStreet");
-        rules.Phases[6].PhaseId.Should().Be("RevealTheBad");
-        rules.Phases[7].PhaseId.Should().Be("SixthStreet");
-        rules.Phases[8].PhaseId.Should().Be("RevealTheUgly");
-        rules.Phases[9].PhaseId.Should().Be("SeventhStreet");
-        rules.Phases[10].PhaseId.Should().Be("Showdown");
-        rules.Phases[11].PhaseId.Should().Be("Complete");
+        rules.Phases[3].PhaseId.Should().Be("RevealTheGood");
+        rules.Phases[4].PhaseId.Should().Be("FourthStreet");
+        rules.Phases[5].PhaseId.Should().Be("RevealTheBad");
+        rules.Phases[6].PhaseId.Should().Be("FifthStreet");
+        rules.Phases[7].PhaseId.Should().Be("RevealTheUgly");
+        rules.Phases[8].PhaseId.Should().Be("SixthStreet");
+        rules.Phases[9].PhaseId.Should().Be("Showdown");
+        rules.Phases[10].PhaseId.Should().Be("Complete");
     }
 
     [Fact]
@@ -62,10 +60,9 @@ public class GoodBadUglyRulesTests
         var rules = GoodBadUglyRules.CreateGameRules();
 
         rules.Phases[2].RequiresPlayerAction.Should().BeTrue();  // ThirdStreet
-        rules.Phases[3].RequiresPlayerAction.Should().BeTrue();  // FourthStreet
-        rules.Phases[5].RequiresPlayerAction.Should().BeTrue();  // FifthStreet
-        rules.Phases[7].RequiresPlayerAction.Should().BeTrue();  // SixthStreet
-        rules.Phases[9].RequiresPlayerAction.Should().BeTrue();  // SeventhStreet
+        rules.Phases[4].RequiresPlayerAction.Should().BeTrue();  // FourthStreet
+        rules.Phases[6].RequiresPlayerAction.Should().BeTrue();  // FifthStreet
+        rules.Phases[8].RequiresPlayerAction.Should().BeTrue();  // SixthStreet
     }
 
     [Fact]
@@ -73,9 +70,9 @@ public class GoodBadUglyRulesTests
     {
         var rules = GoodBadUglyRules.CreateGameRules();
 
-        rules.Phases[4].RequiresPlayerAction.Should().BeFalse();  // RevealTheGood
-        rules.Phases[6].RequiresPlayerAction.Should().BeFalse();  // RevealTheBad
-        rules.Phases[8].RequiresPlayerAction.Should().BeFalse();  // RevealTheUgly
+        rules.Phases[3].RequiresPlayerAction.Should().BeFalse();  // RevealTheGood
+        rules.Phases[5].RequiresPlayerAction.Should().BeFalse();  // RevealTheBad
+        rules.Phases[7].RequiresPlayerAction.Should().BeFalse();  // RevealTheUgly
     }
 
     [Fact]
@@ -83,9 +80,9 @@ public class GoodBadUglyRulesTests
     {
         var rules = GoodBadUglyRules.CreateGameRules();
 
-        rules.Phases[4].Category.Should().Be("Special");  // RevealTheGood
-        rules.Phases[6].Category.Should().Be("Special");  // RevealTheBad
-        rules.Phases[8].Category.Should().Be("Special");  // RevealTheUgly
+        rules.Phases[3].Category.Should().Be("Special");  // RevealTheGood
+        rules.Phases[5].Category.Should().Be("Special");  // RevealTheBad
+        rules.Phases[7].Category.Should().Be("Special");  // RevealTheUgly
     }
 
     [Fact]
@@ -94,10 +91,10 @@ public class GoodBadUglyRulesTests
         var rules = GoodBadUglyRules.CreateGameRules();
 
         rules.CardDealing.Should().NotBeNull();
-        rules.CardDealing.InitialCards.Should().Be(3);
-        rules.CardDealing.InitialVisibility.Should().Be(CardVisibility.Mixed);
-        rules.CardDealing.HasCommunityCards.Should().BeFalse();
-        rules.CardDealing.DealingRounds.Should().HaveCount(6);
+        rules.CardDealing.InitialCards.Should().Be(4);
+        rules.CardDealing.InitialVisibility.Should().Be(CardVisibility.FaceDown);
+        rules.CardDealing.HasCommunityCards.Should().BeTrue();
+        rules.CardDealing.DealingRounds.Should().HaveCount(2);
     }
 
     [Fact]
@@ -108,7 +105,7 @@ public class GoodBadUglyRulesTests
         rules.Betting.Should().NotBeNull();
         rules.Betting.HasAntes.Should().BeTrue();
         rules.Betting.HasBlinds.Should().BeFalse();
-        rules.Betting.BettingRounds.Should().Be(5);
+        rules.Betting.BettingRounds.Should().Be(4);
     }
 
     [Fact]

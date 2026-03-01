@@ -33,12 +33,12 @@ public class GoodBadUglyGameTests
     [Fact]
     public void Constructor_ThrowsForTooManyPlayers()
     {
-        var players = Enumerable.Range(1, 8).Select(i => ($"Player{i}", 1000)).ToList();
+        var players = Enumerable.Range(1, 11).Select(i => ($"Player{i}", 1000)).ToList();
 
         var act = () => new GoodBadUglyGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20);
 
         act.Should().Throw<System.ArgumentException>()
-            .WithMessage("*at most 7 players*");
+            .WithMessage("*at most 10 players*");
     }
 
     [Fact]
@@ -98,23 +98,21 @@ public class GoodBadUglyGameTests
 
         game.GamePlayers.Should().AllSatisfy(gp =>
         {
-            gp.HoleCards.Should().HaveCount(2);
-            gp.BoardCards.Should().HaveCount(1);
+            gp.HoleCards.Should().HaveCount(4);
         });
+
+        game.TableCards.Should().HaveCount(3);
     }
 
     [Fact]
-    public void DealStreetCard_OnFourthStreet_DealsOneBoardCard()
+    public void DealStreetCard_ThrowsBecauseNoAdditionalStreetCardsAreDealt()
     {
         var game = CreateTwoPlayerGame();
         AdvanceToPhase(game, Phases.FourthStreet);
 
-        game.DealStreetCard();
+        var act = () => game.DealStreetCard();
 
-        game.GamePlayers.Should().AllSatisfy(gp =>
-        {
-            gp.BoardCards.Should().HaveCount(2);
-        });
+        act.Should().Throw<System.InvalidOperationException>();
     }
 
     [Fact]
@@ -126,7 +124,7 @@ public class GoodBadUglyGameTests
         var goodCard = game.RevealTheGood();
 
         game.WildRank.Should().Be(goodCard.Value);
-        game.CurrentPhase.Should().Be(Phases.FifthStreet);
+        game.CurrentPhase.Should().Be(Phases.FourthStreet);
     }
 
     [Fact]
@@ -149,12 +147,12 @@ public class GoodBadUglyGameTests
         var (badCard, discards) = game.RevealTheBad();
 
         game.DiscardRank.Should().Be(badCard.Value);
-        game.CurrentPhase.Should().Be(Phases.SixthStreet);
+        game.CurrentPhase.Should().Be(Phases.FifthStreet);
         // Discards may or may not be empty depending on random cards
     }
 
     [Fact]
-    public void RevealTheUgly_EliminatesPlayersWithMatchingBoardCards()
+    public void RevealTheUgly_EliminatesPlayersWithMatchingHoleCards()
     {
         var game = CreateTwoPlayerGame();
         AdvanceToPhase(game, Phases.RevealTheUgly);
@@ -163,7 +161,7 @@ public class GoodBadUglyGameTests
 
         game.EliminationRank.Should().Be(uglyCard.Value);
         // May or may not eliminate players depending on random cards
-        game.CurrentPhase.Should().BeOneOf(Phases.SeventhStreet, Phases.Showdown);
+        game.CurrentPhase.Should().Be(Phases.SixthStreet);
     }
 
     [Fact]
@@ -221,7 +219,7 @@ public class GoodBadUglyGameTests
         var game = CreateTwoPlayerGame();
 
         AdvanceToPhase(game, Phases.ThirdStreet);
-        game.GetCurrentStreetName().Should().Be("Third Street");
+        game.GetCurrentStreetName().Should().Be("Initial Betting");
     }
 
     #region Helper Methods
@@ -233,7 +231,7 @@ public class GoodBadUglyGameTests
             ("Alice", 1000),
             ("Bob", 1000)
         };
-        return new GoodBadUglyGame(players, ante: 5, bringIn: 5, smallBet: 10, bigBet: 20, useBringIn: true);
+        return new GoodBadUglyGame(players, ante: 5, bringIn: 0, smallBet: 10, bigBet: 20, useBringIn: false);
     }
 
     /// <summary>
@@ -260,18 +258,6 @@ public class GoodBadUglyGameTests
         {
             game.DealThirdStreet();
             if (target == Phases.ThirdStreet) return;
-            game.PostBringIn();
-            game.StartBettingRound();
-            CompleteBettingRound(game);
-        }
-
-        if (game.CurrentPhase == target) return;
-
-        // FourthStreet
-        if (game.CurrentPhase == Phases.FourthStreet)
-        {
-            game.DealStreetCard();
-            if (target == Phases.FourthStreet) return;
             game.StartBettingRound();
             CompleteBettingRound(game);
         }
@@ -287,11 +273,10 @@ public class GoodBadUglyGameTests
 
         if (game.CurrentPhase == target) return;
 
-        // FifthStreet
-        if (game.CurrentPhase == Phases.FifthStreet)
+        // FourthStreet
+        if (game.CurrentPhase == Phases.FourthStreet)
         {
-            game.DealStreetCard();
-            if (target == Phases.FifthStreet) return;
+            if (target == Phases.FourthStreet) return;
             game.StartBettingRound();
             CompleteBettingRound(game);
         }
@@ -307,11 +292,10 @@ public class GoodBadUglyGameTests
 
         if (game.CurrentPhase == target) return;
 
-        // SixthStreet
-        if (game.CurrentPhase == Phases.SixthStreet)
+        // FifthStreet
+        if (game.CurrentPhase == Phases.FifthStreet)
         {
-            game.DealStreetCard();
-            if (target == Phases.SixthStreet) return;
+            if (target == Phases.FifthStreet) return;
             game.StartBettingRound();
             CompleteBettingRound(game);
         }
@@ -327,11 +311,10 @@ public class GoodBadUglyGameTests
 
         if (game.CurrentPhase == target) return;
 
-        // SeventhStreet
-        if (game.CurrentPhase == Phases.SeventhStreet)
+        // SixthStreet
+        if (game.CurrentPhase == Phases.SixthStreet)
         {
-            game.DealStreetCard();
-            if (target == Phases.SeventhStreet) return;
+            if (target == Phases.SixthStreet) return;
             game.StartBettingRound();
             CompleteBettingRound(game);
         }

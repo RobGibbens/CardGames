@@ -13,10 +13,10 @@ public class GoodBadUglyGamePlayer
 {
 	public PokerPlayer Player { get; }
 	public List<Card> HoleCards { get; private set; } = new List<Card>();
-	public List<Card> BoardCards { get; private set; } = new List<Card>();
 
 	/// <summary>
-	/// Whether this player was eliminated by "The Ugly" card.
+	/// Whether this player has a dead hand due to "The Ugly" card.
+	/// Dead-hand players can still bet the final round but cannot win if any non-dead player remains.
 	/// </summary>
 	public bool IsEliminatedByUgly { get; private set; }
 
@@ -25,7 +25,7 @@ public class GoodBadUglyGamePlayer
 	/// </summary>
 	public List<Card> DiscardedCards { get; private set; } = new List<Card>();
 
-	public IEnumerable<Card> AllCards => HoleCards.Concat(BoardCards);
+	public IEnumerable<Card> AllCards => HoleCards;
 
 	public GoodBadUglyGamePlayer(PokerPlayer player)
 	{
@@ -35,11 +35,6 @@ public class GoodBadUglyGamePlayer
 	public void AddHoleCard(Card card)
 	{
 		HoleCards.Add(card);
-	}
-
-	public void AddBoardCard(Card card)
-	{
-		BoardCards.Add(card);
 	}
 
 	/// <summary>
@@ -59,41 +54,33 @@ public class GoodBadUglyGamePlayer
 			discarded.Add(card);
 		}
 
-		var matchingBoard = BoardCards.Where(c => c.Value == rank).ToList();
-		foreach (var card in matchingBoard)
-		{
-			BoardCards.Remove(card);
-			discarded.Add(card);
-		}
-
 		DiscardedCards.AddRange(discarded);
 		return discarded;
 	}
 
 	/// <summary>
-	/// Checks if the player has any face-up (board) card matching the given rank.
-	/// Used to determine elimination by "The Ugly".
+	/// Checks if the player has any card matching the given rank.
+	/// Used to determine dead-hand status from "The Ugly".
 	/// </summary>
 	/// <param name="rank">The card rank (value) to check.</param>
-	/// <returns>True if the player has a matching face-up card.</returns>
-	public bool HasMatchingBoardCard(int rank)
+	/// <returns>True if the player has a matching card.</returns>
+	public bool HasMatchingCard(int rank)
 	{
-		return BoardCards.Any(c => c.Value == rank);
+		return HoleCards.Any(c => c.Value == rank);
 	}
 
 	/// <summary>
-	/// Marks this player as eliminated by "The Ugly" card and folds them.
+	/// Marks this player as having a dead hand from "The Ugly" card.
+	/// Does not fold the player; they remain eligible to bet final round.
 	/// </summary>
 	public void EliminateByUgly()
 	{
 		IsEliminatedByUgly = true;
-		Player.Fold();
 	}
 
 	public void ResetHand()
 	{
 		HoleCards.Clear();
-		BoardCards.Clear();
 		DiscardedCards.Clear();
 		IsEliminatedByUgly = false;
 	}

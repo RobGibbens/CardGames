@@ -3,15 +3,17 @@ using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
+using CardGames.Poker.Games.GoodBadUgly;
 using CardGames.Poker.Games.SevenCardStud;
 using CardGames.Poker.Hands.StudHands;
+using CardGames.Poker.Hands.WildCards;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
 using CardSuit = CardGames.Poker.Api.Data.Entities.CardSuit;
 using CardSymbol = CardGames.Poker.Api.Data.Entities.CardSymbol;
 
-namespace CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.PerformShowdown;
+namespace CardGames.Poker.Api.Features.Games.GoodBadUgly.v1.Commands.PerformShowdown;
 
 /// <summary>
 /// Handles the <see cref="PerformShowdownCommand"/> to evaluate hands and award pots.
@@ -63,14 +65,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 			.Where(gp => !gp.HasFolded && (gp.Status == GamePlayerStatus.Active || gp.IsAllIn))
 			.ToList();
 
-		if (string.Equals(game.GameType?.Code, "GOODBADUGLY", StringComparison.OrdinalIgnoreCase))
-		{
-			return new PerformShowdownError
-			{
-				Message = "Good Bad Ugly showdown is handled by the GoodBadUgly endpoint.",
-				Code = PerformShowdownErrorCode.InvalidGameState
-			};
-		}
+		var isGoodBadUgly = string.Equals(game.GameType?.Code, "GOODBADUGLY", StringComparison.OrdinalIgnoreCase);
 
 		// Fetch user first names from Users table (matching by email like GetGamePlayersQueryHandler)
 		var playerEmails = game.GamePlayers
@@ -173,12 +168,48 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 
 		// 7. Evaluate all hands
 		var playerHandEvaluations = new Dictionary<string, (StudHand hand, List<GameCard> cards, GamePlayer gamePlayer)>();
+		var goodBadUglyWildRules = new GoodBadUglyWildCardRules();
+
+		List<GameCard> communityCards = [];
+		CardSymbol? goodSymbol = null;
+		if (isGoodBadUgly)
+		{
+			communityCards = await context.GameCards
+				.Where(c => c.GameId == command.GameId &&
+							c.HandNumber == game.CurrentHandNumber &&
+							c.Location == CardLocation.Community &&
+							!c.IsDiscarded)
+				.OrderBy(c => c.DealOrder)
+				.ToListAsync(cancellationToken);
+
+			goodSymbol = communityCards
+				.FirstOrDefault(c => string.Equals(c.DealtAtPhase, "TheGood", StringComparison.OrdinalIgnoreCase))
+				?.Symbol;
+		}
+
 
 		foreach (var gamePlayer in playersInHand)
 		{
 			if (!playerCardGroups.TryGetValue(gamePlayer.Id, out var cards))
 			{
 				continue; // Skip players without valid hands
+			}
+
+			if (isGoodBadUgly)
+			{
+				var playerOwnedCards = cards
+					.Where(c => !c.IsDiscarded)
+					.ToList();
+
+				var allCards = playerOwnedCards
+					.Concat(communityCards)
+					.Select(c => new Card(MapSuit(c.Suit), MapSymbol(c.Symbol)))
+					.ToList();
+
+				int? wildRank = goodSymbol.HasValue ? (int)MapSymbol(goodSymbol.Value) : (int?)null;
+				var gbuHand = new GoodBadUglyHand(allCards, [], [], wildRank, goodBadUglyWildRules);
+				playerHandEvaluations[gamePlayer.Player.Name] = (gbuHand, cards, gamePlayer);
+				continue;
 			}
 
 			if (cards.Count < 5)
@@ -209,12 +240,36 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 			playerHandEvaluations[gamePlayer.Player.Name] = (studHand, cards, gamePlayer);
 		}
 
-		// 8. Determine winners (highest strength)
-		var maxStrength = playerHandEvaluations.Values.Max(h => h.hand.Strength);
-		var winners = playerHandEvaluations
-			.Where(kvp => kvp.Value.hand.Strength == maxStrength)
-			.Select(kvp => kvp.Key)
-			.ToList();
+		// 8. Determine winners (highest strength), applying GoodBadUgly Ugly elimination rules
+		List<string> winners;
+		if (isGoodBadUgly)
+		{
+			var eligibleEvaluations = playerHandEvaluations
+				.Where(kvp => !string.Equals(kvp.Value.gamePlayer.VariantState, "UGLY_ELIMINATED", StringComparison.OrdinalIgnoreCase))
+				.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+			if (eligibleEvaluations.Count > 0)
+			{
+				var maxEligibleStrength = eligibleEvaluations.Values.Max(h => h.hand.Strength);
+				winners = eligibleEvaluations
+					.Where(kvp => kvp.Value.hand.Strength == maxEligibleStrength)
+					.Select(kvp => kvp.Key)
+					.ToList();
+			}
+			else
+			{
+				// All remaining players were eliminated by The Ugly: split between all players still in hand.
+				winners = playerHandEvaluations.Keys.ToList();
+			}
+		}
+		else
+		{
+			var maxStrength = playerHandEvaluations.Values.Max(h => h.hand.Strength);
+			winners = playerHandEvaluations
+				.Where(kvp => kvp.Value.hand.Strength == maxStrength)
+				.Select(kvp => kvp.Key)
+				.ToList();
+		}
 
 		if (winners.Count == 0)
 		{
@@ -251,9 +306,14 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 			}
 
 			// 11. Mark pots as awarded
-			var winReason = winners.Count > 1
-				? $"Split pot - {playerHandEvaluations[winners[0]].hand.Type}"
-				: playerHandEvaluations[winners[0]].hand.Type.ToString();
+			var allWinnersUglyEliminated = isGoodBadUgly && winners.All(w =>
+				string.Equals(playerHandEvaluations[w].gamePlayer.VariantState, "UGLY_ELIMINATED", StringComparison.OrdinalIgnoreCase));
+
+			var winReason = allWinnersUglyEliminated
+				? "Split pot - all remaining players were eliminated by The Ugly"
+				: winners.Count > 1
+					? $"Split pot - {playerHandEvaluations[winners[0]].hand.Type}"
+					: playerHandEvaluations[winners[0]].hand.Type.ToString();
 
 			var winnerPayoutsList = payouts.Select(p =>
 			{
