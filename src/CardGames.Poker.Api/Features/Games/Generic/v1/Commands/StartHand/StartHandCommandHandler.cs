@@ -253,6 +253,7 @@ public sealed class StartHandCommandHandler(
             gamePlayer.IsAllIn = false;
             gamePlayer.HasDrawnThisRound = false;
             gamePlayer.HasFolded = gamePlayer.IsSittingOut;
+            gamePlayer.VariantState = null;
         }
     }
 

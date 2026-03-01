@@ -57,6 +57,11 @@ public static class HandDescriptionFormatter
 			return followTheQueenHand.EvaluatedBestCards.ToList();
 		}
 
+		if (hand is Hands.StudHands.GoodBadUglyHand gbuHand)
+		{
+			return gbuHand.EvaluatedBestCards.ToList();
+		}
+
 		return hand.Cards.ToList();
 	}
 

@@ -168,6 +168,12 @@ public sealed record TableStatePublicDto
 						/// Only populated when the game is paused for Kings and Lows pot coverage validation.
 						/// </summary>
 						public ChipCheckPauseStateDto? ChipCheckPause { get; init; }
+
+					/// <summary>
+					/// Community cards on the table (e.g., The Good, The Bad, The Ugly).
+					/// Cards are face-down until revealed during the appropriate phase.
+					/// </summary>
+					public IReadOnlyList<CardPublicDto>? CommunityCards { get; init; }
 					}
 
 		/// <summary>

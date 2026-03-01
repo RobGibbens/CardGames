@@ -530,6 +530,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			gamePlayer.IsAllIn = false;
 			gamePlayer.HasDrawnThisRound = false;
 			gamePlayer.DropOrStayDecision = null;
+			gamePlayer.VariantState = null;
 		}
 
 		// Remove any existing cards from previous hand

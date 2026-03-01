@@ -399,7 +399,9 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 						HandStrength = kvp.Value.hand.Strength,
 						IsWinner = isWinner,
 						AmountWon = payouts.GetValueOrDefault(kvp.Key, 0),
-						BestCardIndexes = bestCardIndexes
+						BestCardIndexes = bestCardIndexes,
+						IsEliminatedByUgly = isGoodBadUgly && string.Equals(
+							kvp.Value.gamePlayer.VariantState, "UGLY_ELIMINATED", StringComparison.OrdinalIgnoreCase)
 					};
 				}).OrderByDescending(h => h.HandStrength ?? 0).ToList();
 

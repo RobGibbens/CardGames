@@ -213,8 +213,15 @@ public class ProcessBettingActionCommandHandler(
 				var allPlayersAllInForGbu = AreAllPlayersAllIn(activePlayers);
 				if (allPlayersAllInForGbu)
 				{
-					AdvanceToNextPhaseGoodBadUgly(game, activePlayers);
-					await ResolveGoodBadUglySpecialPhasesAsync(game, activePlayers, now, cancellationToken);
+					// Resolve ALL remaining reveal phases (Good, Bad, Ugly) before showdown
+					while (game.CurrentPhase is not nameof(Phases.Showdown))
+					{
+						var prevPhase = game.CurrentPhase;
+						AdvanceToNextPhaseGoodBadUgly(game, activePlayers);
+						await ResolveGoodBadUglySpecialPhasesAsync(game, activePlayers, now, cancellationToken);
+						if (game.CurrentPhase == prevPhase)
+							break; // Safety: avoid infinite loop if phase doesn't advance
+					}
 					game.CurrentPhase = nameof(Phases.Showdown);
 					game.CurrentPlayerIndex = -1;
 					nextPlayerName = null;

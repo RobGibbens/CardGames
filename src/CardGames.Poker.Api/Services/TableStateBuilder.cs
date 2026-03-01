@@ -178,6 +178,23 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		// Build Chip Check Pause state (for Kings and Lows)
 		var chipCheckPause = BuildChipCheckPauseState(game, gamePlayers, totalPot);
 
+		// Build community cards for variants that use table cards (e.g., Good Bad Ugly)
+		var communityCards = await _context.GameCards
+			.Where(c => c.GameId == gameId
+				&& !c.IsDiscarded
+				&& c.HandNumber == game.CurrentHandNumber
+				&& c.Location == CardLocation.Community)
+			.OrderBy(c => c.DealOrder)
+			.AsNoTracking()
+			.Select(c => new CardPublicDto
+			{
+				IsFaceUp = c.IsVisible,
+				Rank = c.IsVisible ? MapSymbolToRank(c.Symbol) : null,
+				Suit = c.IsVisible ? GetCardSuitString(c.Suit) : null,
+				DealOrder = c.DealOrder
+			})
+			.ToListAsync(cancellationToken);
+
 		// Get action timer state
 		var actionTimerState = _actionTimerService.GetTimerState(gameId);
 		var actionTimer = actionTimerState is not null
@@ -222,7 +239,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				PlayerVsDeck = playerVsDeck,
 			ActionTimer = actionTimer,
 			AllInRunout = allInRunout,
-			ChipCheckPause = chipCheckPause
+			ChipCheckPause = chipCheckPause,
+			CommunityCards = communityCards.Count > 0 ? communityCards : null
 		};
 	}
 
@@ -300,7 +318,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				.Where(c => c.GameId == gameId
 						&& !c.IsDiscarded
 						&& c.HandNumber == game.CurrentHandNumber
-						&& c.Location == CardLocation.Community)
+						&& c.Location == CardLocation.Community
+						&& c.IsVisible)
 				.OrderBy(c => c.DealOrder)
 				.AsNoTracking()
 				.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
@@ -333,8 +352,37 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			// Community-card games (start evaluating as soon as player has cards).
 			else if (allEvaluationCards.Count >= 2)
 			{
+				// Good Bad Ugly: remaining hole cards + visible community with dynamic wild cards.
+				// Check this before card-count branches because The Bad may discard hole cards,
+				// leaving fewer than 4 and incorrectly matching other branches.
+				if (IsGoodBadUglyGame(game.GameType?.Code))
+				{
+					// If the player has been eliminated by The Ugly, show dead hand
+					if (string.Equals(gamePlayer.VariantState, "UGLY_ELIMINATED", StringComparison.OrdinalIgnoreCase))
+					{
+						handEvaluationDescription = "Dead Hand (The Ugly)";
+					}
+					else
+					{
+						int? wildRank = null;
+						var goodCard = await _context.GameCards
+							.Where(c => c.GameId == gameId
+								&& c.HandNumber == game.CurrentHandNumber
+								&& c.Location == CardLocation.Community
+								&& c.DealtAtPhase == "TheGood"
+								&& c.IsVisible)
+							.AsNoTracking()
+							.FirstOrDefaultAsync(cancellationToken);
+						if (goodCard is not null)
+						{
+							wildRank = (int)goodCard.Symbol;
+						}
+						var gbuHand = new GoodBadUglyHand(playerCards.Concat(communityCards).ToList(), [], [], wildRank, new GoodBadUglyWildCardRules());
+						handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(gbuHand);
+					}
+				}
 				// Hold'em / Short-deck Hold'em style: 2 hole + up to 5 community
-				if (playerCards.Count == 2)
+				else if (playerCards.Count == 2)
 				{
 					var holdemHand = new CardGames.Poker.Hands.CommunityCardHands.HoldemHand(playerCards, communityCards);
 					handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(holdemHand);
@@ -695,6 +743,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		}
 
 		var isTwosJacksAxe = IsTwosJacksAxeGame(game.GameType?.Code);
+		var isGoodBadUgly = IsGoodBadUglyGame(game.GameType?.Code);
 
 		var isSevenCardStud = IsGameType(game.GameType?.Code, PokerGameMetadataRegistry.SevenCardStudCode);
 		var isBaseball = IsBaseballGame(game.GameType?.Code);
@@ -706,8 +755,72 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		// Use HandBase as the base type since all hand types inherit from it
 		var playerHandEvaluations = new Dictionary<string, (HandBase hand, TwosJacksManWithTheAxeDrawHand? twosJacksHand, KingsAndLowsDrawHand? kingsAndLowsHand, SevenCardStudHand? studHand, GamePlayer gamePlayer, List<GameCard> cards, List<int> wildIndexes, List<int> bestCardIndexes)>();
 
+		// Good Bad Ugly: players have <=4 hole cards + community cards (The Good, The Bad, The Ugly)
+		// Must be handled before the cards.Count >= 5 check since player-owned cards may be fewer than 5
+		if (isGoodBadUgly)
+		{
+			var gbuCommunityCards = await _context.GameCards
+				.Where(c => c.GameId == game.Id
+					&& c.HandNumber == game.CurrentHandNumber
+					&& c.Location == CardLocation.Community
+					&& !c.IsDiscarded)
+				.OrderBy(c => c.DealOrder)
+				.AsNoTracking()
+				.ToListAsync(cancellationToken);
+
+			int? gbuWildRank = null;
+			var goodCard = gbuCommunityCards.FirstOrDefault(c =>
+				string.Equals(c.DealtAtPhase, "TheGood", StringComparison.OrdinalIgnoreCase) && c.IsVisible);
+			if (goodCard is not null)
+			{
+				gbuWildRank = (int)goodCard.Symbol;
+			}
+
+			var gbuWildRules = new GoodBadUglyWildCardRules();
+			var visibleCommunityCards = gbuCommunityCards
+				.Where(c => c.IsVisible)
+				.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
+				.ToList();
+
+			foreach (var gp in gamePlayers.Where(p => !p.HasFolded))
+			{
+				var ownedCards = gp.Cards
+					.Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber)
+					.OrderBy(c => c.DealOrder)
+					.ToList();
+
+				var ownedCoreCards = ownedCards.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol)).ToList();
+				var allCoreCards = ownedCoreCards.Concat(visibleCommunityCards).ToList();
+				var allDisplayCards = ownedCards.ToList();
+
+				var gbuHand = new GoodBadUglyHand(allCoreCards, [], [], gbuWildRank, gbuWildRules);
+
+				// Determine wild card indexes (within the player's owned cards only)
+				var wildIndexes = new List<int>();
+				if (gbuWildRank.HasValue)
+				{
+					for (int i = 0; i < ownedCoreCards.Count; i++)
+					{
+						if (ownedCoreCards[i].Value == gbuWildRank.Value)
+						{
+							wildIndexes.Add(i);
+						}
+					}
+				}
+
+				playerHandEvaluations[gp.Player.Name] = (gbuHand, null, null, null, gp, allDisplayCards, wildIndexes,
+					GetCardIndexes(allCoreCards, gbuHand.EvaluatedBestCards));
+			}
+		}
+
 		foreach (var gp in gamePlayers.Where(p => !p.HasFolded))
 		{
+			// Skip if already evaluated (e.g., by GBU-specific handling above)
+			if (playerHandEvaluations.ContainsKey(gp.Player.Name))
+			{
+				continue;
+			}
+
 			var filteredCards = gp.Cards
 				.Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber);
 			var cards = OrderCardsForDisplay(filteredCards, isStudStyleShowdown).ToList();
@@ -937,11 +1050,38 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 		if (playerHandEvaluations.Count > 0)
 		{
-			// Determine high hand winners (highest hand strength)
-			var maxStrength = playerHandEvaluations.Values.Max(h => h.hand.Strength);
-			foreach (var kvp in playerHandEvaluations.Where(k => k.Value.hand.Strength == maxStrength))
+			// For Good Bad Ugly, filter out players eliminated by The Ugly before determining winners
+			if (isGoodBadUgly)
 			{
-				highHandWinners.Add(kvp.Key);
+				var eligibleEvaluations = playerHandEvaluations
+					.Where(kvp => !string.Equals(kvp.Value.gamePlayer.VariantState, "UGLY_ELIMINATED", StringComparison.OrdinalIgnoreCase))
+					.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+				if (eligibleEvaluations.Count > 0)
+				{
+					var maxEligibleStrength = eligibleEvaluations.Values.Max(h => h.hand.Strength);
+					foreach (var kvp in eligibleEvaluations.Where(k => k.Value.hand.Strength == maxEligibleStrength))
+					{
+						highHandWinners.Add(kvp.Key);
+					}
+				}
+				else
+				{
+					// All remaining players were eliminated by The Ugly: split among all
+					foreach (var kvp in playerHandEvaluations)
+					{
+						highHandWinners.Add(kvp.Key);
+					}
+				}
+			}
+			else
+			{
+				// Determine high hand winners (highest hand strength)
+				var maxStrength = playerHandEvaluations.Values.Max(h => h.hand.Strength);
+				foreach (var kvp in playerHandEvaluations.Where(k => k.Value.hand.Strength == maxStrength))
+				{
+					highHandWinners.Add(kvp.Key);
+				}
 			}
 
 			// For Twos/Jacks/Axe, also determine sevens winners
@@ -999,9 +1139,11 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					PlayerFirstName = userProfile?.FirstName,
 					SeatPosition = gp.SeatPosition,
 					HandRanking = handRanking,
-					HandDescription = playerHandEvaluations.TryGetValue(gp.Player.Name, out var e)
-						? HandDescriptionFormatter.GetHandDescription(e.hand)
-						: null,
+					HandDescription = isGoodBadUgly && string.Equals(gp.VariantState, "UGLY_ELIMINATED", StringComparison.OrdinalIgnoreCase)
+						? "Dead Hand (The Ugly)"
+						: playerHandEvaluations.TryGetValue(gp.Player.Name, out var e)
+							? HandDescriptionFormatter.GetHandDescription(e.hand)
+							: null,
 					AmountWon = payouts.Total,
 					SevensAmountWon = payouts.Sevens,
 					HighHandAmountWon = payouts.High,
@@ -2116,6 +2258,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 	private static bool IsTwosJacksAxeGame(string? gameTypeCode)
 		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.TwosJacksManWithTheAxeCode);
+
+	private static bool IsGoodBadUglyGame(string? gameTypeCode)
+		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.GoodBadUglyCode);
 
 	private static bool IsGameType(string? gameTypeCode, string expectedCode)
 		=> !string.IsNullOrWhiteSpace(gameTypeCode) &&

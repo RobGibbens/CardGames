@@ -88,6 +88,12 @@ public record ShowdownPlayerHand
 		/// For Seven Card Stud, players have 7 cards but only 5 count toward the winning hand.
 		/// </summary>
 		public List<int>? BestCardIndexes { get; init; }
+
+		/// <summary>
+		/// Indicates whether this player was eliminated by "The Ugly" card.
+		/// Eliminated players have dead hands and cannot win unless all remaining players are also eliminated.
+		/// </summary>
+		public bool IsEliminatedByUgly { get; init; }
 	}
 
 /// <summary>

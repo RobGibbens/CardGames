@@ -15,4 +15,11 @@ public partial record ShowdownPlayerHand
     /// </summary>
     [JsonPropertyName("bestCardIndexes")]
     public ICollection<int>? BestCardIndexes { get; init; }
+
+    /// <summary>
+    /// Whether this player was eliminated by holding a card matching the Ugly card rank
+    /// in The Good, the Bad, and the Ugly.
+    /// </summary>
+    [JsonPropertyName("isEliminatedByUgly")]
+    public bool? IsEliminatedByUgly { get; init; }
 }
