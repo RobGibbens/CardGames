@@ -27,6 +27,7 @@
 @inject ILogger<TablePlay> Logger
 @inject ITwosJacksManWithTheAxeApi TwosJacksManWithTheAxeApi
 @inject ISevenCardStudApi SevenCardStudApi
+@inject IGoodBadUglyApi GoodBadUglyApi
 @inject IFollowTheQueenApi FollowTheQueenApi
 @inject IBaseballApi BaseballApi
 @inject IKingsAndLowsApi KingsAndLowsApi
@@ -174,7 +175,8 @@
                          IsPausedForChipCheck="@_isPausedForChipCheck"
                          FlyingCard="@_flyingCard"
                          HasWildCards="@HasWildCards"
-                         WildCards="@GetWildCardsForDisplay()" />
+                         WildCards="@GetWildCardsForDisplay()"
+                         CommunityCards="@_tableState?.CommunityCards" />
 
             <!-- Dashboard Panel (left side) -->
             @if (_isSeated)
@@ -579,9 +581,10 @@
     private bool IsFiveCardDraw => string.Equals(_gameTypeCode, "FIVECARDDRAW", StringComparison.OrdinalIgnoreCase);
     private bool IsKingsAndLows => string.Equals(_gameTypeCode, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase);
     private bool IsSevenCardStud => string.Equals(_gameTypeCode, "SEVENCARDSTUD", StringComparison.OrdinalIgnoreCase);
+    private bool IsGoodBadUgly => string.Equals(_gameTypeCode, "GOODBADUGLY", StringComparison.OrdinalIgnoreCase);
     private bool IsFollowTheQueen => string.Equals(_gameTypeCode, "FOLLOWTHEQUEEN", StringComparison.OrdinalIgnoreCase);
     private bool IsBaseball => string.Equals(_gameTypeCode, "BASEBALL", StringComparison.OrdinalIgnoreCase);
-    private bool UsesCardDealAnimation => IsSevenCardStud || IsBaseball || IsFollowTheQueen || IsFiveCardDraw || IsTwosJacksManWithTheAxe || IsKingsAndLows;
+    private bool UsesCardDealAnimation => IsSevenCardStud || IsGoodBadUgly || IsBaseball || IsFollowTheQueen || IsFiveCardDraw || IsTwosJacksManWithTheAxe || IsKingsAndLows;
     private int DealAnimationDelayMs => 750;
 
     // Game rules for dynamic UI rendering
@@ -2191,6 +2194,26 @@
                 return;
             }
         }
+        else if (IsGoodBadUgly)
+        {
+            var startHandResponse = await SevenCardStudApi.SevenCardStudStartHandAsync(GameId);
+            if (!startHandResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
+
+            var collectAntesResponse = await SevenCardStudApi.SevenCardStudCollectAntesAsync(GameId);
+            if (!collectAntesResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
+
+            var dealHandsResponse = await GoodBadUglyApi.GoodBadUglyDealHandsAsync(GameId);
+            if (!dealHandsResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
+        }
         else if (IsBaseball)
         {
             var startHandResponse = await BaseballApi.BaseballStartHandAsync(GameId);
@@ -2307,6 +2330,10 @@
         else if (IsSevenCardStud)
         {
             showdownResponse = await SevenCardStudApi.SevenCardStudPerformShowdownAsync(GameId);
+        }
+        else if (IsGoodBadUgly)
+        {
+            showdownResponse = await GoodBadUglyApi.GoodBadUglyPerformShowdownAsync(GameId);
         }
         else if (IsBaseball)
         {

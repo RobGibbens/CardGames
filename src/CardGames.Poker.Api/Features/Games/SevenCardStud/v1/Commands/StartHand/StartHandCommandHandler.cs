@@ -108,6 +108,7 @@ public class StartHandCommandHandler(
 			gamePlayer.IsAllIn = false;
 			gamePlayer.HasDrawnThisRound = false;
 			gamePlayer.HasFolded = gamePlayer.IsSittingOut;
+			gamePlayer.VariantState = null;
 		}
 
 		// 6. Remove any existing cards from previous hand

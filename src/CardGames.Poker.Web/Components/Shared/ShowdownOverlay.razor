@@ -100,7 +100,11 @@
                         <div class="other-hand-row">
                             <div class="other-hand-info">
                                 <span class="other-hand-name">@DisplayFirstName(hand)</span>
-                                @if (!string.IsNullOrWhiteSpace(hand.HandType) || !string.IsNullOrWhiteSpace(hand.HandDescription))
+                                @if (hand.IsEliminatedByUgly == true)
+                                {
+                                    <span class="sd-pill sd-pill-muted">Dead Hand (The Ugly)</span>
+                                }
+                                else if (!string.IsNullOrWhiteSpace(hand.HandType) || !string.IsNullOrWhiteSpace(hand.HandDescription))
                                 {
                                     <span class="sd-pill sd-pill-muted">@GetDetailedHandDescription(hand)</span>
                                 }

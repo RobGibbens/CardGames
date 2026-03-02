@@ -30,6 +30,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 		var game = await context.Games
 			.Include(g => g.GamePlayers)
 				.ThenInclude(gp => gp.Player)
+			.Include(g => g.GameType)
 			.Include(g => g.Pots)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
@@ -61,6 +62,15 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 		var playersInHand = game.GamePlayers
 			.Where(gp => !gp.HasFolded && (gp.Status == GamePlayerStatus.Active || gp.IsAllIn))
 			.ToList();
+
+		if (string.Equals(game.GameType?.Code, "GOODBADUGLY", StringComparison.OrdinalIgnoreCase))
+		{
+			return new PerformShowdownError
+			{
+				Message = "Good Bad Ugly showdown is handled by the GoodBadUgly endpoint.",
+				Code = PerformShowdownErrorCode.InvalidGameState
+			};
+		}
 
 		// Fetch user first names from Users table (matching by email like GetGamePlayersQueryHandler)
 		var playerEmails = game.GamePlayers
@@ -164,10 +174,14 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 		// 7. Evaluate all hands
 		var playerHandEvaluations = new Dictionary<string, (StudHand hand, List<GameCard> cards, GamePlayer gamePlayer)>();
 
-
 		foreach (var gamePlayer in playersInHand)
 		{
-			if (!playerCardGroups.TryGetValue(gamePlayer.Id, out var cards) || cards.Count < 5)
+			if (!playerCardGroups.TryGetValue(gamePlayer.Id, out var cards))
+			{
+				continue; // Skip players without valid hands
+			}
+
+			if (cards.Count < 5)
 			{
 				continue; // Skip players without valid hands
 			}
@@ -201,6 +215,15 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 			.Where(kvp => kvp.Value.hand.Strength == maxStrength)
 			.Select(kvp => kvp.Key)
 			.ToList();
+
+		if (winners.Count == 0)
+		{
+			return new PerformShowdownError
+			{
+				Message = "No eligible winning hand could be determined at showdown.",
+				Code = PerformShowdownErrorCode.InvalidGameState
+			};
+		}
 
 		// 9. Calculate payouts (split pot if multiple winners)
 		var payoutPerWinner = totalPot / winners.Count;

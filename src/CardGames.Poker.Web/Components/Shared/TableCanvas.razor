@@ -1,39 +1,59 @@
 @namespace CardGames.Poker.Web.Components.Shared
 
 @using static CardGames.Poker.Web.Components.Pages.TablePlay
+@using CardGames.Contracts.SignalR
 
 <div class="table-canvas">
     <!-- Poker table background -->
     <div class="poker-table">
         <div class="poker-table-felt">
-            <!-- Center area with pot and phase -->
+            <!-- Center area: deck, community cards, pot in one row -->
             <div class="table-center">
-                <!-- Deck visualization -->
-                <div class="deck-stack" @ref="_deckRef">
-                    @for (var i = 0; i < 5; i++)
+                <div class="table-center-row">
+                    <!-- Deck visualization -->
+                    <div class="deck-stack" @ref="_deckRef">
+                        @for (var i = 0; i < 5; i++)
+                        {
+                            <playing-card rank="0" backcolor="#44F" class="deck-card" style="--deck-offset: @i"></playing-card>
+                        }
+                    </div>
+
+                    <!-- Community cards area -->
+                    @if (CommunityCards is { Count: > 0 })
                     {
-                        <playing-card rank="0" backcolor="#44F" class="deck-card" style="--deck-offset: @i"></playing-card>
+                        <div class="community-cards">
+                            @foreach (var (card, cardIndex) in CommunityCards.OrderBy(c => c.DealOrder).Select((c, i) => (c, i)))
+                            {
+                                var label = GetCommunityCardLabel(cardIndex);
+                                var statusClass = card.IsFaceUp ? "revealed" : "hidden";
+                                <div class="community-card-slot @statusClass">
+                                    @if (card.IsFaceUp && !string.IsNullOrWhiteSpace(card.Rank))
+                                    {
+                                        <playing-card rank="@GetPlayingCardRank(card.Rank)" 
+                                                      suit="@card.Suit" 
+                                                      class="community-card-element"></playing-card>
+                                    }
+                                    else
+                                    {
+                                        <playing-card rank="0" backcolor="#44F" 
+                                                      class="community-card-element"></playing-card>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(label))
+                                    {
+                                        <span class="community-card-label @statusClass">@label</span>
+                                    }
+                                </div>
+                            }
+                        </div>
                     }
-                </div>
 
-                @if (Pot > 0)
-                {
-                    <div class="pot-display">
-                        <span class="pot-icon"><i class="fa-regular fa-coins"></i></span>
-                        <span class="pot-amount">@Pot.ToString("N0")</span>
-                    </div>
-                }
-
-                @if (CurrentPhase != GamePhase.WaitingForPlayers.ToString() && CurrentPhase != GamePhase.Ended.ToString())
-                {
-                    <div class="phase-indicator">
-                        @GetPhaseLabel()
-                    </div>
-                }
-
-                <!-- Community cards area (for future variants like Hold'em) -->
-                <div class="community-cards">
-                    @* This will be populated for Hold'em/Omaha variants *@
+                    @if (Pot > 0)
+                    {
+                        <div class="pot-display">
+                            <span class="pot-icon"><i class="fa-regular fa-coins"></i></span>
+                            <span class="pot-amount">@Pot.ToString("N0")</span>
+                        </div>
+                    }
                 </div>
             </div>
         </div>
@@ -168,6 +188,13 @@
     [Parameter]
     public bool HasWildCards { get; set; }
 
+    /// <summary>
+    /// Community cards displayed in the center of the table.
+    /// For GBU: The Good, The Bad, The Ugly.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<CardPublicDto>? CommunityCards { get; set; }
+
     private ElementReference _deckRef;
 
     /// <summary>
@@ -197,6 +224,20 @@
     private string GetPhaseLabel()
     {
         return CurrentPhaseDescription ?? "Unknown";
+    }
+
+    private string? GetCommunityCardLabel(int dealOrder)
+    {
+        if (!string.Equals(GameTypeCode, "GOODBADUGLY", StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        return dealOrder switch
+        {
+            0 => "The Good",
+            1 => "The Bad",
+            2 => "The Ugly",
+            _ => null
+        };
     }
 
     private string GetSeatPositionClass(int seatIndex)

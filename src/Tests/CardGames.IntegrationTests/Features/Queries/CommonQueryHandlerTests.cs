@@ -141,6 +141,7 @@ public class CommonQueryHandlerTests : IntegrationTestBase
     [InlineData(PokerGameMetadataRegistry.SevenCardStudCode)]
     [InlineData(PokerGameMetadataRegistry.KingsAndLowsCode)]
     [InlineData(PokerGameMetadataRegistry.TwosJacksManWithTheAxeCode)]
+    [InlineData(PokerGameMetadataRegistry.GoodBadUglyCode)]
     public async Task GetGameRules_ValidGameType_ReturnsRules(string gameTypeCode)
     {
         // Arrange

@@ -33,6 +33,7 @@ public class DealHandsCommandHandler(
 		var game = await context.Games
 			.Include(g => g.GamePlayers)
 			.ThenInclude(gp => gp.Player)
+			.Include(g => g.GameType)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
 		if (game is null)
@@ -48,7 +49,16 @@ public class DealHandsCommandHandler(
 			"Game loaded for dealing: Phase {Phase}, Hand {HandNumber}, Players {PlayerCount}",
 			game.CurrentPhase, game.CurrentHandNumber, game.GamePlayers.Count);
 
-		// 2. Validate game state - Seven Card Stud deals cards during street phases
+		if (string.Equals(game.GameType?.Code, "GOODBADUGLY", StringComparison.OrdinalIgnoreCase))
+		{
+			return new DealHandsError
+			{
+				Message = "Good Bad Ugly dealing is handled by the GoodBadUgly endpoint.",
+				Code = DealHandsErrorCode.InvalidGameState
+			};
+		}
+
+		// 2. Validate game state
 		var validPhases = new[]
 		{
 			nameof(Phases.ThirdStreet),
@@ -326,7 +336,9 @@ public class DealHandsCommandHandler(
 
 		// 10. Update game state - remain in street phase for betting
 		game.CurrentPlayerIndex = firstActorSeatPosition;
-		game.BringInPlayerIndex = game.CurrentPhase == nameof(Phases.ThirdStreet) ? firstActorSeatPosition : -1;
+		game.BringInPlayerIndex = game.CurrentPhase == nameof(Phases.ThirdStreet)
+			? firstActorSeatPosition
+			: -1;
 		game.Status = GameStatus.InProgress;
 		game.UpdatedAt = now;
 
@@ -541,4 +553,5 @@ public class DealHandsCommandHandler(
 		gameCard.IsVisible = isVisible;
 		gameCard.DealtAt = now;
 	}
+
 }

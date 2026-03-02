@@ -15,6 +15,7 @@ public class PokerGameRegistryTests
     [InlineData(PokerGameMetadataRegistry.KingsAndLowsCode, "Kings and Lows")]
     [InlineData(PokerGameMetadataRegistry.TwosJacksManWithTheAxeCode, "Twos, Jacks, Man with the Axe")]
     [InlineData(PokerGameMetadataRegistry.HoldEmCode, "Texas Hold 'Em")]
+    [InlineData(PokerGameMetadataRegistry.GoodBadUglyCode, "The Good, the Bad, and the Ugly")]
     public void TryGet_KnownGameCode_ReturnsMetadata(string gameCode, string expectedName)
     {
         // Act
@@ -130,6 +131,7 @@ public class PokerGameRegistryTests
     [InlineData(PokerGameMetadataRegistry.SevenCardStudCode)]
     [InlineData(PokerGameMetadataRegistry.KingsAndLowsCode)]
     [InlineData(PokerGameMetadataRegistry.TwosJacksManWithTheAxeCode)]
+    [InlineData(PokerGameMetadataRegistry.GoodBadUglyCode)]
     public void RulesRegistry_TryGet_KnownGameType_ReturnsRules(string gameCode)
     {
         // Act

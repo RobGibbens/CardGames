@@ -37,6 +37,7 @@ public class ProcessBettingActionCommandHandler(
 		var game = await context.Games
 			.Include(g => g.GamePlayers)
 				.ThenInclude(gp => gp.Player)
+			.Include(g => g.GameType)
 			.Include(g => g.Pots)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 
@@ -52,6 +53,15 @@ public class ProcessBettingActionCommandHandler(
 		logger.LogDebug(
 			"Game loaded: Hand {HandNumber}, Phase {Phase}, PlayerIndex {PlayerIndex}",
 			game.CurrentHandNumber, game.CurrentPhase, game.CurrentPlayerIndex);
+
+		if (string.Equals(game.GameType?.Code, "GOODBADUGLY", StringComparison.OrdinalIgnoreCase))
+		{
+			return new ProcessBettingActionError
+			{
+				Message = "Good Bad Ugly betting actions are handled by the GoodBadUgly endpoint.",
+				Code = ProcessBettingActionErrorCode.InvalidGameState
+			};
+		}
 
 		// Load the active betting round for the current hand separately to avoid filtered include issues
 		var bettingRounds = await context.BettingRounds

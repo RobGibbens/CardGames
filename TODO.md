@@ -3,10 +3,10 @@
 ## Still to do
 
 - [ ] https://github.com/leeoades/FunctionalStateMachine
-- [ ] Card UI isn't consistent
+- [ ] Dealer's choice round robin
+- [ ] Be able to move the action panel, draw panel, drop or stay panel
 
 ### Leagues
-- [ ] Pages load too slowly
 
 ### Cashier
 - [ ] Cashier ledger doesn't page
@@ -165,3 +165,5 @@
 - [x] Rearrange the register and login screens to make OAuth more obvious
 - [x] Prevent joining a game if not enough chips
 - [x] Tabs suck
+- [x] Card UI isn't consistent
+- [x] Pages load too slowly

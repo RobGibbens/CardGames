@@ -14,6 +14,7 @@ public class GameFlowHandlerFactoryTests : IntegrationTestBase
     [InlineData("SEVENCARDSTUD", typeof(SevenCardStudFlowHandler))]
     [InlineData("KINGSANDLOWS", typeof(KingsAndLowsFlowHandler))]
     [InlineData("TWOSJACKSMANWITHTHEAXE", typeof(TwosJacksManWithTheAxeFlowHandler))]
+    [InlineData("GOODBADUGLY", typeof(GoodBadUglyFlowHandler))]
     public void GetHandler_ReturnsCorrectHandlerType(string gameTypeCode, Type expectedType)
     {
         // Act
@@ -66,6 +67,7 @@ public class GameFlowHandlerFactoryTests : IntegrationTestBase
     [InlineData("SEVENCARDSTUD", true)]
     [InlineData("KINGSANDLOWS", true)]
     [InlineData("TWOSJACKSMANWITHTHEAXE", true)]
+    [InlineData("GOODBADUGLY", true)]
     [InlineData("UNKNOWNGAME", false)]
     [InlineData("", false)]
     public void TryGetHandler_ReturnsExpectedResult(string gameTypeCode, bool expectedResult)
@@ -101,7 +103,7 @@ public class GameFlowHandlerFactoryTests : IntegrationTestBase
     public void AllHandlers_HaveValidGameRules()
     {
         // Arrange
-        var gameTypeCodes = new[] { "FIVECARDDRAW", "SEVENCARDSTUD", "KINGSANDLOWS", "TWOSJACKSMANWITHTHEAXE" };
+        var gameTypeCodes = new[] { "FIVECARDDRAW", "SEVENCARDSTUD", "KINGSANDLOWS", "TWOSJACKSMANWITHTHEAXE", "GOODBADUGLY" };
 
         foreach (var code in gameTypeCodes)
         {
@@ -119,7 +121,7 @@ public class GameFlowHandlerFactoryTests : IntegrationTestBase
     public void AllHandlers_HaveValidDealingConfiguration()
     {
         // Arrange
-        var gameTypeCodes = new[] { "FIVECARDDRAW", "SEVENCARDSTUD", "KINGSANDLOWS", "TWOSJACKSMANWITHTHEAXE" };
+        var gameTypeCodes = new[] { "FIVECARDDRAW", "SEVENCARDSTUD", "KINGSANDLOWS", "TWOSJACKSMANWITHTHEAXE", "GOODBADUGLY" };
 
         foreach (var code in gameTypeCodes)
         {

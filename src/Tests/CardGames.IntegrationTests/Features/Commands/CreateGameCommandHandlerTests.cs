@@ -15,6 +15,7 @@ public class CreateGameCommandHandlerTests : IntegrationTestBase
     [InlineData(PokerGameMetadataRegistry.KingsAndLowsCode)]
     [InlineData(PokerGameMetadataRegistry.TwosJacksManWithTheAxeCode)]
     [InlineData(PokerGameMetadataRegistry.HoldEmCode)]
+    [InlineData(PokerGameMetadataRegistry.GoodBadUglyCode)]
     public async Task Handle_ValidRequest_CreatesGame(string gameCode)
     {
         // Arrange
