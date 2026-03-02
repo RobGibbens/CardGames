@@ -4,7 +4,6 @@
 
 - [ ] https://github.com/leeoades/FunctionalStateMachine
 - [ ] Dealer's choice round robin
-- [ ] Be able to move the action panel, draw panel, drop or stay panel
 
 ### Leagues
 
@@ -167,3 +166,4 @@
 - [x] Tabs suck
 - [x] Card UI isn't consistent
 - [x] Pages load too slowly
+- [x] Be able to move the action panel, draw panel, drop or stay panel

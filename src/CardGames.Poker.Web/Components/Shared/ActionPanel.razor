@@ -2,9 +2,15 @@
 
 @using CardGames.Contracts.SignalR
 @using CardGames.Poker.Api.Contracts
+@using Microsoft.JSInterop
 @using static CardGames.Poker.Web.Components.Pages.TablePlay
 
-<div class="action-panel @(IsSubmitting ? "submitting" : "")">
+@inject IJSRuntime JSRuntime
+
+<div @ref="_panelRef" class="action-panel @(IsSubmitting ? "submitting" : "")">
+    <div @ref="_handleRef" class="drag-handle" title="Drag to move">
+        <i class="fa-thin fa-grip-dots"></i>
+    </div>
     @if (!string.IsNullOrWhiteSpace(HandDescription))
     {
         <div class="hand-eval-text">@HandDescription</div>
@@ -118,6 +124,19 @@
     private const int DefaultTimerDurationSeconds = 60;
     private string? _autoActionTimerKey;
     private bool _isAutoActionInFlight;
+
+    private ElementReference _panelRef;
+    private ElementReference _handleRef;
+    private bool _dragInitialized;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_dragInitialized)
+        {
+            _dragInitialized = true;
+            await JSRuntime.InvokeVoidAsync("draggablePanel.init", _panelRef, _handleRef);
+        }
+    }
 
     [Parameter]
     public List<BettingActionType> LegalActions { get; set; } = [];

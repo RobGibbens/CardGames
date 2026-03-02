@@ -1,11 +1,14 @@
 @namespace CardGames.Poker.Web.Components.Shared
 
 @using CardGames.Contracts.SignalR
+@using Microsoft.JSInterop
 @using static CardGames.Poker.Web.Components.Pages.TablePlay
 
-<div class="draw-panel @(IsSubmitting ? "submitting" : "") @(IsAnimating ? "animating" : "") @(IsReadOnly ? "read-only" : "")">
-    <!-- Header -->
-    <div class="draw-panel-header">
+@inject IJSRuntime JSRuntime
+
+<div @ref="_panelRef" class="draw-panel @(IsSubmitting ? "submitting" : "") @(IsAnimating ? "animating" : "") @(IsReadOnly ? "read-only" : "")">
+    <!-- Header (also serves as drag handle) -->
+    <div @ref="_handleRef" class="draw-panel-header drag-handle">
         <div class="draw-panel-title">
             <i class="@TitleIcon"></i>
             <span>@Title</span>
@@ -158,6 +161,19 @@
     private const int DefaultTimerDurationSeconds = 60;
     private string? _autoActionTimerKey;
     private bool _isAutoActionInFlight;
+
+    private ElementReference _panelRef;
+    private ElementReference _handleRef;
+    private bool _dragInitialized;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_dragInitialized)
+        {
+            _dragInitialized = true;
+            await JSRuntime.InvokeVoidAsync("draggablePanel.init", _panelRef, _handleRef);
+        }
+    }
 
     [Parameter]
     public List<CardInfo> Cards { get; set; } = [];

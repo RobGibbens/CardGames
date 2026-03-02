@@ -4124,6 +4124,42 @@ a:hover {
     letter-spacing: 0.02em;
 }
 
+/* ===== Draggable Panel Handles ===== */
+.drag-handle {
+    cursor: grab;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.drag-handle:active,
+.dragging .drag-handle {
+    cursor: grabbing;
+}
+
+.dragging {
+    opacity: 0.5;
+    transition: none !important;
+}
+
+.dragging > .drag-handle {
+    /* Keep the handle visually prominent relative to the faded panel */
+    opacity: 1;
+}
+
+/* Dedicated grip strip (used by ActionPanel which has no natural header) */
+.action-panel > .drag-handle {
+    display: flex;
+    justify-content: center;
+    padding: 2px 0 6px;
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 0.7rem;
+    line-height: 1;
+}
+
+.action-panel > .drag-handle:hover {
+    color: rgba(255, 255, 255, 0.5);
+}
+
 /* ===== Action Panel ===== */
 .action-panel {
     position: fixed;
