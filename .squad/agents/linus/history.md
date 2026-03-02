@@ -33,3 +33,12 @@
 - 2026-02-19 (team update): Final-pass My Clubs implementation/review artifacts (`linus-my-clubs-pill-card-final-pass.md`, `tess-my-clubs-pill-card-final-review.md`) were merged from inbox into canonical `.ai-team/decisions.md`; use canonical entries as source of truth for any subsequent UI polish.
 - 2026-02-26: Unified card UI across league pages in `app.css`. Applied consistent border + left accent (`border-left: 3px solid var(--primary)`) + hover glow (`box-shadow: 0 0 0 1px var(--primary)`) to six card element types: `.league-detail-event-row`, `.league-detail-active-game-card`, `.league-detail-season-row`, `.league-club-card`. Removed `box-shadow: var(--card-shadow)` from `.league-club-card` in favor of border-based hover. CSS-only change — no Razor markup modifications. Key file: `src/CardGames.Poker.Web/wwwroot/app.css`.
 - 2026-03-01: Moved community cards (The Good, The Bad, The Ugly) from a vertical stack below the deck to a horizontal row beside the deck in the table center. Added `.table-center-row` flex container wrapping deck + community cards. Pot and phase indicator remain above as a vertical column. Removed `margin-bottom` from `.deck-stack` and `margin-top` from `.community-cards` since they're now siblings in a row. Key files: `src/CardGames.Poker.Web/Components/Shared/TableCanvas.razor`, `src/CardGames.Poker.Web/wwwroot/app.css`.
+- 2026-03-02: Produced comprehensive Dealer's Choice UI design doc at `docs/DealersChoiceUIDesign.md`. Key design decisions:
+  - DC is a client-side hardcoded variant card in CreateTable (code `DEALERS_CHOICE`), not an API-returned game type — keeps game rules in domain, table mode in API/UI.
+  - Between-hands flow inserts a `DealerChoiceRequired` phase after showdown where the dealer picks game/ante/minBet via overlay modal.
+  - Two new Blazor components: `DealerChoiceModal.razor` (dealer sees) and `DealerChoiceWaiting.razor` (others see), following existing `table-overlay` pattern.
+  - Two new SignalR events: `DealerChoiceRequired` and `DealerChoiceMade`, with DTOs in `Contracts/SignalR/`.
+  - `_gameTypeCode` on `TablePlay.razor` updates per hand from `DealerChoiceMadeDto`, so all existing game-specific UI switches (draw panel, wild cards, overlays) work unchanged.
+  - Ante/min bet in info strip update per hand from SignalR state for DC tables.
+  - 60-second dealer timeout with server auto-fallback to previous hand's game type.
+  - Key files analyzed: `CreateTable.razor`, `TablePlay.razor`, `GameHubClient.cs`, `TableStatePublicDto.cs`, `ShowdownOverlay.razor`.
