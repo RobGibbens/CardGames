@@ -3,6 +3,8 @@
 ## Still to do
 
 - [ ] https://github.com/leeoades/FunctionalStateMachine
+- [ ] Dealer's choice round robin
+- [ ] Be able to move the action panel, draw panel, drop or stay panel
 
 ### Leagues
 

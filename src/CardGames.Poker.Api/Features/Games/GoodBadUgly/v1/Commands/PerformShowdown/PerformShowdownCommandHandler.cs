@@ -201,14 +201,19 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 					.Where(c => !c.IsDiscarded)
 					.ToList();
 
-				var allCards = playerOwnedCards
+				// Include community cards so the response contains all cards used in evaluation
+				// and BestCardIndexes can correctly reference into the combined list
+				var allGameCards = playerOwnedCards
 					.Concat(communityCards)
+					.ToList();
+
+				var allCards = allGameCards
 					.Select(c => new Card(MapSuit(c.Suit), MapSymbol(c.Symbol)))
 					.ToList();
 
 				int? wildRank = goodSymbol.HasValue ? (int)MapSymbol(goodSymbol.Value) : (int?)null;
 				var gbuHand = new GoodBadUglyHand(allCards, [], [], wildRank, goodBadUglyWildRules);
-				playerHandEvaluations[gamePlayer.Player.Name] = (gbuHand, cards, gamePlayer);
+				playerHandEvaluations[gamePlayer.Player.Name] = (gbuHand, allGameCards, gamePlayer);
 				continue;
 			}
 
