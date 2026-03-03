@@ -172,6 +172,80 @@ public static class DatabaseSeeder
 
         return pot;
     }
+
+    /// <summary>
+    /// Creates a Dealer's Choice game with no GameType, null Ante/MinBet.
+    /// </summary>
+    public static async Task<Game> CreateDealersChoiceGameAsync(
+        CardsDbContext context,
+        string? name = null,
+        CancellationToken cancellationToken = default)
+    {
+        var game = new Game
+        {
+            Id = Guid.CreateVersion7(),
+            GameTypeId = null,
+            Name = name ?? "Test Dealer's Choice Game",
+            CurrentPhase = nameof(Phases.WaitingToStart),
+            CurrentHandNumber = 0,
+            DealerPosition = 0,
+            Ante = null,
+            MinBet = null,
+            IsDealersChoice = true,
+            Status = GameStatus.WaitingForPlayers,
+            CurrentPlayerIndex = -1,
+            CurrentDrawPlayerIndex = -1,
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
+            RowVersion = Guid.NewGuid().ToByteArray()[..8]
+        };
+
+        context.Games.Add(game);
+        await context.SaveChangesAsync(cancellationToken);
+
+        return game;
+    }
+
+    /// <summary>
+    /// Creates a Dealer's Choice game setup with the specified number of players,
+    /// ready for the WaitingForDealerChoice phase.
+    /// </summary>
+    public static async Task<GameSetup> CreateDealersChoiceGameSetupAsync(
+        CardsDbContext context,
+        int numberOfPlayers,
+        int startingChips = 1000,
+        int dealerSeatPosition = 0,
+        CancellationToken cancellationToken = default)
+    {
+        var game = await CreateDealersChoiceGameAsync(context, cancellationToken: cancellationToken);
+        var players = new List<Player>();
+        var gamePlayers = new List<GamePlayer>();
+
+        for (var i = 0; i < numberOfPlayers; i++)
+        {
+            var player = await CreatePlayerAsync(context, $"Player {i + 1}", cancellationToken: cancellationToken);
+            var gamePlayer = await AddPlayerToGameAsync(
+                context, game, player, i, startingChips, cancellationToken);
+
+            players.Add(player);
+            gamePlayers.Add(gamePlayer);
+        }
+
+        // Set DC dealer and phase
+        game.DealersChoiceDealerPosition = dealerSeatPosition;
+        game.CurrentPhase = nameof(Phases.WaitingForDealerChoice);
+        game.CurrentHandNumber = 1;
+        game.Status = GameStatus.InProgress;
+        await context.SaveChangesAsync(cancellationToken);
+
+        // Reload with relationships
+        var loadedGame = await context.Games
+            .Include(g => g.GamePlayers)
+                .ThenInclude(gp => gp.Player)
+            .FirstAsync(g => g.Id == game.Id, cancellationToken);
+
+        return new GameSetup(loadedGame, players, gamePlayers);
+    }
 }
 
 /// <summary>

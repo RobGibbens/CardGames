@@ -1,0 +1,10 @@
+.dealer-choice-waiting-overlay {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 100;
+}
+
+.dc-waiting-spinner {
+	margin-top: 1rem;
+}

@@ -16,7 +16,7 @@ public static partial class GetGameMapper
 		return new GetGameResponse
 		{
 			Id = model.Id,
-			GameTypeId = model.GameTypeId,
+			GameTypeId = model.GameTypeId ?? Guid.Empty,
 			GameTypeCode = model.GameType?.Code,
 			GameTypeName = model.GameType?.Name,
 			Name = model.Name,
@@ -46,7 +46,9 @@ public static partial class GetGameMapper
 			CreatedById = model.CreatedById,
 			CreatedByName = model.CreatedByName,
 			CanContinue = activePlayers >= 2,
-			RowVersion = MapRowVersion(model.RowVersion)
+			RowVersion = MapRowVersion(model.RowVersion),
+			IsDealersChoice = model.IsDealersChoice,
+			DealersChoiceDealerPosition = model.DealersChoiceDealerPosition
 		};
 	}
 

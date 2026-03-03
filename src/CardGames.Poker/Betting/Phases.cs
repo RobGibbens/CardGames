@@ -115,6 +115,10 @@ public enum Phases
 	[Description("Showdown")]
 	Showdown,
 
+	/// <summary>Waiting for the dealer to choose the game type (Dealer's Choice mode).</summary>
+	[Description("Waiting for Dealer's Choice")]
+	WaitingForDealerChoice,
+
 	/// <summary>Hand is complete.</summary>
 	[Description("Complete")]
 	Complete,

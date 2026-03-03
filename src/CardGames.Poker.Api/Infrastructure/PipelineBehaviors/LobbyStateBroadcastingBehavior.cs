@@ -127,7 +127,7 @@ public sealed class LobbyStateBroadcastingBehavior<TRequest, TResponse> : IPipel
             {
                 GameId = game.Id,
                 Name = game.Name,
-                GameTypeId = game.GameTypeId,
+                GameTypeId = game.GameTypeId ?? Guid.Empty,
                 GameTypeCode = gameTypeCode,
                 GameTypeName = game.GameType?.Name ?? "Unknown",
                 GameTypeMetadataName = metadataName,
@@ -142,7 +142,8 @@ public sealed class LobbyStateBroadcastingBehavior<TRequest, TResponse> : IPipel
                 Ante = game.Ante ?? 0,
                 MinBet = game.MinBet ?? 0,
                 CreatedById = game.CreatedById,
-                CreatedByName = game.CreatedByName
+                CreatedByName = game.CreatedByName,
+                IsDealersChoice = game.IsDealersChoice
             };
         }
 

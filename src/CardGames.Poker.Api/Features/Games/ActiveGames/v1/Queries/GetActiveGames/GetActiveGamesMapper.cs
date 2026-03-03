@@ -13,11 +13,11 @@ public static partial class GetActiveGamesMapper
 
 		return new GetActiveGamesResponse(
 			model.Id,
-			model.GameTypeId,
-			model.GameType.Code,
-			model.GameType.Name,
+			model.GameTypeId ?? Guid.Empty,
+			model.GameType?.Code,
+			model.GameType?.Name,
 			null,
-			model.GameType.Description,
+			model.GameType?.Description,
 			null,
 			model.Name,
 			model.CurrentPhase,
@@ -26,7 +26,8 @@ public static partial class GetActiveGamesMapper
 			model.CreatedAt,
 			model.CreatedById ?? string.Empty,
 			model.CreatedByName ?? string.Empty,
-			MapRowVersion(model.RowVersion)
+			MapRowVersion(model.RowVersion),
+			model.IsDealersChoice
 		);
 	}
 

@@ -106,16 +106,17 @@ public sealed class JoinGameCommandHandler(
 				"This game has ended and is no longer accepting players.");
 		}
 
-		// Check max players
+		// Check max players (Dealer's Choice games have no GameType; default to 8 seats)
+		var maxPlayers = game.GameType?.MaxPlayers ?? MaxSeatIndex + 1;
 		var activePlayerCount = game.GamePlayers.Count(gp =>
 			gp.Status == GamePlayerStatus.Active ||
 			gp.Status == GamePlayerStatus.SittingOut);
 
-		if (activePlayerCount >= game.GameType.MaxPlayers)
+		if (activePlayerCount >= maxPlayers)
 		{
 			return new JoinGameError(
 				JoinGameErrorCode.MaxPlayersReached,
-				$"This game has reached the maximum of {game.GameType.MaxPlayers} players.");
+				$"This game has reached the maximum of {maxPlayers} players.");
 		}
 
 		// Check if player is already seated in this game

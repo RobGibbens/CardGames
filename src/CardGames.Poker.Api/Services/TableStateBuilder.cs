@@ -240,7 +240,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			ActionTimer = actionTimer,
 			AllInRunout = allInRunout,
 			ChipCheckPause = chipCheckPause,
-			CommunityCards = communityCards.Count > 0 ? communityCards : null
+			CommunityCards = communityCards.Count > 0 ? communityCards : null,
+			IsDealersChoice = game.IsDealersChoice,
+			DealersChoiceDealerPosition = game.IsDealersChoice ? game.DealersChoiceDealerPosition : null
 		};
 	}
 

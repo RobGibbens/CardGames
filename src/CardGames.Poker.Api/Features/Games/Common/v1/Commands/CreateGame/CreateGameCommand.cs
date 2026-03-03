@@ -10,4 +10,5 @@ public record CreateGameCommand(
 	string? GameName,
 	int Ante,
 	int MinBet,
-	IReadOnlyList<PlayerInfo> Players) : IRequest<OneOf<CreateGameSuccessful, CreateGameConflict>>, IGameStateChangingCommand, ILobbyStateChangingCommand;
+	IReadOnlyList<PlayerInfo> Players,
+	bool IsDealersChoice = false) : IRequest<OneOf<CreateGameSuccessful, CreateGameConflict>>, IGameStateChangingCommand, ILobbyStateChangingCommand;

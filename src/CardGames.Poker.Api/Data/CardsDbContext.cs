@@ -86,6 +86,11 @@ public class CardsDbContext(DbContextOptions<CardsDbContext> options) : Identity
 	public DbSet<HandHistoryPlayerResult> HandHistoryPlayerResults => Set<HandHistoryPlayerResult>();
 
 	/// <summary>
+	/// Gets the set of dealer's choice hand log entries.
+	/// </summary>
+	public DbSet<DealersChoiceHandLog> DealersChoiceHandLogs => Set<DealersChoiceHandLog>();
+
+	/// <summary>
 	/// Gets the set of account-level chip balances for players.
 	/// </summary>
 	public DbSet<PlayerChipAccount> PlayerChipAccounts => Set<PlayerChipAccount>();

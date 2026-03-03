@@ -83,9 +83,12 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		// Process DrawComplete games that are ready to transition to Showdown
 		await ProcessDrawCompleteGamesAsync(context, broadcaster, handHistoryRecorder, now, cancellationToken);
 
-		// Find games in Complete or WaitingForPlayers phase where the next hand should start
+		// Find games in Complete or WaitingForPlayers phase where the next hand should start.
+		// Also include Dealer's Choice games in WaitingToStart (after dealer chose the game type).
 		var gamesReadyForNextHand = await context.Games
-			.Where(g => (g.CurrentPhase == nameof(Phases.Complete) || g.CurrentPhase == nameof(Phases.WaitingForPlayers)) &&
+			.Where(g => (g.CurrentPhase == nameof(Phases.Complete)
+						 || g.CurrentPhase == nameof(Phases.WaitingForPlayers)
+						 || (g.CurrentPhase == nameof(Phases.WaitingToStart) && g.IsDealersChoice)) &&
 						g.NextHandStartsAt != null &&
 						g.NextHandStartsAt <= now &&
 						(g.Status == GameStatus.InProgress || g.Status == GameStatus.BetweenHands))
@@ -125,7 +128,8 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 					nameof(Phases.DrawPhase),
 					nameof(Phases.SecondBettingRound),
 					nameof(Phases.Showdown),
-					nameof(Phases.Complete)
+					nameof(Phases.Complete),
+					nameof(Phases.WaitingForDealerChoice)
 				};
 
 		var activeGames = await context.Games
@@ -254,6 +258,32 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			: occupiedSeats.First();
 	}
 
+	/// <summary>
+	/// Advances the Dealer's Choice dealer position to the next active seat (clockwise).
+	/// This is separate from the in-game dealer rotation (MoveDealer) because multi-hand games
+	/// like Kings and Lows rotate the in-game dealer internally while the DC turn stays fixed.
+	/// </summary>
+	private static void AdvanceDealersChoiceDealer(Game game)
+	{
+		var occupiedSeats = game.GamePlayers
+			.Where(gp => gp.Status == GamePlayerStatus.Active && gp.LeftAtHandNumber == -1)
+			.OrderBy(gp => gp.SeatPosition)
+			.Select(gp => gp.SeatPosition)
+			.ToList();
+
+		if (occupiedSeats.Count == 0)
+		{
+			return;
+		}
+
+		var currentPosition = game.DealersChoiceDealerPosition ?? 0;
+		var seatsAfterCurrent = occupiedSeats.Where(pos => pos > currentPosition).ToList();
+
+		game.DealersChoiceDealerPosition = seatsAfterCurrent.Count > 0
+			? seatsAfterCurrent.First()
+			: occupiedSeats.First();
+	}
+
 	private async Task StartNextHandAsync(
 		IServiceScope scope,
 		CardsDbContext context,
@@ -266,7 +296,9 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		// Re-check readiness against the latest database state to avoid races with manual StartHand.
 		await context.Entry(game).ReloadAsync(cancellationToken);
 		var stillReadyForNextHand =
-			(game.CurrentPhase == nameof(Phases.Complete) || game.CurrentPhase == nameof(Phases.WaitingForPlayers)) &&
+			(game.CurrentPhase == nameof(Phases.Complete)
+			 || game.CurrentPhase == nameof(Phases.WaitingForPlayers)
+			 || (game.CurrentPhase == nameof(Phases.WaitingToStart) && game.IsDealersChoice)) &&
 			game.NextHandStartsAt != null &&
 			game.NextHandStartsAt <= now &&
 			(game.Status == GameStatus.InProgress || game.Status == GameStatus.BetweenHands);
@@ -313,8 +345,10 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		}
 
 		// Get the game flow handler for this game type (needed for game-specific checks below)
+		// Use CurrentHandGameTypeCode first — after ReloadAsync, the GameType navigation property may be null
+		// even though GameTypeId is set (reload only refreshes scalar properties, not navigation properties).
 		var flowHandlerFactory = scope.ServiceProvider.GetRequiredService<IGameFlowHandlerFactory>();
-		var flowHandler = flowHandlerFactory.GetHandler(game.GameType?.Code);
+		var flowHandler = flowHandlerFactory.GetHandler(game.CurrentHandGameTypeCode ?? game.GameType?.Code);
 
 		// 2. Apply pending chips to player stacks
 		var playersWithPendingChips = game.GamePlayers
@@ -606,6 +640,46 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 
 		// NOTE: Dealer rotation is already done in PerformShowdownCommandHandler.MoveDealer()
 		// when the previous hand completes. We do NOT rotate again here.
+
+		// Dealer's Choice: determine whether to continue the current game variant or prompt for a new choice.
+		// A pre-existing pot for the next hand (created by multi-hand game flow, e.g. Kings and Lows pot matching)
+		// signals the current variant wants another hand. Otherwise, rotate the DC dealer and wait for a new choice.
+		// SKIP this rotation when the game is in WaitingToStart — the dealer just chose the game type and we
+		// need to deal the first hand of this variant, not rotate to the next dealer.
+		if (game.IsDealersChoice && game.CurrentPhase != nameof(Phases.WaitingToStart))
+		{
+			var isMultiHandContinuation = existingPot is not null && existingPot.Amount > 0;
+
+			if (!isMultiHandContinuation)
+			{
+				// Current game variant is done — rotate DC dealer and wait for the next choice
+				AdvanceDealersChoiceDealer(game);
+
+				game.GameTypeId = null;
+				game.CurrentHandGameTypeCode = null;
+				game.Ante = null;
+				game.MinBet = null;
+				game.CurrentPhase = nameof(Phases.WaitingForDealerChoice);
+				game.Status = GameStatus.BetweenHands;
+				game.HandCompletedAt = null;
+				game.NextHandStartsAt = null;
+				game.UpdatedAt = now;
+
+				await context.SaveChangesAsync(cancellationToken);
+				await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
+
+				_logger.LogInformation(
+					"Dealer's Choice game {GameId}: variant finished, waiting for dealer at seat {DcDealerSeat} to choose next game",
+					game.Id,
+					game.DealersChoiceDealerPosition);
+				return;
+			}
+
+			_logger.LogInformation(
+				"Dealer's Choice game {GameId}: multi-hand variant continues (pot carried forward), same dealer at seat {DcDealerSeat}",
+				game.Id,
+				game.DealersChoiceDealerPosition);
+		}
 
 		// Get dealing configuration from the flow handler
 		var dealingConfig = flowHandler.GetDealingConfiguration();

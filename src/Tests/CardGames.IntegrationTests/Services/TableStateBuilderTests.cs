@@ -270,4 +270,47 @@ public class TableStateBuilderTests : IntegrationTestBase
         result.SpecialRules.WildCardRules.WildRanks!.Should().Contain("4");
         result.SpecialRules.WildCardRules.WildRanks!.Should().NotContain("A");
     }
+
+    [Fact]
+    public async Task BuildPublicStateAsync_DealersChoiceGame_SetsIsDealersChoice()
+    {
+        // Arrange
+        var setup = await DatabaseSeeder.CreateDealersChoiceGameSetupAsync(DbContext, 3);
+
+        // Act
+        var result = await TableStateBuilder.BuildPublicStateAsync(setup.Game.Id);
+
+        // Assert
+        result.Should().NotBeNull();
+        result!.IsDealersChoice.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task BuildPublicStateAsync_DealersChoiceGame_SetsDealersChoiceDealerPosition()
+    {
+        // Arrange
+        var setup = await DatabaseSeeder.CreateDealersChoiceGameSetupAsync(DbContext, 3, dealerSeatPosition: 1);
+
+        // Act
+        var result = await TableStateBuilder.BuildPublicStateAsync(setup.Game.Id);
+
+        // Assert
+        result.Should().NotBeNull();
+        result!.DealersChoiceDealerPosition.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task BuildPublicStateAsync_NonDealersChoiceGame_DealersChoiceFieldsNotSet()
+    {
+        // Arrange
+        var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 3);
+
+        // Act
+        var result = await TableStateBuilder.BuildPublicStateAsync(setup.Game.Id);
+
+        // Assert
+        result.Should().NotBeNull();
+        result!.IsDealersChoice.Should().BeFalse();
+        result.DealersChoiceDealerPosition.Should().BeNull();
+    }
 }
