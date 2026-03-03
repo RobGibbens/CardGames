@@ -446,6 +446,9 @@ public abstract class BaseGameFlowHandler : IGameFlowHandler
     #region Chip Check
 
     /// <inheritdoc />
+    public virtual bool IsMultiHandVariant => false;
+
+    /// <inheritdoc />
     public virtual bool RequiresChipCoverageCheck => false;
 
     /// <inheritdoc />

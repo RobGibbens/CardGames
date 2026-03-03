@@ -4,6 +4,8 @@
 
 - [ ] https://github.com/leeoades/FunctionalStateMachine
 - [ ] Dealer's choice round robin
+- [ ] The Draw Panel, Action Panel, Drop or Stay should show green wild cards
+
 
 ### Leagues
 

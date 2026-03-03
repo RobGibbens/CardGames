@@ -114,6 +114,9 @@ public sealed class KingsAndLowsFlowHandler : BaseGameFlowHandler
     #region Chip Check
 
     /// <inheritdoc />
+    public override bool IsMultiHandVariant => true;
+
+    /// <inheritdoc />
     public override bool RequiresChipCoverageCheck => true;
 
     /// <inheritdoc />
@@ -533,25 +536,37 @@ public sealed class KingsAndLowsFlowHandler : BaseGameFlowHandler
 
     /// <summary>
     /// Moves the dealer button to the next occupied seat position (clockwise).
+    /// Prefers active non-sitting-out players to avoid placing the dealer on someone
+    /// who isn't participating (which would break Player vs Deck decision-maker logic).
     /// </summary>
     private static void MoveDealer(Game game)
     {
-        var occupiedSeats = game.GamePlayers
-            .Where(gp => gp.Status == GamePlayerStatus.Active)
+        var activePlayers = game.GamePlayers
+            .Where(gp => gp.Status == GamePlayerStatus.Active && !gp.IsSittingOut)
             .OrderBy(gp => gp.SeatPosition)
             .Select(gp => gp.SeatPosition)
             .ToList();
 
-        if (occupiedSeats.Count == 0)
+        // Fallback to all active players (including sitting out) if no active non-sitting-out players
+        if (activePlayers.Count == 0)
+        {
+            activePlayers = game.GamePlayers
+                .Where(gp => gp.Status == GamePlayerStatus.Active)
+                .OrderBy(gp => gp.SeatPosition)
+                .Select(gp => gp.SeatPosition)
+                .ToList();
+        }
+
+        if (activePlayers.Count == 0)
         {
             return;
         }
 
         var currentPosition = game.DealerPosition;
-        var seatsAfterCurrent = occupiedSeats.Where(pos => pos > currentPosition).ToList();
+        var seatsAfterCurrent = activePlayers.Where(pos => pos > currentPosition).ToList();
 
         game.DealerPosition = seatsAfterCurrent.Count > 0
             ? seatsAfterCurrent.First()
-            : occupiedSeats.First();
+            : activePlayers.First();
     }
 }

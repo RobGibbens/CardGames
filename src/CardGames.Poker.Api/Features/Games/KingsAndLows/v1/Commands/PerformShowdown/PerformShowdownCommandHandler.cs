@@ -229,13 +229,26 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 							pot.WinnerPayouts = JsonSerializer.Serialize(winnerPayoutsList);
 						}
 
-						// Game ends when player beats the deck
-						game.CurrentPhase = "Ended";
-						game.Status = GameStatus.Completed;
-						game.UpdatedAt = now;
-						game.HandCompletedAt = now;
-						game.NextHandStartsAt = null;
-						// No need to move dealer if game ends
+						if (game.IsDealersChoice)
+						{
+							// Kings and Lows variant is done inside Dealer's Choice.
+							// Transition to Complete so the background service rotates the DC dealer
+							// back to the next player after the one who originally chose K&L.
+							game.CurrentPhase = nameof(Phases.Complete);
+							game.UpdatedAt = now;
+							game.HandCompletedAt = now;
+							game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);
+							MoveDealer(game);
+						}
+						else
+						{
+							// Standalone Kings and Lows game ends when player beats the deck
+							game.CurrentPhase = "Ended";
+							game.Status = GameStatus.Completed;
+							game.UpdatedAt = now;
+							game.HandCompletedAt = now;
+							game.NextHandStartsAt = null;
+						}
 					}
 					else
 					{
@@ -598,30 +611,32 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 	/// </summary>
 	private static void MoveDealer(Game game)
 	{
-		var occupiedSeats = game.GamePlayers
-			.Where(gp => gp.Status == GamePlayerStatus.Active)
+		var activePlayers = game.GamePlayers
+			.Where(gp => gp.Status == GamePlayerStatus.Active && !gp.IsSittingOut)
 			.OrderBy(gp => gp.SeatPosition)
 			.Select(gp => gp.SeatPosition)
 			.ToList();
 
-		if (occupiedSeats.Count == 0)
+		if (activePlayers.Count == 0)
+		{
+			activePlayers = game.GamePlayers
+				.Where(gp => gp.Status == GamePlayerStatus.Active)
+				.OrderBy(gp => gp.SeatPosition)
+				.Select(gp => gp.SeatPosition)
+				.ToList();
+		}
+
+		if (activePlayers.Count == 0)
 		{
 			return;
 		}
 
 		var currentPosition = game.DealerPosition;
+		var seatsAfterCurrent = activePlayers.Where(pos => pos > currentPosition).ToList();
 
-		// Find next occupied seat clockwise from current position
-		var seatsAfterCurrent = occupiedSeats.Where(pos => pos > currentPosition).ToList();
-
-		if (seatsAfterCurrent.Count > 0)
-		{
-			game.DealerPosition = seatsAfterCurrent.First();
-		}
-		else
-		{
-			game.DealerPosition = occupiedSeats.First();
-		}
+		game.DealerPosition = seatsAfterCurrent.Count > 0
+			? seatsAfterCurrent.First()
+			: activePlayers.First();
 	}
 
 	/// <summary>

@@ -146,6 +146,10 @@ public class ChooseDealerGameCommandHandler(
 		game.NextHandStartsAt = now.AddSeconds(3);
 		game.UpdatedAt = now;
 
+		// Track the original DC dealer so we can restore correctly when a multi-hand
+		// variant like Kings and Lows finishes (DC dealer advances from the original picker).
+		game.OriginalDealersChoiceDealerPosition = game.DealersChoiceDealerPosition;
+
 		// 9. Log the choice
 		var handLog = new DealersChoiceHandLog
 		{

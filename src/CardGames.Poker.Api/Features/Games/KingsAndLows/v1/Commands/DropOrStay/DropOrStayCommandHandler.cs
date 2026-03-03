@@ -247,29 +247,31 @@ public class DropOrStayCommandHandler(CardsDbContext context, IMediator mediator
 	/// </summary>
 	private static void MoveDealer(Game game)
 	{
-		var occupiedSeats = game.GamePlayers
-			.Where(gp => gp.Status == GamePlayerStatus.Active)
+		var activePlayers = game.GamePlayers
+			.Where(gp => gp.Status == GamePlayerStatus.Active && !gp.IsSittingOut)
 			.OrderBy(gp => gp.SeatPosition)
 			.Select(gp => gp.SeatPosition)
 			.ToList();
 
-		if (occupiedSeats.Count == 0)
+		if (activePlayers.Count == 0)
+		{
+			activePlayers = game.GamePlayers
+				.Where(gp => gp.Status == GamePlayerStatus.Active)
+				.OrderBy(gp => gp.SeatPosition)
+				.Select(gp => gp.SeatPosition)
+				.ToList();
+		}
+
+		if (activePlayers.Count == 0)
 		{
 			return;
 		}
 
 		var currentPosition = game.DealerPosition;
+		var seatsAfterCurrent = activePlayers.Where(pos => pos > currentPosition).ToList();
 
-		// Find next occupied seat clockwise from current position
-		var seatsAfterCurrent = occupiedSeats.Where(pos => pos > currentPosition).ToList();
-
-		if (seatsAfterCurrent.Count > 0)
-		{
-			game.DealerPosition = seatsAfterCurrent.First();
-		}
-		else
-		{
-			game.DealerPosition = occupiedSeats.First();
-		}
+		game.DealerPosition = seatsAfterCurrent.Count > 0
+			? seatsAfterCurrent.First()
+			: activePlayers.First();
 	}
 }

@@ -172,6 +172,105 @@ public class DealersChoiceContinuousPlayTests : IDisposable
     }
 
     [Fact]
+    public async Task ReadyForNextHand_DCGame_MultiHandVariant_FirstHandEmptyPot_CollectsAntesAndContinues()
+    {
+        // Arrange — DC game with a multi-hand variant (e.g., Kings and Lows).
+        // The first hand had no antes (SkipsAnteCollection = true), so pot was 0.
+        // After the showdown, losers match 0 → no next-hand pot with funds.
+        // With IsMultiHandVariant = true, the background service detects that the
+        // current hand had no funded pot and continues the variant.
+        var now = DateTimeOffset.UtcNow;
+        var game = CreateDCGame(now, currentPhase: "Complete", dealerPosition: 0, dcDealerPosition: 0);
+        game.Ante = 10;
+        AddActivePlayers(game, 3);
+
+        _dbContext.Games.Add(game);
+
+        // Current hand's pot was 0 (no antes collected) and already awarded
+        var currentHandPot = new Pot
+        {
+            Id = Guid.CreateVersion7(),
+            GameId = game.Id,
+            HandNumber = game.CurrentHandNumber,
+            PotType = PotType.Main,
+            Amount = 0,
+            IsAwarded = true,
+            AwardedAt = now,
+            CreatedAt = now
+        };
+        _dbContext.Pots.Add(currentHandPot);
+        await _dbContext.SaveChangesAsync();
+
+        var handler = _flowHandlerFactory.SetHandlerForCode("TESTGAME");
+        handler.InitialPhase = "Dealing";
+        handler.SkipsAnteCollection = true;
+        handler.IsMultiHandVariant = true;
+
+        // Act
+        await _service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+
+        // Assert — multi-hand variant whose first hand had an empty pot:
+        // should NOT go to WaitingForDealerChoice, should continue the variant.
+        var updatedGame = await _dbContext.Games.FindAsync(game.Id);
+        updatedGame!.CurrentPhase.Should().NotBe(nameof(Phases.WaitingForDealerChoice),
+            "multi-hand variant should continue when current hand had no funded pot (first hand)");
+        updatedGame.DealersChoiceDealerPosition.Should().Be(0,
+            "DC dealer should not rotate during multi-hand variant");
+
+        // Verify that antes were collected on the new hand
+        var updatedPot = await _dbContext.Pots
+            .FirstOrDefaultAsync(p => p.GameId == game.Id &&
+                                      p.HandNumber == updatedGame.CurrentHandNumber &&
+                                      p.PotType == PotType.Main);
+        updatedPot.Should().NotBeNull();
+        updatedPot!.Amount.Should().Be(30, "3 players * 10 ante = 30");
+    }
+
+    [Fact]
+    public async Task ReadyForNextHand_DCGame_MultiHandVariant_FundedPotNoMatchingPot_EndsVariant()
+    {
+        // Arrange — DC game with a multi-hand variant where the variant has legitimately ended.
+        // The current hand had a funded pot (e.g., 50 from pot matching) that was awarded,
+        // but no next-hand pot was created (player beat the deck, or losers couldn't match).
+        // The variant should END and transition to WaitingForDealerChoice.
+        var now = DateTimeOffset.UtcNow;
+        var game = CreateDCGame(now, currentPhase: "Complete", dealerPosition: 0, dcDealerPosition: 0);
+        game.Ante = 10;
+        AddActivePlayers(game, 3);
+
+        _dbContext.Games.Add(game);
+
+        // Current hand's pot was funded (from pot matching) and awarded — variant ran normally
+        var currentHandPot = new Pot
+        {
+            Id = Guid.CreateVersion7(),
+            GameId = game.Id,
+            HandNumber = game.CurrentHandNumber,
+            PotType = PotType.Main,
+            Amount = 50,
+            IsAwarded = true,
+            AwardedAt = now,
+            CreatedAt = now
+        };
+        _dbContext.Pots.Add(currentHandPot);
+        // No pot for next hand — variant has ended (player beat the deck)
+        await _dbContext.SaveChangesAsync();
+
+        var handler = _flowHandlerFactory.SetHandlerForCode("TESTGAME");
+        handler.InitialPhase = "Dealing";
+        handler.SkipsAnteCollection = true;
+        handler.IsMultiHandVariant = true;
+
+        // Act
+        await _service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+
+        // Assert — variant has ended: should rotate DC dealer and go to WaitingForDealerChoice
+        var updatedGame = await _dbContext.Games.FindAsync(game.Id);
+        updatedGame!.CurrentPhase.Should().Be(nameof(Phases.WaitingForDealerChoice),
+            "variant ended legitimately — should transition to DC choice");
+    }
+
+    [Fact]
     public async Task ReadyForNextHand_DCGame_BroadcastsGameState()
     {
         var now = DateTimeOffset.UtcNow;
@@ -257,6 +356,52 @@ public class DealersChoiceContinuousPlayTests : IDisposable
         updatedGame!.CurrentPhase.Should().Be("Dealing");
         updatedGame.CurrentHandNumber.Should().Be(2);
         // DC dealer position should NOT have changed
+        updatedGame.DealersChoiceDealerPosition.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task DCGame_WaitingToStart_KingsAndLowsVariant_DealsHandCorrectly()
+    {
+        // Scenario: DC game where dealer chose Kings and Lows (multi-hand variant).
+        // Kings and Lows has SkipsAnteCollection=true and IsMultiHandVariant=true.
+        // The background service should still deal the first hand correctly.
+        var now = DateTimeOffset.UtcNow;
+        var gameType = new GameType { Code = "KINGSANDLOWS", Name = "Kings and Lows" };
+        var game = new Game
+        {
+            Id = Guid.NewGuid(),
+            CurrentPhase = nameof(Phases.WaitingToStart),
+            Status = GameStatus.BetweenHands,
+            NextHandStartsAt = now.AddSeconds(-1),
+            CurrentHandNumber = 1,
+            GameType = gameType,
+            GameTypeId = gameType.Id,
+            CurrentHandGameTypeCode = "KINGSANDLOWS",
+            DealerPosition = 0,
+            DealersChoiceDealerPosition = 0,
+            OriginalDealersChoiceDealerPosition = 0,
+            IsDealersChoice = true,
+            Ante = 5,
+            MinBet = 10
+        };
+        AddActivePlayers(game, 3);
+
+        _dbContext.Games.Add(game);
+        await _dbContext.SaveChangesAsync();
+
+        var handler = _flowHandlerFactory.SetHandlerForCode("KINGSANDLOWS");
+        handler.InitialPhase = "Dealing";
+        handler.SkipsAnteCollection = true;
+        handler.IsMultiHandVariant = true;
+
+        // Act
+        await _service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+
+        // Assert — should deal the hand, not rotate DC or get stuck
+        var updatedGame = await _dbContext.Games.FindAsync(game.Id);
+        updatedGame!.CurrentPhase.Should().Be("Dealing",
+            "K&L initial hand should deal cards from WaitingToStart");
+        updatedGame.CurrentHandNumber.Should().Be(2);
         updatedGame.DealersChoiceDealerPosition.Should().Be(0);
     }
 
@@ -419,6 +564,7 @@ public class DealersChoiceContinuousPlayTests : IDisposable
         public string GameTypeCode { get; }
         public bool SupportsInlineShowdown { get; set; } = false;
         public bool SkipsAnteCollection { get; set; } = false;
+        public bool IsMultiHandVariant { get; set; } = false;
         public IReadOnlyList<string> SpecialPhases { get; } = new List<string>();
         public bool RequiresChipCoverageCheck { get; set; } = false;
         public ChipCheckConfiguration ChipCheckConfig { get; set; } = new ChipCheckConfiguration { IsEnabled = false, PauseDuration = TimeSpan.Zero, ShortageAction = ChipShortageAction.SitOut };

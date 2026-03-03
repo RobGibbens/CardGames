@@ -198,11 +198,42 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			try
 			{
 				_logger.LogInformation(
-					"Game {GameId} DrawComplete display period expired, transitioning to Showdown",
-					game.Id);
+					"Game {GameId} DrawComplete display period expired, transitioning to Showdown (GameType={GameType})",
+					game.Id,
+					game.GameType?.Code ?? game.CurrentHandGameTypeCode ?? "null");
+
+				// Guard: check if the showdown was already handled by an API call (race condition protection).
+				// The web client's PerformShowdown API handler may have already awarded pots and transitioned
+				// the game to Complete before the background service gets here.
+				var currentHandPots = await context.Pots
+					.Where(p => p.GameId == game.Id && p.HandNumber == game.CurrentHandNumber)
+					.ToListAsync(cancellationToken);
+				var isAlreadyHandled = currentHandPots.Any(p => p.IsAwarded);
+
+				if (isAlreadyHandled)
+				{
+					// Showdown was already performed — just ensure we're in Complete phase.
+					_logger.LogInformation(
+						"Game {GameId} showdown already handled (pots awarded), skipping inline showdown",
+						game.Id);
+
+					// Reload to pick up any changes made by the API handler
+					await context.Entry(game).ReloadAsync(cancellationToken);
+
+					// If the API handler already set Complete, we're done. Otherwise, set it now.
+					if (game.CurrentPhase != nameof(Phases.Complete))
+					{
+						game.CurrentPhase = nameof(Phases.Complete);
+						game.UpdatedAt = now;
+						await context.SaveChangesAsync(cancellationToken);
+					}
+
+					await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
+					continue;
+				}
 
 				// Use flow handler instead of hardcoded game type check
-				var flowHandler = flowHandlerFactory.GetHandler(game.GameType?.Code);
+				var flowHandler = flowHandlerFactory.GetHandler(game.GameType?.Code ?? game.CurrentHandGameTypeCode);
 				var nextPhase = await flowHandler.ProcessDrawCompleteAsync(
 					context, game, handHistoryRecorder, now, cancellationToken);
 
@@ -221,11 +252,60 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 							context, game, showdownResult, now, cancellationToken);
 
 						game.CurrentPhase = postShowdownPhase;
+
+						// Log whether a next-hand pot was created (for multi-hand continuation, e.g. K&L pot matching)
+						var nextHandPot = context.ChangeTracker.Entries<Pot>()
+							.FirstOrDefault(e => e.Entity.GameId == game.Id &&
+							                     e.Entity.HandNumber == game.CurrentHandNumber + 1 &&
+							                     e.Entity.PotType == PotType.Main);
+						_logger.LogInformation(
+							"[SHOWDOWN] Game {GameId}: Inline showdown succeeded. NextHandPot={HasPot} (Amount={Amount}), Winners={Winners}, Losers={Losers}",
+							game.Id,
+							nextHandPot is not null,
+							nextHandPot?.Entity.Amount ?? 0,
+							showdownResult.WinnerPlayerIds?.Count ?? 0,
+							showdownResult.LoserPlayerIds?.Count ?? 0);
+					}
+					else
+					{
+						_logger.LogWarning(
+							"Game {GameId} inline showdown failed: {Error}. Phase remains {Phase}",
+							game.Id,
+							showdownResult.ErrorMessage,
+							game.CurrentPhase);
 					}
 				}
 
 				await context.SaveChangesAsync(cancellationToken);
 				await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
+			}
+			catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
+			{
+				// Concurrency conflict — another handler (e.g., the API PerformShowdown endpoint)
+				// modified the game simultaneously. Reload and check if the work is already done.
+				_logger.LogWarning(
+					ex,
+					"Concurrency conflict processing DrawComplete for game {GameId}. Reloading to check if showdown was handled.",
+					game.Id);
+
+				try
+				{
+					await context.Entry(game).ReloadAsync(cancellationToken);
+
+					// If the game is already past DrawComplete (API handler handled it), broadcast and move on
+					if (game.CurrentPhase != nameof(Phases.DrawComplete))
+					{
+						_logger.LogInformation(
+							"Game {GameId} was already transitioned to {Phase} by another handler",
+							game.Id,
+							game.CurrentPhase);
+						await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
+					}
+				}
+				catch (Exception reloadEx)
+				{
+					_logger.LogError(reloadEx, "Failed to reload game {GameId} after concurrency conflict", game.Id);
+				}
 			}
 			catch (Exception ex)
 			{
@@ -236,32 +316,47 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 
 	/// <summary>
 	/// Moves the dealer button to the next occupied seat position (clockwise).
+	/// Prefers active non-sitting-out players to avoid placing the dealer on someone
+	/// who isn't participating (which would break Player vs Deck decision-maker logic).
 	/// </summary>
 	private static void MoveDealer(Game game)
 	{
-		var occupiedSeats = game.GamePlayers
-			.Where(gp => gp.Status == GamePlayerStatus.Active)
+		var activePlayers = game.GamePlayers
+			.Where(gp => gp.Status == GamePlayerStatus.Active && !gp.IsSittingOut)
 			.OrderBy(gp => gp.SeatPosition)
 			.Select(gp => gp.SeatPosition)
 			.ToList();
 
-		if (occupiedSeats.Count == 0)
+		// Fallback to all active players (including sitting out) if no active non-sitting-out players
+		if (activePlayers.Count == 0)
+		{
+			activePlayers = game.GamePlayers
+				.Where(gp => gp.Status == GamePlayerStatus.Active)
+				.OrderBy(gp => gp.SeatPosition)
+				.Select(gp => gp.SeatPosition)
+				.ToList();
+		}
+
+		if (activePlayers.Count == 0)
 		{
 			return;
 		}
 
 		var currentPosition = game.DealerPosition;
-		var seatsAfterCurrent = occupiedSeats.Where(pos => pos > currentPosition).ToList();
+		var seatsAfterCurrent = activePlayers.Where(pos => pos > currentPosition).ToList();
 
 		game.DealerPosition = seatsAfterCurrent.Count > 0
 			? seatsAfterCurrent.First()
-			: occupiedSeats.First();
+			: activePlayers.First();
 	}
 
 	/// <summary>
 	/// Advances the Dealer's Choice dealer position to the next active seat (clockwise).
 	/// This is separate from the in-game dealer rotation (MoveDealer) because multi-hand games
 	/// like Kings and Lows rotate the in-game dealer internally while the DC turn stays fixed.
+	/// When <see cref="Game.OriginalDealersChoiceDealerPosition"/> is set, advance from that
+	/// position (the player who originally chose the variant) so the deal rotates correctly
+	/// even after a multi-hand variant like Kings and Lows rotated the DC dealer internally.
 	/// </summary>
 	private static void AdvanceDealersChoiceDealer(Game game)
 	{
@@ -276,12 +371,20 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			return;
 		}
 
-		var currentPosition = game.DealersChoiceDealerPosition ?? 0;
-		var seatsAfterCurrent = occupiedSeats.Where(pos => pos > currentPosition).ToList();
+		// Advance from the original picker's seat when a multi-hand variant ends,
+		// otherwise advance from the current DC dealer seat.
+		var advanceFrom = game.OriginalDealersChoiceDealerPosition
+		                  ?? game.DealersChoiceDealerPosition
+		                  ?? 0;
+
+		var seatsAfterCurrent = occupiedSeats.Where(pos => pos > advanceFrom).ToList();
 
 		game.DealersChoiceDealerPosition = seatsAfterCurrent.Count > 0
 			? seatsAfterCurrent.First()
 			: occupiedSeats.First();
+
+		// Clear the saved original position now that the variant is over.
+		game.OriginalDealersChoiceDealerPosition = null;
 	}
 
 	private async Task StartNextHandAsync(
@@ -650,6 +753,42 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		{
 			var isMultiHandContinuation = existingPot is not null && existingPot.Amount > 0;
 
+			// Multi-hand variants (like Kings and Lows) skip standard ante collection, so
+			// the first hand's pot is 0. After that showdown, losers match 0 and no next-hand
+			// pot is created. This doesn't mean the variant ended — it means the first hand had
+			// no funded pot. Detect this by checking if the CURRENT hand's pot was non-trivial
+			// (Amount > 0 and awarded). If it wasn't, this is the first hand and we should continue.
+			if (!isMultiHandContinuation && flowHandler.IsMultiHandVariant)
+			{
+				var currentHandHadFundedPot = await context.Pots
+					.AnyAsync(p => p.GameId == game.Id &&
+					               p.HandNumber == game.CurrentHandNumber &&
+					               p.PotType == PotType.Main &&
+					               p.IsAwarded &&
+					               p.Amount > 0,
+					           cancellationToken);
+
+				if (!currentHandHadFundedPot)
+				{
+					isMultiHandContinuation = true;
+					_logger.LogInformation(
+						"[DC-CHECK] Game {GameId}: Multi-hand variant {GameType} continues — " +
+						"current hand had no funded pot (first hand of variant), antes will be collected",
+						game.Id, game.CurrentHandGameTypeCode);
+				}
+			}
+
+			_logger.LogInformation(
+				"[DC-CHECK] Game {GameId}: HandNumber={HandNumber}, ExistingPot={PotExists} (Amount={PotAmount}), " +
+				"IsMultiHandContinuation={IsContinuation}, GameType={GameType}, Phase={Phase}",
+				game.Id,
+				game.CurrentHandNumber,
+				existingPot is not null,
+				existingPot?.Amount ?? 0,
+				isMultiHandContinuation,
+				game.CurrentHandGameTypeCode,
+				game.CurrentPhase);
+
 			if (!isMultiHandContinuation)
 			{
 				// Current game variant is done — rotate DC dealer and wait for the next choice
@@ -710,7 +849,27 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			game.CurrentPhase);
 
 		// Automatically collect antes (skip if game's flow handler indicates it handles antes differently)
-		if (!flowHandler.SkipsAnteCollection)
+		// For multi-hand variants (e.g., Kings and Lows), antes are only collected on the first hand
+		// when the pot is empty. Subsequent hands get their pot from losers matching the previous pot.
+		var shouldCollectAntes = !flowHandler.SkipsAnteCollection;
+		if (!shouldCollectAntes && flowHandler.IsMultiHandVariant && ante > 0)
+		{
+			var handPot = await context.Pots
+				.FirstOrDefaultAsync(p => p.GameId == game.Id &&
+				                          p.HandNumber == game.CurrentHandNumber &&
+				                          p.PotType == PotType.Main,
+				                     cancellationToken);
+
+			if (handPot is not null && handPot.Amount == 0)
+			{
+				shouldCollectAntes = true;
+				_logger.LogInformation(
+					"Multi-hand variant {GameType} game {GameId}: collecting antes for first hand {HandNumber} (pot is empty)",
+					flowHandler.GameTypeCode, game.Id, game.CurrentHandNumber);
+			}
+		}
+
+		if (shouldCollectAntes)
 		{
 			await CollectAntesAsync(context, game, eligiblePlayers, ante, now, cancellationToken);
 		}

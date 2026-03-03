@@ -1744,25 +1744,31 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			return null;
 		}
 
-		// Determine decision maker: dealer, unless dealer is the staying player
+		// Determine decision maker: any active non-staying player, preferring the dealer.
+		// The decision maker chooses which cards to discard from the deck's hand.
 		var dealerSeatPosition = game.DealerPosition;
 		var orderedPlayers = gamePlayers.OrderBy(gp => gp.SeatPosition).ToList();
 
 		GamePlayer? decisionMaker = null;
 
-		// Try dealer first
+		// Try dealer first (must be active, not sitting out, and not the staying player)
 		var dealer = orderedPlayers.FirstOrDefault(gp => gp.SeatPosition == dealerSeatPosition);
-		if (dealer is not null && dealer.PlayerId != stayingPlayer.PlayerId)
+		if (dealer is not null &&
+			dealer.PlayerId != stayingPlayer.PlayerId &&
+			dealer.Status == Entities.GamePlayerStatus.Active &&
+			!dealer.IsSittingOut)
 		{
 			decisionMaker = dealer;
 		}
-		else
+
+		// If dealer can't be the decision maker, find the first eligible player
+		// searching clockwise from the dealer position
+		if (decisionMaker is null)
 		{
-			// Dealer is the staying player, find first player to dealer's left
 			var dealerIndex = orderedPlayers.FindIndex(gp => gp.SeatPosition == dealerSeatPosition);
 			if (dealerIndex < 0) dealerIndex = 0;
 
-			for (int i = 1; i < orderedPlayers.Count; i++)
+			for (int i = 1; i <= orderedPlayers.Count; i++)
 			{
 				var nextIndex = (dealerIndex + i) % orderedPlayers.Count;
 				var candidate = orderedPlayers[nextIndex];

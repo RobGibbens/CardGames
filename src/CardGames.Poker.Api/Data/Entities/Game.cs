@@ -249,6 +249,14 @@ public class Game : EntityWithRowVersion
 	public int? DealersChoiceDealerPosition { get; set; }
 
 	/// <summary>
+	/// The seat position of the DC dealer who originally chose the current multi-hand game variant
+	/// (e.g., Kings and Lows). Saved when the variant starts so that when it finally ends,
+	/// the DC dealer can be restored to OriginalDealersChoiceDealerPosition + 1 (next seat).
+	/// Null when no multi-hand variant is in progress.
+	/// </summary>
+	public int? OriginalDealersChoiceDealerPosition { get; set; }
+
+	/// <summary>
 	/// Navigation property for players in this game.
 	/// </summary>
 	public ICollection<GamePlayer> GamePlayers { get; set; } = [];

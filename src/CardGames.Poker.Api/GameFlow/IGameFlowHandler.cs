@@ -222,6 +222,19 @@ public interface IGameFlowHandler
     #region Chip Check
 
     /// <summary>
+    /// Gets whether this game is a multi-hand variant that continues across multiple
+    /// hands within a single Dealer's Choice selection (e.g., Kings and Lows).
+    /// </summary>
+    /// <remarks>
+    /// Multi-hand variants skip ante collection on subsequent hands because the pot
+    /// is funded by losers matching from the previous hand. However, the first hand
+    /// of the variant still needs antes to seed the initial pot.
+    /// The background service uses this property to correctly determine when the
+    /// variant has ended versus when it should continue.
+    /// </remarks>
+    bool IsMultiHandVariant { get; }
+
+    /// <summary>
     /// Gets whether this game requires chip coverage check before starting new hands.
     /// </summary>
     /// <remarks>
