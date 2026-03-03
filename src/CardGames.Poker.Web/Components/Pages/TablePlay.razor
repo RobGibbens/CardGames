@@ -127,12 +127,14 @@
                                 <i class="fa-regular fa-pen-to-square"></i>
                                 Edit Table
                             </a>
-                            <button class="btn btn-primary btn-sm" @onclick="StartGameAsync" disabled="@(!_canStartGame)">
+                            <button class="btn btn-primary btn-sm" @onclick="StartGameAsync" disabled="@(!_canStartGame || IsDealersChoiceWaitingForSelectedGameStart)">
                                 <i class="fa-regular fa-play"></i>
-                                @(((_gameResponse?.CurrentPhase == GamePhase.WaitingForPlayers.ToString() ||
-                                    _gameResponse?.CurrentPhase == GamePhase.WaitingToStart.ToString()) && !_canStartGame)
-                                    ? "Waiting for more players"
-                                    : "Start Game")
+                                @(IsDealersChoiceWaitingForSelectedGameStart
+                                    ? "Starting..."
+                                    : (((_gameResponse?.CurrentPhase == GamePhase.WaitingForPlayers.ToString() ||
+                                        _gameResponse?.CurrentPhase == GamePhase.WaitingToStart.ToString()) && !_canStartGame)
+                                        ? "Waiting for more players"
+                                        : "Start Game"))
                             </button>
                         }
                         else if (_gameResponse is not null && _gameResponse.CurrentPhase != GamePhase.Ended.ToString())
@@ -670,6 +672,12 @@
     // Dealer's Choice phase detection
     private bool IsDealersChoicePhase =>
     string.Equals(_gameResponse?.CurrentPhase, "WaitingForDealerChoice", StringComparison.OrdinalIgnoreCase);
+
+    private bool IsDealersChoiceWaitingForSelectedGameStart =>
+    _isDealersChoice &&
+    string.Equals(_gameResponse?.CurrentPhase, GamePhase.WaitingToStart.ToString(), StringComparison.OrdinalIgnoreCase) &&
+    !string.IsNullOrWhiteSpace(_gameTypeCode) &&
+    !string.Equals(_gameTypeCode, "DEALERSCHOICE", StringComparison.OrdinalIgnoreCase);
 
     private bool IsCurrentPlayerDealersChoiceDealer =>
     _isDealersChoice && _dealersChoiceDealerPosition.HasValue && _currentPlayerSeatIndex == _dealersChoiceDealerPosition.Value;
@@ -2207,6 +2215,12 @@
     {
         if (!_isHost || !_canStartGame)
         {
+            return;
+        }
+
+        if (IsDealersChoiceWaitingForSelectedGameStart)
+        {
+            await ShowToastAsync("Game is starting…", "info");
             return;
         }
 
