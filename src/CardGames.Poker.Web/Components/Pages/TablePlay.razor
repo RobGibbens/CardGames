@@ -270,7 +270,8 @@
             <DropOrStayOverlay Cards="@_currentPlayerDrawCards" HandDescription="@currentPlayerHandEvaluationDescription"
                                PotAmount="@_pot" HasDecided="@_hasDropOrStayDecided" Decision="@_dropOrStayDecision"
                                IsDeciding="@_isProcessingDropOrStay" PlayersWaiting="@GetPlayersWaitingForDropOrStay()"
-                               OnDecision="@HandleDropOrStayDecision" ActionTimer="@_actionTimerState" />
+                               OnDecision="@HandleDropOrStayDecision" ActionTimer="@_actionTimerState"
+                               EnableKingsAndLowsWildCardHighlighting="@IsKingsAndLows" />
         }
 
         <!-- Buy Card Overlay (for Baseball) -->
@@ -1347,25 +1348,13 @@
 
             if (state.Draw.IsMyTurnToDraw && !_isDrawAnimating && !_forceShowDrawPanel)
             {
-                _currentPlayerDrawCards = state.Hand.Select((c, i) => new CardInfo
-                {
-                    Rank = c.Rank,
-                    Suit = c.Suit,
-                    IsFaceUp = true,
-                    IsSelected = _selectedDiscardIndices.Contains(i)
-                }).ToList();
+                _currentPlayerDrawCards = BuildCurrentPlayerDrawCards(state.Hand, preserveSelection: true);
             }
             else if ((_isDrawAnimating || _forceShowDrawPanel) && _currentPlayerDrawCards.Count == 0)
             {
                 // Preserve whatever is currently being animated. If we lost the list for any reason,
                 // fall back to the latest private hand state to keep the panel populated.
-                _currentPlayerDrawCards = state.Hand.Select((c, i) => new CardInfo
-                {
-                    Rank = c.Rank,
-                    Suit = c.Suit,
-                    IsFaceUp = true,
-                    IsSelected = _selectedDiscardIndices.Contains(i)
-                }).ToList();
+                _currentPlayerDrawCards = BuildCurrentPlayerDrawCards(state.Hand, preserveSelection: true);
             }
         }
         else if (IsDrawingPhase)
@@ -1377,13 +1366,7 @@
             if (_isPlayerDrawTurn && !_isDrawAnimating && !_forceShowDrawPanel && _currentPlayerDrawCards.Count == 0 && state.Hand
             is not null)
             {
-                _currentPlayerDrawCards = state.Hand.Select((c, i) => new CardInfo
-                {
-                    Rank = c.Rank,
-                    Suit = c.Suit,
-                    IsFaceUp = true,
-                    IsSelected = _selectedDiscardIndices.Contains(i)
-                }).ToList();
+                _currentPlayerDrawCards = BuildCurrentPlayerDrawCards(state.Hand, preserveSelection: true);
             }
         }
 
@@ -1403,13 +1386,7 @@
         if ((IsDropOrStayPhase || string.Equals(currentPhase, "DropOrStay", StringComparison.OrdinalIgnoreCase))
         && state.Hand is not null && state.Hand.Count > 0)
         {
-            _currentPlayerDrawCards = state.Hand.Select((c, i) => new CardInfo
-            {
-                Rank = c.Rank,
-                Suit = c.Suit,
-                IsFaceUp = true,
-                IsSelected = false
-            }).ToList();
+            _currentPlayerDrawCards = BuildCurrentPlayerDrawCards(state.Hand, preserveSelection: false);
         }
         // Also populate cards for PlayerVsDeck phase when reconnection
         // This ensures the player can see the deck cards after reconnection
@@ -1417,26 +1394,14 @@
         && state.Hand is not null && state.Hand.Count > 0 && _currentPlayerDrawCards.Count == 0)
         {
             // Populate player's own cards for reference during player-vs-deck phase
-            _currentPlayerDrawCards = state.Hand.Select((c, i) => new CardInfo
-            {
-                Rank = c.Rank,
-                Suit = c.Suit,
-                IsFaceUp = true,
-                IsSelected = false
-            }).ToList();
+            _currentPlayerDrawCards = BuildCurrentPlayerDrawCards(state.Hand, preserveSelection: false);
         }
         // Populate cards for DrawComplete phase so all players can see their new hands
         else if ((IsDrawCompletePhase || string.Equals(currentPhase, "DrawComplete", StringComparison.OrdinalIgnoreCase))
         && state.Hand is not null && state.Hand.Count > 0)
         {
             // Show the player's new hand during DrawComplete phase
-            _currentPlayerDrawCards = state.Hand.Select((c, i) => new CardInfo
-            {
-                Rank = c.Rank,
-                Suit = c.Suit,
-                IsFaceUp = true,
-                IsSelected = false
-            }).ToList();
+            _currentPlayerDrawCards = BuildCurrentPlayerDrawCards(state.Hand, preserveSelection: false);
         }
 
         // Calculate hand odds from current cards
@@ -3915,6 +3880,76 @@ HandType.HighCard
         // Lowest card is wild is handled by server marking the card
         return false;
     }
+
+    private List<CardInfo> BuildCurrentPlayerDrawCards(IReadOnlyList<CardPrivateDto> hand, bool preserveSelection)
+    {
+        var cards = hand.Select((c, i) => new CardInfo
+        {
+            Rank = c.Rank,
+            Suit = c.Suit,
+            IsFaceUp = true,
+            IsSelected = preserveSelection && _selectedDiscardIndices.Contains(i),
+            DealOrder = c.DealOrder,
+            IsWild = IsWildForCurrentPlayerCard(c.Rank, c.Suit)
+        }).ToList();
+
+        ApplyKingsAndLowsLowestCardWildFallback(cards);
+        return cards;
+    }
+
+    private bool IsWildForCurrentPlayerCard(string? rank, string? suit)
+    {
+        if (IsWildCard(rank, suit))
+        {
+            return true;
+        }
+
+        // Kings and Lows always treats kings as wild for display/evaluation.
+        return IsKingsAndLows && rank?.Trim().ToUpperInvariant() is "K" or "KING";
+    }
+
+    private void ApplyKingsAndLowsLowestCardWildFallback(List<CardInfo> cards)
+    {
+        if (!IsKingsAndLows || cards.Count == 0)
+        {
+            return;
+        }
+
+        var wildRules = _tableState?.SpecialRules?.WildCardRules;
+        if (wildRules is null || !wildRules.LowestCardIsWild)
+        {
+            return;
+        }
+
+        var lowestCard = cards
+            .Where(c => c.IsFaceUp && !string.IsNullOrWhiteSpace(c.Rank))
+            .OrderBy(c => GetCardValue(c.Rank))
+            .ThenBy(c => GetSuitSortOrder(c.Suit))
+            .FirstOrDefault();
+
+        if (lowestCard is null)
+        {
+            return;
+        }
+
+        var index = cards.FindIndex(c =>
+            string.Equals(c.Rank, lowestCard.Rank, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(c.Suit, lowestCard.Suit, StringComparison.OrdinalIgnoreCase));
+
+        if (index >= 0)
+        {
+            cards[index] = cards[index] with { IsWild = true };
+        }
+    }
+
+    private static int GetSuitSortOrder(string? suit) => suit?.Trim().ToUpperInvariant() switch
+    {
+        "CLUBS" or "C" => 0,
+        "DIAMONDS" or "D" => 1,
+        "HEARTS" or "H" => 2,
+        "SPADES" or "S" => 3,
+        _ => int.MaxValue
+    };
 
     /// <summary>
     /// Gets the suit code for wild card comparison.

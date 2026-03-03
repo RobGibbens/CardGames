@@ -62,7 +62,7 @@
                  @onclick:stopPropagation="@IsReadOnly">
 
                 <div class="draw-card @(isSelected ? "selected" : "")">
-                    <playing-card rank="@GetPlayingCardRank(card)" suit="@card.Suit" style="height:92px;width:64px;"></playing-card>
+                    <playing-card rank="@GetPlayingCardRank(card)" suit="@card.Suit" style="height:92px;width:64px;" suitcolor="@(card.IsWild ? "green" : null)" rankcolor="@(card.IsWild ? "green" : null)" courtcolor="@(card.IsWild ? "green" : null)"></playing-card>
                 </div>
 
                 @if (!HideCardIndices)

@@ -109,7 +109,8 @@ public sealed class LobbyStateBroadcastingBehavior<TRequest, TResponse> : IPipel
                 return null;
             }
 
-            var gameTypeCode = game.GameType?.Code ?? "Unknown";
+            var gameTypeCode = game.GameType?.Code ?? (game.IsDealersChoice ? "DEALERSCHOICE" : "Unknown");
+            var gameTypeName = game.GameType?.Name ?? (game.IsDealersChoice ? "Dealer's Choice" : "Unknown");
 
             // Look up metadata from registry for image and description
             string? metadataName = null;
@@ -129,7 +130,7 @@ public sealed class LobbyStateBroadcastingBehavior<TRequest, TResponse> : IPipel
                 Name = game.Name,
                 GameTypeId = game.GameTypeId ?? Guid.Empty,
                 GameTypeCode = gameTypeCode,
-                GameTypeName = game.GameType?.Name ?? "Unknown",
+                GameTypeName = gameTypeName,
                 GameTypeMetadataName = metadataName,
                 GameTypeDescription = description,
                 GameTypeImageName = imageName,
