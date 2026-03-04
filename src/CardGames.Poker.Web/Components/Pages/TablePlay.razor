@@ -925,6 +925,8 @@
                     s.Cards = [];
                     s.HandEvaluationDescription = null;
                 }
+
+                ResetDrawPanelStateForNewHand();
             }
 
             // Check for Card Deal Animation trigger (all supported variants)
@@ -1156,17 +1158,7 @@
                         _runoutInitialCardCounts.Clear();
 
                         // Reset DrawPanel state for new hand
-                        _selectedDiscardIndices.Clear();
-                        _currentPlayerDrawCards = [];
-                        _cardsDrawn = false;
-                        _newHandDescription = null;
-                        _isPlayerDrawTurn = false;
-                        _isDrawAnimating = false;
-                        _isDiscardingCards = false;
-                        _isDrawingNewCards = false;
-                        _isSubmittingDraw = false;
-                        _forceShowDrawPanel = false;
-                        _newCardIndices = [];
+                        ResetDrawPanelStateForNewHand();
                     }
                 }
             }
@@ -2960,6 +2952,21 @@
         }
 
         return exception.Message ?? "An error occurred.";
+    }
+
+    private void ResetDrawPanelStateForNewHand()
+    {
+        _selectedDiscardIndices.Clear();
+        _currentPlayerDrawCards = [];
+        _cardsDrawn = false;
+        _newHandDescription = null;
+        _isPlayerDrawTurn = false;
+        _isDrawAnimating = false;
+        _isDiscardingCards = false;
+        _isDrawingNewCards = false;
+        _isSubmittingDraw = false;
+        _forceShowDrawPanel = false;
+        _newCardIndices = [];
     }
 
     private async Task HandleDrawActionAsync(List<int> discardIndices)

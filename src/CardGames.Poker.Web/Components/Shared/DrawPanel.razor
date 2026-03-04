@@ -161,6 +161,7 @@
     private const int DefaultTimerDurationSeconds = 60;
     private string? _autoActionTimerKey;
     private bool _isAutoActionInFlight;
+    private string? _lastCardsKey;
 
     private ElementReference _panelRef;
     private ElementReference _handleRef;
@@ -268,7 +269,32 @@
 
     protected override async Task OnParametersSetAsync()
     {
+        ClearStaleSelectionIfNeeded();
         await TrySubmitTimeoutDefaultActionAsync();
+    }
+
+    private void ClearStaleSelectionIfNeeded()
+    {
+        var cardsKey = ComputeCardsKey();
+
+        if (SelectedIndices.Count > 0 && (Cards.Count == 0 || SelectedIndices.Any(i => i < 0 || i >= Cards.Count)))
+        {
+            SelectedIndices.Clear();
+        }
+        else if (SelectedIndices.Count > 0
+            && !IsSubmitting && !IsAnimating && !IsDiscarding && !IsDrawing
+            && _lastCardsKey is not null
+            && !string.Equals(_lastCardsKey, cardsKey, StringComparison.Ordinal))
+        {
+            SelectedIndices.Clear();
+        }
+
+        _lastCardsKey = cardsKey;
+    }
+
+    private string ComputeCardsKey()
+    {
+        return string.Join("|", Cards.Select(c => $"{c.DealOrder}:{c.Rank}:{c.Suit}"));
     }
 
     private int GetSecondsRemaining()
