@@ -3,9 +3,9 @@
 ## Still to do
 
 - [ ] https://github.com/leeoades/FunctionalStateMachine
-- [ ] Dealer's choice round robin
-- [ ] The Draw Panel, Action Panel, Drop or Stay should show green wild cards
-
+- [ ] The Draw Panel, Drop or Stay should show green wild cards
+- [ ] Baseball (any wild seven card stud game) is not choosing the right "first to act"
+- [ ] Baseball "Buy card" shouldn't display until the 4 actually is face up, then it should stop
 
 ### Leagues
 
@@ -169,3 +169,4 @@
 - [x] Card UI isn't consistent
 - [x] Pages load too slowly
 - [x] Be able to move the action panel, draw panel, drop or stay panel
+- [x] Dealer's choice round robin

@@ -21,7 +21,7 @@
 		{
 			<!-- Variant Grid -->
 			<div class="dealer-choice-variants">
-				@foreach (var game in AvailableGames)
+				@foreach (var game in AvailableGames.Where(g => _selectedCode is null || g.Code == _selectedCode))
 				{
 					<button class="dealer-choice-variant @(_selectedCode == game.Code ? "selected" : "")"
 							@onclick="() => SelectVariant(game.Code, game.Name)">
@@ -102,8 +102,16 @@
 
 	private void SelectVariant(string code, string name)
 	{
-		_selectedCode = code;
-		_selectedName = name;
+		if (_selectedCode == code)
+		{
+			_selectedCode = null;
+			_selectedName = null;
+		}
+		else
+		{
+			_selectedCode = code;
+			_selectedName = name;
+		}
 		_error = null;
 	}
 

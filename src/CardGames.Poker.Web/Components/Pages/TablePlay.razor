@@ -1278,6 +1278,8 @@
                     IsWild = IsWildCard(c.Rank, c.Suit)
                 }).ToList();
 
+                ApplyKingsAndLowsLowestCardWildFallback(_seats[targetSeatIndex].Cards);
+
                 _seats[targetSeatIndex].HandEvaluationDescription = state.HandEvaluationDescription;
 
                 var newlyDealtCardCount = Math.Max(0, state.Hand.Count - previousCardCount);
@@ -1493,6 +1495,8 @@
                         IsWild = c.IsFaceUp && IsWildCard(c.Rank, c.Suit)
                     };
                 }).ToList();
+
+                ApplyKingsAndLowsLowestCardWildFallback(cards);
 
                 // Preserve LastActionDescription if it hasn't expired (5 seconds)
                 var existingSeat = _seats[publicSeat.SeatIndex];
