@@ -48,6 +48,9 @@
     <div class="draw-cards-container">
         @{
             var orderedCards = GetOrderedCards().ToList();
+            var lowestNonKingRankValueForWild = EnableKingsAndLowsWildCardHighlighting
+                ? GetLowestNonKingRankValueForWild(Cards)
+                : null;
         }
 
         @for (var i = 0; i < orderedCards.Count; i++)
@@ -56,13 +59,14 @@
             var index = orderedCards[i].Index;
             var card = orderedCards[i].Card;
             var isSelected = SelectedIndices.Contains(index);
+            var isWildForDisplay = IsWildForDisplay(card, lowestNonKingRankValueForWild, EnableKingsAndLowsWildCardHighlighting);
 
             <div class="draw-card-wrapper @(isSelected ? "selected" : "") @(IsDiscarding && isSelected ? "discarding" : "") @(IsDrawing && NewCardIndices.Contains(index) ? "drawing" : "") @(IsReadOnly ? "readonly" : "")"
                  @onclick="() => ToggleCardSelectionAsync(index)"
                  @onclick:stopPropagation="@IsReadOnly">
 
                 <div class="draw-card @(isSelected ? "selected" : "")">
-                    <playing-card rank="@GetPlayingCardRank(card)" suit="@card.Suit" style="height:92px;width:64px;" suitcolor="@(card.IsWild ? "green" : null)" rankcolor="@(card.IsWild ? "green" : null)" courtcolor="@(card.IsWild ? "green" : null)"></playing-card>
+                    <playing-card rank="@GetPlayingCardRank(card)" suit="@card.Suit" style="height:92px;width:64px;" suitcolor="@(isWildForDisplay ? "green" : null)" rankcolor="@(isWildForDisplay ? "green" : null)" courtcolor="@(isWildForDisplay ? "green" : null)"></playing-card>
                 </div>
 
                 @if (!HideCardIndices)
@@ -264,6 +268,13 @@
     /// </summary>
     [Parameter]
     public ActionTimerStateDto? ActionTimer { get; set; }
+
+    /// <summary>
+    /// Enables Kings and Lows wild card highlighting logic (kings + lowest non-king rank).
+    /// Keep false for other game types.
+    /// </summary>
+    [Parameter]
+    public bool EnableKingsAndLowsWildCardHighlighting { get; set; }
 
     private int SelectedCount => SelectedIndices.Count;
 
@@ -472,6 +483,39 @@
             _ => int.MaxValue
                 };
             }
+
+    private static bool IsWildForDisplay(CardInfo card, int? lowestNonKingRankValue, bool enableKingsAndLowsWildCardHighlighting)
+    {
+        if (card.IsWild)
+        {
+            return true;
+        }
+
+        if (!enableKingsAndLowsWildCardHighlighting)
+        {
+            return false;
+        }
+
+        var rankValue = GetRankValue(card.Rank);
+        if (rankValue == 13)
+        {
+            return true;
+        }
+
+        return lowestNonKingRankValue.HasValue && rankValue == lowestNonKingRankValue.Value;
+    }
+
+    private static int? GetLowestNonKingRankValueForWild(IReadOnlyList<CardInfo> cards)
+    {
+        var lowest = cards
+            .Where(c => !string.IsNullOrWhiteSpace(c.Rank))
+            .Select(c => GetRankValue(c.Rank))
+            .Where(value => value != int.MaxValue && value != 13)
+            .DefaultIfEmpty(int.MaxValue)
+            .Min();
+
+        return lowest == int.MaxValue ? null : lowest;
+    }
 
             private sealed record IndexedCard(CardInfo Card, int Index);
         }

@@ -25,13 +25,13 @@
     <!-- Cards Display -->
     <div class="drop-or-stay-cards-container">
         @{
-            var lowestCard = EnableKingsAndLowsWildCardHighlighting
-                ? GetLowestCardForWild(Cards)
+            var lowestNonKingRankValue = EnableKingsAndLowsWildCardHighlighting
+                ? GetLowestNonKingRankValueForWild(Cards)
                 : null;
         }
         @foreach (var card in GetOrderedCards())
         {
-            var isWildForDisplay = IsWildForDisplay(card, lowestCard, EnableKingsAndLowsWildCardHighlighting);
+            var isWildForDisplay = IsWildForDisplay(card, lowestNonKingRankValue, EnableKingsAndLowsWildCardHighlighting);
             <div class="drop-or-stay-card-wrapper">
                 <div class="drop-or-stay-card">
                     <playing-card rank="@GetPlayingCardRank(card)" suit="@card.Suit" style="height:92px;width:64px;" suitcolor="@(isWildForDisplay ? "green" : null)" rankcolor="@(isWildForDisplay ? "green" : null)" courtcolor="@(isWildForDisplay ? "green" : null)"></playing-card>
@@ -309,7 +309,7 @@
         };
     }
 
-    private static bool IsWildForDisplay(CardInfo card, CardInfo? lowestCard, bool enableKingsAndLowsWildCardHighlighting)
+    private static bool IsWildForDisplay(CardInfo card, int? lowestNonKingRankValue, bool enableKingsAndLowsWildCardHighlighting)
     {
         if (card.IsWild)
         {
@@ -321,36 +321,29 @@
             return false;
         }
 
-        if (IsKing(card.Rank))
+        var rankValue = GetRankValue(card.Rank);
+        if (rankValue == 13)
         {
             return true;
         }
 
-        if (lowestCard is null)
-        {
-            return false;
-        }
-
-        return string.Equals(card.Rank, lowestCard.Rank, StringComparison.OrdinalIgnoreCase)
-            && string.Equals(card.Suit, lowestCard.Suit, StringComparison.OrdinalIgnoreCase);
+        return lowestNonKingRankValue.HasValue && rankValue == lowestNonKingRankValue.Value;
     }
 
-    private static bool IsKing(string? rank)
-    {
-        return rank?.Trim().ToUpperInvariant() is "K" or "KING";
-    }
-
-    private static CardInfo? GetLowestCardForWild(IReadOnlyList<CardInfo> cards)
+    private static int? GetLowestNonKingRankValueForWild(IReadOnlyList<CardInfo> cards)
     {
         if (cards.Count == 0)
         {
             return null;
         }
 
-        return cards
+        var lowest = cards
             .Where(c => c.IsFaceUp && !string.IsNullOrWhiteSpace(c.Rank))
-            .OrderBy(c => GetRankValue(c.Rank))
-            .ThenBy(c => GetSuitValue(c.Suit))
-            .FirstOrDefault();
+            .Select(c => GetRankValue(c.Rank))
+            .Where(value => value != int.MaxValue && value != 13)
+            .DefaultIfEmpty(int.MaxValue)
+            .Min();
+
+        return lowest == int.MaxValue ? null : lowest;
     }
 }

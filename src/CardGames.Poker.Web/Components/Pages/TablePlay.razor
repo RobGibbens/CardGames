@@ -250,7 +250,8 @@
                        MaxDiscards="@GetMaxDiscards()" DrawingSpecialRules="@GetDrawingSpecialRules()"
                        IsReadOnly="@(IsDrawCompletePhase || _cardsDrawn)"
                        ReadOnlyMessage="@(IsDrawCompletePhase ? "Waiting for showdown..." : "New cards drawn!")"
-                       ActionTimer="@_actionTimerState" />
+                       ActionTimer="@_actionTimerState"
+                       EnableKingsAndLowsWildCardHighlighting="@IsKingsAndLows" />
         }
 
         <!-- Draw Phase Waiting Indicator (shown to other players during draw phase) -->
@@ -3927,38 +3928,55 @@ HandType.HighCard
         }
 
         var wildRules = _tableState?.SpecialRules?.WildCardRules;
-        if (wildRules is null || !wildRules.LowestCardIsWild)
+        var applyLowestRankWild = wildRules?.LowestCardIsWild == true;
+
+        int? lowestNonKingRankValue = null;
+        if (applyLowestRankWild)
         {
-            return;
+            var lowest = cards
+                .Where(c => c.IsFaceUp && !string.IsNullOrWhiteSpace(c.Rank))
+                .Select(c => GetKingsAndLowsRankValue(c.Rank))
+                .Where(value => value != int.MaxValue && value != 13)
+                .DefaultIfEmpty(int.MaxValue)
+                .Min();
+
+            if (lowest != int.MaxValue)
+            {
+                lowestNonKingRankValue = lowest;
+            }
         }
 
-        var lowestCard = cards
-            .Where(c => c.IsFaceUp && !string.IsNullOrWhiteSpace(c.Rank))
-            .OrderBy(c => GetCardValue(c.Rank))
-            .ThenBy(c => GetSuitSortOrder(c.Suit))
-            .FirstOrDefault();
-
-        if (lowestCard is null)
+        for (var index = 0; index < cards.Count; index++)
         {
-            return;
-        }
+            var card = cards[index];
+            var rankValue = GetKingsAndLowsRankValue(card.Rank);
+            var isKing = rankValue == 13;
+            var isLowestNonKing = lowestNonKingRankValue.HasValue && rankValue == lowestNonKingRankValue.Value;
 
-        var index = cards.FindIndex(c =>
-            string.Equals(c.Rank, lowestCard.Rank, StringComparison.OrdinalIgnoreCase)
-            && string.Equals(c.Suit, lowestCard.Suit, StringComparison.OrdinalIgnoreCase));
+            if (!isKing && !isLowestNonKing)
+            {
+                continue;
+            }
 
-        if (index >= 0)
-        {
-            cards[index] = cards[index] with { IsWild = true };
+            cards[index] = card with { IsWild = true };
         }
     }
 
-    private static int GetSuitSortOrder(string? suit) => suit?.Trim().ToUpperInvariant() switch
+    private static int GetKingsAndLowsRankValue(string? rank) => rank?.Trim().ToUpperInvariant() switch
     {
-        "CLUBS" or "C" => 0,
-        "DIAMONDS" or "D" => 1,
-        "HEARTS" or "H" => 2,
-        "SPADES" or "S" => 3,
+        "2" or "TWO" or "DEUCE" => 2,
+        "3" or "THREE" => 3,
+        "4" or "FOUR" => 4,
+        "5" or "FIVE" => 5,
+        "6" or "SIX" => 6,
+        "7" or "SEVEN" => 7,
+        "8" or "EIGHT" => 8,
+        "9" or "NINE" => 9,
+        "10" or "T" or "TEN" => 10,
+        "J" or "JACK" => 11,
+        "Q" or "QUEEN" => 12,
+        "K" or "KING" => 13,
+        "A" or "ACE" => 14,
         _ => int.MaxValue
     };
 
