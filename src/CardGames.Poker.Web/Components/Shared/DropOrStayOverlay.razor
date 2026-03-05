@@ -25,13 +25,14 @@
     <!-- Cards Display -->
     <div class="drop-or-stay-cards-container">
         @{
+            var hasExplicitWildFlags = Cards.Any(c => c.IsWild);
             var lowestNonKingRankValue = EnableKingsAndLowsWildCardHighlighting
                 ? GetLowestNonKingRankValueForWild(Cards)
                 : null;
         }
         @foreach (var card in GetOrderedCards())
         {
-            var isWildForDisplay = IsWildForDisplay(card, lowestNonKingRankValue, EnableKingsAndLowsWildCardHighlighting);
+            var isWildForDisplay = IsWildForDisplay(card, lowestNonKingRankValue, EnableKingsAndLowsWildCardHighlighting, hasExplicitWildFlags);
             <div class="drop-or-stay-card-wrapper">
                 <div class="drop-or-stay-card">
                     <playing-card rank="@GetPlayingCardRank(card)" suit="@card.Suit" style="height:92px;width:64px;" suitcolor="@(isWildForDisplay ? "green" : null)" rankcolor="@(isWildForDisplay ? "green" : null)" courtcolor="@(isWildForDisplay ? "green" : null)"></playing-card>
@@ -309,11 +310,16 @@
         };
     }
 
-    private static bool IsWildForDisplay(CardInfo card, int? lowestNonKingRankValue, bool enableKingsAndLowsWildCardHighlighting)
+    private static bool IsWildForDisplay(CardInfo card, int? lowestNonKingRankValue, bool enableKingsAndLowsWildCardHighlighting, bool hasExplicitWildFlags)
     {
         if (card.IsWild)
         {
             return true;
+        }
+
+        if (hasExplicitWildFlags)
+        {
+            return false;
         }
 
         if (!enableKingsAndLowsWildCardHighlighting)

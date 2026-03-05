@@ -14,6 +14,7 @@
 
 				<div class="cards-fan">
 					@{
+						var hasExplicitWildFlags = Seat.Cards.Any(c => c.IsWild);
 						var lowestNonKingRankValueForWild = IsKingsAndLows
 							? GetLowestNonKingRankValueForWild(Seat.Cards)
 							: null;
@@ -22,7 +23,7 @@
 					{
 						var rank = GetPlayingCardRank(card);
 						var hasCardPayload = !string.IsNullOrWhiteSpace(card.Rank) && !string.IsNullOrWhiteSpace(card.Suit);
-						var isWildForDisplay = IsWildForDisplay(card, lowestNonKingRankValueForWild);
+						var isWildForDisplay = IsWildForDisplay(card, lowestNonKingRankValueForWild, hasExplicitWildFlags);
 						// Logic from original: current player sees own cards, others see face up only if face up
 
 						if (IsCurrentPlayer)
@@ -386,10 +387,13 @@
 
 	private bool IsKingsAndLows => string.Equals(GameTypeCode, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase);
 
-	private bool IsWildForDisplay(CardInfo card, int? lowestNonKingRankValue)
+	private bool IsWildForDisplay(CardInfo card, int? lowestNonKingRankValue, bool hasExplicitWildFlags)
 	{
 		if (card.IsWild)
 			return true;
+
+		if (hasExplicitWildFlags)
+			return false;
 
 		if (!IsKingsAndLows)
 			return false;

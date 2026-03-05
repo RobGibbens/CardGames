@@ -48,6 +48,7 @@
     <div class="draw-cards-container">
         @{
             var orderedCards = GetOrderedCards().ToList();
+            var hasExplicitWildFlags = Cards.Any(c => c.IsWild);
             var lowestNonKingRankValueForWild = EnableKingsAndLowsWildCardHighlighting
                 ? GetLowestNonKingRankValueForWild(Cards)
                 : null;
@@ -59,7 +60,7 @@
             var index = orderedCards[i].Index;
             var card = orderedCards[i].Card;
             var isSelected = SelectedIndices.Contains(index);
-            var isWildForDisplay = IsWildForDisplay(card, lowestNonKingRankValueForWild, EnableKingsAndLowsWildCardHighlighting);
+            var isWildForDisplay = IsWildForDisplay(card, lowestNonKingRankValueForWild, EnableKingsAndLowsWildCardHighlighting, hasExplicitWildFlags);
 
             <div class="draw-card-wrapper @(isSelected ? "selected" : "") @(IsDiscarding && isSelected ? "discarding" : "") @(IsDrawing && NewCardIndices.Contains(index) ? "drawing" : "") @(IsReadOnly ? "readonly" : "")"
                  @key="GetCardRenderKey(card, index)"
@@ -509,11 +510,16 @@
                 };
             }
 
-    private static bool IsWildForDisplay(CardInfo card, int? lowestNonKingRankValue, bool enableKingsAndLowsWildCardHighlighting)
+    private static bool IsWildForDisplay(CardInfo card, int? lowestNonKingRankValue, bool enableKingsAndLowsWildCardHighlighting, bool hasExplicitWildFlags)
     {
         if (card.IsWild)
         {
             return true;
+        }
+
+        if (hasExplicitWildFlags)
+        {
+            return false;
         }
 
         if (!enableKingsAndLowsWildCardHighlighting)
