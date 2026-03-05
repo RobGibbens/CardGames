@@ -3106,15 +3106,23 @@
                         }
 
                         var newCard = newCards[i];
+                        var rank = newCard.Symbol?.ToCardRankString();
+                        var suit = newCard.Suit?.ToCardSuitString();
+                        var previousCard = _currentPlayerDrawCards[targetIndex];
 
                         _currentPlayerDrawCards[targetIndex] = new CardInfo
                         {
-                            Rank = newCard.Symbol?.ToCardRankString(),
-                            Suit = newCard.Suit?.ToCardSuitString(),
+                            Rank = rank,
+                            Suit = suit,
                             IsFaceUp = true,
-                            IsSelected = false
+                            IsPubliclyVisible = true,
+                            IsSelected = false,
+                            DealOrder = previousCard.DealOrder,
+                            IsWild = IsWildForCurrentPlayerCard(rank, suit)
                         };
                     }
+
+                    ApplyKingsAndLowsLowestCardWildFallback(_currentPlayerDrawCards);
 
                     await InvokeStateHasChangedAsync();
                 }
