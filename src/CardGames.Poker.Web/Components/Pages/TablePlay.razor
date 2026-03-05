@@ -500,6 +500,7 @@
     private List<int> _newCardIndices = [];
     private HashSet<int> _selectedDiscardIndices = [];
     private List<CardInfo> _currentPlayerDrawCards = [];
+    private List<CardInfo>? _pendingCurrentPlayerDrawCards;
     private GetCurrentDrawPlayerResponse? _currentDrawPlayer;
     private bool _forceShowDrawPanel;
     private int _maxDiscards = 3;
@@ -1343,13 +1344,13 @@
 
             if (state.Draw.IsMyTurnToDraw && !_isDrawAnimating && !_forceShowDrawPanel)
             {
-                _currentPlayerDrawCards = BuildCurrentPlayerDrawCards(state.Hand, preserveSelection: true);
+                UpdateCurrentPlayerDrawCardsFromPrivateState(state.Hand, preserveSelection: true);
             }
             else if ((_isDrawAnimating || _forceShowDrawPanel) && _currentPlayerDrawCards.Count == 0)
             {
                 // Preserve whatever is currently being animated. If we lost the list for any reason,
                 // fall back to the latest private hand state to keep the panel populated.
-                _currentPlayerDrawCards = BuildCurrentPlayerDrawCards(state.Hand, preserveSelection: true);
+                UpdateCurrentPlayerDrawCardsFromPrivateState(state.Hand, preserveSelection: true);
             }
         }
         else if (IsDrawingPhase)
@@ -1361,7 +1362,7 @@
             if (_isPlayerDrawTurn && !_isDrawAnimating && !_forceShowDrawPanel && _currentPlayerDrawCards.Count == 0 && state.Hand
             is not null)
             {
-                _currentPlayerDrawCards = BuildCurrentPlayerDrawCards(state.Hand, preserveSelection: true);
+                UpdateCurrentPlayerDrawCardsFromPrivateState(state.Hand, preserveSelection: true);
             }
         }
 
@@ -1381,7 +1382,7 @@
         if ((IsDropOrStayPhase || string.Equals(currentPhase, "DropOrStay", StringComparison.OrdinalIgnoreCase))
         && state.Hand is not null && state.Hand.Count > 0)
         {
-            _currentPlayerDrawCards = BuildCurrentPlayerDrawCards(state.Hand, preserveSelection: false);
+            UpdateCurrentPlayerDrawCardsFromPrivateState(state.Hand, preserveSelection: false);
         }
         // Also populate cards for PlayerVsDeck phase when reconnection
         // This ensures the player can see the deck cards after reconnection
@@ -1389,14 +1390,14 @@
         && state.Hand is not null && state.Hand.Count > 0 && _currentPlayerDrawCards.Count == 0)
         {
             // Populate player's own cards for reference during player-vs-deck phase
-            _currentPlayerDrawCards = BuildCurrentPlayerDrawCards(state.Hand, preserveSelection: false);
+            UpdateCurrentPlayerDrawCardsFromPrivateState(state.Hand, preserveSelection: false);
         }
         // Populate cards for DrawComplete phase so all players can see their new hands
         else if ((IsDrawCompletePhase || string.Equals(currentPhase, "DrawComplete", StringComparison.OrdinalIgnoreCase))
         && state.Hand is not null && state.Hand.Count > 0)
         {
             // Show the player's new hand during DrawComplete phase
-            _currentPlayerDrawCards = BuildCurrentPlayerDrawCards(state.Hand, preserveSelection: false);
+            UpdateCurrentPlayerDrawCardsFromPrivateState(state.Hand, preserveSelection: false);
         }
 
         // Calculate hand odds from current cards
@@ -1413,6 +1414,8 @@
         {
             _chipHistory = state.ChipHistory;
         }
+
+        ApplyPendingCurrentPlayerDrawCardsIfReady();
 
         await InvokeStateHasChangedAsync();
     }
@@ -2959,6 +2962,7 @@
     {
         _selectedDiscardIndices.Clear();
         _currentPlayerDrawCards = [];
+        _pendingCurrentPlayerDrawCards = null;
         _cardsDrawn = false;
         _newHandDescription = null;
         _isPlayerDrawTurn = false;
@@ -2967,6 +2971,37 @@
         _isDrawingNewCards = false;
         _isSubmittingDraw = false;
         _forceShowDrawPanel = false;
+        _newCardIndices = [];
+    }
+
+    private bool IsDrawPanelAnimationInProgress =>
+        _isDrawAnimating || _isDiscardingCards || _isDrawingNewCards;
+
+    private void UpdateCurrentPlayerDrawCardsFromPrivateState(IReadOnlyList<CardPrivateDto> hand, bool preserveSelection)
+    {
+        var cards = BuildCurrentPlayerDrawCards(hand, preserveSelection);
+
+        if (IsDrawPanelAnimationInProgress)
+        {
+            _pendingCurrentPlayerDrawCards = cards;
+            return;
+        }
+
+        _currentPlayerDrawCards = cards;
+        _pendingCurrentPlayerDrawCards = null;
+    }
+
+    private void ApplyPendingCurrentPlayerDrawCardsIfReady()
+    {
+        if (_pendingCurrentPlayerDrawCards is null || IsDrawPanelAnimationInProgress)
+        {
+            return;
+        }
+
+        _currentPlayerDrawCards = _pendingCurrentPlayerDrawCards;
+        _pendingCurrentPlayerDrawCards = null;
+
+        _selectedDiscardIndices.Clear();
         _newCardIndices = [];
     }
 
@@ -3202,6 +3237,8 @@
                 _cardsDrawn = false;
                 _newHandDescription = null;
             }
+
+            ApplyPendingCurrentPlayerDrawCardsIfReady();
         }
     }
 
