@@ -698,3 +698,17 @@ VERDICT: APPROVED
 - Vertical spacing exists before the `Open Club` button.
 - `Open Club` button is full width.
 
+### 2026-03-02T20:00:00Z: Phase 1 schema changes blocked on 3 nullable GameTypeId errors
+**By:** Danny (Backend Dev)
+**What:** All Dealer's Choice DB schema changes are applied (Game.cs, DealersChoiceHandLog, GameConfiguration, CardsDbContext, Phases enum). However, making `GameTypeId` nullable caused 3 compile errors in existing code that assumes non-null:
+1. `GetActiveGamesMapper.cs:16` — cannot convert `Guid?` to `Guid`
+2. `LobbyStateBroadcastingBehavior.cs:130` — cannot convert `Guid?` to `Guid`
+3. `GetGameMapper.cs:19` — cannot convert `Guid?` to `Guid`
+
+EF migration `AddDealersChoice` cannot be generated until these are fixed. These are Phase 2 handler fixes.
+**Why:** Nullable FK is required for Dealer's Choice tables where game type is chosen per-hand, not at table creation.
+
+### 2025-03-05: Texas Hold 'Em PRD Created
+**By:** Squad Coordinator (Rob Gibbens requested)
+**What:** Created comprehensive PRD at docs/TexasHoldEmPRD.md covering all changes needed to add Texas Hold 'Em to the platform. Key decisions: (1) Hold 'Em-specific feature folder with dedicated command handlers, (2) Community card dealing atomic within betting action transaction, (3) Blind fields via CreateGameCommand partial record extension, (4) SB/BB positions computed client-side. 17 work items across 3 priority tiers. No database migrations needed.
+**Why:** User requested detailed PRD before implementation begins.
