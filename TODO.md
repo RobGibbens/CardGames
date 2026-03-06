@@ -4,7 +4,7 @@
 ## Still to do
 
 - [ ] https://github.com/leeoades/FunctionalStateMachine
-- [ ] Baseball (any wild seven card stud game) is not choosing the right "first to act"
+
 
 ### Leagues
 
@@ -171,3 +171,4 @@
 - [x] Dealer's choice round robin
 - [x] The Draw Panel, Drop or Stay should show green wild cards
 - [x] Baseball "Buy card" shouldn't display until the 4 actually is face up, then it should stop
+- [x] Baseball (any wild seven card stud game) is not choosing the right "first to act"
