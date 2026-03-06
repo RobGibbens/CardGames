@@ -8,4 +8,6 @@ public record ChooseDealerGameSuccessful
 	public int HandNumber { get; init; }
 	public int Ante { get; init; }
 	public int MinBet { get; init; }
+	public int? SmallBlind { get; init; }
+	public int? BigBlind { get; init; }
 }

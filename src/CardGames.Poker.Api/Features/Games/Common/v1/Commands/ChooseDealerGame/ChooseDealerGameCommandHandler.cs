@@ -130,6 +130,35 @@ public class ChooseDealerGameCommandHandler(
 			};
 		}
 
+		// 6b. Validate blind values when provided
+		if (command.SmallBlind.HasValue && command.SmallBlind.Value <= 0)
+		{
+			return new ChooseDealerGameError
+			{
+				GameId = command.GameId,
+				Reason = "Small blind must be greater than zero."
+			};
+		}
+
+		if (command.BigBlind.HasValue && command.BigBlind.Value <= 0)
+		{
+			return new ChooseDealerGameError
+			{
+				GameId = command.GameId,
+				Reason = "Big blind must be greater than zero."
+			};
+		}
+
+		if (command.SmallBlind.HasValue && command.BigBlind.HasValue
+			&& command.BigBlind.Value < command.SmallBlind.Value)
+		{
+			return new ChooseDealerGameError
+			{
+				GameId = command.GameId,
+				Reason = "Big blind must be greater than or equal to small blind."
+			};
+		}
+
 		var now = DateTimeOffset.UtcNow;
 
 		// 7. Get or create the GameType entity for the chosen game
@@ -140,6 +169,13 @@ public class ChooseDealerGameCommandHandler(
 		game.CurrentHandGameTypeCode = command.GameTypeCode;
 		game.Ante = command.Ante;
 		game.MinBet = command.MinBet;
+
+		// Apply blind values for Hold 'Em (or other blind-based games)
+		if (command.SmallBlind.HasValue)
+			game.SmallBlind = command.SmallBlind.Value;
+		if (command.BigBlind.HasValue)
+			game.BigBlind = command.BigBlind.Value;
+
 		game.CurrentPhase = nameof(Phases.WaitingToStart);
 		game.Status = GameStatus.BetweenHands;
 		// Schedule auto-start so the background service picks up and deals the hand
@@ -161,6 +197,8 @@ public class ChooseDealerGameCommandHandler(
 			DealerSeatPosition = currentPlayer.SeatPosition,
 			Ante = command.Ante,
 			MinBet = command.MinBet,
+			SmallBlind = command.SmallBlind,
+			BigBlind = command.BigBlind,
 			ChosenAtUtc = now
 		};
 
@@ -175,7 +213,9 @@ public class ChooseDealerGameCommandHandler(
 			GameTypeName = metadata.Name,
 			HandNumber = game.CurrentHandNumber,
 			Ante = command.Ante,
-			MinBet = command.MinBet
+			MinBet = command.MinBet,
+			SmallBlind = command.SmallBlind,
+			BigBlind = command.BigBlind
 		};
 	}
 

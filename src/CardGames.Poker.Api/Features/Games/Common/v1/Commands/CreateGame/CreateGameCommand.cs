@@ -11,4 +11,6 @@ public record CreateGameCommand(
 	int Ante,
 	int MinBet,
 	IReadOnlyList<PlayerInfo> Players,
-	bool IsDealersChoice = false) : IRequest<OneOf<CreateGameSuccessful, CreateGameConflict>>, IGameStateChangingCommand, ILobbyStateChangingCommand;
+	bool IsDealersChoice = false,
+	int? SmallBlind = null,
+	int? BigBlind = null) : IRequest<OneOf<CreateGameSuccessful, CreateGameConflict>>, IGameStateChangingCommand, ILobbyStateChangingCommand;

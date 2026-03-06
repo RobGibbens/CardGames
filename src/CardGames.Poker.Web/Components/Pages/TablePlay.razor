@@ -31,6 +31,7 @@
 @inject IFollowTheQueenApi FollowTheQueenApi
 @inject IBaseballApi BaseballApi
 @inject IKingsAndLowsApi KingsAndLowsApi
+@inject IHoldEmApi HoldEmApi
 @inject IFiveCardDrawApi FiveCardDrawApiClient
 @inject IJSRuntime JSRuntime
 @inject IProfileApi ProfileApi
@@ -107,8 +108,16 @@
             </span>
             <span class="table-blinds">
                 <span class="table-blinds-pill">
-                    <span class="table-blinds-line">Ante: @_ante</span>
-                    <span class="table-blinds-line">Min Bet: @_gameResponse?.MinBet</span>
+                    @if (IsHoldEm)
+                    {
+                        <span class="table-blinds-line">SB: @(_gameResponse?.SmallBlind ?? 0)</span>
+                        <span class="table-blinds-line">BB: @(_gameResponse?.BigBlind ?? 0)</span>
+                    }
+                    else
+                    {
+                        <span class="table-blinds-line">Ante: @_ante</span>
+                        <span class="table-blinds-line">Min Bet: @_gameResponse?.MinBet</span>
+                    }
                 </span>
             </span>
         </div>
@@ -225,7 +234,8 @@
                          CurrentBetToCall="@_currentBetToCall" PlayerChips="@_playerChips"
                          MinRaise="@(_availableActions?.MinRaise ?? _currentMinBet)" OnAction="HandlePlayerActionAsync"
                          IsSubmitting="@_isSubmittingAction" ActionTimer="@_actionTimerState"
-                         HandDescription="@currentPlayerHandEvaluationDescription" />
+                         HandDescription="@currentPlayerHandEvaluationDescription"
+                         TotalPot="@_pot" />
         }
 
         <!-- Decision Panel (shown during decision phase like Drop/Stay) -->
@@ -620,7 +630,8 @@
     private bool IsGoodBadUgly => string.Equals(_gameTypeCode, "GOODBADUGLY", StringComparison.OrdinalIgnoreCase);
     private bool IsFollowTheQueen => string.Equals(_gameTypeCode, "FOLLOWTHEQUEEN", StringComparison.OrdinalIgnoreCase);
     private bool IsBaseball => string.Equals(_gameTypeCode, "BASEBALL", StringComparison.OrdinalIgnoreCase);
-    private bool UsesCardDealAnimation => IsSevenCardStud || IsGoodBadUgly || IsBaseball || IsFollowTheQueen || IsFiveCardDraw || IsTwosJacksManWithTheAxe || IsKingsAndLows;
+    private bool IsHoldEm => string.Equals(_gameTypeCode, "HOLDEM", StringComparison.OrdinalIgnoreCase);
+    private bool UsesCardDealAnimation => IsSevenCardStud || IsGoodBadUgly || IsBaseball || IsFollowTheQueen || IsFiveCardDraw || IsTwosJacksManWithTheAxe || IsKingsAndLows || IsHoldEm;
     private int DealAnimationDelayMs => 750;
 
     // Game rules for dynamic UI rendering
@@ -2370,6 +2381,17 @@
                 return;
             }
         }
+        else if (IsHoldEm)
+        {
+            // Hold'Em start handles blinds + deal in a single call
+            var startResponse = await HoldEmApi.HoldEmStartHandAsync(GameId);
+            if (!startResponse.IsSuccessStatusCode)
+            {
+                Logger.LogWarning("Failed to start Hold'Em hand: {StatusCode}", startResponse.StatusCode);
+                await ShowToastAsync("Failed to start game. Please try again.", "error");
+                return;
+            }
+        }
         else if (IsKingsAndLows)
         {
             // Kings and Lows has a simpler flow - StartHand handles ante collection and dealing
@@ -2458,6 +2480,10 @@
         else if (IsKingsAndLows)
         {
             showdownResponse = await KingsAndLowsApi.KingsAndLowsPerformShowdownAsync(GameId);
+        }
+        else if (IsHoldEm)
+        {
+            showdownResponse = await HoldEmApi.HoldEmPerformShowdownAsync(GameId);
         }
         else
         {
@@ -4385,7 +4411,7 @@ HandType.HighCard
     {
         try
         {
-            var request = new ChooseDealerGameRequest(selection.GameTypeCode, selection.Ante, selection.MinBet);
+            var request = new ChooseDealerGameRequest(selection.GameTypeCode, selection.Ante, selection.MinBet, selection.SmallBlind, selection.BigBlind);
             var response = await GamesApiClient.ChooseDealerGameAsync(GameId, request);
             if (response is { IsSuccessStatusCode: true, Content: not null })
             {

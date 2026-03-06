@@ -144,6 +144,14 @@
 				{
 					<div class="seat-dealer-button" title="Dealer">D</div>
 				}
+				@if (IsSmallBlind)
+				{
+					<div class="seat-blind-button seat-sb-button" title="Small Blind">SB</div>
+				}
+				@if (IsBigBlind)
+				{
+					<div class="seat-blind-button seat-bb-button" title="Big Blind">BB</div>
+				}
 			</div>
 
 		</div>
@@ -178,6 +186,12 @@
 
 	[Parameter]
 	public bool IsDealer { get; set; }
+
+	[Parameter]
+	public bool IsSmallBlind { get; set; }
+
+	[Parameter]
+	public bool IsBigBlind { get; set; }
 
 	[Parameter]
 	public bool IsCurrentActor { get; set; }

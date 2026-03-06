@@ -391,6 +391,80 @@ public abstract class BaseGameFlowHandler : IGameFlowHandler
         return -1;
     }
 
+    /// <summary>
+    /// Collects small blind and big blind from the appropriate players.
+    /// Shared by all blind-based game types (Hold'Em, Omaha, etc.).
+    /// </summary>
+    protected async Task CollectBlindsAsync(
+        CardsDbContext context,
+        Game game,
+        List<GamePlayer> eligiblePlayers,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        if (eligiblePlayers.Count < 2) return;
+
+        var sbAmount = game.SmallBlind ?? 0;
+        var bbAmount = game.BigBlind ?? 0;
+
+        if (sbAmount == 0 && bbAmount == 0) return;
+
+        var dealerPos = game.DealerPosition;
+
+        // Sort players by seat position for consistent ordering
+        var sortedPlayers = eligiblePlayers.OrderBy(p => p.SeatPosition).ToList();
+
+        // Find Dealer index
+        var dealerIndex = sortedPlayers.FindIndex(p => p.SeatPosition == dealerPos);
+        if (dealerIndex == -1)
+        {
+            // Fallback if dealer not found in eligible players
+            dealerIndex = sortedPlayers.Count - 1;
+        }
+
+        GamePlayer sbPlayer;
+        GamePlayer bbPlayer;
+
+        if (sortedPlayers.Count == 2)
+        {
+            // Heads up: Dealer is SB, Other is BB
+            sbPlayer = sortedPlayers[dealerIndex];
+            bbPlayer = sortedPlayers[(dealerIndex + 1) % sortedPlayers.Count];
+        }
+        else
+        {
+            // Normal play: Dealer -> SB -> BB
+            sbPlayer = sortedPlayers[(dealerIndex + 1) % sortedPlayers.Count];
+            bbPlayer = sortedPlayers[(dealerIndex + 2) % sortedPlayers.Count];
+        }
+
+        await PostBlindAsync(context, game, sbPlayer, sbAmount, now);
+        await PostBlindAsync(context, game, bbPlayer, bbAmount, now);
+    }
+
+    /// <summary>
+    /// Posts a blind for a single player, deducting from their chip stack and adding to the main pot.
+    /// </summary>
+    protected async Task PostBlindAsync(CardsDbContext context, Game game, GamePlayer player, int amount, DateTimeOffset now)
+    {
+        if (amount <= 0) return;
+
+        var actualAmount = Math.Min(amount, player.ChipStack);
+        player.ChipStack -= actualAmount;
+        player.CurrentBet += actualAmount;
+        player.TotalContributedThisHand += actualAmount;
+
+        var pot = await context.Pots
+            .FirstOrDefaultAsync(p => p.GameId == game.Id &&
+                                      p.HandNumber == game.CurrentHandNumber &&
+                                      p.PotType == PotType.Main);
+
+        if (pot != null)
+        {
+            pot.Amount += actualAmount;
+        }
+    }
+
     #endregion
 
     #region Showdown

@@ -45,5 +45,15 @@ public class DealersChoiceHandLog
 	/// </summary>
 	public int MinBet { get; set; }
 
+	/// <summary>
+	/// Small blind chosen for this hand (blind-based games like Hold 'Em).
+	/// </summary>
+	public int? SmallBlind { get; set; }
+
+	/// <summary>
+	/// Big blind chosen for this hand (blind-based games like Hold 'Em).
+	/// </summary>
+	public int? BigBlind { get; set; }
+
 	public DateTimeOffset ChosenAtUtc { get; set; }
 }

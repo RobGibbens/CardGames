@@ -15,4 +15,6 @@ public record ChooseDealerGameCommand(
 	Guid GameId,
 	string GameTypeCode,
 	int Ante,
-	int MinBet) : IRequest<OneOf<ChooseDealerGameSuccessful, ChooseDealerGameError>>, IGameStateChangingCommand;
+	int MinBet,
+	int? SmallBlind = null,
+	int? BigBlind = null) : IRequest<OneOf<ChooseDealerGameSuccessful, ChooseDealerGameError>>, IGameStateChangingCommand;

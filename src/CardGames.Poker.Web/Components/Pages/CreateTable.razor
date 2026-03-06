@@ -133,11 +133,11 @@
 									<input type="number"
 										   id="ante"
 										   class="form-input"
-										   min="1"
+										   min="@(_hasBlinds ? 0 : 1)"
 										   max="100"
 										   @bind-value="_ante"
 										   @bind-value:event="oninput" />
-									<span class="form-hint">Mandatory bet before each hand</span>
+									<span class="form-hint">Mandatory bet before each hand@(_hasBlinds ? " (0 for none)" : "")</span>
 								</div>
 								<div class="form-group">
 									<label class="form-label" for="minBet">Minimum Bet</label>
@@ -151,6 +151,33 @@
 									<span class="form-hint">Minimum bet during play</span>
 								</div>
 							</div>
+								@if (_hasBlinds)
+								{
+							<div class="form-row two-columns">
+								<div class="form-group">
+									<label class="form-label" for="smallBlind">Small Blind</label>
+									<input type="number"
+										   id="smallBlind"
+										   class="form-input"
+										   min="1"
+										   max="50000"
+										   @bind-value="_smallBlind"
+										   @bind-value:event="oninput" />
+									<span class="form-hint">Small blind amount</span>
+								</div>
+								<div class="form-group">
+									<label class="form-label" for="bigBlind">Big Blind</label>
+									<input type="number"
+										   id="bigBlind"
+										   class="form-input"
+										   min="1"
+										   max="100000"
+										   @bind-value="_bigBlind"
+										   @bind-value:event="oninput" />
+									<span class="form-hint">Must be ≥ small blind</span>
+								</div>
+							</div>
+								}
 							}
 							else
 							{
@@ -246,7 +273,10 @@
 	private string _tableName = "";
 	private int _ante = 5;
 	private int _minBet = 10;
+	private int _smallBlind = 1;
+	private int _bigBlind = 2;
 	private bool _isDealersChoice;
+	private bool _hasBlinds;
 	private readonly List<PlayerInput> _players = [];
 	private List<GetAvailablePokerGamesResponse> _availableGames = [];
 	private GetAvailablePokerGamesResponse? _selectedVariant;
@@ -277,7 +307,7 @@
 	private bool CanCreate =>
 		_selectedVariant is not null &&
 		!string.IsNullOrWhiteSpace(_tableName) &&
-		(_isDealersChoice || (_ante > 0 && _minBet > 0)) &&
+		(_isDealersChoice || (_ante >= 0 && _minBet > 0 && (!_hasBlinds || (_smallBlind > 0 && _bigBlind >= _smallBlind)))) &&
 		_players.All(p => !string.IsNullOrWhiteSpace(p.Name) && p.StartingChips > 0);
 
 	protected override async Task OnInitializedAsync()
@@ -331,6 +361,7 @@
 
 		_selectedVariant = variant;
 		_isDealersChoice = variant.Code == "DEALERSCHOICE";
+		_hasBlinds = variant.Code == "HOLDEM";
 
 		// Initialize players list with minimum required players
 		//TODO:ROB - Don't hard code this
@@ -403,7 +434,11 @@
 				.ToList();
 
 			var command = new CreateGameCommand(_isDealersChoice ? 0 : _ante, _selectedVariant.Code, gameId, _tableName, _isDealersChoice ? 0 : _minBet, playerInfos)
-			{ IsDealersChoice = _isDealersChoice };
+			{
+				IsDealersChoice = _isDealersChoice,
+				SmallBlind = _hasBlinds ? _smallBlind : null,
+				BigBlind = _hasBlinds ? _bigBlind : null
+			};
 
 			// Call the appropriate API based on the selected variant
 			Guid? createdGameId = null;
@@ -437,7 +472,7 @@
 	private static bool IsGameAvailable(string gameName)
 	{
 		// Games that are fully implemented and available for play
-		return gameName is "Five Card Draw" or "Twos, Jacks, Man with the Axe" or "Kings and Lows" or "Seven Card Stud" or "Baseball" or "Follow the Queen" or "The Good, the Bad, and the Ugly" or "Dealer's Choice"; //TODO:ROB - This is a stupid way to do this
+		return gameName is "Five Card Draw" or "Twos, Jacks, Man with the Axe" or "Kings and Lows" or "Seven Card Stud" or "Baseball" or "Follow the Queen" or "The Good, the Bad, and the Ugly" or "Dealer's Choice" or "Texas Hold 'Em"; //TODO:ROB - This is a stupid way to do this
 	}
 
 	private record PlayerInput

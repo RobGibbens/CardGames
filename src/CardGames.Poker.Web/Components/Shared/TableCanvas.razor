@@ -9,6 +9,17 @@
         <div class="poker-table-felt">
             <!-- Center area: deck, community cards, pot in one row -->
             <div class="table-center">
+                @if (IsHoldEmGame)
+                {
+                    <div class="street-progress">
+                        @foreach (var street in _holdEmStreets)
+                        {
+                            var isCurrent = string.Equals(CurrentPhase, street.Phase, StringComparison.OrdinalIgnoreCase);
+                            var isPast = IsStreetPast(street.Phase);
+                            <span class="street-step @(isCurrent ? "current" : "") @(isPast ? "past" : "")">@street.Label</span>
+                        }
+                    </div>
+                }
                 <div class="table-center-row">
                     <!-- Deck visualization -->
                     <div class="deck-stack" @ref="_deckRef">
@@ -21,7 +32,8 @@
                     <!-- Community cards area -->
                     @if (CommunityCards is { Count: > 0 })
                     {
-                        <div class="community-cards">
+                        var communityCardsClass = IsHoldEmGame ? "community-cards holdem" : "community-cards";
+                        <div class="@communityCardsClass">
                             @foreach (var (card, cardIndex) in CommunityCards.OrderBy(c => c.DealOrder).Select((c, i) => (c, i)))
                             {
                                 var label = GetCommunityCardLabel(cardIndex);
@@ -71,7 +83,9 @@
                     IsCurrentPlayer="@(seat.SeatIndex == CurrentPlayerSeatIndex)"
                     IsSeatSelectionDisabledForCurrentUser="@(DisableSeatSelectionForCurrentUser && !seat.IsOccupied)"
                     ShowCards="@(!IsPausedForChipCheck && CurrentPhase != GamePhase.WaitingForPlayers.ToString() && CurrentPhase != GamePhase.WaitingToStart.ToString() && seat.Cards.Count > 0)"
-                    GameTypeCode="@GameTypeCode" />
+                    GameTypeCode="@GameTypeCode"
+                    IsSmallBlind="@(IsHoldEmGame && seat.SeatIndex == GetSmallBlindSeatIndex())"
+                    IsBigBlind="@(IsHoldEmGame && seat.SeatIndex == GetBigBlindSeatIndex())" />
             </div>
         }
 
@@ -226,18 +240,93 @@
         return CurrentPhaseDescription ?? "Unknown";
     }
 
+    private bool IsHoldEmGame => string.Equals(GameTypeCode, "HOLDEM", StringComparison.OrdinalIgnoreCase);
+
     private string? GetCommunityCardLabel(int dealOrder)
     {
-        if (!string.Equals(GameTypeCode, "GOODBADUGLY", StringComparison.OrdinalIgnoreCase))
-            return null;
-
-        return dealOrder switch
+        if (string.Equals(GameTypeCode, "GOODBADUGLY", StringComparison.OrdinalIgnoreCase))
         {
-            0 => "The Good",
-            1 => "The Bad",
-            2 => "The Ugly",
-            _ => null
-        };
+            return dealOrder switch
+            {
+                0 => "The Good",
+                1 => "The Bad",
+                2 => "The Ugly",
+                _ => null
+            };
+        }
+
+        if (IsHoldEmGame)
+        {
+            return dealOrder switch
+            {
+                0 or 1 or 2 => "Flop",
+                3 => "Turn",
+                4 => "River",
+                _ => null
+            };
+        }
+
+        return null;
+    }
+
+    private static readonly (string Phase, string Label)[] _holdEmStreets =
+    [
+        ("PreFlop", "Pre-Flop"),
+        ("Flop", "Flop"),
+        ("Turn", "Turn"),
+        ("River", "River"),
+        ("Showdown", "Showdown")
+    ];
+
+    private bool IsStreetPast(string streetPhase)
+    {
+        var currentIndex = Array.FindIndex(_holdEmStreets, s => string.Equals(s.Phase, CurrentPhase, StringComparison.OrdinalIgnoreCase));
+        var streetIndex = Array.FindIndex(_holdEmStreets, s => s.Phase == streetPhase);
+        return currentIndex > streetIndex && streetIndex >= 0;
+    }
+
+    private int GetSmallBlindSeatIndex()
+    {
+        if (!IsHoldEmGame || DealerSeatIndex < 0) return -1;
+
+        var occupiedIndexes = Seats
+            .Where(s => s.IsOccupied)
+            .Select(s => s.SeatIndex)
+            .OrderBy(i => i)
+            .ToList();
+
+        if (occupiedIndexes.Count < 2) return -1;
+
+        // Heads-up: dealer IS the SB
+        if (occupiedIndexes.Count == 2) return DealerSeatIndex;
+
+        return GetNextOccupiedSeat(DealerSeatIndex, occupiedIndexes);
+    }
+
+    private int GetBigBlindSeatIndex()
+    {
+        if (!IsHoldEmGame || DealerSeatIndex < 0) return -1;
+
+        var occupiedIndexes = Seats
+            .Where(s => s.IsOccupied)
+            .Select(s => s.SeatIndex)
+            .OrderBy(i => i)
+            .ToList();
+
+        if (occupiedIndexes.Count < 2) return -1;
+
+        var sbIndex = occupiedIndexes.Count == 2
+            ? DealerSeatIndex
+            : GetNextOccupiedSeat(DealerSeatIndex, occupiedIndexes);
+
+        return GetNextOccupiedSeat(sbIndex, occupiedIndexes);
+    }
+
+    private static int GetNextOccupiedSeat(int currentSeatIndex, List<int> occupiedIndexes)
+    {
+        var pos = occupiedIndexes.IndexOf(currentSeatIndex);
+        if (pos < 0) return -1;
+        return occupiedIndexes[(pos + 1) % occupiedIndexes.Count];
     }
 
     private string GetSeatPositionClass(int seatIndex)

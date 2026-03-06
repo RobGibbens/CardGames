@@ -4,7 +4,7 @@ Cash
 ## Still to do
 
 - [ ] https://github.com/leeoades/FunctionalStateMachine
-
+- [ ] Games with community cards (Hold Em, GBU) odds are wrong
 
 ### Leagues
 
