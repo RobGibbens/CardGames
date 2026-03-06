@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Betting;
 
 namespace CardGames.Poker.Api.Features.Games.Baseball;
 
@@ -68,6 +69,25 @@ public static class BaseballGameSettings
 		}
 
 		game.GameSettings = settings.ToJsonString();
+	}
+
+	public static bool IsStreetPhase(string? phase)
+	{
+		return string.Equals(phase, nameof(Phases.ThirdStreet), StringComparison.OrdinalIgnoreCase) ||
+			string.Equals(phase, nameof(Phases.FourthStreet), StringComparison.OrdinalIgnoreCase) ||
+			string.Equals(phase, nameof(Phases.FifthStreet), StringComparison.OrdinalIgnoreCase) ||
+			string.Equals(phase, nameof(Phases.SixthStreet), StringComparison.OrdinalIgnoreCase) ||
+			string.Equals(phase, nameof(Phases.SeventhStreet), StringComparison.OrdinalIgnoreCase);
+	}
+
+	public static int GetExpectedCardsForStreet(string? phase)
+	{
+		if (string.Equals(phase, nameof(Phases.ThirdStreet), StringComparison.OrdinalIgnoreCase)) return 3;
+		if (string.Equals(phase, nameof(Phases.FourthStreet), StringComparison.OrdinalIgnoreCase)) return 4;
+		if (string.Equals(phase, nameof(Phases.FifthStreet), StringComparison.OrdinalIgnoreCase)) return 5;
+		if (string.Equals(phase, nameof(Phases.SixthStreet), StringComparison.OrdinalIgnoreCase)) return 6;
+		if (string.Equals(phase, nameof(Phases.SeventhStreet), StringComparison.OrdinalIgnoreCase)) return 7;
+		return 0;
 	}
 
 	private static JsonObject ParseSettings(string? json)

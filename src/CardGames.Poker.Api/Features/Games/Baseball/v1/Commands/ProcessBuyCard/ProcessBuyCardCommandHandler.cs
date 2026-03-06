@@ -1,6 +1,7 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.Baseball;
+using CardGames.Poker.Api.Features.Games.Baseball.v1.Commands.DealHands;
 using CardGames.Poker.Betting;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -9,7 +10,7 @@ using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 
 namespace CardGames.Poker.Api.Features.Games.Baseball.v1.Commands.ProcessBuyCard;
 
-public sealed class ProcessBuyCardCommandHandler(CardsDbContext context)
+public sealed class ProcessBuyCardCommandHandler(CardsDbContext context, IMediator mediator)
 	: IRequestHandler<ProcessBuyCardCommand, OneOf<ProcessBuyCardSuccessful, ProcessBuyCardError>>
 {
 	public async Task<OneOf<ProcessBuyCardSuccessful, ProcessBuyCardError>> Handle(
@@ -218,12 +219,29 @@ public sealed class ProcessBuyCardCommandHandler(CardsDbContext context)
 
 		await context.SaveChangesAsync(cancellationToken);
 
+		if (remainingOffers.Count == 0 && BaseballGameSettings.IsStreetPhase(nextPhase))
+		{
+			var dealResult = await mediator.Send(new DealHandsCommand(game.Id), cancellationToken);
+			if (dealResult.IsT1)
+			{
+				return new ProcessBuyCardError
+				{
+					Message = $"Failed to resume street dealing: {dealResult.AsT1.Message}",
+					Code = ProcessBuyCardErrorCode.InvalidGameState
+				};
+			}
+
+			nextPhase = dealResult.AsT0.CurrentPhase;
+		}
+
+		var resultingPhase = nextPhase ?? game.CurrentPhase;
+
 		return new ProcessBuyCardSuccessful
 		{
 			GameId = game.Id,
 			PlayerId = player.PlayerId,
 			Accepted = command.Accept,
-			CurrentPhase = game.CurrentPhase
+			CurrentPhase = resultingPhase
 		};
 	}
 }

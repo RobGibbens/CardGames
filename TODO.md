@@ -3,7 +3,7 @@
 ## Still to do
 
 - [ ] https://github.com/leeoades/FunctionalStateMachine
-- [ ] The Draw Panel, Drop or Stay should show green wild cards
+- [x] The Draw Panel, Drop or Stay should show green wild cards
 - [ ] Baseball (any wild seven card stud game) is not choosing the right "first to act"
 - [ ] Baseball "Buy card" shouldn't display until the 4 actually is face up, then it should stop
 

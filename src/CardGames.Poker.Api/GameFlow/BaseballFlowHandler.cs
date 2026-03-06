@@ -190,7 +190,31 @@ public sealed class BaseballFlowHandler : BaseGameFlowHandler
 					player.SeatPosition,
 					boardCard.Id,
 					nameof(Phases.ThirdStreet)));
+				break;
 			}
+		}
+
+		if (buyCardOffers.Count > 0)
+		{
+			var pendingDefaultBuyCardPrice = game.MinBet ?? 0;
+			var pendingBuyCardState = BaseballGameSettings.GetState(game, pendingDefaultBuyCardPrice);
+			var pendingResolvedBuyCardPrice = pendingBuyCardState.BuyCardPrice > 0 ? pendingBuyCardState.BuyCardPrice : pendingDefaultBuyCardPrice;
+
+			BaseballGameSettings.SaveState(game, pendingBuyCardState with
+			{
+				BuyCardPrice = pendingResolvedBuyCardPrice,
+				PendingOffers = [buyCardOffers[0]],
+				ReturnPhase = nameof(Phases.ThirdStreet),
+				ReturnActorIndex = null
+			});
+
+			game.CurrentPhase = nameof(Phases.BuyCardOffer);
+			game.CurrentPlayerIndex = buyCardOffers[0].SeatPosition;
+			game.BringInPlayerIndex = -1;
+			game.UpdatedAt = now;
+
+			await context.SaveChangesAsync(cancellationToken);
+			return;
 		}
 
 		foreach (var player in game.GamePlayers)
@@ -249,33 +273,16 @@ public sealed class BaseballFlowHandler : BaseGameFlowHandler
 		var buyCardState = BaseballGameSettings.GetState(game, defaultBuyCardPrice);
 		var resolvedBuyCardPrice = buyCardState.BuyCardPrice > 0 ? buyCardState.BuyCardPrice : defaultBuyCardPrice;
 
-		if (buyCardOffers.Count > 0)
+		BaseballGameSettings.SaveState(game, buyCardState with
 		{
-			var updatedState = buyCardState with
-			{
-				BuyCardPrice = resolvedBuyCardPrice,
-				PendingOffers = buyCardOffers,
-				ReturnPhase = nameof(Phases.ThirdStreet),
-				ReturnActorIndex = bringInSeatPosition
-			};
+			BuyCardPrice = resolvedBuyCardPrice,
+			PendingOffers = [],
+			ReturnPhase = null,
+			ReturnActorIndex = null
+		});
 
-			BaseballGameSettings.SaveState(game, updatedState);
-			game.CurrentPhase = nameof(Phases.BuyCardOffer);
-			game.CurrentPlayerIndex = buyCardOffers[0].SeatPosition;
-		}
-		else
-		{
-			BaseballGameSettings.SaveState(game, buyCardState with
-			{
-				BuyCardPrice = resolvedBuyCardPrice,
-				PendingOffers = [],
-				ReturnPhase = null,
-				ReturnActorIndex = null
-			});
-
-			game.CurrentPhase = nameof(Phases.ThirdStreet);
-			game.CurrentPlayerIndex = bringInSeatPosition;
-		}
+		game.CurrentPhase = nameof(Phases.ThirdStreet);
+		game.CurrentPlayerIndex = bringInSeatPosition;
 
 		game.BringInPlayerIndex = bringInSeatPosition;
 		game.UpdatedAt = now;

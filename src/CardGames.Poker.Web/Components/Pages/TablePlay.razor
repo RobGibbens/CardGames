@@ -567,6 +567,8 @@
 
     // Card Deal Animation state (for supported game variants)
     private bool _dealAnimationInProgress;
+    private bool _dealAnimationPausedForBuyCardOffer;
+    private int _dealPausedBuyCardOfferSeatIndex = -1;
     private Timer? _dealTimer;
     private TableStatePublicDto? _dealTargetState;
     private PrivateStateDto? _dealPendingPrivateState;
@@ -651,7 +653,11 @@
     string.Equals(_tableState?.CurrentPhase, "BuyCardOffer", StringComparison.OrdinalIgnoreCase);
 
     private bool ShouldShowBuyCardOverlay =>
-    IsBuyCardOfferPhase && _buyCardOffer is not null && IsParticipatingInHand;
+    IsBuyCardOfferPhase &&
+    _buyCardOffer is not null &&
+    IsParticipatingInHand &&
+    IsBuyCardTriggerCardVisible() &&
+    (!IsCardDealingVisualInProgress || _dealAnimationPausedForBuyCardOffer);
 
     private bool IsCardDealingVisualInProgress =>
     _dealAnimationInProgress || _flyingCard is not null;
@@ -841,6 +847,18 @@
 
         // Store the table state for phase category checks
         _tableState = state;
+
+        if (_dealAnimationInProgress && _dealAnimationPausedForBuyCardOffer)
+        {
+            var currentOfferSeat = state.CurrentActorSeatIndex;
+            var offerAdvanced = !IsBuyCardOfferPhase || currentOfferSeat != _dealPausedBuyCardOfferSeatIndex;
+            if (offerAdvanced)
+            {
+                _dealAnimationPausedForBuyCardOffer = false;
+                _dealPausedBuyCardOfferSeatIndex = -1;
+                _dealTimer?.Change(100, DealAnimationDelayMs);
+            }
+        }
 
         if (_dealAnimationInProgress)
         {
@@ -2625,6 +2643,8 @@
             GameId, startCardIndex, numberOfCardsToDeal);
 
         _dealAnimationInProgress = true;
+        _dealAnimationPausedForBuyCardOffer = false;
+        _dealPausedBuyCardOfferSeatIndex = -1;
         _dealTargetState = state;
         _dealCurrentCardIndex = startCardIndex; // Start dealing at this card index (e.g., 0 for initial, 3 for 4th street)
         _dealTargetEndIndex = startCardIndex + numberOfCardsToDeal; // Stop when index reaches this value
@@ -2692,6 +2712,7 @@
 
         // Deal card to current seat
         var seatIndex = _dealOrderedSeatIndices[_dealCurrentSeatIdx];
+        var dealtFaceUp = false;
 
         // Find the seat in the current display state
         var seatListIndex = _seats.FindIndex(s => s.SeatIndex == seatIndex);
@@ -2713,6 +2734,8 @@
                 suit = targetCard.Suit;
                 isFaceUp = targetCard.IsFaceUp;
             }
+
+            dealtFaceUp = isFaceUp;
 
             // Start flying card animation
             _flyingCard = new TableCanvas.FlyingCardInfo(
@@ -2770,6 +2793,15 @@
 
         _dealCurrentSeatIdx++;
 
+        if (ShouldPauseDealForBuyCardOffer(seatIndex, dealtFaceUp))
+        {
+            _dealAnimationPausedForBuyCardOffer = true;
+            _dealPausedBuyCardOfferSeatIndex = seatIndex;
+            _dealTimer?.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+            await InvokeStateHasChangedAsync();
+            return;
+        }
+
         await InvokeStateHasChangedAsync();
     }
 
@@ -2809,6 +2841,8 @@
         Logger.LogInformation("Card deal animation complete");
 
         _dealAnimationInProgress = false;
+        _dealAnimationPausedForBuyCardOffer = false;
+        _dealPausedBuyCardOfferSeatIndex = -1;
         _dealTimer?.Dispose();
         _dealTimer = null;
         _flyingCard = null;
@@ -3790,6 +3824,37 @@ HandType.HighCard
             IsSelected = false,
             DealOrder = _buyCardOffer.TriggerCard.DealOrder
         };
+    }
+
+    private bool IsBuyCardTriggerCardVisible()
+    {
+        if (_buyCardOffer?.TriggerCard is null)
+        {
+            return false;
+        }
+
+        if (_currentPlayerSeatIndex < 0 || _currentPlayerSeatIndex >= _seats.Count)
+        {
+            return false;
+        }
+
+        var trigger = _buyCardOffer.TriggerCard;
+        return _seats[_currentPlayerSeatIndex].Cards.Any(c =>
+            c.IsFaceUp &&
+            c.DealOrder == trigger.DealOrder &&
+            string.Equals(c.Rank, trigger.Rank, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(c.Suit, trigger.Suit, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private bool ShouldPauseDealForBuyCardOffer(int seatIndex, bool isFaceUp)
+    {
+        if (!IsBaseball || !isFaceUp || !IsBuyCardOfferPhase)
+        {
+            return false;
+        }
+
+        var offerSeat = _tableState?.CurrentActorSeatIndex ?? -1;
+        return offerSeat >= 0 && seatIndex == offerSeat;
     }
 
     /// <summary>
