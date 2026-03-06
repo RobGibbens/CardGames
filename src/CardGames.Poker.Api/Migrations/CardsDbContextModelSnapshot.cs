@@ -1522,7 +1522,8 @@ namespace CardGames.Poker.Api.Migrations
 
                     b.HasIndex("Type");
 
-                    b.HasIndex("PlayerId", "OccurredAtUtc");
+                    b.HasIndex("PlayerId", "OccurredAtUtc", "Id")
+                        .IsDescending(false, true, true);
 
                     b.ToTable("PlayerChipLedgerEntries");
                 });

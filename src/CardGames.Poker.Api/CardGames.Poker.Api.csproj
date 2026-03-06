@@ -71,7 +71,6 @@
 
 	<ItemGroup>
 	  <Folder Include="Data\Extensions\" />
-	  <Folder Include="Migrations\" />
 	  <Folder Include="swagger-ui\" />
 	</ItemGroup>
 

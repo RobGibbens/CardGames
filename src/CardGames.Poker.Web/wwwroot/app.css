@@ -2242,6 +2242,59 @@ a:hover {
     padding-top: 0.25rem;
 }
 
+.cashier-ledger-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-top: 0.85rem;
+    padding-top: 0.35rem;
+}
+
+.cashier-pager-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.cashier-page-size {
+    width: auto;
+    min-width: 5rem;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    color: var(--text-primary);
+    padding: 0.4rem 2rem 0.4rem 0.75rem;
+    line-height: 1.2;
+}
+
+.cashier-page-size:focus {
+    background: var(--bg-secondary);
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+}
+
+.cashier-pager-buttons {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.3rem 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    background: var(--bg-tertiary);
+}
+
+.cashier-pager-status {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    padding: 0 0.35rem;
+    white-space: nowrap;
+}
+
 @media (max-width: 768px) {
     .cashier-panel-body {
         padding: 1rem;
@@ -2259,6 +2312,21 @@ a:hover {
     .cashier-ledger-table thead th,
     .cashier-ledger-table tbody td {
         font-size: 0.85rem;
+    }
+
+    .cashier-pager-toolbar {
+        justify-content: flex-start;
+    }
+
+    .cashier-ledger-footer {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .cashier-pager-buttons {
+        width: 100%;
+        justify-content: space-between;
+        border-radius: 12px;
     }
 }
 

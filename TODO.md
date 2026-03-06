@@ -1,4 +1,4 @@
-
+Cash
 # TODO
 
 ## Still to do
@@ -9,16 +9,12 @@
 ### Leagues
 
 ### Cashier
-- [ ] Cashier ledger doesn't page
 
 ### P1 - Can't play without these
 - [ ] Test side pots
-- [ ] Don't auto start a new hand. Add a timer, allow pause, allow people to get out of the game or end the game
 - [ ] Make sure all game types handle all ins correctly
-- [ ] Dashboard should be scrollable
 
 - [ ] Kings and Lows - Should make it obvious when someone dropped
-- [ ] Kings and Lows - Things happen too fast
 
 ### P2 - Important but not blocking play
 
@@ -36,7 +32,6 @@
 - [ ] Hand history should paginate
 - [ ] When the Draw Overlay is showing, the cards are not opaque
 - [ ] The bottom of the table goes off the bottom of the screen
-- [ ] Add sound effects
 - [ ] When already logged in, take them to the Lobby
 - [ ] Add leagues
 - [ ] Add seasons
@@ -52,20 +47,21 @@
 - [ ] Add the ability to invite friends to a table
 - [ ] Add the ability to create private tables
 
-
 ## Add Games
 
 ### Hold 'Em Variants
 - [ ] Add Texas Hold'em
 - [ ] Add Omaha
+- [ ] Add Irish Hold'em
 - [ ] Add Pittsburgh
 - [ ] Add Squid Game
+- [ ] Add Hold the Baseball
 
 ### 7 Card Stud Variants
 - [x] Add Seven Card Stud
 - [x] Add Baseball
 - [x] Add Follow the Queen
-- [ ] The Good, the Bad, and the Ugly
+- [x] The Good, the Bad, and the Ugly
 - [ ] Add Razz
 
 ### 5 Card Stud Variants
@@ -172,3 +168,8 @@
 - [x] The Draw Panel, Drop or Stay should show green wild cards
 - [x] Baseball "Buy card" shouldn't display until the 4 actually is face up, then it should stop
 - [x] Baseball (any wild seven card stud game) is not choosing the right "first to act"
+- [x] Cashier ledger doesn't page
+- [x] Don't auto start a new hand. Add a timer, allow pause, allow people to get out of the game or end the game
+- [x] Dashboard should be scrollable
+- [x] Kings and Lows - Things happen too fast
+- [x] Add sound effects

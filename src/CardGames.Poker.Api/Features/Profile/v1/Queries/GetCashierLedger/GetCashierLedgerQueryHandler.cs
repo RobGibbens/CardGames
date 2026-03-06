@@ -14,8 +14,8 @@ public sealed class GetCashierLedgerQueryHandler(
 {
 	public async Task<CashierLedgerPageDto> Handle(GetCashierLedgerQuery request, CancellationToken cancellationToken)
 	{
-		var take = Math.Clamp(request.Take, 1, 100);
-		var skip = Math.Max(request.Skip, 0);
+        var pageSize = Math.Clamp(request.PageSize, 1, 100);
+		var pageNumber = Math.Max(request.PageNumber, 1);
 
 		var player = await CashierPlayerResolver.TryResolveAsync(context, currentUserService, cancellationToken);
 		if (player is null)
@@ -24,7 +24,10 @@ public sealed class GetCashierLedgerQueryHandler(
 			{
 				Entries = [],
 				HasMore = false,
-				TotalCount = 0
+              TotalCount = 0,
+				PageNumber = 1,
+				PageSize = pageSize,
+				TotalPages = 1
 			};
 		}
 
@@ -33,13 +36,21 @@ public sealed class GetCashierLedgerQueryHandler(
 			.Where(x => x.PlayerId == player.Id)
 			.CountAsync(cancellationToken);
 
+     var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)pageSize));
+		if (pageNumber > totalPages)
+		{
+			pageNumber = totalPages;
+		}
+
+		var skip = (pageNumber - 1) * pageSize;
+
 		var entries = await context.PlayerChipLedgerEntries
 			.AsNoTracking()
 			.Where(x => x.PlayerId == player.Id)
 			.OrderByDescending(x => x.OccurredAtUtc)
 			.ThenByDescending(x => x.Id)
 			.Skip(skip)
-			.Take(take)
+         .Take(pageSize)
 			.Select(x => new CashierLedgerEntryDto
 			{
 				Id = x.Id,
@@ -56,8 +67,11 @@ public sealed class GetCashierLedgerQueryHandler(
 		return new CashierLedgerPageDto
 		{
 			Entries = entries,
-			HasMore = skip + entries.Count < totalCount,
-			TotalCount = totalCount
+            HasMore = pageNumber < totalPages,
+			TotalCount = totalCount,
+			PageNumber = pageNumber,
+			PageSize = pageSize,
+			TotalPages = totalPages
 		};
 	}
 }

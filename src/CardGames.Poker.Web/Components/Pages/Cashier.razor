@@ -98,10 +98,6 @@
             <div class="cashier-panel-body d-flex flex-column gap-3">
                 <div class="cashier-section-header">
                     <h2 class="cashier-section-title">Ledger</h2>
-                    <div class="d-flex align-items-center gap-2">
-                        <button class="btn btn-sm btn-outline-secondary" @onclick="LoadPreviousPageAsync" disabled="@(_isLoading || _skip == 0)">Previous</button>
-                        <button class="btn btn-sm btn-outline-secondary" @onclick="LoadNextPageAsync" disabled="@(_isLoading || !_hasMore)">Next</button>
-                    </div>
                 </div>
 
                 @if (_isLoading)
@@ -143,21 +139,43 @@
                     </div>
                 }
 
-                <div class="small text-muted cashier-ledger-meta">Showing @_ledgerEntries.Count of @_totalCount transactions.</div>
+                <div class="cashier-ledger-footer">
+                    <div class="small text-muted cashier-ledger-meta">
+                        Showing @_ledgerEntries.Count of @_totalCount transactions. Page @_pageNumber of @TotalPages.
+                    </div>
+
+                    <div class="cashier-pager-toolbar">
+                        <label class="small text-muted mb-0" for="ledger-page-size">Rows per page</label>
+                        <select id="ledger-page-size" class="form-control cashier-page-size" value="@_pageSize" @onchange="OnPageSizeChangedAsync" disabled="@_isLoading">
+                            @foreach (var option in PageSizeOptions)
+                            {
+                                <option value="@option">@option</option>
+                            }
+                        </select>
+                        <div class="cashier-pager-buttons" role="group" aria-label="Ledger page navigation">
+                            <button class="btn btn-sm btn-outline-secondary" @onclick="LoadFirstPageAsync" disabled="@(_isLoading || !HasPreviousPage)">First</button>
+                            <button class="btn btn-sm btn-outline-secondary" @onclick="LoadPreviousPageAsync" disabled="@(_isLoading || !HasPreviousPage)">Previous</button>
+                            <span class="cashier-pager-status">Page @_pageNumber of @TotalPages</span>
+                            <button class="btn btn-sm btn-outline-secondary" @onclick="LoadNextPageAsync" disabled="@(_isLoading || !HasNextPage)">Next</button>
+                            <button class="btn btn-sm btn-outline-secondary" @onclick="LoadLastPageAsync" disabled="@(_isLoading || !HasNextPage)">Last</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </section>
     </div>
 </main>
 
 @code {
-    private const int PageSize = 25;
+    private const int DefaultPageSize = 10;
+    private static readonly int[] PageSizeOptions = [10, 25, 50, 100];
 
     private bool _isLoading;
     private string? _error;
     private CashierSummaryDto? _summary;
     private List<CashierLedgerEntryDto> _ledgerEntries = [];
-    private int _skip;
-    private bool _hasMore;
+    private int _pageNumber = 1;
+    private int _pageSize = DefaultPageSize;
     private int _totalCount;
 
     private int _chipAmount = 500;
@@ -165,6 +183,10 @@
     private bool _isSubmittingAddChips;
     private string? _addChipsMessage;
     private bool _addChipsMessageIsError;
+
+    private int TotalPages => Math.Max(1, (int)Math.Ceiling(_totalCount / (double)_pageSize));
+    private bool HasPreviousPage => _pageNumber > 1;
+    private bool HasNextPage => _pageNumber < TotalPages;
 
     protected override async Task OnInitializedAsync()
     {
@@ -194,17 +216,17 @@
                 _error = "Cashier summary is not available right now.";
             }
 
-            var ledgerResponse = await ProfileApi.GetCashierLedgerAsync(PageSize, _skip);
+            var ledgerResponse = await ProfileApi.GetCashierLedgerPageAsync(_pageSize, _pageNumber);
             if (ledgerResponse.IsSuccessStatusCode && ledgerResponse.Content is not null)
             {
                 _ledgerEntries = ledgerResponse.Content.Entries.ToList();
-                _hasMore = ledgerResponse.Content.HasMore;
+                _pageNumber = ledgerResponse.Content.PageNumber;
+                _pageSize = ledgerResponse.Content.PageSize;
                 _totalCount = ledgerResponse.Content.TotalCount;
             }
             else
             {
                 _ledgerEntries = [];
-                _hasMore = false;
                 _totalCount = 0;
                 _error ??= "Cashier ledger is not available right now.";
             }
@@ -219,7 +241,6 @@
                 LastTransactionAtUtc = null
             };
             _ledgerEntries = [];
-            _hasMore = false;
             _totalCount = 0;
             _error = "Unable to load cashier data right now.";
         }
@@ -256,7 +277,7 @@
             {
                 _chipAmount = 500;
                 _chipReason = null;
-                _skip = 0;
+                _pageNumber = 1;
                 _addChipsMessage = response.Content.Message;
                 await LoadAsync();
             }
@@ -280,23 +301,63 @@
 
     private async Task LoadPreviousPageAsync()
     {
-        if (_skip == 0)
+        if (!HasPreviousPage)
         {
             return;
         }
 
-        _skip = Math.Max(0, _skip - PageSize);
+        _pageNumber = Math.Max(1, _pageNumber - 1);
         await LoadAsync();
     }
 
     private async Task LoadNextPageAsync()
     {
-        if (!_hasMore)
+        if (!HasNextPage)
         {
             return;
         }
 
-        _skip += PageSize;
+        _pageNumber += 1;
+        await LoadAsync();
+    }
+
+    private async Task LoadFirstPageAsync()
+    {
+        if (!HasPreviousPage)
+        {
+            return;
+        }
+
+        _pageNumber = 1;
+        await LoadAsync();
+    }
+
+    private async Task LoadLastPageAsync()
+    {
+        if (!HasNextPage)
+        {
+            return;
+        }
+
+        _pageNumber = TotalPages;
+        await LoadAsync();
+    }
+
+    private async Task OnPageSizeChangedAsync(ChangeEventArgs args)
+    {
+        if (args.Value is not string rawValue || !int.TryParse(rawValue, out var pageSize))
+        {
+            return;
+        }
+
+        var normalizedPageSize = Math.Clamp(pageSize, 1, 100);
+        if (_pageSize == normalizedPageSize)
+        {
+            return;
+        }
+
+        _pageSize = normalizedPageSize;
+        _pageNumber = 1;
         await LoadAsync();
     }
 

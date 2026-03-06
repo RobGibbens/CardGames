@@ -1,0 +1,303 @@
+[1mdiff --git a/src/CardGames.Contracts/Cashier/CashierLedgerPageDto.cs b/src/CardGames.Contracts/Cashier/CashierLedgerPageDto.cs[m
+[1mindex f047f64d..74245d21 100644[m
+[1m--- a/src/CardGames.Contracts/Cashier/CashierLedgerPageDto.cs[m
+[1m+++ b/src/CardGames.Contracts/Cashier/CashierLedgerPageDto.cs[m
+[36m@@ -7,4 +7,10 @@[m [mpublic sealed record CashierLedgerPageDto[m
+ 	public required bool HasMore { get; init; }[m
+ [m
+ 	public required int TotalCount { get; init; }[m
+[32m+[m
+[32m+[m	[32mpublic required int PageNumber { get; init; }[m
+[32m+[m
+[32m+[m	[32mpublic required int PageSize { get; init; }[m
+[32m+[m
+[32m+[m	[32mpublic required int TotalPages { get; init; }[m
+ }[m
+[1mdiff --git a/src/CardGames.Contracts/IProfileApiExtensions.cs b/src/CardGames.Contracts/IProfileApiExtensions.cs[m
+[1mindex 6db33a54..ea35147d 100644[m
+[1m--- a/src/CardGames.Contracts/IProfileApiExtensions.cs[m
+[1m+++ b/src/CardGames.Contracts/IProfileApiExtensions.cs[m
+[36m@@ -20,5 +20,5 @@[m [mpublic partial interface IProfileApi[m
+ [m
+ 	[Headers("Accept: application/json, application/problem+json")][m
+ 	[Get("/api/v1/profile/cashier/ledger")][m
+[31m-	Task<IApiResponse<CashierLedgerPageDto>> GetCashierLedgerAsync([Query] int? take = 25, [Query] int? skip = 0, CancellationToken cancellationToken = default);[m
+[32m+[m[32m   Task<IApiResponse<CashierLedgerPageDto>> GetCashierLedgerAsync([Query] int? pageSize = 25, [Query] int? pageNumber = 1, CancellationToken cancellationToken = default);[m
+ }[m
+[1mdiff --git a/src/CardGames.Poker.Api/Data/Configurations/PlayerChipAccountConfiguration.cs b/src/CardGames.Poker.Api/Data/Configurations/PlayerChipAccountConfiguration.cs[m
+[1mindex 112e5f6f..f71a33cf 100644[m
+[1m--- a/src/CardGames.Poker.Api/Data/Configurations/PlayerChipAccountConfiguration.cs[m
+[1m+++ b/src/CardGames.Poker.Api/Data/Configurations/PlayerChipAccountConfiguration.cs[m
+[36m@@ -47,7 +47,8 @@[m [mpublic class PlayerChipLedgerEntryConfiguration : IEntityTypeConfiguration<Playe[m
+ 		builder.Property(x => x.RowVersion)[m
+ 			.IsRowVersion();[m
+ [m
+[31m-		builder.HasIndex(x => new { x.PlayerId, x.OccurredAtUtc });[m
+[32m+[m[32m     builder.HasIndex(x => new { x.PlayerId, x.OccurredAtUtc, x.Id })[m
+[32m+[m			[32m.IsDescending(false, true, true);[m
+ 		builder.HasIndex(x => x.Type);[m
+ [m
+ 		builder.HasOne(x => x.Player)[m
+[1mdiff --git a/src/CardGames.Poker.Api/Features/Profile/v1/Queries/GetCashierLedger/GetCashierLedgerEndpoint.cs b/src/CardGames.Poker.Api/Features/Profile/v1/Queries/GetCashierLedger/GetCashierLedgerEndpoint.cs[m
+[1mindex 4c4d9ded..b8631431 100644[m
+[1m--- a/src/CardGames.Poker.Api/Features/Profile/v1/Queries/GetCashierLedger/GetCashierLedgerEndpoint.cs[m
+[1m+++ b/src/CardGames.Poker.Api/Features/Profile/v1/Queries/GetCashierLedger/GetCashierLedgerEndpoint.cs[m
+[36m@@ -8,9 +8,9 @@[m [mpublic static class GetCashierLedgerEndpoint[m
+ 	public static RouteGroupBuilder MapGetCashierLedger(this RouteGroupBuilder group)[m
+ 	{[m
+ 		group.MapGet("cashier/ledger",[m
+[31m-				async (IMediator mediator, int take = 25, int skip = 0, CancellationToken cancellationToken = default) =>[m
+[32m+[m[32m               async (IMediator mediator, int pageSize = 25, int pageNumber = 1, CancellationToken cancellationToken = default) =>[m
+ 				{[m
+[31m-					var response = await mediator.Send(new GetCashierLedgerQuery(take, skip), cancellationToken);[m
+[32m+[m[32m                   var response = await mediator.Send(new GetCashierLedgerQuery(pageSize, pageNumber), cancellationToken);[m
+ 					return Results.Ok(response);[m
+ 				})[m
+ 			.WithName("GetCashierLedger")[m
+[1mdiff --git a/src/CardGames.Poker.Api/Features/Profile/v1/Queries/GetCashierLedger/GetCashierLedgerQuery.cs b/src/CardGames.Poker.Api/Features/Profile/v1/Queries/GetCashierLedger/GetCashierLedgerQuery.cs[m
+[1mindex c9d81af4..c1aa1c9d 100644[m
+[1m--- a/src/CardGames.Poker.Api/Features/Profile/v1/Queries/GetCashierLedger/GetCashierLedgerQuery.cs[m
+[1m+++ b/src/CardGames.Poker.Api/Features/Profile/v1/Queries/GetCashierLedger/GetCashierLedgerQuery.cs[m
+[36m@@ -3,4 +3,4 @@[m [musing MediatR;[m
+ [m
+ namespace CardGames.Poker.Api.Features.Profile.v1.Queries.GetCashierLedger;[m
+ [m
+[31m-public sealed record GetCashierLedgerQuery(int Take = 25, int Skip = 0) : IRequest<CashierLedgerPageDto>;[m
+[32m+[m[32mpublic sealed record GetCashierLedgerQuery(int PageSize = 25, int PageNumber = 1) : IRequest<CashierLedgerPageDto>;[m
+[1mdiff --git a/src/CardGames.Poker.Api/Features/Profile/v1/Queries/GetCashierLedger/GetCashierLedgerQueryHandler.cs b/src/CardGames.Poker.Api/Features/Profile/v1/Queries/GetCashierLedger/GetCashierLedgerQueryHandler.cs[m
+[1mindex 66ad68b1..7da3f777 100644[m
+[1m--- a/src/CardGames.Poker.Api/Features/Profile/v1/Queries/GetCashierLedger/GetCashierLedgerQueryHandler.cs[m
+[1m+++ b/src/CardGames.Poker.Api/Features/Profile/v1/Queries/GetCashierLedger/GetCashierLedgerQueryHandler.cs[m
+[36m@@ -14,8 +14,8 @@[m [mpublic sealed class GetCashierLedgerQueryHandler([m
+ {[m
+ 	public async Task<CashierLedgerPageDto> Handle(GetCashierLedgerQuery request, CancellationToken cancellationToken)[m
+ 	{[m
+[31m-		var take = Math.Clamp(request.Take, 1, 100);[m
+[31m-		var skip = Math.Max(request.Skip, 0);[m
+[32m+[m[32m        var pageSize = Math.Clamp(request.PageSize, 1, 100);[m
+[32m+[m		[32mvar pageNumber = Math.Max(request.PageNumber, 1);[m
+ [m
+ 		var player = await CashierPlayerResolver.TryResolveAsync(context, currentUserService, cancellationToken);[m
+ 		if (player is null)[m
+[36m@@ -24,7 +24,10 @@[m [mpublic sealed class GetCashierLedgerQueryHandler([m
+ 			{[m
+ 				Entries = [],[m
+ 				HasMore = false,[m
+[31m-				TotalCount = 0[m
+[32m+[m[32m              TotalCount = 0,[m
+[32m+[m				[32mPageNumber = 1,[m
+[32m+[m				[32mPageSize = pageSize,[m
+[32m+[m				[32mTotalPages = 1[m
+ 			};[m
+ 		}[m
+ [m
+[36m@@ -33,13 +36,21 @@[m [mpublic sealed class GetCashierLedgerQueryHandler([m
+ 			.Where(x => x.PlayerId == player.Id)[m
+ 			.CountAsync(cancellationToken);[m
+ [m
+[32m+[m[32m     var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)pageSize));[m
+[32m+[m		[32mif (pageNumber > totalPages)[m
+[32m+[m		[32m{[m
+[32m+[m			[32mpageNumber = totalPages;[m
+[32m+[m		[32m}[m
+[32m+[m
+[32m+[m		[32mvar skip = (pageNumber - 1) * pageSize;[m
+[32m+[m
+ 		var entries = await context.PlayerChipLedgerEntries[m
+ 			.AsNoTracking()[m
+ 			.Where(x => x.PlayerId == player.Id)[m
+ 			.OrderByDescending(x => x.OccurredAtUtc)[m
+ 			.ThenByDescending(x => x.Id)[m
+ 			.Skip(skip)[m
+[31m-			.Take(take)[m
+[32m+[m[32m         .Take(pageSize)[m
+ 			.Select(x => new CashierLedgerEntryDto[m
+ 			{[m
+ 				Id = x.Id,[m
+[36m@@ -56,8 +67,11 @@[m [mpublic sealed class GetCashierLedgerQueryHandler([m
+ 		return new CashierLedgerPageDto[m
+ 		{[m
+ 			Entries = entries,[m
+[31m-			HasMore = skip + entries.Count < totalCount,[m
+[31m-			TotalCount = totalCount[m
+[32m+[m[32m            HasMore = pageNumber < totalPages,[m
+[32m+[m			[32mTotalCount = totalCount,[m
+[32m+[m			[32mPageNumber = pageNumber,[m
+[32m+[m			[32mPageSize = pageSize,[m
+[32m+[m			[32mTotalPages = totalPages[m
+ 		};[m
+ 	}[m
+ }[m
+[1mdiff --git a/src/CardGames.Poker.Web/Components/Pages/Cashier.razor b/src/CardGames.Poker.Web/Components/Pages/Cashier.razor[m
+[1mindex 5a057cd0..52b0fa9d 100644[m
+[1m--- a/src/CardGames.Poker.Web/Components/Pages/Cashier.razor[m
+[1m+++ b/src/CardGames.Poker.Web/Components/Pages/Cashier.razor[m
+[36m@@ -98,9 +98,19 @@[m
+             <div class="cashier-panel-body d-flex flex-column gap-3">[m
+                 <div class="cashier-section-header">[m
+                     <h2 class="cashier-section-title">Ledger</h2>[m
+[31m-                    <div class="d-flex align-items-center gap-2">[m
+[31m-                        <button class="btn btn-sm btn-outline-secondary" @onclick="LoadPreviousPageAsync" disabled="@(_isLoading || _skip == 0)">Previous</button>[m
+[31m-                        <button class="btn btn-sm btn-outline-secondary" @onclick="LoadNextPageAsync" disabled="@(_isLoading || !_hasMore)">Next</button>[m
+[32m+[m[32m                    <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">[m
+[32m+[m[32m                        <label class="small text-muted mb-0" for="ledger-page-size">Rows</label>[m
+[32m+[m[32m                        <select id="ledger-page-size" class="form-select form-select-sm" style="width:auto;" value="@_pageSize" @onchange="OnPageSizeChangedAsync" disabled="@_isLoading">[m
+[32m+[m[32m                            @foreach (var option in PageSizeOptions)[m
+[32m+[m[32m                            {[m
+[32m+[m[32m                                <option value="@option">@option</option>[m
+[32m+[m[32m                            }[m
+[32m+[m[32m                        </select>[m
+[32m+[m[32m                        <button class="btn btn-sm btn-outline-secondary" @onclick="LoadFirstPageAsync" disabled="@(_isLoading || !HasPreviousPage)">First</button>[m
+[32m+[m[32m                        <button class="btn btn-sm btn-outline-secondary" @onclick="LoadPreviousPageAsync" disabled="@(_isLoading || !HasPreviousPage)">Previous</button>[m
+[32m+[m[32m                        <span class="small text-muted">Page @_pageNumber of @TotalPages</span>[m
+[32m+[m[32m                        <button class="btn btn-sm btn-outline-secondary" @onclick="LoadNextPageAsync" disabled="@(_isLoading || !HasNextPage)">Next</button>[m
+[32m+[m[32m                        <button class="btn btn-sm btn-outline-secondary" @onclick="LoadLastPageAsync" disabled="@(_isLoading || !HasNextPage)">Last</button>[m
+                     </div>[m
+                 </div>[m
+ [m
+[36m@@ -143,21 +153,24 @@[m
+                     </div>[m
+                 }[m
+ [m
+[31m-                <div class="small text-muted cashier-ledger-meta">Showing @_ledgerEntries.Count of @_totalCount transactions.</div>[m
+[32m+[m[32m                <div class="small text-muted cashier-ledger-meta">[m
+[32m+[m[32m                    Showing @_ledgerEntries.Count of @_totalCount transactions. Page @_pageNumber of @TotalPages.[m
+[32m+[m[32m                </div>[m
+             </div>[m
+         </section>[m
+     </div>[m
+ </main>[m
+ [m
+ @code {[m
+[31m-    private const int PageSize = 25;[m
+[32m+[m[32m    private const int DefaultPageSize = 25;[m
+[32m+[m[32m    private static readonly int[] PageSizeOptions = [25, 50, 100];[m
+ [m
+     private bool _isLoading;[m
+     private string? _error;[m
+     private CashierSummaryDto? _summary;[m
+     private List<CashierLedgerEntryDto> _ledgerEntries = [];[m
+[31m-    private int _skip;[m
+[31m-    private bool _hasMore;[m
+[32m+[m[32m    private int _pageNumber = 1;[m
+[32m+[m[32m    private int _pageSize = DefaultPageSize;[m
+     private int _totalCount;[m
+ [m
+     private int _chipAmount = 500;[m
+[36m@@ -166,6 +179,10 @@[m
+     private string? _addChipsMessage;[m
+     private bool _addChipsMessageIsError;[m
+ [m
+[32m+[m[32m    private int TotalPages => Math.Max(1, (int)Math.Ceiling(_totalCount / (double)_pageSize));[m
+[32m+[m[32m    private bool HasPreviousPage => _pageNumber > 1;[m
+[32m+[m[32m    private bool HasNextPage => _pageNumber < TotalPages;[m
+[32m+[m
+     protected override async Task OnInitializedAsync()[m
+     {[m
+         await LoadAsync();[m
+[36m@@ -194,17 +211,17 @@[m
+                 _error = "Cashier summary is not available right now.";[m
+             }[m
+ [m
+[31m-            var ledgerResponse = await ProfileApi.GetCashierLedgerAsync(PageSize, _skip);[m
+[32m+[m[32m            var ledgerResponse = await ProfileApi.GetCashierLedgerAsync(_pageSize, _pageNumber);[m
+             if (ledgerResponse.IsSuccessStatusCode && ledgerResponse.Content is not null)[m
+             {[m
+                 _ledgerEntries = ledgerResponse.Content.Entries.ToList();[m
+[31m-                _hasMore = ledgerResponse.Content.HasMore;[m
+[32m+[m[32m                _pageNumber = ledgerResponse.Content.PageNumber;[m
+[32m+[m[32m                _pageSize = ledgerResponse.Content.PageSize;[m
+                 _totalCount = ledgerResponse.Content.TotalCount;[m
+             }[m
+             else[m
+             {[m
+                 _ledgerEntries = [];[m
+[31m-                _hasMore = false;[m
+                 _totalCount = 0;[m
+                 _error ??= "Cashier ledger is not available right now.";[m
+             }[m
+[36m@@ -219,7 +236,6 @@[m
+                 LastTransactionAtUtc = null[m
+             };[m
+             _ledgerEntries = [];[m
+[31m-            _hasMore = false;[m
+             _totalCount = 0;[m
+             _error = "Unable to load cashier data right now.";[m
+         }[m
+[36m@@ -256,7 +272,7 @@[m
+             {[m
+                 _chipAmount = 500;[m
+                 _chipReason = null;[m
+[31m-                _skip = 0;[m
+[32m+[m[32m                _pageNumber = 1;[m
+                 _addChipsMessage = response.Content.Message;[m
+                 await LoadAsync();[m
+             }[m
+[36m@@ -280,23 +296,63 @@[m
+ [m
+     private async Task LoadPreviousPageAsync()[m
+     {[m
+[31m-        if (_skip == 0)[m
+[32m+[m[32m        if (!HasPreviousPage)[m
+         {[m
+             return;[m
+         }[m
+ [m
+[31m-        _skip = Math.Max(0, _skip - PageSize);[m
+[32m+[m[32m        _pageNumber = Math.Max(1, _pageNumber - 1);[m
+         await LoadAsync();[m
+     }[m
+ [m
+     private async Task LoadNextPageAsync()[m
+     {[m
+[31m-        if (!_hasMore)[m
+[32m+[m[32m        if (!HasNextPage)[m
+[32m+[m[32m        {[m
+[32m+[m[32m            return;[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        _pageNumber += 1;[m
+[32m+[m[32m        await LoadAsync();[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    private async Task LoadFirstPageAsync()[m
+[32m+[m[32m    {[m
+[32m+[m[32m        if (!HasPreviousPage)[m
+[32m+[m[32m        {[m
+[32m+[m[32m            return;[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        _pageNumber = 1;[m
+[32m+[m[32m        await LoadAsync();[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    private async Task LoadLastPageAsync()[m
+[32m+[m[32m    {[m
+[32m+[m[32m        if (!HasNextPage)[m
+[32m+[m[32m        {[m
+[32m+[m[32m            return;[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        _pageNumber = TotalPages;[m
+[32m+[m[32m        await LoadAsync();[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    private async Task OnPageSizeChangedAsync(ChangeEventArgs args)[m
+[32m+[m[32m    {[m
+[32m+[m[32m        if (args.Value is not string rawValue || !int.TryParse(rawValue, out var pageSize))[m
+[32m+[m[32m        {[m
+[32m+[m[32m            return;[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        var normalizedPageSize = Math.Clamp(pageSize, 1, 100);[m
+[32m+[m[32m        if (_pageSize == normalizedPageSize)[m
+         {[m
+             return;[m
+         }[m
+ [m
+[31m-        _skip += PageSize;[m
+[32m+[m[32m        _pageSize = normalizedPageSize;[m
+[32m+[m[32m        _pageNumber = 1;[m
+         await LoadAsync();[m
+     }[m
+ [m

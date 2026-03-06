@@ -20,5 +20,5 @@ public partial interface IProfileApi
 
 	[Headers("Accept: application/json, application/problem+json")]
 	[Get("/api/v1/profile/cashier/ledger")]
-	Task<IApiResponse<CashierLedgerPageDto>> GetCashierLedgerAsync([Query] int? take = 25, [Query] int? skip = 0, CancellationToken cancellationToken = default);
+   Task<IApiResponse<CashierLedgerPageDto>> GetCashierLedgerPageAsync([AliasAs("pageSize")][Query] int? pageSize = 10, [AliasAs("pageNumber")][Query] int? pageNumber = 1, CancellationToken cancellationToken = default);
 }
