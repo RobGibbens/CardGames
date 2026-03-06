@@ -99,6 +99,71 @@
 **What:** Defined Leagues as account-scoped entities that own membership, admin roles, invite links, and event/season metadata while leaving game rules and hand orchestration in existing poker domain flows.
 **Why:** Preserves architecture boundaries from `docs/ARCHITECTURE.md` and avoids coupling league concerns to game-engine mechanics.
 
+### 2026-02-26: Unified card styling across league UI
+**By:** Linus (Frontend Dev), requested by Rob Gibbens
+**What:** All "card" collection items (event rows, active game cards, season rows, league club cards) now share a consistent visual treatment: thin grey border, left primary-color accent (`border-left: 3px solid var(--primary)`), and border-based hover glow (`box-shadow: 0 0 0 1px var(--primary)`). Shadow-based hover on `.league-club-card` was replaced with border-based hover. CSS-only changes in `app.css` — no Razor markup modified.
+**Why:** Rob requested visual consistency across all card-like list items in the league pages.
+
+### 2026-02-26: Lobby tabs visual redesign
+**By:** Linus (Frontend Dev), requested by Rob Gibbens
+**What:** Replaced pill-shaped button tabs (`.lobby-tabs`) with proper tab navigation — bottom-border rail, 3px `var(--primary)` active indicator, 8px top-corner radius for folder-tab shape, no gradient/box-shadow on active. Badges stay functional with primary color on active tabs and muted on inactive.
+**Why:** User feedback that tabs looked like buttons, not navigation tabs. CSS-only change, zero markup impact.
+
+### 2026-02-27: Inline Season Events in Schedule Tab
+**By:** Arwen (Frontend Dev)
+**What:** Restructured `LeagueDetailScheduleTab.razor` so season events render inline beneath their parent season row within the same card. Added toggle behavior (View/Hide Events) and moved "Create Event" button to appear next to the toggle when a season is expanded. Removed separate "Season Events" section.
+**Why:** Users had to mentally connect which events belonged to which season in the previous two-section layout. Inline rendering creates correct visual hierarchy.
+
+### 2026-03-01: Community cards moved to horizontal row beside deck
+**By:** Arwen (Linus) — requested by Rob Gibbens
+**What:** Restructured `.table-center` in TableCanvas.razor so the deck and community cards sit in a horizontal `.table-center-row` flex container, with pot and phase indicator stacked above. This prevents community cards from overlapping the bottom player's hand and uses the available horizontal space in the table center.
+**Why:** Community cards for "The Good, the Bad, and the Ugly" were hidden behind the bottom player's hand in the previous vertical-only layout.
+
+### 2026-03-02: Dealer's Choice as a "Meta-Game" Wrapper, Not a GameType
+**By:** Rusty (Lead)
+**Requested by:** Rob Gibbens
+**What:** Dealer's Choice should NOT be implemented as another `GameType` in the `PokerGameMetadataRegistry`. Instead, it is a table mode — a property on the `Game` entity (`IsDealersChoice` flag) that changes how hands are sequenced. The `Game.GameTypeId` becomes nullable so it can change per hand. Each hand still resolves to a real game type handler via `IGameFlowHandlerFactory.GetHandler(gameTypeCode)`.
+**Why:** The existing `GameType` entity describes static game rules. DC isn't a variant — it's an orchestration mode that selects from existing variants. A table-mode flag keeps the existing handler resolution clean.
+
+### 2026-03-02: Track DC Dealer Separately from Per-Hand Dealer
+**By:** Rusty (Lead)
+**Requested by:** Rob Gibbens
+**What:** Introduce `DealersChoiceDealerPosition` on the `Game` entity — this tracks whose turn it is to choose the next game type. The existing `DealerPosition` continues to track the per-hand dealer for game mechanics.
+**Why:** Kings and Lows rotates `DealerPosition` internally across its multi-hand lifecycle. The separation ensures inner-game dealer rotation never corrupts the outer DC rotation.
+
+### 2026-03-02: New Phase — WaitingForDealerChoice
+**By:** Rusty (Lead)
+**Requested by:** Rob Gibbens
+**What:** Add `WaitingForDealerChoice` to the `Phases` enum. When continuous play enters this phase, the background service pauses and the UI presents a modal to the DC dealer to choose game type, ante, and minimum bet.
+**Why:** The current `ContinuousPlayBackgroundService.StartNextHandAsync` assumes it can immediately start the next hand. DC requires human input between hands. Structurally similar to `WaitingForPlayers`.
+
+### 2026-03-02: Kings and Lows Encapsulation — "Inner Game" Lifecycle
+**By:** Rusty (Lead)
+**Requested by:** Rob Gibbens
+**What:** When a DC dealer selects Kings and Lows, the entire KAL lifecycle runs as a self-contained unit. DC treats the entire KAL session as a single "turn" for the choosing dealer. When KAL concludes, DC advances the DC dealer position by one.
+**Why:** KAL already owns its own internal `MoveDealer` calls and pot carryover logic. Treating multi-hand games as atomic units from DC's perspective avoids complex coupling.
+
+### 2026-03-02: Dealer's Choice — API & Database Schema Design
+**By:** Gimli (Backend Dev)
+**Requested by:** Rob Gibbens
+**What:** Comprehensive design covering schema changes (`GameTypeId` nullable, `IsDealersChoice` flag, `DealersChoiceDealerPosition`, `CurrentHandGameTypeCode`, new `DealersChoiceHandLog` entity), new API endpoints (`POST /api/v1/games/{gameId}/dealers-choice`, `GET /api/v1/games/dealers-choice/available-games`, `GET /api/v1/games/{gameId}/dealers-choice/history`), MediatR commands, SignalR state extensions, and contract DTOs.
+**Why:** Enables tables where the dealer chooses the game type each hand while preserving all existing single-game-type behavior unchanged. Phase-based blocking (`WaitingForDealerChoice`) slots into existing phase machine. Backward compatible — `IsDealersChoice = false` + non-null `GameTypeId` for all existing tables.
+**Reference:** `docs/DealersChoiceUIDesign.md`, inline in inbox file
+
+### 2026-03-02: Dealer's Choice UI architecture — table mode, not game type
+**By:** Linus (Frontend Dev)
+**Requested by:** Rob Gibbens
+**What:** Dealer's Choice is modeled as a table-level mode (`IsDealersChoice`), not a game type in the domain engine. The `DEALERS_CHOICE` code is a client-side constant used at table creation time; the actual `_gameTypeCode` updates per hand via `DealerChoiceMade` SignalR event. Two new components: `DealerChoiceModal.razor` (dealer) and `DealerChoiceWaiting.razor` (others). Ante/min bet set per-hand by dealer. 60-second timeout with server auto-fallback.
+**Why:** Keeps game rules in the domain layer. The UI adapts per-hand by updating `_gameTypeCode` from SignalR, reusing all existing game-type-specific rendering.
+**Reference:** `docs/DealersChoiceUIDesign.md`
+
+### 2026-03-02: Dealer's Choice test strategy — architectural test assumptions
+**By:** Basher (Tester)
+**Requested by:** Rob Gibbens
+**What:** Comprehensive test strategy with ~35 scenarios across 5 test files (P0/P1/P2). Key assumptions: DC mode via null/empty `GameCode`, separate `DcDealerPosition` field, new `ChooseDealerGameCommand`, `WaitingForDealerChoice` phase, ContinuousPlayBackgroundService DC-aware, and K&L encapsulation where DC dealer advances after full K&L resolution.
+**Why:** These assumptions drive all test scenarios. Team should validate before implementation begins to avoid test/implementation divergence.
+**Reference:** `docs/DealersChoiceTestStrategy.md`
+
 **Review context:** Design Review ceremony (Danny, Linus, Basher)
 
 ### 2026-02-17: League membership is temporal and event-backed

@@ -2,6 +2,7 @@ using CardGames.Core.French.Cards;
 using CardGames.Core.French.Cards.Extensions;
 using CardGames.Poker.Hands.WildCards;
 using FluentAssertions;
+using System.Linq;
 using Xunit;
 
 namespace CardGames.Poker.Tests.Hands.WildCards;
@@ -172,5 +173,31 @@ public class WildCardRulesTests
 
         // Ace-high: 7 is low, Ace-low: Ace is low - these are different
         wildCardSets.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public void GetAllPossibleWildCardSets_Includes_Five_And_Ace_For_Five_To_Ace_Example()
+    {
+        var rules = new WildCardRules(kingRequired: false);
+        var hand = "5h 6d 7c 8s Ac".ToCards();
+
+        var wildCardSets = rules.GetAllPossibleWildCardSets(hand);
+
+        wildCardSets.Should().HaveCount(2);
+        wildCardSets.SelectMany(set => set).Should().Contain(c => c.Symbol == Symbol.Five);
+        wildCardSets.SelectMany(set => set).Should().Contain(c => c.Symbol == Symbol.Ace);
+    }
+
+    [Fact]
+    public void GetAllPossibleWildCardSets_Includes_Deuce_And_Ace_For_Broadway_Example()
+    {
+        var rules = new WildCardRules(kingRequired: false);
+        var hand = "2s Jd Qh Kc As".ToCards();
+
+        var wildCardSets = rules.GetAllPossibleWildCardSets(hand);
+
+        wildCardSets.Should().HaveCount(2);
+        wildCardSets.SelectMany(set => set).Should().Contain(c => c.Symbol == Symbol.Deuce);
+        wildCardSets.SelectMany(set => set).Should().Contain(c => c.Symbol == Symbol.Ace);
     }
 }

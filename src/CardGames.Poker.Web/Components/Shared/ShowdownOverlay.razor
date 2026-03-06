@@ -80,9 +80,9 @@
                         <div class="showdown-cards winner-cards" aria-label="Winning cards">
                             @for (var i = 0; i < winnerCards.Count; i++)
                             {
-                                var card = winnerCards[i];
+                                var (card, isWild) = winnerCards[i];
                                 <div class="sd-card-wrapper" style="--i:@i">
-                                    <playing-card class="showdown-card showdown-card-winner" rank="@GetPlayingCardRank(card)" suit="@GetPlayingCardSuit(card)"></playing-card>
+                                    <playing-card class="showdown-card showdown-card-winner" rank="@GetPlayingCardRank(card)" suit="@GetPlayingCardSuit(card)" suitcolor="@(isWild ? "green" : null)" rankcolor="@(isWild ? "green" : null)" courtcolor="@(isWild ? "green" : null)"></playing-card>
                                 </div>
                             }
                         </div>
@@ -116,10 +116,10 @@
                             @if (handCards.Count > 0)
                             {
                                 <div class="showdown-cards other-cards">
-                                    @foreach (var c in handCards)
+                                    @foreach (var (c, isWild) in handCards)
                                     {
                                         <div>
-                                            <playing-card class="showdown-card showdown-card-loser" rank="@GetPlayingCardRank(c)" suit="@GetPlayingCardSuit(c)"></playing-card>
+                                            <playing-card class="showdown-card showdown-card-loser" rank="@GetPlayingCardRank(c)" suit="@GetPlayingCardSuit(c)" suitcolor="@(isWild ? "green" : null)" rankcolor="@(isWild ? "green" : null)" courtcolor="@(isWild ? "green" : null)"></playing-card>
                                         </div>
                                     }
                                 </div>
@@ -300,7 +300,7 @@
     /// Uses BestCardIndexes if provided by API, otherwise computes client-side.
     /// For other games, returns all cards sorted by symbol.
     /// </summary>
-    private static List<ShowdownCard> GetDisplayCards(ShowdownPlayerHand hand)
+    private static List<(ShowdownCard Card, bool IsWild)> GetDisplayCards(ShowdownPlayerHand hand)
     {
         if (hand.Cards is null || hand.Cards.Count == 0)
         {
@@ -308,21 +308,27 @@
         }
 
         var cardsList = hand.Cards.ToList();
+        var wildSet = hand.WildCardIndexes is not null
+            ? new HashSet<int>(hand.WildCardIndexes)
+            : new HashSet<int>();
 
         // If BestCardIndexes is provided and valid, use only those cards
         if (hand.BestCardIndexes is not null && hand.BestCardIndexes.Count == 5)
         {
             return hand.BestCardIndexes
                 .Where(idx => idx >= 0 && idx < cardsList.Count)
-                .Select(idx => cardsList[idx])
-                .OrderBy(GetCardDisplayOrder)
+                .Select(idx => (Card: cardsList[idx], IsWild: wildSet.Contains(idx)))
+                .OrderBy(x => GetCardDisplayOrder(x.Card))
                 .ToList();
         }
 
         // For wild-card hands, show all cards to avoid incorrect best-5 selection client-side
         if (hand.WildCardIndexes is not null && hand.WildCardIndexes.Count > 0 && cardsList.Count > 5)
         {
-            return cardsList.OrderBy(GetCardDisplayOrder).ToList();
+            return cardsList
+                .Select((c, i) => (Card: c, IsWild: wildSet.Contains(i)))
+                .OrderBy(x => GetCardDisplayOrder(x.Card))
+                .ToList();
         }
 
         // For 7-card hands (Seven Card Stud), compute best 5 cards client-side
@@ -340,7 +346,7 @@
 
                 // Map back to ShowdownCards by matching suit and symbol
                 // Use a list to track which cards have been used (to handle potential duplicates)
-                var result = new List<ShowdownCard>();
+                var result = new List<(ShowdownCard Card, bool IsWild)>();
                 var usedIndexes = new HashSet<int>();
 
                 foreach (var bc in bestCards)
@@ -357,19 +363,22 @@
                             MapSuit(sc.Suit.Value) == bc.Suit &&
                             MapSymbol(sc.Symbol.Value) == bc.Symbol)
                         {
-                            result.Add(sc);
+                            result.Add((sc, wildSet.Contains(i)));
                             usedIndexes.Add(i);
                             break;
                         }
                     }
                 }
 
-                return result.OrderBy(c => c.Symbol).ToList();
+                return result.OrderBy(x => x.Card.Symbol).ToList();
             }
         }
 
         // Fall back to showing all cards (for 5-card games)
-        return cardsList.OrderBy(c => c.Symbol).ToList();
+        return cardsList
+            .Select((c, i) => (Card: c, IsWild: wildSet.Contains(i)))
+            .OrderBy(x => x.Card.Symbol)
+            .ToList();
     }
 
     private string? GetPlayingCardSuit(ShowdownCard card)

@@ -61,6 +61,7 @@ public class GameConfiguration : IEntityTypeConfiguration<Game>
 		builder.HasOne(t => t.GameType)
 			.WithMany(gt => gt.Games)
 			.HasForeignKey(t => t.GameTypeId)
+			.IsRequired(false)
 			.OnDelete(DeleteBehavior.Restrict);
 
 		builder.HasMany(t => t.GamePlayers)
@@ -81,6 +82,14 @@ public class GameConfiguration : IEntityTypeConfiguration<Game>
 		builder.HasMany(t => t.BettingRounds)
 			.WithOne(br => br.Game)
 			.HasForeignKey(br => br.GameId)
+			.OnDelete(DeleteBehavior.Cascade);
+
+		builder.Property(t => t.CurrentHandGameTypeCode)
+			.HasMaxLength(50);
+
+		builder.HasMany(t => t.DealersChoiceHandLogs)
+			.WithOne(d => d.Game)
+			.HasForeignKey(d => d.GameId)
 			.OnDelete(DeleteBehavior.Cascade);
 	}
 }

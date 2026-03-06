@@ -24,11 +24,18 @@
 
     <!-- Cards Display -->
     <div class="drop-or-stay-cards-container">
+        @{
+            var hasExplicitWildFlags = Cards.Any(c => c.IsWild);
+            var lowestNonKingRankValue = EnableKingsAndLowsWildCardHighlighting
+                ? GetLowestNonKingRankValueForWild(Cards)
+                : null;
+        }
         @foreach (var card in GetOrderedCards())
         {
+            var isWildForDisplay = IsWildForDisplay(card, lowestNonKingRankValue, EnableKingsAndLowsWildCardHighlighting, hasExplicitWildFlags);
             <div class="drop-or-stay-card-wrapper">
                 <div class="drop-or-stay-card">
-                    <playing-card rank="@GetPlayingCardRank(card)" suit="@card.Suit" style="height:92px;width:64px;"></playing-card>
+                    <playing-card rank="@GetPlayingCardRank(card)" suit="@card.Suit" style="height:92px;width:64px;" suitcolor="@(isWildForDisplay ? "green" : null)" rankcolor="@(isWildForDisplay ? "green" : null)" courtcolor="@(isWildForDisplay ? "green" : null)"></playing-card>
                 </div>
             </div>
         }
@@ -169,6 +176,13 @@
     [Parameter]
     public ActionTimerStateDto? ActionTimer { get; set; }
 
+    /// <summary>
+    /// Enables Kings and Lows wild card highlighting logic (kings + lowest card).
+    /// Keep false for other game types.
+    /// </summary>
+    [Parameter]
+    public bool EnableKingsAndLowsWildCardHighlighting { get; set; }
+
     protected override async Task OnParametersSetAsync()
     {
         await TrySubmitTimeoutDefaultDecisionAsync();
@@ -294,5 +308,48 @@
             "spades" or "s" => 3,
             _ => int.MaxValue
         };
+    }
+
+    private static bool IsWildForDisplay(CardInfo card, int? lowestNonKingRankValue, bool enableKingsAndLowsWildCardHighlighting, bool hasExplicitWildFlags)
+    {
+        if (card.IsWild)
+        {
+            return true;
+        }
+
+        if (hasExplicitWildFlags)
+        {
+            return false;
+        }
+
+        if (!enableKingsAndLowsWildCardHighlighting)
+        {
+            return false;
+        }
+
+        var rankValue = GetRankValue(card.Rank);
+        if (rankValue == 13)
+        {
+            return true;
+        }
+
+        return lowestNonKingRankValue.HasValue && rankValue == lowestNonKingRankValue.Value;
+    }
+
+    private static int? GetLowestNonKingRankValueForWild(IReadOnlyList<CardInfo> cards)
+    {
+        if (cards.Count == 0)
+        {
+            return null;
+        }
+
+        var lowest = cards
+            .Where(c => c.IsFaceUp && !string.IsNullOrWhiteSpace(c.Rank))
+            .Select(c => GetRankValue(c.Rank))
+            .Where(value => value != int.MaxValue && value != 13)
+            .DefaultIfEmpty(int.MaxValue)
+            .Min();
+
+        return lowest == int.MaxValue ? null : lowest;
     }
 }

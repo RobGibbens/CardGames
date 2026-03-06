@@ -243,6 +243,50 @@ namespace CardGames.Poker.Api.Migrations
                     b.ToTable("BettingRounds");
                 });
 
+            modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.DealersChoiceHandLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Ante")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset>("ChosenAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("DealerPlayerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("DealerSeatPosition")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("GameId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("GameTypeCode")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("GameTypeName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("HandNumber")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MinBet")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GameId", "HandNumber")
+                        .IsUnique();
+
+                    b.ToTable("DealersChoiceHandLogs");
+                });
+
             modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.Game", b =>
                 {
                     b.Property<Guid>("Id")
@@ -283,6 +327,10 @@ namespace CardGames.Poker.Api.Migrations
                     b.Property<int>("CurrentDrawPlayerIndex")
                         .HasColumnType("int");
 
+                    b.Property<string>("CurrentHandGameTypeCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<int>("CurrentHandNumber")
                         .HasColumnType("int");
 
@@ -295,6 +343,9 @@ namespace CardGames.Poker.Api.Migrations
                         .HasColumnType("int");
 
                     b.Property<int>("DealerPosition")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("DealersChoiceDealerPosition")
                         .HasColumnType("int");
 
                     b.Property<DateTimeOffset?>("DeletedAt")
@@ -316,11 +367,14 @@ namespace CardGames.Poker.Api.Migrations
                         .HasMaxLength(4000)
                         .HasColumnType("nvarchar(4000)");
 
-                    b.Property<Guid>("GameTypeId")
+                    b.Property<Guid?>("GameTypeId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTimeOffset?>("HandCompletedAt")
                         .HasColumnType("datetimeoffset");
+
+                    b.Property<bool>("IsDealersChoice")
+                        .HasColumnType("bit");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
@@ -337,6 +391,9 @@ namespace CardGames.Poker.Api.Migrations
 
                     b.Property<DateTimeOffset?>("NextHandStartsAt")
                         .HasColumnType("datetimeoffset");
+
+                    b.Property<int?>("OriginalDealersChoiceDealerPosition")
+                        .HasColumnType("int");
 
                     b.Property<int?>("RandomSeed")
                         .HasColumnType("int");
@@ -1731,13 +1788,23 @@ namespace CardGames.Poker.Api.Migrations
                     b.Navigation("Game");
                 });
 
+            modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.DealersChoiceHandLog", b =>
+                {
+                    b.HasOne("CardGames.Poker.Api.Data.Entities.Game", "Game")
+                        .WithMany("DealersChoiceHandLogs")
+                        .HasForeignKey("GameId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Game");
+                });
+
             modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.Game", b =>
                 {
                     b.HasOne("CardGames.Poker.Api.Data.Entities.GameType", "GameType")
                         .WithMany("Games")
                         .HasForeignKey("GameTypeId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("GameType");
                 });
@@ -2097,6 +2164,8 @@ namespace CardGames.Poker.Api.Migrations
             modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.Game", b =>
                 {
                     b.Navigation("BettingRounds");
+
+                    b.Navigation("DealersChoiceHandLogs");
 
                     b.Navigation("GameCards");
 

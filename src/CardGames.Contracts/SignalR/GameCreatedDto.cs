@@ -18,7 +18,7 @@ public sealed record GameCreatedDto
     /// <summary>
     /// The game type identifier.
     /// </summary>
-    public required Guid GameTypeId { get; init; }
+    public Guid? GameTypeId { get; init; }
 
     /// <summary>
     /// The game type code (e.g., "FiveCardDraw").
@@ -80,4 +80,9 @@ public sealed record GameCreatedDto
     /// The image name for the game type.
     /// </summary>
     public string? GameTypeImageName { get; init; }
+
+    /// <summary>
+    /// Whether this game is a Dealer's Choice table.
+    /// </summary>
+    public bool IsDealersChoice { get; init; }
 }

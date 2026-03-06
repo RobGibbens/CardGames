@@ -161,7 +161,7 @@
                                         <td class="text-end">
                                             <button class="btn btn-sm btn-primary" @onclick="() => NavigateToTableWithChipCheckAsync(table.Id)">Join</button>
                                         </td>
-                                        <td>@table.GameTypeName</td>
+                                        <td>@FormatGameTypeName(table)</td>
                                         <td>@table.Name</td>
                                         <td>@table.CreatedByName</td>
                                         <td>@table.CurrentPhaseDescription</td>
@@ -288,7 +288,7 @@
             currentPhaseDescription: gameCreated.CurrentPhaseDescription,
             gameTypeCode: gameCreated.GameTypeCode,
             gameTypeDescription: gameCreated.GameTypeDescription,
-            gameTypeId: gameCreated.GameTypeId,
+            gameTypeId: gameCreated.GameTypeId ?? Guid.Empty,
             gameTypeImageName: gameCreated.GameTypeImageName,
             gameTypeMetadataName: gameCreated.GameTypeMetadataName,
             gameTypeName: gameCreated.GameTypeName,
@@ -297,7 +297,10 @@
             rowVersion: string.Empty,
             status: Enum.TryParse<GameStatus>(gameCreated.Status, out var status)
                 ? status
-                : GameStatus.WaitingForPlayers);
+                : GameStatus.WaitingForPlayers)
+        {
+            IsDealersChoice = gameCreated.IsDealersChoice
+        };
 
         if (existingIndex >= 0)
         {
@@ -485,6 +488,16 @@
     private void HandleNoChipsModalClose()
     {
         _showNoChipsModal = false;
+    }
+
+    private string FormatGameTypeName(GetActiveGamesResponse table)
+    {
+        if (table.IsDealersChoice &&
+            !string.Equals(table.GameTypeName, "Dealer's Choice", StringComparison.OrdinalIgnoreCase))
+        {
+            return $"Dealer's Choice ({table.GameTypeName})";
+        }
+        return table.GameTypeName;
     }
 
     public async ValueTask DisposeAsync()

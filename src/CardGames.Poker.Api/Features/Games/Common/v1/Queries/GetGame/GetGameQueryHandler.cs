@@ -15,15 +15,27 @@ public class GetGameQueryHandler(CardsDbContext context, HybridCache hybridCache
 {
 	public async Task<GetGameResponse?> Handle(GetGameQuery request, CancellationToken cancellationToken)
 	{
-		var gameTypeCode = await context.Games
+		var gameInfo = await context.Games
 			.Where(g => g.Id == request.GameId && !g.IsDeleted)
-			.Select(g => g.GameType.Code)
+			.Select(g => new { g.GameType.Code, g.IsDealersChoice })
 			.AsNoTracking()
 			.FirstOrDefaultAsync(cancellationToken);
 
-		if (!PokerGameMetadataRegistry.TryGet(gameTypeCode, out var metadata) || metadata is null)
+		int minPlayers = 2, maxPlayers = 8;
+		if (gameInfo is null)
 		{
 			return null;
+		}
+
+		if (!gameInfo.IsDealersChoice)
+		{
+			if (!PokerGameMetadataRegistry.TryGet(gameInfo.Code, out var metadata) || metadata is null)
+			{
+				return null;
+			}
+
+			minPlayers = metadata.MinimumNumberOfPlayers;
+			maxPlayers = metadata.MaximumNumberOfPlayers;
 		}
 		
 		return await hybridCache.GetOrCreateAsync(
@@ -34,7 +46,7 @@ public class GetGameQueryHandler(CardsDbContext context, HybridCache hybridCache
 					.Include(g => g.GameType)
 					.Where(g => g.Id == request.GameId)
 					.AsNoTracking()
-					.ProjectToResponse(metadata.MinimumNumberOfPlayers, metadata.MaximumNumberOfPlayers)
+					.ProjectToResponse(minPlayers, maxPlayers)
 					.FirstOrDefaultAsync(cancellationToken);
 
 				if (response is null)

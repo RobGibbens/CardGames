@@ -4,8 +4,8 @@ namespace CardGames.Poker.Api.Features.Games.ActiveGames.v1.Queries.GetActiveGam
 
 public record GetActiveGamesResponse(
 	Guid Id,
-	Guid GameTypeId,
-	string GameTypeCode,
+	Guid? GameTypeId,
+	string? GameTypeCode,
 	string GameTypeName,
 	string? GameTypeMetadataName,
 	string? GameTypeDescription,
@@ -17,5 +17,6 @@ public record GetActiveGamesResponse(
 	DateTimeOffset CreatedAt,
 	string CreatedById,
 	string CreatedByName,
-	string RowVersion
+	string RowVersion,
+	bool IsDealersChoice
 );

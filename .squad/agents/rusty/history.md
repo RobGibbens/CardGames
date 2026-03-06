@@ -22,3 +22,12 @@
 - 2026-02-19 (team update): My Clubs full-rethink directive and baseline are now merged from inbox into canonical `.ai-team/decisions.md`; follow-on direction should reference canonical baseline rather than inbox artifacts.
 - 2026-02-19 (lead update): captured new inbox baseline at `.ai-team/decisions/inbox/rusty-my-clubs-command-center-baseline.md` for a full `My Clubs` Command Center card-grid redesign: consolidated title+icon refresh rail, stats pills (Total/Admin/Pending), removal of Quick Open and per-card Leave actions, Open-first full-width card CTA, pending-pill state emphasis, and strict behavior/data parity with no backend/API changes.
 - 2026-02-19 (team update): Command Center baseline decision has been merged from inbox into canonical `.ai-team/decisions.md`; use canonical entry for subsequent implementation/review references.
+- 2026-03-02 (lead analysis): Produced comprehensive Dealer's Choice architecture analysis. Key findings:
+  - `Game.GameTypeId` (non-nullable FK) is the central constraint — DC tables need per-hand game type resolution, not per-table.
+  - `ContinuousPlayBackgroundService.StartNextHandAsync` resolves `flowHandler` from `game.GameType?.Code` once per hand — DC needs to swap this between hands.
+  - `MoveDealer(game)` is called in every showdown handler (generic + game-specific) — DC needs a separate `DealerChoiceDealerPosition` to avoid corruption from Kings and Lows internal rotation.
+  - Kings and Lows has its own `PerformShowdownCommandHandler` with internal `MoveDealer` at `Features/Games/KingsAndLows/v1/Commands/PerformShowdown/PerformShowdownCommandHandler.cs` — this call rotates `game.DealerPosition` multiple times during a single DC "turn".
+  - `Phases` enum needs `WaitingForDealerChoice` to pause continuous play and prompt the DC dealer via UI (similar to how `WaitingForPlayers` pauses).
+  - `CreateGameCommand` currently requires `GameCode` string — DC tables skip this, deferring game type selection to first dealer.
+  - `CreateTable.razor` Step 1 (variant selection) must support a "Dealer's Choice" card alongside real variants.
+  - Decisions recorded in `.squad/decisions/inbox/rusty-dealers-choice-architecture.md`.

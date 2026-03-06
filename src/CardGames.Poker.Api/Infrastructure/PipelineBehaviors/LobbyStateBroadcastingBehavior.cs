@@ -109,7 +109,8 @@ public sealed class LobbyStateBroadcastingBehavior<TRequest, TResponse> : IPipel
                 return null;
             }
 
-            var gameTypeCode = game.GameType?.Code ?? "Unknown";
+            var gameTypeCode = game.GameType?.Code ?? (game.IsDealersChoice ? "DEALERSCHOICE" : "Unknown");
+            var gameTypeName = game.GameType?.Name ?? (game.IsDealersChoice ? "Dealer's Choice" : "Unknown");
 
             // Look up metadata from registry for image and description
             string? metadataName = null;
@@ -127,9 +128,9 @@ public sealed class LobbyStateBroadcastingBehavior<TRequest, TResponse> : IPipel
             {
                 GameId = game.Id,
                 Name = game.Name,
-                GameTypeId = game.GameTypeId,
+                GameTypeId = game.GameTypeId ?? Guid.Empty,
                 GameTypeCode = gameTypeCode,
-                GameTypeName = game.GameType?.Name ?? "Unknown",
+                GameTypeName = gameTypeName,
                 GameTypeMetadataName = metadataName,
                 GameTypeDescription = description,
                 GameTypeImageName = imageName,
@@ -142,7 +143,8 @@ public sealed class LobbyStateBroadcastingBehavior<TRequest, TResponse> : IPipel
                 Ante = game.Ante ?? 0,
                 MinBet = game.MinBet ?? 0,
                 CreatedById = game.CreatedById,
-                CreatedByName = game.CreatedByName
+                CreatedByName = game.CreatedByName,
+                IsDealersChoice = game.IsDealersChoice
             };
         }
 

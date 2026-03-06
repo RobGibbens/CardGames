@@ -30,12 +30,12 @@ public class Game : EntityWithRowVersion
 	/// <summary>
 	/// Foreign key to the game type definition.
 	/// </summary>
-	public Guid GameTypeId { get; set; }
+	public Guid? GameTypeId { get; set; }
 
 	/// <summary>
 	/// Navigation property to the game type definition.
 	/// </summary>
-	public GameType GameType { get; set; } = null!;
+	public GameType? GameType { get; set; }
 
 	/// <summary>
 	/// Optional friendly name for the game session.
@@ -231,6 +231,32 @@ public class Game : EntityWithRowVersion
 	public DateTimeOffset? ChipCheckPauseEndsAt { get; set; }
 
 	/// <summary>
+	/// Whether this is a Dealer's Choice table where the dealer picks the game type each hand.
+	/// </summary>
+	public bool IsDealersChoice { get; set; }
+
+	/// <summary>
+	/// The game type code chosen by the dealer for the current hand (Dealer's Choice mode only).
+	/// Null when waiting for the dealer to choose.
+	/// </summary>
+	public string? CurrentHandGameTypeCode { get; set; }
+
+	/// <summary>
+	/// The seat position of the player who picks the next game type (Dealer's Choice mode only).
+	/// Separate from DealerPosition because multi-hand games like Kings and Lows
+	/// rotate DealerPosition internally while this stays fixed until the game concludes.
+	/// </summary>
+	public int? DealersChoiceDealerPosition { get; set; }
+
+	/// <summary>
+	/// The seat position of the DC dealer who originally chose the current multi-hand game variant
+	/// (e.g., Kings and Lows). Saved when the variant starts so that when it finally ends,
+	/// the DC dealer can be restored to OriginalDealersChoiceDealerPosition + 1 (next seat).
+	/// Null when no multi-hand variant is in progress.
+	/// </summary>
+	public int? OriginalDealersChoiceDealerPosition { get; set; }
+
+	/// <summary>
 	/// Navigation property for players in this game.
 	/// </summary>
 	public ICollection<GamePlayer> GamePlayers { get; set; } = [];
@@ -249,6 +275,11 @@ public class Game : EntityWithRowVersion
 	/// Navigation property for betting rounds in this game.
 	/// </summary>
 	public ICollection<BettingRound> BettingRounds { get; set; } = [];
+
+	/// <summary>
+	/// Navigation property for dealer's choice hand log entries.
+	/// </summary>
+	public ICollection<DealersChoiceHandLog> DealersChoiceHandLogs { get; set; } = [];
 }
 
 /// <summary>

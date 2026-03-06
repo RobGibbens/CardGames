@@ -29,7 +29,7 @@
     @if (TriggerCard is not null)
     {
         <div class="buy-card-card">
-            <playing-card rank="@GetPlayingCardRank(TriggerCard)" suit="@TriggerCard.Suit" style="height:92px;width:64px;"></playing-card>
+            <playing-card rank="@GetPlayingCardRank(TriggerCard)" suit="@TriggerCard.Suit" style="height:92px;width:64px;" suitcolor="@(TriggerCard.IsWild ? "green" : null)" rankcolor="@(TriggerCard.IsWild ? "green" : null)" courtcolor="@(TriggerCard.IsWild ? "green" : null)"></playing-card>
         </div>
     }
 

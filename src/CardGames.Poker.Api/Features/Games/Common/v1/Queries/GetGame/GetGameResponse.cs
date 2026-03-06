@@ -10,7 +10,7 @@ namespace CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetGame;
 public sealed record GetGameResponse
 {
 	public required Guid Id { get; init; }
-	public required Guid GameTypeId { get; init; }
+	public Guid? GameTypeId { get; init; }
 	public required string? GameTypeCode { get; init; }
 	public required string? GameTypeName { get; init; }
 	public string? Name { get; init; }
@@ -41,4 +41,6 @@ public sealed record GetGameResponse
 	public string? CreatedByName { get; init; }
 	public required bool CanContinue { get; init; }
 	public required string RowVersion { get; init; }
+	public bool IsDealersChoice { get; init; }
+	public int? DealersChoiceDealerPosition { get; init; }
 }

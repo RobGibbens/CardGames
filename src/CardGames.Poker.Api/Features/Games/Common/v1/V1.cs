@@ -1,5 +1,6 @@
 using Asp.Versioning.Builder;
 using CardGames.Poker.Api.Features.Games.Common.v1.Commands.AddChips;
+using CardGames.Poker.Api.Features.Games.Common.v1.Commands.ChooseDealerGame;
 using CardGames.Poker.Api.Features.Games.Common.v1.Commands.CreateGame;
 using CardGames.Poker.Api.Features.Games.Common.v1.Commands.DeleteGame;
 using CardGames.Poker.Api.Features.Games.Common.v1.Commands.JoinGame;
@@ -29,6 +30,7 @@ public static class V1
 
 		//Commands
 		mapGroup.MapAddChips();
+		mapGroup.MapChooseDealerGame();
 		mapGroup.MapCreateGame();
 		mapGroup.MapDeleteGame();
 		mapGroup.MapJoinGame();

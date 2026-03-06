@@ -34,6 +34,7 @@
 @inject IFiveCardDrawApi FiveCardDrawApiClient
 @inject IJSRuntime JSRuntime
 @inject IProfileApi ProfileApi
+@inject IAvailablePokerGamesApi AvailablePokerGamesApi
 
 <PageTitle>Table - Friday Night Poker</PageTitle>
 
@@ -95,7 +96,11 @@
         <div class="table-info-strip">
             <span class="table-name">
                 @_gameResponse?.Name
-                @if (!string.IsNullOrWhiteSpace(_gameResponse?.GameTypeName))
+                @if (_isDealersChoice)
+                {
+                    <span class="table-game-type"> (Dealer's Choice@(!string.IsNullOrWhiteSpace(_gameResponse?.GameTypeName) ? $" — {_gameResponse.GameTypeName}" : ""))</span>
+                }
+                else if (!string.IsNullOrWhiteSpace(_gameResponse?.GameTypeName))
                 {
                     <span class="table-game-type"> (@_gameResponse.GameTypeName)</span>
                 }
@@ -115,22 +120,24 @@
                 {
                     <div class="host-controls">
                         @if
-                                        (_gameResponse.CurrentPhase == GamePhase.WaitingForPlayers.ToString() || _gameResponse.CurrentPhase ==
+                                        (_gameResponse?.CurrentPhase == GamePhase.WaitingForPlayers.ToString() || _gameResponse?.CurrentPhase ==
                                         GamePhase.WaitingToStart.ToString())
                         {
                             <a href="/table/@GameId/edit" class="btn btn-secondary btn-sm">
                                 <i class="fa-regular fa-pen-to-square"></i>
                                 Edit Table
                             </a>
-                            <button class="btn btn-primary btn-sm" @onclick="StartGameAsync" disabled="@(!_canStartGame)">
+                            <button class="btn btn-primary btn-sm" @onclick="StartGameAsync" disabled="@(!_canStartGame || IsDealersChoiceWaitingForSelectedGameStart)">
                                 <i class="fa-regular fa-play"></i>
-                                @(((_gameResponse.CurrentPhase == GamePhase.WaitingForPlayers.ToString() ||
-                                    _gameResponse.CurrentPhase == GamePhase.WaitingToStart.ToString()) && !_canStartGame)
-                                    ? "Waiting for more players"
-                                    : "Start Game")
+                                @(IsDealersChoiceWaitingForSelectedGameStart
+                                    ? "Starting..."
+                                    : (((_gameResponse?.CurrentPhase == GamePhase.WaitingForPlayers.ToString() ||
+                                        _gameResponse?.CurrentPhase == GamePhase.WaitingToStart.ToString()) && !_canStartGame)
+                                        ? "Waiting for more players"
+                                        : "Start Game"))
                             </button>
                         }
-                        else if (_gameResponse.CurrentPhase != GamePhase.Ended.ToString())
+                        else if (_gameResponse is not null && _gameResponse.CurrentPhase != GamePhase.Ended.ToString())
                         {
                             @if (_isPaused)
                             {
@@ -243,7 +250,8 @@
                        MaxDiscards="@GetMaxDiscards()" DrawingSpecialRules="@GetDrawingSpecialRules()"
                        IsReadOnly="@(IsDrawCompletePhase || _cardsDrawn)"
                        ReadOnlyMessage="@(IsDrawCompletePhase ? "Waiting for showdown..." : "New cards drawn!")"
-                       ActionTimer="@_actionTimerState" />
+                       ActionTimer="@_actionTimerState"
+                       EnableKingsAndLowsWildCardHighlighting="@IsKingsAndLows" />
         }
 
         <!-- Draw Phase Waiting Indicator (shown to other players during draw phase) -->
@@ -263,7 +271,8 @@
             <DropOrStayOverlay Cards="@_currentPlayerDrawCards" HandDescription="@currentPlayerHandEvaluationDescription"
                                PotAmount="@_pot" HasDecided="@_hasDropOrStayDecided" Decision="@_dropOrStayDecision"
                                IsDeciding="@_isProcessingDropOrStay" PlayersWaiting="@GetPlayersWaitingForDropOrStay()"
-                               OnDecision="@HandleDropOrStayDecision" ActionTimer="@_actionTimerState" />
+                               OnDecision="@HandleDropOrStayDecision" ActionTimer="@_actionTimerState"
+                               EnableKingsAndLowsWildCardHighlighting="@IsKingsAndLows" />
         }
 
         <!-- Buy Card Overlay (for Baseball) -->
@@ -320,8 +329,23 @@
         <!-- Players who are NOT short on chips just see the normal table -->
         <!-- The short player's seat will show "Waiting for chips" status -->
 
+        <!-- Dealer's Choice Overlay (shown when waiting for dealer to pick the next game) -->
+        @if (IsDealersChoicePhase)
+        {
+            @if (IsCurrentPlayerDealersChoiceDealer)
+            {
+                <DealerChoiceModal AvailableGames="@_dcAvailableGames"
+                                   IsLoading="@_dcGamesLoading"
+                                   OnGameChosen="@HandleDealerChoiceAsync" />
+            }
+            else
+            {
+                <DealerChoiceWaiting DealerName="@GetDealersChoiceDealerName()" />
+            }
+        }
+
         <!-- Waiting/Pre-game overlay (only when waiting for more players, not when game is ready to start) -->
-        @if (_gameResponse.CurrentPhase == GamePhase.WaitingForPlayers.ToString() && (!_isSeated || IsSittingOut ||
+        @if (_gameResponse?.CurrentPhase == GamePhase.WaitingForPlayers.ToString() && (!_isSeated || IsSittingOut ||
             !_isReady))
         {
             <div class="table-overlay waiting-overlay">
@@ -362,7 +386,7 @@
         }
 
         <!-- Game Ended overlay -->
-        @if (_gameResponse.CurrentPhase == GamePhase.Ended.ToString() && !_showShowdownOverlay)
+        @if (_gameResponse?.CurrentPhase == GamePhase.Ended.ToString() && !_showShowdownOverlay)
         {
             <div class="table-overlay ended-overlay">
                 <div class="overlay-content">
@@ -387,8 +411,9 @@
         }
 
         <!-- Paused overlay -->
-        @if (_isPaused && _gameResponse.CurrentPhase != GamePhase.WaitingForPlayers.ToString() && _gameResponse.CurrentPhase
-            != GamePhase.Ended.ToString())
+        @if (_isPaused && _gameResponse is not null && _gameResponse.CurrentPhase != GamePhase.WaitingForPlayers.ToString() && _gameResponse.CurrentPhase
+            != GamePhase.Ended.ToString() && _gameResponse.CurrentPhase != GamePhase.WaitingToStart.ToString()
+            && _gameResponse.CurrentPhase != GamePhase.WaitingForDealerChoice.ToString())
         {
             <div class="table-overlay paused-overlay">
                 <div class="overlay-content">
@@ -417,6 +442,8 @@
 @code {
     [Parameter]
     public Guid GameId { get; set; }
+
+    private bool _disposed;
 
     // Connection state (driven by SignalR)
     private bool _isConnected = false;
@@ -473,6 +500,7 @@
     private List<int> _newCardIndices = [];
     private HashSet<int> _selectedDiscardIndices = [];
     private List<CardInfo> _currentPlayerDrawCards = [];
+    private List<CardInfo>? _pendingCurrentPlayerDrawCards;
     private GetCurrentDrawPlayerResponse? _currentDrawPlayer;
     private bool _forceShowDrawPanel;
     private int _maxDiscards = 3;
@@ -493,6 +521,12 @@
     private bool _isPausedForChipCheck;
     private DateTimeOffset? _chipCheckPauseEndsAt;
     private int _chipCheckPotAmount;
+
+    // Dealer's Choice state
+    private bool _isDealersChoice;
+    private int? _dealersChoiceDealerPosition;
+    private IReadOnlyList<GetAvailablePokerGamesResponse> _dcAvailableGames = [];
+    private bool _dcGamesLoading;
 
     // Deck draw animation state
     private bool _isDeckDrawAnimating;
@@ -533,6 +567,8 @@
 
     // Card Deal Animation state (for supported game variants)
     private bool _dealAnimationInProgress;
+    private bool _dealAnimationPausedForBuyCardOffer;
+    private int _dealPausedBuyCardOfferSeatIndex = -1;
     private Timer? _dealTimer;
     private TableStatePublicDto? _dealTargetState;
     private PrivateStateDto? _dealPendingPrivateState;
@@ -616,8 +652,17 @@
     private bool IsBuyCardOfferPhase =>
     string.Equals(_tableState?.CurrentPhase, "BuyCardOffer", StringComparison.OrdinalIgnoreCase);
 
+    private bool IsCurrentPlayerBuyCardDecisionMaker =>
+    _currentPlayerSeatIndex >= 0 &&
+    _currentPlayerSeatIndex == (_tableState?.CurrentActorSeatIndex ?? -1);
+
     private bool ShouldShowBuyCardOverlay =>
-    IsBuyCardOfferPhase && _buyCardOffer is not null && IsParticipatingInHand;
+    IsBuyCardOfferPhase &&
+    IsCurrentPlayerBuyCardDecisionMaker &&
+    _buyCardOffer is not null &&
+    IsParticipatingInHand &&
+    (IsBuyCardTriggerCardVisible() || _dealAnimationPausedForBuyCardOffer) &&
+    (!IsCardDealingVisualInProgress || _dealAnimationPausedForBuyCardOffer);
 
     private bool IsCardDealingVisualInProgress =>
     _dealAnimationInProgress || _flyingCard is not null;
@@ -637,6 +682,19 @@
     // Pot matching phase detection (for Kings and Lows)
     private bool IsPotMatchingPhase =>
     string.Equals(_gameResponse?.CurrentPhase, "PotMatching", StringComparison.OrdinalIgnoreCase);
+
+    // Dealer's Choice phase detection
+    private bool IsDealersChoicePhase =>
+    string.Equals(_gameResponse?.CurrentPhase, "WaitingForDealerChoice", StringComparison.OrdinalIgnoreCase);
+
+    private bool IsDealersChoiceWaitingForSelectedGameStart =>
+    _isDealersChoice &&
+    string.Equals(_gameResponse?.CurrentPhase, GamePhase.WaitingToStart.ToString(), StringComparison.OrdinalIgnoreCase) &&
+    !string.IsNullOrWhiteSpace(_gameTypeCode) &&
+    !string.Equals(_gameTypeCode, "DEALERSCHOICE", StringComparison.OrdinalIgnoreCase);
+
+    private bool IsCurrentPlayerDealersChoiceDealer =>
+    _isDealersChoice && _dealersChoiceDealerPosition.HasValue && _currentPlayerSeatIndex == _dealersChoiceDealerPosition.Value;
 
     // Whether the current player is a loser in pot matching.
     private bool IsCurrentPlayerLoser => _showdownResult?.PlayerHands?.Any(h =>
@@ -724,7 +782,7 @@
         try
         {
             _isDealSoundMuted = await JSRuntime.InvokeAsync<bool>("cardGamesAudio.getMuted");
-            await InvokeAsync(StateHasChanged);
+            await InvokeStateHasChangedAsync();
         }
         catch (Exception ex)
         {
@@ -752,7 +810,7 @@
     {
         _isConnected = state == Microsoft.AspNetCore.SignalR.Client.HubConnectionState.Connected;
         _isReconnecting = state == Microsoft.AspNetCore.SignalR.Client.HubConnectionState.Reconnecting;
-        _ = InvokeAsync(StateHasChanged);
+        _ = InvokeStateHasChangedAsync();
     }
 
     private async Task HandlePlayerJoinedAsync(PlayerJoinedDto notification)
@@ -772,14 +830,14 @@
     {
         var toast = new ToastMessage(message, type);
         _toastMessages.Add(toast);
-        await InvokeAsync(StateHasChanged);
+        await InvokeStateHasChangedAsync();
 
         // Auto-dismiss after duration
         _ = Task.Run(async () =>
         {
             await Task.Delay(durationMs);
             _toastMessages.Remove(toast);
-            await InvokeAsync(StateHasChanged);
+            await InvokeStateHasChangedAsync();
         });
     }
 
@@ -794,6 +852,18 @@
 
         // Store the table state for phase category checks
         _tableState = state;
+
+        if (_dealAnimationInProgress && _dealAnimationPausedForBuyCardOffer)
+        {
+            var currentOfferSeat = state.CurrentActorSeatIndex;
+            var offerAdvanced = !IsBuyCardOfferPhase || currentOfferSeat != _dealPausedBuyCardOfferSeatIndex;
+            if (offerAdvanced)
+            {
+                _dealAnimationPausedForBuyCardOffer = false;
+                _dealPausedBuyCardOfferSeatIndex = -1;
+                _dealTimer?.Change(100, DealAnimationDelayMs);
+            }
+        }
 
         if (_dealAnimationInProgress)
         {
@@ -830,7 +900,7 @@
                 CurrentPhase = state.CurrentPhase,
                 CurrentPhaseDescription = state?.CurrentPhaseDescription ?? "",
                 Name = state.Name ?? _gameResponse.Name,
-                GameTypeName = state.GameTypeName ?? _gameResponse.GameTypeName,
+                GameTypeName = _isDealersChoice ? state.GameTypeName : (state.GameTypeName ?? _gameResponse.GameTypeName),
                 Ante = state.Ante,
                 MinBet = state.MinBet,
                 DealerPosition = state.DealerSeatIndex,
@@ -844,6 +914,19 @@
             _dealerSeatIndex = state.DealerSeatIndex;
             _currentActorSeatIndex = state.CurrentActorSeatIndex;
             _isPaused = state.IsPaused;
+
+            // Update Dealer's Choice state from SignalR
+            _isDealersChoice = state.IsDealersChoice;
+            _dealersChoiceDealerPosition = state.DealersChoiceDealerPosition;
+
+            // Dealer's Choice: load available games when entering WaitingForDealerChoice
+            if (_isDealersChoice
+                && string.Equals(state.CurrentPhase, "WaitingForDealerChoice", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(previousPhase, "WaitingForDealerChoice", StringComparison.OrdinalIgnoreCase)
+                && _dcAvailableGames.Count == 0)
+            {
+                _ = LoadAvailableGamesAsync();
+            }
 
             // Update chip check pause state (for Kings and Lows)
             if (state.ChipCheckPause is not null)
@@ -867,6 +950,8 @@
                     s.Cards = [];
                     s.HandEvaluationDescription = null;
                 }
+
+                ResetDrawPanelStateForNewHand();
             }
 
             // Check for Card Deal Animation trigger (all supported variants)
@@ -1005,7 +1090,7 @@
                         await TryLoadShowdownAsync();
                     }
                     _showShowdownOverlay = true;
-                    await InvokeAsync(StateHasChanged);
+                    await InvokeStateHasChangedAsync();
                 });
             }
 
@@ -1098,17 +1183,7 @@
                         _runoutInitialCardCounts.Clear();
 
                         // Reset DrawPanel state for new hand
-                        _selectedDiscardIndices.Clear();
-                        _currentPlayerDrawCards = [];
-                        _cardsDrawn = false;
-                        _newHandDescription = null;
-                        _isPlayerDrawTurn = false;
-                        _isDrawAnimating = false;
-                        _isDiscardingCards = false;
-                        _isDrawingNewCards = false;
-                        _isSubmittingDraw = false;
-                        _forceShowDrawPanel = false;
-                        _newCardIndices = [];
+                        ResetDrawPanelStateForNewHand();
                     }
                 }
             }
@@ -1149,7 +1224,7 @@
             return;
         }
 
-        await InvokeAsync(StateHasChanged);
+        await InvokeStateHasChangedAsync();
     }
 
     private async Task HandlePrivateStateUpdatedAsync(PrivateStateDto state)
@@ -1219,6 +1294,8 @@
                     DealOrder = c.DealOrder,
                     IsWild = IsWildCard(c.Rank, c.Suit)
                 }).ToList();
+
+                ApplyKingsAndLowsLowestCardWildFallback(_seats[targetSeatIndex].Cards);
 
                 _seats[targetSeatIndex].HandEvaluationDescription = state.HandEvaluationDescription;
 
@@ -1290,25 +1367,13 @@
 
             if (state.Draw.IsMyTurnToDraw && !_isDrawAnimating && !_forceShowDrawPanel)
             {
-                _currentPlayerDrawCards = state.Hand.Select((c, i) => new CardInfo
-                {
-                    Rank = c.Rank,
-                    Suit = c.Suit,
-                    IsFaceUp = true,
-                    IsSelected = _selectedDiscardIndices.Contains(i)
-                }).ToList();
+                UpdateCurrentPlayerDrawCardsFromPrivateState(state.Hand, preserveSelection: true);
             }
             else if ((_isDrawAnimating || _forceShowDrawPanel) && _currentPlayerDrawCards.Count == 0)
             {
                 // Preserve whatever is currently being animated. If we lost the list for any reason,
                 // fall back to the latest private hand state to keep the panel populated.
-                _currentPlayerDrawCards = state.Hand.Select((c, i) => new CardInfo
-                {
-                    Rank = c.Rank,
-                    Suit = c.Suit,
-                    IsFaceUp = true,
-                    IsSelected = _selectedDiscardIndices.Contains(i)
-                }).ToList();
+                UpdateCurrentPlayerDrawCardsFromPrivateState(state.Hand, preserveSelection: true);
             }
         }
         else if (IsDrawingPhase)
@@ -1320,13 +1385,7 @@
             if (_isPlayerDrawTurn && !_isDrawAnimating && !_forceShowDrawPanel && _currentPlayerDrawCards.Count == 0 && state.Hand
             is not null)
             {
-                _currentPlayerDrawCards = state.Hand.Select((c, i) => new CardInfo
-                {
-                    Rank = c.Rank,
-                    Suit = c.Suit,
-                    IsFaceUp = true,
-                    IsSelected = _selectedDiscardIndices.Contains(i)
-                }).ToList();
+                UpdateCurrentPlayerDrawCardsFromPrivateState(state.Hand, preserveSelection: true);
             }
         }
 
@@ -1346,13 +1405,7 @@
         if ((IsDropOrStayPhase || string.Equals(currentPhase, "DropOrStay", StringComparison.OrdinalIgnoreCase))
         && state.Hand is not null && state.Hand.Count > 0)
         {
-            _currentPlayerDrawCards = state.Hand.Select((c, i) => new CardInfo
-            {
-                Rank = c.Rank,
-                Suit = c.Suit,
-                IsFaceUp = true,
-                IsSelected = false
-            }).ToList();
+            UpdateCurrentPlayerDrawCardsFromPrivateState(state.Hand, preserveSelection: false);
         }
         // Also populate cards for PlayerVsDeck phase when reconnection
         // This ensures the player can see the deck cards after reconnection
@@ -1360,26 +1413,14 @@
         && state.Hand is not null && state.Hand.Count > 0 && _currentPlayerDrawCards.Count == 0)
         {
             // Populate player's own cards for reference during player-vs-deck phase
-            _currentPlayerDrawCards = state.Hand.Select((c, i) => new CardInfo
-            {
-                Rank = c.Rank,
-                Suit = c.Suit,
-                IsFaceUp = true,
-                IsSelected = false
-            }).ToList();
+            UpdateCurrentPlayerDrawCardsFromPrivateState(state.Hand, preserveSelection: false);
         }
         // Populate cards for DrawComplete phase so all players can see their new hands
         else if ((IsDrawCompletePhase || string.Equals(currentPhase, "DrawComplete", StringComparison.OrdinalIgnoreCase))
         && state.Hand is not null && state.Hand.Count > 0)
         {
             // Show the player's new hand during DrawComplete phase
-            _currentPlayerDrawCards = state.Hand.Select((c, i) => new CardInfo
-            {
-                Rank = c.Rank,
-                Suit = c.Suit,
-                IsFaceUp = true,
-                IsSelected = false
-            }).ToList();
+            UpdateCurrentPlayerDrawCardsFromPrivateState(state.Hand, preserveSelection: false);
         }
 
         // Calculate hand odds from current cards
@@ -1397,7 +1438,9 @@
             _chipHistory = state.ChipHistory;
         }
 
-        await InvokeAsync(StateHasChanged);
+        ApplyPendingCurrentPlayerDrawCardsIfReady();
+
+        await InvokeStateHasChangedAsync();
     }
 
     private void UpdateSeatsFromPublicState(IReadOnlyList<SeatPublicDto> publicSeats)
@@ -1449,28 +1492,66 @@
                 existingCards.Count, existingCards.Count(c => c.IsFaceUp),
                 shouldPreserveCards, publicSeat.Cards.Count, publicSeat.IsSittingOut, isInRunoutAnimation, _dealAnimationInProgress);
 
-                var cards = shouldPreserveCards
-                ? existingCards.Select(c => c with { IsWild = IsWildCard(c.Rank, c.Suit) }).ToList()
-                : publicSeat.Cards.Select(c =>
+                List<CardInfo> cards;
+                if (shouldPreserveCards)
                 {
-                    var existingCard = isCurrentPlayer
-                        ? existingCards.FirstOrDefault(ec => ec.DealOrder == c.DealOrder)
-                        : null;
+                    cards = existingCards.Select(c => c with { IsWild = IsWildCard(c.Rank, c.Suit) }).ToList();
 
-                    var rank = c.IsFaceUp ? c.Rank : existingCard?.Rank;
-                    var suit = c.IsFaceUp ? c.Suit : existingCard?.Suit;
+                    var shouldAppendMissingPublicCards =
+                        isCurrentPlayer &&
+                        !_dealAnimationInProgress &&
+                        !isInRunoutAnimation &&
+                        publicSeat.Cards.Count > cards.Count;
 
-                    return new CardInfo
+                    if (shouldAppendMissingPublicCards)
                     {
-                        Rank = rank,
-                        Suit = suit,
-                        IsFaceUp = c.IsFaceUp,
-                        IsPubliclyVisible = c.IsFaceUp,
-                        IsSelected = false,
-                        DealOrder = c.DealOrder,
-                        IsWild = c.IsFaceUp && IsWildCard(c.Rank, c.Suit)
-                    };
-                }).ToList();
+                        foreach (var publicCard in publicSeat.Cards.OrderBy(c => c.DealOrder))
+                        {
+                            if (cards.Any(existing => existing.DealOrder == publicCard.DealOrder))
+                            {
+                                continue;
+                            }
+
+                            cards.Add(new CardInfo
+                            {
+                                Rank = publicCard.IsFaceUp ? publicCard.Rank : null,
+                                Suit = publicCard.IsFaceUp ? publicCard.Suit : null,
+                                IsFaceUp = publicCard.IsFaceUp,
+                                IsPubliclyVisible = publicCard.IsFaceUp,
+                                IsSelected = false,
+                                DealOrder = publicCard.DealOrder,
+                                IsWild = publicCard.IsFaceUp && IsWildCard(publicCard.Rank, publicCard.Suit)
+                            });
+                        }
+
+                        cards = cards.OrderBy(c => c.DealOrder).ToList();
+                    }
+                }
+                else
+                {
+                    cards = publicSeat.Cards.Select(c =>
+                    {
+                        var existingCard = isCurrentPlayer
+                            ? existingCards.FirstOrDefault(ec => ec.DealOrder == c.DealOrder)
+                            : null;
+
+                        var rank = c.IsFaceUp ? c.Rank : existingCard?.Rank;
+                        var suit = c.IsFaceUp ? c.Suit : existingCard?.Suit;
+
+                        return new CardInfo
+                        {
+                            Rank = rank,
+                            Suit = suit,
+                            IsFaceUp = c.IsFaceUp,
+                            IsPubliclyVisible = c.IsFaceUp,
+                            IsSelected = false,
+                            DealOrder = c.DealOrder,
+                            IsWild = c.IsFaceUp && IsWildCard(c.Rank, c.Suit)
+                        };
+                    }).ToList();
+                }
+
+                ApplyKingsAndLowsLowestCardWildFallback(cards);
 
                 // Preserve LastActionDescription if it hasn't expired (5 seconds)
                 var existingSeat = _seats[publicSeat.SeatIndex];
@@ -1795,6 +1876,16 @@
                 _dealerSeatIndex = _gameResponse.DealerPosition;
                 _ante = _gameResponse.Ante ?? _ante;
 				InitializeJoinBuyInFromTable();
+
+                // Capture Dealer's Choice fields
+                _isDealersChoice = gamesResponse.IsDealersChoice;
+                _dealersChoiceDealerPosition = gamesResponse.DealersChoiceDealerPosition;
+
+                // Pre-load available games for DC tables
+                if (_isDealersChoice && _dcAvailableGames.Count == 0)
+                {
+                    _ = LoadAvailableGamesAsync();
+                }
             }
 
             await GetPlayersAndUpdateSeatsAsync();
@@ -1836,7 +1927,7 @@
             _isSeated = _currentPlayerSeatIndex >= 0;
             _isReady = _isSeated && _seats[_currentPlayerSeatIndex].IsReady;
             _isLoading = false;
-            await InvokeAsync(StateHasChanged);
+            await InvokeStateHasChangedAsync();
         }
     }
 
@@ -2151,8 +2242,33 @@
             return;
         }
 
+        if (IsDealersChoiceWaitingForSelectedGameStart)
+        {
+            await ShowToastAsync("Game is starting…", "info");
+            return;
+        }
+
         _isSubmittingAction = false;
         _isPlayerTurn = false;
+
+        // Dealer's Choice: call the generic StartHand endpoint.
+        // The backend detects DC and transitions to WaitingForDealerChoice phase
+        // instead of dealing cards. SignalR will broadcast the phase change
+        // and the DealerChoiceModal will be shown to the current dealer.
+        if (_isDealersChoice)
+        {
+            var startHandResponse = await GamesApiClient.GenericStartHandAsync(GameId);
+            if (!startHandResponse.IsSuccessStatusCode)
+            {
+                Logger.LogWarning("Failed to start Dealer's Choice hand: {StatusCode}", startHandResponse.StatusCode);
+                await ShowToastAsync("Failed to start game. Please try again.", "error");
+                return;
+            }
+
+            // Don't proceed to deal — the backend sets the phase to WaitingForDealerChoice
+            // and SignalR will trigger the dealer selection modal
+            return;
+        }
 
         if (IsTwosJacksManWithTheAxe)
         {
@@ -2316,7 +2432,7 @@
             _isResultsPhase = true;
             StartCountdownTimer();
 
-            await InvokeAsync(StateHasChanged);
+            await InvokeStateHasChangedAsync();
             return;
         }
 
@@ -2384,7 +2500,7 @@
         _showdownWon = iWon;
         _showdownLost = !iWon;
 
-        await InvokeAsync(StateHasChanged);
+        await InvokeStateHasChangedAsync();
     }
 
     private void CloseShowdownOverlay()
@@ -2435,7 +2551,7 @@
             {
                 await Task.Delay(TimeSpan.FromSeconds(2));
                 CompleteRunoutAnimation();
-                await InvokeAsync(StateHasChanged);
+                await InvokeStateHasChangedAsync();
             });
             return;
         }
@@ -2455,7 +2571,7 @@
                 {
                     await Task.Delay(TimeSpan.FromSeconds(2));
                     CompleteRunoutAnimation();
-                    await InvokeAsync(StateHasChanged);
+                    await InvokeStateHasChangedAsync();
                 });
                 return;
             }
@@ -2479,7 +2595,7 @@
                     IsFaceUp: true
                 );
 
-                await InvokeAsync(StateHasChanged);
+                await InvokeStateHasChangedAsync();
 
                 // Wait for the flying animation to complete
                 await Task.Delay(550);
@@ -2498,7 +2614,7 @@
         // Move to next player
         _runoutCurrentSeatIndex++;
 
-        await InvokeAsync(StateHasChanged);
+        await InvokeStateHasChangedAsync();
 
         // Schedule the next card deal in 2 seconds
         _runoutDealTimer?.Change(TimeSpan.FromSeconds(2), Timeout.InfiniteTimeSpan);
@@ -2568,6 +2684,8 @@
             GameId, startCardIndex, numberOfCardsToDeal);
 
         _dealAnimationInProgress = true;
+        _dealAnimationPausedForBuyCardOffer = false;
+        _dealPausedBuyCardOfferSeatIndex = -1;
         _dealTargetState = state;
         _dealCurrentCardIndex = startCardIndex; // Start dealing at this card index (e.g., 0 for initial, 3 for 4th street)
         _dealTargetEndIndex = startCardIndex + numberOfCardsToDeal; // Stop when index reaches this value
@@ -2635,6 +2753,7 @@
 
         // Deal card to current seat
         var seatIndex = _dealOrderedSeatIndices[_dealCurrentSeatIdx];
+        var dealtFaceUp = false;
 
         // Find the seat in the current display state
         var seatListIndex = _seats.FindIndex(s => s.SeatIndex == seatIndex);
@@ -2657,6 +2776,8 @@
                 isFaceUp = targetCard.IsFaceUp;
             }
 
+            dealtFaceUp = isFaceUp;
+
             // Start flying card animation
             _flyingCard = new TableCanvas.FlyingCardInfo(
                 TargetSeatIndex: seatIndex,
@@ -2666,7 +2787,7 @@
                 IsFaceUp: isFaceUp
             );
 
-            await InvokeAsync(StateHasChanged);
+            await InvokeStateHasChangedAsync();
 
             // Wait for the flying animation to complete (600ms matches CSS animation duration)
             await Task.Delay(550);
@@ -2713,7 +2834,16 @@
 
         _dealCurrentSeatIdx++;
 
-        await InvokeAsync(StateHasChanged);
+        if (ShouldPauseDealForBuyCardOffer(seatIndex, dealtFaceUp))
+        {
+            _dealAnimationPausedForBuyCardOffer = true;
+            _dealPausedBuyCardOfferSeatIndex = seatIndex;
+            _dealTimer?.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+            await InvokeStateHasChangedAsync();
+            return;
+        }
+
+        await InvokeStateHasChangedAsync();
     }
 
     private async Task PlayDealCardSoundAsync(int cardCount)
@@ -2752,6 +2882,8 @@
         Logger.LogInformation("Card deal animation complete");
 
         _dealAnimationInProgress = false;
+        _dealAnimationPausedForBuyCardOffer = false;
+        _dealPausedBuyCardOfferSeatIndex = -1;
         _dealTimer?.Dispose();
         _dealTimer = null;
         _flyingCard = null;
@@ -2786,7 +2918,7 @@
         // Now load and show the showdown overlay
         await TryLoadShowdownAsync();
 
-        await InvokeAsync(StateHasChanged);
+        await InvokeStateHasChangedAsync();
     }
 
     private static List<BettingActionType> MapLegalActions(AvailableActionsResponse available)
@@ -2901,6 +3033,53 @@
         return exception.Message ?? "An error occurred.";
     }
 
+    private void ResetDrawPanelStateForNewHand()
+    {
+        _selectedDiscardIndices.Clear();
+        _currentPlayerDrawCards = [];
+        _pendingCurrentPlayerDrawCards = null;
+        _cardsDrawn = false;
+        _newHandDescription = null;
+        _isPlayerDrawTurn = false;
+        _isDrawAnimating = false;
+        _isDiscardingCards = false;
+        _isDrawingNewCards = false;
+        _isSubmittingDraw = false;
+        _forceShowDrawPanel = false;
+        _newCardIndices = [];
+    }
+
+    private bool IsDrawPanelAnimationInProgress =>
+        _isDrawAnimating || _isDiscardingCards || _isDrawingNewCards;
+
+    private void UpdateCurrentPlayerDrawCardsFromPrivateState(IReadOnlyList<CardPrivateDto> hand, bool preserveSelection)
+    {
+        var cards = BuildCurrentPlayerDrawCards(hand, preserveSelection);
+
+        if (IsDrawPanelAnimationInProgress)
+        {
+            _pendingCurrentPlayerDrawCards = cards;
+            return;
+        }
+
+        _currentPlayerDrawCards = cards;
+        _pendingCurrentPlayerDrawCards = null;
+    }
+
+    private void ApplyPendingCurrentPlayerDrawCardsIfReady()
+    {
+        if (_pendingCurrentPlayerDrawCards is null || IsDrawPanelAnimationInProgress)
+        {
+            return;
+        }
+
+        _currentPlayerDrawCards = _pendingCurrentPlayerDrawCards;
+        _pendingCurrentPlayerDrawCards = null;
+
+        _selectedDiscardIndices.Clear();
+        _newCardIndices = [];
+    }
+
     private async Task HandleDrawActionAsync(List<int> discardIndices)
     {
         if (!_isPlayerDrawTurn || _isSubmittingDraw)
@@ -2946,7 +3125,7 @@
                         _currentPlayerDrawCards[i] = _currentPlayerDrawCards[i] with { IsSelected = true };
                     }
                 }
-                await InvokeAsync(StateHasChanged);
+                await InvokeStateHasChangedAsync();
 
                 // Wait for discard animation
                 await Task.Delay(600);
@@ -2980,7 +3159,7 @@
             {
                 // No cards to animate - just mark as complete
                 _cardsDrawn = true;
-                await InvokeAsync(StateHasChanged);
+                await InvokeStateHasChangedAsync();
 
                 // If draw phase is complete (we're now in DrawComplete phase), keep cards visible
                 if (result?.DrawComplete == true)
@@ -2989,7 +3168,7 @@
                     _forceShowDrawPanel = false;
                     _delayShowdownOverlay = false;
                     // Cards stay in currentPlayerDrawCards for DrawComplete phase display
-                    await InvokeAsync(StateHasChanged);
+                    await InvokeStateHasChangedAsync();
 
                     // Wait for the background service to transition to Showdown/Complete phase
                     // The background service has a 5-second delay, so we may need to wait
@@ -3015,7 +3194,7 @@
                 _forceShowDrawPanel = false;
                 _cardsDrawn = false;
                 _newHandDescription = null;
-                await InvokeAsync(StateHasChanged);
+                await InvokeStateHasChangedAsync();
                 return;
             }
 
@@ -3037,27 +3216,35 @@
                         }
 
                         var newCard = newCards[i];
+                        var rank = newCard.Symbol?.ToCardRankString();
+                        var suit = newCard.Suit?.ToCardSuitString();
+                        var previousCard = _currentPlayerDrawCards[targetIndex];
 
                         _currentPlayerDrawCards[targetIndex] = new CardInfo
                         {
-                            Rank = newCard.Symbol?.ToCardRankString(),
-                            Suit = newCard.Suit?.ToCardSuitString(),
+                            Rank = rank,
+                            Suit = suit,
                             IsFaceUp = true,
-                            IsSelected = false
+                            IsPubliclyVisible = true,
+                            IsSelected = false,
+                            DealOrder = previousCard.DealOrder,
+                            IsWild = IsWildForCurrentPlayerCard(rank, suit)
                         };
                     }
 
-                    await InvokeAsync(StateHasChanged);
+                    ApplyKingsAndLowsLowestCardWildFallback(_currentPlayerDrawCards);
+
+                    await InvokeStateHasChangedAsync();
                 }
 
                 _isDrawingNewCards = true;
                 _newCardIndices = discardIndices;
-                await InvokeAsync(StateHasChanged);
+                await InvokeStateHasChangedAsync();
 
                 // Wait for the draw-in animation to complete, then switch the status out of "Drawing...".
                 await Task.Delay(700);
                 _cardsDrawn = true;
-                await InvokeAsync(StateHasChanged);
+                await InvokeStateHasChangedAsync();
 
                 // Keep the panel visible for 5 seconds so the player can see their new cards
                 await Task.Delay(5000);
@@ -3076,7 +3263,7 @@
                 _cardsDrawn = false;
                 _delayShowdownOverlay = false;
                 // Cards stay in currentPlayerDrawCards for DrawComplete phase display
-                await InvokeAsync(StateHasChanged);
+                await InvokeStateHasChangedAsync();
 
                 // Wait for the background service to transition to Showdown/Complete phase
                 // The background service has a 5-second delay matching our animation delay,
@@ -3125,6 +3312,8 @@
                 _cardsDrawn = false;
                 _newHandDescription = null;
             }
+
+            ApplyPendingCurrentPlayerDrawCardsIfReady();
         }
     }
 
@@ -3148,7 +3337,7 @@
         // Recalculate odds based on cards being kept (not selected for discard)
         RecalculateDrawOddsForSelection();
 
-        return InvokeAsync(StateHasChanged);
+        return InvokeStateHasChangedAsync();
     }
 
     /// <summary>
@@ -3269,6 +3458,7 @@
         [Description("Collecting Antes")] CollectingAntes,
         [Description("Drop or Stay")] DropOrStay,
         [Description("Pot Matching")] PotMatching,
+        [Description("Waiting for Dealer Choice")] WaitingForDealerChoice,
     }
 
     public record SeatInfo
@@ -3330,7 +3520,7 @@
             if (_secondsUntilNextHand > 0)
             {
                 _secondsUntilNextHand--;
-                await InvokeAsync(StateHasChanged);
+                await InvokeStateHasChangedAsync();
             }
             else
             {
@@ -3347,7 +3537,7 @@
                     // Countdown complete - hide the showdown overlay
                     // If we're paused for chip check, the ChipCoveragePauseOverlay will show instead
                     _showShowdownOverlay = false;
-                    await InvokeAsync(StateHasChanged);
+                    await InvokeStateHasChangedAsync();
                 }
             }
         }, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
@@ -3361,6 +3551,8 @@
 
     public async ValueTask DisposeAsync()
     {
+        _disposed = true;
+
         // Stop countdown timer
         StopCountdownTimer();
 
@@ -3392,13 +3584,26 @@
         }
     }
 
+    private async Task InvokeStateHasChangedAsync()
+    {
+        if (_disposed) return;
+        try
+        {
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (ObjectDisposedException)
+        {
+            // Component was disposed between the check and the call — safe to ignore.
+        }
+    }
+
     /// <summary>
     /// Handles action timer updates from SignalR.
     /// </summary>
     private async Task HandleActionTimerUpdatedAsync(ActionTimerStateDto timerState)
     {
         _actionTimerState = timerState;
-        await InvokeAsync(StateHasChanged);
+        await InvokeStateHasChangedAsync();
     }
 
     /// <summary>
@@ -3425,7 +3630,7 @@
         _seats[seatIndex].LastActionDescription = notification.ActionDescription;
         _seats[seatIndex].LastActionTime = notification.PerformedAtUtc;
 
-        await InvokeAsync(StateHasChanged);
+        await InvokeStateHasChangedAsync();
 
         // Schedule the action to be cleared after the display duration
         var displayDuration = notification.DisplayDurationSeconds > 0
@@ -3442,7 +3647,7 @@
             {
                 _seats[seatIndex].LastActionDescription = null;
                 _seats[seatIndex].LastActionTime = null;
-                await InvokeAsync(StateHasChanged);
+                await InvokeStateHasChangedAsync();
             }
         });
     }
@@ -3662,6 +3867,37 @@ HandType.HighCard
         };
     }
 
+    private bool IsBuyCardTriggerCardVisible()
+    {
+        if (_buyCardOffer?.TriggerCard is null)
+        {
+            return false;
+        }
+
+        if (_currentPlayerSeatIndex < 0 || _currentPlayerSeatIndex >= _seats.Count)
+        {
+            return false;
+        }
+
+        var trigger = _buyCardOffer.TriggerCard;
+        return _seats[_currentPlayerSeatIndex].Cards.Any(c =>
+            c.IsFaceUp &&
+            c.DealOrder == trigger.DealOrder &&
+            string.Equals(c.Rank, trigger.Rank, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(c.Suit, trigger.Suit, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private bool ShouldPauseDealForBuyCardOffer(int seatIndex, bool isFaceUp)
+    {
+        if (!IsBaseball || !isFaceUp || !IsBuyCardOfferPhase)
+        {
+            return false;
+        }
+
+        var offerSeat = _tableState?.CurrentActorSeatIndex ?? -1;
+        return offerSeat >= 0 && seatIndex == offerSeat;
+    }
+
     /// <summary>
     /// Handles decision actions (like Drop/Stay).
     /// </summary>
@@ -3807,6 +4043,93 @@ HandType.HighCard
         // Lowest card is wild is handled by server marking the card
         return false;
     }
+
+    private List<CardInfo> BuildCurrentPlayerDrawCards(IReadOnlyList<CardPrivateDto> hand, bool preserveSelection)
+    {
+        var cards = hand.Select((c, i) => new CardInfo
+        {
+            Rank = c.Rank,
+            Suit = c.Suit,
+            IsFaceUp = true,
+            IsSelected = preserveSelection && _selectedDiscardIndices.Contains(i),
+            DealOrder = c.DealOrder,
+            IsWild = IsWildForCurrentPlayerCard(c.Rank, c.Suit)
+        }).ToList();
+
+        ApplyKingsAndLowsLowestCardWildFallback(cards);
+        return cards;
+    }
+
+    private bool IsWildForCurrentPlayerCard(string? rank, string? suit)
+    {
+        if (IsWildCard(rank, suit))
+        {
+            return true;
+        }
+
+        // Kings and Lows always treats kings as wild for display/evaluation.
+        return IsKingsAndLows && rank?.Trim().ToUpperInvariant() is "K" or "KING";
+    }
+
+    private void ApplyKingsAndLowsLowestCardWildFallback(List<CardInfo> cards)
+    {
+        if (!IsKingsAndLows || cards.Count == 0)
+        {
+            return;
+        }
+
+        var wildRules = _tableState?.SpecialRules?.WildCardRules;
+        var applyLowestRankWild = wildRules?.LowestCardIsWild == true;
+
+        int? lowestNonKingRankValue = null;
+        if (applyLowestRankWild)
+        {
+            var lowest = cards
+                .Where(c => c.IsFaceUp && !string.IsNullOrWhiteSpace(c.Rank))
+                .Select(c => GetKingsAndLowsRankValue(c.Rank))
+                .Where(value => value != int.MaxValue && value != 13)
+                .DefaultIfEmpty(int.MaxValue)
+                .Min();
+
+            if (lowest != int.MaxValue)
+            {
+                lowestNonKingRankValue = lowest;
+            }
+        }
+
+        for (var index = 0; index < cards.Count; index++)
+        {
+            var card = cards[index];
+            var rankValue = GetKingsAndLowsRankValue(card.Rank);
+            var isKing = rankValue == 13;
+            var isLowestNonKing = lowestNonKingRankValue.HasValue && rankValue == lowestNonKingRankValue.Value;
+
+            if (!isKing && !isLowestNonKing)
+            {
+                continue;
+            }
+
+            cards[index] = card with { IsWild = true };
+        }
+    }
+
+    private static int GetKingsAndLowsRankValue(string? rank) => rank?.Trim().ToUpperInvariant() switch
+    {
+        "2" or "TWO" or "DEUCE" => 2,
+        "3" or "THREE" => 3,
+        "4" or "FOUR" => 4,
+        "5" or "FIVE" => 5,
+        "6" or "SIX" => 6,
+        "7" or "SEVEN" => 7,
+        "8" or "EIGHT" => 8,
+        "9" or "NINE" => 9,
+        "10" or "T" or "TEN" => 10,
+        "J" or "JACK" => 11,
+        "Q" or "QUEEN" => 12,
+        "K" or "KING" => 13,
+        "A" or "ACE" => 14,
+        _ => int.MaxValue
+    };
 
     /// <summary>
     /// Gets the suit code for wild card comparison.
@@ -4011,7 +4334,7 @@ HandType.HighCard
         }
 
         _isAcknowledgingPotMatch = true;
-        await InvokeAsync(StateHasChanged);
+        await InvokeStateHasChangedAsync();
 
         // Leverage API router which handles game type checks or throws/returns error if not supported
         try
@@ -4032,7 +4355,7 @@ HandType.HighCard
                 
                 // On error, reset the flag so user can try again
                 _isAcknowledgingPotMatch = false;
-                await InvokeAsync(StateHasChanged);
+                await InvokeStateHasChangedAsync();
             }
         }
         catch (Exception ex)
@@ -4042,7 +4365,65 @@ HandType.HighCard
             
             // On error, reset the flag so user can try again
             _isAcknowledgingPotMatch = false;
-            await InvokeAsync(StateHasChanged);
+            await InvokeStateHasChangedAsync();
+        }
+    }
+
+    // Dealer's Choice methods
+
+    private string? GetDealersChoiceDealerName()
+    {
+        if (_dealersChoiceDealerPosition is not null && _dealersChoiceDealerPosition.Value >= 0 && _dealersChoiceDealerPosition.Value < _seats.Count)
+        {
+            var seat = _seats[_dealersChoiceDealerPosition.Value];
+            return seat.IsOccupied ? seat.PlayerName : null;
+        }
+        return null;
+    }
+
+    private async Task HandleDealerChoiceAsync(DealerChoiceModal.DealerChoiceSelection selection)
+    {
+        try
+        {
+            var request = new ChooseDealerGameRequest(selection.GameTypeCode, selection.Ante, selection.MinBet);
+            var response = await GamesApiClient.ChooseDealerGameAsync(GameId, request);
+            if (response is { IsSuccessStatusCode: true, Content: not null })
+            {
+                Logger.LogDebug("Dealer chose game {GameType} for hand {Hand}", response.Content.GameTypeName, response.Content.HandNumber);
+                // SignalR will handle the state transition
+            }
+            else
+            {
+                Logger.LogError("Failed to choose dealer game: {StatusCode}", response.StatusCode);
+                await ShowToastAsync("Failed to set game variant. Please try again.", "error");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error choosing dealer game");
+            await ShowToastAsync("An error occurred. Please try again.", "error");
+        }
+    }
+
+    private async Task LoadAvailableGamesAsync()
+    {
+        _dcGamesLoading = true;
+        try
+        {
+            var response = await AvailablePokerGamesApi.GetAvailablePokerGamesAsync(null);
+            if (response is { IsSuccessStatusCode: true, Content: not null })
+            {
+                _dcAvailableGames = response.Content.ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading available games for Dealer's Choice");
+        }
+        finally
+        {
+            _dcGamesLoading = false;
+            await InvokeStateHasChangedAsync();
         }
     }
 
@@ -4383,7 +4764,7 @@ HandType.HighCard
             if (discardIndices.Count > 0)
             {
                 _isDeckDiscardingCards = true;
-                await InvokeAsync(StateHasChanged);
+                await InvokeStateHasChangedAsync();
 
                 // Wait for discard animation
                 await Task.Delay(600);
@@ -4405,7 +4786,7 @@ HandType.HighCard
                 {
                     _isDeckDrawingNewCards = true;
                     _deckNewCardIndices = discardIndices;
-                    await InvokeAsync(StateHasChanged);
+                    await InvokeStateHasChangedAsync();
 
                     // Wait for draw animation
                     await Task.Delay(700);
@@ -4415,7 +4796,7 @@ HandType.HighCard
                     {
                         _deckHandDescription = response.Content.HandDescription;
                     }
-                    await InvokeAsync(StateHasChanged);
+                    await InvokeStateHasChangedAsync();
 
                     // Keep the panel visible to show the results
                     // SignalR will update the deck cards with final hand
@@ -4428,7 +4809,7 @@ HandType.HighCard
                 {
                     // Stand pat - just mark as complete
                     _deckCardsDrawn = true;
-                    await InvokeAsync(StateHasChanged);
+                    await InvokeStateHasChangedAsync();
 
                     // Keep visible briefly
                     await Task.Delay(TimeSpan.FromSeconds(3));
@@ -4457,7 +4838,7 @@ HandType.HighCard
                 }
 
                 await TryLoadShowdownAsync();
-                await InvokeAsync(StateHasChanged);
+                await InvokeStateHasChangedAsync();
             }
             else
             {

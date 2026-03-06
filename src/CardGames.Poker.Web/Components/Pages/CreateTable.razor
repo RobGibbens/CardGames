@@ -71,6 +71,10 @@
 									{
 										<img src="/images/games/@(game.ImageName)" alt="@game.Name" class="variant-icon-image" />
 									}
+									else if (game.Code == "DEALERSCHOICE")
+									{
+										<img src="/images/games/dealerschoice.png" alt="@game.Name" class="variant-icon-image" />
+									}
 									else
 									{
 										<span class="variant-icon-fallback"><i class="fa-thin fa-card-club"></i></span>
@@ -121,6 +125,8 @@
 									<span class="form-hint">Give your table a memorable name</span>
 								</div>
 							</div>
+							@if (!_isDealersChoice)
+							{
 							<div class="form-row two-columns">
 								<div class="form-group">
 									<label class="form-label" for="ante">Ante</label>
@@ -145,6 +151,15 @@
 									<span class="form-hint">Minimum bet during play</span>
 								</div>
 							</div>
+							}
+							else
+							{
+							<div class="form-row">
+								<div class="form-group">
+									<span class="form-hint"><i class="fa-regular fa-info-circle"></i> The dealer will set the ante and minimum bet each hand.</span>
+								</div>
+							</div>
+							}
 						</div>
 					</section>
 
@@ -231,9 +246,19 @@
 	private string _tableName = "";
 	private int _ante = 5;
 	private int _minBet = 10;
+	private bool _isDealersChoice;
 	private readonly List<PlayerInput> _players = [];
 	private List<GetAvailablePokerGamesResponse> _availableGames = [];
 	private GetAvailablePokerGamesResponse? _selectedVariant;
+
+	private static readonly GetAvailablePokerGamesResponse DealersChoiceCard = new(
+		code: "DEALERSCHOICE",
+		description: "The dealer picks the game variant each hand — a different game every deal!",
+		imageName: "",
+		maximumNumberOfPlayers: 8,
+		minimumNumberOfPlayers: 2,
+		name: "Dealer's Choice"
+	);
 
 	private IEnumerable<GetAvailablePokerGamesResponse> VariantCards
 	{
@@ -244,14 +269,15 @@
 				return [_selectedVariant];
 			}
 
-			return _availableGames
-				.OrderBy(g => g.Name, StringComparer.OrdinalIgnoreCase);
+			return new[] { DealersChoiceCard }
+				.Concat(_availableGames.OrderBy(g => g.Name, StringComparer.OrdinalIgnoreCase));
 		}
 	}
 
 	private bool CanCreate =>
 		_selectedVariant is not null &&
 		!string.IsNullOrWhiteSpace(_tableName) &&
+		(_isDealersChoice || (_ante > 0 && _minBet > 0)) &&
 		_players.All(p => !string.IsNullOrWhiteSpace(p.Name) && p.StartingChips > 0);
 
 	protected override async Task OnInitializedAsync()
@@ -299,10 +325,12 @@
 		if (_selectedVariant?.Name == variant.Name)
 		{
 			_selectedVariant = null;
+			_isDealersChoice = false;
 			return;
 		}
 
 		_selectedVariant = variant;
+		_isDealersChoice = variant.Code == "DEALERSCHOICE";
 
 		// Initialize players list with minimum required players
 		//TODO:ROB - Don't hard code this
@@ -374,7 +402,8 @@
 				.Select(p => new PlayerInfo(p.Name, p.StartingChips))
 				.ToList();
 
-			var command = new CreateGameCommand(_ante, _selectedVariant.Code, gameId, _tableName, _minBet, playerInfos);
+			var command = new CreateGameCommand(_isDealersChoice ? 0 : _ante, _selectedVariant.Code, gameId, _tableName, _isDealersChoice ? 0 : _minBet, playerInfos)
+			{ IsDealersChoice = _isDealersChoice };
 
 			// Call the appropriate API based on the selected variant
 			Guid? createdGameId = null;
@@ -408,7 +437,7 @@
 	private static bool IsGameAvailable(string gameName)
 	{
 		// Games that are fully implemented and available for play
-		return gameName is "Five Card Draw" or "Twos, Jacks, Man with the Axe" or "Kings and Lows" or "Seven Card Stud" or "Baseball" or "Follow the Queen" or "The Good, the Bad, and the Ugly"; //TODO:ROB - This is a stupid way to do this
+		return gameName is "Five Card Draw" or "Twos, Jacks, Man with the Axe" or "Kings and Lows" or "Seven Card Stud" or "Baseball" or "Follow the Queen" or "The Good, the Bad, and the Ugly" or "Dealer's Choice"; //TODO:ROB - This is a stupid way to do this
 	}
 
 	private record PlayerInput

@@ -142,4 +142,38 @@ public class KingsAndLowsHandTests
         hand.Type.Should().Be(HandType.FiveOfAKind);
         hand.WildCards.Should().Contain(c => c.Symbol == Symbol.Deuce);
     }
+
+    [Fact]
+    public void Ace_Treated_As_Low_For_Five_To_Ace_Straight_Example()
+    {
+        // Hand: 5h, 6d, 7c, 8s, Ac
+        // Ace-low: Ace is wild and can complete the straight.
+        var holeCards = "5h 6d".ToCards();
+        var openCards = "7c 8s".ToCards();
+        var downCard = "Ac".ToCard();
+        var rules = new WildCardRules(kingRequired: false);
+
+        var hand = new KingsAndLowsHand(holeCards, openCards, downCard, rules);
+
+        hand.Type.Should().Be(HandType.Straight);
+        hand.WildCards.Should().Contain(c => c.Symbol == Symbol.Ace);
+        hand.WildCards.Should().NotContain(c => c.Symbol == Symbol.Five);
+    }
+
+    [Fact]
+    public void Ace_Treated_As_High_For_Broadway_Straight_Example()
+    {
+        // Hand: 2s, Jd, Qh, Kc, As
+        // Ace-high: 2 is wild and can complete A-K-Q-J-10 straight.
+        var holeCards = "2s Jd".ToCards();
+        var openCards = "Qh Kc".ToCards();
+        var downCard = "As".ToCard();
+        var rules = new WildCardRules(kingRequired: false);
+
+        var hand = new KingsAndLowsHand(holeCards, openCards, downCard, rules);
+
+        hand.Type.Should().Be(HandType.Straight);
+        hand.WildCards.Should().Contain(c => c.Symbol == Symbol.Deuce);
+        hand.WildCards.Should().NotContain(c => c.Symbol == Symbol.Ace);
+    }
 }

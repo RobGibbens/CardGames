@@ -1805,6 +1805,213 @@ namespace CardGames.Poker.Api.Clients
         Task<IApiResponse<ResumeAfterChipCheckSuccessful>> KingsAndLowsResumeAfterChipCheckAsync(System.Guid gameId, [Body] ResumeAfterChipCheckRequest body, CancellationToken cancellationToken = default);
     }
 
+    /// <summary>Deal Hands</summary>
+    [System.CodeDom.Compiler.GeneratedCode("Refitter", "1.7.0.0")]
+    public partial interface IGoodBadUglyApi
+    {
+        /// <summary>Deal Hands</summary>
+        /// <remarks>Deals five cards to each active player from the shuffled deck and initiates the first betting round. After dealing, the game transitions to the FirstBettingRound phase. This method deals 5 cards to each player who has not folded, resets all players' current bet amounts for the new betting round, and automatically starts the first betting round.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// <item>
+        /// <term>422</term>
+        /// <description>Unprocessable Entity</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Post("/api/v1/games/good-bad-ugly/{gameId}/hands/deal")]
+        Task<IApiResponse<DealHandsSuccessful>> GoodBadUglyDealHandsAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
+        /// <summary>Process Betting Action</summary>
+        /// <remarks>
+        /// Processes a betting action from the current player and advances the game state accordingly. If the betting round completes (all players have acted and bets are equalized), the game automatically advances to the next phase.
+        /// 
+        /// **Action Types:**
+        /// - `Check` (0): Pass without betting when no bet has been made
+        /// - `Bet` (1): Make an initial bet in the current betting round
+        /// - `Call` (2): Match the current highest bet
+        /// - `Raise` (3): Increase the current bet amount (amount is total to put in, not increment)
+        /// - `Fold` (4): Give up the hand
+        /// - `AllIn` (5): Bet all remaining chips
+        /// 
+        /// **Phase Transitions:**
+        /// - After first betting round completes: transitions to draw phase
+        /// - After second betting round completes: transitions to showdown
+        /// - If only one player remains (all others folded): transitions directly to showdown
+        /// </remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// <item>
+        /// <term>422</term>
+        /// <description>Unprocessable Entity</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/games/good-bad-ugly/{gameId}/betting/actions")]
+        Task<IApiResponse<ProcessBettingActionSuccessful>> GoodBadUglyProcessBettingActionAsync(System.Guid gameId, [Body] ProcessBettingActionRequest body, CancellationToken cancellationToken = default);
+
+        /// <summary>Perform Showdown</summary>
+        /// <remarks>
+        /// Performs the showdown phase to evaluate all remaining players' hands and award the pot(s) to the winner(s). After the showdown completes, the game transitions to the Complete phase and the dealer button moves to the next position.
+        /// 
+        /// **Showdown Scenarios:**
+        /// - **Win by fold:** If only one player remains (all others folded), they win the entire pot without showing cards
+        /// - **Single winner:** The player with the highest-ranking hand wins the entire pot
+        /// - **Split pot:** If multiple players tie with the same hand strength, the pot is divided equally among winners
+        /// - **Side pots:** When players are all-in for different amounts, side pots are calculated and awarded separately
+        /// 
+        /// **Response includes:**
+        /// - Payouts to each winning player
+        /// - Evaluated hand information for all participating players
+        /// - Whether the hand was won by fold (no showdown required)
+        /// </remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Post("/api/v1/games/good-bad-ugly/{gameId}/showdown")]
+        Task<IApiResponse<PerformShowdownSuccessful>> GoodBadUglyPerformShowdownAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+    }
+
+    /// <summary>Start Hand (Generic)</summary>
+    [System.CodeDom.Compiler.GeneratedCode("Refitter", "1.7.0.0")]
+    public partial interface IGenericGamesApi
+    {
+        /// <summary>Start Hand (Generic)</summary>
+        /// <remarks>Starts a new hand in any poker game variant. The game type is automatically detected from the game entity and routed to the appropriate flow handler for game-specific initialization. After calling this endpoint, the game transitions to the initial phase determined by the game type (e.g., CollectingAntes for most games, Dealing for Kings and Lows).</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Post("/api/v1/games/generic/{gameId}/hands")]
+        Task<IApiResponse<StartHandSuccessful>> GenericStartHandAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
+        /// <summary>Perform Showdown (Generic)</summary>
+        /// <remarks>
+        /// Performs the showdown phase in any poker game variant to evaluate all remaining players' hands and award the pot(s) to the winner(s). The game type is automatically detected and the appropriate hand evaluator is used for evaluation.
+        /// 
+        /// **Game-Specific Behavior:**
+        /// - **Five Card Draw:** Standard 5-card poker hand evaluation
+        /// - **Seven Card Stud:** Best 5 cards from 7-card hand
+        /// - **Kings and Lows:** Wild card evaluation (Kings + lowest cards are wild), transitions to PotMatching phase
+        /// 
+        /// **Showdown Scenarios:**
+        /// - **Win by fold:** If only one player remains (all others folded), they win the entire pot without showing cards
+        /// - **Single winner:** The player with the highest-ranking hand wins the entire pot
+        /// - **Split pot:** If multiple players tie with the same hand strength, the pot is divided equally among winners
+        /// - **Side pots:** When players are all-in for different amounts, side pots are calculated and awarded separately
+        /// 
+        /// **Response includes:**
+        /// - Payouts to each winning player
+        /// - Evaluated hand information for all participating players
+        /// - Whether the hand was won by fold (no showdown required)
+        /// </remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Post("/api/v1/games/generic/{gameId}/showdown")]
+        Task<IApiResponse<PerformShowdownSuccessful>> GenericPerformShowdownAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+    }
+
     /// <summary>Start Hand</summary>
     [System.CodeDom.Compiler.GeneratedCode("Refitter", "1.7.0.0")]
     public partial interface IFollowTheQueenApi
@@ -2304,6 +2511,29 @@ namespace CardGames.Poker.Api.Clients
         [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
         [Post("/api/v1/games/{gameId}/players/{playerId}/add-chips")]
         Task<IApiResponse<AddChipsResponse>> AddChipsAsync(System.Guid gameId, System.Guid playerId, [Body] AddChipsRequest body, CancellationToken cancellationToken = default);
+
+        /// <summary>Choose the game type for the current hand (Dealer's Choice)</summary>
+        /// <remarks>Allows the current Dealer's Choice dealer to select the game type, ante, and minimum bet for the upcoming hand.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/games/{gameId}/choose-game")]
+        Task<IApiResponse<ChooseDealerGameSuccessful>> ChooseDealerGameAsync(System.Guid gameId, [Body] ChooseDealerGameRequest body, CancellationToken cancellationToken = default);
 
         /// <summary>CreateGame</summary>
         /// <remarks>Create a new game.</remarks>
@@ -3586,6 +3816,72 @@ namespace CardGames.Poker.Api.Contracts
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record ChooseDealerGameRequest
+    {
+        [JsonConstructor]
+        public ChooseDealerGameRequest(int @ante, string @gameTypeCode, int @minBet)
+        {
+            this.GameTypeCode = @gameTypeCode;
+            this.Ante = @ante;
+            this.MinBet = @minBet;
+        }
+
+        [JsonPropertyName("gameTypeCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string GameTypeCode { get; init; }
+
+        [JsonPropertyName("ante")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int Ante { get; init; }
+
+        [JsonPropertyName("minBet")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int MinBet { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record ChooseDealerGameSuccessful
+    {
+        [JsonConstructor]
+        public ChooseDealerGameSuccessful(int? @ante, System.Guid? @gameId, string @gameTypeCode, string @gameTypeName, int? @handNumber, int? @minBet)
+        {
+            this.GameId = @gameId;
+            this.GameTypeCode = @gameTypeCode;
+            this.GameTypeName = @gameTypeName;
+            this.HandNumber = @handNumber;
+            this.Ante = @ante;
+            this.MinBet = @minBet;
+        }
+
+        [JsonPropertyName("gameId")]
+        public System.Guid? GameId { get; init; }
+
+        [JsonPropertyName("gameTypeCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string GameTypeCode { get; init; }
+
+        [JsonPropertyName("gameTypeName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string GameTypeName { get; init; }
+
+        [JsonPropertyName("handNumber")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? HandNumber { get; init; }
+
+        [JsonPropertyName("ante")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? Ante { get; init; }
+
+        [JsonPropertyName("minBet")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? MinBet { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial record CollectAntesSuccessful
     {
         [JsonConstructor]
@@ -3638,7 +3934,7 @@ namespace CardGames.Poker.Api.Contracts
     public partial record CreateGameCommand
     {
         [JsonConstructor]
-        public CreateGameCommand(int @ante, string @gameCode, System.Guid @gameId, string @gameName, int @minBet, ICollection<PlayerInfo> @players)
+        public CreateGameCommand(int @ante, string @gameCode, System.Guid @gameId, string @gameName, bool? @isDealersChoice, int @minBet, ICollection<PlayerInfo> @players)
         {
             this.GameId = @gameId;
             this.GameCode = @gameCode;
@@ -3646,6 +3942,7 @@ namespace CardGames.Poker.Api.Contracts
             this.Ante = @ante;
             this.MinBet = @minBet;
             this.Players = @players;
+            this.IsDealersChoice = @isDealersChoice;
         }
 
         [JsonPropertyName("gameId")]
@@ -3672,6 +3969,9 @@ namespace CardGames.Poker.Api.Contracts
         [JsonPropertyName("players")]
         [System.ComponentModel.DataAnnotations.Required]
         public ICollection<PlayerInfo> Players { get; init; }
+
+        [JsonPropertyName("isDealersChoice")]
+        public bool? IsDealersChoice { get; init; }
 
     }
 
@@ -4559,7 +4859,7 @@ namespace CardGames.Poker.Api.Contracts
     public partial record GetActiveGamesResponse
     {
         [JsonConstructor]
-        public GetActiveGamesResponse(System.DateTimeOffset @createdAt, string @createdById, string @createdByName, string @currentPhase, string @currentPhaseDescription, string @gameTypeCode, string @gameTypeDescription, System.Guid @gameTypeId, string @gameTypeImageName, string @gameTypeMetadataName, string @gameTypeName, System.Guid @id, string @name, string @rowVersion, GameStatus @status)
+        public GetActiveGamesResponse(System.DateTimeOffset @createdAt, string @createdById, string @createdByName, string @currentPhase, string @currentPhaseDescription, string @gameTypeCode, string @gameTypeDescription, System.Guid? @gameTypeId, string @gameTypeImageName, string @gameTypeMetadataName, string @gameTypeName, System.Guid @id, bool @isDealersChoice, string @name, string @rowVersion, GameStatus @status)
         {
             this.Id = @id;
             this.GameTypeId = @gameTypeId;
@@ -4576,6 +4876,7 @@ namespace CardGames.Poker.Api.Contracts
             this.CreatedById = @createdById;
             this.CreatedByName = @createdByName;
             this.RowVersion = @rowVersion;
+            this.IsDealersChoice = @isDealersChoice;
         }
 
         [JsonPropertyName("id")]
@@ -4583,11 +4884,9 @@ namespace CardGames.Poker.Api.Contracts
         public System.Guid Id { get; init; }
 
         [JsonPropertyName("gameTypeId")]
-        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
-        public System.Guid GameTypeId { get; init; }
+        public System.Guid? GameTypeId { get; init; }
 
         [JsonPropertyName("gameTypeCode")]
-        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string GameTypeCode { get; init; }
 
         [JsonPropertyName("gameTypeName")]
@@ -4631,6 +4930,9 @@ namespace CardGames.Poker.Api.Contracts
         [JsonPropertyName("rowVersion")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string RowVersion { get; init; }
+
+        [JsonPropertyName("isDealersChoice")]
+        public bool IsDealersChoice { get; init; }
 
     }
 
@@ -5023,7 +5325,7 @@ namespace CardGames.Poker.Api.Contracts
     public partial record GetGameResponse
     {
         [JsonConstructor]
-        public GetGameResponse(int? @ante, int? @bigBet, int? @bigBlind, int? @bringIn, int @bringInPlayerIndex, bool @canContinue, System.DateTimeOffset @createdAt, string @createdById, string @createdByName, int @currentDrawPlayerIndex, int @currentHandNumber, string @currentPhase, string @currentPhaseDescription, int @currentPlayerIndex, int @dealerPosition, System.DateTimeOffset? @endedAt, string @gameSettings, string @gameTypeCode, System.Guid @gameTypeId, string @gameTypeName, System.Guid @id, int @maximumNumberOfPlayers, int? @minBet, int @minimumNumberOfPlayers, string @name, int? @randomSeed, string @rowVersion, int? @smallBet, int? @smallBlind, System.DateTimeOffset? @startedAt, GameStatus @status, System.DateTimeOffset @updatedAt)
+        public GetGameResponse(int? @ante, int? @bigBet, int? @bigBlind, int? @bringIn, int @bringInPlayerIndex, bool @canContinue, System.DateTimeOffset @createdAt, string @createdById, string @createdByName, int @currentDrawPlayerIndex, int @currentHandNumber, string @currentPhase, string @currentPhaseDescription, int @currentPlayerIndex, int @dealerPosition, int? @dealersChoiceDealerPosition, System.DateTimeOffset? @endedAt, string @gameSettings, string @gameTypeCode, System.Guid? @gameTypeId, string @gameTypeName, System.Guid @id, bool? @isDealersChoice, int @maximumNumberOfPlayers, int? @minBet, int @minimumNumberOfPlayers, string @name, int? @randomSeed, string @rowVersion, int? @smallBet, int? @smallBlind, System.DateTimeOffset? @startedAt, GameStatus @status, System.DateTimeOffset @updatedAt)
         {
             this.Id = @id;
             this.GameTypeId = @gameTypeId;
@@ -5057,6 +5359,8 @@ namespace CardGames.Poker.Api.Contracts
             this.CreatedByName = @createdByName;
             this.CanContinue = @canContinue;
             this.RowVersion = @rowVersion;
+            this.IsDealersChoice = @isDealersChoice;
+            this.DealersChoiceDealerPosition = @dealersChoiceDealerPosition;
         }
 
         [JsonPropertyName("id")]
@@ -5064,8 +5368,7 @@ namespace CardGames.Poker.Api.Contracts
         public System.Guid Id { get; init; }
 
         [JsonPropertyName("gameTypeId")]
-        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
-        public System.Guid GameTypeId { get; init; }
+        public System.Guid? GameTypeId { get; init; }
 
         [JsonPropertyName("gameTypeCode")]
         public string GameTypeCode { get; init; }
@@ -5182,6 +5485,13 @@ namespace CardGames.Poker.Api.Contracts
         [JsonPropertyName("rowVersion")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string RowVersion { get; init; }
+
+        [JsonPropertyName("isDealersChoice")]
+        public bool? IsDealersChoice { get; init; }
+
+        [JsonPropertyName("dealersChoiceDealerPosition")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? DealersChoiceDealerPosition { get; init; }
 
     }
 
@@ -7350,6 +7660,40 @@ namespace CardGames.Poker.Api.Clients
                 });
 
             builder?.Invoke(clientBuilderIKingsAndLowsApi);
+
+            var clientBuilderIGoodBadUglyApi = services
+                .AddRefitClient<IGoodBadUglyApi>(settings)
+                .ConfigureHttpClient(c => c.BaseAddress = baseUrl);
+
+            clientBuilderIGoodBadUglyApi
+                .AddStandardResilienceHandler(config =>
+                {
+                    config.Retry = new HttpRetryStrategyOptions
+                    {
+                        UseJitter = true,
+                        MaxRetryAttempts = 3,
+                        Delay = TimeSpan.FromSeconds(0.5)
+                    };
+                });
+
+            builder?.Invoke(clientBuilderIGoodBadUglyApi);
+
+            var clientBuilderIGenericGamesApi = services
+                .AddRefitClient<IGenericGamesApi>(settings)
+                .ConfigureHttpClient(c => c.BaseAddress = baseUrl);
+
+            clientBuilderIGenericGamesApi
+                .AddStandardResilienceHandler(config =>
+                {
+                    config.Retry = new HttpRetryStrategyOptions
+                    {
+                        UseJitter = true,
+                        MaxRetryAttempts = 3,
+                        Delay = TimeSpan.FromSeconds(0.5)
+                    };
+                });
+
+            builder?.Invoke(clientBuilderIGenericGamesApi);
 
             var clientBuilderIFollowTheQueenApi = services
                 .AddRefitClient<IFollowTheQueenApi>(settings)

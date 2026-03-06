@@ -110,4 +110,57 @@ public class BaseballDealHandsCommandHandlerTests : IntegrationTestBase
 
 		bettingRound.CurrentActorIndex.Should().Be(lynne.SeatPosition);
 	}
+
+	[Fact]
+	public async Task DealHands_FourthStreet_UsesVisibleWildCardsForFirstActor()
+	{
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "BASEBALL", 2, ante: 10);
+
+		var rob = setup.GamePlayers.Single(p => p.SeatPosition == 0);
+		var lynne = setup.GamePlayers.Single(p => p.SeatPosition == 1);
+		rob.Player.Name = "Rob";
+		lynne.Player.Name = "Lynne";
+
+		setup.Game.DealerPosition = lynne.SeatPosition;
+		await DbContext.SaveChangesAsync();
+
+		await Mediator.Send(new StartHandCommand(setup.Game.Id));
+		await Mediator.Send(new CollectAntesCommand(setup.Game.Id));
+		await Mediator.Send(new DealHandsCommand(setup.Game.Id));
+
+		var thirdStreetBoardCards = await DbContext.GameCards
+			.Where(gc => gc.GameId == setup.Game.Id
+						 && gc.HandNumber == setup.Game.CurrentHandNumber
+						 && gc.Location == CardLocation.Board
+						 && gc.DealtAtPhase == nameof(Phases.ThirdStreet))
+			.ToListAsync();
+
+		thirdStreetBoardCards.Single(c => c.GamePlayerId == rob.Id).Symbol = CardSymbol.Ace;
+		thirdStreetBoardCards.Single(c => c.GamePlayerId == rob.Id).Suit = CardSuit.Spades;
+		thirdStreetBoardCards.Single(c => c.GamePlayerId == lynne.Id).Symbol = CardSymbol.Deuce;
+		thirdStreetBoardCards.Single(c => c.GamePlayerId == lynne.Id).Suit = CardSuit.Hearts;
+
+		var deckCards = await DbContext.GameCards
+			.Where(gc => gc.GameId == setup.Game.Id
+						 && gc.HandNumber == setup.Game.CurrentHandNumber
+						 && gc.Location == CardLocation.Deck)
+			.OrderBy(gc => gc.DealOrder)
+			.Take(2)
+			.ToListAsync();
+
+		deckCards[0].Symbol = CardSymbol.Queen;
+		deckCards[0].Suit = CardSuit.Hearts;
+		deckCards[1].Symbol = CardSymbol.Nine;
+		deckCards[1].Suit = CardSuit.Diamonds;
+
+		setup.Game.CurrentPhase = nameof(Phases.FourthStreet);
+		await DbContext.SaveChangesAsync();
+
+		var result = await Mediator.Send(new DealHandsCommand(setup.Game.Id));
+
+		result.IsT0.Should().BeTrue();
+		var success = result.AsT0;
+		success.CurrentPlayerIndex.Should().Be(lynne.SeatPosition);
+		success.CurrentPlayerName.Should().Be("Lynne");
+	}
 }

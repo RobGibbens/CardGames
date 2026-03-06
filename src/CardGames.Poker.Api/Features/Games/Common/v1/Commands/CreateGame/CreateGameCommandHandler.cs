@@ -39,28 +39,33 @@ public class CreateGameCommandHandler(CardsDbContext context, ICurrentUserServic
 
 		var now = DateTimeOffset.UtcNow;
 
-		// 1. Get or create the game type
-		var gameType = await GetOrCreateGameTypeAsync(command.GameCode, cancellationToken);
-		if (gameType is null)
+		// 1. For Dealer's Choice tables, skip game type lookup; for standard tables, resolve game type
+		GameType? gameType = null;
+		if (!command.IsDealersChoice)
 		{
-			return new CreateGameConflict
+			gameType = await GetOrCreateGameTypeAsync(command.GameCode, cancellationToken);
+			if (gameType is null)
 			{
-				GameId = command.GameId,
-				Reason = $"Unknown game code '{command.GameCode}'."
-			};
+				return new CreateGameConflict
+				{
+					GameId = command.GameId,
+					Reason = $"Unknown game code '{command.GameCode}'."
+				};
+			}
 		}
 
 		// 2. Create the game session
 		var game = new Game
 		{
 			Id = command.GameId,
-			GameTypeId = gameType.Id,
+			GameTypeId = gameType?.Id,
 			Name = command.GameName,
 			CurrentPhase = nameof(Phases.WaitingToStart),
 			CurrentHandNumber = 0,
 			DealerPosition = 0,
-			Ante = command.Ante,
-			MinBet = command.MinBet,
+			Ante = command.IsDealersChoice ? null : command.Ante,
+			MinBet = command.IsDealersChoice ? null : command.MinBet,
+			IsDealersChoice = command.IsDealersChoice,
 			Status = GameStatus.WaitingForPlayers,
 			CurrentPlayerIndex = -1,
 			CurrentDrawPlayerIndex = -1,
@@ -124,7 +129,7 @@ public class CreateGameCommandHandler(CardsDbContext context, ICurrentUserServic
 		return new CreateGameSuccessful
 		{
 			GameId = game.Id,
-			GameTypeCode = gameType.Code,
+			GameTypeCode = gameType?.Code ?? "DEALERSCHOICE",
 			PlayerCount = command.Players.Count
 		};
 	}

@@ -54,6 +54,7 @@
                 ReadOnlyMessage="@GetReadOnlyMessage()"
                 HandDescription="@HandDescription"
                 HideCardIndices="@(!IsDecisionMaker)"
+                EnableKingsAndLowsWildCardHighlighting="true"
                 DrawingSpecialRules="@(IsDecisionMaker ? "Kings are wild, plus lowest non-King cards" : null)" />
         }
         else

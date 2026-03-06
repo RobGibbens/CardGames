@@ -1,0 +1,26 @@
+@namespace CardGames.Poker.Web.Components.Shared
+
+<div class="table-overlay dealer-choice-waiting-overlay">
+	<div class="overlay-content">
+		<div class="overlay-icon"><i class="fa-thin fa-cards"></i></div>
+		<h2>Dealer's Choice</h2>
+		<p>
+			@if (!string.IsNullOrWhiteSpace(DealerName))
+			{
+				<strong>@DealerName</strong> <text>is choosing the next game...</text>
+			}
+			else
+			{
+				<text>The dealer is choosing the next game...</text>
+			}
+		</p>
+		<div class="dc-waiting-spinner">
+			<div class="loading-spinner"></div>
+		</div>
+	</div>
+</div>
+
+@code {
+	[Parameter]
+	public string? DealerName { get; set; }
+}

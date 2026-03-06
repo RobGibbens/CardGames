@@ -174,6 +174,17 @@ public sealed record TableStatePublicDto
 					/// Cards are face-down until revealed during the appropriate phase.
 					/// </summary>
 					public IReadOnlyList<CardPublicDto>? CommunityCards { get; init; }
+
+					/// <summary>
+					/// Whether this game is a Dealer's Choice table where the dealer picks the game variant each hand.
+					/// </summary>
+					public bool IsDealersChoice { get; init; }
+
+					/// <summary>
+					/// The seat position of the current Dealer's Choice dealer (the player who picks the next game variant).
+					/// Only populated when <see cref="IsDealersChoice"/> is true.
+					/// </summary>
+					public int? DealersChoiceDealerPosition { get; init; }
 					}
 
 		/// <summary>

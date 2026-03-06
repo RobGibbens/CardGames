@@ -69,7 +69,49 @@ public sealed class StartHandCommandHandler(
             };
         }
 
-        // 2. Get the game flow handler for this game type
+        // 2. Dealer's Choice first-hand: set initial DC dealer and wait for game type selection
+        if (game.IsDealersChoice && game.GameTypeId is null)
+        {
+            if (game.CurrentPhase != nameof(Phases.WaitingToStart))
+            {
+                return new StartHandError
+                {
+                    Message = $"Cannot start a Dealer's Choice game from '{game.CurrentPhase}' phase.",
+                    Code = StartHandErrorCode.InvalidGameState
+                };
+            }
+
+            // Set initial DC dealer to the same as the game dealer (seat 0 or first occupied seat)
+            var firstActiveSeat = game.GamePlayers
+                .Where(gp => gp.Status == GamePlayerStatus.Active)
+                .OrderBy(gp => gp.SeatPosition)
+                .Select(gp => gp.SeatPosition)
+                .FirstOrDefault();
+
+            game.DealersChoiceDealerPosition = firstActiveSeat;
+            game.DealerPosition = firstActiveSeat;
+            game.CurrentHandNumber = 1;
+            game.CurrentPhase = nameof(Phases.WaitingForDealerChoice);
+            game.Status = GameStatus.InProgress;
+            game.StartedAt ??= now;
+            game.UpdatedAt = now;
+
+            await context.SaveChangesAsync(cancellationToken);
+
+            logger.LogInformation(
+                "Dealer's Choice game {GameId}: waiting for dealer at seat {DcDealerSeat} to choose game type",
+                game.Id, game.DealersChoiceDealerPosition);
+
+            return new StartHandSuccessful
+            {
+                GameId = game.Id,
+                HandNumber = game.CurrentHandNumber,
+                CurrentPhase = game.CurrentPhase,
+                ActivePlayerCount = game.GamePlayers.Count(gp => gp.Status == GamePlayerStatus.Active)
+            };
+        }
+
+        // 3. Get the game flow handler for this game type
         var gameTypeCode = game.GameType?.Code ?? "FIVECARDDRAW";
         if (!flowHandlerFactory.TryGetHandler(gameTypeCode, out var flowHandler) || flowHandler is null)
         {
@@ -83,7 +125,7 @@ public sealed class StartHandCommandHandler(
             "Starting hand for game {GameId} using {GameType} flow handler",
             game.Id, flowHandler.GameTypeCode);
 
-        // 3. Validate game state allows starting a new hand
+        // 4. Validate game state allows starting a new hand
         var validPhases = new[]
         {
             nameof(Phases.WaitingToStart),

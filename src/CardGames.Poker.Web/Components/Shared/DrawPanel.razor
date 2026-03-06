@@ -48,6 +48,10 @@
     <div class="draw-cards-container">
         @{
             var orderedCards = GetOrderedCards().ToList();
+            var hasExplicitWildFlags = Cards.Any(c => c.IsWild);
+            var lowestNonKingRankValueForWild = EnableKingsAndLowsWildCardHighlighting
+                ? GetLowestNonKingRankValueForWild(Cards)
+                : null;
         }
 
         @for (var i = 0; i < orderedCards.Count; i++)
@@ -56,13 +60,15 @@
             var index = orderedCards[i].Index;
             var card = orderedCards[i].Card;
             var isSelected = SelectedIndices.Contains(index);
+            var isWildForDisplay = IsWildForDisplay(card, lowestNonKingRankValueForWild, EnableKingsAndLowsWildCardHighlighting, hasExplicitWildFlags);
 
             <div class="draw-card-wrapper @(isSelected ? "selected" : "") @(IsDiscarding && isSelected ? "discarding" : "") @(IsDrawing && NewCardIndices.Contains(index) ? "drawing" : "") @(IsReadOnly ? "readonly" : "")"
+                 @key="GetCardRenderKey(card, index)"
                  @onclick="() => ToggleCardSelectionAsync(index)"
                  @onclick:stopPropagation="@IsReadOnly">
 
                 <div class="draw-card @(isSelected ? "selected" : "")">
-                    <playing-card rank="@GetPlayingCardRank(card)" suit="@card.Suit" style="height:92px;width:64px;"></playing-card>
+                    <playing-card rank="@GetPlayingCardRank(card)" suit="@card.Suit" style="height:92px;width:64px;" suitcolor="@(isWildForDisplay ? "green" : null)" rankcolor="@(isWildForDisplay ? "green" : null)" courtcolor="@(isWildForDisplay ? "green" : null)"></playing-card>
                 </div>
 
                 @if (!HideCardIndices)
@@ -161,6 +167,8 @@
     private const int DefaultTimerDurationSeconds = 60;
     private string? _autoActionTimerKey;
     private bool _isAutoActionInFlight;
+    private string? _lastCardsKey;
+    private bool _cardsChangedWhileBusy;
 
     private ElementReference _panelRef;
     private ElementReference _handleRef;
@@ -264,11 +272,66 @@
     [Parameter]
     public ActionTimerStateDto? ActionTimer { get; set; }
 
+    /// <summary>
+    /// Enables Kings and Lows wild card highlighting logic (kings + lowest non-king rank).
+    /// Keep false for other game types.
+    /// </summary>
+    [Parameter]
+    public bool EnableKingsAndLowsWildCardHighlighting { get; set; }
+
     private int SelectedCount => SelectedIndices.Count;
 
     protected override async Task OnParametersSetAsync()
     {
+        ClearStaleSelectionIfNeeded();
         await TrySubmitTimeoutDefaultActionAsync();
+    }
+
+    private void ClearStaleSelectionIfNeeded()
+    {
+        var cardsKey = ComputeCardsKey();
+        var cardsChanged = _lastCardsKey is not null
+            && !string.Equals(_lastCardsKey, cardsKey, StringComparison.Ordinal);
+        var isBusy = IsSubmitting || IsAnimating || IsDiscarding || IsDrawing;
+
+        if (SelectedIndices.Count > 0 && (Cards.Count == 0 || SelectedIndices.Any(i => i < 0 || i >= Cards.Count)))
+        {
+            SelectedIndices.Clear();
+            _cardsChangedWhileBusy = false;
+        }
+        else if (SelectedIndices.Count > 0 && cardsChanged)
+        {
+            if (isBusy)
+            {
+                _cardsChangedWhileBusy = true;
+            }
+            else
+            {
+                SelectedIndices.Clear();
+                _cardsChangedWhileBusy = false;
+            }
+        }
+        else if (SelectedIndices.Count > 0 && !isBusy && _cardsChangedWhileBusy)
+        {
+            SelectedIndices.Clear();
+            _cardsChangedWhileBusy = false;
+        }
+        else if (!isBusy)
+        {
+            _cardsChangedWhileBusy = false;
+        }
+
+        _lastCardsKey = cardsKey;
+    }
+
+    private static string GetCardRenderKey(CardInfo card, int index)
+    {
+        return $"{index}:{card.DealOrder}:{card.Rank}:{card.Suit}:{card.IsWild}";
+    }
+
+    private string ComputeCardsKey()
+    {
+        return string.Join("|", Cards.Select(c => $"{c.DealOrder}:{c.Rank}:{c.Suit}"));
     }
 
     private int GetSecondsRemaining()
@@ -446,6 +509,44 @@
             _ => int.MaxValue
                 };
             }
+
+    private static bool IsWildForDisplay(CardInfo card, int? lowestNonKingRankValue, bool enableKingsAndLowsWildCardHighlighting, bool hasExplicitWildFlags)
+    {
+        if (card.IsWild)
+        {
+            return true;
+        }
+
+        if (hasExplicitWildFlags)
+        {
+            return false;
+        }
+
+        if (!enableKingsAndLowsWildCardHighlighting)
+        {
+            return false;
+        }
+
+        var rankValue = GetRankValue(card.Rank);
+        if (rankValue == 13)
+        {
+            return true;
+        }
+
+        return lowestNonKingRankValue.HasValue && rankValue == lowestNonKingRankValue.Value;
+    }
+
+    private static int? GetLowestNonKingRankValueForWild(IReadOnlyList<CardInfo> cards)
+    {
+        var lowest = cards
+            .Where(c => !string.IsNullOrWhiteSpace(c.Rank))
+            .Select(c => GetRankValue(c.Rank))
+            .Where(value => value != int.MaxValue && value != 13)
+            .DefaultIfEmpty(int.MaxValue)
+            .Min();
+
+        return lowest == int.MaxValue ? null : lowest;
+    }
 
             private sealed record IndexedCard(CardInfo Card, int Index);
         }

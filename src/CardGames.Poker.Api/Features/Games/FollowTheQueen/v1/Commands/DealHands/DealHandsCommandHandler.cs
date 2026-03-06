@@ -278,7 +278,12 @@ public class DealHandsCommandHandler(
 		else
 		{
 			// Other streets: player with the best visible hand acts first
-			firstActorSeatPosition = FindBestVisibleHandPlayer(activePlayers, game.Id, game.CurrentHandNumber, context);
+            firstActorSeatPosition = FindBestVisibleHandPlayer(activePlayers, game.Id, game.CurrentHandNumber, game.DealerPosition, context);
+		}
+
+		if (firstActorSeatPosition < 0)
+		{
+			firstActorSeatPosition = GetPlayerLeftOfDealerSeatPosition(activePlayers, game.DealerPosition);
 		}
 
 		// 8. Determine min bet based on street (small bet for 3rd/4th, big bet for 5th/6th/7th)
@@ -429,23 +434,34 @@ public class DealHandsCommandHandler(
 	/// Finds the player with the best visible hand for first action on 4th+ streets.
 	/// Evaluates hand strength including pairs, trips, two pair, and high cards.
 	/// </summary>
-	private static int FindBestVisibleHandPlayer(List<GamePlayer> activePlayers, Guid gameId, int handNumber, CardsDbContext context)
+   private static int FindBestVisibleHandPlayer(List<GamePlayer> activePlayers, Guid gameId, int handNumber, int dealerSeatPosition, CardsDbContext context)
 	{
-		int bestSeatPosition = activePlayers.FirstOrDefault()?.SeatPosition ?? 0;
+       int bestSeatPosition = -1;
 		long bestStrength = -1;
+
+		var allVisibleBoardCards = context.GameCards
+			.Where(gc => gc.GameId == gameId &&
+						 gc.HandNumber == handNumber &&
+						 gc.Location == CardLocation.Board &&
+						 gc.IsVisible &&
+						 !gc.IsDiscarded)
+			.Include(gc => gc.GamePlayer)
+			.ToList();
+
+		var followTheQueenWildSymbols = DetermineFollowTheQueenWildSymbols(allVisibleBoardCards, dealerSeatPosition);
+
+		var byPlayerId = allVisibleBoardCards
+			.Where(c => c.GamePlayerId.HasValue)
+			.GroupBy(c => c.GamePlayerId!.Value)
+			.ToDictionary(g => g.Key, g => g.ToList());
 
 		foreach (var player in activePlayers)
 		{
-			// Get visible board cards for this player
-			var boardCards = context.GameCards
-				.Where(gc => gc.GamePlayerId == player.Id &&
-							 gc.HandNumber == handNumber &&
-							 gc.Location == CardLocation.Board &&
-							 gc.IsVisible &&
-							 !gc.IsDiscarded)
-				.ToList();
+          var boardCards = byPlayerId.TryGetValue(player.Id, out var cards)
+				? cards
+				: [];
 
-			var strength = EvaluateVisibleHand(boardCards);
+         var strength = EvaluateVisibleHand(boardCards, followTheQueenWildSymbols);
 
 			if (strength > bestStrength)
 			{
@@ -457,47 +473,89 @@ public class DealHandsCommandHandler(
 		return bestSeatPosition;
 	}
 
+	private static int GetPlayerLeftOfDealerSeatPosition(List<GamePlayer> activePlayers, int dealerSeatPosition)
+	{
+		if (activePlayers.Count == 0)
+		{
+			return -1;
+		}
+
+		var maxSeatPosition = activePlayers.Max(p => p.SeatPosition);
+		var totalSeats = maxSeatPosition + 1;
+
+		return activePlayers
+			.OrderBy(p => (p.SeatPosition - dealerSeatPosition - 1 + totalSeats) % totalSeats)
+			.Select(p => p.SeatPosition)
+			.First();
+	}
+
 	/// <summary>
 	/// Evaluates the strength of visible cards for determining betting order.
 	/// Higher values indicate better hands (pairs beat high cards, trips beat pairs, etc.)
 	/// </summary>
-	private static long EvaluateVisibleHand(List<GameCard> boardCards)
+  private static long EvaluateVisibleHand(List<GameCard> boardCards, HashSet<CardSymbol> wildSymbols)
 	{
 		if (boardCards.Count == 0) return 0;
 
 		var cards = boardCards.OrderByDescending(c => GetCardValue(c.Symbol)).ToList();
-		var valueCounts = cards.GroupBy(c => GetCardValue(c.Symbol))
+        var valueCounts = cards
+			.Where(c => !wildSymbols.Contains(c.Symbol))
+			.GroupBy(c => GetCardValue(c.Symbol))
 			.OrderByDescending(g => g.Count())
 			.ThenByDescending(g => g.Key)
+          .Select(g => new { Value = g.Key, Count = g.Count() })
 			.ToList();
+
+		var wildCount = cards.Count(c => wildSymbols.Contains(c.Symbol));
+		if (wildCount > 0)
+		{
+			if (valueCounts.Count == 0)
+			{
+				valueCounts.Add(new { Value = 14, Count = wildCount });
+			}
+			else
+			{
+				var target = valueCounts
+					.OrderByDescending(v => v.Count)
+					.ThenByDescending(v => v.Value)
+					.First();
+
+				valueCounts.Remove(target);
+				valueCounts.Add(new { target.Value, Count = target.Count + wildCount });
+				valueCounts = valueCounts
+					.OrderByDescending(v => v.Count)
+					.ThenByDescending(v => v.Value)
+					.ToList();
+			}
+		}
 
 		long strength = 0;
 
 		// Check for pairs, trips, etc.
-		var maxCount = valueCounts.First().Count();
+     var maxCount = valueCounts.First().Count;
 
 		if (maxCount >= 4)
 		{
 			// Four of a kind
-			strength = 7_000_000 + valueCounts.First().Key * 1000;
+          strength = 7_000_000 + valueCounts.First().Value * 1000;
 		}
 		else if (maxCount >= 3)
 		{
 			// Three of a kind
-			strength = 4_000_000 + valueCounts.First().Key * 1000;
+          strength = 4_000_000 + valueCounts.First().Value * 1000;
 		}
 		else if (maxCount >= 2)
 		{
-			var pairs = valueCounts.Where(g => g.Count() >= 2).ToList();
+            var pairs = valueCounts.Where(g => g.Count >= 2).ToList();
 			if (pairs.Count >= 2)
 			{
 				// Two pair
-				strength = 3_000_000 + pairs[0].Key * 1000 + pairs[1].Key * 10;
+             strength = 3_000_000 + pairs[0].Value * 1000 + pairs[1].Value * 10;
 			}
 			else
 			{
 				// One pair
-				strength = 2_000_000 + pairs[0].Key * 1000;
+             strength = 2_000_000 + pairs[0].Value * 1000;
 			}
 		}
 		else
@@ -507,9 +565,20 @@ public class DealHandsCommandHandler(
 		}
 
 		// Add kicker values for tie-breaking
-		foreach (var card in cards.Take(4))
+     var kickerValues = valueCounts
+			.SelectMany(v => Enumerable.Repeat(v.Value, v.Count))
+			.OrderByDescending(v => v)
+			.Take(4)
+			.ToList();
+
+		if (kickerValues.Count == 0)
 		{
-			strength = strength * 15 + GetCardValue(card.Symbol);
+			kickerValues = cards.Take(4).Select(c => GetCardValue(c.Symbol)).ToList();
+		}
+
+		foreach (var kickerValue in kickerValues)
+		{
+           strength = strength * 15 + kickerValue;
 		}
 
 		// Add suit rank for final tie-breaking (highest suit of the best card wins)
@@ -520,6 +589,47 @@ public class DealHandsCommandHandler(
 
 		return strength;
 	}
+
+	private static HashSet<CardSymbol> DetermineFollowTheQueenWildSymbols(List<GameCard> visibleBoardCards, int dealerSeatPosition)
+	{
+		var wildSymbols = new HashSet<CardSymbol> { CardSymbol.Queen };
+
+		var orderedCards = visibleBoardCards
+			.OrderBy(c => GetStreetPhaseOrder(c.DealtAtPhase))
+			.ThenBy(c => c.DealOrder)
+			.ThenBy(c => c.GamePlayer?.SeatPosition > dealerSeatPosition
+				? c.GamePlayer.SeatPosition
+				: (c.GamePlayer?.SeatPosition ?? 0) + 1000)
+			.ToList();
+
+		CardSymbol? followingWild = null;
+		for (var i = 0; i < orderedCards.Count; i++)
+		{
+			if (orderedCards[i].Symbol == CardSymbol.Queen)
+			{
+				followingWild = i + 1 < orderedCards.Count
+					? orderedCards[i + 1].Symbol
+					: null;
+			}
+		}
+
+		if (followingWild.HasValue)
+		{
+			wildSymbols.Add(followingWild.Value);
+		}
+
+		return wildSymbols;
+	}
+
+	private static int GetStreetPhaseOrder(string? phase) => phase switch
+	{
+		nameof(Phases.ThirdStreet) => 1,
+		nameof(Phases.FourthStreet) => 2,
+		nameof(Phases.FifthStreet) => 3,
+		nameof(Phases.SixthStreet) => 4,
+		nameof(Phases.SeventhStreet) => 5,
+		_ => 99
+	};
 
 	/// <summary>
 	/// Assigns a deck card to a player by updating its properties.

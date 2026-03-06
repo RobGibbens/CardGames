@@ -133,11 +133,22 @@ public class KingsAndLowsGameFlowTests : IntegrationTestBase
     [Fact]
     public async Task FlowHandler_SkipsAnteCollection_ReturnsTrue()
     {
-        // Arrange - Kings and Lows doesn't collect antes traditionally
+        // Arrange - Kings and Lows skips the standard ante collection phase.
+        // The background service handles first-hand antes conditionally via IsMultiHandVariant.
         var handler = FlowHandlerFactory.GetHandler("KINGSANDLOWS");
 
         // Assert
         handler.SkipsAnteCollection.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task FlowHandler_IsMultiHandVariant_ReturnsTrue()
+    {
+        // Arrange - Kings and Lows continues across multiple hands within a single game selection
+        var handler = FlowHandlerFactory.GetHandler("KINGSANDLOWS");
+
+        // Assert
+        handler.IsMultiHandVariant.Should().BeTrue();
     }
 
     [Fact]
