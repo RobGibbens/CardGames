@@ -3547,11 +3547,6 @@ a:hover {
     transform: scale(1.05);
 }
 
-/* Hold'Em flop/turn/river visual grouping */
-.community-cards.holdem .community-card-slot:nth-child(n+4) {
-    margin-left: 0.75rem;
-}
-
 .community-card-slot.hidden {
     opacity: 0.7;
 }
@@ -3651,18 +3646,6 @@ a:hover {
         transform: rotateY(0deg);
     }
 }
-
-.community-cards.holdem .community-card-slot.revealed {
-    animation: community-card-fly-in 0.4s ease-out both;
-    transform: none;
-}
-
-/* Stagger the flop cards */
-.community-cards.holdem .community-card-slot:nth-child(1).revealed { animation-delay: 0s; }
-.community-cards.holdem .community-card-slot:nth-child(2).revealed { animation-delay: 0.1s; }
-.community-cards.holdem .community-card-slot:nth-child(3).revealed { animation-delay: 0.2s; }
-.community-cards.holdem .community-card-slot:nth-child(4).revealed { animation-delay: 0.3s; }
-.community-cards.holdem .community-card-slot:nth-child(5).revealed { animation-delay: 0.4s; }
 
 /* Deck stack visualization */
 .deck-stack {

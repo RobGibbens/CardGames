@@ -9,17 +9,6 @@
         <div class="poker-table-felt">
             <!-- Center area: deck, community cards, pot in one row -->
             <div class="table-center">
-                @if (IsHoldEmGame)
-                {
-                    <div class="street-progress">
-                        @foreach (var street in _holdEmStreets)
-                        {
-                            var isCurrent = string.Equals(CurrentPhase, street.Phase, StringComparison.OrdinalIgnoreCase);
-                            var isPast = IsStreetPast(street.Phase);
-                            <span class="street-step @(isCurrent ? "current" : "") @(isPast ? "past" : "")">@street.Label</span>
-                        }
-                    </div>
-                }
                 <div class="table-center-row">
                     <!-- Deck visualization -->
                     <div class="deck-stack" @ref="_deckRef">
@@ -32,8 +21,7 @@
                     <!-- Community cards area -->
                     @if (CommunityCards is { Count: > 0 })
                     {
-                        var communityCardsClass = IsHoldEmGame ? "community-cards holdem" : "community-cards";
-                        <div class="@communityCardsClass">
+                        <div class="community-cards">
                             @foreach (var (card, cardIndex) in CommunityCards.OrderBy(c => c.DealOrder).Select((c, i) => (c, i)))
                             {
                                 var label = GetCommunityCardLabel(cardIndex);
@@ -255,34 +243,7 @@
             };
         }
 
-        if (IsHoldEmGame)
-        {
-            return dealOrder switch
-            {
-                0 or 1 or 2 => "Flop",
-                3 => "Turn",
-                4 => "River",
-                _ => null
-            };
-        }
-
         return null;
-    }
-
-    private static readonly (string Phase, string Label)[] _holdEmStreets =
-    [
-        ("PreFlop", "Pre-Flop"),
-        ("Flop", "Flop"),
-        ("Turn", "Turn"),
-        ("River", "River"),
-        ("Showdown", "Showdown")
-    ];
-
-    private bool IsStreetPast(string streetPhase)
-    {
-        var currentIndex = Array.FindIndex(_holdEmStreets, s => string.Equals(s.Phase, CurrentPhase, StringComparison.OrdinalIgnoreCase));
-        var streetIndex = Array.FindIndex(_holdEmStreets, s => s.Phase == streetPhase);
-        return currentIndex > streetIndex && streetIndex >= 0;
     }
 
     private int GetSmallBlindSeatIndex()
