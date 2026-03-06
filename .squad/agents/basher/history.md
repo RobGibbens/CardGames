@@ -24,3 +24,4 @@
 - 2026-03-02: `ContinuousPlayBackgroundService.MoveDealer()` is a static private method — DC changes may need this logic to be aware of DC vs regular dealer rotation. Tests should verify both paths.
 - 2026-03-02: `DatabaseSeeder` needs a `CreateDealersChoiceGameSetupAsync` helper for DC-specific test setup with no fixed ante/minBet and IsDealersChoice flag.
 - 2026-03-02: New phase `WaitingForDealerChoice` needed between hands in DC mode — ContinuousPlay must NOT auto-start CollectingAntes for DC games; it must pause and wait for dealer's choice.
+- 2026-03-06 (community-card odds regression): Added Hold'em odds regression for hole `8c Kh` + flop `7d Kc Jc` in `src/Tests/CardGames.Poker.Tests/Evaluation/OddsCalculatorTests.cs`; invariant is no `HighCard` outcome and Pair+ total probability ≈ 100% when board already pairs hero.

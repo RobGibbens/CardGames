@@ -41,6 +41,28 @@ public class OddsCalculatorTests
     }
 
     [Fact]
+    public void CalculateHoldemOdds_WithKnownPairOnFlop_NeverReturnsHighCard()
+    {
+        var heroCards = "8c Kh".ToCards();
+        var communityCards = "7d Kc Jc".ToCards();
+
+        var result = OddsCalculator.CalculateHoldemOdds(
+            heroCards,
+            communityCards,
+            simulations: 1000);
+
+        result.HandTypeProbabilities.Should().NotContainKey(HandType.HighCard);
+
+        var pairOrBetterProbability = result.HandTypeProbabilities
+            .Where(kvp => kvp.Key != HandType.HighCard)
+            .Sum(kvp => kvp.Value);
+
+        pairOrBetterProbability.Should().BeApproximately(1.0m, 0.001m);
+        result.HandTypeProbabilities.Should().ContainKey(HandType.OnePair);
+        result.HandTypeProbabilities[HandType.OnePair].Should().BeGreaterThan(0m);
+    }
+
+    [Fact]
     public void CalculateHoldemOdds_ReturnsAllHandTypes()
     {
         var heroCards = "9s 8s".ToCards(); // Suited connectors - can make many hand types

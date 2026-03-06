@@ -600,6 +600,7 @@
 
     // Hand odds state
     private List<HandTypeOddsDto> handOdds = [];
+    private IReadOnlyList<CardPrivateDto> _currentPrivateHand = [];
 
     // Dashboard / Hand history state
     private List<CardGames.Contracts.SignalR.HandHistoryEntryDto> _handHistoryEntries = [];
@@ -1226,6 +1227,11 @@
         _isSeated = _currentPlayerSeatIndex >= 0;
         _isReady = _isSeated && _seats[_currentPlayerSeatIndex].IsReady;
 
+        if (_currentPrivateHand.Count > 0)
+        {
+            CalculateHandOdds(_currentPrivateHand);
+        }
+
         // Redirect if the player requested to leave and is no longer seated (hand completed)
         if (_hasRequestedLeave && !_isSeated)
         {
@@ -1244,6 +1250,8 @@
         {
             return;
         }
+
+        _currentPrivateHand = state.Hand;
 
         Logger.LogDebug("Received private state update for player {PlayerName} at seat {SeatPosition}",
         state.PlayerName, state.SeatPosition);
@@ -3706,6 +3714,13 @@
                 return;
             }
 
+            var communityCards = _tableState?.CommunityCards?
+                .Where(c => c.IsFaceUp && c.Rank is not null && c.Suit is not null)
+                .Select(c => ConvertToCard(c.Rank!, c.Suit!))
+                .Where(c => c is not null)
+                .Cast<Card>()
+                .ToList() ?? [];
+
             // Get dead cards from folded players' visible cards
             var deadCards = _seats
             .Where(s => s.IsFolded && s.Cards.Any())
@@ -3716,32 +3731,15 @@
             .Cast<Card>()
             .ToList();
 
-            OddsCalculator.OddsResult? result;
-            if (IsTwosJacksManWithTheAxe)
-            {
-                result = OddsCalculator.CalculateTwosJacksManWithTheAxeDrawOdds(coreCards, deadCards);
-            }
-            else if (IsSevenCardStud)
-            {
-                result = OddsCalculator.CalculateStudOdds(coreCards, deadCards);
-            }
-            else if (IsBaseball)
-            {
-                var holeCards = coreCards.Take(2).ToList();
-                var boardCards = coreCards.Skip(2).ToList();
-                var totalCards = Math.Max(7, coreCards.Count);
-                result = OddsCalculator.CalculateBaseballOdds(holeCards, boardCards, totalCards, deadCards);
-            }
-            else if (IsKingsAndLows)
-            {
-                result = OddsCalculator.CalculateKingsAndLowsDrawOdds(coreCards, deadCards);
-            }
-            else
-            {
-                result = OddsCalculator.CalculateDrawOdds(coreCards, deadCards);
-            }
+            var result = DashboardHandOddsCalculator.Calculate(
+                _gameTypeCode,
+                coreCards,
+                communityCards,
+                deadCards);
 
-            handOdds = ConvertToHandTypeOddsDtos(result);
+            handOdds = result is null
+                ? []
+                : ConvertToHandTypeOddsDtos(result);
         }
         catch (Exception ex)
         {

@@ -724,3 +724,27 @@ EF migration `AddDealersChoice` cannot be generated until these are fixed. These
 **Requested by:** Rob Gibbens
 **What:** Added optional `SmallBlind`/`BigBlind` (nullable int) through the full Dealer's Choice pipeline: Request → Command → Endpoint → Handler → Success DTO → `DealersChoiceHandLog` entity → Contracts DTO. Frontend conditionally renders blind fields when HOLDEM is selected via `IsBlindBasedGame()` helper. Validation: SmallBlind > 0, BigBlind > 0, BigBlind >= SmallBlind (only when provided). Backward compatible — non-blind games unaffected.
 **Why:** Dealer's Choice modal previously only supported Ante/MinBet; Hold'Em requires blind-based configuration.
+
+### 2026-03-05: Hold'Em Phase 3 backend parity updates
+**By:** Gimli (Backend Dev)
+**Requested by:** Rob Gibbens
+**What:** Consolidated blind posting logic into `BaseGameFlowHandler` (`CollectBlindsAsync`/`PostBlindAsync`) for both Hold'Em and Omaha, added Hold'Em/Omaha/stud/misc in-progress phase coverage to abandoned-game processing, overrode Hold'Em auto-action dispatch to use the Hold'Em betting command, and added `PreFlop`/`Flop`/`Turn`/`River` to `TableStateBuilder` betting phases.
+**Why:** Reduces blind-handling duplication and aligns Hold'Em runtime behavior across auto-action, abandoned-game recovery, and action-availability surfaces.
+
+### 2026-03-05: Pot-size quick bets use real total pot with safe fallback
+**By:** Arwen (Frontend Dev)
+**Requested by:** Rob Gibbens
+**What:** Added `TotalPot` input to `ActionPanel.razor`; updated pot quick-bet calculations to use real `TotalPot` when available, falling back to `CurrentBetToCall * 2` when pot state is not yet populated; wired `TablePlay.razor` to pass table-state pot.
+**Why:** Ensures `½ Pot` and `Pot` quick-bet actions are accurate in normal play while remaining resilient during early-state/loading transitions.
+
+### 2026-03-06: Dashboard odds path is community-card aware and recalculates on public updates
+**By:** Gimli (Backend Dev)
+**Requested by:** Rob Gibbens
+**What:** Routed dashboard odds through `DashboardHandOddsCalculator` with game-specific community-card-aware logic (`HOLDEM` via `CalculateHoldemOdds`; `GOODBADUGLY` via community-aware stud simulation), and triggered recomputation when public table state updates reveal new board cards.
+**Why:** Fixed incorrect dashboard odds that ignored community cards during board progression.
+
+### 2026-03-06: Community-odds regression coverage and risk register captured
+**By:** Legolas (Tester)
+**Requested by:** Rob Gibbens
+**What:** Added/validated regression coverage for known Hold'em flop scenario (`8c Kh` with flop `7d Kc Jc`) and community-aware dashboard calculator behavior; documented follow-up quality risks: blind `CurrentBet` reset ordering, blind-post pot-precreation dependency, missing turn/river integration path coverage, and fold-validation coupling in fold-to-win tests.
+**Why:** Locks in the reported regression and preserves concrete backend/testing follow-ups for Hold'Em betting/phase reliability.

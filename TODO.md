@@ -4,7 +4,6 @@ Cash
 ## Still to do
 
 - [ ] https://github.com/leeoades/FunctionalStateMachine
-- [ ] Games with community cards (Hold Em, GBU) odds are wrong
 
 ### Leagues
 
@@ -13,7 +12,6 @@ Cash
 ### P1 - Can't play without these
 - [ ] Test side pots
 - [ ] Make sure all game types handle all ins correctly
-
 - [ ] Kings and Lows - Should make it obvious when someone dropped
 
 ### P2 - Important but not blocking play
@@ -50,7 +48,7 @@ Cash
 ## Add Games
 
 ### Hold 'Em Variants
-- [ ] Add Texas Hold'em
+- [x] Add Texas Hold'em
 - [ ] Add Omaha
 - [ ] Add Irish Hold'em
 - [ ] Add Pittsburgh
@@ -173,3 +171,4 @@ Cash
 - [x] Dashboard should be scrollable
 - [x] Kings and Lows - Things happen too fast
 - [x] Add sound effects
+- [x] Games with community cards (Hold Em, GBU) odds are wrong
