@@ -9,7 +9,7 @@ public static class ChooseDealerGameEndpoint
 		group.MapPost("{gameId:guid}/choose-game",
 				async (Guid gameId, ChooseDealerGameRequest request, IMediator mediator, CancellationToken cancellationToken) =>
 				{
-					var command = new ChooseDealerGameCommand(gameId, request.GameTypeCode, request.Ante, request.MinBet);
+					var command = new ChooseDealerGameCommand(gameId, request.GameTypeCode, request.Ante, request.MinBet, request.SmallBlind, request.BigBlind);
 					var result = await mediator.Send(command, cancellationToken);
 
 					return result.Match(

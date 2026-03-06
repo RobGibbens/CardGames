@@ -4,7 +4,7 @@ Cash
 ## Still to do
 
 - [ ] https://github.com/leeoades/FunctionalStateMachine
-
+- [ ] When joining any game, choose how many chips to bring in. Also be able to bring in more chips from your bank account.
 
 ### Leagues
 
@@ -13,7 +13,6 @@ Cash
 ### P1 - Can't play without these
 - [ ] Test side pots
 - [ ] Make sure all game types handle all ins correctly
-
 - [ ] Kings and Lows - Should make it obvious when someone dropped
 
 ### P2 - Important but not blocking play
@@ -50,7 +49,7 @@ Cash
 ## Add Games
 
 ### Hold 'Em Variants
-- [ ] Add Texas Hold'em
+- [x] Add Texas Hold'em
 - [ ] Add Omaha
 - [ ] Add Irish Hold'em
 - [ ] Add Pittsburgh
@@ -173,3 +172,6 @@ Cash
 - [x] Dashboard should be scrollable
 - [x] Kings and Lows - Things happen too fast
 - [x] Add sound effects
+- [x] Games with community cards (Hold Em, GBU) odds are wrong
+- [x] Put the GameInfoOverlay under the ShowdownOverlay
+- [x] Better contrast on the GameInfoOverlay close button

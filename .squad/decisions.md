@@ -698,3 +698,81 @@ VERDICT: APPROVED
 - Vertical spacing exists before the `Open Club` button.
 - `Open Club` button is full width.
 
+### 2026-03-02T20:00:00Z: Phase 1 schema changes blocked on 3 nullable GameTypeId errors
+**By:** Danny (Backend Dev)
+**What:** All Dealer's Choice DB schema changes are applied (Game.cs, DealersChoiceHandLog, GameConfiguration, CardsDbContext, Phases enum). However, making `GameTypeId` nullable caused 3 compile errors in existing code that assumes non-null:
+1. `GetActiveGamesMapper.cs:16` — cannot convert `Guid?` to `Guid`
+2. `LobbyStateBroadcastingBehavior.cs:130` — cannot convert `Guid?` to `Guid`
+3. `GetGameMapper.cs:19` — cannot convert `Guid?` to `Guid`
+
+EF migration `AddDealersChoice` cannot be generated until these are fixed. These are Phase 2 handler fixes.
+**Why:** Nullable FK is required for Dealer's Choice tables where game type is chosen per-hand, not at table creation.
+
+### 2025-03-05: Texas Hold 'Em PRD Created
+**By:** Squad Coordinator (Rob Gibbens requested)
+**What:** Created comprehensive PRD at docs/TexasHoldEmPRD.md covering all changes needed to add Texas Hold 'Em to the platform. Key decisions: (1) Hold 'Em-specific feature folder with dedicated command handlers, (2) Community card dealing atomic within betting action transaction, (3) Blind fields via CreateGameCommand partial record extension, (4) SB/BB positions computed client-side. 17 work items across 3 priority tiers. No database migrations needed.
+**Why:** User requested detailed PRD before implementation begins.
+
+### 2026-03-05: Hold'Em Phase 2 — Visual enhancements scoped behind IsHoldEmGame
+**By:** Arwen (Frontend Dev)
+**Requested by:** Rob Gibbens
+**What:** Implemented community card labels/grouping (4.8), SB/BB position indicators (4.9), street progress indicator (4.10), and community card deal animation (4.12). All Hold'Em-specific rendering gated by `IsHoldEmGame` computed property. SB/BB derived from `DealerSeatIndex` in `TableCanvas` and passed as params to `TableSeat`. Street progress uses string comparison against `CurrentPhase`. CSS animation scoped to `.community-cards.holdem`.
+**Why:** Phase 2 UI polish items from PRD Section 6 to bring Hold'Em table to parity with other game types.
+
+### 2026-03-05: Hold'Em Phase 2 — Dealer's Choice blind pipeline
+**By:** Gimli (Backend Dev)
+**Requested by:** Rob Gibbens
+**What:** Added optional `SmallBlind`/`BigBlind` (nullable int) through the full Dealer's Choice pipeline: Request → Command → Endpoint → Handler → Success DTO → `DealersChoiceHandLog` entity → Contracts DTO. Frontend conditionally renders blind fields when HOLDEM is selected via `IsBlindBasedGame()` helper. Validation: SmallBlind > 0, BigBlind > 0, BigBlind >= SmallBlind (only when provided). Backward compatible — non-blind games unaffected.
+**Why:** Dealer's Choice modal previously only supported Ante/MinBet; Hold'Em requires blind-based configuration.
+
+### 2026-03-05: Hold'Em Phase 3 backend parity updates
+**By:** Gimli (Backend Dev)
+**Requested by:** Rob Gibbens
+**What:** Consolidated blind posting logic into `BaseGameFlowHandler` (`CollectBlindsAsync`/`PostBlindAsync`) for both Hold'Em and Omaha, added Hold'Em/Omaha/stud/misc in-progress phase coverage to abandoned-game processing, overrode Hold'Em auto-action dispatch to use the Hold'Em betting command, and added `PreFlop`/`Flop`/`Turn`/`River` to `TableStateBuilder` betting phases.
+**Why:** Reduces blind-handling duplication and aligns Hold'Em runtime behavior across auto-action, abandoned-game recovery, and action-availability surfaces.
+
+### 2026-03-05: Pot-size quick bets use real total pot with safe fallback
+**By:** Arwen (Frontend Dev)
+**Requested by:** Rob Gibbens
+**What:** Added `TotalPot` input to `ActionPanel.razor`; updated pot quick-bet calculations to use real `TotalPot` when available, falling back to `CurrentBetToCall * 2` when pot state is not yet populated; wired `TablePlay.razor` to pass table-state pot.
+**Why:** Ensures `½ Pot` and `Pot` quick-bet actions are accurate in normal play while remaining resilient during early-state/loading transitions.
+
+### 2026-03-06: Dashboard odds path is community-card aware and recalculates on public updates
+**By:** Gimli (Backend Dev)
+**Requested by:** Rob Gibbens
+**What:** Routed dashboard odds through `DashboardHandOddsCalculator` with game-specific community-card-aware logic (`HOLDEM` via `CalculateHoldemOdds`; `GOODBADUGLY` via community-aware stud simulation), and triggered recomputation when public table state updates reveal new board cards.
+**Why:** Fixed incorrect dashboard odds that ignored community cards during board progression.
+
+### 2026-03-06: Community-odds regression coverage and risk register captured
+**By:** Legolas (Tester)
+**Requested by:** Rob Gibbens
+**What:** Added/validated regression coverage for known Hold'em flop scenario (`8c Kh` with flop `7d Kc Jc`) and community-aware dashboard calculator behavior; documented follow-up quality risks: blind `CurrentBet` reset ordering, blind-post pot-precreation dependency, missing turn/river integration path coverage, and fold-validation coupling in fold-to-win tests.
+**Why:** Locks in the reported regression and preserves concrete backend/testing follow-ups for Hold'Em betting/phase reliability.
+
+### 2026-03-06: TablePlay table-controls-strip IA direction (deduped)
+**By:** Linus (Frontend Dev), Tess (Graphic Designer)
+**Requested by:** Rob Gibbens
+**What:** Consolidated agent recommendations to keep `table-controls-strip` focused on common high-frequency controls (leave, seat-state action, sound toggle, host runtime controls, compact connection status) and move table/game metadata into a draggable overlay panel opened from a strip info control.
+**Why:** Separates action controls from descriptive context, reduces strip clutter/wrapping, and reuses the existing draggable overlay interaction pattern already used in gameplay UI.
+
+**Merged sources:**
+- `.squad/decisions/inbox/linus-table-controls-strip.md`
+- `.squad/decisions/inbox/tess-table-controls-strip.md`
+
+### 2026-03-06: TablePlay Option 2 implementation completion (action-first strip + Game Info overlay)
+**By:** Linus (Frontend Dev)
+**Requested by:** Rob Gibbens
+**What:** Implemented Option 2 by keeping `table-controls-strip` action-first and moving table/game metadata into a dedicated draggable overlay panel opened by a single `Game Info` button. Removed inline metadata from the strip and reused existing draggable interaction patterns for the overlay component.
+**Why:** Preserves high-frequency gameplay controls in the strip while exposing richer contextual metadata on demand without adding strip clutter.
+
+**Merged source:**
+- `.squad/decisions/inbox/linus-option2-implementation.md`
+
+### 2026-03-06: Option 2 narrow-screen controls/overlay polish
+**By:** Linus (Frontend Dev)
+**Requested by:** Rob Gibbens
+**What:** Applied a CSS-first responsive polish to the TablePlay top controls strip and Game Info overlay for tablet/phone widths, preserving all existing behavior and control set. Added one minimal markup hook (`join-buy-in-controls`) in `TablePlay.razor` to robustly target buy-in row wrapping without changing interaction logic.
+**Why:** After Option 2 rollout, narrow widths showed crowding and awkward wraps among Leave/Sit Out/Mute/Game Info/host controls. The pass improves readability and stability while keeping scope constrained to presentation and alignment.
+
+**Merged source:**
+- `.squad/decisions/inbox/linus-option2-narrow-screen-polish.md`

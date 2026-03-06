@@ -71,7 +71,9 @@
                     IsCurrentPlayer="@(seat.SeatIndex == CurrentPlayerSeatIndex)"
                     IsSeatSelectionDisabledForCurrentUser="@(DisableSeatSelectionForCurrentUser && !seat.IsOccupied)"
                     ShowCards="@(!IsPausedForChipCheck && CurrentPhase != GamePhase.WaitingForPlayers.ToString() && CurrentPhase != GamePhase.WaitingToStart.ToString() && seat.Cards.Count > 0)"
-                    GameTypeCode="@GameTypeCode" />
+                    GameTypeCode="@GameTypeCode"
+                    IsSmallBlind="@(IsHoldEmGame && seat.SeatIndex == GetSmallBlindSeatIndex())"
+                    IsBigBlind="@(IsHoldEmGame && seat.SeatIndex == GetBigBlindSeatIndex())" />
             </div>
         }
 
@@ -226,18 +228,66 @@
         return CurrentPhaseDescription ?? "Unknown";
     }
 
+    private bool IsHoldEmGame => string.Equals(GameTypeCode, "HOLDEM", StringComparison.OrdinalIgnoreCase);
+
     private string? GetCommunityCardLabel(int dealOrder)
     {
-        if (!string.Equals(GameTypeCode, "GOODBADUGLY", StringComparison.OrdinalIgnoreCase))
-            return null;
-
-        return dealOrder switch
+        if (string.Equals(GameTypeCode, "GOODBADUGLY", StringComparison.OrdinalIgnoreCase))
         {
-            0 => "The Good",
-            1 => "The Bad",
-            2 => "The Ugly",
-            _ => null
-        };
+            return dealOrder switch
+            {
+                0 => "The Good",
+                1 => "The Bad",
+                2 => "The Ugly",
+                _ => null
+            };
+        }
+
+        return null;
+    }
+
+    private int GetSmallBlindSeatIndex()
+    {
+        if (!IsHoldEmGame || DealerSeatIndex < 0) return -1;
+
+        var occupiedIndexes = Seats
+            .Where(s => s.IsOccupied)
+            .Select(s => s.SeatIndex)
+            .OrderBy(i => i)
+            .ToList();
+
+        if (occupiedIndexes.Count < 2) return -1;
+
+        // Heads-up: dealer IS the SB
+        if (occupiedIndexes.Count == 2) return DealerSeatIndex;
+
+        return GetNextOccupiedSeat(DealerSeatIndex, occupiedIndexes);
+    }
+
+    private int GetBigBlindSeatIndex()
+    {
+        if (!IsHoldEmGame || DealerSeatIndex < 0) return -1;
+
+        var occupiedIndexes = Seats
+            .Where(s => s.IsOccupied)
+            .Select(s => s.SeatIndex)
+            .OrderBy(i => i)
+            .ToList();
+
+        if (occupiedIndexes.Count < 2) return -1;
+
+        var sbIndex = occupiedIndexes.Count == 2
+            ? DealerSeatIndex
+            : GetNextOccupiedSeat(DealerSeatIndex, occupiedIndexes);
+
+        return GetNextOccupiedSeat(sbIndex, occupiedIndexes);
+    }
+
+    private static int GetNextOccupiedSeat(int currentSeatIndex, List<int> occupiedIndexes)
+    {
+        var pos = occupiedIndexes.IndexOf(currentSeatIndex);
+        if (pos < 0) return -1;
+        return occupiedIndexes[(pos + 1) % occupiedIndexes.Count];
     }
 
     private string GetSeatPositionClass(int seatIndex)

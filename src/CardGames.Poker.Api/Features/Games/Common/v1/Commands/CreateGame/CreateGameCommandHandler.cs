@@ -65,6 +65,8 @@ public class CreateGameCommandHandler(CardsDbContext context, ICurrentUserServic
 			DealerPosition = 0,
 			Ante = command.IsDealersChoice ? null : command.Ante,
 			MinBet = command.IsDealersChoice ? null : command.MinBet,
+			SmallBlind = command.SmallBlind,
+			BigBlind = command.BigBlind,
 			IsDealersChoice = command.IsDealersChoice,
 			Status = GameStatus.WaitingForPlayers,
 			CurrentPlayerIndex = -1,

@@ -17,7 +17,9 @@ public partial interface IGamesApi
 public record ChooseDealerGameRequest(
 	[property: JsonPropertyName("gameTypeCode")] string GameTypeCode,
 	[property: JsonPropertyName("ante")] int Ante,
-	[property: JsonPropertyName("minBet")] int MinBet
+	[property: JsonPropertyName("minBet")] int MinBet,
+	[property: JsonPropertyName("smallBlind")] int? SmallBlind = null,
+	[property: JsonPropertyName("bigBlind")] int? BigBlind = null
 );
 
 public record ChooseDealerGameSuccessful
@@ -39,4 +41,10 @@ public record ChooseDealerGameSuccessful
 
 	[JsonPropertyName("minBet")]
 	public int MinBet { get; init; }
+
+	[JsonPropertyName("smallBlind")]
+	public int? SmallBlind { get; init; }
+
+	[JsonPropertyName("bigBlind")]
+	public int? BigBlind { get; init; }
 }

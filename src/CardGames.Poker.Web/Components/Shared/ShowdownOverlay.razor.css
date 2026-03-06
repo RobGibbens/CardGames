@@ -1,5 +1,9 @@
 /* Redesigned showdown overlay: calm, structured, and consistent with app chrome. */
 
+.showdown-overlay {
+    z-index: 2200;
+}
+
 .showdown-content {
     position: relative;
     max-width: 860px;

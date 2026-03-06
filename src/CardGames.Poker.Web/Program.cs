@@ -134,6 +134,13 @@ builder.Services
 	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"))
 	.AddHttpMessageHandler<AuthenticationStateHandler>();
 
+builder.Services
+	.AddRefitClient<IHoldEmApi>(
+		settingsAction: _ => new RefitSettings(),
+		httpClientName: "holdEmApi")
+	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"))
+	.AddHttpMessageHandler<AuthenticationStateHandler>();
+
 // Register Game API Router
 // builder.Services.AddScoped<IGameApiRouter, GameApiRouter>();
 
@@ -187,6 +194,7 @@ builder.Services.AddScoped<IGameApiClient, SevenCardStudApiClientWrapper>();
 builder.Services.AddScoped<IGameApiClient, FollowTheQueenApiClientWrapper>();
 builder.Services.AddScoped<IGameApiClient, KingsAndLowsApiClientWrapper>();
 builder.Services.AddScoped<IGameApiClient, TwosJacksManWithTheAxeApiClientWrapper>();
+builder.Services.AddScoped<IGameApiClient, HoldEmApiClientWrapper>();
 builder.Services.AddScoped<CardGames.Poker.Web.Services.IGameApiRouter, CardGames.Poker.Web.Services.GameApiRouter>();
 
 builder.Services.AddAuthentication(options =>

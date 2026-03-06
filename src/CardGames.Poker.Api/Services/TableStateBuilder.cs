@@ -1,6 +1,7 @@
 using System;
 using System.Text.Json;
 using CardGames.Contracts.SignalR;
+using CardGames.Core.Extensions;
 using CardGames.Core.French.Cards;
 using CardGames.Poker.Evaluation;
 using CardGames.Poker.Api.Data;
@@ -14,6 +15,9 @@ using CardGames.Poker.Games.GameFlow;
 using CardGames.Poker.Betting;
 using CardGames.Poker.Hands.DrawHands;
 using CardGames.Poker.Hands;
+using CardGames.Poker.Hands.CommunityCardHands;
+using CardGames.Poker.Hands.HandTypes;
+using CardGames.Poker.Hands.Strength;
 using CardGames.Poker.Hands.StudHands;
 using CardGames.Poker.Hands.WildCards;
 using Microsoft.EntityFrameworkCore;
@@ -659,7 +663,11 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			"FourthStreet",
 			"FifthStreet",
 			"SixthStreet",
-			"SeventhStreet"
+			"SeventhStreet",
+			"PreFlop",
+			"Flop",
+			"Turn",
+			"River"
 		};
 		if (!bettingPhases.Contains(game.CurrentPhase))
 		{
@@ -746,6 +754,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 		var isTwosJacksAxe = IsTwosJacksAxeGame(game.GameType?.Code);
 		var isGoodBadUgly = IsGoodBadUglyGame(game.GameType?.Code);
+		var isHoldEm = IsHoldEmGame(game.GameType?.Code);
 
 		var isSevenCardStud = IsGameType(game.GameType?.Code, PokerGameMetadataRegistry.SevenCardStudCode);
 		var isBaseball = IsBaseballGame(game.GameType?.Code);
@@ -812,6 +821,52 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 				playerHandEvaluations[gp.Player.Name] = (gbuHand, null, null, null, gp, allDisplayCards, wildIndexes,
 					GetCardIndexes(allCoreCards, gbuHand.EvaluatedBestCards));
+			}
+		}
+
+		// Hold'Em: players have 2 hole cards + 5 shared community cards → best 5-of-7
+		if (isHoldEm)
+		{
+			var holdemCommunityCards = await _context.GameCards
+				.Where(c => c.GameId == game.Id
+					&& c.HandNumber == game.CurrentHandNumber
+					&& c.Location == CardLocation.Community
+					&& c.GamePlayerId == null
+					&& !c.IsDiscarded)
+				.OrderBy(c => c.DealOrder)
+				.AsNoTracking()
+				.ToListAsync(cancellationToken);
+
+			var communityCoreCards = holdemCommunityCards
+				.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
+				.ToList();
+
+			foreach (var gp in gamePlayers.Where(p => !p.HasFolded))
+			{
+				var ownedCards = gp.Cards
+					.Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber)
+					.OrderBy(c => c.DealOrder)
+					.ToList();
+
+				var holeCoreCards = ownedCards.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol)).ToList();
+
+				if (holeCoreCards.Count < 2)
+				{
+					continue;
+				}
+
+				var holdemHand = new HoldemHand(holeCoreCards, communityCoreCards);
+
+				// Build full card list for display: hole cards first, then community cards
+				var allDisplayCards = ownedCards.ToList();
+				allDisplayCards.AddRange(holdemCommunityCards);
+				var allCoreCards = holeCoreCards.Concat(communityCoreCards).ToList();
+
+				// Find best 5-card hand from the 7 cards for highlighting
+				var bestFive = FindBestFiveCardHand(allCoreCards);
+
+				playerHandEvaluations[gp.Player.Name] = (holdemHand, null, null, null, gp, allDisplayCards, [],
+					GetCardIndexes(allCoreCards, bestFive));
 			}
 		}
 
@@ -2270,6 +2325,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	private static bool IsGoodBadUglyGame(string? gameTypeCode)
 		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.GoodBadUglyCode);
 
+	private static bool IsHoldEmGame(string? gameTypeCode)
+		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.HoldEmCode);
+
 	private static bool IsGameType(string? gameTypeCode, string expectedCode)
 		=> !string.IsNullOrWhiteSpace(gameTypeCode) &&
 		   string.Equals(gameTypeCode, expectedCode, StringComparison.OrdinalIgnoreCase);
@@ -2434,5 +2492,35 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			}
 		}
 		return indexes;
+	}
+
+	/// <summary>
+	/// Finds the best 5-card hand from a set of cards (e.g., 7 cards in Hold'Em)
+	/// by evaluating all C(n,5) combinations for the strongest hand.
+	/// </summary>
+	private static List<Card> FindBestFiveCardHand(List<Card> allCards)
+	{
+		if (allCards.Count <= 5)
+		{
+			return allCards;
+		}
+
+		var ranking = HandTypeStrengthRanking.Classic;
+		List<Card>? bestCombo = null;
+		long bestStrength = long.MinValue;
+
+		foreach (var combo in allCards.SubsetsOfSize(5))
+		{
+			var comboList = combo.ToList();
+			var handType = HandTypeDetermination.DetermineHandType(comboList);
+			var strength = HandStrength.Calculate(comboList, handType, ranking);
+			if (strength > bestStrength)
+			{
+				bestStrength = strength;
+				bestCombo = comboList;
+			}
+		}
+
+		return bestCombo ?? allCards.Take(5).ToList();
 	}
 }

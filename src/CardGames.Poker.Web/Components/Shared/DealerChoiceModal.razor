@@ -39,21 +39,37 @@
 			@if (_selectedCode is not null)
 			{
 				<div class="dealer-choice-settings animate-fade-in-up">
-					<div class="dc-setting">
-						<label for="dc-ante">Ante</label>
-						<input type="number" id="dc-ante" min="0" max="100"
-							   @bind-value="_ante" @bind-value:event="oninput" />
-					</div>
-					<div class="dc-setting">
-						<label for="dc-minbet">Min Bet</label>
-						<input type="number" id="dc-minbet" min="1" max="1000"
-							   @bind-value="_minBet" @bind-value:event="oninput" />
-					</div>
+					@if (IsBlindBasedGame(_selectedCode))
+					{
+						<div class="dc-setting">
+							<label for="dc-sb">Small Blind</label>
+							<input type="number" id="dc-sb" min="1" max="500"
+								   @bind-value="_smallBlind" @bind-value:event="oninput" />
+						</div>
+						<div class="dc-setting">
+							<label for="dc-bb">Big Blind</label>
+							<input type="number" id="dc-bb" min="1" max="1000"
+								   @bind-value="_bigBlind" @bind-value:event="oninput" />
+						</div>
+					}
+					else
+					{
+						<div class="dc-setting">
+							<label for="dc-ante">Ante</label>
+							<input type="number" id="dc-ante" min="0" max="100"
+								   @bind-value="_ante" @bind-value:event="oninput" />
+						</div>
+						<div class="dc-setting">
+							<label for="dc-minbet">Min Bet</label>
+							<input type="number" id="dc-minbet" min="1" max="1000"
+								   @bind-value="_minBet" @bind-value:event="oninput" />
+						</div>
+					}
 				</div>
 
 				<button class="btn btn-primary btn-lg dealer-choice-confirm"
 						@onclick="ConfirmChoiceAsync"
-						disabled="@(_isSubmitting || _minBet < 1)">
+						disabled="@(_isSubmitting || (IsBlindBasedGame(_selectedCode) ? _bigBlind < 1 : _minBet < 1))">
 					@if (_isSubmitting)
 					{
 						<span class="loading-spinner-small"></span>
@@ -91,6 +107,8 @@
 	private string? _selectedName;
 	private int _ante = 5;
 	private int _minBet = 10;
+	private int _smallBlind = 5;
+	private int _bigBlind = 10;
 	private bool _isSubmitting;
 	private bool _isLoading;
 	private string? _error;
@@ -115,9 +133,15 @@
 		_error = null;
 	}
 
+	private static bool IsBlindBasedGame(string? code) =>
+		string.Equals(code, "HOLDEM", StringComparison.OrdinalIgnoreCase);
+
 	private async Task ConfirmChoiceAsync()
 	{
-		if (_selectedCode is null || _minBet < 1)
+		if (_selectedCode is null)
+			return;
+
+		if (IsBlindBasedGame(_selectedCode) ? _bigBlind < 1 : _minBet < 1)
 			return;
 
 		_isSubmitting = true;
@@ -126,7 +150,14 @@
 
 		try
 		{
-			await OnGameChosen.InvokeAsync(new DealerChoiceSelection(_selectedCode, _ante, _minBet));
+			if (IsBlindBasedGame(_selectedCode))
+			{
+				await OnGameChosen.InvokeAsync(new DealerChoiceSelection(_selectedCode, 0, _bigBlind, _smallBlind, _bigBlind));
+			}
+			else
+			{
+				await OnGameChosen.InvokeAsync(new DealerChoiceSelection(_selectedCode, _ante, _minBet));
+			}
 		}
 		catch (Exception ex)
 		{
@@ -139,5 +170,5 @@
 		}
 	}
 
-	public record DealerChoiceSelection(string GameTypeCode, int Ante, int MinBet);
+	public record DealerChoiceSelection(string GameTypeCode, int Ante, int MinBet, int? SmallBlind = null, int? BigBlind = null);
 }

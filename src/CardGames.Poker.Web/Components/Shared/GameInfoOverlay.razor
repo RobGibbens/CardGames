@@ -1,0 +1,99 @@
+@namespace CardGames.Poker.Web.Components.Shared
+
+@using Microsoft.JSInterop
+
+@inject IJSRuntime JSRuntime
+
+<div id="game-info-overlay-panel" @ref="_panelRef" class="game-info-overlay-panel" role="dialog" aria-label="Table and game information">
+    <div @ref="_handleRef" class="game-info-overlay-header drag-handle">
+        <div class="game-info-overlay-title">
+            <i class="fa-solid fa-circle-info"></i>
+            <span>Game Info</span>
+        </div>
+        <button class="btn btn-link btn-sm game-info-overlay-close"
+                type="button"
+                title="Close game information"
+                aria-label="Close game information"
+                @onclick="OnClose">
+            <i class="fa-solid fa-xmark game-info-overlay-close-icon"></i>
+        </button>
+    </div>
+
+    <div class="game-info-overlay-body">
+        <div class="game-info-row">
+            <span class="game-info-label">Game</span>
+            <span class="game-info-value">@GameTypeContext</span>
+        </div>
+
+        @if (IsHoldEm)
+        {
+            <div class="game-info-row">
+                <span class="game-info-value">Blinds @SmallBlind.ToString("N0") / @BigBlind.ToString("N0")</span>
+            </div>
+        }
+        else
+        {
+            <div class="game-info-row">
+                <span class="game-info-label">Ante</span>
+                <span class="game-info-value">@Ante.ToString("N0")</span>
+            </div>
+            <div class="game-info-row">
+                <span class="game-info-label">Min Bet</span>
+                <span class="game-info-value">@MinBet.ToString("N0")</span>
+            </div>
+        }
+
+        @if (ContextItems.Count > 0)
+        {
+            <div class="game-info-context">
+                <div class="game-info-context-title">Context</div>
+                <ul class="game-info-context-list">
+                    @foreach (var item in ContextItems)
+                    {
+                        <li>@item</li>
+                    }
+                </ul>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private const string _panelStorageKey = "cardGames.panelPosition.gameInfoOverlay";
+    private ElementReference _panelRef;
+    private ElementReference _handleRef;
+    private bool _dragInitialized;
+
+    [Parameter]
+    public string GameTypeContext { get; set; } = "Unknown";
+
+    [Parameter]
+    public bool IsHoldEm { get; set; }
+
+    [Parameter]
+    public int SmallBlind { get; set; }
+
+    [Parameter]
+    public int BigBlind { get; set; }
+
+    [Parameter]
+    public int Ante { get; set; }
+
+    [Parameter]
+    public int MinBet { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<string> ContextItems { get; set; } = [];
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_dragInitialized)
+        {
+            _dragInitialized = true;
+            await JSRuntime.InvokeVoidAsync("draggablePanel.init", _panelRef, _handleRef, _panelStorageKey);
+        }
+    }
+}

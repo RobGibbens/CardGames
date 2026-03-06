@@ -1,9 +1,9 @@
 ---
-updated_at: 2026-02-24T16:42:52.090Z
-focus_area: Initial setup
+updated_at: 2026-03-06T19:33:04Z
+focus_area: TablePlay table-controls-strip UX redesign
 active_issues: []
 ---
 
 # What We're Focused On
 
-Getting started. Updated by coordinator at session start.
+Refining TablePlay UX by keeping common controls in the top strip and moving table/game metadata into a draggable overlay.

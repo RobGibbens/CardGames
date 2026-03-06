@@ -129,7 +129,19 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 					nameof(Phases.SecondBettingRound),
 					nameof(Phases.Showdown),
 					nameof(Phases.Complete),
-					nameof(Phases.WaitingForDealerChoice)
+					nameof(Phases.WaitingForDealerChoice),
+					// Hold'Em / Omaha community-card phases
+					"CollectingBlinds",
+					"PreFlop",
+					"Flop",
+					"Turn",
+					"River",
+					// Seven Card Stud street phases
+					"ThirdStreet",
+					"FourthStreet",
+					"FifthStreet",
+					"SixthStreet",
+					"SeventhStreet"
 				};
 
 		var activeGames = await context.Games

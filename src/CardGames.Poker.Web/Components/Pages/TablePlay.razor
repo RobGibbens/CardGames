@@ -31,6 +31,7 @@
 @inject IFollowTheQueenApi FollowTheQueenApi
 @inject IBaseballApi BaseballApi
 @inject IKingsAndLowsApi KingsAndLowsApi
+@inject IHoldEmApi HoldEmApi
 @inject IFiveCardDrawApi FiveCardDrawApiClient
 @inject IJSRuntime JSRuntime
 @inject IProfileApi ProfileApi
@@ -66,7 +67,7 @@
 
         @if (!_isSeated)
         {
-            <div class="d-flex align-items-center gap-2 ms-2">
+            <div class="d-flex align-items-center gap-2 ms-2 join-buy-in-controls">
                 <label class="small text-muted mb-0" for="join-buy-in">Buy-in</label>
                 <input id="join-buy-in" class="form-control form-control-sm" type="number"
                        min="@GetJoinBuyInMin()" max="@GetJoinBuyInMax()" step="@GetJoinBuyInStep()"
@@ -90,28 +91,16 @@
         <button class="btn btn-secondary btn-sm ms-2" @onclick="ToggleDealSoundMuteAsync"
                 title="@(_isDealSoundMuted ? "Unmute deal sounds" : "Mute deal sounds")">
             <i class="fa-solid @(_isDealSoundMuted ? "fa-volume-xmark" : "fa-volume-high")"></i>
-            @(_isDealSoundMuted ? "Unmute" : "Mute")
+            @(_isDealSoundMuted ? "" : "")
         </button>
 
-        <div class="table-info-strip">
-            <span class="table-name">
-                @_gameResponse?.Name
-                @if (_isDealersChoice)
-                {
-                    <span class="table-game-type"> (Dealer's Choice@(!string.IsNullOrWhiteSpace(_gameResponse?.GameTypeName) ? $" — {_gameResponse.GameTypeName}" : ""))</span>
-                }
-                else if (!string.IsNullOrWhiteSpace(_gameResponse?.GameTypeName))
-                {
-                    <span class="table-game-type"> (@_gameResponse.GameTypeName)</span>
-                }
-            </span>
-            <span class="table-blinds">
-                <span class="table-blinds-pill">
-                    <span class="table-blinds-line">Ante: @_ante</span>
-                    <span class="table-blinds-line">Min Bet: @_gameResponse?.MinBet</span>
-                </span>
-            </span>
-        </div>
+        <button class="btn btn-secondary btn-sm ms-2 game-info-toggle-btn" type="button"
+                @onclick="ToggleGameInfoOverlay"
+                title="@(_showGameInfoOverlay ? "Hide game information" : "Show game information")"
+                aria-expanded="@_showGameInfoOverlay"
+                aria-controls="game-info-overlay-panel">
+            <i class="fa-solid fa-circle-info"></i>
+        </button>
 
         <div class="table-controls-right">
             @if (!_isLoading)
@@ -143,20 +132,17 @@
                             {
                                 <button class="btn btn-secondary btn-sm" @onclick="ResumeGameAsync">
                                     <i class="fa-regular fa-play"></i>
-                                    Resume
                                 </button>
                             }
                             else
                             {
                                 <button class="btn btn-secondary btn-sm" @onclick="PauseGameAsync">
                                     <i class="fa-regular fa-pause"></i>
-                                    Pause
                                 </button>
                             }
 
                             <button class="btn btn-sm btn-end-game" @onclick="EndGameAsync">
                                 <i class="fa-solid fa-octagon"></i>
-                                End Game
                             </button>
                         }
                     </div>
@@ -168,6 +154,18 @@
             </div>
         </div>
     </div>
+
+    @if (_showGameInfoOverlay)
+    {
+        <GameInfoOverlay GameTypeContext="@GetGameInfoTypeContext()"
+                         IsHoldEm="@IsHoldEm"
+                         SmallBlind="@(_gameResponse?.SmallBlind ?? 0)"
+                         BigBlind="@(_gameResponse?.BigBlind ?? 0)"
+                         Ante="@(_gameResponse?.Ante ?? _ante)"
+                         MinBet="@(_gameResponse?.MinBet ?? 0)"
+                         ContextItems="@GetGameInfoContextItems()"
+                         OnClose="CloseGameInfoOverlay" />
+    }
 
     @if (!_isLoading)
     {
@@ -225,7 +223,8 @@
                          CurrentBetToCall="@_currentBetToCall" PlayerChips="@_playerChips"
                          MinRaise="@(_availableActions?.MinRaise ?? _currentMinBet)" OnAction="HandlePlayerActionAsync"
                          IsSubmitting="@_isSubmittingAction" ActionTimer="@_actionTimerState"
-                         HandDescription="@currentPlayerHandEvaluationDescription" />
+                         HandDescription="@currentPlayerHandEvaluationDescription"
+                         TotalPot="@_pot" />
         }
 
         <!-- Decision Panel (shown during decision phase like Drop/Stay) -->
@@ -590,6 +589,7 @@
 
     // Hand odds state
     private List<HandTypeOddsDto> handOdds = [];
+    private IReadOnlyList<CardPrivateDto> _currentPrivateHand = [];
 
     // Dashboard / Hand history state
     private List<CardGames.Contracts.SignalR.HandHistoryEntryDto> _handHistoryEntries = [];
@@ -600,6 +600,7 @@
     private List<ToastMessage> _toastMessages = [];
 
     private bool _isDealSoundMuted;
+    private bool _showGameInfoOverlay;
 
     private List<SeatInfo> _seats = [];
 
@@ -620,7 +621,8 @@
     private bool IsGoodBadUgly => string.Equals(_gameTypeCode, "GOODBADUGLY", StringComparison.OrdinalIgnoreCase);
     private bool IsFollowTheQueen => string.Equals(_gameTypeCode, "FOLLOWTHEQUEEN", StringComparison.OrdinalIgnoreCase);
     private bool IsBaseball => string.Equals(_gameTypeCode, "BASEBALL", StringComparison.OrdinalIgnoreCase);
-    private bool UsesCardDealAnimation => IsSevenCardStud || IsGoodBadUgly || IsBaseball || IsFollowTheQueen || IsFiveCardDraw || IsTwosJacksManWithTheAxe || IsKingsAndLows;
+    private bool IsHoldEm => string.Equals(_gameTypeCode, "HOLDEM", StringComparison.OrdinalIgnoreCase);
+    private bool UsesCardDealAnimation => IsSevenCardStud || IsGoodBadUgly || IsBaseball || IsFollowTheQueen || IsFiveCardDraw || IsTwosJacksManWithTheAxe || IsKingsAndLows || IsHoldEm;
     private int DealAnimationDelayMs => 750;
 
     // Game rules for dynamic UI rendering
@@ -1215,6 +1217,11 @@
         _isSeated = _currentPlayerSeatIndex >= 0;
         _isReady = _isSeated && _seats[_currentPlayerSeatIndex].IsReady;
 
+        if (_currentPrivateHand.Count > 0)
+        {
+            CalculateHandOdds(_currentPrivateHand);
+        }
+
         // Redirect if the player requested to leave and is no longer seated (hand completed)
         if (_hasRequestedLeave && !_isSeated)
         {
@@ -1233,6 +1240,8 @@
         {
             return;
         }
+
+        _currentPrivateHand = state.Hand;
 
         Logger.LogDebug("Received private state update for player {PlayerName} at seat {SeatPosition}",
         state.PlayerName, state.SeatPosition);
@@ -2370,6 +2379,17 @@
                 return;
             }
         }
+        else if (IsHoldEm)
+        {
+            // Hold'Em start handles blinds + deal in a single call
+            var startResponse = await HoldEmApi.HoldEmStartHandAsync(GameId);
+            if (!startResponse.IsSuccessStatusCode)
+            {
+                Logger.LogWarning("Failed to start Hold'Em hand: {StatusCode}", startResponse.StatusCode);
+                await ShowToastAsync("Failed to start game. Please try again.", "error");
+                return;
+            }
+        }
         else if (IsKingsAndLows)
         {
             // Kings and Lows has a simpler flow - StartHand handles ante collection and dealing
@@ -2458,6 +2478,10 @@
         else if (IsKingsAndLows)
         {
             showdownResponse = await KingsAndLowsApi.KingsAndLowsPerformShowdownAsync(GameId);
+        }
+        else if (IsHoldEm)
+        {
+            showdownResponse = await HoldEmApi.HoldEmPerformShowdownAsync(GameId);
         }
         else
         {
@@ -2875,6 +2899,83 @@
         {
             Logger.LogDebug(ex, "Unable to toggle deal-card sound mute state");
         }
+    }
+
+    private void ToggleGameInfoOverlay()
+    {
+        _showGameInfoOverlay = !_showGameInfoOverlay;
+    }
+
+    private void CloseGameInfoOverlay()
+    {
+        _showGameInfoOverlay = false;
+    }
+
+    private string GetGameInfoTypeContext()
+    {
+        var gameTypeName = _tableState?.GameTypeName;
+        if (string.IsNullOrWhiteSpace(gameTypeName))
+        {
+            gameTypeName = _gameResponse?.GameTypeName;
+        }
+
+        if (_isDealersChoice)
+        {
+            return string.IsNullOrWhiteSpace(gameTypeName)
+                ? "Dealer's Choice"
+                : $"Dealer's Choice — {gameTypeName}";
+        }
+
+        return string.IsNullOrWhiteSpace(gameTypeName)
+            ? (_gameTypeCode ?? "Unknown")
+            : gameTypeName;
+    }
+
+    private IReadOnlyList<string> GetGameInfoContextItems()
+    {
+        var contextItems = new List<string>();
+
+        if (_gameResponse?.CurrentHandNumber > 0)
+        {
+            contextItems.Add($"Hand: {_gameResponse.CurrentHandNumber}");
+        }
+
+        var phaseDescription = _tableState?.CurrentPhaseDescription ?? _gameResponse?.CurrentPhaseDescription;
+        if (!string.IsNullOrWhiteSpace(phaseDescription))
+        {
+            contextItems.Add($"Phase: {phaseDescription}");
+        }
+
+        if (_isDealersChoice)
+        {
+            var dealersChoiceDealer = GetDealersChoiceDealerName();
+            if (!string.IsNullOrWhiteSpace(dealersChoiceDealer))
+            {
+                contextItems.Add($"Dealer's Choice dealer: {dealersChoiceDealer}");
+            }
+        }
+
+        var drawingSpecialRules = GetDrawingSpecialRules();
+        if (!string.IsNullOrWhiteSpace(drawingSpecialRules))
+        {
+            contextItems.Add($"Draw rules: {drawingSpecialRules}");
+        }
+
+        if (HasWildCards)
+        {
+            var wildCardLabels = GetWildCardsForDisplay()
+                .Select(wildCard => wildCard.Label)
+                .Where(label => !string.IsNullOrWhiteSpace(label))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (wildCardLabels.Count > 0)
+            {
+                contextItems.Add($"Wild cards: {string.Join(", ", wildCardLabels)}");
+            }
+        }
+
+        return contextItems;
     }
 
     private void CompleteCardDealAnimation()
@@ -3680,6 +3781,13 @@
                 return;
             }
 
+            var communityCards = _tableState?.CommunityCards?
+                .Where(c => c.IsFaceUp && c.Rank is not null && c.Suit is not null)
+                .Select(c => ConvertToCard(c.Rank!, c.Suit!))
+                .Where(c => c is not null)
+                .Cast<Card>()
+                .ToList() ?? [];
+
             // Get dead cards from folded players' visible cards
             var deadCards = _seats
             .Where(s => s.IsFolded && s.Cards.Any())
@@ -3690,32 +3798,15 @@
             .Cast<Card>()
             .ToList();
 
-            OddsCalculator.OddsResult? result;
-            if (IsTwosJacksManWithTheAxe)
-            {
-                result = OddsCalculator.CalculateTwosJacksManWithTheAxeDrawOdds(coreCards, deadCards);
-            }
-            else if (IsSevenCardStud)
-            {
-                result = OddsCalculator.CalculateStudOdds(coreCards, deadCards);
-            }
-            else if (IsBaseball)
-            {
-                var holeCards = coreCards.Take(2).ToList();
-                var boardCards = coreCards.Skip(2).ToList();
-                var totalCards = Math.Max(7, coreCards.Count);
-                result = OddsCalculator.CalculateBaseballOdds(holeCards, boardCards, totalCards, deadCards);
-            }
-            else if (IsKingsAndLows)
-            {
-                result = OddsCalculator.CalculateKingsAndLowsDrawOdds(coreCards, deadCards);
-            }
-            else
-            {
-                result = OddsCalculator.CalculateDrawOdds(coreCards, deadCards);
-            }
+            var result = DashboardHandOddsCalculator.Calculate(
+                _gameTypeCode,
+                coreCards,
+                communityCards,
+                deadCards);
 
-            handOdds = ConvertToHandTypeOddsDtos(result);
+            handOdds = result is null
+                ? []
+                : ConvertToHandTypeOddsDtos(result);
         }
         catch (Exception ex)
         {
@@ -4385,7 +4476,7 @@ HandType.HighCard
     {
         try
         {
-            var request = new ChooseDealerGameRequest(selection.GameTypeCode, selection.Ante, selection.MinBet);
+            var request = new ChooseDealerGameRequest(selection.GameTypeCode, selection.Ante, selection.MinBet, selection.SmallBlind, selection.BigBlind);
             var response = await GamesApiClient.ChooseDealerGameAsync(GameId, request);
             if (response is { IsSuccessStatusCode: true, Content: not null })
             {

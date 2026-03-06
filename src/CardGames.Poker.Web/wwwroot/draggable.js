@@ -1,24 +1,30 @@
 window.draggablePanel = {
     _storageKey: 'cardGames.panelPosition',
 
+    _getStorageKey(storageKey) {
+        return storageKey || this._storageKey;
+    },
+
     /**
      * Initialise drag behaviour on a panel element.
-     * @param {HTMLElement} panel   The panel to make draggable (position:fixed).
-     * @param {HTMLElement} handle  The drag-handle element (usually the header bar).
+     * @param {HTMLElement} panel      The panel to make draggable (position:fixed).
+     * @param {HTMLElement} handle     The drag-handle element (usually the header bar).
+     * @param {string} [storageKey]    Optional localStorage key for panel position persistence.
      */
-    init(panel, handle) {
+    init(panel, handle, storageKey) {
         if (!panel || !handle) return;
         if (panel._draggableInit) return;   // prevent double-init
         panel._draggableInit = true;
 
         const self = this;
+        const panelStorageKey = self._getStorageKey(storageKey);
         let dragging = false;
         let startX, startY, startLeft, startTop;
 
         // Try to restore a previously saved position.
         function restoreSavedPosition() {
             try {
-                const raw = window.localStorage.getItem(self._storageKey);
+                const raw = window.localStorage.getItem(panelStorageKey);
                 if (!raw) return false;
                 const pos = JSON.parse(raw);
                 if (typeof pos.left !== 'number' || typeof pos.top !== 'number') return false;
@@ -40,7 +46,7 @@ window.draggablePanel = {
             try {
                 const rect = panel.getBoundingClientRect();
                 window.localStorage.setItem(
-                    self._storageKey,
+                    panelStorageKey,
                     JSON.stringify({ left: rect.left, top: rect.top })
                 );
             } catch { /* ignore storage failures */ }

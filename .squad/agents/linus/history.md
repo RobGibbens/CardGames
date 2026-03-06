@@ -42,3 +42,27 @@
   - Ante/min bet in info strip update per hand from SignalR state for DC tables.
   - 60-second dealer timeout with server auto-fallback to previous hand's game type.
   - Key files analyzed: `CreateTable.razor`, `TablePlay.razor`, `GameHubClient.cs`, `TableStatePublicDto.cs`, `ShowdownOverlay.razor`.
+
+- 2026-03-05: Implemented PRD Phase 2 items 4.8, 4.9, 4.10, 4.12 for Texas Hold 'Em visual enhancements:
+  - **4.8 Community Card Labels**: Extended `GetCommunityCardLabel()` in `TableCanvas.razor` to return Flop/Turn/River labels for HOLDEM games; added `.holdem` CSS class to community-cards div; added `margin-left: 0.75rem` gap for turn/river cards via `nth-child(n+4)`.
+  - **4.9 SB/BB Position Indicators**: Added `IsSmallBlind`/`IsBigBlind` parameters to `TableSeat.razor`; computed blind seat indexes in `TableCanvas.razor` from dealer position + occupied seats (with heads-up rule); styled as 28px radial-gradient badges (blue for SB, red for BB) in `TableSeat.razor.css`.
+  - **4.10 Street Progress Indicator**: Added horizontal breadcrumb bar above `table-center-row` showing Pre-Flop/Flop/Turn/River/Showdown phases with current/past highlighting; only visible for HOLDEM games.
+  - **4.12 Community Card Deal Animation**: Added `community-card-fly-in` keyframe animation with staggered delays per card slot; scoped to `.community-cards.holdem` parent to avoid breaking GBU display.
+  - All changes are CSS + Blazor parameter-driven; no game rules moved into UI logic.
+  - Key files: `TableCanvas.razor`, `TableSeat.razor`, `TableSeat.razor.css`, `app.css`.
+  - `IsHoldEmGame` computed property gates all Hold'Em-specific rendering.
+
+- 2026-03-06: Reviewed `TablePlay.razor` controls strip architecture for redesign planning. Current strip mixes common actions, join buy-in controls, table metadata, host controls, and connection status in a single horizontal container (`.table-controls-strip`), which creates density and wrapping issues on small screens.
+- 2026-03-06: Confirmed existing draggable overlay pattern consistency via `DrawPanel.razor` and `DropOrStayOverlay.razor` (`draggablePanel.init` + `drag-handle`) and identified this as the lowest-friction pattern to reuse for table/game metadata.
+- 2026-03-06: Noted table info styling debt in `wwwroot/app.css` (`.table-blinds-pill` and `.table-blinds-line`) with hard-coded yellow/red colors and global placement near file top, contributing to visual inconsistency in the strip.
+- 2026-03-06: Recommended MVP direction: keep strip focused on common controls and move full table/game metadata (title, game type, ante/SB/BB/min bet, game-specific rule fields) into a draggable metadata overlay component aligned with DrawPanel/DropOrStay interaction patterns.
+- 2026-03-06 (team update): Linus/Tess table-controls-strip alternatives were merged into canonical `.squad/decisions.md` as one deduped decision; decision inbox entries were cleared.
+- 2026-03-06: Implemented Option 2 in `TablePlay.razor` by removing inline metadata from `table-controls-strip`, adding an accessible `Game Info` toggle (`aria-expanded` + title), and introducing draggable `GameInfoOverlay` in `Components/Shared` using existing `draggablePanel.init` pattern. Overlay now surfaces table name, game type/Dealer's Choice context, Hold'Em SB/BB or non-Hold'Em ante/min bet, plus available state-driven context (hand/phase, Dealer's Choice dealer, draw rules, wild cards) without new backend calls.
+- 2026-03-06 (team update): Option 2 implementation completion decision was merged from `.squad/decisions/inbox/linus-option2-implementation.md` into canonical `.squad/decisions.md`; inbox item cleared.
+- 2026-03-06: Completed focused narrow-screen polish pass for Option 2 top controls + Game Info overlay.
+  - Added a scoped class hook (`join-buy-in-controls`) in `TablePlay.razor` only for responsive targeting; no behavior or feature changes.
+  - In `wwwroot/app.css`, reduced strip crowding on tablet/phone by neutralizing bootstrap `ms-2` offsets in the strip at narrow widths, allowing buy-in controls to wrap as one grouped row, and tightening spacing rhythm.
+  - Preserved host-control readability on narrow screens with stronger wrap behavior and minimum button footprint; retained existing actions and host gating exactly as-is.
+  - Kept connection indicator visible/stable by making right-side layout grid-based on mobile with a dedicated indicator slot.
+  - In `GameInfoOverlay.razor.css`, improved small-screen usability via viewport-bounded panel/body heights, internal scrolling, safer text wrapping, and stacked key/value rows on very small phones.
+  - Validation: `dotnet build src/CardGames.Poker.Web/CardGames.Poker.Web.csproj` succeeded (warnings only, pre-existing).

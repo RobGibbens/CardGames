@@ -91,6 +91,7 @@ public struct Unit { }
 public class GameApiRouter : IGameApiRouter
 {
     private static readonly StringComparer GameCodeComparer = StringComparer.OrdinalIgnoreCase;
+    private const string HoldEm = "HOLDEM";
     private const string TwosJacksManWithTheAxe = "TWOSJACKSMANWITHTHEAXE";
     private const string KingsAndLows = "KINGSANDLOWS";
     private const string SevenCardStud = "SEVENCARDSTUD";
@@ -105,6 +106,7 @@ public class GameApiRouter : IGameApiRouter
     private readonly IGoodBadUglyApi _goodBadUglyApi;
     private readonly IBaseballApi _baseballApi;
     private readonly IFollowTheQueenApi _followTheQueenApi;
+    private readonly IHoldEmApi _holdEmApi;
     private readonly Dictionary<string, Func<Guid, ProcessBettingActionRequest, Task<RouterResponse<ProcessBettingActionSuccessful>>>> _bettingActionRoutes;
     private readonly Dictionary<string, Func<Guid, Guid, List<int>, Task<RouterResponse<ProcessDrawResult>>>> _drawRoutes;
     private readonly Dictionary<string, Func<Guid, DropOrStayRequest, Task<RouterResponse<Unit>>>> _dropOrStayRoutes;
@@ -118,7 +120,8 @@ public class GameApiRouter : IGameApiRouter
         ISevenCardStudApi sevenCardStudApi,
         IGoodBadUglyApi goodBadUglyApi,
         IBaseballApi baseballApi,
-        IFollowTheQueenApi followTheQueenApi)
+        IFollowTheQueenApi followTheQueenApi,
+        IHoldEmApi holdEmApi)
     {
         _fiveCardDrawApi = fiveCardDrawApi;
         _twosJacksManWithTheAxeApi = twosJacksManWithTheAxeApi;
@@ -127,9 +130,11 @@ public class GameApiRouter : IGameApiRouter
         _goodBadUglyApi = goodBadUglyApi;
         _baseballApi = baseballApi;
         _followTheQueenApi = followTheQueenApi;
+        _holdEmApi = holdEmApi;
 
         _bettingActionRoutes = new Dictionary<string, Func<Guid, ProcessBettingActionRequest, Task<RouterResponse<ProcessBettingActionSuccessful>>>>(GameCodeComparer)
         {
+            [HoldEm] = RouteHoldEmBettingActionAsync,
             [TwosJacksManWithTheAxe] = RouteTwosJacksManWithTheAxeBettingActionAsync,
             [SevenCardStud] = RouteSevenCardStudBettingActionAsync,
             [GoodBadUgly] = RouteGoodBadUglyBettingActionAsync,
@@ -139,6 +144,7 @@ public class GameApiRouter : IGameApiRouter
 
         _drawRoutes = new Dictionary<string, Func<Guid, Guid, List<int>, Task<RouterResponse<ProcessDrawResult>>>>(GameCodeComparer)
         {
+            [HoldEm] = RouteHoldEmDrawAsync,
             [TwosJacksManWithTheAxe] = RouteTwosJacksManWithTheAxeDrawAsync,
             [KingsAndLows] = RouteKingsAndLowsDrawAsync
         };
@@ -240,6 +246,14 @@ public class GameApiRouter : IGameApiRouter
     private async Task<RouterResponse<ProcessBettingActionSuccessful>> RouteFollowTheQueenBettingActionAsync(Guid gameId, ProcessBettingActionRequest request)
         => RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
             await _followTheQueenApi.FollowTheQueenProcessBettingActionAsync(gameId, request));
+
+    private async Task<RouterResponse<ProcessBettingActionSuccessful>> RouteHoldEmBettingActionAsync(Guid gameId, ProcessBettingActionRequest request)
+        => RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
+            await _holdEmApi.HoldEmProcessBettingActionAsync(gameId, request));
+
+    private Task<RouterResponse<ProcessDrawResult>> RouteHoldEmDrawAsync(Guid gameId, Guid playerId, List<int> discardIndices)
+        => Task.FromResult(
+            RouterResponse<ProcessDrawResult>.Failure("Draw phase not supported for Texas Hold'Em.", HttpStatusCode.BadRequest));
 
     private async Task<RouterResponse<ProcessDrawResult>> RouteTwosJacksManWithTheAxeDrawAsync(Guid gameId, Guid playerId, List<int> discardIndices)
     {

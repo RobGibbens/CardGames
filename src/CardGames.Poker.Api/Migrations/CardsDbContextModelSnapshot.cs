@@ -251,6 +251,9 @@ namespace CardGames.Poker.Api.Migrations
                     b.Property<int>("Ante")
                         .HasColumnType("int");
 
+                    b.Property<int?>("BigBlind")
+                        .HasColumnType("int");
+
                     b.Property<DateTimeOffset>("ChosenAtUtc")
                         .HasColumnType("datetimeoffset");
 
@@ -277,6 +280,9 @@ namespace CardGames.Poker.Api.Migrations
                         .HasColumnType("int");
 
                     b.Property<int>("MinBet")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("SmallBlind")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
