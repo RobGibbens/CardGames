@@ -165,6 +165,7 @@
 
 @code {
     private const int DefaultTimerDurationSeconds = 60;
+    private const string PanelStorageKey = "cardGames.panelPosition.drawPanel";
     private string? _autoActionTimerKey;
     private bool _isAutoActionInFlight;
     private string? _lastCardsKey;
@@ -179,7 +180,7 @@
         if (!_dragInitialized)
         {
             _dragInitialized = true;
-            await JSRuntime.InvokeVoidAsync("draggablePanel.init", _panelRef, _handleRef);
+            await JSRuntime.InvokeVoidAsync("draggablePanel.init", _panelRef, _handleRef, PanelStorageKey);
         }
     }
 

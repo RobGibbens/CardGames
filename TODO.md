@@ -4,6 +4,7 @@ Cash
 ## Still to do
 
 - [ ] https://github.com/leeoades/FunctionalStateMachine
+- [ ] When joining any game, choose how many chips to bring in. Also be able to bring in more chips from your bank account.
 
 ### Leagues
 
@@ -172,3 +173,5 @@ Cash
 - [x] Kings and Lows - Things happen too fast
 - [x] Add sound effects
 - [x] Games with community cards (Hold Em, GBU) odds are wrong
+- [x] Put the GameInfoOverlay under the ShowdownOverlay
+- [x] Better contrast on the GameInfoOverlay close button

@@ -39,24 +39,6 @@
     --transition-slow: 0.5s ease;
 }
 
-/* ===== Table Play Info Strip ===== */
-.table-blinds-pill {
-    display: inline-flex;
-    flex-direction: column;
-    gap: 2px;
-    padding: 6px 10px;
-    background-color: #fbbf24;
-    border: 1px solid red;
-    border-radius: 10px;
-    line-height: 1.1;
-}
-
-.table-blinds-line {
-    display: block;
-    white-space: nowrap;
-    color:black;
-}
-
 /* ===== Table Play Action Panel ===== */
 /*
    NOTE: `.action-panel` is used by the Table Play page.
@@ -3375,7 +3357,9 @@ a:hover {
 .table-controls-strip {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 0.5rem;
     padding: 0.75rem 1.5rem;
     background: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(10px);
@@ -3394,41 +3378,20 @@ a:hover {
     border-color: var(--primary);
 }
 
-.table-info-strip {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 0.25rem;
+.game-info-toggle-btn {
+    white-space: nowrap;
 }
 
-.table-name {
-    display: inline-flex;
-    align-items: baseline;
-}
-
-.table-blinds {
-    display: inline-flex;
-    align-items: center;
-    margin-left: 0.5rem;
-    font-size: 0.75rem;
-    color: rgba(255, 255, 255, 0.6);
-}
-
-.table-name {
-    font-size: 1.125rem;
-    font-weight: 700;
-    color: white;
-}
-.table-game-type {
-    font-size: 1.125rem;
-    font-weight: 700;
-    color: white;
+.join-buy-in-controls {
+    min-width: 0;
+    flex-wrap: wrap;
 }
 
 .table-controls-right {
     display: flex;
     align-items: center;
     gap: 1rem;
+    margin-left: auto;
 }
 
 .host-controls {
@@ -3439,6 +3402,9 @@ a:hover {
 .connection-indicator {
     width: 12px;
     height: 12px;
+    min-width: 12px;
+    min-height: 12px;
+    flex: 0 0 auto;
     border-radius: 50%;
     position: relative;
 }
@@ -4787,14 +4753,6 @@ a:hover {
         padding: 0.5rem 1rem;
     }
 
-    .table-name {
-        font-size: 1rem;
-    }
-
-    .table-blinds {
-        font-size: 0.7rem;
-    }
-
     .table-play-area {
         padding: 1rem;
     }
@@ -4857,20 +4815,72 @@ a:hover {
     }
 }
 
+@media (max-width: 1024px) {
+    .table-controls-strip {
+        gap: 0.45rem 0.5rem;
+    }
+
+    .table-controls-strip .ms-2 {
+        margin-left: 0 !important;
+    }
+
+    .join-buy-in-controls {
+        width: 100%;
+        align-items: center;
+        gap: 0.35rem 0.5rem;
+        margin-left: 0 !important;
+    }
+
+    .join-buy-in-controls #join-buy-in {
+        width: 98px !important;
+    }
+
+    .join-buy-in-controls .small.text-muted {
+        font-size: 0.72rem;
+        line-height: 1.2;
+    }
+
+    .join-buy-in-controls .btn.btn-link {
+        padding-top: 0;
+        padding-bottom: 0;
+        white-space: normal;
+        text-align: left;
+    }
+
+    .host-controls .btn,
+    .host-controls a.btn {
+        white-space: nowrap;
+    }
+}
+
 @media (max-width: 768px) {
     .table-controls-strip {
         padding: 0.5rem 1rem;
         flex-wrap: wrap;
+        align-items: flex-start;
         gap: 0.5rem;
     }
 
-    .table-info-strip {
-        order: -1;
+    .table-controls-right {
         width: 100%;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: start;
+        gap: 0.45rem 0.5rem;
+        margin-left: 0;
     }
 
     .host-controls {
+        min-width: 0;
+        display: flex;
         flex-wrap: wrap;
+        gap: 0.4rem;
+        justify-content: flex-start;
+    }
+
+    .connection-indicator {
+        justify-self: end;
+        align-self: center;
     }
 
     .table-canvas {
@@ -4944,6 +4954,25 @@ a:hover {
 }
 
 @media (max-width: 480px) {
+    .table-controls-strip {
+        padding: 0.45rem 0.75rem;
+        gap: 0.4rem;
+    }
+
+    .host-controls .btn,
+    .host-controls a.btn {
+        flex: 1 1 120px;
+        justify-content: center;
+    }
+
+    .join-buy-in-controls {
+        align-items: flex-start;
+    }
+
+    .join-buy-in-controls .small.text-muted {
+        flex-basis: 100%;
+    }
+
     .table-seat {
         width: 80px;
     }

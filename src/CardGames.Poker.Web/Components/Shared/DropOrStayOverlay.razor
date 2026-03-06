@@ -106,6 +106,7 @@
 
 @code {
     private const int DefaultTimerDurationSeconds = 30;
+    private const string PanelStorageKey = "cardGames.panelPosition.dropOrStayOverlay";
     private string? _autoActionTimerKey;
     private bool _isAutoActionInFlight;
 
@@ -118,7 +119,7 @@
         if (!_dragInitialized)
         {
             _dragInitialized = true;
-            await JSRuntime.InvokeVoidAsync("draggablePanel.init", _panelRef, _handleRef);
+            await JSRuntime.InvokeVoidAsync("draggablePanel.init", _panelRef, _handleRef, PanelStorageKey);
         }
     }
 

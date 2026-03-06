@@ -67,7 +67,7 @@
 
         @if (!_isSeated)
         {
-            <div class="d-flex align-items-center gap-2 ms-2">
+            <div class="d-flex align-items-center gap-2 ms-2 join-buy-in-controls">
                 <label class="small text-muted mb-0" for="join-buy-in">Buy-in</label>
                 <input id="join-buy-in" class="form-control form-control-sm" type="number"
                        min="@GetJoinBuyInMin()" max="@GetJoinBuyInMax()" step="@GetJoinBuyInStep()"
@@ -91,36 +91,16 @@
         <button class="btn btn-secondary btn-sm ms-2" @onclick="ToggleDealSoundMuteAsync"
                 title="@(_isDealSoundMuted ? "Unmute deal sounds" : "Mute deal sounds")">
             <i class="fa-solid @(_isDealSoundMuted ? "fa-volume-xmark" : "fa-volume-high")"></i>
-            @(_isDealSoundMuted ? "Unmute" : "Mute")
+            @(_isDealSoundMuted ? "" : "")
         </button>
 
-        <div class="table-info-strip">
-            <span class="table-name">
-                @_gameResponse?.Name
-                @if (_isDealersChoice)
-                {
-                    <span class="table-game-type"> (Dealer's Choice@(!string.IsNullOrWhiteSpace(_gameResponse?.GameTypeName) ? $" — {_gameResponse.GameTypeName}" : ""))</span>
-                }
-                else if (!string.IsNullOrWhiteSpace(_gameResponse?.GameTypeName))
-                {
-                    <span class="table-game-type"> (@_gameResponse.GameTypeName)</span>
-                }
-            </span>
-            <span class="table-blinds">
-                <span class="table-blinds-pill">
-                    @if (IsHoldEm)
-                    {
-                        <span class="table-blinds-line">SB: @(_gameResponse?.SmallBlind ?? 0)</span>
-                        <span class="table-blinds-line">BB: @(_gameResponse?.BigBlind ?? 0)</span>
-                    }
-                    else
-                    {
-                        <span class="table-blinds-line">Ante: @_ante</span>
-                        <span class="table-blinds-line">Min Bet: @_gameResponse?.MinBet</span>
-                    }
-                </span>
-            </span>
-        </div>
+        <button class="btn btn-secondary btn-sm ms-2 game-info-toggle-btn" type="button"
+                @onclick="ToggleGameInfoOverlay"
+                title="@(_showGameInfoOverlay ? "Hide game information" : "Show game information")"
+                aria-expanded="@_showGameInfoOverlay"
+                aria-controls="game-info-overlay-panel">
+            <i class="fa-solid fa-circle-info"></i>
+        </button>
 
         <div class="table-controls-right">
             @if (!_isLoading)
@@ -152,20 +132,17 @@
                             {
                                 <button class="btn btn-secondary btn-sm" @onclick="ResumeGameAsync">
                                     <i class="fa-regular fa-play"></i>
-                                    Resume
                                 </button>
                             }
                             else
                             {
                                 <button class="btn btn-secondary btn-sm" @onclick="PauseGameAsync">
                                     <i class="fa-regular fa-pause"></i>
-                                    Pause
                                 </button>
                             }
 
                             <button class="btn btn-sm btn-end-game" @onclick="EndGameAsync">
                                 <i class="fa-solid fa-octagon"></i>
-                                End Game
                             </button>
                         }
                     </div>
@@ -177,6 +154,18 @@
             </div>
         </div>
     </div>
+
+    @if (_showGameInfoOverlay)
+    {
+        <GameInfoOverlay GameTypeContext="@GetGameInfoTypeContext()"
+                         IsHoldEm="@IsHoldEm"
+                         SmallBlind="@(_gameResponse?.SmallBlind ?? 0)"
+                         BigBlind="@(_gameResponse?.BigBlind ?? 0)"
+                         Ante="@(_gameResponse?.Ante ?? _ante)"
+                         MinBet="@(_gameResponse?.MinBet ?? 0)"
+                         ContextItems="@GetGameInfoContextItems()"
+                         OnClose="CloseGameInfoOverlay" />
+    }
 
     @if (!_isLoading)
     {
@@ -611,6 +600,7 @@
     private List<ToastMessage> _toastMessages = [];
 
     private bool _isDealSoundMuted;
+    private bool _showGameInfoOverlay;
 
     private List<SeatInfo> _seats = [];
 
@@ -2909,6 +2899,83 @@
         {
             Logger.LogDebug(ex, "Unable to toggle deal-card sound mute state");
         }
+    }
+
+    private void ToggleGameInfoOverlay()
+    {
+        _showGameInfoOverlay = !_showGameInfoOverlay;
+    }
+
+    private void CloseGameInfoOverlay()
+    {
+        _showGameInfoOverlay = false;
+    }
+
+    private string GetGameInfoTypeContext()
+    {
+        var gameTypeName = _tableState?.GameTypeName;
+        if (string.IsNullOrWhiteSpace(gameTypeName))
+        {
+            gameTypeName = _gameResponse?.GameTypeName;
+        }
+
+        if (_isDealersChoice)
+        {
+            return string.IsNullOrWhiteSpace(gameTypeName)
+                ? "Dealer's Choice"
+                : $"Dealer's Choice — {gameTypeName}";
+        }
+
+        return string.IsNullOrWhiteSpace(gameTypeName)
+            ? (_gameTypeCode ?? "Unknown")
+            : gameTypeName;
+    }
+
+    private IReadOnlyList<string> GetGameInfoContextItems()
+    {
+        var contextItems = new List<string>();
+
+        if (_gameResponse?.CurrentHandNumber > 0)
+        {
+            contextItems.Add($"Hand: {_gameResponse.CurrentHandNumber}");
+        }
+
+        var phaseDescription = _tableState?.CurrentPhaseDescription ?? _gameResponse?.CurrentPhaseDescription;
+        if (!string.IsNullOrWhiteSpace(phaseDescription))
+        {
+            contextItems.Add($"Phase: {phaseDescription}");
+        }
+
+        if (_isDealersChoice)
+        {
+            var dealersChoiceDealer = GetDealersChoiceDealerName();
+            if (!string.IsNullOrWhiteSpace(dealersChoiceDealer))
+            {
+                contextItems.Add($"Dealer's Choice dealer: {dealersChoiceDealer}");
+            }
+        }
+
+        var drawingSpecialRules = GetDrawingSpecialRules();
+        if (!string.IsNullOrWhiteSpace(drawingSpecialRules))
+        {
+            contextItems.Add($"Draw rules: {drawingSpecialRules}");
+        }
+
+        if (HasWildCards)
+        {
+            var wildCardLabels = GetWildCardsForDisplay()
+                .Select(wildCard => wildCard.Label)
+                .Where(label => !string.IsNullOrWhiteSpace(label))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (wildCardLabels.Count > 0)
+            {
+                contextItems.Add($"Wild cards: {string.Join(", ", wildCardLabels)}");
+            }
+        }
+
+        return contextItems;
     }
 
     private void CompleteCardDealAnimation()

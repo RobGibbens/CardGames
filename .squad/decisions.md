@@ -748,3 +748,31 @@ EF migration `AddDealersChoice` cannot be generated until these are fixed. These
 **Requested by:** Rob Gibbens
 **What:** Added/validated regression coverage for known Hold'em flop scenario (`8c Kh` with flop `7d Kc Jc`) and community-aware dashboard calculator behavior; documented follow-up quality risks: blind `CurrentBet` reset ordering, blind-post pot-precreation dependency, missing turn/river integration path coverage, and fold-validation coupling in fold-to-win tests.
 **Why:** Locks in the reported regression and preserves concrete backend/testing follow-ups for Hold'Em betting/phase reliability.
+
+### 2026-03-06: TablePlay table-controls-strip IA direction (deduped)
+**By:** Linus (Frontend Dev), Tess (Graphic Designer)
+**Requested by:** Rob Gibbens
+**What:** Consolidated agent recommendations to keep `table-controls-strip` focused on common high-frequency controls (leave, seat-state action, sound toggle, host runtime controls, compact connection status) and move table/game metadata into a draggable overlay panel opened from a strip info control.
+**Why:** Separates action controls from descriptive context, reduces strip clutter/wrapping, and reuses the existing draggable overlay interaction pattern already used in gameplay UI.
+
+**Merged sources:**
+- `.squad/decisions/inbox/linus-table-controls-strip.md`
+- `.squad/decisions/inbox/tess-table-controls-strip.md`
+
+### 2026-03-06: TablePlay Option 2 implementation completion (action-first strip + Game Info overlay)
+**By:** Linus (Frontend Dev)
+**Requested by:** Rob Gibbens
+**What:** Implemented Option 2 by keeping `table-controls-strip` action-first and moving table/game metadata into a dedicated draggable overlay panel opened by a single `Game Info` button. Removed inline metadata from the strip and reused existing draggable interaction patterns for the overlay component.
+**Why:** Preserves high-frequency gameplay controls in the strip while exposing richer contextual metadata on demand without adding strip clutter.
+
+**Merged source:**
+- `.squad/decisions/inbox/linus-option2-implementation.md`
+
+### 2026-03-06: Option 2 narrow-screen controls/overlay polish
+**By:** Linus (Frontend Dev)
+**Requested by:** Rob Gibbens
+**What:** Applied a CSS-first responsive polish to the TablePlay top controls strip and Game Info overlay for tablet/phone widths, preserving all existing behavior and control set. Added one minimal markup hook (`join-buy-in-controls`) in `TablePlay.razor` to robustly target buy-in row wrapping without changing interaction logic.
+**Why:** After Option 2 rollout, narrow widths showed crowding and awkward wraps among Leave/Sit Out/Mute/Game Info/host controls. The pass improves readability and stability while keeping scope constrained to presentation and alignment.
+
+**Merged source:**
+- `.squad/decisions/inbox/linus-option2-narrow-screen-polish.md`
