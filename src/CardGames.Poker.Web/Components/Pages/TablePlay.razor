@@ -652,11 +652,16 @@
     private bool IsBuyCardOfferPhase =>
     string.Equals(_tableState?.CurrentPhase, "BuyCardOffer", StringComparison.OrdinalIgnoreCase);
 
+    private bool IsCurrentPlayerBuyCardDecisionMaker =>
+    _currentPlayerSeatIndex >= 0 &&
+    _currentPlayerSeatIndex == (_tableState?.CurrentActorSeatIndex ?? -1);
+
     private bool ShouldShowBuyCardOverlay =>
     IsBuyCardOfferPhase &&
+    IsCurrentPlayerBuyCardDecisionMaker &&
     _buyCardOffer is not null &&
     IsParticipatingInHand &&
-    IsBuyCardTriggerCardVisible() &&
+    (IsBuyCardTriggerCardVisible() || _dealAnimationPausedForBuyCardOffer) &&
     (!IsCardDealingVisualInProgress || _dealAnimationPausedForBuyCardOffer);
 
     private bool IsCardDealingVisualInProgress =>
@@ -1487,28 +1492,64 @@
                 existingCards.Count, existingCards.Count(c => c.IsFaceUp),
                 shouldPreserveCards, publicSeat.Cards.Count, publicSeat.IsSittingOut, isInRunoutAnimation, _dealAnimationInProgress);
 
-                var cards = shouldPreserveCards
-                ? existingCards.Select(c => c with { IsWild = IsWildCard(c.Rank, c.Suit) }).ToList()
-                : publicSeat.Cards.Select(c =>
+                List<CardInfo> cards;
+                if (shouldPreserveCards)
                 {
-                    var existingCard = isCurrentPlayer
-                        ? existingCards.FirstOrDefault(ec => ec.DealOrder == c.DealOrder)
-                        : null;
+                    cards = existingCards.Select(c => c with { IsWild = IsWildCard(c.Rank, c.Suit) }).ToList();
 
-                    var rank = c.IsFaceUp ? c.Rank : existingCard?.Rank;
-                    var suit = c.IsFaceUp ? c.Suit : existingCard?.Suit;
+                    var shouldAppendMissingPublicCards =
+                        isCurrentPlayer &&
+                        !_dealAnimationInProgress &&
+                        !isInRunoutAnimation &&
+                        publicSeat.Cards.Count > cards.Count;
 
-                    return new CardInfo
+                    if (shouldAppendMissingPublicCards)
                     {
-                        Rank = rank,
-                        Suit = suit,
-                        IsFaceUp = c.IsFaceUp,
-                        IsPubliclyVisible = c.IsFaceUp,
-                        IsSelected = false,
-                        DealOrder = c.DealOrder,
-                        IsWild = c.IsFaceUp && IsWildCard(c.Rank, c.Suit)
-                    };
-                }).ToList();
+                        foreach (var publicCard in publicSeat.Cards.OrderBy(c => c.DealOrder))
+                        {
+                            if (cards.Any(existing => existing.DealOrder == publicCard.DealOrder))
+                            {
+                                continue;
+                            }
+
+                            cards.Add(new CardInfo
+                            {
+                                Rank = publicCard.IsFaceUp ? publicCard.Rank : null,
+                                Suit = publicCard.IsFaceUp ? publicCard.Suit : null,
+                                IsFaceUp = publicCard.IsFaceUp,
+                                IsPubliclyVisible = publicCard.IsFaceUp,
+                                IsSelected = false,
+                                DealOrder = publicCard.DealOrder,
+                                IsWild = publicCard.IsFaceUp && IsWildCard(publicCard.Rank, publicCard.Suit)
+                            });
+                        }
+
+                        cards = cards.OrderBy(c => c.DealOrder).ToList();
+                    }
+                }
+                else
+                {
+                    cards = publicSeat.Cards.Select(c =>
+                    {
+                        var existingCard = isCurrentPlayer
+                            ? existingCards.FirstOrDefault(ec => ec.DealOrder == c.DealOrder)
+                            : null;
+
+                        var rank = c.IsFaceUp ? c.Rank : existingCard?.Rank;
+                        var suit = c.IsFaceUp ? c.Suit : existingCard?.Suit;
+
+                        return new CardInfo
+                        {
+                            Rank = rank,
+                            Suit = suit,
+                            IsFaceUp = c.IsFaceUp,
+                            IsPubliclyVisible = c.IsFaceUp,
+                            IsSelected = false,
+                            DealOrder = c.DealOrder,
+                            IsWild = c.IsFaceUp && IsWildCard(c.Rank, c.Suit)
+                        };
+                    }).ToList();
+                }
 
                 ApplyKingsAndLowsLowestCardWildFallback(cards);
 
