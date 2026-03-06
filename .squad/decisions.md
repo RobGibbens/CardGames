@@ -712,3 +712,15 @@ EF migration `AddDealersChoice` cannot be generated until these are fixed. These
 **By:** Squad Coordinator (Rob Gibbens requested)
 **What:** Created comprehensive PRD at docs/TexasHoldEmPRD.md covering all changes needed to add Texas Hold 'Em to the platform. Key decisions: (1) Hold 'Em-specific feature folder with dedicated command handlers, (2) Community card dealing atomic within betting action transaction, (3) Blind fields via CreateGameCommand partial record extension, (4) SB/BB positions computed client-side. 17 work items across 3 priority tiers. No database migrations needed.
 **Why:** User requested detailed PRD before implementation begins.
+
+### 2026-03-05: Hold'Em Phase 2 — Visual enhancements scoped behind IsHoldEmGame
+**By:** Arwen (Frontend Dev)
+**Requested by:** Rob Gibbens
+**What:** Implemented community card labels/grouping (4.8), SB/BB position indicators (4.9), street progress indicator (4.10), and community card deal animation (4.12). All Hold'Em-specific rendering gated by `IsHoldEmGame` computed property. SB/BB derived from `DealerSeatIndex` in `TableCanvas` and passed as params to `TableSeat`. Street progress uses string comparison against `CurrentPhase`. CSS animation scoped to `.community-cards.holdem`.
+**Why:** Phase 2 UI polish items from PRD Section 6 to bring Hold'Em table to parity with other game types.
+
+### 2026-03-05: Hold'Em Phase 2 — Dealer's Choice blind pipeline
+**By:** Gimli (Backend Dev)
+**Requested by:** Rob Gibbens
+**What:** Added optional `SmallBlind`/`BigBlind` (nullable int) through the full Dealer's Choice pipeline: Request → Command → Endpoint → Handler → Success DTO → `DealersChoiceHandLog` entity → Contracts DTO. Frontend conditionally renders blind fields when HOLDEM is selected via `IsBlindBasedGame()` helper. Validation: SmallBlind > 0, BigBlind > 0, BigBlind >= SmallBlind (only when provided). Backward compatible — non-blind games unaffected.
+**Why:** Dealer's Choice modal previously only supported Ante/MinBet; Hold'Em requires blind-based configuration.

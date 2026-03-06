@@ -42,3 +42,12 @@
   - Ante/min bet in info strip update per hand from SignalR state for DC tables.
   - 60-second dealer timeout with server auto-fallback to previous hand's game type.
   - Key files analyzed: `CreateTable.razor`, `TablePlay.razor`, `GameHubClient.cs`, `TableStatePublicDto.cs`, `ShowdownOverlay.razor`.
+
+- 2026-03-05: Implemented PRD Phase 2 items 4.8, 4.9, 4.10, 4.12 for Texas Hold 'Em visual enhancements:
+  - **4.8 Community Card Labels**: Extended `GetCommunityCardLabel()` in `TableCanvas.razor` to return Flop/Turn/River labels for HOLDEM games; added `.holdem` CSS class to community-cards div; added `margin-left: 0.75rem` gap for turn/river cards via `nth-child(n+4)`.
+  - **4.9 SB/BB Position Indicators**: Added `IsSmallBlind`/`IsBigBlind` parameters to `TableSeat.razor`; computed blind seat indexes in `TableCanvas.razor` from dealer position + occupied seats (with heads-up rule); styled as 28px radial-gradient badges (blue for SB, red for BB) in `TableSeat.razor.css`.
+  - **4.10 Street Progress Indicator**: Added horizontal breadcrumb bar above `table-center-row` showing Pre-Flop/Flop/Turn/River/Showdown phases with current/past highlighting; only visible for HOLDEM games.
+  - **4.12 Community Card Deal Animation**: Added `community-card-fly-in` keyframe animation with staggered delays per card slot; scoped to `.community-cards.holdem` parent to avoid breaking GBU display.
+  - All changes are CSS + Blazor parameter-driven; no game rules moved into UI logic.
+  - Key files: `TableCanvas.razor`, `TableSeat.razor`, `TableSeat.razor.css`, `app.css`.
+  - `IsHoldEmGame` computed property gates all Hold'Em-specific rendering.
