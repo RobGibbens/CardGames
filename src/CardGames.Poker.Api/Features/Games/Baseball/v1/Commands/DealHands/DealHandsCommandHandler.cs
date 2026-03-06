@@ -292,6 +292,11 @@ public class DealHandsCommandHandler(
 			firstActorSeatPosition = FindBestVisibleHandPlayer(activePlayers, game.Id, game.CurrentHandNumber, context);
 		}
 
+		if (firstActorSeatPosition < 0)
+		{
+			firstActorSeatPosition = GetPlayerLeftOfDealerSeatPosition(activePlayers, game.DealerPosition);
+		}
+
 		var isSmallBetStreet = streetPhase == nameof(Phases.ThirdStreet) ||
 							   streetPhase == nameof(Phases.FourthStreet);
 		var minBet = isSmallBetStreet ? (game.SmallBet ?? game.MinBet ?? 0) : (game.BigBet ?? game.MinBet ?? 0);
@@ -480,7 +485,7 @@ public class DealHandsCommandHandler(
 			.GroupBy(c => c.GamePlayerId!.Value)
 			.ToDictionary(g => g.Key, g => g.ToList());
 
-		int bestSeatPosition = activePlayers.FirstOrDefault()?.SeatPosition ?? 0;
+       int bestSeatPosition = -1;
 		long bestStrength = -1;
 
 		foreach (var player in activePlayers)
@@ -489,7 +494,7 @@ public class DealHandsCommandHandler(
 				? cards.Where(c => c.IsVisible && !c.IsDiscarded).ToList()
 				: [];
 
-			var strength = EvaluateVisibleHand(boardCards);
+         var strength = EvaluateVisibleHand(boardCards, includeWildCards: true);
 
 			if (strength > bestStrength)
 			{
@@ -501,37 +506,82 @@ public class DealHandsCommandHandler(
 		return bestSeatPosition;
 	}
 
-	private static long EvaluateVisibleHand(List<GameCard> boardCards)
+	private static int GetPlayerLeftOfDealerSeatPosition(List<GamePlayer> activePlayers, int dealerSeatPosition)
+	{
+		if (activePlayers.Count == 0)
+		{
+			return -1;
+		}
+
+		var maxSeatPosition = activePlayers.Max(p => p.SeatPosition);
+		var totalSeats = maxSeatPosition + 1;
+
+		return activePlayers
+			.OrderBy(p => (p.SeatPosition - dealerSeatPosition - 1 + totalSeats) % totalSeats)
+			.Select(p => p.SeatPosition)
+			.First();
+	}
+
+  private static long EvaluateVisibleHand(List<GameCard> boardCards, bool includeWildCards)
 	{
 		if (boardCards.Count == 0) return 0;
 
-		var cards = boardCards.OrderByDescending(c => GetCardValue(c.Symbol)).ToList();
-		var valueCounts = cards.GroupBy(c => GetCardValue(c.Symbol))
+     var cards = boardCards.OrderByDescending(c => GetCardValue(c.Symbol)).ToList();
+		var valueCounts = cards
+			.Where(c => !includeWildCards || !IsBaseballWild(c.Symbol))
+			.GroupBy(c => GetCardValue(c.Symbol))
 			.OrderByDescending(g => g.Count())
 			.ThenByDescending(g => g.Key)
+          .Select(g => new { Value = g.Key, Count = g.Count() })
 			.ToList();
 
+		if (includeWildCards)
+		{
+			var wildCount = cards.Count(c => IsBaseballWild(c.Symbol));
+			if (wildCount > 0)
+			{
+				if (valueCounts.Count == 0)
+				{
+					valueCounts.Add(new { Value = 14, Count = wildCount });
+				}
+				else
+				{
+					var target = valueCounts
+						.OrderByDescending(v => v.Count)
+						.ThenByDescending(v => v.Value)
+						.First();
+
+					valueCounts.Remove(target);
+					valueCounts.Add(new { target.Value, Count = target.Count + wildCount });
+					valueCounts = valueCounts
+						.OrderByDescending(v => v.Count)
+						.ThenByDescending(v => v.Value)
+						.ToList();
+				}
+			}
+		}
+
 		long strength = 0;
-		var maxCount = valueCounts.First().Count();
+     var maxCount = valueCounts.First().Count;
 
 		if (maxCount >= 4)
 		{
-			strength = 7_000_000 + valueCounts.First().Key * 1000;
+          strength = 7_000_000 + valueCounts.First().Value * 1000;
 		}
 		else if (maxCount >= 3)
 		{
-			strength = 4_000_000 + valueCounts.First().Key * 1000;
+          strength = 4_000_000 + valueCounts.First().Value * 1000;
 		}
 		else if (maxCount >= 2)
 		{
-			var pairs = valueCounts.Where(g => g.Count() >= 2).ToList();
+            var pairs = valueCounts.Where(g => g.Count >= 2).ToList();
 			if (pairs.Count >= 2)
 			{
-				strength = 3_000_000 + pairs[0].Key * 1000 + pairs[1].Key * 10;
+             strength = 3_000_000 + pairs[0].Value * 1000 + pairs[1].Value * 10;
 			}
 			else
 			{
-				strength = 2_000_000 + pairs[0].Key * 1000;
+             strength = 2_000_000 + pairs[0].Value * 1000;
 			}
 		}
 		else
@@ -539,9 +589,20 @@ public class DealHandsCommandHandler(
 			strength = 1_000_000;
 		}
 
-		foreach (var card in cards.Take(4))
+     var kickerValues = valueCounts
+			.SelectMany(v => Enumerable.Repeat(v.Value, v.Count))
+			.OrderByDescending(v => v)
+			.Take(4)
+			.ToList();
+
+		if (kickerValues.Count == 0)
 		{
-			strength = strength * 15 + GetCardValue(card.Symbol);
+			kickerValues = cards.Take(4).Select(c => GetCardValue(c.Symbol)).ToList();
+		}
+
+		foreach (var kickerValue in kickerValues)
+		{
+           strength = strength * 15 + kickerValue;
 		}
 
 		if (cards.Count > 0)
@@ -550,6 +611,11 @@ public class DealHandsCommandHandler(
 		}
 
 		return strength;
+	}
+
+	private static bool IsBaseballWild(CardSymbol symbol)
+	{
+		return symbol is CardSymbol.Three or CardSymbol.Nine;
 	}
 
 	private static int GetCardValue(CardSymbol symbol) => symbol switch

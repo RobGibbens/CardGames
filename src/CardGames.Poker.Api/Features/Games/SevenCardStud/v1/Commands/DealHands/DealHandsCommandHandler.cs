@@ -292,6 +292,11 @@ public class DealHandsCommandHandler(
 			firstActorSeatPosition = FindBestVisibleHandPlayer(activePlayers, game.Id, game.CurrentHandNumber, context);
 		}
 
+		if (firstActorSeatPosition < 0)
+		{
+			firstActorSeatPosition = GetPlayerLeftOfDealerSeatPosition(activePlayers, game.DealerPosition);
+		}
+
 		// 8. Determine min bet based on street (small bet for 3rd/4th, big bet for 5th/6th/7th)
 		var isSmallBetStreet = game.CurrentPhase == nameof(Phases.ThirdStreet) ||
 							   game.CurrentPhase == nameof(Phases.FourthStreet);
@@ -444,7 +449,7 @@ public class DealHandsCommandHandler(
 	/// </summary>
 	private static int FindBestVisibleHandPlayer(List<GamePlayer> activePlayers, Guid gameId, int handNumber, CardsDbContext context)
 	{
-		int bestSeatPosition = activePlayers.FirstOrDefault()?.SeatPosition ?? 0;
+       int bestSeatPosition = -1;
 		long bestStrength = -1;
 
 		foreach (var player in activePlayers)
@@ -468,6 +473,22 @@ public class DealHandsCommandHandler(
 		}
 
 		return bestSeatPosition;
+	}
+
+	private static int GetPlayerLeftOfDealerSeatPosition(List<GamePlayer> activePlayers, int dealerSeatPosition)
+	{
+		if (activePlayers.Count == 0)
+		{
+			return -1;
+		}
+
+		var maxSeatPosition = activePlayers.Max(p => p.SeatPosition);
+		var totalSeats = maxSeatPosition + 1;
+
+		return activePlayers
+			.OrderBy(p => (p.SeatPosition - dealerSeatPosition - 1 + totalSeats) % totalSeats)
+			.Select(p => p.SeatPosition)
+			.First();
 	}
 
 	/// <summary>
