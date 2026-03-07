@@ -23,6 +23,8 @@ public interface IGameApiRouter
     Task<RouterResponse<Unit>> DropOrStayAsync(string gameCode, Guid gameId, DropOrStayRequest request);
 
     Task<RouterResponse<Unit>> AcknowledgePotMatchAsync(string gameCode, Guid gameId);
+
+    Task<RouterResponse<Unit>> FoldDuringDrawAsync(Guid gameId, int playerSeatIndex);
 }
 
 public class ProcessDrawResult
@@ -329,6 +331,13 @@ public class GameApiRouter : IGameApiRouter
     private async Task<RouterResponse<Unit>> RouteKingsAndLowsAcknowledgePotMatchAsync(Guid gameId)
     {
         var response = await _kingsAndLowsApi.KingsAndLowsAcknowledgePotMatchAsync(gameId);
+        return RouterResponse<Unit>.FromRefit(response);
+    }
+
+    public async Task<RouterResponse<Unit>> FoldDuringDrawAsync(Guid gameId, int playerSeatIndex)
+    {
+        var request = new IrishHoldEmFoldDuringDrawRequest(playerSeatIndex);
+        var response = await _gamesApi.IrishHoldEmFoldDuringDrawAsync(gameId, request);
         return RouterResponse<Unit>.FromRefit(response);
     }
 }

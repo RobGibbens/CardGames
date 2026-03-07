@@ -317,6 +317,14 @@
     public ActionTimerStateDto? ActionTimer { get; set; }
 
     /// <summary>
+    /// Callback invoked when the timer expires and standing pat is not a valid default action
+    /// (e.g., Irish Hold 'Em requires exactly 2 discards, so timeout means fold).
+    /// When set, this is called instead of OnDraw([]) on timeout.
+    /// </summary>
+    [Parameter]
+    public EventCallback OnTimeoutFold { get; set; }
+
+    /// <summary>
     /// Enables Kings and Lows wild card highlighting logic (kings + lowest non-king rank).
     /// Keep false for other game types.
     /// </summary>
@@ -452,7 +460,14 @@
 
         try
         {
-            await OnDraw.InvokeAsync([]);
+            if (OnTimeoutFold.HasDelegate)
+            {
+                await OnTimeoutFold.InvokeAsync();
+            }
+            else
+            {
+                await OnDraw.InvokeAsync([]);
+            }
         }
         finally
         {

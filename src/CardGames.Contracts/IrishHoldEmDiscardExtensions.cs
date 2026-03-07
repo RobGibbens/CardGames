@@ -13,4 +13,14 @@ public partial interface IGamesApi
 	[Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
 	[Post("/api/v1/games/irish-hold-em/{gameId}/discard")]
 	Task<IApiResponse<ProcessDrawSuccessful>> IrishHoldEmDiscardAsync(Guid gameId, [Body] ProcessDrawRequest body, CancellationToken cancellationToken = default);
+
+	[Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+	[Post("/api/v1/games/irish-hold-em/{gameId}/fold-during-draw")]
+	Task<IApiResponse> IrishHoldEmFoldDuringDrawAsync(Guid gameId, [Body] IrishHoldEmFoldDuringDrawRequest body, CancellationToken cancellationToken = default);
 }
+
+/// <summary>
+/// Request body for the Irish Hold 'Em fold-during-draw endpoint.
+/// </summary>
+/// <param name="PlayerSeatIndex">The seat index of the player to fold.</param>
+public record IrishHoldEmFoldDuringDrawRequest(int PlayerSeatIndex);

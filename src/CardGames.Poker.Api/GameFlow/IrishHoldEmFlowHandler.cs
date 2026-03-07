@@ -1,5 +1,6 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Features.Games.IrishHoldEm.v1.Commands.FoldDuringDraw;
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
 using CardGames.Poker.Games.GameFlow;
@@ -61,6 +62,35 @@ public sealed class IrishHoldEmFlowHandler : BaseGameFlowHandler
         CancellationToken cancellationToken)
     {
         return Task.FromResult(nameof(Phases.Turn));
+    }
+
+    /// <summary>
+    /// Overrides auto-action to fold the player when the draw phase timer expires.
+    /// Irish Hold 'Em requires exactly 2 discards, so standing pat is invalid.
+    /// </summary>
+    public override async Task PerformAutoActionAsync(AutoActionContext context)
+    {
+        if (IsDrawingPhase(context.CurrentPhase) && context.PlayerSeatIndex >= 0)
+        {
+            context.Logger.LogInformation(
+                "Irish Hold 'Em auto-action: folding player at seat {SeatIndex} during draw phase for game {GameId}",
+                context.PlayerSeatIndex, context.GameId);
+
+            var command = new FoldDuringDrawCommand(context.GameId, context.PlayerSeatIndex);
+
+            try
+            {
+                await context.Mediator.Send(command, context.CancellationToken);
+            }
+            catch (Exception ex)
+            {
+                context.Logger.LogError(ex, "Error performing auto-fold during draw phase for Irish Hold 'Em game {GameId}", context.GameId);
+            }
+
+            return;
+        }
+
+        await base.PerformAutoActionAsync(context);
     }
 
     protected override async Task SendBettingActionAsync(AutoActionContext context, Data.Entities.BettingActionType action, int amount = 0)

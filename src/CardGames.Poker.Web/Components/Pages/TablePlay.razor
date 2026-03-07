@@ -295,7 +295,8 @@
                        IsReadOnly="@(IsDrawCompletePhase || _cardsDrawn)"
                        ReadOnlyMessage="@(IsDrawCompletePhase ? "Waiting for showdown..." : "New cards drawn!")"
                        ActionTimer="@_actionTimerState"
-                       EnableKingsAndLowsWildCardHighlighting="@IsKingsAndLows" />
+                       EnableKingsAndLowsWildCardHighlighting="@IsKingsAndLows"
+                       OnTimeoutFold="@GetDrawTimeoutFoldCallback()" />
         }
 
         <!-- Draw Phase Waiting Indicator (shown to other players during draw phase) -->
@@ -3717,6 +3718,43 @@
         RecalculateDrawOddsForSelection();
 
         return InvokeStateHasChangedAsync();
+    }
+
+    /// <summary>
+    /// Handles the draw phase timer expiry for games where standing pat is invalid
+    /// (e.g., Irish Hold 'Em requires exactly 2 discards).
+    /// Clears the draw panel immediately for responsive UI; the server-side auto-action
+    /// handles the actual fold and broadcasts the updated state.
+    /// </summary>
+    private async Task HandleDrawTimeoutFoldAsync()
+    {
+        Logger.LogInformation("Draw timer expired — folding via timeout for game {GameId}", GameId);
+
+        try
+        {
+            var response = await GameApiRouter.FoldDuringDrawAsync(GameId, _currentPlayerSeatIndex);
+            if (!response.IsSuccess)
+            {
+                Logger.LogWarning("Fold-during-draw API call failed for game {GameId}: {Error}", GameId, response.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Fold-during-draw API call threw for game {GameId}; server auto-action will handle it", GameId);
+        }
+
+        ResetDrawPanelStateForNewHand();
+        await InvokeStateHasChangedAsync();
+    }
+
+    /// <summary>
+    /// Returns the OnTimeoutFold callback for games that fold on draw timeout, or default for others.
+    /// </summary>
+    private EventCallback GetDrawTimeoutFoldCallback()
+    {
+        return IsIrishHoldEm
+            ? EventCallback.Factory.Create(this, HandleDrawTimeoutFoldAsync)
+            : default;
     }
 
     /// <summary>

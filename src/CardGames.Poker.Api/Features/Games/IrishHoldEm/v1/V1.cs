@@ -1,4 +1,5 @@
 using Asp.Versioning.Builder;
+using CardGames.Poker.Api.Features.Games.IrishHoldEm.v1.Commands.FoldDuringDraw;
 using CardGames.Poker.Api.Features.Games.IrishHoldEm.v1.Commands.ProcessDiscard;
 using SharpGrip.FluentValidation.AutoValidation.Endpoints.Extensions;
 
@@ -14,5 +15,6 @@ public static class V1
 			.AddFluentValidationAutoValidation();
 
 		mapGroup.MapProcessDiscard();
+		mapGroup.MapFoldDuringDraw();
 	}
 }
