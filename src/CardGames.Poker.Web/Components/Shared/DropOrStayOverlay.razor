@@ -32,7 +32,7 @@
         }
         @foreach (var card in GetOrderedCards())
         {
-            var isWildForDisplay = IsWildForDisplay(card, lowestNonKingRankValue, EnableKingsAndLowsWildCardHighlighting, hasExplicitWildFlags);
+            var isWildForDisplay = IsWildForDisplay(card, lowestNonKingRankValue, EnableKingsAndLowsWildCardHighlighting, EnableBaseballWildCardHighlighting, hasExplicitWildFlags);
             <div class="drop-or-stay-card-wrapper">
                 <div class="drop-or-stay-card">
                     <playing-card rank="@GetPlayingCardRank(card)" suit="@card.Suit" style="height:92px;width:64px;" suitcolor="@(isWildForDisplay ? "green" : null)" rankcolor="@(isWildForDisplay ? "green" : null)" courtcolor="@(isWildForDisplay ? "green" : null)"></playing-card>
@@ -184,6 +184,13 @@
     [Parameter]
     public bool EnableKingsAndLowsWildCardHighlighting { get; set; }
 
+    /// <summary>
+    /// Enables Baseball-style wild card highlighting (all 3s and 9s).
+    /// Keep false for non-Baseball variants.
+    /// </summary>
+    [Parameter]
+    public bool EnableBaseballWildCardHighlighting { get; set; }
+
     protected override async Task OnParametersSetAsync()
     {
         await TrySubmitTimeoutDefaultDecisionAsync();
@@ -311,7 +318,7 @@
         };
     }
 
-    private static bool IsWildForDisplay(CardInfo card, int? lowestNonKingRankValue, bool enableKingsAndLowsWildCardHighlighting, bool hasExplicitWildFlags)
+    private static bool IsWildForDisplay(CardInfo card, int? lowestNonKingRankValue, bool enableKingsAndLowsWildCardHighlighting, bool enableBaseballWildCardHighlighting, bool hasExplicitWildFlags)
     {
         if (card.IsWild)
         {
@@ -325,7 +332,13 @@
 
         if (!enableKingsAndLowsWildCardHighlighting)
         {
-            return false;
+            if (!enableBaseballWildCardHighlighting)
+            {
+                return false;
+            }
+
+            var baseballRankValue = GetRankValue(card.Rank);
+            return baseballRankValue is 3 or 9;
         }
 
         var rankValue = GetRankValue(card.Rank);

@@ -7,6 +7,9 @@ Cash
 - [x] When joining any game, choose how many chips to bring in. Also be able to bring in more chips from your bank account.
 - [x] Always show the hand description hover, just move it above the hand
 - [x] Change font to MonoLisa
+- [ ] When taking a seat, just automatically take a seat and show the bring in panel
+- [ ] Make sure that when they leave a table, or close the browser, that their chips stay in their account.
+- [ ] When creating a table, just create it and make them press the Join button to join.
 
 ### Leagues
 

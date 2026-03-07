@@ -62,6 +62,11 @@ public static class HandDescriptionFormatter
 			return gbuHand.EvaluatedBestCards.ToList();
 		}
 
+		if (hand is Hands.CommunityCardHands.HoldTheBaseballHand holdTheBaseballHand)
+		{
+			return holdTheBaseballHand.EvaluatedBestCards.ToList();
+		}
+
 		return hand.Cards.ToList();
 	}
 

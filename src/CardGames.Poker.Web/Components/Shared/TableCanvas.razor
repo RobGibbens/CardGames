@@ -26,11 +26,15 @@
                             {
                                 var label = GetCommunityCardLabel(cardIndex);
                                 var statusClass = card.IsFaceUp ? "revealed" : "hidden";
+                                var isWildCommunityCard = IsCommunityCardWildForDisplay(card);
                                 <div class="community-card-slot @statusClass">
                                     @if (card.IsFaceUp && !string.IsNullOrWhiteSpace(card.Rank))
                                     {
                                         <playing-card rank="@GetPlayingCardRank(card.Rank)" 
                                                       suit="@card.Suit" 
+                                                      suitcolor="@(isWildCommunityCard ? "green" : null)"
+                                                      rankcolor="@(isWildCommunityCard ? "green" : null)"
+                                                      courtcolor="@(isWildCommunityCard ? "green" : null)"
                                                       class="community-card-element"></playing-card>
                                     }
                                     else
@@ -403,6 +407,72 @@
             _ => rank
         };
     }
+
+    /// <summary>
+    /// Determines whether a face-up community card should be highlighted as wild.
+    /// Uses active wild card definitions provided by the page (e.g., 3/9 for Baseball variants).
+    /// </summary>
+    private bool IsCommunityCardWildForDisplay(CardPublicDto card)
+    {
+        if (!card.IsFaceUp || string.IsNullOrWhiteSpace(card.Rank))
+        {
+            return false;
+        }
+
+        if (!HasWildCards || WildCards is null || WildCards.Count == 0)
+        {
+            return false;
+        }
+
+        var cardRank = NormalizeRank(card.Rank);
+        var cardSuit = NormalizeSuit(card.Suit);
+
+        foreach (var wildCard in WildCards)
+        {
+            if (string.IsNullOrWhiteSpace(wildCard.Rank))
+            {
+                continue;
+            }
+
+            var wildRank = NormalizeRank(wildCard.Rank);
+            if (!string.Equals(cardRank, wildRank, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            // If the wild definition is rank-only (e.g., all 3s), any suit matches.
+            if (string.IsNullOrWhiteSpace(wildCard.Suit))
+            {
+                return true;
+            }
+
+            // If suit is specified (e.g., king of diamonds), require suit match.
+            var wildSuit = NormalizeSuit(wildCard.Suit);
+            if (string.Equals(cardSuit, wildSuit, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static string NormalizeRank(string? rank)
+    {
+        if (string.IsNullOrWhiteSpace(rank))
+        {
+            return string.Empty;
+        }
+
+        return rank.Trim().ToUpperInvariant() switch
+        {
+            "T" => "10",
+            _ => rank.Trim().ToUpperInvariant()
+        };
+    }
+
+    private static string NormalizeSuit(string? suit)
+        => suit?.Trim() ?? string.Empty;
 
     /// <summary>
     /// Represents a wild card for display in the wild cards panel.

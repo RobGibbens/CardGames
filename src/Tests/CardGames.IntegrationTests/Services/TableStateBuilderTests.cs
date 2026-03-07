@@ -149,6 +149,101 @@ public class TableStateBuilderTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task BuildPrivateStateAsync_HoldTheBaseball_PreflopAndFlop_ApplyWildCardEvaluation()
+    {
+        // Arrange
+        var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "HOLDTHEBASEBALL", 2);
+        var game = setup.Game;
+        var hero = setup.GamePlayers[0];
+        var heroEmail = setup.Players[0].Email!;
+
+        game.CurrentHandNumber = 1;
+        game.CurrentPhase = nameof(Phases.PreFlop);
+        game.Status = GameStatus.InProgress;
+
+        DbContext.GameCards.AddRange(
+            new GameCard
+            {
+                GameId = game.Id,
+                GamePlayerId = hero.Id,
+                HandNumber = 1,
+                Location = CardLocation.Hole,
+                Suit = CardSuit.Hearts,
+                Symbol = CardSymbol.Nine,
+                DealOrder = 1,
+                DealtAtPhase = nameof(Phases.PreFlop),
+                IsVisible = false
+            },
+            new GameCard
+            {
+                GameId = game.Id,
+                GamePlayerId = hero.Id,
+                HandNumber = 1,
+                Location = CardLocation.Hole,
+                Suit = CardSuit.Spades,
+                Symbol = CardSymbol.Queen,
+                DealOrder = 2,
+                DealtAtPhase = nameof(Phases.PreFlop),
+                IsVisible = false
+            });
+
+        await DbContext.SaveChangesAsync();
+
+        // Act: preflop with 9h (wild) + Qs
+        var preflopState = await TableStateBuilder.BuildPrivateStateAsync(game.Id, heroEmail);
+
+        // Assert
+        preflopState.Should().NotBeNull();
+        preflopState!.HandEvaluationDescription.Should().Be("Pair of Queens");
+
+        // Arrange flop: 5c, 7h, Qh
+        DbContext.GameCards.AddRange(
+            new GameCard
+            {
+                GameId = game.Id,
+                HandNumber = 1,
+                Location = CardLocation.Community,
+                Suit = CardSuit.Clubs,
+                Symbol = CardSymbol.Five,
+                DealOrder = 3,
+                DealtAtPhase = nameof(Phases.Flop),
+                IsVisible = true
+            },
+            new GameCard
+            {
+                GameId = game.Id,
+                HandNumber = 1,
+                Location = CardLocation.Community,
+                Suit = CardSuit.Hearts,
+                Symbol = CardSymbol.Seven,
+                DealOrder = 4,
+                DealtAtPhase = nameof(Phases.Flop),
+                IsVisible = true
+            },
+            new GameCard
+            {
+                GameId = game.Id,
+                HandNumber = 1,
+                Location = CardLocation.Community,
+                Suit = CardSuit.Hearts,
+                Symbol = CardSymbol.Queen,
+                DealOrder = 5,
+                DealtAtPhase = nameof(Phases.Flop),
+                IsVisible = true
+            });
+
+        game.CurrentPhase = nameof(Phases.Flop);
+        await DbContext.SaveChangesAsync();
+
+        // Act: after flop should still use wild-card evaluation
+        var flopState = await TableStateBuilder.BuildPrivateStateAsync(game.Id, heroEmail);
+
+        // Assert
+        flopState.Should().NotBeNull();
+        flopState!.HandEvaluationDescription.Should().Be("Three of a kind, Queens");
+    }
+
+    [Fact]
     public async Task BuildPublicStateAsync_SevenCardStud_ShowsBoardCards()
     {
         // Arrange
