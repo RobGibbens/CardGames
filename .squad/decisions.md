@@ -912,3 +912,19 @@ EF migration `AddDealersChoice` cannot be generated until these are fixed. These
 
 **Merged source:**
 - `.squad/decisions/inbox/linus-drawpanel-mindiscards.md`
+
+### 2026-03-07: Irish Hold 'Em Phase 3 Audit — Release Readiness
+**By:** Aragorn (Lead)
+**Requested by:** Rob Gibbens
+**Status:** NO-GO → fixed → GO
+
+**What:** Full audit of all 44 acceptance criteria from the Irish Hold 'Em PRD (Section 7, Section 8, Section 5 checklists). 43 of 44 items passed. 1 critical blocker found and fixed before release.
+
+**Critical blocker:** `PerformShowdownCommandHandler.UsesSharedCommunityCards()` did not include `IrishHoldEmCode`. During the generic showdown path, community cards were not included when evaluating Irish Hold 'Em hands — players ended up with only 2 hole cards and 0 board cards, causing them to be silently skipped in hand evaluation. Fix: added `IrishHoldEmCode` to `UsesSharedCommunityCards()`.
+
+**Verification:** 81 Irish tests pass (60 unit + 21 integration). Full regression: 617 unit + 525 integration (5 pre-existing failures unchanged).
+
+**Outcome:** PRD updated from Draft to Released, all checklists marked complete. Merged `irishholdem` → `main` (56 files, +4285/−159 lines).
+
+**Merged source:**
+- `.squad/decisions/inbox/rusty-irish-phase3-audit.md`

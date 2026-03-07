@@ -31,3 +31,4 @@
   - `CreateGameCommand` currently requires `GameCode` string — DC tables skip this, deferring game type selection to first dealer.
   - `CreateTable.razor` Step 1 (variant selection) must support a "Dealer's Choice" card alongside real variants.
   - Decisions recorded in `.squad/decisions/inbox/rusty-dealers-choice-architecture.md`.
+- 2026-03-07 (Irish Hold 'Em Phase 3 release): Aragorn audited all 44 PRD acceptance criteria. Found critical blocker — `UsesSharedCommunityCards()` in `PerformShowdownCommandHandler.cs` did not include `IrishHoldEmCode`, causing showdown to silently skip Irish players. Fix applied, 81 Irish tests verified (60 unit + 21 integration). Release approved after fix. PRD status: Released.
