@@ -5,7 +5,8 @@ Cash
 
 - [ ] https://github.com/leeoades/FunctionalStateMachine
 - [ ] When joining any game, choose how many chips to bring in. Also be able to bring in more chips from your bank account.
-- [ ] Always show the hand description hover, just move it above the hand
+- [x] Always show the hand description hover, just move it above the hand
+- [x] Change font to MonoLisa
 
 ### Leagues
 

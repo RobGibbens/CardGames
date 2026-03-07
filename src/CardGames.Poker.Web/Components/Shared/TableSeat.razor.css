@@ -183,12 +183,12 @@
     white-space: nowrap;
 }
 
-/* Hand Evaluation Tooltip - visible on seat hover */
+/* Hand Evaluation Tooltip - always visible */
 .hand-eval-tooltip {
     position: absolute;
-    top: -70px; /* Position above cards */
+    top: -75px; /* Position above cards */
     left: 50%;
-    transform: translateX(-50%);
+    transform: translateX(-50%) translateY(-5px);
     background-color: rgba(20, 20, 20, 0.95);
     color: #ffd700; /* Gold text */
     border: 1px solid #555;
@@ -198,16 +198,10 @@
     font-weight: 600;
     pointer-events: none;
     white-space: nowrap;
-    opacity: 0;
-    transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+    opacity: 1;
     z-index: 100;
     box-shadow: 0 4px 10px rgba(0,0,0,0.6);
 }
-
-.seat-container:hover .hand-eval-tooltip {
-    opacity: 1;
-        transform: translateX(-50%) translateY(-5px);
-    }
 
     /* Status Colors for pill-top-row */
     .pill-top-row.status-observing {
