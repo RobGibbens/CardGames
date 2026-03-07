@@ -839,3 +839,76 @@ EF migration `AddDealersChoice` cannot be generated until these are fixed. These
 
 **Merged source:**
 - `.squad/decisions/inbox/basher-generic-start-omaha-deal-test.md`
+
+### 2026-03-06: Join buy-in backend enforcement already present
+**By:** Danny (Backend Dev)
+**Requested by:** Rob Gibbens
+**What:** Validated existing join flow enforcement: rejects `StartingChips <= 0`, blocks zero-wallet players, blocks buy-ins above available balance. Applied minimal API contract clarity updates (stale TODO removal, XML doc fix, expanded endpoint validation description, 403 response metadata for league-gated tables).
+**Why:** Backend enforcement for modal-driven buy-in UX is already present and test-backed; runtime semantics preserved to avoid risk.
+
+**Merged source:**
+- `.squad/decisions/inbox/danny-join-buyin-backend.md`
+
+### 2026-03-06: Table join uses modal-driven buy-in selection with balance cap
+**By:** Linus (Frontend Dev)
+**Requested by:** Rob Gibbens
+**What:** Changed table join UX so clicking an empty seat fetches cashier balance, blocks join when balance is `<= 0`, opens a buy-in modal with slider/input bound to buy-in amount (capped by fetched balance), and submits join from modal confirm using existing endpoint. Removed old always-visible top-strip buy-in controls.
+**Why:** Gives players per-game control over chip buy-in at seat selection while preserving existing cashier/no-chips safeguards.
+
+**Merged source:**
+- `.squad/decisions/inbox/linus-join-buyin-modal.md`
+
+### 2026-03-06: Omaha Phase 2 staged deploy with config-gated availability
+**By:** Scribe
+**Requested by:** Rob Gibbens
+**What:** Added config-gated Omaha availability via `GameAvailability:EnableOmaha` (default `false`, `true` in development). Server-authoritative gating enforced in available-games query and command handlers (`CreateGame`, `ChooseDealerGame`).
+**Why:** Supports safe staged rollout with non-prod validation before broader availability; prevents client-side bypass.
+
+**Merged source:**
+- `.squad/decisions/inbox/scribe-omaha-phase2-staged-deploy.md`
+
+### 2026-03-07: Omaha Phase 3 production release
+**By:** Scribe
+**Requested by:** Rob Gibbens
+**What:** Enabled Omaha in production via `GameAvailability:EnableOmaha` config flag. Rollback by flipping flag back to `false`.
+**Why:** Final phase of Omaha rollout after Phase 2 non-prod validation criteria met.
+
+**Merged source:**
+- `.squad/decisions/inbox/scribe-omaha-phase3-prod-release.md`
+
+### 2026-03-07: Irish Hold 'Em Phase 0 — domain + API architecture
+**By:** Danny (Backend Dev)
+**What:** Implemented Irish Hold 'Em domain and API layer. Key architecture: reused `Phases.DrawPhase` for discard, post-discard transitions to Turn (not SecondBettingRound), showdown uses `HoldemHand` (2 hole cards post-discard), dedicated `IrishHoldEmHandEvaluator` registered for registry consistency, discard command removes cards only (no replacement dealing).
+**Why:** Irish Hold 'Em is a hybrid variant (Omaha deal → discard → Hold'em play); architecture reuses existing phase infrastructure while keeping game-specific flow in dedicated handler.
+
+**Merged source:**
+- `.squad/decisions/inbox/danny-irish-holdem-domain.md`
+
+### 2026-03-07: Irish Hold 'Em UI branch points
+**By:** Linus (Frontend Dev)
+**What:** Added IRISHHOLDEM to all existing game-type branch points in Blazor UI: blind-based game checks, generic start/showdown routing, HoldEm betting routing, new dedicated discard endpoint, pre/post-discard odds calculation branching. No DrawPanel changes needed (auto-activates from server phase category).
+**Why:** Irish Hold 'Em is architecturally a hybrid of Omaha (4 hole cards, generic start) and Hold'em (2 cards post-discard); UI stays metadata-driven.
+
+**Merged source:**
+- `.squad/decisions/inbox/linus-irish-holdem-ui.md`
+### 2026-03-07: Irish Hold 'Em showdown handling in TableStateBuilder
+**By:** Danny (Backend Dev)
+**Requested by:** Rob Gibbens
+**What:** Added dedicated Irish Hold 'Em showdown evaluation block in `TableStateBuilder.cs`. Irish Hold 'Em post-discard players have 2 hole cards + 5 community cards, evaluated identically to Texas Hold 'Em (`HoldemHand`, `FindBestFiveCardHand`). Without this block, the generic fallback handler never loaded community cards from DB, causing post-discard players (only 2 owned cards) to be skipped entirely at showdown.
+**Why:** Irish Hold 'Em is a community-card game that requires explicit community card loading during showdown evaluation, just like Hold 'Em and Omaha already have. The generic handler only inspects player-owned cards and doesn't know about shared board cards.
+**Changes:** `src/CardGames.Poker.Api/Services/TableStateBuilder.cs` — added `isIrishHoldEm` flag, Irish showdown block (loads community cards, creates `HoldemHand`, finds best 5-of-7), `IsIrishHoldEmGame()` convenience method.
+**Pattern:** Every community-card game variant needs its own showdown block in `TableStateBuilder` to load shared cards from DB.
+
+**Merged source:**
+- `.squad/decisions/inbox/danny-irish-showdown-tablestate.md`
+
+### 2026-03-07: DrawPanel MinDiscards parameter for mandatory discard enforcement
+**By:** Linus (Frontend Dev)
+**Requested by:** Rob Gibbens
+**What:** Added `MinDiscards` parameter to `DrawPanel.razor` component and wired it from `TablePlay.razor` via game-type check for Irish Hold'Em (`IsIrishHoldEm → 2`).
+**Why:** Irish Hold'Em requires players to discard exactly 2 of 4 hole cards after the flop — no stand pat, no partial discard, no replacement draw. The existing `MaxDiscards`-only model couldn't enforce a minimum.
+**Design decisions:** `MinDiscards` defaults to 0 (backward compatible). When `MinDiscards == MaxDiscards`, subtitle reads "Select exactly N cards to discard" and discard button says "Discard N" (no "& Draw"). Stand pat disabled when `MinDiscards > 0`. `DrawingConfigDto` does not yet have `MinDiscards` — game-type check used as fallback.
+**Files changed:** `src/CardGames.Poker.Web/Components/Shared/DrawPanel.razor`, `src/CardGames.Poker.Web/Components/Pages/TablePlay.razor`.
+
+**Merged source:**
+- `.squad/decisions/inbox/linus-drawpanel-mindiscards.md`

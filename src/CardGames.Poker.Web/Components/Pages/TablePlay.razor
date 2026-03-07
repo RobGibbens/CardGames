@@ -203,7 +203,7 @@
     @if (_showGameInfoOverlay)
     {
         <GameInfoOverlay GameTypeContext="@GetGameInfoTypeContext()"
-                         IsHoldEm="@(IsHoldEm || IsOmaha)"
+                         IsHoldEm="@(IsHoldEm || IsOmaha || IsIrishHoldEm)"
                          SmallBlind="@(_gameResponse?.SmallBlind ?? 0)"
                          BigBlind="@(_gameResponse?.BigBlind ?? 0)"
                          Ante="@(_gameResponse?.Ante ?? _ante)"
@@ -291,7 +291,7 @@
                        IsAnimating="@_isDrawAnimating" IsDiscarding="@_isDiscardingCards" IsDrawing="@_isDrawingNewCards"
                        CardsDrawn="@_cardsDrawn" NewCardIndices="@_newCardIndices"
                        HandDescription="@(_cardsDrawn && !string.IsNullOrWhiteSpace(_newHandDescription) ? _newHandDescription : currentPlayerHandEvaluationDescription)"
-                       MaxDiscards="@GetMaxDiscards()" DrawingSpecialRules="@GetDrawingSpecialRules()"
+                       MaxDiscards="@GetMaxDiscards()" MinDiscards="@GetMinDiscards()" DrawingSpecialRules="@GetDrawingSpecialRules()"
                        IsReadOnly="@(IsDrawCompletePhase || _cardsDrawn)"
                        ReadOnlyMessage="@(IsDrawCompletePhase ? "Waiting for showdown..." : "New cards drawn!")"
                        ActionTimer="@_actionTimerState"
@@ -673,7 +673,8 @@
     private bool IsBaseball => string.Equals(_gameTypeCode, "BASEBALL", StringComparison.OrdinalIgnoreCase);
     private bool IsHoldEm => string.Equals(_gameTypeCode, "HOLDEM", StringComparison.OrdinalIgnoreCase);
     private bool IsOmaha => string.Equals(_gameTypeCode, "OMAHA", StringComparison.OrdinalIgnoreCase);
-    private bool UsesCardDealAnimation => IsSevenCardStud || IsGoodBadUgly || IsBaseball || IsFollowTheQueen || IsFiveCardDraw || IsTwosJacksManWithTheAxe || IsKingsAndLows || IsHoldEm || IsOmaha;
+    private bool IsIrishHoldEm => string.Equals(_gameTypeCode, "IRISHHOLDEM", StringComparison.OrdinalIgnoreCase);
+    private bool UsesCardDealAnimation => IsSevenCardStud || IsGoodBadUgly || IsBaseball || IsFollowTheQueen || IsFiveCardDraw || IsTwosJacksManWithTheAxe || IsKingsAndLows || IsHoldEm || IsOmaha || IsIrishHoldEm;
     private int DealAnimationDelayMs => 750;
 
     // Game rules for dynamic UI rendering
@@ -2554,6 +2555,17 @@
                 return;
             }
         }
+        else if (IsIrishHoldEm)
+        {
+            // Irish Hold'Em uses the generic start endpoint (same as Omaha).
+            var startResponse = await GamesApiClient.GenericStartHandAsync(GameId);
+            if (!startResponse.IsSuccessStatusCode)
+            {
+                Logger.LogWarning("Failed to start Irish Hold'Em hand: {StatusCode}", startResponse.StatusCode);
+                await ShowToastAsync("Failed to start game. Please try again.", "error");
+                return;
+            }
+        }
         else if (IsKingsAndLows)
         {
             // Kings and Lows has a simpler flow - StartHand handles ante collection and dealing
@@ -2648,6 +2660,10 @@
             showdownResponse = await HoldEmApi.HoldEmPerformShowdownAsync(GameId);
         }
         else if (IsOmaha)
+        {
+            showdownResponse = await GamesApiClient.GenericPerformShowdownAsync(GameId);
+        }
+        else if (IsIrishHoldEm)
         {
             showdownResponse = await GamesApiClient.GenericPerformShowdownAsync(GameId);
         }
@@ -4256,7 +4272,23 @@ HandType.HighCard
         // Use drawing config from table state if available, but ensure we respect
         // the personalized limit (e.g., having an Ace allows 4 discards instead of 3)
         var publicMax = _tableState?.DrawingConfig?.MaxDiscards ?? 3;
+
+        // Irish Hold 'Em always discards exactly 2
+        if (IsIrishHoldEm) return 2;
+
         return Math.Max(publicMax, _maxDiscards);
+    }
+
+    /// <summary>
+    /// Gets the minimum number of discards required by game rules.
+    /// Irish Hold 'Em requires exactly 2 discards (no stand pat, no partial).
+    /// </summary>
+    private int GetMinDiscards()
+    {
+        // Irish Hold 'Em requires exactly 2 discards after the flop
+        if (IsIrishHoldEm) return 2;
+
+        return 0;
     }
 
     /// <summary>

@@ -217,6 +217,7 @@ public class ChooseDealerGameCommandTests : IntegrationTestBase
     [Theory]
     [InlineData(PokerGameMetadataRegistry.HoldEmCode, 5, 10)]
     [InlineData(PokerGameMetadataRegistry.OmahaCode, 10, 20)]
+    [InlineData(PokerGameMetadataRegistry.IrishHoldEmCode, 5, 10)]
     public async Task Handle_BlindBasedChoice_SetsAndLogsBlinds(
         string gameTypeCode,
         int smallBlind,
@@ -264,6 +265,7 @@ public class ChooseDealerGameCommandTests : IntegrationTestBase
     [InlineData(PokerGameMetadataRegistry.HoldEmCode)]
     [InlineData(PokerGameMetadataRegistry.OmahaCode)]
     [InlineData(PokerGameMetadataRegistry.KingsAndLowsCode)]
+    [InlineData(PokerGameMetadataRegistry.IrishHoldEmCode)]
     public async Task Handle_DifferentGameTypes_AllSucceed(string gameTypeCode)
     {
         var setup = await CreateDealersChoiceSetupWithTestUser(dealerSeatPosition: 0);
