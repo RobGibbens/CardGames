@@ -1,7 +1,7 @@
 ---
 name: dotnet-testing-strategy
 description: "Deciding how to test .NET code. Unit vs integration vs E2E decision tree, test doubles."
-user-invocable: false
+user-invokable: false
 ---
 
 # dotnet-testing-strategy
@@ -324,6 +324,13 @@ Assert.True(order.IsExpired(fakeTime));
 3. **Do not use `Thread.Sleep` in tests.** Use `Task.Delay` with a cancellation token, or better, use `FakeTimeProvider.Advance()` to control time deterministically.
 4. **Do not test private methods directly.** If a private method needs its own tests, it should be extracted into its own class. Test through the public API.
 5. **Do not hard-code connection strings in integration tests.** Use Testcontainers for disposable infrastructure or `WebApplicationFactory` for in-process testing -- see [skill:dotnet-integration-testing].
+
+---
+
+## Reusable Pattern (CardGames)
+
+- **Blind-based variant regression matrix:** When adding a new blind-based poker variant (e.g., Omaha), pair it with an existing blind-based variant (Hold'em) in the same `[Theory]` integration test to verify parity while preserving regression confidence.
+- **Blocked hardening tests:** If a high-risk behavior is implementation-blocked, add the integration test with explicit expected behavior and a precise skip reason so the gap stays visible in test output without breaking unrelated quality gates.
 
 ---
 

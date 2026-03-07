@@ -17,7 +17,7 @@ namespace CardGames.Poker.Games.Omaha;
 	name:"Omaha",
 	description:"A popular variant of poker where players are dealt four hole cards and share five community cards, with four betting rounds.",
 	minimumNumberOfPlayers:2,
-	maximumNumberOfPlayers:11,
+	maximumNumberOfPlayers:10,
     initialHoleCards:4,
     initialBoardCards:0,
     maxCommunityCards:5,
@@ -110,6 +110,8 @@ public class OmahaGame : IPokerGame
             Phases = new List<GameFlow.GamePhaseDescriptor>
             {
                 new() { PhaseId = "WaitingToStart", Name = "Waiting to Start", Description = "Waiting for players", Category = "Setup", RequiresPlayerAction = false },
+                new() { PhaseId = "CollectingBlinds", Name = "Collecting Blinds", Description = "Collecting blinds", Category = "Setup", RequiresPlayerAction = false },
+                new() { PhaseId = "Dealing", Name = "Dealing", Description = "Dealing hole cards", Category = "Setup", RequiresPlayerAction = false },
                 new() { PhaseId = "PreFlop", Name = "Pre-Flop", Description = "Initial betting round", Category = "Betting", RequiresPlayerAction = true },
                 new() { PhaseId = "Flop", Name = "Flop", Description = "First 3 community cards", Category = "Betting", RequiresPlayerAction = true },
                 new() { PhaseId = "Turn", Name = "Turn", Description = "4th community card", Category = "Betting", RequiresPlayerAction = true },

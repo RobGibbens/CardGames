@@ -10,7 +10,9 @@ using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 
 namespace CardGames.Poker.Api.Features.Games.Common.v1.Commands.CreateGame;
 
-public class CreateGameCommandHandler(CardsDbContext context, ICurrentUserService currentUserService)
+public class CreateGameCommandHandler(
+	CardsDbContext context,
+	ICurrentUserService currentUserService)
 	: IRequestHandler<CreateGameCommand, OneOf<CreateGameSuccessful, CreateGameConflict>>
 {
 	public async Task<OneOf<CreateGameSuccessful, CreateGameConflict>> Handle(CreateGameCommand command, CancellationToken cancellationToken)

@@ -15,6 +15,7 @@ public class CreateGameCommandHandlerTests : IntegrationTestBase
     [InlineData(PokerGameMetadataRegistry.KingsAndLowsCode)]
     [InlineData(PokerGameMetadataRegistry.TwosJacksManWithTheAxeCode)]
     [InlineData(PokerGameMetadataRegistry.HoldEmCode)]
+    [InlineData(PokerGameMetadataRegistry.OmahaCode)]
     [InlineData(PokerGameMetadataRegistry.GoodBadUglyCode)]
     public async Task Handle_ValidRequest_CreatesGame(string gameCode)
     {
@@ -52,6 +53,45 @@ public class CreateGameCommandHandlerTests : IntegrationTestBase
         game.MinBet.Should().Be(20);
         game.Status.Should().Be(GameStatus.WaitingForPlayers);
         game.CurrentPhase.Should().Be(nameof(Phases.WaitingToStart));
+    }
+
+    [Theory]
+    [InlineData(PokerGameMetadataRegistry.HoldEmCode, 5, 10)]
+    [InlineData(PokerGameMetadataRegistry.OmahaCode, 10, 20)]
+    public async Task Handle_BlindBasedGame_WithBlindValues_PersistsBlinds(
+        string gameCode,
+        int smallBlind,
+        int bigBlind)
+    {
+        // Arrange
+        var gameId = Guid.NewGuid();
+        var command = new CreateGameCommand(
+            gameId,
+            gameCode,
+            "Blind Table",
+            0,
+            10,
+            new List<PlayerInfo>
+            {
+                new("Player1", 1000),
+                new("Player2", 1000)
+            },
+            SmallBlind: smallBlind,
+            BigBlind: bigBlind);
+
+        // Act
+        var result = await Mediator.Send(command);
+
+        // Assert
+        result.IsT0.Should().BeTrue("Expected successful creation for blind-based game");
+
+        var game = await DbContext.Games
+            .Include(g => g.GameType)
+            .FirstAsync(g => g.Id == gameId);
+
+        game.GameType!.Code.Should().Be(gameCode);
+        game.SmallBlind.Should().Be(smallBlind);
+        game.BigBlind.Should().Be(bigBlind);
     }
 
     [Fact]

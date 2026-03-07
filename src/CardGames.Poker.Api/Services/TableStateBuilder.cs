@@ -755,6 +755,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		var isTwosJacksAxe = IsTwosJacksAxeGame(game.GameType?.Code);
 		var isGoodBadUgly = IsGoodBadUglyGame(game.GameType?.Code);
 		var isHoldEm = IsHoldEmGame(game.GameType?.Code);
+		var isOmaha = IsOmahaGame(game.GameType?.Code);
 
 		var isSevenCardStud = IsGameType(game.GameType?.Code, PokerGameMetadataRegistry.SevenCardStudCode);
 		var isBaseball = IsBaseballGame(game.GameType?.Code);
@@ -866,6 +867,52 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				var bestFive = FindBestFiveCardHand(allCoreCards);
 
 				playerHandEvaluations[gp.Player.Name] = (holdemHand, null, null, null, gp, allDisplayCards, [],
+					GetCardIndexes(allCoreCards, bestFive));
+			}
+		}
+
+		// Omaha: players have 4 hole cards + 5 shared community cards → best 5 using exactly 2 hole + 3 community
+		if (isOmaha)
+		{
+			var omahaCommunityCards = await _context.GameCards
+				.Where(c => c.GameId == game.Id
+					&& c.HandNumber == game.CurrentHandNumber
+					&& c.Location == CardLocation.Community
+					&& c.GamePlayerId == null
+					&& !c.IsDiscarded)
+				.OrderBy(c => c.DealOrder)
+				.AsNoTracking()
+				.ToListAsync(cancellationToken);
+
+			var communityCoreCards = omahaCommunityCards
+				.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
+				.ToList();
+
+			foreach (var gp in gamePlayers.Where(p => !p.HasFolded))
+			{
+				var ownedCards = gp.Cards
+					.Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber)
+					.OrderBy(c => c.DealOrder)
+					.ToList();
+
+				var holeCoreCards = ownedCards.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol)).ToList();
+
+				if (holeCoreCards.Count < 4)
+				{
+					continue;
+				}
+
+				var omahaHand = new OmahaHand(holeCoreCards, communityCoreCards);
+
+				// Build full card list for display: hole cards first, then community cards
+				var allDisplayCards = ownedCards.ToList();
+				allDisplayCards.AddRange(omahaCommunityCards);
+				var allCoreCards = holeCoreCards.Concat(communityCoreCards).ToList();
+
+				// Find best 5-card hand using Omaha rules: exactly 2 hole + 3 community
+				var bestFive = FindBestOmahaHand(holeCoreCards, communityCoreCards);
+
+				playerHandEvaluations[gp.Player.Name] = (omahaHand, null, null, null, gp, allDisplayCards, [],
 					GetCardIndexes(allCoreCards, bestFive));
 			}
 		}
@@ -2328,6 +2375,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	private static bool IsHoldEmGame(string? gameTypeCode)
 		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.HoldEmCode);
 
+	private static bool IsOmahaGame(string? gameTypeCode)
+		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.OmahaCode);
+
 	private static bool IsGameType(string? gameTypeCode, string expectedCode)
 		=> !string.IsNullOrWhiteSpace(gameTypeCode) &&
 		   string.Equals(gameTypeCode, expectedCode, StringComparison.OrdinalIgnoreCase);
@@ -2522,5 +2572,33 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		}
 
 		return bestCombo ?? allCards.Take(5).ToList();
+	}
+
+	/// <summary>
+	/// Finds the best 5-card Omaha hand using exactly 2 hole cards + 3 community cards.
+	/// Evaluates all C(4,2) × C(5,3) = 60 valid combinations.
+	/// </summary>
+	private static List<Card> FindBestOmahaHand(List<Card> holeCards, List<Card> communityCards)
+	{
+		var ranking = HandTypeStrengthRanking.Classic;
+		List<Card>? bestCombo = null;
+		long bestStrength = long.MinValue;
+
+		foreach (var holePair in holeCards.SubsetsOfSize(2))
+		{
+			foreach (var communityTriple in communityCards.SubsetsOfSize(3))
+			{
+				var combo = holePair.Concat(communityTriple).ToList();
+				var handType = HandTypeDetermination.DetermineHandType(combo);
+				var strength = HandStrength.Calculate(combo, handType, ranking);
+				if (strength > bestStrength)
+				{
+					bestStrength = strength;
+					bestCombo = combo;
+				}
+			}
+		}
+
+		return bestCombo ?? holeCards.Take(2).Concat(communityCards.Take(3)).ToList();
 	}
 }

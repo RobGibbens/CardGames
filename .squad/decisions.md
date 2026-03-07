@@ -776,3 +776,66 @@ EF migration `AddDealersChoice` cannot be generated until these are fixed. These
 
 **Merged source:**
 - `.squad/decisions/inbox/linus-option2-narrow-screen-polish.md`
+
+### 2026-03-06: Omaha Phase 0 frontend routing hardening
+**By:** Linus (Frontend Dev)
+**Requested by:** Rob Gibbens
+**What:** For Omaha Phase 0 in the web layer, route Omaha start/showdown through generic game endpoints and add explicit Omaha action routing in the web router to prevent fallback-to-FiveCardDraw behavior; include Omaha blind-based availability/parity in Create Table and Dealer's Choice.
+**Why:** The current web/contracts surface has no Omaha-specific Refit client, so explicit safe routing and blind-based parity are required for immediate Omaha Phase 0 hardening.
+
+**Merged source:**
+- `.squad/decisions/inbox/linus-omaha-phase0.md`
+
+### 2026-03-06: Omaha showdown hardening in generic evaluation path
+**By:** Danny (Backend Dev)
+**Requested by:** Rob Gibbens
+**What:** Harden generic showdown by including shared community cards for community-card games, preserving non-community positional behavior, registering a dedicated `OmahaHandEvaluator` (`[HandEvaluator("OMAHA")]`), and avoiding premature Omaha hole-card truncation before evaluator/domain rules execute.
+**Why:** Removes Omaha fallback/safety gaps in winner resolution while keeping exact-two-hole semantics enforced in domain hand logic.
+
+**Merged source:**
+- `.squad/decisions/inbox/danny-omaha-showdown-hardening.md`
+
+### 2026-03-06: Omaha Phase 0 test gate strategy (runnable now + explicit pending showdown gate)
+**By:** Basher (Tester)
+**Requested by:** Rob Gibbens
+**What:** Prioritized immediately runnable Phase 0 integration coverage for Omaha blind-path creation, Dealer's Choice Omaha blind selection/log persistence, and Dealer's Choice continuous-play Omaha progression; kept Hold'em paired in blind theory matrices; recorded exact-two-hole Omaha showdown as an explicit pending hardening gate.
+**Why:** Maximizes immediate CI signal on high-value Omaha flows while keeping the unresolved showdown behavior visible and traceable until fully wired end-to-end.
+
+**Merged source:**
+- `.squad/decisions/inbox/basher-omaha-phase0.md`
+
+### 2026-03-06: Omaha max-player canonicalization
+**By:** Danny (Backend Dev)
+**Requested by:** Rob Gibbens
+**What:** Set canonical Omaha `MaxPlayers` to `10` and align authoritative product definitions between metadata (`OmahaGame` `maximumNumberOfPlayers`) and rules (`OmahaRules` `GameRules.MaxPlayers`).
+**Why:** These values had drifted (`11` in metadata and `9` in rules), causing inconsistent rule surfaces depending on which backend path consumed Omaha definitions.
+
+**Merged source:**
+- `.squad/decisions/inbox/danny-omaha-max-players.md`
+
+### 2026-03-06: Omaha Phase 1 internal validation test slice
+**By:** Basher (Tester)
+**Requested by:** Rob Gibbens
+**What:** For Omaha Phase 1 internal validation, approved a targeted test slice using `CardGames.Poker.Tests` (full project) plus a filtered `CardGames.IntegrationTests` run covering Omaha flows and required regression surfaces (Hold'em lifecycle, Dealer's Choice selection, create-game, and DC continuous play).
+**Why:** Preserves high-signal Omaha/routing validation while avoiding full-suite runtime during internal phase-gate checks.
+
+**Merged source:**
+- `.squad/decisions/inbox/basher-omaha-phase1-validation.md`
+
+### 2026-03-06: Generic StartHand auto-deals only for skip-ante variants
+**By:** Danny (Backend)
+**Requested by:** Rob Gibbens
+**What:** In the generic StartHand handler, after persisting initial hand state, invoke `flowHandler.DealCardsAsync(...)` only when `flowHandler.SkipsAnteCollection` is `true`.
+**Why:** Aligns blind-based variants (Hold'em/Omaha) with expected start behavior while keeping ante-based variants in `CollectingAntes` for explicit ante collection.
+
+**Merged source:**
+- `.squad/decisions/inbox/danny-generic-start-deals-skip-ante.md`
+
+### 2026-03-06: Omaha generic StartHand post-deal phase expectation (PreFlop)
+**By:** Basher (Tester)
+**Requested by:** Rob Gibbens
+**What:** Added regression expectation that generic StartHand for `OMAHA` with blinds configured results in blinds collected, four hole cards per eligible player, and phase advanced to `PreFlop` after auto-deal.
+**Why:** Confirms the updated generic StartHand + Omaha flow behavior returns and persists the post-deal state as the completion sentinel.
+
+**Merged source:**
+- `.squad/decisions/inbox/basher-generic-start-omaha-deal-test.md`

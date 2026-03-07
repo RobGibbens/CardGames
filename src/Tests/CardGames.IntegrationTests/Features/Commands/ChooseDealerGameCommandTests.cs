@@ -215,9 +215,54 @@ public class ChooseDealerGameCommandTests : IntegrationTestBase
     }
 
     [Theory]
+    [InlineData(PokerGameMetadataRegistry.HoldEmCode, 5, 10)]
+    [InlineData(PokerGameMetadataRegistry.OmahaCode, 10, 20)]
+    public async Task Handle_BlindBasedChoice_SetsAndLogsBlinds(
+        string gameTypeCode,
+        int smallBlind,
+        int bigBlind)
+    {
+        // Arrange
+        var setup = await CreateDealersChoiceSetupWithTestUser(dealerSeatPosition: 0);
+
+        var command = new ChooseDealerGameCommand(
+            setup.Game.Id,
+            gameTypeCode,
+            Ante: 0,
+            MinBet: 10,
+            SmallBlind: smallBlind,
+            BigBlind: bigBlind);
+
+        // Act
+        var result = await Mediator.Send(command);
+
+        // Assert
+        result.IsT0.Should().BeTrue($"Expected success for blind-based game {gameTypeCode}");
+        result.AsT0.GameTypeCode.Should().Be(gameTypeCode);
+        result.AsT0.SmallBlind.Should().Be(smallBlind);
+        result.AsT0.BigBlind.Should().Be(bigBlind);
+
+        var game = await DbContext.Games
+            .Include(g => g.GameType)
+            .FirstAsync(g => g.Id == setup.Game.Id);
+
+        game.CurrentHandGameTypeCode.Should().Be(gameTypeCode);
+        game.SmallBlind.Should().Be(smallBlind);
+        game.BigBlind.Should().Be(bigBlind);
+
+        var handLog = await DbContext.DealersChoiceHandLogs
+            .SingleAsync(l => l.GameId == setup.Game.Id);
+
+        handLog.GameTypeCode.Should().Be(gameTypeCode);
+        handLog.SmallBlind.Should().Be(smallBlind);
+        handLog.BigBlind.Should().Be(bigBlind);
+    }
+
+    [Theory]
     [InlineData(PokerGameMetadataRegistry.FiveCardDrawCode)]
     [InlineData(PokerGameMetadataRegistry.SevenCardStudCode)]
     [InlineData(PokerGameMetadataRegistry.HoldEmCode)]
+    [InlineData(PokerGameMetadataRegistry.OmahaCode)]
     [InlineData(PokerGameMetadataRegistry.KingsAndLowsCode)]
     public async Task Handle_DifferentGameTypes_AllSucceed(string gameTypeCode)
     {

@@ -1,5 +1,17 @@
 # Kings and Lows - Implementation Status
 
+## 🟩 Omaha (High) - Phase 3 Prod Release Ready (2026-03-06)
+
+- Phase 3 production execution checklist is now defined in `docs/OmahaPRD.md` under Rollout phases.
+- Current gate posture: production enablement is ready-to-execute via `GameAvailability:EnableOmaha`.
+- Rollback lever (single): set `GameAvailability:EnableOmaha` back to `false` to immediately remove Omaha from Create Table + Dealer’s Choice exposure.
+
+### Phase 3 Release Notes
+
+- Deploy Omaha code/contract updates to production, then flip the gate to enable.
+- Run immediate post-enable production smoke checks across create, deal, action, and showdown flows.
+- Monitor and be ready to flip the gate back if any rollback condition appears.
+
 ## ✅ Completed
 
 ### API Layer

@@ -19,9 +19,9 @@ namespace CardGames.IntegrationTests.Infrastructure;
 public class ApiWebApplicationFactory : WebApplicationFactory<ApiProgram>
 {
     private readonly string _databaseName = $"ApiTestDb_{Guid.NewGuid():N}";
-
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        builder.UseEnvironment("Development");
         // Provide dummy connection string to satisfy basic validation if cleanup misses something
         builder.UseSetting("ConnectionStrings:cardsdb", "Server=(localdb)\\mssqllocaldb;Database=TestDb;Trusted_Connection=True;ConnectRetryCount=0");
         builder.UseSetting("ConnectionStrings:messaging", "Endpoint=sb://localhost/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abcdefghijklmnopqrstuvwxyz0123456789=");

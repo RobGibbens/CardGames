@@ -1,0 +1,14 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "build-web-project",
+			"type": "shell",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"src/CardGames.Poker.Web/CardGames.Poker.Web.csproj"
+			]
+		}
+	]
+}

@@ -134,7 +134,8 @@
 	}
 
 	private static bool IsBlindBasedGame(string? code) =>
-		string.Equals(code, "HOLDEM", StringComparison.OrdinalIgnoreCase);
+		string.Equals(code, "HOLDEM", StringComparison.OrdinalIgnoreCase)
+		|| string.Equals(code, "OMAHA", StringComparison.OrdinalIgnoreCase);
 
 	private async Task ConfirmChoiceAsync()
 	{

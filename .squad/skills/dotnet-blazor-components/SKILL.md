@@ -1,7 +1,7 @@
 ---
 name: dotnet-blazor-components
 description: "Building Blazor components. Lifecycle, state management, JS interop, EditForm validation, QuickGrid."
-user-invocable: false
+user-invokable: false
 ---
 
 # dotnet-blazor-components
@@ -611,3 +611,14 @@ Blazor component patterns in this skill are grounded in guidance from:
 - [Blazor Forms and Validation](https://learn.microsoft.com/en-us/aspnet/core/blazor/forms/?view=aspnetcore-10.0)
 - [QuickGrid Component](https://learn.microsoft.com/en-us/aspnet/core/blazor/components/quickgrid?view=aspnetcore-10.0)
 - [Cascading Values and Parameters](https://learn.microsoft.com/en-us/aspnet/core/blazor/components/cascading-values-and-parameters?view=aspnetcore-10.0)
+
+---
+
+## Project Pattern: Blind-Based Variant Branching
+
+When multiple variants share blind-based UX (for example Hold'Em and Omaha), define one code-based helper predicate (e.g., `IsBlindBasedGame(code)`) per component and reuse it across all branch points (Create Table fields, Dealer's Choice inputs, seat SB/BB indicators, and game-info summary rows).
+
+Benefits:
+- Reduces drift from duplicated hardcoded variant checks.
+- Makes onboarding new blind-based variants a small, predictable change.
+- Keeps UI metadata-driven by game code instead of embedding game-rule logic.

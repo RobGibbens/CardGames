@@ -1,11 +1,16 @@
+using CardGames.Core.Extensions;
 using CardGames.Core.French.Cards;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.GameFlow;
+using CardGames.Poker.Api.Games;
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
 using CardGames.Poker.Evaluation;
 using CardGames.Poker.Hands;
+using CardGames.Poker.Hands.CommunityCardHands;
+using CardGames.Poker.Hands.HandTypes;
+using CardGames.Poker.Hands.Strength;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
@@ -127,6 +132,15 @@ public sealed class PerformShowdownCommandHandler(
             .GroupBy(c => c.GamePlayerId!.Value)
             .ToDictionary(g => g.Key, g => g.ToList());
 
+        var sharedCommunityCards = await context.GameCards
+            .Where(c => c.GameId == command.GameId &&
+                        c.HandNumber == game.CurrentHandNumber &&
+                        !c.IsDiscarded &&
+                        c.GamePlayerId == null &&
+                        c.Location == CardLocation.Community)
+            .OrderBy(c => c.DealOrder)
+            .ToListAsync(cancellationToken);
+
         // 6. Calculate total pot
         var totalPot = currentHandPots.Sum(p => p.Amount);
 
@@ -147,7 +161,13 @@ public sealed class PerformShowdownCommandHandler(
         }
 
         // 9. Evaluate all hands using the game-specific evaluator
-        var playerHandEvaluations = EvaluatePlayerHands(playersInHand, playerCardGroups, handEvaluator);
+        var includeSharedCommunityCards = UsesSharedCommunityCards(gameTypeCode);
+        var playerHandEvaluations = EvaluatePlayerHands(
+            playersInHand,
+            playerCardGroups,
+            sharedCommunityCards,
+            handEvaluator,
+            includeSharedCommunityCards);
 
         // 10. Award each pot to the best hand among ELIGIBLE players
         var (payouts, allWinners, overallWinReason) = await AwardPotsAsync(
@@ -200,7 +220,8 @@ public sealed class PerformShowdownCommandHandler(
 
         // 14. Build response
         var playerHandsList = BuildPlayerHandsResponse(
-            playerHandEvaluations, allWinners, payouts, usersByEmail, handEvaluator);
+            playerHandEvaluations, allWinners, payouts, usersByEmail, handEvaluator,
+            sharedCommunityCards, includeSharedCommunityCards);
 
         return new PerformShowdownSuccessful
         {
@@ -357,13 +378,15 @@ public sealed class PerformShowdownCommandHandler(
     private static Dictionary<string, PlayerHandEvaluation> EvaluatePlayerHands(
         List<GamePlayer> playersInHand,
         Dictionary<Guid, List<GameCard>> playerCardGroups,
-        IHandEvaluator handEvaluator)
+        IReadOnlyCollection<GameCard> sharedCommunityCards,
+        IHandEvaluator handEvaluator,
+        bool includeSharedCommunityCards)
     {
         var evaluations = new Dictionary<string, PlayerHandEvaluation>();
 
         foreach (var gamePlayer in playersInHand)
         {
-            if (!playerCardGroups.TryGetValue(gamePlayer.Id, out var cards) || cards.Count < 5)
+            if (!playerCardGroups.TryGetValue(gamePlayer.Id, out var cards))
             {
                 continue; // Skip players without valid hands
             }
@@ -371,9 +394,9 @@ public sealed class PerformShowdownCommandHandler(
             HandBase hand;
             if (handEvaluator.SupportsPositionalCards)
             {
-                // For stud-style games, separate hole and board cards
+                // For positional-card games, separate private and visible cards.
                 var holeCards = cards
-                    .Where(c => c.Location == CardLocation.Hole)
+                    .Where(c => c.Location == CardLocation.Hole || c.Location == CardLocation.Hand)
                     .OrderBy(c => c.DealOrder)
                     .Select(c => MapToCard(c))
                     .ToList();
@@ -384,14 +407,36 @@ public sealed class PerformShowdownCommandHandler(
                     .Select(c => MapToCard(c))
                     .ToList();
 
-                var downCards = cards
-                    .Where(c => c.Location == CardLocation.Hole)
-                    .OrderBy(c => c.DealOrder)
-                    .Skip(2) // First 2 are initial hole cards
-                    .Select(c => MapToCard(c))
-                    .ToList();
+                if (includeSharedCommunityCards && sharedCommunityCards.Count != 0)
+                {
+                    boardCards.AddRange(sharedCommunityCards
+                        .OrderBy(c => c.DealOrder)
+                        .Select(MapToCard));
+                }
 
-                hand = handEvaluator.CreateHand(holeCards.Take(2).ToList(), boardCards, downCards);
+                if (holeCards.Count + boardCards.Count < 5)
+                {
+                    continue;
+                }
+
+                if (includeSharedCommunityCards)
+                {
+                    // Hold'em/Omaha: pass all private cards and shared board cards.
+                    // Omaha evaluator enforces exact-two-hole usage internally.
+                    hand = handEvaluator.CreateHand(holeCards, boardCards, []);
+                }
+                else
+                {
+                    // Stud/GBU/Baseball style: preserve existing split of initial hole and down cards.
+                    var downCards = cards
+                        .Where(c => c.Location == CardLocation.Hole)
+                        .OrderBy(c => c.DealOrder)
+                        .Skip(2) // First 2 are initial hole cards
+                        .Select(c => MapToCard(c))
+                        .ToList();
+
+                    hand = handEvaluator.CreateHand(holeCards.Take(2).ToList(), boardCards, downCards);
+                }
             }
             else
             {
@@ -400,6 +445,11 @@ public sealed class PerformShowdownCommandHandler(
                     .OrderBy(c => c.DealOrder)
                     .Select(c => MapToCard(c))
                     .ToList();
+
+                if (coreCards.Count < 5)
+                {
+                    continue;
+                }
 
                 hand = handEvaluator.CreateHand(coreCards);
             }
@@ -562,31 +612,179 @@ public sealed class PerformShowdownCommandHandler(
         HashSet<string> allWinners,
         Dictionary<string, int> payouts,
         Dictionary<string, UserInfo> usersByEmail,
-        IHandEvaluator handEvaluator)
+        IHandEvaluator handEvaluator,
+        IReadOnlyCollection<GameCard> sharedCommunityCards,
+        bool includeSharedCommunityCards)
     {
         return playerHandEvaluations.Select(kvp =>
         {
             var isWinner = allWinners.Contains(kvp.Key);
             usersByEmail.TryGetValue(kvp.Value.GamePlayer.Player.Email ?? string.Empty, out var user);
 
-            // Get the best evaluated cards (handles wild card substitution)
-            var bestCards = handEvaluator.GetEvaluatedBestCards(kvp.Value.Hand);
+            // Build the card list for display
+            // For community card games (Hold'em, Omaha), include both hole cards and community cards
+            var displayCards = kvp.Value.Cards
+                .OrderBy(c => c.DealOrder)
+                .Select(c => new ShowdownCard
+                {
+                    Suit = c.Suit,
+                    Symbol = c.Symbol
+                }).ToList();
+
+            List<int>? bestCardIndexes = null;
+
+            if (includeSharedCommunityCards && sharedCommunityCards.Count > 0)
+            {
+                // Append community cards to the display list
+                var communityShowdownCards = sharedCommunityCards
+                    .OrderBy(c => c.DealOrder)
+                    .Select(c => new ShowdownCard
+                    {
+                        Suit = c.Suit,
+                        Symbol = c.Symbol
+                    }).ToList();
+                displayCards.AddRange(communityShowdownCards);
+
+                // Compute best 5-card indexes from the combined card list
+                // The hand object already has hole + community cards and knows the correct evaluation
+                bestCardIndexes = FindBestCardIndexes(kvp.Value.Hand, displayCards);
+            }
+
+            // Generate hand description
+            var handDescription = HandDescriptionFormatter.GetHandDescription(kvp.Value.Hand);
 
             return new ShowdownPlayerHand
             {
                 PlayerName = kvp.Key,
                 PlayerFirstName = user?.FirstName,
-                Cards = kvp.Value.Cards.Select(c => new ShowdownCard
-                {
-                    Suit = c.Suit,
-                    Symbol = c.Symbol
-                }).ToList(),
+                Cards = displayCards,
                 HandType = kvp.Value.Hand.Type.ToString(),
+                HandDescription = handDescription,
                 HandStrength = kvp.Value.Hand.Strength,
                 IsWinner = isWinner,
-                AmountWon = payouts.GetValueOrDefault(kvp.Key, 0)
+                AmountWon = payouts.GetValueOrDefault(kvp.Key, 0),
+                BestCardIndexes = bestCardIndexes
             };
         }).OrderByDescending(h => h.HandStrength ?? 0).ToList();
+    }
+
+    /// <summary>
+    /// Finds the indexes of the best 5-card hand within the display card list.
+    /// Works for community card games (Hold'em, Omaha) that have constraints on
+    /// which combinations of hole and community cards form valid hands.
+    /// </summary>
+    private static List<int>? FindBestCardIndexes(HandBase hand, List<ShowdownCard> displayCards)
+    {
+        if (displayCards.Count <= 5)
+        {
+            return null; // No need for indexes when showing all cards
+        }
+
+        // Convert display cards to core Card objects for evaluation
+        var allCoreCards = displayCards
+            .Select(c => new Card(MapSuit(c.Suit), MapSymbol(c.Symbol)))
+            .ToList();
+
+        // Determine hole/community split based on hand type
+        if (hand is CommunityCardsHand communityHand)
+        {
+            // Use the hand's own constraints to find the best combo
+            var holeCards = communityHand.HoleCards.ToList();
+            var communityCards = communityHand.CommunityCards.ToList();
+
+            var ranking = HandTypeStrengthRanking.Classic;
+            List<Card>? bestCombo = null;
+            long bestStrength = long.MinValue;
+
+            // Omaha: exactly 2 hole + 3 community; Hold'em: 0-2 hole + 3-5 community
+            var minHole = communityHand is OmahaHand ? 2 : 0;
+            var maxHole = communityHand is OmahaHand ? 2 : Math.Min(holeCards.Count, 5);
+
+            for (var numHole = minHole; numHole <= maxHole; numHole++)
+            {
+                var numCommunity = 5 - numHole;
+                if (numCommunity > communityCards.Count) continue;
+
+                foreach (var holeSub in holeCards.SubsetsOfSize(numHole))
+                {
+                    foreach (var commSub in communityCards.SubsetsOfSize(numCommunity))
+                    {
+                        var combo = holeSub.Concat(commSub).ToList();
+                        var handType = HandTypeDetermination.DetermineHandType(combo);
+                        var strength = HandStrength.Calculate(combo, handType, ranking);
+                        if (strength > bestStrength)
+                        {
+                            bestStrength = strength;
+                            bestCombo = combo;
+                        }
+                    }
+                }
+            }
+
+            if (bestCombo is not null)
+            {
+                return GetCardIndexes(allCoreCards, bestCombo);
+            }
+        }
+
+        // Fallback: generic best-5 from all cards
+        return GetCardIndexes(allCoreCards, FindBestFiveCardHand(allCoreCards));
+    }
+
+    /// <summary>
+    /// Gets the zero-based indexes of target cards within the full card list.
+    /// </summary>
+    private static List<int> GetCardIndexes(List<Card> allCards, IEnumerable<Card> targetCards)
+    {
+        var indexes = new List<int>();
+        var usedIndexes = new HashSet<int>();
+
+        foreach (var target in targetCards)
+        {
+            for (var i = 0; i < allCards.Count; i++)
+            {
+                if (usedIndexes.Contains(i)) continue;
+
+                if (allCards[i].Equals(target))
+                {
+                    indexes.Add(i);
+                    usedIndexes.Add(i);
+                    break;
+                }
+            }
+        }
+
+        return indexes;
+    }
+
+    /// <summary>
+    /// Finds the best 5-card hand from a set of cards by evaluating all C(n,5) combinations.
+    /// Used as a fallback for non-constrained hand types.
+    /// </summary>
+    private static List<Card> FindBestFiveCardHand(List<Card> allCards)
+    {
+        if (allCards.Count <= 5)
+        {
+            return allCards;
+        }
+
+        var ranking = HandTypeStrengthRanking.Classic;
+        List<Card>? bestCombo = null;
+        long bestStrength = long.MinValue;
+
+        foreach (var combo in allCards.SubsetsOfSize(5))
+        {
+            var comboList = combo.ToList();
+            var handType = HandTypeDetermination.DetermineHandType(comboList);
+            var strength = HandStrength.Calculate(comboList, handType, ranking);
+            if (strength > bestStrength)
+            {
+                bestStrength = strength;
+                bestCombo = comboList;
+            }
+        }
+
+        return bestCombo ?? allCards.Take(5).ToList();
     }
 
     /// <summary>
@@ -710,6 +908,12 @@ public sealed class PerformShowdownCommandHandler(
     /// </summary>
     private static Card MapToCard(GameCard gameCard) =>
         new(MapSuit(gameCard.Suit), MapSymbol(gameCard.Symbol));
+
+    private static bool UsesSharedCommunityCards(string gameTypeCode)
+    {
+        return string.Equals(gameTypeCode, PokerGameMetadataRegistry.HoldEmCode, StringComparison.OrdinalIgnoreCase)
+               || string.Equals(gameTypeCode, PokerGameMetadataRegistry.OmahaCode, StringComparison.OrdinalIgnoreCase);
+    }
 
     /// <summary>
     /// Maps entity CardSuit to core library Suit.
