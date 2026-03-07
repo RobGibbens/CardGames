@@ -839,3 +839,55 @@ EF migration `AddDealersChoice` cannot be generated until these are fixed. These
 
 **Merged source:**
 - `.squad/decisions/inbox/basher-generic-start-omaha-deal-test.md`
+
+### 2026-03-06: Join buy-in backend enforcement already present
+**By:** Danny (Backend Dev)
+**Requested by:** Rob Gibbens
+**What:** Validated existing join flow enforcement: rejects `StartingChips <= 0`, blocks zero-wallet players, blocks buy-ins above available balance. Applied minimal API contract clarity updates (stale TODO removal, XML doc fix, expanded endpoint validation description, 403 response metadata for league-gated tables).
+**Why:** Backend enforcement for modal-driven buy-in UX is already present and test-backed; runtime semantics preserved to avoid risk.
+
+**Merged source:**
+- `.squad/decisions/inbox/danny-join-buyin-backend.md`
+
+### 2026-03-06: Table join uses modal-driven buy-in selection with balance cap
+**By:** Linus (Frontend Dev)
+**Requested by:** Rob Gibbens
+**What:** Changed table join UX so clicking an empty seat fetches cashier balance, blocks join when balance is `<= 0`, opens a buy-in modal with slider/input bound to buy-in amount (capped by fetched balance), and submits join from modal confirm using existing endpoint. Removed old always-visible top-strip buy-in controls.
+**Why:** Gives players per-game control over chip buy-in at seat selection while preserving existing cashier/no-chips safeguards.
+
+**Merged source:**
+- `.squad/decisions/inbox/linus-join-buyin-modal.md`
+
+### 2026-03-06: Omaha Phase 2 staged deploy with config-gated availability
+**By:** Scribe
+**Requested by:** Rob Gibbens
+**What:** Added config-gated Omaha availability via `GameAvailability:EnableOmaha` (default `false`, `true` in development). Server-authoritative gating enforced in available-games query and command handlers (`CreateGame`, `ChooseDealerGame`).
+**Why:** Supports safe staged rollout with non-prod validation before broader availability; prevents client-side bypass.
+
+**Merged source:**
+- `.squad/decisions/inbox/scribe-omaha-phase2-staged-deploy.md`
+
+### 2026-03-07: Omaha Phase 3 production release
+**By:** Scribe
+**Requested by:** Rob Gibbens
+**What:** Enabled Omaha in production via `GameAvailability:EnableOmaha` config flag. Rollback by flipping flag back to `false`.
+**Why:** Final phase of Omaha rollout after Phase 2 non-prod validation criteria met.
+
+**Merged source:**
+- `.squad/decisions/inbox/scribe-omaha-phase3-prod-release.md`
+
+### 2026-03-07: Irish Hold 'Em Phase 0 — domain + API architecture
+**By:** Danny (Backend Dev)
+**What:** Implemented Irish Hold 'Em domain and API layer. Key architecture: reused `Phases.DrawPhase` for discard, post-discard transitions to Turn (not SecondBettingRound), showdown uses `HoldemHand` (2 hole cards post-discard), dedicated `IrishHoldEmHandEvaluator` registered for registry consistency, discard command removes cards only (no replacement dealing).
+**Why:** Irish Hold 'Em is a hybrid variant (Omaha deal → discard → Hold'em play); architecture reuses existing phase infrastructure while keeping game-specific flow in dedicated handler.
+
+**Merged source:**
+- `.squad/decisions/inbox/danny-irish-holdem-domain.md`
+
+### 2026-03-07: Irish Hold 'Em UI branch points
+**By:** Linus (Frontend Dev)
+**What:** Added IRISHHOLDEM to all existing game-type branch points in Blazor UI: blind-based game checks, generic start/showdown routing, HoldEm betting routing, new dedicated discard endpoint, pre/post-discard odds calculation branching. No DrawPanel changes needed (auto-activates from server phase category).
+**Why:** Irish Hold 'Em is architecturally a hybrid of Omaha (4 hole cards, generic start) and Hold'em (2 cards post-discard); UI stays metadata-driven.
+
+**Merged source:**
+- `.squad/decisions/inbox/linus-irish-holdem-ui.md`

@@ -76,3 +76,14 @@
   - Added focused web router coverage in `src/Tests/CardGames.Poker.Tests/Web/GameApiRouterTests.cs` for Omaha betting and draw routing behavior.
 - 2026-03-06 (cross-agent sync): Scribe merged Omaha Phase 0 decisions from Basher/Danny/Linus into canonical `.squad/decisions.md` with one consolidated Omaha Phase 0 session log entry.
 - 2026-03-06: Updated `TablePlay.razor` join UX to modal-first buy-in selection triggered by empty-seat click. Flow now fetches cashier balance before join, opens a focused buy-in modal with slider + numeric input bound to the same value, caps modal max buy-in by fetched account balance, and keeps existing `NoChipsModal` behavior for zero-or-less balance. Removed conflicting always-visible top-strip buy-in controls and reused existing confirm-dialog styling patterns for minimal visual change.
+
+- 2026-03-07: Added Irish Hold'Em (IRISHHOLDEM) UI branch points across all game-type-aware Blazor files:
+  - `CreateTable.razor`: added IRISHHOLDEM to `IsBlindBasedGame` pattern match.
+  - `DealerChoiceModal.razor`: added IRISHHOLDEM to `IsBlindBasedGame` OrdinalIgnoreCase check.
+  - `TableCanvas.razor`: added IRISHHOLDEM to `IsBlindBasedGame` property.
+  - `TablePlay.razor`: added `IsIrishHoldEm` property, included in `UsesCardDealAnimation`, `GameInfoOverlay IsHoldEm` binding, `StartHandAsync` (generic start, same as Omaha), and `TryLoadShowdownAsync` (generic showdown).
+  - `IGameApiRouter.cs`: added `IrishHoldEm` constant, betting route (reusing Hold'Em endpoint, same as Omaha), and real draw route via `IGamesApi.IrishHoldEmDiscardAsync` for the post-flop discard phase.
+  - Created `src/CardGames.Contracts/IrishHoldEmDiscardExtensions.cs`: partial `IGamesApi` extension for `/api/v1/games/irish-hold-em/{gameId}/discard` endpoint (same partial-interface pattern as `GenericStartHandExtensions.cs`).
+  - `DashboardHandOddsCalculator.cs`: added IRISHHOLDEM branch using Omaha-style odds (4 hole cards pre-discard) or Hold'Em-style odds (2 hole cards post-discard).
+  - Irish Hold'Em uses blinds (not ante), deals 4 hole cards, has a post-flop discard-2 phase, then continues as Hold'Em. DrawPanel auto-activates when phase category is "Drawing" — no DrawPanel changes needed as MaxDiscards is server-driven.
+  - Build verified: 0 errors.
