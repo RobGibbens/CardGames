@@ -891,3 +891,24 @@ EF migration `AddDealersChoice` cannot be generated until these are fixed. These
 
 **Merged source:**
 - `.squad/decisions/inbox/linus-irish-holdem-ui.md`
+### 2026-03-07: Irish Hold 'Em showdown handling in TableStateBuilder
+**By:** Danny (Backend Dev)
+**Requested by:** Rob Gibbens
+**What:** Added dedicated Irish Hold 'Em showdown evaluation block in `TableStateBuilder.cs`. Irish Hold 'Em post-discard players have 2 hole cards + 5 community cards, evaluated identically to Texas Hold 'Em (`HoldemHand`, `FindBestFiveCardHand`). Without this block, the generic fallback handler never loaded community cards from DB, causing post-discard players (only 2 owned cards) to be skipped entirely at showdown.
+**Why:** Irish Hold 'Em is a community-card game that requires explicit community card loading during showdown evaluation, just like Hold 'Em and Omaha already have. The generic handler only inspects player-owned cards and doesn't know about shared board cards.
+**Changes:** `src/CardGames.Poker.Api/Services/TableStateBuilder.cs` — added `isIrishHoldEm` flag, Irish showdown block (loads community cards, creates `HoldemHand`, finds best 5-of-7), `IsIrishHoldEmGame()` convenience method.
+**Pattern:** Every community-card game variant needs its own showdown block in `TableStateBuilder` to load shared cards from DB.
+
+**Merged source:**
+- `.squad/decisions/inbox/danny-irish-showdown-tablestate.md`
+
+### 2026-03-07: DrawPanel MinDiscards parameter for mandatory discard enforcement
+**By:** Linus (Frontend Dev)
+**Requested by:** Rob Gibbens
+**What:** Added `MinDiscards` parameter to `DrawPanel.razor` component and wired it from `TablePlay.razor` via game-type check for Irish Hold'Em (`IsIrishHoldEm → 2`).
+**Why:** Irish Hold'Em requires players to discard exactly 2 of 4 hole cards after the flop — no stand pat, no partial discard, no replacement draw. The existing `MaxDiscards`-only model couldn't enforce a minimum.
+**Design decisions:** `MinDiscards` defaults to 0 (backward compatible). When `MinDiscards == MaxDiscards`, subtitle reads "Select exactly N cards to discard" and discard button says "Discard N" (no "& Draw"). Stand pat disabled when `MinDiscards > 0`. `DrawingConfigDto` does not yet have `MinDiscards` — game-type check used as fallback.
+**Files changed:** `src/CardGames.Poker.Web/Components/Shared/DrawPanel.razor`, `src/CardGames.Poker.Web/Components/Pages/TablePlay.razor`.
+
+**Merged source:**
+- `.squad/decisions/inbox/linus-drawpanel-mindiscards.md`

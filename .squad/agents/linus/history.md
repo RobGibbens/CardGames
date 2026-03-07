@@ -87,3 +87,13 @@
   - `DashboardHandOddsCalculator.cs`: added IRISHHOLDEM branch using Omaha-style odds (4 hole cards pre-discard) or Hold'Em-style odds (2 hole cards post-discard).
   - Irish Hold'Em uses blinds (not ante), deals 4 hole cards, has a post-flop discard-2 phase, then continues as Hold'Em. DrawPanel auto-activates when phase category is "Drawing" — no DrawPanel changes needed as MaxDiscards is server-driven.
   - Build verified: 0 errors.
+
+- 2026-03-07: Added `MinDiscards` parameter to `DrawPanel.razor` for enforcing mandatory discard counts (Irish Hold'Em requires exactly 2).
+  - `DrawPanel.razor`: new `[Parameter] public int MinDiscards { get; set; } = 0;` — controls subtitle, selection hint, stand pat disable, discard button disable, button label ("Discard N" vs "Discard N & Draw"), warning message, and both `HandleStandPat`/`HandleDiscard` guards.
+  - When `MinDiscards == MaxDiscards`, subtitle reads "Select exactly N cards to discard" and discard button omits "& Draw" (Irish discards only, no replacements).
+  - When `MinDiscards > 0`, stand pat button is disabled (players must discard).
+  - Warning shown if `0 < SelectedCount < MinDiscards`.
+  - `TablePlay.razor`: added `GetMinDiscards()` returning 2 for Irish Hold'Em, 0 otherwise; added Irish safety override in `GetMaxDiscards()` returning 2.
+  - `DrawingConfigDto` in Contracts does not have `MinDiscards` yet — used game-type check (`IsIrishHoldEm`) as fallback.
+  - Key files: `src/CardGames.Poker.Web/Components/Shared/DrawPanel.razor`, `src/CardGames.Poker.Web/Components/Pages/TablePlay.razor`.
+  - Build verified: 0 errors.- 2026-02-18 (Irish Hold 'Em Phase 2): Added MinDiscards to DrawPanel.razor for enforced 2-card discard. Wired from TablePlay.razor via IsIrishHoldEm check. Part of Phase 2 staged deploy session.
