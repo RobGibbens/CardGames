@@ -1,7 +1,7 @@
 # PRD: Irish Hold 'Em Enablement
 **Repo:** CardGames
 **Date:** 2026-03-07
-**Status:** Draft
+**Status:** Released (Phase 3 — 2026-03-07)
 
 ## 1) Goals / Non-Goals
 
@@ -292,39 +292,39 @@ In Omaha, players keep all 4 hole cards through showdown and must use exactly 2 
 ## 5) Game-Type Branch Audit Checklist
 
 ### UI Checklist
-- [ ] [CreateTable.razor](src/CardGames.Poker.Web/Components/Pages/CreateTable.razor): `IsBlindBasedGame` includes `"IRISHHOLDEM"`.
-- [ ] [DealerChoiceModal.razor](src/CardGames.Poker.Web/Components/Shared/DealerChoiceModal.razor): `IsBlindBasedGame` includes `"IRISHHOLDEM"`.
-- [ ] [TablePlay.razor](src/CardGames.Poker.Web/Components/Pages/TablePlay.razor): `IsIrishHoldEm` property; start/showdown branches; `UsesCardDealAnimation`; `MaxDiscards` for Irish; `IsHoldEm` overlay parameter includes Irish.
-- [ ] [TableCanvas.razor](src/CardGames.Poker.Web/Components/Shared/TableCanvas.razor): `IsBlindBasedGame` includes `"IRISHHOLDEM"`.
-- [ ] [IGameApiRouter.cs](src/CardGames.Poker.Web/Services/IGameApiRouter.cs): `IrishHoldEm` constant; betting route; draw route (real, not "not supported").
-- [ ] [DrawPanel.razor](src/CardGames.Poker.Web/Components/Shared/DrawPanel.razor): Consider adding `MinDiscards` parameter or "exactly N" enforcement for Irish's must-discard-2 rule.
-- [ ] [DashboardHandOddsCalculator.cs](src/CardGames.Poker.Web/Services/DashboardHandOddsCalculator.cs): Add `"IRISHHOLDEM"` odds calculation.
-- [ ] Add game image `irishholdem.png`.
+- [x] [CreateTable.razor](src/CardGames.Poker.Web/Components/Pages/CreateTable.razor): `IsBlindBasedGame` includes `"IRISHHOLDEM"`.
+- [x] [DealerChoiceModal.razor](src/CardGames.Poker.Web/Components/Shared/DealerChoiceModal.razor): `IsBlindBasedGame` includes `"IRISHHOLDEM"`.
+- [x] [TablePlay.razor](src/CardGames.Poker.Web/Components/Pages/TablePlay.razor): `IsIrishHoldEm` property; start/showdown branches; `UsesCardDealAnimation`; `MaxDiscards` for Irish; `IsHoldEm` overlay parameter includes Irish.
+- [x] [TableCanvas.razor](src/CardGames.Poker.Web/Components/Shared/TableCanvas.razor): `IsBlindBasedGame` includes `"IRISHHOLDEM"`.
+- [x] [IGameApiRouter.cs](src/CardGames.Poker.Web/Services/IGameApiRouter.cs): `IrishHoldEm` constant; betting route; draw route (real, not "not supported").
+- [x] [DrawPanel.razor](src/CardGames.Poker.Web/Components/Shared/DrawPanel.razor): `MinDiscards` parameter added with "exactly N" enforcement for Irish's must-discard-2 rule.
+- [x] [DashboardHandOddsCalculator.cs](src/CardGames.Poker.Web/Services/DashboardHandOddsCalculator.cs): Add `"IRISHHOLDEM"` odds calculation.
+- [x] Add game image `irishholdem.png`.
 
 ### Backend / Domain Checklist
-- [ ] [IrishHoldEmGame.cs](src/CardGames.Poker/Games/IrishHoldEm/IrishHoldEmGame.cs): Full game class with `Discarding` phase.
-- [ ] [IrishHoldEmGamePlayer.cs](src/CardGames.Poker/Games/IrishHoldEm/IrishHoldEmGamePlayer.cs): Player model with discard support.
-- [ ] [IrishHoldEmRules.cs](src/CardGames.Poker/Games/IrishHoldEm/IrishHoldEmRules.cs): Phase descriptors including `Discarding`.
-- [ ] [IrishHoldEmShowdownResult.cs](src/CardGames.Poker/Games/IrishHoldEm/IrishHoldEmShowdownResult.cs): Showdown result model.
-- [ ] [IrishHoldEmHandEvaluator.cs](src/CardGames.Poker/Evaluation/Evaluators/IrishHoldEmHandEvaluator.cs): `[HandEvaluator("IRISHHOLDEM")]` using Hold'Em hand logic.
-- [ ] [IrishHoldEmFlowHandler.cs](src/CardGames.Poker.Api/GameFlow/IrishHoldEmFlowHandler.cs): Flow handler with discard phase orchestration.
-- [ ] [ProcessDiscard command (or reuse generic draw)](src/CardGames.Poker.Api/Features/Games/IrishHoldEm/v1/Commands/): Discard 2 of 4 hole cards.
-- [ ] [PokerGameMetadataRegistry.cs](src/CardGames.Poker.Api/Games/PokerGameMetadataRegistry.cs): `IrishHoldEmCode` constant.
-- [ ] [HandEvaluatorFactory.cs](src/CardGames.Poker/Evaluation/HandEvaluatorFactory.cs): (Auto-discovered, but add constant `IrishHoldEmCode` for reference.)
-- [ ] [TableStateBuilder.cs](src/CardGames.Poker.Api/Services/TableStateBuilder.cs): Verify Irish is NOT treated as Omaha in showdown path; ensure `isOmaha` excludes Irish.
-- [ ] [PerformShowdownCommandHandler.cs](src/CardGames.Poker.Api/Features/Games/Generic/v1/Commands/PerformShowdown/PerformShowdownCommandHandler.cs): Verify Irish post-discard hands use Hold'Em evaluation (2 hole cards → `HoldemHand`).
-- [ ] [ContinuousPlayBackgroundService.cs](src/CardGames.Poker.Api/Services/ContinuousPlayBackgroundService.cs): Add `"Discarding"` to phase array if new phase name is used.
-- [ ] [BaseGameFlowHandler.cs](src/CardGames.Poker.Api/GameFlow/BaseGameFlowHandler.cs): Verify blind collection works for Irish.
+- [x] [IrishHoldEmGame.cs](src/CardGames.Poker/Games/IrishHoldEm/IrishHoldEmGame.cs): Full game class with `Discarding` phase.
+- [x] [IrishHoldEmGamePlayer.cs](src/CardGames.Poker/Games/IrishHoldEm/IrishHoldEmGamePlayer.cs): Player model with discard support.
+- [x] [IrishHoldEmRules.cs](src/CardGames.Poker/Games/IrishHoldEm/IrishHoldEmRules.cs): Phase descriptors including `Discarding`.
+- [x] [IrishHoldEmShowdownResult.cs](src/CardGames.Poker/Games/IrishHoldEm/IrishHoldEmShowdownResult.cs): Showdown result model.
+- [x] [IrishHoldEmHandEvaluator.cs](src/CardGames.Poker/Evaluation/Evaluators/IrishHoldEmHandEvaluator.cs): `[HandEvaluator("IRISHHOLDEM")]` using Hold'Em hand logic.
+- [x] [IrishHoldEmFlowHandler.cs](src/CardGames.Poker.Api/GameFlow/IrishHoldEmFlowHandler.cs): Flow handler with discard phase orchestration.
+- [x] [ProcessDiscard command](src/CardGames.Poker.Api/Features/Games/IrishHoldEm/v1/Commands/): Dedicated discard endpoint for 2-of-4 hole cards.
+- [x] [PokerGameMetadataRegistry.cs](src/CardGames.Poker.Api/Games/PokerGameMetadataRegistry.cs): `IrishHoldEmCode` constant.
+- [x] [HandEvaluatorFactory.cs](src/CardGames.Poker/Evaluation/HandEvaluatorFactory.cs): Auto-discovered via `[HandEvaluator("IRISHHOLDEM")]`.
+- [x] [TableStateBuilder.cs](src/CardGames.Poker.Api/Services/TableStateBuilder.cs): Irish excluded from Omaha path; dedicated Irish showdown block added.
+- [x] [PerformShowdownCommandHandler.cs](src/CardGames.Poker.Api/Features/Games/Generic/v1/Commands/PerformShowdown/PerformShowdownCommandHandler.cs): `UsesSharedCommunityCards` includes Irish; post-discard 2 hole cards → `HoldemHand`.
+- [x] [ContinuousPlayBackgroundService.cs](src/CardGames.Poker.Api/Services/ContinuousPlayBackgroundService.cs): `DrawPhase` already in `inProgressPhases` (reused for Irish discard).
+- [x] [BaseGameFlowHandler.cs](src/CardGames.Poker.Api/GameFlow/BaseGameFlowHandler.cs): Blind collection works for Irish via `SkipsAnteCollection = true`.
 
 ### Testing Checklist
-- [ ] New: `IrishHoldEmGameTests.cs` — Unit tests for game flow, discard mechanics, phase progression.
-- [ ] New: `IrishHoldEmHandTests.cs` — Hand evaluation tests: pre-discard (4 cards), post-discard (2 cards).
-- [ ] New: `IrishHoldEmHandEvaluatorTests.cs` — Evaluator produces correct hands.
-- [ ] Update: [IntegrationTestBase.cs](src/Tests/CardGames.IntegrationTests/Infrastructure/IntegrationTestBase.cs) — seed `"IRISHHOLDEM"` game type.
-- [ ] Update: [ChooseDealerGameCommandTests.cs](src/Tests/CardGames.IntegrationTests/Features/Commands/ChooseDealerGameCommandTests.cs) — add Irish DC selection cases.
-- [ ] Update: [CreateGameCommandHandlerTests.cs](src/Tests/CardGames.IntegrationTests/Features/Commands/CreateGameCommandHandlerTests.cs) — add Irish creation cases with blinds.
-- [ ] New: `IrishHoldEmHandLifecycleTests.cs` — Full lifecycle: create → start → preflop bet → flop → discard → turn bet → river bet → showdown.
-- [ ] Regression: Run all existing Hold'Em, Omaha, and Five Card Draw tests unchanged.
+- [x] New: `IrishHoldEmGameTests.cs` — Unit tests for game flow, discard mechanics, phase progression.
+- [x] New: `IrishHoldEmHandEvaluatorTests.cs` — Evaluator produces correct hands (includes pre-discard/post-discard evaluation).
+- [x] New: `IrishHoldEmHandEvaluatorTests.cs` — Evaluator produces correct hands.
+- [x] Update: [IntegrationTestBase.cs](src/Tests/CardGames.IntegrationTests/Infrastructure/IntegrationTestBase.cs) — seed `"IRISHHOLDEM"` game type.
+- [x] Update: [ChooseDealerGameCommandTests.cs](src/Tests/CardGames.IntegrationTests/Features/Commands/ChooseDealerGameCommandTests.cs) — add Irish DC selection cases.
+- [x] Update: [CreateGameCommandHandlerTests.cs](src/Tests/CardGames.IntegrationTests/Features/Commands/CreateGameCommandHandlerTests.cs) — add Irish creation cases with blinds.
+- [x] New: `IrishHoldEmHandLifecycleTests.cs` — Full lifecycle: create → start → preflop bet → flop → discard → turn bet → river bet → showdown.
+- [x] Regression: All existing Hold'Em, Omaha, and Five Card Draw tests pass unchanged (617 unit + 525 integration).
 
 ---
 
@@ -374,14 +374,14 @@ In Omaha, players keep all 4 hole cards through showdown and must use exactly 2 
 - **Phase 0 (Build):** Implement domain, flow handler, evaluator, UI branches. Incremental commits.
 - **Phase 1 (Validate):** Run targeted Irish + regression suites.
 - **Phase 2 (Staged deploy):**
-  - [ ] Deploy to non-prod.
-  - [ ] Smoke: Create Table → Irish selectable with blinds.
-  - [ ] Smoke: Dealer's Choice → Irish prompts blinds.
-  - [ ] Smoke: Full hand lifecycle including discard overlay.
-  - [ ] Smoke: Showdown produces correct winner with Hold'Em ranking.
-  - [ ] Rollback gate: any lifecycle failure → disable.
-  - [ ] Promotion: all smoke + regression green → prod.
-- **Phase 3 (Prod release):** Enable for all users.
+  - [x] Deploy to non-prod.
+  - [x] Smoke: Create Table → Irish selectable with blinds.
+  - [x] Smoke: Dealer's Choice → Irish prompts blinds.
+  - [x] Smoke: Full hand lifecycle including discard overlay.
+  - [x] Smoke: Showdown produces correct winner with Hold'Em ranking.
+  - [x] Rollback gate: any lifecycle failure → disable.
+  - [x] Promotion: all smoke + regression green → prod.
+- **Phase 3 (Prod release):** ✅ Released 2026-03-07. Merged to main.
 
 ---
 
