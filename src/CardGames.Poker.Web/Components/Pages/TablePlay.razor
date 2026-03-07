@@ -226,7 +226,7 @@
                          FlyingCard="@_flyingCard"
                          HasWildCards="@HasWildCards"
                          WildCards="@GetWildCardsForDisplay()"
-                         CommunityCards="@_tableState?.CommunityCards" />
+                         CommunityCards="@GetVisibleCommunityCards()" />
 
             <!-- Dashboard Panel (left side) -->
             @if (_isSeated)
@@ -653,6 +653,12 @@
     private int _previousFaceUpCommunityCardCount;
     private bool _showGameInfoOverlay;
 
+    // Community card staggered reveal (for flop in Hold'Em-style games)
+    private int _communityCardRevealCount;
+    private int _communityCardRevealTarget;
+    private Timer? _communityCardRevealTimer;
+    private bool _communityCardRevealInProgress;
+
     private List<SeatInfo> _seats = [];
 
     private int _seatedPlayerCount;
@@ -1007,6 +1013,9 @@
                 }
 
                 _previousFaceUpCommunityCardCount = 0;
+                _communityCardRevealInProgress = false;
+                _communityCardRevealTimer?.Dispose();
+                _communityCardRevealTimer = null;
                 ResetDrawPanelStateForNewHand();
             }
 
@@ -1085,9 +1094,19 @@
 
             var currentFaceUpCommunityCardCount = state.CommunityCards?.Count(c => c.IsFaceUp) ?? 0;
             var newlyFaceUpCommunityCards = Math.Max(0, currentFaceUpCommunityCardCount - _previousFaceUpCommunityCardCount);
-            if (newlyFaceUpCommunityCards > 0)
+            if (newlyFaceUpCommunityCards > 1)
             {
-                await PlayDealCardSoundAsync(newlyFaceUpCommunityCards);
+                // Multiple new community cards (e.g., flop) — stagger the reveal
+                _communityCardRevealCount = _previousFaceUpCommunityCardCount + 1; // Show first card immediately
+                _communityCardRevealTarget = currentFaceUpCommunityCardCount;
+                _communityCardRevealInProgress = true;
+                await PlayDealCardSoundAsync(1); // Sound for first card
+                _communityCardRevealTimer?.Dispose();
+                _communityCardRevealTimer = new Timer(RevealNextCommunityCard, null, 250, Timeout.Infinite);
+            }
+            else if (newlyFaceUpCommunityCards == 1)
+            {
+                await PlayDealCardSoundAsync(1);
             }
 
             _previousFaceUpCommunityCardCount = currentFaceUpCommunityCardCount;
@@ -3065,6 +3084,53 @@
         await InvokeStateHasChangedAsync();
     }
 
+    /// <summary>
+    /// Timer callback that reveals the next community card during a staggered flop reveal.
+    /// </summary>
+    private async void RevealNextCommunityCard(object? state)
+    {
+        _communityCardRevealCount++;
+        await PlayDealCardSoundAsync(1);
+
+        if (_communityCardRevealCount >= _communityCardRevealTarget)
+        {
+            _communityCardRevealInProgress = false;
+            _communityCardRevealTimer?.Dispose();
+            _communityCardRevealTimer = null;
+        }
+        else
+        {
+            _communityCardRevealTimer?.Change(250, Timeout.Infinite);
+        }
+
+        await InvokeStateHasChangedAsync();
+    }
+
+    /// <summary>
+    /// Returns community cards with staggered visibility during flop reveal animation.
+    /// During a reveal, only the first <see cref="_communityCardRevealCount"/> face-up cards are included.
+    /// </summary>
+    private IReadOnlyList<CardPublicDto>? GetVisibleCommunityCards()
+    {
+        var cards = _tableState?.CommunityCards;
+        if (cards is null || !_communityCardRevealInProgress)
+            return cards;
+
+        var result = new List<CardPublicDto>();
+        int faceUpCount = 0;
+        foreach (var card in cards)
+        {
+            if (card.IsFaceUp)
+            {
+                faceUpCount++;
+                if (faceUpCount > _communityCardRevealCount)
+                    continue;
+            }
+            result.Add(card);
+        }
+        return result;
+    }
+
     private async Task PlayDealCardSoundAsync(int cardCount)
     {
         if (cardCount <= 0 || _isDealSoundMuted)
@@ -3876,6 +3942,10 @@
         // Stop card deal animation timer
         _dealTimer?.Dispose();
         _dealTimer = null;
+
+        // Stop community card reveal timer
+        _communityCardRevealTimer?.Dispose();
+        _communityCardRevealTimer = null;
 
         // Stop flying card timer
         _flyingCardTimer?.Dispose();

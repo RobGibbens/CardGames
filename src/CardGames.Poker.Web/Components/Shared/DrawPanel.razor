@@ -124,12 +124,15 @@
     @if (!IsReadOnly)
     {
         <div class="draw-actions">
-            <button class="draw-btn stand-pat-btn" 
-                    @onclick="HandleStandPat" 
-                    disabled="@(IsSubmitting || SelectedCount > 0 || MinDiscards > 0)">
-                <i class="fa-regular fa-hand"></i>
-                <span>@StandPatLabel</span>
-            </button>
+            @if (MinDiscards == 0)
+            {
+                <button class="draw-btn stand-pat-btn" 
+                        @onclick="HandleStandPat" 
+                        disabled="@(IsSubmitting || SelectedCount > 0)">
+                    <i class="fa-regular fa-hand"></i>
+                    <span>@StandPatLabel</span>
+                </button>
+            }
 
                     <button class="draw-btn discard-btn @(SelectedCount > 0 ? "active" : "")" 
                             @onclick="HandleDiscard" 
