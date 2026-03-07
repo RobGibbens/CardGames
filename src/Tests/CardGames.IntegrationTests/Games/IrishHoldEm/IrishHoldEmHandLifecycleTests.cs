@@ -199,7 +199,8 @@ public class IrishHoldEmHandLifecycleTests : IntegrationTestBase
         }
 
         var freshGame = await GetFreshDbContext().Games.FirstAsync(g => g.Id == game.Id);
-        freshGame.CurrentPhase.Should().Be("Flop");
+        freshGame.CurrentPhase.Should().Be("DrawPhase",
+            "Irish Hold 'Em: after PreFlop betting, flop is dealt and phase goes directly to DrawPhase");
 
         var communityCards = await GetFreshDbContext().GameCards
             .Where(gc => gc.GameId == game.Id
@@ -372,8 +373,7 @@ public class IrishHoldEmHandLifecycleTests : IntegrationTestBase
 
     /// <summary>
     /// Creates a game that has been dealt and is now in the DrawPhase (discard phase).
-    /// Manually sets up the state since the HoldEm betting handler's Flop→Turn
-    /// hardcoded transition doesn't route through DrawPhase for Irish Hold 'Em.
+    /// PreFlop check-around deals the flop and transitions directly to DrawPhase.
     /// </summary>
     private async Task<GameSetup> CreateGameInDrawPhaseAsync(
         int playerCount = 3,
@@ -382,48 +382,23 @@ public class IrishHoldEmHandLifecycleTests : IntegrationTestBase
         var setup = await CreateDealtIrishHoldEmGameAsync(playerCount, dealerPosition);
         var game = setup.Game;
 
-        // Manually advance to DrawPhase — the betting handler uses HoldEm's hardcoded
-        // phase transition (Flop→Turn), so we set the state directly.
-        game.CurrentPhase = nameof(Phases.DrawPhase);
+        // Check all players through PreFlop — this deals the flop and advances to DrawPhase
+        await CheckAllPlayersThrough(game);
 
-        // Set the first active non-folded player as the current draw player
-        var activePlayers = game.GamePlayers
-            .Where(gp => gp.Status == GamePlayerStatus.Active && !gp.HasFolded)
-            .OrderBy(gp => gp.SeatPosition)
-            .ToList();
+        var freshGame = await GetFreshDbContext().Games.FirstAsync(g => g.Id == game.Id);
+        freshGame.CurrentPhase.Should().Be("DrawPhase",
+            "after PreFlop check-around, Irish Hold 'Em should be in DrawPhase");
 
-        var firstPlayerSeat = activePlayers.First().SeatPosition;
-        game.CurrentDrawPlayerIndex = firstPlayerSeat;
-        game.CurrentPlayerIndex = firstPlayerSeat;
+        // Reload game entity for further use
+        var reloadedGame = await DbContext.Games
+            .Include(g => g.GamePlayers).ThenInclude(gp => gp.Player)
+            .Include(g => g.GameType)
+            .FirstAsync(g => g.Id == game.Id);
 
-        // Reset draw state for all players
-        foreach (var gp in activePlayers)
-        {
-            gp.HasDrawnThisRound = false;
-        }
+        var gamePlayers = reloadedGame.GamePlayers.OrderBy(gp => gp.SeatPosition).ToList();
+        var players = gamePlayers.Select(gp => gp.Player).ToList();
 
-        // Deal 3 community cards for the flop (since we skipped the flop betting)
-        var deck = await DbContext.GameCards
-            .Where(gc => gc.GameId == game.Id
-                && gc.HandNumber == game.CurrentHandNumber
-                && gc.GamePlayerId == null
-                && gc.Location != CardLocation.Community)
-            .OrderBy(gc => gc.DealOrder)
-            .Take(3)
-            .ToListAsync();
-
-        var dealOrder = 100; // Start after hole cards
-        foreach (var card in deck)
-        {
-            card.Location = CardLocation.Community;
-            card.IsVisible = true;
-            card.DealtAtPhase = "Flop";
-            card.DealOrder = dealOrder++;
-        }
-
-        await DbContext.SaveChangesAsync();
-
-        return setup;
+        return new GameSetup(reloadedGame, players, gamePlayers);
     }
 
     /// <summary>

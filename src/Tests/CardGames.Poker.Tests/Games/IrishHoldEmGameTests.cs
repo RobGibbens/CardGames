@@ -223,17 +223,13 @@ public class IrishHoldEmGameTests
     #region Phase Progression Tests
 
     [Fact]
-    public void PhaseProgression_AfterFlopBetting_TransitionsToDrawPhase()
+    public void PhaseProgression_AfterFlopDeal_TransitionsToDrawPhase()
     {
         // This is the critical Irish Hold 'Em distinction:
-        // After Flop betting completes, phase should be DrawPhase (not Turn)
+        // After the flop is dealt, phase should be DrawPhase (no Flop betting round)
         var game = CreateTwoPlayerGame();
         SetupToFlop(game);
         game.DealFlop();
-        game.StartBettingRound();
-
-        // Complete flop betting
-        CompleteBettingRound(game);
 
         game.CurrentPhase.Should().Be(Phases.DrawPhase);
     }
@@ -269,10 +265,8 @@ public class IrishHoldEmGameTests
         game.StartBettingRound();
         CompleteBettingRound(game);
 
-        // Flop
+        // Flop — dealing auto-advances to DrawPhase (no Flop betting)
         game.DealFlop();
-        game.StartBettingRound();
-        CompleteBettingRound(game);
 
         // DrawPhase (discard) — critical Irish-specific phase
         game.CurrentPhase.Should().Be(Phases.DrawPhase);
@@ -418,10 +412,8 @@ public class IrishHoldEmGameTests
         game.ProcessBettingAction(BettingActionType.Fold);
         game.ProcessBettingAction(BettingActionType.Call);
 
-        // Flop
+        // Flop — dealing auto-advances to DrawPhase (no Flop betting)
         game.DealFlop();
-        game.StartBettingRound();
-        CompleteBettingRound(game);
 
         // Now in DrawPhase — only 2 active players remain
         game.CurrentPhase.Should().Be(Phases.DrawPhase);
@@ -493,19 +485,20 @@ public class IrishHoldEmGameTests
     }
 
     [Fact]
-    public void FoldDuringFlopBetting_SkipsDiscardAndAwardsPot()
+    public void FoldDuringPreFlopBetting_SkipsDrawPhaseAndAwardsPot()
     {
-        // If all but one player fold during flop betting, skip discard and award pot
+        // If all but one player fold during pre-flop betting, skip flop/discard and award pot
         var game = CreateTwoPlayerGame();
-        SetupToFlop(game);
-        game.DealFlop();
+        game.StartHand();
+        game.PostBlinds();
+        game.DealHoleCards();
         game.StartBettingRound();
 
         // Big bet → fold → only one player left
         game.ProcessBettingAction(BettingActionType.Bet, 100);
         game.ProcessBettingAction(BettingActionType.Fold);
 
-        // Should go to showdown (fold win), not DrawPhase
+        // Should go to showdown (fold win), not Flop or DrawPhase
         var result = game.PerformShowdown();
         result.Success.Should().BeTrue();
         result.WonByFold.Should().BeTrue();
@@ -654,10 +647,8 @@ public class IrishHoldEmGameTests
     {
         SetupToFlop(game);
 
-        // Flop
+        // Flop — dealing auto-advances to DrawPhase (no Flop betting in Irish Hold 'Em)
         game.DealFlop();
-        game.StartBettingRound();
-        CompleteBettingRound(game);
 
         // Should now be in DrawPhase
     }

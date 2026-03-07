@@ -171,7 +171,7 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 		if (discardComplete)
 		{
 			// All players have discarded — advance to Turn phase
-			StartTurnPhase(game, activePlayers, now);
+			await StartTurnPhaseAsync(game, activePlayers, now, cancellationToken);
 		}
 		else
 		{
@@ -223,7 +223,7 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 		return eligiblePlayers.First().SeatPosition;
 	}
 
-	private void StartTurnPhase(Game game, List<GamePlayer> activePlayers, DateTimeOffset now)
+	private async Task StartTurnPhaseAsync(Game game, List<GamePlayer> activePlayers, DateTimeOffset now, CancellationToken cancellationToken)
 	{
 		// Reset draw state
 		foreach (var gamePlayer in activePlayers)
@@ -243,12 +243,15 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 			return;
 		}
 
+		// Deal the Turn community card (4th community card)
+		await DealTurnCommunityCardAsync(game, now, cancellationToken);
+
 		// Create betting round record for Turn
 		var bettingRound = new BettingRound
 		{
 			GameId = game.Id,
 			HandNumber = game.CurrentHandNumber,
-			RoundNumber = 3, // PreFlop=1, Flop=2, Turn=3
+			RoundNumber = 2, // PreFlop=1, Turn=2 (no Flop betting in Irish Hold 'Em)
 			Street = nameof(Phases.Turn),
 			CurrentBet = 0,
 			MinBet = game.MinBet ?? 0,
@@ -269,6 +272,30 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 		game.CurrentPhase = nameof(Phases.Turn);
 		game.CurrentPlayerIndex = firstActorIndex;
 		game.CurrentDrawPlayerIndex = -1;
+	}
+
+	/// <summary>
+	/// Deals the Turn community card (4th community card, DealOrder 4).
+	/// </summary>
+	private async Task DealTurnCommunityCardAsync(Game game, DateTimeOffset now, CancellationToken cancellationToken)
+	{
+		var deckCards = await context.GameCards
+			.Where(gc => gc.GameId == game.Id
+				&& gc.HandNumber == game.CurrentHandNumber
+				&& gc.Location == CardLocation.Deck)
+			.OrderBy(gc => gc.DealOrder)
+			.ToListAsync(cancellationToken);
+
+		if (deckCards.Count > 0)
+		{
+			var card = deckCards[0];
+			card.Location = CardLocation.Community;
+			card.GamePlayerId = null;
+			card.IsVisible = true;
+			card.DealtAtPhase = nameof(Phases.Turn);
+			card.DealOrder = 4; // Turn is the 4th community card
+			card.DealtAt = now;
+		}
 	}
 
 	/// <summary>

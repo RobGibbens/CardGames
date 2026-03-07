@@ -23,7 +23,7 @@ public static class IrishHoldEmRules
                 new() { PhaseId = "CollectingBlinds", Name = "Collecting Blinds", Description = "Collecting blinds", Category = "Setup", RequiresPlayerAction = false },
                 new() { PhaseId = "Dealing", Name = "Dealing", Description = "Dealing hole cards", Category = "Setup", RequiresPlayerAction = false },
                 new() { PhaseId = "PreFlop", Name = "Pre-Flop", Description = "Initial betting round", Category = "Betting", RequiresPlayerAction = true },
-                new() { PhaseId = "Flop", Name = "Flop", Description = "First 3 community cards", Category = "Betting", RequiresPlayerAction = true },
+                new() { PhaseId = "Flop", Name = "Flop", Description = "First 3 community cards", Category = "Dealing", RequiresPlayerAction = false },
                 new() { PhaseId = "DrawPhase", Name = "Discard", Description = "Discard 2 of your 4 hole cards", Category = "Drawing", RequiresPlayerAction = true },
                 new() { PhaseId = "Turn", Name = "Turn", Description = "4th community card", Category = "Betting", RequiresPlayerAction = true },
                 new() { PhaseId = "River", Name = "River", Description = "5th community card", Category = "Betting", RequiresPlayerAction = true },
@@ -49,6 +49,12 @@ public static class IrishHoldEmRules
                 HasBlinds = true,
                 BettingRounds = 4,
                 Structure = "No Limit"
+            },
+            Drawing = new DrawingConfig
+            {
+                AllowsDrawing = true,
+                MaxDiscards = 2,
+                SpecialRules = "Must discard exactly 2 of 4 hole cards after the flop"
             },
             Showdown = new ShowdownConfig
             {

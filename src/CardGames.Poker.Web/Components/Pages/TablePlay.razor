@@ -650,6 +650,7 @@
     private List<ToastMessage> _toastMessages = [];
 
     private bool _isDealSoundMuted;
+    private int _previousFaceUpCommunityCardCount;
     private bool _showGameInfoOverlay;
 
     private List<SeatInfo> _seats = [];
@@ -1005,6 +1006,7 @@
                     s.HandEvaluationDescription = null;
                 }
 
+                _previousFaceUpCommunityCardCount = 0;
                 ResetDrawPanelStateForNewHand();
             }
 
@@ -1080,6 +1082,15 @@
             // Update seats from public state
             // Note: If _runoutAnimationInProgress is true, this will preserve cards for runout seats
             UpdateSeatsFromPublicState(state.Seats);
+
+            var currentFaceUpCommunityCardCount = state.CommunityCards?.Count(c => c.IsFaceUp) ?? 0;
+            var newlyFaceUpCommunityCards = Math.Max(0, currentFaceUpCommunityCardCount - _previousFaceUpCommunityCardCount);
+            if (newlyFaceUpCommunityCards > 0)
+            {
+                await PlayDealCardSoundAsync(newlyFaceUpCommunityCards);
+            }
+
+            _previousFaceUpCommunityCardCount = currentFaceUpCommunityCardCount;
 
             // Start the runout timer AFTER UpdateSeatsFromPublicState (if we just detected runout)
             if (_runoutAnimationInProgress && _runoutDealTimer is null)
@@ -3492,50 +3503,67 @@
                 {
                     var newCards = result.NewCards?.ToList() ?? [];
 
-                    for (var i = 0; i < discardIndices.Count && i < newCards.Count; i++)
+                    if (newCards.Count == 0)
                     {
-                        var targetIndex = discardIndices[i];
-                        if (targetIndex < 0 || targetIndex >= _currentPlayerDrawCards.Count)
+                        // Discard-only game (e.g. Irish Hold 'Em): no replacement cards are drawn.
+                        // Remove the discarded cards so they don't animate back in.
+                        _currentPlayerDrawCards = _currentPlayerDrawCards
+                            .Where((_, i) => !discardIndices.Contains(i))
+                            .ToList();
+                        _isDiscardingCards = false;
+                        _cardsDrawn = true;
+                        await InvokeStateHasChangedAsync();
+
+                        // Keep the panel visible briefly so the player sees their kept cards
+                        await Task.Delay(3000);
+                    }
+                    else
+                    {
+                        for (var i = 0; i < discardIndices.Count && i < newCards.Count; i++)
                         {
-                            continue;
+                            var targetIndex = discardIndices[i];
+                            if (targetIndex < 0 || targetIndex >= _currentPlayerDrawCards.Count)
+                            {
+                                continue;
+                            }
+
+                            var newCard = newCards[i];
+                            var rank = newCard.Symbol?.ToCardRankString();
+                            var suit = newCard.Suit?.ToCardSuitString();
+                            var previousCard = _currentPlayerDrawCards[targetIndex];
+
+                            _currentPlayerDrawCards[targetIndex] = new CardInfo
+                            {
+                                Rank = rank,
+                                Suit = suit,
+                                IsFaceUp = true,
+                                IsPubliclyVisible = true,
+                                IsSelected = false,
+                                DealOrder = previousCard.DealOrder,
+                                IsWild = IsWildForCurrentPlayerCard(rank, suit)
+                            };
                         }
 
-                        var newCard = newCards[i];
-                        var rank = newCard.Symbol?.ToCardRankString();
-                        var suit = newCard.Suit?.ToCardSuitString();
-                        var previousCard = _currentPlayerDrawCards[targetIndex];
+                        ApplyKingsAndLowsLowestCardWildFallback(_currentPlayerDrawCards);
 
-                        _currentPlayerDrawCards[targetIndex] = new CardInfo
-                        {
-                            Rank = rank,
-                            Suit = suit,
-                            IsFaceUp = true,
-                            IsPubliclyVisible = true,
-                            IsSelected = false,
-                            DealOrder = previousCard.DealOrder,
-                            IsWild = IsWildForCurrentPlayerCard(rank, suit)
-                        };
+                        await InvokeStateHasChangedAsync();
+
+                        _isDrawingNewCards = true;
+                        _newCardIndices = discardIndices;
+                        await InvokeStateHasChangedAsync();
+
+                        // Wait for the draw-in animation to complete, then switch the status out of "Drawing...".
+                        await Task.Delay(700);
+                        _cardsDrawn = true;
+                        await InvokeStateHasChangedAsync();
+
+                        // Keep the panel visible for 5 seconds so the player can see their new cards
+                        await Task.Delay(5000);
+
+                        _isDrawingNewCards = false;
+                        _newCardIndices = [];
                     }
-
-                    ApplyKingsAndLowsLowestCardWildFallback(_currentPlayerDrawCards);
-
-                    await InvokeStateHasChangedAsync();
                 }
-
-                _isDrawingNewCards = true;
-                _newCardIndices = discardIndices;
-                await InvokeStateHasChangedAsync();
-
-                // Wait for the draw-in animation to complete, then switch the status out of "Drawing...".
-                await Task.Delay(700);
-                _cardsDrawn = true;
-                await InvokeStateHasChangedAsync();
-
-                // Keep the panel visible for 5 seconds so the player can see their new cards
-                await Task.Delay(5000);
-
-                _isDrawingNewCards = false;
-                _newCardIndices = [];
             }
 
             // If draw phase is complete (we're now in DrawComplete phase), keep the cards visible

@@ -222,7 +222,6 @@ public class IrishHoldEmGame : IPokerGame
 				initialBet = _bigBlind;
 				forcedBetPlayerIndex = BigBlindPosition;
 				break;
-			case Phases.Flop:
 			case Phases.Turn:
 			case Phases.River:
 				startPosition = _dealerPosition;
@@ -301,10 +300,6 @@ public class IrishHoldEmGame : IPokerGame
 			case Phases.PreFlop:
 				CurrentPhase = Phases.Flop;
 				break;
-			case Phases.Flop:
-				// Irish Hold 'Em: after flop betting, enter discard phase
-				CurrentPhase = Phases.DrawPhase;
-				break;
 			case Phases.DrawPhase:
 				CurrentPhase = Phases.Turn;
 				break;
@@ -373,6 +368,9 @@ public class IrishHoldEmGame : IPokerGame
 		_communityCards.Add(_dealer.DealCard());
 		_communityCards.Add(_dealer.DealCard());
 		_communityCards.Add(_dealer.DealCard());
+
+		// Irish Hold 'Em: no betting after the flop — go directly to draw phase
+		CurrentPhase = Phases.DrawPhase;
 	}
 
 	/// <summary>

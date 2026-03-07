@@ -227,6 +227,77 @@ public class ProcessBettingActionCommandHandler(
 				"Betting round complete. Advancing from {PreviousPhase} to {NewPhase} for game {GameId}, hand {HandNumber}",
 				previousPhase, game.CurrentPhase, game.Id, game.CurrentHandNumber);
 
+			// Irish Hold 'Em: when advancing to Flop, deal the flop community cards
+			// but skip the Flop betting round — go directly to DrawPhase.
+			if (game.CurrentPhase == "Flop"
+			    && string.Equals(game.GameType?.Code, "IRISHHOLDEM", StringComparison.OrdinalIgnoreCase))
+			{
+				// Deal flop community cards
+				await DealCommunityCardsForPhaseAsync(game, "Flop", now, cancellationToken);
+
+				// Skip Flop betting — go directly to DrawPhase
+				game.CurrentPhase = "DrawPhase";
+				var firstDrawPlayerIndex = FindFirstActivePlayerAfterDealer(game, activePlayers);
+				game.CurrentDrawPlayerIndex = firstDrawPlayerIndex;
+				game.CurrentPlayerIndex = firstDrawPlayerIndex;
+
+				logger.LogInformation(
+					"Irish Hold 'Em: Flop dealt, skipping Flop betting round. Entering DrawPhase for game {GameId}",
+					game.Id);
+
+				game.UpdatedAt = now;
+				await context.SaveChangesAsync(cancellationToken);
+
+				return new ProcessBettingActionSuccessful
+				{
+					GameId = game.Id,
+					RoundComplete = true,
+					CurrentPhase = game.CurrentPhase,
+					Action = new BettingActionResult
+					{
+						PlayerName = currentPlayer.Player.Name,
+						ActionType = command.ActionType,
+						Amount = actualAmount,
+						ChipStackAfter = currentPlayer.ChipStack
+					},
+					PlayerSeatIndex = currentPlayer.SeatPosition,
+					NextPlayerIndex = firstDrawPlayerIndex,
+					NextPlayerName = activePlayers.FirstOrDefault(p => p.SeatPosition == firstDrawPlayerIndex)?.Player.Name,
+					PotTotal = game.Pots.Sum(p => p.Amount),
+					CurrentBet = bettingRound.CurrentBet
+				};
+			}
+
+			// Non-Irish Hold 'Em: entering discard phase — set first draw player and return
+			if (game.CurrentPhase == "DrawPhase")
+			{
+				var firstDrawPlayerIndex = FindFirstActivePlayerAfterDealer(game, activePlayers);
+				game.CurrentDrawPlayerIndex = firstDrawPlayerIndex;
+				game.CurrentPlayerIndex = firstDrawPlayerIndex;
+
+				game.UpdatedAt = now;
+				await context.SaveChangesAsync(cancellationToken);
+
+				return new ProcessBettingActionSuccessful
+				{
+					GameId = game.Id,
+					RoundComplete = true,
+					CurrentPhase = game.CurrentPhase,
+					Action = new BettingActionResult
+					{
+						PlayerName = currentPlayer.Player.Name,
+						ActionType = command.ActionType,
+						Amount = actualAmount,
+						ChipStackAfter = currentPlayer.ChipStack
+					},
+					PlayerSeatIndex = currentPlayer.SeatPosition,
+					NextPlayerIndex = firstDrawPlayerIndex,
+					NextPlayerName = activePlayers.FirstOrDefault(p => p.SeatPosition == firstDrawPlayerIndex)?.Player.Name,
+					PotTotal = game.Pots.Sum(p => p.Amount),
+					CurrentBet = bettingRound.CurrentBet
+				};
+			}
+
 			// Deal community cards if advancing to Flop, Turn, or River
 			if (game.CurrentPhase is "Flop" or "Turn" or "River")
 			{
@@ -547,7 +618,15 @@ public class ProcessBettingActionCommandHandler(
 				break;
 
 			case "Flop":
-				game.CurrentPhase = "Turn";
+				// Irish Hold 'Em inserts a discard phase between Flop and Turn
+				if (string.Equals(game.GameType?.Code, "IRISHHOLDEM", StringComparison.OrdinalIgnoreCase))
+				{
+					game.CurrentPhase = "DrawPhase";
+				}
+				else
+				{
+					game.CurrentPhase = "Turn";
+				}
 				break;
 
 			case "Turn":

@@ -173,7 +173,8 @@ public class IrishHoldEmSmokeTests : IntegrationTestBase
         await CheckCurrentBettingRoundThrough(game);
 
         var gameAfterPreFlop = await GetFreshDbContext().Games.FirstAsync(g => g.Id == game.Id);
-        gameAfterPreFlop.CurrentPhase.Should().Be("Flop", "after PreFlop betting, phase should be Flop");
+        gameAfterPreFlop.CurrentPhase.Should().Be("DrawPhase",
+            "after PreFlop betting, flop is dealt and phase goes directly to DrawPhase");
 
         // Step 4: Verify 3 community cards dealt (Flop)
         var communityAfterFlop = await GetFreshDbContext().GameCards
@@ -183,13 +184,6 @@ public class IrishHoldEmSmokeTests : IntegrationTestBase
             .ToListAsync();
 
         communityAfterFlop.Should().HaveCount(3, "Flop should deal 3 community cards");
-
-        // Step 5: Complete the Flop betting round and transition to DrawPhase.
-        // The HoldEm betting handler hardcodes Flop→Turn (skipping DrawPhase),
-        // so we manually complete the Flop round and set DrawPhase state —
-        // same pattern as the lifecycle tests.
-        await CompleteCurrentBettingRoundManually(game);
-        await SetupDrawPhaseState(game);
 
         var gameInDraw = await GetFreshDbContext().Games.FirstAsync(g => g.Id == game.Id);
         gameInDraw.CurrentPhase.Should().Be("DrawPhase", "should be in DrawPhase for discards");
@@ -227,10 +221,7 @@ public class IrishHoldEmSmokeTests : IntegrationTestBase
             .Should().AllSatisfy(g => g.Count().Should().Be(2,
                 "each player should have exactly 2 non-discarded hole cards after discard"));
 
-        // Deal Turn community card manually — the discard handler creates the Turn
-        // betting round but does not yet deal the Turn card (known integration gap).
-        await DealNextCommunityCardAsync(game, "Turn", 4);
-
+        // Verify Turn community card was dealt by the discard handler
         var communityAfterTurn = await GetFreshDbContext().GameCards
             .Where(gc => gc.GameId == game.Id
                 && gc.HandNumber == game.CurrentHandNumber
