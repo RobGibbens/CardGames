@@ -756,6 +756,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		var isGoodBadUgly = IsGoodBadUglyGame(game.GameType?.Code);
 		var isHoldEm = IsHoldEmGame(game.GameType?.Code);
 		var isOmaha = IsOmahaGame(game.GameType?.Code);
+		var isIrishHoldEm = IsIrishHoldEmGame(game.GameType?.Code);
 
 		var isSevenCardStud = IsGameType(game.GameType?.Code, PokerGameMetadataRegistry.SevenCardStudCode);
 		var isBaseball = IsBaseballGame(game.GameType?.Code);
@@ -913,6 +914,52 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				var bestFive = FindBestOmahaHand(holeCoreCards, communityCoreCards);
 
 				playerHandEvaluations[gp.Player.Name] = (omahaHand, null, null, null, gp, allDisplayCards, [],
+					GetCardIndexes(allCoreCards, bestFive));
+			}
+		}
+
+		// Irish Hold'Em: post-discard players have 2 hole cards + 5 community → best 5-of-7 (same as Hold'Em)
+		if (isIrishHoldEm)
+		{
+			var irishCommunityCards = await _context.GameCards
+				.Where(c => c.GameId == game.Id
+					&& c.HandNumber == game.CurrentHandNumber
+					&& c.Location == CardLocation.Community
+					&& c.GamePlayerId == null
+					&& !c.IsDiscarded)
+				.OrderBy(c => c.DealOrder)
+				.AsNoTracking()
+				.ToListAsync(cancellationToken);
+
+			var communityCoreCards = irishCommunityCards
+				.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
+				.ToList();
+
+			foreach (var gp in gamePlayers.Where(p => !p.HasFolded))
+			{
+				var ownedCards = gp.Cards
+					.Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber)
+					.OrderBy(c => c.DealOrder)
+					.ToList();
+
+				var holeCoreCards = ownedCards.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol)).ToList();
+
+				if (holeCoreCards.Count < 2)
+				{
+					continue;
+				}
+
+				var holdemHand = new HoldemHand(holeCoreCards, communityCoreCards);
+
+				// Build full card list for display: hole cards first, then community cards
+				var allDisplayCards = ownedCards.ToList();
+				allDisplayCards.AddRange(irishCommunityCards);
+				var allCoreCards = holeCoreCards.Concat(communityCoreCards).ToList();
+
+				// Find best 5-card hand from the 7 cards for highlighting
+				var bestFive = FindBestFiveCardHand(allCoreCards);
+
+				playerHandEvaluations[gp.Player.Name] = (holdemHand, null, null, null, gp, allDisplayCards, [],
 					GetCardIndexes(allCoreCards, bestFive));
 			}
 		}
@@ -2377,6 +2424,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 	private static bool IsOmahaGame(string? gameTypeCode)
 		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.OmahaCode);
+
+	private static bool IsIrishHoldEmGame(string? gameTypeCode)
+		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.IrishHoldEmCode);
 
 	private static bool IsGameType(string? gameTypeCode, string expectedCode)
 		=> !string.IsNullOrWhiteSpace(gameTypeCode) &&

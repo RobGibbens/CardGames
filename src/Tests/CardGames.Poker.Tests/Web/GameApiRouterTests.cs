@@ -30,6 +30,7 @@ public class GameApiRouterTests
         var baseballApi = Substitute.For<IBaseballApi>();
         var followTheQueenApi = Substitute.For<IFollowTheQueenApi>();
         var holdEmApi = Substitute.For<IHoldEmApi>();
+        var gamesApi = Substitute.For<IGamesApi>();
 
         var holdEmResponse = CreateFailedBettingActionResponse();
         holdEmApi
@@ -49,7 +50,8 @@ public class GameApiRouterTests
             goodBadUglyApi,
             baseballApi,
             followTheQueenApi,
-            holdEmApi);
+            holdEmApi,
+            gamesApi);
 
         // Act
         _ = await sut.ProcessBettingActionAsync("HOLDEM", gameId, request);
@@ -77,6 +79,7 @@ public class GameApiRouterTests
         var baseballApi = Substitute.For<IBaseballApi>();
         var followTheQueenApi = Substitute.For<IFollowTheQueenApi>();
         var holdEmApi = Substitute.For<IHoldEmApi>();
+        var gamesApi = Substitute.For<IGamesApi>();
 
         var holdEmResponse = CreateFailedBettingActionResponse();
         holdEmApi
@@ -96,7 +99,8 @@ public class GameApiRouterTests
             goodBadUglyApi,
             baseballApi,
             followTheQueenApi,
-            holdEmApi);
+            holdEmApi,
+            gamesApi);
 
         // Act
         _ = await sut.ProcessBettingActionAsync("OMAHA", gameId, request);
@@ -125,6 +129,7 @@ public class GameApiRouterTests
         var baseballApi = Substitute.For<IBaseballApi>();
         var followTheQueenApi = Substitute.For<IFollowTheQueenApi>();
         var holdEmApi = Substitute.For<IHoldEmApi>();
+        var gamesApi = Substitute.For<IGamesApi>();
 
         var sut = new GameApiRouter(
             fiveCardDrawApi,
@@ -134,7 +139,8 @@ public class GameApiRouterTests
             goodBadUglyApi,
             baseballApi,
             followTheQueenApi,
-            holdEmApi);
+            holdEmApi,
+            gamesApi);
 
         // Act
         var response = await sut.ProcessDrawAsync("HOLDEM", gameId, playerId, discardIndices);
@@ -164,6 +170,7 @@ public class GameApiRouterTests
         var baseballApi = Substitute.For<IBaseballApi>();
         var followTheQueenApi = Substitute.For<IFollowTheQueenApi>();
         var holdEmApi = Substitute.For<IHoldEmApi>();
+        var gamesApi = Substitute.For<IGamesApi>();
 
         var sut = new GameApiRouter(
             fiveCardDrawApi,
@@ -173,7 +180,8 @@ public class GameApiRouterTests
             goodBadUglyApi,
             baseballApi,
             followTheQueenApi,
-            holdEmApi);
+            holdEmApi,
+            gamesApi);
 
         // Act
         var response = await sut.ProcessDrawAsync("OMAHA", gameId, playerId, discardIndices);

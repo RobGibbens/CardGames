@@ -63,6 +63,23 @@ public static class DashboardHandOddsCalculator
             return OddsCalculator.CalculateOmahaOdds(holeCards, communityCards, deadCards);
         }
 
+        if (string.Equals(gameTypeCode, "IRISHHOLDEM", StringComparison.OrdinalIgnoreCase))
+        {
+            // Pre-discard (4 hole cards): use Omaha-style odds calculation
+            // Post-discard (2 hole cards): use Hold'Em-style odds calculation
+            if (playerCards.Count >= 4)
+            {
+                return OddsCalculator.CalculateOmahaOdds(playerCards.Take(4).ToList(), communityCards, deadCards);
+            }
+
+            if (playerCards.Count >= 2)
+            {
+                return OddsCalculator.CalculateHoldemOdds(playerCards.Take(2).ToList(), communityCards, deadCards);
+            }
+
+            return null;
+        }
+
         if (string.Equals(gameTypeCode, "GOODBADUGLY", StringComparison.OrdinalIgnoreCase))
         {
             return OddsCalculator.CalculateStudOdds(playerCards, communityCards, totalCardsPerPlayer: 7, deadCards: deadCards);

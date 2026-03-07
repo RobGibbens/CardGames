@@ -18,6 +18,14 @@
             {
                 <text>@DrawingSpecialRules</text>
             }
+            else if (MinDiscards > 0 && MinDiscards == MaxDiscards)
+            {
+                <text>Select exactly @MinDiscards cards to discard</text>
+            }
+            else if (MinDiscards > 0 && MinDiscards < MaxDiscards)
+            {
+                <text>Select @MinDiscards–@MaxDiscards cards to discard</text>
+            }
             else if (MaxDiscards == 4)
             {
                 <text>Select cards to discard (0-4 cards - Ace bonus!)</text>
@@ -93,7 +101,18 @@
         }
         else if (SelectedCount == 0)
         {
-            <span class="selection-hint">Click cards to select them for discard, or stand pat</span>
+            @if (MinDiscards > 0 && MinDiscards == MaxDiscards)
+            {
+                <span class="selection-hint">You must discard exactly @MinDiscards card(s)</span>
+            }
+            else if (MinDiscards > 0)
+            {
+                <span class="selection-hint">Select @MinDiscards to @MaxDiscards cards to discard</span>
+            }
+            else
+            {
+                <span class="selection-hint">Click cards to select them for discard, or stand pat</span>
+            }
         }
         else
         {
@@ -107,16 +126,23 @@
         <div class="draw-actions">
             <button class="draw-btn stand-pat-btn" 
                     @onclick="HandleStandPat" 
-                    disabled="@(IsSubmitting || SelectedCount > 0)">
+                    disabled="@(IsSubmitting || SelectedCount > 0 || MinDiscards > 0)">
                 <i class="fa-regular fa-hand"></i>
                 <span>@StandPatLabel</span>
             </button>
 
                     <button class="draw-btn discard-btn @(SelectedCount > 0 ? "active" : "")" 
                             @onclick="HandleDiscard" 
-                            disabled="@(IsSubmitting || SelectedCount == 0 || SelectedCount > MaxDiscards)">
+                            disabled="@(IsSubmitting || SelectedCount == 0 || SelectedCount > MaxDiscards || SelectedCount < MinDiscards)">
                         <i class="fa-regular fa-arrows-rotate"></i>
-                        <span>@DiscardLabel @SelectedCount & Draw</span>
+                        @if (MinDiscards > 0 && MinDiscards == MaxDiscards)
+                        {
+                            <span>@DiscardLabel @SelectedCount</span>
+                        }
+                        else
+                        {
+                            <span>@DiscardLabel @SelectedCount & Draw</span>
+                        }
                     </button>
                 </div>
 
@@ -130,8 +156,15 @@
                         }
                         else
                         {
-                            <text>Maximum 3 cards can be discarded</text>
+                            <text>Maximum @MaxDiscards cards can be discarded</text>
                         }
+                    </div>
+                }
+                else if (SelectedCount > 0 && SelectedCount < MinDiscards)
+                {
+                    <div class="draw-warning">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        <text>You must select at least @MinDiscards cards to discard</text>
                     </div>
                 }
             }
@@ -219,6 +252,13 @@
 
     [Parameter]
     public int MaxDiscards { get; set; } = 3;
+
+    /// <summary>
+    /// Minimum number of cards that must be discarded. When > 0, stand pat is disabled.
+    /// When MinDiscards == MaxDiscards, the discard button omits "&amp; Draw" label.
+    /// </summary>
+    [Parameter]
+    public int MinDiscards { get; set; } = 0;
 
     [Parameter]
     public string? DrawingSpecialRules { get; set; }
@@ -365,7 +405,7 @@
 
     private async Task HandleStandPat()
     {
-        if (IsReadOnly || IsSubmitting || SelectedCount > 0)
+        if (IsReadOnly || IsSubmitting || SelectedCount > 0 || MinDiscards > 0)
             return;
 
         await OnDraw.InvokeAsync([]);
@@ -373,7 +413,7 @@
 
     private async Task HandleDiscard()
     {
-        if (IsSubmitting || SelectedCount == 0 || SelectedCount > MaxDiscards)
+        if (IsSubmitting || SelectedCount == 0 || SelectedCount > MaxDiscards || SelectedCount < MinDiscards)
             return;
 
         var selectedIndices = Cards

@@ -17,6 +17,7 @@ public class CreateGameCommandHandlerTests : IntegrationTestBase
     [InlineData(PokerGameMetadataRegistry.HoldEmCode)]
     [InlineData(PokerGameMetadataRegistry.OmahaCode)]
     [InlineData(PokerGameMetadataRegistry.GoodBadUglyCode)]
+    [InlineData(PokerGameMetadataRegistry.IrishHoldEmCode)]
     public async Task Handle_ValidRequest_CreatesGame(string gameCode)
     {
         // Arrange
@@ -58,6 +59,7 @@ public class CreateGameCommandHandlerTests : IntegrationTestBase
     [Theory]
     [InlineData(PokerGameMetadataRegistry.HoldEmCode, 5, 10)]
     [InlineData(PokerGameMetadataRegistry.OmahaCode, 10, 20)]
+    [InlineData(PokerGameMetadataRegistry.IrishHoldEmCode, 5, 10)]
     public async Task Handle_BlindBasedGame_WithBlindValues_PersistsBlinds(
         string gameCode,
         int smallBlind,
