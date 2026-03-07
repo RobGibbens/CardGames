@@ -1,6 +1,7 @@
 using CardGames.Poker.Api.Features.Games.HoldEm.v1.Commands.ProcessBettingAction;
 using CardGames.Poker.Api.Features.Games.IrishHoldEm.v1.Commands.ProcessDiscard;
 using CardGames.Poker.Api.GameFlow;
+using CardGames.Poker.Api.Data.Entities;
 using BettingActionType = CardGames.Poker.Api.Data.Entities.BettingActionType;
 
 namespace CardGames.IntegrationTests.Games.IrishHoldEm;
@@ -288,6 +289,47 @@ public class IrishHoldEmHandLifecycleTests : IntegrationTestBase
 
         var freshGame = await GetFreshDbContext().Games.FirstAsync(g => g.Id == game.Id);
         freshGame.CurrentPhase.Should().Be("Turn", "after all players discard, phase should advance to Turn");
+    }
+
+    [Fact]
+    public async Task ProcessDiscard_AllowsOutOfOrderDiscard_BySeatIndex()
+    {
+        var setup = await CreateGameInDrawPhaseAsync(playerCount: 3, dealerPosition: 0);
+        var game = setup.Game;
+
+        var freshDb = GetFreshDbContext();
+        var freshGame = await freshDb.Games
+            .Include(g => g.GamePlayers)
+            .FirstAsync(g => g.Id == game.Id);
+
+        var nonCurrentSeat = freshGame.GamePlayers
+            .Where(gp => !gp.HasFolded && gp.Status == GamePlayerStatus.Active && gp.SeatPosition != freshGame.CurrentDrawPlayerIndex)
+            .OrderBy(gp => gp.SeatPosition)
+            .Select(gp => gp.SeatPosition)
+            .First();
+
+        var discardResult = await Mediator.Send(
+            new ProcessDiscardCommand(game.Id, new List<int> { 0, 1 }, nonCurrentSeat));
+
+        discardResult.IsT0.Should().BeTrue("an eligible Irish Hold 'Em player should be able to discard without waiting for seat order");
+        discardResult.AsT0.PlayerSeatIndex.Should().Be(nonCurrentSeat);
+
+        var gamePlayer = await GetFreshDbContext().GamePlayers
+            .FirstAsync(gp => gp.GameId == game.Id && gp.SeatPosition == nonCurrentSeat);
+        gamePlayer.HasDrawnThisRound.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ProcessDiscard_PartialCompletion_StaysInDrawPhaseUntilAllPlayersAct()
+    {
+        var setup = await CreateGameInDrawPhaseAsync(playerCount: 3, dealerPosition: 0);
+        var game = setup.Game;
+
+        var firstResult = await Mediator.Send(new ProcessDiscardCommand(game.Id, new List<int> { 0, 1 }));
+        firstResult.IsT0.Should().BeTrue();
+
+        var afterOneDiscard = await GetFreshDbContext().Games.FirstAsync(g => g.Id == game.Id);
+        afterOneDiscard.CurrentPhase.Should().Be("DrawPhase", "Irish Hold 'Em should wait for all eligible players to discard or fold");
     }
 
     #endregion

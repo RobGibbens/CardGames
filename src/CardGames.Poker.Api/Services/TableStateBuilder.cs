@@ -732,10 +732,16 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		// Traditional 5-card draw rules: 3 discards, or 4 if you have an Ace.
 		// If the game rules specify a different MaxDiscards (like 5 in Kings and Lows), respect that.
 		var maxDiscards = (baseMaxDiscards == 3 && hasAce) ? 4 : baseMaxDiscards;
+		var isIrishHoldEm = IsIrishHoldEmGame(game.GameType?.Code);
+		var isEligibleIrishDiscardActor = gamePlayer.Status == GamePlayerStatus.Active
+			&& !gamePlayer.HasFolded
+			&& !gamePlayer.HasDrawnThisRound;
 
 		return new DrawPrivateDto
 		{
-			IsMyTurnToDraw = game.CurrentDrawPlayerIndex == gamePlayer.SeatPosition,
+			IsMyTurnToDraw = isIrishHoldEm
+				? isEligibleIrishDiscardActor
+				: game.CurrentDrawPlayerIndex == gamePlayer.SeatPosition,
 			MaxDiscards = maxDiscards,
 			HasDrawnThisRound = gamePlayer.HasDrawnThisRound
 		};

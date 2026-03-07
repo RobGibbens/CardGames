@@ -58,13 +58,18 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 			};
 		}
 
-		// 3. Get the current draw/discard player
+		// 3. Get eligible discard players
 		var activePlayers = game.GamePlayers
 			.Where(gp => gp.Status == GamePlayerStatus.Active)
 			.OrderBy(gp => gp.SeatPosition)
 			.ToList();
 
-		if (game.CurrentDrawPlayerIndex < 0)
+		var eligiblePlayers = activePlayers
+			.Where(gp => !gp.HasFolded && !gp.HasDrawnThisRound)
+			.OrderBy(gp => gp.SeatPosition)
+			.ToList();
+
+		if (eligiblePlayers.Count == 0)
 		{
 			return new ProcessDiscardError
 			{
@@ -73,12 +78,22 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 			};
 		}
 
-		var currentDrawPlayer = activePlayers.FirstOrDefault(p => p.SeatPosition == game.CurrentDrawPlayerIndex);
+		var requestedSeatIndex = command.PlayerSeatIndex ?? game.CurrentDrawPlayerIndex;
+		var currentDrawPlayer = activePlayers.FirstOrDefault(p => p.SeatPosition == requestedSeatIndex);
 		if (currentDrawPlayer is null)
 		{
 			return new ProcessDiscardError
 			{
-				Message = "Current discard player not found.",
+				Message = "Discard player not found.",
+				Code = ProcessDiscardErrorCode.NotPlayerTurn
+			};
+		}
+
+		if (currentDrawPlayer.HasFolded)
+		{
+			return new ProcessDiscardError
+			{
+				Message = "Folded players cannot discard.",
 				Code = ProcessDiscardErrorCode.NotPlayerTurn
 			};
 		}
@@ -163,8 +178,8 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 		// Reverse to maintain original order
 		discardedCards.Reverse();
 
-		// 10. Move to next discard player or advance phase
-		var nextDiscardPlayerIndex = FindNextDiscardPlayer(game, activePlayers, currentDrawPlayer.SeatPosition);
+		// 10. Move to next pending discard player or advance phase
+		var nextDiscardPlayerIndex = FindNextPendingDiscardPlayer(activePlayers);
 		var discardComplete = nextDiscardPlayerIndex < 0;
 		string? nextPlayerName = null;
 
@@ -199,28 +214,19 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 		};
 	}
 
-	private static int FindNextDiscardPlayer(Game game, List<GamePlayer> activePlayers, int currentIndex)
+	private static int FindNextPendingDiscardPlayer(List<GamePlayer> activePlayers)
 	{
-		// Find active players who haven't folded and haven't discarded this round
-		var eligiblePlayers = activePlayers
+		var pendingPlayers = activePlayers
 			.Where(p => !p.HasFolded && !p.HasDrawnThisRound)
 			.OrderBy(p => p.SeatPosition)
 			.ToList();
 
-		if (!eligiblePlayers.Any())
+		if (!pendingPlayers.Any())
 		{
 			return -1; // All players have discarded
 		}
 
-		// Find the next eligible player after currentIndex
-		var next = eligiblePlayers.FirstOrDefault(p => p.SeatPosition > currentIndex);
-		if (next != null)
-		{
-			return next.SeatPosition;
-		}
-
-		// Wrap around to the first eligible
-		return eligiblePlayers.First().SeatPosition;
+		return pendingPlayers[0].SeatPosition;
 	}
 
 	private async Task StartTurnPhaseAsync(Game game, List<GamePlayer> activePlayers, DateTimeOffset now, CancellationToken cancellationToken)

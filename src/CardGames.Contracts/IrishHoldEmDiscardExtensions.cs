@@ -12,7 +12,7 @@ public partial interface IGamesApi
 {
 	[Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
 	[Post("/api/v1/games/irish-hold-em/{gameId}/discard")]
-	Task<IApiResponse<ProcessDrawSuccessful>> IrishHoldEmDiscardAsync(Guid gameId, [Body] ProcessDrawRequest body, CancellationToken cancellationToken = default);
+	Task<IApiResponse<ProcessDrawSuccessful>> IrishHoldEmDiscardAsync(Guid gameId, [Body] IrishHoldEmDiscardRequest body, CancellationToken cancellationToken = default);
 
 	[Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
 	[Post("/api/v1/games/irish-hold-em/{gameId}/fold-during-draw")]
@@ -24,3 +24,10 @@ public partial interface IGamesApi
 /// </summary>
 /// <param name="PlayerSeatIndex">The seat index of the player to fold.</param>
 public record IrishHoldEmFoldDuringDrawRequest(int PlayerSeatIndex);
+
+/// <summary>
+/// Request body for the Irish Hold 'Em discard endpoint.
+/// </summary>
+/// <param name="DiscardIndices">Card indices to discard.</param>
+/// <param name="PlayerSeatIndex">The seat index of the player discarding.</param>
+public record IrishHoldEmDiscardRequest(ICollection<int> DiscardIndices, int PlayerSeatIndex);

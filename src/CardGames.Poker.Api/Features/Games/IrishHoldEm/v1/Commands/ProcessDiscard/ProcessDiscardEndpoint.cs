@@ -16,7 +16,7 @@ public static class ProcessDiscardEndpoint
 		group.MapPost("{gameId:guid}/discard",
 				async (Guid gameId, ProcessDiscardRequest request, IMediator mediator, CancellationToken cancellationToken) =>
 				{
-					var command = new ProcessDiscardCommand(gameId, request.DiscardIndices);
+					var command = new ProcessDiscardCommand(gameId, request.DiscardIndices, request.PlayerSeatIndex);
 					var result = await mediator.Send(command, cancellationToken);
 
 					return result.Match(

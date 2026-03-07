@@ -53,7 +53,7 @@ Cash
 ### Hold 'Em Variants
 - [x] Add Texas Hold'em
 - [x] Add Omaha
-- [ ] Add Irish Hold'em
+- [x] Add Irish Hold'em
 - [ ] Add Pittsburgh
 - [ ] Add Squid Game
 - [ ] Add Hold the Baseball

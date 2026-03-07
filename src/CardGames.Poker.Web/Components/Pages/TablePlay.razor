@@ -290,6 +290,7 @@
                        OnToggleSelection="ToggleDiscardSelectionAsync" OnDraw="HandleDrawActionAsync" IsSubmitting="@_isSubmittingDraw"
                        IsAnimating="@_isDrawAnimating" IsDiscarding="@_isDiscardingCards" IsDrawing="@_isDrawingNewCards"
                        CardsDrawn="@_cardsDrawn" NewCardIndices="@_newCardIndices"
+                       Title="@GetDrawPanelTitle()"
                        HandDescription="@(_cardsDrawn && !string.IsNullOrWhiteSpace(_newHandDescription) ? _newHandDescription : currentPlayerHandEvaluationDescription)"
                        MaxDiscards="@GetMaxDiscards()" MinDiscards="@GetMinDiscards()" DrawingSpecialRules="@GetDrawingSpecialRules()"
                        IsReadOnly="@(IsDrawCompletePhase || _cardsDrawn)"
@@ -3496,7 +3497,7 @@
 
             // Make the API call
             var playerId = _currentPlayerId ?? Guid.Empty;
-            var response = await GameApiRouter.ProcessDrawAsync(_gameTypeCode ?? "", GameId, playerId, discardIndices);
+            var response = await GameApiRouter.ProcessDrawAsync(_gameTypeCode ?? "", GameId, playerId, _currentPlayerSeatIndex, discardIndices);
 
             if (!response.IsSuccess || response.Content is null)
             {
@@ -4433,6 +4434,11 @@ HandType.HighCard
     private string? GetDrawingSpecialRules()
     {
         return _tableState?.DrawingConfig?.SpecialRules;
+    }
+
+    private string GetDrawPanelTitle()
+    {
+        return IsIrishHoldEm ? "Discard Phase" : "Draw Phase";
     }
 
     /// <summary>
