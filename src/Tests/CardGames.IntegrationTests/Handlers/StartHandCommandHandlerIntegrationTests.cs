@@ -15,7 +15,7 @@ public class StartHandCommandHandlerIntegrationTests : IntegrationTestBase
     [Theory]
     [InlineData("FIVECARDDRAW", "CollectingAntes")]
     [InlineData("SEVENCARDSTUD", "CollectingAntes")]
-    [InlineData("KINGSANDLOWS", "Dealing")]
+    [InlineData("KINGSANDLOWS", "DropOrStay")]
     [InlineData("TWOSJACKSMANWITHTHEAXE", "CollectingAntes")]
     [InlineData("GOODBADUGLY", "CollectingAntes")]
     public async Task Handle_ValidGame_TransitionsToCorrectInitialPhase(string gameTypeCode, string expectedPhase)
@@ -327,6 +327,54 @@ public class StartHandCommandHandlerIntegrationTests : IntegrationTestBase
         {
             gp.DropOrStayDecision.Should().Be(DropOrStayDecision.Undecided);
         });
+    }
+
+    [Fact]
+    public async Task Handle_Omaha_AutoDealsHoleCardsAndCollectsBlinds_TransitionsToPreFlop()
+    {
+        // Arrange
+        var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(
+            DbContext,
+            "OMAHA",
+            numberOfPlayers: 4,
+            startingChips: 1000,
+            ante: 0);
+
+        setup.Game.SmallBlind = 5;
+        setup.Game.BigBlind = 10;
+        await DbContext.SaveChangesAsync();
+
+        var command = new StartHandCommand(setup.Game.Id);
+
+        // Act
+        var result = await Mediator.Send(command);
+
+        // Assert
+        result.IsT0.Should().BeTrue("Expected successful result");
+        result.AsT0.CurrentPhase.Should().Be("PreFlop");
+
+        var freshContext = GetFreshDbContext();
+
+        var updatedGame = await freshContext.Games
+            .FirstAsync(g => g.Id == setup.Game.Id);
+        updatedGame.CurrentPhase.Should().Be("PreFlop");
+
+        var mainPot = await freshContext.Pots
+            .SingleAsync(p => p.GameId == setup.Game.Id && p.HandNumber == 1 && p.PotType == PotType.Main);
+        mainPot.Amount.Should().BeGreaterThan(0, "blinds should be collected when SB/BB are configured");
+
+        var dealtCards = await freshContext.GameCards
+            .Where(gc => gc.GameId == setup.Game.Id &&
+                         gc.HandNumber == 1 &&
+                         gc.GamePlayerId != null)
+            .ToListAsync();
+
+        dealtCards.Should().HaveCount(4 * setup.GamePlayers.Count);
+
+        foreach (var player in setup.GamePlayers)
+        {
+            dealtCards.Count(c => c.GamePlayerId == player.Id).Should().Be(4);
+        }
     }
 
     [Fact]

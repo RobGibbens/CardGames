@@ -30,6 +30,7 @@ using CardGames.Poker.Api.Infrastructure.Storage;
 using System.Security.Claims;
 using CardGames.Poker.Api.Features.Leagues.v1;
 using CardGames.Poker.Api.Features.Leagues.v1.Telemetry;
+using CardGames.Poker.Api.Games;
 
 namespace CardGames.Poker.Api;
 

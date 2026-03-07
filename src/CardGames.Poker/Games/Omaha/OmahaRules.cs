@@ -16,10 +16,12 @@ public static class OmahaRules
             GameTypeName = "Omaha",
             Description = "A community card poker game similar to Texas Hold 'Em, but players receive four hole cards and must use exactly two of them along with three community cards to make their best hand.",
             MinPlayers = 2,
-            MaxPlayers = 9,
+            MaxPlayers = 10,
             Phases = new List<GamePhaseDescriptor>
             {
                 new() { PhaseId = "WaitingToStart", Name = "Waiting to Start", Description = "Waiting for players", Category = "Setup", RequiresPlayerAction = false },
+                new() { PhaseId = "CollectingBlinds", Name = "Collecting Blinds", Description = "Collecting blinds", Category = "Setup", RequiresPlayerAction = false },
+                new() { PhaseId = "Dealing", Name = "Dealing", Description = "Dealing hole cards", Category = "Setup", RequiresPlayerAction = false },
                 new() { PhaseId = "PreFlop", Name = "Pre-Flop", Description = "Initial betting round", Category = "Betting", RequiresPlayerAction = true },
                 new() { PhaseId = "Flop", Name = "Flop", Description = "First 3 community cards", Category = "Betting", RequiresPlayerAction = true },
                 new() { PhaseId = "Turn", Name = "Turn", Description = "4th community card", Category = "Betting", RequiresPlayerAction = true },

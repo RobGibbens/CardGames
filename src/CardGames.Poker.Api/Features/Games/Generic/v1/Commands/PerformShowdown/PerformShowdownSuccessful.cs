@@ -88,6 +88,18 @@ public record ShowdownPlayerHand
     /// The amount won by this player, if any.
     /// </summary>
     public int AmountWon { get; init; }
+
+    /// <summary>
+    /// The zero-based indices of cards in <see cref="Cards"/> that make up the best 5-card hand.
+    /// Used for community card games (Hold'em, Omaha) where the full card list includes
+    /// both hole cards and community cards.
+    /// </summary>
+    public List<int>? BestCardIndexes { get; init; }
+
+    /// <summary>
+    /// Indexes of wild cards in the <see cref="Cards"/> list, if any.
+    /// </summary>
+    public List<int>? WildCardIndexes { get; init; }
 }
 
 /// <summary>

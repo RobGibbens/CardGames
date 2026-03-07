@@ -92,6 +92,7 @@ public class GameApiRouter : IGameApiRouter
 {
     private static readonly StringComparer GameCodeComparer = StringComparer.OrdinalIgnoreCase;
     private const string HoldEm = "HOLDEM";
+    private const string Omaha = "OMAHA";
     private const string TwosJacksManWithTheAxe = "TWOSJACKSMANWITHTHEAXE";
     private const string KingsAndLows = "KINGSANDLOWS";
     private const string SevenCardStud = "SEVENCARDSTUD";
@@ -135,6 +136,7 @@ public class GameApiRouter : IGameApiRouter
         _bettingActionRoutes = new Dictionary<string, Func<Guid, ProcessBettingActionRequest, Task<RouterResponse<ProcessBettingActionSuccessful>>>>(GameCodeComparer)
         {
             [HoldEm] = RouteHoldEmBettingActionAsync,
+            [Omaha] = RouteOmahaBettingActionAsync,
             [TwosJacksManWithTheAxe] = RouteTwosJacksManWithTheAxeBettingActionAsync,
             [SevenCardStud] = RouteSevenCardStudBettingActionAsync,
             [GoodBadUgly] = RouteGoodBadUglyBettingActionAsync,
@@ -145,6 +147,7 @@ public class GameApiRouter : IGameApiRouter
         _drawRoutes = new Dictionary<string, Func<Guid, Guid, List<int>, Task<RouterResponse<ProcessDrawResult>>>>(GameCodeComparer)
         {
             [HoldEm] = RouteHoldEmDrawAsync,
+            [Omaha] = RouteOmahaDrawAsync,
             [TwosJacksManWithTheAxe] = RouteTwosJacksManWithTheAxeDrawAsync,
             [KingsAndLows] = RouteKingsAndLowsDrawAsync
         };
@@ -251,9 +254,17 @@ public class GameApiRouter : IGameApiRouter
         => RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
             await _holdEmApi.HoldEmProcessBettingActionAsync(gameId, request));
 
+    private async Task<RouterResponse<ProcessBettingActionSuccessful>> RouteOmahaBettingActionAsync(Guid gameId, ProcessBettingActionRequest request)
+        => RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
+            await _holdEmApi.HoldEmProcessBettingActionAsync(gameId, request));
+
     private Task<RouterResponse<ProcessDrawResult>> RouteHoldEmDrawAsync(Guid gameId, Guid playerId, List<int> discardIndices)
         => Task.FromResult(
             RouterResponse<ProcessDrawResult>.Failure("Draw phase not supported for Texas Hold'Em.", HttpStatusCode.BadRequest));
+
+    private Task<RouterResponse<ProcessDrawResult>> RouteOmahaDrawAsync(Guid gameId, Guid playerId, List<int> discardIndices)
+        => Task.FromResult(
+            RouterResponse<ProcessDrawResult>.Failure("Draw phase not supported for Omaha.", HttpStatusCode.BadRequest));
 
     private async Task<RouterResponse<ProcessDrawResult>> RouteTwosJacksManWithTheAxeDrawAsync(Guid gameId, Guid playerId, List<int> discardIndices)
     {

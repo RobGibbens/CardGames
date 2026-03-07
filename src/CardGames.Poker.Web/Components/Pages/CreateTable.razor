@@ -63,7 +63,8 @@
 					<div class="variants-grid">
 						@foreach (var game in VariantCards)
 						{
-							var isAvailable = IsGameAvailable(game.Name);
+							var isAvailable = game.Code == "DEALERSCHOICE"
+								|| _availableGames.Any(g => string.Equals(g.Code, game.Code, StringComparison.OrdinalIgnoreCase));
 							<div class="variant-card @(_selectedVariant?.Name == game.Name ? "selected" : "") @(!isAvailable ? "disabled" : "")"
 								 @onclick="() => SelectVariant(game, isAvailable)">
 								<div class="variant-icon">
@@ -361,7 +362,7 @@
 
 		_selectedVariant = variant;
 		_isDealersChoice = variant.Code == "DEALERSCHOICE";
-		_hasBlinds = variant.Code == "HOLDEM";
+		_hasBlinds = IsBlindBasedGame(variant.Code);
 
 		// Initialize players list with minimum required players
 		//TODO:ROB - Don't hard code this
@@ -469,10 +470,9 @@
 		}
 	}
 
-	private static bool IsGameAvailable(string gameName)
+	private static bool IsBlindBasedGame(string gameCode)
 	{
-		// Games that are fully implemented and available for play
-		return gameName is "Five Card Draw" or "Twos, Jacks, Man with the Axe" or "Kings and Lows" or "Seven Card Stud" or "Baseball" or "Follow the Queen" or "The Good, the Bad, and the Ugly" or "Dealer's Choice" or "Texas Hold 'Em"; //TODO:ROB - This is a stupid way to do this
+		return gameCode is "HOLDEM" or "OMAHA";
 	}
 
 	private record PlayerInput

@@ -72,8 +72,8 @@
                     IsSeatSelectionDisabledForCurrentUser="@(DisableSeatSelectionForCurrentUser && !seat.IsOccupied)"
                     ShowCards="@(!IsPausedForChipCheck && CurrentPhase != GamePhase.WaitingForPlayers.ToString() && CurrentPhase != GamePhase.WaitingToStart.ToString() && seat.Cards.Count > 0)"
                     GameTypeCode="@GameTypeCode"
-                    IsSmallBlind="@(IsHoldEmGame && seat.SeatIndex == GetSmallBlindSeatIndex())"
-                    IsBigBlind="@(IsHoldEmGame && seat.SeatIndex == GetBigBlindSeatIndex())" />
+                    IsSmallBlind="@(IsBlindBasedGame && seat.SeatIndex == GetSmallBlindSeatIndex())"
+                    IsBigBlind="@(IsBlindBasedGame && seat.SeatIndex == GetBigBlindSeatIndex())" />
             </div>
         }
 
@@ -228,7 +228,9 @@
         return CurrentPhaseDescription ?? "Unknown";
     }
 
-    private bool IsHoldEmGame => string.Equals(GameTypeCode, "HOLDEM", StringComparison.OrdinalIgnoreCase);
+    private bool IsBlindBasedGame =>
+        string.Equals(GameTypeCode, "HOLDEM", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(GameTypeCode, "OMAHA", StringComparison.OrdinalIgnoreCase);
 
     private string? GetCommunityCardLabel(int dealOrder)
     {
@@ -248,7 +250,7 @@
 
     private int GetSmallBlindSeatIndex()
     {
-        if (!IsHoldEmGame || DealerSeatIndex < 0) return -1;
+        if (!IsBlindBasedGame || DealerSeatIndex < 0) return -1;
 
         var occupiedIndexes = Seats
             .Where(s => s.IsOccupied)
@@ -266,7 +268,7 @@
 
     private int GetBigBlindSeatIndex()
     {
-        if (!IsHoldEmGame || DealerSeatIndex < 0) return -1;
+        if (!IsBlindBasedGame || DealerSeatIndex < 0) return -1;
 
         var occupiedIndexes = Seats
             .Where(s => s.IsOccupied)

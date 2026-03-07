@@ -29,6 +29,11 @@ public sealed class HandEvaluatorFactory : IHandEvaluatorFactory
     public const string KingsAndLowsCode = "KINGSANDLOWS";
 
     /// <summary>
+    /// Game type code for Omaha.
+    /// </summary>
+    public const string OmahaCode = "OMAHA";
+
+    /// <summary>
     /// Game type code for Seven Card Stud.
     /// </summary>
     public const string SevenCardStudCode = "SEVENCARDSTUD";

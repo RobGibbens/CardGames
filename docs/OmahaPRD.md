@@ -166,8 +166,45 @@
 ### Rollout phases
 - **Phase 0 (Hardening):** implement Omaha routing/evaluator/branch changes behind low-risk incremental commits.
 - **Phase 1 (Internal validation):** run targeted Omaha + required regression suites.
-- **Phase 2 (Staged deploy):** enable in non-prod and validate end-to-end live table flow.
+- **Phase 2 (Staged deploy):** controlled non-prod enablement with explicit go/no-go gates.
+	- **Execution checklist**
+		- [ ] **Non-prod enablement**
+			- [ ] Deploy Omaha code/contract updates to non-prod only.
+			- [ ] Enable Omaha in Create Table + Dealer’s Choice behind non-prod-scoped configuration.
+			- [ ] Confirm existing Hold’Em and Five Card Draw table creation/play paths remain available.
+		- [ ] **Smoke checks (non-prod)**
+			- [ ] Create Table: Omaha is selectable, blind inputs are shown, and blind values persist on create.
+			- [ ] Dealer’s Choice: Omaha selection prompts blinds (not ante/min-bet-only inputs).
+			- [ ] Table Play: Omaha hand starts successfully and deals 4 hole cards per player.
+			- [ ] Action/showdown routing stays Omaha-compatible and does not fall back to Five Card Draw.
+			- [ ] Showdown completes with Omaha rule enforcement (exactly 2 hole + 3 board) and hand closure.
+		- [ ] **Rollback gates (immediate disable in non-prod)**
+			- [ ] Omaha hand cannot start or complete end-to-end.
+			- [ ] Any Omaha action/showdown path misroutes to Five Card Draw behavior.
+			- [ ] Regression is observed in required Hold’Em baseline flows.
+			- [ ] Contract/UI mismatch blocks normal table play.
+		- [ ] **Promotion criteria (Phase 2 -> Phase 3)**
+			- [ ] All non-prod Omaha smoke checks pass for Create Table and Dealer’s Choice flows.
+			- [ ] No rollback gate is triggered during staged validation.
+			- [ ] Required Omaha tests plus Hold’Em regression suite are green.
+			- [ ] Lead sign-off recorded for production enablement.
 - **Phase 3 (Prod release):** enable Omaha in Create Table + Dealer’s Choice for all users.
+	- **Execution checklist**
+		- [ ] **Production enablement**
+			- [ ] Deploy Omaha code/contract updates to production.
+			- [ ] Enable Omaha in production by setting `GameAvailability:EnableOmaha` to `true`.
+		- [ ] **Smoke checks (prod)**
+			- [ ] Create Table: Omaha is selectable, blind inputs are shown, and blind values persist on create.
+			- [ ] Dealer’s Choice: Omaha selection prompts blinds (not ante/min-bet-only inputs).
+			- [ ] Table Play: Omaha hand starts successfully and deals 4 hole cards per player.
+			- [ ] Action/showdown routing stays Omaha-compatible and does not fall back to Five Card Draw.
+			- [ ] Showdown completes with Omaha rule enforcement (exactly 2 hole + 3 board) and hand closure.
+		- [ ] **Monitoring**
+			- [ ] Monitor API logs/traces for 4xx/5xx spikes and Omaha-specific errors immediately post-enable.
+			- [ ] Watch latency/error-rate dashboards for regressions in Create Table, Dealer’s Choice, and Table Play flows.
+		- [ ] **Rollback (flip config back)**
+			- [ ] Disable Omaha by setting `GameAvailability:EnableOmaha` to `false` and redeploy/restart if required.
+			- [ ] Confirm Omaha disappears from available-games and cannot be created/selected in Dealer’s Choice.
 
 ---
 

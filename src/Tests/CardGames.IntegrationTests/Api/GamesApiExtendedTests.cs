@@ -1,8 +1,15 @@
 using System.Net;
 using System.Net.Http.Json;
+using CardGames.Poker.Api.Data;
+using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.Common.v1.Commands.CreateGame;
+using CardGames.Poker.Api.Features.Games.AvailablePokerGames.v1.Queries.GetAvailablePokerGames;
+using CardGames.Poker.Api.Features.Games.Common.v1.Commands.ChooseDealerGame;
 using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetGameRules;
 using CardGames.Poker.Api.Games;
+using CardGames.Poker.Betting;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace CardGames.IntegrationTests.Api;
 
@@ -113,8 +120,33 @@ public class GamesApiExtendedTests : ApiIntegrationTestBase
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var content = await response.Content.ReadAsStringAsync();
-        content.Should().NotBeNullOrEmpty();
+        var games = await response.Content.ReadFromJsonAsync<List<GetAvailablePokerGamesResponse>>();
+        games.Should().NotBeNull();
+        games.Should().NotBeEmpty();
+
+        var gameCodes = games!.Select(g => g.Code).ToList();
+        gameCodes.Should().Contain(PokerGameMetadataRegistry.HoldEmCode);
+        gameCodes.Should().Contain(PokerGameMetadataRegistry.OmahaCode);
+    }
+
+    [Fact]
+    public async Task GetAvailablePokerGames_WithVariantOmaha_ReturnsOnlyOmaha()
+    {
+        // Act
+        var response = await Client.GetAsync("api/v1/games/available?variant=Omaha");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var games = await response.Content.ReadFromJsonAsync<List<GetAvailablePokerGamesResponse>>();
+        games.Should().NotBeNull();
+        games.Should().ContainSingle();
+
+        var omaha = games![0];
+        omaha.Code.Should().Be(PokerGameMetadataRegistry.OmahaCode);
+        omaha.Name.Should().Be("Omaha");
+        omaha.MinimumNumberOfPlayers.Should().Be(2);
+        omaha.MaximumNumberOfPlayers.Should().Be(10);
     }
 
     #endregion
@@ -228,4 +260,5 @@ public class GamesApiExtendedTests : ApiIntegrationTestBase
     }
 
     #endregion
+
 }

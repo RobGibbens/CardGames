@@ -66,3 +66,12 @@
   - Kept connection indicator visible/stable by making right-side layout grid-based on mobile with a dedicated indicator slot.
   - In `GameInfoOverlay.razor.css`, improved small-screen usability via viewport-bounded panel/body heights, internal scrolling, safer text wrapping, and stacked key/value rows on very small phones.
   - Validation: `dotnet build src/CardGames.Poker.Web/CardGames.Poker.Web.csproj` succeeded (warnings only, pre-existing).
+
+- 2026-03-06: Started Omaha PRD Phase 0 frontend hardening with focused web-UI/router changes only (no domain-rule migration).
+  - `CreateTable.razor`: switched availability gating to game-code checks and enabled `OMAHA`; generalized blind gating helper so both `HOLDEM` and `OMAHA` use blind inputs.
+  - `DealerChoiceModal.razor`: expanded blind-based selection logic to include `OMAHA` so Dealer's Choice prompts blinds for Omaha hands.
+  - `TablePlay.razor`: added `IsOmaha` branching, Omaha start path via generic start endpoint, Omaha showdown path via generic showdown endpoint, and blind-context display parity in Game Info overlay.
+  - `TableCanvas.razor`: generalized SB/BB indicator gating from Hold'Em-only to blind-based (Hold'Em + Omaha).
+  - `Services/IGameApiRouter.cs`: added explicit `OMAHA` betting/draw routes to avoid unsafe fallback to Five Card Draw; Omaha betting currently follows the same endpoint path as Hold'Em while Omaha draw is explicitly unsupported.
+  - Added focused web router coverage in `src/Tests/CardGames.Poker.Tests/Web/GameApiRouterTests.cs` for Omaha betting and draw routing behavior.
+- 2026-03-06 (cross-agent sync): Scribe merged Omaha Phase 0 decisions from Basher/Danny/Linus into canonical `.squad/decisions.md` with one consolidated Omaha Phase 0 session log entry.

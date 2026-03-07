@@ -360,6 +360,50 @@ public class DealersChoiceContinuousPlayTests : IDisposable
     }
 
     [Fact]
+    public async Task DCGame_WaitingToStart_OmahaVariant_DealsHandWithoutRotatingDcDealer()
+    {
+        // Scenario: dealer chose Omaha in Dealer's Choice mode.
+        // Continuous play should start the hand from WaitingToStart and keep DC dealer fixed.
+        var now = DateTimeOffset.UtcNow;
+        var gameType = new GameType { Code = "OMAHA", Name = "Omaha" };
+        var game = new Game
+        {
+            Id = Guid.NewGuid(),
+            CurrentPhase = nameof(Phases.WaitingToStart),
+            Status = GameStatus.BetweenHands,
+            NextHandStartsAt = now.AddSeconds(-1),
+            CurrentHandNumber = 1,
+            GameType = gameType,
+            GameTypeId = gameType.Id,
+            CurrentHandGameTypeCode = "OMAHA",
+            DealerPosition = 0,
+            DealersChoiceDealerPosition = 0,
+            IsDealersChoice = true,
+            Ante = 0,
+            MinBet = 10,
+            SmallBlind = 5,
+            BigBlind = 10
+        };
+        AddActivePlayers(game, 3);
+
+        _dbContext.Games.Add(game);
+        await _dbContext.SaveChangesAsync();
+
+        var handler = _flowHandlerFactory.SetHandlerForCode("OMAHA");
+        handler.InitialPhase = "CollectingBlinds";
+        handler.SkipsAnteCollection = true;
+
+        // Act
+        await _service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+
+        // Assert
+        var updatedGame = await _dbContext.Games.FindAsync(game.Id);
+        updatedGame!.CurrentPhase.Should().Be("CollectingBlinds");
+        updatedGame.CurrentHandNumber.Should().Be(2);
+        updatedGame.DealersChoiceDealerPosition.Should().Be(0);
+    }
+
+    [Fact]
     public async Task DCGame_WaitingToStart_KingsAndLowsVariant_DealsHandCorrectly()
     {
         // Scenario: DC game where dealer chose Kings and Lows (multi-hand variant).

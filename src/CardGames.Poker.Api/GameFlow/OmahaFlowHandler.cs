@@ -28,7 +28,7 @@ public sealed class OmahaFlowHandler : BaseGameFlowHandler
 
     public override string GetInitialPhase(Game game)
     {
-        return "Dealing";
+        return "CollectingBlinds";
     }
 
     public override async Task DealCardsAsync(
@@ -43,6 +43,21 @@ public sealed class OmahaFlowHandler : BaseGameFlowHandler
 
         // 2. Deal Hole Cards
         await base.DealDrawStyleCardsAsync(context, game, eligiblePlayers, now, cancellationToken);
+    }
+
+    protected override async Task SendBettingActionAsync(AutoActionContext context, BettingActionType action, int amount = 0)
+    {
+        var command = new Features.Games.HoldEm.v1.Commands.ProcessBettingAction.ProcessBettingActionCommand(
+            context.GameId, action, amount);
+
+        try
+        {
+            await context.Mediator.Send(command, context.CancellationToken);
+        }
+        catch (Exception ex)
+        {
+            context.Logger.LogError(ex, "Error performing auto-betting action for Omaha game {GameId}", context.GameId);
+        }
     }
 
 }

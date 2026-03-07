@@ -52,6 +52,7 @@ public abstract class IntegrationTestBase : IAsyncLifetime
 #pragma warning disable EXTEXP0018
         services.AddHybridCache();
 #pragma warning restore EXTEXP0018
+        services.AddOptions();
 
         // Add services
         services.AddSingleton<IActionTimerService, FakeActionTimerService>();

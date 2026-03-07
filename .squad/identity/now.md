@@ -1,9 +1,9 @@
 ---
-updated_at: 2026-03-06T19:33:04Z
-focus_area: TablePlay table-controls-strip UX redesign
+updated_at: 2026-03-07T01:57:57Z
+focus_area: Omaha Phase 3 prod release
 active_issues: []
 ---
 
 # What We're Focused On
 
-Refining TablePlay UX by keeping common controls in the top strip and moving table/game metadata into a draggable overlay.
+Executing Omaha Phase 3 production release by enabling Omaha via `GameAvailability:EnableOmaha`, with rollback by flipping it off.

@@ -10,7 +10,8 @@ namespace CardGames.Poker.Api.Features.Games.AvailablePokerGames.v1.Queries.GetA
 /// Handler that uses reflection to discover all IPokerGame implementations
 /// in the CardGames.Poker assembly and returns their metadata.
 /// </summary>
-public class GetAvailablePokerGamesQueryHandler(HybridCache hybridCache)
+public class GetAvailablePokerGamesQueryHandler(
+	HybridCache hybridCache)
 	: IRequestHandler<GetAvailablePokerGamesQuery, List<GetAvailablePokerGamesResponse>>
 {
 	public async Task<List<GetAvailablePokerGamesResponse>> Handle(

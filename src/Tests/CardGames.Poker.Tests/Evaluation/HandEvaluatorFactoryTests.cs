@@ -56,6 +56,16 @@ public class HandEvaluatorFactoryTests
     }
 
     [Fact]
+    public void GetEvaluator_WithOmahaCode_ReturnsOmahaEvaluator()
+    {
+        var evaluator = _factory.GetEvaluator(HandEvaluatorFactory.OmahaCode);
+
+        evaluator.Should().BeOfType<OmahaHandEvaluator>();
+        evaluator.HasWildCards.Should().BeFalse();
+        evaluator.SupportsPositionalCards.Should().BeTrue();
+    }
+
+    [Fact]
     public void GetEvaluator_WithUnknownCode_ReturnsDefaultDrawEvaluator()
     {
         var evaluator = _factory.GetEvaluator("UNKNOWNGAME");
@@ -115,6 +125,7 @@ public class HandEvaluatorFactoryTests
         HandEvaluatorFactory.HasEvaluator(HandEvaluatorFactory.FiveCardDrawCode).Should().BeTrue();
         HandEvaluatorFactory.HasEvaluator(HandEvaluatorFactory.TwosJacksManWithTheAxeCode).Should().BeTrue();
         HandEvaluatorFactory.HasEvaluator(HandEvaluatorFactory.KingsAndLowsCode).Should().BeTrue();
+        HandEvaluatorFactory.HasEvaluator(HandEvaluatorFactory.OmahaCode).Should().BeTrue();
         HandEvaluatorFactory.HasEvaluator(HandEvaluatorFactory.SevenCardStudCode).Should().BeTrue();
     }
 
@@ -134,6 +145,7 @@ public class HandEvaluatorFactoryTests
         codes.Should().Contain(HandEvaluatorFactory.FiveCardDrawCode);
         codes.Should().Contain(HandEvaluatorFactory.TwosJacksManWithTheAxeCode);
         codes.Should().Contain(HandEvaluatorFactory.KingsAndLowsCode);
+        codes.Should().Contain(HandEvaluatorFactory.OmahaCode);
         codes.Should().Contain(HandEvaluatorFactory.SevenCardStudCode);
     }
 }

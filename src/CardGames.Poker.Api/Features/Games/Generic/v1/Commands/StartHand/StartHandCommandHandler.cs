@@ -203,6 +203,13 @@ public sealed class StartHandCommandHandler(
         // 13. Persist changes
         await context.SaveChangesAsync(cancellationToken);
 
+        // Blind-based / skip-ante variants should auto-deal immediately after the initial hand state is saved.
+        // Ante-based variants intentionally wait in CollectingAntes until antes are posted.
+        if (flowHandler.SkipsAnteCollection)
+        {
+            await flowHandler.DealCardsAsync(context, game, eligiblePlayers, now, cancellationToken);
+        }
+
         logger.LogInformation(
             "Started hand {HandNumber} for game {GameId} in phase {Phase} with {PlayerCount} players",
             game.CurrentHandNumber, game.Id, game.CurrentPhase, eligiblePlayers.Count);
