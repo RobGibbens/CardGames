@@ -48,11 +48,15 @@ public static class JoinGameEndpoint
                 "- Game must exist and not be ended\n" +
                 "- Seat must be available (not already occupied)\n" +
                 "- Player must not already be seated elsewhere in the game\n" +
-                "- Game must not have reached maximum player count\n\n" +
+                "- Game must not have reached maximum player count\n" +
+                "- Starting chips must be greater than 0\n" +
+                "- Player account balance must be greater than 0\n" +
+                "- Requested buy-in must not exceed account balance\n\n" +
                 "**Response:**\n" +
                 "- `CanPlayCurrentHand`: true if joining during WaitingToStart/WaitingForPlayers phase")
             .Produces<JoinGameSuccessful>()
             .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict);
 

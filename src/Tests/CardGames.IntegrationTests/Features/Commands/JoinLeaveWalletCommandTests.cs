@@ -114,6 +114,27 @@ public class JoinLeaveWalletCommandTests : IntegrationTestBase
 	}
 
 	[Fact]
+	public async Task JoinGame_WithoutChipAccount_ReturnsZeroBalanceErrorAndDoesNotSeatPlayer()
+	{
+		// Arrange
+		var game = await DatabaseSeeder.CreateGameAsync(DbContext, "FIVECARDDRAW");
+		var player = await DatabaseSeeder.CreatePlayerAsync(DbContext, "No Wallet Yet", "no.wallet@test.com");
+
+		SetCurrentUser("no-wallet-user-id", "No Wallet Yet", "no.wallet@test.com");
+
+		// Act
+		var result = await Mediator.Send(new JoinGameCommand(game.Id, SeatIndex: 2, StartingChips: 100));
+
+		// Assert
+		result.IsT1.Should().BeTrue();
+		result.AsT1.Code.Should().Be(JoinGameErrorCode.ZeroAccountBalance);
+
+		DbContext.PlayerChipAccounts.Count(x => x.PlayerId == player.Id).Should().Be(0);
+		DbContext.GamePlayers.Count(x => x.GameId == game.Id && x.PlayerId == player.Id).Should().Be(0);
+		DbContext.PlayerChipLedgerEntries.Count(x => x.PlayerId == player.Id && x.Type == PlayerChipLedgerEntryType.BuyIn).Should().Be(0);
+	}
+
+	[Fact]
 	public async Task LeaveGame_BetweenHands_CreditsWalletAndCreatesCashOutLedger()
 	{
 		// Arrange

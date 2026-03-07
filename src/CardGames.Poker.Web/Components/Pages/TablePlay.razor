@@ -44,6 +44,65 @@
 
 <NoChipsModal @bind-IsVisible="_showNoChipsModal" OnClose="HandleNoChipsModalClose" />
 
+@if (_showJoinBuyInModal)
+{
+    <div class="confirm-dialog-overlay" @onclick="CloseJoinBuyInModal">
+        <div class="confirm-dialog league-form-modal join-buy-in-modal" @onclick:stopPropagation>
+            <div class="confirm-dialog-header league-form-modal-header">
+                <h3 class="confirm-dialog-title mb-0">Join Seat @((_pendingJoinSeatIndex ?? 0) + 1)</h3>
+                <button class="league-modal-close-btn" type="button" @onclick="CloseJoinBuyInModal" aria-label="Close buy-in dialog" disabled="@_isJoiningSeat">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="confirm-dialog-body league-form-modal-body text-start">
+                <p class="confirm-dialog-message mb-2 text-start">
+                    Account balance: <strong>@_joinBuyInBalance.ToString("N0")</strong>
+                </p>
+
+                <div class="join-buy-in-modal-controls">
+                    <label class="form-label mb-1" for="join-buy-in-slider">Buy-in amount</label>
+                    <input id="join-buy-in-slider"
+                           type="range"
+                           class="bet-slider"
+                              style="@GetJoinBuyInSliderStyle()"
+                           min="@GetJoinBuyInMin()"
+                           max="@GetJoinBuyInMax()"
+                           step="@GetJoinBuyInStep()"
+                           @bind="_joinBuyInAmount"
+                           @bind:event="oninput"
+                           @bind:after="NormalizeJoinBuyIn" />
+                    <div class="bet-slider-labels">
+                        <span>Min @GetJoinBuyInMin().ToString("N0")</span>
+                        <span>Max @GetJoinBuyInMax().ToString("N0")</span>
+                    </div>
+
+                    <input id="join-buy-in-input"
+                              class="form-control join-buy-in-input"
+                           type="number"
+                           min="@GetJoinBuyInMin()"
+                           max="@GetJoinBuyInMax()"
+                           step="@GetJoinBuyInStep()"
+                           @bind="_joinBuyInAmount"
+                           @bind:after="NormalizeJoinBuyIn" />
+
+                </div>
+            </div>
+            <div class="confirm-dialog-footer join-buy-in-modal-footer">
+                <button class="btn btn-secondary confirm-dialog-btn" type="button" @onclick="CloseJoinBuyInModal" disabled="@_isJoiningSeat">
+                    Cancel
+                </button>
+                <button class="btn btn-primary confirm-dialog-btn join-buy-in-submit-btn" type="button" @onclick="SubmitJoinBuyInAsync" disabled="@_isJoiningSeat">
+                    @if (_isJoiningSeat)
+                    {
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    }
+                    Join Table
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
 <!-- Toast notifications -->
 @if (_toastMessages.Count > 0)
 {
@@ -64,20 +123,6 @@
             <i class="fa-regular fa-arrow-left"></i>
             Leave Table
         </button>
-
-        @if (!_isSeated)
-        {
-            <div class="d-flex align-items-center gap-2 ms-2 join-buy-in-controls">
-                <label class="small text-muted mb-0" for="join-buy-in">Buy-in</label>
-                <input id="join-buy-in" class="form-control form-control-sm" type="number"
-                       min="@GetJoinBuyInMin()" max="@GetJoinBuyInMax()" step="@GetJoinBuyInStep()"
-                       style="width: 110px;" @bind="_joinBuyInAmount" @bind:after="NormalizeJoinBuyIn" />
-                <span class="small text-muted">Min @GetJoinBuyInMin().ToString("N0"), step @GetJoinBuyInStep().ToString("N0")</span>
-                <button class="btn btn-link btn-sm p-0 small" type="button" @onclick="ResetJoinBuyInToRecommended">
-                    Use recommended (@GetRecommendedJoinBuyIn().ToString("N0"))
-                </button>
-            </div>
-        }
 
         @if (_isSeated)
         {
@@ -471,6 +516,11 @@
     private int _playerChips = 100; // TODO: Get from server
     private int _joinBuyInAmount = 100;
 	private bool _joinBuyInInitializedFromTable;
+    private bool _showJoinBuyInModal;
+    private bool _isJoiningSeat;
+    private int? _pendingJoinSeatIndex;
+    private int _joinBuyInBalance;
+    private int? _joinBuyInBalanceCap;
     private bool _isPlayerTurn;
     private bool _isSubmittingAction;
 
@@ -2008,6 +2058,14 @@
         _showNoChipsModal = false;
     }
 
+    private void CloseJoinBuyInModal()
+    {
+        _showJoinBuyInModal = false;
+        _pendingJoinSeatIndex = null;
+        _joinBuyInBalance = 0;
+        _joinBuyInBalanceCap = null;
+    }
+
     private async Task ToggleSitOutAsync()
     {
         try
@@ -2090,15 +2148,46 @@
         try
         {
             var cashierSummary = await ProfileApi.GetCashierSummaryAsync();
-            if (cashierSummary.IsSuccessStatusCode && (cashierSummary.Content?.CurrentBalance ?? 0) <= 0)
+            if (!cashierSummary.IsSuccessStatusCode || cashierSummary.Content is null)
+            {
+                await ShowToastAsync("Unable to load your cashier balance right now.", "error");
+                return;
+            }
+
+            var currentBalance = cashierSummary.Content.CurrentBalance;
+            if (currentBalance <= 0)
             {
                 _showNoChipsModal = true;
                 return;
             }
+
+            _joinBuyInBalance = currentBalance;
+            _joinBuyInBalanceCap = currentBalance;
+            _pendingJoinSeatIndex = seatIndex;
+
+            InitializeJoinBuyInFromTable();
+            _joinBuyInAmount = Math.Min(GetRecommendedJoinBuyIn(), GetJoinBuyInMax());
+            NormalizeJoinBuyIn();
+            _showJoinBuyInModal = true;
         }
         catch (Exception ex)
         {
             Logger.LogWarning(ex, "Failed to check chip balance before joining seat");
+            await ShowToastAsync("Unable to load your cashier balance right now.", "error");
+        }
+    }
+
+    private async Task SubmitJoinBuyInAsync()
+    {
+        if (_isJoiningSeat || !_pendingJoinSeatIndex.HasValue)
+            return;
+
+        var seatIndex = _pendingJoinSeatIndex.Value;
+        if (seatIndex < 0 || seatIndex >= _seats.Count || _seats[seatIndex].IsOccupied)
+        {
+            CloseJoinBuyInModal();
+            await ShowToastAsync("That seat is no longer available.", "error");
+            return;
         }
 
         try
@@ -2111,6 +2200,16 @@
                 return;
             }
 
+            if (_joinBuyInBalanceCap.HasValue && _joinBuyInAmount > _joinBuyInBalanceCap.Value)
+            {
+                _joinBuyInAmount = _joinBuyInBalanceCap.Value;
+                NormalizeJoinBuyIn();
+                await ShowToastAsync("Buy-in cannot exceed your account balance.", "error");
+                return;
+            }
+
+            _isJoiningSeat = true;
+
             // Call the API to join the game at this seat
             var request = new Api.Clients.JoinGameRequest(seatIndex, _joinBuyInAmount);
 
@@ -2121,12 +2220,15 @@
                 Logger.LogWarning("Failed to join game at seat {SeatIndex}: {StatusCode} - {Error}",
                 seatIndex, response.StatusCode, response.Error?.Content);
 
-				var errorContent = response.Error?.Content;
-				var joinMessage = !string.IsNullOrWhiteSpace(errorContent) && errorContent.Contains("Insufficient chips", StringComparison.OrdinalIgnoreCase)
-					? "You do not have enough chips in your account for this buy-in. Visit Cashier to add chips."
-					: "Unable to join this seat right now.";
+                var joinMessage = ExtractErrorMessage(response.Error);
+                if (IsNoChipsMessage(joinMessage))
+                {
+                    CloseJoinBuyInModal();
+                    _showNoChipsModal = true;
+                    return;
+                }
 
-				await ShowToastAsync(joinMessage, "error");
+                await ShowToastAsync(joinMessage, "error");
                 return;
             }
 
@@ -2153,6 +2255,7 @@
             _isSeated = true;
             _currentPlayerSeatIndex = seatIndex;
 			_playerChips = _joinBuyInAmount;
+            CloseJoinBuyInModal();
 
             Logger.LogInformation(
             "Successfully joined game {GameId} at seat {SeatIndex}. CanPlayCurrentHand: {CanPlay}",
@@ -2162,6 +2265,10 @@
         {
             Logger.LogError(ex, "Error joining game at seat {SeatIndex}", seatIndex);
 			await ShowToastAsync("An error occurred while joining the table.", "error");
+        }
+        finally
+        {
+            _isJoiningSeat = false;
         }
     }
 
@@ -2194,12 +2301,6 @@
         _joinBuyInAmount = clamped;
     }
 
-    private void ResetJoinBuyInToRecommended()
-    {
-        _joinBuyInAmount = GetRecommendedJoinBuyIn();
-        NormalizeJoinBuyIn();
-    }
-
     private int GetRecommendedJoinBuyIn()
     {
         var min = GetJoinBuyInMin();
@@ -2211,22 +2312,73 @@
     {
         var minBet = _gameResponse?.MinBet ?? 0;
         var ante = _gameResponse?.Ante ?? _ante;
-        return Math.Max(1, Math.Max(minBet, ante));
+        var tableMin = Math.Max(1, Math.Max(minBet, ante));
+
+        if (_joinBuyInBalanceCap.HasValue && _joinBuyInBalanceCap.Value > 0 && _joinBuyInBalanceCap.Value < tableMin)
+        {
+            return _joinBuyInBalanceCap.Value;
+        }
+
+        return tableMin;
     }
 
     private int GetJoinBuyInStep()
     {
         var minBet = _gameResponse?.MinBet ?? 0;
         var ante = _gameResponse?.Ante ?? _ante;
-        var step = Math.Max(minBet, ante);
-        return step > 0 ? step : 25;
+        var tableStep = Math.Max(minBet, ante);
+        var step = tableStep > 0 ? tableStep : 25;
+
+        if (_joinBuyInBalanceCap.HasValue && _joinBuyInBalanceCap.Value > 0 && _joinBuyInBalanceCap.Value < step)
+        {
+            return 1;
+        }
+
+        return step;
     }
 
     private int GetJoinBuyInMax()
     {
         var min = GetJoinBuyInMin();
         var step = GetJoinBuyInStep();
-        return Math.Max(min, step * 1_000);
+        var max = Math.Max(min, step * 1_000);
+
+        if (_joinBuyInBalanceCap.HasValue)
+        {
+            max = Math.Min(max, _joinBuyInBalanceCap.Value);
+        }
+
+        return max;
+    }
+
+    private string GetJoinBuyInSliderStyle()
+    {
+        var min = GetJoinBuyInMin();
+        var max = GetJoinBuyInMax();
+
+        if (max <= min)
+        {
+            return "--join-buy-in-progress: 100%;";
+        }
+
+        var clamped = Math.Clamp(_joinBuyInAmount, min, max);
+        var percent = (int)Math.Round((double)(clamped - min) * 100 / (max - min));
+        return $"--join-buy-in-progress: {percent}%;";
+    }
+
+    private static bool IsNoChipsMessage(string message)
+    {
+        if (string.IsNullOrWhiteSpace(message))
+        {
+            return false;
+        }
+
+        return message.Contains("no chips", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("zero balance", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("balance is 0", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("balance is zero", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("0 chips", StringComparison.OrdinalIgnoreCase)
+            || message.Contains("zero chips", StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task SetReadyAsync()
