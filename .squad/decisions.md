@@ -928,3 +928,50 @@ EF migration `AddDealersChoice` cannot be generated until these are fixed. These
 
 **Merged source:**
 - `.squad/decisions/inbox/rusty-irish-phase3-audit.md`
+
+### 2026-03-07: Hold the Baseball implementation architecture
+**By:** Danny (Backend Dev)
+**Requested by:** Rob Gibbens
+**What:** Implemented Hold the Baseball as a Texas Hold'em-style variant with 3s/9s wild behavior, dedicated game/rules/evaluator/API flow wiring, and metadata registration under `HOLDTHEBASEBALL`.
+**Why:** Delivers the variant using existing wild-card and community-card architecture while keeping game-type routing consistent.
+
+**Merged source:**
+- `.squad/decisions/inbox/danny-hold-the-baseball.md`
+
+### 2026-03-07: Hold the Baseball UI blind and start-flow alignment
+**By:** Linus (Frontend Dev)
+**Requested by:** Rob Gibbens
+**What:** Added `HOLDTHEBASEBALL` to blind-gated UI branch points (create/edit/dealer-choice/table canvas) and routed hand start through the dedicated Hold-the-Baseball endpoint.
+**Why:** Ensures Hold the Baseball behaves/displays like Hold'em for blinds and keeps frontend routing aligned with backend game-specific flow.
+
+**Merged source:**
+- `.squad/decisions/inbox/linus-hold-baseball-ui-blinds.md`
+
+### 2026-03-07: Auto-seat join in TablePlay wallet-gated flow
+**By:** Linus (Frontend Dev)
+**Requested by:** Rob Gibbens
+**What:** Updated `TablePlay.razor` join initiation to deterministically choose the lowest available seat index and removed manual seat-selection as a required user step before buy-in/join submission. Kept explicit `SeatIndex` submission to satisfy existing API contract; on race, re-selects next available seat and continues.
+**Why:** UX requirement was to replace manual seat choice with automatic assignment while preserving backend join semantics and wallet-gated flow.
+
+**Merged source:**
+- `.squad/decisions/inbox/linus-auto-seat-join.md`
+
+### 2026-03-07: Auto-seat join regression strategy and seam coverage
+**By:** Basher (Tester)
+**Requested by:** Rob Gibbens
+**What:** Locked automated coverage to the deterministic seat-selection seam (`TryGetAutoJoinSeatIndex`) and documented manual verification scope for full UI join-button + buy-in modal interaction transitions.
+**Why:** Current web test harness strength in this repo is seam-focused component-internal testing; deterministic seat assignment is the highest regression-risk logic for this change.
+
+**Merged source:**
+- `.squad/decisions/inbox/basher-auto-seat-test-notes.md`
+
+### 2026-03-07: Lobby join intent triggers immediate table auto-seat join
+**By:** Linus (Frontend Dev)
+**Requested by:** Rob Gibbens
+**What:** Lobby Join navigation now sends a one-time URL intent (`/table/{id}?autojoin=1`), and `TablePlay` consumes that intent after initial table/seat data load to trigger `BeginAutoSeatJoinAsync` exactly once when the user is not already seated.
+**Why:** Fixes the reported gap where Lobby Join reached table view without auto-seating or opening the expected buy-in/bring-in flow.
+**Scope guardrails:** Preserves Lobby no-chip gate, existing full-table/race handling, and existing no-chip handling in the `TablePlay` join flow.
+**Files changed:** `src/CardGames.Poker.Web/Components/Pages/Lobby.razor`, `src/CardGames.Poker.Web/Components/Pages/TablePlay.razor`, `src/Tests/CardGames.Poker.Tests/Web/TablePlayAutoSeatJoinTests.cs`.
+
+**Merged source:**
+- `.squad/decisions/inbox/linus-lobby-autojoin-fix.md`

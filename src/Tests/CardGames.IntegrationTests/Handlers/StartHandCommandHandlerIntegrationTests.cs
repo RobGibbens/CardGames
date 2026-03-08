@@ -378,6 +378,68 @@ public class StartHandCommandHandlerIntegrationTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task Handle_HoldTheBaseball_AutoDealsHoleCardsAndCollectsBlinds_TransitionsToPreFlop()
+    {
+        // Arrange
+        var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(
+            DbContext,
+            "HOLDTHEBASEBALL",
+            numberOfPlayers: 4,
+            startingChips: 1000,
+            ante: 0);
+
+        setup.Game.SmallBlind = 5;
+        setup.Game.BigBlind = 10;
+        setup.Game.DealerPosition = 0;
+        await DbContext.SaveChangesAsync();
+
+        var command = new StartHandCommand(setup.Game.Id);
+
+        // Act
+        var result = await Mediator.Send(command);
+
+        // Assert
+        result.IsT0.Should().BeTrue("Expected successful result");
+        result.AsT0.CurrentPhase.Should().Be("PreFlop");
+
+        var freshContext = GetFreshDbContext();
+
+        var updatedGame = await freshContext.Games
+            .FirstAsync(g => g.Id == setup.Game.Id);
+        updatedGame.CurrentPhase.Should().Be("PreFlop");
+
+        var mainPot = await freshContext.Pots
+            .SingleAsync(p => p.GameId == setup.Game.Id && p.HandNumber == 1 && p.PotType == PotType.Main);
+        mainPot.Amount.Should().Be(15, "small blind + big blind should be posted to the pot");
+
+        var players = await freshContext.GamePlayers
+            .Where(gp => gp.GameId == setup.Game.Id)
+            .OrderBy(gp => gp.SeatPosition)
+            .ToListAsync();
+
+        players[0].ChipStack.Should().Be(1000, "dealer should not post blind in 4-handed play");
+        players[1].ChipStack.Should().Be(995, "small blind seat should post 5");
+        players[2].ChipStack.Should().Be(990, "big blind seat should post 10");
+        players[3].ChipStack.Should().Be(1000, "non-blind seat should remain unchanged");
+
+        players[1].CurrentBet.Should().Be(5);
+        players[2].CurrentBet.Should().Be(10);
+
+        var dealtCards = await freshContext.GameCards
+            .Where(gc => gc.GameId == setup.Game.Id &&
+                         gc.HandNumber == 1 &&
+                         gc.GamePlayerId != null)
+            .ToListAsync();
+
+        dealtCards.Should().HaveCount(2 * setup.GamePlayers.Count);
+
+        foreach (var player in setup.GamePlayers)
+        {
+            dealtCards.Count(c => c.GamePlayerId == player.Id).Should().Be(2);
+        }
+    }
+
+    [Fact]
     public async Task Handle_FromCompletedHand_StartsNextHand()
     {
         // Arrange

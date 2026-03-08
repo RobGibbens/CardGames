@@ -400,6 +400,9 @@
 	}
 
 	private bool IsKingsAndLows => string.Equals(GameTypeCode, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase);
+	private bool IsBaseballLike =>
+		string.Equals(GameTypeCode, "BASEBALL", StringComparison.OrdinalIgnoreCase)
+		|| string.Equals(GameTypeCode, "HOLDTHEBASEBALL", StringComparison.OrdinalIgnoreCase);
 
 	private bool IsWildForDisplay(CardInfo card, int? lowestNonKingRankValue, bool hasExplicitWildFlags)
 	{
@@ -410,7 +413,15 @@
 			return false;
 
 		if (!IsKingsAndLows)
-			return false;
+		{
+			if (!IsBaseballLike)
+			{
+				return false;
+			}
+
+			var baseballRankValue = GetRankValueForWild(card.Rank);
+			return baseballRankValue is 3 or 9;
+		}
 
 		var rankValue = GetRankValueForWild(card.Rank);
 		if (rankValue == 13)

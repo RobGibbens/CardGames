@@ -31,7 +31,10 @@
         {
             var winnerHand = GetPrimaryWinnerHand(ShowdownResult);
             var otherHands = GetLoserHands(ShowdownResult, winnerHand);
-            var winnerCards = winnerHand is not null ? GetDisplayCards(winnerHand) : [];
+            var sharedCommunityCards = SharedCommunityCards is { Count: > 0 }
+                ? SharedCommunityCards
+                : GetSharedCommunityCards(winnerHand);
+            var winnerCards = winnerHand is not null ? GetDisplayCards(winnerHand, sharedCommunityCards) : [];
             var winnerName = GetWinnerDisplayName(ShowdownResult, winnerHand);
             var winnerDescription = GetWinnerDescription(ShowdownResult, winnerHand);
             var winnerAmount = GetWinnerAmount(ShowdownResult, winnerHand);
@@ -96,7 +99,7 @@
                     <h3 class="showdown-section-title">Other Hands</h3>
                     @foreach (var hand in otherHands)
                     {
-                        var handCards = GetDisplayCards(hand);
+                        var handCards = GetDisplayCards(hand, sharedCommunityCards);
                         <div class="other-hand-row">
                             <div class="other-hand-info">
                                 <span class="other-hand-name">@DisplayFirstName(hand)</span>
@@ -162,6 +165,9 @@
 
             [Parameter]
             public bool IsGameEnded { get; set; }
+
+            [Parameter]
+            public IReadOnlyList<ShowdownCard>? SharedCommunityCards { get; set; }
 
             [Parameter]
             public EventCallback OnClose { get; set; }
@@ -280,6 +286,17 @@
         return string.Equals(hand?.PlayerName, "The Deck", StringComparison.OrdinalIgnoreCase);
     }
 
+    private static IReadOnlyList<ShowdownCard> GetSharedCommunityCards(ShowdownPlayerHand? winnerHand)
+    {
+        // Community-card showdowns keep hole cards first, followed by shared board cards.
+        if (winnerHand?.Cards is null || winnerHand.Cards.Count <= 2)
+        {
+            return [];
+        }
+
+        return winnerHand.Cards.Skip(2).ToList();
+    }
+
     private static ShowdownPlayerHand EnrichHand(ShowdownPlayerHand hand, IDictionary<string, int>? payouts)
     {
         if (payouts is not null && payouts.TryGetValue(hand.PlayerName, out var amount))
@@ -300,7 +317,7 @@
     /// Uses BestCardIndexes if provided by API, otherwise computes client-side.
     /// For other games, returns all cards sorted by symbol.
     /// </summary>
-    private static List<(ShowdownCard Card, bool IsWild)> GetDisplayCards(ShowdownPlayerHand hand)
+    private static List<(ShowdownCard Card, bool IsWild)> GetDisplayCards(ShowdownPlayerHand hand, IReadOnlyList<ShowdownCard>? sharedCommunityCards = null)
     {
         if (hand.Cards is null || hand.Cards.Count == 0)
         {
@@ -308,18 +325,39 @@
         }
 
         var cardsList = hand.Cards.ToList();
+
+        // Some Hold the Baseball loser payloads contain only hole cards while BestCardIndexes
+        // still reference hole+community indexes. Rehydrate with shared community cards so
+        // every player shows the same board cards.
+        var reconstructedCommunityCards = cardsList.Count == 2
+            && sharedCommunityCards is { Count: > 0 }
+            && ((hand.BestCardIndexes is not null && hand.BestCardIndexes.Any(idx => idx >= 2))
+                || sharedCommunityCards.Count >= 3);
+
+        if (reconstructedCommunityCards)
+        {
+            cardsList.AddRange(sharedCommunityCards!);
+        }
+
         var wildSet = hand.WildCardIndexes is not null
             ? new HashSet<int>(hand.WildCardIndexes)
             : new HashSet<int>();
 
         // If BestCardIndexes is provided and valid, use only those cards
-        if (hand.BestCardIndexes is not null && hand.BestCardIndexes.Count == 5)
+        if (hand.BestCardIndexes is not null)
         {
-            return hand.BestCardIndexes
+            var validBestIndexes = hand.BestCardIndexes
                 .Where(idx => idx >= 0 && idx < cardsList.Count)
+                .Distinct()
+                .ToList();
+
+            if (validBestIndexes.Count == 5)
+            {
+                return validBestIndexes
                 .Select(idx => (Card: cardsList[idx], IsWild: wildSet.Contains(idx)))
                 .OrderBy(x => GetCardDisplayOrder(x.Card))
                 .ToList();
+            }
         }
 
         // For wild-card hands, show all cards to avoid incorrect best-5 selection client-side

@@ -297,11 +297,21 @@ public abstract class BaseGameFlowHandler : IGameFlowHandler
             }
         }
 
-        // Reset CurrentBet for all players
-        foreach (var player in game.GamePlayers)
+        var isBlindBasedHand = SkipsAnteCollection;
+
+        // Ante-based variants start betting rounds with all players at 0.
+        // Blind-based variants preserve posted blind contributions into pre-flop.
+        if (!isBlindBasedHand)
         {
-            player.CurrentBet = 0;
+            foreach (var player in game.GamePlayers)
+            {
+                player.CurrentBet = 0;
+            }
         }
+
+        var openingCurrentBet = isBlindBasedHand && eligiblePlayers.Count > 0
+            ? eligiblePlayers.Max(p => p.CurrentBet)
+            : 0;
 
         // Determine next phase and set up game state
         var nextPhase = GetNextPhase(game, nameof(Phases.Dealing));
@@ -315,7 +325,9 @@ public abstract class BaseGameFlowHandler : IGameFlowHandler
         else
         {
             // Standard poker - set up first betting round
-            var firstActorIndex = FindFirstActivePlayerAfterDealer(game, eligiblePlayers);
+            var firstActorIndex = isBlindBasedHand
+                ? FindFirstActivePlayerAfterBigBlind(game, eligiblePlayers)
+                : FindFirstActivePlayerAfterDealer(game, eligiblePlayers);
 
             var bettingRound = new Data.Entities.BettingRound
             {
@@ -323,7 +335,7 @@ public abstract class BaseGameFlowHandler : IGameFlowHandler
                 HandNumber = game.CurrentHandNumber,
                 RoundNumber = 1,
                 Street = nextPhase ?? nameof(Phases.FirstBettingRound),
-                CurrentBet = 0,
+                CurrentBet = openingCurrentBet,
                 MinBet = game.MinBet ?? 0,
                 RaiseCount = 0,
                 MaxRaises = 0,
@@ -367,6 +379,12 @@ public abstract class BaseGameFlowHandler : IGameFlowHandler
     /// <param name="activePlayers">List of active players.</param>
     /// <returns>The seat position of the first actor, or -1 if none found.</returns>
     protected static int FindFirstActivePlayerAfterDealer(Game game, List<GamePlayer> activePlayers)
+        => FindFirstActivePlayerAfterSeat(game, activePlayers, game.DealerPosition);
+
+    /// <summary>
+    /// Finds the first active player after the specified seat position who can act.
+    /// </summary>
+    protected static int FindFirstActivePlayerAfterSeat(Game game, List<GamePlayer> activePlayers, int seatPosition)
     {
         if (activePlayers.Count == 0)
         {
@@ -375,9 +393,9 @@ public abstract class BaseGameFlowHandler : IGameFlowHandler
 
         var maxSeatPosition = game.GamePlayers.Max(gp => gp.SeatPosition);
         var totalSeats = maxSeatPosition + 1;
-        var searchIndex = (game.DealerPosition + 1) % totalSeats;
+        var searchIndex = (seatPosition + 1) % totalSeats;
 
-        // Search through all seat positions starting left of dealer
+        // Search through all seat positions starting left of the provided seat
         for (var i = 0; i < totalSeats; i++)
         {
             var player = activePlayers.FirstOrDefault(p => p.SeatPosition == searchIndex);
@@ -389,6 +407,31 @@ public abstract class BaseGameFlowHandler : IGameFlowHandler
         }
 
         return -1;
+    }
+
+    /// <summary>
+    /// Finds the first active pre-flop actor for blind-based games (player after the big blind).
+    /// </summary>
+    protected static int FindFirstActivePlayerAfterBigBlind(Game game, List<GamePlayer> eligiblePlayers)
+    {
+        if (eligiblePlayers.Count == 0)
+        {
+            return -1;
+        }
+
+        var sortedPlayers = eligiblePlayers.OrderBy(p => p.SeatPosition).ToList();
+        var dealerIndex = sortedPlayers.FindIndex(p => p.SeatPosition == game.DealerPosition);
+        if (dealerIndex == -1)
+        {
+            dealerIndex = sortedPlayers.Count - 1;
+        }
+
+        var bigBlindIndex = sortedPlayers.Count == 2
+            ? (dealerIndex + 1) % sortedPlayers.Count
+            : (dealerIndex + 2) % sortedPlayers.Count;
+
+        var bigBlindSeat = sortedPlayers[bigBlindIndex].SeatPosition;
+        return FindFirstActivePlayerAfterSeat(game, eligiblePlayers, bigBlindSeat);
     }
 
     /// <summary>

@@ -68,7 +68,7 @@
             var index = orderedCards[i].Index;
             var card = orderedCards[i].Card;
             var isSelected = SelectedIndices.Contains(index);
-            var isWildForDisplay = IsWildForDisplay(card, lowestNonKingRankValueForWild, EnableKingsAndLowsWildCardHighlighting, hasExplicitWildFlags);
+            var isWildForDisplay = IsWildForDisplay(card, lowestNonKingRankValueForWild, EnableKingsAndLowsWildCardHighlighting, EnableBaseballWildCardHighlighting, hasExplicitWildFlags);
 
             <div class="draw-card-wrapper @(isSelected ? "selected" : "") @(IsDiscarding && isSelected ? "discarding" : "") @(IsDrawing && NewCardIndices.Contains(index) ? "drawing" : "") @(IsReadOnly ? "readonly" : "")"
                  @key="GetCardRenderKey(card, index)"
@@ -331,6 +331,13 @@
     [Parameter]
     public bool EnableKingsAndLowsWildCardHighlighting { get; set; }
 
+    /// <summary>
+    /// Enables Baseball-style wild card highlighting (all 3s and 9s).
+    /// Keep false for non-Baseball variants.
+    /// </summary>
+    [Parameter]
+    public bool EnableBaseballWildCardHighlighting { get; set; }
+
     private int SelectedCount => SelectedIndices.Count;
 
     protected override async Task OnParametersSetAsync()
@@ -569,7 +576,7 @@
                 };
             }
 
-    private static bool IsWildForDisplay(CardInfo card, int? lowestNonKingRankValue, bool enableKingsAndLowsWildCardHighlighting, bool hasExplicitWildFlags)
+    private static bool IsWildForDisplay(CardInfo card, int? lowestNonKingRankValue, bool enableKingsAndLowsWildCardHighlighting, bool enableBaseballWildCardHighlighting, bool hasExplicitWildFlags)
     {
         if (card.IsWild)
         {
@@ -583,7 +590,13 @@
 
         if (!enableKingsAndLowsWildCardHighlighting)
         {
-            return false;
+            if (!enableBaseballWildCardHighlighting)
+            {
+                return false;
+            }
+
+            var baseballRankValue = GetRankValue(card.Rank);
+            return baseballRankValue is 3 or 9;
         }
 
         var rankValue = GetRankValue(card.Rank);

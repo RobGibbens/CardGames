@@ -342,6 +342,10 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			var allEvaluationCards = playerCards.Concat(communityCards).ToList();
 
 			var isSevenCardStud = IsStudGame(game.GameType?.Code);
+			var isCommunityCardGame = IsHoldEmGame(game.GameType?.Code)
+				|| IsHoldTheBaseballGame(game.GameType?.Code)
+				|| IsOmahaGame(game.GameType?.Code)
+				|| IsIrishHoldEmGame(game.GameType?.Code);
 
 			// Seven Card Stud / Baseball / Follow The Queen: Requires 2 hole + up to 4 board + 1 down card (7 total at showdown)
 			if (isSevenCardStud)
@@ -350,7 +354,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			}
 			// Draw games (no community cards). Provide a description for any cards held.
 			// (During seating / pre-deal phases there may be 0-4 cards and we keep the description null.)
-			else if (communityCards.Count == 0 && playerCards.Count > 0)
+			else if (!isCommunityCardGame && communityCards.Count == 0 && playerCards.Count > 0)
 			{
 				var drawHand = BuildDrawHandForGame(game.GameType?.Code, playerCards);
 				handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(drawHand);
@@ -386,6 +390,11 @@ public sealed class TableStateBuilder : ITableStateBuilder
 						var gbuHand = new GoodBadUglyHand(playerCards.Concat(communityCards).ToList(), [], [], wildRank, new GoodBadUglyWildCardRules());
 						handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(gbuHand);
 					}
+				}
+				else if (IsHoldTheBaseballGame(game.GameType?.Code) && playerCards.Count == 2)
+				{
+					var holdTheBaseballHand = new HoldTheBaseballHand(playerCards, communityCards);
+					handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(holdTheBaseballHand);
 				}
 				// Hold'em / Short-deck Hold'em style: 2 hole + up to 5 community
 				else if (playerCards.Count == 2)
@@ -761,6 +770,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		var isTwosJacksAxe = IsTwosJacksAxeGame(game.GameType?.Code);
 		var isGoodBadUgly = IsGoodBadUglyGame(game.GameType?.Code);
 		var isHoldEm = IsHoldEmGame(game.GameType?.Code);
+		var isHoldTheBaseball = IsHoldTheBaseballGame(game.GameType?.Code);
 		var isOmaha = IsOmahaGame(game.GameType?.Code);
 		var isIrishHoldEm = IsIrishHoldEmGame(game.GameType?.Code);
 
@@ -875,6 +885,57 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 				playerHandEvaluations[gp.Player.Name] = (holdemHand, null, null, null, gp, allDisplayCards, [],
 					GetCardIndexes(allCoreCards, bestFive));
+			}
+		}
+
+		// Hold the Baseball: Hold'em structure with 3s and 9s wild in hole and community cards.
+		if (isHoldTheBaseball)
+		{
+			var holdTheBaseballCommunityCards = await _context.GameCards
+				.Where(c => c.GameId == game.Id
+					&& c.HandNumber == game.CurrentHandNumber
+					&& c.Location == CardLocation.Community
+					&& c.GamePlayerId == null
+					&& !c.IsDiscarded)
+				.OrderBy(c => c.DealOrder)
+				.AsNoTracking()
+				.ToListAsync(cancellationToken);
+
+			var communityCoreCards = holdTheBaseballCommunityCards
+				.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
+				.ToList();
+
+			foreach (var gp in gamePlayers.Where(p => !p.HasFolded))
+			{
+				var ownedCards = gp.Cards
+					.Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber)
+					.OrderBy(c => c.DealOrder)
+					.ToList();
+
+				var holeCoreCards = ownedCards.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol)).ToList();
+
+				if (holeCoreCards.Count < 2)
+				{
+					continue;
+				}
+
+				var holdTheBaseballHand = new HoldTheBaseballHand(holeCoreCards, communityCoreCards);
+
+				var allDisplayCards = ownedCards.ToList();
+				allDisplayCards.AddRange(holdTheBaseballCommunityCards);
+				var allCoreCards = holeCoreCards.Concat(communityCoreCards).ToList();
+
+				var wildIndexes = new List<int>();
+				for (var i = 0; i < allCoreCards.Count; i++)
+				{
+					if (holdTheBaseballHand.WildCards.Contains(allCoreCards[i]))
+					{
+						wildIndexes.Add(i);
+					}
+				}
+
+				playerHandEvaluations[gp.Player.Name] = (holdTheBaseballHand, null, null, null, gp, allDisplayCards, wildIndexes,
+					GetCardIndexes(allCoreCards, holdTheBaseballHand.BestHandSourceCards));
 			}
 		}
 
@@ -1835,6 +1896,10 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		{
 			wildRanks.AddRange(["3", "9"]);
 		}
+		else if (string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.HoldTheBaseballCode, StringComparison.OrdinalIgnoreCase))
+		{
+			wildRanks.AddRange(["3", "9"]);
+		}
 		else if (string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.KingsAndLowsCode, StringComparison.OrdinalIgnoreCase))
 		{
 			wildRanks.Add("K");
@@ -2427,6 +2492,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 	private static bool IsHoldEmGame(string? gameTypeCode)
 		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.HoldEmCode);
+
+	private static bool IsHoldTheBaseballGame(string? gameTypeCode)
+		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.HoldTheBaseballCode);
 
 	private static bool IsOmahaGame(string? gameTypeCode)
 		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.OmahaCode);

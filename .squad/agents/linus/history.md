@@ -7,6 +7,15 @@
 
 ## Learnings
 
+- 2026-03-07: Lobby Join now passes an explicit one-time URL intent (`?autojoin=1`) and `TablePlay` consumes that intent immediately after initial table/seat load to trigger `BeginAutoSeatJoinAsync` only once when the player is not already seated. This preserves Lobby no-chip gating, keeps existing full-table/race handling in join submit flow, and ensures buy-in modal appears on direct Lobby→Table joins.
+- 2026-03-08 (team update): Lobby-triggered auto-seat join fix decision (`linus-lobby-autojoin-fix`) was merged from inbox into canonical `.squad/decisions.md`; use canonical entry as source of truth for follow-up Lobby→Table join behavior changes.
+
+- 2026-03-07: `TablePlay` join flow now auto-selects the lowest available seat index client-side before opening buy-in confirmation, because `JoinGameRequest` still requires explicit `SeatIndex`. This removes manual seat choice while preserving existing wallet-gated join checks and post-join phase/overlay behavior.
+- 2026-03-08 (team update): Auto-seat join decision (`linus-auto-seat-join`) was merged from inbox into canonical `.squad/decisions.md`; use canonical entry as source of truth for follow-up TablePlay join UX work.
+
+- 2026-03-07: Hold the Baseball frontend blind/pot issues were caused by blind-based game detection gaps in UI components, not by table rendering itself. `HOLDTHEBASEBALL` must be included anywhere blind-based controls/indicators are gated (`CreateTable`, `DealerChoiceModal`, `TableCanvas`, and edit-settings blind visibility checks) so SB/BB values are actually configured and displayed.
+- 2026-03-07: Web client start-hand routing for Hold the Baseball should use its dedicated API endpoint (`/api/v1/games/hold-the-baseball/{gameId}/start`) via Contracts partial `IGamesApi` extension, keeping client mapping aligned with existing backend game-specific flow behavior.
+
 - Added per-card deal sound in `CardGames.Poker.Web` using private-state deltas so only the current client hears sounds for their own newly received cards.
 - For deal-animation variants, hooked playback at per-card animation time for the local seat to preserve one-sound-per-card behavior during staged dealing.
 - Implemented audio format preference in `wwwroot/audio.js` by selecting `.ogg` when playable and falling back to `.mp3`.

@@ -102,6 +102,7 @@ public class GameApiRouter : IGameApiRouter
     private const string SevenCardStud = "SEVENCARDSTUD";
     private const string GoodBadUgly = "GOODBADUGLY";
     private const string Baseball = "BASEBALL";
+    private const string HoldTheBaseball = "HOLDTHEBASEBALL";
     private const string FollowTheQueen = "FOLLOWTHEQUEEN";
 
     private readonly IFiveCardDrawApi _fiveCardDrawApi;
@@ -149,6 +150,7 @@ public class GameApiRouter : IGameApiRouter
             [SevenCardStud] = RouteSevenCardStudBettingActionAsync,
             [GoodBadUgly] = RouteGoodBadUglyBettingActionAsync,
             [Baseball] = RouteBaseballBettingActionAsync,
+            [HoldTheBaseball] = RouteHoldTheBaseballBettingActionAsync,
             [FollowTheQueen] = RouteFollowTheQueenBettingActionAsync
         };
 
@@ -261,6 +263,10 @@ public class GameApiRouter : IGameApiRouter
             await _followTheQueenApi.FollowTheQueenProcessBettingActionAsync(gameId, request));
 
     private async Task<RouterResponse<ProcessBettingActionSuccessful>> RouteHoldEmBettingActionAsync(Guid gameId, ProcessBettingActionRequest request)
+        => RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
+            await _holdEmApi.HoldEmProcessBettingActionAsync(gameId, request));
+
+    private async Task<RouterResponse<ProcessBettingActionSuccessful>> RouteHoldTheBaseballBettingActionAsync(Guid gameId, ProcessBettingActionRequest request)
         => RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
             await _holdEmApi.HoldEmProcessBettingActionAsync(gameId, request));
 

@@ -143,7 +143,7 @@ public class GameApiRouterTests
             gamesApi);
 
         // Act
-        var response = await sut.ProcessDrawAsync("HOLDEM", gameId, playerId, discardIndices);
+        var response = await sut.ProcessDrawAsync("HOLDEM", gameId, playerId, 0, discardIndices);
 
         // Assert
         response.IsSuccess.Should().BeFalse();
@@ -184,7 +184,7 @@ public class GameApiRouterTests
             gamesApi);
 
         // Act
-        var response = await sut.ProcessDrawAsync("OMAHA", gameId, playerId, discardIndices);
+        var response = await sut.ProcessDrawAsync("OMAHA", gameId, playerId, 0, discardIndices);
 
         // Assert
         response.IsSuccess.Should().BeFalse();
