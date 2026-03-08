@@ -1,3 +1,5 @@
+using CardGames.Poker.Games;
+
 namespace CardGames.Poker.Api.Features.Games.AvailablePokerGames.v1.Queries.GetAvailablePokerGames;
 
 /// <summary>
@@ -9,5 +11,6 @@ public record GetAvailablePokerGamesResponse(
 	string Description,
 	int MinimumNumberOfPlayers,
 	int MaximumNumberOfPlayers,
-	string? ImageName = null
+	string? ImageName = null,
+	VariantType VariantType = VariantType.Other
 );

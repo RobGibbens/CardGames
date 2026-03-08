@@ -4,7 +4,6 @@ Cash
 ## Still to do
 
 - [ ] https://github.com/leeoades/FunctionalStateMachine
-- [ ] Reorganize the Create Table to group variants by type
 - [ ] When playing Dealer's choice, filter out games that don't support the number of players
  
 ### Leagues
@@ -189,3 +188,4 @@ Cash
 - [x] Add subtle icons to table felt
 - [x] Make sure that when they leave a table, or close the browser, that their chips stay in their account.
 - [x] When creating a table, just create it and make them press the Join button to join.
+- [x] Reorganize the Create Table to group variants by type

@@ -28,6 +28,7 @@ public class GoodBadUglyGame : IPokerGame
 {
     public string Name { get; } = "The Good, the Bad, and the Ugly";
     public string Description { get; } = "4 hole cards plus 3 community cards. The Good sets wilds, The Bad discards matching cards, and The Ugly creates dead hands that can still bet the final round.";
+    public CardGames.Poker.Games.VariantType VariantType { get; } = CardGames.Poker.Games.VariantType.HoldEm;
     public int MinimumNumberOfPlayers { get; } = 2;
     public int MaximumNumberOfPlayers { get; } = 10;
 

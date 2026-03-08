@@ -6,6 +6,7 @@ public interface IPokerGame
 {
 	string Name { get; }
 	string Description { get; }
+	VariantType VariantType { get; }
 	int MinimumNumberOfPlayers { get; }
 	int MaximumNumberOfPlayers { get; }
 

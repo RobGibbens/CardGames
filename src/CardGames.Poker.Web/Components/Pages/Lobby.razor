@@ -39,14 +39,6 @@
                 <h1 class="lobby-title">
                     <i class="fa-regular fa-house"></i>
                     Game Lobby
-                    @if (LobbyHubClient.IsInLobby)
-                    {
-                        <span class="connection-indicator connected" title="Real-time updates enabled"><i class="fa-solid fa-circle"></i></span>
-                    }
-                    else if (LobbyHubClient.IsConnected)
-                    {
-                        <span class="connection-indicator connecting" title="Connecting..."><i class="fa-solid fa-circle"></i></span>
-                    }
                 </h1>
                 <p class="lobby-subtitle">Find a table or create your own private game</p>
             </div>
@@ -492,11 +484,21 @@
 
     private string FormatGameTypeName(GetActiveGamesResponse table)
     {
-        if (table.IsDealersChoice &&
-            !string.Equals(table.GameTypeName, "Dealer's Choice", StringComparison.OrdinalIgnoreCase))
+        if (table.IsDealersChoice)
         {
-            return $"Dealer's Choice ({table.GameTypeName})";
+            if (string.IsNullOrWhiteSpace(table.GameTypeName))
+            {
+                return "Dealer's Choice";
+            }
+
+            if (!string.Equals(table.GameTypeName, "Dealer's Choice", StringComparison.OrdinalIgnoreCase))
+            {
+                return $"Dealer's Choice ({table.GameTypeName})";
+            }
+
+            return "Dealer's Choice";
         }
+
         return table.GameTypeName;
     }
 

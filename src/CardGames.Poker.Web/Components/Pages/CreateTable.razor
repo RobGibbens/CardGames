@@ -60,19 +60,21 @@
 							<p class="step-description">Select the poker variant you want to play</p>
 						</div>
 					</div>
-					<div class="variants-grid">
-						@foreach (var game in VariantCards)
-						{
-							var isAvailable = game.Code == "DEALERSCHOICE"
-								|| _availableGames.Any(g => string.Equals(g.Code, game.Code, StringComparison.OrdinalIgnoreCase));
-							<div class="variant-card @(_selectedVariant?.Name == game.Name ? "selected" : "") @(!isAvailable ? "disabled" : "")"
+					@if (ShowDealersChoiceCard)
+					{
+						<div class="variants-grid">
+							@{
+								var game = DealersChoiceCard;
+								var isAvailable = true;
+							}
+							<div class="variant-card @(_selectedVariant?.Code == game.Code ? "selected" : "") @(!isAvailable ? "disabled" : "")"
 								 @onclick="() => SelectVariant(game, isAvailable)">
 								<div class="variant-icon">
 									@if (!string.IsNullOrEmpty(game.ImageName))
 									{
 										<img src="/images/games/@(game.ImageName)" alt="@game.Name" class="variant-icon-image" />
 									}
-									else if (game.Code == "DEALERSCHOICE")
+									else if (game.Code == DealersChoiceCode)
 									{
 										<img src="/images/games/dealerschoice.png" alt="@game.Name" class="variant-icon-image" />
 									}
@@ -93,13 +95,64 @@
 								{
 									<span class="variant-badge coming-soon">Coming Soon</span>
 								}
-								@if (_selectedVariant?.Name == game.Name)
+								@if (_selectedVariant?.Code == game.Code)
 								{
 									<span class="variant-selected-indicator"><i class="fa-thin fa-check"></i></span>
 								}
 							</div>
+						</div>
+					}
+					@foreach (var group in VariantCardGroups)
+					{
+						if (group.Cards.Count == 0)
+						{
+							continue;
 						}
-					</div>
+
+						<section class="variant-group">
+							<h2>@group.Title</h2>
+							<div class="variants-grid">
+								@foreach (var game in group.Cards)
+								{
+									var isAvailable = game.Code == DealersChoiceCode
+										|| _availableGames.Any(g => string.Equals(g.Code, game.Code, StringComparison.OrdinalIgnoreCase));
+									<div class="variant-card @(_selectedVariant?.Code == game.Code ? "selected" : "") @(!isAvailable ? "disabled" : "")"
+										 @onclick="() => SelectVariant(game, isAvailable)">
+										<div class="variant-icon">
+											@if (!string.IsNullOrEmpty(game.ImageName))
+											{
+												<img src="/images/games/@(game.ImageName)" alt="@game.Name" class="variant-icon-image" />
+											}
+											else if (game.Code == DealersChoiceCode)
+											{
+												<img src="/images/games/dealerschoice.png" alt="@game.Name" class="variant-icon-image" />
+											}
+											else
+											{
+												<span class="variant-icon-fallback"><i class="fa-thin fa-card-club"></i></span>
+											}
+										</div>
+										<h3 class="variant-name">@game.Name</h3>
+										<p class="variant-description">@game.Description</p>
+										<div class="variant-meta">
+											<span class="variant-players">
+												<i class="fa-regular fa-users"></i>
+												@game.MinimumNumberOfPlayers-@game.MaximumNumberOfPlayers players
+											</span>
+										</div>
+										@if (!isAvailable)
+										{
+											<span class="variant-badge coming-soon">Coming Soon</span>
+										}
+										@if (_selectedVariant?.Code == game.Code)
+										{
+											<span class="variant-selected-indicator"><i class="fa-thin fa-check"></i></span>
+										}
+									</div>
+								}
+							</div>
+						</section>
+					}
 				</section>
 
 				@if (_selectedVariant is not null)
@@ -237,33 +290,73 @@
 	private List<GetAvailablePokerGamesResponse> _availableGames = [];
 	private GetAvailablePokerGamesResponse? _selectedVariant;
 
-	private static readonly GetAvailablePokerGamesResponse DealersChoiceCard = new(
-		code: "DEALERSCHOICE",
-		description: "The dealer picks the game variant each hand — a different game every deal!",
-		imageName: "",
-		maximumNumberOfPlayers: 8,
-		minimumNumberOfPlayers: 2,
-		name: "Dealer's Choice"
+	private const string DealersChoiceCode = "DEALERSCHOICE";
+	private const string HoldEmVariantsTitle = "Hold 'Em variants";
+	private const string DrawVariantsTitle = "Draw variants";
+	private const string StudVariantsTitle = "Stud variants";
+	private const string OtherVariantsTitle = "Other variants";
+
+	private static readonly VariantCard DealersChoiceCard = new(
+		Code: DealersChoiceCode,
+		Name: "Dealer's Choice",
+		Description: "The dealer picks the game variant each hand — a different game every deal!",
+		MinimumNumberOfPlayers: 2,
+		MaximumNumberOfPlayers: 8,
+		ImageName: "",
+		GroupTitle: OtherVariantsTitle,
+		Source: null
 	);
 
-	private IEnumerable<GetAvailablePokerGamesResponse> VariantCards
+	private IEnumerable<VariantGroup> VariantCardGroups
 	{
 		get
 		{
 			if (_selectedVariant is not null)
 			{
-				return [_selectedVariant];
+				if (string.Equals(_selectedVariant.Code, DealersChoiceCode, StringComparison.OrdinalIgnoreCase))
+				{
+					return Array.Empty<VariantGroup>();
+				}
+
+				var selectedCard = ToVariantCard(_selectedVariant);
+				return [new VariantGroup(selectedCard.GroupTitle, [selectedCard])];
 			}
 
-			return new[] { DealersChoiceCard }
-				.Concat(_availableGames.OrderBy(g => g.Name, StringComparer.OrdinalIgnoreCase));
+			var cards = _availableGames
+					.OrderBy(g => g.Name, StringComparer.OrdinalIgnoreCase)
+					.Select(ToVariantCard);
+
+			return new[]
+			{
+				CreateGroup(HoldEmVariantsTitle, cards),
+				CreateGroup(DrawVariantsTitle, cards),
+				CreateGroup(StudVariantsTitle, cards),
+				CreateGroup(OtherVariantsTitle, cards)
+			};
 		}
 	}
+
+	private bool ShowDealersChoiceCard =>
+		_selectedVariant is null ||
+		string.Equals(_selectedVariant.Code, DealersChoiceCode, StringComparison.OrdinalIgnoreCase);
 
 	private bool CanCreate =>
 		_selectedVariant is not null &&
 		!string.IsNullOrWhiteSpace(_tableName) &&
 		(_isDealersChoice || (_ante >= 0 && _minBet > 0 && (!_hasBlinds || (_smallBlind > 0 && _bigBlind >= _smallBlind))));
+
+	private sealed record VariantCard(
+		string Code,
+		string Name,
+		string Description,
+		int MinimumNumberOfPlayers,
+		int MaximumNumberOfPlayers,
+		string? ImageName,
+		string GroupTitle,
+		GetAvailablePokerGamesResponse? Source
+	);
+
+	private sealed record VariantGroup(string Title, IReadOnlyList<VariantCard> Cards);
 
 	protected override async Task OnInitializedAsync()
 	{
@@ -300,22 +393,61 @@
 		}
 	}
 
-	private void SelectVariant(GetAvailablePokerGamesResponse variant, bool isAvailable)
+	private static VariantGroup CreateGroup(string title, IEnumerable<VariantCard> cards)
+	{
+		return new VariantGroup(title, cards.Where(c => c.GroupTitle == title).ToList());
+	}
+
+	private static VariantCard ToVariantCard(GetAvailablePokerGamesResponse game)
+	{
+		var groupTitle = GetGroupTitle(game.VariantType);
+		return new VariantCard(
+			Code: game.Code,
+			Name: game.Name,
+			Description: game.Description,
+			MinimumNumberOfPlayers: game.MinimumNumberOfPlayers,
+			MaximumNumberOfPlayers: game.MaximumNumberOfPlayers,
+			ImageName: game.ImageName,
+			GroupTitle: groupTitle,
+			Source: game
+		);
+	}
+
+	private static string GetGroupTitle(VariantType variantType)
+	{
+		return variantType switch
+		{
+			VariantType.HoldEm => HoldEmVariantsTitle,
+			VariantType.Draw => DrawVariantsTitle,
+			VariantType.Stud => StudVariantsTitle,
+			_ => OtherVariantsTitle
+		};
+	}
+
+	private void SelectVariant(VariantCard variant, bool isAvailable)
 	{
 		if (!isAvailable)
 		{
 			return;
 		}
 
-		if (_selectedVariant?.Name == variant.Name)
+		if (_selectedVariant?.Code == variant.Code)
 		{
 			_selectedVariant = null;
 			_isDealersChoice = false;
+			_hasBlinds = false;
 			return;
 		}
 
-		_selectedVariant = variant;
-		_isDealersChoice = variant.Code == "DEALERSCHOICE";
+		_selectedVariant = variant.Source ?? new GetAvailablePokerGamesResponse(
+			code: DealersChoiceCode,
+			description: variant.Description,
+			imageName: variant.ImageName ?? string.Empty,
+			maximumNumberOfPlayers: variant.MaximumNumberOfPlayers,
+			minimumNumberOfPlayers: variant.MinimumNumberOfPlayers,
+			name: variant.Name
+		);
+		_isDealersChoice = variant.Code == DealersChoiceCode;
 		_hasBlinds = IsBlindBasedGame(variant.Code);
 	}
 

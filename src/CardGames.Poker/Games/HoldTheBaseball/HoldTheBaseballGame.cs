@@ -33,6 +33,7 @@ public class HoldTheBaseballGame : IPokerGame
 {
 	public string Name { get; } = "Hold the Baseball";
 	public string Description { get; } = "A Texas Hold 'Em variant where 3s and 9s are wild, including community cards.";
+	public CardGames.Poker.Games.VariantType VariantType { get; } = CardGames.Poker.Games.VariantType.HoldEm;
 	public int MinimumNumberOfPlayers { get; } = 2;
 	public int MaximumNumberOfPlayers { get; } = 10;
 

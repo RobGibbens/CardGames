@@ -26,8 +26,8 @@
     --gradient-button-hover: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
 
     /* Fonts */
-    --font-primary: 'MonoLisa', 'Inter', sans-serif;
-    --font-display: 'MonoLisa', 'Inter', sans-serif;
+    --font-primary: 'Inter', sans-serif;
+    --font-display: 'Inter', sans-serif;
 
     /* Spacing */
     --section-padding: 5rem 0;
@@ -3066,6 +3066,15 @@ a:hover {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
     gap: 1rem;
+}
+
+.create-step .variant-group {
+    margin-top: 1.5rem;
+}
+
+.create-step .variant-group h2 {
+    margin: 0 0 0.9rem;
+    font-size: 1.2rem;
 }
 
 .create-step .variant-card {

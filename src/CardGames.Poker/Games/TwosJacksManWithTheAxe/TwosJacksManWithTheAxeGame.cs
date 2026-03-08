@@ -31,6 +31,7 @@ public class TwosJacksManWithTheAxeGame : IPokerGame
 {
 	public string Name { get; } = "Twos, Jacks, Man with the Axe";
 	public string Description { get; } = "A five-card draw variant where all 2s, all Jacks, and the King of Diamonds (“Man with the Axe”) are wild, creating big hands and frequent action. Optionally, a player holding a natural pair of 7s can claim half the pot.";
+    public CardGames.Poker.Games.VariantType VariantType { get; } = CardGames.Poker.Games.VariantType.Draw;
 	public int MinimumNumberOfPlayers { get; } = 2;
 	public int MaximumNumberOfPlayers { get; } = 6;
 

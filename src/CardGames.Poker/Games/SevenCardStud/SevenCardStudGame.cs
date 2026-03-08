@@ -30,6 +30,7 @@ public class SevenCardStudGame : IPokerGame
 {
 	public string Name { get; } = "Seven Card Stud";
 	public string Description { get; } = "A classic poker variant where players receive seven cards individually, with betting rounds after the third, fourth, fifth, and sixth cards.";
+    public CardGames.Poker.Games.VariantType VariantType { get; } = CardGames.Poker.Games.VariantType.Stud;
 	public int MinimumNumberOfPlayers { get; } = 2;
 	public int MaximumNumberOfPlayers { get; } = 7;
 

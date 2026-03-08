@@ -32,6 +32,7 @@ public class IrishHoldEmGame : IPokerGame
 {
 	public string Name { get; } = "Irish Hold 'Em";
 	public string Description { get; } = "Deal 4 hole cards, discard 2 after the flop, then play like Hold 'Em with community cards.";
+	public CardGames.Poker.Games.VariantType VariantType { get; } = CardGames.Poker.Games.VariantType.HoldEm;
 	public int MinimumNumberOfPlayers { get; } = 2;
 	public int MaximumNumberOfPlayers { get; } = 10;
 
