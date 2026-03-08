@@ -191,50 +191,6 @@
 						</div>
 					</section>
 
-					<!-- Step 3: Add Players -->
-					<section class="create-step animate-fade-in-up animate-delay-1">
-						<div class="step-header">
-							<span class="step-number">3</span>
-							<div class="step-info">
-								<h2 class="step-title">Add Players</h2>
-								<p class="step-description">Add players to join your table (@_selectedVariant.MinimumNumberOfPlayers-@_selectedVariant.MaximumNumberOfPlayers players)</p>
-							</div>
-						</div>
-						<div class="players-section">
-							<div class="players-list">
-								@for (var i = 0; i < _players.Count; i++)
-								{
-									var index = i;
-									<div class="player-row">
-										<span class="player-seat">Seat @(i + 1)</span>
-										<input type="text"
-											   class="form-input player-name-input"
-											   placeholder="Player name"
-											   value="@_players[index].Name"
-											   @onchange="@(e => UpdatePlayerName(index, e.Value?.ToString() ?? string.Empty))" />
-										<input type="number"
-											   class="form-input player-chips-input"
-											   placeholder="Chips"
-											   min="100"
-											   max="100000"
-											   value="@_players[index].StartingChips"
-											   @onchange="@(e => UpdatePlayerChips(index, e.Value?.ToString() ?? "100"))" />  <!-- TODO:ROB - Set this to 50, or better yet, prompt them first -->
-										<button type="button" class="btn-icon btn-remove" @onclick="() => RemovePlayer(index)" title="Remove player">
-											<i class="fa-regular fa-times"></i>
-										</button>
-									</div>
-								}
-							</div>
-							@if (_players.Count < _selectedVariant.MaximumNumberOfPlayers)
-							{
-								<button type="button" class="btn btn-secondary add-player-btn" @onclick="AddPlayer">
-									<i class="fa-regular fa-plus"></i>
-									Add Player
-								</button>
-							}
-						</div>
-					</section>
-
 					<!-- Create Button -->
 					<div class="create-actions animate-fade-in-up animate-delay-2">
 						@if (_createError is not null)
@@ -258,7 +214,7 @@
 								<span>Create Table</span>
 							}
 						</button>
-						<p class="create-hint">You'll be able to share an invite link after creating the table</p>
+						<p class="create-hint">After creating the table, go to Lobby and click Join to enter the game.</p>
 					</div>
 				}
 			</div>
@@ -278,7 +234,6 @@
 	private int _bigBlind = 2;
 	private bool _isDealersChoice;
 	private bool _hasBlinds;
-	private readonly List<PlayerInput> _players = [];
 	private List<GetAvailablePokerGamesResponse> _availableGames = [];
 	private GetAvailablePokerGamesResponse? _selectedVariant;
 
@@ -308,8 +263,7 @@
 	private bool CanCreate =>
 		_selectedVariant is not null &&
 		!string.IsNullOrWhiteSpace(_tableName) &&
-		(_isDealersChoice || (_ante >= 0 && _minBet > 0 && (!_hasBlinds || (_smallBlind > 0 && _bigBlind >= _smallBlind)))) &&
-		_players.All(p => !string.IsNullOrWhiteSpace(p.Name) && p.StartingChips > 0);
+		(_isDealersChoice || (_ante >= 0 && _minBet > 0 && (!_hasBlinds || (_smallBlind > 0 && _bigBlind >= _smallBlind))));
 
 	protected override async Task OnInitializedAsync()
 	{
@@ -363,56 +317,6 @@
 		_selectedVariant = variant;
 		_isDealersChoice = variant.Code == "DEALERSCHOICE";
 		_hasBlinds = IsBlindBasedGame(variant.Code);
-
-		// Initialize players list with minimum required players
-		//TODO:ROB - Don't hard code this
-		_players.Add(new PlayerInput { Name = $"robgibbens@gmail.com", StartingChips = 100 });   //TODO:ROB - Set this to 50, or better yet, prompt them first
-		// _players.Add(new PlayerInput { Name = $"deangibbens@gmail.com", StartingChips = 5000 });
-		// _players.Add(new PlayerInput { Name = $"lynnegibbens@gmail.com", StartingChips = 5000 });
-		// _players.Add(new PlayerInput { Name = $"iangibbens@gmail.com", StartingChips = 5000 });
-
-		// if (players.Count == 0)
-		// {
-		//     players = Enumerable.Range(1, variant.MinimumNumberOfPlayers)
-		//         .Select(i => new PlayerInput { Name = $"Player {i}", StartingChips = 5000 })
-		//         .ToList();
-		// }
-	}
-
-	private void AddPlayer()
-	{
-		if (_selectedVariant is null || _players.Count >= _selectedVariant.MaximumNumberOfPlayers)
-		{
-			return;
-		}
-
-		_players.Add(new PlayerInput { Name = $"Player {_players.Count + 1}", StartingChips = 100 });   //TODO:ROB - Set this to 50, or better yet, prompt them first
-	}
-
-	private void RemovePlayer(int index)
-	{
-		if (_selectedVariant is null)
-		{
-			return;
-		}
-
-		_players.RemoveAt(index);
-	}
-
-	private void UpdatePlayerName(int index, string name)
-	{
-		if (index >= 0 && index < _players.Count)
-		{
-			_players[index] = _players[index] with { Name = name };
-		}
-	}
-
-	private void UpdatePlayerChips(int index, string chipsStr)
-	{
-		if (index >= 0 && index < _players.Count && int.TryParse(chipsStr, out var chips))
-		{
-			_players[index] = _players[index] with { StartingChips = chips };
-		}
 	}
 
 	private async Task CreateTableAsync()
@@ -429,10 +333,7 @@
 		try
 		{
 			var gameId = Guid.CreateVersion7();
-
-			var playerInfos = _players
-				.Select(p => new PlayerInfo(p.Name, p.StartingChips))
-				.ToList();
+			var playerInfos = new List<PlayerInfo>();
 
 			var command = new CreateGameCommand(_isDealersChoice ? 0 : _ante, _selectedVariant.Code, gameId, _tableName, _isDealersChoice ? 0 : _minBet, playerInfos)
 			{
@@ -451,8 +352,7 @@
 
 			if (createdGameId.HasValue)
 			{
-				// Navigate to the newly created game
-				NavigationManager.NavigateTo($"/table/{createdGameId.Value}");
+				NavigationManager.NavigateTo("/lobby");
 			}
 			else
 			{
@@ -473,11 +373,5 @@
 	private static bool IsBlindBasedGame(string gameCode)
 	{
 		return gameCode is "HOLDEM" or "OMAHA" or "IRISHHOLDEM" or "HOLDTHEBASEBALL";
-	}
-
-	private record PlayerInput
-	{
-		public string Name { get; init; } = "";
-		public int StartingChips { get; init; } = 100; //TODO:ROB - Set this to 50, or better yet, prompt them first
 	}
 }

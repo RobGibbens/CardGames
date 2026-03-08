@@ -6,6 +6,8 @@
 
 ## Learnings
 
+- 2026-03-08: Merged `.squad/decisions/inbox/linus-create-table-no-autojoin.md` into canonical `.squad/decisions.md`, deleted the processed inbox file, appended a Linus cross-agent sync note, and logged orchestration/session artifacts for the create-table no-autojoin batch.
+
 - 2026-03-08: Merged `.squad/decisions/inbox/linus-lobby-autojoin-fix.md` into canonical `.squad/decisions.md`, deleted the processed inbox file, added a Linus cross-agent sync note, and logged session/orchestration entries for the lobby-triggered auto-seat join fix batch.
 
 - Logged Rusty orchestration/session artifacts for Cashier feature design, merged cashier decision inbox into `.ai-team/decisions.md`, and cleared merged inbox entries.

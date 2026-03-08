@@ -50,6 +50,7 @@ public sealed class PerformShowdownCommandHandler(
     IGameFlowHandlerFactory flowHandlerFactory,
     IHandEvaluatorFactory handEvaluatorFactory,
     IHandHistoryRecorder handHistoryRecorder,
+    IHandSettlementService handSettlementService,
     ILogger<PerformShowdownCommandHandler> logger)
     : IRequestHandler<PerformShowdownCommand, OneOf<PerformShowdownSuccessful, PerformShowdownError>>
 {
@@ -198,6 +199,9 @@ public sealed class PerformShowdownCommandHandler(
                 await flowHandler.OnHandCompletedAsync(game, cancellationToken);
             }
 
+            // 11b. Record per-hand settlement to cashier ledger
+            await handSettlementService.SettleHandAsync(game, payouts, cancellationToken);
+
             await context.SaveChangesAsync(cancellationToken);
 
             // 13. Record hand history
@@ -268,6 +272,10 @@ public sealed class PerformShowdownCommandHandler(
             game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);
             UpdateSitOutStatus(game);
             MoveDealer(game);
+
+            // Settle hand results to cashier ledger (win-by-fold)
+            var foldPayouts = new Dictionary<string, int> { { winner.Player.Name, totalPot } };
+            await handSettlementService.SettleHandAsync(game, foldPayouts, cancellationToken);
 
             await context.SaveChangesAsync(cancellationToken);
 
@@ -340,6 +348,7 @@ public sealed class PerformShowdownCommandHandler(
             if (flowHandler.SpecialPhases.Contains(nameof(Phases.DropOrStay)))
             {
                 // Create new pot for next hand with carried pot
+                // No settlement — chips are "in limbo" until pot is eventually awarded
                 var nextHandPot = new Data.Entities.Pot
                 {
                     GameId = game.Id,
@@ -351,6 +360,11 @@ public sealed class PerformShowdownCommandHandler(
                     CreatedAt = now
                 };
                 context.Pots.Add(nextHandPot);
+            }
+            else
+            {
+                // Non-carry-forward dead hand: each player loses their contribution
+                await handSettlementService.SettleHandAsync(game, new Dictionary<string, int>(), cancellationToken);
             }
 
             game.CurrentPhase = nameof(Phases.Complete);

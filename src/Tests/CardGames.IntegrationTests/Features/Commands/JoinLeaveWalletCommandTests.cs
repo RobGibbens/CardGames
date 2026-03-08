@@ -9,7 +9,7 @@ namespace CardGames.IntegrationTests.Features.Commands;
 public class JoinLeaveWalletCommandTests : IntegrationTestBase
 {
 	[Fact]
-	public async Task JoinGame_WithSufficientAccountBalance_DebitsWalletAndCreatesBuyInLedger()
+	public async Task JoinGame_WithSufficientAccountBalance_ValidatesAndCreatesBringInLedger()
 	{
 		// Arrange
 		var game = await DatabaseSeeder.CreateGameAsync(DbContext, "FIVECARDDRAW");
@@ -32,17 +32,19 @@ public class JoinLeaveWalletCommandTests : IntegrationTestBase
 		// Assert
 		result.IsT0.Should().BeTrue();
 
+		// Exposure-limit model: balance is NOT debited on join
 		var account = await DbContext.PlayerChipAccounts.FirstAsync(x => x.PlayerId == player.Id);
-		account.Balance.Should().Be(300);
+		account.Balance.Should().Be(500);
 
 		var ledgerEntry = await DbContext.PlayerChipLedgerEntries
 			.Where(x => x.PlayerId == player.Id)
 			.OrderByDescending(x => x.OccurredAtUtc)
 			.FirstAsync();
 
-		ledgerEntry.Type.Should().Be(PlayerChipLedgerEntryType.BuyIn);
-		ledgerEntry.AmountDelta.Should().Be(-200);
-		ledgerEntry.BalanceAfter.Should().Be(300);
+		// Audit-only BringIn entry with zero delta
+		ledgerEntry.Type.Should().Be(PlayerChipLedgerEntryType.BringIn);
+		ledgerEntry.AmountDelta.Should().Be(0);
+		ledgerEntry.BalanceAfter.Should().Be(500);
 		ledgerEntry.ReferenceId.Should().Be(game.Id);
 
 		var gamePlayer = await DbContext.GamePlayers.FirstAsync(x => x.GameId == game.Id && x.PlayerId == player.Id);
@@ -78,7 +80,7 @@ public class JoinLeaveWalletCommandTests : IntegrationTestBase
 		account.Balance.Should().Be(50);
 
 		DbContext.GamePlayers.Count(x => x.GameId == game.Id && x.PlayerId == player.Id).Should().Be(0);
-		DbContext.PlayerChipLedgerEntries.Count(x => x.PlayerId == player.Id && x.Type == PlayerChipLedgerEntryType.BuyIn).Should().Be(0);
+		DbContext.PlayerChipLedgerEntries.Count(x => x.PlayerId == player.Id && x.Type == PlayerChipLedgerEntryType.BringIn).Should().Be(0);
 	}
 
 	[Fact]
@@ -110,7 +112,7 @@ public class JoinLeaveWalletCommandTests : IntegrationTestBase
 		account.Balance.Should().Be(0);
 
 		DbContext.GamePlayers.Count(x => x.GameId == game.Id && x.PlayerId == player.Id).Should().Be(0);
-		DbContext.PlayerChipLedgerEntries.Count(x => x.PlayerId == player.Id && x.Type == PlayerChipLedgerEntryType.BuyIn).Should().Be(0);
+		DbContext.PlayerChipLedgerEntries.Count(x => x.PlayerId == player.Id && x.Type == PlayerChipLedgerEntryType.BringIn).Should().Be(0);
 	}
 
 	[Fact]
@@ -131,11 +133,11 @@ public class JoinLeaveWalletCommandTests : IntegrationTestBase
 
 		DbContext.PlayerChipAccounts.Count(x => x.PlayerId == player.Id).Should().Be(0);
 		DbContext.GamePlayers.Count(x => x.GameId == game.Id && x.PlayerId == player.Id).Should().Be(0);
-		DbContext.PlayerChipLedgerEntries.Count(x => x.PlayerId == player.Id && x.Type == PlayerChipLedgerEntryType.BuyIn).Should().Be(0);
+		DbContext.PlayerChipLedgerEntries.Count(x => x.PlayerId == player.Id && x.Type == PlayerChipLedgerEntryType.BringIn).Should().Be(0);
 	}
 
 	[Fact]
-	public async Task LeaveGame_BetweenHands_CreditsWalletAndCreatesCashOutLedger()
+	public async Task LeaveGame_BetweenHands_WritesAuditOnlyCashOutLedger()
 	{
 		// Arrange
 		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", numberOfPlayers: 2, startingChips: 400);
@@ -166,16 +168,18 @@ public class JoinLeaveWalletCommandTests : IntegrationTestBase
 		result.AsT0.Immediate.Should().BeTrue();
 		result.AsT0.FinalChipCount.Should().Be(275);
 
+		// Exposure-limit model: balance is NOT credited on leave (results already settled per-hand)
 		var account = await DbContext.PlayerChipAccounts.FirstAsync(x => x.PlayerId == player.Id);
-		account.Balance.Should().Be(375);
+		account.Balance.Should().Be(100);
 
 		var ledgerEntry = await DbContext.PlayerChipLedgerEntries
 			.Where(x => x.PlayerId == player.Id && x.Type == PlayerChipLedgerEntryType.CashOut)
 			.OrderByDescending(x => x.OccurredAtUtc)
 			.FirstAsync();
 
-		ledgerEntry.AmountDelta.Should().Be(275);
-		ledgerEntry.BalanceAfter.Should().Be(375);
+		// Audit-only CashOut entry with zero delta
+		ledgerEntry.AmountDelta.Should().Be(0);
+		ledgerEntry.BalanceAfter.Should().Be(100);
 		ledgerEntry.ReferenceId.Should().Be(setup.Game.Id);
 
 		var updatedGamePlayer = await DbContext.GamePlayers.FirstAsync(x => x.Id == gamePlayer.Id);

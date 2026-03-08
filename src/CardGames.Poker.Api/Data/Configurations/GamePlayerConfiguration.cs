@@ -41,6 +41,9 @@ public class GamePlayerConfiguration : IEntityTypeConfiguration<GamePlayer>
 
 		builder.HasIndex(t => new { t.GameId, t.Status });
 
+		builder.Property(t => t.BringInAmount)
+			.HasDefaultValue(0);
+
 		// Relationships
 		builder.HasOne(t => t.Game)
 			.WithMany(g => g.GamePlayers)

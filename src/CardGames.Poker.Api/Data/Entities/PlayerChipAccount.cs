@@ -18,7 +18,9 @@ public enum PlayerChipLedgerEntryType
 	Add = 1,
 	BuyIn = 2,
 	CashOut = 3,
-	Adjustment = 4
+	Adjustment = 4,
+	HandSettlement = 5,
+	BringIn = 6
 }
 
 public class PlayerChipLedgerEntry : EntityWithRowVersion
@@ -42,6 +44,11 @@ public class PlayerChipLedgerEntry : EntityWithRowVersion
 	public string? Reason { get; set; }
 
 	public string? ActorUserId { get; set; }
+
+	/// <summary>
+	/// The hand number associated with this entry (populated for HandSettlement entries).
+	/// </summary>
+	public int? HandNumber { get; set; }
 
 	public Player Player { get; set; } = null!;
 }

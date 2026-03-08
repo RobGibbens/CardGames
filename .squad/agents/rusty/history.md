@@ -32,3 +32,12 @@
   - `CreateTable.razor` Step 1 (variant selection) must support a "Dealer's Choice" card alongside real variants.
   - Decisions recorded in `.squad/decisions/inbox/rusty-dealers-choice-architecture.md`.
 - 2026-03-07 (Irish Hold 'Em Phase 3 release): Aragorn audited all 44 PRD acceptance criteria. Found critical blocker — `UsesSharedCommunityCards()` in `PerformShowdownCommandHandler.cs` did not include `IrishHoldEmCode`, causing showdown to silently skip Irish players. Fix applied, 81 Irish tests verified (60 unit + 21 integration). Release approved after fix. PRD status: Released.
+- 2026-03-07 (Cashier bring-in redesign): Produced architecture design for converting chip bring-in from transfer model to exposure-limit model. Key findings:
+  - `PlayerChipWalletService.TryDebitForBuyInAsync` debits cashier at join time — this is the root cause of chip loss on disconnect.
+  - `CreditForCashOutAsync` credits cashier only at leave time — creates permanent loss window.
+  - 10 game-specific `PerformShowdownCommandHandler` implementations plus the generic handler all need per-hand settlement injection.
+  - `AddChipsCommandHandler` adds in-game chips without wallet validation — inconsistency.
+  - Key file paths for chip flow: `Services/PlayerChipWalletService.cs`, `Services/IPlayerChipWalletService.cs`, `Features/Games/Common/v1/Commands/JoinGame/JoinGameCommandHandler.cs`, `Features/Games/Common/v1/Commands/LeaveGame/LeaveGameCommandHandler.cs`, `Services/ContinuousPlayBackgroundService.cs`, `Features/Games/Generic/v1/Commands/PerformShowdown/PerformShowdownCommandHandler.cs`.
+  - New concepts: `HandSettlement` ledger entry type (per-hand win/loss), `BringInAmount` on `GamePlayer`, `ValidateBringInAsync` replacing `TryDebitForBuyInAsync`, idempotent settlement via `(PlayerId, GameId, HandNumber)` uniqueness.
+  - Kings and Lows carry-forward pots need special handling — settlement deferred until pot is actually awarded.
+  - Design recorded in `.squad/decisions/inbox/rusty-cashier-bring-in-redesign.md`.

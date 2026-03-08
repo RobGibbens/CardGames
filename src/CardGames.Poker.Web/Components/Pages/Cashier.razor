@@ -127,7 +127,7 @@
                                 {
                                     <tr>
                                         <td>@FormatTimestamp(entry.OccurredAtUtc)</td>
-                                        <td>@entry.Type</td>
+                                        <td>@FormatLedgerType(entry.Type.ToString())</td>
                                         <td class="text-end @GetDeltaClass(entry.AmountDelta)">@FormatDelta(entry.AmountDelta)</td>
                                         <td class="text-end">@entry.BalanceAfter.ToString("N0")</td>
                                         <td>@FormatContext(entry)</td>
@@ -384,6 +384,19 @@
     private static string FormatTimestamp(DateTimeOffset? value)
     {
         return value?.ToLocalTime().ToString("g") ?? "-";
+    }
+
+    private static string FormatLedgerType(string? rawType)
+    {
+        if (string.IsNullOrWhiteSpace(rawType))
+        {
+            return "-";
+        }
+
+        return System.Text.RegularExpressions.Regex.Replace(
+            rawType,
+            "(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])",
+            " ");
     }
 
     private static string FormatContext(CashierLedgerEntryDto entry)

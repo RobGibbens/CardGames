@@ -18,7 +18,7 @@ namespace CardGames.Poker.Api.Features.Games.HoldEm.v1.Commands.PerformShowdown;
 /// Handles the <see cref="PerformShowdownCommand"/> to evaluate Hold'Em hands and award pots.
 /// Hold'Em hand evaluation uses 2 hole cards + 5 community cards → best 5-of-7.
 /// </summary>
-public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryRecorder handHistoryRecorder)
+public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryRecorder handHistoryRecorder, IHandSettlementService handSettlementService)
 	: IRequestHandler<PerformShowdownCommand, OneOf<PerformShowdownSuccessful, PerformShowdownError>>
 {
 	/// <inheritdoc />
@@ -127,6 +127,10 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 				game.HandCompletedAt = now;
 				game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);
 				MoveDealer(game);
+
+				// Settle win-by-fold to cashier ledger
+				var foldPayouts = new Dictionary<string, int> { { winner.Player.Name, totalPot } };
+				await handSettlementService.SettleHandAsync(game, foldPayouts, cancellationToken);
 
 				await context.SaveChangesAsync(cancellationToken);
 
@@ -278,6 +282,9 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 			game.HandCompletedAt = now;
 			game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);
 			MoveDealer(game);
+
+			// Settle hand results to cashier ledger
+			await handSettlementService.SettleHandAsync(game, payouts, cancellationToken);
 
 			await context.SaveChangesAsync(cancellationToken);
 

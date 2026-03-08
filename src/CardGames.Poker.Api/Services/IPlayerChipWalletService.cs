@@ -26,4 +26,16 @@ public interface IPlayerChipWalletService
 		Guid gameId,
 		string? actorUserId,
 		CancellationToken cancellationToken);
+
+	/// <summary>
+	/// Records a per-hand settlement to the cashier ledger. Adjusts the player's account balance by netDelta.
+	/// Idempotent: skips if a HandSettlement entry already exists for (PlayerId, GameId, HandNumber).
+	/// </summary>
+	Task RecordHandSettlementAsync(
+		Guid playerId,
+		int netDelta,
+		Guid gameId,
+		int handNumber,
+		string? actorUserId,
+		CancellationToken cancellationToken);
 }

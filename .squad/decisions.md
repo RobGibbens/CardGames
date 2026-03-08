@@ -1,5 +1,17 @@
 # Decisions
 
+### 2026-03-08: Create table flow does not auto-enter table
+
+**By:** Linus (Frontend Dev)
+**Requested by:** Rob Gibbens
+
+**What:** Updated `CreateTable.razor` so successful table creation redirects to `/lobby` instead of `/table/{gameId}`.
+
+**Why:** The direct redirect to table caused immediate table-entry behavior and could trigger auto-join/auto-seat intent handling on table load. Product behavior now requires explicit user intent to join after creation.
+
+**Applied in:**
+- `src/CardGames.Poker.Web/Components/Pages/CreateTable.razor`
+
 ### 2026-02-17: Initialize squad roster and routing
 **By:** Squad (Coordinator)
 **What:** Created initial team roster, routing map, and casting state for the CardGames repository.
@@ -975,3 +987,13 @@ EF migration `AddDealersChoice` cannot be generated until these are fixed. These
 
 **Merged source:**
 - `.squad/decisions/inbox/linus-lobby-autojoin-fix.md`
+
+### 2026-03-07: Cashier bring-in redesign — exposure-limit model replaces transfer model
+**By:** Aragorn (Lead), implemented by Gimli (Backend Dev), tested by Legolas (Tester)
+**Requested by:** Rob Gibbens
+**What:** Replaced the chip bring-in transfer model (debit cashier on join, credit on leave) with an exposure-limit model. Bring-in now sets a ceiling on at-risk chips without moving funds; per-hand settlement records net win/loss to the cashier ledger immediately at each showdown. `JoinGame` validates but does not debit. `LeaveGame`/`CashOut` writes audit-only entries (no credit). New `RecordHandSettlementAsync` method on `IPlayerChipWalletService`. Settlement integrated into all 10 game-variant showdown handlers. New entity properties: `GamePlayer.BringInAmount`, `PlayerChipLedgerEntry.HandNumber`, new enum values `HandSettlement` and `BringIn`.
+**Why:** The transfer model caused permanent chip loss on disconnect, misleading cashier balances during play, no per-hand auditability, and an AddChips inconsistency. The exposure-limit model keeps the cashier balance accurate in real time and eliminates deferred reconciliation risk.
+**Reference:** `.squad/decisions/inbox/rusty-cashier-bring-in-redesign.md` (full design), session log at `.squad/log/2026-03-07T22-30-00Z-cashier-bring-in-redesign.md`
+
+**Merged source:**
+- `.squad/decisions/inbox/rusty-cashier-bring-in-redesign.md`

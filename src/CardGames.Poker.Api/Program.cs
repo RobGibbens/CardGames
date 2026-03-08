@@ -107,6 +107,7 @@ public class Program
 		builder.Services.AddScoped<ILeagueBroadcaster, LeagueBroadcaster>();
         builder.Services.AddScoped<IHandHistoryRecorder, HandHistoryRecorder>();
 		builder.Services.AddScoped<IPlayerChipWalletService, PlayerChipWalletService>();
+		builder.Services.AddScoped<IHandSettlementService, HandSettlementService>();
         builder.Services.AddSingleton<IHandEvaluatorFactory, HandEvaluatorFactory>();
 
             // Add game flow handler factory for generic command handler architecture

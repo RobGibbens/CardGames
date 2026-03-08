@@ -37,6 +37,12 @@ public sealed record ChipHistoryDto
 	public required int CurrentChips { get; init; }
 
 	/// <summary>
+	/// The player's persistent cashier account balance.
+	/// Reflects real-time wins/losses settled per hand.
+	/// </summary>
+	public int CashierBalance { get; init; }
+
+	/// <summary>
 	/// Chips pending to be added (queued until BetweenHands state for applicable game types).
 	/// </summary>
 	public int PendingChipsToAdd { get; init; }
