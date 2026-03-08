@@ -4,15 +4,10 @@ Cash
 ## Still to do
 
 - [ ] https://github.com/leeoades/FunctionalStateMachine
-- [x] When joining any game, choose how many chips to bring in. Also be able to bring in more chips from your bank account.
-- [x] Always show the hand description hover, just move it above the hand
-- [x] Change font to MonoLisa
-- [ ] When taking a seat, just automatically take a seat and show the bring in panel
 - [ ] Make sure that when they leave a table, or close the browser, that their chips stay in their account.
 - [ ] When creating a table, just create it and make them press the Join button to join.
 - [ ] Reorganize the Create Table to group variants by type
-- [x] Add subtle icons to table felt
-- 
+ 
 ### Leagues
 
 ### Cashier
@@ -61,7 +56,13 @@ Cash
 - [x] Add Irish Hold'em
 - [ ] Add Pittsburgh
 - [ ] Add Squid Game
-- [ ] Add Hold the Baseball
+- [x] Add Hold the Baseball
+- [ ] Add Nebraska
+- [ ] Add Red River
+- [ ] Add Phil's Mom
+- [ ] Add Crazy Pineapple
+- [ ] Add Klondike
+
 
 ### 7 Card Stud Variants
 - [x] Add Seven Card Stud
@@ -182,3 +183,8 @@ Cash
 - [x] Games with community cards (Hold Em, GBU) odds are wrong
 - [x] Put the GameInfoOverlay under the ShowdownOverlay
 - [x] Better contrast on the GameInfoOverlay close button
+- [x] When joining any game, choose how many chips to bring in. Also be able to bring in more chips from your bank account.
+- [x] Always show the hand description hover, just move it above the hand
+- [x] Change font to MonoLisa
+- [x] When taking a seat, just automatically take a seat and show the bring in panel
+- [x] Add subtle icons to table felt

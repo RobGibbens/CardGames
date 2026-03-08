@@ -482,7 +482,7 @@
         {
             Logger.LogWarning(ex, "Failed to check chip balance before joining table");
         }
-        NavigationManager.NavigateTo($"/table/{tableId}");
+        NavigationManager.NavigateTo($"/table/{tableId}?autojoin=1");
     }
 
     private void HandleNoChipsModalClose()

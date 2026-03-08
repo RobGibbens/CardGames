@@ -416,7 +416,10 @@
                     </div>
                     @if (!_isSeated)
                     {
-                        <p class="overlay-hint">Click an empty seat to join the table</p>
+                        <button class="btn btn-primary btn-lg" @onclick="BeginAutoSeatJoinAsync">
+                            <i class="fa-regular fa-chair"></i>
+                            Join Table
+                        </button>
                     }
                     else if (!_isReady)
                     {
@@ -670,6 +673,8 @@
     private bool _canStartGame;
 
     private bool _initialized;
+    private bool _shouldAutoJoinFromQuery;
+    private bool _autoJoinIntentConsumed;
 
     private string? _loggedInUserEmail;
 
@@ -821,6 +826,7 @@
 
         _initialized = true;
         InitializeSeats();
+        CaptureAutoJoinIntentFromUri();
 
         // Subscribe to SignalR events
         GameHubClient.OnTableStateUpdated += HandleTableStateUpdatedAsync;
@@ -834,9 +840,59 @@
         // before SignalR sends its state snapshot
         await LoadDataAsync();
 
+        // Auto-join intent is handled once after initial seat data is loaded.
+        await TriggerAutoJoinIntentIfRequestedAsync();
+
         // Connect to SignalR hub and join game - the snapshot will now
         // be processed correctly since seats are already populated
         await ConnectAndJoinGameAsync();
+    }
+
+    private void CaptureAutoJoinIntentFromUri()
+    {
+        _shouldAutoJoinFromQuery = HasAutoJoinIntent(NavigationManager.Uri);
+    }
+
+    private async Task TriggerAutoJoinIntentIfRequestedAsync()
+    {
+        if (_autoJoinIntentConsumed || !_shouldAutoJoinFromQuery)
+        {
+            return;
+        }
+
+        _autoJoinIntentConsumed = true;
+        if (_isSeated)
+        {
+            return;
+        }
+
+        await BeginAutoSeatJoinAsync();
+    }
+
+    private static bool HasAutoJoinIntent(string? uriValue)
+    {
+        if (string.IsNullOrWhiteSpace(uriValue) ||
+            !Uri.TryCreate(uriValue, UriKind.Absolute, out var uri) ||
+            string.IsNullOrWhiteSpace(uri.Query))
+        {
+            return false;
+        }
+
+        var query = uri.Query.TrimStart('?');
+        foreach (var segment in query.Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var parts = segment.Split('=', 2, StringSplitOptions.TrimEntries);
+            if (parts.Length == 0 || !parts[0].Equals("autojoin", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var value = parts.Length > 1 ? Uri.UnescapeDataString(parts[1]) : "1";
+            return value.Equals("1", StringComparison.OrdinalIgnoreCase)
+                || value.Equals("true", StringComparison.OrdinalIgnoreCase);
+        }
+
+        return false;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -2205,8 +2261,32 @@
 
     private async Task HandleSeatClickAsync(int seatIndex)
     {
-        if (_isSeated || _seats[seatIndex].IsOccupied)
+        await BeginAutoSeatJoinAsync();
+    }
+
+    private bool TryGetAutoJoinSeatIndex(out int seatIndex)
+    {
+        seatIndex = _seats
+            .Where(s => !s.IsOccupied)
+            .OrderBy(s => s.SeatIndex)
+            .Select(s => s.SeatIndex)
+            .FirstOrDefault(-1);
+
+        return seatIndex >= 0;
+    }
+
+    private async Task BeginAutoSeatJoinAsync()
+    {
+        if (_isSeated)
+        {
             return;
+        }
+
+        if (!TryGetAutoJoinSeatIndex(out var autoSeatIndex))
+        {
+            await ShowToastAsync("No seats are currently available.", "error");
+            return;
+        }
 
         try
         {
@@ -2226,7 +2306,7 @@
 
             _joinBuyInBalance = currentBalance;
             _joinBuyInBalanceCap = currentBalance;
-            _pendingJoinSeatIndex = seatIndex;
+            _pendingJoinSeatIndex = autoSeatIndex;
 
             InitializeJoinBuyInFromTable();
             _joinBuyInAmount = Math.Min(GetRecommendedJoinBuyIn(), GetJoinBuyInMax());
@@ -2248,9 +2328,14 @@
         var seatIndex = _pendingJoinSeatIndex.Value;
         if (seatIndex < 0 || seatIndex >= _seats.Count || _seats[seatIndex].IsOccupied)
         {
-            CloseJoinBuyInModal();
-            await ShowToastAsync("That seat is no longer available.", "error");
-            return;
+            if (!TryGetAutoJoinSeatIndex(out seatIndex))
+            {
+                CloseJoinBuyInModal();
+                await ShowToastAsync("No seats are currently available.", "error");
+                return;
+            }
+
+            _pendingJoinSeatIndex = seatIndex;
         }
 
         try

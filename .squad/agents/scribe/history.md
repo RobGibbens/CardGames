@@ -6,6 +6,8 @@
 
 ## Learnings
 
+- 2026-03-08: Merged `.squad/decisions/inbox/linus-lobby-autojoin-fix.md` into canonical `.squad/decisions.md`, deleted the processed inbox file, added a Linus cross-agent sync note, and logged session/orchestration entries for the lobby-triggered auto-seat join fix batch.
+
 - Logged Rusty orchestration/session artifacts for Cashier feature design, merged cashier decision inbox into `.ai-team/decisions.md`, and cleared merged inbox entries.
 - Logged Leagues feature design session in `.ai-team/log/2026-02-17-leagues-feature-design.md`, merged all Leagues decision inbox entries into `.ai-team/decisions.md`, verified no exact duplicate decision headings, and cleared merged inbox files.
 - Logged #216/#224 implementation kickoff in `.ai-team/log/2026-02-18-issues-216-224.md`, merged inbox decisions into canonical `.ai-team/decisions.md`, added short impact notes to affected agent histories, and cleared merged inbox files.
