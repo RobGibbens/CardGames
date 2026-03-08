@@ -1280,9 +1280,35 @@
         }
         else
         {
-            // SignalR update arrived before LoadDataAsync completed - defer to initial load
-            Logger.LogDebug("Received SignalR update before initial data loaded, skipping state update");
-            return;
+            // SignalR update arrived before LoadDataAsync completed.
+            // Apply minimal public state so table visuals (pot, seats, dealer/current actor)
+            // remain accurate even before _gameResponse is initialized.
+            Logger.LogDebug("Received SignalR update before initial data loaded, applying minimal public state update");
+
+            _ante = state.Ante;
+			NormalizeJoinBuyIn();
+            _pot = state.TotalPot;
+            _dealerSeatIndex = state.DealerSeatIndex;
+            _currentActorSeatIndex = state.CurrentActorSeatIndex;
+            _isPaused = state.IsPaused;
+
+            _isDealersChoice = state.IsDealersChoice;
+            _dealersChoiceDealerPosition = state.DealersChoiceDealerPosition;
+
+            if (state.ChipCheckPause is not null)
+            {
+                _isPausedForChipCheck = state.ChipCheckPause.IsPaused;
+                _chipCheckPauseEndsAt = state.ChipCheckPause.PauseEndsAt;
+                _chipCheckPotAmount = state.ChipCheckPause.PotAmountToCover;
+            }
+            else
+            {
+                _isPausedForChipCheck = false;
+                _chipCheckPauseEndsAt = null;
+                _chipCheckPotAmount = 0;
+            }
+
+            UpdateSeatsFromPublicState(state.Seats);
         }
 
         // Update phase-dependent state

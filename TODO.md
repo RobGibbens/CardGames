@@ -11,7 +11,7 @@ Cash
 - [ ] Make sure that when they leave a table, or close the browser, that their chips stay in their account.
 - [ ] When creating a table, just create it and make them press the Join button to join.
 - [ ] Reorganize the Create Table to group variants by type
-- 
+- [ ] Add subtle icons to table felt
 - 
 ### Leagues
 
