@@ -7,6 +7,16 @@
     <!-- Poker table background -->
     <div class="poker-table">
         <div class="poker-table-felt">
+            @if (IsIrishHoldEm)
+            {
+                <div class="felt-pattern" aria-hidden="true">
+                    @for (var i = 0; i < 216; i++)
+                    {
+                        <i class="fa-thin fa-clover icon-felt"></i>
+                    }
+                </div>
+            }
+
             <!-- Center area: deck, community cards, pot in one row -->
             <div class="table-center">
                 <div class="table-center-row">
@@ -237,6 +247,9 @@
         || string.Equals(GameTypeCode, "OMAHA", StringComparison.OrdinalIgnoreCase)
         || string.Equals(GameTypeCode, "IRISHHOLDEM", StringComparison.OrdinalIgnoreCase)
         || string.Equals(GameTypeCode, "HOLDTHEBASEBALL", StringComparison.OrdinalIgnoreCase);
+
+    private bool IsIrishHoldEm =>
+        string.Equals(GameTypeCode, "IRISHHOLDEM", StringComparison.OrdinalIgnoreCase);
 
     private string? GetCommunityCardLabel(int dealOrder)
     {
