@@ -190,6 +190,7 @@ public sealed class JoinGameCommandHandler(
 			SeatPosition = command.SeatIndex,
 			ChipStack = command.StartingChips,
 			StartingChips = command.StartingChips,
+			BringInAmount = command.StartingChips,
 			CurrentBet = 0,
 			TotalContributedThisHand = 0,
 			HasFolded = !canPlayCurrentHand, // If mid-hand, they're folded out of current hand

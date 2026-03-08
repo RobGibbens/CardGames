@@ -51,6 +51,10 @@ public class PlayerChipLedgerEntryConfiguration : IEntityTypeConfiguration<Playe
 			.IsDescending(false, true, true);
 		builder.HasIndex(x => x.Type);
 
+		builder.HasIndex(x => new { x.PlayerId, x.ReferenceId, x.HandNumber, x.Type })
+			.HasFilter("[Type] = 5")
+			.HasDatabaseName("IX_PlayerChipLedgerEntries_HandSettlement_Idempotency");
+
 		builder.HasOne(x => x.Player)
 			.WithMany()
 			.HasForeignKey(x => x.PlayerId)

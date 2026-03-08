@@ -17,7 +17,7 @@ namespace CardGames.Poker.Api.Features.Games.FollowTheQueen.v1.Commands.PerformS
 /// <summary>
 /// Handles the <see cref="PerformShowdownCommand"/> to evaluate hands and award pots.
 /// </summary>
-public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryRecorder handHistoryRecorder)
+public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryRecorder handHistoryRecorder, IHandSettlementService handSettlementService)
 	: IRequestHandler<PerformShowdownCommand, OneOf<PerformShowdownSuccessful, PerformShowdownError>>
 {
 	/// <inheritdoc />
@@ -116,6 +116,10 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 				game.HandCompletedAt = now;
 				game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);
 				MoveDealer(game);
+
+				// Settle win-by-fold to cashier ledger
+				var foldPayouts = new Dictionary<string, int> { { winner.Player.Name, totalPot } };
+				await handSettlementService.SettleHandAsync(game, foldPayouts, cancellationToken);
 
 				await context.SaveChangesAsync(cancellationToken);
 
@@ -286,6 +290,9 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 			game.HandCompletedAt = now;
 			game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);
 			MoveDealer(game);
+
+			// Settle hand results to cashier ledger
+			await handSettlementService.SettleHandAsync(game, payouts, cancellationToken);
 
 			await context.SaveChangesAsync(cancellationToken);
 

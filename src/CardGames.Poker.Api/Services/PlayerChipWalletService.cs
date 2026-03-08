@@ -35,20 +35,18 @@ public sealed class PlayerChipWalletService(CardsDbContext context) : IPlayerChi
 				$"Insufficient chips in your account. Balance: {account.Balance:N0}, requested: {amount:N0}.");
 		}
 
-		account.Balance -= amount;
-		account.UpdatedAtUtc = now;
-
+		// Exposure-limit model: validate only, do NOT debit. Write audit-only BringIn entry.
 		context.PlayerChipLedgerEntries.Add(new PlayerChipLedgerEntry
 		{
 			Id = Guid.CreateVersion7(),
 			PlayerId = playerId,
-			Type = PlayerChipLedgerEntryType.BuyIn,
-			AmountDelta = -amount,
+			Type = PlayerChipLedgerEntryType.BringIn,
+			AmountDelta = 0,
 			BalanceAfter = account.Balance,
 			OccurredAtUtc = now,
 			ReferenceType = "Game",
 			ReferenceId = gameId,
-			Reason = "Table buy-in",
+			Reason = $"Table bring-in (exposure limit: {amount:N0})",
 			ActorUserId = actorUserId
 		});
 
@@ -70,24 +68,64 @@ public sealed class PlayerChipWalletService(CardsDbContext context) : IPlayerChi
 		var now = DateTimeOffset.UtcNow;
 		var account = await GetOrCreateAccountAsync(playerId, now, cancellationToken);
 
-		account.Balance += amount;
+		// Exposure-limit model: results already settled per-hand. Write audit-only CashOut entry.
+		context.PlayerChipLedgerEntries.Add(new PlayerChipLedgerEntry
+		{
+			Id = Guid.CreateVersion7(),
+			PlayerId = playerId,
+			Type = PlayerChipLedgerEntryType.CashOut,
+			AmountDelta = 0,
+			BalanceAfter = account.Balance,
+			OccurredAtUtc = now,
+			ReferenceType = "Game",
+			ReferenceId = gameId,
+			Reason = $"Table cash-out (in-game balance: {amount:N0})",
+			ActorUserId = actorUserId
+		});
+
+		return account.Balance;
+	}
+
+	public async Task RecordHandSettlementAsync(
+		Guid playerId,
+		int netDelta,
+		Guid gameId,
+		int handNumber,
+		string? actorUserId,
+		CancellationToken cancellationToken)
+	{
+		if (netDelta == 0) return; // No-op for break-even hands
+
+		// Idempotency check: skip if settlement already recorded for this (player, game, hand)
+		var alreadySettled = await context.PlayerChipLedgerEntries
+			.AnyAsync(e => e.PlayerId == playerId &&
+						   e.ReferenceId == gameId &&
+						   e.HandNumber == handNumber &&
+						   e.Type == PlayerChipLedgerEntryType.HandSettlement,
+				cancellationToken);
+
+		if (alreadySettled) return;
+
+		var now = DateTimeOffset.UtcNow;
+		var account = await GetOrCreateAccountAsync(playerId, now, cancellationToken);
+
+		account.Balance += netDelta;
 		account.UpdatedAtUtc = now;
 
 		context.PlayerChipLedgerEntries.Add(new PlayerChipLedgerEntry
 		{
 			Id = Guid.CreateVersion7(),
 			PlayerId = playerId,
-			Type = PlayerChipLedgerEntryType.CashOut,
-			AmountDelta = amount,
+			Type = PlayerChipLedgerEntryType.HandSettlement,
+			AmountDelta = netDelta,
 			BalanceAfter = account.Balance,
 			OccurredAtUtc = now,
 			ReferenceType = "Game",
 			ReferenceId = gameId,
-			Reason = "Table cash-out",
+			HandNumber = handNumber,
+			Reason = netDelta > 0 ? "Hand win" : "Hand loss",
 			ActorUserId = actorUserId
 		});
-
-		return account.Balance;
 	}
 
 	private async Task<PlayerChipAccount> GetOrCreateAccountAsync(

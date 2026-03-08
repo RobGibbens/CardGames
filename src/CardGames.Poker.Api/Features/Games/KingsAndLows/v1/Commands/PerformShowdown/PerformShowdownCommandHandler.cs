@@ -20,7 +20,7 @@ namespace CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.PerformSho
 /// Handles the <see cref="PerformShowdownCommand"/> to evaluate hands and award pots in Kings and Lows.
 /// Uses wild card evaluation: Kings are always wild, plus the lowest non-King card(s).
 /// </summary>
-public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryRecorder handHistoryRecorder)
+public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryRecorder handHistoryRecorder, IHandSettlementService handSettlementService)
 	: IRequestHandler<PerformShowdownCommand, OneOf<PerformShowdownSuccessful, PerformShowdownError>>
 {
 	/// <inheritdoc />
@@ -288,6 +288,13 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 						MoveDealer(game);
 					}
 
+					// Settle player-vs-deck win to cashier ledger
+					if (isWinner)
+					{
+						var winPayouts = new Dictionary<string, int> { { player.Player.Name, totalPot } };
+						await handSettlementService.SettleHandAsync(game, winPayouts, cancellationToken);
+					}
+
 					await context.SaveChangesAsync(cancellationToken);
 
 					// Record hand history for player-vs-deck
@@ -378,6 +385,10 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 				game.HandCompletedAt = now;
 				game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);
 				MoveDealer(game);
+
+				// Settle win-by-fold to cashier ledger
+				var foldPayouts = new Dictionary<string, int> { { player.Player.Name, totalPot } };
+				await handSettlementService.SettleHandAsync(game, foldPayouts, cancellationToken);
 
 				await context.SaveChangesAsync(cancellationToken);
 
@@ -546,6 +557,9 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 			game.HandCompletedAt = now;
 			game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);
 			MoveDealer(game);
+
+			// Settle hand results to cashier ledger
+			await handSettlementService.SettleHandAsync(game, payouts, cancellationToken);
 
 			await context.SaveChangesAsync(cancellationToken);
 

@@ -52,6 +52,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 	private readonly CardsDbContext _context;
 	private readonly IActionTimerService _actionTimerService;
+	private readonly IPlayerChipWalletService _walletService;
 	private readonly ILogger<TableStateBuilder> _logger;
 
 	private sealed record UserProfile(string UserId, string? FirstName, string? AvatarUrl);
@@ -60,10 +61,11 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	/// <summary>
 	/// Initializes a new instance of the <see cref="TableStateBuilder"/> class.
 	/// </summary>
-	public TableStateBuilder(CardsDbContext context, IActionTimerService actionTimerService, ILogger<TableStateBuilder> logger)
+	public TableStateBuilder(CardsDbContext context, IActionTimerService actionTimerService, IPlayerChipWalletService walletService, ILogger<TableStateBuilder> logger)
 	{
 		_context = context;
 		_actionTimerService = actionTimerService;
+		_walletService = walletService;
 		_logger = logger;
 	}
 
@@ -434,8 +436,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		// Get hand history personalized for this player
 		var handHistory = await GetHandHistoryEntriesAsync(gameId, gamePlayer.PlayerId, take: 25, cancellationToken);
 
-		// Build chip history from hand history
-		var chipHistory = BuildChipHistory(gamePlayer, handHistory);
+		// Build chip history from hand history, including cashier balance
+		var cashierBalance = await _walletService.GetBalanceAsync(gamePlayer.PlayerId, cancellationToken);
+		var chipHistory = BuildChipHistory(gamePlayer, handHistory, cashierBalance);
 
 		return new PrivateStateDto
 		{
@@ -2155,7 +2158,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	/// </summary>
 	private ChipHistoryDto BuildChipHistory(
 		GamePlayer gamePlayer,
-		IReadOnlyList<CardGames.Contracts.SignalR.HandHistoryEntryDto> handHistory)
+		IReadOnlyList<CardGames.Contracts.SignalR.HandHistoryEntryDto> handHistory,
+		int cashierBalance)
 	{
 		var entries = new List<ChipHistoryEntryDto>();
 
@@ -2222,6 +2226,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		return new ChipHistoryDto
 		{
 			CurrentChips = gamePlayer.ChipStack,
+			CashierBalance = cashierBalance,
 			PendingChipsToAdd = gamePlayer.PendingChipsToAdd,
 			StartingChips = gamePlayer.StartingChips,
 			History = entries

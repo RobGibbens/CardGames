@@ -7,9 +7,21 @@
 @* Chip Management Section - Displays chip stack, add chips interface, and history *@
 
 <div class="chip-management-section">
-    <!-- Current Chip Stack Display -->
+    <!-- Account Balance Display -->
+    <div class="chip-stack-display account-balance-display">
+        <div class="chip-stack-label">
+            <i class="fa-solid fa-wallet"></i> Account Balance:
+        </div>
+        <div class="chip-stack-value account-balance-value">
+            @(ChipHistory?.CashierBalance.ToString("N0") ?? "0")
+        </div>
+    </div>
+
+    <!-- Current In-Game Chip Stack Display -->
     <div class="chip-stack-display">
-        <div class="chip-stack-label">Current Stack:</div>
+        <div class="chip-stack-label">
+            <i class="fa-solid fa-coins"></i> Table Stack:
+        </div>
         <div class="chip-stack-value">
             @(ChipHistory?.CurrentChips.ToString("N0") ?? "0")
             @if (ChipHistory?.PendingChipsToAdd > 0)

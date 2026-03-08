@@ -59,6 +59,7 @@ public class OmahaShowdownHardeningTests : IntegrationTestBase
             FlowHandlerFactory,
             new HandEvaluatorFactory(),
             new FakeHandHistoryRecorder(),
+            new FakeHandSettlementService(),
             NullLogger<PerformShowdownCommandHandler>.Instance);
 
         // Act

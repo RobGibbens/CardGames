@@ -130,6 +130,12 @@ public class GamePlayer : EntityWithRowVersion
 	public int PendingChipsToAdd { get; set; }
 
 	/// <summary>
+	/// The total exposure limit the player has set at this table
+	/// (cumulative across initial bring-in + additional add-chips bring-ins).
+	/// </summary>
+	public int BringInAmount { get; set; }
+
+	/// <summary>
 	/// The player's current status in the game.
 	/// </summary>
 	public GamePlayerStatus Status { get; set; } = GamePlayerStatus.Active;
