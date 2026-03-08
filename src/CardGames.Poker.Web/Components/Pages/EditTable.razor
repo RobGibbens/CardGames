@@ -294,7 +294,12 @@
         seatedPlayerCount = settings.SeatedPlayerCount ?? 0;
         maxPlayers = settings.MaxPlayers ?? 0;
         createdByName = settings.CreatedByName;
-        hasBlindFields = settings.SmallBlind is not null || settings.BigBlind is not null;
+        hasBlindFields = settings.SmallBlind is not null
+                         || settings.BigBlind is not null
+                         || string.Equals(settings.GameTypeCode, "HOLDEM", StringComparison.OrdinalIgnoreCase)
+                         || string.Equals(settings.GameTypeCode, "OMAHA", StringComparison.OrdinalIgnoreCase)
+                         || string.Equals(settings.GameTypeCode, "IRISHHOLDEM", StringComparison.OrdinalIgnoreCase)
+                         || string.Equals(settings.GameTypeCode, "HOLDTHEBASEBALL", StringComparison.OrdinalIgnoreCase);
 
         // Populate form fields
         tableName = settings.Name ?? "";

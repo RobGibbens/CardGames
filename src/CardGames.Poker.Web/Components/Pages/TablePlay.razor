@@ -2582,8 +2582,7 @@
         }
         else if (IsHoldTheBaseball)
         {
-            // Hold the Baseball is a community-card variant that currently uses generic start routing.
-            var startResponse = await GamesApiClient.GenericStartHandAsync(GameId);
+            var startResponse = await GamesApiClient.HoldTheBaseballStartHandAsync(GameId);
             if (!startResponse.IsSuccessStatusCode)
             {
                 Logger.LogWarning("Failed to start Hold the Baseball hand: {StatusCode}", startResponse.StatusCode);

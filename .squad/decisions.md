@@ -928,3 +928,21 @@ EF migration `AddDealersChoice` cannot be generated until these are fixed. These
 
 **Merged source:**
 - `.squad/decisions/inbox/rusty-irish-phase3-audit.md`
+
+### 2026-03-07: Hold the Baseball implementation architecture
+**By:** Danny (Backend Dev)
+**Requested by:** Rob Gibbens
+**What:** Implemented Hold the Baseball as a Texas Hold'em-style variant with 3s/9s wild behavior, dedicated game/rules/evaluator/API flow wiring, and metadata registration under `HOLDTHEBASEBALL`.
+**Why:** Delivers the variant using existing wild-card and community-card architecture while keeping game-type routing consistent.
+
+**Merged source:**
+- `.squad/decisions/inbox/danny-hold-the-baseball.md`
+
+### 2026-03-07: Hold the Baseball UI blind and start-flow alignment
+**By:** Linus (Frontend Dev)
+**Requested by:** Rob Gibbens
+**What:** Added `HOLDTHEBASEBALL` to blind-gated UI branch points (create/edit/dealer-choice/table canvas) and routed hand start through the dedicated Hold-the-Baseball endpoint.
+**Why:** Ensures Hold the Baseball behaves/displays like Hold'em for blinds and keeps frontend routing aligned with backend game-specific flow.
+
+**Merged source:**
+- `.squad/decisions/inbox/linus-hold-baseball-ui-blinds.md`

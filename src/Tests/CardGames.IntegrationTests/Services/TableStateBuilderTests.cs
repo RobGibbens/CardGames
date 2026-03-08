@@ -69,6 +69,34 @@ public class TableStateBuilderTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task BuildPublicStateAsync_HoldTheBaseball_AfterStartHand_ExposesBlindPotState()
+    {
+        // Arrange
+        var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "HOLDTHEBASEBALL", 4, ante: 0);
+        setup.Game.SmallBlind = 5;
+        setup.Game.BigBlind = 10;
+        setup.Game.DealerPosition = 0;
+        await DbContext.SaveChangesAsync();
+
+        await Mediator.Send(new StartHandCommand(setup.Game.Id));
+
+        // Act
+        var result = await TableStateBuilder.BuildPublicStateAsync(setup.Game.Id);
+
+        // Assert
+        result.Should().NotBeNull();
+        result!.GameTypeCode.Should().Be("HOLDTHEBASEBALL");
+        result.CurrentPhase.Should().Be(nameof(Phases.PreFlop));
+        result.TotalPot.Should().Be(15);
+        result.DealerSeatIndex.Should().Be(0);
+        result.Seats.Should().HaveCount(4);
+
+        var orderedSeats = result.Seats.OrderBy(s => s.SeatIndex).ToList();
+        orderedSeats[1].CurrentBet.Should().Be(5, "small blind seat should reflect posted blind in table state");
+        orderedSeats[2].CurrentBet.Should().Be(10, "big blind seat should reflect posted blind in table state");
+    }
+
+    [Fact]
     public async Task BuildPublicStateAsync_AfterDeal_CardsHidden()
     {
         // Arrange

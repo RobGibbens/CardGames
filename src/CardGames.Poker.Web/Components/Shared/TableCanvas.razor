@@ -235,7 +235,8 @@
     private bool IsBlindBasedGame =>
         string.Equals(GameTypeCode, "HOLDEM", StringComparison.OrdinalIgnoreCase)
         || string.Equals(GameTypeCode, "OMAHA", StringComparison.OrdinalIgnoreCase)
-        || string.Equals(GameTypeCode, "IRISHHOLDEM", StringComparison.OrdinalIgnoreCase);
+        || string.Equals(GameTypeCode, "IRISHHOLDEM", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(GameTypeCode, "HOLDTHEBASEBALL", StringComparison.OrdinalIgnoreCase);
 
     private string? GetCommunityCardLabel(int dealOrder)
     {

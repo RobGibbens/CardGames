@@ -37,3 +37,8 @@
   - Updated `src/Tests/CardGames.IntegrationTests/Infrastructure/IntegrationTestBase.cs` — Added `CreateGameType("IRISHHOLDEM", "Irish Hold 'Em", 2, 10, 4, 0, 5, 9)` seed.
   - Domain namespace: `CardGames.Poker.Games.IrishHoldEm`; evaluator namespace: `CardGames.Poker.Evaluation.Evaluators`; `Phases.DrawPhase` reused for the discard phase (no new enum value needed).
 - 2026-02-18 (Irish Hold 'Em Phase 2): Wrote 7 smoke tests in IrishHoldEmSmokeTests.cs. Lifecycle test needed coordinator fix for Flop→DrawPhase transition (CompleteCurrentBettingRoundManually workaround). Part of Phase 2 staged deploy session. 60/60 Irish unit, 21/21 Irish integration, 617 unit + 525 integration passing (5 pre-existing failures).
+
+- 2026-03-07 (Hold the Baseball blind/pot/seat regression hardening): Added focused coverage for blind-based behavior parity with Hold'em. Key additions:
+  - `src/Tests/CardGames.IntegrationTests/Handlers/StartHandCommandHandlerIntegrationTests.cs`: verifies generic `StartHandCommand` for `HOLDTHEBASEBALL` auto-posts SB/BB (seat 1 = 5, seat 2 = 10 for dealer seat 0), transitions to `PreFlop`, creates pot amount 15, and deals exactly 2 hole cards/player.
+  - `src/Tests/CardGames.IntegrationTests/Services/TableStateBuilderTests.cs`: verifies `BuildPublicStateAsync` after Hold the Baseball start hand exposes `TotalPot = 15` and seat `CurrentBet` values for SB/BB, protecting table-view pot state projection.
+  - `src/Tests/CardGames.Poker.Tests/Web/TableCanvasBlindIndicatorsTests.cs`: verifies table-seat blind indicator seat-resolution logic for `HOLDTHEBASEBALL` in both 3-handed and heads-up layouts.

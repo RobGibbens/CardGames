@@ -7,6 +7,9 @@
 
 ## Learnings
 
+- 2026-03-07: Hold the Baseball frontend blind/pot issues were caused by blind-based game detection gaps in UI components, not by table rendering itself. `HOLDTHEBASEBALL` must be included anywhere blind-based controls/indicators are gated (`CreateTable`, `DealerChoiceModal`, `TableCanvas`, and edit-settings blind visibility checks) so SB/BB values are actually configured and displayed.
+- 2026-03-07: Web client start-hand routing for Hold the Baseball should use its dedicated API endpoint (`/api/v1/games/hold-the-baseball/{gameId}/start`) via Contracts partial `IGamesApi` extension, keeping client mapping aligned with existing backend game-specific flow behavior.
+
 - Added per-card deal sound in `CardGames.Poker.Web` using private-state deltas so only the current client hears sounds for their own newly received cards.
 - For deal-animation variants, hooked playback at per-card animation time for the local seat to preserve one-sound-per-card behavior during staged dealing.
 - Implemented audio format preference in `wwwroot/audio.js` by selecting `.ogg` when playable and falling back to `.mp3`.
