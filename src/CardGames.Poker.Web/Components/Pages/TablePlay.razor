@@ -482,6 +482,7 @@
             (IsShowdownPhase || _isResultsPhase || IsEndedPhase || _secondsUntilNextHand > 0))
         {
             <ShowdownOverlay ShowdownResult="@_showdownResult" ShowdownWon="@_showdownWon" ShowdownLost="@_showdownLost"
+                             SharedCommunityCards="@GetShowdownCommunityCards()"
                              SecondsUntilNextHand="@_secondsUntilNextHand" IsGameEnded="@IsEndedPhase" OnClose="@CloseShowdownOverlay" />
         }
     }
@@ -3149,6 +3150,11 @@
             result.Add(card);
         }
         return result;
+    }
+
+    private IReadOnlyList<ShowdownCard> GetShowdownCommunityCards()
+    {
+        return ConvertCardsToShowdownCards(GetVisibleCommunityCards()).ToList();
     }
 
     private async Task PlayDealCardSoundAsync(int cardCount)
