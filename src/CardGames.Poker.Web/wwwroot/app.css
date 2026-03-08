@@ -3471,7 +3471,7 @@ a:hover {
     border-radius: 50%;
 }
 
-.icon-felt-pattern {
+.felt-pattern {
     position: absolute;
     inset: -48px;
     display: grid;
@@ -3482,12 +3482,12 @@ a:hover {
     transform-origin: center;
     pointer-events: none;
     color: #d3d3d3;
-    opacity: 0.05;
+    opacity: 0.08;
     z-index: 1;
 }
 
 .icon-felt {
-    font-size: 1rem;
+    font-size: 1.5rem;
     line-height: 1;
 }
 
