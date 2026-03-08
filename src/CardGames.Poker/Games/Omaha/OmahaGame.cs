@@ -31,6 +31,7 @@ public class OmahaGame : IPokerGame
 {
 	public string Name { get; } = "Omaha";
 	public string Description { get; } = "A popular variant of poker where players are dealt four hole cards and share five community cards, with four betting rounds.";
+    public CardGames.Poker.Games.VariantType VariantType { get; } = CardGames.Poker.Games.VariantType.HoldEm;
 	public int MinimumNumberOfPlayers { get; } = 2;
 	public int MaximumNumberOfPlayers { get; } = 10;
 

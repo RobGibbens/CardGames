@@ -32,6 +32,7 @@ public class FollowTheQueenGame : IPokerGame
 {
 	public string Name { get; } = "Follow the Queen";
 	public string Description { get; } = "A seven card stud poker variant where Queens are wild, and the card following the last face-up Queen also becomes wild.";
+    public CardGames.Poker.Games.VariantType VariantType { get; } = CardGames.Poker.Games.VariantType.Stud;
 	public int MinimumNumberOfPlayers { get; } = 2;
 	public int MaximumNumberOfPlayers { get; } = 7;
 

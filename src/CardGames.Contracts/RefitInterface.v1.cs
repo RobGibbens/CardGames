@@ -2531,7 +2531,7 @@ namespace CardGames.Poker.Api.Contracts
     public partial record GetAvailablePokerGamesResponse
     {
         [JsonConstructor]
-        public GetAvailablePokerGamesResponse(string @code, string @description, string @imageName, int @maximumNumberOfPlayers, int @minimumNumberOfPlayers, string @name)
+        public GetAvailablePokerGamesResponse(string @code, string @description, string @imageName, int @maximumNumberOfPlayers, int @minimumNumberOfPlayers, string @name, VariantType @variantType = VariantType.Other)
         {
             this.Code = @code;
             this.Name = @name;
@@ -2539,6 +2539,7 @@ namespace CardGames.Poker.Api.Contracts
             this.MinimumNumberOfPlayers = @minimumNumberOfPlayers;
             this.MaximumNumberOfPlayers = @maximumNumberOfPlayers;
             this.ImageName = @imageName;
+            this.VariantType = @variantType;
         }
 
         [JsonPropertyName("code")]
@@ -2565,6 +2566,27 @@ namespace CardGames.Poker.Api.Contracts
 
         [JsonPropertyName("imageName")]
         public string ImageName { get; init; }
+
+        [JsonPropertyName("variantType")]
+        public VariantType VariantType { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public enum VariantType
+    {
+
+        [System.Runtime.Serialization.EnumMember(Value = @"HoldEm")]
+        HoldEm = 0,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Draw")]
+        Draw = 1,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Stud")]
+        Stud = 2,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Other")]
+        Other = 3,
 
     }
 

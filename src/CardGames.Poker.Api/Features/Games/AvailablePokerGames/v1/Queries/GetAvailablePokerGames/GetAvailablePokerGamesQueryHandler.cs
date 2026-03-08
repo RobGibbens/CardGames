@@ -54,13 +54,17 @@ public class GetAvailablePokerGamesQueryHandler(
 			var metadata = gameType.GetCustomAttribute<PokerGameMetadataAttribute>();
 			if (metadata is not null)
 			{
+				var gameInstance = CreateGameInstance(gameType);
+				var variantType = gameInstance?.VariantType ?? VariantType.Other;
+
 				return new GetAvailablePokerGamesResponse(
 					metadata.Code,
 					metadata.Name,
 					metadata.Description,
 					metadata.MinimumNumberOfPlayers,
 					metadata.MaximumNumberOfPlayers,
-					metadata.ImageName
+					metadata.ImageName,
+					variantType
 				);
 			}
 

@@ -31,6 +31,7 @@ public class FiveCardDrawGame : IPokerGame
 {
 	public string Name { get; } = "Five Card Draw";
 	public string Description { get; } = "A classic poker variant where players are dealt five cards, have a draw phase to exchange cards, and engage in two betting rounds before showdown.";
+    public CardGames.Poker.Games.VariantType VariantType { get; } = CardGames.Poker.Games.VariantType.Draw;
 	public int MinimumNumberOfPlayers { get; } = 2;
 	public int MaximumNumberOfPlayers { get; } = 6;
 

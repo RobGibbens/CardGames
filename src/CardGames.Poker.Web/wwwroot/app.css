@@ -3068,6 +3068,15 @@ a:hover {
     gap: 1rem;
 }
 
+.create-step .variant-group {
+    margin-top: 1.5rem;
+}
+
+.create-step .variant-group h2 {
+    margin: 0 0 0.9rem;
+    font-size: 1.2rem;
+}
+
 .create-step .variant-card {
     position: relative;
     cursor: pointer;

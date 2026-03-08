@@ -37,6 +37,7 @@ public class BaseballGame : IPokerGame
 {
 	public string Name { get; } = "Baseball";
 	public string Description { get; } = "A seven-card stud variant with wild 3s and 9s, and buy-card options on 4s.";
+    public CardGames.Poker.Games.VariantType VariantType { get; } = CardGames.Poker.Games.VariantType.Stud;
 	public int MinimumNumberOfPlayers { get; } = 2;
 	public int MaximumNumberOfPlayers { get; } = 6;
 

@@ -39,6 +39,7 @@ public class KingsAndLowsGame : IPokerGame
 {
 	public string Name { get; } = "Kings and Lows";
 	public string Description { get; } = "A five-card draw poker variant where kings and the lowest card are wild. Players ante, decide to drop or stay, draw cards, and losers match the pot.";
+    public CardGames.Poker.Games.VariantType VariantType { get; } = CardGames.Poker.Games.VariantType.Draw;
 	public int MinimumNumberOfPlayers { get; } = 2;
 	public int MaximumNumberOfPlayers { get; } = 5;
 
