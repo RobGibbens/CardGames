@@ -9,6 +9,7 @@
 
 - 2026-03-07: Lobby Join now passes an explicit one-time URL intent (`?autojoin=1`) and `TablePlay` consumes that intent immediately after initial table/seat load to trigger `BeginAutoSeatJoinAsync` only once when the player is not already seated. This preserves Lobby no-chip gating, keeps existing full-table/race handling in join submit flow, and ensures buy-in modal appears on direct Lobby→Table joins.
 - 2026-03-08 (team update): Lobby-triggered auto-seat join fix decision (`linus-lobby-autojoin-fix`) was merged from inbox into canonical `.squad/decisions.md`; use canonical entry as source of truth for follow-up Lobby→Table join behavior changes.
+- 2026-03-08 (team update): Create-table no auto-enter decision (`linus-create-table-no-autojoin`) was merged from inbox into canonical `.squad/decisions.md`; keep create success navigation Lobby-first so join/seat remains explicit user intent.
 
 - 2026-03-07: `TablePlay` join flow now auto-selects the lowest available seat index client-side before opening buy-in confirmation, because `JoinGameRequest` still requires explicit `SeatIndex`. This removes manual seat choice while preserving existing wallet-gated join checks and post-join phase/overlay behavior.
 - 2026-03-08 (team update): Auto-seat join decision (`linus-auto-seat-join`) was merged from inbox into canonical `.squad/decisions.md`; use canonical entry as source of truth for follow-up TablePlay join UX work.
@@ -106,3 +107,4 @@
   - `DrawingConfigDto` in Contracts does not have `MinDiscards` yet — used game-type check (`IsIrishHoldEm`) as fallback.
   - Key files: `src/CardGames.Poker.Web/Components/Shared/DrawPanel.razor`, `src/CardGames.Poker.Web/Components/Pages/TablePlay.razor`.
   - Build verified: 0 errors.- 2026-02-18 (Irish Hold 'Em Phase 2): Added MinDiscards to DrawPanel.razor for enforced 2-card discard. Wired from TablePlay.razor via IsIrishHoldEm check. Part of Phase 2 staged deploy session.
+- 2026-03-08: Create-table success flow now returns to `/lobby` instead of navigating to `/table/{gameId}`. This prevents immediate table-entry side effects (including auto-join/auto-seat intent handling on the table page) and keeps join as an explicit action from Lobby.
