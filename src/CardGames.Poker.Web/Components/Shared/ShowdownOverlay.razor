@@ -343,14 +343,6 @@
             ? new HashSet<int>(hand.WildCardIndexes)
             : new HashSet<int>();
 
-        if (reconstructedCommunityCards)
-        {
-            return cardsList
-                .Select((c, i) => (Card: c, IsWild: wildSet.Contains(i)))
-                .OrderBy(x => GetCardDisplayOrder(x.Card))
-                .ToList();
-        }
-
         // If BestCardIndexes is provided and valid, use only those cards
         if (hand.BestCardIndexes is not null)
         {
