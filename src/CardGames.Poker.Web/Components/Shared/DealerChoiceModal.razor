@@ -21,17 +21,28 @@
 		{
 			<!-- Variant Grid -->
 			<div class="dealer-choice-variants">
-				@foreach (var game in AvailableGames.Where(g => _selectedCode is null || g.Code == _selectedCode))
+				@foreach (var group in VariantGroups)
 				{
-					<button class="dealer-choice-variant @(_selectedCode == game.Code ? "selected" : "")"
-							@onclick="() => SelectVariant(game.Code, game.Name)">
-						<span class="dc-variant-name">@game.Name</span>
-						<span class="dc-variant-desc">@game.Description</span>
-						@if (_selectedCode == game.Code)
+					if (group.Games.Count == 0)
+					{
+						continue;
+					}
+
+					<section class="dealer-choice-variant-group">
+						<h3 class="dc-variant-group-title">@group.Title</h3>
+						@foreach (var game in group.Games)
 						{
-							<span class="dc-variant-check"><i class="fa-solid fa-check"></i></span>
+							<button class="dealer-choice-variant @(_selectedCode == game.Code ? "selected" : "")"
+									@onclick="() => SelectVariant(game.Code, game.Name)">
+								<span class="dc-variant-name">@game.Name</span>
+								<span class="dc-variant-desc">@game.Description</span>
+								@if (_selectedCode == game.Code)
+								{
+									<span class="dc-variant-check"><i class="fa-solid fa-check"></i></span>
+								}
+							</button>
 						}
-					</button>
+					</section>
 				}
 			</div>
 
@@ -113,6 +124,29 @@
 	private bool _isLoading;
 	private string? _error;
 
+	private const string HoldEmVariantsTitle = "Hold 'Em variants";
+	private const string DrawVariantsTitle = "Draw variants";
+	private const string StudVariantsTitle = "Stud variants";
+	private const string OtherVariantsTitle = "Other variants";
+
+	private IEnumerable<VariantGroup> VariantGroups
+	{
+		get
+		{
+			var games = AvailableGames
+				.Where(g => _selectedCode is null || g.Code == _selectedCode)
+				.OrderBy(g => g.Name, StringComparer.OrdinalIgnoreCase);
+
+			return new[]
+			{
+				CreateGroup(HoldEmVariantsTitle, games, VariantType.HoldEm),
+				CreateGroup(DrawVariantsTitle, games, VariantType.Draw),
+				CreateGroup(StudVariantsTitle, games, VariantType.Stud),
+				CreateGroup(OtherVariantsTitle, games, VariantType.Other)
+			};
+		}
+	}
+
 	protected override void OnParametersSet()
 	{
 		_isLoading = IsLoading;
@@ -131,6 +165,11 @@
 			_selectedName = name;
 		}
 		_error = null;
+	}
+
+	private static VariantGroup CreateGroup(string title, IEnumerable<GetAvailablePokerGamesResponse> games, VariantType variantType)
+	{
+		return new VariantGroup(title, games.Where(g => g.VariantType == variantType).ToList());
 	}
 
 	private static bool IsBlindBasedGame(string? code) =>
@@ -174,4 +213,6 @@
 	}
 
 	public record DealerChoiceSelection(string GameTypeCode, int Ante, int MinBet, int? SmallBlind = null, int? BigBlind = null);
+
+	private sealed record VariantGroup(string Title, IReadOnlyList<GetAvailablePokerGamesResponse> Games);
 }
