@@ -18,6 +18,7 @@ public class StartHandCommandHandlerIntegrationTests : IntegrationTestBase
     [InlineData("KINGSANDLOWS", "DropOrStay")]
     [InlineData("TWOSJACKSMANWITHTHEAXE", "CollectingAntes")]
     [InlineData("GOODBADUGLY", "CollectingAntes")]
+    [InlineData("NEBRASKA", "PreFlop")]
     public async Task Handle_ValidGame_TransitionsToCorrectInitialPhase(string gameTypeCode, string expectedPhase)
     {
         // Arrange

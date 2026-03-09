@@ -5,12 +5,12 @@ Add a new poker game variant to this repository in a way that is consistent with
 
 Inputs you must use:
 - Primary playbook: [docs/AddingNewGames20.md](docs/AddingNewGames20.md)
-- Architecture context: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-- Existing repo conventions and commands: [README.md](README.md)
+
 
 Ask me for these values before implementation if not provided:
 - Game name
 - Game type code (all caps convention)
+- image name
 - Variant family (HoldEm-style, Draw-style, Stud-style, or custom)
 - Minimal Diff or Production-Ready mode
 - Any game-specific rules and UX constraints

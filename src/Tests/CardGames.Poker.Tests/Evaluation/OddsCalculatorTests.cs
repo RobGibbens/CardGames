@@ -122,6 +122,21 @@ public class OddsCalculatorTests
     }
 
     [Fact]
+    public void CalculateNebraskaOdds_PreFlopWithFiveHoleCards_ReturnsValidOdds()
+    {
+        var heroHoleCards = "As Ad Ks Kd Qh".ToCards();
+        var communityCards = new List<CardGames.Core.French.Cards.Card>();
+
+        var result = OddsCalculator.CalculateNebraskaOdds(
+            heroHoleCards,
+            communityCards,
+            simulations: 500);
+
+        result.HandTypeProbabilities.Should().NotBeEmpty();
+        result.HandTypeProbabilities.Values.Sum().Should().BeApproximately(1.0m, 0.01m);
+    }
+
+    [Fact]
     public void CalculateHoldemOdds_WithDeadCards_AdjustsCorrectly()
     {
         var heroCards = "As Ah".ToCards();

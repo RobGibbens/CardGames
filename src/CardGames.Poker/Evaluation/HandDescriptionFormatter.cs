@@ -67,6 +67,11 @@ public static class HandDescriptionFormatter
 			return holdTheBaseballHand.EvaluatedBestCards.ToList();
 		}
 
+		if (hand is Hands.CommunityCardHands.NebraskaHand nebraskaHand)
+		{
+			return nebraskaHand.EvaluatedBestCards.ToList();
+		}
+
 		return hand.Cards.ToList();
 	}
 

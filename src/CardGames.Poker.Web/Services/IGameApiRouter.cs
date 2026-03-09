@@ -97,6 +97,7 @@ public class GameApiRouter : IGameApiRouter
     private const string HoldEm = "HOLDEM";
     private const string RedRiver = "REDRIVER";
     private const string Omaha = "OMAHA";
+    private const string Nebraska = "NEBRASKA";
     private const string IrishHoldEm = "IRISHHOLDEM";
     private const string PhilsMom = "PHILSMOM";
     private const string CrazyPineapple = "CRAZYPINEAPPLE";
@@ -149,6 +150,7 @@ public class GameApiRouter : IGameApiRouter
             [HoldEm] = RouteHoldEmBettingActionAsync,
             [RedRiver] = RouteRedRiverBettingActionAsync,
             [Omaha] = RouteOmahaBettingActionAsync,
+            [Nebraska] = RouteNebraskaBettingActionAsync,
             [IrishHoldEm] = RouteIrishHoldEmBettingActionAsync,
             [PhilsMom] = RoutePhilsMomBettingActionAsync,
             [CrazyPineapple] = RouteCrazyPineappleBettingActionAsync,
@@ -164,6 +166,7 @@ public class GameApiRouter : IGameApiRouter
         {
             [HoldEm] = RouteHoldEmDrawAsync,
             [Omaha] = RouteOmahaDrawAsync,
+            [Nebraska] = RouteNebraskaDrawAsync,
             [IrishHoldEm] = RouteIrishHoldEmDrawAsync,
             [PhilsMom] = RoutePhilsMomDrawAsync,
             [CrazyPineapple] = RouteCrazyPineappleDrawAsync,
@@ -286,6 +289,10 @@ public class GameApiRouter : IGameApiRouter
         => RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
             await _holdEmApi.HoldEmProcessBettingActionAsync(gameId, request));
 
+    private async Task<RouterResponse<ProcessBettingActionSuccessful>> RouteNebraskaBettingActionAsync(Guid gameId, ProcessBettingActionRequest request)
+        => RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
+            await _holdEmApi.HoldEmProcessBettingActionAsync(gameId, request));
+
     private async Task<RouterResponse<ProcessBettingActionSuccessful>> RouteIrishHoldEmBettingActionAsync(Guid gameId, ProcessBettingActionRequest request)
         => RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
             await _holdEmApi.HoldEmProcessBettingActionAsync(gameId, request));
@@ -305,6 +312,10 @@ public class GameApiRouter : IGameApiRouter
     private Task<RouterResponse<ProcessDrawResult>> RouteOmahaDrawAsync(Guid gameId, Guid playerId, int playerSeatIndex, List<int> discardIndices)
         => Task.FromResult(
             RouterResponse<ProcessDrawResult>.Failure("Draw phase not supported for Omaha.", HttpStatusCode.BadRequest));
+
+    private Task<RouterResponse<ProcessDrawResult>> RouteNebraskaDrawAsync(Guid gameId, Guid playerId, int playerSeatIndex, List<int> discardIndices)
+        => Task.FromResult(
+            RouterResponse<ProcessDrawResult>.Failure("Draw phase not supported for Nebraska.", HttpStatusCode.BadRequest));
 
     private async Task<RouterResponse<ProcessDrawResult>> RouteIrishHoldEmDrawAsync(Guid gameId, Guid playerId, int playerSeatIndex, List<int> discardIndices)
     {
