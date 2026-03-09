@@ -348,6 +348,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				|| IsHoldTheBaseballGame(game.GameType?.Code)
 				|| IsOmahaGame(game.GameType?.Code)
 				|| IsNebraskaGame(game.GameType?.Code)
+				|| IsSouthDakotaGame(game.GameType?.Code)
 				|| IsIrishHoldEmGame(game.GameType?.Code);
 
 			// Seven Card Stud / Baseball / Follow The Queen: Requires 2 hole + up to 4 board + 1 down card (7 total at showdown)
@@ -419,7 +420,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(omahaHand);
 				}
 				// Nebraska style: 5 hole + up to 5 community, must use exactly 3 hole + 2 community
-				else if (playerCards.Count == 5 && IsNebraskaGame(game.GameType?.Code))
+				else if (playerCards.Count == 5 && (IsNebraskaGame(game.GameType?.Code) || IsSouthDakotaGame(game.GameType?.Code)))
 				{
 					var nebraskaHand = new NebraskaHand(playerCards, communityCards);
 					handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(nebraskaHand);
@@ -790,6 +791,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		var isHoldTheBaseball = IsHoldTheBaseballGame(game.GameType?.Code);
 		var isOmaha = IsOmahaGame(game.GameType?.Code);
 		var isNebraska = IsNebraskaGame(game.GameType?.Code);
+		var isSouthDakota = IsSouthDakotaGame(game.GameType?.Code);
 		var isIrishHoldEm = IsIrishHoldEmGame(game.GameType?.Code);
 
 		var isSevenCardStud = IsGameType(game.GameType?.Code, PokerGameMetadataRegistry.SevenCardStudCode);
@@ -1004,7 +1006,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		}
 
 		// Nebraska: players have 5 hole cards + 5 shared community cards → best 5 using exactly 3 hole + 2 community
-		if (isNebraska)
+		if (isNebraska || isSouthDakota)
 		{
 			var nebraskaCommunityCards = await _context.GameCards
 				.Where(c => c.GameId == game.Id
@@ -2566,6 +2568,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 	private static bool IsNebraskaGame(string? gameTypeCode)
 		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.NebraskaCode);
+
+	private static bool IsSouthDakotaGame(string? gameTypeCode)
+		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.SouthDakotaCode);
 
 	private static bool IsIrishHoldEmGame(string? gameTypeCode)
 		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.IrishHoldEmCode)

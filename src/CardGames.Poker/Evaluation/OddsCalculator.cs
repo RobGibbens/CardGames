@@ -496,6 +496,54 @@ public static class OddsCalculator
         return CreateResult(handTypeCounts, simulations);
     }
 
+    /// <summary>
+    /// Calculates odds for a South Dakota hand.
+    /// Rules: exactly 3 hole cards and exactly 2 community cards must be used,
+    /// with a 3-card total board (2-card flop + turn + no river).
+    /// </summary>
+    public static OddsResult CalculateSouthDakotaOdds(
+        IReadOnlyCollection<Card> heroHoleCards,
+        IReadOnlyCollection<Card> communityCards,
+        IReadOnlyCollection<Card> deadCards = null,
+        int simulations = DefaultSimulations)
+    {
+        if (heroHoleCards.Count < 3)
+        {
+            throw new ArgumentException($"Expected at least 3 hole cards for South Dakota, but got {heroHoleCards.Count}");
+        }
+
+        if (communityCards.Count > 3)
+        {
+            throw new ArgumentException($"Expected at most 3 community cards for South Dakota, but got {communityCards.Count}");
+        }
+
+        deadCards ??= Array.Empty<Card>();
+        var handTypeCounts = InitializeHandTypeCounts();
+        var dealer = FrenchDeckDealer.WithFullDeck();
+
+        for (int i = 0; i < simulations; i++)
+        {
+            dealer.Shuffle();
+
+            var knownCards = heroHoleCards.Concat(communityCards).Concat(deadCards).Distinct();
+            foreach (var card in knownCards)
+            {
+                dealer.DealSpecific(card);
+            }
+
+            var simulatedCommunity = communityCards.ToList();
+            while (simulatedCommunity.Count < 3)
+            {
+                simulatedCommunity.Add(dealer.DealCard());
+            }
+
+            var heroHand = new NebraskaHand(heroHoleCards, simulatedCommunity);
+            handTypeCounts[heroHand.Type]++;
+        }
+
+        return CreateResult(handTypeCounts, simulations);
+    }
+
     private static Dictionary<HandType, int> InitializeHandTypeCounts()
     {
         return Enum.GetValues<HandType>()

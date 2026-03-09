@@ -436,4 +436,191 @@ public class TableStateBuilderTests : IntegrationTestBase
         result!.IsDealersChoice.Should().BeFalse();
         result.DealersChoiceDealerPosition.Should().BeNull();
     }
+
+    [Fact]
+    public async Task BuildPublicStateAsync_SouthDakotaShowdown_BestCardIndexesUseThreeHoleAndTwoCommunity()
+    {
+        // Arrange
+        var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "SOUTHDAKOTA", 2);
+        var game = setup.Game;
+        var hero = setup.GamePlayers.OrderBy(gp => gp.SeatPosition).First();
+        var villain = setup.GamePlayers.OrderBy(gp => gp.SeatPosition).Last();
+
+        game.CurrentHandNumber = 1;
+        game.CurrentPhase = nameof(Phases.Showdown);
+        game.Status = GameStatus.InProgress;
+
+        // Hero hole cards (5): Ah As Kd Qc 2d
+        DbContext.GameCards.AddRange(
+            new GameCard
+            {
+                GameId = game.Id,
+                GamePlayerId = hero.Id,
+                HandNumber = game.CurrentHandNumber,
+                Location = CardLocation.Hand,
+                Suit = CardSuit.Hearts,
+                Symbol = CardSymbol.Ace,
+                DealOrder = 1,
+                IsVisible = true
+            },
+            new GameCard
+            {
+                GameId = game.Id,
+                GamePlayerId = hero.Id,
+                HandNumber = game.CurrentHandNumber,
+                Location = CardLocation.Hand,
+                Suit = CardSuit.Spades,
+                Symbol = CardSymbol.Ace,
+                DealOrder = 2,
+                IsVisible = true
+            },
+            new GameCard
+            {
+                GameId = game.Id,
+                GamePlayerId = hero.Id,
+                HandNumber = game.CurrentHandNumber,
+                Location = CardLocation.Hand,
+                Suit = CardSuit.Diamonds,
+                Symbol = CardSymbol.King,
+                DealOrder = 3,
+                IsVisible = true
+            },
+            new GameCard
+            {
+                GameId = game.Id,
+                GamePlayerId = hero.Id,
+                HandNumber = game.CurrentHandNumber,
+                Location = CardLocation.Hand,
+                Suit = CardSuit.Clubs,
+                Symbol = CardSymbol.Queen,
+                DealOrder = 4,
+                IsVisible = true
+            },
+            new GameCard
+            {
+                GameId = game.Id,
+                GamePlayerId = hero.Id,
+                HandNumber = game.CurrentHandNumber,
+                Location = CardLocation.Hand,
+                Suit = CardSuit.Diamonds,
+                Symbol = CardSymbol.Deuce,
+                DealOrder = 5,
+                IsVisible = true
+            });
+
+        // Villain hole cards (5): all low cards
+        DbContext.GameCards.AddRange(
+            new GameCard
+            {
+                GameId = game.Id,
+                GamePlayerId = villain.Id,
+                HandNumber = game.CurrentHandNumber,
+                Location = CardLocation.Hand,
+                Suit = CardSuit.Clubs,
+                Symbol = CardSymbol.Three,
+                DealOrder = 1,
+                IsVisible = true
+            },
+            new GameCard
+            {
+                GameId = game.Id,
+                GamePlayerId = villain.Id,
+                HandNumber = game.CurrentHandNumber,
+                Location = CardLocation.Hand,
+                Suit = CardSuit.Spades,
+                Symbol = CardSymbol.Four,
+                DealOrder = 2,
+                IsVisible = true
+            },
+            new GameCard
+            {
+                GameId = game.Id,
+                GamePlayerId = villain.Id,
+                HandNumber = game.CurrentHandNumber,
+                Location = CardLocation.Hand,
+                Suit = CardSuit.Hearts,
+                Symbol = CardSymbol.Five,
+                DealOrder = 3,
+                IsVisible = true
+            },
+            new GameCard
+            {
+                GameId = game.Id,
+                GamePlayerId = villain.Id,
+                HandNumber = game.CurrentHandNumber,
+                Location = CardLocation.Hand,
+                Suit = CardSuit.Diamonds,
+                Symbol = CardSymbol.Six,
+                DealOrder = 4,
+                IsVisible = true
+            },
+            new GameCard
+            {
+                GameId = game.Id,
+                GamePlayerId = villain.Id,
+                HandNumber = game.CurrentHandNumber,
+                Location = CardLocation.Hand,
+                Suit = CardSuit.Clubs,
+                Symbol = CardSymbol.Seven,
+                DealOrder = 5,
+                IsVisible = true
+            });
+
+        // Community cards (3 total for South Dakota): Kh Qh Jc
+        DbContext.GameCards.AddRange(
+            new GameCard
+            {
+                GameId = game.Id,
+                HandNumber = game.CurrentHandNumber,
+                Location = CardLocation.Community,
+                Suit = CardSuit.Hearts,
+                Symbol = CardSymbol.King,
+                DealOrder = 1,
+                DealtAtPhase = nameof(Phases.Flop),
+                IsVisible = true
+            },
+            new GameCard
+            {
+                GameId = game.Id,
+                HandNumber = game.CurrentHandNumber,
+                Location = CardLocation.Community,
+                Suit = CardSuit.Hearts,
+                Symbol = CardSymbol.Queen,
+                DealOrder = 2,
+                DealtAtPhase = nameof(Phases.Flop),
+                IsVisible = true
+            },
+            new GameCard
+            {
+                GameId = game.Id,
+                HandNumber = game.CurrentHandNumber,
+                Location = CardLocation.Community,
+                Suit = CardSuit.Clubs,
+                Symbol = CardSymbol.Jack,
+                DealOrder = 3,
+                DealtAtPhase = nameof(Phases.Turn),
+                IsVisible = true
+            });
+
+        await DbContext.SaveChangesAsync();
+
+        // Act
+        var result = await TableStateBuilder.BuildPublicStateAsync(game.Id);
+
+        // Assert
+        result.Should().NotBeNull();
+        result!.Showdown.Should().NotBeNull();
+
+        var heroResult = result.Showdown!.PlayerResults.FirstOrDefault(p => p.PlayerName == hero.Player.Name);
+        heroResult.Should().NotBeNull();
+        heroResult!.Cards.Should().HaveCount(8, "5 hole cards + 3 community cards should be present at South Dakota showdown");
+        heroResult.BestCardIndexes.Should().NotBeNull();
+        heroResult.BestCardIndexes!.Should().HaveCount(5);
+
+        var holeIndexes = heroResult.BestCardIndexes!.Where(i => i is >= 0 and <= 4).ToList();
+        var communityIndexes = heroResult.BestCardIndexes!.Where(i => i >= 5).ToList();
+
+        holeIndexes.Should().HaveCount(3, "South Dakota must highlight exactly 3 hole cards in the best hand");
+        communityIndexes.Should().HaveCount(2, "South Dakota must highlight exactly 2 community cards in the best hand");
+    }
 }

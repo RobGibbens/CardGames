@@ -137,6 +137,37 @@ public class OddsCalculatorTests
     }
 
     [Fact]
+    public void CalculateSouthDakotaOdds_PreFlopWithFiveHoleCards_ReturnsValidOdds()
+    {
+        var heroHoleCards = "As Ad Ks Kd Qh".ToCards();
+        var communityCards = new List<CardGames.Core.French.Cards.Card>();
+
+        var result = OddsCalculator.CalculateSouthDakotaOdds(
+            heroHoleCards,
+            communityCards,
+            simulations: 500);
+
+        result.HandTypeProbabilities.Should().NotBeEmpty();
+        result.HandTypeProbabilities.Values.Sum().Should().BeApproximately(1.0m, 0.01m);
+    }
+
+    [Fact]
+    public void CalculateSouthDakotaOdds_OnTurn_HandTypeIs100Percent()
+    {
+        var heroHoleCards = "As Ad Ks Kd Qh".ToCards();
+        var communityCards = "Ac Kh 2s".ToCards(); // South Dakota board is complete after turn (2-card flop + turn)
+
+        var result = OddsCalculator.CalculateSouthDakotaOdds(
+            heroHoleCards,
+            communityCards,
+            simulations: 500);
+
+        result.HandTypeProbabilities.Values.Sum().Should().BeApproximately(1.0m, 0.01m);
+        result.HandTypeProbabilities.Should().ContainSingle();
+        result.HandTypeProbabilities[HandType.FullHouse].Should().Be(1.0m);
+    }
+
+    [Fact]
     public void CalculateHoldemOdds_WithDeadCards_AdjustsCorrectly()
     {
         var heroCards = "As Ah".ToCards();

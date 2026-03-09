@@ -100,6 +100,7 @@ public abstract class IntegrationTestBase : IAsyncLifetime
             CreateGameType("HOLDTHEBASEBALL", "Hold the Baseball", 2, 10, 2, 0, 5, 7),
             CreateGameType("OMAHA", "Omaha", 2, 10, 4, 0, 5, 9),
             CreateGameType("NEBRASKA", "Nebraska", 2, 10, 5, 0, 5, 10),
+            CreateGameType("SOUTHDAKOTA", "South Dakota", 2, 10, 5, 0, 4, 9),
             CreateGameType("IRISHHOLDEM", "Irish Hold 'Em", 2, 10, 4, 0, 5, 9),
             CreateGameType("FOLLOWTHEQUEEN", "Follow the Queen", 2, 8, 2, 1, 0, 7),
             CreateGameType("BASEBALL", "Baseball", 2, 8, 2, 1, 0, 7),

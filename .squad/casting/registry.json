@@ -1,0 +1,67 @@
+{
+  "agents": {
+    "rusty": {
+      "persistent_name": "Aragorn",
+      "universe": "legacy",
+      "created_at": "2026-03-09T16:00:48Z",
+      "legacy_named": true,
+      "status": "active"
+    },
+    "danny": {
+      "persistent_name": "Gimli",
+      "universe": "legacy",
+      "created_at": "2026-03-09T16:00:48Z",
+      "legacy_named": true,
+      "status": "active"
+    },
+    "linus": {
+      "persistent_name": "Arwen",
+      "universe": "legacy",
+      "created_at": "2026-03-09T16:00:48Z",
+      "legacy_named": true,
+      "status": "active"
+    },
+    "basher": {
+      "persistent_name": "Legolas",
+      "universe": "legacy",
+      "created_at": "2026-03-09T16:00:48Z",
+      "legacy_named": true,
+      "status": "active"
+    },
+    "livingston": {
+      "persistent_name": "Boromir",
+      "universe": "legacy",
+      "created_at": "2026-03-09T16:00:48Z",
+      "legacy_named": true,
+      "status": "active"
+    },
+    "frank": {
+      "persistent_name": "Faramir",
+      "universe": "legacy",
+      "created_at": "2026-03-09T16:00:48Z",
+      "legacy_named": true,
+      "status": "active"
+    },
+    "tess": {
+      "persistent_name": "Galadriel",
+      "universe": "legacy",
+      "created_at": "2026-03-09T16:00:48Z",
+      "legacy_named": true,
+      "status": "active"
+    },
+    "scribe": {
+      "persistent_name": "Scribe",
+      "universe": "system",
+      "created_at": "2026-03-09T16:00:48Z",
+      "legacy_named": false,
+      "status": "active"
+    },
+    "ralph": {
+      "persistent_name": "Ralph",
+      "universe": "system",
+      "created_at": "2026-03-09T16:00:48Z",
+      "legacy_named": false,
+      "status": "active"
+    }
+  }
+}

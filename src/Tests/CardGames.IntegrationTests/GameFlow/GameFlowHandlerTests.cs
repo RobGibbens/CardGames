@@ -54,6 +54,21 @@ public class GameFlowHandlerTests
     }
 
     [Fact]
+    public void Factory_CanResolve_SouthDakotaHandler()
+    {
+        // Arrange
+        var factory = new GameFlowHandlerFactory();
+
+        // Act
+        var handler = factory.GetHandler(PokerGameMetadataRegistry.SouthDakotaCode);
+
+        // Assert
+        handler.Should().NotBeNull();
+        handler.Should().BeOfType<SouthDakotaFlowHandler>();
+        handler.GameTypeCode.Should().Be("SOUTHDAKOTA");
+    }
+
+    [Fact]
     public void Factory_CanResolve_FollowTheQueenHandler()
     {
         // Arrange

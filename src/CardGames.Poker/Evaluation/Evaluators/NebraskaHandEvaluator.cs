@@ -12,6 +12,7 @@ namespace CardGames.Poker.Evaluation.Evaluators;
 /// with Nebraska rules enforced by <see cref="NebraskaHand"/> (exactly 3 private + 2 community).
 /// </summary>
 [HandEvaluator("NEBRASKA")]
+[HandEvaluator("SOUTHDAKOTA")]
 public sealed class NebraskaHandEvaluator : IHandEvaluator
 {
     /// <inheritdoc />

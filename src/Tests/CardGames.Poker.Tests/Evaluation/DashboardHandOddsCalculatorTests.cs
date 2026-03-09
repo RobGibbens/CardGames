@@ -47,4 +47,17 @@ public class DashboardHandOddsCalculatorTests
         result!.HandTypeProbabilities.Should().NotBeEmpty();
         result.HandTypeProbabilities.Values.Sum().Should().BeApproximately(1.0m, 0.01m);
     }
+
+    [Fact]
+    public void Calculate_SouthDakota_PreFlopWithFiveHoleCards_ReturnsValidOdds()
+    {
+        var playerCards = "As Ad Ks Kd Qh".ToCards();
+        var communityCards = "".ToCards();
+
+        var result = DashboardHandOddsCalculator.Calculate("SOUTHDAKOTA", playerCards, communityCards, []);
+
+        result.Should().NotBeNull();
+        result!.HandTypeProbabilities.Should().NotBeEmpty();
+        result.HandTypeProbabilities.Values.Sum().Should().BeApproximately(1.0m, 0.01m);
+    }
 }
