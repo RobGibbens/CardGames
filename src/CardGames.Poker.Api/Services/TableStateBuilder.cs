@@ -2513,7 +2513,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 	private static bool IsIrishHoldEmGame(string? gameTypeCode)
 		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.IrishHoldEmCode)
-		   || IsGameType(gameTypeCode, PokerGameMetadataRegistry.PhilsMomCode);
+		   || IsGameType(gameTypeCode, PokerGameMetadataRegistry.PhilsMomCode)
+		   || IsGameType(gameTypeCode, PokerGameMetadataRegistry.CrazyPineappleCode);
 
 	private static bool IsGameType(string? gameTypeCode, string expectedCode)
 		=> !string.IsNullOrWhiteSpace(gameTypeCode) &&

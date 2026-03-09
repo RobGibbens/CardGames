@@ -203,7 +203,7 @@
     @if (_showGameInfoOverlay)
     {
         <GameInfoOverlay GameTypeContext="@GetGameInfoTypeContext()"
-                         IsHoldEm="@(IsHoldEm || IsOmaha || IsIrishHoldEm || IsPhilsMom || IsHoldTheBaseball)"
+                         IsHoldEm="@(IsHoldEm || IsOmaha || IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple || IsHoldTheBaseball)"
                          SmallBlind="@(_gameResponse?.SmallBlind ?? 0)"
                          BigBlind="@(_gameResponse?.BigBlind ?? 0)"
                          Ante="@(_gameResponse?.Ante ?? _ante)"
@@ -693,8 +693,9 @@
     private bool IsOmaha => string.Equals(_gameTypeCode, "OMAHA", StringComparison.OrdinalIgnoreCase);
     private bool IsIrishHoldEm => string.Equals(_gameTypeCode, "IRISHHOLDEM", StringComparison.OrdinalIgnoreCase);
     private bool IsPhilsMom => string.Equals(_gameTypeCode, "PHILSMOM", StringComparison.OrdinalIgnoreCase);
-    private bool IsIrishStyleHoldEm => IsIrishHoldEm || IsPhilsMom;
-    private bool UsesCardDealAnimation => IsSevenCardStud || IsGoodBadUgly || IsBaseball || IsFollowTheQueen || IsFiveCardDraw || IsTwosJacksManWithTheAxe || IsKingsAndLows || IsHoldEm || IsHoldTheBaseball || IsOmaha || IsIrishHoldEm || IsPhilsMom;
+    private bool IsCrazyPineapple => string.Equals(_gameTypeCode, "CRAZYPINEAPPLE", StringComparison.OrdinalIgnoreCase);
+    private bool IsIrishStyleHoldEm => IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple;
+    private bool UsesCardDealAnimation => IsSevenCardStud || IsGoodBadUgly || IsBaseball || IsFollowTheQueen || IsFiveCardDraw || IsTwosJacksManWithTheAxe || IsKingsAndLows || IsHoldEm || IsHoldTheBaseball || IsOmaha || IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple;
     private int DealAnimationDelayMs => 750;
 
     // Game rules for dynamic UI rendering
@@ -4693,6 +4694,9 @@ HandType.HighCard
         // Phil's Mom always discards exactly 1
         if (IsPhilsMom) return 1;
 
+        // Crazy Pineapple discards exactly 1 before the flop
+        if (IsCrazyPineapple) return 1;
+
         return Math.Max(publicMax, _maxDiscards);
     }
 
@@ -4707,6 +4711,9 @@ HandType.HighCard
 
         // Phil's Mom requires exactly 1 discard in each discard round
         if (IsPhilsMom) return 1;
+
+        // Crazy Pineapple requires exactly 1 discard before the flop
+        if (IsCrazyPineapple) return 1;
 
         return 0;
     }

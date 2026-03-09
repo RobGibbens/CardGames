@@ -235,3 +235,23 @@ dotnet build src/CardGames.Poker.Refitter
 
 This playbook is intentionally derived from currently uncommitted Phil's Mom work and existing repository docs.
 It should be updated when future game additions introduce new endpoint families or orchestration modes.
+
+## 11. Crazy Pineapple Mapping (CRAZYPINEAPPLE)
+
+Crazy Pineapple follows the same endpoint family reuse pattern as Phil's Mom and Irish Hold 'Em:
+
+- Domain metadata/rules:
+  - `src/CardGames.Poker/Games/CrazyPineapple/CrazyPineappleGame.cs`
+  - `src/CardGames.Poker/Games/CrazyPineapple/CrazyPineappleRules.cs`
+- API flow + behavior:
+  - `src/CardGames.Poker.Api/GameFlow/CrazyPineappleFlowHandler.cs`
+  - Hold 'Em betting handler branches for `CRAZYPINEAPPLE` pre-flop -> flop (deal) -> discard transition.
+  - Irish discard handler reused for mandatory 1-card discard after flop and before flop betting.
+- Web routing/UI reuse:
+  - `IGameApiRouter` maps `CRAZYPINEAPPLE` betting to Hold 'Em endpoint and discard to Irish discard endpoint.
+  - Hold'em-family predicates in setup/play pages include `CRAZYPINEAPPLE` for blind fields and discard constraints.
+
+Reusable pattern confirmed:
+- If a variant differs only by phase order/card counts but still uses existing request shapes,
+  reuse endpoint families and branch by game code in handlers.
+- Add a dedicated flow handler for dealing/auto-action semantics and keep contracts unchanged.
