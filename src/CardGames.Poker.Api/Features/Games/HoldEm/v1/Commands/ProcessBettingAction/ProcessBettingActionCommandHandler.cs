@@ -1,6 +1,7 @@
 using System.Text.Json;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Games;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -123,7 +124,8 @@ public class ProcessBettingActionCommandHandler(
 		}
 
 		// 6. Validate the action
-		var validationResult = ValidateAction(command.ActionType, command.Amount, currentPlayer, bettingRound);
+		var actionType = NormalizeActionType(command.ActionType, game, currentPlayer, bettingRound);
+		var validationResult = ValidateAction(actionType, command.Amount, currentPlayer, bettingRound);
 		if (validationResult is not null)
 		{
 			return new ProcessBettingActionError
@@ -138,7 +140,7 @@ public class ProcessBettingActionCommandHandler(
 		var potBefore = game.Pots.Sum(p => p.Amount);
 
 		// 8. Execute the action
-		var (actualAmount, chipsMoved) = ExecuteAction(currentPlayer, command.ActionType, command.Amount, bettingRound);
+		var (actualAmount, chipsMoved) = ExecuteAction(currentPlayer, actionType, command.Amount, bettingRound);
 
 		// 9. Create action record
 		var actionRecord = new BettingActionRecord
@@ -146,7 +148,7 @@ public class ProcessBettingActionCommandHandler(
 			BettingRoundId = bettingRound.Id,
 			GamePlayerId = currentPlayer.Id,
 			ActionOrder = bettingRound.Actions.Count + 1,
-			ActionType = command.ActionType,
+			ActionType = actionType,
 			Amount = actualAmount,
 			ChipsMoved = chipsMoved,
 			ChipStackBefore = chipStackBefore,
@@ -207,7 +209,7 @@ public class ProcessBettingActionCommandHandler(
 					Action = new BettingActionResult
 					{
 						PlayerName = currentPlayer.Player.Name,
-						ActionType = command.ActionType,
+						ActionType = actionType,
 						Amount = actualAmount,
 						ChipStackAfter = currentPlayer.ChipStack
 					},
@@ -229,8 +231,7 @@ public class ProcessBettingActionCommandHandler(
 
 			// Irish Hold 'Em: when advancing to Flop, deal the flop community cards
 			// but skip the Flop betting round — go directly to DrawPhase.
-			if (game.CurrentPhase == "Flop"
-			    && string.Equals(game.GameType?.Code, "IRISHHOLDEM", StringComparison.OrdinalIgnoreCase))
+			if (game.CurrentPhase == "Flop" && IsIrishHoldEmGame(game))
 			{
 				// Deal flop community cards
 				await DealCommunityCardsForPhaseAsync(game, "Flop", now, cancellationToken);
@@ -256,7 +257,7 @@ public class ProcessBettingActionCommandHandler(
 					Action = new BettingActionResult
 					{
 						PlayerName = currentPlayer.Player.Name,
-						ActionType = command.ActionType,
+						ActionType = actionType,
 						Amount = actualAmount,
 						ChipStackAfter = currentPlayer.ChipStack
 					},
@@ -271,6 +272,11 @@ public class ProcessBettingActionCommandHandler(
 			// Non-Irish Hold 'Em: entering discard phase — set first draw player and return
 			if (game.CurrentPhase == "DrawPhase")
 			{
+				foreach (var player in activePlayers)
+				{
+					player.HasDrawnThisRound = false;
+				}
+
 				var firstDrawPlayerIndex = FindFirstActivePlayerAfterDealer(game, activePlayers);
 				game.CurrentDrawPlayerIndex = firstDrawPlayerIndex;
 				game.CurrentPlayerIndex = firstDrawPlayerIndex;
@@ -286,7 +292,7 @@ public class ProcessBettingActionCommandHandler(
 					Action = new BettingActionResult
 					{
 						PlayerName = currentPlayer.Player.Name,
-						ActionType = command.ActionType,
+						ActionType = actionType,
 						Amount = actualAmount,
 						ChipStackAfter = currentPlayer.ChipStack
 					},
@@ -359,7 +365,7 @@ public class ProcessBettingActionCommandHandler(
 			Action = new BettingActionResult
 			{
 				PlayerName = currentPlayer.Player.Name,
-				ActionType = command.ActionType,
+				ActionType = actionType,
 				Amount = actualAmount,
 				ChipStackAfter = currentPlayer.ChipStack
 			},
@@ -403,6 +409,27 @@ public class ProcessBettingActionCommandHandler(
 	}
 
 	#endregion
+
+	private static BettingActionType NormalizeActionType(
+		BettingActionType requestedAction,
+		Game game,
+		GamePlayer player,
+		BettingRound bettingRound)
+	{
+		if (requestedAction != BettingActionType.Check)
+		{
+			return requestedAction;
+		}
+
+		if (!IsIrishHoldEmGame(game) && !IsPhilsMomGame(game))
+		{
+			return requestedAction;
+		}
+
+		return bettingRound.CurrentBet > player.CurrentBet
+			? BettingActionType.Call
+			: BettingActionType.Check;
+	}
 
 	#region Action Execution
 
@@ -614,12 +641,12 @@ public class ProcessBettingActionCommandHandler(
 		switch (game.CurrentPhase)
 		{
 			case "PreFlop":
-				game.CurrentPhase = "Flop";
+				game.CurrentPhase = IsPhilsMomGame(game) ? "DrawPhase" : "Flop";
 				break;
 
 			case "Flop":
-				// Irish Hold 'Em inserts a discard phase between Flop and Turn
-				if (string.Equals(game.GameType?.Code, "IRISHHOLDEM", StringComparison.OrdinalIgnoreCase))
+				// Irish Hold 'Em and Phil's Mom insert a discard phase between Flop and Turn.
+				if (IsIrishHoldEmGame(game) || IsPhilsMomGame(game))
 				{
 					game.CurrentPhase = "DrawPhase";
 				}
@@ -639,6 +666,12 @@ public class ProcessBettingActionCommandHandler(
 				break;
 		}
 	}
+
+	private static bool IsIrishHoldEmGame(Game game)
+		=> string.Equals(game.GameType?.Code, PokerGameMetadataRegistry.IrishHoldEmCode, StringComparison.OrdinalIgnoreCase);
+
+	private static bool IsPhilsMomGame(Game game)
+		=> string.Equals(game.GameType?.Code, PokerGameMetadataRegistry.PhilsMomCode, StringComparison.OrdinalIgnoreCase);
 
 	#endregion
 

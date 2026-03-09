@@ -5,7 +5,8 @@ Cash
 
 - [ ] https://github.com/leeoades/FunctionalStateMachine
 - [ ] When playing Dealer's choice, filter out games that don't support the number of players
- 
+- [ ] Phil's mom loser showdown not correct
+
 ### Leagues
 
 ### Cashier
@@ -57,7 +58,7 @@ Cash
 - [x] Add Hold the Baseball
 - [ ] Add Nebraska
 - [ ] Add Red River
-- [ ] Add Phil's Mom
+- [x] Add Phil's Mom
 - [ ] Add Crazy Pineapple
 - [ ] Add Klondike
 
