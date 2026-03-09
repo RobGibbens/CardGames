@@ -313,6 +313,26 @@ public class RedRiverHandLifecycleTests : IntegrationTestBase
             riverCard.Suit = suit;
         }
 
+        // When forcing a non-red suit, revert any bonus card that was dealt
+        // because the original River card happened to be red.
+        var isRedSuit = suit is CardSuit.Hearts or CardSuit.Diamonds;
+        if (!isRedSuit)
+        {
+            var bonusCards = await context.GameCards
+                .Where(gc => gc.GameId == gameId
+                    && gc.HandNumber == game.CurrentHandNumber
+                    && gc.Location == CardLocation.Community
+                    && gc.DealtAtPhase == "RedRiverBonus")
+                .ToListAsync();
+
+            foreach (var bonus in bonusCards)
+            {
+                bonus.Location = CardLocation.Deck;
+                bonus.DealtAtPhase = null;
+                bonus.IsVisible = false;
+            }
+        }
+
         await context.SaveChangesAsync();
     }
 

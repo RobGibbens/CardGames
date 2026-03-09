@@ -743,6 +743,12 @@ public class ProcessBettingActionCommandHandler(
 			.OrderBy(gc => gc.DealOrder)
 			.ToListAsync(cancellationToken);
 
+		// Re-filter with tracked in-memory state. EF Core identity resolution can
+		// return entities whose database row matched the WHERE clause even though
+		// the tracked instance has already been moved out of the deck (e.g. the
+		// River card dealt moments earlier in the same unit of work).
+		deckCards = deckCards.Where(gc => gc.Location == CardLocation.Deck).ToList();
+
 		for (int i = 0; i < cardCount && i < deckCards.Count; i++)
 		{
 			var card = deckCards[i];
