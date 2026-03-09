@@ -97,6 +97,7 @@ public class GameApiRouter : IGameApiRouter
     private const string HoldEm = "HOLDEM";
     private const string Omaha = "OMAHA";
     private const string IrishHoldEm = "IRISHHOLDEM";
+    private const string PhilsMom = "PHILSMOM";
     private const string TwosJacksManWithTheAxe = "TWOSJACKSMANWITHTHEAXE";
     private const string KingsAndLows = "KINGSANDLOWS";
     private const string SevenCardStud = "SEVENCARDSTUD";
@@ -146,6 +147,7 @@ public class GameApiRouter : IGameApiRouter
             [HoldEm] = RouteHoldEmBettingActionAsync,
             [Omaha] = RouteOmahaBettingActionAsync,
             [IrishHoldEm] = RouteIrishHoldEmBettingActionAsync,
+            [PhilsMom] = RoutePhilsMomBettingActionAsync,
             [TwosJacksManWithTheAxe] = RouteTwosJacksManWithTheAxeBettingActionAsync,
             [SevenCardStud] = RouteSevenCardStudBettingActionAsync,
             [GoodBadUgly] = RouteGoodBadUglyBettingActionAsync,
@@ -159,6 +161,7 @@ public class GameApiRouter : IGameApiRouter
             [HoldEm] = RouteHoldEmDrawAsync,
             [Omaha] = RouteOmahaDrawAsync,
             [IrishHoldEm] = RouteIrishHoldEmDrawAsync,
+            [PhilsMom] = RoutePhilsMomDrawAsync,
             [TwosJacksManWithTheAxe] = RouteTwosJacksManWithTheAxeDrawAsync,
             [KingsAndLows] = RouteKingsAndLowsDrawAsync
         };
@@ -278,6 +281,10 @@ public class GameApiRouter : IGameApiRouter
         => RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
             await _holdEmApi.HoldEmProcessBettingActionAsync(gameId, request));
 
+    private async Task<RouterResponse<ProcessBettingActionSuccessful>> RoutePhilsMomBettingActionAsync(Guid gameId, ProcessBettingActionRequest request)
+        => RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
+            await _holdEmApi.HoldEmProcessBettingActionAsync(gameId, request));
+
     private Task<RouterResponse<ProcessDrawResult>> RouteHoldEmDrawAsync(Guid gameId, Guid playerId, int playerSeatIndex, List<int> discardIndices)
         => Task.FromResult(
             RouterResponse<ProcessDrawResult>.Failure("Draw phase not supported for Texas Hold'Em.", HttpStatusCode.BadRequest));
@@ -291,6 +298,19 @@ public class GameApiRouter : IGameApiRouter
         if (playerSeatIndex < 0)
         {
             return RouterResponse<ProcessDrawResult>.Failure("Player seat is required for Irish Hold 'Em discards.", HttpStatusCode.BadRequest);
+        }
+
+        var request = new IrishHoldEmDiscardRequest(discardIndices, playerSeatIndex);
+        return RouterResponse<ProcessDrawResult>.FromRefit(
+            await _gamesApi.IrishHoldEmDiscardAsync(gameId, request),
+            c => new ProcessDrawResult { Original = c });
+    }
+
+    private async Task<RouterResponse<ProcessDrawResult>> RoutePhilsMomDrawAsync(Guid gameId, Guid playerId, int playerSeatIndex, List<int> discardIndices)
+    {
+        if (playerSeatIndex < 0)
+        {
+            return RouterResponse<ProcessDrawResult>.Failure("Player seat is required for Phil's Mom discards.", HttpStatusCode.BadRequest);
         }
 
         var request = new IrishHoldEmDiscardRequest(discardIndices, playerSeatIndex);
