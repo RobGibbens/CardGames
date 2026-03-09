@@ -3146,6 +3146,10 @@ a:hover {
     gap: 1.5rem;
 }
 
+.variant-search-row {
+    margin-bottom: 0.75rem;
+}
+
 .form-row.two-columns {
     display: grid;
     grid-template-columns: 1fr 1fr;

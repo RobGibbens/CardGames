@@ -19,6 +19,15 @@
 		}
 		else
 		{
+		   <div class="dealer-choice-search dc-setting">
+			   <label for="dc-search">Search Variants</label>
+			   <input type="text"
+					  id="dc-search"
+					  placeholder="Search by game name"
+					  @bind="_variantSearch"
+					  @bind:event="oninput" />
+		   </div>
+
 			<!-- Variant Grid -->
 			<div class="dealer-choice-variants">
 				@foreach (var group in VariantGroups)
@@ -120,6 +129,7 @@
 	private int _minBet = 10;
 	private int _smallBlind = 5;
 	private int _bigBlind = 10;
+ private string _variantSearch = string.Empty;
 	private bool _isSubmitting;
 	private bool _isLoading;
 	private string? _error;
@@ -134,7 +144,9 @@
 		get
 		{
 			var games = AvailableGames
-				.Where(g => _selectedCode is null || g.Code == _selectedCode)
+               .Where(g => _selectedCode is not null
+					? g.Code == _selectedCode
+					: MatchesVariantSearch(g.Name))
 				.OrderBy(g => g.Name, StringComparer.OrdinalIgnoreCase);
 
 			return new[]
@@ -180,6 +192,12 @@
 		|| string.Equals(code, "HOLDTHEBASEBALL", StringComparison.OrdinalIgnoreCase)
 		|| string.Equals(code, "PHILSMOM", StringComparison.OrdinalIgnoreCase)
 		|| string.Equals(code, "CRAZYPINEAPPLE", StringComparison.OrdinalIgnoreCase);
+
+	private bool MatchesVariantSearch(string gameName)
+	{
+		return string.IsNullOrWhiteSpace(_variantSearch)
+			|| gameName.Contains(_variantSearch, StringComparison.OrdinalIgnoreCase);
+	}
 
 	private async Task ConfirmChoiceAsync()
 	{

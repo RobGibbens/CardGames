@@ -56,8 +56,19 @@
 					<div class="step-header">
 						<span class="step-number">1</span>
 						<div class="step-info">
-							<h2 class="step-title">Choose Game Variant</h2>
-							<p class="step-description">Select the poker variant you want to play</p>
+								<h2 class="step-title">Choose Game Variant</h2>
+								<p class="step-description">Select the poker variant you want to play</p>
+							</div>
+						</div>
+						<div class="form-row variant-search-row">
+							<div class="form-group">
+								<label class="form-label" for="variantSearch">Search Variants</label>
+							<input type="text"
+								   id="variantSearch"
+								   class="form-input"
+								   placeholder="Search by game name"
+								   @bind="_variantSearch"
+								   @bind:event="oninput" />
 						</div>
 					</div>
 					@if (ShowDealersChoiceCard)
@@ -285,6 +296,7 @@
 	private int _minBet = 10;
 	private int _smallBlind = 1;
 	private int _bigBlind = 2;
+  private string _variantSearch = string.Empty;
 	private bool _isDealersChoice;
 	private bool _hasBlinds;
 	private List<GetAvailablePokerGamesResponse> _availableGames = [];
@@ -322,7 +334,8 @@
 				return [new VariantGroup(selectedCard.GroupTitle, [selectedCard])];
 			}
 
-			var cards = _availableGames
+         var cards = _availableGames
+					.Where(g => MatchesVariantSearch(g.Name))
 					.OrderBy(g => g.Name, StringComparer.OrdinalIgnoreCase)
 					.Select(ToVariantCard);
 
@@ -336,9 +349,9 @@
 		}
 	}
 
-	private bool ShowDealersChoiceCard =>
-		_selectedVariant is null ||
-		string.Equals(_selectedVariant.Code, DealersChoiceCode, StringComparison.OrdinalIgnoreCase);
+   private bool ShowDealersChoiceCard =>
+		(_selectedVariant is null && MatchesVariantSearch(DealersChoiceCard.Name)) ||
+		string.Equals(_selectedVariant?.Code, DealersChoiceCode, StringComparison.OrdinalIgnoreCase);
 
 	private bool CanCreate =>
 		_selectedVariant is not null &&
@@ -505,5 +518,11 @@
 	private static bool IsBlindBasedGame(string gameCode)
 	{
 		return gameCode is "HOLDEM" or "REDRIVER" or "OMAHA" or "IRISHHOLDEM" or "HOLDTHEBASEBALL" or "PHILSMOM" or "CRAZYPINEAPPLE";
+	}
+
+	private bool MatchesVariantSearch(string gameName)
+	{
+		return string.IsNullOrWhiteSpace(_variantSearch)
+			|| gameName.Contains(_variantSearch, StringComparison.OrdinalIgnoreCase);
 	}
 }

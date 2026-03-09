@@ -1,4 +1,3 @@
-Cash
 # TODO
 
 ## Still to do
@@ -6,7 +5,6 @@ Cash
 - [ ] https://github.com/leeoades/FunctionalStateMachine
 - [ ] When playing Dealer's choice, filter out games that don't support the number of players
 - [ ] Phil's mom loser showdown not correct
-- [ ] When picking a game, support search
 - [ ] Allow the creator of the game the ability to turn off the odds calculator
 
 ### Leagues
@@ -193,3 +191,4 @@ Cash
 - [x] When creating a table, just create it and make them press the Join button to join.
 - [x] Reorganize the Create Table to group variants by type
 - [x] Red River not showing extra card
+- [x] When picking a game, support search

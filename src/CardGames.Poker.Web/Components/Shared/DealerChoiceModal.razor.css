@@ -46,6 +46,10 @@
 	color: var(--text-secondary, #aaa);
 }
 
+.dealer-choice-search {
+	margin-bottom: 1rem;
+}
+
 .dealer-choice-variants {
 	display: flex;
 	flex-direction: column;
