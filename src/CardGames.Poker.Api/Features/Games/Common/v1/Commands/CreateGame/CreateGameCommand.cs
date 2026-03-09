@@ -13,4 +13,5 @@ public record CreateGameCommand(
 	IReadOnlyList<PlayerInfo> Players,
 	bool IsDealersChoice = false,
 	int? SmallBlind = null,
-	int? BigBlind = null) : IRequest<OneOf<CreateGameSuccessful, CreateGameConflict>>, IGameStateChangingCommand, ILobbyStateChangingCommand;
+   int? BigBlind = null,
+	bool AreOddsVisibleToAllPlayers = true) : IRequest<OneOf<CreateGameSuccessful, CreateGameConflict>>, IGameStateChangingCommand, ILobbyStateChangingCommand;

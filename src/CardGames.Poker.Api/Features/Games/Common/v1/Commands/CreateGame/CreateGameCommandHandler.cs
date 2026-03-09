@@ -70,6 +70,7 @@ public class CreateGameCommandHandler(
 			SmallBlind = command.SmallBlind,
 			BigBlind = command.BigBlind,
 			IsDealersChoice = command.IsDealersChoice,
+          AreOddsVisibleToAllPlayers = command.AreOddsVisibleToAllPlayers,
 			Status = GameStatus.WaitingForPlayers,
 			CurrentPlayerIndex = -1,
 			CurrentDrawPlayerIndex = -1,

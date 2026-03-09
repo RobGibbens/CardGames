@@ -43,4 +43,5 @@ public sealed record GetGameResponse
 	public required string RowVersion { get; init; }
 	public bool IsDealersChoice { get; init; }
 	public int? DealersChoiceDealerPosition { get; init; }
+   public bool AreOddsVisibleToAllPlayers { get; init; }
 }

@@ -236,6 +236,11 @@ public class Game : EntityWithRowVersion
 	public bool IsDealersChoice { get; set; }
 
 	/// <summary>
+	/// Whether hand-odds calculations are visible in the dashboard for all players at this table.
+	/// </summary>
+	public bool AreOddsVisibleToAllPlayers { get; set; } = true;
+
+	/// <summary>
 	/// The game type code chosen by the dealer for the current hand (Dealer's Choice mode only).
 	/// Null when waiting for the dealer to choose.
 	/// </summary>

@@ -26,6 +26,9 @@ public class GameConfiguration : IEntityTypeConfiguration<Game>
 		builder.Property(t => t.GameSettings)
 			.HasMaxLength(GameFields.GameSettings.MaxLength);
 
+		builder.Property(t => t.AreOddsVisibleToAllPlayers)
+			.HasDefaultValue(true);
+
 		builder.Property(t => t.Status)
 			.HasConversion<int>();
 

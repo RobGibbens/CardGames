@@ -252,6 +252,18 @@
 								</div>
 							</div>
 							}
+
+							<div class="form-row">
+								<div class="form-group">
+									<label class="form-label" for="areOddsVisibleToAllPlayers">Odds Visibility</label>
+									<div>
+										<input type="checkbox"
+											   id="areOddsVisibleToAllPlayers"
+											   @bind="_areOddsVisibleToAllPlayers" />
+										<span class="form-hint"> Allow all players to see hand-odds in the dashboard</span>
+									</div>
+								</div>
+							</div>
 						</div>
 					</section>
 
@@ -295,8 +307,9 @@
 	private int _ante = 5;
 	private int _minBet = 10;
 	private int _smallBlind = 1;
-	private int _bigBlind = 2;
-  private string _variantSearch = string.Empty;
+  private int _bigBlind = 2;
+	private bool _areOddsVisibleToAllPlayers = true;
+	private string _variantSearch = string.Empty;
 	private bool _isDealersChoice;
 	private bool _hasBlinds;
 	private List<GetAvailablePokerGamesResponse> _availableGames = [];
@@ -484,7 +497,8 @@
 			{
 				IsDealersChoice = _isDealersChoice,
 				SmallBlind = _hasBlinds ? _smallBlind : null,
-				BigBlind = _hasBlinds ? _bigBlind : null
+                BigBlind = _hasBlinds ? _bigBlind : null,
+				AreOddsVisibleToAllPlayers = _areOddsVisibleToAllPlayers
 			};
 
 			// Call the appropriate API based on the selected variant

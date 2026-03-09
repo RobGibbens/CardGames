@@ -9,4 +9,7 @@ public partial record GetGameResponse
 
 	[JsonPropertyName("dealersChoiceDealerPosition")]
 	public int? DealersChoiceDealerPosition { get; init; }
+
+	[JsonPropertyName("areOddsVisibleToAllPlayers")]
+	public bool AreOddsVisibleToAllPlayers { get; init; }
 }

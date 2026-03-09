@@ -12,4 +12,7 @@ public partial record CreateGameCommand
 
 	[JsonPropertyName("bigBlind")]
 	public int? BigBlind { get; init; }
+
+	[JsonPropertyName("areOddsVisibleToAllPlayers")]
+	public bool AreOddsVisibleToAllPlayers { get; init; } = true;
 }

@@ -5,7 +5,6 @@
 - [ ] https://github.com/leeoades/FunctionalStateMachine
 - [ ] When playing Dealer's choice, filter out games that don't support the number of players
 - [ ] Phil's mom loser showdown not correct
-- [ ] Allow the creator of the game the ability to turn off the odds calculator
 
 ### Leagues
 
@@ -18,7 +17,6 @@
 
 ### P2 - Important but not blocking play
 
-- [ ] Make sure players can keep a long running chip balance / only bring in a certain amount to a game
 - [ ] Make sure all calls are idempotent
 - [ ] Continuous play should stop if all players disconnect
 - [ ] During ties, the showdown should show the kicker
@@ -57,7 +55,7 @@
 - [ ] Add Squid Game
 - [x] Add Hold the Baseball
 - [ ] Add Nebraska
-- [ ] Add Red River
+- [x] Add Red River
 - [x] Add Phil's Mom
 - [x] Add Crazy Pineapple
 - [ ] Add Klondike
@@ -192,3 +190,5 @@
 - [x] Reorganize the Create Table to group variants by type
 - [x] Red River not showing extra card
 - [x] When picking a game, support search
+- [x] Allow the creator of the game the ability to turn off the odds calculator
+- [x] Make sure players can keep a long running chip balance / only bring in a certain amount to a game

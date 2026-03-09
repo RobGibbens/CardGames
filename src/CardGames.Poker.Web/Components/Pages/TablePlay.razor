@@ -246,11 +246,14 @@
                         <LeaderboardSection Players="@GetLeaderboardPlayers()" />
                     </DashboardSection>
 
-                    <DashboardSection Title="Odds" Icon="fa-solid fa-chart-simple"
-                                      IsExpanded="@DashboardState.IsSectionExpanded("Odds")"
-                                      IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("Odds", value))">
-                        <OddsSection HandOdds="@handOdds" />
-                    </DashboardSection>
+                    @if (_gameResponse?.AreOddsVisibleToAllPlayers ?? true)
+                    {
+                        <DashboardSection Title="Odds" Icon="fa-solid fa-chart-simple"
+                                          IsExpanded="@DashboardState.IsSectionExpanded("Odds")"
+                                          IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("Odds", value))">
+                            <OddsSection HandOdds="@handOdds" />
+                        </DashboardSection>
+                    }
 
                     <DashboardSection Title="Hand History" Icon="fa-solid fa-clock-rotate-left"
                                       IsExpanded="@DashboardState.IsSectionExpanded("HandHistory")"
@@ -2090,7 +2093,10 @@
                 startedAt: gamesResponse.StartedAt,
                 status: gamesResponse.Status,
                 updatedAt: gamesResponse.UpdatedAt
-                );
+                )
+                {
+                    AreOddsVisibleToAllPlayers = gamesResponse.AreOddsVisibleToAllPlayers
+                };
 
                 _currentActorSeatIndex = _gameResponse.CurrentPlayerIndex;
                 _dealerSeatIndex = _gameResponse.DealerPosition;
