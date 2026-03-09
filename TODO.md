@@ -5,7 +5,10 @@ Cash
 
 - [ ] https://github.com/leeoades/FunctionalStateMachine
 - [ ] When playing Dealer's choice, filter out games that don't support the number of players
- 
+- [ ] Phil's mom loser showdown not correct
+- [ ] When picking a game, support search
+- [ ] Allow the creator of the game the ability to turn off the odds calculator
+
 ### Leagues
 
 ### Cashier
@@ -57,8 +60,8 @@ Cash
 - [x] Add Hold the Baseball
 - [ ] Add Nebraska
 - [ ] Add Red River
-- [ ] Add Phil's Mom
-- [ ] Add Crazy Pineapple
+- [x] Add Phil's Mom
+- [x] Add Crazy Pineapple
 - [ ] Add Klondike
 
 
@@ -189,3 +192,4 @@ Cash
 - [x] Make sure that when they leave a table, or close the browser, that their chips stay in their account.
 - [x] When creating a table, just create it and make them press the Join button to join.
 - [x] Reorganize the Create Table to group variants by type
+- [x] Red River not showing extra card

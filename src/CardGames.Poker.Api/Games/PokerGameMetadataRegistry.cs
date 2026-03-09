@@ -25,6 +25,9 @@ public static class PokerGameMetadataRegistry
 	public const string BaseballCode = "BASEBALL";
 	public const string GoodBadUglyCode = "GOODBADUGLY";
 	public const string IrishHoldEmCode = "IRISHHOLDEM";
+	public const string PhilsMomCode = "PHILSMOM";
+	public const string CrazyPineappleCode = "CRAZYPINEAPPLE";
+	public const string RedRiverCode = "REDRIVER";
 	public const string HoldTheBaseballCode = "HOLDTHEBASEBALL";
 
 	private static readonly FrozenDictionary<string, PokerGameMetadataAttribute> MetadataByGameTypeCode;

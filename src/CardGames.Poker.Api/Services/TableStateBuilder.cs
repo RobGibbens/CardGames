@@ -404,6 +404,13 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					var holdemHand = new CardGames.Poker.Hands.CommunityCardHands.HoldemHand(playerCards, communityCards);
 					handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(holdemHand);
 				}
+				// Irish Hold'em variants (including Phil's Mom) can have 3 hole cards after first discard.
+				// Evaluate with community cards during this transitional state as well.
+				else if (playerCards.Count == 3 && isCommunityCardGame)
+				{
+					var holdemHand = new CardGames.Poker.Hands.CommunityCardHands.HoldemHand(playerCards, communityCards);
+					handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(holdemHand);
+				}
 				// Omaha style: 4 hole + up to 5 community
 				else if (playerCards.Count == 4)
 				{
@@ -2496,7 +2503,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.GoodBadUglyCode);
 
 	private static bool IsHoldEmGame(string? gameTypeCode)
-		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.HoldEmCode);
+		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.HoldEmCode)
+		   || IsGameType(gameTypeCode, PokerGameMetadataRegistry.RedRiverCode);
 
 	private static bool IsHoldTheBaseballGame(string? gameTypeCode)
 		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.HoldTheBaseballCode);
@@ -2505,7 +2513,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.OmahaCode);
 
 	private static bool IsIrishHoldEmGame(string? gameTypeCode)
-		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.IrishHoldEmCode);
+		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.IrishHoldEmCode)
+		   || IsGameType(gameTypeCode, PokerGameMetadataRegistry.PhilsMomCode)
+		   || IsGameType(gameTypeCode, PokerGameMetadataRegistry.CrazyPineappleCode);
 
 	private static bool IsGameType(string? gameTypeCode, string expectedCode)
 		=> !string.IsNullOrWhiteSpace(gameTypeCode) &&

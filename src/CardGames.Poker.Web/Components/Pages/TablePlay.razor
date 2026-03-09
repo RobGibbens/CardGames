@@ -203,7 +203,7 @@
     @if (_showGameInfoOverlay)
     {
         <GameInfoOverlay GameTypeContext="@GetGameInfoTypeContext()"
-                         IsHoldEm="@(IsHoldEm || IsOmaha || IsIrishHoldEm || IsHoldTheBaseball)"
+                         IsHoldEm="@(IsHoldEm || IsRedRiver || IsOmaha || IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple || IsHoldTheBaseball)"
                          SmallBlind="@(_gameResponse?.SmallBlind ?? 0)"
                          BigBlind="@(_gameResponse?.BigBlind ?? 0)"
                          Ante="@(_gameResponse?.Ante ?? _ante)"
@@ -689,10 +689,14 @@
     private bool IsFollowTheQueen => string.Equals(_gameTypeCode, "FOLLOWTHEQUEEN", StringComparison.OrdinalIgnoreCase);
     private bool IsBaseball => string.Equals(_gameTypeCode, "BASEBALL", StringComparison.OrdinalIgnoreCase);
     private bool IsHoldEm => string.Equals(_gameTypeCode, "HOLDEM", StringComparison.OrdinalIgnoreCase);
+    private bool IsRedRiver => string.Equals(_gameTypeCode, "REDRIVER", StringComparison.OrdinalIgnoreCase);
     private bool IsHoldTheBaseball => string.Equals(_gameTypeCode, "HOLDTHEBASEBALL", StringComparison.OrdinalIgnoreCase);
     private bool IsOmaha => string.Equals(_gameTypeCode, "OMAHA", StringComparison.OrdinalIgnoreCase);
     private bool IsIrishHoldEm => string.Equals(_gameTypeCode, "IRISHHOLDEM", StringComparison.OrdinalIgnoreCase);
-    private bool UsesCardDealAnimation => IsSevenCardStud || IsGoodBadUgly || IsBaseball || IsFollowTheQueen || IsFiveCardDraw || IsTwosJacksManWithTheAxe || IsKingsAndLows || IsHoldEm || IsHoldTheBaseball || IsOmaha || IsIrishHoldEm;
+    private bool IsPhilsMom => string.Equals(_gameTypeCode, "PHILSMOM", StringComparison.OrdinalIgnoreCase);
+    private bool IsCrazyPineapple => string.Equals(_gameTypeCode, "CRAZYPINEAPPLE", StringComparison.OrdinalIgnoreCase);
+    private bool IsIrishStyleHoldEm => IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple;
+    private bool UsesCardDealAnimation => IsSevenCardStud || IsGoodBadUgly || IsBaseball || IsFollowTheQueen || IsFiveCardDraw || IsTwosJacksManWithTheAxe || IsKingsAndLows || IsHoldEm || IsRedRiver || IsHoldTheBaseball || IsOmaha || IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple;
     private int DealAnimationDelayMs => 750;
 
     // Game rules for dynamic UI rendering
@@ -1476,7 +1480,8 @@
 
                 ApplyKingsAndLowsLowestCardWildFallback(_seats[targetSeatIndex].Cards);
 
-                _seats[targetSeatIndex].HandEvaluationDescription = state.HandEvaluationDescription;
+                _seats[targetSeatIndex].HandEvaluationDescription =
+                    state.HandEvaluationDescription ?? BuildFallbackHandDescription(state.Hand);
 
                 var newlyDealtCardCount = Math.Max(0, state.Hand.Count - previousCardCount);
                 if (targetSeatIndex == _currentPlayerSeatIndex && newlyDealtCardCount > 0)
@@ -1818,8 +1823,11 @@
         // 1. We don't already have a result
         // 2. AND (the showdown is complete (PerformShowdown was called) OR we're in PotMatching phase for Kings and Lows)
         // Do NOT process when IsShowdownPhase is true but IsComplete is false - let TryLoadShowdownAsync call the API
+        var hasWinnerInPublicResults = showdown.PlayerResults.Any(r => r.IsWinner || r.AmountWon > 0);
+
         var shouldProcessShowdown = _showdownResult is null &&
-        (showdown.IsComplete || IsPotMatchingPhase);
+        (showdown.IsComplete || IsPotMatchingPhase) &&
+        hasWinnerInPublicResults;
 
         if (shouldProcessShowdown)
         {
@@ -1865,7 +1873,7 @@
             })
             .ToList();
 
-            _showdownResult = new PerformShowdownSuccessful(
+            var publicShowdownResult = new PerformShowdownSuccessful(
             currentPhase: "Complete",
             gameId: GameId,
             payouts: payouts,
@@ -1876,6 +1884,13 @@
             sevensPayouts: sevensPayouts,
             wonByFold: false,
             sevensWinners: sevensWinners);
+
+            if (!HasUsableShowdownResult(publicShowdownResult))
+            {
+                return;
+            }
+
+            _showdownResult = publicShowdownResult;
 
             // Only show overlay immediately if we're not delaying
             if (!delayShowingOverlay)
@@ -1918,6 +1933,32 @@
         symbol: ParseCardSymbol(c.Rank)
         ))
         .ToList();
+    }
+
+    private static bool HasUsableShowdownResult(PerformShowdownSuccessful? result)
+    {
+        if (result is null)
+        {
+            return false;
+        }
+
+        var hasWinnerFromHands = result.PlayerHands?.Any(h =>
+            !string.IsNullOrWhiteSpace(h.PlayerName) &&
+            (h.IsWinner == true || h.AmountWon.GetValueOrDefault() > 0)) == true;
+
+        var hasWinnerFromPayouts = result.Payouts?.Any(kvp =>
+            !string.IsNullOrWhiteSpace(kvp.Key) && kvp.Value > 0) == true;
+
+        var hasAnyCards = result.PlayerHands?.Any(h => h.Cards is { Count: > 0 }) == true;
+
+        var hasWinnerIdentity = hasWinnerFromHands || hasWinnerFromPayouts;
+
+        if (result.WonByFold == true)
+        {
+            return hasWinnerIdentity;
+        }
+
+        return hasWinnerIdentity && hasAnyCards;
     }
 
     private static CardSuit? ParseCardSuit(string? suit)
@@ -2680,9 +2721,9 @@
                 return;
             }
         }
-        else if (IsHoldEm)
+        else if (IsHoldEm || IsRedRiver)
         {
-            // Hold'Em start handles blinds + deal in a single call
+            // Hold'Em family start handles blinds + deal in a single call.
             var startResponse = await HoldEmApi.HoldEmStartHandAsync(GameId);
             if (!startResponse.IsSuccessStatusCode)
             {
@@ -2712,13 +2753,13 @@
                 return;
             }
         }
-        else if (IsIrishHoldEm)
+        else if (IsIrishStyleHoldEm)
         {
-            // Irish Hold'Em uses the generic start endpoint (same as Omaha).
+            // Irish-style Hold'Em variants use the generic start endpoint (same as Omaha).
             var startResponse = await GamesApiClient.GenericStartHandAsync(GameId);
             if (!startResponse.IsSuccessStatusCode)
             {
-                Logger.LogWarning("Failed to start Irish Hold'Em hand: {StatusCode}", startResponse.StatusCode);
+                Logger.LogWarning("Failed to start Irish-style Hold'Em hand: {StatusCode}", startResponse.StatusCode);
                 await ShowToastAsync("Failed to start game. Please try again.", "error");
                 return;
             }
@@ -2770,10 +2811,17 @@
             return;
         }
 
-        // If showdown result is already loaded (e.g., from SignalR update), just show the overlay
-        // and ensure the countdown timer is running
+        // If showdown result is already loaded (e.g., from SignalR update), validate first.
+        // Incomplete payloads can happen on non-winner clients when public state is filtered.
         if (_showdownResult is not null)
         {
+            if (!HasUsableShowdownResult(_showdownResult))
+            {
+                Logger.LogDebug("TryLoadShowdownAsync: Existing showdown payload incomplete; refreshing from API.");
+                _showdownResult = null;
+            }
+            else
+            {
             Logger.LogDebug("TryLoadShowdownAsync: Showdown result already loaded, showing overlay");
             _showShowdownOverlay = true;
 
@@ -2787,6 +2835,7 @@
 
             await InvokeStateHasChangedAsync();
             return;
+            }
         }
 
         _loggedInUserEmail ??= await GetLoggedInUserEmailAsync();
@@ -2824,7 +2873,7 @@
         {
             showdownResponse = await GamesApiClient.GenericPerformShowdownAsync(GameId);
         }
-        else if (IsIrishHoldEm)
+        else if (IsIrishStyleHoldEm)
         {
             showdownResponse = await GamesApiClient.GenericPerformShowdownAsync(GameId);
         }
@@ -3887,7 +3936,7 @@
     /// </summary>
     private EventCallback GetDrawTimeoutFoldCallback()
     {
-        return IsIrishHoldEm
+        return IsIrishStyleHoldEm
             ? EventCallback.Factory.Create(this, HandleDrawTimeoutFoldAsync)
             : default;
     }
@@ -4354,6 +4403,102 @@ HandType.HighCard
         _ => handType.ToString()
     };
 
+    private static string? BuildFallbackHandDescription(IReadOnlyList<CardPrivateDto> cards)
+    {
+        if (cards.Count == 0)
+        {
+            return null;
+        }
+
+        var rankGroups = cards
+            .Where(c => !string.IsNullOrWhiteSpace(c.Rank))
+            .Select(c => c.Rank!.Trim().ToUpperInvariant())
+            .GroupBy(r => r)
+            .Select(g => g.Count())
+            .OrderByDescending(c => c)
+            .ToList();
+
+        if (rankGroups.Count == 0)
+        {
+            return null;
+        }
+
+        var maxGroup = rankGroups[0];
+        var pairCount = rankGroups.Count(c => c >= 2);
+
+        if (maxGroup >= 4)
+        {
+            return "Four of a Kind";
+        }
+
+        if (maxGroup == 3 && pairCount >= 2)
+        {
+            return "Full House";
+        }
+
+        if (maxGroup == 3)
+        {
+            return "Three of a Kind";
+        }
+
+        if (pairCount >= 2)
+        {
+            return "Two Pair";
+        }
+
+        if (pairCount == 1)
+        {
+            return "One Pair";
+        }
+
+        var highRank = cards
+            .Where(c => !string.IsNullOrWhiteSpace(c.Rank))
+            .Select(c => ParseRankValue(c.Rank!))
+            .DefaultIfEmpty(0)
+            .Max();
+
+        return highRank > 0 ? $"{GetRankDisplayName(highRank)} High" : null;
+    }
+
+    private static string GetRankDisplayName(int rankValue) => rankValue switch
+    {
+        14 => "Ace",
+        13 => "King",
+        12 => "Queen",
+        11 => "Jack",
+        10 => "Ten",
+        9 => "Nine",
+        8 => "Eight",
+        7 => "Seven",
+        6 => "Six",
+        5 => "Five",
+        4 => "Four",
+        3 => "Three",
+        2 => "Two",
+        _ => "High Card"
+    };
+
+    private static int ParseRankValue(string rank)
+    {
+        return rank.Trim().ToUpperInvariant() switch
+        {
+            "A" or "ACE" => 14,
+            "K" or "KING" => 13,
+            "Q" or "QUEEN" => 12,
+            "J" or "JACK" => 11,
+            "10" or "T" or "TEN" => 10,
+            "9" or "NINE" => 9,
+            "8" or "EIGHT" => 8,
+            "7" or "SEVEN" => 7,
+            "6" or "SIX" => 6,
+            "5" or "FIVE" => 5,
+            "4" or "FOUR" => 4,
+            "3" or "THREE" => 3,
+            "2" or "TWO" or "DEUCE" => 2,
+            _ => 0
+        };
+    }
+
     // ============== Dynamic UI Helper Methods ==============
 
     /// <summary>
@@ -4547,6 +4692,12 @@ HandType.HighCard
         // Irish Hold 'Em always discards exactly 2
         if (IsIrishHoldEm) return 2;
 
+        // Phil's Mom always discards exactly 1
+        if (IsPhilsMom) return 1;
+
+        // Crazy Pineapple discards exactly 1 before the flop
+        if (IsCrazyPineapple) return 1;
+
         return Math.Max(publicMax, _maxDiscards);
     }
 
@@ -4558,6 +4709,12 @@ HandType.HighCard
     {
         // Irish Hold 'Em requires exactly 2 discards after the flop
         if (IsIrishHoldEm) return 2;
+
+        // Phil's Mom requires exactly 1 discard in each discard round
+        if (IsPhilsMom) return 1;
+
+        // Crazy Pineapple requires exactly 1 discard before the flop
+        if (IsCrazyPineapple) return 1;
 
         return 0;
     }
@@ -4572,7 +4729,7 @@ HandType.HighCard
 
     private string GetDrawPanelTitle()
     {
-        return IsIrishHoldEm ? "Discard Phase" : "Draw Phase";
+        return IsIrishStyleHoldEm ? "Discard Phase" : "Draw Phase";
     }
 
     /// <summary>
