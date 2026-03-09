@@ -107,6 +107,13 @@ public class ProcessBettingActionCommandHandler(
 			};
 		}
 
+		// Red River rule enforcement: if River is red, the bonus board card must be
+		// available before any River betting action is processed.
+		if (IsRedRiverGame(game) && string.Equals(game.CurrentPhase, "River", StringComparison.OrdinalIgnoreCase))
+		{
+			await DealRedRiverBonusCommunityCardIfNeededAsync(game, now, cancellationToken);
+		}
+
 		// 4. Get active players ordered by seat position
 		var activePlayers = game.GamePlayers
 			.Where(gp => gp.Status == GamePlayerStatus.Active)
@@ -322,6 +329,13 @@ public class ProcessBettingActionCommandHandler(
 			if (game.CurrentPhase is "Flop" or "Turn" or "River")
 			{
 				await DealCommunityCardsForPhaseAsync(game, game.CurrentPhase, now, cancellationToken);
+
+				// Red River rule: if the revealed river card is red, immediately expose
+				// the sixth community card before any River betting actions occur.
+				if (IsRedRiverGame(game) && string.Equals(game.CurrentPhase, "River", StringComparison.OrdinalIgnoreCase))
+				{
+					await DealRedRiverBonusCommunityCardIfNeededAsync(game, now, cancellationToken);
+				}
 
 				// Create a new betting round for the next phase
 				var firstToActIndex = FindFirstActivePlayerAfterDealer(game, activePlayers);
@@ -842,17 +856,32 @@ public class ProcessBettingActionCommandHandler(
 		DateTimeOffset now,
 		CancellationToken cancellationToken)
 	{
-		// Read river state from the store to avoid stale tracked values when tests or
-		// other flows update suit values through a different DbContext instance.
-		var riverCard = await context.GameCards
-			.AsNoTracking()
+		// Prefer tracked state so a just-dealt, not-yet-saved River card can still
+		// trigger the immediate Red River bonus flow before River betting starts.
+		var riverCard = context.GameCards.Local
 			.Where(gc => gc.GameId == game.Id
 				&& gc.HandNumber == game.CurrentHandNumber
 				&& gc.Location == CardLocation.Community
 				&& !gc.IsDiscarded
-				&& gc.DealtAtPhase == "River")
+				&& gc.DealtAtPhase == "River"
+				&& context.Entry(gc).State is EntityState.Added or EntityState.Modified)
 			.OrderByDescending(gc => gc.DealOrder)
-			.FirstOrDefaultAsync(cancellationToken);
+			.FirstOrDefault();
+
+		if (riverCard is null)
+		{
+			// Fall back to store state for flows where River was dealt/suit-adjusted
+			// in a different DbContext instance.
+			riverCard = await context.GameCards
+				.AsNoTracking()
+				.Where(gc => gc.GameId == game.Id
+					&& gc.HandNumber == game.CurrentHandNumber
+					&& gc.Location == CardLocation.Community
+					&& !gc.IsDiscarded
+					&& gc.DealtAtPhase == "River")
+				.OrderByDescending(gc => gc.DealOrder)
+				.FirstOrDefaultAsync(cancellationToken);
+		}
 
 		if (riverCard is null)
 		{

@@ -319,7 +319,8 @@ public class RedRiverHandLifecycleTests : IntegrationTestBase
     private async Task ConfigureNextDeckCardAsync(
         Guid gameId,
         CardSuit bonusSuit,
-        CardSymbol bonusSymbol)
+        CardSymbol bonusSymbol,
+        int deckOffset = 0)
     {
         var context = GetFreshDbContext();
         var game = await context.Games.AsNoTracking().FirstAsync(g => g.Id == gameId);
@@ -331,10 +332,10 @@ public class RedRiverHandLifecycleTests : IntegrationTestBase
             .OrderBy(gc => gc.DealOrder)
             .ToListAsync();
 
-        deckCards.Count.Should().BeGreaterThanOrEqualTo(1);
+        deckCards.Count.Should().BeGreaterThan(deckOffset);
 
-        deckCards[0].Suit = bonusSuit;
-        deckCards[0].Symbol = bonusSymbol;
+        deckCards[deckOffset].Suit = bonusSuit;
+        deckCards[deckOffset].Symbol = bonusSymbol;
 
         await context.SaveChangesAsync();
     }

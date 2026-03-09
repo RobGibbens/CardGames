@@ -4,6 +4,7 @@ Cash
 ## Still to do
 
 - [ ] https://github.com/leeoades/FunctionalStateMachine
+- [ ] Red River not showing extra card
 - [ ] When playing Dealer's choice, filter out games that don't support the number of players
 - [ ] Phil's mom loser showdown not correct
 - [ ] When picking a game, support search

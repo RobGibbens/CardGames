@@ -19,7 +19,7 @@
 
             <!-- Center area: deck, community cards, pot in one row -->
             <div class="table-center">
-                <div class="table-center-row">
+                <div class="table-center-row @(HasExtraCommunityCards ? "table-center-row-compact-board" : string.Empty)">
                     <!-- Deck visualization -->
                     <div class="deck-stack" @ref="_deckRef">
                         @for (var i = 0; i < 5; i++)
@@ -210,6 +210,8 @@
     /// </summary>
     [Parameter]
     public IReadOnlyList<CardPublicDto>? CommunityCards { get; set; }
+
+    private bool HasExtraCommunityCards => CommunityCards is { Count: > 5 };
 
     private ElementReference _deckRef;
 
