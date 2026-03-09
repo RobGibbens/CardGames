@@ -11,6 +11,7 @@ using CardGames.Poker.Hands;
 using CardGames.Poker.Hands.CommunityCardHands;
 using CardGames.Poker.Hands.HandTypes;
 using CardGames.Poker.Hands.Strength;
+using CardGames.Poker.Hands.StudHands;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
@@ -79,8 +80,9 @@ public sealed class PerformShowdownCommandHandler(
             };
         }
 
-        // 2. Get the game flow handler and hand evaluator
-        var gameTypeCode = game.GameType?.Code ?? "FIVECARDDRAW";
+        // 2. Get the game flow handler and hand evaluator.
+        // Dealer's Choice hands should evaluate/showdown against the selected hand type.
+        var gameTypeCode = game.CurrentHandGameTypeCode ?? game.GameType?.Code ?? "FIVECARDDRAW";
         var flowHandler = flowHandlerFactory.GetHandler(gameTypeCode);
         var handEvaluator = handEvaluatorFactory.GetEvaluator(gameTypeCode);
 
@@ -225,7 +227,7 @@ public sealed class PerformShowdownCommandHandler(
         // 14. Build response
         var playerHandsList = BuildPlayerHandsResponse(
             playerHandEvaluations, allWinners, payouts, usersByEmail, handEvaluator,
-            sharedCommunityCards, includeSharedCommunityCards);
+            sharedCommunityCards, includeSharedCommunityCards, gameTypeCode);
 
         return new PerformShowdownSuccessful
         {
@@ -562,9 +564,10 @@ public sealed class PerformShowdownCommandHandler(
                 }
 
                 // Mark pot as awarded
+                var winningHandDescription = FormatHandTypeForDisplay(game.CurrentHandGameTypeCode ?? game.GameType?.Code, eligibleHands[potWinners[0]].Hand);
                 var winReason = potWinners.Count > 1
-                    ? $"Split pot - {eligibleHands[potWinners[0]].Hand.Type}"
-                    : eligibleHands[potWinners[0]].Hand.Type.ToString();
+                    ? $"Split pot - {winningHandDescription}"
+                    : winningHandDescription;
 
                 pot.IsAwarded = true;
                 pot.AwardedAt = now;
@@ -628,7 +631,8 @@ public sealed class PerformShowdownCommandHandler(
         Dictionary<string, UserInfo> usersByEmail,
         IHandEvaluator handEvaluator,
         IReadOnlyCollection<GameCard> sharedCommunityCards,
-        bool includeSharedCommunityCards)
+        bool includeSharedCommunityCards,
+        string? gameTypeCode)
     {
         return playerHandEvaluations.Select(kvp =>
         {
@@ -665,14 +669,17 @@ public sealed class PerformShowdownCommandHandler(
             }
 
             // Generate hand description
-            var handDescription = HandDescriptionFormatter.GetHandDescription(kvp.Value.Hand);
+            var handDescription = string.Equals(gameTypeCode, PokerGameMetadataRegistry.RazzCode, StringComparison.OrdinalIgnoreCase)
+                && kvp.Value.Hand is RazzHand razzHand
+                    ? RazzHand.GetLowHandDescription(razzHand.GetBestLowHand())
+                    : HandDescriptionFormatter.GetHandDescription(kvp.Value.Hand);
 
             return new ShowdownPlayerHand
             {
                 PlayerName = kvp.Key,
                 PlayerFirstName = user?.FirstName,
                 Cards = displayCards,
-                HandType = kvp.Value.Hand.Type.ToString(),
+                HandType = FormatHandTypeForDisplay(gameTypeCode, kvp.Value.Hand),
                 HandDescription = handDescription,
                 HandStrength = kvp.Value.Hand.Strength,
                 IsWinner = isWinner,
@@ -680,6 +687,17 @@ public sealed class PerformShowdownCommandHandler(
                 BestCardIndexes = bestCardIndexes
             };
         }).OrderByDescending(h => h.HandStrength ?? 0).ToList();
+    }
+
+    private static string FormatHandTypeForDisplay(string? gameTypeCode, HandBase hand)
+    {
+        if (string.Equals(gameTypeCode, PokerGameMetadataRegistry.RazzCode, StringComparison.OrdinalIgnoreCase)
+            && hand is RazzHand razzHand)
+        {
+            return RazzHand.GetLowHandDescription(razzHand.GetBestLowHand());
+        }
+
+        return hand.Type.ToString();
     }
 
     /// <summary>

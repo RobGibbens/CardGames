@@ -68,7 +68,7 @@
 - [x] Add Baseball
 - [x] Add Follow the Queen
 - [x] The Good, the Bad, and the Ugly
-- [ ] Add Razz
+- [x] Add Razz
 
 ### 5 Card Stud Variants
 - [ ] Add Five Card Stud

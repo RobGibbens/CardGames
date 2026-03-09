@@ -222,6 +222,46 @@ public static class OddsCalculator
     }
 
     /// <summary>
+    /// Calculates odds for a Razz hand (Ace-to-Five lowball).
+    /// Straights and flushes are ignored for low evaluation.
+    /// </summary>
+    public static OddsResult CalculateRazzOdds(
+        IReadOnlyCollection<Card> heroHoleCards,
+        IReadOnlyCollection<Card> heroBoardCards,
+        int totalCardsPerPlayer = 7,
+        IReadOnlyCollection<Card> deadCards = null,
+        int simulations = DefaultSimulations)
+    {
+        deadCards ??= Array.Empty<Card>();
+        var handTypeCounts = InitializeHandTypeCounts();
+        var dealer = FrenchDeckDealer.WithFullDeck();
+        var heroTotalCards = heroHoleCards.Count + heroBoardCards.Count;
+        var heroCardsNeeded = totalCardsPerPlayer - heroTotalCards;
+
+        for (int i = 0; i < simulations; i++)
+        {
+            dealer.Shuffle();
+
+            var allKnownCards = heroHoleCards.Concat(heroBoardCards).Concat(deadCards).Distinct();
+            foreach (var card in allKnownCards)
+            {
+                dealer.DealSpecific(card);
+            }
+
+            var heroCards = heroHoleCards.Concat(heroBoardCards).ToList();
+            for (int j = 0; j < heroCardsNeeded; j++)
+            {
+                heroCards.Add(dealer.DealCard());
+            }
+
+            var heroHand = CreateRazzHand(heroCards);
+            handTypeCounts[heroHand.Type]++;
+        }
+
+        return CreateResult(handTypeCounts, simulations);
+    }
+
+    /// <summary>
     /// Calculates odds for a Baseball hand (3s and 9s are wild).
     /// </summary>
     public static OddsResult CalculateBaseballOdds(
@@ -563,6 +603,20 @@ public static class OddsCalculator
             cardList.Take(2).ToList(),
             cardList.Skip(2).Take(4).ToList(),
             cardList.Last());
+    }
+
+    private static HandBase CreateRazzHand(IReadOnlyCollection<Card> cards)
+    {
+        if (cards.Count < 7)
+        {
+            throw new ArgumentException($"Expected at least 7 cards for razz hand, but got {cards.Count}");
+        }
+
+        var cardList = cards.ToList();
+        return new RazzHand(
+            cardList.Take(2).ToList(),
+            cardList.Skip(2).Take(4).ToList(),
+            [cardList.Last()]);
     }
 
     private static OddsResult CreateResult(Dictionary<HandType, int> handTypeCounts, int simulations)

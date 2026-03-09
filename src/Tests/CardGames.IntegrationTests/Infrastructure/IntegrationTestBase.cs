@@ -4,6 +4,7 @@ using CardGames.Poker.Api.GameFlow;
 using CardGames.Poker.Betting;
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Api.Infrastructure;
+using CardGames.Poker.Evaluation;
 using CardGames.IntegrationTests.Infrastructure.Fakes;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -47,6 +48,7 @@ public abstract class IntegrationTestBase : IAsyncLifetime
 
         // Add game flow handler factory
         services.AddSingleton<IGameFlowHandlerFactory, GameFlowHandlerFactory>();
+        services.AddSingleton<IHandEvaluatorFactory, HandEvaluatorFactory>();
 
         // Register HybridCache for tests
 #pragma warning disable EXTEXP0018
@@ -58,6 +60,7 @@ public abstract class IntegrationTestBase : IAsyncLifetime
         services.AddSingleton<IActionTimerService, FakeActionTimerService>();
         services.AddSingleton<IGameStateBroadcaster, FakeGameStateBroadcaster>();
         services.AddSingleton<IHandHistoryRecorder, FakeHandHistoryRecorder>();
+        services.AddSingleton<IHandSettlementService, FakeHandSettlementService>();
         services.AddScoped<ICurrentUserService, FakeCurrentUserService>();
         services.AddScoped<ITableStateBuilder, TableStateBuilder>();
 		services.AddScoped<IPlayerChipWalletService, PlayerChipWalletService>();
@@ -94,6 +97,7 @@ public abstract class IntegrationTestBase : IAsyncLifetime
         {
             CreateGameType("FIVECARDDRAW", "Five Card Draw", 2, 8, 5, 0, 0, 5),
             CreateGameType("SEVENCARDSTUD", "Seven Card Stud", 2, 8, 2, 1, 0, 7),
+            CreateGameType("RAZZ", "Razz", 2, 8, 2, 1, 0, 7),
             CreateGameType("KINGSANDLOWS", "Kings and Lows", 2, 8, 5, 0, 0, 5),
             CreateGameType("TWOSJACKSMANWITHTHEAXE", "Twos, Jacks, and Man with the Axe", 2, 8, 5, 0, 0, 5),
             CreateGameType("HOLDEM", "Texas Hold'em", 2, 10, 2, 0, 5, 7),

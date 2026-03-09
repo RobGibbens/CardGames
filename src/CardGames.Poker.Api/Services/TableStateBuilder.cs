@@ -40,12 +40,14 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	private static readonly Dictionary<string, Func<List<GameCard>, List<Card>, string>> StudVariantEvaluators =
 		new(GameCodeComparer)
 		{
-			[PokerGameMetadataRegistry.BaseballCode] = EvaluateBaseballHandDescription
+			[PokerGameMetadataRegistry.BaseballCode] = EvaluateBaseballHandDescription,
+			[PokerGameMetadataRegistry.RazzCode] = EvaluateRazzHandDescription
 		};
 	private static readonly HashSet<string> StudGameCodes =
 		new(GameCodeComparer)
 		{
 			PokerGameMetadataRegistry.SevenCardStudCode,
+			PokerGameMetadataRegistry.RazzCode,
 			PokerGameMetadataRegistry.BaseballCode,
 			PokerGameMetadataRegistry.FollowTheQueenCode
 		};
@@ -794,7 +796,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		var isSouthDakota = IsSouthDakotaGame(game.GameType?.Code);
 		var isIrishHoldEm = IsIrishHoldEmGame(game.GameType?.Code);
 
-		var isSevenCardStud = IsGameType(game.GameType?.Code, PokerGameMetadataRegistry.SevenCardStudCode);
+		var isSevenCardStud = IsGameType(game.GameType?.Code, PokerGameMetadataRegistry.SevenCardStudCode)
+			|| IsGameType(game.GameType?.Code, PokerGameMetadataRegistry.RazzCode);
+		var isRazz = IsGameType(game.GameType?.Code, PokerGameMetadataRegistry.RazzCode);
 		var isBaseball = IsBaseballGame(game.GameType?.Code);
 		var isKingsAndLows = IsKingsAndLowsGame(game.GameType?.Code);
 		var isFollowTheQueen = IsFollowTheQueenGame(game.GameType?.Code);
@@ -1237,8 +1241,16 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					if (initialHoleCards.Count == 2 && openCards.Count <= 4 && holeCards.Count >= 3)
 					{
 						var downCard = new Card((Suit)holeCards[2].Suit, (Symbol)holeCards[2].Symbol);
-						var studHand = new SevenCardStudHand(initialHoleCards, openCards, downCard);
-						playerHandEvaluations[gp.Player.Name] = (studHand, null, null, studHand, gp, cards, [], GetCardIndexes(coreCards, studHand.GetBestHand()));
+						if (isRazz)
+						{
+							var razzHand = new RazzHand(initialHoleCards, openCards, [downCard]);
+							playerHandEvaluations[gp.Player.Name] = (razzHand, null, null, null, gp, cards, [], GetCardIndexes(coreCards, razzHand.GetBestLowHand()));
+						}
+						else
+						{
+							var studHand = new SevenCardStudHand(initialHoleCards, openCards, downCard);
+							playerHandEvaluations[gp.Player.Name] = (studHand, null, null, studHand, gp, cards, [], GetCardIndexes(coreCards, studHand.GetBestHand()));
+						}
 					}
 				}
 				else if (isKingsAndLows)
@@ -2654,6 +2666,18 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			.ToList();
 		var partialStudHand = new StudHand(initialHoleCards, openCards, allHoleCards.Skip(2).ToList());
 		return HandDescriptionFormatter.GetHandDescription(partialStudHand);
+	}
+
+	private static string EvaluateRazzHandDescription(List<GameCard> holeCardEntities, List<Card> openCards)
+	{
+		var allHoleCards = holeCardEntities
+			.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
+			.ToList();
+
+		var initialHoleCards = allHoleCards.Take(2).ToList();
+		var downCards = allHoleCards.Skip(2).ToList();
+		var razzHand = new RazzHand(initialHoleCards, openCards, downCards);
+		return RazzHand.GetLowHandDescription(razzHand.GetBestLowHand());
 	}
 
 	private async Task<string?> EvaluateFollowTheQueenHandDescriptionAsync(

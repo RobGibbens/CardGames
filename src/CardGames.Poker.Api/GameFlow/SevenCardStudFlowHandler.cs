@@ -28,7 +28,7 @@ namespace CardGames.Poker.Api.GameFlow;
 /// Best 5-card hand wins.
 /// </para>
 /// </remarks>
-public sealed class SevenCardStudFlowHandler : BaseGameFlowHandler
+public class SevenCardStudFlowHandler : BaseGameFlowHandler
 {
     /// <inheritdoc />
     public override string GameTypeCode => "SEVENCARDSTUD";

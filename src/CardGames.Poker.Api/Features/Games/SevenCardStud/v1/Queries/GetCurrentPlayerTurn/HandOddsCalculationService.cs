@@ -19,9 +19,10 @@ public static class HandOddsCalculationService
 	/// <param name="heroCards">The player's current hand cards.</param>
 	/// <param name="deadCards">Cards that are known to be out of play (e.g., folded players' cards).</param>
 	/// <returns>Hand odds response with probabilities for each hand type.</returns>
-	public static HandOddsResponse CalculateDrawOdds(
+	public static HandOddsResponse CalculateStudOdds(
 		IReadOnlyList<DealtCard> heroCards,
-		IReadOnlyList<DealtCard>? deadCards = null)
+		IReadOnlyList<DealtCard>? deadCards = null,
+		bool useRazzLowball = false)
 	{
 		var coreHeroCards = heroCards
 			.Select(ConvertDealtCardToCard)
@@ -31,7 +32,9 @@ public static class HandOddsCalculationService
 			.Select(ConvertDealtCardToCard)
 			.ToList() ?? [];
 
-		var result = OddsCalculator.CalculateDrawOdds(coreHeroCards, coreDeadCards);
+		var result = useRazzLowball
+			? OddsCalculator.CalculateRazzOdds(coreHeroCards, [], deadCards: coreDeadCards)
+			: OddsCalculator.CalculateStudOdds(coreHeroCards, coreDeadCards);
 
 		return ConvertToResponse(result);
 	}
@@ -42,9 +45,10 @@ public static class HandOddsCalculationService
 	/// <param name="heroCards">The player's current hand cards as GameCard entities.</param>
 	/// <param name="deadCards">Cards that are known to be out of play.</param>
 	/// <returns>Hand odds response with probabilities for each hand type.</returns>
-	public static HandOddsResponse CalculateDrawOdds(
+	public static HandOddsResponse CalculateStudOdds(
 		IEnumerable<GameCard> heroCards,
-		IEnumerable<GameCard>? deadCards = null)
+		IEnumerable<GameCard>? deadCards = null,
+		bool useRazzLowball = false)
 	{
 		var coreHeroCards = heroCards
 			.Where(c => !c.IsDiscarded)
@@ -55,7 +59,9 @@ public static class HandOddsCalculationService
 			.Select(ConvertGameCardToCard)
 			.ToList() ?? [];
 
-		var result = OddsCalculator.CalculateDrawOdds(coreHeroCards, coreDeadCards);
+		var result = useRazzLowball
+			? OddsCalculator.CalculateRazzOdds(coreHeroCards, [], deadCards: coreDeadCards)
+			: OddsCalculator.CalculateStudOdds(coreHeroCards, coreDeadCards);
 
 		return ConvertToResponse(result);
 	}

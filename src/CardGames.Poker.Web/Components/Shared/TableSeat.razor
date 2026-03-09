@@ -389,7 +389,8 @@
 		// (it can have ties across different streets, causing incorrect interleaving).
 		if (string.Equals(GameTypeCode, "SEVENCARDSTUD", StringComparison.OrdinalIgnoreCase) ||
 			string.Equals(GameTypeCode, "BASEBALL", StringComparison.OrdinalIgnoreCase) ||
-			string.Equals(GameTypeCode, "FOLLOWTHEQUEEN", StringComparison.OrdinalIgnoreCase))
+			string.Equals(GameTypeCode, "FOLLOWTHEQUEEN", StringComparison.OrdinalIgnoreCase) ||
+			string.Equals(GameTypeCode, "RAZZ", StringComparison.OrdinalIgnoreCase))
 		{
 			// Preserve the API order - cards are already sorted by the server
 			return Seat.Cards;

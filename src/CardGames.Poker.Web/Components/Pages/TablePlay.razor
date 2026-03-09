@@ -688,6 +688,7 @@
     private bool IsFiveCardDraw => string.Equals(_gameTypeCode, "FIVECARDDRAW", StringComparison.OrdinalIgnoreCase);
     private bool IsKingsAndLows => string.Equals(_gameTypeCode, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase);
     private bool IsSevenCardStud => string.Equals(_gameTypeCode, "SEVENCARDSTUD", StringComparison.OrdinalIgnoreCase);
+    private bool IsRazz => string.Equals(_gameTypeCode, "RAZZ", StringComparison.OrdinalIgnoreCase);
     private bool IsGoodBadUgly => string.Equals(_gameTypeCode, "GOODBADUGLY", StringComparison.OrdinalIgnoreCase);
     private bool IsFollowTheQueen => string.Equals(_gameTypeCode, "FOLLOWTHEQUEEN", StringComparison.OrdinalIgnoreCase);
     private bool IsBaseball => string.Equals(_gameTypeCode, "BASEBALL", StringComparison.OrdinalIgnoreCase);
@@ -701,7 +702,7 @@
     private bool IsPhilsMom => string.Equals(_gameTypeCode, "PHILSMOM", StringComparison.OrdinalIgnoreCase);
     private bool IsCrazyPineapple => string.Equals(_gameTypeCode, "CRAZYPINEAPPLE", StringComparison.OrdinalIgnoreCase);
     private bool IsIrishStyleHoldEm => IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple;
-    private bool UsesCardDealAnimation => IsSevenCardStud || IsGoodBadUgly || IsBaseball || IsFollowTheQueen || IsFiveCardDraw || IsTwosJacksManWithTheAxe || IsKingsAndLows || IsHoldEm || IsRedRiver || IsHoldTheBaseball || IsOmaha || IsNebraska || IsSouthDakota || IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple;
+    private bool UsesCardDealAnimation => IsSevenCardStud || IsRazz || IsGoodBadUgly || IsBaseball || IsFollowTheQueen || IsFiveCardDraw || IsTwosJacksManWithTheAxe || IsKingsAndLows || IsHoldEm || IsRedRiver || IsHoldTheBaseball || IsOmaha || IsNebraska || IsSouthDakota || IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple;
     private int DealAnimationDelayMs => 750;
 
     // Game rules for dynamic UI rendering
@@ -2669,6 +2670,26 @@
                 return;
             }
         }
+        else if (IsRazz)
+        {
+            var startHandResponse = await SevenCardStudApi.SevenCardStudStartHandAsync(GameId);
+            if (!startHandResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
+
+            var collectAntesResponse = await SevenCardStudApi.SevenCardStudCollectAntesAsync(GameId);
+            if (!collectAntesResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
+
+            var dealHandsResponse = await SevenCardStudApi.SevenCardStudDealHandsAsync(GameId);
+            if (!dealHandsResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
+        }
         else if (IsGoodBadUgly)
         {
             var startHandResponse = await SevenCardStudApi.SevenCardStudStartHandAsync(GameId);
@@ -2854,6 +2875,10 @@
             showdownResponse = await TwosJacksManWithTheAxeApi.TwosJacksManWithTheAxePerformShowdownAsync(GameId);
         }
         else if (IsSevenCardStud)
+        {
+            showdownResponse = await SevenCardStudApi.SevenCardStudPerformShowdownAsync(GameId);
+        }
+        else if (IsRazz)
         {
             showdownResponse = await SevenCardStudApi.SevenCardStudPerformShowdownAsync(GameId);
         }
@@ -4000,6 +4025,10 @@
             else if (IsSevenCardStud)
             {
                 result = OddsCalculator.CalculateStudOdds(cardsToKeep, deadCards);
+            }
+            else if (IsRazz)
+            {
+                result = OddsCalculator.CalculateRazzOdds(cardsToKeep, deadCards);
             }
             else if (IsKingsAndLows)
             {

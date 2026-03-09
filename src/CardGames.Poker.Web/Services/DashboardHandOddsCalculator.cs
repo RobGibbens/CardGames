@@ -28,6 +28,11 @@ public static class DashboardHandOddsCalculator
             return OddsCalculator.CalculateStudOdds(playerCards, deadCards);
         }
 
+        if (string.Equals(gameTypeCode, "RAZZ", StringComparison.OrdinalIgnoreCase))
+        {
+            return OddsCalculator.CalculateRazzOdds(playerCards, deadCards);
+        }
+
         if (string.Equals(gameTypeCode, "BASEBALL", StringComparison.OrdinalIgnoreCase))
         {
             var holeCards = playerCards.Take(2).ToList();

@@ -4,6 +4,7 @@ using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.CollectAntes;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.DealHands;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.ProcessBettingAction;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.ProcessDraw;
+using CardGames.Poker.Api.Data.Entities;
 using BettingAction = CardGames.Poker.Api.Data.Entities.BettingActionType;
 
 namespace CardGames.IntegrationTests.Features.Commands;
@@ -198,5 +199,99 @@ public class PerformShowdownCommandHandlerTests : IntegrationTestBase
         // Total chips should equal starting chips (no money leaves the table)
         var totalChips = freshPlayers.Sum(p => p.ChipStack);
         totalChips.Should().Be(2000); // 2 players x 1000 starting chips
+    }
+
+    [Fact]
+    public async Task Handle_DealersChoiceRazz_UsesLowballForWinnerSelection()
+    {
+        // Arrange: Dealer's Choice table playing a Razz hand in showdown.
+        var setup = await DatabaseSeeder.CreateDealersChoiceGameSetupAsync(DbContext, 2);
+        var game = await DbContext.Games
+            .Include(g => g.GamePlayers)
+                .ThenInclude(gp => gp.Player)
+            .FirstAsync(g => g.Id == setup.Game.Id);
+
+        var now = DateTimeOffset.UtcNow;
+        game.CurrentPhase = nameof(Phases.Showdown);
+        game.CurrentHandNumber = 1;
+        game.CurrentHandGameTypeCode = "RAZZ";
+
+        var playerOne = game.GamePlayers.OrderBy(gp => gp.SeatPosition).First();
+        var playerTwo = game.GamePlayers.OrderBy(gp => gp.SeatPosition).Skip(1).First();
+
+        DbContext.Pots.Add(new CardGames.Poker.Api.Data.Entities.Pot
+        {
+            GameId = game.Id,
+            HandNumber = game.CurrentHandNumber,
+            PotType = PotType.Main,
+            PotOrder = 0,
+            Amount = 100,
+            IsAwarded = false,
+            CreatedAt = now
+        });
+
+        // Player 1: strong Razz low (6-4-3-2-A) but weak high hand.
+        AddStudCard(game.Id, playerOne.Id, 1, CardLocation.Hole, CardSuit.Hearts, CardSymbol.Ace, false, now);
+        AddStudCard(game.Id, playerOne.Id, 1, CardLocation.Hole, CardSuit.Diamonds, CardSymbol.Deuce, false, now);
+        AddStudCard(game.Id, playerOne.Id, 1, CardLocation.Hole, CardSuit.Clubs, CardSymbol.Queen, false, now);
+        AddStudCard(game.Id, playerOne.Id, 1, CardLocation.Board, CardSuit.Clubs, CardSymbol.Three, true, now);
+        AddStudCard(game.Id, playerOne.Id, 1, CardLocation.Board, CardSuit.Spades, CardSymbol.Four, true, now);
+        AddStudCard(game.Id, playerOne.Id, 1, CardLocation.Board, CardSuit.Hearts, CardSymbol.Six, true, now);
+        AddStudCard(game.Id, playerOne.Id, 1, CardLocation.Board, CardSuit.Diamonds, CardSymbol.King, true, now);
+
+        // Player 2: weaker Razz low but stronger high hand (pair of nines).
+        AddStudCard(game.Id, playerTwo.Id, 1, CardLocation.Hole, CardSuit.Hearts, CardSymbol.Nine, false, now);
+        AddStudCard(game.Id, playerTwo.Id, 1, CardLocation.Hole, CardSuit.Diamonds, CardSymbol.Nine, false, now);
+        AddStudCard(game.Id, playerTwo.Id, 1, CardLocation.Hole, CardSuit.Spades, CardSymbol.King, false, now);
+        AddStudCard(game.Id, playerTwo.Id, 1, CardLocation.Board, CardSuit.Clubs, CardSymbol.Eight, true, now);
+        AddStudCard(game.Id, playerTwo.Id, 1, CardLocation.Board, CardSuit.Spades, CardSymbol.Seven, true, now);
+        AddStudCard(game.Id, playerTwo.Id, 1, CardLocation.Board, CardSuit.Hearts, CardSymbol.Five, true, now);
+        AddStudCard(game.Id, playerTwo.Id, 1, CardLocation.Board, CardSuit.Clubs, CardSymbol.Deuce, true, now);
+
+        await DbContext.SaveChangesAsync();
+
+        // Act
+        var result = await Mediator.Send(new PerformShowdownCommand(game.Id));
+
+        // Assert
+        result.IsT0.Should().BeTrue();
+        result.AsT0.Payouts.Should().ContainSingle();
+        result.AsT0.Payouts.Should().ContainKey(playerOne.Player.Name);
+        result.AsT0.Payouts[playerOne.Player.Name].Should().Be(100);
+        result.AsT0.PlayerHands.Single(h => h.PlayerName == playerOne.Player.Name)
+            .HandType.Should().Be("6-4-3-2-1 low");
+    }
+
+    private void AddStudCard(
+        Guid gameId,
+        Guid gamePlayerId,
+        int handNumber,
+        CardLocation location,
+        CardSuit suit,
+        CardSymbol symbol,
+        bool isVisible,
+        DateTimeOffset dealtAt)
+    {
+        DbContext.GameCards.Add(new GameCard
+        {
+            GameId = gameId,
+            GamePlayerId = gamePlayerId,
+            HandNumber = handNumber,
+            Location = location,
+            Suit = suit,
+            Symbol = symbol,
+            IsVisible = isVisible,
+            IsDiscarded = false,
+            DealOrder = GetNextDealOrder(gamePlayerId, handNumber),
+            DealtAt = dealtAt,
+            DealtAtPhase = nameof(Phases.Showdown)
+        });
+    }
+
+    private int GetNextDealOrder(Guid gamePlayerId, int handNumber)
+    {
+        var existingForPlayer = DbContext.GameCards
+            .Count(c => c.GamePlayerId == gamePlayerId && c.HandNumber == handNumber);
+        return existingForPlayer + 1;
     }
 }

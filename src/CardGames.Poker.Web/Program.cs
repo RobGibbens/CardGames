@@ -191,6 +191,7 @@ builder.Services
 // Register Game API Client Wrappers and Router
 builder.Services.AddScoped<IGameApiClient, FiveCardDrawApiClientWrapper>();
 builder.Services.AddScoped<IGameApiClient, SevenCardStudApiClientWrapper>();
+builder.Services.AddScoped<IGameApiClient, RazzApiClientWrapper>();
 builder.Services.AddScoped<IGameApiClient, FollowTheQueenApiClientWrapper>();
 builder.Services.AddScoped<IGameApiClient, KingsAndLowsApiClientWrapper>();
 builder.Services.AddScoped<IGameApiClient, TwosJacksManWithTheAxeApiClientWrapper>();

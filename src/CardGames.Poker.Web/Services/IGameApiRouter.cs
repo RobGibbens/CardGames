@@ -105,6 +105,7 @@ public class GameApiRouter : IGameApiRouter
     private const string TwosJacksManWithTheAxe = "TWOSJACKSMANWITHTHEAXE";
     private const string KingsAndLows = "KINGSANDLOWS";
     private const string SevenCardStud = "SEVENCARDSTUD";
+    private const string Razz = "RAZZ";
     private const string GoodBadUgly = "GOODBADUGLY";
     private const string Baseball = "BASEBALL";
     private const string HoldTheBaseball = "HOLDTHEBASEBALL";
@@ -158,6 +159,7 @@ public class GameApiRouter : IGameApiRouter
             [CrazyPineapple] = RouteCrazyPineappleBettingActionAsync,
             [TwosJacksManWithTheAxe] = RouteTwosJacksManWithTheAxeBettingActionAsync,
             [SevenCardStud] = RouteSevenCardStudBettingActionAsync,
+            [Razz] = RouteSevenCardStudBettingActionAsync,
             [GoodBadUgly] = RouteGoodBadUglyBettingActionAsync,
             [Baseball] = RouteBaseballBettingActionAsync,
             [HoldTheBaseball] = RouteHoldTheBaseballBettingActionAsync,

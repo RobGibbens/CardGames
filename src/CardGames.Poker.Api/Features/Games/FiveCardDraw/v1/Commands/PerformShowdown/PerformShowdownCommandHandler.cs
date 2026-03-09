@@ -3,8 +3,11 @@ using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
+using CardGames.Poker.Evaluation;
 using CardGames.Poker.Games.FiveCardDraw;
+using CardGames.Poker.Hands;
 using CardGames.Poker.Hands.DrawHands;
+using CardGames.Poker.Hands.StudHands;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
@@ -16,7 +19,7 @@ namespace CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.PerformSho
 /// <summary>
 /// Handles the <see cref="PerformShowdownCommand"/> to evaluate hands and award pots.
 /// </summary>
-public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryRecorder handHistoryRecorder, IHandSettlementService handSettlementService)
+public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryRecorder handHistoryRecorder, IHandSettlementService handSettlementService, IHandEvaluatorFactory handEvaluatorFactory)
 	: IRequestHandler<PerformShowdownCommand, OneOf<PerformShowdownSuccessful, PerformShowdownError>>
 {
 	/// <inheritdoc />
@@ -74,6 +77,8 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 			.Where(u => u.Email != null && playerEmails.Contains(u.Email))
 			.Select(u => new { Email = u.Email!, u.FirstName })
 			.ToDictionaryAsync(u => u.Email, StringComparer.OrdinalIgnoreCase, cancellationToken);
+
+		var gameTypeCode = game.CurrentHandGameTypeCode ?? "FIVECARDDRAW";
 
 		// 4. Load cards for players in hand
 		var playerCards = await context.GameCards
@@ -168,7 +173,9 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 		}
 
 			// 7. Evaluate all hands
-			var playerHandEvaluations = new Dictionary<string, (DrawHand hand, List<GameCard> cards, GamePlayer gamePlayer)>();
+			var playerHandEvaluations = new Dictionary<string, (HandBase hand, List<GameCard> cards, GamePlayer gamePlayer)>();
+			var handEvaluator = handEvaluatorFactory.GetEvaluator(gameTypeCode);
+			var isRazz = string.Equals(gameTypeCode, "RAZZ", StringComparison.OrdinalIgnoreCase);
 
 
 			foreach (var gamePlayer in playersInHand)
@@ -178,9 +185,63 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 					continue; // Skip players without valid hands
 				}
 
-				var coreCards = cards.Select(c => new Card(MapSuit(c.Suit), MapSymbol(c.Symbol))).ToList();
-				var drawHand = new DrawHand(coreCards);
-				playerHandEvaluations[gamePlayer.Player.Name] = (drawHand, cards, gamePlayer);
+				if (isRazz)
+				{
+					var holeCards = cards
+						.Where(c => c.Location == CardLocation.Hole)
+						.OrderBy(c => c.DealOrder)
+						.Select(c => new Card(MapSuit(c.Suit), MapSymbol(c.Symbol)))
+						.ToList();
+
+					var boardCards = cards
+						.Where(c => c.Location == CardLocation.Board)
+						.OrderBy(c => c.DealOrder)
+						.Select(c => new Card(MapSuit(c.Suit), MapSymbol(c.Symbol)))
+						.ToList();
+
+					if (holeCards.Count < 3)
+					{
+						continue;
+					}
+
+					var razzHand = new RazzHand(holeCards.Take(2).ToList(), boardCards, [holeCards[2]]);
+					playerHandEvaluations[gamePlayer.Player.Name] = (razzHand, cards, gamePlayer);
+				}
+				else if (handEvaluator.SupportsPositionalCards)
+				{
+					var holeCards = cards
+						.Where(c => c.Location == CardLocation.Hole || c.Location == CardLocation.Hand)
+						.OrderBy(c => c.DealOrder)
+						.Select(c => new Card(MapSuit(c.Suit), MapSymbol(c.Symbol)))
+						.ToList();
+
+					var boardCards = cards
+						.Where(c => c.Location == CardLocation.Board)
+						.OrderBy(c => c.DealOrder)
+						.Select(c => new Card(MapSuit(c.Suit), MapSymbol(c.Symbol)))
+						.ToList();
+
+					if (holeCards.Count + boardCards.Count < 5)
+					{
+						continue;
+					}
+
+					var downCards = cards
+						.Where(c => c.Location == CardLocation.Hole)
+						.OrderBy(c => c.DealOrder)
+						.Skip(2)
+						.Select(c => new Card(MapSuit(c.Suit), MapSymbol(c.Symbol)))
+						.ToList();
+
+					var hand = handEvaluator.CreateHand(holeCards.Take(2).ToList(), boardCards, downCards);
+					playerHandEvaluations[gamePlayer.Player.Name] = (hand, cards, gamePlayer);
+				}
+				else
+				{
+					var coreCards = cards.Select(c => new Card(MapSuit(c.Suit), MapSymbol(c.Symbol))).ToList();
+					var drawHand = new DrawHand(coreCards);
+					playerHandEvaluations[gamePlayer.Player.Name] = (drawHand, cards, gamePlayer);
+				}
 			}
 
 			// 8. Award each pot to the best hand among ELIGIBLE players only
@@ -261,9 +322,13 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 					}
 
 					// Mark pot as awarded
+					var winningHand = eligibleHands[potWinners[0]].hand;
+					var winningHandType = winningHand is RazzHand razzHand
+						? RazzHand.GetLowHandDescription(razzHand.GetBestLowHand())
+						: winningHand.Type.ToString();
 					var winReason = potWinners.Count > 1
-						? $"Split pot - {eligibleHands[potWinners[0]].hand.Type}"
-						: eligibleHands[potWinners[0]].hand.Type.ToString();
+						? $"Split pot - {winningHandType}"
+						: winningHandType;
 
 					pot.IsAwarded = true;
 					pot.AwardedAt = now;
@@ -367,7 +432,9 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 						Suit = c.Suit,
 						Symbol = c.Symbol
 					}).ToList(),
-					HandType = kvp.Value.hand.Type.ToString(),
+					HandType = kvp.Value.hand is RazzHand razzHand
+						? RazzHand.GetLowHandDescription(razzHand.GetBestLowHand())
+						: kvp.Value.hand.Type.ToString(),
 					HandStrength = kvp.Value.hand.Strength,
 					IsWinner = isWinner,
 					AmountWon = payouts.GetValueOrDefault(kvp.Key, 0)
