@@ -229,9 +229,9 @@ public class ProcessBettingActionCommandHandler(
 				"Betting round complete. Advancing from {PreviousPhase} to {NewPhase} for game {GameId}, hand {HandNumber}",
 				previousPhase, game.CurrentPhase, game.Id, game.CurrentHandNumber);
 
-			// Irish Hold 'Em: when advancing to Flop, deal the flop community cards
-			// but skip the Flop betting round — go directly to DrawPhase.
-			if (game.CurrentPhase == "Flop" && IsIrishHoldEmGame(game))
+			// Irish Hold 'Em and Crazy Pineapple: when advancing to Flop, deal the flop
+			// community cards but skip the Flop betting round and go directly to DrawPhase.
+			if (game.CurrentPhase == "Flop" && (IsIrishHoldEmGame(game) || IsCrazyPineappleGame(game)))
 			{
 				// Deal flop community cards
 				await DealCommunityCardsForPhaseAsync(game, "Flop", now, cancellationToken);
@@ -243,7 +243,7 @@ public class ProcessBettingActionCommandHandler(
 				game.CurrentPlayerIndex = firstDrawPlayerIndex;
 
 				logger.LogInformation(
-					"Irish Hold 'Em: Flop dealt, skipping Flop betting round. Entering DrawPhase for game {GameId}",
+					"Flop dealt, skipping Flop betting round and entering DrawPhase for game {GameId}",
 					game.Id);
 
 				game.UpdatedAt = now;
@@ -421,7 +421,7 @@ public class ProcessBettingActionCommandHandler(
 			return requestedAction;
 		}
 
-		if (!IsIrishHoldEmGame(game) && !IsPhilsMomGame(game))
+		if (!IsIrishHoldEmGame(game) && !IsPhilsMomGame(game) && !IsCrazyPineappleGame(game))
 		{
 			return requestedAction;
 		}
@@ -672,6 +672,9 @@ public class ProcessBettingActionCommandHandler(
 
 	private static bool IsPhilsMomGame(Game game)
 		=> string.Equals(game.GameType?.Code, PokerGameMetadataRegistry.PhilsMomCode, StringComparison.OrdinalIgnoreCase);
+
+	private static bool IsCrazyPineappleGame(Game game)
+		=> string.Equals(game.GameType?.Code, PokerGameMetadataRegistry.CrazyPineappleCode, StringComparison.OrdinalIgnoreCase);
 
 	#endregion
 

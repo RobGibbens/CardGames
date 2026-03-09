@@ -20,8 +20,10 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 	: IRequestHandler<ProcessDiscardCommand, OneOf<ProcessDiscardSuccessful, ProcessDiscardError>>
 {
 	private const int InitialHoleCardCount = 4;
+	private const int CrazyPineappleInitialHoleCardCount = 3;
 	private const int IrishRequiredDiscardCount = 2;
 	private const int PhilsMomRequiredDiscardCount = 1;
+	private const int CrazyPineappleRequiredDiscardCount = 1;
 
 	/// <inheritdoc />
 	public async Task<OneOf<ProcessDiscardSuccessful, ProcessDiscardError>> Handle(
@@ -64,7 +66,8 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 		var gameTypeCode = game.CurrentHandGameTypeCode ?? game.GameType?.Code;
 		var isPhilsMom = string.Equals(gameTypeCode, PokerGameMetadataRegistry.PhilsMomCode, StringComparison.OrdinalIgnoreCase);
 		var isIrishHoldEm = string.Equals(gameTypeCode, PokerGameMetadataRegistry.IrishHoldEmCode, StringComparison.OrdinalIgnoreCase);
-		if (!isPhilsMom && !isIrishHoldEm)
+		var isCrazyPineapple = string.Equals(gameTypeCode, PokerGameMetadataRegistry.CrazyPineappleCode, StringComparison.OrdinalIgnoreCase);
+		if (!isPhilsMom && !isIrishHoldEm && !isCrazyPineapple)
 		{
 			return new ProcessDiscardError
 			{
@@ -73,7 +76,11 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 			};
 		}
 
-		var requiredDiscardCount = isPhilsMom ? PhilsMomRequiredDiscardCount : IrishRequiredDiscardCount;
+		var requiredDiscardCount = isIrishHoldEm ? IrishRequiredDiscardCount : PhilsMomRequiredDiscardCount;
+		if (isCrazyPineapple)
+		{
+			requiredDiscardCount = CrazyPineappleRequiredDiscardCount;
+		}
 
 		// 3. Get eligible discard players
 		var activePlayers = game.GamePlayers
@@ -140,7 +147,16 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 			};
 		}
 
-		var drawRound = ResolveDrawRound(playerCards.Count, isPhilsMom);
+		if (playerCards.Count < CrazyPineappleInitialHoleCardCount && isCrazyPineapple)
+		{
+			return new ProcessDiscardError
+			{
+				Message = $"Player does not have enough cards. Expected {CrazyPineappleInitialHoleCardCount}, found {playerCards.Count}.",
+				Code = ProcessDiscardErrorCode.InsufficientCards
+			};
+		}
+
+		var drawRound = ResolveDrawRound(playerCards.Count, isPhilsMom, isCrazyPineapple);
 		if (drawRound < 0)
 		{
 			return new ProcessDiscardError
@@ -212,7 +228,11 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 
 		if (discardComplete)
 		{
-			if (isPhilsMom && drawRound == 1)
+			if (isCrazyPineapple)
+			{
+				await StartFlopPhaseAsync(game, activePlayers, now, cancellationToken, dealFlopCards: false);
+			}
+			else if (isPhilsMom && drawRound == 1)
 			{
 				await StartFlopPhaseAsync(game, activePlayers, now, cancellationToken);
 			}
@@ -263,8 +283,17 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 		return pendingPlayers[0].SeatPosition;
 	}
 
-	private static int ResolveDrawRound(int cardsInHand, bool isPhilsMom)
+	private static int ResolveDrawRound(int cardsInHand, bool isPhilsMom, bool isCrazyPineapple)
 	{
+		if (isCrazyPineapple)
+		{
+			return cardsInHand switch
+			{
+				3 => 1,
+				_ => -1
+			};
+		}
+
 		if (!isPhilsMom)
 		{
 			return 1;
@@ -278,7 +307,12 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 		};
 	}
 
-	private async Task StartFlopPhaseAsync(Game game, List<GamePlayer> activePlayers, DateTimeOffset now, CancellationToken cancellationToken)
+	private async Task StartFlopPhaseAsync(
+		Game game,
+		List<GamePlayer> activePlayers,
+		DateTimeOffset now,
+		CancellationToken cancellationToken,
+		bool dealFlopCards = true)
 	{
 		foreach (var gamePlayer in activePlayers)
 		{
@@ -295,7 +329,10 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 			return;
 		}
 
-		await DealCommunityCardsAsync(game, nameof(Phases.Flop), cardCount: 3, firstDealOrder: 1, now, cancellationToken);
+		if (dealFlopCards)
+		{
+			await DealCommunityCardsAsync(game, nameof(Phases.Flop), cardCount: 3, firstDealOrder: 1, now, cancellationToken);
+		}
 
 		var nextRoundNumber = await context.BettingRounds
 			.Where(br => br.GameId == game.Id && br.HandNumber == game.CurrentHandNumber)
