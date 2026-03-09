@@ -262,6 +262,71 @@ public class PerformShowdownCommandHandlerTests : IntegrationTestBase
             .HandType.Should().Be("6-4-3-2-1 low");
     }
 
+    [Fact]
+    public async Task Handle_DealersChoiceRazz_ExactUserExample_UsesLowballWinnerAndDescriptions()
+    {
+        // Arrange: Dealer's Choice table playing a Razz hand in showdown.
+        var setup = await DatabaseSeeder.CreateDealersChoiceGameSetupAsync(DbContext, 2);
+        var game = await DbContext.Games
+            .Include(g => g.GamePlayers)
+                .ThenInclude(gp => gp.Player)
+            .FirstAsync(g => g.Id == setup.Game.Id);
+
+        var now = DateTimeOffset.UtcNow;
+        game.CurrentPhase = nameof(Phases.Showdown);
+        game.CurrentHandNumber = 1;
+        game.CurrentHandGameTypeCode = "RAZZ";
+
+        var playerOne = game.GamePlayers.OrderBy(gp => gp.SeatPosition).First();
+        var playerTwo = game.GamePlayers.OrderBy(gp => gp.SeatPosition).Skip(1).First();
+
+        DbContext.Pots.Add(new CardGames.Poker.Api.Data.Entities.Pot
+        {
+            GameId = game.Id,
+            HandNumber = game.CurrentHandNumber,
+            PotType = PotType.Main,
+            PotOrder = 0,
+            Amount = 100,
+            IsAwarded = false,
+            CreatedAt = now
+        });
+
+        // Player1: Ks, Js, 6s, 5h, Qs, 2h, 6d -> best Razz low should be 12-11-6-5-2.
+        AddStudCard(game.Id, playerOne.Id, 1, CardLocation.Hole, CardSuit.Spades, CardSymbol.King, false, now);
+        AddStudCard(game.Id, playerOne.Id, 1, CardLocation.Hole, CardSuit.Spades, CardSymbol.Jack, false, now);
+        AddStudCard(game.Id, playerOne.Id, 1, CardLocation.Hole, CardSuit.Spades, CardSymbol.Six, false, now);
+        AddStudCard(game.Id, playerOne.Id, 1, CardLocation.Board, CardSuit.Hearts, CardSymbol.Five, true, now);
+        AddStudCard(game.Id, playerOne.Id, 1, CardLocation.Board, CardSuit.Spades, CardSymbol.Queen, true, now);
+        AddStudCard(game.Id, playerOne.Id, 1, CardLocation.Board, CardSuit.Hearts, CardSymbol.Deuce, true, now);
+        AddStudCard(game.Id, playerOne.Id, 1, CardLocation.Board, CardSuit.Diamonds, CardSymbol.Six, true, now);
+
+        // Player2: Qc, Kh, 9d, 7h, 9h, 7d, 5s -> best Razz low should be 13-12-9-7-5.
+        AddStudCard(game.Id, playerTwo.Id, 1, CardLocation.Hole, CardSuit.Clubs, CardSymbol.Queen, false, now);
+        AddStudCard(game.Id, playerTwo.Id, 1, CardLocation.Hole, CardSuit.Hearts, CardSymbol.King, false, now);
+        AddStudCard(game.Id, playerTwo.Id, 1, CardLocation.Hole, CardSuit.Diamonds, CardSymbol.Nine, false, now);
+        AddStudCard(game.Id, playerTwo.Id, 1, CardLocation.Board, CardSuit.Hearts, CardSymbol.Seven, true, now);
+        AddStudCard(game.Id, playerTwo.Id, 1, CardLocation.Board, CardSuit.Hearts, CardSymbol.Nine, true, now);
+        AddStudCard(game.Id, playerTwo.Id, 1, CardLocation.Board, CardSuit.Diamonds, CardSymbol.Seven, true, now);
+        AddStudCard(game.Id, playerTwo.Id, 1, CardLocation.Board, CardSuit.Spades, CardSymbol.Five, true, now);
+
+        await DbContext.SaveChangesAsync();
+
+        // Act
+        var result = await Mediator.Send(new PerformShowdownCommand(game.Id));
+
+        // Assert
+        result.IsT0.Should().BeTrue();
+        result.AsT0.Payouts.Should().ContainSingle();
+        result.AsT0.Payouts.Should().ContainKey(playerOne.Player.Name);
+        result.AsT0.Payouts[playerOne.Player.Name].Should().Be(100);
+
+        var playerOneHand = result.AsT0.PlayerHands.Single(h => h.PlayerName == playerOne.Player.Name);
+        var playerTwoHand = result.AsT0.PlayerHands.Single(h => h.PlayerName == playerTwo.Player.Name);
+
+        playerOneHand.HandType.Should().Be("12-11-6-5-2 low");
+        playerTwoHand.HandType.Should().Be("13-12-9-7-5 low");
+    }
+
     private void AddStudCard(
         Guid gameId,
         Guid gamePlayerId,
