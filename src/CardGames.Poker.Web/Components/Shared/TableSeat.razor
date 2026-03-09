@@ -152,6 +152,13 @@
 				{
 					<div class="seat-blind-button seat-bb-button" title="Big Blind">BB</div>
 				}
+
+				@if (IsCurrentPlayer && ShowCards && Seat.Cards.Count > 0 && !string.IsNullOrWhiteSpace(Seat.HandEvaluationDescription))
+				{
+					<div class="hand-eval-tooltip">
+						@Seat.HandEvaluationDescription
+					</div>
+				}
 			</div>
 
 		</div>
@@ -164,13 +171,6 @@
 			</div>
 		}
 
-		<!-- Hand Eval Tooltip (Shown on hover) -->
-		@if (IsCurrentPlayer && ShowCards && Seat.Cards.Count > 0 && !string.IsNullOrWhiteSpace(Seat.HandEvaluationDescription))
-		{
-			<div class="hand-eval-tooltip">
-				@Seat.HandEvaluationDescription
-			</div>
-		}
 	}
 	else
 	{

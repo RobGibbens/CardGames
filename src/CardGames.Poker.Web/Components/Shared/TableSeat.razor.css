@@ -186,9 +186,9 @@
 /* Hand Evaluation Tooltip - always visible */
 .hand-eval-tooltip {
     position: absolute;
-    top: -75px; /* Position above cards */
+    top: calc(100% + 13px); /* Position below info-pill-container */
     left: 50%;
-    transform: translateX(-50%) translateY(-5px);
+    transform: translateX(-50%);
     background-color: rgba(20, 20, 20, 0.95);
     color: #ffd700; /* Gold text */
     border: 1px solid #555;
