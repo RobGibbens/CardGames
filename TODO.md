@@ -5,6 +5,7 @@
 - [ ] https://github.com/leeoades/FunctionalStateMachine
 - [ ] When playing Dealer's choice, filter out games that don't support the number of players
 - [ ] Phil's mom loser showdown not correct
+- [ ] Allow table creator to turn off odds during game
 
 ### Leagues
 

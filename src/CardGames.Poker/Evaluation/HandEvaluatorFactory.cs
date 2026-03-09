@@ -34,6 +34,11 @@ public sealed class HandEvaluatorFactory : IHandEvaluatorFactory
     public const string OmahaCode = "OMAHA";
 
     /// <summary>
+    /// Game type code for Nebraska.
+    /// </summary>
+    public const string NebraskaCode = "NEBRASKA";
+
+    /// <summary>
     /// Game type code for Seven Card Stud.
     /// </summary>
     public const string SevenCardStudCode = "SEVENCARDSTUD";

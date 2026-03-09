@@ -6,6 +6,13 @@ This document lists the current locations where behavior branches on **game type
 
 The codebase has improved extensibility via reflection-based registries and flow handlers, but several **hardcoded game type checks** and **phase name lists** remain. The largest concentration of branching is in the API table state builder and the Blazor UI page (`TablePlay.razor`).
 
+### Nebraska (NEBRASKA) Backend Notes
+
+- Nebraska follows Omaha-style blind/community flow in backend orchestration.
+- Domain hand evaluation must enforce exactly 3 hole cards + 2 community cards.
+- API branches that were Omaha-specific (showdown/state-builder best-card selection) must include Nebraska-specific combination logic.
+- Any fallback handler/client path that defaults to Five Card Draw should not be used for Nebraska once metadata + flow handler registration is present.
+
 ## 1) API Services
 
 ### 1.1 `CardGames.Poker.Api/Services/TableStateBuilder.cs`

@@ -1,4 +1,5 @@
 using CardGames.Poker.Games;
+using System.Text.Json.Serialization;
 
 namespace CardGames.Poker.Api.Features.Games.AvailablePokerGames.v1.Queries.GetAvailablePokerGames;
 
@@ -12,5 +13,6 @@ public record GetAvailablePokerGamesResponse(
 	int MinimumNumberOfPlayers,
 	int MaximumNumberOfPlayers,
 	string? ImageName = null,
+	[property: JsonConverter(typeof(JsonStringEnumConverter))]
 	VariantType VariantType = VariantType.Other
 );

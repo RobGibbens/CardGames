@@ -347,6 +347,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			var isCommunityCardGame = IsHoldEmGame(game.GameType?.Code)
 				|| IsHoldTheBaseballGame(game.GameType?.Code)
 				|| IsOmahaGame(game.GameType?.Code)
+				|| IsNebraskaGame(game.GameType?.Code)
 				|| IsIrishHoldEmGame(game.GameType?.Code);
 
 			// Seven Card Stud / Baseball / Follow The Queen: Requires 2 hole + up to 4 board + 1 down card (7 total at showdown)
@@ -416,6 +417,12 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				{
 					var omahaHand = new CardGames.Poker.Hands.CommunityCardHands.OmahaHand(playerCards, communityCards);
 					handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(omahaHand);
+				}
+				// Nebraska style: 5 hole + up to 5 community, must use exactly 3 hole + 2 community
+				else if (playerCards.Count == 5 && IsNebraskaGame(game.GameType?.Code))
+				{
+					var nebraskaHand = new NebraskaHand(playerCards, communityCards);
+					handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(nebraskaHand);
 				}
 			}
 		}
@@ -782,6 +789,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		var isHoldEm = IsHoldEmGame(game.GameType?.Code);
 		var isHoldTheBaseball = IsHoldTheBaseballGame(game.GameType?.Code);
 		var isOmaha = IsOmahaGame(game.GameType?.Code);
+		var isNebraska = IsNebraskaGame(game.GameType?.Code);
 		var isIrishHoldEm = IsIrishHoldEmGame(game.GameType?.Code);
 
 		var isSevenCardStud = IsGameType(game.GameType?.Code, PokerGameMetadataRegistry.SevenCardStudCode);
@@ -991,6 +999,50 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				var bestFive = FindBestOmahaHand(holeCoreCards, communityCoreCards);
 
 				playerHandEvaluations[gp.Player.Name] = (omahaHand, null, null, null, gp, allDisplayCards, [],
+					GetCardIndexes(allCoreCards, bestFive));
+			}
+		}
+
+		// Nebraska: players have 5 hole cards + 5 shared community cards → best 5 using exactly 3 hole + 2 community
+		if (isNebraska)
+		{
+			var nebraskaCommunityCards = await _context.GameCards
+				.Where(c => c.GameId == game.Id
+					&& c.HandNumber == game.CurrentHandNumber
+					&& c.Location == CardLocation.Community
+					&& c.GamePlayerId == null
+					&& !c.IsDiscarded)
+				.OrderBy(c => c.DealOrder)
+				.AsNoTracking()
+				.ToListAsync(cancellationToken);
+
+			var communityCoreCards = nebraskaCommunityCards
+				.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
+				.ToList();
+
+			foreach (var gp in gamePlayers.Where(p => !p.HasFolded))
+			{
+				var ownedCards = gp.Cards
+					.Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber)
+					.OrderBy(c => c.DealOrder)
+					.ToList();
+
+				var holeCoreCards = ownedCards.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol)).ToList();
+
+				if (holeCoreCards.Count < 5)
+				{
+					continue;
+				}
+
+				var nebraskaHand = new NebraskaHand(holeCoreCards, communityCoreCards);
+
+				var allDisplayCards = ownedCards.ToList();
+				allDisplayCards.AddRange(nebraskaCommunityCards);
+				var allCoreCards = holeCoreCards.Concat(communityCoreCards).ToList();
+
+				var bestFive = FindBestNebraskaHand(holeCoreCards, communityCoreCards);
+
+				playerHandEvaluations[gp.Player.Name] = (nebraskaHand, null, null, null, gp, allDisplayCards, [],
 					GetCardIndexes(allCoreCards, bestFive));
 			}
 		}
@@ -2512,6 +2564,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	private static bool IsOmahaGame(string? gameTypeCode)
 		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.OmahaCode);
 
+	private static bool IsNebraskaGame(string? gameTypeCode)
+		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.NebraskaCode);
+
 	private static bool IsIrishHoldEmGame(string? gameTypeCode)
 		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.IrishHoldEmCode)
 		   || IsGameType(gameTypeCode, PokerGameMetadataRegistry.PhilsMomCode)
@@ -2739,5 +2794,33 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		}
 
 		return bestCombo ?? holeCards.Take(2).Concat(communityCards.Take(3)).ToList();
+	}
+
+	/// <summary>
+	/// Finds the best 5-card Nebraska hand using exactly 3 hole cards + 2 community cards.
+	/// Evaluates all C(5,3) × C(5,2) = 100 valid combinations.
+	/// </summary>
+	private static List<Card> FindBestNebraskaHand(List<Card> holeCards, List<Card> communityCards)
+	{
+		var ranking = HandTypeStrengthRanking.Classic;
+		List<Card>? bestCombo = null;
+		long bestStrength = long.MinValue;
+
+		foreach (var holeTriple in holeCards.SubsetsOfSize(3))
+		{
+			foreach (var communityPair in communityCards.SubsetsOfSize(2))
+			{
+				var combo = holeTriple.Concat(communityPair).ToList();
+				var handType = HandTypeDetermination.DetermineHandType(combo);
+				var strength = HandStrength.Calculate(combo, handType, ranking);
+				if (strength > bestStrength)
+				{
+					bestStrength = strength;
+					bestCombo = combo;
+				}
+			}
+		}
+
+		return bestCombo ?? holeCards.Take(3).Concat(communityCards.Take(2)).ToList();
 	}
 }

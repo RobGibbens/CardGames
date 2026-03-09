@@ -2,6 +2,7 @@ using CardGames.Core.French.Cards.Extensions;
 using CardGames.Poker.Hands.HandTypes;
 using CardGames.Poker.Web.Services;
 using FluentAssertions;
+using System.Linq;
 using Xunit;
 
 namespace CardGames.Poker.Tests.Evaluation;
@@ -32,5 +33,18 @@ public class DashboardHandOddsCalculatorTests
         result.Should().NotBeNull();
         result!.HandTypeProbabilities.Should().ContainKey(HandType.OnePair);
         result.HandTypeProbabilities.Should().NotContainKey(HandType.HighCard);
+    }
+
+    [Fact]
+    public void Calculate_Nebraska_PreFlopWithFiveHoleCards_ReturnsValidOdds()
+    {
+        var playerCards = "As Ad Ks Kd Qh".ToCards();
+        var communityCards = "".ToCards();
+
+        var result = DashboardHandOddsCalculator.Calculate("NEBRASKA", playerCards, communityCards, []);
+
+        result.Should().NotBeNull();
+        result!.HandTypeProbabilities.Should().NotBeEmpty();
+        result.HandTypeProbabilities.Values.Sum().Should().BeApproximately(1.0m, 0.01m);
     }
 }

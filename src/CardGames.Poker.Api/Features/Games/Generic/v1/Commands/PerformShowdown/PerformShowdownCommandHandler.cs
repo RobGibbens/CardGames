@@ -710,9 +710,21 @@ public sealed class PerformShowdownCommandHandler(
             List<Card>? bestCombo = null;
             long bestStrength = long.MinValue;
 
-            // Omaha: exactly 2 hole + 3 community; Hold'em: 0-2 hole + 3-5 community
-            var minHole = communityHand is OmahaHand ? 2 : 0;
-            var maxHole = communityHand is OmahaHand ? 2 : Math.Min(holeCards.Count, 5);
+            // Omaha: exactly 2 hole + 3 community
+            // Nebraska: exactly 3 hole + 2 community
+            // Hold'em style: 0-5 hole, constrained by available community cards.
+            var minHole = communityHand switch
+            {
+                OmahaHand => 2,
+                NebraskaHand => 3,
+                _ => 0
+            };
+            var maxHole = communityHand switch
+            {
+                OmahaHand => 2,
+                NebraskaHand => 3,
+                _ => Math.Min(holeCards.Count, 5)
+            };
 
             for (var numHole = minHole; numHole <= maxHole; numHole++)
             {
@@ -928,6 +940,7 @@ public sealed class PerformShowdownCommandHandler(
         return string.Equals(gameTypeCode, PokerGameMetadataRegistry.HoldEmCode, StringComparison.OrdinalIgnoreCase)
                              || string.Equals(gameTypeCode, PokerGameMetadataRegistry.RedRiverCode, StringComparison.OrdinalIgnoreCase)
                || string.Equals(gameTypeCode, PokerGameMetadataRegistry.OmahaCode, StringComparison.OrdinalIgnoreCase)
+                             || string.Equals(gameTypeCode, PokerGameMetadataRegistry.NebraskaCode, StringComparison.OrdinalIgnoreCase)
                || string.Equals(gameTypeCode, PokerGameMetadataRegistry.IrishHoldEmCode, StringComparison.OrdinalIgnoreCase)
                || string.Equals(gameTypeCode, PokerGameMetadataRegistry.PhilsMomCode, StringComparison.OrdinalIgnoreCase)
              || string.Equals(gameTypeCode, PokerGameMetadataRegistry.CrazyPineappleCode, StringComparison.OrdinalIgnoreCase)
