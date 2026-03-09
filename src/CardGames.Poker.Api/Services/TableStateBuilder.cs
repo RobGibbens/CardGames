@@ -2503,7 +2503,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.GoodBadUglyCode);
 
 	private static bool IsHoldEmGame(string? gameTypeCode)
-		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.HoldEmCode);
+		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.HoldEmCode)
+		   || IsGameType(gameTypeCode, PokerGameMetadataRegistry.RedRiverCode);
 
 	private static bool IsHoldTheBaseballGame(string? gameTypeCode)
 		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.HoldTheBaseballCode);

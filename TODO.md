@@ -6,6 +6,8 @@ Cash
 - [ ] https://github.com/leeoades/FunctionalStateMachine
 - [ ] When playing Dealer's choice, filter out games that don't support the number of players
 - [ ] Phil's mom loser showdown not correct
+- [ ] When picking a game, support search
+- [ ] Allow the creator of the game the ability to turn off the odds calculator
 
 ### Leagues
 
@@ -59,7 +61,7 @@ Cash
 - [ ] Add Nebraska
 - [ ] Add Red River
 - [x] Add Phil's Mom
-- [ ] Add Crazy Pineapple
+- [x] Add Crazy Pineapple
 - [ ] Add Klondike
 
 

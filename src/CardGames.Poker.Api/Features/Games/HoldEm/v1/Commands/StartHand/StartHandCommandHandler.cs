@@ -92,7 +92,9 @@ public class StartHandCommandHandler(
 
 		context.Pots.Add(mainPot);
 
-		var flowHandler = flowHandlerFactory.GetHandler("HOLDEM");
+		var gameTypeCode = game.GameType?.Code;
+		var flowHandler = flowHandlerFactory.GetHandler(
+			string.IsNullOrWhiteSpace(gameTypeCode) ? "HOLDEM" : gameTypeCode);
 
 		game.CurrentHandNumber++;
 		game.CurrentPhase = flowHandler.GetInitialPhase(game);
@@ -110,9 +112,10 @@ public class StartHandCommandHandler(
 		await flowHandler.DealCardsAsync(context, game, eligiblePlayers, now, cancellationToken);
 
 		logger.LogInformation(
-			"Started Hold'Em hand {HandNumber} for game {GameId} in phase {Phase} with {PlayerCount} eligible players",
+			"Started hand {HandNumber} for game {GameId} ({GameTypeCode}) in phase {Phase} with {PlayerCount} eligible players",
 			game.CurrentHandNumber,
 			game.Id,
+			gameTypeCode,
 			game.CurrentPhase,
 			eligiblePlayers.Count);
 

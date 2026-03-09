@@ -174,6 +174,7 @@
 
 	private static bool IsBlindBasedGame(string? code) =>
 		string.Equals(code, "HOLDEM", StringComparison.OrdinalIgnoreCase)
+		|| string.Equals(code, "REDRIVER", StringComparison.OrdinalIgnoreCase)
 		|| string.Equals(code, "OMAHA", StringComparison.OrdinalIgnoreCase)
 		|| string.Equals(code, "IRISHHOLDEM", StringComparison.OrdinalIgnoreCase)
 		|| string.Equals(code, "HOLDTHEBASEBALL", StringComparison.OrdinalIgnoreCase)

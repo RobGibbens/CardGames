@@ -11,6 +11,7 @@ namespace CardGames.Poker.Evaluation.Evaluators;
 /// Evaluates the best 5-card hand from 2 hole cards and up to 5 community cards.
 /// </summary>
 [HandEvaluator("HOLDEM")]
+[HandEvaluator("REDRIVER")]
 public sealed class HoldemHandEvaluator : IHandEvaluator
 {
     /// <inheritdoc />

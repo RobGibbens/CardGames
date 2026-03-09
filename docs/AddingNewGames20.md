@@ -255,3 +255,45 @@ Reusable pattern confirmed:
 - If a variant differs only by phase order/card counts but still uses existing request shapes,
   reuse endpoint families and branch by game code in handlers.
 - Add a dedicated flow handler for dealing/auto-action semantics and keep contracts unchanged.
+
+## 12. Red River Mapping (REDRIVER)
+
+Red River follows the Hold 'Em endpoint family and keeps the same betting-round model.
+It introduces one conditional board behavior at the end of the River round:
+
+- If the river card suit is hearts or diamonds, deal one additional community card.
+- Do not create an extra betting round.
+- Proceed directly to Showdown after the conditional deal.
+
+Implementation touchpoints:
+
+- Domain metadata/rules:
+  - `src/CardGames.Poker/Games/RedRiver/RedRiverGame.cs`
+  - `src/CardGames.Poker/Games/RedRiver/RedRiverRules.cs`
+- API flow + behavior:
+  - `src/CardGames.Poker.Api/GameFlow/RedRiverFlowHandler.cs`
+  - `src/CardGames.Poker.Api/Features/Games/HoldEm/v1/Commands/StartHand/StartHandCommandHandler.cs`
+    - Resolve flow handler from `game.GameType.Code` (do not hardcode `HOLDEM`).
+    - This prevents Hold 'Em-family variants from being started with the wrong flow semantics.
+  - `src/CardGames.Poker.Api/Features/Games/HoldEm/v1/Commands/ProcessBettingAction/ProcessBettingActionCommandHandler.cs`
+    - Add conditional post-river community-card deal logic.
+    - Ensure all-in runout path also applies the same conditional logic.
+  - `src/CardGames.Poker.Api/Features/Games/Generic/v1/Commands/PerformShowdown/PerformShowdownCommandHandler.cs`
+    - Include `REDRIVER` in shared-community showdown path.
+  - `src/CardGames.Poker.Api/Services/TableStateBuilder.cs`
+    - Treat `REDRIVER` as Hold 'Em-family for private/public state evaluation.
+- Web routing/UI reuse:
+  - `src/CardGames.Poker.Web/Components/Pages/TablePlay.razor`
+    - Include `REDRIVER` in the Hold 'Em-family start branch that calls `HoldEmStartHandAsync`.
+    - If omitted, the UI can fall through to the default Five Card Draw start/deal path.
+  - Add `REDRIVER` to `IGameApiRouter` Hold 'Em betting route map.
+  - Include `REDRIVER` in blind-based and Hold 'Em-family predicates in:
+    - `CreateTable.razor`
+    - `EditTable.razor`
+    - `DealerChoiceModal.razor`
+    - `TableCanvas.razor`
+    - `TablePlay.razor`
+
+Reusable pattern confirmed:
+- Variants can inject conditional board-dealing behavior inside the betting handler's
+  phase-completion path while reusing existing Hold 'Em contracts/endpoints.

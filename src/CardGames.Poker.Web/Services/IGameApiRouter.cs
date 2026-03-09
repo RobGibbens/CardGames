@@ -95,6 +95,7 @@ public class GameApiRouter : IGameApiRouter
 {
     private static readonly StringComparer GameCodeComparer = StringComparer.OrdinalIgnoreCase;
     private const string HoldEm = "HOLDEM";
+    private const string RedRiver = "REDRIVER";
     private const string Omaha = "OMAHA";
     private const string IrishHoldEm = "IRISHHOLDEM";
     private const string PhilsMom = "PHILSMOM";
@@ -146,6 +147,7 @@ public class GameApiRouter : IGameApiRouter
         _bettingActionRoutes = new Dictionary<string, Func<Guid, ProcessBettingActionRequest, Task<RouterResponse<ProcessBettingActionSuccessful>>>>(GameCodeComparer)
         {
             [HoldEm] = RouteHoldEmBettingActionAsync,
+            [RedRiver] = RouteRedRiverBettingActionAsync,
             [Omaha] = RouteOmahaBettingActionAsync,
             [IrishHoldEm] = RouteIrishHoldEmBettingActionAsync,
             [PhilsMom] = RoutePhilsMomBettingActionAsync,
@@ -269,6 +271,10 @@ public class GameApiRouter : IGameApiRouter
             await _followTheQueenApi.FollowTheQueenProcessBettingActionAsync(gameId, request));
 
     private async Task<RouterResponse<ProcessBettingActionSuccessful>> RouteHoldEmBettingActionAsync(Guid gameId, ProcessBettingActionRequest request)
+        => RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
+            await _holdEmApi.HoldEmProcessBettingActionAsync(gameId, request));
+
+    private async Task<RouterResponse<ProcessBettingActionSuccessful>> RouteRedRiverBettingActionAsync(Guid gameId, ProcessBettingActionRequest request)
         => RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
             await _holdEmApi.HoldEmProcessBettingActionAsync(gameId, request));
 
