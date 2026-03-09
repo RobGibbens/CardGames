@@ -1,7 +1,7 @@
 # Master Prompt: Add a New Game to CardGames
 
 ## Mission
-Add a new poker game variant to this repository in a way that is consistent with existing architecture, conventions, and quality gates.
+Team, add a new poker game variant to this repository in a way that is consistent with existing architecture, conventions, and quality gates.
 
 Inputs you must use:
 - Primary playbook: [docs/AddingNewGames20.md](docs/AddingNewGames20.md)

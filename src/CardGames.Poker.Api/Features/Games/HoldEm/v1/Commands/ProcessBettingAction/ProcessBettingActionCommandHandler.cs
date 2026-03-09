@@ -690,7 +690,11 @@ public class ProcessBettingActionCommandHandler(
 				break;
 
 			case "Turn":
-				game.CurrentPhase = "River";
+				game.CurrentPhase = IsSouthDakotaGame(game) ? "Showdown" : "River";
+				if (game.CurrentPhase == "Showdown")
+				{
+					game.CurrentPlayerIndex = -1;
+				}
 				break;
 
 			case "River":
@@ -712,6 +716,9 @@ public class ProcessBettingActionCommandHandler(
 	private static bool IsRedRiverGame(Game game)
 		=> string.Equals(game.GameType?.Code, PokerGameMetadataRegistry.RedRiverCode, StringComparison.OrdinalIgnoreCase);
 
+	private static bool IsSouthDakotaGame(Game game)
+		=> string.Equals(game.GameType?.Code, PokerGameMetadataRegistry.SouthDakotaCode, StringComparison.OrdinalIgnoreCase);
+
 	#endregion
 
 	#region Community Card Dealing
@@ -725,10 +732,11 @@ public class ProcessBettingActionCommandHandler(
 		DateTimeOffset now,
 		CancellationToken cancellationToken)
 	{
+		var isSouthDakota = IsSouthDakotaGame(game);
 		var (cardCount, dealPhase, nextDealOrder) = phase switch
 		{
-			"Flop" => (3, "Flop", 1),    // Flop: 3 cards, DealOrder 1-3
-			"Turn" => (1, "Turn", 4),     // Turn: 1 card, DealOrder 4
+			"Flop" => (isSouthDakota ? 2 : 3, "Flop", 1),    // Flop: South Dakota=2, default=3
+			"Turn" => (1, "Turn", isSouthDakota ? 3 : 4),     // Turn: South Dakota=DealOrder 3, default=4
 			"River" => (1, "River", 5),   // River: 1 card, DealOrder 5
 			"RedRiverBonus" => (1, "RedRiverBonus", 6), // Red River bonus board card
 			_ => (0, "", 0)
@@ -775,13 +783,14 @@ public class ProcessBettingActionCommandHandler(
 		CancellationToken cancellationToken)
 	{
 		// Determine which community card phases still need to be dealt
-		var phaseOrder = new[] { "Flop", "Turn", "River" };
+		var isSouthDakota = IsSouthDakotaGame(game);
+		var phaseOrder = isSouthDakota ? new[] { "Flop", "Turn" } : new[] { "Flop", "Turn", "River" };
 		var currentPhaseIndex = currentPhase switch
 		{
 			"PreFlop" => -1,
 			"Flop" => 0,
 			"Turn" => 1,
-			"River" => 2,
+			"River" => isSouthDakota ? 3 : 2,
 			_ => 3 // Already past all phases
 		};
 
@@ -802,8 +811,8 @@ public class ProcessBettingActionCommandHandler(
 			var phase = phaseOrder[phaseIdx];
 			var (cardCount, _, nextDealOrder) = phase switch
 			{
-				"Flop" => (3, "Flop", 1),
-				"Turn" => (1, "Turn", 4),
+				"Flop" => (isSouthDakota ? 2 : 3, "Flop", 1),
+				"Turn" => (1, "Turn", isSouthDakota ? 3 : 4),
 				"River" => (1, "River", 5),
 				_ => (0, "", 0)
 			};

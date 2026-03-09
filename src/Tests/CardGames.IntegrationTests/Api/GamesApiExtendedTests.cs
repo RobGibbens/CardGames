@@ -128,6 +128,7 @@ public class GamesApiExtendedTests : ApiIntegrationTestBase
         gameCodes.Should().Contain(PokerGameMetadataRegistry.HoldEmCode);
         gameCodes.Should().Contain(PokerGameMetadataRegistry.OmahaCode);
         gameCodes.Should().Contain(PokerGameMetadataRegistry.NebraskaCode);
+        gameCodes.Should().Contain(PokerGameMetadataRegistry.SouthDakotaCode);
     }
 
     [Fact]

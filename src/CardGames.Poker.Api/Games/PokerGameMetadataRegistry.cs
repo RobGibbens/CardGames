@@ -20,6 +20,7 @@ public static class PokerGameMetadataRegistry
 	public const string TwosJacksManWithTheAxeCode = "TWOSJACKSMANWITHTHEAXE";
 	public const string OmahaCode = "OMAHA";
 	public const string NebraskaCode = "NEBRASKA";
+	public const string SouthDakotaCode = "SOUTHDAKOTA";
 	public const string SevenCardStudCode = "SEVENCARDSTUD";
 	public const string KingsAndLowsCode = "KINGSANDLOWS";
 	public const string FollowTheQueenCode = "FOLLOWTHEQUEEN";

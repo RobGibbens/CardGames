@@ -297,3 +297,52 @@ Implementation touchpoints:
 Reusable pattern confirmed:
 - Variants can inject conditional board-dealing behavior inside the betting handler's
   phase-completion path while reusing existing Hold 'Em contracts/endpoints.
+
+## 13. South Dakota Mapping (SOUTHDAKOTA)
+
+South Dakota follows the Nebraska-style hand construction (exactly 3 hole + 2 community)
+while changing street structure:
+
+- 5 hole cards per player
+- PreFlop betting
+- Flop deals 2 community cards (not 3)
+- Flop betting
+- Turn deals 1 community card
+- Turn betting
+- Showdown (no River)
+
+Implementation touchpoints:
+
+- Domain metadata/rules:
+  - `src/CardGames.Poker/Games/SouthDakota/SouthDakotaGame.cs`
+  - `src/CardGames.Poker/Games/SouthDakota/SouthDakotaRules.cs`
+- API flow + behavior:
+  - `src/CardGames.Poker.Api/GameFlow/SouthDakotaFlowHandler.cs`
+  - `src/CardGames.Poker.Api/Features/Games/HoldEm/v1/Commands/ProcessBettingAction/ProcessBettingActionCommandHandler.cs`
+    - South Dakota-specific street progression (Turn -> Showdown)
+    - South Dakota-specific community dealing counts/order (Flop=2, Turn=1, no River)
+  - `src/CardGames.Poker.Api/Features/Games/Generic/v1/Commands/PerformShowdown/PerformShowdownCommandHandler.cs`
+    - Include SOUTHDAKOTA in shared-community showdown routing
+  - `src/CardGames.Poker.Api/Services/TableStateBuilder.cs`
+    - Treat SOUTHDAKOTA as Nebraska-style for evaluation/projection
+- Evaluation and odds:
+  - `src/CardGames.Poker/Evaluation/Evaluators/NebraskaHandEvaluator.cs`
+    - Also registered for `SOUTHDAKOTA`
+  - `src/CardGames.Poker/Evaluation/OddsCalculator.cs`
+    - `CalculateSouthDakotaOdds` runs to 4 community cards
+  - `src/CardGames.Poker.Web/Services/DashboardHandOddsCalculator.cs`
+    - SOUTHDAKOTA route uses South Dakota odds calculator
+- Web routing/UI reuse:
+  - Add SOUTHDAKOTA to Hold'em-family mappings in:
+    - `src/CardGames.Poker.Web/Services/IGameApiRouter.cs`
+    - `src/CardGames.Poker.Web/Components/Pages/TablePlay.razor`
+    - `src/CardGames.Poker.Web/Components/Pages/CreateTable.razor`
+    - `src/CardGames.Poker.Web/Components/Pages/EditTable.razor`
+    - `src/CardGames.Poker.Web/Components/Shared/DealerChoiceModal.razor`
+    - `src/CardGames.Poker.Web/Components/Shared/TableCanvas.razor`
+  - Add image asset:
+    - `src/CardGames.Poker.Web/wwwroot/images/games/southdakota.png`
+
+Reusable pattern confirmed:
+- If a variant keeps existing action contracts and only changes street progression/card counts,
+  keep endpoint family reuse and branch by game code in handler progression/dealing logic.

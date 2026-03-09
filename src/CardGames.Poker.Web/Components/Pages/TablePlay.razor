@@ -203,7 +203,7 @@
     @if (_showGameInfoOverlay)
     {
         <GameInfoOverlay GameTypeContext="@GetGameInfoTypeContext()"
-                         IsHoldEm="@(IsHoldEm || IsRedRiver || IsOmaha || IsNebraska || IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple || IsHoldTheBaseball)"
+                         IsHoldEm="@(IsHoldEm || IsRedRiver || IsOmaha || IsNebraska || IsSouthDakota || IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple || IsHoldTheBaseball)"
                          SmallBlind="@(_gameResponse?.SmallBlind ?? 0)"
                          BigBlind="@(_gameResponse?.BigBlind ?? 0)"
                          Ante="@(_gameResponse?.Ante ?? _ante)"
@@ -696,11 +696,12 @@
     private bool IsHoldTheBaseball => string.Equals(_gameTypeCode, "HOLDTHEBASEBALL", StringComparison.OrdinalIgnoreCase);
     private bool IsOmaha => string.Equals(_gameTypeCode, "OMAHA", StringComparison.OrdinalIgnoreCase);
     private bool IsNebraska => string.Equals(_gameTypeCode, "NEBRASKA", StringComparison.OrdinalIgnoreCase);
+    private bool IsSouthDakota => string.Equals(_gameTypeCode, "SOUTHDAKOTA", StringComparison.OrdinalIgnoreCase);
     private bool IsIrishHoldEm => string.Equals(_gameTypeCode, "IRISHHOLDEM", StringComparison.OrdinalIgnoreCase);
     private bool IsPhilsMom => string.Equals(_gameTypeCode, "PHILSMOM", StringComparison.OrdinalIgnoreCase);
     private bool IsCrazyPineapple => string.Equals(_gameTypeCode, "CRAZYPINEAPPLE", StringComparison.OrdinalIgnoreCase);
     private bool IsIrishStyleHoldEm => IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple;
-    private bool UsesCardDealAnimation => IsSevenCardStud || IsGoodBadUgly || IsBaseball || IsFollowTheQueen || IsFiveCardDraw || IsTwosJacksManWithTheAxe || IsKingsAndLows || IsHoldEm || IsRedRiver || IsHoldTheBaseball || IsOmaha || IsNebraska || IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple;
+    private bool UsesCardDealAnimation => IsSevenCardStud || IsGoodBadUgly || IsBaseball || IsFollowTheQueen || IsFiveCardDraw || IsTwosJacksManWithTheAxe || IsKingsAndLows || IsHoldEm || IsRedRiver || IsHoldTheBaseball || IsOmaha || IsNebraska || IsSouthDakota || IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple;
     private int DealAnimationDelayMs => 750;
 
     // Game rules for dynamic UI rendering
@@ -2749,7 +2750,7 @@
                 return;
             }
         }
-        else if (IsOmaha || IsNebraska)
+        else if (IsOmaha || IsNebraska || IsSouthDakota)
         {
             // Omaha-family variants use the generic start endpoint until dedicated web client routes are introduced.
             var startResponse = await GamesApiClient.GenericStartHandAsync(GameId);
@@ -2876,7 +2877,7 @@
         {
             showdownResponse = await GamesApiClient.GenericPerformShowdownAsync(GameId);
         }
-        else if (IsOmaha || IsNebraska)
+        else if (IsOmaha || IsNebraska || IsSouthDakota)
         {
             showdownResponse = await GamesApiClient.GenericPerformShowdownAsync(GameId);
         }

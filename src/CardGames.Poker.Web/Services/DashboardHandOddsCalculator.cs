@@ -74,6 +74,17 @@ public static class DashboardHandOddsCalculator
             return OddsCalculator.CalculateNebraskaOdds(holeCards, communityCards, deadCards);
         }
 
+        if (string.Equals(gameTypeCode, "SOUTHDAKOTA", StringComparison.OrdinalIgnoreCase))
+        {
+            var holeCards = playerCards.Take(5).ToList();
+            if (holeCards.Count < 3)
+            {
+                return null;
+            }
+
+            return OddsCalculator.CalculateSouthDakotaOdds(holeCards, communityCards, deadCards);
+        }
+
         if (string.Equals(gameTypeCode, "IRISHHOLDEM", StringComparison.OrdinalIgnoreCase))
         {
             // Pre-discard (4 hole cards): use Omaha-style odds calculation

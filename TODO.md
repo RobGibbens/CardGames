@@ -55,7 +55,8 @@
 - [ ] Add Pittsburgh
 - [ ] Add Squid Game
 - [x] Add Hold the Baseball
-- [ ] Add Nebraska
+- [x] Add Nebraska
+- [ ] Add South Dakota
 - [x] Add Red River
 - [x] Add Phil's Mom
 - [x] Add Crazy Pineapple
