@@ -4,6 +4,9 @@
 
 - [ ] https://github.com/leeoades/FunctionalStateMachine
 
+- [ ] SYN show your remaining stacks
+- [ ] SYN - show everyone if you traded or stayed
+- [ ] SYN - no bring in, or lock it the set amount
 - [ ] Phil's mom loser showdown not correct
 - [ ] Test what happens when a player disconnects
 - [ ] Work on isolating games code more

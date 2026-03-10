@@ -7,6 +7,12 @@
 
 ## Learnings
 
+- 2026-03-10: SYN showdown delay must be enforced from shared SignalR table-state transitions, not only in local `HandleKeepOrTradeDecision`. In `TablePlay.razor`, when phase moves from KeepOrTrade/Reveal into showdown flow, schedule the existing 7-second delay via `ScheduleShowdownOverlayAfterDelay` so every client defers `TryLoadShowdownAsync` and overlay reveal consistently.
+
+- 2026-03-10 (team update): SYN dealer-trade showdown-delay decision (`linus-syn-showdown-delay`) was merged from inbox into canonical `.squad/decisions.md`; use canonical entry as source of truth for follow-up TablePlay showdown/overlay timing changes.
+
+- 2026-03-10: In `TablePlay.razor`, Screw Your Neighbor now applies a dealer-only, Trade-only 7-second showdown delay by reusing `_showdownDelayUntil` and a shared `ScheduleShowdownOverlayAfterDelay` helper. This prevents immediate showdown reveal after dealer deck-trade while keeping SignalR-driven showdown loading/overlay behavior unchanged for other games and decisions.
+
 - 2026-03-07: Lobby Join now passes an explicit one-time URL intent (`?autojoin=1`) and `TablePlay` consumes that intent immediately after initial table/seat load to trigger `BeginAutoSeatJoinAsync` only once when the player is not already seated. This preserves Lobby no-chip gating, keeps existing full-table/race handling in join submit flow, and ensures buy-in modal appears on direct Lobby→Table joins.
 - 2026-03-08 (team update): Lobby-triggered auto-seat join fix decision (`linus-lobby-autojoin-fix`) was merged from inbox into canonical `.squad/decisions.md`; use canonical entry as source of truth for follow-up Lobby→Table join behavior changes.
 - 2026-03-08 (team update): Create-table no auto-enter decision (`linus-create-table-no-autojoin`) was merged from inbox into canonical `.squad/decisions.md`; keep create success navigation Lobby-first so join/seat remains explicit user intent.

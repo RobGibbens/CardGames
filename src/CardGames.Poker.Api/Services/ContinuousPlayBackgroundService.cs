@@ -409,7 +409,10 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		CancellationToken cancellationToken)
 	{
 		// Re-check readiness against the latest database state to avoid races with manual StartHand.
+		// ReloadAsync only refreshes scalar properties; explicitly reload the GameType navigation
+		// so that non-Dealer's-Choice games still resolve the correct flow handler.
 		await context.Entry(game).ReloadAsync(cancellationToken);
+		await context.Entry(game).Reference(g => g.GameType).LoadAsync(cancellationToken);
 		var stillReadyForNextHand =
 			(game.CurrentPhase == nameof(Phases.Complete)
 			 || game.CurrentPhase == nameof(Phases.WaitingForPlayers)
@@ -460,8 +463,8 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		}
 
 		// Get the game flow handler for this game type (needed for game-specific checks below)
-		// Use CurrentHandGameTypeCode first — after ReloadAsync, the GameType navigation property may be null
-		// even though GameTypeId is set (reload only refreshes scalar properties, not navigation properties).
+		// For Dealer's Choice, CurrentHandGameTypeCode is the chosen game for this hand.
+		// For standard games, use GameType.Code (reliably loaded after ReloadAsync + Reference load above).
 		var flowHandlerFactory = scope.ServiceProvider.GetRequiredService<IGameFlowHandlerFactory>();
 		var flowHandler = flowHandlerFactory.GetHandler(game.CurrentHandGameTypeCode ?? game.GameType?.Code);
 

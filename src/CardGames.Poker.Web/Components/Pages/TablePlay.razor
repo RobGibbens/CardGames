@@ -525,6 +525,7 @@
 
     // Continuous play constants (must match ContinuousPlayBackgroundService)
     private const int ContinuousPlayResultsDisplayDurationSeconds = 8;
+    private const double ScrewYourNeighborDealerTradeShowdownDelaySeconds = 3.5;
 
     // Table info
     private int _ante = 5;
@@ -596,6 +597,7 @@
 
     // Screw Your Neighbor specific state
     private bool _isProcessingKeepOrTrade;
+    private string? _synKeepOrTradeDecision;
 
     // Chip check pause state (for Kings and Lows)
     private bool _isPausedForChipCheck;
@@ -1118,6 +1120,7 @@
                     s.Cards = [];
                     s.HandEvaluationDescription = null;
                 }
+                _synKeepOrTradeDecision = null;
 
                 _previousFaceUpCommunityCardCount = 0;
                 _communityCardRevealInProgress = false;
@@ -1238,6 +1241,16 @@
 
             var handChanged = state.CurrentHandNumber != previousHandNumber;
 
+            var enteredScrewYourNeighborShowdown =
+                IsScrewYourNeighbor &&
+                IsShowdownPhase &&
+                !string.Equals(previousPhase, "Showdown", StringComparison.OrdinalIgnoreCase);
+
+            if (enteredScrewYourNeighborShowdown && !_showdownDelayUntil.HasValue)
+            {
+                ScheduleShowdownOverlayAfterDelay(TimeSpan.FromSeconds(ScrewYourNeighborDealerTradeShowdownDelaySeconds));
+            }
+
             // Handle showdown state - check if entering showdown/complete phase
             // Pass whether we should delay showing the overlay (only for deck draw animation now)
             var shouldDelayShowdownOverlay = _delayShowdownOverlay ||
@@ -1254,9 +1267,12 @@
                 UpdateShowdownFromPublicState(state.Showdown, shouldDelayShowdownOverlay || _runoutAnimationInProgress);
             }
 
-            // If entering showdown or complete phase, load showdown results via API
-            // But delay if we're showing the all-in runout animation
-            if (IsShowdownPhase && _showdownResult is null && !shouldDelayShowdownOverlay && !_runoutAnimationInProgress)
+            // If entering showdown or complete phase, load showdown results via API.
+            // Block during deck-draw animation (_delayShowdownOverlay) and runout animation,
+            // but NOT during the SYN timer delay (_showdownDelayUntil) — SYN requires the
+            // client to call PerformShowdown so the server evaluates winners/losers.
+            // TryLoadShowdownAsync is delay-aware and won't show the overlay prematurely.
+            if (IsShowdownPhase && _showdownResult is null && !_delayShowdownOverlay && !_runoutAnimationInProgress)
             {
                 await TryLoadShowdownAsync();
             }
@@ -1267,22 +1283,8 @@
             !IsCurrentPlayerDeckDecisionMaker)
             {
                 // Non-decision maker: delay showdown overlay by 5 seconds to let them see the animation
-                _showdownDelayUntil = DateTimeOffset.UtcNow.AddSeconds(5);
+                ScheduleShowdownOverlayAfterDelay(TimeSpan.FromSeconds(5));
                 _hasDeckDrawn = true;
-
-                // Schedule the showdown to appear after delay
-                _ = Task.Run(async () =>
-                {
-                    await Task.Delay(TimeSpan.FromSeconds(5));
-                    _showdownDelayUntil = null;
-                    // Load showdown results if not already loaded, then show the overlay
-                    if (_showdownResult is null && IsShowdownPhase)
-                    {
-                        await TryLoadShowdownAsync();
-                    }
-                    _showShowdownOverlay = true;
-                    await InvokeStateHasChangedAsync();
-                });
             }
 
             // Handle continuous play countdown
@@ -1522,7 +1524,9 @@
                 ApplyKingsAndLowsLowestCardWildFallback(_seats[targetSeatIndex].Cards);
 
                 _seats[targetSeatIndex].HandEvaluationDescription =
-                    FormatHandDescriptionForDisplay(state.HandEvaluationDescription ?? BuildFallbackHandDescription(state.Hand));
+                    IsScrewYourNeighbor
+                        ? _synKeepOrTradeDecision
+                        : FormatHandDescriptionForDisplay(state.HandEvaluationDescription ?? BuildFallbackHandDescription(state.Hand));
 
                 var newlyDealtCardCount = Math.Max(0, state.Hand.Count - previousCardCount);
                 if (targetSeatIndex == _currentPlayerSeatIndex && newlyDealtCardCount > 0)
@@ -1571,7 +1575,9 @@
         }
         else
         {
-            _isPlayerTurn = state.IsMyTurn && _isDrawPhase; // May be draw turn
+            // Special non-betting decision phases (like Screw Your Neighbor KeepOrTrade)
+            // do not populate AvailableActions, but still require turn-driven overlays.
+            _isPlayerTurn = state.IsMyTurn && (_isDrawPhase || IsKeepOrTradePhase);
             if (!_isDrawPhase)
             {
                 _legalActions = [];
@@ -1832,7 +1838,10 @@
                     HasDecidedDropOrStay = publicSeat.HasDecidedDropOrStay,
                     Cards = cards,
                     LastActionDescription = lastActionDescription,
-                    LastActionTime = lastActionTime
+                    LastActionTime = lastActionTime,
+                    HandEvaluationDescription = IsScrewYourNeighbor && isCurrentPlayer
+                        ? _synKeepOrTradeDecision
+                        : existingSeat.HandEvaluationDescription
                 };
             }
         }
@@ -2843,6 +2852,17 @@
                 return;
             }
         }
+        else if (IsScrewYourNeighbor)
+        {
+            // Screw Your Neighbor skips ante collection; generic StartHand deals 1 card and transitions to KeepOrTrade.
+            var startResponse = await GamesApiClient.GenericStartHandAsync(GameId);
+            if (!startResponse.IsSuccessStatusCode)
+            {
+                Logger.LogWarning("Failed to start Screw Your Neighbor hand: {StatusCode}", startResponse.StatusCode);
+                await ShowToastAsync("Failed to start game. Please try again.", "error");
+                return;
+            }
+        }
         else
         {
             var startHandResponse = await FiveCardDrawApiClient.FiveCardDrawStartHandAsync(GameId);
@@ -2967,16 +2987,28 @@
         }
 
         _showdownResult = showdownResponse.Content;
-        _showShowdownOverlay = true;
-        Logger.LogDebug("TryLoadShowdownAsync: Set _showShowdownOverlay=true, _showdownResult loaded");
 
-        // Initialize countdown timer immediately after successful showdown
-        // The SignalR broadcast will also arrive with the updated state, but we start
-        // the timer proactively to avoid race conditions where the UI shows the overlay
-        // without a countdown.
-        _isResultsPhase = true;
-        _secondsUntilNextHand = ContinuousPlayResultsDisplayDurationSeconds;
-        StartCountdownTimer();
+        // If a showdown overlay delay is active (e.g., SYN 7-second pause), populate the
+        // result but don't show the overlay yet — the ScheduleShowdownOverlayAfterDelay
+        // callback will reveal it when the timer expires.
+        var isDelayActive = _showdownDelayUntil.HasValue && DateTimeOffset.UtcNow < _showdownDelayUntil.Value;
+        if (!isDelayActive)
+        {
+            _showShowdownOverlay = true;
+            Logger.LogDebug("TryLoadShowdownAsync: Set _showShowdownOverlay=true, _showdownResult loaded");
+
+            // Initialize countdown timer immediately after successful showdown
+            // The SignalR broadcast will also arrive with the updated state, but we start
+            // the timer proactively to avoid race conditions where the UI shows the overlay
+            // without a countdown.
+            _isResultsPhase = true;
+            _secondsUntilNextHand = ContinuousPlayResultsDisplayDurationSeconds;
+            StartCountdownTimer();
+        }
+        else
+        {
+            Logger.LogDebug("TryLoadShowdownAsync: Showdown loaded but delay active, overlay deferred");
+        }
 
         if (string.IsNullOrWhiteSpace(_loggedInUserEmail) && string.IsNullOrWhiteSpace(_currentPlayerName))
         {
@@ -5453,6 +5485,17 @@ HandType.HighCard
         }
 
         _isProcessingKeepOrTrade = true;
+
+        // Set decision BEFORE the API call so SignalR state updates (which fire during
+        // the await) see it and don't overwrite with the server's hand evaluation.
+        _synKeepOrTradeDecision = string.Equals(decision, "Trade", StringComparison.OrdinalIgnoreCase)
+            ? "Traded"
+            : "Kept";
+        if (_currentPlayerSeatIndex >= 0 && _currentPlayerSeatIndex < _seats.Count)
+        {
+            _seats[_currentPlayerSeatIndex].HandEvaluationDescription = _synKeepOrTradeDecision;
+        }
+
         StateHasChanged();
 
         try
@@ -5467,11 +5510,11 @@ HandType.HighCard
             if (response.IsSuccess)
             {
                 Logger.LogDebug("Keep or trade decision recorded: {Decision}", decision);
-                // SignalR will update the game state
             }
             else
             {
                 Logger.LogWarning("Keep or trade decision failed: {Error}", response.Error);
+                _synKeepOrTradeDecision = null;
             }
         }
         catch (Exception ex)
@@ -5483,6 +5526,44 @@ HandType.HighCard
             _isProcessingKeepOrTrade = false;
             StateHasChanged();
         }
+    }
+
+    private void ScheduleShowdownOverlayAfterDelay(TimeSpan delay)
+    {
+        _showdownDelayUntil = DateTimeOffset.UtcNow.Add(delay);
+        var scheduledDelayUntil = _showdownDelayUntil.Value;
+
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(delay);
+
+            if (_disposed || !_showdownDelayUntil.HasValue || _showdownDelayUntil.Value != scheduledDelayUntil)
+            {
+                return;
+            }
+
+            _showdownDelayUntil = null;
+
+            var hasShowdownInLatestState = _tableState?.Showdown is not null;
+            var canRevealDuringResultsLikePhase = IsShowdownPhase || _isResultsPhase || IsCompletePhase || IsEndedPhase;
+
+            if (_showdownResult is null && hasShowdownInLatestState && _tableState?.Showdown is not null)
+            {
+                UpdateShowdownFromPublicState(_tableState.Showdown);
+            }
+
+            if (_showdownResult is null && IsShowdownPhase)
+            {
+                await TryLoadShowdownAsync();
+            }
+
+            if (canRevealDuringResultsLikePhase && (_showdownResult is not null || hasShowdownInLatestState))
+            {
+                _showShowdownOverlay = true;
+            }
+
+            await InvokeStateHasChangedAsync();
+        });
     }
 
     // Kings and Lows - Player vs Deck methods
