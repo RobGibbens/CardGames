@@ -19,6 +19,7 @@ public class GetCurrentPlayerTurnQueryHandler(CardsDbContext context, HybridCach
 			async _ =>
 			{
 				var game = await context.Games
+					.Include(g => g.GameType)
 					.AsNoTracking()
 					.FirstOrDefaultAsync(g => g.Id == request.GameId, cancellationToken);
 
@@ -67,9 +68,10 @@ public class GetCurrentPlayerTurnQueryHandler(CardsDbContext context, HybridCach
 						.AsNoTracking()
 						.ToListAsync(cancellationToken);
 
-					var handOdds = HandOddsCalculationService.CalculateDrawOdds(
+					var handOdds = HandOddsCalculationService.CalculateStudOdds(
 						gamePlayer.Cards,
-						deadCards);
+						deadCards,
+						string.Equals(game.GameType?.Code, "RAZZ", StringComparison.OrdinalIgnoreCase));
 
 					return new GetCurrentPlayerTurnResponse(playerResponse, availableActions, handOdds);
 			},

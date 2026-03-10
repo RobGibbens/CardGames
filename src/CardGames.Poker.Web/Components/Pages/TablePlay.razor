@@ -488,6 +488,7 @@
             (IsShowdownPhase || _isResultsPhase || IsEndedPhase || _secondsUntilNextHand > 0))
         {
             <ShowdownOverlay ShowdownResult="@_showdownResult" ShowdownWon="@_showdownWon" ShowdownLost="@_showdownLost"
+                             GameTypeCode="@_gameTypeCode"
                              SharedCommunityCards="@GetShowdownCommunityCards()"
                              SecondsUntilNextHand="@_secondsUntilNextHand" IsGameEnded="@IsEndedPhase" OnClose="@CloseShowdownOverlay" />
         }
@@ -607,7 +608,7 @@
 
     private string? currentPlayerHandEvaluationDescription =>
     _currentPlayerSeatIndex >= 0 && _currentPlayerSeatIndex < _seats.Count
-    ? _seats[_currentPlayerSeatIndex].HandEvaluationDescription
+    ? FormatHandDescriptionForDisplay(_seats[_currentPlayerSeatIndex].HandEvaluationDescription)
     : null;
 
     // Showdown state
@@ -688,6 +689,7 @@
     private bool IsFiveCardDraw => string.Equals(_gameTypeCode, "FIVECARDDRAW", StringComparison.OrdinalIgnoreCase);
     private bool IsKingsAndLows => string.Equals(_gameTypeCode, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase);
     private bool IsSevenCardStud => string.Equals(_gameTypeCode, "SEVENCARDSTUD", StringComparison.OrdinalIgnoreCase);
+    private bool IsRazz => string.Equals(_gameTypeCode, "RAZZ", StringComparison.OrdinalIgnoreCase);
     private bool IsGoodBadUgly => string.Equals(_gameTypeCode, "GOODBADUGLY", StringComparison.OrdinalIgnoreCase);
     private bool IsFollowTheQueen => string.Equals(_gameTypeCode, "FOLLOWTHEQUEEN", StringComparison.OrdinalIgnoreCase);
     private bool IsBaseball => string.Equals(_gameTypeCode, "BASEBALL", StringComparison.OrdinalIgnoreCase);
@@ -701,7 +703,7 @@
     private bool IsPhilsMom => string.Equals(_gameTypeCode, "PHILSMOM", StringComparison.OrdinalIgnoreCase);
     private bool IsCrazyPineapple => string.Equals(_gameTypeCode, "CRAZYPINEAPPLE", StringComparison.OrdinalIgnoreCase);
     private bool IsIrishStyleHoldEm => IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple;
-    private bool UsesCardDealAnimation => IsSevenCardStud || IsGoodBadUgly || IsBaseball || IsFollowTheQueen || IsFiveCardDraw || IsTwosJacksManWithTheAxe || IsKingsAndLows || IsHoldEm || IsRedRiver || IsHoldTheBaseball || IsOmaha || IsNebraska || IsSouthDakota || IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple;
+    private bool UsesCardDealAnimation => IsSevenCardStud || IsRazz || IsGoodBadUgly || IsBaseball || IsFollowTheQueen || IsFiveCardDraw || IsTwosJacksManWithTheAxe || IsKingsAndLows || IsHoldEm || IsRedRiver || IsHoldTheBaseball || IsOmaha || IsNebraska || IsSouthDakota || IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple;
     private int DealAnimationDelayMs => 750;
 
     // Game rules for dynamic UI rendering
@@ -1005,7 +1007,7 @@
         // Update deck hand description from state
         if (state.PlayerVsDeck is not null)
         {
-            _deckHandDescription = state.PlayerVsDeck.DeckHandDescription;
+            _deckHandDescription = FormatHandDescriptionForDisplay(state.PlayerVsDeck.DeckHandDescription);
         }
 
         // Update game type code for routing to correct API
@@ -1486,7 +1488,7 @@
                 ApplyKingsAndLowsLowestCardWildFallback(_seats[targetSeatIndex].Cards);
 
                 _seats[targetSeatIndex].HandEvaluationDescription =
-                    state.HandEvaluationDescription ?? BuildFallbackHandDescription(state.Hand);
+                    FormatHandDescriptionForDisplay(state.HandEvaluationDescription ?? BuildFallbackHandDescription(state.Hand));
 
                 var newlyDealtCardCount = Math.Max(0, state.Hand.Count - previousCardCount);
                 if (targetSeatIndex == _currentPlayerSeatIndex && newlyDealtCardCount > 0)
@@ -2669,6 +2671,26 @@
                 return;
             }
         }
+        else if (IsRazz)
+        {
+            var startHandResponse = await SevenCardStudApi.SevenCardStudStartHandAsync(GameId);
+            if (!startHandResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
+
+            var collectAntesResponse = await SevenCardStudApi.SevenCardStudCollectAntesAsync(GameId);
+            if (!collectAntesResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
+
+            var dealHandsResponse = await SevenCardStudApi.SevenCardStudDealHandsAsync(GameId);
+            if (!dealHandsResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
+        }
         else if (IsGoodBadUgly)
         {
             var startHandResponse = await SevenCardStudApi.SevenCardStudStartHandAsync(GameId);
@@ -2854,6 +2876,10 @@
             showdownResponse = await TwosJacksManWithTheAxeApi.TwosJacksManWithTheAxePerformShowdownAsync(GameId);
         }
         else if (IsSevenCardStud)
+        {
+            showdownResponse = await SevenCardStudApi.SevenCardStudPerformShowdownAsync(GameId);
+        }
+        else if (IsRazz)
         {
             showdownResponse = await SevenCardStudApi.SevenCardStudPerformShowdownAsync(GameId);
         }
@@ -3703,7 +3729,7 @@
             var result = response.Content.Original;
             if (!string.IsNullOrEmpty(response.Content.NewHandDescription))
             {
-                _newHandDescription = response.Content.NewHandDescription;
+                _newHandDescription = FormatHandDescriptionForDisplay(response.Content.NewHandDescription);
             }
 
             // Transition to drawing new cards animation
@@ -4000,6 +4026,10 @@
             else if (IsSevenCardStud)
             {
                 result = OddsCalculator.CalculateStudOdds(cardsToKeep, deadCards);
+            }
+            else if (IsRazz)
+            {
+                result = OddsCalculator.CalculateRazzOdds(cardsToKeep, deadCards);
             }
             else if (IsKingsAndLows)
             {
@@ -5434,16 +5464,58 @@ HandType.HighCard
         // Use the hand description from the PlayerVsDeck state if available
         if (!string.IsNullOrWhiteSpace(playerVsDeck.StayingPlayerHandDescription))
         {
-            return playerVsDeck.StayingPlayerHandDescription;
+            return FormatHandDescriptionForDisplay(playerVsDeck.StayingPlayerHandDescription);
         }
 
         // Fallback to seat's hand evaluation description
         if (stayingPlayerSeatIndex >= 0 && stayingPlayerSeatIndex < _seats.Count)
         {
-            return _seats[stayingPlayerSeatIndex].HandEvaluationDescription;
+            return FormatHandDescriptionForDisplay(_seats[stayingPlayerSeatIndex].HandEvaluationDescription);
         }
 
         return null;
+    }
+
+    private static string? FormatHandDescriptionForDisplay(string? description)
+    {
+        if (string.IsNullOrWhiteSpace(description))
+        {
+            return description;
+        }
+
+        var trimmed = description.Trim();
+        var parts = trimmed.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0 || !parts[0].Contains('-', StringComparison.Ordinal))
+        {
+            return trimmed;
+        }
+
+        var rankTokens = parts[0].Split('-', StringSplitOptions.RemoveEmptyEntries);
+        if (rankTokens.Length == 0)
+        {
+            return trimmed;
+        }
+
+        var mapped = new List<string>(rankTokens.Length);
+        foreach (var token in rankTokens)
+        {
+            if (!int.TryParse(token, out var value) || value < 1 || value > 14)
+            {
+                return trimmed;
+            }
+
+            mapped.Add(value switch
+            {
+                1 or 14 => "Ace",
+                13 => "King",
+                12 => "Queen",
+                11 => "Jack",
+                _ => value.ToString()
+            });
+        }
+
+        var rebuilt = string.Join('-', mapped);
+        return parts.Length == 1 ? rebuilt : $"{rebuilt} {string.Join(' ', parts.Skip(1))}";
     }
 
     /// <summary>
@@ -5535,7 +5607,7 @@ HandType.HighCard
                     _deckCardsDrawn = true;
                     if (!string.IsNullOrWhiteSpace(response.Content.HandDescription))
                     {
-                        _deckHandDescription = response.Content.HandDescription;
+                        _deckHandDescription = FormatHandDescriptionForDisplay(response.Content.HandDescription);
                     }
                     await InvokeStateHasChangedAsync();
 

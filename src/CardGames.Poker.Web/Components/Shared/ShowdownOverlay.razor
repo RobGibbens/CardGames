@@ -29,14 +29,15 @@
         }
         else
         {
+            var isRazz = IsRazzGame;
             var winnerHand = GetPrimaryWinnerHand(ShowdownResult);
             var otherHands = GetLoserHands(ShowdownResult, winnerHand);
             var sharedCommunityCards = SharedCommunityCards is { Count: > 0 }
                 ? SharedCommunityCards
                 : GetSharedCommunityCards(winnerHand);
-            var winnerCards = winnerHand is not null ? GetDisplayCards(winnerHand, sharedCommunityCards) : [];
+            var winnerCards = winnerHand is not null ? GetDisplayCards(winnerHand, sharedCommunityCards, isRazz) : [];
             var winnerName = GetWinnerDisplayName(ShowdownResult, winnerHand);
-            var winnerDescription = GetWinnerDescription(ShowdownResult, winnerHand);
+            var winnerDescription = GetWinnerDescription(ShowdownResult, winnerHand, isRazz);
             var winnerAmount = GetWinnerAmount(ShowdownResult, winnerHand);
             var winnerVerb = GetWinnerVerb(ShowdownResult, winnerHand);
 
@@ -99,7 +100,7 @@
                     <h3 class="showdown-section-title">Other Hands</h3>
                     @foreach (var hand in otherHands)
                     {
-                        var handCards = GetDisplayCards(hand, sharedCommunityCards);
+                        var handCards = GetDisplayCards(hand, sharedCommunityCards, isRazz);
                         <div class="other-hand-row">
                             <div class="other-hand-info">
                                 <span class="other-hand-name">@DisplayFirstName(hand)</span>
@@ -107,9 +108,9 @@
                                 {
                                     <span class="sd-pill sd-pill-muted">Dead Hand (The Ugly)</span>
                                 }
-                                else if (!string.IsNullOrWhiteSpace(hand.HandType) || !string.IsNullOrWhiteSpace(hand.HandDescription))
+                                else if (isRazz || !string.IsNullOrWhiteSpace(hand.HandType) || !string.IsNullOrWhiteSpace(hand.HandDescription))
                                 {
-                                    <span class="sd-pill sd-pill-muted">@GetDetailedHandDescription(hand)</span>
+                                    <span class="sd-pill sd-pill-muted">@GetDetailedHandDescription(hand, isRazz)</span>
                                 }
                                 @if (hand.AmountWon.GetValueOrDefault() > 0)
                                 {
@@ -167,10 +168,15 @@
             public bool IsGameEnded { get; set; }
 
             [Parameter]
+            public string? GameTypeCode { get; set; }
+
+            [Parameter]
             public IReadOnlyList<ShowdownCard>? SharedCommunityCards { get; set; }
 
             [Parameter]
             public EventCallback OnClose { get; set; }
+
+    private bool IsRazzGame => string.Equals(GameTypeCode, "RAZZ", StringComparison.OrdinalIgnoreCase);
 
     private static ShowdownPlayerHand? GetPrimaryWinnerHand(PerformShowdownSuccessful result)
     {
@@ -256,11 +262,11 @@
         return 0;
     }
 
-    private static string GetWinnerDescription(PerformShowdownSuccessful result, ShowdownPlayerHand? winnerHand)
+    private static string GetWinnerDescription(PerformShowdownSuccessful result, ShowdownPlayerHand? winnerHand, bool isRazz)
     {
         if (winnerHand is not null)
         {
-            return GetDetailedHandDescription(winnerHand);
+            return GetDetailedHandDescription(winnerHand, isRazz);
         }
 
         return result.WonByFold == true ? "Won by fold" : string.Empty;
@@ -317,7 +323,7 @@
     /// Uses BestCardIndexes if provided by API, otherwise computes client-side.
     /// For other games, returns all cards sorted by symbol.
     /// </summary>
-    private static List<(ShowdownCard Card, bool IsWild)> GetDisplayCards(ShowdownPlayerHand hand, IReadOnlyList<ShowdownCard>? sharedCommunityCards = null)
+    private static List<(ShowdownCard Card, bool IsWild)> GetDisplayCards(ShowdownPlayerHand hand, IReadOnlyList<ShowdownCard>? sharedCommunityCards = null, bool isRazz = false)
     {
         if (hand.Cards is null || hand.Cards.Count == 0)
         {
@@ -343,8 +349,10 @@
             ? new HashSet<int>(hand.WildCardIndexes)
             : new HashSet<int>();
 
-        // If BestCardIndexes is provided and valid, use only those cards
-        if (hand.BestCardIndexes is not null)
+        // If BestCardIndexes is provided and valid, use only those cards.
+        // Razz always computes client-side low cards because BestCardIndexes
+        // may refer to a high-hand evaluation from other game variants.
+        if (!isRazz && hand.BestCardIndexes is not null)
         {
             var validBestIndexes = hand.BestCardIndexes
                 .Where(idx => idx >= 0 && idx < cardsList.Count)
@@ -367,6 +375,48 @@
                 .Select((c, i) => (Card: c, IsWild: wildSet.Contains(i)))
                 .OrderBy(x => GetCardDisplayOrder(x.Card))
                 .ToList();
+        }
+
+        if (isRazz && cardsList.Count >= 5)
+        {
+            var coreCards = cardsList
+                .Where(c => c is { Suit: not null, Symbol: not null })
+                .Select(c => new Card(MapSuit(c.Suit!.Value), MapSymbol(c.Symbol!.Value)))
+                .ToList();
+
+            if (coreCards.Count >= 5)
+            {
+                var razzHand = new RazzHand([], coreCards, []);
+                var bestLowCards = razzHand.GetBestLowHand();
+
+                var neededByLowValue = bestLowCards
+                    .GroupBy(GetRazzDisplayValue)
+                    .ToDictionary(g => g.Key, g => g.Count());
+
+                var result = new List<(ShowdownCard Card, bool IsWild)>();
+
+                // Prefer the earliest matching card instance from the original list so
+                // duplicates (like two sixes) are selected predictably for display.
+                for (var i = 0; i < cardsList.Count; i++)
+                {
+                    var showdownCard = cardsList[i];
+                    if (showdownCard.Symbol is null)
+                    {
+                        continue;
+                    }
+
+                    var lowValue = GetRazzDisplayValue(showdownCard.Symbol.Value);
+                    if (neededByLowValue.TryGetValue(lowValue, out var neededCount) && neededCount > 0)
+                    {
+                        result.Add((showdownCard, wildSet.Contains(i)));
+                        neededByLowValue[lowValue] = neededCount - 1;
+                    }
+                }
+
+                return result
+                    .OrderBy(x => GetRazzDisplayValue(x.Card.Symbol ?? CardSymbol.Ace))
+                    .ToList();
+            }
         }
 
         // For 7-card hands (Seven Card Stud), compute best 5 cards client-side
@@ -532,8 +582,29 @@
         return symbolValue * 10 + suitValue;
     }
 
-    private static string GetDetailedHandDescription(ShowdownPlayerHand hand)
+    private static string GetDetailedHandDescription(ShowdownPlayerHand hand, bool isRazz = false)
     {
+        if (isRazz)
+        {
+            if (hand.Cards is null || hand.Cards.Count < 5)
+            {
+                return string.Empty;
+            }
+
+            var razzCoreCards = hand.Cards
+                .Where(c => c is { Suit: not null, Symbol: not null })
+                .Select(c => new Card(MapSuit(c.Suit!.Value), MapSymbol(c.Symbol!.Value)))
+                .ToList();
+
+            if (razzCoreCards.Count < 5)
+            {
+                return string.Empty;
+            }
+
+            var razzHand = new RazzHand([], razzCoreCards, []);
+            return FormatRazzLowDescription(razzHand.GetBestLowHand());
+        }
+
         // Prefer server-provided hand description (already handles wild cards)
         if (!string.IsNullOrWhiteSpace(hand.HandDescription))
         {
@@ -591,6 +662,63 @@
         CardSymbol.Ace => Symbol.Ace,
         _ => throw new ArgumentOutOfRangeException(nameof(symbol), symbol, "Unknown symbol")
     };
+
+    private static string FormatRazzLowDescription(IReadOnlyCollection<Card> cards)
+    {
+        var labels = cards
+            .OrderByDescending(GetRazzDisplayValue)
+            .Select(GetRazzRankLabel)
+            .ToList();
+
+        return string.Join("-", labels);
+    }
+
+    private static int GetRazzDisplayValue(Card card)
+    {
+        return card.Value == 14 ? 1 : card.Value;
+    }
+
+    private static int GetRazzDisplayValue(CardSymbol symbol)
+    {
+        return symbol switch
+        {
+            CardSymbol.Ace => 1,
+            CardSymbol.Deuce => 2,
+            CardSymbol.Three => 3,
+            CardSymbol.Four => 4,
+            CardSymbol.Five => 5,
+            CardSymbol.Six => 6,
+            CardSymbol.Seven => 7,
+            CardSymbol.Eight => 8,
+            CardSymbol.Nine => 9,
+            CardSymbol.Ten => 10,
+            CardSymbol.Jack => 11,
+            CardSymbol.Queen => 12,
+            CardSymbol.King => 13,
+            _ => 99
+        };
+    }
+
+    private static string GetRazzRankLabel(Card card)
+    {
+        return card.Symbol switch
+        {
+            Symbol.Ace => "Ace",
+            Symbol.King => "King",
+            Symbol.Queen => "Queen",
+            Symbol.Jack => "Jack",
+            Symbol.Ten => "10",
+            Symbol.Nine => "9",
+            Symbol.Eight => "8",
+            Symbol.Seven => "7",
+            Symbol.Six => "6",
+            Symbol.Five => "5",
+            Symbol.Four => "4",
+            Symbol.Three => "3",
+            Symbol.Deuce => "2",
+            _ => card.Value.ToString(CultureInfo.InvariantCulture)
+        };
+    }
 
         private static string GetSuitFaIcon(CardSuit? suit)
         {

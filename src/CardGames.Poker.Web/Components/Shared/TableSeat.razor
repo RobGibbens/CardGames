@@ -152,6 +152,13 @@
 				{
 					<div class="seat-blind-button seat-bb-button" title="Big Blind">BB</div>
 				}
+
+				@if (IsCurrentPlayer && ShowCards && Seat.Cards.Count > 0 && !string.IsNullOrWhiteSpace(Seat.HandEvaluationDescription))
+				{
+					<div class="hand-eval-tooltip">
+						@Seat.HandEvaluationDescription
+					</div>
+				}
 			</div>
 
 		</div>
@@ -164,13 +171,6 @@
 			</div>
 		}
 
-		<!-- Hand Eval Tooltip (Shown on hover) -->
-		@if (IsCurrentPlayer && ShowCards && Seat.Cards.Count > 0 && !string.IsNullOrWhiteSpace(Seat.HandEvaluationDescription))
-		{
-			<div class="hand-eval-tooltip">
-				@Seat.HandEvaluationDescription
-			</div>
-		}
 	}
 	else
 	{
@@ -389,7 +389,8 @@
 		// (it can have ties across different streets, causing incorrect interleaving).
 		if (string.Equals(GameTypeCode, "SEVENCARDSTUD", StringComparison.OrdinalIgnoreCase) ||
 			string.Equals(GameTypeCode, "BASEBALL", StringComparison.OrdinalIgnoreCase) ||
-			string.Equals(GameTypeCode, "FOLLOWTHEQUEEN", StringComparison.OrdinalIgnoreCase))
+			string.Equals(GameTypeCode, "FOLLOWTHEQUEEN", StringComparison.OrdinalIgnoreCase) ||
+			string.Equals(GameTypeCode, "RAZZ", StringComparison.OrdinalIgnoreCase))
 		{
 			// Preserve the API order - cards are already sorted by the server
 			return Seat.Cards;
