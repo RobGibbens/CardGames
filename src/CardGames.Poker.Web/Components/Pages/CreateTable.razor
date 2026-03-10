@@ -77,8 +77,9 @@
 							@{
 								var game = DealersChoiceCard;
 								var isAvailable = true;
+								var isSelected = _selectedVariant?.Code == game.Code;
 							}
-							<div class="variant-card @(_selectedVariant?.Code == game.Code ? "selected" : "") @(!isAvailable ? "disabled" : "")"
+							<div class="variant-card @(isSelected ? "selected selected-layout" : "") @(!isAvailable ? "disabled" : "")"
 								 @onclick="() => SelectVariant(game, isAvailable)">
 								<div class="variant-icon">
 									@if (!string.IsNullOrEmpty(game.ImageName))
@@ -94,13 +95,15 @@
 										<span class="variant-icon-fallback"><i class="fa-thin fa-card-club"></i></span>
 									}
 								</div>
-								<h3 class="variant-name">@game.Name</h3>
-								<p class="variant-description">@game.Description</p>
-								<div class="variant-meta">
-									<span class="variant-players">
-										<i class="fa-regular fa-users"></i>
-										@game.MinimumNumberOfPlayers-@game.MaximumNumberOfPlayers players
-									</span>
+								<div class="variant-content">
+									<h3 class="variant-name">@game.Name</h3>
+									<p class="variant-description">@game.Description</p>
+									<div class="variant-meta">
+										<span class="variant-players">
+											<i class="fa-regular fa-users"></i>
+											@game.MinimumNumberOfPlayers-@game.MaximumNumberOfPlayers players
+										</span>
+									</div>
 								</div>
 								@if (!isAvailable)
 								{
@@ -127,7 +130,8 @@
 								{
 									var isAvailable = game.Code == DealersChoiceCode
 										|| _availableGames.Any(g => string.Equals(g.Code, game.Code, StringComparison.OrdinalIgnoreCase));
-									<div class="variant-card @(_selectedVariant?.Code == game.Code ? "selected" : "") @(!isAvailable ? "disabled" : "")"
+										var isSelected = _selectedVariant?.Code == game.Code;
+										<div class="variant-card @(isSelected ? "selected selected-layout" : "") @(!isAvailable ? "disabled" : "")"
 										 @onclick="() => SelectVariant(game, isAvailable)">
 										<div class="variant-icon">
 											@if (!string.IsNullOrEmpty(game.ImageName))
@@ -143,13 +147,15 @@
 												<span class="variant-icon-fallback"><i class="fa-thin fa-card-club"></i></span>
 											}
 										</div>
-										<h3 class="variant-name">@game.Name</h3>
-										<p class="variant-description">@game.Description</p>
-										<div class="variant-meta">
-											<span class="variant-players">
-												<i class="fa-regular fa-users"></i>
-												@game.MinimumNumberOfPlayers-@game.MaximumNumberOfPlayers players
-											</span>
+										<div class="variant-content">
+											<h3 class="variant-name">@game.Name</h3>
+											<p class="variant-description">@game.Description</p>
+											<div class="variant-meta">
+												<span class="variant-players">
+													<i class="fa-regular fa-users"></i>
+													@game.MinimumNumberOfPlayers-@game.MaximumNumberOfPlayers players
+												</span>
+											</div>
 										</div>
 										@if (!isAvailable)
 										{
@@ -307,6 +313,55 @@
 		}
 	</div>
 </main>
+
+<style>
+	.create-step .variant-card.selected-layout {
+		display: grid;
+		grid-column: 1 / -1;
+		width: 100%;
+		grid-template-columns: minmax(260px, 380px) minmax(0, 1fr);
+		align-items: stretch;
+		gap: 1rem;
+	}
+
+	.create-step .variant-card.selected-layout .variant-icon {
+		width: 100%;
+		margin: 0;
+		height: 100%;
+		min-height: 220px;
+	}
+
+	.create-step .variant-card.selected-layout .variant-icon-image,
+	.create-step .variant-card.selected-layout .variant-icon-fallback {
+		width: 100%;
+		height: 100%;
+		border-radius: 0.75rem;
+	}
+
+	.create-step .variant-card.selected-layout .variant-content {
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
+		min-width: 0;
+	}
+
+	.create-step .variant-card.selected-layout .variant-content .variant-name {
+		margin-top: 0;
+		font-size: clamp(1.8rem, 2.6vw, 2.5rem);
+		line-height: 1.15;
+		margin-bottom: 0.75rem;
+	}
+
+	@@media (max-width: 768px) {
+		.create-step .variant-card.selected-layout {
+			grid-template-columns: 1fr;
+		}
+
+		.create-step .variant-card.selected-layout .variant-icon {
+			min-height: 190px;
+		}
+	}
+</style>
 
 @code {
 	private bool _isLoading = true;
