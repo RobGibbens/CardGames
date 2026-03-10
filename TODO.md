@@ -7,6 +7,8 @@
 - [ ] Phil's mom loser showdown not correct
 - [ ] Table settings should be dynamic when creating a table. Not all games have an ante or a minimum bet.
 - [ ] Test what happens when a player disconnects
+- [ ] Work on isolating games more
+- [ ] Allow each person to set their preferences for blinds when creating tables
 
 ### Leagues
 

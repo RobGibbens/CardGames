@@ -192,56 +192,59 @@
 							</div>
 							@if (!_isDealersChoice)
 							{
-							<div class="form-row two-columns">
-								<div class="form-group">
-									<label class="form-label" for="ante">Ante</label>
-									<input type="number"
-										   id="ante"
-										   class="form-input"
-										   min="@(_hasBlinds ? 0 : 1)"
-										   max="100"
-										   @bind-value="_ante"
-										   @bind-value:event="oninput" />
-									<span class="form-hint">Mandatory bet before each hand@(_hasBlinds ? " (0 for none)" : "")</span>
-								</div>
-								<div class="form-group">
-									<label class="form-label" for="minBet">Minimum Bet</label>
-									<input type="number"
-										   id="minBet"
-										   class="form-input"
-										   min="1"
-										   max="1000"
-										   @bind-value="_minBet"
-										   @bind-value:event="oninput" />
-									<span class="form-hint">Minimum bet during play</span>
-								</div>
-							</div>
 								@if (_hasBlinds)
 								{
-							<div class="form-row two-columns">
-								<div class="form-group">
-									<label class="form-label" for="smallBlind">Small Blind</label>
-									<input type="number"
-										   id="smallBlind"
-										   class="form-input"
-										   min="1"
-										   max="50000"
-										   @bind-value="_smallBlind"
-										   @bind-value:event="oninput" />
-									<span class="form-hint">Small blind amount</span>
-								</div>
-								<div class="form-group">
-									<label class="form-label" for="bigBlind">Big Blind</label>
-									<input type="number"
-										   id="bigBlind"
-										   class="form-input"
-										   min="1"
-										   max="100000"
-										   @bind-value="_bigBlind"
-										   @bind-value:event="oninput" />
-									<span class="form-hint">Must be ≥ small blind</span>
-								</div>
-							</div>
+									<div class="form-row two-columns">
+										<div class="form-group">
+											<label class="form-label" for="smallBlind">Small Blind</label>
+											<input type="number"
+												   id="smallBlind"
+												   class="form-input"
+												   min="1"
+												   max="50000"
+												   @bind-value="_smallBlind"
+												   @bind-value:event="oninput" />
+											<span class="form-hint">Small blind amount</span>
+										</div>
+										<div class="form-group">
+											<label class="form-label" for="bigBlind">Big Blind</label>
+											<input type="number"
+												   id="bigBlind"
+												   class="form-input"
+												   min="1"
+												   max="100000"
+												   @bind-value="_bigBlind"
+												   @bind-value:event="oninput" />
+											<span class="form-hint">Minimum bet is automatically set to the big blind.</span>
+										</div>
+									</div>
+								}
+								else
+								{
+									<div class="form-row two-columns">
+										<div class="form-group">
+											<label class="form-label" for="ante">Ante</label>
+											<input type="number"
+												   id="ante"
+												   class="form-input"
+												   min="1"
+												   max="100"
+												   @bind-value="_ante"
+												   @bind-value:event="oninput" />
+											<span class="form-hint">Mandatory bet before each hand</span>
+										</div>
+										<div class="form-group">
+											<label class="form-label" for="minBet">Minimum Bet</label>
+											<input type="number"
+												   id="minBet"
+												   class="form-input"
+												   min="1"
+												   max="1000"
+												   @bind-value="_minBet"
+												   @bind-value:event="oninput" />
+											<span class="form-hint">Minimum bet during play</span>
+										</div>
+									</div>
 								}
 							}
 							else
@@ -256,11 +259,18 @@
 							<div class="form-row">
 								<div class="form-group">
 									<label class="form-label" for="areOddsVisibleToAllPlayers">Odds Visibility</label>
-									<div>
-										<input type="checkbox"
-											   id="areOddsVisibleToAllPlayers"
-											   @bind="_areOddsVisibleToAllPlayers" />
-										<span class="form-hint"> Allow all players to see hand-odds in the dashboard</span>
+									<div class="create-table-odds-visibility-control">
+										<button class="game-info-odds-toggle-switch @(_areOddsVisibleToAllPlayers ? "is-on" : "is-off")"
+												type="button"
+												id="areOddsVisibleToAllPlayers"
+												role="switch"
+												aria-checked="@_areOddsVisibleToAllPlayers"
+												aria-label="Toggle odds visibility for everyone"
+												@onclick="ToggleOddsVisibility">
+											<span class="game-info-odds-toggle-text">@(_areOddsVisibleToAllPlayers ? "ON" : "OFF")</span>
+											<span class="game-info-odds-toggle-thumb" aria-hidden="true"></span>
+										</button>
+										<span class="form-hint odds-visibility-hint">Allow all players to see hand-odds in the dashboard</span>
 									</div>
 								</div>
 							</div>
@@ -307,7 +317,7 @@
 	private int _ante = 5;
 	private int _minBet = 10;
 	private int _smallBlind = 1;
-  private int _bigBlind = 2;
+	private int _bigBlind = 2;
 	private bool _areOddsVisibleToAllPlayers = true;
 	private string _variantSearch = string.Empty;
 	private bool _isDealersChoice;
@@ -369,7 +379,9 @@
 	private bool CanCreate =>
 		_selectedVariant is not null &&
 		!string.IsNullOrWhiteSpace(_tableName) &&
-		(_isDealersChoice || (_ante >= 0 && _minBet > 0 && (!_hasBlinds || (_smallBlind > 0 && _bigBlind >= _smallBlind))));
+		(_isDealersChoice || (_hasBlinds
+			? (_smallBlind > 0 && _bigBlind >= _smallBlind)
+			: (_ante > 0 && _minBet > 0)));
 
 	private sealed record VariantCard(
 		string Code,
@@ -471,10 +483,16 @@
 			imageName: variant.ImageName ?? string.Empty,
 			maximumNumberOfPlayers: variant.MaximumNumberOfPlayers,
 			minimumNumberOfPlayers: variant.MinimumNumberOfPlayers,
-			name: variant.Name
+			name: variant.Name,
+			variantType: VariantType.Other
 		);
 		_isDealersChoice = variant.Code == DealersChoiceCode;
-		_hasBlinds = IsBlindBasedGame(variant.Code);
+		_hasBlinds = !_isDealersChoice && _selectedVariant.VariantType == VariantType.HoldEm;
+
+		if (_hasBlinds)
+		{
+			_minBet = _bigBlind;
+		}
 	}
 
 	private async Task CreateTableAsync()
@@ -493,11 +511,14 @@
 			var gameId = Guid.CreateVersion7();
 			var playerInfos = new List<PlayerInfo>();
 
-			var command = new CreateGameCommand(_isDealersChoice ? 0 : _ante, _selectedVariant.Code, gameId, _tableName, _isDealersChoice ? 0 : _minBet, playerInfos)
+			var ante = (_isDealersChoice || _hasBlinds) ? 0 : _ante;
+			var minimumBet = _isDealersChoice ? 0 : (_hasBlinds ? _bigBlind : _minBet);
+
+			var command = new CreateGameCommand(ante, _selectedVariant.Code, gameId, _tableName, minimumBet, playerInfos)
 			{
 				IsDealersChoice = _isDealersChoice,
 				SmallBlind = _hasBlinds ? _smallBlind : null,
-                BigBlind = _hasBlinds ? _bigBlind : null,
+				BigBlind = _hasBlinds ? _bigBlind : null,
 				AreOddsVisibleToAllPlayers = _areOddsVisibleToAllPlayers
 			};
 
@@ -529,14 +550,14 @@
 		}
 	}
 
-	private static bool IsBlindBasedGame(string gameCode)
-	{
-		return gameCode is "HOLDEM" or "REDRIVER" or "OMAHA" or "NEBRASKA" or "SOUTHDAKOTA" or "IRISHHOLDEM" or "HOLDTHEBASEBALL" or "PHILSMOM" or "CRAZYPINEAPPLE";
-	}
-
 	private bool MatchesVariantSearch(string gameName)
 	{
 		return string.IsNullOrWhiteSpace(_variantSearch)
 			|| gameName.Contains(_variantSearch, StringComparison.OrdinalIgnoreCase);
+	}
+
+	private void ToggleOddsVisibility()
+	{
+		_areOddsVisibleToAllPlayers = !_areOddsVisibleToAllPlayers;
 	}
 }
