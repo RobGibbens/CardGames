@@ -1,0 +1,137 @@
+@page "/Account/Manage/GamePreferences"
+
+@using System.ComponentModel.DataAnnotations
+@using CardGames.Poker.Api.Clients
+@using CardGames.Poker.Api.Contracts
+@using Microsoft.AspNetCore.Identity
+@using CardGames.Poker.Web.Data
+
+@inject UserManager<ApplicationUser> UserManager
+@inject IProfileApi ProfileApi
+@inject IdentityRedirectManager RedirectManager
+
+<PageTitle>Game Preferences</PageTitle>
+
+<div class="account-profile">
+    <div class="account-profile-title-row">
+        <h3 class="account-profile-title">Game Preferences</h3>
+        <p class="account-profile-subtitle">Set your default blind, ante, and minimum bet amounts for new games.</p>
+    </div>
+
+    <StatusMessage Message="@message" />
+
+    <EditForm Model="Input" FormName="game-preferences" OnValidSubmit="OnValidSubmitAsync" method="post" class="account-profile-form auth-form">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="text-danger" role="alert" />
+
+        <div class="form-floating mb-3" data-label="Default small blind">
+            <InputNumber @bind-Value="Input.DefaultSmallBlind" id="Input.DefaultSmallBlind" class="form-control" placeholder="Enter default small blind amount" />
+            <ValidationMessage For="() => Input.DefaultSmallBlind" class="text-danger" />
+        </div>
+
+        <div class="form-floating mb-3" data-label="Default big blind">
+            <InputNumber @bind-Value="Input.DefaultBigBlind" id="Input.DefaultBigBlind" class="form-control" placeholder="Enter default big blind amount" />
+            <ValidationMessage For="() => Input.DefaultBigBlind" class="text-danger" />
+        </div>
+
+        <div class="form-floating mb-3" data-label="Default ante">
+            <InputNumber @bind-Value="Input.DefaultAnte" id="Input.DefaultAnte" class="form-control" placeholder="Enter default ante amount" />
+            <ValidationMessage For="() => Input.DefaultAnte" class="text-danger" />
+        </div>
+
+        <div class="form-floating mb-3" data-label="Default minimum bet">
+            <InputNumber @bind-Value="Input.DefaultMinimumBet" id="Input.DefaultMinimumBet" class="form-control" placeholder="Enter default minimum bet amount" />
+            <ValidationMessage For="() => Input.DefaultMinimumBet" class="text-danger" />
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-lg">Save preferences</button>
+    </EditForm>
+</div>
+
+@code {
+    private string? message;
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromForm]
+    private InputModel Input { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Input ??= new();
+
+        var user = await UserManager.GetUserAsync(HttpContext.User);
+        if (user is null)
+        {
+            RedirectManager.RedirectToInvalidUser(UserManager, HttpContext);
+            return;
+        }
+
+        var response = await ProfileApi.GetGamePreferencesAsync();
+        if (!response.IsSuccessStatusCode || response.Content is null)
+        {
+            message = "Error: Unable to load game preferences right now.";
+            return;
+        }
+
+        Input = new InputModel
+        {
+            DefaultSmallBlind = response.Content.DefaultSmallBlind,
+            DefaultBigBlind = response.Content.DefaultBigBlind,
+            DefaultAnte = response.Content.DefaultAnte,
+            DefaultMinimumBet = response.Content.DefaultMinimumBet
+        };
+    }
+
+    private async Task OnValidSubmitAsync()
+    {
+        var user = await UserManager.GetUserAsync(HttpContext.User);
+        if (user is null)
+        {
+            RedirectManager.RedirectToInvalidUser(UserManager, HttpContext);
+            return;
+        }
+
+        var response = await ProfileApi.UpdateGamePreferencesAsync(new UpdateGamePreferencesRequest
+        {
+            DefaultSmallBlind = Input.DefaultSmallBlind,
+            DefaultBigBlind = Input.DefaultBigBlind,
+            DefaultAnte = Input.DefaultAnte,
+            DefaultMinimumBet = Input.DefaultMinimumBet
+        });
+
+        if (!response.IsSuccessStatusCode)
+        {
+            message = "Error: Unable to save game preferences.";
+            return;
+        }
+
+        RedirectManager.RedirectToCurrentPageWithStatus("Game preferences saved.", HttpContext);
+    }
+
+    private sealed class InputModel : IValidatableObject
+    {
+        [Range(0, int.MaxValue, ErrorMessage = "Small blind must be greater than or equal to 0.")]
+        public int DefaultSmallBlind { get; set; } = 1;
+
+        [Range(0, int.MaxValue, ErrorMessage = "Big blind must be greater than or equal to 0.")]
+        public int DefaultBigBlind { get; set; } = 2;
+
+        [Range(0, int.MaxValue, ErrorMessage = "Ante must be greater than or equal to 0.")]
+        public int DefaultAnte { get; set; } = 5;
+
+        [Range(0, int.MaxValue, ErrorMessage = "Minimum bet must be greater than or equal to 0.")]
+        public int DefaultMinimumBet { get; set; } = 10;
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            if (DefaultBigBlind < DefaultSmallBlind)
+            {
+                yield return new ValidationResult(
+                    "Big blind must be greater than or equal to small blind.",
+                    [nameof(DefaultBigBlind), nameof(DefaultSmallBlind)]);
+            }
+        }
+    }
+}

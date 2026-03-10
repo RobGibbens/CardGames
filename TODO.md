@@ -4,7 +4,6 @@
 
 - [ ] https://github.com/leeoades/FunctionalStateMachine
 
-- [ ] When playing Dealer's choice, filter out games that don't support the number of players
 - [ ] Phil's mom loser showdown not correct
 - [ ] Test what happens when a player disconnects
 - [ ] Work on isolating games code more
@@ -200,3 +199,4 @@
 - [x] Make sure players can keep a long running chip balance / only bring in a certain amount to a game
 - [x] Allow table creator to turn off odds during game
 - [x] Table settings should be dynamic when creating a table. Not all games have an ante or a minimum bet.
+- [x] When playing Dealer's choice, filter out games that don't support the number of players

@@ -11,6 +11,7 @@
 
 @inject IGamesApi GamesApi
 @inject IAvailablePokerGamesApi AvailableGamesApi
+@inject IProfileApi ProfileApi
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
 
@@ -423,6 +424,10 @@
 	private ElementReference _variantsSelectionRegion;
 	private IJSObjectReference? _variantAnimationModule;
 	private bool _playVariantFlipAfterRender;
+	private const int FallbackSmallBlind = 1;
+	private const int FallbackBigBlind = 2;
+	private const int FallbackAnte = 5;
+	private const int FallbackMinimumBet = 10;
 
 	private const string DealersChoiceCode = "DEALERSCHOICE";
 	private const string HoldEmVariantsTitle = "Hold 'Em variants";
@@ -519,7 +524,44 @@
 
 	protected override async Task OnInitializedAsync()
 	{
-		await LoadAvailableGamesAsync();
+		await Task.WhenAll(
+			LoadAvailableGamesAsync(),
+			LoadGamePreferenceDefaultsAsync());
+	}
+
+	private async Task LoadGamePreferenceDefaultsAsync()
+	{
+		try
+		{
+			var response = await ProfileApi.GetGamePreferencesAsync();
+			if (response.IsSuccessStatusCode && response.Content is not null)
+			{
+				ApplyGamePreferenceDefaults(response.Content);
+				return;
+			}
+		}
+		catch
+		{
+			// Ignore errors and fall back to local defaults.
+		}
+
+		ApplyIntelligentFallbackDefaults();
+	}
+
+	private void ApplyGamePreferenceDefaults(GamePreferencesDto preferences)
+	{
+		_smallBlind = preferences.DefaultSmallBlind > 0 ? preferences.DefaultSmallBlind : FallbackSmallBlind;
+		_bigBlind = preferences.DefaultBigBlind >= _smallBlind ? preferences.DefaultBigBlind : _smallBlind * 2;
+		_ante = preferences.DefaultAnte > 0 ? preferences.DefaultAnte : FallbackAnte;
+		_minBet = preferences.DefaultMinimumBet > 0 ? preferences.DefaultMinimumBet : Math.Max(FallbackMinimumBet, _bigBlind);
+	}
+
+	private void ApplyIntelligentFallbackDefaults()
+	{
+		_smallBlind = FallbackSmallBlind;
+		_bigBlind = FallbackBigBlind;
+		_ante = FallbackAnte;
+		_minBet = FallbackMinimumBet;
 	}
 
 	protected override async Task OnAfterRenderAsync(bool firstRender)

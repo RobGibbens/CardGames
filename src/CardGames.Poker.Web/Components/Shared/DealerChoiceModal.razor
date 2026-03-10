@@ -41,10 +41,17 @@
 						<h3 class="dc-variant-group-title">@group.Title</h3>
 						@foreach (var game in group.Games)
 						{
-							<button class="dealer-choice-variant @(_selectedCode == game.Code ? "selected" : "")"
+							var isDisabledForPlayerCount = IsVariantDisabledForPlayerCount(game);
+
+							<button class="dealer-choice-variant @(_selectedCode == game.Code ? "selected" : "") @(isDisabledForPlayerCount ? "variant-disabled" : "")"
+									disabled="@isDisabledForPlayerCount"
 									@onclick="() => SelectVariant(game.Code, game.Name)">
 								<span class="dc-variant-name">@game.Name</span>
 								<span class="dc-variant-desc">@game.Description</span>
+								@if (isDisabledForPlayerCount)
+								{
+									<span class="dc-variant-disabled-reason">@GetDisabledReason(game)</span>
+								}
 								@if (_selectedCode == game.Code)
 								{
 									<span class="dc-variant-check"><i class="fa-solid fa-check"></i></span>
@@ -121,6 +128,9 @@
 	public bool IsLoading { get; set; }
 
 	[Parameter, EditorRequired]
+	public int CurrentActivePlayerCount { get; set; }
+
+	[Parameter, EditorRequired]
 	public EventCallback<DealerChoiceSelection> OnGameChosen { get; set; }
 
 	private string? _selectedCode;
@@ -162,6 +172,18 @@
 	protected override void OnParametersSet()
 	{
 		_isLoading = IsLoading;
+
+		if (_selectedCode is null)
+		{
+			return;
+		}
+
+		var selectedGame = AvailableGames.FirstOrDefault(g => string.Equals(g.Code, _selectedCode, StringComparison.OrdinalIgnoreCase));
+		if (selectedGame is not null && IsVariantDisabledForPlayerCount(selectedGame))
+		{
+			_selectedCode = null;
+			_selectedName = null;
+		}
 	}
 
 	private void SelectVariant(string code, string name)
@@ -177,6 +199,16 @@
 			_selectedName = name;
 		}
 		_error = null;
+	}
+
+	private bool IsVariantDisabledForPlayerCount(GetAvailablePokerGamesResponse game)
+	{
+		return game.MaximumNumberOfPlayers < CurrentActivePlayerCount;
+	}
+
+	private string GetDisabledReason(GetAvailablePokerGamesResponse game)
+	{
+		return $"Unavailable: max {game.MaximumNumberOfPlayers} players, current active players: {CurrentActivePlayerCount}.";
 	}
 
 	private static VariantGroup CreateGroup(string title, IEnumerable<GetAvailablePokerGamesResponse> games, VariantType variantType)

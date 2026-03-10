@@ -108,3 +108,4 @@
   - Key files: `src/CardGames.Poker.Web/Components/Shared/DrawPanel.razor`, `src/CardGames.Poker.Web/Components/Pages/TablePlay.razor`.
   - Build verified: 0 errors.- 2026-02-18 (Irish Hold 'Em Phase 2): Added MinDiscards to DrawPanel.razor for enforced 2-card discard. Wired from TablePlay.razor via IsIrishHoldEm check. Part of Phase 2 staged deploy session.
 - 2026-03-08: Create-table success flow now returns to `/lobby` instead of navigating to `/table/{gameId}`. This prevents immediate table-entry side effects (including auto-join/auto-seat intent handling on the table page) and keeps join as an explicit action from Lobby.
+- 2026-03-10: Dealer's Choice variant picker now keeps over-cap variants visible but disabled when `MaximumNumberOfPlayers` is less than current active seats (`IsOccupied && !IsSittingOut`), with inline max-vs-active messaging; active count is passed from `TablePlay.razor` into `DealerChoiceModal` as `CurrentActivePlayerCount`.

@@ -391,6 +391,7 @@
             {
                 <DealerChoiceModal AvailableGames="@_dcAvailableGames"
                                    IsLoading="@_dcGamesLoading"
+                                   CurrentActivePlayerCount="@_seats.Count(s => s.IsOccupied && !s.IsSittingOut)"
                                    OnGameChosen="@HandleDealerChoiceAsync" />
             }
             else

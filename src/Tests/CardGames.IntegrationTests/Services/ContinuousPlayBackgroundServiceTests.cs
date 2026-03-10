@@ -538,6 +538,11 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
              return Task.CompletedTask;
          }
 
+         public Task BroadcastOddsVisibilityUpdatedAsync(OddsVisibilityUpdatedDto notification, CancellationToken cancellationToken = default)
+         {
+             return Task.CompletedTask;
+         }
+
          public Task BroadcastPlayerActionAsync(Guid gameId, int seatPosition, string? action, string description, CancellationToken cancellationToken = default)
          {
              return Task.CompletedTask;

@@ -116,6 +116,11 @@ public class CardsDbContext(DbContextOptions<CardsDbContext> options) : Identity
 	public DbSet<LeagueMembershipEvent> LeagueMembershipEvents => Set<LeagueMembershipEvent>();
 
 	/// <summary>
+	/// Gets the set of per-user game preference defaults.
+	/// </summary>
+	public DbSet<UserGamePreferences> UserGamePreferences => Set<UserGamePreferences>();
+
+	/// <summary>
 	/// Gets the set of league invites.
 	/// </summary>
 	public DbSet<LeagueInvite> LeagueInvites => Set<LeagueInvite>();

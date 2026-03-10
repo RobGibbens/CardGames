@@ -25,6 +25,11 @@ public class FakeGameStateBroadcaster : IGameStateBroadcaster
         return Task.CompletedTask;
     }
 
+    public Task BroadcastOddsVisibilityUpdatedAsync(OddsVisibilityUpdatedDto notification, CancellationToken cancellationToken = default)
+    {
+        return Task.CompletedTask;
+    }
+
     public Task BroadcastPlayerActionAsync(Guid gameId, int seatIndex, string? playerName, string actionDescription, CancellationToken cancellationToken = default)
     {
         return Task.CompletedTask;

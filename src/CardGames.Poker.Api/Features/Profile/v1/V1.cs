@@ -2,8 +2,10 @@ using Asp.Versioning.Builder;
 using CardGames.Poker.Api.Features.Profile.v1.Queries.GetAvatar;
 using CardGames.Poker.Api.Features.Profile.v1.Commands.UploadAvatar;
 using CardGames.Poker.Api.Features.Profile.v1.Commands.AddAccountChips;
+using CardGames.Poker.Api.Features.Profile.v1.Commands.UpdateGamePreferences;
 using CardGames.Poker.Api.Features.Profile.v1.Queries.GetCashierLedger;
 using CardGames.Poker.Api.Features.Profile.v1.Queries.GetCashierSummary;
+using CardGames.Poker.Api.Features.Profile.v1.Queries.GetGamePreferences;
 
 namespace CardGames.Poker.Api.Features.Profile.v1;
 
@@ -20,5 +22,7 @@ public static class V1
 		mapGroup.MapGetCashierSummary();
 		mapGroup.MapGetCashierLedger();
 		mapGroup.MapAddAccountChips();
+		mapGroup.MapGetGamePreferences();
+		mapGroup.MapUpdateGamePreferences();
 	}
 }

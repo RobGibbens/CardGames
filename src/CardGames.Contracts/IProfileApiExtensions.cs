@@ -21,4 +21,12 @@ public partial interface IProfileApi
 	[Headers("Accept: application/json, application/problem+json")]
 	[Get("/api/v1/profile/cashier/ledger")]
    Task<IApiResponse<CashierLedgerPageDto>> GetCashierLedgerPageAsync([AliasAs("pageSize")][Query] int? pageSize = 10, [AliasAs("pageNumber")][Query] int? pageNumber = 1, CancellationToken cancellationToken = default);
+
+	[Headers("Accept: application/json, application/problem+json")]
+	[Get("/api/v1/profile/game-preferences")]
+	Task<IApiResponse<GamePreferencesDto>> GetGamePreferencesAsync(CancellationToken cancellationToken = default);
+
+	[Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+	[Put("/api/v1/profile/game-preferences")]
+	Task<IApiResponse<GamePreferencesDto>> UpdateGamePreferencesAsync([Body] UpdateGamePreferencesRequest request, CancellationToken cancellationToken = default);
 }
