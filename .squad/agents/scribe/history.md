@@ -6,6 +6,8 @@
 
 ## Learnings
 
+- 2026-03-09: Logged completed Razz showdown fix for reported Rob/Lynne scenario. Code updated in `src/CardGames.Poker.Api/Features/Games/FiveCardDraw/v1/Commands/PerformShowdown/PerformShowdownCommandHandler.cs` with matching regression coverage in `src/Tests/CardGames.IntegrationTests/Features/Commands/PerformShowdownCommandHandlerTests.cs`; validation run for `PerformShowdownCommandHandlerTests.cs` passed (9 passed, 0 failed).
+
 - 2026-03-08: Merged `.squad/decisions/inbox/linus-create-table-no-autojoin.md` into canonical `.squad/decisions.md`, deleted the processed inbox file, appended a Linus cross-agent sync note, and logged orchestration/session artifacts for the create-table no-autojoin batch.
 
 - 2026-03-08: Merged `.squad/decisions/inbox/linus-lobby-autojoin-fix.md` into canonical `.squad/decisions.md`, deleted the processed inbox file, added a Linus cross-agent sync note, and logged session/orchestration entries for the lobby-triggered auto-seat join fix batch.

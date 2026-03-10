@@ -187,6 +187,11 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 
 				if (isRazz)
 				{
+					var allCardsByDealOrder = cards
+						.OrderBy(c => c.DealOrder)
+						.Select(c => new Card(MapSuit(c.Suit), MapSymbol(c.Symbol)))
+						.ToList();
+
 					var holeCards = cards
 						.Where(c => c.Location == CardLocation.Hole)
 						.OrderBy(c => c.DealOrder)
@@ -199,12 +204,15 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 						.Select(c => new Card(MapSuit(c.Suit), MapSymbol(c.Symbol)))
 						.ToList();
 
-					if (holeCards.Count < 3)
+					if (allCardsByDealOrder.Count < 5)
 					{
 						continue;
 					}
 
-					var razzHand = new RazzHand(holeCards.Take(2).ToList(), boardCards, [holeCards[2]]);
+					// Prefer canonical stud positional cards, but fall back to all dealt cards if card locations are inconsistent.
+					var razzHand = holeCards.Count >= 3
+						? new RazzHand(holeCards.Take(2).ToList(), boardCards.Take(4).ToList(), [holeCards[2]])
+						: new RazzHand([], allCardsByDealOrder, []);
 					playerHandEvaluations[gamePlayer.Player.Name] = (razzHand, cards, gamePlayer);
 				}
 				else if (handEvaluator.SupportsPositionalCards)

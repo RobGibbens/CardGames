@@ -349,8 +349,10 @@
             ? new HashSet<int>(hand.WildCardIndexes)
             : new HashSet<int>();
 
-        // If BestCardIndexes is provided and valid, use only those cards
-        if (hand.BestCardIndexes is not null)
+        // If BestCardIndexes is provided and valid, use only those cards.
+        // Razz always computes client-side low cards because BestCardIndexes
+        // may refer to a high-hand evaluation from other game variants.
+        if (!isRazz && hand.BestCardIndexes is not null)
         {
             var validBestIndexes = hand.BestCardIndexes
                 .Where(idx => idx >= 0 && idx < cardsList.Count)
