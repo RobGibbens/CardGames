@@ -1,0 +1,132 @@
+@namespace CardGames.Poker.Web.Components.Shared
+
+@using CardGames.Contracts.SignalR
+@using Microsoft.JSInterop
+@using static CardGames.Poker.Web.Components.Pages.TablePlay
+
+@inject IJSRuntime JSRuntime
+
+<div @ref="_panelRef" class="keep-or-trade-panel @(IsSubmitting ? "submitting" : "")">
+    <!-- Header (also serves as drag handle) -->
+    <div @ref="_handleRef" class="keep-or-trade-header drag-handle">
+        <div class="keep-or-trade-title">
+            <i class="fa-solid fa-shuffle"></i>
+            <span>Keep or Trade?</span>
+        </div>
+        <div class="keep-or-trade-subtitle">
+            Current Pot: @PotAmount.ToString("N0") chips
+        </div>
+    </div>
+
+    <!-- Cards Display -->
+    <div class="keep-or-trade-cards-container">
+        @foreach (var card in Cards)
+        {
+            <div class="keep-or-trade-card-wrapper">
+                <div class="keep-or-trade-card">
+                    <playing-card rank="@GetPlayingCardRank(card)" suit="@card.Suit" style="height:110px;width:76px;"></playing-card>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- Decision Info -->
+    <div class="keep-or-trade-info">
+        <span class="decision-hint">Keep your card or trade with the next player. Kings block trades!</span>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="keep-or-trade-actions">
+        <button class="keep-or-trade-btn keep-btn"
+                @onclick='() => OnDecision.InvokeAsync("Keep")'
+                disabled="@IsSubmitting">
+            <i class="fa-solid fa-hand"></i>
+            <span>Keep</span>
+        </button>
+
+        <button class="keep-or-trade-btn trade-btn @(!IsSubmitting ? "active" : "")"
+                @onclick='() => OnDecision.InvokeAsync("Trade")'
+                disabled="@IsSubmitting">
+            <i class="fa-solid fa-arrow-right-arrow-left"></i>
+            <span>Trade</span>
+        </button>
+    </div>
+
+    @if (IsSubmitting)
+    {
+        <div class="keep-or-trade-submitting">
+            <span class="loading-spinner-small"></span>
+            <span>Processing decision...</span>
+        </div>
+    }
+
+    <!-- Turn timer -->
+    <div class="turn-timer keep-or-trade-timer">
+        <div class="timer-bar">
+            <div class="timer-fill" style="width: @GetTimerPercentage()%"></div>
+        </div>
+        <span class="timer-text">@GetSecondsRemaining() s</span>
+    </div>
+</div>
+
+@code {
+    private const int DefaultTimerDurationSeconds = 30;
+    private const string PanelStorageKey = "cardGames.panelPosition.keepOrTradeOverlay";
+
+    private ElementReference _panelRef;
+    private ElementReference _handleRef;
+    private bool _dragInitialized;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_dragInitialized)
+        {
+            _dragInitialized = true;
+            await JSRuntime.InvokeVoidAsync("draggablePanel.init", _panelRef, _handleRef, PanelStorageKey);
+        }
+    }
+
+    [Parameter]
+    public List<CardInfo> Cards { get; set; } = [];
+
+    [Parameter]
+    public int PotAmount { get; set; }
+
+    [Parameter]
+    public bool IsSubmitting { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnDecision { get; set; }
+
+    [Parameter]
+    public ActionTimerStateDto? ActionTimer { get; set; }
+
+    private int GetSecondsRemaining()
+    {
+        return ActionTimer?.SecondsRemaining ?? DefaultTimerDurationSeconds;
+    }
+
+    private int GetTimerDuration()
+    {
+        return ActionTimer?.DurationSeconds ?? DefaultTimerDurationSeconds;
+    }
+
+    private double GetTimerPercentage()
+    {
+        var duration = GetTimerDuration();
+        if (duration <= 0) return 100;
+        return (GetSecondsRemaining() / (double)duration) * 100;
+    }
+
+    private string? GetPlayingCardRank(CardInfo card)
+    {
+        return card.Rank switch
+        {
+            "J" => "Jack",
+            "Q" => "Queen",
+            "K" => "King",
+            "A" => "Ace",
+            _ => card.Rank
+        };
+    }
+}

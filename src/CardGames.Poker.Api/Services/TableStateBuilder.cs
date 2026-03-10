@@ -1871,6 +1871,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		return new GameSpecialRulesDto
 		{
 			HasDropOrStay = rules.SpecialRules.ContainsKey("DropOrStay"),
+			HasKeepOrTrade = rules.SpecialRules.ContainsKey("KeepOrTrade"),
 			HasPotMatching = rules.SpecialRules.ContainsKey("LosersMatchPot"),
 			HasWildCards = rules.SpecialRules.ContainsKey("WildCards"),
 			WildCardsDescription = rules.SpecialRules.TryGetValue("WildCards", out var wc)
@@ -1935,6 +1936,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		return new GameSpecialRulesDto
 		{
 			HasDropOrStay = rules.SpecialRules.ContainsKey("DropOrStay"),
+			HasKeepOrTrade = rules.SpecialRules.ContainsKey("KeepOrTrade"),
 			HasPotMatching = rules.SpecialRules.ContainsKey("LosersMatchPot"),
 			HasWildCards = rules.SpecialRules.ContainsKey("WildCards"),
 			WildCardsDescription = rules.SpecialRules.TryGetValue("WildCards", out var wc)

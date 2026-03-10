@@ -23,6 +23,8 @@ public interface IGameApiRouter
 
     Task<RouterResponse<Unit>> DropOrStayAsync(string gameCode, Guid gameId, DropOrStayRequest request);
 
+    Task<RouterResponse<Unit>> KeepOrTradeAsync(string gameCode, Guid gameId, KeepOrTradeRequest request);
+
     Task<RouterResponse<Unit>> AcknowledgePotMatchAsync(string gameCode, Guid gameId);
 
     Task<RouterResponse<Unit>> FoldDuringDrawAsync(Guid gameId, int playerSeatIndex);
@@ -110,6 +112,7 @@ public class GameApiRouter : IGameApiRouter
     private const string Baseball = "BASEBALL";
     private const string HoldTheBaseball = "HOLDTHEBASEBALL";
     private const string FollowTheQueen = "FOLLOWTHEQUEEN";
+    private const string ScrewYourNeighbor = "SCREWYOURNEIGHBOR";
 
     private readonly IFiveCardDrawApi _fiveCardDrawApi;
     private readonly ITwosJacksManWithTheAxeApi _twosJacksManWithTheAxeApi;
@@ -120,9 +123,11 @@ public class GameApiRouter : IGameApiRouter
     private readonly IFollowTheQueenApi _followTheQueenApi;
     private readonly IHoldEmApi _holdEmApi;
     private readonly IGamesApi _gamesApi;
+    private readonly IScrewYourNeighborApi _screwYourNeighborApi;
     private readonly Dictionary<string, Func<Guid, ProcessBettingActionRequest, Task<RouterResponse<ProcessBettingActionSuccessful>>>> _bettingActionRoutes;
     private readonly Dictionary<string, Func<Guid, Guid, int, List<int>, Task<RouterResponse<ProcessDrawResult>>>> _drawRoutes;
     private readonly Dictionary<string, Func<Guid, DropOrStayRequest, Task<RouterResponse<Unit>>>> _dropOrStayRoutes;
+    private readonly Dictionary<string, Func<Guid, KeepOrTradeRequest, Task<RouterResponse<Unit>>>> _keepOrTradeRoutes;
     private readonly Dictionary<string, Func<Guid, ProcessBuyCardRequest, Task<RouterResponse<Unit>>>> _buyCardRoutes;
     private readonly Dictionary<string, Func<Guid, Task<RouterResponse<Unit>>>> _acknowledgePotMatchRoutes;
 
@@ -135,7 +140,8 @@ public class GameApiRouter : IGameApiRouter
         IBaseballApi baseballApi,
         IFollowTheQueenApi followTheQueenApi,
         IHoldEmApi holdEmApi,
-        IGamesApi gamesApi)
+        IGamesApi gamesApi,
+        IScrewYourNeighborApi screwYourNeighborApi)
     {
         _fiveCardDrawApi = fiveCardDrawApi;
         _twosJacksManWithTheAxeApi = twosJacksManWithTheAxeApi;
@@ -146,6 +152,7 @@ public class GameApiRouter : IGameApiRouter
         _followTheQueenApi = followTheQueenApi;
         _holdEmApi = holdEmApi;
         _gamesApi = gamesApi;
+        _screwYourNeighborApi = screwYourNeighborApi;
 
         _bettingActionRoutes = new Dictionary<string, Func<Guid, ProcessBettingActionRequest, Task<RouterResponse<ProcessBettingActionSuccessful>>>>(GameCodeComparer)
         {
@@ -182,6 +189,11 @@ public class GameApiRouter : IGameApiRouter
         _dropOrStayRoutes = new Dictionary<string, Func<Guid, DropOrStayRequest, Task<RouterResponse<Unit>>>>(GameCodeComparer)
         {
             [KingsAndLows] = RouteKingsAndLowsDropOrStayAsync
+        };
+
+        _keepOrTradeRoutes = new Dictionary<string, Func<Guid, KeepOrTradeRequest, Task<RouterResponse<Unit>>>>(GameCodeComparer)
+        {
+            [ScrewYourNeighbor] = RouteScrewYourNeighborKeepOrTradeAsync
         };
 
         _buyCardRoutes = new Dictionary<string, Func<Guid, ProcessBuyCardRequest, Task<RouterResponse<Unit>>>>(GameCodeComparer)
@@ -231,6 +243,16 @@ public class GameApiRouter : IGameApiRouter
     public async Task<RouterResponse<Unit>> DropOrStayAsync(string gameCode, Guid gameId, DropOrStayRequest request)
     {
         if (_dropOrStayRoutes.TryGetValue(gameCode, out var route))
+        {
+            return await route(gameId, request);
+        }
+
+        return RouterResponse<Unit>.Failure("Not supported for this game type", HttpStatusCode.BadRequest);
+    }
+
+    public async Task<RouterResponse<Unit>> KeepOrTradeAsync(string gameCode, Guid gameId, KeepOrTradeRequest request)
+    {
+        if (_keepOrTradeRoutes.TryGetValue(gameCode, out var route))
         {
             return await route(gameId, request);
         }
@@ -414,6 +436,12 @@ public class GameApiRouter : IGameApiRouter
     private async Task<RouterResponse<Unit>> RouteKingsAndLowsAcknowledgePotMatchAsync(Guid gameId)
     {
         var response = await _kingsAndLowsApi.KingsAndLowsAcknowledgePotMatchAsync(gameId);
+        return RouterResponse<Unit>.FromRefit(response);
+    }
+
+    private async Task<RouterResponse<Unit>> RouteScrewYourNeighborKeepOrTradeAsync(Guid gameId, KeepOrTradeRequest request)
+    {
+        var response = await _screwYourNeighborApi.ScrewYourNeighborKeepOrTradeAsync(gameId, request);
         return RouterResponse<Unit>.FromRefit(response);
     }
 

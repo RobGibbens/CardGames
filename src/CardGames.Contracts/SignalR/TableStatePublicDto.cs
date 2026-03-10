@@ -503,6 +503,11 @@ public sealed record GameSpecialRulesDto
 	public bool HasDropOrStay { get; init; }
 
 	/// <summary>
+	/// Whether the game has a Keep or Trade decision phase (e.g., Screw Your Neighbor).
+	/// </summary>
+	public bool HasKeepOrTrade { get; init; }
+
+	/// <summary>
 	/// Whether losers must match the pot (e.g., Kings and Lows).
 	/// </summary>
 	public bool HasPotMatching { get; init; }

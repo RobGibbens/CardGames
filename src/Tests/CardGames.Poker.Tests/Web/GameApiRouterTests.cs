@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using CardGames.Contracts;
 using CardGames.Poker.Api.Clients;
 using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Web.Services;
@@ -31,6 +32,7 @@ public class GameApiRouterTests
         var followTheQueenApi = Substitute.For<IFollowTheQueenApi>();
         var holdEmApi = Substitute.For<IHoldEmApi>();
         var gamesApi = Substitute.For<IGamesApi>();
+        var screwYourNeighborApi = Substitute.For<IScrewYourNeighborApi>();
 
         var holdEmResponse = CreateFailedBettingActionResponse();
         holdEmApi
@@ -51,7 +53,8 @@ public class GameApiRouterTests
             baseballApi,
             followTheQueenApi,
             holdEmApi,
-            gamesApi);
+            gamesApi,
+            screwYourNeighborApi);
 
         // Act
         _ = await sut.ProcessBettingActionAsync("HOLDEM", gameId, request);
@@ -80,6 +83,7 @@ public class GameApiRouterTests
         var followTheQueenApi = Substitute.For<IFollowTheQueenApi>();
         var holdEmApi = Substitute.For<IHoldEmApi>();
         var gamesApi = Substitute.For<IGamesApi>();
+        var screwYourNeighborApi = Substitute.For<IScrewYourNeighborApi>();
 
         var holdEmResponse = CreateFailedBettingActionResponse();
         holdEmApi
@@ -100,7 +104,8 @@ public class GameApiRouterTests
             baseballApi,
             followTheQueenApi,
             holdEmApi,
-            gamesApi);
+            gamesApi,
+            screwYourNeighborApi);
 
         // Act
         _ = await sut.ProcessBettingActionAsync("OMAHA", gameId, request);
@@ -130,6 +135,7 @@ public class GameApiRouterTests
         var followTheQueenApi = Substitute.For<IFollowTheQueenApi>();
         var holdEmApi = Substitute.For<IHoldEmApi>();
         var gamesApi = Substitute.For<IGamesApi>();
+        var screwYourNeighborApi = Substitute.For<IScrewYourNeighborApi>();
 
         var sut = new GameApiRouter(
             fiveCardDrawApi,
@@ -140,7 +146,8 @@ public class GameApiRouterTests
             baseballApi,
             followTheQueenApi,
             holdEmApi,
-            gamesApi);
+            gamesApi,
+            screwYourNeighborApi);
 
         // Act
         var response = await sut.ProcessDrawAsync("HOLDEM", gameId, playerId, 0, discardIndices);
@@ -171,6 +178,7 @@ public class GameApiRouterTests
         var followTheQueenApi = Substitute.For<IFollowTheQueenApi>();
         var holdEmApi = Substitute.For<IHoldEmApi>();
         var gamesApi = Substitute.For<IGamesApi>();
+        var screwYourNeighborApi = Substitute.For<IScrewYourNeighborApi>();
 
         var sut = new GameApiRouter(
             fiveCardDrawApi,
@@ -181,7 +189,8 @@ public class GameApiRouterTests
             baseballApi,
             followTheQueenApi,
             holdEmApi,
-            gamesApi);
+            gamesApi,
+            screwYourNeighborApi);
 
         // Act
         var response = await sut.ProcessDrawAsync("OMAHA", gameId, playerId, 0, discardIndices);

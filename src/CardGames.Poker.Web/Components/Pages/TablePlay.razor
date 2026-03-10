@@ -31,6 +31,7 @@
 @inject IFollowTheQueenApi FollowTheQueenApi
 @inject IBaseballApi BaseballApi
 @inject IKingsAndLowsApi KingsAndLowsApi
+@inject IScrewYourNeighborApi ScrewYourNeighborApi
 @inject IHoldEmApi HoldEmApi
 @inject IFiveCardDrawApi FiveCardDrawApiClient
 @inject IJSRuntime JSRuntime
@@ -280,8 +281,8 @@
         }
 
         <!-- Decision Panel (shown during decision phase like Drop/Stay) -->
-        <!-- Note: Kings and Lows DropOrStay has its own overlay, so exclude it here -->
-        @if (_isPlayerTurn && IsDecisionPhase && !(HasDropOrStay && IsDropOrStayPhase) && !IsCardDealingVisualInProgress)
+        <!-- Note: Kings and Lows DropOrStay and Screw Your Neighbor KeepOrTrade have their own overlays, so exclude them here -->
+        @if (_isPlayerTurn && IsDecisionPhase && !(HasDropOrStay && IsDropOrStayPhase) && !(HasKeepOrTrade && IsKeepOrTradePhase) && !IsCardDealingVisualInProgress)
         {
             <DecisionPanel Title="@GetDecisionTitle()" Subtitle="@GetDecisionSubtitle()"
                            AvailableActions="@CurrentPhaseAvailableActions" OnDecision="@HandleDecisionAsync"
@@ -328,6 +329,16 @@
                                OnDecision="@HandleDropOrStayDecision" ActionTimer="@_actionTimerState"
                                EnableKingsAndLowsWildCardHighlighting="@IsKingsAndLows"
                                EnableBaseballWildCardHighlighting="@(IsBaseball || IsHoldTheBaseball)" />
+        }
+
+        <!-- Keep or Trade Overlay (for Screw Your Neighbor) -->
+        @if (HasKeepOrTrade && IsKeepOrTradePhase && _isPlayerTurn && IsParticipatingInHand && !IsCardDealingVisualInProgress)
+        {
+            <KeepOrTradeOverlay Cards="@_currentPlayerDrawCards"
+                                PotAmount="@_pot"
+                                IsSubmitting="@_isProcessingKeepOrTrade"
+                                OnDecision="@HandleKeepOrTradeDecision"
+                                ActionTimer="@_actionTimerState" />
         }
 
         <!-- Buy Card Overlay (for Baseball) -->
@@ -583,6 +594,9 @@
     private bool _isAcknowledgingPotMatch;
     private HashSet<int> _deckDrawSelectedIndices = new();
 
+    // Screw Your Neighbor specific state
+    private bool _isProcessingKeepOrTrade;
+
     // Chip check pause state (for Kings and Lows)
     private bool _isPausedForChipCheck;
     private DateTimeOffset? _chipCheckPauseEndsAt;
@@ -708,8 +722,9 @@
     private bool IsIrishHoldEm => string.Equals(_gameTypeCode, "IRISHHOLDEM", StringComparison.OrdinalIgnoreCase);
     private bool IsPhilsMom => string.Equals(_gameTypeCode, "PHILSMOM", StringComparison.OrdinalIgnoreCase);
     private bool IsCrazyPineapple => string.Equals(_gameTypeCode, "CRAZYPINEAPPLE", StringComparison.OrdinalIgnoreCase);
+    private bool IsScrewYourNeighbor => string.Equals(_gameTypeCode, "SCREWYOURNEIGHBOR", StringComparison.OrdinalIgnoreCase);
     private bool IsIrishStyleHoldEm => IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple;
-    private bool UsesCardDealAnimation => IsSevenCardStud || IsRazz || IsGoodBadUgly || IsBaseball || IsFollowTheQueen || IsFiveCardDraw || IsTwosJacksManWithTheAxe || IsKingsAndLows || IsHoldEm || IsRedRiver || IsHoldTheBaseball || IsOmaha || IsNebraska || IsSouthDakota || IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple;
+    private bool UsesCardDealAnimation => IsSevenCardStud || IsRazz || IsGoodBadUgly || IsBaseball || IsFollowTheQueen || IsFiveCardDraw || IsTwosJacksManWithTheAxe || IsKingsAndLows || IsHoldEm || IsRedRiver || IsHoldTheBaseball || IsOmaha || IsNebraska || IsSouthDakota || IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple || IsScrewYourNeighbor;
     private int DealAnimationDelayMs => 750;
 
     // Game rules for dynamic UI rendering
@@ -759,6 +774,14 @@
     // Drop or Stay phase detection (for Kings and Lows)
     private bool IsDropOrStayPhase =>
     string.Equals(_gameResponse?.CurrentPhase, "DropOrStay", StringComparison.OrdinalIgnoreCase);
+
+    // Keep or Trade phase detection (for Screw Your Neighbor)
+    private bool IsKeepOrTradePhase =>
+    string.Equals(_gameResponse?.CurrentPhase, "KeepOrTrade", StringComparison.OrdinalIgnoreCase);
+
+    // Reveal phase detection (for Screw Your Neighbor)
+    private bool IsRevealPhase =>
+    string.Equals(_gameResponse?.CurrentPhase, "Reveal", StringComparison.OrdinalIgnoreCase);
 
     // Draw Complete phase detection (for Kings and Lows - delay before showdown)
     private bool IsDrawCompletePhase =>
@@ -813,6 +836,9 @@
 
     private bool HasDropOrStay =>
     _tableState?.SpecialRules?.HasDropOrStay == true;
+
+    private bool HasKeepOrTrade =>
+    _tableState?.SpecialRules?.HasKeepOrTrade == true;
 
     private bool HasPotMatching =>
     _tableState?.SpecialRules?.HasPotMatching == true;
@@ -1602,6 +1628,12 @@
         // where _gameResponse might not be populated yet
         var currentPhase = _gameResponse?.CurrentPhase ?? string.Empty;
         if ((IsDropOrStayPhase || string.Equals(currentPhase, "DropOrStay", StringComparison.OrdinalIgnoreCase))
+        && state.Hand is not null && state.Hand.Count > 0)
+        {
+            UpdateCurrentPlayerDrawCardsFromPrivateState(state.Hand, preserveSelection: false);
+        }
+        // Populate cards for KeepOrTrade overlay (Screw Your Neighbor)
+        else if ((IsKeepOrTradePhase || string.Equals(currentPhase, "KeepOrTrade", StringComparison.OrdinalIgnoreCase))
         && state.Hand is not null && state.Hand.Count > 0)
         {
             UpdateCurrentPlayerDrawCardsFromPrivateState(state.Hand, preserveSelection: false);
@@ -5406,6 +5438,49 @@ HandType.HighCard
         finally
         {
             _isProcessingDropOrStay = false;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Handles keep or trade decision from the Screw Your Neighbor overlay.
+    /// </summary>
+    private async Task HandleKeepOrTradeDecision(string decision)
+    {
+        if (!HasKeepOrTrade || _isProcessingKeepOrTrade)
+        {
+            return;
+        }
+
+        _isProcessingKeepOrTrade = true;
+        StateHasChanged();
+
+        try
+        {
+            var request = new KeepOrTradeRequest(
+            decision: decision,
+            playerId: _currentPlayerId ?? Guid.Empty
+            );
+
+            var response = await GameApiRouter.KeepOrTradeAsync(_gameTypeCode ?? "", GameId, request);
+
+            if (response.IsSuccess)
+            {
+                Logger.LogDebug("Keep or trade decision recorded: {Decision}", decision);
+                // SignalR will update the game state
+            }
+            else
+            {
+                Logger.LogWarning("Keep or trade decision failed: {Error}", response.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error recording keep or trade decision");
+        }
+        finally
+        {
+            _isProcessingKeepOrTrade = false;
             StateHasChanged();
         }
     }

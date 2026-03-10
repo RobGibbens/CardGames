@@ -111,6 +111,14 @@ public enum Phases
 	[Description("Reveal The Ugly")]
 	RevealTheUgly,
 
+	/// <summary>Keep or Trade decision phase for Screw Your Neighbor.</summary>
+	[Description("Keep or Trade")]
+	KeepOrTrade,
+
+	/// <summary>Reveal phase - all cards are turned face up.</summary>
+	[Description("Reveal")]
+	Reveal,
+
 	/// <summary>Showdown - comparing hands to determine winner.</summary>
 	[Description("Showdown")]
 	Showdown,
