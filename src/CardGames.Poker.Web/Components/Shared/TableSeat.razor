@@ -4,7 +4,8 @@
 @implements IDisposable
 @inject NavigationManager NavigationManager
 
-<div class="seat-container @(IsCurrentPlayer ? "current-player-layout" : "remote-player-layout") @(Seat.IsOccupied ? "occupied" : "empty")">
+<div
+	class="seat-container @(IsCurrentPlayer ? "current-player-layout" : "remote-player-layout") @(Seat.IsOccupied ? "occupied" : "empty")">
 	@if (Seat.IsOccupied)
 	{
 		<!-- Cards -->
@@ -31,7 +32,9 @@
 							if (card.IsPubliclyVisible)
 							{
 								<div class="card-shell face-up">
-									<playing-card rank="@rank" suit="@card.Suit" class="poker-card face-up" suitcolor="@(isWildForDisplay ? "green" : null)" rankcolor="@(isWildForDisplay ? "green" : null)" courtcolor="@(isWildForDisplay ? "green" : null)"></playing-card>
+									<playing-card rank="@rank" suit="@card.Suit" class="poker-card face-up"
+												  suitcolor="@(isWildForDisplay ? "green" : null)" rankcolor="@(isWildForDisplay ? "green" : null)"
+												  courtcolor="@(isWildForDisplay ? "green" : null)"></playing-card>
 								</div>
 							}
 							else if (!hasCardPayload)
@@ -43,7 +46,9 @@
 							else
 							{
 								<div class="card-shell face-down">
-									<playing-card rank="@rank" suit="@card.Suit" class="poker-card face-down" suitcolor="@(isWildForDisplay ? "green" : null)" rankcolor="@(isWildForDisplay ? "green" : null)" courtcolor="@(isWildForDisplay ? "green" : null)"></playing-card>
+									<playing-card rank="@rank" suit="@card.Suit" class="poker-card face-down"
+												  suitcolor="@(isWildForDisplay ? "green" : null)" rankcolor="@(isWildForDisplay ? "green" : null)"
+												  courtcolor="@(isWildForDisplay ? "green" : null)"></playing-card>
 								</div>
 							}
 						}
@@ -51,7 +56,9 @@
 						{
 							if (card.IsFaceUp)
 							{
-								<playing-card rank="@rank" suit="@card.Suit" class="poker-card small" suitcolor="@(isWildForDisplay ? "green" : null)" rankcolor="@(isWildForDisplay ? "green" : null)" courtcolor="@(isWildForDisplay ? "green" : null)"></playing-card>
+								<playing-card rank="@rank" suit="@card.Suit" class="poker-card small"
+											  suitcolor="@(isWildForDisplay ? "green" : null)" rankcolor="@(isWildForDisplay ? "green" : null)"
+											  courtcolor="@(isWildForDisplay ? "green" : null)"></playing-card>
 							}
 							else
 							{
@@ -136,7 +143,33 @@
 						}
 					</div>
 					<div class="pill-bottom-row">
-						<span class="chip-count">@Seat.Chips.ToString("N0")</span>
+						@if (IsScrewYourNeighbor)
+						{
+							var stacksRemaining = Ante > 0 ? Seat.Chips / Ante : 0;
+							<div class="syn-stacks">
+								@for (var i = 0; i < 3; i++)
+								{
+									var isActive = i < stacksRemaining;
+									if (isActive)
+									{
+										<div class="syn-chip syn-chip-active">
+											<i class="fa-sharp-duotone fa-solid fa-poker-chip"
+											   style="--fa-primary-color: white; --fa-secondary-color:red;"></i>
+										</div>
+									}
+									else
+									{
+										<div class="syn-chip syn-chip-lost">
+											<i class="fa-sharp-duotone fa-solid fa-poker-chip"></i>
+										</div>
+									}
+								}
+							</div>
+						}
+						else
+						{
+							<span class="chip-count">@Seat.Chips.ToString("N0")</span>
+						}
 					</div>
 				</div>
 
@@ -153,7 +186,8 @@
 					<div class="seat-blind-button seat-bb-button" title="Big Blind">BB</div>
 				}
 
-				@if (IsCurrentPlayer && ShowCards && Seat.Cards.Count > 0 && !string.IsNullOrWhiteSpace(Seat.HandEvaluationDescription))
+				@if (IsCurrentPlayer && ShowCards && Seat.Cards.Count > 0 &&
+							!string.IsNullOrWhiteSpace(Seat.HandEvaluationDescription))
 				{
 					<div class="hand-eval-tooltip">
 						@Seat.HandEvaluationDescription
@@ -171,10 +205,12 @@
 			</div>
 		}
 
+
 	}
 	else
 	{
-		<button class="empty-seat-button" disabled="@IsSeatSelectionDisabledForCurrentUser" title="@(IsSeatSelectionDisabledForCurrentUser ? "Empty seat" : "Take a seat")">
+		<button class="empty-seat-button" disabled="@IsSeatSelectionDisabledForCurrentUser"
+				title="@(IsSeatSelectionDisabledForCurrentUser ? "Empty seat" : "Take a seat")">
 			@(IsSeatSelectionDisabledForCurrentUser ? "Empty" : "Sit Here")
 		</button>
 	}
@@ -206,12 +242,18 @@
 	public string? GameTypeCode { get; set; }
 
 	[Parameter]
+	public int Ante { get; set; }
+
+	[Parameter]
 	public bool IsSeatSelectionDisabledForCurrentUser { get; set; }
 
 	private bool _imageLoadError;
 	private string? _lastAvatarUrl;
 	private Timer? _alternationTimer;
 	private bool _showAlternateStatus = true;
+
+	private bool IsScrewYourNeighbor => string.Equals(GameTypeCode, "SCREWYOURNEIGHBOR",
+StringComparison.OrdinalIgnoreCase);
 
 	protected override void OnInitialized()
 	{

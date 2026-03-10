@@ -87,7 +87,8 @@
                     ShowCards="@(!IsPausedForChipCheck && CurrentPhase != GamePhase.WaitingForPlayers.ToString() && CurrentPhase != GamePhase.WaitingToStart.ToString() && seat.Cards.Count > 0)"
                     GameTypeCode="@GameTypeCode"
                     IsSmallBlind="@(IsBlindBasedGame && seat.SeatIndex == GetSmallBlindSeatIndex())"
-                    IsBigBlind="@(IsBlindBasedGame && seat.SeatIndex == GetBigBlindSeatIndex())" />
+                    IsBigBlind="@(IsBlindBasedGame && seat.SeatIndex == GetBigBlindSeatIndex())"
+                    Ante="@Ante" />
             </div>
         }
 
@@ -180,6 +181,9 @@
 
     [Parameter]
     public bool IsPausedForChipCheck { get; set; }
+
+    [Parameter]
+    public int Ante { get; set; }
 
     [Parameter]
     public EventCallback<int> OnSeatClick { get; set; }

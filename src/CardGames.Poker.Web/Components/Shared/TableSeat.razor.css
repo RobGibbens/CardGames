@@ -454,3 +454,32 @@
 .remote-player-layout .seat-bb-button {
     left: 28px;
 }
+
+/* --- Screw Your Neighbor Chip Stacks --- */
+.syn-stacks {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    align-items: center;
+}
+
+.syn-chip {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.syn-chip-active {
+    color: #fbbf24;
+}
+
+.syn-chip-lost {
+    color: #444;
+    opacity: 0.35;
+    transform: scale(0.85);
+}
