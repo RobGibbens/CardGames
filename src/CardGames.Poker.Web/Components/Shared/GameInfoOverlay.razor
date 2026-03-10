@@ -61,11 +61,15 @@
             <div class="game-info-row game-info-odds-row">
                 <span class="game-info-label">Odds</span>
                 <div class="game-info-odds-control">
-                    <button class="btn btn-secondary btn-sm game-info-odds-toggle"
+                    <button class="game-info-odds-toggle-switch @(AreOddsVisibleToAllPlayers ? "is-on" : "is-off")"
                             type="button"
+                            role="switch"
+                            aria-checked="@AreOddsVisibleToAllPlayers"
+                            aria-label="Toggle odds visibility for everyone"
                             disabled="@IsUpdatingOddsVisibility"
                             @onclick="OnToggleOddsVisibility">
-                        @(AreOddsVisibleToAllPlayers ? "Turn OFF for everyone" : "Turn ON for everyone")
+                        <span class="game-info-odds-toggle-text">@(AreOddsVisibleToAllPlayers ? "ON" : "OFF")</span>
+                        <span class="game-info-odds-toggle-thumb" aria-hidden="true"></span>
                     </button>
                 </div>
             </div>

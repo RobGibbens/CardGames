@@ -127,8 +127,71 @@
     gap: 0.45rem;
 }
 
-.game-info-odds-toggle {
-    min-width: 170px;
+.game-info-odds-toggle-switch {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    width: 84px;
+    height: 36px;
+    border: none;
+    border-radius: 999px;
+    padding: 0;
+    cursor: pointer;
+    font-family: "Inter", sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    line-height: 1;
+    transition: background-color 160ms ease, opacity 140ms ease;
+}
+
+.game-info-odds-toggle-switch.is-on {
+    justify-content: flex-start;
+    padding-left: 11px;
+    background: #5fca48;
+    color: #ffffff;
+}
+
+.game-info-odds-toggle-switch.is-off {
+    justify-content: flex-end;
+    padding-right: 11px;
+    background: #b8bcc1;
+    color: #ffffff;
+}
+
+.game-info-odds-toggle-switch .game-info-odds-toggle-text {
+    pointer-events: none;
+    user-select: none;
+}
+
+.game-info-odds-toggle-thumb {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.32);
+    transition: transform 160ms ease;
+}
+
+.game-info-odds-toggle-switch.is-on .game-info-odds-toggle-thumb {
+    transform: translateX(48px);
+}
+
+.game-info-odds-toggle-switch.is-off .game-info-odds-toggle-thumb {
+    transform: translateX(0);
+}
+
+.game-info-odds-toggle-switch:disabled {
+    cursor: not-allowed;
+    opacity: 0.75;
+}
+
+.game-info-odds-toggle-switch:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.82);
+    outline-offset: 2px;
 }
 
 .game-info-odds-note {

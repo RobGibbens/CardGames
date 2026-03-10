@@ -5,7 +5,8 @@
 - [ ] https://github.com/leeoades/FunctionalStateMachine
 - [ ] When playing Dealer's choice, filter out games that don't support the number of players
 - [ ] Phil's mom loser showdown not correct
-- [ ] Allow table creator to turn off odds during game
+- [ ] Table settings should be dynamic when creating a table. Not all games have an ante or a minimum bet.
+- [ ] Test what happens when a player disconnects
 
 ### Leagues
 
@@ -25,7 +26,7 @@
 - [ ] Table should be able to scroll if the screen isn't big enough
 
 ### P3 - Nice to have
-- [ ] Table settings should be dynamic when creating a table. Not all games have an ante or a minimum bet.
+
 - [ ] There are a lot of extra database calls going on
 - [ ] Hand history should auto size columns and allow resizing columns
 - [ ] Hand history should paginate
@@ -194,3 +195,4 @@
 - [x] When picking a game, support search
 - [x] Allow the creator of the game the ability to turn off the odds calculator
 - [x] Make sure players can keep a long running chip balance / only bring in a certain amount to a game
+- [x] Allow table creator to turn off odds during game
