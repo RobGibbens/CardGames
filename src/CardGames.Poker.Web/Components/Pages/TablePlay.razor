@@ -209,6 +209,10 @@
                          Ante="@(_gameResponse?.Ante ?? _ante)"
                          MinBet="@(_gameResponse?.MinBet ?? 0)"
                          ContextItems="@GetGameInfoContextItems()"
+                         AreOddsVisibleToAllPlayers="@(_gameResponse?.AreOddsVisibleToAllPlayers ?? true)"
+                         CanToggleOddsVisibility="@_isHost"
+                         IsUpdatingOddsVisibility="@_isUpdatingOddsVisibility"
+                         OnToggleOddsVisibility="ToggleOddsVisibilityAsync"
                          OnClose="CloseGameInfoOverlay" />
     }
 
@@ -664,6 +668,7 @@
     private bool _isDealSoundMuted;
     private int _previousFaceUpCommunityCardCount;
     private bool _showGameInfoOverlay;
+    private bool _isUpdatingOddsVisibility;
 
     // Community card staggered reveal (for flop in Hold'Em-style games)
     private int _communityCardRevealCount;
@@ -846,6 +851,7 @@
         GameHubClient.OnConnectionStateChanged += HandleConnectionStateChanged;
         GameHubClient.OnActionTimerUpdated += HandleActionTimerUpdatedAsync;
         GameHubClient.OnPlayerActionPerformed += HandlePlayerActionPerformedAsync;
+        GameHubClient.OnTableSettingsUpdated += HandleTableSettingsUpdatedAsync;
 
         // Load initial data FIRST so seats and _gameResponse are populated
         // before SignalR sends its state snapshot
@@ -1039,7 +1045,8 @@
                 MinBet = state.MinBet,
                 DealerPosition = state.DealerSeatIndex,
                 CurrentPlayerIndex = state.CurrentActorSeatIndex,
-                CurrentHandNumber = state.CurrentHandNumber
+                CurrentHandNumber = state.CurrentHandNumber,
+                AreOddsVisibleToAllPlayers = state.AreOddsVisibleToAllPlayers ?? _gameResponse.AreOddsVisibleToAllPlayers
             };
 
             _ante = state.Ante;
@@ -3528,6 +3535,86 @@
         await Task.CompletedTask;
     }
 
+    private async Task ToggleOddsVisibilityAsync()
+    {
+        if (!_isHost || _isUpdatingOddsVisibility || _gameResponse is null)
+        {
+            return;
+        }
+
+        _isUpdatingOddsVisibility = true;
+        var nextVisibility = !_gameResponse.AreOddsVisibleToAllPlayers;
+
+        try
+        {
+            var request = new CardGames.Poker.Api.Contracts.ToggleOddsVisibilityRequest
+            {
+                AreOddsVisibleToAllPlayers = nextVisibility
+            };
+
+            var response = await GamesApiClient.ToggleOddsVisibilityAsync(GameId, request);
+
+            if (response is { IsSuccessStatusCode: true, Content: not null })
+            {
+                _gameResponse = _gameResponse with
+                {
+                    AreOddsVisibleToAllPlayers = response.Content.AreOddsVisibleToAllPlayers
+                };
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+            {
+                await ShowToastAsync("Only the table host can change odds visibility.", "error");
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
+            {
+                await ShowToastAsync("This game has ended and odds visibility can no longer be changed.", "warning");
+            }
+            else
+            {
+                await ShowToastAsync("Unable to update odds visibility.", "error");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to update odds visibility for game {GameId}", GameId);
+            await ShowToastAsync("Unable to update odds visibility.", "error");
+        }
+        finally
+        {
+            _isUpdatingOddsVisibility = false;
+            await InvokeStateHasChangedAsync();
+        }
+    }
+
+    private async Task HandleTableSettingsUpdatedAsync(TableSettingsUpdatedDto notification)
+    {
+        if (notification.GameId != GameId)
+        {
+            return;
+        }
+
+        await RefreshOddsVisibilityFromServerAsync();
+        await InvokeStateHasChangedAsync();
+    }
+
+    private async Task RefreshOddsVisibilityFromServerAsync()
+    {
+        if (_gameResponse is null)
+        {
+            return;
+        }
+
+        var gameResponse = await GamesApiClient.GetGameAsync(GameId);
+        if (gameResponse is { IsSuccessStatusCode: true, Content: not null })
+        {
+            _gameResponse = _gameResponse with
+            {
+                AreOddsVisibleToAllPlayers = gameResponse.Content.AreOddsVisibleToAllPlayers,
+                RowVersion = gameResponse.Content.RowVersion
+            };
+        }
+    }
+
     private async Task ResumeGameAsync()
     {
         if (!_isHost)
@@ -4219,6 +4306,7 @@
         GameHubClient.OnConnectionStateChanged -= HandleConnectionStateChanged;
         GameHubClient.OnActionTimerUpdated -= HandleActionTimerUpdatedAsync;
         GameHubClient.OnPlayerActionPerformed -= HandlePlayerActionPerformedAsync;
+        GameHubClient.OnTableSettingsUpdated -= HandleTableSettingsUpdatedAsync;
 
         // Leave the game and disconnect
         if (_currentGameId.HasValue)

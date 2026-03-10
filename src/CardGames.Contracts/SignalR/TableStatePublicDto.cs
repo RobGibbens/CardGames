@@ -8,7 +8,7 @@ using System.Text.Json.Serialization;
 /// Public table state broadcast to all players in a game group.
 /// Does not contain any private card information.
 /// </summary>
-public sealed record TableStatePublicDto
+public sealed partial record TableStatePublicDto
 {
 	/// <summary>
 	/// The unique identifier of the game.

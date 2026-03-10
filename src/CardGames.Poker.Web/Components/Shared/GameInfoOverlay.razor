@@ -55,6 +55,21 @@
                 </ul>
             </div>
         }
+
+        @if (CanToggleOddsVisibility)
+        {
+            <div class="game-info-row game-info-odds-row">
+                <span class="game-info-label">Odds</span>
+                <div class="game-info-odds-control">
+                    <button class="btn btn-secondary btn-sm game-info-odds-toggle"
+                            type="button"
+                            disabled="@IsUpdatingOddsVisibility"
+                            @onclick="OnToggleOddsVisibility">
+                        @(AreOddsVisibleToAllPlayers ? "Turn OFF for everyone" : "Turn ON for everyone")
+                    </button>
+                </div>
+            </div>
+        }
     </div>
 </div>
 
@@ -84,6 +99,18 @@
 
     [Parameter]
     public IReadOnlyList<string> ContextItems { get; set; } = [];
+
+    [Parameter]
+    public bool AreOddsVisibleToAllPlayers { get; set; } = true;
+
+    [Parameter]
+    public bool CanToggleOddsVisibility { get; set; }
+
+    [Parameter]
+    public bool IsUpdatingOddsVisibility { get; set; }
+
+    [Parameter]
+    public EventCallback OnToggleOddsVisibility { get; set; }
 
     [Parameter]
     public EventCallback OnClose { get; set; }

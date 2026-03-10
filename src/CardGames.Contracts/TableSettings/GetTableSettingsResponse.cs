@@ -58,6 +58,11 @@ public sealed record GetTableSettingsResponse
     public int? BigBlind { get; init; }
 
     /// <summary>
+    /// Whether hand-odds are visible to all players at the table.
+    /// </summary>
+    public bool AreOddsVisibleToAllPlayers { get; init; }
+
+    /// <summary>
     /// The maximum number of players allowed.
     /// </summary>
     public int MaxPlayers { get; init; }

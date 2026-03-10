@@ -113,6 +113,29 @@
     margin-top: 0.2rem;
 }
 
+.game-info-odds-row {
+    align-items: flex-start;
+    margin-top: 0.55rem;
+    padding-top: 0.65rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.game-info-odds-control {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.45rem;
+}
+
+.game-info-odds-toggle {
+    min-width: 170px;
+}
+
+.game-info-odds-note {
+    color: rgba(255, 255, 255, 0.66);
+    font-size: 0.75rem;
+}
+
 @media (max-width: 768px) {
     .game-info-overlay-panel {
         left: 1rem;
@@ -159,5 +182,9 @@
 
     .game-info-value {
         text-align: left;
+    }
+
+    .game-info-odds-control {
+        align-items: flex-start;
     }
 }

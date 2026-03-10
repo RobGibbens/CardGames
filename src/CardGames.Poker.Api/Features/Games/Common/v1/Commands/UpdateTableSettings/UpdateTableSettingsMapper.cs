@@ -32,6 +32,7 @@ public static class UpdateTableSettingsMapper
             MinBet = game.MinBet,
             SmallBlind = game.SmallBlind,
             BigBlind = game.BigBlind,
+            AreOddsVisibleToAllPlayers = game.AreOddsVisibleToAllPlayers,
             MaxPlayers = game.GameType.MaxPlayers,
             MinPlayers = game.GameType.MinPlayers,
             SeatedPlayerCount = seatedPlayerCount,

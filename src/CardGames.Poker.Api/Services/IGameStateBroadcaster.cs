@@ -49,6 +49,15 @@ public interface IGameStateBroadcaster
                 CancellationToken cancellationToken = default);
 
             /// <summary>
+            /// Broadcasts an odds visibility updated notification to all players in the game.
+            /// </summary>
+            /// <param name="notification">The notification containing updated odds visibility.</param>
+            /// <param name="cancellationToken">Cancellation token.</param>
+            Task BroadcastOddsVisibilityUpdatedAsync(
+                OddsVisibilityUpdatedDto notification,
+                CancellationToken cancellationToken = default);
+
+            /// <summary>
             /// Broadcasts a player action notification to all players in the game.
             /// The action will be displayed temporarily in the player's seat pill.
             /// </summary>

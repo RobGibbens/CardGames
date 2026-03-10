@@ -269,6 +269,32 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
                         }
 
                         /// <inheritdoc />
+                        public async Task BroadcastOddsVisibilityUpdatedAsync(
+                            OddsVisibilityUpdatedDto notification,
+                            CancellationToken cancellationToken = default)
+                        {
+                            var groupName = GetGroupName(notification.GameId);
+
+                            try
+                            {
+                                await _hubContext.Clients.Group(groupName)
+                                    .SendAsync("OddsVisibilityUpdated", notification, cancellationToken);
+
+                                _logger.LogInformation(
+                                    "Broadcast OddsVisibilityUpdated notification for game {GameId} by user {UserId}",
+                                    notification.GameId,
+                                    notification.UpdatedById);
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex,
+                                    "Failed to broadcast OddsVisibilityUpdated notification for game {GameId}",
+                                    notification.GameId);
+                                throw;
+                            }
+                        }
+
+                        /// <inheritdoc />
                         public async Task BroadcastPlayerActionAsync(
                             Guid gameId,
                             int seatIndex,
