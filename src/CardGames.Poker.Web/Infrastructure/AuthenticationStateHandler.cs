@@ -8,13 +8,14 @@ namespace CardGames.Poker.Web.Infrastructure;
 /// Supports both local Identity accounts and external providers (Google, etc.).
 /// </summary>
 public class AuthenticationStateHandler(
-    CircuitServicesAccessor circuitServicesAccessor) : DelegatingHandler
+    CircuitServicesAccessor circuitServicesAccessor,
+    IHttpContextAccessor httpContextAccessor) : DelegatingHandler
 {
     protected override Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request,
         CancellationToken cancellationToken)
     {
-        var user = circuitServicesAccessor.User;
+        var user = circuitServicesAccessor.User ?? httpContextAccessor.HttpContext?.User;
 
         if (user?.Identity is { IsAuthenticated: true })
         {

@@ -7,12 +7,10 @@
 - [ ] Phil's mom loser showdown not correct
 - [ ] Test what happens when a player disconnects
 - [ ] Work on isolating games code more
-- [ ] Allow each person to set their preferences for blinds when creating tables
 - [ ] Really test all-ins, sidepots, etc.
-
-### Leagues
-
-### Cashier
+- [ ] Add leagues
+- [ ] Add seasons
+- [ ] Add tournaments
 
 ### P1 - Can't play without these
 - [ ] Test side pots
@@ -35,9 +33,7 @@
 - [ ] When the Draw Overlay is showing, the cards are not opaque
 - [ ] The bottom of the table goes off the bottom of the screen
 - [ ] When already logged in, take them to the Lobby
-- [ ] Add leagues
-- [ ] Add seasons
-- [ ] Add tournaments
+
 - [ ] Endpoints shouldn't use generic Error responses
 
 ## When expanding beyond my friends
@@ -200,3 +196,4 @@
 - [x] Allow table creator to turn off odds during game
 - [x] Table settings should be dynamic when creating a table. Not all games have an ante or a minimum bet.
 - [x] When playing Dealer's choice, filter out games that don't support the number of players
+- [x] Allow each person to set their preferences for blinds when creating tables
