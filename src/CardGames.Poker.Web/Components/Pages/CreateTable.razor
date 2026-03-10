@@ -127,8 +127,11 @@
 							continue;
 						}
 
-						<section class="variant-group">
-							<h2>@group.Title</h2>
+						<section class="variant-group @GetVariantGroupClasses(group)">
+							@if (_selectedVariant is null)
+							{
+								<h2>@group.Title</h2>
+							}
 							<div class="variants-grid @(_selectedVariant is not null ? "has-selection" : "")">
 								@foreach (var game in group.Cards)
 								{
@@ -350,6 +353,18 @@
 		overflow: hidden;
 	}
 
+	.create-step .variant-group.selection-hidden {
+		display: none;
+	}
+
+	.create-step .variants-grid.has-selection .variant-card.collapsing-out {
+		display: none;
+	}
+
+	.create-step .variant-group.selected-group {
+		margin-top: 0.75rem;
+	}
+
 	.create-step .variant-card.selected-layout .variant-icon {
 		width: 100%;
 		margin: 0;
@@ -467,6 +482,19 @@
 		}
 
 		return string.Join(" ", classes);
+	}
+
+	private string GetVariantGroupClasses(VariantGroup group)
+	{
+		if (_selectedVariant is null)
+		{
+			return string.Empty;
+		}
+
+		var containsSelectedVariant = group.Cards.Any(card =>
+			string.Equals(card.Code, _selectedVariant.Code, StringComparison.OrdinalIgnoreCase));
+
+		return containsSelectedVariant ? "selected-group" : "selection-hidden";
 	}
 
 	private bool CanCreate =>
