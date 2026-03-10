@@ -6,10 +6,13 @@
 @using CardGames.Poker.Api.Contracts
 @using CardGames.Poker.Web.Components.Shared
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.JSInterop
+@implements IAsyncDisposable
 
 @inject IGamesApi GamesApi
 @inject IAvailablePokerGamesApi AvailableGamesApi
 @inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
 
 <PageTitle>Create Table - Friday Night Poker</PageTitle>
 
@@ -71,16 +74,17 @@
 								   @bind:event="oninput" />
 						</div>
 					</div>
+					<div class="variants-selection-region" @ref="_variantsSelectionRegion">
 					@if (ShowDealersChoiceCard)
 					{
-						<div class="variants-grid">
+						<div class="variants-grid @(_selectedVariant is not null ? "has-selection" : "")">
 							@{
 								var game = DealersChoiceCard;
 								var isAvailable = true;
-								var isSelected = _selectedVariant?.Code == game.Code;
 							}
-							<div class="variant-card @(isSelected ? "selected selected-layout" : "") @(!isAvailable ? "disabled" : "")"
-								 @onclick="() => SelectVariant(game, isAvailable)">
+							<div class="variant-card @GetVariantCardClasses(game) @(!isAvailable ? "disabled" : "")"
+								 data-variant-code="@game.Code"
+								 @onclick="() => SelectVariantAsync(game, isAvailable)">
 								<div class="variant-icon">
 									@if (!string.IsNullOrEmpty(game.ImageName))
 									{
@@ -125,14 +129,14 @@
 
 						<section class="variant-group">
 							<h2>@group.Title</h2>
-							<div class="variants-grid">
+							<div class="variants-grid @(_selectedVariant is not null ? "has-selection" : "")">
 								@foreach (var game in group.Cards)
 								{
 									var isAvailable = game.Code == DealersChoiceCode
 										|| _availableGames.Any(g => string.Equals(g.Code, game.Code, StringComparison.OrdinalIgnoreCase));
-										var isSelected = _selectedVariant?.Code == game.Code;
-										<div class="variant-card @(isSelected ? "selected selected-layout" : "") @(!isAvailable ? "disabled" : "")"
-										 @onclick="() => SelectVariant(game, isAvailable)">
+										<div class="variant-card @GetVariantCardClasses(game) @(!isAvailable ? "disabled" : "")"
+										 data-variant-code="@game.Code"
+										 @onclick="() => SelectVariantAsync(game, isAvailable)">
 										<div class="variant-icon">
 											@if (!string.IsNullOrEmpty(game.ImageName))
 											{
@@ -170,6 +174,7 @@
 							</div>
 						</section>
 					}
+					</div>
 				</section>
 
 				@if (_selectedVariant is not null)
@@ -322,6 +327,27 @@
 		grid-template-columns: minmax(260px, 380px) minmax(0, 1fr);
 		align-items: stretch;
 		gap: 1rem;
+		transition: grid-template-columns 460ms ease, transform 460ms ease, opacity 460ms ease;
+	}
+
+	.create-step .variants-grid.has-selection .variant-card {
+		transition: transform 460ms ease, opacity 460ms ease, max-height 460ms ease, margin 460ms ease, padding 460ms ease;
+		transform-origin: top center;
+		opacity: 1;
+		transform: translateY(0) scale(1);
+		max-height: 42rem;
+		will-change: transform, opacity, max-height;
+	}
+
+	.create-step .variants-grid.has-selection .variant-card.collapsing-out {
+		opacity: 0;
+		transform: scale(0.96) translateY(-6px);
+		pointer-events: none;
+		max-height: 0;
+		padding-top: 0;
+		padding-bottom: 0;
+		margin: 0;
+		overflow: hidden;
 	}
 
 	.create-step .variant-card.selected-layout .variant-icon {
@@ -379,6 +405,9 @@
 	private bool _hasBlinds;
 	private List<GetAvailablePokerGamesResponse> _availableGames = [];
 	private GetAvailablePokerGamesResponse? _selectedVariant;
+	private ElementReference _variantsSelectionRegion;
+	private IJSObjectReference? _variantAnimationModule;
+	private bool _playVariantFlipAfterRender;
 
 	private const string DealersChoiceCode = "DEALERSCHOICE";
 	private const string HoldEmVariantsTitle = "Hold 'Em variants";
@@ -401,19 +430,9 @@
 	{
 		get
 		{
-			if (_selectedVariant is not null)
-			{
-				if (string.Equals(_selectedVariant.Code, DealersChoiceCode, StringComparison.OrdinalIgnoreCase))
-				{
-					return Array.Empty<VariantGroup>();
-				}
-
-				var selectedCard = ToVariantCard(_selectedVariant);
-				return [new VariantGroup(selectedCard.GroupTitle, [selectedCard])];
-			}
-
-         var cards = _availableGames
-					.Where(g => MatchesVariantSearch(g.Name))
+			var cards = _availableGames
+					.Where(g => MatchesVariantSearch(g.Name)
+						|| string.Equals(g.Code, _selectedVariant?.Code, StringComparison.OrdinalIgnoreCase))
 					.OrderBy(g => g.Name, StringComparer.OrdinalIgnoreCase)
 					.Select(ToVariantCard);
 
@@ -427,9 +446,28 @@
 		}
 	}
 
-   private bool ShowDealersChoiceCard =>
+	private bool ShowDealersChoiceCard =>
 		(_selectedVariant is null && MatchesVariantSearch(DealersChoiceCard.Name)) ||
 		string.Equals(_selectedVariant?.Code, DealersChoiceCode, StringComparison.OrdinalIgnoreCase);
+
+	private string GetVariantCardClasses(VariantCard game)
+	{
+		var classes = new List<string>();
+		var isSelected = string.Equals(_selectedVariant?.Code, game.Code, StringComparison.OrdinalIgnoreCase);
+
+		if (isSelected)
+		{
+			classes.Add("selected");
+			classes.Add("selected-layout");
+		}
+
+		if (_selectedVariant is not null && !isSelected)
+		{
+			classes.Add("collapsing-out");
+		}
+
+		return string.Join(" ", classes);
+	}
 
 	private bool CanCreate =>
 		_selectedVariant is not null &&
@@ -454,6 +492,22 @@
 	protected override async Task OnInitializedAsync()
 	{
 		await LoadAvailableGamesAsync();
+	}
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (firstRender)
+		{
+			_variantAnimationModule = await JSRuntime.InvokeAsync<IJSObjectReference>(
+				"import",
+				"./Components/Pages/CreateTable.razor.js");
+		}
+
+		if (_playVariantFlipAfterRender && _variantAnimationModule is not null)
+		{
+			_playVariantFlipAfterRender = false;
+			await _variantAnimationModule.InvokeVoidAsync("playVariantSelectionFlip", _variantsSelectionRegion);
+		}
 	}
 
 	private async Task LoadAvailableGamesAsync()
@@ -517,11 +571,16 @@
 		};
 	}
 
-	private void SelectVariant(VariantCard variant, bool isAvailable)
+	private async Task SelectVariantAsync(VariantCard variant, bool isAvailable)
 	{
 		if (!isAvailable)
 		{
 			return;
+		}
+
+		if (_variantAnimationModule is not null)
+		{
+			await _variantAnimationModule.InvokeVoidAsync("captureVariantSelectionFlip", _variantsSelectionRegion);
 		}
 
 		if (_selectedVariant?.Code == variant.Code)
@@ -529,6 +588,7 @@
 			_selectedVariant = null;
 			_isDealersChoice = false;
 			_hasBlinds = false;
+			_playVariantFlipAfterRender = true;
 			return;
 		}
 
@@ -548,6 +608,8 @@
 		{
 			_minBet = _bigBlind;
 		}
+
+		_playVariantFlipAfterRender = true;
 	}
 
 	private async Task CreateTableAsync()
@@ -614,5 +676,20 @@
 	private void ToggleOddsVisibility()
 	{
 		_areOddsVisibleToAllPlayers = !_areOddsVisibleToAllPlayers;
+	}
+
+	public async ValueTask DisposeAsync()
+	{
+		if (_variantAnimationModule is not null)
+		{
+			try
+			{
+				await _variantAnimationModule.DisposeAsync();
+			}
+			catch (JSDisconnectedException)
+			{
+				// Circuit disconnected, ignore.
+			}
+		}
 	}
 }

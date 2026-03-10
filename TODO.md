@@ -3,12 +3,13 @@
 ## Still to do
 
 - [ ] https://github.com/leeoades/FunctionalStateMachine
+
 - [ ] When playing Dealer's choice, filter out games that don't support the number of players
 - [ ] Phil's mom loser showdown not correct
-- [ ] Table settings should be dynamic when creating a table. Not all games have an ante or a minimum bet.
 - [ ] Test what happens when a player disconnects
-- [ ] Work on isolating games more
+- [ ] Work on isolating games code more
 - [ ] Allow each person to set their preferences for blinds when creating tables
+- [ ] Really test all-ins, sidepots, etc.
 
 ### Leagues
 
@@ -198,3 +199,4 @@
 - [x] Allow the creator of the game the ability to turn off the odds calculator
 - [x] Make sure players can keep a long running chip balance / only bring in a certain amount to a game
 - [x] Allow table creator to turn off odds during game
+- [x] Table settings should be dynamic when creating a table. Not all games have an ante or a minimum bet.
