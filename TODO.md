@@ -4,6 +4,8 @@
 
 - [ ] https://github.com/leeoades/FunctionalStateMachine
 
+- [ ] SYN - When Pot is 0 still show it
+- [ ] SYN - What is the default is not choosing?
 - [ ] SYN - check for King block
 - [ ] SYN - Showdown too fast
 - [ ] SYN - Showdown showing email, not name
