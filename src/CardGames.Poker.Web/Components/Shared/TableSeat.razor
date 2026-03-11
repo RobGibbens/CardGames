@@ -176,8 +176,7 @@
 					<div class="seat-blind-button seat-bb-button" title="Big Blind">BB</div>
 				}
 
-				@if ((IsCurrentPlayer || IsScrewYourNeighbor) && ShowCards && Seat.Cards.Count > 0 &&
-							!string.IsNullOrWhiteSpace(Seat.HandEvaluationDescription))
+				@if (ShouldShowHandEvaluationTooltip())
 				{
 					<div class="hand-eval-tooltip">
 						@Seat.HandEvaluationDescription
@@ -370,6 +369,39 @@ StringComparison.OrdinalIgnoreCase);
 			   IsCurrentActor ||
 			   Seat.SittingOutReason == "Observing" ||
 			   Seat.IsSittingOut;
+	}
+
+	private bool ShouldShowHandEvaluationTooltip()
+	{
+		if (!ShowCards || Seat.Cards.Count == 0 || string.IsNullOrWhiteSpace(Seat.HandEvaluationDescription))
+		{
+			return false;
+		}
+
+		if (!IsCurrentPlayer && !IsScrewYourNeighbor)
+		{
+			return false;
+		}
+
+		if (IsScrewYourNeighbor && IsCurrentPlayer)
+		{
+			return IsScrewYourNeighborDecisionDescription(Seat.HandEvaluationDescription);
+		}
+
+		return true;
+	}
+
+	private static bool IsScrewYourNeighborDecisionDescription(string? description)
+	{
+		if (string.IsNullOrWhiteSpace(description))
+		{
+			return false;
+		}
+
+		return string.Equals(description, "Kept", StringComparison.OrdinalIgnoreCase)
+			|| string.Equals(description, "Traded", StringComparison.OrdinalIgnoreCase)
+			|| string.Equals(description, "Keep", StringComparison.OrdinalIgnoreCase)
+			|| string.Equals(description, "Trade", StringComparison.OrdinalIgnoreCase);
 	}
 
 	private static string GetInitials(string? name)

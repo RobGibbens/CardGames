@@ -1529,8 +1529,8 @@
 
                 _seats[targetSeatIndex].HandEvaluationDescription =
                     IsScrewYourNeighbor
-                        ? formattedPrivateHandDescription
-                            ?? _synKeepOrTradeDecision
+                        ? _synKeepOrTradeDecision
+                            ?? formattedPrivateHandDescription
                             ?? _seats[targetSeatIndex].HandEvaluationDescription
                         : formattedPrivateHandDescription
                             ?? FormatHandDescriptionForDisplay(BuildFallbackHandDescription(state.Hand));

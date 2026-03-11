@@ -4,9 +4,12 @@
 
 - [ ] https://github.com/leeoades/FunctionalStateMachine
 
+- [ ] SYN - check for King block
+- [ ] SYN - Showdown too fast
+- [ ] SYN - Showdown showing email, not name
 - [ ] SYN - check for ties
-- [ ] SYN show your remaining stacks
-- [ ] SYN - show everyone if you traded or stayed
+- [x] SYN - show your remaining stacks
+- [x] SYN - show everyone if you traded or stayed
 - [ ] SYN - no bring in, or lock it the set amount
 - [ ] SYN - doesn't need min bet when creating
 - [ ] SYN - Get a king and it still prompts you to trade
