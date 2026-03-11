@@ -1504,6 +1504,29 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 	private async Task<int> CalculateTotalPotAsync(Game game, int handNumber, CancellationToken cancellationToken)
 	{
+		if (IsScrewYourNeighborGame(game.GameType?.Code))
+		{
+			// SYN carries the funded pot across hands in the Pots table.
+			// While showing results between hands, display the upcoming hand pot.
+			var isWaitingForNextHand = game.CurrentPhase == "Complete";
+			var targetHandNumber = isWaitingForNextHand ? handNumber + 1 : handNumber;
+
+			var total = await _context.Pots
+				.Where(p => p.GameId == game.Id && p.HandNumber == targetHandNumber && !p.IsAwarded)
+				.AsNoTracking()
+				.SumAsync(p => p.Amount, cancellationToken);
+
+			if (total == 0 && isWaitingForNextHand)
+			{
+				total = await _context.Pots
+					.Where(p => p.GameId == game.Id && p.HandNumber == handNumber && !p.IsAwarded)
+					.AsNoTracking()
+					.SumAsync(p => p.Amount, cancellationToken);
+			}
+
+			return total;
+		}
+
 		// For Kings and Lows, the pot is tracked in the Pots table, not TotalContributedThisHand
 		if (IsKingsAndLowsGame(game.GameType?.Code))
 		{
@@ -1544,6 +1567,11 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			.SumAsync(gp => gp.TotalContributedThisHand, cancellationToken);
 
 		return totalContributions;
+	}
+
+	private static bool IsScrewYourNeighborGame(string? gameCode)
+	{
+		return string.Equals(gameCode, PokerGameMetadataRegistry.ScrewYourNeighborCode, StringComparison.OrdinalIgnoreCase);
 	}
 
 	private async Task<KingsAndLowsDeckOutcome?> BuildKingsAndLowsDeckOutcomeAsync(

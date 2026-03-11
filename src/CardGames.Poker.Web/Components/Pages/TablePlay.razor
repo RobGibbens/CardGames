@@ -2552,6 +2552,11 @@
 
     private int GetRecommendedJoinBuyIn()
     {
+        if (IsScrewYourNeighbor)
+        {
+            return GetJoinBuyInMin();
+        }
+
         var min = GetJoinBuyInMin();
         var step = GetJoinBuyInStep();
         return Math.Clamp(step * 10, min, GetJoinBuyInMax());
@@ -2561,6 +2566,18 @@
     {
         var minBet = _gameResponse?.MinBet ?? 0;
         var ante = _gameResponse?.Ante ?? _ante;
+
+        if (IsScrewYourNeighbor)
+        {
+            var synMin = Math.Max(1, ante * 3);
+            if (_joinBuyInBalanceCap.HasValue && _joinBuyInBalanceCap.Value > 0 && _joinBuyInBalanceCap.Value < synMin)
+            {
+                return _joinBuyInBalanceCap.Value;
+            }
+
+            return synMin;
+        }
+
         var tableMin = Math.Max(1, Math.Max(minBet, ante));
 
         if (_joinBuyInBalanceCap.HasValue && _joinBuyInBalanceCap.Value > 0 && _joinBuyInBalanceCap.Value < tableMin)
@@ -2575,6 +2592,12 @@
     {
         var minBet = _gameResponse?.MinBet ?? 0;
         var ante = _gameResponse?.Ante ?? _ante;
+
+        if (IsScrewYourNeighbor)
+        {
+            return Math.Max(1, ante * 3);
+        }
+
         var tableStep = Math.Max(minBet, ante);
         var step = tableStep > 0 ? tableStep : 25;
 
@@ -2588,6 +2611,11 @@
 
     private int GetJoinBuyInMax()
     {
+        if (IsScrewYourNeighbor)
+        {
+            return GetJoinBuyInMin();
+        }
+
         var min = GetJoinBuyInMin();
         var step = GetJoinBuyInStep();
         var max = Math.Max(min, step * 1_000);
@@ -2969,6 +2997,10 @@
             showdownResponse = await GamesApiClient.GenericPerformShowdownAsync(GameId);
         }
         else if (IsIrishStyleHoldEm)
+        {
+            showdownResponse = await GamesApiClient.GenericPerformShowdownAsync(GameId);
+        }
+        else if (IsScrewYourNeighbor)
         {
             showdownResponse = await GamesApiClient.GenericPerformShowdownAsync(GameId);
         }

@@ -168,9 +168,23 @@ public sealed class JoinGameCommandHandler(
 
 		var now = DateTimeOffset.UtcNow;
 
+		var startingChips = command.StartingChips;
+		if (string.Equals(game.GameType?.Code, "SCREWYOURNEIGHBOR", StringComparison.OrdinalIgnoreCase))
+		{
+			var stackSize = game.Ante ?? 0;
+			if (stackSize <= 0)
+			{
+				return new JoinGameError(
+					JoinGameErrorCode.InvalidStartingChips,
+					"Screw Your Neighbor requires an ante greater than 0.");
+			}
+
+			startingChips = stackSize * 3;
+		}
+
 		var debitResult = await playerChipWalletService.TryDebitForBuyInAsync(
 			player.Id,
-			command.StartingChips,
+			startingChips,
 			game.Id,
 			currentUserService.UserId,
 			cancellationToken);
@@ -188,9 +202,9 @@ public sealed class JoinGameCommandHandler(
 			GameId = game.Id,
 			PlayerId = player.Id,
 			SeatPosition = command.SeatIndex,
-			ChipStack = command.StartingChips,
-			StartingChips = command.StartingChips,
-			BringInAmount = command.StartingChips,
+			ChipStack = startingChips,
+			StartingChips = startingChips,
+			BringInAmount = startingChips,
 			CurrentBet = 0,
 			TotalContributedThisHand = 0,
 			HasFolded = !canPlayCurrentHand, // If mid-hand, they're folded out of current hand

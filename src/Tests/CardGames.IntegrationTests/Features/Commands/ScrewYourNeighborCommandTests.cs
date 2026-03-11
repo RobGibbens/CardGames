@@ -1,5 +1,9 @@
 using CardGames.Poker.Api.Features.Games.ScrewYourNeighbor.v1.Commands.KeepOrTrade;
+using CardGames.Poker.Api.Features.Games.Generic.v1.Commands.PerformShowdown;
 using CardGames.Poker.Api.Features.Games.Generic.v1.Commands.StartHand;
+using CardGames.Poker.Api.Services;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace CardGames.IntegrationTests.Features.Commands;
 
@@ -158,5 +162,145 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
 
 		// Should have transitioned past KeepOrTrade (to Reveal or beyond)
 		game.CurrentPhase.Should().NotBe(nameof(Phases.KeepOrTrade));
+	}
+
+	[Fact]
+	public async Task PerformShowdown_RuntimeCommandPath_LoserLosesStack_AndPotCarriesToNextHand()
+	{
+		var (setup, game) = await CreateScrewYourNeighborGameInKeepOrTradePhaseAsync(2);
+
+		var now = DateTimeOffset.UtcNow;
+		var players = game.GamePlayers.OrderBy(gp => gp.SeatPosition).ToList();
+		var winner = players[0];
+		var loser = players[1];
+
+		// Force deterministic cards for this hand so loser is unambiguous.
+		var handCards = await DbContext.GameCards
+			.Where(gc => gc.GameId == game.Id &&
+			             gc.HandNumber == game.CurrentHandNumber &&
+			             gc.Location == CardLocation.Hand &&
+			             gc.GamePlayerId != null)
+			.ToListAsync();
+
+		var winnerCard = handCards.First(c => c.GamePlayerId == winner.Id);
+		var loserCard = handCards.First(c => c.GamePlayerId == loser.Id);
+
+		winnerCard.Symbol = CardSymbol.Four;
+		winnerCard.Suit = CardSuit.Hearts;
+		loserCard.Symbol = CardSymbol.Ace;
+		loserCard.Suit = CardSuit.Spades;
+
+		await DbContext.SaveChangesAsync();
+
+		// Complete Keep/Trade turn order using keep decisions.
+		for (var i = 0; i < 2; i++)
+		{
+			game = await DbContext.Games
+				.Include(g => g.GamePlayers)
+				.AsNoTracking()
+				.FirstAsync(g => g.Id == setup.Game.Id);
+
+			if (game.CurrentPhase != nameof(Phases.KeepOrTrade))
+			{
+				break;
+			}
+
+			var currentActor = game.GamePlayers.First(gp => gp.SeatPosition == game.CurrentPlayerIndex);
+			var keepResult = await Mediator.Send(new KeepOrTradeCommand(game.Id, currentActor.PlayerId, "Keep"));
+			keepResult.IsT0.Should().BeTrue();
+		}
+
+		game = await DbContext.Games.AsNoTracking().FirstAsync(g => g.Id == setup.Game.Id);
+		game.CurrentPhase.Should().Be(nameof(Phases.Showdown));
+
+		var showdownResult = await Mediator.Send(new PerformShowdownCommand(game.Id));
+		showdownResult.IsT0.Should().BeTrue();
+
+		var refreshedGame = await DbContext.Games
+			.AsNoTracking()
+			.FirstAsync(g => g.Id == game.Id);
+
+		var refreshedWinner = await DbContext.GamePlayers.AsNoTracking().FirstAsync(gp => gp.Id == winner.Id);
+		var refreshedLoser = await DbContext.GamePlayers.AsNoTracking().FirstAsync(gp => gp.Id == loser.Id);
+		var nextHandPot = await DbContext.Pots
+			.AsNoTracking()
+			.FirstOrDefaultAsync(p => p.GameId == game.Id &&
+			                         p.HandNumber == refreshedGame.CurrentHandNumber + 1 &&
+			                         p.PotType == PotType.Main);
+
+		refreshedWinner.ChipStack.Should().Be(100);
+		refreshedLoser.ChipStack.Should().Be(75);
+		nextHandPot.Should().NotBeNull();
+		nextHandPot!.Amount.Should().Be(25);
+		refreshedGame.NextHandStartsAt.Should().NotBeNull();
+	}
+
+	[Fact]
+	public async Task PerformShowdown_ThenBackgroundStartsNextHand_LoserStackRemainsDecremented()
+	{
+		var (setup, game) = await CreateScrewYourNeighborGameInKeepOrTradePhaseAsync(2);
+
+		var players = game.GamePlayers.OrderBy(gp => gp.SeatPosition).ToList();
+		var winner = players[0];
+		var loser = players[1];
+
+		var handCards = await DbContext.GameCards
+			.Where(gc => gc.GameId == game.Id &&
+			             gc.HandNumber == game.CurrentHandNumber &&
+			             gc.Location == CardLocation.Hand &&
+			             gc.GamePlayerId != null)
+			.ToListAsync();
+
+		var winnerCard = handCards.First(c => c.GamePlayerId == winner.Id);
+		var loserCard = handCards.First(c => c.GamePlayerId == loser.Id);
+		winnerCard.Symbol = CardSymbol.Four;
+		loserCard.Symbol = CardSymbol.Ace;
+		await DbContext.SaveChangesAsync();
+
+		for (var i = 0; i < 2; i++)
+		{
+			game = await DbContext.Games
+				.Include(g => g.GamePlayers)
+				.AsNoTracking()
+				.FirstAsync(g => g.Id == setup.Game.Id);
+
+			if (game.CurrentPhase != nameof(Phases.KeepOrTrade))
+			{
+				break;
+			}
+
+			var currentActor = game.GamePlayers.First(gp => gp.SeatPosition == game.CurrentPlayerIndex);
+			var keepResult = await Mediator.Send(new KeepOrTradeCommand(game.Id, currentActor.PlayerId, "Keep"));
+			keepResult.IsT0.Should().BeTrue();
+		}
+
+		var showdownGame = await DbContext.Games.AsNoTracking().FirstAsync(g => g.Id == setup.Game.Id);
+		showdownGame.CurrentPhase.Should().Be(nameof(Phases.Showdown));
+
+		var showdownResult = await Mediator.Send(new PerformShowdownCommand(showdownGame.Id));
+		showdownResult.IsT0.Should().BeTrue();
+
+		var afterShowdownLoser = await DbContext.GamePlayers.AsNoTracking().FirstAsync(gp => gp.Id == loser.Id);
+		afterShowdownLoser.ChipStack.Should().Be(75);
+
+		var gameToSchedule = await DbContext.Games.FirstAsync(g => g.Id == setup.Game.Id);
+		gameToSchedule.NextHandStartsAt = DateTimeOffset.UtcNow.AddSeconds(-1);
+		await DbContext.SaveChangesAsync();
+
+		var loggerFactory = Scope.ServiceProvider.GetRequiredService<ILoggerFactory>();
+		var serviceScopeFactory = Scope.ServiceProvider.GetRequiredService<IServiceScopeFactory>();
+		var service = new ContinuousPlayBackgroundService(
+			serviceScopeFactory,
+			loggerFactory.CreateLogger<ContinuousPlayBackgroundService>());
+
+		await service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+
+		var postBackgroundLoser = await DbContext.GamePlayers.AsNoTracking().FirstAsync(gp => gp.Id == loser.Id);
+		var postBackgroundWinner = await DbContext.GamePlayers.AsNoTracking().FirstAsync(gp => gp.Id == winner.Id);
+		var postBackgroundGame = await DbContext.Games.AsNoTracking().FirstAsync(g => g.Id == setup.Game.Id);
+
+		postBackgroundLoser.ChipStack.Should().Be(75);
+		postBackgroundWinner.ChipStack.Should().Be(100);
+		postBackgroundGame.CurrentHandNumber.Should().Be(2);
 	}
 }

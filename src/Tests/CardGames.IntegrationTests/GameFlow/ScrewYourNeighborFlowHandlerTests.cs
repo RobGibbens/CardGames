@@ -1,4 +1,5 @@
 using CardGames.Poker.Api.GameFlow;
+using CardGames.Poker.Api.Services;
 
 namespace CardGames.IntegrationTests.GameFlow;
 
@@ -174,5 +175,170 @@ public class ScrewYourNeighborFlowHandlerTests : IntegrationTestBase
 
 		// Phase should transition to KeepOrTrade
 		setup.Game.CurrentPhase.Should().Be(nameof(Phases.KeepOrTrade));
+	}
+
+	[Fact]
+	public async Task PerformShowdown_TwoPlayers_AceLoses_OnlyLoserLosesStack()
+	{
+		// Arrange
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(
+			DbContext,
+			"SCREWYOURNEIGHBOR",
+			2,
+			startingChips: 100,
+			ante: 25);
+
+		var game = setup.Game;
+		game.CurrentHandNumber = 1;
+		game.CurrentPhase = nameof(Phases.Showdown);
+		game.Status = GameStatus.InProgress;
+
+		await DatabaseSeeder.CreatePotAsync(DbContext, game, amount: 0, potType: PotType.Main);
+
+		var rob = setup.GamePlayers[0];
+		var lynne = setup.GamePlayers[1];
+		var now = DateTimeOffset.UtcNow;
+
+		DbContext.GameCards.AddRange(
+			new GameCard
+			{
+				Id = Guid.NewGuid(),
+				GameId = game.Id,
+				GamePlayerId = rob.Id,
+				HandNumber = game.CurrentHandNumber,
+				Suit = CardSuit.Hearts,
+				Symbol = CardSymbol.Four,
+				Location = CardLocation.Hand,
+				DealOrder = 1,
+				IsVisible = false,
+				DealtAt = now
+			},
+			new GameCard
+			{
+				Id = Guid.NewGuid(),
+				GameId = game.Id,
+				GamePlayerId = lynne.Id,
+				HandNumber = game.CurrentHandNumber,
+				Suit = CardSuit.Spades,
+				Symbol = CardSymbol.Ace,
+				Location = CardLocation.Hand,
+				DealOrder = 1,
+				IsVisible = false,
+				DealtAt = now
+			});
+
+		await DbContext.SaveChangesAsync();
+
+		var handler = new ScrewYourNeighborFlowHandler();
+		var handHistoryRecorder = Scope.ServiceProvider.GetRequiredService<IHandHistoryRecorder>();
+
+		// Act
+		var result = await handler.PerformShowdownAsync(
+			DbContext,
+			game,
+			handHistoryRecorder,
+			now,
+			CancellationToken.None);
+
+		// Assert
+		result.IsSuccess.Should().BeTrue();
+		result.LoserPlayerIds.Should().ContainSingle().Which.Should().Be(lynne.PlayerId);
+		result.WinnerPlayerIds.Should().Contain(rob.PlayerId);
+
+		var updatedRob = await DbContext.GamePlayers.AsNoTracking().FirstAsync(gp => gp.Id == rob.Id);
+		var updatedLynne = await DbContext.GamePlayers.AsNoTracking().FirstAsync(gp => gp.Id == lynne.Id);
+		var nextHandPot = await DbContext.Pots
+			.AsNoTracking()
+			.FirstOrDefaultAsync(p => p.GameId == game.Id &&
+			                          p.HandNumber == game.CurrentHandNumber + 1 &&
+			                          p.PotType == PotType.Main);
+
+		updatedRob.ChipStack.Should().Be(100);
+		updatedLynne.ChipStack.Should().Be(75);
+		nextHandPot.Should().NotBeNull();
+		nextHandPot!.Amount.Should().Be(25);
+	}
+
+	[Fact]
+	public async Task PerformShowdown_AnteZero_LoserStillPaysDefaultStack_WinnerDoesNotPay()
+	{
+		// Arrange
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(
+			DbContext,
+			"SCREWYOURNEIGHBOR",
+			2,
+			startingChips: 100,
+			ante: 0);
+
+		var game = setup.Game;
+		game.CurrentHandNumber = 1;
+		game.CurrentPhase = nameof(Phases.Showdown);
+		game.Status = GameStatus.InProgress;
+
+		await DatabaseSeeder.CreatePotAsync(DbContext, game, amount: 0, potType: PotType.Main);
+
+		var winner = setup.GamePlayers[0];
+		var loser = setup.GamePlayers[1];
+		var now = DateTimeOffset.UtcNow;
+
+		DbContext.GameCards.AddRange(
+			new GameCard
+			{
+				Id = Guid.NewGuid(),
+				GameId = game.Id,
+				GamePlayerId = winner.Id,
+				HandNumber = game.CurrentHandNumber,
+				Suit = CardSuit.Hearts,
+				Symbol = CardSymbol.Four,
+				Location = CardLocation.Hand,
+				DealOrder = 1,
+				IsVisible = false,
+				DealtAt = now
+			},
+			new GameCard
+			{
+				Id = Guid.NewGuid(),
+				GameId = game.Id,
+				GamePlayerId = loser.Id,
+				HandNumber = game.CurrentHandNumber,
+				Suit = CardSuit.Spades,
+				Symbol = CardSymbol.Ace,
+				Location = CardLocation.Hand,
+				DealOrder = 1,
+				IsVisible = false,
+				DealtAt = now
+			});
+
+		await DbContext.SaveChangesAsync();
+
+		var handler = new ScrewYourNeighborFlowHandler();
+		var handHistoryRecorder = Scope.ServiceProvider.GetRequiredService<IHandHistoryRecorder>();
+
+		// Act
+		var result = await handler.PerformShowdownAsync(
+			DbContext,
+			game,
+			handHistoryRecorder,
+			now,
+			CancellationToken.None);
+
+		// Assert
+		result.IsSuccess.Should().BeTrue();
+		result.TotalPotAwarded.Should().Be(25);
+		result.LoserPlayerIds.Should().ContainSingle().Which.Should().Be(loser.PlayerId);
+		result.WinnerPlayerIds.Should().ContainSingle().Which.Should().Be(winner.PlayerId);
+
+		var updatedWinner = await DbContext.GamePlayers.AsNoTracking().FirstAsync(gp => gp.Id == winner.Id);
+		var updatedLoser = await DbContext.GamePlayers.AsNoTracking().FirstAsync(gp => gp.Id == loser.Id);
+		var nextHandPot = await DbContext.Pots
+			.AsNoTracking()
+			.FirstOrDefaultAsync(p => p.GameId == game.Id &&
+			                          p.HandNumber == game.CurrentHandNumber + 1 &&
+			                          p.PotType == PotType.Main);
+
+		updatedWinner.ChipStack.Should().Be(100);
+		updatedLoser.ChipStack.Should().Be(75);
+		nextHandPot.Should().NotBeNull();
+		nextHandPot!.Amount.Should().Be(25);
 	}
 }

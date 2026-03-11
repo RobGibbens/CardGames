@@ -317,6 +317,49 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task ProcessGamesReadyForNextHandAsync_ScrewYourNeighbor_FirstHand_DoesNotCollectAntes()
+    {
+        // Arrange
+        var now = DateTimeOffset.UtcNow;
+        var game = new Game
+        {
+            Id = Guid.NewGuid(),
+            CurrentPhase = "Complete",
+            Status = GameStatus.InProgress,
+            NextHandStartsAt = now.AddSeconds(-1),
+            CurrentHandNumber = 0,
+            Ante = 25,
+            GameType = new GameType { Code = "SCREWYOURNEIGHBOR", Name = "Screw Your Neighbor" }
+        };
+
+        var p1 = new GamePlayer { GameId = game.Id, PlayerId = Guid.NewGuid(), Status = GamePlayerStatus.Active, SeatPosition = 0, ChipStack = 100, LeftAtHandNumber = -1 };
+        var p2 = new GamePlayer { GameId = game.Id, PlayerId = Guid.NewGuid(), Status = GamePlayerStatus.Active, SeatPosition = 1, ChipStack = 100, LeftAtHandNumber = -1 };
+        game.GamePlayers.Add(p1);
+        game.GamePlayers.Add(p2);
+
+        _dbContext.Games.Add(game);
+        await _dbContext.SaveChangesAsync();
+
+        var handler = _flowHandlerFactory.SetHandlerForCode("SCREWYOURNEIGHBOR");
+        handler.SkipsAnteCollection = true;
+        handler.IsMultiHandVariant = true;
+        handler.InitialPhase = "Dealing";
+
+        // Act
+        await _service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+
+        // Assert
+        var updatedP1 = await _dbContext.GamePlayers.FindAsync(p1.Id);
+        var updatedP2 = await _dbContext.GamePlayers.FindAsync(p2.Id);
+        updatedP1!.ChipStack.Should().Be(100);
+        updatedP2!.ChipStack.Should().Be(100);
+
+        var pot = await _dbContext.Pots.FirstOrDefaultAsync(p => p.GameId == game.Id && p.HandNumber == 1 && p.PotType == PotType.Main);
+        pot.Should().NotBeNull();
+        pot!.Amount.Should().Be(0);
+    }
+
+    [Fact]
     public async Task ProcessGamesReadyForNextHandAsync_ChipCoverage_PausesIfShort()
     {
          // Arrange

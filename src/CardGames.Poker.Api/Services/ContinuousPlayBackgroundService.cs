@@ -879,10 +879,13 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			game.CurrentPhase);
 
 		// Automatically collect antes (skip if game's flow handler indicates it handles antes differently)
-		// For multi-hand variants (e.g., Kings and Lows), antes are only collected on the first hand
-		// when the pot is empty. Subsequent hands get their pot from losers matching the previous pot.
+		// For Kings and Lows, antes are only collected on the first hand when the pot is empty.
+		// Other multi-hand variants (for example Screw Your Neighbor) should not be auto-anted here.
 		var shouldCollectAntes = !flowHandler.SkipsAnteCollection;
-		if (!shouldCollectAntes && flowHandler.IsMultiHandVariant && ante > 0)
+		if (!shouldCollectAntes &&
+		    flowHandler.IsMultiHandVariant &&
+		    string.Equals(flowHandler.GameTypeCode, PokerGameMetadataRegistry.KingsAndLowsCode, StringComparison.OrdinalIgnoreCase) &&
+		    ante > 0)
 		{
 			var handPot = await context.Pots
 				.FirstOrDefaultAsync(p => p.GameId == game.Id &&

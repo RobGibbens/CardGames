@@ -147,16 +147,12 @@
 						{
 							var stacksRemaining = Ante > 0 ? Seat.Chips / Ante : 0;
 							<div class="syn-stacks">
-								@for (var i = 0; i < 3; i++)
+								@for (var i = 0; i < stacksRemaining; i++)
 								{
-									var isActive = i < stacksRemaining;
-									if (isActive)
-									{
-										<div class="syn-chip syn-chip-active">
-											<i class="fa-sharp-duotone fa-solid fa-poker-chip"
-											   style="--fa-primary-color: white; --fa-secondary-color:red;"></i>
-										</div>
-									}
+									<div class="syn-chip syn-chip-active">
+										<i class="fa-sharp-duotone fa-solid fa-poker-chip"
+										   style="--fa-primary-color: white; --fa-secondary-color:red;"></i>
+									</div>
 								}
 							</div>
 						}

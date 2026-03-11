@@ -162,8 +162,9 @@ public sealed class ScrewYourNeighborFlowHandler : BaseGameFlowHandler
 			card.IsVisible = true;
 		}
 
-		// Get stack size (ante) per round
-		var stackSize = game.Ante ?? 25;
+		// SYN stack loss is based on configured ante/stack size, but zero/negative
+		// ante values should still use the default stack size.
+		var stackSize = game.Ante.GetValueOrDefault() > 0 ? game.Ante!.Value : 25;
 
 		// Find lowest card value (Ace is low = 1, King is high = 13)
 		var playerValues = new List<(GamePlayer Player, int CardValue, GameCard Card)>();

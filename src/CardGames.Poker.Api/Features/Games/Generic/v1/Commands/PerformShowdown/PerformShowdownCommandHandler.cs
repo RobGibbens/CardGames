@@ -110,6 +110,61 @@ public sealed class PerformShowdownCommandHandler(
             .Where(gp => !gp.HasFolded && (gp.Status == GamePlayerStatus.Active || gp.IsAllIn))
             .ToList();
 
+        // Inline-showdown variants (for example Screw Your Neighbor) own their showdown
+        // settlement logic and must not go through generic poker hand evaluation.
+        if (flowHandler.SupportsInlineShowdown && !isAlreadyAwarded)
+        {
+            var showdownResult = await flowHandler.PerformShowdownAsync(
+                context,
+                game,
+                handHistoryRecorder,
+                now,
+                cancellationToken);
+
+            if (!showdownResult.IsSuccess)
+            {
+                return new PerformShowdownError
+                {
+                    Message = showdownResult.ErrorMessage ?? "Showdown failed.",
+                    Code = PerformShowdownErrorCode.InvalidGameState
+                };
+            }
+
+            var nextPhase = await flowHandler.ProcessPostShowdownAsync(
+                context,
+                game,
+                showdownResult,
+                now,
+                cancellationToken);
+
+            game.CurrentPhase = nextPhase;
+            game.UpdatedAt = now;
+
+            await context.SaveChangesAsync(cancellationToken);
+
+            var inlinePayouts = new Dictionary<string, int>();
+            if (game.Status == GameStatus.Completed &&
+                showdownResult.WinnerPlayerIds.Count == 1 &&
+                showdownResult.TotalPotAwarded > 0)
+            {
+                var winner = game.GamePlayers
+                    .FirstOrDefault(gp => gp.PlayerId == showdownResult.WinnerPlayerIds[0]);
+                if (winner is not null)
+                {
+                    inlinePayouts[winner.Player.Name] = showdownResult.TotalPotAwarded;
+                }
+            }
+
+            return new PerformShowdownSuccessful
+            {
+                GameId = game.Id,
+                WonByFold = showdownResult.WonByFold,
+                CurrentPhase = game.CurrentPhase,
+                Payouts = inlinePayouts,
+                PlayerHands = []
+            };
+        }
+
         // Fetch user first names from Users table
         var playerEmails = game.GamePlayers
             .Where(gp => gp.Player.Email != null)

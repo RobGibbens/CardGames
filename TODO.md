@@ -8,6 +8,9 @@
 - [ ] SYN show your remaining stacks
 - [ ] SYN - show everyone if you traded or stayed
 - [ ] SYN - no bring in, or lock it the set amount
+- [ ] SYN - doesn't need min bet when creating
+- [ ] SYN - Get a king and it still prompts you to trade
+
 - [ ] Phil's mom loser showdown not correct
 - [ ] Test what happens when a player disconnects
 - [ ] Work on isolating games code more
@@ -15,6 +18,7 @@
 - [ ] Add leagues
 - [ ] Add seasons
 - [ ] Add tournaments
+- [ ] Productize it - deployment and hosting
 
 ### P1 - Can't play without these
 - [ ] Test side pots
