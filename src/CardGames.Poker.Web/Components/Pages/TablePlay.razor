@@ -71,7 +71,8 @@
                            step="@GetJoinBuyInStep()"
                            @bind="_joinBuyInAmount"
                            @bind:event="oninput"
-                           @bind:after="NormalizeJoinBuyIn" />
+                           @bind:after="NormalizeJoinBuyIn"
+                           disabled="@IsScrewYourNeighbor" />
                     <div class="bet-slider-labels">
                         <span>Min @GetJoinBuyInMin().ToString("N0")</span>
                         <span>Max @GetJoinBuyInMax().ToString("N0")</span>
@@ -84,7 +85,8 @@
                            max="@GetJoinBuyInMax()"
                            step="@GetJoinBuyInStep()"
                            @bind="_joinBuyInAmount"
-                           @bind:after="NormalizeJoinBuyIn" />
+                           @bind:after="NormalizeJoinBuyIn"
+                           disabled="@IsScrewYourNeighbor" />
 
                 </div>
             </div>
@@ -6014,3 +6016,6 @@ HandType.HighCard
         await Task.CompletedTask;
     }
 }
+
+
+
