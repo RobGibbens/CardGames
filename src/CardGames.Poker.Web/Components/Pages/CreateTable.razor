@@ -236,9 +236,9 @@
 								}
 								else
 								{
-									<div class="form-row two-columns">
+                                  <div class="form-row @(ShowMinimumBetInput ? "two-columns" : string.Empty)">
 										<div class="form-group">
-											<label class="form-label" for="ante">Ante</label>
+                                           <label class="form-label" for="ante">@(IsScrewYourNeighbor ? "Chip stack amount" : "Ante")</label>
 											<input type="number"
 												   id="ante"
 												   class="form-input"
@@ -246,19 +246,22 @@
 												   max="100"
 												   @bind-value="_ante"
 												   @bind-value:event="oninput" />
-											<span class="form-hint">Mandatory bet before each hand</span>
+                                           <span class="form-hint">@(IsScrewYourNeighbor ? "Chips per stack (3 stacks)" : "Mandatory bet before each hand")</span>
 										</div>
-										<div class="form-group">
-											<label class="form-label" for="minBet">Minimum Bet</label>
-											<input type="number"
-												   id="minBet"
-												   class="form-input"
-												   min="1"
-												   max="1000"
-												   @bind-value="_minBet"
-												   @bind-value:event="oninput" />
-											<span class="form-hint">Minimum bet during play</span>
-										</div>
+                                        @if (ShowMinimumBetInput)
+										{
+											<div class="form-group">
+												<label class="form-label" for="minBet">Minimum Bet</label>
+												<input type="number"
+													   id="minBet"
+													   class="form-input"
+													   min="1"
+													   max="1000"
+													   @bind-value="_minBet"
+													   @bind-value:event="oninput" />
+												<span class="form-hint">Minimum bet during play</span>
+											</div>
+										}
 									</div>
 								}
 							}
@@ -430,6 +433,7 @@
 	private const int FallbackMinimumBet = 10;
 
 	private const string DealersChoiceCode = "DEALERSCHOICE";
+ private const string ScrewYourNeighborCode = "SCREWYOURNEIGHBOR";
 	private const string HoldEmVariantsTitle = "Hold 'Em variants";
 	private const string DrawVariantsTitle = "Draw variants";
 	private const string StudVariantsTitle = "Stud variants";
@@ -508,6 +512,11 @@
 		(_isDealersChoice || (_hasBlinds
 			? (_smallBlind > 0 && _bigBlind >= _smallBlind)
 			: (_ante > 0 && _minBet > 0)));
+
+	private bool IsScrewYourNeighbor =>
+       IsScrewYourNeighborCode(_selectedVariant?.Code);
+
+	private bool ShowMinimumBetInput => !IsScrewYourNeighbor;
 
 	private sealed record VariantCard(
 		string Code,
@@ -672,7 +681,9 @@
 			variantType: VariantType.Other
 		);
 		_isDealersChoice = variant.Code == DealersChoiceCode;
-		_hasBlinds = !_isDealersChoice && _selectedVariant.VariantType == VariantType.HoldEm;
+       _hasBlinds = !_isDealersChoice
+			&& !IsScrewYourNeighborCode(_selectedVariant.Code)
+			&& _selectedVariant.VariantType == VariantType.HoldEm;
 
 		if (_hasBlinds)
 		{
@@ -741,6 +752,11 @@
 	{
 		return string.IsNullOrWhiteSpace(_variantSearch)
 			|| gameName.Contains(_variantSearch, StringComparison.OrdinalIgnoreCase);
+	}
+
+	private static bool IsScrewYourNeighborCode(string? gameCode)
+	{
+		return string.Equals(gameCode, ScrewYourNeighborCode, StringComparison.OrdinalIgnoreCase);
 	}
 
 	private void ToggleOddsVisibility()
