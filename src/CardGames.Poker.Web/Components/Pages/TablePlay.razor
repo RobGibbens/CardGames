@@ -500,6 +500,7 @@
 
         @if (
             _showShowdownOverlay &&
+            ShouldDisplayShowdownOverlay &&
             _showdownResult is not null &&
             !_runoutAnimationInProgress &&
             (IsShowdownPhase || _isResultsPhase || IsEndedPhase || _secondsUntilNextHand > 0))
@@ -855,6 +856,9 @@
 
     private bool IsEndedPhase => string.Equals(_gameResponse?.CurrentPhase, GamePhase.Ended.ToString(),
     StringComparison.OrdinalIgnoreCase);
+
+    // Screw Your Neighbor should only show showdown once the game has fully ended.
+    private bool ShouldDisplayShowdownOverlay => !IsScrewYourNeighbor || IsEndedPhase;
 
     private bool IsShowdownPhase => string.Equals(_gameResponse?.CurrentPhase, GamePhase.Showdown.ToString(),
     StringComparison.OrdinalIgnoreCase)
@@ -1968,7 +1972,7 @@
             // Only show overlay immediately if we're not delaying
             if (!delayShowingOverlay)
             {
-                _showShowdownOverlay = true;
+                _showShowdownOverlay = ShouldDisplayShowdownOverlay;
 
                 // Initialize countdown timer when showdown is loaded from SignalR
                 // This ensures the timer starts even if TryLoadShowdownAsync is never called
@@ -2958,7 +2962,7 @@
             else
             {
             Logger.LogDebug("TryLoadShowdownAsync: Showdown result already loaded, showing overlay");
-            _showShowdownOverlay = true;
+            _showShowdownOverlay = ShouldDisplayShowdownOverlay;
 
             // Ensure countdown timer is initialized (may have been missed if SignalR populated the result)
             if (_secondsUntilNextHand <= 0)
@@ -3043,7 +3047,7 @@
         var isDelayActive = _showdownDelayUntil.HasValue && DateTimeOffset.UtcNow < _showdownDelayUntil.Value;
         if (!isDelayActive)
         {
-            _showShowdownOverlay = true;
+            _showShowdownOverlay = ShouldDisplayShowdownOverlay;
             Logger.LogDebug("TryLoadShowdownAsync: Set _showShowdownOverlay=true, _showdownResult loaded");
 
             // Initialize countdown timer immediately after successful showdown
@@ -5638,7 +5642,7 @@ HandType.HighCard
 
             if (canRevealDuringResultsLikePhase && (_showdownResult is not null || hasShowdownInLatestState))
             {
-                _showShowdownOverlay = true;
+                _showShowdownOverlay = ShouldDisplayShowdownOverlay;
             }
 
             await InvokeStateHasChangedAsync();
