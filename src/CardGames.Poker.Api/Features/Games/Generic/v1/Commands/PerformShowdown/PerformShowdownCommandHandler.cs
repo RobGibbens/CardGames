@@ -143,6 +143,7 @@ public sealed class PerformShowdownCommandHandler(
             await context.SaveChangesAsync(cancellationToken);
 
             var inlinePayouts = new Dictionary<string, int>();
+            var settlementPayouts = new Dictionary<string, int>();
             if (game.Status == GameStatus.Completed &&
                 showdownResult.WinnerPlayerIds.Count == 1 &&
                 showdownResult.TotalPotAwarded > 0)
@@ -151,9 +152,18 @@ public sealed class PerformShowdownCommandHandler(
                     .FirstOrDefault(gp => gp.PlayerId == showdownResult.WinnerPlayerIds[0]);
                 if (winner is not null)
                 {
+                    // UI payout should show the amount won from the pot.
                     inlinePayouts[winner.Player.Name] = showdownResult.TotalPotAwarded;
+
+                    // Settlement payout must include the winner's own hand contribution so
+                    // netDelta = payout - contribution still credits the full pot amount.
+                    settlementPayouts[winner.Player.Name] = showdownResult.TotalPotAwarded + winner.TotalContributedThisHand;
                 }
             }
+
+            // Inline-showdown variants still need cashier settlement updates.
+            await handSettlementService.SettleHandAsync(game, settlementPayouts, cancellationToken);
+            await context.SaveChangesAsync(cancellationToken);
 
             return new PerformShowdownSuccessful
             {
@@ -206,7 +216,7 @@ public sealed class PerformShowdownCommandHandler(
         if (playersInHand.Count == 1)
         {
             return await HandleWinByFoldAsync(
-                game, playersInHand[0], currentHandPots, totalPot, 
+                game, playersInHand[0], currentHandPots, totalPot,
                 playerCardGroups, usersByEmail, isAlreadyAwarded, now, cancellationToken);
         }
 
@@ -241,9 +251,9 @@ public sealed class PerformShowdownCommandHandler(
             }
 
             // 12. Update game state - use flow handler to determine next phase
-            var nextPhase = flowHandler.GetNextPhase(game, nameof(Phases.Showdown)) 
+            var nextPhase = flowHandler.GetNextPhase(game, nameof(Phases.Showdown))
                 ?? nameof(Phases.Complete);
-            
+
             game.CurrentPhase = nextPhase;
             game.UpdatedAt = now;
 
@@ -1091,3 +1101,5 @@ public sealed class PerformShowdownCommandHandler(
     /// </summary>
     private sealed record UserInfo(string Email, string? FirstName);
 }
+
+

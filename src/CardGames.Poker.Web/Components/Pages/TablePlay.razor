@@ -505,12 +505,12 @@
             ShouldDisplayShowdownOverlay &&
             _showdownResult is not null &&
             !_runoutAnimationInProgress &&
-            (IsShowdownPhase || _isResultsPhase || IsEndedPhase || _secondsUntilNextHand > 0))
+            (IsShowdownPhase || _isResultsPhase || IsEndedPhase || IsGameCompleted || _secondsUntilNextHand > 0))
         {
             <ShowdownOverlay ShowdownResult="@_showdownResult" ShowdownWon="@_showdownWon" ShowdownLost="@_showdownLost"
                              GameTypeCode="@_gameTypeCode"
                              SharedCommunityCards="@GetShowdownCommunityCards()"
-                             SecondsUntilNextHand="@_secondsUntilNextHand" IsGameEnded="@IsEndedPhase" OnClose="@CloseShowdownOverlay" />
+                             SecondsUntilNextHand="@_secondsUntilNextHand" IsGameEnded="@(IsEndedPhase || IsGameCompleted)" OnClose="@CloseShowdownOverlay" />
         }
     }
 </main>
@@ -859,8 +859,10 @@
     private bool IsEndedPhase => string.Equals(_gameResponse?.CurrentPhase, GamePhase.Ended.ToString(),
     StringComparison.OrdinalIgnoreCase);
 
+    private bool IsGameCompleted => _gameResponse?.Status == GameStatus.Completed;
+
     // Screw Your Neighbor should only show showdown once the game has fully ended.
-    private bool ShouldDisplayShowdownOverlay => !IsScrewYourNeighbor || IsEndedPhase;
+    private bool ShouldDisplayShowdownOverlay => !IsScrewYourNeighbor || IsEndedPhase || IsGameCompleted;
 
     private bool IsShowdownPhase => string.Equals(_gameResponse?.CurrentPhase, GamePhase.Showdown.ToString(),
     StringComparison.OrdinalIgnoreCase)
@@ -1297,7 +1299,7 @@
             // Handle continuous play countdown
             _isResultsPhase = state.IsResultsPhase;
 
-            if (IsEndedPhase)
+            if (IsEndedPhase || IsGameCompleted)
             {
                 // If game ended, enforce a local countdown if none exists
                 if (_secondsUntilNextHand <= 0 && _countdownTimer is null)
@@ -1340,7 +1342,7 @@
             {
                 StopCountdownTimer();
                 // Clear showdown overlay when new hand starts
-                if (!IsShowdownPhase)
+                if (!IsShowdownPhase && !IsGameCompleted)
                 {
                     _showShowdownOverlay = false;
                     _showdownResult = null;
@@ -2946,7 +2948,7 @@
         Logger.LogDebug("TryLoadShowdownAsync called. CurrentPhase={Phase}, IsShowdownPhase={IsShowdown}",
         _gameResponse?.CurrentPhase, IsShowdownPhase);
 
-        if (!IsShowdownPhase)
+        if (!IsShowdownPhase && !IsGameCompleted)
         {
             Logger.LogDebug("TryLoadShowdownAsync: Not in showdown phase, returning early");
             return;
@@ -4373,7 +4375,7 @@
                 StopCountdownTimer();
 
                 // If game is ended and timer reached 0, redirect to lobby
-                if (IsEndedPhase)
+                if (IsEndedPhase || IsGameCompleted)
                 {
                     await GameHubClient.LeaveGameAsync(GameId);
                     NavigationManager.NavigateTo("/lobby");
@@ -5630,7 +5632,7 @@ HandType.HighCard
             _showdownDelayUntil = null;
 
             var hasShowdownInLatestState = _tableState?.Showdown is not null;
-            var canRevealDuringResultsLikePhase = IsShowdownPhase || _isResultsPhase || IsCompletePhase || IsEndedPhase;
+            var canRevealDuringResultsLikePhase = IsShowdownPhase || _isResultsPhase || IsCompletePhase || IsEndedPhase || IsGameCompleted;
 
             if (_showdownResult is null && hasShowdownInLatestState && _tableState?.Showdown is not null)
             {
@@ -6016,6 +6018,5 @@ HandType.HighCard
         await Task.CompletedTask;
     }
 }
-
 
 

@@ -4,6 +4,8 @@
 
 - [ ] https://github.com/leeoades/FunctionalStateMachine
 
+- [ ] SYN - Speed up deal
+- [ ] SYN - Not showing showdown
 - [ ] SYN - When Pot is 0 still show it
 - [ ] SYN - What is the default is not choosing?
 - [ ] SYN - check for King block
@@ -16,6 +18,7 @@
 - [x] SYN - doesn't need min bet when creating
 - [ ] SYN - Get a king and it still prompts you to trade
 
+- [ ] Bringing in cash to a game should require host approval
 - [ ] Phil's mom loser showdown not correct
 - [ ] Test what happens when a player disconnects
 - [ ] Work on isolating games code more
