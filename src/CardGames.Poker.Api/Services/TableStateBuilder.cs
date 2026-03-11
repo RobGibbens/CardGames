@@ -569,6 +569,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			};
 		}).ToList();
 
+		var handEvaluationDescription = GetPublicHandEvaluationDescription(gameTypeCode, gamePlayer.VariantState);
+
 		return new SeatPublicDto
 		{
 			SeatIndex = gamePlayer.SeatPosition,
@@ -585,7 +587,23 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			SittingOutReason = sittingOutReason,
 			CurrentBet = gamePlayer.CurrentBet,
 			HasDecidedDropOrStay = gamePlayer.DropOrStayDecision.HasValue && gamePlayer.DropOrStayDecision.Value != Entities.DropOrStayDecision.Undecided,
-			Cards = publicCards
+			Cards = publicCards,
+			HandEvaluationDescription = handEvaluationDescription
+		};
+	}
+
+	private static string? GetPublicHandEvaluationDescription(string? gameTypeCode, string? variantState)
+	{
+		if (!string.Equals(gameTypeCode, PokerGameMetadataRegistry.ScrewYourNeighborCode, StringComparison.OrdinalIgnoreCase))
+		{
+			return null;
+		}
+
+		return variantState?.Trim().ToUpperInvariant() switch
+		{
+			"SYN_KEPT" => "Kept",
+			"SYN_TRADED" => "Traded",
+			_ => null
 		};
 	}
 

@@ -82,6 +82,9 @@ public class KeepOrTradeCommandHandler(CardsDbContext context)
 		var didTrade = false;
 		var wasBlocked = false;
 
+		// Persist player's choice for public seat display during this hand.
+		gamePlayer.VariantState = isKeep ? "SYN_KEPT" : "SYN_TRADED";
+
 		if (!isKeep)
 		{
 			// Attempt to trade

@@ -301,6 +301,12 @@ public sealed record SeatPublicDto
 		public IReadOnlyList<CardPublicDto> Cards { get; init; } = [];
 
 		/// <summary>
+		/// Optional per-seat hand/decision description for display in the UI.
+		/// Used by variants like Screw Your Neighbor to show Keep/Trade choices.
+		/// </summary>
+		public string? HandEvaluationDescription { get; init; }
+
+		/// <summary>
 		/// The last action performed by this player, for temporary display in the UI.
 		/// </summary>
 		public SeatLastActionDto? LastAction { get; init; }

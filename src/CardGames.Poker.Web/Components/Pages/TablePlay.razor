@@ -1524,10 +1524,16 @@
 
                 ApplyKingsAndLowsLowestCardWildFallback(_seats[targetSeatIndex].Cards);
 
+                var formattedPrivateHandDescription =
+                    FormatHandDescriptionForDisplay(state.HandEvaluationDescription);
+
                 _seats[targetSeatIndex].HandEvaluationDescription =
                     IsScrewYourNeighbor
-                        ? _synKeepOrTradeDecision
-                        : FormatHandDescriptionForDisplay(state.HandEvaluationDescription ?? BuildFallbackHandDescription(state.Hand));
+                        ? formattedPrivateHandDescription
+                            ?? _synKeepOrTradeDecision
+                            ?? _seats[targetSeatIndex].HandEvaluationDescription
+                        : formattedPrivateHandDescription
+                            ?? FormatHandDescriptionForDisplay(BuildFallbackHandDescription(state.Hand));
 
                 var newlyDealtCardCount = Math.Max(0, state.Hand.Count - previousCardCount);
                 if (targetSeatIndex == _currentPlayerSeatIndex && newlyDealtCardCount > 0)
@@ -1820,6 +1826,12 @@
                     lastActionTime = shouldPreserveAction ? existingSeat.LastActionTime : null;
                 }
 
+                var screwYourNeighborDecision = IsScrewYourNeighbor
+                    ? publicSeat.HandEvaluationDescription
+                        ?? GetScrewYourNeighborDecisionDescription(lastActionDescription)
+                        ?? GetScrewYourNeighborDecisionDescription(publicSeat.LastAction?.ActionDescription)
+                    : null;
+
                 _seats[publicSeat.SeatIndex] = new SeatInfo
                 {
                     SeatIndex = publicSeat.SeatIndex,
@@ -1840,8 +1852,12 @@
                     Cards = cards,
                     LastActionDescription = lastActionDescription,
                     LastActionTime = lastActionTime,
-                    HandEvaluationDescription = IsScrewYourNeighbor && isCurrentPlayer
-                        ? _synKeepOrTradeDecision
+                    HandEvaluationDescription = IsScrewYourNeighbor
+                        ? (isCurrentPlayer
+                            ? _synKeepOrTradeDecision
+                            : null)
+                            ?? existingSeat.HandEvaluationDescription
+                            ?? screwYourNeighborDecision
                         : existingSeat.HandEvaluationDescription
                 };
             }
@@ -4459,6 +4475,16 @@
         _seats[seatIndex].LastActionDescription = notification.ActionDescription;
         _seats[seatIndex].LastActionTime = notification.PerformedAtUtc;
 
+        // Keep/Trade is a hand-long decision in Screw Your Neighbor and should remain visible.
+        if (IsScrewYourNeighbor)
+        {
+            var screwYourNeighborDecision = GetScrewYourNeighborDecisionDescription(notification.ActionDescription);
+            if (!string.IsNullOrWhiteSpace(screwYourNeighborDecision))
+            {
+                _seats[seatIndex].HandEvaluationDescription = screwYourNeighborDecision;
+            }
+        }
+
         await InvokeStateHasChangedAsync();
 
         // Schedule the action to be cleared after the display duration
@@ -4479,6 +4505,26 @@
                 await InvokeStateHasChangedAsync();
             }
         });
+    }
+
+    private static string? GetScrewYourNeighborDecisionDescription(string? actionDescription)
+    {
+        if (string.IsNullOrWhiteSpace(actionDescription))
+        {
+            return null;
+        }
+
+        if (actionDescription.Contains("trade", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Traded";
+        }
+
+        if (actionDescription.Contains("keep", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Kept";
+        }
+
+        return null;
     }
 
     private Guid? _currentGameId => GameId;
