@@ -232,8 +232,85 @@ window.cardGamesTable = (() => {
         }, resolvedDuration + 100);
     }
 
+    /**
+     * Animates a poker chip from a seat to the pot display in the center of the table.
+     * Used when a player loses a hand of Screw Your Neighbor.
+     * @param {number} seatIndex - The seat index of the losing player.
+     * @param {number} [durationMs] - Animation duration in milliseconds.
+     * @param {number} [delayMs] - Delay before starting the animation (for staggering multiple losers).
+     */
+    function animateChipToPot(seatIndex, durationMs, delayMs) {
+        const seatElement = getSeatElement(Number(seatIndex));
+        const potElement = document.querySelector(".pot-display");
+        if (!seatElement || !potElement) {
+            return;
+        }
+
+        // Find the chip stacks area in the seat, or fall back to the seat visuals
+        const chipArea = seatElement.querySelector(".syn-stacks")
+            ?? seatElement.querySelector(".info-pill")
+            ?? seatElement.querySelector(".seat-visuals");
+        const seatRect = chipArea ? chipArea.getBoundingClientRect() : seatElement.getBoundingClientRect();
+        const potRect = potElement.getBoundingClientRect();
+
+        if (!seatRect.width || !potRect.width) {
+            return;
+        }
+
+        const resolvedDuration = Number.isFinite(durationMs)
+            ? Math.max(200, Math.floor(durationMs))
+            : DEFAULT_DURATION_MS;
+
+        const resolvedDelay = Number.isFinite(delayMs) ? Math.max(0, Math.floor(delayMs)) : 0;
+
+        const seatCx = seatRect.left + seatRect.width / 2;
+        const seatCy = seatRect.top + seatRect.height / 2;
+        const potCx = potRect.left + potRect.width / 2;
+        const potCy = potRect.top + potRect.height / 2;
+
+        // Create a synthetic chip — use a styled div with a border that looks like a poker chip.
+        // We avoid Font Awesome <i> elements here because dynamically injected icons may not
+        // render correctly depending on the FA loading method (CSS font-face timing).
+        const chipSize = 26;
+        const chip = document.createElement("div");
+        chip.style.position = "fixed";
+        chip.style.left = `${seatCx - chipSize / 2}px`;
+        chip.style.top = `${seatCy - chipSize / 2}px`;
+        chip.style.width = `${chipSize}px`;
+        chip.style.height = `${chipSize}px`;
+        chip.style.borderRadius = "50%";
+        chip.style.background = "radial-gradient(circle at 35% 35%, #e53e3e, #991b1b)";
+        chip.style.border = "3px solid #fbbf24";
+        chip.style.boxShadow = "inset 0 -2px 4px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.6)";
+        chip.style.transform = "translate3d(0, 0, 0) scale(1)";
+        chip.style.pointerEvents = "none";
+        chip.style.zIndex = "4000";
+        chip.style.opacity = "1";
+
+        document.body.appendChild(chip);
+
+        const dx = potCx - seatCx;
+        const dy = potCy - seatCy;
+
+        window.setTimeout(() => {
+            window.requestAnimationFrame(() => {
+                chip.style.transition = `transform ${resolvedDuration}ms cubic-bezier(0.22, 1, 0.36, 1), opacity ${resolvedDuration}ms ease`;
+
+                window.requestAnimationFrame(() => {
+                    chip.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(0.6)`;
+                    chip.style.opacity = "0.7";
+                });
+            });
+
+            window.setTimeout(() => {
+                chip.remove();
+            }, resolvedDuration + 100);
+        }, resolvedDelay);
+    }
+
     return {
         animateScrewYourNeighborTrade,
-        animateScrewYourNeighborDeckTrade
+        animateScrewYourNeighborDeckTrade,
+        animateChipToPot
     };
 })();

@@ -1312,6 +1312,16 @@
                 Logger.LogInformation("Detected all-in runout for game {GameId}, starting table animation", state.GameId);
             }
 
+            // Snapshot chip counts BEFORE seats are updated, so we can detect who lost chips
+            // at showdown time (for SYN chip-to-pot animation).
+            Dictionary<int, int>? preShowdownChips = null;
+            if (IsScrewYourNeighbor)
+            {
+                preShowdownChips = _seats
+                    .Where(s => s.IsOccupied)
+                    .ToDictionary(s => s.SeatIndex, s => s.Chips);
+            }
+
             // Update seats from public state
             // Note: If _runoutAnimationInProgress is true, this will preserve cards for runout seats
             UpdateSeatsFromPublicState(state.Seats);
@@ -1363,6 +1373,35 @@
             if (enteredScrewYourNeighborShowdown && !_showdownDelayUntil.HasValue)
             {
                 ScheduleShowdownOverlayAfterDelay(TimeSpan.FromSeconds(ScrewYourNeighborDealerTradeShowdownDelaySeconds));
+            }
+
+            // Animate chip(s) flying from losing player seats to the pot when entering SYN showdown.
+            // Trigger here (from the SignalR state transition) rather than from TryLoadShowdownAsync,
+            // because the API call in TryLoadShowdownAsync is async and by the time it returns,
+            // other state updates may have already re-rendered seats with reduced chips.
+            if (enteredScrewYourNeighborShowdown && state.Showdown is not null && preShowdownChips is not null)
+            {
+                // Determine which seat(s) lost by comparing pre-update chip counts
+                // (captured before UpdateSeatsFromPublicState) against the new state.
+                // The player whose chips decreased is the actual loser.
+                var loserSeatIndices = new List<int>();
+
+                foreach (var seat in state.Seats)
+                {
+                    if (preShowdownChips.TryGetValue(seat.SeatIndex, out var previousChips) &&
+                        seat.Chips < previousChips)
+                    {
+                        loserSeatIndices.Add(seat.SeatIndex);
+                    }
+                }
+
+                Logger.LogInformation("SYN Showdown chip-loss animation for seats: [{Seats}]",
+                    string.Join(", ", loserSeatIndices));
+
+                if (loserSeatIndices.Count > 0)
+                {
+                    _ = InvokeAsync(() => AnimateScrewYourNeighborChipLossAsync(loserSeatIndices));
+                }
             }
 
             // Handle showdown state - check if entering showdown/complete phase
@@ -4760,6 +4799,48 @@
         foreach (var sourceSeatIndex in pending)
         {
             await AnimateScrewYourNeighborTradeAsync(sourceSeatIndex);
+        }
+    }
+
+    /// <summary>
+    /// Animates a poker chip flying from each losing player's seat to the pot display.
+    /// </summary>
+    private async Task AnimateScrewYourNeighborChipLossAsync(List<int> loserSeatIndices)
+    {
+        if (!_isJsInteropReady)
+        {
+            return;
+        }
+
+        Logger.LogInformation(
+            "AnimateScrewYourNeighborChipLossAsync: animating chip loss for {Count} loser(s) at seats [{Seats}]",
+            loserSeatIndices.Count, string.Join(", ", loserSeatIndices));
+
+        var staggerDelayMs = 0;
+        foreach (var seatIndex in loserSeatIndices)
+        {
+            try
+            {
+                await JSRuntime.InvokeVoidAsync(
+                    "cardGamesTable.animateChipToPot",
+                    seatIndex,
+                    ScrewYourNeighborTradeAnimationDurationMs,
+                    staggerDelayMs);
+            }
+            catch (JSDisconnectedException)
+            {
+                return;
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("statically rendered", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+            catch (JSException ex)
+            {
+                Logger.LogDebug(ex, "Failed to animate chip loss for seat {SeatIndex}", seatIndex);
+            }
+
+            staggerDelayMs += 150;
         }
     }
 
