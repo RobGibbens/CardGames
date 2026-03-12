@@ -4,20 +4,22 @@
 
 - [ ] https://github.com/leeoades/FunctionalStateMachine
 
+- [ ] SYN - Animate trading
+- [ ] SYN - Animate trading with the deck
+- [ ] SYN - Timer time out
+- [ ] SYN - Animate chips to pot
 - [ ] SYN - Speed up deal
 - [ ] SYN - Not showing showdown
-- [ ] SYN - When Pot is 0 still show it
 - [ ] SYN - What is the default is not choosing?
 - [ ] SYN - check for King block
 - [ ] SYN - Showdown too fast
 - [ ] SYN - Showdown showing email, not name
 - [ ] SYN - check for ties
-- [x] SYN - show your remaining stacks
-- [x] SYN - show everyone if you traded or stayed
-- [x] SYN - no bring in, or lock it the set amount
-- [x] SYN - doesn't need min bet when creating
 - [ ] SYN - Get a king and it still prompts you to trade
+- [ ] SYN in DC - Shows six stacks each - not removing them
 
+- [ ] DC - You're the dealer! Pick a game variant for this hand. - SYN shows Min Bet
+- [ ] Joining table adds 5001 when setting 5000
 - [ ] Bringing in cash to a game should require host approval
 - [ ] Phil's mom loser showdown not correct
 - [ ] Test what happens when a player disconnects
@@ -213,3 +215,8 @@
 - [x] Table settings should be dynamic when creating a table. Not all games have an ante or a minimum bet.
 - [x] When playing Dealer's choice, filter out games that don't support the number of players
 - [x] Allow each person to set their preferences for blinds when creating tables
+- [x] SYN - When Pot is 0 still show it
+- [x] SYN - show your remaining stacks
+- [x] SYN - show everyone if you traded or stayed
+- [x] SYN - no bring in, or lock it the set amount
+- [x] SYN - doesn't need min bet when creating
