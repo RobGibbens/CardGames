@@ -61,3 +61,90 @@
         transform: translateX(0);
     }
 }
+
+/* Join buy-in overlay theme handling (scoped to TablePlay) */
+.confirm-dialog-overlay {
+    --join-overlay-backdrop: var(--confirm-overlay-backdrop, rgba(15, 23, 42, 0.5));
+    --join-overlay-surface: var(--confirm-overlay-surface, var(--card-bg, #ffffff));
+    --join-overlay-surface-border: var(--confirm-overlay-surface-border, var(--border-color, rgba(15, 23, 42, 0.12)));
+    --join-overlay-text-primary: var(--confirm-overlay-text-primary, var(--text-primary, #111827));
+    --join-overlay-text-secondary: var(--confirm-overlay-text-secondary, var(--text-secondary, #4b5563));
+    --join-overlay-secondary-bg: var(--confirm-overlay-secondary-bg, var(--bg-tertiary, #f3f4f6));
+    --join-overlay-secondary-border: var(--confirm-overlay-secondary-border, var(--border-color, #d1d5db));
+    --join-overlay-secondary-text: var(--confirm-overlay-secondary-text, var(--text-primary, #111827));
+    --join-overlay-primary-bg: var(--confirm-overlay-primary-bg, var(--primary, #dc2626));
+    --join-overlay-primary-border: var(--confirm-overlay-primary-border, var(--primary, #dc2626));
+    --join-overlay-primary-text: var(--confirm-overlay-primary-text, #ffffff);
+    --join-overlay-input-bg: var(--bg-tertiary, #f9fafb);
+    --join-overlay-input-border: var(--border-color, #d1d5db);
+    --join-overlay-media-filter: var(--confirm-overlay-media-filter, none);
+    background-color: var(--join-overlay-backdrop);
+}
+
+.confirm-dialog-overlay .join-buy-in-modal {
+    background: var(--join-overlay-surface);
+    border: 1px solid var(--join-overlay-surface-border);
+    color: var(--join-overlay-text-primary);
+}
+
+.confirm-dialog-overlay .join-buy-in-modal .confirm-dialog-title,
+.confirm-dialog-overlay .join-buy-in-modal .confirm-dialog-message,
+.confirm-dialog-overlay .join-buy-in-modal .form-label,
+.confirm-dialog-overlay .join-buy-in-modal .bet-slider-labels span,
+.confirm-dialog-overlay .join-buy-in-modal strong {
+    color: var(--join-overlay-text-primary);
+}
+
+.confirm-dialog-overlay .join-buy-in-modal .confirm-dialog-message {
+    color: var(--join-overlay-text-secondary);
+}
+
+.confirm-dialog-overlay .join-buy-in-modal .join-buy-in-input {
+    background: var(--join-overlay-input-bg);
+    border-color: var(--join-overlay-input-border);
+    color: var(--join-overlay-text-primary);
+}
+
+.confirm-dialog-overlay .join-buy-in-modal .join-buy-in-input:focus {
+    background: var(--join-overlay-input-bg);
+    border-color: var(--join-overlay-primary-border);
+}
+
+.confirm-dialog-overlay .join-buy-in-modal .btn.btn-secondary {
+    background: var(--join-overlay-secondary-bg);
+    border-color: var(--join-overlay-secondary-border);
+    color: var(--join-overlay-secondary-text);
+}
+
+.confirm-dialog-overlay .join-buy-in-modal .btn.btn-secondary:hover:not(:disabled) {
+    filter: brightness(0.95);
+}
+
+.confirm-dialog-overlay .join-buy-in-modal .btn.btn-primary {
+    background: var(--join-overlay-primary-bg);
+    border-color: var(--join-overlay-primary-border);
+    color: var(--join-overlay-primary-text);
+}
+
+.confirm-dialog-overlay .join-buy-in-modal .btn.btn-primary:hover:not(:disabled) {
+    filter: brightness(1.05);
+}
+
+.confirm-dialog-overlay .join-buy-in-modal .league-modal-close-btn {
+    background: var(--join-overlay-secondary-bg);
+    border-color: var(--join-overlay-secondary-border);
+    color: var(--join-overlay-secondary-text);
+}
+
+.confirm-dialog-overlay .join-buy-in-modal .league-modal-close-btn:hover:not(:disabled) {
+    filter: brightness(0.95);
+}
+
+.confirm-dialog-overlay .join-buy-in-modal img,
+.confirm-dialog-overlay .join-buy-in-modal svg {
+    filter: var(--join-overlay-media-filter);
+}
+
+.confirm-dialog-overlay .join-buy-in-modal i {
+    color: inherit;
+}

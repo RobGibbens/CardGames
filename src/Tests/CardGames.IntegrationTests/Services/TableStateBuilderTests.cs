@@ -321,6 +321,64 @@ public class TableStateBuilderTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task BuildPublicStateAsync_ScrewYourNeighbor_VisibleKingIsShownToAllPlayers()
+    {
+        // Arrange
+        var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "SCREWYOURNEIGHBOR", 3);
+        var game = setup.Game;
+        game.CurrentHandNumber = 1;
+        game.CurrentPhase = nameof(Phases.KeepOrTrade);
+        game.Status = GameStatus.InProgress;
+
+        var seat0 = setup.GamePlayers.First(gp => gp.SeatPosition == 0);
+        var seat1 = setup.GamePlayers.First(gp => gp.SeatPosition == 1);
+
+        DbContext.GameCards.AddRange(
+            new GameCard
+            {
+                GameId = game.Id,
+                GamePlayerId = seat0.Id,
+                HandNumber = 1,
+                Location = CardLocation.Hand,
+                Suit = CardSuit.Spades,
+                Symbol = CardSymbol.King,
+                DealOrder = 1,
+                IsVisible = true
+            },
+            new GameCard
+            {
+                GameId = game.Id,
+                GamePlayerId = seat1.Id,
+                HandNumber = 1,
+                Location = CardLocation.Hand,
+                Suit = CardSuit.Hearts,
+                Symbol = CardSymbol.Five,
+                DealOrder = 1,
+                IsVisible = false
+            });
+
+        await DbContext.SaveChangesAsync();
+
+        // Act
+        var result = await TableStateBuilder.BuildPublicStateAsync(game.Id);
+
+        // Assert
+        result.Should().NotBeNull();
+        var seat0Public = result!.Seats.First(s => s.SeatIndex == 0);
+        var seat1Public = result.Seats.First(s => s.SeatIndex == 1);
+
+        seat0Public.Cards.Should().ContainSingle();
+        seat0Public.Cards[0].IsFaceUp.Should().BeTrue();
+        seat0Public.Cards[0].Rank.Should().Be("K");
+        seat0Public.Cards[0].Suit.Should().NotBeNull();
+
+        seat1Public.Cards.Should().ContainSingle();
+        seat1Public.Cards[0].IsFaceUp.Should().BeFalse();
+        seat1Public.Cards[0].Rank.Should().BeNull();
+        seat1Public.Cards[0].Suit.Should().BeNull();
+    }
+
+    [Fact]
     public async Task BuildPublicStateAsync_FollowTheQueen_DynamicWildRank_UsesNextCardAfterQueenInGlobalDealOrder()
     {
         // Arrange

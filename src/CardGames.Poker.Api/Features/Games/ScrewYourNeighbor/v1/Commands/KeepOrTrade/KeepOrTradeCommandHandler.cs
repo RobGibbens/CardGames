@@ -257,6 +257,7 @@ public class KeepOrTradeCommandHandler(CardsDbContext context)
 		topDeckCard.GamePlayerId = dealer.Id;
 		topDeckCard.Location = CardLocation.Hand;
 		topDeckCard.DealtAt = now;
+		topDeckCard.IsVisible = ScrewYourNeighborFlowHandler.IsKing(topDeckCard.Symbol);
 
 		return true;
 	}

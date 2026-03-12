@@ -32,7 +32,7 @@
 
     <!-- Decision Info -->
     <div class="keep-or-trade-info">
-        <span class="decision-hint">Keep your card or trade with the next player. Kings block trades!</span>
+        <span class="decision-hint">@GetDecisionHintText()</span>
     </div>
 
     <!-- Action Buttons -->
@@ -44,12 +44,15 @@
             <span>Keep</span>
         </button>
 
-        <button class="keep-or-trade-btn trade-btn @(!IsSubmitting ? "active" : "")"
-                @onclick='() => OnDecision.InvokeAsync("Trade")'
-                disabled="@IsSubmitting">
-            <i class="fa-solid fa-arrow-right-arrow-left"></i>
-            <span>Trade</span>
-        </button>
+        @if (CanTrade())
+        {
+            <button class="keep-or-trade-btn trade-btn @(!IsSubmitting ? "active" : "")"
+                    @onclick='() => OnDecision.InvokeAsync("Trade")'
+                    disabled="@IsSubmitting">
+                <i class="fa-solid fa-arrow-right-arrow-left"></i>
+                <span>Trade</span>
+            </button>
+        }
     </div>
 
     @if (IsSubmitting)
@@ -93,6 +96,15 @@
     public int PotAmount { get; set; }
 
     [Parameter]
+    public bool IsDealer { get; set; }
+
+    [Parameter]
+    public bool IsTradeBlockedByTargetKing { get; set; }
+
+    [Parameter]
+    public string? TradeTargetPlayerName { get; set; }
+
+    [Parameter]
     public bool IsSubmitting { get; set; }
 
     [Parameter]
@@ -128,5 +140,27 @@
             "A" => "Ace",
             _ => card.Rank
         };
+    }
+
+    private bool CanTrade()
+    {
+        return IsDealer || !IsTradeBlockedByTargetKing;
+    }
+
+    private string GetDecisionHintText()
+    {
+        if (IsDealer)
+        {
+            return "You are the dealer, so you can always trade with the deck.";
+        }
+
+        if (IsTradeBlockedByTargetKing)
+        {
+            return string.IsNullOrWhiteSpace(TradeTargetPlayerName)
+                ? "The next player has a King, so trade is blocked. You must keep your card."
+                : $"{TradeTargetPlayerName} has a King, so trade is blocked. You must keep your card.";
+        }
+
+        return "Keep your card or trade with the next player to your left.";
     }
 }

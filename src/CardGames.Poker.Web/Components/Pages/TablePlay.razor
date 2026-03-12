@@ -339,6 +339,9 @@
         {
             <KeepOrTradeOverlay Cards="@_currentPlayerDrawCards"
                                 PotAmount="@_pot"
+                                IsDealer="@IsCurrentPlayerScrewYourNeighborDealer"
+                                IsTradeBlockedByTargetKing="@IsCurrentPlayerTradeBlockedByTargetKing"
+                                TradeTargetPlayerName="@CurrentScrewYourNeighborTradeTargetName"
                                 IsSubmitting="@_isProcessingKeepOrTrade"
                                 OnDecision="@HandleKeepOrTradeDecision"
                                 ActionTimer="@_actionTimerState" />
@@ -845,6 +848,75 @@
 
     private bool HasKeepOrTrade =>
     _tableState?.SpecialRules?.HasKeepOrTrade == true;
+
+    private bool IsCurrentPlayerScrewYourNeighborDealer =>
+    IsScrewYourNeighbor &&
+    _currentPlayerSeatIndex >= 0 &&
+    _currentPlayerSeatIndex == _dealerSeatIndex;
+
+    private string? CurrentScrewYourNeighborTradeTargetName
+    {
+        get
+        {
+            if (!TryGetCurrentScrewYourNeighborTradeTarget(out var tradeTarget))
+            {
+                return null;
+            }
+
+            return string.IsNullOrWhiteSpace(tradeTarget.PlayerFirstName)
+                ? tradeTarget.PlayerName
+                : tradeTarget.PlayerFirstName;
+        }
+    }
+
+    private bool IsCurrentPlayerTradeBlockedByTargetKing
+    {
+        get
+        {
+            if (!IsScrewYourNeighbor || IsCurrentPlayerScrewYourNeighborDealer)
+            {
+                return false;
+            }
+
+            if (!TryGetCurrentScrewYourNeighborTradeTarget(out var tradeTarget))
+            {
+                return false;
+            }
+
+            return tradeTarget.Cards.Any(card =>
+                card.IsFaceUp &&
+                string.Equals(card.Rank, "K", StringComparison.OrdinalIgnoreCase));
+        }
+    }
+
+    private bool TryGetCurrentScrewYourNeighborTradeTarget(out SeatInfo tradeTarget)
+    {
+        tradeTarget = default!;
+
+        if (_seats.Count == 0 || _currentPlayerSeatIndex < 0)
+        {
+            return false;
+        }
+
+        var eligibleSeats = _seats
+            .Where(seat => seat.IsOccupied && !seat.IsSittingOut && !seat.IsFolded)
+            .OrderBy(seat => seat.SeatIndex)
+            .ToList();
+
+        if (eligibleSeats.Count <= 1)
+        {
+            return false;
+        }
+
+        var currentPlayerPosition = eligibleSeats.FindIndex(seat => seat.SeatIndex == _currentPlayerSeatIndex);
+        if (currentPlayerPosition < 0)
+        {
+            return false;
+        }
+
+        tradeTarget = eligibleSeats[(currentPlayerPosition + 1) % eligibleSeats.Count];
+        return true;
+    }
 
     private bool HasPotMatching =>
     _tableState?.SpecialRules?.HasPotMatching == true;

@@ -85,6 +85,40 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task KeepOrTrade_DealerTradesWithDeck_KingBecomesVisible()
+    {
+        var (setup, game) = await CreateScrewYourNeighborGameInKeepOrTradePhaseAsync();
+
+        var dealer = game.GamePlayers.First(gp => gp.SeatPosition == game.DealerPosition);
+        game.CurrentPlayerIndex = dealer.SeatPosition;
+
+        var topDeckCard = game.GameCards
+            .Where(gc => gc.HandNumber == game.CurrentHandNumber &&
+                         gc.Location == CardLocation.Deck &&
+                         gc.GamePlayerId == null)
+            .OrderBy(gc => gc.DealOrder)
+            .First();
+
+        topDeckCard.Symbol = CardSymbol.King;
+        topDeckCard.IsVisible = false;
+
+        await DbContext.SaveChangesAsync();
+
+        var result = await Mediator.Send(new KeepOrTradeCommand(game.Id, dealer.PlayerId, "Trade"));
+
+        result.IsT0.Should().BeTrue();
+        result.AsT0.DidTrade.Should().BeTrue();
+
+        var updatedTopDeckCard = await DbContext.GameCards
+            .AsNoTracking()
+            .FirstAsync(gc => gc.Id == topDeckCard.Id);
+
+        updatedTopDeckCard.GamePlayerId.Should().Be(dealer.Id);
+        updatedTopDeckCard.Location.Should().Be(CardLocation.Hand);
+        updatedTopDeckCard.IsVisible.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task KeepOrTrade_InvalidDecision_ReturnsError()
     {
         var (setup, game) = await CreateScrewYourNeighborGameInKeepOrTradePhaseAsync();

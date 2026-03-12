@@ -111,6 +111,23 @@ public sealed class ScrewYourNeighborFlowHandler : BaseGameFlowHandler
 		// Deal 1 card face-down to each eligible player using standard dealing
 		await base.DealDrawStyleCardsAsync(context, game, eligiblePlayers, now, cancellationToken);
 
+		// SYN rule: any dealt King is immediately face-up to all players.
+		var dealtHandCards = await context.GameCards
+			.Where(gc =>
+			gc.HandNumber == game.CurrentHandNumber &&
+			gc.GamePlayerId != null &&
+			gc.Location == CardLocation.Hand &&
+			!gc.IsDiscarded)
+			.ToListAsync(cancellationToken);
+
+		foreach (var card in dealtHandCards)
+		{
+			if (IsKing(card.Symbol))
+			{
+				card.IsVisible = true;
+			}
+		}
+
 		// Override the phase — dealing sets up KeepOrTrade (a special phase, not a betting round)
 		game.CurrentPhase = nameof(Phases.KeepOrTrade);
 

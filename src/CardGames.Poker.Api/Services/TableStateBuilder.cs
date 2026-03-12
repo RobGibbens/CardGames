@@ -539,6 +539,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		// For Seven Card Stud, show visible cards; otherwise show face-down placeholders
 		// During showdown phases, show cards face-up for players who haven't folded
 		var isSevenCardStud = IsStudGame(gameTypeCode);
+		var isScrewYourNeighbor = IsScrewYourNeighborGame(gameTypeCode);
 
 		// Get current hand cards (not discarded)
 		// Note: We filter by hand number to naturally handle sitting out players.
@@ -558,7 +559,10 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		{
 			// For stud games, respect the IsVisible flag; otherwise default to face-down
 			// During showdown, show cards face-up for staying players
-			var shouldShowCard = (isSevenCardStud && card.IsVisible) || shouldShowCardsForShowdown;
+			var shouldShowCard =
+				(isSevenCardStud && card.IsVisible)
+				|| (isScrewYourNeighbor && card.IsVisible)
+				|| shouldShowCardsForShowdown;
 
 			return new CardPublicDto
 			{
