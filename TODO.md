@@ -4,8 +4,8 @@
 
 - [ ] https://github.com/leeoades/FunctionalStateMachine
 
-- [ ] SYN - Animate trading
-- [ ] SYN - Animate trading with the deck
+- [x] SYN - Animate trading
+- [x] SYN - Animate trading with the deck
 - [ ] SYN - Timer time out
 - [ ] SYN - Animate chips to pot
 - [ ] SYN - Speed up deal

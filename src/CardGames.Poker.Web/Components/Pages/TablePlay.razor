@@ -533,6 +533,7 @@
     // Continuous play constants (must match ContinuousPlayBackgroundService)
     private const int ContinuousPlayResultsDisplayDurationSeconds = 8;
     private const double ScrewYourNeighborDealerTradeShowdownDelaySeconds = 3.5;
+    private const int ScrewYourNeighborTradeAnimationDurationMs = 650;
 
     // Table info
     private int _ante = 5;
@@ -605,6 +606,8 @@
     // Screw Your Neighbor specific state
     private bool _isProcessingKeepOrTrade;
     private string? _synKeepOrTradeDecision;
+    private HashSet<string> _synAnimatedTradeKeys = [];
+    private List<int> _pendingSynTradeAnimationSeatIndices = [];
 
     // Chip check pause state (for Kings and Lows)
     private bool _isPausedForChipCheck;
@@ -690,6 +693,7 @@
     private List<ToastMessage> _toastMessages = [];
 
     private bool _isDealSoundMuted;
+    private bool _isJsInteropReady;
     private int _previousFaceUpCommunityCardCount;
     private bool _showGameInfoOverlay;
     private bool _isUpdatingOddsVisibility;
@@ -893,7 +897,25 @@
     {
         tradeTarget = default!;
 
-        if (_seats.Count == 0 || _currentPlayerSeatIndex < 0)
+        if (!TryGetScrewYourNeighborTradeTarget(_currentPlayerSeatIndex, out var targetSeatIndex))
+        {
+            return false;
+        }
+
+        if (targetSeatIndex < 0 || targetSeatIndex >= _seats.Count)
+        {
+            return false;
+        }
+
+        tradeTarget = _seats[targetSeatIndex];
+        return tradeTarget.IsOccupied;
+    }
+
+    private bool TryGetScrewYourNeighborTradeTarget(int sourceSeatIndex, out int targetSeatIndex)
+    {
+        targetSeatIndex = -1;
+
+        if (_seats.Count == 0 || sourceSeatIndex < 0)
         {
             return false;
         }
@@ -908,13 +930,13 @@
             return false;
         }
 
-        var currentPlayerPosition = eligibleSeats.FindIndex(seat => seat.SeatIndex == _currentPlayerSeatIndex);
-        if (currentPlayerPosition < 0)
+        var sourceSeatPosition = eligibleSeats.FindIndex(seat => seat.SeatIndex == sourceSeatIndex);
+        if (sourceSeatPosition < 0)
         {
             return false;
         }
 
-        tradeTarget = eligibleSeats[(currentPlayerPosition + 1) % eligibleSeats.Count];
+        targetSeatIndex = eligibleSeats[(sourceSeatPosition + 1) % eligibleSeats.Count].SeatIndex;
         return true;
     }
 
@@ -1024,7 +1046,7 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender)
+        if (_isJsInteropReady)
         {
             return;
         }
@@ -1032,7 +1054,18 @@
         try
         {
             _isDealSoundMuted = await JSRuntime.InvokeAsync<bool>("cardGamesAudio.getMuted");
+            _isJsInteropReady = true;
+            await FlushPendingScrewYourNeighborTradeAnimationsAsync();
             await InvokeStateHasChangedAsync();
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("statically rendered", StringComparison.OrdinalIgnoreCase))
+        {
+            // Prerender phase: JS interop is not available yet.
+            // We'll try again on the next render when the circuit becomes interactive.
+        }
+        catch (JSDisconnectedException)
+        {
+            // Circuit is not currently connected for JS interop.
         }
         catch (Exception ex)
         {
@@ -1445,6 +1478,7 @@
                         _showdownDelayUntil = null;
                         _previousPhaseCategory = null;
                         _isAcknowledgingPotMatch = false;
+                        _synAnimatedTradeKeys.Clear();
 
                         // Reset All-In Runout state for new hand
                         _allInRunoutState = null;
@@ -1912,6 +1946,21 @@
                         ?? GetScrewYourNeighborDecisionDescription(publicSeat.LastAction?.ActionDescription)
                     : null;
 
+                var resolvedHandEvaluationDescription = IsScrewYourNeighbor
+                    ? (isCurrentPlayer
+                        ? _synKeepOrTradeDecision
+                        : null)
+                        ?? existingSeat.HandEvaluationDescription
+                        ?? screwYourNeighborDecision
+                    : existingSeat.HandEvaluationDescription;
+
+                if (IsScrewYourNeighbor &&
+                    !string.Equals(existingSeat.HandEvaluationDescription, "Traded", StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(resolvedHandEvaluationDescription, "Traded", StringComparison.OrdinalIgnoreCase))
+                {
+                    QueueScrewYourNeighborTradeAnimation(publicSeat.SeatIndex);
+                }
+
                 _seats[publicSeat.SeatIndex] = new SeatInfo
                 {
                     SeatIndex = publicSeat.SeatIndex,
@@ -1932,13 +1981,7 @@
                     Cards = cards,
                     LastActionDescription = lastActionDescription,
                     LastActionTime = lastActionTime,
-                    HandEvaluationDescription = IsScrewYourNeighbor
-                        ? (isCurrentPlayer
-                            ? _synKeepOrTradeDecision
-                            : null)
-                            ?? existingSeat.HandEvaluationDescription
-                            ?? screwYourNeighborDecision
-                        : existingSeat.HandEvaluationDescription
+                    HandEvaluationDescription = resolvedHandEvaluationDescription
                 };
             }
         }
@@ -4567,6 +4610,11 @@
 
         await InvokeStateHasChangedAsync();
 
+        if (IsScrewYourNeighbor && IsScrewYourNeighborTradeAction(notification.ActionDescription))
+        {
+            QueueScrewYourNeighborTradeAnimation(seatIndex);
+        }
+
         // Schedule the action to be cleared after the display duration
         var displayDuration = notification.DisplayDurationSeconds > 0
         ? notification.DisplayDurationSeconds
@@ -4605,6 +4653,114 @@
         }
 
         return null;
+    }
+
+    private static bool IsScrewYourNeighborTradeAction(string? actionDescription)
+    {
+        if (string.IsNullOrWhiteSpace(actionDescription))
+        {
+            return false;
+        }
+
+        return actionDescription.Contains("trade", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task AnimateScrewYourNeighborTradeAsync(int sourceSeatIndex)
+    {
+        if (!_isJsInteropReady)
+        {
+            return;
+        }
+
+        var isDealerTrade = sourceSeatIndex == _dealerSeatIndex;
+
+        if (!isDealerTrade && !TryGetScrewYourNeighborTradeTarget(sourceSeatIndex, out _))
+        {
+            return;
+        }
+
+        try
+        {
+            if (isDealerTrade)
+            {
+                // Dealer trades with the deck — animate card from deck to dealer's seat
+                await JSRuntime.InvokeVoidAsync(
+                    "cardGamesTable.animateScrewYourNeighborDeckTrade",
+                    sourceSeatIndex,
+                    ScrewYourNeighborTradeAnimationDurationMs);
+            }
+            else
+            {
+                TryGetScrewYourNeighborTradeTarget(sourceSeatIndex, out var targetSeatIndex);
+                // Non-dealer trades with the next player — animate cards flying between seats
+                await JSRuntime.InvokeVoidAsync(
+                    "cardGamesTable.animateScrewYourNeighborTrade",
+                    sourceSeatIndex,
+                    targetSeatIndex,
+                    ScrewYourNeighborTradeAnimationDurationMs);
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+            // Circuit ended before animation could execute.
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("statically rendered", StringComparison.OrdinalIgnoreCase))
+        {
+            Logger.LogDebug(ex,
+                "Skipped Screw Your Neighbor trade animation during prerender for seat {SourceSeatIndex}",
+                sourceSeatIndex);
+        }
+        catch (JSException ex)
+        {
+            Logger.LogDebug(ex,
+                "Failed to run Screw Your Neighbor trade animation for seat {SourceSeatIndex}",
+                sourceSeatIndex);
+        }
+    }
+
+    private void QueueScrewYourNeighborTradeAnimation(int sourceSeatIndex)
+    {
+        var isDealerTrade = sourceSeatIndex == _dealerSeatIndex;
+
+        // For non-dealer trades, verify there is a valid trade target
+        if (!isDealerTrade && !TryGetScrewYourNeighborTradeTarget(sourceSeatIndex, out _))
+        {
+            return;
+        }
+
+        var handNumber = _tableState?.CurrentHandNumber ?? _gameResponse?.CurrentHandNumber ?? 0;
+        var tradeKey = $"{handNumber}:{sourceSeatIndex}";
+        if (!_synAnimatedTradeKeys.Add(tradeKey))
+        {
+            return;
+        }
+
+        if (!_isJsInteropReady)
+        {
+            _pendingSynTradeAnimationSeatIndices.Add(sourceSeatIndex);
+            return;
+        }
+
+        // Fire-and-forget: the JS animation creates its own synthetic card elements
+        // positioned over the seats (or deck) and flies them. It does not depend on the
+        // current DOM card state, so it works regardless of when Blazor re-renders.
+        _ = InvokeAsync(() => AnimateScrewYourNeighborTradeAsync(sourceSeatIndex));
+    }
+
+    private async Task FlushPendingScrewYourNeighborTradeAnimationsAsync()
+    {
+        if (!_isJsInteropReady || _pendingSynTradeAnimationSeatIndices.Count == 0)
+        {
+            return;
+        }
+
+        var pending = _pendingSynTradeAnimationSeatIndices.ToList();
+        _pendingSynTradeAnimationSeatIndices.Clear();
+
+        foreach (var sourceSeatIndex in pending)
+        {
+            await AnimateScrewYourNeighborTradeAsync(sourceSeatIndex);
+        }
     }
 
     private Guid? _currentGameId => GameId;
@@ -5647,12 +5803,19 @@ HandType.HighCard
 
         // Set decision BEFORE the API call so SignalR state updates (which fire during
         // the await) see it and don't overwrite with the server's hand evaluation.
-        _synKeepOrTradeDecision = string.Equals(decision, "Trade", StringComparison.OrdinalIgnoreCase)
-            ? "Traded"
-            : "Kept";
+        var isTrade = string.Equals(decision, "Trade", StringComparison.OrdinalIgnoreCase);
+        _synKeepOrTradeDecision = isTrade ? "Traded" : "Kept";
         if (_currentPlayerSeatIndex >= 0 && _currentPlayerSeatIndex < _seats.Count)
         {
             _seats[_currentPlayerSeatIndex].HandEvaluationDescription = _synKeepOrTradeDecision;
+        }
+
+        // Trigger the trade animation immediately for the current player so they see
+        // the cards fly before the API response / SignalR update swaps the card values.
+        // The dedupe key prevents a second animation when the server notification arrives.
+        if (isTrade)
+        {
+            QueueScrewYourNeighborTradeAnimation(_currentPlayerSeatIndex);
         }
 
         StateHasChanged();
