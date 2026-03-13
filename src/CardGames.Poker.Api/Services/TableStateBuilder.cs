@@ -10,6 +10,7 @@ using CardGames.Poker.Api.Features.Profile;
 using CardGames.Poker.Api.Features.Games.ActiveGames.v1.Queries.GetActiveGames;
 using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetHandHistory;
 using CardGames.Poker.Api.Features.Games.Baseball;
+using CardGames.Poker.Api.GameFlow;
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Games.GameFlow;
 using CardGames.Poker.Betting;
@@ -824,6 +825,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		var isBaseball = IsBaseballGame(game.GameType?.Code);
 		var isKingsAndLows = IsKingsAndLowsGame(game.GameType?.Code);
 		var isFollowTheQueen = IsFollowTheQueenGame(game.GameType?.Code);
+		var isScrewYourNeighbor = IsScrewYourNeighborGame(game.GameType?.Code);
 		var isStudStyleShowdown = isSevenCardStud || isBaseball || isFollowTheQueen;
 
 		// Evaluate all hands for players who haven't folded
@@ -1408,6 +1410,51 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					sevensWinners.Add(kvp.Key);
 				}
 				sevensPoolRolledOver = sevensWinners.Count == 0;
+			}
+		}
+		else if (isScrewYourNeighbor)
+		{
+			// SYN: each player has exactly 1 card. Lowest card value loses (Ace=1, King=13).
+			// Players who do NOT have the lowest value are winners.
+			var synActivePlayers = gamePlayers
+				.Where(gp => !gp.HasFolded)
+				.ToList();
+
+			var synHandCards = await _context.GameCards
+				.Where(gc => gc.GameId == game.Id
+					&& gc.HandNumber == game.CurrentHandNumber
+					&& gc.GamePlayerId != null
+					&& gc.Location == CardLocation.Hand
+					&& !gc.IsDiscarded)
+				.AsNoTracking()
+				.ToListAsync(cancellationToken);
+
+			var synPlayerCards = new Dictionary<Guid, GameCard>();
+			foreach (var card in synHandCards)
+			{
+				if (card.GamePlayerId.HasValue)
+				{
+					synPlayerCards[card.GamePlayerId.Value] = card;
+				}
+			}
+
+			var synPlayerValues = new List<(GamePlayer Player, int CardValue)>();
+			foreach (var player in synActivePlayers)
+			{
+				if (synPlayerCards.TryGetValue(player.Id, out var card))
+				{
+					var value = ScrewYourNeighborFlowHandler.GetScrewYourNeighborCardValue(card.Symbol);
+					synPlayerValues.Add((player, value));
+				}
+			}
+
+			if (synPlayerValues.Count > 0)
+			{
+				var lowestValue = synPlayerValues.Min(pv => pv.CardValue);
+				foreach (var pv in synPlayerValues.Where(pv => pv.CardValue != lowestValue))
+				{
+					highHandWinners.Add(pv.Player.Player.Name);
+				}
 			}
 		}
 		else if (gamePlayers.Count(gp => !gp.HasFolded) == 1)
