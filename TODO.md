@@ -1,13 +1,16 @@
+
 # TODO
 
 ## Still to do
 
 - [ ] https://github.com/leeoades/FunctionalStateMachine
 
+- [ ] SYN - Highlight winner(s)
 - [x] SYN - Animate trading
 - [x] SYN - Animate trading with the deck
 - [ ] SYN - Timer time out
-- [ ] SYN - Animate chips to pot
+- [x] SYN - Animate chips to pot
+- [x] SYN - Get a king and it still prompts you to trade
 - [ ] SYN - Speed up deal
 - [ ] SYN - Not showing showdown
 - [ ] SYN - What is the default is not choosing?
@@ -15,9 +18,14 @@
 - [ ] SYN - Showdown too fast
 - [ ] SYN - Showdown showing email, not name
 - [ ] SYN - check for ties
-- [ ] SYN - Get a king and it still prompts you to trade
+
 - [ ] SYN in DC - Shows six stacks each - not removing them
 
+- [ ] Lobby - Group by game type
+- [ ] Lobby - Filter by status
+- [ ] Join game modal - should not be able to click out of it
+- [ ] Join game modal background color
+- [ ] Auto generate table name
 - [ ] DC - You're the dealer! Pick a game variant for this hand. - SYN shows Min Bet
 - [ ] Joining table adds 5001 when setting 5000
 - [ ] Bringing in cash to a game should require host approval

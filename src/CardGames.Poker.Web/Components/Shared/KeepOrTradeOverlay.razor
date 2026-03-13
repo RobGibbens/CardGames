@@ -144,11 +144,21 @@
 
     private bool CanTrade()
     {
-        return IsDealer || !IsTradeBlockedByTargetKing;
+        return !HasKingCard() && (IsDealer || !IsTradeBlockedByTargetKing);
+    }
+
+    private bool HasKingCard()
+    {
+        return Cards.Any(card => string.Equals(card.Rank, "K", StringComparison.OrdinalIgnoreCase));
     }
 
     private string GetDecisionHintText()
     {
+        if (HasKingCard())
+        {
+            return "You have a King, so trade is blocked. You must keep your card.";
+        }
+
         if (IsDealer)
         {
             return "You are the dealer, so you can always trade with the deck.";
@@ -164,3 +174,4 @@
         return "Keep your card or trade with the next player to your left.";
     }
 }
+
