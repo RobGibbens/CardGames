@@ -60,12 +60,14 @@ public abstract class IntegrationTestBase : IAsyncLifetime
         services.AddSingleton<IActionTimerService, FakeActionTimerService>();
         services.AddSingleton<IGameStateBroadcaster, FakeGameStateBroadcaster>();
         services.AddSingleton<IHandHistoryRecorder, FakeHandHistoryRecorder>();
-        services.AddSingleton<IHandSettlementService, FakeHandSettlementService>();
-        services.AddScoped<ICurrentUserService, FakeCurrentUserService>();
-        services.AddScoped<ITableStateBuilder, TableStateBuilder>();
+		services.AddSingleton<IHandSettlementService, FakeHandSettlementService>();
+		services.AddScoped<ICurrentUserService, FakeCurrentUserService>();
+		services.AddScoped<ITableStateBuilder, TableStateBuilder>();
 		services.AddScoped<IPlayerChipWalletService, PlayerChipWalletService>();
 
-        ServiceProvider = services.BuildServiceProvider();
+		ConfigureServices(services);
+
+		ServiceProvider = services.BuildServiceProvider();
         Scope = ServiceProvider.CreateScope();
 
         // Ensure database is created and seed base data
@@ -86,6 +88,11 @@ public abstract class IntegrationTestBase : IAsyncLifetime
             disposable.Dispose();
         }
     }
+
+    /// <summary>
+    /// Override to replace or add service registrations before the provider is built.
+    /// </summary>
+    protected virtual void ConfigureServices(IServiceCollection services) { }
 
     /// <summary>
     /// Seeds base data required for tests (game types, etc.)

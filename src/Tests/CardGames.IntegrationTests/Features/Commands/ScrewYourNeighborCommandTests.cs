@@ -12,6 +12,13 @@ namespace CardGames.IntegrationTests.Features.Commands;
 /// </summary>
 public class ScrewYourNeighborCommandTests : IntegrationTestBase
 {
+    /// <inheritdoc />
+    protected override void ConfigureServices(IServiceCollection services)
+    {
+        // SYN settlement tests need the real service so wallet balances are updated.
+        services.AddScoped<IHandSettlementService, HandSettlementService>();
+    }
+
     private async Task<(GameSetup Setup, Game Game)> CreateScrewYourNeighborGameInKeepOrTradePhaseAsync(int playerCount = 4)
     {
         var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(

@@ -531,8 +531,8 @@
     private bool _isLoading = true;
 
     // Continuous play constants (must match ContinuousPlayBackgroundService)
-    private const int ContinuousPlayResultsDisplayDurationSeconds = 8;
-    private const double ScrewYourNeighborDealerTradeShowdownDelaySeconds = 3.5;
+    private const int ContinuousPlayResultsDisplayDurationSeconds = 7;
+    private const double ScrewYourNeighborDealerTradeShowdownDelaySeconds = 4.5;
     private const int ScrewYourNeighborTradeAnimationDurationMs = 650;
 
     // Table info
@@ -957,7 +957,7 @@
     private bool IsGameCompleted => _gameResponse?.Status == GameStatus.Completed;
 
     // Screw Your Neighbor should only show showdown once the game has fully ended.
-    private bool ShouldDisplayShowdownOverlay => !IsScrewYourNeighbor || IsEndedPhase || IsGameCompleted;
+    private bool ShouldDisplayShowdownOverlay => !IsScrewYourNeighbor || IsEndedPhase || IsGameCompleted || (IsScrewYourNeighbor && IsCompletePhase && _tableState?.NextHandStartsAtUtc is null);
 
     private bool IsShowdownPhase => string.Equals(_gameResponse?.CurrentPhase, GamePhase.Showdown.ToString(),
     StringComparison.OrdinalIgnoreCase)
@@ -6322,5 +6322,4 @@ HandType.HighCard
         await Task.CompletedTask;
     }
 }
-
 

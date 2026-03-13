@@ -18,7 +18,8 @@
 - [ ] SYN - Showdown too fast
 - [ ] SYN - Showdown showing email, not name
 - [ ] SYN - check for ties
-
+- [ ] SYN - odds
+- [ ] SYN - Make sure you can't join in the middle of a game
 - [ ] SYN in DC - Shows six stacks each - not removing them
 
 - [ ] Lobby - Group by game type

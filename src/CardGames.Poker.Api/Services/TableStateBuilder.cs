@@ -614,11 +614,33 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 	private static string? GetPlayerFirstName(GamePlayer gamePlayer, IReadOnlyDictionary<string, UserProfile> userProfilesByEmail)
 	{
-		if (!string.IsNullOrWhiteSpace(gamePlayer.Player.Email)
-			&& userProfilesByEmail.TryGetValue(gamePlayer.Player.Email, out var profile))
+		// Try Identity profile lookup by email
+		var email = gamePlayer.Player.Email;
+		if (string.IsNullOrWhiteSpace(email) && gamePlayer.Player.Name?.Contains('@') == true)
 		{
-			return !string.IsNullOrWhiteSpace(profile.FirstName) ? profile.FirstName.Trim() : null;
+			email = gamePlayer.Player.Name;
 		}
+
+		if (!string.IsNullOrWhiteSpace(email)
+			&& userProfilesByEmail.TryGetValue(email, out var profile)
+			&& !string.IsNullOrWhiteSpace(profile.FirstName))
+		{
+			return profile.FirstName.Trim();
+		}
+
+		// Fallback: derive from email local-part (TitleCase first segment)
+		var emailSource = !string.IsNullOrWhiteSpace(email) ? email : gamePlayer.Player.Name;
+		var atIndex = emailSource?.IndexOf('@') ?? -1;
+		if (atIndex > 0)
+		{
+			var localPart = emailSource![..atIndex];
+			var segments = localPart.Split(['.', '_', '-'], StringSplitOptions.RemoveEmptyEntries);
+			if (segments.Length > 0)
+			{
+				return System.Globalization.CultureInfo.InvariantCulture.TextInfo.ToTitleCase(segments[0].ToLowerInvariant());
+			}
+		}
+
 		return null;
 	}
 
@@ -1499,7 +1521,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				return new ShowdownPlayerResultDto
 				{
 					PlayerName = gp.Player.Name,
-					PlayerFirstName = userProfile?.FirstName,
+					PlayerFirstName = GetPlayerFirstName(gp, userProfilesByEmail),
 					SeatPosition = gp.SeatPosition,
 					HandRanking = handRanking,
 					HandDescription = isGoodBadUgly && string.Equals(gp.VariantState, "UGLY_ELIMINATED", StringComparison.OrdinalIgnoreCase)
