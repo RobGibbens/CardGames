@@ -4788,6 +4788,8 @@
     /// <summary>
     /// Animates a poker chip flying from each losing player's seat to the pot display.
     /// </summary>
+    private const int ScrewYourNeighborChipAnimationDelayMs = 2000;
+
     private async Task AnimateScrewYourNeighborChipLossAsync(List<int> loserSeatIndices)
     {
         if (!_isJsInteropReady)
@@ -4798,6 +4800,9 @@
         Logger.LogInformation(
             "AnimateScrewYourNeighborChipLossAsync: animating chip loss for {Count} loser(s) at seats [{Seats}]",
             loserSeatIndices.Count, string.Join(", ", loserSeatIndices));
+
+        // Wait after winner/loser is revealed before animating the chip to the pot
+        await Task.Delay(ScrewYourNeighborChipAnimationDelayMs);
 
         var staggerDelayMs = 0;
         foreach (var seatIndex in loserSeatIndices)
