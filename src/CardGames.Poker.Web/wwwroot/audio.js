@@ -246,14 +246,31 @@ window.cardGamesTable = (() => {
             return;
         }
 
-        // Find the chip stacks area in the seat, or fall back to the seat visuals
-        const chipArea = seatElement.querySelector(".syn-stacks")
-            ?? seatElement.querySelector(".info-pill")
-            ?? seatElement.querySelector(".seat-visuals");
-        const seatRect = chipArea ? chipArea.getBoundingClientRect() : seatElement.getBoundingClientRect();
+        // If the loser has zero stacks, .syn-stacks can exist with width 0.
+        // In that case, fall back to other stable seat anchors.
+        const candidateAnchors = [
+            seatElement.querySelector(".syn-stacks"),
+            seatElement.querySelector(".info-pill"),
+            seatElement.querySelector(".seat-visuals"),
+            seatElement
+        ];
+
+        let seatRect = null;
+        for (const anchor of candidateAnchors) {
+            if (!anchor) {
+                continue;
+            }
+
+            const rect = anchor.getBoundingClientRect();
+            if (rect.width > 0 && rect.height > 0) {
+                seatRect = rect;
+                break;
+            }
+        }
+
         const potRect = potElement.getBoundingClientRect();
 
-        if (!seatRect.width || !potRect.width) {
+        if (!seatRect || !potRect.width) {
             return;
         }
 

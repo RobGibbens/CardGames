@@ -608,6 +608,7 @@
     private string? _synKeepOrTradeDecision;
     private HashSet<string> _synAnimatedTradeKeys = [];
     private List<int> _pendingSynTradeAnimationSeatIndices = [];
+    private bool _synChipAnimationFired;
 
     // Chip check pause state (for Kings and Lows)
     private bool _isPausedForChipCheck;
@@ -1235,6 +1236,7 @@
                     s.HandEvaluationDescription = null;
                 }
                 _synKeepOrTradeDecision = null;
+                _synChipAnimationFired = false;
 
                 _previousFaceUpCommunityCardCount = 0;
                 _communityCardRevealInProgress = false;
@@ -1312,16 +1314,6 @@
                 Logger.LogInformation("Detected all-in runout for game {GameId}, starting table animation", state.GameId);
             }
 
-            // Snapshot chip counts BEFORE seats are updated, so we can detect who lost chips
-            // at showdown time (for SYN chip-to-pot animation).
-            Dictionary<int, int>? preShowdownChips = null;
-            if (IsScrewYourNeighbor)
-            {
-                preShowdownChips = _seats
-                    .Where(s => s.IsOccupied)
-                    .ToDictionary(s => s.SeatIndex, s => s.Chips);
-            }
-
             // Update seats from public state
             // Note: If _runoutAnimationInProgress is true, this will preserve cards for runout seats
             UpdateSeatsFromPublicState(state.Seats);
@@ -1376,24 +1368,15 @@
             }
 
             // Animate chip(s) flying from losing player seats to the pot when entering SYN showdown.
-            // Trigger here (from the SignalR state transition) rather than from TryLoadShowdownAsync,
-            // because the API call in TryLoadShowdownAsync is async and by the time it returns,
-            // other state updates may have already re-rendered seats with reduced chips.
-            if (enteredScrewYourNeighborShowdown && state.Showdown is not null && preShowdownChips is not null)
+            // Use the showdown PlayerResults to identify losers (IsWinner == false) rather than
+            // chip-count comparison, because SYN chips are deducted at ante time — not at showdown.
+            if (enteredScrewYourNeighborShowdown && state.Showdown is not null && !_synChipAnimationFired)
             {
-                // Determine which seat(s) lost by comparing pre-update chip counts
-                // (captured before UpdateSeatsFromPublicState) against the new state.
-                // The player whose chips decreased is the actual loser.
-                var loserSeatIndices = new List<int>();
-
-                foreach (var seat in state.Seats)
-                {
-                    if (preShowdownChips.TryGetValue(seat.SeatIndex, out var previousChips) &&
-                        seat.Chips < previousChips)
-                    {
-                        loserSeatIndices.Add(seat.SeatIndex);
-                    }
-                }
+                _synChipAnimationFired = true;
+                var loserSeatIndices = state.Showdown.PlayerResults
+                    .Where(r => !r.IsWinner)
+                    .Select(r => r.SeatPosition)
+                    .ToList();
 
                 Logger.LogInformation("SYN Showdown chip-loss animation for seats: [{Seats}]",
                     string.Join(", ", loserSeatIndices));
