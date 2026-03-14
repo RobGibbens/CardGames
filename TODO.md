@@ -4,7 +4,7 @@
 ## Still to do
 
 - [ ] https://github.com/leeoades/FunctionalStateMachine
-
+- [ ] Dealer's Choice - pick which games are included
 - [ ] SYN - Have end of game go to lobby
 - [ ] SYN - Highlight winner(s)
 - [x] SYN - Animate trading
