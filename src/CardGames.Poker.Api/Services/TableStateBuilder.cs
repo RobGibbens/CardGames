@@ -23,6 +23,7 @@ using CardGames.Poker.Hands.StudHands;
 using CardGames.Poker.Hands.WildCards;
 using Microsoft.EntityFrameworkCore;
 using Entities = CardGames.Poker.Api.Data.Entities;
+using ContractGameStatus = CardGames.Poker.Api.Contracts.GameStatus;
 
 namespace CardGames.Poker.Api.Services;
 
@@ -231,6 +232,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			DealerSeatIndex = game.DealerPosition,
 			CurrentActorSeatIndex = game.CurrentPlayerIndex,
 			IsPaused = game.Status == Entities.GameStatus.BetweenHands,
+			GameStatus = (ContractGameStatus)(int)game.Status,
 			CurrentHandNumber = game.CurrentHandNumber,
 			CreatedByName = game.CreatedByName,
 			Seats = seats,

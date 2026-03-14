@@ -1190,7 +1190,8 @@
                 DealerPosition = state.DealerSeatIndex,
                 CurrentPlayerIndex = state.CurrentActorSeatIndex,
                 CurrentHandNumber = state.CurrentHandNumber,
-                AreOddsVisibleToAllPlayers = state.AreOddsVisibleToAllPlayers ?? _gameResponse.AreOddsVisibleToAllPlayers
+                AreOddsVisibleToAllPlayers = state.AreOddsVisibleToAllPlayers ?? _gameResponse.AreOddsVisibleToAllPlayers,
+                Status = state.GameStatus
             };
 
             _ante = state.Ante;

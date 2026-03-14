@@ -5,6 +5,7 @@
 
 - [ ] https://github.com/leeoades/FunctionalStateMachine
 
+- [ ] SYN - Have end of game go to lobby
 - [ ] SYN - Highlight winner(s)
 - [x] SYN - Animate trading
 - [x] SYN - Animate trading with the deck
@@ -12,15 +13,14 @@
 - [x] SYN - Animate chips to pot
 - [x] SYN - Get a king and it still prompts you to trade
 - [ ] SYN - Speed up deal
-- [ ] SYN - Not showing showdown
-- [ ] SYN - What is the default is not choosing?
-- [ ] SYN - check for King block
+- [x] SYN - Not showing showdown
+- [x] SYN - check for King block
 - [ ] SYN - Showdown too fast
-- [ ] SYN - Showdown showing email, not name
+- [x] SYN - Showdown showing email, not name
 - [ ] SYN - check for ties
 - [ ] SYN - odds
 - [ ] SYN - Make sure you can't join in the middle of a game
-- [ ] SYN in DC - Shows six stacks each - not removing them
+- [x] SYN in DC - Shows six stacks each - not removing them
 
 - [ ] Lobby - Group by game type
 - [ ] Lobby - Filter by status

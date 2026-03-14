@@ -71,6 +71,11 @@ public sealed partial record TableStatePublicDto
 	public bool IsPaused { get; init; }
 
 	/// <summary>
+	/// The overall status of the game (e.g., InProgress, Completed).
+	/// </summary>
+	public GameStatus GameStatus { get; init; }
+
+	/// <summary>
 	/// The current hand number being played.
 	/// </summary>
 	public int CurrentHandNumber { get; init; }
