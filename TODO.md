@@ -3,7 +3,7 @@
 
 ## Still to do
 
-add rounders sounds 
+- [ ] Add rounders sounds 
 - [ ] https://github.com/leeoades/FunctionalStateMachine
 - [ ] Dealer's Choice - pick which games are included
 - [ ] SYN - Have end of game go to lobby
