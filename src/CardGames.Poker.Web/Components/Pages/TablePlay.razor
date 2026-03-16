@@ -1108,6 +1108,24 @@
 
         // Show toast notification to other players
         await ShowToastAsync(notification.Message, "info");
+
+        // Fallback sync: some join flows may not immediately trigger a full table-state snapshot.
+        // Refresh seats so host controls (e.g. Start Game availability) update without requiring a page reload.
+        await GetPlayersAndUpdateSeatsAsync();
+
+        _seatedPlayerCount = _seats.Count(s => s.IsOccupied);
+        var activePlayers = _seats.Where(s => s.IsOccupied && !s.IsSittingOut).ToList();
+        _canStartGame = activePlayers.Count >= (_gameResponse?.MinimumNumberOfPlayers ?? 2)
+            && activePlayers.All(s => s.IsReady);
+
+        _currentPlayerSeatIndex = _seats.FirstOrDefault(s => s.IsOccupied &&
+            !string.IsNullOrWhiteSpace(_loggedInUserEmail) &&
+            string.Equals(s.PlayerName, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase))?.SeatIndex ?? -1;
+
+        _isSeated = _currentPlayerSeatIndex >= 0;
+        _isReady = _isSeated && _seats[_currentPlayerSeatIndex].IsReady;
+
+        await InvokeStateHasChangedAsync();
     }
 
     private async Task ShowToastAsync(string message, string type = "info", int durationMs = 4000)
@@ -2524,7 +2542,24 @@
 
     private async Task HandleSeatClickAsync(int seatIndex)
     {
-        await BeginAutoSeatJoinAsync();
+        if (_isSeated)
+        {
+            return;
+        }
+
+        if (seatIndex < 0 || seatIndex >= _seats.Count)
+        {
+            await ShowToastAsync("Invalid seat selection.", "error");
+            return;
+        }
+
+        if (_seats[seatIndex].IsOccupied)
+        {
+            await ShowToastAsync($"Seat {seatIndex + 1} is already occupied.", "error");
+            return;
+        }
+
+        await BeginSeatJoinAsync(seatIndex);
     }
 
     private bool TryGetAutoJoinSeatIndex(out int seatIndex)
@@ -2551,6 +2586,23 @@
             return;
         }
 
+        await BeginSeatJoinAsync(autoSeatIndex);
+    }
+
+    private async Task BeginSeatJoinAsync(int seatIndex)
+    {
+        if (seatIndex < 0 || seatIndex >= _seats.Count)
+        {
+            await ShowToastAsync("Invalid seat selection.", "error");
+            return;
+        }
+
+        if (_seats[seatIndex].IsOccupied)
+        {
+            await ShowToastAsync($"Seat {seatIndex + 1} is already occupied.", "error");
+            return;
+        }
+
         try
         {
             var cashierSummary = await ProfileApi.GetCashierSummaryAsync();
@@ -2569,7 +2621,7 @@
 
             _joinBuyInBalance = currentBalance;
             _joinBuyInBalanceCap = currentBalance;
-            _pendingJoinSeatIndex = autoSeatIndex;
+            _pendingJoinSeatIndex = seatIndex;
 
             InitializeJoinBuyInFromTable();
             _joinBuyInAmount = Math.Min(GetRecommendedJoinBuyIn(), GetJoinBuyInMax());
@@ -2861,6 +2913,12 @@
             var startHandResponse = await GamesApiClient.GenericStartHandAsync(GameId);
             if (!startHandResponse.IsSuccessStatusCode)
             {
+                if (startHandResponse.StatusCode == System.Net.HttpStatusCode.Conflict)
+                {
+                    await HandleStartConflictAsync("Dealer's Choice");
+                    return;
+                }
+
                 Logger.LogWarning("Failed to start Dealer's Choice hand: {StatusCode}", startHandResponse.StatusCode);
                 await ShowToastAsync("Failed to start game. Please try again.", "error");
                 return;
@@ -3049,6 +3107,12 @@
             var startResponse = await GamesApiClient.GenericStartHandAsync(GameId);
             if (!startResponse.IsSuccessStatusCode)
             {
+                if (startResponse.StatusCode == System.Net.HttpStatusCode.Conflict)
+                {
+                    await HandleStartConflictAsync("Screw Your Neighbor");
+                    return;
+                }
+
                 Logger.LogWarning("Failed to start Screw Your Neighbor hand: {StatusCode}", startResponse.StatusCode);
                 await ShowToastAsync("Failed to start game. Please try again.", "error");
                 return;
@@ -3077,6 +3141,26 @@
 
         // SignalR will broadcast the updated state - no need to refresh manually
         await TryLoadShowdownAsync();
+    }
+
+    private async Task HandleStartConflictAsync(string gameLabel)
+    {
+        Logger.LogInformation("Start hand returned conflict for {GameLabel}; refreshing client state", gameLabel);
+
+        await LoadDataAsync();
+
+        var currentPhase = _gameResponse?.CurrentPhase;
+        var stillInPreStartPhase =
+            string.Equals(currentPhase, GamePhase.WaitingForPlayers.ToString(), StringComparison.OrdinalIgnoreCase)
+            || string.Equals(currentPhase, GamePhase.WaitingToStart.ToString(), StringComparison.OrdinalIgnoreCase);
+
+        if (stillInPreStartPhase)
+        {
+            await ShowToastAsync($"Unable to start {gameLabel}. The game state changed; please try again.", "warning");
+            return;
+        }
+
+        await ShowToastAsync("Hand already started. Syncing table state.", "info");
     }
 
     // Polling methods removed - SignalR handles state updates

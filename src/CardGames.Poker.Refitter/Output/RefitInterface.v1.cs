@@ -109,7 +109,7 @@ namespace CardGames.Poker.Api.Clients
         /// </returns>
         [Headers("Accept: application/json")]
         [Get("/api/v1/profile/cashier/ledger")]
-        Task<IApiResponse<CashierLedgerPageDto>> GetCashierLedgerAsync([Query] int? take, [Query] int? skip, CancellationToken cancellationToken = default);
+        Task<IApiResponse<CashierLedgerPageDto>> GetCashierLedgerAsync([Query] int? pageSize, [Query] int? pageNumber, [Query] int? take, [Query] int? skip, CancellationToken cancellationToken = default);
 
         /// <summary>Add account chips</summary>
         /// <remarks>Adds chips directly to the authenticated player's account balance and records an immutable ledger transaction.</remarks>
@@ -133,6 +133,48 @@ namespace CardGames.Poker.Api.Clients
         [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
         [Post("/api/v1/profile/cashier/add-chips")]
         Task<IApiResponse<AddAccountChipsResponse>> AddAccountChipsAsync([Body] AddAccountChipsRequest body, CancellationToken cancellationToken = default);
+
+        /// <summary>Get game preferences</summary>
+        /// <remarks>Retrieves default blind, ante, and minimum bet preferences for the authenticated player.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json")]
+        [Get("/api/v1/profile/game-preferences")]
+        Task<IApiResponse<GamePreferencesDto>> GetGamePreferencesAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>Update game preferences</summary>
+        /// <remarks>Creates or updates default blind, ante, and minimum bet preferences for the authenticated player.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Put("/api/v1/profile/game-preferences")]
+        Task<IApiResponse<GamePreferencesDto>> UpdateGamePreferencesAsync([Body] UpdateGamePreferencesRequest body, CancellationToken cancellationToken = default);
     }
 
     /// <summary>Create league</summary>
@@ -1594,6 +1636,38 @@ namespace CardGames.Poker.Api.Clients
         Task<IApiResponse<GetCurrentPlayerTurnResponse>> SevenCardStudGetCurrentPlayerTurnAsync(System.Guid gameId, CancellationToken cancellationToken = default);
     }
 
+    /// <summary>KeepOrTrade</summary>
+    [System.CodeDom.Compiler.GeneratedCode("Refitter", "1.7.0.0")]
+    public partial interface IScrewYourNeighborApi
+    {
+        /// <summary>KeepOrTrade</summary>
+        /// <remarks>Record a player's keep or trade decision in Screw Your Neighbor.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/games/screw-your-neighbor/{gameId}/keep-or-trade")]
+        Task<IApiResponse<KeepOrTradeSuccessful>> ScrewYourNeighborKeepOrTradeAsync(System.Guid gameId, [Body] KeepOrTradeRequest body, CancellationToken cancellationToken = default);
+    }
+
     /// <summary>StartHand</summary>
     [System.CodeDom.Compiler.GeneratedCode("Refitter", "1.7.0.0")]
     public partial interface IKingsAndLowsApi
@@ -1803,6 +1877,297 @@ namespace CardGames.Poker.Api.Clients
         [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
         [Post("/api/v1/games/kings-and-lows/{gameId}/resume-chip-check")]
         Task<IApiResponse<ResumeAfterChipCheckSuccessful>> KingsAndLowsResumeAfterChipCheckAsync(System.Guid gameId, [Body] ResumeAfterChipCheckRequest body, CancellationToken cancellationToken = default);
+    }
+
+    /// <summary>Process Discard Action</summary>
+    [System.CodeDom.Compiler.GeneratedCode("Refitter", "1.7.0.0")]
+    public partial interface IIrishHoldEmApi
+    {
+        /// <summary>Process Discard Action</summary>
+        /// <remarks>
+        /// Processes a discard action for the current player in Irish Hold 'Em, requiring them to discard exactly 2 of their 4 hole cards after the flop betting round. No replacement cards are dealt — players continue with their remaining 2 hole cards.
+        /// 
+        /// **Irish Hold 'Em discard rules:**
+        /// - Players must discard exactly 2 cards
+        /// - Card indices must be between 0 and 3 (inclusive)
+        /// - No replacement cards are dealt
+        /// 
+        /// **Phase Transitions:**
+        /// - After all players discard: transitions to Turn betting round
+        /// - Players who have folded are automatically skipped
+        /// </remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// <item>
+        /// <term>422</term>
+        /// <description>Unprocessable Entity</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/games/irish-hold-em/{gameId}/discard")]
+        Task<IApiResponse<ProcessDiscardSuccessful>> IrishHoldEmProcessDiscardAsync(System.Guid gameId, [Body] ProcessDiscardRequest body, CancellationToken cancellationToken = default);
+
+        /// <summary>Fold During Draw Phase</summary>
+        /// <remarks>
+        /// Folds a player during the Irish Hold 'Em discard phase, typically when the turn timer expires without the player selecting their 2 discards. This is used because standing pat (keeping all 4 cards) is not valid in Irish Hold 'Em.
+        /// 
+        /// **Phase Transitions:**
+        /// - If only one player remains: transitions to Showdown
+        /// - If other players still need to discard: advances to next draw player
+        /// - If all remaining players have discarded: transitions to DrawComplete → Turn
+        /// </remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Content-Type: application/json")]
+        [Post("/api/v1/games/irish-hold-em/{gameId}/fold-during-draw")]
+        Task<IApiResponse> IrishHoldEmFoldDuringDrawAsync(System.Guid gameId, [Body] FoldDuringDrawRequest body, CancellationToken cancellationToken = default);
+    }
+
+    /// <summary>Start Hand</summary>
+    [System.CodeDom.Compiler.GeneratedCode("Refitter", "1.7.0.0")]
+    public partial interface IHoldTheBaseballApi
+    {
+        /// <summary>Start Hand</summary>
+        /// <remarks>Starts a new Hold the Baseball hand, posts blinds, and deals hole cards.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Post("/api/v1/games/hold-the-baseball/{gameId}/start")]
+        Task<IApiResponse<StartHandSuccessful>> HoldTheBaseballStartHandAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
+        /// <summary>Process Betting Action</summary>
+        /// <remarks>Processes a betting action in a Hold the Baseball game.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// <item>
+        /// <term>422</term>
+        /// <description>Unprocessable Entity</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/games/hold-the-baseball/{gameId}/betting/actions")]
+        Task<IApiResponse<ProcessBettingActionSuccessful>> HoldTheBaseballProcessBettingActionAsync(System.Guid gameId, [Body] ProcessBettingActionRequest body, CancellationToken cancellationToken = default);
+
+        /// <summary>Perform Showdown</summary>
+        /// <remarks>Performs the showdown for a Hold the Baseball game. Evaluates hands with 3s and 9s as wild cards (including community cards), supporting Five of a Kind as the highest possible hand.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Post("/api/v1/games/hold-the-baseball/{gameId}/showdown")]
+        Task<IApiResponse<PerformShowdownSuccessful>> HoldTheBaseballPerformShowdownAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+    }
+
+    /// <summary>Start Hand</summary>
+    [System.CodeDom.Compiler.GeneratedCode("Refitter", "1.7.0.0")]
+    public partial interface IHoldEmApi
+    {
+        /// <summary>Start Hand</summary>
+        /// <remarks>Starts a new Hold'Em hand, posts blinds, and deals hole cards.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Post("/api/v1/games/hold-em/{gameId}/start")]
+        Task<IApiResponse<StartHandSuccessful>> HoldEmStartHandAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
+        /// <summary>Process Betting Action</summary>
+        /// <remarks>
+        /// Processes a betting action from the current player and advances the game state accordingly. If the betting round completes (all players have acted and bets are equalized), the game automatically advances to the next phase and deals community cards.
+        /// 
+        /// **Action Types:**
+        /// - `Check` (0): Pass without betting when no bet has been made
+        /// - `Bet` (1): Make an initial bet in the current betting round
+        /// - `Call` (2): Match the current highest bet
+        /// - `Raise` (3): Increase the current bet amount (amount is total to put in, not increment)
+        /// - `Fold` (4): Give up the hand
+        /// - `AllIn` (5): Bet all remaining chips
+        /// 
+        /// **Phase Transitions:**
+        /// - PreFlop → deal 3 community cards (Flop)
+        /// - Flop → deal 1 community card (Turn)
+        /// - Turn → deal 1 community card (River)
+        /// - River → Showdown
+        /// - If only one player remains (all others folded): transitions directly to showdown
+        /// </remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// <item>
+        /// <term>422</term>
+        /// <description>Unprocessable Entity</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/games/hold-em/{gameId}/betting/actions")]
+        Task<IApiResponse<ProcessBettingActionSuccessful>> HoldEmProcessBettingActionAsync(System.Guid gameId, [Body] ProcessBettingActionRequest body, CancellationToken cancellationToken = default);
+
+        /// <summary>Perform Showdown</summary>
+        /// <remarks>
+        /// Performs the showdown phase to evaluate all remaining players' hands and award the pot(s) to the winner(s) in a Texas Hold'Em game. Each player's best 5-card hand is determined from their 2 hole cards and 5 community cards.
+        /// 
+        /// **Showdown Scenarios:**
+        /// - **Win by fold:** If only one player remains (all others folded), they win the entire pot without showing cards
+        /// - **Single winner:** The player with the highest-ranking hand wins the entire pot
+        /// - **Split pot:** If multiple players tie with the same hand strength, the pot is divided equally among winners
+        /// - **Side pots:** When players are all-in for different amounts, side pots are calculated and awarded separately
+        /// 
+        /// **Response includes:**
+        /// - Payouts to each winning player
+        /// - Evaluated hand information for all participating players with best-card indexes
+        /// - Whether the hand was won by fold (no showdown required)
+        /// </remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Post("/api/v1/games/hold-em/{gameId}/showdown")]
+        Task<IApiResponse<PerformShowdownSuccessful>> HoldEmPerformShowdownAsync(System.Guid gameId, CancellationToken cancellationToken = default);
     }
 
     /// <summary>Deal Hands</summary>
@@ -2656,6 +3021,9 @@ namespace CardGames.Poker.Api.Clients
         /// - Seat must be available (not already occupied)
         /// - Player must not already be seated elsewhere in the game
         /// - Game must not have reached maximum player count
+        /// - Starting chips must be greater than 0
+        /// - Player account balance must be greater than 0
+        /// - Requested buy-in must not exceed account balance
         /// 
         /// **Response:**
         /// - `CanPlayCurrentHand`: true if joining during WaitingToStart/WaitingForPlayers phase
@@ -2674,6 +3042,10 @@ namespace CardGames.Poker.Api.Clients
         /// <item>
         /// <term>400</term>
         /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>403</term>
+        /// <description>Forbidden</description>
         /// </item>
         /// <item>
         /// <term>404</term>
@@ -2773,6 +3145,44 @@ namespace CardGames.Poker.Api.Clients
         [Headers("Content-Type: application/json")]
         [Post("/api/v1/games/{gameId}/sit-out")]
         Task<IApiResponse> SitOutAsync(System.Guid gameId, [Body] ToggleSitOutRequest body, CancellationToken cancellationToken = default);
+
+        /// <summary>Toggle Odds Visibility</summary>
+        /// <remarks>
+        /// Allows the table host to toggle whether hand-odds are visible to all players. This can be changed while a game is active.
+        /// 
+        /// **Validations:**
+        /// - Game must exist
+        /// - Caller must be the table creator
+        /// - Game must not be ended
+        /// </remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>403</term>
+        /// <description>Forbidden</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Put("/api/v1/games/{gameId}/settings/odds-visibility")]
+        Task<IApiResponse<ToggleOddsVisibilitySuccessful>> ToggleOddsVisibilityAsync(System.Guid gameId, [Body] ToggleOddsVisibilityRequest body, CancellationToken cancellationToken = default);
 
         /// <summary>Update Table Settings</summary>
         /// <remarks>
@@ -3769,11 +4179,14 @@ namespace CardGames.Poker.Api.Contracts
     public partial record CashierLedgerPageDto
     {
         [JsonConstructor]
-        public CashierLedgerPageDto(ICollection<CashierLedgerEntryDto> @entries, bool @hasMore, int @totalCount)
+        public CashierLedgerPageDto(ICollection<CashierLedgerEntryDto> @entries, bool @hasMore, int @pageNumber, int @pageSize, int @totalCount, int @totalPages)
         {
             this.Entries = @entries;
             this.HasMore = @hasMore;
             this.TotalCount = @totalCount;
+            this.PageNumber = @pageNumber;
+            this.PageSize = @pageSize;
+            this.TotalPages = @totalPages;
         }
 
         [JsonPropertyName("entries")]
@@ -3787,6 +4200,21 @@ namespace CardGames.Poker.Api.Contracts
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int TotalCount { get; init; }
+
+        [JsonPropertyName("pageNumber")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int PageNumber { get; init; }
+
+        [JsonPropertyName("pageSize")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int PageSize { get; init; }
+
+        [JsonPropertyName("totalPages")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int TotalPages { get; init; }
 
     }
 
@@ -3819,11 +4247,13 @@ namespace CardGames.Poker.Api.Contracts
     public partial record ChooseDealerGameRequest
     {
         [JsonConstructor]
-        public ChooseDealerGameRequest(int @ante, string @gameTypeCode, int @minBet)
+        public ChooseDealerGameRequest(int @ante, int? @bigBlind, string @gameTypeCode, int @minBet, int? @smallBlind)
         {
             this.GameTypeCode = @gameTypeCode;
             this.Ante = @ante;
             this.MinBet = @minBet;
+            this.SmallBlind = @smallBlind;
+            this.BigBlind = @bigBlind;
         }
 
         [JsonPropertyName("gameTypeCode")]
@@ -3840,13 +4270,21 @@ namespace CardGames.Poker.Api.Contracts
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int MinBet { get; init; }
 
+        [JsonPropertyName("smallBlind")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? SmallBlind { get; init; }
+
+        [JsonPropertyName("bigBlind")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? BigBlind { get; init; }
+
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial record ChooseDealerGameSuccessful
     {
         [JsonConstructor]
-        public ChooseDealerGameSuccessful(int? @ante, System.Guid? @gameId, string @gameTypeCode, string @gameTypeName, int? @handNumber, int? @minBet)
+        public ChooseDealerGameSuccessful(int? @ante, int? @bigBlind, System.Guid? @gameId, string @gameTypeCode, string @gameTypeName, int? @handNumber, int? @minBet, int? @smallBlind)
         {
             this.GameId = @gameId;
             this.GameTypeCode = @gameTypeCode;
@@ -3854,6 +4292,8 @@ namespace CardGames.Poker.Api.Contracts
             this.HandNumber = @handNumber;
             this.Ante = @ante;
             this.MinBet = @minBet;
+            this.SmallBlind = @smallBlind;
+            this.BigBlind = @bigBlind;
         }
 
         [JsonPropertyName("gameId")]
@@ -3878,6 +4318,14 @@ namespace CardGames.Poker.Api.Contracts
         [JsonPropertyName("minBet")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? MinBet { get; init; }
+
+        [JsonPropertyName("smallBlind")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? SmallBlind { get; init; }
+
+        [JsonPropertyName("bigBlind")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? BigBlind { get; init; }
 
     }
 
@@ -3934,7 +4382,7 @@ namespace CardGames.Poker.Api.Contracts
     public partial record CreateGameCommand
     {
         [JsonConstructor]
-        public CreateGameCommand(int @ante, string @gameCode, System.Guid @gameId, string @gameName, bool? @isDealersChoice, int @minBet, ICollection<PlayerInfo> @players)
+        public CreateGameCommand(int @ante, bool? @areOddsVisibleToAllPlayers, int? @bigBlind, string @gameCode, System.Guid @gameId, string @gameName, bool? @isDealersChoice, int @minBet, ICollection<PlayerInfo> @players, int? @smallBlind)
         {
             this.GameId = @gameId;
             this.GameCode = @gameCode;
@@ -3943,6 +4391,9 @@ namespace CardGames.Poker.Api.Contracts
             this.MinBet = @minBet;
             this.Players = @players;
             this.IsDealersChoice = @isDealersChoice;
+            this.SmallBlind = @smallBlind;
+            this.BigBlind = @bigBlind;
+            this.AreOddsVisibleToAllPlayers = @areOddsVisibleToAllPlayers;
         }
 
         [JsonPropertyName("gameId")]
@@ -3972,6 +4423,17 @@ namespace CardGames.Poker.Api.Contracts
 
         [JsonPropertyName("isDealersChoice")]
         public bool? IsDealersChoice { get; init; }
+
+        [JsonPropertyName("smallBlind")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? SmallBlind { get; init; }
+
+        [JsonPropertyName("bigBlind")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? BigBlind { get; init; }
+
+        [JsonPropertyName("areOddsVisibleToAllPlayers")]
+        public bool? AreOddsVisibleToAllPlayers { get; init; }
 
     }
 
@@ -4814,6 +5276,22 @@ namespace CardGames.Poker.Api.Contracts
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record FoldDuringDrawRequest
+    {
+        [JsonConstructor]
+        public FoldDuringDrawRequest(int @playerSeatIndex)
+        {
+            this.PlayerSeatIndex = @playerSeatIndex;
+        }
+
+        [JsonPropertyName("playerSeatIndex")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int PlayerSeatIndex { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public enum GamePlayerStatus
     {
 
@@ -4831,6 +5309,40 @@ namespace CardGames.Poker.Api.Contracts
 
         [System.Runtime.Serialization.EnumMember(Value = @"SittingOut")]
         SittingOut = 4,
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record GamePreferencesDto
+    {
+        [JsonConstructor]
+        public GamePreferencesDto(int @defaultAnte, int @defaultBigBlind, int @defaultMinimumBet, int @defaultSmallBlind)
+        {
+            this.DefaultSmallBlind = @defaultSmallBlind;
+            this.DefaultBigBlind = @defaultBigBlind;
+            this.DefaultAnte = @defaultAnte;
+            this.DefaultMinimumBet = @defaultMinimumBet;
+        }
+
+        [JsonPropertyName("defaultSmallBlind")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int DefaultSmallBlind { get; init; }
+
+        [JsonPropertyName("defaultBigBlind")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int DefaultBigBlind { get; init; }
+
+        [JsonPropertyName("defaultAnte")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int DefaultAnte { get; init; }
+
+        [JsonPropertyName("defaultMinimumBet")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int DefaultMinimumBet { get; init; }
 
     }
 
@@ -4940,7 +5452,7 @@ namespace CardGames.Poker.Api.Contracts
     public partial record GetAvailablePokerGamesResponse
     {
         [JsonConstructor]
-        public GetAvailablePokerGamesResponse(string @code, string @description, string @imageName, int @maximumNumberOfPlayers, int @minimumNumberOfPlayers, string @name, VariantType @variantType = VariantType.Other)
+        public GetAvailablePokerGamesResponse(string @code, string @description, string @imageName, int @maximumNumberOfPlayers, int @minimumNumberOfPlayers, string @name, VariantType? @variantType)
         {
             this.Code = @code;
             this.Name = @name;
@@ -4977,25 +5489,7 @@ namespace CardGames.Poker.Api.Contracts
         public string ImageName { get; init; }
 
         [JsonPropertyName("variantType")]
-        public VariantType VariantType { get; init; }
-
-    }
-
-    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
-    public enum VariantType
-    {
-
-        [System.Runtime.Serialization.EnumMember(Value = @"HoldEm")]
-        HoldEm = 0,
-
-        [System.Runtime.Serialization.EnumMember(Value = @"Draw")]
-        Draw = 1,
-
-        [System.Runtime.Serialization.EnumMember(Value = @"Stud")]
-        Stud = 2,
-
-        [System.Runtime.Serialization.EnumMember(Value = @"Other")]
-        Other = 3,
+        public VariantType? VariantType { get; init; }
 
     }
 
@@ -5347,7 +5841,7 @@ namespace CardGames.Poker.Api.Contracts
     public partial record GetGameResponse
     {
         [JsonConstructor]
-        public GetGameResponse(int? @ante, int? @bigBet, int? @bigBlind, int? @bringIn, int @bringInPlayerIndex, bool @canContinue, System.DateTimeOffset @createdAt, string @createdById, string @createdByName, int @currentDrawPlayerIndex, int @currentHandNumber, string @currentPhase, string @currentPhaseDescription, int @currentPlayerIndex, int @dealerPosition, int? @dealersChoiceDealerPosition, System.DateTimeOffset? @endedAt, string @gameSettings, string @gameTypeCode, System.Guid? @gameTypeId, string @gameTypeName, System.Guid @id, bool? @isDealersChoice, int @maximumNumberOfPlayers, int? @minBet, int @minimumNumberOfPlayers, string @name, int? @randomSeed, string @rowVersion, int? @smallBet, int? @smallBlind, System.DateTimeOffset? @startedAt, GameStatus @status, System.DateTimeOffset @updatedAt)
+        public GetGameResponse(int? @ante, bool? @areOddsVisibleToAllPlayers, int? @bigBet, int? @bigBlind, int? @bringIn, int @bringInPlayerIndex, bool @canContinue, System.DateTimeOffset @createdAt, string @createdById, string @createdByName, int @currentDrawPlayerIndex, int @currentHandNumber, string @currentPhase, string @currentPhaseDescription, int @currentPlayerIndex, int @dealerPosition, int? @dealersChoiceDealerPosition, System.DateTimeOffset? @endedAt, string @gameSettings, string @gameTypeCode, System.Guid? @gameTypeId, string @gameTypeName, System.Guid @id, bool? @isDealersChoice, int @maximumNumberOfPlayers, int? @minBet, int @minimumNumberOfPlayers, string @name, int? @randomSeed, string @rowVersion, int? @smallBet, int? @smallBlind, System.DateTimeOffset? @startedAt, GameStatus @status, System.DateTimeOffset @updatedAt)
         {
             this.Id = @id;
             this.GameTypeId = @gameTypeId;
@@ -5383,6 +5877,7 @@ namespace CardGames.Poker.Api.Contracts
             this.RowVersion = @rowVersion;
             this.IsDealersChoice = @isDealersChoice;
             this.DealersChoiceDealerPosition = @dealersChoiceDealerPosition;
+            this.AreOddsVisibleToAllPlayers = @areOddsVisibleToAllPlayers;
         }
 
         [JsonPropertyName("id")]
@@ -5515,6 +6010,9 @@ namespace CardGames.Poker.Api.Contracts
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? DealersChoiceDealerPosition { get; init; }
 
+        [JsonPropertyName("areOddsVisibleToAllPlayers")]
+        public bool? AreOddsVisibleToAllPlayers { get; init; }
+
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
@@ -5624,7 +6122,7 @@ namespace CardGames.Poker.Api.Contracts
     public partial record GetTableSettingsResponse
     {
         [JsonConstructor]
-        public GetTableSettingsResponse(int? @ante, int? @bigBlind, string @createdById, string @createdByName, string @currentPhase, System.Guid @gameId, string @gameTypeCode, string @gameTypeName, bool? @isEditable, int? @maxPlayers, int? @minBet, int? @minPlayers, string @name, string @rowVersion, int? @seatedPlayerCount, int? @smallBlind, System.DateTimeOffset? @updatedAt, string @updatedById, string @updatedByName)
+        public GetTableSettingsResponse(int? @ante, bool? @areOddsVisibleToAllPlayers, int? @bigBlind, string @createdById, string @createdByName, string @currentPhase, System.Guid @gameId, string @gameTypeCode, string @gameTypeName, bool? @isEditable, int? @maxPlayers, int? @minBet, int? @minPlayers, string @name, string @rowVersion, int? @seatedPlayerCount, int? @smallBlind, System.DateTimeOffset? @updatedAt, string @updatedById, string @updatedByName)
         {
             this.GameId = @gameId;
             this.Name = @name;
@@ -5636,6 +6134,7 @@ namespace CardGames.Poker.Api.Contracts
             this.MinBet = @minBet;
             this.SmallBlind = @smallBlind;
             this.BigBlind = @bigBlind;
+            this.AreOddsVisibleToAllPlayers = @areOddsVisibleToAllPlayers;
             this.MaxPlayers = @maxPlayers;
             this.MinPlayers = @minPlayers;
             this.SeatedPlayerCount = @seatedPlayerCount;
@@ -5684,6 +6183,9 @@ namespace CardGames.Poker.Api.Contracts
         [JsonPropertyName("bigBlind")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? BigBlind { get; init; }
+
+        [JsonPropertyName("areOddsVisibleToAllPlayers")]
+        public bool? AreOddsVisibleToAllPlayers { get; init; }
 
         [JsonPropertyName("maxPlayers")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
@@ -5959,6 +6461,68 @@ namespace CardGames.Poker.Api.Contracts
 
         [JsonPropertyName("alreadyMember")]
         public bool? AlreadyMember { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record KeepOrTradeRequest
+    {
+        [JsonConstructor]
+        public KeepOrTradeRequest(string @decision, System.Guid @playerId)
+        {
+            this.PlayerId = @playerId;
+            this.Decision = @decision;
+        }
+
+        [JsonPropertyName("playerId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid PlayerId { get; init; }
+
+        [JsonPropertyName("decision")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Decision { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record KeepOrTradeSuccessful
+    {
+        [JsonConstructor]
+        public KeepOrTradeSuccessful(string @decision, bool? @didTrade, System.Guid @gameId, string @nextPhase, int? @nextPlayerSeatIndex, System.Guid @playerId, bool? @wasBlocked)
+        {
+            this.GameId = @gameId;
+            this.PlayerId = @playerId;
+            this.Decision = @decision;
+            this.DidTrade = @didTrade;
+            this.WasBlocked = @wasBlocked;
+            this.NextPhase = @nextPhase;
+            this.NextPlayerSeatIndex = @nextPlayerSeatIndex;
+        }
+
+        [JsonPropertyName("gameId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid GameId { get; init; }
+
+        [JsonPropertyName("playerId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid PlayerId { get; init; }
+
+        [JsonPropertyName("decision")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Decision { get; init; }
+
+        [JsonPropertyName("didTrade")]
+        public bool? DidTrade { get; init; }
+
+        [JsonPropertyName("wasBlocked")]
+        public bool? WasBlocked { get; init; }
+
+        [JsonPropertyName("nextPhase")]
+        public string NextPhase { get; init; }
+
+        [JsonPropertyName("nextPlayerSeatIndex")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? NextPlayerSeatIndex { get; init; }
 
     }
 
@@ -7126,6 +7690,72 @@ namespace CardGames.Poker.Api.Contracts
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record ProcessDiscardRequest
+    {
+        [JsonConstructor]
+        public ProcessDiscardRequest(ICollection<int> @discardIndices, int? @playerSeatIndex)
+        {
+            this.DiscardIndices = @discardIndices;
+            this.PlayerSeatIndex = @playerSeatIndex;
+        }
+
+        [JsonPropertyName("discardIndices")]
+        public ICollection<int> DiscardIndices { get; init; }
+
+        [JsonPropertyName("playerSeatIndex")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? PlayerSeatIndex { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record ProcessDiscardSuccessful
+    {
+        [JsonConstructor]
+        public ProcessDiscardSuccessful(string @currentPhase, ICollection<CardInfo> @discardedCards, bool? @discardPhaseComplete, System.Guid? @gameId, int? @nextDiscardPlayerIndex, string @nextDiscardPlayerName, string @playerName, int? @playerSeatIndex)
+        {
+            this.GameId = @gameId;
+            this.PlayerName = @playerName;
+            this.PlayerSeatIndex = @playerSeatIndex;
+            this.DiscardedCards = @discardedCards;
+            this.DiscardPhaseComplete = @discardPhaseComplete;
+            this.CurrentPhase = @currentPhase;
+            this.NextDiscardPlayerIndex = @nextDiscardPlayerIndex;
+            this.NextDiscardPlayerName = @nextDiscardPlayerName;
+        }
+
+        [JsonPropertyName("gameId")]
+        public System.Guid? GameId { get; init; }
+
+        [JsonPropertyName("playerName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string PlayerName { get; init; }
+
+        [JsonPropertyName("playerSeatIndex")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? PlayerSeatIndex { get; init; }
+
+        [JsonPropertyName("discardedCards")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public ICollection<CardInfo> DiscardedCards { get; init; }
+
+        [JsonPropertyName("discardPhaseComplete")]
+        public bool? DiscardPhaseComplete { get; init; }
+
+        [JsonPropertyName("currentPhase")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string CurrentPhase { get; init; }
+
+        [JsonPropertyName("nextDiscardPlayerIndex")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? NextDiscardPlayerIndex { get; init; }
+
+        [JsonPropertyName("nextDiscardPlayerName")]
+        public string NextDiscardPlayerName { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial record ProcessDrawRequest
     {
         [JsonConstructor]
@@ -7378,6 +8008,39 @@ namespace CardGames.Poker.Api.Contracts
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record ToggleOddsVisibilityRequest
+    {
+        [JsonConstructor]
+        public ToggleOddsVisibilityRequest(bool @areOddsVisibleToAllPlayers)
+        {
+            this.AreOddsVisibleToAllPlayers = @areOddsVisibleToAllPlayers;
+        }
+
+        [JsonPropertyName("areOddsVisibleToAllPlayers")]
+        public bool AreOddsVisibleToAllPlayers { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record ToggleOddsVisibilitySuccessful
+    {
+        [JsonConstructor]
+        public ToggleOddsVisibilitySuccessful(bool @areOddsVisibleToAllPlayers, System.Guid @gameId)
+        {
+            this.GameId = @gameId;
+            this.AreOddsVisibleToAllPlayers = @areOddsVisibleToAllPlayers;
+        }
+
+        [JsonPropertyName("gameId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid GameId { get; init; }
+
+        [JsonPropertyName("areOddsVisibleToAllPlayers")]
+        public bool AreOddsVisibleToAllPlayers { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial record ToggleSitOutRequest
     {
         [JsonConstructor]
@@ -7388,6 +8051,44 @@ namespace CardGames.Poker.Api.Contracts
 
         [JsonPropertyName("isSittingOut")]
         public bool IsSittingOut { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record UpdateGamePreferencesRequest
+    {
+        [JsonConstructor]
+        public UpdateGamePreferencesRequest(int @defaultAnte, int @defaultBigBlind, int @defaultMinimumBet, int @defaultSmallBlind)
+        {
+            this.DefaultSmallBlind = @defaultSmallBlind;
+            this.DefaultBigBlind = @defaultBigBlind;
+            this.DefaultAnte = @defaultAnte;
+            this.DefaultMinimumBet = @defaultMinimumBet;
+        }
+
+        [JsonPropertyName("defaultSmallBlind")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.Range(0, 2147483647)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int DefaultSmallBlind { get; init; }
+
+        [JsonPropertyName("defaultBigBlind")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.Range(0, 2147483647)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int DefaultBigBlind { get; init; }
+
+        [JsonPropertyName("defaultAnte")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.Range(0, 2147483647)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int DefaultAnte { get; init; }
+
+        [JsonPropertyName("defaultMinimumBet")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.Range(0, 2147483647)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int DefaultMinimumBet { get; init; }
 
     }
 
@@ -7434,7 +8135,7 @@ namespace CardGames.Poker.Api.Contracts
     public partial record UpdateTableSettingsResponse
     {
         [JsonConstructor]
-        public UpdateTableSettingsResponse(int? @ante, int? @bigBlind, string @createdById, string @createdByName, string @currentPhase, System.Guid @gameId, string @gameTypeCode, string @gameTypeName, bool? @isEditable, int? @maxPlayers, int? @minBet, int? @minPlayers, string @name, string @rowVersion, int? @seatedPlayerCount, int? @smallBlind, System.DateTimeOffset? @updatedAt, string @updatedById, string @updatedByName)
+        public UpdateTableSettingsResponse(int? @ante, bool? @areOddsVisibleToAllPlayers, int? @bigBlind, string @createdById, string @createdByName, string @currentPhase, System.Guid @gameId, string @gameTypeCode, string @gameTypeName, bool? @isEditable, int? @maxPlayers, int? @minBet, int? @minPlayers, string @name, string @rowVersion, int? @seatedPlayerCount, int? @smallBlind, System.DateTimeOffset? @updatedAt, string @updatedById, string @updatedByName)
         {
             this.GameId = @gameId;
             this.Name = @name;
@@ -7446,6 +8147,7 @@ namespace CardGames.Poker.Api.Contracts
             this.MinBet = @minBet;
             this.SmallBlind = @smallBlind;
             this.BigBlind = @bigBlind;
+            this.AreOddsVisibleToAllPlayers = @areOddsVisibleToAllPlayers;
             this.MaxPlayers = @maxPlayers;
             this.MinPlayers = @minPlayers;
             this.SeatedPlayerCount = @seatedPlayerCount;
@@ -7495,6 +8197,9 @@ namespace CardGames.Poker.Api.Contracts
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? BigBlind { get; init; }
 
+        [JsonPropertyName("areOddsVisibleToAllPlayers")]
+        public bool? AreOddsVisibleToAllPlayers { get; init; }
+
         [JsonPropertyName("maxPlayers")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? MaxPlayers { get; init; }
@@ -7540,6 +8245,24 @@ namespace CardGames.Poker.Api.Contracts
         [JsonPropertyName("avatarUrl")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string AvatarUrl { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public enum VariantType
+    {
+
+        [System.Runtime.Serialization.EnumMember(Value = @"HoldEm")]
+        HoldEm = 0,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Draw")]
+        Draw = 1,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Stud")]
+        Stud = 2,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Other")]
+        Other = 3,
 
     }
 
@@ -7666,6 +8389,23 @@ namespace CardGames.Poker.Api.Clients
 
             builder?.Invoke(clientBuilderISevenCardStudApi);
 
+            var clientBuilderIScrewYourNeighborApi = services
+                .AddRefitClient<IScrewYourNeighborApi>(settings)
+                .ConfigureHttpClient(c => c.BaseAddress = baseUrl);
+
+            clientBuilderIScrewYourNeighborApi
+                .AddStandardResilienceHandler(config =>
+                {
+                    config.Retry = new HttpRetryStrategyOptions
+                    {
+                        UseJitter = true,
+                        MaxRetryAttempts = 3,
+                        Delay = TimeSpan.FromSeconds(0.5)
+                    };
+                });
+
+            builder?.Invoke(clientBuilderIScrewYourNeighborApi);
+
             var clientBuilderIKingsAndLowsApi = services
                 .AddRefitClient<IKingsAndLowsApi>(settings)
                 .ConfigureHttpClient(c => c.BaseAddress = baseUrl);
@@ -7682,6 +8422,57 @@ namespace CardGames.Poker.Api.Clients
                 });
 
             builder?.Invoke(clientBuilderIKingsAndLowsApi);
+
+            var clientBuilderIIrishHoldEmApi = services
+                .AddRefitClient<IIrishHoldEmApi>(settings)
+                .ConfigureHttpClient(c => c.BaseAddress = baseUrl);
+
+            clientBuilderIIrishHoldEmApi
+                .AddStandardResilienceHandler(config =>
+                {
+                    config.Retry = new HttpRetryStrategyOptions
+                    {
+                        UseJitter = true,
+                        MaxRetryAttempts = 3,
+                        Delay = TimeSpan.FromSeconds(0.5)
+                    };
+                });
+
+            builder?.Invoke(clientBuilderIIrishHoldEmApi);
+
+            var clientBuilderIHoldTheBaseballApi = services
+                .AddRefitClient<IHoldTheBaseballApi>(settings)
+                .ConfigureHttpClient(c => c.BaseAddress = baseUrl);
+
+            clientBuilderIHoldTheBaseballApi
+                .AddStandardResilienceHandler(config =>
+                {
+                    config.Retry = new HttpRetryStrategyOptions
+                    {
+                        UseJitter = true,
+                        MaxRetryAttempts = 3,
+                        Delay = TimeSpan.FromSeconds(0.5)
+                    };
+                });
+
+            builder?.Invoke(clientBuilderIHoldTheBaseballApi);
+
+            var clientBuilderIHoldEmApi = services
+                .AddRefitClient<IHoldEmApi>(settings)
+                .ConfigureHttpClient(c => c.BaseAddress = baseUrl);
+
+            clientBuilderIHoldEmApi
+                .AddStandardResilienceHandler(config =>
+                {
+                    config.Retry = new HttpRetryStrategyOptions
+                    {
+                        UseJitter = true,
+                        MaxRetryAttempts = 3,
+                        Delay = TimeSpan.FromSeconds(0.5)
+                    };
+                });
+
+            builder?.Invoke(clientBuilderIHoldEmApi);
 
             var clientBuilderIGoodBadUglyApi = services
                 .AddRefitClient<IGoodBadUglyApi>(settings)

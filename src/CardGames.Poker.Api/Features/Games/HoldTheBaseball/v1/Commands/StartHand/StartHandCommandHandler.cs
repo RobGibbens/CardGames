@@ -41,6 +41,7 @@ public class StartHandCommandHandler(
 		var validPhases = new[]
 		{
 			nameof(Phases.WaitingToStart),
+			nameof(Phases.WaitingForPlayers),
 			nameof(Phases.Complete)
 		};
 
@@ -50,6 +51,7 @@ public class StartHandCommandHandler(
 			{
 				Message = $"Cannot start a new hand. Game is in '{game.CurrentPhase}' phase. " +
 				          $"A new hand can only be started when the game is in '{nameof(Phases.WaitingToStart)}' " +
+				          $"or '{nameof(Phases.WaitingForPlayers)}' " +
 				          $"or '{nameof(Phases.Complete)}' phase.",
 				Code = StartHandErrorCode.InvalidGameState
 			};

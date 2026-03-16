@@ -462,6 +462,49 @@ public class StartHandCommandHandlerIntegrationTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task Handle_FromWaitingForPlayers_StartsHand()
+    {
+        // Arrange
+        var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 4);
+        setup.Game.CurrentPhase = nameof(Phases.WaitingForPlayers);
+        await DbContext.SaveChangesAsync();
+
+        var command = new StartHandCommand(setup.Game.Id);
+
+        // Act
+        var result = await Mediator.Send(command);
+
+        // Assert
+        result.IsT0.Should().BeTrue();
+        result.AsT0.HandNumber.Should().Be(1);
+        result.AsT0.CurrentPhase.Should().Be(nameof(Phases.CollectingAntes));
+    }
+
+    [Fact]
+    public async Task Handle_ScrewYourNeighbor_FromWaitingForPlayers_StartsHand()
+    {
+        // Arrange
+        var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(
+            DbContext,
+            "SCREWYOURNEIGHBOR",
+            4,
+            startingChips: 100,
+            ante: 25);
+        setup.Game.CurrentPhase = nameof(Phases.WaitingForPlayers);
+        await DbContext.SaveChangesAsync();
+
+        var command = new StartHandCommand(setup.Game.Id);
+
+        // Act
+        var result = await Mediator.Send(command);
+
+        // Assert
+        result.IsT0.Should().BeTrue();
+        result.AsT0.HandNumber.Should().Be(1);
+        result.AsT0.CurrentPhase.Should().Be(nameof(Phases.KeepOrTrade));
+    }
+
+    [Fact]
     public async Task Handle_SetsStartedAtOnFirstHand()
     {
         // Arrange
