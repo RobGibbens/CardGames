@@ -304,7 +304,8 @@ public sealed class ScrewYourNeighborFlowHandler : BaseGameFlowHandler
 
 		// Set timestamps for continuous play
 		game.HandCompletedAt = now;
-		game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);
+		var secondsBetweenScrewYourNeighborHandDeals = 4;
+		game.NextHandStartsAt = now.AddSeconds(secondsBetweenScrewYourNeighborHandDeals);
 		game.UpdatedAt = now;
 		MoveDealer(game);
 
