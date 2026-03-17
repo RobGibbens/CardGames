@@ -1246,7 +1246,8 @@ public sealed class PerformShowdownCommandHandler(
             WonByFold = false,
             CurrentPhase = game.CurrentPhase,
             Payouts = payoutsByName,
-            PlayerHands = playerHands
+            PlayerHands = playerHands,
+            ShouldBroadcastGameState = false
         };
     }
 

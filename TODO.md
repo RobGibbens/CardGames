@@ -7,7 +7,7 @@
 - [ ] https://github.com/leeoades/FunctionalStateMachine
 - [ ] Dealer's Choice - pick which games are included
 
-- [ ] SYN - When dealing you can briefly see all player's cards
+- [x] SYN - When dealing you can briefly see all player's cards
 - [ ] SYN - After a few hands, table goes nuts, everybody animates a chip, cards redeal
 - [ ] SYN - Enable playing in Dealer's Choice
 - [ ] SYN - Highlight winner(s)

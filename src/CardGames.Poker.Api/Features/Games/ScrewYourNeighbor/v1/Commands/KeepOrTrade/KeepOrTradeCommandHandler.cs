@@ -1,6 +1,8 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.GameFlow;
+using CardGames.Poker.Api.Games;
+using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -11,7 +13,11 @@ namespace CardGames.Poker.Api.Features.Games.ScrewYourNeighbor.v1.Commands.KeepO
 /// <summary>
 /// Handles the <see cref="KeepOrTradeCommand"/> to process a player's keep or trade decision.
 /// </summary>
-public class KeepOrTradeCommandHandler(CardsDbContext context)
+public class KeepOrTradeCommandHandler(
+	CardsDbContext context,
+	IGameFlowHandlerFactory flowHandlerFactory,
+	IHandHistoryRecorder handHistoryRecorder,
+	IHandSettlementService handSettlementService)
 	: IRequestHandler<KeepOrTradeCommand, OneOf<KeepOrTradeSuccessful, KeepOrTradeError>>
 {
 	public async Task<OneOf<KeepOrTradeSuccessful, KeepOrTradeError>> Handle(
@@ -116,27 +122,51 @@ public class KeepOrTradeCommandHandler(CardsDbContext context)
 		// 6. Advance to next player or next phase
 		var (nextPhase, nextPlayerSeat) = AdvanceToNextPlayerOrPhase(game, gamePlayer);
 
-		game.CurrentPhase = nextPhase;
-		game.CurrentPlayerIndex = nextPlayerSeat;
-		game.UpdatedAt = now;
-
-		// If we've transitioned to Reveal, set all cards visible after a moment
 		if (string.Equals(nextPhase, nameof(Phases.Reveal), StringComparison.OrdinalIgnoreCase))
 		{
-			// Reveal all cards
-			var allCards = game.GameCards
-				.Where(gc => gc.HandNumber == game.CurrentHandNumber &&
-				             gc.GamePlayerId != null &&
-				             gc.Location == CardLocation.Hand &&
-				             !gc.IsDiscarded);
-			foreach (var card in allCards)
-			{
-				card.IsVisible = true;
-			}
-
-			// Auto-advance to Showdown after reveal
+			// The final SYN decision owns showdown resolution server-side.
 			game.CurrentPhase = nameof(Phases.Showdown);
 			game.CurrentPlayerIndex = -1;
+			game.UpdatedAt = now;
+
+			var flowHandler = flowHandlerFactory.GetHandler(PokerGameMetadataRegistry.ScrewYourNeighborCode);
+			var showdownResult = await flowHandler.PerformShowdownAsync(
+				context,
+				game,
+				handHistoryRecorder,
+				now,
+				cancellationToken);
+
+			if (!showdownResult.IsSuccess)
+			{
+				return new KeepOrTradeError
+				{
+					Message = showdownResult.ErrorMessage ?? "Failed to resolve Screw Your Neighbor showdown.",
+					Code = KeepOrTradeErrorCode.InvalidPhase
+				};
+			}
+
+			var postShowdownPhase = await flowHandler.ProcessPostShowdownAsync(
+				context,
+				game,
+				showdownResult,
+				now,
+				cancellationToken);
+
+			game.CurrentPhase = postShowdownPhase;
+			game.CurrentPlayerIndex = -1;
+			game.UpdatedAt = now;
+
+			await handSettlementService.SettleHandAsync(
+				game,
+				BuildSettlementPayouts(game, showdownResult),
+				cancellationToken);
+		}
+		else
+		{
+			game.CurrentPhase = nextPhase;
+			game.CurrentPlayerIndex = nextPlayerSeat;
+			game.UpdatedAt = now;
 		}
 
 		await context.SaveChangesAsync(cancellationToken);
@@ -151,6 +181,24 @@ public class KeepOrTradeCommandHandler(CardsDbContext context)
 			NextPhase = game.CurrentPhase,
 			NextPlayerSeatIndex = game.CurrentPlayerIndex >= 0 ? game.CurrentPlayerIndex : null
 		};
+	}
+
+	private static Dictionary<string, int> BuildSettlementPayouts(Game game, ShowdownResult showdownResult)
+	{
+		var settlementPayouts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+		if (game.Status == GameStatus.Completed &&
+		    showdownResult.WinnerPlayerIds.Count == 1 &&
+		    showdownResult.TotalPotAwarded > 0)
+		{
+			var winner = game.GamePlayers.FirstOrDefault(gp => gp.PlayerId == showdownResult.WinnerPlayerIds[0]);
+			if (winner is not null)
+			{
+				settlementPayouts[winner.Player.Name] = showdownResult.TotalPotAwarded + winner.TotalContributedThisHand;
+			}
+		}
+
+		return settlementPayouts;
 	}
 
 	/// <summary>
