@@ -1,4 +1,5 @@
 using CardGames.Contracts.SignalR;
+using CardGames.Poker.Api.Games;
 using CardGames.Poker.Api.Hubs;
 using Microsoft.AspNetCore.SignalR;
 
@@ -134,9 +135,11 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 
         var durationSeconds = IActionTimerService.DefaultTimerDurationSeconds;
 
-        // Use 30 seconds for Kings and Lows "Drop or Stay"
-        if (string.Equals(state.GameTypeCode, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase) && 
-            string.Equals(state.CurrentPhase, "DropOrStay", StringComparison.OrdinalIgnoreCase))
+        // Use 30 seconds for short decision phases.
+        if ((string.Equals(state.GameTypeCode, PokerGameMetadataRegistry.KingsAndLowsCode, StringComparison.OrdinalIgnoreCase) &&
+             string.Equals(state.CurrentPhase, "DropOrStay", StringComparison.OrdinalIgnoreCase)) ||
+            (string.Equals(state.GameTypeCode, PokerGameMetadataRegistry.ScrewYourNeighborCode, StringComparison.OrdinalIgnoreCase) &&
+             string.Equals(state.CurrentPhase, "KeepOrTrade", StringComparison.OrdinalIgnoreCase)))
         {
             durationSeconds = 30;
         }

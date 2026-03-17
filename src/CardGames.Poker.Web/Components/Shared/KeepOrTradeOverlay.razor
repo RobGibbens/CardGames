@@ -75,6 +75,8 @@
 @code {
     private const int DefaultTimerDurationSeconds = 30;
     private const string PanelStorageKey = "cardGames.panelPosition.keepOrTradeOverlay";
+    private string? _autoActionTimerKey;
+    private bool _isAutoActionInFlight;
 
     private ElementReference _panelRef;
     private ElementReference _handleRef;
@@ -87,6 +89,11 @@
             _dragInitialized = true;
             await JSRuntime.InvokeVoidAsync("draggablePanel.init", _panelRef, _handleRef, PanelStorageKey);
         }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await TrySubmitTimeoutDefaultDecisionAsync();
     }
 
     [Parameter]
@@ -128,6 +135,38 @@
         var duration = GetTimerDuration();
         if (duration <= 0) return 100;
         return (GetSecondsRemaining() / (double)duration) * 100;
+    }
+
+    private async Task TrySubmitTimeoutDefaultDecisionAsync()
+    {
+        if (ActionTimer is null || !ActionTimer.IsActive || ActionTimer.SecondsRemaining > 0)
+        {
+            _autoActionTimerKey = null;
+            return;
+        }
+
+        if (IsSubmitting || _isAutoActionInFlight)
+        {
+            return;
+        }
+
+        var timerKey = $"{ActionTimer.PlayerSeatIndex}:{ActionTimer.StartedAtUtc.UtcTicks}";
+        if (_autoActionTimerKey == timerKey)
+        {
+            return;
+        }
+
+        _autoActionTimerKey = timerKey;
+        _isAutoActionInFlight = true;
+
+        try
+        {
+            await OnDecision.InvokeAsync("Keep");
+        }
+        finally
+        {
+            _isAutoActionInFlight = false;
+        }
     }
 
     private string? GetPlayingCardRank(CardInfo card)
