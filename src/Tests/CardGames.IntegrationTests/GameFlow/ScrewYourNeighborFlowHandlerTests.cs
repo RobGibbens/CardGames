@@ -341,4 +341,38 @@ public class ScrewYourNeighborFlowHandlerTests : IntegrationTestBase
 		nextHandPot.Should().NotBeNull();
 		nextHandPot!.Amount.Should().Be(25);
 	}
+
+	[Fact]
+	public async Task ProcessPostShowdownAsync_GameCompleted_ReturnsEnded()
+	{
+		var handler = new ScrewYourNeighborFlowHandler();
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "SCREWYOURNEIGHBOR", 2);
+		setup.Game.Status = GameStatus.Completed;
+
+		var nextPhase = await handler.ProcessPostShowdownAsync(
+			DbContext,
+			setup.Game,
+			ShowdownResult.Success([setup.GamePlayers[0].PlayerId], [setup.GamePlayers[1].PlayerId], 25, "winner"),
+			DateTimeOffset.UtcNow,
+			CancellationToken.None);
+
+		nextPhase.Should().Be("Ended");
+	}
+
+	[Fact]
+	public async Task ProcessPostShowdownAsync_GameContinues_ReturnsComplete()
+	{
+		var handler = new ScrewYourNeighborFlowHandler();
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "SCREWYOURNEIGHBOR", 2);
+		setup.Game.Status = GameStatus.InProgress;
+
+		var nextPhase = await handler.ProcessPostShowdownAsync(
+			DbContext,
+			setup.Game,
+			ShowdownResult.Success([setup.GamePlayers[0].PlayerId], [setup.GamePlayers[1].PlayerId], 25, "winner"),
+			DateTimeOffset.UtcNow,
+			CancellationToken.None);
+
+		nextPhase.Should().Be(nameof(Phases.Complete));
+	}
 }

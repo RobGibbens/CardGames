@@ -328,6 +328,22 @@ public sealed class ScrewYourNeighborFlowHandler : BaseGameFlowHandler
 			description);
 	}
 
+	/// <inheritdoc />
+	public override Task<string> ProcessPostShowdownAsync(
+		CardsDbContext context,
+		Game game,
+		ShowdownResult showdownResult,
+		DateTimeOffset now,
+		CancellationToken cancellationToken)
+	{
+		if (game.Status == GameStatus.Completed)
+		{
+			return Task.FromResult("Ended");
+		}
+
+		return Task.FromResult(nameof(Phases.Complete));
+	}
+
 	#endregion
 
 	#region Auto Actions

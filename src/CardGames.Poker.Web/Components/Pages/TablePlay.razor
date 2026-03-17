@@ -462,7 +462,7 @@
         }
 
         <!-- Game Ended overlay -->
-        @if (_gameResponse?.CurrentPhase == GamePhase.Ended.ToString() && !_showShowdownOverlay)
+        @* @if (_gameResponse?.CurrentPhase == GamePhase.Ended.ToString() && !_showShowdownOverlay)
         {
             <div class="table-overlay ended-overlay">
                 <div class="overlay-content">
@@ -484,7 +484,7 @@
                     </button>
                 </div>
             </div>
-        }
+        } *@
 
         <!-- Paused overlay -->
         @if (_isPaused && _gameResponse is not null && _gameResponse.CurrentPhase != GamePhase.WaitingForPlayers.ToString() && _gameResponse.CurrentPhase
@@ -2276,38 +2276,38 @@
 
                 // Convert to GetGameResponse format for compatibility with existing code
                 _gameResponse = new GetGameResponse(
-                ante: gamesResponse.Ante,
-                bigBet: gamesResponse.BigBet,
-                bigBlind: gamesResponse.BigBlind,
-                bringIn: gamesResponse.BringIn,
-                bringInPlayerIndex: gamesResponse.BringInPlayerIndex,
-                canContinue: gamesResponse.CanContinue,
-                createdAt: gamesResponse.CreatedAt,
-                createdById: gamesResponse.CreatedById,
-                createdByName: gamesResponse.CreatedByName,
-                currentDrawPlayerIndex: gamesResponse.CurrentDrawPlayerIndex,
-                currentHandNumber: gamesResponse.CurrentHandNumber,
-                currentPhase: gamesResponse.CurrentPhase,
-                currentPhaseDescription: gamesResponse.CurrentPhaseDescription,
-                currentPlayerIndex: gamesResponse.CurrentPlayerIndex,
-                dealerPosition: gamesResponse.DealerPosition,
-                endedAt: gamesResponse.EndedAt,
-                gameSettings: gamesResponse.GameSettings,
-                gameTypeCode: gamesResponse.GameTypeCode,
-                gameTypeId: gamesResponse.GameTypeId,
-                gameTypeName: gamesResponse.GameTypeName,
-                id: gamesResponse.Id,
-                maximumNumberOfPlayers: gamesResponse.MaximumNumberOfPlayers,
-                minBet: gamesResponse.MinBet,
-                minimumNumberOfPlayers: gamesResponse.MinimumNumberOfPlayers,
-                name: gamesResponse.Name,
-                randomSeed: gamesResponse.RandomSeed,
-                rowVersion: gamesResponse.RowVersion,
-                smallBet: gamesResponse.SmallBet,
-                smallBlind: gamesResponse.SmallBlind,
-                startedAt: gamesResponse.StartedAt,
-                status: gamesResponse.Status,
-                updatedAt: gamesResponse.UpdatedAt
+                    ante: gamesResponse.Ante,
+                    bigBet: gamesResponse.BigBet,
+                    bigBlind: gamesResponse.BigBlind,
+                    bringIn: gamesResponse.BringIn,
+                    bringInPlayerIndex: gamesResponse.BringInPlayerIndex,
+                    canContinue: gamesResponse.CanContinue,
+                    createdAt: gamesResponse.CreatedAt,
+                    createdById: gamesResponse.CreatedById,
+                    createdByName: gamesResponse.CreatedByName,
+                    currentDrawPlayerIndex: gamesResponse.CurrentDrawPlayerIndex,
+                    currentHandNumber: gamesResponse.CurrentHandNumber,
+                    currentPhase: gamesResponse.CurrentPhase,
+                    currentPhaseDescription: gamesResponse.CurrentPhaseDescription,
+                    currentPlayerIndex: gamesResponse.CurrentPlayerIndex,
+                    dealerPosition: gamesResponse.DealerPosition,
+                    endedAt: gamesResponse.EndedAt,
+                    gameSettings: gamesResponse.GameSettings,
+                    gameTypeCode: gamesResponse.GameTypeCode,
+                    gameTypeId: gamesResponse.GameTypeId,
+                    gameTypeName: gamesResponse.GameTypeName,
+                    id: gamesResponse.Id,
+                    maximumNumberOfPlayers: gamesResponse.MaximumNumberOfPlayers,
+                    minBet: gamesResponse.MinBet,
+                    minimumNumberOfPlayers: gamesResponse.MinimumNumberOfPlayers,
+                    name: gamesResponse.Name,
+                    randomSeed: gamesResponse.RandomSeed,
+                    rowVersion: gamesResponse.RowVersion,
+                    smallBet: gamesResponse.SmallBet,
+                    smallBlind: gamesResponse.SmallBlind,
+                    startedAt: gamesResponse.StartedAt,
+                    status: gamesResponse.Status,
+                    updatedAt: gamesResponse.UpdatedAt
                 )
                 {
                     AreOddsVisibleToAllPlayers = gamesResponse.AreOddsVisibleToAllPlayers

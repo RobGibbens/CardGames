@@ -273,6 +273,7 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
         refreshedLoser.ChipStack.Should().Be(75);
         nextHandPot.Should().NotBeNull();
         nextHandPot!.Amount.Should().Be(25);
+        refreshedGame.CurrentPhase.Should().Be(nameof(Phases.Complete));
         refreshedGame.NextHandStartsAt.Should().NotBeNull();
     }
 
@@ -414,6 +415,7 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
         loserBalance.Should().Be(-25);
 
         var refreshedGame = await DbContext.Games.AsNoTracking().FirstAsync(g => g.Id == game.Id);
+        refreshedGame.CurrentPhase.Should().Be("Ended");
         refreshedGame.Status.Should().Be(GameStatus.Completed);
         refreshedGame.NextHandStartsAt.Should().BeNull();
     }
