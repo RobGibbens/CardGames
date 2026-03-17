@@ -84,6 +84,69 @@ public class JoinLeaveWalletCommandTests : IntegrationTestBase
 	}
 
 	[Fact]
+	public async Task JoinGame_ScrewYourNeighborAfterStart_ReturnsLateJoinNotAllowedAndDoesNotSeatPlayer()
+	{
+		// Arrange
+		var game = await DatabaseSeeder.CreateGameAsync(DbContext, "SCREWYOURNEIGHBOR", ante: 25);
+		game.Status = GameStatus.InProgress;
+		game.CurrentHandNumber = 1;
+		game.CurrentPhase = "KeepOrTrade";
+		game.StartedAt = DateTimeOffset.UtcNow.AddMinutes(-1);
+
+		var player = await DatabaseSeeder.CreatePlayerAsync(DbContext, "Late SYN Player", "late.syn@test.com");
+
+		DbContext.PlayerChipAccounts.Add(new PlayerChipAccount
+		{
+			PlayerId = player.Id,
+			Balance = 500,
+			CreatedAtUtc = DateTimeOffset.UtcNow,
+			UpdatedAtUtc = DateTimeOffset.UtcNow
+		});
+		await DbContext.SaveChangesAsync();
+
+		SetCurrentUser("late-syn-user-id", "Late SYN Player", "late.syn@test.com");
+
+		// Act
+		var result = await Mediator.Send(new JoinGameCommand(game.Id, SeatIndex: 0, StartingChips: 75));
+
+		// Assert
+		result.IsT1.Should().BeTrue();
+		result.AsT1.Code.Should().Be(JoinGameErrorCode.LateJoinNotAllowed);
+
+		DbContext.GamePlayers.Count(x => x.GameId == game.Id && x.PlayerId == player.Id).Should().Be(0);
+		DbContext.PlayerChipLedgerEntries.Count(x => x.PlayerId == player.Id && x.Type == PlayerChipLedgerEntryType.BringIn).Should().Be(0);
+	}
+
+	[Fact]
+	public async Task JoinGame_ScrewYourNeighborBeforeStart_AllowsPlayerToJoin()
+	{
+		// Arrange
+		var game = await DatabaseSeeder.CreateGameAsync(DbContext, "SCREWYOURNEIGHBOR", ante: 25);
+		var player = await DatabaseSeeder.CreatePlayerAsync(DbContext, "Prestart SYN Player", "prestart.syn@test.com");
+
+		DbContext.PlayerChipAccounts.Add(new PlayerChipAccount
+		{
+			PlayerId = player.Id,
+			Balance = 500,
+			CreatedAtUtc = DateTimeOffset.UtcNow,
+			UpdatedAtUtc = DateTimeOffset.UtcNow
+		});
+		await DbContext.SaveChangesAsync();
+
+		SetCurrentUser("prestart-syn-user-id", "Prestart SYN Player", "prestart.syn@test.com");
+
+		// Act
+		var result = await Mediator.Send(new JoinGameCommand(game.Id, SeatIndex: 0, StartingChips: 10));
+
+		// Assert
+		result.IsT0.Should().BeTrue();
+		result.AsT0.CanPlayCurrentHand.Should().BeTrue();
+
+		var gamePlayer = await DbContext.GamePlayers.FirstAsync(x => x.GameId == game.Id && x.PlayerId == player.Id);
+		gamePlayer.ChipStack.Should().Be(75);
+	}
+
+	[Fact]
 	public async Task JoinGame_WithZeroAccountBalance_ReturnsZeroBalanceErrorAndDoesNotSeatPlayer()
 	{
 		// Arrange

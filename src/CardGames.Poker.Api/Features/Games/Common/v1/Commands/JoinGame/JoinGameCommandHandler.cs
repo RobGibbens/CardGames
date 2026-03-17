@@ -1,5 +1,6 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Games;
 using CardGames.Poker.Api.Infrastructure;
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
@@ -104,6 +105,19 @@ public sealed class JoinGameCommandHandler(
 			return new JoinGameError(
 				JoinGameErrorCode.GameEnded,
 				"This game has ended and is no longer accepting players.");
+		}
+
+		var lateJoinAllowed = !string.Equals(
+			game.GameType?.Code,
+			PokerGameMetadataRegistry.ScrewYourNeighborCode,
+			StringComparison.OrdinalIgnoreCase)
+			|| !game.StartedAt.HasValue;
+
+		if (!lateJoinAllowed)
+		{
+			return new JoinGameError(
+				JoinGameErrorCode.LateJoinNotAllowed,
+				"Screw Your Neighbor does not allow players to join after the game has started.");
 		}
 
 		// Check max players (Dealer's Choice games have no GameType; default to 8 seats)

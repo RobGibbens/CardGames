@@ -737,6 +737,7 @@
     private bool IsPhilsMom => string.Equals(_gameTypeCode, "PHILSMOM", StringComparison.OrdinalIgnoreCase);
     private bool IsCrazyPineapple => string.Equals(_gameTypeCode, "CRAZYPINEAPPLE", StringComparison.OrdinalIgnoreCase);
     private bool IsScrewYourNeighbor => string.Equals(_gameTypeCode, "SCREWYOURNEIGHBOR", StringComparison.OrdinalIgnoreCase);
+    private bool IsStartedScrewYourNeighborTable => IsScrewYourNeighbor && _gameResponse?.StartedAt is not null;
     private bool IsIrishStyleHoldEm => IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple;
     private bool UsesCardDealAnimation => IsSevenCardStud || IsRazz || IsGoodBadUgly || IsBaseball || IsFollowTheQueen || IsFiveCardDraw || IsTwosJacksManWithTheAxe || IsKingsAndLows || IsHoldEm || IsRedRiver || IsHoldTheBaseball || IsOmaha || IsNebraska || IsSouthDakota || IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple || IsScrewYourNeighbor;
     private int DealAnimationDelayMs => 750;
@@ -2544,6 +2545,12 @@
             return;
         }
 
+        if (IsStartedScrewYourNeighborTable)
+        {
+            await ShowToastAsync("Screw Your Neighbor does not allow players to join after the game has started.", "error");
+            return;
+        }
+
         if (!TryGetAutoJoinSeatIndex(out var autoSeatIndex))
         {
             await ShowToastAsync("No seats are currently available.", "error");
@@ -2586,6 +2593,13 @@
     {
         if (_isJoiningSeat || !_pendingJoinSeatIndex.HasValue)
             return;
+
+        if (IsStartedScrewYourNeighborTable)
+        {
+            CloseJoinBuyInModal();
+            await ShowToastAsync("Screw Your Neighbor does not allow players to join after the game has started.", "error");
+            return;
+        }
 
         var seatIndex = _pendingJoinSeatIndex.Value;
         if (seatIndex < 0 || seatIndex >= _seats.Count || _seats[seatIndex].IsOccupied)

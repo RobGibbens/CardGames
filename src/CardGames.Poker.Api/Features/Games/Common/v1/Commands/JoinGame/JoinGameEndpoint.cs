@@ -33,6 +33,7 @@ public static class JoinGameEndpoint
                             JoinGameErrorCode.ZeroAccountBalance => Results.BadRequest(new { error.Message }),
                             JoinGameErrorCode.InsufficientAccountChips => Results.Conflict(new { error.Message }),
                             JoinGameErrorCode.LeagueMembershipRequired => Results.Forbid(),
+                            JoinGameErrorCode.LateJoinNotAllowed => Results.Conflict(new { error.Message }),
                             _ => Results.Problem(error.Message)
                         }
                     );
@@ -43,12 +44,13 @@ public static class JoinGameEndpoint
                 "Adds the currently authenticated player to a game at the specified seat. " +
                 "Players can join a game at any time as long as the game hasn't ended and " +
                 "there are seats available. If joining mid-hand, the player will sit out " +
-                "the current hand and join play on the next hand.\n\n" +
+                "the current hand and join play on the next hand. Some variants, such as Screw Your Neighbor, do not allow late entry after the game has started.\n\n" +
                 "**Validations:**\n" +
                 "- Game must exist and not be ended\n" +
                 "- Seat must be available (not already occupied)\n" +
                 "- Player must not already be seated elsewhere in the game\n" +
                 "- Game must not have reached maximum player count\n" +
+                "- Variant must allow late entry for started games\n" +
                 "- Starting chips must be greater than 0\n" +
                 "- Player account balance must be greater than 0\n" +
                 "- Requested buy-in must not exceed account balance\n\n" +

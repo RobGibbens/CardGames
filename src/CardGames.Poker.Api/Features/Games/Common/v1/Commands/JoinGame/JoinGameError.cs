@@ -60,5 +60,10 @@ public enum JoinGameErrorCode
 	/// <summary>
 	/// The game is restricted to active members of the associated league.
 	/// </summary>
-	LeagueMembershipRequired
+    LeagueMembershipRequired,
+
+    /// <summary>
+    /// The game variant does not allow players to join after the game has started.
+    /// </summary>
+    LateJoinNotAllowed
 }
