@@ -670,6 +670,13 @@ public class DealersChoiceContinuousPlayTests : IDisposable
         public DealingConfiguration GetDealingConfiguration() => new DealingConfiguration { PatternType = DealingPatternType.AllAtOnce, InitialCardsPerPlayer = 5 };
         public ChipCheckConfiguration GetChipCheckConfiguration() => ChipCheckConfig;
         public Task OnHandStartingAsync(Game game, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task PrepareForNewHandAsync(
+            CardsDbContext context,
+            Game game,
+            List<GamePlayer> eligiblePlayers,
+            int upcomingHandNumber,
+            DateTimeOffset now,
+            CancellationToken cancellationToken) => Task.CompletedTask;
         public Task OnHandCompletedAsync(Game game, CancellationToken cancellationToken = default) => Task.CompletedTask;
 
         public Task DealCardsAsync(CardsDbContext context, Game game, List<GamePlayer> eligiblePlayers, DateTimeOffset now, CancellationToken cancellationToken)

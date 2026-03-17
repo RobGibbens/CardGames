@@ -700,15 +700,15 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			gamePlayer.VariantState = null;
 		}
 
-		// Remove any existing cards from previous hand
-		var existingCards = await context.GameCards
-			.Where(gc => gc.GameId == game.Id)
-			.ToListAsync(cancellationToken);
-
-		if (existingCards.Count > 0)
-		{
-			context.GameCards.RemoveRange(existingCards);
-		}
+		// Prepare cards for the upcoming hand. Most games clear prior cards here,
+		// but variants with persistent decks can retain undealt cards.
+		await flowHandler.PrepareForNewHandAsync(
+			context,
+			game,
+			eligiblePlayers,
+			game.CurrentHandNumber + 1,
+			now,
+			cancellationToken);
 
 		// Mark any incomplete betting rounds from the previous hand as complete
 		var incompleteBettingRounds = await context.Set<Data.Entities.BettingRound>()

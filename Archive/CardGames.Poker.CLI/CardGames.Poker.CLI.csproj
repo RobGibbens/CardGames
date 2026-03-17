@@ -4,6 +4,7 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <AssemblyName>pocli</AssemblyName>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,9 +17,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\CardGames.Contracts\CardGames.Contracts.csproj" />
-    <ProjectReference Include="..\CardGames.Poker\CardGames.Poker.csproj" />
-    <ProjectReference Include="..\CardGames.Playground\CardGames.Playground.csproj" />
+    <ProjectReference Include="..\..\src\CardGames.Contracts\CardGames.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\CardGames.Poker\CardGames.Poker.csproj" />
+    <ProjectReference Include="..\..\src\CardGames.Playground\CardGames.Playground.csproj" />
   </ItemGroup>
 
 </Project>

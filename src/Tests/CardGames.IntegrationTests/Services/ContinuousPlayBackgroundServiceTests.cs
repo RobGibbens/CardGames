@@ -201,6 +201,7 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
         updatedGame!.CurrentHandNumber.Should().Be(2);
         updatedGame.CurrentPhase.Should().Be("Dealing");
         handler.DealCardsCalled.Should().BeTrue();
+        handler.PrepareForNewHandCalled.Should().BeTrue();
         handler.OnHandStartingCalled.Should().BeTrue();
     }
 
@@ -647,6 +648,7 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
         public bool ProcessPostShowdownCalled { get; set; }
         public bool DealCardsCalled { get; set; }
         public bool OnHandStartingCalled { get; set; }
+        public bool PrepareForNewHandCalled { get; set; }
         public bool OnHandCompletedCalled { get; set; }
 
         public FakeGameFlowHandler(string code)
@@ -667,6 +669,18 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
         public Task OnHandStartingAsync(Game game, CancellationToken cancellationToken = default)
         {
             OnHandStartingCalled = true;
+            return Task.CompletedTask;
+        }
+
+        public Task PrepareForNewHandAsync(
+            CardsDbContext context,
+            Game game,
+            List<GamePlayer> eligiblePlayers,
+            int upcomingHandNumber,
+            DateTimeOffset now,
+            CancellationToken cancellationToken)
+        {
+            PrepareForNewHandCalled = true;
             return Task.CompletedTask;
         }
 

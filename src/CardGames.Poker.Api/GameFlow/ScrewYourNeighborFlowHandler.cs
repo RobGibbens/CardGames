@@ -101,6 +101,56 @@ public sealed class ScrewYourNeighborFlowHandler : BaseGameFlowHandler
 	}
 
 	/// <inheritdoc />
+	public override async Task PrepareForNewHandAsync(
+		CardsDbContext context,
+		Game game,
+		List<GamePlayer> eligiblePlayers,
+		int upcomingHandNumber,
+		DateTimeOffset now,
+		CancellationToken cancellationToken)
+	{
+		var existingCards = await context.GameCards
+			.Where(gc => gc.GameId == game.Id)
+			.ToListAsync(cancellationToken);
+
+		if (existingCards.Count == 0)
+		{
+			return;
+		}
+
+		var remainingDeckCards = existingCards
+			.Where(gc => gc.Location == CardLocation.Deck && gc.GamePlayerId == null && !gc.IsDiscarded)
+			.OrderBy(gc => gc.DealOrder)
+			.ToList();
+
+		var requiredCardsForNextHand = eligiblePlayers.Count + 1;
+		if (remainingDeckCards.Count < requiredCardsForNextHand)
+		{
+			context.GameCards.RemoveRange(existingCards);
+			return;
+		}
+
+		var remainingDeckCardIds = remainingDeckCards
+			.Select(gc => gc.Id)
+			.ToHashSet();
+
+		var cardsToRemove = existingCards
+			.Where(gc => !remainingDeckCardIds.Contains(gc.Id))
+			.ToList();
+
+		if (cardsToRemove.Count > 0)
+		{
+			context.GameCards.RemoveRange(cardsToRemove);
+		}
+
+		foreach (var deckCard in remainingDeckCards)
+		{
+			deckCard.HandNumber = upcomingHandNumber;
+			deckCard.DealtAt = now;
+		}
+	}
+
+	/// <inheritdoc />
 	public override async Task DealCardsAsync(
 		CardsDbContext context,
 		Game game,
@@ -108,35 +158,97 @@ public sealed class ScrewYourNeighborFlowHandler : BaseGameFlowHandler
 		DateTimeOffset now,
 		CancellationToken cancellationToken)
 	{
-		// Deal 1 card face-down to each eligible player using standard dealing
-		await base.DealDrawStyleCardsAsync(context, game, eligiblePlayers, now, cancellationToken);
+		var config = GetDealingConfiguration();
+		var cardsPerPlayer = config.InitialCardsPerPlayer > 0 ? config.InitialCardsPerPlayer : 1;
+		var requiredCardsForHand = eligiblePlayers.Count + 1;
 
-		// SYN rule: any dealt King is immediately face-up to all players.
-		var dealtHandCards = await context.GameCards
-			.Where(gc =>
-			gc.HandNumber == game.CurrentHandNumber &&
-			gc.GamePlayerId != null &&
-			gc.Location == CardLocation.Hand &&
-			!gc.IsDiscarded)
+		var deckCards = await context.GameCards
+			.Where(gc => gc.GameId == game.Id &&
+			             gc.HandNumber == game.CurrentHandNumber &&
+			             gc.Location == CardLocation.Deck &&
+			             gc.GamePlayerId == null &&
+			             !gc.IsDiscarded)
+			.OrderBy(gc => gc.DealOrder)
 			.ToListAsync(cancellationToken);
 
-		foreach (var card in dealtHandCards)
+		if (deckCards.Count < requiredCardsForHand)
 		{
-			if (IsKing(card.Symbol))
+			if (deckCards.Count > 0)
 			{
-				card.IsVisible = true;
+				context.GameCards.RemoveRange(deckCards);
+			}
+
+			deckCards = await CreateFreshDeckAsync(context, game, now, cancellationToken);
+		}
+
+		var dealerPosition = game.DealerPosition;
+		var maxSeatPosition = game.GamePlayers.Max(gp => gp.SeatPosition);
+		var totalSeats = maxSeatPosition + 1;
+
+		var playersInDealOrder = eligiblePlayers
+			.OrderBy(p => (p.SeatPosition - dealerPosition - 1 + totalSeats) % totalSeats)
+			.ToList();
+
+		var deckIndex = 0;
+		var dealOrder = 1;
+		foreach (var player in playersInDealOrder)
+		{
+			for (var cardIndex = 0; cardIndex < cardsPerPlayer; cardIndex++)
+			{
+				if (deckIndex >= deckCards.Count)
+				{
+					break;
+				}
+
+				var card = deckCards[deckIndex++];
+				card.GamePlayerId = player.Id;
+				card.Location = CardLocation.Hand;
+				card.DealOrder = dealOrder++;
+				card.IsVisible = !config.AllFaceDown || IsKing(card.Symbol);
+				card.DealtAt = now;
 			}
 		}
 
-		// Override the phase — dealing sets up KeepOrTrade (a special phase, not a betting round)
 		game.CurrentPhase = nameof(Phases.KeepOrTrade);
-
-		// Set first actor: first eligible player after dealer
-		var firstActor = FindFirstActivePlayerAfterDealer(game, eligiblePlayers);
-		game.CurrentPlayerIndex = firstActor;
+		game.CurrentPlayerIndex = FindFirstActivePlayerAfterDealer(game, eligiblePlayers);
 		game.UpdatedAt = now;
 
 		await context.SaveChangesAsync(cancellationToken);
+	}
+
+	private static async Task<List<GameCard>> CreateFreshDeckAsync(
+		CardsDbContext context,
+		Game game,
+		DateTimeOffset now,
+		CancellationToken cancellationToken)
+	{
+		var shuffledDeck = CreateShuffledDeck();
+		var deckCards = new List<GameCard>(shuffledDeck.Count);
+
+		for (var deckOrder = 0; deckOrder < shuffledDeck.Count; deckOrder++)
+		{
+			var (suit, symbol) = shuffledDeck[deckOrder];
+			var gameCard = new GameCard
+			{
+				GameId = game.Id,
+				GamePlayerId = null,
+				HandNumber = game.CurrentHandNumber,
+				Suit = suit,
+				Symbol = symbol,
+				DealOrder = deckOrder,
+				Location = CardLocation.Deck,
+				IsVisible = false,
+				IsDiscarded = false,
+				DealtAt = now
+			};
+
+			deckCards.Add(gameCard);
+		}
+
+		context.GameCards.AddRange(deckCards);
+		await context.SaveChangesAsync(cancellationToken);
+
+		return deckCards;
 	}
 
 	#region Showdown

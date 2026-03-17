@@ -98,6 +98,28 @@ public interface IGameFlowHandler
     Task OnHandStartingAsync(Game game, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Prepares card state before a new hand begins.
+    /// </summary>
+    /// <param name="context">The database context.</param>
+    /// <param name="game">The game entity being started.</param>
+    /// <param name="eligiblePlayers">Players eligible for the upcoming hand.</param>
+    /// <param name="upcomingHandNumber">The hand number that will be started next.</param>
+    /// <param name="now">The current timestamp.</param>
+    /// <param name="cancellationToken">Cancellation token for the operation.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    /// <remarks>
+    /// Most games clear prior hand cards before dealing. Variants with persistent decks
+    /// can override this to carry undealt cards into the next hand.
+    /// </remarks>
+    Task PrepareForNewHandAsync(
+        CardsDbContext context,
+        Game game,
+        List<GamePlayer> eligiblePlayers,
+        int upcomingHandNumber,
+        DateTimeOffset now,
+        CancellationToken cancellationToken);
+
+    /// <summary>
     /// Performs an automatic action for a player or the game when a timer expires.
     /// </summary>
     /// <param name="context">The context for the auto action.</param>

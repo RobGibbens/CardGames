@@ -38,6 +38,55 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
         return (setup, game);
     }
 
+    private async Task PrimeRemainingDeckAsync(
+        Guid gameId,
+        int handNumber,
+        params (CardSuit Suit, CardSymbol Symbol)[] orderedDeckCards)
+    {
+        var deckCards = await DbContext.GameCards
+            .Where(gc => gc.GameId == gameId &&
+                         gc.HandNumber == handNumber &&
+                         gc.Location == CardLocation.Deck &&
+                         gc.GamePlayerId == null)
+            .OrderBy(gc => gc.DealOrder)
+            .ToListAsync();
+
+        deckCards.Count.Should().BeGreaterThanOrEqualTo(orderedDeckCards.Length);
+
+        var cardsToKeep = deckCards.Take(orderedDeckCards.Length).ToList();
+        var cardsToRemove = deckCards.Skip(orderedDeckCards.Length).ToList();
+
+        if (cardsToRemove.Count > 0)
+        {
+            DbContext.GameCards.RemoveRange(cardsToRemove);
+        }
+
+        for (var i = 0; i < orderedDeckCards.Length; i++)
+        {
+            cardsToKeep[i].Suit = orderedDeckCards[i].Suit;
+            cardsToKeep[i].Symbol = orderedDeckCards[i].Symbol;
+        }
+
+        await DbContext.SaveChangesAsync();
+    }
+
+    private sealed class TestLogger<T> : ILogger<T>
+    {
+        public List<string> ErrorLogs { get; } = new();
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            if (logLevel >= LogLevel.Error)
+            {
+                ErrorLogs.Add(formatter(state, exception));
+            }
+        }
+    }
+
     [Fact]
     public async Task StartHand_TransitionsToKeepOrTrade()
     {
@@ -206,6 +255,91 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task StartHand_WhenEnoughDeckCardsRemain_ReusesDeckInsteadOfReshuffling()
+    {
+        var (setup, game) = await CreateScrewYourNeighborGameInKeepOrTradePhaseAsync(3);
+
+        await PrimeRemainingDeckAsync(
+            game.Id,
+            game.CurrentHandNumber,
+            (CardSuit.Spades, CardSymbol.Ace),
+            (CardSuit.Hearts, CardSymbol.Deuce),
+            (CardSuit.Clubs, CardSymbol.Three),
+            (CardSuit.Diamonds, CardSymbol.Four),
+            (CardSuit.Spades, CardSymbol.Five));
+
+        var gameToRestart = await DbContext.Games.FirstAsync(g => g.Id == game.Id);
+        gameToRestart.CurrentPhase = nameof(Phases.Complete);
+        gameToRestart.HandCompletedAt = DateTimeOffset.UtcNow;
+        gameToRestart.NextHandStartsAt = null;
+        await DbContext.SaveChangesAsync();
+
+        var result = await Mediator.Send(new StartHandCommand(game.Id));
+        result.IsT0.Should().BeTrue();
+
+        var secondHandCards = await DbContext.GameCards
+            .AsNoTracking()
+            .Where(gc => gc.GameId == game.Id && gc.HandNumber == 2)
+            .OrderBy(gc => gc.Location)
+            .ThenBy(gc => gc.DealOrder)
+            .ToListAsync();
+
+        secondHandCards.Should().HaveCount(5);
+        secondHandCards.Should().OnlyContain(gc => gc.HandNumber == 2);
+        (await DbContext.GameCards.AnyAsync(gc => gc.GameId == game.Id && gc.HandNumber == 1)).Should().BeFalse();
+
+        var dealtCards = secondHandCards
+            .Where(gc => gc.Location == CardLocation.Hand)
+            .OrderBy(gc => gc.DealOrder)
+            .ToList();
+        dealtCards.Should().HaveCount(3);
+        dealtCards.Select(gc => gc.Symbol).Should().Equal(
+            CardSymbol.Ace,
+            CardSymbol.Deuce,
+            CardSymbol.Three);
+
+        var remainingDeckCards = secondHandCards
+            .Where(gc => gc.Location == CardLocation.Deck)
+            .OrderBy(gc => gc.DealOrder)
+            .ToList();
+        remainingDeckCards.Should().HaveCount(2);
+        remainingDeckCards.Select(gc => gc.Symbol).Should().Equal(
+            CardSymbol.Four,
+            CardSymbol.Five);
+    }
+
+    [Fact]
+    public async Task StartHand_WhenDeckCannotCoverNextHand_ReshufflesFreshDeck()
+    {
+        var (setup, game) = await CreateScrewYourNeighborGameInKeepOrTradePhaseAsync(3);
+
+        await PrimeRemainingDeckAsync(
+            game.Id,
+            game.CurrentHandNumber,
+            (CardSuit.Spades, CardSymbol.Ace),
+            (CardSuit.Hearts, CardSymbol.Deuce),
+            (CardSuit.Clubs, CardSymbol.Three));
+
+        var gameToRestart = await DbContext.Games.FirstAsync(g => g.Id == game.Id);
+        gameToRestart.CurrentPhase = nameof(Phases.Complete);
+        gameToRestart.HandCompletedAt = DateTimeOffset.UtcNow;
+        gameToRestart.NextHandStartsAt = null;
+        await DbContext.SaveChangesAsync();
+
+        var result = await Mediator.Send(new StartHandCommand(game.Id));
+        result.IsT0.Should().BeTrue();
+
+        var secondHandCards = await DbContext.GameCards
+            .Where(gc => gc.GameId == game.Id && gc.HandNumber == 2)
+            .ToListAsync();
+
+        secondHandCards.Should().HaveCount(52);
+        secondHandCards.Count(gc => gc.Location == CardLocation.Hand).Should().Be(3);
+        secondHandCards.Count(gc => gc.Location == CardLocation.Deck).Should().Be(49);
+        (await DbContext.GameCards.AnyAsync(gc => gc.GameId == game.Id && gc.HandNumber == 1)).Should().BeFalse();
+    }
+
+    [Fact]
     public async Task PerformShowdown_RuntimeCommandPath_LoserLosesStack_AndPotCarriesToNextHand()
     {
         var (setup, game) = await CreateScrewYourNeighborGameInKeepOrTradePhaseAsync(2);
@@ -345,6 +479,56 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
         postBackgroundWinner.ChipStack.Should().Be(100);
         postBackgroundGame.CurrentHandNumber.Should().Be(2);
     }
+
+    [Fact]
+    public async Task BackgroundService_WhenEnoughDeckCardsRemain_ReusesDeckForNextHand()
+    {
+        var (setup, game) = await CreateScrewYourNeighborGameInKeepOrTradePhaseAsync(3);
+
+        await PrimeRemainingDeckAsync(
+            game.Id,
+            game.CurrentHandNumber,
+            (CardSuit.Spades, CardSymbol.Ace),
+            (CardSuit.Hearts, CardSymbol.Deuce),
+            (CardSuit.Clubs, CardSymbol.Three),
+            (CardSuit.Diamonds, CardSymbol.Four),
+            (CardSuit.Spades, CardSymbol.Five));
+
+        var gameToSchedule = await DbContext.Games.FirstAsync(g => g.Id == game.Id);
+        gameToSchedule.CurrentPhase = nameof(Phases.Complete);
+        gameToSchedule.NextHandStartsAt = DateTimeOffset.UtcNow.AddSeconds(-1);
+        gameToSchedule.HandCompletedAt = DateTimeOffset.UtcNow;
+        await DbContext.SaveChangesAsync();
+
+        var serviceScopeFactory = Scope.ServiceProvider.GetRequiredService<IServiceScopeFactory>();
+        var logger = new TestLogger<ContinuousPlayBackgroundService>();
+        var service = new ContinuousPlayBackgroundService(
+            serviceScopeFactory,
+            logger);
+
+        await service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+
+        logger.ErrorLogs.Should().BeEmpty();
+
+        var secondHandCards = await DbContext.GameCards
+            .AsNoTracking()
+            .Where(gc => gc.GameId == game.Id && gc.HandNumber == 2)
+            .OrderBy(gc => gc.Location)
+            .ThenBy(gc => gc.DealOrder)
+            .ToListAsync();
+
+        secondHandCards.Should().HaveCount(5);
+        secondHandCards.Count(gc => gc.Location == CardLocation.Hand).Should().Be(3);
+        secondHandCards.Count(gc => gc.Location == CardLocation.Deck).Should().Be(2);
+
+        var dealtCards = secondHandCards
+            .Where(gc => gc.Location == CardLocation.Hand)
+            .OrderBy(gc => gc.DealOrder)
+            .Select(gc => gc.Symbol)
+            .ToList();
+        dealtCards.Should().Equal(CardSymbol.Ace, CardSymbol.Deuce, CardSymbol.Three);
+    }
+
     [Fact]
     public async Task PerformShowdown_WhenGameEnds_SettlesWinnerToCashierAndReturnsPayout()
     {

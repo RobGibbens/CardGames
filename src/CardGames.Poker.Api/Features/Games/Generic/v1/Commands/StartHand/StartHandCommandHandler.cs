@@ -167,8 +167,14 @@ public sealed class StartHandCommandHandler(
         // 8. Reset player states for new hand
         ResetPlayerStates(game);
 
-        // 9. Remove any existing cards from previous hand
-        await RemovePreviousHandCardsAsync(game, cancellationToken);
+        // 9. Prepare card state for the upcoming hand.
+        await flowHandler.PrepareForNewHandAsync(
+            context,
+            game,
+            eligiblePlayers,
+            game.CurrentHandNumber + 1,
+            now,
+            cancellationToken);
 
         // 10. Game-specific initialization (e.g., reset DropOrStay decisions for Kings and Lows)
         await flowHandler.OnHandStartingAsync(game, cancellationToken);
@@ -303,21 +309,6 @@ public sealed class StartHandCommandHandler(
             gamePlayer.HasDrawnThisRound = false;
             gamePlayer.HasFolded = gamePlayer.IsSittingOut;
             gamePlayer.VariantState = null;
-        }
-    }
-
-    /// <summary>
-    /// Removes any existing cards from the previous hand.
-    /// </summary>
-    private async Task RemovePreviousHandCardsAsync(Game game, CancellationToken cancellationToken)
-    {
-        var existingCards = await context.GameCards
-            .Where(gc => gc.GameId == game.Id)
-            .ToListAsync(cancellationToken);
-
-        if (existingCards.Count > 0)
-        {
-            context.GameCards.RemoveRange(existingCards);
         }
     }
 }

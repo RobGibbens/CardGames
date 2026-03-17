@@ -170,8 +170,8 @@ public class ScrewYourNeighborFlowHandlerTests : IntegrationTestBase
 		var playerCards = cards.Where(c => c.GamePlayerId.HasValue).ToList();
 		playerCards.Should().HaveCount(4);
 
-		// Cards should be face down
-		playerCards.Should().AllSatisfy(c => c.IsVisible.Should().BeFalse());
+		// SYN rule: Kings are immediately face-up; all other dealt cards stay face-down.
+		playerCards.Should().AllSatisfy(c => c.IsVisible.Should().Be(c.Symbol == CardSymbol.King));
 
 		// Phase should transition to KeepOrTrade
 		setup.Game.CurrentPhase.Should().Be(nameof(Phases.KeepOrTrade));
