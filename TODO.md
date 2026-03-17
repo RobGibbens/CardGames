@@ -3,25 +3,31 @@
 
 ## Still to do
 
+- [ ] Add rounders sounds 
 - [ ] https://github.com/leeoades/FunctionalStateMachine
+- [ ] Dealer's Choice - pick which games are included
 
+- [ ] SYN - Enable playing in Dealer's Choice
 - [ ] SYN - Highlight winner(s)
-- [x] SYN - Animate trading
-- [x] SYN - Animate trading with the deck
-- [ ] SYN - Timer time out
-- [x] SYN - Animate chips to pot
-- [x] SYN - Get a king and it still prompts you to trade
-- [ ] SYN - Speed up deal
-- [ ] SYN - Not showing showdown
-- [ ] SYN - What is the default is not choosing?
-- [ ] SYN - check for King block
-- [ ] SYN - Showdown too fast
-- [ ] SYN - Showdown showing email, not name
 - [ ] SYN - check for ties
 - [ ] SYN - odds
-- [ ] SYN - Make sure you can't join in the middle of a game
-- [ ] SYN in DC - Shows six stacks each - not removing them
 
+- [ ] SYN - When running out of cards, deal a new deck
+- [x] SYN - Speed up deal
+- [x] SYN - Timer time out
+- [x] SYN - Showdown too fast
+- [x] SYN - Make sure you can't join in the middle of a game
+- [x] SYN - Have end of game go to lobby
+- [x] SYN - Animate trading
+- [x] SYN - Animate trading with the deck
+- [x] SYN - Animate chips to pot
+- [x] SYN - Get a king and it still prompts you to trade
+- [x] SYN - Not showing showdown
+- [x] SYN - check for King block
+- [x] SYN - Showdown showing email, not name
+- [x] SYN in DC - Shows six stacks each - not removing them
+
+- [ ] Create Table - Once a game is selected, hide the search box
 - [ ] Lobby - Group by game type
 - [ ] Lobby - Filter by status
 - [ ] Join game modal - should not be able to click out of it
