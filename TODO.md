@@ -11,7 +11,7 @@
 - [ ] SYN - Highlight winner(s)
 - [ ] SYN - check for ties
 - [ ] SYN - odds
-
+- [ ] SYN - only use one deck until it runs out
 - [ ] SYN - When running out of cards, deal a new deck
 - [x] SYN - Speed up deal
 - [x] SYN - Timer time out
