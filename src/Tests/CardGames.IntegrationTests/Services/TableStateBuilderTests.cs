@@ -110,10 +110,16 @@ public class TableStateBuilderTests : IntegrationTestBase
 
         // Assert
         result.Should().NotBeNull();
-        // In public state, cards should be face down (not showing values)
+        // In public state, cards should remain face down without rank/suit payloads.
         result!.Seats.Should().AllSatisfy(seat =>
         {
             seat.Cards.Should().NotBeNull();
+            seat.Cards.Should().AllSatisfy(card =>
+            {
+                card.IsFaceUp.Should().BeFalse();
+                card.Rank.Should().BeNull();
+                card.Suit.Should().BeNull();
+            });
         });
     }
 

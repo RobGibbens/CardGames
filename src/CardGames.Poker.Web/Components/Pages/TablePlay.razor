@@ -1652,7 +1652,7 @@
                 {
                     Rank = c.Rank,
                     Suit = c.Suit,
-                    IsFaceUp = true,
+                    IsFaceUp = c.IsPubliclyVisible,
                     IsPubliclyVisible = c.IsPubliclyVisible,
                     IsSelected = false,
                     DealOrder = c.DealOrder,
@@ -3321,10 +3321,7 @@
                 // Start flying card animation for runout
                 _flyingCard = new TableCanvas.FlyingCardInfo(
                     TargetSeatIndex: currentSeatIndex,
-                    CardIndex: currentVisible,
-                    Rank: runoutCard.Rank,
-                    Suit: runoutCard.Suit,
-                    IsFaceUp: true
+                    CardIndex: currentVisible
                 );
 
                 await InvokeStateHasChangedAsync();
@@ -3513,10 +3510,7 @@
             // Start flying card animation
             _flyingCard = new TableCanvas.FlyingCardInfo(
                 TargetSeatIndex: seatIndex,
-                CardIndex: _dealCurrentCardIndex,
-                Rank: rank,
-                Suit: suit,
-                IsFaceUp: isFaceUp
+                CardIndex: _dealCurrentCardIndex
             );
 
             await InvokeStateHasChangedAsync();

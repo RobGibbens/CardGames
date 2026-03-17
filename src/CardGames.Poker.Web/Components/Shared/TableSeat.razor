@@ -57,7 +57,7 @@
 						}
 						else
 						{
-							if (card.IsFaceUp)
+							if (ShouldShowRemoteCardFace(card))
 							{
 							   <playing-card rank="@rank" suit="@card.Suit" class="poker-card small"
 											  suitcolor="@(isWildForDisplay ? "green" : null)" rankcolor="@(isWildForDisplay ? "green" : null)"
@@ -220,6 +220,13 @@
 
 	[Parameter]
 	public bool IsBigBlind { get; set; }
+
+	private static bool ShouldShowRemoteCardFace(CardInfo card)
+	{
+		return card.IsPubliclyVisible
+			&& !string.IsNullOrWhiteSpace(card.Rank)
+			&& !string.IsNullOrWhiteSpace(card.Suit);
+	}
 
 	[Parameter]
 	public bool IsCurrentActor { get; set; }
