@@ -379,6 +379,69 @@ public class TableStateBuilderTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task BuildPublicStateAsync_ScrewYourNeighbor_EndedGameStillIncludesCompleteShowdownForWinner()
+    {
+        var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(
+            DbContext,
+            "SCREWYOURNEIGHBOR",
+            2,
+            startingChips: 25,
+            ante: 25);
+
+        await Mediator.Send(new CardGames.Poker.Api.Features.Games.Generic.v1.Commands.StartHand.StartHandCommand(setup.Game.Id));
+
+        var game = await DbContext.Games
+            .Include(g => g.GamePlayers).ThenInclude(gp => gp.Player)
+            .FirstAsync(g => g.Id == setup.Game.Id);
+
+        var players = game.GamePlayers.OrderBy(gp => gp.SeatPosition).ToList();
+        var winner = players[0];
+        var loser = players[1];
+
+        var handCards = await DbContext.GameCards
+            .Where(gc => gc.GameId == game.Id &&
+                         gc.HandNumber == game.CurrentHandNumber &&
+                         gc.Location == CardLocation.Hand &&
+                         gc.GamePlayerId != null)
+            .ToListAsync();
+
+        handCards.First(c => c.GamePlayerId == winner.Id).Symbol = CardSymbol.Four;
+        handCards.First(c => c.GamePlayerId == winner.Id).Suit = CardSuit.Hearts;
+        handCards.First(c => c.GamePlayerId == loser.Id).Symbol = CardSymbol.Ace;
+        handCards.First(c => c.GamePlayerId == loser.Id).Suit = CardSuit.Spades;
+        await DbContext.SaveChangesAsync();
+
+        for (var i = 0; i < 2; i++)
+        {
+            game = await DbContext.Games
+                .Include(g => g.GamePlayers)
+                .AsNoTracking()
+                .FirstAsync(g => g.Id == setup.Game.Id);
+
+            if (game.CurrentPhase != nameof(Phases.KeepOrTrade))
+            {
+                break;
+            }
+
+            var currentActor = game.GamePlayers.First(gp => gp.SeatPosition == game.CurrentPlayerIndex);
+            var keepResult = await Mediator.Send(new CardGames.Poker.Api.Features.Games.ScrewYourNeighbor.v1.Commands.KeepOrTrade.KeepOrTradeCommand(game.Id, currentActor.PlayerId, "Keep"));
+            keepResult.IsT0.Should().BeTrue();
+        }
+
+        var showdownResult = await Mediator.Send(new CardGames.Poker.Api.Features.Games.Generic.v1.Commands.PerformShowdown.PerformShowdownCommand(setup.Game.Id));
+        showdownResult.IsT0.Should().BeTrue();
+
+        var result = await TableStateBuilder.BuildPublicStateAsync(setup.Game.Id);
+
+        result.Should().NotBeNull();
+        result!.CurrentPhase.Should().Be("Ended");
+        result.Showdown.Should().NotBeNull();
+        result.Showdown!.IsComplete.Should().BeTrue();
+        result.Showdown.PlayerResults.Should().ContainSingle(r => r.PlayerName == winner.Player.Name && r.IsWinner);
+        result.Showdown.PlayerResults.Should().ContainSingle(r => r.PlayerName == loser.Player.Name && !r.IsWinner);
+    }
+
+    [Fact]
     public async Task BuildPublicStateAsync_FollowTheQueen_DynamicWildRank_UsesNextCardAfterQueenInGlobalDealOrder()
     {
         // Arrange

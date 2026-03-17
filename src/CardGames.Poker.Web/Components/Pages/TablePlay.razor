@@ -462,7 +462,7 @@
         }
 
         <!-- Game Ended overlay -->
-        @if (_gameResponse?.CurrentPhase == GamePhase.Ended.ToString() && !_showShowdownOverlay)
+        @* @if (_gameResponse?.CurrentPhase == GamePhase.Ended.ToString() && !_showShowdownOverlay)
         {
             <div class="table-overlay ended-overlay">
                 <div class="overlay-content">
@@ -484,7 +484,7 @@
                     </button>
                 </div>
             </div>
-        }
+        } *@
 
         <!-- Paused overlay -->
         @if (_isPaused && _gameResponse is not null && _gameResponse.CurrentPhase != GamePhase.WaitingForPlayers.ToString() && _gameResponse.CurrentPhase

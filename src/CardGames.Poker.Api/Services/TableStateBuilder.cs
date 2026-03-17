@@ -827,11 +827,6 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		Dictionary<string, UserProfile> userProfilesByEmail,
 		CancellationToken cancellationToken)
 	{
-		if (game.CurrentPhase != "Showdown" && game.CurrentPhase != "Complete" && game.CurrentPhase != "PotMatching")
-		{
-			return null;
-		}
-
 		var isTwosJacksAxe = IsTwosJacksAxeGame(game.GameType?.Code);
 		var isGoodBadUgly = IsGoodBadUglyGame(game.GameType?.Code);
 		var isHoldEm = IsHoldEmGame(game.GameType?.Code);
@@ -849,6 +844,16 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		var isFollowTheQueen = IsFollowTheQueenGame(game.GameType?.Code);
 		var isScrewYourNeighbor = IsScrewYourNeighborGame(game.GameType?.Code);
 		var isStudStyleShowdown = isSevenCardStud || isBaseball || isFollowTheQueen;
+		var isTerminalScrewYourNeighborShowdown =
+			isScrewYourNeighbor && string.Equals(game.CurrentPhase, "Ended", StringComparison.OrdinalIgnoreCase);
+
+		if (game.CurrentPhase != "Showdown" &&
+			game.CurrentPhase != "Complete" &&
+			game.CurrentPhase != "PotMatching" &&
+			!isTerminalScrewYourNeighborShowdown)
+		{
+			return null;
+		}
 
 		// Evaluate all hands for players who haven't folded
 		// Use HandBase as the base type since all hand types inherit from it
@@ -1585,7 +1590,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		return new ShowdownPublicDto
 		{
 			PlayerResults = playerResults,
-			IsComplete = game.CurrentPhase == "Complete",
+			IsComplete = game.CurrentPhase == "Complete" || isTerminalScrewYourNeighborShowdown,
 			SevensWinners = isTwosJacksAxe ? sevensWinners.ToList() : null,
 			HighHandWinners = isTwosJacksAxe ? highHandWinners.ToList() : null,
 			Losers = allLosers,
