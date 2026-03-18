@@ -73,6 +73,10 @@ public class RouterResponse<T>
         {
             content = t;
         }
+        else if (typeof(T) == typeof(Unit))
+        {
+            content = (T)(object)default(Unit);
+        }
         else
         {
             throw new InvalidOperationException($"Cannot map {typeof(TRefit).Name} to {typeof(T).Name}");

@@ -4705,12 +4705,16 @@
             return null;
         }
 
-        if (actionDescription.Contains("trade", StringComparison.OrdinalIgnoreCase))
+        var normalizedDescription = actionDescription.Trim();
+
+        if (string.Equals(normalizedDescription, "Trade", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(normalizedDescription, "Traded", StringComparison.OrdinalIgnoreCase))
         {
             return "Traded";
         }
 
-        if (actionDescription.Contains("keep", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(normalizedDescription, "Keep", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(normalizedDescription, "Kept", StringComparison.OrdinalIgnoreCase))
         {
             return "Kept";
         }
@@ -4720,12 +4724,10 @@
 
     private static bool IsScrewYourNeighborTradeAction(string? actionDescription)
     {
-        if (string.IsNullOrWhiteSpace(actionDescription))
-        {
-            return false;
-        }
-
-        return actionDescription.Contains("trade", StringComparison.OrdinalIgnoreCase);
+        return string.Equals(
+            GetScrewYourNeighborDecisionDescription(actionDescription),
+            "Traded",
+            StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task AnimateScrewYourNeighborTradeAsync(int sourceSeatIndex)
@@ -4766,6 +4768,12 @@
         catch (JSDisconnectedException)
         {
             // Circuit ended before animation could execute.
+        }
+        catch (TaskCanceledException ex)
+        {
+            Logger.LogDebug(ex,
+                "Skipped Screw Your Neighbor trade animation after JS interop was canceled for seat {SourceSeatIndex}",
+                sourceSeatIndex);
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("statically rendered", StringComparison.OrdinalIgnoreCase))
         {

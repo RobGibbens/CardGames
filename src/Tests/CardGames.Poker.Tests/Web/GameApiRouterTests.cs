@@ -204,12 +204,74 @@ public class GameApiRouterTests
             .FiveCardDrawProcessDrawAsync(Arg.Any<Guid>(), Arg.Any<ProcessDrawRequest>(), Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task KeepOrTradeAsync_ScrewYourNeighbor_IgnoresTypedSuccessBodyForUnitResponse()
+    {
+        // Arrange
+        var gameId = Guid.NewGuid();
+        var playerId = Guid.NewGuid();
+        var request = new KeepOrTradeRequest("Trade", playerId);
+
+        var fiveCardDrawApi = Substitute.For<IFiveCardDrawApi>();
+        var twosJacksApi = Substitute.For<ITwosJacksManWithTheAxeApi>();
+        var kingsAndLowsApi = Substitute.For<IKingsAndLowsApi>();
+        var sevenCardStudApi = Substitute.For<ISevenCardStudApi>();
+        var goodBadUglyApi = Substitute.For<IGoodBadUglyApi>();
+        var baseballApi = Substitute.For<IBaseballApi>();
+        var followTheQueenApi = Substitute.For<IFollowTheQueenApi>();
+        var holdEmApi = Substitute.For<IHoldEmApi>();
+        var gamesApi = Substitute.For<IGamesApi>();
+        var screwYourNeighborApi = Substitute.For<IScrewYourNeighborApi>();
+
+        screwYourNeighborApi
+            .ScrewYourNeighborKeepOrTradeAsync(gameId, request, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(CreateSuccessfulKeepOrTradeResponse(gameId, playerId)));
+
+        var sut = new GameApiRouter(
+            fiveCardDrawApi,
+            twosJacksApi,
+            kingsAndLowsApi,
+            sevenCardStudApi,
+            goodBadUglyApi,
+            baseballApi,
+            followTheQueenApi,
+            holdEmApi,
+            gamesApi,
+            screwYourNeighborApi);
+
+        // Act
+        var response = await sut.KeepOrTradeAsync("SCREWYOURNEIGHBOR", gameId, request);
+
+        // Assert
+        response.IsSuccess.Should().BeTrue();
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        await screwYourNeighborApi.Received(1)
+            .ScrewYourNeighborKeepOrTradeAsync(gameId, request, Arg.Any<CancellationToken>());
+    }
+
     private static IApiResponse<ProcessBettingActionSuccessful> CreateFailedBettingActionResponse()
     {
         var response = Substitute.For<IApiResponse<ProcessBettingActionSuccessful>>();
         response.IsSuccessStatusCode.Returns(false);
         response.StatusCode.Returns(HttpStatusCode.BadRequest);
         response.Error.Returns((ApiException)null);
+        return response;
+    }
+
+    private static IApiResponse<KeepOrTradeSuccessful> CreateSuccessfulKeepOrTradeResponse(Guid gameId, Guid playerId)
+    {
+        var response = Substitute.For<IApiResponse<KeepOrTradeSuccessful>>();
+        response.IsSuccessStatusCode.Returns(true);
+        response.StatusCode.Returns(HttpStatusCode.OK);
+        response.Content.Returns(new KeepOrTradeSuccessful(
+            gameId,
+            playerId,
+            "Trade",
+            didTrade: true,
+            wasBlocked: false,
+            nextPhase: "ResolveKeepOrTrade",
+            nextPlayerSeatIndex: 2));
         return response;
     }
 }

@@ -448,6 +448,72 @@ public class TableStateBuilderTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task BuildPublicStateAsync_ScrewYourNeighbor_ShowdownExcludesZeroChipSitOutWithoutHand()
+    {
+        var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(
+            DbContext,
+            "SCREWYOURNEIGHBOR",
+            3,
+            startingChips: 25,
+            ante: 25);
+
+        var game = setup.Game;
+        game.CurrentHandNumber = 1;
+        game.CurrentPhase = nameof(Phases.Showdown);
+        game.Status = GameStatus.InProgress;
+
+        var players = await DbContext.GamePlayers
+            .Include(gp => gp.Player)
+            .Where(gp => gp.GameId == game.Id)
+            .OrderBy(gp => gp.SeatPosition)
+            .ToListAsync();
+
+        var winner = players[0];
+        var bustedLoser = players[1];
+        var sittingOut = players[2];
+
+        bustedLoser.ChipStack = 0;
+        bustedLoser.IsSittingOut = true;
+        sittingOut.ChipStack = 0;
+        sittingOut.IsSittingOut = true;
+
+        DbContext.GameCards.AddRange(
+            new GameCard
+            {
+                GameId = game.Id,
+                GamePlayerId = winner.Id,
+                HandNumber = 1,
+                Location = CardLocation.Hand,
+                Suit = CardSuit.Hearts,
+                Symbol = CardSymbol.Four,
+                DealOrder = 1,
+                IsVisible = true
+            },
+            new GameCard
+            {
+                GameId = game.Id,
+                GamePlayerId = bustedLoser.Id,
+                HandNumber = 1,
+                Location = CardLocation.Hand,
+                Suit = CardSuit.Spades,
+                Symbol = CardSymbol.Ace,
+                DealOrder = 1,
+                IsVisible = true
+            });
+
+        await DbContext.SaveChangesAsync();
+
+        var result = await TableStateBuilder.BuildPublicStateAsync(game.Id);
+
+        result.Should().NotBeNull();
+        result!.Showdown.Should().NotBeNull();
+        result.Showdown!.PlayerResults.Should().HaveCount(2);
+        result.Showdown.PlayerResults.Should().ContainSingle(r => r.PlayerName == winner.Player!.Name && r.IsWinner);
+        result.Showdown.PlayerResults.Should().ContainSingle(r => r.PlayerName == bustedLoser.Player!.Name && !r.IsWinner);
+        result.Showdown.PlayerResults.Should().NotContain(r => r.PlayerName == sittingOut.Player!.Name);
+    }
+
+    [Fact]
     public async Task BuildPublicStateAsync_FollowTheQueen_DynamicWildRank_UsesNextCardAfterQueenInGlobalDealOrder()
     {
         // Arrange

@@ -858,6 +858,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		// Evaluate all hands for players who haven't folded
 		// Use HandBase as the base type since all hand types inherit from it
 		var playerHandEvaluations = new Dictionary<string, (HandBase hand, TwosJacksManWithTheAxeDrawHand? twosJacksHand, KingsAndLowsDrawHand? kingsAndLowsHand, SevenCardStudHand? studHand, GamePlayer gamePlayer, List<GameCard> cards, List<int> wildIndexes, List<int> bestCardIndexes)>();
+		var showdownPlayers = gamePlayers
+			.Where(gp => !gp.HasFolded)
+			.ToList();
 
 		// Good Bad Ugly: players have <=4 hole cards + community cards (The Good, The Bad, The Ugly)
 		// Must be handled before the cards.Count >= 5 check since player-owned cards may be fewer than 5
@@ -1443,9 +1446,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		{
 			// SYN: each player has exactly 1 card. Lowest card value loses (Ace=1, King=13).
 			// Players who do NOT have the lowest value are winners.
-			var synActivePlayers = gamePlayers
-				.Where(gp => !gp.HasFolded)
-				.ToList();
+			var synActivePlayers = showdownPlayers;
 
 			var synHandCards = await _context.GameCards
 				.Where(gc => gc.GameId == game.Id
@@ -1483,6 +1484,10 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					highHandWinners.Add(pv.Player.Player.Name);
 				}
 			}
+
+			showdownPlayers = synPlayerValues
+				.Select(pv => pv.Player)
+				.ToList();
 		}
 		else if (gamePlayers.Count(gp => !gp.HasFolded) == 1)
 		{
@@ -1501,8 +1506,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			: null;
 
 		// Build player results
-		var playerResults = gamePlayers
-			.Where(gp => !gp.HasFolded)
+		var playerResults = showdownPlayers
 			.Select(gp =>
 			{
 				var isWinner = allWinners.Contains(gp.Player.Name);

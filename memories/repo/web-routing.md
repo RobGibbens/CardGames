@@ -1,0 +1,1 @@
+- RouterResponse<Unit>.FromRefit in src/CardGames.Poker.Web/Services/IGameApiRouter.cs accepts typed success bodies and discards them automatically; use this for web routes that only care about success/failure.

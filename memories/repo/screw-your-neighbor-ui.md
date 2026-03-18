@@ -1,0 +1,2 @@
+- In TablePlay SYN UI logic, parse keep/trade decisions by exact values (`Keep`, `Kept`, `Trade`, `Traded`) rather than substring matching; `KeepOrTrade`/`Keep or Trade` can otherwise misfire the trade animation.
+- JS interop for SYN trade animation can throw `TaskCanceledException` during teardown/rerender and should be treated as a benign skipped animation.
