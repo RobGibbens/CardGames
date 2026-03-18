@@ -10,7 +10,7 @@
 - [x] SYN - When dealing you can briefly see all player's cards
 - [ ] SYN - After a few hands, table goes nuts, everybody animates a chip, cards redeal
 - [ ] SYN - Enable playing in Dealer's Choice
-- [ ] SYN - Highlight winner(s)
+- [x] SYN - Highlight winner(s)
 - [ ] SYN - check for ties
 - [ ] SYN - odds
 - [ ] SYN - only use one deck until it runs out
