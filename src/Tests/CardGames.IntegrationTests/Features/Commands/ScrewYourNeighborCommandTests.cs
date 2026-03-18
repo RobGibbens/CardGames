@@ -2,6 +2,7 @@ using CardGames.Poker.Api.Features.Games.ScrewYourNeighbor.v1.Commands.KeepOrTra
 using CardGames.Poker.Api.Features.Games.Generic.v1.Commands.PerformShowdown;
 using CardGames.Poker.Api.Features.Games.Generic.v1.Commands.StartHand;
 using CardGames.Poker.Api.Services;
+using CardGames.IntegrationTests.Infrastructure.Fakes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -258,6 +259,7 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
     public async Task StartHand_WhenEnoughDeckCardsRemain_ReusesDeckInsteadOfReshuffling()
     {
         var (setup, game) = await CreateScrewYourNeighborGameInKeepOrTradePhaseAsync(3);
+        var broadcaster = Scope.ServiceProvider.GetRequiredService<IGameStateBroadcaster>().Should().BeOfType<FakeGameStateBroadcaster>().Subject;
 
         await PrimeRemainingDeckAsync(
             game.Id,
@@ -306,12 +308,15 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
         remainingDeckCards.Select(gc => gc.Symbol).Should().Equal(
             CardSymbol.Four,
             CardSymbol.Five);
+
+        broadcaster.ToastNotifications.Should().BeEmpty();
     }
 
     [Fact]
     public async Task StartHand_WhenDeckCannotCoverNextHand_ReshufflesFreshDeck()
     {
         var (setup, game) = await CreateScrewYourNeighborGameInKeepOrTradePhaseAsync(3);
+        var broadcaster = Scope.ServiceProvider.GetRequiredService<IGameStateBroadcaster>().Should().BeOfType<FakeGameStateBroadcaster>().Subject;
 
         await PrimeRemainingDeckAsync(
             game.Id,
@@ -337,6 +342,9 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
         secondHandCards.Count(gc => gc.Location == CardLocation.Hand).Should().Be(3);
         secondHandCards.Count(gc => gc.Location == CardLocation.Deck).Should().Be(49);
         (await DbContext.GameCards.AnyAsync(gc => gc.GameId == game.Id && gc.HandNumber == 1)).Should().BeFalse();
+        broadcaster.ToastNotifications.Should().ContainSingle();
+        broadcaster.ToastNotifications[0].GameId.Should().Be(game.Id);
+        broadcaster.ToastNotifications[0].Message.Should().Be("Starting new deck");
     }
 
     [Fact]
@@ -484,6 +492,7 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
     public async Task BackgroundService_WhenEnoughDeckCardsRemain_ReusesDeckForNextHand()
     {
         var (setup, game) = await CreateScrewYourNeighborGameInKeepOrTradePhaseAsync(3);
+        var broadcaster = Scope.ServiceProvider.GetRequiredService<IGameStateBroadcaster>().Should().BeOfType<FakeGameStateBroadcaster>().Subject;
 
         await PrimeRemainingDeckAsync(
             game.Id,
@@ -527,6 +536,49 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
             .Select(gc => gc.Symbol)
             .ToList();
         dealtCards.Should().Equal(CardSymbol.Ace, CardSymbol.Deuce, CardSymbol.Three);
+        broadcaster.ToastNotifications.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task BackgroundService_WhenDeckCannotCoverNextHand_ReshufflesFreshDeckAndBroadcastsToast()
+    {
+        var (setup, game) = await CreateScrewYourNeighborGameInKeepOrTradePhaseAsync(3);
+        var broadcaster = Scope.ServiceProvider.GetRequiredService<IGameStateBroadcaster>().Should().BeOfType<FakeGameStateBroadcaster>().Subject;
+
+        await PrimeRemainingDeckAsync(
+            game.Id,
+            game.CurrentHandNumber,
+            (CardSuit.Spades, CardSymbol.Ace),
+            (CardSuit.Hearts, CardSymbol.Deuce),
+            (CardSuit.Clubs, CardSymbol.Three));
+
+        var gameToSchedule = await DbContext.Games.FirstAsync(g => g.Id == game.Id);
+        gameToSchedule.CurrentPhase = nameof(Phases.Complete);
+        gameToSchedule.NextHandStartsAt = DateTimeOffset.UtcNow.AddSeconds(-1);
+        gameToSchedule.HandCompletedAt = DateTimeOffset.UtcNow;
+        await DbContext.SaveChangesAsync();
+
+        var serviceScopeFactory = Scope.ServiceProvider.GetRequiredService<IServiceScopeFactory>();
+        var logger = new TestLogger<ContinuousPlayBackgroundService>();
+        var service = new ContinuousPlayBackgroundService(
+            serviceScopeFactory,
+            logger);
+
+        await service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+
+        logger.ErrorLogs.Should().BeEmpty();
+
+        var secondHandCards = await DbContext.GameCards
+            .AsNoTracking()
+            .Where(gc => gc.GameId == game.Id && gc.HandNumber == 2)
+            .ToListAsync();
+
+        secondHandCards.Should().HaveCount(52);
+        secondHandCards.Count(gc => gc.Location == CardLocation.Hand).Should().Be(3);
+        secondHandCards.Count(gc => gc.Location == CardLocation.Deck).Should().Be(49);
+        broadcaster.ToastNotifications.Should().ContainSingle();
+        broadcaster.ToastNotifications[0].GameId.Should().Be(game.Id);
+        broadcaster.ToastNotifications[0].Message.Should().Be("Starting new deck");
     }
 
     [Fact]

@@ -3,6 +3,7 @@ using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.GameFlow;
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Betting;
+using CardGames.Contracts.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 
@@ -911,8 +912,37 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		await flowHandler.DealCardsAsync(context, game, eligiblePlayers, now, cancellationToken);
 		await context.SaveChangesAsync(cancellationToken);
 
+		if (await ShouldBroadcastScrewYourNeighborNewDeckToastAsync(context, flowHandler, game, cancellationToken))
+		{
+			await broadcaster.BroadcastTableToastAsync(
+				new TableToastNotificationDto
+				{
+					GameId = game.Id,
+					Message = "Starting new deck"
+				},
+				cancellationToken);
+		}
+
 		// Broadcast updated state
 		await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
+	}
+
+	private static async Task<bool> ShouldBroadcastScrewYourNeighborNewDeckToastAsync(
+		CardsDbContext context,
+		IGameFlowHandler flowHandler,
+		Game game,
+		CancellationToken cancellationToken)
+	{
+		if (!string.Equals(flowHandler.GameTypeCode, PokerGameMetadataRegistry.ScrewYourNeighborCode, StringComparison.OrdinalIgnoreCase) ||
+			game.CurrentHandNumber <= 1)
+		{
+			return false;
+		}
+
+		var currentHandCardCount = await context.GameCards
+			.CountAsync(gc => gc.GameId == game.Id && gc.HandNumber == game.CurrentHandNumber, cancellationToken);
+
+		return currentHandCardCount == 52;
 	}
 
 	private async Task CollectAntesAsync(

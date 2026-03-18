@@ -987,6 +987,7 @@
         GameHubClient.OnActionTimerUpdated += HandleActionTimerUpdatedAsync;
         GameHubClient.OnPlayerActionPerformed += HandlePlayerActionPerformedAsync;
         GameHubClient.OnTableSettingsUpdated += HandleTableSettingsUpdatedAsync;
+        GameHubClient.OnTableToastNotification += HandleTableToastNotificationAsync;
 
         // Load initial data FIRST so seats and _gameResponse are populated
         // before SignalR sends its state snapshot
@@ -1110,6 +1111,16 @@
 
         // Show toast notification to other players
         await ShowToastAsync(notification.Message, "info");
+    }
+
+    private async Task HandleTableToastNotificationAsync(TableToastNotificationDto notification)
+    {
+        if (notification.GameId != GameId)
+        {
+            return;
+        }
+
+        await ShowToastAsync(notification.Message, notification.Type, notification.DurationMs);
     }
 
     private async Task ShowToastAsync(string message, string type = "info", int durationMs = 4000)
@@ -4607,6 +4618,7 @@
         GameHubClient.OnActionTimerUpdated -= HandleActionTimerUpdatedAsync;
         GameHubClient.OnPlayerActionPerformed -= HandlePlayerActionPerformedAsync;
         GameHubClient.OnTableSettingsUpdated -= HandleTableSettingsUpdatedAsync;
+        GameHubClient.OnTableToastNotification -= HandleTableToastNotificationAsync;
 
         // Leave the game and disconnect
         if (_currentGameId.HasValue)

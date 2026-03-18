@@ -246,6 +246,31 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
         }
 
                 /// <inheritdoc />
+                public async Task BroadcastTableToastAsync(
+                    TableToastNotificationDto notification,
+                    CancellationToken cancellationToken = default)
+                {
+                    var groupName = GetGroupName(notification.GameId);
+
+                    try
+                    {
+                        await _hubContext.Clients.Group(groupName)
+                            .SendAsync("TableToastNotification", notification, cancellationToken);
+
+                        _logger.LogInformation(
+                            "Broadcast TableToastNotification for game {GameId}: {Message}",
+                            notification.GameId,
+                            notification.Message);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex,
+                            "Failed to broadcast TableToastNotification for game {GameId}",
+                            notification.GameId);
+                    }
+                }
+
+                /// <inheritdoc />
                 public async Task BroadcastTableSettingsUpdatedAsync(
                     TableSettingsUpdatedDto notification,
                     CancellationToken cancellationToken = default)

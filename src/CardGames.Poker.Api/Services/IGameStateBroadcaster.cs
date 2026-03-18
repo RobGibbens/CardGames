@@ -40,6 +40,15 @@ public interface IGameStateBroadcaster
                 CancellationToken cancellationToken = default);
 
             /// <summary>
+            /// Broadcasts a toast notification to all players in the game.
+            /// </summary>
+            /// <param name="notification">The toast notification payload.</param>
+            /// <param name="cancellationToken">Cancellation token.</param>
+            Task BroadcastTableToastAsync(
+                TableToastNotificationDto notification,
+                CancellationToken cancellationToken = default);
+
+            /// <summary>
             /// Broadcasts a table settings updated notification to all players in the game.
             /// </summary>
             /// <param name="notification">The notification containing updated settings.</param>

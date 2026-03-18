@@ -1,7 +1,10 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.GameFlow;
+using CardGames.Poker.Api.Games;
+using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
+using CardGames.Contracts.SignalR;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
@@ -44,6 +47,7 @@ namespace CardGames.Poker.Api.Features.Games.Generic.v1.Commands.StartHand;
 public sealed class StartHandCommandHandler(
     CardsDbContext context,
     IGameFlowHandlerFactory flowHandlerFactory,
+    IGameStateBroadcaster broadcaster,
     ILogger<StartHandCommandHandler> logger)
     : IRequestHandler<StartHandCommand, OneOf<StartHandSuccessful, StartHandError>>
 {
@@ -214,6 +218,17 @@ public sealed class StartHandCommandHandler(
         if (flowHandler.SkipsAnteCollection)
         {
             await flowHandler.DealCardsAsync(context, game, eligiblePlayers, now, cancellationToken);
+
+            if (await ShouldBroadcastScrewYourNeighborNewDeckToastAsync(context, flowHandler, game, cancellationToken))
+            {
+                await broadcaster.BroadcastTableToastAsync(
+                    new TableToastNotificationDto
+                    {
+                        GameId = game.Id,
+                        Message = "Starting new deck"
+                    },
+                    cancellationToken);
+            }
         }
 
         logger.LogInformation(
@@ -227,6 +242,24 @@ public sealed class StartHandCommandHandler(
             CurrentPhase = game.CurrentPhase,
             ActivePlayerCount = eligiblePlayers.Count
         };
+    }
+
+    private static async Task<bool> ShouldBroadcastScrewYourNeighborNewDeckToastAsync(
+        CardsDbContext context,
+        IGameFlowHandler flowHandler,
+        Game game,
+        CancellationToken cancellationToken)
+    {
+        if (!string.Equals(flowHandler.GameTypeCode, PokerGameMetadataRegistry.ScrewYourNeighborCode, StringComparison.OrdinalIgnoreCase) ||
+            game.CurrentHandNumber <= 1)
+        {
+            return false;
+        }
+
+        var currentHandCardCount = await context.GameCards
+            .CountAsync(gc => gc.GameId == game.Id && gc.HandNumber == game.CurrentHandNumber, cancellationToken);
+
+        return currentHandCardCount == 52;
     }
 
     /// <summary>

@@ -560,6 +560,7 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
     private class FakeGameStateBroadcaster : IGameStateBroadcaster
     {
          public List<(Guid GameId, DateTimeOffset Time)> Broadcasts { get; } = new();
+            public List<TableToastNotificationDto> ToastNotifications { get; } = new();
 
          public Task BroadcastGameStateAsync(Guid gameId, CancellationToken cancellationToken = default)
          {
@@ -574,6 +575,12 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
 
          public Task BroadcastPlayerJoinedAsync(Guid gameId, string playerName, int seatPosition, bool isRejoining, CancellationToken cancellationToken = default)
          {
+             return Task.CompletedTask;
+         }
+
+         public Task BroadcastTableToastAsync(TableToastNotificationDto notification, CancellationToken cancellationToken = default)
+         {
+             ToastNotifications.Add(notification);
              return Task.CompletedTask;
          }
 

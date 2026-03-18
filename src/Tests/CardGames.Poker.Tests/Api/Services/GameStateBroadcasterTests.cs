@@ -20,7 +20,7 @@ public class GameStateBroadcasterTests
     {
         var gameId = Guid.NewGuid();
         var publicState = CreateState(gameId, "SCREWYOURNEIGHBOR", "KeepOrTrade", 3, currentPhaseRequiresAction: true);
-        var (sut, tableStateBuilder, actionTimerService) = CreateSubject(publicState);
+        var (sut, tableStateBuilder, actionTimerService, _) = CreateSubject(publicState);
 
         await sut.BroadcastGameStateAsync(gameId);
 
@@ -35,7 +35,7 @@ public class GameStateBroadcasterTests
     {
         var gameId = Guid.NewGuid();
         var publicState = CreateState(gameId, "FIVECARDDRAW", "DrawPhase", 1);
-        var (sut, _, actionTimerService) = CreateSubject(publicState);
+        var (sut, _, actionTimerService, _) = CreateSubject(publicState);
 
         await sut.BroadcastGameStateAsync(gameId);
 
@@ -43,7 +43,30 @@ public class GameStateBroadcasterTests
             .StartTimer(gameId, 1, IActionTimerService.DefaultTimerDurationSeconds, Arg.Any<Func<Guid, int, Task>?>());
     }
 
-    private static (GameStateBroadcaster Sut, ITableStateBuilder TableStateBuilder, IActionTimerService ActionTimerService) CreateSubject(TableStatePublicDto publicState)
+    [Fact]
+    public async Task BroadcastTableToastAsync_SendsToastToGameGroup()
+    {
+        var gameId = Guid.NewGuid();
+        var publicState = CreateState(gameId, "SCREWYOURNEIGHBOR", "KeepOrTrade", 1);
+        var (sut, _, _, clientProxy) = CreateSubject(publicState);
+
+        await sut.BroadcastTableToastAsync(new TableToastNotificationDto
+        {
+            GameId = gameId,
+            Message = "Starting new deck"
+        });
+
+        await clientProxy.Received(1).SendCoreAsync(
+            "TableToastNotification",
+            Arg.Is<object?[]>(args =>
+                args.Length == 1 &&
+                args[0] != null &&
+                ((TableToastNotificationDto)args[0]!).GameId == gameId &&
+                ((TableToastNotificationDto)args[0]!).Message == "Starting new deck"),
+            Arg.Any<CancellationToken>());
+    }
+
+    private static (GameStateBroadcaster Sut, ITableStateBuilder TableStateBuilder, IActionTimerService ActionTimerService, IClientProxy ClientProxy) CreateSubject(TableStatePublicDto publicState)
     {
         var tableStateBuilder = Substitute.For<ITableStateBuilder>();
         tableStateBuilder.BuildPublicStateAsync(publicState.GameId, Arg.Any<CancellationToken>())
@@ -72,7 +95,7 @@ public class GameStateBroadcasterTests
             Substitute.For<IAutoActionService>(),
             Substitute.For<ILogger<GameStateBroadcaster>>());
 
-        return (sut, tableStateBuilder, actionTimerService);
+        return (sut, tableStateBuilder, actionTimerService, clientProxy);
     }
 
     private static TableStatePublicDto CreateState(

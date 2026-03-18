@@ -603,6 +603,7 @@ public class DealersChoiceContinuousPlayTests : IDisposable
     private class FakeGameStateBroadcaster : IGameStateBroadcaster
     {
         public List<(Guid GameId, DateTimeOffset Time)> Broadcasts { get; } = new();
+        public List<TableToastNotificationDto> ToastNotifications { get; } = new();
 
         public Task BroadcastGameStateAsync(Guid gameId, CancellationToken cancellationToken = default)
         {
@@ -612,6 +613,11 @@ public class DealersChoiceContinuousPlayTests : IDisposable
 
         public Task BroadcastGameStateToUserAsync(Guid gameId, string userId, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task BroadcastPlayerJoinedAsync(Guid gameId, string playerName, int seatPosition, bool isRejoining, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task BroadcastTableToastAsync(TableToastNotificationDto notification, CancellationToken cancellationToken = default)
+        {
+            ToastNotifications.Add(notification);
+            return Task.CompletedTask;
+        }
         public Task BroadcastTableSettingsUpdatedAsync(TableSettingsUpdatedDto settings, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task BroadcastOddsVisibilityUpdatedAsync(OddsVisibilityUpdatedDto notification, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task BroadcastPlayerActionAsync(Guid gameId, int seatPosition, string? action, string description, CancellationToken cancellationToken = default) => Task.CompletedTask;
