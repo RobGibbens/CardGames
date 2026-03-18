@@ -67,6 +67,7 @@ window.cardGamesAudio = (() => {
 
 window.cardGamesTable = (() => {
     const DEFAULT_DURATION_MS = 650;
+    const SEAT_EXPLOSION_DURATION_MS = 2350;
 
     function getSeatElement(seatIndex) {
         if (!Number.isFinite(seatIndex)) {
@@ -74,6 +75,86 @@ window.cardGamesTable = (() => {
         }
 
         return document.querySelector(`.seat-container[data-seat-index="${seatIndex}"]`);
+    }
+
+    function getSeatParticleHost(seatElement) {
+        return seatElement?.querySelector(".seat-particle-host") ?? null;
+    }
+
+    function clearSeatParticleHost(particleHost) {
+        if (!particleHost) {
+            return;
+        }
+
+        window.setTimeout(() => {
+            particleHost.classList.remove("seat-loss-explosion-active");
+            particleHost.replaceChildren();
+        }, SEAT_EXPLOSION_DURATION_MS + 100);
+    }
+
+    function triggerSeatLossOverlay(particleHost) {
+        if (!particleHost) {
+            return;
+        }
+
+        particleHost.classList.remove("seat-loss-explosion-active");
+
+        // Restart the CSS animation when multiple losses happen back to back.
+        void particleHost.offsetWidth;
+
+        particleHost.classList.add("seat-loss-explosion-active");
+    }
+
+    function createSeatLossExplosionOptions() {
+        return {
+            count: 42,
+            angle: 90,
+            spread: 75,
+            startVelocity: 32,
+            decay: 0.91,
+            gravity: 1.05,
+            drift: 0,
+            ticks: 205,
+            scalar: 0.95,
+            zIndex: 0,
+            disableForReducedMotion: false,
+            position: {
+                x: 50,
+                y: 68
+            },
+            colors: ["#fff7cc", "#fde68a", "#fbbf24", "#f87171", "#ffffff"],
+            shapes: ["square", "circle", "star"]
+        };
+    }
+
+    async function runSeatLossExplosion(seatIndex) {
+        const seatElement = getSeatElement(Number(seatIndex));
+        const particleHost = getSeatParticleHost(seatElement);
+        const particleHostId = particleHost?.id;
+
+        if (!seatElement || !particleHost || !particleHostId || particleHost.offsetWidth === 0 || particleHost.offsetHeight === 0) {
+            return;
+        }
+
+        if (typeof window.confetti !== "function") {
+            console.warn("Seat loss explosion skipped because tsParticles confetti is unavailable");
+            triggerSeatLossOverlay(particleHost);
+            clearSeatParticleHost(particleHost);
+            return;
+        }
+
+        triggerSeatLossOverlay(particleHost);
+        particleHost.replaceChildren();
+
+        try {
+            await window.confetti(particleHostId, createSeatLossExplosionOptions());
+        } catch (error) {
+            console.warn("Seat loss explosion failed to initialize", error);
+            particleHost.replaceChildren();
+            return;
+        }
+
+        clearSeatParticleHost(particleHost);
     }
 
     /**
@@ -325,9 +406,18 @@ window.cardGamesTable = (() => {
         }, resolvedDelay);
     }
 
+    function animateSeatLossExplosion(seatIndex, delayMs) {
+        const resolvedDelay = Number.isFinite(delayMs) ? Math.max(0, Math.floor(delayMs)) : 0;
+
+        window.setTimeout(() => {
+            void runSeatLossExplosion(Number(seatIndex));
+        }, resolvedDelay);
+    }
+
     return {
         animateScrewYourNeighborTrade,
         animateScrewYourNeighborDeckTrade,
-        animateChipToPot
+        animateChipToPot,
+        animateSeatLossExplosion
     };
 })();

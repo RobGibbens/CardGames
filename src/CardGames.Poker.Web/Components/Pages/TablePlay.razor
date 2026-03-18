@@ -4859,6 +4859,11 @@
             try
             {
                 await JSRuntime.InvokeVoidAsync(
+                    "cardGamesTable.animateSeatLossExplosion",
+                    seatIndex,
+                    staggerDelayMs);
+
+                await JSRuntime.InvokeVoidAsync(
                     "cardGamesTable.animateChipToPot",
                     seatIndex,
                     ScrewYourNeighborTradeAnimationDurationMs,

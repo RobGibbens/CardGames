@@ -7,6 +7,7 @@
 <div
  class="seat-container @(IsCurrentPlayer ? "current-player-layout" : "remote-player-layout") @(Seat.IsOccupied ? "occupied" : "empty")"
 	data-seat-index="@Seat.SeatIndex">
+	<div id="seat-particle-host-@Seat.SeatIndex" class="seat-particle-host" aria-hidden="true"></div>
 	@if (Seat.IsOccupied)
 	{
 		<!-- Cards -->
