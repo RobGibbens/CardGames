@@ -67,7 +67,9 @@ window.cardGamesAudio = (() => {
 
 window.cardGamesTable = (() => {
     const DEFAULT_DURATION_MS = 650;
-    const SEAT_EXPLOSION_DURATION_MS = 2350;
+    const SEAT_EXPLOSION_DURATION_MS = 4400;
+    const seatParticleCleanupTimeouts = new Map();
+    const seatExplosionContainers = new Map();
 
     function getSeatElement(seatIndex) {
         if (!Number.isFinite(seatIndex)) {
@@ -81,15 +83,72 @@ window.cardGamesTable = (() => {
         return seatElement?.querySelector(".seat-particle-host") ?? null;
     }
 
+    function destroySeatExplosionContainer(particleHost) {
+        if (!particleHost?.id) {
+            return;
+        }
+
+        const existingContainer = seatExplosionContainers.get(particleHost.id);
+        if (!existingContainer) {
+            return;
+        }
+
+        seatExplosionContainers.delete(particleHost.id);
+
+        try {
+            existingContainer.destroy();
+        } catch (error) {
+            console.warn("Seat loss explosion cleanup failed", error);
+        }
+    }
+
+    function positionSeatParticleHost(seatElement, particleHost) {
+        if (!seatElement || !particleHost) {
+            return false;
+        }
+
+        const particleAnchor = seatElement.querySelector(".seat-visuals")
+            ?? seatElement.querySelector(".info-pill")
+            ?? seatElement;
+
+        const hostBounds = particleAnchor.getBoundingClientRect();
+        const seatBounds = seatElement.getBoundingClientRect();
+
+        if (hostBounds.width === 0 || hostBounds.height === 0 || seatBounds.width === 0 || seatBounds.height === 0) {
+            return false;
+        }
+
+        const hostSize = Math.max(170, Math.round(Math.max(hostBounds.width, hostBounds.height) * 1.95));
+        const centerX = hostBounds.left - seatBounds.left + (hostBounds.width / 2);
+        const centerY = hostBounds.top - seatBounds.top + (hostBounds.height * 0.42);
+
+        particleHost.style.width = `${hostSize}px`;
+        particleHost.style.height = `${hostSize}px`;
+        particleHost.style.left = `${centerX}px`;
+        particleHost.style.top = `${centerY}px`;
+        particleHost.style.transform = "translate(-50%, -50%)";
+
+        return true;
+    }
+
     function clearSeatParticleHost(particleHost) {
         if (!particleHost) {
             return;
         }
 
-        window.setTimeout(() => {
+        const existingTimeout = seatParticleCleanupTimeouts.get(particleHost.id);
+        if (existingTimeout) {
+            window.clearTimeout(existingTimeout);
+        }
+
+        const timeoutId = window.setTimeout(() => {
+            seatParticleCleanupTimeouts.delete(particleHost.id);
+            destroySeatExplosionContainer(particleHost);
             particleHost.classList.remove("seat-loss-explosion-active");
             particleHost.replaceChildren();
         }, SEAT_EXPLOSION_DURATION_MS + 100);
+
+        seatParticleCleanupTimeouts.set(particleHost.id, timeoutId);
     }
 
     function triggerSeatLossOverlay(particleHost) {
@@ -107,23 +166,252 @@ window.cardGamesTable = (() => {
 
     function createSeatLossExplosionOptions() {
         return {
-            count: 42,
-            angle: 90,
-            spread: 75,
-            startVelocity: 32,
-            decay: 0.91,
-            gravity: 1.05,
-            drift: 0,
-            ticks: 205,
-            scalar: 0.95,
-            zIndex: 0,
-            disableForReducedMotion: false,
-            position: {
-                x: 50,
-                y: 68
+            fullScreen: {
+                enable: false,
+                zIndex: 0
             },
-            colors: ["#fff7cc", "#fde68a", "#fbbf24", "#f87171", "#ffffff"],
-            shapes: ["square", "circle", "star"]
+            background: {
+                color: "transparent"
+            },
+            detectRetina: true,
+            fpsLimit: 120,
+            pauseOnBlur: false,
+            particles: {
+                number: {
+                    value: 0
+                }
+            },
+            emitters: [
+                {
+                    position: {
+                        x: 50,
+                        y: 54
+                    },
+                    size: {
+                        width: 0,
+                        height: 0
+                    },
+                    life: {
+                        count: 1,
+                        duration: 0.18
+                    },
+                    rate: {
+                        quantity: 32,
+                        delay: 0.01
+                    },
+                    particles: {
+                        color: {
+                            value: ["#fff7b3", "#ffd166", "#ff9f1c", "#ff6b00", "#ffe8a3"]
+                        },
+                        shape: {
+                            type: ["circle"]
+                        },
+                        size: {
+                            value: {
+                                min: 20,
+                                max: 42
+                            },
+                            animation: {
+                                enable: true,
+                                speed: 48,
+                                startValue: "min",
+                                destroy: "max"
+                            }
+                        },
+                        opacity: {
+                            value: {
+                                min: 0.55,
+                                max: 1
+                            },
+                            animation: {
+                                enable: true,
+                                speed: 2.6,
+                                startValue: "max",
+                                destroy: "min"
+                            }
+                        },
+                        move: {
+                            enable: true,
+                            speed: {
+                                min: 26,
+                                max: 44
+                            },
+                            outModes: {
+                                default: "destroy"
+                            },
+                            decay: 0.2,
+                            gravity: {
+                                enable: false
+                            }
+                        },
+                        zIndex: {
+                            value: 4
+                        }
+                    }
+                },
+                {
+                    position: {
+                        x: 50,
+                        y: 56
+                    },
+                    size: {
+                        width: 0,
+                        height: 0
+                    },
+                    life: {
+                        count: 1,
+                        duration: 0.42,
+                        delay: 0.06
+                    },
+                    rate: {
+                        quantity: 26,
+                        delay: 0.018
+                    },
+                    particles: {
+                        color: {
+                            value: ["#5b3a29", "#70492d", "#8b5e3c", "#6b7280", "#3f3f46"]
+                        },
+                        shape: {
+                            type: ["square", "circle"]
+                        },
+                        size: {
+                            value: {
+                                min: 5,
+                                max: 11
+                            }
+                        },
+                        opacity: {
+                            value: {
+                                min: 0.55,
+                                max: 0.9
+                            },
+                            animation: {
+                                enable: true,
+                                speed: 1.1,
+                                startValue: "max",
+                                destroy: "min"
+                            }
+                        },
+                        rotate: {
+                            value: {
+                                min: 0,
+                                max: 360
+                            },
+                            animation: {
+                                enable: true,
+                                speed: 120
+                            }
+                        },
+                        move: {
+                            enable: true,
+                            speed: {
+                                min: 7,
+                                max: 17
+                            },
+                            outModes: {
+                                default: "destroy"
+                            },
+                            decay: 0.08,
+                            life: {
+                                duration: {
+                                    value: 1.1,
+                                    sync: true
+                                }
+                            },
+                            gravity: {
+                                enable: true,
+                                acceleration: 1.8
+                            },
+                            drift: {
+                                min: -0.45,
+                                max: 0.45
+                            }
+                        },
+                        zIndex: {
+                            value: 3
+                        }
+                    }
+                },
+                {
+                    position: {
+                        x: 50,
+                        y: 58
+                    },
+                    size: {
+                        width: 0,
+                        height: 0
+                    },
+                    life: {
+                        count: 1,
+                        duration: 1.9,
+                        delay: 0.12
+                    },
+                    rate: {
+                        quantity: 12,
+                        delay: 0.07
+                    },
+                    particles: {
+                        color: {
+                            value: ["#d1d5db", "#9ca3af", "#6b7280", "#4b5563", "#374151"]
+                        },
+                        shape: {
+                            type: ["circle"]
+                        },
+                        size: {
+                            value: {
+                                min: 30,
+                                max: 58
+                            },
+                            animation: {
+                                enable: true,
+                                speed: 6.5,
+                                startValue: "min",
+                                destroy: "max"
+                            }
+                        },
+                        opacity: {
+                            value: {
+                                min: 0.2,
+                                max: 0.42
+                            },
+                            animation: {
+                                enable: true,
+                                speed: 0.2,
+                                startValue: "max",
+                                destroy: "min"
+                            }
+                        },
+                        move: {
+                            enable: true,
+                            speed: {
+                                min: 0.45,
+                                max: 1.25
+                            },
+                            direction: "top",
+                            outModes: {
+                                default: "destroy"
+                            },
+                            decay: 0.01,
+                            life: {
+                                duration: {
+                                    value: 3.3,
+                                    sync: true
+                                }
+                            },
+                            gravity: {
+                                enable: false
+                            },
+                            drift: {
+                                min: -0.18,
+                                max: 0.18
+                            }
+                        },
+                        zIndex: {
+                            value: 2
+                        }
+                    }
+                }
+            ]
         };
     }
 
@@ -132,24 +420,35 @@ window.cardGamesTable = (() => {
         const particleHost = getSeatParticleHost(seatElement);
         const particleHostId = particleHost?.id;
 
-        if (!seatElement || !particleHost || !particleHostId || particleHost.offsetWidth === 0 || particleHost.offsetHeight === 0) {
+        if (!seatElement || !particleHost || !particleHostId) {
             return;
         }
 
-        if (typeof window.confetti !== "function") {
-            console.warn("Seat loss explosion skipped because tsParticles confetti is unavailable");
+        if (!positionSeatParticleHost(seatElement, particleHost) || particleHost.offsetWidth === 0 || particleHost.offsetHeight === 0) {
+            return;
+        }
+
+        if (!window.tsParticles || typeof window.tsParticles.load !== "function") {
+            console.warn("Seat loss explosion skipped because tsParticles is unavailable");
             triggerSeatLossOverlay(particleHost);
             clearSeatParticleHost(particleHost);
             return;
         }
 
         triggerSeatLossOverlay(particleHost);
+        destroySeatExplosionContainer(particleHost);
         particleHost.replaceChildren();
 
         try {
-            await window.confetti(particleHostId, createSeatLossExplosionOptions());
+            const explosionContainer = await window.tsParticles.load({
+                id: particleHostId,
+                options: createSeatLossExplosionOptions()
+            });
+
+            seatExplosionContainers.set(particleHostId, explosionContainer);
         } catch (error) {
             console.warn("Seat loss explosion failed to initialize", error);
+            destroySeatExplosionContainer(particleHost);
             particleHost.replaceChildren();
             return;
         }
