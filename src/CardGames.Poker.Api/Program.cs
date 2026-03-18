@@ -31,6 +31,9 @@ using System.Security.Claims;
 using CardGames.Poker.Api.Features.Leagues.v1;
 using CardGames.Poker.Api.Features.Leagues.v1.Telemetry;
 using CardGames.Poker.Api.Games;
+using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Features.Testing;
+using Microsoft.AspNetCore.Identity;
 
 namespace CardGames.Poker.Api;
 
@@ -73,6 +76,8 @@ public class Program
         builder.Services.AddAuthorization();
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+        builder.Services.Configure<DevelopmentUserSeedOptions>(
+            builder.Configuration.GetSection(DevelopmentUserSeedOptions.SectionName));
 
         // Configure CORS for SignalR (requires credentials support)
         builder.Services.AddCors(options =>
@@ -119,6 +124,14 @@ public class Program
         builder.AddRedisDistributedCache("cache");
 
         builder.AddSqlServerDbContext<CardsDbContext>("cardsdb");
+
+        builder.Services.AddIdentityCore<ApplicationUser>(options =>
+            {
+                options.SignIn.RequireConfirmedAccount = true;
+                options.Stores.SchemaVersion = IdentitySchemaVersions.Version3;
+            })
+            .AddEntityFrameworkStores<CardsDbContext>()
+            .AddDefaultTokenProviders();
 
         builder.Services.AddFusionCache()
             .WithSerializer(new FusionCacheSystemTextJsonSerializer(new System.Text.Json.JsonSerializerOptions
