@@ -816,4 +816,135 @@ public class TableStateBuilderTests : IntegrationTestBase
         holeIndexes.Should().HaveCount(3, "South Dakota must highlight exactly 3 hole cards in the best hand");
         communityIndexes.Should().HaveCount(2, "South Dakota must highlight exactly 2 community cards in the best hand");
     }
+
+    [Fact]
+    public async Task BuildPublicStateAsync_CompletedTenthHand_IncludesDeterministicWinningSoundCue()
+    {
+        var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(
+            DbContext,
+            "SCREWYOURNEIGHBOR",
+            2,
+            startingChips: 25,
+            ante: 25);
+
+        setup.Game.CurrentHandNumber = 9;
+        await DbContext.SaveChangesAsync();
+
+        await Mediator.Send(new CardGames.Poker.Api.Features.Games.Generic.v1.Commands.StartHand.StartHandCommand(setup.Game.Id));
+
+        var game = await DbContext.Games
+            .Include(g => g.GamePlayers).ThenInclude(gp => gp.Player)
+            .FirstAsync(g => g.Id == setup.Game.Id);
+
+        var players = game.GamePlayers.OrderBy(gp => gp.SeatPosition).ToList();
+        var winner = players[0];
+        var loser = players[1];
+
+        var handCards = await DbContext.GameCards
+            .Where(gc => gc.GameId == game.Id &&
+                         gc.HandNumber == game.CurrentHandNumber &&
+                         gc.Location == CardLocation.Hand &&
+                         gc.GamePlayerId != null)
+            .ToListAsync();
+
+        handCards.First(c => c.GamePlayerId == winner.Id).Symbol = CardSymbol.Four;
+        handCards.First(c => c.GamePlayerId == winner.Id).Suit = CardSuit.Hearts;
+        handCards.First(c => c.GamePlayerId == loser.Id).Symbol = CardSymbol.Ace;
+        handCards.First(c => c.GamePlayerId == loser.Id).Suit = CardSuit.Spades;
+        await DbContext.SaveChangesAsync();
+
+        for (var i = 0; i < 2; i++)
+        {
+            game = await DbContext.Games
+                .Include(g => g.GamePlayers)
+                .AsNoTracking()
+                .FirstAsync(g => g.Id == setup.Game.Id);
+
+            if (game.CurrentPhase != nameof(Phases.KeepOrTrade))
+            {
+                break;
+            }
+
+            var currentActor = game.GamePlayers.First(gp => gp.SeatPosition == game.CurrentPlayerIndex);
+            var keepResult = await Mediator.Send(new CardGames.Poker.Api.Features.Games.ScrewYourNeighbor.v1.Commands.KeepOrTrade.KeepOrTradeCommand(game.Id, currentActor.PlayerId, "Keep"));
+            keepResult.IsT0.Should().BeTrue();
+        }
+
+        var showdownResult = await Mediator.Send(new CardGames.Poker.Api.Features.Games.Generic.v1.Commands.PerformShowdown.PerformShowdownCommand(setup.Game.Id));
+        showdownResult.IsT0.Should().BeTrue();
+
+        var firstResult = await TableStateBuilder.BuildPublicStateAsync(setup.Game.Id);
+        var secondResult = await TableStateBuilder.BuildPublicStateAsync(setup.Game.Id);
+
+        firstResult.Should().NotBeNull();
+        firstResult!.SoundEffects.Should().ContainSingle();
+        firstResult.SoundEffects![0].EventKey.Should().Be("winning");
+        firstResult.SoundEffects[0].HandNumber.Should().Be(10);
+        firstResult.SoundEffects[0].CueKey.Should().StartWith("winning:10:");
+        firstResult.SoundEffects[0].Source.Should().Be("/sounds/soundboard/winning/pay_dat_man_his_money.mp3");
+
+        secondResult.Should().NotBeNull();
+        secondResult!.SoundEffects.Should().ContainSingle();
+        secondResult.SoundEffects![0].Source.Should().Be(firstResult.SoundEffects[0].Source);
+        secondResult.SoundEffects[0].CueKey.Should().Be(firstResult.SoundEffects[0].CueKey);
+    }
+
+    [Fact]
+    public async Task BuildPublicStateAsync_CompletedNonTenthHand_DoesNotIncludeWinningSoundCue()
+    {
+        var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(
+            DbContext,
+            "SCREWYOURNEIGHBOR",
+            2,
+            startingChips: 25,
+            ante: 25);
+
+        await Mediator.Send(new CardGames.Poker.Api.Features.Games.Generic.v1.Commands.StartHand.StartHandCommand(setup.Game.Id));
+
+        var game = await DbContext.Games
+            .Include(g => g.GamePlayers).ThenInclude(gp => gp.Player)
+            .FirstAsync(g => g.Id == setup.Game.Id);
+
+        var players = game.GamePlayers.OrderBy(gp => gp.SeatPosition).ToList();
+        var winner = players[0];
+        var loser = players[1];
+
+        var handCards = await DbContext.GameCards
+            .Where(gc => gc.GameId == game.Id &&
+                         gc.HandNumber == game.CurrentHandNumber &&
+                         gc.Location == CardLocation.Hand &&
+                         gc.GamePlayerId != null)
+            .ToListAsync();
+
+        handCards.First(c => c.GamePlayerId == winner.Id).Symbol = CardSymbol.Four;
+        handCards.First(c => c.GamePlayerId == winner.Id).Suit = CardSuit.Hearts;
+        handCards.First(c => c.GamePlayerId == loser.Id).Symbol = CardSymbol.Ace;
+        handCards.First(c => c.GamePlayerId == loser.Id).Suit = CardSuit.Spades;
+        await DbContext.SaveChangesAsync();
+
+        for (var i = 0; i < 2; i++)
+        {
+            game = await DbContext.Games
+                .Include(g => g.GamePlayers)
+                .AsNoTracking()
+                .FirstAsync(g => g.Id == setup.Game.Id);
+
+            if (game.CurrentPhase != nameof(Phases.KeepOrTrade))
+            {
+                break;
+            }
+
+            var currentActor = game.GamePlayers.First(gp => gp.SeatPosition == game.CurrentPlayerIndex);
+            var keepResult = await Mediator.Send(new CardGames.Poker.Api.Features.Games.ScrewYourNeighbor.v1.Commands.KeepOrTrade.KeepOrTradeCommand(game.Id, currentActor.PlayerId, "Keep"));
+            keepResult.IsT0.Should().BeTrue();
+        }
+
+        var showdownResult = await Mediator.Send(new CardGames.Poker.Api.Features.Games.Generic.v1.Commands.PerformShowdown.PerformShowdownCommand(setup.Game.Id));
+        showdownResult.IsT0.Should().BeTrue();
+
+        var result = await TableStateBuilder.BuildPublicStateAsync(setup.Game.Id);
+
+        result.Should().NotBeNull();
+        result!.SoundEffects.Should().BeNullOrEmpty();
+    }
 }

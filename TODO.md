@@ -3,7 +3,7 @@
 
 ## Still to do
 
-- [ ] Add rounders sounds 
+- [x] Add rounders sounds 
 - [ ] https://github.com/leeoades/FunctionalStateMachine
 - [ ] Dealer's Choice - pick which games are included
 

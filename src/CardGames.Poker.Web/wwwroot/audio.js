@@ -1,10 +1,17 @@
 window.cardGamesAudio = (() => {
-    const dealSoundMutedStorageKey = "cardGames.dealSoundMuted";
+    const soundMutedStorageKey = "cardGames.dealSoundMuted";
+    const soundboardFolderDefinitions = {
+        winning: {
+            playback: "random",
+            files: ["pay_dat_man_his_money.mp3"]
+        }
+    };
+    const soundboardSourceCache = new Map();
     let preferredDealCardSource;
     let isMuted = false;
 
     try {
-        const persisted = window.localStorage.getItem(dealSoundMutedStorageKey);
+        const persisted = window.localStorage.getItem(soundMutedStorageKey);
         if (persisted !== null) {
             isMuted = persisted === "true";
         }
@@ -25,6 +32,42 @@ window.cardGamesAudio = (() => {
         return preferredDealCardSource;
     }
 
+    function resolveSoundboardSources(folderKey) {
+        if (soundboardSourceCache.has(folderKey)) {
+            return soundboardSourceCache.get(folderKey);
+        }
+
+        const folderDefinition = soundboardFolderDefinitions[folderKey];
+        if (!folderDefinition) {
+            return [];
+        }
+
+        const sources = folderDefinition.files.map((fileName) => "/sounds/soundboard/" + folderKey + "/" + encodeURIComponent(fileName));
+        soundboardSourceCache.set(folderKey, sources);
+        return sources;
+    }
+
+    function playSource(source) {
+        if (isMuted || !source) {
+            return;
+        }
+
+        const effect = new Audio(source);
+        effect.preload = "auto";
+        void effect.play().catch(() => {
+            // Ignore browser autoplay/capability failures.
+        });
+    }
+
+    function playRandomSource(sources) {
+        if (!Array.isArray(sources) || sources.length === 0) {
+            return;
+        }
+
+        const randomIndex = Math.floor(Math.random() * sources.length);
+        playSource(sources[randomIndex]);
+    }
+
     function playDealCard(count) {
         if (isMuted) {
             return;
@@ -35,12 +78,33 @@ window.cardGamesAudio = (() => {
 
         for (let index = 0; index < cardsToPlay; index += 1) {
             window.setTimeout(() => {
-                const effect = new Audio(source);
-                effect.preload = "auto";
-                void effect.play().catch(() => {
-                    // Ignore browser autoplay/capability failures.
-                });
+                playSource(source);
             }, index * 90);
+        }
+    }
+
+    function playSoundEffect(source) {
+        playSource(source);
+    }
+
+    function playEventSound(eventKey) {
+        if (isMuted || typeof eventKey !== "string" || eventKey.length === 0) {
+            return;
+        }
+
+        const folderDefinition = soundboardFolderDefinitions[eventKey];
+        if (!folderDefinition) {
+            return;
+        }
+
+        const sources = resolveSoundboardSources(eventKey);
+        switch (folderDefinition.playback) {
+            case "random":
+                playRandomSource(sources);
+                break;
+            default:
+                playSource(sources[0]);
+                break;
         }
     }
 
@@ -48,7 +112,7 @@ window.cardGamesAudio = (() => {
         isMuted = Boolean(muted);
 
         try {
-            window.localStorage.setItem(dealSoundMutedStorageKey, isMuted ? "true" : "false");
+            window.localStorage.setItem(soundMutedStorageKey, isMuted ? "true" : "false");
         } catch {
             // Ignore storage access failures.
         }
@@ -60,6 +124,8 @@ window.cardGamesAudio = (() => {
 
     return {
         playDealCard,
+        playSoundEffect,
+        playEventSound,
         setMuted,
         getMuted
     };
