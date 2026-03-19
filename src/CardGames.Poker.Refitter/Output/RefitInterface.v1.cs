@@ -2320,10 +2320,33 @@ namespace CardGames.Poker.Api.Clients
         Task<IApiResponse<PerformShowdownSuccessful>> GoodBadUglyPerformShowdownAsync(System.Guid gameId, CancellationToken cancellationToken = default);
     }
 
-    /// <summary>Start Hand (Generic)</summary>
+    /// <summary>Get Generated Table Name (Generic)</summary>
     [System.CodeDom.Compiler.GeneratedCode("Refitter", "1.7.0.0")]
     public partial interface IGenericGamesApi
     {
+        /// <summary>Get Generated Table Name (Generic)</summary>
+        /// <remarks>Retrieves a generated table name suggestion for a new table. Currently returns a placeholder value.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Get("/api/v1/games/generic/table-name")]
+        Task<IApiResponse<GetGeneratedTableNameResponse>> GenericGetGeneratedTableNameAsync([Query] string? gameType = null, CancellationToken cancellationToken = default);
+
         /// <summary>Start Hand (Generic)</summary>
         /// <remarks>Starts a new hand in any poker game variant. The game type is automatically detected from the game entity and routed to the appropriate flow handler for game-specific initialization. After calling this endpoint, the game transitions to the initial phase determined by the game type (e.g., CollectingAntes for most games, Dealing for Kings and Lows).</remarks>
         /// <returns>
@@ -6148,6 +6171,21 @@ namespace CardGames.Poker.Api.Contracts
         [JsonPropertyName("rowVersion")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string RowVersion { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record GetGeneratedTableNameResponse
+    {
+        [JsonConstructor]
+        public GetGeneratedTableNameResponse(string @name)
+        {
+            this.Name = @name;
+        }
+
+        [JsonPropertyName("name")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Name { get; init; }
 
     }
 

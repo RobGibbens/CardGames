@@ -199,13 +199,30 @@
 							<div class="form-row">
 								<div class="form-group">
 									<label class="form-label" for="tableName">Table Name</label>
-									<input type="text"
-										   id="tableName"
-										   class="form-input"
-										   placeholder="e.g., Friday Night Poker"
-										   value="@_tableNameInput"
-										   @oninput="OnTableNameInput"
-										   maxlength="50" />
+									<div class="table-name-input-row">
+										<input type="text"
+											   id="tableName"
+											   class="form-input"
+											   placeholder="e.g., Friday Night Poker"
+											   value="@_tableNameInput"
+											   @oninput="OnTableNameInput"
+											   maxlength="50" />
+										<button class="table-name-generate-button"
+											type="button"
+											title="Generate table name"
+											aria-label="Generate table name"
+											@onclick="GenerateTableNameAsync"
+											disabled="@(_isGeneratingTableName || _selectedVariant is null)">
+											@if (_isGeneratingTableName)
+											{
+												<span class="loading-spinner-small"></span>
+											}
+											else
+											{
+												<i class="fa-thin fa-bolt-auto"></i>
+											}
+										</button>
+									</div>
 									<span class="form-hint">Give your table a memorable name</span>
 								</div>
 							</div>
@@ -504,6 +521,42 @@
 		line-height: 1.35;
 	}
 
+	.table-name-input-row {
+		display: flex;
+		align-items: stretch;
+		gap: 0.75rem;
+	}
+
+	.table-name-input-row .form-input {
+		flex: 1 1 auto;
+		min-width: 0;
+	}
+
+	.table-name-generate-button {
+		flex: 0 0 auto;
+		width: 3rem;
+		min-width: 3rem;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		border: 1px solid rgba(148, 163, 184, 0.28);
+		border-radius: 0.85rem;
+		background: rgba(15, 23, 42, 0.72);
+		color: rgba(248, 250, 252, 0.95);
+		transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
+	}
+
+	.table-name-generate-button:hover:not(:disabled) {
+		background: rgba(30, 41, 59, 0.9);
+		border-color: rgba(148, 163, 184, 0.45);
+		transform: translateY(-1px);
+	}
+
+	.table-name-generate-button:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+
 	@@media (max-width: 768px) {
 		.create-step .variant-card.selected-layout {
 			grid-template-columns: 1fr;
@@ -521,12 +574,17 @@
 		.create-table-dealers-choice-selection-item .game-info-odds-toggle-switch {
 			margin-top: 0.1rem;
 		}
+
+		.table-name-input-row {
+			gap: 0.5rem;
+		}
 	}
 </style>
 
 @code {
 	private bool _isLoading = true;
 	private bool _isCreating;
+	private bool _isGeneratingTableName;
 	private string? _loadError;
 	private string? _createError;
 	private string _tableName = "";
@@ -922,6 +980,48 @@
 		finally
 		{
 			_isCreating = false;
+			StateHasChanged();
+		}
+	}
+
+	private async Task GenerateTableNameAsync()
+	{
+		if (_selectedVariant is null || _isGeneratingTableName)
+		{
+			return;
+		}
+
+		_isGeneratingTableName = true;
+		_createError = null;
+		StateHasChanged();
+
+		try
+		{
+			var response = await GamesApi.GenericGetGeneratedTableNameAsync(_selectedVariant.Name);
+
+			if (response.IsSuccessStatusCode && response.Content is not null)
+			{
+				var generatedName = response.Content.Name?.Trim() ?? string.Empty;
+
+				if (generatedName.Length > 50)
+				{
+					generatedName = generatedName[..50];
+				}
+
+				_tableName = generatedName;
+				_tableNameInput = generatedName;
+				return;
+			}
+
+			_createError = "Failed to generate a table name. Please try again.";
+		}
+		catch (Exception ex)
+		{
+			_createError = $"An error occurred while generating a table name: {ex.Message}";
+		}
+		finally
+		{
+			_isGeneratingTableName = false;
 			StateHasChanged();
 		}
 	}
