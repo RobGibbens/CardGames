@@ -7,17 +7,20 @@ public class GetGeneratedTableNameQueryHandler : IRequestHandler<GetGeneratedTab
 {
     public async Task<GetGeneratedTableNameResponse> Handle(GetGeneratedTableNameQuery request, CancellationToken cancellationToken)
     {
-        string gameType = request.GameType ?? string.Empty;
-
-        await using var client = new CopilotClient();
-
-        await using var session = await client.CreateSessionAsync(new SessionConfig
+        try
         {
-            Model = "gpt-5.1-mini"
-        });
+            string gameType = request.GameType ?? string.Empty;
 
-        var prompt =
-            $"""
+            await using var client = new CopilotClient();
+
+            await using var session = await client.CreateSessionAsync(new SessionConfig
+            {
+                Model = "gpt-5.1-mini",
+                OnPermissionRequest = PermissionHandler.ApproveAll
+            });
+
+            var prompt =
+                $"""
                 **Prompt: Generate a Unique Poker Table Name**
 
                 You are generating a creative, unique, and randomized name for an online poker table.
@@ -52,15 +55,20 @@ public class GetGeneratedTableNameQueryHandler : IRequestHandler<GetGeneratedTab
                 - Lucky Coyote Holdem Run
             """;
 
-        var response = await session.SendAndWaitAsync(
-        new MessageOptions
-        {
-            Prompt = prompt
+            var response = await session.SendAndWaitAsync(
+            new MessageOptions
+            {
+                Prompt = prompt
+            }
+            );
+
+            var text = response?.Data.Content ?? "New Table";
+
+            return new GetGeneratedTableNameResponse(text);
         }
-        );
-
-        var text = response?.Data.Content ?? "New Table";
-
-        return new GetGeneratedTableNameResponse(text);
+        catch (Exception ex)
+        {
+            return new GetGeneratedTableNameResponse("New Table");
+        }
     }
 }

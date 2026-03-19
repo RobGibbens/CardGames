@@ -12,7 +12,6 @@
 - [ ] Lobby - Filter by status
 - [ ] Join game modal - should not be able to click out of it
 - [ ] Join game modal background color
-- [ ] Auto generate table name
 - [ ] DC - You're the dealer! Pick a game variant for this hand. - SYN shows Min Bet
 - [ ] Joining table adds 5001 when setting 5000
 - [ ] Bringing in cash to a game should require host approval
@@ -241,3 +240,4 @@
 - [x] Create Table page, make the Create Table button look like a poker table
 - [x] When in dark mode, the Join Seat Amount text is hidden (white on white)
 - [x] Dealer's Choice - pick which games are included
+- [x] Auto generate table name
