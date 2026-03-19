@@ -375,4 +375,85 @@ public class ScrewYourNeighborFlowHandlerTests : IntegrationTestBase
 
 		nextPhase.Should().Be(nameof(Phases.Complete));
 	}
+
+	[Fact]
+	public async Task PerformShowdown_DealersChoiceTerminalHand_DoesNotCompleteTable()
+	{
+		var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(
+			DbContext,
+			"SCREWYOURNEIGHBOR",
+			2,
+			startingChips: 25,
+			ante: 25);
+
+		var game = setup.Game;
+		game.IsDealersChoice = true;
+		game.DealersChoiceDealerPosition = 0;
+		game.OriginalDealersChoiceDealerPosition = 0;
+		game.CurrentHandGameTypeCode = "SCREWYOURNEIGHBOR";
+		game.CurrentHandNumber = 1;
+		game.CurrentPhase = nameof(Phases.Showdown);
+		game.Status = GameStatus.InProgress;
+
+		await DatabaseSeeder.CreatePotAsync(DbContext, game, amount: 0, potType: PotType.Main);
+
+		var winner = setup.GamePlayers[0];
+		var loser = setup.GamePlayers[1];
+		var now = DateTimeOffset.UtcNow;
+
+		DbContext.GameCards.AddRange(
+			new GameCard
+			{
+				Id = Guid.NewGuid(),
+				GameId = game.Id,
+				GamePlayerId = winner.Id,
+				HandNumber = game.CurrentHandNumber,
+				Suit = CardSuit.Hearts,
+				Symbol = CardSymbol.Four,
+				Location = CardLocation.Hand,
+				DealOrder = 1,
+				IsVisible = false,
+				DealtAt = now
+			},
+			new GameCard
+			{
+				Id = Guid.NewGuid(),
+				GameId = game.Id,
+				GamePlayerId = loser.Id,
+				HandNumber = game.CurrentHandNumber,
+				Suit = CardSuit.Spades,
+				Symbol = CardSymbol.Ace,
+				Location = CardLocation.Hand,
+				DealOrder = 1,
+				IsVisible = false,
+				DealtAt = now
+			});
+
+		await DbContext.SaveChangesAsync();
+
+		var handler = new ScrewYourNeighborFlowHandler();
+		var handHistoryRecorder = Scope.ServiceProvider.GetRequiredService<IHandHistoryRecorder>();
+
+		var result = await handler.PerformShowdownAsync(
+			DbContext,
+			game,
+			handHistoryRecorder,
+			now,
+			CancellationToken.None);
+
+		result.IsSuccess.Should().BeTrue();
+
+		var updatedGame = await DbContext.Games.AsNoTracking().FirstAsync(g => g.Id == game.Id);
+		updatedGame.Status.Should().Be(GameStatus.InProgress);
+		updatedGame.NextHandStartsAt.Should().NotBeNull();
+
+		var nextPhase = await handler.ProcessPostShowdownAsync(
+			DbContext,
+			updatedGame,
+			result,
+			now,
+			CancellationToken.None);
+
+		nextPhase.Should().Be(nameof(Phases.Complete));
+	}
 }

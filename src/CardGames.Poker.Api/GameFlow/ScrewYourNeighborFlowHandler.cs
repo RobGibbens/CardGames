@@ -371,9 +371,20 @@ public sealed class ScrewYourNeighborFlowHandler : BaseGameFlowHandler
 			});
 
 			game.HandCompletedAt = now;
-			game.NextHandStartsAt = null; // Game is finished
 			game.UpdatedAt = now;
-			game.Status = GameStatus.Completed;
+
+			if (game.IsDealersChoice)
+			{
+				// On a Dealer's Choice table, terminal SYN ends only the chosen variant.
+				// The background service will hand control back to WaitingForDealerChoice.
+				game.NextHandStartsAt = now.AddSeconds(4);
+				game.Status = GameStatus.InProgress;
+			}
+			else
+			{
+				game.NextHandStartsAt = null;
+				game.Status = GameStatus.Completed;
+			}
 
 			await context.SaveChangesAsync(cancellationToken);
 

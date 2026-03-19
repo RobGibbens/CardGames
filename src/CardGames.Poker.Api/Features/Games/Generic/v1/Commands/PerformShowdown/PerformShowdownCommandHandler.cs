@@ -173,7 +173,7 @@ public sealed class PerformShowdownCommandHandler(
                 .Concat(showdownResult.LoserPlayerIds)
                 .ToHashSet();
 
-            if (game.Status == GameStatus.Completed &&
+            if (ShouldSettleTerminalScrewYourNeighborVariant(game, showdownResult) &&
                 showdownResult.WinnerPlayerIds.Count == 1 &&
                 showdownResult.TotalPotAwarded > 0)
             {
@@ -249,6 +249,19 @@ public sealed class PerformShowdownCommandHandler(
         {
             return await ReconstructInlineShowdownResultAsync(
                 context, game, currentHandPots, usersByEmail, cancellationToken);
+        }
+
+        static bool ShouldSettleTerminalScrewYourNeighborVariant(Game game, ShowdownResult showdownResult)
+        {
+            if (game.Status == GameStatus.Completed)
+            {
+                return true;
+            }
+
+            return game.IsDealersChoice &&
+                   string.Equals(game.CurrentHandGameTypeCode, PokerGameMetadataRegistry.ScrewYourNeighborCode, StringComparison.OrdinalIgnoreCase) &&
+                   showdownResult.WinnerPlayerIds.Count == 1 &&
+                   game.GamePlayers.Count(gp => gp.Status == GamePlayerStatus.Active && gp.ChipStack > 0) <= 1;
         }
 
         // 5. Load cards for players in hand

@@ -271,6 +271,62 @@ public class DealersChoiceContinuousPlayTests : IDisposable
     }
 
     [Fact]
+    public async Task ReadyForNextHand_DCGame_ScrewYourNeighborWinner_WithOneEligiblePlayer_ReturnsToWaitingForDealerChoice()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var game = new Game
+        {
+            Id = Guid.NewGuid(),
+            CurrentPhase = nameof(Phases.Complete),
+            Status = GameStatus.InProgress,
+            NextHandStartsAt = now.AddSeconds(-1),
+            CurrentHandNumber = 1,
+            GameType = new GameType { Code = "SCREWYOURNEIGHBOR", Name = "Screw Your Neighbor" },
+            CurrentHandGameTypeCode = "SCREWYOURNEIGHBOR",
+            DealerPosition = 2,
+            DealersChoiceDealerPosition = 0,
+            OriginalDealersChoiceDealerPosition = 0,
+            IsDealersChoice = true,
+            Ante = 25,
+            MinBet = 25
+        };
+
+        game.GamePlayers.Add(new GamePlayer { GameId = game.Id, PlayerId = Guid.NewGuid(), Status = GamePlayerStatus.Active, SeatPosition = 0, ChipStack = 150, LeftAtHandNumber = -1 });
+        game.GamePlayers.Add(new GamePlayer { GameId = game.Id, PlayerId = Guid.NewGuid(), Status = GamePlayerStatus.Active, SeatPosition = 1, ChipStack = 0, LeftAtHandNumber = -1, IsSittingOut = true });
+        game.GamePlayers.Add(new GamePlayer { GameId = game.Id, PlayerId = Guid.NewGuid(), Status = GamePlayerStatus.Active, SeatPosition = 2, ChipStack = 0, LeftAtHandNumber = -1, IsSittingOut = true });
+
+        _dbContext.Games.Add(game);
+        _dbContext.Pots.Add(new Pot
+        {
+            Id = Guid.CreateVersion7(),
+            GameId = game.Id,
+            HandNumber = game.CurrentHandNumber,
+            PotType = PotType.Main,
+            Amount = 50,
+            IsAwarded = true,
+            AwardedAt = now,
+            CreatedAt = now
+        });
+        await _dbContext.SaveChangesAsync();
+
+        var handler = _flowHandlerFactory.SetHandlerForCode("SCREWYOURNEIGHBOR");
+        handler.InitialPhase = "Dealing";
+        handler.SkipsAnteCollection = true;
+        handler.IsMultiHandVariant = true;
+
+        await _service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+
+        var updatedGame = await _dbContext.Games.FindAsync(game.Id);
+        updatedGame.Should().NotBeNull();
+        updatedGame!.CurrentPhase.Should().Be(nameof(Phases.WaitingForDealerChoice));
+        updatedGame.Status.Should().Be(GameStatus.BetweenHands);
+        updatedGame.DealersChoiceDealerPosition.Should().Be(1,
+            "the Dealer's Choice turn should advance from the original SYN picker, not get stranded in WaitingForPlayers");
+        updatedGame.GameTypeId.Should().BeNull();
+        updatedGame.CurrentHandGameTypeCode.Should().BeNull();
+    }
+
+    [Fact]
     public async Task ReadyForNextHand_DCGame_BroadcastsGameState()
     {
         var now = DateTimeOffset.UtcNow;

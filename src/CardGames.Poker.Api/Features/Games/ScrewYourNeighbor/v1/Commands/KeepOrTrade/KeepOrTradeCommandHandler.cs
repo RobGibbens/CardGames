@@ -187,7 +187,7 @@ public class KeepOrTradeCommandHandler(
 	{
 		var settlementPayouts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
-		if (game.Status == GameStatus.Completed &&
+		if (ShouldSettleTerminalScrewYourNeighborVariant(game, showdownResult) &&
 		    showdownResult.WinnerPlayerIds.Count == 1 &&
 		    showdownResult.TotalPotAwarded > 0)
 		{
@@ -199,6 +199,19 @@ public class KeepOrTradeCommandHandler(
 		}
 
 		return settlementPayouts;
+	}
+
+	private static bool ShouldSettleTerminalScrewYourNeighborVariant(Game game, ShowdownResult showdownResult)
+	{
+		if (game.Status == GameStatus.Completed)
+		{
+			return true;
+		}
+
+		return game.IsDealersChoice &&
+		       string.Equals(game.CurrentHandGameTypeCode, PokerGameMetadataRegistry.ScrewYourNeighborCode, StringComparison.OrdinalIgnoreCase) &&
+		       showdownResult.WinnerPlayerIds.Count == 1 &&
+		       game.GamePlayers.Count(gp => gp.Status == GamePlayerStatus.Active && gp.ChipStack > 0) <= 1;
 	}
 
 	/// <summary>

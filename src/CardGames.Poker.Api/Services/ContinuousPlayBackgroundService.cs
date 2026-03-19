@@ -1,3 +1,4 @@
+using System.Text.Json;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.GameFlow;
@@ -534,6 +535,20 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 					game.Id);
 			}
 
+		// Recompute eligible players after auto-sit-out so downstream checks
+		// (e.g. TryTransitionTerminalDealersChoiceScrewYourNeighborAsync) use
+		// the correct count. Without this, ante=0 games could include 0-chip
+		// players who were just sat out, inflating the count.
+		if (insufficientChipPlayers.Count > 0)
+		{
+			eligiblePlayers = game.GamePlayers
+				.Where(gp => gp.Status == GamePlayerStatus.Active &&
+							 !gp.IsSittingOut &&
+							 gp.ChipStack >= ante &&
+							 gp.LeftAtHandNumber == -1)
+				.ToList();
+		}
+
 			// 3a. For games with chip coverage check requirement, check if any player cannot cover the current pot
 			if (flowHandler.RequiresChipCoverageCheck)
 			{
@@ -647,9 +662,43 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			return;
 		}
 
+		if (await TryTransitionTerminalDealersChoiceScrewYourNeighborAsync(
+			context,
+			broadcaster,
+			game,
+			flowHandler,
+			eligiblePlayers.Count,
+			now,
+			cancellationToken))
+		{
+			return;
+		}
+
 		// Check minimum player count
 		if (eligiblePlayers.Count < 2)
 		{
+			// Dealer's Choice tables should return to game selection, not WaitingForPlayers,
+			// when a variant finishes with insufficient eligible players. The next dealer can
+			// pick a different game type once more players join or add chips.
+			if (game.IsDealersChoice &&
+				game.CurrentPhase != nameof(Phases.WaitingToStart) &&
+				!string.IsNullOrWhiteSpace(game.CurrentHandGameTypeCode))
+			{
+				_logger.LogInformation(
+					"[DC-FALLBACK] Game {GameId}: Fewer than 2 eligible players after variant {GameType}, " +
+					"returning to WaitingForDealerChoice instead of WaitingForPlayers (EligibleCount={EligibleCount})",
+					game.Id, game.CurrentHandGameTypeCode, eligiblePlayers.Count);
+
+				await TransitionDealersChoiceToWaitingForChoiceAsync(
+					context,
+					broadcaster,
+					game,
+					now,
+					cancellationToken,
+					"Dealer's Choice game {GameId}: variant ended with insufficient players, waiting for dealer at seat {DcDealerSeat} to choose next game");
+				return;
+			}
+
 			_logger.LogInformation(
 				"Game {GameId} has insufficient eligible players ({Count}), pausing continuous play",
 				game.Id,
@@ -688,6 +737,10 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			return;
 		}
 
+		// SYN in DC stores pre-SYN chip snapshots in VariantState; preserve across multi-hand rounds.
+		var preserveVariantState = game.IsDealersChoice &&
+			string.Equals(flowHandler.GameTypeCode, PokerGameMetadataRegistry.ScrewYourNeighborCode, StringComparison.OrdinalIgnoreCase);
+
 		// Reset player states for new hand
 		foreach (var gamePlayer in game.GamePlayers.Where(gp => gp.Status == GamePlayerStatus.Active))
 		{
@@ -698,7 +751,8 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			gamePlayer.IsAllIn = false;
 			gamePlayer.HasDrawnThisRound = false;
 			gamePlayer.DropOrStayDecision = null;
-			gamePlayer.VariantState = null;
+			if (!preserveVariantState)
+				gamePlayer.VariantState = null;
 		}
 
 		// Prepare cards for the upcoming hand. Most games clear prior cards here,
@@ -823,25 +877,13 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			if (!isMultiHandContinuation)
 			{
 				// Current game variant is done — rotate DC dealer and wait for the next choice
-				AdvanceDealersChoiceDealer(game);
-
-				game.GameTypeId = null;
-				game.CurrentHandGameTypeCode = null;
-				game.Ante = null;
-				game.MinBet = null;
-				game.CurrentPhase = nameof(Phases.WaitingForDealerChoice);
-				game.Status = GameStatus.BetweenHands;
-				game.HandCompletedAt = null;
-				game.NextHandStartsAt = null;
-				game.UpdatedAt = now;
-
-				await context.SaveChangesAsync(cancellationToken);
-				await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
-
-				_logger.LogInformation(
-					"Dealer's Choice game {GameId}: variant finished, waiting for dealer at seat {DcDealerSeat} to choose next game",
-					game.Id,
-					game.DealersChoiceDealerPosition);
+				await TransitionDealersChoiceToWaitingForChoiceAsync(
+					context,
+					broadcaster,
+					game,
+					now,
+					cancellationToken,
+					"Dealer's Choice game {GameId}: variant finished, waiting for dealer at seat {DcDealerSeat} to choose next game");
 				return;
 			}
 
@@ -925,6 +967,129 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 
 		// Broadcast updated state
 		await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
+	}
+
+	private async Task<bool> TryTransitionTerminalDealersChoiceScrewYourNeighborAsync(
+		CardsDbContext context,
+		IGameStateBroadcaster broadcaster,
+		Game game,
+		IGameFlowHandler flowHandler,
+		int eligiblePlayerCount,
+		DateTimeOffset now,
+		CancellationToken cancellationToken)
+	{
+		if (!game.IsDealersChoice ||
+			game.CurrentPhase == nameof(Phases.WaitingToStart) ||
+			eligiblePlayerCount >= 2 ||
+			!string.Equals(game.CurrentHandGameTypeCode, PokerGameMetadataRegistry.ScrewYourNeighborCode, StringComparison.OrdinalIgnoreCase) ||
+			!flowHandler.IsMultiHandVariant)
+		{
+			return false;
+		}
+
+		var nextHandPotExists = await context.Pots
+			.AnyAsync(p => p.GameId == game.Id &&
+			               p.HandNumber == game.CurrentHandNumber + 1 &&
+			               p.PotType == PotType.Main &&
+			               p.Amount > 0,
+			           cancellationToken);
+
+		if (nextHandPotExists)
+		{
+			return false;
+		}
+
+		var currentHandHadFundedPot = await context.Pots
+			.AnyAsync(p => p.GameId == game.Id &&
+			               p.HandNumber == game.CurrentHandNumber &&
+			               p.PotType == PotType.Main &&
+			               p.IsAwarded &&
+			               p.Amount > 0,
+			           cancellationToken);
+
+		if (!currentHandHadFundedPot)
+		{
+			return false;
+		}
+
+		await TransitionDealersChoiceToWaitingForChoiceAsync(
+			context,
+			broadcaster,
+			game,
+			now,
+			cancellationToken,
+			"Dealer's Choice game {GameId}: Screw Your Neighbor finished with one remaining stack, waiting for dealer at seat {DcDealerSeat} to choose next game");
+
+		return true;
+	}
+
+	private async Task TransitionDealersChoiceToWaitingForChoiceAsync(
+		CardsDbContext context,
+		IGameStateBroadcaster broadcaster,
+		Game game,
+		DateTimeOffset now,
+		CancellationToken cancellationToken,
+		string logMessage)
+	{
+		// Restore pre-SYN DC chip stacks before clearing game settings.
+		RestoreDcChipsAfterSyn(game);
+
+		AdvanceDealersChoiceDealer(game);
+
+		game.GameTypeId = null;
+		game.CurrentHandGameTypeCode = null;
+		game.Ante = null;
+		game.MinBet = null;
+		game.CurrentPhase = nameof(Phases.WaitingForDealerChoice);
+		game.Status = GameStatus.BetweenHands;
+		game.HandCompletedAt = null;
+		game.NextHandStartsAt = null;
+		game.UpdatedAt = now;
+
+		await context.SaveChangesAsync(cancellationToken);
+		await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
+
+		_logger.LogInformation(logMessage, game.Id, game.DealersChoiceDealerPosition);
+	}
+
+	/// <summary>
+	/// Restores pre-SYN Dealer's Choice chip stacks from VariantState after a SYN variant ends.
+	/// Each player's DC chips are adjusted by their net SYN result (win or loss).
+	/// </summary>
+	private static void RestoreDcChipsAfterSyn(Game game)
+	{
+		var synAnte = game.Ante ?? 0;
+		if (synAnte <= 0)
+			return;
+
+		var synBuyIn = synAnte * 3;
+
+		foreach (var gp in game.GamePlayers)
+		{
+			if (string.IsNullOrEmpty(gp.VariantState))
+				continue;
+
+			try
+			{
+				using var doc = JsonDocument.Parse(gp.VariantState);
+				if (doc.RootElement.TryGetProperty("preSynChips", out var preSynChipsElement))
+				{
+					var preSynChips = preSynChipsElement.GetInt32();
+					var synNetResult = gp.ChipStack - synBuyIn;
+					gp.ChipStack = Math.Max(0, preSynChips + synNetResult);
+
+					// Un-sit-out players who still have DC chips after SYN
+					if (gp.ChipStack > 0 && gp.IsSittingOut)
+						gp.IsSittingOut = false;
+				}
+			}
+			catch (JsonException)
+			{
+				// Non-SYN variant state — leave unchanged
+			}
+
+			gp.VariantState = null;
+		}
 	}
 
 	private static async Task<bool> ShouldBroadcastScrewYourNeighborNewDeckToastAsync(

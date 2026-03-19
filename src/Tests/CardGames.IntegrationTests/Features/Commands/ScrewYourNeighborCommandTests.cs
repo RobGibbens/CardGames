@@ -1,4 +1,5 @@
 using CardGames.Poker.Api.Features.Games.ScrewYourNeighbor.v1.Commands.KeepOrTrade;
+using CardGames.Poker.Api.Features.Games.Common.v1.Commands.ChooseDealerGame;
 using CardGames.Poker.Api.Features.Games.Generic.v1.Commands.PerformShowdown;
 using CardGames.Poker.Api.Features.Games.Generic.v1.Commands.StartHand;
 using CardGames.Poker.Api.Services;
@@ -69,6 +70,52 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
         }
 
         await DbContext.SaveChangesAsync();
+    }
+
+    private async Task<Game> CreateDealersChoiceScrewYourNeighborSetupAsync(int playerCount = 3, int startingChips = 25, int ante = 25)
+    {
+        var game = await DatabaseSeeder.CreateDealersChoiceGameAsync(DbContext);
+
+        for (var i = 0; i < playerCount; i++)
+        {
+            var playerName = i == 0 ? "Test User" : $"Player {i + 1}";
+            var player = await DatabaseSeeder.CreatePlayerAsync(DbContext, playerName);
+            await DatabaseSeeder.AddPlayerToGameAsync(DbContext, game, player, i, startingChips);
+        }
+
+        game.DealersChoiceDealerPosition = 0;
+        game.CurrentPhase = nameof(Phases.WaitingForDealerChoice);
+        game.CurrentHandNumber = 1;
+        game.Status = GameStatus.InProgress;
+        await DbContext.SaveChangesAsync();
+
+        var choice = await Mediator.Send(new ChooseDealerGameCommand(
+            game.Id,
+            "SCREWYOURNEIGHBOR",
+            Ante: ante,
+            MinBet: Math.Max(ante, 1)));
+
+        choice.IsT0.Should().BeTrue();
+
+        var gameToStart = await DbContext.Games.FirstAsync(g => g.Id == game.Id);
+        gameToStart.NextHandStartsAt = DateTimeOffset.UtcNow.AddSeconds(-1);
+        await DbContext.SaveChangesAsync();
+
+        var serviceScopeFactory = Scope.ServiceProvider.GetRequiredService<IServiceScopeFactory>();
+        var logger = new TestLogger<ContinuousPlayBackgroundService>();
+        var service = new ContinuousPlayBackgroundService(
+            serviceScopeFactory,
+            logger);
+
+        await service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+        logger.ErrorLogs.Should().BeEmpty();
+        DbContext.ChangeTracker.Clear();
+
+        return await DbContext.Games
+            .AsNoTracking()
+            .Include(g => g.GamePlayers).ThenInclude(gp => gp.Player)
+            .Include(g => g.GameCards)
+            .FirstAsync(g => g.Id == game.Id);
     }
 
     private sealed class TestLogger<T> : ILogger<T>
@@ -393,30 +440,23 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
             keepResult.IsT0.Should().BeTrue();
         }
 
+        // Inline showdown: last KeepOrTrade triggers showdown automatically
         game = await DbContext.Games.AsNoTracking().FirstAsync(g => g.Id == setup.Game.Id);
-        game.CurrentPhase.Should().Be(nameof(Phases.Showdown));
-
-        var showdownResult = await Mediator.Send(new PerformShowdownCommand(game.Id));
-        showdownResult.IsT0.Should().BeTrue();
-
-        var refreshedGame = await DbContext.Games
-            .AsNoTracking()
-            .FirstAsync(g => g.Id == game.Id);
+        game.CurrentPhase.Should().Be(nameof(Phases.Complete));
 
         var refreshedWinner = await DbContext.GamePlayers.AsNoTracking().FirstAsync(gp => gp.Id == winner.Id);
         var refreshedLoser = await DbContext.GamePlayers.AsNoTracking().FirstAsync(gp => gp.Id == loser.Id);
         var nextHandPot = await DbContext.Pots
             .AsNoTracking()
             .FirstOrDefaultAsync(p => p.GameId == game.Id &&
-                                     p.HandNumber == refreshedGame.CurrentHandNumber + 1 &&
+                                     p.HandNumber == game.CurrentHandNumber + 1 &&
                                      p.PotType == PotType.Main);
 
         refreshedWinner.ChipStack.Should().Be(100);
         refreshedLoser.ChipStack.Should().Be(75);
         nextHandPot.Should().NotBeNull();
         nextHandPot!.Amount.Should().Be(25);
-        refreshedGame.CurrentPhase.Should().Be(nameof(Phases.Complete));
-        refreshedGame.NextHandStartsAt.Should().NotBeNull();
+        game.NextHandStartsAt.Should().NotBeNull();
     }
 
     [Fact]
@@ -458,11 +498,9 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
             keepResult.IsT0.Should().BeTrue();
         }
 
+        // Inline showdown: last KeepOrTrade triggers showdown automatically
         var showdownGame = await DbContext.Games.AsNoTracking().FirstAsync(g => g.Id == setup.Game.Id);
-        showdownGame.CurrentPhase.Should().Be(nameof(Phases.Showdown));
-
-        var showdownResult = await Mediator.Send(new PerformShowdownCommand(showdownGame.Id));
-        showdownResult.IsT0.Should().BeTrue();
+        showdownGame.CurrentPhase.Should().Be(nameof(Phases.Complete));
 
         var afterShowdownLoser = await DbContext.GamePlayers.AsNoTracking().FirstAsync(gp => gp.Id == loser.Id);
         afterShowdownLoser.ChipStack.Should().Be(75);
@@ -633,15 +671,11 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
             keepResult.IsT0.Should().BeTrue();
         }
 
+        // Inline showdown: last KeepOrTrade triggers showdown and settlement automatically
         game = await DbContext.Games.AsNoTracking().FirstAsync(g => g.Id == setup.Game.Id);
-        game.CurrentPhase.Should().Be(nameof(Phases.Showdown));
-
-        var showdownResult = await Mediator.Send(new PerformShowdownCommand(game.Id));
-        showdownResult.IsT0.Should().BeTrue();
-        var showdown = showdownResult.AsT0;
-        showdown.Payouts.Should().ContainSingle();
-        showdown.Payouts.Should().ContainKey(winner.Player.Name);
-        showdown.Payouts[winner.Player.Name].Should().Be(25);
+        game.CurrentPhase.Should().Be("Ended");
+        game.Status.Should().Be(GameStatus.Completed);
+        game.NextHandStartsAt.Should().BeNull();
 
         var walletService = Scope.ServiceProvider.GetRequiredService<IPlayerChipWalletService>();
         var winnerBalance = await walletService.GetBalanceAsync(winner.PlayerId, CancellationToken.None);
@@ -649,11 +683,335 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
 
         winnerBalance.Should().Be(25);
         loserBalance.Should().Be(-25);
+    }
 
-        var refreshedGame = await DbContext.Games.AsNoTracking().FirstAsync(g => g.Id == game.Id);
-        refreshedGame.CurrentPhase.Should().Be("Ended");
-        refreshedGame.Status.Should().Be(GameStatus.Completed);
-        refreshedGame.NextHandStartsAt.Should().BeNull();
+    [Fact]
+    public async Task DealersChoiceScrewYourNeighbor_StartsWithThreeStacks()
+    {
+        // In DC, when SYN is chosen with ante=25, each player should get 3 stacks (75 chips)
+        var game = await CreateDealersChoiceScrewYourNeighborSetupAsync(playerCount: 3, startingChips: 500, ante: 25);
+
+        game.CurrentPhase.Should().Be(nameof(Phases.KeepOrTrade));
+
+        var players = game.GamePlayers.OrderBy(gp => gp.SeatPosition).ToList();
+        foreach (var player in players)
+        {
+            player.ChipStack.Should().Be(75, $"player at seat {player.SeatPosition} should have 3 stacks (ante × 3 = 75)");
+        }
+    }
+
+    [Fact]
+    public async Task DealersChoiceScrewYourNeighbor_WhenVariantEnds_ReturnsToWaitingForDealerChoice()
+    {
+        var game = await CreateDealersChoiceScrewYourNeighborSetupAsync();
+        game.CurrentPhase.Should().Be(nameof(Phases.KeepOrTrade));
+
+        var players = game.GamePlayers.OrderBy(gp => gp.SeatPosition).ToList();
+        var winner = players[0];
+        var loserOne = players[1];
+        var loserTwo = players[2];
+
+        // Players now have 3 stacks (ante × 3 = 75 chips) — play 3 SYN hands to eliminate losers
+        for (var hand = 0; hand < 3; hand++)
+        {
+            game = await DbContext.Games
+                .Include(g => g.GamePlayers).ThenInclude(gp => gp.Player)
+                .Include(g => g.GameCards)
+                .AsNoTracking()
+                .FirstAsync(g => g.Id == game.Id);
+
+            game.CurrentPhase.Should().Be(nameof(Phases.KeepOrTrade));
+
+            var handCards = await DbContext.GameCards
+                .Where(gc => gc.GameId == game.Id &&
+                             gc.HandNumber == game.CurrentHandNumber &&
+                             gc.Location == CardLocation.Hand &&
+                             gc.GamePlayerId != null)
+                .ToListAsync();
+
+            handCards.First(c => c.GamePlayerId == winner.Id).Symbol = CardSymbol.Four;
+            handCards.First(c => c.GamePlayerId == winner.Id).Suit = CardSuit.Hearts;
+            handCards.First(c => c.GamePlayerId == loserOne.Id).Symbol = CardSymbol.Ace;
+            handCards.First(c => c.GamePlayerId == loserOne.Id).Suit = CardSuit.Spades;
+            handCards.First(c => c.GamePlayerId == loserTwo.Id).Symbol = CardSymbol.Ace;
+            handCards.First(c => c.GamePlayerId == loserTwo.Id).Suit = CardSuit.Clubs;
+            await DbContext.SaveChangesAsync();
+
+            for (var i = 0; i < 3; i++)
+            {
+                game = await DbContext.Games
+                    .Include(g => g.GamePlayers)
+                    .AsNoTracking()
+                    .FirstAsync(g => g.Id == game.Id);
+
+                if (game.CurrentPhase != nameof(Phases.KeepOrTrade))
+                    break;
+
+                var currentActor = game.GamePlayers.First(gp => gp.SeatPosition == game.CurrentPlayerIndex);
+                var keepResult = await Mediator.Send(new KeepOrTradeCommand(game.Id, currentActor.PlayerId, "Keep"));
+                if (keepResult.IsT1)
+                {
+                    throw new Xunit.Sdk.XunitException(
+                        $"KeepOrTrade H{hand + 1} failed for seat {currentActor.SeatPosition}: {keepResult.AsT1.Code} - {keepResult.AsT1.Message}");
+                }
+            }
+
+            game = await DbContext.Games.AsNoTracking().FirstAsync(g => g.Id == game.Id);
+            game.CurrentPhase.Should().Be(nameof(Phases.Complete));
+            game.NextHandStartsAt.Should().NotBeNull();
+
+            // Run background service to either start next SYN hand or transition back to DC
+            var gameToSchedule = await DbContext.Games.FirstAsync(g => g.Id == game.Id);
+            gameToSchedule.NextHandStartsAt = DateTimeOffset.UtcNow.AddSeconds(-1);
+            await DbContext.SaveChangesAsync();
+
+            var service = new ContinuousPlayBackgroundService(
+                Scope.ServiceProvider.GetRequiredService<IServiceScopeFactory>(),
+                new TestLogger<ContinuousPlayBackgroundService>());
+            await service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+            DbContext.ChangeTracker.Clear();
+        }
+
+        var updatedGame = await DbContext.Games.AsNoTracking().FirstAsync(g => g.Id == game.Id);
+        updatedGame.CurrentPhase.Should().Be(nameof(Phases.WaitingForDealerChoice));
+        updatedGame.Status.Should().Be(GameStatus.BetweenHands);
+        updatedGame.CurrentHandGameTypeCode.Should().BeNull();
+        updatedGame.DealersChoiceDealerPosition.Should().Be(1);
+
+        var tableStateBuilder = Scope.ServiceProvider.GetRequiredService<ITableStateBuilder>();
+        var publicState = await tableStateBuilder.BuildPublicStateAsync(game.Id, CancellationToken.None);
+        publicState.Should().NotBeNull();
+        publicState!.CurrentPhase.Should().Be(nameof(Phases.WaitingForDealerChoice));
+        publicState.IsDealersChoice.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task DealersChoiceScrewYourNeighbor_MultiHand_WhenVariantEnds_ReturnsToWaitingForDealerChoice()
+    {
+        // 3 players, ante=5, SYN chips = ante × 3 = 15 per player (3 stacks)
+        // Takes 3 SYN hands to get a winner (player 0 always wins, players 1&2 lose 5 each hand)
+        var game = await CreateDealersChoiceScrewYourNeighborSetupAsync(playerCount: 3, startingChips: 15, ante: 5);
+        game.CurrentPhase.Should().Be(nameof(Phases.KeepOrTrade));
+
+        var players = game.GamePlayers.OrderBy(gp => gp.SeatPosition).ToList();
+
+        // === Hand 1: Player 0 wins (Four), players 1 & 2 lose (Aces) ===
+        var handCards = await DbContext.GameCards
+            .Where(gc => gc.GameId == game.Id &&
+                         gc.HandNumber == game.CurrentHandNumber &&
+                         gc.Location == CardLocation.Hand &&
+                         gc.GamePlayerId != null)
+            .ToListAsync();
+
+        handCards.First(c => c.GamePlayerId == players[0].Id).Symbol = CardSymbol.Four;
+        handCards.First(c => c.GamePlayerId == players[0].Id).Suit = CardSuit.Hearts;
+        handCards.First(c => c.GamePlayerId == players[1].Id).Symbol = CardSymbol.Ace;
+        handCards.First(c => c.GamePlayerId == players[1].Id).Suit = CardSuit.Spades;
+        handCards.First(c => c.GamePlayerId == players[2].Id).Symbol = CardSymbol.Ace;
+        handCards.First(c => c.GamePlayerId == players[2].Id).Suit = CardSuit.Clubs;
+        await DbContext.SaveChangesAsync();
+
+        for (var i = 0; i < 3; i++)
+        {
+            game = await DbContext.Games.Include(g => g.GamePlayers).AsNoTracking().FirstAsync(g => g.Id == game.Id);
+            if (game.CurrentPhase != nameof(Phases.KeepOrTrade)) break;
+            var actor = game.GamePlayers.First(gp => gp.SeatPosition == game.CurrentPlayerIndex);
+            var keepResult = await Mediator.Send(new KeepOrTradeCommand(game.Id, actor.PlayerId, "Keep"));
+            if (keepResult.IsT1)
+                throw new Xunit.Sdk.XunitException($"KeepOrTrade H1 failed: {keepResult.AsT1.Code} - {keepResult.AsT1.Message}");
+        }
+
+        // After hand 1: players 1&2 should have 10 chips each (lost 1 stack of 5), game should continue
+        game = await DbContext.Games.Include(g => g.GamePlayers).AsNoTracking().FirstAsync(g => g.Id == game.Id);
+        game.CurrentPhase.Should().Be(nameof(Phases.Complete),
+            "SYN should be in Complete phase after non-terminal hand");
+
+        var chipStacks = game.GamePlayers.OrderBy(gp => gp.SeatPosition)
+            .Select(gp => new { gp.SeatPosition, gp.ChipStack }).ToList();
+        chipStacks[0].ChipStack.Should().Be(15, "winner kept all chips");
+        chipStacks[1].ChipStack.Should().Be(10, "loser lost one stack (5 chips)");
+        chipStacks[2].ChipStack.Should().Be(10, "loser lost one stack (5 chips)");
+
+        // Run background service to start next SYN hand
+        var gameToSchedule = await DbContext.Games.FirstAsync(g => g.Id == game.Id);
+        gameToSchedule.NextHandStartsAt = DateTimeOffset.UtcNow.AddSeconds(-1);
+        await DbContext.SaveChangesAsync();
+
+        var serviceScopeFactory = Scope.ServiceProvider.GetRequiredService<IServiceScopeFactory>();
+        var logger = new TestLogger<ContinuousPlayBackgroundService>();
+        var service = new ContinuousPlayBackgroundService(serviceScopeFactory, logger);
+        await service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+        logger.ErrorLogs.Should().BeEmpty("background service should succeed starting hand 2");
+        DbContext.ChangeTracker.Clear();
+
+        // === Hand 2: Same rigging - players 1 & 2 lose again ===
+        game = await DbContext.Games.Include(g => g.GamePlayers).Include(g => g.GameCards)
+            .AsNoTracking().FirstAsync(g => g.Id == game.Id);
+        game.CurrentPhase.Should().Be(nameof(Phases.KeepOrTrade),
+            "SYN hand 2 should be in KeepOrTrade phase");
+
+        players = game.GamePlayers.OrderBy(gp => gp.SeatPosition).ToList();
+
+        handCards = await DbContext.GameCards
+            .Where(gc => gc.GameId == game.Id &&
+                         gc.HandNumber == game.CurrentHandNumber &&
+                         gc.Location == CardLocation.Hand &&
+                         gc.GamePlayerId != null)
+            .ToListAsync();
+
+        handCards.First(c => c.GamePlayerId == players[0].Id).Symbol = CardSymbol.Four;
+        handCards.First(c => c.GamePlayerId == players[0].Id).Suit = CardSuit.Hearts;
+        handCards.First(c => c.GamePlayerId == players[1].Id).Symbol = CardSymbol.Ace;
+        handCards.First(c => c.GamePlayerId == players[1].Id).Suit = CardSuit.Spades;
+        handCards.First(c => c.GamePlayerId == players[2].Id).Symbol = CardSymbol.Ace;
+        handCards.First(c => c.GamePlayerId == players[2].Id).Suit = CardSuit.Clubs;
+        await DbContext.SaveChangesAsync();
+
+        for (var i = 0; i < 3; i++)
+        {
+            game = await DbContext.Games.Include(g => g.GamePlayers).AsNoTracking().FirstAsync(g => g.Id == game.Id);
+            if (game.CurrentPhase != nameof(Phases.KeepOrTrade)) break;
+            var actor = game.GamePlayers.First(gp => gp.SeatPosition == game.CurrentPlayerIndex);
+            var keepResult = await Mediator.Send(new KeepOrTradeCommand(game.Id, actor.PlayerId, "Keep"));
+            if (keepResult.IsT1)
+                throw new Xunit.Sdk.XunitException($"KeepOrTrade H2 failed: {keepResult.AsT1.Code} - {keepResult.AsT1.Message}");
+        }
+
+        // After hand 2: players 1&2 should have 5 chips each (1 stack left)
+        game = await DbContext.Games.Include(g => g.GamePlayers).AsNoTracking().FirstAsync(g => g.Id == game.Id);
+        game.CurrentPhase.Should().Be(nameof(Phases.Complete));
+
+        chipStacks = game.GamePlayers.OrderBy(gp => gp.SeatPosition)
+            .Select(gp => new { gp.SeatPosition, gp.ChipStack }).ToList();
+        chipStacks[0].ChipStack.Should().Be(15, "winner kept all chips");
+        chipStacks[1].ChipStack.Should().Be(5, "loser lost two stacks");
+        chipStacks[2].ChipStack.Should().Be(5, "loser lost two stacks");
+
+        // Run background service to start hand 3
+        gameToSchedule = await DbContext.Games.FirstAsync(g => g.Id == game.Id);
+        gameToSchedule.NextHandStartsAt = DateTimeOffset.UtcNow.AddSeconds(-1);
+        await DbContext.SaveChangesAsync();
+
+        logger = new TestLogger<ContinuousPlayBackgroundService>();
+        service = new ContinuousPlayBackgroundService(serviceScopeFactory, logger);
+        await service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+        logger.ErrorLogs.Should().BeEmpty("background service should succeed starting hand 3");
+        DbContext.ChangeTracker.Clear();
+
+        // === Hand 3: Same rigging - players 1 & 2 lose final stack, going to 0 ===
+        game = await DbContext.Games.Include(g => g.GamePlayers).Include(g => g.GameCards)
+            .AsNoTracking().FirstAsync(g => g.Id == game.Id);
+        game.CurrentPhase.Should().Be(nameof(Phases.KeepOrTrade),
+            "SYN hand 3 should be in KeepOrTrade phase");
+
+        players = game.GamePlayers.OrderBy(gp => gp.SeatPosition).ToList();
+
+        handCards = await DbContext.GameCards
+            .Where(gc => gc.GameId == game.Id &&
+                         gc.HandNumber == game.CurrentHandNumber &&
+                         gc.Location == CardLocation.Hand &&
+                         gc.GamePlayerId != null)
+            .ToListAsync();
+
+        handCards.First(c => c.GamePlayerId == players[0].Id).Symbol = CardSymbol.Four;
+        handCards.First(c => c.GamePlayerId == players[0].Id).Suit = CardSuit.Hearts;
+        handCards.First(c => c.GamePlayerId == players[1].Id).Symbol = CardSymbol.Ace;
+        handCards.First(c => c.GamePlayerId == players[1].Id).Suit = CardSuit.Spades;
+        handCards.First(c => c.GamePlayerId == players[2].Id).Symbol = CardSymbol.Ace;
+        handCards.First(c => c.GamePlayerId == players[2].Id).Suit = CardSuit.Clubs;
+        await DbContext.SaveChangesAsync();
+
+        for (var i = 0; i < 3; i++)
+        {
+            game = await DbContext.Games.Include(g => g.GamePlayers).AsNoTracking().FirstAsync(g => g.Id == game.Id);
+            if (game.CurrentPhase != nameof(Phases.KeepOrTrade)) break;
+            var actor = game.GamePlayers.First(gp => gp.SeatPosition == game.CurrentPlayerIndex);
+            var keepResult = await Mediator.Send(new KeepOrTradeCommand(game.Id, actor.PlayerId, "Keep"));
+            if (keepResult.IsT1)
+                throw new Xunit.Sdk.XunitException($"KeepOrTrade H3 failed: {keepResult.AsT1.Code} - {keepResult.AsT1.Message}");
+        }
+
+        // After hand 3: players 1&2 should have 0 chips, game should be terminal
+        game = await DbContext.Games.Include(g => g.GamePlayers).AsNoTracking().FirstAsync(g => g.Id == game.Id);
+        game.CurrentPhase.Should().Be(nameof(Phases.Complete));
+        game.NextHandStartsAt.Should().NotBeNull("DC+SYN terminal should set NextHandStartsAt");
+
+        chipStacks = game.GamePlayers.OrderBy(gp => gp.SeatPosition)
+            .Select(gp => new { gp.SeatPosition, gp.ChipStack }).ToList();
+        chipStacks[0].ChipStack.Should().BeGreaterThan(0, "winner has chips");
+        chipStacks[1].ChipStack.Should().Be(0, "eliminated");
+        chipStacks[2].ChipStack.Should().Be(0, "eliminated");
+
+        // Run background service to transition to WaitingForDealerChoice
+        gameToSchedule = await DbContext.Games.FirstAsync(g => g.Id == game.Id);
+        gameToSchedule.NextHandStartsAt = DateTimeOffset.UtcNow.AddSeconds(-1);
+        await DbContext.SaveChangesAsync();
+
+        logger = new TestLogger<ContinuousPlayBackgroundService>();
+        service = new ContinuousPlayBackgroundService(serviceScopeFactory, logger);
+        await service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+        logger.ErrorLogs.Should().BeEmpty("background service should succeed transitioning to DC");
+        DbContext.ChangeTracker.Clear();
+
+        var updatedGame = await DbContext.Games.AsNoTracking().FirstAsync(g => g.Id == game.Id);
+        updatedGame.CurrentPhase.Should().Be(nameof(Phases.WaitingForDealerChoice),
+            $"DC+SYN terminal should go to WaitingForDealerChoice, not {updatedGame.CurrentPhase}. " +
+            $"Status={updatedGame.Status}, IsDealersChoice={updatedGame.IsDealersChoice}");
+    }
+
+    [Fact]
+    public async Task DealersChoiceScrewYourNeighbor_AnteZero_WhenVariantEnds_ReturnsToWaitingForDealerChoice()
+    {
+        // Edge-case: ante=0 means ChipStack >= 0 passes the eligible filter for 0-chip losers.
+        // After auto-sit-out, the recomputed eligible count must drop below 2 so the DC fallback triggers.
+        var game = await CreateDealersChoiceScrewYourNeighborSetupAsync(playerCount: 3, startingChips: 25, ante: 0);
+        game.CurrentPhase.Should().Be(nameof(Phases.KeepOrTrade));
+
+        var players = game.GamePlayers.OrderBy(gp => gp.SeatPosition).ToList();
+
+        var handCards = await DbContext.GameCards
+            .Where(gc => gc.GameId == game.Id &&
+                         gc.HandNumber == game.CurrentHandNumber &&
+                         gc.Location == CardLocation.Hand &&
+                         gc.GamePlayerId != null)
+            .ToListAsync();
+
+        // Rig: player 0 wins (Four), players 1 & 2 lose (Aces) — losers go to 0 chips in one hand
+        handCards.First(c => c.GamePlayerId == players[0].Id).Symbol = CardSymbol.Four;
+        handCards.First(c => c.GamePlayerId == players[0].Id).Suit = CardSuit.Hearts;
+        handCards.First(c => c.GamePlayerId == players[1].Id).Symbol = CardSymbol.Ace;
+        handCards.First(c => c.GamePlayerId == players[1].Id).Suit = CardSuit.Spades;
+        handCards.First(c => c.GamePlayerId == players[2].Id).Symbol = CardSymbol.Ace;
+        handCards.First(c => c.GamePlayerId == players[2].Id).Suit = CardSuit.Clubs;
+        await DbContext.SaveChangesAsync();
+
+        for (var i = 0; i < 3; i++)
+        {
+            game = await DbContext.Games.Include(g => g.GamePlayers).AsNoTracking().FirstAsync(g => g.Id == game.Id);
+            if (game.CurrentPhase != nameof(Phases.KeepOrTrade)) break;
+            var actor = game.GamePlayers.First(gp => gp.SeatPosition == game.CurrentPlayerIndex);
+            var keepResult = await Mediator.Send(new KeepOrTradeCommand(game.Id, actor.PlayerId, "Keep"));
+            if (keepResult.IsT1)
+                throw new Xunit.Sdk.XunitException($"KeepOrTrade failed: {keepResult.AsT1.Code} - {keepResult.AsT1.Message}");
+        }
+
+        var completedGame = await DbContext.Games.AsNoTracking().FirstAsync(g => g.Id == game.Id);
+        completedGame.CurrentPhase.Should().Be(nameof(Phases.Complete));
+
+        var gameToSchedule = await DbContext.Games.FirstAsync(g => g.Id == game.Id);
+        gameToSchedule.NextHandStartsAt = DateTimeOffset.UtcNow.AddSeconds(-1);
+        await DbContext.SaveChangesAsync();
+
+        var serviceScopeFactory = Scope.ServiceProvider.GetRequiredService<IServiceScopeFactory>();
+        var logger = new TestLogger<ContinuousPlayBackgroundService>();
+        var service = new ContinuousPlayBackgroundService(serviceScopeFactory, logger);
+        await service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+        logger.ErrorLogs.Should().BeEmpty();
+        DbContext.ChangeTracker.Clear();
+
+        var updatedGame = await DbContext.Games.AsNoTracking().FirstAsync(g => g.Id == game.Id);
+        updatedGame.CurrentPhase.Should().Be(nameof(Phases.WaitingForDealerChoice),
+            $"DC+SYN with ante=0 should go to WaitingForDealerChoice, not {updatedGame.CurrentPhase}");
     }
 }
 
