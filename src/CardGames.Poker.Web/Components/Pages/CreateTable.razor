@@ -64,6 +64,8 @@
 								<p class="step-description">Select the poker variant you want to play</p>
 							</div>
 						</div>
+						@if (_selectedVariant is null)
+						{
 						<div class="form-row variant-search-row">
 							<div class="form-group">
 								<label class="form-label" for="variantSearch">Search Variants</label>
@@ -75,6 +77,7 @@
 								   @bind:event="oninput" />
 						</div>
 					</div>
+						}
 					<div class="variants-selection-region" @ref="_variantsSelectionRegion">
 					@if (ShowDealersChoiceCard)
 					{
@@ -200,7 +203,8 @@
 										   id="tableName"
 										   class="form-input"
 										   placeholder="e.g., Friday Night Poker"
-										   @bind="_tableName"
+										   value="@_tableNameInput"
+										   @oninput="OnTableNameInput"
 										   maxlength="50" />
 									<span class="form-hint">Give your table a memorable name</span>
 								</div>
@@ -217,8 +221,8 @@
 												   class="form-input"
 												   min="1"
 												   max="50000"
-												   @bind-value="_smallBlind"
-												   @bind-value:event="oninput" />
+											   value="@_smallBlindInput"
+											   @oninput="OnSmallBlindInput" />
 											<span class="form-hint">Small blind amount</span>
 										</div>
 										<div class="form-group">
@@ -228,8 +232,8 @@
 												   class="form-input"
 												   min="1"
 												   max="100000"
-												   @bind-value="_bigBlind"
-												   @bind-value:event="oninput" />
+											   value="@_bigBlindInput"
+											   @oninput="OnBigBlindInput" />
 											<span class="form-hint">Minimum bet is automatically set to the big blind.</span>
 										</div>
 									</div>
@@ -244,8 +248,8 @@
 												   class="form-input"
 												   min="1"
 												   max="100"
-												   @bind-value="_ante"
-												   @bind-value:event="oninput" />
+											   value="@_anteInput"
+											   @oninput="OnAnteInput" />
                                            <span class="form-hint">@(IsScrewYourNeighbor ? "Chips per stack (3 stacks)" : "Mandatory bet before each hand")</span>
 										</div>
                                         @if (ShowMinimumBetInput)
@@ -257,8 +261,8 @@
 													   class="form-input"
 													   min="1"
 													   max="1000"
-													   @bind-value="_minBet"
-													   @bind-value:event="oninput" />
+												   value="@_minBetInput"
+												   @oninput="OnMinimumBetInput" />
 												<span class="form-hint">Minimum bet during play</span>
 											</div>
 										}
@@ -414,10 +418,15 @@
 	private string? _loadError;
 	private string? _createError;
 	private string _tableName = "";
+	private string _tableNameInput = "";
 	private int _ante = 5;
+	private string _anteInput = "5";
 	private int _minBet = 10;
+	private string _minBetInput = "10";
 	private int _smallBlind = 1;
+	private string _smallBlindInput = "1";
 	private int _bigBlind = 2;
+	private string _bigBlindInput = "2";
 	private bool _areOddsVisibleToAllPlayers = true;
 	private string _variantSearch = string.Empty;
 	private bool _isDealersChoice;
@@ -426,11 +435,13 @@
 	private GetAvailablePokerGamesResponse? _selectedVariant;
 	private ElementReference _variantsSelectionRegion;
 	private IJSObjectReference? _variantAnimationModule;
+	private CancellationTokenSource? _canCreateDebounceCancellationTokenSource;
 	private bool _playVariantFlipAfterRender;
 	private const int FallbackSmallBlind = 1;
 	private const int FallbackBigBlind = 2;
 	private const int FallbackAnte = 5;
 	private const int FallbackMinimumBet = 10;
+	private const int CanCreateDebounceDelayMilliseconds = 400;
 
 	private const string DealersChoiceCode = "DEALERSCHOICE";
  private const string ScrewYourNeighborCode = "SCREWYOURNEIGHBOR";
@@ -563,6 +574,7 @@
 		_bigBlind = preferences.DefaultBigBlind >= _smallBlind ? preferences.DefaultBigBlind : _smallBlind * 2;
 		_ante = preferences.DefaultAnte > 0 ? preferences.DefaultAnte : FallbackAnte;
 		_minBet = preferences.DefaultMinimumBet > 0 ? preferences.DefaultMinimumBet : Math.Max(FallbackMinimumBet, _bigBlind);
+		SyncBufferedCanCreateInputs();
 	}
 
 	private void ApplyIntelligentFallbackDefaults()
@@ -571,6 +583,7 @@
 		_bigBlind = FallbackBigBlind;
 		_ante = FallbackAnte;
 		_minBet = FallbackMinimumBet;
+		SyncBufferedCanCreateInputs();
 	}
 
 	protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -690,11 +703,15 @@
 			_minBet = _bigBlind;
 		}
 
+		SyncBufferedCanCreateInputs();
+
 		_playVariantFlipAfterRender = true;
 	}
 
 	private async Task CreateTableAsync()
 	{
+		ApplyBufferedCanCreateInputs();
+
 		if (!CanCreate || _selectedVariant is null)
 		{
 			return;
@@ -748,6 +765,79 @@
 		}
 	}
 
+	private async Task OnTableNameInput(ChangeEventArgs args)
+	{
+		_tableNameInput = args.Value?.ToString() ?? string.Empty;
+		await DebounceCanCreateUpdateAsync();
+	}
+
+	private async Task OnSmallBlindInput(ChangeEventArgs args)
+	{
+		_smallBlindInput = args.Value?.ToString() ?? string.Empty;
+		await DebounceCanCreateUpdateAsync();
+	}
+
+	private async Task OnBigBlindInput(ChangeEventArgs args)
+	{
+		_bigBlindInput = args.Value?.ToString() ?? string.Empty;
+		await DebounceCanCreateUpdateAsync();
+	}
+
+	private async Task OnAnteInput(ChangeEventArgs args)
+	{
+		_anteInput = args.Value?.ToString() ?? string.Empty;
+		await DebounceCanCreateUpdateAsync();
+	}
+
+	private async Task OnMinimumBetInput(ChangeEventArgs args)
+	{
+		_minBetInput = args.Value?.ToString() ?? string.Empty;
+		await DebounceCanCreateUpdateAsync();
+	}
+
+	private async Task DebounceCanCreateUpdateAsync()
+	{
+		_canCreateDebounceCancellationTokenSource?.Cancel();
+		_canCreateDebounceCancellationTokenSource?.Dispose();
+
+		var cancellationTokenSource = new CancellationTokenSource();
+		_canCreateDebounceCancellationTokenSource = cancellationTokenSource;
+
+		try
+		{
+			await Task.Delay(CanCreateDebounceDelayMilliseconds, cancellationTokenSource.Token);
+			ApplyBufferedCanCreateInputs();
+			await InvokeAsync(StateHasChanged);
+		}
+		catch (OperationCanceledException)
+		{
+			// A newer keystroke restarted the debounce window.
+		}
+	}
+
+	private void ApplyBufferedCanCreateInputs()
+	{
+		_tableName = _tableNameInput;
+		_smallBlind = ParseBufferedInteger(_smallBlindInput);
+		_bigBlind = ParseBufferedInteger(_bigBlindInput);
+		_ante = ParseBufferedInteger(_anteInput);
+		_minBet = ParseBufferedInteger(_minBetInput);
+	}
+
+	private void SyncBufferedCanCreateInputs()
+	{
+		_tableNameInput = _tableName;
+		_smallBlindInput = _smallBlind.ToString();
+		_bigBlindInput = _bigBlind.ToString();
+		_anteInput = _ante.ToString();
+		_minBetInput = _minBet.ToString();
+	}
+
+	private static int ParseBufferedInteger(string value)
+	{
+		return int.TryParse(value, out var parsedValue) ? parsedValue : 0;
+	}
+
 	private bool MatchesVariantSearch(string gameName)
 	{
 		return string.IsNullOrWhiteSpace(_variantSearch)
@@ -777,5 +867,8 @@
 				// Circuit disconnected, ignore.
 			}
 		}
+
+		_canCreateDebounceCancellationTokenSource?.Cancel();
+		_canCreateDebounceCancellationTokenSource?.Dispose();
 	}
 }
