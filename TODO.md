@@ -9,8 +9,6 @@
 - [ ] SYN - check for ties
 - [ ] SYN - odds
 
-- [ ] Create Table page, make the Create Table button look like a poker table
-- [ ] When in dark mode, the Join Seat Amount text is hidden (white on white)
 - [ ] Lobby - Group by game type
 - [ ] Lobby - Filter by status
 - [ ] Join game modal - should not be able to click out of it
@@ -241,3 +239,5 @@
 - [x] Create Table - Once a game is selected, hide the search box
 - [x] Create table page, enable button as soon as you start typing
 - [x] SYN - Enable playing in Dealer's Choice
+- [x] Create Table page, make the Create Table button look like a poker table
+- [x] When in dark mode, the Join Seat Amount text is hidden (white on white)

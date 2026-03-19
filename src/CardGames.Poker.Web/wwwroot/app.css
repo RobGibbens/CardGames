@@ -1676,7 +1676,27 @@ a:hover {
 }
 
 .lobby-create-btn {
+    display: block;
+    width: fit-content;
     flex-shrink: 0;
+    margin-left: auto;
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+    border-radius: 0;
+}
+
+.lobby-create-btn:hover {
+    background: transparent;
+    box-shadow: none;
+    transform: none;
+}
+
+.lobby-create-btn img {
+    display: block;
+    width: clamp(180px, 18vw, 260px);
+    max-width: 100%;
+    height: auto;
 }
 
 .cashier-panel {
@@ -2877,6 +2897,11 @@ a:hover {
         flex-direction: column;
         align-items: stretch;
         text-align: center;
+    }
+
+    .lobby-create-btn {
+        margin-left: 0;
+        align-self: center;
     }
 
     .lobby-title {
