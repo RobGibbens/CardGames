@@ -101,13 +101,21 @@
 
 .confirm-dialog-overlay .join-buy-in-modal .join-buy-in-input {
     background: var(--join-overlay-input-bg);
+    background-color: var(--join-overlay-input-bg);
     border-color: var(--join-overlay-input-border);
     color: var(--join-overlay-text-primary);
+    -webkit-text-fill-color: var(--join-overlay-text-primary);
+    caret-color: var(--join-overlay-text-primary);
 }
 
 .confirm-dialog-overlay .join-buy-in-modal .join-buy-in-input:focus {
     background: var(--join-overlay-input-bg);
+    background-color: var(--join-overlay-input-bg);
     border-color: var(--join-overlay-primary-border);
+}
+
+.confirm-dialog-overlay .join-buy-in-modal .join-buy-in-input:disabled {
+    -webkit-text-fill-color: var(--join-overlay-text-primary);
 }
 
 .confirm-dialog-overlay .join-buy-in-modal .btn.btn-secondary {
