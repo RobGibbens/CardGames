@@ -1,5 +1,52 @@
 # Decisions
 
+### 2026-03-19: Lobby group headings use explicit top spacing between sections
+
+**By:** Arwen (Frontend Dev)
+**Requested by:** Rob Gibbens
+
+**What:** Updated `Lobby.razor` so grouped section headings use `h5 mt-2 mb-1` in both the grid and list grouped renders.
+
+**Why:** The crowding issue was the next heading sitting too close to the previous group's final card or row. Spacing the heading itself fixes the visual issue directly without changing grouping behavior, actions, or section structure.
+
+**Applied in:**
+- `src/CardGames.Poker.Web/Components/Pages/Lobby.razor`
+
+**Verification:**
+- Web build succeeded.
+- No new Razor diagnostics were introduced by the change.
+
+### 2026-03-19: Lobby group sections use slightly larger vertical spacing
+
+**By:** Arwen (Frontend Dev)
+**Requested by:** Rob Gibbens
+
+**What:** Updated `Lobby.razor` to increase the bottom spacing between grouped game-type sections from `mb-4` to `mb-5` in both the grid and list grouped layouts.
+
+**Why:** The grouped lobby layout needed a bit more vertical separation between sections without changing grouping logic, actions, or structure.
+
+**Applied in:**
+- `src/CardGames.Poker.Web/Components/Pages/Lobby.razor`
+
+**Verification:**
+- `build-web-project` succeeded.
+- No new Razor errors were introduced by the spacing-only change.
+
+### 2026-03-19: Lobby groups tables by display game type
+
+**By:** Arwen (Frontend Dev)
+**Requested by:** Rob Gibbens
+
+**What:** Updated `Lobby.razor` to render filtered tables in grouped sections keyed by the existing display-name rule (`FormatGameTypeName(table)`) instead of one flat list. Each group renders a section heading and table count in both grid and list modes while preserving the existing table actions.
+
+**Why:** The lobby needed clearer separation between table variants without introducing new naming rules or changing join/delete behavior.
+
+**Applied in:**
+- `src/CardGames.Poker.Web/Components/Pages/Lobby.razor`
+
+**Verification:**
+- `dotnet build src/CardGames.Poker.Web/CardGames.Poker.Web.csproj` succeeded.
+
 ### 2026-03-08: Create table flow does not auto-enter table
 
 **By:** Linus (Frontend Dev)

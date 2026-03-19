@@ -7,8 +7,6 @@
 
 - [ ] SYN - check for ties
 - [ ] SYN - odds
-
-- [ ] Lobby - Group by game type
 - [ ] Lobby - Filter by status
 - [ ] Join game modal - should not be able to click out of it
 - [ ] Join game modal background color
@@ -241,3 +239,4 @@
 - [x] When in dark mode, the Join Seat Amount text is hidden (white on white)
 - [x] Dealer's Choice - pick which games are included
 - [x] Auto generate table name
+- [x] Lobby - Group by game type

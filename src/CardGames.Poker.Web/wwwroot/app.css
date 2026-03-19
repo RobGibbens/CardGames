@@ -2551,6 +2551,10 @@ a:hover {
     min-height: 400px;
 }
 
+.lobby-group-section + .lobby-group-section {
+    margin-top: 2.5rem;
+}
+
 .lobby-loading {
     display: flex;
     flex-direction: column;

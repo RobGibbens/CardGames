@@ -7,6 +7,18 @@
 
 ## Learnings
 
+- 2026-03-19 (team update): Lobby heading spacing decision (`linus-lobby-heading-spacing-fix`) was merged from inbox into canonical `.squad/decisions.md`; use the canonical entry as the source of truth for follow-up grouped lobby heading spacing changes.
+
+- 2026-03-19: In `Lobby.razor`, the grouped lobby spacing issue between sections is best fixed by adding top margin on the next section heading (`mt-*`) in both grid and list renders, rather than relying on larger section bottom margin.
+
+- 2026-03-19: In `Lobby.razor`, grouped-section heading separation is better fixed on the heading/header itself (`mt-*`) than by increasing outer section bottom margin, because the perceived crowding is the next heading sitting too close to the prior group's final card.
+
+- 2026-03-19 (team update): Lobby group spacing decision (`linus-lobby-group-spacing`) was merged from inbox into canonical `.squad/decisions.md`; use the canonical entry as the source of truth for follow-up lobby section spacing changes.
+
+- 2026-03-19: For grouped lobby game-type sections in `Lobby.razor`, a Bootstrap spacing-class bump (`mb-4` -> `mb-5`) is enough to improve vertical separation without touching grouping logic, join/delete actions, or section markup structure.
+
+- 2026-03-19: `Lobby.razor` should group rendered tables by the same display label used in-row/in-card via `FormatGameTypeName(table)`, not raw `GameTypeName` or `GameTypeCode`. That keeps Dealer's Choice tables grouped under their effective user-facing label (`Dealer's Choice` or `Dealer's Choice (Variant)`) consistently across both grid and list views without introducing UI-only naming rules.
+
 - 2026-03-10: SYN showdown delay must be enforced from shared SignalR table-state transitions, not only in local `HandleKeepOrTradeDecision`. In `TablePlay.razor`, when phase moves from KeepOrTrade/Reveal into showdown flow, schedule the existing 7-second delay via `ScheduleShowdownOverlayAfterDelay` so every client defers `TryLoadShowdownAsync` and overlay reveal consistently.
 
 - 2026-03-10 (team update): SYN dealer-trade showdown-delay decision (`linus-syn-showdown-delay`) was merged from inbox into canonical `.squad/decisions.md`; use canonical entry as source of truth for follow-up TablePlay showdown/overlay timing changes.
