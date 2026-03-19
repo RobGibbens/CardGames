@@ -1,5 +1,6 @@
 ﻿using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Features.Games.Common;
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Api.Infrastructure;
 using CardGames.Poker.Betting;
@@ -40,6 +41,31 @@ public class CreateGameCommandHandler(
 		}
 
 		var now = DateTimeOffset.UtcNow;
+		var allowedDealerChoiceGameCodes = DealersChoiceGameSettings.NormalizeGameCodes(command.AllowedDealerChoiceGameCodes);
+
+		if (command.IsDealersChoice && command.AllowedDealerChoiceGameCodes is not null && allowedDealerChoiceGameCodes.Count == 0)
+		{
+			return new CreateGameConflict
+			{
+				GameId = command.GameId,
+				Reason = "Dealer's Choice tables must allow at least one game variant."
+			};
+		}
+
+		if (command.IsDealersChoice)
+		{
+			foreach (var allowedGameCode in allowedDealerChoiceGameCodes)
+			{
+				if (!PokerGameMetadataRegistry.TryGet(allowedGameCode, out _))
+				{
+					return new CreateGameConflict
+					{
+						GameId = command.GameId,
+						Reason = $"Unknown Dealer's Choice game code '{allowedGameCode}'."
+					};
+				}
+			}
+		}
 
 		// 1. For Dealer's Choice tables, skip game type lookup; for standard tables, resolve game type
 		GameType? gameType = null;
@@ -79,6 +105,11 @@ public class CreateGameCommandHandler(
 			CreatedAt = now,
 			UpdatedAt = now
 		};
+
+		if (command.IsDealersChoice && allowedDealerChoiceGameCodes.Count > 0)
+		{
+			DealersChoiceGameSettings.SaveAllowedGameCodes(game, allowedDealerChoiceGameCodes);
+		}
 
 		context.Games.Add(game);
 

@@ -4,6 +4,7 @@
 @implements IAsyncDisposable
 
 @using System.ComponentModel
+@using System.Text.Json
 @using CardGames.Contracts.SignalR
 @using CardGames.Core.French.Cards
 @using CardGames.Poker.Api.Clients
@@ -409,6 +410,7 @@
                 <DealerChoiceModal AvailableGames="@_dcAvailableGames"
                                    IsLoading="@_dcGamesLoading"
                                    CurrentActivePlayerCount="@_seats.Count(s => s.IsOccupied && !s.IsSittingOut)"
+                                   AllowedGameCodes="@_allowedDealerChoiceGameCodes"
                                    OnGameChosen="@HandleDealerChoiceAsync" />
             }
             else
@@ -2278,6 +2280,7 @@
     }
 
     private GetGameResponse? _gameResponse;
+    private IReadOnlyList<string>? _allowedDealerChoiceGameCodes;
     private async Task LoadDataAsync()
     {
         try
@@ -2329,6 +2332,7 @@
                 {
                     AreOddsVisibleToAllPlayers = gamesResponse.AreOddsVisibleToAllPlayers
                 };
+                _allowedDealerChoiceGameCodes = ParseAllowedDealerChoiceGameCodes(gamesResponse.GameSettings);
 
                 _currentActorSeatIndex = _gameResponse.CurrentPlayerIndex;
                 _dealerSeatIndex = _gameResponse.DealerPosition;
@@ -3963,6 +3967,40 @@
                 AreOddsVisibleToAllPlayers = gameResponse.Content.AreOddsVisibleToAllPlayers,
                 RowVersion = gameResponse.Content.RowVersion
             };
+            _allowedDealerChoiceGameCodes = ParseAllowedDealerChoiceGameCodes(gameResponse.Content.GameSettings);
+        }
+    }
+
+    private static IReadOnlyList<string>? ParseAllowedDealerChoiceGameCodes(string? gameSettings)
+    {
+        if (string.IsNullOrWhiteSpace(gameSettings))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(gameSettings);
+            if (!document.RootElement.TryGetProperty("allowedDealerChoiceGameCodes", out var allowedGameCodesElement)
+                || allowedGameCodesElement.ValueKind != JsonValueKind.Array)
+            {
+                return null;
+            }
+
+            var allowedGameCodes = allowedGameCodesElement
+                .EnumerateArray()
+                .Select(element => element.GetString()?.Trim())
+                .Where(code => !string.IsNullOrWhiteSpace(code))
+                .Select(code => code!)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(code => code, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            return allowedGameCodes.Length > 0 ? allowedGameCodes : null;
+        }
+        catch (JsonException)
+        {
+            return null;
         }
     }
 
@@ -5824,7 +5862,7 @@ HandType.HighCard
         _dcGamesLoading = true;
         try
         {
-            var response = await AvailablePokerGamesApi.GetAvailablePokerGamesAsync(null);
+            var response = await AvailablePokerGamesApi.GetAvailablePokerGamesAsync(string.Empty);
             if (response is { IsSuccessStatusCode: true, Content: not null })
             {
                 _dcAvailableGames = response.Content.ToList();

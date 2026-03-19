@@ -4411,7 +4411,7 @@ namespace CardGames.Poker.Api.Contracts
     public partial record CreateGameCommand
     {
         [JsonConstructor]
-        public CreateGameCommand(int @ante, bool? @areOddsVisibleToAllPlayers, int? @bigBlind, string @gameCode, System.Guid @gameId, string @gameName, bool? @isDealersChoice, int @minBet, ICollection<PlayerInfo> @players, int? @smallBlind)
+        public CreateGameCommand(ICollection<string> @allowedDealerChoiceGameCodes, int @ante, bool? @areOddsVisibleToAllPlayers, int? @bigBlind, string @gameCode, System.Guid @gameId, string @gameName, bool? @isDealersChoice, int @minBet, ICollection<PlayerInfo> @players, int? @smallBlind)
         {
             this.GameId = @gameId;
             this.GameCode = @gameCode;
@@ -4423,6 +4423,7 @@ namespace CardGames.Poker.Api.Contracts
             this.SmallBlind = @smallBlind;
             this.BigBlind = @bigBlind;
             this.AreOddsVisibleToAllPlayers = @areOddsVisibleToAllPlayers;
+            this.AllowedDealerChoiceGameCodes = @allowedDealerChoiceGameCodes;
         }
 
         [JsonPropertyName("gameId")]
@@ -4463,6 +4464,9 @@ namespace CardGames.Poker.Api.Contracts
 
         [JsonPropertyName("areOddsVisibleToAllPlayers")]
         public bool? AreOddsVisibleToAllPlayers { get; init; }
+
+        [JsonPropertyName("allowedDealerChoiceGameCodes")]
+        public ICollection<string> AllowedDealerChoiceGameCodes { get; init; }
 
     }
 

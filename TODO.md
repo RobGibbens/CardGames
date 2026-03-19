@@ -4,7 +4,6 @@
 ## Still to do
 
 - [ ] https://github.com/leeoades/FunctionalStateMachine
-- [ ] Dealer's Choice - pick which games are included
 
 - [ ] SYN - check for ties
 - [ ] SYN - odds
@@ -241,3 +240,4 @@
 - [x] SYN - Enable playing in Dealer's Choice
 - [x] Create Table page, make the Create Table button look like a poker table
 - [x] When in dark mode, the Join Seat Amount text is hidden (white on white)
+- [x] Dealer's Choice - pick which games are included

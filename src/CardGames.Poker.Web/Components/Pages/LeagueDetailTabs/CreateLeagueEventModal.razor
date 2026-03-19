@@ -113,7 +113,7 @@
 		_isLoadingGames = true;
 		try
 		{
-			var response = await AvailableGamesApi.GetAvailablePokerGamesAsync(null);
+			var response = await AvailableGamesApi.GetAvailablePokerGamesAsync(string.Empty);
 			if (response.IsSuccessStatusCode && response.Content is not null)
 			{
 				_availableGames = response.Content.ToList();

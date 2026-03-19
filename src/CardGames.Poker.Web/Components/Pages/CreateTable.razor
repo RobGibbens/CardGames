@@ -276,6 +276,46 @@
 									<span class="form-hint"><i class="fa-regular fa-info-circle"></i> The dealer will set the ante and minimum bet each hand.</span>
 								</div>
 							</div>
+							<div class="form-row">
+								<div class="form-group">
+									<label class="form-label">Allowed Dealer's Choice Variants</label>
+									<span class="form-hint">Choose which game variants the dealer may select at this table. At least one variant must remain enabled.</span>
+									<div class="create-table-dealers-choice-selection-groups">
+										@foreach (var group in DealerChoiceAllowedVariantGroups)
+										{
+											if (group.Cards.Count == 0)
+											{
+												continue;
+											}
+
+											<section class="create-table-dealers-choice-selection-group">
+												<h3 class="create-table-dealers-choice-selection-group-title">@group.Title</h3>
+												<div class="create-table-dealers-choice-selection-list">
+													@foreach (var game in group.Cards)
+													{
+														var isAllowed = IsDealerChoiceGameAllowed(game.Code);
+														<div class="create-table-dealers-choice-selection-item">
+															<div class="create-table-dealers-choice-selection-copy">
+																<span class="create-table-dealers-choice-selection-name">@game.Name</span>
+																<span class="create-table-dealers-choice-selection-description">@game.Description</span>
+															</div>
+															<button class="game-info-odds-toggle-switch @(isAllowed ? "is-on" : "is-off")"
+																	type="button"
+																	role="switch"
+																	aria-checked="@isAllowed"
+																	aria-label="@($"Toggle {game.Name}")"
+																	@onclick="() => ToggleAllowedDealerChoiceGame(game.Code)">
+																<span class="game-info-odds-toggle-text">@(isAllowed ? "ON" : "OFF")</span>
+																<span class="game-info-odds-toggle-thumb" aria-hidden="true"></span>
+															</button>
+														</div>
+													}
+												</div>
+											</section>
+										}
+									</div>
+								</div>
+							</div>
 							}
 
 							<div class="form-row">
@@ -401,6 +441,69 @@
 		margin-bottom: 0.75rem;
 	}
 
+	.create-table-dealers-choice-selection-groups {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+		margin-top: 1rem;
+	}
+
+	.create-table-dealers-choice-selection-group {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+		padding: 1rem 1.25rem;
+		border: 1px solid rgba(148, 163, 184, 0.18);
+		border-radius: 0.9rem;
+		background: rgba(15, 23, 42, 0.24);
+	}
+
+	.create-table-dealers-choice-selection-group-title {
+		margin: 0;
+		font-size: 1rem;
+		font-weight: 700;
+	}
+
+	.create-table-dealers-choice-selection-list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+	}
+
+	.create-table-dealers-choice-selection-item {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+		align-items: center;
+		gap: 1rem;
+		padding: 0.9rem 1rem;
+		border-radius: 0.85rem;
+		background: rgba(15, 23, 42, 0.38);
+	}
+
+	.create-table-dealers-choice-selection-item .game-info-odds-toggle-switch {
+		flex-shrink: 0;
+		min-width: 84px;
+		justify-self: end;
+	}
+
+	.create-table-dealers-choice-selection-copy {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+		min-width: 0;
+	}
+
+	.create-table-dealers-choice-selection-name {
+		font-weight: 700;
+		line-height: 1.2;
+	}
+
+	.create-table-dealers-choice-selection-description {
+		color: rgba(226, 232, 240, 0.78);
+		font-size: 0.92rem;
+		line-height: 1.35;
+	}
+
 	@@media (max-width: 768px) {
 		.create-step .variant-card.selected-layout {
 			grid-template-columns: 1fr;
@@ -408,6 +511,15 @@
 
 		.create-step .variant-card.selected-layout .variant-icon {
 			min-height: 190px;
+		}
+
+		.create-table-dealers-choice-selection-item {
+			grid-template-columns: minmax(0, 1fr) auto;
+			align-items: start;
+		}
+
+		.create-table-dealers-choice-selection-item .game-info-odds-toggle-switch {
+			margin-top: 0.1rem;
 		}
 	}
 </style>
@@ -428,9 +540,11 @@
 	private int _bigBlind = 2;
 	private string _bigBlindInput = "2";
 	private bool _areOddsVisibleToAllPlayers = true;
+	private readonly HashSet<string> _allowedDealerChoiceGameCodes = new(StringComparer.OrdinalIgnoreCase);
 	private string _variantSearch = string.Empty;
 	private bool _isDealersChoice;
 	private bool _hasBlinds;
+	private bool _hasInitializedAllowedDealerChoiceGameCodes;
 	private List<GetAvailablePokerGamesResponse> _availableGames = [];
 	private GetAvailablePokerGamesResponse? _selectedVariant;
 	private ElementReference _variantsSelectionRegion;
@@ -471,15 +585,15 @@
 					.OrderBy(g => g.Name, StringComparer.OrdinalIgnoreCase)
 					.Select(ToVariantCard);
 
-			return new[]
-			{
-				CreateGroup(HoldEmVariantsTitle, cards),
-				CreateGroup(DrawVariantsTitle, cards),
-				CreateGroup(StudVariantsTitle, cards),
-				CreateGroup(OtherVariantsTitle, cards)
-			};
+			return CreateVariantGroups(cards);
 		}
 	}
+
+	private IEnumerable<VariantGroup> DealerChoiceAllowedVariantGroups =>
+		CreateVariantGroups(
+			_availableGames
+				.OrderBy(g => g.Name, StringComparer.OrdinalIgnoreCase)
+				.Select(ToVariantCard));
 
 	private bool ShowDealersChoiceCard =>
 		(_selectedVariant is null && MatchesVariantSearch(DealersChoiceCard.Name)) ||
@@ -520,9 +634,11 @@
 	private bool CanCreate =>
 		_selectedVariant is not null &&
 		!string.IsNullOrWhiteSpace(_tableName) &&
-		(_isDealersChoice || (_hasBlinds
-			? (_smallBlind > 0 && _bigBlind >= _smallBlind)
-			: (_ante > 0 && _minBet > 0)));
+		(_isDealersChoice
+			? _allowedDealerChoiceGameCodes.Count > 0
+			: (_hasBlinds
+				? (_smallBlind > 0 && _bigBlind >= _smallBlind)
+				: (_ante > 0 && _minBet > 0)));
 
 	private bool IsScrewYourNeighbor =>
        IsScrewYourNeighborCode(_selectedVariant?.Code);
@@ -610,11 +726,12 @@
 
 		try
 		{
-			var response = await AvailableGamesApi.GetAvailablePokerGamesAsync(null);
+			var response = await AvailableGamesApi.GetAvailablePokerGamesAsync(string.Empty);
 
 			if (response.IsSuccessStatusCode && response.Content is not null)
 			{
 				_availableGames = response.Content.ToList();
+				EnsureAllowedDealerChoiceGameDefaults();
 			}
 			else
 			{
@@ -635,6 +752,19 @@
 	private static VariantGroup CreateGroup(string title, IEnumerable<VariantCard> cards)
 	{
 		return new VariantGroup(title, cards.Where(c => c.GroupTitle == title).ToList());
+	}
+
+	private static IEnumerable<VariantGroup> CreateVariantGroups(IEnumerable<VariantCard> cards)
+	{
+		var materializedCards = cards.ToList();
+
+		return new[]
+		{
+			CreateGroup(HoldEmVariantsTitle, materializedCards),
+			CreateGroup(DrawVariantsTitle, materializedCards),
+			CreateGroup(StudVariantsTitle, materializedCards),
+			CreateGroup(OtherVariantsTitle, materializedCards)
+		};
 	}
 
 	private static VariantCard ToVariantCard(GetAvailablePokerGamesResponse game)
@@ -661,6 +791,34 @@
 			VariantType.Stud => StudVariantsTitle,
 			_ => OtherVariantsTitle
 		};
+	}
+
+	private void EnsureAllowedDealerChoiceGameDefaults()
+	{
+		if (_hasInitializedAllowedDealerChoiceGameCodes)
+		{
+			return;
+		}
+
+		foreach (var gameCode in _availableGames.Select(game => game.Code))
+		{
+			_allowedDealerChoiceGameCodes.Add(gameCode);
+		}
+
+		_hasInitializedAllowedDealerChoiceGameCodes = _allowedDealerChoiceGameCodes.Count > 0;
+	}
+
+	private bool IsDealerChoiceGameAllowed(string gameCode)
+	{
+		return _allowedDealerChoiceGameCodes.Contains(gameCode);
+	}
+
+	private void ToggleAllowedDealerChoiceGame(string gameCode)
+	{
+		if (!_allowedDealerChoiceGameCodes.Add(gameCode))
+		{
+			_allowedDealerChoiceGameCodes.Remove(gameCode);
+		}
 	}
 
 	private async Task SelectVariantAsync(VariantCard variant, bool isAvailable)
@@ -734,7 +892,10 @@
 				IsDealersChoice = _isDealersChoice,
 				SmallBlind = _hasBlinds ? _smallBlind : null,
 				BigBlind = _hasBlinds ? _bigBlind : null,
-				AreOddsVisibleToAllPlayers = _areOddsVisibleToAllPlayers
+				AreOddsVisibleToAllPlayers = _areOddsVisibleToAllPlayers,
+				AllowedDealerChoiceGameCodes = _isDealersChoice
+					? _allowedDealerChoiceGameCodes.OrderBy(code => code, StringComparer.OrdinalIgnoreCase).ToArray()
+					: null
 			};
 
 			// Call the appropriate API based on the selected variant

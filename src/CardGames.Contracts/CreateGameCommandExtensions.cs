@@ -15,4 +15,7 @@ public partial record CreateGameCommand
 
 	[JsonPropertyName("areOddsVisibleToAllPlayers")]
 	public bool AreOddsVisibleToAllPlayers { get; init; } = true;
+
+	[JsonPropertyName("allowedDealerChoiceGameCodes")]
+	public IReadOnlyList<string>? AllowedDealerChoiceGameCodes { get; init; }
 }

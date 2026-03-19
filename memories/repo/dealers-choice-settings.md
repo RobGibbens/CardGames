@@ -1,0 +1,3 @@
+- Dealer's Choice allowed variants are persisted on `Game.GameSettings` under the JSON key `allowedDealerChoiceGameCodes`.
+- New DC tables send `AllowedDealerChoiceGameCodes` on `CreateGameCommand`; old DC tables with no key remain unrestricted.
+- UI flow: `CreateTable.razor` configures the allowed set, `TablePlay.razor` parses it from `GetGameResponse.GameSettings`, and `DealerChoiceModal.razor` filters grouped choices from `AllowedGameCodes`.

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Features.Games.Common;
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Api.Infrastructure;
 using CardGames.Poker.Betting;
@@ -109,6 +110,15 @@ public class ChooseDealerGameCommandHandler(
 			{
 				GameId = command.GameId,
 				Reason = $"Unknown game type code '{command.GameTypeCode}'."
+			};
+		}
+
+		if (!DealersChoiceGameSettings.IsGameCodeAllowed(game, command.GameTypeCode))
+		{
+			return new ChooseDealerGameError
+			{
+				GameId = command.GameId,
+				Reason = $"Game type '{command.GameTypeCode}' is not allowed at this Dealer's Choice table."
 			};
 		}
 

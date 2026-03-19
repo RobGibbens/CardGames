@@ -130,6 +130,9 @@
 	[Parameter, EditorRequired]
 	public int CurrentActivePlayerCount { get; set; }
 
+	[Parameter]
+	public IReadOnlyCollection<string>? AllowedGameCodes { get; set; }
+
 	[Parameter, EditorRequired]
 	public EventCallback<DealerChoiceSelection> OnGameChosen { get; set; }
 
@@ -140,6 +143,7 @@
 	private int _smallBlind = 5;
 	private int _bigBlind = 10;
  private string _variantSearch = string.Empty;
+	private HashSet<string>? _allowedGameCodeLookup;
 	private bool _isSubmitting;
 	private bool _isLoading;
 	private string? _error;
@@ -154,6 +158,7 @@
 		get
 		{
 			var games = AvailableGames
+				.Where(g => IsAllowedGameType(g.Code))
                .Where(g => _selectedCode is not null
 					? g.Code == _selectedCode
 					: MatchesVariantSearch(g.Name))
@@ -172,6 +177,7 @@
 	protected override void OnParametersSet()
 	{
 		_isLoading = IsLoading;
+		_allowedGameCodeLookup = NormalizeAllowedGameCodes(AllowedGameCodes);
 
 		if (_selectedCode is null)
 		{
@@ -179,7 +185,7 @@
 		}
 
 		var selectedGame = AvailableGames.FirstOrDefault(g => string.Equals(g.Code, _selectedCode, StringComparison.OrdinalIgnoreCase));
-		if (selectedGame is not null && IsVariantDisabledForPlayerCount(selectedGame))
+		if (selectedGame is null || !IsAllowedGameType(selectedGame.Code) || IsVariantDisabledForPlayerCount(selectedGame))
 		{
 			_selectedCode = null;
 			_selectedName = null;
@@ -231,6 +237,22 @@
 	{
 		return string.IsNullOrWhiteSpace(_variantSearch)
 			|| gameName.Contains(_variantSearch, StringComparison.OrdinalIgnoreCase);
+	}
+
+	private bool IsAllowedGameType(string gameCode)
+	{
+		return _allowedGameCodeLookup is null || _allowedGameCodeLookup.Contains(gameCode);
+	}
+
+	private static HashSet<string>? NormalizeAllowedGameCodes(IEnumerable<string>? allowedGameCodes)
+	{
+		var normalizedCodes = allowedGameCodes?
+			.Select(code => code?.Trim())
+			.Where(code => !string.IsNullOrWhiteSpace(code))
+			.Select(code => code!)
+			.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+		return normalizedCodes is { Count: > 0 } ? normalizedCodes : null;
 	}
 
 	private async Task ConfirmChoiceAsync()
