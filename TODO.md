@@ -7,27 +7,9 @@
 - [ ] https://github.com/leeoades/FunctionalStateMachine
 - [ ] Dealer's Choice - pick which games are included
 
-- [x] SYN - When dealing you can briefly see all player's cards
-- [ ] SYN - After a few hands, table goes nuts, everybody animates a chip, cards redeal
 - [ ] SYN - Enable playing in Dealer's Choice
-- [x] SYN - Highlight winner(s)
 - [ ] SYN - check for ties
 - [ ] SYN - odds
-- [ ] SYN - only use one deck until it runs out
-- [ ] SYN - When running out of cards, deal a new deck
-- [x] SYN - Speed up deal
-- [x] SYN - Timer time out
-- [x] SYN - Showdown too fast
-- [x] SYN - Make sure you can't join in the middle of a game
-- [x] SYN - Have end of game go to lobby
-- [x] SYN - Animate trading
-- [x] SYN - Animate trading with the deck
-- [x] SYN - Animate chips to pot
-- [x] SYN - Get a king and it still prompts you to trade
-- [x] SYN - Not showing showdown
-- [x] SYN - check for King block
-- [x] SYN - Showdown showing email, not name
-- [x] SYN in DC - Shows six stacks each - not removing them
 
 - [ ] Create Table - Once a game is selected, hide the search box
 - [ ] Lobby - Group by game type
@@ -237,3 +219,21 @@
 - [x] SYN - show everyone if you traded or stayed
 - [x] SYN - no bring in, or lock it the set amount
 - [x] SYN - doesn't need min bet when creating
+- [x] SYN - When dealing you can briefly see all player's cards
+- [x] SYN - After a few hands, table goes nuts, everybody animates a chip, cards redeal
+- [x] SYN - Highlight winner(s)
+- [x] SYN - only use one deck until it runs out
+- [x] SYN - When running out of cards, deal a new deck
+- [x] SYN - Speed up deal
+- [x] SYN - Timer time out
+- [x] SYN - Showdown too fast
+- [x] SYN - Make sure you can't join in the middle of a game
+- [x] SYN - Have end of game go to lobby
+- [x] SYN - Animate trading
+- [x] SYN - Animate trading with the deck
+- [x] SYN - Animate chips to pot
+- [x] SYN - Get a king and it still prompts you to trade
+- [x] SYN - Not showing showdown
+- [x] SYN - check for King block
+- [x] SYN - Showdown showing email, not name
+- [x] SYN in DC - Shows six stacks each - not removing them
