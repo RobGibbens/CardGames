@@ -19,14 +19,14 @@
 		}
 		else
 		{
-		   <div class="dealer-choice-search dc-setting">
-			   <label for="dc-search">Search Variants</label>
-			   <input type="text"
-					  id="dc-search"
-					  placeholder="Search by game name"
-					  @bind="_variantSearch"
-					  @bind:event="oninput" />
-		   </div>
+			<div class="dealer-choice-search dc-setting">
+				<label for="dc-search">Search Variants</label>
+				<input type="text"
+					   id="dc-search"
+					   placeholder="Search by game name"
+					   @bind="_variantSearch"
+					   @bind:event="oninput" />
+			</div>
 
 			<!-- Variant Grid -->
 			<div class="dealer-choice-variants">
@@ -82,21 +82,24 @@
 					else
 					{
 						<div class="dc-setting">
-							<label for="dc-ante">Ante</label>
+							<label for="dc-ante">@(IsScrewYourNeighborGame(_selectedCode) ? "Chip stack amount" : "Ante")</label>
 							<input type="number" id="dc-ante" min="0" max="100"
 								   @bind-value="_ante" @bind-value:event="oninput" />
 						</div>
-						<div class="dc-setting">
-							<label for="dc-minbet">Min Bet</label>
-							<input type="number" id="dc-minbet" min="1" max="1000"
-								   @bind-value="_minBet" @bind-value:event="oninput" />
-						</div>
+						@if (ShouldShowMinBet(_selectedCode))
+						{
+							<div class="dc-setting">
+								<label for="dc-minbet">Min Bet</label>
+								<input type="number" id="dc-minbet" min="1" max="1000"
+									   @bind-value="_minBet" @bind-value:event="oninput" />
+							</div>
+						}
 					}
 				</div>
 
 				<button class="btn btn-primary btn-lg dealer-choice-confirm"
 						@onclick="ConfirmChoiceAsync"
-						disabled="@(_isSubmitting || (IsBlindBasedGame(_selectedCode) ? _bigBlind < 1 : _minBet < 1))">
+						disabled="@(_isSubmitting || (IsBlindBasedGame(_selectedCode) ? _bigBlind < 1 : RequiresMinBet(_selectedCode) && _minBet < 1))">
 					@if (_isSubmitting)
 					{
 						<span class="loading-spinner-small"></span>
@@ -142,7 +145,7 @@
 	private int _minBet = 10;
 	private int _smallBlind = 5;
 	private int _bigBlind = 10;
- private string _variantSearch = string.Empty;
+	private string _variantSearch = string.Empty;
 	private HashSet<string>? _allowedGameCodeLookup;
 	private bool _isSubmitting;
 	private bool _isLoading;
@@ -159,7 +162,7 @@
 		{
 			var games = AvailableGames
 				.Where(g => IsAllowedGameType(g.Code))
-               .Where(g => _selectedCode is not null
+				.Where(g => _selectedCode is not null
 					? g.Code == _selectedCode
 					: MatchesVariantSearch(g.Name))
 				.OrderBy(g => g.Name, StringComparer.OrdinalIgnoreCase);
@@ -233,6 +236,15 @@
 		|| string.Equals(code, "PHILSMOM", StringComparison.OrdinalIgnoreCase)
 		|| string.Equals(code, "CRAZYPINEAPPLE", StringComparison.OrdinalIgnoreCase);
 
+	private static bool RequiresMinBet(string? code) =>
+		!string.Equals(code, "SCREWYOURNEIGHBOR", StringComparison.OrdinalIgnoreCase);
+
+	private static bool IsScrewYourNeighborGame(string? code) =>
+		string.Equals(code, "SCREWYOURNEIGHBOR", StringComparison.OrdinalIgnoreCase);
+
+	private static bool ShouldShowMinBet(string? code) =>
+		RequiresMinBet(code);
+
 	private bool MatchesVariantSearch(string gameName)
 	{
 		return string.IsNullOrWhiteSpace(_variantSearch)
@@ -260,7 +272,7 @@
 		if (_selectedCode is null)
 			return;
 
-		if (IsBlindBasedGame(_selectedCode) ? _bigBlind < 1 : _minBet < 1)
+		if (IsBlindBasedGame(_selectedCode) ? _bigBlind < 1 : RequiresMinBet(_selectedCode) && _minBet < 1)
 			return;
 
 		_isSubmitting = true;
@@ -275,7 +287,8 @@
 			}
 			else
 			{
-				await OnGameChosen.InvokeAsync(new DealerChoiceSelection(_selectedCode, _ante, _minBet));
+				var minBet = RequiresMinBet(_selectedCode) ? _minBet : 1;
+				await OnGameChosen.InvokeAsync(new DealerChoiceSelection(_selectedCode, _ante, minBet));
 			}
 		}
 		catch (Exception ex)

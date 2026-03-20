@@ -10,7 +10,6 @@
 - [ ] Lobby - Filter by status
 - [ ] Join game modal - should not be able to click out of it
 - [ ] Join game modal background color
-- [ ] DC - You're the dealer! Pick a game variant for this hand. - SYN shows Min Bet
 - [ ] Joining table adds 5001 when setting 5000
 - [ ] Bringing in cash to a game should require host approval
 - [ ] Phil's mom loser showdown not correct
@@ -60,6 +59,7 @@
 ### Hold 'Em Variants
 - [x] Add Texas Hold'em
 - [x] Add Omaha
+- [ ] Add The Bob Barker
 - [x] Add Irish Hold'em
 - [ ] Add Pittsburgh
 - [ ] Add Squid Game
@@ -70,7 +70,6 @@
 - [x] Add Phil's Mom
 - [x] Add Crazy Pineapple
 - [ ] Add Klondike
-
 
 ### 7 Card Stud Variants
 - [x] Add Seven Card Stud
@@ -240,3 +239,4 @@
 - [x] Dealer's Choice - pick which games are included
 - [x] Auto generate table name
 - [x] Lobby - Group by game type
+- [x] DC - You're the dealer! Pick a game variant for this hand. - SYN shows Min Bet
