@@ -53,9 +53,10 @@
     }
 
     <!-- Cards Display -->
-    <div class="draw-cards-container">
+    <div class="draw-cards-container @(ShouldSeparateShowcaseCard ? "bob-barker-layout" : string.Empty)">
         @{
             var orderedCards = GetOrderedCards().ToList();
+            var shouldSeparateShowcaseCard = SeparateShowcaseCard && orderedCards.Any(card => card.Card.IsShowcaseCard);
             var hasExplicitWildFlags = Cards.Any(c => c.IsWild);
             var lowestNonKingRankValueForWild = EnableKingsAndLowsWildCardHighlighting
                 ? GetLowestNonKingRankValueForWild(Cards)
@@ -69,8 +70,9 @@
             var card = orderedCards[i].Card;
             var isSelected = SelectedIndices.Contains(index);
             var isWildForDisplay = IsWildForDisplay(card, lowestNonKingRankValueForWild, EnableKingsAndLowsWildCardHighlighting, EnableBaseballWildCardHighlighting, hasExplicitWildFlags);
+              var showcaseCardClass = shouldSeparateShowcaseCard && card.IsShowcaseCard ? "showcase-card" : string.Empty;
 
-            <div class="draw-card-wrapper @(isSelected ? "selected" : "") @(IsDiscarding && isSelected ? "discarding" : "") @(IsDrawing && NewCardIndices.Contains(index) ? "drawing" : "") @(IsReadOnly ? "readonly" : "")"
+              <div class="draw-card-wrapper @showcaseCardClass @(isSelected ? "selected" : "") @(IsDiscarding && isSelected ? "discarding" : "") @(IsDrawing && NewCardIndices.Contains(index) ? "drawing" : "") @(IsReadOnly ? "readonly" : "")"
                  @key="GetCardRenderKey(card, index)"
                  @onclick="() => ToggleCardSelectionAsync(index)"
                  @onclick:stopPropagation="@IsReadOnly">
@@ -344,6 +346,9 @@
     [Parameter]
     public bool EnableBaseballWildCardHighlighting { get; set; }
 
+    [Parameter]
+    public bool SeparateShowcaseCard { get; set; }
+
     private int SelectedCount => SelectedIndices.Count;
 
     protected override async Task OnParametersSetAsync()
@@ -519,11 +524,14 @@
         // Sort known face-up cards by value (2..A). Keep unknown/blank ranks stable.
         return Cards
             .Select((card, index) => new IndexedCard(card, index))
-            .OrderBy(x => string.IsNullOrWhiteSpace(x.Card.Rank) ? 1 : 0)
+            .OrderBy(x => SeparateShowcaseCard && x.Card.IsShowcaseCard ? 1 : 0)
+            .ThenBy(x => string.IsNullOrWhiteSpace(x.Card.Rank) ? 1 : 0)
             .ThenBy(x => GetRankValue(x.Card.Rank))
             .ThenBy(x => GetSuitValue(x.Card.Suit))
             .ThenBy(x => x.Index);
     }
+
+    private bool ShouldSeparateShowcaseCard => SeparateShowcaseCard && Cards.Any(card => card.IsShowcaseCard);
 
     private string? GetPlayingCardRank(CardInfo card)
     {

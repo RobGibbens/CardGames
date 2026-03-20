@@ -5222,11 +5222,19 @@ a:hover {
 
 /* Draw Cards Container */
 .draw-cards-container {
+    --draw-card-gap: 0.75rem;
+    --draw-card-width: 64px;
     display: flex;
     justify-content: center;
-    gap: 0.75rem;
+    gap: var(--draw-card-gap);
     margin-bottom: 1.25rem;
     perspective: 1000px;
+}
+
+.draw-cards-container.bob-barker-layout .draw-card-wrapper.showcase-card {
+    margin-left: calc((var(--draw-card-width) - var(--draw-card-gap)) * 0.72);
+    transform: rotate(24deg);
+    transform-origin: bottom center;
 }
 
 .draw-card-wrapper {
@@ -5239,8 +5247,16 @@ a:hover {
     transform: translateY(-8px);
 }
 
+.draw-cards-container.bob-barker-layout .draw-card-wrapper.showcase-card:hover:not(.selected) {
+    transform: rotate(24deg) translateY(-8px);
+}
+
 .draw-card-wrapper.selected {
     transform: translateY(-16px) scale(1.05);
+}
+
+.draw-cards-container.bob-barker-layout .draw-card-wrapper.showcase-card.selected {
+    transform: rotate(24deg) translateY(-16px) scale(1.05);
 }
 
 .draw-card-wrapper.selected .draw-card {
@@ -5503,7 +5519,7 @@ a:hover {
     }
 
     .draw-cards-container {
-        gap: 0.5rem;
+        --draw-card-gap: 0.5rem;
     }
 
     .draw-card {

@@ -384,6 +384,10 @@
         position: absolute;
         top: -40px; /* Cards sit above the seat details */
         /* top: 40%; left: 50%; transform: translate(-50%, -50%); /* Alternative center placement */
+        --seat-current-card-width: 80px;
+        --seat-current-card-overlap: -15px;
+        --seat-remote-card-width: 50px;
+        --seat-remote-card-overlap: -16px;
         z-index: 5;
         pointer-events: none;
     }
@@ -421,6 +425,12 @@
     z-index: 1;
 }
 
+.current-player-layout .cards-fan.bob-barker-layout .card-shell.showcase-card {
+    margin-left: calc((var(--seat-current-card-width) - var(--seat-current-card-overlap)) * 0.30);
+    transform: rotate(15deg);
+    transform-origin: bottom center;
+}
+
 /* Element Styles for injected playing-card component support */
 ::deep playing-card {
     position: relative;
@@ -445,6 +455,12 @@
     width: 50px !important;
     margin: 0 -16px;
 }
+
+.remote-player-layout .cards-fan.bob-barker-layout ::deep playing-card.showcase-card {
+    margin-left: calc((var(--seat-remote-card-width) - var(--seat-remote-card-overlap)) * 0.72);
+    transform: rotate(30deg);
+}
+
 ::deep playing-card.poker-card {
     height: 140px;
     width: 80px;

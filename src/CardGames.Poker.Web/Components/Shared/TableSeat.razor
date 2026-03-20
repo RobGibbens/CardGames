@@ -15,27 +15,28 @@
 		{
 			<div class="seat-cards-container">
 
-				<div class="cards-fan">
+				<div class="cards-fan @(ShouldSeparateShowcaseCard ? "bob-barker-layout" : string.Empty)">
 					@{
 						var hasExplicitWildFlags = Seat.Cards.Any(c => c.IsWild);
 						var lowestNonKingRankValueForWild = IsKingsAndLows
 							? GetLowestNonKingRankValueForWild(Seat.Cards)
 							: null;
-                       var orderedCards = GetOrderedCards().ToList();
+						var orderedCards = GetOrderedCards().ToList();
 					}
-                    @for (var cardIndex = 0; cardIndex < orderedCards.Count; cardIndex++)
+					@for (var cardIndex = 0; cardIndex < orderedCards.Count; cardIndex++)
 					{
-                        var card = orderedCards[cardIndex];
+						var card = orderedCards[cardIndex];
 						var rank = GetPlayingCardRank(card);
 						var hasCardPayload = !string.IsNullOrWhiteSpace(card.Rank) && !string.IsNullOrWhiteSpace(card.Suit);
 						var isWildForDisplay = IsWildForDisplay(card, lowestNonKingRankValueForWild, hasExplicitWildFlags);
+						var showcaseCardClass = ShouldSeparateShowcaseCard && card.IsShowcaseCard ? "showcase-card" : string.Empty;
 						// Logic from original: current player sees own cards, others see face up only if face up
 
 						if (IsCurrentPlayer)
 						{
 							if (card.IsPubliclyVisible)
 							{
-								<div class="card-shell face-up">
+								<div class="card-shell face-up @showcaseCardClass">
 									<playing-card rank="@rank" suit="@card.Suit" class="poker-card face-up"
 												  suitcolor="@(isWildForDisplay ? "green" : null)" rankcolor="@(isWildForDisplay ? "green" : null)"
 												  courtcolor="@(isWildForDisplay ? "green" : null)"></playing-card>
@@ -43,13 +44,13 @@
 							}
 							else if (!hasCardPayload)
 							{
-							  <div class="card-shell face-down">
+								<div class="card-shell face-down @showcaseCardClass">
 									<playing-card rank="0" backcolor="#44F" class="poker-card face-down"></playing-card>
 								</div>
 							}
 							else
 							{
-							  <div class="card-shell face-down">
+								<div class="card-shell face-down @showcaseCardClass">
 									<playing-card rank="@rank" suit="@card.Suit" class="poker-card face-down"
 												  suitcolor="@(isWildForDisplay ? "green" : null)" rankcolor="@(isWildForDisplay ? "green" : null)"
 												  courtcolor="@(isWildForDisplay ? "green" : null)"></playing-card>
@@ -60,13 +61,13 @@
 						{
 							if (ShouldShowRemoteCardFace(card))
 							{
-							   <playing-card rank="@rank" suit="@card.Suit" class="poker-card small"
+								<playing-card rank="@rank" suit="@card.Suit" class="poker-card small @showcaseCardClass"
 											  suitcolor="@(isWildForDisplay ? "green" : null)" rankcolor="@(isWildForDisplay ? "green" : null)"
 											  courtcolor="@(isWildForDisplay ? "green" : null)"></playing-card>
 							}
 							else
 							{
-								<playing-card rank="0" backcolor="#44F" class="poker-card small"></playing-card>
+								<playing-card rank="0" backcolor="#44F" class="poker-card small @showcaseCardClass"></playing-card>
 							}
 						}
 					}
@@ -254,6 +255,8 @@
 
 	private bool IsScrewYourNeighbor => string.Equals(GameTypeCode, "SCREWYOURNEIGHBOR",
 StringComparison.OrdinalIgnoreCase);
+	private bool IsBobBarker => string.Equals(GameTypeCode, "BOBBARKER", StringComparison.OrdinalIgnoreCase);
+	private bool ShouldSeparateShowcaseCard => IsBobBarker && Seat.Cards.Any(c => c.IsShowcaseCard);
 
 	protected override void OnInitialized()
 	{
@@ -472,7 +475,9 @@ StringComparison.OrdinalIgnoreCase);
 		}
 
 		// Sort by card value (2 lowest, Ace highest) for Five Card Draw display.
-		return Seat.Cards.OrderBy(GetCardValueOrder);
+		return Seat.Cards
+			.OrderBy(card => ShouldSeparateShowcaseCard && card.IsShowcaseCard ? 1 : 0)
+			.ThenBy(GetCardValueOrder);
 	}
 
 	private bool IsKingsAndLows => string.Equals(GameTypeCode, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase);

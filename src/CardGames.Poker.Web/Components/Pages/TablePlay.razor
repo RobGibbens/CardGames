@@ -310,6 +310,7 @@
                        DiscardLabel="@(IsBobBarker ? "Choose" : "Discard")"
                        SelectionVerb="@(IsBobBarker ? "mark as your showcase" : "discard")"
                        SelectedBadgeIconClass="@(IsBobBarker ? "fa-solid fa-star" : "fa-solid fa-xmark")"
+                       SeparateShowcaseCard="@IsBobBarker"
                        IsReadOnly="@(IsDrawCompletePhase || _cardsDrawn)"
                        ReadOnlyMessage="@(IsDrawCompletePhase ? "Waiting for showdown..." : "New cards drawn!")"
                        ActionTimer="@_actionTimerState"
@@ -1682,7 +1683,8 @@
                     IsPubliclyVisible = c.IsPubliclyVisible,
                     IsSelected = false,
                     DealOrder = c.DealOrder,
-                    IsWild = IsWildCard(c.Rank, c.Suit)
+                    IsWild = IsWildCard(c.Rank, c.Suit),
+                    IsShowcaseCard = c.IsShowcaseCard
                 }).ToList();
 
                 ApplyKingsAndLowsLowestCardWildFallback(_seats[targetSeatIndex].Cards);
@@ -1902,7 +1904,11 @@
                 List<CardInfo> cards;
                 if (shouldPreserveCards)
                 {
-                    cards = existingCards.Select(c => c with { IsWild = IsWildCard(c.Rank, c.Suit) }).ToList();
+                    cards = existingCards.Select(c => c with
+                    {
+                        IsWild = IsWildCard(c.Rank, c.Suit),
+                        IsShowcaseCard = c.IsShowcaseCard
+                    }).ToList();
 
                     var shouldAppendMissingPublicCards =
                         isCurrentPlayer &&
@@ -1927,7 +1933,8 @@
                                 IsPubliclyVisible = publicCard.IsFaceUp,
                                 IsSelected = false,
                                 DealOrder = publicCard.DealOrder,
-                                IsWild = publicCard.IsFaceUp && IsWildCard(publicCard.Rank, publicCard.Suit)
+                                IsWild = publicCard.IsFaceUp && IsWildCard(publicCard.Rank, publicCard.Suit),
+                                IsShowcaseCard = existingCards.FirstOrDefault(existing => existing.DealOrder == publicCard.DealOrder)?.IsShowcaseCard == true
                             });
                         }
 
@@ -1953,7 +1960,8 @@
                             IsPubliclyVisible = c.IsFaceUp,
                             IsSelected = false,
                             DealOrder = c.DealOrder,
-                            IsWild = c.IsFaceUp && IsWildCard(c.Rank, c.Suit)
+                            IsWild = c.IsFaceUp && IsWildCard(c.Rank, c.Suit),
+                            IsShowcaseCard = existingCard?.IsShowcaseCard == true
                         };
                     }).ToList();
                 }
