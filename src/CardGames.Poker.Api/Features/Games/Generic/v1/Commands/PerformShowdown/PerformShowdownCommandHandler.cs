@@ -110,7 +110,6 @@ public sealed class PerformShowdownCommandHandler(
             .Where(gp => !gp.HasFolded && (gp.Status == GamePlayerStatus.Active || gp.IsAllIn))
             .ToList();
 
-        // Fetch user first names from Users table
         var playerEmails = game.GamePlayers
             .Where(gp => gp.Player.Email != null)
             .Select(gp => gp.Player.Email!)
@@ -119,8 +118,151 @@ public sealed class PerformShowdownCommandHandler(
         var usersByEmail = await context.Users
             .AsNoTracking()
             .Where(u => u.Email != null && playerEmails.Contains(u.Email))
-            .Select(u => new UserInfo(u.Email!, u.FirstName))
+            .Select(u => new UserInfo(u.Email!, u.FirstName, u.LastName))
             .ToDictionaryAsync(u => u.Email, StringComparer.OrdinalIgnoreCase, cancellationToken);
+
+        // Inline-showdown variants (for example Screw Your Neighbor) own their showdown
+        // settlement logic and must not go through generic poker hand evaluation.
+        if (flowHandler.SupportsInlineShowdown && !isAlreadyAwarded)
+        {
+            var showdownResult = await flowHandler.PerformShowdownAsync(
+                context,
+                game,
+                handHistoryRecorder,
+                now,
+                cancellationToken);
+
+            if (!showdownResult.IsSuccess)
+            {
+                return new PerformShowdownError
+                {
+                    Message = showdownResult.ErrorMessage ?? "Showdown failed.",
+                    Code = PerformShowdownErrorCode.InvalidGameState
+                };
+            }
+
+            var nextPhase = await flowHandler.ProcessPostShowdownAsync(
+                context,
+                game,
+                showdownResult,
+                now,
+                cancellationToken);
+
+            game.CurrentPhase = nextPhase;
+            game.UpdatedAt = now;
+
+            await context.SaveChangesAsync(cancellationToken);
+
+            var inlineHandCards = await context.GameCards
+                .Where(c => c.GameId == command.GameId &&
+                            c.HandNumber == game.CurrentHandNumber &&
+                            !c.IsDiscarded &&
+                            c.GamePlayerId != null)
+                .OrderBy(c => c.DealOrder)
+                .ToListAsync(cancellationToken);
+
+            var inlineCardsByGamePlayerId = inlineHandCards
+                .Where(c => c.GamePlayerId.HasValue)
+                .GroupBy(c => c.GamePlayerId!.Value)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            var inlinePayouts = new Dictionary<string, int>();
+            var settlementPayouts = new Dictionary<string, int>();
+            var inlineWinnerIdSet = showdownResult.WinnerPlayerIds.ToHashSet();
+            var inlineParticipantPlayerIds = showdownResult.WinnerPlayerIds
+                .Concat(showdownResult.LoserPlayerIds)
+                .ToHashSet();
+
+            if (ShouldSettleTerminalScrewYourNeighborVariant(game, showdownResult) &&
+                showdownResult.WinnerPlayerIds.Count == 1 &&
+                showdownResult.TotalPotAwarded > 0)
+            {
+                var winner = game.GamePlayers
+                    .FirstOrDefault(gp => gp.PlayerId == showdownResult.WinnerPlayerIds[0]);
+                if (winner is not null)
+                {
+                    // UI payout should show the amount won from the pot.
+                    inlinePayouts[winner.Player.Name] = showdownResult.TotalPotAwarded;
+
+                    // Settlement payout must include the winner's own hand contribution so
+                    // netDelta = payout - contribution still credits the full pot amount.
+                    settlementPayouts[winner.Player.Name] = showdownResult.TotalPotAwarded + winner.TotalContributedThisHand;
+                }
+            }
+
+            // Load cards for each player so the overlay can display them
+            var inlineCards = await context.GameCards
+                .Where(c => c.GameId == game.Id &&
+                             c.HandNumber == game.CurrentHandNumber &&
+                             !c.IsDiscarded &&
+                             c.GamePlayerId != null &&
+                             c.Location == CardLocation.Hand)
+                .ToListAsync(cancellationToken);
+
+            var inlineCardsByPlayer = inlineCards
+                .GroupBy(c => c.GamePlayerId!.Value)
+                .ToDictionary(g => g.Key, g => g.OrderBy(c => c.DealOrder).ToList());
+
+            var inlinePlayerHands = playersInHand
+                .Select(gamePlayer =>
+                {
+                    usersByEmail.TryGetValue(gamePlayer.Player.Email ?? string.Empty, out var user);
+
+                    var canonicalPlayerName = gamePlayer.Player.Name;
+                    var firstName = ResolvePlayerFirstName(user, canonicalPlayerName);
+
+                    var cards = inlineCardsByPlayer.TryGetValue(gamePlayer.Id, out var playerCards)
+                        ? playerCards.Select(c => new ShowdownCard { Suit = c.Suit, Symbol = c.Symbol }).ToList()
+                        : new List<ShowdownCard>();
+
+                    return new ShowdownPlayerHand
+                    {
+                        PlayerName = canonicalPlayerName,
+                        PlayerFirstName = firstName,
+                        Cards = cards,
+                        HandType = null,
+                        HandDescription = null,
+                        HandStrength = null,
+                        IsWinner = inlineWinnerIdSet.Contains(gamePlayer.PlayerId),
+                        AmountWon = inlinePayouts.GetValueOrDefault(canonicalPlayerName, 0)
+                    };
+                })
+                .ToList();
+
+            // Inline-showdown variants still need cashier settlement updates.
+            await handSettlementService.SettleHandAsync(game, settlementPayouts, cancellationToken);
+            await context.SaveChangesAsync(cancellationToken);
+
+            return new PerformShowdownSuccessful
+            {
+                GameId = game.Id,
+                WonByFold = showdownResult.WonByFold,
+                CurrentPhase = game.CurrentPhase,
+                Payouts = inlinePayouts,
+                PlayerHands = inlinePlayerHands
+            };
+        }
+
+        // Inline-showdown variants that have already been awarded need to reconstruct
+        // the response from persisted data so that every caller sees the same result.
+        if (flowHandler.SupportsInlineShowdown && isAlreadyAwarded)
+        {
+            return await ReconstructInlineShowdownResultAsync(
+                context, game, currentHandPots, usersByEmail, cancellationToken);
+        }
+
+        static bool ShouldSettleTerminalScrewYourNeighborVariant(Game game, ShowdownResult showdownResult)
+        {
+            if (game.Status == GameStatus.Completed)
+            {
+                return true;
+            }
+
+            return game.IsDealersChoice &&
+                   string.Equals(game.CurrentHandGameTypeCode, PokerGameMetadataRegistry.ScrewYourNeighborCode, StringComparison.OrdinalIgnoreCase) &&
+                   showdownResult.WinnerPlayerIds.Count == 1 &&
+                   game.GamePlayers.Count(gp => gp.Status == GamePlayerStatus.Active && gp.ChipStack > 0) <= 1;
+        }
 
         // 5. Load cards for players in hand
         var playerCards = await context.GameCards
@@ -151,7 +293,7 @@ public sealed class PerformShowdownCommandHandler(
         if (playersInHand.Count == 1)
         {
             return await HandleWinByFoldAsync(
-                game, playersInHand[0], currentHandPots, totalPot, 
+                game, playersInHand[0], currentHandPots, totalPot,
                 playerCardGroups, usersByEmail, isAlreadyAwarded, now, cancellationToken);
         }
 
@@ -186,9 +328,9 @@ public sealed class PerformShowdownCommandHandler(
             }
 
             // 12. Update game state - use flow handler to determine next phase
-            var nextPhase = flowHandler.GetNextPhase(game, nameof(Phases.Showdown)) 
+            var nextPhase = flowHandler.GetNextPhase(game, nameof(Phases.Showdown))
                 ?? nameof(Phases.Complete);
-            
+
             game.CurrentPhase = nextPhase;
             game.UpdatedAt = now;
 
@@ -309,7 +451,7 @@ public sealed class PerformShowdownCommandHandler(
                 new ShowdownPlayerHand
                 {
                     PlayerName = winner.Player.Name,
-                    PlayerFirstName = winnerUser?.FirstName,
+                    PlayerFirstName = ResolvePlayerFirstName(winnerUser, winner.Player.Name),
                     Cards = winnerCards.Select(c => new ShowdownCard
                     {
                         Suit = c.Suit,
@@ -677,7 +819,7 @@ public sealed class PerformShowdownCommandHandler(
             return new ShowdownPlayerHand
             {
                 PlayerName = kvp.Key,
-                PlayerFirstName = user?.FirstName,
+                PlayerFirstName = ResolvePlayerFirstName(user, kvp.Key),
                 Cards = displayCards,
                 HandType = FormatHandTypeForDisplay(gameTypeCode, kvp.Value.Hand),
                 HandDescription = handDescription,
@@ -1027,6 +1169,130 @@ public sealed class PerformShowdownCommandHandler(
     }
 
     /// <summary>
+    /// Reconstructs the inline showdown response from persisted data when pots
+    /// have already been awarded by a prior caller, avoiding the race condition
+    /// where the second caller skips the live showdown branch.
+    /// </summary>
+    private async Task<OneOf<PerformShowdownSuccessful, PerformShowdownError>> ReconstructInlineShowdownResultAsync(
+        CardsDbContext context,
+        Game game,
+        List<Data.Entities.Pot> currentHandPots,
+        Dictionary<string, UserInfo> usersByEmail,
+        CancellationToken cancellationToken)
+    {
+        // Determine winners and payouts from the already-awarded pot's WinnerPayouts JSON.
+        var winnerPlayerIds = new HashSet<Guid>();
+        var payoutsByName = new Dictionary<string, int>();
+
+        var awardedPot = currentHandPots.FirstOrDefault(p => p.IsAwarded && !string.IsNullOrWhiteSpace(p.WinnerPayouts));
+        if (awardedPot?.WinnerPayouts is not null)
+        {
+            using var doc = JsonDocument.Parse(awardedPot.WinnerPayouts);
+            foreach (var entry in doc.RootElement.EnumerateArray())
+            {
+                if (entry.TryGetProperty("playerId", out var pidProp) &&
+                    Guid.TryParse(pidProp.GetString(), out var pid))
+                {
+                    winnerPlayerIds.Add(pid);
+                }
+
+                var name = entry.TryGetProperty("playerName", out var nameProp) ? nameProp.GetString() : null;
+                var amount = entry.TryGetProperty("amount", out var amtProp) && amtProp.TryGetInt32(out var amt) ? amt : 0;
+
+                if (!string.IsNullOrWhiteSpace(name))
+                {
+                    payoutsByName[name] = amount;
+                }
+            }
+        }
+
+        // Load cards for all players in this hand.
+        var handCards = await context.GameCards
+            .Where(c => c.GameId == game.Id &&
+                        c.HandNumber == game.CurrentHandNumber &&
+                        !c.IsDiscarded &&
+                        c.GamePlayerId != null &&
+                        c.Location == CardLocation.Hand)
+            .OrderBy(c => c.DealOrder)
+            .ToListAsync(cancellationToken);
+
+        var cardsByGamePlayerId = handCards
+            .Where(c => c.GamePlayerId.HasValue)
+            .GroupBy(c => c.GamePlayerId!.Value)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        // Build PlayerHands for every game player that held cards this hand.
+        var gamePlayerIdsWithCards = cardsByGamePlayerId.Keys.ToHashSet();
+        var participants = game.GamePlayers
+            .Where(gp => gamePlayerIdsWithCards.Contains(gp.Id))
+            .ToList();
+
+        var playerHands = participants
+            .Select(gp =>
+            {
+                usersByEmail.TryGetValue(gp.Player.Email ?? string.Empty, out var user);
+
+                var canonicalName = gp.Player.Name;
+                var firstName = ResolvePlayerFirstName(user, canonicalName);
+
+                var cards = cardsByGamePlayerId.TryGetValue(gp.Id, out var playerCards)
+                    ? playerCards.Select(c => new ShowdownCard { Suit = c.Suit, Symbol = c.Symbol }).ToList()
+                    : new List<ShowdownCard>();
+
+                return new ShowdownPlayerHand
+                {
+                    PlayerName = canonicalName,
+                    PlayerFirstName = firstName,
+                    Cards = cards,
+                    HandType = null,
+                    HandDescription = null,
+                    HandStrength = null,
+                    IsWinner = winnerPlayerIds.Contains(gp.PlayerId),
+                    AmountWon = payoutsByName.GetValueOrDefault(canonicalName, 0)
+                };
+            })
+            .ToList();
+
+        return new PerformShowdownSuccessful
+        {
+            GameId = game.Id,
+            WonByFold = false,
+            CurrentPhase = game.CurrentPhase,
+            Payouts = payoutsByName,
+            PlayerHands = playerHands,
+            ShouldBroadcastGameState = false
+        };
+    }
+
+    /// <summary>
+    /// Resolves the display first name for a player at showdown.
+    /// Prefers Identity FirstName; falls back to TitleCased email local-part.
+    /// </summary>
+    private static string? ResolvePlayerFirstName(UserInfo? user, string canonicalName)
+    {
+        var firstName = user?.FirstName?.Trim();
+        if (!string.IsNullOrWhiteSpace(firstName))
+        {
+            return firstName;
+        }
+
+        // Derive from email local-part when Identity profile is missing
+        var emailSource = !string.IsNullOrWhiteSpace(user?.Email) ? user.Email : canonicalName;
+        var atIndex = emailSource?.IndexOf('@') ?? -1;
+        if (atIndex > 0)
+        {
+            var localPart = emailSource![..atIndex];
+            var segments = localPart.Split(['.', '_', '-'], StringSplitOptions.RemoveEmptyEntries);
+            if (segments.Length > 0)
+            {
+                return System.Globalization.CultureInfo.InvariantCulture.TextInfo.ToTitleCase(segments[0].ToLowerInvariant());
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
     /// Holds evaluation results for a player's hand.
     /// </summary>
     private sealed record PlayerHandEvaluation(HandBase Hand, List<GameCard> Cards, GamePlayer GamePlayer);
@@ -1034,5 +1300,7 @@ public sealed class PerformShowdownCommandHandler(
     /// <summary>
     /// Holds user information for display purposes.
     /// </summary>
-    private sealed record UserInfo(string Email, string? FirstName);
+    private sealed record UserInfo(string Email, string? FirstName, string? LastName);
 }
+
+

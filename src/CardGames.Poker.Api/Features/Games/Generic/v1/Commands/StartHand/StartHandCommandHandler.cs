@@ -1,7 +1,10 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.GameFlow;
+using CardGames.Poker.Api.Games;
+using CardGames.Poker.Api.Services;
 using CardGames.Poker.Betting;
+using CardGames.Contracts.SignalR;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
@@ -44,6 +47,7 @@ namespace CardGames.Poker.Api.Features.Games.Generic.v1.Commands.StartHand;
 public sealed class StartHandCommandHandler(
     CardsDbContext context,
     IGameFlowHandlerFactory flowHandlerFactory,
+    IGameStateBroadcaster broadcaster,
     ILogger<StartHandCommandHandler> logger)
     : IRequestHandler<StartHandCommand, OneOf<StartHandSuccessful, StartHandError>>
 {
@@ -167,8 +171,14 @@ public sealed class StartHandCommandHandler(
         // 8. Reset player states for new hand
         ResetPlayerStates(game);
 
-        // 9. Remove any existing cards from previous hand
-        await RemovePreviousHandCardsAsync(game, cancellationToken);
+        // 9. Prepare card state for the upcoming hand.
+        await flowHandler.PrepareForNewHandAsync(
+            context,
+            game,
+            eligiblePlayers,
+            game.CurrentHandNumber + 1,
+            now,
+            cancellationToken);
 
         // 10. Game-specific initialization (e.g., reset DropOrStay decisions for Kings and Lows)
         await flowHandler.OnHandStartingAsync(game, cancellationToken);
@@ -208,6 +218,17 @@ public sealed class StartHandCommandHandler(
         if (flowHandler.SkipsAnteCollection)
         {
             await flowHandler.DealCardsAsync(context, game, eligiblePlayers, now, cancellationToken);
+
+            if (await ShouldBroadcastScrewYourNeighborNewDeckToastAsync(context, flowHandler, game, cancellationToken))
+            {
+                await broadcaster.BroadcastTableToastAsync(
+                    new TableToastNotificationDto
+                    {
+                        GameId = game.Id,
+                        Message = "Starting new deck"
+                    },
+                    cancellationToken);
+            }
         }
 
         logger.LogInformation(
@@ -221,6 +242,24 @@ public sealed class StartHandCommandHandler(
             CurrentPhase = game.CurrentPhase,
             ActivePlayerCount = eligiblePlayers.Count
         };
+    }
+
+    private static async Task<bool> ShouldBroadcastScrewYourNeighborNewDeckToastAsync(
+        CardsDbContext context,
+        IGameFlowHandler flowHandler,
+        Game game,
+        CancellationToken cancellationToken)
+    {
+        if (!string.Equals(flowHandler.GameTypeCode, PokerGameMetadataRegistry.ScrewYourNeighborCode, StringComparison.OrdinalIgnoreCase) ||
+            game.CurrentHandNumber <= 1)
+        {
+            return false;
+        }
+
+        var currentHandCardCount = await context.GameCards
+            .CountAsync(gc => gc.GameId == game.Id && gc.HandNumber == game.CurrentHandNumber, cancellationToken);
+
+        return currentHandCardCount == 52;
     }
 
     /// <summary>
@@ -303,21 +342,6 @@ public sealed class StartHandCommandHandler(
             gamePlayer.HasDrawnThisRound = false;
             gamePlayer.HasFolded = gamePlayer.IsSittingOut;
             gamePlayer.VariantState = null;
-        }
-    }
-
-    /// <summary>
-    /// Removes any existing cards from the previous hand.
-    /// </summary>
-    private async Task RemovePreviousHandCardsAsync(Game game, CancellationToken cancellationToken)
-    {
-        var existingCards = await context.GameCards
-            .Where(gc => gc.GameId == game.Id)
-            .ToListAsync(cancellationToken);
-
-        if (existingCards.Count > 0)
-        {
-            context.GameCards.RemoveRange(existingCards);
         }
     }
 }

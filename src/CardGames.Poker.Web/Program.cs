@@ -142,6 +142,13 @@ builder.Services
 	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"))
 	.AddHttpMessageHandler<AuthenticationStateHandler>();
 
+builder.Services
+	.AddRefitClient<IScrewYourNeighborApi>(
+		settingsAction: _ => new RefitSettings(),
+		httpClientName: "screwYourNeighborApi")
+	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"))
+	.AddHttpMessageHandler<AuthenticationStateHandler>();
+
 // Register Game API Router
 // builder.Services.AddScoped<IGameApiRouter, GameApiRouter>();
 

@@ -5,6 +5,8 @@ namespace CardGames.IntegrationTests.Infrastructure.Fakes;
 
 public class FakeGameStateBroadcaster : IGameStateBroadcaster
 {
+    public List<TableToastNotificationDto> ToastNotifications { get; } = [];
+
     public Task BroadcastGameStateAsync(Guid gameId, CancellationToken cancellationToken = default)
     {
         return Task.CompletedTask;
@@ -17,6 +19,12 @@ public class FakeGameStateBroadcaster : IGameStateBroadcaster
 
     public Task BroadcastPlayerJoinedAsync(Guid gameId, string playerName, int seatIndex, bool canPlayCurrentHand, CancellationToken cancellationToken = default)
     {
+        return Task.CompletedTask;
+    }
+
+    public Task BroadcastTableToastAsync(TableToastNotificationDto notification, CancellationToken cancellationToken = default)
+    {
+        ToastNotifications.Add(notification);
         return Task.CompletedTask;
     }
 

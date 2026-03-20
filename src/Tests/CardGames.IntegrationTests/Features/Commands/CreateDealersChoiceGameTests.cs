@@ -1,3 +1,4 @@
+using System.Text.Json;
 using CardGames.Poker.Api.Features.Games.Common.v1.Commands.CreateGame;
 using CardGames.Poker.Api.Games;
 
@@ -137,6 +138,67 @@ public class CreateDealersChoiceGameTests : IntegrationTestBase
         pots.Should().HaveCount(1);
         pots[0].PotType.Should().Be(PotType.Main);
         pots[0].Amount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Handle_DealersChoice_PersistsAllowedGameCodesInGameSettings()
+    {
+        var gameId = Guid.NewGuid();
+        var command = new CreateGameCommand(
+            gameId,
+            string.Empty,
+            "DC Table",
+            0,
+            0,
+            new List<PlayerInfo> { new("P1", 1000), new("P2", 1000) },
+            IsDealersChoice: true)
+        {
+            AllowedDealerChoiceGameCodes =
+            [
+                PokerGameMetadataRegistry.FiveCardDrawCode,
+                PokerGameMetadataRegistry.OmahaCode
+            ]
+        };
+
+        await Mediator.Send(command);
+
+        var game = await DbContext.Games.FirstAsync(g => g.Id == gameId);
+        game.GameSettings.Should().NotBeNullOrWhiteSpace();
+
+        using var document = JsonDocument.Parse(game.GameSettings!);
+        var allowedGameCodes = document.RootElement
+            .GetProperty("allowedDealerChoiceGameCodes")
+            .EnumerateArray()
+            .Select(element => element.GetString())
+            .Where(code => code is not null)
+            .ToArray();
+
+        allowedGameCodes.Should().BeEquivalentTo(
+            [
+                PokerGameMetadataRegistry.FiveCardDrawCode,
+                PokerGameMetadataRegistry.OmahaCode
+            ]);
+    }
+
+    [Fact]
+    public async Task Handle_DealersChoice_WithEmptyAllowedGameCodes_ReturnsConflict()
+    {
+        var command = new CreateGameCommand(
+            Guid.NewGuid(),
+            string.Empty,
+            "DC Table",
+            0,
+            0,
+            new List<PlayerInfo> { new("P1", 1000), new("P2", 1000) },
+            IsDealersChoice: true)
+        {
+            AllowedDealerChoiceGameCodes = []
+        };
+
+        var result = await Mediator.Send(command);
+
+        result.IsT1.Should().BeTrue();
+        result.AsT1.Reason.Should().Contain("must allow at least one game variant");
     }
 
     [Fact]

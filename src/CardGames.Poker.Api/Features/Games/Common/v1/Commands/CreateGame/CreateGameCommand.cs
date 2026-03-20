@@ -1,4 +1,5 @@
-﻿using CardGames.Poker.Api.Infrastructure;
+﻿using System.Text.Json.Serialization;
+using CardGames.Poker.Api.Infrastructure;
 using MediatR;
 using OneOf;
 
@@ -14,4 +15,8 @@ public record CreateGameCommand(
 	bool IsDealersChoice = false,
 	int? SmallBlind = null,
    int? BigBlind = null,
-	bool AreOddsVisibleToAllPlayers = true) : IRequest<OneOf<CreateGameSuccessful, CreateGameConflict>>, IGameStateChangingCommand, ILobbyStateChangingCommand;
+	bool AreOddsVisibleToAllPlayers = true) : IRequest<OneOf<CreateGameSuccessful, CreateGameConflict>>, IGameStateChangingCommand, ILobbyStateChangingCommand
+{
+	[JsonPropertyName("allowedDealerChoiceGameCodes")]
+	public IReadOnlyList<string>? AllowedDealerChoiceGameCodes { get; init; }
+}

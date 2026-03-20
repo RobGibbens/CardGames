@@ -4,523 +4,512 @@
 @using CardGames.Contracts.SignalR
 
 <div class="table-canvas">
-    <!-- Poker table background -->
-    <div class="poker-table">
-        <div class="poker-table-felt">
-            @if (FeltPatternIconClass is not null)
-            {
-                <div class="felt-pattern" aria-hidden="true">
-                    @for (var i = 0; i < 216; i++)
-                    {
-                        <i class="fa-thin @FeltPatternIconClass icon-felt"></i>
-                    }
-                </div>
-            }
+	<!-- Poker table background -->
+	<div class="poker-table">
+		<div class="poker-table-felt">
+			@if (FeltPatternIconClass is not null)
+			{
+				<div class="felt-pattern" aria-hidden="true">
+					@for (var i = 0; i < 216; i++)
+					{
+						<i class="fa-thin @FeltPatternIconClass icon-felt"></i>
+					}
+				</div>
+			}
 
-            <!-- Center area: deck, community cards, pot in one row -->
-            <div class="table-center">
-                <div class="table-center-row @(HasExtraCommunityCards ? "table-center-row-compact-board" : string.Empty)">
-                    <!-- Deck visualization -->
-                    <div class="deck-stack" @ref="_deckRef">
-                        @for (var i = 0; i < 5; i++)
-                        {
-                            <playing-card rank="0" backcolor="#44F" class="deck-card" style="--deck-offset: @i"></playing-card>
-                        }
-                    </div>
+			<!-- Center area: deck, community cards, pot in one row -->
+			<div class="table-center">
+				<div class="table-center-row @(HasExtraCommunityCards ? "table-center-row-compact-board" : string.Empty)">
+					<!-- Deck visualization -->
+					<div class="deck-stack" @ref="_deckRef">
+						@for (var i = 0; i < 5; i++)
+						{
+							<playing-card rank="0" backcolor="#44F" class="deck-card" style="--deck-offset: @i"></playing-card>
+						}
+					</div>
 
-                    <!-- Community cards area -->
-                    @if (CommunityCards is { Count: > 0 })
-                    {
-                        <div class="community-cards">
-                            @foreach (var (card, cardIndex) in CommunityCards.OrderBy(c => c.DealOrder).Select((c, i) => (c, i)))
-                            {
-                                var label = GetCommunityCardLabel(cardIndex);
-                                var statusClass = card.IsFaceUp ? "revealed" : "hidden";
-                                var isWildCommunityCard = IsCommunityCardWildForDisplay(card);
-                                <div class="community-card-slot @statusClass">
-                                    @if (card.IsFaceUp && !string.IsNullOrWhiteSpace(card.Rank))
-                                    {
-                                        <playing-card rank="@GetPlayingCardRank(card.Rank)" 
-                                                      suit="@card.Suit" 
-                                                      suitcolor="@(isWildCommunityCard ? "green" : null)"
-                                                      rankcolor="@(isWildCommunityCard ? "green" : null)"
-                                                      courtcolor="@(isWildCommunityCard ? "green" : null)"
-                                                      class="community-card-element"></playing-card>
-                                    }
-                                    else
-                                    {
-                                        <playing-card rank="0" backcolor="#44F" 
-                                                      class="community-card-element"></playing-card>
-                                    }
-                                    @if (!string.IsNullOrWhiteSpace(label))
-                                    {
-                                        <span class="community-card-label @statusClass">@label</span>
-                                    }
-                                </div>
-                            }
-                        </div>
-                    }
+					<!-- Community cards area -->
+					@if (CommunityCards is { Count: > 0 })
+					{
+						<div class="community-cards">
+							@foreach (var (card, cardIndex) in CommunityCards.OrderBy(c => c.DealOrder).Select((c, i) => (c, i)))
+							{
+								var label = GetCommunityCardLabel(cardIndex);
+								var statusClass = card.IsFaceUp ? "revealed" : "hidden";
+								var isWildCommunityCard = IsCommunityCardWildForDisplay(card);
+								<div class="community-card-slot @statusClass">
+									@if (card.IsFaceUp && !string.IsNullOrWhiteSpace(card.Rank))
+									{
+										<playing-card rank="@GetPlayingCardRank(card.Rank)"
+													  suit="@card.Suit"
+													  suitcolor="@(isWildCommunityCard ? "green" : null)"
+													  rankcolor="@(isWildCommunityCard ? "green" : null)"
+													  courtcolor="@(isWildCommunityCard ? "green" : null)"
+													  class="community-card-element"></playing-card>
+									}
+									else
+									{
+										<playing-card rank="0" backcolor="#44F"
+													  class="community-card-element"></playing-card>
+									}
+									@if (!string.IsNullOrWhiteSpace(label))
+									{
+										<span class="community-card-label @statusClass">@label</span>
+									}
+								</div>
+							}
+						</div>
+					}
 
-                    @if (Pot > 0)
-                    {
-                        <div class="pot-display">
-                            <span class="pot-icon"><i class="fa-regular fa-coins"></i></span>
-                            <span class="pot-amount">@Pot.ToString("N0")</span>
-                        </div>
-                    }
-                </div>
-            </div>
-        </div>
+					<div class="pot-display">
+						<span class="pot-icon"><i class="fa-regular fa-coins"></i></span>
+						<span class="pot-amount">@Pot.ToString("N0")</span>
+					</div>
+				</div>
+			</div>
+		</div>
 
-        <!-- Seats around the table -->
-        @foreach (var seat in Seats.ToList())
-        {
-            <div class="table-seat @GetSeatPositionClass(seat.SeatIndex) @GetSeatStateClass(seat)"
-                 @onclick="() => HandleSeatClick(seat)">
+		<!-- Seats around the table -->
+		@foreach (var seat in Seats.ToList())
+		{
+			<div class="table-seat @GetSeatPositionClass(seat.SeatIndex) @GetSeatStateClass(seat)"
+				 @onclick="() => HandleSeatClick(seat)">
                 
-                <TableSeat 
-                    Seat="seat"
-                    IsDealer="@(seat.SeatIndex == DealerSeatIndex && CurrentPhase != GamePhase.WaitingForPlayers.ToString())"
-                    IsCurrentActor="@(seat.SeatIndex == CurrentActorSeatIndex)"
-                    IsCurrentPlayer="@(seat.SeatIndex == CurrentPlayerSeatIndex)"
-                    IsSeatSelectionDisabledForCurrentUser="@(DisableSeatSelectionForCurrentUser && !seat.IsOccupied)"
-                    ShowCards="@(!IsPausedForChipCheck && CurrentPhase != GamePhase.WaitingForPlayers.ToString() && CurrentPhase != GamePhase.WaitingToStart.ToString() && seat.Cards.Count > 0)"
-                    GameTypeCode="@GameTypeCode"
-                    IsSmallBlind="@(IsBlindBasedGame && seat.SeatIndex == GetSmallBlindSeatIndex())"
-                    IsBigBlind="@(IsBlindBasedGame && seat.SeatIndex == GetBigBlindSeatIndex())" />
-            </div>
-        }
+				<TableSeat Seat="seat"
+						   IsDealer="@(seat.SeatIndex == DealerSeatIndex && CurrentPhase != GamePhase.WaitingForPlayers.ToString())"
+						   IsCurrentActor="@(seat.SeatIndex == CurrentActorSeatIndex)"
+						   IsCurrentPlayer="@(seat.SeatIndex == CurrentPlayerSeatIndex)"
+						   IsSeatSelectionDisabledForCurrentUser="@(DisableSeatSelectionForCurrentUser && !seat.IsOccupied)"
+						   ShowCards="@(!IsPausedForChipCheck && CurrentPhase != GamePhase.WaitingForPlayers.ToString() && CurrentPhase != GamePhase.WaitingToStart.ToString() && seat.Cards.Count > 0)"
+						   GameTypeCode="@GameTypeCode"
+						   IsSmallBlind="@(IsBlindBasedGame && seat.SeatIndex == GetSmallBlindSeatIndex())"
+						   IsBigBlind="@(IsBlindBasedGame && seat.SeatIndex == GetBigBlindSeatIndex())"
+						   Ante="@Ante" />
+			</div>
+		}
 
-        <!-- Flying card animation overlay -->
-        @if (FlyingCard is not null)
-        {
-            var targetPosition = MapSeatIndexToDisplayPosition(FlyingCard.TargetSeatIndex);
-            var isCurrentPlayerTarget = FlyingCard.TargetSeatIndex == CurrentPlayerSeatIndex;
-            <div class="flying-card-container">
-                <div class="flying-card @(isCurrentPlayerTarget ? "to-current-player" : "to-remote-player")"
-                     style="--target-position: @targetPosition; --card-index: @FlyingCard.CardIndex;">
-                    @if (FlyingCard.IsFaceUp && !string.IsNullOrWhiteSpace(FlyingCard.Rank))
-                    {
-                        <playing-card rank="@GetPlayingCardRank(FlyingCard.Rank)" 
-                                      suit="@FlyingCard.Suit" 
-                                      class="flying-card-element"></playing-card>
-                    }
-                    else
-                    {
-                        <playing-card rank="0" backcolor="#44F" class="flying-card-element"></playing-card>
-                    }
-                </div>
-            </div>
-        }
-    </div>
+		<!-- Flying card animation overlay -->
+		@if (FlyingCard is not null)
+		{
+			var targetPosition = MapSeatIndexToDisplayPosition(FlyingCard.TargetSeatIndex);
+			var isCurrentPlayerTarget = FlyingCard.TargetSeatIndex == CurrentPlayerSeatIndex;
+			<div class="flying-card-container">
+				<div class="flying-card @(isCurrentPlayerTarget ? "to-current-player" : "to-remote-player")"
+					 style="--target-position: @targetPosition; --card-index: @FlyingCard.CardIndex;">
+					<playing-card rank="0" backcolor="#44F" class="flying-card-element"></playing-card>
+				</div>
+			</div>
+		}
+	</div>
 
-    <!-- Wild Cards Panel (top-right corner, outside the table) -->
-    @if (HasWildCards && WildCards is { Count: > 0 })
-    {
-        <div class="wild-cards-panel">
-            <div class="wild-cards-header">
-                <i class="fa-solid fa-star wild-cards-icon"></i>
-                <span class="wild-cards-title">Wild Cards</span>
-            </div>
-            <div class="wild-cards-list">
-                @foreach 
-	                (var wildCard in WildCards)
-                {
-                    <div class="wild-card-item @(wildCard.IsPersonalized ? "personalized" : "")">
-                        @if 
-	                        (!string.IsNullOrWhiteSpace(wildCard.Suit))
-                        {
-                            @* Specific card (e.g., King of Diamonds) *@
-                            <div class="wild-card-visual wild-card-specific">
-                                <playing-card rank="@GetPlayingCardRank(wildCard.Rank)" 
-                                              suit="@wildCard.Suit"></playing-card>
-                            </div>
-                        }
-                        else if 
-	                        (!string.IsNullOrWhiteSpace(wildCard.Rank))
-                        {
-	                        <div class="wild-card-visual wild-card-specific">
-		                        <playing-card rank="@GetPlayingCardRank(wildCard.Rank)" suit="Hearts" suitcolor="white"></playing-card>
-	                        </div>
-                        }
-                    </div>
-                }
-            </div>
-        </div>
-    }
+	<!-- Wild Cards Panel (top-right corner, outside the table) -->
+	@if (HasWildCards && WildCards is { Count: > 0 })
+	{
+		<div class="wild-cards-panel">
+			<div class="wild-cards-header">
+				<i class="fa-solid fa-star wild-cards-icon"></i>
+				<span class="wild-cards-title">Wild Cards</span>
+			</div>
+			<div class="wild-cards-list">
+				@foreach
+					(var wildCard in WildCards)
+				{
+					<div class="wild-card-item @(wildCard.IsPersonalized ? "personalized" : "")">
+						@if
+							(!string.IsNullOrWhiteSpace(wildCard.Suit))
+						{
+							@* Specific card (e.g., King of Diamonds) *@
+							<div class="wild-card-visual wild-card-specific">
+								<playing-card rank="@GetPlayingCardRank(wildCard.Rank)"
+											  suit="@wildCard.Suit"></playing-card>
+							</div>
+						}
+						else if
+							(!string.IsNullOrWhiteSpace(wildCard.Rank))
+						{
+							<div class="wild-card-visual wild-card-specific">
+								<playing-card rank="@GetPlayingCardRank(wildCard.Rank)" suit="Hearts" suitcolor="white"></playing-card>
+							</div>
+						}
+					</div>
+				}
+			</div>
+		</div>
+	}
 </div>
 
 @code {
-    [Parameter]
-    public List<SeatInfo> Seats { get; set; } = [];
+	[Parameter]
+	public List<SeatInfo> Seats { get; set; } = [];
 
-    [Parameter]
-    public int Pot { get; set; }
+	[Parameter]
+	public int Pot { get; set; }
 
-    [Parameter]
-    public string? CurrentPhase { get; set; }
+	[Parameter]
+	public string? CurrentPhase { get; set; }
 
-    [Parameter]
-    public string? CurrentPhaseDescription { get; set; }
+	[Parameter]
+	public string? CurrentPhaseDescription { get; set; }
 
-    [Parameter]
-    public int CurrentActorSeatIndex { get; set; } = -1;
+	[Parameter]
+	public int CurrentActorSeatIndex { get; set; } = -1;
 
-    [Parameter]
-    public int DealerSeatIndex { get; set; } = -1;
+	[Parameter]
+	public int DealerSeatIndex { get; set; } = -1;
 
-    [Parameter]
-    public int CurrentPlayerSeatIndex { get; set; } = -1;
+	[Parameter]
+	public int CurrentPlayerSeatIndex { get; set; } = -1;
 
-    [Parameter]
-    public string? GameTypeCode { get; set; }
+	[Parameter]
+	public string? GameTypeCode { get; set; }
 
-    [Parameter]
-    public bool DisableSeatSelectionForCurrentUser { get; set; }
+	[Parameter]
+	public bool DisableSeatSelectionForCurrentUser { get; set; }
 
-    [Parameter]
-    public bool IsPausedForChipCheck { get; set; }
+	[Parameter]
+	public bool IsPausedForChipCheck { get; set; }
 
-    [Parameter]
-    public EventCallback<int> OnSeatClick { get; set; }
+	[Parameter]
+	public int Ante { get; set; }
 
-    /// <summary>
-    /// The currently flying card being animated from deck to player.
-    /// </summary>
-    [Parameter]
-    public FlyingCardInfo? FlyingCard { get; set; }
+	[Parameter]
+	public EventCallback<int> OnSeatClick { get; set; }
 
-    /// <summary>
-    /// Wild cards to display in the visualization panel.
-    /// For Baseball: 3s and 9s. For Follow the Queen: Queens + dynamic wild.
-    /// For Kings and Lows: Kings + player's lowest card (personalized).
-    /// </summary>
-    [Parameter]
-    public IReadOnlyList<WildCardDisplay>? WildCards { get; set; }
+	/// <summary>
+	/// The currently flying card being animated from deck to player.
+	/// </summary>
+	[Parameter]
+	public FlyingCardInfo? FlyingCard { get; set; }
 
-    /// <summary>
-    /// Whether the game has wild cards to display.
-    /// </summary>
-    [Parameter]
-    public bool HasWildCards { get; set; }
+	/// <summary>
+	/// Wild cards to display in the visualization panel.
+	/// For Baseball: 3s and 9s. For Follow the Queen: Queens + dynamic wild.
+	/// For Kings and Lows: Kings + player's lowest card (personalized).
+	/// </summary>
+	[Parameter]
+	public IReadOnlyList<WildCardDisplay>? WildCards { get; set; }
 
-    /// <summary>
-    /// Community cards displayed in the center of the table.
-    /// For GBU: The Good, The Bad, The Ugly.
-    /// </summary>
-    [Parameter]
-    public IReadOnlyList<CardPublicDto>? CommunityCards { get; set; }
+	/// <summary>
+	/// Whether the game has wild cards to display.
+	/// </summary>
+	[Parameter]
+	public bool HasWildCards { get; set; }
 
-    private bool HasExtraCommunityCards => CommunityCards is { Count: > 5 };
+	/// <summary>
+	/// Community cards displayed in the center of the table.
+	/// For GBU: The Good, The Bad, The Ugly.
+	/// </summary>
+	[Parameter]
+	public IReadOnlyList<CardPublicDto>? CommunityCards { get; set; }
 
-    private ElementReference _deckRef;
+	private bool HasExtraCommunityCards => CommunityCards is { Count: > 5 };
 
-    /// <summary>
-    /// Represents a card being animated from the deck to a player's hand.
-    /// </summary>
-    public record FlyingCardInfo(
-        int TargetSeatIndex,
-        int CardIndex,
-        string? Rank,
-        string? Suit,
-        bool IsFaceUp
-    );
+	private ElementReference _deckRef;
 
-    private async Task HandleSeatClick(SeatInfo seat)
-    {
-        if (DisableSeatSelectionForCurrentUser)
-        {
-            return;
-        }
+	/// <summary>
+	/// Represents a card being animated from the deck to a player's hand.
+	/// Flying cards never carry face data so animation cannot leak private cards.
+	/// </summary>
+	public record FlyingCardInfo(
+		int TargetSeatIndex,
+		int CardIndex
+	);
 
-        if (!seat.IsOccupied && OnSeatClick.HasDelegate)
-        {
-            await OnSeatClick.InvokeAsync(seat.SeatIndex);
-        }
-    }
+	private async Task HandleSeatClick(SeatInfo seat)
+	{
+		if (DisableSeatSelectionForCurrentUser)
+		{
+			return;
+		}
 
-    private string GetPhaseLabel()
-    {
-        return CurrentPhaseDescription ?? "Unknown";
-    }
+		if (!seat.IsOccupied && OnSeatClick.HasDelegate)
+		{
+			await OnSeatClick.InvokeAsync(seat.SeatIndex);
+		}
+	}
 
-    private bool IsBlindBasedGame =>
-        string.Equals(GameTypeCode, "HOLDEM", StringComparison.OrdinalIgnoreCase)
-        || string.Equals(GameTypeCode, "REDRIVER", StringComparison.OrdinalIgnoreCase)
-        || string.Equals(GameTypeCode, "OMAHA", StringComparison.OrdinalIgnoreCase)
-        || string.Equals(GameTypeCode, "NEBRASKA", StringComparison.OrdinalIgnoreCase)
-        || string.Equals(GameTypeCode, "SOUTHDAKOTA", StringComparison.OrdinalIgnoreCase)
-        || string.Equals(GameTypeCode, "IRISHHOLDEM", StringComparison.OrdinalIgnoreCase)
-        || string.Equals(GameTypeCode, "PHILSMOM", StringComparison.OrdinalIgnoreCase)
-        || string.Equals(GameTypeCode, "CRAZYPINEAPPLE", StringComparison.OrdinalIgnoreCase)
-        || string.Equals(GameTypeCode, "HOLDTHEBASEBALL", StringComparison.OrdinalIgnoreCase);
+	private string GetPhaseLabel()
+	{
+		return CurrentPhaseDescription ?? "Unknown";
+	}
 
-    private string? FeltPatternIconClass => GameTypeCode?.Trim().ToUpperInvariant() switch
-    {
-        "IRISHHOLDEM" => "fa-clover",
-        "HOLDEM" => "fa-hat-cowboy",
-        "REDRIVER" => "fa-water",
-        "BASEBALL" => "fa-baseball",
-        "OMAHA" => "fa-cow",
-        "NEBRASKA" => "fa-cow",
-        "SOUTHDAKOTA" => "fa-cow",
-        "KINGSANDLOWS" => "fa-crown",
-        "FOLLOWTHEQUEEN" => "fa-chess-queen",
-        "SEVENCARDSTUD" => "fa-7",
-        "RAZZ" => "fa-arrow-down-1-9",
-        "FIVECARDDRAW" => "fa-5",
-        "TWOSJACKSMANWITHTHEAXE" => "fa-axe",
-        _ => null
-    };
+	private bool IsBlindBasedGame =>
+		string.Equals(GameTypeCode, "HOLDEM", StringComparison.OrdinalIgnoreCase)
+		|| string.Equals(GameTypeCode, "REDRIVER", StringComparison.OrdinalIgnoreCase)
+		|| string.Equals(GameTypeCode, "OMAHA", StringComparison.OrdinalIgnoreCase)
+		|| string.Equals(GameTypeCode, "NEBRASKA", StringComparison.OrdinalIgnoreCase)
+		|| string.Equals(GameTypeCode, "SOUTHDAKOTA", StringComparison.OrdinalIgnoreCase)
+		|| string.Equals(GameTypeCode, "IRISHHOLDEM", StringComparison.OrdinalIgnoreCase)
+		|| string.Equals(GameTypeCode, "PHILSMOM", StringComparison.OrdinalIgnoreCase)
+		|| string.Equals(GameTypeCode, "CRAZYPINEAPPLE", StringComparison.OrdinalIgnoreCase)
+		|| string.Equals(GameTypeCode, "HOLDTHEBASEBALL", StringComparison.OrdinalIgnoreCase);
 
-    private string? GetCommunityCardLabel(int dealOrder)
-    {
-        if (string.Equals(GameTypeCode, "GOODBADUGLY", StringComparison.OrdinalIgnoreCase))
-        {
-            return dealOrder switch
-            {
-                0 => "The Good",
-                1 => "The Bad",
-                2 => "The Ugly",
-                _ => null
-            };
-        }
+	private string? FeltPatternIconClass => GameTypeCode?.Trim().ToUpperInvariant() switch
+	{
+		"IRISHHOLDEM" => "fa-clover",
+		"HOLDEM" => "fa-hat-cowboy",
+		"REDRIVER" => "fa-water",
+		"BASEBALL" => "fa-baseball",
+		"OMAHA" => "fa-cow",
+		"NEBRASKA" => "fa-cow",
+		"SOUTHDAKOTA" => "fa-cow",
+		"KINGSANDLOWS" => "fa-crown",
+		"FOLLOWTHEQUEEN" => "fa-chess-queen",
+		"SEVENCARDSTUD" => "fa-7",
+		"RAZZ" => "fa-arrow-down-1-9",
+		"FIVECARDDRAW" => "fa-5",
+		"TWOSJACKSMANWITHTHEAXE" => "fa-axe",
+		_ => null
+	};
 
-        return null;
-    }
+	private string? GetCommunityCardLabel(int dealOrder)
+	{
+		if (string.Equals(GameTypeCode, "GOODBADUGLY", StringComparison.OrdinalIgnoreCase))
+		{
+			return dealOrder switch
+			{
+				0 => "The Good",
+				1 => "The Bad",
+				2 => "The Ugly",
+				_ => null
+			};
+		}
 
-    private int GetSmallBlindSeatIndex()
-    {
-        if (!IsBlindBasedGame || DealerSeatIndex < 0) return -1;
+		return null;
+	}
 
-        var occupiedIndexes = Seats
-            .Where(s => s.IsOccupied)
-            .Select(s => s.SeatIndex)
-            .OrderBy(i => i)
-            .ToList();
+	private int GetSmallBlindSeatIndex()
+	{
+		if (!IsBlindBasedGame || DealerSeatIndex < 0) return -1;
 
-        if (occupiedIndexes.Count < 2) return -1;
+		var occupiedIndexes = Seats
+			.Where(s => s.IsOccupied)
+			.Select(s => s.SeatIndex)
+			.OrderBy(i => i)
+			.ToList();
 
-        // Heads-up: dealer IS the SB
-        if (occupiedIndexes.Count == 2) return DealerSeatIndex;
+		if (occupiedIndexes.Count < 2) return -1;
 
-        return GetNextOccupiedSeat(DealerSeatIndex, occupiedIndexes);
-    }
+		// Heads-up: dealer IS the SB
+		if (occupiedIndexes.Count == 2) return DealerSeatIndex;
 
-    private int GetBigBlindSeatIndex()
-    {
-        if (!IsBlindBasedGame || DealerSeatIndex < 0) return -1;
+		return GetNextOccupiedSeat(DealerSeatIndex, occupiedIndexes);
+	}
 
-        var occupiedIndexes = Seats
-            .Where(s => s.IsOccupied)
-            .Select(s => s.SeatIndex)
-            .OrderBy(i => i)
-            .ToList();
+	private int GetBigBlindSeatIndex()
+	{
+		if (!IsBlindBasedGame || DealerSeatIndex < 0) return -1;
 
-        if (occupiedIndexes.Count < 2) return -1;
+		var occupiedIndexes = Seats
+			.Where(s => s.IsOccupied)
+			.Select(s => s.SeatIndex)
+			.OrderBy(i => i)
+			.ToList();
 
-        var sbIndex = occupiedIndexes.Count == 2
-            ? DealerSeatIndex
-            : GetNextOccupiedSeat(DealerSeatIndex, occupiedIndexes);
+		if (occupiedIndexes.Count < 2) return -1;
 
-        return GetNextOccupiedSeat(sbIndex, occupiedIndexes);
-    }
+		var sbIndex = occupiedIndexes.Count == 2
+			? DealerSeatIndex
+			: GetNextOccupiedSeat(DealerSeatIndex, occupiedIndexes);
 
-    private static int GetNextOccupiedSeat(int currentSeatIndex, List<int> occupiedIndexes)
-    {
-        var pos = occupiedIndexes.IndexOf(currentSeatIndex);
-        if (pos < 0) return -1;
-        return occupiedIndexes[(pos + 1) % occupiedIndexes.Count];
-    }
+		return GetNextOccupiedSeat(sbIndex, occupiedIndexes);
+	}
 
-    private string GetSeatPositionClass(int seatIndex)
-    {
-        // Keep the seat ordering stable, but rotate the visual layout so the current player
-        // is always shown at the bottom (seat-position-0).
-        var positionIndex = MapSeatIndexToDisplayPosition(seatIndex);
-        return $"seat-position-{positionIndex}";
-    }
+	private static int GetNextOccupiedSeat(int currentSeatIndex, List<int> occupiedIndexes)
+	{
+		var pos = occupiedIndexes.IndexOf(currentSeatIndex);
+		if (pos < 0) return -1;
+		return occupiedIndexes[(pos + 1) % occupiedIndexes.Count];
+	}
 
-    private int MapSeatIndexToDisplayPosition(int seatIndex)
-    {
-        const int seatCount = 8;
-        if (seatIndex < 0)
-        {
-            return seatIndex;
-        }
+	private string GetSeatPositionClass(int seatIndex)
+	{
+		// Keep the seat ordering stable, but rotate the visual layout so the current player
+		// is always shown at the bottom (seat-position-0).
+		var positionIndex = MapSeatIndexToDisplayPosition(seatIndex);
+		return $"seat-position-{positionIndex}";
+	}
 
-        // If we don't know who the current player is (e.g., spectators), use the natural layout.
-        if (CurrentPlayerSeatIndex < 0)
-        {
-            return seatIndex % seatCount;
-        }
+	private int MapSeatIndexToDisplayPosition(int seatIndex)
+	{
+		const int seatCount = 8;
+		if (seatIndex < 0)
+		{
+			return seatIndex;
+		}
 
-        // Rotate so the current player maps to display position 0.
-        return (seatIndex - CurrentPlayerSeatIndex + seatCount) % seatCount;
-    }
+		// If we don't know who the current player is (e.g., spectators), use the natural layout.
+		if (CurrentPlayerSeatIndex < 0)
+		{
+			return seatIndex % seatCount;
+		}
 
-    private string GetSeatStateClass(SeatInfo seat)
-    {
-        var classes = new List<string>();
+		// Rotate so the current player maps to display position 0.
+		return (seatIndex - CurrentPlayerSeatIndex + seatCount) % seatCount;
+	}
 
-        @* if (!seat.IsOccupied)
+	private string GetSeatStateClass(SeatInfo seat)
+	{
+		var classes = new List<string>();
+
+		@* if (!seat.IsOccupied)
             classes.Add("seat-empty");
         else *@
-            classes.Add("seat-occupied");
+		classes.Add("seat-occupied");
 
-        if (seat.IsCurrentPlayer)
-            classes.Add("seat-current-player");
+		if (seat.IsCurrentPlayer)
+			classes.Add("seat-current-player");
 
-        if (seat.SeatIndex == CurrentActorSeatIndex)
-            classes.Add("seat-active-turn");
+		if (seat.SeatIndex == CurrentActorSeatIndex)
+			classes.Add("seat-active-turn");
 
-        if (seat.IsFolded)
-            classes.Add("seat-folded");
+		if (seat.IsFolded)
+			classes.Add("seat-folded");
 
-        if (seat.IsAllIn)
-            classes.Add("seat-all-in");
+		if (seat.IsAllIn)
+			classes.Add("seat-all-in");
 
-        if (seat.IsDisconnected)
-            classes.Add("seat-disconnected");
+		if (seat.IsDisconnected)
+			classes.Add("seat-disconnected");
 
-        return string.Join(" ", classes);
-    }
+		return string.Join(" ", classes);
+	}
 
-    /// <summary>
-    /// Converts a rank string to the playing-card web component rank attribute value.
-    /// </summary>
-    private static string GetPlayingCardRank(string? rank)
-    {
-        if (string.IsNullOrWhiteSpace(rank))
-        {
-            return "0";
-        }
+	/// <summary>
+	/// Converts a rank string to the playing-card web component rank attribute value.
+	/// </summary>
+	private static string GetPlayingCardRank(string? rank)
+	{
+		if (string.IsNullOrWhiteSpace(rank))
+		{
+			return "0";
+		}
 
-        return rank.ToUpperInvariant() switch
-        {
-            "A" => "1",
-            "2" => "2",
-            "3" => "3",
-            "4" => "4",
-            "5" => "5",
-            "6" => "6",
-            "7" => "7",
-            "8" => "8",
-            "9" => "9",
-            "10" or "T" => "10",
-            "J" => "11",
-            "Q" => "12",
-            "K" => "13",
-            _ => "0"
-        };
-    }
+		return rank.ToUpperInvariant() switch
+		{
+			"A" => "1",
+			"2" => "2",
+			"3" => "3",
+			"4" => "4",
+			"5" => "5",
+			"6" => "6",
+			"7" => "7",
+			"8" => "8",
+			"9" => "9",
+			"10" or "T" => "10",
+			"J" => "11",
+			"Q" => "12",
+			"K" => "13",
+			_ => "0"
+		};
+	}
 
-    /// <summary>
-    /// Gets a display-friendly rank string for the wild cards panel.
-    /// </summary>
-    private static string GetDisplayRank(string? rank)
-    {
-        if (string.IsNullOrWhiteSpace(rank))
-        {
-            return "?";
-        }
+	/// <summary>
+	/// Gets a display-friendly rank string for the wild cards panel.
+	/// </summary>
+	private static string GetDisplayRank(string? rank)
+	{
+		if (string.IsNullOrWhiteSpace(rank))
+		{
+			return "?";
+		}
 
-        return rank.ToUpperInvariant() switch
-        {
-            "A" => "A",
-            "2" => "2",
-            "3" => "3",
-            "4" => "4",
-            "5" => "5",
-            "6" => "6",
-            "7" => "7",
-            "8" => "8",
-            "9" => "9",
-            "10" or "T" => "10",
-            "J" => "J",
-            "Q" => "Q",
-            "K" => "K",
-            _ => rank
-        };
-    }
+		return rank.ToUpperInvariant() switch
+		{
+			"A" => "A",
+			"2" => "2",
+			"3" => "3",
+			"4" => "4",
+			"5" => "5",
+			"6" => "6",
+			"7" => "7",
+			"8" => "8",
+			"9" => "9",
+			"10" or "T" => "10",
+			"J" => "J",
+			"Q" => "Q",
+			"K" => "K",
+			_ => rank
+		};
+	}
 
-    /// <summary>
-    /// Determines whether a face-up community card should be highlighted as wild.
-    /// Uses active wild card definitions provided by the page (e.g., 3/9 for Baseball variants).
-    /// </summary>
-    private bool IsCommunityCardWildForDisplay(CardPublicDto card)
-    {
-        if (!card.IsFaceUp || string.IsNullOrWhiteSpace(card.Rank))
-        {
-            return false;
-        }
+	/// <summary>
+	/// Determines whether a face-up community card should be highlighted as wild.
+	/// Uses active wild card definitions provided by the page (e.g., 3/9 for Baseball variants).
+	/// </summary>
+	private bool IsCommunityCardWildForDisplay(CardPublicDto card)
+	{
+		if (!card.IsFaceUp || string.IsNullOrWhiteSpace(card.Rank))
+		{
+			return false;
+		}
 
-        if (!HasWildCards || WildCards is null || WildCards.Count == 0)
-        {
-            return false;
-        }
+		if (!HasWildCards || WildCards is null || WildCards.Count == 0)
+		{
+			return false;
+		}
 
-        var cardRank = NormalizeRank(card.Rank);
-        var cardSuit = NormalizeSuit(card.Suit);
+		var cardRank = NormalizeRank(card.Rank);
+		var cardSuit = NormalizeSuit(card.Suit);
 
-        foreach (var wildCard in WildCards)
-        {
-            if (string.IsNullOrWhiteSpace(wildCard.Rank))
-            {
-                continue;
-            }
+		foreach (var wildCard in WildCards)
+		{
+			if (string.IsNullOrWhiteSpace(wildCard.Rank))
+			{
+				continue;
+			}
 
-            var wildRank = NormalizeRank(wildCard.Rank);
-            if (!string.Equals(cardRank, wildRank, StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
+			var wildRank = NormalizeRank(wildCard.Rank);
+			if (!string.Equals(cardRank, wildRank, StringComparison.OrdinalIgnoreCase))
+			{
+				continue;
+			}
 
-            // If the wild definition is rank-only (e.g., all 3s), any suit matches.
-            if (string.IsNullOrWhiteSpace(wildCard.Suit))
-            {
-                return true;
-            }
+			// If the wild definition is rank-only (e.g., all 3s), any suit matches.
+			if (string.IsNullOrWhiteSpace(wildCard.Suit))
+			{
+				return true;
+			}
 
-            // If suit is specified (e.g., king of diamonds), require suit match.
-            var wildSuit = NormalizeSuit(wildCard.Suit);
-            if (string.Equals(cardSuit, wildSuit, StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-        }
+			// If suit is specified (e.g., king of diamonds), require suit match.
+			var wildSuit = NormalizeSuit(wildCard.Suit);
+			if (string.Equals(cardSuit, wildSuit, StringComparison.OrdinalIgnoreCase))
+			{
+				return true;
+			}
+		}
 
-        return false;
-    }
+		return false;
+	}
 
-    private static string NormalizeRank(string? rank)
-    {
-        if (string.IsNullOrWhiteSpace(rank))
-        {
-            return string.Empty;
-        }
+	private static string NormalizeRank(string? rank)
+	{
+		if (string.IsNullOrWhiteSpace(rank))
+		{
+			return string.Empty;
+		}
 
-        return rank.Trim().ToUpperInvariant() switch
-        {
-            "T" => "10",
-            _ => rank.Trim().ToUpperInvariant()
-        };
-    }
+		return rank.Trim().ToUpperInvariant() switch
+		{
+			"T" => "10",
+			_ => rank.Trim().ToUpperInvariant()
+		};
+	}
 
-    private static string NormalizeSuit(string? suit)
-        => suit?.Trim() ?? string.Empty;
+	private static string NormalizeSuit(string? suit)
+		=> suit?.Trim() ?? string.Empty;
 
-    /// <summary>
-    /// Represents a wild card for display in the wild cards panel.
-    /// </summary>
-    /// <param name="Rank">The rank to display (e.g., "3", "9", "Q", "K"). Null for "Lowest" card.</param>
-    /// <param name="Suit">Optional suit for specific wild cards (e.g., "Diamonds" for King of Diamonds).</param>
-    /// <param name="Label">Display label (e.g., "All 3s", "Queens", "Your Lowest").</param>
-    /// <param name="IsPersonalized">Whether this is a personalized wild (like player's lowest card).</param>
-    public record WildCardDisplay(
-        string? Rank,
-        string? Suit,
-        string Label,
-        bool IsPersonalized = false
-    );
+	/// <summary>
+	/// Represents a wild card for display in the wild cards panel.
+	/// </summary>
+	/// <param name="Rank">The rank to display (e.g., "3", "9", "Q", "K"). Null for "Lowest" card.</param>
+	/// <param name="Suit">Optional suit for specific wild cards (e.g., "Diamonds" for King of Diamonds).</param>
+	/// <param name="Label">Display label (e.g., "All 3s", "Queens", "Your Lowest").</param>
+	/// <param name="IsPersonalized">Whether this is a personalized wild (like player's lowest card).</param>
+	public record WildCardDisplay(
+		string? Rank,
+		string? Suit,
+		string Label,
+		bool IsPersonalized = false
+	);
 }

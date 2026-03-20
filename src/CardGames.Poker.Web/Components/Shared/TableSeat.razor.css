@@ -10,6 +10,97 @@
     margin: 10px;
 }
 
+.seat-particle-host {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 180px;
+    height: 180px;
+    transform: translate(-50%, -50%);
+    overflow: visible;
+    pointer-events: none;
+    z-index: 60;
+    contain: layout style paint;
+}
+
+.seat-particle-host::before,
+.seat-particle-host::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.seat-particle-host.seat-loss-explosion-active::before {
+    background:
+        radial-gradient(circle at 50% 56%, rgba(255, 255, 255, 0.98) 0 7%, rgba(255, 247, 174, 0.94) 8%, rgba(255, 189, 89, 0.82) 16%, rgba(249, 115, 22, 0.52) 29%, rgba(120, 53, 15, 0.24) 46%, rgba(55, 65, 81, 0.12) 58%, rgba(55, 65, 81, 0) 74%);
+    filter: blur(1px);
+    animation: seat-loss-flash 1400ms cubic-bezier(0.18, 0.82, 0.3, 1) forwards;
+}
+
+.seat-particle-host.seat-loss-explosion-active::after {
+    left: 50%;
+    top: 58%;
+    width: 28px;
+    height: 28px;
+    inset: auto;
+    border-radius: 50%;
+    background: rgba(55, 65, 81, 0.42);
+    transform: translate(-50%, -50%) scale(0.2);
+    box-shadow:
+        0 -44px 0 11px rgba(255, 214, 140, 0.16),
+        34px -22px 0 9px rgba(148, 163, 184, 0.16),
+        48px 8px 0 14px rgba(107, 114, 128, 0.28),
+        32px 34px 0 15px rgba(75, 85, 99, 0.26),
+        0 48px 0 14px rgba(107, 114, 128, 0.24),
+        -34px 30px 0 14px rgba(55, 65, 81, 0.28),
+        -48px 4px 0 10px rgba(75, 85, 99, 0.2),
+        -28px -28px 0 9px rgba(255, 183, 77, 0.12);
+    filter: blur(3.5px);
+    animation: seat-loss-smoke 3650ms cubic-bezier(0.08, 0.72, 0.22, 1) forwards;
+}
+
+.seat-particle-host canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+@keyframes seat-loss-flash {
+    0% {
+        opacity: 0;
+        transform: scale(0.12);
+    }
+
+    14% {
+        opacity: 1;
+        transform: scale(0.68);
+    }
+
+    100% {
+        opacity: 0;
+        transform: scale(1.28);
+    }
+}
+
+@keyframes seat-loss-smoke {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, -48%) scale(0.22) rotate(-8deg);
+    }
+
+    22% {
+        opacity: 0.88;
+        transform: translate(-50%, -54%) scale(0.96) rotate(1deg);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -68%) scale(2.08) rotate(6deg);
+    }
+}
+
+
 /* --- Seat Visuals Flex Layout --- */
 .seat-visuals {
     display: flex;
@@ -453,4 +544,33 @@
 }
 .remote-player-layout .seat-bb-button {
     left: 28px;
+}
+
+/* --- Screw Your Neighbor Chip Stacks --- */
+.syn-stacks {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    align-items: center;
+}
+
+.syn-chip {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.syn-chip-active {
+    color: #fbbf24;
+}
+
+.syn-chip-lost {
+    color: #444;
+    opacity: 0.35;
+    transform: scale(0.85);
 }

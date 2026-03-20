@@ -42,6 +42,11 @@ public sealed class GameHubClient : IAsyncDisposable
     public event Func<TableSettingsUpdatedDto, Task>? OnTableSettingsUpdated;
 
     /// <summary>
+    /// Fired when a table toast notification is received.
+    /// </summary>
+    public event Func<TableToastNotificationDto, Task>? OnTableToastNotification;
+
+    /// <summary>
     /// Fired when the action timer is updated.
     /// </summary>
     public event Func<ActionTimerStateDto, Task>? OnActionTimerUpdated;
@@ -143,6 +148,7 @@ public sealed class GameHubClient : IAsyncDisposable
             _hubConnection.On<PrivateStateDto>("PrivateStateUpdated", HandlePrivateStateUpdated);
             _hubConnection.On<PlayerJoinedDto>("PlayerJoined", HandlePlayerJoined);
             _hubConnection.On<TableSettingsUpdatedDto>("TableSettingsUpdated", HandleTableSettingsUpdated);
+            _hubConnection.On<TableToastNotificationDto>("TableToastNotification", HandleTableToastNotification);
             _hubConnection.On<ActionTimerStateDto>("ActionTimerUpdated", HandleActionTimerUpdated);
             _hubConnection.On<PlayerActionPerformedDto>("PlayerActionPerformed", HandlePlayerActionPerformed);
 
@@ -404,6 +410,17 @@ public sealed class GameHubClient : IAsyncDisposable
         if (OnTableSettingsUpdated is not null)
         {
             await OnTableSettingsUpdated(notification);
+        }
+    }
+
+    private async Task HandleTableToastNotification(TableToastNotificationDto notification)
+    {
+        _logger.LogDebug("Received TableToastNotification for game {GameId}: {Message}",
+            notification.GameId, notification.Message);
+
+        if (OnTableToastNotification is not null)
+        {
+            await OnTableToastNotification(notification);
         }
     }
 

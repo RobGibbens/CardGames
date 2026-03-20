@@ -4,6 +4,7 @@
 @implements IAsyncDisposable
 
 @using System.ComponentModel
+@using System.Text.Json
 @using CardGames.Contracts.SignalR
 @using CardGames.Core.French.Cards
 @using CardGames.Poker.Api.Clients
@@ -31,6 +32,7 @@
 @inject IFollowTheQueenApi FollowTheQueenApi
 @inject IBaseballApi BaseballApi
 @inject IKingsAndLowsApi KingsAndLowsApi
+@inject IScrewYourNeighborApi ScrewYourNeighborApi
 @inject IHoldEmApi HoldEmApi
 @inject IFiveCardDrawApi FiveCardDrawApiClient
 @inject IJSRuntime JSRuntime
@@ -70,7 +72,8 @@
                            step="@GetJoinBuyInStep()"
                            @bind="_joinBuyInAmount"
                            @bind:event="oninput"
-                           @bind:after="NormalizeJoinBuyIn" />
+                           @bind:after="NormalizeJoinBuyIn"
+                           disabled="@IsScrewYourNeighbor" />
                     <div class="bet-slider-labels">
                         <span>Min @GetJoinBuyInMin().ToString("N0")</span>
                         <span>Max @GetJoinBuyInMax().ToString("N0")</span>
@@ -83,7 +86,8 @@
                            max="@GetJoinBuyInMax()"
                            step="@GetJoinBuyInStep()"
                            @bind="_joinBuyInAmount"
-                           @bind:after="NormalizeJoinBuyIn" />
+                           @bind:after="NormalizeJoinBuyIn"
+                           disabled="@IsScrewYourNeighbor" />
 
                 </div>
             </div>
@@ -134,7 +138,7 @@
         }
 
         <button class="btn btn-secondary btn-sm ms-2" @onclick="ToggleDealSoundMuteAsync"
-                title="@(_isDealSoundMuted ? "Unmute deal sounds" : "Mute deal sounds")">
+            title="@(_isDealSoundMuted ? "Unmute table sounds" : "Mute table sounds")">
             <i class="fa-solid @(_isDealSoundMuted ? "fa-volume-xmark" : "fa-volume-high")"></i>
             @(_isDealSoundMuted ? "" : "")
         </button>
@@ -230,7 +234,8 @@
                          FlyingCard="@_flyingCard"
                          HasWildCards="@HasWildCards"
                          WildCards="@GetWildCardsForDisplay()"
-                         CommunityCards="@GetVisibleCommunityCards()" />
+                         CommunityCards="@GetVisibleCommunityCards()"
+                         Ante="@_ante" />
 
             <!-- Dashboard Panel (left side) -->
             @if (_isSeated)
@@ -280,8 +285,8 @@
         }
 
         <!-- Decision Panel (shown during decision phase like Drop/Stay) -->
-        <!-- Note: Kings and Lows DropOrStay has its own overlay, so exclude it here -->
-        @if (_isPlayerTurn && IsDecisionPhase && !(HasDropOrStay && IsDropOrStayPhase) && !IsCardDealingVisualInProgress)
+        <!-- Note: Kings and Lows DropOrStay and Screw Your Neighbor KeepOrTrade have their own overlays, so exclude them here -->
+        @if (_isPlayerTurn && IsDecisionPhase && !(HasDropOrStay && IsDropOrStayPhase) && !(HasKeepOrTrade && IsKeepOrTradePhase) && !IsCardDealingVisualInProgress)
         {
             <DecisionPanel Title="@GetDecisionTitle()" Subtitle="@GetDecisionSubtitle()"
                            AvailableActions="@CurrentPhaseAvailableActions" OnDecision="@HandleDecisionAsync"
@@ -328,6 +333,19 @@
                                OnDecision="@HandleDropOrStayDecision" ActionTimer="@_actionTimerState"
                                EnableKingsAndLowsWildCardHighlighting="@IsKingsAndLows"
                                EnableBaseballWildCardHighlighting="@(IsBaseball || IsHoldTheBaseball)" />
+        }
+
+        <!-- Keep or Trade Overlay (for Screw Your Neighbor) -->
+        @if (HasKeepOrTrade && IsKeepOrTradePhase && _isPlayerTurn && IsParticipatingInHand && !IsCardDealingVisualInProgress)
+        {
+            <KeepOrTradeOverlay Cards="@_currentPlayerDrawCards"
+                                PotAmount="@_pot"
+                                IsDealer="@IsCurrentPlayerScrewYourNeighborDealer"
+                                IsTradeBlockedByTargetKing="@IsCurrentPlayerTradeBlockedByTargetKing"
+                                TradeTargetPlayerName="@CurrentScrewYourNeighborTradeTargetName"
+                                IsSubmitting="@_isProcessingKeepOrTrade"
+                                OnDecision="@HandleKeepOrTradeDecision"
+                                ActionTimer="@_actionTimerState" />
         }
 
         <!-- Buy Card Overlay (for Baseball) -->
@@ -392,6 +410,7 @@
                 <DealerChoiceModal AvailableGames="@_dcAvailableGames"
                                    IsLoading="@_dcGamesLoading"
                                    CurrentActivePlayerCount="@_seats.Count(s => s.IsOccupied && !s.IsSittingOut)"
+                                   AllowedGameCodes="@_allowedDealerChoiceGameCodes"
                                    OnGameChosen="@HandleDealerChoiceAsync" />
             }
             else
@@ -445,7 +464,7 @@
         }
 
         <!-- Game Ended overlay -->
-        @if (_gameResponse?.CurrentPhase == GamePhase.Ended.ToString() && !_showShowdownOverlay)
+        @* @if (_gameResponse?.CurrentPhase == GamePhase.Ended.ToString() && !_showShowdownOverlay)
         {
             <div class="table-overlay ended-overlay">
                 <div class="overlay-content">
@@ -467,7 +486,7 @@
                     </button>
                 </div>
             </div>
-        }
+        } *@
 
         <!-- Paused overlay -->
         @if (_isPaused && _gameResponse is not null && _gameResponse.CurrentPhase != GamePhase.WaitingForPlayers.ToString() && _gameResponse.CurrentPhase
@@ -488,14 +507,15 @@
 
         @if (
             _showShowdownOverlay &&
+            ShouldDisplayShowdownOverlay &&
             _showdownResult is not null &&
             !_runoutAnimationInProgress &&
-            (IsShowdownPhase || _isResultsPhase || IsEndedPhase || _secondsUntilNextHand > 0))
+            (IsShowdownPhase || _isResultsPhase || IsEndedPhase || IsGameCompleted || _secondsUntilNextHand > 0))
         {
             <ShowdownOverlay ShowdownResult="@_showdownResult" ShowdownWon="@_showdownWon" ShowdownLost="@_showdownLost"
                              GameTypeCode="@_gameTypeCode"
                              SharedCommunityCards="@GetShowdownCommunityCards()"
-                             SecondsUntilNextHand="@_secondsUntilNextHand" IsGameEnded="@IsEndedPhase" OnClose="@CloseShowdownOverlay" />
+                             SecondsUntilNextHand="@_secondsUntilNextHand" IsGameEnded="@(IsEndedPhase || IsGameCompleted)" OnClose="@CloseShowdownOverlay" />
         }
     }
 </main>
@@ -513,7 +533,9 @@
     private bool _isLoading = true;
 
     // Continuous play constants (must match ContinuousPlayBackgroundService)
-    private const int ContinuousPlayResultsDisplayDurationSeconds = 8;
+    private const int ContinuousPlayResultsDisplayDurationSeconds = 7;
+    private const double ScrewYourNeighborDealerTradeShowdownDelaySeconds = 4.5;
+    private const int ScrewYourNeighborTradeAnimationDurationMs = 650;
 
     // Table info
     private int _ante = 5;
@@ -583,6 +605,14 @@
     private bool _isAcknowledgingPotMatch;
     private HashSet<int> _deckDrawSelectedIndices = new();
 
+    // Screw Your Neighbor specific state
+    private bool _isProcessingKeepOrTrade;
+    private string? _synKeepOrTradeDecision;
+    private HashSet<string> _synAnimatedTradeKeys = [];
+    private HashSet<string> _playedTableSoundKeys = [];
+    private List<int> _pendingSynTradeAnimationSeatIndices = [];
+    private bool _synChipAnimationFired;
+
     // Chip check pause state (for Kings and Lows)
     private bool _isPausedForChipCheck;
     private DateTimeOffset? _chipCheckPauseEndsAt;
@@ -618,6 +648,7 @@
 
     // Showdown state
     private PerformShowdownSuccessful? _showdownResult;
+    private bool _showdownLoadInFlight;
     private bool _showShowdownOverlay;
     private bool _showdownWon;
     private bool _showdownLost;
@@ -667,6 +698,7 @@
     private List<ToastMessage> _toastMessages = [];
 
     private bool _isDealSoundMuted;
+    private bool _isJsInteropReady;
     private int _previousFaceUpCommunityCardCount;
     private bool _showGameInfoOverlay;
     private bool _isUpdatingOddsVisibility;
@@ -708,8 +740,10 @@
     private bool IsIrishHoldEm => string.Equals(_gameTypeCode, "IRISHHOLDEM", StringComparison.OrdinalIgnoreCase);
     private bool IsPhilsMom => string.Equals(_gameTypeCode, "PHILSMOM", StringComparison.OrdinalIgnoreCase);
     private bool IsCrazyPineapple => string.Equals(_gameTypeCode, "CRAZYPINEAPPLE", StringComparison.OrdinalIgnoreCase);
+    private bool IsScrewYourNeighbor => string.Equals(_gameTypeCode, "SCREWYOURNEIGHBOR", StringComparison.OrdinalIgnoreCase);
+    private bool IsStartedScrewYourNeighborTable => IsScrewYourNeighbor && _gameResponse?.StartedAt is not null;
     private bool IsIrishStyleHoldEm => IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple;
-    private bool UsesCardDealAnimation => IsSevenCardStud || IsRazz || IsGoodBadUgly || IsBaseball || IsFollowTheQueen || IsFiveCardDraw || IsTwosJacksManWithTheAxe || IsKingsAndLows || IsHoldEm || IsRedRiver || IsHoldTheBaseball || IsOmaha || IsNebraska || IsSouthDakota || IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple;
+    private bool UsesCardDealAnimation => IsSevenCardStud || IsRazz || IsGoodBadUgly || IsBaseball || IsFollowTheQueen || IsFiveCardDraw || IsTwosJacksManWithTheAxe || IsKingsAndLows || IsHoldEm || IsRedRiver || IsHoldTheBaseball || IsOmaha || IsNebraska || IsSouthDakota || IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple || IsScrewYourNeighbor;
     private int DealAnimationDelayMs => 750;
 
     // Game rules for dynamic UI rendering
@@ -759,6 +793,14 @@
     // Drop or Stay phase detection (for Kings and Lows)
     private bool IsDropOrStayPhase =>
     string.Equals(_gameResponse?.CurrentPhase, "DropOrStay", StringComparison.OrdinalIgnoreCase);
+
+    // Keep or Trade phase detection (for Screw Your Neighbor)
+    private bool IsKeepOrTradePhase =>
+    string.Equals(_gameResponse?.CurrentPhase, "KeepOrTrade", StringComparison.OrdinalIgnoreCase);
+
+    // Reveal phase detection (for Screw Your Neighbor)
+    private bool IsRevealPhase =>
+    string.Equals(_gameResponse?.CurrentPhase, "Reveal", StringComparison.OrdinalIgnoreCase);
 
     // Draw Complete phase detection (for Kings and Lows - delay before showdown)
     private bool IsDrawCompletePhase =>
@@ -814,6 +856,96 @@
     private bool HasDropOrStay =>
     _tableState?.SpecialRules?.HasDropOrStay == true;
 
+    private bool HasKeepOrTrade =>
+    _tableState?.SpecialRules?.HasKeepOrTrade == true;
+
+    private bool IsCurrentPlayerScrewYourNeighborDealer =>
+    IsScrewYourNeighbor &&
+    _currentPlayerSeatIndex >= 0 &&
+    _currentPlayerSeatIndex == _dealerSeatIndex;
+
+    private string? CurrentScrewYourNeighborTradeTargetName
+    {
+        get
+        {
+            if (!TryGetCurrentScrewYourNeighborTradeTarget(out var tradeTarget))
+            {
+                return null;
+            }
+
+            return string.IsNullOrWhiteSpace(tradeTarget.PlayerFirstName)
+                ? tradeTarget.PlayerName
+                : tradeTarget.PlayerFirstName;
+        }
+    }
+
+    private bool IsCurrentPlayerTradeBlockedByTargetKing
+    {
+        get
+        {
+            if (!IsScrewYourNeighbor || IsCurrentPlayerScrewYourNeighborDealer)
+            {
+                return false;
+            }
+
+            if (!TryGetCurrentScrewYourNeighborTradeTarget(out var tradeTarget))
+            {
+                return false;
+            }
+
+            return tradeTarget.Cards.Any(card =>
+                card.IsFaceUp &&
+                string.Equals(card.Rank, "K", StringComparison.OrdinalIgnoreCase));
+        }
+    }
+
+    private bool TryGetCurrentScrewYourNeighborTradeTarget(out SeatInfo tradeTarget)
+    {
+        tradeTarget = default!;
+
+        if (!TryGetScrewYourNeighborTradeTarget(_currentPlayerSeatIndex, out var targetSeatIndex))
+        {
+            return false;
+        }
+
+        if (targetSeatIndex < 0 || targetSeatIndex >= _seats.Count)
+        {
+            return false;
+        }
+
+        tradeTarget = _seats[targetSeatIndex];
+        return tradeTarget.IsOccupied;
+    }
+
+    private bool TryGetScrewYourNeighborTradeTarget(int sourceSeatIndex, out int targetSeatIndex)
+    {
+        targetSeatIndex = -1;
+
+        if (_seats.Count == 0 || sourceSeatIndex < 0)
+        {
+            return false;
+        }
+
+        var eligibleSeats = _seats
+            .Where(seat => seat.IsOccupied && !seat.IsSittingOut && !seat.IsFolded)
+            .OrderBy(seat => seat.SeatIndex)
+            .ToList();
+
+        if (eligibleSeats.Count <= 1)
+        {
+            return false;
+        }
+
+        var sourceSeatPosition = eligibleSeats.FindIndex(seat => seat.SeatIndex == sourceSeatIndex);
+        if (sourceSeatPosition < 0)
+        {
+            return false;
+        }
+
+        targetSeatIndex = eligibleSeats[(sourceSeatPosition + 1) % eligibleSeats.Count].SeatIndex;
+        return true;
+    }
+
     private bool HasPotMatching =>
     _tableState?.SpecialRules?.HasPotMatching == true;
 
@@ -826,6 +958,11 @@
 
     private bool IsEndedPhase => string.Equals(_gameResponse?.CurrentPhase, GamePhase.Ended.ToString(),
     StringComparison.OrdinalIgnoreCase);
+
+    private bool IsGameCompleted => _gameResponse?.Status == GameStatus.Completed;
+
+    // Screw Your Neighbor should only show showdown once the game has fully ended.
+    private bool ShouldDisplayShowdownOverlay => !IsScrewYourNeighbor || IsEndedPhase || IsGameCompleted || (IsScrewYourNeighbor && IsCompletePhase && _tableState?.NextHandStartsAtUtc is null);
 
     private bool IsShowdownPhase => string.Equals(_gameResponse?.CurrentPhase, GamePhase.Showdown.ToString(),
     StringComparison.OrdinalIgnoreCase)
@@ -853,6 +990,7 @@
         GameHubClient.OnActionTimerUpdated += HandleActionTimerUpdatedAsync;
         GameHubClient.OnPlayerActionPerformed += HandlePlayerActionPerformedAsync;
         GameHubClient.OnTableSettingsUpdated += HandleTableSettingsUpdatedAsync;
+        GameHubClient.OnTableToastNotification += HandleTableToastNotificationAsync;
 
         // Load initial data FIRST so seats and _gameResponse are populated
         // before SignalR sends its state snapshot
@@ -915,7 +1053,7 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender)
+        if (_isJsInteropReady)
         {
             return;
         }
@@ -923,7 +1061,19 @@
         try
         {
             _isDealSoundMuted = await JSRuntime.InvokeAsync<bool>("cardGamesAudio.getMuted");
+            _isJsInteropReady = true;
+            await TryPlayTableSoundEffectsAsync(_tableState?.SoundEffects);
+            await FlushPendingScrewYourNeighborTradeAnimationsAsync();
             await InvokeStateHasChangedAsync();
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("statically rendered", StringComparison.OrdinalIgnoreCase))
+        {
+            // Prerender phase: JS interop is not available yet.
+            // We'll try again on the next render when the circuit becomes interactive.
+        }
+        catch (JSDisconnectedException)
+        {
+            // Circuit is not currently connected for JS interop.
         }
         catch (Exception ex)
         {
@@ -967,6 +1117,16 @@
         await ShowToastAsync(notification.Message, "info");
     }
 
+    private async Task HandleTableToastNotificationAsync(TableToastNotificationDto notification)
+    {
+        if (notification.GameId != GameId)
+        {
+            return;
+        }
+
+        await ShowToastAsync(notification.Message, notification.Type, notification.DurationMs);
+    }
+
     private async Task ShowToastAsync(string message, string type = "info", int durationMs = 4000)
     {
         var toast = new ToastMessage(message, type);
@@ -993,6 +1153,7 @@
 
         // Store the table state for phase category checks
         _tableState = state;
+        await TryPlayTableSoundEffectsAsync(state.SoundEffects);
 
         if (_dealAnimationInProgress && _dealAnimationPausedForBuyCardOffer)
         {
@@ -1092,6 +1253,8 @@
                     s.Cards = [];
                     s.HandEvaluationDescription = null;
                 }
+                _synKeepOrTradeDecision = null;
+                _synChipAnimationFired = false;
 
                 _previousFaceUpCommunityCardCount = 0;
                 _communityCardRevealInProgress = false;
@@ -1212,6 +1375,36 @@
 
             var handChanged = state.CurrentHandNumber != previousHandNumber;
 
+            var enteredScrewYourNeighborShowdown =
+                IsScrewYourNeighbor &&
+                IsShowdownPhase &&
+                !string.Equals(previousPhase, "Showdown", StringComparison.OrdinalIgnoreCase);
+
+            if (enteredScrewYourNeighborShowdown && !_showdownDelayUntil.HasValue)
+            {
+                ScheduleShowdownOverlayAfterDelay(TimeSpan.FromSeconds(ScrewYourNeighborDealerTradeShowdownDelaySeconds));
+            }
+
+            // Animate chip(s) flying from losing player seats to the pot when entering SYN showdown.
+            // Use the showdown PlayerResults to identify losers (IsWinner == false) rather than
+            // chip-count comparison, because SYN chips are deducted at ante time — not at showdown.
+            if (enteredScrewYourNeighborShowdown && state.Showdown is not null && !_synChipAnimationFired)
+            {
+                _synChipAnimationFired = true;
+                var loserSeatIndices = state.Showdown.PlayerResults
+                    .Where(r => !r.IsWinner)
+                    .Select(r => r.SeatPosition)
+                    .ToList();
+
+                Logger.LogInformation("SYN Showdown chip-loss animation for seats: [{Seats}]",
+                    string.Join(", ", loserSeatIndices));
+
+                if (loserSeatIndices.Count > 0)
+                {
+                    _ = InvokeAsync(() => AnimateScrewYourNeighborChipLossAsync(loserSeatIndices));
+                }
+            }
+
             // Handle showdown state - check if entering showdown/complete phase
             // Pass whether we should delay showing the overlay (only for deck draw animation now)
             var shouldDelayShowdownOverlay = _delayShowdownOverlay ||
@@ -1228,9 +1421,13 @@
                 UpdateShowdownFromPublicState(state.Showdown, shouldDelayShowdownOverlay || _runoutAnimationInProgress);
             }
 
-            // If entering showdown or complete phase, load showdown results via API
-            // But delay if we're showing the all-in runout animation
-            if (IsShowdownPhase && _showdownResult is null && !shouldDelayShowdownOverlay && !_runoutAnimationInProgress)
+            // If entering showdown or complete phase, load showdown results via API when
+            // the server has not already provided a complete showdown payload.
+            if (IsShowdownPhase &&
+                _showdownResult is null &&
+                !_delayShowdownOverlay &&
+                !_runoutAnimationInProgress &&
+                !(IsScrewYourNeighbor && state.Showdown is { IsComplete: true }))
             {
                 await TryLoadShowdownAsync();
             }
@@ -1241,28 +1438,14 @@
             !IsCurrentPlayerDeckDecisionMaker)
             {
                 // Non-decision maker: delay showdown overlay by 5 seconds to let them see the animation
-                _showdownDelayUntil = DateTimeOffset.UtcNow.AddSeconds(5);
+                ScheduleShowdownOverlayAfterDelay(TimeSpan.FromSeconds(5));
                 _hasDeckDrawn = true;
-
-                // Schedule the showdown to appear after delay
-                _ = Task.Run(async () =>
-                {
-                    await Task.Delay(TimeSpan.FromSeconds(5));
-                    _showdownDelayUntil = null;
-                    // Load showdown results if not already loaded, then show the overlay
-                    if (_showdownResult is null && IsShowdownPhase)
-                    {
-                        await TryLoadShowdownAsync();
-                    }
-                    _showShowdownOverlay = true;
-                    await InvokeStateHasChangedAsync();
-                });
             }
 
             // Handle continuous play countdown
             _isResultsPhase = state.IsResultsPhase;
 
-            if (IsEndedPhase)
+            if (IsEndedPhase || IsGameCompleted)
             {
                 // If game ended, enforce a local countdown if none exists
                 if (_secondsUntilNextHand <= 0 && _countdownTimer is null)
@@ -1305,7 +1488,7 @@
             {
                 StopCountdownTimer();
                 // Clear showdown overlay when new hand starts
-                if (!IsShowdownPhase)
+                if (!IsShowdownPhase && !IsGameCompleted)
                 {
                     _showShowdownOverlay = false;
                     _showdownResult = null;
@@ -1336,6 +1519,8 @@
                         _showdownDelayUntil = null;
                         _previousPhaseCategory = null;
                         _isAcknowledgingPotMatch = false;
+                        _synAnimatedTradeKeys.Clear();
+                        _playedTableSoundKeys.Clear();
 
                         // Reset All-In Runout state for new hand
                         _allInRunoutState = null;
@@ -1486,7 +1671,7 @@
                 {
                     Rank = c.Rank,
                     Suit = c.Suit,
-                    IsFaceUp = true,
+                    IsFaceUp = c.IsPubliclyVisible,
                     IsPubliclyVisible = c.IsPubliclyVisible,
                     IsSelected = false,
                     DealOrder = c.DealOrder,
@@ -1495,8 +1680,16 @@
 
                 ApplyKingsAndLowsLowestCardWildFallback(_seats[targetSeatIndex].Cards);
 
+                var formattedPrivateHandDescription =
+                    FormatHandDescriptionForDisplay(state.HandEvaluationDescription);
+
                 _seats[targetSeatIndex].HandEvaluationDescription =
-                    FormatHandDescriptionForDisplay(state.HandEvaluationDescription ?? BuildFallbackHandDescription(state.Hand));
+                    IsScrewYourNeighbor
+                        ? _synKeepOrTradeDecision
+                            ?? formattedPrivateHandDescription
+                            ?? _seats[targetSeatIndex].HandEvaluationDescription
+                        : formattedPrivateHandDescription
+                            ?? FormatHandDescriptionForDisplay(BuildFallbackHandDescription(state.Hand));
 
                 var newlyDealtCardCount = Math.Max(0, state.Hand.Count - previousCardCount);
                 if (targetSeatIndex == _currentPlayerSeatIndex && newlyDealtCardCount > 0)
@@ -1545,7 +1738,9 @@
         }
         else
         {
-            _isPlayerTurn = state.IsMyTurn && _isDrawPhase; // May be draw turn
+            // Special non-betting decision phases (like Screw Your Neighbor KeepOrTrade)
+            // do not populate AvailableActions, but still require turn-driven overlays.
+            _isPlayerTurn = state.IsMyTurn && (_isDrawPhase || IsKeepOrTradePhase);
             if (!_isDrawPhase)
             {
                 _legalActions = [];
@@ -1602,6 +1797,12 @@
         // where _gameResponse might not be populated yet
         var currentPhase = _gameResponse?.CurrentPhase ?? string.Empty;
         if ((IsDropOrStayPhase || string.Equals(currentPhase, "DropOrStay", StringComparison.OrdinalIgnoreCase))
+        && state.Hand is not null && state.Hand.Count > 0)
+        {
+            UpdateCurrentPlayerDrawCardsFromPrivateState(state.Hand, preserveSelection: false);
+        }
+        // Populate cards for KeepOrTrade overlay (Screw Your Neighbor)
+        else if ((IsKeepOrTradePhase || string.Equals(currentPhase, "KeepOrTrade", StringComparison.OrdinalIgnoreCase))
         && state.Hand is not null && state.Hand.Count > 0)
         {
             UpdateCurrentPlayerDrawCardsFromPrivateState(state.Hand, preserveSelection: false);
@@ -1781,6 +1982,27 @@
                     lastActionTime = shouldPreserveAction ? existingSeat.LastActionTime : null;
                 }
 
+                var screwYourNeighborDecision = IsScrewYourNeighbor
+                    ? publicSeat.HandEvaluationDescription
+                        ?? GetScrewYourNeighborDecisionDescription(lastActionDescription)
+                        ?? GetScrewYourNeighborDecisionDescription(publicSeat.LastAction?.ActionDescription)
+                    : null;
+
+                var resolvedHandEvaluationDescription = IsScrewYourNeighbor
+                    ? (isCurrentPlayer
+                        ? _synKeepOrTradeDecision
+                        : null)
+                        ?? existingSeat.HandEvaluationDescription
+                        ?? screwYourNeighborDecision
+                    : existingSeat.HandEvaluationDescription;
+
+                if (IsScrewYourNeighbor &&
+                    !string.Equals(existingSeat.HandEvaluationDescription, "Traded", StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(resolvedHandEvaluationDescription, "Traded", StringComparison.OrdinalIgnoreCase))
+                {
+                    QueueScrewYourNeighborTradeAnimation(publicSeat.SeatIndex);
+                }
+
                 _seats[publicSeat.SeatIndex] = new SeatInfo
                 {
                     SeatIndex = publicSeat.SeatIndex,
@@ -1800,7 +2022,8 @@
                     HasDecidedDropOrStay = publicSeat.HasDecidedDropOrStay,
                     Cards = cards,
                     LastActionDescription = lastActionDescription,
-                    LastActionTime = lastActionTime
+                    LastActionTime = lastActionTime,
+                    HandEvaluationDescription = resolvedHandEvaluationDescription
                 };
             }
         }
@@ -1818,12 +2041,11 @@
     private void UpdateShowdownFromPublicState(ShowdownPublicDto showdown, bool delayShowingOverlay = false)
     {
         // Build showdown result from public state ONLY when showdown.IsComplete is true.
-        // This means the server has already performed the showdown (PerformShowdown API was called),
-        // set NextHandStartsAt, and transitioned to Complete phase.
+        // This means the server has already performed the showdown, set NextHandStartsAt,
+        // and transitioned to Complete phase.
         //
         // CRITICAL: Do NOT populate _showdownResult when IsShowdownPhase is true but IsComplete is false!
-        // If we do, TryLoadShowdownAsync will see _showdownResult is not null and skip calling the
-        // PerformShowdown API. This would leave NextHandStartsAt unset and the next hand would never start.
+        // Non-inline showdown variants still rely on the showdown API to finalize results.
         //
         // For Kings and Lows and PotMatching phase, we also allow processing as those have special flows.
         // IMPORTANT: If we're delaying the overlay (e.g., for animation), don't set _showdownResult
@@ -1836,7 +2058,7 @@
 
         // Only process showdown from SignalR when:
         // 1. We don't already have a result
-        // 2. AND (the showdown is complete (PerformShowdown was called) OR we're in PotMatching phase for Kings and Lows)
+        // 2. AND (the showdown is complete OR we're in PotMatching phase for Kings and Lows)
         // Do NOT process when IsShowdownPhase is true but IsComplete is false - let TryLoadShowdownAsync call the API
         var hasWinnerInPublicResults = showdown.PlayerResults.Any(r => r.IsWinner || r.AmountWon > 0);
 
@@ -1910,7 +2132,7 @@
             // Only show overlay immediately if we're not delaying
             if (!delayShowingOverlay)
             {
-                _showShowdownOverlay = true;
+                _showShowdownOverlay = ShouldDisplayShowdownOverlay;
 
                 // Initialize countdown timer when showdown is loaded from SignalR
                 // This ensures the timer starts even if TryLoadShowdownAsync is never called
@@ -2058,6 +2280,7 @@
     }
 
     private GetGameResponse? _gameResponse;
+    private IReadOnlyList<string>? _allowedDealerChoiceGameCodes;
     private async Task LoadDataAsync()
     {
         try
@@ -2073,42 +2296,43 @@
 
                 // Convert to GetGameResponse format for compatibility with existing code
                 _gameResponse = new GetGameResponse(
-                ante: gamesResponse.Ante,
-                bigBet: gamesResponse.BigBet,
-                bigBlind: gamesResponse.BigBlind,
-                bringIn: gamesResponse.BringIn,
-                bringInPlayerIndex: gamesResponse.BringInPlayerIndex,
-                canContinue: gamesResponse.CanContinue,
-                createdAt: gamesResponse.CreatedAt,
-                createdById: gamesResponse.CreatedById,
-                createdByName: gamesResponse.CreatedByName,
-                currentDrawPlayerIndex: gamesResponse.CurrentDrawPlayerIndex,
-                currentHandNumber: gamesResponse.CurrentHandNumber,
-                currentPhase: gamesResponse.CurrentPhase,
-                currentPhaseDescription: gamesResponse.CurrentPhaseDescription,
-                currentPlayerIndex: gamesResponse.CurrentPlayerIndex,
-                dealerPosition: gamesResponse.DealerPosition,
-                endedAt: gamesResponse.EndedAt,
-                gameSettings: gamesResponse.GameSettings,
-                gameTypeCode: gamesResponse.GameTypeCode,
-                gameTypeId: gamesResponse.GameTypeId,
-                gameTypeName: gamesResponse.GameTypeName,
-                id: gamesResponse.Id,
-                maximumNumberOfPlayers: gamesResponse.MaximumNumberOfPlayers,
-                minBet: gamesResponse.MinBet,
-                minimumNumberOfPlayers: gamesResponse.MinimumNumberOfPlayers,
-                name: gamesResponse.Name,
-                randomSeed: gamesResponse.RandomSeed,
-                rowVersion: gamesResponse.RowVersion,
-                smallBet: gamesResponse.SmallBet,
-                smallBlind: gamesResponse.SmallBlind,
-                startedAt: gamesResponse.StartedAt,
-                status: gamesResponse.Status,
-                updatedAt: gamesResponse.UpdatedAt
+                    ante: gamesResponse.Ante,
+                    bigBet: gamesResponse.BigBet,
+                    bigBlind: gamesResponse.BigBlind,
+                    bringIn: gamesResponse.BringIn,
+                    bringInPlayerIndex: gamesResponse.BringInPlayerIndex,
+                    canContinue: gamesResponse.CanContinue,
+                    createdAt: gamesResponse.CreatedAt,
+                    createdById: gamesResponse.CreatedById,
+                    createdByName: gamesResponse.CreatedByName,
+                    currentDrawPlayerIndex: gamesResponse.CurrentDrawPlayerIndex,
+                    currentHandNumber: gamesResponse.CurrentHandNumber,
+                    currentPhase: gamesResponse.CurrentPhase,
+                    currentPhaseDescription: gamesResponse.CurrentPhaseDescription,
+                    currentPlayerIndex: gamesResponse.CurrentPlayerIndex,
+                    dealerPosition: gamesResponse.DealerPosition,
+                    endedAt: gamesResponse.EndedAt,
+                    gameSettings: gamesResponse.GameSettings,
+                    gameTypeCode: gamesResponse.GameTypeCode,
+                    gameTypeId: gamesResponse.GameTypeId,
+                    gameTypeName: gamesResponse.GameTypeName,
+                    id: gamesResponse.Id,
+                    maximumNumberOfPlayers: gamesResponse.MaximumNumberOfPlayers,
+                    minBet: gamesResponse.MinBet,
+                    minimumNumberOfPlayers: gamesResponse.MinimumNumberOfPlayers,
+                    name: gamesResponse.Name,
+                    randomSeed: gamesResponse.RandomSeed,
+                    rowVersion: gamesResponse.RowVersion,
+                    smallBet: gamesResponse.SmallBet,
+                    smallBlind: gamesResponse.SmallBlind,
+                    startedAt: gamesResponse.StartedAt,
+                    status: gamesResponse.Status,
+                    updatedAt: gamesResponse.UpdatedAt
                 )
                 {
                     AreOddsVisibleToAllPlayers = gamesResponse.AreOddsVisibleToAllPlayers
                 };
+                _allowedDealerChoiceGameCodes = ParseAllowedDealerChoiceGameCodes(gamesResponse.GameSettings);
 
                 _currentActorSeatIndex = _gameResponse.CurrentPlayerIndex;
                 _dealerSeatIndex = _gameResponse.DealerPosition;
@@ -2341,6 +2565,12 @@
             return;
         }
 
+        if (IsStartedScrewYourNeighborTable)
+        {
+            await ShowToastAsync("Screw Your Neighbor does not allow players to join after the game has started.", "error");
+            return;
+        }
+
         if (!TryGetAutoJoinSeatIndex(out var autoSeatIndex))
         {
             await ShowToastAsync("No seats are currently available.", "error");
@@ -2383,6 +2613,13 @@
     {
         if (_isJoiningSeat || !_pendingJoinSeatIndex.HasValue)
             return;
+
+        if (IsStartedScrewYourNeighborTable)
+        {
+            CloseJoinBuyInModal();
+            await ShowToastAsync("Screw Your Neighbor does not allow players to join after the game has started.", "error");
+            return;
+        }
 
         var seatIndex = _pendingJoinSeatIndex.Value;
         if (seatIndex < 0 || seatIndex >= _seats.Count || _seats[seatIndex].IsOccupied)
@@ -2510,6 +2747,11 @@
 
     private int GetRecommendedJoinBuyIn()
     {
+        if (IsScrewYourNeighbor)
+        {
+            return GetJoinBuyInMin();
+        }
+
         var min = GetJoinBuyInMin();
         var step = GetJoinBuyInStep();
         return Math.Clamp(step * 10, min, GetJoinBuyInMax());
@@ -2519,6 +2761,18 @@
     {
         var minBet = _gameResponse?.MinBet ?? 0;
         var ante = _gameResponse?.Ante ?? _ante;
+
+        if (IsScrewYourNeighbor)
+        {
+            var synMin = Math.Max(1, ante * 3);
+            if (_joinBuyInBalanceCap.HasValue && _joinBuyInBalanceCap.Value > 0 && _joinBuyInBalanceCap.Value < synMin)
+            {
+                return _joinBuyInBalanceCap.Value;
+            }
+
+            return synMin;
+        }
+
         var tableMin = Math.Max(1, Math.Max(minBet, ante));
 
         if (_joinBuyInBalanceCap.HasValue && _joinBuyInBalanceCap.Value > 0 && _joinBuyInBalanceCap.Value < tableMin)
@@ -2533,6 +2787,12 @@
     {
         var minBet = _gameResponse?.MinBet ?? 0;
         var ante = _gameResponse?.Ante ?? _ante;
+
+        if (IsScrewYourNeighbor)
+        {
+            return Math.Max(1, ante * 3);
+        }
+
         var tableStep = Math.Max(minBet, ante);
         var step = tableStep > 0 ? tableStep : 25;
 
@@ -2546,6 +2806,11 @@
 
     private int GetJoinBuyInMax()
     {
+        if (IsScrewYourNeighbor)
+        {
+            return GetJoinBuyInMin();
+        }
+
         var min = GetJoinBuyInMin();
         var step = GetJoinBuyInStep();
         var max = Math.Max(min, step * 1_000);
@@ -2811,6 +3076,17 @@
                 return;
             }
         }
+        else if (IsScrewYourNeighbor)
+        {
+            // Screw Your Neighbor skips ante collection; generic StartHand deals 1 card and transitions to KeepOrTrade.
+            var startResponse = await GamesApiClient.GenericStartHandAsync(GameId);
+            if (!startResponse.IsSuccessStatusCode)
+            {
+                Logger.LogWarning("Failed to start Screw Your Neighbor hand: {StatusCode}", startResponse.StatusCode);
+                await ShowToastAsync("Failed to start game. Please try again.", "error");
+                return;
+            }
+        }
         else
         {
             var startHandResponse = await FiveCardDrawApiClient.FiveCardDrawStartHandAsync(GameId);
@@ -2843,10 +3119,33 @@
         Logger.LogDebug("TryLoadShowdownAsync called. CurrentPhase={Phase}, IsShowdownPhase={IsShowdown}",
         _gameResponse?.CurrentPhase, IsShowdownPhase);
 
-        if (!IsShowdownPhase)
+        if (_showdownLoadInFlight)
+        {
+            Logger.LogDebug("TryLoadShowdownAsync: Showdown load already in flight, skipping duplicate request");
+            return;
+        }
+
+        if (!IsShowdownPhase && !IsGameCompleted)
         {
             Logger.LogDebug("TryLoadShowdownAsync: Not in showdown phase, returning early");
             return;
+        }
+
+        if (IsScrewYourNeighbor && _tableState?.Showdown is { IsComplete: true } synShowdown)
+        {
+            var isDelayActive = _showdownDelayUntil.HasValue && DateTimeOffset.UtcNow < _showdownDelayUntil.Value;
+            if (isDelayActive)
+            {
+                Logger.LogDebug("TryLoadShowdownAsync: SYN showdown already available in public state, waiting for delay to expire");
+                return;
+            }
+
+            UpdateShowdownFromPublicState(synShowdown);
+            if (_showdownResult is not null)
+            {
+                await InvokeStateHasChangedAsync();
+                return;
+            }
         }
 
         // If showdown result is already loaded (e.g., from SignalR update), validate first.
@@ -2861,7 +3160,7 @@
             else
             {
             Logger.LogDebug("TryLoadShowdownAsync: Showdown result already loaded, showing overlay");
-            _showShowdownOverlay = true;
+            _showShowdownOverlay = ShouldDisplayShowdownOverlay;
 
             // Ensure countdown timer is initialized (may have been missed if SignalR populated the result)
             if (_secondsUntilNextHand <= 0)
@@ -2876,91 +3175,116 @@
             }
         }
 
-        _loggedInUserEmail ??= await GetLoggedInUserEmailAsync();
+        _showdownLoadInFlight = true;
 
-        Refit.IApiResponse<PerformShowdownSuccessful>? showdownResponse;
-        if (IsTwosJacksManWithTheAxe)
+        try
         {
-            showdownResponse = await TwosJacksManWithTheAxeApi.TwosJacksManWithTheAxePerformShowdownAsync(GameId);
-        }
-        else if (IsSevenCardStud)
-        {
-            showdownResponse = await SevenCardStudApi.SevenCardStudPerformShowdownAsync(GameId);
-        }
-        else if (IsRazz)
-        {
-            showdownResponse = await SevenCardStudApi.SevenCardStudPerformShowdownAsync(GameId);
-        }
-        else if (IsGoodBadUgly)
-        {
-            showdownResponse = await GoodBadUglyApi.GoodBadUglyPerformShowdownAsync(GameId);
-        }
-        else if (IsBaseball)
-        {
-            showdownResponse = await BaseballApi.BaseballPerformShowdownAsync(GameId);
-        }
-        else if (IsKingsAndLows)
-        {
-            showdownResponse = await KingsAndLowsApi.KingsAndLowsPerformShowdownAsync(GameId);
-        }
-        else if (IsHoldEm)
-        {
-            showdownResponse = await HoldEmApi.HoldEmPerformShowdownAsync(GameId);
-        }
-        else if (IsHoldTheBaseball)
-        {
-            showdownResponse = await GamesApiClient.GenericPerformShowdownAsync(GameId);
-        }
-        else if (IsOmaha || IsNebraska || IsSouthDakota)
-        {
-            showdownResponse = await GamesApiClient.GenericPerformShowdownAsync(GameId);
-        }
-        else if (IsIrishStyleHoldEm)
-        {
-            showdownResponse = await GamesApiClient.GenericPerformShowdownAsync(GameId);
-        }
-        else
-        {
-            showdownResponse = await FiveCardDrawApiClient.FiveCardDrawPerformShowdownAsync(GameId);
-        }
+            _loggedInUserEmail ??= await GetLoggedInUserEmailAsync();
 
-        Logger.LogDebug("TryLoadShowdownAsync: Showdown API response - IsSuccess={IsSuccess}, HasContent={HasContent}",
-        showdownResponse?.IsSuccessStatusCode, showdownResponse?.Content is not null);
+            Refit.IApiResponse<PerformShowdownSuccessful>? showdownResponse;
+            if (IsTwosJacksManWithTheAxe)
+            {
+                showdownResponse = await TwosJacksManWithTheAxeApi.TwosJacksManWithTheAxePerformShowdownAsync(GameId);
+            }
+            else if (IsSevenCardStud)
+            {
+                showdownResponse = await SevenCardStudApi.SevenCardStudPerformShowdownAsync(GameId);
+            }
+            else if (IsRazz)
+            {
+                showdownResponse = await SevenCardStudApi.SevenCardStudPerformShowdownAsync(GameId);
+            }
+            else if (IsGoodBadUgly)
+            {
+                showdownResponse = await GoodBadUglyApi.GoodBadUglyPerformShowdownAsync(GameId);
+            }
+            else if (IsBaseball)
+            {
+                showdownResponse = await BaseballApi.BaseballPerformShowdownAsync(GameId);
+            }
+            else if (IsKingsAndLows)
+            {
+                showdownResponse = await KingsAndLowsApi.KingsAndLowsPerformShowdownAsync(GameId);
+            }
+            else if (IsHoldEm)
+            {
+                showdownResponse = await HoldEmApi.HoldEmPerformShowdownAsync(GameId);
+            }
+            else if (IsHoldTheBaseball)
+            {
+                showdownResponse = await GamesApiClient.GenericPerformShowdownAsync(GameId);
+            }
+            else if (IsOmaha || IsNebraska || IsSouthDakota)
+            {
+                showdownResponse = await GamesApiClient.GenericPerformShowdownAsync(GameId);
+            }
+            else if (IsIrishStyleHoldEm)
+            {
+                showdownResponse = await GamesApiClient.GenericPerformShowdownAsync(GameId);
+            }
+            else if (IsScrewYourNeighbor)
+            {
+                showdownResponse = await GamesApiClient.GenericPerformShowdownAsync(GameId);
+            }
+            else
+            {
+                showdownResponse = await FiveCardDrawApiClient.FiveCardDrawPerformShowdownAsync(GameId);
+            }
 
-        if (showdownResponse is not { IsSuccessStatusCode: true, Content: not null })
-        {
-            Logger.LogWarning("TryLoadShowdownAsync: Showdown API failed or returned no content. StatusCode={StatusCode}, Error={Error}",
-            showdownResponse?.StatusCode, showdownResponse?.Error?.Content);
-            return;
+            Logger.LogDebug("TryLoadShowdownAsync: Showdown API response - IsSuccess={IsSuccess}, HasContent={HasContent}",
+            showdownResponse?.IsSuccessStatusCode, showdownResponse?.Content is not null);
+
+            if (showdownResponse is not { IsSuccessStatusCode: true, Content: not null })
+            {
+                Logger.LogWarning("TryLoadShowdownAsync: Showdown API failed or returned no content. StatusCode={StatusCode}, Error={Error}",
+                showdownResponse?.StatusCode, showdownResponse?.Error?.Content);
+                return;
+            }
+
+            _showdownResult = showdownResponse.Content;
+
+            // If a showdown overlay delay is active (e.g., SYN 7-second pause), populate the
+            // result but don't show the overlay yet — the ScheduleShowdownOverlayAfterDelay
+            // callback will reveal it when the timer expires.
+            var isDelayActive = _showdownDelayUntil.HasValue && DateTimeOffset.UtcNow < _showdownDelayUntil.Value;
+            if (!isDelayActive)
+            {
+                _showShowdownOverlay = ShouldDisplayShowdownOverlay;
+                Logger.LogDebug("TryLoadShowdownAsync: Set _showShowdownOverlay=true, _showdownResult loaded");
+
+                // Initialize countdown timer immediately after successful showdown
+                // The SignalR broadcast will also arrive with the updated state, but we start
+                // the timer proactively to avoid race conditions where the UI shows the overlay
+                // without a countdown.
+                _isResultsPhase = true;
+                _secondsUntilNextHand = ContinuousPlayResultsDisplayDurationSeconds;
+                StartCountdownTimer();
+            }
+            else
+            {
+                Logger.LogDebug("TryLoadShowdownAsync: Showdown loaded but delay active, overlay deferred");
+            }
+
+            if (string.IsNullOrWhiteSpace(_loggedInUserEmail) && string.IsNullOrWhiteSpace(_currentPlayerName))
+            {
+                _showdownWon = false;
+                _showdownLost = false;
+                return;
+            }
+
+            // Check against both email and display name since payout keys may use either
+            var iWon = _showdownResult.Payouts?.Keys.Any(p =>
+            string.Equals(p, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(p, _currentPlayerName, StringComparison.OrdinalIgnoreCase)) == true;
+            _showdownWon = iWon;
+            _showdownLost = !iWon;
+
+            await InvokeStateHasChangedAsync();
         }
-
-        _showdownResult = showdownResponse.Content;
-        _showShowdownOverlay = true;
-        Logger.LogDebug("TryLoadShowdownAsync: Set _showShowdownOverlay=true, _showdownResult loaded");
-
-        // Initialize countdown timer immediately after successful showdown
-        // The SignalR broadcast will also arrive with the updated state, but we start
-        // the timer proactively to avoid race conditions where the UI shows the overlay
-        // without a countdown.
-        _isResultsPhase = true;
-        _secondsUntilNextHand = ContinuousPlayResultsDisplayDurationSeconds;
-        StartCountdownTimer();
-
-        if (string.IsNullOrWhiteSpace(_loggedInUserEmail) && string.IsNullOrWhiteSpace(_currentPlayerName))
+        finally
         {
-            _showdownWon = false;
-            _showdownLost = false;
-            return;
+            _showdownLoadInFlight = false;
         }
-
-        // Check against both email and display name since payout keys may use either
-        var iWon = _showdownResult.Payouts?.Keys.Any(p =>
-        string.Equals(p, _loggedInUserEmail, StringComparison.OrdinalIgnoreCase) ||
-        string.Equals(p, _currentPlayerName, StringComparison.OrdinalIgnoreCase)) == true;
-        _showdownWon = iWon;
-        _showdownLost = !iWon;
-
-        await InvokeStateHasChangedAsync();
     }
 
     private void CloseShowdownOverlay()
@@ -3049,10 +3373,7 @@
                 // Start flying card animation for runout
                 _flyingCard = new TableCanvas.FlyingCardInfo(
                     TargetSeatIndex: currentSeatIndex,
-                    CardIndex: currentVisible,
-                    Rank: runoutCard.Rank,
-                    Suit: runoutCard.Suit,
-                    IsFaceUp: true
+                    CardIndex: currentVisible
                 );
 
                 await InvokeStateHasChangedAsync();
@@ -3241,10 +3562,7 @@
             // Start flying card animation
             _flyingCard = new TableCanvas.FlyingCardInfo(
                 TargetSeatIndex: seatIndex,
-                CardIndex: _dealCurrentCardIndex,
-                Rank: rank,
-                Suit: suit,
-                IsFaceUp: isFaceUp
+                CardIndex: _dealCurrentCardIndex
             );
 
             await InvokeStateHasChangedAsync();
@@ -3372,6 +3690,42 @@
         catch (Exception ex)
         {
             Logger.LogDebug(ex, "Unable to play deal-card sound effect");
+        }
+    }
+
+    private async Task TryPlayTableSoundEffectsAsync(IReadOnlyList<TableSoundEffectDto>? soundEffects)
+    {
+        if (soundEffects is null || soundEffects.Count == 0 || _isDealSoundMuted || !_isJsInteropReady)
+        {
+            return;
+        }
+
+        foreach (var soundEffect in soundEffects)
+        {
+            await TryPlayTableSoundEffectAsync(soundEffect);
+        }
+    }
+
+    private async Task TryPlayTableSoundEffectAsync(TableSoundEffectDto soundEffect)
+    {
+        if (string.IsNullOrWhiteSpace(soundEffect.CueKey) || string.IsNullOrWhiteSpace(soundEffect.Source))
+        {
+            return;
+        }
+
+        if (!_playedTableSoundKeys.Add(soundEffect.CueKey))
+        {
+            return;
+        }
+
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("cardGamesAudio.playSoundEffect", soundEffect.Source);
+        }
+        catch (Exception ex)
+        {
+            _playedTableSoundKeys.Remove(soundEffect.CueKey);
+            Logger.LogDebug(ex, "Unable to play {SoundEventKey} sound effect", soundEffect.EventKey);
         }
     }
 
@@ -3613,6 +3967,40 @@
                 AreOddsVisibleToAllPlayers = gameResponse.Content.AreOddsVisibleToAllPlayers,
                 RowVersion = gameResponse.Content.RowVersion
             };
+            _allowedDealerChoiceGameCodes = ParseAllowedDealerChoiceGameCodes(gameResponse.Content.GameSettings);
+        }
+    }
+
+    private static IReadOnlyList<string>? ParseAllowedDealerChoiceGameCodes(string? gameSettings)
+    {
+        if (string.IsNullOrWhiteSpace(gameSettings))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(gameSettings);
+            if (!document.RootElement.TryGetProperty("allowedDealerChoiceGameCodes", out var allowedGameCodesElement)
+                || allowedGameCodesElement.ValueKind != JsonValueKind.Array)
+            {
+                return null;
+            }
+
+            var allowedGameCodes = allowedGameCodesElement
+                .EnumerateArray()
+                .Select(element => element.GetString()?.Trim())
+                .Where(code => !string.IsNullOrWhiteSpace(code))
+                .Select(code => code!)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(code => code, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            return allowedGameCodes.Length > 0 ? allowedGameCodes : null;
+        }
+        catch (JsonException)
+        {
+            return null;
         }
     }
 
@@ -4254,7 +4642,7 @@
                 StopCountdownTimer();
 
                 // If game is ended and timer reached 0, redirect to lobby
-                if (IsEndedPhase)
+                if (IsEndedPhase || IsGameCompleted)
                 {
                     await GameHubClient.LeaveGameAsync(GameId);
                     NavigationManager.NavigateTo("/lobby");
@@ -4308,6 +4696,7 @@
         GameHubClient.OnActionTimerUpdated -= HandleActionTimerUpdatedAsync;
         GameHubClient.OnPlayerActionPerformed -= HandlePlayerActionPerformedAsync;
         GameHubClient.OnTableSettingsUpdated -= HandleTableSettingsUpdatedAsync;
+        GameHubClient.OnTableToastNotification -= HandleTableToastNotificationAsync;
 
         // Leave the game and disconnect
         if (_currentGameId.HasValue)
@@ -4362,7 +4751,22 @@
         _seats[seatIndex].LastActionDescription = notification.ActionDescription;
         _seats[seatIndex].LastActionTime = notification.PerformedAtUtc;
 
+        // Keep/Trade is a hand-long decision in Screw Your Neighbor and should remain visible.
+        if (IsScrewYourNeighbor)
+        {
+            var screwYourNeighborDecision = GetScrewYourNeighborDecisionDescription(notification.ActionDescription);
+            if (!string.IsNullOrWhiteSpace(screwYourNeighborDecision))
+            {
+                _seats[seatIndex].HandEvaluationDescription = screwYourNeighborDecision;
+            }
+        }
+
         await InvokeStateHasChangedAsync();
+
+        if (IsScrewYourNeighbor && IsScrewYourNeighborTradeAction(notification.ActionDescription))
+        {
+            QueueScrewYourNeighborTradeAnimation(seatIndex);
+        }
 
         // Schedule the action to be cleared after the display duration
         var displayDuration = notification.DisplayDurationSeconds > 0
@@ -4382,6 +4786,194 @@
                 await InvokeStateHasChangedAsync();
             }
         });
+    }
+
+    private static string? GetScrewYourNeighborDecisionDescription(string? actionDescription)
+    {
+        if (string.IsNullOrWhiteSpace(actionDescription))
+        {
+            return null;
+        }
+
+        var normalizedDescription = actionDescription.Trim();
+
+        if (string.Equals(normalizedDescription, "Trade", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(normalizedDescription, "Traded", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Traded";
+        }
+
+        if (string.Equals(normalizedDescription, "Keep", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(normalizedDescription, "Kept", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Kept";
+        }
+
+        return null;
+    }
+
+    private static bool IsScrewYourNeighborTradeAction(string? actionDescription)
+    {
+        return string.Equals(
+            GetScrewYourNeighborDecisionDescription(actionDescription),
+            "Traded",
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task AnimateScrewYourNeighborTradeAsync(int sourceSeatIndex)
+    {
+        if (!_isJsInteropReady)
+        {
+            return;
+        }
+
+        var isDealerTrade = sourceSeatIndex == _dealerSeatIndex;
+
+        if (!isDealerTrade && !TryGetScrewYourNeighborTradeTarget(sourceSeatIndex, out _))
+        {
+            return;
+        }
+
+        try
+        {
+            if (isDealerTrade)
+            {
+                // Dealer trades with the deck — animate card from deck to dealer's seat
+                await JSRuntime.InvokeVoidAsync(
+                    "cardGamesTable.animateScrewYourNeighborDeckTrade",
+                    sourceSeatIndex,
+                    ScrewYourNeighborTradeAnimationDurationMs);
+            }
+            else
+            {
+                TryGetScrewYourNeighborTradeTarget(sourceSeatIndex, out var targetSeatIndex);
+                // Non-dealer trades with the next player — animate cards flying between seats
+                await JSRuntime.InvokeVoidAsync(
+                    "cardGamesTable.animateScrewYourNeighborTrade",
+                    sourceSeatIndex,
+                    targetSeatIndex,
+                    ScrewYourNeighborTradeAnimationDurationMs);
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+            // Circuit ended before animation could execute.
+        }
+        catch (TaskCanceledException ex)
+        {
+            Logger.LogDebug(ex,
+                "Skipped Screw Your Neighbor trade animation after JS interop was canceled for seat {SourceSeatIndex}",
+                sourceSeatIndex);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("statically rendered", StringComparison.OrdinalIgnoreCase))
+        {
+            Logger.LogDebug(ex,
+                "Skipped Screw Your Neighbor trade animation during prerender for seat {SourceSeatIndex}",
+                sourceSeatIndex);
+        }
+        catch (JSException ex)
+        {
+            Logger.LogDebug(ex,
+                "Failed to run Screw Your Neighbor trade animation for seat {SourceSeatIndex}",
+                sourceSeatIndex);
+        }
+    }
+
+    private void QueueScrewYourNeighborTradeAnimation(int sourceSeatIndex)
+    {
+        var isDealerTrade = sourceSeatIndex == _dealerSeatIndex;
+
+        // For non-dealer trades, verify there is a valid trade target
+        if (!isDealerTrade && !TryGetScrewYourNeighborTradeTarget(sourceSeatIndex, out _))
+        {
+            return;
+        }
+
+        var handNumber = _tableState?.CurrentHandNumber ?? _gameResponse?.CurrentHandNumber ?? 0;
+        var tradeKey = $"{handNumber}:{sourceSeatIndex}";
+        if (!_synAnimatedTradeKeys.Add(tradeKey))
+        {
+            return;
+        }
+
+        if (!_isJsInteropReady)
+        {
+            _pendingSynTradeAnimationSeatIndices.Add(sourceSeatIndex);
+            return;
+        }
+
+        // Fire-and-forget: the JS animation creates its own synthetic card elements
+        // positioned over the seats (or deck) and flies them. It does not depend on the
+        // current DOM card state, so it works regardless of when Blazor re-renders.
+        _ = InvokeAsync(() => AnimateScrewYourNeighborTradeAsync(sourceSeatIndex));
+    }
+
+    private async Task FlushPendingScrewYourNeighborTradeAnimationsAsync()
+    {
+        if (!_isJsInteropReady || _pendingSynTradeAnimationSeatIndices.Count == 0)
+        {
+            return;
+        }
+
+        var pending = _pendingSynTradeAnimationSeatIndices.ToList();
+        _pendingSynTradeAnimationSeatIndices.Clear();
+
+        foreach (var sourceSeatIndex in pending)
+        {
+            await AnimateScrewYourNeighborTradeAsync(sourceSeatIndex);
+        }
+    }
+
+    /// <summary>
+    /// Animates a poker chip flying from each losing player's seat to the pot display.
+    /// </summary>
+    private const int ScrewYourNeighborChipAnimationDelayMs = 3000;
+
+    private async Task AnimateScrewYourNeighborChipLossAsync(List<int> loserSeatIndices)
+    {
+        if (!_isJsInteropReady)
+        {
+            return;
+        }
+
+        Logger.LogInformation(
+            "AnimateScrewYourNeighborChipLossAsync: animating chip loss for {Count} loser(s) at seats [{Seats}]",
+            loserSeatIndices.Count, string.Join(", ", loserSeatIndices));
+
+        // Wait after winner/loser is revealed before animating the chip to the pot
+        await Task.Delay(ScrewYourNeighborChipAnimationDelayMs);
+
+        var staggerDelayMs = 0;
+        foreach (var seatIndex in loserSeatIndices)
+        {
+            try
+            {
+                await JSRuntime.InvokeVoidAsync(
+                    "cardGamesTable.animateSeatLossExplosion",
+                    seatIndex,
+                    staggerDelayMs);
+
+                await JSRuntime.InvokeVoidAsync(
+                    "cardGamesTable.animateChipToPot",
+                    seatIndex,
+                    ScrewYourNeighborTradeAnimationDurationMs,
+                    staggerDelayMs);
+            }
+            catch (JSDisconnectedException)
+            {
+                return;
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("statically rendered", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+            catch (JSException ex)
+            {
+                Logger.LogDebug(ex, "Failed to animate chip loss for seat {SeatIndex}", seatIndex);
+            }
+
+            staggerDelayMs += 150;
+        }
     }
 
     private Guid? _currentGameId => GameId;
@@ -5270,7 +5862,7 @@ HandType.HighCard
         _dcGamesLoading = true;
         try
         {
-            var response = await AvailablePokerGamesApi.GetAvailablePokerGamesAsync(null);
+            var response = await AvailablePokerGamesApi.GetAvailablePokerGamesAsync(string.Empty);
             if (response is { IsSuccessStatusCode: true, Content: not null })
             {
                 _dcAvailableGames = response.Content.ToList();
@@ -5408,6 +6000,105 @@ HandType.HighCard
             _isProcessingDropOrStay = false;
             StateHasChanged();
         }
+    }
+
+    /// <summary>
+    /// Handles keep or trade decision from the Screw Your Neighbor overlay.
+    /// </summary>
+    private async Task HandleKeepOrTradeDecision(string decision)
+    {
+        if (!HasKeepOrTrade || _isProcessingKeepOrTrade)
+        {
+            return;
+        }
+
+        _isProcessingKeepOrTrade = true;
+
+        // Set decision BEFORE the API call so SignalR state updates (which fire during
+        // the await) see it and don't overwrite with the server's hand evaluation.
+        var isTrade = string.Equals(decision, "Trade", StringComparison.OrdinalIgnoreCase);
+        _synKeepOrTradeDecision = isTrade ? "Traded" : "Kept";
+        if (_currentPlayerSeatIndex >= 0 && _currentPlayerSeatIndex < _seats.Count)
+        {
+            _seats[_currentPlayerSeatIndex].HandEvaluationDescription = _synKeepOrTradeDecision;
+        }
+
+        // Trigger the trade animation immediately for the current player so they see
+        // the cards fly before the API response / SignalR update swaps the card values.
+        // The dedupe key prevents a second animation when the server notification arrives.
+        if (isTrade)
+        {
+            QueueScrewYourNeighborTradeAnimation(_currentPlayerSeatIndex);
+        }
+
+        StateHasChanged();
+
+        try
+        {
+            var request = new KeepOrTradeRequest(
+            decision: decision,
+            playerId: _currentPlayerId ?? Guid.Empty
+            );
+
+            var response = await GameApiRouter.KeepOrTradeAsync(_gameTypeCode ?? "", GameId, request);
+
+            if (response.IsSuccess)
+            {
+                Logger.LogDebug("Keep or trade decision recorded: {Decision}", decision);
+            }
+            else
+            {
+                Logger.LogWarning("Keep or trade decision failed: {Error}", response.Error);
+                _synKeepOrTradeDecision = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error recording keep or trade decision");
+        }
+        finally
+        {
+            _isProcessingKeepOrTrade = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ScheduleShowdownOverlayAfterDelay(TimeSpan delay)
+    {
+        _showdownDelayUntil = DateTimeOffset.UtcNow.Add(delay);
+        var scheduledDelayUntil = _showdownDelayUntil.Value;
+
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(delay);
+
+            if (_disposed || !_showdownDelayUntil.HasValue || _showdownDelayUntil.Value != scheduledDelayUntil)
+            {
+                return;
+            }
+
+            _showdownDelayUntil = null;
+
+            var hasShowdownInLatestState = _tableState?.Showdown is not null;
+            var canRevealDuringResultsLikePhase = IsShowdownPhase || _isResultsPhase || IsCompletePhase || IsEndedPhase || IsGameCompleted;
+
+            if (_showdownResult is null && hasShowdownInLatestState && _tableState?.Showdown is not null)
+            {
+                UpdateShowdownFromPublicState(_tableState.Showdown);
+            }
+
+            if (_showdownResult is null && IsShowdownPhase)
+            {
+                await TryLoadShowdownAsync();
+            }
+
+            if (canRevealDuringResultsLikePhase && (_showdownResult is not null || hasShowdownInLatestState))
+            {
+                _showShowdownOverlay = ShouldDisplayShowdownOverlay;
+            }
+
+            await InvokeStateHasChangedAsync();
+        });
     }
 
     // Kings and Lows - Player vs Deck methods
@@ -5775,3 +6466,4 @@ HandType.HighCard
         await Task.CompletedTask;
     }
 }
+

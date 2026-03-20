@@ -1,5 +1,7 @@
 using System;
+using System.Security.Cryptography;
 using System.Text.Json;
+using System.Text;
 using CardGames.Contracts.SignalR;
 using CardGames.Core.Extensions;
 using CardGames.Core.French.Cards;
@@ -10,6 +12,7 @@ using CardGames.Poker.Api.Features.Profile;
 using CardGames.Poker.Api.Features.Games.ActiveGames.v1.Queries.GetActiveGames;
 using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetHandHistory;
 using CardGames.Poker.Api.Features.Games.Baseball;
+using CardGames.Poker.Api.GameFlow;
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Games.GameFlow;
 using CardGames.Poker.Betting;
@@ -51,6 +54,12 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			PokerGameMetadataRegistry.BaseballCode,
 			PokerGameMetadataRegistry.FollowTheQueenCode
 		};
+	private static readonly Dictionary<string, string[]> TableSoundboardFiles =
+		new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+		{
+			["winning"] = ["pay_dat_man_his_money.mp3"]
+		};
+	private const int WinningSoundFrequencyHands = 10;
 
 	private readonly CardsDbContext _context;
 	private readonly IActionTimerService _actionTimerService;
@@ -216,6 +225,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			}
 			: null;
 
+		var showdown = await BuildShowdownPublicDtoAsync(game, gamePlayers, userProfilesByEmail, cancellationToken);
+		var soundEffects = BuildTableSoundEffects(game, showdown);
+
 		return new TableStatePublicDto
 		{
 			GameId = game.Id,
@@ -233,12 +245,13 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			CurrentHandNumber = game.CurrentHandNumber,
 			CreatedByName = game.CreatedByName,
 			Seats = seats,
-			Showdown = await BuildShowdownPublicDtoAsync(game, gamePlayers, userProfilesByEmail, cancellationToken),
+			Showdown = showdown,
 			HandCompletedAtUtc = game.HandCompletedAt,
 			NextHandStartsAtUtc = game.NextHandStartsAt,
 			IsResultsPhase = isResultsPhase,
 			SecondsUntilNextHand = secondsUntilNextHand,
 			HandHistory = handHistory,
+			SoundEffects = soundEffects,
 			CurrentPhaseCategory = currentPhaseDescriptor?.Category,
 			CurrentPhaseRequiresAction = currentPhaseDescriptor?.RequiresPlayerAction ?? false,
 			CurrentPhaseAvailableActions = currentPhaseDescriptor?.AvailableActions,
@@ -252,6 +265,51 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			IsDealersChoice = game.IsDealersChoice,
 			DealersChoiceDealerPosition = game.IsDealersChoice ? game.DealersChoiceDealerPosition : null
 		};
+	}
+
+	private static IReadOnlyList<TableSoundEffectDto>? BuildTableSoundEffects(Entities.Game game, ShowdownPublicDto? showdown)
+	{
+		if (game.CurrentHandNumber <= 0 || game.CurrentHandNumber % WinningSoundFrequencyHands != 0 || showdown is not { IsComplete: true })
+		{
+			return null;
+		}
+
+		var hasWinner = showdown.PlayerResults.Any(result => result.IsWinner || result.AmountWon > 0);
+		if (!hasWinner)
+		{
+			return null;
+		}
+
+		var source = ChooseDeterministicSoundboardSource(game.Id, game.CurrentHandNumber, "winning");
+		if (string.IsNullOrWhiteSpace(source))
+		{
+			return null;
+		}
+
+		return
+		[
+			new TableSoundEffectDto
+			{
+				CueKey = $"winning:{game.CurrentHandNumber}:{Path.GetFileName(source)}",
+				EventKey = "winning",
+				HandNumber = game.CurrentHandNumber,
+				Source = source
+			}
+		];
+	}
+
+	private static string? ChooseDeterministicSoundboardSource(Guid gameId, int handNumber, string eventKey)
+	{
+		if (!TableSoundboardFiles.TryGetValue(eventKey, out var files) || files.Length == 0)
+		{
+			return null;
+		}
+
+		var seedBytes = Encoding.UTF8.GetBytes($"{gameId:N}:{handNumber}:{eventKey}");
+		var hashBytes = SHA256.HashData(seedBytes);
+		var selectedIndex = BitConverter.ToUInt32(hashBytes, 0) % (uint)files.Length;
+		var fileName = files[(int)selectedIndex];
+		return $"/sounds/soundboard/{eventKey}/{Uri.EscapeDataString(fileName)}";
 	}
 
 	/// <inheritdoc />
@@ -539,6 +597,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		// For Seven Card Stud, show visible cards; otherwise show face-down placeholders
 		// During showdown phases, show cards face-up for players who haven't folded
 		var isSevenCardStud = IsStudGame(gameTypeCode);
+		var isScrewYourNeighbor = IsScrewYourNeighborGame(gameTypeCode);
 
 		// Get current hand cards (not discarded)
 		// Note: We filter by hand number to naturally handle sitting out players.
@@ -558,7 +617,10 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		{
 			// For stud games, respect the IsVisible flag; otherwise default to face-down
 			// During showdown, show cards face-up for staying players
-			var shouldShowCard = (isSevenCardStud && card.IsVisible) || shouldShowCardsForShowdown;
+			var shouldShowCard =
+				(isSevenCardStud && card.IsVisible)
+				|| (isScrewYourNeighbor && card.IsVisible)
+				|| shouldShowCardsForShowdown;
 
 			return new CardPublicDto
 			{
@@ -568,6 +630,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				DealOrder = card.DealOrder
 			};
 		}).ToList();
+
+		var handEvaluationDescription = GetPublicHandEvaluationDescription(gameTypeCode, gamePlayer.VariantState);
 
 		return new SeatPublicDto
 		{
@@ -585,17 +649,55 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			SittingOutReason = sittingOutReason,
 			CurrentBet = gamePlayer.CurrentBet,
 			HasDecidedDropOrStay = gamePlayer.DropOrStayDecision.HasValue && gamePlayer.DropOrStayDecision.Value != Entities.DropOrStayDecision.Undecided,
-			Cards = publicCards
+			Cards = publicCards,
+			HandEvaluationDescription = handEvaluationDescription
+		};
+	}
+
+	private static string? GetPublicHandEvaluationDescription(string? gameTypeCode, string? variantState)
+	{
+		if (!string.Equals(gameTypeCode, PokerGameMetadataRegistry.ScrewYourNeighborCode, StringComparison.OrdinalIgnoreCase))
+		{
+			return null;
+		}
+
+		return variantState?.Trim().ToUpperInvariant() switch
+		{
+			"SYN_KEPT" => "Kept",
+			"SYN_TRADED" => "Traded",
+			_ => null
 		};
 	}
 
 	private static string? GetPlayerFirstName(GamePlayer gamePlayer, IReadOnlyDictionary<string, UserProfile> userProfilesByEmail)
 	{
-		if (!string.IsNullOrWhiteSpace(gamePlayer.Player.Email)
-			&& userProfilesByEmail.TryGetValue(gamePlayer.Player.Email, out var profile))
+		// Try Identity profile lookup by email
+		var email = gamePlayer.Player.Email;
+		if (string.IsNullOrWhiteSpace(email) && gamePlayer.Player.Name?.Contains('@') == true)
 		{
-			return !string.IsNullOrWhiteSpace(profile.FirstName) ? profile.FirstName.Trim() : null;
+			email = gamePlayer.Player.Name;
 		}
+
+		if (!string.IsNullOrWhiteSpace(email)
+			&& userProfilesByEmail.TryGetValue(email, out var profile)
+			&& !string.IsNullOrWhiteSpace(profile.FirstName))
+		{
+			return profile.FirstName.Trim();
+		}
+
+		// Fallback: derive from email local-part (TitleCase first segment)
+		var emailSource = !string.IsNullOrWhiteSpace(email) ? email : gamePlayer.Player.Name;
+		var atIndex = emailSource?.IndexOf('@') ?? -1;
+		if (atIndex > 0)
+		{
+			var localPart = emailSource![..atIndex];
+			var segments = localPart.Split(['.', '_', '-'], StringSplitOptions.RemoveEmptyEntries);
+			if (segments.Length > 0)
+			{
+				return System.Globalization.CultureInfo.InvariantCulture.TextInfo.ToTitleCase(segments[0].ToLowerInvariant());
+			}
+		}
+
 		return null;
 	}
 
@@ -782,11 +884,6 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		Dictionary<string, UserProfile> userProfilesByEmail,
 		CancellationToken cancellationToken)
 	{
-		if (game.CurrentPhase != "Showdown" && game.CurrentPhase != "Complete" && game.CurrentPhase != "PotMatching")
-		{
-			return null;
-		}
-
 		var isTwosJacksAxe = IsTwosJacksAxeGame(game.GameType?.Code);
 		var isGoodBadUgly = IsGoodBadUglyGame(game.GameType?.Code);
 		var isHoldEm = IsHoldEmGame(game.GameType?.Code);
@@ -802,11 +899,25 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		var isBaseball = IsBaseballGame(game.GameType?.Code);
 		var isKingsAndLows = IsKingsAndLowsGame(game.GameType?.Code);
 		var isFollowTheQueen = IsFollowTheQueenGame(game.GameType?.Code);
+		var isScrewYourNeighbor = IsScrewYourNeighborGame(game.GameType?.Code);
 		var isStudStyleShowdown = isSevenCardStud || isBaseball || isFollowTheQueen;
+		var isTerminalScrewYourNeighborShowdown =
+			isScrewYourNeighbor && string.Equals(game.CurrentPhase, "Ended", StringComparison.OrdinalIgnoreCase);
+
+		if (game.CurrentPhase != "Showdown" &&
+			game.CurrentPhase != "Complete" &&
+			game.CurrentPhase != "PotMatching" &&
+			!isTerminalScrewYourNeighborShowdown)
+		{
+			return null;
+		}
 
 		// Evaluate all hands for players who haven't folded
 		// Use HandBase as the base type since all hand types inherit from it
 		var playerHandEvaluations = new Dictionary<string, (HandBase hand, TwosJacksManWithTheAxeDrawHand? twosJacksHand, KingsAndLowsDrawHand? kingsAndLowsHand, SevenCardStudHand? studHand, GamePlayer gamePlayer, List<GameCard> cards, List<int> wildIndexes, List<int> bestCardIndexes)>();
+		var showdownPlayers = gamePlayers
+			.Where(gp => !gp.HasFolded)
+			.ToList();
 
 		// Good Bad Ugly: players have <=4 hole cards + community cards (The Good, The Bad, The Ugly)
 		// Must be handled before the cards.Count >= 5 check since player-owned cards may be fewer than 5
@@ -1388,6 +1499,53 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				sevensPoolRolledOver = sevensWinners.Count == 0;
 			}
 		}
+		else if (isScrewYourNeighbor)
+		{
+			// SYN: each player has exactly 1 card. Lowest card value loses (Ace=1, King=13).
+			// Players who do NOT have the lowest value are winners.
+			var synActivePlayers = showdownPlayers;
+
+			var synHandCards = await _context.GameCards
+				.Where(gc => gc.GameId == game.Id
+					&& gc.HandNumber == game.CurrentHandNumber
+					&& gc.GamePlayerId != null
+					&& gc.Location == CardLocation.Hand
+					&& !gc.IsDiscarded)
+				.AsNoTracking()
+				.ToListAsync(cancellationToken);
+
+			var synPlayerCards = new Dictionary<Guid, GameCard>();
+			foreach (var card in synHandCards)
+			{
+				if (card.GamePlayerId.HasValue)
+				{
+					synPlayerCards[card.GamePlayerId.Value] = card;
+				}
+			}
+
+			var synPlayerValues = new List<(GamePlayer Player, int CardValue)>();
+			foreach (var player in synActivePlayers)
+			{
+				if (synPlayerCards.TryGetValue(player.Id, out var card))
+				{
+					var value = ScrewYourNeighborFlowHandler.GetScrewYourNeighborCardValue(card.Symbol);
+					synPlayerValues.Add((player, value));
+				}
+			}
+
+			if (synPlayerValues.Count > 0)
+			{
+				var lowestValue = synPlayerValues.Min(pv => pv.CardValue);
+				foreach (var pv in synPlayerValues.Where(pv => pv.CardValue != lowestValue))
+				{
+					highHandWinners.Add(pv.Player.Player.Name);
+				}
+			}
+
+			showdownPlayers = synPlayerValues
+				.Select(pv => pv.Player)
+				.ToList();
+		}
 		else if (gamePlayers.Count(gp => !gp.HasFolded) == 1)
 		{
 			// Only one player remaining (won by fold)
@@ -1405,8 +1563,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			: null;
 
 		// Build player results
-		var playerResults = gamePlayers
-			.Where(gp => !gp.HasFolded)
+		var playerResults = showdownPlayers
 			.Select(gp =>
 			{
 				var isWinner = allWinners.Contains(gp.Player.Name);
@@ -1430,7 +1587,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				return new ShowdownPlayerResultDto
 				{
 					PlayerName = gp.Player.Name,
-					PlayerFirstName = userProfile?.FirstName,
+					PlayerFirstName = GetPlayerFirstName(gp, userProfilesByEmail),
 					SeatPosition = gp.SeatPosition,
 					HandRanking = handRanking,
 					HandDescription = isGoodBadUgly && string.Equals(gp.VariantState, "UGLY_ELIMINATED", StringComparison.OrdinalIgnoreCase)
@@ -1494,7 +1651,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		return new ShowdownPublicDto
 		{
 			PlayerResults = playerResults,
-			IsComplete = game.CurrentPhase == "Complete",
+			IsComplete = game.CurrentPhase == "Complete" || isTerminalScrewYourNeighborShowdown,
 			SevensWinners = isTwosJacksAxe ? sevensWinners.ToList() : null,
 			HighHandWinners = isTwosJacksAxe ? highHandWinners.ToList() : null,
 			Losers = allLosers,
@@ -1504,6 +1661,29 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 	private async Task<int> CalculateTotalPotAsync(Game game, int handNumber, CancellationToken cancellationToken)
 	{
+		if (IsScrewYourNeighborGame(game.GameType?.Code))
+		{
+			// SYN carries the funded pot across hands in the Pots table.
+			// While showing results between hands, display the upcoming hand pot.
+			var isWaitingForNextHand = game.CurrentPhase == "Complete";
+			var targetHandNumber = isWaitingForNextHand ? handNumber + 1 : handNumber;
+
+			var total = await _context.Pots
+				.Where(p => p.GameId == game.Id && p.HandNumber == targetHandNumber && !p.IsAwarded)
+				.AsNoTracking()
+				.SumAsync(p => p.Amount, cancellationToken);
+
+			if (total == 0 && isWaitingForNextHand)
+			{
+				total = await _context.Pots
+					.Where(p => p.GameId == game.Id && p.HandNumber == handNumber && !p.IsAwarded)
+					.AsNoTracking()
+					.SumAsync(p => p.Amount, cancellationToken);
+			}
+
+			return total;
+		}
+
 		// For Kings and Lows, the pot is tracked in the Pots table, not TotalContributedThisHand
 		if (IsKingsAndLowsGame(game.GameType?.Code))
 		{
@@ -1544,6 +1724,11 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			.SumAsync(gp => gp.TotalContributedThisHand, cancellationToken);
 
 		return totalContributions;
+	}
+
+	private static bool IsScrewYourNeighborGame(string? gameCode)
+	{
+		return string.Equals(gameCode, PokerGameMetadataRegistry.ScrewYourNeighborCode, StringComparison.OrdinalIgnoreCase);
 	}
 
 	private async Task<KingsAndLowsDeckOutcome?> BuildKingsAndLowsDeckOutcomeAsync(
@@ -1871,6 +2056,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		return new GameSpecialRulesDto
 		{
 			HasDropOrStay = rules.SpecialRules.ContainsKey("DropOrStay"),
+			HasKeepOrTrade = rules.SpecialRules.ContainsKey("KeepOrTrade"),
 			HasPotMatching = rules.SpecialRules.ContainsKey("LosersMatchPot"),
 			HasWildCards = rules.SpecialRules.ContainsKey("WildCards"),
 			WildCardsDescription = rules.SpecialRules.TryGetValue("WildCards", out var wc)
@@ -1935,6 +2121,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		return new GameSpecialRulesDto
 		{
 			HasDropOrStay = rules.SpecialRules.ContainsKey("DropOrStay"),
+			HasKeepOrTrade = rules.SpecialRules.ContainsKey("KeepOrTrade"),
 			HasPotMatching = rules.SpecialRules.ContainsKey("LosersMatchPot"),
 			HasWildCards = rules.SpecialRules.ContainsKey("WildCards"),
 			WildCardsDescription = rules.SpecialRules.TryGetValue("WildCards", out var wc)

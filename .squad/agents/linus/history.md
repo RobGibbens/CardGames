@@ -7,6 +7,24 @@
 
 ## Learnings
 
+- 2026-03-19 (team update): Lobby heading spacing decision (`linus-lobby-heading-spacing-fix`) was merged from inbox into canonical `.squad/decisions.md`; use the canonical entry as the source of truth for follow-up grouped lobby heading spacing changes.
+
+- 2026-03-19: In `Lobby.razor`, the grouped lobby spacing issue between sections is best fixed by adding top margin on the next section heading (`mt-*`) in both grid and list renders, rather than relying on larger section bottom margin.
+
+- 2026-03-19: In `Lobby.razor`, grouped-section heading separation is better fixed on the heading/header itself (`mt-*`) than by increasing outer section bottom margin, because the perceived crowding is the next heading sitting too close to the prior group's final card.
+
+- 2026-03-19 (team update): Lobby group spacing decision (`linus-lobby-group-spacing`) was merged from inbox into canonical `.squad/decisions.md`; use the canonical entry as the source of truth for follow-up lobby section spacing changes.
+
+- 2026-03-19: For grouped lobby game-type sections in `Lobby.razor`, a Bootstrap spacing-class bump (`mb-4` -> `mb-5`) is enough to improve vertical separation without touching grouping logic, join/delete actions, or section markup structure.
+
+- 2026-03-19: `Lobby.razor` should group rendered tables by the same display label used in-row/in-card via `FormatGameTypeName(table)`, not raw `GameTypeName` or `GameTypeCode`. That keeps Dealer's Choice tables grouped under their effective user-facing label (`Dealer's Choice` or `Dealer's Choice (Variant)`) consistently across both grid and list views without introducing UI-only naming rules.
+
+- 2026-03-10: SYN showdown delay must be enforced from shared SignalR table-state transitions, not only in local `HandleKeepOrTradeDecision`. In `TablePlay.razor`, when phase moves from KeepOrTrade/Reveal into showdown flow, schedule the existing 7-second delay via `ScheduleShowdownOverlayAfterDelay` so every client defers `TryLoadShowdownAsync` and overlay reveal consistently.
+
+- 2026-03-10 (team update): SYN dealer-trade showdown-delay decision (`linus-syn-showdown-delay`) was merged from inbox into canonical `.squad/decisions.md`; use canonical entry as source of truth for follow-up TablePlay showdown/overlay timing changes.
+
+- 2026-03-10: In `TablePlay.razor`, Screw Your Neighbor now applies a dealer-only, Trade-only 7-second showdown delay by reusing `_showdownDelayUntil` and a shared `ScheduleShowdownOverlayAfterDelay` helper. This prevents immediate showdown reveal after dealer deck-trade while keeping SignalR-driven showdown loading/overlay behavior unchanged for other games and decisions.
+
 - 2026-03-07: Lobby Join now passes an explicit one-time URL intent (`?autojoin=1`) and `TablePlay` consumes that intent immediately after initial table/seat load to trigger `BeginAutoSeatJoinAsync` only once when the player is not already seated. This preserves Lobby no-chip gating, keeps existing full-table/race handling in join submit flow, and ensures buy-in modal appears on direct Lobby→Table joins.
 - 2026-03-08 (team update): Lobby-triggered auto-seat join fix decision (`linus-lobby-autojoin-fix`) was merged from inbox into canonical `.squad/decisions.md`; use canonical entry as source of truth for follow-up Lobby→Table join behavior changes.
 - 2026-03-08 (team update): Create-table no auto-enter decision (`linus-create-table-no-autojoin`) was merged from inbox into canonical `.squad/decisions.md`; keep create success navigation Lobby-first so join/seat remains explicit user intent.

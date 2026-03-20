@@ -4,7 +4,10 @@
 @implements IDisposable
 @inject NavigationManager NavigationManager
 
-<div class="seat-container @(IsCurrentPlayer ? "current-player-layout" : "remote-player-layout") @(Seat.IsOccupied ? "occupied" : "empty")">
+<div
+ class="seat-container @(IsCurrentPlayer ? "current-player-layout" : "remote-player-layout") @(Seat.IsOccupied ? "occupied" : "empty")"
+	data-seat-index="@Seat.SeatIndex">
+	<div id="seat-particle-host-@Seat.SeatIndex" class="seat-particle-host" aria-hidden="true"></div>
 	@if (Seat.IsOccupied)
 	{
 		<!-- Cards -->
@@ -18,9 +21,11 @@
 						var lowestNonKingRankValueForWild = IsKingsAndLows
 							? GetLowestNonKingRankValueForWild(Seat.Cards)
 							: null;
+                       var orderedCards = GetOrderedCards().ToList();
 					}
-					@foreach (var card in GetOrderedCards())
+                    @for (var cardIndex = 0; cardIndex < orderedCards.Count; cardIndex++)
 					{
+                        var card = orderedCards[cardIndex];
 						var rank = GetPlayingCardRank(card);
 						var hasCardPayload = !string.IsNullOrWhiteSpace(card.Rank) && !string.IsNullOrWhiteSpace(card.Suit);
 						var isWildForDisplay = IsWildForDisplay(card, lowestNonKingRankValueForWild, hasExplicitWildFlags);
@@ -31,27 +36,33 @@
 							if (card.IsPubliclyVisible)
 							{
 								<div class="card-shell face-up">
-									<playing-card rank="@rank" suit="@card.Suit" class="poker-card face-up" suitcolor="@(isWildForDisplay ? "green" : null)" rankcolor="@(isWildForDisplay ? "green" : null)" courtcolor="@(isWildForDisplay ? "green" : null)"></playing-card>
+									<playing-card rank="@rank" suit="@card.Suit" class="poker-card face-up"
+												  suitcolor="@(isWildForDisplay ? "green" : null)" rankcolor="@(isWildForDisplay ? "green" : null)"
+												  courtcolor="@(isWildForDisplay ? "green" : null)"></playing-card>
 								</div>
 							}
 							else if (!hasCardPayload)
 							{
-								<div class="card-shell face-down">
+							  <div class="card-shell face-down">
 									<playing-card rank="0" backcolor="#44F" class="poker-card face-down"></playing-card>
 								</div>
 							}
 							else
 							{
-								<div class="card-shell face-down">
-									<playing-card rank="@rank" suit="@card.Suit" class="poker-card face-down" suitcolor="@(isWildForDisplay ? "green" : null)" rankcolor="@(isWildForDisplay ? "green" : null)" courtcolor="@(isWildForDisplay ? "green" : null)"></playing-card>
+							  <div class="card-shell face-down">
+									<playing-card rank="@rank" suit="@card.Suit" class="poker-card face-down"
+												  suitcolor="@(isWildForDisplay ? "green" : null)" rankcolor="@(isWildForDisplay ? "green" : null)"
+												  courtcolor="@(isWildForDisplay ? "green" : null)"></playing-card>
 								</div>
 							}
 						}
 						else
 						{
-							if (card.IsFaceUp)
+							if (ShouldShowRemoteCardFace(card))
 							{
-								<playing-card rank="@rank" suit="@card.Suit" class="poker-card small" suitcolor="@(isWildForDisplay ? "green" : null)" rankcolor="@(isWildForDisplay ? "green" : null)" courtcolor="@(isWildForDisplay ? "green" : null)"></playing-card>
+							   <playing-card rank="@rank" suit="@card.Suit" class="poker-card small"
+											  suitcolor="@(isWildForDisplay ? "green" : null)" rankcolor="@(isWildForDisplay ? "green" : null)"
+											  courtcolor="@(isWildForDisplay ? "green" : null)"></playing-card>
 							}
 							else
 							{
@@ -136,7 +147,23 @@
 						}
 					</div>
 					<div class="pill-bottom-row">
-						<span class="chip-count">@Seat.Chips.ToString("N0")</span>
+						@if (IsScrewYourNeighbor)
+						{
+							var stacksRemaining = Ante > 0 ? Seat.Chips / Ante : 0;
+							<div class="syn-stacks">
+								@for (var i = 0; i < stacksRemaining; i++)
+								{
+									<div class="syn-chip syn-chip-active">
+										<i class="fa-sharp-duotone fa-solid fa-poker-chip"
+										   style="--fa-primary-color: white; --fa-secondary-color:red;"></i>
+									</div>
+								}
+							</div>
+						}
+						else
+						{
+							<span class="chip-count">@Seat.Chips.ToString("N0")</span>
+						}
 					</div>
 				</div>
 
@@ -153,7 +180,7 @@
 					<div class="seat-blind-button seat-bb-button" title="Big Blind">BB</div>
 				}
 
-				@if (IsCurrentPlayer && ShowCards && Seat.Cards.Count > 0 && !string.IsNullOrWhiteSpace(Seat.HandEvaluationDescription))
+				@if (ShouldShowHandEvaluationTooltip())
 				{
 					<div class="hand-eval-tooltip">
 						@Seat.HandEvaluationDescription
@@ -171,10 +198,12 @@
 			</div>
 		}
 
+
 	}
 	else
 	{
-		<button class="empty-seat-button" disabled="@IsSeatSelectionDisabledForCurrentUser" title="@(IsSeatSelectionDisabledForCurrentUser ? "Empty seat" : "Take a seat")">
+		<button class="empty-seat-button" disabled="@IsSeatSelectionDisabledForCurrentUser"
+				title="@(IsSeatSelectionDisabledForCurrentUser ? "Empty seat" : "Take a seat")">
 			@(IsSeatSelectionDisabledForCurrentUser ? "Empty" : "Sit Here")
 		</button>
 	}
@@ -193,6 +222,13 @@
 	[Parameter]
 	public bool IsBigBlind { get; set; }
 
+	private static bool ShouldShowRemoteCardFace(CardInfo card)
+	{
+		return card.IsPubliclyVisible
+			&& !string.IsNullOrWhiteSpace(card.Rank)
+			&& !string.IsNullOrWhiteSpace(card.Suit);
+	}
+
 	[Parameter]
 	public bool IsCurrentActor { get; set; }
 
@@ -206,12 +242,18 @@
 	public string? GameTypeCode { get; set; }
 
 	[Parameter]
+	public int Ante { get; set; }
+
+	[Parameter]
 	public bool IsSeatSelectionDisabledForCurrentUser { get; set; }
 
 	private bool _imageLoadError;
 	private string? _lastAvatarUrl;
 	private Timer? _alternationTimer;
 	private bool _showAlternateStatus = true;
+
+	private bool IsScrewYourNeighbor => string.Equals(GameTypeCode, "SCREWYOURNEIGHBOR",
+StringComparison.OrdinalIgnoreCase);
 
 	protected override void OnInitialized()
 	{
@@ -338,6 +380,39 @@
 			   IsCurrentActor ||
 			   Seat.SittingOutReason == "Observing" ||
 			   Seat.IsSittingOut;
+	}
+
+	private bool ShouldShowHandEvaluationTooltip()
+	{
+		if (!ShowCards || Seat.Cards.Count == 0 || string.IsNullOrWhiteSpace(Seat.HandEvaluationDescription))
+		{
+			return false;
+		}
+
+		if (!IsCurrentPlayer && !IsScrewYourNeighbor)
+		{
+			return false;
+		}
+
+		if (IsScrewYourNeighbor && IsCurrentPlayer)
+		{
+			return IsScrewYourNeighborDecisionDescription(Seat.HandEvaluationDescription);
+		}
+
+		return true;
+	}
+
+	private static bool IsScrewYourNeighborDecisionDescription(string? description)
+	{
+		if (string.IsNullOrWhiteSpace(description))
+		{
+			return false;
+		}
+
+		return string.Equals(description, "Kept", StringComparison.OrdinalIgnoreCase)
+			|| string.Equals(description, "Traded", StringComparison.OrdinalIgnoreCase)
+			|| string.Equals(description, "Keep", StringComparison.OrdinalIgnoreCase)
+			|| string.Equals(description, "Trade", StringComparison.OrdinalIgnoreCase);
 	}
 
 	private static string GetInitials(string? name)

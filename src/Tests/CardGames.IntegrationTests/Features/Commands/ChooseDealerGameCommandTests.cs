@@ -139,6 +139,25 @@ public class ChooseDealerGameCommandTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task Handle_DisallowedGameTypeCode_ReturnsError()
+    {
+        var setup = await CreateDealersChoiceSetupWithTestUser(dealerSeatPosition: 0);
+        setup.Game.GameSettings = "{\"allowedDealerChoiceGameCodes\":[\"FIVECARDDRAW\"]}";
+        await DbContext.SaveChangesAsync();
+
+        var command = new ChooseDealerGameCommand(
+            setup.Game.Id,
+            PokerGameMetadataRegistry.OmahaCode,
+            Ante: 10,
+            MinBet: 20);
+
+        var result = await Mediator.Send(command);
+
+        result.IsT1.Should().BeTrue();
+        result.AsT1.Reason.Should().Contain("is not allowed");
+    }
+
+    [Fact]
     public async Task Handle_NegativeAnte_ReturnsError()
     {
         var setup = await CreateDealersChoiceSetupWithTestUser(dealerSeatPosition: 0);

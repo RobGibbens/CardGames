@@ -1,9 +1,17 @@
+
 # TODO
 
 ## Still to do
 
 - [ ] https://github.com/leeoades/FunctionalStateMachine
 
+- [ ] SYN - check for ties
+- [ ] SYN - odds
+- [ ] Lobby - Filter by status
+- [ ] Join game modal - should not be able to click out of it
+- [ ] Join game modal background color
+- [ ] Joining table adds 5001 when setting 5000
+- [ ] Bringing in cash to a game should require host approval
 - [ ] Phil's mom loser showdown not correct
 - [ ] Test what happens when a player disconnects
 - [ ] Work on isolating games code more
@@ -11,6 +19,7 @@
 - [ ] Add leagues
 - [ ] Add seasons
 - [ ] Add tournaments
+- [ ] Productize it - deployment and hosting
 
 ### P1 - Can't play without these
 - [ ] Test side pots
@@ -50,6 +59,7 @@
 ### Hold 'Em Variants
 - [x] Add Texas Hold'em
 - [x] Add Omaha
+- [ ] Add The Bob Barker
 - [x] Add Irish Hold'em
 - [ ] Add Pittsburgh
 - [ ] Add Squid Game
@@ -60,7 +70,6 @@
 - [x] Add Phil's Mom
 - [x] Add Crazy Pineapple
 - [ ] Add Klondike
-
 
 ### 7 Card Stud Variants
 - [x] Add Seven Card Stud
@@ -197,3 +206,37 @@
 - [x] Table settings should be dynamic when creating a table. Not all games have an ante or a minimum bet.
 - [x] When playing Dealer's choice, filter out games that don't support the number of players
 - [x] Allow each person to set their preferences for blinds when creating tables
+- [x] SYN - When Pot is 0 still show it
+- [x] SYN - show your remaining stacks
+- [x] SYN - show everyone if you traded or stayed
+- [x] SYN - no bring in, or lock it the set amount
+- [x] SYN - doesn't need min bet when creating
+- [x] SYN - When dealing you can briefly see all player's cards
+- [x] SYN - After a few hands, table goes nuts, everybody animates a chip, cards redeal
+- [x] SYN - Highlight winner(s)
+- [x] SYN - only use one deck until it runs out
+- [x] SYN - When running out of cards, deal a new deck
+- [x] SYN - Speed up deal
+- [x] SYN - Timer time out
+- [x] SYN - Showdown too fast
+- [x] SYN - Make sure you can't join in the middle of a game
+- [x] SYN - Have end of game go to lobby
+- [x] SYN - Animate trading
+- [x] SYN - Animate trading with the deck
+- [x] SYN - Animate chips to pot
+- [x] SYN - Get a king and it still prompts you to trade
+- [x] SYN - Not showing showdown
+- [x] SYN - check for King block
+- [x] SYN - Showdown showing email, not name
+- [x] SYN in DC - Shows six stacks each - not removing them
+- [x] Add rounders sounds 
+- [x] DC/SYN - Only setting 2 chips per player instead of 3
+- [x] Create Table - Once a game is selected, hide the search box
+- [x] Create table page, enable button as soon as you start typing
+- [x] SYN - Enable playing in Dealer's Choice
+- [x] Create Table page, make the Create Table button look like a poker table
+- [x] When in dark mode, the Join Seat Amount text is hidden (white on white)
+- [x] Dealer's Choice - pick which games are included
+- [x] Auto generate table name
+- [x] Lobby - Group by game type
+- [x] DC - You're the dealer! Pick a game variant for this hand. - SYN shows Min Bet

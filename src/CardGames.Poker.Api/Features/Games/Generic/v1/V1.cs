@@ -1,6 +1,7 @@
 using Asp.Versioning.Builder;
 using CardGames.Poker.Api.Features.Games.Generic.v1.Commands.PerformShowdown;
 using CardGames.Poker.Api.Features.Games.Generic.v1.Commands.StartHand;
+using CardGames.Poker.Api.Features.Games.Generic.v1.Queries.GetGeneratedTableName;
 using SharpGrip.FluentValidation.AutoValidation.Endpoints.Extensions;
 
 namespace CardGames.Poker.Api.Features.Games.Generic.v1;
@@ -26,6 +27,7 @@ public static class V1
             .AddFluentValidationAutoValidation();
 
         mapGroup
+            .MapGetGeneratedTableName()
             .MapStartHand()
             .MapPerformShowdown();
     }

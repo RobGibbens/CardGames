@@ -1,5 +1,7 @@
+using System.Text.Json;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Features.Games.Common;
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Api.Infrastructure;
 using CardGames.Poker.Betting;
@@ -111,6 +113,15 @@ public class ChooseDealerGameCommandHandler(
 			};
 		}
 
+		if (!DealersChoiceGameSettings.IsGameCodeAllowed(game, command.GameTypeCode))
+		{
+			return new ChooseDealerGameError
+			{
+				GameId = command.GameId,
+				Reason = $"Game type '{command.GameTypeCode}' is not allowed at this Dealer's Choice table."
+			};
+		}
+
 		// 6. Validate ante / min bet are positive
 		if (command.Ante < 0)
 		{
@@ -175,6 +186,18 @@ public class ChooseDealerGameCommandHandler(
 			game.SmallBlind = command.SmallBlind.Value;
 		if (command.BigBlind.HasValue)
 			game.BigBlind = command.BigBlind.Value;
+
+		// For SYN in Dealer's Choice, snapshot DC chips and give each player 3 stacks.
+		if (string.Equals(command.GameTypeCode, PokerGameMetadataRegistry.ScrewYourNeighborCode, StringComparison.OrdinalIgnoreCase)
+		    && command.Ante > 0)
+		{
+			var synBuyIn = command.Ante * 3;
+			foreach (var gp in game.GamePlayers.Where(gp => gp.Status == GamePlayerStatus.Active && !gp.IsSittingOut))
+			{
+				gp.VariantState = JsonSerializer.Serialize(new { preSynChips = gp.ChipStack });
+				gp.ChipStack = synBuyIn;
+			}
+		}
 
 		game.CurrentPhase = nameof(Phases.WaitingToStart);
 		game.Status = GameStatus.BetweenHands;

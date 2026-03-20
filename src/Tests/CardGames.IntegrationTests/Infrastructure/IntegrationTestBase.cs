@@ -60,12 +60,14 @@ public abstract class IntegrationTestBase : IAsyncLifetime
         services.AddSingleton<IActionTimerService, FakeActionTimerService>();
         services.AddSingleton<IGameStateBroadcaster, FakeGameStateBroadcaster>();
         services.AddSingleton<IHandHistoryRecorder, FakeHandHistoryRecorder>();
-        services.AddSingleton<IHandSettlementService, FakeHandSettlementService>();
-        services.AddScoped<ICurrentUserService, FakeCurrentUserService>();
-        services.AddScoped<ITableStateBuilder, TableStateBuilder>();
+		services.AddSingleton<IHandSettlementService, FakeHandSettlementService>();
+		services.AddScoped<ICurrentUserService, FakeCurrentUserService>();
+		services.AddScoped<ITableStateBuilder, TableStateBuilder>();
 		services.AddScoped<IPlayerChipWalletService, PlayerChipWalletService>();
 
-        ServiceProvider = services.BuildServiceProvider();
+		ConfigureServices(services);
+
+		ServiceProvider = services.BuildServiceProvider();
         Scope = ServiceProvider.CreateScope();
 
         // Ensure database is created and seed base data
@@ -88,6 +90,11 @@ public abstract class IntegrationTestBase : IAsyncLifetime
     }
 
     /// <summary>
+    /// Override to replace or add service registrations before the provider is built.
+    /// </summary>
+    protected virtual void ConfigureServices(IServiceCollection services) { }
+
+    /// <summary>
     /// Seeds base data required for tests (game types, etc.)
     /// </summary>
     protected virtual async Task SeedBaseDataAsync()
@@ -108,7 +115,8 @@ public abstract class IntegrationTestBase : IAsyncLifetime
             CreateGameType("IRISHHOLDEM", "Irish Hold 'Em", 2, 10, 4, 0, 5, 9),
             CreateGameType("FOLLOWTHEQUEEN", "Follow the Queen", 2, 8, 2, 1, 0, 7),
             CreateGameType("BASEBALL", "Baseball", 2, 8, 2, 1, 0, 7),
-            CreateGameType("GOODBADUGLY", "The Good, the Bad, and the Ugly", 2, 7, 2, 1, 0, 7)
+            CreateGameType("GOODBADUGLY", "The Good, the Bad, and the Ugly", 2, 7, 2, 1, 0, 7),
+            CreateGameType("SCREWYOURNEIGHBOR", "Screw Your Neighbor", 3, 10, 1, 0, 0, 1)
         };
 
         await DbContext.GameTypes.AddRangeAsync(gameTypes);

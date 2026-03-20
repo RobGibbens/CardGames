@@ -26,6 +26,7 @@
 .fans,
 .fands,
 .faes,
+.fagt,
 .fajr,
 .fajfr,
 .fajdr,
@@ -45,6 +46,7 @@
 .fa-sharp-duotone,
 .fa-chisel,
 .fa-etch,
+.fa-graphite,
 .fa-jelly,
 .fa-jelly-duo,
 .fa-jelly-fill,
@@ -58,7 +60,7 @@
 .fa-utility-fill,
 .fa-whiteboard,
 .fa {
-  --_fa-family: var(--fa-family, var(--fa-style-family, "Font Awesome 7 Pro"));
+  --_fa-family: var(--fa-family, var(--fa-style-family, 'Font Awesome 7 Pro'));
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   display: var(--fa-display, inline-block);
@@ -98,6 +100,7 @@
 .fans,
 .fands,
 .faes,
+.fagt,
 .fajr,
 .fajfr,
 .fajdr,
@@ -117,6 +120,7 @@
 .fa-sharp-duotone,
 .fa-chisel,
 .fa-etch,
+.fa-graphite,
 .fa-jelly,
 .fa-jelly-duo,
 .fa-jelly-fill,
@@ -158,6 +162,7 @@
   .fans,
   .fands,
   .faes,
+  .fagt,
   .fajr,
   .fajfr,
   .fajdr,
@@ -177,6 +182,7 @@
   .fa-sharp-duotone,
   .fa-chisel,
   .fa-etch,
+  .fa-graphite,
   .fa-jelly,
   .fa-jelly-duo,
   .fa-jelly-fill,
@@ -211,7 +217,7 @@
 .fa-jelly-duo,
 .faudsb,
 .fa-utility-duo)::after {
-  content: var(--fa);
+  content: var(--fa)/"";
   font-feature-settings: "ss01";
 }
 
@@ -696,9 +702,11 @@
 .fa-apple-core { --fa: "\e08f"; }
 .fa-apple-crate { --fa: "\f6b1"; }
 .fa-apple-whole { --fa: "\f5d1"; }
+.fa-aquarius { --fa: "\e845"; }
 .fa-archive { --fa: "\f187"; }
 .fa-archway { --fa: "\f557"; }
 .fa-area-chart { --fa: "\f1fe"; }
+.fa-aries { --fa: "\e846"; }
 .fa-arrow-alt-circle-down { --fa: "\f358"; }
 .fa-arrow-alt-circle-left { --fa: "\f359"; }
 .fa-arrow-alt-circle-right { --fa: "\f35a"; }
@@ -719,6 +727,7 @@
 .fa-arrow-alt-to-right { --fa: "\f34c"; }
 .fa-arrow-alt-to-top { --fa: "\f34d"; }
 .fa-arrow-alt-up { --fa: "\f357"; }
+.fa-arrow-archery { --fa: "\e839"; }
 .fa-arrow-circle-down { --fa: "\f0ab"; }
 .fa-arrow-circle-left { --fa: "\f0a8"; }
 .fa-arrow-circle-right { --fa: "\f0a9"; }
@@ -791,8 +800,12 @@
 .fa-arrow-rotate-forward { --fa: "\f01e"; }
 .fa-arrow-rotate-left { --fa: "\f0e2"; }
 .fa-arrow-rotate-left-10 { --fa: "\e836"; }
+.fa-arrow-rotate-left-15 { --fa: "\e886"; }
+.fa-arrow-rotate-left-30 { --fa: "\e887"; }
 .fa-arrow-rotate-right { --fa: "\f01e"; }
 .fa-arrow-rotate-right-10 { --fa: "\e837"; }
+.fa-arrow-rotate-right-15 { --fa: "\e888"; }
+.fa-arrow-rotate-right-30 { --fa: "\e889"; }
 .fa-arrow-square-down { --fa: "\f339"; }
 .fa-arrow-square-left { --fa: "\f33a"; }
 .fa-arrow-square-right { --fa: "\f33b"; }
@@ -1020,6 +1033,7 @@
 .fa-betamax { --fa: "\f8a4"; }
 .fa-bezier-curve { --fa: "\f55b"; }
 .fa-bible { --fa: "\f647"; }
+.fa-bicep { --fa: "\e862"; }
 .fa-bicycle { --fa: "\f206"; }
 .fa-biking { --fa: "\f84a"; }
 .fa-biking-mountain { --fa: "\f84b"; }
@@ -1123,6 +1137,7 @@
 .fa-bottle-baby { --fa: "\e673"; }
 .fa-bottle-droplet { --fa: "\e4c4"; }
 .fa-bottle-water { --fa: "\e4c5"; }
+.fa-bow-archery { --fa: "\e83a"; }
 .fa-bow-arrow { --fa: "\f6b9"; }
 .fa-bowl-chopsticks { --fa: "\e2e9"; }
 .fa-bowl-chopsticks-noodles { --fa: "\e2ea"; }
@@ -1250,6 +1265,7 @@
 .fa-burn { --fa: "\f46a"; }
 .fa-burrito { --fa: "\f7ed"; }
 .fa-burst { --fa: "\e4dc"; }
+.fa-burst-new { --fa: "\e878"; }
 .fa-bus { --fa: "\f207"; }
 .fa-bus-alt { --fa: "\f55e"; }
 .fa-bus-school { --fa: "\f5dd"; }
@@ -1328,6 +1344,7 @@
 .fa-campground { --fa: "\f6bb"; }
 .fa-can-food { --fa: "\e3e6"; }
 .fa-cancel { --fa: "\f05e"; }
+.fa-cancer { --fa: "\e847"; }
 .fa-candle-holder { --fa: "\f6bc"; }
 .fa-candy { --fa: "\e3e7"; }
 .fa-candy-bar { --fa: "\e3e8"; }
@@ -1335,6 +1352,8 @@
 .fa-candy-corn { --fa: "\f6bd"; }
 .fa-cannabis { --fa: "\f55f"; }
 .fa-cannon { --fa: "\e642"; }
+.fa-canoe-person { --fa: "\e89c"; }
+.fa-capricorn { --fa: "\e848"; }
 .fa-capsule { --fa: "\e75a"; }
 .fa-capsules { --fa: "\f46b"; }
 .fa-car { --fa: "\f1b9"; }
@@ -1499,6 +1518,7 @@
 .fa-chess-rook { --fa: "\f447"; }
 .fa-chess-rook-alt { --fa: "\f448"; }
 .fa-chess-rook-piece { --fa: "\f448"; }
+.fa-chest-drawers { --fa: "\e883"; }
 .fa-chestnut { --fa: "\e3f6"; }
 .fa-chevron-circle-down { --fa: "\f13a"; }
 .fa-chevron-circle-left { --fa: "\f137"; }
@@ -1990,6 +2010,7 @@
 .fa-delete-left { --fa: "\f55a"; }
 .fa-delete-right { --fa: "\e154"; }
 .fa-democrat { --fa: "\f747"; }
+.fa-desk { --fa: "\e87e"; }
 .fa-desktop { --fa: "\f390"; }
 .fa-desktop-alt { --fa: "\f390"; }
 .fa-desktop-arrow-down { --fa: "\e155"; }
@@ -2106,6 +2127,7 @@
 .fa-draw-square { --fa: "\f5ef"; }
 .fa-dreidel { --fa: "\f792"; }
 .fa-dress { --fa: "\e6d1"; }
+.fa-dresser { --fa: "\e87f"; }
 .fa-drivers-license { --fa: "\f2c2"; }
 .fa-drone { --fa: "\f85f"; }
 .fa-drone-alt { --fa: "\f860"; }
@@ -2204,6 +2226,7 @@
 .fa-external-link-square { --fa: "\f14c"; }
 .fa-external-link-square-alt { --fa: "\f360"; }
 .fa-eye { --fa: "\f06e"; }
+.fa-eye-closed { --fa: "\e83b"; }
 .fa-eye-dropper { --fa: "\f1fb"; }
 .fa-eye-dropper-empty { --fa: "\f1fb"; }
 .fa-eye-dropper-full { --fa: "\e172"; }
@@ -2381,6 +2404,7 @@
 .fa-file-clipboard { --fa: "\f0ea"; }
 .fa-file-code { --fa: "\f1c9"; }
 .fa-file-contract { --fa: "\f56c"; }
+.fa-file-css { --fa: "\e83c"; }
 .fa-file-csv { --fa: "\f6dd"; }
 .fa-file-dashed-line { --fa: "\f877"; }
 .fa-file-doc { --fa: "\e5ed"; }
@@ -2394,11 +2418,14 @@
 .fa-file-gif { --fa: "\e645"; }
 .fa-file-half-dashed { --fa: "\e698"; }
 .fa-file-heart { --fa: "\e176"; }
+.fa-file-html { --fa: "\e83d"; }
+.fa-file-icns { --fa: "\e841"; }
 .fa-file-image { --fa: "\f1c5"; }
 .fa-file-import { --fa: "\f56f"; }
 .fa-file-invoice { --fa: "\f570"; }
 .fa-file-invoice-dollar { --fa: "\f571"; }
 .fa-file-jpg { --fa: "\e646"; }
+.fa-file-js { --fa: "\e83e"; }
 .fa-file-lines { --fa: "\f15c"; }
 .fa-file-lock { --fa: "\e3a6"; }
 .fa-file-magnifying-glass { --fa: "\f865"; }
@@ -2606,11 +2633,14 @@
 .fa-gavel { --fa: "\f0e3"; }
 .fa-gbp { --fa: "\f154"; }
 .fa-gear { --fa: "\f013"; }
+.fa-gear-api { --fa: "\e8a4"; }
 .fa-gear-code { --fa: "\e5e8"; }
 .fa-gear-complex { --fa: "\e5e9"; }
+.fa-gear-complex-api { --fa: "\e8a5"; }
 .fa-gear-complex-code { --fa: "\e5eb"; }
 .fa-gears { --fa: "\f085"; }
 .fa-gem { --fa: "\f3a5"; }
+.fa-gemini { --fa: "\e849"; }
 .fa-genderless { --fa: "\f22d"; }
 .fa-ghost { --fa: "\f6e2"; }
 .fa-gif { --fa: "\e190"; }
@@ -2645,6 +2675,7 @@
 .fa-globe-snow { --fa: "\f7a3"; }
 .fa-globe-stand { --fa: "\f5f6"; }
 .fa-globe-wifi { --fa: "\e685"; }
+.fa-globe-www { --fa: "\e8a6"; }
 .fa-glove-boxing { --fa: "\f438"; }
 .fa-goal-net { --fa: "\e3ab"; }
 .fa-golf-ball { --fa: "\f450"; }
@@ -2652,6 +2683,7 @@
 .fa-golf-club { --fa: "\f451"; }
 .fa-golf-flag-hole { --fa: "\e3ac"; }
 .fa-gopuram { --fa: "\f664"; }
+.fa-gpu { --fa: "\e843"; }
 .fa-graduation-cap { --fa: "\f19d"; }
 .fa-gramophone { --fa: "\f8bd"; }
 .fa-grapes { --fa: "\e306"; }
@@ -2982,6 +3014,7 @@
 .fa-igloo { --fa: "\f7ae"; }
 .fa-ils { --fa: "\f20b"; }
 .fa-image { --fa: "\f03e"; }
+.fa-image-broken { --fa: "\e8aa"; }
 .fa-image-circle-arrow-down { --fa: "\e76c"; }
 .fa-image-circle-check { --fa: "\e76d"; }
 .fa-image-circle-plus { --fa: "\e76e"; }
@@ -3015,6 +3048,7 @@
 .fa-info-square { --fa: "\f30f"; }
 .fa-inhaler { --fa: "\f5f9"; }
 .fa-input-numeric { --fa: "\e1bd"; }
+.fa-input-password { --fa: "\e87d"; }
 .fa-input-pipe { --fa: "\e1be"; }
 .fa-input-text { --fa: "\e1bf"; }
 .fa-inr { --fa: "\e1bc"; }
@@ -3044,6 +3078,7 @@
 .fa-jug-detergent { --fa: "\e519"; }
 .fa-k { --fa: "\4b"; }
 .fa-kaaba { --fa: "\f66b"; }
+.fa-kayak { --fa: "\e89b"; }
 .fa-kazoo { --fa: "\f8c7"; }
 .fa-kerning { --fa: "\f86f"; }
 .fa-kettlebell { --fa: "\e832"; }
@@ -3071,6 +3106,7 @@
 .fa-knife-kitchen { --fa: "\f6f5"; }
 .fa-krw { --fa: "\f159"; }
 .fa-l { --fa: "\4c"; }
+.fa-label { --fa: "\e8a7"; }
 .fa-lacrosse-stick { --fa: "\e3b5"; }
 .fa-lacrosse-stick-ball { --fa: "\e3b6"; }
 .fa-ladder-water { --fa: "\f5c5"; }
@@ -3103,6 +3139,7 @@
 .fa-laugh-beam { --fa: "\f59a"; }
 .fa-laugh-squint { --fa: "\f59b"; }
 .fa-laugh-wink { --fa: "\f59c"; }
+.fa-layer { --fa: "\e83f"; }
 .fa-layer-group { --fa: "\f5fd"; }
 .fa-layer-group-minus { --fa: "\f5fe"; }
 .fa-layer-group-plus { --fa: "\f5ff"; }
@@ -3125,12 +3162,14 @@
 .fa-left-to-line { --fa: "\f34b"; }
 .fa-legal { --fa: "\f0e3"; }
 .fa-lemon { --fa: "\f094"; }
+.fa-leo { --fa: "\e84a"; }
 .fa-less-than { --fa: "\3c"; }
 .fa-less-than-equal { --fa: "\f537"; }
 .fa-level-down { --fa: "\f149"; }
 .fa-level-down-alt { --fa: "\f3be"; }
 .fa-level-up { --fa: "\f148"; }
 .fa-level-up-alt { --fa: "\f3bf"; }
+.fa-libra { --fa: "\e84b"; }
 .fa-life-ring { --fa: "\f1cd"; }
 .fa-light-ceiling { --fa: "\e016"; }
 .fa-light-emergency { --fa: "\e41f"; }
@@ -3155,6 +3194,7 @@
 .fa-line-height { --fa: "\f871"; }
 .fa-lines-leaning { --fa: "\e51e"; }
 .fa-link { --fa: "\f0c1"; }
+.fa-link-broken { --fa: "\e842"; }
 .fa-link-horizontal { --fa: "\e1cb"; }
 .fa-link-horizontal-slash { --fa: "\e1cc"; }
 .fa-link-simple { --fa: "\e1cd"; }
@@ -3434,9 +3474,25 @@
 .fa-monument { --fa: "\f5a6"; }
 .fa-moon { --fa: "\f186"; }
 .fa-moon-cloud { --fa: "\f754"; }
+.fa-moon-first-quarter { --fa: "\e870"; }
+.fa-moon-first-quarter-inverse { --fa: "\e872"; }
+.fa-moon-full { --fa: "\e871"; }
+.fa-moon-full-inverse { --fa: "\e873"; }
+.fa-moon-last-quarter { --fa: "\e872"; }
+.fa-moon-last-quarter-inverse { --fa: "\e870"; }
+.fa-moon-new { --fa: "\e873"; }
+.fa-moon-new-inverse { --fa: "\e871"; }
 .fa-moon-over-sun { --fa: "\f74a"; }
 .fa-moon-star { --fa: "\e7c9"; }
 .fa-moon-stars { --fa: "\f755"; }
+.fa-moon-waning-crescent { --fa: "\e874"; }
+.fa-moon-waning-crescent-inverse { --fa: "\e877"; }
+.fa-moon-waning-gibbous { --fa: "\e875"; }
+.fa-moon-waning-gibbous-inverse { --fa: "\e876"; }
+.fa-moon-waxing-crescent { --fa: "\e876"; }
+.fa-moon-waxing-crescent-inverse { --fa: "\e875"; }
+.fa-moon-waxing-gibbous { --fa: "\e877"; }
+.fa-moon-waxing-gibbous-inverse { --fa: "\e874"; }
 .fa-moped { --fa: "\e3b9"; }
 .fa-mortar-board { --fa: "\f19d"; }
 .fa-mortar-pestle { --fa: "\f5a7"; }
@@ -3474,6 +3530,7 @@
 .fa-n { --fa: "\4e"; }
 .fa-naira-sign { --fa: "\e1f6"; }
 .fa-narwhal { --fa: "\f6fe"; }
+.fa-nas { --fa: "\e8a1"; }
 .fa-navicon { --fa: "\f0c9"; }
 .fa-nesting-dolls { --fa: "\e3ba"; }
 .fa-network-wired { --fa: "\f6ff"; }
@@ -3500,7 +3557,10 @@
 .fa-notes { --fa: "\e202"; }
 .fa-notes-medical { --fa: "\f481"; }
 .fa-notes-sticky { --fa: "\e759"; }
+.fa-numpad { --fa: "\e7cc"; }
 .fa-o { --fa: "\4f"; }
+.fa-oar { --fa: "\e884"; }
+.fa-oars { --fa: "\e885"; }
 .fa-object-exclude { --fa: "\e49c"; }
 .fa-object-group { --fa: "\f247"; }
 .fa-object-intersect { --fa: "\e49d"; }
@@ -3534,6 +3594,7 @@
 .fa-omega { --fa: "\f67a"; }
 .fa-onion { --fa: "\e427"; }
 .fa-open-captioning { --fa: "\e77f"; }
+.fa-opossum { --fa: "\e87c"; }
 .fa-option { --fa: "\e318"; }
 .fa-ornament { --fa: "\f7b8"; }
 .fa-otter { --fa: "\f700"; }
@@ -3541,6 +3602,7 @@
 .fa-outlet { --fa: "\e01c"; }
 .fa-oven { --fa: "\e01d"; }
 .fa-overline { --fa: "\f876"; }
+.fa-owl { --fa: "\e89f"; }
 .fa-p { --fa: "\50"; }
 .fa-page { --fa: "\e428"; }
 .fa-page-break { --fa: "\f877"; }
@@ -3789,6 +3851,7 @@
 .fa-pipe-section { --fa: "\e438"; }
 .fa-pipe-smoking { --fa: "\e3c4"; }
 .fa-pipe-valve { --fa: "\e439"; }
+.fa-pisces { --fa: "\e84c"; }
 .fa-pizza { --fa: "\f817"; }
 .fa-pizza-slice { --fa: "\f818"; }
 .fa-place-of-worship { --fa: "\f67f"; }
@@ -3834,6 +3897,7 @@
 .fa-podcast { --fa: "\f2ce"; }
 .fa-podium { --fa: "\f680"; }
 .fa-podium-star { --fa: "\f758"; }
+.fa-poker-chip { --fa: "\e8a2"; }
 .fa-police-box { --fa: "\e021"; }
 .fa-polish-zloty-sign { --fa: "\e70b"; }
 .fa-poll { --fa: "\f681"; }
@@ -3850,6 +3914,7 @@
 .fa-portal-enter { --fa: "\e022"; }
 .fa-portal-exit { --fa: "\e023"; }
 .fa-portrait { --fa: "\f3e0"; }
+.fa-possum { --fa: "\e87c"; }
 .fa-postage-stamp { --fa: "\e6e3"; }
 .fa-pot-food { --fa: "\e43f"; }
 .fa-potato { --fa: "\e440"; }
@@ -3922,6 +3987,7 @@
 .fa-rectangle { --fa: "\f2fa"; }
 .fa-rectangle-4k { --fa: "\e772"; }
 .fa-rectangle-ad { --fa: "\f641"; }
+.fa-rectangle-api { --fa: "\e8a0"; }
 .fa-rectangle-barcode { --fa: "\f463"; }
 .fa-rectangle-beta { --fa: "\e808"; }
 .fa-rectangle-code { --fa: "\e322"; }
@@ -3931,9 +3997,12 @@
 .fa-rectangle-history { --fa: "\e4a2"; }
 .fa-rectangle-history-circle-plus { --fa: "\e4a3"; }
 .fa-rectangle-history-circle-user { --fa: "\e4a4"; }
+.fa-rectangle-irc { --fa: "\e86c"; }
 .fa-rectangle-landscape { --fa: "\f2fa"; }
 .fa-rectangle-list { --fa: "\f022"; }
 .fa-rectangle-minus { --fa: "\e6b4"; }
+.fa-rectangle-n-a { --fa: "\e8a8"; }
+.fa-rectangle-new { --fa: "\e87a"; }
 .fa-rectangle-plus { --fa: "\e6b5"; }
 .fa-rectangle-portrait { --fa: "\f2fb"; }
 .fa-rectangle-pro { --fa: "\e235"; }
@@ -3957,6 +4026,7 @@
 .fa-refresh { --fa: "\f021"; }
 .fa-refrigerator { --fa: "\e026"; }
 .fa-registered { --fa: "\f25d"; }
+.fa-remote { --fa: "\e8a9"; }
 .fa-remove { --fa: "\f00d"; }
 .fa-remove-format { --fa: "\f87d"; }
 .fa-renminbi-sign { --fa: "\e73c"; }
@@ -4021,6 +4091,7 @@
 .fa-route-interstate { --fa: "\f61b"; }
 .fa-router { --fa: "\f8da"; }
 .fa-rows { --fa: "\e292"; }
+.fa-rows-3 { --fa: "\e88b"; }
 .fa-rss { --fa: "\f09e"; }
 .fa-rss-square { --fa: "\f143"; }
 .fa-rub { --fa: "\f158"; }
@@ -4044,6 +4115,7 @@
 .fa-sack-xmark { --fa: "\e56a"; }
 .fa-sad-cry { --fa: "\f5b3"; }
 .fa-sad-tear { --fa: "\f5b4"; }
+.fa-sagittarius { --fa: "\e84d"; }
 .fa-sailboat { --fa: "\e445"; }
 .fa-salad { --fa: "\f81e"; }
 .fa-salt-shaker { --fa: "\e446"; }
@@ -4080,6 +4152,7 @@
 .fa-school-unlock { --fa: "\e6cb"; }
 .fa-scissors { --fa: "\f0c4"; }
 .fa-scooter { --fa: "\e7c3"; }
+.fa-scorpio { --fa: "\e84e"; }
 .fa-screen-users { --fa: "\f63d"; }
 .fa-screencast { --fa: "\e23e"; }
 .fa-screenshot { --fa: "\e0da"; }
@@ -4575,6 +4648,7 @@
 .fa-sticky-note { --fa: "\f249"; }
 .fa-stocking { --fa: "\f7d5"; }
 .fa-stomach { --fa: "\f623"; }
+.fa-stool { --fa: "\e880"; }
 .fa-stop { --fa: "\f04d"; }
 .fa-stop-circle { --fa: "\f28d"; }
 .fa-stopwatch { --fa: "\f2f2"; }
@@ -4634,6 +4708,7 @@
 .fa-t-rex { --fa: "\e629"; }
 .fa-t-shirt { --fa: "\f553"; }
 .fa-table { --fa: "\f0ce"; }
+.fa-table-bar { --fa: "\e89e"; }
 .fa-table-cells { --fa: "\f00a"; }
 .fa-table-cells-column-lock { --fa: "\e678"; }
 .fa-table-cells-column-unlock { --fa: "\e690"; }
@@ -4643,16 +4718,32 @@
 .fa-table-cells-header-unlock { --fa: "\e6af"; }
 .fa-table-cells-large { --fa: "\f009"; }
 .fa-table-cells-lock { --fa: "\e679"; }
+.fa-table-cells-merge { --fa: "\e88c"; }
 .fa-table-cells-row-lock { --fa: "\e67a"; }
 .fa-table-cells-row-unlock { --fa: "\e691"; }
 .fa-table-cells-rows { --fa: "\e6b0"; }
+.fa-table-cells-split { --fa: "\e88d"; }
 .fa-table-cells-unlock { --fa: "\e692"; }
 .fa-table-columns { --fa: "\f0db"; }
+.fa-table-columns-add-after { --fa: "\e88e"; }
+.fa-table-columns-add-before { --fa: "\e88f"; }
+.fa-table-columns-merge-next { --fa: "\e890"; }
+.fa-table-columns-merge-previous { --fa: "\e891"; }
+.fa-table-columns-remove-after { --fa: "\e892"; }
+.fa-table-columns-remove-before { --fa: "\e893"; }
+.fa-table-dining { --fa: "\e882"; }
 .fa-table-layout { --fa: "\e290"; }
 .fa-table-list { --fa: "\f00b"; }
 .fa-table-picnic { --fa: "\e32d"; }
 .fa-table-pivot { --fa: "\e291"; }
 .fa-table-rows { --fa: "\e292"; }
+.fa-table-rows-add-above { --fa: "\e894"; }
+.fa-table-rows-add-below { --fa: "\e895"; }
+.fa-table-rows-merge-next { --fa: "\e896"; }
+.fa-table-rows-merge-previous { --fa: "\e897"; }
+.fa-table-rows-remove-above { --fa: "\e898"; }
+.fa-table-rows-remove-below { --fa: "\e899"; }
+.fa-table-slash { --fa: "\e89a"; }
 .fa-table-tennis { --fa: "\f45d"; }
 .fa-table-tennis-paddle-ball { --fa: "\f45d"; }
 .fa-table-tree { --fa: "\e293"; }
@@ -4696,6 +4787,7 @@
 .fa-tarp-droplet { --fa: "\e57c"; }
 .fa-tasks { --fa: "\f0ae"; }
 .fa-tasks-alt { --fa: "\f828"; }
+.fa-taurus { --fa: "\e84f"; }
 .fa-taxi { --fa: "\f1ba"; }
 .fa-taxi-bus { --fa: "\e298"; }
 .fa-teddy-bear { --fa: "\e3cf"; }
@@ -4838,6 +4930,7 @@
 .fa-tower-cell { --fa: "\e585"; }
 .fa-tower-control { --fa: "\e2a2"; }
 .fa-tower-observation { --fa: "\e586"; }
+.fa-tower-receive { --fa: "\e8a3"; }
 .fa-tractor { --fa: "\f722"; }
 .fa-trademark { --fa: "\f25c"; }
 .fa-traffic-cone { --fa: "\f636"; }
@@ -5135,6 +5228,7 @@
 .fa-utensils { --fa: "\f2e7"; }
 .fa-utensils-alt { --fa: "\f2e6"; }
 .fa-utensils-slash { --fa: "\e464"; }
+.fa-utility-can { --fa: "\e89d"; }
 .fa-utility-pole { --fa: "\e2c3"; }
 .fa-utility-pole-double { --fa: "\e2c4"; }
 .fa-v { --fa: "\56"; }
@@ -5172,6 +5266,7 @@
 .fa-video-slash { --fa: "\f4e2"; }
 .fa-vihara { --fa: "\f6a7"; }
 .fa-violin { --fa: "\f8ed"; }
+.fa-virgo { --fa: "\e850"; }
 .fa-virus { --fa: "\e074"; }
 .fa-virus-covid { --fa: "\e4a8"; }
 .fa-virus-covid-slash { --fa: "\e4a9"; }
@@ -5208,6 +5303,7 @@
 .fa-wand-magic { --fa: "\f0d0"; }
 .fa-wand-magic-sparkles { --fa: "\e2ca"; }
 .fa-wand-sparkles { --fa: "\f72b"; }
+.fa-wardrobe { --fa: "\e881"; }
 .fa-warehouse { --fa: "\f494"; }
 .fa-warehouse-alt { --fa: "\f495"; }
 .fa-warehouse-full { --fa: "\f495"; }

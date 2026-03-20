@@ -88,6 +88,25 @@ public abstract class BaseGameFlowHandler : IGameFlowHandler
     }
 
     /// <inheritdoc />
+    public virtual async Task PrepareForNewHandAsync(
+        CardsDbContext context,
+        Game game,
+        List<GamePlayer> eligiblePlayers,
+        int upcomingHandNumber,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        var existingCards = await context.GameCards
+            .Where(gc => gc.GameId == game.Id)
+            .ToListAsync(cancellationToken);
+
+        if (existingCards.Count > 0)
+        {
+            context.GameCards.RemoveRange(existingCards);
+        }
+    }
+
+    /// <inheritdoc />
     public virtual Task OnHandCompletedAsync(Game game, CancellationToken cancellationToken = default)
     {
         // Default: No special cleanup

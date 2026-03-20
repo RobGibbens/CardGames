@@ -64,6 +64,8 @@
 								<p class="step-description">Select the poker variant you want to play</p>
 							</div>
 						</div>
+						@if (_selectedVariant is null)
+						{
 						<div class="form-row variant-search-row">
 							<div class="form-group">
 								<label class="form-label" for="variantSearch">Search Variants</label>
@@ -75,6 +77,7 @@
 								   @bind:event="oninput" />
 						</div>
 					</div>
+						}
 					<div class="variants-selection-region" @ref="_variantsSelectionRegion">
 					@if (ShowDealersChoiceCard)
 					{
@@ -196,12 +199,30 @@
 							<div class="form-row">
 								<div class="form-group">
 									<label class="form-label" for="tableName">Table Name</label>
-									<input type="text"
-										   id="tableName"
-										   class="form-input"
-										   placeholder="e.g., Friday Night Poker"
-										   @bind="_tableName"
-										   maxlength="50" />
+									<div class="table-name-input-row">
+										<input type="text"
+											   id="tableName"
+											   class="form-input"
+											   placeholder="e.g., Friday Night Poker"
+											   value="@_tableNameInput"
+											   @oninput="OnTableNameInput"
+											   maxlength="50" />
+										<button class="table-name-generate-button"
+											type="button"
+											title="Generate table name"
+											aria-label="Generate table name"
+											@onclick="GenerateTableNameAsync"
+											disabled="@(_isGeneratingTableName || _selectedVariant is null)">
+											@if (_isGeneratingTableName)
+											{
+												<span class="loading-spinner-small"></span>
+											}
+											else
+											{
+												<i class="fa-thin fa-bolt-auto"></i>
+											}
+										</button>
+									</div>
 									<span class="form-hint">Give your table a memorable name</span>
 								</div>
 							</div>
@@ -217,8 +238,8 @@
 												   class="form-input"
 												   min="1"
 												   max="50000"
-												   @bind-value="_smallBlind"
-												   @bind-value:event="oninput" />
+											   value="@_smallBlindInput"
+											   @oninput="OnSmallBlindInput" />
 											<span class="form-hint">Small blind amount</span>
 										</div>
 										<div class="form-group">
@@ -228,37 +249,40 @@
 												   class="form-input"
 												   min="1"
 												   max="100000"
-												   @bind-value="_bigBlind"
-												   @bind-value:event="oninput" />
+											   value="@_bigBlindInput"
+											   @oninput="OnBigBlindInput" />
 											<span class="form-hint">Minimum bet is automatically set to the big blind.</span>
 										</div>
 									</div>
 								}
 								else
 								{
-									<div class="form-row two-columns">
+                                  <div class="form-row @(ShowMinimumBetInput ? "two-columns" : string.Empty)">
 										<div class="form-group">
-											<label class="form-label" for="ante">Ante</label>
+                                           <label class="form-label" for="ante">@(IsScrewYourNeighbor ? "Chip stack amount" : "Ante")</label>
 											<input type="number"
 												   id="ante"
 												   class="form-input"
 												   min="1"
 												   max="100"
-												   @bind-value="_ante"
-												   @bind-value:event="oninput" />
-											<span class="form-hint">Mandatory bet before each hand</span>
+											   value="@_anteInput"
+											   @oninput="OnAnteInput" />
+                                           <span class="form-hint">@(IsScrewYourNeighbor ? "Chips per stack (3 stacks)" : "Mandatory bet before each hand")</span>
 										</div>
-										<div class="form-group">
-											<label class="form-label" for="minBet">Minimum Bet</label>
-											<input type="number"
-												   id="minBet"
-												   class="form-input"
-												   min="1"
-												   max="1000"
-												   @bind-value="_minBet"
-												   @bind-value:event="oninput" />
-											<span class="form-hint">Minimum bet during play</span>
-										</div>
+                                        @if (ShowMinimumBetInput)
+										{
+											<div class="form-group">
+												<label class="form-label" for="minBet">Minimum Bet</label>
+												<input type="number"
+													   id="minBet"
+													   class="form-input"
+													   min="1"
+													   max="1000"
+												   value="@_minBetInput"
+												   @oninput="OnMinimumBetInput" />
+												<span class="form-hint">Minimum bet during play</span>
+											</div>
+										}
 									</div>
 								}
 							}
@@ -267,6 +291,46 @@
 							<div class="form-row">
 								<div class="form-group">
 									<span class="form-hint"><i class="fa-regular fa-info-circle"></i> The dealer will set the ante and minimum bet each hand.</span>
+								</div>
+							</div>
+							<div class="form-row">
+								<div class="form-group">
+									<label class="form-label">Allowed Dealer's Choice Variants</label>
+									<span class="form-hint">Choose which game variants the dealer may select at this table. At least one variant must remain enabled.</span>
+									<div class="create-table-dealers-choice-selection-groups">
+										@foreach (var group in DealerChoiceAllowedVariantGroups)
+										{
+											if (group.Cards.Count == 0)
+											{
+												continue;
+											}
+
+											<section class="create-table-dealers-choice-selection-group">
+												<h3 class="create-table-dealers-choice-selection-group-title">@group.Title</h3>
+												<div class="create-table-dealers-choice-selection-list">
+													@foreach (var game in group.Cards)
+													{
+														var isAllowed = IsDealerChoiceGameAllowed(game.Code);
+														<div class="create-table-dealers-choice-selection-item">
+															<div class="create-table-dealers-choice-selection-copy">
+																<span class="create-table-dealers-choice-selection-name">@game.Name</span>
+																<span class="create-table-dealers-choice-selection-description">@game.Description</span>
+															</div>
+															<button class="game-info-odds-toggle-switch @(isAllowed ? "is-on" : "is-off")"
+																	type="button"
+																	role="switch"
+																	aria-checked="@isAllowed"
+																	aria-label="@($"Toggle {game.Name}")"
+																	@onclick="() => ToggleAllowedDealerChoiceGame(game.Code)">
+																<span class="game-info-odds-toggle-text">@(isAllowed ? "ON" : "OFF")</span>
+																<span class="game-info-odds-toggle-thumb" aria-hidden="true"></span>
+															</button>
+														</div>
+													}
+												</div>
+											</section>
+										}
+									</div>
 								</div>
 							</div>
 							}
@@ -394,6 +458,105 @@
 		margin-bottom: 0.75rem;
 	}
 
+	.create-table-dealers-choice-selection-groups {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+		margin-top: 1rem;
+	}
+
+	.create-table-dealers-choice-selection-group {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+		padding: 1rem 1.25rem;
+		border: 1px solid rgba(148, 163, 184, 0.18);
+		border-radius: 0.9rem;
+		background: rgba(15, 23, 42, 0.24);
+	}
+
+	.create-table-dealers-choice-selection-group-title {
+		margin: 0;
+		font-size: 1rem;
+		font-weight: 700;
+	}
+
+	.create-table-dealers-choice-selection-list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+	}
+
+	.create-table-dealers-choice-selection-item {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+		align-items: center;
+		gap: 1rem;
+		padding: 0.9rem 1rem;
+		border-radius: 0.85rem;
+		background: rgba(15, 23, 42, 0.38);
+	}
+
+	.create-table-dealers-choice-selection-item .game-info-odds-toggle-switch {
+		flex-shrink: 0;
+		min-width: 84px;
+		justify-self: end;
+	}
+
+	.create-table-dealers-choice-selection-copy {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+		min-width: 0;
+	}
+
+	.create-table-dealers-choice-selection-name {
+		font-weight: 700;
+		line-height: 1.2;
+	}
+
+	.create-table-dealers-choice-selection-description {
+		color: rgba(226, 232, 240, 0.78);
+		font-size: 0.92rem;
+		line-height: 1.35;
+	}
+
+	.table-name-input-row {
+		display: flex;
+		align-items: stretch;
+		gap: 0.75rem;
+	}
+
+	.table-name-input-row .form-input {
+		flex: 1 1 auto;
+		min-width: 0;
+	}
+
+	.table-name-generate-button {
+		flex: 0 0 auto;
+		width: 3rem;
+		min-width: 3rem;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		border: 1px solid rgba(148, 163, 184, 0.28);
+		border-radius: 0.85rem;
+		background: rgba(15, 23, 42, 0.72);
+		color: rgba(248, 250, 252, 0.95);
+		transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
+	}
+
+	.table-name-generate-button:hover:not(:disabled) {
+		background: rgba(30, 41, 59, 0.9);
+		border-color: rgba(148, 163, 184, 0.45);
+		transform: translateY(-1px);
+	}
+
+	.table-name-generate-button:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+
 	@@media (max-width: 768px) {
 		.create-step .variant-card.selected-layout {
 			grid-template-columns: 1fr;
@@ -402,34 +565,58 @@
 		.create-step .variant-card.selected-layout .variant-icon {
 			min-height: 190px;
 		}
+
+		.create-table-dealers-choice-selection-item {
+			grid-template-columns: minmax(0, 1fr) auto;
+			align-items: start;
+		}
+
+		.create-table-dealers-choice-selection-item .game-info-odds-toggle-switch {
+			margin-top: 0.1rem;
+		}
+
+		.table-name-input-row {
+			gap: 0.5rem;
+		}
 	}
 </style>
 
 @code {
 	private bool _isLoading = true;
 	private bool _isCreating;
+	private bool _isGeneratingTableName;
 	private string? _loadError;
 	private string? _createError;
 	private string _tableName = "";
+	private string _tableNameInput = "";
 	private int _ante = 5;
+	private string _anteInput = "5";
 	private int _minBet = 10;
+	private string _minBetInput = "10";
 	private int _smallBlind = 1;
+	private string _smallBlindInput = "1";
 	private int _bigBlind = 2;
+	private string _bigBlindInput = "2";
 	private bool _areOddsVisibleToAllPlayers = true;
+	private readonly HashSet<string> _allowedDealerChoiceGameCodes = new(StringComparer.OrdinalIgnoreCase);
 	private string _variantSearch = string.Empty;
 	private bool _isDealersChoice;
 	private bool _hasBlinds;
+	private bool _hasInitializedAllowedDealerChoiceGameCodes;
 	private List<GetAvailablePokerGamesResponse> _availableGames = [];
 	private GetAvailablePokerGamesResponse? _selectedVariant;
 	private ElementReference _variantsSelectionRegion;
 	private IJSObjectReference? _variantAnimationModule;
+	private CancellationTokenSource? _canCreateDebounceCancellationTokenSource;
 	private bool _playVariantFlipAfterRender;
 	private const int FallbackSmallBlind = 1;
 	private const int FallbackBigBlind = 2;
 	private const int FallbackAnte = 5;
 	private const int FallbackMinimumBet = 10;
+	private const int CanCreateDebounceDelayMilliseconds = 400;
 
 	private const string DealersChoiceCode = "DEALERSCHOICE";
+ private const string ScrewYourNeighborCode = "SCREWYOURNEIGHBOR";
 	private const string HoldEmVariantsTitle = "Hold 'Em variants";
 	private const string DrawVariantsTitle = "Draw variants";
 	private const string StudVariantsTitle = "Stud variants";
@@ -456,15 +643,15 @@
 					.OrderBy(g => g.Name, StringComparer.OrdinalIgnoreCase)
 					.Select(ToVariantCard);
 
-			return new[]
-			{
-				CreateGroup(HoldEmVariantsTitle, cards),
-				CreateGroup(DrawVariantsTitle, cards),
-				CreateGroup(StudVariantsTitle, cards),
-				CreateGroup(OtherVariantsTitle, cards)
-			};
+			return CreateVariantGroups(cards);
 		}
 	}
+
+	private IEnumerable<VariantGroup> DealerChoiceAllowedVariantGroups =>
+		CreateVariantGroups(
+			_availableGames
+				.OrderBy(g => g.Name, StringComparer.OrdinalIgnoreCase)
+				.Select(ToVariantCard));
 
 	private bool ShowDealersChoiceCard =>
 		(_selectedVariant is null && MatchesVariantSearch(DealersChoiceCard.Name)) ||
@@ -505,9 +692,16 @@
 	private bool CanCreate =>
 		_selectedVariant is not null &&
 		!string.IsNullOrWhiteSpace(_tableName) &&
-		(_isDealersChoice || (_hasBlinds
-			? (_smallBlind > 0 && _bigBlind >= _smallBlind)
-			: (_ante > 0 && _minBet > 0)));
+		(_isDealersChoice
+			? _allowedDealerChoiceGameCodes.Count > 0
+			: (_hasBlinds
+				? (_smallBlind > 0 && _bigBlind >= _smallBlind)
+				: (_ante > 0 && _minBet > 0)));
+
+	private bool IsScrewYourNeighbor =>
+       IsScrewYourNeighborCode(_selectedVariant?.Code);
+
+	private bool ShowMinimumBetInput => !IsScrewYourNeighbor;
 
 	private sealed record VariantCard(
 		string Code,
@@ -554,6 +748,7 @@
 		_bigBlind = preferences.DefaultBigBlind >= _smallBlind ? preferences.DefaultBigBlind : _smallBlind * 2;
 		_ante = preferences.DefaultAnte > 0 ? preferences.DefaultAnte : FallbackAnte;
 		_minBet = preferences.DefaultMinimumBet > 0 ? preferences.DefaultMinimumBet : Math.Max(FallbackMinimumBet, _bigBlind);
+		SyncBufferedCanCreateInputs();
 	}
 
 	private void ApplyIntelligentFallbackDefaults()
@@ -562,6 +757,7 @@
 		_bigBlind = FallbackBigBlind;
 		_ante = FallbackAnte;
 		_minBet = FallbackMinimumBet;
+		SyncBufferedCanCreateInputs();
 	}
 
 	protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -588,11 +784,12 @@
 
 		try
 		{
-			var response = await AvailableGamesApi.GetAvailablePokerGamesAsync(null);
+			var response = await AvailableGamesApi.GetAvailablePokerGamesAsync(string.Empty);
 
 			if (response.IsSuccessStatusCode && response.Content is not null)
 			{
 				_availableGames = response.Content.ToList();
+				EnsureAllowedDealerChoiceGameDefaults();
 			}
 			else
 			{
@@ -613,6 +810,19 @@
 	private static VariantGroup CreateGroup(string title, IEnumerable<VariantCard> cards)
 	{
 		return new VariantGroup(title, cards.Where(c => c.GroupTitle == title).ToList());
+	}
+
+	private static IEnumerable<VariantGroup> CreateVariantGroups(IEnumerable<VariantCard> cards)
+	{
+		var materializedCards = cards.ToList();
+
+		return new[]
+		{
+			CreateGroup(HoldEmVariantsTitle, materializedCards),
+			CreateGroup(DrawVariantsTitle, materializedCards),
+			CreateGroup(StudVariantsTitle, materializedCards),
+			CreateGroup(OtherVariantsTitle, materializedCards)
+		};
 	}
 
 	private static VariantCard ToVariantCard(GetAvailablePokerGamesResponse game)
@@ -639,6 +849,34 @@
 			VariantType.Stud => StudVariantsTitle,
 			_ => OtherVariantsTitle
 		};
+	}
+
+	private void EnsureAllowedDealerChoiceGameDefaults()
+	{
+		if (_hasInitializedAllowedDealerChoiceGameCodes)
+		{
+			return;
+		}
+
+		foreach (var gameCode in _availableGames.Select(game => game.Code))
+		{
+			_allowedDealerChoiceGameCodes.Add(gameCode);
+		}
+
+		_hasInitializedAllowedDealerChoiceGameCodes = _allowedDealerChoiceGameCodes.Count > 0;
+	}
+
+	private bool IsDealerChoiceGameAllowed(string gameCode)
+	{
+		return _allowedDealerChoiceGameCodes.Contains(gameCode);
+	}
+
+	private void ToggleAllowedDealerChoiceGame(string gameCode)
+	{
+		if (!_allowedDealerChoiceGameCodes.Add(gameCode))
+		{
+			_allowedDealerChoiceGameCodes.Remove(gameCode);
+		}
 	}
 
 	private async Task SelectVariantAsync(VariantCard variant, bool isAvailable)
@@ -672,18 +910,24 @@
 			variantType: VariantType.Other
 		);
 		_isDealersChoice = variant.Code == DealersChoiceCode;
-		_hasBlinds = !_isDealersChoice && _selectedVariant.VariantType == VariantType.HoldEm;
+       _hasBlinds = !_isDealersChoice
+			&& !IsScrewYourNeighborCode(_selectedVariant.Code)
+			&& _selectedVariant.VariantType == VariantType.HoldEm;
 
 		if (_hasBlinds)
 		{
 			_minBet = _bigBlind;
 		}
 
+		SyncBufferedCanCreateInputs();
+
 		_playVariantFlipAfterRender = true;
 	}
 
 	private async Task CreateTableAsync()
 	{
+		ApplyBufferedCanCreateInputs();
+
 		if (!CanCreate || _selectedVariant is null)
 		{
 			return;
@@ -706,7 +950,10 @@
 				IsDealersChoice = _isDealersChoice,
 				SmallBlind = _hasBlinds ? _smallBlind : null,
 				BigBlind = _hasBlinds ? _bigBlind : null,
-				AreOddsVisibleToAllPlayers = _areOddsVisibleToAllPlayers
+				AreOddsVisibleToAllPlayers = _areOddsVisibleToAllPlayers,
+				AllowedDealerChoiceGameCodes = _isDealersChoice
+					? _allowedDealerChoiceGameCodes.OrderBy(code => code, StringComparer.OrdinalIgnoreCase).ToArray()
+					: null
 			};
 
 			// Call the appropriate API based on the selected variant
@@ -737,10 +984,130 @@
 		}
 	}
 
+	private async Task GenerateTableNameAsync()
+	{
+		if (_selectedVariant is null || _isGeneratingTableName)
+		{
+			return;
+		}
+
+		_isGeneratingTableName = true;
+		_createError = null;
+		StateHasChanged();
+
+		try
+		{
+			var response = await GamesApi.GenericGetGeneratedTableNameAsync(_selectedVariant.Name);
+
+			if (response.IsSuccessStatusCode && response.Content is not null)
+			{
+				var generatedName = response.Content.Name?.Trim() ?? string.Empty;
+
+				if (generatedName.Length > 50)
+				{
+					generatedName = generatedName[..50];
+				}
+
+				_tableName = generatedName;
+				_tableNameInput = generatedName;
+				return;
+			}
+
+			_createError = "Failed to generate a table name. Please try again.";
+		}
+		catch (Exception ex)
+		{
+			_createError = $"An error occurred while generating a table name: {ex.Message}";
+		}
+		finally
+		{
+			_isGeneratingTableName = false;
+			StateHasChanged();
+		}
+	}
+
+	private async Task OnTableNameInput(ChangeEventArgs args)
+	{
+		_tableNameInput = args.Value?.ToString() ?? string.Empty;
+		await DebounceCanCreateUpdateAsync();
+	}
+
+	private async Task OnSmallBlindInput(ChangeEventArgs args)
+	{
+		_smallBlindInput = args.Value?.ToString() ?? string.Empty;
+		await DebounceCanCreateUpdateAsync();
+	}
+
+	private async Task OnBigBlindInput(ChangeEventArgs args)
+	{
+		_bigBlindInput = args.Value?.ToString() ?? string.Empty;
+		await DebounceCanCreateUpdateAsync();
+	}
+
+	private async Task OnAnteInput(ChangeEventArgs args)
+	{
+		_anteInput = args.Value?.ToString() ?? string.Empty;
+		await DebounceCanCreateUpdateAsync();
+	}
+
+	private async Task OnMinimumBetInput(ChangeEventArgs args)
+	{
+		_minBetInput = args.Value?.ToString() ?? string.Empty;
+		await DebounceCanCreateUpdateAsync();
+	}
+
+	private async Task DebounceCanCreateUpdateAsync()
+	{
+		_canCreateDebounceCancellationTokenSource?.Cancel();
+		_canCreateDebounceCancellationTokenSource?.Dispose();
+
+		var cancellationTokenSource = new CancellationTokenSource();
+		_canCreateDebounceCancellationTokenSource = cancellationTokenSource;
+
+		try
+		{
+			await Task.Delay(CanCreateDebounceDelayMilliseconds, cancellationTokenSource.Token);
+			ApplyBufferedCanCreateInputs();
+			await InvokeAsync(StateHasChanged);
+		}
+		catch (OperationCanceledException)
+		{
+			// A newer keystroke restarted the debounce window.
+		}
+	}
+
+	private void ApplyBufferedCanCreateInputs()
+	{
+		_tableName = _tableNameInput;
+		_smallBlind = ParseBufferedInteger(_smallBlindInput);
+		_bigBlind = ParseBufferedInteger(_bigBlindInput);
+		_ante = ParseBufferedInteger(_anteInput);
+		_minBet = ParseBufferedInteger(_minBetInput);
+	}
+
+	private void SyncBufferedCanCreateInputs()
+	{
+		_tableNameInput = _tableName;
+		_smallBlindInput = _smallBlind.ToString();
+		_bigBlindInput = _bigBlind.ToString();
+		_anteInput = _ante.ToString();
+		_minBetInput = _minBet.ToString();
+	}
+
+	private static int ParseBufferedInteger(string value)
+	{
+		return int.TryParse(value, out var parsedValue) ? parsedValue : 0;
+	}
+
 	private bool MatchesVariantSearch(string gameName)
 	{
 		return string.IsNullOrWhiteSpace(_variantSearch)
 			|| gameName.Contains(_variantSearch, StringComparison.OrdinalIgnoreCase);
+	}
+
+	private static bool IsScrewYourNeighborCode(string? gameCode)
+	{
+		return string.Equals(gameCode, ScrewYourNeighborCode, StringComparison.OrdinalIgnoreCase);
 	}
 
 	private void ToggleOddsVisibility()
@@ -761,5 +1128,8 @@
 				// Circuit disconnected, ignore.
 			}
 		}
+
+		_canCreateDebounceCancellationTokenSource?.Cancel();
+		_canCreateDebounceCancellationTokenSource?.Dispose();
 	}
 }

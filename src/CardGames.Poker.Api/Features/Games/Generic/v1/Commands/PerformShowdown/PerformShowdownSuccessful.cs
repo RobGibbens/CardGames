@@ -1,11 +1,13 @@
+using System.Text.Json.Serialization;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Infrastructure;
 
 namespace CardGames.Poker.Api.Features.Games.Generic.v1.Commands.PerformShowdown;
 
 /// <summary>
 /// Represents a successful showdown result.
 /// </summary>
-public record PerformShowdownSuccessful
+public record PerformShowdownSuccessful : IGameStateBroadcastResult
 {
     /// <summary>
     /// The unique identifier of the game.
@@ -38,6 +40,13 @@ public record PerformShowdownSuccessful
     /// Ordered by hand strength (strongest first).
     /// </summary>
     public required List<ShowdownPlayerHand> PlayerHands { get; init; }
+
+    /// <summary>
+    /// Gets a value indicating whether this successful response should trigger
+    /// the automatic post-command game-state broadcast.
+    /// </summary>
+    [JsonIgnore]
+    public bool ShouldBroadcastGameState { get; init; } = true;
 }
 
 /// <summary>

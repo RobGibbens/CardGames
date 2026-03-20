@@ -1,5 +1,52 @@
 # Decisions
 
+### 2026-03-19: Lobby group headings use explicit top spacing between sections
+
+**By:** Arwen (Frontend Dev)
+**Requested by:** Rob Gibbens
+
+**What:** Updated `Lobby.razor` so grouped section headings use `h5 mt-2 mb-1` in both the grid and list grouped renders.
+
+**Why:** The crowding issue was the next heading sitting too close to the previous group's final card or row. Spacing the heading itself fixes the visual issue directly without changing grouping behavior, actions, or section structure.
+
+**Applied in:**
+- `src/CardGames.Poker.Web/Components/Pages/Lobby.razor`
+
+**Verification:**
+- Web build succeeded.
+- No new Razor diagnostics were introduced by the change.
+
+### 2026-03-19: Lobby group sections use slightly larger vertical spacing
+
+**By:** Arwen (Frontend Dev)
+**Requested by:** Rob Gibbens
+
+**What:** Updated `Lobby.razor` to increase the bottom spacing between grouped game-type sections from `mb-4` to `mb-5` in both the grid and list grouped layouts.
+
+**Why:** The grouped lobby layout needed a bit more vertical separation between sections without changing grouping logic, actions, or structure.
+
+**Applied in:**
+- `src/CardGames.Poker.Web/Components/Pages/Lobby.razor`
+
+**Verification:**
+- `build-web-project` succeeded.
+- No new Razor errors were introduced by the spacing-only change.
+
+### 2026-03-19: Lobby groups tables by display game type
+
+**By:** Arwen (Frontend Dev)
+**Requested by:** Rob Gibbens
+
+**What:** Updated `Lobby.razor` to render filtered tables in grouped sections keyed by the existing display-name rule (`FormatGameTypeName(table)`) instead of one flat list. Each group renders a section heading and table count in both grid and list modes while preserving the existing table actions.
+
+**Why:** The lobby needed clearer separation between table variants without introducing new naming rules or changing join/delete behavior.
+
+**Applied in:**
+- `src/CardGames.Poker.Web/Components/Pages/Lobby.razor`
+
+**Verification:**
+- `dotnet build src/CardGames.Poker.Web/CardGames.Poker.Web.csproj` succeeded.
+
 ### 2026-03-08: Create table flow does not auto-enter table
 
 **By:** Linus (Frontend Dev)
@@ -11,6 +58,57 @@
 
 **Applied in:**
 - `src/CardGames.Poker.Web/Components/Pages/CreateTable.razor`
+
+### 2026-03-10: Dealer's Choice player-cap gating in variant picker
+**By:** Linus (Frontend Dev)
+**Requested by:** Rob Gibbens
+
+**What:** `DealerChoiceModal` now disables (but still displays) any available game whose `MaximumNumberOfPlayers` is lower than the current active-player count in the table. Disabled items are non-selectable and render an inline reason message showing max players versus current active players.
+
+**Why:** Prevents selecting invalid game variants during Dealer's Choice while preserving visibility and discoverability of all variants.
+
+**Applied in:**
+- `src/CardGames.Poker.Web/Components/Shared/DealerChoiceModal.razor`
+- `src/CardGames.Poker.Web/Components/Shared/DealerChoiceModal.razor.css`
+- `src/CardGames.Poker.Web/Components/Pages/TablePlay.razor`
+
+### 2026-03-10: Screw Your Neighbor dealer-trade showdown delay
+**By:** Linus (Frontend Dev)
+**Requested by:** Rob Gibbens
+
+**What:** Added a 7-second delay before showing showdown overlay only when all conditions are true: Screw Your Neighbor game, current player is the dealer, and KeepOrTrade decision is `Trade`. Implemented in `TablePlay.razor` using the existing showdown delay pattern (`_showdownDelayUntil`) with a shared `ScheduleShowdownOverlayAfterDelay` helper.
+
+**Why:** When the dealer trades with the deck, the Keep/Trade overlay disappeared and showdown appeared immediately, so the dealer could not see the new card before result reveal.
+
+**Scope Guardrails:**
+- No change to non-Screw-Your-Neighbor games.
+- No change to `Keep` decisions.
+- No change to non-dealer `Trade` decisions.
+- Uses existing SignalR-aware showdown flow (`TryLoadShowdownAsync` + delayed overlay reveal) for robustness.
+
+**Verification:**
+- Build: `dotnet build src/CardGames.Poker.Web/CardGames.Poker.Web.csproj`
+- Result: succeeded (warnings only, no errors).
+
+### 2026-03-10: SYN showdown delay enforced from shared table-state updates
+**By:** Linus (Frontend Dev)
+**Requested by:** Rob Gibbens
+
+**What:** Moved authoritative application of the 7-second Screw Your Neighbor showdown delay into the shared SignalR table-state update path in `TablePlay.razor` (`HandleTableStateUpdatedAsync`) by using the existing `ScheduleShowdownOverlayAfterDelay(TimeSpan.FromSeconds(7))` helper when SYN transitions from KeepOrTrade/Reveal into showdown flow. The local dealer-action delay path remains as a pre-signal guard but is no longer the cross-client source of truth.
+
+**Why:** Local keep/trade decision handling only runs for the acting client, which allowed non-acting clients to reveal showdown immediately. The shared state-update path keeps reveal timing consistent for all clients.
+
+**Outcome:** All clients now defer showdown loading/overlay display on this SYN transition, while delay scope remains limited to SYN keep/trade flow.
+
+### 2026-03-09: Razz showdown must resolve per-hand game type in legacy routed handler
+**By:** Danny (Backend Dev)
+**Requested by:** Rob Gibbens
+
+**What:** Updated `Features/Games/FiveCardDraw/v1/Commands/PerformShowdown/PerformShowdownCommandHandler.cs` so showdown hand evaluation uses the effective hand game type (`CurrentHandGameTypeCode` when present) and applies Razz lowball evaluation (`RazzHand`) for Razz hands. Added a regression test that proves Dealer's Choice Razz awards the pot to the low hand rather than the strongest high hand.
+
+**Why:** Dealer's Choice tables can play Razz while the table-level route still hits the legacy showdown handler; without per-hand type resolution, it evaluated via `DrawHand` high rules and could select the wrong winner.
+
+**Test evidence:** `dotnet test src/Tests/CardGames.IntegrationTests/CardGames.IntegrationTests.csproj --filter PerformShowdownCommandHandlerTests` (9 passed, 0 failed).
 
 ### 2026-02-17: Initialize squad roster and routing
 **By:** Squad (Coordinator)

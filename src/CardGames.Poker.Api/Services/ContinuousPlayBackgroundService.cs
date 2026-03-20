@@ -1,8 +1,10 @@
+using System.Text.Json;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.GameFlow;
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Betting;
+using CardGames.Contracts.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 
@@ -409,7 +411,10 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		CancellationToken cancellationToken)
 	{
 		// Re-check readiness against the latest database state to avoid races with manual StartHand.
+		// ReloadAsync only refreshes scalar properties; explicitly reload the GameType navigation
+		// so that non-Dealer's-Choice games still resolve the correct flow handler.
 		await context.Entry(game).ReloadAsync(cancellationToken);
+		await context.Entry(game).Reference(g => g.GameType).LoadAsync(cancellationToken);
 		var stillReadyForNextHand =
 			(game.CurrentPhase == nameof(Phases.Complete)
 			 || game.CurrentPhase == nameof(Phases.WaitingForPlayers)
@@ -460,8 +465,8 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		}
 
 		// Get the game flow handler for this game type (needed for game-specific checks below)
-		// Use CurrentHandGameTypeCode first — after ReloadAsync, the GameType navigation property may be null
-		// even though GameTypeId is set (reload only refreshes scalar properties, not navigation properties).
+		// For Dealer's Choice, CurrentHandGameTypeCode is the chosen game for this hand.
+		// For standard games, use GameType.Code (reliably loaded after ReloadAsync + Reference load above).
 		var flowHandlerFactory = scope.ServiceProvider.GetRequiredService<IGameFlowHandlerFactory>();
 		var flowHandler = flowHandlerFactory.GetHandler(game.CurrentHandGameTypeCode ?? game.GameType?.Code);
 
@@ -529,6 +534,20 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 					ante,
 					game.Id);
 			}
+
+		// Recompute eligible players after auto-sit-out so downstream checks
+		// (e.g. TryTransitionTerminalDealersChoiceScrewYourNeighborAsync) use
+		// the correct count. Without this, ante=0 games could include 0-chip
+		// players who were just sat out, inflating the count.
+		if (insufficientChipPlayers.Count > 0)
+		{
+			eligiblePlayers = game.GamePlayers
+				.Where(gp => gp.Status == GamePlayerStatus.Active &&
+							 !gp.IsSittingOut &&
+							 gp.ChipStack >= ante &&
+							 gp.LeftAtHandNumber == -1)
+				.ToList();
+		}
 
 			// 3a. For games with chip coverage check requirement, check if any player cannot cover the current pot
 			if (flowHandler.RequiresChipCoverageCheck)
@@ -643,9 +662,43 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			return;
 		}
 
+		if (await TryTransitionTerminalDealersChoiceScrewYourNeighborAsync(
+			context,
+			broadcaster,
+			game,
+			flowHandler,
+			eligiblePlayers.Count,
+			now,
+			cancellationToken))
+		{
+			return;
+		}
+
 		// Check minimum player count
 		if (eligiblePlayers.Count < 2)
 		{
+			// Dealer's Choice tables should return to game selection, not WaitingForPlayers,
+			// when a variant finishes with insufficient eligible players. The next dealer can
+			// pick a different game type once more players join or add chips.
+			if (game.IsDealersChoice &&
+				game.CurrentPhase != nameof(Phases.WaitingToStart) &&
+				!string.IsNullOrWhiteSpace(game.CurrentHandGameTypeCode))
+			{
+				_logger.LogInformation(
+					"[DC-FALLBACK] Game {GameId}: Fewer than 2 eligible players after variant {GameType}, " +
+					"returning to WaitingForDealerChoice instead of WaitingForPlayers (EligibleCount={EligibleCount})",
+					game.Id, game.CurrentHandGameTypeCode, eligiblePlayers.Count);
+
+				await TransitionDealersChoiceToWaitingForChoiceAsync(
+					context,
+					broadcaster,
+					game,
+					now,
+					cancellationToken,
+					"Dealer's Choice game {GameId}: variant ended with insufficient players, waiting for dealer at seat {DcDealerSeat} to choose next game");
+				return;
+			}
+
 			_logger.LogInformation(
 				"Game {GameId} has insufficient eligible players ({Count}), pausing continuous play",
 				game.Id,
@@ -684,6 +737,10 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			return;
 		}
 
+		// SYN in DC stores pre-SYN chip snapshots in VariantState; preserve across multi-hand rounds.
+		var preserveVariantState = game.IsDealersChoice &&
+			string.Equals(flowHandler.GameTypeCode, PokerGameMetadataRegistry.ScrewYourNeighborCode, StringComparison.OrdinalIgnoreCase);
+
 		// Reset player states for new hand
 		foreach (var gamePlayer in game.GamePlayers.Where(gp => gp.Status == GamePlayerStatus.Active))
 		{
@@ -694,18 +751,19 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			gamePlayer.IsAllIn = false;
 			gamePlayer.HasDrawnThisRound = false;
 			gamePlayer.DropOrStayDecision = null;
-			gamePlayer.VariantState = null;
+			if (!preserveVariantState)
+				gamePlayer.VariantState = null;
 		}
 
-		// Remove any existing cards from previous hand
-		var existingCards = await context.GameCards
-			.Where(gc => gc.GameId == game.Id)
-			.ToListAsync(cancellationToken);
-
-		if (existingCards.Count > 0)
-		{
-			context.GameCards.RemoveRange(existingCards);
-		}
+		// Prepare cards for the upcoming hand. Most games clear prior cards here,
+		// but variants with persistent decks can retain undealt cards.
+		await flowHandler.PrepareForNewHandAsync(
+			context,
+			game,
+			eligiblePlayers,
+			game.CurrentHandNumber + 1,
+			now,
+			cancellationToken);
 
 		// Mark any incomplete betting rounds from the previous hand as complete
 		var incompleteBettingRounds = await context.Set<Data.Entities.BettingRound>()
@@ -819,25 +877,13 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			if (!isMultiHandContinuation)
 			{
 				// Current game variant is done — rotate DC dealer and wait for the next choice
-				AdvanceDealersChoiceDealer(game);
-
-				game.GameTypeId = null;
-				game.CurrentHandGameTypeCode = null;
-				game.Ante = null;
-				game.MinBet = null;
-				game.CurrentPhase = nameof(Phases.WaitingForDealerChoice);
-				game.Status = GameStatus.BetweenHands;
-				game.HandCompletedAt = null;
-				game.NextHandStartsAt = null;
-				game.UpdatedAt = now;
-
-				await context.SaveChangesAsync(cancellationToken);
-				await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
-
-				_logger.LogInformation(
-					"Dealer's Choice game {GameId}: variant finished, waiting for dealer at seat {DcDealerSeat} to choose next game",
-					game.Id,
-					game.DealersChoiceDealerPosition);
+				await TransitionDealersChoiceToWaitingForChoiceAsync(
+					context,
+					broadcaster,
+					game,
+					now,
+					cancellationToken,
+					"Dealer's Choice game {GameId}: variant finished, waiting for dealer at seat {DcDealerSeat} to choose next game");
 				return;
 			}
 
@@ -876,10 +922,13 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			game.CurrentPhase);
 
 		// Automatically collect antes (skip if game's flow handler indicates it handles antes differently)
-		// For multi-hand variants (e.g., Kings and Lows), antes are only collected on the first hand
-		// when the pot is empty. Subsequent hands get their pot from losers matching the previous pot.
+		// For Kings and Lows, antes are only collected on the first hand when the pot is empty.
+		// Other multi-hand variants (for example Screw Your Neighbor) should not be auto-anted here.
 		var shouldCollectAntes = !flowHandler.SkipsAnteCollection;
-		if (!shouldCollectAntes && flowHandler.IsMultiHandVariant && ante > 0)
+		if (!shouldCollectAntes &&
+		    flowHandler.IsMultiHandVariant &&
+		    string.Equals(flowHandler.GameTypeCode, PokerGameMetadataRegistry.KingsAndLowsCode, StringComparison.OrdinalIgnoreCase) &&
+		    ante > 0)
 		{
 			var handPot = await context.Pots
 				.FirstOrDefaultAsync(p => p.GameId == game.Id &&
@@ -905,8 +954,160 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		await flowHandler.DealCardsAsync(context, game, eligiblePlayers, now, cancellationToken);
 		await context.SaveChangesAsync(cancellationToken);
 
+		if (await ShouldBroadcastScrewYourNeighborNewDeckToastAsync(context, flowHandler, game, cancellationToken))
+		{
+			await broadcaster.BroadcastTableToastAsync(
+				new TableToastNotificationDto
+				{
+					GameId = game.Id,
+					Message = "Starting new deck"
+				},
+				cancellationToken);
+		}
+
 		// Broadcast updated state
 		await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
+	}
+
+	private async Task<bool> TryTransitionTerminalDealersChoiceScrewYourNeighborAsync(
+		CardsDbContext context,
+		IGameStateBroadcaster broadcaster,
+		Game game,
+		IGameFlowHandler flowHandler,
+		int eligiblePlayerCount,
+		DateTimeOffset now,
+		CancellationToken cancellationToken)
+	{
+		if (!game.IsDealersChoice ||
+			game.CurrentPhase == nameof(Phases.WaitingToStart) ||
+			eligiblePlayerCount >= 2 ||
+			!string.Equals(game.CurrentHandGameTypeCode, PokerGameMetadataRegistry.ScrewYourNeighborCode, StringComparison.OrdinalIgnoreCase) ||
+			!flowHandler.IsMultiHandVariant)
+		{
+			return false;
+		}
+
+		var nextHandPotExists = await context.Pots
+			.AnyAsync(p => p.GameId == game.Id &&
+			               p.HandNumber == game.CurrentHandNumber + 1 &&
+			               p.PotType == PotType.Main &&
+			               p.Amount > 0,
+			           cancellationToken);
+
+		if (nextHandPotExists)
+		{
+			return false;
+		}
+
+		var currentHandHadFundedPot = await context.Pots
+			.AnyAsync(p => p.GameId == game.Id &&
+			               p.HandNumber == game.CurrentHandNumber &&
+			               p.PotType == PotType.Main &&
+			               p.IsAwarded &&
+			               p.Amount > 0,
+			           cancellationToken);
+
+		if (!currentHandHadFundedPot)
+		{
+			return false;
+		}
+
+		await TransitionDealersChoiceToWaitingForChoiceAsync(
+			context,
+			broadcaster,
+			game,
+			now,
+			cancellationToken,
+			"Dealer's Choice game {GameId}: Screw Your Neighbor finished with one remaining stack, waiting for dealer at seat {DcDealerSeat} to choose next game");
+
+		return true;
+	}
+
+	private async Task TransitionDealersChoiceToWaitingForChoiceAsync(
+		CardsDbContext context,
+		IGameStateBroadcaster broadcaster,
+		Game game,
+		DateTimeOffset now,
+		CancellationToken cancellationToken,
+		string logMessage)
+	{
+		// Restore pre-SYN DC chip stacks before clearing game settings.
+		RestoreDcChipsAfterSyn(game);
+
+		AdvanceDealersChoiceDealer(game);
+
+		game.GameTypeId = null;
+		game.CurrentHandGameTypeCode = null;
+		game.Ante = null;
+		game.MinBet = null;
+		game.CurrentPhase = nameof(Phases.WaitingForDealerChoice);
+		game.Status = GameStatus.BetweenHands;
+		game.HandCompletedAt = null;
+		game.NextHandStartsAt = null;
+		game.UpdatedAt = now;
+
+		await context.SaveChangesAsync(cancellationToken);
+		await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
+
+		_logger.LogInformation(logMessage, game.Id, game.DealersChoiceDealerPosition);
+	}
+
+	/// <summary>
+	/// Restores pre-SYN Dealer's Choice chip stacks from VariantState after a SYN variant ends.
+	/// Each player's DC chips are adjusted by their net SYN result (win or loss).
+	/// </summary>
+	private static void RestoreDcChipsAfterSyn(Game game)
+	{
+		var synAnte = game.Ante ?? 0;
+		if (synAnte <= 0)
+			return;
+
+		var synBuyIn = synAnte * 3;
+
+		foreach (var gp in game.GamePlayers)
+		{
+			if (string.IsNullOrEmpty(gp.VariantState))
+				continue;
+
+			try
+			{
+				using var doc = JsonDocument.Parse(gp.VariantState);
+				if (doc.RootElement.TryGetProperty("preSynChips", out var preSynChipsElement))
+				{
+					var preSynChips = preSynChipsElement.GetInt32();
+					var synNetResult = gp.ChipStack - synBuyIn;
+					gp.ChipStack = Math.Max(0, preSynChips + synNetResult);
+
+					// Un-sit-out players who still have DC chips after SYN
+					if (gp.ChipStack > 0 && gp.IsSittingOut)
+						gp.IsSittingOut = false;
+				}
+			}
+			catch (JsonException)
+			{
+				// Non-SYN variant state — leave unchanged
+			}
+
+			gp.VariantState = null;
+		}
+	}
+
+	private static async Task<bool> ShouldBroadcastScrewYourNeighborNewDeckToastAsync(
+		CardsDbContext context,
+		IGameFlowHandler flowHandler,
+		Game game,
+		CancellationToken cancellationToken)
+	{
+		if (!string.Equals(flowHandler.GameTypeCode, PokerGameMetadataRegistry.ScrewYourNeighborCode, StringComparison.OrdinalIgnoreCase) ||
+			game.CurrentHandNumber <= 1)
+		{
+			return false;
+		}
+
+		var currentHandCardCount = await context.GameCards
+			.CountAsync(gc => gc.GameId == game.Id && gc.HandNumber == game.CurrentHandNumber, cancellationToken);
+
+		return currentHandCardCount == 52;
 	}
 
 	private async Task CollectAntesAsync(

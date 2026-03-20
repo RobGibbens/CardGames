@@ -1,4 +1,5 @@
 using CardGames.Contracts.SignalR;
+using CardGames.Poker.Api.Games;
 using CardGames.Poker.Api.Hubs;
 using Microsoft.AspNetCore.SignalR;
 
@@ -134,9 +135,11 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 
         var durationSeconds = IActionTimerService.DefaultTimerDurationSeconds;
 
-        // Use 30 seconds for Kings and Lows "Drop or Stay"
-        if (string.Equals(state.GameTypeCode, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase) && 
-            string.Equals(state.CurrentPhase, "DropOrStay", StringComparison.OrdinalIgnoreCase))
+        // Use 30 seconds for short decision phases.
+        if ((string.Equals(state.GameTypeCode, PokerGameMetadataRegistry.KingsAndLowsCode, StringComparison.OrdinalIgnoreCase) &&
+             string.Equals(state.CurrentPhase, "DropOrStay", StringComparison.OrdinalIgnoreCase)) ||
+            (string.Equals(state.GameTypeCode, PokerGameMetadataRegistry.ScrewYourNeighborCode, StringComparison.OrdinalIgnoreCase) &&
+             string.Equals(state.CurrentPhase, "KeepOrTrade", StringComparison.OrdinalIgnoreCase)))
         {
             durationSeconds = 30;
         }
@@ -241,6 +244,31 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
                 // Don't throw - the join was successful, just the notification failed
             }
         }
+
+                /// <inheritdoc />
+                public async Task BroadcastTableToastAsync(
+                    TableToastNotificationDto notification,
+                    CancellationToken cancellationToken = default)
+                {
+                    var groupName = GetGroupName(notification.GameId);
+
+                    try
+                    {
+                        await _hubContext.Clients.Group(groupName)
+                            .SendAsync("TableToastNotification", notification, cancellationToken);
+
+                        _logger.LogInformation(
+                            "Broadcast TableToastNotification for game {GameId}: {Message}",
+                            notification.GameId,
+                            notification.Message);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex,
+                            "Failed to broadcast TableToastNotification for game {GameId}",
+                            notification.GameId);
+                    }
+                }
 
                 /// <inheritdoc />
                 public async Task BroadcastTableSettingsUpdatedAsync(

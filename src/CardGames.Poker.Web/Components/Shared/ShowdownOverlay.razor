@@ -239,8 +239,15 @@
             var winnerName = result.Payouts.First().Key;
             if (!string.IsNullOrWhiteSpace(winnerName))
             {
-                var parts = winnerName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                return parts.Length > 0 ? parts[0] : winnerName;
+                var matchingHand = result.PlayerHands?
+                    .FirstOrDefault(h => string.Equals(h.PlayerName, winnerName, StringComparison.OrdinalIgnoreCase));
+
+                if (matchingHand is not null)
+                {
+                    return DisplayFirstName(matchingHand);
+                }
+
+                return GetDisplayNameFromPlayerName(winnerName);
             }
         }
 
@@ -548,8 +555,31 @@
             return "Player";
         }
 
-        var parts = hand.PlayerName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        return parts.Length > 0 ? parts[0] : hand.PlayerName;
+        return GetDisplayNameFromPlayerName(hand.PlayerName);
+    }
+
+    private static string GetDisplayNameFromPlayerName(string playerName)
+    {
+        var parts = playerName.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0)
+        {
+            return "Player";
+        }
+
+        var firstToken = parts[0];
+        var atIndex = firstToken.IndexOf('@');
+
+        if (atIndex > 0)
+        {
+            var emailLocalPart = firstToken[..atIndex];
+            var localPartParts = emailLocalPart.Split(['.', '_', '-'], StringSplitOptions.RemoveEmptyEntries);
+            if (localPartParts.Length > 0)
+            {
+                return CultureInfo.InvariantCulture.TextInfo.ToTitleCase(localPartParts[0]);
+            }
+        }
+
+        return firstToken;
     }
 
     private static string HumanizeHandType(string? handType)

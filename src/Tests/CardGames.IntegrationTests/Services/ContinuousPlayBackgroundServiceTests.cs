@@ -201,6 +201,7 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
         updatedGame!.CurrentHandNumber.Should().Be(2);
         updatedGame.CurrentPhase.Should().Be("Dealing");
         handler.DealCardsCalled.Should().BeTrue();
+        handler.PrepareForNewHandCalled.Should().BeTrue();
         handler.OnHandStartingCalled.Should().BeTrue();
     }
 
@@ -314,6 +315,49 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
         var pot = await _dbContext.Pots.FirstOrDefaultAsync(p => p.GameId == game.Id && p.HandNumber == 2);
         pot.Should().NotBeNull();
         pot!.Amount.Should().Be(20);
+    }
+
+    [Fact]
+    public async Task ProcessGamesReadyForNextHandAsync_ScrewYourNeighbor_FirstHand_DoesNotCollectAntes()
+    {
+        // Arrange
+        var now = DateTimeOffset.UtcNow;
+        var game = new Game
+        {
+            Id = Guid.NewGuid(),
+            CurrentPhase = "Complete",
+            Status = GameStatus.InProgress,
+            NextHandStartsAt = now.AddSeconds(-1),
+            CurrentHandNumber = 0,
+            Ante = 25,
+            GameType = new GameType { Code = "SCREWYOURNEIGHBOR", Name = "Screw Your Neighbor" }
+        };
+
+        var p1 = new GamePlayer { GameId = game.Id, PlayerId = Guid.NewGuid(), Status = GamePlayerStatus.Active, SeatPosition = 0, ChipStack = 100, LeftAtHandNumber = -1 };
+        var p2 = new GamePlayer { GameId = game.Id, PlayerId = Guid.NewGuid(), Status = GamePlayerStatus.Active, SeatPosition = 1, ChipStack = 100, LeftAtHandNumber = -1 };
+        game.GamePlayers.Add(p1);
+        game.GamePlayers.Add(p2);
+
+        _dbContext.Games.Add(game);
+        await _dbContext.SaveChangesAsync();
+
+        var handler = _flowHandlerFactory.SetHandlerForCode("SCREWYOURNEIGHBOR");
+        handler.SkipsAnteCollection = true;
+        handler.IsMultiHandVariant = true;
+        handler.InitialPhase = "Dealing";
+
+        // Act
+        await _service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+
+        // Assert
+        var updatedP1 = await _dbContext.GamePlayers.FindAsync(p1.Id);
+        var updatedP2 = await _dbContext.GamePlayers.FindAsync(p2.Id);
+        updatedP1!.ChipStack.Should().Be(100);
+        updatedP2!.ChipStack.Should().Be(100);
+
+        var pot = await _dbContext.Pots.FirstOrDefaultAsync(p => p.GameId == game.Id && p.HandNumber == 1 && p.PotType == PotType.Main);
+        pot.Should().NotBeNull();
+        pot!.Amount.Should().Be(0);
     }
 
     [Fact]
@@ -516,6 +560,7 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
     private class FakeGameStateBroadcaster : IGameStateBroadcaster
     {
          public List<(Guid GameId, DateTimeOffset Time)> Broadcasts { get; } = new();
+            public List<TableToastNotificationDto> ToastNotifications { get; } = new();
 
          public Task BroadcastGameStateAsync(Guid gameId, CancellationToken cancellationToken = default)
          {
@@ -530,6 +575,12 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
 
          public Task BroadcastPlayerJoinedAsync(Guid gameId, string playerName, int seatPosition, bool isRejoining, CancellationToken cancellationToken = default)
          {
+             return Task.CompletedTask;
+         }
+
+         public Task BroadcastTableToastAsync(TableToastNotificationDto notification, CancellationToken cancellationToken = default)
+         {
+             ToastNotifications.Add(notification);
              return Task.CompletedTask;
          }
 
@@ -604,6 +655,7 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
         public bool ProcessPostShowdownCalled { get; set; }
         public bool DealCardsCalled { get; set; }
         public bool OnHandStartingCalled { get; set; }
+        public bool PrepareForNewHandCalled { get; set; }
         public bool OnHandCompletedCalled { get; set; }
 
         public FakeGameFlowHandler(string code)
@@ -624,6 +676,18 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
         public Task OnHandStartingAsync(Game game, CancellationToken cancellationToken = default)
         {
             OnHandStartingCalled = true;
+            return Task.CompletedTask;
+        }
+
+        public Task PrepareForNewHandAsync(
+            CardsDbContext context,
+            Game game,
+            List<GamePlayer> eligiblePlayers,
+            int upcomingHandNumber,
+            DateTimeOffset now,
+            CancellationToken cancellationToken)
+        {
+            PrepareForNewHandCalled = true;
             return Task.CompletedTask;
         }
 

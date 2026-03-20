@@ -121,6 +121,11 @@ public sealed partial record TableStatePublicDto
 	public IReadOnlyList<HandHistoryEntryDto>? HandHistory { get; init; }
 
 	/// <summary>
+	/// Server-authored sound cues that clients may play for the current table state.
+	/// </summary>
+	public IReadOnlyList<TableSoundEffectDto>? SoundEffects { get; init; }
+
+	/// <summary>
 	/// The category of the current phase (e.g., "Setup", "Betting", "Drawing", "Decision", "Resolution", "Special").
 	/// Used by the UI to determine which overlay or panel to display.
 	/// </summary>
@@ -301,6 +306,12 @@ public sealed record SeatPublicDto
 		public IReadOnlyList<CardPublicDto> Cards { get; init; } = [];
 
 		/// <summary>
+		/// Optional per-seat hand/decision description for display in the UI.
+		/// Used by variants like Screw Your Neighbor to show Keep/Trade choices.
+		/// </summary>
+		public string? HandEvaluationDescription { get; init; }
+
+		/// <summary>
 		/// The last action performed by this player, for temporary display in the UI.
 		/// </summary>
 		public SeatLastActionDto? LastAction { get; init; }
@@ -386,6 +397,32 @@ public sealed record ShowdownPublicDto
 	/// because no players had a natural pair of 7s.
 	/// </summary>
 	public bool SevensPoolRolledOver { get; init; }
+}
+
+/// <summary>
+/// A sound cue that all clients can play from the same table-state snapshot.
+/// </summary>
+public sealed record TableSoundEffectDto
+{
+	/// <summary>
+	/// Stable unique key for this cue instance. Clients should use this for deduplication.
+	/// </summary>
+	public required string CueKey { get; init; }
+
+	/// <summary>
+	/// Logical table event key such as "winning".
+	/// </summary>
+	public required string EventKey { get; init; }
+
+	/// <summary>
+	/// The current hand number this cue belongs to.
+	/// </summary>
+	public int HandNumber { get; init; }
+
+	/// <summary>
+	/// Relative static asset path the client should play.
+	/// </summary>
+	public required string Source { get; init; }
 }
 
 /// <summary>
@@ -501,6 +538,11 @@ public sealed record GameSpecialRulesDto
 	/// Whether the game has a Drop or Stay decision phase.
 	/// </summary>
 	public bool HasDropOrStay { get; init; }
+
+	/// <summary>
+	/// Whether the game has a Keep or Trade decision phase (e.g., Screw Your Neighbor).
+	/// </summary>
+	public bool HasKeepOrTrade { get; init; }
 
 	/// <summary>
 	/// Whether losers must match the pot (e.g., Kings and Lows).

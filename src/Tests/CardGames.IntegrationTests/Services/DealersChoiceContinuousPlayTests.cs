@@ -271,6 +271,62 @@ public class DealersChoiceContinuousPlayTests : IDisposable
     }
 
     [Fact]
+    public async Task ReadyForNextHand_DCGame_ScrewYourNeighborWinner_WithOneEligiblePlayer_ReturnsToWaitingForDealerChoice()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var game = new Game
+        {
+            Id = Guid.NewGuid(),
+            CurrentPhase = nameof(Phases.Complete),
+            Status = GameStatus.InProgress,
+            NextHandStartsAt = now.AddSeconds(-1),
+            CurrentHandNumber = 1,
+            GameType = new GameType { Code = "SCREWYOURNEIGHBOR", Name = "Screw Your Neighbor" },
+            CurrentHandGameTypeCode = "SCREWYOURNEIGHBOR",
+            DealerPosition = 2,
+            DealersChoiceDealerPosition = 0,
+            OriginalDealersChoiceDealerPosition = 0,
+            IsDealersChoice = true,
+            Ante = 25,
+            MinBet = 25
+        };
+
+        game.GamePlayers.Add(new GamePlayer { GameId = game.Id, PlayerId = Guid.NewGuid(), Status = GamePlayerStatus.Active, SeatPosition = 0, ChipStack = 150, LeftAtHandNumber = -1 });
+        game.GamePlayers.Add(new GamePlayer { GameId = game.Id, PlayerId = Guid.NewGuid(), Status = GamePlayerStatus.Active, SeatPosition = 1, ChipStack = 0, LeftAtHandNumber = -1, IsSittingOut = true });
+        game.GamePlayers.Add(new GamePlayer { GameId = game.Id, PlayerId = Guid.NewGuid(), Status = GamePlayerStatus.Active, SeatPosition = 2, ChipStack = 0, LeftAtHandNumber = -1, IsSittingOut = true });
+
+        _dbContext.Games.Add(game);
+        _dbContext.Pots.Add(new Pot
+        {
+            Id = Guid.CreateVersion7(),
+            GameId = game.Id,
+            HandNumber = game.CurrentHandNumber,
+            PotType = PotType.Main,
+            Amount = 50,
+            IsAwarded = true,
+            AwardedAt = now,
+            CreatedAt = now
+        });
+        await _dbContext.SaveChangesAsync();
+
+        var handler = _flowHandlerFactory.SetHandlerForCode("SCREWYOURNEIGHBOR");
+        handler.InitialPhase = "Dealing";
+        handler.SkipsAnteCollection = true;
+        handler.IsMultiHandVariant = true;
+
+        await _service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+
+        var updatedGame = await _dbContext.Games.FindAsync(game.Id);
+        updatedGame.Should().NotBeNull();
+        updatedGame!.CurrentPhase.Should().Be(nameof(Phases.WaitingForDealerChoice));
+        updatedGame.Status.Should().Be(GameStatus.BetweenHands);
+        updatedGame.DealersChoiceDealerPosition.Should().Be(1,
+            "the Dealer's Choice turn should advance from the original SYN picker, not get stranded in WaitingForPlayers");
+        updatedGame.GameTypeId.Should().BeNull();
+        updatedGame.CurrentHandGameTypeCode.Should().BeNull();
+    }
+
+    [Fact]
     public async Task ReadyForNextHand_DCGame_BroadcastsGameState()
     {
         var now = DateTimeOffset.UtcNow;
@@ -603,6 +659,7 @@ public class DealersChoiceContinuousPlayTests : IDisposable
     private class FakeGameStateBroadcaster : IGameStateBroadcaster
     {
         public List<(Guid GameId, DateTimeOffset Time)> Broadcasts { get; } = new();
+        public List<TableToastNotificationDto> ToastNotifications { get; } = new();
 
         public Task BroadcastGameStateAsync(Guid gameId, CancellationToken cancellationToken = default)
         {
@@ -612,6 +669,11 @@ public class DealersChoiceContinuousPlayTests : IDisposable
 
         public Task BroadcastGameStateToUserAsync(Guid gameId, string userId, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task BroadcastPlayerJoinedAsync(Guid gameId, string playerName, int seatPosition, bool isRejoining, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task BroadcastTableToastAsync(TableToastNotificationDto notification, CancellationToken cancellationToken = default)
+        {
+            ToastNotifications.Add(notification);
+            return Task.CompletedTask;
+        }
         public Task BroadcastTableSettingsUpdatedAsync(TableSettingsUpdatedDto settings, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task BroadcastOddsVisibilityUpdatedAsync(OddsVisibilityUpdatedDto notification, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task BroadcastPlayerActionAsync(Guid gameId, int seatPosition, string? action, string description, CancellationToken cancellationToken = default) => Task.CompletedTask;
@@ -670,6 +732,13 @@ public class DealersChoiceContinuousPlayTests : IDisposable
         public DealingConfiguration GetDealingConfiguration() => new DealingConfiguration { PatternType = DealingPatternType.AllAtOnce, InitialCardsPerPlayer = 5 };
         public ChipCheckConfiguration GetChipCheckConfiguration() => ChipCheckConfig;
         public Task OnHandStartingAsync(Game game, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task PrepareForNewHandAsync(
+            CardsDbContext context,
+            Game game,
+            List<GamePlayer> eligiblePlayers,
+            int upcomingHandNumber,
+            DateTimeOffset now,
+            CancellationToken cancellationToken) => Task.CompletedTask;
         public Task OnHandCompletedAsync(Game game, CancellationToken cancellationToken = default) => Task.CompletedTask;
 
         public Task DealCardsAsync(CardsDbContext context, Game game, List<GamePlayer> eligiblePlayers, DateTimeOffset now, CancellationToken cancellationToken)

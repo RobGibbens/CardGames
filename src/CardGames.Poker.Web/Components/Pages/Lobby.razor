@@ -43,7 +43,7 @@
                 <p class="lobby-subtitle">Find a table or create your own private game</p>
             </div>
             <a href="/table/create" class="btn btn-primary btn-lg lobby-create-btn">
-                <i class="fa-regular fa-add"></i> Create New Table
+                <img src="/images/createtable.png" alt="Create New Table" />
             </a>
         </div>
 
@@ -123,56 +123,86 @@
             }
             else
             {
+                var groupedTables = GetFilteredTableGroups();
+
                 @if (_viewMode == "grid")
                 {
-                    <div class="tables-grid">
-                        @foreach (var table in _filteredTables)
-                        {
-                            <TableCard Table="table" CurrentUserId="@_currentUserId" OnDelete="HandleDeleteTableAsync" />
-                        }
-                    </div>
+                    @for (var groupIndex = 0; groupIndex < groupedTables.Count; groupIndex++)
+                    {
+                        var group = groupedTables[groupIndex];
+
+                        <section class="@GetGroupSectionClass(groupIndex)">
+                            <div class="d-flex flex-wrap align-items-baseline justify-content-between gap-2 border-bottom pb-2 mb-3">
+                                <div>
+                                    <h2 class="h5 mb-1">@group.DisplayName</h2>
+                                    <p class="text-muted small mb-0">@GetTableCountLabel(group.Tables.Count)</p>
+                                </div>
+                            </div>
+
+                            <div class="tables-grid">
+                                @foreach (var table in group.Tables)
+                                {
+                                    <TableCard Table="table" CurrentUserId="@_currentUserId" OnDelete="HandleDeleteTableAsync" />
+                                }
+                            </div>
+                        </section>
+                    }
                 }
                 else
                 {
-                    <div class="tables-list">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th></th>
-                                    <th>Game Type</th>
-                                    <th>Table Name</th>
-                                    <th>Host</th>
-                                    <th>Phase</th>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var table in _filteredTables)
-                                {
-                                    <tr>
-                                        <td class="text-end">
-                                            <button class="btn btn-sm btn-primary" @onclick="() => NavigateToTableWithChipCheckAsync(table.Id)">Join</button>
-                                        </td>
-                                        <td>@FormatGameTypeName(table)</td>
-                                        <td>@table.Name</td>
-                                        <td>@table.CreatedByName</td>
-                                        <td>@table.CurrentPhaseDescription</td>
-                                        <td class="text-end">
-                                            @if (CanDeleteTable(table))
-                                            {
-                                                <button class="btn btn-sm btn-primary" 
-                                                        @onclick="() => HandleDeleteTableAsync(table.Id)"
-                                                        disabled="@_isDeleting"
-                                                        title="Delete table">
-                                                    <i class="fa-regular fa-trash"></i>
-                                                </button>
-                                            }
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
+                    @for (var groupIndex = 0; groupIndex < groupedTables.Count; groupIndex++)
+                    {
+                        var group = groupedTables[groupIndex];
+
+                        <section class="@GetGroupSectionClass(groupIndex)">
+                            <div class="d-flex flex-wrap align-items-baseline justify-content-between gap-2 border-bottom pb-2 mb-3">
+                                <div>
+                                    <h2 class="h5 mb-1">@group.DisplayName</h2>
+                                    <p class="text-muted small mb-0">@GetTableCountLabel(group.Tables.Count)</p>
+                                </div>
+                            </div>
+
+                            <div class="tables-list">
+                                <table class="table table-hover mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th></th>
+                                            <th>Game Type</th>
+                                            <th>Table Name</th>
+                                            <th>Host</th>
+                                            <th>Phase</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var table in group.Tables)
+                                        {
+                                            <tr>
+                                                <td class="text-end">
+                                                    <button class="btn btn-sm btn-primary" @onclick="() => NavigateToTableWithChipCheckAsync(table.Id)">Join</button>
+                                                </td>
+                                                <td>@FormatGameTypeName(table)</td>
+                                                <td>@table.Name</td>
+                                                <td>@table.CreatedByName</td>
+                                                <td>@table.CurrentPhaseDescription</td>
+                                                <td class="text-end">
+                                                    @if (CanDeleteTable(table))
+                                                    {
+                                                        <button class="btn btn-sm btn-primary" 
+                                                                @onclick="() => HandleDeleteTableAsync(table.Id)"
+                                                                disabled="@_isDeleting"
+                                                                title="Delete table">
+                                                            <i class="fa-regular fa-trash"></i>
+                                                        </button>
+                                                    }
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+                    }
                 }
             }
         </div>
@@ -345,7 +375,7 @@
     {
         try
         {
-            var response = await AvailablePokerGamesApi.GetAvailablePokerGamesAsync(null);
+            var response = await AvailablePokerGamesApi.GetAvailablePokerGamesAsync(string.Empty);
             if (response.IsSuccessStatusCode && response.Content != null)
             {
                 _availableGameTypes = response.Content.OrderBy(g => g.Name).ToList();
@@ -482,6 +512,24 @@
         _showNoChipsModal = false;
     }
 
+    private List<LobbyTableGroup> GetFilteredTableGroups()
+    {
+        return _filteredTables
+            .GroupBy(FormatGameTypeName)
+            .Select(group => new LobbyTableGroup(group.Key, group.ToList()))
+            .ToList();
+    }
+
+    private static string GetTableCountLabel(int tableCount)
+    {
+        return tableCount == 1 ? "1 table" : $"{tableCount} tables";
+    }
+
+    private static string GetGroupSectionClass(int _)
+    {
+        return "lobby-group-section border rounded-3 bg-white p-3";
+    }
+
     private string FormatGameTypeName(GetActiveGamesResponse table)
     {
         if (table.IsDealersChoice)
@@ -501,6 +549,8 @@
 
         return table.GameTypeName;
     }
+
+    private sealed record LobbyTableGroup(string DisplayName, List<GetActiveGamesResponse> Tables);
 
     public async ValueTask DisposeAsync()
     {
