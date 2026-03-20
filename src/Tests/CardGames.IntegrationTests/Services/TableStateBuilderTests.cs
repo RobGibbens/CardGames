@@ -183,6 +183,57 @@ public class TableStateBuilderTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task BuildPrivateStateAsync_BobBarker_DrawPhase_AllEligiblePlayersCanChooseShowcaseConcurrently()
+    {
+        var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "BOBBARKER", 3, ante: 0);
+        var game = setup.Game;
+        var now = DateTimeOffset.UtcNow;
+
+        game.CurrentHandNumber = 1;
+        game.CurrentHandGameTypeCode = "BOBBARKER";
+        game.CurrentPhase = nameof(Phases.DrawPhase);
+        game.Status = GameStatus.InProgress;
+        game.CurrentDrawPlayerIndex = setup.GamePlayers[0].SeatPosition;
+        game.CurrentPlayerIndex = setup.GamePlayers[0].SeatPosition;
+
+        foreach (var gamePlayer in setup.GamePlayers)
+        {
+            gamePlayer.HasDrawnThisRound = false;
+
+            for (var cardIndex = 0; cardIndex < 5; cardIndex++)
+            {
+                DbContext.GameCards.Add(new GameCard
+                {
+                    Id = Guid.CreateVersion7(),
+                    GameId = game.Id,
+                    GamePlayerId = gamePlayer.Id,
+                    HandNumber = 1,
+                    Location = CardLocation.Hand,
+                    Suit = (CardSuit)(cardIndex % 4),
+                    Symbol = (CardSymbol)(cardIndex + 1),
+                    DealOrder = cardIndex + 1,
+                    IsVisible = false,
+                    IsDiscarded = false,
+                    DealtAt = now,
+                    DealtAtPhase = nameof(Phases.Dealing)
+                });
+            }
+        }
+
+        await DbContext.SaveChangesAsync();
+
+        var firstPlayerState = await TableStateBuilder.BuildPrivateStateAsync(game.Id, setup.Players[0].Email!);
+        var secondPlayerState = await TableStateBuilder.BuildPrivateStateAsync(game.Id, setup.Players[1].Email!);
+
+        firstPlayerState.Should().NotBeNull();
+        secondPlayerState.Should().NotBeNull();
+        firstPlayerState!.Draw.Should().NotBeNull();
+        secondPlayerState!.Draw.Should().NotBeNull();
+        firstPlayerState.Draw!.IsMyTurnToDraw.Should().BeTrue();
+        secondPlayerState.Draw!.IsMyTurnToDraw.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task BuildPrivateStateAsync_HoldTheBaseball_PreflopAndFlop_ApplyWildCardEvaluation()
     {
         // Arrange

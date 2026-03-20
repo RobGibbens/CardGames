@@ -79,15 +79,6 @@ public sealed class SelectShowcaseCommandHandler(CardsDbContext context)
         }
 
         var requestedSeatIndex = command.PlayerSeatIndex ?? game.CurrentDrawPlayerIndex;
-        if (requestedSeatIndex != game.CurrentDrawPlayerIndex)
-        {
-            return new SelectShowcaseError
-            {
-                Message = "It is not that player's turn to choose a showcase card.",
-                Code = SelectShowcaseErrorCode.NotPlayerTurn
-            };
-        }
-
         var currentPlayer = activePlayers.FirstOrDefault(gp => gp.SeatPosition == requestedSeatIndex);
         if (currentPlayer is null || currentPlayer.HasFolded)
         {

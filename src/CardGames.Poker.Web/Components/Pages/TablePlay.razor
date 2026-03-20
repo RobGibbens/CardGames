@@ -39,7 +39,7 @@
 @inject IProfileApi ProfileApi
 @inject IAvailablePokerGamesApi AvailablePokerGamesApi
 
-<PageTitle>Table - Friday Night Poker</PageTitle>
+<PageTitle>Table - Dealer's Choice Poker</PageTitle>
 
 <!-- Connection Banner -->
 <ConnectionBanner IsConnected="@_isConnected" IsReconnecting="@_isReconnecting" />
@@ -295,7 +295,8 @@
 
         <!-- Draw Panel (only shown when it's player's turn during draw phase, or forced visible during animation/DrawComplete) -->
         @if
-            (((IsDrawingPhase && (_isPlayerDrawTurn || _isPlayerTurn)) || _forceShowDrawPanel || IsDrawCompletePhase) &&
+                (!IsCardDealingVisualInProgress &&
+                ((IsDrawingPhase && (_isPlayerDrawTurn || _isPlayerTurn)) || _forceShowDrawPanel || IsDrawCompletePhase) &&
             IsParticipatingInHand)
         {
             <DrawPanel Cards="@_currentPlayerDrawCards" SelectedIndices="@_selectedDiscardIndices"

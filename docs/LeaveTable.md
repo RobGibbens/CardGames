@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-This document provides a comprehensive specification for implementing the "Leave Table" feature in the Friday Night Poker application. This feature allows players to voluntarily exit a game table, with different behaviors depending on whether the game has started and whether the player is actively involved in a hand.
+This document provides a comprehensive specification for implementing the "Leave Table" feature in the Dealer's Choice Poker application. This feature allows players to voluntarily exit a game table, with different behaviors depending on whether the game has started and whether the player is actively involved in a hand.
 
 ## Table of Contents
 

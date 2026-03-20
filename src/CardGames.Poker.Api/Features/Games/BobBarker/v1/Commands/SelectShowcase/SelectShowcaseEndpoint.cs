@@ -29,7 +29,7 @@ public static class SelectShowcaseEndpoint
                 })
             .WithName("BobBarkerSelectShowcase")
             .WithSummary("Select Showcase Card")
-            .WithDescription("Marks exactly one Bob Barker hole card as the player's showcase card before pre-flop betting begins.")
+            .WithDescription("Marks exactly one Bob Barker hole card as the player's showcase card. Pre-flop betting begins after all eligible players choose.")
             .Produces<SelectShowcaseSuccessful>()
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict)

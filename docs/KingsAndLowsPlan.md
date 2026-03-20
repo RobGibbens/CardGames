@@ -43,7 +43,7 @@ Files to create:
 ```json
 {
   "gameId": "01936e5a-...",
-  "tableName": "Friday Night Poker",
+  "tableName": "Dealer's Choice Poker",
   "ante": 5,
   "minBet": 10,
   "players": [

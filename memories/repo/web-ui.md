@@ -1,0 +1,1 @@
+- Table blind badges are gated by `TableCanvas.IsBlindBasedGame`; if a blind-based variant is missing there, `TableSeat` will never receive `IsSmallBlind` or `IsBigBlind`.

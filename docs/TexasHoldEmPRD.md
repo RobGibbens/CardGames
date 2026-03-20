@@ -9,7 +9,7 @@
 
 ## 1. Executive Summary
 
-Add **Texas Hold 'Em** — the world's most popular poker variant — to the Friday Night Poker platform. Players receive two private hole cards and share five community cards dealt in stages (flop, turn, river) across four betting rounds. The game uses blinds (small blind / big blind) instead of antes.
+Add **Texas Hold 'Em** — the world's most popular poker variant — to the Dealer's Choice Poker platform. Players receive two private hole cards and share five community cards dealt in stages (flop, turn, river) across four betting rounds. The game uses blinds (small blind / big blind) instead of antes.
 
 Significant domain scaffolding already exists (`HoldEmGame.cs`, `HoldEmRules.cs`, `HoldemHand.cs`, `HoldEmFlowHandler.cs`). The database schema is fully ready (Game entity has `SmallBlind`/`BigBlind`/`DealerPosition`; GameCard supports `CardLocation.Community`). The primary work is in the **API orchestration layer** — wiring the domain game logic through the command pipeline, dealing community cards between betting rounds, and adapting the UI for blind-based games.
 

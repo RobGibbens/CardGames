@@ -883,7 +883,11 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		// If the game rules specify a different MaxDiscards (like 5 in Kings and Lows), respect that.
 		var maxDiscards = (baseMaxDiscards == 3 && hasAce) ? 4 : baseMaxDiscards;
 		var isIrishHoldEm = IsIrishHoldEmGame(game.GameType?.Code);
+		var isBobBarker = IsBobBarkerGame(game.GameType?.Code);
 		var isEligibleIrishDiscardActor = gamePlayer.Status == GamePlayerStatus.Active
+			&& !gamePlayer.HasFolded
+			&& !gamePlayer.HasDrawnThisRound;
+		var isEligibleBobBarkerSelector = gamePlayer.Status == GamePlayerStatus.Active
 			&& !gamePlayer.HasFolded
 			&& !gamePlayer.HasDrawnThisRound;
 
@@ -891,7 +895,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		{
 			IsMyTurnToDraw = isIrishHoldEm
 				? isEligibleIrishDiscardActor
-				: game.CurrentDrawPlayerIndex == gamePlayer.SeatPosition,
+				: isBobBarker
+					? isEligibleBobBarkerSelector
+					: game.CurrentDrawPlayerIndex == gamePlayer.SeatPosition,
 			MaxDiscards = maxDiscards,
 			HasDrawnThisRound = gamePlayer.HasDrawnThisRound
 		};
