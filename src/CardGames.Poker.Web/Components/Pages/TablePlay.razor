@@ -48,7 +48,7 @@
 
 @if (_showJoinBuyInModal)
 {
-    <div class="confirm-dialog-overlay" @onclick="CloseJoinBuyInModal">
+    <div class="confirm-dialog-overlay">
         <div class="confirm-dialog league-form-modal join-buy-in-modal" @onclick:stopPropagation>
             <div class="confirm-dialog-header league-form-modal-header">
                 <h3 class="confirm-dialog-title mb-0">Join Seat @((_pendingJoinSeatIndex ?? 0) + 1)</h3>
