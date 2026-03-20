@@ -4,6 +4,7 @@
 @using CardGames.Poker.Hands
 @using CardGames.Poker.Hands.DrawHands
 @using CardGames.Poker.Hands.StudHands
+@using CardGames.Contracts.SignalR
 
 @using System.Globalization
 
@@ -94,6 +95,61 @@
                 </div>
             </section>
 
+            @if (IsBobBarkerGame && ShowdownState?.BobBarker is { } bobBarker)
+            {
+                <section class="showdown-others" aria-label="Bob Barker showcase results">
+                    <h3 class="showdown-section-title">Dealer Showcase Card</h3>
+                    <div class="other-hand-row">
+                        <div class="other-hand-info">
+                            <span class="other-hand-name">Dealer target</span>
+                            <span class="sd-pill sd-pill-muted">Value @bobBarker.DealerCardValue</span>
+                        </div>
+                        @if (bobBarker.DealerCard is not null)
+                        {
+                            <div class="showdown-cards other-cards">
+                                <div>
+                                    <playing-card class="showdown-card showdown-card-loser" rank="@bobBarker.DealerCard.Rank" suit="@bobBarker.DealerCard.Suit"></playing-card>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <h3 class="showdown-section-title">Showcase Results</h3>
+                    @foreach (var player in GetBobBarkerPlayers())
+                    {
+                        <div class="other-hand-row">
+                            <div class="other-hand-info">
+                                <span class="other-hand-name">@GetPlayerDisplayName(player)</span>
+                                @if (player.IsHighHandWinner)
+                                {
+                                    <span class="sd-pill sd-pill-muted">Main hand winner</span>
+                                }
+                                @if (player.IsShowcaseWinner)
+                                {
+                                    <span class="sd-pill sd-pill-muted">Showcase winner</span>
+                                }
+                                @if (player.ShowcaseCardValue.HasValue)
+                                {
+                                    <span class="sd-pill sd-pill-muted">Showcase @player.ShowcaseCardValue.Value</span>
+                                }
+                                @if (player.ShowcaseAmountWon > 0)
+                                {
+                                    <span class="sd-pill sd-pill-gold">+@player.ShowcaseAmountWon showcase</span>
+                                }
+                            </div>
+                            @if (player.ShowcaseCard is not null)
+                            {
+                                <div class="showdown-cards other-cards">
+                                    <div>
+                                        <playing-card class="showdown-card showdown-card-loser" rank="@player.ShowcaseCard.Rank" suit="@player.ShowcaseCard.Suit"></playing-card>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </section>
+            }
+
             @if (otherHands.Count > 0)
             {
                 <section class="showdown-others" aria-label="Other hands">
@@ -174,9 +230,29 @@
             public IReadOnlyList<ShowdownCard>? SharedCommunityCards { get; set; }
 
             [Parameter]
+            public ShowdownPublicDto? ShowdownState { get; set; }
+
+            [Parameter]
             public EventCallback OnClose { get; set; }
 
     private bool IsRazzGame => string.Equals(GameTypeCode, "RAZZ", StringComparison.OrdinalIgnoreCase);
+    private bool IsBobBarkerGame => string.Equals(GameTypeCode, "BOBBARKER", StringComparison.OrdinalIgnoreCase);
+
+    private IEnumerable<ShowdownPlayerResultDto> GetBobBarkerPlayers()
+    {
+        return (ShowdownState?.PlayerResults ?? Enumerable.Empty<ShowdownPlayerResultDto>())
+            .Where(player => player.ShowcaseCard is not null)
+            .OrderByDescending(player => player.IsShowcaseWinner)
+            .ThenByDescending(player => player.ShowcaseAmountWon)
+            .ThenBy(player => player.PlayerName);
+    }
+
+    private static string GetPlayerDisplayName(ShowdownPlayerResultDto player)
+    {
+        return !string.IsNullOrWhiteSpace(player.PlayerFirstName)
+            ? player.PlayerFirstName
+            : GetDisplayNameFromPlayerName(player.PlayerName);
+    }
 
     private static ShowdownPlayerHand? GetPrimaryWinnerHand(PerformShowdownSuccessful result)
     {

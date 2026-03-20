@@ -1,5 +1,18 @@
 # Kings and Lows - Implementation Status
 
+## ✅ Bob Barker - Production Ready (2026-03-20)
+
+- Bob Barker is implemented as a Hold'Em-family variant with Omaha-style betting streets, five initial hole cards, one hidden dealer showcase card, and a dedicated showcase-selection phase before pre-flop betting.
+- The selected showcase card is preserved privately for side-contest scoring, excluded from the main-hand evaluator, and only the dealer/showcase reveal is published at showdown.
+- Settlement now splits each pot into a traditional high-hand half and a Bob Barker showcase half, including tie support and the dealer-Ace rule where Ace stays low unless the dealer card is an Ace.
+- Web routing and UI are wired for Bob Barker showcase selection and showdown display, reusing the existing draw-panel seam and extending the showdown overlay.
+
+### Bob Barker Verification Snapshot
+
+- Targeted backend Bob Barker showdown tests were added and previously passed in isolation.
+- Targeted web-facing Bob Barker router/showdown tests now pass in `CardGames.Poker.Tests`.
+- Refitter regeneration was not required because the dedicated Bob Barker Refit surface was added via a partial `IGamesApi` extension instead of editing generated output directly.
+
 ## 🟩 Omaha (High) - Phase 3 Prod Release Ready (2026-03-06)
 
 - Phase 3 production execution checklist is now defined in `docs/OmahaPRD.md` under Rollout phases.

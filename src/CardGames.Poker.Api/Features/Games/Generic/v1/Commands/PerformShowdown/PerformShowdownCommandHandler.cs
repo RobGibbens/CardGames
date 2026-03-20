@@ -2,6 +2,7 @@ using CardGames.Core.Extensions;
 using CardGames.Core.French.Cards;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Features.Games.BobBarker;
 using CardGames.Poker.Api.GameFlow;
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Api.Services;
@@ -316,7 +317,7 @@ public sealed class PerformShowdownCommandHandler(
 
         // 10. Award each pot to the best hand among ELIGIBLE players
         var (payouts, allWinners, overallWinReason) = await AwardPotsAsync(
-            game, currentHandPots, playerHandEvaluations, isAlreadyAwarded, now);
+            game, currentHandPots, playerHandEvaluations, isAlreadyAwarded, now, cancellationToken);
 
         if (!isAlreadyAwarded)
         {
@@ -559,6 +560,20 @@ public sealed class PerformShowdownCommandHandler(
                     .Select(c => MapToCard(c))
                     .ToList();
 
+                if (string.Equals(gamePlayer.Game.CurrentHandGameTypeCode ?? gamePlayer.Game.GameType?.Code, PokerGameMetadataRegistry.BobBarkerCode, StringComparison.OrdinalIgnoreCase))
+                {
+                    var selectedShowcaseDealOrder = BobBarkerVariantState.GetSelectedShowcaseDealOrder(gamePlayer);
+                    if (selectedShowcaseDealOrder.HasValue)
+                    {
+                        holeCards = cards
+                            .Where(c => (c.Location == CardLocation.Hole || c.Location == CardLocation.Hand)
+                                && c.DealOrder != selectedShowcaseDealOrder.Value)
+                            .OrderBy(c => c.DealOrder)
+                            .Select(MapToCard)
+                            .ToList();
+                    }
+                }
+
                 var boardCards = cards
                     .Where(c => c.Location == CardLocation.Board)
                     .OrderBy(c => c.DealOrder)
@@ -626,11 +641,28 @@ public sealed class PerformShowdownCommandHandler(
         List<Data.Entities.Pot> currentHandPots,
         Dictionary<string, PlayerHandEvaluation> playerHandEvaluations,
         bool isAlreadyAwarded,
-        DateTimeOffset now)
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
     {
         var payouts = new Dictionary<string, int>();
         var allWinners = new HashSet<string>();
         string? overallWinReason = null;
+        var gameTypeCode = game.CurrentHandGameTypeCode ?? game.GameType?.Code;
+        var isBobBarker = string.Equals(gameTypeCode, PokerGameMetadataRegistry.BobBarkerCode, StringComparison.OrdinalIgnoreCase);
+        var bobBarkerDealerCard = isBobBarker
+            ? await context.GameCards
+                .Where(c => c.GameId == game.Id
+                    && c.HandNumber == game.CurrentHandNumber
+                    && c.Location == CardLocation.Community
+                    && c.GamePlayerId == null
+                    && !c.IsDiscarded)
+                .OrderBy(c => c.DealOrder)
+                .AsNoTracking()
+                .FirstOrDefaultAsync()
+            : null;
+        var bobBarkerDealerValue = bobBarkerDealerCard is null
+            ? (int?)null
+            : GetBobBarkerCardValue(bobBarkerDealerCard.Symbol, bobBarkerDealerCard.Symbol == CardSymbol.Ace);
 
         if (!isAlreadyAwarded)
         {
@@ -675,42 +707,106 @@ public sealed class PerformShowdownCommandHandler(
                     .Select(kvp => kvp.Key)
                     .ToList();
 
-                // Calculate payouts for this pot
-                var potPayoutPerWinner = pot.Amount / potWinners.Count;
-                var potRemainder = pot.Amount % potWinners.Count;
+                var potPayoutsByPlayer = new Dictionary<string, PotWinnerBreakdown>(StringComparer.OrdinalIgnoreCase);
 
-                var potPayoutsList = new List<object>();
-                foreach (var winner in potWinners)
+                void AwardAmount(IReadOnlyList<string> winners, int amount, bool isHighHand, bool isShowcase)
                 {
-                    var payout = potPayoutPerWinner;
-                    if (potRemainder > 0)
+                    if (amount <= 0 || winners.Count == 0)
                     {
-                        payout++;
-                        potRemainder--;
+                        return;
                     }
 
-                    // Add to total payouts
-                    if (payouts.TryGetValue(winner, out var existingPayout))
-                    {
-                        payouts[winner] = existingPayout + payout;
-                    }
-                    else
-                    {
-                        payouts[winner] = payout;
-                    }
+                    var payoutPerWinner = amount / winners.Count;
+                    var payoutRemainder = amount % winners.Count;
 
-                    allWinners.Add(winner);
+                    foreach (var winner in winners)
+                    {
+                        var payout = payoutPerWinner;
+                        if (payoutRemainder > 0)
+                        {
+                            payout++;
+                            payoutRemainder--;
+                        }
 
-                    var gp = eligibleHands[winner].GamePlayer;
-                    potPayoutsList.Add(new { playerId = gp.PlayerId.ToString(), playerName = winner, amount = payout });
+                        if (payouts.TryGetValue(winner, out var existingPayout))
+                        {
+                            payouts[winner] = existingPayout + payout;
+                        }
+                        else
+                        {
+                            payouts[winner] = payout;
+                        }
+
+                        allWinners.Add(winner);
+
+                        if (!potPayoutsByPlayer.TryGetValue(winner, out var breakdown))
+                        {
+                            breakdown = new PotWinnerBreakdown
+                            {
+                                GamePlayer = eligibleHands[winner].GamePlayer
+                            };
+                            potPayoutsByPlayer[winner] = breakdown;
+                        }
+
+                        breakdown.Total += payout;
+                        if (isHighHand)
+                        {
+                            breakdown.HighHandAmount += payout;
+                        }
+
+                        if (isShowcase)
+                        {
+                            breakdown.ShowcaseAmount += payout;
+                        }
+                    }
                 }
 
-                // Mark pot as awarded
-                var winningHandDescription = FormatHandTypeForDisplay(game.CurrentHandGameTypeCode ?? game.GameType?.Code, eligibleHands[potWinners[0]].Hand);
-                var winReason = potWinners.Count > 1
-                    ? $"Split pot - {winningHandDescription}"
-                    : winningHandDescription;
+                string winReason;
+                var winningHandDescription = FormatHandTypeForDisplay(gameTypeCode, eligibleHands[potWinners[0]].Hand);
 
+                if (isBobBarker)
+                {
+                    var mainHandAmount = (pot.Amount + 1) / 2;
+                    var showcaseAmount = pot.Amount - mainHandAmount;
+
+                    AwardAmount(potWinners, mainHandAmount, isHighHand: true, isShowcase: false);
+
+                    var showcaseWinners = bobBarkerDealerValue.HasValue
+                        ? GetBobBarkerShowcaseWinners(eligibleHands, bobBarkerDealerValue.Value)
+                        : [];
+
+                    var showcaseRolledIntoMainHand = showcaseWinners.Count == 0;
+                    if (showcaseRolledIntoMainHand)
+                    {
+                        showcaseWinners = potWinners;
+                    }
+
+                    AwardAmount(showcaseWinners, showcaseAmount, isHighHand: false, isShowcase: true);
+
+                    winReason = showcaseRolledIntoMainHand
+                        ? $"Bob Barker split pot - {winningHandDescription} (no showcase qualifier)"
+                        : $"Bob Barker split pot - {winningHandDescription}";
+                }
+                else
+                {
+                    AwardAmount(potWinners, pot.Amount, isHighHand: false, isShowcase: false);
+                    winReason = potWinners.Count > 1
+                        ? $"Split pot - {winningHandDescription}"
+                        : winningHandDescription;
+                }
+
+                var potPayoutsList = potPayoutsByPlayer.Values
+                    .Select(payout => new
+                    {
+                        playerId = payout.GamePlayer.PlayerId.ToString(),
+                        playerName = payout.GamePlayer.Player.Name,
+                        amount = payout.Total,
+                        highHandAmount = payout.HighHandAmount,
+                        showcaseAmount = payout.ShowcaseAmount
+                    })
+                    .ToList();
+
+                // Mark pot as awarded
                 pot.IsAwarded = true;
                 pot.AwardedAt = now;
                 pot.WinReason = winReason;
@@ -796,7 +892,11 @@ public sealed class PerformShowdownCommandHandler(
             if (includeSharedCommunityCards && sharedCommunityCards.Count > 0)
             {
                 // Append community cards to the display list
-                var communityShowdownCards = sharedCommunityCards
+                var communityCardsForDisplay = string.Equals(gameTypeCode, PokerGameMetadataRegistry.BobBarkerCode, StringComparison.OrdinalIgnoreCase)
+                    ? sharedCommunityCards.Where(c => c.IsVisible)
+                    : sharedCommunityCards;
+
+                var communityShowdownCards = communityCardsForDisplay
                     .OrderBy(c => c.DealOrder)
                     .Select(c => new ShowdownCard
                     {
@@ -876,12 +976,14 @@ public sealed class PerformShowdownCommandHandler(
             var minHole = communityHand switch
             {
                 OmahaHand => 2,
+                BobBarkerHand => 2,
                 NebraskaHand => 3,
                 _ => 0
             };
             var maxHole = communityHand switch
             {
                 OmahaHand => 2,
+                BobBarkerHand => 2,
                 NebraskaHand => 3,
                 _ => Math.Min(holeCards.Count, 5)
             };
@@ -1100,12 +1202,64 @@ public sealed class PerformShowdownCommandHandler(
         return string.Equals(gameTypeCode, PokerGameMetadataRegistry.HoldEmCode, StringComparison.OrdinalIgnoreCase)
                              || string.Equals(gameTypeCode, PokerGameMetadataRegistry.RedRiverCode, StringComparison.OrdinalIgnoreCase)
                || string.Equals(gameTypeCode, PokerGameMetadataRegistry.OmahaCode, StringComparison.OrdinalIgnoreCase)
+                             || string.Equals(gameTypeCode, PokerGameMetadataRegistry.BobBarkerCode, StringComparison.OrdinalIgnoreCase)
                              || string.Equals(gameTypeCode, PokerGameMetadataRegistry.NebraskaCode, StringComparison.OrdinalIgnoreCase)
                              || string.Equals(gameTypeCode, PokerGameMetadataRegistry.SouthDakotaCode, StringComparison.OrdinalIgnoreCase)
                || string.Equals(gameTypeCode, PokerGameMetadataRegistry.IrishHoldEmCode, StringComparison.OrdinalIgnoreCase)
                || string.Equals(gameTypeCode, PokerGameMetadataRegistry.PhilsMomCode, StringComparison.OrdinalIgnoreCase)
              || string.Equals(gameTypeCode, PokerGameMetadataRegistry.CrazyPineappleCode, StringComparison.OrdinalIgnoreCase)
                || string.Equals(gameTypeCode, PokerGameMetadataRegistry.HoldTheBaseballCode, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static List<string> GetBobBarkerShowcaseWinners(
+        Dictionary<string, PlayerHandEvaluation> eligibleHands,
+        int dealerCardValue)
+    {
+        var qualifiedShowcaseValues = eligibleHands
+            .Select(kvp => new
+            {
+                PlayerName = kvp.Key,
+                ShowcaseCard = GetBobBarkerShowcaseCard(kvp.Value.GamePlayer, kvp.Value.Cards)
+            })
+            .Select(x => new
+            {
+                x.PlayerName,
+                Value = GetBobBarkerCardValue(x.ShowcaseCard!.Symbol, dealerCardValue == 14)
+            })
+            .Where(x => x.Value <= dealerCardValue)
+            .ToList();
+
+        if (qualifiedShowcaseValues.Count == 0)
+        {
+            return [];
+        }
+
+        var bestValue = qualifiedShowcaseValues.Max(x => x.Value);
+        return qualifiedShowcaseValues
+            .Where(x => x.Value == bestValue)
+            .Select(x => x.PlayerName)
+            .ToList();
+    }
+
+    private static GameCard? GetBobBarkerShowcaseCard(GamePlayer gamePlayer, IReadOnlyCollection<GameCard> cards)
+    {
+        var selectedShowcaseDealOrder = BobBarkerVariantState.GetSelectedShowcaseDealOrder(gamePlayer);
+        if (!selectedShowcaseDealOrder.HasValue)
+        {
+            return null;
+        }
+
+        return cards.FirstOrDefault(c => c.DealOrder == selectedShowcaseDealOrder.Value);
+    }
+
+    private static int GetBobBarkerCardValue(CardSymbol symbol, bool aceHigh)
+    {
+        if (symbol == CardSymbol.Ace)
+        {
+            return aceHigh ? 14 : 1;
+        }
+
+        return (int)symbol;
     }
 
     /// <summary>
@@ -1140,6 +1294,14 @@ public sealed class PerformShowdownCommandHandler(
         CardSymbol.Ace => Symbol.Ace,
         _ => throw new ArgumentOutOfRangeException(nameof(symbol), symbol, "Unknown symbol")
     };
+
+    private sealed class PotWinnerBreakdown
+    {
+        public required GamePlayer GamePlayer { get; init; }
+        public int Total { get; set; }
+        public int HighHandAmount { get; set; }
+        public int ShowcaseAmount { get; set; }
+    }
 
     /// <summary>
     /// Formats a card for display in hand history.

@@ -20,7 +20,7 @@ The new architecture introduces a **metadata-driven system** where:
 1. **Game rules live in the domain layer** as structured metadata
 2. **The API exposes these rules** via REST endpoints
 3. **The UI adapts dynamically** based on the game rules received from the API
-4. **No game-specific conditionals** are needed in the UI or API orchestration code
+4. **Shared orchestration can stay mostly metadata-driven**, while variant-specific behavior remains localized to dedicated handlers, DTO extensions, and UI seams when the game introduces mechanics that metadata alone does not cover
 
 ## Core Components
 
@@ -204,10 +204,12 @@ private static readonly FrozenDictionary<string, Func<GameRules>> RulesByGameTyp
     }.ToFrozenDictionary();
 ```
 
-**That's it!** No UI changes required. The UI will automatically:
+**That's the baseline integration path.** Many variants can stop there, and the UI can automatically:
 - Display the correct phases
 - Show appropriate action buttons based on `availableActions`
 - Adapt the table display based on `cardDealing` configuration
+
+Variants with bespoke turn actions or showdown payloads still need targeted integration in the current codebase. Bob Barker is the reference example: it reuses Hold'Em-family betting flow, but required a dedicated showcase-selection endpoint, Bob Barker-specific showdown DTOs, and localized table/showdown rendering updates.
 
 ### UI Consumption (Future Implementation)
 
@@ -240,7 +242,7 @@ if (rules.CardDealing.HasCommunityCards)
 
 ## Benefits of This Architecture
 
-1. **Extensibility**: Add new games without touching UI code
+1. **Extensibility**: Most new games start from domain rules and shared infrastructure instead of a full-stack rewrite
 2. **Maintainability**: Game logic is centralized and declarative
 3. **Consistency**: All games follow the same metadata structure
 4. **Testability**: Rules can be unit tested independently

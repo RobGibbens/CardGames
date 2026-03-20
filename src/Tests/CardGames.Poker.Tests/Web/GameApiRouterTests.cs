@@ -37,12 +37,12 @@ public class GameApiRouterTests
         var holdEmResponse = CreateFailedBettingActionResponse();
         holdEmApi
             .HoldEmProcessBettingActionAsync(gameId, request, Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(holdEmResponse));
+            .Returns(Task.FromResult<IApiResponse<ProcessBettingActionSuccessful>>(holdEmResponse));
 
         var fiveCardResponse = CreateFailedBettingActionResponse();
         fiveCardDrawApi
             .FiveCardDrawProcessBettingActionAsync(gameId, request, Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(fiveCardResponse));
+            .Returns(Task.FromResult<IApiResponse<ProcessBettingActionSuccessful>>(fiveCardResponse));
 
         var sut = new GameApiRouter(
             fiveCardDrawApi,
@@ -88,12 +88,12 @@ public class GameApiRouterTests
         var holdEmResponse = CreateFailedBettingActionResponse();
         holdEmApi
             .HoldEmProcessBettingActionAsync(gameId, request, Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(holdEmResponse));
+            .Returns(Task.FromResult<IApiResponse<ProcessBettingActionSuccessful>>(holdEmResponse));
 
         var fiveCardResponse = CreateFailedBettingActionResponse();
         fiveCardDrawApi
             .FiveCardDrawProcessBettingActionAsync(gameId, request, Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(fiveCardResponse));
+            .Returns(Task.FromResult<IApiResponse<ProcessBettingActionSuccessful>>(fiveCardResponse));
 
         var sut = new GameApiRouter(
             fiveCardDrawApi,
@@ -109,6 +109,52 @@ public class GameApiRouterTests
 
         // Act
         _ = await sut.ProcessBettingActionAsync("OMAHA", gameId, request);
+
+        // Assert
+        await holdEmApi.Received(1)
+            .HoldEmProcessBettingActionAsync(gameId, request, Arg.Any<CancellationToken>());
+
+        await fiveCardDrawApi.DidNotReceive()
+            .FiveCardDrawProcessBettingActionAsync(gameId, Arg.Any<ProcessBettingActionRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ProcessBettingActionAsync_BobBarker_RoutesToHoldEmApi()
+    {
+        // Arrange
+        var gameId = Guid.NewGuid();
+        var request = new ProcessBettingActionRequest(BettingActionType.Check, 0);
+
+        var fiveCardDrawApi = Substitute.For<IFiveCardDrawApi>();
+        var twosJacksApi = Substitute.For<ITwosJacksManWithTheAxeApi>();
+        var kingsAndLowsApi = Substitute.For<IKingsAndLowsApi>();
+        var sevenCardStudApi = Substitute.For<ISevenCardStudApi>();
+        var goodBadUglyApi = Substitute.For<IGoodBadUglyApi>();
+        var baseballApi = Substitute.For<IBaseballApi>();
+        var followTheQueenApi = Substitute.For<IFollowTheQueenApi>();
+        var holdEmApi = Substitute.For<IHoldEmApi>();
+        var gamesApi = Substitute.For<IGamesApi>();
+        var screwYourNeighborApi = Substitute.For<IScrewYourNeighborApi>();
+        var holdEmResponse = CreateFailedBettingActionResponse();
+
+        holdEmApi
+            .HoldEmProcessBettingActionAsync(gameId, request, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IApiResponse<ProcessBettingActionSuccessful>>(holdEmResponse));
+
+        var sut = new GameApiRouter(
+            fiveCardDrawApi,
+            twosJacksApi,
+            kingsAndLowsApi,
+            sevenCardStudApi,
+            goodBadUglyApi,
+            baseballApi,
+            followTheQueenApi,
+            holdEmApi,
+            gamesApi,
+            screwYourNeighborApi);
+
+        // Act
+        _ = await sut.ProcessBettingActionAsync("BOBBARKER", gameId, request);
 
         // Assert
         await holdEmApi.Received(1)
@@ -205,6 +251,107 @@ public class GameApiRouterTests
     }
 
     [Fact]
+    public async Task ProcessDrawAsync_BobBarker_RoutesToShowcaseEndpoint()
+    {
+        // Arrange
+        var gameId = Guid.NewGuid();
+        var playerId = Guid.NewGuid();
+        const int playerSeatIndex = 3;
+        var discardIndices = new List<int> { 1 };
+
+        var fiveCardDrawApi = Substitute.For<IFiveCardDrawApi>();
+        var twosJacksApi = Substitute.For<ITwosJacksManWithTheAxeApi>();
+        var kingsAndLowsApi = Substitute.For<IKingsAndLowsApi>();
+        var sevenCardStudApi = Substitute.For<ISevenCardStudApi>();
+        var goodBadUglyApi = Substitute.For<IGoodBadUglyApi>();
+        var baseballApi = Substitute.For<IBaseballApi>();
+        var followTheQueenApi = Substitute.For<IFollowTheQueenApi>();
+        var holdEmApi = Substitute.For<IHoldEmApi>();
+        var gamesApi = Substitute.For<IGamesApi>();
+        var screwYourNeighborApi = Substitute.For<IScrewYourNeighborApi>();
+        var showcaseResponse = CreateSuccessfulUnitResponse();
+
+        gamesApi
+            .BobBarkerSelectShowcaseAsync(
+                gameId,
+                Arg.Is<BobBarkerSelectShowcaseRequest>(r => r.ShowcaseCardIndex == 1 && r.PlayerSeatIndex == playerSeatIndex),
+                Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IApiResponse>(showcaseResponse));
+
+        var sut = new GameApiRouter(
+            fiveCardDrawApi,
+            twosJacksApi,
+            kingsAndLowsApi,
+            sevenCardStudApi,
+            goodBadUglyApi,
+            baseballApi,
+            followTheQueenApi,
+            holdEmApi,
+            gamesApi,
+            screwYourNeighborApi);
+
+        // Act
+        var response = await sut.ProcessDrawAsync("BOBBARKER", gameId, playerId, playerSeatIndex, discardIndices);
+
+        // Assert
+        response.IsSuccess.Should().BeTrue();
+        response.Content.Should().NotBeNull();
+        response.Content!.Original.PlayerSeatIndex.Should().Be(playerSeatIndex);
+
+        await gamesApi.Received(1)
+            .BobBarkerSelectShowcaseAsync(
+                gameId,
+                Arg.Is<BobBarkerSelectShowcaseRequest>(r => r.ShowcaseCardIndex == 1 && r.PlayerSeatIndex == playerSeatIndex),
+                Arg.Any<CancellationToken>());
+
+        await fiveCardDrawApi.DidNotReceive()
+            .FiveCardDrawProcessDrawAsync(Arg.Any<Guid>(), Arg.Any<ProcessDrawRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ProcessDrawAsync_BobBarker_WithMultipleSelections_ReturnsBadRequestWithoutCallingApi()
+    {
+        // Arrange
+        var gameId = Guid.NewGuid();
+        var playerId = Guid.NewGuid();
+        var discardIndices = new List<int> { 0, 1 };
+
+        var fiveCardDrawApi = Substitute.For<IFiveCardDrawApi>();
+        var twosJacksApi = Substitute.For<ITwosJacksManWithTheAxeApi>();
+        var kingsAndLowsApi = Substitute.For<IKingsAndLowsApi>();
+        var sevenCardStudApi = Substitute.For<ISevenCardStudApi>();
+        var goodBadUglyApi = Substitute.For<IGoodBadUglyApi>();
+        var baseballApi = Substitute.For<IBaseballApi>();
+        var followTheQueenApi = Substitute.For<IFollowTheQueenApi>();
+        var holdEmApi = Substitute.For<IHoldEmApi>();
+        var gamesApi = Substitute.For<IGamesApi>();
+        var screwYourNeighborApi = Substitute.For<IScrewYourNeighborApi>();
+
+        var sut = new GameApiRouter(
+            fiveCardDrawApi,
+            twosJacksApi,
+            kingsAndLowsApi,
+            sevenCardStudApi,
+            goodBadUglyApi,
+            baseballApi,
+            followTheQueenApi,
+            holdEmApi,
+            gamesApi,
+            screwYourNeighborApi);
+
+        // Act
+        var response = await sut.ProcessDrawAsync("BOBBARKER", gameId, playerId, 2, discardIndices);
+
+        // Assert
+        response.IsSuccess.Should().BeFalse();
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        response.Error.Should().Be("Select exactly one showcase card.");
+
+        await gamesApi.DidNotReceive()
+            .BobBarkerSelectShowcaseAsync(Arg.Any<Guid>(), Arg.Any<BobBarkerSelectShowcaseRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task KeepOrTradeAsync_ScrewYourNeighbor_IgnoresTypedSuccessBodyForUnitResponse()
     {
         // Arrange
@@ -222,10 +369,11 @@ public class GameApiRouterTests
         var holdEmApi = Substitute.For<IHoldEmApi>();
         var gamesApi = Substitute.For<IGamesApi>();
         var screwYourNeighborApi = Substitute.For<IScrewYourNeighborApi>();
+        var keepOrTradeResponse = CreateSuccessfulKeepOrTradeResponse(gameId, playerId);
 
         screwYourNeighborApi
             .ScrewYourNeighborKeepOrTradeAsync(gameId, request, Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(CreateSuccessfulKeepOrTradeResponse(gameId, playerId)));
+            .Returns(Task.FromResult<IApiResponse<KeepOrTradeSuccessful>>(keepOrTradeResponse));
 
         var sut = new GameApiRouter(
             fiveCardDrawApi,
@@ -272,6 +420,14 @@ public class GameApiRouterTests
             wasBlocked: false,
             nextPhase: "ResolveKeepOrTrade",
             nextPlayerSeatIndex: 2));
+        return response;
+    }
+
+    private static IApiResponse CreateSuccessfulUnitResponse()
+    {
+        var response = Substitute.For<IApiResponse>();
+        response.IsSuccessStatusCode.Returns(true);
+        response.StatusCode.Returns(HttpStatusCode.OK);
         return response;
     }
 }

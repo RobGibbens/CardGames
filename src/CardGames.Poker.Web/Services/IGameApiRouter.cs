@@ -108,6 +108,7 @@ public class GameApiRouter : IGameApiRouter
     private const string IrishHoldEm = "IRISHHOLDEM";
     private const string PhilsMom = "PHILSMOM";
     private const string CrazyPineapple = "CRAZYPINEAPPLE";
+    private const string BobBarker = "BOBBARKER";
     private const string TwosJacksManWithTheAxe = "TWOSJACKSMANWITHTHEAXE";
     private const string KingsAndLows = "KINGSANDLOWS";
     private const string SevenCardStud = "SEVENCARDSTUD";
@@ -165,6 +166,7 @@ public class GameApiRouter : IGameApiRouter
             [Omaha] = RouteOmahaBettingActionAsync,
             [Nebraska] = RouteNebraskaBettingActionAsync,
             [SouthDakota] = RouteSouthDakotaBettingActionAsync,
+            [BobBarker] = RouteBobBarkerBettingActionAsync,
             [IrishHoldEm] = RouteIrishHoldEmBettingActionAsync,
             [PhilsMom] = RoutePhilsMomBettingActionAsync,
             [CrazyPineapple] = RouteCrazyPineappleBettingActionAsync,
@@ -183,6 +185,7 @@ public class GameApiRouter : IGameApiRouter
             [Omaha] = RouteOmahaDrawAsync,
             [Nebraska] = RouteNebraskaDrawAsync,
             [SouthDakota] = RouteSouthDakotaDrawAsync,
+            [BobBarker] = RouteBobBarkerDrawAsync,
             [IrishHoldEm] = RouteIrishHoldEmDrawAsync,
             [PhilsMom] = RoutePhilsMomDrawAsync,
             [CrazyPineapple] = RouteCrazyPineappleDrawAsync,
@@ -328,6 +331,10 @@ public class GameApiRouter : IGameApiRouter
         => RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
             await _holdEmApi.HoldEmProcessBettingActionAsync(gameId, request));
 
+    private async Task<RouterResponse<ProcessBettingActionSuccessful>> RouteBobBarkerBettingActionAsync(Guid gameId, ProcessBettingActionRequest request)
+        => RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
+            await _holdEmApi.HoldEmProcessBettingActionAsync(gameId, request));
+
     private async Task<RouterResponse<ProcessBettingActionSuccessful>> RouteIrishHoldEmBettingActionAsync(Guid gameId, ProcessBettingActionRequest request)
         => RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
             await _holdEmApi.HoldEmProcessBettingActionAsync(gameId, request));
@@ -355,6 +362,40 @@ public class GameApiRouter : IGameApiRouter
     private Task<RouterResponse<ProcessDrawResult>> RouteSouthDakotaDrawAsync(Guid gameId, Guid playerId, int playerSeatIndex, List<int> discardIndices)
         => Task.FromResult(
             RouterResponse<ProcessDrawResult>.Failure("Draw phase not supported for South Dakota.", HttpStatusCode.BadRequest));
+
+    private async Task<RouterResponse<ProcessDrawResult>> RouteBobBarkerDrawAsync(Guid gameId, Guid playerId, int playerSeatIndex, List<int> discardIndices)
+    {
+        if (playerSeatIndex < 0)
+        {
+            return RouterResponse<ProcessDrawResult>.Failure("Player seat is required for Bob Barker showcase selection.", HttpStatusCode.BadRequest);
+        }
+
+        if (discardIndices.Count != 1)
+        {
+            return RouterResponse<ProcessDrawResult>.Failure("Select exactly one showcase card.", HttpStatusCode.BadRequest);
+        }
+
+        var request = new BobBarkerSelectShowcaseRequest(discardIndices[0], playerSeatIndex);
+        var response = await _gamesApi.BobBarkerSelectShowcaseAsync(gameId, request);
+        if (!response.IsSuccessStatusCode)
+        {
+            return RouterResponse<ProcessDrawResult>.Failure(response.Error?.Content ?? response.Error?.Message, response.StatusCode);
+        }
+
+        return RouterResponse<ProcessDrawResult>.Success(new ProcessDrawResult
+        {
+            Original = new ProcessDrawSuccessful(
+                currentPhase: "DrawPhase",
+                discardedCards: [],
+                drawComplete: false,
+                gameId: gameId,
+                newCards: [],
+                nextDrawPlayerIndex: null,
+                nextDrawPlayerName: string.Empty,
+                playerName: string.Empty,
+                playerSeatIndex: playerSeatIndex)
+        }, response.StatusCode);
+    }
 
     private async Task<RouterResponse<ProcessDrawResult>> RouteIrishHoldEmDrawAsync(Guid gameId, Guid playerId, int playerSeatIndex, List<int> discardIndices)
     {

@@ -9,7 +9,7 @@ Adding a new game type involves:
 2. Defining the game rules metadata
 3. Registering the game in the API layer
 
-**No UI changes are required** - the UI adapts automatically based on the game rules.
+For straightforward variants, that can be enough. In the current repo, variants with bespoke turn actions, private-state needs, or custom showdown payloads still require focused API/contracts/web updates. Treat the rules metadata as the starting point, not a guarantee that no other layer changes are needed.
 
 ## Step-by-Step Example: Adding "Kings and Lows"
 
@@ -242,6 +242,24 @@ if (PokerGameRulesRegistry.TryGet("KINGSANDLOWS", out var rules))
 ```
 
 ## Guidelines for Defining Game Rules
+
+## When Metadata Is Not Enough
+
+The current architecture handles many phase and rendering concerns from `GameRules`, but some features still need localized variant work.
+
+Use Bob Barker as the reference pattern when a game needs any of the following:
+
+- A dedicated player action that does not fit an existing generic command, such as Bob Barker's showcase selection before pre-flop betting.
+- Variant-specific private or public state, such as marking a selected showcase card privately while revealing the dealer target card only at showdown.
+- Custom showdown settlement or display payloads, such as Bob Barker's split main-hand/showcase results.
+
+For variants in that category, plan for changes in these seams:
+
+- API feature folder and endpoint registration under `src/CardGames.Poker.Api/Features/Games/{Variant}`.
+- Contracts for Refit or SignalR DTO extensions under `src/CardGames.Contracts/`.
+- `TableStateBuilder` and showdown settlement shaping in the API.
+- Web router mappings in `src/CardGames.Poker.Web/Services/IGameApiRouter.cs`.
+- Localized UI updates in table-play or overlay components rather than broad UI rewrites.
 
 ### Phases
 

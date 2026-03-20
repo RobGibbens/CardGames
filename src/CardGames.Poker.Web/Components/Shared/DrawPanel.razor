@@ -20,11 +20,11 @@
             }
             else if (MinDiscards > 0 && MinDiscards == MaxDiscards)
             {
-                <text>Select exactly @MinDiscards cards to discard</text>
+                <text>Select exactly @MinDiscards card(s) to @SelectionVerb</text>
             }
             else if (MinDiscards > 0 && MinDiscards < MaxDiscards)
             {
-                <text>Select @MinDiscards–@MaxDiscards cards to discard</text>
+                <text>Select @MinDiscards–@MaxDiscards cards to @SelectionVerb</text>
             }
             else if (MaxDiscards == 4)
             {
@@ -32,7 +32,7 @@
             }
             else if (!IsReadOnly)
             {
-                <text>Select cards to discard (0-@MaxDiscards cards)</text>
+                <text>Select cards to @SelectionVerb (0-@MaxDiscards cards)</text>
             }
         </div>
         @if (!string.IsNullOrWhiteSpace(HandDescription))
@@ -86,7 +86,7 @@
                 @if (isSelected)
                 {
                     <div class="discard-badge">
-                        <i class="fa-solid fa-xmark"></i>
+                        <i class="@SelectedBadgeIconClass"></i>
                     </div>
                 }
             </div>
@@ -103,20 +103,20 @@
         {
             @if (MinDiscards > 0 && MinDiscards == MaxDiscards)
             {
-                <span class="selection-hint">You must discard exactly @MinDiscards card(s)</span>
+                <span class="selection-hint">You must @SelectionVerb exactly @MinDiscards card(s)</span>
             }
             else if (MinDiscards > 0)
             {
-                <span class="selection-hint">Select @MinDiscards to @MaxDiscards cards to discard</span>
+                <span class="selection-hint">Select @MinDiscards to @MaxDiscards cards to @SelectionVerb</span>
             }
             else
             {
-                <span class="selection-hint">Click cards to select them for discard, or stand pat</span>
+                <span class="selection-hint">Click cards to select them to @SelectionVerb, or stand pat</span>
             }
         }
         else
         {
-            <span class="selection-count">@SelectedCount card(s) selected for discard</span>
+            <span class="selection-count">@SelectedCount card(s) selected to @SelectionVerb</span>
         }
     </div>
 
@@ -289,6 +289,12 @@
     /// </summary>
     [Parameter]
     public string DiscardLabel { get; set; } = "Discard";
+
+    [Parameter]
+    public string SelectionVerb { get; set; } = "discard";
+
+    [Parameter]
+    public string SelectedBadgeIconClass { get; set; } = "fa-solid fa-xmark";
 
     /// <summary>
     /// When true, hides action buttons and shows cards in read-only mode.
