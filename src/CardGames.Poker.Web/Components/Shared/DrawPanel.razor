@@ -325,13 +325,6 @@
     public ActionTimerStateDto? ActionTimer { get; set; }
 
     /// <summary>
-    /// When true, timeout auto-action selects the lowest card while preserving paired ranks when possible.
-    /// Used by Bob Barker showcase selection.
-    /// </summary>
-    [Parameter]
-    public bool AutoSelectLowestCardOnTimeout { get; set; }
-
-    /// <summary>
     /// Callback invoked when the timer expires and standing pat is not a valid default action
     /// (e.g., Irish Hold 'Em requires exactly 2 discards, so timeout means fold).
     /// When set, this is called instead of OnDraw([]) on timeout.
@@ -489,10 +482,6 @@
             {
                 await OnTimeoutFold.InvokeAsync();
             }
-            else if (AutoSelectLowestCardOnTimeout)
-            {
-                await OnDraw.InvokeAsync(GetTimeoutSelectionIndices());
-            }
             else
             {
                 await OnDraw.InvokeAsync([]);
@@ -556,85 +545,6 @@
         };
 
         return rank;
-    }
-
-    private List<int> GetTimeoutSelectionIndices()
-    {
-        if (SelectedCount >= MinDiscards && SelectedCount <= MaxDiscards)
-        {
-            return SelectedIndices.OrderBy(index => index).ToList();
-        }
-
-        var preferredIndex = GetLowestTimeoutSelectionIndex(Cards);
-        return preferredIndex >= 0 ? [preferredIndex] : [];
-    }
-
-    private static int GetLowestTimeoutSelectionIndex(IReadOnlyList<CardInfo> cards)
-    {
-        if (cards.Count == 0)
-        {
-            return -1;
-        }
-
-        var rankedCards = cards
-            .Select((card, index) => new TimeoutSelectionCard(index, GetBobBarkerTimeoutRankValue(card.Rank)))
-            .Where(card => card.RankValue != int.MaxValue)
-            .ToList();
-
-        if (rankedCards.Count == 0)
-        {
-            return 0;
-        }
-
-        var groups = rankedCards
-            .GroupBy(card => card.RankValue)
-            .Select(group => new TimeoutSelectionGroup(
-                group.Key,
-                group.Count(),
-                group.Min(card => card.Index)))
-            .OrderBy(group => group.RankValue)
-            .ThenBy(group => group.LowestIndex)
-            .ToList();
-
-        var singleton = groups.FirstOrDefault(group => group.Count == 1);
-        if (singleton is not null)
-        {
-            return singleton.LowestIndex;
-        }
-
-        return groups
-            .OrderBy(group => group.Count)
-            .ThenByDescending(group => group.RankValue)
-            .ThenBy(group => group.LowestIndex)
-            .First()
-            .LowestIndex;
-    }
-
-    private static int GetBobBarkerTimeoutRankValue(string? rank)
-    {
-        if (string.IsNullOrWhiteSpace(rank))
-        {
-            return int.MaxValue;
-        }
-
-        // Bob Barker treats aces as low unless the hidden dealer card is also an ace.
-        return rank.Trim().ToUpperInvariant() switch
-        {
-            "A" or "ACE" => 1,
-            "2" or "TWO" or "DEUCE" => 2,
-            "3" or "THREE" => 3,
-            "4" or "FOUR" => 4,
-            "5" or "FIVE" => 5,
-            "6" or "SIX" => 6,
-            "7" or "SEVEN" => 7,
-            "8" or "EIGHT" => 8,
-            "9" or "NINE" => 9,
-            "10" or "T" or "TEN" => 10,
-            "J" or "JACK" => 11,
-            "Q" or "QUEEN" => 12,
-            "K" or "KING" => 13,
-            _ => int.MaxValue
-        };
     }
     
     private static int GetRankValue(string? rank)
@@ -723,10 +633,6 @@
 
         return lowest == int.MaxValue ? null : lowest;
     }
-
-    private sealed record TimeoutSelectionCard(int Index, int RankValue);
-
-    private sealed record TimeoutSelectionGroup(int RankValue, int Count, int LowestIndex);
 
             private sealed record IndexedCard(CardInfo Card, int Index);
         }

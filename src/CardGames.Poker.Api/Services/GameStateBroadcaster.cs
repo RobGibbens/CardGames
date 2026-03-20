@@ -102,7 +102,9 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
                              state.CurrentPhaseRequiresAction;
 
         var currentActorSeatIndex = state.CurrentActorSeatIndex;
-        var isSimultaneousAction = string.Equals(state.CurrentPhase, "DropOrStay", StringComparison.OrdinalIgnoreCase);
+        var isSimultaneousAction = string.Equals(state.CurrentPhase, "DropOrStay", StringComparison.OrdinalIgnoreCase)
+            || (string.Equals(state.GameTypeCode, PokerGameMetadataRegistry.BobBarkerCode, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(state.CurrentPhase, "DrawPhase", StringComparison.OrdinalIgnoreCase));
 
         if (!requiresAction || (currentActorSeatIndex < 0 && !isSimultaneousAction) || state.IsPaused)
         {

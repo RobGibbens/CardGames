@@ -5,13 +5,14 @@
 
 - [ ] https://github.com/leeoades/FunctionalStateMachine
 
-- [ ] BB - Chose lowest card by default
+- [ ] BB - Showdown UI
+- [ ] BB - Showdown speed
+- [x] BB - Chose lowest card by default
 - [x] BB - Separate out showcase card
 - [x] BB - Not showing BB SB chips
 - [x] BB - Showcase showing 10 cards for winner and other hands
 - [ ] BB - The blinds chips icons overlay the hand eval
-
-
+- [ ] BB - Test in DC
 
 - [ ] SYN - check for ties
 - [ ] SYN - odds

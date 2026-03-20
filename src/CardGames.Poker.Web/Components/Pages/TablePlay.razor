@@ -314,7 +314,6 @@
                        IsReadOnly="@(IsDrawCompletePhase || _cardsDrawn)"
                        ReadOnlyMessage="@(IsDrawCompletePhase ? "Waiting for showdown..." : "New cards drawn!")"
                        ActionTimer="@_actionTimerState"
-                       AutoSelectLowestCardOnTimeout="@IsBobBarker"
                        EnableKingsAndLowsWildCardHighlighting="@IsKingsAndLows"
                        EnableBaseballWildCardHighlighting="@(IsBaseball || IsHoldTheBaseball)"
                        OnTimeoutFold="@GetDrawTimeoutFoldCallback()" />

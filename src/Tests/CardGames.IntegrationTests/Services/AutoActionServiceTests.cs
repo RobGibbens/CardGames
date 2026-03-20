@@ -3,6 +3,7 @@ using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.ProcessBettingAction;
 using CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.ProcessDraw;
+using CardGames.Poker.Api.Features.Games.BobBarker.v1.Commands.SelectShowcase;
 using CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.DrawCards;
 using CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.DropOrStay;
 using CardGames.Poker.Api.GameFlow;
@@ -278,6 +279,133 @@ public class AutoActionServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task PerformAutoActionAsync_Draw_BobBarker_SelectsLowestSingletonShowcaseCard()
+    {
+        var gameId = Guid.NewGuid();
+        var playerSeat = 1;
+        var player = new GamePlayer
+        {
+            GameId = gameId,
+            PlayerId = Guid.NewGuid(),
+            SeatPosition = playerSeat,
+            Status = GamePlayerStatus.Active
+        };
+        var game = new Game
+        {
+            Id = gameId,
+            CurrentHandNumber = 1,
+            CurrentPhase = "DrawPhase",
+            GameType = new GameType { Code = "BOBBARKER", Name = "Bob Barker" },
+            GamePlayers = [player]
+        };
+
+        _dbContext.Games.Add(game);
+        _dbContext.GamePlayers.Add(player);
+        _dbContext.GameCards.AddRange(
+            CreateBobBarkerCard(gameId, player.Id, 1, CardSymbol.Deuce),
+            CreateBobBarkerCard(gameId, player.Id, 2, CardSymbol.Deuce),
+            CreateBobBarkerCard(gameId, player.Id, 3, CardSymbol.Five),
+            CreateBobBarkerCard(gameId, player.Id, 4, CardSymbol.Nine),
+            CreateBobBarkerCard(gameId, player.Id, 5, CardSymbol.King));
+        await _dbContext.SaveChangesAsync();
+
+        await _service.PerformAutoActionAsync(gameId, playerSeat);
+
+        _mediator.SentCommands.Should().ContainSingle(c => c is SelectShowcaseCommand);
+        var cmd = _mediator.SentCommands.OfType<SelectShowcaseCommand>().First();
+        cmd.PlayerSeatIndex.Should().Be(playerSeat);
+        cmd.ShowcaseCardIndex.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task PerformAutoActionAsync_Draw_BobBarker_TreatsAceAsLowestCard()
+    {
+        var gameId = Guid.NewGuid();
+        var playerSeat = 1;
+        var player = new GamePlayer
+        {
+            GameId = gameId,
+            PlayerId = Guid.NewGuid(),
+            SeatPosition = playerSeat,
+            Status = GamePlayerStatus.Active
+        };
+        var game = new Game
+        {
+            Id = gameId,
+            CurrentHandNumber = 1,
+            CurrentPhase = "DrawPhase",
+            GameType = new GameType { Code = "BOBBARKER", Name = "Bob Barker" },
+            GamePlayers = [player]
+        };
+
+        _dbContext.Games.Add(game);
+        _dbContext.GamePlayers.Add(player);
+        _dbContext.GameCards.AddRange(
+            CreateBobBarkerCard(gameId, player.Id, 1, CardSymbol.Ace),
+            CreateBobBarkerCard(gameId, player.Id, 2, CardSymbol.Deuce),
+            CreateBobBarkerCard(gameId, player.Id, 3, CardSymbol.Five),
+            CreateBobBarkerCard(gameId, player.Id, 4, CardSymbol.Nine),
+            CreateBobBarkerCard(gameId, player.Id, 5, CardSymbol.King));
+        await _dbContext.SaveChangesAsync();
+
+        await _service.PerformAutoActionAsync(gameId, playerSeat);
+
+        _mediator.SentCommands.Should().ContainSingle(c => c is SelectShowcaseCommand);
+        var cmd = _mediator.SentCommands.OfType<SelectShowcaseCommand>().First();
+        cmd.ShowcaseCardIndex.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task PerformAutoActionAsync_Draw_BobBarker_GlobalTimer_SelectsAllPendingPlayers()
+    {
+        var gameId = Guid.NewGuid();
+        var firstPlayer = new GamePlayer
+        {
+            GameId = gameId,
+            PlayerId = Guid.NewGuid(),
+            SeatPosition = 1,
+            Status = GamePlayerStatus.Active
+        };
+        var secondPlayer = new GamePlayer
+        {
+            GameId = gameId,
+            PlayerId = Guid.NewGuid(),
+            SeatPosition = 2,
+            Status = GamePlayerStatus.Active
+        };
+        var game = new Game
+        {
+            Id = gameId,
+            CurrentHandNumber = 1,
+            CurrentPhase = "DrawPhase",
+            GameType = new GameType { Code = "BOBBARKER", Name = "Bob Barker" },
+            GamePlayers = [firstPlayer, secondPlayer]
+        };
+
+        _dbContext.Games.Add(game);
+        _dbContext.GamePlayers.AddRange(firstPlayer, secondPlayer);
+        _dbContext.GameCards.AddRange(
+            CreateBobBarkerCard(gameId, firstPlayer.Id, 1, CardSymbol.Deuce),
+            CreateBobBarkerCard(gameId, firstPlayer.Id, 2, CardSymbol.Deuce),
+            CreateBobBarkerCard(gameId, firstPlayer.Id, 3, CardSymbol.Five),
+            CreateBobBarkerCard(gameId, firstPlayer.Id, 4, CardSymbol.Nine),
+            CreateBobBarkerCard(gameId, firstPlayer.Id, 5, CardSymbol.King),
+            CreateBobBarkerCard(gameId, secondPlayer.Id, 1, CardSymbol.Three),
+            CreateBobBarkerCard(gameId, secondPlayer.Id, 2, CardSymbol.Three),
+            CreateBobBarkerCard(gameId, secondPlayer.Id, 3, CardSymbol.Seven),
+            CreateBobBarkerCard(gameId, secondPlayer.Id, 4, CardSymbol.Jack),
+            CreateBobBarkerCard(gameId, secondPlayer.Id, 5, CardSymbol.Queen));
+        await _dbContext.SaveChangesAsync();
+
+        await _service.PerformAutoActionAsync(gameId, -1);
+
+        var commands = _mediator.SentCommands.OfType<SelectShowcaseCommand>().ToList();
+        commands.Should().HaveCount(2);
+        commands.Should().ContainSingle(c => c.PlayerSeatIndex == 1 && c.ShowcaseCardIndex == 2);
+        commands.Should().ContainSingle(c => c.PlayerSeatIndex == 2 && c.ShowcaseCardIndex == 2);
+    }
+
+    [Fact]
     public async Task PerformAutoActionAsync_DropOrStay_KingsAndLows_Drops()
     {
         var gameId = Guid.NewGuid();
@@ -517,6 +645,28 @@ public class AutoActionServiceTests : IDisposable
                 return (TResponse)(object)OneOf<DropOrStaySuccessful, DropOrStayError>.FromT0(success);
             }
 
+            if (request is SelectShowcaseCommand showcaseCmd)
+            {
+                if (ForceError)
+                {
+                    return (TResponse)(object)OneOf<SelectShowcaseSuccessful, SelectShowcaseError>.FromT1(new SelectShowcaseError { Message = "Simulated Error", Code = default });
+                }
+
+                var success = new SelectShowcaseSuccessful
+                {
+                    GameId = showcaseCmd.GameId,
+                    PlayerName = "TestPlayer",
+                    PlayerSeatIndex = showcaseCmd.PlayerSeatIndex ?? 0,
+                    ShowcaseCardIndex = showcaseCmd.ShowcaseCardIndex,
+                    SelectionPhaseComplete = false,
+                    CurrentPhase = "DrawPhase",
+                    NextPlayerSeatIndex = 2,
+                    NextPlayerName = "NextPlayer"
+                };
+
+                return (TResponse)(object)OneOf<SelectShowcaseSuccessful, SelectShowcaseError>.FromT0(success);
+            }
+
             return default!;
         }
 
@@ -635,5 +785,24 @@ public class AutoActionServiceTests : IDisposable
                     break;
             }
         }
+    }
+
+    private static GameCard CreateBobBarkerCard(Guid gameId, Guid gamePlayerId, int dealOrder, CardSymbol symbol)
+    {
+        return new GameCard
+        {
+            Id = Guid.NewGuid(),
+            GameId = gameId,
+            GamePlayerId = gamePlayerId,
+            HandNumber = 1,
+            Location = CardLocation.Hand,
+            Symbol = symbol,
+            Suit = CardSuit.Clubs,
+            DealOrder = dealOrder,
+            IsVisible = false,
+            IsDiscarded = false,
+            DealtAt = DateTimeOffset.UtcNow,
+            DealtAtPhase = nameof(Phases.Dealing)
+        };
     }
 }
