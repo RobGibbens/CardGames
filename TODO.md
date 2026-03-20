@@ -8,7 +8,7 @@
 - [ ] SYN - check for ties
 - [ ] SYN - odds
 - [ ] Lobby - Filter by status
-- [ ] Join game modal - should not be able to click out of it
+- [x] Join game modal - should not be able to click out of it
 - [ ] Join game modal background color
 - [ ] Joining table adds 5001 when setting 5000
 - [ ] Bringing in cash to a game should require host approval
