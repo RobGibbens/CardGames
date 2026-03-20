@@ -1,6 +1,10 @@
+#nullable enable
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using CardGames.Core.French.Cards;
 using CardGames.Contracts.SignalR;
 using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Web.Components.Shared;
@@ -47,6 +51,79 @@ public class BobBarkerShowdownOverlayTests
         InvokePlayerDisplayName(unnamedPlayer).Should().Be("Zoe");
     }
 
+    [Fact]
+    public void GetDisplayCardsForShowdown_BobBarker_WithCombinedCards_ReturnsBestFiveWithoutShowcase()
+    {
+        var overlay = new ShowdownOverlay
+        {
+            GameTypeCode = "BOBBARKER",
+            ShowdownState = new ShowdownPublicDto
+            {
+                PlayerResults =
+                [
+                    CreatePlayer(
+                        "amy@example.com",
+                        showcaseCard: new CardPublicDto
+                        {
+                            IsFaceUp = true,
+                            Rank = "7",
+                            Suit = "Spades",
+                            DealOrder = 5
+                        })
+                ]
+            }
+        };
+
+        var hand = CreateHand("amy@example.com", "Ah Ad Kc 2c 7s Ac Ks Kd 3h 4d");
+        var sharedCommunityCards = ParseShowdownCards("Ac Ks Kd 3h 4d");
+
+        var cards = InvokeShowdownDisplayCards(overlay, hand, sharedCommunityCards);
+
+        cards.Should().HaveCount(5);
+        cards.Should().Contain(new ShowdownCard(CardSuit.Hearts, CardSymbol.Ace));
+        cards.Should().Contain(new ShowdownCard(CardSuit.Diamonds, CardSymbol.Ace));
+        cards.Should().Contain(new ShowdownCard(CardSuit.Clubs, CardSymbol.Ace));
+        cards.Should().Contain(new ShowdownCard(CardSuit.Spades, CardSymbol.King));
+        cards.Should().Contain(new ShowdownCard(CardSuit.Diamonds, CardSymbol.King));
+        cards.Should().NotContain(new ShowdownCard(CardSuit.Spades, CardSymbol.Seven));
+    }
+
+    [Fact]
+    public void GetDisplayCardsForShowdown_BobBarker_WithSeparatedCommunity_ReturnsBestFive()
+    {
+        var overlay = new ShowdownOverlay
+        {
+            GameTypeCode = "BOBBARKER",
+            ShowdownState = new ShowdownPublicDto
+            {
+                PlayerResults =
+                [
+                    CreatePlayer(
+                        "amy@example.com",
+                        showcaseCard: new CardPublicDto
+                        {
+                            IsFaceUp = true,
+                            Rank = "7",
+                            Suit = "Spades",
+                            DealOrder = 5
+                        })
+                ]
+            }
+        };
+
+        var hand = CreateHand("amy@example.com", "Ah Ad Kc 2c");
+        var sharedCommunityCards = ParseShowdownCards("Ac Ks Kd 3h 4d");
+
+        var cards = InvokeShowdownDisplayCards(overlay, hand, sharedCommunityCards);
+
+        cards.Should().HaveCount(5);
+        cards.Should().Contain(new ShowdownCard(CardSuit.Hearts, CardSymbol.Ace));
+        cards.Should().Contain(new ShowdownCard(CardSuit.Diamonds, CardSymbol.Ace));
+        cards.Should().Contain(new ShowdownCard(CardSuit.Clubs, CardSymbol.Ace));
+        cards.Should().Contain(new ShowdownCard(CardSuit.Spades, CardSymbol.King));
+        cards.Should().Contain(new ShowdownCard(CardSuit.Diamonds, CardSymbol.King));
+    }
+
     private static IEnumerable<ShowdownPlayerResultDto> InvokeBobBarkerPlayers(ShowdownOverlay overlay)
     {
         var method = typeof(ShowdownOverlay).GetMethod("GetBobBarkerPlayers", BindingFlags.Instance | BindingFlags.NonPublic);
@@ -67,6 +144,91 @@ public class BobBarkerShowdownOverlayTests
         var result = method!.Invoke(null, [player]);
         result.Should().BeOfType<string>();
         return (string)result!;
+    }
+
+    private static IReadOnlyList<ShowdownCard> InvokeShowdownDisplayCards(
+        ShowdownOverlay overlay,
+        ShowdownPlayerHand hand,
+        IReadOnlyList<ShowdownCard> sharedCommunityCards)
+    {
+        var method = typeof(ShowdownOverlay).GetMethod(
+            "GetDisplayCardsForShowdown",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+
+        method.Should().NotBeNull("ShowdownOverlay should normalize Bob Barker showdown cards before rendering");
+
+        var result = method!.Invoke(overlay, [hand, sharedCommunityCards, false]);
+        result.Should().NotBeNull();
+
+        var tuples = result!
+            .Should()
+            .BeAssignableTo<IEnumerable<(ShowdownCard, bool)>>()
+            .Subject
+            .ToList();
+
+        return tuples.Select(tuple => tuple.Item1).ToList();
+    }
+
+    private static ShowdownPlayerHand CreateHand(string playerName, string cards)
+    {
+        return new ShowdownPlayerHand(
+            amountWon: 0,
+            cards: ParseShowdownCards(cards).ToList(),
+            handDescription: string.Empty,
+            handStrength: null,
+            handType: string.Empty,
+            highHandAmountWon: 0,
+            isHighHandWinner: false,
+            isSevensWinner: false,
+            isWinner: false,
+            playerFirstName: playerName,
+            playerName: playerName,
+            sevensAmountWon: 0,
+            wildCardIndexes: []);
+    }
+
+    private static IReadOnlyList<ShowdownCard> ParseShowdownCards(string cards)
+    {
+        return cards
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Select(ParseShowdownCard)
+            .ToList();
+    }
+
+    private static ShowdownCard ParseShowdownCard(string token)
+    {
+        token.Should().NotBeNullOrWhiteSpace();
+        var trimmed = token.Trim();
+
+        var suit = trimmed[^1] switch
+        {
+            'h' or 'H' => CardSuit.Hearts,
+            'd' or 'D' => CardSuit.Diamonds,
+            'c' or 'C' => CardSuit.Clubs,
+            's' or 'S' => CardSuit.Spades,
+            _ => throw new ArgumentOutOfRangeException(nameof(token), token, "Unknown suit")
+        };
+
+        var rankText = trimmed[..^1].ToUpperInvariant();
+        var symbol = rankText switch
+        {
+            "A" => CardSymbol.Ace,
+            "K" => CardSymbol.King,
+            "Q" => CardSymbol.Queen,
+            "J" => CardSymbol.Jack,
+            "10" or "T" => CardSymbol.Ten,
+            "9" => CardSymbol.Nine,
+            "8" => CardSymbol.Eight,
+            "7" => CardSymbol.Seven,
+            "6" => CardSymbol.Six,
+            "5" => CardSymbol.Five,
+            "4" => CardSymbol.Four,
+            "3" => CardSymbol.Three,
+            "2" => CardSymbol.Deuce,
+            _ => throw new ArgumentOutOfRangeException(nameof(token), token, "Unknown rank")
+        };
+
+        return new ShowdownCard(suit, symbol);
     }
 
     private static ShowdownPlayerResultDto CreatePlayer(

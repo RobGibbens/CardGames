@@ -1,7 +1,10 @@
 @using CardGames.Poker.Api.Contracts
+@using CardGames.Core.Extensions
 @using CardGames.Core.French.Cards
 @using CardGames.Poker.Evaluation
 @using CardGames.Poker.Hands
+@using CardGames.Poker.Hands.HandTypes
+@using CardGames.Poker.Hands.Strength
 @using CardGames.Poker.Hands.DrawHands
 @using CardGames.Poker.Hands.StudHands
 @using CardGames.Contracts.SignalR
@@ -36,7 +39,7 @@
             var sharedCommunityCards = SharedCommunityCards is { Count: > 0 }
                 ? SharedCommunityCards
                 : GetSharedCommunityCards(winnerHand);
-            var winnerCards = winnerHand is not null ? GetDisplayCards(winnerHand, sharedCommunityCards, isRazz) : [];
+            var winnerCards = winnerHand is not null ? GetDisplayCardsForShowdown(winnerHand, sharedCommunityCards, isRazz) : [];
             var winnerName = GetWinnerDisplayName(ShowdownResult, winnerHand);
             var winnerDescription = GetWinnerDescription(ShowdownResult, winnerHand, isRazz);
             var winnerAmount = GetWinnerAmount(ShowdownResult, winnerHand);
@@ -156,7 +159,7 @@
                     <h3 class="showdown-section-title">Other Hands</h3>
                     @foreach (var hand in otherHands)
                     {
-                        var handCards = GetDisplayCards(hand, sharedCommunityCards, isRazz);
+                        var handCards = GetDisplayCardsForShowdown(hand, sharedCommunityCards, isRazz);
                         <div class="other-hand-row">
                             <div class="other-hand-info">
                                 <span class="other-hand-name">@DisplayFirstName(hand)</span>
@@ -245,6 +248,30 @@
             .OrderByDescending(player => player.IsShowcaseWinner)
             .ThenByDescending(player => player.ShowcaseAmountWon)
             .ThenBy(player => player.PlayerName);
+    }
+
+    private List<(ShowdownCard Card, bool IsWild)> GetDisplayCardsForShowdown(
+        ShowdownPlayerHand hand,
+        IReadOnlyList<ShowdownCard>? sharedCommunityCards,
+        bool isRazz)
+    {
+        var displayCards = GetDisplayCards(hand, sharedCommunityCards, isRazz);
+
+        if (!IsBobBarkerGame || isRazz || displayCards.Count == 5)
+        {
+            return displayCards;
+        }
+
+        return GetBobBarkerDisplayCards(hand, sharedCommunityCards, GetBobBarkerShowcaseCard(hand), displayCards);
+    }
+
+    private ShowdownCard? GetBobBarkerShowcaseCard(ShowdownPlayerHand hand)
+    {
+        var showcaseCard = ShowdownState?.PlayerResults?
+            .FirstOrDefault(player => string.Equals(player.PlayerName, hand.PlayerName, StringComparison.OrdinalIgnoreCase))?
+            .ShowcaseCard;
+
+        return ToShowdownCard(showcaseCard);
     }
 
     private static string GetPlayerDisplayName(ShowdownPlayerResultDto player)
@@ -550,6 +577,170 @@
             .Select((c, i) => (Card: c, IsWild: wildSet.Contains(i)))
             .OrderBy(x => x.Card.Symbol)
             .ToList();
+    }
+
+    private static List<(ShowdownCard Card, bool IsWild)> GetBobBarkerDisplayCards(
+        ShowdownPlayerHand hand,
+        IReadOnlyList<ShowdownCard>? sharedCommunityCards,
+        ShowdownCard? showcaseCard,
+        List<(ShowdownCard Card, bool IsWild)> fallbackCards)
+    {
+        if (hand.Cards is null || hand.Cards.Count == 0)
+        {
+            return [];
+        }
+
+        var allCards = hand.Cards.ToList();
+        var communityCards = sharedCommunityCards?.ToList() ?? [];
+        var playerCards = allCards;
+
+        if (communityCards.Count > 0 && CardsEndWith(allCards, communityCards))
+        {
+            playerCards = allCards.Take(allCards.Count - communityCards.Count).ToList();
+        }
+        else if (communityCards.Count == 0 && allCards.Count > 5)
+        {
+            communityCards = allCards.Skip(5).ToList();
+            playerCards = allCards.Take(5).ToList();
+        }
+
+        if (showcaseCard is { } showcase)
+        {
+            var showcaseIndex = playerCards.FindIndex(card => CardsMatch(card, showcase));
+            if (showcaseIndex >= 0)
+            {
+                playerCards.RemoveAt(showcaseIndex);
+            }
+        }
+
+        if (playerCards.Count != 4 || communityCards.Count < 3)
+        {
+            return fallbackCards;
+        }
+
+        var holeCards = playerCards
+            .Where(card => card is { Suit: not null, Symbol: not null })
+            .Select(card => (Card: card, Core: new Card(MapSuit(card.Suit!.Value), MapSymbol(card.Symbol!.Value))))
+            .ToList();
+        var boardCards = communityCards
+            .Where(card => card is { Suit: not null, Symbol: not null })
+            .Select(card => (Card: card, Core: new Card(MapSuit(card.Suit!.Value), MapSymbol(card.Symbol!.Value))))
+            .ToList();
+
+        if (holeCards.Count != 4 || boardCards.Count < 3)
+        {
+            return fallbackCards;
+        }
+
+        List<(ShowdownCard Card, Card Core)>? bestCombo = null;
+        long bestStrength = long.MinValue;
+
+        foreach (var holePair in holeCards.SubsetsOfSize(2))
+        {
+            foreach (var communityTriple in boardCards.SubsetsOfSize(3))
+            {
+                var combo = holePair.Concat(communityTriple).ToList();
+                var coreCards = combo.Select(entry => entry.Core).ToList();
+                var handType = HandTypeDetermination.DetermineHandType(coreCards);
+                var strength = HandStrength.Calculate(coreCards, handType, HandTypeStrengthRanking.Classic);
+
+                if (strength > bestStrength)
+                {
+                    bestStrength = strength;
+                    bestCombo = combo;
+                }
+            }
+        }
+
+        return bestCombo is null
+            ? fallbackCards
+            : bestCombo
+                .Select(entry => (entry.Card, IsWild: false))
+                .OrderBy(entry => GetCardDisplayOrder(entry.Card))
+                .ToList();
+    }
+
+    private static bool CardsEndWith(IReadOnlyList<ShowdownCard> cards, IReadOnlyList<ShowdownCard> suffix)
+    {
+        if (suffix.Count == 0 || cards.Count < suffix.Count)
+        {
+            return false;
+        }
+
+        var offset = cards.Count - suffix.Count;
+        for (var i = 0; i < suffix.Count; i++)
+        {
+            if (!CardsMatch(cards[offset + i], suffix[i]))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool CardsMatch(ShowdownCard left, ShowdownCard right)
+    {
+        return left.Suit == right.Suit && left.Symbol == right.Symbol;
+    }
+
+    private static ShowdownCard? ToShowdownCard(CardPublicDto? card)
+    {
+        if (card is null || !TryMapPublicSuit(card.Suit, out var suit) || !TryMapPublicRank(card.Rank, out var symbol))
+        {
+            return null;
+        }
+
+        return new ShowdownCard(suit, symbol);
+    }
+
+    private static bool TryMapPublicSuit(string? suit, out CardSuit mappedSuit)
+    {
+        mappedSuit = suit?.Trim() switch
+        {
+            "Hearts" => CardSuit.Hearts,
+            "Diamonds" => CardSuit.Diamonds,
+            "Clubs" => CardSuit.Clubs,
+            "Spades" => CardSuit.Spades,
+            _ => default
+        };
+
+        return suit is "Hearts" or "Diamonds" or "Clubs" or "Spades";
+    }
+
+    private static bool TryMapPublicRank(string? rank, out CardSymbol mappedSymbol)
+    {
+        mappedSymbol = rank?.Trim().ToUpperInvariant() switch
+        {
+            "A" or "ACE" => CardSymbol.Ace,
+            "K" or "KING" => CardSymbol.King,
+            "Q" or "QUEEN" => CardSymbol.Queen,
+            "J" or "JACK" => CardSymbol.Jack,
+            "10" => CardSymbol.Ten,
+            "9" => CardSymbol.Nine,
+            "8" => CardSymbol.Eight,
+            "7" => CardSymbol.Seven,
+            "6" => CardSymbol.Six,
+            "5" => CardSymbol.Five,
+            "4" => CardSymbol.Four,
+            "3" => CardSymbol.Three,
+            "2" => CardSymbol.Deuce,
+            _ => default
+        };
+
+        return rank?.Trim().ToUpperInvariant() is "A" or "ACE"
+            or "K" or "KING"
+            or "Q" or "QUEEN"
+            or "J" or "JACK"
+            or "10"
+            or "9"
+            or "8"
+            or "7"
+            or "6"
+            or "5"
+            or "4"
+            or "3"
+            or "2";
     }
 
     private string? GetPlayingCardSuit(ShowdownCard card)

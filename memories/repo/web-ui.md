@@ -1,1 +1,2 @@
 - Table blind badges are gated by `TableCanvas.IsBlindBasedGame`; if a blind-based variant is missing there, `TableSeat` will never receive `IsSmallBlind` or `IsBigBlind`.
+- Bob Barker showdown rendering can receive either `4 hole + shared board` or `5 player cards + 5 board`; normalize via the separate showcase card before computing/rendering the best five.

@@ -6,9 +6,9 @@
 - [ ] https://github.com/leeoades/FunctionalStateMachine
 
 - [ ] BB - Chose lowest card by default
-- [ ] BB - Separate out showcase card
+- [x] BB - Separate out showcase card
 - [x] BB - Not showing BB SB chips
-- [ ] BB - Showcase showing 10 cards for winner and other hands
+- [x] BB - Showcase showing 10 cards for winner and other hands
 - [ ] BB - 
 - [ ] BB - 
 - [ ] BB - 
