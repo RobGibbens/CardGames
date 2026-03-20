@@ -1,2 +1,3 @@
 - Table blind badges are gated by `TableCanvas.IsBlindBasedGame`; if a blind-based variant is missing there, `TableSeat` will never receive `IsSmallBlind` or `IsBigBlind`.
 - Bob Barker showdown rendering can receive either `4 hole + shared board` or `5 player cards + 5 board`; normalize via the separate showcase card before computing/rendering the best five.
+- Bob Barker showcase timeout selection lives in `DrawPanel`; preserve a valid manual selection, otherwise auto-pick the lowest singleton rank with Ace low by default, falling back to breaking the smallest duplicate group.

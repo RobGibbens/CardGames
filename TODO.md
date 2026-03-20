@@ -9,11 +9,8 @@
 - [x] BB - Separate out showcase card
 - [x] BB - Not showing BB SB chips
 - [x] BB - Showcase showing 10 cards for winner and other hands
-- [ ] BB - 
-- [ ] BB - 
-- [ ] BB - 
-- [ ] BB - 
-- [ ] BB - 
+- [ ] BB - The blinds chips icons overlay the hand eval
+
 
 
 - [ ] SYN - check for ties
