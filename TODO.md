@@ -5,12 +5,7 @@
 
 - [ ] https://github.com/leeoades/FunctionalStateMachine
 
-- [ ] BB - Showdown UI
-- [ ] BB - Showdown speed
-- [x] BB - Chose lowest card by default
-- [x] BB - Separate out showcase card
-- [x] BB - Not showing BB SB chips
-- [x] BB - Showcase showing 10 cards for winner and other hands
+
 - [ ] BB - The blinds chips icons overlay the hand eval
 - [ ] BB - Test in DC
 
@@ -68,7 +63,7 @@
 ### Hold 'Em Variants
 - [x] Add Texas Hold'em
 - [x] Add Omaha
-- [ ] Add The Bob Barker
+- [x] Add The Bob Barker
 - [x] Add Irish Hold'em
 - [ ] Add Pittsburgh
 - [ ] Add Squid Game

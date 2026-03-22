@@ -101,55 +101,41 @@
             @if (IsBobBarkerGame && ShowdownState?.BobBarker is { } bobBarker)
             {
                 <section class="showdown-others" aria-label="Bob Barker showcase results">
-                    <h3 class="showdown-section-title">Dealer Showcase Card</h3>
-                    <div class="other-hand-row">
-                        <div class="other-hand-info">
-                            <span class="other-hand-name">Dealer target</span>
-                            <span class="sd-pill sd-pill-muted">Value @bobBarker.DealerCardValue</span>
-                        </div>
-                        @if (bobBarker.DealerCard is not null)
-                        {
-                            <div class="showdown-cards other-cards">
-                                <div>
-                                    <playing-card class="showdown-card showdown-card-loser" rank="@bobBarker.DealerCard.Rank" suit="@bobBarker.DealerCard.Suit"></playing-card>
-                                </div>
-                            </div>
-                        }
-                    </div>
-
                     <h3 class="showdown-section-title">Showcase Results</h3>
-                    @foreach (var player in GetBobBarkerPlayers())
-                    {
-                        <div class="other-hand-row">
+                    <div class="other-hand-row bob-barker-showcase-row">
+                        <div class="bob-barker-showcase-item bob-barker-showcase-item-dealer">
                             <div class="other-hand-info">
-                                <span class="other-hand-name">@GetPlayerDisplayName(player)</span>
-                                @if (player.IsHighHandWinner)
-                                {
-                                    <span class="sd-pill sd-pill-muted">Main hand winner</span>
-                                }
-                                @if (player.IsShowcaseWinner)
-                                {
-                                    <span class="sd-pill sd-pill-muted">Showcase winner</span>
-                                }
-                                @if (player.ShowcaseCardValue.HasValue)
-                                {
-                                    <span class="sd-pill sd-pill-muted">Showcase @player.ShowcaseCardValue.Value</span>
-                                }
-                                @if (player.ShowcaseAmountWon > 0)
-                                {
-                                    <span class="sd-pill sd-pill-gold">+@player.ShowcaseAmountWon showcase</span>
-                                }
+                                <span class="other-hand-name">Dealer target</span>
                             </div>
-                            @if (player.ShowcaseCard is not null)
+                            @if (bobBarker.DealerCard is not null)
                             {
-                                <div class="showdown-cards other-cards">
+                                <div class="showdown-cards other-cards bob-barker-showcase-cards">
                                     <div>
-                                        <playing-card class="showdown-card showdown-card-loser" rank="@player.ShowcaseCard.Rank" suit="@player.ShowcaseCard.Suit"></playing-card>
+                                        <playing-card class="showdown-card showdown-card-loser" rank="@bobBarker.DealerCard.Rank" suit="@bobBarker.DealerCard.Suit"></playing-card>
                                     </div>
                                 </div>
                             }
                         </div>
-                    }
+
+                        <div class="bob-barker-showcase-spacer" aria-hidden="true"></div>
+
+                        @foreach (var player in GetBobBarkerPlayers())
+                        {
+                            <div class="bob-barker-showcase-item">
+                                <div class="other-hand-info">
+                                    <span class="other-hand-name">@GetPlayerDisplayName(player)</span>
+                                </div>
+                                @if (player.ShowcaseCard is not null)
+                                {
+                                    <div class="showdown-cards other-cards bob-barker-showcase-cards">
+                                        <div>
+                                            <playing-card class="showdown-card showdown-card-loser" rank="@player.ShowcaseCard.Rank" suit="@player.ShowcaseCard.Suit"></playing-card>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
                 </section>
             }
 
