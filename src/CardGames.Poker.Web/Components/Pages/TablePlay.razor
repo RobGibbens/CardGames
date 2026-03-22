@@ -520,8 +520,8 @@
         {
             <ShowdownOverlay ShowdownResult="@_showdownResult" ShowdownWon="@_showdownWon" ShowdownLost="@_showdownLost"
                              GameTypeCode="@_gameTypeCode"
-                             ShowdownState="@_tableState?.Showdown"
-                             SharedCommunityCards="@GetShowdownCommunityCards()"
+                             ShowdownState="@GetOverlayShowdownState()"
+                             SharedCommunityCards="@GetOverlayShowdownCommunityCards()"
                              SecondsUntilNextHand="@_secondsUntilNextHand" IsGameEnded="@(IsEndedPhase || IsGameCompleted)" OnClose="@CloseShowdownOverlay" />
         }
     }
@@ -659,6 +659,8 @@
     private bool _showShowdownOverlay;
     private bool _showdownWon;
     private bool _showdownLost;
+    private ShowdownPublicDto? _showdownStateSnapshot;
+    private IReadOnlyList<ShowdownCard> _showdownCommunityCardsSnapshot = [];
 
     // All-In Runout state (for animated card dealing on table seats when all players are all-in)
     private AllInRunoutStateDto? _allInRunoutState;
@@ -1426,7 +1428,14 @@
 
             if (state.Showdown is not null)
             {
+                _showdownStateSnapshot = state.Showdown;
                 UpdateShowdownFromPublicState(state.Showdown, shouldDelayShowdownOverlay || _runoutAnimationInProgress);
+            }
+
+            var showdownCommunityCards = GetShowdownCommunityCards();
+            if (showdownCommunityCards.Count > 0)
+            {
+                _showdownCommunityCardsSnapshot = showdownCommunityCards;
             }
 
             // If entering showdown or complete phase, load showdown results via API when
@@ -1500,6 +1509,8 @@
                 {
                     _showShowdownOverlay = false;
                     _showdownResult = null;
+                    _showdownStateSnapshot = null;
+                    _showdownCommunityCardsSnapshot = [];
 
                     // Only reset game state if we are truly starting a new hand (Setup/Dealing phases)
                     // This prevents UI state (like visible cards during draw delay) from being cleared
@@ -3177,6 +3188,13 @@
             Logger.LogDebug("TryLoadShowdownAsync: Showdown result already loaded, showing overlay");
             _showShowdownOverlay = ShouldDisplayShowdownOverlay;
 
+            _showdownStateSnapshot ??= _tableState?.Showdown;
+            var showdownCommunityCards = GetShowdownCommunityCards();
+            if (showdownCommunityCards.Count > 0)
+            {
+                _showdownCommunityCardsSnapshot = showdownCommunityCards;
+            }
+
             // Ensure countdown timer is initialized (may have been missed if SignalR populated the result)
             if (_secondsUntilNextHand <= 0)
             {
@@ -3257,6 +3275,13 @@
             }
 
             _showdownResult = showdownResponse.Content;
+            _showdownStateSnapshot ??= _tableState?.Showdown;
+
+            var showdownCommunityCards = GetShowdownCommunityCards();
+            if (showdownCommunityCards.Count > 0)
+            {
+                _showdownCommunityCardsSnapshot = showdownCommunityCards;
+            }
 
             // If a showdown overlay delay is active (e.g., SYN 7-second pause), populate the
             // result but don't show the overlay yet — the ScheduleShowdownOverlayAfterDelay
@@ -3305,6 +3330,17 @@
     private void CloseShowdownOverlay()
     {
         _showShowdownOverlay = false;
+    }
+
+    private ShowdownPublicDto? GetOverlayShowdownState()
+    {
+        return _tableState?.Showdown ?? _showdownStateSnapshot;
+    }
+
+    private IReadOnlyList<ShowdownCard> GetOverlayShowdownCommunityCards()
+    {
+        var currentCommunityCards = GetShowdownCommunityCards();
+        return currentCommunityCards.Count > 0 ? currentCommunityCards : _showdownCommunityCardsSnapshot;
     }
 
     // Note: StartRunoutAnimation has been inlined into HandleTableStateUpdatedAsync
@@ -6373,6 +6409,8 @@ HandType.HighCard
         // Clear any existing showdown result so we fetch fresh data from API after deck draw
         // This prevents stale SignalR data from being used
         _showdownResult = null;
+        _showdownStateSnapshot = null;
+        _showdownCommunityCardsSnapshot = [];
         _showShowdownOverlay = false;
 
         // Initialize deck draw cards from current SignalR state for animation

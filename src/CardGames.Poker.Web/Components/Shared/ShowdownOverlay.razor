@@ -593,12 +593,13 @@
         var allCards = hand.Cards.ToList();
         var communityCards = sharedCommunityCards?.ToList() ?? [];
         var playerCards = allCards;
+        var hasValidSharedSuffix = communityCards.Count == 5 && CardsEndWith(allCards, communityCards);
 
-        if (communityCards.Count > 0 && CardsEndWith(allCards, communityCards))
+        if (hasValidSharedSuffix)
         {
             playerCards = allCards.Take(allCards.Count - communityCards.Count).ToList();
         }
-        else if (communityCards.Count == 0 && allCards.Count > 5)
+        else if (allCards.Count >= 9)
         {
             communityCards = allCards.Skip(5).ToList();
             playerCards = allCards.Take(5).ToList();

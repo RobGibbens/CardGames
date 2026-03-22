@@ -124,6 +124,44 @@ public class BobBarkerShowdownOverlayTests
         cards.Should().Contain(new ShowdownCard(CardSuit.Diamonds, CardSymbol.King));
     }
 
+    [Fact]
+    public void GetDisplayCardsForShowdown_BobBarker_WithIncorrectDerivedSharedCards_StillReturnsBestFive()
+    {
+        var overlay = new ShowdownOverlay
+        {
+            GameTypeCode = "BOBBARKER",
+            ShowdownState = new ShowdownPublicDto
+            {
+                PlayerResults =
+                [
+                    CreatePlayer(
+                        "amy@example.com",
+                        showcaseCard: new CardPublicDto
+                        {
+                            IsFaceUp = true,
+                            Rank = "7",
+                            Suit = "Spades",
+                            DealOrder = 5
+                        })
+                ]
+            }
+        };
+
+        var hand = CreateHand("amy@example.com", "Ah Ad Kc 2c 7s Ac Ks Kd 3h 4d");
+        var incorrectlyDerivedSharedCommunityCards = ParseShowdownCards("Kc 2c 7s Ac Ks Kd 3h 4d");
+
+        var cards = InvokeShowdownDisplayCards(overlay, hand, incorrectlyDerivedSharedCommunityCards);
+
+        cards.Should().HaveCount(5);
+        cards.Should().Contain(new ShowdownCard(CardSuit.Hearts, CardSymbol.Ace));
+        cards.Should().Contain(new ShowdownCard(CardSuit.Diamonds, CardSymbol.Ace));
+        cards.Should().Contain(new ShowdownCard(CardSuit.Clubs, CardSymbol.Ace));
+        cards.Should().Contain(new ShowdownCard(CardSuit.Spades, CardSymbol.King));
+        cards.Should().Contain(new ShowdownCard(CardSuit.Diamonds, CardSymbol.King));
+        cards.Should().NotContain(new ShowdownCard(CardSuit.Spades, CardSymbol.Seven));
+        cards.Should().NotContain(new ShowdownCard(CardSuit.Clubs, CardSymbol.King));
+    }
+
     private static IEnumerable<ShowdownPlayerResultDto> InvokeBobBarkerPlayers(ShowdownOverlay overlay)
     {
         var method = typeof(ShowdownOverlay).GetMethod("GetBobBarkerPlayers", BindingFlags.Instance | BindingFlags.NonPublic);
