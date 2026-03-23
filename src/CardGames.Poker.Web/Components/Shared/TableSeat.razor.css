@@ -261,25 +261,32 @@
 
 /* --- External Elements --- */
 
-.seat-bet-bubble {
+.seat-meta-row {
     position: absolute;
-    bottom: -15px; /* Position below seat */
+    top: calc(100% + 13px);
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    z-index: 100;
+    pointer-events: none;
+}
+
+.seat-bet-bubble {
+    position: relative;
     background: rgba(0,0,0,0.8);
     border: 1px solid #666;
     color: #fff;
     padding: 2px 8px;
     border-radius: 10px;
     font-size: 0.8rem;
-    z-index: 20;
     white-space: nowrap;
 }
 
 /* Hand Evaluation Tooltip - always visible */
 .hand-eval-tooltip {
-    position: absolute;
-    top: calc(100% + 13px); /* Position below info-pill-container */
-    left: 50%;
-    transform: translateX(-50%);
+    position: relative;
     background-color: rgba(20, 20, 20, 0.95);
     color: #ffd700; /* Gold text */
     border: 1px solid #555;
@@ -287,10 +294,7 @@
     border-radius: 6px;
     font-size: 0.9rem;
     font-weight: 600;
-    pointer-events: none;
     white-space: nowrap;
-    opacity: 1;
-    z-index: 100;
     box-shadow: 0 4px 10px rgba(0,0,0,0.6);
 }
 

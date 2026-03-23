@@ -176,30 +176,33 @@
 				{
 					<div class="seat-blind-button seat-sb-button" title="Small Blind">SB</div>
 				}
+				
 				@if (IsBigBlind)
 				{
 					<div class="seat-blind-button seat-bb-button" title="Big Blind">BB</div>
 				}
 
-				@if (ShouldShowHandEvaluationTooltip())
+				@if (Seat.CurrentBet > 0 || ShouldShowHandEvaluationTooltip())
 				{
-					<div class="hand-eval-tooltip">
-						@Seat.HandEvaluationDescription
+					<div class="seat-meta-row">
+						@if (Seat.CurrentBet > 0)
+						{
+							<div class="seat-bet-bubble">
+								<i class="fa-solid fa-coins"></i> @Seat.CurrentBet.ToString("N0")
+							</div>
+						}
+
+						@if (ShouldShowHandEvaluationTooltip())
+						{
+							<div class="hand-eval-tooltip">
+								@Seat.HandEvaluationDescription
+							</div>
+						}
 					</div>
 				}
 			</div>
 
 		</div>
-
-		<!-- External Elements (Cards, Bets, Badges) -->
-		@if (Seat.CurrentBet > 0)
-		{
-			<div class="seat-bet-bubble">
-				<i class="fa-solid fa-coins"></i> @Seat.CurrentBet.ToString("N0")
-			</div>
-		}
-
-
 	}
 	else
 	{

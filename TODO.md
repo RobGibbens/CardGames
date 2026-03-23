@@ -6,8 +6,8 @@
 - [ ] https://github.com/leeoades/FunctionalStateMachine
 
 
-- [ ] BB - The blinds chips icons overlay the hand eval
-- [ ] BB - Test in DC
+- [x] BB - The blinds chips icons overlay the hand eval
+- [x] BB - Test in DC
 
 - [ ] SYN - check for ties
 - [ ] SYN - odds
@@ -81,6 +81,8 @@
 - [x] Add Follow the Queen
 - [x] The Good, the Bad, and the Ugly
 - [x] Add Razz
+- [ ] Pair Pressure 
+- [ ] Toll booth
 
 ### 5 Card Stud Variants
 - [ ] Add Five Card Stud
