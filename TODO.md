@@ -94,7 +94,7 @@
 
 ### Other Poker Variants
 
-- [ ] Add Screw Your Neighbor
+- [x] Add Screw Your Neighbor
 - [ ] In Between
 - [ ] Add Guts
 
