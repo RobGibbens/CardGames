@@ -51,7 +51,7 @@
 							else
 							{
 								<div class="card-shell face-down @showcaseCardClass">
-									<playing-card rank="@rank" suit="@card.Suit" class="poker-card face-down"
+                                   <playing-card rank="@rank" suit="@card.Suit" class="poker-card"
 												  suitcolor="@(isWildForDisplay ? "green" : null)" rankcolor="@(isWildForDisplay ? "green" : null)"
 												  courtcolor="@(isWildForDisplay ? "green" : null)"></playing-card>
 								</div>
@@ -465,12 +465,13 @@ StringComparison.OrdinalIgnoreCase);
 			return [];
 		}
 
-		// Seven Card Stud variants: The API already orders cards correctly using a composite key
+       // Stud-style variants: The API already orders cards correctly using a composite key
 		// (phase + location + deal order). Do NOT re-sort here as DealOrder alone is unreliable
 		// (it can have ties across different streets, causing incorrect interleaving).
 		if (string.Equals(GameTypeCode, "SEVENCARDSTUD", StringComparison.OrdinalIgnoreCase) ||
 			string.Equals(GameTypeCode, "BASEBALL", StringComparison.OrdinalIgnoreCase) ||
 			string.Equals(GameTypeCode, "FOLLOWTHEQUEEN", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(GameTypeCode, "PAIRPRESSURE", StringComparison.OrdinalIgnoreCase) ||
 			string.Equals(GameTypeCode, "RAZZ", StringComparison.OrdinalIgnoreCase))
 		{
 			// Preserve the API order - cards are already sorted by the server

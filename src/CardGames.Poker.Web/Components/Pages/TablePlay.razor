@@ -1974,7 +1974,7 @@
                             IsPubliclyVisible = c.IsFaceUp,
                             IsSelected = false,
                             DealOrder = c.DealOrder,
-                            IsWild = c.IsFaceUp && IsWildCard(c.Rank, c.Suit),
+                          IsWild = IsWildCard(rank, suit),
                             IsShowcaseCard = existingCard?.IsShowcaseCard == true
                         };
                     }).ToList();
