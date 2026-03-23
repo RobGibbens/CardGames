@@ -45,7 +45,7 @@ To add a new poker variant:
 2. Define game rules metadata in a `YourGameRules.cs` factory
 3. Register the game in `PokerGameRulesRegistry`
 
-No UI changes required - the interface adapts automatically based on the game rules.
+Many variants can stop there, but the current app is not fully condition-free. Variants with dedicated player decisions or custom showdown/state payloads may still need targeted API, contract, router, and UI updates. Bob Barker is the current reference example: it reuses Hold'Em-family betting flow, but adds a dedicated showcase-selection action and Bob Barker-specific showdown display.
 
 For a complete guide with examples, see [ADDING_NEW_GAMES.md](ADDING_NEW_GAMES.md).
 

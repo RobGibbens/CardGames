@@ -397,6 +397,37 @@ public sealed record ShowdownPublicDto
 	/// because no players had a natural pair of 7s.
 	/// </summary>
 	public bool SevensPoolRolledOver { get; init; }
+
+	/// <summary>
+	/// Bob Barker-specific showdown details, including the dealer card and showcase winners.
+	/// </summary>
+	public BobBarkerShowdownStateDto? BobBarker { get; init; }
+}
+
+/// <summary>
+/// Bob Barker-specific showdown information.
+/// </summary>
+public sealed record BobBarkerShowdownStateDto
+{
+	/// <summary>
+	/// The hidden dealer card revealed at showdown.
+	/// </summary>
+	public CardPublicDto? DealerCard { get; init; }
+
+	/// <summary>
+	/// The numeric value used for showcase scoring.
+	/// </summary>
+	public int DealerCardValue { get; init; }
+
+	/// <summary>
+	/// Player names who won the main-hand half of the pot.
+	/// </summary>
+	public IReadOnlyList<string> MainHandWinners { get; init; } = [];
+
+	/// <summary>
+	/// Player names who won the showcase half of the pot.
+	/// </summary>
+	public IReadOnlyList<string> ShowcaseWinners { get; init; } = [];
 }
 
 /// <summary>
@@ -472,6 +503,11 @@ public sealed record ShowdownPlayerResultDto
 	public int HighHandAmountWon { get; init; }
 
 	/// <summary>
+	/// The amount won from the Bob Barker showcase half of the pot.
+	/// </summary>
+	public int ShowcaseAmountWon { get; init; }
+
+	/// <summary>
 	/// Whether this player won (or split) the pot.
 	/// </summary>
 	public bool IsWinner { get; init; }
@@ -485,6 +521,11 @@ public sealed record ShowdownPlayerResultDto
 	/// Whether this player won the high hand pool.
 	/// </summary>
 	public bool IsHighHandWinner { get; init; }
+
+	/// <summary>
+	/// Whether this player won the Bob Barker showcase half of the pot.
+	/// </summary>
+	public bool IsShowcaseWinner { get; init; }
 
 	/// <summary>
 	/// The player's cards (face-up for showdown display).
@@ -501,6 +542,16 @@ public sealed record ShowdownPlayerResultDto
 	/// The zero-based indices of cards in the hand that make up the best 5-card hand.
 	/// </summary>
 	public IReadOnlyList<int>? BestCardIndexes { get; init; }
+
+	/// <summary>
+	/// The player's Bob Barker showcase card, revealed at showdown.
+	/// </summary>
+	public CardPublicDto? ShowcaseCard { get; init; }
+
+	/// <summary>
+	/// The numeric value of the player's showcase card for Bob Barker scoring.
+	/// </summary>
+	public int? ShowcaseCardValue { get; init; }
 }
 
 /// <summary>

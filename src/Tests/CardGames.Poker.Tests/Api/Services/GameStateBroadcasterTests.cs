@@ -44,6 +44,19 @@ public class GameStateBroadcasterTests
     }
 
     [Fact]
+    public async Task BroadcastGameStateAsync_BobBarkerDrawPhase_UsesSharedTimer()
+    {
+        var gameId = Guid.NewGuid();
+        var publicState = CreateState(gameId, "BOBBARKER", "DrawPhase", 1, currentPhaseRequiresAction: true);
+        var (sut, _, actionTimerService, _) = CreateSubject(publicState);
+
+        await sut.BroadcastGameStateAsync(gameId);
+
+        actionTimerService.Received(1)
+            .StartTimer(gameId, -1, IActionTimerService.DefaultTimerDurationSeconds, Arg.Any<Func<Guid, int, Task>?>());
+    }
+
+    [Fact]
     public async Task BroadcastTableToastAsync_SendsToastToGameGroup()
     {
         var gameId = Guid.NewGuid();

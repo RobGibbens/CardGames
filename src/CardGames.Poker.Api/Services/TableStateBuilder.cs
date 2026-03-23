@@ -8,6 +8,7 @@ using CardGames.Core.French.Cards;
 using CardGames.Poker.Evaluation;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Features.Games.BobBarker;
 using CardGames.Poker.Api.Features.Profile;
 using CardGames.Poker.Api.Features.Games.ActiveGames.v1.Queries.GetActiveGames;
 using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetHandHistory;
@@ -194,6 +195,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 		// Build Chip Check Pause state (for Kings and Lows)
 		var chipCheckPause = BuildChipCheckPauseState(game, gamePlayers, totalPot);
+		var isBobBarkerShowdownReveal = IsBobBarkerGame(game.GameType?.Code)
+			&& (string.Equals(game.CurrentPhase, "Showdown", StringComparison.OrdinalIgnoreCase)
+				|| string.Equals(game.CurrentPhase, "Complete", StringComparison.OrdinalIgnoreCase));
 
 		// Build community cards for variants that use table cards (e.g., Good Bad Ugly)
 		var communityCards = await _context.GameCards
@@ -205,9 +209,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			.AsNoTracking()
 			.Select(c => new CardPublicDto
 			{
-				IsFaceUp = c.IsVisible,
-				Rank = c.IsVisible ? MapSymbolToRank(c.Symbol) : null,
-				Suit = c.IsVisible ? GetCardSuitString(c.Suit) : null,
+				IsFaceUp = c.IsVisible || isBobBarkerShowdownReveal,
+				Rank = c.IsVisible || isBobBarkerShowdownReveal ? MapSymbolToRank(c.Symbol) : null,
+				Suit = c.IsVisible || isBobBarkerShowdownReveal ? GetCardSuitString(c.Suit) : null,
 				DealOrder = c.DealOrder
 			})
 			.ToListAsync(cancellationToken);
@@ -376,9 +380,18 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		string? handEvaluationDescription = null;
 		try
 		{
-			var playerCards = gamePlayer.Cards
-				.Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber)
+			var selectedShowcaseDealOrder = IsBobBarkerGame(game.GameType?.Code)
+				? BobBarkerVariantState.GetSelectedShowcaseDealOrder(gamePlayer)
+				: null;
+
+			var playerCardEntities = gamePlayer.Cards
+				.Where(c => !c.IsDiscarded
+					&& c.HandNumber == game.CurrentHandNumber
+					&& (selectedShowcaseDealOrder is null || c.DealOrder != selectedShowcaseDealOrder.Value))
 				.OrderBy(c => c.DealOrder)
+				.ToList();
+
+			var playerCards = playerCardEntities
 				.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
 				.ToList();
 
@@ -407,6 +420,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			var isCommunityCardGame = IsHoldEmGame(game.GameType?.Code)
 				|| IsHoldTheBaseballGame(game.GameType?.Code)
 				|| IsOmahaGame(game.GameType?.Code)
+				|| IsBobBarkerGame(game.GameType?.Code)
 				|| IsNebraskaGame(game.GameType?.Code)
 				|| IsSouthDakotaGame(game.GameType?.Code)
 				|| IsIrishHoldEmGame(game.GameType?.Code);
@@ -474,7 +488,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(holdemHand);
 				}
 				// Omaha style: 4 hole + up to 5 community
-				else if (playerCards.Count == 4)
+				else if (playerCards.Count == 4 && (IsOmahaGame(game.GameType?.Code) || IsBobBarkerGame(game.GameType?.Code)))
 				{
 					var omahaHand = new CardGames.Poker.Hands.CommunityCardHands.OmahaHand(playerCards, communityCards);
 					handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(omahaHand);
@@ -766,6 +780,10 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			currentHandNumber,
 			string.Join(", ", orderedCards.Select(c => $"{c.Symbol}{c.Suit}(DO={c.DealOrder},Phase={c.DealtAtPhase})")));
 
+		var selectedShowcaseDealOrder = IsBobBarkerGame(gameTypeCode)
+			? BobBarkerVariantState.GetSelectedShowcaseDealOrder(gamePlayer)
+			: null;
+
 		return orderedCards
 			.Select(c => new CardPrivateDto
 			{
@@ -773,7 +791,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				Suit = c.Suit.ToString(),
 				DealOrder = c.DealOrder,
 				IsSelectedForDiscard = false,
-				IsPubliclyVisible = c.IsVisible
+				IsPubliclyVisible = c.IsVisible,
+				IsShowcaseCard = selectedShowcaseDealOrder == c.DealOrder
 			})
 			.ToList();
 	}
@@ -864,7 +883,11 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		// If the game rules specify a different MaxDiscards (like 5 in Kings and Lows), respect that.
 		var maxDiscards = (baseMaxDiscards == 3 && hasAce) ? 4 : baseMaxDiscards;
 		var isIrishHoldEm = IsIrishHoldEmGame(game.GameType?.Code);
+		var isBobBarker = IsBobBarkerGame(game.GameType?.Code);
 		var isEligibleIrishDiscardActor = gamePlayer.Status == GamePlayerStatus.Active
+			&& !gamePlayer.HasFolded
+			&& !gamePlayer.HasDrawnThisRound;
+		var isEligibleBobBarkerSelector = gamePlayer.Status == GamePlayerStatus.Active
 			&& !gamePlayer.HasFolded
 			&& !gamePlayer.HasDrawnThisRound;
 
@@ -872,7 +895,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		{
 			IsMyTurnToDraw = isIrishHoldEm
 				? isEligibleIrishDiscardActor
-				: game.CurrentDrawPlayerIndex == gamePlayer.SeatPosition,
+				: isBobBarker
+					? isEligibleBobBarkerSelector
+					: game.CurrentDrawPlayerIndex == gamePlayer.SeatPosition,
 			MaxDiscards = maxDiscards,
 			HasDrawnThisRound = gamePlayer.HasDrawnThisRound
 		};
@@ -889,6 +914,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		var isHoldEm = IsHoldEmGame(game.GameType?.Code);
 		var isHoldTheBaseball = IsHoldTheBaseballGame(game.GameType?.Code);
 		var isOmaha = IsOmahaGame(game.GameType?.Code);
+		var isBobBarker = IsBobBarkerGame(game.GameType?.Code);
 		var isNebraska = IsNebraskaGame(game.GameType?.Code);
 		var isSouthDakota = IsSouthDakotaGame(game.GameType?.Code);
 		var isIrishHoldEm = IsIrishHoldEmGame(game.GameType?.Code);
@@ -1116,6 +1142,51 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				var bestFive = FindBestOmahaHand(holeCoreCards, communityCoreCards);
 
 				playerHandEvaluations[gp.Player.Name] = (omahaHand, null, null, null, gp, allDisplayCards, [],
+					GetCardIndexes(allCoreCards, bestFive));
+			}
+		}
+
+		if (isBobBarker)
+		{
+			var bobBarkerCommunityCards = await _context.GameCards
+				.Where(c => c.GameId == game.Id
+					&& c.HandNumber == game.CurrentHandNumber
+					&& c.Location == CardLocation.Community
+					&& c.GamePlayerId == null
+					&& !c.IsDiscarded
+					&& c.IsVisible)
+				.OrderBy(c => c.DealOrder)
+				.AsNoTracking()
+				.ToListAsync(cancellationToken);
+
+			var communityCoreCards = bobBarkerCommunityCards
+				.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
+				.ToList();
+
+			foreach (var gp in gamePlayers.Where(p => !p.HasFolded))
+			{
+				var selectedShowcaseDealOrder = BobBarkerVariantState.GetSelectedShowcaseDealOrder(gp);
+				var ownedCards = gp.Cards
+					.Where(c => !c.IsDiscarded
+						&& c.HandNumber == game.CurrentHandNumber
+						&& (selectedShowcaseDealOrder is null || c.DealOrder != selectedShowcaseDealOrder.Value))
+					.OrderBy(c => c.DealOrder)
+					.ToList();
+
+				var holeCoreCards = ownedCards.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol)).ToList();
+
+				if (holeCoreCards.Count < 4)
+				{
+					continue;
+				}
+
+				var bobBarkerHand = new BobBarkerHand(holeCoreCards, communityCoreCards);
+				var allDisplayCards = ownedCards.ToList();
+				allDisplayCards.AddRange(bobBarkerCommunityCards);
+				var allCoreCards = holeCoreCards.Concat(communityCoreCards).ToList();
+				var bestFive = FindBestOmahaHand(holeCoreCards, communityCoreCards);
+
+				playerHandEvaluations[gp.Player.Name] = (bobBarkerHand, null, null, null, gp, allDisplayCards, [],
 					GetCardIndexes(allCoreCards, bestFive));
 			}
 		}
@@ -1393,7 +1464,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		var sevensPoolRolledOver = false;
 
 		// Extract actual payouts from pots if they have been awarded
-		var actualPayouts = new Dictionary<string, (int Total, int Sevens, int High)>(StringComparer.OrdinalIgnoreCase);
+		var actualPayouts = new Dictionary<string, (int Total, int Sevens, int High, int Showcase)>(StringComparer.OrdinalIgnoreCase);
 		var awardedHandPots = game.Pots
 			.Where(p => p.HandNumber == game.CurrentHandNumber && p.IsAwarded)
 			.ToList();
@@ -1436,13 +1507,19 @@ public sealed class TableStateBuilder : ITableStateBuilder
 							highAmount = hProp.GetInt32();
 						}
 
+						int showcaseAmount = 0;
+						if (element.TryGetProperty("showcaseAmount", out var showcaseProp))
+						{
+							showcaseAmount = showcaseProp.GetInt32();
+						}
+
 						if (actualPayouts.TryGetValue(name, out var existing))
 						{
-							actualPayouts[name] = (existing.Total + amount, existing.Sevens + sevensAmount, existing.High + highAmount);
+							actualPayouts[name] = (existing.Total + amount, existing.Sevens + sevensAmount, existing.High + highAmount, existing.Showcase + showcaseAmount);
 						}
 						else
 						{
-							actualPayouts[name] = (amount, sevensAmount, highAmount);
+							actualPayouts[name] = (amount, sevensAmount, highAmount, showcaseAmount);
 						}
 					}
 				}
@@ -1554,12 +1631,30 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		}
 
 		// Combined winners for IsWinner flag
-		var allWinners = highHandWinners.Union(sevensWinners).ToHashSet(StringComparer.OrdinalIgnoreCase);
+		var showcaseWinners = isBobBarker
+			? actualPayouts.Where(kvp => kvp.Value.Showcase > 0).Select(kvp => kvp.Key).ToHashSet(StringComparer.OrdinalIgnoreCase)
+			: new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+		var mainHandWinners = isBobBarker && actualPayouts.Any(kvp => kvp.Value.High > 0)
+			? actualPayouts.Where(kvp => kvp.Value.High > 0).Select(kvp => kvp.Key).ToHashSet(StringComparer.OrdinalIgnoreCase)
+			: highHandWinners;
+		var allWinners = mainHandWinners.Union(sevensWinners).Union(showcaseWinners).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
 		var allLosers = isKingsAndLows
 			? gamePlayers.Where(gp => !gp.HasFolded && !highHandWinners.Contains(gp.Player.Name))
 				.Select(gp => gp.Player.Name)
 				.ToList()
+			: null;
+
+		var bobBarkerDealerCard = isBobBarker
+			? await _context.GameCards
+				.Where(c => c.GameId == game.Id
+					&& c.HandNumber == game.CurrentHandNumber
+					&& c.Location == CardLocation.Community
+					&& c.GamePlayerId == null
+					&& !c.IsDiscarded)
+				.OrderBy(c => c.DealOrder)
+				.AsNoTracking()
+				.FirstOrDefaultAsync(cancellationToken)
 			: null;
 
 		// Build player results
@@ -1568,7 +1663,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			{
 				var isWinner = allWinners.Contains(gp.Player.Name);
 				var isSevensWinner = sevensWinners.Contains(gp.Player.Name);
-				var isHighHandWinner = highHandWinners.Contains(gp.Player.Name);
+				var isHighHandWinner = mainHandWinners.Contains(gp.Player.Name);
+				var isShowcaseWinner = showcaseWinners.Contains(gp.Player.Name);
 				string? handRanking = null;
 				List<int>? wildIndexes = null;
 				List<int>? bestCardIndexes = null;
@@ -1583,6 +1679,12 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				userProfilesByEmail.TryGetValue(gp.Player.Email ?? string.Empty, out var userProfile);
 
 				actualPayouts.TryGetValue(gp.Player.Name, out var payouts);
+				var selectedShowcaseDealOrder = isBobBarker
+					? BobBarkerVariantState.GetSelectedShowcaseDealOrder(gp)
+					: null;
+				var showcaseCard = isBobBarker && selectedShowcaseDealOrder.HasValue
+					? gp.Cards.FirstOrDefault(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber && c.DealOrder == selectedShowcaseDealOrder.Value)
+					: null;
 
 				return new ShowdownPlayerResultDto
 				{
@@ -1598,19 +1700,36 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					AmountWon = payouts.Total,
 					SevensAmountWon = payouts.Sevens,
 					HighHandAmountWon = payouts.High,
+					ShowcaseAmountWon = payouts.Showcase,
 					IsWinner = isWinner,
 					IsSevensWinner = isSevensWinner,
 					IsHighHandWinner = isHighHandWinner,
+					IsShowcaseWinner = isShowcaseWinner,
 					WildCardIndexes = wildIndexes,
 					BestCardIndexes = bestCardIndexes,
+					ShowcaseCard = showcaseCard is null
+						? null
+						: new CardPublicDto
+						{
+							IsFaceUp = true,
+							Rank = MapSymbolToRank(showcaseCard.Symbol),
+							Suit = GetCardSuitString(showcaseCard.Suit),
+							DealOrder = showcaseCard.DealOrder
+						},
+					ShowcaseCardValue = showcaseCard is null
+						? null
+						: GetBobBarkerCardValue(showcaseCard.Symbol, bobBarkerDealerCard?.Symbol == Entities.CardSymbol.Ace),
 					Cards = OrderCardsForDisplay(
-							gp.Cards.Where(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber),
+							gp.Cards.Where(c => !c.IsDiscarded
+								&& c.HandNumber == game.CurrentHandNumber
+								&& (!isBobBarker || selectedShowcaseDealOrder is null || c.DealOrder != selectedShowcaseDealOrder.Value)),
 							isStudStyleShowdown)
 						.Select(c => new CardPublicDto
 						{
 							IsFaceUp = true,
 							Rank = MapSymbolToRank(c.Symbol),
-							Suit = c.Suit.ToString()
+							Suit = GetCardSuitString(c.Suit),
+							DealOrder = c.DealOrder
 						})
 						.ToList()
 				};
@@ -1655,8 +1774,33 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			SevensWinners = isTwosJacksAxe ? sevensWinners.ToList() : null,
 			HighHandWinners = isTwosJacksAxe ? highHandWinners.ToList() : null,
 			Losers = allLosers,
-			SevensPoolRolledOver = sevensPoolRolledOver
+			SevensPoolRolledOver = sevensPoolRolledOver,
+			BobBarker = isBobBarker && bobBarkerDealerCard is not null
+				? new BobBarkerShowdownStateDto
+				{
+					DealerCard = new CardPublicDto
+					{
+						IsFaceUp = true,
+						Rank = MapSymbolToRank(bobBarkerDealerCard.Symbol),
+						Suit = GetCardSuitString(bobBarkerDealerCard.Suit),
+						DealOrder = bobBarkerDealerCard.DealOrder
+					},
+					DealerCardValue = GetBobBarkerCardValue(bobBarkerDealerCard.Symbol, bobBarkerDealerCard.Symbol == Entities.CardSymbol.Ace),
+					MainHandWinners = mainHandWinners.OrderBy(name => name).ToList(),
+					ShowcaseWinners = showcaseWinners.OrderBy(name => name).ToList()
+				}
+				: null
 		};
+	}
+
+	private static int GetBobBarkerCardValue(Entities.CardSymbol symbol, bool aceHigh)
+	{
+		if (symbol == Entities.CardSymbol.Ace)
+		{
+			return aceHigh ? 14 : 1;
+		}
+
+		return (int)symbol;
 	}
 
 	private async Task<int> CalculateTotalPotAsync(Game game, int handNumber, CancellationToken cancellationToken)
@@ -2775,6 +2919,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.IrishHoldEmCode)
 		   || IsGameType(gameTypeCode, PokerGameMetadataRegistry.PhilsMomCode)
 		   || IsGameType(gameTypeCode, PokerGameMetadataRegistry.CrazyPineappleCode);
+
+	private static bool IsBobBarkerGame(string? gameTypeCode)
+		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.BobBarkerCode);
 
 	private static bool IsGameType(string? gameTypeCode, string expectedCode)
 		=> !string.IsNullOrWhiteSpace(gameTypeCode) &&

@@ -20,11 +20,11 @@
             }
             else if (MinDiscards > 0 && MinDiscards == MaxDiscards)
             {
-                <text>Select exactly @MinDiscards cards to discard</text>
+                <text>Select exactly @MinDiscards card(s) to @SelectionVerb</text>
             }
             else if (MinDiscards > 0 && MinDiscards < MaxDiscards)
             {
-                <text>Select @MinDiscards–@MaxDiscards cards to discard</text>
+                <text>Select @MinDiscards–@MaxDiscards cards to @SelectionVerb</text>
             }
             else if (MaxDiscards == 4)
             {
@@ -32,7 +32,7 @@
             }
             else if (!IsReadOnly)
             {
-                <text>Select cards to discard (0-@MaxDiscards cards)</text>
+                <text>Select cards to @SelectionVerb (0-@MaxDiscards cards)</text>
             }
         </div>
         @if (!string.IsNullOrWhiteSpace(HandDescription))
@@ -53,9 +53,10 @@
     }
 
     <!-- Cards Display -->
-    <div class="draw-cards-container">
+    <div class="draw-cards-container @(ShouldSeparateShowcaseCard ? "bob-barker-layout" : string.Empty)">
         @{
             var orderedCards = GetOrderedCards().ToList();
+            var shouldSeparateShowcaseCard = SeparateShowcaseCard && orderedCards.Any(card => card.Card.IsShowcaseCard);
             var hasExplicitWildFlags = Cards.Any(c => c.IsWild);
             var lowestNonKingRankValueForWild = EnableKingsAndLowsWildCardHighlighting
                 ? GetLowestNonKingRankValueForWild(Cards)
@@ -69,8 +70,9 @@
             var card = orderedCards[i].Card;
             var isSelected = SelectedIndices.Contains(index);
             var isWildForDisplay = IsWildForDisplay(card, lowestNonKingRankValueForWild, EnableKingsAndLowsWildCardHighlighting, EnableBaseballWildCardHighlighting, hasExplicitWildFlags);
+              var showcaseCardClass = shouldSeparateShowcaseCard && card.IsShowcaseCard ? "showcase-card" : string.Empty;
 
-            <div class="draw-card-wrapper @(isSelected ? "selected" : "") @(IsDiscarding && isSelected ? "discarding" : "") @(IsDrawing && NewCardIndices.Contains(index) ? "drawing" : "") @(IsReadOnly ? "readonly" : "")"
+              <div class="draw-card-wrapper @showcaseCardClass @(isSelected ? "selected" : "") @(IsDiscarding && isSelected ? "discarding" : "") @(IsDrawing && NewCardIndices.Contains(index) ? "drawing" : "") @(IsReadOnly ? "readonly" : "")"
                  @key="GetCardRenderKey(card, index)"
                  @onclick="() => ToggleCardSelectionAsync(index)"
                  @onclick:stopPropagation="@IsReadOnly">
@@ -86,7 +88,7 @@
                 @if (isSelected)
                 {
                     <div class="discard-badge">
-                        <i class="fa-solid fa-xmark"></i>
+                        <i class="@SelectedBadgeIconClass"></i>
                     </div>
                 }
             </div>
@@ -103,20 +105,20 @@
         {
             @if (MinDiscards > 0 && MinDiscards == MaxDiscards)
             {
-                <span class="selection-hint">You must discard exactly @MinDiscards card(s)</span>
+                <span class="selection-hint">You must @SelectionVerb exactly @MinDiscards card(s)</span>
             }
             else if (MinDiscards > 0)
             {
-                <span class="selection-hint">Select @MinDiscards to @MaxDiscards cards to discard</span>
+                <span class="selection-hint">Select @MinDiscards to @MaxDiscards cards to @SelectionVerb</span>
             }
             else
             {
-                <span class="selection-hint">Click cards to select them for discard, or stand pat</span>
+                <span class="selection-hint">Click cards to select them to @SelectionVerb, or stand pat</span>
             }
         }
         else
         {
-            <span class="selection-count">@SelectedCount card(s) selected for discard</span>
+            <span class="selection-count">@SelectedCount card(s) selected to @SelectionVerb</span>
         }
     </div>
 
@@ -290,6 +292,12 @@
     [Parameter]
     public string DiscardLabel { get; set; } = "Discard";
 
+    [Parameter]
+    public string SelectionVerb { get; set; } = "discard";
+
+    [Parameter]
+    public string SelectedBadgeIconClass { get; set; } = "fa-solid fa-xmark";
+
     /// <summary>
     /// When true, hides action buttons and shows cards in read-only mode.
     /// Used for showing deck cards to non-decision makers.
@@ -337,6 +345,9 @@
     /// </summary>
     [Parameter]
     public bool EnableBaseballWildCardHighlighting { get; set; }
+
+    [Parameter]
+    public bool SeparateShowcaseCard { get; set; }
 
     private int SelectedCount => SelectedIndices.Count;
 
@@ -513,11 +524,14 @@
         // Sort known face-up cards by value (2..A). Keep unknown/blank ranks stable.
         return Cards
             .Select((card, index) => new IndexedCard(card, index))
-            .OrderBy(x => string.IsNullOrWhiteSpace(x.Card.Rank) ? 1 : 0)
+            .OrderBy(x => SeparateShowcaseCard && x.Card.IsShowcaseCard ? 1 : 0)
+            .ThenBy(x => string.IsNullOrWhiteSpace(x.Card.Rank) ? 1 : 0)
             .ThenBy(x => GetRankValue(x.Card.Rank))
             .ThenBy(x => GetSuitValue(x.Card.Suit))
             .ThenBy(x => x.Index);
     }
+
+    private bool ShouldSeparateShowcaseCard => SeparateShowcaseCard && Cards.Any(card => card.IsShowcaseCard);
 
     private string? GetPlayingCardRank(CardInfo card)
     {

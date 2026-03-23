@@ -2345,7 +2345,7 @@ namespace CardGames.Poker.Api.Clients
         /// </returns>
         [Headers("Accept: application/json, application/problem+json")]
         [Get("/api/v1/games/generic/table-name")]
-        Task<IApiResponse<GetGeneratedTableNameResponse>> GenericGetGeneratedTableNameAsync([Query] string? gameType = null, CancellationToken cancellationToken = default);
+        Task<IApiResponse<GetGeneratedTableNameResponse>> GenericGetGeneratedTableNameAsync([Query] string gameType, CancellationToken cancellationToken = default);
 
         /// <summary>Start Hand (Generic)</summary>
         /// <remarks>Starts a new hand in any poker game variant. The game type is automatically detected from the game entity and routed to the appropriate flow handler for game-specific initialization. After calling this endpoint, the game transitions to the initial phase determined by the game type (e.g., CollectingAntes for most games, Dealing for Kings and Lows).</remarks>
@@ -3435,6 +3435,42 @@ namespace CardGames.Poker.Api.Clients
         [Headers("Accept: application/json, application/problem+json")]
         [Get("/api/v1/games/{gameId}/history")]
         Task<IApiResponse<HandHistoryListDto>> GetHandHistoryAsync(System.Guid gameId, [Query] int? take, [Query] int? skip, CancellationToken cancellationToken = default);
+    }
+
+    /// <summary>Select Showcase Card</summary>
+    [System.CodeDom.Compiler.GeneratedCode("Refitter", "1.7.0.0")]
+    public partial interface IBobBarkerApi
+    {
+        /// <summary>Select Showcase Card</summary>
+        /// <remarks>Marks exactly one Bob Barker hole card as the player's showcase card before pre-flop betting begins.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// <item>
+        /// <term>422</term>
+        /// <description>Unprocessable Entity</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/games/bob-barker/{gameId}/showcase")]
+        Task<IApiResponse<SelectShowcaseSuccessful>> BobBarkerSelectShowcaseAsync(System.Guid gameId, [Body] SelectShowcaseRequest body, CancellationToken cancellationToken = default);
     }
 
     /// <summary>Start Hand</summary>
@@ -7993,6 +8029,73 @@ namespace CardGames.Poker.Api.Contracts
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record SelectShowcaseRequest
+    {
+        [JsonConstructor]
+        public SelectShowcaseRequest(int? @playerSeatIndex, int? @showcaseCardIndex)
+        {
+            this.ShowcaseCardIndex = @showcaseCardIndex;
+            this.PlayerSeatIndex = @playerSeatIndex;
+        }
+
+        [JsonPropertyName("showcaseCardIndex")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ShowcaseCardIndex { get; init; }
+
+        [JsonPropertyName("playerSeatIndex")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? PlayerSeatIndex { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record SelectShowcaseSuccessful
+    {
+        [JsonConstructor]
+        public SelectShowcaseSuccessful(string @currentPhase, System.Guid? @gameId, string @nextPlayerName, int? @nextPlayerSeatIndex, string @playerName, int? @playerSeatIndex, bool? @selectionPhaseComplete, int? @showcaseCardIndex)
+        {
+            this.GameId = @gameId;
+            this.PlayerName = @playerName;
+            this.PlayerSeatIndex = @playerSeatIndex;
+            this.ShowcaseCardIndex = @showcaseCardIndex;
+            this.SelectionPhaseComplete = @selectionPhaseComplete;
+            this.CurrentPhase = @currentPhase;
+            this.NextPlayerSeatIndex = @nextPlayerSeatIndex;
+            this.NextPlayerName = @nextPlayerName;
+        }
+
+        [JsonPropertyName("gameId")]
+        public System.Guid? GameId { get; init; }
+
+        [JsonPropertyName("playerName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string PlayerName { get; init; }
+
+        [JsonPropertyName("playerSeatIndex")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? PlayerSeatIndex { get; init; }
+
+        [JsonPropertyName("showcaseCardIndex")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ShowcaseCardIndex { get; init; }
+
+        [JsonPropertyName("selectionPhaseComplete")]
+        public bool? SelectionPhaseComplete { get; init; }
+
+        [JsonPropertyName("currentPhase")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string CurrentPhase { get; init; }
+
+        [JsonPropertyName("nextPlayerSeatIndex")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? NextPlayerSeatIndex { get; init; }
+
+        [JsonPropertyName("nextPlayerName")]
+        public string NextPlayerName { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial record ShowdownCard
     {
         [JsonConstructor]
@@ -8702,6 +8805,23 @@ namespace CardGames.Poker.Api.Clients
                 });
 
             builder?.Invoke(clientBuilderIGamesApi);
+
+            var clientBuilderIBobBarkerApi = services
+                .AddRefitClient<IBobBarkerApi>(settings)
+                .ConfigureHttpClient(c => c.BaseAddress = baseUrl);
+
+            clientBuilderIBobBarkerApi
+                .AddStandardResilienceHandler(config =>
+                {
+                    config.Retry = new HttpRetryStrategyOptions
+                    {
+                        UseJitter = true,
+                        MaxRetryAttempts = 3,
+                        Delay = TimeSpan.FromSeconds(0.5)
+                    };
+                });
+
+            builder?.Invoke(clientBuilderIBobBarkerApi);
 
             var clientBuilderIBaseballApi = services
                 .AddRefitClient<IBaseballApi>(settings)

@@ -122,6 +122,11 @@ public sealed record CardPrivateDto
     /// Whether this card is publicly visible (face up) to other players.
     /// </summary>
     public bool IsPubliclyVisible { get; init; }
+
+    /// <summary>
+    /// Whether this card has been marked as the player's Bob Barker showcase card.
+    /// </summary>
+    public bool IsShowcaseCard { get; init; }
 }
 
 /// <summary>

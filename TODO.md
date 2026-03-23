@@ -5,10 +5,14 @@
 
 - [ ] https://github.com/leeoades/FunctionalStateMachine
 
+
+- [x] BB - The blinds chips icons overlay the hand eval
+- [x] BB - Test in DC
+
 - [ ] SYN - check for ties
 - [ ] SYN - odds
 - [ ] Lobby - Filter by status
-- [ ] Join game modal - should not be able to click out of it
+- [x] Join game modal - should not be able to click out of it
 - [ ] Join game modal background color
 - [ ] Joining table adds 5001 when setting 5000
 - [ ] Bringing in cash to a game should require host approval
@@ -59,7 +63,7 @@
 ### Hold 'Em Variants
 - [x] Add Texas Hold'em
 - [x] Add Omaha
-- [ ] Add The Bob Barker
+- [x] Add The Bob Barker
 - [x] Add Irish Hold'em
 - [ ] Add Pittsburgh
 - [ ] Add Squid Game
@@ -77,6 +81,8 @@
 - [x] Add Follow the Queen
 - [x] The Good, the Bad, and the Ugly
 - [x] Add Razz
+- [ ] Pair Pressure 
+- [ ] Toll booth
 
 ### 5 Card Stud Variants
 - [ ] Add Five Card Stud

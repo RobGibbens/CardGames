@@ -497,6 +497,37 @@
     margin-bottom: 0.45rem;
 }
 
+.bob-barker-showcase-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.9rem;
+    flex-wrap: wrap;
+}
+
+.bob-barker-showcase-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    min-width: 0;
+}
+
+.bob-barker-showcase-item .other-hand-info {
+    margin-bottom: 0.35rem;
+}
+
+.bob-barker-showcase-item-dealer {
+    margin-right: 0.25rem;
+}
+
+.bob-barker-showcase-spacer {
+    width: 1.5rem;
+    flex: 0 0 1.5rem;
+}
+
+.bob-barker-showcase-cards {
+    min-height: 56px;
+}
+
 .other-hand-name {
     font-size: 1rem;
     font-weight: 800;
@@ -514,9 +545,19 @@
     background: rgba(220, 38, 38, 0.04);
 }
 
+.bob-barker-showcase-row:hover {
+    border-color: rgba(0, 0, 0, 0.10);
+    background: transparent;
+}
+
 [data-theme="dark"] .other-hand-row:hover {
     border-color: rgba(220, 38, 38, 0.42);
     background: rgba(220, 38, 38, 0.10);
+}
+
+[data-theme="dark"] .bob-barker-showcase-row:hover {
+    border-color: rgba(255, 255, 255, 0.18);
+    background: transparent;
 }
 
 .showdown-countdown {

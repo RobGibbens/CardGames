@@ -11,6 +11,26 @@ namespace CardGames.Poker.Tests.Web;
 public class TableCanvasBlindIndicatorsTests
 {
     [Fact]
+    public void BobBarker_ThreeHanded_BlindIndicatorsResolveFromDealerPosition()
+    {
+        var canvas = CreateTableCanvas(
+            "BOBBARKER",
+            0,
+            [
+                CreateOccupiedSeat(0),
+                CreateOccupiedSeat(1),
+                CreateOccupiedSeat(2)
+            ]
+        );
+
+        var smallBlindSeat = InvokePrivateSeatIndexMethod(canvas, "GetSmallBlindSeatIndex");
+        var bigBlindSeat = InvokePrivateSeatIndexMethod(canvas, "GetBigBlindSeatIndex");
+
+        smallBlindSeat.Should().Be(1);
+        bigBlindSeat.Should().Be(2);
+    }
+
+    [Fact]
     public void HoldTheBaseball_ThreeHanded_BlindIndicatorsResolveFromDealerPosition()
     {
         // Arrange: dealer seat 0 -> SB seat 1, BB seat 2

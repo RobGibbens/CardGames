@@ -1,0 +1,63 @@
+## Plan: Add Bob Barker
+
+Add Bob Barker as a production-ready Hold'Em-family variant by reusing Omaha betting/street flow where possible, introducing a dedicated showcase-selection action before pre-flop betting, and extending showdown/state projection to support the hidden dealer card plus split-pot showcase scoring. Current uncommitted work is limited to docs/BoBarkerPrompt.md, so implementation should build from repo conventions rather than preserving in-flight code.
+
+**Steps**
+1. Phase 1: Domain metadata and evaluation foundation. Add `BOBBARKER` metadata/rules under `/Users/robgibbens/dev/CardGames/src/CardGames.Poker/Games/BobBarker/` mirroring Omaha/Nebraska structure, with phases ordered as WaitingToStart -> CollectingBlinds -> Dealing -> DrawPhase (showcase selection) -> PreFlop -> Flop -> Turn -> River -> Showdown -> Complete. Mark the variant as HoldEm, 5 initial hole cards, 1 hidden dealer community/showcase-target card, and special split rules describing half-pot traditional Omaha winner plus half-pot showcase contest. Add a Bob Barker hand/evaluator that enforces exactly 2 of the remaining 4 active hole cards plus 3 visible community cards, likely by reusing or minimally adapting Omaha/Nebraska evaluation patterns. This blocks API showdown/state work.
+2. Phase 2: API flow handler and card dealing. Add a Bob Barker flow handler in `/Users/robgibbens/dev/CardGames/src/CardGames.Poker.Api/GameFlow/` derived from `BaseGameFlowHandler`, using Omaha blind collection/dealing semantics but also dealing one hidden shared dealer card after the five hole cards. Confirm the handler starts from CollectingBlinds, deals 5 hole cards per player, creates the hidden dealer card as a face-down community card, then enters the showcase-selection phase instead of PreFlop. This depends on step 1.
+3. Phase 3: Dedicated showcase-selection command surface. Add a dedicated Bob Barker command/endpoint family in API/contracts rather than reusing Irish discard endpoints, per clarified requirement. Define request/response contracts for selecting exactly one showcase card by seat/card index, expose an endpoint map group, and update `/Users/robgibbens/dev/CardGames/src/CardGames.Poker.Refitter` regeneration path rather than editing generated Refit output directly. Handler rules should validate phase, turn order, one-time selection, card index bounds, and active-player participation. This blocks web routing and client interaction.
+4. Phase 4: Betting/street progression integration. Update the Hold'Em betting command handler to recognize Bob Barker’s initial transition: after showcase selection completes, move into PreFlop with 4 active hole cards; later street progression should match Omaha. Review any helper predicates or `AdvanceToNextPhase` logic to keep Bob Barker-specific assumptions isolated behind game-code checks instead of leaking into generic behavior. This depends on steps 2-3.
+5. Phase 5: Table state and private/public card projection. Extend `TableStateBuilder` to expose the showcase-selection turn cleanly, keep the hidden dealer card face-down until showdown, and represent player cards so the selected showcase card is still known privately but excluded from the main Omaha hand evaluation. Likely changes include `BuildPrivateState`, draw/decision DTO generation, community-card projection, community-card labels, and showdown DTO shaping. Because current DTOs only support generic draw/showdown data, add Bob Barker-specific public/private fields only where required and keep the dealer/showcase reveal timing at showdown only. This depends on steps 1-4.
+6. Phase 6: Showdown and settlement. Extend generic showdown handling to support Bob Barker’s split settlement: compute traditional main-hand winners using the Bob Barker evaluator, compute showcase winners using the dealer-card contest with Ace low except when the dealer card is an Ace, split the pot 50/50 with tie support on either side, persist winner payouts in pot records, and surface both winner groups/results in API and SignalR showdown payloads. Review `PerformShowdownCommandHandler`, `TableStateBuilder` showdown shaping, and any hand-settlement helpers to ensure split payouts and winner metadata stay coherent. This depends on steps 1-5.
+7. Phase 7: Web routing and UX. Add `BOBBARKER` to `/Users/robgibbens/dev/CardGames/src/CardGames.Poker.Web/Services/IGameApiRouter.cs` for Hold'Em betting plus the new Bob Barker selection route. Update `/Users/robgibbens/dev/CardGames/src/CardGames.Poker.Web/Components/Pages/TablePlay.razor` and related shared components so the game appears in create/edit/dealer-choice/table canvas flows, uses blinds, participates in Hold'Em-family start/showdown routing, renders the hidden dealer card appropriately, and offers a dedicated showcase-selection interaction instead of the generic discard panel unless the existing panel can be cleanly specialized. Add the game image to web assets. This depends on steps 3 and 5.
+8. Phase 8: Test coverage. Add integration lifecycle tests near Omaha/Irish Hold'Em family tests to cover: five-card initial deal + hidden dealer card, showcase selection phase ordering, invalid showcase selection timing/index/double-selection, Omaha-style hand resolution using only the 4 active hole cards, showcase contest scoring including the Ace exception, and split-pot payout behavior. Add regression tests for any generic handler/state-builder/showdown logic touched, plus router/setup tests for web mappings and blind-based lists. This can start once steps 3-7 stabilize.
+9. Phase 9: Docs and verification. Update the game-addition docs and any operational notes that need the new reusable pattern documented: dedicated pre-betting player-choice action plus split-pot showdown metadata. Then run verification in the requested order: `dotnet build src/CardGames.sln`, `dotnet test src/CardGames.sln`, targeted Bob Barker integration tests, `dotnet run --project src/CardGames.Poker.Api`, `dotnet run --project src/CardGames.Poker.Web`, and `dotnet build src/CardGames.Poker.Refitter` if contracts changed. Fix only failures caused by the Bob Barker work.
+
+**Relevant files**
+- `/Users/robgibbens/dev/CardGames/docs/AddingNewGames20.md` — primary playbook; mirrors Phil’s Mom/Crazy Pineapple extension strategy and warns about discovery-point omissions.
+- `/Users/robgibbens/dev/CardGames/docs/ARCHITECTURE.md` — metadata-driven architecture reference; use to keep Bob Barker rules declarative and game-specific orchestration localized.
+- `/Users/robgibbens/dev/CardGames/src/CardGames.Poker/Games/Omaha/OmahaRules.cs` — nearest baseline for Hold'Em-family Omaha street order and showdown semantics.
+- `/Users/robgibbens/dev/CardGames/src/CardGames.Poker/Games/Nebraska/NebraskaRules.cs` — reference for 5-hole-card metadata without using all 5 in final evaluation.
+- `/Users/robgibbens/dev/CardGames/src/CardGames.Poker/Evaluation/Evaluators/OmahaHandEvaluator.cs` — likely reuse point or adaptation model for Bob Barker main-hand evaluation.
+- `/Users/robgibbens/dev/CardGames/src/CardGames.Poker.Api/GameFlow/OmahaFlowHandler.cs` — baseline blind/deal/start orchestration.
+- `/Users/robgibbens/dev/CardGames/src/CardGames.Poker.Api/GameFlow/IrishHoldEmFlowHandler.cs` — reference for inserting a player-action phase into a Hold'Em/Omaha street machine.
+- `/Users/robgibbens/dev/CardGames/src/CardGames.Poker.Api/Features/Games/IrishHoldEm/v1/Commands/ProcessDiscard/ProcessDiscardCommandHandler.cs` — validation and per-player-turn sequencing reference for the new dedicated showcase-selection command.
+- `/Users/robgibbens/dev/CardGames/src/CardGames.Poker.Api/Features/Games/HoldEm/v1/Commands/ProcessBettingAction/ProcessBettingActionCommandHandler.cs` — required for Bob Barker-specific phase advancement into PreFlop/Flop/Turn/River.
+- `/Users/robgibbens/dev/CardGames/src/CardGames.Poker.Api/Features/Games/Generic/v1/Commands/PerformShowdown/PerformShowdownCommandHandler.cs` — likely primary showdown extension point for split-pot settlement and winner metadata.
+- `/Users/robgibbens/dev/CardGames/src/CardGames.Poker.Api/Services/TableStateBuilder.cs` — required for hidden dealer card projection, showcase exclusion from main hand, showdown payload shaping, and phase-specific UI state.
+- `/Users/robgibbens/dev/CardGames/src/CardGames.Poker.Api/Games/PokerGameMetadataRegistry.cs` — add `BobBarkerCode` constant for API/UI conditional logic.
+- `/Users/robgibbens/dev/CardGames/src/CardGames.Contracts/SignalR/PrivateStateDto.cs` — current draw/private state shape; likely needs Bob Barker-specific selection metadata.
+- `/Users/robgibbens/dev/CardGames/src/CardGames.Contracts/SignalR/TableStatePublicDto.cs` — current showdown/public state shape; likely needs Bob Barker-specific winner/dealer-card/showcase result payload.
+- `/Users/robgibbens/dev/CardGames/src/CardGames.Poker.Web/Services/IGameApiRouter.cs` — router mappings for betting and the new Bob Barker action.
+- `/Users/robgibbens/dev/CardGames/src/CardGames.Poker.Web/Components/Pages/TablePlay.razor` — main play-screen predicates, start/showdown routing, and custom interaction UI.
+- `/Users/robgibbens/dev/CardGames/src/CardGames.Poker.Web/Components/Pages/CreateTable.razor` — verify Hold'Em-family listing and blinds handling.
+- `/Users/robgibbens/dev/CardGames/src/CardGames.Poker.Web/Components/Pages/EditTable.razor` — verify blind-field inclusion.
+- `/Users/robgibbens/dev/CardGames/src/CardGames.Poker.Web/Components/Shared/DealerChoiceModal.razor` — include Bob Barker in blind-based dealer’s choice settings.
+- `/Users/robgibbens/dev/CardGames/src/CardGames.Poker.Web/Components/Shared/TableCanvas.razor` — blind markers, felt icon choice, and hidden dealer-card table rendering if needed.
+- `/Users/robgibbens/dev/CardGames/src/Tests/CardGames.IntegrationTests/Games/IrishHoldEm/PhilsMomHandLifecycleTests.cs` — best lifecycle template for a Hold'Em-family variant with inserted player-choice rounds.
+- `/Users/robgibbens/dev/CardGames/src/Tests/CardGames.IntegrationTests/Features/Commands/OmahaShowdownHardeningTests.cs` — regression template for Omaha-specific showdown correctness.
+- `/Users/robgibbens/dev/CardGames/src/Tests/CardGames.Poker.Tests/Web/GameApiRouterTests.cs` — router mapping regression coverage.
+- `/Users/robgibbens/dev/CardGames/docs/BoBarkerPrompt.md` — existing uncommitted design prompt; preserve as the source of current intent.
+
+**Verification**
+1. Validate game discovery: confirm Bob Barker appears in available game metadata/rules endpoints and `GameFlowHandlerFactory` resolves the new handler.
+2. Run `dotnet build src/CardGames.sln` from repo root.
+3. Run targeted tests first: `dotnet test src/Tests/CardGames.IntegrationTests/CardGames.IntegrationTests.csproj --filter FullyQualifiedName~BobBarker`.
+4. Run broader automated coverage: `dotnet test src/CardGames.sln`.
+5. If contracts changed, run `dotnet build src/CardGames.Poker.Refitter` and verify no manual edits were made to generated output.
+6. Run `dotnet run --project src/CardGames.Poker.Api` and validate create/start/showcase-select/betting/showdown flow manually or via smoke request.
+7. Run `dotnet run --project src/CardGames.Poker.Web` and verify create/edit/dealer-choice/play/showdown UX, including hidden dealer card before showdown.
+
+**Decisions**
+- Mode: Production-Ready.
+- Repository state: only uncommitted file directly related to this task is `docs/BoBarkerPrompt.md`; no partial implementation was found.
+- Showcase action: use a dedicated Bob Barker action/endpoint, not the shared Irish discard endpoint.
+- Showcase contest ranking: Ace is low except when the dealer card itself is an Ace.
+- Reveal timing: dealer card and showcase cards remain hidden to all players until showdown.
+- Included scope: domain rules, API orchestration, contracts if needed, web integration, tests, docs, and full verification attempts.
+- Excluded scope: unrelated refactors, generated-file hand edits, and rule changes beyond the clarified Bob Barker behavior.
+
+**Further Considerations**
+1. Contract pressure is real. Because current SignalR and showdown DTOs do not model Bob Barker’s side contest, expect a small but intentional contract expansion and Refit regeneration rather than forcing the feature into unrelated fields.
+2. The cleanest UI may be a Bob Barker-specific selection overlay rather than overloading the generic draw panel, because the selected card is preserved for side scoring instead of becoming a normal discard.
+3. Settlement should preserve tie behavior independently for both halves of the pot; the plan assumes quartering/equal division when either side has multiple winners.
