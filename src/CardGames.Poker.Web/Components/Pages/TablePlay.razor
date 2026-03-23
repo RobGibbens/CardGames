@@ -521,6 +521,7 @@
         {
             <ShowdownOverlay ShowdownResult="@_showdownResult" ShowdownWon="@_showdownWon" ShowdownLost="@_showdownLost"
                              GameTypeCode="@_gameTypeCode"
+                             ActiveWildCards="@GetWildCardsForDisplay()"
                              ShowdownState="@GetOverlayShowdownState()"
                              SharedCommunityCards="@GetOverlayShowdownCommunityCards()"
                              SecondsUntilNextHand="@_secondsUntilNextHand" IsGameEnded="@(IsEndedPhase || IsGameCompleted)" OnClose="@CloseShowdownOverlay" />

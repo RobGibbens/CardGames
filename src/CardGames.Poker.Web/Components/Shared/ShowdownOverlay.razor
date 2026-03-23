@@ -89,7 +89,7 @@
                             @for (var i = 0; i < winnerCards.Count; i++)
                             {
                                 var (card, isWild) = winnerCards[i];
-                                <div class="sd-card-wrapper" style="--i:@i">
+                                <div class="sd-card-wrapper" style="--i:@i" @key="GetShowdownCardRenderKey(card, i, isWild)">
                                     <playing-card class="showdown-card showdown-card-winner" rank="@GetPlayingCardRank(card)" suit="@GetPlayingCardSuit(card)" suitcolor="@(isWild ? "green" : null)" rankcolor="@(isWild ? "green" : null)" courtcolor="@(isWild ? "green" : null)"></playing-card>
                                 </div>
                             }
@@ -167,7 +167,7 @@
                                 <div class="showdown-cards other-cards">
                                     @foreach (var (c, isWild) in handCards)
                                     {
-                                        <div>
+                                        <div @key="GetShowdownCardRenderKey(c, hand.PlayerName, isWild)">
                                             <playing-card class="showdown-card showdown-card-loser" rank="@GetPlayingCardRank(c)" suit="@GetPlayingCardSuit(c)" suitcolor="@(isWild ? "green" : null)" rankcolor="@(isWild ? "green" : null)" courtcolor="@(isWild ? "green" : null)"></playing-card>
                                         </div>
                                     }
@@ -216,6 +216,9 @@
             public string? GameTypeCode { get; set; }
 
             [Parameter]
+            public IReadOnlyList<TableCanvas.WildCardDisplay>? ActiveWildCards { get; set; }
+
+            [Parameter]
             public IReadOnlyList<ShowdownCard>? SharedCommunityCards { get; set; }
 
             [Parameter]
@@ -226,6 +229,7 @@
 
     private bool IsRazzGame => string.Equals(GameTypeCode, "RAZZ", StringComparison.OrdinalIgnoreCase);
     private bool IsBobBarkerGame => string.Equals(GameTypeCode, "BOBBARKER", StringComparison.OrdinalIgnoreCase);
+    private bool IsPairPressureGame => string.Equals(GameTypeCode, "PAIRPRESSURE", StringComparison.OrdinalIgnoreCase);
 
     private IEnumerable<ShowdownPlayerResultDto> GetBobBarkerPlayers()
     {
@@ -243,12 +247,30 @@
     {
         var displayCards = GetDisplayCards(hand, sharedCommunityCards, isRazz);
 
-        if (!IsBobBarkerGame || isRazz || displayCards.Count == 5)
+        if (IsBobBarkerGame && !isRazz && displayCards.Count != 5)
+        {
+            displayCards = GetBobBarkerDisplayCards(hand, sharedCommunityCards, GetBobBarkerShowcaseCard(hand), displayCards);
+        }
+
+        return ApplyPairPressureWildHighlighting(displayCards);
+    }
+
+    private List<(ShowdownCard Card, bool IsWild)> ApplyPairPressureWildHighlighting(
+        List<(ShowdownCard Card, bool IsWild)> displayCards)
+    {
+        if (!IsPairPressureGame || ActiveWildCards is not { Count: > 0 })
         {
             return displayCards;
         }
 
-        return GetBobBarkerDisplayCards(hand, sharedCommunityCards, GetBobBarkerShowcaseCard(hand), displayCards);
+        return displayCards
+            .Select(entry => (
+                entry.Card,
+                IsWild: WildCardDisplayMatcher.IsActiveWildCard(
+                    GetPlayingCardRank(entry.Card),
+                    GetPlayingCardSuit(entry.Card),
+                    ActiveWildCards)))
+            .ToList();
     }
 
     private ShowdownCard? GetBobBarkerShowcaseCard(ShowdownPlayerHand hand)
@@ -1002,6 +1024,16 @@
             Symbol.Deuce => "2",
             _ => card.Value.ToString(CultureInfo.InvariantCulture)
         };
+    }
+
+    private static string GetShowdownCardRenderKey(ShowdownCard card, int index, bool isWild)
+    {
+        return $"{index}:{card.Symbol}:{card.Suit}:{isWild}";
+    }
+
+    private static string GetShowdownCardRenderKey(ShowdownCard card, string? owner, bool isWild)
+    {
+        return $"{owner}:{card.Symbol}:{card.Suit}:{isWild}";
     }
 
         private static string GetSuitFaIcon(CardSuit? suit)

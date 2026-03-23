@@ -1,3 +1,4 @@
 - Table blind badges are gated by `TableCanvas.IsBlindBasedGame`; if a blind-based variant is missing there, `TableSeat` will never receive `IsSmallBlind` or `IsBigBlind`.
 - Bob Barker showdown rendering can receive either `4 hole + shared board` or `5 player cards + 5 board`; normalize via the separate showcase card before computing/rendering the best five.
 - Bob Barker showcase timeout selection lives in `DrawPanel`; preserve a valid manual selection, otherwise auto-pick the lowest singleton rank with Ace low by default, falling back to breaking the smallest duplicate group.
+- Pair Pressure wild highlighting in web UI should use active `WildCardRules.WildRanks` from table state rather than per-card `IsWild` flags or showdown `WildCardIndexes`, because when the tracked wild ranks rotate all cards of the active rank must update together.

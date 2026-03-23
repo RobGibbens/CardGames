@@ -82,6 +82,7 @@
 						   IsSeatSelectionDisabledForCurrentUser="@(DisableSeatSelectionForCurrentUser && !seat.IsOccupied)"
 						   ShowCards="@(!IsPausedForChipCheck && CurrentPhase != GamePhase.WaitingForPlayers.ToString() && CurrentPhase != GamePhase.WaitingToStart.ToString() && seat.Cards.Count > 0)"
 						   GameTypeCode="@GameTypeCode"
+						   WildCards="@WildCards"
 						   IsSmallBlind="@(IsBlindBasedGame && seat.SeatIndex == GetSmallBlindSeatIndex())"
 						   IsBigBlind="@(IsBlindBasedGame && seat.SeatIndex == GetBigBlindSeatIndex())"
 						   Ante="@Ante" />
