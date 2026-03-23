@@ -28,6 +28,7 @@
 @inject ILogger<TablePlay> Logger
 @inject ITwosJacksManWithTheAxeApi TwosJacksManWithTheAxeApi
 @inject ISevenCardStudApi SevenCardStudApi
+@inject IPairPressureApi PairPressureApi
 @inject IGoodBadUglyApi GoodBadUglyApi
 @inject IFollowTheQueenApi FollowTheQueenApi
 @inject IBaseballApi BaseballApi
@@ -736,6 +737,7 @@
     private bool IsFiveCardDraw => string.Equals(_gameTypeCode, "FIVECARDDRAW", StringComparison.OrdinalIgnoreCase);
     private bool IsKingsAndLows => string.Equals(_gameTypeCode, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase);
     private bool IsSevenCardStud => string.Equals(_gameTypeCode, "SEVENCARDSTUD", StringComparison.OrdinalIgnoreCase);
+    private bool IsPairPressure => string.Equals(_gameTypeCode, "PAIRPRESSURE", StringComparison.OrdinalIgnoreCase);
     private bool IsRazz => string.Equals(_gameTypeCode, "RAZZ", StringComparison.OrdinalIgnoreCase);
     private bool IsGoodBadUgly => string.Equals(_gameTypeCode, "GOODBADUGLY", StringComparison.OrdinalIgnoreCase);
     private bool IsFollowTheQueen => string.Equals(_gameTypeCode, "FOLLOWTHEQUEEN", StringComparison.OrdinalIgnoreCase);
@@ -753,7 +755,8 @@
     private bool IsScrewYourNeighbor => string.Equals(_gameTypeCode, "SCREWYOURNEIGHBOR", StringComparison.OrdinalIgnoreCase);
     private bool IsStartedScrewYourNeighborTable => IsScrewYourNeighbor && _gameResponse?.StartedAt is not null;
     private bool IsIrishStyleHoldEm => IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple;
-    private bool UsesCardDealAnimation => IsSevenCardStud || IsRazz || IsGoodBadUgly || IsBaseball || IsFollowTheQueen || IsFiveCardDraw || IsTwosJacksManWithTheAxe || IsKingsAndLows || IsHoldEm || IsRedRiver || IsHoldTheBaseball || IsOmaha || IsNebraska || IsSouthDakota || IsBobBarker || IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple || IsScrewYourNeighbor;
+    private bool IsSevenCardStudStyle => IsSevenCardStud || IsPairPressure;
+    private bool UsesCardDealAnimation => IsSevenCardStudStyle || IsRazz || IsGoodBadUgly || IsBaseball || IsFollowTheQueen || IsFiveCardDraw || IsTwosJacksManWithTheAxe || IsKingsAndLows || IsHoldEm || IsRedRiver || IsHoldTheBaseball || IsOmaha || IsNebraska || IsSouthDakota || IsBobBarker || IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple || IsScrewYourNeighbor;
     private int DealAnimationDelayMs => 750;
 
     // Game rules for dynamic UI rendering
@@ -2950,6 +2953,26 @@
                 return;
             }
         }
+        else if (IsPairPressure)
+        {
+            var startHandResponse = await PairPressureApi.PairPressureStartHandAsync(GameId);
+            if (!startHandResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
+
+            var collectAntesResponse = await PairPressureApi.PairPressureCollectAntesAsync(GameId);
+            if (!collectAntesResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
+
+            var dealHandsResponse = await PairPressureApi.PairPressureDealHandsAsync(GameId);
+            if (!dealHandsResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
+        }
         else if (IsSevenCardStud)
         {
             var startHandResponse = await SevenCardStudApi.SevenCardStudStartHandAsync(GameId);
@@ -3218,6 +3241,10 @@
             if (IsTwosJacksManWithTheAxe)
             {
                 showdownResponse = await TwosJacksManWithTheAxeApi.TwosJacksManWithTheAxePerformShowdownAsync(GameId);
+            }
+            else if (IsPairPressure)
+            {
+                showdownResponse = await PairPressureApi.PairPressurePerformShowdownAsync(GameId);
             }
             else if (IsSevenCardStud)
             {
@@ -4559,7 +4586,7 @@
             {
                 result = OddsCalculator.CalculateTwosJacksManWithTheAxeDrawOdds(cardsToKeep, deadCards);
             }
-            else if (IsSevenCardStud)
+            else if (IsSevenCardStudStyle)
             {
                 result = OddsCalculator.CalculateStudOdds(cardsToKeep, deadCards);
             }

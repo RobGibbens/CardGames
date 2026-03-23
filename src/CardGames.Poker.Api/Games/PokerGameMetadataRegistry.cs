@@ -25,6 +25,7 @@ public static class PokerGameMetadataRegistry
 	public const string RazzCode = "RAZZ";
 	public const string KingsAndLowsCode = "KINGSANDLOWS";
 	public const string FollowTheQueenCode = "FOLLOWTHEQUEEN";
+	public const string PairPressureCode = "PAIRPRESSURE";
 	public const string BaseballCode = "BASEBALL";
 	public const string GoodBadUglyCode = "GOODBADUGLY";
 	public const string IrishHoldEmCode = "IRISHHOLDEM";

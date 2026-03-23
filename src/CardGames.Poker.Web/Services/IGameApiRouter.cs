@@ -112,6 +112,7 @@ public class GameApiRouter : IGameApiRouter
     private const string TwosJacksManWithTheAxe = "TWOSJACKSMANWITHTHEAXE";
     private const string KingsAndLows = "KINGSANDLOWS";
     private const string SevenCardStud = "SEVENCARDSTUD";
+    private const string PairPressure = "PAIRPRESSURE";
     private const string Razz = "RAZZ";
     private const string GoodBadUgly = "GOODBADUGLY";
     private const string Baseball = "BASEBALL";
@@ -123,6 +124,7 @@ public class GameApiRouter : IGameApiRouter
     private readonly ITwosJacksManWithTheAxeApi _twosJacksManWithTheAxeApi;
     private readonly IKingsAndLowsApi _kingsAndLowsApi;
     private readonly ISevenCardStudApi _sevenCardStudApi;
+    private readonly IPairPressureApi _pairPressureApi;
     private readonly IGoodBadUglyApi _goodBadUglyApi;
     private readonly IBaseballApi _baseballApi;
     private readonly IFollowTheQueenApi _followTheQueenApi;
@@ -141,6 +143,7 @@ public class GameApiRouter : IGameApiRouter
         ITwosJacksManWithTheAxeApi twosJacksManWithTheAxeApi,
         IKingsAndLowsApi kingsAndLowsApi,
         ISevenCardStudApi sevenCardStudApi,
+        IPairPressureApi pairPressureApi,
         IGoodBadUglyApi goodBadUglyApi,
         IBaseballApi baseballApi,
         IFollowTheQueenApi followTheQueenApi,
@@ -152,6 +155,7 @@ public class GameApiRouter : IGameApiRouter
         _twosJacksManWithTheAxeApi = twosJacksManWithTheAxeApi;
         _kingsAndLowsApi = kingsAndLowsApi;
         _sevenCardStudApi = sevenCardStudApi;
+        _pairPressureApi = pairPressureApi;
         _goodBadUglyApi = goodBadUglyApi;
         _baseballApi = baseballApi;
         _followTheQueenApi = followTheQueenApi;
@@ -172,6 +176,7 @@ public class GameApiRouter : IGameApiRouter
             [CrazyPineapple] = RouteCrazyPineappleBettingActionAsync,
             [TwosJacksManWithTheAxe] = RouteTwosJacksManWithTheAxeBettingActionAsync,
             [SevenCardStud] = RouteSevenCardStudBettingActionAsync,
+            [PairPressure] = RoutePairPressureBettingActionAsync,
             [Razz] = RouteSevenCardStudBettingActionAsync,
             [GoodBadUgly] = RouteGoodBadUglyBettingActionAsync,
             [Baseball] = RouteBaseballBettingActionAsync,
@@ -294,6 +299,10 @@ public class GameApiRouter : IGameApiRouter
     private async Task<RouterResponse<ProcessBettingActionSuccessful>> RouteSevenCardStudBettingActionAsync(Guid gameId, ProcessBettingActionRequest request)
         => RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
             await _sevenCardStudApi.SevenCardStudProcessBettingActionAsync(gameId, request));
+
+    private async Task<RouterResponse<ProcessBettingActionSuccessful>> RoutePairPressureBettingActionAsync(Guid gameId, ProcessBettingActionRequest request)
+        => RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
+            await _pairPressureApi.PairPressureProcessBettingActionAsync(gameId, request));
 
     private async Task<RouterResponse<ProcessBettingActionSuccessful>> RouteGoodBadUglyBettingActionAsync(Guid gameId, ProcessBettingActionRequest request)
         => RouterResponse<ProcessBettingActionSuccessful>.FromRefit(

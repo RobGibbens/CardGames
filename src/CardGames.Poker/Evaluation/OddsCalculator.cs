@@ -355,6 +355,57 @@ public static class OddsCalculator
     }
 
     /// <summary>
+    /// Calculates odds for a Pair Pressure hand.
+    /// The two most recent ranks that have paired among face-up cards are wild.
+    /// </summary>
+    public static OddsResult CalculatePairPressureOdds(
+        IReadOnlyCollection<Card> heroHoleCards,
+        IReadOnlyCollection<Card> heroBoardCards,
+        IReadOnlyCollection<Card> faceUpCardsInOrder,
+        int totalCardsPerPlayer = 7,
+        IReadOnlyCollection<Card> deadCards = null,
+        int simulations = DefaultSimulations)
+    {
+        deadCards ??= Array.Empty<Card>();
+        var handTypeCounts = InitializeHandTypeCounts();
+        var dealer = FrenchDeckDealer.WithFullDeck();
+        var heroTotalCards = heroHoleCards.Count + heroBoardCards.Count;
+        var heroCardsNeeded = totalCardsPerPlayer - heroTotalCards;
+
+        for (var index = 0; index < simulations; index++)
+        {
+            dealer.Shuffle();
+
+            var allKnownCards = heroHoleCards.Concat(heroBoardCards).Concat(deadCards).Distinct();
+            foreach (var card in allKnownCards)
+            {
+                dealer.DealSpecific(card);
+            }
+
+            var holeCards = heroHoleCards.ToList();
+            var boardCards = heroBoardCards.ToList();
+
+            var additionalCards = new List<Card>();
+            for (var cardIndex = 0; cardIndex < heroCardsNeeded; cardIndex++)
+            {
+                additionalCards.Add(dealer.DealCard());
+            }
+
+            var downCard = additionalCards.Any() ? additionalCards.Last() : holeCards.Last();
+
+            if (additionalCards.Count > 1)
+            {
+                boardCards.AddRange(additionalCards.Take(additionalCards.Count - 1));
+            }
+
+            var heroHand = new PairPressureHand(holeCards, boardCards, downCard, faceUpCardsInOrder);
+            handTypeCounts[heroHand.Type]++;
+        }
+
+        return CreateResult(handTypeCounts, simulations);
+    }
+
+    /// <summary>
     /// Calculates odds for a Kings and Lows hand.
     /// Kings are always wild, and the lowest card in the hand is also wild.
     /// This takes into account that drawing new cards could change which card is lowest.

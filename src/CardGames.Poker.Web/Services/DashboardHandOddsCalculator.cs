@@ -23,7 +23,8 @@ public static class DashboardHandOddsCalculator
             return OddsCalculator.CalculateTwosJacksManWithTheAxeDrawOdds(playerCards, deadCards);
         }
 
-        if (string.Equals(gameTypeCode, "SEVENCARDSTUD", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(gameTypeCode, "SEVENCARDSTUD", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(gameTypeCode, "PAIRPRESSURE", StringComparison.OrdinalIgnoreCase))
         {
             return OddsCalculator.CalculateStudOdds(playerCards, deadCards);
         }
