@@ -758,6 +758,7 @@
     private bool IsIrishStyleHoldEm => IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple;
     private bool IsSevenCardStudStyle => IsSevenCardStud || IsPairPressure;
     private bool UsesCardDealAnimation => IsSevenCardStudStyle || IsRazz || IsGoodBadUgly || IsBaseball || IsFollowTheQueen || IsFiveCardDraw || IsTwosJacksManWithTheAxe || IsKingsAndLows || IsHoldEm || IsRedRiver || IsHoldTheBaseball || IsOmaha || IsNebraska || IsSouthDakota || IsBobBarker || IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple || IsScrewYourNeighbor;
+    
     private int DealAnimationDelayMs => 750;
 
     // Game rules for dynamic UI rendering
@@ -5707,6 +5708,11 @@ HandType.HighCard
     /// </summary>
     private IReadOnlyList<TableCanvas.WildCardDisplay> GetWildCardsForDisplay()
     {
+        if (IsPairPressure && _dealAnimationInProgress)
+        {
+            return GetPairPressureVisibleWildCardsForDisplay();
+        }
+
         var wildRules = _tableState?.SpecialRules?.WildCardRules;
         if (wildRules is null)
         {
@@ -5777,6 +5783,45 @@ HandType.HighCard
 
         return wildCards;
     }
+
+    private IReadOnlyList<TableCanvas.WildCardDisplay> GetPairPressureVisibleWildCardsForDisplay()
+    {
+        var visibleWildRanks = _seats
+            .SelectMany(seat => seat.Cards)
+            .Where(card => card.IsFaceUp && card.IsPubliclyVisible && !string.IsNullOrWhiteSpace(card.Rank))
+            .Select(card => NormalizePairPressureWildRank(card.Rank))
+            .Where(rank => !string.IsNullOrWhiteSpace(rank))
+            .GroupBy(rank => rank, StringComparer.OrdinalIgnoreCase)
+            .Where(group => group.Count() >= 2)
+            .Select(group => group.Key)
+            .OrderBy(GetCardValue)
+            .ToList();
+
+        return visibleWildRanks
+            .Select(rank => new TableCanvas.WildCardDisplay(
+                Rank: rank,
+                Suit: null,
+                Label: GetWildRankLabel(rank)))
+            .ToList();
+    }
+
+    private static string NormalizePairPressureWildRank(string? rank) => rank?.Trim().ToUpperInvariant() switch
+    {
+        "ACE" => "A",
+        "KING" => "K",
+        "QUEEN" => "Q",
+        "JACK" => "J",
+        "TEN" or "T" => "10",
+        "NINE" => "9",
+        "EIGHT" => "8",
+        "SEVEN" => "7",
+        "SIX" => "6",
+        "FIVE" => "5",
+        "FOUR" => "4",
+        "THREE" => "3",
+        "TWO" or "DEUCE" => "2",
+        _ => rank?.Trim().ToUpperInvariant() ?? string.Empty
+    };
 
     /// <summary>
     /// Gets a display-friendly name for a rank.

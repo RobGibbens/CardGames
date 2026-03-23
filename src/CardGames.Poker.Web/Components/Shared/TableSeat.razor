@@ -495,7 +495,7 @@ StringComparison.OrdinalIgnoreCase);
 
 	private bool IsWildForDisplay(CardInfo card, int? lowestNonKingRankValue, bool hasExplicitWildFlags)
 	{
-		if (IsPairPressure && WildCards is { Count: > 0 })
+		if (IsPairPressure)
 		{
 			return WildCardDisplayMatcher.IsActiveWildCard(card.Rank, card.Suit, WildCards);
 		}
