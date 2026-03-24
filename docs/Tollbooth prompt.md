@@ -13,7 +13,13 @@ Variant Family: Seven Card Stud
 Mode: Production-Ready
 
 Rules:
-Tollbooth is a Seven Card Stud game. It has mostly the same game play mechanics as Seven Card Stud (antes, betting rounds, showdown). The difference is in how cards are dealt. We start the same as Seven Card Stud, by dealing each player 2 cards face down and 1 card face up. Then we have a betting round. Then, instead of immediately dealing a card face up to each player, we are going to turn two cards face up in the middle of the table next to the deck. The first player to act will be presented with an overlay and given the option to purchase the card furthest from the deck for free, or purchase the card nearest the deck for 1x the ante, or to take the top face down card from the deck for 2x the ante. If the player takes the furthest card, then the nearest card moves into the furthest position and the top card from the deck is flipped over face up into the nearest positon. If the player takes the nearest card then the furthest card stays where it is and the top card from the deck is flipped face up and takes the nearest position. The player can only take one card. If the choice timer of 30 seconds times out, then the player will automatically take the furthest card. Once the player chooses a card (either manually or automatically) then the action moves to the next card. Once every player makes a choice in the round, then the betting action takes place as normal. 
+Tollbooth is a Seven Card Stud game. It has mostly the same game play mechanics as Seven Card Stud (antes, betting rounds, showdown). The difference is in how cards are dealt. We start the same as Seven Card Stud, by dealing each player 2 cards face down and 1 card face up. Then we have a betting round. Then, instead of immediately dealing a card face up to each player, we are going to turn two cards face up in the middle of the table next to the deck. The first player to act will be presented with an overlay and given the option to purchase the card furthest from the deck for free, or purchase the card nearest the deck for 1x the ante, or to take the top face down card from the deck for 2x the ante. If the player takes the furthest card, then the nearest card moves into the furthest position and the top card from the deck is flipped over face up into the nearest position. If the player takes the nearest card then the furthest card stays where it is and the top card from the deck is flipped face up and takes the nearest position. The player can only take one card. If the choice timer of 30 seconds times out, then the player will automatically take the furthest card. Once the player chooses a card (either manually or automatically) then the action moves to the next card. Once every player makes a choice in the round, then the betting action takes place as normal. 
+
+Community card cleanup: After all players choose in a TollboothOffer round, the remaining 2 display cards should be remain visible on the table and used for the next betting round. However, they should NOT be included as community cards.
+
+All-in runout: When all remaining players are all-in during a betting round, the subsequent tollbooth rounds should auto-deal using the "free" (furthest) option for each player, dealing out remaining streets rapidly. This mirrors how 7CS deals remaining streets automatically when all-in. Recommendation: handle in ProcessBettingAction — detect all-in state and bypass tollbooth offers.
+
+Card display on table: The 2 tollbooth face-up cards should be visible to all players via TableStatePublicDto.CommunityCards. After the round, they should stay visible on the table and used for the next round. They should NOT be used as / counted as community cards during Hand evaluation or odds calculation though. 
 
 
 ## Operating Mode
@@ -43,6 +49,7 @@ Before coding:
 - Derive all changes from repository conventions in [docs/AddingNewGames20.md](docs/AddingNewGames20.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), and current neighboring implementations
 
 ## Guardrails (Mandatory)
+- If anything is unclear, prompt/ask me
 - Do not stage, commit, amend, reset, checkout, or discard changes unless explicitly asked.
 - Preserve unrelated working tree changes.
 - Never revert user changes you did not create.
