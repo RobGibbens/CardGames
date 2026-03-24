@@ -6,6 +6,13 @@
 *@
 
 <div class="odds-section">
+    @if (IsPairPressure)
+    {
+        <div class="odds-section-hint">
+            Odds include future wild-rank rotation as new face-up pairs appear.
+        </div>
+    }
+
     @if (HandOdds is not null && HandOdds.Any())
     {
         <div class="odds-list">
@@ -42,6 +49,11 @@
     /// </summary>
     [Parameter]
     public IReadOnlyList<HandTypeOddsDto>? HandOdds { get; set; }
+
+    [Parameter]
+    public string? GameTypeCode { get; set; }
+
+    private bool IsPairPressure => string.Equals(GameTypeCode, "PAIRPRESSURE", StringComparison.OrdinalIgnoreCase);
 
     private static string FormatPercentage(decimal value)
     {

@@ -1,13 +1,8 @@
-
 # TODO
 
 ## Still to do
 
 - [ ] https://github.com/leeoades/FunctionalStateMachine
-
-
-- [x] BB - The blinds chips icons overlay the hand eval
-- [x] BB - Test in DC
 
 - [ ] SYN - check for ties
 - [ ] SYN - odds
@@ -81,7 +76,7 @@
 - [x] Add Follow the Queen
 - [x] The Good, the Bad, and the Ugly
 - [x] Add Razz
-- [ ] Pair Pressure 
+- [x] Pair Pressure 
 - [ ] Toll booth
 
 ### 5 Card Stud Variants
@@ -246,3 +241,5 @@
 - [x] Auto generate table name
 - [x] Lobby - Group by game type
 - [x] DC - You're the dealer! Pick a game variant for this hand. - SYN shows Min Bet
+- [x] BB - The blinds chips icons overlay the hand eval
+- [x] BB - Test in DC

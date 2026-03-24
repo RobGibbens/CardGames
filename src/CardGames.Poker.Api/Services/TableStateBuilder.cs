@@ -53,7 +53,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			PokerGameMetadataRegistry.SevenCardStudCode,
 			PokerGameMetadataRegistry.RazzCode,
 			PokerGameMetadataRegistry.BaseballCode,
-			PokerGameMetadataRegistry.FollowTheQueenCode
+			PokerGameMetadataRegistry.FollowTheQueenCode,
+			PokerGameMetadataRegistry.PairPressureCode
 		};
 	private static readonly Dictionary<string, string[]> TableSoundboardFiles =
 		new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
@@ -130,7 +131,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 						var orderKeys = cardsForHand.Select(c => new
 						{
 							Card = $"{MapSymbolToRank(c.Symbol)}{c.Suit.ToString()[0]}",
-							OrderKey = GetSevenCardStudOrderKey(c),
+							OrderKey = StudOrderHelper.GetPlayerCardOrderKey(c.DealtAtPhase, c.Location == CardLocation.Hole, c.DealOrder),
 							c.DealOrder,
 							c.Location,
 							c.DealtAtPhase,
@@ -925,8 +926,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		var isBaseball = IsBaseballGame(game.GameType?.Code);
 		var isKingsAndLows = IsKingsAndLowsGame(game.GameType?.Code);
 		var isFollowTheQueen = IsFollowTheQueenGame(game.GameType?.Code);
+		var isPairPressure = IsPairPressureGame(game.GameType?.Code);
 		var isScrewYourNeighbor = IsScrewYourNeighborGame(game.GameType?.Code);
-		var isStudStyleShowdown = isSevenCardStud || isBaseball || isFollowTheQueen;
+		var isStudStyleShowdown = isSevenCardStud || isBaseball || isFollowTheQueen || isPairPressure;
 		var isTerminalScrewYourNeighborShowdown =
 			isScrewYourNeighbor && string.Equals(game.CurrentPhase, "Ended", StringComparison.OrdinalIgnoreCase);
 
@@ -1394,6 +1396,44 @@ public sealed class TableStateBuilder : ITableStateBuilder
 							}
 						}
 						playerHandEvaluations[gp.Player.Name] = (ftqHand, null, null, null, gp, cards, wildIndexes, GetCardIndexes(coreCards, ftqHand.BestHandSourceCards));
+					}
+				}
+				else if (isPairPressure)
+				{
+					var holeCards = cards
+						.Where(c => c.Location == CardLocation.Hole)
+						.OrderBy(c => c.DealOrder)
+						.ToList();
+					var boardCards = cards
+						.Where(c => c.Location == CardLocation.Board)
+						.OrderBy(c => c.DealOrder)
+						.ToList();
+
+					var initialHoleCards = holeCards.Take(2)
+						.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
+						.ToList();
+					var openCards = boardCards
+						.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
+						.ToList();
+					var faceUpCardsInOrder = await GetOrderedFaceUpCardsAsync(game, cancellationToken);
+
+					if (initialHoleCards.Count >= 2)
+					{
+						var downCard = holeCards.Count >= 3
+							? new Card((Suit)holeCards[2].Suit, (Symbol)holeCards[2].Symbol)
+							: null;
+						var pairPressureHand = new PairPressureHand(initialHoleCards, openCards, downCard, faceUpCardsInOrder);
+						var wildCards = pairPressureHand.WildCards;
+						var wildIndexes = new List<int>();
+						for (var i = 0; i < coreCards.Count; i++)
+						{
+							if (wildCards.Contains(coreCards[i]))
+							{
+								wildIndexes.Add(i);
+							}
+						}
+
+						playerHandEvaluations[gp.Player.Name] = (pairPressureHand, null, null, null, gp, cards, wildIndexes, GetCardIndexes(coreCards, pairPressureHand.BestHandSourceCards));
 					}
 				}
 				else if (isSevenCardStud)
@@ -2189,12 +2229,17 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		}
 
 		var isFollowTheQueen = string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.FollowTheQueenCode, StringComparison.OrdinalIgnoreCase);
+		var isPairPressure = string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.PairPressureCode, StringComparison.OrdinalIgnoreCase);
 
-		// For Follow the Queen, compute dynamic wild ranks from face-up cards
+		// Dynamic-wild stud variants compute their active wild ranks from face-up cards.
 		IReadOnlyList<string>? dynamicWildRanks = null;
 		if (isFollowTheQueen)
 		{
 			dynamicWildRanks = await ComputeFollowTheQueenWildRanksAsync(game, cancellationToken);
+		}
+		else if (isPairPressure)
+		{
+			dynamicWildRanks = await ComputePairPressureWildRanksAsync(game, cancellationToken);
 		}
 
 		return new GameSpecialRulesDto
@@ -2248,6 +2293,21 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				wildRanks.Add(followRank);
 			}
 		}
+
+		return wildRanks;
+	}
+
+	private async Task<IReadOnlyList<string>> ComputePairPressureWildRanksAsync(
+		Entities.Game game,
+		CancellationToken cancellationToken)
+	{
+		var sortedFaceUpCards = await GetOrderedFaceUpCardsAsync(game, cancellationToken);
+		var wildRanks = new PairPressureWildCardRules()
+			.DetermineWildRanks(sortedFaceUpCards)
+			.Select(rank => MapSymbolToRank((Entities.CardSymbol)rank))
+			.Where(rank => rank is not null)
+			.Cast<string>()
+			.ToList();
 
 		return wildRanks;
 	}
@@ -2322,6 +2382,13 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			else
 			{
 				wildRanks.Add("Q"); // Fallback: at minimum Queens are always wild
+			}
+		}
+		else if (string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.PairPressureCode, StringComparison.OrdinalIgnoreCase))
+		{
+			if (dynamicWildRanks is { Count: > 0 })
+			{
+				wildRanks.AddRange(dynamicWildRanks);
 			}
 		}
 
@@ -2848,20 +2915,31 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				c.Suit,
 				c.DealtAtPhase,
 				c.DealOrder,
+				c.Location,
 				SeatPosition = c.GamePlayer != null ? c.GamePlayer.SeatPosition : -1
 			})
 			.ToListAsync(cancellationToken);
 
-		// Sort in memory to handle rotation logic (Stud deals start left of Dealer)
-		// IMPORTANT: DealOrder is not guaranteed to be globally unique across streets for stud variants.
-		// To determine the "next card after the last face-up Queen" we must sort by street/phase first,
-		// then by within-street order, then by rotation relative to the dealer.
-		// Rotation order desired: (Dealer+1)...Max, 0...Dealer
-		return rawFaceUpCards
-			.OrderBy(c => GetStreetPhaseOrder(c.DealtAtPhase))
-			.ThenBy(c => c.DealOrder)
-			.ThenBy(c => c.SeatPosition > game.DealerPosition ? c.SeatPosition : c.SeatPosition + 1000)
-			.Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
+		var seats = rawFaceUpCards
+			.GroupBy(card => card.SeatPosition)
+			.Select(group => new
+			{
+				SeatPosition = group.Key,
+				Cards = StudOrderHelper.OrderPlayerCards(
+					group,
+					card => card.DealtAtPhase,
+					card => card.Location == CardLocation.Hole,
+					card => card.DealOrder)
+			})
+			.ToList();
+
+		return StudOrderHelper.OrderFaceUpCardsInGlobalDealOrder(
+				seats,
+				game.DealerPosition,
+				seat => seat.SeatPosition,
+				seat => seat.Cards,
+				_ => true)
+			.Select(card => new Card((Suit)card.Suit, (Symbol)card.Symbol))
 			.ToList();
 	}
 
@@ -2892,6 +2970,9 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 	private static bool IsFollowTheQueenGame(string? gameTypeCode)
 		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.FollowTheQueenCode);
+
+	private static bool IsPairPressureGame(string? gameTypeCode)
+		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.PairPressureCode);
 
 	private static bool IsTwosJacksAxeGame(string? gameTypeCode)
 		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.TwosJacksManWithTheAxeCode);
@@ -2969,6 +3050,11 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			return await EvaluateFollowTheQueenHandDescriptionAsync(game, holeCardEntities, initialHoleCards, boardCards, cancellationToken);
 		}
 
+		if (IsPairPressureGame(game.GameType?.Code))
+		{
+			return await EvaluatePairPressureHandDescriptionAsync(game, holeCardEntities, initialHoleCards, boardCards, cancellationToken);
+		}
+
 		if (!string.IsNullOrWhiteSpace(game.GameType?.Code) && StudVariantEvaluators.TryGetValue(game.GameType.Code, out var evaluator))
 		{
 			return evaluator(holeCardEntities, boardCards);
@@ -3034,29 +3120,20 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		return HandDescriptionFormatter.GetHandDescription(partialHand);
 	}
 
-	private static int GetSevenCardStudOrderKey(GameCard card)
+	private async Task<string?> EvaluatePairPressureHandDescriptionAsync(
+		Game game,
+		List<GameCard> holeCardEntities,
+		List<Card> initialHoleCards,
+		List<Card> openCards,
+		CancellationToken cancellationToken)
 	{
-		var phaseOrder = GetStreetPhaseOrder(card.DealtAtPhase);
+		var faceUpCardsInOrder = await GetOrderedFaceUpCardsAsync(game, cancellationToken);
+		var downCard = holeCardEntities.Count >= 3
+			? new Card((Suit)holeCardEntities[2].Suit, (Symbol)holeCardEntities[2].Symbol)
+			: null;
 
-		if (phaseOrder == 1) // ThirdStreet
-		{
-			// ThirdStreet has 2 hole cards then 1 board card.
-			// Use Location to ensure holes come before board, then DealOrder for hole ordering.
-			if (card.Location == CardLocation.Hole)
-			{
-				// Hole cards: base 1000 + DealOrder gives 1001, 1002
-				return 1000 + card.DealOrder;
-			}
-			else
-			{
-				// Board card: base 1100 + DealOrder ensures it sorts after all holes
-				return 1100 + card.DealOrder;
-			}
-		}
-
-		// For FourthStreet-SeventhStreet, use phase * 1000 + DealOrder
-		// This maintains phase ordering and uses DealOrder as tiebreaker
-		return phaseOrder * 1000 + card.DealOrder;
+		var hand = new PairPressureHand(initialHoleCards, openCards, downCard, faceUpCardsInOrder);
+		return HandDescriptionFormatter.GetHandDescription(hand);
 	}
 
 	/// <summary>
@@ -3066,13 +3143,15 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	/// <param name="cards">The collection of cards to order.</param>
 	/// <param name="isSevenCardStud">Whether this is a Seven Card Stud game.</param>
 	/// <returns>Cards ordered in the correct deal sequence.</returns>
-	private static IOrderedEnumerable<GameCard> OrderCardsForDisplay(IEnumerable<GameCard> cards, bool isSevenCardStud)
+	private static IEnumerable<GameCard> OrderCardsForDisplay(IEnumerable<GameCard> cards, bool isSevenCardStud)
 	{
 		if (isSevenCardStud)
 		{
-			// Use composite order key that accounts for Location within ThirdStreet
-			// to handle cases where DealOrder values might be incorrect.
-			return cards.OrderBy(GetSevenCardStudOrderKey);
+			return StudOrderHelper.OrderPlayerCards(
+				cards,
+				card => card.DealtAtPhase,
+				card => card.Location == CardLocation.Hole,
+				card => card.DealOrder);
 		}
 
 		// For other games: Order by DealOrder which should be sequential per player

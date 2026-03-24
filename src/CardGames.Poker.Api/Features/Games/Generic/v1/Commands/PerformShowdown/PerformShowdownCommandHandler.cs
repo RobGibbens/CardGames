@@ -308,12 +308,17 @@ public sealed class PerformShowdownCommandHandler(
 
         // 9. Evaluate all hands using the game-specific evaluator
         var includeSharedCommunityCards = UsesSharedCommunityCards(gameTypeCode);
+        var pairPressureFaceUpCards = IsPairPressureGame(gameTypeCode)
+            ? await GetOrderedFaceUpCardsAsync(context, game, cancellationToken)
+            : null;
         var playerHandEvaluations = EvaluatePlayerHands(
             playersInHand,
             playerCardGroups,
             sharedCommunityCards,
             handEvaluator,
-            includeSharedCommunityCards);
+            includeSharedCommunityCards,
+            gameTypeCode,
+            pairPressureFaceUpCards);
 
         // 10. Award each pot to the best hand among ELIGIBLE players
         var (payouts, allWinners, overallWinReason) = await AwardPotsAsync(
@@ -539,7 +544,9 @@ public sealed class PerformShowdownCommandHandler(
         Dictionary<Guid, List<GameCard>> playerCardGroups,
         IReadOnlyCollection<GameCard> sharedCommunityCards,
         IHandEvaluator handEvaluator,
-        bool includeSharedCommunityCards)
+        bool includeSharedCommunityCards,
+        string gameTypeCode,
+        IReadOnlyCollection<Card>? pairPressureFaceUpCards)
     {
         var evaluations = new Dictionary<string, PlayerHandEvaluation>();
 
@@ -551,7 +558,15 @@ public sealed class PerformShowdownCommandHandler(
             }
 
             HandBase hand;
-            if (handEvaluator.SupportsPositionalCards)
+            if (IsPairPressureGame(gameTypeCode))
+            {
+                hand = CreatePairPressureHand(cards, pairPressureFaceUpCards);
+                if (hand is null)
+                {
+                    continue;
+                }
+            }
+            else if (handEvaluator.SupportsPositionalCards)
             {
                 // For positional-card games, separate private and visible cards.
                 var holeCards = cards
@@ -1196,6 +1211,78 @@ public sealed class PerformShowdownCommandHandler(
     /// </summary>
     private static Card MapToCard(GameCard gameCard) =>
         new(MapSuit(gameCard.Suit), MapSymbol(gameCard.Symbol));
+
+    private static bool IsPairPressureGame(string gameTypeCode)
+        => string.Equals(gameTypeCode, PokerGameMetadataRegistry.PairPressureCode, StringComparison.OrdinalIgnoreCase);
+
+    private static PairPressureHand? CreatePairPressureHand(
+        List<GameCard> cards,
+        IReadOnlyCollection<Card>? pairPressureFaceUpCards)
+    {
+        if (pairPressureFaceUpCards is null)
+        {
+            return null;
+        }
+
+        var holeCards = cards
+            .Where(c => c.Location == CardLocation.Hole || c.Location == CardLocation.Hand)
+            .OrderBy(c => c.DealOrder)
+            .Select(MapToCard)
+            .ToList();
+        var boardCards = cards
+            .Where(c => c.Location == CardLocation.Board)
+            .OrderBy(c => c.DealOrder)
+            .Select(MapToCard)
+            .ToList();
+
+        if (holeCards.Count < 2)
+        {
+            return null;
+        }
+
+        var initialHoleCards = holeCards.Take(2).ToList();
+        var downCard = holeCards.Skip(2).FirstOrDefault();
+        return new PairPressureHand(initialHoleCards, boardCards, downCard, pairPressureFaceUpCards);
+    }
+
+    private static async Task<IReadOnlyCollection<Card>> GetOrderedFaceUpCardsAsync(
+        CardsDbContext context,
+        Game game,
+        CancellationToken cancellationToken)
+    {
+        var faceUpCards = await context.GameCards
+            .Where(c => c.GameId == game.Id
+                        && c.HandNumber == game.CurrentHandNumber
+                        && c.IsVisible
+                        && !c.IsDiscarded)
+            .Include(c => c.GamePlayer)
+            .Select(c => new
+            {
+                c.Symbol,
+                c.Suit,
+                c.DealtAtPhase,
+                c.DealOrder,
+                SeatPosition = c.GamePlayer != null ? c.GamePlayer.SeatPosition : -1
+            })
+            .ToListAsync(cancellationToken);
+
+        return faceUpCards
+            .OrderBy(c => GetStreetPhaseOrder(c.DealtAtPhase))
+            .ThenBy(c => c.DealOrder)
+            .ThenBy(c => c.SeatPosition > game.DealerPosition ? c.SeatPosition : c.SeatPosition + 1000)
+            .Select(c => new Card((Suit)c.Suit, (Symbol)c.Symbol))
+            .ToList();
+    }
+
+    private static int GetStreetPhaseOrder(string? phase) => phase switch
+    {
+        nameof(Phases.ThirdStreet) => 1,
+        nameof(Phases.FourthStreet) => 2,
+        nameof(Phases.FifthStreet) => 3,
+        nameof(Phases.SixthStreet) => 4,
+        nameof(Phases.SeventhStreet) => 5,
+        _ => 999
+    };
 
     private static bool UsesSharedCommunityCards(string gameTypeCode)
     {

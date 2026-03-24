@@ -7,6 +7,8 @@
 
 ## Learnings
 
+- 2026-03-23: Pair Pressure web cutover can stay low-risk by adding dedicated `/api/v1/games/pair-pressure/*` endpoints that reuse the existing stud betting/current-turn handlers and generic showdown handler behind the new route, then switching `TablePlay.razor` and `IGameApiRouter` to a small `IPairPressureApi` Refit interface. This removes the frontend dependency on Seven Card Stud and generic gameplay routes without changing game behavior.
+
 - 2026-03-19 (team update): Lobby heading spacing decision (`linus-lobby-heading-spacing-fix`) was merged from inbox into canonical `.squad/decisions.md`; use the canonical entry as the source of truth for follow-up grouped lobby heading spacing changes.
 
 - 2026-03-19: In `Lobby.razor`, the grouped lobby spacing issue between sections is best fixed by adding top margin on the next section heading (`mt-*`) in both grid and list renders, rather than relying on larger section bottom margin.

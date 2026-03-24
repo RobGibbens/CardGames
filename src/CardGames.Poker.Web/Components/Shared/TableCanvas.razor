@@ -19,12 +19,14 @@
 
 			<!-- Center area: deck, community cards, pot in one row -->
 			<div class="table-center">
-				<div class="table-center-row @(HasExtraCommunityCards ? "table-center-row-compact-board" : string.Empty)">
+				<div
+					class="table-center-row @(HasExtraCommunityCards ? "table-center-row-compact-board" : string.Empty)">
 					<!-- Deck visualization -->
 					<div class="deck-stack" @ref="_deckRef">
 						@for (var i = 0; i < 5; i++)
 						{
-							<playing-card rank="0" backcolor="#44F" class="deck-card" style="--deck-offset: @i"></playing-card>
+							<playing-card rank="0" backcolor="#44F" class="deck-card"
+										  style="--deck-offset: @i"></playing-card>
 						}
 					</div>
 
@@ -32,7 +34,8 @@
 					@if (CommunityCards is { Count: > 0 })
 					{
 						<div class="community-cards">
-							@foreach (var (card, cardIndex) in CommunityCards.OrderBy(c => c.DealOrder).Select((c, i) => (c, i)))
+							@foreach (var (card, cardIndex) in CommunityCards.OrderBy(c => c.DealOrder).Select((c, i) => (c,
+						i)))
 							{
 								var label = GetCommunityCardLabel(cardIndex);
 								var statusClass = card.IsFaceUp ? "revealed" : "hidden";
@@ -40,8 +43,7 @@
 								<div class="community-card-slot @statusClass">
 									@if (card.IsFaceUp && !string.IsNullOrWhiteSpace(card.Rank))
 									{
-										<playing-card rank="@GetPlayingCardRank(card.Rank)"
-													  suit="@card.Suit"
+										<playing-card rank="@GetPlayingCardRank(card.Rank)" suit="@card.Suit"
 													  suitcolor="@(isWildCommunityCard ? "green" : null)"
 													  rankcolor="@(isWildCommunityCard ? "green" : null)"
 													  courtcolor="@(isWildCommunityCard ? "green" : null)"
@@ -49,8 +51,7 @@
 									}
 									else
 									{
-										<playing-card rank="0" backcolor="#44F"
-													  class="community-card-element"></playing-card>
+										<playing-card rank="0" backcolor="#44F" class="community-card-element"></playing-card>
 									}
 									@if (!string.IsNullOrWhiteSpace(label))
 									{
@@ -74,17 +75,16 @@
 		{
 			<div class="table-seat @GetSeatPositionClass(seat.SeatIndex) @GetSeatStateClass(seat)"
 				 @onclick="() => HandleSeatClick(seat)">
-                
+
 				<TableSeat Seat="seat"
 						   IsDealer="@(seat.SeatIndex == DealerSeatIndex && CurrentPhase != GamePhase.WaitingForPlayers.ToString())"
 						   IsCurrentActor="@(seat.SeatIndex == CurrentActorSeatIndex)"
 						   IsCurrentPlayer="@(seat.SeatIndex == CurrentPlayerSeatIndex)"
 						   IsSeatSelectionDisabledForCurrentUser="@(DisableSeatSelectionForCurrentUser && !seat.IsOccupied)"
 						   ShowCards="@(!IsPausedForChipCheck && CurrentPhase != GamePhase.WaitingForPlayers.ToString() && CurrentPhase != GamePhase.WaitingToStart.ToString() && seat.Cards.Count > 0)"
-						   GameTypeCode="@GameTypeCode"
+						   GameTypeCode="@GameTypeCode" WildCards="@WildCards"
 						   IsSmallBlind="@(IsBlindBasedGame && seat.SeatIndex == GetSmallBlindSeatIndex())"
-						   IsBigBlind="@(IsBlindBasedGame && seat.SeatIndex == GetBigBlindSeatIndex())"
-						   Ante="@Ante" />
+						   IsBigBlind="@(IsBlindBasedGame && seat.SeatIndex == GetBigBlindSeatIndex())" Ante="@Ante" />
 			</div>
 		}
 
@@ -120,15 +120,15 @@
 						{
 							@* Specific card (e.g., King of Diamonds) *@
 							<div class="wild-card-visual wild-card-specific">
-								<playing-card rank="@GetPlayingCardRank(wildCard.Rank)"
-											  suit="@wildCard.Suit"></playing-card>
+								<playing-card rank="@GetPlayingCardRank(wildCard.Rank)" suit="@wildCard.Suit"></playing-card>
 							</div>
 						}
 						else if
 							(!string.IsNullOrWhiteSpace(wildCard.Rank))
 						{
 							<div class="wild-card-visual wild-card-specific">
-								<playing-card rank="@GetPlayingCardRank(wildCard.Rank)" suit="Hearts" suitcolor="white"></playing-card>
+								<playing-card rank="@GetPlayingCardRank(wildCard.Rank)" suit="Hearts" suitcolor="white"
+											  rankcolor="green"></playing-card>
 							</div>
 						}
 					</div>

@@ -1,5 +1,7 @@
 using CardGames.Core.French.Cards;
 using CardGames.Poker.Evaluation;
+using CardGames.Poker.Hands.HandTypes;
+using CardGames.Poker.Hands.StudHands;
 
 namespace CardGames.Poker.Web.Services;
 
@@ -9,7 +11,11 @@ public static class DashboardHandOddsCalculator
         string? gameTypeCode,
         IReadOnlyCollection<Card> playerCards,
         IReadOnlyCollection<Card> communityCards,
-        IReadOnlyCollection<Card>? deadCards = null)
+        IReadOnlyCollection<Card>? deadCards = null,
+        IReadOnlyCollection<Card>? faceUpCardsInOrder = null,
+        IReadOnlyCollection<OddsCalculator.PairPressurePlayerSnapshot>? pairPressurePlayers = null,
+        int? heroSeatIndex = null,
+        int? dealerSeatIndex = null)
     {
         if (playerCards.Count == 0)
         {
@@ -17,6 +23,7 @@ public static class DashboardHandOddsCalculator
         }
 
         deadCards ??= Array.Empty<Card>();
+        faceUpCardsInOrder ??= Array.Empty<Card>();
 
         if (string.Equals(gameTypeCode, "TWOSJACKSMANWITHTHEAXE", StringComparison.OrdinalIgnoreCase))
         {
@@ -25,12 +32,23 @@ public static class DashboardHandOddsCalculator
 
         if (string.Equals(gameTypeCode, "SEVENCARDSTUD", StringComparison.OrdinalIgnoreCase))
         {
-            return OddsCalculator.CalculateStudOdds(playerCards, deadCards);
+            return OddsCalculator.CalculateStudOdds(playerCards, Array.Empty<Card>(), deadCards: deadCards);
+        }
+
+        if (string.Equals(gameTypeCode, "PAIRPRESSURE", StringComparison.OrdinalIgnoreCase))
+        {
+            return CalculatePairPressureOdds(
+                playerCards,
+                deadCards,
+                faceUpCardsInOrder,
+                pairPressurePlayers,
+                heroSeatIndex,
+                dealerSeatIndex);
         }
 
         if (string.Equals(gameTypeCode, "RAZZ", StringComparison.OrdinalIgnoreCase))
         {
-            return OddsCalculator.CalculateRazzOdds(playerCards, deadCards);
+            return OddsCalculator.CalculateRazzOdds(playerCards, Array.Empty<Card>(), deadCards: deadCards);
         }
 
         if (string.Equals(gameTypeCode, "BASEBALL", StringComparison.OrdinalIgnoreCase))
@@ -113,5 +131,58 @@ public static class DashboardHandOddsCalculator
         }
 
         return OddsCalculator.CalculateDrawOdds(playerCards, deadCards);
+    }
+
+    private static OddsCalculator.OddsResult? CalculatePairPressureOdds(
+        IReadOnlyCollection<Card> playerCards,
+        IReadOnlyCollection<Card> deadCards,
+        IReadOnlyCollection<Card> faceUpCardsInOrder,
+        IReadOnlyCollection<OddsCalculator.PairPressurePlayerSnapshot>? pairPressurePlayers,
+        int? heroSeatIndex,
+        int? dealerSeatIndex)
+    {
+        var orderedCards = playerCards.ToList();
+        if (orderedCards.Count < 2)
+        {
+            return null;
+        }
+
+        if (pairPressurePlayers is { Count: > 0 } && heroSeatIndex.HasValue && dealerSeatIndex.HasValue)
+        {
+            return OddsCalculator.CalculatePairPressureTableOdds(
+                orderedCards,
+                heroSeatIndex.Value,
+                dealerSeatIndex.Value,
+                pairPressurePlayers,
+                deadCards: deadCards);
+        }
+
+        if (orderedCards.Count >= 7)
+        {
+            var hand = new PairPressureHand(
+                orderedCards.Take(2).ToList(),
+                orderedCards.Skip(2).Take(4).ToList(),
+                orderedCards[6],
+                faceUpCardsInOrder);
+
+            return CreateCertainResult(hand.Type);
+        }
+
+        return OddsCalculator.CalculatePairPressureOdds(
+            orderedCards.Take(2).ToList(),
+            orderedCards.Skip(2).ToList(),
+            faceUpCardsInOrder,
+            deadCards: deadCards);
+    }
+
+    private static OddsCalculator.OddsResult CreateCertainResult(HandType handType)
+    {
+        return new OddsCalculator.OddsResult
+        {
+            HandTypeProbabilities = new Dictionary<HandType, decimal>
+            {
+                [handType] = 1m
+            }
+        };
     }
 }

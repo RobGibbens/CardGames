@@ -346,3 +346,49 @@ Implementation touchpoints:
 Reusable pattern confirmed:
 - If a variant keeps existing action contracts and only changes street progression/card counts,
   keep endpoint family reuse and branch by game code in handler progression/dealing logic.
+
+## 14. Pair Pressure Mapping (PAIRPRESSURE)
+
+Pair Pressure is a stud-family variant that keeps Seven Card Stud's lifecycle intact:
+
+- CollectingAntes -> ThirdStreet -> FourthStreet -> FifthStreet -> SixthStreet -> SeventhStreet -> Showdown -> Complete
+- Wild ranks are derived from duplicate face-up ranks in global deal order.
+- Only the two most recent distinct paired ranks stay wild.
+
+Implementation touchpoints:
+
+- Domain metadata and hand logic:
+  - `src/CardGames.Poker/Games/PairPressure/PairPressureGame.cs`
+  - `src/CardGames.Poker/Games/PairPressure/PairPressureRules.cs`
+  - `src/CardGames.Poker/Hands/WildCards/PairPressureWildCardRules.cs`
+  - `src/CardGames.Poker/Hands/StudHands/PairPressureHand.cs`
+- API flow and evaluation wiring:
+  - `src/CardGames.Poker.Api/GameFlow/PairPressureFlowHandler.cs`
+    - Reuse Seven Card Stud street/dealing behavior rather than cloning new lifecycle logic.
+  - `src/CardGames.Poker.Api/Games/PokerGameMetadataRegistry.cs`
+    - Add `PairPressureCode` for shared conditionals.
+  - `src/CardGames.Poker.Api/Features/Games/Generic/v1/Commands/PerformShowdown/PerformShowdownCommandHandler.cs`
+    - Route `PAIRPRESSURE` through stud-style showdown and pass ordered face-up cards into Pair Pressure evaluation.
+  - `src/CardGames.Poker.Api/Services/TableStateBuilder.cs`
+    - Compute dynamic paired wild ranks from ordered face-up cards for public rules, interim evaluation, and showdown overlays.
+
+Recommended targeted coverage:
+
+- Unit tests for the paired-rank queue logic:
+  - first paired rank becomes wild
+  - third distinct paired rank evicts the oldest tracked rank
+  - repeated duplicates do not resurrect an evicted older rank
+- Unit tests for Pair Pressure hand behavior:
+  - natural hand when no face-up pairs exist
+  - hand improvement when one or two tracked ranks are wild
+  - regression that an evicted older paired rank is not still treated as wild
+- Integration tests:
+  - flow-handler resolution returns a stud-style handler instead of fallback
+  - street sequence matches Seven Card Stud
+  - showdown winner evaluation uses Pair Pressure wild-card rules
+  - table-state special rules expose only the two most recent distinct paired ranks
+
+Reusable pattern confirmed:
+
+- For stud variants that reuse Seven Card Stud dealing and betting but have dynamic wilds based on the global face-up sequence,
+  keep the Seven Card Stud flow handler shape, add a dedicated wild-rank helper plus stud hand type, and wire ordered face-up-card evaluation into both showdown and table-state projection.

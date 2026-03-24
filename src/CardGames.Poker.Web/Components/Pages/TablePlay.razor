@@ -11,6 +11,8 @@
 @using CardGames.Poker.Api.Contracts
 @using CardGames.Poker.Evaluation
 @using CardGames.Poker.Hands.HandTypes
+@using CardGames.Poker.Hands.StudHands
+@using CardGames.Poker.Hands.WildCards
 @using CardGames.Poker.Web.Components.Shared
 @using CardGames.Poker.Web.Extensions
 @using CardGames.Poker.Web.Services
@@ -28,6 +30,7 @@
 @inject ILogger<TablePlay> Logger
 @inject ITwosJacksManWithTheAxeApi TwosJacksManWithTheAxeApi
 @inject ISevenCardStudApi SevenCardStudApi
+@inject IPairPressureApi PairPressureApi
 @inject IGoodBadUglyApi GoodBadUglyApi
 @inject IFollowTheQueenApi FollowTheQueenApi
 @inject IBaseballApi BaseballApi
@@ -260,7 +263,7 @@
                         <DashboardSection Title="Odds" Icon="fa-solid fa-chart-simple"
                                           IsExpanded="@DashboardState.IsSectionExpanded("Odds")"
                                           IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("Odds", value))">
-                            <OddsSection HandOdds="@handOdds" />
+                            <OddsSection HandOdds="@handOdds" GameTypeCode="@_gameTypeCode" />
                         </DashboardSection>
                     }
 
@@ -520,6 +523,7 @@
         {
             <ShowdownOverlay ShowdownResult="@_showdownResult" ShowdownWon="@_showdownWon" ShowdownLost="@_showdownLost"
                              GameTypeCode="@_gameTypeCode"
+                             ActiveWildCards="@GetWildCardsForDisplay()"
                              ShowdownState="@GetOverlayShowdownState()"
                              SharedCommunityCards="@GetOverlayShowdownCommunityCards()"
                              SecondsUntilNextHand="@_secondsUntilNextHand" IsGameEnded="@(IsEndedPhase || IsGameCompleted)" OnClose="@CloseShowdownOverlay" />
@@ -736,6 +740,7 @@
     private bool IsFiveCardDraw => string.Equals(_gameTypeCode, "FIVECARDDRAW", StringComparison.OrdinalIgnoreCase);
     private bool IsKingsAndLows => string.Equals(_gameTypeCode, "KINGSANDLOWS", StringComparison.OrdinalIgnoreCase);
     private bool IsSevenCardStud => string.Equals(_gameTypeCode, "SEVENCARDSTUD", StringComparison.OrdinalIgnoreCase);
+    private bool IsPairPressure => string.Equals(_gameTypeCode, "PAIRPRESSURE", StringComparison.OrdinalIgnoreCase);
     private bool IsRazz => string.Equals(_gameTypeCode, "RAZZ", StringComparison.OrdinalIgnoreCase);
     private bool IsGoodBadUgly => string.Equals(_gameTypeCode, "GOODBADUGLY", StringComparison.OrdinalIgnoreCase);
     private bool IsFollowTheQueen => string.Equals(_gameTypeCode, "FOLLOWTHEQUEEN", StringComparison.OrdinalIgnoreCase);
@@ -753,7 +758,9 @@
     private bool IsScrewYourNeighbor => string.Equals(_gameTypeCode, "SCREWYOURNEIGHBOR", StringComparison.OrdinalIgnoreCase);
     private bool IsStartedScrewYourNeighborTable => IsScrewYourNeighbor && _gameResponse?.StartedAt is not null;
     private bool IsIrishStyleHoldEm => IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple;
-    private bool UsesCardDealAnimation => IsSevenCardStud || IsRazz || IsGoodBadUgly || IsBaseball || IsFollowTheQueen || IsFiveCardDraw || IsTwosJacksManWithTheAxe || IsKingsAndLows || IsHoldEm || IsRedRiver || IsHoldTheBaseball || IsOmaha || IsNebraska || IsSouthDakota || IsBobBarker || IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple || IsScrewYourNeighbor;
+    private bool IsSevenCardStudStyle => IsSevenCardStud || IsPairPressure;
+    private bool UsesCardDealAnimation => IsSevenCardStudStyle || IsRazz || IsGoodBadUgly || IsBaseball || IsFollowTheQueen || IsFiveCardDraw || IsTwosJacksManWithTheAxe || IsKingsAndLows || IsHoldEm || IsRedRiver || IsHoldTheBaseball || IsOmaha || IsNebraska || IsSouthDakota || IsBobBarker || IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple || IsScrewYourNeighbor;
+    
     private int DealAnimationDelayMs => 750;
 
     // Game rules for dynamic UI rendering
@@ -1971,7 +1978,7 @@
                             IsPubliclyVisible = c.IsFaceUp,
                             IsSelected = false,
                             DealOrder = c.DealOrder,
-                            IsWild = c.IsFaceUp && IsWildCard(c.Rank, c.Suit),
+                          IsWild = IsWildCard(rank, suit),
                             IsShowcaseCard = existingCard?.IsShowcaseCard == true
                         };
                     }).ToList();
@@ -2950,6 +2957,26 @@
                 return;
             }
         }
+        else if (IsPairPressure)
+        {
+            var startHandResponse = await PairPressureApi.PairPressureStartHandAsync(GameId);
+            if (!startHandResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
+
+            var collectAntesResponse = await PairPressureApi.PairPressureCollectAntesAsync(GameId);
+            if (!collectAntesResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
+
+            var dealHandsResponse = await PairPressureApi.PairPressureDealHandsAsync(GameId);
+            if (!dealHandsResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
+        }
         else if (IsSevenCardStud)
         {
             var startHandResponse = await SevenCardStudApi.SevenCardStudStartHandAsync(GameId);
@@ -3218,6 +3245,10 @@
             if (IsTwosJacksManWithTheAxe)
             {
                 showdownResponse = await TwosJacksManWithTheAxeApi.TwosJacksManWithTheAxePerformShowdownAsync(GameId);
+            }
+            else if (IsPairPressure)
+            {
+                showdownResponse = await PairPressureApi.PairPressurePerformShowdownAsync(GameId);
             }
             else if (IsSevenCardStud)
             {
@@ -4559,7 +4590,7 @@
             {
                 result = OddsCalculator.CalculateTwosJacksManWithTheAxeDrawOdds(cardsToKeep, deadCards);
             }
-            else if (IsSevenCardStud)
+            else if (IsSevenCardStudStyle)
             {
                 result = OddsCalculator.CalculateStudOdds(cardsToKeep, deadCards);
             }
@@ -5082,11 +5113,42 @@
             .Cast<Card>()
             .ToList();
 
+            var pairPressureFaceUpCardsInOrder = IsPairPressure
+                ? GetPairPressureVisibleFaceUpCardsInOrder()
+                : [];
+
+            var pairPressurePlayers = IsPairPressure
+                ? _seats
+                    .Where(seat => seat.IsOccupied && seat.SeatIndex != _currentPlayerSeatIndex && seat.Cards.Count > 0)
+                    .Select(seat => new OddsCalculator.PairPressurePlayerSnapshot
+                    {
+                        SeatIndex = seat.SeatIndex,
+                        TotalCardsDealt = seat.Cards.Count,
+                        FaceUpCardsInOrder = seat.Cards
+                            .Where(card => card.IsFaceUp && card.IsPubliclyVisible && card.Rank is not null && card.Suit is not null)
+                            .Select(card => ConvertToCard(card.Rank!, card.Suit!))
+                            .Where(card => card is not null)
+                            .Cast<Card>()
+                            .ToList(),
+                        ReceivesFutureCards = !seat.IsFolded && (!seat.IsSittingOut || seat.Cards.Count > 0)
+                    })
+                    .ToList()
+                : [];
+
+            if (IsPairPressure)
+            {
+                deadCards.AddRange(pairPressureFaceUpCardsInOrder.Except(coreCards));
+            }
+
             var result = DashboardHandOddsCalculator.Calculate(
                 _gameTypeCode,
                 coreCards,
                 communityCards,
-                deadCards);
+                deadCards,
+                pairPressureFaceUpCardsInOrder,
+                pairPressurePlayers,
+                _currentPlayerSeatIndex >= 0 ? _currentPlayerSeatIndex : null,
+                _dealerSeatIndex);
 
             handOdds = result is null
                 ? []
@@ -5679,6 +5741,11 @@ HandType.HighCard
     /// </summary>
     private IReadOnlyList<TableCanvas.WildCardDisplay> GetWildCardsForDisplay()
     {
+        if (IsPairPressure && _dealAnimationInProgress)
+        {
+            return GetPairPressureVisibleWildCardsForDisplay();
+        }
+
         var wildRules = _tableState?.SpecialRules?.WildCardRules;
         if (wildRules is null)
         {
@@ -5749,6 +5816,70 @@ HandType.HighCard
 
         return wildCards;
     }
+
+    private IReadOnlyList<TableCanvas.WildCardDisplay> GetPairPressureVisibleWildCardsForDisplay()
+    {
+        var visibleFaceUpCardsInOrder = GetPairPressureVisibleFaceUpCardsInOrder();
+        if (visibleFaceUpCardsInOrder.Count == 0)
+        {
+            return [];
+        }
+
+        var visibleWildRanks = new PairPressureWildCardRules()
+            .DetermineWildRanks(visibleFaceUpCardsInOrder)
+            .Select(GetPairPressureDisplayRank)
+            .Where(rank => !string.IsNullOrWhiteSpace(rank))
+            .ToList();
+
+        return visibleWildRanks
+            .Select(rank => new TableCanvas.WildCardDisplay(
+                Rank: rank,
+                Suit: null,
+                Label: GetWildRankLabel(rank)))
+            .ToList();
+    }
+
+    private IReadOnlyList<Card> GetPairPressureVisibleFaceUpCardsInOrder()
+    {
+        return StudOrderHelper.OrderFaceUpCardsInGlobalDealOrder(
+                _seats.Where(seat => seat.IsOccupied && seat.Cards.Count > 0),
+                _dealerSeatIndex,
+                seat => seat.SeatIndex,
+                seat => seat.Cards,
+                card => card.IsFaceUp && card.IsPubliclyVisible && card.Rank is not null && card.Suit is not null)
+            .Select(card => ConvertToCard(card.Rank!, card.Suit!))
+            .Where(card => card is not null)
+            .Cast<Card>()
+            .ToList();
+    }
+
+    private static string GetPairPressureDisplayRank(int rankValue) => rankValue switch
+    {
+        >= 2 and <= 10 => rankValue.ToString(),
+        11 => "J",
+        12 => "Q",
+        13 => "K",
+        14 => "A",
+        _ => string.Empty
+    };
+
+    private static string NormalizePairPressureWildRank(string? rank) => rank?.Trim().ToUpperInvariant() switch
+    {
+        "ACE" => "A",
+        "KING" => "K",
+        "QUEEN" => "Q",
+        "JACK" => "J",
+        "TEN" or "T" => "10",
+        "NINE" => "9",
+        "EIGHT" => "8",
+        "SEVEN" => "7",
+        "SIX" => "6",
+        "FIVE" => "5",
+        "FOUR" => "4",
+        "THREE" => "3",
+        "TWO" or "DEUCE" => "2",
+        _ => rank?.Trim().ToUpperInvariant() ?? string.Empty
+    };
 
     /// <summary>
     /// Gets a display-friendly name for a rank.

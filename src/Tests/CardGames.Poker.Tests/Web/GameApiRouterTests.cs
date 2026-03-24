@@ -27,6 +27,7 @@ public class GameApiRouterTests
         var twosJacksApi = Substitute.For<ITwosJacksManWithTheAxeApi>();
         var kingsAndLowsApi = Substitute.For<IKingsAndLowsApi>();
         var sevenCardStudApi = Substitute.For<ISevenCardStudApi>();
+        var pairPressureApi = Substitute.For<IPairPressureApi>();
         var goodBadUglyApi = Substitute.For<IGoodBadUglyApi>();
         var baseballApi = Substitute.For<IBaseballApi>();
         var followTheQueenApi = Substitute.For<IFollowTheQueenApi>();
@@ -49,6 +50,7 @@ public class GameApiRouterTests
             twosJacksApi,
             kingsAndLowsApi,
             sevenCardStudApi,
+            pairPressureApi,
             goodBadUglyApi,
             baseballApi,
             followTheQueenApi,
@@ -78,6 +80,7 @@ public class GameApiRouterTests
         var twosJacksApi = Substitute.For<ITwosJacksManWithTheAxeApi>();
         var kingsAndLowsApi = Substitute.For<IKingsAndLowsApi>();
         var sevenCardStudApi = Substitute.For<ISevenCardStudApi>();
+        var pairPressureApi = Substitute.For<IPairPressureApi>();
         var goodBadUglyApi = Substitute.For<IGoodBadUglyApi>();
         var baseballApi = Substitute.For<IBaseballApi>();
         var followTheQueenApi = Substitute.For<IFollowTheQueenApi>();
@@ -100,6 +103,7 @@ public class GameApiRouterTests
             twosJacksApi,
             kingsAndLowsApi,
             sevenCardStudApi,
+            pairPressureApi,
             goodBadUglyApi,
             baseballApi,
             followTheQueenApi,
@@ -129,6 +133,7 @@ public class GameApiRouterTests
         var twosJacksApi = Substitute.For<ITwosJacksManWithTheAxeApi>();
         var kingsAndLowsApi = Substitute.For<IKingsAndLowsApi>();
         var sevenCardStudApi = Substitute.For<ISevenCardStudApi>();
+        var pairPressureApi = Substitute.For<IPairPressureApi>();
         var goodBadUglyApi = Substitute.For<IGoodBadUglyApi>();
         var baseballApi = Substitute.For<IBaseballApi>();
         var followTheQueenApi = Substitute.For<IFollowTheQueenApi>();
@@ -146,6 +151,7 @@ public class GameApiRouterTests
             twosJacksApi,
             kingsAndLowsApi,
             sevenCardStudApi,
+            pairPressureApi,
             goodBadUglyApi,
             baseballApi,
             followTheQueenApi,
@@ -165,6 +171,54 @@ public class GameApiRouterTests
     }
 
     [Fact]
+    public async Task ProcessBettingActionAsync_PairPressure_RoutesToPairPressureApi()
+    {
+        // Arrange
+        var gameId = Guid.NewGuid();
+        var request = new ProcessBettingActionRequest(BettingActionType.Check, 0);
+
+        var fiveCardDrawApi = Substitute.For<IFiveCardDrawApi>();
+        var twosJacksApi = Substitute.For<ITwosJacksManWithTheAxeApi>();
+        var kingsAndLowsApi = Substitute.For<IKingsAndLowsApi>();
+        var sevenCardStudApi = Substitute.For<ISevenCardStudApi>();
+        var pairPressureApi = Substitute.For<IPairPressureApi>();
+        var goodBadUglyApi = Substitute.For<IGoodBadUglyApi>();
+        var baseballApi = Substitute.For<IBaseballApi>();
+        var followTheQueenApi = Substitute.For<IFollowTheQueenApi>();
+        var holdEmApi = Substitute.For<IHoldEmApi>();
+        var gamesApi = Substitute.For<IGamesApi>();
+        var screwYourNeighborApi = Substitute.For<IScrewYourNeighborApi>();
+        var pairPressureResponse = CreateFailedBettingActionResponse();
+
+        pairPressureApi
+            .PairPressureProcessBettingActionAsync(gameId, request, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IApiResponse<ProcessBettingActionSuccessful>>(pairPressureResponse));
+
+        var sut = new GameApiRouter(
+            fiveCardDrawApi,
+            twosJacksApi,
+            kingsAndLowsApi,
+            sevenCardStudApi,
+            pairPressureApi,
+            goodBadUglyApi,
+            baseballApi,
+            followTheQueenApi,
+            holdEmApi,
+            gamesApi,
+            screwYourNeighborApi);
+
+        // Act
+        _ = await sut.ProcessBettingActionAsync("PAIRPRESSURE", gameId, request);
+
+        // Assert
+        await pairPressureApi.Received(1)
+            .PairPressureProcessBettingActionAsync(gameId, request, Arg.Any<CancellationToken>());
+
+        await sevenCardStudApi.DidNotReceive()
+            .SevenCardStudProcessBettingActionAsync(gameId, Arg.Any<ProcessBettingActionRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task ProcessDrawAsync_HoldEm_ReturnsNotSupportedAndDoesNotFallback()
     {
         // Arrange
@@ -176,6 +230,7 @@ public class GameApiRouterTests
         var twosJacksApi = Substitute.For<ITwosJacksManWithTheAxeApi>();
         var kingsAndLowsApi = Substitute.For<IKingsAndLowsApi>();
         var sevenCardStudApi = Substitute.For<ISevenCardStudApi>();
+        var pairPressureApi = Substitute.For<IPairPressureApi>();
         var goodBadUglyApi = Substitute.For<IGoodBadUglyApi>();
         var baseballApi = Substitute.For<IBaseballApi>();
         var followTheQueenApi = Substitute.For<IFollowTheQueenApi>();
@@ -188,6 +243,7 @@ public class GameApiRouterTests
             twosJacksApi,
             kingsAndLowsApi,
             sevenCardStudApi,
+            pairPressureApi,
             goodBadUglyApi,
             baseballApi,
             followTheQueenApi,
@@ -219,6 +275,7 @@ public class GameApiRouterTests
         var twosJacksApi = Substitute.For<ITwosJacksManWithTheAxeApi>();
         var kingsAndLowsApi = Substitute.For<IKingsAndLowsApi>();
         var sevenCardStudApi = Substitute.For<ISevenCardStudApi>();
+        var pairPressureApi = Substitute.For<IPairPressureApi>();
         var goodBadUglyApi = Substitute.For<IGoodBadUglyApi>();
         var baseballApi = Substitute.For<IBaseballApi>();
         var followTheQueenApi = Substitute.For<IFollowTheQueenApi>();
@@ -231,6 +288,7 @@ public class GameApiRouterTests
             twosJacksApi,
             kingsAndLowsApi,
             sevenCardStudApi,
+            pairPressureApi,
             goodBadUglyApi,
             baseballApi,
             followTheQueenApi,
@@ -263,6 +321,7 @@ public class GameApiRouterTests
         var twosJacksApi = Substitute.For<ITwosJacksManWithTheAxeApi>();
         var kingsAndLowsApi = Substitute.For<IKingsAndLowsApi>();
         var sevenCardStudApi = Substitute.For<ISevenCardStudApi>();
+        var pairPressureApi = Substitute.For<IPairPressureApi>();
         var goodBadUglyApi = Substitute.For<IGoodBadUglyApi>();
         var baseballApi = Substitute.For<IBaseballApi>();
         var followTheQueenApi = Substitute.For<IFollowTheQueenApi>();
@@ -283,6 +342,7 @@ public class GameApiRouterTests
             twosJacksApi,
             kingsAndLowsApi,
             sevenCardStudApi,
+            pairPressureApi,
             goodBadUglyApi,
             baseballApi,
             followTheQueenApi,
@@ -320,6 +380,7 @@ public class GameApiRouterTests
         var twosJacksApi = Substitute.For<ITwosJacksManWithTheAxeApi>();
         var kingsAndLowsApi = Substitute.For<IKingsAndLowsApi>();
         var sevenCardStudApi = Substitute.For<ISevenCardStudApi>();
+        var pairPressureApi = Substitute.For<IPairPressureApi>();
         var goodBadUglyApi = Substitute.For<IGoodBadUglyApi>();
         var baseballApi = Substitute.For<IBaseballApi>();
         var followTheQueenApi = Substitute.For<IFollowTheQueenApi>();
@@ -332,6 +393,7 @@ public class GameApiRouterTests
             twosJacksApi,
             kingsAndLowsApi,
             sevenCardStudApi,
+            pairPressureApi,
             goodBadUglyApi,
             baseballApi,
             followTheQueenApi,
@@ -363,6 +425,7 @@ public class GameApiRouterTests
         var twosJacksApi = Substitute.For<ITwosJacksManWithTheAxeApi>();
         var kingsAndLowsApi = Substitute.For<IKingsAndLowsApi>();
         var sevenCardStudApi = Substitute.For<ISevenCardStudApi>();
+        var pairPressureApi = Substitute.For<IPairPressureApi>();
         var goodBadUglyApi = Substitute.For<IGoodBadUglyApi>();
         var baseballApi = Substitute.For<IBaseballApi>();
         var followTheQueenApi = Substitute.For<IFollowTheQueenApi>();
@@ -380,6 +443,7 @@ public class GameApiRouterTests
             twosJacksApi,
             kingsAndLowsApi,
             sevenCardStudApi,
+            pairPressureApi,
             goodBadUglyApi,
             baseballApi,
             followTheQueenApi,
