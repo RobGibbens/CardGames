@@ -1,11 +1,5 @@
 # Adding a New Game (v2.0) - Repo Playbook
 
-This playbook captures what actually changed to add Phil's Mom (`PHILSMOM`) and generalizes that into a repeatable process for this repository.
-
-Source of truth used:
-- Uncommitted Phil's Mom code changes in this workspace
-- `docs/ARCHITECTURE.md`
-- `docs/ADDING_NEW_GAMES.md`
 
 ## 1. Quick Orientation
 

@@ -27,6 +27,7 @@ Support two implementation modes. Confirm selected mode at the start.
 - Goal: full launch-quality implementation with stronger validation, broader tests, and explicit docs updates.
 - Include negative-path and regression coverage.
 - Include rollout readiness checks.
+- Do not make large changes to the existing architecture. Make just enough changes to add this game to the system, reusing existing classes and patterns when it makes sense, or creating new APIs when needed.
 
 ## Pre-Flight and Repository State Rules
 Before coding:
@@ -46,9 +47,9 @@ Before coding:
 - Preserve unrelated working tree changes.
 - Never revert user changes you did not create.
 - Do not directly edit generated files.
-- Treat [src/CardGames.Contracts/RefitInterface.v1.cs](src/CardGames.Contracts/RefitInterface.v1.cs) as generated output.
-- If contracts change, regenerate via project build for [src/CardGames.Poker.Refitter](src/CardGames.Poker.Refitter) instead of hand-editing generated artifacts.
+- Treat [src/CardGames.Contracts/RefitInterface.v1.cs](src/CardGames.Contracts/RefitInterface.v1.cs) as the ai contract.
 - Keep diffs minimal and localized; avoid opportunistic refactors.
+- Do not make large changes to the existing architecture. Make just enough changes to add this game to the system, reusing existing classes and patterns when it makes sense, or creating new APIs when needed.
 
 ## Phased Execution Plan (Mandatory)
 Execute in these phases and report completion of each phase before moving on.
@@ -147,9 +148,6 @@ Run from repository root in this order:
 
 Targeted test command pattern (required):
 - dotnet test src/Tests/CardGames.IntegrationTests/CardGames.IntegrationTests.csproj --filter FullyQualifiedName~<NewGameOrFeatureName>
-
-If contracts changed:
-- dotnet build src/CardGames.Poker.Refitter
 
 If a command cannot be run, state exactly why and provide the closest equivalent signal.
 
