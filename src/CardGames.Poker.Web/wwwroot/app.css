@@ -3235,6 +3235,13 @@ a:hover {
     font-size: 0.95rem;
 }
 
+.odds-section-hint {
+    margin-bottom: 0.75rem;
+    font-size: 0.78rem;
+    line-height: 1.4;
+    color: var(--text-muted);
+}
+
 .game-info-odds-toggle-switch {
     position: relative;
     display: inline-flex;

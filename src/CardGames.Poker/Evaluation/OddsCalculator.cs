@@ -36,6 +36,20 @@ public static class OddsCalculator
     }
 
     /// <summary>
+    /// Snapshot of a non-hero Pair Pressure seat for table-aware odds simulation.
+    /// </summary>
+    public sealed record PairPressurePlayerSnapshot
+    {
+        public required int SeatIndex { get; init; }
+
+        public required int TotalCardsDealt { get; init; }
+
+        public required IReadOnlyCollection<Card> FaceUpCardsInOrder { get; init; }
+
+        public required bool ReceivesFutureCards { get; init; }
+    }
+
+    /// <summary>
     /// Calculates odds for a Texas Hold'em hand.
     /// </summary>
     public static OddsResult CalculateHoldemOdds(
@@ -406,6 +420,97 @@ public static class OddsCalculator
     }
 
     /// <summary>
+    /// Calculates Pair Pressure odds using full table context.
+    /// This simulation accounts for unknown dealt hole cards on other seats and future face-up cards
+    /// that can rotate the active wild ranks before showdown.
+    /// </summary>
+    public static OddsResult CalculatePairPressureTableOdds(
+        IReadOnlyCollection<Card> heroCards,
+        int heroSeatIndex,
+        int dealerSeatIndex,
+        IReadOnlyCollection<PairPressurePlayerSnapshot> otherPlayers,
+        IReadOnlyCollection<Card> deadCards = null,
+        int simulations = DefaultSimulations)
+    {
+        deadCards ??= Array.Empty<Card>();
+
+        var orderedHeroCards = heroCards.ToList();
+        if (orderedHeroCards.Count < 2)
+        {
+            throw new ArgumentException($"Expected at least 2 hero cards for Pair Pressure, but got {orderedHeroCards.Count}");
+        }
+
+        var snapshots = otherPlayers.ToList();
+        var handTypeCounts = InitializeHandTypeCounts();
+        var dealer = FrenchDeckDealer.WithFullDeck();
+
+        for (var index = 0; index < simulations; index++)
+        {
+            dealer.Shuffle();
+
+            var knownCards = orderedHeroCards
+                .Concat(snapshots.SelectMany(player => player.FaceUpCardsInOrder))
+                .Concat(deadCards)
+                .Distinct();
+
+            foreach (var card in knownCards)
+            {
+                dealer.DealSpecific(card);
+            }
+
+            // Hidden cards already dealt to non-hero seats must be removed before simulating future streets.
+            foreach (var snapshot in snapshots)
+            {
+                var hiddenCardsAlreadyDealt = Math.Max(0, snapshot.TotalCardsDealt - snapshot.FaceUpCardsInOrder.Count);
+                for (var hiddenIndex = 0; hiddenIndex < hiddenCardsAlreadyDealt; hiddenIndex++)
+                {
+                    dealer.DealCard();
+                }
+            }
+
+            var faceUpCardsInOrder = BuildPairPressureFaceUpCardsInOrder(
+                orderedHeroCards,
+                heroSeatIndex,
+                dealerSeatIndex,
+                snapshots);
+
+            var heroFinalCards = orderedHeroCards.ToList();
+            var seatStates = BuildPairPressureSeatStates(orderedHeroCards.Count, heroSeatIndex, snapshots)
+                .OrderBy(state => GetStudRotationOrder(state.SeatIndex, dealerSeatIndex))
+                .ToList();
+
+            while (seatStates.Any(state => state.ReceivesFutureCards && state.TotalCardsDealt < 7))
+            {
+                foreach (var state in seatStates)
+                {
+                    if (!state.ReceivesFutureCards || state.TotalCardsDealt >= 7)
+                    {
+                        continue;
+                    }
+
+                    var dealtCard = dealer.DealCard();
+                    state.TotalCardsDealt++;
+
+                    if (state.IsHero)
+                    {
+                        heroFinalCards.Add(dealtCard);
+                    }
+
+                    if (IsPairPressureFaceUpCardPosition(state.TotalCardsDealt))
+                    {
+                        faceUpCardsInOrder.Add(dealtCard);
+                    }
+                }
+            }
+
+            var heroHand = CreatePairPressureHand(heroFinalCards, faceUpCardsInOrder);
+            handTypeCounts[heroHand.Type]++;
+        }
+
+        return CreateResult(handTypeCounts, simulations);
+    }
+
+    /// <summary>
     /// Calculates odds for a Kings and Lows hand.
     /// Kings are always wild, and the lowest card in the hand is also wild.
     /// This takes into account that drawing new cards could change which card is lowest.
@@ -640,6 +745,119 @@ public static class OddsCalculator
         return Enum.GetValues<HandType>()
             .Where(t => t != HandType.Incomplete)
             .ToDictionary(t => t, _ => 0);
+    }
+
+    private sealed class PairPressureSeatState
+    {
+        public required int SeatIndex { get; init; }
+
+        public required int TotalCardsDealt { get; set; }
+
+        public required bool ReceivesFutureCards { get; init; }
+
+        public required bool IsHero { get; init; }
+    }
+
+    private static List<PairPressureSeatState> BuildPairPressureSeatStates(
+        int heroCardCount,
+        int heroSeatIndex,
+        IReadOnlyCollection<PairPressurePlayerSnapshot> snapshots)
+    {
+        var seatStates = new List<PairPressureSeatState>
+        {
+            new()
+            {
+                SeatIndex = heroSeatIndex,
+                TotalCardsDealt = heroCardCount,
+                ReceivesFutureCards = heroCardCount < 7,
+                IsHero = true
+            }
+        };
+
+        seatStates.AddRange(snapshots.Select(snapshot => new PairPressureSeatState
+        {
+            SeatIndex = snapshot.SeatIndex,
+            TotalCardsDealt = snapshot.TotalCardsDealt,
+            ReceivesFutureCards = snapshot.ReceivesFutureCards,
+            IsHero = false
+        }));
+
+        return seatStates;
+    }
+
+    private static List<Card> BuildPairPressureFaceUpCardsInOrder(
+        IReadOnlyCollection<Card> heroCards,
+        int heroSeatIndex,
+        int dealerSeatIndex,
+        IReadOnlyCollection<PairPressurePlayerSnapshot> snapshots)
+    {
+        var visibleCardsBySeat = snapshots.ToDictionary(
+            snapshot => snapshot.SeatIndex,
+            snapshot => snapshot.FaceUpCardsInOrder.ToList());
+
+        visibleCardsBySeat[heroSeatIndex] = GetHeroFaceUpCards(heroCards).ToList();
+
+        var seatOrder = visibleCardsBySeat.Keys
+            .OrderBy(seatIndex => GetStudRotationOrder(seatIndex, dealerSeatIndex))
+            .ToList();
+
+        var maxVisibleCards = visibleCardsBySeat.Values.DefaultIfEmpty([]).Max(cards => cards.Count);
+        var faceUpCardsInOrder = new List<Card>();
+
+        for (var visibleIndex = 0; visibleIndex < maxVisibleCards; visibleIndex++)
+        {
+            foreach (var seatIndex in seatOrder)
+            {
+                var visibleCards = visibleCardsBySeat[seatIndex];
+                if (visibleCards.Count <= visibleIndex)
+                {
+                    continue;
+                }
+
+                faceUpCardsInOrder.Add(visibleCards[visibleIndex]);
+            }
+        }
+
+        return faceUpCardsInOrder;
+    }
+
+    private static IReadOnlyCollection<Card> GetHeroFaceUpCards(IReadOnlyCollection<Card> heroCards)
+    {
+        var orderedHeroCards = heroCards.ToList();
+        var visibleCardCount = orderedHeroCards.Count switch
+        {
+            <= 2 => 0,
+            <= 6 => orderedHeroCards.Count - 2,
+            _ => 4
+        };
+
+        return orderedHeroCards
+            .Skip(2)
+            .Take(visibleCardCount)
+            .ToList();
+    }
+
+    private static bool IsPairPressureFaceUpCardPosition(int totalCardsDealt)
+        => totalCardsDealt is >= 3 and <= 6;
+
+    private static int GetStudRotationOrder(int seatIndex, int dealerSeatIndex)
+        => seatIndex > dealerSeatIndex ? seatIndex : seatIndex + 1000;
+
+    private static PairPressureHand CreatePairPressureHand(
+        IReadOnlyCollection<Card> heroCards,
+        IReadOnlyCollection<Card> faceUpCardsInOrder)
+    {
+        var orderedHeroCards = heroCards.ToList();
+        if (orderedHeroCards.Count < 7)
+        {
+            throw new ArgumentException($"Expected 7 hero cards for Pair Pressure hand evaluation, but got {orderedHeroCards.Count}");
+        }
+
+        return new PairPressureHand(
+            orderedHeroCards.Take(2).ToList(),
+            orderedHeroCards.Skip(2).Take(4).ToList(),
+            orderedHeroCards[6],
+            faceUpCardsInOrder);
     }
 
     private static HandBase CreateStudHand(IReadOnlyCollection<Card> cards)
