@@ -1,11 +1,5 @@
 # Adding a New Game (v2.0) - Repo Playbook
 
-This playbook captures what actually changed to add Phil's Mom (`PHILSMOM`) and generalizes that into a repeatable process for this repository.
-
-Source of truth used:
-- Uncommitted Phil's Mom code changes in this workspace
-- `docs/ARCHITECTURE.md`
-- `docs/ADDING_NEW_GAMES.md`
 
 ## 1. Quick Orientation
 
@@ -392,3 +386,55 @@ Reusable pattern confirmed:
 
 - For stud variants that reuse Seven Card Stud dealing and betting but have dynamic wilds based on the global face-up sequence,
   keep the Seven Card Stud flow handler shape, add a dedicated wild-rank helper plus stud hand type, and wire ordered face-up-card evaluation into both showdown and table-state projection.
+
+## 15. Tollbooth Mapping (TOLLBOOTH)
+
+Tollbooth is a stud-family variant that introduces a **tollbooth offer** mechanic between betting streets.
+Cards 4th through 7th are not dealt from the deck automatically — instead, after each betting street,
+a TollboothOffer phase lets each player choose one of three options:
+
+| Choice    | Cost     | Card source                                     |
+|-----------|----------|--------------------------------------------------|
+| Furthest  | Free     | The community display card with the lowest deal order  |
+| Nearest   | 1× ante  | The community display card with the highest deal order |
+| Deck      | 2× ante  | Top card from the deck (no display replenishment)      |
+
+Two **display-only community cards** are visible to all players but are excluded from hand evaluation.
+When a player takes a display card, it is replenished from the deck.
+
+Phase sequence:
+- CollectingAntes → ThirdStreet → TollboothOffer → FourthStreet → TollboothOffer → FifthStreet → TollboothOffer → SixthStreet → TollboothOffer → SeventhStreet → Showdown → Complete
+
+Implementation touchpoints:
+
+- Domain metadata:
+  - `src/CardGames.Poker/Games/Tollbooth/TollboothGame.cs` — `[PokerGameMetadata("TOLLBOOTH", ...)]`, VariantType.Stud, 2-7 players
+  - `src/CardGames.Poker/Games/Tollbooth/TollboothRules.cs` — phase list, SpecialRules with `TollboothOffer` and `TollboothDisplayCards` keys
+- API flow:
+  - `src/CardGames.Poker.Api/GameFlow/TollboothFlowHandler.cs` — SpecialPhases includes TollboothOffer; GetNextPhase routes streets→TollboothOffer and resolves TollboothOffer→next street via `TollboothVariantState`
+  - `src/CardGames.Poker.Api/Features/Games/Tollbooth/TollboothVariantState.cs` — JSON-serialized in `game.GameSettings`, tracks `PreviousBettingStreet`
+- Tollbooth endpoint family (`src/CardGames.Poker.Api/Features/Games/Tollbooth/`):
+  - `ChooseCard` command — validates phase/turn, calculates cost, assigns card (Board for 4th-6th, Hole for 7th), replenishes display, charges player, advances round
+  - `StartHand`, `CollectAntes`, `DealHands` (full), `ProcessBettingAction`, `PerformShowdown`, `GetCurrentPlayerTurn` (thin delegates to SevenCardStud/Generic)
+- Betting progression interception:
+  - `SevenCardStud/ProcessBettingActionCommandHandler.cs` — after standard AdvanceToNextPhase, checks `game.GameTypeCode == "TOLLBOOTH"` and redirects 4th-7th streets to TollboothOffer; handles all-in resolution
+- State projection:
+  - `src/CardGames.Poker.Api/Services/TableStateBuilder.cs` — added to `StudGameCodes`; `BuildTollboothOfferPrivateDto` queries display cards and projects `TollboothOfferPrivateDto`
+  - `src/CardGames.Contracts/SignalR/PrivateStateDto.cs` — `TollboothOfferPrivateDto` record (IsMyTurnToChoose, HasChosenThisRound, costs, DisplayCards)
+- Web integration:
+  - `src/CardGames.Contracts/TollboothApiExtensions.cs` — `ITollboothApi` Refit interface
+  - `src/CardGames.Poker.Web/Services/IGameApiRouter.cs` — Tollbooth constant, routing, `TollboothChooseCardAsync`
+  - `src/CardGames.Poker.Web/Components/Shared/TollboothOfferOverlay.razor` — 3-button overlay with cost display and timer
+  - `src/CardGames.Poker.Web/Components/Pages/TablePlay.razor` — overlay integration, `HandleTollboothChoiceAsync`
+
+Recommended targeted coverage:
+
+- Domain tests: metadata attributes, phase count/order, special rules, betting config
+- Flow handler tests: GetNextPhase routing for all street→TollboothOffer and TollboothOffer→street transitions, variant state resolution
+- ChooseCard integration tests: cost validation (Furthest free, Nearest 1× ante, Deck 2× ante), display replenishment, phase/turn guards, affordability checks, round completion transitions
+- Regression: existing GameApiRouterTests updated with `ITollboothApi` mock
+
+Reusable patterns introduced:
+
+- **Display-only community cards**: Cards stored with `CommunityCard` type and visible through `CommunityCards` query, but excluded from hand evaluation. The `TableStateBuilder` projects them for UI independently from evaluation inputs. This pattern can be reused by any variant that needs visible shared cards that don't participate in hand ranking.
+- **Tollbooth offer (special phase with per-player choice)**: A special phase between betting streets where each player makes an individual card-acquisition choice. Uses `CurrentDrawPlayerIndex` and `HasDrawnThisRound` to track turn order. The flow handler's `SpecialPhases` list and `TollboothVariantState` (previous betting street) enable the offer→street→offer cycle. This pattern generalizes to any variant needing per-player decisions between standard betting rounds.

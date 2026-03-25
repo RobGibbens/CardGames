@@ -38,6 +38,7 @@
 @inject IScrewYourNeighborApi ScrewYourNeighborApi
 @inject IHoldEmApi HoldEmApi
 @inject IFiveCardDrawApi FiveCardDrawApiClient
+@inject ITollboothApi TollboothApi
 @inject IJSRuntime JSRuntime
 @inject IProfileApi ProfileApi
 @inject IAvailablePokerGamesApi AvailablePokerGamesApi
@@ -299,6 +300,7 @@
         <!-- Draw Panel (only shown when it's player's turn during draw phase, or forced visible during animation/DrawComplete) -->
         @if
                 (!IsCardDealingVisualInProgress &&
+                !IsTollboothOfferPhase &&
                 ((IsDrawingPhase && (_isPlayerDrawTurn || _isPlayerTurn)) || _forceShowDrawPanel || IsDrawCompletePhase) &&
             IsParticipatingInHand)
         {
@@ -323,7 +325,7 @@
         }
 
         <!-- Draw Phase Waiting Indicator (shown to other players during draw phase) -->
-        @if (IsDrawingPhase && !(_isPlayerDrawTurn || _isPlayerTurn) && _currentDrawPlayer is not null)
+        @if (IsDrawingPhase && !IsTollboothOfferPhase && !(_isPlayerDrawTurn || _isPlayerTurn) && _currentDrawPlayer is not null)
         {
             <div class="draw-phase-indicator">
                 <div class="draw-phase-content">
@@ -357,6 +359,18 @@
                                 ActionTimer="@_actionTimerState" />
         }
 
+        <!-- Tollbooth Offer Overlay -->
+        @if (ShouldShowTollboothOfferOverlay)
+        {
+            <TollboothOfferOverlay DisplayCards="@_tollboothOffer?.DisplayCards"
+                                   NearestCost="@(_tollboothOffer?.NearestCost ?? 0)"
+                                   DeckCost="@(_tollboothOffer?.DeckCost ?? 0)"
+                                   PlayerChipStack="@GetCurrentPlayerChips()"
+                                   IsSubmitting="@_isProcessingTollboothChoice"
+                                   OnChoice="@HandleTollboothChoiceAsync"
+                                   ActionTimer="@_actionTimerState" />
+        }
+
         <!-- Buy Card Overlay (for Baseball) -->
         @if (ShouldShowBuyCardOverlay)
         {
@@ -383,7 +397,7 @@
         }
 
         <!-- Special Phase Overlay (for game-specific phases) -->
-        @if (IsSpecialPhase && !ShouldShowBuyCardOverlay)
+        @if (IsSpecialPhase && !ShouldShowBuyCardOverlay && !ShouldShowTollboothOfferOverlay)
         {
             <SpecialPhaseOverlay Title="@(_tableState?.CurrentPhaseDescription ?? "Special Phase")"
                                  Description="@GetSpecialPhaseDescription()" IconClass="fa-solid fa-star" />
@@ -611,6 +625,10 @@
     private bool _isProcessingDropOrStay;
     private BuyCardOfferPrivateDto? _buyCardOffer;
     private bool _isProcessingBuyCard;
+
+    // Tollbooth specific state
+    private TollboothOfferPrivateDto? _tollboothOffer;
+    private bool _isProcessingTollboothChoice;
     private bool _hasDeckDrawn;
     private bool _isProcessingDeckDraw;
     private bool _isAcknowledgingPotMatch;
@@ -721,6 +739,7 @@
     private int _communityCardRevealTarget;
     private Timer? _communityCardRevealTimer;
     private bool _communityCardRevealInProgress;
+    private bool _deferCommunityCardsForDealAnimation;
 
     private List<SeatInfo> _seats = [];
 
@@ -756,10 +775,11 @@
     private bool IsPhilsMom => string.Equals(_gameTypeCode, "PHILSMOM", StringComparison.OrdinalIgnoreCase);
     private bool IsCrazyPineapple => string.Equals(_gameTypeCode, "CRAZYPINEAPPLE", StringComparison.OrdinalIgnoreCase);
     private bool IsScrewYourNeighbor => string.Equals(_gameTypeCode, "SCREWYOURNEIGHBOR", StringComparison.OrdinalIgnoreCase);
+    private bool IsTollbooth => string.Equals(_gameTypeCode, "TOLLBOOTH", StringComparison.OrdinalIgnoreCase);
     private bool IsStartedScrewYourNeighborTable => IsScrewYourNeighbor && _gameResponse?.StartedAt is not null;
     private bool IsIrishStyleHoldEm => IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple;
     private bool IsSevenCardStudStyle => IsSevenCardStud || IsPairPressure;
-    private bool UsesCardDealAnimation => IsSevenCardStudStyle || IsRazz || IsGoodBadUgly || IsBaseball || IsFollowTheQueen || IsFiveCardDraw || IsTwosJacksManWithTheAxe || IsKingsAndLows || IsHoldEm || IsRedRiver || IsHoldTheBaseball || IsOmaha || IsNebraska || IsSouthDakota || IsBobBarker || IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple || IsScrewYourNeighbor;
+    private bool UsesCardDealAnimation => IsSevenCardStudStyle || IsRazz || IsGoodBadUgly || IsBaseball || IsFollowTheQueen || IsFiveCardDraw || IsTwosJacksManWithTheAxe || IsKingsAndLows || IsHoldEm || IsRedRiver || IsHoldTheBaseball || IsOmaha || IsNebraska || IsSouthDakota || IsBobBarker || IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple || IsScrewYourNeighbor || IsTollbooth;
     
     private int DealAnimationDelayMs => 750;
 
@@ -803,6 +823,15 @@
     IsParticipatingInHand &&
     (IsBuyCardTriggerCardVisible() || _dealAnimationPausedForBuyCardOffer) &&
     (!IsCardDealingVisualInProgress || _dealAnimationPausedForBuyCardOffer);
+
+    private bool IsTollboothOfferPhase =>
+    string.Equals(_tableState?.CurrentPhase, "TollboothOffer", StringComparison.OrdinalIgnoreCase);
+
+    private bool ShouldShowTollboothOfferOverlay =>
+    IsTollboothOfferPhase &&
+    _tollboothOffer is not null &&
+    _tollboothOffer.IsMyTurnToChoose &&
+    IsParticipatingInHand;
 
     private bool IsCardDealingVisualInProgress =>
     _dealAnimationInProgress || _flyingCard is not null;
@@ -1275,6 +1304,7 @@
 
                 _previousFaceUpCommunityCardCount = 0;
                 _communityCardRevealInProgress = false;
+                _deferCommunityCardsForDealAnimation = false;
                 _communityCardRevealTimer?.Dispose();
                 _communityCardRevealTimer = null;
                 ResetDrawPanelStateForNewHand();
@@ -1308,7 +1338,7 @@
                             if (newCount > currentCount)
                             {
                                 // Trigger animation for the difference
-                                StartCardDealAnimation(state, currentCount, newCount - currentCount);
+                                StartCardDealAnimation(state, currentCount, newCount - currentCount, seatIdx);
                                 break; // Only trigger once
                             }
                         }
@@ -1355,7 +1385,13 @@
 
             var currentFaceUpCommunityCardCount = state.CommunityCards?.Count(c => c.IsFaceUp) ?? 0;
             var newlyFaceUpCommunityCards = Math.Max(0, currentFaceUpCommunityCardCount - _previousFaceUpCommunityCardCount);
-            if (newlyFaceUpCommunityCards > 1)
+
+            // Tollbooth: defer community card reveal until the player deal animation completes
+            if (IsTollbooth && _dealAnimationInProgress && newlyFaceUpCommunityCards > 0)
+            {
+                _deferCommunityCardsForDealAnimation = true;
+            }
+            else if (newlyFaceUpCommunityCards > 1)
             {
                 // Multiple new community cards (e.g., flop) — stagger the reveal
                 _communityCardRevealCount = _previousFaceUpCommunityCardCount + 1; // Show first card immediately
@@ -1818,6 +1854,7 @@
         }
 
         _buyCardOffer = state.BuyCardOffer;
+        _tollboothOffer = state.TollboothOffer;
 
         // Populate cards for display in DropOrStayOverlay
         // Check both the property AND the phase string directly from state to handle reconnection scenarios
@@ -3077,6 +3114,26 @@
                 return;
             }
         }
+        else if (IsTollbooth)
+        {
+            var startHandResponse = await TollboothApi.TollboothStartHandAsync(GameId);
+            if (!startHandResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
+
+            var collectAntesResponse = await TollboothApi.TollboothCollectAntesAsync(GameId);
+            if (!collectAntesResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
+
+            var dealHandsResponse = await TollboothApi.TollboothDealHandsAsync(GameId);
+            if (!dealHandsResponse.IsSuccessStatusCode)
+            {
+                return;
+            }
+        }
         else if (IsHoldEm || IsRedRiver)
         {
             // Hold'Em family start handles blinds + deal in a single call.
@@ -3140,7 +3197,7 @@
                 return;
             }
         }
-        else
+        else if (IsFiveCardDraw)
         {
             var startHandResponse = await FiveCardDrawApiClient.FiveCardDrawStartHandAsync(GameId);
             if (!startHandResponse.IsSuccessStatusCode)
@@ -3159,6 +3216,12 @@
             {
                 return;
             }
+        }
+        else
+        {
+            throw new NotSupportedException(
+                $"No StartNewHand routing configured for game type '{_gameTypeCode}'. " +
+                "Add an explicit branch for this game type in StartNewHandAsync.");
         }
 
         // SignalR will broadcast the updated state - no need to refresh manually
@@ -3290,9 +3353,19 @@
             {
                 showdownResponse = await GamesApiClient.GenericPerformShowdownAsync(GameId);
             }
-            else
+            else if (IsTollbooth)
+            {
+                showdownResponse = await TollboothApi.TollboothPerformShowdownAsync(GameId);
+            }
+            else if (IsFiveCardDraw)
             {
                 showdownResponse = await FiveCardDrawApiClient.FiveCardDrawPerformShowdownAsync(GameId);
+            }
+            else
+            {
+                throw new NotSupportedException(
+                    $"No showdown routing configured for game type '{_gameTypeCode}'. " +
+                    "Add an explicit branch for this game type in TryLoadShowdownAsync.");
             }
 
             Logger.LogDebug("TryLoadShowdownAsync: Showdown API response - IsSuccess={IsSuccess}, HasContent={HasContent}",
@@ -3541,10 +3614,10 @@
         seatIndex, allCards.Count);
     }
 
-    private void StartCardDealAnimation(TableStatePublicDto state, int startCardIndex, int numberOfCardsToDeal)
+    private void StartCardDealAnimation(TableStatePublicDto state, int startCardIndex, int numberOfCardsToDeal, int detectedSeatIndex = -1)
     {
-        Logger.LogInformation("Starting card deal animation for game {GameId}. StartIdx={Start}, Count={Count}", 
-            GameId, startCardIndex, numberOfCardsToDeal);
+        Logger.LogInformation("Starting card deal animation for game {GameId}. StartIdx={Start}, Count={Count}, DetectedSeat={Seat}", 
+            GameId, startCardIndex, numberOfCardsToDeal, detectedSeatIndex);
 
         _dealAnimationInProgress = true;
         _dealAnimationPausedForBuyCardOffer = false;
@@ -3557,8 +3630,12 @@
         // Determine deal order: Start from Dealer + 1
         // Filter to seats that are occupied, not sitting out, AND NOT Folded in the NEW state
         // (Folded players do not receive new cards in Stud, except initially everyone is not folded)
+        // For Tollbooth offers, only animate to the seat that actually received the card (detectedSeatIndex),
+        // since CurrentActorSeatIndex has already advanced to the next player by the time the state arrives.
+        var isTollboothOffer = IsTollbooth && detectedSeatIndex >= 0;
         var activePublicSeats = state.Seats
             .Where(s => s.IsOccupied && !s.IsSittingOut && !s.IsFolded)
+            .Where(s => !isTollboothOffer || s.SeatIndex == detectedSeatIndex)
             .ToList();
 
         if (activePublicSeats.Count == 0)
@@ -3731,9 +3808,13 @@
     /// <summary>
     /// Returns community cards with staggered visibility during flop reveal animation.
     /// During a reveal, only the first <see cref="_communityCardRevealCount"/> face-up cards are included.
+    /// When Tollbooth deal animation is in progress, community cards are hidden until the deal completes.
     /// </summary>
     private IReadOnlyList<CardPublicDto>? GetVisibleCommunityCards()
     {
+        if (_deferCommunityCardsForDealAnimation)
+            return null;
+
         var cards = _tableState?.CommunityCards;
         if (cards is null || !_communityCardRevealInProgress)
             return cards;
@@ -3914,18 +3995,35 @@
     {
         Logger.LogInformation("Card deal animation complete");
 
-        _dealAnimationInProgress = false;
         _dealAnimationPausedForBuyCardOffer = false;
         _dealPausedBuyCardOfferSeatIndex = -1;
         _dealTimer?.Dispose();
         _dealTimer = null;
         _flyingCard = null;
 
-        // Sync with Pending State
+        // Sync with Pending State while _dealAnimationInProgress is still true
+        // so that UpdateSeatsFromPublicState preserves cards already placed by the animation
         if (_dealTargetState != null)
         {
             UpdateSeatsFromPublicState(_dealTargetState.Seats);
             _dealTargetState = null;
+        }
+
+        _dealAnimationInProgress = false;
+
+        // Tollbooth: reveal deferred community cards now that all player cards have been dealt
+        if (_deferCommunityCardsForDealAnimation)
+        {
+            _deferCommunityCardsForDealAnimation = false;
+            var faceUpCount = _tableState?.CommunityCards?.Count(c => c.IsFaceUp) ?? 0;
+            if (faceUpCount > 1)
+            {
+                _communityCardRevealCount = 1;
+                _communityCardRevealTarget = faceUpCount;
+                _communityCardRevealInProgress = true;
+                _communityCardRevealTimer?.Dispose();
+                _communityCardRevealTimer = new Timer(RevealNextCommunityCard, null, 250, Timeout.Infinite);
+            }
         }
 
         // Sync with Pending Private State (for current player hole cards)
@@ -4128,7 +4226,21 @@
 
             if (!response.IsSuccess)
             {
-                var errorMessage = response.Error ?? "An unknown error occurred.";
+                // When the server-side auto-action timer fires at the same time the client
+                // submits an action, the server may have already advanced the game to a
+                // resolution phase (Showdown/Complete/Ended). In that case the betting
+                // endpoint returns an error because there is no active betting round.
+                // Suppress the toast — SignalR will broadcast the updated state and the
+                // showdown overlay will appear normally.
+                if (IsShowdownPhase || IsCompletePhase || IsEndedPhase)
+                {
+                    Logger.LogDebug(
+                        "Betting action failed but game is already in resolution phase ({Phase}); suppressing error toast",
+                        _gameResponse?.CurrentPhase);
+                    return;
+                }
+
+                var errorMessage = ExtractJsonErrorMessage(response.Error) ?? "An unknown error occurred.";
                 await ShowToastAsync(errorMessage, "error");
                 return;
             }
@@ -4139,6 +4251,43 @@
         {
             _isSubmittingAction = false;
         }
+    }
+
+    /// <summary>
+    /// Extracts the "message" property from a JSON error body returned by the API.
+    /// Returns null if the input is not valid JSON or has no "message" property.
+    /// </summary>
+    private static string? ExtractJsonErrorMessage(string? errorBody)
+    {
+        if (string.IsNullOrWhiteSpace(errorBody))
+        {
+            return null;
+        }
+
+        // Fast path: if it doesn't look like JSON, return as-is
+        if (!errorBody.TrimStart().StartsWith('{'))
+        {
+            return errorBody;
+        }
+
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(errorBody);
+            if (doc.RootElement.TryGetProperty("message", out var messageElement))
+            {
+                return messageElement.GetString();
+            }
+            if (doc.RootElement.TryGetProperty("Message", out var messageElementUpper))
+            {
+                return messageElementUpper.GetString();
+            }
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            // Not valid JSON — return as-is
+        }
+
+        return errorBody;
     }
 
     /// <summary>
@@ -5519,6 +5668,42 @@ HandType.HighCard
         finally
         {
             _isProcessingBuyCard = false;
+        }
+    }
+
+    private async Task HandleTollboothChoiceAsync(string choice)
+    {
+        if (_isProcessingTollboothChoice)
+        {
+            return;
+        }
+
+        _isProcessingTollboothChoice = true;
+        StateHasChanged();
+
+        try
+        {
+            var request = new TollboothChooseCardRequest
+            {
+                Choice = choice,
+                PlayerSeatIndex = _currentPlayerSeatIndex >= 0 ? _currentPlayerSeatIndex : null
+            };
+
+            var response = await GameApiRouter.TollboothChooseCardAsync(GameId, request);
+
+            if (!response.IsSuccess)
+            {
+                await ShowToastAsync(response.Error ?? "Failed to process tollbooth choice.", "error");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error processing tollbooth choice");
+        }
+        finally
+        {
+            _isProcessingTollboothChoice = false;
+            StateHasChanged();
         }
     }
 

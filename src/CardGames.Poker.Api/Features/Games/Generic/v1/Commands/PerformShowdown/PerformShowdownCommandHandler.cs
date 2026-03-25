@@ -83,7 +83,9 @@ public sealed class PerformShowdownCommandHandler(
 
         // 2. Get the game flow handler and hand evaluator.
         // Dealer's Choice hands should evaluate/showdown against the selected hand type.
-        var gameTypeCode = game.CurrentHandGameTypeCode ?? game.GameType?.Code ?? "FIVECARDDRAW";
+        var gameTypeCode = game.CurrentHandGameTypeCode ?? game.GameType?.Code
+            ?? throw new InvalidOperationException(
+                $"Game {game.Id} has no GameType or CurrentHandGameTypeCode assigned. Cannot determine flow handler.");
         var flowHandler = flowHandlerFactory.GetHandler(gameTypeCode);
         var handEvaluator = handEvaluatorFactory.GetEvaluator(gameTypeCode);
 

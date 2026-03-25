@@ -2,6 +2,7 @@ using System.Text.Json;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.DealHands;
+using CardGames.Poker.Api.Features.Games.Tollbooth;
 using CardGames.Poker.Betting;
 using CardGames.Poker.Games.SevenCardStud;
 using MediatR;
@@ -101,6 +102,33 @@ public class ProcessBettingActionCommandHandler(
 		var bettingRound = bettingRounds.FirstOrDefault();
 		if (bettingRound is null)
 		{
+			if (string.Equals(game.CurrentPhase, nameof(Phases.Showdown), StringComparison.OrdinalIgnoreCase))
+			{
+				logger.LogInformation(
+					"Ignoring late betting action for game {GameId} because the hand is already in showdown",
+					game.Id);
+
+				return new ProcessBettingActionSuccessful
+				{
+					GameId = game.Id,
+					RoundComplete = true,
+					CurrentPhase = game.CurrentPhase,
+					Action = new BettingActionResult
+					{
+						PlayerName = string.Empty,
+						ActionType = command.ActionType,
+						Amount = 0,
+						ChipStackAfter = 0
+					},
+					NextPlayerIndex = -1,
+					NextPlayerName = null,
+					PotTotal = game.Pots.Sum(p => p.Amount),
+					CurrentBet = 0,
+					PlayerSeatIndex = game.CurrentPlayerIndex,
+					ShouldBroadcastGameState = false
+				};
+			}
+
 			// Log diagnostic information to help debug why no betting round was found
 			var allRoundsForGame = await context.BettingRounds
 				.Where(br => br.GameId == game.Id)
@@ -223,7 +251,16 @@ public class ProcessBettingActionCommandHandler(
 				// If not already at showdown, deal remaining streets
 				if (game.CurrentPhase != nameof(Phases.Showdown))
 				{
-					await DealRemainingStreetsAsync(game, activePlayers, game.CurrentPhase, now, cancellationToken);
+					var dealFromPhase = game.CurrentPhase;
+
+					// For Tollbooth: TollboothOffer isn't a deal phase; resolve to the target street
+					if (dealFromPhase == nameof(Phases.TollboothOffer))
+					{
+						dealFromPhase = ResolveTollboothOfferToStreet(game);
+						game.CurrentPhase = dealFromPhase;
+					}
+
+					await DealRemainingStreetsAsync(game, activePlayers, dealFromPhase, now, cancellationToken);
 				}
 
 				game.UpdatedAt = now;
@@ -558,6 +595,8 @@ public class ProcessBettingActionCommandHandler(
 			gamePlayer.CurrentBet = 0;
 		}
 
+		var previousPhase = game.CurrentPhase;
+
 		// Seven Card Stud phase progression:
 		// ThirdStreet (betting) -> FourthStreet (deal card, then betting)
 		// FourthStreet (betting) -> FifthStreet (deal card, then betting)
@@ -594,6 +633,24 @@ public class ProcessBettingActionCommandHandler(
 				game.CurrentPhase = nameof(Phases.Showdown);
 				game.CurrentPlayerIndex = -1;
 				break;
+		}
+
+		// For Tollbooth: redirect deal streets to TollboothOffer phase so players can choose their card
+		var isTollbooth = string.Equals(game.GameType?.Code, "TOLLBOOTH", StringComparison.OrdinalIgnoreCase)
+						  || string.Equals(game.CurrentHandGameTypeCode, "TOLLBOOTH", StringComparison.OrdinalIgnoreCase);
+		if (isTollbooth && game.CurrentPhase is nameof(Phases.FourthStreet) or nameof(Phases.FifthStreet)
+						   or nameof(Phases.SixthStreet) or nameof(Phases.SeventhStreet))
+		{
+			TollboothVariantState.SetPreviousBettingStreet(game, previousPhase);
+			game.CurrentPhase = nameof(Phases.TollboothOffer);
+
+			foreach (var player in activePlayers.Where(p => !p.HasFolded))
+			{
+				player.HasDrawnThisRound = false;
+			}
+
+			game.CurrentDrawPlayerIndex = FindFirstActivePlayerAfterDealer(game, activePlayers);
+			game.CurrentPlayerIndex = game.CurrentDrawPlayerIndex;
 		}
 	}
 
@@ -752,5 +809,22 @@ public class ProcessBettingActionCommandHandler(
 				"All remaining streets dealt ({Streets}). Moving to Showdown for game {GameId}",
 				string.Join(", ", dealtStreets), game.Id);
 		}
+
+	/// <summary>
+	/// Resolves a TollboothOffer phase to the actual deal street based on stored variant state.
+	/// Used during all-in runout to determine which street to start dealing from.
+	/// </summary>
+	private static string ResolveTollboothOfferToStreet(Game game)
+	{
+		var prev = TollboothVariantState.GetPreviousBettingStreet(game);
+		return prev switch
+		{
+			nameof(Phases.ThirdStreet) => nameof(Phases.FourthStreet),
+			nameof(Phases.FourthStreet) => nameof(Phases.FifthStreet),
+			nameof(Phases.FifthStreet) => nameof(Phases.SixthStreet),
+			nameof(Phases.SixthStreet) => nameof(Phases.SeventhStreet),
+			_ => nameof(Phases.FourthStreet)
+		};
+	}
 	}
 

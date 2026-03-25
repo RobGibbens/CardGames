@@ -99,6 +99,10 @@ public enum Phases
 	[Description("Seventh Street")]
 	SeventhStreet,
 
+	/// <summary>Tollbooth offer phase where each player chooses a card from the display or deck.</summary>
+	[Description("Tollbooth Offer")]
+	TollboothOffer,
+
 	/// <summary>Reveal "The Good" table card — matching ranks become wild.</summary>
 	[Description("Reveal The Good")]
 	RevealTheGood,

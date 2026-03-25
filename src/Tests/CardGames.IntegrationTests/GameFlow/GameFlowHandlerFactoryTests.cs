@@ -41,25 +41,35 @@ public class GameFlowHandlerFactoryTests : IntegrationTestBase
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
-    [InlineData("UNKNOWNGAME")]
-    [InlineData("INVALID")]
-    public void GetHandler_WithUnknownGameType_ReturnsFallbackHandler(string gameTypeCode)
+    public void GetHandler_WithNullOrEmptyGameType_ThrowsArgumentException(string gameTypeCode)
     {
         // Act
-        var handler = FlowHandlerFactory.GetHandler(gameTypeCode);
+        var act = () => FlowHandlerFactory.GetHandler(gameTypeCode);
 
-        // Assert - Default fallback is FiveCardDrawFlowHandler
-        handler.Should().BeOfType<FiveCardDrawFlowHandler>();
+        // Assert
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Theory]
+    [InlineData("UNKNOWNGAME")]
+    [InlineData("INVALID")]
+    public void GetHandler_WithUnknownGameType_ThrowsNotSupportedException(string gameTypeCode)
+    {
+        // Act
+        var act = () => FlowHandlerFactory.GetHandler(gameTypeCode);
+
+        // Assert
+        act.Should().Throw<NotSupportedException>();
     }
 
     [Fact]
-    public void GetHandler_WithNullGameType_ReturnsFallbackHandler()
+    public void GetHandler_WithNullGameType_ThrowsArgumentException()
     {
         // Act
-        var handler = FlowHandlerFactory.GetHandler(null!);
+        var act = () => FlowHandlerFactory.GetHandler(null!);
 
         // Assert
-        handler.Should().BeOfType<FiveCardDrawFlowHandler>();
+        act.Should().Throw<ArgumentException>();
     }
 
     [Theory]

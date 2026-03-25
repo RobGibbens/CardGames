@@ -100,6 +100,17 @@ builder.Services
 	.AddHttpMessageHandler<AuthenticationStateHandler>();
 
 builder.Services
+	.AddRefitClient<ITollboothApi>(
+		settingsAction: _ => new RefitSettings(),
+		httpClientName: "tollboothApi")
+	.ConfigureHttpClient(c =>
+	{
+		c.BaseAddress = new Uri("https+http://api");
+		c.Timeout = TimeSpan.FromSeconds(600); //TODO: Make configurable
+	})
+	.AddHttpMessageHandler<AuthenticationStateHandler>();
+
+builder.Services
 	.AddRefitClient<IGoodBadUglyApi>(
 		settingsAction: _ => new RefitSettings(),
 		httpClientName: "goodBadUglyApi")

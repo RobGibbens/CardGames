@@ -8,10 +8,11 @@ using CardGames.Poker.Evaluation;
 namespace CardGames.Poker.Evaluation.Evaluators;
 
 /// <summary>
-/// Hand evaluator for Seven Card Stud variant.
+/// Hand evaluator for Seven Card Stud variant and structurally identical variants (e.g., Tollbooth).
 /// Uses positional cards (hole cards, board cards, and down card).
 /// </summary>
 [HandEvaluator("SEVENCARDSTUD")]
+[HandEvaluator("TOLLBOOTH")]
 public sealed class SevenCardStudHandEvaluator : IHandEvaluator
 {
     /// <inheritdoc />

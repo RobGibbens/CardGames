@@ -310,3 +310,11 @@ if (phase?.Category == "Drawing" && phase.RequiresPlayerAction)
 This architecture transforms the card games system from a hardcoded, game-specific implementation to a flexible, metadata-driven platform. New game types can be added by simply defining their rules in the domain layer, with no changes required to the UI or API orchestration logic.
 
 The system remains backward compatible while providing a clear path forward for scaling to dozens or hundreds of game variants without increasing code complexity.
+
+## Display-Only Community Cards
+
+Some stud variants (e.g., Tollbooth) use **shared display cards** that are visible to all players but excluded from hand evaluation. These cards are stored as `CommunityCard` type in the `GameCards` table and are queryable through the standard community cards path, but the evaluation layer ignores them.
+
+The `TableStateBuilder` projects display cards into a game-specific private DTO (e.g., `TollboothOfferPrivateDto.DisplayCards`) so the UI can render them independently from a player's evaluated hand. When a display card is taken by a player, it is reassigned to their seat and a replacement is drawn from the deck.
+
+This pattern enables any future variant that needs visible shared information without affecting hand ranking — for example, display-only wild card indicators, shared trump cards, or community cards that influence betting but not evaluation.

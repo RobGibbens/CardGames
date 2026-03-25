@@ -25,7 +25,6 @@ namespace CardGames.Poker.Api.GameFlow;
 public sealed class GameFlowHandlerFactory : IGameFlowHandlerFactory
 {
     private readonly FrozenDictionary<string, IGameFlowHandler> _handlers;
-    private readonly IGameFlowHandler _defaultHandler;
     private readonly ILogger<GameFlowHandlerFactory>? _logger;
 
     /// <summary>
@@ -47,10 +46,6 @@ public sealed class GameFlowHandlerFactory : IGameFlowHandlerFactory
     {
         _logger = logger;
         var handlersDict = new Dictionary<string, IGameFlowHandler>(StringComparer.OrdinalIgnoreCase);
-
-        // Create default handler first
-        _defaultHandler = new FiveCardDrawFlowHandler();
-        handlersDict[_defaultHandler.GameTypeCode] = _defaultHandler;
 
         // Discover all IGameFlowHandler implementations via reflection
         var handlerInterface = typeof(IGameFlowHandler);
@@ -94,10 +89,10 @@ public sealed class GameFlowHandlerFactory : IGameFlowHandlerFactory
     {
         if (string.IsNullOrWhiteSpace(gameTypeCode))
         {
-            _logger?.LogDebug(
-                "Null or empty game type code provided. Returning default handler ({DefaultType}).",
-                _defaultHandler.GameTypeCode);
-            return _defaultHandler;
+            throw new ArgumentException(
+                "Game type code must not be null or empty. " +
+                $"Registered types: {string.Join(", ", _handlers.Keys)}.",
+                nameof(gameTypeCode));
         }
 
         if (_handlers.TryGetValue(gameTypeCode, out var handler))
@@ -105,11 +100,10 @@ public sealed class GameFlowHandlerFactory : IGameFlowHandlerFactory
             return handler;
         }
 
-        _logger?.LogWarning(
-            "No handler found for game type {GameTypeCode}. Returning default handler ({DefaultType}).",
-            gameTypeCode,
-            _defaultHandler.GameTypeCode);
-        return _defaultHandler;
+        throw new NotSupportedException(
+            $"No game flow handler registered for game type '{gameTypeCode}'. " +
+            $"Registered types: {string.Join(", ", _handlers.Keys)}. " +
+            "Did you forget to create a flow handler for a new game type?");
     }
 
     /// <inheritdoc />

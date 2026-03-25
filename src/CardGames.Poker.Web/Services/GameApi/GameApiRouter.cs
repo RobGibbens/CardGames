@@ -19,24 +19,18 @@ public interface IGameApiRouter
 public class GameApiRouter : IGameApiRouter
 {
     private readonly IEnumerable<IGameApiClient> _clients;
-    private readonly IGameApiClient _defaultClient;
 
     public GameApiRouter(IEnumerable<IGameApiClient> clients)
     {
         _clients = clients;
-        // Fallback to FiveCardDraw if specific client not found, matching legacy behavior.
-        _defaultClient = clients.FirstOrDefault(c => c.GameTypeCode.Equals("FIVECARDDRAW", StringComparison.OrdinalIgnoreCase))
-                         ?? throw new InvalidOperationException("FiveCardDraw client not registered as fallback.");
     }
 
-    private IGameApiClient GetClient(string? gameTypeCode)
+    private IGameApiClient GetClient(string gameTypeCode)
     {
-        if (string.IsNullOrWhiteSpace(gameTypeCode))
-        {
-            return _defaultClient;
-        }
-
-        return _clients.FirstOrDefault(c => c.GameTypeCode.Equals(gameTypeCode, StringComparison.OrdinalIgnoreCase)) ?? _defaultClient;
+        return _clients.FirstOrDefault(c => c.GameTypeCode.Equals(gameTypeCode, StringComparison.OrdinalIgnoreCase))
+            ?? throw new NotSupportedException(
+                $"No IGameApiClient registered for game type '{gameTypeCode}'. " +
+                "Register an IGameApiClient implementation for this game type.");
     }
 
     public Task<bool> StartGameAsync(string gameTypeCode, Guid gameId)

@@ -476,7 +476,8 @@ StringComparison.OrdinalIgnoreCase);
 			string.Equals(GameTypeCode, "BASEBALL", StringComparison.OrdinalIgnoreCase) ||
 			string.Equals(GameTypeCode, "FOLLOWTHEQUEEN", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(GameTypeCode, "PAIRPRESSURE", StringComparison.OrdinalIgnoreCase) ||
-			string.Equals(GameTypeCode, "RAZZ", StringComparison.OrdinalIgnoreCase))
+			string.Equals(GameTypeCode, "RAZZ", StringComparison.OrdinalIgnoreCase) ||
+			string.Equals(GameTypeCode, "TOLLBOOTH", StringComparison.OrdinalIgnoreCase))
 		{
 			// Preserve the API order - cards are already sorted by the server
 			return Seat.Cards;

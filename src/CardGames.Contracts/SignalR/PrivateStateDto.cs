@@ -55,6 +55,11 @@ public sealed record PrivateStateDto
 	/// </summary>
 	public BuyCardOfferPrivateDto? BuyCardOffer { get; init; }
 
+	/// <summary>
+	/// Tollbooth offer information when in the TollboothOffer phase.
+	/// </summary>
+	public TollboothOfferPrivateDto? TollboothOffer { get; init; }
+
         /// <summary>
         /// Whether it is currently this player's turn to act.
         /// </summary>
@@ -226,3 +231,39 @@ public sealed record DropOrStayPrivateDto
         /// </summary>
         public string? Decision { get; init; }
     }
+
+/// <summary>
+/// Tollbooth offer information for the player during TollboothOffer phase.
+/// </summary>
+public sealed record TollboothOfferPrivateDto
+{
+	/// <summary>
+	/// Whether it is the player's turn to choose a card.
+	/// </summary>
+	public bool IsMyTurnToChoose { get; init; }
+
+	/// <summary>
+	/// Whether the player has already chosen this round.
+	/// </summary>
+	public bool HasChosenThisRound { get; init; }
+
+	/// <summary>
+	/// Cost of the Furthest display card (always 0, free).
+	/// </summary>
+	public int FurthestCost { get; init; }
+
+	/// <summary>
+	/// Cost of the Nearest display card (1× ante).
+	/// </summary>
+	public int NearestCost { get; init; }
+
+	/// <summary>
+	/// Cost of drawing from the Deck (2× ante).
+	/// </summary>
+	public int DeckCost { get; init; }
+
+	/// <summary>
+	/// The display cards currently available for selection (face-up community cards).
+	/// </summary>
+	public IReadOnlyList<CardPublicDto> DisplayCards { get; init; } = [];
+}

@@ -116,7 +116,9 @@ public sealed class StartHandCommandHandler(
         }
 
         // 3. Get the game flow handler for this game type
-        var gameTypeCode = game.GameType?.Code ?? "FIVECARDDRAW";
+        var gameTypeCode = game.GameType?.Code
+            ?? throw new InvalidOperationException(
+                $"Game {game.Id} has no GameType assigned. Cannot determine flow handler.");
         if (!flowHandlerFactory.TryGetHandler(gameTypeCode, out var flowHandler) || flowHandler is null)
         {
             logger.LogWarning(

@@ -27,6 +27,8 @@ public interface IGameApiRouter
 
     Task<RouterResponse<Unit>> AcknowledgePotMatchAsync(string gameCode, Guid gameId);
 
+    Task<RouterResponse<TollboothChooseCardSuccessful>> TollboothChooseCardAsync(Guid gameId, TollboothChooseCardRequest request);
+
     Task<RouterResponse<Unit>> FoldDuringDrawAsync(Guid gameId, int playerSeatIndex);
 }
 
@@ -119,6 +121,8 @@ public class GameApiRouter : IGameApiRouter
     private const string HoldTheBaseball = "HOLDTHEBASEBALL";
     private const string FollowTheQueen = "FOLLOWTHEQUEEN";
     private const string ScrewYourNeighbor = "SCREWYOURNEIGHBOR";
+    private const string Tollbooth = "TOLLBOOTH";
+    private const string FiveCardDraw = "FIVECARDDRAW";
 
     private readonly IFiveCardDrawApi _fiveCardDrawApi;
     private readonly ITwosJacksManWithTheAxeApi _twosJacksManWithTheAxeApi;
@@ -131,6 +135,7 @@ public class GameApiRouter : IGameApiRouter
     private readonly IHoldEmApi _holdEmApi;
     private readonly IGamesApi _gamesApi;
     private readonly IScrewYourNeighborApi _screwYourNeighborApi;
+    private readonly ITollboothApi _tollboothApi;
     private readonly Dictionary<string, Func<Guid, ProcessBettingActionRequest, Task<RouterResponse<ProcessBettingActionSuccessful>>>> _bettingActionRoutes;
     private readonly Dictionary<string, Func<Guid, Guid, int, List<int>, Task<RouterResponse<ProcessDrawResult>>>> _drawRoutes;
     private readonly Dictionary<string, Func<Guid, DropOrStayRequest, Task<RouterResponse<Unit>>>> _dropOrStayRoutes;
@@ -149,7 +154,8 @@ public class GameApiRouter : IGameApiRouter
         IFollowTheQueenApi followTheQueenApi,
         IHoldEmApi holdEmApi,
         IGamesApi gamesApi,
-        IScrewYourNeighborApi screwYourNeighborApi)
+        IScrewYourNeighborApi screwYourNeighborApi,
+        ITollboothApi tollboothApi)
     {
         _fiveCardDrawApi = fiveCardDrawApi;
         _twosJacksManWithTheAxeApi = twosJacksManWithTheAxeApi;
@@ -162,6 +168,7 @@ public class GameApiRouter : IGameApiRouter
         _holdEmApi = holdEmApi;
         _gamesApi = gamesApi;
         _screwYourNeighborApi = screwYourNeighborApi;
+        _tollboothApi = tollboothApi;
 
         _bettingActionRoutes = new Dictionary<string, Func<Guid, ProcessBettingActionRequest, Task<RouterResponse<ProcessBettingActionSuccessful>>>>(GameCodeComparer)
         {
@@ -181,7 +188,9 @@ public class GameApiRouter : IGameApiRouter
             [GoodBadUgly] = RouteGoodBadUglyBettingActionAsync,
             [Baseball] = RouteBaseballBettingActionAsync,
             [HoldTheBaseball] = RouteHoldTheBaseballBettingActionAsync,
-            [FollowTheQueen] = RouteFollowTheQueenBettingActionAsync
+            [FollowTheQueen] = RouteFollowTheQueenBettingActionAsync,
+            [Tollbooth] = RouteTollboothBettingActionAsync,
+            [FiveCardDraw] = RouteFiveCardDrawBettingActionAsync
         };
 
         _drawRoutes = new Dictionary<string, Func<Guid, Guid, int, List<int>, Task<RouterResponse<ProcessDrawResult>>>>(GameCodeComparer)
@@ -195,7 +204,8 @@ public class GameApiRouter : IGameApiRouter
             [PhilsMom] = RoutePhilsMomDrawAsync,
             [CrazyPineapple] = RouteCrazyPineappleDrawAsync,
             [TwosJacksManWithTheAxe] = RouteTwosJacksManWithTheAxeDrawAsync,
-            [KingsAndLows] = RouteKingsAndLowsDrawAsync
+            [KingsAndLows] = RouteKingsAndLowsDrawAsync,
+            [FiveCardDraw] = RouteFiveCardDrawDrawAsync
         };
 
         _dropOrStayRoutes = new Dictionary<string, Func<Guid, DropOrStayRequest, Task<RouterResponse<Unit>>>>(GameCodeComparer)
@@ -229,9 +239,9 @@ public class GameApiRouter : IGameApiRouter
             return await route(gameId, request);
         }
 
-        // Default to Five Card Draw (handles KingsAndLows fallback logic)
-        return RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
-            await _fiveCardDrawApi.FiveCardDrawProcessBettingActionAsync(gameId, request));
+        throw new NotSupportedException(
+            $"No betting action route configured for game type '{gameCode}'. " +
+            "Add an explicit entry in _bettingActionRoutes for this game type.");
     }
 
     public async Task<RouterResponse<ProcessDrawResult>> ProcessDrawAsync(
@@ -246,10 +256,9 @@ public class GameApiRouter : IGameApiRouter
             return await route(gameId, playerId, playerSeatIndex, discardIndices);
         }
 
-        var fcdRequest = new ProcessDrawRequest(discardIndices);
-        return RouterResponse<ProcessDrawResult>.FromRefit(
-            await _fiveCardDrawApi.FiveCardDrawProcessDrawAsync(gameId, fcdRequest),
-            c => new ProcessDrawResult { Original = c });
+        throw new NotSupportedException(
+            $"No draw route configured for game type '{gameCode}'. " +
+            "Add an explicit entry in _drawRoutes for this game type.");
     }
 
     public async Task<RouterResponse<Unit>> DropOrStayAsync(string gameCode, Guid gameId, DropOrStayRequest request)
@@ -505,4 +514,24 @@ public class GameApiRouter : IGameApiRouter
         var response = await _gamesApi.IrishHoldEmFoldDuringDrawAsync(gameId, request);
         return RouterResponse<Unit>.FromRefit(response);
     }
+
+    private async Task<RouterResponse<ProcessBettingActionSuccessful>> RouteTollboothBettingActionAsync(Guid gameId, ProcessBettingActionRequest request)
+        => RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
+            await _tollboothApi.TollboothProcessBettingActionAsync(gameId, request));
+
+    private async Task<RouterResponse<ProcessBettingActionSuccessful>> RouteFiveCardDrawBettingActionAsync(Guid gameId, ProcessBettingActionRequest request)
+        => RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
+            await _fiveCardDrawApi.FiveCardDrawProcessBettingActionAsync(gameId, request));
+
+    private async Task<RouterResponse<ProcessDrawResult>> RouteFiveCardDrawDrawAsync(Guid gameId, Guid playerId, int playerSeatIndex, List<int> discardIndices)
+    {
+        var fcdRequest = new ProcessDrawRequest(discardIndices);
+        return RouterResponse<ProcessDrawResult>.FromRefit(
+            await _fiveCardDrawApi.FiveCardDrawProcessDrawAsync(gameId, fcdRequest),
+            c => new ProcessDrawResult { Original = c });
+    }
+
+    public async Task<RouterResponse<TollboothChooseCardSuccessful>> TollboothChooseCardAsync(Guid gameId, TollboothChooseCardRequest request)
+        => RouterResponse<TollboothChooseCardSuccessful>.FromRefit(
+            await _tollboothApi.TollboothChooseCardAsync(gameId, request));
 }
