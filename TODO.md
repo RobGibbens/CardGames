@@ -8,9 +8,6 @@
 - [ ] SYN - odds
 - [ ] Allow users to "favorite" game types and sort them at the top
 - [ ] Lobby - Filter by status
-- [ ] Make the create table list smaller
-- [ ] Add the images to the DC game list
-- [ ] Add the images to the game info overlay
 - [ ] Join game modal background color
 - [ ] Joining table adds 5001 when setting 5000
 - [ ] Bringing in cash to a game should require host approval?
@@ -61,19 +58,21 @@
 
 ### Hold 'Em Variants
 
+- [ ] Add Pittsburgh
+- [ ] Add Squid Game
+- [ ] Add Hall of Mirrors
+- [ ] Add Klondike
+
 - [x] Add Texas Hold'em
 - [x] Add Omaha
 - [x] Add The Bob Barker
 - [x] Add Irish Hold'em
-- [ ] Add Pittsburgh
-- [ ] Add Squid Game
 - [x] Add Hold the Baseball
 - [x] Add Nebraska
 - [x] Add South Dakota
 - [x] Add Red River
 - [x] Add Phil's Mom
 - [x] Add Crazy Pineapple
-- [ ] Add Klondike
 
 ### 7 Card Stud Variants
 
@@ -97,9 +96,11 @@
 
 ### Other Poker Variants
 
-- [x] Add Screw Your Neighbor
-- [ ] In Between
+- [ ] Add In Between
+- [ ] Add Bzzjt
 - [ ] Add Guts
+
+- [x] Add Screw Your Neighbor
 
 ## Completed
 
@@ -254,3 +255,6 @@
 - [x] BB - Test in DC
 - [x] Add 50,000 chips to demo players
 - [x] Join game modal - should not be able to click out of it
+- [x] Make the create table list smaller
+- [x] Add the images to the DC game list
+- [x] Add the images to the game info overlay

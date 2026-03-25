@@ -46,15 +46,25 @@
 							<button class="dealer-choice-variant @(_selectedCode == game.Code ? "selected" : "") @(isDisabledForPlayerCount ? "variant-disabled" : "")"
 									disabled="@isDisabledForPlayerCount"
 									@onclick="() => SelectVariant(game.Code, game.Name)">
+								<div class="dc-variant-icon">
+									@if (!string.IsNullOrEmpty(game.ImageName))
+									{
+										<img src="/images/games/@(game.ImageName)" alt="@game.Name" />
+									}
+									else
+									{
+										<span class="dc-variant-icon-fallback"><i class="fa-thin fa-card-club"></i></span>
+									}
+								</div>
 								<span class="dc-variant-name">@game.Name</span>
 								<span class="dc-variant-desc">@game.Description</span>
+								<span class="dc-variant-players">
+									<i class="fa-regular fa-users"></i>
+									@game.MinimumNumberOfPlayers-@game.MaximumNumberOfPlayers
+								</span>
 								@if (isDisabledForPlayerCount)
 								{
 									<span class="dc-variant-disabled-reason">@GetDisabledReason(game)</span>
-								}
-								@if (_selectedCode == game.Code)
-								{
-									<span class="dc-variant-check"><i class="fa-solid fa-check"></i></span>
 								}
 							</button>
 						}
