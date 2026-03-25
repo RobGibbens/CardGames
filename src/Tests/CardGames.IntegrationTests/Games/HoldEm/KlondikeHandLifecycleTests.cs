@@ -1,6 +1,7 @@
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.HoldEm.v1.Commands.StartHand;
 using CardGames.Poker.Api.Features.Games.HoldEm.v1.Commands.ProcessBettingAction;
+using CardGames.Poker.Api.Features.Games.Generic.v1.Commands.PerformShowdown;
 using CardGames.Poker.Api.GameFlow;
 using CardGames.Poker.Betting;
 using BettingActionType = CardGames.Poker.Api.Data.Entities.BettingActionType;
@@ -248,6 +249,93 @@ public class KlondikeHandLifecycleTests : IntegrationTestBase
         var klondikeCard = communityCards.Single(c => c.DealtAtPhase == "KlondikeCard");
         klondikeCard.DealOrder.Should().Be(0);
         klondikeCard.IsVisible.Should().BeFalse("Klondike Card should remain face-down even after runout");
+    }
+
+    #endregion
+
+    #region Showdown
+
+    [Fact]
+    public async Task PerformShowdown_AfterRiver_ReturnsValidShowdownResult()
+    {
+        var setup = await CreateDealtKlondikeGameAsync(playerCount: 3, dealerPosition: 0);
+
+        // Advance to Showdown phase
+        await AdvanceToPhaseByCheckingAsync(setup.Game.Id, "Showdown");
+
+        var fresh = GetFreshDbContext();
+        var game = await fresh.Games.AsNoTracking().FirstAsync(g => g.Id == setup.Game.Id);
+        game.CurrentPhase.Should().Be("Showdown");
+
+        // Klondike card should still be face-down before showdown
+        var klondikeCardBefore = await fresh.GameCards
+            .AsNoTracking()
+            .FirstAsync(gc => gc.GameId == setup.Game.Id
+                && gc.HandNumber == game.CurrentHandNumber
+                && gc.DealtAtPhase == "KlondikeCard");
+        klondikeCardBefore.IsVisible.Should().BeFalse("Klondike card should be face-down before showdown");
+
+        // Perform showdown via GenericPerformShowdownCommand (same as GenericPerformShowdownAsync API)
+        var showdownResult = await Mediator.Send(new PerformShowdownCommand(setup.Game.Id));
+        showdownResult.IsT0.Should().BeTrue("showdown should succeed");
+
+        var result = showdownResult.AsT0;
+
+        // Verify phase transitioned to Complete
+        result.CurrentPhase.Should().Be("Complete");
+
+        // Verify payouts exist (at least one winner)
+        result.Payouts.Should().NotBeEmpty("there should be at least one winner with a payout");
+
+        // Verify player hands have cards (hole + community = 8 cards per player)
+        result.PlayerHands.Should().NotBeEmpty("player hands should be returned");
+        foreach (var hand in result.PlayerHands)
+        {
+            hand.Cards.Should().NotBeEmpty($"player {hand.PlayerName} should have cards");
+            hand.Cards.Should().HaveCount(8, $"player {hand.PlayerName} should have 2 hole + 6 community = 8 cards");
+            hand.HandType.Should().NotBeNullOrWhiteSpace($"player {hand.PlayerName} should have a hand type");
+            hand.HandDescription.Should().NotBeNullOrWhiteSpace($"player {hand.PlayerName} should have a hand description");
+        }
+
+        // Verify at least one player is marked as winner
+        result.PlayerHands.Should().Contain(h => h.IsWinner == true, "at least one player should be a winner");
+
+        // Verify Klondike card was revealed (face-up) after showdown
+        var freshAfter = GetFreshDbContext();
+        var klondikeCardAfter = await freshAfter.GameCards
+            .AsNoTracking()
+            .FirstAsync(gc => gc.GameId == setup.Game.Id
+                && gc.HandNumber == game.CurrentHandNumber
+                && gc.DealtAtPhase == "KlondikeCard");
+        klondikeCardAfter.IsVisible.Should().BeTrue("Klondike card should be revealed after showdown");
+
+        // Verify game transitioned to Complete with timing data
+        var gameAfter = await freshAfter.Games.AsNoTracking().FirstAsync(g => g.Id == setup.Game.Id);
+        gameAfter.CurrentPhase.Should().Be("Complete");
+        gameAfter.HandCompletedAt.Should().NotBeNull("HandCompletedAt should be set after showdown");
+        gameAfter.NextHandStartsAt.Should().NotBeNull("NextHandStartsAt should be set after showdown");
+    }
+
+    [Fact]
+    public async Task PerformShowdown_IsIdempotent_ReturnsValidResultOnSecondCall()
+    {
+        var setup = await CreateDealtKlondikeGameAsync(playerCount: 2, dealerPosition: 0);
+
+        await AdvanceToPhaseByCheckingAsync(setup.Game.Id, "Showdown");
+
+        // First call
+        var result1 = await Mediator.Send(new PerformShowdownCommand(setup.Game.Id));
+        result1.IsT0.Should().BeTrue("first showdown call should succeed");
+
+        // Second call (idempotent — simulates another client calling)
+        var result2 = await Mediator.Send(new PerformShowdownCommand(setup.Game.Id));
+        result2.IsT0.Should().BeTrue("second showdown call should also succeed (idempotent)");
+
+        var r1 = result1.AsT0;
+        var r2 = result2.AsT0;
+
+        r2.PlayerHands.Should().HaveCount(r1.PlayerHands.Count);
+        r2.Payouts.Should().HaveCount(r1.Payouts.Count);
     }
 
     #endregion
