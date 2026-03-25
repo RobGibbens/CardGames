@@ -216,6 +216,9 @@
                          BigBlind="@(_gameResponse?.BigBlind ?? 0)"
                          Ante="@(_gameResponse?.Ante ?? _ante)"
                          MinBet="@(_gameResponse?.MinBet ?? 0)"
+                         TableName="@(_gameResponse?.Name)"
+                         HostName="@(_gameResponse?.CreatedByName)"
+                         GameImageName="@GetGameInfoImageName()"
                          ContextItems="@GetGameInfoContextItems()"
                          AreOddsVisibleToAllPlayers="@(_gameResponse?.AreOddsVisibleToAllPlayers ?? true)"
                          CanToggleOddsVisibility="@_isHost"
@@ -3922,6 +3925,16 @@
     private void CloseGameInfoOverlay()
     {
         _showGameInfoOverlay = false;
+    }
+
+    private string? GetGameInfoImageName()
+    {
+        var code = _tableState?.GameTypeCode ?? _gameTypeCode;
+        if (string.IsNullOrWhiteSpace(code) || string.Equals(code, "DEALERSCHOICE", StringComparison.OrdinalIgnoreCase))
+        {
+            return _isDealersChoice ? "dealerschoice.png" : null;
+        }
+        return $"{code.ToLowerInvariant()}.png";
     }
 
     private string GetGameInfoTypeContext()

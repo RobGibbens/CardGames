@@ -20,33 +20,71 @@
     </div>
 
     <div class="game-info-overlay-body">
-        <div class="game-info-row">
-            <span class="game-info-label">Game</span>
-            <span class="game-info-value">@GameTypeContext</span>
+        <!-- Hero: Game image + variant name -->
+        <div class="game-info-hero">
+            <div class="game-info-hero-image">
+                @if (!string.IsNullOrEmpty(GameImageName))
+                {
+                    <img src="/images/games/@GameImageName" alt="@GameTypeContext" />
+                }
+                else
+                {
+                    <span class="game-info-hero-fallback"><i class="fa-thin fa-card-club"></i></span>
+                }
+            </div>
+            <div class="game-info-hero-details">
+                <h3 class="game-info-hero-name">@GameTypeContext</h3>
+                @if (!string.IsNullOrWhiteSpace(TableName))
+                {
+                    <span class="game-info-table-name">
+                        <i class="fa-regular fa-table-columns"></i>
+                        @TableName
+                    </span>
+                }
+                @if (!string.IsNullOrWhiteSpace(HostName))
+                {
+                    <span class="game-info-host">
+                        <i class="fa-regular fa-crown"></i>
+                        Hosted by @HostName
+                    </span>
+                }
+            </div>
         </div>
 
-        @if (IsHoldEm)
-        {
-            <div class="game-info-row">
-                <span class="game-info-value">Blinds @SmallBlind.ToString("N0") / @BigBlind.ToString("N0")</span>
+        <!-- Stakes -->
+        <div class="game-info-section">
+            <div class="game-info-section-title">Stakes</div>
+            <div class="game-info-stakes-grid">
+                @if (IsHoldEm)
+                {
+                    <div class="game-info-stat">
+                        <span class="game-info-stat-label">Small Blind</span>
+                        <span class="game-info-stat-value">@SmallBlind.ToString("N0")</span>
+                    </div>
+                    <div class="game-info-stat">
+                        <span class="game-info-stat-label">Big Blind</span>
+                        <span class="game-info-stat-value">@BigBlind.ToString("N0")</span>
+                    </div>
+                }
+                else
+                {
+                    <div class="game-info-stat">
+                        <span class="game-info-stat-label">Ante</span>
+                        <span class="game-info-stat-value">@Ante.ToString("N0")</span>
+                    </div>
+                    <div class="game-info-stat">
+                        <span class="game-info-stat-label">Min Bet</span>
+                        <span class="game-info-stat-value">@MinBet.ToString("N0")</span>
+                    </div>
+                }
             </div>
-        }
-        else
-        {
-            <div class="game-info-row">
-                <span class="game-info-label">Ante</span>
-                <span class="game-info-value">@Ante.ToString("N0")</span>
-            </div>
-            <div class="game-info-row">
-                <span class="game-info-label">Min Bet</span>
-                <span class="game-info-value">@MinBet.ToString("N0")</span>
-            </div>
-        }
+        </div>
 
+        <!-- Context -->
         @if (ContextItems.Count > 0)
         {
-            <div class="game-info-context">
-                <div class="game-info-context-title">Context</div>
+            <div class="game-info-section">
+                <div class="game-info-section-title">Context</div>
                 <ul class="game-info-context-list">
                     @foreach (var item in ContextItems)
                     {
@@ -56,11 +94,12 @@
             </div>
         }
 
+        <!-- Odds Toggle -->
         @if (CanToggleOddsVisibility)
         {
-            <div class="game-info-row game-info-odds-row">
-                <span class="game-info-label">Odds</span>
-                <div class="game-info-odds-control">
+            <div class="game-info-section game-info-odds-section">
+                <div class="game-info-odds-row">
+                    <span class="game-info-section-title">Odds</span>
                     <button class="game-info-odds-toggle-switch @(AreOddsVisibleToAllPlayers ? "is-on" : "is-off")"
                             type="button"
                             role="switch"
@@ -100,6 +139,15 @@
 
     [Parameter]
     public int MinBet { get; set; }
+
+    [Parameter]
+    public string? TableName { get; set; }
+
+    [Parameter]
+    public string? HostName { get; set; }
+
+    [Parameter]
+    public string? GameImageName { get; set; }
 
     [Parameter]
     public IReadOnlyList<string> ContextItems { get; set; } = [];

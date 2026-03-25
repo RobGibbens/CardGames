@@ -8,7 +8,6 @@
 - [ ] SYN - odds
 - [ ] Allow users to "favorite" game types and sort them at the top
 - [ ] Lobby - Filter by status
-- [ ] Add the images to the game info overlay
 - [ ] Join game modal background color
 - [ ] Joining table adds 5001 when setting 5000
 - [ ] Bringing in cash to a game should require host approval?
@@ -254,3 +253,4 @@
 - [x] Join game modal - should not be able to click out of it
 - [x] Make the create table list smaller
 - [x] Add the images to the DC game list
+- [x] Add the images to the game info overlay
