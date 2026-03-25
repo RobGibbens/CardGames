@@ -58,19 +58,21 @@
 
 ### Hold 'Em Variants
 
+- [ ] Add Pittsburgh
+- [ ] Add Squid Game
+- [ ] Add Hall of Mirrors
+- [ ] Add Klondike
+
 - [x] Add Texas Hold'em
 - [x] Add Omaha
 - [x] Add The Bob Barker
 - [x] Add Irish Hold'em
-- [ ] Add Pittsburgh
-- [ ] Add Squid Game
 - [x] Add Hold the Baseball
 - [x] Add Nebraska
 - [x] Add South Dakota
 - [x] Add Red River
 - [x] Add Phil's Mom
 - [x] Add Crazy Pineapple
-- [ ] Add Klondike
 
 ### 7 Card Stud Variants
 
@@ -94,9 +96,11 @@
 
 ### Other Poker Variants
 
-- [x] Add Screw Your Neighbor
-- [ ] In Between
+- [ ] Add In Between
+- [ ] Add Bzzjt
 - [ ] Add Guts
+
+- [x] Add Screw Your Neighbor
 
 ## Completed
 
