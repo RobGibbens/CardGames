@@ -76,6 +76,14 @@
 								   @bind="_variantSearch"
 								   @bind:event="oninput" />
 						</div>
+						<div class="view-toggle-group">
+							<button class="btn btn-view-toggle @(_variantViewMode == "grid" ? "active" : "")" @onclick="@(() => SetVariantViewModeAsync("grid"))" title="Grid View">
+								<i class="fa-solid fa-th-large"></i>
+							</button>
+							<button class="btn btn-view-toggle @(_variantViewMode == "list" ? "active" : "")" @onclick="@(() => SetVariantViewModeAsync("list"))" title="List View">
+								<i class="fa-solid fa-list"></i>
+							</button>
+						</div>
 					</div>
 						}
 					<div class="variants-selection-region" @ref="_variantsSelectionRegion">
@@ -136,6 +144,8 @@
 							{
 								<h2>@group.Title</h2>
 							}
+							@if (_variantViewMode == "grid" || _selectedVariant is not null)
+							{
 							<div class="variants-grid @(_selectedVariant is not null ? "has-selection" : "")">
 								@foreach (var game in group.Cards)
 								{
@@ -179,6 +189,45 @@
 									</div>
 								}
 							</div>
+							}
+							else
+							{
+							<div class="variants-list">
+								@foreach (var game in group.Cards)
+								{
+									var isAvailable = game.Code == DealersChoiceCode
+										|| _availableGames.Any(g => string.Equals(g.Code, game.Code, StringComparison.OrdinalIgnoreCase));
+									<div class="variant-list-row @(!isAvailable ? "disabled" : "") @(_selectedVariant?.Code == game.Code ? "selected" : "")"
+										 data-variant-code="@game.Code"
+										 @onclick="() => SelectVariantAsync(game, isAvailable)">
+										<div class="variant-list-row-icon">
+											@if (!string.IsNullOrEmpty(game.ImageName))
+											{
+												<img src="/images/games/@(game.ImageName)" alt="@game.Name" />
+											}
+											else if (game.Code == DealersChoiceCode)
+											{
+												<img src="/images/games/dealerschoice.png" alt="@game.Name" />
+											}
+											else
+											{
+												<span class="variant-icon-fallback"><i class="fa-thin fa-card-club"></i></span>
+											}
+										</div>
+										<span class="variant-list-row-name">@game.Name</span>
+										<span class="variant-list-row-description">@game.Description</span>
+										<span class="variant-list-row-players">
+											<i class="fa-regular fa-users"></i>
+											@game.MinimumNumberOfPlayers-@game.MaximumNumberOfPlayers
+										</span>
+										@if (!isAvailable)
+										{
+											<span class="variant-badge coming-soon">Coming Soon</span>
+										}
+									</div>
+								}
+							</div>
+							}
 						</section>
 					}
 					</div>
@@ -557,6 +606,126 @@
 		cursor: not-allowed;
 	}
 
+	/* Variant search row layout */
+	.variant-search-row {
+		display: flex;
+		align-items: flex-end;
+		gap: 1rem;
+	}
+
+	.variant-search-row .form-group {
+		flex: 1 1 auto;
+		min-width: 0;
+	}
+
+	.variant-search-row .view-toggle-group {
+		display: flex;
+		gap: 0.5rem;
+		flex-shrink: 0;
+		padding-bottom: 0.15rem;
+	}
+
+	/* Variant list view */
+	.variants-list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.variant-list-row {
+		display: grid;
+		grid-template-columns: 60px minmax(120px, 1fr) minmax(0, 2.5fr) auto;
+		gap: 0.75rem;
+		align-items: center;
+		padding: 0.75rem 1rem;
+		background: var(--card-bg);
+		border: 1px solid var(--border-color);
+		border-radius: 12px;
+		cursor: pointer;
+		transition: all var(--transition-normal);
+		position: relative;
+		min-height: 0;
+	}
+
+	.variant-list-row:hover {
+		transform: translateY(-1px);
+		box-shadow: var(--card-shadow-hover);
+		border-color: var(--primary);
+	}
+
+	.variant-list-row.selected {
+		border-color: var(--primary);
+		box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2);
+	}
+
+	.variant-list-row.disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+
+	.variant-list-row.disabled:hover {
+		transform: none;
+		box-shadow: none;
+		border-color: var(--border-color);
+	}
+
+	.variant-list-row-icon {
+		width: 60px;
+		height: 60px;
+		flex-shrink: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		overflow: hidden;
+		border-radius: 8px;
+	}
+
+	.variant-list-row-icon img {
+		width: 100%;
+		height: 100%;
+		object-fit: contain;
+		border-radius: 8px;
+	}
+
+	.variant-list-row-icon .variant-icon-fallback {
+		font-size: 1.4rem;
+		line-height: 1;
+	}
+
+	.variant-list-row-name {
+		font-size: 0.95rem;
+		font-weight: 700;
+		color: var(--text-primary);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.variant-list-row-description {
+		font-size: 0.85rem;
+		color: var(--text-muted);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.variant-list-row-players {
+		font-size: 0.8rem;
+		color: var(--text-muted);
+		white-space: nowrap;
+		display: flex;
+		align-items: center;
+		gap: 0.3rem;
+	}
+
+	.variant-list-row .variant-badge.coming-soon {
+		position: absolute;
+		top: 50%;
+		right: 1rem;
+		transform: translateY(-50%);
+		margin: 0;
+	}
+
 	@@media (max-width: 768px) {
 		.create-step .variant-card.selected-layout {
 			grid-template-columns: 1fr;
@@ -578,10 +747,28 @@
 		.table-name-input-row {
 			gap: 0.5rem;
 		}
+
+		.variant-list-row {
+			grid-template-columns: 40px minmax(80px, 1fr) auto;
+		}
+
+		.variant-list-row-description {
+			display: none;
+		}
+
+		.variant-list-row-icon {
+			width: 40px;
+			height: 40px;
+		}
+
+		.variant-search-row {
+			flex-wrap: wrap;
+		}
 	}
 </style>
 
 @code {
+	private string _variantViewMode = "grid";
 	private bool _isLoading = true;
 	private bool _isCreating;
 	private bool _isGeneratingTableName;
@@ -615,6 +802,7 @@
 	private const int FallbackMinimumBet = 10;
 	private const int CanCreateDebounceDelayMilliseconds = 400;
 
+	private const string VariantViewModeKey = "createTable.variantViewMode";
 	private const string DealersChoiceCode = "DEALERSCHOICE";
  private const string ScrewYourNeighborCode = "SCREWYOURNEIGHBOR";
 	private const string HoldEmVariantsTitle = "Hold 'Em variants";
@@ -767,6 +955,13 @@
 			_variantAnimationModule = await JSRuntime.InvokeAsync<IJSObjectReference>(
 				"import",
 				"./Components/Pages/CreateTable.razor.js");
+
+			var stored = await JSRuntime.InvokeAsync<string?>("localStorage.getItem", VariantViewModeKey);
+			if (stored is "grid" or "list")
+			{
+				_variantViewMode = stored;
+				StateHasChanged();
+			}
 		}
 
 		if (_playVariantFlipAfterRender && _variantAnimationModule is not null)
@@ -1108,6 +1303,12 @@
 	private static bool IsScrewYourNeighborCode(string? gameCode)
 	{
 		return string.Equals(gameCode, ScrewYourNeighborCode, StringComparison.OrdinalIgnoreCase);
+	}
+
+	private async Task SetVariantViewModeAsync(string mode)
+	{
+		_variantViewMode = mode;
+		await JSRuntime.InvokeVoidAsync("localStorage.setItem", VariantViewModeKey, mode);
 	}
 
 	private void ToggleOddsVisibility()

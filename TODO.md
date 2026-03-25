@@ -8,8 +8,6 @@
 - [ ] SYN - odds
 - [ ] Allow users to "favorite" game types and sort them at the top
 - [ ] Lobby - Filter by status
-- [ ] Make the create table list smaller
-- [ ] Add the images to the DC game list
 - [ ] Add the images to the game info overlay
 - [ ] Join game modal background color
 - [ ] Joining table adds 5001 when setting 5000
@@ -254,3 +252,5 @@
 - [x] BB - Test in DC
 - [x] Add 50,000 chips to demo players
 - [x] Join game modal - should not be able to click out of it
+- [x] Make the create table list smaller
+- [x] Add the images to the DC game list
