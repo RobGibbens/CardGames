@@ -214,7 +214,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				IsFaceUp = c.IsVisible || isBobBarkerShowdownReveal,
 				Rank = c.IsVisible || isBobBarkerShowdownReveal ? MapSymbolToRank(c.Symbol) : null,
 				Suit = c.IsVisible || isBobBarkerShowdownReveal ? GetCardSuitString(c.Suit) : null,
-				DealOrder = c.DealOrder
+				DealOrder = c.DealOrder,
+				IsKlondikeCard = c.DealtAtPhase == "KlondikeCard"
 			})
 			.ToListAsync(cancellationToken);
 
@@ -3028,7 +3029,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 	private static bool IsHoldEmGame(string? gameTypeCode)
 		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.HoldEmCode)
-		   || IsGameType(gameTypeCode, PokerGameMetadataRegistry.RedRiverCode);
+		   || IsGameType(gameTypeCode, PokerGameMetadataRegistry.RedRiverCode)
+		   || IsGameType(gameTypeCode, PokerGameMetadataRegistry.KlondikeCode);
 
 	private static bool IsHoldTheBaseballGame(string? gameTypeCode)
 		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.HoldTheBaseballCode);

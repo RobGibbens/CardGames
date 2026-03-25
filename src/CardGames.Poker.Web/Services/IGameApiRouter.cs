@@ -123,6 +123,7 @@ public class GameApiRouter : IGameApiRouter
     private const string ScrewYourNeighbor = "SCREWYOURNEIGHBOR";
     private const string Tollbooth = "TOLLBOOTH";
     private const string FiveCardDraw = "FIVECARDDRAW";
+    private const string Klondike = "KLONDIKE";
 
     private readonly IFiveCardDrawApi _fiveCardDrawApi;
     private readonly ITwosJacksManWithTheAxeApi _twosJacksManWithTheAxeApi;
@@ -190,7 +191,8 @@ public class GameApiRouter : IGameApiRouter
             [HoldTheBaseball] = RouteHoldTheBaseballBettingActionAsync,
             [FollowTheQueen] = RouteFollowTheQueenBettingActionAsync,
             [Tollbooth] = RouteTollboothBettingActionAsync,
-            [FiveCardDraw] = RouteFiveCardDrawBettingActionAsync
+            [FiveCardDraw] = RouteFiveCardDrawBettingActionAsync,
+            [Klondike] = RouteKlondikeBettingActionAsync
         };
 
         _drawRoutes = new Dictionary<string, Func<Guid, Guid, int, List<int>, Task<RouterResponse<ProcessDrawResult>>>>(GameCodeComparer)
@@ -330,6 +332,10 @@ public class GameApiRouter : IGameApiRouter
             await _holdEmApi.HoldEmProcessBettingActionAsync(gameId, request));
 
     private async Task<RouterResponse<ProcessBettingActionSuccessful>> RouteRedRiverBettingActionAsync(Guid gameId, ProcessBettingActionRequest request)
+        => RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
+            await _holdEmApi.HoldEmProcessBettingActionAsync(gameId, request));
+
+    private async Task<RouterResponse<ProcessBettingActionSuccessful>> RouteKlondikeBettingActionAsync(Guid gameId, ProcessBettingActionRequest request)
         => RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
             await _holdEmApi.HoldEmProcessBettingActionAsync(gameId, request));
 

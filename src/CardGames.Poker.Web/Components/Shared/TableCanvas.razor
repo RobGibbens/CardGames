@@ -30,11 +30,30 @@
 						}
 					</div>
 
+					<!-- Klondike Card: displayed separated from community cards, like a showcase card -->
+					@if (KlondikeCard is not null)
+					{
+						var klondikeStatusClass = KlondikeCard.IsFaceUp ? "revealed" : "hidden";
+						<div class="klondike-card-slot @klondikeStatusClass">
+							@if (KlondikeCard.IsFaceUp && !string.IsNullOrWhiteSpace(KlondikeCard.Rank))
+							{
+								<playing-card rank="@GetPlayingCardRank(KlondikeCard.Rank)" suit="@KlondikeCard.Suit"
+											  suitcolor="green" rankcolor="green" courtcolor="green"
+											  class="community-card-element"></playing-card>
+							}
+							else
+							{
+								<playing-card rank="0" backcolor="#44F" class="community-card-element"></playing-card>
+							}
+							<span class="community-card-label @klondikeStatusClass">Klondike</span>
+						</div>
+					}
+
 					<!-- Community cards area -->
-					@if (CommunityCards is { Count: > 0 })
+					@if (RegularCommunityCards is { Count: > 0 })
 					{
 						<div class="community-cards">
-							@foreach (var (card, cardIndex) in CommunityCards.OrderBy(c => c.DealOrder).Select((c, i) => (c,
+							@foreach (var (card, cardIndex) in RegularCommunityCards.OrderBy(c => c.DealOrder).Select((c, i) => (c,
 						i)))
 							{
 								var label = GetCommunityCardLabel(cardIndex);
@@ -202,7 +221,25 @@
 	[Parameter]
 	public IReadOnlyList<CardPublicDto>? CommunityCards { get; set; }
 
-	private bool HasExtraCommunityCards => CommunityCards is { Count: > 5 };
+	private bool HasExtraCommunityCards => RegularCommunityCards is { Count: > 5 };
+
+	/// <summary>
+	/// The Klondike Card, if present. Displayed separately from regular community cards.
+	/// </summary>
+	private CardPublicDto? KlondikeCard => CommunityCards?.FirstOrDefault(c => c.IsKlondikeCard);
+
+	/// <summary>
+	/// Community cards excluding the Klondike Card (flop, turn, river).
+	/// </summary>
+	private IReadOnlyList<CardPublicDto>? RegularCommunityCards
+	{
+		get
+		{
+			if (CommunityCards is null or { Count: 0 }) return null;
+			var regular = CommunityCards.Where(c => !c.IsKlondikeCard).ToList();
+			return regular.Count > 0 ? regular : null;
+		}
+	}
 
 	private ElementReference _deckRef;
 
@@ -243,13 +280,15 @@
 		|| string.Equals(GameTypeCode, "IRISHHOLDEM", StringComparison.OrdinalIgnoreCase)
 		|| string.Equals(GameTypeCode, "PHILSMOM", StringComparison.OrdinalIgnoreCase)
 		|| string.Equals(GameTypeCode, "CRAZYPINEAPPLE", StringComparison.OrdinalIgnoreCase)
-		|| string.Equals(GameTypeCode, "HOLDTHEBASEBALL", StringComparison.OrdinalIgnoreCase);
+		|| string.Equals(GameTypeCode, "HOLDTHEBASEBALL", StringComparison.OrdinalIgnoreCase)
+		|| string.Equals(GameTypeCode, "KLONDIKE", StringComparison.OrdinalIgnoreCase);
 
 	private string? FeltPatternIconClass => GameTypeCode?.Trim().ToUpperInvariant() switch
 	{
 		"IRISHHOLDEM" => "fa-clover",
 		"HOLDEM" => "fa-hat-cowboy",
 		"REDRIVER" => "fa-water",
+		"KLONDIKE" => "fa-mountain",
 		"BASEBALL" => "fa-baseball",
 		"OMAHA" => "fa-cow",
 		"NEBRASKA" => "fa-cow",

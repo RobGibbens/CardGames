@@ -358,6 +358,12 @@ public sealed record CardPublicDto
 	/// Used for displaying cards in deal order for stud-style games.
 	/// </summary>
 	public int DealOrder { get; init; }
+
+	/// <summary>
+	/// Whether this is the Klondike Card (face-down wild card in Klondike Hold'em).
+	/// Used by the UI to display this card separated from regular community cards.
+	/// </summary>
+	public bool IsKlondikeCard { get; init; }
 }
 
 /// <summary>

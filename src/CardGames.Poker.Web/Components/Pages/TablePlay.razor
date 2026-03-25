@@ -211,7 +211,7 @@
     @if (_showGameInfoOverlay)
     {
         <GameInfoOverlay GameTypeContext="@GetGameInfoTypeContext()"
-                         IsHoldEm="@(IsHoldEm || IsRedRiver || IsOmaha || IsNebraska || IsSouthDakota || IsBobBarker || IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple || IsHoldTheBaseball)"
+                         IsHoldEm="@(IsHoldEm || IsRedRiver || IsKlondike || IsOmaha || IsNebraska || IsSouthDakota || IsBobBarker || IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple || IsHoldTheBaseball)"
                          SmallBlind="@(_gameResponse?.SmallBlind ?? 0)"
                          BigBlind="@(_gameResponse?.BigBlind ?? 0)"
                          Ante="@(_gameResponse?.Ante ?? _ante)"
@@ -779,10 +779,11 @@
     private bool IsCrazyPineapple => string.Equals(_gameTypeCode, "CRAZYPINEAPPLE", StringComparison.OrdinalIgnoreCase);
     private bool IsScrewYourNeighbor => string.Equals(_gameTypeCode, "SCREWYOURNEIGHBOR", StringComparison.OrdinalIgnoreCase);
     private bool IsTollbooth => string.Equals(_gameTypeCode, "TOLLBOOTH", StringComparison.OrdinalIgnoreCase);
+    private bool IsKlondike => string.Equals(_gameTypeCode, "KLONDIKE", StringComparison.OrdinalIgnoreCase);
     private bool IsStartedScrewYourNeighborTable => IsScrewYourNeighbor && _gameResponse?.StartedAt is not null;
     private bool IsIrishStyleHoldEm => IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple;
     private bool IsSevenCardStudStyle => IsSevenCardStud || IsPairPressure;
-    private bool UsesCardDealAnimation => IsSevenCardStudStyle || IsRazz || IsGoodBadUgly || IsBaseball || IsFollowTheQueen || IsFiveCardDraw || IsTwosJacksManWithTheAxe || IsKingsAndLows || IsHoldEm || IsRedRiver || IsHoldTheBaseball || IsOmaha || IsNebraska || IsSouthDakota || IsBobBarker || IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple || IsScrewYourNeighbor || IsTollbooth;
+    private bool UsesCardDealAnimation => IsSevenCardStudStyle || IsRazz || IsGoodBadUgly || IsBaseball || IsFollowTheQueen || IsFiveCardDraw || IsTwosJacksManWithTheAxe || IsKingsAndLows || IsHoldEm || IsRedRiver || IsKlondike || IsHoldTheBaseball || IsOmaha || IsNebraska || IsSouthDakota || IsBobBarker || IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple || IsScrewYourNeighbor || IsTollbooth;
     
     private int DealAnimationDelayMs => 750;
 
@@ -3137,7 +3138,7 @@
                 return;
             }
         }
-        else if (IsHoldEm || IsRedRiver)
+        else if (IsHoldEm || IsRedRiver || IsKlondike)
         {
             // Hold'Em family start handles blinds + deal in a single call.
             var startResponse = await HoldEmApi.HoldEmStartHandAsync(GameId);
@@ -3344,7 +3345,7 @@
             {
                 showdownResponse = await GamesApiClient.GenericPerformShowdownAsync(GameId);
             }
-            else if (IsOmaha || IsNebraska || IsSouthDakota || IsBobBarker)
+            else if (IsOmaha || IsNebraska || IsSouthDakota || IsBobBarker || IsKlondike)
             {
                 showdownResponse = await GamesApiClient.GenericPerformShowdownAsync(GameId);
             }

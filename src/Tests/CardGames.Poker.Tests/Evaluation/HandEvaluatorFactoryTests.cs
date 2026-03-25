@@ -86,6 +86,16 @@ public class HandEvaluatorFactoryTests
     }
 
     [Fact]
+    public void GetEvaluator_WithKlondikeCode_ReturnsKlondikeHandEvaluator()
+    {
+        var evaluator = _factory.GetEvaluator("KLONDIKE");
+
+        evaluator.Should().BeOfType<KlondikeHandEvaluator>();
+        evaluator.HasWildCards.Should().BeTrue();
+        evaluator.SupportsPositionalCards.Should().BeTrue();
+    }
+
+    [Fact]
     public void GetEvaluator_WithUnknownCode_ReturnsDefaultDrawEvaluator()
     {
         var evaluator = _factory.GetEvaluator("UNKNOWNGAME");
@@ -149,6 +159,7 @@ public class HandEvaluatorFactoryTests
         HandEvaluatorFactory.HasEvaluator(HandEvaluatorFactory.NebraskaCode).Should().BeTrue();
         HandEvaluatorFactory.HasEvaluator(HandEvaluatorFactory.SouthDakotaCode).Should().BeTrue();
         HandEvaluatorFactory.HasEvaluator(HandEvaluatorFactory.SevenCardStudCode).Should().BeTrue();
+        HandEvaluatorFactory.HasEvaluator("KLONDIKE").Should().BeTrue();
     }
 
     [Fact]
@@ -171,6 +182,7 @@ public class HandEvaluatorFactoryTests
         codes.Should().Contain(HandEvaluatorFactory.NebraskaCode);
         codes.Should().Contain(HandEvaluatorFactory.SouthDakotaCode);
         codes.Should().Contain(HandEvaluatorFactory.SevenCardStudCode);
+        codes.Should().Contain("KLONDIKE");
     }
 }
 

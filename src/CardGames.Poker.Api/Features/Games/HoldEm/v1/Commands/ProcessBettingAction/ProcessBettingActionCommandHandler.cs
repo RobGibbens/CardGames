@@ -736,8 +736,8 @@ public class ProcessBettingActionCommandHandler(
 		var (cardCount, dealPhase, nextDealOrder) = phase switch
 		{
 			"Flop" => (isSouthDakota ? 2 : 3, "Flop", 1),    // Flop: South Dakota=2, default=3
-			"Turn" => (1, "Turn", isSouthDakota ? 3 : 4),     // Turn: South Dakota=DealOrder 3, default=4
-			"River" => (1, "River", 5),   // River: 1 card, DealOrder 5
+			"Turn" => (1, "Turn", isSouthDakota ? 3 : 4),
+			"River" => (1, "River", 5),
 			"RedRiverBonus" => (1, "RedRiverBonus", 6), // Red River bonus board card
 			_ => (0, "", 0)
 		};
@@ -784,14 +784,16 @@ public class ProcessBettingActionCommandHandler(
 	{
 		// Determine which community card phases still need to be dealt
 		var isSouthDakota = IsSouthDakotaGame(game);
-		var phaseOrder = isSouthDakota ? new[] { "Flop", "Turn" } : new[] { "Flop", "Turn", "River" };
+		var phaseOrder = isSouthDakota
+			? new[] { "Flop", "Turn" }
+			: new[] { "Flop", "Turn", "River" };
 		var currentPhaseIndex = currentPhase switch
 		{
 			"PreFlop" => -1,
 			"Flop" => 0,
 			"Turn" => 1,
 			"River" => isSouthDakota ? 3 : 2,
-			_ => 3 // Already past all phases
+			_ => phaseOrder.Length // Already past all phases
 		};
 
 		// Load remaining deck cards

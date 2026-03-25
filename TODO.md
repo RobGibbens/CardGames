@@ -58,10 +58,10 @@
 
 ### Hold 'Em Variants
 
+- [ ] Add Omaha Hi/Lo
 - [ ] Add Pittsburgh
 - [ ] Add Squid Game
 - [ ] Add Hall of Mirrors
-- [ ] Add Klondike
 
 - [x] Add Texas Hold'em
 - [x] Add Omaha
@@ -258,3 +258,4 @@
 - [x] Make the create table list smaller
 - [x] Add the images to the DC game list
 - [x] Add the images to the game info overlay
+- [x] Add Klondike
