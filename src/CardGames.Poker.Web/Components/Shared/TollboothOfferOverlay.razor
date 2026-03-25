@@ -1,0 +1,127 @@
+@namespace CardGames.Poker.Web.Components.Shared
+
+@using CardGames.Contracts.SignalR
+@using static CardGames.Poker.Web.Components.Pages.TablePlay
+
+<div class="tollbooth-offer-panel @(IsSubmitting ? "submitting" : "")">
+    <div class="tollbooth-offer-header">
+        <div class="tollbooth-offer-title">
+            <i class="fa-solid fa-road"></i>
+            <span>Tollbooth</span>
+        </div>
+        <div class="tollbooth-offer-subtitle">Choose your card</div>
+    </div>
+
+    @if (ActionTimer is not null)
+    {
+        <div class="tollbooth-offer-timer">
+            <div class="tollbooth-offer-timer-bar">
+                <div class="tollbooth-offer-timer-fill" style="width: @GetTimerPercentage()%"></div>
+            </div>
+            <span class="tollbooth-offer-timer-text">@GetSecondsRemaining() s</span>
+        </div>
+    }
+
+    <div class="tollbooth-offer-actions">
+        <div class="tollbooth-offer-option">
+            @if (FurthestCard is not null)
+            {
+                <div class="tollbooth-display-card">
+                    <playing-card rank="@FurthestCard.Rank" suit="@FurthestCard.Suit" style="height:92px;width:64px;"></playing-card>
+                </div>
+            }
+            <button class="tollbooth-offer-btn furthest"
+                    @onclick="ChooseFurthest"
+                    disabled="@IsSubmitting"
+                    title="Take the card furthest from the deck">
+                <i class="fa-solid fa-arrow-left"></i>
+                <span>Furthest</span>
+                <span class="tollbooth-cost free">Free</span>
+            </button>
+        </div>
+        <div class="tollbooth-offer-option">
+            @if (NearestCard is not null)
+            {
+                <div class="tollbooth-display-card">
+                    <playing-card rank="@NearestCard.Rank" suit="@NearestCard.Suit" style="height:92px;width:64px;"></playing-card>
+                </div>
+            }
+            <button class="tollbooth-offer-btn nearest"
+                    @onclick="ChooseNearest"
+                    disabled="@(IsSubmitting || !CanAffordNearest)"
+                    title="Take the card nearest to the deck">
+                <i class="fa-solid fa-arrow-right"></i>
+                <span>Nearest</span>
+                <span class="tollbooth-cost">@NearestCost chips</span>
+            </button>
+        </div>
+        <div class="tollbooth-offer-option">
+            <div class="tollbooth-display-card">
+                <playing-card rank="0" backcolor="#44F" style="height:92px;width:64px;"></playing-card>
+            </div>
+            <button class="tollbooth-offer-btn deck"
+                    @onclick="ChooseDeck"
+                    disabled="@(IsSubmitting || !CanAffordDeck)"
+                    title="Take the top card from the deck">
+                <i class="fa-solid fa-layer-group"></i>
+                <span>Deck</span>
+                <span class="tollbooth-cost">@DeckCost chips</span>
+            </button>
+        </div>
+    </div>
+
+    @if (IsSubmitting)
+    {
+        <div class="tollbooth-offer-submitting">
+            <span class="loading-spinner-small"></span>
+            <span>Processing choice...</span>
+        </div>
+    }
+</div>
+
+@code {
+    private const int DefaultTimerDurationSeconds = 30;
+
+    [Parameter]
+    public IReadOnlyList<CardPublicDto>? DisplayCards { get; set; }
+
+    [Parameter]
+
+    public int NearestCost { get; set; }
+
+    [Parameter]
+    public int DeckCost { get; set; }
+
+    [Parameter]
+    public int PlayerChipStack { get; set; }
+
+    [Parameter]
+    public bool IsSubmitting { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnChoice { get; set; }
+
+    [Parameter]
+    public ActionTimerStateDto? ActionTimer { get; set; }
+
+    private bool CanAffordNearest => PlayerChipStack >= NearestCost;
+    private bool CanAffordDeck => PlayerChipStack >= DeckCost;
+
+    private CardPublicDto? FurthestCard => DisplayCards is { Count: > 1 } ? DisplayCards[^1] : null;
+    private CardPublicDto? NearestCard => DisplayCards is { Count: > 0 } ? DisplayCards[0] : null;
+
+    private Task ChooseFurthest() => OnChoice.InvokeAsync("Furthest");
+    private Task ChooseNearest() => OnChoice.InvokeAsync("Nearest");
+    private Task ChooseDeck() => OnChoice.InvokeAsync("Deck");
+
+    private int GetSecondsRemaining() => ActionTimer?.SecondsRemaining ?? DefaultTimerDurationSeconds;
+
+    private int GetTimerDuration() => ActionTimer?.DurationSeconds ?? DefaultTimerDurationSeconds;
+
+    private double GetTimerPercentage()
+    {
+        var duration = GetTimerDuration();
+        if (duration <= 0) return 100;
+        return (GetSecondsRemaining() / (double)duration) * 100;
+    }
+}

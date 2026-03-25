@@ -2,11 +2,16 @@
 
 ## Still to do
 
-- [ ] https://github.com/leeoades/FunctionalStateMachine
+- [ ] <https://github.com/leeoades/FunctionalStateMachine>
 
 - [ ] SYN - check for ties
 - [ ] SYN - odds
+- [ ] Add 50,000 chips to demo players
+- [ ] Allow users to "favorite" game types and sort them at the top
 - [ ] Lobby - Filter by status
+- [ ] Make the create table list smaller
+- [ ] Add the images to the DC game list
+- [ ] Add the images to the game info overlay
 - [x] Join game modal - should not be able to click out of it
 - [ ] Join game modal background color
 - [ ] Joining table adds 5001 when setting 5000
@@ -21,6 +26,7 @@
 - [ ] Productize it - deployment and hosting
 
 ### P1 - Can't play without these
+
 - [ ] Test side pots
 - [ ] Make sure all game types handle all ins correctly
 - [ ] Kings and Lows - Should make it obvious when someone dropped
@@ -56,6 +62,7 @@
 ## Add Games
 
 ### Hold 'Em Variants
+
 - [x] Add Texas Hold'em
 - [x] Add Omaha
 - [x] Add The Bob Barker
@@ -71,18 +78,21 @@
 - [ ] Add Klondike
 
 ### 7 Card Stud Variants
+
 - [x] Add Seven Card Stud
 - [x] Add Baseball
 - [x] Add Follow the Queen
 - [x] The Good, the Bad, and the Ugly
 - [x] Add Razz
-- [x] Pair Pressure 
-- [ ] Toll booth
+- [x] Pair Pressure
+- [x] Tollbooth
 
 ### 5 Card Stud Variants
+
 - [ ] Add Five Card Stud
 
 ### 5 Card Draw Variants
+
 - [x] Five card draw
 - [x] Add Twos, Jacks, Man with the Axe
 - [x] Add Kings and Lows
@@ -94,8 +104,9 @@
 - [ ] Add Guts
 
 ## Completed
+
 - [x] FTQ second third street doesn't delay
-- [x] Spin cards 
+- [x] Spin cards
 - [x] Search for code == "KINGSANDLOWS" and refactor
 - [x] Add a chip stack graph in the dashboard
 - [x] Show current standings
@@ -162,7 +173,7 @@
 - [x] Kings and Lows - is always treating an Ace as high. (6,7,8,9,A should be a straight)
 - [x] SCS - when a player has no chips, they're still getting dealt and can take action
 - [x] SCS - odds should calculate based on future cards
-- [x] Raise face up cards 
+- [x] Raise face up cards
 - [x] FTQ should show what cards are wild
 - [x] Wild cards is not showing the second wild card in FTQ
 - [x] FTQ is misremembering other wild card after action
@@ -230,7 +241,7 @@
 - [x] SYN - check for King block
 - [x] SYN - Showdown showing email, not name
 - [x] SYN in DC - Shows six stacks each - not removing them
-- [x] Add rounders sounds 
+- [x] Add rounders sounds
 - [x] DC/SYN - Only setting 2 chips per player instead of 3
 - [x] Create Table - Once a game is selected, hide the search box
 - [x] Create table page, enable button as soon as you start typing

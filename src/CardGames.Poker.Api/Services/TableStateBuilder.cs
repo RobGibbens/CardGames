@@ -54,7 +54,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			PokerGameMetadataRegistry.RazzCode,
 			PokerGameMetadataRegistry.BaseballCode,
 			PokerGameMetadataRegistry.FollowTheQueenCode,
-			PokerGameMetadataRegistry.PairPressureCode
+			PokerGameMetadataRegistry.PairPressureCode,
+			PokerGameMetadataRegistry.TollboothCode
 		};
 	private static readonly Dictionary<string, string[]> TableSoundboardFiles =
 		new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
@@ -522,6 +523,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		var draw = BuildDrawPrivateDto(game, gamePlayer, rules);
 		var dropOrStay = BuildDropOrStayPrivateDto(game, gamePlayer);
 		var buyCardOffer = BuildBuyCardOfferPrivateDto(game, gamePlayer);
+		var tollboothOffer = await BuildTollboothOfferPrivateDto(game, gamePlayer, cancellationToken);
 
 		// Get hand history personalized for this player
 		var handHistory = await GetHandHistoryEntriesAsync(gameId, gamePlayer.PlayerId, take: 25, cancellationToken);
@@ -541,6 +543,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			Draw = draw,
 			DropOrStay = dropOrStay,
 			BuyCardOffer = buyCardOffer,
+			TollboothOffer = tollboothOffer,
 			IsMyTurn = isMyTurn,
 			HandHistory = handHistory,
 			ChipHistory = chipHistory
@@ -921,7 +924,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		var isIrishHoldEm = IsIrishHoldEmGame(game.GameType?.Code);
 
 		var isSevenCardStud = IsGameType(game.GameType?.Code, PokerGameMetadataRegistry.SevenCardStudCode)
-			|| IsGameType(game.GameType?.Code, PokerGameMetadataRegistry.RazzCode);
+			|| IsGameType(game.GameType?.Code, PokerGameMetadataRegistry.RazzCode)
+			|| IsGameType(game.GameType?.Code, PokerGameMetadataRegistry.TollboothCode);
 		var isRazz = IsGameType(game.GameType?.Code, PokerGameMetadataRegistry.RazzCode);
 		var isBaseball = IsBaseballGame(game.GameType?.Code);
 		var isKingsAndLows = IsKingsAndLowsGame(game.GameType?.Code);
@@ -2621,6 +2625,48 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			BuyCardPrice = buyCardState.BuyCardPrice,
 			TriggerCard = triggerCardDto,
 			PendingOfferCount = buyCardState.PendingOffers.Count
+		};
+	}
+
+	private async Task<TollboothOfferPrivateDto?> BuildTollboothOfferPrivateDto(
+		Entities.Game game, GamePlayer gamePlayer, CancellationToken cancellationToken)
+	{
+		var gameTypeCode = game.CurrentHandGameTypeCode ?? game.GameType?.Code;
+		if (!string.Equals(gameTypeCode, PokerGameMetadataRegistry.TollboothCode, StringComparison.OrdinalIgnoreCase)
+			|| !string.Equals(game.CurrentPhase, nameof(Phases.TollboothOffer), StringComparison.OrdinalIgnoreCase))
+		{
+			return null;
+		}
+
+		var ante = game.Ante ?? game.BringIn ?? game.SmallBet ?? game.MinBet ?? 0;
+
+		var displayCards = await _context.GameCards
+			.Where(c => c.GameId == game.Id
+						&& c.Location == CardLocation.Community
+						&& c.GamePlayerId == null
+						&& c.HandNumber == game.CurrentHandNumber
+						&& !c.IsDiscarded)
+			.OrderBy(c => c.DealOrder)
+			.AsNoTracking()
+			.Select(c => new CardPublicDto
+			{
+				IsFaceUp = true,
+				Rank = MapSymbolToRank(c.Symbol),
+				Suit = c.Suit.ToString(),
+				DealOrder = c.DealOrder
+			})
+			.ToListAsync(cancellationToken);
+
+		return new TollboothOfferPrivateDto
+		{
+			IsMyTurnToChoose = game.CurrentDrawPlayerIndex == gamePlayer.SeatPosition
+							   && !gamePlayer.HasFolded
+							   && !gamePlayer.HasDrawnThisRound,
+			HasChosenThisRound = gamePlayer.HasDrawnThisRound,
+			FurthestCost = 0,
+			NearestCost = ante,
+			DeckCost = ante * 2,
+			DisplayCards = displayCards
 		};
 	}
 

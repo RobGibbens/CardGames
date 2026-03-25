@@ -141,7 +141,9 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
         if ((string.Equals(state.GameTypeCode, PokerGameMetadataRegistry.KingsAndLowsCode, StringComparison.OrdinalIgnoreCase) &&
              string.Equals(state.CurrentPhase, "DropOrStay", StringComparison.OrdinalIgnoreCase)) ||
             (string.Equals(state.GameTypeCode, PokerGameMetadataRegistry.ScrewYourNeighborCode, StringComparison.OrdinalIgnoreCase) &&
-             string.Equals(state.CurrentPhase, "KeepOrTrade", StringComparison.OrdinalIgnoreCase)))
+             string.Equals(state.CurrentPhase, "KeepOrTrade", StringComparison.OrdinalIgnoreCase)) ||
+            (string.Equals(state.GameTypeCode, PokerGameMetadataRegistry.TollboothCode, StringComparison.OrdinalIgnoreCase) &&
+             string.Equals(state.CurrentPhase, "TollboothOffer", StringComparison.OrdinalIgnoreCase)))
         {
             durationSeconds = 30;
         }

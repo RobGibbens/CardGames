@@ -35,6 +35,11 @@ public static class DashboardHandOddsCalculator
             return OddsCalculator.CalculateStudOdds(playerCards, Array.Empty<Card>(), deadCards: deadCards);
         }
 
+        if (string.Equals(gameTypeCode, "TOLLBOOTH", StringComparison.OrdinalIgnoreCase))
+        {
+            return OddsCalculator.CalculateStudOdds(playerCards, Array.Empty<Card>(), deadCards: deadCards);
+        }
+
         if (string.Equals(gameTypeCode, "PAIRPRESSURE", StringComparison.OrdinalIgnoreCase))
         {
             return CalculatePairPressureOdds(

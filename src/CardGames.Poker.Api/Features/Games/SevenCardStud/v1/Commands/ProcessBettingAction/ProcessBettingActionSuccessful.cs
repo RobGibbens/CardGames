@@ -6,8 +6,13 @@ namespace CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.ProcessBe
 /// <summary>
 /// Represents a successful betting action result.
 /// </summary>
-public record ProcessBettingActionSuccessful : IPlayerActionResult
+public record ProcessBettingActionSuccessful : IPlayerActionResult, IGameStateBroadcastResult
 {
+	/// <summary>
+	/// Gets a value indicating whether the MediatR broadcast pipeline should emit a game-state update.
+	/// </summary>
+	public bool ShouldBroadcastGameState { get; init; } = true;
+
 	/// <summary>
 	/// The unique identifier of the game.
 	/// </summary>

@@ -1,0 +1,174 @@
+/* Tollbooth Offer Overlay - matches Draw/BuyCard styling */
+.tollbooth-offer-panel {
+    position: fixed;
+    right: 1.25rem;
+    bottom: 1.25rem;
+    z-index: 2000;
+    width: min(480px, calc(100vw - 2.5rem));
+    background: rgba(0, 0, 0, 0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.26);
+    border-radius: 20px;
+    box-shadow: 0 18px 42px rgba(0, 0, 0, 0.5), 0 0 24px rgba(226, 232, 240, 0.22), 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+    padding: 1.25rem 1.5rem;
+    animation: fadeInUp 0.3s ease-out;
+}
+
+.tollbooth-offer-panel.submitting {
+    pointer-events: none;
+}
+
+.tollbooth-offer-header {
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.tollbooth-offer-title {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: white;
+}
+
+.tollbooth-offer-title i {
+    color: #fbbf24;
+}
+
+.tollbooth-offer-subtitle {
+    margin-top: 0.35rem;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* Timer */
+.tollbooth-offer-timer {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.tollbooth-offer-timer-bar {
+    flex: 1;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.tollbooth-offer-timer-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #22c55e 0%, #fbbf24 50%, #dc2626 100%);
+    border-radius: 3px;
+    transition: width 1s linear;
+}
+
+.tollbooth-offer-timer-text {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: white;
+    min-width: 35px;
+}
+
+/* Display Cards */
+.tollbooth-display-card {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.5rem;
+}
+
+/* Action Buttons */
+.tollbooth-offer-actions {
+    display: flex;
+    justify-content: center;
+    gap: 0.75rem;
+}
+
+.tollbooth-offer-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+}
+
+.tollbooth-offer-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    padding: 0.75rem 1.25rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 120px;
+    width: 100%;
+    color: white;
+}
+
+.tollbooth-offer-btn i {
+    font-size: 1.1rem;
+}
+
+.tollbooth-offer-btn.furthest {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.tollbooth-offer-btn.furthest:hover:not(:disabled) {
+    background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
+}
+
+.tollbooth-offer-btn.nearest {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+}
+
+.tollbooth-offer-btn.nearest:hover:not(:disabled) {
+    background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4);
+}
+
+.tollbooth-offer-btn.deck {
+    background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
+}
+
+.tollbooth-offer-btn.deck:hover:not(:disabled) {
+    background: linear-gradient(135deg, #c084fc 0%, #a855f7 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(168, 85, 247, 0.4);
+}
+
+.tollbooth-offer-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.tollbooth-cost {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.tollbooth-cost.free {
+    color: #86efac;
+}
+
+/* Submitting state */
+.tollbooth-offer-submitting {
+    margin-top: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.8);
+}
