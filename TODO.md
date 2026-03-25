@@ -3,7 +3,7 @@
 ## Still to do
 
 - [ ] <https://github.com/leeoades/FunctionalStateMachine>
-
+- [ ] Game info should have game rules
 - [ ] SYN - check for ties
 - [ ] SYN - odds
 - [ ] Allow users to "favorite" game types and sort them at the top
