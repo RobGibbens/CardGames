@@ -739,6 +739,7 @@
     private int _communityCardRevealTarget;
     private Timer? _communityCardRevealTimer;
     private bool _communityCardRevealInProgress;
+    private bool _deferCommunityCardsForDealAnimation;
 
     private List<SeatInfo> _seats = [];
 
@@ -1303,6 +1304,7 @@
 
                 _previousFaceUpCommunityCardCount = 0;
                 _communityCardRevealInProgress = false;
+                _deferCommunityCardsForDealAnimation = false;
                 _communityCardRevealTimer?.Dispose();
                 _communityCardRevealTimer = null;
                 ResetDrawPanelStateForNewHand();
@@ -1383,7 +1385,13 @@
 
             var currentFaceUpCommunityCardCount = state.CommunityCards?.Count(c => c.IsFaceUp) ?? 0;
             var newlyFaceUpCommunityCards = Math.Max(0, currentFaceUpCommunityCardCount - _previousFaceUpCommunityCardCount);
-            if (newlyFaceUpCommunityCards > 1)
+
+            // Tollbooth: defer community card reveal until the player deal animation completes
+            if (IsTollbooth && _dealAnimationInProgress && newlyFaceUpCommunityCards > 0)
+            {
+                _deferCommunityCardsForDealAnimation = true;
+            }
+            else if (newlyFaceUpCommunityCards > 1)
             {
                 // Multiple new community cards (e.g., flop) — stagger the reveal
                 _communityCardRevealCount = _previousFaceUpCommunityCardCount + 1; // Show first card immediately
@@ -3800,9 +3808,13 @@
     /// <summary>
     /// Returns community cards with staggered visibility during flop reveal animation.
     /// During a reveal, only the first <see cref="_communityCardRevealCount"/> face-up cards are included.
+    /// When Tollbooth deal animation is in progress, community cards are hidden until the deal completes.
     /// </summary>
     private IReadOnlyList<CardPublicDto>? GetVisibleCommunityCards()
     {
+        if (_deferCommunityCardsForDealAnimation)
+            return null;
+
         var cards = _tableState?.CommunityCards;
         if (cards is null || !_communityCardRevealInProgress)
             return cards;
@@ -3998,6 +4010,21 @@
         }
 
         _dealAnimationInProgress = false;
+
+        // Tollbooth: reveal deferred community cards now that all player cards have been dealt
+        if (_deferCommunityCardsForDealAnimation)
+        {
+            _deferCommunityCardsForDealAnimation = false;
+            var faceUpCount = _tableState?.CommunityCards?.Count(c => c.IsFaceUp) ?? 0;
+            if (faceUpCount > 1)
+            {
+                _communityCardRevealCount = 1;
+                _communityCardRevealTarget = faceUpCount;
+                _communityCardRevealInProgress = true;
+                _communityCardRevealTimer?.Dispose();
+                _communityCardRevealTimer = new Timer(RevealNextCommunityCard, null, 250, Timeout.Infinite);
+            }
+        }
 
         // Sync with Pending Private State (for current player hole cards)
         if (_dealPendingPrivateState != null)
