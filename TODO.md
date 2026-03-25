@@ -6,16 +6,14 @@
 
 - [ ] SYN - check for ties
 - [ ] SYN - odds
-- [ ] Add 50,000 chips to demo players
 - [ ] Allow users to "favorite" game types and sort them at the top
 - [ ] Lobby - Filter by status
 - [ ] Make the create table list smaller
 - [ ] Add the images to the DC game list
 - [ ] Add the images to the game info overlay
-- [x] Join game modal - should not be able to click out of it
 - [ ] Join game modal background color
 - [ ] Joining table adds 5001 when setting 5000
-- [ ] Bringing in cash to a game should require host approval
+- [ ] Bringing in cash to a game should require host approval?
 - [ ] Phil's mom loser showdown not correct
 - [ ] Test what happens when a player disconnects
 - [ ] Work on isolating games code more
@@ -254,3 +252,5 @@
 - [x] DC - You're the dealer! Pick a game variant for this hand. - SYN shows Min Bet
 - [x] BB - The blinds chips icons overlay the hand eval
 - [x] BB - Test in DC
+- [x] Add 50,000 chips to demo players
+- [x] Join game modal - should not be able to click out of it
