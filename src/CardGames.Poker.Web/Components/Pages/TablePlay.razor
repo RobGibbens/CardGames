@@ -1464,6 +1464,7 @@
 
             // Handle showdown state - check if entering showdown/complete phase
             // Pass whether we should delay showing the overlay (only for deck draw animation now)
+            // Re-evaluate delay flag AFTER Klondike/SYN delays have been scheduled above
             var shouldDelayShowdownOverlay = _delayShowdownOverlay ||
             (_showdownDelayUntil.HasValue && DateTimeOffset.UtcNow < _showdownDelayUntil.Value);
 
@@ -1491,6 +1492,7 @@
                 _showdownResult is null &&
                 !_delayShowdownOverlay &&
                 !_runoutAnimationInProgress &&
+                !(_showdownDelayUntil.HasValue && DateTimeOffset.UtcNow < _showdownDelayUntil.Value) &&
                 !(IsScrewYourNeighbor && state.Showdown is { IsComplete: true }))
             {
                 await TryLoadShowdownAsync();
@@ -4246,7 +4248,10 @@
                 // endpoint returns an error because there is no active betting round.
                 // Suppress the toast — SignalR will broadcast the updated state and the
                 // showdown overlay will appear normally.
-                if (IsShowdownPhase || IsCompletePhase || IsEndedPhase)
+                // Check both the client-side phase (may already be updated via SignalR) and
+                // the error message itself (the SignalR update may not have arrived yet).
+                if (IsShowdownPhase || IsCompletePhase || IsEndedPhase ||
+                    IsResolutionPhaseError(response.Error))
                 {
                     Logger.LogDebug(
                         "Betting action failed but game is already in resolution phase ({Phase}); suppressing error toast",
@@ -4302,6 +4307,25 @@
         }
 
         return errorBody;
+    }
+
+    /// <summary>
+    /// Checks whether an API error body indicates the game has already advanced
+    /// to a resolution phase (Showdown, Complete, Ended). Used as a fallback when the
+    /// SignalR state update has not yet arrived on the client.
+    /// </summary>
+    private static bool IsResolutionPhaseError(string? errorBody)
+    {
+        if (string.IsNullOrWhiteSpace(errorBody))
+        {
+            return false;
+        }
+
+        var message = ExtractJsonErrorMessage(errorBody) ?? errorBody;
+        return message.Contains("'Showdown'", StringComparison.OrdinalIgnoreCase) ||
+               message.Contains("'Complete'", StringComparison.OrdinalIgnoreCase) ||
+               message.Contains("'Ended'", StringComparison.OrdinalIgnoreCase) ||
+               message.Contains("'KlondikeReveal'", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -5260,11 +5284,23 @@
             }
 
             var communityCards = _tableState?.CommunityCards?
-                .Where(c => c.IsFaceUp && c.Rank is not null && c.Suit is not null)
+                .Where(c => c.IsFaceUp && !c.IsKlondikeCard && c.Rank is not null && c.Suit is not null)
                 .Select(c => ConvertToCard(c.Rank!, c.Suit!))
                 .Where(c => c is not null)
                 .Cast<Card>()
                 .ToList() ?? [];
+
+            // Extract the revealed Klondike card (if any) for wild card odds calculation
+            Card? klondikeCardForOdds = null;
+            if (IsKlondike)
+            {
+                var klondikeDto = _tableState?.CommunityCards?
+                    .FirstOrDefault(c => c.IsKlondikeCard && c.IsFaceUp && c.Rank is not null && c.Suit is not null);
+                if (klondikeDto is not null)
+                {
+                    klondikeCardForOdds = ConvertToCard(klondikeDto.Rank!, klondikeDto.Suit!);
+                }
+            }
 
             // Get dead cards from folded players' visible cards
             var deadCards = _seats
@@ -5311,7 +5347,8 @@
                 pairPressureFaceUpCardsInOrder,
                 pairPressurePlayers,
                 _currentPlayerSeatIndex >= 0 ? _currentPlayerSeatIndex : null,
-                _dealerSeatIndex);
+                _dealerSeatIndex,
+                klondikeCardForOdds);
 
             handOdds = result is null
                 ? []

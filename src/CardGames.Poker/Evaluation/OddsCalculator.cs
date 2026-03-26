@@ -87,6 +87,76 @@ public static class OddsCalculator
     }
 
     /// <summary>
+    /// Calculates odds for a Klondike Hold'em hand.
+    /// Before reveal: the Klondike Card is unknown — one phantom wild card is included.
+    /// After reveal: the Klondike Card and all cards of the same rank are wild.
+    /// </summary>
+    /// <param name="heroHoleCards">The player's 2 hole cards.</param>
+    /// <param name="communityCards">Visible community cards (excluding unrevealed Klondike card).</param>
+    /// <param name="klondikeCard">The revealed Klondike Card, or null if not yet revealed.</param>
+    /// <param name="deadCards">Cards that are known to be unavailable.</param>
+    /// <param name="simulations">Number of Monte Carlo simulations to run.</param>
+    public static OddsResult CalculateKlondikeOdds(
+        IReadOnlyCollection<Card> heroHoleCards,
+        IReadOnlyCollection<Card> communityCards,
+        Card? klondikeCard = null,
+        IReadOnlyCollection<Card> deadCards = null,
+        int simulations = DefaultSimulations)
+    {
+        deadCards ??= Array.Empty<Card>();
+        var handTypeCounts = InitializeHandTypeCounts();
+        var dealer = FrenchDeckDealer.WithFullDeck();
+
+        for (int i = 0; i < simulations; i++)
+        {
+            dealer.Shuffle();
+
+            var knownCards = heroHoleCards.Concat(communityCards).Concat(deadCards);
+            if (klondikeCard is not null)
+            {
+                knownCards = knownCards.Append(klondikeCard);
+            }
+            foreach (var card in knownCards.Distinct())
+            {
+                dealer.DealSpecific(card);
+            }
+
+            // Community needs 5 cards (excludes the Klondike card which is separate)
+            var remainingCommunityCount = 5 - communityCards.Count;
+            var simulatedCommunity = communityCards.ToList();
+            for (int j = 0; j < remainingCommunityCount; j++)
+            {
+                simulatedCommunity.Add(dealer.DealCard());
+            }
+
+            KlondikeHand heroHand;
+            if (klondikeCard is not null)
+            {
+                // Post-reveal: Klondike Card + all same-rank cards are wild.
+                // The Klondike card must be included in community cards (as first element)
+                // so the hand evaluator can detect it as wild.
+                var communityWithKlondike = new List<Card> { klondikeCard };
+                communityWithKlondike.AddRange(simulatedCommunity);
+                heroHand = new KlondikeHand(heroHoleCards, communityWithKlondike, klondikeCard);
+            }
+            else
+            {
+                // Pre-reveal: simulate a random Klondike card from remaining deck.
+                // The Klondike card must be included in community cards (as first element)
+                // so the hand evaluator can detect it as wild.
+                var simulatedKlondike = dealer.DealCard();
+                var communityWithKlondike = new List<Card> { simulatedKlondike };
+                communityWithKlondike.AddRange(simulatedCommunity);
+                heroHand = new KlondikeHand(heroHoleCards, communityWithKlondike, simulatedKlondike);
+            }
+
+            handTypeCounts[heroHand.Type]++;
+        }
+
+        return CreateResult(handTypeCounts, simulations);
+    }
+
+    /// <summary>
     /// Calculates odds for a Twos, Jacks, Man with the Axe five-card draw hand.
     /// Wild cards: all 2s, all Jacks, and the King of Diamonds.
     /// </summary>

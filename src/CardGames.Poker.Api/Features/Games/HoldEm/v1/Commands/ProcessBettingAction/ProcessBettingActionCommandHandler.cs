@@ -377,6 +377,13 @@ public class ProcessBettingActionCommandHandler(
 				await DealRedRiverBonusCommunityCardIfNeededAsync(game, now, cancellationToken);
 			}
 
+			// Klondike: reveal the wild card and record the timestamp for the timed delay
+			if (IsKlondikeGame(game) && string.Equals(game.CurrentPhase, "KlondikeReveal", StringComparison.OrdinalIgnoreCase))
+			{
+				await RevealKlondikeCardAsync(game, now, cancellationToken);
+				game.DrawCompletedAt = now;
+			}
+
 			game.UpdatedAt = now;
 			await context.SaveChangesAsync(cancellationToken);
 		}
@@ -698,7 +705,14 @@ public class ProcessBettingActionCommandHandler(
 				break;
 
 			case "River":
-				game.CurrentPhase = "Showdown";
+				if (IsKlondikeGame(game))
+				{
+					game.CurrentPhase = "KlondikeReveal";
+				}
+				else
+				{
+					game.CurrentPhase = "Showdown";
+				}
 				game.CurrentPlayerIndex = -1;
 				break;
 		}
@@ -718,6 +732,9 @@ public class ProcessBettingActionCommandHandler(
 
 	private static bool IsSouthDakotaGame(Game game)
 		=> string.Equals(game.GameType?.Code, PokerGameMetadataRegistry.SouthDakotaCode, StringComparison.OrdinalIgnoreCase);
+
+	private static bool IsKlondikeGame(Game game)
+		=> string.Equals(game.GameType?.Code, PokerGameMetadataRegistry.KlondikeCode, StringComparison.OrdinalIgnoreCase);
 
 	#endregion
 
@@ -858,14 +875,23 @@ public class ProcessBettingActionCommandHandler(
 
 		game.GameSettings = JsonSerializer.Serialize(existingSettings);
 
-		// Move to Showdown
-		game.CurrentPhase = "Showdown";
+		// Move to Showdown (or KlondikeReveal for Klondike games)
+		if (IsKlondikeGame(game))
+		{
+			game.CurrentPhase = "KlondikeReveal";
+			await RevealKlondikeCardAsync(game, now, cancellationToken);
+			game.DrawCompletedAt = now;
+		}
+		else
+		{
+			game.CurrentPhase = "Showdown";
+		}
 		game.CurrentPlayerIndex = -1;
 		game.UpdatedAt = now;
 
 		logger.LogInformation(
-			"All remaining community cards dealt ({Phases}). Moving to Showdown for game {GameId}",
-			string.Join(", ", dealtPhases), game.Id);
+			"All remaining community cards dealt ({Phases}). Moving to {Phase} for game {GameId}",
+			string.Join(", ", dealtPhases), game.CurrentPhase, game.Id);
 	}
 
 	private async Task<bool> DealRedRiverBonusCommunityCardIfNeededAsync(
@@ -927,6 +953,32 @@ public class ProcessBettingActionCommandHandler(
 
 		await DealCommunityCardsForPhaseAsync(game, "RedRiverBonus", now, cancellationToken);
 		return true;
+	}
+
+	/// <summary>
+	/// Reveals the face-down Klondike wild card so all players can see it
+	/// during the KlondikeReveal phase before showdown begins.
+	/// </summary>
+	private async Task RevealKlondikeCardAsync(
+		Game game,
+		DateTimeOffset now,
+		CancellationToken cancellationToken)
+	{
+		var klondikeCards = await context.GameCards
+			.Where(gc => gc.GameId == game.Id
+				&& gc.HandNumber == game.CurrentHandNumber
+				&& gc.DealtAtPhase == "KlondikeCard"
+				&& !gc.IsVisible)
+			.ToListAsync(cancellationToken);
+
+		foreach (var card in klondikeCards)
+		{
+			card.IsVisible = true;
+		}
+
+		logger.LogInformation(
+			"Revealed {Count} Klondike card(s) for game {GameId} at KlondikeReveal phase",
+			klondikeCards.Count, game.Id);
 	}
 
 	#endregion

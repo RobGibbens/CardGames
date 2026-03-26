@@ -49,9 +49,20 @@ public sealed class KlondikeHandEvaluator : IHandEvaluator
     /// <inheritdoc />
     public IReadOnlyCollection<int> GetWildCardIndexes(IReadOnlyCollection<Card> cards)
     {
-        // The Klondike Card is the first community card (index 2 after 2 hole cards)
+        // The Klondike Card is the first community card (index 2 after 2 hole cards).
+        // All cards sharing the Klondike Card's rank are also wild.
         if (cards.Count < 3) return [];
-        return [2];
+        var cardList = cards.ToList();
+        var klondikeCard = cardList[2];
+        var wildIndexes = new List<int>();
+        for (var i = 0; i < cardList.Count; i++)
+        {
+            if (cardList[i].Symbol == klondikeCard.Symbol)
+            {
+                wildIndexes.Add(i);
+            }
+        }
+        return wildIndexes;
     }
 
     /// <inheritdoc />

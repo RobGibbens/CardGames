@@ -29,6 +29,7 @@ public static class KlondikeRules
                 new() { PhaseId = "Flop", Name = "Flop", Description = "First 3 community cards", Category = "Betting", RequiresPlayerAction = true },
                 new() { PhaseId = "Turn", Name = "Turn", Description = "4th community card", Category = "Betting", RequiresPlayerAction = true },
                 new() { PhaseId = "River", Name = "River", Description = "5th community card", Category = "Betting", RequiresPlayerAction = true },
+                new() { PhaseId = "KlondikeReveal", Name = "Klondike Reveal", Description = "Klondike wild card revealed — 20 second pause", Category = "Resolution", RequiresPlayerAction = false },
                 new() { PhaseId = "Showdown", Name = "Showdown", Description = "Determine winner — Klondike Card revealed as wild", Category = "Resolution", RequiresPlayerAction = false },
                 new() { PhaseId = "Complete", Name = "Complete", Description = "Hand complete", Category = "Resolution", RequiresPlayerAction = false, IsTerminal = true }
             },

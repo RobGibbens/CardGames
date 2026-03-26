@@ -2,6 +2,9 @@
 
 ## Still to do
 
+- [ ] Add a private chime for the player when it's their turn 
+- [ ] Refactor TablePlay
+- [ ] Customize blazor rejoin modal
 - [ ] <https://github.com/leeoades/FunctionalStateMachine>
 - [ ] Game info should have game rules
 - [ ] SYN - check for ties
