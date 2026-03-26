@@ -3,10 +3,13 @@
 ## Still to do
 
 - [ ] Add a private chime for the player when it's their turn 
+- [ ] Lobby should wrap descriptions
+- [ ] Add a "Rules" property to each game
+- [ ] Replace cardmeister with images?
 - [ ] Refactor TablePlay
 - [ ] Customize blazor rejoin modal
 - [ ] <https://github.com/leeoades/FunctionalStateMachine>
-- [ ] Game info should have game rules
+- [x] Game info should have game rules
 - [ ] SYN - check for ties
 - [ ] SYN - odds
 - [ ] Allow users to "favorite" game types and sort them at the top

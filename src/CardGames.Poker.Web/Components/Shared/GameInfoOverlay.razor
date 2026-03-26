@@ -51,6 +51,15 @@
             </div>
         </div>
 
+        <!-- Description -->
+        @if (!string.IsNullOrWhiteSpace(Description))
+        {
+            <div class="game-info-section">
+                <div class="game-info-section-title">Description</div>
+                <p class="game-info-description">@Description</p>
+            </div>
+        }
+
         <!-- Stakes -->
         <div class="game-info-section">
             <div class="game-info-section-title">Stakes</div>
@@ -148,6 +157,9 @@
 
     [Parameter]
     public string? GameImageName { get; set; }
+
+    [Parameter]
+    public string? Description { get; set; }
 
     [Parameter]
     public IReadOnlyList<string> ContextItems { get; set; } = [];
