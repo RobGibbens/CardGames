@@ -1063,6 +1063,7 @@
 	private const string DealersChoiceCode = "DEALERSCHOICE";
 	private const string ScrewYourNeighborCode = "SCREWYOURNEIGHBOR";
 	private const string FavoriteVariantsTitle = "Favorites";
+	private const string DealersChoiceGroupTitle = "Dealer's Choice";
 	private const string HoldEmVariantsTitle = "Hold 'Em variants";
 	private const string DrawVariantsTitle = "Draw variants";
 	private const string StudVariantsTitle = "Stud variants";
@@ -1075,7 +1076,7 @@
 		MinimumNumberOfPlayers: 2,
 		MaximumNumberOfPlayers: 8,
 		ImageName: "",
-		GroupTitle: OtherVariantsTitle,
+		GroupTitle: DealersChoiceGroupTitle,
 		Source: null
 	);
 
@@ -1316,6 +1317,7 @@
 
 		return new[]
 		{
+			CreateGroup(DealersChoiceGroupTitle, materializedCards),
 			CreateGroup(HoldEmVariantsTitle, materializedCards),
 			CreateGroup(DrawVariantsTitle, materializedCards),
 			CreateGroup(StudVariantsTitle, materializedCards),

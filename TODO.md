@@ -2,11 +2,6 @@
 
 ## Still to do
 
-- [ ] Create table page - Keep Dealer's Choice at the top, not with "Other"
-- [ ] Add a "Rules" property to each game
-- [ ] Replace cardmeister with images?
-- [ ] Refactor TablePlay
-- [ ] <https://github.com/leeoades/FunctionalStateMachine>
 - [ ] SYN - check for ties
 - [ ] SYN - odds
 - [ ] Lobby - Filter by status
@@ -22,6 +17,11 @@
 - [ ] Add tournaments
 
 - [ ] Productize it - deployment and hosting
+
+- [ ] Add a "Rules" property to each game
+- [ ] Replace cardmeister with images?
+- [ ] Refactor TablePlay
+- [ ] <https://github.com/leeoades/FunctionalStateMachine>
 
 ### P1 - Can't play without these
 
@@ -269,3 +269,4 @@
 - [x] Allow users to "favorite" game types and sort them at the top
 - [x] Make the dark/light theme support system settings
 - [x] Bringing in cash to a game should require host approval?
+- [x] Create table page - Keep Dealer's Choice at the top, not with "Other"
