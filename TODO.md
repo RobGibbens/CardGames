@@ -2,25 +2,27 @@
 
 ## Still to do
 
+- [ ] Bringing in cash to a game should require host approval?
 
+- [ ] Create table page - Keep Dealer's Choice at the top, not with "Other"
 - [ ] Add a "Rules" property to each game
 - [ ] Replace cardmeister with images?
 - [ ] Refactor TablePlay
-- [ ] Make the dark/light theme support system settings
 - [ ] <https://github.com/leeoades/FunctionalStateMachine>
 - [ ] SYN - check for ties
 - [ ] SYN - odds
 - [ ] Lobby - Filter by status
 - [ ] Join game modal background color
 - [ ] Joining table adds 5001 when setting 5000
-- [ ] Bringing in cash to a game should require host approval?
 - [ ] Phil's mom loser showdown not correct
 - [ ] Test what happens when a player disconnects
 - [ ] Work on isolating games code more
 - [ ] Really test all-ins, sidepots, etc.
+
 - [ ] Add leagues
 - [ ] Add seasons
 - [ ] Add tournaments
+
 - [ ] Productize it - deployment and hosting
 
 ### P1 - Can't play without these
@@ -264,6 +266,7 @@
 - [x] Add Klondike
 - [x] Game info should have game rules
 - [x] Customize blazor rejoin modal
-- [x] Add a private chime for the player when it's their turn 
+- [x] Add a private chime for the player when it's their turn
 - [x] Lobby should wrap descriptions
 - [x] Allow users to "favorite" game types and sort them at the top
+- [x] - [x] Make the dark/light theme support system settings

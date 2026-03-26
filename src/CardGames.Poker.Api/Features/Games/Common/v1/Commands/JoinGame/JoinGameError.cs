@@ -57,6 +57,11 @@ public enum JoinGameErrorCode
     /// </summary>
     InsufficientAccountChips,
 
+    /// <summary>
+    /// The requested buy-in exceeds the table's configured maximum buy-in.
+    /// </summary>
+    BuyInExceedsTableMaximum,
+
 	/// <summary>
 	/// The game is restricted to active members of the associated league.
 	/// </summary>

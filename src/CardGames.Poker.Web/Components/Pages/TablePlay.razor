@@ -2419,7 +2419,8 @@
                     updatedAt: gamesResponse.UpdatedAt
                 )
                 {
-                    AreOddsVisibleToAllPlayers = gamesResponse.AreOddsVisibleToAllPlayers
+                    AreOddsVisibleToAllPlayers = gamesResponse.AreOddsVisibleToAllPlayers,
+                    MaxBuyIn = gamesResponse.MaxBuyIn
                 };
                 _allowedDealerChoiceGameCodes = ParseAllowedDealerChoiceGameCodes(gamesResponse.GameSettings);
 
@@ -2907,6 +2908,11 @@
         if (_joinBuyInBalanceCap.HasValue)
         {
             max = Math.Min(max, _joinBuyInBalanceCap.Value);
+        }
+
+        if (_gameResponse?.MaxBuyIn is int tableMaxBuyIn && tableMaxBuyIn > 0)
+        {
+            max = Math.Min(max, tableMaxBuyIn);
         }
 
         return max;

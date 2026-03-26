@@ -27,6 +27,7 @@ public sealed record GetGameResponse
 	public int? SmallBet { get; init; }
 	public int? BigBet { get; init; }
 	public int? MinBet { get; init; }
+	public int? MaxBuyIn { get; init; }
 	public string? GameSettings { get; init; }
 	public required GameStatus Status { get; init; }
 	public required int CurrentPlayerIndex { get; init; }
@@ -43,5 +44,5 @@ public sealed record GetGameResponse
 	public required string RowVersion { get; init; }
 	public bool IsDealersChoice { get; init; }
 	public int? DealersChoiceDealerPosition { get; init; }
-   public bool AreOddsVisibleToAllPlayers { get; init; }
+	public bool AreOddsVisibleToAllPlayers { get; init; }
 }

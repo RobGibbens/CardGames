@@ -203,6 +203,48 @@ namespace CardGames.Poker.Api.Clients
         [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
         [Put("/api/v1/profile/game-preferences")]
         Task<IApiResponse<GamePreferencesDto>> UpdateGamePreferencesAsync([Body] UpdateGamePreferencesRequest body, CancellationToken cancellationToken = default);
+
+        /// <summary>Get favorite variants</summary>
+        /// <remarks>Retrieves the authenticated player's favorited game variant codes.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json")]
+        [Get("/api/v1/profile/favorite-variants")]
+        Task<IApiResponse<FavoriteVariantsDto>> GetFavoriteVariantsAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>Update favorite variants</summary>
+        /// <remarks>Creates or updates favorite game variant codes for the authenticated player.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Put("/api/v1/profile/favorite-variants")]
+        Task<IApiResponse<FavoriteVariantsDto>> UpdateFavoriteVariantsAsync([Body] UpdateFavoriteVariantsRequest body, CancellationToken cancellationToken = default);
     }
 
     /// <summary>Create league</summary>
@@ -1459,6 +1501,220 @@ namespace CardGames.Poker.Api.Clients
 
     /// <summary>Start Hand</summary>
     [System.CodeDom.Compiler.GeneratedCode("Refitter", "1.7.0.0")]
+    public partial interface ITollboothApi
+    {
+        /// <summary>Start Hand</summary>
+        /// <remarks>Starts a new hand of Tollbooth and transitions the game to the CollectingAntes phase.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Post("/api/v1/games/tollbooth/{gameId}/hands")]
+        Task<IApiResponse<StartHandSuccessful>> TollboothStartHandAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
+        /// <summary>Collect Antes</summary>
+        /// <remarks>Collects antes from active Tollbooth players and advances the game to Third Street.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Post("/api/v1/games/tollbooth/{gameId}/hands/antes")]
+        Task<IApiResponse<CollectAntesSuccessful>> TollboothCollectAntesAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
+        /// <summary>Deal Hands</summary>
+        /// <remarks>Deals the current Tollbooth street and places display cards for the Tollbooth offer mechanic.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// <item>
+        /// <term>422</term>
+        /// <description>Unprocessable Entity</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Post("/api/v1/games/tollbooth/{gameId}/hands/deal")]
+        Task<IApiResponse<DealHandsSuccessful>> TollboothDealHandsAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
+        /// <summary>Process Betting Action</summary>
+        /// <remarks>Processes a Tollbooth betting action and advances the hand when the street is complete.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// <item>
+        /// <term>422</term>
+        /// <description>Unprocessable Entity</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/games/tollbooth/{gameId}/betting/actions")]
+        Task<IApiResponse<ProcessBettingActionSuccessful>> TollboothProcessBettingActionAsync(System.Guid gameId, [Body] ProcessBettingActionRequest body, CancellationToken cancellationToken = default);
+
+        /// <summary>Choose Tollbooth Card</summary>
+        /// <remarks>Select a Tollbooth card: furthest display card (free), nearest display card (1× ante), or top deck card (2× ante).</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// <item>
+        /// <term>422</term>
+        /// <description>Unprocessable Entity</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/games/tollbooth/{gameId}/choose-card")]
+        Task<IApiResponse<ChooseCardSuccessful>> TollboothChooseCardAsync(System.Guid gameId, [Body] ChooseCardRequest body, CancellationToken cancellationToken = default);
+
+        /// <summary>Perform Showdown</summary>
+        /// <remarks>Performs Tollbooth showdown and awards the hand.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Post("/api/v1/games/tollbooth/{gameId}/showdown")]
+        Task<IApiResponse<PerformShowdownSuccessful>> TollboothPerformShowdownAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
+        /// <summary>GetCurrentPlayerTurn</summary>
+        /// <remarks>Retrieve the current player's turn state for a specific Tollbooth game, including available actions.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Get("/api/v1/games/tollbooth/{gameId}/current-turn")]
+        Task<IApiResponse<GetCurrentPlayerTurnResponse>> TollboothGetCurrentPlayerTurnAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+    }
+
+    /// <summary>Start Hand</summary>
+    [System.CodeDom.Compiler.GeneratedCode("Refitter", "1.7.0.0")]
     public partial interface ISevenCardStudApi
     {
         /// <summary>Start Hand</summary>
@@ -1694,6 +1950,189 @@ namespace CardGames.Poker.Api.Clients
         [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
         [Post("/api/v1/games/screw-your-neighbor/{gameId}/keep-or-trade")]
         Task<IApiResponse<KeepOrTradeSuccessful>> ScrewYourNeighborKeepOrTradeAsync(System.Guid gameId, [Body] KeepOrTradeRequest body, CancellationToken cancellationToken = default);
+    }
+
+    /// <summary>Start Hand</summary>
+    [System.CodeDom.Compiler.GeneratedCode("Refitter", "1.7.0.0")]
+    public partial interface IPairPressureApi
+    {
+        /// <summary>Start Hand</summary>
+        /// <remarks>Starts a new hand of Pair Pressure and transitions the game to the CollectingAntes phase.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Post("/api/v1/games/pair-pressure/{gameId}/hands")]
+        Task<IApiResponse<StartHandSuccessful>> PairPressureStartHandAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
+        /// <summary>Collect Antes</summary>
+        /// <remarks>Collects antes from active Pair Pressure players and advances the game to Third Street.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Post("/api/v1/games/pair-pressure/{gameId}/hands/antes")]
+        Task<IApiResponse<CollectAntesSuccessful>> PairPressureCollectAntesAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
+        /// <summary>Deal Hands</summary>
+        /// <remarks>Deals the current Pair Pressure street and advances play to the next betting actor.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// <item>
+        /// <term>422</term>
+        /// <description>Unprocessable Entity</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Post("/api/v1/games/pair-pressure/{gameId}/hands/deal")]
+        Task<IApiResponse<DealHandsSuccessful>> PairPressureDealHandsAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
+        /// <summary>Process Betting Action</summary>
+        /// <remarks>Processes a Pair Pressure betting action and advances the hand when the street is complete.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// <item>
+        /// <term>422</term>
+        /// <description>Unprocessable Entity</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/games/pair-pressure/{gameId}/betting/actions")]
+        Task<IApiResponse<ProcessBettingActionSuccessful>> PairPressureProcessBettingActionAsync(System.Guid gameId, [Body] ProcessBettingActionRequest body, CancellationToken cancellationToken = default);
+
+        /// <summary>Perform Showdown</summary>
+        /// <remarks>Performs Pair Pressure showdown and awards the hand using the dedicated Pair Pressure evaluation path.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Post("/api/v1/games/pair-pressure/{gameId}/showdown")]
+        Task<IApiResponse<PerformShowdownSuccessful>> PairPressurePerformShowdownAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
+        /// <summary>GetCurrentPlayerTurn</summary>
+        /// <remarks>Retrieve the current player's turn state for a specific Pair Pressure game, including available actions.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Get("/api/v1/games/pair-pressure/{gameId}/current-turn")]
+        Task<IApiResponse<GetCurrentPlayerTurnResponse>> PairPressureGetCurrentPlayerTurnAsync(System.Guid gameId, CancellationToken cancellationToken = default);
     }
 
     /// <summary>StartHand</summary>
@@ -3075,6 +3514,7 @@ namespace CardGames.Poker.Api.Clients
         /// - Variant must allow late entry for started games
         /// - Starting chips must be greater than 0
         /// - Player account balance must be greater than 0
+        /// - Requested buy-in must not exceed the table maximum buy-in, when configured
         /// - Requested buy-in must not exceed account balance
         /// 
         /// **Response:**
@@ -3442,7 +3882,7 @@ namespace CardGames.Poker.Api.Clients
     public partial interface IBobBarkerApi
     {
         /// <summary>Select Showcase Card</summary>
-        /// <remarks>Marks exactly one Bob Barker hole card as the player's showcase card before pre-flop betting begins.</remarks>
+        /// <remarks>Marks exactly one Bob Barker hole card as the player's showcase card. Pre-flop betting begins after all eligible players choose.</remarks>
         /// <returns>
         /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
         /// <list type="table">
@@ -4332,6 +4772,76 @@ namespace CardGames.Poker.Api.Contracts
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record ChooseCardRequest
+    {
+        [JsonConstructor]
+        public ChooseCardRequest(TollboothChoice? @choice, int? @playerSeatIndex)
+        {
+            this.Choice = @choice;
+            this.PlayerSeatIndex = @playerSeatIndex;
+        }
+
+        [JsonPropertyName("choice")]
+        public TollboothChoice? Choice { get; init; }
+
+        [JsonPropertyName("playerSeatIndex")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? PlayerSeatIndex { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record ChooseCardSuccessful
+    {
+        [JsonConstructor]
+        public ChooseCardSuccessful(TollboothChoice? @choice, int? @cost, string @currentPhase, System.Guid? @gameId, string @nextPlayerName, int? @nextPlayerSeatIndex, bool? @offerRoundComplete, string @playerName, int? @playerSeatIndex)
+        {
+            this.GameId = @gameId;
+            this.PlayerName = @playerName;
+            this.PlayerSeatIndex = @playerSeatIndex;
+            this.Choice = @choice;
+            this.Cost = @cost;
+            this.OfferRoundComplete = @offerRoundComplete;
+            this.CurrentPhase = @currentPhase;
+            this.NextPlayerSeatIndex = @nextPlayerSeatIndex;
+            this.NextPlayerName = @nextPlayerName;
+        }
+
+        [JsonPropertyName("gameId")]
+        public System.Guid? GameId { get; init; }
+
+        [JsonPropertyName("playerName")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string PlayerName { get; init; }
+
+        [JsonPropertyName("playerSeatIndex")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? PlayerSeatIndex { get; init; }
+
+        [JsonPropertyName("choice")]
+        public TollboothChoice? Choice { get; init; }
+
+        [JsonPropertyName("cost")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? Cost { get; init; }
+
+        [JsonPropertyName("offerRoundComplete")]
+        public bool? OfferRoundComplete { get; init; }
+
+        [JsonPropertyName("currentPhase")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string CurrentPhase { get; init; }
+
+        [JsonPropertyName("nextPlayerSeatIndex")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? NextPlayerSeatIndex { get; init; }
+
+        [JsonPropertyName("nextPlayerName")]
+        public string NextPlayerName { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial record ChooseDealerGameRequest
     {
         [JsonConstructor]
@@ -4470,7 +4980,7 @@ namespace CardGames.Poker.Api.Contracts
     public partial record CreateGameCommand
     {
         [JsonConstructor]
-        public CreateGameCommand(ICollection<string> @allowedDealerChoiceGameCodes, int @ante, bool? @areOddsVisibleToAllPlayers, int? @bigBlind, string @gameCode, System.Guid @gameId, string @gameName, bool? @isDealersChoice, int @minBet, ICollection<PlayerInfo> @players, int? @smallBlind)
+        public CreateGameCommand(ICollection<string> @allowedDealerChoiceGameCodes, int @ante, bool? @areOddsVisibleToAllPlayers, int? @bigBlind, string @gameCode, System.Guid @gameId, string @gameName, bool? @isDealersChoice, int? @maxBuyIn, int @minBet, ICollection<PlayerInfo> @players, int? @smallBlind)
         {
             this.GameId = @gameId;
             this.GameCode = @gameCode;
@@ -4481,6 +4991,7 @@ namespace CardGames.Poker.Api.Contracts
             this.IsDealersChoice = @isDealersChoice;
             this.SmallBlind = @smallBlind;
             this.BigBlind = @bigBlind;
+            this.MaxBuyIn = @maxBuyIn;
             this.AreOddsVisibleToAllPlayers = @areOddsVisibleToAllPlayers;
             this.AllowedDealerChoiceGameCodes = @allowedDealerChoiceGameCodes;
         }
@@ -4520,6 +5031,10 @@ namespace CardGames.Poker.Api.Contracts
         [JsonPropertyName("bigBlind")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? BigBlind { get; init; }
+
+        [JsonPropertyName("maxBuyIn")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? MaxBuyIn { get; init; }
 
         [JsonPropertyName("areOddsVisibleToAllPlayers")]
         public bool? AreOddsVisibleToAllPlayers { get; init; }
@@ -5368,6 +5883,21 @@ namespace CardGames.Poker.Api.Contracts
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record FavoriteVariantsDto
+    {
+        [JsonConstructor]
+        public FavoriteVariantsDto(ICollection<string> @favoriteVariantCodes)
+        {
+            this.FavoriteVariantCodes = @favoriteVariantCodes;
+        }
+
+        [JsonPropertyName("favoriteVariantCodes")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public ICollection<string> FavoriteVariantCodes { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial record FoldDuringDrawRequest
     {
         [JsonConstructor]
@@ -5933,7 +6463,7 @@ namespace CardGames.Poker.Api.Contracts
     public partial record GetGameResponse
     {
         [JsonConstructor]
-        public GetGameResponse(int? @ante, bool? @areOddsVisibleToAllPlayers, int? @bigBet, int? @bigBlind, int? @bringIn, int @bringInPlayerIndex, bool @canContinue, System.DateTimeOffset @createdAt, string @createdById, string @createdByName, int @currentDrawPlayerIndex, int @currentHandNumber, string @currentPhase, string @currentPhaseDescription, int @currentPlayerIndex, int @dealerPosition, int? @dealersChoiceDealerPosition, System.DateTimeOffset? @endedAt, string @gameSettings, string @gameTypeCode, System.Guid? @gameTypeId, string @gameTypeName, System.Guid @id, bool? @isDealersChoice, int @maximumNumberOfPlayers, int? @minBet, int @minimumNumberOfPlayers, string @name, int? @randomSeed, string @rowVersion, int? @smallBet, int? @smallBlind, System.DateTimeOffset? @startedAt, GameStatus @status, System.DateTimeOffset @updatedAt)
+        public GetGameResponse(int? @ante, bool? @areOddsVisibleToAllPlayers, int? @bigBet, int? @bigBlind, int? @bringIn, int @bringInPlayerIndex, bool @canContinue, System.DateTimeOffset @createdAt, string @createdById, string @createdByName, int @currentDrawPlayerIndex, int @currentHandNumber, string @currentPhase, string @currentPhaseDescription, int @currentPlayerIndex, int @dealerPosition, int? @dealersChoiceDealerPosition, System.DateTimeOffset? @endedAt, string @gameSettings, string @gameTypeCode, System.Guid? @gameTypeId, string @gameTypeName, System.Guid @id, bool? @isDealersChoice, int? @maxBuyIn, int @maximumNumberOfPlayers, int? @minBet, int @minimumNumberOfPlayers, string @name, int? @randomSeed, string @rowVersion, int? @smallBet, int? @smallBlind, System.DateTimeOffset? @startedAt, GameStatus @status, System.DateTimeOffset @updatedAt)
         {
             this.Id = @id;
             this.GameTypeId = @gameTypeId;
@@ -5953,6 +6483,7 @@ namespace CardGames.Poker.Api.Contracts
             this.SmallBet = @smallBet;
             this.BigBet = @bigBet;
             this.MinBet = @minBet;
+            this.MaxBuyIn = @maxBuyIn;
             this.GameSettings = @gameSettings;
             this.Status = @status;
             this.CurrentPlayerIndex = @currentPlayerIndex;
@@ -6042,6 +6573,10 @@ namespace CardGames.Poker.Api.Contracts
         [JsonPropertyName("minBet")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? MinBet { get; init; }
+
+        [JsonPropertyName("maxBuyIn")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? MaxBuyIn { get; init; }
 
         [JsonPropertyName("gameSettings")]
         public string GameSettings { get; init; }
@@ -6229,7 +6764,7 @@ namespace CardGames.Poker.Api.Contracts
     public partial record GetTableSettingsResponse
     {
         [JsonConstructor]
-        public GetTableSettingsResponse(int? @ante, bool? @areOddsVisibleToAllPlayers, int? @bigBlind, string @createdById, string @createdByName, string @currentPhase, System.Guid @gameId, string @gameTypeCode, string @gameTypeName, bool? @isEditable, int? @maxPlayers, int? @minBet, int? @minPlayers, string @name, string @rowVersion, int? @seatedPlayerCount, int? @smallBlind, System.DateTimeOffset? @updatedAt, string @updatedById, string @updatedByName)
+        public GetTableSettingsResponse(int? @ante, bool? @areOddsVisibleToAllPlayers, int? @bigBlind, string @createdById, string @createdByName, string @currentPhase, System.Guid @gameId, string @gameTypeCode, string @gameTypeName, bool? @isEditable, int? @maxBuyIn, int? @maxPlayers, int? @minBet, int? @minPlayers, string @name, string @rowVersion, int? @seatedPlayerCount, int? @smallBlind, System.DateTimeOffset? @updatedAt, string @updatedById, string @updatedByName)
         {
             this.GameId = @gameId;
             this.Name = @name;
@@ -6241,6 +6776,7 @@ namespace CardGames.Poker.Api.Contracts
             this.MinBet = @minBet;
             this.SmallBlind = @smallBlind;
             this.BigBlind = @bigBlind;
+            this.MaxBuyIn = @maxBuyIn;
             this.AreOddsVisibleToAllPlayers = @areOddsVisibleToAllPlayers;
             this.MaxPlayers = @maxPlayers;
             this.MinPlayers = @minPlayers;
@@ -6290,6 +6826,10 @@ namespace CardGames.Poker.Api.Contracts
         [JsonPropertyName("bigBlind")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? BigBlind { get; init; }
+
+        [JsonPropertyName("maxBuyIn")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? MaxBuyIn { get; init; }
 
         [JsonPropertyName("areOddsVisibleToAllPlayers")]
         public bool? AreOddsVisibleToAllPlayers { get; init; }
@@ -8285,6 +8825,36 @@ namespace CardGames.Poker.Api.Contracts
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public enum TollboothChoice
+    {
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Furthest")]
+        Furthest = 0,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Nearest")]
+        Nearest = 1,
+
+        [System.Runtime.Serialization.EnumMember(Value = @"Deck")]
+        Deck = 2,
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record UpdateFavoriteVariantsRequest
+    {
+        [JsonConstructor]
+        public UpdateFavoriteVariantsRequest(ICollection<string> @favoriteVariantCodes)
+        {
+            this.FavoriteVariantCodes = @favoriteVariantCodes;
+        }
+
+        [JsonPropertyName("favoriteVariantCodes")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public ICollection<string> FavoriteVariantCodes { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial record UpdateGamePreferencesRequest
     {
         [JsonConstructor]
@@ -8619,6 +9189,23 @@ namespace CardGames.Poker.Api.Clients
 
             builder?.Invoke(clientBuilderITwosJacksManWithTheAxeApi);
 
+            var clientBuilderITollboothApi = services
+                .AddRefitClient<ITollboothApi>(settings)
+                .ConfigureHttpClient(c => c.BaseAddress = baseUrl);
+
+            clientBuilderITollboothApi
+                .AddStandardResilienceHandler(config =>
+                {
+                    config.Retry = new HttpRetryStrategyOptions
+                    {
+                        UseJitter = true,
+                        MaxRetryAttempts = 3,
+                        Delay = TimeSpan.FromSeconds(0.5)
+                    };
+                });
+
+            builder?.Invoke(clientBuilderITollboothApi);
+
             var clientBuilderISevenCardStudApi = services
                 .AddRefitClient<ISevenCardStudApi>(settings)
                 .ConfigureHttpClient(c => c.BaseAddress = baseUrl);
@@ -8652,6 +9239,23 @@ namespace CardGames.Poker.Api.Clients
                 });
 
             builder?.Invoke(clientBuilderIScrewYourNeighborApi);
+
+            var clientBuilderIPairPressureApi = services
+                .AddRefitClient<IPairPressureApi>(settings)
+                .ConfigureHttpClient(c => c.BaseAddress = baseUrl);
+
+            clientBuilderIPairPressureApi
+                .AddStandardResilienceHandler(config =>
+                {
+                    config.Retry = new HttpRetryStrategyOptions
+                    {
+                        UseJitter = true,
+                        MaxRetryAttempts = 3,
+                        Delay = TimeSpan.FromSeconds(0.5)
+                    };
+                });
+
+            builder?.Invoke(clientBuilderIPairPressureApi);
 
             var clientBuilderIKingsAndLowsApi = services
                 .AddRefitClient<IKingsAndLowsApi>(settings)

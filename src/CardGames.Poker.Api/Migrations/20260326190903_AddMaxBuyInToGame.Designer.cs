@@ -4,6 +4,7 @@ using CardGames.Poker.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CardGames.Poker.Api.Migrations
 {
     [DbContext(typeof(CardsDbContext))]
-    partial class CardsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260326190903_AddMaxBuyInToGame")]
+    partial class AddMaxBuyInToGame
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -168,7 +171,7 @@ namespace CardGames.Poker.Api.Migrations
                     b.HasIndex("BettingRoundId", "ActionOrder")
                         .IsUnique();
 
-                    b.ToTable("BettingActionRecords", (string)null);
+                    b.ToTable("BettingActionRecords");
                 });
 
             modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.BettingRound", b =>
@@ -241,7 +244,7 @@ namespace CardGames.Poker.Api.Migrations
                     b.HasIndex("GameId", "HandNumber", "RoundNumber")
                         .IsUnique();
 
-                    b.ToTable("BettingRounds", (string)null);
+                    b.ToTable("BettingRounds");
                 });
 
             modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.DealersChoiceHandLog", b =>
@@ -291,7 +294,7 @@ namespace CardGames.Poker.Api.Migrations
                     b.HasIndex("GameId", "HandNumber")
                         .IsUnique();
 
-                    b.ToTable("DealersChoiceHandLogs", (string)null);
+                    b.ToTable("DealersChoiceHandLogs");
                 });
 
             modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.Game", b =>
@@ -456,7 +459,7 @@ namespace CardGames.Poker.Api.Migrations
 
                     b.HasIndex("CurrentPhase", "Status", "NextHandStartsAt");
 
-                    b.ToTable("Games", (string)null);
+                    b.ToTable("Games");
                 });
 
             modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.GameCard", b =>
@@ -531,7 +534,7 @@ namespace CardGames.Poker.Api.Migrations
 
                     b.HasIndex("GamePlayerId", "Location", "DealOrder");
 
-                    b.ToTable("GameCards", (string)null);
+                    b.ToTable("GameCards");
                 });
 
             modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.GamePlayer", b =>
@@ -631,7 +634,7 @@ namespace CardGames.Poker.Api.Migrations
 
                     b.HasIndex("GameId", "Status");
 
-                    b.ToTable("GamePlayers", (string)null);
+                    b.ToTable("GamePlayers");
                 });
 
             modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.GameType", b =>
@@ -709,7 +712,7 @@ namespace CardGames.Poker.Api.Migrations
 
                     b.HasIndex("IsActive");
 
-                    b.ToTable("GameTypes", (string)null);
+                    b.ToTable("GameTypes");
                 });
 
             modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.HandHistory", b =>
@@ -754,7 +757,7 @@ namespace CardGames.Poker.Api.Migrations
                     b.HasIndex("GameId", "HandNumber")
                         .IsUnique();
 
-                    b.ToTable("HandHistories", (string)null);
+                    b.ToTable("HandHistories");
                 });
 
             modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.HandHistoryPlayerResult", b =>
@@ -806,7 +809,7 @@ namespace CardGames.Poker.Api.Migrations
                     b.HasIndex("HandHistoryId", "PlayerId")
                         .IsUnique();
 
-                    b.ToTable("HandHistoryPlayerResults", (string)null);
+                    b.ToTable("HandHistoryPlayerResults");
                 });
 
             modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.HandHistoryWinner", b =>
@@ -834,7 +837,7 @@ namespace CardGames.Poker.Api.Migrations
 
                     b.HasIndex("PlayerId");
 
-                    b.ToTable("HandHistoryWinners", (string)null);
+                    b.ToTable("HandHistoryWinners");
                 });
 
             modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.League", b =>
@@ -874,7 +877,7 @@ namespace CardGames.Poker.Api.Migrations
 
                     b.HasIndex("CreatedByUserId");
 
-                    b.ToTable("Leagues", (string)null);
+                    b.ToTable("Leagues");
                 });
 
             modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.LeagueInvite", b =>
@@ -928,7 +931,7 @@ namespace CardGames.Poker.Api.Migrations
 
                     b.HasIndex("LeagueId", "Status", "ExpiresAtUtc");
 
-                    b.ToTable("LeagueInvites", (string)null);
+                    b.ToTable("LeagueInvites");
                 });
 
             modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.LeagueJoinRequest", b =>
@@ -988,7 +991,7 @@ namespace CardGames.Poker.Api.Migrations
 
                     b.HasIndex("LeagueId", "RequesterUserId", "Status", "ExpiresAtUtc");
 
-                    b.ToTable("LeagueJoinRequests", (string)null);
+                    b.ToTable("LeagueJoinRequests");
                 });
 
             modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.LeagueMemberCurrent", b =>
@@ -1027,7 +1030,7 @@ namespace CardGames.Poker.Api.Migrations
 
                     b.HasIndex("LeagueId", "Role", "IsActive");
 
-                    b.ToTable("LeagueMembersCurrent", (string)null);
+                    b.ToTable("LeagueMembersCurrent");
                 });
 
             modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.LeagueMembershipEvent", b =>
@@ -1064,7 +1067,7 @@ namespace CardGames.Poker.Api.Migrations
 
                     b.HasIndex("LeagueId", "OccurredAtUtc");
 
-                    b.ToTable("LeagueMembershipEvents", (string)null);
+                    b.ToTable("LeagueMembershipEvents");
                 });
 
             modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.LeagueOneOffEvent", b =>
@@ -1139,7 +1142,7 @@ namespace CardGames.Poker.Api.Migrations
 
                     b.HasIndex("LeagueId", "ScheduledAtUtc");
 
-                    b.ToTable("LeagueOneOffEvents", (string)null);
+                    b.ToTable("LeagueOneOffEvents");
                 });
 
             modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.LeagueSeason", b =>
@@ -1185,7 +1188,7 @@ namespace CardGames.Poker.Api.Migrations
 
                     b.HasIndex("LeagueId", "Status", "CreatedAtUtc");
 
-                    b.ToTable("LeagueSeasons", (string)null);
+                    b.ToTable("LeagueSeasons");
                 });
 
             modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.LeagueSeasonEvent", b =>
@@ -1252,7 +1255,7 @@ namespace CardGames.Poker.Api.Migrations
 
                     b.HasIndex("LeagueId", "LeagueSeasonId", "ScheduledAtUtc");
 
-                    b.ToTable("LeagueSeasonEvents", (string)null);
+                    b.ToTable("LeagueSeasonEvents");
                 });
 
             modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.LeagueSeasonEventResult", b =>
@@ -1301,7 +1304,7 @@ namespace CardGames.Poker.Api.Migrations
 
                     b.HasIndex("LeagueId", "LeagueSeasonId", "LeagueSeasonEventId");
 
-                    b.ToTable("LeagueSeasonEventResults", (string)null);
+                    b.ToTable("LeagueSeasonEventResults");
                 });
 
             modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.LeagueSeasonEventResultCorrectionAudit", b =>
@@ -1353,7 +1356,7 @@ namespace CardGames.Poker.Api.Migrations
 
                     b.HasIndex("LeagueId", "LeagueSeasonId", "LeagueSeasonEventId", "CorrectedAtUtc");
 
-                    b.ToTable("LeagueSeasonEventResultCorrectionAudits", (string)null);
+                    b.ToTable("LeagueSeasonEventResultCorrectionAudits");
                 });
 
             modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.LeagueStandingCurrent", b =>
@@ -1393,7 +1396,7 @@ namespace CardGames.Poker.Api.Migrations
 
                     b.HasIndex("LeagueId", "TotalPoints", "TotalChipsDelta");
 
-                    b.ToTable("LeagueStandingsCurrent", (string)null);
+                    b.ToTable("LeagueStandingsCurrent");
                 });
 
             modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.Player", b =>
@@ -1469,7 +1472,7 @@ namespace CardGames.Poker.Api.Migrations
 
                     b.HasIndex("Name");
 
-                    b.ToTable("Players", (string)null);
+                    b.ToTable("Players");
                 });
 
             modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.PlayerChipAccount", b =>
@@ -1494,7 +1497,7 @@ namespace CardGames.Poker.Api.Migrations
 
                     b.HasKey("PlayerId");
 
-                    b.ToTable("PlayerChipAccounts", (string)null);
+                    b.ToTable("PlayerChipAccounts");
                 });
 
             modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.PlayerChipLedgerEntry", b =>
@@ -1552,7 +1555,7 @@ namespace CardGames.Poker.Api.Migrations
                         .HasDatabaseName("IX_PlayerChipLedgerEntries_HandSettlement_Idempotency")
                         .HasFilter("[Type] = 5");
 
-                    b.ToTable("PlayerChipLedgerEntries", (string)null);
+                    b.ToTable("PlayerChipLedgerEntries");
                 });
 
             modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.Pot", b =>
@@ -1609,7 +1612,7 @@ namespace CardGames.Poker.Api.Migrations
 
                     b.HasIndex("GameId", "HandNumber", "PotOrder");
 
-                    b.ToTable("Pots", (string)null);
+                    b.ToTable("Pots");
                 });
 
             modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.PotContribution", b =>
@@ -1650,7 +1653,7 @@ namespace CardGames.Poker.Api.Migrations
                     b.HasIndex("PotId", "GamePlayerId")
                         .IsUnique();
 
-                    b.ToTable("PotContributions", (string)null);
+                    b.ToTable("PotContributions");
                 });
 
             modelBuilder.Entity("CardGames.Poker.Api.Data.Entities.UserGamePreferences", b =>
@@ -1687,7 +1690,7 @@ namespace CardGames.Poker.Api.Migrations
 
                     b.HasKey("UserId");
 
-                    b.ToTable("UserGamePreferences", (string)null);
+                    b.ToTable("UserGamePreferences");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
@@ -2266,7 +2269,7 @@ namespace CardGames.Poker.Api.Migrations
 
                             b1.HasKey("IdentityUserPasskeyCredentialId");
 
-                            b1.ToTable("AspNetUserPasskeys", (string)null);
+                            b1.ToTable("AspNetUserPasskeys");
 
                             b1
                                 .ToJson("Data")

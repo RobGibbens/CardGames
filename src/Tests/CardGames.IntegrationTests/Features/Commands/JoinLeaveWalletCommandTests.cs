@@ -84,6 +84,70 @@ public class JoinLeaveWalletCommandTests : IntegrationTestBase
 	}
 
 	[Fact]
+	public async Task JoinGame_WithBuyInAboveTableMaximum_ReturnsConflictAndDoesNotSeatPlayer()
+	{
+		// Arrange
+		var game = await DatabaseSeeder.CreateGameAsync(DbContext, "FIVECARDDRAW");
+		game.MaxBuyIn = 150;
+
+		var player = await DatabaseSeeder.CreatePlayerAsync(DbContext, "Capped Player", "capped.player@test.com");
+
+		DbContext.PlayerChipAccounts.Add(new PlayerChipAccount
+		{
+			PlayerId = player.Id,
+			Balance = 500,
+			CreatedAtUtc = DateTimeOffset.UtcNow,
+			UpdatedAtUtc = DateTimeOffset.UtcNow
+		});
+		await DbContext.SaveChangesAsync();
+
+		SetCurrentUser("capped-player-user-id", "Capped Player", "capped.player@test.com");
+
+		// Act
+		var result = await Mediator.Send(new JoinGameCommand(game.Id, SeatIndex: 1, StartingChips: 200));
+
+		// Assert
+		result.IsT1.Should().BeTrue();
+		result.AsT1.Code.Should().Be(JoinGameErrorCode.BuyInExceedsTableMaximum);
+
+		var account = await DbContext.PlayerChipAccounts.FirstAsync(x => x.PlayerId == player.Id);
+		account.Balance.Should().Be(500);
+
+		DbContext.GamePlayers.Count(x => x.GameId == game.Id && x.PlayerId == player.Id).Should().Be(0);
+		DbContext.PlayerChipLedgerEntries.Count(x => x.PlayerId == player.Id && x.Type == PlayerChipLedgerEntryType.BringIn).Should().Be(0);
+	}
+
+	[Fact]
+	public async Task JoinGame_WithBuyInAtTableMaximum_Succeeds()
+	{
+		// Arrange
+		var game = await DatabaseSeeder.CreateGameAsync(DbContext, "FIVECARDDRAW");
+		game.MaxBuyIn = 200;
+
+		var player = await DatabaseSeeder.CreatePlayerAsync(DbContext, "Exact Cap Player", "exact.cap@test.com");
+
+		DbContext.PlayerChipAccounts.Add(new PlayerChipAccount
+		{
+			PlayerId = player.Id,
+			Balance = 500,
+			CreatedAtUtc = DateTimeOffset.UtcNow,
+			UpdatedAtUtc = DateTimeOffset.UtcNow
+		});
+		await DbContext.SaveChangesAsync();
+
+		SetCurrentUser("exact-cap-user-id", "Exact Cap Player", "exact.cap@test.com");
+
+		// Act
+		var result = await Mediator.Send(new JoinGameCommand(game.Id, SeatIndex: 2, StartingChips: 200));
+
+		// Assert
+		result.IsT0.Should().BeTrue();
+
+		var gamePlayer = await DbContext.GamePlayers.FirstAsync(x => x.GameId == game.Id && x.PlayerId == player.Id);
+		gamePlayer.ChipStack.Should().Be(200);
+	}
+
+	[Fact]
 	public async Task JoinGame_ScrewYourNeighborAfterStart_ReturnsLateJoinNotAllowedAndDoesNotSeatPlayer()
 	{
 		// Arrange

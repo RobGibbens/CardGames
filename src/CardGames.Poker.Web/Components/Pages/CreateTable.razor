@@ -60,32 +60,32 @@
 					<div class="step-header">
 						<span class="step-number">1</span>
 						<div class="step-info">
-								<h2 class="step-title">Choose Game Variant</h2>
-								<p class="step-description">Select the poker variant you want to play</p>
-							</div>
+							<h2 class="step-title">Choose Game Variant</h2>
+							<p class="step-description">Select the poker variant you want to play</p>
 						</div>
-						@if (_selectedVariant is null)
-						{
+					</div>
+					@if (_selectedVariant is null)
+					{
 						<div class="form-row variant-search-row">
 							<div class="form-group">
 								<label class="form-label" for="variantSearch">Search Variants</label>
-							<input type="text"
-								   id="variantSearch"
-								   class="form-input"
-								   placeholder="Search by game name"
-								   @bind="_variantSearch"
-								   @bind:event="oninput" />
+								<input type="text"
+									   id="variantSearch"
+									   class="form-input"
+									   placeholder="Search by game name"
+									   @bind="_variantSearch"
+									   @bind:event="oninput" />
+							</div>
+							<div class="view-toggle-group">
+								<button class="btn btn-view-toggle @(_variantViewMode == "grid" ? "active" : "")" @onclick="@(() => SetVariantViewModeAsync("grid"))" title="Grid View">
+									<i class="fa-solid fa-th-large"></i>
+								</button>
+								<button class="btn btn-view-toggle @(_variantViewMode == "list" ? "active" : "")" @onclick="@(() => SetVariantViewModeAsync("list"))" title="List View">
+									<i class="fa-solid fa-list"></i>
+								</button>
+							</div>
 						</div>
-						<div class="view-toggle-group">
-							<button class="btn btn-view-toggle @(_variantViewMode == "grid" ? "active" : "")" @onclick="@(() => SetVariantViewModeAsync("grid"))" title="Grid View">
-								<i class="fa-solid fa-th-large"></i>
-							</button>
-							<button class="btn btn-view-toggle @(_variantViewMode == "list" ? "active" : "")" @onclick="@(() => SetVariantViewModeAsync("list"))" title="List View">
-								<i class="fa-solid fa-list"></i>
-							</button>
-						</div>
-					</div>
-						}
+					}
 					@if (_favoriteVariantsError is not null)
 					{
 						<div class="create-table-favorites-message" role="status">
@@ -94,101 +94,23 @@
 						</div>
 					}
 					<div class="variants-selection-region" @ref="_variantsSelectionRegion">
-					@if (FavoriteVariantGroup.Cards.Count > 0)
-					{
-						<section class="variant-group @GetVariantGroupClasses(FavoriteVariantGroup)">
-							@if (_selectedVariant is null)
-							{
-								<h2>@FavoriteVariantGroup.Title</h2>
-							}
-							@if (_variantViewMode == "grid" || _selectedVariant is not null)
-							{
-								<div class="variants-grid @(_selectedVariant is not null ? "has-selection" : "")">
-									@foreach (var game in FavoriteVariantGroup.Cards)
-									{
-										var isAvailable = IsVariantAvailable(game.Code);
-										<div class="variant-card @GetVariantCardClasses(game) @(!isAvailable ? "disabled" : "")"
-											 data-variant-code="@game.Code"
-											 @onclick="() => SelectVariantAsync(game, isAvailable)">
-											<button class="@GetFavoriteButtonClasses(game.Code)"
-													type="button"
-													aria-label="@GetFavoriteButtonLabel(game)"
-													aria-pressed="@IsFavoriteVariant(game.Code)"
-													title="@GetFavoriteButtonLabel(game)"
-													disabled="@(!CanManageFavoriteVariants)"
-													@onclick="() => ToggleFavoriteVariantAsync(game.Code)"
-													@onclick:stopPropagation="true">
-												<i class="@GetFavoriteButtonIconClasses(game.Code)"></i>
-											</button>
-											<div class="variant-icon">
-												@if (!string.IsNullOrEmpty(game.ImageName))
-												{
-													<img src="/images/games/@(game.ImageName)" alt="@game.Name" class="variant-icon-image" />
-												}
-												else if (game.Code == DealersChoiceCode)
-												{
-													<img src="/images/games/dealerschoice.png" alt="@game.Name" class="variant-icon-image" />
-												}
-												else
-												{
-													<span class="variant-icon-fallback"><i class="fa-thin fa-card-club"></i></span>
-												}
-											</div>
-											<div class="variant-content">
-												<h3 class="variant-name">@game.Name</h3>
-												<p class="variant-description">@game.Description</p>
-												<div class="variant-meta">
-													<span class="variant-players">
-														<i class="fa-regular fa-users"></i>
-														@game.MinimumNumberOfPlayers-@game.MaximumNumberOfPlayers players
-													</span>
-												</div>
-											</div>
-											@if (!isAvailable)
-											{
-												<span class="variant-badge coming-soon">Coming Soon</span>
-											}
-											@if (_selectedVariant?.Code == game.Code)
-											{
-												<span class="variant-selected-indicator"><i class="fa-thin fa-check"></i></span>
-											}
-										</div>
-									}
-								</div>
-							}
-							else
-							{
-								<div class="variants-list">
-									@foreach (var game in FavoriteVariantGroup.Cards)
-									{
-										var isAvailable = IsVariantAvailable(game.Code);
-										<div class="variant-list-row @(!isAvailable ? "disabled" : "") @(_selectedVariant?.Code == game.Code ? "selected" : "")"
-											 data-variant-code="@game.Code"
-											 @onclick="() => SelectVariantAsync(game, isAvailable)">
-											<div class="variant-list-row-icon">
-												@if (!string.IsNullOrEmpty(game.ImageName))
-												{
-													<img src="/images/games/@(game.ImageName)" alt="@game.Name" />
-												}
-												else if (game.Code == DealersChoiceCode)
-												{
-													<img src="/images/games/dealerschoice.png" alt="@game.Name" />
-												}
-												else
-												{
-													<span class="variant-icon-fallback"><i class="fa-thin fa-card-club"></i></span>
-												}
-											</div>
-											<div class="variant-list-row-info">
-												<span class="variant-list-row-name">@game.Name</span>
-												<span class="variant-list-row-description">@game.Description</span>
-											</div>
-											<div class="variant-list-row-actions">
-												<span class="variant-list-row-players">
-													<i class="fa-regular fa-users"></i>
-													@game.MinimumNumberOfPlayers-@game.MaximumNumberOfPlayers
-												</span>
-												<button class="@GetFavoriteButtonClasses(game.Code, isListButton: true)"
+						@if (FavoriteVariantGroup.Cards.Count > 0)
+						{
+							<section class="variant-group @GetVariantGroupClasses(FavoriteVariantGroup)">
+								@if (_selectedVariant is null)
+								{
+									<h2>@FavoriteVariantGroup.Title</h2>
+								}
+								@if (_variantViewMode == "grid" || _selectedVariant is not null)
+								{
+									<div class="variants-grid @(_selectedVariant is not null ? "has-selection" : "")">
+										@foreach (var game in FavoriteVariantGroup.Cards)
+										{
+											var isAvailable = IsVariantAvailable(game.Code);
+											<div class="variant-card @GetVariantCardClasses(game) @(!isAvailable ? "disabled" : "")"
+												 data-variant-code="@game.Code"
+												 @onclick="() => SelectVariantAsync(game, isAvailable)">
+												<button class="@GetFavoriteButtonClasses(game.Code)"
 														type="button"
 														aria-label="@GetFavoriteButtonLabel(game)"
 														aria-pressed="@IsFavoriteVariant(game.Code)"
@@ -198,137 +120,215 @@
 														@onclick:stopPropagation="true">
 													<i class="@GetFavoriteButtonIconClasses(game.Code)"></i>
 												</button>
+												<div class="variant-icon">
+													@if (!string.IsNullOrEmpty(game.ImageName))
+													{
+														<img src="/images/games/@(game.ImageName)" alt="@game.Name" class="variant-icon-image" />
+													}
+													else if (game.Code == DealersChoiceCode)
+													{
+														<img src="/images/games/dealerschoice.png" alt="@game.Name" class="variant-icon-image" />
+													}
+													else
+													{
+														<span class="variant-icon-fallback"><i class="fa-thin fa-card-club"></i></span>
+													}
+												</div>
+												<div class="variant-content">
+													<h3 class="variant-name">@game.Name</h3>
+													<p class="variant-description">@game.Description</p>
+													<div class="variant-meta">
+														<span class="variant-players">
+															<i class="fa-regular fa-users"></i>
+															@game.MinimumNumberOfPlayers-@game.MaximumNumberOfPlayers players
+														</span>
+													</div>
+												</div>
+												@if (!isAvailable)
+												{
+													<span class="variant-badge coming-soon">Coming Soon</span>
+												}
+												@if (_selectedVariant?.Code == game.Code)
+												{
+													<span class="variant-selected-indicator"><i class="fa-thin fa-check"></i></span>
+												}
 											</div>
-											@if (!isAvailable)
-											{
-												<span class="variant-badge coming-soon">Coming Soon</span>
-											}
-										</div>
-									}
-								</div>
-							}
-						</section>
-					}
-					@foreach (var group in VariantCardGroups)
-					{
-						if (group.Cards.Count == 0)
-						{
-							continue;
+										}
+									</div>
+								}
+								else
+								{
+									<div class="variants-list">
+										@foreach (var game in FavoriteVariantGroup.Cards)
+										{
+											var isAvailable = IsVariantAvailable(game.Code);
+											<div class="variant-list-row @(!isAvailable ? "disabled" : "") @(_selectedVariant?.Code == game.Code ? "selected" : "")"
+												 data-variant-code="@game.Code"
+												 @onclick="() => SelectVariantAsync(game, isAvailable)">
+												<div class="variant-list-row-icon">
+													@if (!string.IsNullOrEmpty(game.ImageName))
+													{
+														<img src="/images/games/@(game.ImageName)" alt="@game.Name" />
+													}
+													else if (game.Code == DealersChoiceCode)
+													{
+														<img src="/images/games/dealerschoice.png" alt="@game.Name" />
+													}
+													else
+													{
+														<span class="variant-icon-fallback"><i class="fa-thin fa-card-club"></i></span>
+													}
+												</div>
+												<div class="variant-list-row-info">
+													<span class="variant-list-row-name">@game.Name</span>
+													<span class="variant-list-row-description">@game.Description</span>
+												</div>
+												<div class="variant-list-row-actions">
+													<span class="variant-list-row-players">
+														<i class="fa-regular fa-users"></i>
+														@game.MinimumNumberOfPlayers-@game.MaximumNumberOfPlayers
+													</span>
+													<button class="@GetFavoriteButtonClasses(game.Code, isListButton: true)"
+															type="button"
+															aria-label="@GetFavoriteButtonLabel(game)"
+															aria-pressed="@IsFavoriteVariant(game.Code)"
+															title="@GetFavoriteButtonLabel(game)"
+															disabled="@(!CanManageFavoriteVariants)"
+															@onclick="() => ToggleFavoriteVariantAsync(game.Code)"
+															@onclick:stopPropagation="true">
+														<i class="@GetFavoriteButtonIconClasses(game.Code)"></i>
+													</button>
+												</div>
+												@if (!isAvailable)
+												{
+													<span class="variant-badge coming-soon">Coming Soon</span>
+												}
+											</div>
+										}
+									</div>
+								}
+							</section>
 						}
+						@foreach (var group in VariantCardGroups)
+						{
+							if (group.Cards.Count == 0)
+							{
+								continue;
+							}
 
-						<section class="variant-group @GetVariantGroupClasses(group)">
-							@if (_selectedVariant is null)
-							{
-								<h2>@group.Title</h2>
-							}
-							@if (_variantViewMode == "grid" || _selectedVariant is not null)
-							{
-							<div class="variants-grid @(_selectedVariant is not null ? "has-selection" : "")">
-								@foreach (var game in group.Cards)
+							<section class="variant-group @GetVariantGroupClasses(group)">
+								@if (_selectedVariant is null)
 								{
-									var isAvailable = IsVariantAvailable(game.Code);
-										<div class="variant-card @GetVariantCardClasses(game) @(!isAvailable ? "disabled" : "")"
-										 data-variant-code="@game.Code"
-										 @onclick="() => SelectVariantAsync(game, isAvailable)">
-											<button class="@GetFavoriteButtonClasses(game.Code)"
-												type="button"
-												aria-label="@GetFavoriteButtonLabel(game)"
-												aria-pressed="@IsFavoriteVariant(game.Code)"
-												title="@GetFavoriteButtonLabel(game)"
-												disabled="@(!CanManageFavoriteVariants)"
-												@onclick="() => ToggleFavoriteVariantAsync(game.Code)"
-												@onclick:stopPropagation="true">
-												<i class="@GetFavoriteButtonIconClasses(game.Code)"></i>
-											</button>
-										<div class="variant-icon">
-											@if (!string.IsNullOrEmpty(game.ImageName))
-											{
-												<img src="/images/games/@(game.ImageName)" alt="@game.Name" class="variant-icon-image" />
-											}
-											else if (game.Code == DealersChoiceCode)
-											{
-												<img src="/images/games/dealerschoice.png" alt="@game.Name" class="variant-icon-image" />
-											}
-											else
-											{
-												<span class="variant-icon-fallback"><i class="fa-thin fa-card-club"></i></span>
-											}
-										</div>
-										<div class="variant-content">
-											<h3 class="variant-name">@game.Name</h3>
-											<p class="variant-description">@game.Description</p>
-											<div class="variant-meta">
-												<span class="variant-players">
-													<i class="fa-regular fa-users"></i>
-													@game.MinimumNumberOfPlayers-@game.MaximumNumberOfPlayers players
-												</span>
+									<h2>@group.Title</h2>
+								}
+								@if (_variantViewMode == "grid" || _selectedVariant is not null)
+								{
+									<div class="variants-grid @(_selectedVariant is not null ? "has-selection" : "")">
+										@foreach (var game in group.Cards)
+										{
+											var isAvailable = IsVariantAvailable(game.Code);
+											<div class="variant-card @GetVariantCardClasses(game) @(!isAvailable ? "disabled" : "")"
+												 data-variant-code="@game.Code"
+												 @onclick="() => SelectVariantAsync(game, isAvailable)">
+												<button class="@GetFavoriteButtonClasses(game.Code)"
+														type="button"
+														aria-label="@GetFavoriteButtonLabel(game)"
+														aria-pressed="@IsFavoriteVariant(game.Code)"
+														title="@GetFavoriteButtonLabel(game)"
+														disabled="@(!CanManageFavoriteVariants)"
+														@onclick="() => ToggleFavoriteVariantAsync(game.Code)"
+														@onclick:stopPropagation="true">
+													<i class="@GetFavoriteButtonIconClasses(game.Code)"></i>
+												</button>
+												<div class="variant-icon">
+													@if (!string.IsNullOrEmpty(game.ImageName))
+													{
+														<img src="/images/games/@(game.ImageName)" alt="@game.Name" class="variant-icon-image" />
+													}
+													else if (game.Code == DealersChoiceCode)
+													{
+														<img src="/images/games/dealerschoice.png" alt="@game.Name" class="variant-icon-image" />
+													}
+													else
+													{
+														<span class="variant-icon-fallback"><i class="fa-thin fa-card-club"></i></span>
+													}
+												</div>
+												<div class="variant-content">
+													<h3 class="variant-name">@game.Name</h3>
+													<p class="variant-description">@game.Description</p>
+													<div class="variant-meta">
+														<span class="variant-players">
+															<i class="fa-regular fa-users"></i>
+															@game.MinimumNumberOfPlayers-@game.MaximumNumberOfPlayers players
+														</span>
+													</div>
+												</div>
+												@if (!isAvailable)
+												{
+													<span class="variant-badge coming-soon">Coming Soon</span>
+												}
+												@if (_selectedVariant?.Code == game.Code)
+												{
+													<span class="variant-selected-indicator"><i class="fa-thin fa-check"></i></span>
+												}
 											</div>
-										</div>
-										@if (!isAvailable)
-										{
-											<span class="variant-badge coming-soon">Coming Soon</span>
-										}
-										@if (_selectedVariant?.Code == game.Code)
-										{
-											<span class="variant-selected-indicator"><i class="fa-thin fa-check"></i></span>
 										}
 									</div>
 								}
-							</div>
-							}
-							else
-							{
-							<div class="variants-list">
-								@foreach (var game in group.Cards)
+								else
 								{
-									var isAvailable = IsVariantAvailable(game.Code);
-									<div class="variant-list-row @(!isAvailable ? "disabled" : "") @(_selectedVariant?.Code == game.Code ? "selected" : "")"
-										 data-variant-code="@game.Code"
-										 @onclick="() => SelectVariantAsync(game, isAvailable)">
-										<div class="variant-list-row-icon">
-											@if (!string.IsNullOrEmpty(game.ImageName))
-											{
-												<img src="/images/games/@(game.ImageName)" alt="@game.Name" />
-											}
-											else if (game.Code == DealersChoiceCode)
-											{
-												<img src="/images/games/dealerschoice.png" alt="@game.Name" />
-											}
-											else
-											{
-												<span class="variant-icon-fallback"><i class="fa-thin fa-card-club"></i></span>
-											}
-										</div>
-										<div class="variant-list-row-info">
-											<span class="variant-list-row-name">@game.Name</span>
-											<span class="variant-list-row-description">@game.Description</span>
-										</div>
-										<div class="variant-list-row-actions">
-											<span class="variant-list-row-players">
-												<i class="fa-regular fa-users"></i>
-												@game.MinimumNumberOfPlayers-@game.MaximumNumberOfPlayers
-											</span>
-											<button class="@GetFavoriteButtonClasses(game.Code, isListButton: true)"
-													type="button"
-													aria-label="@GetFavoriteButtonLabel(game)"
-													aria-pressed="@IsFavoriteVariant(game.Code)"
-													title="@GetFavoriteButtonLabel(game)"
-													disabled="@(!CanManageFavoriteVariants)"
-													@onclick="() => ToggleFavoriteVariantAsync(game.Code)"
-													@onclick:stopPropagation="true">
-												<i class="@GetFavoriteButtonIconClasses(game.Code)"></i>
-											</button>
-										</div>
-										@if (!isAvailable)
+									<div class="variants-list">
+										@foreach (var game in group.Cards)
 										{
-											<span class="variant-badge coming-soon">Coming Soon</span>
+											var isAvailable = IsVariantAvailable(game.Code);
+											<div class="variant-list-row @(!isAvailable ? "disabled" : "") @(_selectedVariant?.Code == game.Code ? "selected" : "")"
+												 data-variant-code="@game.Code"
+												 @onclick="() => SelectVariantAsync(game, isAvailable)">
+												<div class="variant-list-row-icon">
+													@if (!string.IsNullOrEmpty(game.ImageName))
+													{
+														<img src="/images/games/@(game.ImageName)" alt="@game.Name" />
+													}
+													else if (game.Code == DealersChoiceCode)
+													{
+														<img src="/images/games/dealerschoice.png" alt="@game.Name" />
+													}
+													else
+													{
+														<span class="variant-icon-fallback"><i class="fa-thin fa-card-club"></i></span>
+													}
+												</div>
+												<div class="variant-list-row-info">
+													<span class="variant-list-row-name">@game.Name</span>
+													<span class="variant-list-row-description">@game.Description</span>
+												</div>
+												<div class="variant-list-row-actions">
+													<span class="variant-list-row-players">
+														<i class="fa-regular fa-users"></i>
+														@game.MinimumNumberOfPlayers-@game.MaximumNumberOfPlayers
+													</span>
+													<button class="@GetFavoriteButtonClasses(game.Code, isListButton: true)"
+															type="button"
+															aria-label="@GetFavoriteButtonLabel(game)"
+															aria-pressed="@IsFavoriteVariant(game.Code)"
+															title="@GetFavoriteButtonLabel(game)"
+															disabled="@(!CanManageFavoriteVariants)"
+															@onclick="() => ToggleFavoriteVariantAsync(game.Code)"
+															@onclick:stopPropagation="true">
+														<i class="@GetFavoriteButtonIconClasses(game.Code)"></i>
+													</button>
+												</div>
+												@if (!isAvailable)
+												{
+													<span class="variant-badge coming-soon">Coming Soon</span>
+												}
+											</div>
 										}
 									</div>
 								}
-							</div>
-							}
-						</section>
-					}
+							</section>
+						}
 					</div>
 				</section>
 
@@ -356,11 +356,11 @@
 											   @oninput="OnTableNameInput"
 											   maxlength="50" />
 										<button class="table-name-generate-button"
-											type="button"
-											title="Generate table name"
-											aria-label="Generate table name"
-											@onclick="GenerateTableNameAsync"
-											disabled="@(_isGeneratingTableName || _selectedVariant is null)">
+												type="button"
+												title="Generate table name"
+												aria-label="Generate table name"
+												@onclick="GenerateTableNameAsync"
+												disabled="@(_isGeneratingTableName || _selectedVariant is null)">
 											@if (_isGeneratingTableName)
 											{
 												<span class="loading-spinner-small"></span>
@@ -386,8 +386,8 @@
 												   class="form-input"
 												   min="1"
 												   max="50000"
-											   value="@_smallBlindInput"
-											   @oninput="OnSmallBlindInput" />
+												   value="@_smallBlindInput"
+												   @oninput="OnSmallBlindInput" />
 											<span class="form-hint">Small blind amount</span>
 										</div>
 										<div class="form-group">
@@ -397,27 +397,27 @@
 												   class="form-input"
 												   min="1"
 												   max="100000"
-											   value="@_bigBlindInput"
-											   @oninput="OnBigBlindInput" />
+												   value="@_bigBlindInput"
+												   @oninput="OnBigBlindInput" />
 											<span class="form-hint">Minimum bet is automatically set to the big blind.</span>
 										</div>
 									</div>
 								}
 								else
 								{
-                                  <div class="form-row @(ShowMinimumBetInput ? "two-columns" : string.Empty)">
+									<div class="form-row @(ShowMinimumBetInput ? "two-columns" : string.Empty)">
 										<div class="form-group">
-                                           <label class="form-label" for="ante">@(IsScrewYourNeighbor ? "Chip stack amount" : "Ante")</label>
+											<label class="form-label" for="ante">@(IsScrewYourNeighbor ? "Chip stack amount" : "Ante")</label>
 											<input type="number"
 												   id="ante"
 												   class="form-input"
 												   min="1"
 												   max="100"
-											   value="@_anteInput"
-											   @oninput="OnAnteInput" />
-                                           <span class="form-hint">@(IsScrewYourNeighbor ? "Chips per stack (3 stacks)" : "Mandatory bet before each hand")</span>
+												   value="@_anteInput"
+												   @oninput="OnAnteInput" />
+											<span class="form-hint">@(IsScrewYourNeighbor ? "Chips per stack (3 stacks)" : "Mandatory bet before each hand")</span>
 										</div>
-                                        @if (ShowMinimumBetInput)
+										@if (ShowMinimumBetInput)
 										{
 											<div class="form-group">
 												<label class="form-label" for="minBet">Minimum Bet</label>
@@ -426,8 +426,8 @@
 													   class="form-input"
 													   min="1"
 													   max="1000"
-												   value="@_minBetInput"
-												   @oninput="OnMinimumBetInput" />
+													   value="@_minBetInput"
+													   @oninput="OnMinimumBetInput" />
 												<span class="form-hint">Minimum bet during play</span>
 											</div>
 										}
@@ -436,52 +436,67 @@
 							}
 							else
 							{
-							<div class="form-row">
-								<div class="form-group">
-									<span class="form-hint"><i class="fa-regular fa-info-circle"></i> The dealer will set the ante and minimum bet each hand.</span>
-								</div>
-							</div>
-							<div class="form-row">
-								<div class="form-group">
-									<label class="form-label">Allowed Dealer's Choice Variants</label>
-									<span class="form-hint">Choose which game variants the dealer may select at this table. At least one variant must remain enabled.</span>
-									<div class="create-table-dealers-choice-selection-groups">
-										@foreach (var group in DealerChoiceAllowedVariantGroups)
-										{
-											if (group.Cards.Count == 0)
-											{
-												continue;
-											}
-
-											<section class="create-table-dealers-choice-selection-group">
-												<h3 class="create-table-dealers-choice-selection-group-title">@group.Title</h3>
-												<div class="create-table-dealers-choice-selection-list">
-													@foreach (var game in group.Cards)
-													{
-														var isAllowed = IsDealerChoiceGameAllowed(game.Code);
-														<div class="create-table-dealers-choice-selection-item">
-															<div class="create-table-dealers-choice-selection-copy">
-																<span class="create-table-dealers-choice-selection-name">@game.Name</span>
-																<span class="create-table-dealers-choice-selection-description">@game.Description</span>
-															</div>
-															<button class="game-info-odds-toggle-switch @(isAllowed ? "is-on" : "is-off")"
-																	type="button"
-																	role="switch"
-																	aria-checked="@isAllowed"
-																	aria-label="@($"Toggle {game.Name}")"
-																	@onclick="() => ToggleAllowedDealerChoiceGame(game.Code)">
-																<span class="game-info-odds-toggle-text">@(isAllowed ? "ON" : "OFF")</span>
-																<span class="game-info-odds-toggle-thumb" aria-hidden="true"></span>
-															</button>
-														</div>
-													}
-												</div>
-											</section>
-										}
+								<div class="form-row">
+									<div class="form-group">
+										<span class="form-hint"><i class="fa-regular fa-info-circle"></i> The dealer will set the ante and minimum bet each hand.</span>
 									</div>
 								</div>
-							</div>
+								<div class="form-row">
+									<div class="form-group">
+										<label class="form-label">Allowed Dealer's Choice Variants</label>
+										<span class="form-hint">Choose which game variants the dealer may select at this table. At least one variant must remain enabled.</span>
+										<div class="create-table-dealers-choice-selection-groups">
+											@foreach (var group in DealerChoiceAllowedVariantGroups)
+											{
+												if (group.Cards.Count == 0)
+												{
+													continue;
+												}
+
+												<section class="create-table-dealers-choice-selection-group">
+													<h3 class="create-table-dealers-choice-selection-group-title">@group.Title</h3>
+													<div class="create-table-dealers-choice-selection-list">
+														@foreach (var game in group.Cards)
+														{
+															var isAllowed = IsDealerChoiceGameAllowed(game.Code);
+															<div class="create-table-dealers-choice-selection-item">
+																<div class="create-table-dealers-choice-selection-copy">
+																	<span class="create-table-dealers-choice-selection-name">@game.Name</span>
+																	<span class="create-table-dealers-choice-selection-description">@game.Description</span>
+																</div>
+																<button class="game-info-odds-toggle-switch @(isAllowed ? "is-on" : "is-off")"
+																		type="button"
+																		role="switch"
+																		aria-checked="@isAllowed"
+																		aria-label="@($"Toggle {game.Name}")"
+																		@onclick="() => ToggleAllowedDealerChoiceGame(game.Code)">
+																	<span class="game-info-odds-toggle-text">@(isAllowed ? "ON" : "OFF")</span>
+																	<span class="game-info-odds-toggle-thumb" aria-hidden="true"></span>
+																</button>
+															</div>
+														}
+													</div>
+												</section>
+											}
+										</div>
+									</div>
+								</div>
 							}
+
+							<div class="form-row">
+								<div class="form-group">
+									<label class="form-label" for="maxBuyIn">Max Buy-In</label>
+									<input type="number"
+										   id="maxBuyIn"
+										   class="form-input"
+										   min="@GetConfiguredMinimumBuyIn()"
+										   max="1000000"
+										   placeholder="No limit"
+										   value="@_maxBuyInInput"
+										   @oninput="OnMaxBuyInInput" />
+									<span class="form-hint">Optional. Leave blank for no limit. Minimum @GetConfiguredMinimumBuyIn().ToString("N0").</span>
+								</div>
+							</div>
 
 							<div class="form-row">
 								<div class="form-group">
@@ -555,16 +570,16 @@
 		will-change: transform, opacity, max-height;
 	}
 
-	.create-step .variants-grid.has-selection .variant-card.collapsing-out {
-		opacity: 0;
-		transform: scale(0.96) translateY(-6px);
-		pointer-events: none;
-		max-height: 0;
-		padding-top: 0;
-		padding-bottom: 0;
-		margin: 0;
-		overflow: hidden;
-	}
+		.create-step .variants-grid.has-selection .variant-card.collapsing-out {
+			opacity: 0;
+			transform: scale(0.96) translateY(-6px);
+			pointer-events: none;
+			max-height: 0;
+			padding-top: 0;
+			padding-bottom: 0;
+			margin: 0;
+			overflow: hidden;
+		}
 
 	.create-step .variant-group.selection-hidden {
 		display: none;
@@ -599,12 +614,12 @@
 		min-width: 0;
 	}
 
-	.create-step .variant-card.selected-layout .variant-content .variant-name {
-		margin-top: 0;
-		font-size: clamp(1.8rem, 2.6vw, 2.5rem);
-		line-height: 1.15;
-		margin-bottom: 0.75rem;
-	}
+		.create-step .variant-card.selected-layout .variant-content .variant-name {
+			margin-top: 0;
+			font-size: clamp(1.8rem, 2.6vw, 2.5rem);
+			line-height: 1.15;
+			margin-bottom: 0.75rem;
+		}
 
 	.create-table-favorites-message {
 		display: inline-flex;
@@ -637,38 +652,38 @@
 		z-index: 1;
 	}
 
-	.variant-favorite-button:hover:not(:disabled) {
-		transform: translateY(-1px);
-		border-color: rgba(217, 119, 6, 0.28);
-		background: linear-gradient(180deg, rgba(255, 251, 235, 0.98) 0%, rgba(254, 243, 199, 0.92) 100%);
-		color: rgba(180, 83, 9, 0.98);
-		box-shadow: 0 14px 28px rgba(217, 119, 6, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.82);
-	}
+		.variant-favorite-button:hover:not(:disabled) {
+			transform: translateY(-1px);
+			border-color: rgba(217, 119, 6, 0.28);
+			background: linear-gradient(180deg, rgba(255, 251, 235, 0.98) 0%, rgba(254, 243, 199, 0.92) 100%);
+			color: rgba(180, 83, 9, 0.98);
+			box-shadow: 0 14px 28px rgba(217, 119, 6, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.82);
+		}
 
-	.variant-favorite-button.active {
-		border-color: rgba(217, 119, 6, 0.34);
-		background: linear-gradient(180deg, rgba(255, 248, 220, 0.98) 0%, rgba(252, 211, 77, 0.68) 100%);
-		color: rgba(161, 98, 7, 1);
-		box-shadow: 0 14px 30px rgba(217, 119, 6, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.88);
-	}
+		.variant-favorite-button.active {
+			border-color: rgba(217, 119, 6, 0.34);
+			background: linear-gradient(180deg, rgba(255, 248, 220, 0.98) 0%, rgba(252, 211, 77, 0.68) 100%);
+			color: rgba(161, 98, 7, 1);
+			box-shadow: 0 14px 30px rgba(217, 119, 6, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.88);
+		}
 
-	.variant-favorite-button.active:hover:not(:disabled) {
-		border-color: rgba(180, 83, 9, 0.42);
-		background: linear-gradient(180deg, rgba(255, 250, 229, 1) 0%, rgba(250, 204, 21, 0.76) 100%);
-		color: rgba(146, 64, 14, 1);
-		box-shadow: 0 16px 32px rgba(180, 83, 9, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.92);
-	}
+			.variant-favorite-button.active:hover:not(:disabled) {
+				border-color: rgba(180, 83, 9, 0.42);
+				background: linear-gradient(180deg, rgba(255, 250, 229, 1) 0%, rgba(250, 204, 21, 0.76) 100%);
+				color: rgba(146, 64, 14, 1);
+				box-shadow: 0 16px 32px rgba(180, 83, 9, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.92);
+			}
 
-	.variant-favorite-button:focus-visible {
-		outline: none;
-		box-shadow: 0 0 0 4px rgba(252, 211, 77, 0.24), 0 14px 30px rgba(15, 23, 42, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.88);
-	}
+		.variant-favorite-button:focus-visible {
+			outline: none;
+			box-shadow: 0 0 0 4px rgba(252, 211, 77, 0.24), 0 14px 30px rgba(15, 23, 42, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.88);
+		}
 
-	.variant-favorite-button:disabled {
-		opacity: 0.55;
-		cursor: not-allowed;
-		box-shadow: 0 8px 16px rgba(15, 23, 42, 0.05);
-	}
+		.variant-favorite-button:disabled {
+			opacity: 0.55;
+			cursor: not-allowed;
+			box-shadow: 0 8px 16px rgba(15, 23, 42, 0.05);
+		}
 
 	.variant-list-row-actions {
 		display: flex;
@@ -691,29 +706,29 @@
 		box-shadow: 0 12px 24px rgba(2, 6, 23, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 	}
 
-	[data-theme="dark"] .variant-favorite-button:hover:not(:disabled) {
-		border-color: rgba(251, 191, 36, 0.36);
-		background: linear-gradient(180deg, rgba(69, 39, 12, 0.96) 0%, rgba(41, 24, 10, 0.94) 100%);
-		color: rgba(253, 230, 138, 0.98);
-		box-shadow: 0 14px 28px rgba(120, 53, 15, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-	}
+		[data-theme="dark"] .variant-favorite-button:hover:not(:disabled) {
+			border-color: rgba(251, 191, 36, 0.36);
+			background: linear-gradient(180deg, rgba(69, 39, 12, 0.96) 0%, rgba(41, 24, 10, 0.94) 100%);
+			color: rgba(253, 230, 138, 0.98);
+			box-shadow: 0 14px 28px rgba(120, 53, 15, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+		}
 
-	[data-theme="dark"] .variant-favorite-button.active {
-		border-color: rgba(245, 158, 11, 0.42);
-		background: linear-gradient(180deg, rgba(120, 53, 15, 0.98) 0%, rgba(146, 64, 14, 0.94) 100%);
-		color: rgba(254, 240, 138, 1);
-		box-shadow: 0 16px 30px rgba(120, 53, 15, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-	}
+		[data-theme="dark"] .variant-favorite-button.active {
+			border-color: rgba(245, 158, 11, 0.42);
+			background: linear-gradient(180deg, rgba(120, 53, 15, 0.98) 0%, rgba(146, 64, 14, 0.94) 100%);
+			color: rgba(254, 240, 138, 1);
+			box-shadow: 0 16px 30px rgba(120, 53, 15, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+		}
 
-	[data-theme="dark"] .variant-favorite-button.active:hover:not(:disabled) {
-		border-color: rgba(252, 211, 77, 0.5);
-		background: linear-gradient(180deg, rgba(146, 64, 14, 1) 0%, rgba(180, 83, 9, 0.96) 100%);
-		color: rgba(254, 249, 195, 1);
-	}
+			[data-theme="dark"] .variant-favorite-button.active:hover:not(:disabled) {
+				border-color: rgba(252, 211, 77, 0.5);
+				background: linear-gradient(180deg, rgba(146, 64, 14, 1) 0%, rgba(180, 83, 9, 0.96) 100%);
+				color: rgba(254, 249, 195, 1);
+			}
 
-	[data-theme="dark"] .variant-favorite-button:focus-visible {
-		box-shadow: 0 0 0 4px rgba(250, 204, 21, 0.2), 0 16px 30px rgba(2, 6, 23, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-	}
+		[data-theme="dark"] .variant-favorite-button:focus-visible {
+			box-shadow: 0 0 0 4px rgba(250, 204, 21, 0.2), 0 16px 30px rgba(2, 6, 23, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+		}
 
 	.create-table-dealers-choice-selection-groups {
 		display: flex;
@@ -754,11 +769,11 @@
 		background: rgba(15, 23, 42, 0.38);
 	}
 
-	.create-table-dealers-choice-selection-item .game-info-odds-toggle-switch {
-		flex-shrink: 0;
-		min-width: 84px;
-		justify-self: end;
-	}
+		.create-table-dealers-choice-selection-item .game-info-odds-toggle-switch {
+			flex-shrink: 0;
+			min-width: 84px;
+			justify-self: end;
+		}
 
 	.create-table-dealers-choice-selection-copy {
 		display: flex;
@@ -784,10 +799,10 @@
 		gap: 0.75rem;
 	}
 
-	.table-name-input-row .form-input {
-		flex: 1 1 auto;
-		min-width: 0;
-	}
+		.table-name-input-row .form-input {
+			flex: 1 1 auto;
+			min-width: 0;
+		}
 
 	.table-name-generate-button {
 		flex: 0 0 auto;
@@ -803,16 +818,16 @@
 		transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
 	}
 
-	.table-name-generate-button:hover:not(:disabled) {
-		background: rgba(30, 41, 59, 0.9);
-		border-color: rgba(148, 163, 184, 0.45);
-		transform: translateY(-1px);
-	}
+		.table-name-generate-button:hover:not(:disabled) {
+			background: rgba(30, 41, 59, 0.9);
+			border-color: rgba(148, 163, 184, 0.45);
+			transform: translateY(-1px);
+		}
 
-	.table-name-generate-button:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
-	}
+		.table-name-generate-button:disabled {
+			opacity: 0.6;
+			cursor: not-allowed;
+		}
 
 	/* Variant search row layout */
 	.variant-search-row {
@@ -821,17 +836,17 @@
 		gap: 1rem;
 	}
 
-	.variant-search-row .form-group {
-		flex: 1 1 auto;
-		min-width: 0;
-	}
+		.variant-search-row .form-group {
+			flex: 1 1 auto;
+			min-width: 0;
+		}
 
-	.variant-search-row .view-toggle-group {
-		display: flex;
-		gap: 0.5rem;
-		flex-shrink: 0;
-		padding-bottom: 0.15rem;
-	}
+		.variant-search-row .view-toggle-group {
+			display: flex;
+			gap: 0.5rem;
+			flex-shrink: 0;
+			padding-bottom: 0.15rem;
+		}
 
 	/* Variant list view */
 	.variants-list {
@@ -855,27 +870,27 @@
 		min-height: 0;
 	}
 
-	.variant-list-row:hover {
-		transform: translateY(-1px);
-		box-shadow: var(--card-shadow-hover);
-		border-color: var(--primary);
-	}
+		.variant-list-row:hover {
+			transform: translateY(-1px);
+			box-shadow: var(--card-shadow-hover);
+			border-color: var(--primary);
+		}
 
-	.variant-list-row.selected {
-		border-color: var(--primary);
-		box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2);
-	}
+		.variant-list-row.selected {
+			border-color: var(--primary);
+			box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2);
+		}
 
-	.variant-list-row.disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
-	}
+		.variant-list-row.disabled {
+			opacity: 0.6;
+			cursor: not-allowed;
+		}
 
-	.variant-list-row.disabled:hover {
-		transform: none;
-		box-shadow: none;
-		border-color: var(--border-color);
-	}
+			.variant-list-row.disabled:hover {
+				transform: none;
+				box-shadow: none;
+				border-color: var(--border-color);
+			}
 
 	.variant-list-row-icon {
 		width: 60px;
@@ -888,17 +903,17 @@
 		border-radius: 8px;
 	}
 
-	.variant-list-row-icon img {
-		width: 100%;
-		height: 100%;
-		object-fit: contain;
-		border-radius: 8px;
-	}
+		.variant-list-row-icon img {
+			width: 100%;
+			height: 100%;
+			object-fit: contain;
+			border-radius: 8px;
+		}
 
-	.variant-list-row-icon .variant-icon-fallback {
-		font-size: 1.4rem;
-		line-height: 1;
-	}
+		.variant-list-row-icon .variant-icon-fallback {
+			font-size: 1.4rem;
+			line-height: 1;
+		}
 
 	.variant-list-row-info {
 		display: flex;
@@ -941,18 +956,18 @@
 			grid-template-columns: 1fr;
 		}
 
-		.create-step .variant-card.selected-layout .variant-icon {
-			min-height: 190px;
-		}
+			.create-step .variant-card.selected-layout .variant-icon {
+				min-height: 190px;
+			}
 
 		.create-table-dealers-choice-selection-item {
 			grid-template-columns: minmax(0, 1fr) auto;
 			align-items: start;
 		}
 
-		.create-table-dealers-choice-selection-item .game-info-odds-toggle-switch {
-			margin-top: 0.1rem;
-		}
+			.create-table-dealers-choice-selection-item .game-info-odds-toggle-switch {
+				margin-top: 0.1rem;
+			}
 
 		.table-name-input-row {
 			gap: 0.5rem;
@@ -1005,6 +1020,8 @@
 	private string _smallBlindInput = "1";
 	private int _bigBlind = 2;
 	private string _bigBlindInput = "2";
+	private int? _maxBuyIn;
+	private string _maxBuyInInput = string.Empty;
 	private bool _areOddsVisibleToAllPlayers = true;
 	private bool _canManageFavoriteVariants = true;
 	private readonly HashSet<string> _allowedDealerChoiceGameCodes = new(StringComparer.OrdinalIgnoreCase);
@@ -1118,6 +1135,7 @@
 	private bool CanCreate =>
 		_selectedVariant is not null &&
 		!string.IsNullOrWhiteSpace(_tableName) &&
+		HasValidMaxBuyIn &&
 		(_isDealersChoice
 			? _allowedDealerChoiceGameCodes.Count > 0
 			: (_hasBlinds
@@ -1125,9 +1143,13 @@
 				: (_ante > 0 && _minBet > 0)));
 
 	private bool IsScrewYourNeighbor =>
-       IsScrewYourNeighborCode(_selectedVariant?.Code);
+	   IsScrewYourNeighborCode(_selectedVariant?.Code);
 
 	private bool ShowMinimumBetInput => !IsScrewYourNeighbor;
+
+	private bool HasValidMaxBuyIn =>
+		string.IsNullOrWhiteSpace(_maxBuyInInput)
+		|| (_maxBuyIn.HasValue && _maxBuyIn.Value >= GetConfiguredMinimumBuyIn());
 
 	private bool CanManageFavoriteVariants => _canManageFavoriteVariants && !_isUpdatingFavoriteVariants;
 
@@ -1482,9 +1504,9 @@
 			variantType: VariantType.Other
 		);
 		_isDealersChoice = variant.Code == DealersChoiceCode;
-       _hasBlinds = !_isDealersChoice
-			&& !IsScrewYourNeighborCode(_selectedVariant.Code)
-			&& _selectedVariant.VariantType == VariantType.HoldEm;
+		_hasBlinds = !_isDealersChoice
+			 && !IsScrewYourNeighborCode(_selectedVariant.Code)
+			 && _selectedVariant.VariantType == VariantType.HoldEm;
 
 		if (_hasBlinds)
 		{
@@ -1522,6 +1544,7 @@
 				IsDealersChoice = _isDealersChoice,
 				SmallBlind = _hasBlinds ? _smallBlind : null,
 				BigBlind = _hasBlinds ? _bigBlind : null,
+				MaxBuyIn = _maxBuyIn,
 				AreOddsVisibleToAllPlayers = _areOddsVisibleToAllPlayers,
 				AllowedDealerChoiceGameCodes = _isDealersChoice
 					? _allowedDealerChoiceGameCodes.OrderBy(code => code, StringComparer.OrdinalIgnoreCase).ToArray()
@@ -1628,6 +1651,12 @@
 		await DebounceCanCreateUpdateAsync();
 	}
 
+	private async Task OnMaxBuyInInput(ChangeEventArgs args)
+	{
+		_maxBuyInInput = args.Value?.ToString() ?? string.Empty;
+		await DebounceCanCreateUpdateAsync();
+	}
+
 	private async Task DebounceCanCreateUpdateAsync()
 	{
 		_canCreateDebounceCancellationTokenSource?.Cancel();
@@ -1655,6 +1684,7 @@
 		_bigBlind = ParseBufferedInteger(_bigBlindInput);
 		_ante = ParseBufferedInteger(_anteInput);
 		_minBet = ParseBufferedInteger(_minBetInput);
+		_maxBuyIn = ParseBufferedNullableInteger(_maxBuyInInput);
 	}
 
 	private void SyncBufferedCanCreateInputs()
@@ -1664,11 +1694,42 @@
 		_bigBlindInput = _bigBlind.ToString();
 		_anteInput = _ante.ToString();
 		_minBetInput = _minBet.ToString();
+		_maxBuyInInput = _maxBuyIn?.ToString() ?? string.Empty;
 	}
 
 	private static int ParseBufferedInteger(string value)
 	{
 		return int.TryParse(value, out var parsedValue) ? parsedValue : 0;
+	}
+
+	private static int? ParseBufferedNullableInteger(string value)
+	{
+		if (string.IsNullOrWhiteSpace(value))
+		{
+			return null;
+		}
+
+		return int.TryParse(value, out var parsedValue) ? parsedValue : null;
+	}
+
+	private int GetConfiguredMinimumBuyIn()
+	{
+		if (_selectedVariant is null || _isDealersChoice)
+		{
+			return 1;
+		}
+
+		if (IsScrewYourNeighbor)
+		{
+			return Math.Max(1, _ante * 3);
+		}
+
+		if (_hasBlinds)
+		{
+			return Math.Max(1, _bigBlind);
+		}
+
+		return Math.Max(1, Math.Max(_ante, _minBet));
 	}
 
 	private static string NormalizeVariantCode(string? value)

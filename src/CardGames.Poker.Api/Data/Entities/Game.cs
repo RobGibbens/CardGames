@@ -98,6 +98,12 @@ public class Game : EntityWithRowVersion
 	public int? MinBet { get; set; }
 
 	/// <summary>
+	/// Maximum buy-in allowed when a player initially joins the table.
+	/// Null means no table-level buy-in cap.
+	/// </summary>
+	public int? MaxBuyIn { get; set; }
+
+	/// <summary>
 	/// JSON-serialized game-specific settings (e.g., buy-card price, king-required rule).
 	/// </summary>
 	/// <remarks>

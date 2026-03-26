@@ -196,6 +196,13 @@ public sealed class JoinGameCommandHandler(
 			startingChips = stackSize * 3;
 		}
 
+		if (game.MaxBuyIn.HasValue && startingChips > game.MaxBuyIn.Value)
+		{
+			return new JoinGameError(
+				JoinGameErrorCode.BuyInExceedsTableMaximum,
+				$"Buy-in exceeds the table maximum of {game.MaxBuyIn.Value:N0}.");
+		}
+
 		var debitResult = await playerChipWalletService.TryDebitForBuyInAsync(
 			player.Id,
 			startingChips,

@@ -32,6 +32,7 @@ public static class JoinGameEndpoint
                             JoinGameErrorCode.GameEnded => Results.Conflict(new { error.Message }),
                             JoinGameErrorCode.ZeroAccountBalance => Results.BadRequest(new { error.Message }),
                             JoinGameErrorCode.InsufficientAccountChips => Results.Conflict(new { error.Message }),
+                            JoinGameErrorCode.BuyInExceedsTableMaximum => Results.Conflict(new { error.Message }),
                             JoinGameErrorCode.LeagueMembershipRequired => Results.Forbid(),
                             JoinGameErrorCode.LateJoinNotAllowed => Results.Conflict(new { error.Message }),
                             _ => Results.Problem(error.Message)
@@ -53,6 +54,7 @@ public static class JoinGameEndpoint
                 "- Variant must allow late entry for started games\n" +
                 "- Starting chips must be greater than 0\n" +
                 "- Player account balance must be greater than 0\n" +
+                "- Requested buy-in must not exceed the table maximum buy-in, when configured\n" +
                 "- Requested buy-in must not exceed account balance\n\n" +
                 "**Response:**\n" +
                 "- `CanPlayCurrentHand`: true if joining during WaitingToStart/WaitingForPlayers phase")
