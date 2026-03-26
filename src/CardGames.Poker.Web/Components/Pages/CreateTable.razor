@@ -496,6 +496,22 @@
 										   @oninput="OnMaxBuyInInput" />
 									<span class="form-hint">Optional. Leave blank for no limit. Minimum @GetConfiguredMinimumBuyIn().ToString("N0").</span>
 								</div>
+								<div class="form-group">
+									<label class="form-label" for="requiresJoinApproval">Host Approval</label>
+									<div class="create-table-odds-visibility-control">
+										<button class="game-info-odds-toggle-switch @(_requiresJoinApproval ? "is-on" : "is-off")"
+												type="button"
+												id="requiresJoinApproval"
+												role="switch"
+												aria-checked="@_requiresJoinApproval"
+												aria-label="Toggle host approval for joining"
+												@onclick="ToggleJoinApproval">
+											<span class="game-info-odds-toggle-text">@(_requiresJoinApproval ? "ON" : "OFF")</span>
+											<span class="game-info-odds-toggle-thumb" aria-hidden="true"></span>
+										</button>
+										<span class="form-hint odds-visibility-hint">Require host approval before players can join this table</span>
+									</div>
+								</div>
 							</div>
 
 							<div class="form-row">
@@ -1022,6 +1038,7 @@
 	private string _bigBlindInput = "2";
 	private int? _maxBuyIn;
 	private string _maxBuyInInput = string.Empty;
+	private bool _requiresJoinApproval;
 	private bool _areOddsVisibleToAllPlayers = true;
 	private bool _canManageFavoriteVariants = true;
 	private readonly HashSet<string> _allowedDealerChoiceGameCodes = new(StringComparer.OrdinalIgnoreCase);
@@ -1545,6 +1562,7 @@
 				SmallBlind = _hasBlinds ? _smallBlind : null,
 				BigBlind = _hasBlinds ? _bigBlind : null,
 				MaxBuyIn = _maxBuyIn,
+				RequiresJoinApproval = _requiresJoinApproval,
 				AreOddsVisibleToAllPlayers = _areOddsVisibleToAllPlayers,
 				AllowedDealerChoiceGameCodes = _isDealersChoice
 					? _allowedDealerChoiceGameCodes.OrderBy(code => code, StringComparer.OrdinalIgnoreCase).ToArray()
@@ -1759,6 +1777,11 @@
 	private void ToggleOddsVisibility()
 	{
 		_areOddsVisibleToAllPlayers = !_areOddsVisibleToAllPlayers;
+	}
+
+	private void ToggleJoinApproval()
+	{
+		_requiresJoinApproval = !_requiresJoinApproval;
 	}
 
 	public async ValueTask DisposeAsync()

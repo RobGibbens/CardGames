@@ -270,6 +270,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			ChipCheckPause = chipCheckPause,
 			CommunityCards = communityCards.Count > 0 ? communityCards : null,
 			IsDealersChoice = game.IsDealersChoice,
+			RequiresJoinApproval = game.RequiresJoinApproval,
 			DealersChoiceDealerPosition = game.IsDealersChoice ? game.DealersChoiceDealerPosition : null
 		};
 	}

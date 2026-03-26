@@ -46,6 +46,11 @@ public class CardsDbContext(DbContextOptions<CardsDbContext> options) : Identity
 	public DbSet<GamePlayer> GamePlayers => Set<GamePlayer>();
 
 	/// <summary>
+	/// Gets the set of game join requests.
+	/// </summary>
+	public DbSet<GameJoinRequest> GameJoinRequests => Set<GameJoinRequest>();
+
+	/// <summary>
 	/// Gets the set of cards in games.
 	/// </summary>
 	public DbSet<GameCard> GameCards => Set<GameCard>();

@@ -106,8 +106,10 @@ public class Program
         builder.Services.AddSingleton<IUserIdProvider, SignalRUserIdProvider>();
         builder.Services.AddSingleton<IActionTimerService, ActionTimerService>();
         builder.Services.AddSingleton<IAutoActionService, AutoActionService>();
+        builder.Services.AddHostedService<GameJoinRequestExpiryBackgroundService>();
         builder.Services.AddScoped<ITableStateBuilder, TableStateBuilder>();
         builder.Services.AddScoped<IGameStateBroadcaster, GameStateBroadcaster>();
+        builder.Services.AddScoped<IGameJoinRequestBroadcaster, GameJoinRequestBroadcaster>();
         builder.Services.AddScoped<ILobbyBroadcaster, LobbyBroadcaster>();
 		builder.Services.AddScoped<ILeagueBroadcaster, LeagueBroadcaster>();
         builder.Services.AddScoped<IHandHistoryRecorder, HandHistoryRecorder>();
@@ -358,6 +360,7 @@ public class Program
         // Map SignalR hubs with header-based auth for Blazor clients
         app.MapHub<GameHub>("/hubs/game");
         app.MapHub<LobbyHub>("/hubs/lobby");
+		app.MapHub<NotificationHub>("/hubs/notifications");
 		app.MapHub<LeagueHub>("/hubs/leagues");
 
         app.Run();

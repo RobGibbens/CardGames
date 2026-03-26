@@ -50,7 +50,8 @@ public static partial class GetGameMapper
 			RowVersion = MapRowVersion(model.RowVersion),
 			IsDealersChoice = model.IsDealersChoice,
 			DealersChoiceDealerPosition = model.DealersChoiceDealerPosition,
-			AreOddsVisibleToAllPlayers = model.AreOddsVisibleToAllPlayers
+			AreOddsVisibleToAllPlayers = model.AreOddsVisibleToAllPlayers,
+			RequiresJoinApproval = model.RequiresJoinApproval
 		};
 	}
 

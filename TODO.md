@@ -2,8 +2,6 @@
 
 ## Still to do
 
-- [ ] Bringing in cash to a game should require host approval?
-
 - [ ] Create table page - Keep Dealer's Choice at the top, not with "Other"
 - [ ] Add a "Rules" property to each game
 - [ ] Replace cardmeister with images?
@@ -269,4 +267,5 @@
 - [x] Add a private chime for the player when it's their turn
 - [x] Lobby should wrap descriptions
 - [x] Allow users to "favorite" game types and sort them at the top
-- [x] - [x] Make the dark/light theme support system settings
+- [x] Make the dark/light theme support system settings
+- [x] Bringing in cash to a game should require host approval?

@@ -15,4 +15,7 @@ public partial record GetGameResponse
 
 	[JsonPropertyName("areOddsVisibleToAllPlayers")]
 	public bool AreOddsVisibleToAllPlayers { get; init; }
+
+	[JsonPropertyName("requiresJoinApproval")]
+	public bool RequiresJoinApproval { get; init; }
 }

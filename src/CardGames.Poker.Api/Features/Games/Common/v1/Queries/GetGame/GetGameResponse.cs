@@ -45,4 +45,5 @@ public sealed record GetGameResponse
 	public bool IsDealersChoice { get; init; }
 	public int? DealersChoiceDealerPosition { get; init; }
 	public bool AreOddsVisibleToAllPlayers { get; init; }
+	public bool RequiresJoinApproval { get; init; }
 }

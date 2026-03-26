@@ -81,6 +81,11 @@ public sealed partial record TableStatePublicDto
 	public string? CreatedByName { get; init; }
 
 	/// <summary>
+	/// Whether new joiners must be approved by the host before taking a seat.
+	/// </summary>
+	public bool RequiresJoinApproval { get; init; }
+
+	/// <summary>
 	/// The list of seats and their public state.
 	/// </summary>
 	public required IReadOnlyList<SeatPublicDto> Seats { get; init; }

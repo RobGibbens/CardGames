@@ -4,6 +4,7 @@
 @implements IAsyncDisposable
 
 @using System.ComponentModel
+@using System.Net
 @using System.Text.Json
 @using CardGames.Contracts.SignalR
 @using CardGames.Core.French.Cards
@@ -42,6 +43,7 @@
 @inject IJSRuntime JSRuntime
 @inject IProfileApi ProfileApi
 @inject IAvailablePokerGamesApi AvailablePokerGamesApi
+@inject NotificationHubClient NotificationHubClient
 
 <PageTitle>Table - Dealer's Choice Poker</PageTitle>
 
@@ -106,6 +108,31 @@
                     }
                     Join Table
                 </button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_showJoinApprovalPendingModal)
+{
+    <div class="confirm-dialog-overlay">
+        <div class="confirm-dialog league-form-modal join-buy-in-modal join-approval-pending-modal" @onclick:stopPropagation>
+            <div class="confirm-dialog-header league-form-modal-header">
+                <h3 class="confirm-dialog-title mb-0">Waiting for Approval</h3>
+            </div>
+            <div class="confirm-dialog-body league-form-modal-body text-start">
+                <p class="confirm-dialog-message mb-2 text-start">
+                    Your request to join is pending approval from <strong>@_joinApprovalHostName</strong>.
+                </p>
+                <p class="confirm-dialog-message mb-0 text-start">
+                    Requested buy-in: <strong>@_pendingApprovalBuyIn.ToString("N0")</strong>
+                </p>
+            </div>
+            <div class="confirm-dialog-footer join-buy-in-modal-footer">
+                <div class="waiting-approval-indicator">
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    <span>Waiting on host response</span>
+                </div>
             </div>
         </div>
     </div>
@@ -587,6 +614,10 @@
     private bool _showJoinBuyInModal;
     private bool _isJoiningSeat;
     private int? _pendingJoinSeatIndex;
+    private bool _showJoinApprovalPendingModal;
+    private Guid? _pendingJoinRequestId;
+    private string? _joinApprovalHostName;
+    private int _pendingApprovalBuyIn;
     private int _joinBuyInBalance;
     private int? _joinBuyInBalanceCap;
     private bool _isPlayerTurn;
@@ -1043,6 +1074,7 @@
         GameHubClient.OnPlayerActionPerformed += HandlePlayerActionPerformedAsync;
         GameHubClient.OnTableSettingsUpdated += HandleTableSettingsUpdatedAsync;
         GameHubClient.OnTableToastNotification += HandleTableToastNotificationAsync;
+        NotificationHubClient.OnGameJoinRequestResolved += HandleJoinRequestResolvedAsync;
 
         // Load initial data FIRST so seats and _gameResponse are populated
         // before SignalR sends its state snapshot
@@ -2420,7 +2452,8 @@
                 )
                 {
                     AreOddsVisibleToAllPlayers = gamesResponse.AreOddsVisibleToAllPlayers,
-                    MaxBuyIn = gamesResponse.MaxBuyIn
+                    MaxBuyIn = gamesResponse.MaxBuyIn,
+                    RequiresJoinApproval = gamesResponse.RequiresJoinApproval
                 };
                 _allowedDealerChoiceGameCodes = ParseAllowedDealerChoiceGameCodes(gamesResponse.GameSettings);
 
@@ -2556,6 +2589,22 @@
         _pendingJoinSeatIndex = null;
         _joinBuyInBalance = 0;
         _joinBuyInBalanceCap = null;
+    }
+
+    private void ShowJoinApprovalPendingModal(Guid? joinRequestId, string? hostName)
+    {
+        _showJoinApprovalPendingModal = true;
+        _pendingJoinRequestId = joinRequestId;
+        _joinApprovalHostName = string.IsNullOrWhiteSpace(hostName) ? "the host" : hostName;
+        _pendingApprovalBuyIn = _joinBuyInAmount;
+    }
+
+    private void CloseJoinApprovalPendingModal()
+    {
+        _showJoinApprovalPendingModal = false;
+        _pendingJoinRequestId = null;
+        _joinApprovalHostName = null;
+        _pendingApprovalBuyIn = 0;
     }
 
     private async Task ToggleSitOutAsync()
@@ -2749,6 +2798,20 @@
 
             var response = await GamesApiClient.JoinGameAsync(GameId, request);
 
+            if (response.StatusCode == HttpStatusCode.Accepted)
+            {
+                var hostName = TryGetHeaderValue(response.Headers, "X-Host-Name");
+                var joinRequestIdValue = TryGetHeaderValue(response.Headers, "X-Join-Request-Id");
+                Guid? joinRequestId = Guid.TryParse(joinRequestIdValue, out var parsedJoinRequestId)
+                    ? parsedJoinRequestId
+                    : null;
+
+                CloseJoinBuyInModal();
+                ShowJoinApprovalPendingModal(joinRequestId, hostName);
+                await ShowToastAsync($"Waiting for {(_joinApprovalHostName ?? "the host")} to approve your request.", "info");
+                return;
+            }
+
             if (!response.IsSuccessStatusCode)
             {
                 Logger.LogWarning("Failed to join game at seat {SeatIndex}: {StatusCode} - {Error}",
@@ -2803,6 +2866,31 @@
         finally
         {
             _isJoiningSeat = false;
+        }
+    }
+
+    private async Task HandleJoinRequestResolvedAsync(GameJoinRequestResolvedDto notification)
+    {
+        if (notification.GameId != GameId)
+        {
+            return;
+        }
+
+        if (_pendingJoinRequestId.HasValue && notification.JoinRequestId != _pendingJoinRequestId.Value)
+        {
+            return;
+        }
+
+        CloseJoinApprovalPendingModal();
+
+        if (string.Equals(notification.Status, "Approved", StringComparison.OrdinalIgnoreCase))
+        {
+            await LoadDataAsync();
+            await ShowToastAsync("The host approved your join request.", "success");
+        }
+        else
+        {
+            await ShowToastAsync(notification.Reason ?? "The host denied your join request.", "error");
         }
     }
 
@@ -5040,6 +5128,7 @@
         GameHubClient.OnPlayerActionPerformed -= HandlePlayerActionPerformedAsync;
         GameHubClient.OnTableSettingsUpdated -= HandleTableSettingsUpdatedAsync;
         GameHubClient.OnTableToastNotification -= HandleTableToastNotificationAsync;
+        NotificationHubClient.OnGameJoinRequestResolved -= HandleJoinRequestResolvedAsync;
 
         // Leave the game and disconnect
         if (_currentGameId.HasValue)
@@ -5059,6 +5148,13 @@
         {
             // Component was disposed between the check and the call — safe to ignore.
         }
+    }
+
+    private static string? TryGetHeaderValue(System.Net.Http.Headers.HttpResponseHeaders headers, string headerName)
+    {
+        return headers.TryGetValues(headerName, out var values)
+            ? values.FirstOrDefault()
+            : null;
     }
 
     /// <summary>

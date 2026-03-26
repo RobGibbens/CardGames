@@ -5,6 +5,7 @@ using CardGames.Poker.Api.Features.Games.Common.v1.Commands.CreateGame;
 using CardGames.Poker.Api.Features.Games.Common.v1.Commands.DeleteGame;
 using CardGames.Poker.Api.Features.Games.Common.v1.Commands.JoinGame;
 using CardGames.Poker.Api.Features.Games.Common.v1.Commands.LeaveGame;
+using CardGames.Poker.Api.Features.Games.Common.v1.Commands.ResolveJoinRequest;
 using CardGames.Poker.Api.Features.Games.Common.v1.Commands.ToggleSitOut;
 using CardGames.Poker.Api.Features.Games.Common.v1.Commands.ToggleOddsVisibility;
 using CardGames.Poker.Api.Features.Games.Common.v1.Commands.UpdateTableSettings;
@@ -15,6 +16,7 @@ using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetTableSettings;
 using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetGamePlayers;
 using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetGames;
 using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetHandHistory;
+using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetPendingJoinRequestsForHost;
 using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetCurrentBettingRound;
 using SharpGrip.FluentValidation.AutoValidation.Endpoints.Extensions;
 
@@ -36,6 +38,7 @@ public static class V1
 		mapGroup.MapDeleteGame();
 		mapGroup.MapJoinGame();
 		mapGroup.MapLeaveGame();
+		mapGroup.MapResolveJoinRequest();
 		mapGroup.MapSitOut();
 		mapGroup.MapToggleOddsVisibility();
 		mapGroup.MapUpdateTableSettings();
@@ -48,6 +51,7 @@ public static class V1
 		mapGroup.MapGetGameRules();
 		mapGroup.MapGetGames();
 		mapGroup.MapGetHandHistory();
+		mapGroup.MapGetPendingJoinRequestsForHost();
 		mapGroup.MapGetTableSettings();
 	}
 }

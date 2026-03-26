@@ -109,6 +109,7 @@ public class CreateGameCommandHandler(
 			SmallBlind = command.SmallBlind,
 			BigBlind = command.BigBlind,
 			MaxBuyIn = command.MaxBuyIn,
+			RequiresJoinApproval = command.RequiresJoinApproval,
 			IsDealersChoice = command.IsDealersChoice,
 			AreOddsVisibleToAllPlayers = command.AreOddsVisibleToAllPlayers,
 			Status = GameStatus.WaitingForPlayers,

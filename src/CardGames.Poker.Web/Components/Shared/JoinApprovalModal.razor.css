@@ -1,0 +1,78 @@
+.join-approval-overlay {
+    --join-overlay-backdrop: var(--confirm-overlay-backdrop, rgba(15, 23, 42, 0.5));
+    --join-overlay-surface: var(--confirm-overlay-surface, var(--card-bg, #ffffff));
+    --join-overlay-surface-border: var(--confirm-overlay-surface-border, var(--border-color, rgba(15, 23, 42, 0.12)));
+    --join-overlay-text-primary: var(--confirm-overlay-text-primary, var(--text-primary, #111827));
+    --join-overlay-text-secondary: var(--confirm-overlay-text-secondary, var(--text-secondary, #4b5563));
+    --join-overlay-secondary-bg: var(--confirm-overlay-secondary-bg, var(--bg-tertiary, #f3f4f6));
+    --join-overlay-secondary-border: var(--confirm-overlay-secondary-border, var(--border-color, #d1d5db));
+    --join-overlay-secondary-text: var(--confirm-overlay-secondary-text, var(--text-primary, #111827));
+    --join-overlay-primary-bg: var(--confirm-overlay-primary-bg, var(--primary, #dc2626));
+    --join-overlay-primary-border: var(--confirm-overlay-primary-border, var(--primary, #dc2626));
+    --join-overlay-primary-text: var(--confirm-overlay-primary-text, #ffffff);
+    --join-overlay-input-bg: var(--bg-tertiary, #f9fafb);
+    --join-overlay-input-border: var(--border-color, #d1d5db);
+    background-color: var(--join-overlay-backdrop);
+}
+
+.join-approval-modal {
+    width: min(42rem, calc(100vw - 2rem));
+    max-height: min(80vh, 48rem);
+    overflow: auto;
+    background: var(--join-overlay-surface);
+    border: 1px solid var(--join-overlay-surface-border);
+    color: var(--join-overlay-text-primary);
+}
+
+.join-approval-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.join-approval-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 1rem;
+    align-items: end;
+    padding: 1rem;
+    border: 1px solid var(--join-overlay-surface-border);
+    border-radius: 0.9rem;
+    background: color-mix(in srgb, var(--join-overlay-surface) 92%, #000 8%);
+}
+
+.join-approval-item-title-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: baseline;
+}
+
+.join-approval-game-name {
+    color: var(--join-overlay-text-secondary);
+    font-size: 0.9rem;
+}
+
+.join-approval-item-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.join-approval-error {
+    color: #b91c1c;
+    font-weight: 600;
+}
+
+@media (max-width: 640px) {
+    .join-approval-item {
+        grid-template-columns: 1fr;
+    }
+
+    .join-approval-item-actions {
+        width: 100%;
+    }
+
+    .join-approval-item-actions .btn {
+        flex: 1;
+    }
+}
