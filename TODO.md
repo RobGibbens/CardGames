@@ -2,15 +2,14 @@
 
 ## Still to do
 
-- [ ] Add a private chime for the player when it's their turn 
-- [x] Lobby should wrap descriptions
+
 - [ ] Add a "Rules" property to each game
 - [ ] Replace cardmeister with images?
 - [ ] Refactor TablePlay
+- [ ] Make the dark/light theme support system settings
 - [ ] <https://github.com/leeoades/FunctionalStateMachine>
 - [ ] SYN - check for ties
 - [ ] SYN - odds
-- [ ] Allow users to "favorite" game types and sort them at the top
 - [ ] Lobby - Filter by status
 - [ ] Join game modal background color
 - [ ] Joining table adds 5001 when setting 5000
@@ -265,3 +264,6 @@
 - [x] Add Klondike
 - [x] Game info should have game rules
 - [x] Customize blazor rejoin modal
+- [x] Add a private chime for the player when it's their turn 
+- [x] Lobby should wrap descriptions
+- [x] Allow users to "favorite" game types and sort them at the top

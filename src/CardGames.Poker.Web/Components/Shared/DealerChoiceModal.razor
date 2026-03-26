@@ -1,6 +1,9 @@
 @namespace CardGames.Poker.Web.Components.Shared
 
+@using CardGames.Poker.Api.Clients
 @using CardGames.Poker.Api.Contracts
+
+@inject IProfileApi ProfileApi
 
 <div class="table-overlay dealer-choice-overlay">
 	<div class="dealer-choice-modal">
@@ -28,11 +31,68 @@
 					   @bind:event="oninput" />
 			</div>
 
+			@if (_favoriteVariantsError is not null)
+			{
+				<div class="dealer-choice-favorites-message" role="status">
+					<i class="fa-regular fa-star"></i>
+					<span>@_favoriteVariantsError</span>
+				</div>
+			}
+
 			<!-- Variant Grid -->
 			<div class="dealer-choice-variants">
+				@if (FavoriteVariantGroup.Games.Count > 0 && ShouldRenderVariantGroup(FavoriteVariantGroup))
+				{
+					<section class="dealer-choice-variant-group">
+						<h3 class="dc-variant-group-title">@FavoriteVariantGroup.Title</h3>
+						@foreach (var game in FavoriteVariantGroup.Games)
+						{
+							var isDisabledForPlayerCount = IsVariantDisabledForPlayerCount(game);
+
+							<div class="dealer-choice-variant-shell @(isDisabledForPlayerCount ? "variant-disabled" : string.Empty)">
+								<button class="@GetFavoriteButtonClasses(game.Code)"
+									type="button"
+									aria-label="@GetFavoriteButtonLabel(game)"
+									aria-pressed="@IsFavoriteVariant(game.Code)"
+									title="@GetFavoriteButtonLabel(game)"
+									disabled="@(!CanManageFavoriteVariants)"
+									@onclick="() => ToggleFavoriteVariantAsync(game.Code)"
+									@onclick:stopPropagation="true">
+									<i class="@GetFavoriteButtonIconClasses(game.Code)"></i>
+								</button>
+								<button class="dealer-choice-variant @(_selectedCode == game.Code ? "selected" : string.Empty) @(isDisabledForPlayerCount ? "variant-disabled" : string.Empty)"
+										type="button"
+										disabled="@isDisabledForPlayerCount"
+										@onclick="() => SelectVariant(game.Code, game.Name)">
+									<div class="dc-variant-icon">
+										@if (!string.IsNullOrEmpty(game.ImageName))
+										{
+											<img src="/images/games/@(game.ImageName)" alt="@game.Name" />
+										}
+										else
+										{
+											<span class="dc-variant-icon-fallback"><i class="fa-thin fa-card-club"></i></span>
+										}
+									</div>
+									<span class="dc-variant-name">@game.Name</span>
+									<span class="dc-variant-desc">@game.Description</span>
+									<span class="dc-variant-players">
+										<i class="fa-regular fa-users"></i>
+										@game.MinimumNumberOfPlayers-@game.MaximumNumberOfPlayers
+									</span>
+									@if (isDisabledForPlayerCount)
+									{
+										<span class="dc-variant-disabled-reason">@GetDisabledReason(game)</span>
+									}
+								</button>
+							</div>
+						}
+					</section>
+				}
+
 				@foreach (var group in VariantGroups)
 				{
-					if (group.Games.Count == 0)
+					if (group.Games.Count == 0 || !ShouldRenderVariantGroup(group))
 					{
 						continue;
 					}
@@ -43,30 +103,43 @@
 						{
 							var isDisabledForPlayerCount = IsVariantDisabledForPlayerCount(game);
 
-							<button class="dealer-choice-variant @(_selectedCode == game.Code ? "selected" : "") @(isDisabledForPlayerCount ? "variant-disabled" : "")"
-									disabled="@isDisabledForPlayerCount"
-									@onclick="() => SelectVariant(game.Code, game.Name)">
-								<div class="dc-variant-icon">
-									@if (!string.IsNullOrEmpty(game.ImageName))
+							<div class="dealer-choice-variant-shell @(isDisabledForPlayerCount ? "variant-disabled" : string.Empty)">
+								<button class="@GetFavoriteButtonClasses(game.Code)"
+									type="button"
+									aria-label="@GetFavoriteButtonLabel(game)"
+									aria-pressed="@IsFavoriteVariant(game.Code)"
+									title="@GetFavoriteButtonLabel(game)"
+									disabled="@(!CanManageFavoriteVariants)"
+									@onclick="() => ToggleFavoriteVariantAsync(game.Code)"
+									@onclick:stopPropagation="true">
+									<i class="@GetFavoriteButtonIconClasses(game.Code)"></i>
+								</button>
+								<button class="dealer-choice-variant @(_selectedCode == game.Code ? "selected" : string.Empty) @(isDisabledForPlayerCount ? "variant-disabled" : string.Empty)"
+										type="button"
+										disabled="@isDisabledForPlayerCount"
+										@onclick="() => SelectVariant(game.Code, game.Name)">
+									<div class="dc-variant-icon">
+										@if (!string.IsNullOrEmpty(game.ImageName))
+										{
+											<img src="/images/games/@(game.ImageName)" alt="@game.Name" />
+										}
+										else
+										{
+											<span class="dc-variant-icon-fallback"><i class="fa-thin fa-card-club"></i></span>
+										}
+									</div>
+									<span class="dc-variant-name">@game.Name</span>
+									<span class="dc-variant-desc">@game.Description</span>
+									<span class="dc-variant-players">
+										<i class="fa-regular fa-users"></i>
+										@game.MinimumNumberOfPlayers-@game.MaximumNumberOfPlayers
+									</span>
+									@if (isDisabledForPlayerCount)
 									{
-										<img src="/images/games/@(game.ImageName)" alt="@game.Name" />
+										<span class="dc-variant-disabled-reason">@GetDisabledReason(game)</span>
 									}
-									else
-									{
-										<span class="dc-variant-icon-fallback"><i class="fa-thin fa-card-club"></i></span>
-									}
-								</div>
-								<span class="dc-variant-name">@game.Name</span>
-								<span class="dc-variant-desc">@game.Description</span>
-								<span class="dc-variant-players">
-									<i class="fa-regular fa-users"></i>
-									@game.MinimumNumberOfPlayers-@game.MaximumNumberOfPlayers
-								</span>
-								@if (isDisabledForPlayerCount)
-								{
-									<span class="dc-variant-disabled-reason">@GetDisabledReason(game)</span>
-								}
-							</button>
+								</button>
+							</div>
 						}
 					</section>
 				}
@@ -157,25 +230,33 @@
 	private int _bigBlind = 10;
 	private string _variantSearch = string.Empty;
 	private HashSet<string>? _allowedGameCodeLookup;
+	private readonly HashSet<string> _favoriteVariantCodes = new(StringComparer.OrdinalIgnoreCase);
 	private bool _isSubmitting;
+	private bool _isUpdatingFavoriteVariants;
 	private bool _isLoading;
+	private bool _canManageFavoriteVariants = true;
 	private string? _error;
+	private string? _favoriteVariantsError;
 
+	private const string FavoriteVariantsTitle = "Favorites";
 	private const string HoldEmVariantsTitle = "Hold 'Em variants";
 	private const string DrawVariantsTitle = "Draw variants";
 	private const string StudVariantsTitle = "Stud variants";
 	private const string OtherVariantsTitle = "Other variants";
 
+	private IEnumerable<GetAvailablePokerGamesResponse> VisibleGames =>
+		AvailableGames
+			.Where(g => IsAllowedGameType(g.Code))
+			.Where(g => _selectedCode is not null
+				? string.Equals(g.Code, _selectedCode, StringComparison.OrdinalIgnoreCase)
+				: MatchesVariantSearch(g.Name))
+			.OrderBy(g => g.Name, StringComparer.OrdinalIgnoreCase);
+
 	private IEnumerable<VariantGroup> VariantGroups
 	{
 		get
 		{
-			var games = AvailableGames
-				.Where(g => IsAllowedGameType(g.Code))
-				.Where(g => _selectedCode is not null
-					? g.Code == _selectedCode
-					: MatchesVariantSearch(g.Name))
-				.OrderBy(g => g.Name, StringComparer.OrdinalIgnoreCase);
+			var games = VisibleGames;
 
 			return new[]
 			{
@@ -185,6 +266,18 @@
 				CreateGroup(OtherVariantsTitle, games, VariantType.Other)
 			};
 		}
+	}
+
+	private VariantGroup FavoriteVariantGroup => new(
+		FavoriteVariantsTitle,
+		VisibleGames.Where(game => IsFavoriteVariant(game.Code)).ToList(),
+		true);
+
+	private bool CanManageFavoriteVariants => _canManageFavoriteVariants && !_isUpdatingFavoriteVariants;
+
+	protected override async Task OnInitializedAsync()
+	{
+		await LoadFavoriteVariantsAsync();
 	}
 
 	protected override void OnParametersSet()
@@ -203,6 +296,29 @@
 			_selectedCode = null;
 			_selectedName = null;
 		}
+	}
+
+	private async Task LoadFavoriteVariantsAsync()
+	{
+		try
+		{
+			var response = await ProfileApi.GetFavoriteVariantsAsync();
+			if (response.IsSuccessStatusCode && response.Content is not null)
+			{
+				ApplyFavoriteVariants(response.Content);
+				_favoriteVariantsError = null;
+				_canManageFavoriteVariants = true;
+				return;
+			}
+		}
+		catch
+		{
+			// Keep the dealer-choice flow usable even if favorites are unavailable.
+		}
+
+		_favoriteVariantCodes.Clear();
+		_canManageFavoriteVariants = false;
+		_favoriteVariantsError = "Favorites are unavailable right now.";
 	}
 
 	private void SelectVariant(string code, string name)
@@ -233,6 +349,27 @@
 	private static VariantGroup CreateGroup(string title, IEnumerable<GetAvailablePokerGamesResponse> games, VariantType variantType)
 	{
 		return new VariantGroup(title, games.Where(g => g.VariantType == variantType).ToList());
+	}
+
+	private bool ShouldRenderVariantGroup(VariantGroup group)
+	{
+		if (_selectedCode is null)
+		{
+			return true;
+		}
+
+		var containsSelectedVariant = group.Games.Any(game => string.Equals(game.Code, _selectedCode, StringComparison.OrdinalIgnoreCase));
+		if (!containsSelectedVariant)
+		{
+			return false;
+		}
+
+		if (IsFavoriteVariant(_selectedCode) && !group.IsFavorites)
+		{
+			return false;
+		}
+
+		return true;
 	}
 
 	private static bool IsBlindBasedGame(string? code) =>
@@ -267,6 +404,108 @@
 		return _allowedGameCodeLookup is null || _allowedGameCodeLookup.Contains(gameCode);
 	}
 
+	private bool IsFavoriteVariant(string? gameCode)
+	{
+		return !string.IsNullOrWhiteSpace(gameCode)
+			&& _favoriteVariantCodes.Contains(gameCode);
+	}
+
+	private string GetFavoriteButtonClasses(string gameCode)
+	{
+		var classes = new List<string> { "dc-favorite-button" };
+
+		if (IsFavoriteVariant(gameCode))
+		{
+			classes.Add("active");
+		}
+
+		return string.Join(" ", classes);
+	}
+
+	private string GetFavoriteButtonIconClasses(string gameCode)
+	{
+		return IsFavoriteVariant(gameCode) ? "fa-solid fa-star" : "fa-regular fa-star";
+	}
+
+	private string GetFavoriteButtonLabel(GetAvailablePokerGamesResponse game)
+	{
+		return IsFavoriteVariant(game.Code)
+			? $"Remove {game.Name} from favorites"
+			: $"Add {game.Name} to favorites";
+	}
+
+	private void ApplyFavoriteVariants(FavoriteVariantsDto favoriteVariants)
+	{
+		_favoriteVariantCodes.Clear();
+
+		foreach (var gameCode in favoriteVariants.FavoriteVariantCodes.Select(NormalizeVariantCode).Where(code => !string.IsNullOrWhiteSpace(code)))
+		{
+			_favoriteVariantCodes.Add(gameCode);
+		}
+	}
+
+	private async Task ToggleFavoriteVariantAsync(string gameCode)
+	{
+		if (!CanManageFavoriteVariants)
+		{
+			return;
+		}
+
+		var normalizedGameCode = NormalizeVariantCode(gameCode);
+		if (string.IsNullOrWhiteSpace(normalizedGameCode))
+		{
+			return;
+		}
+
+		var wasFavorite = _favoriteVariantCodes.Contains(normalizedGameCode);
+		if (wasFavorite)
+		{
+			_favoriteVariantCodes.Remove(normalizedGameCode);
+		}
+		else
+		{
+			_favoriteVariantCodes.Add(normalizedGameCode);
+		}
+
+		_isUpdatingFavoriteVariants = true;
+		_favoriteVariantsError = null;
+		StateHasChanged();
+
+		try
+		{
+			var response = await ProfileApi.UpdateFavoriteVariantsAsync(new UpdateFavoriteVariantsRequest
+			{
+				FavoriteVariantCodes = _favoriteVariantCodes.OrderBy(code => code, StringComparer.OrdinalIgnoreCase).ToArray()
+			});
+
+			if (response.IsSuccessStatusCode && response.Content is not null)
+			{
+				ApplyFavoriteVariants(response.Content);
+				return;
+			}
+
+			throw new InvalidOperationException();
+		}
+		catch
+		{
+			if (wasFavorite)
+			{
+				_favoriteVariantCodes.Add(normalizedGameCode);
+			}
+			else
+			{
+				_favoriteVariantCodes.Remove(normalizedGameCode);
+			}
+
+			_favoriteVariantsError = "We couldn't update your favorites. Please try again.";
+		}
+		finally
+		{
+			_isUpdatingFavoriteVariants = false;
+			StateHasChanged();
+		}
+	}
+
 	private static HashSet<string>? NormalizeAllowedGameCodes(IEnumerable<string>? allowedGameCodes)
 	{
 		var normalizedCodes = allowedGameCodes?
@@ -276,6 +515,13 @@
 			.ToHashSet(StringComparer.OrdinalIgnoreCase);
 
 		return normalizedCodes is { Count: > 0 } ? normalizedCodes : null;
+	}
+
+	private static string NormalizeVariantCode(string? value)
+	{
+		return string.IsNullOrWhiteSpace(value)
+			? string.Empty
+			: value.Trim().ToUpperInvariant();
 	}
 
 	private async Task ConfirmChoiceAsync()
@@ -315,5 +561,5 @@
 
 	public record DealerChoiceSelection(string GameTypeCode, int Ante, int MinBet, int? SmallBlind = null, int? BigBlind = null);
 
-	private sealed record VariantGroup(string Title, IReadOnlyList<GetAvailablePokerGamesResponse> Games);
+	private sealed record VariantGroup(string Title, IReadOnlyList<GetAvailablePokerGamesResponse> Games, bool IsFavorites = false);
 }

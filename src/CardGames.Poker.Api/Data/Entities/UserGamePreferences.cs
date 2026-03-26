@@ -12,6 +12,8 @@ public sealed class UserGamePreferences : EntityWithRowVersion
 
 	public int DefaultMinimumBet { get; set; }
 
+	public string? FavoriteVariantCodesJson { get; set; }
+
 	public DateTimeOffset CreatedAtUtc { get; set; }
 
 	public DateTimeOffset UpdatedAtUtc { get; set; }
