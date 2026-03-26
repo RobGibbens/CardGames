@@ -3,45 +3,50 @@
 .components-reconnect-failed-visible,
 .components-pause-visible,
 .components-resume-failed-visible,
-.components-rejoining-animation {
+.components-rejoining-animation,
+.reconnect-attempt-info {
     display: none;
 }
 
 #components-reconnect-modal.components-reconnect-show .components-reconnect-first-attempt-visible,
 #components-reconnect-modal.components-reconnect-show .components-rejoining-animation,
+#components-reconnect-modal.components-reconnect-show .reconnect-attempt-info,
 #components-reconnect-modal.components-reconnect-paused .components-pause-visible,
 #components-reconnect-modal.components-reconnect-resume-failed .components-resume-failed-visible,
 #components-reconnect-modal.components-reconnect-retrying,
 #components-reconnect-modal.components-reconnect-retrying .components-reconnect-repeated-attempt-visible,
 #components-reconnect-modal.components-reconnect-retrying .components-rejoining-animation,
+#components-reconnect-modal.components-reconnect-retrying .reconnect-attempt-info,
 #components-reconnect-modal.components-reconnect-failed,
 #components-reconnect-modal.components-reconnect-failed .components-reconnect-failed-visible {
     display: block;
 }
 
-
 #components-reconnect-modal {
-    background-color: white;
-    width: 20rem;
+    background-color: var(--card-bg, #ffffff);
+    color: var(--text-primary, #1a1a1a);
+    width: 38rem;
+    max-width: 90vw;
     margin: 20vh auto;
-    padding: 2rem;
-    border: 0;
-    border-radius: 0.5rem;
-    box-shadow: 0 3px 6px 2px rgba(0, 0, 0, 0.3);
+    padding: 0;
+    border: 1px solid var(--border-color, rgba(0, 0, 0, 0.1));
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     opacity: 0;
+    overflow: hidden;
     transition: display 0.5s allow-discrete, overlay 0.5s allow-discrete;
     animation: components-reconnect-modal-fadeOutOpacity 0.5s both;
-    &[open]
 
-{
-    animation: components-reconnect-modal-slideUp 1.5s cubic-bezier(.05, .89, .25, 1.02) 0.3s, components-reconnect-modal-fadeInOpacity 0.5s ease-in-out 0.3s;
-    animation-fill-mode: both;
-}
-
+    &[open] {
+        animation: components-reconnect-modal-slideUp 1.5s cubic-bezier(.05, .89, .25, 1.02) 0.3s,
+                   components-reconnect-modal-fadeInOpacity 0.5s ease-in-out 0.3s;
+        animation-fill-mode: both;
+    }
 }
 
 #components-reconnect-modal::backdrop {
-    background-color: rgba(0, 0, 0, 0.4);
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
     animation: components-reconnect-modal-fadeInOpacity 0.5s ease-in-out;
     opacity: 1;
 }
@@ -50,37 +55,60 @@
     0% {
         transform: translateY(30px) scale(0.95);
     }
-
     100% {
-        transform: translateY(0);
+        transform: translateY(0) scale(1);
     }
 }
 
 @keyframes components-reconnect-modal-fadeInOpacity {
-    0% {
-        opacity: 0;
-    }
-
-    100% {
-        opacity: 1;
-    }
+    0% { opacity: 0; }
+    100% { opacity: 1; }
 }
 
 @keyframes components-reconnect-modal-fadeOutOpacity {
-    0% {
-        opacity: 1;
-    }
-
-    100% {
-        opacity: 0;
-    }
+    0% { opacity: 1; }
+    100% { opacity: 0; }
 }
 
 .components-reconnect-container {
     display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 0;
+}
+
+.reconnect-image-panel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    flex-shrink: 0;
+}
+
+.reconnect-image {
+    width: 100%;
+    max-width: 180px;
+    height: auto;
+}
+
+.reconnect-content-panel {
+    display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 1rem;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 1.5rem 2rem 1.5rem 0.5rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.reconnect-title {
+    margin: 0;
+    font-size: 1.35rem;
+    font-weight: 700;
+    font-family: var(--font-display, 'Inter', sans-serif);
+    color: var(--primary, #dc2626);
+    letter-spacing: -0.01em;
 }
 
 #components-reconnect-modal p {
@@ -88,70 +116,117 @@
     text-align: center;
 }
 
-#components-reconnect-modal button {
-    border: 0;
-    background-color: #6b9ed2;
-    color: white;
-    padding: 4px 24px;
-    border-radius: 4px;
+.reconnect-status-text {
+    font-size: 0.95rem;
+    color: var(--text-secondary, #4a4a4a);
+    line-height: 1.5;
 }
 
-    #components-reconnect-modal button:hover {
-        background-color: #3b6ea2;
-    }
+.reconnect-attempt-info {
+    font-size: 0.8rem;
+    color: var(--text-muted, #6a6a6a);
+    margin-top: 0.25rem;
+}
 
-    #components-reconnect-modal button:active {
-        background-color: #6b9ed2;
-    }
+.reconnect-buttons-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
 
+.btn-reconnect {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1.75rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+    color: #ffffff;
+    box-shadow: 0 4px 15px rgba(220, 38, 38, 0.3);
+    transition: all 0.3s ease;
+    margin-top: 0.25rem;
+}
+
+.btn-reconnect:hover {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 25px rgba(220, 38, 38, 0.4);
+}
+
+.btn-reconnect:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 10px rgba(220, 38, 38, 0.3);
+}
+
+/* Animation */
 .components-rejoining-animation {
     position: relative;
-    width: 80px;
-    height: 80px;
+    width: 48px;
+    height: 48px;
 }
 
-    .components-rejoining-animation div {
-        position: absolute;
-        border: 3px solid #0087ff;
-        opacity: 1;
-        border-radius: 50%;
-        animation: components-rejoining-animation 1.5s cubic-bezier(0, 0.2, 0.8, 1) infinite;
-    }
+.components-rejoining-animation div {
+    position: absolute;
+    border: 3px solid var(--primary, #dc2626);
+    opacity: 1;
+    border-radius: 50%;
+    animation: components-rejoining-animation 1.5s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+}
 
-        .components-rejoining-animation div:nth-child(2) {
-            animation-delay: -0.5s;
-        }
+.components-rejoining-animation div:nth-child(2) {
+    animation-delay: -0.5s;
+}
 
 @keyframes components-rejoining-animation {
     0% {
-        top: 40px;
-        left: 40px;
+        top: 24px;
+        left: 24px;
         width: 0;
         height: 0;
         opacity: 0;
     }
-
     4.9% {
-        top: 40px;
-        left: 40px;
+        top: 24px;
+        left: 24px;
         width: 0;
         height: 0;
         opacity: 0;
     }
-
     5% {
-        top: 40px;
-        left: 40px;
+        top: 24px;
+        left: 24px;
         width: 0;
         height: 0;
         opacity: 1;
     }
-
     100% {
-        top: 0px;
-        left: 0px;
-        width: 80px;
-        height: 80px;
+        top: 0;
+        left: 0;
+        width: 48px;
+        height: 48px;
         opacity: 0;
+    }
+}
+
+/* Dark theme support */
+[data-theme="dark"] #components-reconnect-modal {
+    background-color: #111827;
+    border-color: rgba(148, 163, 184, 0.25);
+    color: #f8fafc;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) #components-reconnect-modal {
+        background-color: #111827;
+        border-color: rgba(148, 163, 184, 0.25);
+        color: #f8fafc;
     }
 }

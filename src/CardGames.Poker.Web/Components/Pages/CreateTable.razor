@@ -214,8 +214,10 @@
 												<span class="variant-icon-fallback"><i class="fa-thin fa-card-club"></i></span>
 											}
 										</div>
-										<span class="variant-list-row-name">@game.Name</span>
-										<span class="variant-list-row-description">@game.Description</span>
+										<div class="variant-list-row-info">
+											<span class="variant-list-row-name">@game.Name</span>
+											<span class="variant-list-row-description">@game.Description</span>
+										</div>
 										<span class="variant-list-row-players">
 											<i class="fa-regular fa-users"></i>
 											@game.MinimumNumberOfPlayers-@game.MaximumNumberOfPlayers
@@ -634,7 +636,7 @@
 
 	.variant-list-row {
 		display: grid;
-		grid-template-columns: 60px minmax(120px, 1fr) minmax(0, 2.5fr) auto;
+		grid-template-columns: 60px minmax(0, 1fr) auto;
 		gap: 0.75rem;
 		align-items: center;
 		padding: 0.75rem 1rem;
@@ -692,21 +694,23 @@
 		line-height: 1;
 	}
 
+	.variant-list-row-info {
+		display: flex;
+		flex-direction: column;
+		gap: 0.15rem;
+		min-width: 0;
+	}
+
 	.variant-list-row-name {
 		font-size: 0.95rem;
 		font-weight: 700;
 		color: var(--text-primary);
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
 	}
 
 	.variant-list-row-description {
 		font-size: 0.85rem;
 		color: var(--text-muted);
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
+		line-height: 1.35;
 	}
 
 	.variant-list-row-players {

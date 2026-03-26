@@ -2,30 +2,41 @@
 
 <dialog id="components-reconnect-modal" data-nosnippet>
     <div class="components-reconnect-container">
-        <div class="components-rejoining-animation" aria-hidden="true">
-            <div></div>
-            <div></div>
+        <div class="reconnect-image-panel">
+            <img src="/images/disconnected.png" alt="Disconnected" class="reconnect-image" />
         </div>
-        <p class="components-reconnect-first-attempt-visible">
-            Rejoining the server...
-        </p>
-        <p class="components-reconnect-repeated-attempt-visible">
-            Rejoin failed... trying again in <span id="components-seconds-to-next-attempt"></span> seconds.
-        </p>
-        <p class="components-reconnect-failed-visible">
-            Failed to rejoin.<br />Please retry or reload the page.
-        </p>
-        <button id="components-reconnect-button" class="components-reconnect-failed-visible">
-            Retry
-        </button>
-        <p class="components-pause-visible">
-            The session has been paused by the server.
-        </p>
-        <button id="components-resume-button" class="components-pause-visible">
-            Resume
-        </button>
-        <p class="components-resume-failed-visible">
-            Failed to resume the session.<br />Please reload the page.
-        </p>
+        <div class="reconnect-content-panel">
+            <h2 class="reconnect-title">Connection Lost</h2>
+            <div class="components-rejoining-animation" aria-hidden="true">
+                <div></div>
+                <div></div>
+            </div>
+            <p class="components-reconnect-first-attempt-visible reconnect-status-text">
+                Rejoining the table&hellip;
+            </p>
+            <p class="components-reconnect-repeated-attempt-visible reconnect-status-text">
+                Rejoin failed&hellip; trying again in <span id="components-seconds-to-next-attempt"></span> seconds.
+            </p>
+            <p class="components-reconnect-failed-visible reconnect-status-text">
+                Failed to rejoin the game.<br />Please retry or reload the page.
+            </p>
+            <div class="reconnect-buttons-row">
+                <button id="components-reconnect-button" class="components-reconnect-failed-visible btn btn-reconnect">
+                    <i class="fa-thin fa-arrows-rotate"></i> Retry
+                </button>
+                <button id="components-resume-button" class="components-pause-visible btn btn-reconnect">
+                    <i class="fa-thin fa-play"></i> Resume
+                </button>
+            </div>
+            <p class="components-pause-visible reconnect-status-text">
+                The session has been paused by the server.
+            </p>
+            <p class="components-resume-failed-visible reconnect-status-text">
+                Failed to resume the session.<br />Please reload the page.
+            </p>
+            <p class="reconnect-attempt-info">
+                Attempt <span id="components-reconnect-current-attempt"></span> of <span id="components-reconnect-max-retries"></span>
+            </p>
+        </div>
     </div>
 </dialog>
