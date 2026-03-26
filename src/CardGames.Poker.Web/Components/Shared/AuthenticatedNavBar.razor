@@ -1,7 +1,7 @@
 ﻿@namespace CardGames.Poker.Web.Components.Shared
 @rendermode InteractiveServer
+@inherits ThemeToggleComponentBase
 
-@inject IJSRuntime JSRuntime
 @inject NavigationManager NavigationManager
 @inject UserManager<ApplicationUser> UserManager
 
@@ -40,15 +40,8 @@
 
         <div class="nav-actions">
 
-            <button class="theme-toggle" @onclick="ToggleThemeAsync" title="Toggle theme" aria-label="Toggle dark/light theme">
-                @if (isDarkMode)
-                {
-                    <span><i class="fa-solid fa-sun"></i></span>
-                }
-                else
-                {
-                    <span><i class="fa-solid fa-moon"></i></span>
-                }
+            <button class="theme-toggle" @onclick="ToggleThemeAsync" title="@ThemeToggleTitle" aria-label="@ThemeToggleAriaLabel">
+                <span><i class="@ThemeIconClass"></i></span>
             </button>
 
             <AuthorizeView>
@@ -111,7 +104,6 @@
 </header>
 
 @code {
-    private bool isDarkMode;
     private bool isMobileMenuOpen;
     private bool isUserMenuOpen;
 
@@ -142,54 +134,6 @@
         var user = await UserManager.GetUserAsync(principal);
         CurrentUserName = UserProfileDisplayHelpers.PreferFirstName(user?.FirstName) ?? principal.Identity?.Name;
         CurrentUserAvatarUrl = UserProfileDisplayHelpers.BuildAvatarApiPath(userId);
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (!firstRender)
-        {
-            return;
-        }
-
-        try
-        {
-            var savedTheme = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "theme");
-            if (!string.IsNullOrEmpty(savedTheme))
-            {
-                isDarkMode = savedTheme == "dark";
-            }
-            else
-            {
-                isDarkMode = await JSRuntime.InvokeAsync<bool>("matchMedia", "(prefers-color-scheme: dark)");
-            }
-
-            await ApplyThemeAsync();
-            StateHasChanged();
-        }
-        catch
-        {
-            // Ignore errors during SSR
-        }
-    }
-
-    private async Task ToggleThemeAsync()
-    {
-        isDarkMode = !isDarkMode;
-        await ApplyThemeAsync();
-    }
-
-    private async Task ApplyThemeAsync()
-    {
-        try
-        {
-            var theme = isDarkMode ? "dark" : "light";
-            await JSRuntime.InvokeVoidAsync("document.documentElement.setAttribute", "data-theme", theme);
-            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "theme", theme);
-        }
-        catch
-        {
-            // Ignore errors during SSR
-        }
     }
 
     private void ToggleMobileMenu()
