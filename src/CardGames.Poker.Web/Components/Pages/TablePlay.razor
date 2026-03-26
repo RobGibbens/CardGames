@@ -737,6 +737,7 @@
     private int _previousFaceUpCommunityCardCount;
     private bool _showGameInfoOverlay;
     private bool _isUpdatingOddsVisibility;
+    private bool _pendingTurnAlertSound;
 
     // Community card staggered reveal (for flop in Hold'Em-style games)
     private int _communityCardRevealCount;
@@ -1797,6 +1798,7 @@
             minRaise: state.AvailableActions.MinRaise
             );
 
+            var wasPlayerTurn = _isPlayerTurn;
             _isPlayerTurn = state.IsMyTurn;
             if (state.IsMyTurn)
             {
@@ -1804,13 +1806,23 @@
                 _currentMinBet = Math.Max(_gameResponse?.MinBet ?? 0, state.AvailableActions.MinBet);
                 _currentMaxBet = state.AvailableActions.MaxBet;
                 _currentBetToCall = state.AvailableActions.CallAmount;
+
+                if (!wasPlayerTurn)
+                {
+                    await PlayTurnAlertSoundAsync();
+                }
             }
         }
         else
         {
             // Special non-betting decision phases (like Screw Your Neighbor KeepOrTrade)
             // do not populate AvailableActions, but still require turn-driven overlays.
+            var wasPlayerTurn = _isPlayerTurn;
             _isPlayerTurn = state.IsMyTurn && (_isDrawPhase || IsKeepOrTradePhase);
+            if (_isPlayerTurn && !wasPlayerTurn)
+            {
+                await PlayTurnAlertSoundAsync();
+            }
             if (!_isDrawPhase)
             {
                 _legalActions = [];
@@ -3803,6 +3815,8 @@
             _communityCardRevealInProgress = false;
             _communityCardRevealTimer?.Dispose();
             _communityCardRevealTimer = null;
+
+            _ = TryPlayPendingTurnAlertSoundAsync();
         }
         else
         {
@@ -3852,6 +3866,42 @@
         }
 
         return ConvertCardsToShowdownCards(communityCards).ToList();
+    }
+
+    private async Task PlayTurnAlertSoundAsync()
+    {
+        if (IsCardDealingVisualInProgress || _communityCardRevealInProgress)
+        {
+            _pendingTurnAlertSound = true;
+            return;
+        }
+
+        _pendingTurnAlertSound = false;
+
+        if (_isDealSoundMuted || !_isJsInteropReady)
+        {
+            return;
+        }
+
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("cardGamesAudio.playSoundEffect", "/sounds/alert.mp3");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "Unable to play turn alert sound");
+        }
+    }
+
+    private async Task TryPlayPendingTurnAlertSoundAsync()
+    {
+        if (!_pendingTurnAlertSound || !_isPlayerTurn)
+        {
+            _pendingTurnAlertSound = false;
+            return;
+        }
+
+        await PlayTurnAlertSoundAsync();
     }
 
     private async Task PlayDealCardSoundAsync(int cardCount)
@@ -4029,6 +4079,7 @@
         _dealAnimationInProgress = false;
 
         // Tollbooth: reveal deferred community cards now that all player cards have been dealt
+        // If community card reveal starts, defer the turn alert to after the reveal completes
         if (_deferCommunityCardsForDealAnimation)
         {
             _deferCommunityCardsForDealAnimation = false;
@@ -4041,6 +4092,12 @@
                 _communityCardRevealTimer?.Dispose();
                 _communityCardRevealTimer = new Timer(RevealNextCommunityCard, null, 250, Timeout.Infinite);
             }
+        }
+
+        // Play pending turn alert if no community card reveal was started
+        if (!_communityCardRevealInProgress)
+        {
+            _ = TryPlayPendingTurnAlertSoundAsync();
         }
 
         // Sync with Pending Private State (for current player hole cards)
