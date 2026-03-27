@@ -1,19 +1,11 @@
 # TODO
 
 ## IN-BETWEEN
-- [x] Remove Odds Visibility from CreateTable
-- [x] Can't adjust buy-in on Join Seat modal
 - [ ] Animate the chips going to/from the pot
-- [x] Show the timer
-- [x] Pressing Start Game doesn't do anything
-- [x] Layout cards on either side of the deck
-- [x] Not showing the in-between card
-- [x] Pause to see the card
  
 ## Still to do
 
 - [ ] Lobby - Filter by status
-- [ ] Join game modal background color
 - [ ] Joining table adds 5001 when setting 5000
 - [ ] Work on isolating games code more
 
@@ -279,3 +271,11 @@
 - [x] Create table page - Keep Dealer's Choice at the top, not with "Other"
 - [x] Phil's mom loser showdown not correct
 - [x] Redesign ShowdownOverlay
+- [x] Remove Odds Visibility from CreateTable
+- [x] Can't adjust buy-in on Join Seat modal
+- [x] Show the timer
+- [x] Pressing Start Game doesn't do anything
+- [x] Layout cards on either side of the deck
+- [x] Not showing the in-between card
+- [x] Pause to see the card
+- [x] Join game modal background color
