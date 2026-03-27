@@ -98,6 +98,17 @@ public class Game : EntityWithRowVersion
 	public int? MinBet { get; set; }
 
 	/// <summary>
+	/// Maximum buy-in allowed when a player initially joins the table.
+	/// Null means no table-level buy-in cap.
+	/// </summary>
+	public int? MaxBuyIn { get; set; }
+
+	/// <summary>
+	/// Whether new joiners must be approved by the host before they can take a seat.
+	/// </summary>
+	public bool RequiresJoinApproval { get; set; }
+
+	/// <summary>
 	/// JSON-serialized game-specific settings (e.g., buy-card price, king-required rule).
 	/// </summary>
 	/// <remarks>
@@ -270,6 +281,11 @@ public class Game : EntityWithRowVersion
 	/// Navigation property for cards in this game.
 	/// </summary>
 	public ICollection<GameCard> GameCards { get; set; } = [];
+
+	/// <summary>
+	/// Navigation property for join requests submitted for this game.
+	/// </summary>
+	public ICollection<GameJoinRequest> JoinRequests { get; set; } = [];
 
 	/// <summary>
 	/// Navigation property for pots in this game.

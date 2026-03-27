@@ -22,6 +22,8 @@ public sealed class UserGamePreferencesConfiguration : IEntityTypeConfiguration<
 		builder.Property(x => x.DefaultMinimumBet)
 			.IsRequired();
 
+		builder.Property(x => x.FavoriteVariantCodesJson);
+
 		builder.Property(x => x.RowVersion)
 			.IsRowVersion();
 

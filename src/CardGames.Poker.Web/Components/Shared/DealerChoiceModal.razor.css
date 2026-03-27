@@ -50,6 +50,18 @@
 	margin-bottom: 1rem;
 }
 
+.dealer-choice-favorites-message {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5rem;
+	margin-bottom: 1rem;
+	padding: 0.75rem 1rem;
+	border-radius: 0.85rem;
+	border: 1px solid rgba(251, 191, 36, 0.3);
+	background: rgba(120, 53, 15, 0.16);
+	color: rgba(254, 240, 138, 0.96);
+}
+
 .dealer-choice-variants {
 	display: flex;
 	flex-direction: column;
@@ -61,6 +73,11 @@
 	display: flex;
 	flex-direction: column;
 	gap: 0.5rem;
+}
+
+.dealer-choice-variant-shell {
+	position: relative;
+	width: 100%;
 }
 
 .dc-variant-group-title {
@@ -77,7 +94,7 @@
 	gap: 0.15rem 0.75rem;
 	align-items: center;
 	position: relative;
-	padding: 0.75rem 1rem;
+	padding: 0.75rem 3.75rem 0.75rem 1rem;
 	background: var(--card-bg, var(--bg-secondary));
 	border: 1px solid var(--border-color, rgba(255, 255, 255, 0.06));
 	border-radius: 12px;
@@ -85,6 +102,7 @@
 	transition: all var(--transition-normal, 0.15s);
 	text-align: left;
 	color: var(--text-primary, #fff);
+	width: 100%;
 }
 
 .dealer-choice-variant:hover {
@@ -110,6 +128,89 @@
 	transform: none;
 	box-shadow: none;
 	border-color: var(--border-color, rgba(255, 255, 255, 0.06));
+}
+
+.dc-favorite-button {
+	position: absolute;
+	top: 0.75rem;
+	right: 0.75rem;
+	width: 2.1rem;
+	height: 2.1rem;
+	border: 1px solid rgba(15, 23, 42, 0.12);
+	border-radius: 999px;
+	background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(244, 246, 248, 0.94) 100%);
+	color: rgba(71, 85, 105, 0.96);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+	backdrop-filter: blur(8px);
+	transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+	z-index: 2;
+}
+
+.dc-favorite-button:hover:not(:disabled) {
+	transform: translateY(-1px);
+	border-color: rgba(217, 119, 6, 0.28);
+	background: linear-gradient(180deg, rgba(255, 251, 235, 0.98) 0%, rgba(254, 243, 199, 0.92) 100%);
+	color: rgba(180, 83, 9, 0.98);
+	box-shadow: 0 14px 28px rgba(217, 119, 6, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.82);
+}
+
+.dc-favorite-button.active {
+	border-color: rgba(217, 119, 6, 0.34);
+	background: linear-gradient(180deg, rgba(255, 248, 220, 0.98) 0%, rgba(252, 211, 77, 0.68) 100%);
+	color: rgba(161, 98, 7, 1);
+	box-shadow: 0 14px 30px rgba(217, 119, 6, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.88);
+}
+
+.dc-favorite-button.active:hover:not(:disabled) {
+	border-color: rgba(180, 83, 9, 0.42);
+	background: linear-gradient(180deg, rgba(255, 250, 229, 1) 0%, rgba(250, 204, 21, 0.76) 100%);
+	color: rgba(146, 64, 14, 1);
+	box-shadow: 0 16px 32px rgba(180, 83, 9, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.92);
+}
+
+.dc-favorite-button:focus-visible {
+	outline: none;
+	box-shadow: 0 0 0 4px rgba(252, 211, 77, 0.24), 0 14px 30px rgba(15, 23, 42, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.88);
+}
+
+.dc-favorite-button:disabled {
+	opacity: 0.55;
+	cursor: not-allowed;
+	box-shadow: 0 8px 16px rgba(15, 23, 42, 0.05);
+}
+
+[data-theme="dark"] .dc-favorite-button {
+	border-color: rgba(148, 163, 184, 0.24);
+	background: linear-gradient(180deg, rgba(30, 41, 59, 0.96) 0%, rgba(15, 23, 42, 0.94) 100%);
+	color: rgba(226, 232, 240, 0.92);
+	box-shadow: 0 12px 24px rgba(2, 6, 23, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+[data-theme="dark"] .dc-favorite-button:hover:not(:disabled) {
+	border-color: rgba(251, 191, 36, 0.36);
+	background: linear-gradient(180deg, rgba(69, 39, 12, 0.96) 0%, rgba(41, 24, 10, 0.94) 100%);
+	color: rgba(253, 230, 138, 0.98);
+	box-shadow: 0 14px 28px rgba(120, 53, 15, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .dc-favorite-button.active {
+	border-color: rgba(245, 158, 11, 0.42);
+	background: linear-gradient(180deg, rgba(120, 53, 15, 0.98) 0%, rgba(146, 64, 14, 0.94) 100%);
+	color: rgba(254, 240, 138, 1);
+	box-shadow: 0 16px 30px rgba(120, 53, 15, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .dc-favorite-button.active:hover:not(:disabled) {
+	border-color: rgba(252, 211, 77, 0.5);
+	background: linear-gradient(180deg, rgba(146, 64, 14, 1) 0%, rgba(180, 83, 9, 0.96) 100%);
+	color: rgba(254, 249, 195, 1);
+}
+
+[data-theme="dark"] .dc-favorite-button:focus-visible {
+	box-shadow: 0 0 0 4px rgba(250, 204, 21, 0.2), 0 16px 30px rgba(2, 6, 23, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .dc-variant-icon {
@@ -237,10 +338,16 @@
 @media (max-width: 768px) {
 	.dealer-choice-variant {
 		grid-template-columns: 40px minmax(0, 1fr) auto;
+		padding-right: 3.5rem;
 	}
 
 	.dc-variant-icon {
 		width: 40px;
 		height: 40px;
+	}
+
+	.dc-favorite-button {
+		width: 2rem;
+		height: 2rem;
 	}
 }

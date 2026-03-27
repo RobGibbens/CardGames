@@ -1,6 +1,5 @@
 ﻿@page "/"
 @rendermode InteractiveServer
-@inject IJSRuntime JSRuntime
 @inject CardGames.Poker.Api.Clients.IAvailablePokerGamesApi AvailablePokerGamesApi
 @using CardGames.Poker.Api.Contracts
 @using Refit
@@ -343,7 +342,6 @@
 </footer>
 
 @code {
-    private bool isDarkMode = false;
     private bool isMobileMenuOpen = false;
 
     private ICollection<GetAvailablePokerGamesResponse>? _availableGames;
@@ -357,33 +355,6 @@
     {
         var pathAndQuery = HttpContext?.Request.GetEncodedPathAndQuery();
         return string.IsNullOrWhiteSpace(pathAndQuery) ? string.Empty : pathAndQuery.TrimStart('/');
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            try
-            {
-                // Check for saved theme preference or system preference
-                var savedTheme = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "theme");
-                if (!string.IsNullOrEmpty(savedTheme))
-                {
-                    isDarkMode = savedTheme == "dark";
-                }
-                else
-                {
-                    // Check system preference
-                    isDarkMode = await JSRuntime.InvokeAsync<bool>("matchMedia", "(prefers-color-scheme: dark)");
-                }
-                await ApplyTheme();
-                StateHasChanged();
-            }
-            catch
-            {
-                // Ignore errors during SSR
-            }
-        }
     }
 
     protected override async Task OnInitializedAsync()
@@ -407,26 +378,6 @@
         finally
         {
             _isLoadingAvailableGames = false;
-        }
-    }
-
-    private async Task ToggleTheme()
-    {
-        isDarkMode = !isDarkMode;
-        await ApplyTheme();
-    }
-
-    private async Task ApplyTheme()
-    {
-        try
-        {
-            var theme = isDarkMode ? "dark" : "light";
-            await JSRuntime.InvokeVoidAsync("document.documentElement.setAttribute", "data-theme", theme);
-            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "theme", theme);
-        }
-        catch
-        {
-            // Ignore errors during SSR
         }
     }
 

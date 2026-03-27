@@ -2,29 +2,34 @@
 
 ## Still to do
 
-- [ ] <https://github.com/leeoades/FunctionalStateMachine>
-
-- [ ] SYN - check for ties
-- [ ] SYN - odds
-- [ ] Allow users to "favorite" game types and sort them at the top
 - [ ] Lobby - Filter by status
 - [ ] Join game modal background color
 - [ ] Joining table adds 5001 when setting 5000
-- [ ] Bringing in cash to a game should require host approval?
-- [ ] Phil's mom loser showdown not correct
-- [ ] Test what happens when a player disconnects
 - [ ] Work on isolating games code more
-- [ ] Really test all-ins, sidepots, etc.
+
 - [ ] Add leagues
 - [ ] Add seasons
 - [ ] Add tournaments
-- [ ] Productize it - deployment and hosting
+
+- [ ] Productize it - deployment and hosting (Hetzner)
+
+- [ ] Check for security issues
+- [ ] Add a "Rules" property to each game
+- [ ] Refactor TablePlay
+- [ ] <https://github.com/leeoades/FunctionalStateMachine>
+- [ ] Add individual control to sounds
+- [ ] During Phil's mom, it plays the alert every time a player takes an action
 
 ### P1 - Can't play without these
 
 - [ ] Test side pots
 - [ ] Make sure all game types handle all ins correctly
+- [ ] Test what happens when a player disconnects
+- [ ] Really test all-ins, sidepots, etc.
+- [ ] SYN - check for ties
+- [ ] SYN - odds
 - [ ] Kings and Lows - Should make it obvious when someone dropped
+- [ ] If buy-in protection is on for a table, that should apply to adding money later
 
 ### P2 - Important but not blocking play
 
@@ -39,10 +44,6 @@
 - [ ] There are a lot of extra database calls going on
 - [ ] Hand history should auto size columns and allow resizing columns
 - [ ] Hand history should paginate
-- [ ] When the Draw Overlay is showing, the cards are not opaque
-- [ ] The bottom of the table goes off the bottom of the screen
-- [ ] When already logged in, take them to the Lobby
-
 - [ ] Endpoints shouldn't use generic Error responses
 
 ## When expanding beyond my friends
@@ -58,10 +59,10 @@
 
 ### Hold 'Em Variants
 
+- [ ] Add Omaha Hi/Lo
 - [ ] Add Pittsburgh
 - [ ] Add Squid Game
 - [ ] Add Hall of Mirrors
-- [ ] Add Klondike
 
 - [x] Add Texas Hold'em
 - [x] Add Omaha
@@ -99,7 +100,6 @@
 - [ ] Add In Between
 - [ ] Add Bzzjt
 - [ ] Add Guts
-
 - [x] Add Screw Your Neighbor
 
 ## Completed
@@ -258,3 +258,14 @@
 - [x] Make the create table list smaller
 - [x] Add the images to the DC game list
 - [x] Add the images to the game info overlay
+- [x] Add Klondike
+- [x] Game info should have game rules
+- [x] Customize blazor rejoin modal
+- [x] Add a private chime for the player when it's their turn
+- [x] Lobby should wrap descriptions
+- [x] Allow users to "favorite" game types and sort them at the top
+- [x] Make the dark/light theme support system settings
+- [x] Bringing in cash to a game should require host approval?
+- [x] Create table page - Keep Dealer's Choice at the top, not with "Other"
+- [x] Phil's mom loser showdown not correct
+- [x] Redesign ShowdownOverlay

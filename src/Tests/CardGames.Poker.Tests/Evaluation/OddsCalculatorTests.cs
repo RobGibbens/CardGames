@@ -263,4 +263,40 @@ public class OddsCalculatorTests
         result.HandTypeProbabilities.Should().NotBeEmpty();
         result.HandTypeProbabilities.Values.Sum().Should().BeApproximately(1.0m, 0.01m);
     }
+
+    [Fact]
+    public void CalculateKlondikeOdds_PreReveal_NeverReturnsHighCard()
+    {
+        // With a wild card always in the hand, the worst possible hand is a pair.
+        var heroCards = "8c Kh".ToCards();
+        var communityCards = new List<CardGames.Core.French.Cards.Card>();
+
+        var result = OddsCalculator.CalculateKlondikeOdds(
+            heroCards,
+            communityCards,
+            klondikeCard: null,
+            simulations: 1000);
+
+        result.HandTypeProbabilities.Should().NotContainKey(HandType.HighCard);
+        result.HandTypeProbabilities.Values.Sum().Should().BeApproximately(1.0m, 0.01m);
+    }
+
+    [Fact]
+    public void CalculateKlondikeOdds_PostReveal_NeverReturnsHighCard()
+    {
+        // After reveal the Klondike card and all same-rank cards are wild,
+        // guaranteeing at least a pair.
+        var heroCards = "8c Kh".ToCards();
+        var communityCards = "Jd 5s 2h".ToCards();
+        var klondikeCard = "9d".ToCards().First();
+
+        var result = OddsCalculator.CalculateKlondikeOdds(
+            heroCards,
+            communityCards,
+            klondikeCard: klondikeCard,
+            simulations: 1000);
+
+        result.HandTypeProbabilities.Should().NotContainKey(HandType.HighCard);
+        result.HandTypeProbabilities.Values.Sum().Should().BeApproximately(1.0m, 0.01m);
+    }
 }

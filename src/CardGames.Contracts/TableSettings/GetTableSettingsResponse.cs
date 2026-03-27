@@ -57,6 +57,12 @@ public sealed record GetTableSettingsResponse
     /// </summary>
     public int? BigBlind { get; init; }
 
+	/// <summary>
+	/// The maximum buy-in allowed when a player initially joins the table.
+	/// Null means no table-level cap.
+	/// </summary>
+	public int? MaxBuyIn { get; init; }
+
     /// <summary>
     /// Whether hand-odds are visible to all players at the table.
     /// </summary>

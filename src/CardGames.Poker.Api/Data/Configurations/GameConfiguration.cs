@@ -29,6 +29,9 @@ public class GameConfiguration : IEntityTypeConfiguration<Game>
 		builder.Property(t => t.AreOddsVisibleToAllPlayers)
 			.HasDefaultValue(true);
 
+		builder.Property(t => t.RequiresJoinApproval)
+			.HasDefaultValue(false);
+
 		builder.Property(t => t.Status)
 			.HasConversion<int>();
 
@@ -75,6 +78,11 @@ public class GameConfiguration : IEntityTypeConfiguration<Game>
 		builder.HasMany(t => t.GameCards)
 			.WithOne(gc => gc.Game)
 			.HasForeignKey(gc => gc.GameId)
+			.OnDelete(DeleteBehavior.Cascade);
+
+		builder.HasMany(t => t.JoinRequests)
+			.WithOne(jr => jr.Game)
+			.HasForeignKey(jr => jr.GameId)
 			.OnDelete(DeleteBehavior.Cascade);
 
 		builder.HasMany(t => t.Pots)

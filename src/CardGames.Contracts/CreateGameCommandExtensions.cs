@@ -13,6 +13,12 @@ public partial record CreateGameCommand
 	[JsonPropertyName("bigBlind")]
 	public int? BigBlind { get; init; }
 
+	[JsonPropertyName("maxBuyIn")]
+	public int? MaxBuyIn { get; init; }
+
+	[JsonPropertyName("requiresJoinApproval")]
+	public bool RequiresJoinApproval { get; init; }
+
 	[JsonPropertyName("areOddsVisibleToAllPlayers")]
 	public bool AreOddsVisibleToAllPlayers { get; init; } = true;
 

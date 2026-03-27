@@ -81,6 +81,11 @@ public sealed partial record TableStatePublicDto
 	public string? CreatedByName { get; init; }
 
 	/// <summary>
+	/// Whether new joiners must be approved by the host before taking a seat.
+	/// </summary>
+	public bool RequiresJoinApproval { get; init; }
+
+	/// <summary>
 	/// The list of seats and their public state.
 	/// </summary>
 	public required IReadOnlyList<SeatPublicDto> Seats { get; init; }
@@ -358,6 +363,12 @@ public sealed record CardPublicDto
 	/// Used for displaying cards in deal order for stud-style games.
 	/// </summary>
 	public int DealOrder { get; init; }
+
+	/// <summary>
+	/// Whether this is the Klondike Card (face-down wild card in Klondike Hold'em).
+	/// Used by the UI to display this card separated from regular community cards.
+	/// </summary>
+	public bool IsKlondikeCard { get; init; }
 }
 
 /// <summary>

@@ -1,0 +1,108 @@
+@implements IAsyncDisposable
+
+@using CardGames.Contracts.SignalR
+@using CardGames.Poker.Api.Clients
+@using CardGames.Poker.Web.Services
+
+@inject NotificationHubClient NotificationHubClient
+@inject IGamesApi GamesApiClient
+@inject ILogger<JoinApprovalHost> Logger
+
+<JoinApprovalModal PendingRequests="@_pendingJoinRequests"
+                    BusyJoinRequestId="@_busyJoinRequestId"
+                    ErrorMessage="@_joinApprovalError"
+                    OnResolveRequested="HandleJoinApprovalActionAsync" />
+
+@code {
+    private readonly List<GameJoinRequestReceivedDto> _pendingJoinRequests = [];
+    private bool _initialized;
+    private Guid? _busyJoinRequestId;
+    private string? _joinApprovalError;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _initialized)
+        {
+            return;
+        }
+
+        _initialized = true;
+        NotificationHubClient.OnGameJoinRequestReceived += HandleGameJoinRequestReceivedAsync;
+
+        try
+        {
+            await NotificationHubClient.ConnectAsync();
+            await LoadPendingJoinRequestsAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to initialize notification hub client");
+        }
+    }
+
+    private async Task LoadPendingJoinRequestsAsync()
+    {
+        var response = await GamesApiClient.GetPendingJoinRequestsForHostAsync();
+        if (!response.IsSuccessStatusCode || response.Content is null)
+        {
+            return;
+        }
+
+        _pendingJoinRequests.Clear();
+        _pendingJoinRequests.AddRange(response.Content.OrderBy(x => x.RequestedAtUtc));
+        _joinApprovalError = null;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task HandleGameJoinRequestReceivedAsync(GameJoinRequestReceivedDto payload)
+    {
+        if (_pendingJoinRequests.All(x => x.JoinRequestId != payload.JoinRequestId))
+        {
+            _pendingJoinRequests.Add(payload);
+            _pendingJoinRequests.Sort((left, right) => left.RequestedAtUtc.CompareTo(right.RequestedAtUtc));
+        }
+
+        _joinApprovalError = null;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task HandleJoinApprovalActionAsync(JoinApprovalAction action)
+    {
+        _busyJoinRequestId = action.JoinRequestId;
+        _joinApprovalError = null;
+
+        try
+        {
+            var response = await GamesApiClient.ResolveJoinRequestAsync(
+                action.GameId,
+                action.JoinRequestId,
+                new CardGames.Poker.Api.Contracts.ResolveJoinRequestRequest(
+                    action.Approved,
+                    action.ApprovedBuyIn));
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _joinApprovalError = response.Error?.Content ?? "Unable to resolve the join request right now.";
+                return;
+            }
+
+            _pendingJoinRequests.RemoveAll(x => x.JoinRequestId == action.JoinRequestId);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to resolve join request {JoinRequestId}", action.JoinRequestId);
+            _joinApprovalError = "Unable to resolve the join request right now.";
+        }
+        finally
+        {
+            _busyJoinRequestId = null;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        NotificationHubClient.OnGameJoinRequestReceived -= HandleGameJoinRequestReceivedAsync;
+        await NotificationHubClient.DisposeAsync();
+    }
+}

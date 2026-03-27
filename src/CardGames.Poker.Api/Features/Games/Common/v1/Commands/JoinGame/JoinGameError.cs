@@ -57,6 +57,11 @@ public enum JoinGameErrorCode
     /// </summary>
     InsufficientAccountChips,
 
+    /// <summary>
+    /// The requested buy-in exceeds the table's configured maximum buy-in.
+    /// </summary>
+    BuyInExceedsTableMaximum,
+
 	/// <summary>
 	/// The game is restricted to active members of the associated league.
 	/// </summary>
@@ -65,5 +70,10 @@ public enum JoinGameErrorCode
     /// <summary>
     /// The game variant does not allow players to join after the game has started.
     /// </summary>
-    LateJoinNotAllowed
+    LateJoinNotAllowed,
+
+    /// <summary>
+    /// The player already has a pending approval request for this table.
+    /// </summary>
+    JoinApprovalPending
 }

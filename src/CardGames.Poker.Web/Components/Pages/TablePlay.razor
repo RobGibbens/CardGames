@@ -4,6 +4,7 @@
 @implements IAsyncDisposable
 
 @using System.ComponentModel
+@using System.Net
 @using System.Text.Json
 @using CardGames.Contracts.SignalR
 @using CardGames.Core.French.Cards
@@ -42,6 +43,7 @@
 @inject IJSRuntime JSRuntime
 @inject IProfileApi ProfileApi
 @inject IAvailablePokerGamesApi AvailablePokerGamesApi
+@inject NotificationHubClient NotificationHubClient
 
 <PageTitle>Table - Dealer's Choice Poker</PageTitle>
 
@@ -84,7 +86,7 @@
                     </div>
 
                     <input id="join-buy-in-input"
-                              class="form-control join-buy-in-input"
+                              class="form-input join-buy-in-input"
                            type="number"
                            min="@GetJoinBuyInMin()"
                            max="@GetJoinBuyInMax()"
@@ -106,6 +108,31 @@
                     }
                     Join Table
                 </button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_showJoinApprovalPendingModal)
+{
+    <div class="confirm-dialog-overlay">
+        <div class="confirm-dialog league-form-modal join-buy-in-modal join-approval-pending-modal" @onclick:stopPropagation>
+            <div class="confirm-dialog-header league-form-modal-header">
+                <h3 class="confirm-dialog-title mb-0">Waiting for Approval</h3>
+            </div>
+            <div class="confirm-dialog-body league-form-modal-body text-start">
+                <p class="confirm-dialog-message mb-2 text-start">
+                    Your request to join is pending approval from <strong>@_joinApprovalHostName</strong>.
+                </p>
+                <p class="confirm-dialog-message mb-0 text-start">
+                    Requested buy-in: <strong>@_pendingApprovalBuyIn.ToString("N0")</strong>
+                </p>
+            </div>
+            <div class="confirm-dialog-footer join-buy-in-modal-footer">
+                <div class="waiting-approval-indicator">
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    <span>Waiting on host response</span>
+                </div>
             </div>
         </div>
     </div>
@@ -211,7 +238,8 @@
     @if (_showGameInfoOverlay)
     {
         <GameInfoOverlay GameTypeContext="@GetGameInfoTypeContext()"
-                         IsHoldEm="@(IsHoldEm || IsRedRiver || IsOmaha || IsNebraska || IsSouthDakota || IsBobBarker || IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple || IsHoldTheBaseball)"
+                         Description="@_gameRules?.Description"
+                         IsHoldEm="@(IsHoldEm || IsRedRiver || IsKlondike || IsOmaha || IsNebraska || IsSouthDakota || IsBobBarker || IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple || IsHoldTheBaseball)"
                          SmallBlind="@(_gameResponse?.SmallBlind ?? 0)"
                          BigBlind="@(_gameResponse?.BigBlind ?? 0)"
                          Ante="@(_gameResponse?.Ante ?? _ante)"
@@ -586,6 +614,10 @@
     private bool _showJoinBuyInModal;
     private bool _isJoiningSeat;
     private int? _pendingJoinSeatIndex;
+    private bool _showJoinApprovalPendingModal;
+    private Guid? _pendingJoinRequestId;
+    private string? _joinApprovalHostName;
+    private int _pendingApprovalBuyIn;
     private int _joinBuyInBalance;
     private int? _joinBuyInBalanceCap;
     private bool _isPlayerTurn;
@@ -736,6 +768,7 @@
     private int _previousFaceUpCommunityCardCount;
     private bool _showGameInfoOverlay;
     private bool _isUpdatingOddsVisibility;
+    private bool _pendingTurnAlertSound;
 
     // Community card staggered reveal (for flop in Hold'Em-style games)
     private int _communityCardRevealCount;
@@ -779,10 +812,11 @@
     private bool IsCrazyPineapple => string.Equals(_gameTypeCode, "CRAZYPINEAPPLE", StringComparison.OrdinalIgnoreCase);
     private bool IsScrewYourNeighbor => string.Equals(_gameTypeCode, "SCREWYOURNEIGHBOR", StringComparison.OrdinalIgnoreCase);
     private bool IsTollbooth => string.Equals(_gameTypeCode, "TOLLBOOTH", StringComparison.OrdinalIgnoreCase);
+    private bool IsKlondike => string.Equals(_gameTypeCode, "KLONDIKE", StringComparison.OrdinalIgnoreCase);
     private bool IsStartedScrewYourNeighborTable => IsScrewYourNeighbor && _gameResponse?.StartedAt is not null;
     private bool IsIrishStyleHoldEm => IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple;
     private bool IsSevenCardStudStyle => IsSevenCardStud || IsPairPressure;
-    private bool UsesCardDealAnimation => IsSevenCardStudStyle || IsRazz || IsGoodBadUgly || IsBaseball || IsFollowTheQueen || IsFiveCardDraw || IsTwosJacksManWithTheAxe || IsKingsAndLows || IsHoldEm || IsRedRiver || IsHoldTheBaseball || IsOmaha || IsNebraska || IsSouthDakota || IsBobBarker || IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple || IsScrewYourNeighbor || IsTollbooth;
+    private bool UsesCardDealAnimation => IsSevenCardStudStyle || IsRazz || IsGoodBadUgly || IsBaseball || IsFollowTheQueen || IsFiveCardDraw || IsTwosJacksManWithTheAxe || IsKingsAndLows || IsHoldEm || IsRedRiver || IsKlondike || IsHoldTheBaseball || IsOmaha || IsNebraska || IsSouthDakota || IsBobBarker || IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple || IsScrewYourNeighbor || IsTollbooth;
     
     private int DealAnimationDelayMs => 750;
 
@@ -1040,6 +1074,7 @@
         GameHubClient.OnPlayerActionPerformed += HandlePlayerActionPerformedAsync;
         GameHubClient.OnTableSettingsUpdated += HandleTableSettingsUpdatedAsync;
         GameHubClient.OnTableToastNotification += HandleTableToastNotificationAsync;
+        NotificationHubClient.OnGameJoinRequestResolved += HandleJoinRequestResolvedAsync;
 
         // Load initial data FIRST so seats and _gameResponse are populated
         // before SignalR sends its state snapshot
@@ -1463,6 +1498,7 @@
 
             // Handle showdown state - check if entering showdown/complete phase
             // Pass whether we should delay showing the overlay (only for deck draw animation now)
+            // Re-evaluate delay flag AFTER Klondike/SYN delays have been scheduled above
             var shouldDelayShowdownOverlay = _delayShowdownOverlay ||
             (_showdownDelayUntil.HasValue && DateTimeOffset.UtcNow < _showdownDelayUntil.Value);
 
@@ -1490,6 +1526,7 @@
                 _showdownResult is null &&
                 !_delayShowdownOverlay &&
                 !_runoutAnimationInProgress &&
+                !(_showdownDelayUntil.HasValue && DateTimeOffset.UtcNow < _showdownDelayUntil.Value) &&
                 !(IsScrewYourNeighbor && state.Showdown is { IsComplete: true }))
             {
                 await TryLoadShowdownAsync();
@@ -1793,6 +1830,7 @@
             minRaise: state.AvailableActions.MinRaise
             );
 
+            var wasPlayerTurn = _isPlayerTurn;
             _isPlayerTurn = state.IsMyTurn;
             if (state.IsMyTurn)
             {
@@ -1800,13 +1838,23 @@
                 _currentMinBet = Math.Max(_gameResponse?.MinBet ?? 0, state.AvailableActions.MinBet);
                 _currentMaxBet = state.AvailableActions.MaxBet;
                 _currentBetToCall = state.AvailableActions.CallAmount;
+
+                if (!wasPlayerTurn)
+                {
+                    await PlayTurnAlertSoundAsync();
+                }
             }
         }
         else
         {
             // Special non-betting decision phases (like Screw Your Neighbor KeepOrTrade)
             // do not populate AvailableActions, but still require turn-driven overlays.
+            var wasPlayerTurn = _isPlayerTurn;
             _isPlayerTurn = state.IsMyTurn && (_isDrawPhase || IsKeepOrTradePhase);
+            if (_isPlayerTurn && !wasPlayerTurn)
+            {
+                await PlayTurnAlertSoundAsync();
+            }
             if (!_isDrawPhase)
             {
                 _legalActions = [];
@@ -2403,7 +2451,9 @@
                     updatedAt: gamesResponse.UpdatedAt
                 )
                 {
-                    AreOddsVisibleToAllPlayers = gamesResponse.AreOddsVisibleToAllPlayers
+                    AreOddsVisibleToAllPlayers = gamesResponse.AreOddsVisibleToAllPlayers,
+                    MaxBuyIn = gamesResponse.MaxBuyIn,
+                    RequiresJoinApproval = gamesResponse.RequiresJoinApproval
                 };
                 _allowedDealerChoiceGameCodes = ParseAllowedDealerChoiceGameCodes(gamesResponse.GameSettings);
 
@@ -2539,6 +2589,22 @@
         _pendingJoinSeatIndex = null;
         _joinBuyInBalance = 0;
         _joinBuyInBalanceCap = null;
+    }
+
+    private void ShowJoinApprovalPendingModal(Guid? joinRequestId, string? hostName)
+    {
+        _showJoinApprovalPendingModal = true;
+        _pendingJoinRequestId = joinRequestId;
+        _joinApprovalHostName = string.IsNullOrWhiteSpace(hostName) ? "the host" : hostName;
+        _pendingApprovalBuyIn = _joinBuyInAmount;
+    }
+
+    private void CloseJoinApprovalPendingModal()
+    {
+        _showJoinApprovalPendingModal = false;
+        _pendingJoinRequestId = null;
+        _joinApprovalHostName = null;
+        _pendingApprovalBuyIn = 0;
     }
 
     private async Task ToggleSitOutAsync()
@@ -2732,6 +2798,20 @@
 
             var response = await GamesApiClient.JoinGameAsync(GameId, request);
 
+            if (response.StatusCode == HttpStatusCode.Accepted)
+            {
+                var hostName = TryGetHeaderValue(response.Headers, "X-Host-Name");
+                var joinRequestIdValue = TryGetHeaderValue(response.Headers, "X-Join-Request-Id");
+                Guid? joinRequestId = Guid.TryParse(joinRequestIdValue, out var parsedJoinRequestId)
+                    ? parsedJoinRequestId
+                    : null;
+
+                CloseJoinBuyInModal();
+                ShowJoinApprovalPendingModal(joinRequestId, hostName);
+                await ShowToastAsync($"Waiting for {(_joinApprovalHostName ?? "the host")} to approve your request.", "info");
+                return;
+            }
+
             if (!response.IsSuccessStatusCode)
             {
                 Logger.LogWarning("Failed to join game at seat {SeatIndex}: {StatusCode} - {Error}",
@@ -2786,6 +2866,31 @@
         finally
         {
             _isJoiningSeat = false;
+        }
+    }
+
+    private async Task HandleJoinRequestResolvedAsync(GameJoinRequestResolvedDto notification)
+    {
+        if (notification.GameId != GameId)
+        {
+            return;
+        }
+
+        if (_pendingJoinRequestId.HasValue && notification.JoinRequestId != _pendingJoinRequestId.Value)
+        {
+            return;
+        }
+
+        CloseJoinApprovalPendingModal();
+
+        if (string.Equals(notification.Status, "Approved", StringComparison.OrdinalIgnoreCase))
+        {
+            await LoadDataAsync();
+            await ShowToastAsync("The host approved your join request.", "success");
+        }
+        else
+        {
+            await ShowToastAsync(notification.Reason ?? "The host denied your join request.", "error");
         }
     }
 
@@ -2891,6 +2996,11 @@
         if (_joinBuyInBalanceCap.HasValue)
         {
             max = Math.Min(max, _joinBuyInBalanceCap.Value);
+        }
+
+        if (_gameResponse?.MaxBuyIn is int tableMaxBuyIn && tableMaxBuyIn > 0)
+        {
+            max = Math.Min(max, tableMaxBuyIn);
         }
 
         return max;
@@ -3137,7 +3247,7 @@
                 return;
             }
         }
-        else if (IsHoldEm || IsRedRiver)
+        else if (IsHoldEm || IsRedRiver || IsKlondike)
         {
             // Hold'Em family start handles blinds + deal in a single call.
             var startResponse = await HoldEmApi.HoldEmStartHandAsync(GameId);
@@ -3344,7 +3454,7 @@
             {
                 showdownResponse = await GamesApiClient.GenericPerformShowdownAsync(GameId);
             }
-            else if (IsOmaha || IsNebraska || IsSouthDakota || IsBobBarker)
+            else if (IsOmaha || IsNebraska || IsSouthDakota || IsBobBarker || IsKlondike)
             {
                 showdownResponse = await GamesApiClient.GenericPerformShowdownAsync(GameId);
             }
@@ -3799,6 +3909,8 @@
             _communityCardRevealInProgress = false;
             _communityCardRevealTimer?.Dispose();
             _communityCardRevealTimer = null;
+
+            _ = TryPlayPendingTurnAlertSoundAsync();
         }
         else
         {
@@ -3848,6 +3960,42 @@
         }
 
         return ConvertCardsToShowdownCards(communityCards).ToList();
+    }
+
+    private async Task PlayTurnAlertSoundAsync()
+    {
+        if (IsCardDealingVisualInProgress || _communityCardRevealInProgress)
+        {
+            _pendingTurnAlertSound = true;
+            return;
+        }
+
+        _pendingTurnAlertSound = false;
+
+        if (_isDealSoundMuted || !_isJsInteropReady)
+        {
+            return;
+        }
+
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("cardGamesAudio.playSoundEffect", "/sounds/alert.mp3");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "Unable to play turn alert sound");
+        }
+    }
+
+    private async Task TryPlayPendingTurnAlertSoundAsync()
+    {
+        if (!_pendingTurnAlertSound || !_isPlayerTurn)
+        {
+            _pendingTurnAlertSound = false;
+            return;
+        }
+
+        await PlayTurnAlertSoundAsync();
     }
 
     private async Task PlayDealCardSoundAsync(int cardCount)
@@ -4025,6 +4173,7 @@
         _dealAnimationInProgress = false;
 
         // Tollbooth: reveal deferred community cards now that all player cards have been dealt
+        // If community card reveal starts, defer the turn alert to after the reveal completes
         if (_deferCommunityCardsForDealAnimation)
         {
             _deferCommunityCardsForDealAnimation = false;
@@ -4037,6 +4186,12 @@
                 _communityCardRevealTimer?.Dispose();
                 _communityCardRevealTimer = new Timer(RevealNextCommunityCard, null, 250, Timeout.Infinite);
             }
+        }
+
+        // Play pending turn alert if no community card reveal was started
+        if (!_communityCardRevealInProgress)
+        {
+            _ = TryPlayPendingTurnAlertSoundAsync();
         }
 
         // Sync with Pending Private State (for current player hole cards)
@@ -4245,7 +4400,10 @@
                 // endpoint returns an error because there is no active betting round.
                 // Suppress the toast — SignalR will broadcast the updated state and the
                 // showdown overlay will appear normally.
-                if (IsShowdownPhase || IsCompletePhase || IsEndedPhase)
+                // Check both the client-side phase (may already be updated via SignalR) and
+                // the error message itself (the SignalR update may not have arrived yet).
+                if (IsShowdownPhase || IsCompletePhase || IsEndedPhase ||
+                    IsResolutionPhaseError(response.Error))
                 {
                     Logger.LogDebug(
                         "Betting action failed but game is already in resolution phase ({Phase}); suppressing error toast",
@@ -4301,6 +4459,25 @@
         }
 
         return errorBody;
+    }
+
+    /// <summary>
+    /// Checks whether an API error body indicates the game has already advanced
+    /// to a resolution phase (Showdown, Complete, Ended). Used as a fallback when the
+    /// SignalR state update has not yet arrived on the client.
+    /// </summary>
+    private static bool IsResolutionPhaseError(string? errorBody)
+    {
+        if (string.IsNullOrWhiteSpace(errorBody))
+        {
+            return false;
+        }
+
+        var message = ExtractJsonErrorMessage(errorBody) ?? errorBody;
+        return message.Contains("'Showdown'", StringComparison.OrdinalIgnoreCase) ||
+               message.Contains("'Complete'", StringComparison.OrdinalIgnoreCase) ||
+               message.Contains("'Ended'", StringComparison.OrdinalIgnoreCase) ||
+               message.Contains("'KlondikeReveal'", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -4951,6 +5128,7 @@
         GameHubClient.OnPlayerActionPerformed -= HandlePlayerActionPerformedAsync;
         GameHubClient.OnTableSettingsUpdated -= HandleTableSettingsUpdatedAsync;
         GameHubClient.OnTableToastNotification -= HandleTableToastNotificationAsync;
+        NotificationHubClient.OnGameJoinRequestResolved -= HandleJoinRequestResolvedAsync;
 
         // Leave the game and disconnect
         if (_currentGameId.HasValue)
@@ -4970,6 +5148,13 @@
         {
             // Component was disposed between the check and the call — safe to ignore.
         }
+    }
+
+    private static string? TryGetHeaderValue(System.Net.Http.Headers.HttpResponseHeaders headers, string headerName)
+    {
+        return headers.TryGetValues(headerName, out var values)
+            ? values.FirstOrDefault()
+            : null;
     }
 
     /// <summary>
@@ -5259,11 +5444,23 @@
             }
 
             var communityCards = _tableState?.CommunityCards?
-                .Where(c => c.IsFaceUp && c.Rank is not null && c.Suit is not null)
+                .Where(c => c.IsFaceUp && !c.IsKlondikeCard && c.Rank is not null && c.Suit is not null)
                 .Select(c => ConvertToCard(c.Rank!, c.Suit!))
                 .Where(c => c is not null)
                 .Cast<Card>()
                 .ToList() ?? [];
+
+            // Extract the revealed Klondike card (if any) for wild card odds calculation
+            Card? klondikeCardForOdds = null;
+            if (IsKlondike)
+            {
+                var klondikeDto = _tableState?.CommunityCards?
+                    .FirstOrDefault(c => c.IsKlondikeCard && c.IsFaceUp && c.Rank is not null && c.Suit is not null);
+                if (klondikeDto is not null)
+                {
+                    klondikeCardForOdds = ConvertToCard(klondikeDto.Rank!, klondikeDto.Suit!);
+                }
+            }
 
             // Get dead cards from folded players' visible cards
             var deadCards = _seats
@@ -5310,7 +5507,8 @@
                 pairPressureFaceUpCardsInOrder,
                 pairPressurePlayers,
                 _currentPlayerSeatIndex >= 0 ? _currentPlayerSeatIndex : null,
-                _dealerSeatIndex);
+                _dealerSeatIndex,
+                klondikeCardForOdds);
 
             handOdds = result is null
                 ? []

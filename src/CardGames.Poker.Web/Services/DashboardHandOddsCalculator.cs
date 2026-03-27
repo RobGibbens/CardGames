@@ -15,7 +15,8 @@ public static class DashboardHandOddsCalculator
         IReadOnlyCollection<Card>? faceUpCardsInOrder = null,
         IReadOnlyCollection<OddsCalculator.PairPressurePlayerSnapshot>? pairPressurePlayers = null,
         int? heroSeatIndex = null,
-        int? dealerSeatIndex = null)
+        int? dealerSeatIndex = null,
+        Card? klondikeCard = null)
     {
         if (playerCards.Count == 0)
         {
@@ -78,6 +79,17 @@ public static class DashboardHandOddsCalculator
             }
 
             return OddsCalculator.CalculateHoldemOdds(holeCards, communityCards, deadCards);
+        }
+
+        if (string.Equals(gameTypeCode, "KLONDIKE", StringComparison.OrdinalIgnoreCase))
+        {
+            var holeCards = playerCards.Take(2).ToList();
+            if (holeCards.Count < 2)
+            {
+                return null;
+            }
+
+            return OddsCalculator.CalculateKlondikeOdds(holeCards, communityCards, klondikeCard, deadCards);
         }
 
         if (string.Equals(gameTypeCode, "OMAHA", StringComparison.OrdinalIgnoreCase))

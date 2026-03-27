@@ -77,6 +77,11 @@ public static class HandDescriptionFormatter
 			return nebraskaHand.EvaluatedBestCards.ToList();
 		}
 
+		if (hand is Hands.CommunityCardHands.KlondikeHand klondikeHand)
+		{
+			return klondikeHand.EvaluatedBestCards.ToList();
+		}
+
 		return hand.Cards.ToList();
 	}
 

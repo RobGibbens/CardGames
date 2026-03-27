@@ -7,10 +7,11 @@ using CardGames.Poker.Hands.CommunityCardHands;
 namespace CardGames.Poker.Evaluation.Evaluators;
 
 /// <summary>
-/// Hand evaluator for Irish Hold 'Em.
+/// Hand evaluator for Irish Hold 'Em and variants that discard down to 2 hole cards.
 /// Post-discard (2 hole cards remaining), evaluates identically to Texas Hold 'Em.
 /// </summary>
 [HandEvaluator("IRISHHOLDEM")]
+[HandEvaluator("PHILSMOM")]
 public sealed class IrishHoldEmHandEvaluator : IHandEvaluator
 {
     /// <inheritdoc />

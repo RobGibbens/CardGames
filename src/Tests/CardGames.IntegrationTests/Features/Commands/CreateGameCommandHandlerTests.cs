@@ -101,6 +101,55 @@ public class CreateGameCommandHandlerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task Handle_WithMaxBuyIn_PersistsMaxBuyIn()
+    {
+        // Arrange
+        var gameId = Guid.NewGuid();
+        var command = new CreateGameCommand(
+            gameId,
+            PokerGameMetadataRegistry.FiveCardDrawCode,
+            "Capped Table",
+            10,
+            20,
+            new List<PlayerInfo>
+            {
+                new("Player1", 1000),
+                new("Player2", 1000)
+            },
+            MaxBuyIn: 250);
+
+        // Act
+        var result = await Mediator.Send(command);
+
+        // Assert
+        result.IsT0.Should().BeTrue();
+
+        var game = await DbContext.Games.FirstAsync(g => g.Id == gameId);
+        game.MaxBuyIn.Should().Be(250);
+    }
+
+    [Fact]
+    public async Task Handle_WithMaxBuyInBelowMinimum_ReturnsConflict()
+    {
+        // Arrange
+        var command = new CreateGameCommand(
+            Guid.NewGuid(),
+            PokerGameMetadataRegistry.FiveCardDrawCode,
+            "Invalid Capped Table",
+            10,
+            20,
+            new List<PlayerInfo> { new("Player1", 1000) },
+            MaxBuyIn: 5);
+
+        // Act
+        var result = await Mediator.Send(command);
+
+        // Assert
+        result.IsT1.Should().BeTrue();
+        result.AsT1.Reason.Should().Contain("Max buy-in must be at least 20");
+    }
+
+    [Fact]
     public async Task Handle_EmptyGameId_ReturnsConflict()
     {
         // Arrange

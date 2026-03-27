@@ -33,6 +33,7 @@ public static partial class GetGameMapper
 			SmallBet = model.SmallBet,
 			BigBet = model.BigBet,
 			MinBet = model.MinBet,
+			MaxBuyIn = model.MaxBuyIn,
 			GameSettings = model.GameSettings,
 			Status = model.Status,
 			CurrentPlayerIndex = model.CurrentPlayerIndex,
@@ -48,8 +49,9 @@ public static partial class GetGameMapper
 			CanContinue = activePlayers >= 2,
 			RowVersion = MapRowVersion(model.RowVersion),
 			IsDealersChoice = model.IsDealersChoice,
-         DealersChoiceDealerPosition = model.DealersChoiceDealerPosition,
-			AreOddsVisibleToAllPlayers = model.AreOddsVisibleToAllPlayers
+			DealersChoiceDealerPosition = model.DealersChoiceDealerPosition,
+			AreOddsVisibleToAllPlayers = model.AreOddsVisibleToAllPlayers,
+			RequiresJoinApproval = model.RequiresJoinApproval
 		};
 	}
 

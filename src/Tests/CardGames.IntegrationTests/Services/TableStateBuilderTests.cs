@@ -329,6 +329,119 @@ public class TableStateBuilderTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task BuildPrivateStateAsync_Klondike_HandDescriptionUpdatesWhenKlondikeCardRevealed()
+    {
+        // Arrange
+        var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "KLONDIKE", 2);
+        var game = setup.Game;
+        var hero = setup.GamePlayers[0];
+        var heroEmail = setup.Players[0].Email!;
+
+        game.CurrentHandNumber = 1;
+        game.CurrentPhase = nameof(Phases.PreFlop);
+        game.Status = GameStatus.InProgress;
+
+        // Hero's hole cards: 7c, As
+        DbContext.GameCards.AddRange(
+            new GameCard
+            {
+                GameId = game.Id,
+                GamePlayerId = hero.Id,
+                HandNumber = 1,
+                Location = CardLocation.Hole,
+                Suit = CardSuit.Clubs,
+                Symbol = CardSymbol.Seven,
+                DealOrder = 1,
+                DealtAtPhase = nameof(Phases.PreFlop),
+                IsVisible = false
+            },
+            new GameCard
+            {
+                GameId = game.Id,
+                GamePlayerId = hero.Id,
+                HandNumber = 1,
+                Location = CardLocation.Hole,
+                Suit = CardSuit.Spades,
+                Symbol = CardSymbol.Ace,
+                DealOrder = 2,
+                DealtAtPhase = nameof(Phases.PreFlop),
+                IsVisible = false
+            });
+
+        // Klondike Card (face-down initially): 7 of Diamonds
+        DbContext.GameCards.Add(new GameCard
+        {
+            GameId = game.Id,
+            HandNumber = 1,
+            Location = CardLocation.Community,
+            Suit = CardSuit.Diamonds,
+            Symbol = CardSymbol.Seven,
+            DealOrder = 3,
+            DealtAtPhase = "KlondikeCard",
+            IsVisible = false
+        });
+
+        // Flop community cards: 3h, 9d, Kd (gaps too wide for straights with 2 wilds)
+        DbContext.GameCards.AddRange(
+            new GameCard
+            {
+                GameId = game.Id,
+                HandNumber = 1,
+                Location = CardLocation.Community,
+                Suit = CardSuit.Hearts,
+                Symbol = CardSymbol.Three,
+                DealOrder = 4,
+                DealtAtPhase = nameof(Phases.Flop),
+                IsVisible = true
+            },
+            new GameCard
+            {
+                GameId = game.Id,
+                HandNumber = 1,
+                Location = CardLocation.Community,
+                Suit = CardSuit.Diamonds,
+                Symbol = CardSymbol.Nine,
+                DealOrder = 5,
+                DealtAtPhase = nameof(Phases.Flop),
+                IsVisible = true
+            },
+            new GameCard
+            {
+                GameId = game.Id,
+                HandNumber = 1,
+                Location = CardLocation.Community,
+                Suit = CardSuit.Diamonds,
+                Symbol = CardSymbol.King,
+                DealOrder = 6,
+                DealtAtPhase = nameof(Phases.Flop),
+                IsVisible = true
+            });
+
+        await DbContext.SaveChangesAsync();
+
+        // Act: Before Klondike card is revealed, one phantom wild card is used.
+        // Hole: 7c, As + Community: 3h, 9d, Kd + 1 phantom wild → best hand = Pair of Aces
+        var beforeRevealState = await TableStateBuilder.BuildPrivateStateAsync(game.Id, heroEmail);
+
+        beforeRevealState.Should().NotBeNull();
+        beforeRevealState!.HandEvaluationDescription.Should().Be("Pair of Aces");
+
+        // Arrange: Reveal the Klondike Card (simulate KlondikeReveal phase)
+        var klondikeCard = await DbContext.GameCards
+            .FirstAsync(c => c.GameId == game.Id && c.DealtAtPhase == "KlondikeCard");
+        klondikeCard.IsVisible = true;
+        game.CurrentPhase = "KlondikeReveal";
+        await DbContext.SaveChangesAsync();
+
+        // Act: After reveal, 7d is the Klondike Card → all 7s are wild.
+        // Hero holds 7c (wild) and community has 7d (wild): 2 wilds + As → Three of a Kind Aces.
+        var afterRevealState = await TableStateBuilder.BuildPrivateStateAsync(game.Id, heroEmail);
+
+        afterRevealState.Should().NotBeNull();
+        afterRevealState!.HandEvaluationDescription.Should().Be("Three of a kind, Aces");
+    }
+
+    [Fact]
     public async Task BuildPublicStateAsync_SevenCardStud_ShowsBoardCards()
     {
         // Arrange

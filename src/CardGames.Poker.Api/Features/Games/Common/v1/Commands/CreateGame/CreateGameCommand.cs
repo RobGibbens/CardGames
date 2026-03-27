@@ -14,7 +14,9 @@ public record CreateGameCommand(
 	IReadOnlyList<PlayerInfo> Players,
 	bool IsDealersChoice = false,
 	int? SmallBlind = null,
-   int? BigBlind = null,
+	int? BigBlind = null,
+	int? MaxBuyIn = null,
+	bool RequiresJoinApproval = false,
 	bool AreOddsVisibleToAllPlayers = true) : IRequest<OneOf<CreateGameSuccessful, CreateGameConflict>>, IGameStateChangingCommand, ILobbyStateChangingCommand
 {
 	[JsonPropertyName("allowedDealerChoiceGameCodes")]

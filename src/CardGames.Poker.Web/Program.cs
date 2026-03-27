@@ -45,6 +45,9 @@ builder.Services.AddScoped<LobbyHubClient>();
 // Register SignalR leagues hub client (scoped per Blazor circuit)
 builder.Services.AddScoped<LeagueHubClient>();
 
+// Register global notifications hub client (scoped per Blazor circuit)
+builder.Services.AddScoped<NotificationHubClient>();
+
 // Register Dashboard UI state service (scoped per Blazor circuit)
 builder.Services.AddScoped<DashboardState>();
 

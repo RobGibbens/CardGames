@@ -27,6 +27,12 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 	/// </summary>
 	public const int DrawCompleteDisplayDurationSeconds = 5;
 
+	/// <summary>
+	/// Duration in seconds for the Klondike reveal display period before transitioning to showdown.
+	/// This gives all players time to see the revealed wild card.
+	/// </summary>
+	public const int KlondikeRevealDisplayDurationSeconds = 20;
+
 	private readonly IServiceScopeFactory _scopeFactory;
 	private readonly ILogger<ContinuousPlayBackgroundService> _logger;
 	private readonly TimeSpan _checkInterval = TimeSpan.FromSeconds(1);
@@ -84,6 +90,9 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 
 		// Process DrawComplete games that are ready to transition to Showdown
 		await ProcessDrawCompleteGamesAsync(context, broadcaster, handHistoryRecorder, now, cancellationToken);
+
+		// Process KlondikeReveal games that are ready to transition to Showdown
+		await ProcessKlondikeRevealGamesAsync(context, broadcaster, now, cancellationToken);
 
 		// Find games in Complete or WaitingForPlayers phase where the next hand should start.
 		// Also include Dealer's Choice games in WaitingToStart (after dealer chose the game type).
@@ -143,7 +152,9 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 					"FourthStreet",
 					"FifthStreet",
 					"SixthStreet",
-					"SeventhStreet"
+					"SeventhStreet",
+					// Klondike reveal phase
+					"KlondikeReveal"
 				};
 
 		var activeGames = await context.Games
@@ -324,6 +335,49 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			catch (Exception ex)
 			{
 				_logger.LogError(ex, "Failed to process DrawComplete for game {GameId}", game.Id);
+			}
+		}
+	}
+
+	/// <summary>
+	/// Processes Klondike games in KlondikeReveal phase that are ready to transition to Showdown.
+	/// The Klondike wild card was revealed when entering this phase; after the display period
+	/// expires, the game transitions to Showdown so all players see the overlay simultaneously.
+	/// </summary>
+	private async Task ProcessKlondikeRevealGamesAsync(
+		CardsDbContext context,
+		IGameStateBroadcaster broadcaster,
+		DateTimeOffset now,
+		CancellationToken cancellationToken)
+	{
+		var klondikeRevealDeadline = now.AddSeconds(-KlondikeRevealDisplayDurationSeconds);
+
+		var gamesReadyForShowdown = await context.Games
+			.Where(g => g.CurrentPhase == nameof(Phases.KlondikeReveal) &&
+						g.DrawCompletedAt != null &&
+						g.DrawCompletedAt <= klondikeRevealDeadline &&
+						g.Status == GameStatus.InProgress)
+			.Include(g => g.GamePlayers)
+			.Include(g => g.GameType)
+			.ToListAsync(cancellationToken);
+
+		foreach (var game in gamesReadyForShowdown)
+		{
+			try
+			{
+				_logger.LogInformation(
+					"Game {GameId} KlondikeReveal display period expired, transitioning to Showdown",
+					game.Id);
+
+				game.CurrentPhase = nameof(Phases.Showdown);
+				game.UpdatedAt = now;
+
+				await context.SaveChangesAsync(cancellationToken);
+				await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Failed to process KlondikeReveal for game {GameId}", game.Id);
 			}
 		}
 	}

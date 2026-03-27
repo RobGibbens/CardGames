@@ -123,6 +123,10 @@ public enum Phases
 	[Description("Reveal")]
 	Reveal,
 
+	/// <summary>Klondike reveal - the Klondike wild card is turned face-up before showdown.</summary>
+	[Description("Klondike Reveal")]
+	KlondikeReveal,
+
 	/// <summary>Showdown - comparing hands to determine winner.</summary>
 	[Description("Showdown")]
 	Showdown,

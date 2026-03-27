@@ -40,6 +40,19 @@ public class CreateGameCommandHandler(
 			};
 		}
 
+		if (command.MaxBuyIn.HasValue)
+		{
+			var minimumAllowedBuyIn = GetMinimumAllowedBuyIn(command);
+			if (command.MaxBuyIn.Value < minimumAllowedBuyIn)
+			{
+				return new CreateGameConflict
+				{
+					GameId = command.GameId,
+					Reason = $"Max buy-in must be at least {minimumAllowedBuyIn}."
+				};
+			}
+		}
+
 		var now = DateTimeOffset.UtcNow;
 		var allowedDealerChoiceGameCodes = DealersChoiceGameSettings.NormalizeGameCodes(command.AllowedDealerChoiceGameCodes);
 
@@ -95,8 +108,10 @@ public class CreateGameCommandHandler(
 			MinBet = command.IsDealersChoice ? null : command.MinBet,
 			SmallBlind = command.SmallBlind,
 			BigBlind = command.BigBlind,
+			MaxBuyIn = command.MaxBuyIn,
+			RequiresJoinApproval = command.RequiresJoinApproval,
 			IsDealersChoice = command.IsDealersChoice,
-          AreOddsVisibleToAllPlayers = command.AreOddsVisibleToAllPlayers,
+			AreOddsVisibleToAllPlayers = command.AreOddsVisibleToAllPlayers,
 			Status = GameStatus.WaitingForPlayers,
 			CurrentPlayerIndex = -1,
 			CurrentDrawPlayerIndex = -1,
@@ -238,5 +253,21 @@ public class CreateGameCommandHandler(
 
 		context.Players.Add(player);
 		return player;
+	}
+
+	private static int GetMinimumAllowedBuyIn(CreateGameCommand command)
+	{
+		if (command.IsDealersChoice)
+		{
+			return 1;
+		}
+
+		if (string.Equals(command.GameCode, PokerGameMetadataRegistry.ScrewYourNeighborCode, StringComparison.OrdinalIgnoreCase))
+		{
+			return Math.Max(1, command.Ante * 3);
+		}
+
+		var baseMinimum = Math.Max(command.Ante, command.BigBlind ?? command.MinBet);
+		return Math.Max(1, baseMinimum);
 	}
 }

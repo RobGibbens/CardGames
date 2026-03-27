@@ -289,6 +289,15 @@ public sealed class PerformShowdownCommandHandler(
             .OrderBy(c => c.DealOrder)
             .ToListAsync(cancellationToken);
 
+        // Klondike: reveal the face-down Klondike Card at showdown
+        if (string.Equals(gameTypeCode, PokerGameMetadataRegistry.KlondikeCode, StringComparison.OrdinalIgnoreCase))
+        {
+            foreach (var card in sharedCommunityCards.Where(c => c.DealtAtPhase == "KlondikeCard" && !c.IsVisible))
+            {
+                card.IsVisible = true;
+            }
+        }
+
         // 6. Calculate total pot
         var totalPot = currentHandPots.Sum(p => p.Amount);
 
@@ -1296,8 +1305,9 @@ public sealed class PerformShowdownCommandHandler(
                              || string.Equals(gameTypeCode, PokerGameMetadataRegistry.SouthDakotaCode, StringComparison.OrdinalIgnoreCase)
                || string.Equals(gameTypeCode, PokerGameMetadataRegistry.IrishHoldEmCode, StringComparison.OrdinalIgnoreCase)
                || string.Equals(gameTypeCode, PokerGameMetadataRegistry.PhilsMomCode, StringComparison.OrdinalIgnoreCase)
-             || string.Equals(gameTypeCode, PokerGameMetadataRegistry.CrazyPineappleCode, StringComparison.OrdinalIgnoreCase)
-               || string.Equals(gameTypeCode, PokerGameMetadataRegistry.HoldTheBaseballCode, StringComparison.OrdinalIgnoreCase);
+               || string.Equals(gameTypeCode, PokerGameMetadataRegistry.CrazyPineappleCode, StringComparison.OrdinalIgnoreCase)
+               || string.Equals(gameTypeCode, PokerGameMetadataRegistry.HoldTheBaseballCode, StringComparison.OrdinalIgnoreCase)
+               || string.Equals(gameTypeCode, PokerGameMetadataRegistry.KlondikeCode, StringComparison.OrdinalIgnoreCase);
     }
 
     private static List<string> GetBobBarkerShowcaseWinners(

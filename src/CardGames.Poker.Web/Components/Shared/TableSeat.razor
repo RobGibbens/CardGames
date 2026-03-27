@@ -263,6 +263,7 @@
 StringComparison.OrdinalIgnoreCase);
 	private bool IsBobBarker => string.Equals(GameTypeCode, "BOBBARKER", StringComparison.OrdinalIgnoreCase);
 	private bool IsPairPressure => string.Equals(GameTypeCode, "PAIRPRESSURE", StringComparison.OrdinalIgnoreCase);
+	private bool IsKlondike => string.Equals(GameTypeCode, "KLONDIKE", StringComparison.OrdinalIgnoreCase);
 	private bool ShouldSeparateShowcaseCard => IsBobBarker && Seat.Cards.Any(c => c.IsShowcaseCard);
 
 	protected override void OnInitialized()
@@ -496,7 +497,7 @@ StringComparison.OrdinalIgnoreCase);
 
 	private bool IsWildForDisplay(CardInfo card, int? lowestNonKingRankValue, bool hasExplicitWildFlags)
 	{
-		if (IsPairPressure)
+		if (IsPairPressure || IsKlondike)
 		{
 			return WildCardDisplayMatcher.IsActiveWildCard(card.Rank, card.Suit, WildCards);
 		}

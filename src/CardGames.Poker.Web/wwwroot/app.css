@@ -3694,6 +3694,31 @@ a:hover {
     border: 1px solid rgba(255, 215, 0, 0.2);
 }
 
+/* --- Klondike Card: separated display (like Bob Barker showcase card) --- */
+.klondike-card-slot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    margin-right: 0.75rem;
+    padding: 0.4rem;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+    border: 1px solid rgba(251, 191, 36, 0.3);
+    box-shadow: 0 0 10px rgba(251, 191, 36, 0.15);
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.klondike-card-slot.revealed {
+    transform: scale(1.05);
+    border-color: rgba(34, 197, 94, 0.5);
+    box-shadow: 0 0 14px rgba(34, 197, 94, 0.25);
+}
+
+.klondike-card-slot.hidden {
+    opacity: 0.85;
+}
+
 .community-card-slot {
     display: flex;
     flex-direction: column;

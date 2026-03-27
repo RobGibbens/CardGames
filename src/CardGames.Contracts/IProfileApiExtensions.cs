@@ -29,4 +29,12 @@ public partial interface IProfileApi
 	[Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
 	[Put("/api/v1/profile/game-preferences")]
 	Task<IApiResponse<GamePreferencesDto>> UpdateGamePreferencesAsync([Body] UpdateGamePreferencesRequest request, CancellationToken cancellationToken = default);
+
+	[Headers("Accept: application/json, application/problem+json")]
+	[Get("/api/v1/profile/favorite-variants")]
+	Task<IApiResponse<FavoriteVariantsDto>> GetFavoriteVariantsAsync(CancellationToken cancellationToken = default);
+
+	[Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+	[Put("/api/v1/profile/favorite-variants")]
+	Task<IApiResponse<FavoriteVariantsDto>> UpdateFavoriteVariantsAsync([Body] UpdateFavoriteVariantsRequest request, CancellationToken cancellationToken = default);
 }

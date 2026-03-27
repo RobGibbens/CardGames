@@ -103,6 +103,8 @@ Use this for a complete launch-quality addition.
 - [ ] Validate image and metadata visibility in table creation and play views.
 - [ ] Run full solution build and targeted tests before merge.
 
+9. There are places in the code (if statements, switch statements, etc) where we make decisions based on the game variant. Sometimes we default to FIVECARDDRAW, and sometimes we throw an exception. Be sure to add this new game to all of those code hooks.
+1. 
 ## 4. Concrete Phil's Mom Change Map
 
 ### Domain / game rules

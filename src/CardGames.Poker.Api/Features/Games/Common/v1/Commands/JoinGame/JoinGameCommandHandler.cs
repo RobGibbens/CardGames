@@ -17,14 +17,23 @@ public sealed class JoinGameCommandHandler(
 	CardsDbContext context,
 	ICurrentUserService currentUserService,
 	IPlayerChipWalletService playerChipWalletService,
+	IGameJoinRequestBroadcaster joinRequestBroadcaster,
 	IGameStateBroadcaster broadcaster,
 	ILogger<JoinGameCommandHandler> logger)
-	: IRequestHandler<JoinGameCommand, OneOf<JoinGameSuccessful, JoinGameError>>
+	: IRequestHandler<JoinGameCommand, OneOf<JoinGameSuccessful, JoinGameError, JoinGamePendingApproval>>
 {
 	private const int MaxSeatIndex = 7; // 0-based, so 8 seats total
+	private static readonly TimeSpan JoinApprovalTimeout = TimeSpan.FromMinutes(5);
 
 	/// <inheritdoc />
-	public async Task<OneOf<JoinGameSuccessful, JoinGameError>> Handle(
+	public Task<OneOf<JoinGameSuccessful, JoinGameError, JoinGamePendingApproval>> Handle(
+		JoinGameCommand command,
+		CancellationToken cancellationToken)
+	{
+		return HandleCore(command, cancellationToken);
+	}
+
+	private async Task<OneOf<JoinGameSuccessful, JoinGameError, JoinGamePendingApproval>> HandleCore(
 		JoinGameCommand command,
 		CancellationToken cancellationToken)
 	{
@@ -182,6 +191,22 @@ public sealed class JoinGameCommandHandler(
 
 		var now = DateTimeOffset.UtcNow;
 
+		var existingPendingRequest = await context.GameJoinRequests
+			.AsNoTracking()
+			.AnyAsync(
+				x => x.GameId == game.Id
+					&& x.PlayerId == player.Id
+					&& x.Status == GameJoinRequestStatus.Pending
+					&& x.ExpiresAt > now,
+				cancellationToken);
+
+		if (existingPendingRequest)
+		{
+			return new JoinGameError(
+				JoinGameErrorCode.JoinApprovalPending,
+				"You already have a pending approval request for this table.");
+		}
+
 		var startingChips = command.StartingChips;
 		if (string.Equals(game.GameType?.Code, "SCREWYOURNEIGHBOR", StringComparison.OrdinalIgnoreCase))
 		{
@@ -194,6 +219,73 @@ public sealed class JoinGameCommandHandler(
 			}
 
 			startingChips = stackSize * 3;
+		}
+
+		if (game.MaxBuyIn.HasValue && startingChips > game.MaxBuyIn.Value)
+		{
+			return new JoinGameError(
+				JoinGameErrorCode.BuyInExceedsTableMaximum,
+				$"Buy-in exceeds the table maximum of {game.MaxBuyIn.Value:N0}.");
+		}
+
+		var requiresApproval = game.RequiresJoinApproval
+			&& !string.IsNullOrWhiteSpace(game.CreatedById)
+			&& !string.Equals(game.CreatedById, currentUserService.UserId, StringComparison.Ordinal);
+
+		if (requiresApproval)
+		{
+			var joinRequest = new GameJoinRequest
+			{
+				GameId = game.Id,
+				PlayerId = player.Id,
+				RequestedBuyIn = startingChips,
+				SeatIndex = command.SeatIndex,
+				RequestedAt = now,
+				UpdatedAt = now,
+				ExpiresAt = now.Add(JoinApprovalTimeout)
+			};
+
+			context.GameJoinRequests.Add(joinRequest);
+			game.UpdatedAt = now;
+
+			await context.SaveChangesAsync(cancellationToken);
+
+			// Look up the host's email for SignalR routing.
+			// SignalRUserIdProvider resolves user identity via ClaimTypes.Email,
+			// so we must route to the host's email, not their display name.
+			var hostRoutingKey = game.CreatedByName;
+			if (!string.IsNullOrWhiteSpace(game.CreatedById))
+			{
+				var hostEmail = await context.Users
+					.AsNoTracking()
+					.Where(u => u.Id == game.CreatedById)
+					.Select(u => u.Email)
+					.FirstOrDefaultAsync(cancellationToken);
+				hostRoutingKey = hostEmail ?? game.CreatedByName;
+			}
+
+			if (!string.IsNullOrWhiteSpace(hostRoutingKey))
+			{
+				await joinRequestBroadcaster.BroadcastJoinRequestReceivedAsync(
+					hostRoutingKey,
+					new CardGames.Contracts.SignalR.GameJoinRequestReceivedDto
+					{
+						GameId = game.Id,
+						JoinRequestId = joinRequest.Id,
+						GameName = game.Name ?? game.GameType?.Name ?? "Table",
+						HostName = game.CreatedByName,
+						PlayerName = playerName,
+						PlayerAvatarUrl = userProfile?.AvatarUrl ?? player.AvatarUrl,
+						PlayerFirstName = userProfile?.FirstName,
+						RequestedBuyIn = startingChips,
+						MaxBuyIn = game.MaxBuyIn,
+						RequestedAtUtc = joinRequest.RequestedAt,
+						ExpiresAtUtc = joinRequest.ExpiresAt
+					},
+					cancellationToken);
+			}
+
+			return new JoinGamePendingApproval(joinRequest.Id, game.CreatedByName ?? "the host");
 		}
 
 		var debitResult = await playerChipWalletService.TryDebitForBuyInAsync(

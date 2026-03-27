@@ -214,7 +214,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				IsFaceUp = c.IsVisible || isBobBarkerShowdownReveal,
 				Rank = c.IsVisible || isBobBarkerShowdownReveal ? MapSymbolToRank(c.Symbol) : null,
 				Suit = c.IsVisible || isBobBarkerShowdownReveal ? GetCardSuitString(c.Suit) : null,
-				DealOrder = c.DealOrder
+				DealOrder = c.DealOrder,
+				IsKlondikeCard = c.DealtAtPhase == "KlondikeCard"
 			})
 			.ToListAsync(cancellationToken);
 
@@ -269,6 +270,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			ChipCheckPause = chipCheckPause,
 			CommunityCards = communityCards.Count > 0 ? communityCards : null,
 			IsDealersChoice = game.IsDealersChoice,
+			RequiresJoinApproval = game.RequiresJoinApproval,
 			DealersChoiceDealerPosition = game.IsDealersChoice ? game.DealersChoiceDealerPosition : null
 		};
 	}
@@ -475,6 +477,31 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				{
 					var holdTheBaseballHand = new HoldTheBaseballHand(playerCards, communityCards);
 					handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(holdTheBaseballHand);
+				}
+				// Klondike: Before reveal, treat the unknown Klondike Card as one wild.
+				// After reveal, treat the Klondike Card and all cards of the same rank as wild.
+				else if (IsGameType(game.GameType?.Code, PokerGameMetadataRegistry.KlondikeCode) && playerCards.Count == 2)
+				{
+					var klondikeCardEntity = await _context.GameCards
+						.Where(c => c.GameId == gameId
+							&& c.HandNumber == game.CurrentHandNumber
+							&& c.DealtAtPhase == "KlondikeCard")
+						.AsNoTracking()
+						.FirstOrDefaultAsync(cancellationToken);
+
+					if (klondikeCardEntity is { IsVisible: true })
+					{
+						// Post-reveal: Klondike Card + all same-rank cards are wild
+						var klondikeCard = new Card((Suit)klondikeCardEntity.Suit, (Symbol)klondikeCardEntity.Symbol);
+						var klondikeHand = new KlondikeHand(playerCards, communityCards, klondikeCard);
+						handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(klondikeHand);
+					}
+					else
+					{
+						// Pre-reveal: one unknown wild card
+						var klondikeHand = new KlondikeHand(playerCards, communityCards);
+						handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(klondikeHand);
+					}
 				}
 				// Hold'em / Short-deck Hold'em style: 2 hole + up to 5 community
 				else if (playerCards.Count == 2)
@@ -2234,6 +2261,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 		var isFollowTheQueen = string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.FollowTheQueenCode, StringComparison.OrdinalIgnoreCase);
 		var isPairPressure = string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.PairPressureCode, StringComparison.OrdinalIgnoreCase);
+		var isKlondike = string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.KlondikeCode, StringComparison.OrdinalIgnoreCase);
 
 		// Dynamic-wild stud variants compute their active wild ranks from face-up cards.
 		IReadOnlyList<string>? dynamicWildRanks = null;
@@ -2244,6 +2272,10 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		else if (isPairPressure)
 		{
 			dynamicWildRanks = await ComputePairPressureWildRanksAsync(game, cancellationToken);
+		}
+		else if (isKlondike)
+		{
+			dynamicWildRanks = await ComputeKlondikeWildRanksAsync(game, cancellationToken);
 		}
 
 		return new GameSpecialRulesDto
@@ -2314,6 +2346,32 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			.ToList();
 
 		return wildRanks;
+	}
+
+	/// <summary>
+	/// Computes the current wild card rank for Klondike.
+	/// When the Klondike Card is revealed, all cards of that rank are wild.
+	/// Returns empty if the card has not been revealed yet.
+	/// </summary>
+	private async Task<IReadOnlyList<string>> ComputeKlondikeWildRanksAsync(
+		Entities.Game game,
+		CancellationToken cancellationToken)
+	{
+		var klondikeCard = await _context.GameCards
+			.Where(c => c.GameId == game.Id
+				&& c.HandNumber == game.CurrentHandNumber
+				&& c.DealtAtPhase == "KlondikeCard"
+				&& c.IsVisible)
+			.AsNoTracking()
+			.FirstOrDefaultAsync(cancellationToken);
+
+		if (klondikeCard is null)
+		{
+			return [];
+		}
+
+		var rank = MapSymbolToRank(klondikeCard.Symbol);
+		return rank is not null ? [rank] : [];
 	}
 
 	/// <summary>
@@ -2389,6 +2447,13 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			}
 		}
 		else if (string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.PairPressureCode, StringComparison.OrdinalIgnoreCase))
+		{
+			if (dynamicWildRanks is { Count: > 0 })
+			{
+				wildRanks.AddRange(dynamicWildRanks);
+			}
+		}
+		else if (string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.KlondikeCode, StringComparison.OrdinalIgnoreCase))
 		{
 			if (dynamicWildRanks is { Count: > 0 })
 			{
@@ -3028,7 +3093,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 	private static bool IsHoldEmGame(string? gameTypeCode)
 		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.HoldEmCode)
-		   || IsGameType(gameTypeCode, PokerGameMetadataRegistry.RedRiverCode);
+		   || IsGameType(gameTypeCode, PokerGameMetadataRegistry.RedRiverCode)
+		   || IsGameType(gameTypeCode, PokerGameMetadataRegistry.KlondikeCode);
 
 	private static bool IsHoldTheBaseballGame(string? gameTypeCode)
 		=> IsGameType(gameTypeCode, PokerGameMetadataRegistry.HoldTheBaseballCode);

@@ -14,12 +14,12 @@ public static class JoinGameEndpoint
     public static RouteGroupBuilder MapJoinGame(this RouteGroupBuilder group)
     {
         group.MapPost("{gameId:guid}/players",
-                async (Guid gameId, JoinGameRequest request, IMediator mediator, CancellationToken cancellationToken) =>
+                async (Guid gameId, JoinGameRequest request, IMediator mediator, HttpContext httpContext, CancellationToken cancellationToken) =>
                 {
                     var command = new JoinGameCommand(gameId, request.SeatIndex, request.StartingChips);
                     var result = await mediator.Send(command, cancellationToken);
 
-                    return result.Match(
+                    return result.Match<IResult>(
                         success => Results.Ok(success),
                         error => error.Code switch
                         {
@@ -32,9 +32,17 @@ public static class JoinGameEndpoint
                             JoinGameErrorCode.GameEnded => Results.Conflict(new { error.Message }),
                             JoinGameErrorCode.ZeroAccountBalance => Results.BadRequest(new { error.Message }),
                             JoinGameErrorCode.InsufficientAccountChips => Results.Conflict(new { error.Message }),
+                            JoinGameErrorCode.BuyInExceedsTableMaximum => Results.Conflict(new { error.Message }),
                             JoinGameErrorCode.LeagueMembershipRequired => Results.Forbid(),
                             JoinGameErrorCode.LateJoinNotAllowed => Results.Conflict(new { error.Message }),
+                            JoinGameErrorCode.JoinApprovalPending => Results.Conflict(new { error.Message }),
                             _ => Results.Problem(error.Message)
+                        },
+                        pending =>
+                        {
+                            httpContext.Response.Headers.Append("X-Join-Request-Id", pending.JoinRequestId.ToString());
+                            httpContext.Response.Headers.Append("X-Host-Name", pending.HostName);
+                            return Results.Accepted();
                         }
                     );
                 })
@@ -53,10 +61,12 @@ public static class JoinGameEndpoint
                 "- Variant must allow late entry for started games\n" +
                 "- Starting chips must be greater than 0\n" +
                 "- Player account balance must be greater than 0\n" +
+                "- Requested buy-in must not exceed the table maximum buy-in, when configured\n" +
                 "- Requested buy-in must not exceed account balance\n\n" +
                 "**Response:**\n" +
                 "- `CanPlayCurrentHand`: true if joining during WaitingToStart/WaitingForPlayers phase")
             .Produces<JoinGameSuccessful>()
+            .Produces(StatusCodes.Status202Accepted)
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status404NotFound)

@@ -11,4 +11,4 @@ namespace CardGames.Poker.Api.Features.Games.Common.v1.Commands.JoinGame;
 /// <param name="SeatIndex">The zero-based seat index to occupy.</param>
 /// <param name="StartingChips">The initial chip stack for the player.</param>
 public record JoinGameCommand(Guid GameId, int SeatIndex, int StartingChips = 100)
-    : IRequest<OneOf<JoinGameSuccessful, JoinGameError>>, IGameStateChangingCommand;
+	: IRequest<OneOf<JoinGameSuccessful, JoinGameError, JoinGamePendingApproval>>, IGameStateChangingCommand;

@@ -1,8 +1,10 @@
 using Asp.Versioning.Builder;
+using CardGames.Poker.Api.Features.Profile.v1.Commands.UpdateFavoriteVariants;
 using CardGames.Poker.Api.Features.Profile.v1.Queries.GetAvatar;
 using CardGames.Poker.Api.Features.Profile.v1.Commands.UploadAvatar;
 using CardGames.Poker.Api.Features.Profile.v1.Commands.AddAccountChips;
 using CardGames.Poker.Api.Features.Profile.v1.Commands.UpdateGamePreferences;
+using CardGames.Poker.Api.Features.Profile.v1.Queries.GetFavoriteVariants;
 using CardGames.Poker.Api.Features.Profile.v1.Queries.GetCashierLedger;
 using CardGames.Poker.Api.Features.Profile.v1.Queries.GetCashierSummary;
 using CardGames.Poker.Api.Features.Profile.v1.Queries.GetGamePreferences;
@@ -24,5 +26,7 @@ public static class V1
 		mapGroup.MapAddAccountChips();
 		mapGroup.MapGetGamePreferences();
 		mapGroup.MapUpdateGamePreferences();
+		mapGroup.MapGetFavoriteVariants();
+		mapGroup.MapUpdateFavoriteVariants();
 	}
 }

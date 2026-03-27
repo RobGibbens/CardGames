@@ -156,3 +156,11 @@
 .confirm-dialog-overlay .join-buy-in-modal i {
     color: inherit;
 }
+
+.confirm-dialog-overlay .join-approval-pending-modal .waiting-approval-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+    color: var(--join-overlay-text-secondary);
+    font-weight: 600;
+}
