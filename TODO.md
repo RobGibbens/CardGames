@@ -15,7 +15,6 @@
 
 - [ ] Check for security issues
 - [ ] Add a "Rules" property to each game
-- [ ] Replace cardmeister with images?
 - [ ] Refactor TablePlay
 - [ ] <https://github.com/leeoades/FunctionalStateMachine>
 - [ ] Add individual control to sounds
@@ -25,7 +24,6 @@
 
 - [ ] Test side pots
 - [ ] Make sure all game types handle all ins correctly
-
 - [ ] Test what happens when a player disconnects
 - [ ] Really test all-ins, sidepots, etc.
 - [ ] SYN - check for ties
@@ -46,10 +44,6 @@
 - [ ] There are a lot of extra database calls going on
 - [ ] Hand history should auto size columns and allow resizing columns
 - [ ] Hand history should paginate
-- [ ] When the Draw Overlay is showing, the cards are not opaque
-- [ ] The bottom of the table goes off the bottom of the screen
-- [ ] When already logged in, take them to the Lobby
-
 - [ ] Endpoints shouldn't use generic Error responses
 
 ## When expanding beyond my friends
@@ -106,7 +100,6 @@
 - [ ] Add In Between
 - [ ] Add Bzzjt
 - [ ] Add Guts
-
 - [x] Add Screw Your Neighbor
 
 ## Completed
