@@ -2,32 +2,37 @@
 
 ## Still to do
 
-- [ ] SYN - check for ties
-- [ ] SYN - odds
 - [ ] Lobby - Filter by status
 - [ ] Join game modal background color
 - [ ] Joining table adds 5001 when setting 5000
-- [ ] Phil's mom loser showdown not correct
-- [ ] Test what happens when a player disconnects
 - [ ] Work on isolating games code more
-- [ ] Really test all-ins, sidepots, etc.
 
 - [ ] Add leagues
 - [ ] Add seasons
 - [ ] Add tournaments
 
-- [ ] Productize it - deployment and hosting
+- [ ] Productize it - deployment and hosting (Hetzner)
 
+- [ ] Redesign ShowdownOverlay
 - [ ] Add a "Rules" property to each game
 - [ ] Replace cardmeister with images?
 - [ ] Refactor TablePlay
 - [ ] <https://github.com/leeoades/FunctionalStateMachine>
+- [ ] Add individual control to sounds
+- [ ] During Phil's mom, it plays the alert every time a player takes an action
 
 ### P1 - Can't play without these
 
+- [ ] Phil's mom loser showdown not correct
 - [ ] Test side pots
 - [ ] Make sure all game types handle all ins correctly
+
+- [ ] Test what happens when a player disconnects
+- [ ] Really test all-ins, sidepots, etc.
+- [ ] SYN - check for ties
+- [ ] SYN - odds
 - [ ] Kings and Lows - Should make it obvious when someone dropped
+- [ ] If buy-in protection is on for a table, that should apply to adding money later
 
 ### P2 - Important but not blocking play
 
