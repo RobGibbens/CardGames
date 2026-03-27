@@ -95,9 +95,13 @@ public sealed class ResolveJoinRequestCommandHandler(
 		}
 
 		var lateJoinAllowed = !string.Equals(
-			game.GameType?.Code,
-			PokerGameMetadataRegistry.ScrewYourNeighborCode,
-			StringComparison.OrdinalIgnoreCase)
+				game.GameType?.Code,
+				PokerGameMetadataRegistry.ScrewYourNeighborCode,
+				StringComparison.OrdinalIgnoreCase)
+			&& !string.Equals(
+				game.GameType?.Code,
+				PokerGameMetadataRegistry.InBetweenCode,
+				StringComparison.OrdinalIgnoreCase)
 			|| !game.StartedAt.HasValue;
 
 		if (!lateJoinAllowed)

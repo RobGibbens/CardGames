@@ -1,5 +1,15 @@
 # TODO
 
+## IN-BETWEEN
+- [ ] Remove Odds Visibility from CreateTable
+- [x] Can't adjust buy-in on Join Seat modal
+- [ ] Animate the chips going to/from the pot
+- [x] Show the timer
+- [x] Pressing Start Game doesn't do anything
+- [x] Layout cards on either side of the deck
+- [x] Not showing the in-between card
+- [x] Pause to see the card
+ 
 ## Still to do
 
 - [ ] Lobby - Filter by status

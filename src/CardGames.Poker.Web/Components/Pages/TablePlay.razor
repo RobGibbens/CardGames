@@ -40,6 +40,7 @@
 @inject IHoldEmApi HoldEmApi
 @inject IFiveCardDrawApi FiveCardDrawApiClient
 @inject ITollboothApi TollboothApi
+@inject IInBetweenApi InBetweenApi
 @inject IJSRuntime JSRuntime
 @inject IProfileApi ProfileApi
 @inject IAvailablePokerGamesApi AvailablePokerGamesApi
@@ -321,7 +322,7 @@
 
         <!-- Decision Panel (shown during decision phase like Drop/Stay) -->
         <!-- Note: Kings and Lows DropOrStay and Screw Your Neighbor KeepOrTrade have their own overlays, so exclude them here -->
-        @if (_isPlayerTurn && IsDecisionPhase && !(HasDropOrStay && IsDropOrStayPhase) && !(HasKeepOrTrade && IsKeepOrTradePhase) && !IsCardDealingVisualInProgress)
+        @if (_isPlayerTurn && IsDecisionPhase && !(HasDropOrStay && IsDropOrStayPhase) && !(HasKeepOrTrade && IsKeepOrTradePhase) && !IsInBetween && !IsCardDealingVisualInProgress)
         {
             <DecisionPanel Title="@GetDecisionTitle()" Subtitle="@GetDecisionSubtitle()"
                            AvailableActions="@CurrentPhaseAvailableActions" OnDecision="@HandleDecisionAsync"
@@ -388,6 +389,25 @@
                                 IsSubmitting="@_isProcessingKeepOrTrade"
                                 OnDecision="@HandleKeepOrTradeDecision"
                                 ActionTimer="@_actionTimerState" />
+        }
+
+        <!-- In-Between Overlay -->
+        @if (ShouldShowInBetweenOverlay)
+        {
+            <InBetweenOverlay BoundaryCards="@GetVisibleCommunityCards()"
+                              PotAmount="@_pot"
+                              PlayerChips="@GetCurrentPlayerChips()"
+                              MaxBet="@GetInBetweenMaxBet()"
+                              IsAceChoiceRequired="@_ibAceChoiceRequired"
+                              ShowBetControls="@_ibShowBetControls"
+                              ShowDealPrompt="@_ibShowDealPrompt"
+                              IsFirstOrbitFullPotRestricted="@false"
+                              IsSubmitting="@_isProcessingInBetween"
+                              LastTurnDescription="@_ibLastTurnDescription"
+                              OnAceChoice="@HandleInBetweenAceChoiceAsync"
+                              OnPlaceBet="@HandleInBetweenPlaceBetAsync"
+                              OnDealCards="@HandleInBetweenDealCardsAsync"
+                              ActionTimer="@_actionTimerState" />
         }
 
         <!-- Tollbooth Offer Overlay -->
@@ -677,6 +697,15 @@
     private List<int> _pendingSynTradeAnimationSeatIndices = [];
     private bool _synChipAnimationFired;
 
+    // In-Between specific state
+    private bool _isProcessingInBetween;
+    private bool _ibAceChoiceRequired;
+    private bool _ibShowBetControls;
+    private bool _ibShowDealPrompt;
+    private string? _ibLastTurnDescription;
+    private bool _ibWaitingForReveal;
+    private bool _ibWaitingForBoundaryCards;
+
     // Chip check pause state (for Kings and Lows)
     private bool _isPausedForChipCheck;
     private DateTimeOffset? _chipCheckPauseEndsAt;
@@ -813,10 +842,11 @@
     private bool IsScrewYourNeighbor => string.Equals(_gameTypeCode, "SCREWYOURNEIGHBOR", StringComparison.OrdinalIgnoreCase);
     private bool IsTollbooth => string.Equals(_gameTypeCode, "TOLLBOOTH", StringComparison.OrdinalIgnoreCase);
     private bool IsKlondike => string.Equals(_gameTypeCode, "KLONDIKE", StringComparison.OrdinalIgnoreCase);
+    private bool IsInBetween => string.Equals(_gameTypeCode, "INBETWEEN", StringComparison.OrdinalIgnoreCase);
     private bool IsStartedScrewYourNeighborTable => IsScrewYourNeighbor && _gameResponse?.StartedAt is not null;
     private bool IsIrishStyleHoldEm => IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple;
     private bool IsSevenCardStudStyle => IsSevenCardStud || IsPairPressure;
-    private bool UsesCardDealAnimation => IsSevenCardStudStyle || IsRazz || IsGoodBadUgly || IsBaseball || IsFollowTheQueen || IsFiveCardDraw || IsTwosJacksManWithTheAxe || IsKingsAndLows || IsHoldEm || IsRedRiver || IsKlondike || IsHoldTheBaseball || IsOmaha || IsNebraska || IsSouthDakota || IsBobBarker || IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple || IsScrewYourNeighbor || IsTollbooth;
+    private bool UsesCardDealAnimation => IsSevenCardStudStyle || IsRazz || IsGoodBadUgly || IsBaseball || IsFollowTheQueen || IsFiveCardDraw || IsTwosJacksManWithTheAxe || IsKingsAndLows || IsHoldEm || IsRedRiver || IsKlondike || IsHoldTheBaseball || IsOmaha || IsNebraska || IsSouthDakota || IsBobBarker || IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple || IsScrewYourNeighbor || IsTollbooth || IsInBetween;
     
     private int DealAnimationDelayMs => 750;
 
@@ -880,6 +910,14 @@
     // Keep or Trade phase detection (for Screw Your Neighbor)
     private bool IsKeepOrTradePhase =>
     string.Equals(_gameResponse?.CurrentPhase, "KeepOrTrade", StringComparison.OrdinalIgnoreCase);
+
+    // In-Between turn phase detection
+    private bool IsInBetweenTurnPhase =>
+    string.Equals(_gameResponse?.CurrentPhase, "InBetweenTurn", StringComparison.OrdinalIgnoreCase);
+
+    private bool ShouldShowInBetweenOverlay =>
+    IsInBetween && IsInBetweenTurnPhase && _isPlayerTurn && IsParticipatingInHand &&
+    !IsCardDealingVisualInProgress;
 
     // Reveal phase detection (for Screw Your Neighbor)
     private bool IsRevealPhase =>
@@ -1044,8 +1082,8 @@
 
     private bool IsGameCompleted => _gameResponse?.Status == GameStatus.Completed;
 
-    // Screw Your Neighbor should only show showdown once the game has fully ended.
-    private bool ShouldDisplayShowdownOverlay => !IsScrewYourNeighbor || IsEndedPhase || IsGameCompleted || (IsScrewYourNeighbor && IsCompletePhase && _tableState?.NextHandStartsAtUtc is null);
+    // Screw Your Neighbor and In-Between should only show showdown once the game has fully ended.
+    private bool ShouldDisplayShowdownOverlay => (!IsScrewYourNeighbor && !IsInBetween) || IsEndedPhase || IsGameCompleted || (IsScrewYourNeighbor && IsCompletePhase && _tableState?.NextHandStartsAtUtc is null);
 
     private bool IsShowdownPhase => string.Equals(_gameResponse?.CurrentPhase, GamePhase.Showdown.ToString(),
     StringComparison.OrdinalIgnoreCase)
@@ -1238,6 +1276,14 @@
         // Store the table state for phase category checks
         _tableState = state;
         await TryPlayTableSoundEffectsAsync(state.SoundEffects);
+
+        // In-Between: show bet controls once boundary cards arrive via SignalR
+        if (_ibWaitingForBoundaryCards && state.CommunityCards?.Any(c => c.IsFaceUp) == true)
+        {
+            _ibWaitingForBoundaryCards = false;
+            _ibShowBetControls = true;
+            _ibAceChoiceRequired = false;
+        }
 
         if (_dealAnimationInProgress && _dealAnimationPausedForBuyCardOffer)
         {
@@ -1850,10 +1896,32 @@
             // Special non-betting decision phases (like Screw Your Neighbor KeepOrTrade)
             // do not populate AvailableActions, but still require turn-driven overlays.
             var wasPlayerTurn = _isPlayerTurn;
-            _isPlayerTurn = state.IsMyTurn && (_isDrawPhase || IsKeepOrTradePhase);
+            _isPlayerTurn = state.IsMyTurn && (_isDrawPhase || IsKeepOrTradePhase || IsInBetweenTurnPhase);
             if (_isPlayerTurn && !wasPlayerTurn)
             {
                 await PlayTurnAlertSoundAsync();
+            }
+
+            // Clear all In-Between UI flags when it's no longer this player's turn
+            // so stale state (e.g. from a timer auto-pass) doesn't bleed into the next turn.
+            if (!_isPlayerTurn && IsInBetween)
+            {
+                _ibWaitingForReveal = false;
+                _ibWaitingForBoundaryCards = false;
+                _ibShowBetControls = false;
+                _ibAceChoiceRequired = false;
+                _ibShowDealPrompt = false;
+                _ibLastTurnDescription = null;
+            }
+
+            // Auto-deal boundary cards when it becomes this player's InBetween turn
+            // and no action panel is already showing.
+            if (_isPlayerTurn && IsInBetween && !_isProcessingInBetween
+                && !_ibShowBetControls && !_ibAceChoiceRequired && !_ibShowDealPrompt
+                && !_ibWaitingForReveal && !_ibWaitingForBoundaryCards)
+            {
+                _ibLastTurnDescription = null;
+                await HandleInBetweenDealCardsAsync();
             }
             if (!_isDrawPhase)
             {
@@ -3310,6 +3378,25 @@
                 return;
             }
         }
+        else if (IsInBetween)
+        {
+            // In-Between: generic StartHand collects antes and transitions to InBetweenTurn phase.
+            var startResponse = await GamesApiClient.GenericStartHandAsync(GameId);
+            if (!startResponse.IsSuccessStatusCode)
+            {
+                Logger.LogWarning("Failed to start In-Between game: {StatusCode}", startResponse.StatusCode);
+                await ShowToastAsync("Failed to start game. Please try again.", "error");
+                return;
+            }
+            // Reset In-Between UI state for new game (auto-deal triggered by turn state update)
+            _ibAceChoiceRequired = false;
+            _ibShowBetControls = false;
+            _ibShowDealPrompt = false;
+            _ibLastTurnDescription = null;
+            _isProcessingInBetween = false;
+            _ibWaitingForReveal = false;
+            _ibWaitingForBoundaryCards = false;
+        }
         else if (IsFiveCardDraw)
         {
             var startHandResponse = await FiveCardDrawApiClient.FiveCardDrawStartHandAsync(GameId);
@@ -3465,6 +3552,12 @@
             else if (IsScrewYourNeighbor)
             {
                 showdownResponse = await GamesApiClient.GenericPerformShowdownAsync(GameId);
+            }
+            else if (IsInBetween)
+            {
+                // In-Between has no showdown — game ends when pot reaches zero.
+                Logger.LogDebug("TryLoadShowdownAsync: In-Between game has no showdown, skipping.");
+                return;
             }
             else if (IsTollbooth)
             {
@@ -6662,6 +6755,166 @@ HandType.HighCard
             _isProcessingKeepOrTrade = false;
             StateHasChanged();
         }
+    }
+
+    /// <summary>
+    /// Handles the "Deal My Cards" action in In-Between — triggers boundary card dealing via PlaceBet.
+    /// </summary>
+    private async Task HandleInBetweenDealCardsAsync()
+    {
+        if (_isProcessingInBetween) return;
+        _isProcessingInBetween = true;
+        _ibShowDealPrompt = false;
+        await InvokeStateHasChangedAsync();
+
+        try
+        {
+            var request = new InBetweenPlaceBetRequest(
+                playerId: _currentPlayerId ?? Guid.Empty,
+                amount: 0);
+
+            var response = await InBetweenApi.InBetweenPlaceBetAsync(GameId, request);
+
+            if (response.IsSuccessStatusCode && response.Content is not null)
+            {
+                if (string.Equals(response.Content.TurnResult, "BoundaryCardsDealt", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Boundary cards dealt — wait for SignalR state update with community cards
+                    // before showing bet controls so the cards are visible on the table.
+                    _ibWaitingForBoundaryCards = true;
+                    _ibAceChoiceRequired = false;
+                }
+                else
+                {
+                    // Bet of 0 = pass. Turn resolved, next player.
+                    _ibLastTurnDescription = response.Content.Description;
+                    _ibShowBetControls = false;
+                    _ibAceChoiceRequired = false;
+                }
+            }
+            else
+            {
+                var errorContent = response.Error?.Content ?? "";
+                if (errorContent.Contains("Ace", StringComparison.OrdinalIgnoreCase) &&
+                    errorContent.Contains("high or low", StringComparison.OrdinalIgnoreCase))
+                {
+                    _ibAceChoiceRequired = true;
+                    _ibShowBetControls = false;
+                }
+                else
+                {
+                    // Unexpected error — show bet controls as fallback
+                    _ibShowBetControls = true;
+                    _ibAceChoiceRequired = false;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error dealing In-Between boundary cards");
+            _ibShowDealPrompt = true;
+        }
+        finally
+        {
+            _isProcessingInBetween = false;
+            await InvokeStateHasChangedAsync();
+        }
+    }
+
+    /// <summary>
+    /// Handles ace high/low choice in In-Between.
+    /// </summary>
+    private async Task HandleInBetweenAceChoiceAsync(bool aceIsHigh)
+    {
+        if (_isProcessingInBetween) return;
+        _isProcessingInBetween = true;
+        StateHasChanged();
+
+        try
+        {
+            var request = new InBetweenAceChoiceRequest(
+                playerId: _currentPlayerId ?? Guid.Empty,
+                aceIsHigh: aceIsHigh);
+
+            var response = await InBetweenApi.InBetweenAceChoiceAsync(GameId, request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                _ibAceChoiceRequired = false;
+                _ibShowBetControls = true;
+            }
+            else
+            {
+                Logger.LogWarning("Ace choice failed: {Error}", response.Error?.Content);
+                await ShowToastAsync("Failed to submit ace choice.", "error");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error submitting In-Between ace choice");
+        }
+        finally
+        {
+            _isProcessingInBetween = false;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Handles bet or pass in In-Between.
+    /// </summary>
+    private async Task HandleInBetweenPlaceBetAsync(int amount)
+    {
+        if (_isProcessingInBetween) return;
+        _isProcessingInBetween = true;
+        StateHasChanged();
+
+        try
+        {
+            var request = new InBetweenPlaceBetRequest(
+                playerId: _currentPlayerId ?? Guid.Empty,
+                amount: amount);
+
+            var response = await InBetweenApi.InBetweenPlaceBetAsync(GameId, request);
+
+            if (response.IsSuccessStatusCode && response.Content is not null)
+            {
+                _ibLastTurnDescription = response.Content.Description;
+                _ibShowBetControls = false;
+                _ibAceChoiceRequired = false;
+                _ibShowDealPrompt = false;
+
+                // When an actual bet was placed, the server pauses before advancing
+                // so all players can see the revealed third card.
+                if (amount > 0)
+                {
+                    _ibWaitingForReveal = true;
+                }
+            }
+            else
+            {
+                Logger.LogWarning("In-Between place bet failed: {Error}", response.Error?.Content);
+                await ShowToastAsync("Failed to place bet.", "error");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error placing In-Between bet");
+        }
+        finally
+        {
+            _isProcessingInBetween = false;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Gets the maximum legal bet for the current In-Between turn (pot amount, clamped to player chips).
+    /// </summary>
+    private int GetInBetweenMaxBet()
+    {
+        var chips = GetCurrentPlayerChips();
+        return Math.Min(_pot, chips);
     }
 
     private void ScheduleShowdownOverlayAfterDelay(TimeSpan delay)

@@ -78,6 +78,9 @@ public abstract class BaseGameFlowHandler : IGameFlowHandler
     public virtual bool SkipsAnteCollection => false;
 
     /// <inheritdoc />
+    public virtual bool AutoCollectsAntesOnStart => false;
+
+    /// <inheritdoc />
     public virtual IReadOnlyList<string> SpecialPhases => [];
 
     /// <inheritdoc />

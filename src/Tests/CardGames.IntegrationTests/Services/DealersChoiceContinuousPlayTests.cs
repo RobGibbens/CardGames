@@ -715,6 +715,7 @@ public class DealersChoiceContinuousPlayTests : IDisposable
         public string GameTypeCode { get; }
         public bool SupportsInlineShowdown { get; set; } = false;
         public bool SkipsAnteCollection { get; set; } = false;
+        public bool AutoCollectsAntesOnStart { get; set; } = false;
         public bool IsMultiHandVariant { get; set; } = false;
         public IReadOnlyList<string> SpecialPhases { get; } = new List<string>();
         public bool RequiresChipCoverageCheck { get; set; } = false;

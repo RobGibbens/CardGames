@@ -48,6 +48,7 @@
 
 /* Dark theme */
 [data-theme="dark"] {
+    color-scheme: dark;
     --bg-primary: #0a0a0a;
     --bg-secondary: #141414;
     --bg-tertiary: #1a1a1a;
@@ -3758,6 +3759,59 @@ a:hover {
     font-size: 46px;
 }
 
+/* InBetween layout: Card 1 | Deck (center) | Card 2 */
+.table-center-row.table-center-row-inbetween {
+    justify-content: center;
+}
+
+.inbetween-deck-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.inbetween-reveal-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    animation: ib-flip-reveal 0.5s ease-out;
+}
+
+@keyframes ib-flip-reveal {
+    0% {
+        transform: rotateY(90deg) scale(0.9);
+        opacity: 0;
+    }
+    50% {
+        transform: rotateY(0deg) scale(1.05);
+        opacity: 1;
+    }
+    100% {
+        transform: rotateY(0deg) scale(1);
+        opacity: 1;
+    }
+}
+
+.inbetween-card-slot {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 60px;
+    min-height: 84px;
+    padding: 0.4rem;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+    border: 1px solid rgba(255, 215, 0, 0.2);
+}
+
+.inbetween-card-slot .community-card-slot.revealed {
+    transform: scale(1.05);
+}
+
 .community-card-label {
     font-size: 0.65rem;
     font-weight: 700;
@@ -4734,6 +4788,159 @@ a:hover {
     font-size: 0.875rem;
 }
 
+/* ===== In-Between Panel ===== */
+.in-between-panel {
+    position: fixed;
+    right: 1.25rem;
+    bottom: 1.25rem;
+    z-index: 2000;
+    width: min(480px, calc(100vw - 2.5rem));
+    background: rgba(0, 0, 0, 0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.26);
+    border-radius: 16px;
+    box-shadow: 0 18px 42px rgba(0, 0, 0, 0.5), 0 0 24px rgba(226, 232, 240, 0.22), 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+    padding: 1rem 1.5rem;
+    animation: fadeInUp 0.3s ease-out;
+}
+
+.in-between-panel.submitting {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.in-between-panel > .drag-handle {
+    display: flex;
+    justify-content: center;
+    padding: 2px 0 6px;
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 0.7rem;
+    line-height: 1;
+}
+
+.in-between-panel > .drag-handle:hover {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.ib-section {
+    text-align: center;
+}
+
+.ib-heading {
+    margin: 0 0 0.5rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: white;
+}
+
+.ib-subtext {
+    margin: 0 0 1rem;
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.7);
+    line-height: 1.4;
+}
+
+.ib-forced-pass {
+    font-style: italic;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.ib-action-buttons {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 1rem;
+}
+
+.ib-bet-display {
+    padding: 0.5rem 0.75rem;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    color: white;
+    font-size: 1rem;
+    font-weight: 600;
+    text-align: center;
+    min-width: 80px;
+}
+
+/* In-Between button colour variants */
+.ib-pass-btn {
+    background: linear-gradient(135deg, rgba(75, 85, 99, 0.6) 0%, rgba(107, 114, 128, 0.6) 100%);
+    border-color: #6b7280;
+}
+
+.ib-pass-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(75, 85, 99, 0.8) 0%, rgba(107, 114, 128, 0.8) 100%);
+    border-color: #6b7280;
+    box-shadow: 0 0 12px rgba(107, 114, 128, 0.25);
+}
+
+.ib-bet-btn {
+    background: linear-gradient(135deg, rgba(29, 78, 216, 0.6) 0%, rgba(59, 130, 246, 0.6) 100%);
+    border-color: #3b82f6;
+}
+
+.ib-bet-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(29, 78, 216, 0.8) 0%, rgba(59, 130, 246, 0.8) 100%);
+    border-color: #3b82f6;
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+}
+
+.ib-pot-btn {
+    background: linear-gradient(135deg, rgba(220, 38, 38, 0.6) 0%, rgba(245, 158, 11, 0.6) 100%);
+    border-color: #f59e0b;
+}
+
+.ib-pot-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(220, 38, 38, 0.8) 0%, rgba(245, 158, 11, 0.8) 100%);
+    box-shadow: 0 0 28px rgba(245, 158, 11, 0.55);
+}
+
+.ib-deal-btn {
+    background: linear-gradient(135deg, rgba(22, 163, 74, 0.6) 0%, rgba(34, 197, 94, 0.6) 100%);
+    border-color: #22c55e;
+}
+
+.ib-deal-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(22, 163, 74, 0.8) 0%, rgba(34, 197, 94, 0.8) 100%);
+    border-color: #22c55e;
+    box-shadow: 0 0 14px rgba(34, 197, 94, 0.3);
+}
+
+.ib-ace-high-btn {
+    background: linear-gradient(135deg, rgba(29, 78, 216, 0.6) 0%, rgba(59, 130, 246, 0.6) 100%);
+    border-color: #3b82f6;
+}
+
+.ib-ace-high-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(29, 78, 216, 0.8) 0%, rgba(59, 130, 246, 0.8) 100%);
+    border-color: #3b82f6;
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+}
+
+.ib-ace-low-btn {
+    background: linear-gradient(135deg, rgba(22, 163, 74, 0.6) 0%, rgba(34, 197, 94, 0.6) 100%);
+    border-color: #22c55e;
+}
+
+.ib-ace-low-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(22, 163, 74, 0.8) 0%, rgba(34, 197, 94, 0.8) 100%);
+    border-color: #22c55e;
+    box-shadow: 0 0 14px rgba(34, 197, 94, 0.3);
+}
+
+.ib-result-toast {
+    margin-top: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.7);
+    text-align: center;
+}
+
 /* ===== Connection Banner ===== */
 .connection-banner {
     position: fixed;
@@ -4951,7 +5158,8 @@ a:hover {
         font-size: 1.25rem;
     }
 
-    .action-panel {
+    .action-panel,
+    .in-between-panel {
         transform: scale(0.9);
         transform-origin: bottom right;
     }
@@ -4990,7 +5198,8 @@ a:hover {
         max-width: 820px;
     }
 
-    .action-panel {
+    .action-panel,
+    .in-between-panel {
         transform: scale(0.85);
         transform-origin: bottom right;
     }
@@ -5080,7 +5289,8 @@ a:hover {
         height: 28px;
     }
 
-    .action-panel {
+    .action-panel,
+    .in-between-panel {
         padding: 0.75rem 1rem;
     }
 
@@ -6160,6 +6370,36 @@ a:hover {
     background: var(--bg-secondary);
     border-color: var(--primary);
     box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+}
+
+[data-theme="dark"] .join-buy-in-modal .join-buy-in-input {
+    background: #1a1a1a;
+    background-color: #1a1a1a;
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #f5f5f5;
+    -webkit-text-fill-color: #f5f5f5;
+}
+
+[data-theme="dark"] .join-buy-in-modal .join-buy-in-input:focus {
+    background: #141414;
+    background-color: #141414;
+    border-color: #ef4444;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .join-buy-in-modal .join-buy-in-input {
+        background: #1a1a1a;
+        background-color: #1a1a1a;
+        border-color: rgba(255, 255, 255, 0.1);
+        color: #f5f5f5;
+        -webkit-text-fill-color: #f5f5f5;
+    }
+
+    :root:not([data-theme="light"]) .join-buy-in-modal .join-buy-in-input:focus {
+        background: #141414;
+        background-color: #141414;
+        border-color: #ef4444;
+    }
 }
 
 .join-buy-in-modal-footer .confirm-dialog-btn {

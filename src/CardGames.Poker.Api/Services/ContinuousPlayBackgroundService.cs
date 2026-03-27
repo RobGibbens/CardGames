@@ -33,6 +33,12 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 	/// </summary>
 	public const int KlondikeRevealDisplayDurationSeconds = 20;
 
+	/// <summary>
+	/// Duration in seconds for the In-Between card reveal display period before advancing
+	/// to the next player. This gives all players time to see the revealed third card.
+	/// </summary>
+	public const int InBetweenRevealDisplayDurationSeconds = 5;
+
 	private readonly IServiceScopeFactory _scopeFactory;
 	private readonly ILogger<ContinuousPlayBackgroundService> _logger;
 	private readonly TimeSpan _checkInterval = TimeSpan.FromSeconds(1);
@@ -93,6 +99,9 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 
 		// Process KlondikeReveal games that are ready to transition to Showdown
 		await ProcessKlondikeRevealGamesAsync(context, broadcaster, now, cancellationToken);
+
+		// Process In-Between games where the card reveal display period has expired
+		await ProcessInBetweenResolutionGamesAsync(context, broadcaster, handHistoryRecorder, now, cancellationToken);
 
 		// Find games in Complete or WaitingForPlayers phase where the next hand should start.
 		// Also include Dealer's Choice games in WaitingToStart (after dealer chose the game type).
@@ -378,6 +387,53 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			catch (Exception ex)
 			{
 				_logger.LogError(ex, "Failed to process KlondikeReveal for game {GameId}", game.Id);
+			}
+		}
+	}
+
+	/// <summary>
+	/// Processes In-Between games where the card-reveal display period has expired.
+	/// After a player bets, the third card is shown for <see cref="InBetweenRevealDisplayDurationSeconds"/>
+	/// seconds before discarding community cards and advancing to the next player.
+	/// </summary>
+	private async Task ProcessInBetweenResolutionGamesAsync(
+		CardsDbContext context,
+		IGameStateBroadcaster broadcaster,
+		IHandHistoryRecorder handHistoryRecorder,
+		DateTimeOffset now,
+		CancellationToken cancellationToken)
+	{
+		var revealDeadline = now.AddSeconds(-InBetweenRevealDisplayDurationSeconds);
+
+		var gamesReady = await context.Games
+			.Where(g => g.CurrentPhase == nameof(Phases.InBetweenTurn) &&
+						g.DrawCompletedAt != null &&
+						g.DrawCompletedAt <= revealDeadline &&
+						g.Status == GameStatus.InProgress)
+			.Include(g => g.GamePlayers)
+				.ThenInclude(gp => gp.Player)
+			.Include(g => g.GameCards)
+			.Include(g => g.Pots)
+			.ToListAsync(cancellationToken);
+
+		foreach (var game in gamesReady)
+		{
+			try
+			{
+				_logger.LogInformation(
+					"Game {GameId} In-Between reveal display period expired, advancing to next player",
+					game.Id);
+
+				game.DrawCompletedAt = null;
+
+				await InBetweenFlowHandler.AdvanceToNextPlayerOrCompleteAsync(
+					context, game, handHistoryRecorder, now, cancellationToken);
+
+				await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Failed to process In-Between resolution for game {GameId}", game.Id);
 			}
 		}
 	}
@@ -722,6 +778,16 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			game,
 			flowHandler,
 			eligiblePlayers.Count,
+			now,
+			cancellationToken))
+		{
+			return;
+		}
+
+		if (await TryTransitionTerminalDealersChoiceInBetweenAsync(
+			context,
+			broadcaster,
+			game,
 			now,
 			cancellationToken))
 		{
@@ -1073,6 +1139,34 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			now,
 			cancellationToken,
 			"Dealer's Choice game {GameId}: Screw Your Neighbor finished with one remaining stack, waiting for dealer at seat {DcDealerSeat} to choose next game");
+
+		return true;
+	}
+
+	private async Task<bool> TryTransitionTerminalDealersChoiceInBetweenAsync(
+		CardsDbContext context,
+		IGameStateBroadcaster broadcaster,
+		Game game,
+		DateTimeOffset now,
+		CancellationToken cancellationToken)
+	{
+		if (!game.IsDealersChoice ||
+			!string.Equals(game.CurrentHandGameTypeCode, PokerGameMetadataRegistry.InBetweenCode, StringComparison.OrdinalIgnoreCase) ||
+			game.CurrentPhase != nameof(Phases.Complete))
+		{
+			return false;
+		}
+
+		// Clear In-Between variant state stored in GameSettings
+		game.GameSettings = null;
+
+		await TransitionDealersChoiceToWaitingForChoiceAsync(
+			context,
+			broadcaster,
+			game,
+			now,
+			cancellationToken,
+			"Dealer's Choice game {GameId}: In-Between finished (pot empty), waiting for dealer at seat {DcDealerSeat} to choose next game");
 
 		return true;
 	}

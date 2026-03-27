@@ -30,6 +30,10 @@ public interface IGameApiRouter
     Task<RouterResponse<TollboothChooseCardSuccessful>> TollboothChooseCardAsync(Guid gameId, TollboothChooseCardRequest request);
 
     Task<RouterResponse<Unit>> FoldDuringDrawAsync(Guid gameId, int playerSeatIndex);
+
+    Task<RouterResponse<InBetweenAceChoiceSuccessful>> InBetweenAceChoiceAsync(Guid gameId, InBetweenAceChoiceRequest request);
+
+    Task<RouterResponse<InBetweenPlaceBetSuccessful>> InBetweenPlaceBetAsync(Guid gameId, InBetweenPlaceBetRequest request);
 }
 
 public class ProcessDrawResult
@@ -124,6 +128,7 @@ public class GameApiRouter : IGameApiRouter
     private const string Tollbooth = "TOLLBOOTH";
     private const string FiveCardDraw = "FIVECARDDRAW";
     private const string Klondike = "KLONDIKE";
+    private const string InBetween = "INBETWEEN";
 
     private readonly IFiveCardDrawApi _fiveCardDrawApi;
     private readonly ITwosJacksManWithTheAxeApi _twosJacksManWithTheAxeApi;
@@ -137,6 +142,7 @@ public class GameApiRouter : IGameApiRouter
     private readonly IGamesApi _gamesApi;
     private readonly IScrewYourNeighborApi _screwYourNeighborApi;
     private readonly ITollboothApi _tollboothApi;
+    private readonly IInBetweenApi _inBetweenApi;
     private readonly Dictionary<string, Func<Guid, ProcessBettingActionRequest, Task<RouterResponse<ProcessBettingActionSuccessful>>>> _bettingActionRoutes;
     private readonly Dictionary<string, Func<Guid, Guid, int, List<int>, Task<RouterResponse<ProcessDrawResult>>>> _drawRoutes;
     private readonly Dictionary<string, Func<Guid, DropOrStayRequest, Task<RouterResponse<Unit>>>> _dropOrStayRoutes;
@@ -156,7 +162,8 @@ public class GameApiRouter : IGameApiRouter
         IHoldEmApi holdEmApi,
         IGamesApi gamesApi,
         IScrewYourNeighborApi screwYourNeighborApi,
-        ITollboothApi tollboothApi)
+        ITollboothApi tollboothApi,
+        IInBetweenApi inBetweenApi)
     {
         _fiveCardDrawApi = fiveCardDrawApi;
         _twosJacksManWithTheAxeApi = twosJacksManWithTheAxeApi;
@@ -170,6 +177,7 @@ public class GameApiRouter : IGameApiRouter
         _gamesApi = gamesApi;
         _screwYourNeighborApi = screwYourNeighborApi;
         _tollboothApi = tollboothApi;
+        _inBetweenApi = inBetweenApi;
 
         _bettingActionRoutes = new Dictionary<string, Func<Guid, ProcessBettingActionRequest, Task<RouterResponse<ProcessBettingActionSuccessful>>>>(GameCodeComparer)
         {
@@ -540,4 +548,12 @@ public class GameApiRouter : IGameApiRouter
     public async Task<RouterResponse<TollboothChooseCardSuccessful>> TollboothChooseCardAsync(Guid gameId, TollboothChooseCardRequest request)
         => RouterResponse<TollboothChooseCardSuccessful>.FromRefit(
             await _tollboothApi.TollboothChooseCardAsync(gameId, request));
+
+    public async Task<RouterResponse<InBetweenAceChoiceSuccessful>> InBetweenAceChoiceAsync(Guid gameId, InBetweenAceChoiceRequest request)
+        => RouterResponse<InBetweenAceChoiceSuccessful>.FromRefit(
+            await _inBetweenApi.InBetweenAceChoiceAsync(gameId, request));
+
+    public async Task<RouterResponse<InBetweenPlaceBetSuccessful>> InBetweenPlaceBetAsync(Guid gameId, InBetweenPlaceBetRequest request)
+        => RouterResponse<InBetweenPlaceBetSuccessful>.FromRefit(
+            await _inBetweenApi.InBetweenPlaceBetAsync(gameId, request));
 }

@@ -35,6 +35,7 @@ public class GameApiRouterTests
         var gamesApi = Substitute.For<IGamesApi>();
         var screwYourNeighborApi = Substitute.For<IScrewYourNeighborApi>();
         var tollboothApi = Substitute.For<ITollboothApi>();
+        var inBetweenApi = Substitute.For<IInBetweenApi>();
 
         var holdEmResponse = CreateFailedBettingActionResponse();
         holdEmApi
@@ -58,7 +59,8 @@ public class GameApiRouterTests
             holdEmApi,
             gamesApi,
             screwYourNeighborApi,
-            tollboothApi);
+            tollboothApi,
+            inBetweenApi);
 
         // Act
         _ = await sut.ProcessBettingActionAsync("HOLDEM", gameId, request);
@@ -90,6 +92,7 @@ public class GameApiRouterTests
         var gamesApi = Substitute.For<IGamesApi>();
         var screwYourNeighborApi = Substitute.For<IScrewYourNeighborApi>();
         var tollboothApi = Substitute.For<ITollboothApi>();
+        var inBetweenApi = Substitute.For<IInBetweenApi>();
 
         var holdEmResponse = CreateFailedBettingActionResponse();
         holdEmApi
@@ -113,7 +116,8 @@ public class GameApiRouterTests
             holdEmApi,
             gamesApi,
             screwYourNeighborApi,
-            tollboothApi);
+            tollboothApi,
+            inBetweenApi);
 
         // Act
         _ = await sut.ProcessBettingActionAsync("OMAHA", gameId, request);
@@ -145,6 +149,7 @@ public class GameApiRouterTests
         var gamesApi = Substitute.For<IGamesApi>();
         var screwYourNeighborApi = Substitute.For<IScrewYourNeighborApi>();
         var tollboothApi = Substitute.For<ITollboothApi>();
+        var inBetweenApi = Substitute.For<IInBetweenApi>();
         var holdEmResponse = CreateFailedBettingActionResponse();
 
         holdEmApi
@@ -163,7 +168,8 @@ public class GameApiRouterTests
             holdEmApi,
             gamesApi,
             screwYourNeighborApi,
-            tollboothApi);
+            tollboothApi,
+            inBetweenApi);
 
         // Act
         _ = await sut.ProcessBettingActionAsync("BOBBARKER", gameId, request);
@@ -195,6 +201,7 @@ public class GameApiRouterTests
         var gamesApi = Substitute.For<IGamesApi>();
         var screwYourNeighborApi = Substitute.For<IScrewYourNeighborApi>();
         var tollboothApi = Substitute.For<ITollboothApi>();
+        var inBetweenApi = Substitute.For<IInBetweenApi>();
         var pairPressureResponse = CreateFailedBettingActionResponse();
 
         pairPressureApi
@@ -213,7 +220,8 @@ public class GameApiRouterTests
             holdEmApi,
             gamesApi,
             screwYourNeighborApi,
-            tollboothApi);
+            tollboothApi,
+            inBetweenApi);
 
         // Act
         _ = await sut.ProcessBettingActionAsync("PAIRPRESSURE", gameId, request);
@@ -246,6 +254,7 @@ public class GameApiRouterTests
         var gamesApi = Substitute.For<IGamesApi>();
         var screwYourNeighborApi = Substitute.For<IScrewYourNeighborApi>();
         var tollboothApi = Substitute.For<ITollboothApi>();
+        var inBetweenApi = Substitute.For<IInBetweenApi>();
 
         var sut = new GameApiRouter(
             fiveCardDrawApi,
@@ -259,7 +268,8 @@ public class GameApiRouterTests
             holdEmApi,
             gamesApi,
             screwYourNeighborApi,
-            tollboothApi);
+            tollboothApi,
+            inBetweenApi);
 
         // Act
         var response = await sut.ProcessDrawAsync("HOLDEM", gameId, playerId, 0, discardIndices);
@@ -293,6 +303,7 @@ public class GameApiRouterTests
         var gamesApi = Substitute.For<IGamesApi>();
         var screwYourNeighborApi = Substitute.For<IScrewYourNeighborApi>();
         var tollboothApi = Substitute.For<ITollboothApi>();
+        var inBetweenApi = Substitute.For<IInBetweenApi>();
 
         var sut = new GameApiRouter(
             fiveCardDrawApi,
@@ -306,7 +317,8 @@ public class GameApiRouterTests
             holdEmApi,
             gamesApi,
             screwYourNeighborApi,
-            tollboothApi);
+            tollboothApi,
+            inBetweenApi);
 
         // Act
         var response = await sut.ProcessDrawAsync("OMAHA", gameId, playerId, 0, discardIndices);
@@ -341,6 +353,7 @@ public class GameApiRouterTests
         var gamesApi = Substitute.For<IGamesApi>();
         var screwYourNeighborApi = Substitute.For<IScrewYourNeighborApi>();
         var tollboothApi = Substitute.For<ITollboothApi>();
+        var inBetweenApi = Substitute.For<IInBetweenApi>();
         var showcaseResponse = CreateSuccessfulUnitResponse();
 
         gamesApi
@@ -362,7 +375,8 @@ public class GameApiRouterTests
             holdEmApi,
             gamesApi,
             screwYourNeighborApi,
-            tollboothApi);
+            tollboothApi,
+            inBetweenApi);
 
         // Act
         var response = await sut.ProcessDrawAsync("BOBBARKER", gameId, playerId, playerSeatIndex, discardIndices);
@@ -402,6 +416,7 @@ public class GameApiRouterTests
         var gamesApi = Substitute.For<IGamesApi>();
         var screwYourNeighborApi = Substitute.For<IScrewYourNeighborApi>();
         var tollboothApi = Substitute.For<ITollboothApi>();
+        var inBetweenApi = Substitute.For<IInBetweenApi>();
 
         var sut = new GameApiRouter(
             fiveCardDrawApi,
@@ -415,7 +430,8 @@ public class GameApiRouterTests
             holdEmApi,
             gamesApi,
             screwYourNeighborApi,
-            tollboothApi);
+            tollboothApi,
+            inBetweenApi);
 
         // Act
         var response = await sut.ProcessDrawAsync("BOBBARKER", gameId, playerId, 2, discardIndices);
@@ -449,6 +465,7 @@ public class GameApiRouterTests
         var gamesApi = Substitute.For<IGamesApi>();
         var screwYourNeighborApi = Substitute.For<IScrewYourNeighborApi>();
         var tollboothApi = Substitute.For<ITollboothApi>();
+        var inBetweenApi = Substitute.For<IInBetweenApi>();
         var keepOrTradeResponse = CreateSuccessfulKeepOrTradeResponse(gameId, playerId);
 
         screwYourNeighborApi
@@ -467,7 +484,8 @@ public class GameApiRouterTests
             holdEmApi,
             gamesApi,
             screwYourNeighborApi,
-            tollboothApi);
+            tollboothApi,
+            inBetweenApi);
 
         // Act
         var response = await sut.KeepOrTradeAsync("SCREWYOURNEIGHBOR", gameId, request);

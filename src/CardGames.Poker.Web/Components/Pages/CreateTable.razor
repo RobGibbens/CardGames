@@ -1062,6 +1062,7 @@
 	private const string VariantViewModeKey = "createTable.variantViewMode";
 	private const string DealersChoiceCode = "DEALERSCHOICE";
 	private const string ScrewYourNeighborCode = "SCREWYOURNEIGHBOR";
+	private const string InBetweenCode = "INBETWEEN";
 	private const string FavoriteVariantsTitle = "Favorites";
 	private const string DealersChoiceGroupTitle = "Dealer's Choice";
 	private const string HoldEmVariantsTitle = "Hold 'Em variants";
@@ -1158,12 +1159,15 @@
 			? _allowedDealerChoiceGameCodes.Count > 0
 			: (_hasBlinds
 				? (_smallBlind > 0 && _bigBlind >= _smallBlind)
-				: (_ante > 0 && _minBet > 0)));
+				: (_ante > 0 && (IsInBetween || IsScrewYourNeighbor || _minBet > 0))));
 
 	private bool IsScrewYourNeighbor =>
 	   IsScrewYourNeighborCode(_selectedVariant?.Code);
 
-	private bool ShowMinimumBetInput => !IsScrewYourNeighbor;
+	private bool IsInBetween =>
+		IsInBetweenCode(_selectedVariant?.Code);
+
+	private bool ShowMinimumBetInput => !IsScrewYourNeighbor && !IsInBetween;
 
 	private bool HasValidMaxBuyIn =>
 		string.IsNullOrWhiteSpace(_maxBuyInInput)
@@ -1744,6 +1748,11 @@
 			return Math.Max(1, _ante * 3);
 		}
 
+		if (IsInBetween)
+		{
+			return Math.Max(1, _ante);
+		}
+
 		if (_hasBlinds)
 		{
 			return Math.Max(1, _bigBlind);
@@ -1768,6 +1777,11 @@
 	private static bool IsScrewYourNeighborCode(string? gameCode)
 	{
 		return string.Equals(gameCode, ScrewYourNeighborCode, StringComparison.OrdinalIgnoreCase);
+	}
+
+	private static bool IsInBetweenCode(string? gameCode)
+	{
+		return string.Equals(gameCode, InBetweenCode, StringComparison.OrdinalIgnoreCase);
 	}
 
 	private async Task SetVariantViewModeAsync(string mode)

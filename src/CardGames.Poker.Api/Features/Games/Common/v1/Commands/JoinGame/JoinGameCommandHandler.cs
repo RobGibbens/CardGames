@@ -120,13 +120,20 @@ public sealed class JoinGameCommandHandler(
 			game.GameType?.Code,
 			PokerGameMetadataRegistry.ScrewYourNeighborCode,
 			StringComparison.OrdinalIgnoreCase)
+			&& !string.Equals(
+			game.GameType?.Code,
+			PokerGameMetadataRegistry.InBetweenCode,
+			StringComparison.OrdinalIgnoreCase)
 			|| !game.StartedAt.HasValue;
 
 		if (!lateJoinAllowed)
 		{
+			var gameName = string.Equals(game.GameType?.Code, PokerGameMetadataRegistry.InBetweenCode, StringComparison.OrdinalIgnoreCase)
+				? "In-Between"
+				: "Screw Your Neighbor";
 			return new JoinGameError(
 				JoinGameErrorCode.LateJoinNotAllowed,
-				"Screw Your Neighbor does not allow players to join after the game has started.");
+				$"{gameName} does not allow players to join after the game has started.");
 		}
 
 		// Check max players (Dealer's Choice games have no GameType; default to 8 seats)

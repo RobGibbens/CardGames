@@ -232,6 +232,40 @@ public sealed class StartHandCommandHandler(
                     cancellationToken);
             }
         }
+        else if (flowHandler.AutoCollectsAntesOnStart)
+        {
+            // Pot-funded games (e.g., In-Between) collect antes and deal in one step
+            // because they have no separate CollectAntes endpoint.
+            var ante = game.Ante ?? 0;
+            if (ante > 0)
+            {
+                foreach (var player in eligiblePlayers)
+                {
+                    var anteAmount = Math.Min(ante, player.ChipStack);
+                    player.ChipStack -= anteAmount;
+                    player.CurrentBet = anteAmount;
+                    player.TotalContributedThisHand = anteAmount;
+
+                    mainPot.Amount += anteAmount;
+
+                    context.Set<PotContribution>().Add(new PotContribution
+                    {
+                        PotId = mainPot.Id,
+                        GamePlayerId = player.Id,
+                        Amount = anteAmount,
+                        ContributedAt = now
+                    });
+
+                    if (player.ChipStack == 0)
+                    {
+                        player.IsAllIn = true;
+                    }
+                }
+            }
+
+            await flowHandler.DealCardsAsync(context, game, eligiblePlayers, now, cancellationToken);
+            await context.SaveChangesAsync(cancellationToken);
+        }
 
         logger.LogInformation(
             "Started hand {HandNumber} for game {GameId} in phase {Phase} with {PlayerCount} players",

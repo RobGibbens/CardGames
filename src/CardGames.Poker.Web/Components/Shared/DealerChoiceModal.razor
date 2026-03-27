@@ -385,7 +385,8 @@
 		|| string.Equals(code, "KLONDIKE", StringComparison.OrdinalIgnoreCase);
 
 	private static bool RequiresMinBet(string? code) =>
-		!string.Equals(code, "SCREWYOURNEIGHBOR", StringComparison.OrdinalIgnoreCase);
+		!string.Equals(code, "SCREWYOURNEIGHBOR", StringComparison.OrdinalIgnoreCase)
+		&& !string.Equals(code, "INBETWEEN", StringComparison.OrdinalIgnoreCase);
 
 	private static bool IsScrewYourNeighborGame(string? code) =>
 		string.Equals(code, "SCREWYOURNEIGHBOR", StringComparison.OrdinalIgnoreCase);

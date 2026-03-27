@@ -1,0 +1,239 @@
+@using CardGames.Contracts.SignalR
+@using Microsoft.JSInterop
+
+@inject IJSRuntime JSRuntime
+
+<div @ref="_panelRef" class="in-between-panel @(IsSubmitting ? "submitting" : "")">
+    <div @ref="_handleRef" class="drag-handle" title="Drag to move">
+        <i class="fa-thin fa-grip-dots"></i>
+    </div>
+
+    @if (IsAceChoiceRequired)
+    {
+        <div class="ib-section">
+            <h3 class="ib-heading">Ace Drawn!</h3>
+            <p class="ib-subtext">Choose whether the Ace counts as high or low.</p>
+            <div class="ib-action-buttons">
+                <button class="action-btn ib-ace-high-btn" disabled="@IsSubmitting" @onclick="() => OnAceChoice.InvokeAsync(true)">
+                    <i class="action-icon fa-thin fa-arrow-up"></i>
+                    <span class="action-label">High</span>
+                </button>
+                <button class="action-btn ib-ace-low-btn" disabled="@IsSubmitting" @onclick="() => OnAceChoice.InvokeAsync(false)">
+                    <i class="action-icon fa-thin fa-arrow-down"></i>
+                    <span class="action-label">Low</span>
+                </button>
+            </div>
+        </div>
+    }
+    else if (ShowBetControls)
+    {
+        <div class="ib-section">
+            @if (BoundaryCards?.Count >= 2)
+            {
+                <h3 class="ib-heading">Place Your Bet</h3>
+                <p class="ib-subtext">
+                    Bet that the next card lands between the two boundary cards. An Ace in the second position is always high.
+                </p>
+            }
+
+            @if (MaxBet > 0 && PlayerChips > 0)
+            {
+                <div class="bet-controls">
+                    <div class="bet-slider-container">
+                        <input type="range" class="bet-slider"
+                               min="0" max="@MaxBet" step="1"
+                               value="@_betAmount"
+                               @oninput="OnSliderChanged"
+                               disabled="@IsSubmitting" />
+                        <div class="bet-slider-labels">
+                            <span>Pass</span>
+                            <span>@MaxBet</span>
+                        </div>
+                    </div>
+
+                    <div class="bet-input-group">
+                        <span class="ib-bet-display">@(_betAmount == 0 ? "" : _betAmount.ToString())</span>
+                    </div>
+                </div>
+
+                <div class="ib-action-buttons">
+                    <button class="action-btn ib-pass-btn" disabled="@IsSubmitting" @onclick="() => OnPlaceBet.InvokeAsync(0)">
+                        <i class="action-icon fa-thin fa-circle-xmark"></i>
+                        <span class="action-label">Pass</span>
+                    </button>
+                    @if (_betAmount > 0)
+                    {
+                        <button class="action-btn ib-bet-btn" disabled="@IsSubmitting" @onclick="() => OnPlaceBet.InvokeAsync(_betAmount)">
+                            <i class="action-icon fa-thin fa-circle-dollar"></i>
+                            <span class="action-label">Bet @_betAmount</span>
+                        </button>
+                    }
+                    @if (MaxBet > 0 && !IsFirstOrbitFullPotRestricted)
+                    {
+                        <button class="action-btn ib-pot-btn" disabled="@IsSubmitting" @onclick="() => OnPlaceBet.InvokeAsync(MaxBet)">
+                            <i class="action-icon fa-thin fa-sack-dollar"></i>
+                            <span class="action-label">Bet Pot (@MaxBet)</span>
+                        </button>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="ib-action-buttons">
+                    <p class="ib-subtext ib-forced-pass">
+                        @(PlayerChips <= 0 ? "No chips — forced pass." : "Pot is empty!")
+                    </p>
+                    <button class="action-btn ib-pass-btn" disabled="@IsSubmitting" @onclick="() => OnPlaceBet.InvokeAsync(0)">
+                        <i class="action-icon fa-thin fa-circle-xmark"></i>
+                        <span class="action-label">Pass</span>
+                    </button>
+                </div>
+            }
+        </div>
+    }
+    else if (ShowDealPrompt)
+    {
+        <div class="ib-section">
+            <h3 class="ib-heading">Your Turn</h3>
+            <p class="ib-subtext">Tap to reveal your boundary cards.</p>
+            <div class="ib-action-buttons">
+                <button class="action-btn ib-deal-btn" disabled="@IsSubmitting" @onclick="OnDealCards">
+                    <i class="action-icon fa-thin fa-cards"></i>
+                    <span class="action-label">Deal My Cards</span>
+                </button>
+            </div>
+        </div>
+    }
+
+    @if (IsSubmitting)
+    {
+        <div class="action-submitting">
+            <span class="loading-spinner-small"></span>
+            Submitting...
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(LastTurnDescription))
+    {
+        <div class="ib-result-toast">@LastTurnDescription</div>
+    }
+
+    <!-- Turn timer -->
+    @if (!IsSubmitting)
+    {
+        <div class="turn-timer action-panel-timer">
+            <div class="timer-bar">
+                <div class="timer-fill" style="width: @GetTimerPercentage()%"></div>
+            </div>
+            <span class="timer-text">@GetSecondsRemaining() s</span>
+        </div>
+    }
+</div>
+
+@code {
+    private const string PanelStorageKey = "cardGames.panelPosition.inBetweenPanel";
+
+    private ElementReference _panelRef;
+    private ElementReference _handleRef;
+    private bool _dragInitialized;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_dragInitialized)
+        {
+            _dragInitialized = true;
+            await JSRuntime.InvokeVoidAsync("draggablePanel.init", _panelRef, _handleRef, PanelStorageKey);
+        }
+    }
+
+    [Parameter] public IReadOnlyList<CardPublicDto> BoundaryCards { get; set; } = [];
+    [Parameter] public int PotAmount { get; set; }
+    [Parameter] public int PlayerChips { get; set; }
+    [Parameter] public int MaxBet { get; set; }
+    [Parameter] public bool IsAceChoiceRequired { get; set; }
+    [Parameter] public bool ShowBetControls { get; set; }
+    [Parameter] public bool ShowDealPrompt { get; set; }
+    [Parameter] public bool IsFirstOrbitFullPotRestricted { get; set; }
+    [Parameter] public bool IsSubmitting { get; set; }
+    [Parameter] public string? LastTurnDescription { get; set; }
+    [Parameter] public EventCallback<bool> OnAceChoice { get; set; }
+    [Parameter] public EventCallback<int> OnPlaceBet { get; set; }
+    [Parameter] public EventCallback OnDealCards { get; set; }
+    [Parameter] public ActionTimerStateDto? ActionTimer { get; set; }
+
+    private const int DefaultTimerDurationSeconds = 30;
+    private int _betAmount;
+    private string? _autoActionTimerKey;
+    private bool _isAutoActionInFlight;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await TrySubmitTimeoutDefaultDecisionAsync();
+    }
+
+    private async Task TrySubmitTimeoutDefaultDecisionAsync()
+    {
+        if (ActionTimer is null || !ActionTimer.IsActive || ActionTimer.SecondsRemaining > 0)
+        {
+            _autoActionTimerKey = null;
+            return;
+        }
+
+        if (IsSubmitting || _isAutoActionInFlight)
+        {
+            return;
+        }
+
+        var timerKey = $"{ActionTimer.PlayerSeatIndex}:{ActionTimer.StartedAtUtc.UtcTicks}";
+        if (_autoActionTimerKey == timerKey)
+        {
+            return;
+        }
+
+        _autoActionTimerKey = timerKey;
+        _isAutoActionInFlight = true;
+
+        try
+        {
+            if (IsAceChoiceRequired)
+            {
+                // Auto-choose "Low" when the timer expires
+                await OnAceChoice.InvokeAsync(false);
+            }
+            else if (ShowBetControls)
+            {
+                // Auto-pass when the timer expires
+                await OnPlaceBet.InvokeAsync(0);
+            }
+            else if (ShowDealPrompt)
+            {
+                await OnDealCards.InvokeAsync();
+            }
+        }
+        finally
+        {
+            _isAutoActionInFlight = false;
+        }
+    }
+
+    private void OnSliderChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var val))
+        {
+            _betAmount = Math.Clamp(val, 0, MaxBet);
+        }
+    }
+
+    private int GetSecondsRemaining() =>
+        ActionTimer?.SecondsRemaining ?? DefaultTimerDurationSeconds;
+
+    private int GetTimerDuration() =>
+        ActionTimer?.DurationSeconds ?? DefaultTimerDurationSeconds;
+
+    private double GetTimerPercentage()
+    {
+        var duration = GetTimerDuration();
+        if (duration <= 0) return 100;
+        return (GetSecondsRemaining() / (double)duration) * 100;
+    }
+}

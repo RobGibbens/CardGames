@@ -643,6 +643,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		// During showdown phases, show cards face-up for players who haven't folded
 		var isSevenCardStud = IsStudGame(gameTypeCode);
 		var isScrewYourNeighbor = IsScrewYourNeighborGame(gameTypeCode);
+		var isInBetween = IsInBetweenGame(gameTypeCode);
 
 		// Get current hand cards (not discarded)
 		// Note: We filter by hand number to naturally handle sitting out players.
@@ -665,6 +666,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			var shouldShowCard =
 				(isSevenCardStud && card.IsVisible)
 				|| (isScrewYourNeighbor && card.IsVisible)
+				|| (isInBetween && card.IsVisible)
 				|| shouldShowCardsForShowdown;
 
 			return new CardPublicDto
@@ -959,9 +961,16 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		var isFollowTheQueen = IsFollowTheQueenGame(game.GameType?.Code);
 		var isPairPressure = IsPairPressureGame(game.GameType?.Code);
 		var isScrewYourNeighbor = IsScrewYourNeighborGame(game.GameType?.Code);
+		var isInBetween = IsInBetweenGame(game.GameType?.Code);
 		var isStudStyleShowdown = isSevenCardStud || isBaseball || isFollowTheQueen || isPairPressure;
 		var isTerminalScrewYourNeighborShowdown =
 			isScrewYourNeighbor && string.Equals(game.CurrentPhase, "Ended", StringComparison.OrdinalIgnoreCase);
+
+		// In-Between has no traditional showdown — skip evaluation entirely
+		if (isInBetween)
+		{
+			return null;
+		}
 
 		if (game.CurrentPhase != "Showdown" &&
 			game.CurrentPhase != "Complete" &&
@@ -1876,6 +1885,15 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 	private async Task<int> CalculateTotalPotAsync(Game game, int handNumber, CancellationToken cancellationToken)
 	{
+		if (IsInBetweenGame(game.GameType?.Code))
+		{
+			// In-Between uses a single hand with a pot that changes each turn.
+			return await _context.Pots
+				.Where(p => p.GameId == game.Id && p.HandNumber == handNumber && !p.IsAwarded)
+				.AsNoTracking()
+				.SumAsync(p => p.Amount, cancellationToken);
+		}
+
 		if (IsScrewYourNeighborGame(game.GameType?.Code))
 		{
 			// SYN carries the funded pot across hands in the Pots table.
@@ -1944,6 +1962,11 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	private static bool IsScrewYourNeighborGame(string? gameCode)
 	{
 		return string.Equals(gameCode, PokerGameMetadataRegistry.ScrewYourNeighborCode, StringComparison.OrdinalIgnoreCase);
+	}
+
+	private static bool IsInBetweenGame(string? gameCode)
+	{
+		return string.Equals(gameCode, PokerGameMetadataRegistry.InBetweenCode, StringComparison.OrdinalIgnoreCase);
 	}
 
 	private async Task<KingsAndLowsDeckOutcome?> BuildKingsAndLowsDeckOutcomeAsync(
