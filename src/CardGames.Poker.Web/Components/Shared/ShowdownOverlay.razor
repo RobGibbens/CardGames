@@ -13,18 +13,23 @@
 
 <div class="table-overlay showdown-overlay" role="dialog" aria-modal="true" aria-label="Showdown results">
     <div class="overlay-content showdown-content @(ShowdownWon ? "showdown-won" : "")">
-        <button type="button" class="showdown-close" @onclick="OnClose" aria-label="Close showdown">
-            &times;
-        </button>
-
         <header class="showdown-header">
-            <div class="showdown-icon" aria-hidden="true">
-                <i class="fa-solid fa-trophy"></i>
+            <div class="showdown-header-main">
+                <div class="showdown-icon" aria-hidden="true">
+                    <i class="fa-solid fa-trophy"></i>
+                </div>
+                <div class="showdown-heading">
+                    <h2 class="showdown-title">Showdown</h2>
+                    <div class="showdown-subtitle">@GetOutcomeSubtitle()</div>
+                </div>
             </div>
-            <div class="showdown-heading">
-                <h2 class="showdown-title">Showdown</h2>
-                <div class="showdown-subtitle">@GetOutcomeSubtitle()</div>
-            </div>
+            <button type="button"
+                    class="btn btn-link btn-sm showdown-close"
+                    title="Close showdown"
+                    aria-label="Close showdown"
+                    @onclick="OnClose">
+                <i class="fa-solid fa-xmark game-info-overlay-close-icon"></i>
+            </button>
         </header>
 
         @if (ShowdownResult is null)
@@ -45,138 +50,176 @@
             var winnerAmount = GetWinnerAmount(ShowdownResult, winnerHand);
             var winnerVerb = GetWinnerVerb(ShowdownResult, winnerHand);
 
-            <section class="showdown-winner" aria-label="Winner">
-                <div class="winner-banner @(ShowdownWon ? "winner-banner-celebrate" : "")">
-                    @if (ShowdownWon)
-                    {
-                        <div class="winner-celebration" aria-hidden="true">
-                            <span class="winner-ribbon">Winner</span>
-                            <i class="fa-solid fa-sparkles celebration-star celebration-star-left"></i>
-                            <i class="fa-solid fa-sparkles celebration-star celebration-star-right"></i>
-                            @for (var i = 0; i < 14; i++)
-                            {
-                                <span class="celebration-confetti" style="--i:@i"></span>
-                            }
-                        </div>
-                    }
-
-                    <div class="winner-headline">
+            <section class="showdown-stage" aria-label="Showdown summary">
+                <section class="showdown-winner" aria-label="Winner">
+                    <div class="winner-banner @(ShowdownWon ? "winner-banner-celebrate" : "")">
                         @if (ShowdownWon)
                         {
-                            <span class="winner-crown" aria-hidden="true"><i class="fa-solid fa-crown"></i></span>
-                        }
-                        <h3 class="winner-first">@winnerName</h3>
-                        <span class="winner-rest">@winnerVerb</span>
-                    </div>
-
-                    @if (!string.IsNullOrWhiteSpace(winnerDescription) || winnerAmount > 0)
-                    {
-                        <div class="winner-pills">
-                            @if (!string.IsNullOrWhiteSpace(winnerDescription))
-                            {
-                                <span class="sd-pill sd-pill-muted">@winnerDescription</span>
-                            }
-                            @if (winnerAmount > 0)
-                            {
-                                <span class="sd-pill sd-pill-gold">+@winnerAmount chips</span>
-                            }
-                        </div>
-                    }
-
-                    @if (winnerCards.Count > 0)
-                    {
-                        <div class="showdown-cards winner-cards" aria-label="Winning cards">
-                            @for (var i = 0; i < winnerCards.Count; i++)
-                            {
-                                var (card, isWild) = winnerCards[i];
-                                <div class="sd-card-wrapper" style="--i:@i" @key="GetShowdownCardRenderKey(card, i, isWild)">
-                                    <playing-card class="showdown-card showdown-card-winner" rank="@GetPlayingCardRank(card)" suit="@GetPlayingCardSuit(card)" suitcolor="@(isWild ? "green" : null)" rankcolor="@(isWild ? "green" : null)" courtcolor="@(isWild ? "green" : null)"></playing-card>
-                                </div>
-                            }
-                        </div>
-                    }
-                </div>
-            </section>
-
-            @if (IsBobBarkerGame && ShowdownState?.BobBarker is { } bobBarker)
-            {
-                <section class="showdown-others" aria-label="Bob Barker showcase results">
-                    <h3 class="showdown-section-title">Showcase Results</h3>
-                    <div class="other-hand-row bob-barker-showcase-row">
-                        <div class="bob-barker-showcase-item bob-barker-showcase-item-dealer">
-                            <div class="other-hand-info">
-                                <span class="other-hand-name">Dealer target</span>
-                            </div>
-                            @if (bobBarker.DealerCard is not null)
-                            {
-                                <div class="showdown-cards other-cards bob-barker-showcase-cards">
-                                    <div>
-                                        <playing-card class="showdown-card showdown-card-loser" rank="@bobBarker.DealerCard.Rank" suit="@bobBarker.DealerCard.Suit"></playing-card>
-                                    </div>
-                                </div>
-                            }
-                        </div>
-
-                        <div class="bob-barker-showcase-spacer" aria-hidden="true"></div>
-
-                        @foreach (var player in GetBobBarkerPlayers())
-                        {
-                            <div class="bob-barker-showcase-item">
-                                <div class="other-hand-info">
-                                    <span class="other-hand-name">@GetPlayerDisplayName(player)</span>
-                                </div>
-                                @if (player.ShowcaseCard is not null)
+                            <div class="winner-celebration" aria-hidden="true">
+                                <span class="winner-ribbon">Winner</span>
+                                <i class="fa-solid fa-sparkles celebration-star celebration-star-left"></i>
+                                <i class="fa-solid fa-sparkles celebration-star celebration-star-right"></i>
+                                @for (var i = 0; i < 14; i++)
                                 {
-                                    <div class="showdown-cards other-cards bob-barker-showcase-cards">
-                                        <div>
-                                            <playing-card class="showdown-card showdown-card-loser" rank="@player.ShowcaseCard.Rank" suit="@player.ShowcaseCard.Suit"></playing-card>
-                                        </div>
+                                    <span class="celebration-confetti" style="--i:@i"></span>
+                                }
+                            </div>
+                        }
+
+                        <div class="winner-main">
+                            <div class="winner-copy">
+
+                                <div class="winner-headline">
+                                    @if (ShowdownWon)
+                                    {
+                                        <span class="winner-crown" aria-hidden="true"><i class="fa-solid fa-crown"></i></span>
+                                    }
+                                    <h3 class="winner-first">@winnerName</h3>
+                                    <span class="winner-rest">@winnerVerb</span>
+                                </div>
+
+                                @if (!string.IsNullOrWhiteSpace(winnerDescription))
+                                {
+                                    <p class="winner-hand-callout">@winnerDescription</p>
+                                }
+
+                                @if (!string.IsNullOrWhiteSpace(winnerDescription) || winnerAmount > 0)
+                                {
+                                    <div class="winner-pills">
+                                        @if (!string.IsNullOrWhiteSpace(winnerDescription))
+                                        {
+                                            <span class="sd-pill sd-pill-muted">Best hand</span>
+                                        }
+                                        @if (winnerAmount > 0)
+                                        {
+                                            <span class="sd-pill sd-pill-gold">+@winnerAmount chips</span>
+                                        }
                                     </div>
                                 }
+                            </div>
+
+                            <div class="winner-illustration-shell" aria-hidden="true">
+                                <div class="winner-illustration-frame">
+                                    <img class="winner-illustration" src="/images/winner.png" alt="" />
+                                </div>
+                            </div>
+                        </div>
+
+                        @if (winnerCards.Count > 0)
+                        {
+                            <div class="winner-hand-stage">
+                                <div class="winner-hand-header">
+                                    <span class="winner-hand-label">Winning cards</span>
+                                    @if (!string.IsNullOrWhiteSpace(winnerDescription))
+                                    {
+                                        <span class="winner-hand-detail">@winnerDescription</span>
+                                    }
+                                </div>
+
+                                <div class="showdown-cards winner-cards" aria-label="Winning cards">
+                                    @for (var i = 0; i < winnerCards.Count; i++)
+                                    {
+                                        var (card, isWild) = winnerCards[i];
+                                        <div class="sd-card-wrapper" style="--i:@i" @key="GetShowdownCardRenderKey(card, i, isWild)">
+                                            <playing-card class="showdown-card showdown-card-winner" rank="@GetPlayingCardRank(card)" suit="@GetPlayingCardSuit(card)" suitcolor="@(isWild ? "green" : null)" rankcolor="@(isWild ? "green" : null)" courtcolor="@(isWild ? "green" : null)"></playing-card>
+                                        </div>
+                                    }
+                                </div>
                             </div>
                         }
                     </div>
                 </section>
-            }
 
-            @if (otherHands.Count > 0)
-            {
-                <section class="showdown-others" aria-label="Other hands">
-                    <h3 class="showdown-section-title">Other Hands</h3>
-                    @foreach (var hand in otherHands)
+                <div class="showdown-sidepanels">
+                    @if (IsBobBarkerGame && ShowdownState?.BobBarker is { } bobBarker)
                     {
-                        var handCards = GetDisplayCardsForShowdown(hand, sharedCommunityCards, isRazz);
-                        <div class="other-hand-row">
-                            <div class="other-hand-info">
-                                <span class="other-hand-name">@DisplayFirstName(hand)</span>
-                                @if (hand.IsEliminatedByUgly == true)
+                        <section class="showdown-others showdown-others-showcase" aria-label="Bob Barker showcase results">
+                            <div class="showdown-section-heading">
+                                <h3 class="showdown-section-title">Showcase Results</h3>
+                                <p class="showdown-section-subtitle">Dealer target and player showcase cards</p>
+                            </div>
+
+                            <div class="other-hand-row bob-barker-showcase-row">
+                                <div class="bob-barker-showcase-item bob-barker-showcase-item-dealer">
+                                    <div class="other-hand-info">
+                                        <span class="other-hand-name">Dealer target</span>
+                                    </div>
+                                    @if (bobBarker.DealerCard is not null)
+                                    {
+                                        <div class="showdown-cards other-cards bob-barker-showcase-cards">
+                                            <div>
+                                                <playing-card class="showdown-card showdown-card-loser" rank="@bobBarker.DealerCard.Rank" suit="@bobBarker.DealerCard.Suit"></playing-card>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+
+                                <div class="bob-barker-showcase-spacer" aria-hidden="true"></div>
+
+                                @foreach (var player in GetBobBarkerPlayers())
                                 {
-                                    <span class="sd-pill sd-pill-muted">Dead Hand (The Ugly)</span>
-                                }
-                                else if (isRazz || !string.IsNullOrWhiteSpace(hand.HandType) || !string.IsNullOrWhiteSpace(hand.HandDescription))
-                                {
-                                    <span class="sd-pill sd-pill-muted">@GetDetailedHandDescription(hand, isRazz)</span>
-                                }
-                                @if (hand.AmountWon.GetValueOrDefault() > 0)
-                                {
-                                    <span class="sd-pill sd-pill-gold">+@hand.AmountWon.GetValueOrDefault() chips</span>
+                                    <div class="bob-barker-showcase-item">
+                                        <div class="other-hand-info">
+                                            <span class="other-hand-name">@GetPlayerDisplayName(player)</span>
+                                        </div>
+                                        @if (player.ShowcaseCard is not null)
+                                        {
+                                            <div class="showdown-cards other-cards bob-barker-showcase-cards">
+                                                <div>
+                                                    <playing-card class="showdown-card showdown-card-loser" rank="@player.ShowcaseCard.Rank" suit="@player.ShowcaseCard.Suit"></playing-card>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
                                 }
                             </div>
-                            @if (handCards.Count > 0)
+                        </section>
+                    }
+
+                    @if (otherHands.Count > 0)
+                    {
+                        <section class="showdown-others showdown-others-grid" aria-label="Other hands">
+                            <div class="showdown-section-heading">
+                                <h3 class="showdown-section-title">Other Hands</h3>
+                                <p class="showdown-section-subtitle">Every revealed hand remains visible for comparison</p>
+                            </div>
+
+                            @foreach (var hand in otherHands)
                             {
-                                <div class="showdown-cards other-cards">
-                                    @foreach (var (c, isWild) in handCards)
+                                var handCards = GetDisplayCardsForShowdown(hand, sharedCommunityCards, isRazz);
+                                <div class="other-hand-row">
+                                    <div class="other-hand-info">
+                                        <span class="other-hand-name">@DisplayFirstName(hand)</span>
+                                        @if (hand.IsEliminatedByUgly == true)
+                                        {
+                                            <span class="sd-pill sd-pill-muted">Dead Hand (The Ugly)</span>
+                                        }
+                                        else if (isRazz || !string.IsNullOrWhiteSpace(hand.HandType) || !string.IsNullOrWhiteSpace(hand.HandDescription))
+                                        {
+                                            <span class="sd-pill sd-pill-muted">@GetDetailedHandDescription(hand, isRazz)</span>
+                                        }
+                                        @if (hand.AmountWon.GetValueOrDefault() > 0)
+                                        {
+                                            <span class="sd-pill sd-pill-gold">+@hand.AmountWon.GetValueOrDefault() chips</span>
+                                        }
+                                    </div>
+                                    @if (handCards.Count > 0)
                                     {
-                                        <div @key="GetShowdownCardRenderKey(c, hand.PlayerName, isWild)">
-                                            <playing-card class="showdown-card showdown-card-loser" rank="@GetPlayingCardRank(c)" suit="@GetPlayingCardSuit(c)" suitcolor="@(isWild ? "green" : null)" rankcolor="@(isWild ? "green" : null)" courtcolor="@(isWild ? "green" : null)"></playing-card>
+                                        <div class="showdown-cards other-cards">
+                                            @foreach (var (c, isWild) in handCards)
+                                            {
+                                                <div @key="GetShowdownCardRenderKey(c, hand.PlayerName, isWild)">
+                                                    <playing-card class="showdown-card showdown-card-loser" rank="@GetPlayingCardRank(c)" suit="@GetPlayingCardSuit(c)" suitcolor="@(isWild ? "green" : null)" rankcolor="@(isWild ? "green" : null)" courtcolor="@(isWild ? "green" : null)"></playing-card>
+                                                </div>
+                                            }
                                         </div>
                                     }
                                 </div>
                             }
-                        </div>
+                        </section>
                     }
-                </section>
-            }
+                </div>
+            </section>
         }
 
         <div class="showdown-countdown">

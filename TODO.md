@@ -13,7 +13,7 @@
 
 - [ ] Productize it - deployment and hosting (Hetzner)
 
-- [ ] Redesign ShowdownOverlay
+- [ ] Check for security issues
 - [ ] Add a "Rules" property to each game
 - [ ] Replace cardmeister with images?
 - [ ] Refactor TablePlay
@@ -23,7 +23,6 @@
 
 ### P1 - Can't play without these
 
-- [ ] Phil's mom loser showdown not correct
 - [ ] Test side pots
 - [ ] Make sure all game types handle all ins correctly
 
@@ -275,3 +274,5 @@
 - [x] Make the dark/light theme support system settings
 - [x] Bringing in cash to a game should require host approval?
 - [x] Create table page - Keep Dealer's Choice at the top, not with "Other"
+- [x] Phil's mom loser showdown not correct
+- [x] Redesign ShowdownOverlay
