@@ -1,7 +1,7 @@
 # TODO
 
 ## IN-BETWEEN
-- [ ] Remove Odds Visibility from CreateTable
+- [x] Remove Odds Visibility from CreateTable
 - [x] Can't adjust buy-in on Join Seat modal
 - [ ] Animate the chips going to/from the pot
 - [x] Show the timer

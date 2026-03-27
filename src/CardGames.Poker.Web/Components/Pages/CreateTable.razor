@@ -514,24 +514,27 @@
 								</div>
 							</div>
 
-							<div class="form-row">
-								<div class="form-group">
-									<label class="form-label" for="areOddsVisibleToAllPlayers">Odds Visibility</label>
-									<div class="create-table-odds-visibility-control">
-										<button class="game-info-odds-toggle-switch @(_areOddsVisibleToAllPlayers ? "is-on" : "is-off")"
-												type="button"
-												id="areOddsVisibleToAllPlayers"
-												role="switch"
-												aria-checked="@_areOddsVisibleToAllPlayers"
-												aria-label="Toggle odds visibility for everyone"
-												@onclick="ToggleOddsVisibility">
-											<span class="game-info-odds-toggle-text">@(_areOddsVisibleToAllPlayers ? "ON" : "OFF")</span>
-											<span class="game-info-odds-toggle-thumb" aria-hidden="true"></span>
-										</button>
-										<span class="form-hint odds-visibility-hint">Allow all players to see hand-odds in the dashboard</span>
+							@if (!IsScrewYourNeighbor && !IsInBetween)
+							{
+								<div class="form-row">
+									<div class="form-group">
+										<label class="form-label" for="areOddsVisibleToAllPlayers">Odds Visibility</label>
+										<div class="create-table-odds-visibility-control">
+											<button class="game-info-odds-toggle-switch @(_areOddsVisibleToAllPlayers ? "is-on" : "is-off")"
+													type="button"
+													id="areOddsVisibleToAllPlayers"
+													role="switch"
+													aria-checked="@_areOddsVisibleToAllPlayers"
+													aria-label="Toggle odds visibility for everyone"
+													@onclick="ToggleOddsVisibility">
+												<span class="game-info-odds-toggle-text">@(_areOddsVisibleToAllPlayers ? "ON" : "OFF")</span>
+												<span class="game-info-odds-toggle-thumb" aria-hidden="true"></span>
+											</button>
+											<span class="form-hint odds-visibility-hint">Allow all players to see hand-odds in the dashboard</span>
+										</div>
 									</div>
 								</div>
-							</div>
+							}
 						</div>
 					</section>
 

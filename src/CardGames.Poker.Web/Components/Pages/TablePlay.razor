@@ -250,7 +250,7 @@
                          GameImageName="@GetGameInfoImageName()"
                          ContextItems="@GetGameInfoContextItems()"
                          AreOddsVisibleToAllPlayers="@(_gameResponse?.AreOddsVisibleToAllPlayers ?? true)"
-                         CanToggleOddsVisibility="@_isHost"
+                         CanToggleOddsVisibility="@(_isHost && SupportsOdds)"
                          IsUpdatingOddsVisibility="@_isUpdatingOddsVisibility"
                          OnToggleOddsVisibility="ToggleOddsVisibilityAsync"
                          OnClose="CloseGameInfoOverlay" />
@@ -291,7 +291,7 @@
                         <LeaderboardSection Players="@GetLeaderboardPlayers()" />
                     </DashboardSection>
 
-                    @if (_gameResponse?.AreOddsVisibleToAllPlayers ?? true)
+                    @if (SupportsOdds && (_gameResponse?.AreOddsVisibleToAllPlayers ?? true))
                     {
                         <DashboardSection Title="Odds" Icon="fa-solid fa-chart-simple"
                                           IsExpanded="@DashboardState.IsSectionExpanded("Odds")"
@@ -844,6 +844,7 @@
     private bool IsKlondike => string.Equals(_gameTypeCode, "KLONDIKE", StringComparison.OrdinalIgnoreCase);
     private bool IsInBetween => string.Equals(_gameTypeCode, "INBETWEEN", StringComparison.OrdinalIgnoreCase);
     private bool IsStartedScrewYourNeighborTable => IsScrewYourNeighbor && _gameResponse?.StartedAt is not null;
+    private bool SupportsOdds => !IsInBetween && !IsScrewYourNeighbor;
     private bool IsIrishStyleHoldEm => IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple;
     private bool IsSevenCardStudStyle => IsSevenCardStud || IsPairPressure;
     private bool UsesCardDealAnimation => IsSevenCardStudStyle || IsRazz || IsGoodBadUgly || IsBaseball || IsFollowTheQueen || IsFiveCardDraw || IsTwosJacksManWithTheAxe || IsKingsAndLows || IsHoldEm || IsRedRiver || IsKlondike || IsHoldTheBaseball || IsOmaha || IsNebraska || IsSouthDakota || IsBobBarker || IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple || IsScrewYourNeighbor || IsTollbooth || IsInBetween;
