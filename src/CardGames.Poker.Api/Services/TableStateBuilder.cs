@@ -750,8 +750,14 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 	private static string? GetPlayerAvatarUrl(GamePlayer gamePlayer, IReadOnlyDictionary<string, UserProfile> userProfilesByEmail)
 	{
-		if (!string.IsNullOrWhiteSpace(gamePlayer.Player.Email)
-			&& userProfilesByEmail.TryGetValue(gamePlayer.Player.Email, out var profile))
+		var email = gamePlayer.Player.Email;
+		if (string.IsNullOrWhiteSpace(email) && gamePlayer.Player.Name?.Contains('@') == true)
+		{
+			email = gamePlayer.Player.Name;
+		}
+
+		if (!string.IsNullOrWhiteSpace(email)
+			&& userProfilesByEmail.TryGetValue(email, out var profile))
 		{
 			return BuildAvatarUrl(profile.UserId, profile.AvatarUrl);
 		}

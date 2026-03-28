@@ -294,6 +294,8 @@ StringComparison.OrdinalIgnoreCase);
 		_imageLoadError = true;
 	}
 
+	private static readonly string AvatarApiPrefix = "/api/v1/profile/avatar/";
+
 	private string GetSafeAvatarUrl()
 	{
 		if (string.IsNullOrWhiteSpace(Seat.PlayerAvatarUrl)) return "";
@@ -304,6 +306,17 @@ StringComparison.OrdinalIgnoreCase);
 			url.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
 		{
 			return url;
+		}
+
+		// API-relative avatar paths (e.g. /api/v1/profile/avatar/{userId}) must resolve
+		// against the API host, not the Blazor Web host.
+		if (url.StartsWith(AvatarApiPrefix, StringComparison.OrdinalIgnoreCase))
+		{
+			var userId = Uri.UnescapeDataString(url.Substring(AvatarApiPrefix.Length).TrimEnd('/'));
+			if (!string.IsNullOrWhiteSpace(userId))
+			{
+				return UserProfileDisplayHelpers.BuildAvatarApiPath(userId);
+			}
 		}
 
 		// If it starts with /, treat as relative to root, but respect base path

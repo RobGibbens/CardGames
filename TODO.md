@@ -5,14 +5,12 @@
 - [ ] SYN - It took the chips from the wrong player
 - [ ] SYN - Double burn doesn't work
 - [ ] Tony was trying to join during DC, it stole the choice from Russ
-- [ ] Join table is limiting chips
-- [ ] It's not showing my avatar on tableseat
-- [ ] K&L - had an ace, but it colored the 5 as low
 - [ ] DC - Eric joined, it glitched
 - [ ] Make cards transparent when folded
 - [ ] G,B,U - Good should be green
 - [ ] Rabbit hunt
 - [ ] Game felt
+- [ ] {"message":"You are not seated at this table or have already left"}
 
 ## Still to do
 
@@ -298,3 +296,6 @@
 - [x] BB should always be twice SB
 - [x] In Hold Em, the BB should be able to raise
 - [x] In DC the SB and BB when creating should use preferences
+- [x] Join table is limiting chips
+- [x] It's not showing my avatar on tableseat
+- [x] K&L - had an ace, but it colored the 5 as low

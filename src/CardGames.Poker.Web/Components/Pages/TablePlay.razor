@@ -11,6 +11,7 @@
 @using CardGames.Poker.Api.Clients
 @using CardGames.Poker.Api.Contracts
 @using CardGames.Poker.Evaluation
+@using CardGames.Poker.Hands.DrawHands
 @using CardGames.Poker.Hands.HandTypes
 @using CardGames.Poker.Hands.StudHands
 @using CardGames.Poker.Hands.WildCards
@@ -3068,8 +3069,7 @@
         }
 
         var min = GetJoinBuyInMin();
-        var step = GetJoinBuyInStep();
-        var max = Math.Max(min, step * 1_000);
+        var max = Math.Max(min, _joinBuyInBalance);
 
         if (_joinBuyInBalanceCap.HasValue)
         {
@@ -6166,6 +6166,43 @@ HandType.HighCard
         var wildRules = _tableState?.SpecialRules?.WildCardRules;
         var applyLowestRankWild = wildRules?.LowestCardIsWild == true;
 
+        if (applyLowestRankWild)
+        {
+            // When we have 5 face-up cards, use domain hand evaluation to correctly
+            // determine Ace high/low. The domain evaluates both scenarios and picks
+            // whichever produces the stronger hand (e.g., Ace-as-low when it enables a straight).
+            var faceUpWithIndex = cards
+                .Select((c, i) => (Card: c, Index: i))
+                .Where(x => x.Card.IsFaceUp && !string.IsNullOrWhiteSpace(x.Card.Rank) && !string.IsNullOrWhiteSpace(x.Card.Suit))
+                .ToList();
+
+            if (faceUpWithIndex.Count >= 5)
+            {
+                var domainCards = faceUpWithIndex
+                    .Select(x => TryMapToDomainCard(x.Card.Rank!, x.Card.Suit!))
+                    .ToList();
+
+                if (domainCards.All(c => c is not null))
+                {
+                    var hand = new KingsAndLowsDrawHand(domainCards.Select(c => c!).ToList());
+                    var wildCards = hand.WildCards;
+
+                    for (var i = 0; i < faceUpWithIndex.Count; i++)
+                    {
+                        if (wildCards.Contains(domainCards[i]!))
+                        {
+                            var origIndex = faceUpWithIndex[i].Index;
+                            cards[origIndex] = cards[origIndex] with { IsWild = true };
+                        }
+                    }
+
+                    return;
+                }
+            }
+        }
+
+        // Fallback for < 5 face-up cards or when domain conversion fails:
+        // use rank-value comparison with Ace treated as high.
         int? lowestNonKingRankValue = null;
         if (applyLowestRankWild)
         {
@@ -6196,6 +6233,43 @@ HandType.HighCard
 
             cards[index] = card with { IsWild = true };
         }
+    }
+
+    private static Card? TryMapToDomainCard(string rank, string suit)
+    {
+        var symbol = rank.Trim().ToUpperInvariant() switch
+        {
+            "2" or "TWO" or "DEUCE" => (Symbol?)Symbol.Deuce,
+            "3" or "THREE" => Symbol.Three,
+            "4" or "FOUR" => Symbol.Four,
+            "5" or "FIVE" => Symbol.Five,
+            "6" or "SIX" => Symbol.Six,
+            "7" or "SEVEN" => Symbol.Seven,
+            "8" or "EIGHT" => Symbol.Eight,
+            "9" or "NINE" => Symbol.Nine,
+            "10" or "T" or "TEN" => Symbol.Ten,
+            "J" or "JACK" => Symbol.Jack,
+            "Q" or "QUEEN" => Symbol.Queen,
+            "K" or "KING" => Symbol.King,
+            "A" or "ACE" => Symbol.Ace,
+            _ => null
+        };
+
+        var domainSuit = suit.Trim().ToUpperInvariant() switch
+        {
+            "HEARTS" => (Suit?)Suit.Hearts,
+            "DIAMONDS" => Suit.Diamonds,
+            "SPADES" => Suit.Spades,
+            "CLUBS" => Suit.Clubs,
+            _ => null
+        };
+
+        if (symbol is null || domainSuit is null)
+        {
+            return null;
+        }
+
+        return new Card(domainSuit.Value, symbol.Value);
     }
 
     private static int GetKingsAndLowsRankValue(string? rank) => rank?.Trim().ToUpperInvariant() switch
