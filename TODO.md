@@ -6,7 +6,6 @@
 - [ ] SYN - Double burn doesn't work
 - [ ] Tony was trying to join during DC, it stole the choice from Russ
 - [ ] DC - Eric joined, it glitched
-- [ ] Make cards transparent when folded
 - [ ] Rabbit hunt
 - [ ] Game felt
 - [ ] Click Leave Table : {"message":"You are not seated at this table or have already left"}
@@ -289,7 +288,7 @@
 - [x] Join game modal background color
 - [x] SYN - odds
 
-- [x] Crazy Pineapple description is incorrect. Deals 3 cards. Every game is like this.
+- [x] Crazy Pineapple description is incorrect. Every game is like this.
 - [x] Delete Table modal, make the delete button red 
 - [x] DC - Make it more obvious what game you're playing
 - [x] BB should always be twice SB
@@ -299,3 +298,4 @@
 - [x] It's not showing my avatar on tableseat
 - [x] K&L - had an ace, but it colored the 5 as low
 - [x] G,B,U - Good should be green
+- [x] Make cards transparent when folded
