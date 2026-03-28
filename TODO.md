@@ -2,6 +2,23 @@
 
 - [ ] Animate the chips going to/from the pot
 - [ ] Delete Table modal, make the delete button red 
+- [ ] In Hold Em, the BB should be able to raise
+- [ ] DC - Make it more obvious what game you're playing
+- [ ] In DC the SB and BB when creating should use preferences
+- [ ] BB should always be twice SB
+- [ ] Crazy Pineapple description is incorrect. Deals 3 cards. Every game is like this.
+- [ ] Adding chips during DC doesn't work
+- [ ] SYN - It took the chips from the wrong player
+- [ ] SYN - Double burn doesn't work
+- [ ] Tony was trying to join during DC, it stole the choice from Russ
+- [ ] Join table is limiting chips
+- [ ] It's not showing my avatar on tableseat
+- [ ] K&L - had an ace, but it colored the 5 as low
+- [ ] DC - Eric joined, it glitched
+- [ ] Make cards transparent when folded
+- [ ] G,B,U - Good should be green
+- [ ] Rabbit hunt
+- [ ] Game felt
 
 ## Still to do
 
