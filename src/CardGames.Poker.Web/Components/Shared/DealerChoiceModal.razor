@@ -24,10 +24,7 @@
 		{
 			<div class="dealer-choice-search dc-setting">
 				<label for="dc-search">Search Variants</label>
-				<input type="text"
-					   id="dc-search"
-					   placeholder="Search by game name"
-					   @bind="_variantSearch"
+				<input type="text" id="dc-search" placeholder="Search by game name" @bind="_variantSearch"
 					   @bind:event="oninput" />
 			</div>
 
@@ -49,21 +46,18 @@
 						{
 							var isDisabledForPlayerCount = IsVariantDisabledForPlayerCount(game);
 
-							<div class="dealer-choice-variant-shell @(isDisabledForPlayerCount ? "variant-disabled" : string.Empty)">
-								<button class="@GetFavoriteButtonClasses(game.Code)"
-									type="button"
-									aria-label="@GetFavoriteButtonLabel(game)"
-									aria-pressed="@IsFavoriteVariant(game.Code)"
-									title="@GetFavoriteButtonLabel(game)"
-									disabled="@(!CanManageFavoriteVariants)"
-									@onclick="() => ToggleFavoriteVariantAsync(game.Code)"
-									@onclick:stopPropagation="true">
+							<div
+								class="dealer-choice-variant-shell @(isDisabledForPlayerCount ? "variant-disabled" : string.Empty)">
+								<button class="@GetFavoriteButtonClasses(game.Code)" type="button"
+										aria-label="@GetFavoriteButtonLabel(game)" aria-pressed="@IsFavoriteVariant(game.Code)"
+										title="@GetFavoriteButtonLabel(game)" disabled="@(!CanManageFavoriteVariants)"
+										@onclick="() => ToggleFavoriteVariantAsync(game.Code)" @onclick:stopPropagation="true">
 									<i class="@GetFavoriteButtonIconClasses(game.Code)"></i>
 								</button>
-								<button class="dealer-choice-variant @(_selectedCode == game.Code ? "selected" : string.Empty) @(isDisabledForPlayerCount ? "variant-disabled" : string.Empty)"
-										type="button"
-										disabled="@isDisabledForPlayerCount"
-										@onclick="() => SelectVariant(game.Code, game.Name)">
+								<button
+									class="dealer-choice-variant @(_selectedCode == game.Code ? "selected" : string.Empty) @(isDisabledForPlayerCount ? "variant-disabled" : string.Empty)"
+									type="button" disabled="@isDisabledForPlayerCount"
+									@onclick="() => SelectVariant(game.Code, game.Name)">
 									<div class="dc-variant-icon">
 										@if (!string.IsNullOrEmpty(game.ImageName))
 										{
@@ -103,21 +97,18 @@
 						{
 							var isDisabledForPlayerCount = IsVariantDisabledForPlayerCount(game);
 
-							<div class="dealer-choice-variant-shell @(isDisabledForPlayerCount ? "variant-disabled" : string.Empty)">
-								<button class="@GetFavoriteButtonClasses(game.Code)"
-									type="button"
-									aria-label="@GetFavoriteButtonLabel(game)"
-									aria-pressed="@IsFavoriteVariant(game.Code)"
-									title="@GetFavoriteButtonLabel(game)"
-									disabled="@(!CanManageFavoriteVariants)"
-									@onclick="() => ToggleFavoriteVariantAsync(game.Code)"
-									@onclick:stopPropagation="true">
+							<div
+								class="dealer-choice-variant-shell @(isDisabledForPlayerCount ? "variant-disabled" : string.Empty)">
+								<button class="@GetFavoriteButtonClasses(game.Code)" type="button"
+										aria-label="@GetFavoriteButtonLabel(game)" aria-pressed="@IsFavoriteVariant(game.Code)"
+										title="@GetFavoriteButtonLabel(game)" disabled="@(!CanManageFavoriteVariants)"
+										@onclick="() => ToggleFavoriteVariantAsync(game.Code)" @onclick:stopPropagation="true">
 									<i class="@GetFavoriteButtonIconClasses(game.Code)"></i>
 								</button>
-								<button class="dealer-choice-variant @(_selectedCode == game.Code ? "selected" : string.Empty) @(isDisabledForPlayerCount ? "variant-disabled" : string.Empty)"
-										type="button"
-										disabled="@isDisabledForPlayerCount"
-										@onclick="() => SelectVariant(game.Code, game.Name)">
+								<button
+									class="dealer-choice-variant @(_selectedCode == game.Code ? "selected" : string.Empty) @(isDisabledForPlayerCount ? "variant-disabled" : string.Empty)"
+									type="button" disabled="@isDisabledForPlayerCount"
+									@onclick="() => SelectVariant(game.Code, game.Name)">
 									<div class="dc-variant-icon">
 										@if (!string.IsNullOrEmpty(game.ImageName))
 										{
@@ -153,40 +144,37 @@
 					{
 						<div class="dc-setting">
 							<label for="dc-sb">Small Blind</label>
-							<input type="number" id="dc-sb" min="1" max="500"
-								   @bind-value="_smallBlind" @bind-value:event="oninput" />
+							<input type="number" id="dc-sb" min="1" max="500" @bind-value="_smallBlind"
+								   @bind-value:event="oninput" />
 						</div>
 						<div class="dc-setting">
 							<label for="dc-bb">Big Blind</label>
-							<input type="number" id="dc-bb" min="1" max="1000"
-							   class="@(ShowDcBigBlindError ? "input-error" : "")"
-							   @bind-value="_bigBlind" @bind-value:event="oninput" />
-						@if (ShowDcBigBlindError)
-						{
-							<span class="form-hint form-hint-error">Big blind must be greater than small blind.</span>
-						}
+							<input type="number" id="dc-bb" min="1" max="1000" class="@(ShowDcBigBlindError ? "input-error" : "")"
+								   @bind-value="_bigBlind" @bind-value:event="oninput" />
+							@if (ShowDcBigBlindError)
+							{
+								<span class="form-hint form-hint-error">Big blind must be greater than small blind.</span>
+							}
 						</div>
 					}
 					else
 					{
 						<div class="dc-setting">
 							<label for="dc-ante">@(IsScrewYourNeighborGame(_selectedCode) ? "Chip stack amount" : "Ante")</label>
-							<input type="number" id="dc-ante" min="0" max="100"
-								   @bind-value="_ante" @bind-value:event="oninput" />
+							<input type="number" id="dc-ante" min="0" max="100" @bind-value="_ante" @bind-value:event="oninput" />
 						</div>
 						@if (ShouldShowMinBet(_selectedCode))
 						{
 							<div class="dc-setting">
 								<label for="dc-minbet">Min Bet</label>
-								<input type="number" id="dc-minbet" min="1" max="1000"
-									   @bind-value="_minBet" @bind-value:event="oninput" />
+								<input type="number" id="dc-minbet" min="1" max="1000" @bind-value="_minBet"
+									   @bind-value:event="oninput" />
 							</div>
 						}
 					}
 				</div>
 
-				<button class="btn btn-primary btn-lg dealer-choice-confirm"
-						@onclick="ConfirmChoiceAsync"
+				<button class="btn btn-primary btn-lg dealer-choice-confirm" @onclick="ConfirmChoiceAsync"
 						disabled="@(_isSubmitting || (IsBlindBasedGame(_selectedCode) ? (_bigBlind < 1 || _bigBlind <= _smallBlind) : RequiresMinBet(_selectedCode) && _minBet < 1))">
 					@if (_isSubmitting)
 					{
@@ -234,7 +222,8 @@
 	private int _smallBlind = 5;
 	private int _bigBlind = 10;
 
-	private bool ShowDcBigBlindError => _selectedCode is not null && IsBlindBasedGame(_selectedCode) && _bigBlind > 0 && _smallBlind > 0 && _bigBlind <= _smallBlind;
+	private bool ShowDcBigBlindError => _selectedCode is not null && IsBlindBasedGame(_selectedCode) && _bigBlind > 0 &&
+_smallBlind > 0 && _bigBlind <= _smallBlind;
 	private string _variantSearch = string.Empty;
 	private HashSet<string>? _allowedGameCodeLookup;
 	private readonly HashSet<string> _favoriteVariantCodes = new(StringComparer.OrdinalIgnoreCase);
@@ -284,7 +273,7 @@
 
 	protected override async Task OnInitializedAsync()
 	{
-		await LoadFavoriteVariantsAsync();
+		await Task.WhenAll(LoadFavoriteVariantsAsync(), LoadGamePreferencesAsync());
 	}
 
 	protected override void OnParametersSet()
@@ -297,11 +286,32 @@
 			return;
 		}
 
-		var selectedGame = AvailableGames.FirstOrDefault(g => string.Equals(g.Code, _selectedCode, StringComparison.OrdinalIgnoreCase));
+		var selectedGame = AvailableGames.FirstOrDefault(g => string.Equals(g.Code, _selectedCode,
+StringComparison.OrdinalIgnoreCase));
 		if (selectedGame is null || !IsAllowedGameType(selectedGame.Code) || IsVariantDisabledForPlayerCount(selectedGame))
 		{
 			_selectedCode = null;
 			_selectedName = null;
+		}
+	}
+
+	private async Task LoadGamePreferencesAsync()
+	{
+		try
+		{
+			var response = await ProfileApi.GetGamePreferencesAsync();
+			if (response.IsSuccessStatusCode && response.Content is not null)
+			{
+				var prefs = response.Content;
+				if (prefs.DefaultSmallBlind > 0) _smallBlind = prefs.DefaultSmallBlind;
+				if (prefs.DefaultBigBlind > 0) _bigBlind = prefs.DefaultBigBlind;
+				if (prefs.DefaultAnte > 0) _ante = prefs.DefaultAnte;
+				if (prefs.DefaultMinimumBet > 0) _minBet = prefs.DefaultMinimumBet;
+			}
+		}
+		catch
+		{
+			// Fall back to hardcoded defaults if preferences are unavailable.
 		}
 	}
 
@@ -353,7 +363,8 @@
 		return $"Unavailable: max {game.MaximumNumberOfPlayers} players, current active players: {CurrentActivePlayerCount}.";
 	}
 
-	private static VariantGroup CreateGroup(string title, IEnumerable<GetAvailablePokerGamesResponse> games, VariantType variantType)
+	private static VariantGroup CreateGroup(string title, IEnumerable<GetAvailablePokerGamesResponse> games, VariantType
+variantType)
 	{
 		return new VariantGroup(title, games.Where(g => g.VariantType == variantType).ToList());
 	}
@@ -365,7 +376,8 @@
 			return true;
 		}
 
-		var containsSelectedVariant = group.Games.Any(game => string.Equals(game.Code, _selectedCode, StringComparison.OrdinalIgnoreCase));
+		var containsSelectedVariant = group.Games.Any(game => string.Equals(game.Code, _selectedCode,
+StringComparison.OrdinalIgnoreCase));
 		if (!containsSelectedVariant)
 		{
 			return false;
@@ -446,7 +458,8 @@
 	{
 		_favoriteVariantCodes.Clear();
 
-		foreach (var gameCode in favoriteVariants.FavoriteVariantCodes.Select(NormalizeVariantCode).Where(code => !string.IsNullOrWhiteSpace(code)))
+		foreach (var gameCode in favoriteVariants.FavoriteVariantCodes.Select(NormalizeVariantCode).Where(code =>
+!string.IsNullOrWhiteSpace(code)))
 		{
 			_favoriteVariantCodes.Add(gameCode);
 		}
@@ -537,7 +550,8 @@
 		if (_selectedCode is null)
 			return;
 
-		if (IsBlindBasedGame(_selectedCode) ? (_bigBlind < 1 || _bigBlind <= _smallBlind) : RequiresMinBet(_selectedCode) && _minBet < 1)
+		if (IsBlindBasedGame(_selectedCode) ? (_bigBlind < 1 || _bigBlind <= _smallBlind) : RequiresMinBet(_selectedCode) &&
+_minBet < 1)
 			return;
 
 		_isSubmitting = true;
@@ -567,7 +581,9 @@
 		}
 	}
 
-	public record DealerChoiceSelection(string GameTypeCode, int Ante, int MinBet, int? SmallBlind = null, int? BigBlind = null);
+	public record DealerChoiceSelection(string GameTypeCode, int Ante, int MinBet, int? SmallBlind = null, int? BigBlind =
+null);
 
-	private sealed record VariantGroup(string Title, IReadOnlyList<GetAvailablePokerGamesResponse> Games, bool IsFavorites = false);
+	private sealed record VariantGroup(string Title, IReadOnlyList<GetAvailablePokerGamesResponse> Games, bool IsFavorites =
+false);
 }
