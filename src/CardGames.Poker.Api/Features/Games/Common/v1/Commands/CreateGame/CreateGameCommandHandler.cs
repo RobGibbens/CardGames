@@ -40,6 +40,15 @@ public class CreateGameCommandHandler(
 			};
 		}
 
+		if (command is { SmallBlind: not null, BigBlind: not null } && command.BigBlind <= command.SmallBlind)
+		{
+			return new CreateGameConflict
+			{
+				GameId = command.GameId,
+				Reason = "Big blind must be greater than small blind."
+			};
+		}
+
 		if (command.MaxBuyIn.HasValue)
 		{
 			var minimumAllowedBuyIn = GetMinimumAllowedBuyIn(command);

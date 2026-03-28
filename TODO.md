@@ -1,9 +1,19 @@
 # TODO
 
+- [ ] Animate the chips going to/from the pot
+- [ ] Adding chips during DC doesn't work
+- [ ] SYN - It took the chips from the wrong player
+- [ ] SYN - Double burn doesn't work
+- [ ] Tony was trying to join during DC, it stole the choice from Russ
+- [ ] DC - Eric joined, it glitched
+- [ ] Make cards transparent when folded
+- [ ] Rabbit hunt
+- [ ] Game felt
+- [ ] Click Leave Table : {"message":"You are not seated at this table or have already left"}
+
 ## Still to do
 
 - [ ] Lobby - Filter by status
-- [ ] Join game modal background color
 - [ ] Joining table adds 5001 when setting 5000
 - [ ] Work on isolating games code more
 
@@ -27,9 +37,9 @@
 - [ ] Test what happens when a player disconnects
 - [ ] Really test all-ins, sidepots, etc.
 - [ ] SYN - check for ties
-- [ ] SYN - odds
 - [ ] Kings and Lows - Should make it obvious when someone dropped
 - [ ] If buy-in protection is on for a table, that should apply to adding money later
+- [ ] Make sure that if a player leaves the game doesn't just keep going and taking all of their money.
 
 ### P2 - Important but not blocking play
 
@@ -269,3 +279,23 @@
 - [x] Create table page - Keep Dealer's Choice at the top, not with "Other"
 - [x] Phil's mom loser showdown not correct
 - [x] Redesign ShowdownOverlay
+- [x] Remove Odds Visibility from CreateTable
+- [x] Can't adjust buy-in on Join Seat modal
+- [x] Show the timer
+- [x] Pressing Start Game doesn't do anything
+- [x] Layout cards on either side of the deck
+- [x] Not showing the in-between card
+- [x] Pause to see the card
+- [x] Join game modal background color
+- [x] SYN - odds
+
+- [x] Crazy Pineapple description is incorrect. Deals 3 cards. Every game is like this.
+- [x] Delete Table modal, make the delete button red 
+- [x] DC - Make it more obvious what game you're playing
+- [x] BB should always be twice SB
+- [x] In Hold Em, the BB should be able to raise
+- [x] In DC the SB and BB when creating should use preferences
+- [x] Join table is limiting chips
+- [x] It's not showing my avatar on tableseat
+- [x] K&L - had an ace, but it colored the 5 as low
+- [x] G,B,U - Good should be green

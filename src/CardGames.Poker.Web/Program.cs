@@ -174,6 +174,13 @@ builder.Services
 	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"))
 	.AddHttpMessageHandler<AuthenticationStateHandler>();
 
+builder.Services
+	.AddRefitClient<IInBetweenApi>(
+		settingsAction: _ => new RefitSettings(),
+		httpClientName: "inBetweenApi")
+	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"))
+	.AddHttpMessageHandler<AuthenticationStateHandler>();
+
 // Register Game API Router
 // builder.Services.AddScoped<IGameApiRouter, GameApiRouter>();
 

@@ -223,10 +223,18 @@
     color: #f8fafc;
 }
 
+[data-theme="dark"] #components-reconnect-modal .reconnect-title {
+    color: #ffffff;
+}
+
 @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) #components-reconnect-modal {
         background-color: #111827;
         border-color: rgba(148, 163, 184, 0.25);
         color: #f8fafc;
+    }
+
+    :root:not([data-theme="light"]) #components-reconnect-modal .reconnect-title {
+        color: #ffffff;
     }
 }

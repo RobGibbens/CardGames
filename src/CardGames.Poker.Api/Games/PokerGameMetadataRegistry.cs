@@ -37,6 +37,7 @@ public static class PokerGameMetadataRegistry
 	public const string ScrewYourNeighborCode = "SCREWYOURNEIGHBOR";
 	public const string TollboothCode = "TOLLBOOTH";
 	public const string KlondikeCode = "KLONDIKE";
+	public const string InBetweenCode = "INBETWEEN";
 
 	private static readonly FrozenDictionary<string, PokerGameMetadataAttribute> MetadataByGameTypeCode;
 	private static readonly FrozenDictionary<string, Type> GameTypeByCode;

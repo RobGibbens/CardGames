@@ -414,4 +414,29 @@ public class CreateGameCommandHandlerTests : IntegrationTestBase
         var game = await DbContext.Games.FirstAsync(g => g.Id == gameId);
         game.Name.Should().BeNull();
     }
+
+    [Theory]
+    [InlineData(10, 10)]
+    [InlineData(20, 10)]
+    [InlineData(5, 1)]
+    public async Task Handle_BigBlindNotGreaterThanSmallBlind_ReturnsConflict(int smallBlind, int bigBlind)
+    {
+        // Arrange
+        var command = new CreateGameCommand(
+            Guid.NewGuid(),
+            PokerGameMetadataRegistry.HoldEmCode,
+            "Invalid Blinds Table",
+            0,
+            10,
+            new List<PlayerInfo> { new("Player1", 1000), new("Player2", 1000) },
+            SmallBlind: smallBlind,
+            BigBlind: bigBlind);
+
+        // Act
+        var result = await Mediator.Send(command);
+
+        // Assert
+        result.IsT1.Should().BeTrue("Expected conflict when big blind is not greater than small blind");
+        result.AsT1.Reason.Should().Contain("Big blind must be greater than small blind");
+    }
 }

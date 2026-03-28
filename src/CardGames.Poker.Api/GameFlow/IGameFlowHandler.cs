@@ -77,6 +77,17 @@ public interface IGameFlowHandler
     bool SkipsAnteCollection { get; }
 
     /// <summary>
+    /// When true, the generic StartHand handler will automatically collect antes
+    /// and deal cards as part of starting the hand, rather than waiting for
+    /// separate ante-collection requests.
+    /// </summary>
+    /// <remarks>
+    /// Pot-funded games like In-Between need antes collected and dealing completed
+    /// in a single start operation because they have no separate CollectAntes endpoint.
+    /// </remarks>
+    bool AutoCollectsAntesOnStart { get; }
+
+    /// <summary>
     /// Gets phases that are unique to this game variant and require special handling.
     /// </summary>
     /// <remarks>

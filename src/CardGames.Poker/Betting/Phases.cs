@@ -119,6 +119,10 @@ public enum Phases
 	[Description("Keep or Trade")]
 	KeepOrTrade,
 
+	/// <summary>In-Between turn phase: boundary cards dealt, ace choice (if needed), bet/pass, resolution.</summary>
+	[Description("In-Between Turn")]
+	InBetweenTurn,
+
 	/// <summary>Reveal phase - all cards are turned face up.</summary>
 	[Description("Reveal")]
 	Reveal,

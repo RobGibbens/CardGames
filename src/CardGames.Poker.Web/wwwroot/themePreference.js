@@ -90,3 +90,10 @@ function normalizePreference(value) {
 }
 
 initializeThemePreference();
+
+// Re-apply theme after Blazor enhanced navigation, which patches the DOM and
+// may strip the data-theme attribute from <html> to match the server response.
+// Module scripts only execute once, so initializeThemePreference won't re-run.
+document.addEventListener("blazor:enhancedload", () => {
+    applyThemePreference(getStoredThemePreference());
+});

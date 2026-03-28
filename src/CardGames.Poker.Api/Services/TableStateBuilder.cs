@@ -643,6 +643,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		// During showdown phases, show cards face-up for players who haven't folded
 		var isSevenCardStud = IsStudGame(gameTypeCode);
 		var isScrewYourNeighbor = IsScrewYourNeighborGame(gameTypeCode);
+		var isInBetween = IsInBetweenGame(gameTypeCode);
 
 		// Get current hand cards (not discarded)
 		// Note: We filter by hand number to naturally handle sitting out players.
@@ -665,6 +666,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			var shouldShowCard =
 				(isSevenCardStud && card.IsVisible)
 				|| (isScrewYourNeighbor && card.IsVisible)
+				|| (isInBetween && card.IsVisible)
 				|| shouldShowCardsForShowdown;
 
 			return new CardPublicDto
@@ -748,8 +750,14 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 	private static string? GetPlayerAvatarUrl(GamePlayer gamePlayer, IReadOnlyDictionary<string, UserProfile> userProfilesByEmail)
 	{
-		if (!string.IsNullOrWhiteSpace(gamePlayer.Player.Email)
-			&& userProfilesByEmail.TryGetValue(gamePlayer.Player.Email, out var profile))
+		var email = gamePlayer.Player.Email;
+		if (string.IsNullOrWhiteSpace(email) && gamePlayer.Player.Name?.Contains('@') == true)
+		{
+			email = gamePlayer.Player.Name;
+		}
+
+		if (!string.IsNullOrWhiteSpace(email)
+			&& userProfilesByEmail.TryGetValue(email, out var profile))
 		{
 			return BuildAvatarUrl(profile.UserId, profile.AvatarUrl);
 		}
@@ -959,9 +967,16 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		var isFollowTheQueen = IsFollowTheQueenGame(game.GameType?.Code);
 		var isPairPressure = IsPairPressureGame(game.GameType?.Code);
 		var isScrewYourNeighbor = IsScrewYourNeighborGame(game.GameType?.Code);
+		var isInBetween = IsInBetweenGame(game.GameType?.Code);
 		var isStudStyleShowdown = isSevenCardStud || isBaseball || isFollowTheQueen || isPairPressure;
 		var isTerminalScrewYourNeighborShowdown =
 			isScrewYourNeighbor && string.Equals(game.CurrentPhase, "Ended", StringComparison.OrdinalIgnoreCase);
+
+		// In-Between has no traditional showdown — skip evaluation entirely
+		if (isInBetween)
+		{
+			return null;
+		}
 
 		if (game.CurrentPhase != "Showdown" &&
 			game.CurrentPhase != "Complete" &&
@@ -1876,6 +1891,15 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 	private async Task<int> CalculateTotalPotAsync(Game game, int handNumber, CancellationToken cancellationToken)
 	{
+		if (IsInBetweenGame(game.GameType?.Code))
+		{
+			// In-Between uses a single hand with a pot that changes each turn.
+			return await _context.Pots
+				.Where(p => p.GameId == game.Id && p.HandNumber == handNumber && !p.IsAwarded)
+				.AsNoTracking()
+				.SumAsync(p => p.Amount, cancellationToken);
+		}
+
 		if (IsScrewYourNeighborGame(game.GameType?.Code))
 		{
 			// SYN carries the funded pot across hands in the Pots table.
@@ -1944,6 +1968,11 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	private static bool IsScrewYourNeighborGame(string? gameCode)
 	{
 		return string.Equals(gameCode, PokerGameMetadataRegistry.ScrewYourNeighborCode, StringComparison.OrdinalIgnoreCase);
+	}
+
+	private static bool IsInBetweenGame(string? gameCode)
+	{
+		return string.Equals(gameCode, PokerGameMetadataRegistry.InBetweenCode, StringComparison.OrdinalIgnoreCase);
 	}
 
 	private async Task<KingsAndLowsDeckOutcome?> BuildKingsAndLowsDeckOutcomeAsync(
@@ -2262,6 +2291,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		var isFollowTheQueen = string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.FollowTheQueenCode, StringComparison.OrdinalIgnoreCase);
 		var isPairPressure = string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.PairPressureCode, StringComparison.OrdinalIgnoreCase);
 		var isKlondike = string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.KlondikeCode, StringComparison.OrdinalIgnoreCase);
+		var isGoodBadUgly = string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.GoodBadUglyCode, StringComparison.OrdinalIgnoreCase);
 
 		// Dynamic-wild stud variants compute their active wild ranks from face-up cards.
 		IReadOnlyList<string>? dynamicWildRanks = null;
@@ -2276,6 +2306,10 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		else if (isKlondike)
 		{
 			dynamicWildRanks = await ComputeKlondikeWildRanksAsync(game, cancellationToken);
+		}
+		else if (isGoodBadUgly)
+		{
+			dynamicWildRanks = await ComputeGoodBadUglyWildRanksAsync(game, cancellationToken);
 		}
 
 		return new GameSpecialRulesDto
@@ -2375,6 +2409,32 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	}
 
 	/// <summary>
+	/// Computes the current wild card rank for Good Bad Ugly.
+	/// When The Good card is revealed, all cards of that rank are wild.
+	/// Returns empty if The Good card has not been revealed yet.
+	/// </summary>
+	private async Task<IReadOnlyList<string>> ComputeGoodBadUglyWildRanksAsync(
+		Entities.Game game,
+		CancellationToken cancellationToken)
+	{
+		var goodCard = await _context.GameCards
+			.Where(c => c.GameId == game.Id
+				&& c.HandNumber == game.CurrentHandNumber
+				&& c.DealtAtPhase == "TheGood"
+				&& c.IsVisible)
+			.AsNoTracking()
+			.FirstOrDefaultAsync(cancellationToken);
+
+		if (goodCard is null)
+		{
+			return [];
+		}
+
+		var rank = MapSymbolToRank(goodCard.Symbol);
+		return rank is not null ? [rank] : [];
+	}
+
+	/// <summary>
 	/// Builds the special rules DTO from game rules (static version for non-dynamic games).
 	/// </summary>
 	private static GameSpecialRulesDto? BuildSpecialRulesDto(GameRules? rules)
@@ -2454,6 +2514,13 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			}
 		}
 		else if (string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.KlondikeCode, StringComparison.OrdinalIgnoreCase))
+		{
+			if (dynamicWildRanks is { Count: > 0 })
+			{
+				wildRanks.AddRange(dynamicWildRanks);
+			}
+		}
+		else if (string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.GoodBadUglyCode, StringComparison.OrdinalIgnoreCase))
 		{
 			if (dynamicWildRanks is { Count: > 0 })
 			{

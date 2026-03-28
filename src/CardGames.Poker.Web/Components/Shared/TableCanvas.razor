@@ -20,65 +20,135 @@
 			<!-- Center area: deck, community cards, pot in one row -->
 			<div class="table-center">
 				<div
-					class="table-center-row @(HasExtraCommunityCards ? "table-center-row-compact-board" : string.Empty)">
-					<!-- Deck visualization -->
-					<div class="deck-stack" @ref="_deckRef">
-						@for (var i = 0; i < 5; i++)
-						{
-							<playing-card rank="0" backcolor="#44F" class="deck-card"
-										  style="--deck-offset: @i"></playing-card>
-						}
-					</div>
+					class="table-center-row @(HasExtraCommunityCards ? "table-center-row-compact-board" : string.Empty) @(IsInBetween ? "table-center-row-inbetween" : string.Empty)">
 
-					<!-- Klondike Card: displayed separated from community cards, like a showcase card -->
-					@if (KlondikeCard is not null)
+					@if (IsInBetween)
 					{
-						var klondikeStatusClass = KlondikeCard.IsFaceUp ? "revealed" : "hidden";
-						<div class="klondike-card-slot @klondikeStatusClass">
-							@if (KlondikeCard.IsFaceUp && !string.IsNullOrWhiteSpace(KlondikeCard.Rank))
-							{
-								<playing-card rank="@GetPlayingCardRank(KlondikeCard.Rank)" suit="@KlondikeCard.Suit"
-											  suitcolor="green" rankcolor="green" courtcolor="green"
-											  class="community-card-element"></playing-card>
-							}
-							else
-							{
-								<playing-card rank="0" backcolor="#44F" class="community-card-element"></playing-card>
-							}
-							<span class="community-card-label @klondikeStatusClass">Klondike</span>
-						</div>
-					}
+						<!-- InBetween layout: Card 1 | Deck (+Reveal) | Card 2 -->
+						var inBetweenCards = (RegularCommunityCards ?? []).OrderBy(c => c.DealOrder).ToList();
+						var revealCard = inBetweenCards.Count > 2 ? inBetweenCards[2] : null;
 
-					<!-- Community cards area -->
-					@if (RegularCommunityCards is { Count: > 0 })
-					{
-						<div class="community-cards">
-							@foreach (var (card, cardIndex) in RegularCommunityCards.OrderBy(c => c.DealOrder).Select((c, i) => (c,
-						i)))
+						<!-- First dealt card (left of deck) -->
+						<div class="inbetween-card-slot">
+							@if (inBetweenCards.Count > 0)
 							{
-								var label = GetCommunityCardLabel(cardIndex);
-								var statusClass = card.IsFaceUp ? "revealed" : "hidden";
-								var isWildCommunityCard = IsCommunityCardWildForDisplay(card);
-								<div class="community-card-slot @statusClass">
-									@if (card.IsFaceUp && !string.IsNullOrWhiteSpace(card.Rank))
+								var firstCard = inBetweenCards[0];
+								var firstStatus = firstCard.IsFaceUp ? "revealed" : "hidden";
+								<div class="community-card-slot @firstStatus">
+									@if (firstCard.IsFaceUp && !string.IsNullOrWhiteSpace(firstCard.Rank))
 									{
-										<playing-card rank="@GetPlayingCardRank(card.Rank)" suit="@card.Suit"
-													  suitcolor="@(isWildCommunityCard ? "green" : null)"
-													  rankcolor="@(isWildCommunityCard ? "green" : null)"
-													  courtcolor="@(isWildCommunityCard ? "green" : null)"
+										<playing-card rank="@GetPlayingCardRank(firstCard.Rank)" suit="@firstCard.Suit"
 													  class="community-card-element"></playing-card>
 									}
 									else
 									{
 										<playing-card rank="0" backcolor="#44F" class="community-card-element"></playing-card>
 									}
-									@if (!string.IsNullOrWhiteSpace(label))
+								</div>
+							}
+						</div>
+
+						<!-- Deck (center) with reveal card overlaid on top -->
+						<div class="inbetween-deck-wrapper">
+							<div class="deck-stack" @ref="_deckRef">
+								@for (var i = 0; i < 5; i++)
+								{
+									<playing-card rank="0" backcolor="#44F" class="deck-card"
+												  style="--deck-offset: @i"></playing-card>
+								}
+							</div>
+
+							@if (revealCard is not null && revealCard.IsFaceUp && !string.IsNullOrWhiteSpace(revealCard.Rank))
+							{
+								<div class="inbetween-reveal-overlay">
+									<playing-card rank="@GetPlayingCardRank(revealCard.Rank)" suit="@revealCard.Suit"
+												  class="community-card-element"></playing-card>
+								</div>
+							}
+						</div>
+
+						<!-- Second dealt card (right of deck) -->
+						<div class="inbetween-card-slot">
+							@if (inBetweenCards.Count > 1)
+							{
+								var secondCard = inBetweenCards[1];
+								var secondStatus = secondCard.IsFaceUp ? "revealed" : "hidden";
+								<div class="community-card-slot @secondStatus">
+									@if (secondCard.IsFaceUp && !string.IsNullOrWhiteSpace(secondCard.Rank))
 									{
-										<span class="community-card-label @statusClass">@label</span>
+										<playing-card rank="@GetPlayingCardRank(secondCard.Rank)" suit="@secondCard.Suit"
+													  class="community-card-element"></playing-card>
+									}
+									else
+									{
+										<playing-card rank="0" backcolor="#44F" class="community-card-element"></playing-card>
 									}
 								</div>
 							}
 						</div>
+					}
+					else
+					{
+						<!-- Default layout: Deck | Community cards -->
+						<!-- Deck visualization -->
+						<div class="deck-stack" @ref="_deckRef">
+							@for (var i = 0; i < 5; i++)
+							{
+								<playing-card rank="0" backcolor="#44F" class="deck-card"
+											  style="--deck-offset: @i"></playing-card>
+							}
+						</div>
+
+						<!-- Klondike Card: displayed separated from community cards, like a showcase card -->
+						@if (KlondikeCard is not null)
+						{
+							var klondikeStatusClass = KlondikeCard.IsFaceUp ? "revealed" : "hidden";
+							<div class="klondike-card-slot @klondikeStatusClass">
+								@if (KlondikeCard.IsFaceUp && !string.IsNullOrWhiteSpace(KlondikeCard.Rank))
+								{
+									<playing-card rank="@GetPlayingCardRank(KlondikeCard.Rank)" suit="@KlondikeCard.Suit"
+												  suitcolor="green" rankcolor="green" courtcolor="green"
+												  class="community-card-element"></playing-card>
+								}
+								else
+								{
+									<playing-card rank="0" backcolor="#44F" class="community-card-element"></playing-card>
+								}
+								<span class="community-card-label @klondikeStatusClass">Klondike</span>
+							</div>
+						}
+
+						<!-- Community cards area -->
+						@if (RegularCommunityCards is { Count: > 0 })
+						{
+							<div class="community-cards">
+								@foreach (var (card, cardIndex) in RegularCommunityCards.OrderBy(c => c.DealOrder).Select((c, i) => (c,
+							i)))
+								{
+									var label = GetCommunityCardLabel(cardIndex);
+									var statusClass = card.IsFaceUp ? "revealed" : "hidden";
+									var isWildCommunityCard = IsCommunityCardWildForDisplay(card);
+									<div class="community-card-slot @statusClass">
+										@if (card.IsFaceUp && !string.IsNullOrWhiteSpace(card.Rank))
+										{
+											<playing-card rank="@GetPlayingCardRank(card.Rank)" suit="@card.Suit"
+														  suitcolor="@(isWildCommunityCard ? "green" : null)"
+														  rankcolor="@(isWildCommunityCard ? "green" : null)"
+														  courtcolor="@(isWildCommunityCard ? "green" : null)"
+														  class="community-card-element"></playing-card>
+										}
+										else
+										{
+											<playing-card rank="0" backcolor="#44F" class="community-card-element"></playing-card>
+										}
+										@if (!string.IsNullOrWhiteSpace(label))
+										{
+											<span class="community-card-label @statusClass">@label</span>
+										}
+									</div>
+								}
+							</div>
+						}
 					}
 
 					<div class="pot-display">
@@ -222,6 +292,8 @@
 	public IReadOnlyList<CardPublicDto>? CommunityCards { get; set; }
 
 	private bool HasExtraCommunityCards => RegularCommunityCards is { Count: > 5 };
+
+	private bool IsInBetween => string.Equals(GameTypeCode, "INBETWEEN", StringComparison.OrdinalIgnoreCase);
 
 	/// <summary>
 	/// The Klondike Card, if present. Displayed separately from regular community cards.
