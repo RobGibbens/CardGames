@@ -1,8 +1,8 @@
 # TODO
 
-## IN-BETWEEN
 - [ ] Animate the chips going to/from the pot
- 
+- [ ] Delete Table modal, make the delete button red 
+
 ## Still to do
 
 - [ ] Lobby - Filter by status
@@ -29,9 +29,9 @@
 - [ ] Test what happens when a player disconnects
 - [ ] Really test all-ins, sidepots, etc.
 - [ ] SYN - check for ties
-- [ ] SYN - odds
 - [ ] Kings and Lows - Should make it obvious when someone dropped
 - [ ] If buy-in protection is on for a table, that should apply to adding money later
+- [ ] Make sure that if a player leaves the game doesn't just keep going and taking all of their money.
 
 ### P2 - Important but not blocking play
 
@@ -279,3 +279,4 @@
 - [x] Not showing the in-between card
 - [x] Pause to see the card
 - [x] Join game modal background color
+- [x] SYN - odds
