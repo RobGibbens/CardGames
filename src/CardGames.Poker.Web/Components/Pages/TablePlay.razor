@@ -183,6 +183,14 @@
             <i class="fa-solid fa-circle-info"></i>
         </button>
 
+        @if (!_isLoading && !string.IsNullOrWhiteSpace(_gameTypeCode))
+        {
+            <span class="game-variant-label">
+                <i class="fa-solid fa-cards"></i>
+                @GetGameInfoTypeContext()
+            </span>
+        }
+
         <div class="table-controls-right">
             @if (!_isLoading)
             {

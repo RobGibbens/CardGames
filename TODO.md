@@ -1,7 +1,7 @@
 # TODO
 
 - [ ] Animate the chips going to/from the pot
-- [ ] Delete Table modal, make the delete button red 
+- [x] Delete Table modal, make the delete button red 
 - [ ] In Hold Em, the BB should be able to raise
 - [ ] DC - Make it more obvious what game you're playing
 - [ ] In DC the SB and BB when creating should use preferences
