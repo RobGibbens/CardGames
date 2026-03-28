@@ -6,7 +6,7 @@
 - [ ] DC - Make it more obvious what game you're playing
 - [ ] In DC the SB and BB when creating should use preferences
 - [ ] BB should always be twice SB
-- [ ] Crazy Pineapple description is incorrect. Deals 3 cards. Every game is like this.
+- [x] Crazy Pineapple description is incorrect. Deals 3 cards. Every game is like this.
 - [ ] Adding chips during DC doesn't work
 - [ ] SYN - It took the chips from the wrong player
 - [ ] SYN - Double burn doesn't work

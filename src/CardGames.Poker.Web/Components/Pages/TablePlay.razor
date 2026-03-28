@@ -1312,10 +1312,11 @@
         // Update game type code for routing to correct API
         if (!string.IsNullOrWhiteSpace(state.GameTypeCode))
         {
+            var gameTypeChanged = _gameTypeCode != state.GameTypeCode;
             _gameTypeCode = state.GameTypeCode;
 
-            // Load game rules if not already loaded
-            if (_gameRules is null && !string.IsNullOrWhiteSpace(_gameTypeCode))
+            // Load game rules if not loaded or game type changed (e.g. Dealer's Choice rotation)
+            if ((_gameRules is null || gameTypeChanged) && !string.IsNullOrWhiteSpace(_gameTypeCode))
             {
                 _gameRules = await GameRulesService.GetGameRulesAsync(_gameTypeCode);
             }
