@@ -2291,6 +2291,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		var isFollowTheQueen = string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.FollowTheQueenCode, StringComparison.OrdinalIgnoreCase);
 		var isPairPressure = string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.PairPressureCode, StringComparison.OrdinalIgnoreCase);
 		var isKlondike = string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.KlondikeCode, StringComparison.OrdinalIgnoreCase);
+		var isGoodBadUgly = string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.GoodBadUglyCode, StringComparison.OrdinalIgnoreCase);
 
 		// Dynamic-wild stud variants compute their active wild ranks from face-up cards.
 		IReadOnlyList<string>? dynamicWildRanks = null;
@@ -2305,6 +2306,10 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		else if (isKlondike)
 		{
 			dynamicWildRanks = await ComputeKlondikeWildRanksAsync(game, cancellationToken);
+		}
+		else if (isGoodBadUgly)
+		{
+			dynamicWildRanks = await ComputeGoodBadUglyWildRanksAsync(game, cancellationToken);
 		}
 
 		return new GameSpecialRulesDto
@@ -2404,6 +2409,32 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	}
 
 	/// <summary>
+	/// Computes the current wild card rank for Good Bad Ugly.
+	/// When The Good card is revealed, all cards of that rank are wild.
+	/// Returns empty if The Good card has not been revealed yet.
+	/// </summary>
+	private async Task<IReadOnlyList<string>> ComputeGoodBadUglyWildRanksAsync(
+		Entities.Game game,
+		CancellationToken cancellationToken)
+	{
+		var goodCard = await _context.GameCards
+			.Where(c => c.GameId == game.Id
+				&& c.HandNumber == game.CurrentHandNumber
+				&& c.DealtAtPhase == "TheGood"
+				&& c.IsVisible)
+			.AsNoTracking()
+			.FirstOrDefaultAsync(cancellationToken);
+
+		if (goodCard is null)
+		{
+			return [];
+		}
+
+		var rank = MapSymbolToRank(goodCard.Symbol);
+		return rank is not null ? [rank] : [];
+	}
+
+	/// <summary>
 	/// Builds the special rules DTO from game rules (static version for non-dynamic games).
 	/// </summary>
 	private static GameSpecialRulesDto? BuildSpecialRulesDto(GameRules? rules)
@@ -2483,6 +2514,13 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			}
 		}
 		else if (string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.KlondikeCode, StringComparison.OrdinalIgnoreCase))
+		{
+			if (dynamicWildRanks is { Count: > 0 })
+			{
+				wildRanks.AddRange(dynamicWildRanks);
+			}
+		}
+		else if (string.Equals(rules.GameTypeCode, PokerGameMetadataRegistry.GoodBadUglyCode, StringComparison.OrdinalIgnoreCase))
 		{
 			if (dynamicWildRanks is { Count: > 0 })
 			{

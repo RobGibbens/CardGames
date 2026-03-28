@@ -7,10 +7,9 @@
 - [ ] Tony was trying to join during DC, it stole the choice from Russ
 - [ ] DC - Eric joined, it glitched
 - [ ] Make cards transparent when folded
-- [ ] G,B,U - Good should be green
 - [ ] Rabbit hunt
 - [ ] Game felt
-- [ ] {"message":"You are not seated at this table or have already left"}
+- [ ] Click Leave Table : {"message":"You are not seated at this table or have already left"}
 
 ## Still to do
 
@@ -299,3 +298,4 @@
 - [x] Join table is limiting chips
 - [x] It's not showing my avatar on tableseat
 - [x] K&L - had an ace, but it colored the 5 as low
+- [x] G,B,U - Good should be green
