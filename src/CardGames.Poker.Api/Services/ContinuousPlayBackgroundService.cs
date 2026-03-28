@@ -525,6 +525,12 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		// so that non-Dealer's-Choice games still resolve the correct flow handler.
 		await context.Entry(game).ReloadAsync(cancellationToken);
 		await context.Entry(game).Reference(g => g.GameType).LoadAsync(cancellationToken);
+
+		foreach (var gp in game.GamePlayers.ToList())
+		{
+			await context.Entry(gp).ReloadAsync(cancellationToken);
+		}
+
 		var stillReadyForNextHand =
 			(game.CurrentPhase == nameof(Phases.Complete)
 			 || game.CurrentPhase == nameof(Phases.WaitingForPlayers)
@@ -582,8 +588,10 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 
 		// 2. Apply pending chips to player stacks (validate cashier balance first)
 		var playersWithPendingChips = game.GamePlayers
-			.Where(gp => gp.Status == GamePlayerStatus.Active && gp.PendingChipsToAdd > 0)
-			.ToList();
+    			.Where(gp =>
+        				gp.Status is GamePlayerStatus.Active or GamePlayerStatus.SittingOut &&
+        				gp.PendingChipsToAdd > 0)
+    			.ToList();
 
 		foreach (var player in playersWithPendingChips)
 		{
@@ -609,7 +617,10 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 				player.Player?.Name ?? player.PlayerId.ToString(),
 				game.Id,
 				player.ChipStack);
+
 			player.PendingChipsToAdd = 0;
+			player.IsSittingOut = false;
+			player.Status = GamePlayerStatus.Active;
 		}
 
 		if (playersWithPendingChips.Count > 0)
