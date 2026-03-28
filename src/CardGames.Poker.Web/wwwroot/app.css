@@ -3225,6 +3225,14 @@ a:hover {
     color: var(--text-muted);
 }
 
+.form-hint-error {
+    color: var(--danger, #e74c3c);
+}
+
+.input-error {
+    border-color: var(--danger, #e74c3c);
+}
+
 .create-table-odds-visibility-control {
     display: flex;
     align-items: center;

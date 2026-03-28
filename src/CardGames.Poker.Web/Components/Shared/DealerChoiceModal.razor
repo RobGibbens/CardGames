@@ -159,7 +159,12 @@
 						<div class="dc-setting">
 							<label for="dc-bb">Big Blind</label>
 							<input type="number" id="dc-bb" min="1" max="1000"
-								   @bind-value="_bigBlind" @bind-value:event="oninput" />
+							   class="@(ShowDcBigBlindError ? "input-error" : "")"
+							   @bind-value="_bigBlind" @bind-value:event="oninput" />
+						@if (ShowDcBigBlindError)
+						{
+							<span class="form-hint form-hint-error">Big blind must be greater than small blind.</span>
+						}
 						</div>
 					}
 					else
@@ -182,7 +187,7 @@
 
 				<button class="btn btn-primary btn-lg dealer-choice-confirm"
 						@onclick="ConfirmChoiceAsync"
-						disabled="@(_isSubmitting || (IsBlindBasedGame(_selectedCode) ? _bigBlind < 1 : RequiresMinBet(_selectedCode) && _minBet < 1))">
+						disabled="@(_isSubmitting || (IsBlindBasedGame(_selectedCode) ? (_bigBlind < 1 || _bigBlind <= _smallBlind) : RequiresMinBet(_selectedCode) && _minBet < 1))">
 					@if (_isSubmitting)
 					{
 						<span class="loading-spinner-small"></span>
@@ -228,6 +233,8 @@
 	private int _minBet = 10;
 	private int _smallBlind = 5;
 	private int _bigBlind = 10;
+
+	private bool ShowDcBigBlindError => _selectedCode is not null && IsBlindBasedGame(_selectedCode) && _bigBlind > 0 && _smallBlind > 0 && _bigBlind <= _smallBlind;
 	private string _variantSearch = string.Empty;
 	private HashSet<string>? _allowedGameCodeLookup;
 	private readonly HashSet<string> _favoriteVariantCodes = new(StringComparer.OrdinalIgnoreCase);
@@ -530,7 +537,7 @@
 		if (_selectedCode is null)
 			return;
 
-		if (IsBlindBasedGame(_selectedCode) ? _bigBlind < 1 : RequiresMinBet(_selectedCode) && _minBet < 1)
+		if (IsBlindBasedGame(_selectedCode) ? (_bigBlind < 1 || _bigBlind <= _smallBlind) : RequiresMinBet(_selectedCode) && _minBet < 1)
 			return;
 
 		_isSubmitting = true;

@@ -394,12 +394,19 @@
 											<label class="form-label" for="bigBlind">Big Blind</label>
 											<input type="number"
 												   id="bigBlind"
-												   class="form-input"
+												   class="form-input @(ShowBigBlindError ? "input-error" : "")"
 												   min="1"
 												   max="100000"
 												   value="@_bigBlindInput"
 												   @oninput="OnBigBlindInput" />
-											<span class="form-hint">Minimum bet is automatically set to the big blind.</span>
+											@if (ShowBigBlindError)
+											{
+												<span class="form-hint form-hint-error">Big blind must be greater than small blind.</span>
+											}
+											else
+											{
+												<span class="form-hint">Minimum bet is automatically set to the big blind.</span>
+											}
 										</div>
 									</div>
 								}
@@ -1245,8 +1252,10 @@
 		(_isDealersChoice
 			? _allowedDealerChoiceGameCodes.Count > 0
 			: (_hasBlinds
-				? (_smallBlind > 0 && _bigBlind >= _smallBlind)
+				? (_smallBlind > 0 && _bigBlind > _smallBlind)
 				: (_ante > 0 && (IsInBetween || IsScrewYourNeighbor || _minBet > 0))));
+
+	private bool ShowBigBlindError => _hasBlinds && _bigBlind > 0 && _smallBlind > 0 && _bigBlind <= _smallBlind;
 
 	private bool IsScrewYourNeighbor =>
 	   IsScrewYourNeighborCode(_selectedVariant?.Code);

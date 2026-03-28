@@ -1,12 +1,8 @@
 # TODO
 
 - [ ] Animate the chips going to/from the pot
-- [x] Delete Table modal, make the delete button red 
 - [ ] In Hold Em, the BB should be able to raise
-- [ ] DC - Make it more obvious what game you're playing
 - [ ] In DC the SB and BB when creating should use preferences
-- [ ] BB should always be twice SB
-- [x] Crazy Pineapple description is incorrect. Deals 3 cards. Every game is like this.
 - [ ] Adding chips during DC doesn't work
 - [ ] SYN - It took the chips from the wrong player
 - [ ] SYN - Double burn doesn't work
@@ -297,3 +293,8 @@
 - [x] Pause to see the card
 - [x] Join game modal background color
 - [x] SYN - odds
+
+- [x] Crazy Pineapple description is incorrect. Deals 3 cards. Every game is like this.
+- [x] Delete Table modal, make the delete button red 
+- [x] DC - Make it more obvious what game you're playing
+- [x] BB should always be twice SB

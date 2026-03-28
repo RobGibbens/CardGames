@@ -188,15 +188,15 @@ public sealed class UpdateTableSettingsCommandHandler(
 	/// </summary>
 	private static UpdateTableSettingsError? ValidateSettings(UpdateTableSettingsCommand command, Game game)
 	{
-		// Validate BigBlind >= SmallBlind if both are provided
+		// Validate BigBlind > SmallBlind if both are provided
 		if (command is { SmallBlind: not null, BigBlind: not null })
 		{
-			if (command.BigBlind < command.SmallBlind)
+			if (command.BigBlind <= command.SmallBlind)
 			{
 				return new UpdateTableSettingsError
 				{
 					Code = UpdateTableSettingsErrorCode.ValidationFailed,
-					Message = "Big blind must be greater than or equal to small blind."
+					Message = "Big blind must be greater than small blind."
 				};
 			}
 		}
