@@ -13,7 +13,7 @@
 		<!-- Cards -->
 		@if (ShowCards && Seat.Cards.Count > 0)
 		{
-			<div class="seat-cards-container">
+			<div class="seat-cards-container" style="@((Seat.IsFolded || Seat.IsSittingOut) ? "opacity: 0.25" : null)">
 
 				<div class="cards-fan @(ShouldSeparateShowcaseCard ? "bob-barker-layout" : string.Empty)">
 					@{
@@ -22,6 +22,7 @@
 							? GetLowestNonKingRankValueForWild(Seat.Cards)
 							: null;
 						var orderedCards = GetOrderedCards().ToList();
+						var cardOpacity = (Seat.IsFolded || Seat.IsSittingOut) ? "0.25" : "1";
 					}
 					@for (var cardIndex = 0; cardIndex < orderedCards.Count; cardIndex++)
 					{
@@ -39,13 +40,13 @@
 								<div class="card-shell face-up @showcaseCardClass" @key="GetCardRenderKey(card, cardIndex, isWildForDisplay)">
 									<playing-card rank="@rank" suit="@card.Suit" class="poker-card face-up"
 												  suitcolor="@(isWildForDisplay ? "green" : null)" rankcolor="@(isWildForDisplay ? "green" : null)"
-												  courtcolor="@(isWildForDisplay ? "green" : null)"></playing-card>
+												  courtcolor="@(isWildForDisplay ? "green" : null)" opacity="@cardOpacity"></playing-card>
 								</div>
 							}
 							else if (!hasCardPayload)
 							{
 								<div class="card-shell face-down @showcaseCardClass" @key="GetCardRenderKey(card, cardIndex, isWildForDisplay)">
-									<playing-card rank="0" backcolor="#44F" class="poker-card face-down"></playing-card>
+									<playing-card rank="0" backcolor="#44F" class="poker-card face-down" opacity="@cardOpacity"></playing-card>
 								</div>
 							}
 							else
@@ -53,7 +54,7 @@
 								<div class="card-shell face-down @showcaseCardClass" @key="GetCardRenderKey(card, cardIndex, isWildForDisplay)">
                                    <playing-card rank="@rank" suit="@card.Suit" class="poker-card"
 												  suitcolor="@(isWildForDisplay ? "green" : null)" rankcolor="@(isWildForDisplay ? "green" : null)"
-												  courtcolor="@(isWildForDisplay ? "green" : null)"></playing-card>
+												  courtcolor="@(isWildForDisplay ? "green" : null)" opacity="@cardOpacity"></playing-card>
 								</div>
 							}
 						}
@@ -63,11 +64,11 @@
 							{
 								<playing-card @key="GetCardRenderKey(card, cardIndex, isWildForDisplay)" rank="@rank" suit="@card.Suit" class="poker-card small @showcaseCardClass"
 											  suitcolor="@(isWildForDisplay ? "green" : null)" rankcolor="@(isWildForDisplay ? "green" : null)"
-											  courtcolor="@(isWildForDisplay ? "green" : null)"></playing-card>
+											  courtcolor="@(isWildForDisplay ? "green" : null)" opacity="@cardOpacity"></playing-card>
 							}
 							else
 							{
-								<playing-card @key="GetCardRenderKey(card, cardIndex, isWildForDisplay)" rank="0" backcolor="#44F" class="poker-card small @showcaseCardClass"></playing-card>
+								<playing-card @key="GetCardRenderKey(card, cardIndex, isWildForDisplay)" rank="0" backcolor="#44F" class="poker-card small @showcaseCardClass" opacity="@cardOpacity"></playing-card>
 							}
 						}
 					}
@@ -120,7 +121,7 @@
 			</div>
 
 			<!-- Info Pill -->
-			<div class="info-pill-container">
+			<div class="info-pill-container" style="@((Seat.IsFolded || Seat.IsSittingOut) ? "opacity: 0.25" : null)">
 				<div class="info-pill">
 					<div class="pill-top-row @GetPillStatusClass()">
 						@if (ShouldShowStatusText())
