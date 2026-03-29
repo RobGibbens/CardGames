@@ -2807,7 +2807,12 @@
             var currentBalance = cashierSummary.Content.CurrentBalance;
             if (currentBalance <= 0)
             {
-                _showNoChipsModal = true;
+                // Attempt rejoin: player may have unreturned chips from a previous session at this table.
+                // The server will reactivate their Left record if eligible; otherwise it returns an error.
+                if (!await TryRejoinAsync(autoSeatIndex))
+                {
+                    _showNoChipsModal = true;
+                }
                 return;
             }
 
@@ -2824,6 +2829,59 @@
         {
             Logger.LogWarning(ex, "Failed to check chip balance before joining seat");
             await ShowToastAsync("Unable to load your cashier balance right now.", "error");
+        }
+    }
+
+    /// <summary>
+    /// Attempts to rejoin a game where the player previously left with unreturned chips.
+    /// The server detects the Left record and reactivates it without a wallet debit.
+    /// Returns true if the rejoin succeeded, false if the server rejected the attempt.
+    /// </summary>
+    private async Task<bool> TryRejoinAsync(int seatIndex)
+    {
+        try
+        {
+            // StartingChips=1 is a placeholder; the server ignores it for rejoin and uses the previous chip stack.
+            var request = new Api.Clients.JoinGameRequest(seatIndex, 1);
+            var response = await GamesApiClient.JoinGameAsync(GameId, request);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return false;
+            }
+
+            // Rejoin succeeded — set local state; SignalR table state update will fill in the correct chip count.
+            _loggedInUserEmail ??= await GetLoggedInUserEmailAsync();
+            var canPlay = response.Content?.CanPlayCurrentHand ?? false;
+            var responseSeatIndex = response.Content?.SeatIndex ?? seatIndex;
+            _currentPlayerId = response.Content?.PlayerId;
+
+            _seats[responseSeatIndex] = new SeatInfo
+            {
+                SeatIndex = responseSeatIndex,
+                IsOccupied = true,
+                PlayerName = response.Content?.PlayerName ?? _loggedInUserEmail ?? "You",
+                PlayerAvatarUrl = response.Content?.PlayerAvatarUrl,
+                PlayerFirstName = response.Content?.PlayerFirstName,
+                IsCurrentPlayer = true,
+                IsReady = false,
+                IsFolded = !canPlay,
+                SittingOutReason = !canPlay ? "Observing" : null
+            };
+            _isSeated = true;
+            _currentPlayerSeatIndex = responseSeatIndex;
+
+            Logger.LogInformation(
+                "Successfully rejoined game {GameId} at seat {SeatIndex}",
+                GameId, responseSeatIndex);
+
+            await ShowToastAsync("Welcome back! Your seat has been restored.", "success");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Rejoin attempt failed for game {GameId}", GameId);
+            return false;
         }
     }
 

@@ -143,6 +143,9 @@ public sealed class LeaveGameCommandHandler(
 			currentUserId,
 			cancellationToken);
 
+		// Zero ChipStack so the rejoin path knows these chips are already back in the wallet
+		gamePlayer.ChipStack = 0;
+
 		await context.SaveChangesAsync(cancellationToken);
 
 		await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);

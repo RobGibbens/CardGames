@@ -567,6 +567,8 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			player.Status = GamePlayerStatus.Left;
 			player.LeftAt = now;
 			player.FinalChipCount = player.ChipStack;
+			// Zero ChipStack so the rejoin path knows these chips are already back in the wallet
+			player.ChipStack = 0;
 			player.IsSittingOut = true;
 			_logger.LogInformation(
 				"Player {PlayerName} finalized leave from game {GameId} after hand {HandNumber}",

@@ -161,6 +161,21 @@ public sealed class JoinGameCommandHandler(
 				$"You are already seated at position {existingGamePlayer.SeatPosition}.");
 		}
 
+		// Check if player previously left this game and still has unreturned chips (rejoin scenario).
+		// ChipStack > 0 on a Left record means the chips were never credited back to the wallet
+		// (e.g., leave was finalized by StartHandCommandHandler without a wallet credit).
+		var previousGamePlayer = game.GamePlayers
+			.Where(gp =>
+				gp.Player.Name.Equals(playerName, StringComparison.OrdinalIgnoreCase) &&
+				gp.Status == GamePlayerStatus.Left)
+			.OrderByDescending(gp => gp.LeftAt)
+			.FirstOrDefault();
+
+		if (previousGamePlayer is not null && previousGamePlayer.ChipStack > 0)
+		{
+			return await HandleRejoinAsync(game, previousGamePlayer, command, cancellationToken);
+		}
+
 		// Check if the seat is already occupied
 		var seatOccupied = game.GamePlayers.Any(gp =>
 			gp.SeatPosition == command.SeatIndex &&
@@ -357,6 +372,89 @@ public sealed class JoinGameCommandHandler(
 					PlayerFirstName: userProfile?.FirstName,
 					CanPlayCurrentHand: canPlayCurrentHand);
 			}
+
+	private async Task<OneOf<JoinGameSuccessful, JoinGameError, JoinGamePendingApproval>> HandleRejoinAsync(
+		Game game,
+		GamePlayer previousGamePlayer,
+		JoinGameCommand command,
+		CancellationToken cancellationToken)
+	{
+		// Resolve an available seat (previous seat may now be occupied)
+		var rejoinSeatIndex = command.SeatIndex;
+		var occupiedSeats = game.GamePlayers
+			.Where(gp =>
+				gp.Id != previousGamePlayer.Id &&
+				(gp.Status == GamePlayerStatus.Active || gp.Status == GamePlayerStatus.SittingOut))
+			.Select(gp => gp.SeatPosition)
+			.ToHashSet();
+
+		if (occupiedSeats.Contains(rejoinSeatIndex))
+		{
+			rejoinSeatIndex = Enumerable.Range(0, MaxSeatIndex + 1)
+				.FirstOrDefault(s => !occupiedSeats.Contains(s), -1);
+
+			if (rejoinSeatIndex < 0)
+			{
+				return new JoinGameError(
+					JoinGameErrorCode.MaxPlayersReached,
+					"No seats are available to rejoin.");
+			}
+		}
+
+		var canPlayCurrentHand = game.CurrentPhase == nameof(Phases.WaitingToStart) ||
+								 game.Status == GameStatus.WaitingForPlayers;
+
+		var restoredChips = previousGamePlayer.ChipStack;
+		var now = DateTimeOffset.UtcNow;
+
+		// Reactivate the existing player record with their previous chip stack
+		previousGamePlayer.Status = GamePlayerStatus.Active;
+		previousGamePlayer.SeatPosition = rejoinSeatIndex;
+		previousGamePlayer.FinalChipCount = null;
+		previousGamePlayer.LeftAt = null;
+		previousGamePlayer.LeftAtHandNumber = -1;
+		previousGamePlayer.IsSittingOut = false;
+		previousGamePlayer.IsConnected = true;
+		previousGamePlayer.HasFolded = !canPlayCurrentHand;
+		previousGamePlayer.IsAllIn = false;
+		previousGamePlayer.CurrentBet = 0;
+		previousGamePlayer.TotalContributedThisHand = 0;
+		previousGamePlayer.HasDrawnThisRound = false;
+		previousGamePlayer.DropOrStayDecision = null;
+		previousGamePlayer.AutoDropOnDropOrStay = false;
+		previousGamePlayer.VariantState = null;
+		previousGamePlayer.PendingChipsToAdd = 0;
+		previousGamePlayer.JoinedAtHandNumber = game.CurrentHandNumber;
+		previousGamePlayer.JoinedAt = now;
+
+		game.UpdatedAt = now;
+		await context.SaveChangesAsync(cancellationToken);
+
+		var userEmail = currentUserService.UserEmail;
+		var userProfile = !string.IsNullOrWhiteSpace(userEmail)
+			? await context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Email == userEmail, cancellationToken)
+			: null;
+
+		logger.LogInformation(
+			"Player {PlayerName} rejoined game {GameId} at seat {SeatIndex} with {ChipStack} chips",
+			previousGamePlayer.Player.Name, game.Id, rejoinSeatIndex, restoredChips);
+
+		await broadcaster.BroadcastPlayerJoinedAsync(
+			game.Id,
+			previousGamePlayer.Player.Name,
+			rejoinSeatIndex,
+			canPlayCurrentHand,
+			cancellationToken);
+
+		return new JoinGameSuccessful(
+			GameId: game.Id,
+			SeatIndex: rejoinSeatIndex,
+			PlayerId: previousGamePlayer.PlayerId,
+			PlayerName: previousGamePlayer.Player.Name,
+			PlayerAvatarUrl: userProfile?.AvatarUrl ?? previousGamePlayer.Player.AvatarUrl,
+			PlayerFirstName: userProfile?.FirstName,
+			CanPlayCurrentHand: canPlayCurrentHand);
+	}
 
 	private async Task<Player> GetOrCreatePlayerAsync(string name, string? email, CancellationToken cancellationToken)
 	{

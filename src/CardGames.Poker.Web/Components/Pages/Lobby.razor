@@ -496,7 +496,9 @@
             var cashierSummary = await ProfileApi.GetCashierSummaryAsync();
             if (cashierSummary.IsSuccessStatusCode && (cashierSummary.Content?.CurrentBalance ?? 0) <= 0)
             {
-                _showNoChipsModal = true;
+                // Allow navigation — the player may have unreturned chips from a previous session.
+                // The table page handles the rejoin flow or shows the no-chips modal if ineligible.
+                NavigationManager.NavigateTo($"/table/{tableId}?autojoin=1");
                 return;
             }
         }
