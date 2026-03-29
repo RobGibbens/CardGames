@@ -1,7 +1,7 @@
 # TODO
 
 - [ ] Animate the chips going to/from the pot
-- [ ] Adding chips during DC doesn't work
+- [x] Adding chips during DC doesn't work
 - [ ] SYN - It took the chips from the wrong player
 - [ ] SYN - Double burn doesn't work
 - [ ] Tony was trying to join during DC, it stole the choice from Russ
