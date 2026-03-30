@@ -280,7 +280,8 @@
                          HasWildCards="@HasWildCards"
                          WildCards="@GetWildCardsForDisplay()"
                          CommunityCards="@GetVisibleCommunityCards()"
-                         Ante="@_ante" />
+                         Ante="@_ante"
+                         SynBonusChipsBySeat="@_synBonusChipsBySeat" />
 
             <!-- Dashboard Panel (left side) -->
             @if (_isSeated)
@@ -705,6 +706,7 @@
     private HashSet<string> _playedTableSoundKeys = [];
     private List<int> _pendingSynTradeAnimationSeatIndices = [];
     private bool _synChipAnimationFired;
+    private Dictionary<int, int> _synBonusChipsBySeat = new();
 
     // In-Between specific state
     private bool _isProcessingInBetween;
@@ -1396,6 +1398,7 @@
                 }
                 _synKeepOrTradeDecision = null;
                 _synChipAnimationFired = false;
+                ClearSynBonusChips();
 
                 _previousFaceUpCommunityCardCount = 0;
                 _communityCardRevealInProgress = false;
@@ -1549,6 +1552,13 @@
 
                 if (loserSeatIndices.Count > 0)
                 {
+                    // Add bonus chips so the UI keeps showing the pre-loss stack count
+                    // until the chip-to-pot animation finishes.
+                    foreach (var seatIndex in loserSeatIndices)
+                    {
+                        _synBonusChipsBySeat[seatIndex] = _ante;
+                    }
+
                     _ = InvokeAsync(() => AnimateScrewYourNeighborChipLossAsync(loserSeatIndices));
                 }
             }
@@ -5533,6 +5543,7 @@
     {
         if (!_isJsInteropReady)
         {
+            ClearSynBonusChips();
             return;
         }
 
@@ -5561,10 +5572,12 @@
             }
             catch (JSDisconnectedException)
             {
+                ClearSynBonusChips();
                 return;
             }
             catch (InvalidOperationException ex) when (ex.Message.Contains("statically rendered", StringComparison.OrdinalIgnoreCase))
             {
+                ClearSynBonusChips();
                 return;
             }
             catch (JSException ex)
@@ -5574,6 +5587,19 @@
 
             staggerDelayMs += 150;
         }
+
+        // Wait for the last JS animation to complete before removing the bonus chips.
+        // Total wait = last stagger delay + animation duration + small buffer.
+        var lastStaggerMs = Math.Max(0, staggerDelayMs - 150);
+        await Task.Delay(lastStaggerMs + ScrewYourNeighborTradeAnimationDurationMs + 100);
+
+        ClearSynBonusChips();
+        StateHasChanged();
+    }
+
+    private void ClearSynBonusChips()
+    {
+        _synBonusChipsBySeat.Clear();
     }
 
     private Guid? _currentGameId => GameId;

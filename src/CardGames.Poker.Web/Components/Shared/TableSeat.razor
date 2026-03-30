@@ -151,7 +151,7 @@
 					<div class="pill-bottom-row">
 						@if (IsScrewYourNeighbor)
 						{
-							var stacksRemaining = Ante > 0 ? Seat.Chips / Ante : 0;
+							var stacksRemaining = Ante > 0 ? (Seat.Chips + SynBonusChips) / Ante : 0;
 							<div class="syn-stacks">
 								@for (var i = 0; i < stacksRemaining; i++)
 								{
@@ -254,6 +254,12 @@
 
 	[Parameter]
 	public bool IsSeatSelectionDisabledForCurrentUser { get; set; }
+
+	/// <summary>
+	/// Extra chips to add to the SYN stack display (to keep the old count visible until the chip-loss animation finishes).
+	/// </summary>
+	[Parameter]
+	public int SynBonusChips { get; set; }
 
 	private bool _imageLoadError;
 	private string? _lastAvatarUrl;

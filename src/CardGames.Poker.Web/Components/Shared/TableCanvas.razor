@@ -173,7 +173,8 @@
 						   ShowCards="@(!IsPausedForChipCheck && CurrentPhase != GamePhase.WaitingForPlayers.ToString() && CurrentPhase != GamePhase.WaitingToStart.ToString() && seat.Cards.Count > 0)"
 						   GameTypeCode="@GameTypeCode" WildCards="@WildCards"
 						   IsSmallBlind="@(IsBlindBasedGame && seat.SeatIndex == GetSmallBlindSeatIndex())"
-						   IsBigBlind="@(IsBlindBasedGame && seat.SeatIndex == GetBigBlindSeatIndex())" Ante="@Ante" />
+					   IsBigBlind="@(IsBlindBasedGame && seat.SeatIndex == GetBigBlindSeatIndex())" Ante="@Ante"
+					   SynBonusChips="@(SynBonusChipsBySeat != null && SynBonusChipsBySeat.TryGetValue(seat.SeatIndex, out var bonus) ? bonus : 0)" />
 			</div>
 		}
 
@@ -260,6 +261,12 @@
 
 	[Parameter]
 	public int Ante { get; set; }
+
+	/// <summary>
+	/// Per-seat bonus chips for SYN chip-loss animation (keeps old stack count visible until animation finishes).
+	/// </summary>
+	[Parameter]
+	public IReadOnlyDictionary<int, int>? SynBonusChipsBySeat { get; set; }
 
 	[Parameter]
 	public EventCallback<int> OnSeatClick { get; set; }
