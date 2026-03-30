@@ -960,6 +960,81 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task DealerDeckTrade_DealerGetsLowestCard_DealerLosesStack()
+    {
+        // Regression: when the dealer traded with the deck, the showdown used a DB query
+        // that missed the unsaved deck card, excluding the dealer from evaluation entirely.
+        // This caused the wrong player to lose a chip stack.
+        var (setup, game) = await CreateScrewYourNeighborGameInKeepOrTradePhaseAsync(3);
+
+        var players = game.GamePlayers.OrderBy(gp => gp.SeatPosition).ToList();
+        var dealer = players.First(gp => gp.SeatPosition == game.DealerPosition);
+        var nonDealerPlayers = players.Where(gp => gp.SeatPosition != game.DealerPosition)
+            .OrderBy(gp => gp.SeatPosition)
+            .ToList();
+
+        // Rig cards: non-dealers get high cards; dealer gets a medium card they'll want to trade.
+        var handCards = await DbContext.GameCards
+            .Where(gc => gc.GameId == game.Id &&
+                         gc.HandNumber == game.CurrentHandNumber &&
+                         gc.Location == CardLocation.Hand &&
+                         gc.GamePlayerId != null)
+            .ToListAsync();
+
+        handCards.First(c => c.GamePlayerId == nonDealerPlayers[0].Id).Symbol = CardSymbol.Queen;
+        handCards.First(c => c.GamePlayerId == nonDealerPlayers[0].Id).Suit = CardSuit.Hearts;
+        handCards.First(c => c.GamePlayerId == nonDealerPlayers[1].Id).Symbol = CardSymbol.Jack;
+        handCards.First(c => c.GamePlayerId == nonDealerPlayers[1].Id).Suit = CardSuit.Spades;
+        handCards.First(c => c.GamePlayerId == dealer.Id).Symbol = CardSymbol.Five;
+        handCards.First(c => c.GamePlayerId == dealer.Id).Suit = CardSuit.Diamonds;
+
+        // Rig the deck so the top card is an Ace (lowest possible) — the dealer will draw it.
+        await PrimeRemainingDeckAsync(
+            game.Id,
+            game.CurrentHandNumber,
+            (CardSuit.Clubs, CardSymbol.Ace));
+
+        await DbContext.SaveChangesAsync();
+
+        // Non-dealer players keep their cards.
+        for (var i = 0; i < 3; i++)
+        {
+            game = await DbContext.Games
+                .Include(g => g.GamePlayers)
+                .AsNoTracking()
+                .FirstAsync(g => g.Id == setup.Game.Id);
+
+            if (game.CurrentPhase != nameof(Phases.KeepOrTrade)) break;
+
+            var actor = game.GamePlayers.First(gp => gp.SeatPosition == game.CurrentPlayerIndex);
+            var isDealer = actor.SeatPosition == game.DealerPosition;
+
+            // Non-dealers keep; dealer trades with deck to pick up the rigged Ace.
+            var decision = isDealer ? "Trade" : "Keep";
+            var result = await Mediator.Send(new KeepOrTradeCommand(game.Id, actor.PlayerId, decision));
+            result.IsT0.Should().BeTrue();
+
+            if (isDealer)
+            {
+                result.AsT0.DidTrade.Should().BeTrue("Dealer should have traded with the deck");
+            }
+        }
+
+        // After all turns, showdown should have fired inline.
+        game = await DbContext.Games.AsNoTracking().FirstAsync(g => g.Id == setup.Game.Id);
+        game.CurrentPhase.Should().Be(nameof(Phases.Complete));
+
+        // The dealer drew an Ace (value 1) — the lowest card. They should lose a stack.
+        var refreshedDealer = await DbContext.GamePlayers.AsNoTracking().FirstAsync(gp => gp.Id == dealer.Id);
+        var refreshedNonDealer0 = await DbContext.GamePlayers.AsNoTracking().FirstAsync(gp => gp.Id == nonDealerPlayers[0].Id);
+        var refreshedNonDealer1 = await DbContext.GamePlayers.AsNoTracking().FirstAsync(gp => gp.Id == nonDealerPlayers[1].Id);
+
+        refreshedDealer.ChipStack.Should().Be(75, "dealer drew an Ace and should lose one stack (25 chips)");
+        refreshedNonDealer0.ChipStack.Should().Be(100, "non-dealer with Queen should keep all chips");
+        refreshedNonDealer1.ChipStack.Should().Be(100, "non-dealer with Jack should keep all chips");
+    }
+
+    [Fact]
     public async Task DealersChoiceScrewYourNeighbor_AnteZero_WhenVariantEnds_ReturnsToWaitingForDealerChoice()
     {
         // Edge-case: ante=0 means ChipStack >= 0 passes the eligible filter for 0-chip losers.

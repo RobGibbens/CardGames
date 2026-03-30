@@ -266,14 +266,15 @@ public sealed class ScrewYourNeighborFlowHandler : BaseGameFlowHandler
 			.OrderBy(gp => gp.SeatPosition)
 			.ToList();
 
-		// Load cards for this hand
-		var handCards = await context.GameCards
-			.Where(gc => gc.GameId == game.Id &&
-			             gc.HandNumber == game.CurrentHandNumber &&
+		// Use the in-memory navigation property instead of a DB query so that
+		// unsaved card changes (e.g. dealer deck trade within the same command)
+		// are correctly reflected in the showdown evaluation.
+		var handCards = game.GameCards
+			.Where(gc => gc.HandNumber == game.CurrentHandNumber &&
 			             gc.GamePlayerId != null &&
 			             gc.Location == CardLocation.Hand &&
 			             !gc.IsDiscarded)
-			.ToListAsync(cancellationToken);
+			.ToList();
 
 		// Build player-card map
 		var playerCards = new Dictionary<Guid, GameCard>();
