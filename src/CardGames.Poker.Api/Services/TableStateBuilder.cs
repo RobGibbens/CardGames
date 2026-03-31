@@ -516,8 +516,14 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					var holdemHand = new CardGames.Poker.Hands.CommunityCardHands.HoldemHand(playerCards, communityCards);
 					handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(holdemHand);
 				}
+				// Bob Barker: 4 active hole cards + up to 5 community, must use exactly 2 hole + 3 community.
+				else if (playerCards.Count == 4 && IsBobBarkerGame(game.GameType?.Code))
+				{
+					var bobBarkerHand = new BobBarkerHand(playerCards, communityCards);
+					handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(bobBarkerHand);
+				}
 				// Omaha style: 4 hole + up to 5 community
-				else if (playerCards.Count == 4 && (IsOmahaGame(game.GameType?.Code) || IsBobBarkerGame(game.GameType?.Code)))
+				else if (playerCards.Count == 4 && IsOmahaGame(game.GameType?.Code))
 				{
 					var omahaHand = new CardGames.Poker.Hands.CommunityCardHands.OmahaHand(playerCards, communityCards);
 					handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(omahaHand);

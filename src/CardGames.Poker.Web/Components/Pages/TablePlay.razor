@@ -2163,6 +2163,9 @@
 
                 ApplyKingsAndLowsLowestCardWildFallback(cards);
 
+                var formattedPublicHandEvaluationDescription =
+                    FormatHandDescriptionForDisplay(publicSeat.HandEvaluationDescription);
+
                 // Preserve LastActionDescription if it hasn't expired (5 seconds)
                 var existingSeat = _seats[publicSeat.SeatIndex];
 
@@ -2193,7 +2196,7 @@
                 }
 
                 var screwYourNeighborDecision = IsScrewYourNeighbor
-                    ? publicSeat.HandEvaluationDescription
+                    ? formattedPublicHandEvaluationDescription
                         ?? GetScrewYourNeighborDecisionDescription(lastActionDescription)
                         ?? GetScrewYourNeighborDecisionDescription(publicSeat.LastAction?.ActionDescription)
                     : null;
@@ -2204,7 +2207,8 @@
                         : null)
                         ?? existingSeat.HandEvaluationDescription
                         ?? screwYourNeighborDecision
-                    : existingSeat.HandEvaluationDescription;
+                    : formattedPublicHandEvaluationDescription
+                        ?? existingSeat.HandEvaluationDescription;
 
                 if (IsScrewYourNeighbor &&
                     !string.Equals(existingSeat.HandEvaluationDescription, "Traded", StringComparison.OrdinalIgnoreCase) &&

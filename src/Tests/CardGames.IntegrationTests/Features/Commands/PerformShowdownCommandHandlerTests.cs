@@ -448,6 +448,46 @@ public class PerformShowdownCommandHandlerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task Handle_BobBarker_HandDescription_UsesExactlyTwoHoleCards()
+    {
+        var (game, players) = await CreateBobBarkerShowdownGameAsync(playerCount: 2, potAmount: 100);
+        var hero = players[0];
+        var villain = players[1];
+        var now = DateTimeOffset.UtcNow;
+
+        AddBobBarkerPlayerCard(game.Id, hero.Id, 1, CardSuit.Hearts, CardSymbol.Queen, now);
+        AddBobBarkerPlayerCard(game.Id, hero.Id, 2, CardSuit.Clubs, CardSymbol.Queen, now);
+        AddBobBarkerPlayerCard(game.Id, hero.Id, 3, CardSuit.Diamonds, CardSymbol.King, now);
+        AddBobBarkerPlayerCard(game.Id, hero.Id, 4, CardSuit.Spades, CardSymbol.King, now);
+        AddBobBarkerPlayerCard(game.Id, hero.Id, 5, CardSuit.Clubs, CardSymbol.Jack, now);
+
+        AddBobBarkerPlayerCard(game.Id, villain.Id, 1, CardSuit.Spades, CardSymbol.Ace, now);
+        AddBobBarkerPlayerCard(game.Id, villain.Id, 2, CardSuit.Hearts, CardSymbol.Nine, now);
+        AddBobBarkerPlayerCard(game.Id, villain.Id, 3, CardSuit.Diamonds, CardSymbol.Eight, now);
+        AddBobBarkerPlayerCard(game.Id, villain.Id, 4, CardSuit.Clubs, CardSymbol.Seven, now);
+        AddBobBarkerPlayerCard(game.Id, villain.Id, 5, CardSuit.Hearts, CardSymbol.Five, now);
+
+        BobBarkerVariantState.SetSelectedShowcaseDealOrder(hero, 5);
+        BobBarkerVariantState.SetSelectedShowcaseDealOrder(villain, 5);
+
+        AddBobBarkerCommunityCard(game.Id, 0, CardSuit.Spades, CardSymbol.Ace, isVisible: false, nameof(Phases.Dealing), now);
+        AddBobBarkerCommunityCard(game.Id, 1, CardSuit.Hearts, CardSymbol.Six, isVisible: true, nameof(Phases.Flop), now);
+        AddBobBarkerCommunityCard(game.Id, 2, CardSuit.Clubs, CardSymbol.Ten, isVisible: true, nameof(Phases.Flop), now);
+        AddBobBarkerCommunityCard(game.Id, 3, CardSuit.Hearts, CardSymbol.Four, isVisible: true, nameof(Phases.Flop), now);
+        AddBobBarkerCommunityCard(game.Id, 4, CardSuit.Diamonds, CardSymbol.Deuce, isVisible: true, nameof(Phases.Turn), now);
+        AddBobBarkerCommunityCard(game.Id, 5, CardSuit.Clubs, CardSymbol.Six, isVisible: true, nameof(Phases.River), now);
+
+        await DbContext.SaveChangesAsync();
+
+        var result = await Mediator.Send(new PerformShowdownCommand(game.Id));
+
+        result.IsT0.Should().BeTrue();
+
+        var heroHand = result.AsT0.PlayerHands.Single(h => h.PlayerName == hero.Player.Name);
+        heroHand.HandDescription.Should().Be("Two pair, Kings and Sixes");
+    }
+
+    [Fact]
     public async Task Handle_BobBarker_ShowcaseTie_SplitsShowcaseHalfAmongAllShowcaseWinners()
     {
         var (game, players) = await CreateBobBarkerShowdownGameAsync(playerCount: 3, potAmount: 100);

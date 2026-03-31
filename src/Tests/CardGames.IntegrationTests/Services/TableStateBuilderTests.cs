@@ -234,6 +234,157 @@ public class TableStateBuilderTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task BuildPrivateStateAsync_BobBarker_UsesExactlyTwoHoleCardsForHandDescription()
+    {
+        var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "BOBBARKER", 2, ante: 0);
+        var game = setup.Game;
+        var hero = setup.GamePlayers[0];
+        var heroEmail = setup.Players[0].Email!;
+        var now = DateTimeOffset.UtcNow;
+
+        game.CurrentHandNumber = 1;
+        game.CurrentHandGameTypeCode = "BOBBARKER";
+        game.CurrentPhase = nameof(Phases.River);
+        game.Status = GameStatus.InProgress;
+
+        hero.VariantState = "{\"SelectedShowcaseDealOrder\":5}";
+
+        DbContext.GameCards.AddRange(
+            new GameCard
+            {
+                GameId = game.Id,
+                GamePlayerId = hero.Id,
+                HandNumber = 1,
+                Location = CardLocation.Hand,
+                Suit = CardSuit.Hearts,
+                Symbol = CardSymbol.Queen,
+                DealOrder = 1,
+                DealtAt = now,
+                DealtAtPhase = nameof(Phases.Dealing),
+                IsVisible = false
+            },
+            new GameCard
+            {
+                GameId = game.Id,
+                GamePlayerId = hero.Id,
+                HandNumber = 1,
+                Location = CardLocation.Hand,
+                Suit = CardSuit.Clubs,
+                Symbol = CardSymbol.Queen,
+                DealOrder = 2,
+                DealtAt = now,
+                DealtAtPhase = nameof(Phases.Dealing),
+                IsVisible = false
+            },
+            new GameCard
+            {
+                GameId = game.Id,
+                GamePlayerId = hero.Id,
+                HandNumber = 1,
+                Location = CardLocation.Hand,
+                Suit = CardSuit.Diamonds,
+                Symbol = CardSymbol.King,
+                DealOrder = 3,
+                DealtAt = now,
+                DealtAtPhase = nameof(Phases.Dealing),
+                IsVisible = false
+            },
+            new GameCard
+            {
+                GameId = game.Id,
+                GamePlayerId = hero.Id,
+                HandNumber = 1,
+                Location = CardLocation.Hand,
+                Suit = CardSuit.Spades,
+                Symbol = CardSymbol.King,
+                DealOrder = 4,
+                DealtAt = now,
+                DealtAtPhase = nameof(Phases.Dealing),
+                IsVisible = false
+            },
+            new GameCard
+            {
+                GameId = game.Id,
+                GamePlayerId = hero.Id,
+                HandNumber = 1,
+                Location = CardLocation.Hand,
+                Suit = CardSuit.Clubs,
+                Symbol = CardSymbol.Jack,
+                DealOrder = 5,
+                DealtAt = now,
+                DealtAtPhase = nameof(Phases.Dealing),
+                IsVisible = false
+            },
+            new GameCard
+            {
+                GameId = game.Id,
+                HandNumber = 1,
+                Location = CardLocation.Community,
+                Suit = CardSuit.Hearts,
+                Symbol = CardSymbol.Six,
+                DealOrder = 6,
+                DealtAt = now,
+                DealtAtPhase = nameof(Phases.Flop),
+                IsVisible = true
+            },
+            new GameCard
+            {
+                GameId = game.Id,
+                HandNumber = 1,
+                Location = CardLocation.Community,
+                Suit = CardSuit.Clubs,
+                Symbol = CardSymbol.Ten,
+                DealOrder = 7,
+                DealtAt = now,
+                DealtAtPhase = nameof(Phases.Flop),
+                IsVisible = true
+            },
+            new GameCard
+            {
+                GameId = game.Id,
+                HandNumber = 1,
+                Location = CardLocation.Community,
+                Suit = CardSuit.Hearts,
+                Symbol = CardSymbol.Four,
+                DealOrder = 8,
+                DealtAt = now,
+                DealtAtPhase = nameof(Phases.Flop),
+                IsVisible = true
+            },
+            new GameCard
+            {
+                GameId = game.Id,
+                HandNumber = 1,
+                Location = CardLocation.Community,
+                Suit = CardSuit.Diamonds,
+                Symbol = CardSymbol.Deuce,
+                DealOrder = 9,
+                DealtAt = now,
+                DealtAtPhase = nameof(Phases.Turn),
+                IsVisible = true
+            },
+            new GameCard
+            {
+                GameId = game.Id,
+                HandNumber = 1,
+                Location = CardLocation.Community,
+                Suit = CardSuit.Clubs,
+                Symbol = CardSymbol.Six,
+                DealOrder = 10,
+                DealtAt = now,
+                DealtAtPhase = nameof(Phases.River),
+                IsVisible = true
+            });
+
+        await DbContext.SaveChangesAsync();
+
+        var state = await TableStateBuilder.BuildPrivateStateAsync(game.Id, heroEmail);
+
+        state.Should().NotBeNull();
+        state!.HandEvaluationDescription.Should().Be("Two pair, Kings and Sixes");
+    }
+
+    [Fact]
     public async Task BuildPrivateStateAsync_HoldTheBaseball_PreflopAndFlop_ApplyWildCardEvaluation()
     {
         // Arrange
