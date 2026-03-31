@@ -200,14 +200,7 @@ public sealed class ScrewYourNeighborFlowHandler : BaseGameFlowHandler
 					break;
 				}
 
-                //var card = deckCards[deckIndex++];
-                //TODO: ROB - Remove
-				GameCard card;
-					card = deckCards
-						.Where(x => x.GamePlayerId == null)
-						.OrderBy(x => x.Symbol)
-						.First();
-
+                var card = deckCards[deckIndex++];
 				card.GamePlayerId = player.Id;
 				card.Location = CardLocation.Hand;
 				card.DealOrder = dealOrder++;
