@@ -119,6 +119,9 @@ public sealed class GameHub : Hub
                 "Sending state snapshot for game {GameId} to caller user {UserId} (connection {ConnectionId})",
                 gameId, userId, Context.ConnectionId);
 
+            // Resolve the stable user ID for private state lookups
+            var resolvedUserId = Context.UserIdentifier ?? userId;
+
             // Try to serve from cache first (handles reconnection without DB queries)
             if (_gameCache.TryGet(gameId, out var cached) && cached is not null)
             {
@@ -128,8 +131,7 @@ public sealed class GameHub : Hub
 
                 await Clients.Caller.SendAsync("TableStateUpdated", cached.PublicState);
 
-                var privateStateUserId = Context.UserIdentifier ?? userId;
-                if (cached.PrivateStates.TryGetValue(privateStateUserId, out var cachedPrivateState))
+                if (cached.PrivateStates.TryGetValue(resolvedUserId, out var cachedPrivateState))
                 {
                     await Clients.Caller.SendAsync("PrivateStateUpdated", cachedPrivateState);
                 }
@@ -148,9 +150,7 @@ public sealed class GameHub : Hub
             }
 
             // Build and send private state for this user.
-            // Prefer SignalR's stable user id, but fall back to email/name matching for legacy connections.
-            var privateStateUserIdFallback = Context.UserIdentifier ?? userId;
-            var privateState = await _tableStateBuilder.BuildPrivateStateAsync(gameId, privateStateUserIdFallback);
+            var privateState = await _tableStateBuilder.BuildPrivateStateAsync(gameId, resolvedUserId);
             if (privateState is not null)
             {
                 await Clients.Caller.SendAsync("PrivateStateUpdated", privateState);

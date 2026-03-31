@@ -144,20 +144,13 @@ public class GameStateBroadcasterTests
         gameCache.Set(gameId, new CachedGameSnapshot
         {
             PublicState = publicState,
-            PrivateStates = new Dictionary<string, PrivateStateDto> { [userId] = privateState },
+            PrivateStates = new Dictionary<string, PrivateStateDto>(StringComparer.OrdinalIgnoreCase) { [userId] = privateState },
             PlayerUserIds = new[] { userId },
             CapturedAt = DateTimeOffset.UtcNow,
             HandNumber = 1
         });
 
         var (sut, tableStateBuilder, _, _) = CreateSubject(publicState, gameCache);
-
-        // Set up user-specific client mock
-        var userProxy = Substitute.For<IClientProxy>();
-        userProxy.SendCoreAsync(Arg.Any<string>(), Arg.Any<object?[]>(), Arg.Any<CancellationToken>())
-            .Returns(Task.CompletedTask);
-        var hubContext = GetHubContext(sut);
-        hubContext.Clients.User(userId).Returns(userProxy);
 
         await sut.BroadcastGameStateToUserAsync(gameId, userId);
 
@@ -202,13 +195,7 @@ public class GameStateBroadcasterTests
         return (sut, tableStateBuilder, actionTimerService, clientProxy);
     }
 
-    private static IHubContext<GameHub> GetHubContext(GameStateBroadcaster broadcaster)
-    {
-        // Access the hub context field via reflection for test setup
-        var field = typeof(GameStateBroadcaster).GetField("_hubContext",
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        return (IHubContext<GameHub>)field!.GetValue(broadcaster)!;
-    }
+
 
     private static TableStatePublicDto CreateState(
         Guid gameId,
