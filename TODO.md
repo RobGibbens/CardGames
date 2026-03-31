@@ -8,7 +8,7 @@
 - [ ] DC - Eric joined, it glitched
 - [ ] Rabbit hunt
 - [x] Game felt
-- [ ] Click Leave Table : {"message":"You are not seated at this table or have already left"}
+- [x] Click Leave Table : {"message":"You are not seated at this table or have already left"}
 
 ## Still to do
 

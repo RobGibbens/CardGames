@@ -2754,9 +2754,9 @@
             }
             else
             {
-                // Show error toast
-                var errorMessage = response.Error?.Content ?? "Failed to leave the table.";
-                await ShowToastAsync(errorMessage, "error");
+                // If not seated or already left, just navigate to lobby
+                await GameHubClient.LeaveGameAsync(GameId);
+                NavigationManager.NavigateTo("/lobby");
             }
         }
         catch (Exception ex)
