@@ -200,7 +200,14 @@ public sealed class ScrewYourNeighborFlowHandler : BaseGameFlowHandler
 					break;
 				}
 
-				var card = deckCards[deckIndex++];
+                //var card = deckCards[deckIndex++];
+                //TODO: ROB - Remove
+				GameCard card;
+					card = deckCards
+						.Where(x => x.GamePlayerId == null)
+						.OrderBy(x => x.Symbol)
+						.First();
+
 				card.GamePlayerId = player.Id;
 				card.Location = CardLocation.Hand;
 				card.DealOrder = dealOrder++;
@@ -212,7 +219,7 @@ public sealed class ScrewYourNeighborFlowHandler : BaseGameFlowHandler
 		game.CurrentPhase = nameof(Phases.KeepOrTrade);
 		game.CurrentPlayerIndex = FindFirstActivePlayerAfterDealer(game, eligiblePlayers);
 		game.UpdatedAt = now;
-
+		
 		await context.SaveChangesAsync(cancellationToken);
 	}
 
@@ -332,6 +339,71 @@ public sealed class ScrewYourNeighborFlowHandler : BaseGameFlowHandler
 			return ShowdownResult.Failure("No pot found");
 		}
 
+		// When all remaining players are on their last stack and they all tie,
+		// split the pot evenly among them and end the game.
+		if (allWouldBeEliminated && mainPot.Amount > 0)
+		{
+			var splitPlayerCount = activePlayers.Count;
+			var baseShare = mainPot.Amount / splitPlayerCount;
+			var remainder = mainPot.Amount % splitPlayerCount;
+
+			// Distribute remainder one chip at a time to players in seat order after dealer
+			var dealerPosition = game.DealerPosition;
+			var maxSeatPosition = game.GamePlayers.Max(gp => gp.SeatPosition);
+			var totalSeats = maxSeatPosition + 1;
+
+			var playersInDealOrder = activePlayers
+				.OrderBy(p => (p.SeatPosition - dealerPosition - 1 + totalSeats) % totalSeats)
+				.ToList();
+
+			for (var i = 0; i < playersInDealOrder.Count; i++)
+			{
+				var share = baseShare + (i < remainder ? 1 : 0);
+				playersInDealOrder[i].ChipStack += share;
+			}
+
+			var splitWinnerNames = string.Join(", ", playersInDealOrder.Select(p => p.Player?.Name ?? "Unknown"));
+			var lowestCardName = GetCardDisplayName(playerValues.First(pv => pv.CardValue == lowestValue).Card);
+			var splitDescription = $"All remaining players tied with {lowestCardName} — pot of {mainPot.Amount} split evenly";
+
+			mainPot.IsAwarded = true;
+			mainPot.AwardedAt = now;
+			mainPot.WinnerPayouts = JsonSerializer.Serialize(
+				playersInDealOrder.Select((p, i) => new
+				{
+					playerId = p.PlayerId.ToString(),
+					playerName = p.Player?.Name ?? "Unknown",
+					amount = baseShare + (i < remainder ? 1 : 0)
+				}).ToArray());
+
+			game.HandCompletedAt = now;
+			game.UpdatedAt = now;
+
+			if (game.IsDealersChoice)
+			{
+				game.NextHandStartsAt = now.AddSeconds(4);
+				game.Status = GameStatus.InProgress;
+			}
+			else
+			{
+				game.NextHandStartsAt = null;
+				game.Status = GameStatus.Completed;
+			}
+
+			await context.SaveChangesAsync(cancellationToken);
+
+			await RecordHandHistoryAsync(
+				handHistoryRecorder, game, activePlayers,
+				mainPot.Amount, activePlayers, losers: [],
+				splitDescription, now, cancellationToken);
+
+			return ShowdownResult.Success(
+				activePlayers.Select(p => p.PlayerId).ToList(),
+				[],
+				mainPot.Amount,
+				splitDescription);
+		}
+
 		var totalLost = 0;
 
 		if (!allWouldBeEliminated)
@@ -421,36 +493,37 @@ public sealed class ScrewYourNeighborFlowHandler : BaseGameFlowHandler
 
 		// Build description of what happened
 		var loserNames = string.Join(", ", losers.Select(l => l.Player?.Name ?? "Unknown"));
-		var lowestCardName = GetCardDisplayName(playerValues.First(pv => pv.CardValue == lowestValue).Card);
-		var description = allWouldBeEliminated
-			? $"All remaining players tied with {lowestCardName} — nobody loses a stack"
-			: $"{loserNames} had the lowest card ({lowestCardName}) and lost a stack";
-
-		// Set timestamps for continuous play
-		game.HandCompletedAt = now;
-		var secondsBetweenScrewYourNeighborHandDeals = 4;
-		game.NextHandStartsAt = now.AddSeconds(secondsBetweenScrewYourNeighborHandDeals);
-		game.UpdatedAt = now;
-		MoveDealer(game);
-
-		// Sit out eliminated players
-		foreach (var player in game.GamePlayers.Where(gp => gp.Status == GamePlayerStatus.Active && gp.ChipStack <= 0))
 		{
-			player.IsSittingOut = true;
+			var lowestCardName = GetCardDisplayName(playerValues.First(pv => pv.CardValue == lowestValue).Card);
+			var description = $"{loserNames} had the lowest card ({lowestCardName}) and lost a stack";
+
+			// Set timestamps for continuous play
+			game.HandCompletedAt = now;
+			var secondsBetweenScrewYourNeighborHandDeals = 4;
+			game.NextHandStartsAt = now.AddSeconds(secondsBetweenScrewYourNeighborHandDeals);
+			game.UpdatedAt = now;
+			MoveDealer(game);
+
+			// Sit out eliminated players
+			foreach (var player in game.GamePlayers.Where(gp =>
+				         gp.Status == GamePlayerStatus.Active && gp.ChipStack <= 0))
+			{
+				player.IsSittingOut = true;
+			}
+
+			await context.SaveChangesAsync(cancellationToken);
+
+			// Record hand history
+			await RecordHandHistoryAsync(
+				handHistoryRecorder, game, activePlayers,
+				totalLost, winners, losers, description, now, cancellationToken);
+
+			return ShowdownResult.Success(
+				winners.Select(w => w.PlayerId).ToList(),
+				losers.Select(l => l.PlayerId).ToList(),
+				totalLost,
+				description);
 		}
-
-		await context.SaveChangesAsync(cancellationToken);
-
-		// Record hand history
-		await RecordHandHistoryAsync(
-			handHistoryRecorder, game, activePlayers,
-			totalLost, winners, losers, description, now, cancellationToken);
-
-		return ShowdownResult.Success(
-			winners.Select(w => w.PlayerId).ToList(),
-			losers.Select(l => l.PlayerId).ToList(),
-			totalLost,
-			description);
 	}
 
 	/// <inheritdoc />

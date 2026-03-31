@@ -188,13 +188,29 @@ public class KeepOrTradeCommandHandler(
 		var settlementPayouts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
 		if (ShouldSettleTerminalScrewYourNeighborVariant(game, showdownResult) &&
-		    showdownResult.WinnerPlayerIds.Count == 1 &&
+		    showdownResult.WinnerPlayerIds.Count > 0 &&
 		    showdownResult.TotalPotAwarded > 0)
 		{
-			var winner = game.GamePlayers.FirstOrDefault(gp => gp.PlayerId == showdownResult.WinnerPlayerIds[0]);
-			if (winner is not null)
+			var winnerCount = showdownResult.WinnerPlayerIds.Count;
+			var baseShare = showdownResult.TotalPotAwarded / winnerCount;
+			var remainder = showdownResult.TotalPotAwarded % winnerCount;
+
+			// Order by seat position after dealer for remainder distribution
+			var dealerPosition = game.DealerPosition;
+			var maxSeatPosition = game.GamePlayers.Max(gp => gp.SeatPosition);
+			var totalSeats = maxSeatPosition + 1;
+
+			var winnersInOrder = showdownResult.WinnerPlayerIds
+				.Select(id => game.GamePlayers.FirstOrDefault(gp => gp.PlayerId == id))
+				.Where(gp => gp is not null)
+				.OrderBy(gp => (gp!.SeatPosition - dealerPosition - 1 + totalSeats) % totalSeats)
+				.ToList();
+
+			for (var i = 0; i < winnersInOrder.Count; i++)
 			{
-				settlementPayouts[winner.Player.Name] = showdownResult.TotalPotAwarded + winner.TotalContributedThisHand;
+				var winner = winnersInOrder[i]!;
+				var share = baseShare + (i < remainder ? 1 : 0);
+				settlementPayouts[winner.Player.Name] = share + winner.TotalContributedThisHand;
 			}
 		}
 
@@ -210,8 +226,8 @@ public class KeepOrTradeCommandHandler(
 
 		return game.IsDealersChoice &&
 		       string.Equals(game.CurrentHandGameTypeCode, PokerGameMetadataRegistry.ScrewYourNeighborCode, StringComparison.OrdinalIgnoreCase) &&
-		       showdownResult.WinnerPlayerIds.Count == 1 &&
-		       game.GamePlayers.Count(gp => gp.Status == GamePlayerStatus.Active && gp.ChipStack > 0) <= 1;
+		       showdownResult.WinnerPlayerIds.Count > 0 &&
+		       game.GamePlayers.Count(gp => gp.Status == GamePlayerStatus.Active && gp.ChipStack > 0) <= showdownResult.WinnerPlayerIds.Count;
 	}
 
 	/// <summary>
