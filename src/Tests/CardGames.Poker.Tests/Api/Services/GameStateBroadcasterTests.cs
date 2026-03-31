@@ -1,11 +1,14 @@
 #nullable enable
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using CardGames.Contracts.SignalR;
 using CardGames.Poker.Api.Hubs;
 using CardGames.Poker.Api.Services;
+using CardGames.Poker.Api.Services.Cache;
+using FluentAssertions;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
@@ -79,7 +82,93 @@ public class GameStateBroadcasterTests
             Arg.Any<CancellationToken>());
     }
 
-    private static (GameStateBroadcaster Sut, ITableStateBuilder TableStateBuilder, IActionTimerService ActionTimerService, IClientProxy ClientProxy) CreateSubject(TableStatePublicDto publicState)
+    [Fact]
+    public async Task BroadcastGameStateAsync_CachesStateAfterBroadcast()
+    {
+        var gameId = Guid.NewGuid();
+        var publicState = CreateState(gameId, "FIVECARDDRAW", "DrawPhase", 1);
+        var gameCache = new ActiveGameCache(Substitute.For<ILogger<ActiveGameCache>>());
+        var (sut, _, _, _) = CreateSubject(publicState, gameCache);
+
+        await sut.BroadcastGameStateAsync(gameId);
+
+        gameCache.TryGet(gameId, out var cached).Should().BeTrue();
+        cached!.PublicState.Should().BeSameAs(publicState);
+        cached.HandNumber.Should().Be(publicState.CurrentHandNumber);
+    }
+
+    [Fact]
+    public async Task BroadcastGameStateAsync_CachesPrivateStatesPerPlayer()
+    {
+        var gameId = Guid.NewGuid();
+        var publicState = CreateState(gameId, "FIVECARDDRAW", "DrawPhase", 1);
+        var userId = "player@test.com";
+        var privateState = new PrivateStateDto
+        {
+            GameId = gameId,
+            PlayerName = "Test Player",
+            SeatPosition = 0,
+            Hand = Array.Empty<CardPrivateDto>()
+        };
+
+        var gameCache = new ActiveGameCache(Substitute.For<ILogger<ActiveGameCache>>());
+        var (sut, tableStateBuilder, _, _) = CreateSubject(publicState, gameCache);
+        tableStateBuilder.GetPlayerUserIdsAsync(gameId, Arg.Any<CancellationToken>())
+            .Returns(new[] { userId });
+        tableStateBuilder.BuildPrivateStateAsync(gameId, userId, Arg.Any<CancellationToken>())
+            .Returns(privateState);
+
+        await sut.BroadcastGameStateAsync(gameId);
+
+        gameCache.TryGet(gameId, out var cached).Should().BeTrue();
+        cached!.PrivateStates.Should().ContainKey(userId);
+        cached.PrivateStates[userId].Should().BeSameAs(privateState);
+        cached.PlayerUserIds.Should().Contain(userId);
+    }
+
+    [Fact]
+    public async Task BroadcastGameStateToUserAsync_ServesCachedStateOnReconnect()
+    {
+        var gameId = Guid.NewGuid();
+        var userId = "player@test.com";
+        var publicState = CreateState(gameId, "FIVECARDDRAW", "DrawPhase", 1);
+        var privateState = new PrivateStateDto
+        {
+            GameId = gameId,
+            PlayerName = "Test Player",
+            SeatPosition = 0,
+            Hand = Array.Empty<CardPrivateDto>()
+        };
+
+        var gameCache = new ActiveGameCache(Substitute.For<ILogger<ActiveGameCache>>());
+        gameCache.Set(gameId, new CachedGameSnapshot
+        {
+            PublicState = publicState,
+            PrivateStates = new Dictionary<string, PrivateStateDto> { [userId] = privateState },
+            PlayerUserIds = new[] { userId },
+            CapturedAt = DateTimeOffset.UtcNow,
+            HandNumber = 1
+        });
+
+        var (sut, tableStateBuilder, _, _) = CreateSubject(publicState, gameCache);
+
+        // Set up user-specific client mock
+        var userProxy = Substitute.For<IClientProxy>();
+        userProxy.SendCoreAsync(Arg.Any<string>(), Arg.Any<object?[]>(), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+        var hubContext = GetHubContext(sut);
+        hubContext.Clients.User(userId).Returns(userProxy);
+
+        await sut.BroadcastGameStateToUserAsync(gameId, userId);
+
+        // Should NOT hit the database (TableStateBuilder not called)
+        await tableStateBuilder.DidNotReceive()
+            .BuildPublicStateAsync(gameId, Arg.Any<CancellationToken>());
+        await tableStateBuilder.DidNotReceive()
+            .BuildPrivateStateAsync(gameId, userId, Arg.Any<CancellationToken>());
+    }
+
+    private static (GameStateBroadcaster Sut, ITableStateBuilder TableStateBuilder, IActionTimerService ActionTimerService, IClientProxy ClientProxy) CreateSubject(TableStatePublicDto publicState, IActiveGameCache? gameCache = null)
     {
         var tableStateBuilder = Substitute.For<ITableStateBuilder>();
         tableStateBuilder.BuildPublicStateAsync(publicState.GameId, Arg.Any<CancellationToken>())
@@ -97,6 +186,7 @@ public class GameStateBroadcasterTests
 
         var hubClients = Substitute.For<IHubClients>();
         hubClients.Group(Arg.Any<string>()).Returns(clientProxy);
+        hubClients.User(Arg.Any<string>()).Returns(clientProxy);
 
         var hubContext = Substitute.For<IHubContext<GameHub>>();
         hubContext.Clients.Returns(hubClients);
@@ -106,9 +196,18 @@ public class GameStateBroadcasterTests
             tableStateBuilder,
             actionTimerService,
             Substitute.For<IAutoActionService>(),
+            gameCache ?? Substitute.For<IActiveGameCache>(),
             Substitute.For<ILogger<GameStateBroadcaster>>());
 
         return (sut, tableStateBuilder, actionTimerService, clientProxy);
+    }
+
+    private static IHubContext<GameHub> GetHubContext(GameStateBroadcaster broadcaster)
+    {
+        // Access the hub context field via reflection for test setup
+        var field = typeof(GameStateBroadcaster).GetField("_hubContext",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        return (IHubContext<GameHub>)field!.GetValue(broadcaster)!;
     }
 
     private static TableStatePublicDto CreateState(
