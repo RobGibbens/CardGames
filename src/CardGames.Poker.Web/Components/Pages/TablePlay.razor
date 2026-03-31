@@ -92,9 +92,9 @@
                            type="number"
                            min="@GetJoinBuyInMin()"
                            max="@GetJoinBuyInMax()"
-                           step="@GetJoinBuyInStep()"
+                           step="1"
                            @bind="_joinBuyInAmount"
-                           @bind:after="NormalizeJoinBuyIn"
+                           @bind:after="ClampJoinBuyIn"
                            disabled="@IsScrewYourNeighbor" />
 
                 </div>
@@ -3063,11 +3063,16 @@
         var clamped = Math.Clamp(_joinBuyInAmount, min, max);
         if (step > 1)
         {
-            var snapped = ((clamped - min + (step / 2)) / step) * step + min;
+            var snapped = ((clamped - min) / step) * step + min;
             clamped = Math.Clamp(snapped, min, max);
         }
 
         _joinBuyInAmount = clamped;
+    }
+
+    private void ClampJoinBuyIn()
+    {
+        _joinBuyInAmount = Math.Clamp(_joinBuyInAmount, GetJoinBuyInMin(), GetJoinBuyInMax());
     }
 
     private int GetRecommendedJoinBuyIn()

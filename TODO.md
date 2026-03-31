@@ -1,19 +1,13 @@
 # TODO
 
 - [ ] Animate the chips going to/from the pot
-- [x] Adding chips during DC doesn't work
-- [x] SYN - It took the chips from the wrong player
-- [x] SYN - Double burn doesn't work
 - [ ] Tony was trying to join during DC, it stole the choice from Russ
 - [ ] DC - Eric joined, it glitched
 - [ ] Rabbit hunt
-- [x] Game felt
-- [x] Click Leave Table : {"message":"You are not seated at this table or have already left"}
 
 ## Still to do
 
 - [ ] Lobby - Filter by status
-- [ ] Joining table adds 5001 when setting 5000
 - [ ] Work on isolating games code more
 
 - [ ] Add leagues
@@ -299,3 +293,9 @@
 - [x] K&L - had an ace, but it colored the 5 as low
 - [x] G,B,U - Good should be green
 - [x] Make cards transparent when folded
+- [x] Joining table adds 5001 when setting 5000
+- [x] Adding chips during DC doesn't work
+- [x] SYN - It took the chips from the wrong player
+- [x] SYN - Double burn doesn't work
+- [x] Game felt
+- [x] Click Leave Table : {"message":"You are not seated at this table or have already left"}
