@@ -27,7 +27,6 @@ using CardGames.Poker.Api.Services;
 using CardGames.Poker.Evaluation;
 using Microsoft.AspNetCore.SignalR;
 using CardGames.Poker.Api.Infrastructure.Storage;
-using CardGames.Poker.Api.Services.Cache;
 using System.Security.Claims;
 using CardGames.Poker.Api.Features.Leagues.v1;
 using CardGames.Poker.Api.Features.Leagues.v1.Telemetry;
@@ -107,7 +106,6 @@ public class Program
         builder.Services.AddSingleton<IUserIdProvider, SignalRUserIdProvider>();
         builder.Services.AddSingleton<IActionTimerService, ActionTimerService>();
         builder.Services.AddSingleton<IAutoActionService, AutoActionService>();
-        builder.Services.AddSingleton<IActiveGameCache, ActiveGameCache>();
         builder.Services.AddHostedService<GameJoinRequestExpiryBackgroundService>();
         builder.Services.AddScoped<ITableStateBuilder, TableStateBuilder>();
         builder.Services.AddScoped<IGameStateBroadcaster, GameStateBroadcaster>();
@@ -143,7 +141,8 @@ public class Program
                 ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles,
                 PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
             }))
-            .WithDefaultEntryOptions(options => options.Duration = TimeSpan.FromMinutes(5))
+            //TODO:ROB = .WithDefaultEntryOptions(options => options.Duration = TimeSpan.FromMinutes(5))
+            .WithDefaultEntryOptions(options => options.Duration = TimeSpan.FromMilliseconds(2))
             .WithRegisteredDistributedCache()
             .AsHybridCache();
 

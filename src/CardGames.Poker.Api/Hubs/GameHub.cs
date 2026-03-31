@@ -1,7 +1,6 @@
 using CardGames.Contracts.SignalR;
 using CardGames.Poker.Api.Infrastructure;
 using CardGames.Poker.Api.Services;
-using CardGames.Poker.Api.Services.Cache;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
@@ -10,14 +9,11 @@ namespace CardGames.Poker.Api.Hubs;
 /// <summary>
 /// SignalR hub for real-time poker game state updates.
 /// Clients join per-game groups to receive table state broadcasts.
-/// Uses <see cref="IActiveGameCache"/> to serve cached state on reconnections,
-/// avoiding redundant database queries.
 /// </summary>
 [Authorize(AuthenticationSchemes = HeaderAuthenticationHandler.SchemeName)]
 public sealed class GameHub : Hub
 {
     private readonly ITableStateBuilder _tableStateBuilder;
-    private readonly IActiveGameCache _gameCache;
     private readonly ILogger<GameHub> _logger;
 
     /// <summary>
@@ -28,10 +24,9 @@ public sealed class GameHub : Hub
     /// <summary>
     /// Initializes a new instance of the <see cref="GameHub"/> class.
     /// </summary>
-    public GameHub(ITableStateBuilder tableStateBuilder, IActiveGameCache gameCache, ILogger<GameHub> logger)
+    public GameHub(ITableStateBuilder tableStateBuilder, ILogger<GameHub> logger)
     {
         _tableStateBuilder = tableStateBuilder;
-        _gameCache = gameCache;
         _logger = logger;
     }
 
@@ -109,7 +104,6 @@ public sealed class GameHub : Hub
 
     /// <summary>
     /// Sends the current state snapshot to the calling client.
-    /// Serves from the in-memory cache when available to avoid database queries on reconnection.
     /// </summary>
     private async Task SendStateSnapshotToCallerAsync(Guid gameId, string userId)
     {
@@ -119,29 +113,6 @@ public sealed class GameHub : Hub
                 "Sending state snapshot for game {GameId} to caller user {UserId} (connection {ConnectionId})",
                 gameId, userId, Context.ConnectionId);
 
-            // Resolve the stable user ID for private state lookups
-            var resolvedUserId = Context.UserIdentifier ?? userId;
-
-            // Try to serve from cache first (handles reconnection without DB queries)
-            if (_gameCache.TryGet(gameId, out var cached) && cached is not null)
-            {
-                _logger.LogInformation(
-                    "Serving cached state snapshot for game {GameId} to user {UserId} (cached at {CachedAt})",
-                    gameId, userId, cached.CapturedAt);
-
-                await Clients.Caller.SendAsync("TableStateUpdated", cached.PublicState);
-
-                if (cached.PrivateStates.TryGetValue(resolvedUserId, out var cachedPrivateState))
-                {
-                    await Clients.Caller.SendAsync("PrivateStateUpdated", cachedPrivateState);
-                }
-
-                return;
-            }
-
-            // Cache miss — fall through to database
-            _logger.LogDebug("Cache miss for game {GameId}, building state from database", gameId);
-
             // Build and send public state
             var publicState = await _tableStateBuilder.BuildPublicStateAsync(gameId);
             if (publicState is not null)
@@ -150,7 +121,9 @@ public sealed class GameHub : Hub
             }
 
             // Build and send private state for this user.
-            var privateState = await _tableStateBuilder.BuildPrivateStateAsync(gameId, resolvedUserId);
+            // Prefer SignalR's stable user id, but fall back to email/name matching for legacy connections.
+            var privateStateUserId = Context.UserIdentifier ?? userId;
+            var privateState = await _tableStateBuilder.BuildPrivateStateAsync(gameId, privateStateUserId);
             if (privateState is not null)
             {
                 await Clients.Caller.SendAsync("PrivateStateUpdated", privateState);

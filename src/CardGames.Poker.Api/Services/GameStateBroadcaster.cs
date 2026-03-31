@@ -1,15 +1,12 @@
 using CardGames.Contracts.SignalR;
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Api.Hubs;
-using CardGames.Poker.Api.Services.Cache;
 using Microsoft.AspNetCore.SignalR;
 
 namespace CardGames.Poker.Api.Services;
 
 /// <summary>
 /// Broadcasts game state updates to connected SignalR clients.
-/// Uses <see cref="IActiveGameCache"/> to cache the last-broadcast state per game,
-/// eliminating redundant database queries during broadcast cycles and reconnections.
 /// </summary>
 public sealed class GameStateBroadcaster : IGameStateBroadcaster
 {
@@ -17,7 +14,6 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
     private readonly ITableStateBuilder _tableStateBuilder;
     private readonly IActionTimerService _actionTimerService;
     private readonly IAutoActionService _autoActionService;
-    private readonly IActiveGameCache _gameCache;
     private readonly ILogger<GameStateBroadcaster> _logger;
 
     /// <summary>
@@ -44,14 +40,12 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
         ITableStateBuilder tableStateBuilder,
         IActionTimerService actionTimerService,
         IAutoActionService autoActionService,
-        IActiveGameCache gameCache,
         ILogger<GameStateBroadcaster> logger)
     {
         _hubContext = hubContext;
         _tableStateBuilder = tableStateBuilder;
         _actionTimerService = actionTimerService;
         _autoActionService = autoActionService;
-        _gameCache = gameCache;
         _logger = logger;
     }
 
@@ -85,40 +79,9 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
                 "Broadcasting private state to {PlayerCount} players: [{PlayerIds}]",
                 playerUserIds.Count, string.Join(", ", playerUserIds));
 
-            var privateStates = new Dictionary<string, PrivateStateDto>(StringComparer.OrdinalIgnoreCase);
             foreach (var userId in playerUserIds)
             {
-                var privateState = await _tableStateBuilder.BuildPrivateStateAsync(gameId, userId, cancellationToken);
-                if (privateState is not null)
-                {
-                    privateStates[userId] = privateState;
-
-                    _logger.LogInformation(
-                        "Sending private state to user {UserId} for game {GameId}: {CardCount} cards, seat {SeatPosition}",
-                        userId, gameId, privateState.Hand.Count, privateState.SeatPosition);
-
-                    await _hubContext.Clients.User(userId)
-                        .SendAsync("PrivateStateUpdated", privateState, cancellationToken);
-                }
-                else
-                {
-                    _logger.LogWarning(
-                        "BuildPrivateStateAsync returned null for user {UserId} in game {GameId}",
-                        userId, gameId);
-                }
-            }
-
-            // Cache the broadcast state for reconnections and subsequent reads
-            if (publicState is not null)
-            {
-                _gameCache.Set(gameId, new CachedGameSnapshot
-                {
-                    PublicState = publicState,
-                    PrivateStates = privateStates,
-                    PlayerUserIds = playerUserIds,
-                    CapturedAt = DateTimeOffset.UtcNow,
-                    HandNumber = publicState.CurrentHandNumber
-                });
+                await SendPrivateStateToUserAsync(gameId, userId, cancellationToken);
             }
         }
         catch (Exception ex)
@@ -207,31 +170,6 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 
             try
             {
-            // Try to serve from cache first (reconnecting clients)
-            if (_gameCache.TryGet(gameId, out var cached) && cached is not null)
-            {
-                _logger.LogInformation(
-                    "Serving cached state to reconnecting user {UserId} for game {GameId} (cached at {CachedAt})",
-                    userId, gameId, cached.CapturedAt);
-
-                await _hubContext.Clients.User(userId)
-                    .SendAsync("TableStateUpdated", cached.PublicState, cancellationToken);
-
-                if (cached.PrivateStates.TryGetValue(userId, out var cachedPrivateState))
-                {
-                    await _hubContext.Clients.User(userId)
-                        .SendAsync("PrivateStateUpdated", cachedPrivateState, cancellationToken);
-                }
-
-                _logger.LogDebug("Sent cached state to user {UserId} for game {GameId}", userId, gameId);
-                return;
-            }
-
-            // Cache miss — fall through to database
-            _logger.LogInformation(
-                "Cache miss for game {GameId}, building state from database for user {UserId}",
-                gameId, userId);
-
             // Send public state to the user
             var publicState = await _tableStateBuilder.BuildPublicStateAsync(gameId, cancellationToken);
             if (publicState is not null)
