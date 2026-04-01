@@ -21,6 +21,7 @@ using System.Threading.RateLimiting;
 using CardGames.Poker.Api.Infrastructure.Caching;
 using CardGames.Poker.Api.Infrastructure.Diagnostics;
 using CardGames.Poker.Api.Infrastructure.PipelineBehaviors;
+using CardGames.Poker.Api.Services.Cache;
 using MediatR;
 using ZiggyCreatures.Caching.Fusion;
 using ZiggyCreatures.Caching.Fusion.Serialization.SystemTextJson;
@@ -108,6 +109,13 @@ public class Program
         builder.Services.AddSingleton<IUserIdProvider, SignalRUserIdProvider>();
         builder.Services.AddSingleton<IActionTimerService, ActionTimerService>();
         builder.Services.AddSingleton<IAutoActionService, AutoActionService>();
+
+        // Active game broadcast snapshot cache (Phase 1)
+        builder.Services.Configure<ActiveGameCacheOptions>(
+            builder.Configuration.GetSection(ActiveGameCacheOptions.SectionName));
+        builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
+        builder.Services.AddSingleton<IActiveGameCache, ActiveGameCache>();
+        builder.Services.AddHostedService<ActiveGameCacheEvictionService>();
         builder.Services.AddHostedService<GameJoinRequestExpiryBackgroundService>();
         builder.Services.AddScoped<ITableStateBuilder, TableStateBuilder>();
         builder.Services.AddScoped<IGameStateBroadcaster, GameStateBroadcaster>();

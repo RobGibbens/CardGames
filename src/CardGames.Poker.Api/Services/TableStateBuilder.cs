@@ -106,6 +106,15 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				.AsNoTracking()
 				.ToListAsync(cancellationToken);
 
+		return await BuildPublicStateCoreAsync(game, gamePlayers, cancellationToken);
+	}
+
+	/// <summary>
+	/// Core implementation for building public state from pre-loaded game data.
+	/// </summary>
+	private async Task<TableStatePublicDto> BuildPublicStateCoreAsync(
+		Game game, List<GamePlayer> gamePlayers, CancellationToken cancellationToken)
+	{
 			// DEBUG: Log card data before ordering for Seven Card Stud
 			var isSevenCardStudGame = IsStudGame(game.GameType?.Code);
 			if (isSevenCardStudGame)
@@ -177,7 +186,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		}
 
 		// Get hand history for the dashboard (limited to recent hands)
-		var handHistory = await GetHandHistoryEntriesAsync(gameId, currentUserPlayerId: null, take: 25, cancellationToken);
+		var handHistory = await GetHandHistoryEntriesAsync(game.Id, currentUserPlayerId: null, take: 25, cancellationToken);
 
 		// Get game rules for phase metadata
 		GameRules? rules = null;
@@ -203,7 +212,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 		// Build community cards for variants that use table cards (e.g., Good Bad Ugly)
 		var communityCards = await _context.GameCards
-			.Where(c => c.GameId == gameId
+			.Where(c => c.GameId == game.Id
 				&& !c.IsDiscarded
 				&& c.HandNumber == game.CurrentHandNumber
 				&& c.Location == CardLocation.Community)
@@ -220,7 +229,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			.ToListAsync(cancellationToken);
 
 		// Get action timer state
-		var actionTimerState = _actionTimerService.GetTimerState(gameId);
+		var actionTimerState = _actionTimerService.GetTimerState(game.Id);
 		var actionTimer = actionTimerState is not null
 			? new ActionTimerStateDto
 			{
@@ -373,8 +382,20 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			return null;
 		}
 
+		var cashierBalance = await _walletService.GetBalanceAsync(gamePlayer.PlayerId, cancellationToken);
+		return await BuildPrivateStateCoreAsync(game, gamePlayer, cashierBalance, cancellationToken);
+	}
+
+	/// <summary>
+	/// Core implementation for building private state from pre-loaded game data.
+	/// Accepts the wallet balance instead of querying <see cref="IPlayerChipWalletService"/>
+	/// so that <see cref="BuildFullStateAsync"/> can batch-load balances.
+	/// </summary>
+	private async Task<PrivateStateDto?> BuildPrivateStateCoreAsync(
+		Game game, GamePlayer gamePlayer, int cashierBalance, CancellationToken cancellationToken)
+	{
 		_logger.LogInformation(
-			"BuildPrivateStateAsync: Found player {PlayerName} at seat {SeatPosition} with {CardCount} cards (hand #{HandNumber})",
+			"BuildPrivateStateCoreAsync: Building state for player {PlayerName} at seat {SeatPosition} with {CardCount} cards (hand #{HandNumber})",
 			gamePlayer.Player.Name, gamePlayer.SeatPosition,
 			gamePlayer.Cards.Count(c => !c.IsDiscarded && c.HandNumber == game.CurrentHandNumber),
 			game.CurrentHandNumber);
@@ -400,7 +421,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				.ToList();
 
 			var communityCards = await _context.GameCards
-				.Where(c => c.GameId == gameId
+				.Where(c => c.GameId == game.Id
 						&& !c.IsDiscarded
 						&& c.HandNumber == game.CurrentHandNumber
 						&& c.Location == CardLocation.Community
@@ -458,7 +479,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 					{
 						int? wildRank = null;
 						var goodCard = await _context.GameCards
-							.Where(c => c.GameId == gameId
+							.Where(c => c.GameId == game.Id
 								&& c.HandNumber == game.CurrentHandNumber
 								&& c.Location == CardLocation.Community
 								&& c.DealtAtPhase == "TheGood"
@@ -483,7 +504,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				else if (IsGameType(game.GameType?.Code, PokerGameMetadataRegistry.KlondikeCode) && playerCards.Count == 2)
 				{
 					var klondikeCardEntity = await _context.GameCards
-						.Where(c => c.GameId == gameId
+						.Where(c => c.GameId == game.Id
 							&& c.HandNumber == game.CurrentHandNumber
 							&& c.DealtAtPhase == "KlondikeCard")
 						.AsNoTracking()
@@ -538,12 +559,12 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		}
 		catch (Exception ex)
 		{
-			_logger.LogDebug(ex, "Failed to compute hand evaluation description for game {GameId}, player {PlayerName}", gameId, gamePlayer.Player.Name);
+			_logger.LogDebug(ex, "Failed to compute hand evaluation description for game {GameId}, player {PlayerName}", game.Id, gamePlayer.Player.Name);
 		}
 
 		var isMyTurn = game.CurrentPlayerIndex == gamePlayer.SeatPosition;
 		var availableActions = isMyTurn
-			? await BuildAvailableActionsAsync(gameId, game, gamePlayer, cancellationToken)
+			? await BuildAvailableActionsAsync(game.Id, game, gamePlayer, cancellationToken)
 			: null;
 
 		// Get game rules for metadata
@@ -559,15 +580,14 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		var tollboothOffer = await BuildTollboothOfferPrivateDto(game, gamePlayer, cancellationToken);
 
 		// Get hand history personalized for this player
-		var handHistory = await GetHandHistoryEntriesAsync(gameId, gamePlayer.PlayerId, take: 25, cancellationToken);
+		var handHistory = await GetHandHistoryEntriesAsync(game.Id, gamePlayer.PlayerId, take: 25, cancellationToken);
 
-		// Build chip history from hand history, including cashier balance
-		var cashierBalance = await _walletService.GetBalanceAsync(gamePlayer.PlayerId, cancellationToken);
+		// Build chip history from hand history, including cashier balance (passed in for batch support)
 		var chipHistory = BuildChipHistory(gamePlayer, handHistory, cashierBalance);
 
 		return new PrivateStateDto
 		{
-			GameId = gameId,
+			GameId = game.Id,
 			PlayerName = gamePlayer.Player.Name,
 			SeatPosition = gamePlayer.SeatPosition,
 			Hand = hand,
@@ -626,6 +646,116 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			string.Join(", ", players.Select(p => $"Email={p.Email ?? "(null)"}, Name={p.Name ?? "(null)"}, ExternalId={p.ExternalId ?? "(null)"}")));
 
 		return userIds;
+	}
+
+	/// <summary>
+	/// Resolves SignalR user identifiers from pre-loaded game players without querying the database.
+	/// Uses the same identity resolution logic as <see cref="GetPlayerUserIdsAsync"/>.
+	/// </summary>
+	private static IReadOnlyList<string> ResolvePlayerUserIds(IEnumerable<GamePlayer> gamePlayers)
+	{
+		return gamePlayers
+			.Select(gp =>
+			{
+				var email = gp.Player.Email;
+				var name = gp.Player.Name;
+				var isMalformedEmail = !string.IsNullOrWhiteSpace(email) && email.Count(c => c == '@') > 1;
+				if (isMalformedEmail && !string.IsNullOrWhiteSpace(name))
+				{
+					return name;
+				}
+				return email ?? name ?? gp.Player.ExternalId;
+			})
+			.Where(id => !string.IsNullOrWhiteSpace(id))
+			.Cast<string>()
+			.Distinct(StringComparer.OrdinalIgnoreCase)
+			.ToList();
+	}
+
+	/// <summary>
+	/// Finds the <see cref="GamePlayer"/> whose associated <see cref="Player"/> matches the given
+	/// SignalR user identifier (email, name, or external ID — case-insensitive).
+	/// </summary>
+	private static GamePlayer? FindGamePlayerByUserId(IEnumerable<GamePlayer> gamePlayers, string userId)
+	{
+		return gamePlayers.FirstOrDefault(gp =>
+			string.Equals(gp.Player.Email, userId, StringComparison.OrdinalIgnoreCase) ||
+			string.Equals(gp.Player.Name, userId, StringComparison.OrdinalIgnoreCase) ||
+			string.Equals(gp.Player.ExternalId, userId, StringComparison.OrdinalIgnoreCase));
+	}
+
+	/// <inheritdoc />
+	public async Task<BroadcastStateBuildResult?> BuildFullStateAsync(Guid gameId, CancellationToken cancellationToken = default)
+	{
+		// ── 1. Single aggregate query ──────────────────────────────────────
+		// Load Game + GameType + Pots + GamePlayers + Player + Cards in one
+		// round-trip using AsSplitQuery to avoid Cartesian explosion.
+		var game = await _context.Games
+			.Include(g => g.GameType)
+			.Include(g => g.Pots)
+			.Include(g => g.GamePlayers.Where(gp => gp.Status != Entities.GamePlayerStatus.Left))
+				.ThenInclude(gp => gp.Player)
+			.Include(g => g.GamePlayers.Where(gp => gp.Status != Entities.GamePlayerStatus.Left))
+				.ThenInclude(gp => gp.Cards)
+			.AsSplitQuery()
+			.AsNoTracking()
+			.FirstOrDefaultAsync(g => g.Id == gameId, cancellationToken);
+
+		if (game is null)
+		{
+			_logger.LogWarning("BuildFullStateAsync: Game {GameId} not found", gameId);
+			return null;
+		}
+
+		var gamePlayers = game.GamePlayers
+			.Where(gp => gp.Status != Entities.GamePlayerStatus.Left)
+			.OrderBy(gp => gp.SeatPosition)
+			.ToList();
+
+		// ── 2. Batch wallet balances ───────────────────────────────────────
+		var playerIds = gamePlayers.Select(gp => gp.PlayerId).Distinct().ToArray();
+		var walletBalances = await _context.PlayerChipAccounts
+			.Where(a => playerIds.Contains(a.PlayerId))
+			.AsNoTracking()
+			.ToDictionaryAsync(a => a.PlayerId, a => a.Balance, cancellationToken);
+
+		// ── 3. Build public state ──────────────────────────────────────────
+		var publicState = await BuildPublicStateCoreAsync(game, gamePlayers, cancellationToken);
+
+		// ── 4. Resolve user IDs ────────────────────────────────────────────
+		var playerUserIds = ResolvePlayerUserIds(gamePlayers);
+
+		// ── 5. Build all private states ────────────────────────────────────
+		var privateStates = new Dictionary<string, PrivateStateDto>(StringComparer.OrdinalIgnoreCase);
+		foreach (var userId in playerUserIds)
+		{
+			var gamePlayer = FindGamePlayerByUserId(gamePlayers, userId);
+			if (gamePlayer is null)
+			{
+				_logger.LogWarning(
+					"BuildFullStateAsync: No player found for resolved userId {UserId} in game {GameId}",
+					userId, gameId);
+				continue;
+			}
+
+			var balance = walletBalances.GetValueOrDefault(gamePlayer.PlayerId, 0);
+			var privateState = await BuildPrivateStateCoreAsync(game, gamePlayer, balance, cancellationToken);
+			if (privateState is not null)
+			{
+				privateStates[userId] = privateState;
+			}
+		}
+
+		// ── 6. Compute cache version from SQL rowversion ───────────────────
+		var versionNumber = BitConverter.ToUInt64(game.RowVersion.Reverse().ToArray(), 0);
+
+		return new BroadcastStateBuildResult(
+			publicState,
+			privateStates,
+			playerUserIds,
+			versionNumber,
+			game.CurrentHandNumber,
+			game.CurrentPhase);
 	}
 
 	private static SeatPublicDto BuildSeatPublicDto(

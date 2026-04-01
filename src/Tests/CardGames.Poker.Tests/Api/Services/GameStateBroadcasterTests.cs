@@ -1,13 +1,16 @@
 #nullable enable
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using CardGames.Contracts.SignalR;
 using CardGames.Poker.Api.Hubs;
 using CardGames.Poker.Api.Services;
+using CardGames.Poker.Api.Services.Cache;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 using Xunit;
 
@@ -27,7 +30,7 @@ public class GameStateBroadcasterTests
         actionTimerService.Received(1)
             .StartTimer(gameId, 3, 30, Arg.Any<Func<Guid, int, Task>?>());
         await tableStateBuilder.Received(1)
-            .BuildPublicStateAsync(gameId, Arg.Any<CancellationToken>());
+            .BuildFullStateAsync(gameId, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -82,10 +85,14 @@ public class GameStateBroadcasterTests
     private static (GameStateBroadcaster Sut, ITableStateBuilder TableStateBuilder, IActionTimerService ActionTimerService, IClientProxy ClientProxy) CreateSubject(TableStatePublicDto publicState)
     {
         var tableStateBuilder = Substitute.For<ITableStateBuilder>();
-        tableStateBuilder.BuildPublicStateAsync(publicState.GameId, Arg.Any<CancellationToken>())
-            .Returns(publicState);
-        tableStateBuilder.GetPlayerUserIdsAsync(publicState.GameId, Arg.Any<CancellationToken>())
-            .Returns(Array.Empty<string>());
+        tableStateBuilder.BuildFullStateAsync(publicState.GameId, Arg.Any<CancellationToken>())
+            .Returns(new BroadcastStateBuildResult(
+                publicState,
+                new Dictionary<string, PrivateStateDto>(StringComparer.OrdinalIgnoreCase),
+                Array.Empty<string>(),
+                VersionNumber: 1,
+                HandNumber: 1,
+                Phase: publicState.CurrentPhase));
 
         var actionTimerService = Substitute.For<IActionTimerService>();
         actionTimerService.GetTimerState(publicState.GameId).Returns((ActionTimerState?)null);
@@ -106,6 +113,9 @@ public class GameStateBroadcasterTests
             tableStateBuilder,
             actionTimerService,
             Substitute.For<IAutoActionService>(),
+            Substitute.For<IActiveGameCache>(),
+            TimeProvider.System,
+            Options.Create(new ActiveGameCacheOptions { Enabled = false }),
             Substitute.For<ILogger<GameStateBroadcaster>>());
 
         return (sut, tableStateBuilder, actionTimerService, clientProxy);

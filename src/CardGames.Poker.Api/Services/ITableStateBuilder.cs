@@ -34,4 +34,17 @@ public interface ITableStateBuilder
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>List of user identifiers (typically emails) for players in the game.</returns>
     Task<IReadOnlyList<string>> GetPlayerUserIdsAsync(Guid gameId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Builds the complete broadcast state (public + all private states) for a game in a single
+    /// batch operation. Replaces the N+1 pattern of calling <see cref="BuildPublicStateAsync"/>,
+    /// <see cref="GetPlayerUserIdsAsync"/>, and <see cref="BuildPrivateStateAsync"/> per player.
+    /// </summary>
+    /// <param name="gameId">The unique identifier of the game.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>
+    /// The complete broadcast result containing public state, per-player private states,
+    /// player user IDs, and snapshot metadata; or <c>null</c> if the game is not found.
+    /// </returns>
+    Task<BroadcastStateBuildResult?> BuildFullStateAsync(Guid gameId, CancellationToken cancellationToken = default);
 }

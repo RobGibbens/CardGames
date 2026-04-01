@@ -1,7 +1,10 @@
+using System.Collections.Immutable;
 using CardGames.Contracts.SignalR;
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Api.Hubs;
+using CardGames.Poker.Api.Services.Cache;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Options;
 
 namespace CardGames.Poker.Api.Services;
 
@@ -14,6 +17,9 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
     private readonly ITableStateBuilder _tableStateBuilder;
     private readonly IActionTimerService _actionTimerService;
     private readonly IAutoActionService _autoActionService;
+    private readonly IActiveGameCache _activeGameCache;
+    private readonly TimeProvider _timeProvider;
+    private readonly IOptions<ActiveGameCacheOptions> _cacheOptions;
     private readonly ILogger<GameStateBroadcaster> _logger;
 
     /// <summary>
@@ -40,12 +46,18 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
         ITableStateBuilder tableStateBuilder,
         IActionTimerService actionTimerService,
         IAutoActionService autoActionService,
+        IActiveGameCache activeGameCache,
+        TimeProvider timeProvider,
+        IOptions<ActiveGameCacheOptions> cacheOptions,
         ILogger<GameStateBroadcaster> logger)
     {
         _hubContext = hubContext;
         _tableStateBuilder = tableStateBuilder;
         _actionTimerService = actionTimerService;
         _autoActionService = autoActionService;
+        _activeGameCache = activeGameCache;
+        _timeProvider = timeProvider;
+        _cacheOptions = cacheOptions;
         _logger = logger;
     }
 
@@ -56,33 +68,42 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 
         try
         {
-            // Build and send public state to the entire group
-            var publicState = await _tableStateBuilder.BuildPublicStateAsync(gameId, cancellationToken);
-            if (publicState is not null)
+            // Build complete broadcast state in a single batch operation (Phase 2).
+            var result = await _tableStateBuilder.BuildFullStateAsync(gameId, cancellationToken);
+            if (result is null)
             {
-                _logger.LogInformation(
-                    "Broadcasting public state for game {GameId}, phase: {Phase}, seats: {SeatCount}",
-                    gameId, publicState.CurrentPhase, publicState.Seats.Count);
-
-                await _hubContext.Clients.Group(groupName)
-                    .SendAsync("TableStateUpdated", publicState, cancellationToken);
-
-                _logger.LogDebug("Broadcast public state to group {GroupName}", groupName);
-
-                // Manage action timer based on current phase and actor
-                ManageActionTimer(gameId, publicState);
+                _activeGameCache.Evict(gameId);
+                return;
             }
 
-            // Get all player user IDs and send private state to each
-            var playerUserIds = await _tableStateBuilder.GetPlayerUserIdsAsync(gameId, cancellationToken);
+            var publicState = result.PublicState;
+
+            _logger.LogInformation(
+                "Broadcasting public state for game {GameId}, phase: {Phase}, seats: {SeatCount}",
+                gameId, publicState.CurrentPhase, publicState.Seats.Count);
+
+            await _hubContext.Clients.Group(groupName)
+                .SendAsync("TableStateUpdated", publicState, cancellationToken);
+
+            _logger.LogDebug("Broadcast public state to group {GroupName}", groupName);
+
+            // Manage action timer based on current phase and actor
+            ManageActionTimer(gameId, publicState);
+
             _logger.LogInformation(
                 "Broadcasting private state to {PlayerCount} players: [{PlayerIds}]",
-                playerUserIds.Count, string.Join(", ", playerUserIds));
+                result.PlayerUserIds.Count, string.Join(", ", result.PlayerUserIds));
 
-            foreach (var userId in playerUserIds)
+            foreach (var (userId, privateState) in result.PrivateStatesByUserId)
             {
-                await SendPrivateStateToUserAsync(gameId, userId, cancellationToken);
+                await _hubContext.Clients.User(userId)
+                    .SendAsync("PrivateStateUpdated", privateState, cancellationToken);
+
+                _logger.LogDebug("Sent private state to user {UserId} for game {GameId}", userId, gameId);
             }
+
+            // Store snapshot in cache — version metadata already included in result
+            StoreSnapshot(gameId, result);
         }
         catch (Exception ex)
         {
@@ -166,11 +187,41 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
         /// <inheritdoc />
         public async Task BroadcastGameStateToUserAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
         {
-            var groupName = GetGroupName(gameId);
-
             try
             {
-            // Send public state to the user
+            // Try serving from cache first
+            if (_cacheOptions.Value.ServeReconnectsFromCache
+                && _activeGameCache.TryGet(gameId, out var snapshot))
+            {
+                _logger.LogDebug("Serving cached state to user {UserId} for game {GameId}", userId, gameId);
+
+                await _hubContext.Clients.User(userId)
+                    .SendAsync("TableStateUpdated", snapshot.PublicState, cancellationToken);
+
+                if (snapshot.PrivateStatesByUserId.TryGetValue(userId, out var cachedPrivate))
+                {
+                    await _hubContext.Clients.User(userId)
+                        .SendAsync("PrivateStateUpdated", cachedPrivate, cancellationToken);
+                }
+                else
+                {
+                    // Private state missing from cache — fall back to DB for this user only
+                    _logger.LogDebug(
+                        "Private state not cached for user {UserId} in game {GameId}; falling back to DB",
+                        userId, gameId);
+                    var privateState = await _tableStateBuilder.BuildPrivateStateAsync(gameId, userId, cancellationToken);
+                    if (privateState is not null)
+                    {
+                        await _hubContext.Clients.User(userId)
+                            .SendAsync("PrivateStateUpdated", privateState, cancellationToken);
+                        _activeGameCache.UpsertPrivateState(gameId, userId, privateState, snapshot.VersionNumber);
+                    }
+                }
+
+                return;
+            }
+
+            // Cache miss — fall back to full DB build
             var publicState = await _tableStateBuilder.BuildPublicStateAsync(gameId, cancellationToken);
             if (publicState is not null)
             {
@@ -178,7 +229,6 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
                     .SendAsync("TableStateUpdated", publicState, cancellationToken);
             }
 
-            // Send private state to the user
             await SendPrivateStateToUserAsync(gameId, userId, cancellationToken);
 
             _logger.LogDebug("Broadcast state to user {UserId} for game {GameId}", userId, gameId);
@@ -365,6 +415,37 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
                                 // Don't throw - the action was successful, just the notification failed
                             }
                         }
+
+    /// <summary>
+    /// <summary>
+    /// Stores a broadcast result snapshot without additional DB queries.
+    /// Version metadata is already included in the <see cref="BroadcastStateBuildResult"/>.
+    /// </summary>
+    private void StoreSnapshot(Guid gameId, BroadcastStateBuildResult result)
+    {
+        if (!_cacheOptions.Value.Enabled)
+            return;
+
+        try
+        {
+            _activeGameCache.Set(new CachedGameSnapshot
+            {
+                GameId = gameId,
+                VersionNumber = result.VersionNumber,
+                PublicState = result.PublicState,
+                PrivateStatesByUserId = result.PrivateStatesByUserId.ToImmutableDictionary(StringComparer.OrdinalIgnoreCase),
+                PlayerUserIds = [.. result.PlayerUserIds],
+                HandNumber = result.HandNumber,
+                Phase = result.Phase,
+                BuiltAtUtc = _timeProvider.GetUtcNow()
+            });
+        }
+        catch (Exception ex)
+        {
+            // Cache write failure must not break the broadcast
+            _logger.LogWarning(ex, "Failed to store snapshot in active game cache for game {GameId}", gameId);
+        }
+    }
 
                         private static string GetGroupName(Guid gameId) => $"{GameGroupPrefix}{gameId}";
                     }
