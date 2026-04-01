@@ -1,5 +1,6 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Infrastructure.Caching;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -60,7 +61,8 @@ public class GetCurrentPlayerTurnQueryHandler(CardsDbContext context, HybridCach
 				return new GetCurrentPlayerTurnResponse(playerResponse, availableActions, handOdds);
 			},
 			cancellationToken: cancellationToken,
-			tags: [Feature.Version, Feature.Name, nameof(GetCurrentPlayerTurnQuery)]
+			options: new HybridCacheEntryOptions { Expiration = TimeSpan.FromSeconds(3) },
+			tags: [GameCacheKeys.CurrentPlayerTurnTag(request.GameId)]
 		);
 	}
 

@@ -1,5 +1,6 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Games;
+using CardGames.Poker.Api.Infrastructure.Caching;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -38,6 +39,11 @@ public class GetGameQueryHandler(CardsDbContext context, HybridCache hybridCache
 			maxPlayers = metadata.MaximumNumberOfPlayers;
 		}
 		
+		var entryOptions = new HybridCacheEntryOptions
+		{
+			Expiration = TimeSpan.FromSeconds(3)
+		};
+
 		return await hybridCache.GetOrCreateAsync(
 			$"{Feature.Version}-{request.CacheKey}",
 			async _ =>
@@ -57,7 +63,8 @@ public class GetGameQueryHandler(CardsDbContext context, HybridCache hybridCache
 				return response;
 			},
 			cancellationToken: cancellationToken,
-			tags: [Feature.Version, Feature.Name, nameof(GetGameQuery)]
+			options: entryOptions,
+			tags: [GameCacheKeys.GameTag(request.GameId), GameCacheKeys.ActiveGamesTag]
 		);
 	}
 }

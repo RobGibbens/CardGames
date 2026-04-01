@@ -1,4 +1,5 @@
 using CardGames.Poker.Api.Data;
+using CardGames.Poker.Api.Infrastructure.Caching;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -37,7 +38,8 @@ public class GetCurrentDrawPlayerQueryHandler(CardsDbContext context, HybridCach
 				return gamePlayer?.ToResponse();
 			},
 			cancellationToken: cancellationToken,
-			tags: [Feature.Version, Feature.Name, nameof(GetCurrentDrawPlayerQuery)]
+			options: new HybridCacheEntryOptions { Expiration = TimeSpan.FromSeconds(3) },
+			tags: [GameCacheKeys.DrawPlayerTag(request.GameId)]
 		);
 	}
 }

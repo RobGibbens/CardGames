@@ -1,5 +1,6 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Features.Profile;
+using CardGames.Poker.Api.Infrastructure.Caching;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -37,7 +38,8 @@ public class GetGamePlayersQueryHandler(CardsDbContext context, HybridCache hybr
                                        .AsNoTracking()
 								.ToListAsync(cancellationToken),
                        cancellationToken: cancellationToken,
-                       tags: [Feature.Version, Feature.Name, nameof(GetGamePlayersQuery)]
+				   options: new HybridCacheEntryOptions { Expiration = TimeSpan.FromSeconds(3) },
+                       tags: [GameCacheKeys.GamePlayersTag(request.GameId)]
                );
 
 		var usersByEmail = await context.Users

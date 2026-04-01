@@ -1,5 +1,6 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Games;
+using CardGames.Poker.Api.Infrastructure.Caching;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -13,6 +14,11 @@ public class GetActiveGamesQueryHandler(CardsDbContext context, HybridCache hybr
 
 	public async Task<List<GetActiveGamesResponse>> Handle(GetActiveGamesQuery request, CancellationToken cancellationToken)
 	{
+		var entryOptions = new HybridCacheEntryOptions
+		{
+			Expiration = TimeSpan.FromSeconds(3)
+		};
+
 		return await hybridCache.GetOrCreateAsync(
 			$"{Feature.Version}-{request.CacheKey}",
 			async _ =>
@@ -54,7 +60,8 @@ public class GetActiveGamesQueryHandler(CardsDbContext context, HybridCache hybr
 					.ToList();
 			},
 			cancellationToken: cancellationToken,
-			tags: [Feature.Version, Feature.Name, nameof(GetActiveGamesQuery)]
+			options: entryOptions,
+			tags: [GameCacheKeys.ActiveGamesTag]
 		);
 	}
 }

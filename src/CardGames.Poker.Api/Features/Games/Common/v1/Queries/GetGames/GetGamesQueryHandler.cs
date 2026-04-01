@@ -1,4 +1,5 @@
 ﻿﻿using CardGames.Poker.Api.Data;
+using CardGames.Poker.Api.Infrastructure.Caching;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -20,7 +21,7 @@ public class GetGamesQueryHandler(CardsDbContext context, HybridCache hybridCach
 					.ProjectToResponse()
 					.ToListAsync(cancellationToken),
 			cancellationToken: cancellationToken,
-			tags: [Feature.Version, Feature.Name, nameof(GetGamesQuery)]
+			tags: [GameCacheKeys.ActiveGamesTag]
 		);
 	}
 }

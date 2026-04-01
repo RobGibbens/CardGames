@@ -18,6 +18,8 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Scalar.AspNetCore;
 using System.Threading.RateLimiting;
+using CardGames.Poker.Api.Infrastructure.Caching;
+using CardGames.Poker.Api.Infrastructure.Diagnostics;
 using CardGames.Poker.Api.Infrastructure.PipelineBehaviors;
 using MediatR;
 using ZiggyCreatures.Caching.Fusion;
@@ -125,7 +127,17 @@ public class Program
 
         builder.AddRedisDistributedCache("cache");
 
+        builder.Services.AddSingleton<QueryCountContext>();
+        builder.Services.AddSingleton<QueryCountingDbCommandInterceptor>();
+        builder.Services.AddScoped<IGameStateQueryCacheInvalidator, GameStateQueryCacheInvalidator>();
+
         builder.AddSqlServerDbContext<CardsDbContext>("cardsdb");
+
+        // Post-configure DbContext to add scoped query-counting interceptor
+        builder.Services.ConfigureDbContext<CardsDbContext>((sp, options) =>
+        {
+            options.AddInterceptors(sp.GetRequiredService<QueryCountingDbCommandInterceptor>());
+        });
 
         builder.Services.AddIdentityCore<ApplicationUser>(options =>
             {
@@ -141,8 +153,7 @@ public class Program
                 ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles,
                 PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
             }))
-            //TODO:ROB = .WithDefaultEntryOptions(options => options.Duration = TimeSpan.FromMinutes(5))
-            .WithDefaultEntryOptions(options => options.Duration = TimeSpan.FromMilliseconds(2))
+            .WithDefaultEntryOptions(options => options.Duration = TimeSpan.FromMinutes(5))
             .WithRegisteredDistributedCache()
             .AsHybridCache();
 
@@ -346,6 +357,7 @@ public class Program
         );
         app.UseMiddleware<ExceptionHandlingMiddleware>();
         app.UseMiddleware<TrimStringsMiddleware>();
+        app.UseMiddleware<QueryCountLoggingMiddleware>();
         app.UseHttpsRedirection();
         app.UseHealthChecks("/health");
 

@@ -1,4 +1,5 @@
 using CardGames.Poker.Api.Infrastructure;
+using CardGames.Poker.Api.Infrastructure.Caching;
 using CardGames.Poker.Api.Services;
 using MediatR;
 
@@ -14,6 +15,7 @@ public sealed class GameStateBroadcastingBehavior<TRequest, TResponse> : IPipeli
     where TRequest : IRequest<TResponse>
 {
     private readonly IGameStateBroadcaster _broadcaster;
+    private readonly IGameStateQueryCacheInvalidator _gameStateQueryCacheInvalidator;
     private readonly ILogger<GameStateBroadcastingBehavior<TRequest, TResponse>> _logger;
 
     /// <summary>
@@ -21,9 +23,11 @@ public sealed class GameStateBroadcastingBehavior<TRequest, TResponse> : IPipeli
     /// </summary>
     public GameStateBroadcastingBehavior(
         IGameStateBroadcaster broadcaster,
+        IGameStateQueryCacheInvalidator gameStateQueryCacheInvalidator,
         ILogger<GameStateBroadcastingBehavior<TRequest, TResponse>> logger)
     {
         _broadcaster = broadcaster;
+        _gameStateQueryCacheInvalidator = gameStateQueryCacheInvalidator;
         _logger = logger;
     }
 
@@ -64,6 +68,9 @@ public sealed class GameStateBroadcastingBehavior<TRequest, TResponse> : IPipeli
             _logger.LogDebug(
                 "Broadcasting game state for game {GameId} after {CommandType}",
                 gameCommand.GameId, typeof(TRequest).Name);
+
+            // Invalidate query cache before broadcasting so the broadcaster reads fresh state
+            await _gameStateQueryCacheInvalidator.InvalidateAfterMutationAsync(gameCommand.GameId, cancellationToken);
 
             var actionResult = ExtractPlayerActionResult(response);
             if (actionResult is not null)

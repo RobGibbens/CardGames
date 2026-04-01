@@ -1,9 +1,9 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Infrastructure;
+using CardGames.Poker.Api.Infrastructure.Caching;
 using CardGames.Poker.Api.Services;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Hybrid;
 using OneOf;
 
 namespace CardGames.Poker.Api.Features.Games.Common.v1.Commands.DeleteGame;
@@ -15,7 +15,7 @@ public sealed class DeleteGameCommandHandler(
 	CardsDbContext context,
 	ICurrentUserService currentUserService,
 	ILobbyBroadcaster lobbyBroadcaster,
-	HybridCache hybridCache,
+	IGameStateQueryCacheInvalidator gameStateQueryCacheInvalidator,
 	ILogger<DeleteGameCommandHandler> logger)
 	: IRequestHandler<DeleteGameCommand, OneOf<DeleteGameSuccessful, DeleteGameError>>
 {
@@ -85,7 +85,7 @@ public sealed class DeleteGameCommandHandler(
 		await lobbyBroadcaster.BroadcastGameDeletedAsync(command.GameId, cancellationToken);
 
 		// 6. Invalidate cache
-		await hybridCache.RemoveByTagAsync(nameof(Features.Games.ActiveGames), cancellationToken);
+		await gameStateQueryCacheInvalidator.InvalidateAfterMutationAsync(command.GameId, cancellationToken);
 
 		return new DeleteGameSuccessful
 		{

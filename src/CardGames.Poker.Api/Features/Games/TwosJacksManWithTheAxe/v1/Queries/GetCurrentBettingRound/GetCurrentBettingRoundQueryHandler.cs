@@ -1,4 +1,5 @@
 using CardGames.Poker.Api.Data;
+using CardGames.Poker.Api.Infrastructure.Caching;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -26,7 +27,8 @@ public class GetCurrentBettingRoundQueryHandler(CardsDbContext context, HybridCa
 					.ProjectToResponse()
 					.FirstOrDefaultAsync(cancellationToken),
 			cancellationToken: cancellationToken,
-			tags: [Feature.Version, Feature.Name, nameof(GetCurrentBettingRoundQuery)]
+			options: new HybridCacheEntryOptions { Expiration = TimeSpan.FromSeconds(3) },
+			tags: [GameCacheKeys.BettingRoundTag(request.GameId)]
 		);
 	}
 }

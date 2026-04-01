@@ -1,6 +1,7 @@
 using System.Reflection;
 using System;
 using CardGames.Poker.Games;
+using CardGames.Poker.Api.Infrastructure.Caching;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
 
@@ -43,7 +44,7 @@ public class GetAvailablePokerGamesQueryHandler(
 			},
 			cancellationToken: cancellationToken,
 			options: entryOptions,
-			tags: [Feature.Version, Feature.Name, nameof(GetAvailablePokerGamesQuery)]
+			tags: [GameCacheKeys.AvailableGamesTag]
 		);
 	}
 
