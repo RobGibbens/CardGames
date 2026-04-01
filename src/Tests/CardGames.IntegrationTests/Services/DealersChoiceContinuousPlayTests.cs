@@ -1,11 +1,14 @@
 using CardGames.Poker.Api.Services;
+using CardGames.Poker.Api.Services.Cache;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.GameFlow;
 using CardGames.Poker.Games.GameFlow;
 using CardGames.Contracts.SignalR;
+using CardGames.IntegrationTests.Infrastructure.Fakes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
 using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 
@@ -39,7 +42,11 @@ public class DealersChoiceContinuousPlayTests : IDisposable
         _recorder = new FakeHandHistoryRecorder();
 
         _scopeFactory = new FakeServiceScopeFactory(_dbContext, _broadcaster, _recorder, _flowHandlerFactory);
-        _service = new ContinuousPlayBackgroundService(_scopeFactory, _logger);
+        _service = new ContinuousPlayBackgroundService(
+            _scopeFactory,
+            new FakeActiveGameCache(),
+            Options.Create(new ActiveGameCacheOptions { AdaptivePollingEnabled = false }),
+            _logger);
     }
 
     public void Dispose()

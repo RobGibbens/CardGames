@@ -85,7 +85,14 @@
         await TrySubmitTimeoutDefaultDecisionAsync();
     }
 
-    private int GetSecondsRemaining() => ActionTimer?.SecondsRemaining ?? DefaultTimerDurationSeconds;
+    private int GetSecondsRemaining()
+    {
+        if (ActionTimer is null) return DefaultTimerDurationSeconds;
+        if (!ActionTimer.IsActive) return 0;
+        var elapsed = DateTimeOffset.UtcNow - ActionTimer.StartedAtUtc;
+        var remaining = ActionTimer.DurationSeconds - (int)elapsed.TotalSeconds;
+        return Math.Max(0, remaining);
+    }
 
     private int GetTimerDuration() => ActionTimer?.DurationSeconds ?? DefaultTimerDurationSeconds;
 
@@ -110,7 +117,7 @@
 
     private async Task TrySubmitTimeoutDefaultDecisionAsync()
     {
-        if (ActionTimer is null || !ActionTimer.IsActive || ActionTimer.SecondsRemaining > 0)
+        if (ActionTimer is null || !ActionTimer.IsActive || GetSecondsRemaining() > 0)
         {
             _autoActionTimerKey = null;
             return;

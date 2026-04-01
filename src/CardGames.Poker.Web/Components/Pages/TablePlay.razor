@@ -667,6 +667,10 @@
     // Action timer state (from SignalR)
     private ActionTimerStateDto? _actionTimerState;
 
+    // Client-side countdown timer — triggers re-renders every second so the
+    // UI computes remaining time locally from StartedAtUtc + DurationSeconds.
+    private Timer? _actionCountdownTimer;
+
     // Draw phase state
     private bool _isDrawPhase;
     private bool _isPlayerDrawTurn;
@@ -5299,6 +5303,14 @@
         _flyingCardTimer = null;
         _flyingCard = null;
 
+        // Stop countdown timer
+        _countdownTimer?.Dispose();
+        _countdownTimer = null;
+
+        // Stop action countdown timer
+        _actionCountdownTimer?.Dispose();
+        _actionCountdownTimer = null;
+
         // Unsubscribe from SignalR events
         GameHubClient.OnTableStateUpdated -= HandleTableStateUpdatedAsync;
         GameHubClient.OnPrivateStateUpdated -= HandlePrivateStateUpdatedAsync;
@@ -5343,6 +5355,24 @@
     private async Task HandleActionTimerUpdatedAsync(ActionTimerStateDto timerState)
     {
         _actionTimerState = timerState;
+
+        // Start or stop the local countdown timer based on the server event.
+        // When active, the timer triggers a re-render every second so child
+        // components can compute remaining time locally from StartedAtUtc.
+        if (timerState.IsActive)
+        {
+            _actionCountdownTimer ??= new Timer(
+                _ => InvokeAsync(StateHasChanged),
+                null,
+                TimeSpan.FromSeconds(1),
+                TimeSpan.FromSeconds(1));
+        }
+        else
+        {
+            _actionCountdownTimer?.Dispose();
+            _actionCountdownTimer = null;
+        }
+
         await InvokeStateHasChangedAsync();
     }
 

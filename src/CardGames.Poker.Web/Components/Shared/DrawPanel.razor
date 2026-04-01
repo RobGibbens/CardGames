@@ -406,7 +406,11 @@
 
     private int GetSecondsRemaining()
     {
-        return ActionTimer?.SecondsRemaining ?? DefaultTimerDurationSeconds;
+        if (ActionTimer is null) return DefaultTimerDurationSeconds;
+        if (!ActionTimer.IsActive) return 0;
+        var elapsed = DateTimeOffset.UtcNow - ActionTimer.StartedAtUtc;
+        var remaining = ActionTimer.DurationSeconds - (int)elapsed.TotalSeconds;
+        return Math.Max(0, remaining);
     }
 
     private int GetTimerDuration()

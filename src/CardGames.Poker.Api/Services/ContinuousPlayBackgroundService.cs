@@ -3,9 +3,11 @@ using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.GameFlow;
 using CardGames.Poker.Api.Games;
+using CardGames.Poker.Api.Services.Cache;
 using CardGames.Poker.Betting;
 using CardGames.Contracts.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 
 namespace CardGames.Poker.Api.Services;
@@ -40,17 +42,23 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 	public const int InBetweenRevealDisplayDurationSeconds = 5;
 
 	private readonly IServiceScopeFactory _scopeFactory;
+	private readonly IActiveGameCache _activeGameCache;
+	private readonly ActiveGameCacheOptions _cacheOptions;
 	private readonly ILogger<ContinuousPlayBackgroundService> _logger;
-	private readonly TimeSpan _checkInterval = TimeSpan.FromSeconds(1);
+	private readonly TimeSpan _fastInterval = TimeSpan.FromSeconds(1);
 
 	/// <summary>
 	/// Initializes a new instance of the <see cref="ContinuousPlayBackgroundService"/> class.
 	/// </summary>
 	public ContinuousPlayBackgroundService(
 		IServiceScopeFactory scopeFactory,
+		IActiveGameCache activeGameCache,
+		IOptions<ActiveGameCacheOptions> cacheOptions,
 		ILogger<ContinuousPlayBackgroundService> logger)
 	{
 		_scopeFactory = scopeFactory;
+		_activeGameCache = activeGameCache;
+		_cacheOptions = cacheOptions.Value;
 		_logger = logger;
 	}
 
@@ -59,10 +67,31 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 	{
 		_logger.LogInformation("ContinuousPlayBackgroundService started");
 
+		var lastDiscoveryUtc = DateTimeOffset.MinValue;
+
 		while (!stoppingToken.IsCancellationRequested)
 		{
 			try
 			{
+				var hasActiveGames = _activeGameCache.Count > 0;
+
+				if (_cacheOptions.AdaptivePollingEnabled && !hasActiveGames)
+				{
+					// Slow discovery mode: only hit the DB periodically to find games
+					// that may have started while the cache was cold (restart / deployment).
+					var sinceLastDiscovery = DateTimeOffset.UtcNow - lastDiscoveryUtc;
+					if (sinceLastDiscovery < _cacheOptions.SlowPollInterval)
+					{
+						await Task.Delay(_fastInterval, stoppingToken);
+						continue;
+					}
+
+					_logger.LogDebug(
+						"No active cached games; running slow discovery query (interval: {Interval}s)",
+						_cacheOptions.SlowPollInterval.TotalSeconds);
+				}
+
+				lastDiscoveryUtc = DateTimeOffset.UtcNow;
 				await ProcessGamesReadyForNextHandAsync(stoppingToken);
 			}
 			catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
@@ -75,7 +104,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 				_logger.LogError(ex, "Error processing continuous play games");
 			}
 
-			await Task.Delay(_checkInterval, stoppingToken);
+			await Task.Delay(_fastInterval, stoppingToken);
 		}
 
 		_logger.LogInformation("ContinuousPlayBackgroundService stopped");
@@ -91,30 +120,45 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 
 		var now = DateTimeOffset.UtcNow;
 
-		// Check for abandoned games (all players left after game started)
-		await ProcessAbandonedGamesAsync(context, broadcaster, now, cancellationToken);
+		// ── Phase 3 optimisation: single consolidated query ──
+		// Fetch all games that could need processing this tick (InProgress or BetweenHands)
+		// with the union of all navigations required by the individual processing paths.
+		// This replaces 5 separate queries with 1 (split into bounded SQL statements by EF).
+		var candidateGames = await context.Games
+			.Where(g => g.Status == GameStatus.InProgress || g.Status == GameStatus.BetweenHands)
+			.Include(g => g.GamePlayers)
+				.ThenInclude(gp => gp.Player)
+			.Include(g => g.GameType)
+			.AsSplitQuery()
+			.ToListAsync(cancellationToken);
 
-		// Process DrawComplete games that are ready to transition to Showdown
-		await ProcessDrawCompleteGamesAsync(context, broadcaster, handHistoryRecorder, now, cancellationToken);
+		if (candidateGames.Count == 0)
+			return;
 
-		// Process KlondikeReveal games that are ready to transition to Showdown
-		await ProcessKlondikeRevealGamesAsync(context, broadcaster, now, cancellationToken);
+		// Dispatch each category in-memory instead of hitting the DB again.
+		// Additional navigations (GameCards, Pots) are loaded only for games that need them.
 
-		// Process In-Between games where the card reveal display period has expired
-		await ProcessInBetweenResolutionGamesAsync(context, broadcaster, handHistoryRecorder, now, cancellationToken);
+		// 1. Check for abandoned games (all players left after game started)
+		await ProcessAbandonedGamesAsync(context, broadcaster, candidateGames, now, cancellationToken);
 
-		// Find games in Complete or WaitingForPlayers phase where the next hand should start.
+		// 2. Process DrawComplete games that are ready to transition to Showdown
+		await ProcessDrawCompleteGamesAsync(context, broadcaster, handHistoryRecorder, candidateGames, now, cancellationToken);
+
+		// 3. Process KlondikeReveal games that are ready to transition to Showdown
+		await ProcessKlondikeRevealGamesAsync(context, broadcaster, candidateGames, now, cancellationToken);
+
+		// 4. Process In-Between games where the card reveal display period has expired
+		await ProcessInBetweenResolutionGamesAsync(context, broadcaster, handHistoryRecorder, candidateGames, now, cancellationToken);
+
+		// 5. Find games in Complete or WaitingForPlayers phase where the next hand should start.
 		// Also include Dealer's Choice games in WaitingToStart (after dealer chose the game type).
-		var gamesReadyForNextHand = await context.Games
+		var gamesReadyForNextHand = candidateGames
 			.Where(g => (g.CurrentPhase == nameof(Phases.Complete)
 						 || g.CurrentPhase == nameof(Phases.WaitingForPlayers)
 						 || (g.CurrentPhase == nameof(Phases.WaitingToStart) && g.IsDealersChoice)) &&
 						g.NextHandStartsAt != null &&
-						g.NextHandStartsAt <= now &&
-						(g.Status == GameStatus.InProgress || g.Status == GameStatus.BetweenHands))
-			.Include(g => g.GamePlayers)
-			.Include(g => g.GameType)
-			.ToListAsync(cancellationToken);
+						g.NextHandStartsAt <= now)
+			.ToList();
 
 		foreach (var game in gamesReadyForNextHand)
 			{
@@ -136,11 +180,12 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 	private async Task ProcessAbandonedGamesAsync(
 		CardsDbContext context,
 		IGameStateBroadcaster broadcaster,
+		List<Game> candidateGames,
 		DateTimeOffset now,
 		CancellationToken cancellationToken)
 	{
 		// Find in-progress games (not waiting phases)
-		var inProgressPhases = new[]
+		var inProgressPhases = new HashSet<string>
 		{
 					nameof(Phases.CollectingAntes),
 					nameof(Phases.Dealing),
@@ -166,11 +211,9 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 					"KlondikeReveal"
 				};
 
-		var activeGames = await context.Games
-			.Where(g => inProgressPhases.Contains(g.CurrentPhase) &&
-						(g.Status == GameStatus.InProgress || g.Status == GameStatus.BetweenHands))
-			.Include(g => g.GamePlayers)
-			.ToListAsync(cancellationToken);
+		var activeGames = candidateGames
+			.Where(g => inProgressPhases.Contains(g.CurrentPhase))
+			.ToList();
 
 		foreach (var game in activeGames)
 		{
@@ -207,22 +250,28 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		CardsDbContext context,
 		IGameStateBroadcaster broadcaster,
 		IHandHistoryRecorder handHistoryRecorder,
+		List<Game> candidateGames,
 		DateTimeOffset now,
 		CancellationToken cancellationToken)
 	{
 		var drawCompleteDeadline = now.AddSeconds(-DrawCompleteDisplayDurationSeconds);
 
-		// Find games in DrawComplete phase where the display period has expired
-		var gamesReadyForShowdown = await context.Games
+		// Filter from pre-fetched candidates instead of querying DB again
+		var gamesReadyForShowdown = candidateGames
 			.Where(g => g.CurrentPhase == nameof(Phases.DrawComplete) &&
 						g.DrawCompletedAt != null &&
 						g.DrawCompletedAt <= drawCompleteDeadline &&
 						g.Status == GameStatus.InProgress)
-			.Include(g => g.GamePlayers)
-				.ThenInclude(gp => gp.Player)
-			.Include(g => g.GameCards)
-			.Include(g => g.GameType)
-			.ToListAsync(cancellationToken);
+			.ToList();
+
+		if (gamesReadyForShowdown.Count == 0)
+			return;
+
+		// Load GameCards only for the games that actually need them
+		var gameIds = gamesReadyForShowdown.Select(g => g.Id).ToArray();
+		await context.GameCards
+			.Where(gc => gameIds.Contains(gc.GameId))
+			.LoadAsync(cancellationToken);
 
 		using var scope = _scopeFactory.CreateScope();
 		var flowHandlerFactory = scope.ServiceProvider.GetRequiredService<IGameFlowHandlerFactory>();
@@ -356,19 +405,18 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 	private async Task ProcessKlondikeRevealGamesAsync(
 		CardsDbContext context,
 		IGameStateBroadcaster broadcaster,
+		List<Game> candidateGames,
 		DateTimeOffset now,
 		CancellationToken cancellationToken)
 	{
 		var klondikeRevealDeadline = now.AddSeconds(-KlondikeRevealDisplayDurationSeconds);
 
-		var gamesReadyForShowdown = await context.Games
+		var gamesReadyForShowdown = candidateGames
 			.Where(g => g.CurrentPhase == nameof(Phases.KlondikeReveal) &&
 						g.DrawCompletedAt != null &&
 						g.DrawCompletedAt <= klondikeRevealDeadline &&
 						g.Status == GameStatus.InProgress)
-			.Include(g => g.GamePlayers)
-			.Include(g => g.GameType)
-			.ToListAsync(cancellationToken);
+			.ToList();
 
 		foreach (var game in gamesReadyForShowdown)
 		{
@@ -400,21 +448,30 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		CardsDbContext context,
 		IGameStateBroadcaster broadcaster,
 		IHandHistoryRecorder handHistoryRecorder,
+		List<Game> candidateGames,
 		DateTimeOffset now,
 		CancellationToken cancellationToken)
 	{
 		var revealDeadline = now.AddSeconds(-InBetweenRevealDisplayDurationSeconds);
 
-		var gamesReady = await context.Games
+		var gamesReady = candidateGames
 			.Where(g => g.CurrentPhase == nameof(Phases.InBetweenTurn) &&
 						g.DrawCompletedAt != null &&
 						g.DrawCompletedAt <= revealDeadline &&
 						g.Status == GameStatus.InProgress)
-			.Include(g => g.GamePlayers)
-				.ThenInclude(gp => gp.Player)
-			.Include(g => g.GameCards)
-			.Include(g => g.Pots)
-			.ToListAsync(cancellationToken);
+			.ToList();
+
+		if (gamesReady.Count == 0)
+			return;
+
+		// Load GameCards and Pots only for the games that need them
+		var gameIds = gamesReady.Select(g => g.Id).ToArray();
+		await context.GameCards
+			.Where(gc => gameIds.Contains(gc.GameId))
+			.LoadAsync(cancellationToken);
+		await context.Pots
+			.Where(p => gameIds.Contains(p.GameId))
+			.LoadAsync(cancellationToken);
 
 		foreach (var game in gamesReady)
 		{

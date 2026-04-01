@@ -33,4 +33,30 @@ public sealed class ActiveGameCacheOptions
     /// How often the background eviction service runs.
     /// </summary>
     public TimeSpan ScavengeInterval { get; init; } = TimeSpan.FromMinutes(5);
+
+    /// <summary>
+    /// When true, ContinuousPlayBackgroundService uses adaptive polling intervals:
+    /// fast (1 s) when cached active games exist, slow (discovery) when the cache is empty.
+    /// </summary>
+    public bool AdaptivePollingEnabled { get; init; } = true;
+
+    /// <summary>
+    /// Polling interval when no active games are cached.
+    /// Must be long enough to avoid unnecessary DB load but short enough
+    /// to discover games after a cold start or deployment.
+    /// </summary>
+    public TimeSpan SlowPollInterval { get; init; } = TimeSpan.FromSeconds(15);
+
+    /// <summary>
+    /// When true, ActionTimerService reduces per-second broadcasts to
+    /// start/stop events plus periodic sync heartbeats.
+    /// Requires the web client to run a local countdown from StartedAtUtc + DurationSeconds.
+    /// </summary>
+    public bool ReduceTimerBroadcasts { get; init; } = true;
+
+    /// <summary>
+    /// Interval between sync heartbeat broadcasts when <see cref="ReduceTimerBroadcasts"/> is true.
+    /// Provides drift protection for clients with inaccurate clocks.
+    /// </summary>
+    public TimeSpan TimerSyncHeartbeatInterval { get; init; } = TimeSpan.FromSeconds(5);
 }

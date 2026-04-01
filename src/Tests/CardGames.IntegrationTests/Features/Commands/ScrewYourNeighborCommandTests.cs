@@ -3,9 +3,11 @@ using CardGames.Poker.Api.Features.Games.Common.v1.Commands.ChooseDealerGame;
 using CardGames.Poker.Api.Features.Games.Generic.v1.Commands.PerformShowdown;
 using CardGames.Poker.Api.Features.Games.Generic.v1.Commands.StartHand;
 using CardGames.Poker.Api.Services;
+using CardGames.Poker.Api.Services.Cache;
 using CardGames.IntegrationTests.Infrastructure.Fakes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace CardGames.IntegrationTests.Features.Commands;
 
@@ -105,6 +107,8 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
         var logger = new TestLogger<ContinuousPlayBackgroundService>();
         var service = new ContinuousPlayBackgroundService(
             serviceScopeFactory,
+            new FakeActiveGameCache(),
+            Options.Create(new ActiveGameCacheOptions { AdaptivePollingEnabled = false }),
             logger);
 
         await service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
@@ -513,6 +517,8 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
         var serviceScopeFactory = Scope.ServiceProvider.GetRequiredService<IServiceScopeFactory>();
         var service = new ContinuousPlayBackgroundService(
             serviceScopeFactory,
+            new FakeActiveGameCache(),
+            Options.Create(new ActiveGameCacheOptions { AdaptivePollingEnabled = false }),
             loggerFactory.CreateLogger<ContinuousPlayBackgroundService>());
 
         await service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
@@ -551,6 +557,8 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
         var logger = new TestLogger<ContinuousPlayBackgroundService>();
         var service = new ContinuousPlayBackgroundService(
             serviceScopeFactory,
+            new FakeActiveGameCache(),
+            Options.Create(new ActiveGameCacheOptions { AdaptivePollingEnabled = false }),
             logger);
 
         await service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
@@ -600,6 +608,8 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
         var logger = new TestLogger<ContinuousPlayBackgroundService>();
         var service = new ContinuousPlayBackgroundService(
             serviceScopeFactory,
+            new FakeActiveGameCache(),
+            Options.Create(new ActiveGameCacheOptions { AdaptivePollingEnabled = false }),
             logger);
 
         await service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
@@ -767,6 +777,8 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
 
             var service = new ContinuousPlayBackgroundService(
                 Scope.ServiceProvider.GetRequiredService<IServiceScopeFactory>(),
+                new FakeActiveGameCache(),
+                Options.Create(new ActiveGameCacheOptions { AdaptivePollingEnabled = false }),
                 new TestLogger<ContinuousPlayBackgroundService>());
             await service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
             DbContext.ChangeTracker.Clear();
@@ -839,7 +851,7 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
 
         var serviceScopeFactory = Scope.ServiceProvider.GetRequiredService<IServiceScopeFactory>();
         var logger = new TestLogger<ContinuousPlayBackgroundService>();
-        var service = new ContinuousPlayBackgroundService(serviceScopeFactory, logger);
+        var service = new ContinuousPlayBackgroundService(serviceScopeFactory, new FakeActiveGameCache(), Options.Create(new ActiveGameCacheOptions { AdaptivePollingEnabled = false }), logger);
         await service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
         logger.ErrorLogs.Should().BeEmpty("background service should succeed starting hand 2");
         DbContext.ChangeTracker.Clear();
@@ -893,7 +905,7 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
         await DbContext.SaveChangesAsync();
 
         logger = new TestLogger<ContinuousPlayBackgroundService>();
-        service = new ContinuousPlayBackgroundService(serviceScopeFactory, logger);
+        service = new ContinuousPlayBackgroundService(serviceScopeFactory, new FakeActiveGameCache(), Options.Create(new ActiveGameCacheOptions { AdaptivePollingEnabled = false }), logger);
         await service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
         logger.ErrorLogs.Should().BeEmpty("background service should succeed starting hand 3");
         DbContext.ChangeTracker.Clear();
@@ -948,7 +960,7 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
         await DbContext.SaveChangesAsync();
 
         logger = new TestLogger<ContinuousPlayBackgroundService>();
-        service = new ContinuousPlayBackgroundService(serviceScopeFactory, logger);
+        service = new ContinuousPlayBackgroundService(serviceScopeFactory, new FakeActiveGameCache(), Options.Create(new ActiveGameCacheOptions { AdaptivePollingEnabled = false }), logger);
         await service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
         logger.ErrorLogs.Should().BeEmpty("background service should succeed transitioning to DC");
         DbContext.ChangeTracker.Clear();
@@ -1079,7 +1091,7 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
 
         var serviceScopeFactory = Scope.ServiceProvider.GetRequiredService<IServiceScopeFactory>();
         var logger = new TestLogger<ContinuousPlayBackgroundService>();
-        var service = new ContinuousPlayBackgroundService(serviceScopeFactory, logger);
+        var service = new ContinuousPlayBackgroundService(serviceScopeFactory, new FakeActiveGameCache(), Options.Create(new ActiveGameCacheOptions { AdaptivePollingEnabled = false }), logger);
         await service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
         logger.ErrorLogs.Should().BeEmpty();
         DbContext.ChangeTracker.Clear();

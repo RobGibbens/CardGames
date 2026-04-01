@@ -1,6 +1,8 @@
 using CardGames.Contracts.SignalR;
 using CardGames.Poker.Api.Hubs;
+using CardGames.Poker.Api.Services.Cache;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Options;
 using System.Collections.Concurrent;
 
 namespace CardGames.Poker.Api.Services;
@@ -13,6 +15,7 @@ public sealed class ActionTimerService : IActionTimerService, IDisposable
     private readonly IHubContext<GameHub> _hubContext;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<ActionTimerService> _logger;
+    private readonly ActiveGameCacheOptions _cacheOptions;
 
     private readonly ConcurrentDictionary<Guid, GameTimerState> _activeTimers = new();
     private bool _disposed;
@@ -25,10 +28,12 @@ public sealed class ActionTimerService : IActionTimerService, IDisposable
     public ActionTimerService(
         IHubContext<GameHub> hubContext,
         IServiceScopeFactory scopeFactory,
+        IOptions<ActiveGameCacheOptions> cacheOptions,
         ILogger<ActionTimerService> logger)
     {
         _hubContext = hubContext;
         _scopeFactory = scopeFactory;
+        _cacheOptions = cacheOptions.Value;
         _logger = logger;
     }
 
@@ -151,8 +156,25 @@ public sealed class ActionTimerService : IActionTimerService, IDisposable
         var state = timerState.State;
         var secondsRemaining = state.SecondsRemaining;
 
-        // Broadcast timer update
-        await BroadcastTimerStateAsync(gameId, state);
+        // When ReduceTimerBroadcasts is enabled, only broadcast on sync heartbeat
+        // intervals. The client runs a local countdown from StartedAtUtc + DurationSeconds,
+        // so per-second pushes are redundant. Start and stop events are broadcast separately.
+        if (_cacheOptions.ReduceTimerBroadcasts)
+        {
+            var elapsed = DateTimeOffset.UtcNow - state.StartedAtUtc;
+            var heartbeatSeconds = (int)_cacheOptions.TimerSyncHeartbeatInterval.TotalSeconds;
+            var isHeartbeat = heartbeatSeconds > 0 && (int)elapsed.TotalSeconds % heartbeatSeconds == 0;
+
+            if (isHeartbeat)
+            {
+                await BroadcastTimerStateAsync(gameId, state);
+            }
+        }
+        else
+        {
+            // Legacy mode: broadcast every second
+            await BroadcastTimerStateAsync(gameId, state);
+        }
 
         // Check if timer has expired
         if (secondsRemaining <= 0)
