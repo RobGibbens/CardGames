@@ -4,8 +4,10 @@ using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetTableSettings;
 using CardGames.Poker.Api.Infrastructure;
 using CardGames.Poker.Api.Services;
+using CardGames.Poker.Api.Services.InMemoryEngine;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using OneOf;
 
 namespace CardGames.Poker.Api.Features.Games.Common.v1.Commands.ToggleOddsVisibility;
@@ -17,6 +19,8 @@ public sealed class ToggleOddsVisibilityCommandHandler(
     CardsDbContext context,
     ICurrentUserService currentUserService,
     IGameStateBroadcaster gameStateBroadcaster,
+    IOptions<InMemoryEngineOptions> engineOptions,
+    IGameExecutionCoordinator coordinator,
     ILogger<ToggleOddsVisibilityCommandHandler> logger)
     : IRequestHandler<ToggleOddsVisibilityCommand, OneOf<ToggleOddsVisibilitySuccessful, ToggleOddsVisibilityError>>
 {
@@ -24,6 +28,77 @@ public sealed class ToggleOddsVisibilityCommandHandler(
     public async Task<OneOf<ToggleOddsVisibilitySuccessful, ToggleOddsVisibilityError>> Handle(
         ToggleOddsVisibilityCommand command,
         CancellationToken cancellationToken)
+    {
+        if (engineOptions.Value.Enabled)
+            return await HandleInMemory(command, cancellationToken);
+
+        return await HandleDatabase(command, cancellationToken);
+    }
+
+    private async Task<OneOf<ToggleOddsVisibilitySuccessful, ToggleOddsVisibilityError>> HandleInMemory(
+        ToggleOddsVisibilityCommand command, CancellationToken cancellationToken)
+    {
+        return await coordinator.ExecuteAsync(command.GameId, async (state, ct) =>
+        {
+            if (!IsAuthorizedFromState(state))
+            {
+                logger.LogWarning(
+                    "User {UserId} attempted to toggle odds visibility for game {GameId} but is not authorized",
+                    currentUserService.UserId, command.GameId);
+
+                return (OneOf<ToggleOddsVisibilitySuccessful, ToggleOddsVisibilityError>)new ToggleOddsVisibilityError
+                {
+                    Code = ToggleOddsVisibilityErrorCode.NotAuthorized,
+                    Message = "You are not authorized to edit this table's settings."
+                };
+            }
+
+            if (state.Status is GameStatus.Completed or GameStatus.Cancelled)
+            {
+                return new ToggleOddsVisibilityError
+                {
+                    Code = ToggleOddsVisibilityErrorCode.GameEnded,
+                    Message = "This game has ended and odds visibility can no longer be changed."
+                };
+            }
+
+            var now = DateTimeOffset.UtcNow;
+            state.AreOddsVisibleToAllPlayers = command.AreOddsVisibleToAllPlayers;
+            state.UpdatedAt = now;
+            state.UpdatedById = currentUserService.UserId;
+            state.UpdatedByName = currentUserService.UserName;
+
+            logger.LogInformation(
+                "User {UserId} set AreOddsVisibleToAllPlayers={AreOddsVisible} for game {GameId}",
+                currentUserService.UserId, command.AreOddsVisibleToAllPlayers, state.GameId);
+
+            try
+            {
+                var notification = new OddsVisibilityUpdatedDto
+                {
+                    GameId = state.GameId,
+                    AreOddsVisibleToAllPlayers = state.AreOddsVisibleToAllPlayers,
+                    UpdatedAt = now,
+                    UpdatedById = currentUserService.UserId,
+                    UpdatedByName = currentUserService.UserName
+                };
+                await gameStateBroadcaster.BroadcastOddsVisibilityUpdatedAsync(notification, ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to broadcast odds visibility update for game {GameId}", state.GameId);
+            }
+
+            return (OneOf<ToggleOddsVisibilitySuccessful, ToggleOddsVisibilityError>)new ToggleOddsVisibilitySuccessful
+            {
+                GameId = state.GameId,
+                AreOddsVisibleToAllPlayers = state.AreOddsVisibleToAllPlayers
+            };
+        }, cancellationToken);
+    }
+
+    private async Task<OneOf<ToggleOddsVisibilitySuccessful, ToggleOddsVisibilityError>> HandleDatabase(
+        ToggleOddsVisibilityCommand command, CancellationToken cancellationToken)
     {
         var game = await context.Games
             .Include(g => g.GameType)
@@ -132,6 +207,34 @@ public sealed class ToggleOddsVisibilityCommandHandler(
 
             if (string.Equals(game.CreatedByName, userName, StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(game.CreatedByName, userEmail, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private bool IsAuthorizedFromState(ActiveGameRuntimeState state)
+    {
+        if (!currentUserService.IsAuthenticated)
+        {
+            return false;
+        }
+
+        if (!string.IsNullOrEmpty(state.CreatedById) &&
+            string.Equals(state.CreatedById, currentUserService.UserId, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (!string.IsNullOrEmpty(state.CreatedByName))
+        {
+            var userName = currentUserService.UserName;
+            var userEmail = currentUserService.UserEmail;
+
+            if (string.Equals(state.CreatedByName, userName, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(state.CreatedByName, userEmail, StringComparison.OrdinalIgnoreCase))
             {
                 return true;
             }

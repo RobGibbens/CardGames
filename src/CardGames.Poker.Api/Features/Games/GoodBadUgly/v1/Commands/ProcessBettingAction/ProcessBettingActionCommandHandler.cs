@@ -11,6 +11,9 @@ using OneOf;
 using BettingActionType = CardGames.Poker.Api.Data.Entities.BettingActionType;
 using BettingRound = CardGames.Poker.Api.Data.Entities.BettingRound;
 
+using CardGames.Poker.Api.Services.InMemoryEngine;
+using Microsoft.Extensions.Options;
+
 namespace CardGames.Poker.Api.Features.Games.GoodBadUgly.v1.Commands.ProcessBettingAction;
 
 /// <summary>
@@ -18,6 +21,8 @@ namespace CardGames.Poker.Api.Features.Games.GoodBadUgly.v1.Commands.ProcessBett
 /// </summary>
 public class ProcessBettingActionCommandHandler(
 	CardsDbContext context,
+	IOptions<InMemoryEngineOptions> engineOptions,
+	IGameStateManager gameStateManager,
 	IMediator mediator,
 	ILogger<ProcessBettingActionCommandHandler> logger)
 	: IRequestHandler<ProcessBettingActionCommand, OneOf<ProcessBettingActionSuccessful, ProcessBettingActionError>>
@@ -228,6 +233,9 @@ public class ProcessBettingActionCommandHandler(
 					game.UpdatedAt = now;
 					await context.SaveChangesAsync(cancellationToken);
 
+					if (engineOptions.Value.Enabled)
+						await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
+
 					return new ProcessBettingActionSuccessful
 					{
 						GameId = game.Id,
@@ -299,6 +307,9 @@ public class ProcessBettingActionCommandHandler(
 
 				game.UpdatedAt = now;
 				await context.SaveChangesAsync(cancellationToken);
+
+				if (engineOptions.Value.Enabled)
+					await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
 			}
 			else
 			{
@@ -325,6 +336,9 @@ public class ProcessBettingActionCommandHandler(
 
 				game.UpdatedAt = now;
 				await context.SaveChangesAsync(cancellationToken);
+
+				if (engineOptions.Value.Enabled)
+					await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
 
 				return new ProcessBettingActionSuccessful
 				{
@@ -439,6 +453,9 @@ public class ProcessBettingActionCommandHandler(
 			{
 				// Not advancing to a new street (e.g., going to Showdown), just save
 				await context.SaveChangesAsync(cancellationToken);
+
+				if (engineOptions.Value.Enabled)
+					await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
 			}
 			}
 		}
@@ -453,6 +470,9 @@ public class ProcessBettingActionCommandHandler(
 
 			// 14. Persist changes
 			await context.SaveChangesAsync(cancellationToken);
+
+			if (engineOptions.Value.Enabled)
+				await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
 		}
 
 		return new ProcessBettingActionSuccessful

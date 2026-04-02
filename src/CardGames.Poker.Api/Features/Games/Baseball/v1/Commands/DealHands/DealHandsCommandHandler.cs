@@ -10,10 +10,15 @@ using BettingRoundEntity = CardGames.Poker.Api.Data.Entities.BettingRound;
 using CardSuit = CardGames.Poker.Api.Data.Entities.CardSuit;
 using CardSymbol = CardGames.Poker.Api.Data.Entities.CardSymbol;
 
+using CardGames.Poker.Api.Services.InMemoryEngine;
+using Microsoft.Extensions.Options;
+
 namespace CardGames.Poker.Api.Features.Games.Baseball.v1.Commands.DealHands;
 
 public class DealHandsCommandHandler(
 	CardsDbContext context,
+	IOptions<InMemoryEngineOptions> engineOptions,
+	IGameStateManager gameStateManager,
 	ILogger<DealHandsCommandHandler> logger)
 	: IRequestHandler<DealHandsCommand, OneOf<DealHandsSuccessful, DealHandsError>>
 {
@@ -237,6 +242,9 @@ public class DealHandsCommandHandler(
 
 			await context.SaveChangesAsync(cancellationToken);
 
+			if (engineOptions.Value.Enabled)
+				await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
+
 			var offerPlayerName = activePlayers.FirstOrDefault(p => p.SeatPosition == buyCardOffers[0].SeatPosition)?.Player.Name;
 			return new DealHandsSuccessful
 			{
@@ -266,6 +274,9 @@ public class DealHandsCommandHandler(
 		// Persist dealt cards before determining first actor so visible-hand evaluation
 		// includes newly dealt up-cards on this street.
 		await context.SaveChangesAsync(cancellationToken);
+
+		if (engineOptions.Value.Enabled)
+			await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
 
 		int firstActorSeatPosition;
 		int currentBet = 0;
@@ -349,6 +360,9 @@ public class DealHandsCommandHandler(
 		game.UpdatedAt = now;
 
 		await context.SaveChangesAsync(cancellationToken);
+
+		if (engineOptions.Value.Enabled)
+			await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
 
 		var currentPlayerName = activePlayers.FirstOrDefault(p => p.SeatPosition == firstActorSeatPosition)?.Player.Name;
 

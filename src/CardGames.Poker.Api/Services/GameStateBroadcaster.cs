@@ -3,6 +3,7 @@ using CardGames.Contracts.SignalR;
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Api.Hubs;
 using CardGames.Poker.Api.Services.Cache;
+using CardGames.Poker.Api.Services.InMemoryEngine;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Options;
 
@@ -18,6 +19,8 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
     private readonly IActionTimerService _actionTimerService;
     private readonly IAutoActionService _autoActionService;
     private readonly IActiveGameCache _activeGameCache;
+    private readonly IGameStateManager _gameStateManager;
+    private readonly IOptions<InMemoryEngineOptions> _engineOptions;
     private readonly TimeProvider _timeProvider;
     private readonly IOptions<ActiveGameCacheOptions> _cacheOptions;
     private readonly ILogger<GameStateBroadcaster> _logger;
@@ -47,6 +50,8 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
         IActionTimerService actionTimerService,
         IAutoActionService autoActionService,
         IActiveGameCache activeGameCache,
+        IGameStateManager gameStateManager,
+        IOptions<InMemoryEngineOptions> engineOptions,
         TimeProvider timeProvider,
         IOptions<ActiveGameCacheOptions> cacheOptions,
         ILogger<GameStateBroadcaster> logger)
@@ -56,6 +61,8 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
         _actionTimerService = actionTimerService;
         _autoActionService = autoActionService;
         _activeGameCache = activeGameCache;
+        _gameStateManager = gameStateManager;
+        _engineOptions = engineOptions;
         _timeProvider = timeProvider;
         _cacheOptions = cacheOptions;
         _logger = logger;
@@ -69,10 +76,22 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
         try
         {
             // Build complete broadcast state in a single batch operation (Phase 2).
-            var result = await _tableStateBuilder.BuildFullStateAsync(gameId, cancellationToken);
+            // When the in-memory engine is active and the game is loaded, build from
+            // runtime state to skip the expensive aggregate DB query.
+            BroadcastStateBuildResult? result;
+            if (_engineOptions.Value.Enabled && _gameStateManager.TryGetGame(gameId, out var runtimeState))
+            {
+                result = await _tableStateBuilder.BuildFullStateAsync(runtimeState, cancellationToken);
+            }
+            else
+            {
+                result = await _tableStateBuilder.BuildFullStateAsync(gameId, cancellationToken);
+            }
             if (result is null)
             {
                 _activeGameCache.Evict(gameId);
+                if (_engineOptions.Value.Enabled)
+                    _gameStateManager.RemoveGame(gameId);
                 return;
             }
 

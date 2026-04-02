@@ -1,8 +1,10 @@
 using CardGames.IntegrationTests.Infrastructure.Fakes;
 using CardGames.Poker.Api.Features.Games.Generic.v1.Commands.PerformShowdown;
 using CardGames.Poker.Api.Games;
+using CardGames.Poker.Api.Services.InMemoryEngine;
 using CardGames.Poker.Evaluation;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 namespace CardGames.IntegrationTests.Features.Commands;
 
@@ -60,6 +62,8 @@ public class OmahaShowdownHardeningTests : IntegrationTestBase
             new HandEvaluatorFactory(),
             new FakeHandHistoryRecorder(),
             new FakeHandSettlementService(),
+            Options.Create(new InMemoryEngineOptions()),
+            null!,
             NullLogger<PerformShowdownCommandHandler>.Instance);
 
         // Act

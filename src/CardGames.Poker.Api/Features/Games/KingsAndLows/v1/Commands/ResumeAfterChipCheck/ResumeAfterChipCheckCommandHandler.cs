@@ -5,12 +5,17 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OneOf;
 
+using CardGames.Poker.Api.Services.InMemoryEngine;
+using Microsoft.Extensions.Options;
+
 namespace CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.ResumeAfterChipCheck;
 
 /// <summary>
 /// Handles the <see cref="ResumeAfterChipCheckCommand"/> to resume a game after the chip check pause.
 /// </summary>
-public class ResumeAfterChipCheckCommandHandler(CardsDbContext context, ILogger<ResumeAfterChipCheckCommandHandler> logger)
+public class ResumeAfterChipCheckCommandHandler(CardsDbContext context,
+	IOptions<InMemoryEngineOptions> engineOptions,
+	IGameStateManager gameStateManager, ILogger<ResumeAfterChipCheckCommandHandler> logger)
 	: IRequestHandler<ResumeAfterChipCheckCommand, OneOf<ResumeAfterChipCheckSuccessful, ResumeAfterChipCheckError>>
 {
 	public async Task<OneOf<ResumeAfterChipCheckSuccessful, ResumeAfterChipCheckError>> Handle(
@@ -94,6 +99,9 @@ public class ResumeAfterChipCheckCommandHandler(CardsDbContext context, ILogger<
 		game.UpdatedAt = now;
 
 		await context.SaveChangesAsync(cancellationToken);
+
+		if (engineOptions.Value.Enabled)
+			await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
 
 		var message = allPlayersReady
 			? "All players now have sufficient chips. Game resumed."

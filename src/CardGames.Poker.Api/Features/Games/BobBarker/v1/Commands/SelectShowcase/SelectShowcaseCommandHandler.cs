@@ -8,9 +8,14 @@ using Microsoft.EntityFrameworkCore;
 using OneOf;
 using BettingRound = CardGames.Poker.Api.Data.Entities.BettingRound;
 
+using CardGames.Poker.Api.Services.InMemoryEngine;
+using Microsoft.Extensions.Options;
+
 namespace CardGames.Poker.Api.Features.Games.BobBarker.v1.Commands.SelectShowcase;
 
-public sealed class SelectShowcaseCommandHandler(CardsDbContext context)
+public sealed class SelectShowcaseCommandHandler(CardsDbContext context,
+	IOptions<InMemoryEngineOptions> engineOptions,
+	IGameStateManager gameStateManager)
     : IRequestHandler<SelectShowcaseCommand, OneOf<SelectShowcaseSuccessful, SelectShowcaseError>>
 {
     private const int InitialHoleCardCount = 5;
@@ -143,6 +148,9 @@ public sealed class SelectShowcaseCommandHandler(CardsDbContext context)
 
         game.UpdatedAt = now;
         await context.SaveChangesAsync(cancellationToken);
+
+        if (engineOptions.Value.Enabled)
+        	await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
 
         return new SelectShowcaseSuccessful
         {

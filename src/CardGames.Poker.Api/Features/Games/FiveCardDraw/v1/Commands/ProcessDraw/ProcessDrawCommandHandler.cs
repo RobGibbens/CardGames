@@ -9,12 +9,17 @@ using BettingRound = CardGames.Poker.Api.Data.Entities.BettingRound;
 using CardSuit = CardGames.Poker.Api.Data.Entities.CardSuit;
 using CardSymbol = CardGames.Poker.Api.Data.Entities.CardSymbol;
 
+using CardGames.Poker.Api.Services.InMemoryEngine;
+using Microsoft.Extensions.Options;
+
 namespace CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.ProcessDraw;
 
 /// <summary>
 /// Handles the <see cref="ProcessDrawCommand"/> to process draw actions from players.
 /// </summary>
-public class ProcessDrawCommandHandler(CardsDbContext context)
+public class ProcessDrawCommandHandler(CardsDbContext context,
+	IOptions<InMemoryEngineOptions> engineOptions,
+	IGameStateManager gameStateManager)
 	: IRequestHandler<ProcessDrawCommand, OneOf<ProcessDrawSuccessful, ProcessDrawError>>
 {
 	private const int HandSize = 5;
@@ -217,6 +222,9 @@ public class ProcessDrawCommandHandler(CardsDbContext context)
 
 			// 11. Persist changes
 			await context.SaveChangesAsync(cancellationToken);
+
+			if (engineOptions.Value.Enabled)
+				await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
 
 			return new ProcessDrawSuccessful
 			{

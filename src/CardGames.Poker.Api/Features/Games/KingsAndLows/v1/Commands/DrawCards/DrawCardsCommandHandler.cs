@@ -10,12 +10,18 @@ using Microsoft.EntityFrameworkCore;
 using OneOf;
 using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 
+using CardGames.Poker.Api.Services.InMemoryEngine;
+using Microsoft.Extensions.Options;
+
 namespace CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.DrawCards;
 
 /// <summary>
 /// Handles the <see cref="DrawCardsCommand"/> to process a player's draw action in Kings and Lows.
 /// </summary>
-public class DrawCardsCommandHandler(CardsDbContext context)
+public class DrawCardsCommandHandler(
+	CardsDbContext context,
+	IOptions<InMemoryEngineOptions> engineOptions,
+	IGameStateManager gameStateManager)
 	: IRequestHandler<DrawCardsCommand, OneOf<DrawCardsSuccessful, DrawCardsError>>
 {
 	private const int MaxDiscards = 5; // Kings and Lows allows all 5 cards to be discarded
@@ -206,6 +212,9 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 				// that could corrupt the player's hand.
 				await context.SaveChangesAsync(cancellationToken);
 
+				if (engineOptions.Value.Enabled)
+					await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
+
 				// Deal the deck's hand now so it's visible in the overlay
 				await DealDeckHandAsync(game, context, now, cancellationToken);
 			}
@@ -220,6 +229,9 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 
 				// Save changes so new cards are in database and state is broadcast
 				await context.SaveChangesAsync(cancellationToken);
+
+				if (engineOptions.Value.Enabled)
+					await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
 
 				// Note: Showdown will be performed by ContinuousPlayBackgroundService after delay
 			}
@@ -267,6 +279,9 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 			game.UpdatedAt = now;
 			await context.SaveChangesAsync(cancellationToken);
 
+			if (engineOptions.Value.Enabled)
+				await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
+
 			return new DrawCardsSuccessful
 			{
 				GameId = game.Id,
@@ -292,6 +307,8 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 		Game game,
 		List<GamePlayer> gamePlayersList,
 		CardsDbContext context,
+		IOptions<InMemoryEngineOptions> engineOptions,
+		IGameStateManager gameStateManager,
 		DateTimeOffset now,
 		CancellationToken cancellationToken)
 	{

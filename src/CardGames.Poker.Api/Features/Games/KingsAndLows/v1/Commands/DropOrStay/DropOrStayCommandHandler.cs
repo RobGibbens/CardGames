@@ -8,12 +8,17 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
 
+using CardGames.Poker.Api.Services.InMemoryEngine;
+using Microsoft.Extensions.Options;
+
 namespace CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.DropOrStay;
 
 /// <summary>
 /// Handles the <see cref="DropOrStayCommand"/> to record a player's drop or stay decision.
 /// </summary>
-public class DropOrStayCommandHandler(CardsDbContext context, IMediator mediator)
+public class DropOrStayCommandHandler(CardsDbContext context,
+	IOptions<InMemoryEngineOptions> engineOptions,
+	IGameStateManager gameStateManager, IMediator mediator)
 	: IRequestHandler<DropOrStayCommand, OneOf<DropOrStaySuccessful, DropOrStayError>>
 {
 	public async Task<OneOf<DropOrStaySuccessful, DropOrStayError>> Handle(
@@ -116,6 +121,9 @@ public class DropOrStayCommandHandler(CardsDbContext context, IMediator mediator
 		// This handles concurrency issues where EF might not have updated the local collection yet
 		await context.SaveChangesAsync(cancellationToken);
 
+		if (engineOptions.Value.Enabled)
+			await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
+
 		// Re-fetch players to ensure we have the latest state including other concurrent updates
 			// and the current player's just-saved decision
 			var refreshedGame = await context.Games
@@ -144,6 +152,9 @@ public class DropOrStayCommandHandler(CardsDbContext context, IMediator mediator
 			if (autoDropPlayers.Count > 0)
 			{
 				await context.SaveChangesAsync(cancellationToken);
+
+				if (engineOptions.Value.Enabled)
+					await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
 			}
 
 			// 7. Check if all players have decided
@@ -221,6 +232,9 @@ public class DropOrStayCommandHandler(CardsDbContext context, IMediator mediator
 
 		// 9. Persist changes
 		await context.SaveChangesAsync(cancellationToken);
+
+		if (engineOptions.Value.Enabled)
+			await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
 
 		// If all players dropped, the hand is dead. Automatically perform showdown to handle pot carry-over.
 		if (allDecided && stayingPlayers.Count == 0)

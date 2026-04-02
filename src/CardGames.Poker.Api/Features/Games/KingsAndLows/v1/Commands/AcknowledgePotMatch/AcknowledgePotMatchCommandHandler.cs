@@ -8,12 +8,17 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
 
+using CardGames.Poker.Api.Services.InMemoryEngine;
+using Microsoft.Extensions.Options;
+
 namespace CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.AcknowledgePotMatch;
 
 /// <summary>
 /// Handles the <see cref="AcknowledgePotMatchCommand"/> to process pot matching in Kings and Lows.
 /// </summary>
-public class AcknowledgePotMatchCommandHandler(CardsDbContext context)
+public class AcknowledgePotMatchCommandHandler(CardsDbContext context,
+	IOptions<InMemoryEngineOptions> engineOptions,
+	IGameStateManager gameStateManager)
 	: IRequestHandler<AcknowledgePotMatchCommand, OneOf<AcknowledgePotMatchSuccessful, AcknowledgePotMatchError>>
 {
 	public async Task<OneOf<AcknowledgePotMatchSuccessful, AcknowledgePotMatchError>> Handle(
@@ -149,6 +154,9 @@ public class AcknowledgePotMatchCommandHandler(CardsDbContext context)
 
 		// 7. Persist changes
 		await context.SaveChangesAsync(cancellationToken);
+
+		if (engineOptions.Value.Enabled)
+			await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
 
 		return new AcknowledgePotMatchSuccessful
 		{

@@ -8,6 +8,9 @@ using Microsoft.EntityFrameworkCore;
 using OneOf;
 using static CardGames.Poker.Api.Features.Games.InBetween.InBetweenVariantState;
 
+using CardGames.Poker.Api.Services.InMemoryEngine;
+using Microsoft.Extensions.Options;
+
 namespace CardGames.Poker.Api.Features.Games.InBetween.v1.Commands.PlaceBet;
 
 /// <summary>
@@ -17,6 +20,8 @@ namespace CardGames.Poker.Api.Features.Games.InBetween.v1.Commands.PlaceBet;
 /// </summary>
 public class PlaceBetCommandHandler(
 	CardsDbContext context,
+	IOptions<InMemoryEngineOptions> engineOptions,
+	IGameStateManager gameStateManager,
 	IGameFlowHandlerFactory flowHandlerFactory,
 	IHandHistoryRecorder handHistoryRecorder)
 	: IRequestHandler<PlaceBetCommand, OneOf<PlaceBetSuccessful, PlaceBetError>>
@@ -195,6 +200,9 @@ public class PlaceBetCommandHandler(
 			game.UpdatedAt = now;
 			await context.SaveChangesAsync(cancellationToken);
 
+			if (engineOptions.Value.Enabled)
+				await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
+
 			turnResultStr = "Pass";
 			description = state.LastTurnDescription;
 		}
@@ -212,6 +220,9 @@ public class PlaceBetCommandHandler(
 			// after the card-reveal display period (5 seconds).
 			game.DrawCompletedAt = now;
 			await context.SaveChangesAsync(cancellationToken);
+
+			if (engineOptions.Value.Enabled)
+				await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
 		}
 
 		// 9. Advance to next player or complete game (only for pass; bets wait for reveal display)

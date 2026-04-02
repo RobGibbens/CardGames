@@ -13,13 +13,18 @@ using OneOf;
 using CardSuit = CardGames.Poker.Api.Data.Entities.CardSuit;
 using CardSymbol = CardGames.Poker.Api.Data.Entities.CardSymbol;
 
+using CardGames.Poker.Api.Services.InMemoryEngine;
+using Microsoft.Extensions.Options;
+
 namespace CardGames.Poker.Api.Features.Games.HoldTheBaseball.v1.Commands.PerformShowdown;
 
 /// <summary>
 /// Handles showdown for Hold the Baseball. Uses <see cref="HoldTheBaseballHand"/>
 /// which evaluates wild cards (3s and 9s) in both hole and community cards.
 /// </summary>
-public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryRecorder handHistoryRecorder, IHandSettlementService handSettlementService)
+public class PerformShowdownCommandHandler(CardsDbContext context,
+	IOptions<InMemoryEngineOptions> engineOptions,
+	IGameStateManager gameStateManager, IHandHistoryRecorder handHistoryRecorder, IHandSettlementService handSettlementService)
 	: IRequestHandler<PerformShowdownCommand, OneOf<PerformShowdownSuccessful, PerformShowdownError>>
 {
 	public async Task<OneOf<PerformShowdownSuccessful, PerformShowdownError>> Handle(
@@ -123,6 +128,9 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 				await handSettlementService.SettleHandAsync(game, foldPayouts, cancellationToken);
 
 				await context.SaveChangesAsync(cancellationToken);
+
+				if (engineOptions.Value.Enabled)
+					await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
 
 				await RecordHandHistoryAsync(
 					game, game.GamePlayers.ToList(), now, totalPot,
@@ -253,6 +261,9 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 			await handSettlementService.SettleHandAsync(game, payouts, cancellationToken);
 
 			await context.SaveChangesAsync(cancellationToken);
+
+			if (engineOptions.Value.Enabled)
+				await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
 
 			var winnerInfos = winners.Select(w =>
 			{

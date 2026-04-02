@@ -6,12 +6,17 @@ using Microsoft.EntityFrameworkCore;
 using OneOf;
 using static CardGames.Poker.Api.Features.Games.InBetween.InBetweenVariantState;
 
+using CardGames.Poker.Api.Services.InMemoryEngine;
+using Microsoft.Extensions.Options;
+
 namespace CardGames.Poker.Api.Features.Games.InBetween.v1.Commands.AceChoice;
 
 /// <summary>
 /// Handles the <see cref="AceChoiceCommand"/> to process a player's ace high/low declaration.
 /// </summary>
-public class AceChoiceCommandHandler(CardsDbContext context)
+public class AceChoiceCommandHandler(CardsDbContext context,
+	IOptions<InMemoryEngineOptions> engineOptions,
+	IGameStateManager gameStateManager)
 	: IRequestHandler<AceChoiceCommand, OneOf<AceChoiceSuccessful, AceChoiceError>>
 {
 	public async Task<OneOf<AceChoiceSuccessful, AceChoiceError>> Handle(
@@ -80,6 +85,9 @@ public class AceChoiceCommandHandler(CardsDbContext context)
 
 		game.UpdatedAt = now;
 		await context.SaveChangesAsync(cancellationToken);
+
+		if (engineOptions.Value.Enabled)
+			await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
 
 		return new AceChoiceSuccessful
 		{

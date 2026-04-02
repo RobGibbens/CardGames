@@ -4,6 +4,7 @@ using CardGames.Poker.Api.Features.Games.Generic.v1.Commands.PerformShowdown;
 using CardGames.Poker.Api.Features.Games.Generic.v1.Commands.StartHand;
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Api.Services.Cache;
+using CardGames.Poker.Api.Services.InMemoryEngine;
 using CardGames.IntegrationTests.Infrastructure.Fakes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -109,6 +110,8 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
             serviceScopeFactory,
             new FakeActiveGameCache(),
             Options.Create(new ActiveGameCacheOptions { AdaptivePollingEnabled = false }),
+            new FakeGameStateManager(),
+            Options.Create(new InMemoryEngineOptions()),
             logger);
 
         await service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
@@ -519,6 +522,8 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
             serviceScopeFactory,
             new FakeActiveGameCache(),
             Options.Create(new ActiveGameCacheOptions { AdaptivePollingEnabled = false }),
+            new FakeGameStateManager(),
+            Options.Create(new InMemoryEngineOptions()),
             loggerFactory.CreateLogger<ContinuousPlayBackgroundService>());
 
         await service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
@@ -559,6 +564,8 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
             serviceScopeFactory,
             new FakeActiveGameCache(),
             Options.Create(new ActiveGameCacheOptions { AdaptivePollingEnabled = false }),
+            new FakeGameStateManager(),
+            Options.Create(new InMemoryEngineOptions()),
             logger);
 
         await service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
@@ -610,6 +617,8 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
             serviceScopeFactory,
             new FakeActiveGameCache(),
             Options.Create(new ActiveGameCacheOptions { AdaptivePollingEnabled = false }),
+            new FakeGameStateManager(),
+            Options.Create(new InMemoryEngineOptions()),
             logger);
 
         await service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
@@ -779,6 +788,8 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
                 Scope.ServiceProvider.GetRequiredService<IServiceScopeFactory>(),
                 new FakeActiveGameCache(),
                 Options.Create(new ActiveGameCacheOptions { AdaptivePollingEnabled = false }),
+                new FakeGameStateManager(),
+                Options.Create(new InMemoryEngineOptions()),
                 new TestLogger<ContinuousPlayBackgroundService>());
             await service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
             DbContext.ChangeTracker.Clear();
@@ -851,7 +862,7 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
 
         var serviceScopeFactory = Scope.ServiceProvider.GetRequiredService<IServiceScopeFactory>();
         var logger = new TestLogger<ContinuousPlayBackgroundService>();
-        var service = new ContinuousPlayBackgroundService(serviceScopeFactory, new FakeActiveGameCache(), Options.Create(new ActiveGameCacheOptions { AdaptivePollingEnabled = false }), logger);
+        var service = new ContinuousPlayBackgroundService(serviceScopeFactory, new FakeActiveGameCache(), Options.Create(new ActiveGameCacheOptions { AdaptivePollingEnabled = false }), new FakeGameStateManager(), Options.Create(new InMemoryEngineOptions()), logger);
         await service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
         logger.ErrorLogs.Should().BeEmpty("background service should succeed starting hand 2");
         DbContext.ChangeTracker.Clear();
@@ -905,7 +916,7 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
         await DbContext.SaveChangesAsync();
 
         logger = new TestLogger<ContinuousPlayBackgroundService>();
-        service = new ContinuousPlayBackgroundService(serviceScopeFactory, new FakeActiveGameCache(), Options.Create(new ActiveGameCacheOptions { AdaptivePollingEnabled = false }), logger);
+        service = new ContinuousPlayBackgroundService(serviceScopeFactory, new FakeActiveGameCache(), Options.Create(new ActiveGameCacheOptions { AdaptivePollingEnabled = false }), new FakeGameStateManager(), Options.Create(new InMemoryEngineOptions()), logger);
         await service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
         logger.ErrorLogs.Should().BeEmpty("background service should succeed starting hand 3");
         DbContext.ChangeTracker.Clear();
@@ -960,7 +971,7 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
         await DbContext.SaveChangesAsync();
 
         logger = new TestLogger<ContinuousPlayBackgroundService>();
-        service = new ContinuousPlayBackgroundService(serviceScopeFactory, new FakeActiveGameCache(), Options.Create(new ActiveGameCacheOptions { AdaptivePollingEnabled = false }), logger);
+        service = new ContinuousPlayBackgroundService(serviceScopeFactory, new FakeActiveGameCache(), Options.Create(new ActiveGameCacheOptions { AdaptivePollingEnabled = false }), new FakeGameStateManager(), Options.Create(new InMemoryEngineOptions()), logger);
         await service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
         logger.ErrorLogs.Should().BeEmpty("background service should succeed transitioning to DC");
         DbContext.ChangeTracker.Clear();
@@ -1091,7 +1102,7 @@ public class ScrewYourNeighborCommandTests : IntegrationTestBase
 
         var serviceScopeFactory = Scope.ServiceProvider.GetRequiredService<IServiceScopeFactory>();
         var logger = new TestLogger<ContinuousPlayBackgroundService>();
-        var service = new ContinuousPlayBackgroundService(serviceScopeFactory, new FakeActiveGameCache(), Options.Create(new ActiveGameCacheOptions { AdaptivePollingEnabled = false }), logger);
+        var service = new ContinuousPlayBackgroundService(serviceScopeFactory, new FakeActiveGameCache(), Options.Create(new ActiveGameCacheOptions { AdaptivePollingEnabled = false }), new FakeGameStateManager(), Options.Create(new InMemoryEngineOptions()), logger);
         await service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
         logger.ErrorLogs.Should().BeEmpty();
         DbContext.ChangeTracker.Clear();

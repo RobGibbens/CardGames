@@ -6,9 +6,14 @@ using Microsoft.EntityFrameworkCore;
 using OneOf;
 using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 
+using CardGames.Poker.Api.Services.InMemoryEngine;
+using Microsoft.Extensions.Options;
+
 namespace CardGames.Poker.Api.Features.Games.Baseball.v1.Commands.CollectAntes;
 
-public class CollectAntesCommandHandler(CardsDbContext context)
+public class CollectAntesCommandHandler(CardsDbContext context,
+	IOptions<InMemoryEngineOptions> engineOptions,
+	IGameStateManager gameStateManager)
 	: IRequestHandler<CollectAntesCommand, OneOf<CollectAntesSuccessful, CollectAntesError>>
 {
 	public async Task<OneOf<CollectAntesSuccessful, CollectAntesError>> Handle(
@@ -120,6 +125,9 @@ public class CollectAntesCommandHandler(CardsDbContext context)
 		}
 
 		await context.SaveChangesAsync(cancellationToken);
+
+		if (engineOptions.Value.Enabled)
+			await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
 
 		return new CollectAntesSuccessful
 		{

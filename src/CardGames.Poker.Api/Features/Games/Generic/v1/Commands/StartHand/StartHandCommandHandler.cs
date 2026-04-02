@@ -3,10 +3,12 @@ using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.GameFlow;
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Api.Services;
+using CardGames.Poker.Api.Services.InMemoryEngine;
 using CardGames.Poker.Betting;
 using CardGames.Contracts.SignalR;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using OneOf;
 using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 
@@ -48,6 +50,8 @@ public sealed class StartHandCommandHandler(
     CardsDbContext context,
     IGameFlowHandlerFactory flowHandlerFactory,
     IGameStateBroadcaster broadcaster,
+    IOptions<InMemoryEngineOptions> engineOptions,
+    IGameStateManager gameStateManager,
     ILogger<StartHandCommandHandler> logger)
     : IRequestHandler<StartHandCommand, OneOf<StartHandSuccessful, StartHandError>>
 {
@@ -101,6 +105,9 @@ public sealed class StartHandCommandHandler(
             game.UpdatedAt = now;
 
             await context.SaveChangesAsync(cancellationToken);
+
+            if (engineOptions.Value.Enabled)
+                await gameStateManager.GetOrLoadGameAsync(game.Id, cancellationToken);
 
             logger.LogInformation(
                 "Dealer's Choice game {GameId}: waiting for dealer at seat {DcDealerSeat} to choose game type",
@@ -266,6 +273,9 @@ public sealed class StartHandCommandHandler(
             await flowHandler.DealCardsAsync(context, game, eligiblePlayers, now, cancellationToken);
             await context.SaveChangesAsync(cancellationToken);
         }
+
+        if (engineOptions.Value.Enabled)
+            await gameStateManager.GetOrLoadGameAsync(game.Id, cancellationToken);
 
         logger.LogInformation(
             "Started hand {HandNumber} for game {GameId} in phase {Phase} with {PlayerCount} players",

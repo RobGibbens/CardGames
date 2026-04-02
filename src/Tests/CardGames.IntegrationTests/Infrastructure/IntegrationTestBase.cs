@@ -3,6 +3,7 @@ using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.GameFlow;
 using CardGames.Poker.Betting;
 using CardGames.Poker.Api.Services;
+using CardGames.Poker.Api.Services.InMemoryEngine;
 using CardGames.Poker.Api.Infrastructure;
 using CardGames.Poker.Evaluation;
 using CardGames.IntegrationTests.Infrastructure.Fakes;
@@ -64,6 +65,14 @@ public abstract class IntegrationTestBase : IAsyncLifetime
 		services.AddScoped<ICurrentUserService, FakeCurrentUserService>();
 		services.AddScoped<ITableStateBuilder, TableStateBuilder>();
 		services.AddScoped<IPlayerChipWalletService, PlayerChipWalletService>();
+
+		// In-memory engine services (disabled by default in tests)
+		services.AddMetrics();
+		services.Configure<InMemoryEngineOptions>(opt => opt.Enabled = false);
+		services.AddSingleton<IGameStateManager, GameStateManager>();
+		services.AddSingleton<IGameExecutionCoordinator, GameExecutionCoordinator>();
+		services.AddSingleton<IGameStateHydrator, GameStateHydrator>();
+		services.AddSingleton<IGameStateCheckpointService, GameStateCheckpointService>();
 
 		ConfigureServices(services);
 

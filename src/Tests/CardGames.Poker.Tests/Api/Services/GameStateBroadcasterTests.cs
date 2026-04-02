@@ -8,6 +8,7 @@ using CardGames.Contracts.SignalR;
 using CardGames.Poker.Api.Hubs;
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Api.Services.Cache;
+using CardGames.Poker.Api.Services.InMemoryEngine;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -82,6 +83,58 @@ public class GameStateBroadcasterTests
             Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task BroadcastGameStateAsync_EngineEnabledAndGameLoaded_UsesRuntimeStateOverload()
+    {
+        var gameId = Guid.NewGuid();
+        var publicState = CreateState(gameId, "FIVECARDDRAW", "FirstBettingRound", 0);
+        var runtimeState = new ActiveGameRuntimeState { GameId = gameId, CurrentPhase = "FirstBettingRound" };
+
+        var (sut, tableStateBuilder, _, _) = CreateSubjectWithEngine(
+            publicState, engineEnabled: true, runtimeState: runtimeState);
+
+        await sut.BroadcastGameStateAsync(gameId);
+
+        await tableStateBuilder.Received(1)
+            .BuildFullStateAsync(runtimeState, Arg.Any<CancellationToken>());
+        await tableStateBuilder.DidNotReceive()
+            .BuildFullStateAsync(gameId, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task BroadcastGameStateAsync_EngineDisabled_UsesDbOverload()
+    {
+        var gameId = Guid.NewGuid();
+        var publicState = CreateState(gameId, "FIVECARDDRAW", "FirstBettingRound", 0);
+
+        var (sut, tableStateBuilder, _, _) = CreateSubjectWithEngine(
+            publicState, engineEnabled: false, runtimeState: null);
+
+        await sut.BroadcastGameStateAsync(gameId);
+
+        await tableStateBuilder.Received(1)
+            .BuildFullStateAsync(gameId, Arg.Any<CancellationToken>());
+        await tableStateBuilder.DidNotReceive()
+            .BuildFullStateAsync(Arg.Any<ActiveGameRuntimeState>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task BroadcastGameStateAsync_EngineEnabledButGameNotLoaded_FallsBackToDbOverload()
+    {
+        var gameId = Guid.NewGuid();
+        var publicState = CreateState(gameId, "FIVECARDDRAW", "FirstBettingRound", 0);
+
+        var (sut, tableStateBuilder, _, _) = CreateSubjectWithEngine(
+            publicState, engineEnabled: true, runtimeState: null);
+
+        await sut.BroadcastGameStateAsync(gameId);
+
+        await tableStateBuilder.Received(1)
+            .BuildFullStateAsync(gameId, Arg.Any<CancellationToken>());
+        await tableStateBuilder.DidNotReceive()
+            .BuildFullStateAsync(Arg.Any<ActiveGameRuntimeState>(), Arg.Any<CancellationToken>());
+    }
+
     private static (GameStateBroadcaster Sut, ITableStateBuilder TableStateBuilder, IActionTimerService ActionTimerService, IClientProxy ClientProxy) CreateSubject(TableStatePublicDto publicState)
     {
         var tableStateBuilder = Substitute.For<ITableStateBuilder>();
@@ -114,6 +167,67 @@ public class GameStateBroadcasterTests
             actionTimerService,
             Substitute.For<IAutoActionService>(),
             Substitute.For<IActiveGameCache>(),
+            Substitute.For<IGameStateManager>(),
+            Options.Create(new InMemoryEngineOptions()),
+            TimeProvider.System,
+            Options.Create(new ActiveGameCacheOptions { Enabled = false }),
+            Substitute.For<ILogger<GameStateBroadcaster>>());
+
+        return (sut, tableStateBuilder, actionTimerService, clientProxy);
+    }
+
+    private static (GameStateBroadcaster Sut, ITableStateBuilder TableStateBuilder, IActionTimerService ActionTimerService, IClientProxy ClientProxy) CreateSubjectWithEngine(
+        TableStatePublicDto publicState,
+        bool engineEnabled,
+        ActiveGameRuntimeState? runtimeState)
+    {
+        var broadcastResult = new BroadcastStateBuildResult(
+            publicState,
+            new Dictionary<string, PrivateStateDto>(StringComparer.OrdinalIgnoreCase),
+            Array.Empty<string>(),
+            VersionNumber: 1,
+            HandNumber: 1,
+            Phase: publicState.CurrentPhase);
+
+        var tableStateBuilder = Substitute.For<ITableStateBuilder>();
+        tableStateBuilder.BuildFullStateAsync(publicState.GameId, Arg.Any<CancellationToken>())
+            .Returns(broadcastResult);
+        tableStateBuilder.BuildFullStateAsync(Arg.Any<ActiveGameRuntimeState>(), Arg.Any<CancellationToken>())
+            .Returns(broadcastResult);
+
+        var actionTimerService = Substitute.For<IActionTimerService>();
+        actionTimerService.GetTimerState(publicState.GameId).Returns((ActionTimerState?)null);
+        actionTimerService.IsTimerActive(publicState.GameId).Returns(false);
+
+        var clientProxy = Substitute.For<IClientProxy>();
+        clientProxy.SendCoreAsync(Arg.Any<string>(), Arg.Any<object?[]>(), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+
+        var hubClients = Substitute.For<IHubClients>();
+        hubClients.Group(Arg.Any<string>()).Returns(clientProxy);
+
+        var hubContext = Substitute.For<IHubContext<GameHub>>();
+        hubContext.Clients.Returns(hubClients);
+
+        var gameStateManager = Substitute.For<IGameStateManager>();
+        if (runtimeState is not null)
+        {
+            gameStateManager.TryGetGame(publicState.GameId, out Arg.Any<ActiveGameRuntimeState>()!)
+                .Returns(x =>
+                {
+                    x[1] = runtimeState;
+                    return true;
+                });
+        }
+
+        var sut = new GameStateBroadcaster(
+            hubContext,
+            tableStateBuilder,
+            actionTimerService,
+            Substitute.For<IAutoActionService>(),
+            Substitute.For<IActiveGameCache>(),
+            gameStateManager,
+            Options.Create(new InMemoryEngineOptions { Enabled = engineEnabled }),
             TimeProvider.System,
             Options.Create(new ActiveGameCacheOptions { Enabled = false }),
             Substitute.For<ILogger<GameStateBroadcaster>>());

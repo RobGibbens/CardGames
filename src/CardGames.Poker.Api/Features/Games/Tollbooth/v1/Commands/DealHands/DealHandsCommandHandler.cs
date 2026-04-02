@@ -8,6 +8,9 @@ using SharedDealHandsCommand = CardGames.Poker.Api.Features.Games.SevenCardStud.
 using SharedDealHandsError = CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.DealHands.DealHandsError;
 using SharedDealHandsSuccessful = CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.DealHands.DealHandsSuccessful;
 
+using CardGames.Poker.Api.Services.InMemoryEngine;
+using Microsoft.Extensions.Options;
+
 namespace CardGames.Poker.Api.Features.Games.Tollbooth.v1.Commands.DealHands;
 
 /// <summary>
@@ -16,7 +19,9 @@ namespace CardGames.Poker.Api.Features.Games.Tollbooth.v1.Commands.DealHands;
 /// </summary>
 public sealed class DealHandsCommandHandler(
 	IRequestHandler<SharedDealHandsCommand, OneOf<SharedDealHandsSuccessful, SharedDealHandsError>> innerHandler,
-	CardsDbContext context)
+	CardsDbContext context,
+	IOptions<InMemoryEngineOptions> engineOptions,
+	IGameStateManager gameStateManager)
 	: IRequestHandler<DealHandsCommand, OneOf<SharedDealHandsSuccessful, SharedDealHandsError>>
 {
 	public async Task<OneOf<SharedDealHandsSuccessful, SharedDealHandsError>> Handle(
@@ -68,6 +73,9 @@ public sealed class DealHandsCommandHandler(
 
 					TollboothVariantState.SetPreviousBettingStreet(game, nameof(Phases.ThirdStreet));
 					await context.SaveChangesAsync(cancellationToken);
+
+					if (engineOptions.Value.Enabled)
+						await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
 				}
 			}
 		}

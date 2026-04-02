@@ -12,10 +12,15 @@ using CardSymbol = CardGames.Poker.Api.Data.Entities.CardSymbol;
 using Suit = CardGames.Core.French.Cards.Suit;
 using Symbol = CardGames.Core.French.Cards.Symbol;
 
+using CardGames.Poker.Api.Services.InMemoryEngine;
+using Microsoft.Extensions.Options;
+
 namespace CardGames.Poker.Api.Features.Games.PairPressure.v1.Commands.StartHand;
 
 public class StartHandCommandHandler(
 	CardsDbContext context,
+	IOptions<InMemoryEngineOptions> engineOptions,
+	IGameStateManager gameStateManager,
 	ILogger<StartHandCommandHandler> logger)
 	: IRequestHandler<StartHandCommand, OneOf<StartHandSuccessful, StartHandError>>
 {
@@ -144,6 +149,9 @@ public class StartHandCommandHandler(
 		game.StartedAt ??= now;
 
 		await context.SaveChangesAsync(cancellationToken);
+
+		if (engineOptions.Value.Enabled)
+			await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
 
 		return new StartHandSuccessful
 		{

@@ -3,9 +3,11 @@ using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Api.Infrastructure;
 using CardGames.Poker.Api.Services;
+using CardGames.Poker.Api.Services.InMemoryEngine;
 using CardGames.Poker.Betting;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using OneOf;
 
 namespace CardGames.Poker.Api.Features.Games.Common.v1.Commands.JoinGame;
@@ -19,6 +21,8 @@ public sealed class JoinGameCommandHandler(
 	IPlayerChipWalletService playerChipWalletService,
 	IGameJoinRequestBroadcaster joinRequestBroadcaster,
 	IGameStateBroadcaster broadcaster,
+	IOptions<InMemoryEngineOptions> engineOptions,
+	IGameStateManager gameStateManager,
 	ILogger<JoinGameCommandHandler> logger)
 	: IRequestHandler<JoinGameCommand, OneOf<JoinGameSuccessful, JoinGameError, JoinGamePendingApproval>>
 {
@@ -351,6 +355,12 @@ public sealed class JoinGameCommandHandler(
 
 		await context.SaveChangesAsync(cancellationToken);
 
+		// Refresh in-memory state so subsequent handlers see the new player
+		if (engineOptions.Value.Enabled)
+		{
+			await gameStateManager.GetOrLoadGameAsync(game.Id, cancellationToken);
+		}
+
 		logger.LogInformation(
 			"Player {PlayerName} joined game {GameId} at seat {SeatIndex}. CanPlayCurrentHand: {CanPlay}",
 			playerName, command.GameId, command.SeatIndex, canPlayCurrentHand);
@@ -429,6 +439,12 @@ public sealed class JoinGameCommandHandler(
 
 		game.UpdatedAt = now;
 		await context.SaveChangesAsync(cancellationToken);
+
+		// Refresh in-memory state so subsequent handlers see the rejoined player
+		if (engineOptions.Value.Enabled)
+		{
+			await gameStateManager.GetOrLoadGameAsync(game.Id, cancellationToken);
+		}
 
 		var userEmail = currentUserService.UserEmail;
 		var userProfile = !string.IsNullOrWhiteSpace(userEmail)

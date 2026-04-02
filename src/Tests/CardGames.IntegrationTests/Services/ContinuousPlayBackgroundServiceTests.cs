@@ -1,5 +1,6 @@
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Api.Services.Cache;
+using CardGames.Poker.Api.Services.InMemoryEngine;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.GameFlow;
@@ -45,6 +46,8 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
             _scopeFactory,
             new FakeActiveGameCache(),
             Options.Create(new ActiveGameCacheOptions { AdaptivePollingEnabled = false }),
+            new FakeGameStateManager(),
+            Options.Create(new InMemoryEngineOptions()),
             _logger);
     }
 

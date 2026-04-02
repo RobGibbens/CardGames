@@ -3,8 +3,10 @@ using CardGames.Poker.Api.Infrastructure;
 using CardGames.Poker.Api.Infrastructure.Caching;
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Api.Services.Cache;
+using CardGames.Poker.Api.Services.InMemoryEngine;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using OneOf;
 
 namespace CardGames.Poker.Api.Features.Games.Common.v1.Commands.DeleteGame;
@@ -18,6 +20,8 @@ public sealed class DeleteGameCommandHandler(
 	ILobbyBroadcaster lobbyBroadcaster,
 	IGameStateQueryCacheInvalidator gameStateQueryCacheInvalidator,
 	IActiveGameCache activeGameCache,
+	IOptions<InMemoryEngineOptions> engineOptions,
+	IGameStateManager gameStateManager,
 	ILogger<DeleteGameCommandHandler> logger)
 	: IRequestHandler<DeleteGameCommand, OneOf<DeleteGameSuccessful, DeleteGameError>>
 {
@@ -89,6 +93,12 @@ public sealed class DeleteGameCommandHandler(
 		// 6. Invalidate caches
 		await gameStateQueryCacheInvalidator.InvalidateAfterMutationAsync(command.GameId, cancellationToken);
 		activeGameCache.Evict(command.GameId);
+
+		// 7. Evict from in-memory engine if enabled
+		if (engineOptions.Value.Enabled)
+		{
+			gameStateManager.RemoveGame(command.GameId);
+		}
 
 		return new DeleteGameSuccessful
 		{

@@ -9,12 +9,17 @@ using Microsoft.Extensions.Logging;
 using OneOf;
 using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 
+using CardGames.Poker.Api.Services.InMemoryEngine;
+using Microsoft.Extensions.Options;
+
 namespace CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.StartHand;
 
 /// <summary>
 /// Handles the <see cref="StartHandCommand"/> to start a new hand in a Kings and Lows game.
 /// </summary>
-public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCommandHandler> logger)
+public class StartHandCommandHandler(CardsDbContext context,
+	IOptions<InMemoryEngineOptions> engineOptions,
+	IGameStateManager gameStateManager, ILogger<StartHandCommandHandler> logger)
 	: IRequestHandler<StartHandCommand, OneOf<StartHandSuccessful, StartHandError>>
 {
 	public async Task<OneOf<StartHandSuccessful, StartHandError>> Handle(
@@ -187,6 +192,9 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 				{
 					// Still paused - return early
 					await context.SaveChangesAsync(cancellationToken);
+
+					if (engineOptions.Value.Enabled)
+						await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
 					return new StartHandError
 					{
 						Message = "Game is paused waiting for players to add chips. Resume will occur automatically when all players have sufficient chips or after 2 minutes.",
@@ -209,6 +217,9 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 				game.Id, playersNeedingChips.Count, currentPotAmount, shortPlayerNames);
 
 			await context.SaveChangesAsync(cancellationToken);
+
+			if (engineOptions.Value.Enabled)
+				await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
 
 			return new StartHandError
 			{
@@ -398,6 +409,9 @@ public class StartHandCommandHandler(CardsDbContext context, ILogger<StartHandCo
 
 				// 14. Persist changes
 				await context.SaveChangesAsync(cancellationToken);
+
+				if (engineOptions.Value.Enabled)
+					await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
 
 				return new StartHandSuccessful
 				{

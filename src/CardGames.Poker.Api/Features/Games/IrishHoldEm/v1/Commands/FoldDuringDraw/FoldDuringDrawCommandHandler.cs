@@ -5,6 +5,9 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
 
+using CardGames.Poker.Api.Services.InMemoryEngine;
+using Microsoft.Extensions.Options;
+
 namespace CardGames.Poker.Api.Features.Games.IrishHoldEm.v1.Commands.FoldDuringDraw;
 
 /// <summary>
@@ -13,6 +16,8 @@ namespace CardGames.Poker.Api.Features.Games.IrishHoldEm.v1.Commands.FoldDuringD
 /// </summary>
 public class FoldDuringDrawCommandHandler(
 	CardsDbContext context,
+	IOptions<InMemoryEngineOptions> engineOptions,
+	IGameStateManager gameStateManager,
 	ILogger<FoldDuringDrawCommandHandler> logger)
 	: IRequestHandler<FoldDuringDrawCommand, OneOf<FoldDuringDrawSuccessful, FoldDuringDrawError>>
 {
@@ -105,6 +110,9 @@ public class FoldDuringDrawCommandHandler(
 
 		game.UpdatedAt = now;
 		await context.SaveChangesAsync(cancellationToken);
+
+		if (engineOptions.Value.Enabled)
+			await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
 
 		return new FoldDuringDrawSuccessful
 		{

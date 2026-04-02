@@ -7,12 +7,17 @@ using Microsoft.EntityFrameworkCore;
 using OneOf;
 using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 
+using CardGames.Poker.Api.Services.InMemoryEngine;
+using Microsoft.Extensions.Options;
+
 namespace CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe.v1.Commands.StartHand;
 
 /// <summary>
 /// Handles the <see cref="StartHandCommand"/> to start a new hand in a Five Card Draw game.
 /// </summary>
-public class StartHandCommandHandler(CardsDbContext context)
+public class StartHandCommandHandler(CardsDbContext context,
+	IOptions<InMemoryEngineOptions> engineOptions,
+	IGameStateManager gameStateManager)
 	: IRequestHandler<StartHandCommand, OneOf<StartHandSuccessful, StartHandError>>
 {
 	public async Task<OneOf<StartHandSuccessful, StartHandError>> Handle(
@@ -156,6 +161,9 @@ public class StartHandCommandHandler(CardsDbContext context)
 
 		// 9. Persist changes
 		await context.SaveChangesAsync(cancellationToken);
+
+		if (engineOptions.Value.Enabled)
+			await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
 
 		return new StartHandSuccessful
 		{

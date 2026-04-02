@@ -4,8 +4,10 @@ using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Api.Infrastructure;
 using CardGames.Poker.Api.Services;
+using CardGames.Poker.Api.Services.InMemoryEngine;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using OneOf;
 
 namespace CardGames.Poker.Api.Features.Games.Common.v1.Commands.AddChips;
@@ -17,6 +19,8 @@ public sealed class AddChipsCommandHandler(
 	CardsDbContext context,
 	ICurrentUserService currentUserService,
 	IGameStateBroadcaster broadcaster,
+	IOptions<InMemoryEngineOptions> engineOptions,
+	IGameExecutionCoordinator coordinator,
 	ILogger<AddChipsCommandHandler> logger)
 	: IRequestHandler<AddChipsCommand, OneOf<AddChipsResponse, AddChipsError>>
 {
@@ -33,6 +37,77 @@ public sealed class AddChipsCommandHandler(
 				"Amount must be greater than 0.");
 		}
 
+		if (engineOptions.Value.Enabled)
+			return await HandleInMemory(command, cancellationToken);
+
+		return await HandleDatabase(command, cancellationToken);
+	}
+
+	private async Task<OneOf<AddChipsResponse, AddChipsError>> HandleInMemory(
+		AddChipsCommand command, CancellationToken cancellationToken)
+	{
+		return await coordinator.ExecuteAsync(command.GameId, async (state, ct) =>
+		{
+			if (state.Status is GameStatus.Completed or GameStatus.Cancelled)
+			{
+				return (OneOf<AddChipsResponse, AddChipsError>)new AddChipsError(
+					AddChipsErrorCode.GameEnded,
+					"This game has ended and chips cannot be added.");
+			}
+
+			var runtimePlayer = state.Players.FirstOrDefault(p => p.PlayerId == command.PlayerId);
+			if (runtimePlayer is null)
+			{
+				return new AddChipsError(
+					AddChipsErrorCode.PlayerNotInGame,
+					"Player is not part of this game.");
+			}
+			if (runtimePlayer.Status == GamePlayerStatus.Left)
+			{
+				return new AddChipsError(
+					AddChipsErrorCode.PlayerNotInGame,
+					"Player has already left this game.");
+			}
+
+			bool applyImmediately = string.Equals(state.GameTypeCode, PokerGameMetadataRegistry.KingsAndLowsCode, StringComparison.OrdinalIgnoreCase)
+				|| string.Equals(state.CurrentPhase, "BetweenHands", StringComparison.OrdinalIgnoreCase);
+
+			string message;
+			if (applyImmediately)
+			{
+				runtimePlayer.ChipStack += command.Amount;
+				runtimePlayer.IsSittingOut = false;
+				if (runtimePlayer.Status == GamePlayerStatus.SittingOut)
+				{
+					runtimePlayer.Status = GamePlayerStatus.Active;
+				}
+				message = $"{command.Amount} chips added to your stack.";
+				logger.LogInformation(
+					"Added {Amount} chips immediately to player {PlayerId} in game {GameId}",
+					command.Amount, command.PlayerId, command.GameId);
+			}
+			else
+			{
+				runtimePlayer.PendingChipsToAdd += command.Amount;
+				message = $"{command.Amount} chips will be added at the start of the next hand.";
+				logger.LogInformation(
+					"Queued {Amount} chips for player {PlayerId} in game {GameId} (total pending: {PendingChips})",
+					command.Amount, command.PlayerId, command.GameId, runtimePlayer.PendingChipsToAdd);
+			}
+
+			return (OneOf<AddChipsResponse, AddChipsError>)new AddChipsResponse
+			{
+				NewChipStack = runtimePlayer.ChipStack,
+				PendingChipsToAdd = runtimePlayer.PendingChipsToAdd,
+				AppliedImmediately = applyImmediately,
+				Message = message
+			};
+		}, cancellationToken);
+	}
+
+	private async Task<OneOf<AddChipsResponse, AddChipsError>> HandleDatabase(
+		AddChipsCommand command, CancellationToken cancellationToken)
+	{
 		// Load the game with game type and players
 		var game = await context.Games
 			.Include(g => g.GameType)

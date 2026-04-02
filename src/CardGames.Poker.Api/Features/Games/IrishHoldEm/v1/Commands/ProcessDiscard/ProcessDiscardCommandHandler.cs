@@ -10,13 +10,18 @@ using BettingRound = CardGames.Poker.Api.Data.Entities.BettingRound;
 using CardSuit = CardGames.Poker.Api.Data.Entities.CardSuit;
 using CardSymbol = CardGames.Poker.Api.Data.Entities.CardSymbol;
 
+using CardGames.Poker.Api.Services.InMemoryEngine;
+using Microsoft.Extensions.Options;
+
 namespace CardGames.Poker.Api.Features.Games.IrishHoldEm.v1.Commands.ProcessDiscard;
 
 /// <summary>
 /// Handles the <see cref="ProcessDiscardCommand"/> to process discard actions from players
 /// during the Irish Hold 'Em discard phase.
 /// </summary>
-public class ProcessDiscardCommandHandler(CardsDbContext context)
+public class ProcessDiscardCommandHandler(CardsDbContext context,
+	IOptions<InMemoryEngineOptions> engineOptions,
+	IGameStateManager gameStateManager)
 	: IRequestHandler<ProcessDiscardCommand, OneOf<ProcessDiscardSuccessful, ProcessDiscardError>>
 {
 	private const int InitialHoleCardCount = 4;
@@ -254,6 +259,9 @@ public class ProcessDiscardCommandHandler(CardsDbContext context)
 
 		// 12. Persist changes
 		await context.SaveChangesAsync(cancellationToken);
+
+		if (engineOptions.Value.Enabled)
+			await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
 
 		return new ProcessDiscardSuccessful
 		{

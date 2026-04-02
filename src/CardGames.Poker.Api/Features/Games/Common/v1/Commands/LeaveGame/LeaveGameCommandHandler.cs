@@ -2,8 +2,10 @@ using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Infrastructure;
 using CardGames.Poker.Api.Services;
+using CardGames.Poker.Api.Services.InMemoryEngine;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using OneOf;
 
 namespace CardGames.Poker.Api.Features.Games.Common.v1.Commands.LeaveGame;
@@ -16,6 +18,8 @@ public sealed class LeaveGameCommandHandler(
 	ICurrentUserService currentUserService,
 	IPlayerChipWalletService playerChipWalletService,
 	IGameStateBroadcaster broadcaster,
+	IOptions<InMemoryEngineOptions> engineOptions,
+	IGameStateManager gameStateManager,
 	ILogger<LeaveGameCommandHandler> logger)
 	: IRequestHandler<LeaveGameCommand, OneOf<LeaveGameSuccessful, LeaveGameError>>
 {
@@ -81,6 +85,9 @@ public sealed class LeaveGameCommandHandler(
 			game.UpdatedAt = DateTimeOffset.UtcNow;
 			await context.SaveChangesAsync(cancellationToken);
 
+			if (engineOptions.Value.Enabled)
+				await gameStateManager.GetOrLoadGameAsync(game.Id, cancellationToken);
+
 			await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
 
 			return new LeaveGameSuccessful(
@@ -109,6 +116,9 @@ public sealed class LeaveGameCommandHandler(
 			game.UpdatedAt = DateTimeOffset.UtcNow;
 
 			await context.SaveChangesAsync(cancellationToken);
+
+			if (engineOptions.Value.Enabled)
+				await gameStateManager.GetOrLoadGameAsync(game.Id, cancellationToken);
 
 			await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
 
@@ -147,6 +157,9 @@ public sealed class LeaveGameCommandHandler(
 		gamePlayer.ChipStack = 0;
 
 		await context.SaveChangesAsync(cancellationToken);
+
+		if (engineOptions.Value.Enabled)
+			await gameStateManager.GetOrLoadGameAsync(game.Id, cancellationToken);
 
 		await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
 

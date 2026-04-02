@@ -8,6 +8,9 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
 
+using CardGames.Poker.Api.Services.InMemoryEngine;
+using Microsoft.Extensions.Options;
+
 namespace CardGames.Poker.Api.Features.Games.ScrewYourNeighbor.v1.Commands.KeepOrTrade;
 
 /// <summary>
@@ -15,6 +18,8 @@ namespace CardGames.Poker.Api.Features.Games.ScrewYourNeighbor.v1.Commands.KeepO
 /// </summary>
 public class KeepOrTradeCommandHandler(
 	CardsDbContext context,
+	IOptions<InMemoryEngineOptions> engineOptions,
+	IGameStateManager gameStateManager,
 	IGameFlowHandlerFactory flowHandlerFactory,
 	IHandHistoryRecorder handHistoryRecorder,
 	IHandSettlementService handSettlementService)
@@ -170,6 +175,9 @@ public class KeepOrTradeCommandHandler(
 		}
 
 		await context.SaveChangesAsync(cancellationToken);
+
+		if (engineOptions.Value.Enabled)
+			await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
 
 		return new KeepOrTradeSuccessful
 		{

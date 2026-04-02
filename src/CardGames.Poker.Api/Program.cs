@@ -27,6 +27,7 @@ using ZiggyCreatures.Caching.Fusion;
 using ZiggyCreatures.Caching.Fusion.Serialization.SystemTextJson;
 using CardGames.Poker.Api.Hubs;
 using CardGames.Poker.Api.Services;
+using CardGames.Poker.Api.Services.InMemoryEngine;
 using CardGames.Poker.Evaluation;
 using Microsoft.AspNetCore.SignalR;
 using CardGames.Poker.Api.Infrastructure.Storage;
@@ -132,6 +133,16 @@ public class Program
 
             // Add background service for continuous play (auto-start next hands)
             builder.Services.AddHostedService<ContinuousPlayBackgroundService>();
+
+        // In-memory game engine (Phase 4)
+        builder.Services.Configure<InMemoryEngineOptions>(
+            builder.Configuration.GetSection(InMemoryEngineOptions.SectionName));
+        builder.Services.AddSingleton<IGameStateHydrator, GameStateHydrator>();
+        builder.Services.AddSingleton<IGameStateManager, GameStateManager>();
+        builder.Services.AddSingleton<IGameExecutionCoordinator, GameExecutionCoordinator>();
+        builder.Services.AddSingleton<IGameStateCheckpointService, GameStateCheckpointService>();
+        builder.Services.AddHostedService<GameStatePeriodicCheckpointService>();
+        builder.Services.AddHostedService<GameStateRecoveryService>();
 
         builder.AddRedisDistributedCache("cache");
 

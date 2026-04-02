@@ -8,9 +8,14 @@ using Microsoft.EntityFrameworkCore;
 using OneOf;
 using BettingRound = CardGames.Poker.Api.Data.Entities.BettingRound;
 
+using CardGames.Poker.Api.Services.InMemoryEngine;
+using Microsoft.Extensions.Options;
+
 namespace CardGames.Poker.Api.Features.Games.Tollbooth.v1.Commands.ChooseCard;
 
-public sealed class ChooseCardCommandHandler(CardsDbContext context)
+public sealed class ChooseCardCommandHandler(CardsDbContext context,
+	IOptions<InMemoryEngineOptions> engineOptions,
+	IGameStateManager gameStateManager)
 	: IRequestHandler<ChooseCardCommand, OneOf<ChooseCardSuccessful, ChooseCardError>>
 {
 	public async Task<OneOf<ChooseCardSuccessful, ChooseCardError>> Handle(
@@ -413,6 +418,9 @@ public sealed class ChooseCardCommandHandler(CardsDbContext context)
 
 		game.UpdatedAt = now;
 		await context.SaveChangesAsync(cancellationToken);
+
+		if (engineOptions.Value.Enabled)
+			await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
 
 		return new ChooseCardSuccessful
 		{

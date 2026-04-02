@@ -8,12 +8,17 @@ using Microsoft.EntityFrameworkCore;
 using OneOf;
 using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 
+using CardGames.Poker.Api.Services.InMemoryEngine;
+using Microsoft.Extensions.Options;
+
 namespace CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe.v1.Commands.CollectAntes;
 
 /// <summary>
 /// Handles the <see cref="CollectAntesCommand"/> to collect mandatory ante bets from all players.
 /// </summary>
-public class CollectAntesCommandHandler(CardsDbContext context)
+public class CollectAntesCommandHandler(CardsDbContext context,
+	IOptions<InMemoryEngineOptions> engineOptions,
+	IGameStateManager gameStateManager)
 	: IRequestHandler<CollectAntesCommand, OneOf<CollectAntesSuccessful, CollectAntesError>>
 {
 	/// <inheritdoc />
@@ -140,6 +145,9 @@ public class CollectAntesCommandHandler(CardsDbContext context)
 
 		// 7. Persist changes
 		await context.SaveChangesAsync(cancellationToken);
+
+		if (engineOptions.Value.Enabled)
+			await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
 
 		return new CollectAntesSuccessful
 		{

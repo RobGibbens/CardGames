@@ -14,13 +14,18 @@ using OneOf;
 using CardSuit = CardGames.Poker.Api.Data.Entities.CardSuit;
 using CardSymbol = CardGames.Poker.Api.Data.Entities.CardSymbol;
 
+using CardGames.Poker.Api.Services.InMemoryEngine;
+using Microsoft.Extensions.Options;
+
 namespace CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.PerformShowdown;
 
 /// <summary>
 /// Handles the <see cref="PerformShowdownCommand"/> to evaluate hands and award pots in Kings and Lows.
 /// Uses wild card evaluation: Kings are always wild, plus the lowest non-King card(s).
 /// </summary>
-public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryRecorder handHistoryRecorder, IHandSettlementService handSettlementService)
+public class PerformShowdownCommandHandler(CardsDbContext context,
+	IOptions<InMemoryEngineOptions> engineOptions,
+	IGameStateManager gameStateManager, IHandHistoryRecorder handHistoryRecorder, IHandSettlementService handSettlementService)
 	: IRequestHandler<PerformShowdownCommand, OneOf<PerformShowdownSuccessful, PerformShowdownError>>
 {
 	/// <inheritdoc />
@@ -138,6 +143,9 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 					MoveDealer(game);
 
 					await context.SaveChangesAsync(cancellationToken);
+
+					if (engineOptions.Value.Enabled)
+						await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
 
 					// Record hand history for dead hand
 					await RecordHandHistoryAsync(
@@ -297,6 +305,9 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 
 					await context.SaveChangesAsync(cancellationToken);
 
+					if (engineOptions.Value.Enabled)
+						await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
+
 					// Record hand history for player-vs-deck
 					await RecordHandHistoryAsync(
 						game,
@@ -391,6 +402,9 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 				await handSettlementService.SettleHandAsync(game, foldPayouts, cancellationToken);
 
 				await context.SaveChangesAsync(cancellationToken);
+
+				if (engineOptions.Value.Enabled)
+					await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
 
 				// Record hand history for win-by-fold
 				await RecordHandHistoryAsync(
@@ -562,6 +576,9 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 			await handSettlementService.SettleHandAsync(game, payouts, cancellationToken);
 
 			await context.SaveChangesAsync(cancellationToken);
+
+			if (engineOptions.Value.Enabled)
+				await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
 
 			// Record hand history for showdown
 			var winnerInfos = winners.Select(w =>

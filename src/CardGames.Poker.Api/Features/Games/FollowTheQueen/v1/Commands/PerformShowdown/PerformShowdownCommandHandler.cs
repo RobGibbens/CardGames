@@ -12,12 +12,17 @@ using OneOf;
 using CardSuit = CardGames.Poker.Api.Data.Entities.CardSuit;
 using CardSymbol = CardGames.Poker.Api.Data.Entities.CardSymbol;
 
+using CardGames.Poker.Api.Services.InMemoryEngine;
+using Microsoft.Extensions.Options;
+
 namespace CardGames.Poker.Api.Features.Games.FollowTheQueen.v1.Commands.PerformShowdown;
 
 /// <summary>
 /// Handles the <see cref="PerformShowdownCommand"/> to evaluate hands and award pots.
 /// </summary>
-public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryRecorder handHistoryRecorder, IHandSettlementService handSettlementService)
+public class PerformShowdownCommandHandler(CardsDbContext context,
+	IOptions<InMemoryEngineOptions> engineOptions,
+	IGameStateManager gameStateManager, IHandHistoryRecorder handHistoryRecorder, IHandSettlementService handSettlementService)
 	: IRequestHandler<PerformShowdownCommand, OneOf<PerformShowdownSuccessful, PerformShowdownError>>
 {
 	/// <inheritdoc />
@@ -122,6 +127,9 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 				await handSettlementService.SettleHandAsync(game, foldPayouts, cancellationToken);
 
 				await context.SaveChangesAsync(cancellationToken);
+
+				if (engineOptions.Value.Enabled)
+					await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
 
 				// Record hand history for win-by-fold
 				await RecordHandHistoryAsync(
@@ -295,6 +303,9 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 			await handSettlementService.SettleHandAsync(game, payouts, cancellationToken);
 
 			await context.SaveChangesAsync(cancellationToken);
+
+			if (engineOptions.Value.Enabled)
+				await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
 
 			// Record hand history for showdown
 			var winnerInfos = winners.Select(w =>

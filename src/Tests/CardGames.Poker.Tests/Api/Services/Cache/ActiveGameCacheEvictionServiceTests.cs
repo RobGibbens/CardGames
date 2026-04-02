@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using CardGames.Contracts.SignalR;
 using CardGames.Poker.Api.Services.Cache;
+using CardGames.Poker.Api.Services.InMemoryEngine;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -31,7 +32,7 @@ public class ActiveGameCacheEvictionServiceTests
         var timeProvider = TimeProvider.System;
         var logger = Substitute.For<ILogger<ActiveGameCacheEvictionService>>();
 
-        var svc = new ActiveGameCacheEvictionService(cache, options, timeProvider, logger);
+        var svc = new ActiveGameCacheEvictionService(cache, Substitute.For<IGameStateManager>(), options, Options.Create(new InMemoryEngineOptions()), timeProvider, logger);
 
         using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(200));
 
@@ -62,7 +63,7 @@ public class ActiveGameCacheEvictionServiceTests
         var timeProvider = TimeProvider.System;
         var logger = Substitute.For<ILogger<ActiveGameCacheEvictionService>>();
 
-        var svc = new ActiveGameCacheEvictionService(cache, options, timeProvider, logger);
+        var svc = new ActiveGameCacheEvictionService(cache, Substitute.For<IGameStateManager>(), options, Options.Create(new InMemoryEngineOptions()), timeProvider, logger);
 
         using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(200));
 

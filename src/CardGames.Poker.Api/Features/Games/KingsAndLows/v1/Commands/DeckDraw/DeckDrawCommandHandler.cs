@@ -9,12 +9,17 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
 
+using CardGames.Poker.Api.Services.InMemoryEngine;
+using Microsoft.Extensions.Options;
+
 namespace CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.DeckDraw;
 
 /// <summary>
 /// Handles the <see cref="DeckDrawCommand"/> to process the deck's draw in player-vs-deck scenario.
 /// </summary>
-public class DeckDrawCommandHandler(CardsDbContext context)
+public class DeckDrawCommandHandler(CardsDbContext context,
+	IOptions<InMemoryEngineOptions> engineOptions,
+	IGameStateManager gameStateManager)
 	: IRequestHandler<DeckDrawCommand, OneOf<DeckDrawSuccessful, DeckDrawError>>
 {
 	private const int MaxDiscards = 5;
@@ -202,6 +207,9 @@ public class DeckDrawCommandHandler(CardsDbContext context)
 
 				// 10. Persist changes
 				await context.SaveChangesAsync(cancellationToken);
+
+				if (engineOptions.Value.Enabled)
+					await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
 
 				return new DeckDrawSuccessful
 				{

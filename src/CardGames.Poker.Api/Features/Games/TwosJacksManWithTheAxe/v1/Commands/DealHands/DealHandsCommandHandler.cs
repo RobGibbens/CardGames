@@ -11,12 +11,17 @@ using BettingRound = CardGames.Poker.Api.Data.Entities.BettingRound;
 using CardSuit = CardGames.Poker.Api.Data.Entities.CardSuit;
 using CardSymbol = CardGames.Poker.Api.Data.Entities.CardSymbol;
 
+using CardGames.Poker.Api.Services.InMemoryEngine;
+using Microsoft.Extensions.Options;
+
 namespace CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe.v1.Commands.DealHands;
 
 /// <summary>
 /// Handles the <see cref="DealHandsCommand"/> to deal five cards to each active player.
 /// </summary>
-public class DealHandsCommandHandler(CardsDbContext context)
+public class DealHandsCommandHandler(CardsDbContext context,
+	IOptions<InMemoryEngineOptions> engineOptions,
+	IGameStateManager gameStateManager)
 	: IRequestHandler<DealHandsCommand, OneOf<DealHandsSuccessful, DealHandsError>>
 {
 	private const int CardsPerPlayer = 5;
@@ -170,6 +175,9 @@ public class DealHandsCommandHandler(CardsDbContext context)
 
 		// 10. Persist changes
 		await context.SaveChangesAsync(cancellationToken);
+
+		if (engineOptions.Value.Enabled)
+			await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
 
 		// Get current player name
 		var currentPlayerName = firstActorIndex >= 0

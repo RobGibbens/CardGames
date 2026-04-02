@@ -9,12 +9,17 @@ using BettingActionType = CardGames.Poker.Api.Data.Entities.BettingActionType;
 using BettingRound = CardGames.Poker.Api.Data.Entities.BettingRound;
 using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 
+using CardGames.Poker.Api.Services.InMemoryEngine;
+using Microsoft.Extensions.Options;
+
 namespace CardGames.Poker.Api.Features.Games.FiveCardDraw.v1.Commands.ProcessBettingAction;
 
 /// <summary>
 /// Handles the <see cref="ProcessBettingActionCommand"/> to process betting actions from players.
 /// </summary>
-public class ProcessBettingActionCommandHandler(CardsDbContext context)
+public class ProcessBettingActionCommandHandler(CardsDbContext context,
+	IOptions<InMemoryEngineOptions> engineOptions,
+	IGameStateManager gameStateManager)
 	: IRequestHandler<ProcessBettingActionCommand, OneOf<ProcessBettingActionSuccessful, ProcessBettingActionError>>
 {
 	/// <inheritdoc />
@@ -167,6 +172,9 @@ public class ProcessBettingActionCommandHandler(CardsDbContext context)
 
 			// 14. Persist changes
 			await context.SaveChangesAsync(cancellationToken);
+
+			if (engineOptions.Value.Enabled)
+				await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
 
 			return new ProcessBettingActionSuccessful
 			{

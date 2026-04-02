@@ -3,9 +3,11 @@ using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.Common;
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Api.Infrastructure;
+using CardGames.Poker.Api.Services.InMemoryEngine;
 using CardGames.Poker.Betting;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using OneOf;
 using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 
@@ -13,7 +15,9 @@ namespace CardGames.Poker.Api.Features.Games.Common.v1.Commands.CreateGame;
 
 public class CreateGameCommandHandler(
 	CardsDbContext context,
-	ICurrentUserService currentUserService)
+	ICurrentUserService currentUserService,
+	IOptions<InMemoryEngineOptions> engineOptions,
+	IGameStateManager gameStateManager)
 	: IRequestHandler<CreateGameCommand, OneOf<CreateGameSuccessful, CreateGameConflict>>
 {
 	public async Task<OneOf<CreateGameSuccessful, CreateGameConflict>> Handle(CreateGameCommand command, CancellationToken cancellationToken)
@@ -185,6 +189,12 @@ public class CreateGameCommandHandler(
 		context.Pots.Add(mainPot);
 
 		await context.SaveChangesAsync(cancellationToken);
+
+		// Pre-populate in-memory engine so subsequent handlers find the game immediately
+		if (engineOptions.Value.Enabled)
+		{
+			await gameStateManager.GetOrLoadGameAsync(game.Id, cancellationToken);
+		}
 
 		return new CreateGameSuccessful
 		{

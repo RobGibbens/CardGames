@@ -4,21 +4,189 @@ using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.Common;
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Api.Infrastructure;
+using CardGames.Poker.Api.Services.InMemoryEngine;
 using CardGames.Poker.Betting;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using OneOf;
 
 namespace CardGames.Poker.Api.Features.Games.Common.v1.Commands.ChooseDealerGame;
 
 public class ChooseDealerGameCommandHandler(
 	CardsDbContext context,
-	ICurrentUserService currentUserService)
+	ICurrentUserService currentUserService,
+	IOptions<InMemoryEngineOptions> engineOptions,
+	IGameExecutionCoordinator coordinator)
 	: IRequestHandler<ChooseDealerGameCommand, OneOf<ChooseDealerGameSuccessful, ChooseDealerGameError>>
 {
 	public async Task<OneOf<ChooseDealerGameSuccessful, ChooseDealerGameError>> Handle(
 		ChooseDealerGameCommand command,
 		CancellationToken cancellationToken)
+	{
+		if (engineOptions.Value.Enabled)
+			return await HandleInMemory(command, cancellationToken);
+
+		return await HandleDatabase(command, cancellationToken);
+	}
+
+	private async Task<OneOf<ChooseDealerGameSuccessful, ChooseDealerGameError>> HandleInMemory(
+		ChooseDealerGameCommand command, CancellationToken cancellationToken)
+	{
+		return await coordinator.ExecuteAsync(command.GameId, async (state, ct) =>
+		{
+			if (!state.IsDealersChoice)
+			{
+				return (OneOf<ChooseDealerGameSuccessful, ChooseDealerGameError>)new ChooseDealerGameError
+				{
+					GameId = command.GameId,
+					Reason = "This is not a Dealer's Choice table."
+				};
+			}
+
+			if (state.CurrentPhase != nameof(Phases.WaitingForDealerChoice))
+			{
+				return new ChooseDealerGameError
+				{
+					GameId = command.GameId,
+					Reason = $"Game is not waiting for a dealer choice. Current phase: {state.CurrentPhase}."
+				};
+			}
+
+			var dcDealerPosition = state.DealersChoiceDealerPosition;
+			if (dcDealerPosition is null)
+			{
+				return new ChooseDealerGameError
+				{
+					GameId = command.GameId,
+					Reason = "Dealer's Choice dealer position is not set."
+				};
+			}
+
+			var dcDealer = state.Players
+				.FirstOrDefault(p => p.SeatPosition == dcDealerPosition.Value && p.Status == GamePlayerStatus.Active);
+
+			if (dcDealer is null)
+			{
+				return new ChooseDealerGameError
+				{
+					GameId = command.GameId,
+					Reason = "Dealer's Choice dealer not found at the designated seat."
+				};
+			}
+
+			var currentUserName = currentUserService.UserName;
+			if (string.IsNullOrWhiteSpace(currentUserName))
+			{
+				return new ChooseDealerGameError
+				{
+					GameId = command.GameId,
+					Reason = "User not authenticated."
+				};
+			}
+
+			var currentPlayer = state.Players
+				.FirstOrDefault(p => p.PlayerName.Equals(currentUserName, StringComparison.OrdinalIgnoreCase) && p.Status == GamePlayerStatus.Active);
+
+			if (currentPlayer is null || currentPlayer.SeatPosition != dcDealerPosition.Value)
+			{
+				return new ChooseDealerGameError
+				{
+					GameId = command.GameId,
+					Reason = "Only the current dealer may choose the game type."
+				};
+			}
+
+			if (!PokerGameMetadataRegistry.TryGet(command.GameTypeCode, out var metadata) || metadata is null)
+			{
+				return new ChooseDealerGameError
+				{
+					GameId = command.GameId,
+					Reason = $"Unknown game type code '{command.GameTypeCode}'."
+				};
+			}
+
+			var allowedCodes = DealersChoiceGameSettings.GetAllowedGameCodes(state.GameSettings);
+			if (allowedCodes is not null && !allowedCodes.Contains(command.GameTypeCode, StringComparer.OrdinalIgnoreCase))
+			{
+				return new ChooseDealerGameError
+				{
+					GameId = command.GameId,
+					Reason = $"Game type '{command.GameTypeCode}' is not allowed at this Dealer's Choice table."
+				};
+			}
+
+			var validationError = ValidateBlindAndAnte(command);
+			if (validationError is not null)
+			{
+				return (OneOf<ChooseDealerGameSuccessful, ChooseDealerGameError>)validationError;
+			}
+
+			var now = DateTimeOffset.UtcNow;
+
+			// DB operations: GameType lookup + hand log
+			var gameType = await GetOrCreateGameTypeAsync(command.GameTypeCode, metadata, ct);
+
+			state.GameTypeId = gameType.Id;
+			state.CurrentHandGameTypeCode = command.GameTypeCode;
+			state.Ante = command.Ante;
+			state.MinBet = command.MinBet;
+
+			if (command.SmallBlind.HasValue)
+				state.SmallBlind = command.SmallBlind.Value;
+			if (command.BigBlind.HasValue)
+				state.BigBlind = command.BigBlind.Value;
+
+			if (string.Equals(command.GameTypeCode, PokerGameMetadataRegistry.ScrewYourNeighborCode, StringComparison.OrdinalIgnoreCase)
+			    && command.Ante > 0)
+			{
+				var synBuyIn = command.Ante * 3;
+				foreach (var p in state.Players.Where(p => p.Status == GamePlayerStatus.Active && !p.IsSittingOut))
+				{
+					p.VariantState = JsonSerializer.Serialize(new { preSynChips = p.ChipStack });
+					p.ChipStack = synBuyIn;
+				}
+			}
+
+			state.CurrentPhase = nameof(Phases.WaitingToStart);
+			state.Status = GameStatus.BetweenHands;
+			state.NextHandStartsAt = now.AddSeconds(3);
+			state.UpdatedAt = now;
+			state.OriginalDealersChoiceDealerPosition = state.DealersChoiceDealerPosition;
+
+			var handLog = new DealersChoiceHandLog
+			{
+				GameId = state.GameId,
+				HandNumber = state.CurrentHandNumber,
+				GameTypeCode = command.GameTypeCode,
+				GameTypeName = metadata.Name,
+				DealerPlayerId = currentPlayer.PlayerId,
+				DealerSeatPosition = currentPlayer.SeatPosition,
+				Ante = command.Ante,
+				MinBet = command.MinBet,
+				SmallBlind = command.SmallBlind,
+				BigBlind = command.BigBlind,
+				ChosenAtUtc = now
+			};
+			context.DealersChoiceHandLogs.Add(handLog);
+			await context.SaveChangesAsync(ct);
+
+			return (OneOf<ChooseDealerGameSuccessful, ChooseDealerGameError>)new ChooseDealerGameSuccessful
+			{
+				GameId = state.GameId,
+				GameTypeCode = command.GameTypeCode,
+				GameTypeName = metadata.Name,
+				HandNumber = state.CurrentHandNumber,
+				Ante = command.Ante,
+				MinBet = command.MinBet,
+				SmallBlind = command.SmallBlind,
+				BigBlind = command.BigBlind
+			};
+		}, cancellationToken);
+	}
+
+	private async Task<OneOf<ChooseDealerGameSuccessful, ChooseDealerGameError>> HandleDatabase(
+		ChooseDealerGameCommand command, CancellationToken cancellationToken)
 	{
 		// 1. Load the game with players
 		var game = await context.Games
@@ -278,5 +446,20 @@ public class ChooseDealerGameCommandHandler(
 
 		context.GameTypes.Add(gameType);
 		return gameType;
+	}
+
+	private static ChooseDealerGameError? ValidateBlindAndAnte(ChooseDealerGameCommand command)
+	{
+		if (command.Ante < 0)
+			return new ChooseDealerGameError { GameId = command.GameId, Reason = "Ante must be zero or greater." };
+		if (command.MinBet <= 0)
+			return new ChooseDealerGameError { GameId = command.GameId, Reason = "Minimum bet must be greater than zero." };
+		if (command.SmallBlind.HasValue && command.SmallBlind.Value <= 0)
+			return new ChooseDealerGameError { GameId = command.GameId, Reason = "Small blind must be greater than zero." };
+		if (command.BigBlind.HasValue && command.BigBlind.Value <= 0)
+			return new ChooseDealerGameError { GameId = command.GameId, Reason = "Big blind must be greater than zero." };
+		if (command.SmallBlind.HasValue && command.BigBlind.HasValue && command.BigBlind.Value < command.SmallBlind.Value)
+			return new ChooseDealerGameError { GameId = command.GameId, Reason = "Big blind must be greater than or equal to small blind." };
+		return null;
 	}
 }

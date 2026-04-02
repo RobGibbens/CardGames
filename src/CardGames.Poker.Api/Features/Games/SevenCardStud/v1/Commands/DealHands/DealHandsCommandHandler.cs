@@ -10,6 +10,9 @@ using BettingRoundEntity = CardGames.Poker.Api.Data.Entities.BettingRound;
 using CardSuit = CardGames.Poker.Api.Data.Entities.CardSuit;
 using CardSymbol = CardGames.Poker.Api.Data.Entities.CardSymbol;
 
+using CardGames.Poker.Api.Services.InMemoryEngine;
+using Microsoft.Extensions.Options;
+
 namespace CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.DealHands;
 
 /// <summary>
@@ -17,6 +20,8 @@ namespace CardGames.Poker.Api.Features.Games.SevenCardStud.v1.Commands.DealHands
 /// </summary>
 public class DealHandsCommandHandler(
 	CardsDbContext context,
+	IOptions<InMemoryEngineOptions> engineOptions,
+	IGameStateManager gameStateManager,
 	ILogger<DealHandsCommandHandler> logger)
 	: IRequestHandler<DealHandsCommand, OneOf<DealHandsSuccessful, DealHandsError>>
 {
@@ -263,6 +268,9 @@ public class DealHandsCommandHandler(
 		// includes newly dealt up-cards on this street.
 		await context.SaveChangesAsync(cancellationToken);
 
+		if (engineOptions.Value.Enabled)
+			await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
+
 		// 7. Determine first player to act based on street
 		int firstActorSeatPosition;
 		int currentBet = 0;
@@ -349,6 +357,9 @@ public class DealHandsCommandHandler(
 
 		// 11. Persist changes
 		await context.SaveChangesAsync(cancellationToken);
+
+		if (engineOptions.Value.Enabled)
+			await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
 
 		logger.LogInformation(
 			"Dealt cards for {Street} and created betting round {RoundNumber} for game {GameId}, hand {HandNumber}",

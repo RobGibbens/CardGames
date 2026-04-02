@@ -5,8 +5,10 @@ using CardGames.Poker.Api.Features.Games.Common;
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Api.Infrastructure;
 using CardGames.Poker.Api.Services;
+using CardGames.Poker.Api.Services.InMemoryEngine;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using OneOf;
 
 namespace CardGames.Poker.Api.Features.Games.Common.v1.Commands.ResolveJoinRequest;
@@ -17,6 +19,8 @@ public sealed class ResolveJoinRequestCommandHandler(
 	IPlayerChipWalletService playerChipWalletService,
 	IGameStateBroadcaster gameStateBroadcaster,
 	IGameJoinRequestBroadcaster joinRequestBroadcaster,
+	IOptions<InMemoryEngineOptions> engineOptions,
+	IGameStateManager gameStateManager,
 	ILogger<ResolveJoinRequestCommandHandler> logger)
 	: IRequestHandler<ResolveJoinRequestCommand, OneOf<ResolveJoinRequestSuccessful, ResolveJoinRequestError>>
 {
@@ -169,6 +173,12 @@ public sealed class ResolveJoinRequestCommandHandler(
 		game.UpdatedAt = now;
 
 		await context.SaveChangesAsync(cancellationToken);
+
+		// Refresh in-memory state so subsequent handlers see the approved player
+		if (engineOptions.Value.Enabled)
+		{
+			await gameStateManager.GetOrLoadGameAsync(game.Id, cancellationToken);
+		}
 
 		await gameStateBroadcaster.BroadcastPlayerJoinedAsync(game.Id, joinRequest.Player.Name, seatIndex.Value, canPlayCurrentHand, cancellationToken);
 		await NotifyRequesterAsync(joinRequest, game, now, cancellationToken);

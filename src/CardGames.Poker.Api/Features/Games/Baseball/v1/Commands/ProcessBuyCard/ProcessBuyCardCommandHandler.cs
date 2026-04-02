@@ -8,9 +8,14 @@ using Microsoft.EntityFrameworkCore;
 using OneOf;
 using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 
+using CardGames.Poker.Api.Services.InMemoryEngine;
+using Microsoft.Extensions.Options;
+
 namespace CardGames.Poker.Api.Features.Games.Baseball.v1.Commands.ProcessBuyCard;
 
-public sealed class ProcessBuyCardCommandHandler(CardsDbContext context, IMediator mediator)
+public sealed class ProcessBuyCardCommandHandler(CardsDbContext context,
+	IOptions<InMemoryEngineOptions> engineOptions,
+	IGameStateManager gameStateManager, IMediator mediator)
 	: IRequestHandler<ProcessBuyCardCommand, OneOf<ProcessBuyCardSuccessful, ProcessBuyCardError>>
 {
 	public async Task<OneOf<ProcessBuyCardSuccessful, ProcessBuyCardError>> Handle(
@@ -218,6 +223,9 @@ public sealed class ProcessBuyCardCommandHandler(CardsDbContext context, IMediat
 		game.UpdatedAt = now;
 
 		await context.SaveChangesAsync(cancellationToken);
+
+		if (engineOptions.Value.Enabled)
+			await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
 
 		if (remainingOffers.Count == 0 && BaseballGameSettings.IsStreetPhase(nextPhase))
 		{

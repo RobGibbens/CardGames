@@ -15,6 +15,7 @@ using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetHandHistory;
 using CardGames.Poker.Api.Features.Games.Baseball;
 using CardGames.Poker.Api.GameFlow;
 using CardGames.Poker.Api.Games;
+using CardGames.Poker.Api.Services.InMemoryEngine;
 using CardGames.Poker.Games.GameFlow;
 using CardGames.Poker.Betting;
 using CardGames.Poker.Hands.DrawHands;
@@ -757,6 +758,220 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			game.CurrentHandNumber,
 			game.CurrentPhase);
 	}
+
+	/// <inheritdoc />
+	public async Task<BroadcastStateBuildResult?> BuildFullStateAsync(ActiveGameRuntimeState state, CancellationToken cancellationToken = default)
+	{
+		// ── 1. Adapt runtime state to entity form ──────────────────────────
+		// This avoids the expensive aggregate Include/SplitQuery load in the DB-based overload.
+		// Secondary queries (community cards, user profiles, hand history, etc.) inside the
+		// core builder methods still hit the database using the checkpoint data.
+		var (game, gamePlayers) = await AdaptRuntimeStateAsync(state, cancellationToken);
+
+		// ── 2. Batch wallet balances (still requires DB) ───────────────────
+		var playerIds = gamePlayers.Select(gp => gp.PlayerId).Distinct().ToArray();
+		var walletBalances = await _context.PlayerChipAccounts
+			.Where(a => playerIds.Contains(a.PlayerId))
+			.AsNoTracking()
+			.ToDictionaryAsync(a => a.PlayerId, a => a.Balance, cancellationToken);
+
+		// ── 3. Build public state using adapted entities ───────────────────
+		var publicState = await BuildPublicStateCoreAsync(game, gamePlayers, cancellationToken);
+
+		// ── 4. Resolve user IDs ────────────────────────────────────────────
+		var playerUserIds = ResolvePlayerUserIds(gamePlayers);
+
+		// ── 5. Build all private states ────────────────────────────────────
+		var privateStates = new Dictionary<string, PrivateStateDto>(StringComparer.OrdinalIgnoreCase);
+		foreach (var userId in playerUserIds)
+		{
+			var gamePlayer = FindGamePlayerByUserId(gamePlayers, userId);
+			if (gamePlayer is null)
+			{
+				_logger.LogWarning(
+					"BuildFullStateAsync(runtime): No player found for resolved userId {UserId} in game {GameId}",
+					userId, state.GameId);
+				continue;
+			}
+
+			var balance = walletBalances.GetValueOrDefault(gamePlayer.PlayerId, 0);
+			var privateState = await BuildPrivateStateCoreAsync(game, gamePlayer, balance, cancellationToken);
+			if (privateState is not null)
+			{
+				privateStates[userId] = privateState;
+			}
+		}
+
+		// ── 6. Use monotonic runtime version directly ──────────────────────
+		return new BroadcastStateBuildResult(
+			publicState,
+			privateStates,
+			playerUserIds,
+			(ulong)state.Version,
+			state.CurrentHandNumber,
+			state.CurrentPhase);
+	}
+
+	/// <summary>
+	/// Converts an <see cref="ActiveGameRuntimeState"/> to detached EF entity objects
+	/// that the existing <see cref="BuildPublicStateCoreAsync"/> and
+	/// <see cref="BuildPrivateStateCoreAsync"/> methods can consume, avoiding the
+	/// expensive aggregate Include/SplitQuery database load.
+	/// </summary>
+	private async Task<(Game game, List<GamePlayer> gamePlayers)> AdaptRuntimeStateAsync(
+		ActiveGameRuntimeState state, CancellationToken cancellationToken)
+	{
+		// Look up GameType once — it's a small, static reference table
+		var gameType = state.GameTypeId.HasValue
+			? await _context.GameTypes.AsNoTracking()
+				.FirstOrDefaultAsync(gt => gt.Id == state.GameTypeId.Value, cancellationToken)
+			: null;
+
+		var game = new Game
+		{
+			Id = state.GameId,
+			GameTypeId = state.GameTypeId,
+			GameType = gameType,
+			Name = state.Name,
+			CurrentPhase = state.CurrentPhase,
+			CurrentHandNumber = state.CurrentHandNumber,
+			Status = state.Status,
+			DealerPosition = state.DealerPosition,
+			CurrentPlayerIndex = state.CurrentPlayerIndex,
+			BringInPlayerIndex = state.BringInPlayerIndex,
+			CurrentDrawPlayerIndex = state.CurrentDrawPlayerIndex,
+			Ante = state.Ante,
+			SmallBlind = state.SmallBlind,
+			BigBlind = state.BigBlind,
+			BringIn = state.BringIn,
+			SmallBet = state.SmallBet,
+			BigBet = state.BigBet,
+			MinBet = state.MinBet,
+			MaxBuyIn = state.MaxBuyIn,
+			RequiresJoinApproval = state.RequiresJoinApproval,
+			GameSettings = state.GameSettings,
+			IsDealersChoice = state.IsDealersChoice,
+			AreOddsVisibleToAllPlayers = state.AreOddsVisibleToAllPlayers,
+			CurrentHandGameTypeCode = state.CurrentHandGameTypeCode,
+			DealersChoiceDealerPosition = state.DealersChoiceDealerPosition,
+			OriginalDealersChoiceDealerPosition = state.OriginalDealersChoiceDealerPosition,
+			IsPausedForChipCheck = state.IsPausedForChipCheck,
+			ChipCheckPauseStartedAt = state.ChipCheckPauseStartedAt,
+			ChipCheckPauseEndsAt = state.ChipCheckPauseEndsAt,
+			CreatedAt = state.CreatedAt,
+			UpdatedAt = state.UpdatedAt,
+			StartedAt = state.StartedAt,
+			EndedAt = state.EndedAt,
+			HandCompletedAt = state.HandCompletedAt,
+			NextHandStartsAt = state.NextHandStartsAt,
+			DrawCompletedAt = state.DrawCompletedAt,
+			RandomSeed = state.RandomSeed,
+			CreatedById = state.CreatedById,
+			CreatedByName = state.CreatedByName,
+			UpdatedById = state.UpdatedById,
+			UpdatedByName = state.UpdatedByName,
+			RowVersion = state.LastCheckpointRowVersion
+		};
+
+		// Build a lookup from runtime player ID → their cards
+		var cardsByPlayerId = state.Cards
+			.Where(c => c.GamePlayerId.HasValue)
+			.GroupBy(c => c.GamePlayerId!.Value)
+			.ToDictionary(g => g.Key, g => g.ToList());
+
+		var gamePlayers = state.Players
+			.Where(p => p.Status != GamePlayerStatus.Left)
+			.OrderBy(p => p.SeatPosition)
+			.Select(p =>
+			{
+				var gp = new GamePlayer
+				{
+					Id = p.Id,
+					GameId = state.GameId,
+					PlayerId = p.PlayerId,
+					SeatPosition = p.SeatPosition,
+					ChipStack = p.ChipStack,
+					StartingChips = p.StartingChips,
+					CurrentBet = p.CurrentBet,
+					TotalContributedThisHand = p.TotalContributedThisHand,
+					HasFolded = p.HasFolded,
+					IsAllIn = p.IsAllIn,
+					IsConnected = p.IsConnected,
+					IsSittingOut = p.IsSittingOut,
+					DropOrStayDecision = p.DropOrStayDecision,
+					AutoDropOnDropOrStay = p.AutoDropOnDropOrStay,
+					HasDrawnThisRound = p.HasDrawnThisRound,
+					JoinedAtHandNumber = p.JoinedAtHandNumber,
+					LeftAtHandNumber = p.LeftAtHandNumber,
+					FinalChipCount = p.FinalChipCount,
+					PendingChipsToAdd = p.PendingChipsToAdd,
+					BringInAmount = p.BringInAmount,
+					Status = p.Status,
+					VariantState = p.VariantState,
+					JoinedAt = p.JoinedAt,
+					LeftAt = p.LeftAt,
+					RowVersion = p.LastCheckpointRowVersion
+				};
+
+				// Attach a minimal Player entity for identity resolution
+				gp.Player = new Player
+				{
+					Id = p.PlayerId,
+					Name = p.PlayerName,
+					Email = p.PlayerEmail,
+					ExternalId = p.ExternalId,
+					AvatarUrl = p.AvatarUrl
+				};
+
+				// Attach cards from runtime state
+				gp.Cards = cardsByPlayerId.TryGetValue(p.Id, out var runtimeCards)
+					? runtimeCards.Select(AdaptRuntimeCard).ToList()
+					: [];
+
+				return gp;
+			})
+			.ToList();
+
+		// Set Pots on game entity (used by some code paths that access game.Pots)
+		game.Pots = state.Pots.Select(p => new Entities.Pot
+		{
+			Id = p.Id,
+			GameId = state.GameId,
+			HandNumber = p.HandNumber,
+			PotType = p.PotType,
+			PotOrder = p.PotOrder,
+			Amount = p.Amount,
+			MaxContributionPerPlayer = p.MaxContributionPerPlayer,
+			IsAwarded = p.IsAwarded,
+			AwardedAt = p.AwardedAt,
+			WinnerPayouts = p.WinnerPayouts,
+			WinReason = p.WinReason,
+			CreatedAt = p.CreatedAt
+		}).ToList();
+
+		return (game, gamePlayers);
+	}
+
+	private static GameCard AdaptRuntimeCard(RuntimeCard c) => new()
+	{
+		Id = c.Id,
+		GameId = c.GameId,
+		GamePlayerId = c.GamePlayerId,
+		HandNumber = c.HandNumber,
+		Suit = c.Suit,
+		Symbol = c.Symbol,
+		Location = c.Location,
+		DealOrder = c.DealOrder,
+		DealtAtPhase = c.DealtAtPhase,
+		IsVisible = c.IsVisible,
+		IsWild = c.IsWild,
+		IsDiscarded = c.IsDiscarded,
+		DiscardedAtDrawRound = c.DiscardedAtDrawRound,
+		IsDrawnCard = c.IsDrawnCard,
+		DrawnAtRound = c.DrawnAtRound,
+		IsBuyCard = c.IsBuyCard,
+		DealtAt = c.DealtAt
+	};
 
 	private static SeatPublicDto BuildSeatPublicDto(
 		GamePlayer gamePlayer,

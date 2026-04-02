@@ -11,10 +11,15 @@ using System.Text.Json;
 using BettingActionType = CardGames.Poker.Api.Data.Entities.BettingActionType;
 using BettingRound = CardGames.Poker.Api.Data.Entities.BettingRound;
 
+using CardGames.Poker.Api.Services.InMemoryEngine;
+using Microsoft.Extensions.Options;
+
 namespace CardGames.Poker.Api.Features.Games.Baseball.v1.Commands.ProcessBettingAction;
 
 public class ProcessBettingActionCommandHandler(
 	CardsDbContext context,
+	IOptions<InMemoryEngineOptions> engineOptions,
+	IGameStateManager gameStateManager,
 	IMediator mediator,
 	ILogger<ProcessBettingActionCommandHandler> logger)
 	: IRequestHandler<ProcessBettingActionCommand, OneOf<ProcessBettingActionSuccessful, ProcessBettingActionError>>
@@ -189,6 +194,9 @@ public class ProcessBettingActionCommandHandler(
 				game.UpdatedAt = now;
 				await context.SaveChangesAsync(cancellationToken);
 
+				if (engineOptions.Value.Enabled)
+					await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
+
 				return new ProcessBettingActionSuccessful
 				{
 					GameId = game.Id,
@@ -285,6 +293,9 @@ public class ProcessBettingActionCommandHandler(
 			nextPlayerName = activePlayers.FirstOrDefault(p => p.SeatPosition == nextPlayerIndex)?.Player.Name;
 			game.UpdatedAt = now;
 			await context.SaveChangesAsync(cancellationToken);
+
+			if (engineOptions.Value.Enabled)
+				await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
 		}
 
 		return new ProcessBettingActionSuccessful
@@ -630,5 +641,8 @@ public class ProcessBettingActionCommandHandler(
 		game.CurrentPlayerIndex = -1;
 
 		await context.SaveChangesAsync(cancellationToken);
+
+		if (engineOptions.Value.Enabled)
+			await gameStateManager.GetOrLoadGameAsync(game.Id, cancellationToken);
 	}
 }

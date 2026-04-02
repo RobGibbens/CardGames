@@ -2,6 +2,7 @@ using CardGames.Contracts.SignalR;
 using CardGames.Poker.Api.Infrastructure;
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Api.Services.Cache;
+using CardGames.Poker.Api.Services.InMemoryEngine;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Options;
@@ -17,6 +18,8 @@ public sealed class GameHub : Hub
 {
     private readonly ITableStateBuilder _tableStateBuilder;
     private readonly IActiveGameCache _activeGameCache;
+    private readonly IGameStateManager _gameStateManager;
+    private readonly IOptions<InMemoryEngineOptions> _engineOptions;
     private readonly IOptions<ActiveGameCacheOptions> _cacheOptions;
     private readonly ILogger<GameHub> _logger;
 
@@ -31,11 +34,15 @@ public sealed class GameHub : Hub
     public GameHub(
         ITableStateBuilder tableStateBuilder,
         IActiveGameCache activeGameCache,
+        IGameStateManager gameStateManager,
+        IOptions<InMemoryEngineOptions> engineOptions,
         IOptions<ActiveGameCacheOptions> cacheOptions,
         ILogger<GameHub> logger)
     {
         _tableStateBuilder = tableStateBuilder;
         _activeGameCache = activeGameCache;
+        _gameStateManager = gameStateManager;
+        _engineOptions = engineOptions;
         _cacheOptions = cacheOptions;
         _logger = logger;
     }
@@ -156,6 +163,11 @@ public sealed class GameHub : Hub
             }
 
             // Cache miss — fall back to full DB build
+            // When in-memory engine is active, ensure the game is loaded into GameStateManager
+            // so subsequent operations don't need to hydrate on-demand.
+            if (_engineOptions.Value.Enabled)
+                await _gameStateManager.GetOrLoadGameAsync(gameId, CancellationToken.None);
+
             var publicState = await _tableStateBuilder.BuildPublicStateAsync(gameId);
             if (publicState is not null)
             {

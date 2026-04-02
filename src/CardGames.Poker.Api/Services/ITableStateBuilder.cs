@@ -1,4 +1,5 @@
 using CardGames.Contracts.SignalR;
+using CardGames.Poker.Api.Services.InMemoryEngine;
 
 namespace CardGames.Poker.Api.Services;
 
@@ -47,4 +48,16 @@ public interface ITableStateBuilder
     /// player user IDs, and snapshot metadata; or <c>null</c> if the game is not found.
     /// </returns>
     Task<BroadcastStateBuildResult?> BuildFullStateAsync(Guid gameId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Builds the complete broadcast state from an in-memory runtime state snapshot,
+    /// bypassing the main aggregate DB query. Secondary lookups (wallet balances,
+    /// user profiles, hand history) may still query the database.
+    /// </summary>
+    /// <param name="state">The detached runtime state for the game.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>
+    /// The complete broadcast result, or <c>null</c> if the runtime state cannot be mapped.
+    /// </returns>
+    Task<BroadcastStateBuildResult?> BuildFullStateAsync(ActiveGameRuntimeState state, CancellationToken cancellationToken = default);
 }

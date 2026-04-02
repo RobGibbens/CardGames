@@ -7,6 +7,9 @@ using Microsoft.EntityFrameworkCore;
 using OneOf;
 using Pot = CardGames.Poker.Api.Data.Entities.Pot;
 
+using CardGames.Poker.Api.Services.InMemoryEngine;
+using Microsoft.Extensions.Options;
+
 namespace CardGames.Poker.Api.Features.Games.HoldTheBaseball.v1.Commands.StartHand;
 
 /// <summary>
@@ -14,6 +17,8 @@ namespace CardGames.Poker.Api.Features.Games.HoldTheBaseball.v1.Commands.StartHa
 /// </summary>
 public class StartHandCommandHandler(
 	CardsDbContext context,
+	IOptions<InMemoryEngineOptions> engineOptions,
+	IGameStateManager gameStateManager,
 	IGameFlowHandlerFactory flowHandlerFactory,
 	ILogger<StartHandCommandHandler> logger)
 	: IRequestHandler<StartHandCommand, OneOf<StartHandSuccessful, StartHandError>>
@@ -106,6 +111,9 @@ public class StartHandCommandHandler(
 
 		await flowHandler.OnHandStartingAsync(game, cancellationToken);
 		await context.SaveChangesAsync(cancellationToken);
+
+		if (engineOptions.Value.Enabled)
+			await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
 
 		await flowHandler.DealCardsAsync(context, game, eligiblePlayers, now, cancellationToken);
 

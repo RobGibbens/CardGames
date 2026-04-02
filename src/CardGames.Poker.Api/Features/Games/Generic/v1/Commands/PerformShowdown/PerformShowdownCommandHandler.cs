@@ -6,6 +6,7 @@ using CardGames.Poker.Api.Features.Games.BobBarker;
 using CardGames.Poker.Api.GameFlow;
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Api.Services;
+using CardGames.Poker.Api.Services.InMemoryEngine;
 using CardGames.Poker.Betting;
 using CardGames.Poker.Evaluation;
 using CardGames.Poker.Hands;
@@ -15,6 +16,7 @@ using CardGames.Poker.Hands.Strength;
 using CardGames.Poker.Hands.StudHands;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using OneOf;
 using System.Text.Json;
 using CardSuit = CardGames.Poker.Api.Data.Entities.CardSuit;
@@ -53,6 +55,8 @@ public sealed class PerformShowdownCommandHandler(
     IHandEvaluatorFactory handEvaluatorFactory,
     IHandHistoryRecorder handHistoryRecorder,
     IHandSettlementService handSettlementService,
+    IOptions<InMemoryEngineOptions> engineOptions,
+    IGameStateManager gameStateManager,
     ILogger<PerformShowdownCommandHandler> logger)
     : IRequestHandler<PerformShowdownCommand, OneOf<PerformShowdownSuccessful, PerformShowdownError>>
 {
@@ -236,6 +240,9 @@ public sealed class PerformShowdownCommandHandler(
             await handSettlementService.SettleHandAsync(game, settlementPayouts, cancellationToken);
             await context.SaveChangesAsync(cancellationToken);
 
+            if (engineOptions.Value.Enabled)
+                await gameStateManager.GetOrLoadGameAsync(game.Id, cancellationToken);
+
             return new PerformShowdownSuccessful
             {
                 GameId = game.Id,
@@ -365,6 +372,9 @@ public sealed class PerformShowdownCommandHandler(
 
             await context.SaveChangesAsync(cancellationToken);
 
+            if (engineOptions.Value.Enabled)
+                await gameStateManager.GetOrLoadGameAsync(game.Id, cancellationToken);
+
             // 13. Record hand history
             await RecordHandHistoryAsync(
                 game,
@@ -439,6 +449,9 @@ public sealed class PerformShowdownCommandHandler(
             await handSettlementService.SettleHandAsync(game, foldPayouts, cancellationToken);
 
             await context.SaveChangesAsync(cancellationToken);
+
+            if (engineOptions.Value.Enabled)
+                await gameStateManager.GetOrLoadGameAsync(game.Id, cancellationToken);
 
             // Record hand history for win-by-fold
             await RecordHandHistoryAsync(
@@ -535,6 +548,9 @@ public sealed class PerformShowdownCommandHandler(
             MoveDealer(game);
 
             await context.SaveChangesAsync(cancellationToken);
+
+            if (engineOptions.Value.Enabled)
+                await gameStateManager.GetOrLoadGameAsync(game.Id, cancellationToken);
         }
 
         return new PerformShowdownSuccessful
