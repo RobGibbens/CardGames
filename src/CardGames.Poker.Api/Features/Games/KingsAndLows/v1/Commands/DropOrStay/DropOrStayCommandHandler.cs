@@ -122,7 +122,7 @@ public class DropOrStayCommandHandler(CardsDbContext context,
 		await context.SaveChangesAsync(cancellationToken);
 
 		if (engineOptions.Value.Enabled)
-			await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
+			await gameStateManager.ReloadGameAsync(command.GameId, cancellationToken);
 
 		// Re-fetch players to ensure we have the latest state including other concurrent updates
 			// and the current player's just-saved decision
@@ -154,7 +154,7 @@ public class DropOrStayCommandHandler(CardsDbContext context,
 				await context.SaveChangesAsync(cancellationToken);
 
 				if (engineOptions.Value.Enabled)
-					await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
+					await gameStateManager.ReloadGameAsync(command.GameId, cancellationToken);
 			}
 
 			// 7. Check if all players have decided
@@ -234,7 +234,7 @@ public class DropOrStayCommandHandler(CardsDbContext context,
 		await context.SaveChangesAsync(cancellationToken);
 
 		if (engineOptions.Value.Enabled)
-			await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
+			await gameStateManager.ReloadGameAsync(command.GameId, cancellationToken);
 
 		// If all players dropped, the hand is dead. Automatically perform showdown to handle pot carry-over.
 		if (allDecided && stayingPlayers.Count == 0)

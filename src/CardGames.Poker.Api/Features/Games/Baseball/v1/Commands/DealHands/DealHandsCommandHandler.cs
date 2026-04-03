@@ -243,7 +243,7 @@ public class DealHandsCommandHandler(
 			await context.SaveChangesAsync(cancellationToken);
 
 			if (engineOptions.Value.Enabled)
-				await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
+				await gameStateManager.ReloadGameAsync(command.GameId, cancellationToken);
 
 			var offerPlayerName = activePlayers.FirstOrDefault(p => p.SeatPosition == buyCardOffers[0].SeatPosition)?.Player.Name;
 			return new DealHandsSuccessful
@@ -276,7 +276,7 @@ public class DealHandsCommandHandler(
 		await context.SaveChangesAsync(cancellationToken);
 
 		if (engineOptions.Value.Enabled)
-			await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
+			await gameStateManager.ReloadGameAsync(command.GameId, cancellationToken);
 
 		int firstActorSeatPosition;
 		int currentBet = 0;
@@ -362,7 +362,7 @@ public class DealHandsCommandHandler(
 		await context.SaveChangesAsync(cancellationToken);
 
 		if (engineOptions.Value.Enabled)
-			await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
+			await gameStateManager.ReloadGameAsync(command.GameId, cancellationToken);
 
 		var currentPlayerName = activePlayers.FirstOrDefault(p => p.SeatPosition == firstActorSeatPosition)?.Player.Name;
 

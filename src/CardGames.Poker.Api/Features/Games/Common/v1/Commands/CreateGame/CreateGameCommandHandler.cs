@@ -1,4 +1,4 @@
-﻿using CardGames.Poker.Api.Data;
+using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.Common;
 using CardGames.Poker.Api.Games;
@@ -193,7 +193,7 @@ public class CreateGameCommandHandler(
 		// Pre-populate in-memory engine so subsequent handlers find the game immediately
 		if (engineOptions.Value.Enabled)
 		{
-			await gameStateManager.GetOrLoadGameAsync(game.Id, cancellationToken);
+			await gameStateManager.ReloadGameAsync(game.Id, cancellationToken);
 		}
 
 		return new CreateGameSuccessful

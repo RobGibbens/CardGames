@@ -17,6 +17,13 @@ public interface IGameStateManager
     Task<ActiveGameRuntimeState?> GetOrLoadGameAsync(Guid gameId, CancellationToken cancellationToken);
 
     /// <summary>
+    /// Forces a fresh re-hydration of the game state from the database, replacing any
+    /// existing in-memory state. Use this after DB mutations (e.g., player join/leave)
+    /// that are not performed through the in-memory engine coordinator.
+    /// </summary>
+    Task<ActiveGameRuntimeState?> ReloadGameAsync(Guid gameId, CancellationToken cancellationToken);
+
+    /// <summary>
     /// Stores a game state (e.g., after initial creation or hydration).
     /// </summary>
     void SetGame(ActiveGameRuntimeState state);

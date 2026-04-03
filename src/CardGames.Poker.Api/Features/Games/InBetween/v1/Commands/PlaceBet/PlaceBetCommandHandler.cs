@@ -201,7 +201,7 @@ public class PlaceBetCommandHandler(
 			await context.SaveChangesAsync(cancellationToken);
 
 			if (engineOptions.Value.Enabled)
-				await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
+				await gameStateManager.ReloadGameAsync(command.GameId, cancellationToken);
 
 			turnResultStr = "Pass";
 			description = state.LastTurnDescription;
@@ -222,7 +222,7 @@ public class PlaceBetCommandHandler(
 			await context.SaveChangesAsync(cancellationToken);
 
 			if (engineOptions.Value.Enabled)
-				await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
+				await gameStateManager.ReloadGameAsync(command.GameId, cancellationToken);
 		}
 
 		// 9. Advance to next player or complete game (only for pass; bets wait for reveal display)

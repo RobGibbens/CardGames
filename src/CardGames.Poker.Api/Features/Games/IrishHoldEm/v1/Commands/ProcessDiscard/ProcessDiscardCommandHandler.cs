@@ -261,7 +261,7 @@ public class ProcessDiscardCommandHandler(CardsDbContext context,
 		await context.SaveChangesAsync(cancellationToken);
 
 		if (engineOptions.Value.Enabled)
-			await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
+			await gameStateManager.ReloadGameAsync(command.GameId, cancellationToken);
 
 		return new ProcessDiscardSuccessful
 		{

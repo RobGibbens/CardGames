@@ -213,7 +213,7 @@ public class DrawCardsCommandHandler(
 				await context.SaveChangesAsync(cancellationToken);
 
 				if (engineOptions.Value.Enabled)
-					await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
+					await gameStateManager.ReloadGameAsync(command.GameId, cancellationToken);
 
 				// Deal the deck's hand now so it's visible in the overlay
 				await DealDeckHandAsync(game, context, now, cancellationToken);
@@ -231,7 +231,7 @@ public class DrawCardsCommandHandler(
 				await context.SaveChangesAsync(cancellationToken);
 
 				if (engineOptions.Value.Enabled)
-					await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
+					await gameStateManager.ReloadGameAsync(command.GameId, cancellationToken);
 
 				// Note: Showdown will be performed by ContinuousPlayBackgroundService after delay
 			}
@@ -280,7 +280,7 @@ public class DrawCardsCommandHandler(
 			await context.SaveChangesAsync(cancellationToken);
 
 			if (engineOptions.Value.Enabled)
-				await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
+				await gameStateManager.ReloadGameAsync(command.GameId, cancellationToken);
 
 			return new DrawCardsSuccessful
 			{

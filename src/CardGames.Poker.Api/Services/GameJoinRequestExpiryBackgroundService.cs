@@ -40,16 +40,20 @@ public sealed class GameJoinRequestExpiryBackgroundService(
 		var broadcaster = scope.ServiceProvider.GetRequiredService<IGameJoinRequestBroadcaster>();
 
 		var now = DateTimeOffset.UtcNow;
+
+		var hasExpired = await context.GameJoinRequests
+			.AnyAsync(x => x.Status == GameJoinRequestStatus.Pending && x.ExpiresAt <= now, cancellationToken);
+
+		if (!hasExpired)
+		{
+			return;
+		}
+
 		var expiredRequests = await context.GameJoinRequests
 			.Include(x => x.Game)
 			.Include(x => x.Player)
 			.Where(x => x.Status == GameJoinRequestStatus.Pending && x.ExpiresAt <= now)
 			.ToListAsync(cancellationToken);
-
-		if (expiredRequests.Count == 0)
-		{
-			return;
-		}
 
 		foreach (var joinRequest in expiredRequests)
 		{

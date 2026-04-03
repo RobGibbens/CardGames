@@ -225,7 +225,7 @@ public sealed class ProcessBuyCardCommandHandler(CardsDbContext context,
 		await context.SaveChangesAsync(cancellationToken);
 
 		if (engineOptions.Value.Enabled)
-			await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
+			await gameStateManager.ReloadGameAsync(command.GameId, cancellationToken);
 
 		if (remainingOffers.Count == 0 && BaseballGameSettings.IsStreetPhase(nextPhase))
 		{

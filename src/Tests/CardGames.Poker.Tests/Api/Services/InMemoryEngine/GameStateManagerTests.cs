@@ -138,6 +138,60 @@ public class GameStateManagerTests
         _sut.Count.Should().Be(1);
     }
 
+    [Fact]
+    public async Task ReloadGameAsync_ReplacesExistingStateWithFreshHydration()
+    {
+        var gameId = Guid.NewGuid();
+        var staleState = new ActiveGameRuntimeState { GameId = gameId, CurrentPhase = "Dealing", Players = [] };
+        _sut.SetGame(staleState);
+
+        var freshState = new ActiveGameRuntimeState
+        {
+            GameId = gameId,
+            CurrentPhase = "Dealing",
+            Players = [new RuntimeGamePlayer { PlayerId = Guid.NewGuid(), SeatPosition = 0 }]
+        };
+        _hydrator.HydrateFromDatabaseAsync(gameId, Arg.Any<CancellationToken>())
+            .Returns(freshState);
+
+        var result = await _sut.ReloadGameAsync(gameId, CancellationToken.None);
+
+        result.Should().BeSameAs(freshState);
+        _sut.TryGetGame(gameId, out var stored).Should().BeTrue();
+        stored.Should().BeSameAs(freshState);
+        stored!.Players.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task ReloadGameAsync_GameDeletedFromDb_RemovesFromCache()
+    {
+        var gameId = Guid.NewGuid();
+        _sut.SetGame(new ActiveGameRuntimeState { GameId = gameId });
+
+        _hydrator.HydrateFromDatabaseAsync(gameId, Arg.Any<CancellationToken>())
+            .Returns((ActiveGameRuntimeState?)null);
+
+        var result = await _sut.ReloadGameAsync(gameId, CancellationToken.None);
+
+        result.Should().BeNull();
+        _sut.TryGetGame(gameId, out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ReloadGameAsync_NoExistingEntry_StoresNewState()
+    {
+        var gameId = Guid.NewGuid();
+        var freshState = new ActiveGameRuntimeState { GameId = gameId, CurrentPhase = "Betting" };
+        _hydrator.HydrateFromDatabaseAsync(gameId, Arg.Any<CancellationToken>())
+            .Returns(freshState);
+
+        var result = await _sut.ReloadGameAsync(gameId, CancellationToken.None);
+
+        result.Should().BeSameAs(freshState);
+        _sut.TryGetGame(gameId, out _).Should().BeTrue();
+        _sut.Count.Should().Be(1);
+    }
+
     private sealed class TestMeterFactory : IMeterFactory
     {
         private readonly List<Meter> _meters = [];

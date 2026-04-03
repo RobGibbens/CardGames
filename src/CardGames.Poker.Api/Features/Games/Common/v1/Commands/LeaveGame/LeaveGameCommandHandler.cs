@@ -86,7 +86,7 @@ public sealed class LeaveGameCommandHandler(
 			await context.SaveChangesAsync(cancellationToken);
 
 			if (engineOptions.Value.Enabled)
-				await gameStateManager.GetOrLoadGameAsync(game.Id, cancellationToken);
+				await gameStateManager.ReloadGameAsync(game.Id, cancellationToken);
 
 			await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
 
@@ -118,7 +118,7 @@ public sealed class LeaveGameCommandHandler(
 			await context.SaveChangesAsync(cancellationToken);
 
 			if (engineOptions.Value.Enabled)
-				await gameStateManager.GetOrLoadGameAsync(game.Id, cancellationToken);
+				await gameStateManager.ReloadGameAsync(game.Id, cancellationToken);
 
 			await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
 
@@ -159,7 +159,7 @@ public sealed class LeaveGameCommandHandler(
 		await context.SaveChangesAsync(cancellationToken);
 
 		if (engineOptions.Value.Enabled)
-			await gameStateManager.GetOrLoadGameAsync(game.Id, cancellationToken);
+			await gameStateManager.ReloadGameAsync(game.Id, cancellationToken);
 
 		await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
 

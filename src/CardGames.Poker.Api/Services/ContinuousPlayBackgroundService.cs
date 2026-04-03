@@ -120,6 +120,14 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 
 	internal async Task ProcessGamesReadyForNextHandAsync(CancellationToken cancellationToken)
 	{
+		// ── In-memory engine fast path ──
+		// When the engine tracks all active games, check in-memory state to decide
+		// if any game actually needs background processing this tick.  This avoids
+		// the expensive aggregate DB query on the majority of 1-second ticks where
+		// no timer has expired and no game needs a state transition.
+		if (_engineOptions.Value.Enabled && !AnyGameNeedsBackgroundProcessing())
+			return;
+
 		using var scope = _scopeFactory.CreateScope();
 		var context = scope.ServiceProvider.GetRequiredService<CardsDbContext>();
 		var broadcaster = scope.ServiceProvider.GetRequiredService<IGameStateBroadcaster>();
@@ -320,7 +328,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 						game.UpdatedAt = now;
 						await context.SaveChangesAsync(cancellationToken);
 						if (_engineOptions.Value.Enabled)
-							await _gameStateManager.GetOrLoadGameAsync(game.Id, cancellationToken);
+							await _gameStateManager.ReloadGameAsync(game.Id, cancellationToken);
 					}
 
 					await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
@@ -373,7 +381,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 
 				await context.SaveChangesAsync(cancellationToken);
 				if (_engineOptions.Value.Enabled)
-					await _gameStateManager.GetOrLoadGameAsync(game.Id, cancellationToken);
+					await _gameStateManager.ReloadGameAsync(game.Id, cancellationToken);
 				await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
 			}
 			catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
@@ -445,7 +453,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 
 				await context.SaveChangesAsync(cancellationToken);
 				if (_engineOptions.Value.Enabled)
-					await _gameStateManager.GetOrLoadGameAsync(game.Id, cancellationToken);
+					await _gameStateManager.ReloadGameAsync(game.Id, cancellationToken);
 				await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
 			}
 			catch (Exception ex)
@@ -584,6 +592,68 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		game.OriginalDealersChoiceDealerPosition = null;
 	}
 
+	/// <summary>
+	/// Pre-flight check using in-memory engine state.  Returns <c>true</c> when at
+	/// least one tracked game is in a state that the background service needs to act
+	/// on (timer expired, abandoned, etc.).  Avoids the expensive DB aggregate query
+	/// on ticks where no game needs processing.
+	/// </summary>
+	private bool AnyGameNeedsBackgroundProcessing()
+	{
+		var now = DateTimeOffset.UtcNow;
+		var drawCompleteDeadline = now.AddSeconds(-DrawCompleteDisplayDurationSeconds);
+		var klondikeDeadline = now.AddSeconds(-KlondikeRevealDisplayDurationSeconds);
+		var inBetweenDeadline = now.AddSeconds(-InBetweenRevealDisplayDurationSeconds);
+
+		foreach (var gameId in _gameStateManager.GetActiveGameIds())
+		{
+			if (!_gameStateManager.TryGetGame(gameId, out var state))
+				continue;
+
+			if (state.Status != GameStatus.InProgress && state.Status != GameStatus.BetweenHands)
+				continue;
+
+			var phase = state.CurrentPhase;
+
+			// DrawComplete timer expired → needs transition to Showdown
+			if (phase == nameof(Phases.DrawComplete) &&
+				state.Status == GameStatus.InProgress &&
+				state.DrawCompletedAt is not null &&
+				state.DrawCompletedAt <= drawCompleteDeadline)
+				return true;
+
+			// KlondikeReveal timer expired → needs transition to Showdown
+			if (phase == nameof(Phases.KlondikeReveal) &&
+				state.Status == GameStatus.InProgress &&
+				state.DrawCompletedAt is not null &&
+				state.DrawCompletedAt <= klondikeDeadline)
+				return true;
+
+			// In-Between reveal timer expired → advance to next player
+			if (phase == nameof(Phases.InBetweenTurn) &&
+				state.Status == GameStatus.InProgress &&
+				state.DrawCompletedAt is not null &&
+				state.DrawCompletedAt <= inBetweenDeadline)
+				return true;
+
+			// Next-hand timer expired → start next hand
+			if ((phase == nameof(Phases.Complete) ||
+				 phase == nameof(Phases.WaitingForPlayers) ||
+				 (phase == nameof(Phases.WaitingToStart) && state.IsDealersChoice)) &&
+				state.NextHandStartsAt is not null &&
+				state.NextHandStartsAt <= now)
+				return true;
+
+			// Abandoned game: in-progress phase but no active players remaining
+			if (state.Status == GameStatus.InProgress &&
+				state.Players.Count > 0 &&
+				state.Players.All(p => p.Status != GamePlayerStatus.Active || p.LeftAtHandNumber != -1))
+				return true;
+		}
+
+		return false;
+	}
+
 	private async Task StartNextHandAsync(
 		IServiceScope scope,
 		CardsDbContext context,
@@ -654,7 +724,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		{
 			await context.SaveChangesAsync(cancellationToken);
 			if (_engineOptions.Value.Enabled)
-				await _gameStateManager.GetOrLoadGameAsync(game.Id, cancellationToken);
+				await _gameStateManager.ReloadGameAsync(game.Id, cancellationToken);
 		}
 
 		// Get the game flow handler for this game type (needed for game-specific checks below)
@@ -704,7 +774,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		{
 			await context.SaveChangesAsync(cancellationToken);
 			if (_engineOptions.Value.Enabled)
-				await _gameStateManager.GetOrLoadGameAsync(game.Id, cancellationToken);
+				await _gameStateManager.ReloadGameAsync(game.Id, cancellationToken);
 		}
 
 		// 3. Check for eligible players (occupied, not sitting out, chips >= ante, hasn't left)
@@ -799,7 +869,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 								game.UpdatedAt = now;
 								await context.SaveChangesAsync(cancellationToken);
 								if (_engineOptions.Value.Enabled)
-									await _gameStateManager.GetOrLoadGameAsync(game.Id, cancellationToken);
+									await _gameStateManager.ReloadGameAsync(game.Id, cancellationToken);
 							}
 							else
 							{
@@ -826,7 +896,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 
 							await context.SaveChangesAsync(cancellationToken);
 							if (_engineOptions.Value.Enabled)
-								await _gameStateManager.GetOrLoadGameAsync(game.Id, cancellationToken);
+								await _gameStateManager.ReloadGameAsync(game.Id, cancellationToken);
 							await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
 							return; // Don't start the hand - wait for players to add chips
 						}
@@ -950,7 +1020,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 
 			await context.SaveChangesAsync(cancellationToken);
 			if (_engineOptions.Value.Enabled)
-				await _gameStateManager.GetOrLoadGameAsync(game.Id, cancellationToken);
+				await _gameStateManager.ReloadGameAsync(game.Id, cancellationToken);
 			await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
 			return;
 		}
@@ -1130,7 +1200,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 
 		await context.SaveChangesAsync(cancellationToken);
 		if (_engineOptions.Value.Enabled)
-			await _gameStateManager.GetOrLoadGameAsync(game.Id, cancellationToken);
+			await _gameStateManager.ReloadGameAsync(game.Id, cancellationToken);
 
 		_logger.LogInformation(
 			"Started hand {HandNumber} for game {GameId} ({GameType}) with {PlayerCount} eligible players. Dealer at seat {DealerPosition}. Initial phase: {InitialPhase}",
@@ -1174,7 +1244,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		await flowHandler.DealCardsAsync(context, game, eligiblePlayers, now, cancellationToken);
 		await context.SaveChangesAsync(cancellationToken);
 		if (_engineOptions.Value.Enabled)
-			await _gameStateManager.GetOrLoadGameAsync(game.Id, cancellationToken);
+			await _gameStateManager.ReloadGameAsync(game.Id, cancellationToken);
 
 		if (await ShouldBroadcastScrewYourNeighborNewDeckToastAsync(context, flowHandler, game, cancellationToken))
 		{
@@ -1298,7 +1368,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 
 		await context.SaveChangesAsync(cancellationToken);
 		if (_engineOptions.Value.Enabled)
-			await _gameStateManager.GetOrLoadGameAsync(game.Id, cancellationToken);
+			await _gameStateManager.ReloadGameAsync(game.Id, cancellationToken);
 		await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
 
 		_logger.LogInformation(logMessage, game.Id, game.DealersChoiceDealerPosition);
@@ -1414,7 +1484,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 
 		await context.SaveChangesAsync(cancellationToken);
 		if (_engineOptions.Value.Enabled)
-			await _gameStateManager.GetOrLoadGameAsync(game.Id, cancellationToken);
+			await _gameStateManager.ReloadGameAsync(game.Id, cancellationToken);
 	}
 
 	/// <summary>

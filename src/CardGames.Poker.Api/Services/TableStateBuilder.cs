@@ -68,6 +68,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	private readonly CardsDbContext _context;
 	private readonly IActionTimerService _actionTimerService;
 	private readonly IPlayerChipWalletService _walletService;
+	private readonly IGameUserIdResolver _userIdResolver;
 	private readonly ILogger<TableStateBuilder> _logger;
 
 	private sealed record UserProfile(string UserId, string? FirstName, string? AvatarUrl);
@@ -76,11 +77,12 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	/// <summary>
 	/// Initializes a new instance of the <see cref="TableStateBuilder"/> class.
 	/// </summary>
-	public TableStateBuilder(CardsDbContext context, IActionTimerService actionTimerService, IPlayerChipWalletService walletService, ILogger<TableStateBuilder> logger)
+	public TableStateBuilder(CardsDbContext context, IActionTimerService actionTimerService, IPlayerChipWalletService walletService, IGameUserIdResolver userIdResolver, ILogger<TableStateBuilder> logger)
 	{
 		_context = context;
 		_actionTimerService = actionTimerService;
 		_walletService = walletService;
+		_userIdResolver = userIdResolver;
 		_logger = logger;
 	}
 
@@ -614,26 +616,8 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			.Select(gp => new { gp.Player.Email, gp.Player.Name, gp.Player.ExternalId })
 			.ToListAsync(cancellationToken);
 
-		// Prefer Name over Email when Email appears malformed (e.g., contains multiple @ symbols).
-		// This handles legacy data where Email may have been incorrectly stored with @localhost appended.
 		var userIds = players
-			.Select(p =>
-			{
-				// If Email looks like a valid single @ email, use it
-				// Otherwise prefer Name (which is typically the clean email)
-				var email = p.Email;
-				var name = p.Name;
-
-				// Check if email is malformed (has more than one @ symbol)
-				var isMalformedEmail = !string.IsNullOrWhiteSpace(email) && email.Count(c => c == '@') > 1;
-
-				if (isMalformedEmail && !string.IsNullOrWhiteSpace(name))
-				{
-					return name;
-				}
-
-				return email ?? name ?? p.ExternalId;
-			})
+			.Select(p => _userIdResolver.ResolveFromPlayer(p.Email, p.Name, p.ExternalId))
 			.Where(id => !string.IsNullOrWhiteSpace(id))
 			.Cast<string>()
 			.ToList();
@@ -651,22 +635,12 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 	/// <summary>
 	/// Resolves SignalR user identifiers from pre-loaded game players without querying the database.
-	/// Uses the same identity resolution logic as <see cref="GetPlayerUserIdsAsync"/>.
+	/// Delegates to <see cref="IGameUserIdResolver.ResolveFromPlayer"/> for consistent resolution.
 	/// </summary>
-	private static IReadOnlyList<string> ResolvePlayerUserIds(IEnumerable<GamePlayer> gamePlayers)
+	private IReadOnlyList<string> ResolvePlayerUserIds(IEnumerable<GamePlayer> gamePlayers)
 	{
 		return gamePlayers
-			.Select(gp =>
-			{
-				var email = gp.Player.Email;
-				var name = gp.Player.Name;
-				var isMalformedEmail = !string.IsNullOrWhiteSpace(email) && email.Count(c => c == '@') > 1;
-				if (isMalformedEmail && !string.IsNullOrWhiteSpace(name))
-				{
-					return name;
-				}
-				return email ?? name ?? gp.Player.ExternalId;
-			})
+			.Select(gp => _userIdResolver.ResolveFromPlayer(gp.Player.Email, gp.Player.Name, gp.Player.ExternalId))
 			.Where(id => !string.IsNullOrWhiteSpace(id))
 			.Cast<string>()
 			.Distinct(StringComparer.OrdinalIgnoreCase)

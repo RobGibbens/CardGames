@@ -107,7 +107,7 @@ public sealed class StartHandCommandHandler(
             await context.SaveChangesAsync(cancellationToken);
 
             if (engineOptions.Value.Enabled)
-                await gameStateManager.GetOrLoadGameAsync(game.Id, cancellationToken);
+                await gameStateManager.ReloadGameAsync(game.Id, cancellationToken);
 
             logger.LogInformation(
                 "Dealer's Choice game {GameId}: waiting for dealer at seat {DcDealerSeat} to choose game type",
@@ -275,7 +275,7 @@ public sealed class StartHandCommandHandler(
         }
 
         if (engineOptions.Value.Enabled)
-            await gameStateManager.GetOrLoadGameAsync(game.Id, cancellationToken);
+            await gameStateManager.ReloadGameAsync(game.Id, cancellationToken);
 
         logger.LogInformation(
             "Started hand {HandNumber} for game {GameId} in phase {Phase} with {PlayerCount} players",

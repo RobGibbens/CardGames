@@ -1,0 +1,5 @@
+{
+  "appHost": {
+    "path": "src/CardGames.AppHost/CardGames.AppHost.csproj"
+  }
+}

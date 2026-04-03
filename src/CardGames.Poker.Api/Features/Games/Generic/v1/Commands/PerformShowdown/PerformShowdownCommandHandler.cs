@@ -241,7 +241,7 @@ public sealed class PerformShowdownCommandHandler(
             await context.SaveChangesAsync(cancellationToken);
 
             if (engineOptions.Value.Enabled)
-                await gameStateManager.GetOrLoadGameAsync(game.Id, cancellationToken);
+                await gameStateManager.ReloadGameAsync(game.Id, cancellationToken);
 
             return new PerformShowdownSuccessful
             {
@@ -373,7 +373,7 @@ public sealed class PerformShowdownCommandHandler(
             await context.SaveChangesAsync(cancellationToken);
 
             if (engineOptions.Value.Enabled)
-                await gameStateManager.GetOrLoadGameAsync(game.Id, cancellationToken);
+                await gameStateManager.ReloadGameAsync(game.Id, cancellationToken);
 
             // 13. Record hand history
             await RecordHandHistoryAsync(
@@ -451,7 +451,7 @@ public sealed class PerformShowdownCommandHandler(
             await context.SaveChangesAsync(cancellationToken);
 
             if (engineOptions.Value.Enabled)
-                await gameStateManager.GetOrLoadGameAsync(game.Id, cancellationToken);
+                await gameStateManager.ReloadGameAsync(game.Id, cancellationToken);
 
             // Record hand history for win-by-fold
             await RecordHandHistoryAsync(
@@ -550,7 +550,7 @@ public sealed class PerformShowdownCommandHandler(
             await context.SaveChangesAsync(cancellationToken);
 
             if (engineOptions.Value.Enabled)
-                await gameStateManager.GetOrLoadGameAsync(game.Id, cancellationToken);
+                await gameStateManager.ReloadGameAsync(game.Id, cancellationToken);
         }
 
         return new PerformShowdownSuccessful

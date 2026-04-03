@@ -15,10 +15,8 @@ public sealed class GameStateQueryCacheInvalidator(
 		var tags = GameCacheKeys.BuildAllMutationTags(gameId);
 		logger.LogDebug("Invalidating {TagCount} cache tags for game {GameId}", tags.Length, gameId);
 
-		foreach (var tag in tags)
-		{
-			await hybridCache.RemoveByTagAsync(tag, cancellationToken);
-		}
+		await Parallel.ForEachAsync(tags, cancellationToken, (tag, ct) =>
+			new ValueTask(hybridCache.RemoveByTagAsync(tag, ct).AsTask()));
 	}
 
 	public async ValueTask InvalidateGameAsync(Guid gameId, CancellationToken cancellationToken = default)
@@ -26,10 +24,8 @@ public sealed class GameStateQueryCacheInvalidator(
 		var tags = GameCacheKeys.BuildPerGameTags(gameId);
 		logger.LogDebug("Invalidating {TagCount} per-game cache tags for game {GameId}", tags.Length, gameId);
 
-		foreach (var tag in tags)
-		{
-			await hybridCache.RemoveByTagAsync(tag, cancellationToken);
-		}
+		await Parallel.ForEachAsync(tags, cancellationToken, (tag, ct) =>
+			new ValueTask(hybridCache.RemoveByTagAsync(tag, ct).AsTask()));
 	}
 
 	public async ValueTask InvalidateActiveGamesAsync(CancellationToken cancellationToken = default)

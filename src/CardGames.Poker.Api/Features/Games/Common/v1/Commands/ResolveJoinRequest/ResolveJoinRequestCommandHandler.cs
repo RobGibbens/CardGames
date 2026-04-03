@@ -177,7 +177,7 @@ public sealed class ResolveJoinRequestCommandHandler(
 		// Refresh in-memory state so subsequent handlers see the approved player
 		if (engineOptions.Value.Enabled)
 		{
-			await gameStateManager.GetOrLoadGameAsync(game.Id, cancellationToken);
+			await gameStateManager.ReloadGameAsync(game.Id, cancellationToken);
 		}
 
 		await gameStateBroadcaster.BroadcastPlayerJoinedAsync(game.Id, joinRequest.Player.Name, seatIndex.Value, canPlayCurrentHand, cancellationToken);

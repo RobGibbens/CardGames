@@ -358,7 +358,7 @@ public sealed class JoinGameCommandHandler(
 		// Refresh in-memory state so subsequent handlers see the new player
 		if (engineOptions.Value.Enabled)
 		{
-			await gameStateManager.GetOrLoadGameAsync(game.Id, cancellationToken);
+			await gameStateManager.ReloadGameAsync(game.Id, cancellationToken);
 		}
 
 		logger.LogInformation(
@@ -443,7 +443,7 @@ public sealed class JoinGameCommandHandler(
 		// Refresh in-memory state so subsequent handlers see the rejoined player
 		if (engineOptions.Value.Enabled)
 		{
-			await gameStateManager.GetOrLoadGameAsync(game.Id, cancellationToken);
+			await gameStateManager.ReloadGameAsync(game.Id, cancellationToken);
 		}
 
 		var userEmail = currentUserService.UserEmail;

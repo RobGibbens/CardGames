@@ -177,7 +177,7 @@ public class DealHandsCommandHandler(CardsDbContext context,
 		await context.SaveChangesAsync(cancellationToken);
 
 		if (engineOptions.Value.Enabled)
-			await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
+			await gameStateManager.ReloadGameAsync(command.GameId, cancellationToken);
 
 		// Get current player name
 		var currentPlayerName = firstActorIndex >= 0

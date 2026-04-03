@@ -258,7 +258,7 @@ public class DealHandsCommandHandler(
 		await context.SaveChangesAsync(cancellationToken);
 
 		if (engineOptions.Value.Enabled)
-			await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
+			await gameStateManager.ReloadGameAsync(command.GameId, cancellationToken);
 
 		// 7. Determine first player to act based on street
 		int firstActorSeatPosition;
@@ -346,7 +346,7 @@ public class DealHandsCommandHandler(
 		await context.SaveChangesAsync(cancellationToken);
 
 		if (engineOptions.Value.Enabled)
-			await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
+			await gameStateManager.ReloadGameAsync(command.GameId, cancellationToken);
 
 		logger.LogInformation(
 			"Dealt cards for {Street} and created betting round {RoundNumber} for game {GameId}, hand {HandNumber}",

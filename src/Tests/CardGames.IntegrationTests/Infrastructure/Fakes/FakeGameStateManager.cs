@@ -17,6 +17,9 @@ public sealed class FakeGameStateManager : IGameStateManager
     public Task<ActiveGameRuntimeState?> GetOrLoadGameAsync(Guid gameId, CancellationToken cancellationToken)
         => Task.FromResult<ActiveGameRuntimeState?>(null);
 
+    public Task<ActiveGameRuntimeState?> ReloadGameAsync(Guid gameId, CancellationToken cancellationToken)
+        => Task.FromResult<ActiveGameRuntimeState?>(null);
+
     public void SetGame(ActiveGameRuntimeState state) { }
 
     public bool RemoveGame(Guid gameId) => false;

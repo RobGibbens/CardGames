@@ -101,7 +101,7 @@ public class ResumeAfterChipCheckCommandHandler(CardsDbContext context,
 		await context.SaveChangesAsync(cancellationToken);
 
 		if (engineOptions.Value.Enabled)
-			await gameStateManager.GetOrLoadGameAsync(command.GameId, cancellationToken);
+			await gameStateManager.ReloadGameAsync(command.GameId, cancellationToken);
 
 		var message = allPlayersReady
 			? "All players now have sufficient chips. Game resumed."

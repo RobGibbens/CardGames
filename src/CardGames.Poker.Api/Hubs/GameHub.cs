@@ -19,6 +19,7 @@ public sealed class GameHub : Hub
     private readonly ITableStateBuilder _tableStateBuilder;
     private readonly IActiveGameCache _activeGameCache;
     private readonly IGameStateManager _gameStateManager;
+    private readonly IGameUserIdResolver _userIdResolver;
     private readonly IOptions<InMemoryEngineOptions> _engineOptions;
     private readonly IOptions<ActiveGameCacheOptions> _cacheOptions;
     private readonly ILogger<GameHub> _logger;
@@ -35,6 +36,7 @@ public sealed class GameHub : Hub
         ITableStateBuilder tableStateBuilder,
         IActiveGameCache activeGameCache,
         IGameStateManager gameStateManager,
+        IGameUserIdResolver userIdResolver,
         IOptions<InMemoryEngineOptions> engineOptions,
         IOptions<ActiveGameCacheOptions> cacheOptions,
         ILogger<GameHub> logger)
@@ -42,6 +44,7 @@ public sealed class GameHub : Hub
         _tableStateBuilder = tableStateBuilder;
         _activeGameCache = activeGameCache;
         _gameStateManager = gameStateManager;
+        _userIdResolver = userIdResolver;
         _engineOptions = engineOptions;
         _cacheOptions = cacheOptions;
         _logger = logger;
@@ -190,16 +193,10 @@ public sealed class GameHub : Hub
 
     /// <summary>
     /// Gets the stable user identifier from the connection context.
-    /// Uses email claim to match existing identity usage in the application.
+    /// Delegates to <see cref="IGameUserIdResolver"/> for consistent resolution.
     /// </summary>
     private string? GetUserIdentifier()
-    {
-        // Match the claim order used by CurrentUserService.UserName
-        return Context.User?.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value
-            ?? Context.User?.FindFirst("email")?.Value
-            ?? Context.User?.FindFirst("preferred_username")?.Value
-            ?? Context.User?.Identity?.Name;
-    }
+        => _userIdResolver.ResolveFromClaims(Context.User);
 
     /// <summary>
     /// Gets the SignalR group name for a game.

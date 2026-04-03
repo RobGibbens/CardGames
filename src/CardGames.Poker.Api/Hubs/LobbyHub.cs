@@ -1,5 +1,6 @@
 using CardGames.Contracts.SignalR;
 using CardGames.Poker.Api.Infrastructure;
+using CardGames.Poker.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
@@ -12,6 +13,7 @@ namespace CardGames.Poker.Api.Hubs;
 [Authorize(AuthenticationSchemes = HeaderAuthenticationHandler.SchemeName)]
 public sealed class LobbyHub : Hub
 {
+    private readonly IGameUserIdResolver _userIdResolver;
     private readonly ILogger<LobbyHub> _logger;
 
     /// <summary>
@@ -22,8 +24,9 @@ public sealed class LobbyHub : Hub
     /// <summary>
     /// Initializes a new instance of the <see cref="LobbyHub"/> class.
     /// </summary>
-    public LobbyHub(ILogger<LobbyHub> logger)
+    public LobbyHub(IGameUserIdResolver userIdResolver, ILogger<LobbyHub> logger)
     {
+        _userIdResolver = userIdResolver;
         _logger = logger;
     }
 
@@ -86,7 +89,5 @@ public sealed class LobbyHub : Hub
     }
 
     private string? GetUserIdentifier()
-    {
-        return Context.UserIdentifier ?? Context.User?.Identity?.Name;
-    }
+        => Context.UserIdentifier ?? _userIdResolver.ResolveFromClaims(Context.User);
 }

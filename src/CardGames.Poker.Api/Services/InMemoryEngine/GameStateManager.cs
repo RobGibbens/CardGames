@@ -68,6 +68,23 @@ public sealed class GameStateManager : IGameStateManager
     }
 
     /// <inheritdoc />
+    public async Task<ActiveGameRuntimeState?> ReloadGameAsync(Guid gameId, CancellationToken cancellationToken)
+    {
+        var state = await _hydrator.HydrateFromDatabaseAsync(gameId, cancellationToken);
+        if (state is null)
+        {
+            _games.TryRemove(gameId, out _);
+            return null;
+        }
+
+        _games[gameId] = state;
+        _logger.LogInformation("Reloaded game {GameId} into in-memory engine (hand {Hand}, phase {Phase})",
+            gameId, state.CurrentHandNumber, state.CurrentPhase);
+
+        return state;
+    }
+
+    /// <inheritdoc />
     public bool RemoveGame(Guid gameId)
     {
         if (_games.TryRemove(gameId, out _))

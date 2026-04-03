@@ -4,6 +4,8 @@
 - [ ] Tony was trying to join during DC, it stole the choice from Russ
 - [ ] DC - Eric joined, it glitched
 - [ ] Rabbit hunt
+- [ ] There are a lot of extra database calls going on
+- [ ] Move to PostGres
 
 ## Still to do
 
@@ -44,7 +46,7 @@
 
 ### P3 - Nice to have
 
-- [ ] There are a lot of extra database calls going on
+
 - [ ] Hand history should auto size columns and allow resizing columns
 - [ ] Hand history should paginate
 - [ ] Endpoints shouldn't use generic Error responses
@@ -87,6 +89,7 @@
 - [x] Add Razz
 - [x] Pair Pressure
 - [x] Tollbooth
+- [ ] Add Low Chicago option
 
 ### 5 Card Stud Variants
 
@@ -100,7 +103,7 @@
 
 ### Other Poker Variants
 
-- [ ] Add In Between
+- [x] Add In Between
 - [ ] Add Bzzjt
 - [ ] Add Guts
 - [x] Add Screw Your Neighbor

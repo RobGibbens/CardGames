@@ -107,6 +107,7 @@ public class Program
                     options.PayloadSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
                     options.PayloadSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
                 });
+        builder.Services.AddSingleton<IGameUserIdResolver, GameUserIdResolver>();
         builder.Services.AddSingleton<IUserIdProvider, SignalRUserIdProvider>();
         builder.Services.AddSingleton<IActionTimerService, ActionTimerService>();
         builder.Services.AddSingleton<IAutoActionService, AutoActionService>();
@@ -172,7 +173,13 @@ public class Program
                 ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles,
                 PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
             }))
-            .WithDefaultEntryOptions(options => options.Duration = TimeSpan.FromMinutes(5))
+            .WithDefaultEntryOptions(options =>
+            {
+                options.Duration = TimeSpan.FromMinutes(5);
+                options.DistributedCacheSoftTimeout = TimeSpan.FromSeconds(1);
+                options.DistributedCacheHardTimeout = TimeSpan.FromSeconds(3);
+                options.AllowTimedOutFactoryBackgroundCompletion = true;
+            })
             .WithRegisteredDistributedCache()
             .AsHybridCache();
 
