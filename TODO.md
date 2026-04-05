@@ -16,6 +16,7 @@
 
 - [ ] Productize it - deployment and hosting (Hetzner)
 
+- [ ] Make sure that we're not showing the hand in the showdown when we're not supposed to
 - [ ] Check for security issues
 - [ ] Add a "Rules" property to each game
 - [ ] Refactor TablePlay
@@ -283,7 +284,7 @@
 - [x] SYN - odds
 
 - [x] Crazy Pineapple description is incorrect. Every game is like this.
-- [x] Delete Table modal, make the delete button red 
+- [x] Delete Table modal, make the delete button red
 - [x] DC - Make it more obvious what game you're playing
 - [x] BB should always be twice SB
 - [x] In Hold Em, the BB should be able to raise
