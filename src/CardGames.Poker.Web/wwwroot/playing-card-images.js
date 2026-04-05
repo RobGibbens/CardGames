@@ -178,7 +178,7 @@
                     this._img.style.width = "100%";
                     this._img.style.height = "100%";
                     this._img.style.display = "block";
-                    this._img.style.objectFit = "contain";
+                    this._img.style.objectFit = "fill";
                     this._img.style.borderRadius = "inherit";
                     this._img.style.pointerEvents = "none";
                     this._img.draggable = false;
