@@ -17,6 +17,7 @@ using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetGamePlayers;
 using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetGames;
 using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetHandHistory;
 using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetPendingJoinRequestsForHost;
+using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetRabbitHunt;
 using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetCurrentBettingRound;
 using SharpGrip.FluentValidation.AutoValidation.Endpoints.Extensions;
 
@@ -52,6 +53,7 @@ public static class V1
 		mapGroup.MapGetGames();
 		mapGroup.MapGetHandHistory();
 		mapGroup.MapGetPendingJoinRequestsForHost();
+		mapGroup.MapGetRabbitHunt();
 		mapGroup.MapGetTableSettings();
 	}
 }

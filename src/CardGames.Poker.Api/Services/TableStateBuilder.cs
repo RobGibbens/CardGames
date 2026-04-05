@@ -167,12 +167,14 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				.Select(gp => BuildSeatPublicDto(gp, game.CurrentHandNumber, game.Ante ?? 0, game.GameType?.Code, game.CurrentPhase, userProfilesByEmail))
 						.ToList();
 
+		var serverUtcNow = DateTimeOffset.UtcNow;
+
 		// Calculate results phase state
 		var isResultsPhase = (game.CurrentPhase == "Complete" || game.CurrentPhase == "PotMatching") && game.HandCompletedAt.HasValue;
 		int? secondsUntilNextHand = null;
 		if (isResultsPhase && game.NextHandStartsAt.HasValue)
 		{
-			var remaining = game.NextHandStartsAt.Value - DateTimeOffset.UtcNow;
+			var remaining = game.NextHandStartsAt.Value - serverUtcNow;
 			secondsUntilNextHand = Math.Max(0, (int)remaining.TotalSeconds);
 		}
 
@@ -254,6 +256,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			Seats = seats,
 			Showdown = showdown,
 			HandCompletedAtUtc = game.HandCompletedAt,
+			ServerUtcNow = serverUtcNow,
 			NextHandStartsAtUtc = game.NextHandStartsAt,
 			IsResultsPhase = isResultsPhase,
 			SecondsUntilNextHand = secondsUntilNextHand,
@@ -473,66 +476,29 @@ public sealed class TableStateBuilder : ITableStateBuilder
 						handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(gbuHand);
 					}
 				}
-				else if (IsHoldTheBaseballGame(game.GameType?.Code) && playerCards.Count == 2)
+				else
 				{
-					var holdTheBaseballHand = new HoldTheBaseballHand(playerCards, communityCards);
-					handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(holdTheBaseballHand);
-				}
-				// Klondike: Before reveal, treat the unknown Klondike Card as one wild.
-				// After reveal, treat the Klondike Card and all cards of the same rank as wild.
-				else if (IsGameType(game.GameType?.Code, PokerGameMetadataRegistry.KlondikeCode) && playerCards.Count == 2)
-				{
-					var klondikeCardEntity = await _context.GameCards
-						.Where(c => c.GameId == gameId
-							&& c.HandNumber == game.CurrentHandNumber
-							&& c.DealtAtPhase == "KlondikeCard")
-						.AsNoTracking()
-						.FirstOrDefaultAsync(cancellationToken);
+					Card? visibleKlondikeCard = null;
+					if (IsGameType(game.GameType?.Code, PokerGameMetadataRegistry.KlondikeCode))
+					{
+						var klondikeCardEntity = await _context.GameCards
+							.Where(c => c.GameId == gameId
+								&& c.HandNumber == game.CurrentHandNumber
+								&& c.DealtAtPhase == "KlondikeCard")
+							.AsNoTracking()
+							.FirstOrDefaultAsync(cancellationToken);
 
-					if (klondikeCardEntity is { IsVisible: true })
-					{
-						// Post-reveal: Klondike Card + all same-rank cards are wild
-						var klondikeCard = new Card((Suit)klondikeCardEntity.Suit, (Symbol)klondikeCardEntity.Symbol);
-						var klondikeHand = new KlondikeHand(playerCards, communityCards, klondikeCard);
-						handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(klondikeHand);
+						if (klondikeCardEntity is { IsVisible: true })
+						{
+							visibleKlondikeCard = new Card((Suit)klondikeCardEntity.Suit, (Symbol)klondikeCardEntity.Symbol);
+						}
 					}
-					else
-					{
-						// Pre-reveal: one unknown wild card
-						var klondikeHand = new KlondikeHand(playerCards, communityCards);
-						handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(klondikeHand);
-					}
-				}
-				// Hold'em / Short-deck Hold'em style: 2 hole + up to 5 community
-				else if (playerCards.Count == 2)
-				{
-					var holdemHand = new CardGames.Poker.Hands.CommunityCardHands.HoldemHand(playerCards, communityCards);
-					handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(holdemHand);
-				}
-				// Irish Hold'em variants (including Phil's Mom) can have 3 hole cards after first discard.
-				// Evaluate with community cards during this transitional state as well.
-				else if (playerCards.Count == 3 && isCommunityCardGame)
-				{
-					var holdemHand = new CardGames.Poker.Hands.CommunityCardHands.HoldemHand(playerCards, communityCards);
-					handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(holdemHand);
-				}
-				// Bob Barker: 4 active hole cards + up to 5 community, must use exactly 2 hole + 3 community.
-				else if (playerCards.Count == 4 && IsBobBarkerGame(game.GameType?.Code))
-				{
-					var bobBarkerHand = new BobBarkerHand(playerCards, communityCards);
-					handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(bobBarkerHand);
-				}
-				// Omaha style: 4 hole + up to 5 community
-				else if (playerCards.Count == 4 && IsOmahaGame(game.GameType?.Code))
-				{
-					var omahaHand = new CardGames.Poker.Hands.CommunityCardHands.OmahaHand(playerCards, communityCards);
-					handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(omahaHand);
-				}
-				// Nebraska style: 5 hole + up to 5 community, must use exactly 3 hole + 2 community
-				else if (playerCards.Count == 5 && (IsNebraskaGame(game.GameType?.Code) || IsSouthDakotaGame(game.GameType?.Code)))
-				{
-					var nebraskaHand = new NebraskaHand(playerCards, communityCards);
-					handEvaluationDescription = HandDescriptionFormatter.GetHandDescription(nebraskaHand);
+
+					handEvaluationDescription = CommunityHandDescriptionEvaluator.Evaluate(
+						game.GameType?.Code,
+						playerCards,
+						communityCards,
+						visibleKlondikeCard);
 				}
 			}
 		}

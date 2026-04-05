@@ -102,6 +102,12 @@ public sealed partial record TableStatePublicDto
 	public DateTimeOffset? HandCompletedAtUtc { get; init; }
 
 	/// <summary>
+	/// The current UTC timestamp according to the server when this table state was built.
+	/// Clients can use this to correct local clock skew for countdown displays.
+	/// </summary>
+	public DateTimeOffset ServerUtcNow { get; init; }
+
+	/// <summary>
 	/// The UTC timestamp when the next hand is scheduled to start.
 	/// Clients can use this for countdown display.
 	/// </summary>
