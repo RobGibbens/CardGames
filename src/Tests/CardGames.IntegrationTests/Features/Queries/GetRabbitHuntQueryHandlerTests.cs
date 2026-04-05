@@ -6,9 +6,14 @@ using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetRabbitHunt;
 using CardGames.Poker.Api.Features.Games.HoldEm.v1.Commands.ProcessBettingAction;
 using CardGames.Poker.Api.GameFlow;
 using CardGames.Poker.Api.Infrastructure;
+using CardGames.Poker.Evaluation;
+using CardGames.Poker.Hands.CommunityCardHands;
 using ContractCardSuit = CardGames.Poker.Api.Contracts.CardSuit;
 using ContractCardSymbol = CardGames.Poker.Api.Contracts.CardSymbol;
 using BettingActionType = CardGames.Poker.Api.Data.Entities.BettingActionType;
+using CoreCard = CardGames.Core.French.Cards.Card;
+using CoreSuit = CardGames.Core.French.Cards.Suit;
+using CoreSymbol = CardGames.Core.French.Cards.Symbol;
 
 namespace CardGames.IntegrationTests.Features.Queries;
 
@@ -20,13 +25,27 @@ public class GetRabbitHuntQueryHandlerTests : IntegrationTestBase
         var setup = await CreateDealtCommunityGameAsync("HOLDEM", 3);
         ConfigureCurrentUser(setup.Players[0]);
 
+        var heroCards = await DbContext.GameCards
+            .Where(card => card.GameId == setup.Game.Id
+                && card.HandNumber == setup.Game.CurrentHandNumber
+                && card.GamePlayerId == setup.GamePlayers[0].Id
+                && !card.IsDiscarded)
+            .OrderBy(card => card.DealOrder)
+            .Take(2)
+            .ToListAsync();
+
+        heroCards[0].Suit = CardGames.Poker.Api.Data.Entities.CardSuit.Hearts;
+        heroCards[0].Symbol = CardGames.Poker.Api.Data.Entities.CardSymbol.Ace;
+        heroCards[1].Suit = CardGames.Poker.Api.Data.Entities.CardSuit.Hearts;
+        heroCards[1].Symbol = CardGames.Poker.Api.Data.Entities.CardSymbol.King;
+
         var configuredRunout = new[]
         {
-            new { Suit = CardGames.Poker.Api.Data.Entities.CardSuit.Hearts, Symbol = CardGames.Poker.Api.Data.Entities.CardSymbol.Ace },
-            new { Suit = CardGames.Poker.Api.Data.Entities.CardSuit.Clubs, Symbol = CardGames.Poker.Api.Data.Entities.CardSymbol.King },
-            new { Suit = CardGames.Poker.Api.Data.Entities.CardSuit.Spades, Symbol = CardGames.Poker.Api.Data.Entities.CardSymbol.Queen },
-            new { Suit = CardGames.Poker.Api.Data.Entities.CardSuit.Diamonds, Symbol = CardGames.Poker.Api.Data.Entities.CardSymbol.Jack },
-            new { Suit = CardGames.Poker.Api.Data.Entities.CardSuit.Hearts, Symbol = CardGames.Poker.Api.Data.Entities.CardSymbol.Ten }
+            new { Suit = CardGames.Poker.Api.Data.Entities.CardSuit.Hearts, Symbol = CardGames.Poker.Api.Data.Entities.CardSymbol.Queen },
+            new { Suit = CardGames.Poker.Api.Data.Entities.CardSuit.Hearts, Symbol = CardGames.Poker.Api.Data.Entities.CardSymbol.Jack },
+            new { Suit = CardGames.Poker.Api.Data.Entities.CardSuit.Hearts, Symbol = CardGames.Poker.Api.Data.Entities.CardSymbol.Ten },
+            new { Suit = CardGames.Poker.Api.Data.Entities.CardSuit.Clubs, Symbol = CardGames.Poker.Api.Data.Entities.CardSymbol.Deuce },
+            new { Suit = CardGames.Poker.Api.Data.Entities.CardSuit.Diamonds, Symbol = CardGames.Poker.Api.Data.Entities.CardSymbol.Three }
         };
 
         var deckCardsToRewrite = await DbContext.GameCards
@@ -65,9 +84,25 @@ public class GetRabbitHuntQueryHandlerTests : IntegrationTestBase
 
         result.IsT0.Should().BeTrue();
         var rabbitHunt = result.AsT0;
+        var expectedDescription = HandDescriptionFormatter.GetHandDescription(
+            new HoldemHand(
+                [new CoreCard(CoreSuit.Hearts, CoreSymbol.Ace), new CoreCard(CoreSuit.Hearts, CoreSymbol.King)],
+                [
+                    new CoreCard(CoreSuit.Hearts, CoreSymbol.Queen),
+                    new CoreCard(CoreSuit.Hearts, CoreSymbol.Jack),
+                    new CoreCard(CoreSuit.Hearts, CoreSymbol.Ten),
+                    new CoreCard(CoreSuit.Clubs, CoreSymbol.Deuce),
+                    new CoreCard(CoreSuit.Diamonds, CoreSymbol.Three)
+                ]));
+
         rabbitHunt.CommunityCards.Should().HaveCount(5);
+        rabbitHunt.PlayerCards.Should().HaveCount(2);
+        rabbitHunt.PlayerCards.Should().Equal(
+            new ShowdownCard(ContractCardSuit.Hearts, ContractCardSymbol.Ace),
+            new ShowdownCard(ContractCardSuit.Hearts, ContractCardSymbol.King));
         rabbitHunt.NewlyRevealedCards.Should().HaveCount(5);
         rabbitHunt.PreviouslyVisibleCards.Should().BeEmpty();
+        rabbitHunt.ProjectedHandEvaluationDescription.Should().Be(expectedDescription);
         rabbitHunt.CommunityCards
             .Select(card => new { card.Card.Suit, card.Card.Symbol })
             .Should().Equal(expectedBoard.Select(card => new { Suit = (ContractCardSuit?)card.Suit, Symbol = (ContractCardSymbol?)card.Symbol }));
@@ -80,14 +115,56 @@ public class GetRabbitHuntQueryHandlerTests : IntegrationTestBase
         var setup = await CreateDealtCommunityGameAsync("KLONDIKE", 3);
         ConfigureCurrentUser(setup.Players[0]);
 
-        var freshContext = GetFreshDbContext();
-        var hiddenKlondikeCard = await freshContext.GameCards
-            .AsNoTracking()
+        var heroCards = await DbContext.GameCards
+            .Where(card => card.GameId == setup.Game.Id
+                && card.HandNumber == setup.Game.CurrentHandNumber
+                && card.GamePlayerId == setup.GamePlayers[0].Id
+                && !card.IsDiscarded)
+            .OrderBy(card => card.DealOrder)
+            .Take(2)
+            .ToListAsync();
+
+        heroCards[0].Suit = CardGames.Poker.Api.Data.Entities.CardSuit.Hearts;
+        heroCards[0].Symbol = CardGames.Poker.Api.Data.Entities.CardSymbol.King;
+        heroCards[1].Suit = CardGames.Poker.Api.Data.Entities.CardSuit.Spades;
+        heroCards[1].Symbol = CardGames.Poker.Api.Data.Entities.CardSymbol.King;
+
+        var hiddenKlondikeCard = await DbContext.GameCards
             .Where(card => card.GameId == setup.Game.Id
                 && card.HandNumber == setup.Game.CurrentHandNumber
                 && card.Location == CardLocation.Community
                 && card.DealtAtPhase == "KlondikeCard")
             .SingleAsync();
+
+        hiddenKlondikeCard.Suit = CardGames.Poker.Api.Data.Entities.CardSuit.Clubs;
+        hiddenKlondikeCard.Symbol = CardGames.Poker.Api.Data.Entities.CardSymbol.Deuce;
+
+        var configuredRunout = new[]
+        {
+            new { Suit = CardGames.Poker.Api.Data.Entities.CardSuit.Diamonds, Symbol = CardGames.Poker.Api.Data.Entities.CardSymbol.King },
+            new { Suit = CardGames.Poker.Api.Data.Entities.CardSuit.Spades, Symbol = CardGames.Poker.Api.Data.Entities.CardSymbol.Five },
+            new { Suit = CardGames.Poker.Api.Data.Entities.CardSuit.Diamonds, Symbol = CardGames.Poker.Api.Data.Entities.CardSymbol.Eight },
+            new { Suit = CardGames.Poker.Api.Data.Entities.CardSuit.Hearts, Symbol = CardGames.Poker.Api.Data.Entities.CardSymbol.Three },
+            new { Suit = CardGames.Poker.Api.Data.Entities.CardSuit.Hearts, Symbol = CardGames.Poker.Api.Data.Entities.CardSymbol.Four }
+        };
+
+        var deckCardsToRewrite = await DbContext.GameCards
+            .Where(card => card.GameId == setup.Game.Id
+                && card.HandNumber == setup.Game.CurrentHandNumber
+                && card.Location == CardLocation.Deck)
+            .OrderBy(card => card.DealOrder)
+            .Take(configuredRunout.Length)
+            .ToListAsync();
+
+        for (var index = 0; index < configuredRunout.Length; index++)
+        {
+            deckCardsToRewrite[index].Suit = configuredRunout[index].Suit;
+            deckCardsToRewrite[index].Symbol = configuredRunout[index].Symbol;
+        }
+
+        await DbContext.SaveChangesAsync();
+
+        var freshContext = GetFreshDbContext();
 
         var expectedRunout = await freshContext.GameCards
             .AsNoTracking()
@@ -106,8 +183,26 @@ public class GetRabbitHuntQueryHandlerTests : IntegrationTestBase
 
         result.IsT0.Should().BeTrue();
         var rabbitHunt = result.AsT0;
+        var expectedDescription = HandDescriptionFormatter.GetHandDescription(
+            new KlondikeHand(
+                [new CoreCard(CoreSuit.Hearts, CoreSymbol.King), new CoreCard(CoreSuit.Spades, CoreSymbol.King)],
+                [
+                    new CoreCard(CoreSuit.Clubs, CoreSymbol.Deuce),
+                    new CoreCard(CoreSuit.Diamonds, CoreSymbol.King),
+                    new CoreCard(CoreSuit.Spades, CoreSymbol.Five),
+                    new CoreCard(CoreSuit.Diamonds, CoreSymbol.Eight),
+                    new CoreCard(CoreSuit.Hearts, CoreSymbol.Three),
+                    new CoreCard(CoreSuit.Hearts, CoreSymbol.Four)
+                ],
+                new CoreCard(CoreSuit.Clubs, CoreSymbol.Deuce)));
+
         rabbitHunt.CommunityCards.Should().HaveCount(6);
         rabbitHunt.NewlyRevealedCards.Should().HaveCount(6);
+        rabbitHunt.PlayerCards.Should().HaveCount(2);
+        rabbitHunt.PlayerCards.Should().Equal(
+            new ShowdownCard(ContractCardSuit.Hearts, ContractCardSymbol.King),
+            new ShowdownCard(ContractCardSuit.Spades, ContractCardSymbol.King));
+        rabbitHunt.ProjectedHandEvaluationDescription.Should().Be(expectedDescription);
 
         rabbitHunt.CommunityCards[0].DealOrder.Should().Be(0);
         rabbitHunt.CommunityCards[0].IsKlondikeCard.Should().BeTrue();
@@ -117,6 +212,90 @@ public class GetRabbitHuntQueryHandlerTests : IntegrationTestBase
             .Skip(1)
             .Select(card => new { card.Card.Suit, card.Card.Symbol })
             .Should().Equal(expectedRunout.Select(card => new { Suit = (ContractCardSuit?)card.Suit, Symbol = (ContractCardSymbol?)card.Symbol }));
+    }
+
+    [Fact]
+    public async Task GetRabbitHunt_IrishHoldemFoldedRequesterBeforeDiscard_ReturnsProjectedDescription()
+    {
+        var setup = await CreateDealtCommunityGameAsync("IRISHHOLDEM", 3);
+        ConfigureCurrentUser(setup.Players[0]);
+
+        var heroCards = await DbContext.GameCards
+            .Where(card => card.GameId == setup.Game.Id
+                && card.HandNumber == setup.Game.CurrentHandNumber
+                && card.GamePlayerId == setup.GamePlayers[0].Id
+                && !card.IsDiscarded)
+            .OrderBy(card => card.DealOrder)
+            .Take(4)
+            .ToListAsync();
+
+        heroCards[0].Suit = CardGames.Poker.Api.Data.Entities.CardSuit.Hearts;
+        heroCards[0].Symbol = CardGames.Poker.Api.Data.Entities.CardSymbol.Ace;
+        heroCards[1].Suit = CardGames.Poker.Api.Data.Entities.CardSuit.Hearts;
+        heroCards[1].Symbol = CardGames.Poker.Api.Data.Entities.CardSymbol.King;
+        heroCards[2].Suit = CardGames.Poker.Api.Data.Entities.CardSuit.Spades;
+        heroCards[2].Symbol = CardGames.Poker.Api.Data.Entities.CardSymbol.Queen;
+        heroCards[3].Suit = CardGames.Poker.Api.Data.Entities.CardSuit.Clubs;
+        heroCards[3].Symbol = CardGames.Poker.Api.Data.Entities.CardSymbol.Queen;
+
+        var configuredRunout = new[]
+        {
+            new { Suit = CardGames.Poker.Api.Data.Entities.CardSuit.Hearts, Symbol = CardGames.Poker.Api.Data.Entities.CardSymbol.Jack },
+            new { Suit = CardGames.Poker.Api.Data.Entities.CardSuit.Hearts, Symbol = CardGames.Poker.Api.Data.Entities.CardSymbol.Ten },
+            new { Suit = CardGames.Poker.Api.Data.Entities.CardSuit.Clubs, Symbol = CardGames.Poker.Api.Data.Entities.CardSymbol.Deuce },
+            new { Suit = CardGames.Poker.Api.Data.Entities.CardSuit.Diamonds, Symbol = CardGames.Poker.Api.Data.Entities.CardSymbol.Three },
+            new { Suit = CardGames.Poker.Api.Data.Entities.CardSuit.Spades, Symbol = CardGames.Poker.Api.Data.Entities.CardSymbol.Four }
+        };
+
+        var deckCardsToRewrite = await DbContext.GameCards
+            .Where(card => card.GameId == setup.Game.Id
+                && card.HandNumber == setup.Game.CurrentHandNumber
+                && card.Location == CardLocation.Deck)
+            .OrderBy(card => card.DealOrder)
+            .Take(configuredRunout.Length)
+            .ToListAsync();
+
+        deckCardsToRewrite.Should().HaveCount(configuredRunout.Length);
+
+        for (var index = 0; index < configuredRunout.Length; index++)
+        {
+            deckCardsToRewrite[index].Suit = configuredRunout[index].Suit;
+            deckCardsToRewrite[index].Symbol = configuredRunout[index].Symbol;
+        }
+
+        setup.GamePlayers[0].HasFolded = true;
+        setup.Game.CurrentPhase = "Complete";
+
+        await DbContext.SaveChangesAsync();
+
+        var result = await Mediator.Send(new GetRabbitHuntQuery(setup.Game.Id));
+
+        result.IsT0.Should().BeTrue();
+        var rabbitHunt = result.AsT0;
+        var expectedDescription = HandDescriptionFormatter.GetHandDescription(
+            new HoldemHand(
+                [
+                    new CoreCard(CoreSuit.Hearts, CoreSymbol.Ace),
+                    new CoreCard(CoreSuit.Hearts, CoreSymbol.King),
+                    new CoreCard(CoreSuit.Spades, CoreSymbol.Queen),
+                    new CoreCard(CoreSuit.Clubs, CoreSymbol.Queen)
+                ],
+                [
+                    new CoreCard(CoreSuit.Hearts, CoreSymbol.Jack),
+                    new CoreCard(CoreSuit.Hearts, CoreSymbol.Ten),
+                    new CoreCard(CoreSuit.Clubs, CoreSymbol.Deuce),
+                    new CoreCard(CoreSuit.Diamonds, CoreSymbol.Three),
+                    new CoreCard(CoreSuit.Spades, CoreSymbol.Four)
+                ]));
+
+        rabbitHunt.NewlyRevealedCards.Should().HaveCount(5);
+        rabbitHunt.PlayerCards.Should().HaveCount(4);
+        rabbitHunt.PlayerCards.Should().Equal(
+            new ShowdownCard(ContractCardSuit.Hearts, ContractCardSymbol.Ace),
+            new ShowdownCard(ContractCardSuit.Hearts, ContractCardSymbol.King),
+            new ShowdownCard(ContractCardSuit.Spades, ContractCardSymbol.Queen),
+            new ShowdownCard(ContractCardSuit.Clubs, ContractCardSymbol.Queen));
+        rabbitHunt.ProjectedHandEvaluationDescription.Should().Be(expectedDescription);
     }
 
     [Fact]

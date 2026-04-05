@@ -52,6 +52,11 @@ public sealed record GetRabbitHuntSuccessful
     public required string GameTypeCode { get; init; }
 
     /// <summary>
+    /// The requesting player's current hole cards in display order.
+    /// </summary>
+    public required IReadOnlyList<ShowdownCard> PlayerCards { get; init; }
+
+    /// <summary>
     /// The fully projected community board in display order.
     /// </summary>
     public required IReadOnlyList<RabbitHuntCardDto> CommunityCards { get; init; }
@@ -65,4 +70,10 @@ public sealed record GetRabbitHuntSuccessful
     /// Cards revealed only because the player requested Rabbit Hunt.
     /// </summary>
     public required IReadOnlyList<RabbitHuntCardDto> NewlyRevealedCards { get; init; }
+
+    /// <summary>
+    /// The requesting player's projected best-hand description using their hole cards
+    /// and the fully projected Rabbit Hunt board.
+    /// </summary>
+    public string? ProjectedHandEvaluationDescription { get; init; }
 }

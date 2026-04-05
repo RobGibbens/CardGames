@@ -179,6 +179,7 @@
                     @if (CanRequestRabbitHunt || RabbitHuntResult is not null || IsRabbitHuntLoading || !string.IsNullOrWhiteSpace(RabbitHuntError))
                     {
                         var rabbitHuntCards = GetOrderedRabbitHuntCards(RabbitHuntResult);
+                        var rabbitHuntPlayerCards = GetRabbitHuntPlayerCards(RabbitHuntResult);
                         var newlyRevealedCount = RabbitHuntResult?.NewlyRevealedCards.Count ?? 0;
 
                         <section class="showdown-others rabbit-hunt-panel" aria-label="Rabbit Hunt">
@@ -228,7 +229,14 @@
                                 <div class="rabbit-hunt-summary-panel">
                                     <div class="rabbit-hunt-summary">
                                         <span class="sd-pill sd-pill-gold">@newlyRevealedCount new @(newlyRevealedCount == 1 ? "card" : "cards")</span>
+                                        
+                                        @if (!string.IsNullOrWhiteSpace(GetRabbitHuntProjectedHandDescription(RabbitHuntResult)))
+                                        {
+                                            <span class="sd-pill sd-pill-gold">@GetRabbitHuntProjectedHandDescription(RabbitHuntResult)</span>
+                                        }
+                                        
                                         <span class="rabbit-hunt-note">Highlighted cards were hidden before the hand ended.</span>
+                                        
                                     </div>
 
                                     <div class="rabbit-hunt-art-frame rabbit-hunt-art-frame-compact" aria-hidden="true">
@@ -236,16 +244,39 @@
                                     </div>
                                 </div>
 
-                                <div class="showdown-cards rabbit-hunt-cards" aria-label="Rabbit Hunt community cards">
-                                    @for (var i = 0; i < rabbitHuntCards.Count; i++)
+                                <div class="rabbit-hunt-card-layout">
+                                    @if (rabbitHuntPlayerCards.Count > 0)
                                     {
-                                        var projectedCard = rabbitHuntCards[i];
-                                        <div class="rabbit-hunt-card-shell @(projectedCard.WasAlreadyVisible ? "rabbit-hunt-card-known" : "rabbit-hunt-card-revealed")"
-                                             @key="GetRabbitHuntCardRenderKey(projectedCard, i)">
-                                            <playing-card class="showdown-card rabbit-hunt-card" rank="@GetPlayingCardRank(projectedCard.Card)" suit="@GetPlayingCardSuit(projectedCard.Card)"></playing-card>
-                                            <span class="rabbit-hunt-card-tag">@(projectedCard.WasAlreadyVisible ? "Shown" : "Rabbit")</span>
+                                        <div class="rabbit-hunt-card-group" aria-label="Your hole cards">
+                                            <span class="rabbit-hunt-card-group-label">Your cards</span>
+                                            <div class="showdown-cards rabbit-hunt-cards rabbit-hunt-player-cards">
+                                                @for (var i = 0; i < rabbitHuntPlayerCards.Count; i++)
+                                                {
+                                                    var playerCard = rabbitHuntPlayerCards[i];
+                                                    var playerCardRenderKey = GetShowdownCardRenderKey(playerCard, $"rabbit-player-{i}", false);
+                                                      <div class="rabbit-hunt-card-shell rabbit-hunt-player-card-shell"
+                                                         @key="playerCardRenderKey">
+                                                        <playing-card class="showdown-card rabbit-hunt-card" rank="@GetPlayingCardRank(playerCard)" suit="@GetPlayingCardSuit(playerCard)"></playing-card>
+                                                    </div>
+                                                }
+                                            </div>
                                         </div>
                                     }
+
+                                    <div class="rabbit-hunt-card-group" aria-label="Rabbit Hunt community cards">
+                                        <span class="rabbit-hunt-card-group-label">Runout</span>
+                                        <div class="showdown-cards rabbit-hunt-cards rabbit-hunt-board-cards">
+                                            @for (var i = 0; i < rabbitHuntCards.Count; i++)
+                                            {
+                                                var projectedCard = rabbitHuntCards[i];
+                                                <div class="rabbit-hunt-card-shell @(projectedCard.WasAlreadyVisible ? "rabbit-hunt-card-known" : "rabbit-hunt-card-revealed")"
+                                                     @key="GetRabbitHuntCardRenderKey(projectedCard, i)">
+                                                    <playing-card class="showdown-card rabbit-hunt-card" rank="@GetPlayingCardRank(projectedCard.Card)" suit="@GetPlayingCardSuit(projectedCard.Card)"></playing-card>
+                                                    <span class="rabbit-hunt-card-tag">@(projectedCard.WasAlreadyVisible ? "Shown" : "Rabbit")</span>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
                                 </div>
                             }
 
@@ -442,6 +473,23 @@
         return result.CommunityCards
             .OrderBy(card => card.DealOrder)
             .ToList();
+    }
+
+    private static IReadOnlyList<ShowdownCard> GetRabbitHuntPlayerCards(GetRabbitHuntSuccessful? result)
+    {
+        if (result?.PlayerCards is not { Count: > 0 })
+        {
+            return [];
+        }
+
+        return result.PlayerCards.ToList();
+    }
+
+    private static string? GetRabbitHuntProjectedHandDescription(GetRabbitHuntSuccessful? result)
+    {
+        return string.IsNullOrWhiteSpace(result?.ProjectedHandEvaluationDescription)
+            ? null
+            : result.ProjectedHandEvaluationDescription.Trim();
     }
 
     private static ShowdownPlayerHand? GetPrimaryWinnerHand(PerformShowdownSuccessful result)
