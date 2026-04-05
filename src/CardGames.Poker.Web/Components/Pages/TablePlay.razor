@@ -601,6 +601,11 @@
                              ActiveWildCards="@GetWildCardsForDisplay()"
                              ShowdownState="@GetOverlayShowdownState()"
                              SharedCommunityCards="@GetOverlayShowdownCommunityCards()"
+                             CanRequestRabbitHunt="@CanRequestRabbitHunt()"
+                             RabbitHuntResult="@_rabbitHuntResult"
+                             IsRabbitHuntLoading="@_rabbitHuntLoadInFlight"
+                             RabbitHuntError="@_rabbitHuntError"
+                             OnRabbitHunt="@LoadRabbitHuntAsync"
                              SecondsUntilNextHand="@_secondsUntilNextHand" IsGameEnded="@(IsEndedPhase || IsGameCompleted)" OnClose="@CloseShowdownOverlay" />
         }
     }
@@ -618,8 +623,7 @@
 
     private bool _isLoading = true;
 
-    // Continuous play constants (must match ContinuousPlayBackgroundService)
-    private const int ContinuousPlayResultsDisplayDurationSeconds = 7;
+    private const int CompletedGameReturnToLobbyDurationSeconds = 10;
     private const double ScrewYourNeighborDealerTradeShowdownDelaySeconds = 4.5;
     private const int ScrewYourNeighborTradeAnimationDurationMs = 650;
 
@@ -758,6 +762,9 @@
     private bool _showdownLost;
     private ShowdownPublicDto? _showdownStateSnapshot;
     private IReadOnlyList<ShowdownCard> _showdownCommunityCardsSnapshot = [];
+    private GetRabbitHuntSuccessful? _rabbitHuntResult;
+    private bool _rabbitHuntLoadInFlight;
+    private string? _rabbitHuntError;
 
     // All-In Runout state (for animated card dealing on table seats when all players are all-in)
     private AllInRunoutStateDto? _allInRunoutState;
@@ -790,6 +797,8 @@
     private int _secondsUntilNextHand;
     private bool _isResultsPhase;
     private Timer? _countdownTimer;
+    private DateTimeOffset? _countdownDeadlineUtc;
+    private TimeSpan _serverClockOffset;
 
     // Hand odds state
     private List<HandTypeOddsDto> handOdds = [];
@@ -855,6 +864,7 @@
     private bool IsKlondike => string.Equals(_gameTypeCode, "KLONDIKE", StringComparison.OrdinalIgnoreCase);
     private bool IsInBetween => string.Equals(_gameTypeCode, "INBETWEEN", StringComparison.OrdinalIgnoreCase);
     private bool IsStartedScrewYourNeighborTable => IsScrewYourNeighbor && _gameResponse?.StartedAt is not null;
+    private bool SupportsRabbitHunt => IsHoldEm || IsRedRiver || IsKlondike || IsOmaha || IsNebraska || IsSouthDakota || IsBobBarker || IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple || IsHoldTheBaseball;
     private bool SupportsOdds => !IsInBetween && !IsScrewYourNeighbor;
     private bool IsIrishStyleHoldEm => IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple;
     private bool IsSevenCardStudStyle => IsSevenCardStud || IsPairPressure;
@@ -1609,51 +1619,21 @@
                 _hasDeckDrawn = true;
             }
 
-            // Handle continuous play countdown
+            // Handle continuous play countdown from the server-authored deadline.
             _isResultsPhase = state.IsResultsPhase;
+            SyncCountdownWithServer(state);
 
-            if (IsEndedPhase || IsGameCompleted)
-            {
-                // If game ended, enforce a local countdown if none exists
-                if (_secondsUntilNextHand <= 0 && _countdownTimer is null)
-                {
-                    _secondsUntilNextHand = 10;
-                }
-            }
-            else
-            {
-                // Prefer server value if provided
-                if (state.SecondsUntilNextHand.HasValue && state.SecondsUntilNextHand.Value > 0)
-                {
-                    _secondsUntilNextHand = state.SecondsUntilNextHand.Value;
-                }
-                // Fallback to local countdown if overlay is visible and we have time left
-                else if (_showShowdownOverlay && _secondsUntilNextHand > 0)
-                {
-                    // Keep local value
-                }
-                // Initialize local countdown if overlay is shown (and we have results) but no time set
-                // This handles cases where SignalR populates the showdown but sends no countdown
-                else if (_showShowdownOverlay && _showdownResult is not null)
-                {
-                    _secondsUntilNextHand = ContinuousPlayResultsDisplayDurationSeconds;
-                }
-                else
-                {
-                    _secondsUntilNextHand = 0;
-                }
-            }
+            bool keepCountdownRunning = _showShowdownOverlay && _countdownDeadlineUtc.HasValue && _secondsUntilNextHand > 0;
 
-            // Keep timer running if we have a local countdown
-            bool keepLocalTimerRunning = _showShowdownOverlay && _secondsUntilNextHand > 0;
-
-            if ((_isResultsPhase || IsEndedPhase || keepLocalTimerRunning) && _secondsUntilNextHand > 0)
+            if ((_isResultsPhase || IsEndedPhase || IsGameCompleted || keepCountdownRunning) && _countdownDeadlineUtc.HasValue)
             {
                 StartCountdownTimer();
             }
-            else if (!_isResultsPhase && !IsEndedPhase && !keepLocalTimerRunning)
+            else if (!_isResultsPhase && !IsEndedPhase && !IsGameCompleted && !keepCountdownRunning)
             {
                 StopCountdownTimer();
+                _countdownDeadlineUtc = null;
+                _secondsUntilNextHand = 0;
                 // Clear showdown overlay when new hand starts
                 if (!IsShowdownPhase && !IsGameCompleted)
                 {
@@ -1661,6 +1641,7 @@
                     _showdownResult = null;
                     _showdownStateSnapshot = null;
                     _showdownCommunityCardsSnapshot = [];
+                    ResetRabbitHuntState();
 
                     // Only reset game state if we are truly starting a new hand (Setup/Dealing phases)
                     // This prevents UI state (like visible cards during draw delay) from being cleared
@@ -2348,15 +2329,13 @@
             {
                 _showShowdownOverlay = ShouldDisplayShowdownOverlay;
 
-                // Initialize countdown timer when showdown is loaded from SignalR
-                // This ensures the timer starts even if TryLoadShowdownAsync is never called
-                // or returns early because result is already loaded
-                if (_secondsUntilNextHand <= 0)
-                {
-                    _secondsUntilNextHand = ContinuousPlayResultsDisplayDurationSeconds;
-                }
                 _isResultsPhase = true;
-                StartCountdownTimer();
+                RefreshCountdownFromCurrentTableState();
+
+                if (_countdownDeadlineUtc.HasValue)
+                {
+                    StartCountdownTimer();
+                }
             }
 
             _showdownWon = _showdownResult.Payouts?.Keys.Any(p =>
@@ -3572,13 +3551,13 @@
                 _showdownCommunityCardsSnapshot = showdownCommunityCards;
             }
 
-            // Ensure countdown timer is initialized (may have been missed if SignalR populated the result)
-            if (_secondsUntilNextHand <= 0)
-            {
-                _secondsUntilNextHand = ContinuousPlayResultsDisplayDurationSeconds;
-            }
             _isResultsPhase = true;
-            StartCountdownTimer();
+            RefreshCountdownFromCurrentTableState();
+
+            if (_countdownDeadlineUtc.HasValue)
+            {
+                StartCountdownTimer();
+            }
 
             await InvokeStateHasChangedAsync();
             return;
@@ -3689,13 +3668,13 @@
                 _showShowdownOverlay = ShouldDisplayShowdownOverlay;
                 Logger.LogDebug("TryLoadShowdownAsync: Set _showShowdownOverlay=true, _showdownResult loaded");
 
-                // Initialize countdown timer immediately after successful showdown
-                // The SignalR broadcast will also arrive with the updated state, but we start
-                // the timer proactively to avoid race conditions where the UI shows the overlay
-                // without a countdown.
                 _isResultsPhase = true;
-                _secondsUntilNextHand = ContinuousPlayResultsDisplayDurationSeconds;
-                StartCountdownTimer();
+                RefreshCountdownFromCurrentTableState();
+
+                if (_countdownDeadlineUtc.HasValue)
+                {
+                    StartCountdownTimer();
+                }
             }
             else
             {
@@ -3727,6 +3706,7 @@
     private void CloseShowdownOverlay()
     {
         _showShowdownOverlay = false;
+        ResetRabbitHuntState();
     }
 
     private ShowdownPublicDto? GetOverlayShowdownState()
@@ -3738,6 +3718,127 @@
     {
         var currentCommunityCards = GetShowdownCommunityCards();
         return currentCommunityCards.Count > 0 ? currentCommunityCards : _showdownCommunityCardsSnapshot;
+    }
+
+    private async Task LoadRabbitHuntAsync()
+    {
+        if (_rabbitHuntLoadInFlight || !CanRequestRabbitHunt())
+        {
+            return;
+        }
+
+        _rabbitHuntLoadInFlight = true;
+        _rabbitHuntError = null;
+
+        try
+        {
+            var response = await GamesApiClient.GetRabbitHuntAsync(GameId);
+            if (response is { IsSuccessStatusCode: true, Content: not null })
+            {
+                _rabbitHuntResult = response.Content;
+                return;
+            }
+
+            _rabbitHuntError = GetRabbitHuntErrorMessage(response?.StatusCode);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to load Rabbit Hunt for game {GameId}", GameId);
+            _rabbitHuntError = "Unable to load Rabbit Hunt right now.";
+        }
+        finally
+        {
+            _rabbitHuntLoadInFlight = false;
+            await InvokeStateHasChangedAsync();
+        }
+    }
+
+    private bool CanRequestRabbitHunt()
+    {
+        if (!SupportsRabbitHunt || _showdownResult is null)
+        {
+            return false;
+        }
+
+        if (_rabbitHuntResult is not null && _rabbitHuntResult.HandNumber == GetCurrentOverlayHandNumber())
+        {
+            return false;
+        }
+
+        var communityCards = GetVisibleCommunityCards();
+        if (communityCards is null)
+        {
+            return true;
+        }
+
+        if (communityCards.Any(card => !card.IsFaceUp))
+        {
+            return true;
+        }
+
+        var faceUpCardCount = communityCards.Count(card => card.IsFaceUp && !(IsBobBarker && card.DealOrder == 0));
+        if (faceUpCardCount < GetProjectedRabbitHuntBoardCount())
+        {
+            return true;
+        }
+
+        if (IsRedRiver)
+        {
+            var riverCard = communityCards.FirstOrDefault(card => card.DealOrder == 5 && card.IsFaceUp);
+            if (riverCard is not null && IsRedSuit(riverCard.Suit) && !communityCards.Any(card => card.DealOrder == 6 && card.IsFaceUp))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private int GetProjectedRabbitHuntBoardCount()
+    {
+        if (IsKlondike)
+        {
+            return 6;
+        }
+
+        if (IsSouthDakota)
+        {
+            return 3;
+        }
+
+        return 5;
+    }
+
+    private int GetCurrentOverlayHandNumber()
+    {
+        return _tableState?.CurrentHandNumber
+            ?? _gameResponse?.CurrentHandNumber
+            ?? _handNumber;
+    }
+
+    private string GetRabbitHuntErrorMessage(HttpStatusCode? statusCode)
+    {
+        return statusCode switch
+        {
+            HttpStatusCode.Conflict => "Rabbit Hunt is not available for this hand.",
+            HttpStatusCode.Forbidden => "Only seated players can use Rabbit Hunt.",
+            HttpStatusCode.NotFound => "The hand could not be found.",
+            HttpStatusCode.Unauthorized => "You must be signed in to use Rabbit Hunt.",
+            _ => "Unable to load Rabbit Hunt right now."
+        };
+    }
+
+    private void ResetRabbitHuntState()
+    {
+        _rabbitHuntResult = null;
+        _rabbitHuntError = null;
+        _rabbitHuntLoadInFlight = false;
+    }
+
+    private bool IsRedSuit(string? suit)
+    {
+        return string.Equals(suit, nameof(CardSuit.Hearts), StringComparison.OrdinalIgnoreCase)
+            || string.Equals(suit, nameof(CardSuit.Diamonds), StringComparison.OrdinalIgnoreCase);
     }
 
     // Note: StartRunoutAnimation has been inlined into HandleTableStateUpdatedAsync
@@ -5235,22 +5336,26 @@
 
     private void StartCountdownTimer()
     {
-        // Only start if not already running
-        if (_countdownTimer is not null)
+        StopCountdownTimer();
+        RefreshCountdownSeconds();
+
+        if (_countdownDeadlineUtc is null)
         {
             return;
         }
 
         _countdownTimer = new System.Threading.Timer(async _ =>
         {
+            RefreshCountdownSeconds();
+
             if (_secondsUntilNextHand > 0)
             {
-                _secondsUntilNextHand--;
                 await InvokeStateHasChangedAsync();
             }
             else
             {
                 StopCountdownTimer();
+                _countdownDeadlineUtc = null;
 
                 // If game is ended and timer reached 0, redirect to lobby
                 if (IsEndedPhase || IsGameCompleted)
@@ -5266,13 +5371,88 @@
                     await InvokeStateHasChangedAsync();
                 }
             }
-        }, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+        }, null, GetCountdownTimerDueTime(), TimeSpan.FromSeconds(1));
     }
 
     private void StopCountdownTimer()
     {
         _countdownTimer?.Dispose();
         _countdownTimer = null;
+    }
+
+    private void SyncCountdownWithServer(TableStatePublicDto state)
+    {
+        _serverClockOffset = state.ServerUtcNow - DateTimeOffset.UtcNow;
+        _countdownDeadlineUtc = ResolveCountdownDeadlineUtc(state, IsEndedPhase, IsGameCompleted);
+        RefreshCountdownSeconds();
+    }
+
+    private void RefreshCountdownFromCurrentTableState()
+    {
+        if (_tableState is null)
+        {
+            _countdownDeadlineUtc = null;
+            _secondsUntilNextHand = 0;
+            return;
+        }
+
+        SyncCountdownWithServer(_tableState);
+    }
+
+    private static DateTimeOffset? ResolveCountdownDeadlineUtc(TableStatePublicDto state, bool isEndedPhase, bool isGameCompleted)
+    {
+        if (state.NextHandStartsAtUtc.HasValue)
+        {
+            return state.NextHandStartsAtUtc.Value;
+        }
+
+        if ((isEndedPhase || isGameCompleted) && state.HandCompletedAtUtc.HasValue)
+        {
+            return state.HandCompletedAtUtc.Value.AddSeconds(CompletedGameReturnToLobbyDurationSeconds);
+        }
+
+        return null;
+    }
+
+    private void RefreshCountdownSeconds()
+    {
+        _secondsUntilNextHand = CalculateSecondsUntilDeadline(_countdownDeadlineUtc, DateTimeOffset.UtcNow, _serverClockOffset);
+    }
+
+    private static int CalculateSecondsUntilDeadline(DateTimeOffset? deadlineUtc, DateTimeOffset clientUtcNow, TimeSpan serverClockOffset)
+    {
+        if (!deadlineUtc.HasValue)
+        {
+            return 0;
+        }
+
+        var adjustedServerNow = clientUtcNow + serverClockOffset;
+        var remaining = deadlineUtc.Value - adjustedServerNow;
+        return Math.Max(0, (int)Math.Ceiling(remaining.TotalSeconds));
+    }
+
+    private TimeSpan GetCountdownTimerDueTime()
+    {
+        if (!_countdownDeadlineUtc.HasValue)
+        {
+            return Timeout.InfiniteTimeSpan;
+        }
+
+        var adjustedServerNow = DateTimeOffset.UtcNow + _serverClockOffset;
+        var remaining = _countdownDeadlineUtc.Value - adjustedServerNow;
+
+        if (remaining <= TimeSpan.Zero)
+        {
+            return TimeSpan.Zero;
+        }
+
+        var millisecondsUntilNextBoundary = remaining.TotalMilliseconds % 1000;
+        if (millisecondsUntilNextBoundary < 1)
+        {
+            millisecondsUntilNextBoundary = 1000;
+        }
+
+        return TimeSpan.FromMilliseconds(millisecondsUntilNextBoundary);
     }
 
     public async ValueTask DisposeAsync()

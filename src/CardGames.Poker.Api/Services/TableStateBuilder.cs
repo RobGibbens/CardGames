@@ -167,12 +167,14 @@ public sealed class TableStateBuilder : ITableStateBuilder
 				.Select(gp => BuildSeatPublicDto(gp, game.CurrentHandNumber, game.Ante ?? 0, game.GameType?.Code, game.CurrentPhase, userProfilesByEmail))
 						.ToList();
 
+		var serverUtcNow = DateTimeOffset.UtcNow;
+
 		// Calculate results phase state
 		var isResultsPhase = (game.CurrentPhase == "Complete" || game.CurrentPhase == "PotMatching") && game.HandCompletedAt.HasValue;
 		int? secondsUntilNextHand = null;
 		if (isResultsPhase && game.NextHandStartsAt.HasValue)
 		{
-			var remaining = game.NextHandStartsAt.Value - DateTimeOffset.UtcNow;
+			var remaining = game.NextHandStartsAt.Value - serverUtcNow;
 			secondsUntilNextHand = Math.Max(0, (int)remaining.TotalSeconds);
 		}
 
@@ -254,6 +256,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 			Seats = seats,
 			Showdown = showdown,
 			HandCompletedAtUtc = game.HandCompletedAt,
+			ServerUtcNow = serverUtcNow,
 			NextHandStartsAtUtc = game.NextHandStartsAt,
 			IsResultsPhase = isResultsPhase,
 			SecondsUntilNextHand = secondsUntilNextHand,
