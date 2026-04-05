@@ -4429,30 +4429,43 @@ a:hover {
 .playing-card {
     width: 28px;
     height: 40px;
-    background: white;
     border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.625rem;
-    font-weight: 700;
+    display: inline-block;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
     transition: transform var(--transition-fast);
+    overflow: hidden;
 }
 
 .playing-card.face-down {
-    background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #3b82f6 100%);
-}
-
-.playing-card.face-down .card-back {
-    font-size: 1.25rem;
-    opacity: 0.3;
+    /* face-down styling now handled by back PNG */
 }
 
 .playing-card.selected {
     transform: translateY(-8px);
     box-shadow: 0 6px 12px rgba(220, 38, 38, 0.4);
     border: 2px solid var(--primary);
+}
+
+/* --- PNG card image support --- */
+playing-card {
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+playing-card img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: fill;
+    border-radius: inherit;
+    pointer-events: none;
+}
+
+/* Wild-card highlight (replaces Cardmeister suitcolor/rankcolor/courtcolor tinting) */
+playing-card.card-wild-highlight {
+    box-shadow: 0 0 8px 2px rgba(34, 197, 94, 0.6), 0 0 0 2px rgba(34, 197, 94, 0.8);
+    outline: 2px solid rgba(34, 197, 94, 0.7);
+    outline-offset: -2px;
 }
 
 .card-value {

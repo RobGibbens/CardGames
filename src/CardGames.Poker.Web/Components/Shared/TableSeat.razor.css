@@ -442,6 +442,17 @@
     margin: 0 -15px; /* Overlap cards */
     transition: transform 0.2s;
     transform-origin: bottom center;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+::deep playing-card img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: fill;
+    border-radius: inherit;
+    pointer-events: none;
 }
 
 /* In current-player layout, overlap is handled by .card-shell, so remove inner overlap margins */
