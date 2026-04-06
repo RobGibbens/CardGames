@@ -48,6 +48,9 @@
 								<button class="btn btn-sm btn-outline-secondary league-action-btn" @onclick="() => EditSeasonEvent.InvokeAsync(seasonEvent)">
 									<i class="fa-solid fa-pen-to-square"></i> Edit
 								</button>
+								<button class="btn btn-sm btn-outline-danger league-action-btn" @onclick="() => DeleteSeasonEvent.InvokeAsync(seasonEvent)" title="Delete season event">
+									<i class="fa-regular fa-trash"></i>
+								</button>
 							}
 							@if (seasonEvent.LaunchedGameId.HasValue)
 							{
@@ -89,6 +92,9 @@
 
 	[Parameter]
 	public EventCallback<LeagueSeasonEventDto> EditSeasonEvent { get; set; }
+
+	[Parameter]
+	public EventCallback<LeagueSeasonEventDto> DeleteSeasonEvent { get; set; }
 
 	[Parameter]
 	public EventCallback<Guid> OpenTable { get; set; }

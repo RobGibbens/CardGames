@@ -138,6 +138,9 @@
 													<button class="league-detail-active-game-edit-btn" @onclick="() => EditSeasonEvent.InvokeAsync(se)" @onclick:stopPropagation>
 														<i class="fa-solid fa-pen-to-square"></i> Edit
 													</button>
+													<button class="league-detail-active-game-delete-btn" @onclick="() => DeleteSeasonEvent.InvokeAsync(se)" @onclick:stopPropagation title="Delete season event">
+														<i class="fa-regular fa-trash"></i>
+													</button>
 												}
 												@if (se.LaunchedGameId.HasValue)
 												{
@@ -189,6 +192,9 @@
 												{
 													<button class="league-detail-active-game-edit-btn" @onclick="() => EditOneOffEvent.InvokeAsync(oo)" @onclick:stopPropagation>
 														<i class="fa-solid fa-pen-to-square"></i> Edit
+													</button>
+													<button class="league-detail-active-game-delete-btn" @onclick="() => DeleteOneOffEvent.InvokeAsync(oo)" @onclick:stopPropagation title="Delete one-off event">
+														<i class="fa-regular fa-trash"></i>
 													</button>
 												}
 												@if (oo.LaunchedGameId.HasValue)
@@ -297,7 +303,13 @@
 	public EventCallback<LeagueSeasonEventDto> EditSeasonEvent { get; set; }
 
 	[Parameter]
+	public EventCallback<LeagueSeasonEventDto> DeleteSeasonEvent { get; set; }
+
+	[Parameter]
 	public EventCallback<LeagueOneOffEventDto> EditOneOffEvent { get; set; }
+
+	[Parameter]
+	public EventCallback<LeagueOneOffEventDto> DeleteOneOffEvent { get; set; }
 
 	[Parameter]
 	public LeagueStandingEntryDto? MyStanding { get; set; }

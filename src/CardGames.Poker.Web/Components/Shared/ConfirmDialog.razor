@@ -4,9 +4,17 @@
 {
     <div class="confirm-dialog-overlay" @onclick="HandleOverlayClick">
         <div class="confirm-dialog" @onclick:stopPropagation>
-            <div class="confirm-dialog-header">
-                <i class="fa-regular @IconClass confirm-dialog-icon"></i>
-                <h3 class="confirm-dialog-title">@Title</h3>
+            <div class="confirm-dialog-header @(ShowCloseButton ? "confirm-dialog-header-with-close" : string.Empty)">
+                <div class="confirm-dialog-heading">
+                    <i class="fa-regular @IconClass confirm-dialog-icon"></i>
+                    <h3 class="confirm-dialog-title">@Title</h3>
+                </div>
+                @if (ShowCloseButton)
+                {
+                    <button type="button" class="league-modal-close-btn" aria-label="@CloseButtonAriaLabel" @onclick="HandleCancel" disabled="@IsProcessing">
+                        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                    </button>
+                }
             </div>
             <div class="confirm-dialog-body">
                 <p class="confirm-dialog-message">@Message</p>
@@ -63,6 +71,15 @@
     public bool IsProcessing { get; set; }
 
     [Parameter]
+    public bool AllowOverlayDismiss { get; set; } = true;
+
+    [Parameter]
+    public bool ShowCloseButton { get; set; }
+
+    [Parameter]
+    public string CloseButtonAriaLabel { get; set; } = "Close";
+
+    [Parameter]
     public EventCallback OnConfirm { get; set; }
 
     [Parameter]
@@ -87,7 +104,7 @@
 
     private async Task HandleOverlayClick()
     {
-        if (!IsProcessing)
+        if (AllowOverlayDismiss && !IsProcessing)
         {
             await HandleCancel();
         }

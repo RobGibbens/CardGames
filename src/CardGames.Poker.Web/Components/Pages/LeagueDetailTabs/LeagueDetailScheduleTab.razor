@@ -76,6 +76,9 @@
 														<button class="btn btn-sm btn-outline-secondary league-action-btn" @onclick="() => EditSeasonEvent.InvokeAsync(seasonEvent)" @onclick:stopPropagation="true">
 															<i class="fa-solid fa-pen-to-square"></i> Edit
 														</button>
+														<button class="btn btn-sm btn-outline-danger league-action-btn" @onclick="() => DeleteSeasonEvent.InvokeAsync(seasonEvent)" @onclick:stopPropagation="true" title="Delete season event">
+															<i class="fa-regular fa-trash"></i>
+														</button>
 													}
 													@if (seasonEvent.LaunchedGameId.HasValue)
 													{
@@ -128,6 +131,9 @@
 								{
 									<button class="btn btn-sm btn-outline-secondary league-action-btn" @onclick="() => EditOneOffEvent.InvokeAsync(oneOff)">
 										<i class="fa-solid fa-pen-to-square"></i> Edit
+									</button>
+									<button class="btn btn-sm btn-outline-danger league-action-btn" @onclick="() => DeleteOneOffEvent.InvokeAsync(oneOff)" title="Delete one-off event">
+										<i class="fa-regular fa-trash"></i>
 									</button>
 								}
 								@if (oneOff.LaunchedGameId.HasValue)
@@ -191,6 +197,9 @@
 	public EventCallback<LeagueSeasonEventDto> EditSeasonEvent { get; set; }
 
 	[Parameter]
+	public EventCallback<LeagueSeasonEventDto> DeleteSeasonEvent { get; set; }
+
+	[Parameter]
 	public EventCallback<Guid> OpenTable { get; set; }
 
 	[Parameter]
@@ -201,6 +210,9 @@
 
 	[Parameter]
 	public EventCallback<LeagueOneOffEventDto> EditOneOffEvent { get; set; }
+
+	[Parameter]
+	public EventCallback<LeagueOneOffEventDto> DeleteOneOffEvent { get; set; }
 
 	[Parameter]
 	public EventCallback<Guid> LaunchOneOffEvent { get; set; }

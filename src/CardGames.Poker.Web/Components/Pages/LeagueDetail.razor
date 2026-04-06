@@ -30,6 +30,20 @@
 
 <NoChipsModal @bind-IsVisible="_showNoChipsModal" OnClose="HandleNoChipsModalClose" />
 
+<ConfirmDialog @bind-IsVisible="_showDeleteEventConfirmation"
+			   Title="Delete Event"
+			   Message="@_deleteEventConfirmationMessage"
+			   ConfirmText="Delete"
+			   CancelText="Cancel"
+			   ProcessingText="Deleting..."
+			   IconClass="fa-trash"
+			   ConfirmButtonClass="btn-danger"
+			   IsProcessing="_isDeletingEvent"
+			   AllowOverlayDismiss="false"
+			   ShowCloseButton="true"
+			   OnConfirm="ConfirmDeleteEventAsync"
+			   OnCancel="CancelDeleteEvent" />
+
 <main class="lobby-main">
 	<div class="lobby-container">
 
@@ -188,7 +202,8 @@
 									  OneOffEvents="_oneOffEvents" Standings="_standings" MyStanding="_myStanding"
 									  RankMovementByUserId="_rankMovementByUserId" Members="_members" ActiveGameDetails="_activeGameDetails"
 									  OpenTable="OpenTable" CanManageLeague="CanManageLeague" EditSeasonEvent="OpenSeasonEventEditor"
-									  EditOneOffEvent="OpenOneOffEventEditor" />
+									  DeleteSeasonEvent="OpenDeleteSeasonEventDialog" EditOneOffEvent="OpenOneOffEventEditor"
+									  DeleteOneOffEvent="OpenDeleteOneOffEventDialog" />
 			}
 
 			@* ═══════════ TAB 2: RESULTS ═══════════ *@
@@ -198,6 +213,7 @@
 									CanManageLeague="CanManageLeague" SeasonEvents="_seasonEvents"
 									LaunchingSeasonEventId="_launchingSeasonEventId" OnSeasonSelectorChanged="OnSeasonSelectorChanged"
 									OpenSeasonEventModal="OpenSeasonEventModal" EditSeasonEvent="OpenSeasonEventEditor"
+									DeleteSeasonEvent="OpenDeleteSeasonEventDialog"
 									OpenTable="OpenTable" LaunchSeasonEvent="LaunchSeasonEventAsync" />
 			}
 
@@ -220,9 +236,10 @@
 									 LaunchingOneOffEventId="_launchingOneOffEventId" OpenSeasonModal="OpenSeasonModal"
 									 SelectSeason="SelectSeasonAsync" DeselectSeason="DeselectSeasonAsync"
 									 OpenSeasonEventModal="OpenSeasonEventModal" EditSeasonEvent="OpenSeasonEventEditor"
+									 DeleteSeasonEvent="OpenDeleteSeasonEventDialog"
 									 OpenTable="OpenTable"
 									 LaunchSeasonEvent="LaunchSeasonEventAsync" OpenOneOffModal="OpenOneOffModal"
-									 EditOneOffEvent="OpenOneOffEventEditor"
+									 EditOneOffEvent="OpenOneOffEventEditor" DeleteOneOffEvent="OpenDeleteOneOffEventDialog"
 									 LaunchOneOffEvent="LaunchOneOffEventAsync" />
 			}
 
@@ -439,6 +456,10 @@
 	private Guid? _launchingSeasonEventId;
 	private Guid? _launchingOneOffEventId;
 	private bool _showNoChipsModal;
+	private bool _showDeleteEventConfirmation;
+	private bool _isDeletingEvent;
+	private string _deleteEventConfirmationMessage = string.Empty;
+	private PendingLeagueEventDeletion? _pendingEventDeletion;
 	private bool _isSubmittingResults;
 	private Guid? _recordingSeasonEventId;
 	private string _recordingSeasonEventName = string.Empty;
@@ -466,6 +487,23 @@
 	{
 		Seasons,
 		OneOffEvents
+	}
+
+	private enum LeagueEventDeletionKind
+	{
+		SeasonEvent,
+		OneOffEvent
+	}
+
+	private sealed class PendingLeagueEventDeletion
+	{
+		public required LeagueEventDeletionKind Kind { get; init; }
+
+		public Guid EventId { get; init; }
+
+		public Guid? SeasonId { get; init; }
+
+		public required string EventName { get; init; }
 	}
 
 	private sealed class SeasonEventResultDraft
@@ -1430,6 +1468,25 @@ DateTimeKind.Utc)) : null,
 		_showSeasonEventModal = true;
 	}
 
+	private Task OpenDeleteSeasonEventDialog(LeagueSeasonEventDto seasonEvent)
+	{
+		if (!CanEditSeasonEvent(seasonEvent))
+		{
+			return Task.CompletedTask;
+		}
+
+		_pendingEventDeletion = new PendingLeagueEventDeletion
+		{
+			Kind = LeagueEventDeletionKind.SeasonEvent,
+			SeasonId = seasonEvent.SeasonId,
+			EventId = seasonEvent.EventId,
+			EventName = seasonEvent.Name
+		};
+		_deleteEventConfirmationMessage = $"Are you sure you want to delete \"{seasonEvent.Name}\"? This action cannot be undone.";
+		_showDeleteEventConfirmation = true;
+		return Task.CompletedTask;
+	}
+
 	private void CloseSeasonEventModal()
 	{
 		if (_isSubmittingSeasonEvent)
@@ -1459,6 +1516,25 @@ DateTimeKind.Utc)) : null,
 		_editingOneOffEvent = oneOffEvent;
 		_oneOffType = oneOffEvent.EventType;
 		_showOneOffModal = true;
+	}
+
+	private Task OpenDeleteOneOffEventDialog(LeagueOneOffEventDto oneOffEvent)
+	{
+		if (!CanEditOneOffEvent(oneOffEvent))
+		{
+			return Task.CompletedTask;
+		}
+
+		_showCreateDropdown = false;
+		_pendingEventDeletion = new PendingLeagueEventDeletion
+		{
+			Kind = LeagueEventDeletionKind.OneOffEvent,
+			EventId = oneOffEvent.EventId,
+			EventName = oneOffEvent.Name
+		};
+		_deleteEventConfirmationMessage = $"Are you sure you want to delete \"{oneOffEvent.Name}\"? This action cannot be undone.";
+		_showDeleteEventConfirmation = true;
+		return Task.CompletedTask;
 	}
 
 	private void CloseOneOffModal()
@@ -1537,6 +1613,73 @@ DateTimeKind.Utc)) : null,
 	private static bool CanEditOneOffEvent(LeagueOneOffEventDto oneOffEvent)
 	{
 		return oneOffEvent.Status == LeagueOneOffEventStatus.Planned && !oneOffEvent.LaunchedGameId.HasValue;
+	}
+
+	private async Task ConfirmDeleteEventAsync()
+	{
+		if (_pendingEventDeletion is null || _isDeletingEvent)
+		{
+			return;
+		}
+
+		_isDeletingEvent = true;
+		try
+		{
+			Refit.IApiResponse response = _pendingEventDeletion.Kind switch
+			{
+				LeagueEventDeletionKind.SeasonEvent when _pendingEventDeletion.SeasonId.HasValue
+					=> await LeaguesApi.DeleteSeasonEventAsync(LeagueId, _pendingEventDeletion.SeasonId.Value, _pendingEventDeletion.EventId),
+				LeagueEventDeletionKind.OneOffEvent
+					=> await LeaguesApi.DeleteOneOffEventAsync(LeagueId, _pendingEventDeletion.EventId),
+				_ => throw new InvalidOperationException("Delete dialog is missing event context.")
+			};
+
+			if (response.IsSuccessStatusCode)
+			{
+				if (_pendingEventDeletion.Kind == LeagueEventDeletionKind.SeasonEvent && _pendingEventDeletion.SeasonId.HasValue)
+				{
+					_selectedSeasonId = _pendingEventDeletion.SeasonId.Value;
+					await LoadSeasonEventsAsync(_pendingEventDeletion.SeasonId.Value);
+					await LoadStandingsAsync();
+					_message = "Season event deleted.";
+				}
+				else
+				{
+					await LoadOneOffEventsAsync();
+					_message = "One-off event deleted.";
+				}
+
+				_isError = false;
+				CancelDeleteEvent();
+				return;
+			}
+
+			_message = TryExtractApiErrorMessage(response) ?? "Failed to delete event.";
+			_isError = true;
+		}
+		catch (Exception ex)
+		{
+			Logger.LogError(ex, "Failed to delete league event {EventId} in league {LeagueId}", _pendingEventDeletion.EventId, LeagueId);
+			_message = "Failed to delete event.";
+			_isError = true;
+		}
+		finally
+		{
+			_isDeletingEvent = false;
+			_showDeleteEventConfirmation = false;
+			_pendingEventDeletion = null;
+		}
+	}
+
+	private void CancelDeleteEvent()
+	{
+		if (_isDeletingEvent)
+		{
+			return;
+		}
+
+		_showDeleteEventConfirmation = false;
+		_pendingEventDeletion = null;
 	}
 
 	

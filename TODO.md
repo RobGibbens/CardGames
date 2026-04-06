@@ -18,8 +18,8 @@
 - 
 - [ ] Add tournaments
   - [x] On the "Create Tournament" and "Create Cash Game" modals, add descriptions
-  - [ ] Can't edit future tournament
-  - [ ] Can't delete future tournament
+  - [x] Can't edit future tournament
+  - [x] Can't delete future tournament
   - [ ] Can't add a start time for tournament
   - [ ] Tournaments blinds should increase as time goes on
   - [ ] Allows creating tournaments in the past

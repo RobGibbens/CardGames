@@ -94,6 +94,10 @@ public partial interface ILeaguesApi
 	Task<IApiResponse> UpdateSeasonEventAsync(Guid leagueId, Guid seasonId, Guid eventId, [Body] UpdateLeagueSeasonEventRequest request, CancellationToken cancellationToken = default);
 
 	[Headers("Accept: application/json, application/problem+json")]
+	[Delete("/api/v1/leagues/{leagueId}/seasons/{seasonId}/events/{eventId}")]
+	Task<IApiResponse> DeleteSeasonEventAsync(Guid leagueId, Guid seasonId, Guid eventId, CancellationToken cancellationToken = default);
+
+	[Headers("Accept: application/json, application/problem+json")]
 	[Get("/api/v1/leagues/{leagueId}/seasons/{seasonId}/events")]
 	Task<IApiResponse<IReadOnlyList<LeagueSeasonEventDto>>> GetSeasonEventsAsync(Guid leagueId, Guid seasonId, CancellationToken cancellationToken = default);
 
@@ -112,6 +116,10 @@ public partial interface ILeaguesApi
 	[Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
 	[Put("/api/v1/leagues/{leagueId}/events/one-off/{eventId}")]
 	Task<IApiResponse> UpdateOneOffEventAsync(Guid leagueId, Guid eventId, [Body] UpdateLeagueOneOffEventRequest request, CancellationToken cancellationToken = default);
+
+	[Headers("Accept: application/json, application/problem+json")]
+	[Delete("/api/v1/leagues/{leagueId}/events/one-off/{eventId}")]
+	Task<IApiResponse> DeleteOneOffEventAsync(Guid leagueId, Guid eventId, CancellationToken cancellationToken = default);
 
 	[Headers("Accept: application/json, application/problem+json")]
 	[Get("/api/v1/leagues/{leagueId}/events/one-off")]
