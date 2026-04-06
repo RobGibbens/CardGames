@@ -13,6 +13,15 @@
 - [ ] Add leagues
 - [ ] Add seasons
 - [ ] Add tournaments
+  - [ ] Can't edit future tournament
+  - [ ] Can't delete future tournament
+  - [ ] Can't add a start time for tournament
+  - [ ] Allows creating tournaments in the past
+  - [ ] Can't specify buy-in
+  - [ ] When joining a tournament, you shouldn't be able to change the buy-in amount
+  - [ ] Texas Hold Em, not collecting blinds
+  - [ ] When the tournament ends, it just says "Waiting for Players" . We should have a nice summary page.
+
 
 - [ ] Productize it - deployment and hosting (Hetzner)
 
