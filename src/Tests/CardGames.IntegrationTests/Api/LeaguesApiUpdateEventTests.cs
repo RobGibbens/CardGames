@@ -102,12 +102,11 @@ public class LeaguesApiUpdateEventTests(ApiWebApplicationFactory factory) : ApiI
 
 		var response = await Client.PutAsJsonAsync($"/api/v1/leagues/{leagueId}/events/one-off/{eventId}", new UpdateLeagueOneOffEventRequest
 		{
-			Name = "Saturday Special",
+			Name = "Feature Table",
 			ScheduledAtUtc = scheduledAtUtc,
 			EventType = ContractLeagueOneOffEventType.Tournament,
 			Notes = "Bring chips",
 			GameTypeCode = "OMAHA",
-			TableName = "Feature Table",
 			Ante = 25,
 			MinBet = 50
 		}, JsonOptions);
@@ -116,11 +115,10 @@ public class LeaguesApiUpdateEventTests(ApiWebApplicationFactory factory) : ApiI
 
 		var storedEvent = await DbContext.LeagueOneOffEvents.FindAsync(eventId);
 		storedEvent.Should().NotBeNull();
-		storedEvent!.Name.Should().Be("Saturday Special");
+		storedEvent!.Name.Should().Be("Feature Table");
 		storedEvent.ScheduledAtUtc.Should().Be(scheduledAtUtc);
 		storedEvent.EventType.Should().Be(CardGames.Poker.Api.Data.Entities.LeagueOneOffEventType.Tournament);
 		storedEvent.GameTypeCode.Should().Be("OMAHA");
-		storedEvent.TableName.Should().Be("Feature Table");
 		storedEvent.Ante.Should().Be(25);
 		storedEvent.MinBet.Should().Be(50);
 		storedEvent.Notes.Should().Be("Bring chips");

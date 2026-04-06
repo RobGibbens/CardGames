@@ -23,8 +23,8 @@
 				{
 					<div class="alert alert-danger py-2 mb-2" role="alert">@_errorMessage</div>
 				}
-				<div class="form-floating" data-label="Event name">
-					<InputText id="one-off-name" class="form-control league-modal-input" @bind-Value="_name" maxlength="120" placeholder="Event name" />
+				<div class="form-floating" data-label="Table name">
+					<InputText id="one-off-name" class="form-control league-modal-input" @bind-Value="_name" maxlength="120" placeholder="Table name" />
 				</div>
 				<div class="row league-form-inline-fields">
 					<div class="col-md-4 league-form-inline-field">
@@ -60,9 +60,6 @@
 							}
 						</InputSelect>
 					}
-				</div>
-				<div class="form-floating" data-label="Table name">
-					<InputText id="one-off-table-name" class="form-control league-modal-input" @bind-Value="_tableName" maxlength="120" placeholder="Table name" />
 				</div>
 				<div class="form-floating" data-label="Ante">
 					<InputNumber id="one-off-ante" class="form-control league-modal-input" @bind-Value="_ante" min="1" max="100" />
@@ -122,7 +119,6 @@
 	private string _selectedTimeZoneId = "UTC";
 	private string? _notes;
 	private string _gameTypeCode = string.Empty;
-	private string _tableName = string.Empty;
 	private int _ante = 5;
 	private int _minBet = 10;
 	private bool _isSubmitting;
@@ -243,7 +239,7 @@
 
 		if (string.IsNullOrWhiteSpace(_name))
 		{
-			_errorMessage = "Event name is required.";
+			_errorMessage = "Table name is required.";
 			return;
 		}
 
@@ -272,7 +268,6 @@
 					EventType = EventType,
 					Notes = string.IsNullOrWhiteSpace(_notes) ? null : _notes.Trim(),
 					GameTypeCode = _gameTypeCode,
-					TableName = string.IsNullOrWhiteSpace(_tableName) ? null : _tableName.Trim(),
 					Ante = _ante,
 					MinBet = _minBet
 				});
@@ -286,7 +281,6 @@
 					EventType = EventType,
 					Notes = string.IsNullOrWhiteSpace(_notes) ? null : _notes.Trim(),
 					GameTypeCode = _gameTypeCode,
-					TableName = string.IsNullOrWhiteSpace(_tableName) ? null : _tableName.Trim(),
 					Ante = _ante,
 					MinBet = _minBet
 				});
@@ -329,7 +323,6 @@
 		_autoSelectedTimeZoneId = null;
 		_notes = EditingEvent.Notes;
 		_gameTypeCode = EditingEvent.GameTypeCode ?? string.Empty;
-		_tableName = EditingEvent.TableName ?? string.Empty;
 		_ante = EditingEvent.Ante;
 		_minBet = EditingEvent.MinBet;
 		_errorMessage = null;
@@ -344,7 +337,6 @@
 		_autoSelectedTimeZoneId = EffectiveBrowserTimeZoneId;
 		_notes = null;
 		_gameTypeCode = string.Empty;
-		_tableName = string.Empty;
 		_ante = 5;
 		_minBet = 10;
 		_errorMessage = null;

@@ -5095,14 +5095,13 @@ namespace CardGames.Poker.Api.Contracts
     public partial record CreateLeagueOneOffEventRequest
     {
         [JsonConstructor]
-        public CreateLeagueOneOffEventRequest(int? @ante, LeagueOneOffEventType? @eventType, string @gameTypeCode, int? @minBet, string @name, string @notes, System.DateTimeOffset? @scheduledAtUtc, string @tableName)
+        public CreateLeagueOneOffEventRequest(int? @ante, LeagueOneOffEventType? @eventType, string @gameTypeCode, int? @minBet, string @name, string @notes, System.DateTimeOffset? @scheduledAtUtc)
         {
             this.Name = @name;
             this.ScheduledAtUtc = @scheduledAtUtc;
             this.EventType = @eventType;
             this.Notes = @notes;
             this.GameTypeCode = @gameTypeCode;
-            this.TableName = @tableName;
             this.Ante = @ante;
             this.MinBet = @minBet;
         }
@@ -5123,9 +5122,6 @@ namespace CardGames.Poker.Api.Contracts
         [JsonPropertyName("gameTypeCode")]
         public string GameTypeCode { get; init; }
 
-        [JsonPropertyName("tableName")]
-        public string TableName { get; init; }
-
         [JsonPropertyName("ante")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? Ante { get; init; }
@@ -5140,7 +5136,7 @@ namespace CardGames.Poker.Api.Contracts
     public partial record CreateLeagueOneOffEventResponse
     {
         [JsonConstructor]
-        public CreateLeagueOneOffEventResponse(int? @ante, System.DateTimeOffset? @createdAtUtc, string @createdByUserId, System.Guid @eventId, LeagueOneOffEventType? @eventType, string @gameTypeCode, System.Guid @leagueId, int? @minBet, string @name, string @notes, System.DateTimeOffset? @scheduledAtUtc, LeagueOneOffEventStatus? @status, string @tableName)
+        public CreateLeagueOneOffEventResponse(int? @ante, System.DateTimeOffset? @createdAtUtc, string @createdByUserId, System.Guid @eventId, LeagueOneOffEventType? @eventType, string @gameTypeCode, System.Guid @leagueId, int? @minBet, string @name, string @notes, System.DateTimeOffset? @scheduledAtUtc, LeagueOneOffEventStatus? @status)
         {
             this.EventId = @eventId;
             this.LeagueId = @leagueId;
@@ -5152,7 +5148,6 @@ namespace CardGames.Poker.Api.Contracts
             this.CreatedByUserId = @createdByUserId;
             this.CreatedAtUtc = @createdAtUtc;
             this.GameTypeCode = @gameTypeCode;
-            this.TableName = @tableName;
             this.Ante = @ante;
             this.MinBet = @minBet;
         }
@@ -5190,9 +5185,6 @@ namespace CardGames.Poker.Api.Contracts
 
         [JsonPropertyName("gameTypeCode")]
         public string GameTypeCode { get; init; }
-
-        [JsonPropertyName("tableName")]
-        public string TableName { get; init; }
 
         [JsonPropertyName("ante")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
@@ -7550,7 +7542,7 @@ namespace CardGames.Poker.Api.Contracts
     public partial record LeagueOneOffEventDto
     {
         [JsonConstructor]
-        public LeagueOneOffEventDto(int? @ante, System.DateTimeOffset? @createdAtUtc, string @createdByUserId, System.Guid @eventId, LeagueOneOffEventType? @eventType, string @gameTypeCode, System.Guid? @launchedGameId, System.Guid @leagueId, int? @minBet, string @name, string @notes, System.DateTimeOffset? @scheduledAtUtc, LeagueOneOffEventStatus? @status, string @tableName)
+        public LeagueOneOffEventDto(int? @ante, System.DateTimeOffset? @createdAtUtc, string @createdByUserId, System.Guid @eventId, LeagueOneOffEventType? @eventType, string @gameTypeCode, System.Guid? @launchedGameId, System.Guid @leagueId, int? @minBet, string @name, string @notes, System.DateTimeOffset? @scheduledAtUtc, LeagueOneOffEventStatus? @status)
         {
             this.EventId = @eventId;
             this.LeagueId = @leagueId;
@@ -7563,7 +7555,6 @@ namespace CardGames.Poker.Api.Contracts
             this.CreatedAtUtc = @createdAtUtc;
             this.LaunchedGameId = @launchedGameId;
             this.GameTypeCode = @gameTypeCode;
-            this.TableName = @tableName;
             this.Ante = @ante;
             this.MinBet = @minBet;
         }
@@ -7604,9 +7595,6 @@ namespace CardGames.Poker.Api.Contracts
 
         [JsonPropertyName("gameTypeCode")]
         public string GameTypeCode { get; init; }
-
-        [JsonPropertyName("tableName")]
-        public string TableName { get; init; }
 
         [JsonPropertyName("ante")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]

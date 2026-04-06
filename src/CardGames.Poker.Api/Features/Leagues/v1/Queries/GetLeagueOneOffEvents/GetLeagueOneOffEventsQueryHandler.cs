@@ -49,7 +49,6 @@ public sealed class GetLeagueOneOffEventsQueryHandler(
 				CreatedAtUtc = x.CreatedAtUtc,
 				LaunchedGameId = x.LaunchedGameId,
 				GameTypeCode = x.GameTypeCode,
-				TableName = x.TableName,
 				Ante = x.Ante,
 				MinBet = x.MinBet
 			})

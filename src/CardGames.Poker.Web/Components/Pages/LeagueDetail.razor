@@ -1888,7 +1888,7 @@ LaunchLeagueEventSessionRequest
 			var response = await LeaguesApi.LaunchOneOffEventSessionAsync(LeagueId, eventId, new LaunchLeagueEventSessionRequest
 			{
 				GameCode = oneOff?.GameTypeCode ?? "FIVECARDDRAW",
-				GameName = oneOff?.TableName,
+				GameName = oneOff?.Name,
 				Ante = oneOff?.Ante ?? 10,
 				MinBet = oneOff?.MinBet ?? 20,
 				HostStartingChips = 100

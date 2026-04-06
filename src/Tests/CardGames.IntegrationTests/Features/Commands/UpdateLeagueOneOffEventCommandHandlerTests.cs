@@ -39,12 +39,11 @@ public class UpdateLeagueOneOffEventCommandHandlerTests : IntegrationTestBase
 		var scheduledAtUtc = DateTimeOffset.UtcNow.AddDays(7);
 		var result = await Mediator.Send(new UpdateLeagueOneOffEventCommand(leagueId, createEvent.AsT0.EventId, new UpdateLeagueOneOffEventRequest
 		{
-			Name = "Saturday Special",
+			Name = "High Stakes",
 			ScheduledAtUtc = scheduledAtUtc,
 			EventType = ContractLeagueOneOffEventType.CashGame,
 			Notes = "Updated notes",
 			GameTypeCode = "OMAHA",
-			TableName = "High Stakes",
 			Ante = 25,
 			MinBet = 50
 		}));
@@ -55,10 +54,9 @@ public class UpdateLeagueOneOffEventCommandHandlerTests : IntegrationTestBase
 			.AsNoTracking()
 			.SingleAsync(x => x.Id == createEvent.AsT0.EventId);
 
-		savedEvent.Name.Should().Be("Saturday Special");
+		savedEvent.Name.Should().Be("High Stakes");
 		savedEvent.ScheduledAtUtc.Should().Be(scheduledAtUtc);
 		savedEvent.GameTypeCode.Should().Be("OMAHA");
-		savedEvent.TableName.Should().Be("High Stakes");
 		savedEvent.Ante.Should().Be(25);
 		savedEvent.MinBet.Should().Be(50);
 		savedEvent.Notes.Should().Be("Updated notes");

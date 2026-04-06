@@ -61,7 +61,6 @@ public sealed class CreateLeagueOneOffEventCommandHandler(
 			Status = Data.Entities.LeagueOneOffEventStatus.Planned,
 			Notes = string.IsNullOrWhiteSpace(request.Request.Notes) ? null : request.Request.Notes.Trim(),
 			GameTypeCode = string.IsNullOrWhiteSpace(request.Request.GameTypeCode) ? null : request.Request.GameTypeCode.Trim(),
-			TableName = string.IsNullOrWhiteSpace(request.Request.TableName) ? null : request.Request.TableName.Trim(),
 			Ante = request.Request.Ante,
 			MinBet = request.Request.MinBet,
 			CreatedByUserId = currentUserService.UserId,
@@ -83,7 +82,6 @@ public sealed class CreateLeagueOneOffEventCommandHandler(
 			CreatedByUserId = oneOffEvent.CreatedByUserId,
 			CreatedAtUtc = oneOffEvent.CreatedAtUtc,
 			GameTypeCode = oneOffEvent.GameTypeCode,
-			TableName = oneOffEvent.TableName,
 			Ante = oneOffEvent.Ante,
 			MinBet = oneOffEvent.MinBet
 		};

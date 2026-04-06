@@ -73,7 +73,6 @@ public sealed class UpdateLeagueOneOffEventCommandHandler(
 		oneOffEvent.EventType = (LeagueOneOffEventType)request.Request.EventType;
 		oneOffEvent.Notes = string.IsNullOrWhiteSpace(request.Request.Notes) ? null : request.Request.Notes.Trim();
 		oneOffEvent.GameTypeCode = request.Request.GameTypeCode.Trim();
-		oneOffEvent.TableName = string.IsNullOrWhiteSpace(request.Request.TableName) ? null : request.Request.TableName.Trim();
 		oneOffEvent.Ante = request.Request.Ante;
 		oneOffEvent.MinBet = request.Request.MinBet;
 

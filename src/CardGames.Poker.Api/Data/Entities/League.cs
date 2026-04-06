@@ -184,8 +184,6 @@ public sealed class LeagueOneOffEvent : EntityWithRowVersion
 
 	public string? GameTypeCode { get; set; }
 
-	public string? TableName { get; set; }
-
 	public int Ante { get; set; } = 10;
 
 	public int MinBet { get; set; } = 20;
