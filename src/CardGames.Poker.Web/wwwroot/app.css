@@ -6027,6 +6027,18 @@ playing-card.card-wild-highlight {
     text-align: left;
 }
 
+.league-form-modal-title-group {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 0;
+}
+
+.league-form-modal-subtitle {
+    text-align: left;
+}
+
 .league-modal-close-btn {
     display: inline-flex;
     align-items: center;
@@ -7407,6 +7419,43 @@ playing-card.card-wild-highlight {
     width: 0.85rem;
     text-align: center;
     opacity: 0.6;
+}
+
+.league-detail-active-game-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: auto;
+}
+
+.league-detail-active-game-edit-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 1rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    background: transparent;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: border-color 0.15s, transform 0.1s, background 0.15s;
+}
+
+.league-detail-active-game-edit-btn:hover {
+    background: rgba(148, 163, 184, 0.12);
+    border-color: rgba(148, 163, 184, 0.6);
+    transform: translateY(-1px);
+}
+
+.league-detail-active-game-edit-btn:active {
+    transform: translateY(0);
+}
+
+.league-detail-active-game-edit-btn i {
+    font-size: 0.75rem;
 }
 
 .league-detail-active-game-join-btn {

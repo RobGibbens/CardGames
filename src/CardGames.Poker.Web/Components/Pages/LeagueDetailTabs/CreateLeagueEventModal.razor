@@ -1,12 +1,16 @@
 @using CardGames.Poker.Api.Clients
 @using CardGames.Poker.Api.Contracts
+@using Refit
 
 @if (Show)
 {
-	<div class="confirm-dialog-overlay" @onclick="Close">
+	<div class="confirm-dialog-overlay">
 		<div class="confirm-dialog league-form-modal one-off-event-modal" @onclick:stopPropagation>
 			<div class="confirm-dialog-header league-form-modal-header">
-				<h3 class="confirm-dialog-title mb-0">@ModalTitle</h3>
+				<div class="league-form-modal-title-group">
+					<h3 class="confirm-dialog-title mb-0">@ModalTitle</h3>
+					<p class="confirm-dialog-message league-form-modal-subtitle mb-0">@ModalSubtitle</p>
+				</div>
 				<button type="button" class="league-modal-close-btn" aria-label="Close" @onclick="Close">
 					<i class="fa-solid fa-xmark" aria-hidden="true"></i>
 				</button>
@@ -19,8 +23,8 @@
 				<div class="form-floating" data-label="Event name">
 					<InputText id="one-off-name" class="form-control league-modal-input" @bind-Value="_name" maxlength="120" placeholder="Event name" />
 				</div>
-				<div class="form-floating" data-label="Scheduled (UTC)">
-					<InputDate id="one-off-scheduled" class="form-control league-modal-date-input" @bind-Value="_scheduledDate" />
+				<div class="form-floating" data-label="Scheduled (local time)">
+					<InputDate id="one-off-scheduled" Type="InputDateType.DateTimeLocal" class="form-control league-modal-date-input" @bind-Value="_scheduledDate" />
 				</div>
 				<div class="form-floating" data-label="Game Variant">
 					@if (_isLoadingGames)
@@ -51,7 +55,8 @@
 					<InputText id="one-off-notes" class="form-control league-modal-input" @bind-Value="_notes" maxlength="512" placeholder="Notes (optional)" />
 				</div>
 				<div class="league-form-modal-actions">
-					<button class="btn btn-sm btn-primary league-action-btn" @onclick="CreateAsync" disabled="@_isSubmitting">@ModalTitle</button>
+					<button type="button" class="btn btn-sm btn-secondary league-action-btn" @onclick="Close" disabled="@_isSubmitting">Cancel</button>
+					<button class="btn btn-sm btn-primary league-action-btn" @onclick="SaveAsync" disabled="@_isSubmitting">@SubmitLabel</button>
 				</div>
 			</div>
 		</div>
@@ -69,10 +74,16 @@
 	public Guid LeagueId { get; set; }
 
 	[Parameter]
+	public LeagueOneOffEventDto? EditingEvent { get; set; }
+
+	[Parameter]
+	public double BrowserUtcOffsetMinutes { get; set; }
+
+	[Parameter]
 	public EventCallback OnClose { get; set; }
 
 	[Parameter]
-	public EventCallback OnCreated { get; set; }
+	public EventCallback OnSaved { get; set; }
 
 	[Inject]
 	private ILeaguesApi LeaguesApi { get; set; } = default!;
@@ -95,16 +106,44 @@
 	private bool _isLoadingGames;
 	private List<GetAvailablePokerGamesResponse> _availableGames = [];
 	private bool _gamesLoaded;
+	private string? _initializedContextKey;
 
-	private string ModalTitle => EventType == LeagueOneOffEventType.Tournament
+	private bool IsEditMode => EditingEvent is not null;
+
+	private string ModalTitle => IsEditMode
+		? EventType == LeagueOneOffEventType.Tournament
+			? "Edit Tournament"
+			: "Edit Cash Game"
+		: EventType == LeagueOneOffEventType.Tournament
 		? "Create Tournament"
 		: "Create Cash Game";
+
+	private string ModalSubtitle => IsEditMode
+		? "Update the event details before players join the table."
+		: EventType == LeagueOneOffEventType.Tournament
+		? "Every player starts with the same buy-in, there are no late entries or rebuys, and play continues until one winner remains."
+		: "Players can join or leave freely, choose their own buy-in amount, and rebuy as needed, so the game has no fixed ending.";
+
+	private string SubmitLabel => IsEditMode ? "Save Changes" : ModalTitle;
 
 	protected override async Task OnParametersSetAsync()
 	{
 		if (Show && !_gamesLoaded)
 		{
 			await LoadAvailableGamesAsync();
+		}
+
+		if (!Show)
+		{
+			_initializedContextKey = null;
+			return;
+		}
+
+		var contextKey = EditingEvent?.EventId.ToString() ?? "__create__";
+		if (!string.Equals(_initializedContextKey, contextKey, StringComparison.Ordinal))
+		{
+			InitializeForm();
+			_initializedContextKey = contextKey;
 		}
 	}
 
@@ -134,10 +173,11 @@
 	{
 		if (_isSubmitting) return;
 		ResetForm();
+		_initializedContextKey = null;
 		await OnClose.InvokeAsync();
 	}
 
-	private async Task CreateAsync()
+	private async Task SaveAsync()
 	{
 		_errorMessage = null;
 
@@ -153,40 +193,79 @@
 			return;
 		}
 
+		var scheduledAtUtc = new DateTimeOffset(_scheduledDate, TimeSpan.FromMinutes(BrowserUtcOffsetMinutes)).ToUniversalTime();
+
 		_isSubmitting = true;
 		try
 		{
-			var response = await LeaguesApi.CreateOneOffEventAsync(LeagueId, new CreateLeagueOneOffEventRequest
+			IApiResponse response;
+			if (EditingEvent is null)
 			{
-				Name = _name.Trim(),
-				ScheduledAtUtc = new DateTimeOffset(DateTime.SpecifyKind(_scheduledDate, DateTimeKind.Utc)),
-				EventType = EventType,
-				Notes = string.IsNullOrWhiteSpace(_notes) ? null : _notes.Trim(),
-				GameTypeCode = _gameTypeCode,
-				TableName = string.IsNullOrWhiteSpace(_tableName) ? null : _tableName.Trim(),
-				Ante = _ante,
-				MinBet = _minBet
-			});
+				response = await LeaguesApi.CreateOneOffEventAsync(LeagueId, new CreateLeagueOneOffEventRequest
+				{
+					Name = _name.Trim(),
+					ScheduledAtUtc = scheduledAtUtc,
+					EventType = EventType,
+					Notes = string.IsNullOrWhiteSpace(_notes) ? null : _notes.Trim(),
+					GameTypeCode = _gameTypeCode,
+					TableName = string.IsNullOrWhiteSpace(_tableName) ? null : _tableName.Trim(),
+					Ante = _ante,
+					MinBet = _minBet
+				});
+			}
+			else
+			{
+				response = await LeaguesApi.UpdateOneOffEventAsync(LeagueId, EditingEvent.EventId, new UpdateLeagueOneOffEventRequest
+				{
+					Name = _name.Trim(),
+					ScheduledAtUtc = scheduledAtUtc,
+					EventType = EventType,
+					Notes = string.IsNullOrWhiteSpace(_notes) ? null : _notes.Trim(),
+					GameTypeCode = _gameTypeCode,
+					TableName = string.IsNullOrWhiteSpace(_tableName) ? null : _tableName.Trim(),
+					Ante = _ante,
+					MinBet = _minBet
+				});
+			}
 
 			if (response.IsSuccessStatusCode)
 			{
 				ResetForm();
-				await OnCreated.InvokeAsync();
+				_initializedContextKey = null;
+				await OnSaved.InvokeAsync();
 			}
 			else
 			{
-				_errorMessage = "Failed to create event. Please try again.";
+				_errorMessage = IsEditMode ? "Failed to update event. Please try again." : "Failed to create event. Please try again.";
 			}
 		}
 		catch (Exception ex)
 		{
-			Logger.LogError(ex, "Failed to create one-off event for league {LeagueId}", LeagueId);
-			_errorMessage = "Failed to create event. Please try again.";
+			Logger.LogError(ex, "Failed to save one-off event for league {LeagueId}", LeagueId);
+			_errorMessage = IsEditMode ? "Failed to update event. Please try again." : "Failed to create event. Please try again.";
 		}
 		finally
 		{
 			_isSubmitting = false;
 		}
+	}
+
+	private void InitializeForm()
+	{
+		if (EditingEvent is null)
+		{
+			ResetForm();
+			return;
+		}
+
+		_name = EditingEvent.Name;
+		_scheduledDate = EditingEvent.ScheduledAtUtc.ToOffset(TimeSpan.FromMinutes(BrowserUtcOffsetMinutes)).DateTime;
+		_notes = EditingEvent.Notes;
+		_gameTypeCode = EditingEvent.GameTypeCode ?? string.Empty;
+		_tableName = EditingEvent.TableName ?? string.Empty;
+		_ante = EditingEvent.Ante;
+		_minBet = EditingEvent.MinBet;
+		_errorMessage = null;
 	}
 
 	private void ResetForm()

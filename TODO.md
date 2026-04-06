@@ -9,15 +9,27 @@
 
 - [ ] Lobby - Filter by status
 - [ ] Work on isolating games code more
+- [ ] "Add Chips:" on the dashboard is the wrong color
+- [ ] Either remove "confirm login" or set up email
+- [ ] Allow private tables - need an invite / password
 
 - [ ] Add leagues
 - [ ] Add seasons
+- 
 - [ ] Add tournaments
+  - [x] On the "Create Tournament" and "Create Cash Game" modals, add descriptions
   - [ ] Can't edit future tournament
   - [ ] Can't delete future tournament
   - [ ] Can't add a start time for tournament
+  - [ ] Tournaments blinds should increase as time goes on
   - [ ] Allows creating tournaments in the past
   - [ ] Can't specify buy-in
+  - [ ] Tournaments on the lobby page don't allow you to start/join
+  - [ ] Change the UI of the Schedule page, remove segmented control
+  - [ ] When the host clicks "Launch Play" it auto buys in for 100
+  - [ ] When the host clicks "Launch Play", send a signalr message to update the schedule and lobby pages
+  - [ ] The description at the top of the tableplay should read "Tournament"
+  - [ ] When joining, automatically take a seat
   - [ ] When joining a tournament, you shouldn't be able to change the buy-in amount
   - [ ] Texas Hold Em, not collecting blinds
   - [ ] When the tournament ends, it just says "Waiting for Players" . We should have a nice summary page.
@@ -46,6 +58,7 @@
 
 ### P2 - Important but not blocking play
 
+- [ ] Be able to see a full hand history (including rabbit hunt, and folds)
 - [ ] Make sure all calls are idempotent
 - [ ] Continuous play should stop if all players disconnect
 - [ ] During ties, the showdown should show the kicker

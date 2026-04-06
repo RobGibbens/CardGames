@@ -71,6 +71,12 @@
 													<span class="league-detail-event-date">Seq: @(seasonEvent.SequenceNumber?.ToString() ?? "-") &bull; @FormatDate(seasonEvent.ScheduledAtUtc) &bull; @seasonEvent.Status</span>
 												</div>
 												<div class="league-detail-event-row-actions">
+													@if (CanManageLeague && CanEditSeasonEvent(seasonEvent))
+													{
+														<button class="btn btn-sm btn-outline-secondary league-action-btn" @onclick="() => EditSeasonEvent.InvokeAsync(seasonEvent)" @onclick:stopPropagation="true">
+															<i class="fa-solid fa-pen-to-square"></i> Edit
+														</button>
+													}
 													@if (seasonEvent.LaunchedGameId.HasValue)
 													{
 														<button class="btn btn-sm btn-outline-primary league-action-btn" @onclick="() => OpenTable.InvokeAsync(seasonEvent.LaunchedGameId.Value)">Open Table</button>
@@ -118,6 +124,12 @@
 								<span class="league-detail-event-date">@oneOff.EventType &bull; @oneOff.ScheduledAtUtc.ToLocalTime().ToString("g") &bull; @oneOff.Status</span>
 							</div>
 							<div class="league-detail-event-row-actions">
+								@if (CanManageLeague && CanEditOneOffEvent(oneOff))
+								{
+									<button class="btn btn-sm btn-outline-secondary league-action-btn" @onclick="() => EditOneOffEvent.InvokeAsync(oneOff)">
+										<i class="fa-solid fa-pen-to-square"></i> Edit
+									</button>
+								}
 								@if (oneOff.LaunchedGameId.HasValue)
 								{
 									<button class="btn btn-sm btn-outline-primary league-action-btn" @onclick="() => OpenTable.InvokeAsync(oneOff.LaunchedGameId.Value)">Open Table</button>
@@ -176,6 +188,9 @@
 	public EventCallback OpenSeasonEventModal { get; set; }
 
 	[Parameter]
+	public EventCallback<LeagueSeasonEventDto> EditSeasonEvent { get; set; }
+
+	[Parameter]
 	public EventCallback<Guid> OpenTable { get; set; }
 
 	[Parameter]
@@ -183,6 +198,9 @@
 
 	[Parameter]
 	public EventCallback OpenOneOffModal { get; set; }
+
+	[Parameter]
+	public EventCallback<LeagueOneOffEventDto> EditOneOffEvent { get; set; }
 
 	[Parameter]
 	public EventCallback<Guid> LaunchOneOffEvent { get; set; }
@@ -208,5 +226,15 @@
 			return false;
 
 		return DateTimeOffset.UtcNow >= scheduledAtUtc.Value.AddHours(-2);
+	}
+
+	private static bool CanEditSeasonEvent(LeagueSeasonEventDto seasonEvent)
+	{
+		return seasonEvent.Status == LeagueSeasonEventStatus.Planned && !seasonEvent.LaunchedGameId.HasValue;
+	}
+
+	private static bool CanEditOneOffEvent(LeagueOneOffEventDto oneOffEvent)
+	{
+		return oneOffEvent.Status == LeagueOneOffEventStatus.Planned && !oneOffEvent.LaunchedGameId.HasValue;
 	}
 }

@@ -130,11 +130,22 @@
 												<span>@FormatDate(se.ScheduledAtUtc)</span>
 											</div>
 										</div>
-										@if (se.LaunchedGameId.HasValue)
+										@if (CanManageLeague && CanEditSeasonEvent(se) || se.LaunchedGameId.HasValue)
 										{
-											<button class="league-detail-active-game-join-btn" @onclick="() => OpenTable.InvokeAsync(se.LaunchedGameId.Value)" @onclick:stopPropagation>
-												<i class="fa-solid fa-right-to-bracket"></i> Join
-											</button>
+											<div class="league-detail-active-game-actions">
+												@if (CanManageLeague && CanEditSeasonEvent(se))
+												{
+													<button class="league-detail-active-game-edit-btn" @onclick="() => EditSeasonEvent.InvokeAsync(se)" @onclick:stopPropagation>
+														<i class="fa-solid fa-pen-to-square"></i> Edit
+													</button>
+												}
+												@if (se.LaunchedGameId.HasValue)
+												{
+													<button class="league-detail-active-game-join-btn" @onclick="() => OpenTable.InvokeAsync(se.LaunchedGameId.Value)" @onclick:stopPropagation>
+														<i class="fa-solid fa-right-to-bracket"></i> Join
+													</button>
+												}
+											</div>
 										}
 									</div>
 								}
@@ -171,11 +182,22 @@
 												<span>@oo.ScheduledAtUtc.ToLocalTime().ToString("g")</span>
 											</div>
 										</div>
-										@if (oo.LaunchedGameId.HasValue)
+										@if (CanManageLeague && CanEditOneOffEvent(oo) || oo.LaunchedGameId.HasValue)
 										{
-											<button class="league-detail-active-game-join-btn" @onclick="() => OpenTable.InvokeAsync(oo.LaunchedGameId.Value)" @onclick:stopPropagation>
-												<i class="fa-solid fa-right-to-bracket"></i> Join
-											</button>
+											<div class="league-detail-active-game-actions">
+												@if (CanManageLeague && CanEditOneOffEvent(oo))
+												{
+													<button class="league-detail-active-game-edit-btn" @onclick="() => EditOneOffEvent.InvokeAsync(oo)" @onclick:stopPropagation>
+														<i class="fa-solid fa-pen-to-square"></i> Edit
+													</button>
+												}
+												@if (oo.LaunchedGameId.HasValue)
+												{
+													<button class="league-detail-active-game-join-btn" @onclick="() => OpenTable.InvokeAsync(oo.LaunchedGameId.Value)" @onclick:stopPropagation>
+														<i class="fa-solid fa-right-to-bracket"></i> Join
+													</button>
+												}
+											</div>
 										}
 									</div>
 								}
@@ -267,6 +289,15 @@
 
 	[Parameter]
 	public EventCallback<Guid> OpenTable { get; set; }
+
+	[Parameter]
+	public bool CanManageLeague { get; set; }
+
+	[Parameter]
+	public EventCallback<LeagueSeasonEventDto> EditSeasonEvent { get; set; }
+
+	[Parameter]
+	public EventCallback<LeagueOneOffEventDto> EditOneOffEvent { get; set; }
 
 	[Parameter]
 	public LeagueStandingEntryDto? MyStanding { get; set; }
@@ -374,6 +405,16 @@
 	private static string FormatChipsDelta(int chipsDelta)
 	{
 		return chipsDelta >= 0 ? $"+{chipsDelta}" : chipsDelta.ToString();
+	}
+
+	private static bool CanEditSeasonEvent(LeagueSeasonEventDto seasonEvent)
+	{
+		return seasonEvent.Status == LeagueSeasonEventStatus.Planned && !seasonEvent.LaunchedGameId.HasValue;
+	}
+
+	private static bool CanEditOneOffEvent(LeagueOneOffEventDto oneOffEvent)
+	{
+		return oneOffEvent.Status == LeagueOneOffEventStatus.Planned && !oneOffEvent.LaunchedGameId.HasValue;
 	}
 
 	private string GetRankMovementLabel(string userId)
