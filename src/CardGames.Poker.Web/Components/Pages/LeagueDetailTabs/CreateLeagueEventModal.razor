@@ -191,6 +191,22 @@
 		SynchronizeDefaultTimeZone();
 	}
 
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (!Show || (_resolvedTimeZones.Count > 0 && !string.IsNullOrWhiteSpace(_resolvedBrowserTimeZoneId)))
+		{
+			return;
+		}
+
+		await EnsureBrowserTimeZoneSetupAsync();
+
+		if (!string.IsNullOrWhiteSpace(_resolvedBrowserTimeZoneId))
+		{
+			SynchronizeDefaultTimeZone();
+			StateHasChanged();
+		}
+	}
+
 	private async Task LoadAvailableGamesAsync()
 	{
 		_isLoadingGames = true;
