@@ -9,6 +9,7 @@
 @using CardGames.Poker.Web.Components.Pages.LeagueDetailTabs
 @using CardGames.Poker.Web.Components.Shared
 @using CardGames.Poker.Web.Services
+@using CardGames.Poker.Web.Utilities
 @using Microsoft.AspNetCore.Authorization
 @using System.ComponentModel
 @using System.Net
@@ -201,6 +202,7 @@
 				<LeagueDetailLobbyTab RecentCompletedEvents="_recentCompletedEvents" SeasonEvents="_seasonEvents"
 									  OneOffEvents="_oneOffEvents" Standings="_standings" MyStanding="_myStanding"
 									  RankMovementByUserId="_rankMovementByUserId" Members="_members" ActiveGameDetails="_activeGameDetails"
+									  BrowserTimeZoneId="BrowserTimeZoneId"
 									  OpenTable="OpenTable" CanManageLeague="CanManageLeague" EditSeasonEvent="OpenSeasonEventEditor"
 									  DeleteSeasonEvent="OpenDeleteSeasonEventDialog" EditOneOffEvent="OpenOneOffEventEditor"
 									  DeleteOneOffEvent="OpenDeleteOneOffEventDialog" />
@@ -211,6 +213,7 @@
 			{
 				<LeagueDetailResultsTab Seasons="_seasons" SelectedSeasonId="_selectedSeasonId"
 									CanManageLeague="CanManageLeague" SeasonEvents="_seasonEvents"
+									BrowserTimeZoneId="BrowserTimeZoneId"
 									LaunchingSeasonEventId="_launchingSeasonEventId" OnSeasonSelectorChanged="OnSeasonSelectorChanged"
 									OpenSeasonEventModal="OpenSeasonEventModal" EditSeasonEvent="OpenSeasonEventEditor"
 									DeleteSeasonEvent="OpenDeleteSeasonEventDialog"
@@ -233,6 +236,7 @@
 									 ShowOneOffEventsTab="() => _activeScheduleTab = ScheduleTab.OneOffEvents" CanManageLeague="CanManageLeague"
 									 Seasons="_seasons" SelectedSeasonId="_selectedSeasonId" SeasonEvents="_seasonEvents"
 									 OneOffEvents="_oneOffEvents" LaunchingSeasonEventId="_launchingSeasonEventId"
+									 BrowserTimeZoneId="BrowserTimeZoneId"
 									 LaunchingOneOffEventId="_launchingOneOffEventId" OpenSeasonModal="OpenSeasonModal"
 									 SelectSeason="SelectSeasonAsync" DeselectSeason="DeselectSeasonAsync"
 									 OpenSeasonEventModal="OpenSeasonEventModal" EditSeasonEvent="OpenSeasonEventEditor"
@@ -370,10 +374,23 @@
 					<InputNumber id="season-event-sequence" class="form-control league-modal-input"
 							 @bind-Value="_seasonEventSequence" placeholder="Sequence" />
 				</div>
-				<div class="row g-2">
-					<div class="col-md-6">
-						<label class="form-label small">Scheduled (optional, local time)</label>
-						<InputDate Type="InputDateType.DateTimeLocal" class="form-control league-modal-date-input" @bind-Value="_seasonEventScheduledDate" />
+				<div class="row league-form-inline-fields">
+					<div class="col-md-4 league-form-inline-field">
+						<label class="form-label small" for="season-event-date">Scheduled date</label>
+						<InputDate id="season-event-date" class="form-control league-modal-date-input" @bind-Value="_seasonEventScheduledDate" />
+					</div>
+					<div class="col-md-3 league-form-inline-field">
+						<label class="form-label small" for="season-event-time">Start time</label>
+						<input id="season-event-time" type="time" class="form-control league-modal-input league-modal-date-input" value="@_seasonEventScheduledTime" @onchange="OnSeasonEventScheduledTimeChanged" />
+					</div>
+					<div class="col-md-5 league-form-inline-field">
+						<label class="form-label small" for="season-event-time-zone">Time zone</label>
+						<InputSelect id="season-event-time-zone" class="form-select league-modal-input league-modal-date-input" @bind-Value="_seasonEventTimeZoneId">
+							@foreach (var timeZone in TimeZoneOptions)
+							{
+								<option value="@timeZone.Id">@timeZone.DisplayName</option>
+							}
+						</InputSelect>
 					</div>
 				</div>
 				<div class="form-floating" data-label="Notes (optional)">
@@ -392,7 +409,7 @@
 }
 
 <CreateLeagueEventModal Show="_showOneOffModal" EventType="_oneOffType" LeagueId="LeagueId" EditingEvent="_editingOneOffEvent"
-						BrowserUtcOffsetMinutes="_browserUtcOffsetMinutes" OnClose="CloseOneOffModal" OnSaved="HandleOneOffSaved" />
+						BrowserTimeZoneId="BrowserTimeZoneId" AvailableTimeZones="TimeZoneOptions" OnClose="CloseOneOffModal" OnSaved="HandleOneOffSaved" />
 
 @code {
 	[Parameter]
@@ -444,6 +461,8 @@
 	private string _seasonEventName = string.Empty;
 	private int? _seasonEventSequence;
 	private DateTime? _seasonEventScheduledDate;
+	private string _seasonEventScheduledTime = LeagueTimeZoneHelper.DefaultTimeText;
+	private string _seasonEventTimeZoneId = "UTC";
 	private string? _seasonEventNotes;
 	private bool _isSubmittingSeasonEvent;
 	private bool _showSeasonEventModal;
@@ -469,7 +488,10 @@
 	private LeagueStandingEntryDto? _myStanding;
 	private List<LeagueSeasonEventDto> _recentCompletedEvents = [];
 	private bool _isLeagueHubSubscriptionInitialized;
-	private double _browserUtcOffsetMinutes;
+	private const string LeagueDetailModulePath = "/Components/Pages/LeagueDetail.razor.js";
+	private IJSObjectReference? _leagueDetailModule;
+	private string? _browserTimeZoneId;
+	private List<BrowserTimeZoneOption> _availableTimeZones = [];
 
 	private ScheduleTab _activeScheduleTab = ScheduleTab.Seasons;
 	private LeagueDetailTab _activeTab = LeagueDetailTab.Lobby;
@@ -548,7 +570,13 @@
 		.Take(20)
 		.ToList();
 
-	private bool _hasResolvedBrowserOffset;
+	private bool _hasResolvedBrowserTimeZone;
+
+	private string BrowserTimeZoneId => string.IsNullOrWhiteSpace(_browserTimeZoneId) ? "UTC" : _browserTimeZoneId;
+
+	private IReadOnlyList<BrowserTimeZoneOption> TimeZoneOptions => _availableTimeZones.Count > 0
+		? _availableTimeZones
+		: [new BrowserTimeZoneOption(BrowserTimeZoneId, BrowserTimeZoneId)];
 
 	protected override async Task OnParametersSetAsync()
 	{
@@ -557,10 +585,34 @@
 
 	protected override async Task OnAfterRenderAsync(bool firstRender)
 	{
-		if (!_hasResolvedBrowserOffset)
+		if (!_hasResolvedBrowserTimeZone)
 		{
-			_hasResolvedBrowserOffset = true;
-			_browserUtcOffsetMinutes = await JSRuntime.InvokeAsync<double>("eval", "new Date().getTimezoneOffset() * -1");
+			_hasResolvedBrowserTimeZone = true;
+
+			try
+			{
+				_leagueDetailModule = await JSRuntime.InvokeAsync<IJSObjectReference>("import", LeagueDetailModulePath);
+				var timeZoneSetup = await _leagueDetailModule.InvokeAsync<BrowserTimeZoneSetup>("getTimeZoneSetup");
+				_browserTimeZoneId = string.IsNullOrWhiteSpace(timeZoneSetup.BrowserTimeZoneId) ? "UTC" : timeZoneSetup.BrowserTimeZoneId;
+				_availableTimeZones = timeZoneSetup.TimeZones
+					.Where(option => !string.IsNullOrWhiteSpace(option.Id))
+					.DistinctBy(option => option.Id)
+					.ToList();
+
+				StateHasChanged();
+			}
+			catch (InvalidOperationException)
+			{
+				// Ignore JS interop errors during SSR.
+			}
+			catch (JSDisconnectedException)
+			{
+				// Ignore circuit disconnects during teardown.
+			}
+			catch (JSException ex)
+			{
+				Logger.LogDebug(ex, "Failed resolving browser time zone for league detail page {LeagueId}", LeagueId);
+			}
 		}
 	}
 
@@ -1391,14 +1443,17 @@ DateTimeKind.Utc)) : null,
 			return;
 		}
 
+		if (!LeagueTimeZoneHelper.TryConvertLocalToUtc(_seasonEventScheduledDate, _seasonEventScheduledTime, _seasonEventTimeZoneId, out var scheduledAtUtc, out var errorMessage))
+		{
+			_message = errorMessage;
+			_isError = true;
+			return;
+		}
+
 		_isSubmittingSeasonEvent = true;
 		var isEditing = _editingSeasonEventId.HasValue;
 		try
 		{
-			DateTimeOffset? scheduledAtUtc = _seasonEventScheduledDate.HasValue
-				? new DateTimeOffset(_seasonEventScheduledDate.Value, TimeSpan.FromMinutes(_browserUtcOffsetMinutes)).ToUniversalTime()
-				: null;
-
 			Refit.IApiResponse response;
 			if (isEditing)
 			{
@@ -1587,7 +1642,9 @@ DateTimeKind.Utc)) : null,
 		_editingSeasonEventId = null;
 		_seasonEventName = string.Empty;
 		_seasonEventSequence = null;
-		_seasonEventScheduledDate = null;
+		_seasonEventScheduledDate = LeagueTimeZoneHelper.GetNextLocalEventDate(BrowserTimeZoneId);
+		_seasonEventScheduledTime = LeagueTimeZoneHelper.DefaultTimeText;
+		_seasonEventTimeZoneId = BrowserTimeZoneId;
 		_seasonEventNotes = null;
 	}
 
@@ -1596,13 +1653,15 @@ DateTimeKind.Utc)) : null,
 		_editingSeasonEventId = seasonEvent.EventId;
 		_seasonEventName = seasonEvent.Name;
 		_seasonEventSequence = seasonEvent.SequenceNumber;
-		_seasonEventScheduledDate = ToBrowserLocalDateTime(seasonEvent.ScheduledAtUtc);
+		_seasonEventScheduledDate = LeagueTimeZoneHelper.ConvertUtcToLocalDate(seasonEvent.ScheduledAtUtc, BrowserTimeZoneId);
+		_seasonEventScheduledTime = LeagueTimeZoneHelper.ConvertUtcToTimeText(seasonEvent.ScheduledAtUtc, BrowserTimeZoneId);
+		_seasonEventTimeZoneId = BrowserTimeZoneId;
 		_seasonEventNotes = seasonEvent.Notes;
 	}
 
-	private DateTime? ToBrowserLocalDateTime(DateTimeOffset? value)
+	private void OnSeasonEventScheduledTimeChanged(ChangeEventArgs args)
 	{
-		return value?.ToOffset(TimeSpan.FromMinutes(_browserUtcOffsetMinutes)).DateTime;
+		_seasonEventScheduledTime = args.Value?.ToString() ?? string.Empty;
 	}
 
 	private static bool CanEditSeasonEvent(LeagueSeasonEventDto seasonEvent)
@@ -1683,9 +1742,9 @@ DateTimeKind.Utc)) : null,
 	}
 
 	
-	private static string FormatDate(DateTimeOffset? value)
+	private string FormatDate(DateTimeOffset? value)
 	{
-		return value.HasValue ? value.Value.ToLocalTime().ToString("g") : "-";
+		return LeagueTimeZoneHelper.FormatDateTime(value, BrowserTimeZoneId);
 	}
 
 	private bool IsCurrentUserStanding(LeagueStandingEntryDto standing)
@@ -1898,6 +1957,18 @@ LaunchLeagueEventSessionRequest
 		catch (Exception ex)
 		{
 			Logger.LogDebug(ex, "Error disconnecting league hub client for league detail page");
+		}
+
+		if (_leagueDetailModule is not null)
+		{
+			try
+			{
+				await _leagueDetailModule.DisposeAsync();
+			}
+			catch (JSDisconnectedException)
+			{
+				// Ignore circuit disconnects during teardown.
+			}
 		}
 	}
 

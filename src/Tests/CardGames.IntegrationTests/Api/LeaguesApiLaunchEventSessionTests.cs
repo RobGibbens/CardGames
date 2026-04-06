@@ -219,7 +219,8 @@ public class LeaguesApiLaunchEventSessionTests(ApiWebApplicationFactory factory)
 		var createEventResponse = await PostAsync($"/api/v1/leagues/{league.LeagueId}/seasons/{season!.SeasonId}/events", new CreateLeagueSeasonEventRequest
 		{
 			Name = "Week 1",
-			SequenceNumber = 1
+			SequenceNumber = 1,
+			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(3)
 		});
 		createEventResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 		var seasonEvent = await createEventResponse.Content.ReadFromJsonAsync<CreateLeagueSeasonEventResponse>(JsonOptions);

@@ -1,5 +1,6 @@
 @using CardGames.Poker.Api.Contracts
 @using CardGames.Poker.Api.Clients
+@using CardGames.Poker.Web.Utilities
 
 <div class="league-detail-tab-content">
 	@if (ActiveGames.Count > 0)
@@ -182,7 +183,7 @@
 										<div class="league-detail-active-game-details">
 											<div class="league-detail-active-game-detail">
 												<i class="fa-solid fa-calendar"></i>
-												<span>@oo.ScheduledAtUtc.ToLocalTime().ToString("g")</span>
+												<span>@FormatDate(oo.ScheduledAtUtc)</span>
 											</div>
 										</div>
 										@if (CanManageLeague && CanEditOneOffEvent(oo) || oo.LaunchedGameId.HasValue)
@@ -323,6 +324,9 @@
 	[Parameter]
 	public Dictionary<Guid, GetTableSettingsResponse> ActiveGameDetails { get; set; } = new();
 
+	[Parameter]
+	public string BrowserTimeZoneId { get; set; } = "UTC";
+
 	private List<ActiveGameViewModel> ActiveGames => GetActiveGames();
 
 	private List<ActiveGameViewModel> GetActiveGames()
@@ -386,9 +390,9 @@
 		string? CreatedByName,
 		string? GameTypeName);
 
-	private static string FormatDate(DateTimeOffset? value)
+	private string FormatDate(DateTimeOffset? value)
 	{
-		return value.HasValue ? value.Value.ToLocalTime().ToString("g") : "-";
+		return LeagueTimeZoneHelper.FormatDateTime(value, BrowserTimeZoneId);
 	}
 
 	private static string FormatPhase(string? phase)

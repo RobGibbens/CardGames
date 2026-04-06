@@ -1,4 +1,5 @@
 @using CardGames.Poker.Api.Contracts
+@using CardGames.Poker.Web.Utilities
 
 <div class="league-detail-tab-content">
 	<section class="league-detail-card">
@@ -85,6 +86,9 @@
 	public Guid? LaunchingSeasonEventId { get; set; }
 
 	[Parameter]
+	public string BrowserTimeZoneId { get; set; } = "UTC";
+
+	[Parameter]
 	public EventCallback<ChangeEventArgs> OnSeasonSelectorChanged { get; set; }
 
 	[Parameter]
@@ -102,9 +106,9 @@
 	[Parameter]
 	public EventCallback<Guid> LaunchSeasonEvent { get; set; }
 
-	private static string FormatDate(DateTimeOffset? value)
+	private string FormatDate(DateTimeOffset? value)
 	{
-		return value.HasValue ? value.Value.ToLocalTime().ToString("g") : "-";
+		return LeagueTimeZoneHelper.FormatDateTime(value, BrowserTimeZoneId);
 	}
 
 	private static bool CanEditSeasonEvent(LeagueSeasonEventDto seasonEvent)

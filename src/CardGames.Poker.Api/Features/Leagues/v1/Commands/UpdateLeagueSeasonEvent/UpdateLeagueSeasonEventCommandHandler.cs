@@ -72,6 +72,11 @@ public sealed class UpdateLeagueSeasonEventCommandHandler(
 			return new UpdateLeagueSeasonEventError(UpdateLeagueSeasonEventErrorCode.Conflict, "Only planned, unlaunched season events can be edited.");
 		}
 
+		if (request.Request.ScheduledAtUtc == default)
+		{
+			return new UpdateLeagueSeasonEventError(UpdateLeagueSeasonEventErrorCode.InvalidRequest, "Scheduled date/time is required.");
+		}
+
 		if (request.Request.SequenceNumber.HasValue)
 		{
 			var sequenceInUse = await context.LeagueSeasonEvents

@@ -34,7 +34,8 @@ public class CreateLeagueSeasonEventCommandHandlerTests : IntegrationTestBase
 		var result = await Mediator.Send(new CreateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId, new CardGames.Poker.Api.Contracts.CreateLeagueSeasonEventRequest
 		{
 			Name = "Week 1",
-			SequenceNumber = 1
+			SequenceNumber = 1,
+			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(7)
 		}));
 
 		result.IsT0.Should().BeTrue();

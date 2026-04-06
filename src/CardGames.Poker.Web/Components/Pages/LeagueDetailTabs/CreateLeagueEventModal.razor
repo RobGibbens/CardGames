@@ -1,6 +1,9 @@
 @using CardGames.Poker.Api.Clients
 @using CardGames.Poker.Api.Contracts
+@using CardGames.Poker.Web.Utilities
 @using Refit
+@inject IJSRuntime JSRuntime
+@implements IAsyncDisposable
 
 @if (Show)
 {
@@ -23,8 +26,24 @@
 				<div class="form-floating" data-label="Event name">
 					<InputText id="one-off-name" class="form-control league-modal-input" @bind-Value="_name" maxlength="120" placeholder="Event name" />
 				</div>
-				<div class="form-floating" data-label="Scheduled (local time)">
-					<InputDate id="one-off-scheduled" Type="InputDateType.DateTimeLocal" class="form-control league-modal-date-input" @bind-Value="_scheduledDate" />
+				<div class="row league-form-inline-fields">
+					<div class="col-md-4 league-form-inline-field">
+						<label class="form-label small" for="one-off-scheduled-date">Scheduled date</label>
+						<InputDate id="one-off-scheduled-date" class="form-control league-modal-date-input" @bind-Value="_scheduledDate" />
+					</div>
+					<div class="col-md-3 league-form-inline-field">
+						<label class="form-label small" for="one-off-scheduled-time">Start time</label>
+						<input id="one-off-scheduled-time" type="time" class="form-control league-modal-input league-modal-date-input" value="@_scheduledTime" @onchange="OnScheduledTimeChanged" />
+					</div>
+					<div class="col-md-5 league-form-inline-field">
+						<label class="form-label small" for="one-off-time-zone">Time zone</label>
+						<InputSelect id="one-off-time-zone" class="form-select league-modal-input league-modal-date-input" @bind-Value="_selectedTimeZoneId" @bind-Value:after="OnTimeZoneSelectionChanged">
+							@foreach (var timeZone in TimeZoneOptions)
+							{
+								<option value="@timeZone.Id">@timeZone.DisplayName</option>
+							}
+						</InputSelect>
+					</div>
 				</div>
 				<div class="form-floating" data-label="Game Variant">
 					@if (_isLoadingGames)
@@ -77,7 +96,10 @@
 	public LeagueOneOffEventDto? EditingEvent { get; set; }
 
 	[Parameter]
-	public double BrowserUtcOffsetMinutes { get; set; }
+	public string BrowserTimeZoneId { get; set; } = "UTC";
+
+	[Parameter]
+	public IReadOnlyList<BrowserTimeZoneOption> AvailableTimeZones { get; set; } = [];
 
 	[Parameter]
 	public EventCallback OnClose { get; set; }
@@ -95,7 +117,9 @@
 	private ILogger<CreateLeagueEventModal> Logger { get; set; } = default!;
 
 	private string _name = string.Empty;
-	private DateTime _scheduledDate = DateTime.UtcNow.Date.AddDays(1);
+	private DateTime? _scheduledDate = DateTime.UtcNow.Date.AddDays(1);
+	private string _scheduledTime = LeagueTimeZoneHelper.DefaultTimeText;
+	private string _selectedTimeZoneId = "UTC";
 	private string? _notes;
 	private string _gameTypeCode = string.Empty;
 	private string _tableName = string.Empty;
@@ -107,8 +131,23 @@
 	private List<GetAvailablePokerGamesResponse> _availableGames = [];
 	private bool _gamesLoaded;
 	private string? _initializedContextKey;
+	private string? _autoSelectedTimeZoneId;
+	private const string TimeZoneModulePath = "/Components/Pages/LeagueDetail.razor.js";
+	private IJSObjectReference? _timeZoneModule;
+	private string? _resolvedBrowserTimeZoneId;
+	private List<BrowserTimeZoneOption> _resolvedTimeZones = [];
 
 	private bool IsEditMode => EditingEvent is not null;
+
+	private string EffectiveBrowserTimeZoneId => string.IsNullOrWhiteSpace(_resolvedBrowserTimeZoneId)
+		? BrowserTimeZoneId
+		: _resolvedBrowserTimeZoneId;
+
+	private IReadOnlyList<BrowserTimeZoneOption> TimeZoneOptions => _resolvedTimeZones.Count > 0
+		? _resolvedTimeZones
+		: AvailableTimeZones.Count > 0
+			? AvailableTimeZones
+			: [new BrowserTimeZoneOption(EffectiveBrowserTimeZoneId, EffectiveBrowserTimeZoneId)];
 
 	private string ModalTitle => IsEditMode
 		? EventType == LeagueOneOffEventType.Tournament
@@ -136,8 +175,11 @@
 		if (!Show)
 		{
 			_initializedContextKey = null;
+			_autoSelectedTimeZoneId = null;
 			return;
 		}
+
+		await EnsureBrowserTimeZoneSetupAsync();
 
 		var contextKey = EditingEvent?.EventId.ToString() ?? "__create__";
 		if (!string.Equals(_initializedContextKey, contextKey, StringComparison.Ordinal))
@@ -145,6 +187,8 @@
 			InitializeForm();
 			_initializedContextKey = contextKey;
 		}
+
+		SynchronizeDefaultTimeZone();
 	}
 
 	private async Task LoadAvailableGamesAsync()
@@ -193,7 +237,11 @@
 			return;
 		}
 
-		var scheduledAtUtc = new DateTimeOffset(_scheduledDate, TimeSpan.FromMinutes(BrowserUtcOffsetMinutes)).ToUniversalTime();
+		if (!LeagueTimeZoneHelper.TryConvertLocalToUtc(_scheduledDate, _scheduledTime, _selectedTimeZoneId, out var scheduledAtUtc, out var errorMessage))
+		{
+			_errorMessage = errorMessage;
+			return;
+		}
 
 		_isSubmitting = true;
 		try
@@ -259,7 +307,10 @@
 		}
 
 		_name = EditingEvent.Name;
-		_scheduledDate = EditingEvent.ScheduledAtUtc.ToOffset(TimeSpan.FromMinutes(BrowserUtcOffsetMinutes)).DateTime;
+		_scheduledDate = LeagueTimeZoneHelper.ConvertUtcToLocalDate(EditingEvent.ScheduledAtUtc, EffectiveBrowserTimeZoneId);
+		_scheduledTime = LeagueTimeZoneHelper.ConvertUtcToTimeText(EditingEvent.ScheduledAtUtc, EffectiveBrowserTimeZoneId);
+		_selectedTimeZoneId = EffectiveBrowserTimeZoneId;
+		_autoSelectedTimeZoneId = null;
 		_notes = EditingEvent.Notes;
 		_gameTypeCode = EditingEvent.GameTypeCode ?? string.Empty;
 		_tableName = EditingEvent.TableName ?? string.Empty;
@@ -271,12 +322,100 @@
 	private void ResetForm()
 	{
 		_name = string.Empty;
-		_scheduledDate = DateTime.UtcNow.Date.AddDays(1);
+		_scheduledDate = LeagueTimeZoneHelper.GetNextLocalEventDate(EffectiveBrowserTimeZoneId);
+		_scheduledTime = LeagueTimeZoneHelper.DefaultTimeText;
+		_selectedTimeZoneId = EffectiveBrowserTimeZoneId;
+		_autoSelectedTimeZoneId = EffectiveBrowserTimeZoneId;
 		_notes = null;
 		_gameTypeCode = string.Empty;
 		_tableName = string.Empty;
 		_ante = 5;
 		_minBet = 10;
 		_errorMessage = null;
+	}
+
+	private void OnScheduledTimeChanged(ChangeEventArgs args)
+	{
+		_scheduledTime = args.Value?.ToString() ?? string.Empty;
+	}
+
+	private void OnTimeZoneSelectionChanged()
+	{
+		_autoSelectedTimeZoneId = null;
+	}
+
+	private void SynchronizeDefaultTimeZone()
+	{
+		if (EditingEvent is not null || string.IsNullOrWhiteSpace(EffectiveBrowserTimeZoneId))
+		{
+			return;
+		}
+
+		if (string.Equals(_selectedTimeZoneId, EffectiveBrowserTimeZoneId, StringComparison.Ordinal))
+		{
+			_autoSelectedTimeZoneId = EffectiveBrowserTimeZoneId;
+			return;
+		}
+
+		if (string.IsNullOrWhiteSpace(_selectedTimeZoneId)
+			|| string.Equals(_selectedTimeZoneId, "UTC", StringComparison.Ordinal)
+			|| string.Equals(_selectedTimeZoneId, _autoSelectedTimeZoneId, StringComparison.Ordinal))
+		{
+			_selectedTimeZoneId = EffectiveBrowserTimeZoneId;
+			_autoSelectedTimeZoneId = EffectiveBrowserTimeZoneId;
+		}
+	}
+
+	private async Task EnsureBrowserTimeZoneSetupAsync()
+	{
+		if (_resolvedTimeZones.Count > 0 && !string.IsNullOrWhiteSpace(_resolvedBrowserTimeZoneId))
+		{
+			return;
+		}
+
+		if (!string.Equals(BrowserTimeZoneId, "UTC", StringComparison.Ordinal) && AvailableTimeZones.Count > 1)
+		{
+			_resolvedBrowserTimeZoneId = BrowserTimeZoneId;
+			_resolvedTimeZones = AvailableTimeZones.ToList();
+			return;
+		}
+
+		try
+		{
+			_timeZoneModule ??= await JSRuntime.InvokeAsync<IJSObjectReference>("import", TimeZoneModulePath);
+			var setup = await _timeZoneModule.InvokeAsync<BrowserTimeZoneSetup>("getTimeZoneSetup");
+			_resolvedBrowserTimeZoneId = string.IsNullOrWhiteSpace(setup.BrowserTimeZoneId) ? BrowserTimeZoneId : setup.BrowserTimeZoneId;
+			_resolvedTimeZones = setup.TimeZones
+				.Where(option => !string.IsNullOrWhiteSpace(option.Id))
+				.DistinctBy(option => option.Id)
+				.ToList();
+		}
+		catch (InvalidOperationException)
+		{
+			// Ignore JS interop errors during SSR.
+		}
+		catch (JSDisconnectedException)
+		{
+			// Ignore circuit disconnects during teardown.
+		}
+		catch (JSException ex)
+		{
+			Logger.LogDebug(ex, "Failed resolving browser time zone in one-off event modal for league {LeagueId}", LeagueId);
+		}
+	}
+
+	public async ValueTask DisposeAsync()
+	{
+		if (_timeZoneModule is not null)
+		{
+			try
+			{
+				await _timeZoneModule.DisposeAsync();
+			}
+			catch (JSDisconnectedException)
+			{
+				// Ignore circuit disconnects during teardown.
+			}
+		}
 	}
 }

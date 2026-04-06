@@ -66,7 +66,8 @@ public class LeaguesApiUpdateEventTests(ApiWebApplicationFactory factory) : ApiI
 		SetUser("league-update-season-member");
 		var response = await Client.PutAsJsonAsync($"/api/v1/leagues/{leagueId}/seasons/{seasonId}/events/{eventId}", new UpdateLeagueSeasonEventRequest
 		{
-			Name = "Week 1 Updated"
+			Name = "Week 1 Updated",
+			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(14)
 		}, JsonOptions);
 
 		response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
@@ -85,7 +86,8 @@ public class LeaguesApiUpdateEventTests(ApiWebApplicationFactory factory) : ApiI
 
 		var response = await Client.PutAsJsonAsync($"/api/v1/leagues/{leagueId}/seasons/{seasonId}/events/{eventId}", new UpdateLeagueSeasonEventRequest
 		{
-			Name = "Week 1 Updated"
+			Name = "Week 1 Updated",
+			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(14)
 		}, JsonOptions);
 
 		response.StatusCode.Should().Be(HttpStatusCode.Conflict);
@@ -198,7 +200,8 @@ public class LeaguesApiUpdateEventTests(ApiWebApplicationFactory factory) : ApiI
 		var createEventResponse = await PostAsync($"/api/v1/leagues/{league.LeagueId}/seasons/{season!.SeasonId}/events", new CreateLeagueSeasonEventRequest
 		{
 			Name = eventName,
-			SequenceNumber = sequenceNumber
+			SequenceNumber = sequenceNumber,
+			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(3)
 		});
 		createEventResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 		var seasonEvent = await createEventResponse.Content.ReadFromJsonAsync<CreateLeagueSeasonEventResponse>(JsonOptions);

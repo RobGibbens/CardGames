@@ -6,7 +6,7 @@ public sealed record CreateLeagueSeasonEventRequest
 
 	public int? SequenceNumber { get; init; }
 
-	public DateTimeOffset? ScheduledAtUtc { get; init; }
+	public DateTimeOffset ScheduledAtUtc { get; init; }
 
 	public string? Notes { get; init; }
 }

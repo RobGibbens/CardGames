@@ -6120,6 +6120,23 @@ playing-card.card-wild-highlight {
     min-width: 8.5rem;
 }
 
+.league-form-inline-fields {
+    --bs-gutter-x: 0.75rem;
+    --bs-gutter-y: 0.75rem;
+    margin: 0;
+}
+
+.league-form-inline-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.league-form-inline-field .form-label {
+    margin-bottom: 0;
+    padding-left: 0.125rem;
+}
+
 .league-modal-input,
 .league-modal-date-input {
     font-family: var(--font-primary);

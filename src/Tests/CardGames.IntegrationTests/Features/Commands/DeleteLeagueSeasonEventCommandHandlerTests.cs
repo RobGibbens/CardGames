@@ -35,7 +35,8 @@ public class DeleteLeagueSeasonEventCommandHandlerTests : IntegrationTestBase
 		var createEvent = await Mediator.Send(new CreateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId, new CreateLeagueSeasonEventRequest
 		{
 			Name = "Week 1",
-			SequenceNumber = 1
+			SequenceNumber = 1,
+			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(3)
 		}));
 
 		var result = await Mediator.Send(new DeleteLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId, createEvent.AsT0.EventId));
@@ -66,7 +67,8 @@ public class DeleteLeagueSeasonEventCommandHandlerTests : IntegrationTestBase
 
 		var createEvent = await Mediator.Send(new CreateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId, new CreateLeagueSeasonEventRequest
 		{
-			Name = "Week 1"
+			Name = "Week 1",
+			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(3)
 		}));
 
 		fakeCurrentUser.UserId = "league-season-delete-outsider";
@@ -98,7 +100,8 @@ public class DeleteLeagueSeasonEventCommandHandlerTests : IntegrationTestBase
 
 		var createEvent = await Mediator.Send(new CreateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId, new CreateLeagueSeasonEventRequest
 		{
-			Name = "Week 1"
+			Name = "Week 1",
+			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(3)
 		}));
 
 		var seasonEvent = await DbContext.LeagueSeasonEvents.SingleAsync(x => x.Id == createEvent.AsT0.EventId);

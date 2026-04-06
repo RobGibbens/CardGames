@@ -35,6 +35,7 @@ public class UpdateLeagueSeasonEventCommandHandlerTests : IntegrationTestBase
 		{
 			Name = "Week 1",
 			SequenceNumber = 1,
+			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(3),
 			Notes = "Original notes"
 		}));
 
@@ -81,19 +82,22 @@ public class UpdateLeagueSeasonEventCommandHandlerTests : IntegrationTestBase
 		var firstEvent = await Mediator.Send(new CreateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId, new CreateLeagueSeasonEventRequest
 		{
 			Name = "Week 1",
-			SequenceNumber = 1
+			SequenceNumber = 1,
+			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(3)
 		}));
 
 		await Mediator.Send(new CreateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId, new CreateLeagueSeasonEventRequest
 		{
 			Name = "Week 2",
-			SequenceNumber = 2
+			SequenceNumber = 2,
+			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(10)
 		}));
 
 		var result = await Mediator.Send(new UpdateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId, firstEvent.AsT0.EventId, new UpdateLeagueSeasonEventRequest
 		{
 			Name = "Week 1",
-			SequenceNumber = 2
+			SequenceNumber = 2,
+			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(5)
 		}));
 
 		result.IsT1.Should().BeTrue();
@@ -121,7 +125,8 @@ public class UpdateLeagueSeasonEventCommandHandlerTests : IntegrationTestBase
 
 		var createEvent = await Mediator.Send(new CreateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId, new CreateLeagueSeasonEventRequest
 		{
-			Name = "Week 1"
+			Name = "Week 1",
+			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(3)
 		}));
 
 		var seasonEvent = await DbContext.LeagueSeasonEvents.SingleAsync(x => x.Id == createEvent.AsT0.EventId);
@@ -130,7 +135,8 @@ public class UpdateLeagueSeasonEventCommandHandlerTests : IntegrationTestBase
 
 		var result = await Mediator.Send(new UpdateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId, createEvent.AsT0.EventId, new UpdateLeagueSeasonEventRequest
 		{
-			Name = "Week 1 Updated"
+			Name = "Week 1 Updated",
+			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(5)
 		}));
 
 		result.IsT1.Should().BeTrue();

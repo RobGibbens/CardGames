@@ -60,6 +60,11 @@ public sealed class CreateLeagueSeasonEventCommandHandler(
 			return new CreateLeagueSeasonEventError(CreateLeagueSeasonEventErrorCode.Forbidden, "Only league managers or admins can create season events.");
 		}
 
+		if (request.Request.ScheduledAtUtc == default)
+		{
+			return new CreateLeagueSeasonEventError(CreateLeagueSeasonEventErrorCode.InvalidRequest, "Scheduled date/time is required.");
+		}
+
 		if (request.Request.SequenceNumber.HasValue)
 		{
 			var sequenceInUse = await context.LeagueSeasonEvents
