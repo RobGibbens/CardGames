@@ -85,7 +85,7 @@
 													{
 														<button class="btn btn-sm btn-outline-primary league-action-btn" @onclick="() => OpenTable.InvokeAsync(seasonEvent.LaunchedGameId.Value)">Open Table</button>
 													}
-													else if (CanManageLeague && IsLaunchWindowOpen(seasonEvent.ScheduledAtUtc))
+													else if (CanManageLeague && CanEditSeasonEvent(seasonEvent))
 													{
 														<button class="btn btn-sm btn-primary league-action-btn" @onclick="() => LaunchSeasonEvent.InvokeAsync(seasonEvent.EventId)" disabled="@(LaunchingSeasonEventId == seasonEvent.EventId)">Launch Play</button>
 													}
@@ -141,7 +141,7 @@
 								{
 									<button class="btn btn-sm btn-outline-primary league-action-btn" @onclick="() => OpenTable.InvokeAsync(oneOff.LaunchedGameId.Value)">Open Table</button>
 								}
-								else if (CanManageLeague && IsLaunchWindowOpen(oneOff.ScheduledAtUtc))
+								else if (CanManageLeague && CanEditOneOffEvent(oneOff))
 								{
 									<button class="btn btn-sm btn-primary league-action-btn" @onclick="() => LaunchOneOffEvent.InvokeAsync(oneOff.EventId)" disabled="@(LaunchingOneOffEventId == oneOff.EventId)">Launch Play</button>
 								}
@@ -234,14 +234,6 @@
 	private string FormatDate(DateTimeOffset? value)
 	{
 		return LeagueTimeZoneHelper.FormatDateTime(value, BrowserTimeZoneId);
-	}
-
-	private static bool IsLaunchWindowOpen(DateTimeOffset? scheduledAtUtc)
-	{
-		if (!scheduledAtUtc.HasValue)
-			return false;
-
-		return DateTimeOffset.UtcNow >= scheduledAtUtc.Value.AddHours(-2);
 	}
 
 	private static bool CanEditSeasonEvent(LeagueSeasonEventDto seasonEvent)

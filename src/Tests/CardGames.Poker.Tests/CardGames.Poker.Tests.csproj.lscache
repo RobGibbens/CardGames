@@ -147,6 +147,7 @@ Web/
  TablePlayPairPressureWildCardsTests.cs
  TablePlayScrewYourNeighborDecisionTests.cs
  TablePlaySeatHandDescriptionTests.cs
+ TablePlayTournamentBuyInTests.cs
  TableSeatVisibilityTests.cs
 
 [metadataReferences]

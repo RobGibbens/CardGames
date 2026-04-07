@@ -2489,46 +2489,7 @@
                 var gamesResponse = gameResponse.Content;
                 _gameTypeCode = gamesResponse.GameTypeCode;
 
-                // Convert to GetGameResponse format for compatibility with existing code
-                _gameResponse = new GetGameResponse(
-                    ante: gamesResponse.Ante,
-                    bigBet: gamesResponse.BigBet,
-                    bigBlind: gamesResponse.BigBlind,
-                    bringIn: gamesResponse.BringIn,
-                    bringInPlayerIndex: gamesResponse.BringInPlayerIndex,
-                    canContinue: gamesResponse.CanContinue,
-                    createdAt: gamesResponse.CreatedAt,
-                    createdById: gamesResponse.CreatedById,
-                    createdByName: gamesResponse.CreatedByName,
-                    currentDrawPlayerIndex: gamesResponse.CurrentDrawPlayerIndex,
-                    currentHandNumber: gamesResponse.CurrentHandNumber,
-                    currentPhase: gamesResponse.CurrentPhase,
-                    currentPhaseDescription: gamesResponse.CurrentPhaseDescription,
-                    currentPlayerIndex: gamesResponse.CurrentPlayerIndex,
-                    dealerPosition: gamesResponse.DealerPosition,
-                    endedAt: gamesResponse.EndedAt,
-                    gameSettings: gamesResponse.GameSettings,
-                    gameTypeCode: gamesResponse.GameTypeCode,
-                    gameTypeId: gamesResponse.GameTypeId,
-                    gameTypeName: gamesResponse.GameTypeName,
-                    id: gamesResponse.Id,
-                    maximumNumberOfPlayers: gamesResponse.MaximumNumberOfPlayers,
-                    minBet: gamesResponse.MinBet,
-                    minimumNumberOfPlayers: gamesResponse.MinimumNumberOfPlayers,
-                    name: gamesResponse.Name,
-                    randomSeed: gamesResponse.RandomSeed,
-                    rowVersion: gamesResponse.RowVersion,
-                    smallBet: gamesResponse.SmallBet,
-                    smallBlind: gamesResponse.SmallBlind,
-                    startedAt: gamesResponse.StartedAt,
-                    status: gamesResponse.Status,
-                    updatedAt: gamesResponse.UpdatedAt
-                )
-                {
-                    AreOddsVisibleToAllPlayers = gamesResponse.AreOddsVisibleToAllPlayers,
-                    MaxBuyIn = gamesResponse.MaxBuyIn,
-                    RequiresJoinApproval = gamesResponse.RequiresJoinApproval
-                };
+                _gameResponse = CreateLocalGameResponse(gamesResponse);
                 _allowedDealerChoiceGameCodes = ParseAllowedDealerChoiceGameCodes(gamesResponse.GameSettings);
 
                 _currentActorSeatIndex = _gameResponse.CurrentPlayerIndex;
@@ -2588,6 +2549,49 @@
             _isLoading = false;
             await InvokeStateHasChangedAsync();
         }
+    }
+
+    private static GetGameResponse CreateLocalGameResponse(GetGameResponse gamesResponse)
+    {
+        return new GetGameResponse(
+            ante: gamesResponse.Ante,
+            bigBet: gamesResponse.BigBet,
+            bigBlind: gamesResponse.BigBlind,
+            bringIn: gamesResponse.BringIn,
+            bringInPlayerIndex: gamesResponse.BringInPlayerIndex,
+            canContinue: gamesResponse.CanContinue,
+            createdAt: gamesResponse.CreatedAt,
+            createdById: gamesResponse.CreatedById,
+            createdByName: gamesResponse.CreatedByName,
+            currentDrawPlayerIndex: gamesResponse.CurrentDrawPlayerIndex,
+            currentHandNumber: gamesResponse.CurrentHandNumber,
+            currentPhase: gamesResponse.CurrentPhase,
+            currentPhaseDescription: gamesResponse.CurrentPhaseDescription,
+            currentPlayerIndex: gamesResponse.CurrentPlayerIndex,
+            dealerPosition: gamesResponse.DealerPosition,
+            endedAt: gamesResponse.EndedAt,
+            gameSettings: gamesResponse.GameSettings,
+            gameTypeCode: gamesResponse.GameTypeCode,
+            gameTypeId: gamesResponse.GameTypeId,
+            gameTypeName: gamesResponse.GameTypeName,
+            id: gamesResponse.Id,
+            maximumNumberOfPlayers: gamesResponse.MaximumNumberOfPlayers,
+            minBet: gamesResponse.MinBet,
+            minimumNumberOfPlayers: gamesResponse.MinimumNumberOfPlayers,
+            name: gamesResponse.Name,
+            randomSeed: gamesResponse.RandomSeed,
+            rowVersion: gamesResponse.RowVersion,
+            smallBet: gamesResponse.SmallBet,
+            smallBlind: gamesResponse.SmallBlind,
+            startedAt: gamesResponse.StartedAt,
+            status: gamesResponse.Status,
+            updatedAt: gamesResponse.UpdatedAt)
+        {
+            AreOddsVisibleToAllPlayers = gamesResponse.AreOddsVisibleToAllPlayers,
+            MaxBuyIn = gamesResponse.MaxBuyIn,
+            RequiresJoinApproval = gamesResponse.RequiresJoinApproval,
+            TournamentBuyIn = gamesResponse.TournamentBuyIn
+        };
     }
 
     private async Task GetPlayersAndUpdateSeatsAsync()

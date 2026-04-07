@@ -27,10 +27,10 @@
   - [x] The edit and delete buttons on lobby are not styled correctly
   - [ ] Active games should have an info button to see who's playing
   - [x] Upcoming events should show the variant
-  - [ ] Can't specify buy-in
-  - [ ] Tournaments on the lobby page don't allow you to start/join
+  - [x] Can't specify buy-in
+  - [x] Tournaments on the lobby page don't allow you to start/join
   - [ ] Change the UI of the Schedule page, remove segmented control
-  - [ ] When the host clicks "Launch Play" it auto buys in for 100
+  - [x] When the host clicks "Launch Play" it auto buys in for 100
   - [ ] When the host clicks "Launch Play", send a signalr message to update the schedule and lobby pages
   - [ ] The description at the top of the tableplay should read "Tournament"
   - [ ] When joining, automatically take a seat
