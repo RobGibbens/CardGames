@@ -31,27 +31,30 @@ public sealed class GetLeagueOneOffEventsQueryHandler(
 			return new GetLeagueOneOffEventsError(GetLeagueOneOffEventsErrorCode.Forbidden, "Only active members can view one-off events.");
 		}
 
-		var events = await context.LeagueOneOffEvents
-			.AsNoTracking()
-			.Where(x => x.LeagueId == request.LeagueId)
-			.OrderBy(x => x.ScheduledAtUtc)
-			.ThenBy(x => x.CreatedAtUtc)
-			.Select(x => new LeagueOneOffEventDto
+		var events = await (
+			from oneOffEvent in context.LeagueOneOffEvents.AsNoTracking()
+			where oneOffEvent.LeagueId == request.LeagueId
+			join gameType in context.GameTypes.AsNoTracking()
+				on oneOffEvent.GameTypeCode equals gameType.Code into gameTypes
+			from gameType in gameTypes.DefaultIfEmpty()
+			orderby oneOffEvent.ScheduledAtUtc, oneOffEvent.CreatedAtUtc
+			select new LeagueOneOffEventDto
 			{
-				EventId = x.Id,
-				LeagueId = x.LeagueId,
-				Name = x.Name,
-				ScheduledAtUtc = x.ScheduledAtUtc,
-				EventType = (Contracts.LeagueOneOffEventType)x.EventType,
-				Status = (Contracts.LeagueOneOffEventStatus)x.Status,
-				Notes = x.Notes,
-				CreatedByUserId = x.CreatedByUserId,
-				CreatedAtUtc = x.CreatedAtUtc,
-				LaunchedGameId = x.LaunchedGameId,
-				GameTypeCode = x.GameTypeCode,
-				Ante = x.Ante,
-				MinBet = x.MinBet,
-				TournamentBuyIn = x.TournamentBuyIn
+				EventId = oneOffEvent.Id,
+				LeagueId = oneOffEvent.LeagueId,
+				Name = oneOffEvent.Name,
+				ScheduledAtUtc = oneOffEvent.ScheduledAtUtc,
+				EventType = (Contracts.LeagueOneOffEventType)oneOffEvent.EventType,
+				Status = (Contracts.LeagueOneOffEventStatus)oneOffEvent.Status,
+				Notes = oneOffEvent.Notes,
+				CreatedByUserId = oneOffEvent.CreatedByUserId,
+				CreatedAtUtc = oneOffEvent.CreatedAtUtc,
+				LaunchedGameId = oneOffEvent.LaunchedGameId,
+				GameTypeCode = oneOffEvent.GameTypeCode,
+				GameTypeName = gameType != null ? gameType.Name : null,
+				Ante = oneOffEvent.Ante,
+				MinBet = oneOffEvent.MinBet,
+				TournamentBuyIn = oneOffEvent.TournamentBuyIn
 			})
 			.ToListAsync(cancellationToken);
 

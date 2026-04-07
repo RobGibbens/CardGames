@@ -24,7 +24,9 @@
   - [ ] Validation errors should look better
   - [ ] Tournaments blinds should increase as time goes on
   - [x] Allows creating tournaments in the past
-  - [ ] The edit and delete buttons on lobby are not styled correctly
+  - [x] The edit and delete buttons on lobby are not styled correctly
+  - [ ] Active games should have an info button to see who's playing
+  - [x] Upcoming events should show the variant
   - [ ] Can't specify buy-in
   - [ ] Tournaments on the lobby page don't allow you to start/join
   - [ ] Change the UI of the Schedule page, remove segmented control
