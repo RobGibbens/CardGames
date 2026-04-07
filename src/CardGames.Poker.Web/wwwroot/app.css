@@ -6110,6 +6110,79 @@ playing-card.card-wild-highlight {
     gap: 1rem;
 }
 
+.create-league-event-modal .league-form-error-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.875rem;
+    margin: 0;
+    padding: 0.9rem 1rem;
+    border: 1px solid rgba(185, 28, 28, 0.22);
+    border-left: 4px solid var(--primary);
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(220, 38, 38, 0.14) 0%, rgba(127, 29, 29, 0.06) 100%);
+    color: #7f1d1d;
+    box-shadow: 0 10px 24px rgba(127, 29, 29, 0.08);
+}
+
+.create-league-event-modal .league-form-error-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 1.85rem;
+    height: 1.85rem;
+    border-radius: 999px;
+    background: rgba(220, 38, 38, 0.14);
+    color: var(--primary);
+}
+
+.create-league-event-modal .league-form-error-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+}
+
+.create-league-event-modal .league-form-error-title {
+    font-size: 0.74rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+
+.create-league-event-modal .league-form-error-message {
+    font-size: 0.96rem;
+    font-weight: 600;
+    line-height: 1.45;
+}
+
+[data-theme="dark"] .create-league-event-modal .league-form-error-alert {
+    border-color: rgba(248, 113, 113, 0.28);
+    background: linear-gradient(135deg, rgba(127, 29, 29, 0.52) 0%, rgba(69, 10, 10, 0.72) 100%);
+    color: #fecaca;
+    box-shadow: none;
+}
+
+[data-theme="dark"] .create-league-event-modal .league-form-error-icon {
+    background: rgba(248, 113, 113, 0.16);
+    color: #fecaca;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .create-league-event-modal .league-form-error-alert {
+        border-color: rgba(248, 113, 113, 0.28);
+        background: linear-gradient(135deg, rgba(127, 29, 29, 0.52) 0%, rgba(69, 10, 10, 0.72) 100%);
+        color: #fecaca;
+        box-shadow: none;
+    }
+
+    :root:not([data-theme="light"]) .create-league-event-modal .league-form-error-icon {
+        background: rgba(248, 113, 113, 0.16);
+        color: #fecaca;
+    }
+}
+
 .create-league-event-modal .league-form-inline-fields {
     display: grid;
     gap: 1rem;

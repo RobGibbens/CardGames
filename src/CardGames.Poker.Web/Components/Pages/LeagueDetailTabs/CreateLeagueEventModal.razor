@@ -21,7 +21,15 @@
 			<div class="confirm-dialog-body league-form-modal-body text-start">
 				@if (!string.IsNullOrWhiteSpace(_errorMessage))
 				{
-					<div class="alert alert-danger py-2 mb-2" role="alert">@_errorMessage</div>
+					<div class="league-form-error-alert" role="alert" aria-live="assertive" aria-atomic="true">
+						<span class="league-form-error-icon" aria-hidden="true">
+							<i class="fa-solid fa-triangle-exclamation"></i>
+						</span>
+						<div class="league-form-error-content">
+							<span class="league-form-error-title">Unable to save event</span>
+							<span class="league-form-error-message">@_errorMessage</span>
+						</div>
+					</div>
 				}
 				<div class="form-floating" data-label="Table name">
 					<InputText id="one-off-name" class="form-control league-modal-input" @bind-Value="_name" maxlength="120" placeholder="Table name" />

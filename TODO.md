@@ -21,7 +21,7 @@
   - [x] Can't edit future tournament
   - [x] Can't delete future tournament
   - [x] Can't add a start time for tournament
-  - [ ] Validation errors should look better
+  - [x] Validation errors should look better
   - [ ] Tournaments blinds should increase as time goes on
   - [x] Allows creating tournaments in the past
   - [x] The edit and delete buttons on lobby are not styled correctly
