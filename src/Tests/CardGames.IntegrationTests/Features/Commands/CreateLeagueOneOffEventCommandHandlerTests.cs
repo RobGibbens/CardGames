@@ -35,4 +35,31 @@ public class CreateLeagueOneOffEventCommandHandlerTests : IntegrationTestBase
 		result.AsT0.LeagueId.Should().Be(leagueId);
 		result.AsT0.Name.Should().Be("Friday Night");
 	}
+
+	[Fact]
+	public async Task Handle_PastScheduledDate_ReturnsInvalidRequest()
+	{
+		var fakeCurrentUser = (FakeCurrentUserService)Scope.ServiceProvider.GetRequiredService<ICurrentUserService>();
+		fakeCurrentUser.UserId = "league-one-off-past-admin";
+		fakeCurrentUser.IsAuthenticated = true;
+
+		var createLeague = await Mediator.Send(new CreateLeagueCommand(new CardGames.Poker.Api.Contracts.CreateLeagueRequest
+		{
+			Name = "OneOff Past League"
+		}));
+
+		createLeague.IsT0.Should().BeTrue();
+		var leagueId = createLeague.AsT0.LeagueId;
+
+		var result = await Mediator.Send(new CreateLeagueOneOffEventCommand(leagueId, new CardGames.Poker.Api.Contracts.CreateLeagueOneOffEventRequest
+		{
+			Name = "Friday Night",
+			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(-1),
+			EventType = CardGames.Poker.Api.Contracts.LeagueOneOffEventType.CashGame
+		}));
+
+		result.IsT1.Should().BeTrue();
+		result.AsT1.Code.Should().Be(CreateLeagueOneOffEventErrorCode.InvalidRequest);
+		result.AsT1.Message.Should().Be("Scheduled date/time must be in the future.");
+	}
 }

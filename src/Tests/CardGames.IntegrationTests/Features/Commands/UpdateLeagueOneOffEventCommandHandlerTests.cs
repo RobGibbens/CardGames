@@ -135,4 +135,39 @@ public class UpdateLeagueOneOffEventCommandHandlerTests : IntegrationTestBase
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(UpdateLeagueOneOffEventErrorCode.Conflict);
 	}
+
+	[Fact]
+	public async Task Handle_PastScheduledDate_ReturnsInvalidRequest()
+	{
+		var fakeCurrentUser = (FakeCurrentUserService)Scope.ServiceProvider.GetRequiredService<ICurrentUserService>();
+		fakeCurrentUser.UserId = "league-one-off-update-past-admin";
+		fakeCurrentUser.IsAuthenticated = true;
+
+		var createLeague = await Mediator.Send(new CreateLeagueCommand(new CreateLeagueRequest
+		{
+			Name = "One-Off Update Past League"
+		}));
+
+		var leagueId = createLeague.AsT0.LeagueId;
+
+		var createEvent = await Mediator.Send(new CreateLeagueOneOffEventCommand(leagueId, new CreateLeagueOneOffEventRequest
+		{
+			Name = "Friday Night",
+			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(2),
+			EventType = ContractLeagueOneOffEventType.CashGame,
+			GameTypeCode = "HOLDEM"
+		}));
+
+		var result = await Mediator.Send(new UpdateLeagueOneOffEventCommand(leagueId, createEvent.AsT0.EventId, new UpdateLeagueOneOffEventRequest
+		{
+			Name = "Friday Night Updated",
+			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(-1),
+			EventType = ContractLeagueOneOffEventType.CashGame,
+			GameTypeCode = "HOLDEM"
+		}));
+
+		result.IsT1.Should().BeTrue();
+		result.AsT1.Code.Should().Be(UpdateLeagueOneOffEventErrorCode.InvalidRequest);
+		result.AsT1.Message.Should().Be("Scheduled date/time must be in the future.");
+	}
 }

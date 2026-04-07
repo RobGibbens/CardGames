@@ -142,4 +142,40 @@ public class UpdateLeagueSeasonEventCommandHandlerTests : IntegrationTestBase
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(UpdateLeagueSeasonEventErrorCode.Conflict);
 	}
+
+	[Fact]
+	public async Task Handle_PastScheduledDate_ReturnsInvalidRequest()
+	{
+		var fakeCurrentUser = (FakeCurrentUserService)Scope.ServiceProvider.GetRequiredService<ICurrentUserService>();
+		fakeCurrentUser.UserId = "league-season-update-past-admin";
+		fakeCurrentUser.IsAuthenticated = true;
+
+		var createLeague = await Mediator.Send(new CreateLeagueCommand(new CreateLeagueRequest
+		{
+			Name = "Season Update Past League"
+		}));
+
+		var leagueId = createLeague.AsT0.LeagueId;
+
+		var createSeason = await Mediator.Send(new CreateLeagueSeasonCommand(leagueId, new CreateLeagueSeasonRequest
+		{
+			Name = "Spring 2027"
+		}));
+
+		var createEvent = await Mediator.Send(new CreateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId, new CreateLeagueSeasonEventRequest
+		{
+			Name = "Week 1",
+			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(3)
+		}));
+
+		var result = await Mediator.Send(new UpdateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId, createEvent.AsT0.EventId, new UpdateLeagueSeasonEventRequest
+		{
+			Name = "Week 1 Updated",
+			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(-1)
+		}));
+
+		result.IsT1.Should().BeTrue();
+		result.AsT1.Code.Should().Be(UpdateLeagueSeasonEventErrorCode.InvalidRequest);
+		result.AsT1.Message.Should().Be("Scheduled date/time must be in the future.");
+	}
 }

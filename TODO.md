@@ -20,9 +20,10 @@
   - [x] On the "Create Tournament" and "Create Cash Game" modals, add descriptions
   - [x] Can't edit future tournament
   - [x] Can't delete future tournament
-  - [ ] Can't add a start time for tournament
+  - [x] Can't add a start time for tournament
+  - [ ] Validation errors should look better
   - [ ] Tournaments blinds should increase as time goes on
-  - [ ] Allows creating tournaments in the past
+  - [x] Allows creating tournaments in the past
   - [ ] Can't specify buy-in
   - [ ] Tournaments on the lobby page don't allow you to start/join
   - [ ] Change the UI of the Schedule page, remove segmented control

@@ -1450,6 +1450,13 @@ DateTimeKind.Utc)) : null,
 			return;
 		}
 
+		if (!LeagueTimeZoneHelper.IsScheduledAtInFuture(scheduledAtUtc))
+		{
+			_message = LeagueTimeZoneHelper.ScheduledAtUtcMustBeInFutureMessage;
+			_isError = true;
+			return;
+		}
+
 		_isSubmittingSeasonEvent = true;
 		var isEditing = _editingSeasonEventId.HasValue;
 		try

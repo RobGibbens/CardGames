@@ -1,5 +1,6 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Features.Leagues.v1.Commands;
 using CardGames.Poker.Api.Features.Leagues.v1.Governance;
 using CardGames.Poker.Api.Infrastructure;
 using MediatR;
@@ -28,6 +29,11 @@ public sealed class UpdateLeagueOneOffEventCommandHandler(
 		if (request.Request.ScheduledAtUtc == default)
 		{
 			return new UpdateLeagueOneOffEventError(UpdateLeagueOneOffEventErrorCode.InvalidRequest, "Scheduled date/time is required.");
+		}
+
+		if (!LeagueEventSchedulingGuard.IsScheduledAtInFuture(request.Request.ScheduledAtUtc))
+		{
+			return new UpdateLeagueOneOffEventError(UpdateLeagueOneOffEventErrorCode.InvalidRequest, LeagueEventSchedulingGuard.ScheduledAtUtcMustBeInFutureMessage);
 		}
 
 		if (string.IsNullOrWhiteSpace(request.Request.GameTypeCode))

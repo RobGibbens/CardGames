@@ -1,6 +1,7 @@
 using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Features.Leagues.v1.Commands;
 using CardGames.Poker.Api.Features.Leagues.v1.Governance;
 using CardGames.Poker.Api.Infrastructure;
 using MediatR;
@@ -29,6 +30,11 @@ public sealed class CreateLeagueOneOffEventCommandHandler(
 		if (request.Request.ScheduledAtUtc == default)
 		{
 			return new CreateLeagueOneOffEventError(CreateLeagueOneOffEventErrorCode.InvalidRequest, "Scheduled date/time is required.");
+		}
+
+		if (!LeagueEventSchedulingGuard.IsScheduledAtInFuture(request.Request.ScheduledAtUtc))
+		{
+			return new CreateLeagueOneOffEventError(CreateLeagueOneOffEventErrorCode.InvalidRequest, LeagueEventSchedulingGuard.ScheduledAtUtcMustBeInFutureMessage);
 		}
 
 		var leagueExists = await context.Leagues

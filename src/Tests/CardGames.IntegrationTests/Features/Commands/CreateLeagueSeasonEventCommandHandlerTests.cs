@@ -1,5 +1,6 @@
 using CardGames.IntegrationTests.Infrastructure;
 using CardGames.IntegrationTests.Infrastructure.Fakes;
+using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeague;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueSeason;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueSeasonEvent;
@@ -41,5 +42,39 @@ public class CreateLeagueSeasonEventCommandHandlerTests : IntegrationTestBase
 		result.IsT0.Should().BeTrue();
 		result.AsT0.SeasonId.Should().Be(createSeason.AsT0.SeasonId);
 		result.AsT0.SequenceNumber.Should().Be(1);
+	}
+
+	[Fact]
+	public async Task Handle_PastScheduledDate_ReturnsInvalidRequest()
+	{
+		var fakeCurrentUser = (FakeCurrentUserService)Scope.ServiceProvider.GetRequiredService<ICurrentUserService>();
+		fakeCurrentUser.UserId = "league-season-event-past-admin";
+		fakeCurrentUser.IsAuthenticated = true;
+
+		var createLeague = await Mediator.Send(new CreateLeagueCommand(new CreateLeagueRequest
+		{
+			Name = "Season Event Past League"
+		}));
+
+		createLeague.IsT0.Should().BeTrue();
+		var leagueId = createLeague.AsT0.LeagueId;
+
+		var createSeason = await Mediator.Send(new CreateLeagueSeasonCommand(leagueId, new CreateLeagueSeasonRequest
+		{
+			Name = "Summer 2026"
+		}));
+
+		createSeason.IsT0.Should().BeTrue();
+
+		var result = await Mediator.Send(new CreateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId, new CreateLeagueSeasonEventRequest
+		{
+			Name = "Week 1",
+			SequenceNumber = 1,
+			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(-1)
+		}));
+
+		result.IsT1.Should().BeTrue();
+		result.AsT1.Code.Should().Be(CreateLeagueSeasonEventErrorCode.InvalidRequest);
+		result.AsT1.Message.Should().Be("Scheduled date/time must be in the future.");
 	}
 }

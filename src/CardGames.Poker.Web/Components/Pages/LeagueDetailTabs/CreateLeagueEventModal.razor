@@ -261,6 +261,12 @@
 			return;
 		}
 
+		if (!LeagueTimeZoneHelper.IsScheduledAtInFuture(scheduledAtUtc))
+		{
+			_errorMessage = LeagueTimeZoneHelper.ScheduledAtUtcMustBeInFutureMessage;
+			return;
+		}
+
 		_isSubmitting = true;
 		try
 		{
