@@ -73,6 +73,17 @@
 						</div>
 					</div>
 				</div>
+				@if (EventType == LeagueOneOffEventType.Tournament)
+				{
+					<div class="form-floating" data-label="Tournament Buy-In">
+						<InputNumber id="one-off-tournament-buy-in"
+							class="form-control league-modal-input"
+							@bind-Value="_tournamentBuyIn"
+							@bind-Value:after="ClampTournamentBuyIn"
+							min="1"
+							max="@GetTournamentBuyInMax()" />
+					</div>
+				}
 				<div class="form-floating" data-label="Notes (optional)">
 					<InputText id="one-off-notes" class="form-control league-modal-input" @bind-Value="_notes" maxlength="512" placeholder="Notes (optional)" />
 				</div>
@@ -127,6 +138,7 @@
 	private string _gameTypeCode = string.Empty;
 	private int _ante = 5;
 	private int _minBet = 10;
+	private int _tournamentBuyIn = 100;
 	private bool _isSubmitting;
 	private string? _errorMessage;
 	private bool _isLoadingGames;
@@ -135,6 +147,7 @@
 	private string? _initializedContextKey;
 	private string? _autoSelectedTimeZoneId;
 	private const string TimeZoneModulePath = "/Components/Pages/LeagueDetail.razor.js";
+	private const int DefaultTournamentBuyIn = 100;
 	private IJSObjectReference? _timeZoneModule;
 	private string? _resolvedBrowserTimeZoneId;
 	private List<BrowserTimeZoneOption> _resolvedTimeZones = [];
@@ -255,6 +268,12 @@
 			return;
 		}
 
+		if (EventType == LeagueOneOffEventType.Tournament && !TryValidateTournamentBuyIn(out var tournamentBuyInError))
+		{
+			_errorMessage = tournamentBuyInError;
+			return;
+		}
+
 		if (!LeagueTimeZoneHelper.TryConvertLocalToUtc(_scheduledDate, _scheduledTime, _selectedTimeZoneId, out var scheduledAtUtc, out var errorMessage))
 		{
 			_errorMessage = errorMessage;
@@ -281,7 +300,8 @@
 					Notes = string.IsNullOrWhiteSpace(_notes) ? null : _notes.Trim(),
 					GameTypeCode = _gameTypeCode,
 					Ante = _ante,
-					MinBet = _minBet
+					MinBet = _minBet,
+					TournamentBuyIn = EventType == LeagueOneOffEventType.Tournament ? _tournamentBuyIn : null
 				});
 			}
 			else
@@ -294,7 +314,8 @@
 					Notes = string.IsNullOrWhiteSpace(_notes) ? null : _notes.Trim(),
 					GameTypeCode = _gameTypeCode,
 					Ante = _ante,
-					MinBet = _minBet
+					MinBet = _minBet,
+					TournamentBuyIn = EventType == LeagueOneOffEventType.Tournament ? _tournamentBuyIn : null
 				});
 			}
 
@@ -337,6 +358,7 @@
 		_gameTypeCode = EditingEvent.GameTypeCode ?? string.Empty;
 		_ante = EditingEvent.Ante;
 		_minBet = EditingEvent.MinBet;
+		_tournamentBuyIn = EditingEvent.TournamentBuyIn ?? DefaultTournamentBuyIn;
 		_errorMessage = null;
 	}
 
@@ -351,8 +373,31 @@
 		_gameTypeCode = string.Empty;
 		_ante = 5;
 		_minBet = 10;
+		_tournamentBuyIn = DefaultTournamentBuyIn;
 		_errorMessage = null;
 	}
+
+	private bool TryValidateTournamentBuyIn(out string? errorMessage)
+	{
+		ClampTournamentBuyIn();
+		if (_tournamentBuyIn < GetTournamentBuyInMin() || _tournamentBuyIn > GetTournamentBuyInMax())
+		{
+			errorMessage = $"Tournament buy-in must be between {GetTournamentBuyInMin():N0} and {GetTournamentBuyInMax():N0}.";
+			return false;
+		}
+
+		errorMessage = null;
+		return true;
+	}
+
+	private void ClampTournamentBuyIn()
+	{
+		_tournamentBuyIn = Math.Clamp(_tournamentBuyIn, GetTournamentBuyInMin(), GetTournamentBuyInMax());
+	}
+
+	private static int GetTournamentBuyInMin() => 1;
+
+	private static int GetTournamentBuyInMax() => LeagueEventBuyInRules.MaxTournamentBuyIn;
 
 	private void OnScheduledTimeChanged(ChangeEventArgs args)
 	{

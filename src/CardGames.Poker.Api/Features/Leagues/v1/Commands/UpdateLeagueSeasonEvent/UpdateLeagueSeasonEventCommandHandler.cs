@@ -1,3 +1,4 @@
+using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands;
@@ -68,7 +69,7 @@ public sealed class UpdateLeagueSeasonEventCommandHandler(
 			return new UpdateLeagueSeasonEventError(UpdateLeagueSeasonEventErrorCode.EventNotFound, "Season event not found in league season.");
 		}
 
-		if (seasonEvent.Status != LeagueSeasonEventStatus.Planned || seasonEvent.LaunchedGameId.HasValue)
+		if (seasonEvent.Status != Data.Entities.LeagueSeasonEventStatus.Planned || seasonEvent.LaunchedGameId.HasValue)
 		{
 			return new UpdateLeagueSeasonEventError(UpdateLeagueSeasonEventErrorCode.Conflict, "Only planned, unlaunched season events can be edited.");
 		}
@@ -81,6 +82,12 @@ public sealed class UpdateLeagueSeasonEventCommandHandler(
 		if (!LeagueEventSchedulingGuard.IsScheduledAtInFuture(request.Request.ScheduledAtUtc))
 		{
 			return new UpdateLeagueSeasonEventError(UpdateLeagueSeasonEventErrorCode.InvalidRequest, LeagueEventSchedulingGuard.ScheduledAtUtcMustBeInFutureMessage);
+		}
+
+		var tournamentBuyInError = ValidateSeasonTournamentBuyIn(request.Request.TournamentBuyIn);
+		if (tournamentBuyInError is not null)
+		{
+			return new UpdateLeagueSeasonEventError(UpdateLeagueSeasonEventErrorCode.InvalidRequest, tournamentBuyInError);
 		}
 
 		if (request.Request.SequenceNumber.HasValue)
@@ -103,9 +110,25 @@ public sealed class UpdateLeagueSeasonEventCommandHandler(
 		seasonEvent.SequenceNumber = request.Request.SequenceNumber;
 		seasonEvent.ScheduledAtUtc = request.Request.ScheduledAtUtc;
 		seasonEvent.Notes = string.IsNullOrWhiteSpace(request.Request.Notes) ? null : request.Request.Notes.Trim();
+		seasonEvent.TournamentBuyIn = request.Request.TournamentBuyIn;
 
 		await context.SaveChangesAsync(cancellationToken);
 
 		return Unit.Value;
+	}
+
+	private static string? ValidateSeasonTournamentBuyIn(int? tournamentBuyIn)
+	{
+		if (!tournamentBuyIn.HasValue)
+		{
+			return null;
+		}
+
+		if (tournamentBuyIn.Value <= 0 || tournamentBuyIn.Value > LeagueEventBuyInRules.MaxTournamentBuyIn)
+		{
+			return $"Tournament buy-in must be between 1 and {LeagueEventBuyInRules.MaxTournamentBuyIn:N0}.";
+		}
+
+		return null;
 	}
 }

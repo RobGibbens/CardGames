@@ -45,6 +45,44 @@ public class CreateLeagueSeasonEventCommandHandlerTests : IntegrationTestBase
 	}
 
 	[Fact]
+	public async Task Handle_WithTournamentBuyIn_PersistsTournamentBuyIn()
+	{
+		var fakeCurrentUser = (FakeCurrentUserService)Scope.ServiceProvider.GetRequiredService<ICurrentUserService>();
+		fakeCurrentUser.UserId = "league-season-event-tournament-admin";
+		fakeCurrentUser.IsAuthenticated = true;
+
+		var createLeague = await Mediator.Send(new CreateLeagueCommand(new CardGames.Poker.Api.Contracts.CreateLeagueRequest
+		{
+			Name = "Season Tournament League"
+		}));
+
+		createLeague.IsT0.Should().BeTrue();
+		var leagueId = createLeague.AsT0.LeagueId;
+
+		var createSeason = await Mediator.Send(new CreateLeagueSeasonCommand(leagueId, new CardGames.Poker.Api.Contracts.CreateLeagueSeasonRequest
+		{
+			Name = "Autumn 2026"
+		}));
+
+		createSeason.IsT0.Should().BeTrue();
+
+		var result = await Mediator.Send(new CreateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId, new CardGames.Poker.Api.Contracts.CreateLeagueSeasonEventRequest
+		{
+			Name = "Week 2",
+			SequenceNumber = 2,
+			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(7),
+			TournamentBuyIn = 1800
+		}));
+
+		result.IsT0.Should().BeTrue();
+		result.AsT0.TournamentBuyIn.Should().Be(1800);
+
+		var savedEvent = await DbContext.LeagueSeasonEvents.FindAsync(result.AsT0.EventId);
+		savedEvent.Should().NotBeNull();
+		savedEvent!.TournamentBuyIn.Should().Be(1800);
+	}
+
+	[Fact]
 	public async Task Handle_PastScheduledDate_ReturnsInvalidRequest()
 	{
 		var fakeCurrentUser = (FakeCurrentUserService)Scope.ServiceProvider.GetRequiredService<ICurrentUserService>();

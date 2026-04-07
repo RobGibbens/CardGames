@@ -11,6 +11,8 @@ namespace CardGames.IntegrationTests.Api;
 
 public class LeaguesApiLaunchEventSessionTests(ApiWebApplicationFactory factory) : ApiIntegrationTestBase(factory)
 {
+	private const int SeasonTournamentBuyIn = 300;
+
 	private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
 	{
 		Converters =
@@ -51,6 +53,10 @@ public class LeaguesApiLaunchEventSessionTests(ApiWebApplicationFactory factory)
 
 		var storedGame = await DbContext.Games.FindAsync(launched.GameId);
 		storedGame.Should().NotBeNull();
+		storedGame!.TournamentBuyIn.Should().Be(SeasonTournamentBuyIn);
+
+		var hostGamePlayer = await DbContext.GamePlayers.SingleAsync(x => x.GameId == launched.GameId && x.SeatPosition == 0);
+		hostGamePlayer.StartingChips.Should().Be(SeasonTournamentBuyIn);
 	}
 
 	[Fact]
@@ -164,7 +170,7 @@ public class LeaguesApiLaunchEventSessionTests(ApiWebApplicationFactory factory)
 		outsiderJoin.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
 		SetUser("league-active-member");
-		var memberJoin = await PostAsync($"/api/v1/games/{launched.GameId}/players", new JoinGameRequest(1, 100));
+		var memberJoin = await PostAsync($"/api/v1/games/{launched.GameId}/players", new JoinGameRequest(1, SeasonTournamentBuyIn));
 		memberJoin.StatusCode.Should().Be(HttpStatusCode.OK);
 	}
 
@@ -220,7 +226,8 @@ public class LeaguesApiLaunchEventSessionTests(ApiWebApplicationFactory factory)
 		{
 			Name = "Week 1",
 			SequenceNumber = 1,
-			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(3)
+			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(3),
+			TournamentBuyIn = SeasonTournamentBuyIn
 		});
 		createEventResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 		var seasonEvent = await createEventResponse.Content.ReadFromJsonAsync<CreateLeagueSeasonEventResponse>(JsonOptions);

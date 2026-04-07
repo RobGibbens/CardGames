@@ -1,3 +1,4 @@
+using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands;
@@ -41,6 +42,12 @@ public sealed class UpdateLeagueOneOffEventCommandHandler(
 			return new UpdateLeagueOneOffEventError(UpdateLeagueOneOffEventErrorCode.InvalidRequest, "Game variant is required.");
 		}
 
+		var tournamentBuyInError = ValidateOneOffTournamentBuyIn(request.Request.EventType, request.Request.TournamentBuyIn);
+		if (tournamentBuyInError is not null)
+		{
+			return new UpdateLeagueOneOffEventError(UpdateLeagueOneOffEventErrorCode.InvalidRequest, tournamentBuyInError);
+		}
+
 		var leagueExists = await context.Leagues
 			.AsNoTracking()
 			.AnyAsync(x => x.Id == request.LeagueId, cancellationToken);
@@ -69,21 +76,47 @@ public sealed class UpdateLeagueOneOffEventCommandHandler(
 			return new UpdateLeagueOneOffEventError(UpdateLeagueOneOffEventErrorCode.EventNotFound, "One-off event not found in league.");
 		}
 
-		if (oneOffEvent.Status != LeagueOneOffEventStatus.Planned || oneOffEvent.LaunchedGameId.HasValue)
+		if (oneOffEvent.Status != Data.Entities.LeagueOneOffEventStatus.Planned || oneOffEvent.LaunchedGameId.HasValue)
 		{
 			return new UpdateLeagueOneOffEventError(UpdateLeagueOneOffEventErrorCode.Conflict, "Only planned, unlaunched one-off events can be edited.");
 		}
 
 		oneOffEvent.Name = request.Request.Name.Trim();
 		oneOffEvent.ScheduledAtUtc = request.Request.ScheduledAtUtc;
-		oneOffEvent.EventType = (LeagueOneOffEventType)request.Request.EventType;
+		oneOffEvent.EventType = (Data.Entities.LeagueOneOffEventType)request.Request.EventType;
 		oneOffEvent.Notes = string.IsNullOrWhiteSpace(request.Request.Notes) ? null : request.Request.Notes.Trim();
 		oneOffEvent.GameTypeCode = request.Request.GameTypeCode.Trim();
 		oneOffEvent.Ante = request.Request.Ante;
 		oneOffEvent.MinBet = request.Request.MinBet;
+		oneOffEvent.TournamentBuyIn = request.Request.TournamentBuyIn;
 
 		await context.SaveChangesAsync(cancellationToken);
 
 		return Unit.Value;
+	}
+
+	private static string? ValidateOneOffTournamentBuyIn(CardGames.Poker.Api.Contracts.LeagueOneOffEventType eventType, int? tournamentBuyIn)
+	{
+		if (eventType == CardGames.Poker.Api.Contracts.LeagueOneOffEventType.Tournament)
+		{
+			if (!tournamentBuyIn.HasValue)
+			{
+				return "Tournament buy-in is required for league tournaments.";
+			}
+
+			if (tournamentBuyIn.Value <= 0 || tournamentBuyIn.Value > LeagueEventBuyInRules.MaxTournamentBuyIn)
+			{
+				return $"Tournament buy-in must be between 1 and {LeagueEventBuyInRules.MaxTournamentBuyIn:N0}.";
+			}
+
+			return null;
+		}
+
+		if (tournamentBuyIn.HasValue)
+		{
+			return "Tournament buy-in can only be set for tournament events.";
+		}
+
+		return null;
 	}
 }

@@ -81,7 +81,7 @@
                            @bind="_joinBuyInAmount"
                            @bind:event="oninput"
                            @bind:after="NormalizeJoinBuyIn"
-                           disabled="@IsScrewYourNeighbor" />
+                           disabled="@(IsScrewYourNeighbor || HasFixedTournamentBuyIn)" />
                     <div class="bet-slider-labels">
                         <span>Min @GetJoinBuyInMin().ToString("N0")</span>
                         <span>Max @GetJoinBuyInMax().ToString("N0")</span>
@@ -95,7 +95,7 @@
                            step="1"
                            @bind="_joinBuyInAmount"
                            @bind:after="ClampJoinBuyIn"
-                           disabled="@IsScrewYourNeighbor" />
+                           disabled="@(IsScrewYourNeighbor || HasFixedTournamentBuyIn)" />
 
                 </div>
             </div>
@@ -834,6 +834,8 @@
     private bool _initialized;
     private bool _shouldAutoJoinFromQuery;
     private bool _autoJoinIntentConsumed;
+
+    private bool HasFixedTournamentBuyIn => (_gameResponse?.TournamentBuyIn ?? 0) > 0;
 
     private string? _loggedInUserEmail;
 
@@ -3032,7 +3034,7 @@
             return;
         }
 
-        _joinBuyInAmount = GetRecommendedJoinBuyIn();
+        _joinBuyInAmount = HasFixedTournamentBuyIn ? _gameResponse!.TournamentBuyIn!.Value : GetRecommendedJoinBuyIn();
         _joinBuyInInitializedFromTable = true;
         NormalizeJoinBuyIn();
     }
@@ -3060,6 +3062,11 @@
 
     private int GetRecommendedJoinBuyIn()
     {
+        if (HasFixedTournamentBuyIn)
+        {
+            return _gameResponse!.TournamentBuyIn!.Value;
+        }
+
         if (IsScrewYourNeighbor)
         {
             return GetJoinBuyInMin();
@@ -3072,6 +3079,11 @@
 
     private int GetJoinBuyInMin()
     {
+        if (HasFixedTournamentBuyIn)
+        {
+            return _gameResponse!.TournamentBuyIn!.Value;
+        }
+
         var minBet = _gameResponse?.MinBet ?? 0;
         var ante = _gameResponse?.Ante ?? _ante;
 
@@ -3098,6 +3110,11 @@
 
     private int GetJoinBuyInStep()
     {
+        if (HasFixedTournamentBuyIn)
+        {
+            return 1;
+        }
+
         var minBet = _gameResponse?.MinBet ?? 0;
         var ante = _gameResponse?.Ante ?? _ante;
 
@@ -3119,6 +3136,11 @@
 
     private int GetJoinBuyInMax()
     {
+        if (HasFixedTournamentBuyIn)
+        {
+            return _gameResponse!.TournamentBuyIn!.Value;
+        }
+
         if (IsScrewYourNeighbor)
         {
             return GetJoinBuyInMin();

@@ -27,4 +27,6 @@ public sealed record LeagueOneOffEventDto
 	public int Ante { get; init; }
 
 	public int MinBet { get; init; }
+
+	public int? TournamentBuyIn { get; init; }
 }

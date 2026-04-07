@@ -151,6 +151,8 @@ public sealed class LeagueSeasonEvent : EntityWithRowVersion
 
 	public string? Notes { get; set; }
 
+	public int? TournamentBuyIn { get; set; }
+
 	public required string CreatedByUserId { get; set; }
 
 	public DateTimeOffset CreatedAtUtc { get; set; }
@@ -187,6 +189,8 @@ public sealed class LeagueOneOffEvent : EntityWithRowVersion
 	public int Ante { get; set; } = 10;
 
 	public int MinBet { get; set; } = 20;
+
+	public int? TournamentBuyIn { get; set; }
 
 	public required string CreatedByUserId { get; set; }
 

@@ -63,6 +63,44 @@ public class UpdateLeagueOneOffEventCommandHandlerTests : IntegrationTestBase
 	}
 
 	[Fact]
+	public async Task Handle_TournamentUpdatePersistsTournamentBuyIn()
+	{
+		var fakeCurrentUser = (FakeCurrentUserService)Scope.ServiceProvider.GetRequiredService<ICurrentUserService>();
+		fakeCurrentUser.UserId = "league-one-off-tournament-update-admin";
+		fakeCurrentUser.IsAuthenticated = true;
+
+		var createLeague = await Mediator.Send(new CreateLeagueCommand(new CreateLeagueRequest
+		{
+			Name = "One-Off Tournament Update League"
+		}));
+
+		var leagueId = createLeague.AsT0.LeagueId;
+
+		var createEvent = await Mediator.Send(new CreateLeagueOneOffEventCommand(leagueId, new CreateLeagueOneOffEventRequest
+		{
+			Name = "Friday Night",
+			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(2),
+			EventType = ContractLeagueOneOffEventType.Tournament,
+			GameTypeCode = "HOLDEM",
+			TournamentBuyIn = 1200
+		}));
+
+		var result = await Mediator.Send(new UpdateLeagueOneOffEventCommand(leagueId, createEvent.AsT0.EventId, new UpdateLeagueOneOffEventRequest
+		{
+			Name = "Championship",
+			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(7),
+			EventType = ContractLeagueOneOffEventType.Tournament,
+			GameTypeCode = "OMAHA",
+			TournamentBuyIn = 2400
+		}));
+
+		result.IsT0.Should().BeTrue();
+
+		var savedEvent = await DbContext.LeagueOneOffEvents.AsNoTracking().SingleAsync(x => x.Id == createEvent.AsT0.EventId);
+		savedEvent.TournamentBuyIn.Should().Be(2400);
+	}
+
+	[Fact]
 	public async Task Handle_NonGovernanceMemberCannotUpdateOneOffEvent()
 	{
 		var fakeCurrentUser = (FakeCurrentUserService)Scope.ServiceProvider.GetRequiredService<ICurrentUserService>();

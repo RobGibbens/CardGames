@@ -9,4 +9,6 @@ public sealed record CreateLeagueSeasonEventRequest
 	public DateTimeOffset ScheduledAtUtc { get; init; }
 
 	public string? Notes { get; init; }
+
+	public int? TournamentBuyIn { get; init; }
 }

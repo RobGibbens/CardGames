@@ -71,6 +71,12 @@ public sealed class CreateLeagueSeasonEventCommandHandler(
 			return new CreateLeagueSeasonEventError(CreateLeagueSeasonEventErrorCode.InvalidRequest, LeagueEventSchedulingGuard.ScheduledAtUtcMustBeInFutureMessage);
 		}
 
+		var tournamentBuyInError = ValidateSeasonTournamentBuyIn(request.Request.TournamentBuyIn);
+		if (tournamentBuyInError is not null)
+		{
+			return new CreateLeagueSeasonEventError(CreateLeagueSeasonEventErrorCode.InvalidRequest, tournamentBuyInError);
+		}
+
 		if (request.Request.SequenceNumber.HasValue)
 		{
 			var sequenceInUse = await context.LeagueSeasonEvents
@@ -93,6 +99,7 @@ public sealed class CreateLeagueSeasonEventCommandHandler(
 			ScheduledAtUtc = request.Request.ScheduledAtUtc,
 			Status = Data.Entities.LeagueSeasonEventStatus.Planned,
 			Notes = string.IsNullOrWhiteSpace(request.Request.Notes) ? null : request.Request.Notes.Trim(),
+			TournamentBuyIn = request.Request.TournamentBuyIn,
 			CreatedByUserId = currentUserService.UserId,
 			CreatedAtUtc = DateTimeOffset.UtcNow
 		};
@@ -111,7 +118,23 @@ public sealed class CreateLeagueSeasonEventCommandHandler(
 			Status = (Contracts.LeagueSeasonEventStatus)seasonEvent.Status,
 			Notes = seasonEvent.Notes,
 			CreatedByUserId = seasonEvent.CreatedByUserId,
-			CreatedAtUtc = seasonEvent.CreatedAtUtc
+			CreatedAtUtc = seasonEvent.CreatedAtUtc,
+			TournamentBuyIn = seasonEvent.TournamentBuyIn
 		};
+	}
+
+	private static string? ValidateSeasonTournamentBuyIn(int? tournamentBuyIn)
+	{
+		if (!tournamentBuyIn.HasValue)
+		{
+			return null;
+		}
+
+		if (tournamentBuyIn.Value <= 0 || tournamentBuyIn.Value > LeagueEventBuyInRules.MaxTournamentBuyIn)
+		{
+			return $"Tournament buy-in must be between 1 and {LeagueEventBuyInRules.MaxTournamentBuyIn:N0}.";
+		}
+
+		return null;
 	}
 }

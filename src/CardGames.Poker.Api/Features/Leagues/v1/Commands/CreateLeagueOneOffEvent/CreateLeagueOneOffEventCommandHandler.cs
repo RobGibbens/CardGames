@@ -37,6 +37,12 @@ public sealed class CreateLeagueOneOffEventCommandHandler(
 			return new CreateLeagueOneOffEventError(CreateLeagueOneOffEventErrorCode.InvalidRequest, LeagueEventSchedulingGuard.ScheduledAtUtcMustBeInFutureMessage);
 		}
 
+		var tournamentBuyInError = ValidateOneOffTournamentBuyIn(request.Request.EventType, request.Request.TournamentBuyIn);
+		if (tournamentBuyInError is not null)
+		{
+			return new CreateLeagueOneOffEventError(CreateLeagueOneOffEventErrorCode.InvalidRequest, tournamentBuyInError);
+		}
+
 		var leagueExists = await context.Leagues
 			.AsNoTracking()
 			.AnyAsync(x => x.Id == request.LeagueId, cancellationToken);
@@ -69,6 +75,7 @@ public sealed class CreateLeagueOneOffEventCommandHandler(
 			GameTypeCode = string.IsNullOrWhiteSpace(request.Request.GameTypeCode) ? null : request.Request.GameTypeCode.Trim(),
 			Ante = request.Request.Ante,
 			MinBet = request.Request.MinBet,
+			TournamentBuyIn = request.Request.TournamentBuyIn,
 			CreatedByUserId = currentUserService.UserId,
 			CreatedAtUtc = DateTimeOffset.UtcNow
 		};
@@ -89,7 +96,33 @@ public sealed class CreateLeagueOneOffEventCommandHandler(
 			CreatedAtUtc = oneOffEvent.CreatedAtUtc,
 			GameTypeCode = oneOffEvent.GameTypeCode,
 			Ante = oneOffEvent.Ante,
-			MinBet = oneOffEvent.MinBet
+			MinBet = oneOffEvent.MinBet,
+			TournamentBuyIn = oneOffEvent.TournamentBuyIn
 		};
+	}
+
+	private static string? ValidateOneOffTournamentBuyIn(CardGames.Poker.Api.Contracts.LeagueOneOffEventType eventType, int? tournamentBuyIn)
+	{
+		if (eventType == CardGames.Poker.Api.Contracts.LeagueOneOffEventType.Tournament)
+		{
+			if (!tournamentBuyIn.HasValue)
+			{
+				return "Tournament buy-in is required for league tournaments.";
+			}
+
+			if (tournamentBuyIn.Value <= 0 || tournamentBuyIn.Value > LeagueEventBuyInRules.MaxTournamentBuyIn)
+			{
+				return $"Tournament buy-in must be between 1 and {LeagueEventBuyInRules.MaxTournamentBuyIn:N0}.";
+			}
+
+			return null;
+		}
+
+		if (tournamentBuyIn.HasValue)
+		{
+			return "Tournament buy-in can only be set for tournament events.";
+		}
+
+		return null;
 	}
 }

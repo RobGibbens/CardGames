@@ -13,6 +13,9 @@ public partial record GetGameResponse
 	[JsonPropertyName("maxBuyIn")]
 	public int? MaxBuyIn { get; init; }
 
+	[JsonPropertyName("tournamentBuyIn")]
+	public int? TournamentBuyIn { get; init; }
+
 	[JsonPropertyName("areOddsVisibleToAllPlayers")]
 	public bool AreOddsVisibleToAllPlayers { get; init; }
 

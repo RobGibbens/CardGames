@@ -62,6 +62,15 @@ public class CreateGameCommandHandler(
 			}
 		}
 
+		if (command.TournamentBuyIn.HasValue && command.TournamentBuyIn.Value <= 0)
+		{
+			return new CreateGameConflict
+			{
+				GameId = command.GameId,
+				Reason = "Tournament buy-in must be greater than 0."
+			};
+		}
+
 		var now = DateTimeOffset.UtcNow;
 		var allowedDealerChoiceGameCodes = DealersChoiceGameSettings.NormalizeGameCodes(command.AllowedDealerChoiceGameCodes);
 
@@ -118,6 +127,7 @@ public class CreateGameCommandHandler(
 			SmallBlind = command.SmallBlind,
 			BigBlind = command.BigBlind,
 			MaxBuyIn = command.MaxBuyIn,
+			TournamentBuyIn = command.TournamentBuyIn,
 			RequiresJoinApproval = command.RequiresJoinApproval,
 			IsDealersChoice = command.IsDealersChoice,
 			AreOddsVisibleToAllPlayers = command.AreOddsVisibleToAllPlayers,

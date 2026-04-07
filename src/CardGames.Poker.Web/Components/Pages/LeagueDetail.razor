@@ -397,6 +397,32 @@
 					<InputText id="season-event-notes" class="form-control league-modal-input"
 							   @bind-Value="_seasonEventNotes" maxlength="512" placeholder="Notes (optional)" />
 				</div>
+				<div class="join-buy-in-modal-controls">
+					<label class="form-label mb-1" for="season-event-tournament-buy-in-slider">Tournament buy-in</label>
+					<input id="season-event-tournament-buy-in-slider"
+						   type="range"
+						   class="bet-slider"
+						   style="@GetSeasonEventTournamentBuyInSliderStyle()"
+						   min="@GetSeasonEventTournamentBuyInMin()"
+						   max="@GetSeasonEventTournamentBuyInMax()"
+						   step="@GetSeasonEventTournamentBuyInStep()"
+						   @bind="_seasonEventTournamentBuyIn"
+						   @bind:event="oninput"
+						   @bind:after="NormalizeSeasonEventTournamentBuyIn" />
+					<div class="bet-slider-labels">
+						<span>Min @GetSeasonEventTournamentBuyInMin().ToString("N0")</span>
+						<span>Max @GetSeasonEventTournamentBuyInMax().ToString("N0")</span>
+					</div>
+
+					<input id="season-event-tournament-buy-in-input"
+						   class="form-input join-buy-in-input"
+						   type="number"
+						   min="@GetSeasonEventTournamentBuyInMin()"
+						   max="@GetSeasonEventTournamentBuyInMax()"
+						   step="1"
+						   @bind="_seasonEventTournamentBuyIn"
+						   @bind:after="ClampSeasonEventTournamentBuyIn" />
+				</div>
 				<div class="league-form-modal-actions">
 					<button type="button" class="btn btn-sm btn-secondary league-action-btn" @onclick="CloseSeasonEventModal"
 							disabled="@_isSubmittingSeasonEvent">Cancel</button>
@@ -464,6 +490,7 @@
 	private string _seasonEventScheduledTime = LeagueTimeZoneHelper.DefaultTimeText;
 	private string _seasonEventTimeZoneId = "UTC";
 	private string? _seasonEventNotes;
+	private int _seasonEventTournamentBuyIn = 100;
 	private bool _isSubmittingSeasonEvent;
 	private bool _showSeasonEventModal;
 	private Guid? _editingSeasonEventId;
@@ -571,6 +598,7 @@
 		.ToList();
 
 	private bool _hasResolvedBrowserTimeZone;
+	private const int DefaultTournamentBuyIn = 100;
 
 	private string BrowserTimeZoneId => string.IsNullOrWhiteSpace(_browserTimeZoneId) ? "UTC" : _browserTimeZoneId;
 
@@ -1457,6 +1485,13 @@ DateTimeKind.Utc)) : null,
 			return;
 		}
 
+		if (!TryValidateSeasonEventTournamentBuyIn(out var tournamentBuyInError))
+		{
+			_message = tournamentBuyInError;
+			_isError = true;
+			return;
+		}
+
 		_isSubmittingSeasonEvent = true;
 		var isEditing = _editingSeasonEventId.HasValue;
 		try
@@ -1469,7 +1504,8 @@ DateTimeKind.Utc)) : null,
 					Name = _seasonEventName.Trim(),
 					SequenceNumber = _seasonEventSequence,
 					ScheduledAtUtc = scheduledAtUtc,
-					Notes = string.IsNullOrWhiteSpace(_seasonEventNotes) ? null : _seasonEventNotes.Trim()
+					Notes = string.IsNullOrWhiteSpace(_seasonEventNotes) ? null : _seasonEventNotes.Trim(),
+					TournamentBuyIn = _seasonEventTournamentBuyIn
 				});
 			}
 			else
@@ -1479,7 +1515,8 @@ DateTimeKind.Utc)) : null,
 					Name = _seasonEventName.Trim(),
 					SequenceNumber = _seasonEventSequence,
 					ScheduledAtUtc = scheduledAtUtc,
-					Notes = string.IsNullOrWhiteSpace(_seasonEventNotes) ? null : _seasonEventNotes.Trim()
+					Notes = string.IsNullOrWhiteSpace(_seasonEventNotes) ? null : _seasonEventNotes.Trim(),
+					TournamentBuyIn = _seasonEventTournamentBuyIn
 				});
 			}
 
@@ -1653,6 +1690,7 @@ DateTimeKind.Utc)) : null,
 		_seasonEventScheduledTime = LeagueTimeZoneHelper.DefaultTimeText;
 		_seasonEventTimeZoneId = BrowserTimeZoneId;
 		_seasonEventNotes = null;
+		_seasonEventTournamentBuyIn = DefaultTournamentBuyIn;
 	}
 
 	private void PopulateSeasonEventDraft(LeagueSeasonEventDto seasonEvent)
@@ -1664,6 +1702,60 @@ DateTimeKind.Utc)) : null,
 		_seasonEventScheduledTime = LeagueTimeZoneHelper.ConvertUtcToTimeText(seasonEvent.ScheduledAtUtc, BrowserTimeZoneId);
 		_seasonEventTimeZoneId = BrowserTimeZoneId;
 		_seasonEventNotes = seasonEvent.Notes;
+		_seasonEventTournamentBuyIn = seasonEvent.TournamentBuyIn ?? DefaultTournamentBuyIn;
+	}
+
+	private bool TryValidateSeasonEventTournamentBuyIn(out string? errorMessage)
+	{
+		NormalizeSeasonEventTournamentBuyIn();
+		if (_seasonEventTournamentBuyIn < GetSeasonEventTournamentBuyInMin() || _seasonEventTournamentBuyIn > GetSeasonEventTournamentBuyInMax())
+		{
+			errorMessage = $"Tournament buy-in must be between {GetSeasonEventTournamentBuyInMin():N0} and {GetSeasonEventTournamentBuyInMax():N0}.";
+			return false;
+		}
+
+		errorMessage = null;
+		return true;
+	}
+
+	private void NormalizeSeasonEventTournamentBuyIn()
+	{
+		var min = GetSeasonEventTournamentBuyInMin();
+		var max = GetSeasonEventTournamentBuyInMax();
+		var step = GetSeasonEventTournamentBuyInStep();
+		var clamped = Math.Clamp(_seasonEventTournamentBuyIn, min, max);
+
+		if (step > 1)
+		{
+			var snapped = ((clamped - min) / step) * step + min;
+			clamped = Math.Clamp(snapped, min, max);
+		}
+
+		_seasonEventTournamentBuyIn = clamped;
+	}
+
+	private void ClampSeasonEventTournamentBuyIn()
+	{
+		_seasonEventTournamentBuyIn = Math.Clamp(_seasonEventTournamentBuyIn, GetSeasonEventTournamentBuyInMin(), GetSeasonEventTournamentBuyInMax());
+	}
+
+	private static int GetSeasonEventTournamentBuyInMin() => 1;
+
+	private static int GetSeasonEventTournamentBuyInStep() => 100;
+
+	private static int GetSeasonEventTournamentBuyInMax() => LeagueEventBuyInRules.MaxTournamentBuyIn;
+
+	private string GetSeasonEventTournamentBuyInSliderStyle()
+	{
+		var min = GetSeasonEventTournamentBuyInMin();
+		var max = GetSeasonEventTournamentBuyInMax();
+		if (max <= min)
+		{
+			return "--slider-progress: 0%;";
+		}
+
+		var progress = (_seasonEventTournamentBuyIn - min) * 100.0 / (max - min);
+		return $"--slider-progress: {progress:F1}%;";
 	}
 
 	private void OnSeasonEventScheduledTimeChanged(ChangeEventArgs args)
@@ -1862,7 +1954,7 @@ LaunchLeagueEventSessionRequest
 				GameCode = "FIVECARDDRAW",
 				Ante = 10,
 				MinBet = 20,
-				HostStartingChips = 100
+				HostStartingChips = _seasonEvents.FirstOrDefault(e => e.EventId == eventId)?.TournamentBuyIn ?? DefaultTournamentBuyIn
 			});
 
 			if (response.IsSuccessStatusCode && response.Content is not null)

@@ -34,6 +34,7 @@ public static partial class GetGameMapper
 			BigBet = model.BigBet,
 			MinBet = model.MinBet,
 			MaxBuyIn = model.MaxBuyIn,
+			TournamentBuyIn = model.TournamentBuyIn,
 			GameSettings = model.GameSettings,
 			Status = model.Status,
 			CurrentPlayerIndex = model.CurrentPlayerIndex,

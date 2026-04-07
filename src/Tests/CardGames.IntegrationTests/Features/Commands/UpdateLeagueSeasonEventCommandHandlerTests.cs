@@ -36,7 +36,8 @@ public class UpdateLeagueSeasonEventCommandHandlerTests : IntegrationTestBase
 			Name = "Week 1",
 			SequenceNumber = 1,
 			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(3),
-			Notes = "Original notes"
+			Notes = "Original notes",
+			TournamentBuyIn = 1000
 		}));
 
 		var scheduledAtUtc = DateTimeOffset.UtcNow.AddDays(5);
@@ -45,7 +46,8 @@ public class UpdateLeagueSeasonEventCommandHandlerTests : IntegrationTestBase
 			Name = "Week 1 Updated",
 			SequenceNumber = 3,
 			ScheduledAtUtc = scheduledAtUtc,
-			Notes = "Updated notes"
+			Notes = "Updated notes",
+			TournamentBuyIn = 2200
 		}));
 
 		result.IsT0.Should().BeTrue();
@@ -58,6 +60,7 @@ public class UpdateLeagueSeasonEventCommandHandlerTests : IntegrationTestBase
 		savedEvent.SequenceNumber.Should().Be(3);
 		savedEvent.ScheduledAtUtc.Should().Be(scheduledAtUtc);
 		savedEvent.Notes.Should().Be("Updated notes");
+		savedEvent.TournamentBuyIn.Should().Be(2200);
 	}
 
 	[Fact]

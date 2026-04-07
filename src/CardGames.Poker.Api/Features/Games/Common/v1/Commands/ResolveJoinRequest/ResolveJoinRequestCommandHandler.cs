@@ -94,6 +94,11 @@ public sealed class ResolveJoinRequestCommandHandler(
 			return new ResolveJoinRequestError(ResolveJoinRequestErrorCode.InvalidApprovedBuyIn, $"Approved buy-in cannot exceed the table maximum of {game.MaxBuyIn.Value:N0}.");
 		}
 
+		if (game.TournamentBuyIn.HasValue && approvedBuyIn != game.TournamentBuyIn.Value)
+		{
+			return new ResolveJoinRequestError(ResolveJoinRequestErrorCode.InvalidApprovedBuyIn, $"This tournament requires a fixed buy-in of {game.TournamentBuyIn.Value:N0}.");
+		}
+
 		var lateJoinAllowed = !string.Equals(
 				game.GameType?.Code,
 				PokerGameMetadataRegistry.ScrewYourNeighborCode,

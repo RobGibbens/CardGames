@@ -21,4 +21,6 @@ public sealed record CreateLeagueSeasonEventResponse
 	public required string CreatedByUserId { get; init; }
 
 	public DateTimeOffset CreatedAtUtc { get; init; }
+
+	public int? TournamentBuyIn { get; init; }
 }

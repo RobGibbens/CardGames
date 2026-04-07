@@ -50,7 +50,8 @@ public sealed class GetLeagueOneOffEventsQueryHandler(
 				LaunchedGameId = x.LaunchedGameId,
 				GameTypeCode = x.GameTypeCode,
 				Ante = x.Ante,
-				MinBet = x.MinBet
+				MinBet = x.MinBet,
+				TournamentBuyIn = x.TournamentBuyIn
 			})
 			.ToListAsync(cancellationToken);
 

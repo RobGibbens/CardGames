@@ -23,4 +23,6 @@ public sealed record LeagueSeasonEventDto
 	public DateTimeOffset CreatedAtUtc { get; init; }
 
 	public Guid? LaunchedGameId { get; init; }
+
+	public int? TournamentBuyIn { get; init; }
 }

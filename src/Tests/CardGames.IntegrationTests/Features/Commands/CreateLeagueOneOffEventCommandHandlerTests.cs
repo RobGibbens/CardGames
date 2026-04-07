@@ -37,6 +37,38 @@ public class CreateLeagueOneOffEventCommandHandlerTests : IntegrationTestBase
 	}
 
 	[Fact]
+	public async Task Handle_TournamentPersistsTournamentBuyIn()
+	{
+		var fakeCurrentUser = (FakeCurrentUserService)Scope.ServiceProvider.GetRequiredService<ICurrentUserService>();
+		fakeCurrentUser.UserId = "league-one-off-tournament-admin";
+		fakeCurrentUser.IsAuthenticated = true;
+
+		var createLeague = await Mediator.Send(new CreateLeagueCommand(new CardGames.Poker.Api.Contracts.CreateLeagueRequest
+		{
+			Name = "Tournament OneOff League"
+		}));
+
+		createLeague.IsT0.Should().BeTrue();
+		var leagueId = createLeague.AsT0.LeagueId;
+
+		var result = await Mediator.Send(new CreateLeagueOneOffEventCommand(leagueId, new CardGames.Poker.Api.Contracts.CreateLeagueOneOffEventRequest
+		{
+			Name = "Championship Night",
+			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(3),
+			EventType = CardGames.Poker.Api.Contracts.LeagueOneOffEventType.Tournament,
+			GameTypeCode = "HOLDEM",
+			TournamentBuyIn = 2500
+		}));
+
+		result.IsT0.Should().BeTrue();
+		result.AsT0.TournamentBuyIn.Should().Be(2500);
+
+		var savedEvent = await DbContext.LeagueOneOffEvents.FindAsync(result.AsT0.EventId);
+		savedEvent.Should().NotBeNull();
+		savedEvent!.TournamentBuyIn.Should().Be(2500);
+	}
+
+	[Fact]
 	public async Task Handle_PastScheduledDate_ReturnsInvalidRequest()
 	{
 		var fakeCurrentUser = (FakeCurrentUserService)Scope.ServiceProvider.GetRequiredService<ICurrentUserService>();

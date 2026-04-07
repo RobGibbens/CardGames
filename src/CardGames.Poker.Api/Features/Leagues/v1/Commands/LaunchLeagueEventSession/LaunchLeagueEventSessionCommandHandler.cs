@@ -88,6 +88,11 @@ public sealed class LaunchLeagueEventSessionCommandHandler(
 				return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.AlreadyLaunched, "This season event has already launched a table.");
 			}
 
+			if (!seasonEvent.TournamentBuyIn.HasValue)
+			{
+				return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.InvalidRequest, "Season events must define a tournament buy-in before launch.");
+			}
+
 			var createResult = await mediator.Send(
 				new Features.Games.Common.v1.Commands.CreateGame.CreateGameCommand(
 					gameId,
@@ -95,7 +100,8 @@ public sealed class LaunchLeagueEventSessionCommandHandler(
 					gameName,
 					request.Request.Ante,
 					request.Request.MinBet,
-					[new Features.Games.Common.v1.Commands.CreateGame.PlayerInfo(hostName, request.Request.HostStartingChips)]),
+					[new Features.Games.Common.v1.Commands.CreateGame.PlayerInfo(hostName, seasonEvent.TournamentBuyIn.Value)],
+					TournamentBuyIn: seasonEvent.TournamentBuyIn),
 				cancellationToken);
 
 			if (createResult.IsT1)
@@ -129,6 +135,19 @@ public sealed class LaunchLeagueEventSessionCommandHandler(
 				return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.AlreadyLaunched, "This one-off event has already launched a table.");
 			}
 
+			var hostStartingChips = request.Request.HostStartingChips;
+			int? tournamentBuyIn = null;
+			if (oneOffEvent.EventType == Data.Entities.LeagueOneOffEventType.Tournament)
+			{
+				if (!oneOffEvent.TournamentBuyIn.HasValue)
+				{
+					return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.InvalidRequest, "Tournament events must define a tournament buy-in before launch.");
+				}
+
+				hostStartingChips = oneOffEvent.TournamentBuyIn.Value;
+				tournamentBuyIn = oneOffEvent.TournamentBuyIn.Value;
+			}
+
 			var createResult = await mediator.Send(
 				new Features.Games.Common.v1.Commands.CreateGame.CreateGameCommand(
 					gameId,
@@ -136,7 +155,8 @@ public sealed class LaunchLeagueEventSessionCommandHandler(
 					gameName,
 					request.Request.Ante,
 					request.Request.MinBet,
-					[new Features.Games.Common.v1.Commands.CreateGame.PlayerInfo(hostName, request.Request.HostStartingChips)]),
+					[new Features.Games.Common.v1.Commands.CreateGame.PlayerInfo(hostName, hostStartingChips)],
+					TournamentBuyIn: tournamentBuyIn),
 				cancellationToken);
 
 			if (createResult.IsT1)

@@ -15,4 +15,6 @@ public sealed record CreateLeagueOneOffEventRequest
 	public int Ante { get; init; } = 10;
 
 	public int MinBet { get; init; } = 20;
+
+	public int? TournamentBuyIn { get; init; }
 }
