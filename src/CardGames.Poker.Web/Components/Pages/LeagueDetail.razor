@@ -202,7 +202,7 @@
 				<LeagueDetailLobbyTab RecentCompletedEvents="_recentCompletedEvents" SeasonEvents="_seasonEvents"
 									  OneOffEvents="_oneOffEvents" Standings="_standings" MyStanding="_myStanding"
 									  RankMovementByUserId="_rankMovementByUserId" Members="_members" ActiveGameDetails="_activeGameDetails"
-									  BrowserTimeZoneId="BrowserTimeZoneId"
+									  BrowserTimeZoneId="@BrowserTimeZoneId"
 									  OpenTable="OpenTable" CanManageLeague="CanManageLeague" EditSeasonEvent="OpenSeasonEventEditor"
 									  DeleteSeasonEvent="OpenDeleteSeasonEventDialog" EditOneOffEvent="OpenOneOffEventEditor"
 									  DeleteOneOffEvent="OpenDeleteOneOffEventDialog" />
@@ -213,7 +213,7 @@
 			{
 				<LeagueDetailResultsTab Seasons="_seasons" SelectedSeasonId="_selectedSeasonId"
 									CanManageLeague="CanManageLeague" SeasonEvents="_seasonEvents"
-									BrowserTimeZoneId="BrowserTimeZoneId"
+									BrowserTimeZoneId="@BrowserTimeZoneId"
 									LaunchingSeasonEventId="_launchingSeasonEventId" OnSeasonSelectorChanged="OnSeasonSelectorChanged"
 									OpenSeasonEventModal="OpenSeasonEventModal" EditSeasonEvent="OpenSeasonEventEditor"
 									DeleteSeasonEvent="OpenDeleteSeasonEventDialog"
@@ -236,7 +236,7 @@
 									 ShowOneOffEventsTab="() => _activeScheduleTab = ScheduleTab.OneOffEvents" CanManageLeague="CanManageLeague"
 									 Seasons="_seasons" SelectedSeasonId="_selectedSeasonId" SeasonEvents="_seasonEvents"
 									 OneOffEvents="_oneOffEvents" LaunchingSeasonEventId="_launchingSeasonEventId"
-									 BrowserTimeZoneId="BrowserTimeZoneId"
+									 BrowserTimeZoneId="@BrowserTimeZoneId"
 									 LaunchingOneOffEventId="_launchingOneOffEventId" OpenSeasonModal="OpenSeasonModal"
 									 SelectSeason="SelectSeasonAsync" DeselectSeason="DeselectSeasonAsync"
 									 OpenSeasonEventModal="OpenSeasonEventModal" EditSeasonEvent="OpenSeasonEventEditor"
