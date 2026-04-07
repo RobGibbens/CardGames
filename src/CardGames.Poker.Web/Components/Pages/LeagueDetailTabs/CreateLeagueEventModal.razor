@@ -8,7 +8,7 @@
 @if (Show)
 {
 	<div class="confirm-dialog-overlay">
-		<div class="confirm-dialog league-form-modal one-off-event-modal" @onclick:stopPropagation>
+		<div class="confirm-dialog league-form-modal one-off-event-modal create-league-event-modal" @onclick:stopPropagation>
 			<div class="confirm-dialog-header league-form-modal-header">
 				<div class="league-form-modal-title-group">
 					<h3 class="confirm-dialog-title mb-0">@ModalTitle</h3>
@@ -26,16 +26,16 @@
 				<div class="form-floating" data-label="Table name">
 					<InputText id="one-off-name" class="form-control league-modal-input" @bind-Value="_name" maxlength="120" placeholder="Table name" />
 				</div>
-				<div class="row league-form-inline-fields">
-					<div class="col-md-4 league-form-inline-field">
+				<div class="league-form-inline-fields league-form-inline-fields-schedule">
+					<div class="league-form-inline-field league-form-inline-field-scheduled-date">
 						<label class="form-label small" for="one-off-scheduled-date">Scheduled date</label>
 						<InputDate id="one-off-scheduled-date" class="form-control league-modal-date-input" @bind-Value="_scheduledDate" />
 					</div>
-					<div class="col-md-3 league-form-inline-field">
+					<div class="league-form-inline-field league-form-inline-field-scheduled-time">
 						<label class="form-label small" for="one-off-scheduled-time">Start time</label>
 						<input id="one-off-scheduled-time" type="time" class="form-control league-modal-input league-modal-date-input" value="@_scheduledTime" @onchange="OnScheduledTimeChanged" />
 					</div>
-					<div class="col-md-5 league-form-inline-field">
+					<div class="league-form-inline-field league-form-inline-field-time-zone">
 						<label class="form-label small" for="one-off-time-zone">Time zone</label>
 						<InputSelect id="one-off-time-zone" class="form-select league-modal-input league-modal-date-input" @bind-Value="_selectedTimeZoneId" @bind-Value:after="OnTimeZoneSelectionChanged">
 							@foreach (var timeZone in TimeZoneOptions)
@@ -61,11 +61,17 @@
 						</InputSelect>
 					}
 				</div>
-				<div class="form-floating" data-label="Ante">
-					<InputNumber id="one-off-ante" class="form-control league-modal-input" @bind-Value="_ante" min="1" max="100" />
-				</div>
-				<div class="form-floating" data-label="Minimum Bet">
-					<InputNumber id="one-off-min-bet" class="form-control league-modal-input" @bind-Value="_minBet" min="1" max="1000" />
+				<div class="league-form-inline-fields league-form-inline-fields-bets">
+					<div class="league-form-inline-field">
+						<div class="form-floating" data-label="Ante">
+							<InputNumber id="one-off-ante" class="form-control league-modal-input" @bind-Value="_ante" min="1" max="100" />
+						</div>
+					</div>
+					<div class="league-form-inline-field">
+						<div class="form-floating" data-label="Minimum Bet">
+							<InputNumber id="one-off-min-bet" class="form-control league-modal-input" @bind-Value="_minBet" min="1" max="1000" />
+						</div>
+					</div>
 				</div>
 				<div class="form-floating" data-label="Notes (optional)">
 					<InputText id="one-off-notes" class="form-control league-modal-input" @bind-Value="_notes" maxlength="512" placeholder="Notes (optional)" />
