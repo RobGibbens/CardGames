@@ -4,6 +4,7 @@ using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.IngestLeagueSeasonEventResults;
 using CardGames.Poker.Api.Features.Leagues.v1.Governance;
 using CardGames.Poker.Api.Infrastructure;
+using CardGames.Poker.Api.Services;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
@@ -12,7 +13,8 @@ namespace CardGames.Poker.Api.Features.Leagues.v1.Commands.CorrectLeagueSeasonEv
 
 public sealed class CorrectLeagueSeasonEventResultsCommandHandler(
 	CardsDbContext context,
-	ICurrentUserService currentUserService)
+	ICurrentUserService currentUserService,
+	ILeagueBroadcaster leagueBroadcaster)
 	: IRequestHandler<CorrectLeagueSeasonEventResultsCommand, OneOf<Unit, CorrectLeagueSeasonEventResultsError>>
 {
 	public async Task<OneOf<Unit, CorrectLeagueSeasonEventResultsError>> Handle(CorrectLeagueSeasonEventResultsCommand request, CancellationToken cancellationToken)
@@ -198,6 +200,15 @@ public sealed class CorrectLeagueSeasonEventResultsCommandHandler(
 
 		await LeagueSeasonEventStandingsRecalculator.RebuildForMembersAsync(context, request.LeagueId, affectedMemberIds, cancellationToken);
 		await context.SaveChangesAsync(cancellationToken);
+		await leagueBroadcaster.BroadcastLeagueEventChangedAsync(new CardGames.Contracts.SignalR.LeagueEventChangedDto
+		{
+			LeagueId = request.LeagueId,
+			EventId = request.EventId,
+			SourceType = CardGames.Contracts.SignalR.LeagueEventSourceType.Season,
+			SeasonId = request.SeasonId,
+			ChangeKind = CardGames.Contracts.SignalR.LeagueEventChangeKind.ResultsRecorded,
+			ChangedAtUtc = now
+		}, cancellationToken);
 
 		return Unit.Value;
 	}

@@ -13,6 +13,42 @@ public sealed class LeagueBroadcaster(
 	: ILeagueBroadcaster
 {
 	/// <inheritdoc />
+	public async Task BroadcastLeagueEventChangedAsync(LeagueEventChangedDto eventChanged, CancellationToken cancellationToken = default)
+	{
+		ArgumentNullException.ThrowIfNull(eventChanged);
+
+		var groupName = LeagueHub.GetViewedLeagueGroupName(eventChanged.LeagueId);
+
+		await hubContext.Clients.Group(groupName)
+			.SendAsync("LeagueEventChanged", eventChanged, cancellationToken);
+
+		logger.LogInformation(
+			"Broadcast LeagueEventChanged for league {LeagueId}, event {EventId}, change {ChangeKind} to group {GroupName}",
+			eventChanged.LeagueId,
+			eventChanged.EventId,
+			eventChanged.ChangeKind,
+			groupName);
+	}
+
+	/// <inheritdoc />
+	public async Task BroadcastEventSessionLaunchedAsync(LeagueEventSessionLaunchedDto sessionLaunched, CancellationToken cancellationToken = default)
+	{
+		ArgumentNullException.ThrowIfNull(sessionLaunched);
+
+		var groupName = LeagueHub.GetViewedLeagueGroupName(sessionLaunched.LeagueId);
+
+		await hubContext.Clients.Group(groupName)
+			.SendAsync("LeagueEventSessionLaunched", sessionLaunched, cancellationToken);
+
+		logger.LogInformation(
+			"Broadcast LeagueEventSessionLaunched for league {LeagueId}, event {EventId}, game {GameId} to group {GroupName}",
+			sessionLaunched.LeagueId,
+			sessionLaunched.EventId,
+			sessionLaunched.GameId,
+			groupName);
+	}
+
+	/// <inheritdoc />
 	public async Task BroadcastJoinRequestSubmittedAsync(LeagueJoinRequestSubmittedDto joinRequestSubmitted, CancellationToken cancellationToken = default)
 	{
 		ArgumentNullException.ThrowIfNull(joinRequestSubmitted);

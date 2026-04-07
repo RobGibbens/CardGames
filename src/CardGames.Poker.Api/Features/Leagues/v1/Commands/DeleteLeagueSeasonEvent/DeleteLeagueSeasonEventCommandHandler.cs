@@ -2,6 +2,7 @@ using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Leagues.v1.Governance;
 using CardGames.Poker.Api.Infrastructure;
+using CardGames.Poker.Api.Services;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
@@ -10,7 +11,8 @@ namespace CardGames.Poker.Api.Features.Leagues.v1.Commands.DeleteLeagueSeasonEve
 
 public sealed class DeleteLeagueSeasonEventCommandHandler(
 	CardsDbContext context,
-	ICurrentUserService currentUserService)
+	ICurrentUserService currentUserService,
+	ILeagueBroadcaster leagueBroadcaster)
 	: IRequestHandler<DeleteLeagueSeasonEventCommand, OneOf<Unit, DeleteLeagueSeasonEventError>>
 {
 	public async Task<OneOf<Unit, DeleteLeagueSeasonEventError>> Handle(DeleteLeagueSeasonEventCommand request, CancellationToken cancellationToken)
@@ -62,8 +64,19 @@ public sealed class DeleteLeagueSeasonEventCommandHandler(
 			return new DeleteLeagueSeasonEventError(DeleteLeagueSeasonEventErrorCode.Conflict, "Only planned, unlaunched season events can be deleted.");
 		}
 
+		var seasonEventId = seasonEvent.Id;
+		var seasonId = seasonEvent.LeagueSeasonId;
 		context.LeagueSeasonEvents.Remove(seasonEvent);
 		await context.SaveChangesAsync(cancellationToken);
+		await leagueBroadcaster.BroadcastLeagueEventChangedAsync(new CardGames.Contracts.SignalR.LeagueEventChangedDto
+		{
+			LeagueId = request.LeagueId,
+			EventId = seasonEventId,
+			SourceType = CardGames.Contracts.SignalR.LeagueEventSourceType.Season,
+			SeasonId = seasonId,
+			ChangeKind = CardGames.Contracts.SignalR.LeagueEventChangeKind.Deleted,
+			ChangedAtUtc = DateTimeOffset.UtcNow
+		}, cancellationToken);
 
 		return Unit.Value;
 	}

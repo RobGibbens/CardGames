@@ -16,6 +16,7 @@ public class UpdateLeagueSeasonEventCommandHandlerTests : IntegrationTestBase
 	public async Task Handle_AdminCanUpdateSeasonEvent()
 	{
 		var fakeCurrentUser = (FakeCurrentUserService)Scope.ServiceProvider.GetRequiredService<ICurrentUserService>();
+		var fakeLeagueBroadcaster = Scope.ServiceProvider.GetRequiredService<FakeLeagueBroadcaster>();
 		fakeCurrentUser.UserId = "league-season-update-admin";
 		fakeCurrentUser.IsAuthenticated = true;
 
@@ -41,6 +42,7 @@ public class UpdateLeagueSeasonEventCommandHandlerTests : IntegrationTestBase
 		}));
 
 		var scheduledAtUtc = DateTimeOffset.UtcNow.AddDays(5);
+		fakeLeagueBroadcaster.EventChangedNotifications.Clear();
 		var result = await Mediator.Send(new UpdateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId, createEvent.AsT0.EventId, new UpdateLeagueSeasonEventRequest
 		{
 			Name = "Week 1 Updated",
@@ -61,6 +63,12 @@ public class UpdateLeagueSeasonEventCommandHandlerTests : IntegrationTestBase
 		savedEvent.ScheduledAtUtc.Should().Be(scheduledAtUtc);
 		savedEvent.Notes.Should().Be("Updated notes");
 		savedEvent.TournamentBuyIn.Should().Be(2200);
+		fakeLeagueBroadcaster.EventChangedNotifications.Should().ContainSingle();
+		fakeLeagueBroadcaster.EventChangedNotifications[0].LeagueId.Should().Be(leagueId);
+		fakeLeagueBroadcaster.EventChangedNotifications[0].EventId.Should().Be(createEvent.AsT0.EventId);
+		fakeLeagueBroadcaster.EventChangedNotifications[0].SourceType.Should().Be(CardGames.Contracts.SignalR.LeagueEventSourceType.Season);
+		fakeLeagueBroadcaster.EventChangedNotifications[0].SeasonId.Should().Be(createSeason.AsT0.SeasonId);
+		fakeLeagueBroadcaster.EventChangedNotifications[0].ChangeKind.Should().Be(CardGames.Contracts.SignalR.LeagueEventChangeKind.Updated);
 	}
 
 	[Fact]

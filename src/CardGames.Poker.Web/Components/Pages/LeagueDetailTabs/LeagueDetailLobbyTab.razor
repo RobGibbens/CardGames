@@ -1,17 +1,16 @@
 @using CardGames.Poker.Api.Contracts
-@using CardGames.Poker.Api.Clients
 @using CardGames.Poker.Web.Utilities
 
 <div class="league-detail-tab-content">
-	@if (ActiveGames.Count > 0)
+	@if (ActiveGamesPage.TotalCount > 0)
 	{
 		<section class="league-detail-card league-detail-active-games-card">
 			<div class="league-detail-card-header">
 				<h3><i class="fa-solid fa-gamepad"></i> Active Games</h3>
-				<span class="lobby-tab-badge">@ActiveGames.Count</span>
+				<span class="lobby-tab-badge">@ActiveGamesPage.TotalCount</span>
 			</div>
 			<div class="league-detail-active-games-list">
-				@foreach (var game in ActiveGames)
+				@foreach (var game in ActiveGamesPage.Entries)
 				{
 					<div class="league-detail-active-game-card">
 						<div class="league-detail-active-game-top">
@@ -57,6 +56,18 @@
 					</div>
 				}
 			</div>
+			<div class="league-detail-active-games-footer">
+				<div class="league-detail-active-games-meta">
+					Showing @ActiveGamesPage.Entries.Count of @ActiveGamesPage.TotalCount active game@(ActiveGamesPage.TotalCount != 1 ? "s" : ""). Page @ActiveGamesPage.PageNumber of @ActiveGamesPage.TotalPages.
+				</div>
+				<div class="league-detail-active-games-pager" role="group" aria-label="Active games page navigation">
+					<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => LoadActiveGamesPage.InvokeAsync(1)" disabled="@(IsLoadingActiveGamesPage || ActiveGamesPage.PageNumber <= 1)">First</button>
+					<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => LoadActiveGamesPage.InvokeAsync(Math.Max(1, ActiveGamesPage.PageNumber - 1))" disabled="@(IsLoadingActiveGamesPage || ActiveGamesPage.PageNumber <= 1)">Previous</button>
+					<span class="league-detail-active-games-pager-status">Page @ActiveGamesPage.PageNumber of @ActiveGamesPage.TotalPages</span>
+					<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => LoadActiveGamesPage.InvokeAsync(Math.Min(ActiveGamesPage.TotalPages, ActiveGamesPage.PageNumber + 1))" disabled="@(IsLoadingActiveGamesPage || ActiveGamesPage.PageNumber >= ActiveGamesPage.TotalPages)">Next</button>
+					<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => LoadActiveGamesPage.InvokeAsync(ActiveGamesPage.TotalPages)" disabled="@(IsLoadingActiveGamesPage || ActiveGamesPage.PageNumber >= ActiveGamesPage.TotalPages)">Last</button>
+				</div>
+			</div>
 		</section>
 	}
 
@@ -91,138 +102,131 @@
 				<div class="league-detail-card-header">
 					<h3><i class="fa-solid fa-calendar-star"></i> Upcoming Events</h3>
 				</div>
-				@{
-					var upcomingSeasonEvents = SeasonEvents.Where(e => e.Status != LeagueSeasonEventStatus.Completed).Take(5).ToList();
-					var upcomingOneOffs = OneOffEvents.Where(e => e.Status != LeagueOneOffEventStatus.Completed).Take(3).ToList();
-				}
-				@if (upcomingSeasonEvents.Count == 0 && upcomingOneOffs.Count == 0)
+				@if (UpcomingEventsPage.TotalCount == 0)
 				{
 					<p class="league-detail-empty">No upcoming events scheduled.</p>
 				}
 				else
 				{
-					@if (upcomingSeasonEvents.Count > 0)
-					{
-						<div class="league-upcoming-group">
-							<div class="league-upcoming-group-header">
-								<i class="fa-solid fa-layer-group"></i>
-								<span>Season Events</span>
-							</div>
-							<div class="league-detail-active-games-list">
-								@foreach (var se in upcomingSeasonEvents)
-								{
-									<div class="league-detail-active-game-card league-event-season">
-										<div class="league-detail-active-game-top">
-											<div class="league-detail-active-game-info">
-												<span class="league-detail-active-game-name">@se.Name</span>
-												<div class="league-detail-active-game-meta">
-													<span class="league-detail-active-game-meta-item">
-														<i class="fa-solid fa-trophy league-event-type-icon-season"></i> Season Event
-													</span>
-													<span class="league-detail-active-game-meta-item league-event-badge-season">
-														@se.Status
-													</span>
-												</div>
+					<div class="league-detail-active-games-list">
+						@foreach (var upcomingEvent in UpcomingEventsPage.Entries)
+						{
+							@if (upcomingEvent.SeasonEvent is not null)
+							{
+								var se = upcomingEvent.SeasonEvent;
+								<div class="league-detail-active-game-card league-event-season">
+									<div class="league-detail-active-game-top">
+										<div class="league-detail-active-game-info">
+											<span class="league-detail-active-game-name">@se.Name</span>
+											<div class="league-detail-active-game-meta">
+												<span class="league-detail-active-game-meta-item">
+													<i class="fa-solid fa-trophy league-event-type-icon-season"></i> Season Event
+												</span>
+												<span class="league-detail-active-game-meta-item league-event-badge-season">
+													@se.Status
+												</span>
 											</div>
 										</div>
-										<div class="league-detail-active-game-details">
-											<div class="league-detail-active-game-detail">
-												<i class="fa-solid fa-calendar"></i>
-												<span>@FormatDate(se.ScheduledAtUtc)</span>
-											</div>
-										</div>
-										@if ((CanManageLeague && CanEditSeasonEvent(se)) || se.LaunchedGameId.HasValue)
-										{
-											<div class="league-detail-active-game-actions">
-												@if (CanManageLeague && CanEditSeasonEvent(se))
-												{
-													<button class="btn btn-sm btn-outline-secondary league-action-btn" @onclick="() => EditSeasonEvent.InvokeAsync(se)" @onclick:stopPropagation>
-														<i class="fa-solid fa-pen-to-square"></i> Edit
-													</button>
-													<button class="btn btn-sm btn-danger league-action-btn" @onclick="() => DeleteSeasonEvent.InvokeAsync(se)" @onclick:stopPropagation title="Delete season event">
-														<i class="fa-regular fa-trash"></i>
-													</button>
-													<button class="btn btn-sm btn-primary league-action-btn" @onclick="() => LaunchSeasonEvent.InvokeAsync(se.EventId)" @onclick:stopPropagation disabled="@(LaunchingSeasonEventId == se.EventId)">
-														<i class="fa-solid fa-play"></i> Launch Play
-													</button>
-												}
-												@if (se.LaunchedGameId.HasValue)
-												{
-													<button class="league-detail-active-game-join-btn" @onclick="() => OpenTable.InvokeAsync(se.LaunchedGameId.Value)" @onclick:stopPropagation>
-														<i class="fa-solid fa-right-to-bracket"></i> Join
-													</button>
-												}
-											</div>
-										}
 									</div>
-								}
-							</div>
-						</div>
-					}
-					@if (upcomingOneOffs.Count > 0)
-					{
-						<div class="league-upcoming-group">
-							<div class="league-upcoming-group-header">
-								<i class="fa-solid fa-sparkles"></i>
-								<span>One-Off Events</span>
-							</div>
-							<div class="league-detail-active-games-list">
-								@foreach (var oo in upcomingOneOffs)
-								{
-									<div class="league-detail-active-game-card league-event-oneoff">
-										<div class="league-detail-active-game-top">
-											<div class="league-detail-active-game-info">
-												<span class="league-detail-active-game-name">@oo.Name</span>
-												<div class="league-detail-active-game-meta">
-													<span class="league-detail-active-game-meta-item">
-														<i class="fa-solid @(oo.EventType == LeagueOneOffEventType.Tournament ? "fa-ranking-star" : "fa-dice") league-event-type-icon-oneoff"></i> @FormatOneOffEventType(oo.EventType)
-													</span>
-													@if (!string.IsNullOrWhiteSpace(oo.GameTypeName))
-													{
-														<span class="league-detail-active-game-meta-item">
-															<i class="fa-solid fa-cards"></i> @oo.GameTypeName
-														</span>
-													}
-													<span class="league-detail-active-game-meta-item league-event-badge-oneoff">
-														@oo.Status
-													</span>
-												</div>
-											</div>
+									<div class="league-detail-active-game-details">
+										<div class="league-detail-active-game-detail">
+											<i class="fa-solid fa-calendar"></i>
+											<span>@FormatDate(se.ScheduledAtUtc)</span>
 										</div>
-										<div class="league-detail-active-game-details">
-											<div class="league-detail-active-game-detail">
-												<i class="fa-solid fa-calendar"></i>
-												<span>@FormatDate(oo.ScheduledAtUtc)</span>
-											</div>
-										</div>
-										@if ((CanManageLeague && CanEditOneOffEvent(oo)) || oo.LaunchedGameId.HasValue)
-										{
-											<div class="league-detail-active-game-actions">
-												@if (CanManageLeague && CanEditOneOffEvent(oo))
-												{
-													<button class="btn btn-sm btn-outline-secondary league-action-btn" @onclick="() => EditOneOffEvent.InvokeAsync(oo)" @onclick:stopPropagation>
-														<i class="fa-solid fa-pen-to-square"></i> Edit
-													</button>
-													<button class="btn btn-sm btn-danger league-action-btn" @onclick="() => DeleteOneOffEvent.InvokeAsync(oo)" @onclick:stopPropagation title="Delete one-off event">
-														<i class="fa-regular fa-trash"></i>
-													</button>
-													<button class="btn btn-sm btn-primary league-action-btn" @onclick="() => LaunchOneOffEvent.InvokeAsync(oo.EventId)" @onclick:stopPropagation disabled="@(LaunchingOneOffEventId == oo.EventId)">
-														<i class="fa-solid fa-play"></i> Launch Play
-													</button>
-												}
-												@if (oo.LaunchedGameId.HasValue)
-												{
-													<button class="league-detail-active-game-join-btn" @onclick="() => OpenTable.InvokeAsync(oo.LaunchedGameId.Value)" @onclick:stopPropagation>
-														<i class="fa-solid fa-right-to-bracket"></i> Join
-													</button>
-												}
-											</div>
-										}
 									</div>
-								}
-							</div>
+									@if ((CanManageLeague && CanEditSeasonEvent(se)) || se.LaunchedGameId.HasValue)
+									{
+										<div class="league-detail-active-game-actions">
+											@if (CanManageLeague && CanEditSeasonEvent(se))
+											{
+												<button class="btn btn-sm btn-outline-secondary league-action-btn" @onclick="() => EditSeasonEvent.InvokeAsync(se)" @onclick:stopPropagation>
+													<i class="fa-solid fa-pen-to-square"></i> Edit
+												</button>
+												<button class="btn btn-sm btn-danger league-action-btn" @onclick="() => DeleteSeasonEvent.InvokeAsync(se)" @onclick:stopPropagation title="Delete season event">
+													<i class="fa-regular fa-trash"></i>
+												</button>
+												<button class="btn btn-sm btn-primary league-action-btn" @onclick="() => LaunchSeasonEvent.InvokeAsync(se)" @onclick:stopPropagation disabled="@(LaunchingSeasonEventId == se.EventId)">
+													<i class="fa-solid fa-play"></i> Launch Play
+												</button>
+											}
+											@if (se.LaunchedGameId.HasValue)
+											{
+												<button class="league-detail-active-game-join-btn" @onclick="() => OpenTable.InvokeAsync(se.LaunchedGameId.Value)" @onclick:stopPropagation>
+													<i class="fa-solid fa-right-to-bracket"></i> Join
+												</button>
+											}
+										</div>
+									}
+								</div>
+							}
+							else if (upcomingEvent.OneOffEvent is not null)
+							{
+								var oo = upcomingEvent.OneOffEvent;
+								<div class="league-detail-active-game-card league-event-oneoff">
+									<div class="league-detail-active-game-top">
+										<div class="league-detail-active-game-info">
+											<span class="league-detail-active-game-name">@oo.Name</span>
+											<div class="league-detail-active-game-meta">
+												<span class="league-detail-active-game-meta-item">
+													<i class="fa-solid @(oo.EventType == LeagueOneOffEventType.Tournament ? "fa-ranking-star" : "fa-dice") league-event-type-icon-oneoff"></i> @FormatOneOffEventType(oo.EventType)
+												</span>
+												@if (!string.IsNullOrWhiteSpace(oo.GameTypeName))
+												{
+													<span class="league-detail-active-game-meta-item">
+														<i class="fa-solid fa-cards"></i> @oo.GameTypeName
+													</span>
+												}
+												<span class="league-detail-active-game-meta-item league-event-badge-oneoff">
+													@oo.Status
+												</span>
+											</div>
+										</div>
+									</div>
+									<div class="league-detail-active-game-details">
+										<div class="league-detail-active-game-detail">
+											<i class="fa-solid fa-calendar"></i>
+											<span>@FormatDate(oo.ScheduledAtUtc)</span>
+										</div>
+									</div>
+									@if ((CanManageLeague && CanEditOneOffEvent(oo)) || oo.LaunchedGameId.HasValue)
+									{
+										<div class="league-detail-active-game-actions">
+											@if (CanManageLeague && CanEditOneOffEvent(oo))
+											{
+												<button class="btn btn-sm btn-outline-secondary league-action-btn" @onclick="() => EditOneOffEvent.InvokeAsync(oo)" @onclick:stopPropagation>
+													<i class="fa-solid fa-pen-to-square"></i> Edit
+												</button>
+												<button class="btn btn-sm btn-danger league-action-btn" @onclick="() => DeleteOneOffEvent.InvokeAsync(oo)" @onclick:stopPropagation title="Delete one-off event">
+													<i class="fa-regular fa-trash"></i>
+												</button>
+												<button class="btn btn-sm btn-primary league-action-btn" @onclick="() => LaunchOneOffEvent.InvokeAsync(oo)" @onclick:stopPropagation disabled="@(LaunchingOneOffEventId == oo.EventId)">
+													<i class="fa-solid fa-play"></i> Launch Play
+												</button>
+											}
+											@if (oo.LaunchedGameId.HasValue)
+											{
+												<button class="league-detail-active-game-join-btn" @onclick="() => OpenTable.InvokeAsync(oo.LaunchedGameId.Value)" @onclick:stopPropagation>
+													<i class="fa-solid fa-right-to-bracket"></i> Join
+												</button>
+											}
+										</div>
+									}
+								</div>
+							}
+						}
+					</div>
+					<div class="league-detail-active-games-footer">
+						<div class="league-detail-active-games-meta">
+							Showing @UpcomingEventsPage.Entries.Count of @UpcomingEventsPage.TotalCount upcoming event@(UpcomingEventsPage.TotalCount != 1 ? "s" : ""). Page @UpcomingEventsPage.PageNumber of @UpcomingEventsPage.TotalPages.
 						</div>
-					}
+						<div class="league-detail-active-games-pager" role="group" aria-label="Upcoming events page navigation">
+							<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => LoadUpcomingEventsPage.InvokeAsync(1)" disabled="@(IsLoadingUpcomingEventsPage || UpcomingEventsPage.PageNumber <= 1)">First</button>
+							<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => LoadUpcomingEventsPage.InvokeAsync(Math.Max(1, UpcomingEventsPage.PageNumber - 1))" disabled="@(IsLoadingUpcomingEventsPage || UpcomingEventsPage.PageNumber <= 1)">Previous</button>
+							<span class="league-detail-active-games-pager-status">Page @UpcomingEventsPage.PageNumber of @UpcomingEventsPage.TotalPages</span>
+							<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => LoadUpcomingEventsPage.InvokeAsync(Math.Min(UpcomingEventsPage.TotalPages, UpcomingEventsPage.PageNumber + 1))" disabled="@(IsLoadingUpcomingEventsPage || UpcomingEventsPage.PageNumber >= UpcomingEventsPage.TotalPages)">Next</button>
+							<button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => LoadUpcomingEventsPage.InvokeAsync(UpcomingEventsPage.TotalPages)" disabled="@(IsLoadingUpcomingEventsPage || UpcomingEventsPage.PageNumber >= UpcomingEventsPage.TotalPages)">Last</button>
+						</div>
+					</div>
 				}
 			</section>
 		</div>
@@ -298,10 +302,26 @@
 	public List<LeagueSeasonEventDto> RecentCompletedEvents { get; set; } = [];
 
 	[Parameter, EditorRequired]
-	public List<LeagueSeasonEventDto> SeasonEvents { get; set; } = [];
+	public LeagueActiveGamesPageDto ActiveGamesPage { get; set; } = new()
+	{
+		Entries = [],
+		HasMore = false,
+		TotalCount = 0,
+		PageNumber = 1,
+		PageSize = 5,
+		TotalPages = 1
+	};
 
 	[Parameter, EditorRequired]
-	public List<LeagueOneOffEventDto> OneOffEvents { get; set; } = [];
+	public LeagueUpcomingEventsPageDto UpcomingEventsPage { get; set; } = new()
+	{
+		Entries = [],
+		HasMore = false,
+		TotalCount = 0,
+		PageNumber = 1,
+		PageSize = 5,
+		TotalPages = 1
+	};
 
 	[Parameter, EditorRequired]
 	public List<LeagueStandingEntryDto> Standings { get; set; } = [];
@@ -319,6 +339,18 @@
 	public Guid? LaunchingOneOffEventId { get; set; }
 
 	[Parameter]
+	public bool IsLoadingActiveGamesPage { get; set; }
+
+	[Parameter]
+	public bool IsLoadingUpcomingEventsPage { get; set; }
+
+	[Parameter]
+	public EventCallback<int> LoadActiveGamesPage { get; set; }
+
+	[Parameter]
+	public EventCallback<int> LoadUpcomingEventsPage { get; set; }
+
+	[Parameter]
 	public EventCallback<LeagueSeasonEventDto> EditSeasonEvent { get; set; }
 
 	[Parameter]
@@ -331,10 +363,10 @@
 	public EventCallback<LeagueOneOffEventDto> DeleteOneOffEvent { get; set; }
 
 	[Parameter]
-	public EventCallback<Guid> LaunchSeasonEvent { get; set; }
+	public EventCallback<LeagueSeasonEventDto> LaunchSeasonEvent { get; set; }
 
 	[Parameter]
-	public EventCallback<Guid> LaunchOneOffEvent { get; set; }
+	public EventCallback<LeagueOneOffEventDto> LaunchOneOffEvent { get; set; }
 
 	[Parameter]
 	public LeagueStandingEntryDto? MyStanding { get; set; }
@@ -343,76 +375,7 @@
 	public Dictionary<string, int> RankMovementByUserId { get; set; } = new(StringComparer.Ordinal);
 
 	[Parameter]
-	public List<LeagueMemberDto> Members { get; set; } = [];
-
-	[Parameter]
-	public Dictionary<Guid, GetTableSettingsResponse> ActiveGameDetails { get; set; } = new();
-
-	[Parameter]
 	public string BrowserTimeZoneId { get; set; } = "UTC";
-
-	private List<ActiveGameViewModel> ActiveGames => GetActiveGames();
-
-	private List<ActiveGameViewModel> GetActiveGames()
-	{
-		var games = new List<ActiveGameViewModel>();
-
-		foreach (var se in SeasonEvents.Where(e => e.LaunchedGameId.HasValue && e.Status != LeagueSeasonEventStatus.Completed && e.Status != LeagueSeasonEventStatus.Canceled))
-		{
-			var gameId = se.LaunchedGameId!.Value;
-			ActiveGameDetails.TryGetValue(gameId, out var details);
-			var creatorName = ResolveCreatorName(se.CreatedByUserId, details?.CreatedByName);
-
-			games.Add(new ActiveGameViewModel(
-				gameId,
-				se.Name,
-				"Season Event",
-				se.ScheduledAtUtc ?? se.CreatedAtUtc,
-				details?.CurrentPhase,
-				details?.SeatedPlayerCount ?? 0,
-				creatorName,
-				details?.GameTypeName));
-		}
-
-		foreach (var oo in OneOffEvents.Where(e => e.LaunchedGameId.HasValue && e.Status != LeagueOneOffEventStatus.Completed && e.Status != LeagueOneOffEventStatus.Canceled))
-		{
-			var gameId = oo.LaunchedGameId!.Value;
-			var typeLabel = oo.EventType == LeagueOneOffEventType.Tournament ? "Tournament" : "Cash Game";
-			ActiveGameDetails.TryGetValue(gameId, out var details);
-			var creatorName = ResolveCreatorName(oo.CreatedByUserId, details?.CreatedByName);
-
-			games.Add(new ActiveGameViewModel(
-				gameId,
-				oo.Name,
-				typeLabel,
-				oo.ScheduledAtUtc,
-				details?.CurrentPhase,
-				details?.SeatedPlayerCount ?? 0,
-				creatorName,
-				details?.GameTypeName));
-		}
-
-		return games;
-	}
-
-	private string? ResolveCreatorName(string? userId, string? fallbackName)
-	{
-		if (string.IsNullOrEmpty(userId))
-			return fallbackName;
-
-		var member = Members.FirstOrDefault(m => m.UserId == userId);
-		return member?.UserDisplayName ?? fallbackName ?? userId;
-	}
-
-	private sealed record ActiveGameViewModel(
-		Guid GameId,
-		string Name,
-		string EventType,
-		DateTimeOffset? StartedAt,
-		string? CurrentPhase,
-		int PlayerCount,
-		string? CreatedByName,
-		string? GameTypeName);
 
 	private string FormatDate(DateTimeOffset? value)
 	{

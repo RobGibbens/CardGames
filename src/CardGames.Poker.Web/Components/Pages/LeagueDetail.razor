@@ -17,7 +17,6 @@
 @using System.Text.Json
 
 @inject ILeaguesApi LeaguesApi
-@inject IGamesApi GamesApi
 @inject LeagueHubClient LeagueHubClient
 @inject ILogger<LeagueDetail> Logger
 @inject NavigationManager NavigationManager
@@ -161,13 +160,13 @@
 			<nav class="lobby-tabs" role="tablist" aria-label="League sections">
 				<button type="button" class="lobby-tab @(_activeTab == LeagueDetailTab.Lobby ? "active" : "")" role="tab"
 						aria-selected="@(_activeTab == LeagueDetailTab.Lobby)"
-						@onclick="() => _activeTab = LeagueDetailTab.Lobby">
+						@onclick="() => SetActiveTabAsync(LeagueDetailTab.Lobby)">
 					<span class="lobby-tab-icon"><i class="fa-thin fa-house"></i></span>
 					<span class="lobby-tab-text">Lobby</span>
 				</button>
 				<button type="button" class="lobby-tab @(_activeTab == LeagueDetailTab.Results ? "active" : "")" role="tab"
 						aria-selected="@(_activeTab == LeagueDetailTab.Results)"
-						@onclick="() => _activeTab = LeagueDetailTab.Results">
+						@onclick="() => SetActiveTabAsync(LeagueDetailTab.Results)">
 					<span class="lobby-tab-icon"><i class="fa-thin fa-trophy"></i></span>
 					<span class="lobby-tab-text">Results</span>
 					@if (_recentCompletedEvents.Count > 0)
@@ -177,19 +176,19 @@
 				</button>
 				<button type="button" class="lobby-tab @(_activeTab == LeagueDetailTab.Standings ? "active" : "")"
 						role="tab" aria-selected="@(_activeTab == LeagueDetailTab.Standings)"
-						@onclick="() => _activeTab = LeagueDetailTab.Standings">
+						@onclick="() => SetActiveTabAsync(LeagueDetailTab.Standings)">
 					<span class="lobby-tab-icon"><i class="fa-thin fa-ranking-star"></i></span>
 					<span class="lobby-tab-text">Standings</span>
 				</button>
 				<button type="button" class="lobby-tab @(_activeTab == LeagueDetailTab.Schedule ? "active" : "")" role="tab"
 						aria-selected="@(_activeTab == LeagueDetailTab.Schedule)"
-						@onclick="() => _activeTab = LeagueDetailTab.Schedule">
+						@onclick="() => SetActiveTabAsync(LeagueDetailTab.Schedule)">
 					<span class="lobby-tab-icon"><i class="fa-thin fa-calendar-days"></i></span>
 					<span class="lobby-tab-text">Schedule</span>
 				</button>
 				<button type="button" class="lobby-tab @(_activeTab == LeagueDetailTab.Members ? "active" : "")" role="tab"
 						aria-selected="@(_activeTab == LeagueDetailTab.Members)"
-						@onclick="() => _activeTab = LeagueDetailTab.Members">
+						@onclick="() => SetActiveTabAsync(LeagueDetailTab.Members)">
 					<span class="lobby-tab-icon"><i class="fa-thin fa-users"></i></span>
 					<span class="lobby-tab-text">Members</span>
 					<span class="lobby-tab-badge">@_leagueDetail?.ActiveMemberCount</span>
@@ -199,13 +198,15 @@
 			@* ═══════════ TAB 1: LOBBY ═══════════ *@
 			@if (_activeTab == LeagueDetailTab.Lobby)
 			{
-				<LeagueDetailLobbyTab RecentCompletedEvents="_recentCompletedEvents" SeasonEvents="_seasonEvents"
-									  OneOffEvents="_oneOffEvents" Standings="_standings" MyStanding="_myStanding"
-									  RankMovementByUserId="_rankMovementByUserId" Members="_members" ActiveGameDetails="_activeGameDetails"
+				<LeagueDetailLobbyTab RecentCompletedEvents="_recentCompletedEvents" ActiveGamesPage="_activeGamesPage"
+									  UpcomingEventsPage="_upcomingEventsPage" Standings="_standings" MyStanding="_myStanding"
+									  RankMovementByUserId="_rankMovementByUserId"
 									  BrowserTimeZoneId="@BrowserTimeZoneId"
+									  IsLoadingActiveGamesPage="_isLoadingActiveGamesPage" IsLoadingUpcomingEventsPage="_isLoadingUpcomingEventsPage"
+									  LoadActiveGamesPage="LoadActiveGamesPageAsync" LoadUpcomingEventsPage="LoadUpcomingEventsPageAsync"
 									  LaunchingSeasonEventId="_launchingSeasonEventId" LaunchingOneOffEventId="_launchingOneOffEventId"
 									  OpenTable="OpenTable" CanManageLeague="CanManageLeague" EditSeasonEvent="OpenSeasonEventEditor"
-									  LaunchSeasonEvent="LaunchSeasonEventAsync" LaunchOneOffEvent="LaunchOneOffEventAsync"
+									  LaunchSeasonEvent="LaunchSeasonEventFromLobbyAsync" LaunchOneOffEvent="LaunchOneOffEventFromLobbyAsync"
 									  DeleteSeasonEvent="OpenDeleteSeasonEventDialog" EditOneOffEvent="OpenOneOffEventEditor"
 									  DeleteOneOffEvent="OpenDeleteOneOffEventDialog" />
 			}
@@ -477,7 +478,16 @@
 	private List<LeagueSeasonEventDto> _seasonEvents = [];
 	private List<LeagueOneOffEventDto> _oneOffEvents = [];
 	private List<LeagueStandingEntryDto> _standings = [];
-	private Dictionary<Guid, GetTableSettingsResponse> _activeGameDetails = new();
+	private List<LeagueSeasonEventDto> _recentCompletedEvents = [];
+	private LeagueActiveGamesPageDto _activeGamesPage = CreateEmptyActiveGamesPage();
+	private LeagueUpcomingEventsPageDto _upcomingEventsPage = CreateEmptyUpcomingEventsPage();
+	private int _activeGamesPageNumber = 1;
+	private int _upcomingEventsPageNumber = 1;
+	private bool _isLoadingActiveGamesPage;
+	private bool _isLoadingUpcomingEventsPage;
+	private bool _hasLoadedSeasonEvents;
+	private Guid? _loadedSeasonEventsSeasonId;
+	private bool _hasLoadedOneOffEvents;
 
 	private string _seasonName = string.Empty;
 	private int? _seasonPlannedEventCount;
@@ -515,8 +525,8 @@
 	private string? _currentUserId;
 	private Dictionary<string, int> _rankMovementByUserId = new(StringComparer.Ordinal);
 	private LeagueStandingEntryDto? _myStanding;
-	private List<LeagueSeasonEventDto> _recentCompletedEvents = [];
 	private bool _isLeagueHubSubscriptionInitialized;
+	private const int LobbyPageSize = 5;
 	private const string LeagueDetailModulePath = "/Components/Pages/LeagueDetail.razor.js";
 	private IJSObjectReference? _leagueDetailModule;
 	private string? _browserTimeZoneId;
@@ -570,6 +580,32 @@
 		public int Points { get; set; }
 
 		public int ChipsDelta { get; set; }
+	}
+
+	private static LeagueActiveGamesPageDto CreateEmptyActiveGamesPage(int pageNumber = 1, int pageSize = LobbyPageSize)
+	{
+		return new LeagueActiveGamesPageDto
+		{
+			Entries = [],
+			HasMore = false,
+			TotalCount = 0,
+			PageNumber = pageNumber,
+			PageSize = pageSize,
+			TotalPages = 1
+		};
+	}
+
+	private static LeagueUpcomingEventsPageDto CreateEmptyUpcomingEventsPage(int pageNumber = 1, int pageSize = LobbyPageSize)
+	{
+		return new LeagueUpcomingEventsPageDto
+		{
+			Entries = [],
+			HasMore = false,
+			TotalCount = 0,
+			PageNumber = pageNumber,
+			PageSize = pageSize,
+			TotalPages = 1
+		};
 	}
 
 	private bool IsManager => HasManagerAuthorityRole(_leagueDetail?.MyRole);
@@ -669,15 +705,19 @@
 			await LoadInvitesAsync();
 			await LoadStandingsAsync();
 			await LoadSeasonsAsync();
-			await LoadOneOffEventsAsync();
-			await LoadPendingJoinRequestsAsync();
+			await LoadLobbySectionsAsync(resetPages: true);
 
-			if (_selectedSeasonId.HasValue)
+			if (_activeTab is LeagueDetailTab.Results or LeagueDetailTab.Schedule)
 			{
-				await LoadSeasonEventsAsync(_selectedSeasonId.Value);
+				await EnsureSeasonEventsLoadedAsync(forceReload: true);
 			}
 
-			await LoadActiveGameDetailsAsync();
+			if (_activeTab == LeagueDetailTab.Schedule)
+			{
+				await EnsureOneOffEventsLoadedAsync(forceReload: true);
+			}
+
+			await LoadPendingJoinRequestsAsync();
 		}
 		catch (Exception ex)
 		{
@@ -692,25 +732,43 @@
 		}
 	}
 
+	private async Task SetActiveTabAsync(LeagueDetailTab tab)
+	{
+		_activeTab = tab;
+
+		if (tab is LeagueDetailTab.Results or LeagueDetailTab.Schedule)
+		{
+			await EnsureSeasonEventsLoadedAsync();
+		}
+
+		if (tab == LeagueDetailTab.Schedule)
+		{
+			await EnsureOneOffEventsLoadedAsync();
+		}
+	}
+
 	private async Task SyncLeagueHubSubscriptionAsync()
 	{
 		try
 		{
 			if (!_isLeagueHubSubscriptionInitialized)
 			{
+				LeagueHubClient.OnLeagueEventChanged += HandleLeagueEventChangedAsync;
+				LeagueHubClient.OnLeagueEventSessionLaunched += HandleLeagueEventSessionLaunchedAsync;
 				LeagueHubClient.OnLeagueJoinRequestSubmitted += HandleLeagueJoinRequestSubmittedAsync;
 				LeagueHubClient.OnLeagueJoinRequestUpdated += HandleLeagueJoinRequestUpdatedAsync;
 				_isLeagueHubSubscriptionInitialized = true;
 			}
 
-			if (HasLeagueAccess && CanManageLeague)
+			if (HasLeagueAccess)
 			{
 				await LeagueHubClient.ConnectAsync();
-				await LeagueHubClient.SetManagedLeaguesAsync([LeagueId]);
+				await LeagueHubClient.SetViewedLeaguesAsync([LeagueId]);
+				await LeagueHubClient.SetManagedLeaguesAsync(CanManageLeague ? [LeagueId] : []);
 			}
-			else if (_isLeagueHubSubscriptionInitialized)
+			else if (_isLeagueHubSubscriptionInitialized && LeagueHubClient.IsConnected)
 			{
-				await LeagueHubClient.ConnectAsync();
+				await LeagueHubClient.SetViewedLeaguesAsync([]);
 				await LeagueHubClient.SetManagedLeaguesAsync([]);
 			}
 		}
@@ -732,6 +790,49 @@
 			await LoadPendingJoinRequestsAsync();
 			StateHasChanged();
 		});
+	}
+
+	private async Task HandleLeagueEventSessionLaunchedAsync(LeagueEventSessionLaunchedDto payload)
+	{
+		await InvokeAsync(async () =>
+		{
+			if (payload.LeagueId != LeagueId || !HasLeagueAccess)
+			{
+				return;
+			}
+
+			await ReloadLeagueEventStateAsync();
+			StateHasChanged();
+		});
+	}
+
+	private async Task HandleLeagueEventChangedAsync(LeagueEventChangedDto payload)
+	{
+		await InvokeAsync(async () =>
+		{
+			if (payload.LeagueId != LeagueId || !HasLeagueAccess)
+			{
+				return;
+			}
+
+			await ReloadLeagueEventStateAsync();
+			StateHasChanged();
+		});
+	}
+
+	private async Task ReloadLeagueEventStateAsync()
+	{
+		await LoadLobbySectionsAsync();
+
+		if (_hasLoadedSeasonEvents)
+		{
+			await EnsureSeasonEventsLoadedAsync(forceReload: true);
+		}
+
+		if (_hasLoadedOneOffEvents)
+		{
+			await EnsureOneOffEventsLoadedAsync(forceReload: true);
+		}
 	}
 
 	private async Task HandleLeagueJoinRequestUpdatedAsync(LeagueJoinRequestUpdatedDto payload)
@@ -788,11 +889,17 @@
 		_selectedSeasonId = null;
 		_seasonEvents = [];
 		_oneOffEvents = [];
+		_hasLoadedSeasonEvents = false;
+		_loadedSeasonEventsSeasonId = null;
+		_hasLoadedOneOffEvents = false;
 		_standings = [];
 		_rankMovementByUserId.Clear();
-		_activeGameDetails.Clear();
 		_myStanding = null;
 		_recentCompletedEvents = [];
+		_activeGamesPageNumber = 1;
+		_upcomingEventsPageNumber = 1;
+		_activeGamesPage = CreateEmptyActiveGamesPage();
+		_upcomingEventsPage = CreateEmptyUpcomingEventsPage();
 		_activeScheduleTab = ScheduleTab.Seasons;
 	}
 
@@ -855,6 +962,8 @@
 		{
 			_selectedSeasonId = null;
 			_seasonEvents = [];
+			_hasLoadedSeasonEvents = false;
+			_loadedSeasonEventsSeasonId = null;
 			_recentCompletedEvents = [];
 		}
 	}
@@ -863,57 +972,198 @@
 	{
 		var response = await LeaguesApi.GetSeasonEventsAsync(LeagueId, seasonId);
 		_seasonEvents = response.IsSuccessStatusCode && response.Content is not null ? response.Content.ToList() : [];
-		_recentCompletedEvents = _seasonEvents
-			.Where(x => x.Status == LeagueSeasonEventStatus.Completed)
-			.OrderByDescending(x => x.ScheduledAtUtc ?? x.CreatedAtUtc)
-			.Take(5)
-			.ToList();
+		_hasLoadedSeasonEvents = true;
+		_loadedSeasonEventsSeasonId = seasonId;
 	}
 
 	private async Task LoadOneOffEventsAsync()
 	{
 		var response = await LeaguesApi.GetOneOffEventsAsync(LeagueId);
 		_oneOffEvents = response.IsSuccessStatusCode && response.Content is not null ? response.Content.ToList() : [];
+		_hasLoadedOneOffEvents = true;
 	}
 
-	private async Task LoadActiveGameDetailsAsync()
+	private async Task LoadLobbySectionsAsync(bool resetPages = false)
 	{
-		_activeGameDetails.Clear();
-
-		var activeGameIds = _seasonEvents
-			.Where(e => e.LaunchedGameId.HasValue && e.Status != LeagueSeasonEventStatus.Completed && e.Status != LeagueSeasonEventStatus.Canceled)
-			.Select(e => e.LaunchedGameId!.Value)
-			.Concat(_oneOffEvents
-				.Where(e => e.LaunchedGameId.HasValue && e.Status != LeagueOneOffEventStatus.Completed && e.Status != LeagueOneOffEventStatus.Canceled)
-				.Select(e => e.LaunchedGameId!.Value))
-			.Distinct()
-			.ToList();
-
-		var tasks = activeGameIds.Select(async gameId =>
+		if (resetPages)
 		{
-			try
-			{
-				var response = await GamesApi.GetTableSettingsAsync(gameId);
-				if (response.IsSuccessStatusCode && response.Content is not null)
-				{
-					return (gameId, settings: (GetTableSettingsResponse?)response.Content);
-				}
-			}
-			catch
-			{
-			}
-
-			return (gameId, settings: (GetTableSettingsResponse?)null);
-		});
-
-		var results = await Task.WhenAll(tasks);
-		foreach (var (gameId, settings) in results)
-		{
-			if (settings is not null)
-			{
-				_activeGameDetails[gameId] = settings;
-			}
+			_activeGamesPageNumber = 1;
+			_upcomingEventsPageNumber = 1;
 		}
+
+		if (_selectedSeasonId.HasValue)
+		{
+			await LoadRecentCompletedSeasonEventsAsync(_selectedSeasonId.Value);
+		}
+		else
+		{
+			_recentCompletedEvents = [];
+		}
+
+		await LoadActiveGamesPageAsync(_activeGamesPageNumber);
+		await LoadUpcomingEventsPageAsync(_upcomingEventsPageNumber);
+	}
+
+	private async Task LoadRecentCompletedSeasonEventsAsync(Guid seasonId)
+	{
+		var response = await LeaguesApi.GetRecentCompletedSeasonEventsAsync(LeagueId, seasonId, take: 5);
+		_recentCompletedEvents = response.IsSuccessStatusCode && response.Content is not null ? response.Content.ToList() : [];
+	}
+
+	private async Task LoadActiveGamesPageAsync(int pageNumber)
+	{
+		_isLoadingActiveGamesPage = true;
+		try
+		{
+			var response = await LeaguesApi.GetActiveGamesPageAsync(LeagueId, LobbyPageSize, pageNumber);
+			if (response.IsSuccessStatusCode && response.Content is not null)
+			{
+				_activeGamesPage = response.Content;
+				_activeGamesPageNumber = response.Content.PageNumber;
+				return;
+			}
+
+			_activeGamesPage = CreateEmptyActiveGamesPage(pageNumber);
+			_activeGamesPageNumber = _activeGamesPage.PageNumber;
+		}
+		finally
+		{
+			_isLoadingActiveGamesPage = false;
+		}
+	}
+
+	private async Task LoadUpcomingEventsPageAsync(int pageNumber)
+	{
+		_isLoadingUpcomingEventsPage = true;
+		try
+		{
+			var response = await LeaguesApi.GetUpcomingEventsPageAsync(LeagueId, LobbyPageSize, pageNumber);
+			if (response.IsSuccessStatusCode && response.Content is not null)
+			{
+				_upcomingEventsPage = response.Content;
+				_upcomingEventsPageNumber = response.Content.PageNumber;
+				return;
+			}
+
+			Logger.LogWarning("Failed loading upcoming events page for league {LeagueId}. StatusCode={StatusCode}. Error={Error}. Falling back to existing event feeds.",
+				LeagueId,
+				response.StatusCode,
+				TryExtractApiErrorMessage(response));
+
+			await LoadUpcomingEventsFallbackPageAsync(pageNumber);
+		}
+		catch (Exception ex)
+		{
+			Logger.LogWarning(ex, "Exception loading upcoming events page for league {LeagueId}. Falling back to existing event feeds.", LeagueId);
+			await LoadUpcomingEventsFallbackPageAsync(pageNumber);
+		}
+		finally
+		{
+			_isLoadingUpcomingEventsPage = false;
+		}
+	}
+
+	private async Task LoadUpcomingEventsFallbackPageAsync(int pageNumber)
+	{
+		try
+		{
+			await EnsureOneOffEventsLoadedAsync();
+
+			if (_selectedSeasonId.HasValue)
+			{
+				await EnsureSeasonEventsLoadedAsync();
+			}
+
+			var upcomingItems = new List<UpcomingEventFallbackItem>();
+
+			upcomingItems.AddRange(_oneOffEvents
+				.Where(oneOffEvent => oneOffEvent.Status != LeagueOneOffEventStatus.Completed
+					&& oneOffEvent.Status != LeagueOneOffEventStatus.Canceled)
+				.Select(oneOffEvent => new UpcomingEventFallbackItem(
+					oneOffEvent.ScheduledAtUtc,
+					oneOffEvent.CreatedAtUtc,
+					oneOffEvent.Name,
+					new LeagueUpcomingEventEntryDto
+					{
+						SortAt = oneOffEvent.ScheduledAtUtc,
+						SeasonEvent = null,
+						OneOffEvent = oneOffEvent
+					})));
+
+			if (_selectedSeasonId.HasValue)
+			{
+				upcomingItems.AddRange(_seasonEvents
+					.Where(seasonEvent => seasonEvent.Status != LeagueSeasonEventStatus.Completed
+						&& seasonEvent.Status != LeagueSeasonEventStatus.Canceled)
+					.Select(seasonEvent => new UpcomingEventFallbackItem(
+						seasonEvent.ScheduledAtUtc ?? seasonEvent.CreatedAtUtc,
+						seasonEvent.CreatedAtUtc,
+						seasonEvent.Name,
+						new LeagueUpcomingEventEntryDto
+						{
+							SortAt = seasonEvent.ScheduledAtUtc ?? seasonEvent.CreatedAtUtc,
+							SeasonEvent = seasonEvent,
+							OneOffEvent = null
+						})));
+			}
+
+			var totalCount = upcomingItems.Count;
+			var totalPages = Math.Max(1, (int)Math.Ceiling(totalCount / (double)LobbyPageSize));
+			var resolvedPageNumber = Math.Min(Math.Max(pageNumber, 1), totalPages);
+			var skip = (resolvedPageNumber - 1) * LobbyPageSize;
+
+			_upcomingEventsPage = new LeagueUpcomingEventsPageDto
+			{
+				Entries = upcomingItems
+					.OrderBy(item => item.SortAt)
+					.ThenBy(item => item.CreatedAtUtc)
+					.ThenBy(item => item.Name)
+					.Skip(skip)
+					.Take(LobbyPageSize)
+					.Select(item => item.Entry)
+					.ToList(),
+				HasMore = resolvedPageNumber < totalPages,
+				TotalCount = totalCount,
+				PageNumber = resolvedPageNumber,
+				PageSize = LobbyPageSize,
+				TotalPages = totalPages
+			};
+			_upcomingEventsPageNumber = _upcomingEventsPage.PageNumber;
+		}
+		catch (Exception ex)
+		{
+			Logger.LogWarning(ex, "Fallback loading for upcoming events failed for league {LeagueId}", LeagueId);
+			_upcomingEventsPage = CreateEmptyUpcomingEventsPage(pageNumber);
+			_upcomingEventsPageNumber = _upcomingEventsPage.PageNumber;
+		}
+	}
+
+	private async Task EnsureSeasonEventsLoadedAsync(bool forceReload = false)
+	{
+		if (!_selectedSeasonId.HasValue)
+		{
+			_seasonEvents = [];
+			_hasLoadedSeasonEvents = false;
+			_loadedSeasonEventsSeasonId = null;
+			return;
+		}
+
+		if (!forceReload && _hasLoadedSeasonEvents && _loadedSeasonEventsSeasonId == _selectedSeasonId.Value)
+		{
+			return;
+		}
+
+		await LoadSeasonEventsAsync(_selectedSeasonId.Value);
+	}
+
+	private async Task EnsureOneOffEventsLoadedAsync(bool forceReload = false)
+	{
+		if (!forceReload && _hasLoadedOneOffEvents)
+		{
+			return;
+		}
+
+		await LoadOneOffEventsAsync();
 	}
 
 	private async Task LoadStandingsAsync()
@@ -959,6 +1209,12 @@
 			?? user.Identity?.Name;
 	}
 
+	private sealed record UpcomingEventFallbackItem(
+		DateTimeOffset SortAt,
+		DateTimeOffset CreatedAtUtc,
+		string Name,
+		LeagueUpcomingEventEntryDto Entry);
+
 	private async Task OnSeasonSelectorChanged(ChangeEventArgs args)
 	{
 		if (args.Value is string rawValue && Guid.TryParse(rawValue, out var seasonId))
@@ -973,7 +1229,19 @@
 	private async Task SelectSeasonAsync(Guid seasonId)
 	{
 		_selectedSeasonId = seasonId;
-		await LoadSeasonEventsAsync(seasonId);
+		await LoadRecentCompletedSeasonEventsAsync(seasonId);
+
+		if (_activeTab is LeagueDetailTab.Results or LeagueDetailTab.Schedule)
+		{
+			await LoadSeasonEventsAsync(seasonId);
+		}
+		else
+		{
+			_seasonEvents = [];
+			_hasLoadedSeasonEvents = false;
+			_loadedSeasonEventsSeasonId = null;
+		}
+
 		await LoadStandingsAsync();
 	}
 
@@ -981,6 +1249,8 @@
 	{
 		_selectedSeasonId = null;
 		_seasonEvents = [];
+		_hasLoadedSeasonEvents = false;
+		_loadedSeasonEventsSeasonId = null;
 		_recentCompletedEvents = [];
 		await LoadStandingsAsync();
 	}
@@ -1528,7 +1798,12 @@ DateTimeKind.Utc)) : null,
 				_showSeasonEventModal = false;
 				_message = isEditing ? "Season event updated." : "Season event created.";
 				_isError = false;
-				await LoadSeasonEventsAsync(_selectedSeasonId.Value);
+				await LoadLobbySectionsAsync();
+
+				if (_activeTab is LeagueDetailTab.Results or LeagueDetailTab.Schedule || (_hasLoadedSeasonEvents && _loadedSeasonEventsSeasonId == _selectedSeasonId.Value))
+				{
+					await LoadSeasonEventsAsync(_selectedSeasonId.Value);
+				}
 			}
 			else
 			{
@@ -1654,7 +1929,12 @@ DateTimeKind.Utc)) : null,
 			? isEditing ? "Tournament updated." : "Tournament created."
 			: isEditing ? "Cash game updated." : "Cash game created.";
 		_isError = false;
-		await LoadOneOffEventsAsync();
+		await LoadLobbySectionsAsync();
+
+		if (_activeTab == LeagueDetailTab.Schedule || _hasLoadedOneOffEvents)
+		{
+			await LoadOneOffEventsAsync();
+		}
 	}
 
 	private void ToggleCreateDropdown()
@@ -1799,15 +2079,34 @@ DateTimeKind.Utc)) : null,
 				if (_pendingEventDeletion.Kind == LeagueEventDeletionKind.SeasonEvent && _pendingEventDeletion.SeasonId.HasValue)
 				{
 					_selectedSeasonId = _pendingEventDeletion.SeasonId.Value;
-					await LoadSeasonEventsAsync(_pendingEventDeletion.SeasonId.Value);
+					await LoadRecentCompletedSeasonEventsAsync(_pendingEventDeletion.SeasonId.Value);
+
+					if (_activeTab is LeagueDetailTab.Results or LeagueDetailTab.Schedule || (_hasLoadedSeasonEvents && _loadedSeasonEventsSeasonId == _pendingEventDeletion.SeasonId.Value))
+					{
+						await LoadSeasonEventsAsync(_pendingEventDeletion.SeasonId.Value);
+					}
+					else
+					{
+						_seasonEvents = [];
+						_hasLoadedSeasonEvents = false;
+						_loadedSeasonEventsSeasonId = null;
+					}
+
 					await LoadStandingsAsync();
 					_message = "Season event deleted.";
 				}
 				else
 				{
-					await LoadOneOffEventsAsync();
+					if (_activeTab == LeagueDetailTab.Schedule || _hasLoadedOneOffEvents)
+					{
+						await LoadOneOffEventsAsync();
+					}
+
 					_message = "One-off event deleted.";
 				}
+
+				await LoadActiveGamesPageAsync(_activeGamesPageNumber);
+				await LoadUpcomingEventsPageAsync(_upcomingEventsPageNumber);
 
 				_isError = false;
 				CancelDeleteEvent();
@@ -1948,15 +2247,25 @@ DateTimeKind.Utc)) : null,
 		}
 
 		_launchingSeasonEventId = eventId;
+		await EnsureSeasonEventsLoadedAsync();
+		var seasonEvent = _seasonEvents.FirstOrDefault(e => e.EventId == eventId);
+		await LaunchSeasonEventCoreAsync(
+			_selectedSeasonId.Value,
+			eventId,
+			seasonEvent?.TournamentBuyIn ?? DefaultTournamentBuyIn,
+			$"Failed to launch table from season event {eventId} in league {LeagueId}");
+	}
+
+	private async Task LaunchSeasonEventCoreAsync(Guid seasonId, Guid eventId, int hostStartingChips, string logMessage)
+	{
 		try
 		{
-			var response = await LeaguesApi.LaunchSeasonEventSessionAsync(LeagueId, _selectedSeasonId.Value, eventId, new
-LaunchLeagueEventSessionRequest
+			var response = await LeaguesApi.LaunchSeasonEventSessionAsync(LeagueId, seasonId, eventId, new LaunchLeagueEventSessionRequest
 			{
 				GameCode = "FIVECARDDRAW",
 				Ante = 10,
 				MinBet = 20,
-				HostStartingChips = _seasonEvents.FirstOrDefault(e => e.EventId == eventId)?.TournamentBuyIn ?? DefaultTournamentBuyIn
+				HostStartingChips = hostStartingChips
 			});
 
 			if (response.IsSuccessStatusCode && response.Content is not null)
@@ -1970,7 +2279,7 @@ LaunchLeagueEventSessionRequest
 		}
 		catch (Exception ex)
 		{
-			Logger.LogError(ex, "Failed to launch table from season event {EventId} in league {LeagueId}", eventId, LeagueId);
+			Logger.LogError(ex, logMessage);
 			_message = "Failed to launch table from season event.";
 			_isError = true;
 		}
@@ -1980,11 +2289,20 @@ LaunchLeagueEventSessionRequest
 		}
 	}
 
+	private Task LaunchSeasonEventFromLobbyAsync(LeagueSeasonEventDto seasonEvent)
+	{
+		_selectedSeasonId = seasonEvent.SeasonId;
+		_launchingSeasonEventId = seasonEvent.EventId;
+		return LaunchSeasonEventCoreAsync(seasonEvent.SeasonId, seasonEvent.EventId, seasonEvent.TournamentBuyIn ?? DefaultTournamentBuyIn,
+			$"Failed to launch table from season event {seasonEvent.EventId} in league {LeagueId}");
+	}
+
 	private async Task LaunchOneOffEventAsync(Guid eventId)
 	{
 		_launchingOneOffEventId = eventId;
 		try
 		{
+			await EnsureOneOffEventsLoadedAsync();
 			var oneOff = _oneOffEvents.FirstOrDefault(e => e.EventId == eventId);
 			var response = await LeaguesApi.LaunchOneOffEventSessionAsync(LeagueId, eventId, new LaunchLeagueEventSessionRequest
 			{
@@ -2007,6 +2325,41 @@ LaunchLeagueEventSessionRequest
 		catch (Exception ex)
 		{
 			Logger.LogError(ex, "Failed to launch table from one-off event {EventId} in league {LeagueId}", eventId, LeagueId);
+			_message = "Failed to launch table from one-off event.";
+			_isError = true;
+		}
+		finally
+		{
+			_launchingOneOffEventId = null;
+		}
+	}
+
+	private async Task LaunchOneOffEventFromLobbyAsync(LeagueOneOffEventDto oneOffEvent)
+	{
+		_launchingOneOffEventId = oneOffEvent.EventId;
+		try
+		{
+			var response = await LeaguesApi.LaunchOneOffEventSessionAsync(LeagueId, oneOffEvent.EventId, new LaunchLeagueEventSessionRequest
+			{
+				GameCode = oneOffEvent.GameTypeCode ?? "FIVECARDDRAW",
+				GameName = oneOffEvent.Name,
+				Ante = oneOffEvent.Ante,
+				MinBet = oneOffEvent.MinBet,
+				HostStartingChips = 100
+			});
+
+			if (response.IsSuccessStatusCode && response.Content is not null)
+			{
+				NavigationManager.NavigateTo(response.Content.TablePath);
+				return;
+			}
+
+			_message = "Failed to launch table from one-off event.";
+			_isError = true;
+		}
+		catch (Exception ex)
+		{
+			Logger.LogError(ex, "Failed to launch table from one-off event {EventId} in league {LeagueId}", oneOffEvent.EventId, LeagueId);
 			_message = "Failed to launch table from one-off event.";
 			_isError = true;
 		}
@@ -2045,6 +2398,8 @@ LaunchLeagueEventSessionRequest
 	{
 		if (_isLeagueHubSubscriptionInitialized)
 		{
+			LeagueHubClient.OnLeagueEventChanged -= HandleLeagueEventChangedAsync;
+			LeagueHubClient.OnLeagueEventSessionLaunched -= HandleLeagueEventSessionLaunchedAsync;
 			LeagueHubClient.OnLeagueJoinRequestSubmitted -= HandleLeagueJoinRequestSubmittedAsync;
 			LeagueHubClient.OnLeagueJoinRequestUpdated -= HandleLeagueJoinRequestUpdatedAsync;
 			_isLeagueHubSubscriptionInitialized = false;
@@ -2052,6 +2407,7 @@ LaunchLeagueEventSessionRequest
 
 		try
 		{
+			await LeagueHubClient.SetViewedLeaguesAsync([]);
 			await LeagueHubClient.SetManagedLeaguesAsync([]);
 			await LeagueHubClient.DisconnectAsync();
 		}

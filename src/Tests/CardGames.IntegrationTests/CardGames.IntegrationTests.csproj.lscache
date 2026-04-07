@@ -66,6 +66,7 @@ Api/
  LeaguesApiLaunchEventSessionTests.cs
  LeaguesApiMembershipHistoryTests.cs
  LeaguesApiStandingsScaffoldTests.cs
+ LeaguesApiUpcomingEventsTests.cs
  LeaguesApiUpdateEventTests.cs
  ProfileFavoriteVariantsApiTests.cs
  ProfileGamePreferencesApiTests.cs
@@ -97,6 +98,8 @@ Features/Commands/
  JoinLeagueCommandHandlerTests.cs
  JoinLeaveWalletCommandTests.cs
  KingsAndLowsCommandTests.cs
+ LaunchLeagueEventSessionCommandHandlerTests.cs
+ LeagueSeasonEventResultsCommandHandlerTests.cs
  LeaveLeagueCommandHandlerTests.cs
  OmahaShowdownHardeningTests.cs
  PerformShowdownCommandHandlerTests.cs
@@ -158,6 +161,7 @@ Infrastructure/
   FakeGameStateBroadcaster.cs
   FakeHandHistoryRecorder.cs
   FakeHandSettlementService.cs
+  FakeLeagueBroadcaster.cs
  IntegrationTestBase.cs
  TestAuthHandler.cs
 obj/Debug/net10.0/

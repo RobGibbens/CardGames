@@ -8,6 +8,20 @@ namespace CardGames.Poker.Api.Services;
 public interface ILeagueBroadcaster
 {
 	/// <summary>
+	/// Broadcasts that a league event changed and viewers should refresh.
+	/// </summary>
+	/// <param name="eventChanged">The league event change details.</param>
+	/// <param name="cancellationToken">Cancellation token.</param>
+	Task BroadcastLeagueEventChangedAsync(LeagueEventChangedDto eventChanged, CancellationToken cancellationToken = default);
+
+	/// <summary>
+	/// Broadcasts that a league event launched a new game session.
+	/// </summary>
+	/// <param name="sessionLaunched">The launched session details.</param>
+	/// <param name="cancellationToken">Cancellation token.</param>
+	Task BroadcastEventSessionLaunchedAsync(LeagueEventSessionLaunchedDto sessionLaunched, CancellationToken cancellationToken = default);
+
+	/// <summary>
 	/// Broadcasts that a league join request was submitted.
 	/// </summary>
 	/// <param name="joinRequestSubmitted">The submitted join request details.</param>

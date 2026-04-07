@@ -17,6 +17,7 @@ public class DeleteLeagueSeasonEventCommandHandlerTests : IntegrationTestBase
 	public async Task Handle_AdminCanDeleteSeasonEvent()
 	{
 		var fakeCurrentUser = (FakeCurrentUserService)Scope.ServiceProvider.GetRequiredService<ICurrentUserService>();
+		var fakeLeagueBroadcaster = Scope.ServiceProvider.GetRequiredService<FakeLeagueBroadcaster>();
 		fakeCurrentUser.UserId = "league-season-delete-admin";
 		fakeCurrentUser.IsAuthenticated = true;
 
@@ -39,11 +40,18 @@ public class DeleteLeagueSeasonEventCommandHandlerTests : IntegrationTestBase
 			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(3)
 		}));
 
+		fakeLeagueBroadcaster.EventChangedNotifications.Clear();
 		var result = await Mediator.Send(new DeleteLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId, createEvent.AsT0.EventId));
 
 		result.IsT0.Should().BeTrue();
 		var exists = await DbContext.LeagueSeasonEvents.AsNoTracking().AnyAsync(x => x.Id == createEvent.AsT0.EventId);
 		exists.Should().BeFalse();
+		fakeLeagueBroadcaster.EventChangedNotifications.Should().ContainSingle();
+		fakeLeagueBroadcaster.EventChangedNotifications[0].LeagueId.Should().Be(leagueId);
+		fakeLeagueBroadcaster.EventChangedNotifications[0].EventId.Should().Be(createEvent.AsT0.EventId);
+		fakeLeagueBroadcaster.EventChangedNotifications[0].SourceType.Should().Be(CardGames.Contracts.SignalR.LeagueEventSourceType.Season);
+		fakeLeagueBroadcaster.EventChangedNotifications[0].SeasonId.Should().Be(createSeason.AsT0.SeasonId);
+		fakeLeagueBroadcaster.EventChangedNotifications[0].ChangeKind.Should().Be(CardGames.Contracts.SignalR.LeagueEventChangeKind.Deleted);
 	}
 
 	[Fact]

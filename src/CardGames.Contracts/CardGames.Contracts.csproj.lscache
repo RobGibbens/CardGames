@@ -113,6 +113,8 @@ Leagues/
  JoinLeagueResponse.cs
  LaunchLeagueEventSessionRequest.cs
  LaunchLeagueEventSessionResponse.cs
+ LeagueActiveGameEntryDto.cs
+ LeagueActiveGamesPageDto.cs
  LeagueDetailDto.cs
  LeagueEventBuyInRules.cs
  LeagueInviteStatus.cs
@@ -134,6 +136,8 @@ Leagues/
  LeagueSeasonStatus.cs
  LeagueStandingEntryDto.cs
  LeagueSummaryDto.cs
+ LeagueUpcomingEventEntryDto.cs
+ LeagueUpcomingEventsPageDto.cs
  LeaveLeagueResponse.cs
  ModerateLeagueJoinRequestRequest.cs
  UpdateLeagueOneOffEventRequest.cs
@@ -156,6 +160,8 @@ SignalR/
  GameJoinRequestReceivedDto.cs
  GameJoinRequestResolvedDto.cs
  HandHistoryDto.cs
+ LeagueEventChangedDto.cs
+ LeagueEventSessionLaunchedDto.cs
  LeagueJoinRequestSubmittedDto.cs
  LeagueJoinRequestUpdatedDto.cs
  OddsVisibilityUpdatedDto.cs

@@ -4,6 +4,8 @@ using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.Common.v1.Commands.CreateGame;
 using CardGames.Poker.Api.Features.Leagues.v1.Governance;
 using CardGames.Poker.Api.Infrastructure;
+using CardGames.Poker.Api.Services;
+using CardGames.Contracts.SignalR;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
@@ -13,7 +15,8 @@ namespace CardGames.Poker.Api.Features.Leagues.v1.Commands.LaunchLeagueEventSess
 public sealed class LaunchLeagueEventSessionCommandHandler(
 	CardsDbContext context,
 	ICurrentUserService currentUserService,
-	IMediator mediator)
+	IMediator mediator,
+	ILeagueBroadcaster leagueBroadcaster)
 	: IRequestHandler<LaunchLeagueEventSessionCommand, OneOf<LaunchLeagueEventSessionResponse, LaunchLeagueEventSessionError>>
 {
 	public async Task<OneOf<LaunchLeagueEventSessionResponse, LaunchLeagueEventSessionError>> Handle(LaunchLeagueEventSessionCommand request, CancellationToken cancellationToken)
@@ -114,6 +117,15 @@ public sealed class LaunchLeagueEventSessionCommandHandler(
 			seasonEvent.LaunchedAtUtc = now;
 
 			await context.SaveChangesAsync(cancellationToken);
+			await leagueBroadcaster.BroadcastEventSessionLaunchedAsync(new LeagueEventSessionLaunchedDto
+			{
+				LeagueId = request.LeagueId,
+				EventId = request.EventId,
+				SourceType = CardGames.Contracts.SignalR.LeagueEventSourceType.Season,
+				SeasonId = request.SeasonId,
+				GameId = gameId,
+				LaunchedAtUtc = now
+			}, cancellationToken);
 		}
 		else
 		{
@@ -169,6 +181,14 @@ public sealed class LaunchLeagueEventSessionCommandHandler(
 			oneOffEvent.LaunchedAtUtc = now;
 
 			await context.SaveChangesAsync(cancellationToken);
+			await leagueBroadcaster.BroadcastEventSessionLaunchedAsync(new LeagueEventSessionLaunchedDto
+			{
+				LeagueId = request.LeagueId,
+				EventId = request.EventId,
+				SourceType = CardGames.Contracts.SignalR.LeagueEventSourceType.OneOff,
+				GameId = gameId,
+				LaunchedAtUtc = now
+			}, cancellationToken);
 		}
 
 		return new LaunchLeagueEventSessionResponse

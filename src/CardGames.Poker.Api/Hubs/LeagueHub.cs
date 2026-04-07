@@ -15,12 +15,18 @@ namespace CardGames.Poker.Api.Hubs;
 public sealed class LeagueHub(CardsDbContext context, ILogger<LeagueHub> logger) : Hub
 {
 	private const string ManagedLeagueGroupPrefix = "league:managed:";
+	private const string ViewedLeagueGroupPrefix = "league:viewed:";
 	private const string JoinRequesterGroupPrefix = "league:join-requester:";
 
 	/// <summary>
 	/// Gets the group name used for management updates for a given league.
 	/// </summary>
 	public static string GetManagedLeagueGroupName(Guid leagueId) => $"{ManagedLeagueGroupPrefix}{leagueId}";
+
+	/// <summary>
+	/// Gets the group name used for viewers of a given league.
+	/// </summary>
+	public static string GetViewedLeagueGroupName(Guid leagueId) => $"{ViewedLeagueGroupPrefix}{leagueId}";
 
 	/// <summary>
 	/// Gets the group name used for league join-request updates for a requester.
@@ -85,6 +91,34 @@ public sealed class LeagueHub(CardsDbContext context, ILogger<LeagueHub> logger)
 	}
 
 	/// <summary>
+	/// Joins the caller to general league event updates for the provided league.
+	/// </summary>
+	public async Task JoinViewedLeague(Guid leagueId)
+	{
+		var userId = GetCurrentUserId();
+		if (string.IsNullOrWhiteSpace(userId))
+		{
+			throw new HubException("User identifier not found.");
+		}
+
+		var canViewLeague = await CanViewLeagueAsync(leagueId, userId);
+		if (!canViewLeague)
+		{
+			logger.LogWarning("User {UserId} attempted to join unauthorized viewed league group for {LeagueId}.", userId, leagueId);
+			throw new HubException("Not authorized to view this league.");
+		}
+
+		var groupName = GetViewedLeagueGroupName(leagueId);
+		await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
+
+		logger.LogInformation(
+			"User {UserId} (connection {ConnectionId}) joined viewed league group {GroupName}",
+			userId,
+			Context.ConnectionId,
+			groupName);
+	}
+
+	/// <summary>
 	/// Leaves league management updates for the provided league.
 	/// </summary>
 	public async Task LeaveManagedLeague(Guid leagueId)
@@ -96,6 +130,36 @@ public sealed class LeagueHub(CardsDbContext context, ILogger<LeagueHub> logger)
 			"Connection {ConnectionId} left managed league group {GroupName}",
 			Context.ConnectionId,
 			groupName);
+	}
+
+	/// <summary>
+	/// Leaves general league event updates for the provided league.
+	/// </summary>
+	public async Task LeaveViewedLeague(Guid leagueId)
+	{
+		var groupName = GetViewedLeagueGroupName(leagueId);
+		await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
+
+		logger.LogInformation(
+			"Connection {ConnectionId} left viewed league group {GroupName}",
+			Context.ConnectionId,
+			groupName);
+	}
+
+	private async Task<bool> CanViewLeagueAsync(Guid leagueId, string userId)
+	{
+		var membership = await context.LeagueMembersCurrent
+			.AsNoTracking()
+			.AnyAsync(x => x.LeagueId == leagueId && x.UserId == userId && x.IsActive);
+
+		if (membership)
+		{
+			return true;
+		}
+
+		return await context.Leagues
+			.AsNoTracking()
+			.AnyAsync(x => x.Id == leagueId && x.CreatedByUserId == userId);
 	}
 
 	private string? GetCurrentUserId()

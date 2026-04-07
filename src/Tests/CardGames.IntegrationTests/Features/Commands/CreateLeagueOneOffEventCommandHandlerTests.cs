@@ -13,6 +13,7 @@ public class CreateLeagueOneOffEventCommandHandlerTests : IntegrationTestBase
 	public async Task Handle_AdminCanCreateOneOffEvent()
 	{
 		var fakeCurrentUser = (FakeCurrentUserService)Scope.ServiceProvider.GetRequiredService<ICurrentUserService>();
+		var fakeLeagueBroadcaster = Scope.ServiceProvider.GetRequiredService<FakeLeagueBroadcaster>();
 		fakeCurrentUser.UserId = "league-one-off-admin";
 		fakeCurrentUser.IsAuthenticated = true;
 
@@ -34,6 +35,11 @@ public class CreateLeagueOneOffEventCommandHandlerTests : IntegrationTestBase
 		result.IsT0.Should().BeTrue();
 		result.AsT0.LeagueId.Should().Be(leagueId);
 		result.AsT0.Name.Should().Be("Friday Night");
+		fakeLeagueBroadcaster.EventChangedNotifications.Should().ContainSingle();
+		fakeLeagueBroadcaster.EventChangedNotifications[0].LeagueId.Should().Be(leagueId);
+		fakeLeagueBroadcaster.EventChangedNotifications[0].EventId.Should().Be(result.AsT0.EventId);
+		fakeLeagueBroadcaster.EventChangedNotifications[0].SourceType.Should().Be(CardGames.Contracts.SignalR.LeagueEventSourceType.OneOff);
+		fakeLeagueBroadcaster.EventChangedNotifications[0].ChangeKind.Should().Be(CardGames.Contracts.SignalR.LeagueEventChangeKind.Created);
 	}
 
 	[Fact]

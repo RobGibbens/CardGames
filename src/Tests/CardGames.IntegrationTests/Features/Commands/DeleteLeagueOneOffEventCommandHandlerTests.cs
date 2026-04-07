@@ -17,6 +17,7 @@ public class DeleteLeagueOneOffEventCommandHandlerTests : IntegrationTestBase
 	public async Task Handle_AdminCanDeleteOneOffEvent()
 	{
 		var fakeCurrentUser = (FakeCurrentUserService)Scope.ServiceProvider.GetRequiredService<ICurrentUserService>();
+		var fakeLeagueBroadcaster = Scope.ServiceProvider.GetRequiredService<FakeLeagueBroadcaster>();
 		fakeCurrentUser.UserId = "league-oneoff-delete-admin";
 		fakeCurrentUser.IsAuthenticated = true;
 
@@ -35,11 +36,18 @@ public class DeleteLeagueOneOffEventCommandHandlerTests : IntegrationTestBase
 			GameTypeCode = "HOLDEM"
 		}));
 
+		fakeLeagueBroadcaster.EventChangedNotifications.Clear();
 		var result = await Mediator.Send(new DeleteLeagueOneOffEventCommand(leagueId, createEvent.AsT0.EventId));
 
 		result.IsT0.Should().BeTrue();
 		var exists = await DbContext.LeagueOneOffEvents.AsNoTracking().AnyAsync(x => x.Id == createEvent.AsT0.EventId);
 		exists.Should().BeFalse();
+		fakeLeagueBroadcaster.EventChangedNotifications.Should().ContainSingle();
+		fakeLeagueBroadcaster.EventChangedNotifications[0].LeagueId.Should().Be(leagueId);
+		fakeLeagueBroadcaster.EventChangedNotifications[0].EventId.Should().Be(createEvent.AsT0.EventId);
+		fakeLeagueBroadcaster.EventChangedNotifications[0].SourceType.Should().Be(CardGames.Contracts.SignalR.LeagueEventSourceType.OneOff);
+		fakeLeagueBroadcaster.EventChangedNotifications[0].SeasonId.Should().BeNull();
+		fakeLeagueBroadcaster.EventChangedNotifications[0].ChangeKind.Should().Be(CardGames.Contracts.SignalR.LeagueEventChangeKind.Deleted);
 	}
 
 	[Fact]

@@ -25,11 +25,14 @@ using CardGames.Poker.Api.Features.Leagues.v1.Queries.GetLeagueInvites;
 using CardGames.Poker.Api.Features.Leagues.v1.Queries.GetLeagueJoinPreview;
 using CardGames.Poker.Api.Features.Leagues.v1.Queries.GetLeagueMembershipHistory;
 using CardGames.Poker.Api.Features.Leagues.v1.Queries.GetLeagueMembers;
+using CardGames.Poker.Api.Features.Leagues.v1.Queries.GetLeagueActiveGamesPage;
 using CardGames.Poker.Api.Features.Leagues.v1.Queries.GetLeagueOneOffEvents;
+using CardGames.Poker.Api.Features.Leagues.v1.Queries.GetLeagueUpcomingEventsPage;
 using CardGames.Poker.Api.Features.Leagues.v1.Queries.GetLeagueSeasonEvents;
 using CardGames.Poker.Api.Features.Leagues.v1.Queries.GetLeagueSeasons;
 using CardGames.Poker.Api.Features.Leagues.v1.Queries.GetLeagueStandings;
 using CardGames.Poker.Api.Features.Leagues.v1.Queries.GetPendingLeagueJoinRequests;
+using CardGames.Poker.Api.Features.Leagues.v1.Queries.GetRecentCompletedLeagueSeasonEvents;
 using CardGames.Poker.Api.Features.Leagues.v1.Queries.GetMyLeagues;
 
 namespace CardGames.Poker.Api.Features.Leagues.v1;
@@ -46,6 +49,7 @@ public static class V1
 		mapGroup.MapGetMyLeagues();
 		mapGroup.MapGetLeagueDetail();
 		mapGroup.MapGetLeagueMembers();
+		mapGroup.MapGetLeagueActiveGamesPage();
 		mapGroup.MapGetLeagueMembershipHistory();
 		mapGroup.MapCreateLeagueInvite();
 		mapGroup.MapRevokeLeagueInvite();
@@ -66,12 +70,14 @@ public static class V1
 		mapGroup.MapUpdateLeagueSeasonEvent();
 		mapGroup.MapDeleteLeagueSeasonEvent();
 		mapGroup.MapGetLeagueSeasonEvents();
+		mapGroup.MapGetRecentCompletedLeagueSeasonEvents();
 		mapGroup.MapIngestLeagueSeasonEventResults();
 		mapGroup.MapCorrectLeagueSeasonEventResults();
 		mapGroup.MapCreateLeagueOneOffEvent();
 		mapGroup.MapUpdateLeagueOneOffEvent();
 		mapGroup.MapDeleteLeagueOneOffEvent();
 		mapGroup.MapGetLeagueOneOffEvents();
+		mapGroup.MapGetLeagueUpcomingEventsPage();
 		mapGroup.MapGetLeagueStandings();
 		mapGroup.MapLaunchLeagueEventSession();
 	}

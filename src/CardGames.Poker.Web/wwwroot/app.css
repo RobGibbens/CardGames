@@ -7552,10 +7552,66 @@ playing-card.card-wild-highlight {
     font-size: 0.75rem;
 }
 
+.league-detail-active-games-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem 1rem;
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.06));
+}
+
+.league-detail-active-games-meta {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.league-detail-active-games-pager {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.league-detail-active-games-pager .btn {
+    min-width: 4.5rem;
+}
+
+.league-detail-active-games-pager-status {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
 .league-detail-event-row-actions {
     display: flex;
     gap: 0.4rem;
     flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+    .league-detail-active-games-footer {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .league-detail-active-games-pager {
+        justify-content: space-between;
+    }
+
+    .league-detail-active-games-pager .btn {
+        min-width: 0;
+        flex: 1 1 calc(50% - 0.25rem);
+    }
+
+    .league-detail-active-games-pager-status {
+        width: 100%;
+        text-align: center;
+        order: -1;
+    }
 }
 
 /* ── Season Row Highlight ── */

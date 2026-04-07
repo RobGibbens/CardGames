@@ -16,6 +16,7 @@ public class UpdateLeagueOneOffEventCommandHandlerTests : IntegrationTestBase
 	public async Task Handle_AdminCanUpdateOneOffEvent()
 	{
 		var fakeCurrentUser = (FakeCurrentUserService)Scope.ServiceProvider.GetRequiredService<ICurrentUserService>();
+		var fakeLeagueBroadcaster = Scope.ServiceProvider.GetRequiredService<FakeLeagueBroadcaster>();
 		fakeCurrentUser.UserId = "league-one-off-update-admin";
 		fakeCurrentUser.IsAuthenticated = true;
 
@@ -37,6 +38,7 @@ public class UpdateLeagueOneOffEventCommandHandlerTests : IntegrationTestBase
 		}));
 
 		var scheduledAtUtc = DateTimeOffset.UtcNow.AddDays(7);
+		fakeLeagueBroadcaster.EventChangedNotifications.Clear();
 		var result = await Mediator.Send(new UpdateLeagueOneOffEventCommand(leagueId, createEvent.AsT0.EventId, new UpdateLeagueOneOffEventRequest
 		{
 			Name = "High Stakes",
@@ -60,6 +62,12 @@ public class UpdateLeagueOneOffEventCommandHandlerTests : IntegrationTestBase
 		savedEvent.Ante.Should().Be(25);
 		savedEvent.MinBet.Should().Be(50);
 		savedEvent.Notes.Should().Be("Updated notes");
+		fakeLeagueBroadcaster.EventChangedNotifications.Should().ContainSingle();
+		fakeLeagueBroadcaster.EventChangedNotifications[0].LeagueId.Should().Be(leagueId);
+		fakeLeagueBroadcaster.EventChangedNotifications[0].EventId.Should().Be(createEvent.AsT0.EventId);
+		fakeLeagueBroadcaster.EventChangedNotifications[0].SourceType.Should().Be(CardGames.Contracts.SignalR.LeagueEventSourceType.OneOff);
+		fakeLeagueBroadcaster.EventChangedNotifications[0].SeasonId.Should().BeNull();
+		fakeLeagueBroadcaster.EventChangedNotifications[0].ChangeKind.Should().Be(CardGames.Contracts.SignalR.LeagueEventChangeKind.Updated);
 	}
 
 	[Fact]
