@@ -33,7 +33,7 @@ TemporaryDependencyNodeTargetIdentifier=net10.0
 /noconfig
 /unsafe-
 /checked-
-/nowarn:1701,1702,1701,1702,8002
+/nowarn:1701,1702,1701,1702
 /fullpaths
 /nostdlib+
 /errorreport:prompt
@@ -46,8 +46,8 @@ TemporaryDependencyNodeTargetIdentifier=net10.0
 /debug:portable
 /filealign:512
 /optimize-
-/out:obj\Debug\net10.0\CardGames.Poker.Web.dll
-/refout:obj\Debug\net10.0\refint\CardGames.Poker.Web.dll
+/out:obj/Debug/net10.0/CardGames.Poker.Web.dll
+/refout:obj/Debug/net10.0/refint/CardGames.Poker.Web.dll
 /target:exe
 /warnaserror-
 /utf8output
@@ -117,14 +117,7 @@ Services/
 Utilities/LeagueTimeZoneHelper.cs
 
 [metadataReferences]
-../
- CardGames.Contracts/obj/Debug/net10.0/ref/CardGames.Contracts.dll
- CardGames.Core.French/obj/Debug/net10.0/ref/CardGames.Core.French.dll
- CardGames.Core/obj/Debug/net10.0/ref/CardGames.Core.dll
- CardGames.Poker.Events/obj/Debug/net10.0/ref/CardGames.Poker.Events.dll
- CardGames.Poker/obj/Debug/net10.0/ref/CardGames.Poker.dll
- CardGames.ServiceDefaults/obj/Debug/net10.0/ref/CardGames.ServiceDefaults.dll
-<DOTNET>/packs/Microsoft.AspNetCore.App.Ref/10.0.5/ref/net10.0/
+../../../../../../usr/local/share/dotnet/packs/Microsoft.AspNetCore.App.Ref/10.0.0/ref/net10.0/
  Microsoft.AspNetCore.Antiforgery.dll
  Microsoft.AspNetCore.Authentication.Abstractions.dll
  Microsoft.AspNetCore.Authentication.BearerToken.dll
@@ -265,7 +258,7 @@ Utilities/LeagueTimeZoneHelper.cs
  System.Formats.Cbor.dll
  System.Security.Cryptography.Xml.dll
  System.Threading.RateLimiting.dll
-<DOTNET>/packs/Microsoft.NETCore.App.Ref/10.0.5/ref/net10.0/
+../../../../../../usr/local/share/dotnet/packs/Microsoft.NETCore.App.Ref/10.0.0/ref/net10.0/
  Microsoft.CSharp.dll
  Microsoft.VisualBasic.Core.dll
  Microsoft.VisualBasic.dll
@@ -433,6 +426,13 @@ Utilities/LeagueTimeZoneHelper.cs
  System.Xml.XPath.dll
  System.Xml.XPath.XDocument.dll
  WindowsBase.dll
+../
+ CardGames.Contracts/obj/Debug/net10.0/ref/CardGames.Contracts.dll
+ CardGames.Core.French/obj/Debug/net10.0/ref/CardGames.Core.French.dll
+ CardGames.Core/obj/Debug/net10.0/ref/CardGames.Core.dll
+ CardGames.Poker.Events/obj/Debug/net10.0/ref/CardGames.Poker.Events.dll
+ CardGames.Poker/obj/Debug/net10.0/ref/CardGames.Poker.dll
+ CardGames.ServiceDefaults/obj/Debug/net10.0/ref/CardGames.ServiceDefaults.dll
 <NUGET>/
  azure.core/1.47.1/lib/net8.0/Azure.Core.dll
  azure.identity/1.14.2/lib/net8.0/Azure.Identity.dll
@@ -494,28 +494,28 @@ Utilities/LeagueTimeZoneHelper.cs
  ziggycreatures.fusioncache/2.6.0/lib/net9.0/ZiggyCreatures.FusionCache.dll
 
 [analyzerReferences]
-<DOTNET>/packs/Microsoft.AspNetCore.App.Ref/10.0.5/analyzers/dotnet/cs/
+../../../../../../usr/local/share/dotnet/packs/Microsoft.AspNetCore.App.Ref/10.0.0/analyzers/dotnet/cs/
  Microsoft.AspNetCore.App.Analyzers.dll
  Microsoft.AspNetCore.App.CodeFixes.dll
  Microsoft.AspNetCore.App.SourceGenerators.dll
  Microsoft.AspNetCore.Components.Analyzers.dll
  Microsoft.Extensions.Options.SourceGeneration.dll
  Microsoft.Extensions.Validation.ValidationsGenerator.dll
-<DOTNET>/packs/Microsoft.NETCore.App.Ref/10.0.5/analyzers/dotnet/cs/
+../../../../../../usr/local/share/dotnet/packs/Microsoft.NETCore.App.Ref/10.0.0/analyzers/dotnet/cs/
  Microsoft.Interop.ComInterfaceGenerator.dll
  Microsoft.Interop.JavaScript.JSImportGenerator.dll
  Microsoft.Interop.LibraryImportGenerator.dll
  Microsoft.Interop.SourceGeneration.dll
  System.Text.Json.SourceGeneration.dll
  System.Text.RegularExpressions.Generator.dll
-<DOTNET>/sdk/10.0.201/Sdks/Microsoft.NET.Sdk.Razor/source-generators/
+../../../../../../usr/local/share/dotnet/sdk/10.0.100/Sdks/Microsoft.NET.Sdk.Razor/source-generators/
  Microsoft.AspNetCore.Razor.Utilities.Shared.dll
  Microsoft.CodeAnalysis.Razor.Compiler.dll
  Microsoft.Extensions.ObjectPool.dll
-<DOTNET>/sdk/10.0.201/Sdks/Microsoft.NET.Sdk.Web/analyzers/cs/
+../../../../../../usr/local/share/dotnet/sdk/10.0.100/Sdks/Microsoft.NET.Sdk.Web/analyzers/cs/
  Microsoft.AspNetCore.Analyzers.dll
  Microsoft.AspNetCore.Mvc.Analyzers.dll
-<DOTNET>/sdk/10.0.201/Sdks/Microsoft.NET.Sdk/analyzers/
+../../../../../../usr/local/share/dotnet/sdk/10.0.100/Sdks/Microsoft.NET.Sdk/analyzers/
  Microsoft.CodeAnalysis.CSharp.NetAnalyzers.dll
  Microsoft.CodeAnalysis.NetAnalyzers.dll
 <NUGET>/
@@ -531,7 +531,7 @@ Utilities/LeagueTimeZoneHelper.cs
  system.clientmodel/1.5.1/analyzers/dotnet/cs/System.ClientModel.SourceGeneration.dll
 
 [analyzerConfigFiles]
-<DOTNET>/sdk/10.0.201/Sdks/Microsoft.NET.Sdk/analyzers/build/config/analysislevel_10_default.globalconfig
+../../../../../../usr/local/share/dotnet/sdk/10.0.100/Sdks/Microsoft.NET.Sdk/analyzers/build/config/analysislevel_10_default.globalconfig
 obj/Debug/net10.0/CardGames.Poker.Web.GeneratedMSBuildEditorConfig.editorconfig
 
 [additionalFiles]

@@ -33,7 +33,7 @@ TemporaryDependencyNodeTargetIdentifier=net10.0
 /noconfig
 /unsafe-
 /checked-
-/nowarn:1701,1702,1701,1702,8002
+/nowarn:1701,1702,1701,1702
 /fullpaths
 /nostdlib+
 /errorreport:prompt
@@ -46,8 +46,8 @@ TemporaryDependencyNodeTargetIdentifier=net10.0
 /debug:portable
 /filealign:512
 /optimize-
-/out:obj\Debug\net10.0\CardGames.MigrationService.dll
-/refout:obj\Debug\net10.0\refint\CardGames.MigrationService.dll
+/out:obj/Debug/net10.0/CardGames.MigrationService.dll
+/refout:obj/Debug/net10.0/refint/CardGames.MigrationService.dll
 /target:exe
 /warnaserror-
 /utf8output
@@ -64,15 +64,7 @@ Program.cs
 Worker.cs
 
 [metadataReferences]
-../
- CardGames.Contracts/obj/Debug/net10.0/ref/CardGames.Contracts.dll
- CardGames.Core.French/obj/Debug/net10.0/ref/CardGames.Core.French.dll
- CardGames.Core/obj/Debug/net10.0/ref/CardGames.Core.dll
- CardGames.Poker.Api/obj/Debug/net10.0/ref/CardGames.Poker.Api.dll
- CardGames.Poker.Events/obj/Debug/net10.0/ref/CardGames.Poker.Events.dll
- CardGames.Poker/obj/Debug/net10.0/ref/CardGames.Poker.dll
- CardGames.ServiceDefaults/obj/Debug/net10.0/ref/CardGames.ServiceDefaults.dll
-<DOTNET>/packs/Microsoft.AspNetCore.App.Ref/10.0.5/ref/net10.0/
+../../../../../../usr/local/share/dotnet/packs/Microsoft.AspNetCore.App.Ref/10.0.0/ref/net10.0/
  Microsoft.AspNetCore.Antiforgery.dll
  Microsoft.AspNetCore.Authentication.Abstractions.dll
  Microsoft.AspNetCore.Authentication.BearerToken.dll
@@ -91,8 +83,6 @@ Worker.cs
  Microsoft.AspNetCore.Connections.Abstractions.dll
  Microsoft.AspNetCore.CookiePolicy.dll
  Microsoft.AspNetCore.Cors.dll
- Microsoft.AspNetCore.Cryptography.Internal.dll
- Microsoft.AspNetCore.Cryptography.KeyDerivation.dll
  Microsoft.AspNetCore.DataProtection.Abstractions.dll
  Microsoft.AspNetCore.DataProtection.dll
  Microsoft.AspNetCore.DataProtection.Extensions.dll
@@ -160,60 +150,23 @@ Worker.cs
  Microsoft.AspNetCore.StaticFiles.dll
  Microsoft.AspNetCore.WebSockets.dll
  Microsoft.AspNetCore.WebUtilities.dll
- Microsoft.Extensions.Caching.Abstractions.dll
- Microsoft.Extensions.Caching.Memory.dll
- Microsoft.Extensions.Configuration.Abstractions.dll
- Microsoft.Extensions.Configuration.Binder.dll
- Microsoft.Extensions.Configuration.CommandLine.dll
- Microsoft.Extensions.Configuration.dll
- Microsoft.Extensions.Configuration.EnvironmentVariables.dll
- Microsoft.Extensions.Configuration.FileExtensions.dll
  Microsoft.Extensions.Configuration.Ini.dll
- Microsoft.Extensions.Configuration.Json.dll
  Microsoft.Extensions.Configuration.KeyPerFile.dll
- Microsoft.Extensions.Configuration.UserSecrets.dll
  Microsoft.Extensions.Configuration.Xml.dll
- Microsoft.Extensions.DependencyInjection.Abstractions.dll
- Microsoft.Extensions.DependencyInjection.dll
- Microsoft.Extensions.Diagnostics.Abstractions.dll
- Microsoft.Extensions.Diagnostics.dll
- Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions.dll
- Microsoft.Extensions.Diagnostics.HealthChecks.dll
- Microsoft.Extensions.Features.dll
- Microsoft.Extensions.FileProviders.Abstractions.dll
  Microsoft.Extensions.FileProviders.Composite.dll
  Microsoft.Extensions.FileProviders.Embedded.dll
- Microsoft.Extensions.FileProviders.Physical.dll
- Microsoft.Extensions.FileSystemGlobbing.dll
- Microsoft.Extensions.Hosting.Abstractions.dll
- Microsoft.Extensions.Hosting.dll
- Microsoft.Extensions.Http.dll
- Microsoft.Extensions.Identity.Core.dll
- Microsoft.Extensions.Identity.Stores.dll
  Microsoft.Extensions.Localization.Abstractions.dll
  Microsoft.Extensions.Localization.dll
- Microsoft.Extensions.Logging.Abstractions.dll
- Microsoft.Extensions.Logging.Configuration.dll
- Microsoft.Extensions.Logging.Console.dll
- Microsoft.Extensions.Logging.Debug.dll
- Microsoft.Extensions.Logging.dll
- Microsoft.Extensions.Logging.EventLog.dll
- Microsoft.Extensions.Logging.EventSource.dll
  Microsoft.Extensions.Logging.TraceSource.dll
- Microsoft.Extensions.ObjectPool.dll
- Microsoft.Extensions.Options.ConfigurationExtensions.dll
  Microsoft.Extensions.Options.DataAnnotations.dll
- Microsoft.Extensions.Options.dll
- Microsoft.Extensions.Primitives.dll
  Microsoft.Extensions.Validation.dll
  Microsoft.Extensions.WebEncoders.dll
  Microsoft.JSInterop.dll
  Microsoft.Net.Http.Headers.dll
- System.Diagnostics.EventLog.dll
  System.Formats.Cbor.dll
  System.Security.Cryptography.Xml.dll
  System.Threading.RateLimiting.dll
-<DOTNET>/packs/Microsoft.NETCore.App.Ref/10.0.5/ref/net10.0/
+../../../../../../usr/local/share/dotnet/packs/Microsoft.NETCore.App.Ref/10.0.0/ref/net10.0/
  Microsoft.CSharp.dll
  Microsoft.VisualBasic.Core.dll
  Microsoft.VisualBasic.dll
@@ -381,6 +334,14 @@ Worker.cs
  System.Xml.XPath.dll
  System.Xml.XPath.XDocument.dll
  WindowsBase.dll
+../
+ CardGames.Contracts/obj/Debug/net10.0/ref/CardGames.Contracts.dll
+ CardGames.Core.French/obj/Debug/net10.0/ref/CardGames.Core.French.dll
+ CardGames.Core/obj/Debug/net10.0/ref/CardGames.Core.dll
+ CardGames.Poker.Api/obj/Debug/net10.0/ref/CardGames.Poker.Api.dll
+ CardGames.Poker.Events/obj/Debug/net10.0/ref/CardGames.Poker.Events.dll
+ CardGames.Poker/obj/Debug/net10.0/ref/CardGames.Poker.dll
+ CardGames.ServiceDefaults/obj/Debug/net10.0/ref/CardGames.ServiceDefaults.dll
 <NUGET>/
  asp.versioning.abstractions/8.1.0/lib/net8.0/Asp.Versioning.Abstractions.dll
  asp.versioning.http/8.1.1/lib/net8.0/Asp.Versioning.Http.dll
@@ -412,6 +373,8 @@ Worker.cs
  mediatr/14.1.0/lib/net10.0/MediatR.dll
  microsoft.aspnetcore.authentication.jwtbearer/10.0.5/lib/net10.0/Microsoft.AspNetCore.Authentication.JwtBearer.dll
  microsoft.aspnetcore.authentication.openidconnect/10.0.5/lib/net10.0/Microsoft.AspNetCore.Authentication.OpenIdConnect.dll
+ microsoft.aspnetcore.cryptography.internal/10.0.5/lib/net10.0/Microsoft.AspNetCore.Cryptography.Internal.dll
+ microsoft.aspnetcore.cryptography.keyderivation/10.0.5/lib/net10.0/Microsoft.AspNetCore.Cryptography.KeyDerivation.dll
  microsoft.aspnetcore.diagnostics.entityframeworkcore/10.0.5/lib/net10.0/Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore.dll
  microsoft.aspnetcore.identity.entityframeworkcore/10.0.5/lib/net10.0/Microsoft.AspNetCore.Identity.EntityFrameworkCore.dll
  microsoft.aspnetcore.openapi/10.0.5/lib/net10.0/Microsoft.AspNetCore.OpenApi.dll
@@ -425,13 +388,49 @@ Worker.cs
  microsoft.extensions.ai.abstractions/10.2.0/lib/net10.0/Microsoft.Extensions.AI.Abstractions.dll
  microsoft.extensions.ambientmetadata.application/10.4.0/lib/net10.0/Microsoft.Extensions.AmbientMetadata.Application.dll
  microsoft.extensions.azure/1.13.1/lib/net8.0/Microsoft.Extensions.Azure.dll
+ microsoft.extensions.caching.abstractions/10.0.5/lib/net10.0/Microsoft.Extensions.Caching.Abstractions.dll
+ microsoft.extensions.caching.memory/10.0.5/lib/net10.0/Microsoft.Extensions.Caching.Memory.dll
  microsoft.extensions.caching.stackexchangeredis/10.0.5/lib/net10.0/Microsoft.Extensions.Caching.StackExchangeRedis.dll
  microsoft.extensions.compliance.abstractions/10.4.0/lib/net10.0/Microsoft.Extensions.Compliance.Abstractions.dll
+ microsoft.extensions.configuration.abstractions/10.0.5/lib/net10.0/Microsoft.Extensions.Configuration.Abstractions.dll
+ microsoft.extensions.configuration.binder/10.0.5/lib/net10.0/Microsoft.Extensions.Configuration.Binder.dll
+ microsoft.extensions.configuration.commandline/10.0.5/lib/net10.0/Microsoft.Extensions.Configuration.CommandLine.dll
+ microsoft.extensions.configuration.environmentvariables/10.0.5/lib/net10.0/Microsoft.Extensions.Configuration.EnvironmentVariables.dll
+ microsoft.extensions.configuration.fileextensions/10.0.5/lib/net10.0/Microsoft.Extensions.Configuration.FileExtensions.dll
+ microsoft.extensions.configuration.json/10.0.5/lib/net10.0/Microsoft.Extensions.Configuration.Json.dll
+ microsoft.extensions.configuration.usersecrets/10.0.5/lib/net10.0/Microsoft.Extensions.Configuration.UserSecrets.dll
+ microsoft.extensions.configuration/10.0.5/lib/net10.0/Microsoft.Extensions.Configuration.dll
+ microsoft.extensions.dependencyinjection.abstractions/10.0.5/lib/net10.0/Microsoft.Extensions.DependencyInjection.Abstractions.dll
  microsoft.extensions.dependencyinjection.autoactivation/10.4.0/lib/net10.0/Microsoft.Extensions.DependencyInjection.AutoActivation.dll
+ microsoft.extensions.dependencyinjection/10.0.5/lib/net10.0/Microsoft.Extensions.DependencyInjection.dll
+ microsoft.extensions.diagnostics.abstractions/10.0.5/lib/net10.0/Microsoft.Extensions.Diagnostics.Abstractions.dll
  microsoft.extensions.diagnostics.exceptionsummarization/10.4.0/lib/net10.0/Microsoft.Extensions.Diagnostics.ExceptionSummarization.dll
+ microsoft.extensions.diagnostics.healthchecks.abstractions/10.0.5/lib/net10.0/Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions.dll
  microsoft.extensions.diagnostics.healthchecks.entityframeworkcore/10.0.5/lib/net10.0/Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore.dll
+ microsoft.extensions.diagnostics.healthchecks/10.0.5/lib/net10.0/Microsoft.Extensions.Diagnostics.HealthChecks.dll
+ microsoft.extensions.diagnostics/10.0.5/lib/net10.0/Microsoft.Extensions.Diagnostics.dll
+ microsoft.extensions.features/10.0.4/lib/net10.0/Microsoft.Extensions.Features.dll
+ microsoft.extensions.fileproviders.abstractions/10.0.5/lib/net10.0/Microsoft.Extensions.FileProviders.Abstractions.dll
+ microsoft.extensions.fileproviders.physical/10.0.5/lib/net10.0/Microsoft.Extensions.FileProviders.Physical.dll
+ microsoft.extensions.filesystemglobbing/10.0.5/lib/net10.0/Microsoft.Extensions.FileSystemGlobbing.dll
+ microsoft.extensions.hosting.abstractions/10.0.5/lib/net10.0/Microsoft.Extensions.Hosting.Abstractions.dll
+ microsoft.extensions.hosting/10.0.5/lib/net10.0/Microsoft.Extensions.Hosting.dll
  microsoft.extensions.http.diagnostics/10.4.0/lib/net10.0/Microsoft.Extensions.Http.Diagnostics.dll
  microsoft.extensions.http.resilience/10.4.0/lib/net10.0/Microsoft.Extensions.Http.Resilience.dll
+ microsoft.extensions.http/10.0.4/lib/net10.0/Microsoft.Extensions.Http.dll
+ microsoft.extensions.identity.core/10.0.5/lib/net10.0/Microsoft.Extensions.Identity.Core.dll
+ microsoft.extensions.identity.stores/10.0.5/lib/net10.0/Microsoft.Extensions.Identity.Stores.dll
+ microsoft.extensions.logging.abstractions/10.0.5/lib/net10.0/Microsoft.Extensions.Logging.Abstractions.dll
+ microsoft.extensions.logging.configuration/10.0.5/lib/net10.0/Microsoft.Extensions.Logging.Configuration.dll
+ microsoft.extensions.logging.console/10.0.5/lib/net10.0/Microsoft.Extensions.Logging.Console.dll
+ microsoft.extensions.logging.debug/10.0.5/lib/net10.0/Microsoft.Extensions.Logging.Debug.dll
+ microsoft.extensions.logging.eventlog/10.0.5/lib/net10.0/Microsoft.Extensions.Logging.EventLog.dll
+ microsoft.extensions.logging.eventsource/10.0.5/lib/net10.0/Microsoft.Extensions.Logging.EventSource.dll
+ microsoft.extensions.logging/10.0.5/lib/net10.0/Microsoft.Extensions.Logging.dll
+ microsoft.extensions.objectpool/10.0.4/lib/net10.0/Microsoft.Extensions.ObjectPool.dll
+ microsoft.extensions.options.configurationextensions/10.0.5/lib/net10.0/Microsoft.Extensions.Options.ConfigurationExtensions.dll
+ microsoft.extensions.options/10.0.5/lib/net10.0/Microsoft.Extensions.Options.dll
+ microsoft.extensions.primitives/10.0.5/lib/net10.0/Microsoft.Extensions.Primitives.dll
  microsoft.extensions.resilience/10.4.0/lib/net10.0/Microsoft.Extensions.Resilience.dll
  microsoft.extensions.servicediscovery.abstractions/10.4.0/lib/net10.0/Microsoft.Extensions.ServiceDiscovery.Abstractions.dll
  microsoft.extensions.servicediscovery/10.4.0/lib/net10.0/Microsoft.Extensions.ServiceDiscovery.dll
@@ -484,6 +483,7 @@ Worker.cs
  swashbuckle.aspnetcore.swaggergen/10.1.5/lib/net10.0/Swashbuckle.AspNetCore.SwaggerGen.dll
  swashbuckle.aspnetcore.swaggerui/10.1.5/lib/net10.0/Swashbuckle.AspNetCore.SwaggerUI.dll
  system.clientmodel/1.9.0/lib/net10.0/System.ClientModel.dll
+ system.diagnostics.eventlog/10.0.5/lib/net10.0/System.Diagnostics.EventLog.dll
  system.identitymodel.tokens.jwt/8.15.0/lib/net10.0/System.IdentityModel.Tokens.Jwt.dll
  system.io.hashing/10.0.3/lib/net10.0/System.IO.Hashing.dll
  system.memory.data/10.0.1/lib/net10.0/System.Memory.Data.dll
@@ -494,26 +494,26 @@ Worker.cs
  ziggycreatures.fusioncache/2.6.0/lib/net9.0/ZiggyCreatures.FusionCache.dll
 
 [analyzerReferences]
-<DOTNET>/packs/Microsoft.AspNetCore.App.Ref/10.0.5/analyzers/dotnet/cs/
+../../../../../../usr/local/share/dotnet/packs/Microsoft.AspNetCore.App.Ref/10.0.0/analyzers/dotnet/cs/
  Microsoft.AspNetCore.App.Analyzers.dll
  Microsoft.AspNetCore.App.CodeFixes.dll
  Microsoft.AspNetCore.App.SourceGenerators.dll
  Microsoft.AspNetCore.Components.Analyzers.dll
- Microsoft.Extensions.Options.SourceGeneration.dll
  Microsoft.Extensions.Validation.ValidationsGenerator.dll
-<DOTNET>/packs/Microsoft.NETCore.App.Ref/10.0.5/analyzers/dotnet/cs/
+../../../../../../usr/local/share/dotnet/packs/Microsoft.NETCore.App.Ref/10.0.0/analyzers/dotnet/cs/
  Microsoft.Interop.ComInterfaceGenerator.dll
  Microsoft.Interop.JavaScript.JSImportGenerator.dll
  Microsoft.Interop.LibraryImportGenerator.dll
  Microsoft.Interop.SourceGeneration.dll
  System.Text.Json.SourceGeneration.dll
  System.Text.RegularExpressions.Generator.dll
-<DOTNET>/sdk/10.0.201/Sdks/Microsoft.NET.Sdk/analyzers/
+../../../../../../usr/local/share/dotnet/sdk/10.0.100/Sdks/Microsoft.NET.Sdk/analyzers/
  Microsoft.CodeAnalysis.CSharp.NetAnalyzers.dll
  Microsoft.CodeAnalysis.NetAnalyzers.dll
 <NUGET>/
  microsoft.aspnetcore.openapi/10.0.5/analyzers/dotnet/cs/Microsoft.AspNetCore.OpenApi.SourceGenerators.dll
  microsoft.entityframeworkcore.analyzers/10.0.5/analyzers/dotnet/cs/Microsoft.EntityFrameworkCore.Analyzers.dll
+ microsoft.extensions.options/10.0.5/analyzers/dotnet/roslyn4.4/cs/Microsoft.Extensions.Options.SourceGeneration.dll
  microsoft.extensions.telemetry.abstractions/10.4.0/analyzers/dotnet/cs/
   Microsoft.Gen.Logging.dll
   Microsoft.Gen.Metrics.dll
@@ -531,5 +531,5 @@ Worker.cs
  system.clientmodel/1.9.0/analyzers/dotnet/cs/System.ClientModel.SourceGeneration.dll
 
 [analyzerConfigFiles]
-<DOTNET>/sdk/10.0.201/Sdks/Microsoft.NET.Sdk/analyzers/build/config/analysislevel_10_default.globalconfig
+../../../../../../usr/local/share/dotnet/sdk/10.0.100/Sdks/Microsoft.NET.Sdk/analyzers/build/config/analysislevel_10_default.globalconfig
 obj/Debug/net10.0/CardGames.MigrationService.GeneratedMSBuildEditorConfig.editorconfig

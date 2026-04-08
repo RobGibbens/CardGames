@@ -18,6 +18,7 @@
 - 
 - [ ] Add tournaments
   - [x] On the "Create Tournament" and "Create Cash Game" modals, add descriptions
+  - [ ] Default start time to now + 30 minutes
   - [x] Can't edit future tournament
   - [x] Can't delete future tournament
   - [x] Can't add a start time for tournament

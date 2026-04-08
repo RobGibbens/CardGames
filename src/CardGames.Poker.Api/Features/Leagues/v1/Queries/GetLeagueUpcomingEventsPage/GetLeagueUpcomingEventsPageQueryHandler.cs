@@ -93,7 +93,12 @@ public sealed class GetLeagueUpcomingEventsPageQueryHandler(
 				Notes = x.Notes,
 				CreatedByUserId = x.CreatedByUserId,
 				LaunchedGameId = x.LaunchedGameId,
-				TournamentBuyIn = x.TournamentBuyIn
+				TournamentBuyIn = x.TournamentBuyIn,
+				OneOffEventTypeValue = null,
+				GameTypeCode = null,
+				GameTypeName = null,
+				Ante = null,
+				MinBet = null
 			});
 
 		var oneOffEvents =

@@ -33,7 +33,7 @@ TemporaryDependencyNodeTargetIdentifier=net10.0
 /noconfig
 /unsafe-
 /checked-
-/nowarn:1701,1702,1701,1702,8002
+/nowarn:1701,1702,1701,1702
 /fullpaths
 /nostdlib+
 /errorreport:prompt
@@ -45,8 +45,8 @@ TemporaryDependencyNodeTargetIdentifier=net10.0
 /debug:portable
 /filealign:512
 /optimize-
-/out:obj\Debug\net10.0\CardGames.Poker.dll
-/refout:obj\Debug\net10.0\refint\CardGames.Poker.dll
+/out:obj/Debug/net10.0/CardGames.Poker.dll
+/refout:obj/Debug/net10.0/refint/CardGames.Poker.dll
 /target:library
 /warnaserror-
 /utf8output
@@ -279,11 +279,7 @@ Simulations/TwosJacksManWithTheAxe/
 WildCardRule.cs
 
 [metadataReferences]
-../
- CardGames.Contracts/obj/Debug/net10.0/ref/CardGames.Contracts.dll
- CardGames.Core.French/obj/Debug/net10.0/ref/CardGames.Core.French.dll
- CardGames.Core/obj/Debug/net10.0/ref/CardGames.Core.dll
-<DOTNET>/packs/Microsoft.NETCore.App.Ref/10.0.5/ref/net10.0/
+../../../../../../usr/local/share/dotnet/packs/Microsoft.NETCore.App.Ref/10.0.0/ref/net10.0/
  Microsoft.CSharp.dll
  Microsoft.VisualBasic.Core.dll
  Microsoft.VisualBasic.dll
@@ -451,6 +447,10 @@ WildCardRule.cs
  System.Xml.XPath.dll
  System.Xml.XPath.XDocument.dll
  WindowsBase.dll
+../
+ CardGames.Contracts/obj/Debug/net10.0/ref/CardGames.Contracts.dll
+ CardGames.Core.French/obj/Debug/net10.0/ref/CardGames.Core.French.dll
+ CardGames.Core/obj/Debug/net10.0/ref/CardGames.Core.dll
 <NUGET>/
  microsoft.extensions.ambientmetadata.application/10.4.0/lib/net10.0/Microsoft.Extensions.AmbientMetadata.Application.dll
  microsoft.extensions.compliance.abstractions/10.4.0/lib/net10.0/Microsoft.Extensions.Compliance.Abstractions.dll
@@ -486,14 +486,14 @@ WildCardRule.cs
  system.threading.ratelimiting/8.0.0/lib/net8.0/System.Threading.RateLimiting.dll
 
 [analyzerReferences]
-<DOTNET>/packs/Microsoft.NETCore.App.Ref/10.0.5/analyzers/dotnet/cs/
+../../../../../../usr/local/share/dotnet/packs/Microsoft.NETCore.App.Ref/10.0.0/analyzers/dotnet/cs/
  Microsoft.Interop.ComInterfaceGenerator.dll
  Microsoft.Interop.JavaScript.JSImportGenerator.dll
  Microsoft.Interop.LibraryImportGenerator.dll
  Microsoft.Interop.SourceGeneration.dll
  System.Text.Json.SourceGeneration.dll
  System.Text.RegularExpressions.Generator.dll
-<DOTNET>/sdk/10.0.201/Sdks/Microsoft.NET.Sdk/analyzers/
+../../../../../../usr/local/share/dotnet/sdk/10.0.100/Sdks/Microsoft.NET.Sdk/analyzers/
  Microsoft.CodeAnalysis.CSharp.NetAnalyzers.dll
  Microsoft.CodeAnalysis.NetAnalyzers.dll
 <NUGET>/
@@ -504,5 +504,5 @@ WildCardRule.cs
  refit/10.1.6/analyzers/dotnet/roslyn5.0/cs/InterfaceStubGeneratorV3.dll
 
 [analyzerConfigFiles]
-<DOTNET>/sdk/10.0.201/Sdks/Microsoft.NET.Sdk/analyzers/build/config/analysislevel_10_default.globalconfig
+../../../../../../usr/local/share/dotnet/sdk/10.0.100/Sdks/Microsoft.NET.Sdk/analyzers/build/config/analysislevel_10_default.globalconfig
 obj/Debug/net10.0/CardGames.Poker.GeneratedMSBuildEditorConfig.editorconfig

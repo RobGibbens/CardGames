@@ -801,7 +801,15 @@
 				return;
 			}
 
-			await ReloadLeagueEventStateAsync();
+			try
+			{
+				await ReloadLeagueEventStateAsync();
+			}
+			catch (Exception ex)
+			{
+				Logger.LogWarning(ex, "Error reloading league event state for league {LeagueId} after session launched notification", LeagueId);
+			}
+
 			StateHasChanged();
 		});
 	}
@@ -815,7 +823,15 @@
 				return;
 			}
 
-			await ReloadLeagueEventStateAsync();
+			try
+			{
+				await ReloadLeagueEventStateAsync();
+			}
+			catch (Exception ex)
+			{
+				Logger.LogWarning(ex, "Error reloading league event state for league {LeagueId} after {ChangeKind} notification", LeagueId, payload.ChangeKind);
+			}
+
 			StateHasChanged();
 		});
 	}
@@ -991,16 +1007,31 @@
 			_upcomingEventsPageNumber = 1;
 		}
 
-		if (_selectedSeasonId.HasValue)
+		try
 		{
-			await LoadRecentCompletedSeasonEventsAsync(_selectedSeasonId.Value);
+			if (_selectedSeasonId.HasValue)
+			{
+				await LoadRecentCompletedSeasonEventsAsync(_selectedSeasonId.Value);
+			}
+			else
+			{
+				_recentCompletedEvents = [];
+			}
 		}
-		else
+		catch (Exception ex)
 		{
-			_recentCompletedEvents = [];
+			Logger.LogWarning(ex, "Failed loading recent completed events for league {LeagueId}", LeagueId);
 		}
 
-		await LoadActiveGamesPageAsync(_activeGamesPageNumber);
+		try
+		{
+			await LoadActiveGamesPageAsync(_activeGamesPageNumber);
+		}
+		catch (Exception ex)
+		{
+			Logger.LogWarning(ex, "Failed loading active games page for league {LeagueId}", LeagueId);
+		}
+
 		await LoadUpcomingEventsPageAsync(_upcomingEventsPageNumber);
 	}
 
@@ -2403,17 +2434,6 @@ DateTimeKind.Utc)) : null,
 			LeagueHubClient.OnLeagueJoinRequestSubmitted -= HandleLeagueJoinRequestSubmittedAsync;
 			LeagueHubClient.OnLeagueJoinRequestUpdated -= HandleLeagueJoinRequestUpdatedAsync;
 			_isLeagueHubSubscriptionInitialized = false;
-		}
-
-		try
-		{
-			await LeagueHubClient.SetViewedLeaguesAsync([]);
-			await LeagueHubClient.SetManagedLeaguesAsync([]);
-			await LeagueHubClient.DisconnectAsync();
-		}
-		catch (Exception ex)
-		{
-			Logger.LogDebug(ex, "Error disconnecting league hub client for league detail page");
 		}
 
 		if (_leagueDetailModule is not null)
