@@ -157,8 +157,8 @@
                         <section class="@GetGroupSectionClass(groupIndex)">
                             <div class="d-flex flex-wrap align-items-baseline justify-content-between gap-2 border-bottom pb-2 mb-3">
                                 <div>
-                                    <h2 class="h5 mb-1">@group.DisplayName</h2>
-                                    <p class="text-muted small mb-0">@GetTableCountLabel(group.Tables.Count)</p>
+                                    <BbTypographyH2>@group.DisplayName</BbTypographyH2>
+                                    <BbTypographyMuted>@GetTableCountLabel(group.Tables.Count)</BbTypographyMuted>
                                 </div>
                             </div>
 
@@ -181,7 +181,7 @@
                                         {
                                             <tr>
                                                 <td class="text-end">
-                                                    <button class="btn btn-sm btn-primary" @onclick="() => NavigateToTableWithChipCheckAsync(table.Id)">Join</button>
+                                                    <BbButton Variant="ButtonVariant.Default" @onclick="() => NavigateToTableWithChipCheckAsync(table.Id)">Join</BbButton>
                                                 </td>
                                                 <td>@FormatGameTypeName(table)</td>
                                                 <td>@table.TableTypeLabel</td>
@@ -192,12 +192,9 @@
                                                 <td class="text-end">
                                                     @if (CanDeleteTable(table))
                                                     {
-                                                        <button class="btn btn-sm btn-primary" 
-                                                                @onclick="() => HandleDeleteTableAsync(table.Id)"
-                                                                disabled="@_isDeleting"
-                                                                title="Delete table">
-                                                            <i class="fa-regular fa-trash"></i>
-                                                        </button>
+                                                        <BbButton Variant="ButtonVariant.Destructive" Size="ButtonSize.Icon" @onclick="() => HandleDeleteTableAsync(table.Id)" Disabled="@_isDeleting" title="Delete table">
+                                                            <i class="fa-regular fa-trash h-4 w-4"></i>
+                                                        </BbButton>
                                                     }
                                                 </td>
                                             </tr>
