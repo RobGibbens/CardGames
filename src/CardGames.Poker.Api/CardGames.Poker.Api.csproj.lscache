@@ -860,10 +860,18 @@ Features/
     GetLeagueOneOffEventsEndpoint.cs
     GetLeagueOneOffEventsQuery.cs
     GetLeagueOneOffEventsQueryHandler.cs
+   Queries/GetLeagueOneOffEventsPage/
+    GetLeagueOneOffEventsPageEndpoint.cs
+    GetLeagueOneOffEventsPageQuery.cs
+    GetLeagueOneOffEventsPageQueryHandler.cs
    Queries/GetLeagueSeasonEvents/
     GetLeagueSeasonEventsEndpoint.cs
     GetLeagueSeasonEventsQuery.cs
     GetLeagueSeasonEventsQueryHandler.cs
+   Queries/GetLeagueSeasonEventsPage/
+    GetLeagueSeasonEventsPageEndpoint.cs
+    GetLeagueSeasonEventsPageQuery.cs
+    GetLeagueSeasonEventsPageQueryHandler.cs
    Queries/GetLeagueSeasons/
     GetLeagueSeasonsEndpoint.cs
     GetLeagueSeasonsQuery.cs

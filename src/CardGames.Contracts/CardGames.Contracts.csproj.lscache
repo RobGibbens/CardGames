@@ -126,12 +126,14 @@ Leagues/
  LeagueMembershipEventType.cs
  LeagueMembershipHistoryItemDto.cs
  LeagueOneOffEventDto.cs
+ LeagueOneOffEventsPageDto.cs
  LeagueOneOffEventStatus.cs
  LeagueOneOffEventType.cs
  LeagueRole.cs
  LeagueSeasonDto.cs
  LeagueSeasonEventDto.cs
  LeagueSeasonEventResultEntryRequest.cs
+ LeagueSeasonEventsPageDto.cs
  LeagueSeasonEventStatus.cs
  LeagueSeasonStatus.cs
  LeagueStandingEntryDto.cs

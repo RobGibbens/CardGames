@@ -234,17 +234,16 @@
 			@* ═══════════ TAB 4: SCHEDULE ═══════════ *@
 			@if (_activeTab == LeagueDetailTab.Schedule)
 			{
-				<LeagueDetailScheduleTab IsSeasonsTabActive="@(_activeScheduleTab == ScheduleTab.Seasons)"
-									 ShowSeasonsTab="() => _activeScheduleTab = ScheduleTab.Seasons"
-									 ShowOneOffEventsTab="() => _activeScheduleTab = ScheduleTab.OneOffEvents" CanManageLeague="CanManageLeague"
-									 Seasons="_seasons" SelectedSeasonId="_selectedSeasonId" SeasonEvents="_seasonEvents"
-									 OneOffEvents="_oneOffEvents" LaunchingSeasonEventId="_launchingSeasonEventId"
-									 BrowserTimeZoneId="@BrowserTimeZoneId"
+				<LeagueDetailScheduleTab CanManageLeague="CanManageLeague" Seasons="_seasons" SelectedSeasonId="_selectedSeasonId"
+									 SeasonEventsPage="_scheduleSeasonEventsPage" OneOffEventsPage="_scheduleOneOffEventsPage"
+									 IsLoadingSeasonEventsPage="_isLoadingScheduleSeasonEventsPage"
+									 IsLoadingOneOffEventsPage="_isLoadingScheduleOneOffEventsPage"
+									 LoadSeasonEventsPage="LoadSeasonEventsPageAsync" LoadOneOffEventsPage="LoadOneOffEventsPageAsync"
+									 LaunchingSeasonEventId="_launchingSeasonEventId" BrowserTimeZoneId="@BrowserTimeZoneId"
 									 LaunchingOneOffEventId="_launchingOneOffEventId" OpenSeasonModal="OpenSeasonModal"
 									 SelectSeason="SelectSeasonAsync" DeselectSeason="DeselectSeasonAsync"
 									 OpenSeasonEventModal="OpenSeasonEventModal" EditSeasonEvent="OpenSeasonEventEditor"
-									 DeleteSeasonEvent="OpenDeleteSeasonEventDialog"
-									 OpenTable="OpenTable"
+									 DeleteSeasonEvent="OpenDeleteSeasonEventDialog" OpenTable="OpenTable"
 									 LaunchSeasonEvent="LaunchSeasonEventAsync" OpenOneOffModal="OpenOneOffModal"
 									 EditOneOffEvent="OpenOneOffEventEditor" DeleteOneOffEvent="OpenDeleteOneOffEventDialog"
 									 LaunchOneOffEvent="LaunchOneOffEventAsync" />
@@ -477,17 +476,26 @@
 	private Guid? _selectedSeasonId;
 	private List<LeagueSeasonEventDto> _seasonEvents = [];
 	private List<LeagueOneOffEventDto> _oneOffEvents = [];
+	private LeagueSeasonEventsPageDto _scheduleSeasonEventsPage = CreateEmptySeasonEventsPage();
+	private LeagueOneOffEventsPageDto _scheduleOneOffEventsPage = CreateEmptyOneOffEventsPage();
 	private List<LeagueStandingEntryDto> _standings = [];
 	private List<LeagueSeasonEventDto> _recentCompletedEvents = [];
 	private LeagueActiveGamesPageDto _activeGamesPage = CreateEmptyActiveGamesPage();
 	private LeagueUpcomingEventsPageDto _upcomingEventsPage = CreateEmptyUpcomingEventsPage();
 	private int _activeGamesPageNumber = 1;
 	private int _upcomingEventsPageNumber = 1;
+	private int _scheduleSeasonEventsPageNumber = 1;
+	private int _scheduleOneOffEventsPageNumber = 1;
 	private bool _isLoadingActiveGamesPage;
 	private bool _isLoadingUpcomingEventsPage;
+	private bool _isLoadingScheduleSeasonEventsPage;
+	private bool _isLoadingScheduleOneOffEventsPage;
 	private bool _hasLoadedSeasonEvents;
 	private Guid? _loadedSeasonEventsSeasonId;
 	private bool _hasLoadedOneOffEvents;
+	private bool _hasLoadedScheduleSeasonEventsPage;
+	private Guid? _loadedScheduleSeasonEventsSeasonId;
+	private bool _hasLoadedScheduleOneOffEventsPage;
 
 	private string _seasonName = string.Empty;
 	private int? _seasonPlannedEventCount;
@@ -527,12 +535,11 @@
 	private LeagueStandingEntryDto? _myStanding;
 	private bool _isLeagueHubSubscriptionInitialized;
 	private const int LobbyPageSize = 5;
+	private const int SchedulePageSize = 5;
 	private const string LeagueDetailModulePath = "/Components/Pages/LeagueDetail.razor.js";
 	private IJSObjectReference? _leagueDetailModule;
 	private string? _browserTimeZoneId;
 	private List<BrowserTimeZoneOption> _availableTimeZones = [];
-
-	private ScheduleTab _activeScheduleTab = ScheduleTab.Seasons;
 	private LeagueDetailTab _activeTab = LeagueDetailTab.Lobby;
 
 	private enum LeagueDetailTab
@@ -542,12 +549,6 @@
 		Standings,
 		Schedule,
 		Members
-	}
-
-	private enum ScheduleTab
-	{
-		Seasons,
-		OneOffEvents
 	}
 
 	private enum LeagueEventDeletionKind
@@ -598,6 +599,32 @@
 	private static LeagueUpcomingEventsPageDto CreateEmptyUpcomingEventsPage(int pageNumber = 1, int pageSize = LobbyPageSize)
 	{
 		return new LeagueUpcomingEventsPageDto
+		{
+			Entries = [],
+			HasMore = false,
+			TotalCount = 0,
+			PageNumber = pageNumber,
+			PageSize = pageSize,
+			TotalPages = 1
+		};
+	}
+
+	private static LeagueSeasonEventsPageDto CreateEmptySeasonEventsPage(int pageNumber = 1, int pageSize = SchedulePageSize)
+	{
+		return new LeagueSeasonEventsPageDto
+		{
+			Entries = [],
+			HasMore = false,
+			TotalCount = 0,
+			PageNumber = pageNumber,
+			PageSize = pageSize,
+			TotalPages = 1
+		};
+	}
+
+	private static LeagueOneOffEventsPageDto CreateEmptyOneOffEventsPage(int pageNumber = 1, int pageSize = SchedulePageSize)
+	{
+		return new LeagueOneOffEventsPageDto
 		{
 			Entries = [],
 			HasMore = false,
@@ -707,14 +734,15 @@
 			await LoadSeasonsAsync();
 			await LoadLobbySectionsAsync(resetPages: true);
 
-			if (_activeTab is LeagueDetailTab.Results or LeagueDetailTab.Schedule)
+			if (_activeTab == LeagueDetailTab.Results)
 			{
 				await EnsureSeasonEventsLoadedAsync(forceReload: true);
 			}
 
 			if (_activeTab == LeagueDetailTab.Schedule)
 			{
-				await EnsureOneOffEventsLoadedAsync(forceReload: true);
+				await EnsureScheduleSeasonEventsPageLoadedAsync(forceReload: true);
+				await EnsureScheduleOneOffEventsPageLoadedAsync(forceReload: true);
 			}
 
 			await LoadPendingJoinRequestsAsync();
@@ -736,14 +764,15 @@
 	{
 		_activeTab = tab;
 
-		if (tab is LeagueDetailTab.Results or LeagueDetailTab.Schedule)
+		if (tab == LeagueDetailTab.Results)
 		{
 			await EnsureSeasonEventsLoadedAsync();
 		}
 
 		if (tab == LeagueDetailTab.Schedule)
 		{
-			await EnsureOneOffEventsLoadedAsync();
+			await EnsureScheduleSeasonEventsPageLoadedAsync();
+			await EnsureScheduleOneOffEventsPageLoadedAsync();
 		}
 	}
 
@@ -849,6 +878,16 @@
 		{
 			await EnsureOneOffEventsLoadedAsync(forceReload: true);
 		}
+
+		if (_hasLoadedScheduleSeasonEventsPage)
+		{
+			await EnsureScheduleSeasonEventsPageLoadedAsync(forceReload: true);
+		}
+
+		if (_hasLoadedScheduleOneOffEventsPage)
+		{
+			await EnsureScheduleOneOffEventsPageLoadedAsync(forceReload: true);
+		}
 	}
 
 	private async Task HandleLeagueJoinRequestUpdatedAsync(LeagueJoinRequestUpdatedDto payload)
@@ -905,9 +944,16 @@
 		_selectedSeasonId = null;
 		_seasonEvents = [];
 		_oneOffEvents = [];
+		_scheduleSeasonEventsPageNumber = 1;
+		_scheduleOneOffEventsPageNumber = 1;
+		_scheduleSeasonEventsPage = CreateEmptySeasonEventsPage();
+		_scheduleOneOffEventsPage = CreateEmptyOneOffEventsPage();
 		_hasLoadedSeasonEvents = false;
 		_loadedSeasonEventsSeasonId = null;
 		_hasLoadedOneOffEvents = false;
+		_hasLoadedScheduleSeasonEventsPage = false;
+		_loadedScheduleSeasonEventsSeasonId = null;
+		_hasLoadedScheduleOneOffEventsPage = false;
 		_standings = [];
 		_rankMovementByUserId.Clear();
 		_myStanding = null;
@@ -916,7 +962,6 @@
 		_upcomingEventsPageNumber = 1;
 		_activeGamesPage = CreateEmptyActiveGamesPage();
 		_upcomingEventsPage = CreateEmptyUpcomingEventsPage();
-		_activeScheduleTab = ScheduleTab.Seasons;
 	}
 
 	private async Task LoadMembersAsync()
@@ -980,6 +1025,10 @@
 			_seasonEvents = [];
 			_hasLoadedSeasonEvents = false;
 			_loadedSeasonEventsSeasonId = null;
+			_scheduleSeasonEventsPageNumber = 1;
+			_scheduleSeasonEventsPage = CreateEmptySeasonEventsPage();
+			_hasLoadedScheduleSeasonEventsPage = false;
+			_loadedScheduleSeasonEventsSeasonId = null;
 			_recentCompletedEvents = [];
 		}
 	}
@@ -997,6 +1046,80 @@
 		var response = await LeaguesApi.GetOneOffEventsAsync(LeagueId);
 		_oneOffEvents = response.IsSuccessStatusCode && response.Content is not null ? response.Content.ToList() : [];
 		_hasLoadedOneOffEvents = true;
+	}
+
+	private async Task LoadSeasonEventsPageAsync(int pageNumber)
+	{
+		if (!_selectedSeasonId.HasValue)
+		{
+			_scheduleSeasonEventsPageNumber = 1;
+			_scheduleSeasonEventsPage = CreateEmptySeasonEventsPage();
+			_hasLoadedScheduleSeasonEventsPage = false;
+			_loadedScheduleSeasonEventsSeasonId = null;
+			return;
+		}
+
+		_isLoadingScheduleSeasonEventsPage = true;
+		try
+		{
+			var response = await LeaguesApi.GetSeasonEventsPageAsync(LeagueId, _selectedSeasonId.Value, SchedulePageSize, pageNumber);
+			if (response.IsSuccessStatusCode && response.Content is not null)
+			{
+				_scheduleSeasonEventsPage = response.Content;
+				_scheduleSeasonEventsPageNumber = response.Content.PageNumber;
+				_hasLoadedScheduleSeasonEventsPage = true;
+				_loadedScheduleSeasonEventsSeasonId = _selectedSeasonId.Value;
+				return;
+			}
+
+			_scheduleSeasonEventsPage = CreateEmptySeasonEventsPage(pageNumber);
+			_scheduleSeasonEventsPageNumber = _scheduleSeasonEventsPage.PageNumber;
+			_hasLoadedScheduleSeasonEventsPage = true;
+			_loadedScheduleSeasonEventsSeasonId = _selectedSeasonId.Value;
+		}
+		catch (Exception ex)
+		{
+			Logger.LogWarning(ex, "Failed loading season events page for league {LeagueId} season {SeasonId}", LeagueId, _selectedSeasonId.Value);
+			_scheduleSeasonEventsPage = CreateEmptySeasonEventsPage(pageNumber);
+			_scheduleSeasonEventsPageNumber = _scheduleSeasonEventsPage.PageNumber;
+			_hasLoadedScheduleSeasonEventsPage = true;
+			_loadedScheduleSeasonEventsSeasonId = _selectedSeasonId.Value;
+		}
+		finally
+		{
+			_isLoadingScheduleSeasonEventsPage = false;
+		}
+	}
+
+	private async Task LoadOneOffEventsPageAsync(int pageNumber)
+	{
+		_isLoadingScheduleOneOffEventsPage = true;
+		try
+		{
+			var response = await LeaguesApi.GetOneOffEventsPageAsync(LeagueId, SchedulePageSize, pageNumber);
+			if (response.IsSuccessStatusCode && response.Content is not null)
+			{
+				_scheduleOneOffEventsPage = response.Content;
+				_scheduleOneOffEventsPageNumber = response.Content.PageNumber;
+				_hasLoadedScheduleOneOffEventsPage = true;
+				return;
+			}
+
+			_scheduleOneOffEventsPage = CreateEmptyOneOffEventsPage(pageNumber);
+			_scheduleOneOffEventsPageNumber = _scheduleOneOffEventsPage.PageNumber;
+			_hasLoadedScheduleOneOffEventsPage = true;
+		}
+		catch (Exception ex)
+		{
+			Logger.LogWarning(ex, "Failed loading one-off events page for league {LeagueId}", LeagueId);
+			_scheduleOneOffEventsPage = CreateEmptyOneOffEventsPage(pageNumber);
+			_scheduleOneOffEventsPageNumber = _scheduleOneOffEventsPage.PageNumber;
+			_hasLoadedScheduleOneOffEventsPage = true;
+		}
+		finally
+		{
+			_isLoadingScheduleOneOffEventsPage = false;
+		}
 	}
 
 	private async Task LoadLobbySectionsAsync(bool resetPages = false)
@@ -1197,6 +1320,40 @@
 		await LoadOneOffEventsAsync();
 	}
 
+	private async Task EnsureScheduleSeasonEventsPageLoadedAsync(bool forceReload = false)
+	{
+		if (!_selectedSeasonId.HasValue)
+		{
+			_scheduleSeasonEventsPageNumber = 1;
+			_scheduleSeasonEventsPage = CreateEmptySeasonEventsPage();
+			_hasLoadedScheduleSeasonEventsPage = false;
+			_loadedScheduleSeasonEventsSeasonId = null;
+			return;
+		}
+
+		if (!forceReload && _hasLoadedScheduleSeasonEventsPage && _loadedScheduleSeasonEventsSeasonId == _selectedSeasonId.Value)
+		{
+			return;
+		}
+
+		if (_loadedScheduleSeasonEventsSeasonId != _selectedSeasonId.Value)
+		{
+			_scheduleSeasonEventsPageNumber = 1;
+		}
+
+		await LoadSeasonEventsPageAsync(_scheduleSeasonEventsPageNumber);
+	}
+
+	private async Task EnsureScheduleOneOffEventsPageLoadedAsync(bool forceReload = false)
+	{
+		if (!forceReload && _hasLoadedScheduleOneOffEventsPage)
+		{
+			return;
+		}
+
+		await LoadOneOffEventsPageAsync(_scheduleOneOffEventsPageNumber);
+	}
+
 	private async Task LoadStandingsAsync()
 	{
 		var previousRankByUserId = _standings.ToDictionary(x => x.UserId, x => x.Rank, StringComparer.Ordinal);
@@ -1262,7 +1419,7 @@
 		_selectedSeasonId = seasonId;
 		await LoadRecentCompletedSeasonEventsAsync(seasonId);
 
-		if (_activeTab is LeagueDetailTab.Results or LeagueDetailTab.Schedule)
+		if (_activeTab == LeagueDetailTab.Results)
 		{
 			await LoadSeasonEventsAsync(seasonId);
 		}
@@ -1271,6 +1428,18 @@
 			_seasonEvents = [];
 			_hasLoadedSeasonEvents = false;
 			_loadedSeasonEventsSeasonId = null;
+		}
+
+		_scheduleSeasonEventsPageNumber = 1;
+		if (_activeTab == LeagueDetailTab.Schedule)
+		{
+			await LoadSeasonEventsPageAsync(_scheduleSeasonEventsPageNumber);
+		}
+		else
+		{
+			_scheduleSeasonEventsPage = CreateEmptySeasonEventsPage();
+			_hasLoadedScheduleSeasonEventsPage = false;
+			_loadedScheduleSeasonEventsSeasonId = null;
 		}
 
 		await LoadStandingsAsync();
@@ -1282,6 +1451,10 @@
 		_seasonEvents = [];
 		_hasLoadedSeasonEvents = false;
 		_loadedSeasonEventsSeasonId = null;
+		_scheduleSeasonEventsPageNumber = 1;
+		_scheduleSeasonEventsPage = CreateEmptySeasonEventsPage();
+		_hasLoadedScheduleSeasonEventsPage = false;
+		_loadedScheduleSeasonEventsSeasonId = null;
 		_recentCompletedEvents = [];
 		await LoadStandingsAsync();
 	}
@@ -1831,9 +2004,14 @@ DateTimeKind.Utc)) : null,
 				_isError = false;
 				await LoadLobbySectionsAsync();
 
-				if (_activeTab is LeagueDetailTab.Results or LeagueDetailTab.Schedule || (_hasLoadedSeasonEvents && _loadedSeasonEventsSeasonId == _selectedSeasonId.Value))
+				if (_activeTab == LeagueDetailTab.Results || (_hasLoadedSeasonEvents && _loadedSeasonEventsSeasonId == _selectedSeasonId.Value))
 				{
 					await LoadSeasonEventsAsync(_selectedSeasonId.Value);
+				}
+
+				if (_activeTab == LeagueDetailTab.Schedule || (_hasLoadedScheduleSeasonEventsPage && _loadedScheduleSeasonEventsSeasonId == _selectedSeasonId.Value))
+				{
+					await LoadSeasonEventsPageAsync(_scheduleSeasonEventsPageNumber);
 				}
 			}
 			else
@@ -1962,9 +2140,14 @@ DateTimeKind.Utc)) : null,
 		_isError = false;
 		await LoadLobbySectionsAsync();
 
-		if (_activeTab == LeagueDetailTab.Schedule || _hasLoadedOneOffEvents)
+		if (_hasLoadedOneOffEvents)
 		{
 			await LoadOneOffEventsAsync();
+		}
+
+		if (_activeTab == LeagueDetailTab.Schedule || _hasLoadedScheduleOneOffEventsPage)
+		{
+			await LoadOneOffEventsPageAsync(_scheduleOneOffEventsPageNumber);
 		}
 	}
 
@@ -2112,7 +2295,7 @@ DateTimeKind.Utc)) : null,
 					_selectedSeasonId = _pendingEventDeletion.SeasonId.Value;
 					await LoadRecentCompletedSeasonEventsAsync(_pendingEventDeletion.SeasonId.Value);
 
-					if (_activeTab is LeagueDetailTab.Results or LeagueDetailTab.Schedule || (_hasLoadedSeasonEvents && _loadedSeasonEventsSeasonId == _pendingEventDeletion.SeasonId.Value))
+					if (_activeTab == LeagueDetailTab.Results || (_hasLoadedSeasonEvents && _loadedSeasonEventsSeasonId == _pendingEventDeletion.SeasonId.Value))
 					{
 						await LoadSeasonEventsAsync(_pendingEventDeletion.SeasonId.Value);
 					}
@@ -2123,14 +2306,31 @@ DateTimeKind.Utc)) : null,
 						_loadedSeasonEventsSeasonId = null;
 					}
 
+					if (_activeTab == LeagueDetailTab.Schedule || (_hasLoadedScheduleSeasonEventsPage && _loadedScheduleSeasonEventsSeasonId == _pendingEventDeletion.SeasonId.Value))
+					{
+						await LoadSeasonEventsPageAsync(_scheduleSeasonEventsPageNumber);
+					}
+					else if (_loadedScheduleSeasonEventsSeasonId == _pendingEventDeletion.SeasonId.Value)
+					{
+						_scheduleSeasonEventsPageNumber = 1;
+						_scheduleSeasonEventsPage = CreateEmptySeasonEventsPage();
+						_hasLoadedScheduleSeasonEventsPage = false;
+						_loadedScheduleSeasonEventsSeasonId = null;
+					}
+
 					await LoadStandingsAsync();
 					_message = "Season event deleted.";
 				}
 				else
 				{
-					if (_activeTab == LeagueDetailTab.Schedule || _hasLoadedOneOffEvents)
+					if (_hasLoadedOneOffEvents)
 					{
 						await LoadOneOffEventsAsync();
+					}
+
+					if (_activeTab == LeagueDetailTab.Schedule || _hasLoadedScheduleOneOffEventsPage)
+					{
+						await LoadOneOffEventsPageAsync(_scheduleOneOffEventsPageNumber);
 					}
 
 					_message = "One-off event deleted.";
@@ -2278,8 +2478,13 @@ DateTimeKind.Utc)) : null,
 		}
 
 		_launchingSeasonEventId = eventId;
-		await EnsureSeasonEventsLoadedAsync();
-		var seasonEvent = _seasonEvents.FirstOrDefault(e => e.EventId == eventId);
+		var seasonEvent = _scheduleSeasonEventsPage.Entries.FirstOrDefault(e => e.EventId == eventId);
+		if (seasonEvent is null)
+		{
+			await EnsureSeasonEventsLoadedAsync();
+			seasonEvent = _seasonEvents.FirstOrDefault(e => e.EventId == eventId);
+		}
+
 		await LaunchSeasonEventCoreAsync(
 			_selectedSeasonId.Value,
 			eventId,
@@ -2333,8 +2538,13 @@ DateTimeKind.Utc)) : null,
 		_launchingOneOffEventId = eventId;
 		try
 		{
-			await EnsureOneOffEventsLoadedAsync();
-			var oneOff = _oneOffEvents.FirstOrDefault(e => e.EventId == eventId);
+			var oneOff = _scheduleOneOffEventsPage.Entries.FirstOrDefault(e => e.EventId == eventId);
+			if (oneOff is null)
+			{
+				await EnsureOneOffEventsLoadedAsync();
+				oneOff = _oneOffEvents.FirstOrDefault(e => e.EventId == eventId);
+			}
+
 			var response = await LeaguesApi.LaunchOneOffEventSessionAsync(LeagueId, eventId, new LaunchLeagueEventSessionRequest
 			{
 				GameCode = oneOff?.GameTypeCode ?? "FIVECARDDRAW",

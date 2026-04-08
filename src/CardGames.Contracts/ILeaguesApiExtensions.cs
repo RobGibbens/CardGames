@@ -110,6 +110,15 @@ public partial interface ILeaguesApi
 	Task<IApiResponse<IReadOnlyList<LeagueSeasonEventDto>>> GetSeasonEventsAsync(Guid leagueId, Guid seasonId, CancellationToken cancellationToken = default);
 
 	[Headers("Accept: application/json, application/problem+json")]
+	[Get("/api/v1/leagues/{leagueId}/seasons/{seasonId}/events/page")]
+	Task<IApiResponse<LeagueSeasonEventsPageDto>> GetSeasonEventsPageAsync(
+		Guid leagueId,
+		Guid seasonId,
+		[AliasAs("pageSize")][Query] int? pageSize = 5,
+		[AliasAs("pageNumber")][Query] int? pageNumber = 1,
+		CancellationToken cancellationToken = default);
+
+	[Headers("Accept: application/json, application/problem+json")]
 	[Get("/api/v1/leagues/{leagueId}/seasons/{seasonId}/events/recent-completed")]
 	Task<IApiResponse<IReadOnlyList<LeagueSeasonEventDto>>> GetRecentCompletedSeasonEventsAsync(
 		Guid leagueId,
@@ -140,6 +149,14 @@ public partial interface ILeaguesApi
 	[Headers("Accept: application/json, application/problem+json")]
 	[Get("/api/v1/leagues/{leagueId}/events/one-off")]
 	Task<IApiResponse<IReadOnlyList<LeagueOneOffEventDto>>> GetOneOffEventsAsync(Guid leagueId, CancellationToken cancellationToken = default);
+
+	[Headers("Accept: application/json, application/problem+json")]
+	[Get("/api/v1/leagues/{leagueId}/events/one-off/page")]
+	Task<IApiResponse<LeagueOneOffEventsPageDto>> GetOneOffEventsPageAsync(
+		Guid leagueId,
+		[AliasAs("pageSize")][Query] int? pageSize = 5,
+		[AliasAs("pageNumber")][Query] int? pageNumber = 1,
+		CancellationToken cancellationToken = default);
 
 	[Headers("Accept: application/json, application/problem+json")]
 	[Get("/api/v1/leagues/{leagueId}/events/upcoming")]
