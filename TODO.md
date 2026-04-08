@@ -10,7 +10,6 @@
 - [ ] Lobby - Filter by status
 - [ ] Work on isolating games code more
 - [ ] Either remove "confirm login" or set up email
-- [ ] Allow private tables - need an invite / password
 
 - [ ] Add leagues
 - [ ] Add seasons
@@ -327,3 +326,4 @@
 - [x] Game felt
 - [x] Click Leave Table : {"message":"You are not seated at this table or have already left"}
 - [x] "Add Chips:" on the dashboard is the wrong color
+- [x] Allow private tables - need an invite / password
