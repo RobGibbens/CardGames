@@ -2506,7 +2506,7 @@ DateTimeKind.Utc)) : null,
 
 			if (response.IsSuccessStatusCode && response.Content is not null)
 			{
-				NavigationManager.NavigateTo(response.Content.TablePath);
+				NavigationManager.NavigateTo(BuildLeagueTablePath(response.Content.TablePath));
 				return;
 			}
 
@@ -2556,7 +2556,7 @@ DateTimeKind.Utc)) : null,
 
 			if (response.IsSuccessStatusCode && response.Content is not null)
 			{
-				NavigationManager.NavigateTo(response.Content.TablePath);
+				NavigationManager.NavigateTo(BuildLeagueTablePath(response.Content.TablePath));
 				return;
 			}
 
@@ -2591,7 +2591,7 @@ DateTimeKind.Utc)) : null,
 
 			if (response.IsSuccessStatusCode && response.Content is not null)
 			{
-				NavigationManager.NavigateTo(response.Content.TablePath);
+				NavigationManager.NavigateTo(BuildLeagueTablePath(response.Content.TablePath));
 				return;
 			}
 
@@ -2610,6 +2610,23 @@ DateTimeKind.Utc)) : null,
 		}
 	}
 
+	private static string BuildLeagueTablePath(string tablePath)
+	{
+		if (string.IsNullOrWhiteSpace(tablePath))
+		{
+			return tablePath;
+		}
+
+		if (tablePath.Contains("autojoin=", StringComparison.OrdinalIgnoreCase))
+		{
+			return tablePath;
+		}
+
+		return tablePath.Contains('?', StringComparison.Ordinal)
+			? $"{tablePath}&autojoin=1"
+			: $"{tablePath}?autojoin=1";
+	}
+
 	private async Task OpenTable(Guid gameId)
 	{
 		try
@@ -2619,7 +2636,7 @@ DateTimeKind.Utc)) : null,
 			{
 				// Allow navigation — the player may have unreturned chips from a previous session.
 				// The table page handles the rejoin flow or shows the no-chips modal if ineligible.
-				NavigationManager.NavigateTo($"/table/{gameId}");
+				NavigationManager.NavigateTo(BuildLeagueTablePath($"/table/{gameId}"));
 				return;
 			}
 		}
@@ -2627,7 +2644,7 @@ DateTimeKind.Utc)) : null,
 		{
 			Logger.LogWarning(ex, "Failed to check chip balance before opening table");
 		}
-		NavigationManager.NavigateTo($"/table/{gameId}");
+		NavigationManager.NavigateTo(BuildLeagueTablePath($"/table/{gameId}"));
 	}
 
 	private void HandleNoChipsModalClose()

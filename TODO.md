@@ -21,7 +21,7 @@
   - [ ] Change the UI of the Schedule page, remove segmented control
   - [ ] The description at the top of the tableplay should read "Tournament"
   - [ ] Active games should have an info button to see who's playing
-  - [ ] When joining, automatically take a seat
+  - [x] When joining, automatically take a seat
   - [ ] Texas Hold Em, not collecting blinds
   - [ ] When the tournament ends, it just says "Waiting for Players" . We should have a nice summary page.
   - [x] Default start time to now + 30 minutes

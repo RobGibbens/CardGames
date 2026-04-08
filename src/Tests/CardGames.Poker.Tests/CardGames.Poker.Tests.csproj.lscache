@@ -138,6 +138,7 @@ TestReproduceIssue.cs
 Web/
  BobBarkerShowdownOverlayTests.cs
  GameApiRouterTests.cs
+ LeagueDetailNavigationTests.cs
  LeagueTimeZoneHelperTests.cs
  RabbitHuntShowdownOverlayTests.cs
  RazzShowdownOverlayParityTests.cs
