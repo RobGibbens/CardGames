@@ -32,6 +32,24 @@ public class TablePlayTournamentBuyInTests
         GetPrivateField<int>(tablePlay, "_joinBuyInAmount").Should().Be(250);
     }
 
+    [Fact]
+    public void IsLeagueTournament_ReturnsTrue_WhenTournamentBuyInIsSet()
+    {
+        var tablePlay = new TablePlay();
+        SetPrivateField(tablePlay, "_gameResponse", CreateGameResponse(tournamentBuyIn: 250));
+
+        GetPrivateProperty<bool>(tablePlay, "IsLeagueTournament").Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsLeagueTournament_ReturnsFalse_WhenTournamentBuyInIsMissing()
+    {
+        var tablePlay = new TablePlay();
+        SetPrivateField(tablePlay, "_gameResponse", CreateGameResponse(tournamentBuyIn: null));
+
+        GetPrivateProperty<bool>(tablePlay, "IsLeagueTournament").Should().BeFalse();
+    }
+
     private static GetGameResponse InvokeCreateLocalGameResponse(GetGameResponse source)
     {
         var method = typeof(TablePlay).GetMethod("CreateLocalGameResponse", BindingFlags.Static | BindingFlags.NonPublic);
@@ -62,6 +80,16 @@ public class TablePlayTournamentBuyInTests
         field.Should().NotBeNull($"TablePlay should keep {fieldName} as a private field");
 
         var value = field!.GetValue(tablePlay);
+        value.Should().BeOfType<T>();
+        return (T)value!;
+    }
+
+    private static T GetPrivateProperty<T>(TablePlay tablePlay, string propertyName)
+    {
+        var property = typeof(TablePlay).GetProperty(propertyName, BindingFlags.Instance | BindingFlags.NonPublic);
+        property.Should().NotBeNull($"TablePlay should expose {propertyName} as a private property");
+
+        var value = property!.GetValue(tablePlay);
         value.Should().BeOfType<T>();
         return (T)value!;
     }

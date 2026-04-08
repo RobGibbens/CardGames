@@ -1,0 +1,11 @@
+{
+  "subject": "league tournament table detection",
+  "fact": "TablePlay can currently treat a fixed Game.TournamentBuyIn as the signal for a league tournament table because TournamentBuyIn is passed when league season or tournament one-off events launch a game, and no other web/API creation path sets it.",
+  "citations": [
+    "src/CardGames.Poker.Api/Features/Leagues/v1/Commands/LaunchLeagueEventSession/LaunchLeagueEventSessionCommandHandler.cs:94-107",
+    "src/CardGames.Poker.Api/Features/Leagues/v1/Commands/LaunchLeagueEventSession/LaunchLeagueEventSessionCommandHandler.cs:151-171",
+    "src/CardGames.Poker.Web/Components/Pages/TablePlay.razor:838"
+  ],
+  "reason": "Future UI or review work around tournament-specific behavior on the table page needs to know that league tournaments are currently inferred from TournamentBuyIn rather than explicit league metadata in GetGameResponse.",
+  "category": "web ui"
+}

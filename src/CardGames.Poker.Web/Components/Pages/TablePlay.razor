@@ -186,10 +186,20 @@
 
         @if (!_isLoading && !string.IsNullOrWhiteSpace(_gameTypeCode))
         {
-            <span class="game-variant-label">
-                <i class="fa-solid fa-cards"></i>
-                @GetGameInfoTypeContext()
-            </span>
+            <div class="game-variant-badges">
+                <span class="game-variant-label">
+                    <i class="fa-solid fa-cards"></i>
+                    @GetGameInfoTypeContext()
+                </span>
+
+                @if (IsLeagueTournament)
+                {
+                    <span class="game-variant-label">
+                        <i class="fa-solid fa-trophy"></i>
+                        Tournament
+                    </span>
+                }
+            </div>
         }
 
         <div class="table-controls-right">
@@ -836,6 +846,7 @@
     private bool _autoJoinIntentConsumed;
 
     private bool HasFixedTournamentBuyIn => (_gameResponse?.TournamentBuyIn ?? 0) > 0;
+    private bool IsLeagueTournament => HasFixedTournamentBuyIn;
 
     private string? _loggedInUserEmail;
 
