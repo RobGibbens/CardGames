@@ -3,16 +3,40 @@
 - [ ] Animate the chips going to/from the pot
 - [ ] Tony was trying to join during DC, it stole the choice from Russ
 - [ ] DC - Eric joined, it glitched
-- [ ] Rabbit hunt
+- [x] Rabbit hunt
 
 ## Still to do
 
 - [ ] Lobby - Filter by status
 - [ ] Work on isolating games code more
+- [ ] Either remove "confirm login" or set up email
 
 - [ ] Add leagues
 - [ ] Add seasons
 - [ ] Add tournaments
+  - [ ] Active games should not be listed in upcoming also
+  - [ ] Tournaments blinds should increase as time goes on
+  - [ ] Active games should have an info button to see who's playing
+  - [ ] When the tournament ends, it just says "Waiting for Players" . We should have a nice summary page.
+  - [x] League games should be noted on the lobby page
+  - [x] Texas Hold Em, not collecting blinds
+  - [x] Change the UI of the Schedule page, remove segmented control
+  - [x] The description at the top of the tableplay should read "Tournament"
+  - [x] When joining, automatically take a seat
+  - [x] Default start time to now + 30 minutes
+  - [x] Can't edit future tournament
+  - [x] Can't delete future tournament
+  - [x] Can't add a start time for tournament
+  - [x] Validation errors should look better
+  - [x] On the "Create Tournament" and "Create Cash Game" modals, add descriptions
+  - [x] Allows creating tournaments in the past
+  - [x] The edit and delete buttons on lobby are not styled correctly
+  - [x] Upcoming events should show the variant
+  - [x] Can't specify buy-in
+  - [x] Tournaments on the lobby page don't allow you to start/join
+  - [x] When the host clicks "Launch Play" it auto buys in for 100
+  - [x] When the host clicks "Launch Play", send a signalr message to update the schedule and lobby pages
+  - [x] When joining a tournament, you shouldn't be able to change the buy-in amount
 
 - [ ] Productize it - deployment and hosting (Hetzner)
 
@@ -37,6 +61,7 @@
 
 ### P2 - Important but not blocking play
 
+- [ ] Be able to see a full hand history (including rabbit hunt, and folds)
 - [ ] Make sure all calls are idempotent
 - [ ] Continuous play should stop if all players disconnect
 - [ ] During ties, the showdown should show the kicker
@@ -300,3 +325,5 @@
 - [x] SYN - Double burn doesn't work
 - [x] Game felt
 - [x] Click Leave Table : {"message":"You are not seated at this table or have already left"}
+- [x] "Add Chips:" on the dashboard is the wrong color
+- [x] Allow private tables - need an invite / password

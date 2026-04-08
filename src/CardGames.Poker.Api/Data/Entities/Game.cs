@@ -104,6 +104,12 @@ public class Game : EntityWithRowVersion
 	public int? MaxBuyIn { get; set; }
 
 	/// <summary>
+	/// Fixed buy-in required for tournament tables.
+	/// When set, all new entrants must join for exactly this amount.
+	/// </summary>
+	public int? TournamentBuyIn { get; set; }
+
+	/// <summary>
 	/// Whether new joiners must be approved by the host before they can take a seat.
 	/// </summary>
 	public bool RequiresJoinApproval { get; set; }

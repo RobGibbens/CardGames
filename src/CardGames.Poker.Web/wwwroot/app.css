@@ -483,6 +483,19 @@ a:hover {
     color: white;
 }
 
+.btn-danger {
+    background: #dc3545;
+    color: #fff;
+    border: 1px solid #dc3545;
+}
+
+.btn-danger:hover {
+    background: #bb2d3b;
+    border-color: #b02a33;
+    color: #fff;
+    transform: translateY(-2px);
+}
+
 .btn-secondary {
     background: var(--bg-tertiary);
     color: var(--text-primary);
@@ -6004,6 +6017,10 @@ playing-card.card-wild-highlight {
     max-width: 560px;
 }
 
+.confirm-dialog.league-form-modal.create-league-event-modal {
+    max-width: 840px;
+}
+
 .invite-modal {
     max-width: 672px;
 }
@@ -6091,6 +6108,103 @@ playing-card.card-wild-highlight {
     display: flex;
     flex-direction: column;
     gap: 1rem;
+}
+
+.create-league-event-modal .league-form-error-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.875rem;
+    margin: 0;
+    padding: 0.9rem 1rem;
+    border: 1px solid rgba(185, 28, 28, 0.22);
+    border-left: 4px solid var(--primary);
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(220, 38, 38, 0.14) 0%, rgba(127, 29, 29, 0.06) 100%);
+    color: #7f1d1d;
+    box-shadow: 0 10px 24px rgba(127, 29, 29, 0.08);
+}
+
+.create-league-event-modal .league-form-error-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 1.85rem;
+    height: 1.85rem;
+    border-radius: 999px;
+    background: rgba(220, 38, 38, 0.14);
+    color: var(--primary);
+}
+
+.create-league-event-modal .league-form-error-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+}
+
+.create-league-event-modal .league-form-error-title {
+    font-size: 0.74rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+
+.create-league-event-modal .league-form-error-message {
+    font-size: 0.96rem;
+    font-weight: 600;
+    line-height: 1.45;
+}
+
+[data-theme="dark"] .create-league-event-modal .league-form-error-alert {
+    border-color: rgba(248, 113, 113, 0.28);
+    background: linear-gradient(135deg, rgba(127, 29, 29, 0.52) 0%, rgba(69, 10, 10, 0.72) 100%);
+    color: #fecaca;
+    box-shadow: none;
+}
+
+[data-theme="dark"] .create-league-event-modal .league-form-error-icon {
+    background: rgba(248, 113, 113, 0.16);
+    color: #fecaca;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .create-league-event-modal .league-form-error-alert {
+        border-color: rgba(248, 113, 113, 0.28);
+        background: linear-gradient(135deg, rgba(127, 29, 29, 0.52) 0%, rgba(69, 10, 10, 0.72) 100%);
+        color: #fecaca;
+        box-shadow: none;
+    }
+
+    :root:not([data-theme="light"]) .create-league-event-modal .league-form-error-icon {
+        background: rgba(248, 113, 113, 0.16);
+        color: #fecaca;
+    }
+}
+
+.create-league-event-modal .league-form-inline-fields {
+    display: grid;
+    gap: 1rem;
+}
+
+.create-league-event-modal .league-form-inline-field {
+    min-width: 0;
+}
+
+.create-league-event-modal .league-form-inline-field .form-floating {
+    margin: 0;
+}
+
+@media (min-width: 768px) {
+    .create-league-event-modal .league-form-inline-fields-schedule {
+        grid-template-columns: minmax(0, 4fr) minmax(0, 3fr) minmax(0, 5fr);
+        align-items: end;
+    }
+
+    .create-league-event-modal .league-form-inline-fields-bets {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
 .league-form-field {
@@ -7438,10 +7552,66 @@ playing-card.card-wild-highlight {
     font-size: 0.75rem;
 }
 
+.league-detail-active-games-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem 1rem;
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.06));
+}
+
+.league-detail-active-games-meta {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.league-detail-active-games-pager {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.league-detail-active-games-pager .btn {
+    min-width: 4.5rem;
+}
+
+.league-detail-active-games-pager-status {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
 .league-detail-event-row-actions {
     display: flex;
     gap: 0.4rem;
     flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+    .league-detail-active-games-footer {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .league-detail-active-games-pager {
+        justify-content: space-between;
+    }
+
+    .league-detail-active-games-pager .btn {
+        min-width: 0;
+        flex: 1 1 calc(50% - 0.25rem);
+    }
+
+    .league-detail-active-games-pager-status {
+        width: 100%;
+        text-align: center;
+        order: -1;
+    }
 }
 
 /* ── Season Row Highlight ── */

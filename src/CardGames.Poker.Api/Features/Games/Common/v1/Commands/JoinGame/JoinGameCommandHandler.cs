@@ -250,6 +250,13 @@ public sealed class JoinGameCommandHandler(
 				$"Buy-in exceeds the table maximum of {game.MaxBuyIn.Value:N0}.");
 		}
 
+		if (game.TournamentBuyIn.HasValue && startingChips != game.TournamentBuyIn.Value)
+		{
+			return new JoinGameError(
+				JoinGameErrorCode.InvalidStartingChips,
+				$"This tournament requires a fixed buy-in of {game.TournamentBuyIn.Value:N0}.");
+		}
+
 		var requiresApproval = game.RequiresJoinApproval
 			&& !string.IsNullOrWhiteSpace(game.CreatedById)
 			&& !string.Equals(game.CreatedById, currentUserService.UserId, StringComparison.Ordinal);
@@ -288,15 +295,20 @@ public sealed class JoinGameCommandHandler(
 
 			if (!string.IsNullOrWhiteSpace(hostRoutingKey))
 			{
+				var resolvedHostRoutingKey = hostRoutingKey ?? throw new InvalidOperationException("Host routing key is required.");
+				var resolvedGameName = game.Name ?? game.GameType?.Name ?? "Table";
+				var resolvedHostName = game.CreatedByName ?? "Host";
+				var resolvedPlayerName = playerName ?? string.Empty;
+
 				await joinRequestBroadcaster.BroadcastJoinRequestReceivedAsync(
-					hostRoutingKey,
+					resolvedHostRoutingKey,
 					new CardGames.Contracts.SignalR.GameJoinRequestReceivedDto
 					{
 						GameId = game.Id,
 						JoinRequestId = joinRequest.Id,
-						GameName = game.Name ?? game.GameType?.Name ?? "Table",
-						HostName = game.CreatedByName,
-						PlayerName = playerName,
+						GameName = resolvedGameName,
+						HostName = resolvedHostName,
+						PlayerName = resolvedPlayerName,
 						PlayerAvatarUrl = userProfile?.AvatarUrl ?? player.AvatarUrl,
 						PlayerFirstName = userProfile?.FirstName,
 						RequestedBuyIn = startingChips,

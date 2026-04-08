@@ -436,6 +436,9 @@ namespace CardGames.Poker.Api.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
+                    b.Property<int?>("TournamentBuyIn")
+                        .HasColumnType("int");
+
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("datetimeoffset");
 
@@ -1144,6 +1147,9 @@ namespace CardGames.Poker.Api.Migrations
                     b.Property<int>("Ante")
                         .HasColumnType("int");
 
+                    b.Property<int?>("BigBlind")
+                        .HasColumnType("int");
+
                     b.Property<DateTimeOffset>("CreatedAtUtc")
                         .HasColumnType("datetimeoffset");
 
@@ -1193,12 +1199,14 @@ namespace CardGames.Poker.Api.Migrations
                     b.Property<DateTimeOffset>("ScheduledAtUtc")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<int?>("SmallBlind")
+                        .HasColumnType("int");
+
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
-                    b.Property<string>("TableName")
-                        .HasMaxLength(120)
-                        .HasColumnType("nvarchar(120)");
+                    b.Property<int?>("TournamentBuyIn")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
@@ -1262,6 +1270,12 @@ namespace CardGames.Poker.Api.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int?>("Ante")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("BigBlind")
+                        .HasColumnType("int");
+
                     b.Property<DateTimeOffset>("CreatedAtUtc")
                         .HasColumnType("datetimeoffset");
 
@@ -1269,6 +1283,10 @@ namespace CardGames.Poker.Api.Migrations
                         .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("GameTypeCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<DateTimeOffset?>("LaunchedAtUtc")
                         .HasColumnType("datetimeoffset");
@@ -1284,6 +1302,9 @@ namespace CardGames.Poker.Api.Migrations
 
                     b.Property<Guid>("LeagueSeasonId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<int?>("MinBet")
+                        .HasColumnType("int");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -1306,7 +1327,13 @@ namespace CardGames.Poker.Api.Migrations
                     b.Property<int?>("SequenceNumber")
                         .HasColumnType("int");
 
+                    b.Property<int?>("SmallBlind")
+                        .HasColumnType("int");
+
                     b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TournamentBuyIn")
                         .HasColumnType("int");
 
                     b.HasKey("Id");

@@ -1,12 +1,19 @@
 @using CardGames.Poker.Api.Clients
 @using CardGames.Poker.Api.Contracts
+@using CardGames.Poker.Web.Utilities
+@using Refit
+@inject IJSRuntime JSRuntime
+@implements IAsyncDisposable
 
 @if (Show)
 {
-	<div class="confirm-dialog-overlay" @onclick="Close">
-		<div class="confirm-dialog league-form-modal one-off-event-modal" @onclick:stopPropagation>
+	<div class="confirm-dialog-overlay">
+		<div class="confirm-dialog league-form-modal one-off-event-modal create-league-event-modal" @onclick:stopPropagation>
 			<div class="confirm-dialog-header league-form-modal-header">
-				<h3 class="confirm-dialog-title mb-0">@ModalTitle</h3>
+				<div class="league-form-modal-title-group">
+					<h3 class="confirm-dialog-title mb-0">@ModalTitle</h3>
+					<p class="confirm-dialog-message league-form-modal-subtitle mb-0">@ModalSubtitle</p>
+				</div>
 				<button type="button" class="league-modal-close-btn" aria-label="Close" @onclick="Close">
 					<i class="fa-solid fa-xmark" aria-hidden="true"></i>
 				</button>
@@ -14,13 +21,37 @@
 			<div class="confirm-dialog-body league-form-modal-body text-start">
 				@if (!string.IsNullOrWhiteSpace(_errorMessage))
 				{
-					<div class="alert alert-danger py-2 mb-2" role="alert">@_errorMessage</div>
+					<div class="league-form-error-alert" role="alert" aria-live="assertive" aria-atomic="true">
+						<span class="league-form-error-icon" aria-hidden="true">
+							<i class="fa-solid fa-triangle-exclamation"></i>
+						</span>
+						<div class="league-form-error-content">
+							<span class="league-form-error-title">Unable to save event</span>
+							<span class="league-form-error-message">@_errorMessage</span>
+						</div>
+					</div>
 				}
-				<div class="form-floating" data-label="Event name">
-					<InputText id="one-off-name" class="form-control league-modal-input" @bind-Value="_name" maxlength="120" placeholder="Event name" />
+				<div class="form-floating" data-label="Table name">
+					<InputText id="one-off-name" class="form-control league-modal-input" @bind-Value="_name" maxlength="120" placeholder="Table name" />
 				</div>
-				<div class="form-floating" data-label="Scheduled (UTC)">
-					<InputDate id="one-off-scheduled" class="form-control league-modal-date-input" @bind-Value="_scheduledDate" />
+				<div class="league-form-inline-fields league-form-inline-fields-schedule">
+					<div class="league-form-inline-field league-form-inline-field-scheduled-date">
+						<label class="form-label small" for="one-off-scheduled-date">Scheduled date</label>
+						<InputDate id="one-off-scheduled-date" class="form-control league-modal-date-input" @bind-Value="_scheduledDate" />
+					</div>
+					<div class="league-form-inline-field league-form-inline-field-scheduled-time">
+						<label class="form-label small" for="one-off-scheduled-time">Start time</label>
+						<input id="one-off-scheduled-time" type="time" class="form-control league-modal-input league-modal-date-input" value="@_scheduledTime" @onchange="OnScheduledTimeChanged" />
+					</div>
+					<div class="league-form-inline-field league-form-inline-field-time-zone">
+						<label class="form-label small" for="one-off-time-zone">Time zone</label>
+						<InputSelect id="one-off-time-zone" class="form-select league-modal-input league-modal-date-input" @bind-Value="_selectedTimeZoneId" @bind-Value:after="OnTimeZoneSelectionChanged">
+							@foreach (var timeZone in TimeZoneOptions)
+							{
+								<option value="@timeZone.Id">@timeZone.DisplayName</option>
+							}
+						</InputSelect>
+					</div>
 				</div>
 				<div class="form-floating" data-label="Game Variant">
 					@if (_isLoadingGames)
@@ -29,7 +60,7 @@
 					}
 					else
 					{
-						<InputSelect id="one-off-game-type" class="form-control league-modal-input" @bind-Value="_gameTypeCode">
+						<InputSelect id="one-off-game-type" class="form-control league-modal-input" @bind-Value="_gameTypeCode" @bind-Value:after="OnGameTypeChanged">
 							<option value="">-- Select a game --</option>
 							@foreach (var game in _availableGames)
 							{
@@ -38,20 +69,53 @@
 						</InputSelect>
 					}
 				</div>
-				<div class="form-floating" data-label="Table name">
-					<InputText id="one-off-table-name" class="form-control league-modal-input" @bind-Value="_tableName" maxlength="120" placeholder="Table name" />
-				</div>
-				<div class="form-floating" data-label="Ante">
-					<InputNumber id="one-off-ante" class="form-control league-modal-input" @bind-Value="_ante" min="1" max="100" />
-				</div>
-				<div class="form-floating" data-label="Minimum Bet">
-					<InputNumber id="one-off-min-bet" class="form-control league-modal-input" @bind-Value="_minBet" min="1" max="1000" />
-				</div>
+				@if (SelectedGameHasBlinds)
+				{
+					<div class="league-form-inline-fields league-form-inline-fields-bets">
+						<div class="league-form-inline-field">
+							<div class="form-floating" data-label="Small Blind">
+								<InputNumber id="one-off-small-blind" class="form-control league-modal-input" @bind-Value="_smallBlind" min="1" max="1000" />
+							</div>
+						</div>
+						<div class="league-form-inline-field">
+							<div class="form-floating" data-label="Big Blind">
+								<InputNumber id="one-off-big-blind" class="form-control league-modal-input" @bind-Value="_bigBlind" min="1" max="2000" />
+							</div>
+						</div>
+					</div>
+				}
+				else
+				{
+					<div class="league-form-inline-fields league-form-inline-fields-bets">
+						<div class="league-form-inline-field">
+							<div class="form-floating" data-label="Ante">
+								<InputNumber id="one-off-ante" class="form-control league-modal-input" @bind-Value="_ante" min="1" max="100" />
+							</div>
+						</div>
+						<div class="league-form-inline-field">
+							<div class="form-floating" data-label="Minimum Bet">
+								<InputNumber id="one-off-min-bet" class="form-control league-modal-input" @bind-Value="_minBet" min="1" max="1000" />
+							</div>
+						</div>
+					</div>
+				}
+				@if (EventType == LeagueOneOffEventType.Tournament)
+				{
+					<div class="form-floating" data-label="Tournament Buy-In">
+						<InputNumber id="one-off-tournament-buy-in"
+							class="form-control league-modal-input"
+							@bind-Value="_tournamentBuyIn"
+							@bind-Value:after="ClampTournamentBuyIn"
+							min="1"
+							max="@GetTournamentBuyInMax()" />
+					</div>
+				}
 				<div class="form-floating" data-label="Notes (optional)">
 					<InputText id="one-off-notes" class="form-control league-modal-input" @bind-Value="_notes" maxlength="512" placeholder="Notes (optional)" />
 				</div>
 				<div class="league-form-modal-actions">
-					<button class="btn btn-sm btn-primary league-action-btn" @onclick="CreateAsync" disabled="@_isSubmitting">@ModalTitle</button>
+					<button type="button" class="btn btn-sm btn-secondary league-action-btn" @onclick="Close" disabled="@_isSubmitting">Cancel</button>
+					<button class="btn btn-sm btn-primary league-action-btn" @onclick="SaveAsync" disabled="@_isSubmitting">@SubmitLabel</button>
 				</div>
 			</div>
 		</div>
@@ -69,10 +133,19 @@
 	public Guid LeagueId { get; set; }
 
 	[Parameter]
+	public LeagueOneOffEventDto? EditingEvent { get; set; }
+
+	[Parameter]
+	public string BrowserTimeZoneId { get; set; } = "UTC";
+
+	[Parameter]
+	public IReadOnlyList<BrowserTimeZoneOption> AvailableTimeZones { get; set; } = [];
+
+	[Parameter]
 	public EventCallback OnClose { get; set; }
 
 	[Parameter]
-	public EventCallback OnCreated { get; set; }
+	public EventCallback OnSaved { get; set; }
 
 	[Inject]
 	private ILeaguesApi LeaguesApi { get; set; } = default!;
@@ -84,27 +157,115 @@
 	private ILogger<CreateLeagueEventModal> Logger { get; set; } = default!;
 
 	private string _name = string.Empty;
-	private DateTime _scheduledDate = DateTime.UtcNow.Date.AddDays(1);
+	private DateTime? _scheduledDate = DateTime.UtcNow.Date.AddMinutes(30);
+	private string _scheduledTime = LeagueTimeZoneHelper.DefaultTimeText;
+	private string _selectedTimeZoneId = "UTC";
 	private string? _notes;
 	private string _gameTypeCode = string.Empty;
-	private string _tableName = string.Empty;
 	private int _ante = 5;
 	private int _minBet = 10;
+	private int _smallBlind = 5;
+	private int _bigBlind = 10;
+	private int _tournamentBuyIn = 100;
 	private bool _isSubmitting;
 	private string? _errorMessage;
 	private bool _isLoadingGames;
 	private List<GetAvailablePokerGamesResponse> _availableGames = [];
 	private bool _gamesLoaded;
+	private string? _initializedContextKey;
+	private string? _autoSelectedTimeZoneId;
+	private const string TimeZoneModulePath = "/Components/Pages/LeagueDetail.razor.js";
+	private const int DefaultTournamentBuyIn = 100;
+	private IJSObjectReference? _timeZoneModule;
+	private string? _resolvedBrowserTimeZoneId;
+	private List<BrowserTimeZoneOption> _resolvedTimeZones = [];
 
-	private string ModalTitle => EventType == LeagueOneOffEventType.Tournament
+	private bool IsEditMode => EditingEvent is not null;
+
+	private string EffectiveBrowserTimeZoneId => string.IsNullOrWhiteSpace(_resolvedBrowserTimeZoneId)
+		? BrowserTimeZoneId
+		: _resolvedBrowserTimeZoneId;
+
+	private IReadOnlyList<BrowserTimeZoneOption> TimeZoneOptions => _resolvedTimeZones.Count > 0
+		? _resolvedTimeZones
+		: AvailableTimeZones.Count > 0
+			? AvailableTimeZones
+			: [new BrowserTimeZoneOption(EffectiveBrowserTimeZoneId, EffectiveBrowserTimeZoneId)];
+
+	private string ModalTitle => IsEditMode
+		? EventType == LeagueOneOffEventType.Tournament
+			? "Edit Tournament"
+			: "Edit Cash Game"
+		: EventType == LeagueOneOffEventType.Tournament
 		? "Create Tournament"
 		: "Create Cash Game";
+
+	private string ModalSubtitle => IsEditMode
+		? "Update the event details before players join the table."
+		: EventType == LeagueOneOffEventType.Tournament
+		? "Every player starts with the same buy-in, there are no late entries or rebuys, and play continues until one winner remains."
+		: "Players can join or leave freely, choose their own buy-in amount, and rebuy as needed, so the game has no fixed ending.";
+
+	private string SubmitLabel => IsEditMode ? "Save Changes" : ModalTitle;
+
+	private GetAvailablePokerGamesResponse? SelectedGame => _availableGames.FirstOrDefault(game => string.Equals(game.Code, _gameTypeCode, StringComparison.OrdinalIgnoreCase));
+
+	private bool SelectedGameHasBlinds => UsesBlinds(_gameTypeCode);
+
+	private static bool UsesBlinds(string? gameTypeCode)
+	{
+		return gameTypeCode?.Trim().ToUpperInvariant() is "BOBBARKER"
+			or "CRAZYPINEAPPLE"
+			or "HOLDEM"
+			or "HOLDTHEBASEBALL"
+			or "IRISHHOLDEM"
+			or "KLONDIKE"
+			or "NEBRASKA"
+			or "OMAHA"
+			or "PHILSMOM"
+			or "REDRIVER"
+			or "SOUTHDAKOTA";
+	}
 
 	protected override async Task OnParametersSetAsync()
 	{
 		if (Show && !_gamesLoaded)
 		{
 			await LoadAvailableGamesAsync();
+		}
+
+		if (!Show)
+		{
+			_initializedContextKey = null;
+			_autoSelectedTimeZoneId = null;
+			return;
+		}
+
+		await EnsureBrowserTimeZoneSetupAsync();
+
+		var contextKey = EditingEvent?.EventId.ToString() ?? "__create__";
+		if (!string.Equals(_initializedContextKey, contextKey, StringComparison.Ordinal))
+		{
+			InitializeForm();
+			_initializedContextKey = contextKey;
+		}
+
+		SynchronizeDefaultTimeZone();
+	}
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (!Show || (_resolvedTimeZones.Count > 0 && !string.IsNullOrWhiteSpace(_resolvedBrowserTimeZoneId)))
+		{
+			return;
+		}
+
+		await EnsureBrowserTimeZoneSetupAsync();
+
+		if (!string.IsNullOrWhiteSpace(_resolvedBrowserTimeZoneId))
+		{
+			SynchronizeDefaultTimeZone();
+			StateHasChanged();
 		}
 	}
 
@@ -134,16 +295,17 @@
 	{
 		if (_isSubmitting) return;
 		ResetForm();
+		_initializedContextKey = null;
 		await OnClose.InvokeAsync();
 	}
 
-	private async Task CreateAsync()
+	private async Task SaveAsync()
 	{
 		_errorMessage = null;
 
 		if (string.IsNullOrWhiteSpace(_name))
 		{
-			_errorMessage = "Event name is required.";
+			_errorMessage = "Table name is required.";
 			return;
 		}
 
@@ -153,35 +315,105 @@
 			return;
 		}
 
+		if (SelectedGameHasBlinds)
+		{
+			if (_smallBlind <= 0)
+			{
+				_errorMessage = "Small blind must be greater than 0.";
+				return;
+			}
+
+			if (_bigBlind <= _smallBlind)
+			{
+				_errorMessage = "Big blind must be greater than small blind.";
+				return;
+			}
+		}
+		else
+		{
+			if (_ante <= 0)
+			{
+				_errorMessage = "Ante must be greater than 0.";
+				return;
+			}
+
+			if (_minBet <= 0)
+			{
+				_errorMessage = "Minimum bet must be greater than 0.";
+				return;
+			}
+		}
+
+		if (EventType == LeagueOneOffEventType.Tournament && !TryValidateTournamentBuyIn(out var tournamentBuyInError))
+		{
+			_errorMessage = tournamentBuyInError;
+			return;
+		}
+
+		if (!LeagueTimeZoneHelper.TryConvertLocalToUtc(_scheduledDate, _scheduledTime, _selectedTimeZoneId, out var scheduledAtUtc, out var errorMessage))
+		{
+			_errorMessage = errorMessage;
+			return;
+		}
+
+		if (!LeagueTimeZoneHelper.IsScheduledAtInFuture(scheduledAtUtc))
+		{
+			_errorMessage = LeagueTimeZoneHelper.ScheduledAtUtcMustBeInFutureMessage;
+			return;
+		}
+
 		_isSubmitting = true;
 		try
 		{
-			var response = await LeaguesApi.CreateOneOffEventAsync(LeagueId, new CreateLeagueOneOffEventRequest
+			IApiResponse response;
+			if (EditingEvent is null)
 			{
-				Name = _name.Trim(),
-				ScheduledAtUtc = new DateTimeOffset(DateTime.SpecifyKind(_scheduledDate, DateTimeKind.Utc)),
-				EventType = EventType,
-				Notes = string.IsNullOrWhiteSpace(_notes) ? null : _notes.Trim(),
-				GameTypeCode = _gameTypeCode,
-				TableName = string.IsNullOrWhiteSpace(_tableName) ? null : _tableName.Trim(),
-				Ante = _ante,
-				MinBet = _minBet
-			});
+				response = await LeaguesApi.CreateOneOffEventAsync(LeagueId, new CreateLeagueOneOffEventRequest
+				{
+					Name = _name.Trim(),
+					ScheduledAtUtc = scheduledAtUtc,
+					EventType = EventType,
+					Notes = string.IsNullOrWhiteSpace(_notes) ? null : _notes.Trim(),
+					GameTypeCode = _gameTypeCode,
+					Ante = SelectedGameHasBlinds ? 0 : _ante,
+					MinBet = SelectedGameHasBlinds ? _bigBlind : _minBet,
+					SmallBlind = SelectedGameHasBlinds ? _smallBlind : null,
+					BigBlind = SelectedGameHasBlinds ? _bigBlind : null,
+					TournamentBuyIn = EventType == LeagueOneOffEventType.Tournament ? _tournamentBuyIn : null
+				});
+			}
+			else
+			{
+				response = await LeaguesApi.UpdateOneOffEventAsync(LeagueId, EditingEvent.EventId, new UpdateLeagueOneOffEventRequest
+				{
+					Name = _name.Trim(),
+					ScheduledAtUtc = scheduledAtUtc,
+					EventType = EventType,
+					Notes = string.IsNullOrWhiteSpace(_notes) ? null : _notes.Trim(),
+					GameTypeCode = _gameTypeCode,
+					Ante = SelectedGameHasBlinds ? 0 : _ante,
+					MinBet = SelectedGameHasBlinds ? _bigBlind : _minBet,
+					SmallBlind = SelectedGameHasBlinds ? _smallBlind : null,
+					BigBlind = SelectedGameHasBlinds ? _bigBlind : null,
+					TournamentBuyIn = EventType == LeagueOneOffEventType.Tournament ? _tournamentBuyIn : null
+				});
+			}
 
 			if (response.IsSuccessStatusCode)
 			{
 				ResetForm();
-				await OnCreated.InvokeAsync();
+				_initializedContextKey = null;
+				await OnSaved.InvokeAsync();
 			}
 			else
 			{
-				_errorMessage = "Failed to create event. Please try again.";
+				_errorMessage = IsEditMode ? "Failed to update event. Please try again." : "Failed to create event. Please try again.";
 			}
 		}
 		catch (Exception ex)
 		{
-			Logger.LogError(ex, "Failed to create one-off event for league {LeagueId}", LeagueId);
-			_errorMessage = "Failed to create event. Please try again.";
+			Logger.LogError(ex, "Failed to save one-off event for league {LeagueId}", LeagueId);
+			_errorMessage = IsEditMode ? "Failed to update event. Please try again." : "Failed to create event. Please try again.";
 		}
 		finally
 		{
@@ -189,15 +421,181 @@
 		}
 	}
 
+	private void InitializeForm()
+	{
+		if (EditingEvent is null)
+		{
+			ResetForm();
+			return;
+		}
+
+		_name = EditingEvent.Name;
+		_scheduledDate = LeagueTimeZoneHelper.ConvertUtcToLocalDate(EditingEvent.ScheduledAtUtc, EffectiveBrowserTimeZoneId);
+		_scheduledTime = LeagueTimeZoneHelper.ConvertUtcToTimeText(EditingEvent.ScheduledAtUtc, EffectiveBrowserTimeZoneId);
+		_selectedTimeZoneId = EffectiveBrowserTimeZoneId;
+		_autoSelectedTimeZoneId = null;
+		_notes = EditingEvent.Notes;
+		_gameTypeCode = EditingEvent.GameTypeCode ?? string.Empty;
+		_ante = EditingEvent.Ante;
+		_minBet = EditingEvent.MinBet;
+		_smallBlind = EditingEvent.SmallBlind ?? 5;
+		_bigBlind = EditingEvent.BigBlind ?? 10;
+		_tournamentBuyIn = EditingEvent.TournamentBuyIn ?? DefaultTournamentBuyIn;
+		_errorMessage = null;
+		OnGameTypeChanged();
+	}
+
 	private void ResetForm()
 	{
 		_name = string.Empty;
-		_scheduledDate = DateTime.UtcNow.Date.AddDays(1);
+		_scheduledDate = LeagueTimeZoneHelper.GetNextLocalEventDate(EffectiveBrowserTimeZoneId);
+		_scheduledTime = LeagueTimeZoneHelper.DefaultTimeText;
+		_selectedTimeZoneId = EffectiveBrowserTimeZoneId;
+		_autoSelectedTimeZoneId = EffectiveBrowserTimeZoneId;
 		_notes = null;
 		_gameTypeCode = string.Empty;
-		_tableName = string.Empty;
 		_ante = 5;
 		_minBet = 10;
+		_smallBlind = 5;
+		_bigBlind = 10;
+		_tournamentBuyIn = DefaultTournamentBuyIn;
 		_errorMessage = null;
+	}
+
+	private void OnGameTypeChanged()
+	{
+		if (SelectedGameHasBlinds)
+		{
+			if (_smallBlind <= 0)
+			{
+				_smallBlind = 5;
+			}
+
+			if (_bigBlind <= _smallBlind)
+			{
+				_bigBlind = Math.Max(_smallBlind * 2, 10);
+			}
+
+			_minBet = _bigBlind;
+			_ante = 0;
+			return;
+		}
+
+		if (_ante <= 0)
+		{
+			_ante = 5;
+		}
+
+		if (_minBet <= 0)
+		{
+			_minBet = 10;
+		}
+	}
+
+	private bool TryValidateTournamentBuyIn(out string? errorMessage)
+	{
+		ClampTournamentBuyIn();
+		if (_tournamentBuyIn < GetTournamentBuyInMin() || _tournamentBuyIn > GetTournamentBuyInMax())
+		{
+			errorMessage = $"Tournament buy-in must be between {GetTournamentBuyInMin():N0} and {GetTournamentBuyInMax():N0}.";
+			return false;
+		}
+
+		errorMessage = null;
+		return true;
+	}
+
+	private void ClampTournamentBuyIn()
+	{
+		_tournamentBuyIn = Math.Clamp(_tournamentBuyIn, GetTournamentBuyInMin(), GetTournamentBuyInMax());
+	}
+
+	private static int GetTournamentBuyInMin() => 1;
+
+	private static int GetTournamentBuyInMax() => LeagueEventBuyInRules.MaxTournamentBuyIn;
+
+	private void OnScheduledTimeChanged(ChangeEventArgs args)
+	{
+		_scheduledTime = args.Value?.ToString() ?? string.Empty;
+	}
+
+	private void OnTimeZoneSelectionChanged()
+	{
+		_autoSelectedTimeZoneId = null;
+	}
+
+	private void SynchronizeDefaultTimeZone()
+	{
+		if (EditingEvent is not null || string.IsNullOrWhiteSpace(EffectiveBrowserTimeZoneId))
+		{
+			return;
+		}
+
+		if (string.Equals(_selectedTimeZoneId, EffectiveBrowserTimeZoneId, StringComparison.Ordinal))
+		{
+			_autoSelectedTimeZoneId = EffectiveBrowserTimeZoneId;
+			return;
+		}
+
+		if (string.IsNullOrWhiteSpace(_selectedTimeZoneId)
+			|| string.Equals(_selectedTimeZoneId, "UTC", StringComparison.Ordinal)
+			|| string.Equals(_selectedTimeZoneId, _autoSelectedTimeZoneId, StringComparison.Ordinal))
+		{
+			_selectedTimeZoneId = EffectiveBrowserTimeZoneId;
+			_autoSelectedTimeZoneId = EffectiveBrowserTimeZoneId;
+		}
+	}
+
+	private async Task EnsureBrowserTimeZoneSetupAsync()
+	{
+		if (_resolvedTimeZones.Count > 0 && !string.IsNullOrWhiteSpace(_resolvedBrowserTimeZoneId))
+		{
+			return;
+		}
+
+		if (!string.Equals(BrowserTimeZoneId, "UTC", StringComparison.Ordinal) && AvailableTimeZones.Count > 1)
+		{
+			_resolvedBrowserTimeZoneId = BrowserTimeZoneId;
+			_resolvedTimeZones = AvailableTimeZones.ToList();
+			return;
+		}
+
+		try
+		{
+			_timeZoneModule ??= await JSRuntime.InvokeAsync<IJSObjectReference>("import", TimeZoneModulePath);
+			var setup = await _timeZoneModule.InvokeAsync<BrowserTimeZoneSetup>("getTimeZoneSetup");
+			_resolvedBrowserTimeZoneId = string.IsNullOrWhiteSpace(setup.BrowserTimeZoneId) ? BrowserTimeZoneId : setup.BrowserTimeZoneId;
+			_resolvedTimeZones = setup.TimeZones
+				.Where(option => !string.IsNullOrWhiteSpace(option.Id))
+				.DistinctBy(option => option.Id)
+				.ToList();
+		}
+		catch (InvalidOperationException)
+		{
+			// Ignore JS interop errors during SSR.
+		}
+		catch (JSDisconnectedException)
+		{
+			// Ignore circuit disconnects during teardown.
+		}
+		catch (JSException ex)
+		{
+			Logger.LogDebug(ex, "Failed resolving browser time zone in one-off event modal for league {LeagueId}", LeagueId);
+		}
+	}
+
+	public async ValueTask DisposeAsync()
+	{
+		if (_timeZoneModule is not null)
+		{
+			try
+			{
+				await _timeZoneModule.DisposeAsync();
+			}
+			catch (JSDisconnectedException)
+			{
+				// Ignore circuit disconnects during teardown.
+			}
+		}
 	}
 }

@@ -998,15 +998,5 @@ errorContent.Length)]}";
 	{
 		LeagueHubClient.OnLeagueJoinRequestSubmitted -= HandleLeagueJoinRequestSubmittedAsync;
 		LeagueHubClient.OnLeagueJoinRequestUpdated -= HandleLeagueJoinRequestUpdatedAsync;
-
-		try
-		{
-			await LeagueHubClient.SetManagedLeaguesAsync([]);
-			await LeagueHubClient.DisconnectAsync();
-		}
-		catch (Exception ex)
-		{
-			Logger.LogWarning(ex, "Error disconnecting leagues hub on dispose.");
-		}
 	}
 }

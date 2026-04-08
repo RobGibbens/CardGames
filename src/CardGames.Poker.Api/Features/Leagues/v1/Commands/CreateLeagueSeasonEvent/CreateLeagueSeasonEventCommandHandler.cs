@@ -1,8 +1,11 @@
 using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Features.Leagues.v1.Commands;
+using CardGames.Poker.Api.Features.Leagues.v1;
 using CardGames.Poker.Api.Features.Leagues.v1.Governance;
 using CardGames.Poker.Api.Infrastructure;
+using CardGames.Poker.Api.Services;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
@@ -11,7 +14,8 @@ namespace CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueSeasonEve
 
 public sealed class CreateLeagueSeasonEventCommandHandler(
 	CardsDbContext context,
-	ICurrentUserService currentUserService)
+	ICurrentUserService currentUserService,
+	ILeagueBroadcaster leagueBroadcaster)
 	: IRequestHandler<CreateLeagueSeasonEventCommand, OneOf<CreateLeagueSeasonEventResponse, CreateLeagueSeasonEventError>>
 {
 	public async Task<OneOf<CreateLeagueSeasonEventResponse, CreateLeagueSeasonEventError>> Handle(CreateLeagueSeasonEventCommand request, CancellationToken cancellationToken)
@@ -60,6 +64,40 @@ public sealed class CreateLeagueSeasonEventCommandHandler(
 			return new CreateLeagueSeasonEventError(CreateLeagueSeasonEventErrorCode.Forbidden, "Only league managers or admins can create season events.");
 		}
 
+		if (request.Request.ScheduledAtUtc == default)
+		{
+			return new CreateLeagueSeasonEventError(CreateLeagueSeasonEventErrorCode.InvalidRequest, "Scheduled date/time is required.");
+		}
+
+		if (!LeagueEventSchedulingGuard.IsScheduledAtInFuture(request.Request.ScheduledAtUtc))
+		{
+			return new CreateLeagueSeasonEventError(CreateLeagueSeasonEventErrorCode.InvalidRequest, LeagueEventSchedulingGuard.ScheduledAtUtcMustBeInFutureMessage);
+		}
+
+		string? normalizedGameTypeCode = null;
+		CardGames.Poker.Games.GameFlow.GameRules? rules = null;
+		if (!string.IsNullOrWhiteSpace(request.Request.GameTypeCode))
+		{
+			if (!LeagueEventGameSettings.TryResolve(request.Request.GameTypeCode, out var resolvedGameTypeCode, out rules, out var gameTypeError))
+			{
+				return new CreateLeagueSeasonEventError(CreateLeagueSeasonEventErrorCode.InvalidRequest, gameTypeError!);
+			}
+
+			var stakesError = LeagueEventGameSettings.Validate(rules!, request.Request.Ante, request.Request.MinBet, request.Request.SmallBlind, request.Request.BigBlind);
+			if (stakesError is not null)
+			{
+				return new CreateLeagueSeasonEventError(CreateLeagueSeasonEventErrorCode.InvalidRequest, stakesError);
+			}
+
+			normalizedGameTypeCode = resolvedGameTypeCode;
+		}
+
+		var tournamentBuyInError = ValidateSeasonTournamentBuyIn(request.Request.TournamentBuyIn);
+		if (tournamentBuyInError is not null)
+		{
+			return new CreateLeagueSeasonEventError(CreateLeagueSeasonEventErrorCode.InvalidRequest, tournamentBuyInError);
+		}
+
 		if (request.Request.SequenceNumber.HasValue)
 		{
 			var sequenceInUse = await context.LeagueSeasonEvents
@@ -82,12 +120,27 @@ public sealed class CreateLeagueSeasonEventCommandHandler(
 			ScheduledAtUtc = request.Request.ScheduledAtUtc,
 			Status = Data.Entities.LeagueSeasonEventStatus.Planned,
 			Notes = string.IsNullOrWhiteSpace(request.Request.Notes) ? null : request.Request.Notes.Trim(),
+			GameTypeCode = normalizedGameTypeCode,
+			Ante = rules is null ? null : LeagueEventGameSettings.NormalizeAnte(rules, request.Request.Ante),
+			MinBet = rules is null ? null : LeagueEventGameSettings.NormalizeMinBet(rules, request.Request.MinBet, request.Request.BigBlind),
+			SmallBlind = rules is null ? null : LeagueEventGameSettings.NormalizeSmallBlind(rules, request.Request.MinBet, request.Request.SmallBlind, request.Request.BigBlind),
+			BigBlind = rules is null ? null : LeagueEventGameSettings.NormalizeBigBlind(rules, request.Request.MinBet, request.Request.BigBlind),
+			TournamentBuyIn = request.Request.TournamentBuyIn,
 			CreatedByUserId = currentUserService.UserId,
 			CreatedAtUtc = DateTimeOffset.UtcNow
 		};
 
 		context.LeagueSeasonEvents.Add(seasonEvent);
 		await context.SaveChangesAsync(cancellationToken);
+		await leagueBroadcaster.BroadcastLeagueEventChangedAsync(new CardGames.Contracts.SignalR.LeagueEventChangedDto
+		{
+			LeagueId = seasonEvent.LeagueId,
+			EventId = seasonEvent.Id,
+			SourceType = CardGames.Contracts.SignalR.LeagueEventSourceType.Season,
+			SeasonId = seasonEvent.LeagueSeasonId,
+			ChangeKind = CardGames.Contracts.SignalR.LeagueEventChangeKind.Created,
+			ChangedAtUtc = seasonEvent.CreatedAtUtc
+		}, cancellationToken);
 
 		return new CreateLeagueSeasonEventResponse
 		{
@@ -100,7 +153,28 @@ public sealed class CreateLeagueSeasonEventCommandHandler(
 			Status = (Contracts.LeagueSeasonEventStatus)seasonEvent.Status,
 			Notes = seasonEvent.Notes,
 			CreatedByUserId = seasonEvent.CreatedByUserId,
-			CreatedAtUtc = seasonEvent.CreatedAtUtc
+			CreatedAtUtc = seasonEvent.CreatedAtUtc,
+			GameTypeCode = seasonEvent.GameTypeCode,
+			Ante = seasonEvent.Ante,
+			MinBet = seasonEvent.MinBet,
+			SmallBlind = seasonEvent.SmallBlind,
+			BigBlind = seasonEvent.BigBlind,
+			TournamentBuyIn = seasonEvent.TournamentBuyIn
 		};
+	}
+
+	private static string? ValidateSeasonTournamentBuyIn(int? tournamentBuyIn)
+	{
+		if (!tournamentBuyIn.HasValue)
+		{
+			return null;
+		}
+
+		if (tournamentBuyIn.Value <= 0 || tournamentBuyIn.Value > LeagueEventBuyInRules.MaxTournamentBuyIn)
+		{
+			return $"Tournament buy-in must be between 1 and {LeagueEventBuyInRules.MaxTournamentBuyIn:N0}.";
+		}
+
+		return null;
 	}
 }

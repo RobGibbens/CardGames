@@ -196,3 +196,23 @@
     color: var(--join-overlay-text-secondary);
     font-weight: 600;
 }
+
+.game-variant-badges {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+@media (max-width: 480px) {
+    .game-variant-badges {
+        order: 10;
+        flex-basis: 100%;
+        gap: 0.4rem;
+    }
+
+    .game-variant-badges .game-variant-label {
+        order: initial;
+        flex-basis: auto;
+    }
+}

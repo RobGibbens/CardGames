@@ -185,19 +185,30 @@ public sealed class StartHandCommandHandler(
         // 10. Game-specific initialization (e.g., reset DropOrStay decisions for Kings and Lows)
         await flowHandler.OnHandStartingAsync(game, cancellationToken);
 
-        // 11. Create a new main pot for this hand
-        var mainPot = new Pot
-        {
-            GameId = game.Id,
-            HandNumber = game.CurrentHandNumber + 1,
-            PotType = PotType.Main,
-            PotOrder = 0,
-            Amount = 0,
-            IsAwarded = false,
-            CreatedAt = now
-        };
+        // 11. Create a new main pot for this hand (if one doesn't already exist)
+        // CreateGameCommandHandler pre-creates a pot for hand 1, so check first.
+        var upcomingHandNumber = game.CurrentHandNumber + 1;
+        var mainPot = await context.Pots
+            .FirstOrDefaultAsync(p => p.GameId == game.Id &&
+                                      p.HandNumber == upcomingHandNumber &&
+                                      p.PotType == PotType.Main,
+                                 cancellationToken);
 
-        context.Pots.Add(mainPot);
+        if (mainPot is null)
+        {
+            mainPot = new Pot
+            {
+                GameId = game.Id,
+                HandNumber = upcomingHandNumber,
+                PotType = PotType.Main,
+                PotOrder = 0,
+                Amount = 0,
+                IsAwarded = false,
+                CreatedAt = now
+            };
+
+            context.Pots.Add(mainPot);
+        }
 
         // 12. Update game state
         game.CurrentHandNumber++;
@@ -219,7 +230,16 @@ public sealed class StartHandCommandHandler(
         // Ante-based variants intentionally wait in CollectingAntes until antes are posted.
         if (flowHandler.SkipsAnteCollection)
         {
+            logger.LogInformation(
+                "Generic SkipsAnteCollection path – Game {GameId} Hand {Hand}: SmallBlind={SmallBlind}, BigBlind={BigBlind}, EligiblePlayers={Count}",
+                game.Id, game.CurrentHandNumber, game.SmallBlind, game.BigBlind, eligiblePlayers.Count);
+
             await flowHandler.DealCardsAsync(context, game, eligiblePlayers, now, cancellationToken);
+
+            logger.LogInformation(
+                "Generic post-DealCardsAsync – Game {GameId} Hand {Hand}: PlayerContributions=[{Contributions}]",
+                game.Id, game.CurrentHandNumber,
+                string.Join(", ", eligiblePlayers.Select(p => $"{p.PlayerId}:contributed={p.TotalContributedThisHand},stack={p.ChipStack}")));
 
             if (await ShouldBroadcastScrewYourNeighborNewDeckToastAsync(context, flowHandler, game, cancellationToken))
             {

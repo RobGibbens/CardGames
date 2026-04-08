@@ -81,7 +81,7 @@
                            @bind="_joinBuyInAmount"
                            @bind:event="oninput"
                            @bind:after="NormalizeJoinBuyIn"
-                           disabled="@IsScrewYourNeighbor" />
+                           disabled="@(IsScrewYourNeighbor || HasFixedTournamentBuyIn)" />
                     <div class="bet-slider-labels">
                         <span>Min @GetJoinBuyInMin().ToString("N0")</span>
                         <span>Max @GetJoinBuyInMax().ToString("N0")</span>
@@ -95,7 +95,7 @@
                            step="1"
                            @bind="_joinBuyInAmount"
                            @bind:after="ClampJoinBuyIn"
-                           disabled="@IsScrewYourNeighbor" />
+                           disabled="@(IsScrewYourNeighbor || HasFixedTournamentBuyIn)" />
 
                 </div>
             </div>
@@ -186,10 +186,20 @@
 
         @if (!_isLoading && !string.IsNullOrWhiteSpace(_gameTypeCode))
         {
-            <span class="game-variant-label">
-                <i class="fa-solid fa-cards"></i>
-                @GetGameInfoTypeContext()
-            </span>
+            <div class="game-variant-badges">
+                <span class="game-variant-label">
+                    <i class="fa-solid fa-cards"></i>
+                    @GetGameInfoTypeContext()
+                </span>
+
+                @if (IsLeagueTournament)
+                {
+                    <span class="game-variant-label">
+                        <i class="fa-solid fa-trophy"></i>
+                        Tournament
+                    </span>
+                }
+            </div>
         }
 
         <div class="table-controls-right">
@@ -834,6 +844,9 @@
     private bool _initialized;
     private bool _shouldAutoJoinFromQuery;
     private bool _autoJoinIntentConsumed;
+
+    private bool HasFixedTournamentBuyIn => (_gameResponse?.TournamentBuyIn ?? 0) > 0;
+    private bool IsLeagueTournament => HasFixedTournamentBuyIn;
 
     private string? _loggedInUserEmail;
 
@@ -2487,46 +2500,7 @@
                 var gamesResponse = gameResponse.Content;
                 _gameTypeCode = gamesResponse.GameTypeCode;
 
-                // Convert to GetGameResponse format for compatibility with existing code
-                _gameResponse = new GetGameResponse(
-                    ante: gamesResponse.Ante,
-                    bigBet: gamesResponse.BigBet,
-                    bigBlind: gamesResponse.BigBlind,
-                    bringIn: gamesResponse.BringIn,
-                    bringInPlayerIndex: gamesResponse.BringInPlayerIndex,
-                    canContinue: gamesResponse.CanContinue,
-                    createdAt: gamesResponse.CreatedAt,
-                    createdById: gamesResponse.CreatedById,
-                    createdByName: gamesResponse.CreatedByName,
-                    currentDrawPlayerIndex: gamesResponse.CurrentDrawPlayerIndex,
-                    currentHandNumber: gamesResponse.CurrentHandNumber,
-                    currentPhase: gamesResponse.CurrentPhase,
-                    currentPhaseDescription: gamesResponse.CurrentPhaseDescription,
-                    currentPlayerIndex: gamesResponse.CurrentPlayerIndex,
-                    dealerPosition: gamesResponse.DealerPosition,
-                    endedAt: gamesResponse.EndedAt,
-                    gameSettings: gamesResponse.GameSettings,
-                    gameTypeCode: gamesResponse.GameTypeCode,
-                    gameTypeId: gamesResponse.GameTypeId,
-                    gameTypeName: gamesResponse.GameTypeName,
-                    id: gamesResponse.Id,
-                    maximumNumberOfPlayers: gamesResponse.MaximumNumberOfPlayers,
-                    minBet: gamesResponse.MinBet,
-                    minimumNumberOfPlayers: gamesResponse.MinimumNumberOfPlayers,
-                    name: gamesResponse.Name,
-                    randomSeed: gamesResponse.RandomSeed,
-                    rowVersion: gamesResponse.RowVersion,
-                    smallBet: gamesResponse.SmallBet,
-                    smallBlind: gamesResponse.SmallBlind,
-                    startedAt: gamesResponse.StartedAt,
-                    status: gamesResponse.Status,
-                    updatedAt: gamesResponse.UpdatedAt
-                )
-                {
-                    AreOddsVisibleToAllPlayers = gamesResponse.AreOddsVisibleToAllPlayers,
-                    MaxBuyIn = gamesResponse.MaxBuyIn,
-                    RequiresJoinApproval = gamesResponse.RequiresJoinApproval
-                };
+                _gameResponse = CreateLocalGameResponse(gamesResponse);
                 _allowedDealerChoiceGameCodes = ParseAllowedDealerChoiceGameCodes(gamesResponse.GameSettings);
 
                 _currentActorSeatIndex = _gameResponse.CurrentPlayerIndex;
@@ -2586,6 +2560,49 @@
             _isLoading = false;
             await InvokeStateHasChangedAsync();
         }
+    }
+
+    private static GetGameResponse CreateLocalGameResponse(GetGameResponse gamesResponse)
+    {
+        return new GetGameResponse(
+            ante: gamesResponse.Ante,
+            bigBet: gamesResponse.BigBet,
+            bigBlind: gamesResponse.BigBlind,
+            bringIn: gamesResponse.BringIn,
+            bringInPlayerIndex: gamesResponse.BringInPlayerIndex,
+            canContinue: gamesResponse.CanContinue,
+            createdAt: gamesResponse.CreatedAt,
+            createdById: gamesResponse.CreatedById,
+            createdByName: gamesResponse.CreatedByName,
+            currentDrawPlayerIndex: gamesResponse.CurrentDrawPlayerIndex,
+            currentHandNumber: gamesResponse.CurrentHandNumber,
+            currentPhase: gamesResponse.CurrentPhase,
+            currentPhaseDescription: gamesResponse.CurrentPhaseDescription,
+            currentPlayerIndex: gamesResponse.CurrentPlayerIndex,
+            dealerPosition: gamesResponse.DealerPosition,
+            endedAt: gamesResponse.EndedAt,
+            gameSettings: gamesResponse.GameSettings,
+            gameTypeCode: gamesResponse.GameTypeCode,
+            gameTypeId: gamesResponse.GameTypeId,
+            gameTypeName: gamesResponse.GameTypeName,
+            id: gamesResponse.Id,
+            maximumNumberOfPlayers: gamesResponse.MaximumNumberOfPlayers,
+            minBet: gamesResponse.MinBet,
+            minimumNumberOfPlayers: gamesResponse.MinimumNumberOfPlayers,
+            name: gamesResponse.Name,
+            randomSeed: gamesResponse.RandomSeed,
+            rowVersion: gamesResponse.RowVersion,
+            smallBet: gamesResponse.SmallBet,
+            smallBlind: gamesResponse.SmallBlind,
+            startedAt: gamesResponse.StartedAt,
+            status: gamesResponse.Status,
+            updatedAt: gamesResponse.UpdatedAt)
+        {
+            AreOddsVisibleToAllPlayers = gamesResponse.AreOddsVisibleToAllPlayers,
+            MaxBuyIn = gamesResponse.MaxBuyIn,
+            RequiresJoinApproval = gamesResponse.RequiresJoinApproval,
+            TournamentBuyIn = gamesResponse.TournamentBuyIn
+        };
     }
 
     private async Task GetPlayersAndUpdateSeatsAsync()
@@ -3032,7 +3049,7 @@
             return;
         }
 
-        _joinBuyInAmount = GetRecommendedJoinBuyIn();
+        _joinBuyInAmount = HasFixedTournamentBuyIn ? _gameResponse!.TournamentBuyIn!.Value : GetRecommendedJoinBuyIn();
         _joinBuyInInitializedFromTable = true;
         NormalizeJoinBuyIn();
     }
@@ -3060,6 +3077,11 @@
 
     private int GetRecommendedJoinBuyIn()
     {
+        if (HasFixedTournamentBuyIn)
+        {
+            return _gameResponse!.TournamentBuyIn!.Value;
+        }
+
         if (IsScrewYourNeighbor)
         {
             return GetJoinBuyInMin();
@@ -3072,6 +3094,11 @@
 
     private int GetJoinBuyInMin()
     {
+        if (HasFixedTournamentBuyIn)
+        {
+            return _gameResponse!.TournamentBuyIn!.Value;
+        }
+
         var minBet = _gameResponse?.MinBet ?? 0;
         var ante = _gameResponse?.Ante ?? _ante;
 
@@ -3098,6 +3125,11 @@
 
     private int GetJoinBuyInStep()
     {
+        if (HasFixedTournamentBuyIn)
+        {
+            return 1;
+        }
+
         var minBet = _gameResponse?.MinBet ?? 0;
         var ante = _gameResponse?.Ante ?? _ante;
 
@@ -3119,6 +3151,11 @@
 
     private int GetJoinBuyInMax()
     {
+        if (HasFixedTournamentBuyIn)
+        {
+            return _gameResponse!.TournamentBuyIn!.Value;
+        }
+
         if (IsScrewYourNeighbor)
         {
             return GetJoinBuyInMin();

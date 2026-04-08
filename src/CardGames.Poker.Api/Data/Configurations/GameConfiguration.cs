@@ -32,6 +32,8 @@ public class GameConfiguration : IEntityTypeConfiguration<Game>
 		builder.Property(t => t.RequiresJoinApproval)
 			.HasDefaultValue(false);
 
+		builder.Property(t => t.TournamentBuyIn);
+
 		builder.Property(t => t.Status)
 			.HasConversion<int>();
 

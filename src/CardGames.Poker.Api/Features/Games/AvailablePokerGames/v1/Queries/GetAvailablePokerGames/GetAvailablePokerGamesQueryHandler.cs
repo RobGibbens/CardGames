@@ -1,5 +1,6 @@
 using System.Reflection;
 using System;
+using CardGames.Poker.Api.Games;
 using CardGames.Poker.Games;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
@@ -56,6 +57,7 @@ public class GetAvailablePokerGamesQueryHandler(
 			{
 				var gameInstance = CreateGameInstance(gameType);
 				var variantType = gameInstance?.VariantType ?? VariantType.Other;
+				PokerGameRulesRegistry.TryGet(metadata.Code, out var rules);
 
 				return new GetAvailablePokerGamesResponse(
 					metadata.Code,
@@ -64,7 +66,9 @@ public class GetAvailablePokerGamesQueryHandler(
 					metadata.MinimumNumberOfPlayers,
 					metadata.MaximumNumberOfPlayers,
 					metadata.ImageName,
-					variantType
+					variantType,
+					rules?.Betting.HasAntes ?? false,
+					rules?.Betting.HasBlinds ?? false
 				);
 			}
 

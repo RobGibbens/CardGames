@@ -18,5 +18,7 @@ public record GetActiveGamesResponse(
 	string CreatedById,
 	string CreatedByName,
 	string RowVersion,
+	Guid? LeagueId,
+	int? TournamentBuyIn,
 	bool IsDealersChoice
 );

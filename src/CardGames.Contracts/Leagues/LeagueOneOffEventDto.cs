@@ -24,9 +24,15 @@ public sealed record LeagueOneOffEventDto
 
 	public string? GameTypeCode { get; init; }
 
-	public string? TableName { get; init; }
+	public string? GameTypeName { get; init; }
 
 	public int Ante { get; init; }
 
 	public int MinBet { get; init; }
+
+	public int? SmallBlind { get; init; }
+
+	public int? BigBlind { get; init; }
+
+	public int? TournamentBuyIn { get; init; }
 }

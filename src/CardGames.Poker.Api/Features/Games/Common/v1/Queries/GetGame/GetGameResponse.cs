@@ -28,6 +28,7 @@ public sealed record GetGameResponse
 	public int? BigBet { get; init; }
 	public int? MinBet { get; init; }
 	public int? MaxBuyIn { get; init; }
+	public int? TournamentBuyIn { get; init; }
 	public string? GameSettings { get; init; }
 	public required GameStatus Status { get; init; }
 	public required int CurrentPlayerIndex { get; init; }

@@ -151,6 +151,18 @@ public sealed class LeagueSeasonEvent : EntityWithRowVersion
 
 	public string? Notes { get; set; }
 
+	public string? GameTypeCode { get; set; }
+
+	public int? Ante { get; set; }
+
+	public int? MinBet { get; set; }
+
+	public int? SmallBlind { get; set; }
+
+	public int? BigBlind { get; set; }
+
+	public int? TournamentBuyIn { get; set; }
+
 	public required string CreatedByUserId { get; set; }
 
 	public DateTimeOffset CreatedAtUtc { get; set; }
@@ -184,11 +196,15 @@ public sealed class LeagueOneOffEvent : EntityWithRowVersion
 
 	public string? GameTypeCode { get; set; }
 
-	public string? TableName { get; set; }
-
 	public int Ante { get; set; } = 10;
 
 	public int MinBet { get; set; } = 20;
+
+	public int? SmallBlind { get; set; }
+
+	public int? BigBlind { get; set; }
+
+	public int? TournamentBuyIn { get; set; }
 
 	public required string CreatedByUserId { get; set; }
 

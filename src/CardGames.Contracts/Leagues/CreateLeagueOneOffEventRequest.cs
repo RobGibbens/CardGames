@@ -12,9 +12,13 @@ public sealed record CreateLeagueOneOffEventRequest
 
 	public string? GameTypeCode { get; init; }
 
-	public string? TableName { get; init; }
-
 	public int Ante { get; init; } = 10;
 
 	public int MinBet { get; init; } = 20;
+
+	public int? SmallBlind { get; init; }
+
+	public int? BigBlind { get; init; }
+
+	public int? TournamentBuyIn { get; init; }
 }

@@ -1,4 +1,5 @@
 @using CardGames.Poker.Api.Contracts
+@using CardGames.Poker.Web.Utilities
 
 <div class="league-detail-tab-content">
 	<section class="league-detail-card">
@@ -43,6 +44,15 @@
 						<span class="league-detail-results-date">@FormatDate(seasonEvent.ScheduledAtUtc)</span>
 						<span class="league-detail-event-status @(seasonEvent.Status == LeagueSeasonEventStatus.Completed ? "league-detail-event-status-completed" : "")">@seasonEvent.Status</span>
 						<div class="league-detail-results-actions">
+							@if (CanManageLeague && CanEditSeasonEvent(seasonEvent))
+							{
+								<button class="btn btn-sm btn-outline-secondary league-action-btn" @onclick="() => EditSeasonEvent.InvokeAsync(seasonEvent)">
+									<i class="fa-solid fa-pen-to-square"></i> Edit
+								</button>
+								<button class="btn btn-sm btn-outline-danger league-action-btn" @onclick="() => DeleteSeasonEvent.InvokeAsync(seasonEvent)" title="Delete season event">
+									<i class="fa-regular fa-trash"></i>
+								</button>
+							}
 							@if (seasonEvent.LaunchedGameId.HasValue)
 							{
 								<button class="btn btn-sm btn-outline-primary league-action-btn" @onclick="() => OpenTable.InvokeAsync(seasonEvent.LaunchedGameId.Value)">Open Table</button>
@@ -76,10 +86,19 @@
 	public Guid? LaunchingSeasonEventId { get; set; }
 
 	[Parameter]
+	public string BrowserTimeZoneId { get; set; } = "UTC";
+
+	[Parameter]
 	public EventCallback<ChangeEventArgs> OnSeasonSelectorChanged { get; set; }
 
 	[Parameter]
 	public EventCallback OpenSeasonEventModal { get; set; }
+
+	[Parameter]
+	public EventCallback<LeagueSeasonEventDto> EditSeasonEvent { get; set; }
+
+	[Parameter]
+	public EventCallback<LeagueSeasonEventDto> DeleteSeasonEvent { get; set; }
 
 	[Parameter]
 	public EventCallback<Guid> OpenTable { get; set; }
@@ -87,8 +106,13 @@
 	[Parameter]
 	public EventCallback<Guid> LaunchSeasonEvent { get; set; }
 
-	private static string FormatDate(DateTimeOffset? value)
+	private string FormatDate(DateTimeOffset? value)
 	{
-		return value.HasValue ? value.Value.ToLocalTime().ToString("g") : "-";
+		return LeagueTimeZoneHelper.FormatDateTime(value, BrowserTimeZoneId);
+	}
+
+	private static bool CanEditSeasonEvent(LeagueSeasonEventDto seasonEvent)
+	{
+		return seasonEvent.Status == LeagueSeasonEventStatus.Planned && !seasonEvent.LaunchedGameId.HasValue;
 	}
 }

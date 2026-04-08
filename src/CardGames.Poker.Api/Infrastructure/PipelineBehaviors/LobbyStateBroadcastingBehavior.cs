@@ -116,6 +116,17 @@ public sealed class LobbyStateBroadcastingBehavior<TRequest, TResponse> : IPipel
             string? metadataName = null;
             string? description = game.GameType?.Description;
             string? imageName = null;
+            Guid? leagueId = await _dbContext.LeagueSeasonEvents
+                .AsNoTracking()
+                .Where(x => x.LaunchedGameId == gameId)
+                .Select(x => (Guid?)x.LeagueId)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            leagueId ??= await _dbContext.LeagueOneOffEvents
+                .AsNoTracking()
+                .Where(x => x.LaunchedGameId == gameId)
+                .Select(x => (Guid?)x.LeagueId)
+                .FirstOrDefaultAsync(cancellationToken);
 
             if (PokerGameMetadataRegistry.TryGet(gameTypeCode, out var metadata) && metadata is not null)
             {
@@ -142,6 +153,8 @@ public sealed class LobbyStateBroadcastingBehavior<TRequest, TResponse> : IPipel
                 CreatedAt = game.CreatedAt,
                 Ante = game.Ante ?? 0,
                 MinBet = game.MinBet ?? 0,
+				LeagueId = leagueId,
+				TournamentBuyIn = game.TournamentBuyIn,
                 CreatedById = game.CreatedById,
                 CreatedByName = game.CreatedByName,
                 IsDealersChoice = game.IsDealersChoice

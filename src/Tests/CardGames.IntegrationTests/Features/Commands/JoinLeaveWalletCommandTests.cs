@@ -148,6 +148,58 @@ public class JoinLeaveWalletCommandTests : IntegrationTestBase
 	}
 
 	[Fact]
+	public async Task JoinGame_WithFixedTournamentBuyInMismatch_ReturnsInvalidStartingChips()
+	{
+		var game = await DatabaseSeeder.CreateGameAsync(DbContext, "FIVECARDDRAW");
+		game.TournamentBuyIn = 250;
+
+		var player = await DatabaseSeeder.CreatePlayerAsync(DbContext, "Tournament Mismatch", "tournament.mismatch@test.com");
+
+		DbContext.PlayerChipAccounts.Add(new PlayerChipAccount
+		{
+			PlayerId = player.Id,
+			Balance = 500,
+			CreatedAtUtc = DateTimeOffset.UtcNow,
+			UpdatedAtUtc = DateTimeOffset.UtcNow
+		});
+		await DbContext.SaveChangesAsync();
+
+		SetCurrentUser("tournament-mismatch-user-id", "Tournament Mismatch", "tournament.mismatch@test.com");
+
+		var result = await Mediator.Send(new JoinGameCommand(game.Id, SeatIndex: 3, StartingChips: 200));
+
+		result.IsT1.Should().BeTrue();
+		result.AsT1.Code.Should().Be(JoinGameErrorCode.InvalidStartingChips);
+		DbContext.GamePlayers.Count(x => x.GameId == game.Id && x.PlayerId == player.Id).Should().Be(0);
+	}
+
+	[Fact]
+	public async Task JoinGame_WithFixedTournamentBuyInMatch_Succeeds()
+	{
+		var game = await DatabaseSeeder.CreateGameAsync(DbContext, "FIVECARDDRAW");
+		game.TournamentBuyIn = 250;
+
+		var player = await DatabaseSeeder.CreatePlayerAsync(DbContext, "Tournament Match", "tournament.match@test.com");
+
+		DbContext.PlayerChipAccounts.Add(new PlayerChipAccount
+		{
+			PlayerId = player.Id,
+			Balance = 500,
+			CreatedAtUtc = DateTimeOffset.UtcNow,
+			UpdatedAtUtc = DateTimeOffset.UtcNow
+		});
+		await DbContext.SaveChangesAsync();
+
+		SetCurrentUser("tournament-match-user-id", "Tournament Match", "tournament.match@test.com");
+
+		var result = await Mediator.Send(new JoinGameCommand(game.Id, SeatIndex: 4, StartingChips: 250));
+
+		result.IsT0.Should().BeTrue();
+		var gamePlayer = await DbContext.GamePlayers.FirstAsync(x => x.GameId == game.Id && x.PlayerId == player.Id);
+		gamePlayer.ChipStack.Should().Be(250);
+	}
+
+	[Fact]
 	public async Task JoinGame_ScrewYourNeighborAfterStart_ReturnsLateJoinNotAllowedAndDoesNotSeatPlayer()
 	{
 		// Arrange

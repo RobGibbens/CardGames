@@ -59,6 +59,9 @@ public abstract class IntegrationTestBase : IAsyncLifetime
         // Add services
         services.AddSingleton<IActionTimerService, FakeActionTimerService>();
         services.AddSingleton<IGameStateBroadcaster, FakeGameStateBroadcaster>();
+        services.AddSingleton<IGameJoinRequestBroadcaster, FakeGameJoinRequestBroadcaster>();
+        services.AddSingleton<FakeLeagueBroadcaster>();
+        services.AddSingleton<ILeagueBroadcaster>(sp => sp.GetRequiredService<FakeLeagueBroadcaster>());
         services.AddSingleton<IHandHistoryRecorder, FakeHandHistoryRecorder>();
 		services.AddSingleton<IHandSettlementService, FakeHandSettlementService>();
 		services.AddScoped<ICurrentUserService, FakeCurrentUserService>();

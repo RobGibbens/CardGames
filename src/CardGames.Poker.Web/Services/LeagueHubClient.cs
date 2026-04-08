@@ -2,6 +2,7 @@ using CardGames.Contracts.SignalR;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.SignalR.Client;
 using System.Security.Claims;
+using System.Text.Json.Serialization;
 using System.Web;
 
 namespace CardGames.Poker.Web.Services;
@@ -18,6 +19,10 @@ public sealed class LeagueHubClient : IAsyncDisposable
 
 	private HubConnection? _hubConnection;
 	private HashSet<Guid> _managedLeagueIds = [];
+	private HashSet<Guid> _viewedLeagueIds = [];
+	private HashSet<Guid> _joinedManagedLeagueIds = [];
+	private HashSet<Guid> _joinedViewedLeagueIds = [];
+	private int _subscriptionResyncScheduled;
 
 	/// <summary>
 	/// Fired when a league join request is submitted.
@@ -28,6 +33,16 @@ public sealed class LeagueHubClient : IAsyncDisposable
 	/// Fired when a league join request is updated.
 	/// </summary>
 	public event Func<LeagueJoinRequestUpdatedDto, Task>? OnLeagueJoinRequestUpdated;
+
+	/// <summary>
+	/// Fired when a league event changes.
+	/// </summary>
+	public event Func<LeagueEventChangedDto, Task>? OnLeagueEventChanged;
+
+	/// <summary>
+	/// Fired when a league event launches a game session.
+	/// </summary>
+	public event Func<LeagueEventSessionLaunchedDto, Task>? OnLeagueEventSessionLaunched;
 
 	/// <summary>
 	/// Gets whether the client is connected.
@@ -84,6 +99,11 @@ public sealed class LeagueHubClient : IAsyncDisposable
 					}
 				}
 			})
+			.AddJsonProtocol(options =>
+			{
+				options.PayloadSerializerOptions.PropertyNameCaseInsensitive = true;
+				options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+			})
 			.WithAutomaticReconnect(new[]
 			{
 				TimeSpan.Zero,
@@ -99,9 +119,14 @@ public sealed class LeagueHubClient : IAsyncDisposable
 
 		_hubConnection.On<LeagueJoinRequestSubmittedDto>("LeagueJoinRequestSubmitted", HandleLeagueJoinRequestSubmittedAsync);
 		_hubConnection.On<LeagueJoinRequestUpdatedDto>("LeagueJoinRequestUpdated", HandleLeagueJoinRequestUpdatedAsync);
+		_hubConnection.On<LeagueEventChangedDto>("LeagueEventChanged", HandleLeagueEventChangedAsync);
+		_hubConnection.On<LeagueEventSessionLaunchedDto>("LeagueEventSessionLaunched", HandleLeagueEventSessionLaunchedAsync);
 
 		await _hubConnection.StartAsync(cancellationToken);
-		await JoinManagedLeaguesAsync(_managedLeagueIds, cancellationToken);
+		_joinedViewedLeagueIds.Clear();
+		_joinedManagedLeagueIds.Clear();
+		await SynchronizeViewedLeaguesAsync(cancellationToken);
+		await SynchronizeManagedLeaguesAsync(cancellationToken);
 
 		_logger.LogInformation("Connected to leagues hub");
 	}
@@ -112,27 +137,32 @@ public sealed class LeagueHubClient : IAsyncDisposable
 	public async Task SetManagedLeaguesAsync(IEnumerable<Guid> leagueIds, CancellationToken cancellationToken = default)
 	{
 		var target = leagueIds.Distinct().ToHashSet();
+		_managedLeagueIds = target;
 
 		if (_hubConnection is null || _hubConnection.State != HubConnectionState.Connected)
 		{
-			_managedLeagueIds = target;
+			_joinedManagedLeagueIds.Clear();
 			return;
 		}
 
-		var toLeave = _managedLeagueIds.Except(target).ToList();
-		var toJoin = target.Except(_managedLeagueIds).ToList();
+		await SynchronizeManagedLeaguesAsync(cancellationToken);
+	}
 
-		foreach (var leagueId in toLeave)
+	/// <summary>
+	/// Sets the leagues that should receive viewer event updates.
+	/// </summary>
+	public async Task SetViewedLeaguesAsync(IEnumerable<Guid> leagueIds, CancellationToken cancellationToken = default)
+	{
+		var target = leagueIds.Distinct().ToHashSet();
+		_viewedLeagueIds = target;
+
+		if (_hubConnection is null || _hubConnection.State != HubConnectionState.Connected)
 		{
-			await LeaveManagedLeagueAsync(leagueId, cancellationToken);
+			_joinedViewedLeagueIds.Clear();
+			return;
 		}
 
-		foreach (var leagueId in toJoin)
-		{
-			await JoinManagedLeagueAsync(leagueId, cancellationToken);
-		}
-
-		_managedLeagueIds = target;
+		await SynchronizeViewedLeaguesAsync(cancellationToken);
 	}
 
 	/// <summary>
@@ -147,7 +177,19 @@ public sealed class LeagueHubClient : IAsyncDisposable
 
 		if (_hubConnection.State == HubConnectionState.Connected)
 		{
-			foreach (var leagueId in _managedLeagueIds)
+			foreach (var leagueId in _joinedViewedLeagueIds.ToList())
+			{
+				try
+				{
+					await LeaveViewedLeagueAsync(leagueId, cancellationToken);
+				}
+				catch (Exception ex)
+				{
+					_logger.LogDebug(ex, "Failed leaving viewed league {LeagueId} while disconnecting", leagueId);
+				}
+			}
+
+			foreach (var leagueId in _joinedManagedLeagueIds.ToList())
 			{
 				try
 				{
@@ -168,6 +210,63 @@ public sealed class LeagueHubClient : IAsyncDisposable
 		{
 			_logger.LogWarning(ex, "Error stopping leagues hub connection");
 		}
+
+		_joinedViewedLeagueIds.Clear();
+		_joinedManagedLeagueIds.Clear();
+	}
+
+	private async Task SynchronizeManagedLeaguesAsync(CancellationToken cancellationToken)
+	{
+		if (_hubConnection is null || _hubConnection.State != HubConnectionState.Connected)
+		{
+			_joinedManagedLeagueIds.Clear();
+			return;
+		}
+
+		var toLeave = _joinedManagedLeagueIds.Except(_managedLeagueIds).ToList();
+		foreach (var leagueId in toLeave)
+		{
+			if (await TryLeaveManagedLeagueAsync(leagueId, cancellationToken))
+			{
+				_joinedManagedLeagueIds.Remove(leagueId);
+			}
+		}
+
+		var toJoin = _managedLeagueIds.Except(_joinedManagedLeagueIds).ToList();
+		foreach (var leagueId in toJoin)
+		{
+			if (await TryJoinManagedLeagueAsync(leagueId, cancellationToken))
+			{
+				_joinedManagedLeagueIds.Add(leagueId);
+			}
+		}
+	}
+
+	private async Task SynchronizeViewedLeaguesAsync(CancellationToken cancellationToken)
+	{
+		if (_hubConnection is null || _hubConnection.State != HubConnectionState.Connected)
+		{
+			_joinedViewedLeagueIds.Clear();
+			return;
+		}
+
+		var toLeave = _joinedViewedLeagueIds.Except(_viewedLeagueIds).ToList();
+		foreach (var leagueId in toLeave)
+		{
+			if (await TryLeaveViewedLeagueAsync(leagueId, cancellationToken))
+			{
+				_joinedViewedLeagueIds.Remove(leagueId);
+			}
+		}
+
+		var toJoin = _viewedLeagueIds.Except(_joinedViewedLeagueIds).ToList();
+		foreach (var leagueId in toJoin)
+		{
+			if (await TryJoinViewedLeagueAsync(leagueId, cancellationToken))
+			{
+				_joinedViewedLeagueIds.Add(leagueId);
+			}
+		}
 	}
 
 	private async Task JoinManagedLeaguesAsync(IEnumerable<Guid> leagueIds, CancellationToken cancellationToken)
@@ -176,6 +275,135 @@ public sealed class LeagueHubClient : IAsyncDisposable
 		{
 			await JoinManagedLeagueAsync(leagueId, cancellationToken);
 		}
+	}
+
+	private async Task JoinViewedLeaguesAsync(IEnumerable<Guid> leagueIds, CancellationToken cancellationToken)
+	{
+		foreach (var leagueId in leagueIds)
+		{
+			await JoinViewedLeagueAsync(leagueId, cancellationToken);
+		}
+	}
+
+	private async Task<bool> TryJoinViewedLeagueAsync(Guid leagueId, CancellationToken cancellationToken)
+	{
+		try
+		{
+			await JoinViewedLeagueAsync(leagueId, cancellationToken);
+			return true;
+		}
+		catch (Exception ex)
+		{
+			_logger.LogWarning(ex,
+				"Failed joining viewed league {LeagueId}. Subscription will be retried on the next sync or reconnect.",
+				leagueId);
+			ScheduleSubscriptionResync();
+			return false;
+		}
+	}
+
+	private async Task<bool> TryJoinManagedLeagueAsync(Guid leagueId, CancellationToken cancellationToken)
+	{
+		try
+		{
+			await JoinManagedLeagueAsync(leagueId, cancellationToken);
+			return true;
+		}
+		catch (Exception ex)
+		{
+			_logger.LogWarning(ex,
+				"Failed joining managed league {LeagueId}. Subscription will be retried on the next sync or reconnect.",
+				leagueId);
+			ScheduleSubscriptionResync();
+			return false;
+		}
+	}
+
+	private async Task<bool> TryLeaveViewedLeagueAsync(Guid leagueId, CancellationToken cancellationToken)
+	{
+		try
+		{
+			await LeaveViewedLeagueAsync(leagueId, cancellationToken);
+			return true;
+		}
+		catch (Exception ex)
+		{
+			_logger.LogDebug(ex,
+				"Failed leaving viewed league {LeagueId}. Leaving will be retried on the next sync.",
+				leagueId);
+			ScheduleSubscriptionResync();
+			return false;
+		}
+	}
+
+	private async Task<bool> TryLeaveManagedLeagueAsync(Guid leagueId, CancellationToken cancellationToken)
+	{
+		try
+		{
+			await LeaveManagedLeagueAsync(leagueId, cancellationToken);
+			return true;
+		}
+		catch (Exception ex)
+		{
+			_logger.LogDebug(ex,
+				"Failed leaving managed league {LeagueId}. Leaving will be retried on the next sync.",
+				leagueId);
+			ScheduleSubscriptionResync();
+			return false;
+		}
+	}
+
+	private void ScheduleSubscriptionResync()
+	{
+		if (Interlocked.Exchange(ref _subscriptionResyncScheduled, 1) == 1)
+		{
+			return;
+		}
+
+		_ = Task.Run(async () =>
+		{
+			try
+			{
+				await Task.Delay(TimeSpan.FromSeconds(2));
+
+				if (_hubConnection is null || _hubConnection.State != HubConnectionState.Connected)
+				{
+					return;
+				}
+
+				await SynchronizeViewedLeaguesAsync(CancellationToken.None);
+				await SynchronizeManagedLeaguesAsync(CancellationToken.None);
+			}
+			catch (Exception ex)
+			{
+				_logger.LogDebug(ex, "Deferred league subscription resync failed.");
+			}
+			finally
+			{
+				Interlocked.Exchange(ref _subscriptionResyncScheduled, 0);
+
+				if (HasPendingSubscriptionChanges() && _hubConnection?.State == HubConnectionState.Connected)
+				{
+					ScheduleSubscriptionResync();
+				}
+			}
+		});
+	}
+
+	private bool HasPendingSubscriptionChanges()
+	{
+		return !_joinedViewedLeagueIds.SetEquals(_viewedLeagueIds)
+			|| !_joinedManagedLeagueIds.SetEquals(_managedLeagueIds);
+	}
+
+	private async Task JoinViewedLeagueAsync(Guid leagueId, CancellationToken cancellationToken)
+	{
+		if (_hubConnection is null || _hubConnection.State != HubConnectionState.Connected)
+		{
+			return;
+		}
+
+		await _hubConnection.InvokeAsync("JoinViewedLeague", leagueId, cancellationToken);
 	}
 
 	private async Task JoinManagedLeagueAsync(Guid leagueId, CancellationToken cancellationToken)
@@ -198,6 +426,16 @@ public sealed class LeagueHubClient : IAsyncDisposable
 		await _hubConnection.InvokeAsync("LeaveManagedLeague", leagueId, cancellationToken);
 	}
 
+	private async Task LeaveViewedLeagueAsync(Guid leagueId, CancellationToken cancellationToken)
+	{
+		if (_hubConnection is null || _hubConnection.State != HubConnectionState.Connected)
+		{
+			return;
+		}
+
+		await _hubConnection.InvokeAsync("LeaveViewedLeague", leagueId, cancellationToken);
+	}
+
 	private async Task HandleLeagueJoinRequestSubmittedAsync(LeagueJoinRequestSubmittedDto payload)
 	{
 		if (OnLeagueJoinRequestSubmitted is not null)
@@ -214,22 +452,44 @@ public sealed class LeagueHubClient : IAsyncDisposable
 		}
 	}
 
+	private async Task HandleLeagueEventChangedAsync(LeagueEventChangedDto payload)
+	{
+		if (OnLeagueEventChanged is not null)
+		{
+			await OnLeagueEventChanged(payload);
+		}
+	}
+
+	private async Task HandleLeagueEventSessionLaunchedAsync(LeagueEventSessionLaunchedDto payload)
+	{
+		if (OnLeagueEventSessionLaunched is not null)
+		{
+			await OnLeagueEventSessionLaunched(payload);
+		}
+	}
+
 	private async Task OnReconnected(string? connectionId)
 	{
 		_logger.LogInformation("Leagues hub connection restored with connection ID {ConnectionId}", connectionId);
 
 		try
 		{
-			await JoinManagedLeaguesAsync(_managedLeagueIds, CancellationToken.None);
+			_joinedViewedLeagueIds.Clear();
+			_joinedManagedLeagueIds.Clear();
+			await SynchronizeViewedLeaguesAsync(CancellationToken.None);
+			await SynchronizeManagedLeaguesAsync(CancellationToken.None);
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Failed to rejoin managed league groups after reconnection");
+			_logger.LogError(ex, "Failed to rejoin league groups after reconnection");
 		}
 	}
 
 	private Task OnClosed(Exception? exception)
 	{
+		_joinedViewedLeagueIds.Clear();
+		_joinedManagedLeagueIds.Clear();
+
 		if (exception is not null)
 		{
 			_logger.LogWarning(exception, "Leagues hub connection closed with error");
