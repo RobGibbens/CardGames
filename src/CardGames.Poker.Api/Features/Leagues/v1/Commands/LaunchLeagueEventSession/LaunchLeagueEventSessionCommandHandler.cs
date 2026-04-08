@@ -2,6 +2,7 @@ using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.Common.v1.Commands.CreateGame;
+using CardGames.Poker.Api.Features.Leagues.v1;
 using CardGames.Poker.Api.Features.Leagues.v1.Governance;
 using CardGames.Poker.Api.Infrastructure;
 using CardGames.Poker.Api.Services;
@@ -58,13 +59,13 @@ public sealed class LaunchLeagueEventSessionCommandHandler(
 
 		var now = DateTimeOffset.UtcNow;
 		var gameId = Guid.CreateVersion7();
+		var normalizedGameCode = string.Empty;
 		var hostName = string.IsNullOrWhiteSpace(currentUserService.UserName)
 			? currentUserService.UserId!
 			: currentUserService.UserName;
 		var gameName = string.IsNullOrWhiteSpace(request.Request.GameName)
 			? $"League Event {request.EventId:N}" 
 			: request.Request.GameName.Trim();
-		var normalizedGameCode = request.Request.GameCode.Trim().ToUpperInvariant();
 
 		if (request.SourceType == LeagueEventSourceType.Season)
 		{
@@ -96,14 +97,36 @@ public sealed class LaunchLeagueEventSessionCommandHandler(
 				return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.InvalidRequest, "Season events must define a tournament buy-in before launch.");
 			}
 
+			var gameCode = !string.IsNullOrWhiteSpace(seasonEvent.GameTypeCode)
+				? seasonEvent.GameTypeCode
+				: request.Request.GameCode;
+
+			if (!LeagueEventGameSettings.TryResolve(gameCode, out normalizedGameCode, out var rules, out var gameTypeError))
+			{
+				return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.InvalidRequest, gameTypeError!);
+			}
+
+			var ante = seasonEvent.Ante ?? request.Request.Ante;
+			var minBet = seasonEvent.MinBet ?? request.Request.MinBet;
+			var smallBlind = seasonEvent.SmallBlind ?? request.Request.SmallBlind;
+			var bigBlind = seasonEvent.BigBlind ?? request.Request.BigBlind;
+
+			var stakesError = LeagueEventGameSettings.Validate(rules!, ante, minBet, smallBlind, bigBlind);
+			if (stakesError is not null)
+			{
+				return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.InvalidRequest, stakesError);
+			}
+
 			var createResult = await mediator.Send(
 				new Features.Games.Common.v1.Commands.CreateGame.CreateGameCommand(
 					gameId,
 					normalizedGameCode,
 					gameName,
-					request.Request.Ante,
-					request.Request.MinBet,
+					LeagueEventGameSettings.NormalizeAnte(rules!, ante),
+					LeagueEventGameSettings.NormalizeMinBet(rules!, minBet, bigBlind),
 					[new Features.Games.Common.v1.Commands.CreateGame.PlayerInfo(hostName, seasonEvent.TournamentBuyIn.Value)],
+					SmallBlind: LeagueEventGameSettings.NormalizeSmallBlind(rules!, minBet, smallBlind, bigBlind),
+					BigBlind: LeagueEventGameSettings.NormalizeBigBlind(rules!, minBet, bigBlind),
 					TournamentBuyIn: seasonEvent.TournamentBuyIn),
 				cancellationToken);
 
@@ -149,6 +172,14 @@ public sealed class LaunchLeagueEventSessionCommandHandler(
 
 			var hostStartingChips = request.Request.HostStartingChips;
 			int? tournamentBuyIn = null;
+			var gameCode = !string.IsNullOrWhiteSpace(oneOffEvent.GameTypeCode)
+				? oneOffEvent.GameTypeCode
+				: request.Request.GameCode;
+
+			if (!LeagueEventGameSettings.TryResolve(gameCode, out normalizedGameCode, out var rules, out var gameTypeError))
+			{
+				return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.InvalidRequest, gameTypeError!);
+			}
 			if (oneOffEvent.EventType == Data.Entities.LeagueOneOffEventType.Tournament)
 			{
 				if (!oneOffEvent.TournamentBuyIn.HasValue)
@@ -160,14 +191,27 @@ public sealed class LaunchLeagueEventSessionCommandHandler(
 				tournamentBuyIn = oneOffEvent.TournamentBuyIn.Value;
 			}
 
+			var ante = oneOffEvent.Ante;
+			var minBet = oneOffEvent.MinBet;
+			var smallBlind = oneOffEvent.SmallBlind ?? request.Request.SmallBlind;
+			var bigBlind = oneOffEvent.BigBlind ?? request.Request.BigBlind;
+
+			var stakesError = LeagueEventGameSettings.Validate(rules!, ante, minBet, smallBlind, bigBlind);
+			if (stakesError is not null)
+			{
+				return new LaunchLeagueEventSessionError(LaunchLeagueEventSessionErrorCode.InvalidRequest, stakesError);
+			}
+
 			var createResult = await mediator.Send(
 				new Features.Games.Common.v1.Commands.CreateGame.CreateGameCommand(
 					gameId,
 					normalizedGameCode,
 					gameName,
-					request.Request.Ante,
-					request.Request.MinBet,
+					LeagueEventGameSettings.NormalizeAnte(rules!, ante),
+					LeagueEventGameSettings.NormalizeMinBet(rules!, minBet, bigBlind),
 					[new Features.Games.Common.v1.Commands.CreateGame.PlayerInfo(hostName, hostStartingChips)],
+					SmallBlind: LeagueEventGameSettings.NormalizeSmallBlind(rules!, minBet, smallBlind, bigBlind),
+					BigBlind: LeagueEventGameSettings.NormalizeBigBlind(rules!, minBet, bigBlind),
 					TournamentBuyIn: tournamentBuyIn),
 				cancellationToken);
 

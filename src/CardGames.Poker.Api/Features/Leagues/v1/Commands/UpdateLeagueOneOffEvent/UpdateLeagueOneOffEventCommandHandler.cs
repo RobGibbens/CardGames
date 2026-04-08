@@ -2,6 +2,7 @@ using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands;
+using CardGames.Poker.Api.Features.Leagues.v1;
 using CardGames.Poker.Api.Features.Leagues.v1.Governance;
 using CardGames.Poker.Api.Infrastructure;
 using CardGames.Poker.Api.Services;
@@ -42,6 +43,17 @@ public sealed class UpdateLeagueOneOffEventCommandHandler(
 		if (string.IsNullOrWhiteSpace(request.Request.GameTypeCode))
 		{
 			return new UpdateLeagueOneOffEventError(UpdateLeagueOneOffEventErrorCode.InvalidRequest, "Game variant is required.");
+		}
+
+		if (!LeagueEventGameSettings.TryResolve(request.Request.GameTypeCode, out var normalizedGameTypeCode, out var rules, out var gameTypeError))
+		{
+			return new UpdateLeagueOneOffEventError(UpdateLeagueOneOffEventErrorCode.InvalidRequest, gameTypeError!);
+		}
+
+		var stakesError = LeagueEventGameSettings.Validate(rules!, request.Request.Ante, request.Request.MinBet, request.Request.SmallBlind, request.Request.BigBlind);
+		if (stakesError is not null)
+		{
+			return new UpdateLeagueOneOffEventError(UpdateLeagueOneOffEventErrorCode.InvalidRequest, stakesError);
 		}
 
 		var tournamentBuyInError = ValidateOneOffTournamentBuyIn(request.Request.EventType, request.Request.TournamentBuyIn);
@@ -87,9 +99,11 @@ public sealed class UpdateLeagueOneOffEventCommandHandler(
 		oneOffEvent.ScheduledAtUtc = request.Request.ScheduledAtUtc;
 		oneOffEvent.EventType = (Data.Entities.LeagueOneOffEventType)request.Request.EventType;
 		oneOffEvent.Notes = string.IsNullOrWhiteSpace(request.Request.Notes) ? null : request.Request.Notes.Trim();
-		oneOffEvent.GameTypeCode = request.Request.GameTypeCode.Trim();
-		oneOffEvent.Ante = request.Request.Ante;
-		oneOffEvent.MinBet = request.Request.MinBet;
+		oneOffEvent.GameTypeCode = normalizedGameTypeCode;
+		oneOffEvent.Ante = LeagueEventGameSettings.NormalizeAnte(rules!, request.Request.Ante);
+		oneOffEvent.MinBet = LeagueEventGameSettings.NormalizeMinBet(rules!, request.Request.MinBet, request.Request.BigBlind);
+		oneOffEvent.SmallBlind = LeagueEventGameSettings.NormalizeSmallBlind(rules!, request.Request.MinBet, request.Request.SmallBlind, request.Request.BigBlind);
+		oneOffEvent.BigBlind = LeagueEventGameSettings.NormalizeBigBlind(rules!, request.Request.MinBet, request.Request.BigBlind);
 		oneOffEvent.TournamentBuyIn = request.Request.TournamentBuyIn;
 
 		await context.SaveChangesAsync(cancellationToken);

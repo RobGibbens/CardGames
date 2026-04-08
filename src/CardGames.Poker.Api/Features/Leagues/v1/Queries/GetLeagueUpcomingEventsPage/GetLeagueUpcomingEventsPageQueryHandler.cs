@@ -52,6 +52,10 @@ public sealed class GetLeagueUpcomingEventsPageQueryHandler(
 		public int? Ante { get; init; }
 
 		public int? MinBet { get; init; }
+
+		public int? SmallBlind { get; init; }
+
+		public int? BigBlind { get; init; }
 	}
 
 	public async Task<OneOf<LeagueUpcomingEventsPageDto, GetLeagueUpcomingEventsPageError>> Handle(GetLeagueUpcomingEventsPageQuery request, CancellationToken cancellationToken)
@@ -95,10 +99,12 @@ public sealed class GetLeagueUpcomingEventsPageQueryHandler(
 				LaunchedGameId = x.LaunchedGameId,
 				TournamentBuyIn = x.TournamentBuyIn,
 				OneOffEventTypeValue = null,
-				GameTypeCode = null,
+				GameTypeCode = x.GameTypeCode,
 				GameTypeName = null,
-				Ante = null,
-				MinBet = null
+				Ante = x.Ante,
+				MinBet = x.MinBet,
+				SmallBlind = x.SmallBlind,
+				BigBlind = x.BigBlind
 			});
 
 		var oneOffEvents =
@@ -128,7 +134,9 @@ public sealed class GetLeagueUpcomingEventsPageQueryHandler(
 				GameTypeCode = oneOffEvent.GameTypeCode,
 				GameTypeName = gameType != null ? gameType.Name : null,
 				Ante = oneOffEvent.Ante,
-				MinBet = oneOffEvent.MinBet
+				MinBet = oneOffEvent.MinBet,
+				SmallBlind = oneOffEvent.SmallBlind,
+				BigBlind = oneOffEvent.BigBlind
 			};
 
 		var query = seasonEvents.Concat(oneOffEvents);
@@ -166,6 +174,11 @@ public sealed class GetLeagueUpcomingEventsPageQueryHandler(
 					CreatedByUserId = row.CreatedByUserId,
 					CreatedAtUtc = row.CreatedAtUtc,
 					LaunchedGameId = row.LaunchedGameId,
+					GameTypeCode = row.GameTypeCode,
+					Ante = row.Ante,
+					MinBet = row.MinBet,
+					SmallBlind = row.SmallBlind,
+					BigBlind = row.BigBlind,
 					TournamentBuyIn = row.TournamentBuyIn
 				},
 				OneOffEvent = null
@@ -190,6 +203,8 @@ public sealed class GetLeagueUpcomingEventsPageQueryHandler(
 					GameTypeName = row.GameTypeName,
 					Ante = row.Ante ?? 0,
 					MinBet = row.MinBet ?? 0,
+					SmallBlind = row.SmallBlind,
+					BigBlind = row.BigBlind,
 					TournamentBuyIn = row.TournamentBuyIn
 				}
 			}).ToList();

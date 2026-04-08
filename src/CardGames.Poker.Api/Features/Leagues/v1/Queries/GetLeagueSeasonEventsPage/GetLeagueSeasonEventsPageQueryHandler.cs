@@ -74,6 +74,11 @@ public sealed class GetLeagueSeasonEventsPageQueryHandler(
 				CreatedByUserId = x.CreatedByUserId,
 				CreatedAtUtc = x.CreatedAtUtc,
 				LaunchedGameId = x.LaunchedGameId,
+				GameTypeCode = x.GameTypeCode,
+				Ante = x.Ante,
+				MinBet = x.MinBet,
+				SmallBlind = x.SmallBlind,
+				BigBlind = x.BigBlind,
 				TournamentBuyIn = x.TournamentBuyIn
 			})
 			.Skip(skip)

@@ -2,6 +2,7 @@ using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands;
+using CardGames.Poker.Api.Features.Leagues.v1;
 using CardGames.Poker.Api.Features.Leagues.v1.Governance;
 using CardGames.Poker.Api.Infrastructure;
 using CardGames.Poker.Api.Services;
@@ -32,6 +33,17 @@ public sealed class CreateLeagueOneOffEventCommandHandler(
 		if (request.Request.ScheduledAtUtc == default)
 		{
 			return new CreateLeagueOneOffEventError(CreateLeagueOneOffEventErrorCode.InvalidRequest, "Scheduled date/time is required.");
+		}
+
+		if (!LeagueEventGameSettings.TryResolve(request.Request.GameTypeCode, out var normalizedGameTypeCode, out var rules, out var gameTypeError))
+		{
+			return new CreateLeagueOneOffEventError(CreateLeagueOneOffEventErrorCode.InvalidRequest, gameTypeError!);
+		}
+
+		var stakesError = LeagueEventGameSettings.Validate(rules!, request.Request.Ante, request.Request.MinBet, request.Request.SmallBlind, request.Request.BigBlind);
+		if (stakesError is not null)
+		{
+			return new CreateLeagueOneOffEventError(CreateLeagueOneOffEventErrorCode.InvalidRequest, stakesError);
 		}
 
 		if (!LeagueEventSchedulingGuard.IsScheduledAtInFuture(request.Request.ScheduledAtUtc))
@@ -74,9 +86,11 @@ public sealed class CreateLeagueOneOffEventCommandHandler(
 			EventType = (Data.Entities.LeagueOneOffEventType)request.Request.EventType,
 			Status = Data.Entities.LeagueOneOffEventStatus.Planned,
 			Notes = string.IsNullOrWhiteSpace(request.Request.Notes) ? null : request.Request.Notes.Trim(),
-			GameTypeCode = string.IsNullOrWhiteSpace(request.Request.GameTypeCode) ? null : request.Request.GameTypeCode.Trim(),
-			Ante = request.Request.Ante,
-			MinBet = request.Request.MinBet,
+			GameTypeCode = normalizedGameTypeCode,
+			Ante = LeagueEventGameSettings.NormalizeAnte(rules!, request.Request.Ante),
+			MinBet = LeagueEventGameSettings.NormalizeMinBet(rules!, request.Request.MinBet, request.Request.BigBlind),
+			SmallBlind = LeagueEventGameSettings.NormalizeSmallBlind(rules!, request.Request.MinBet, request.Request.SmallBlind, request.Request.BigBlind),
+			BigBlind = LeagueEventGameSettings.NormalizeBigBlind(rules!, request.Request.MinBet, request.Request.BigBlind),
 			TournamentBuyIn = request.Request.TournamentBuyIn,
 			CreatedByUserId = currentUserService.UserId,
 			CreatedAtUtc = DateTimeOffset.UtcNow
@@ -108,6 +122,8 @@ public sealed class CreateLeagueOneOffEventCommandHandler(
 			GameTypeCode = oneOffEvent.GameTypeCode,
 			Ante = oneOffEvent.Ante,
 			MinBet = oneOffEvent.MinBet,
+			SmallBlind = oneOffEvent.SmallBlind,
+			BigBlind = oneOffEvent.BigBlind,
 			TournamentBuyIn = oneOffEvent.TournamentBuyIn
 		};
 	}

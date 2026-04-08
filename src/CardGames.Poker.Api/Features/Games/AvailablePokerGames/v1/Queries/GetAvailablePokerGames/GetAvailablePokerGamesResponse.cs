@@ -14,5 +14,7 @@ public record GetAvailablePokerGamesResponse(
 	int MaximumNumberOfPlayers,
 	string? ImageName = null,
 	[property: JsonConverter(typeof(JsonStringEnumConverter))]
-	VariantType VariantType = VariantType.Other
+	VariantType VariantType = VariantType.Other,
+	bool HasAntes = false,
+	bool HasBlinds = false
 );

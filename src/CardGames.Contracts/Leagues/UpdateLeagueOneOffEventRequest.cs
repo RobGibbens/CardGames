@@ -16,5 +16,9 @@ public sealed record UpdateLeagueOneOffEventRequest
 
 	public int MinBet { get; init; } = 20;
 
+	public int? SmallBlind { get; init; }
+
+	public int? BigBlind { get; init; }
+
 	public int? TournamentBuyIn { get; init; }
 }

@@ -2,6 +2,7 @@ using CardGames.Poker.Api.Contracts;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands;
+using CardGames.Poker.Api.Features.Leagues.v1;
 using CardGames.Poker.Api.Features.Leagues.v1.Governance;
 using CardGames.Poker.Api.Infrastructure;
 using CardGames.Poker.Api.Services;
@@ -73,6 +74,24 @@ public sealed class CreateLeagueSeasonEventCommandHandler(
 			return new CreateLeagueSeasonEventError(CreateLeagueSeasonEventErrorCode.InvalidRequest, LeagueEventSchedulingGuard.ScheduledAtUtcMustBeInFutureMessage);
 		}
 
+		string? normalizedGameTypeCode = null;
+		CardGames.Poker.Games.GameFlow.GameRules? rules = null;
+		if (!string.IsNullOrWhiteSpace(request.Request.GameTypeCode))
+		{
+			if (!LeagueEventGameSettings.TryResolve(request.Request.GameTypeCode, out var resolvedGameTypeCode, out rules, out var gameTypeError))
+			{
+				return new CreateLeagueSeasonEventError(CreateLeagueSeasonEventErrorCode.InvalidRequest, gameTypeError!);
+			}
+
+			var stakesError = LeagueEventGameSettings.Validate(rules!, request.Request.Ante, request.Request.MinBet, request.Request.SmallBlind, request.Request.BigBlind);
+			if (stakesError is not null)
+			{
+				return new CreateLeagueSeasonEventError(CreateLeagueSeasonEventErrorCode.InvalidRequest, stakesError);
+			}
+
+			normalizedGameTypeCode = resolvedGameTypeCode;
+		}
+
 		var tournamentBuyInError = ValidateSeasonTournamentBuyIn(request.Request.TournamentBuyIn);
 		if (tournamentBuyInError is not null)
 		{
@@ -101,6 +120,11 @@ public sealed class CreateLeagueSeasonEventCommandHandler(
 			ScheduledAtUtc = request.Request.ScheduledAtUtc,
 			Status = Data.Entities.LeagueSeasonEventStatus.Planned,
 			Notes = string.IsNullOrWhiteSpace(request.Request.Notes) ? null : request.Request.Notes.Trim(),
+			GameTypeCode = normalizedGameTypeCode,
+			Ante = rules is null ? null : LeagueEventGameSettings.NormalizeAnte(rules, request.Request.Ante),
+			MinBet = rules is null ? null : LeagueEventGameSettings.NormalizeMinBet(rules, request.Request.MinBet, request.Request.BigBlind),
+			SmallBlind = rules is null ? null : LeagueEventGameSettings.NormalizeSmallBlind(rules, request.Request.MinBet, request.Request.SmallBlind, request.Request.BigBlind),
+			BigBlind = rules is null ? null : LeagueEventGameSettings.NormalizeBigBlind(rules, request.Request.MinBet, request.Request.BigBlind),
 			TournamentBuyIn = request.Request.TournamentBuyIn,
 			CreatedByUserId = currentUserService.UserId,
 			CreatedAtUtc = DateTimeOffset.UtcNow
@@ -130,6 +154,11 @@ public sealed class CreateLeagueSeasonEventCommandHandler(
 			Notes = seasonEvent.Notes,
 			CreatedByUserId = seasonEvent.CreatedByUserId,
 			CreatedAtUtc = seasonEvent.CreatedAtUtc,
+			GameTypeCode = seasonEvent.GameTypeCode,
+			Ante = seasonEvent.Ante,
+			MinBet = seasonEvent.MinBet,
+			SmallBlind = seasonEvent.SmallBlind,
+			BigBlind = seasonEvent.BigBlind,
 			TournamentBuyIn = seasonEvent.TournamentBuyIn
 		};
 	}

@@ -60,7 +60,7 @@
 					}
 					else
 					{
-						<InputSelect id="one-off-game-type" class="form-control league-modal-input" @bind-Value="_gameTypeCode">
+						<InputSelect id="one-off-game-type" class="form-control league-modal-input" @bind-Value="_gameTypeCode" @bind-Value:after="OnGameTypeChanged">
 							<option value="">-- Select a game --</option>
 							@foreach (var game in _availableGames)
 							{
@@ -69,18 +69,36 @@
 						</InputSelect>
 					}
 				</div>
-				<div class="league-form-inline-fields league-form-inline-fields-bets">
-					<div class="league-form-inline-field">
-						<div class="form-floating" data-label="Ante">
-							<InputNumber id="one-off-ante" class="form-control league-modal-input" @bind-Value="_ante" min="1" max="100" />
+				@if (SelectedGameHasBlinds)
+				{
+					<div class="league-form-inline-fields league-form-inline-fields-bets">
+						<div class="league-form-inline-field">
+							<div class="form-floating" data-label="Small Blind">
+								<InputNumber id="one-off-small-blind" class="form-control league-modal-input" @bind-Value="_smallBlind" min="1" max="1000" />
+							</div>
+						</div>
+						<div class="league-form-inline-field">
+							<div class="form-floating" data-label="Big Blind">
+								<InputNumber id="one-off-big-blind" class="form-control league-modal-input" @bind-Value="_bigBlind" min="1" max="2000" />
+							</div>
 						</div>
 					</div>
-					<div class="league-form-inline-field">
-						<div class="form-floating" data-label="Minimum Bet">
-							<InputNumber id="one-off-min-bet" class="form-control league-modal-input" @bind-Value="_minBet" min="1" max="1000" />
+				}
+				else
+				{
+					<div class="league-form-inline-fields league-form-inline-fields-bets">
+						<div class="league-form-inline-field">
+							<div class="form-floating" data-label="Ante">
+								<InputNumber id="one-off-ante" class="form-control league-modal-input" @bind-Value="_ante" min="1" max="100" />
+							</div>
+						</div>
+						<div class="league-form-inline-field">
+							<div class="form-floating" data-label="Minimum Bet">
+								<InputNumber id="one-off-min-bet" class="form-control league-modal-input" @bind-Value="_minBet" min="1" max="1000" />
+							</div>
 						</div>
 					</div>
-				</div>
+				}
 				@if (EventType == LeagueOneOffEventType.Tournament)
 				{
 					<div class="form-floating" data-label="Tournament Buy-In">
@@ -146,6 +164,8 @@
 	private string _gameTypeCode = string.Empty;
 	private int _ante = 5;
 	private int _minBet = 10;
+	private int _smallBlind = 5;
+	private int _bigBlind = 10;
 	private int _tournamentBuyIn = 100;
 	private bool _isSubmitting;
 	private string? _errorMessage;
@@ -187,6 +207,25 @@
 		: "Players can join or leave freely, choose their own buy-in amount, and rebuy as needed, so the game has no fixed ending.";
 
 	private string SubmitLabel => IsEditMode ? "Save Changes" : ModalTitle;
+
+	private GetAvailablePokerGamesResponse? SelectedGame => _availableGames.FirstOrDefault(game => string.Equals(game.Code, _gameTypeCode, StringComparison.OrdinalIgnoreCase));
+
+	private bool SelectedGameHasBlinds => UsesBlinds(_gameTypeCode);
+
+	private static bool UsesBlinds(string? gameTypeCode)
+	{
+		return gameTypeCode?.Trim().ToUpperInvariant() is "BOBBARKER"
+			or "CRAZYPINEAPPLE"
+			or "HOLDEM"
+			or "HOLDTHEBASEBALL"
+			or "IRISHHOLDEM"
+			or "KLONDIKE"
+			or "NEBRASKA"
+			or "OMAHA"
+			or "PHILSMOM"
+			or "REDRIVER"
+			or "SOUTHDAKOTA";
+	}
 
 	protected override async Task OnParametersSetAsync()
 	{
@@ -276,6 +315,35 @@
 			return;
 		}
 
+		if (SelectedGameHasBlinds)
+		{
+			if (_smallBlind <= 0)
+			{
+				_errorMessage = "Small blind must be greater than 0.";
+				return;
+			}
+
+			if (_bigBlind <= _smallBlind)
+			{
+				_errorMessage = "Big blind must be greater than small blind.";
+				return;
+			}
+		}
+		else
+		{
+			if (_ante <= 0)
+			{
+				_errorMessage = "Ante must be greater than 0.";
+				return;
+			}
+
+			if (_minBet <= 0)
+			{
+				_errorMessage = "Minimum bet must be greater than 0.";
+				return;
+			}
+		}
+
 		if (EventType == LeagueOneOffEventType.Tournament && !TryValidateTournamentBuyIn(out var tournamentBuyInError))
 		{
 			_errorMessage = tournamentBuyInError;
@@ -307,8 +375,10 @@
 					EventType = EventType,
 					Notes = string.IsNullOrWhiteSpace(_notes) ? null : _notes.Trim(),
 					GameTypeCode = _gameTypeCode,
-					Ante = _ante,
-					MinBet = _minBet,
+					Ante = SelectedGameHasBlinds ? 0 : _ante,
+					MinBet = SelectedGameHasBlinds ? _bigBlind : _minBet,
+					SmallBlind = SelectedGameHasBlinds ? _smallBlind : null,
+					BigBlind = SelectedGameHasBlinds ? _bigBlind : null,
 					TournamentBuyIn = EventType == LeagueOneOffEventType.Tournament ? _tournamentBuyIn : null
 				});
 			}
@@ -321,8 +391,10 @@
 					EventType = EventType,
 					Notes = string.IsNullOrWhiteSpace(_notes) ? null : _notes.Trim(),
 					GameTypeCode = _gameTypeCode,
-					Ante = _ante,
-					MinBet = _minBet,
+					Ante = SelectedGameHasBlinds ? 0 : _ante,
+					MinBet = SelectedGameHasBlinds ? _bigBlind : _minBet,
+					SmallBlind = SelectedGameHasBlinds ? _smallBlind : null,
+					BigBlind = SelectedGameHasBlinds ? _bigBlind : null,
 					TournamentBuyIn = EventType == LeagueOneOffEventType.Tournament ? _tournamentBuyIn : null
 				});
 			}
@@ -366,8 +438,11 @@
 		_gameTypeCode = EditingEvent.GameTypeCode ?? string.Empty;
 		_ante = EditingEvent.Ante;
 		_minBet = EditingEvent.MinBet;
+		_smallBlind = EditingEvent.SmallBlind ?? 5;
+		_bigBlind = EditingEvent.BigBlind ?? 10;
 		_tournamentBuyIn = EditingEvent.TournamentBuyIn ?? DefaultTournamentBuyIn;
 		_errorMessage = null;
+		OnGameTypeChanged();
 	}
 
 	private void ResetForm()
@@ -381,8 +456,40 @@
 		_gameTypeCode = string.Empty;
 		_ante = 5;
 		_minBet = 10;
+		_smallBlind = 5;
+		_bigBlind = 10;
 		_tournamentBuyIn = DefaultTournamentBuyIn;
 		_errorMessage = null;
+	}
+
+	private void OnGameTypeChanged()
+	{
+		if (SelectedGameHasBlinds)
+		{
+			if (_smallBlind <= 0)
+			{
+				_smallBlind = 5;
+			}
+
+			if (_bigBlind <= _smallBlind)
+			{
+				_bigBlind = Math.Max(_smallBlind * 2, 10);
+			}
+
+			_minBet = _bigBlind;
+			_ante = 0;
+			return;
+		}
+
+		if (_ante <= 0)
+		{
+			_ante = 5;
+		}
+
+		if (_minBet <= 0)
+		{
+			_minBet = 10;
+		}
 	}
 
 	private bool TryValidateTournamentBuyIn(out string? errorMessage)

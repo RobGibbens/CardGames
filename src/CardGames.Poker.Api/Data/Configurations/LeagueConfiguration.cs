@@ -225,6 +225,17 @@ public sealed class LeagueSeasonEventConfiguration : IEntityTypeConfiguration<Le
 		builder.Property(x => x.Notes)
 			.HasMaxLength(512);
 
+		builder.Property(x => x.GameTypeCode)
+			.HasMaxLength(50);
+
+		builder.Property(x => x.Ante);
+
+		builder.Property(x => x.MinBet);
+
+		builder.Property(x => x.SmallBlind);
+
+		builder.Property(x => x.BigBlind);
+
 		builder.Property(x => x.TournamentBuyIn);
 
 		builder.Property(x => x.CreatedByUserId)
@@ -278,6 +289,10 @@ public sealed class LeagueOneOffEventConfiguration : IEntityTypeConfiguration<Le
 
 		builder.Property(x => x.GameTypeCode)
 			.HasMaxLength(50);
+
+		builder.Property(x => x.SmallBlind);
+
+		builder.Property(x => x.BigBlind);
 
 		builder.Property(x => x.TournamentBuyIn);
 

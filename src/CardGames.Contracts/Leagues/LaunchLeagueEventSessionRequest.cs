@@ -10,5 +10,9 @@ public sealed record LaunchLeagueEventSessionRequest
 
 	public int MinBet { get; init; } = 20;
 
+	public int? SmallBlind { get; init; }
+
+	public int? BigBlind { get; init; }
+
 	public int HostStartingChips { get; init; } = 100;
 }

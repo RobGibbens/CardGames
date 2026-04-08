@@ -79,18 +79,30 @@ public class StartHandCommandHandler(
 		await RemovePreviousHandCardsAsync(game, cancellationToken);
 		await CompleteOpenBettingRoundsAsync(game, now, cancellationToken);
 
-		var mainPot = new Pot
-		{
-			GameId = game.Id,
-			HandNumber = game.CurrentHandNumber + 1,
-			PotType = PotType.Main,
-			PotOrder = 0,
-			Amount = 0,
-			IsAwarded = false,
-			CreatedAt = now
-		};
+		// Check if a main pot already exists for the upcoming hand
+		// (CreateGameCommandHandler pre-creates a pot for hand 1)
+		var upcomingHandNumber = game.CurrentHandNumber + 1;
+		var existingPot = await context.Pots
+			.FirstOrDefaultAsync(p => p.GameId == game.Id &&
+									  p.HandNumber == upcomingHandNumber &&
+									  p.PotType == PotType.Main,
+								 cancellationToken);
 
-		context.Pots.Add(mainPot);
+		if (existingPot is null)
+		{
+			var mainPot = new Pot
+			{
+				GameId = game.Id,
+				HandNumber = upcomingHandNumber,
+				PotType = PotType.Main,
+				PotOrder = 0,
+				Amount = 0,
+				IsAwarded = false,
+				CreatedAt = now
+			};
+
+			context.Pots.Add(mainPot);
+		}
 
 		var gameTypeCode = game.GameType?.Code;
 		var flowHandler = flowHandlerFactory.GetHandler(
@@ -109,15 +121,24 @@ public class StartHandCommandHandler(
 		await flowHandler.OnHandStartingAsync(game, cancellationToken);
 		await context.SaveChangesAsync(cancellationToken);
 
-		await flowHandler.DealCardsAsync(context, game, eligiblePlayers, now, cancellationToken);
-
 		logger.LogInformation(
-			"Started hand {HandNumber} for game {GameId} ({GameTypeCode}) in phase {Phase} with {PlayerCount} eligible players",
+			"Starting hand {HandNumber} for game {GameId} ({GameTypeCode}): SmallBlind={SmallBlind}, BigBlind={BigBlind}, EligiblePlayers={PlayerCount}",
 			game.CurrentHandNumber,
 			game.Id,
 			gameTypeCode,
-			game.CurrentPhase,
+			game.SmallBlind,
+			game.BigBlind,
 			eligiblePlayers.Count);
+
+		await flowHandler.DealCardsAsync(context, game, eligiblePlayers, now, cancellationToken);
+
+		var totalContributed = eligiblePlayers.Sum(p => p.TotalContributedThisHand);
+		logger.LogInformation(
+			"Completed hand {HandNumber} deal for game {GameId}: TotalContributed={TotalContributed}, PlayerStacks=[{Stacks}]",
+			game.CurrentHandNumber,
+			game.Id,
+			totalContributed,
+			string.Join(", ", eligiblePlayers.Select(p => $"{p.Player?.Name ?? p.PlayerId.ToString()}={p.ChipStack}")));
 
 		return new StartHandSuccessful
 		{

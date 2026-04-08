@@ -60,6 +60,11 @@ public sealed class GetLeagueSeasonEventsQueryHandler(
 				CreatedByUserId = x.CreatedByUserId,
 				CreatedAtUtc = x.CreatedAtUtc,
 				LaunchedGameId = x.LaunchedGameId,
+				GameTypeCode = x.GameTypeCode,
+				Ante = x.Ante,
+				MinBet = x.MinBet,
+				SmallBlind = x.SmallBlind,
+				BigBlind = x.BigBlind,
 				TournamentBuyIn = x.TournamentBuyIn
 			})
 			.ToListAsync(cancellationToken);

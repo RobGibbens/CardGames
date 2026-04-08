@@ -15,6 +15,111 @@ namespace CardGames.IntegrationTests.Features.Commands;
 public class LaunchLeagueEventSessionCommandHandlerTests : IntegrationTestBase
 {
 	[Fact]
+	public async Task Handle_SeasonHoldEmTournamentLaunch_PersistsBlindSettingsOnCreatedGame()
+	{
+		var fakeCurrentUser = (FakeCurrentUserService)Scope.ServiceProvider.GetRequiredService<ICurrentUserService>();
+		fakeCurrentUser.UserId = "league-launch-season-holdem-admin";
+		fakeCurrentUser.UserName = "league-launch-season-holdem-admin";
+		fakeCurrentUser.IsAuthenticated = true;
+
+		var createLeague = await Mediator.Send(new CreateLeagueCommand(new CreateLeagueRequest
+		{
+			Name = "Season HoldEm Launch League"
+		}));
+
+		var leagueId = createLeague.AsT0.LeagueId;
+
+		var createSeason = await Mediator.Send(new CreateLeagueSeasonCommand(leagueId, new CreateLeagueSeasonRequest
+		{
+			Name = "Spring 2026"
+		}));
+
+		var createEvent = await Mediator.Send(new CreateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId, new CreateLeagueSeasonEventRequest
+		{
+			Name = "Week 2",
+			SequenceNumber = 2,
+			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(2),
+			GameTypeCode = "HOLDEM",
+			Ante = 0,
+			MinBet = 10,
+			SmallBlind = 5,
+			BigBlind = 10,
+			TournamentBuyIn = 250
+		}));
+
+		var result = await Mediator.Send(new LaunchLeagueEventSessionCommand(
+			leagueId,
+			LeagueEventSourceType.Season,
+			createEvent.AsT0.EventId,
+			createSeason.AsT0.SeasonId,
+			new LaunchLeagueEventSessionRequest
+			{
+				GameCode = "HOLDEM",
+				HostStartingChips = 250
+			}));
+
+		result.IsT0.Should().BeTrue();
+
+		var createdGame = await DbContext.Games.FindAsync(result.AsT0.GameId);
+		createdGame.Should().NotBeNull();
+		createdGame!.SmallBlind.Should().Be(5);
+		createdGame.BigBlind.Should().Be(10);
+		createdGame.Ante.Should().Be(0);
+		createdGame.MinBet.Should().Be(10);
+		createdGame.TournamentBuyIn.Should().Be(250);
+	}
+
+	[Fact]
+	public async Task Handle_OneOffHoldEmTournamentLaunch_PersistsBlindSettingsOnCreatedGame()
+	{
+		var fakeCurrentUser = (FakeCurrentUserService)Scope.ServiceProvider.GetRequiredService<ICurrentUserService>();
+		fakeCurrentUser.UserId = "league-launch-oneoff-holdem-admin";
+		fakeCurrentUser.UserName = "league-launch-oneoff-holdem-admin";
+		fakeCurrentUser.IsAuthenticated = true;
+
+		var createLeague = await Mediator.Send(new CreateLeagueCommand(new CreateLeagueRequest
+		{
+			Name = "One-Off HoldEm Launch League"
+		}));
+
+		var leagueId = createLeague.AsT0.LeagueId;
+
+		var createEvent = await Mediator.Send(new CreateLeagueOneOffEventCommand(leagueId, new CreateLeagueOneOffEventRequest
+		{
+			Name = "Saturday Tournament",
+			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(3),
+			EventType = CardGames.Poker.Api.Contracts.LeagueOneOffEventType.Tournament,
+			GameTypeCode = "HOLDEM",
+			Ante = 0,
+			MinBet = 10,
+			SmallBlind = 5,
+			BigBlind = 10,
+			TournamentBuyIn = 300
+		}));
+
+		var result = await Mediator.Send(new LaunchLeagueEventSessionCommand(
+			leagueId,
+			LeagueEventSourceType.OneOff,
+			createEvent.AsT0.EventId,
+			null,
+			new LaunchLeagueEventSessionRequest
+			{
+				GameCode = "HOLDEM",
+				HostStartingChips = 300
+			}));
+
+		result.IsT0.Should().BeTrue();
+
+		var createdGame = await DbContext.Games.FindAsync(result.AsT0.GameId);
+		createdGame.Should().NotBeNull();
+		createdGame!.SmallBlind.Should().Be(5);
+		createdGame.BigBlind.Should().Be(10);
+		createdGame.Ante.Should().Be(0);
+		createdGame.MinBet.Should().Be(10);
+		createdGame.TournamentBuyIn.Should().Be(300);
+	}
+
+	[Fact]
 	public async Task Handle_SeasonEventLaunch_BroadcastsViewerRefreshNotification()
 	{
 		var fakeCurrentUser = (FakeCurrentUserService)Scope.ServiceProvider.GetRequiredService<ICurrentUserService>();

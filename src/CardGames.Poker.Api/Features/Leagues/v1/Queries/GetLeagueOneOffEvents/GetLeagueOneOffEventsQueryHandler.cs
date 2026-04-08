@@ -54,6 +54,8 @@ public sealed class GetLeagueOneOffEventsQueryHandler(
 				GameTypeName = gameType != null ? gameType.Name : null,
 				Ante = oneOffEvent.Ante,
 				MinBet = oneOffEvent.MinBet,
+				SmallBlind = oneOffEvent.SmallBlind,
+				BigBlind = oneOffEvent.BigBlind,
 				TournamentBuyIn = oneOffEvent.TournamentBuyIn
 			})
 			.ToListAsync(cancellationToken);

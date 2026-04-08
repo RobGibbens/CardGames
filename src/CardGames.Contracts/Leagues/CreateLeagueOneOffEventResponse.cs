@@ -26,5 +26,9 @@ public sealed record CreateLeagueOneOffEventResponse
 
 	public int MinBet { get; init; }
 
+	public int? SmallBlind { get; init; }
+
+	public int? BigBlind { get; init; }
+
 	public int? TournamentBuyIn { get; init; }
 }
