@@ -1,5 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using CardGames.IntegrationTests.Infrastructure;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.Common.v1.Commands.CreateGame;
@@ -18,6 +21,11 @@ namespace CardGames.IntegrationTests.Api;
 /// </summary>
 public class GamesApiExtendedTests : ApiIntegrationTestBase
 {
+    private static readonly JsonSerializerOptions ActiveGamesJsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new JsonStringEnumConverter() }
+    };
+
     public GamesApiExtendedTests(ApiWebApplicationFactory factory) : base(factory)
     {
     }
@@ -177,6 +185,75 @@ public class GamesApiExtendedTests : ApiIntegrationTestBase
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
+    [Fact]
+    public async Task GetActiveGames_LeagueGames_AreVisibleOnlyToMembers_AndIncludeScopeLabel()
+    {
+        var publicGameId = Guid.NewGuid();
+        await PostAsync("api/v1/games", new CreateGameCommand(
+            publicGameId,
+            PokerGameMetadataRegistry.FiveCardDrawCode,
+            "Public Lobby Table",
+            10,
+            20,
+            [new PlayerInfo("P1", 1000), new PlayerInfo("P2", 1000)]));
+
+        SetUser("league-lobby-owner");
+        var createLeagueResponse = await PostAsync("/api/v1/leagues", new CardGames.Poker.Api.Contracts.CreateLeagueRequest
+        {
+            Name = "Lobby Members League"
+        });
+        createLeagueResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var league = await createLeagueResponse.Content.ReadFromJsonAsync<CardGames.Poker.Api.Contracts.CreateLeagueResponse>(ActiveGamesJsonOptions);
+        league.Should().NotBeNull();
+
+        var createEventResponse = await PostAsync($"/api/v1/leagues/{league!.LeagueId}/events/one-off", new CardGames.Poker.Api.Contracts.CreateLeagueOneOffEventRequest
+        {
+            Name = "League Lobby Table",
+            ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(1),
+            EventType = CardGames.Poker.Api.Contracts.LeagueOneOffEventType.CashGame,
+            GameTypeCode = PokerGameMetadataRegistry.FiveCardDrawCode,
+            Ante = 10,
+            MinBet = 20
+        });
+        createEventResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var leagueEvent = await createEventResponse.Content.ReadFromJsonAsync<CardGames.Poker.Api.Contracts.CreateLeagueOneOffEventResponse>(ActiveGamesJsonOptions);
+        leagueEvent.Should().NotBeNull();
+
+        var launchResponse = await PostAsync($"/api/v1/leagues/{league.LeagueId}/events/one-off/{leagueEvent!.EventId}/launch", new CardGames.Poker.Api.Contracts.LaunchLeagueEventSessionRequest
+        {
+            GameCode = PokerGameMetadataRegistry.FiveCardDrawCode,
+            HostStartingChips = 1000
+        });
+        launchResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var launched = await launchResponse.Content.ReadFromJsonAsync<CardGames.Poker.Api.Contracts.LaunchLeagueEventSessionResponse>(ActiveGamesJsonOptions);
+        launched.Should().NotBeNull();
+
+        DbContext.LeagueMembersCurrent.Add(new LeagueMemberCurrent
+        {
+            LeagueId = league.LeagueId,
+            UserId = "league-lobby-member",
+            Role = CardGames.Poker.Api.Data.Entities.LeagueRole.Member,
+            IsActive = true,
+            JoinedAtUtc = DateTimeOffset.UtcNow,
+            UpdatedAtUtc = DateTimeOffset.UtcNow
+        });
+        await DbContext.SaveChangesAsync();
+
+        SetUser("league-lobby-outsider");
+        var outsiderGames = await Client.GetFromJsonAsync<List<CardGames.Poker.Api.Contracts.GetActiveGamesResponse>>("api/v1/games/active", ActiveGamesJsonOptions);
+        outsiderGames.Should().NotBeNull();
+        outsiderGames!.Should().Contain(x => x.Id == publicGameId);
+        outsiderGames.Should().NotContain(x => x.Id == launched!.GameId);
+        outsiderGames.Single(x => x.Id == publicGameId).TableScopeLabel.Should().Be("Public");
+
+        SetUser("league-lobby-member");
+        var memberGames = await Client.GetFromJsonAsync<List<CardGames.Poker.Api.Contracts.GetActiveGamesResponse>>("api/v1/games/active", ActiveGamesJsonOptions);
+        memberGames.Should().NotBeNull();
+        memberGames!.Should().Contain(x => x.Id == publicGameId);
+        memberGames.Should().Contain(x => x.Id == launched!.GameId);
+        memberGames.Single(x => x.Id == launched.GameId).TableScopeLabel.Should().Be("League");
+    }
+
     #endregion
 
     #region Health Check and Info Endpoints
@@ -262,5 +339,11 @@ public class GamesApiExtendedTests : ApiIntegrationTestBase
     }
 
     #endregion
+
+    private void SetUser(string userId)
+    {
+        Client.DefaultRequestHeaders.Remove(TestAuthHandler.UserHeader);
+        Client.DefaultRequestHeaders.Add(TestAuthHandler.UserHeader, userId);
+    }
 
 }

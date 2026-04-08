@@ -27,6 +27,8 @@ public static partial class GetActiveGamesMapper
 			model.CreatedById ?? string.Empty,
 			model.CreatedByName ?? string.Empty,
 			MapRowVersion(model.RowVersion),
+			null,
+			model.TournamentBuyIn,
 			model.IsDealersChoice
 		);
 	}

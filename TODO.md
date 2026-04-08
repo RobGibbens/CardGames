@@ -17,12 +17,12 @@
 - [ ] Add seasons
 - 
 - [ ] Add tournaments
-  - [x] Texas Hold Em, not collecting blinds
   - [ ] Active games should not be listed in upcoming also
-  - [ ] League games should be noted on the lobby page
   - [ ] Tournaments blinds should increase as time goes on
   - [ ] Active games should have an info button to see who's playing
   - [ ] When the tournament ends, it just says "Waiting for Players" . We should have a nice summary page.
+  - [x] League games should be noted on the lobby page
+  - [x] Texas Hold Em, not collecting blinds
   - [x] Change the UI of the Schedule page, remove segmented control
   - [x] The description at the top of the tableplay should read "Tournament"
   - [x] When joining, automatically take a seat

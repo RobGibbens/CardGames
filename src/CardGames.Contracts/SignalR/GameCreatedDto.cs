@@ -57,6 +57,16 @@ public sealed record GameCreatedDto
     public int MinBet { get; init; }
 
     /// <summary>
+    /// The league identifier when this table was launched from a league event.
+    /// </summary>
+    public Guid? LeagueId { get; init; }
+
+	/// <summary>
+	/// The fixed buy-in required for tournament tables.
+	/// </summary>
+	public int? TournamentBuyIn { get; init; }
+
+    /// <summary>
     /// The identifier of the user who created the game.
     /// </summary>
     public string? CreatedById { get; init; }

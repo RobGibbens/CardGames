@@ -30,6 +30,16 @@
         
         <div class="table-card-info">
             <div class="info-item">
+                <i class="fa-solid @(Table.IsTournament ? "fa-trophy" : "fa-dollar-sign")"></i>
+                <span class="info-label">Type:</span>
+                <span class="info-value">@Table.TableTypeLabel</span>
+            </div>
+            <div class="info-item">
+                <i class="fa-solid @(Table.IsLeagueGame ? "fa-users" : "fa-globe")"></i>
+                <span class="info-label">Scope:</span>
+                <span class="info-value">@Table.TableScopeLabel</span>
+            </div>
+            <div class="info-item">
                 <i class="fa-regular fa-user"></i>
                 <span class="info-label">Host:</span>
                 <span class="info-value">@(string.IsNullOrWhiteSpace(Table.CreatedByName) ? "-" : Table.CreatedByName)</span>
