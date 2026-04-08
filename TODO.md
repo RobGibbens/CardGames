@@ -17,28 +17,27 @@
 - [ ] Add seasons
 - 
 - [ ] Add tournaments
-  - [x] On the "Create Tournament" and "Create Cash Game" modals, add descriptions
-  - [ ] Default start time to now + 30 minutes
+  - [ ] Tournaments blinds should increase as time goes on
+  - [ ] Change the UI of the Schedule page, remove segmented control
+  - [ ] The description at the top of the tableplay should read "Tournament"
+  - [ ] Active games should have an info button to see who's playing
+  - [ ] When joining, automatically take a seat
+  - [ ] Texas Hold Em, not collecting blinds
+  - [ ] When the tournament ends, it just says "Waiting for Players" . We should have a nice summary page.
+  - [x] Default start time to now + 30 minutes
   - [x] Can't edit future tournament
   - [x] Can't delete future tournament
   - [x] Can't add a start time for tournament
   - [x] Validation errors should look better
-  - [ ] Tournaments blinds should increase as time goes on
+  - [x] On the "Create Tournament" and "Create Cash Game" modals, add descriptions
   - [x] Allows creating tournaments in the past
   - [x] The edit and delete buttons on lobby are not styled correctly
-  - [ ] Active games should have an info button to see who's playing
   - [x] Upcoming events should show the variant
   - [x] Can't specify buy-in
   - [x] Tournaments on the lobby page don't allow you to start/join
-  - [ ] Change the UI of the Schedule page, remove segmented control
   - [x] When the host clicks "Launch Play" it auto buys in for 100
-  - [ ] When the host clicks "Launch Play", send a signalr message to update the schedule and lobby pages
-  - [ ] The description at the top of the tableplay should read "Tournament"
-  - [ ] When joining, automatically take a seat
-  - [ ] When joining a tournament, you shouldn't be able to change the buy-in amount
-  - [ ] Texas Hold Em, not collecting blinds
-  - [ ] When the tournament ends, it just says "Waiting for Players" . We should have a nice summary page.
-
+  - [x] When the host clicks "Launch Play", send a signalr message to update the schedule and lobby pages
+  - [x] When joining a tournament, you shouldn't be able to change the buy-in amount
 
 - [ ] Productize it - deployment and hosting (Hetzner)
 

@@ -139,7 +139,7 @@
 	private ILogger<CreateLeagueEventModal> Logger { get; set; } = default!;
 
 	private string _name = string.Empty;
-	private DateTime? _scheduledDate = DateTime.UtcNow.Date.AddDays(1);
+	private DateTime? _scheduledDate = DateTime.UtcNow.Date.AddMinutes(30);
 	private string _scheduledTime = LeagueTimeZoneHelper.DefaultTimeText;
 	private string _selectedTimeZoneId = "UTC";
 	private string? _notes;
