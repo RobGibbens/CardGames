@@ -22,13 +22,13 @@ That means the project is not blocked on setup. This is an adoption problem, not
 
 The current UI is still overwhelmingly hand-built:
 
-| Metric | Value | Notes |
-| --- | ---: | --- |
-| Raw or standard form controls | 97 | `InputText`, `InputNumber`, `InputDate`, `InputSelect`, `InputCheckbox`, `EditForm`, raw `select` |
-| Blazor Blueprint component usages | 6 | Mostly `BbButton`, `BbTypography*`, and `BbPortalHost` |
-| Overlay / modal / dialog components | 18 | Strong candidates for `BbDialog`, `BbAlertDialog`, `BbSheet`, `BbDrawer` |
-| Razor pages in `Components/Pages` | 18 | Main application surface |
-| Razor shared components in `Components/Shared` | 33 | Reusable migration seam |
+| Metric                                         | Value | Notes                                                                                             |
+| ---------------------------------------------- | -----:| ------------------------------------------------------------------------------------------------- |
+| Raw or standard form controls                  | 97    | `InputText`, `InputNumber`, `InputDate`, `InputSelect`, `InputCheckbox`, `EditForm`, raw `select` |
+| Blazor Blueprint component usages              | 6     | Mostly `BbButton`, `BbTypography*`, and `BbPortalHost`                                            |
+| Overlay / modal / dialog components            | 18    | Strong candidates for `BbDialog`, `BbAlertDialog`, `BbSheet`, `BbDrawer`                          |
+| Razor pages in `Components/Pages`              | 18    | Main application surface                                                                          |
+| Razor shared components in `Components/Shared` | 33    | Reusable migration seam                                                                           |
 
 The highest-value migration targets are:
 
@@ -72,25 +72,25 @@ You can start replacing hand-built UI immediately without any setup phase.
 
 ## Component Mapping Cheat Sheet
 
-| Current pattern | Blueprint replacement |
-| --- | --- |
-| Hand-built `button.btn...` | `BbButton` |
-| Raw `select` | `BbNativeSelect` or `BbSelect` |
+| Current pattern                                        | Blueprint replacement                                                               |
+| ------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| Hand-built `button.btn...`                             | `BbButton`                                                                          |
+| Raw `select`                                           | `BbNativeSelect` or `BbSelect`                                                      |
 | `InputText`, `InputNumber`, `InputDate`, `InputSelect` | `BbInput`, `BbNumericInput`, `BbDatePicker`, `BbSelect`, or `BbFormField*` variants |
-| Custom toggle switch buttons | `BbSwitch` or `BbToggleGroup` |
-| Custom tab bars | `BbTabs` |
-| Hand-built badges / pills | `BbBadge` |
-| Hand-built cards | `BbCard` |
-| Hand-built loading blocks | `BbSpinner` or `BbSkeleton` |
-| Hand-built empty states | `BbEmpty` |
-| Hand-built dropdown menus | `BbDropdownMenu`, `BbMenubar`, or `BbNavigationMenu` |
-| Hand-built confirm modals | `BbAlertDialog` |
-| Hand-built modals / editors | `BbDialog`, `BbSheet`, `BbDrawer` |
-| Hand-built lists / tables | `BbDataTable`, `BbDataView`, `BbScrollArea`, `BbPagination` |
-| Hand-built accordions / expanders | `BbAccordion` or `BbCollapsible` |
-| Hand-built avatars | `BbAvatar` |
-| Hand-built status or error banners | `BbAlert` |
-| Ad hoc feedback after actions | `BbToast` |
+| Custom toggle switch buttons                           | `BbSwitch` or `BbToggleGroup`                                                       |
+| Custom tab bars                                        | `BbTabs`                                                                            |
+| Hand-built badges / pills                              | `BbBadge`                                                                           |
+| Hand-built cards                                       | `BbCard`                                                                            |
+| Hand-built loading blocks                              | `BbSpinner` or `BbSkeleton`                                                         |
+| Hand-built empty states                                | `BbEmpty`                                                                           |
+| Hand-built dropdown menus                              | `BbDropdownMenu`, `BbMenubar`, or `BbNavigationMenu`                                |
+| Hand-built confirm modals                              | `BbAlertDialog`                                                                     |
+| Hand-built modals / editors                            | `BbDialog`, `BbSheet`, `BbDrawer`                                                   |
+| Hand-built lists / tables                              | `BbDataTable`, `BbDataView`, `BbScrollArea`, `BbPagination`                         |
+| Hand-built accordions / expanders                      | `BbAccordion` or `BbCollapsible`                                                    |
+| Hand-built avatars                                     | `BbAvatar`                                                                          |
+| Hand-built status or error banners                     | `BbAlert`                                                                           |
+| Ad hoc feedback after actions                          | `BbToast`                                                                           |
 
 ## Priority 1: High-Value, Low-to-Medium Risk
 
@@ -450,13 +450,13 @@ Why to keep partly custom:
 
 These Blueprint blueprints are the best matches for the current app:
 
-| App area | Best Blueprint starting points |
-| --- | --- |
-| Login and registration | `login-01`, `login-08`, `signup-01`, `signup-05`, `login-06`, `login-07` |
-| Account management shell | `sidebar-05`, `sidebar-08` |
-| Lobby filters and results | `app-flights`, `app-dashboard` |
-| League admin area | `app-tasks`, `app-dashboard` |
-| Create/edit flows | `form-02`, `form-03`, `form-05` |
+| App area                  | Best Blueprint starting points                                           |
+| ------------------------- | ------------------------------------------------------------------------ |
+| Login and registration    | `login-01`, `login-08`, `signup-01`, `signup-05`, `login-06`, `login-07` |
+| Account management shell  | `sidebar-05`, `sidebar-08`                                               |
+| Lobby filters and results | `app-flights`, `app-dashboard`                                           |
+| League admin area         | `app-tasks`, `app-dashboard`                                             |
+| Create/edit flows         | `form-02`, `form-03`, `form-05`                                          |
 
 ## Proposed Migration Order
 

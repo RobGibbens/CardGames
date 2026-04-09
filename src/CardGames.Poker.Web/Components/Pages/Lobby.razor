@@ -41,9 +41,9 @@
         <!-- Tab Navigation -->
         <div class="lobby-tabs">
             <a href="/lobby" class="lobby-tab @(IsActiveTab("") ? "active" : "")">
-                <span class="lobby-tab-icon"><i class="fa-thin fa-bullseye"></i></span>
+                <span class="lobby-tab-icon"><i class="fa-solid fa-cards"></i></span>
                 <span class="lobby-tab-text">My Tables</span>
-                <span class="lobby-tab-badge">@_myTablesCount</span>
+                <BbBadge Variant="BadgeVariant.Secondary">@_myTablesCount</BbBadge>
             </a>
         </div>
 
@@ -191,7 +191,7 @@
                                                     {
                                                         <BbButton Variant="ButtonVariant.Destructive"
                                                                   Disabled="@_isDeleting"
-                                                                  @onclick="() => HandleDeleteTableAsync(table.Id)">Delete</BbButton>
+                                                                  @onclick="() => HandleDeleteTableAsync(table.Id)"><i class="fa-solid fa-trash"></i></BbButton>
                                                     }
                                                 </td>
                                             </tr>
