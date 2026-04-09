@@ -1,0 +1,12 @@
+{
+	"servers": {
+		"BlazorBlueprint": {
+			"type": "stdio",
+			"command": "npx",
+			"args": [
+				"@blazorblueprint/mcp@latest"
+			]
+		}
+	},
+	"inputs": []
+}
