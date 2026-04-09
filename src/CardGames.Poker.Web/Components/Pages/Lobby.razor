@@ -15,17 +15,7 @@
 
 <PageTitle>Lobby - Dealer's Choice Poker</PageTitle>
 
-<ConfirmDialog @bind-IsVisible="_showDeleteConfirmation"
-               Title="Delete Table"
-               Message="@_deleteConfirmationMessage"
-               ConfirmText="Delete"
-               CancelText="Cancel"
-               ProcessingText="Deleting..."
-               IconClass="fa-trash"
-               ConfirmButtonClass="btn-danger"
-               IsProcessing="_isDeleting"
-               OnConfirm="ConfirmDeleteTableAsync"
-               OnCancel="CancelDelete" />
+
 
 <NoChipsModal @bind-IsVisible="_showNoChipsModal" OnClose="HandleNoChipsModalClose" />
 
@@ -60,6 +50,7 @@
         <div class="lobby-filters">
             <div class="filter-group">
                 <label class="filter-label">Variant</label>
+
                 <select class="filter-select" @bind="_selectedVariant" @bind:after="OnSelectedVariantChangedAsync">
                     <option value="">All Variants</option>
                     @foreach (var gameType in _availableGameTypes)
@@ -192,9 +183,37 @@
                                                 <td class="text-end">
                                                     @if (CanDeleteTable(table))
                                                     {
-                                                        <BbButton Variant="ButtonVariant.Destructive" Size="ButtonSize.Icon" @onclick="() => HandleDeleteTableAsync(table.Id)" Disabled="@_isDeleting" title="Delete table">
+<BbAlertDialog>
+<BbAlertDialogTrigger>
+        <BbButton Variant="ButtonVariant.Destructive">Delete</BbButton>
+    </BbAlertDialogTrigger>
+    <BbAlertDialogContent>
+        <BbAlertDialogHeader>
+            <BbAlertDialogTitle>Delete Table</BbAlertDialogTitle>
+            <BbAlertDialogDescription>@_deleteConfirmationMessage</BbAlertDialogDescription>
+        </BbAlertDialogHeader>
+        <BbAlertDialogFooter>
+            <BbAlertDialogCancel>
+                <BbButton Variant="ButtonVariant.Outline" Disabled="@_isDeleting" @onclick="CancelDelete">Cancel</BbButton>
+            </BbAlertDialogCancel>
+            <BbButton Variant="ButtonVariant.Destructive" Disabled="@_isDeleting" @onclick="ConfirmDeleteTableAsync">
+                @if (_isDeleting)
+                {
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    <span>Deleting...</span>
+                }
+                else
+                {
+                    <span>Delete</span>
+                }
+            </BbButton>
+        </BbAlertDialogFooter>
+    </BbAlertDialogContent>
+</BbAlertDialog>
+
+                                                        @* <BbButton Variant="ButtonVariant.Destructive" Size="ButtonSize.Icon" @onclick="() => HandleDeleteTableAsync(table.Id)" Disabled="@_isDeleting" title="Delete table">
                                                             <i class="fa-regular fa-trash h-4 w-4"></i>
-                                                        </BbButton>
+                                                        </BbButton> *@
                                                     }
                                                 </td>
                                             </tr>
