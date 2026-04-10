@@ -1,4 +1,4 @@
-@page "/lobby"
+﻿@page "/lobby"
 @page "/lobby/{Tab}"
 @attribute [Authorize]
 @rendermode InteractiveServer
@@ -80,16 +80,24 @@
             <button class="filter-clear-btn" @onclick="ClearFilters">
                 <span><i class="fa-thin fa-circle-x"></i></span> Clear Filters
             </button>
-            <div class="view-toggle-group" style="margin-left: auto; display: flex; gap: 0.5rem;">
-                <button class="btn btn-view-toggle @(_viewMode == "grid" ? "active" : "")"
-                        @onclick="@(() => _viewMode = "grid")" title="Grid View">
+            <BbButtonGroup AriaLabel="Lobby view mode">
+                <BbButton Variant="ButtonVariant.Outline"
+                          Size="ButtonSize.Icon"
+                          Class='@GetViewToggleButtonClass("grid")'
+                          OnClick='@(() => SetViewMode("grid"))'
+                          AriaLabel="Grid view"
+                          title="Grid View">
                     <i class="fa-solid fa-th-large"></i>
-                </button>
-                <button class="btn btn-view-toggle @(_viewMode == "list" ? "active" : "")"
-                        @onclick="@(() => _viewMode = "list")" title="List View">
+                </BbButton>
+                <BbButton Variant="ButtonVariant.Outline"
+                          Size="ButtonSize.Icon"
+                          Class='@GetViewToggleButtonClass("list")'
+                          OnClick='@(() => SetViewMode("list"))'
+                          AriaLabel="List view"
+                          title="List View">
                     <i class="fa-solid fa-list"></i>
-                </button>
-            </div>
+                </BbButton>
+            </BbButtonGroup>
         </div>
 
         <!-- Tables Grid -->
@@ -473,6 +481,16 @@
         _selectedStatus = "";
         ApplyFilters();
         await LoadAvailableGamesAsync();
+    }
+
+    private void SetViewMode(string viewMode)
+    {
+        _viewMode = viewMode;
+    }
+
+    private string GetViewToggleButtonClass(string viewMode)
+    {
+        return _viewMode == viewMode ? "btn-view-toggle active" : "btn-view-toggle";
     }
 
     private bool IsActiveTab(string tab)

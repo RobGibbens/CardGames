@@ -13,11 +13,11 @@
     --card-shadow-hover: 0 8px 40px rgba(0, 0, 0, 0.15);
 
     /* Brand colors - Red & Black theme */
-    --primary: #dc2626;
+    /* --primary: #dc2626; */
     --primary-hover: #b91c1c;
     --primary-dark: #b91c1c;
     --primary-light: #ef4444;
-    --accent: #1a1a1a;
+    /* --accent: #1a1a1a; */
     --accent-light: #2d2d2d;
     --gradient-primary: linear-gradient(135deg, #dc2626 0%, #7f1d1d 50%, #1a1a1a 100%);
     --gradient-hero: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 25%, #4a1010 50%, #7f1d1d 75%, #dc2626 100%);
@@ -2624,24 +2624,25 @@ a:hover {
 
 /* View Toggle Buttons */
 .btn-view-toggle {
-    background: var(--bg-tertiary);
-    color: var(--text-secondary);
-    border: 1px solid var(--border-color);
-    padding: 0.75rem 1rem;
-    border-radius: 10px;
+    background: var(--background);
+    color: black;
+    border: 1px solid var(--border);
+    /* padding: 0.75rem 1rem;
+    border-radius: 10px; */
     transition: all var(--transition-normal);
 }
 
-.btn-view-toggle:hover {
+/* .btn-view-toggle:hover {
     background: var(--bg-secondary);
     color: var(--primary);
-    border-color: var(--primary);
-}
+    /* border-color: var(--primary);
+} */
+
 
 .btn-view-toggle.active {
-    background: var(--primary);
+    background: var(--secondary);
     color: white;
-    border-color: var(--primary);
+    border: 1px solid var(--border);
 }
 
 /* Tables Grid */
