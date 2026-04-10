@@ -6,7 +6,7 @@
 		<div class="league-detail-card-header">
 			<h3><i class="fa-solid fa-trophy"></i> Season Event Results</h3>
 			<div class="league-detail-card-actions">
-				@if (Seasons.Count > 0)
+				@if (ShowSeasonSelector && Seasons.Count > 0)
 				{
 					<select class="league-detail-season-select" @onchange="OnSeasonSelectorChanged">
 						@foreach (var season in Seasons)
@@ -105,6 +105,9 @@
 
 	[Parameter]
 	public EventCallback<Guid> LaunchSeasonEvent { get; set; }
+
+	[Parameter]
+	public bool ShowSeasonSelector { get; set; } = true;
 
 	private string FormatDate(DateTimeOffset? value)
 	{

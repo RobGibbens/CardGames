@@ -40,11 +40,6 @@
 }
 
 /* ===== Table Play Action Panel ===== */
-/*
-   NOTE: `.action-panel` is used by the Table Play page.
-   Keep all rules for it in the Table Play section below.
-   (This early block previously conflicted with the later Table Play rules.)
-*/
 
 /* Dark theme */
 [data-theme="dark"] {
@@ -7630,10 +7625,46 @@ playing-card.card-wild-highlight {
     box-shadow: 0 0 0 1px var(--primary);
 }
 
+.league-detail-season-link-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-left: auto;
+}
+
+.league-detail-season-link-hint i {
+    font-size: 0.72rem;
+}
+
 .league-detail-season-selected {
     border-left-color: var(--primary);
     border-left-width: 4px;
     background: rgba(220, 38, 38, 0.06);
+}
+
+.season-detail-calendar button.season-detail-calendar-day-has-event {
+    position: relative;
+}
+
+.season-detail-calendar button.season-detail-calendar-day-has-event::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: 0.32rem;
+    width: 0.38rem;
+    height: 0.38rem;
+    border-radius: 999px;
+    background: var(--primary);
+    transform: translateX(-50%);
+    pointer-events: none;
+}
+
+.season-detail-calendar td[aria-selected] button.season-detail-calendar-day-has-event::after,
+.season-detail-calendar button.season-detail-calendar-day-has-event[aria-selected]::after {
+    background: var(--secondary);
 }
 
 /* ── Season Events (nested children) ── */

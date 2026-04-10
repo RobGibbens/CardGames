@@ -235,17 +235,12 @@
 			@* ═══════════ TAB 4: SCHEDULE ═══════════ *@
 			@if (_activeTab == LeagueDetailTab.Schedule)
 			{
-				<LeagueDetailScheduleTab CanManageLeague="CanManageLeague" Seasons="_seasons" SelectedSeasonId="_selectedSeasonId"
-									 SeasonEventsPage="_scheduleSeasonEventsPage" OneOffEventsPage="_scheduleOneOffEventsPage"
-									 IsLoadingSeasonEventsPage="_isLoadingScheduleSeasonEventsPage"
+				<LeagueDetailScheduleTab LeagueId="LeagueId" CanManageLeague="CanManageLeague" Seasons="_seasons" SelectedSeasonId="_selectedSeasonId"
+									 OneOffEventsPage="_scheduleOneOffEventsPage"
 									 IsLoadingOneOffEventsPage="_isLoadingScheduleOneOffEventsPage"
-									 LoadSeasonEventsPage="LoadSeasonEventsPageAsync" LoadOneOffEventsPage="LoadOneOffEventsPageAsync"
-									 LaunchingSeasonEventId="_launchingSeasonEventId" BrowserTimeZoneId="@BrowserTimeZoneId"
+									 LoadOneOffEventsPage="LoadOneOffEventsPageAsync" BrowserTimeZoneId="@BrowserTimeZoneId"
 									 LaunchingOneOffEventId="_launchingOneOffEventId" OpenSeasonModal="OpenSeasonModal"
-									 SelectSeason="SelectSeasonAsync" DeselectSeason="DeselectSeasonAsync"
-									 OpenSeasonEventModal="OpenSeasonEventModal" EditSeasonEvent="OpenSeasonEventEditor"
-									 DeleteSeasonEvent="OpenDeleteSeasonEventDialog" OpenTable="OpenTable"
-									 LaunchSeasonEvent="LaunchSeasonEventAsync" OpenOneOffModal="OpenOneOffModal"
+									 OpenTable="OpenTable" OpenOneOffModal="OpenOneOffModal"
 									 EditOneOffEvent="OpenOneOffEventEditor" DeleteOneOffEvent="OpenDeleteOneOffEventDialog"
 									 LaunchOneOffEvent="LaunchOneOffEventAsync" />
 			}
