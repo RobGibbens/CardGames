@@ -20,8 +20,8 @@
 		<PackageReference Include="Asp.Versioning.Http" Version="8.1.1" />
 		<PackageReference Include="Asp.Versioning.Mvc" Version="8.1.1" />
 		<PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" Version="8.1.1" />
-		<PackageReference Include="Aspire.Microsoft.EntityFrameworkCore.SqlServer" Version="13.2.1" />
-		<PackageReference Include="Aspire.StackExchange.Redis.DistributedCaching" Version="13.2.1" />
+		<PackageReference Include="Aspire.Microsoft.EntityFrameworkCore.SqlServer" Version="13.2.2" />
+		<PackageReference Include="Aspire.StackExchange.Redis.DistributedCaching" Version="13.2.2" />
 		<PackageReference Include="FluentValidation.AspNetCore" Version="11.3.1" />
 		<PackageReference Include="GitHub.Copilot.SDK" Version="0.2.0" />
 		<PackageReference Include="LinqKit.Microsoft.EntityFrameworkCore" Version="10.0.11" />
@@ -46,8 +46,8 @@
 		<PackageReference Include="Microsoft.Identity.Web.UI" Version="4.6.0" />
 
 		<PackageReference Include="OneOf" Version="3.0.271" />
-		<PackageReference Include="Aspire.Azure.Storage.Blobs" Version="13.2.1" />
-		<PackageReference Include="Aspire.Azure.Messaging.ServiceBus" Version="13.2.1" />
+		<PackageReference Include="Aspire.Azure.Storage.Blobs" Version="13.2.2" />
+		<PackageReference Include="Aspire.Azure.Messaging.ServiceBus" Version="13.2.2" />
 		<PackageReference Include="Azure.Messaging.ServiceBus" Version="7.20.1" />
 		<PackageReference Include="OpenTelemetry" Version="1.15.0" />
 		<PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.15.0" />

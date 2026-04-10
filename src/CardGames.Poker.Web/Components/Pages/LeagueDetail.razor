@@ -1306,6 +1306,7 @@
 
 			upcomingItems.AddRange(_oneOffEvents
 				.Where(oneOffEvent => oneOffEvent.Status != LeagueOneOffEventStatus.Completed
+					&& !oneOffEvent.LaunchedGameId.HasValue
 					&& oneOffEvent.Status != LeagueOneOffEventStatus.Canceled)
 				.Select(oneOffEvent => new UpcomingEventFallbackItem(
 					oneOffEvent.ScheduledAtUtc,
@@ -1322,6 +1323,7 @@
 			{
 				upcomingItems.AddRange(_seasonEvents
 					.Where(seasonEvent => seasonEvent.Status != LeagueSeasonEventStatus.Completed
+						&& !seasonEvent.LaunchedGameId.HasValue
 						&& seasonEvent.Status != LeagueSeasonEventStatus.Canceled)
 					.Select(seasonEvent => new UpcomingEventFallbackItem(
 						seasonEvent.ScheduledAtUtc ?? seasonEvent.CreatedAtUtc,

@@ -80,6 +80,7 @@ public sealed class GetLeagueUpcomingEventsPageQueryHandler(
 		var seasonEvents = context.LeagueSeasonEvents
 			.AsNoTracking()
 			.Where(x => x.LeagueId == request.LeagueId
+				&& !x.LaunchedGameId.HasValue
 				&& x.Status != Data.Entities.LeagueSeasonEventStatus.Completed
 				&& x.Status != Data.Entities.LeagueSeasonEventStatus.Canceled)
 			.Select(x => new UpcomingEventRow
@@ -110,6 +111,7 @@ public sealed class GetLeagueUpcomingEventsPageQueryHandler(
 		var oneOffEvents =
 			from oneOffEvent in context.LeagueOneOffEvents.AsNoTracking()
 			where oneOffEvent.LeagueId == request.LeagueId
+				&& !oneOffEvent.LaunchedGameId.HasValue
 				&& oneOffEvent.Status != Data.Entities.LeagueOneOffEventStatus.Completed
 				&& oneOffEvent.Status != Data.Entities.LeagueOneOffEventStatus.Canceled
 			join gameType in context.GameTypes.AsNoTracking() on oneOffEvent.GameTypeCode equals gameType.Code into gameTypes

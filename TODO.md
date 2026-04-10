@@ -13,10 +13,15 @@
 
 - [ ] Add leagues
 - [ ] Add seasons
+  - [ ] Change UI - Hard to find seasons
+  - [ ] Change UI - Hard to find events
+  - [ ] Create event modal too big
+  - [ ] Event doesn't need sequence, just order by date
+  - [ ] Event should take blind and ante preferences
+  - [ ] When there is an error, it doesn't show the message on the modal, it shows it behind it
 - [ ] Add tournaments
-  - [ ] Active games should not be listed in upcoming also
+  - [x] Active games should not be listed in upcoming also
   - [ ] Tournaments blinds should increase as time goes on
-  - [ ] Active games should have an info button to see who's playing
   - [ ] When the tournament ends, it just says "Waiting for Players" . We should have a nice summary page.
   - [x] League games should be noted on the lobby page
   - [x] Texas Hold Em, not collecting blinds

@@ -67,6 +67,34 @@ public class LeaguesApiUpcomingEventsTests(ApiWebApplicationFactory factory) : A
 		response.Content.Entries[0].OneOffEvent!.EventId.Should().Be(eventId);
 	}
 
+	[Fact]
+	public async Task GetUpcomingEventsPage_ExcludesLaunchedOneOffEventsThatAppearInActiveGames()
+	{
+		SetUser("league-upcoming-launch-admin");
+		var (leagueId, eventId) = await CreateOneOffEventAsync("league-upcoming-launch-admin", "Upcoming Launch League", "Launch Me");
+
+		var launchResponse = await PostAsync($"/api/v1/leagues/{leagueId}/events/one-off/{eventId}/launch", new LaunchLeagueEventSessionRequest
+		{
+			GameCode = "HOLDEM",
+			HostStartingChips = 300
+		});
+		launchResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+		var activeGamesResponse = await Client.GetAsync($"/api/v1/leagues/{leagueId}/active-games?pageSize=5&pageNumber=1");
+		activeGamesResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+		var activeGamesPage = await activeGamesResponse.Content.ReadFromJsonAsync<LeagueActiveGamesPageDto>(JsonOptions);
+		activeGamesPage.Should().NotBeNull();
+		activeGamesPage!.Entries.Should().ContainSingle(entry => entry.Name == "Launch Me");
+
+		var upcomingResponse = await Client.GetAsync($"/api/v1/leagues/{leagueId}/events/upcoming?pageSize=5&pageNumber=1");
+		upcomingResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+		var upcomingPage = await upcomingResponse.Content.ReadFromJsonAsync<LeagueUpcomingEventsPageDto>(JsonOptions);
+		upcomingPage.Should().NotBeNull();
+		upcomingPage!.TotalCount.Should().Be(0);
+		upcomingPage.Entries.Should().BeEmpty();
+	}
+
 	private async Task<(Guid LeagueId, Guid EventId)> CreateOneOffEventAsync(string ownerUserId, string leagueName, string eventName)
 	{
 		SetUser(ownerUserId);
