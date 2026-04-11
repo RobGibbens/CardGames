@@ -7272,6 +7272,52 @@ playing-card.card-wild-highlight {
     flex-wrap: wrap;
 }
 
+.season-detail-schedule-grid {
+    display: grid;
+    grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
+    gap: 1.25rem;
+    align-items: start;
+}
+
+.season-detail-calendar-panel,
+.season-detail-day-panel {
+    min-width: 0;
+}
+
+.season-detail-calendar-frame {
+    position: sticky;
+    top: 1rem;
+}
+
+.season-detail-day-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.season-detail-day-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.season-detail-day-header h3 {
+    margin: 0.25rem 0 0;
+}
+
+.season-detail-day-kicker,
+.season-detail-calendar-summary {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+.season-detail-day-empty {
+    text-align: left;
+    padding: 0;
+}
+
 .league-detail-empty {
     color: var(--text-muted);
     font-size: 0.85rem;
@@ -7609,6 +7655,14 @@ playing-card.card-wild-highlight {
         width: 100%;
         text-align: center;
         order: -1;
+    }
+
+    .season-detail-schedule-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .season-detail-calendar-frame {
+        position: static;
     }
 }
 
