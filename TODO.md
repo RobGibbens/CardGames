@@ -8,7 +8,7 @@
 
 - [ ] Lobby - Filter by status
 - [ ] Work on isolating games code more
-- [ ] Either remove "confirm login" or set up email
+- [x] Either remove "confirm login" or set up email
 - [ ] Add option to treat coins as money
 
 - [ ] Add leagues
@@ -132,7 +132,7 @@
 
 ### Other Poker Variants
 
-- [ ] Add In Between
+- [x] Add In Between
 - [ ] Add Bzzjt
 - [ ] Add Guts
 - [x] Add Screw Your Neighbor
