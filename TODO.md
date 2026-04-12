@@ -3,13 +3,13 @@
 - [ ] Animate the chips going to/from the pot
 - [ ] Tony was trying to join during DC, it stole the choice from Russ
 - [ ] DC - Eric joined, it glitched
-- [x] Rabbit hunt
 
 ## Still to do
 
 - [ ] Lobby - Filter by status
 - [ ] Work on isolating games code more
 - [ ] Either remove "confirm login" or set up email
+- [ ] Add option to treat coins as money
 
 - [ ] Add leagues
 - [ ] Add seasons
@@ -97,6 +97,7 @@
 - [ ] Add Pittsburgh
 - [ ] Add Squid Game
 - [ ] Add Hall of Mirrors
+- [ ] Friends (friend card kills the hand)
 
 - [x] Add Texas Hold'em
 - [x] Add Omaha
@@ -332,3 +333,4 @@
 - [x] Click Leave Table : {"message":"You are not seated at this table or have already left"}
 - [x] "Add Chips:" on the dashboard is the wrong color
 - [x] Allow private tables - need an invite / password
+- [x] Rabbit hunt

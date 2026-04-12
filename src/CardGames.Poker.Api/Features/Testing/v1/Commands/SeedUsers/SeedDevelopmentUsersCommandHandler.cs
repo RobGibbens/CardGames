@@ -1,5 +1,6 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Features.Profile.v1.Cashier;
 using MediatR;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -32,6 +33,7 @@ public sealed class SeedDevelopmentUsersCommandHandler(
         var createdCount = 0;
         var skippedCount = 0;
         var failedCount = 0;
+        const int seedChipAmount = CashierAccountInitializer.StartingChipAmount;
 
         foreach (var configuredUser in configuredUsers)
         {
@@ -101,7 +103,6 @@ public sealed class SeedDevelopmentUsersCommandHandler(
             }
 
             var now = DateTimeOffset.UtcNow;
-            const int seedChipAmount = 50_000;
 
             var player = await context.Players
                 .FirstOrDefaultAsync(p => p.Email == email, cancellationToken);
@@ -124,27 +125,14 @@ public sealed class SeedDevelopmentUsersCommandHandler(
                 context.Players.Add(player);
             }
 
-            var account = new PlayerChipAccount
-            {
-                PlayerId = player.Id,
-                Balance = seedChipAmount,
-                CreatedAtUtc = now,
-                UpdatedAtUtc = now
-            };
-
-            context.PlayerChipAccounts.Add(account);
-
-            context.PlayerChipLedgerEntries.Add(new PlayerChipLedgerEntry
-            {
-                Id = Guid.CreateVersion7(),
-                PlayerId = player.Id,
-                Type = PlayerChipLedgerEntryType.Add,
-                AmountDelta = seedChipAmount,
-                BalanceAfter = seedChipAmount,
-                OccurredAtUtc = now,
-                ReferenceType = "DevelopmentSeed",
-                Reason = "Initial development seed chips"
-            });
+            await CashierAccountInitializer.EnsureAccountInitializedAsync(
+                context,
+                player.Id,
+                seedChipAmount,
+                "DevelopmentSeed",
+                "Initial development seed chips",
+                null,
+                cancellationToken);
 
             await context.SaveChangesAsync(cancellationToken);
 

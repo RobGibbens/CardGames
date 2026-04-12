@@ -1,5 +1,6 @@
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Features.Profile.v1.Cashier;
 using Microsoft.EntityFrameworkCore;
 
 namespace CardGames.Poker.Api.Services;
@@ -8,10 +9,18 @@ public sealed class PlayerChipWalletService(CardsDbContext context) : IPlayerChi
 {
 	public async Task<int> GetBalanceAsync(Guid playerId, CancellationToken cancellationToken)
 	{
-		var account = await context.PlayerChipAccounts
-			.AsNoTracking()
-			.FirstOrDefaultAsync(x => x.PlayerId == playerId, cancellationToken);
-		return account?.Balance ?? 0;
+		var account = await CashierAccountInitializer.EnsureRegistrationCreditAsync(
+			context,
+			playerId,
+			null,
+			cancellationToken);
+
+		if (context.Entry(account).State == EntityState.Added)
+		{
+			await context.SaveChangesAsync(cancellationToken);
+		}
+
+		return account.Balance;
 	}
 
 	public async Task<WalletDebitResult> TryDebitForBuyInAsync(
@@ -27,7 +36,7 @@ public sealed class PlayerChipWalletService(CardsDbContext context) : IPlayerChi
 		}
 
 		var now = DateTimeOffset.UtcNow;
-		var account = await GetOrCreateAccountAsync(playerId, now, cancellationToken);
+		var account = await GetOrCreateAccountAsync(playerId, now, actorUserId, cancellationToken);
 
 		if (account.Balance < amount)
 		{
@@ -66,7 +75,7 @@ public sealed class PlayerChipWalletService(CardsDbContext context) : IPlayerChi
 		}
 
 		var now = DateTimeOffset.UtcNow;
-		var account = await GetOrCreateAccountAsync(playerId, now, cancellationToken);
+		var account = await GetOrCreateAccountAsync(playerId, now, actorUserId, cancellationToken);
 
 		// Exposure-limit model: results already settled per-hand. Write audit-only CashOut entry.
 		context.PlayerChipLedgerEntries.Add(new PlayerChipLedgerEntry
@@ -107,7 +116,7 @@ public sealed class PlayerChipWalletService(CardsDbContext context) : IPlayerChi
 		if (alreadySettled) return;
 
 		var now = DateTimeOffset.UtcNow;
-		var account = await GetOrCreateAccountAsync(playerId, now, cancellationToken);
+		var account = await GetOrCreateAccountAsync(playerId, now, actorUserId, cancellationToken);
 
 		account.Balance += netDelta;
 		account.UpdatedAtUtc = now;
@@ -131,25 +140,25 @@ public sealed class PlayerChipWalletService(CardsDbContext context) : IPlayerChi
 	private async Task<PlayerChipAccount> GetOrCreateAccountAsync(
 		Guid playerId,
 		DateTimeOffset now,
+		string? actorUserId,
 		CancellationToken cancellationToken)
 	{
-		var account = await context.PlayerChipAccounts
-			.FirstOrDefaultAsync(x => x.PlayerId == playerId, cancellationToken);
+		var account = await CashierAccountInitializer.EnsureRegistrationCreditAsync(
+			context,
+			playerId,
+			actorUserId,
+			cancellationToken);
 
-		if (account is not null)
+		if (account.CreatedAtUtc == default)
 		{
-			return account;
+			account.CreatedAtUtc = now;
 		}
 
-		account = new PlayerChipAccount
+		if (account.UpdatedAtUtc == default)
 		{
-			PlayerId = playerId,
-			Balance = 0,
-			CreatedAtUtc = now,
-			UpdatedAtUtc = now
-		};
+			account.UpdatedAtUtc = now;
+		}
 
-		context.PlayerChipAccounts.Add(account);
 		return account;
 	}
 }

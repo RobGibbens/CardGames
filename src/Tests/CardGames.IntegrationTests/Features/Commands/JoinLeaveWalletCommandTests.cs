@@ -1,5 +1,6 @@
 using CardGames.IntegrationTests.Infrastructure.Fakes;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Features.Profile.v1.Cashier;
 using CardGames.Poker.Api.Features.Games.Common.v1.Commands.JoinGame;
 using CardGames.Poker.Api.Features.Games.Common.v1.Commands.LeaveGame;
 using CardGames.Poker.Api.Infrastructure;
@@ -295,7 +296,7 @@ public class JoinLeaveWalletCommandTests : IntegrationTestBase
 	}
 
 	[Fact]
-	public async Task JoinGame_WithoutChipAccount_ReturnsZeroBalanceErrorAndDoesNotSeatPlayer()
+	public async Task JoinGame_WithoutChipAccount_SeedsStartingBalanceAndSeatsPlayer()
 	{
 		// Arrange
 		var game = await DatabaseSeeder.CreateGameAsync(DbContext, "FIVECARDDRAW");
@@ -307,12 +308,28 @@ public class JoinLeaveWalletCommandTests : IntegrationTestBase
 		var result = await Mediator.Send(new JoinGameCommand(game.Id, SeatIndex: 2, StartingChips: 100));
 
 		// Assert
-		result.IsT1.Should().BeTrue();
-		result.AsT1.Code.Should().Be(JoinGameErrorCode.ZeroAccountBalance);
+		result.IsT0.Should().BeTrue();
 
-		DbContext.PlayerChipAccounts.Count(x => x.PlayerId == player.Id).Should().Be(0);
-		DbContext.GamePlayers.Count(x => x.GameId == game.Id && x.PlayerId == player.Id).Should().Be(0);
-		DbContext.PlayerChipLedgerEntries.Count(x => x.PlayerId == player.Id && x.Type == PlayerChipLedgerEntryType.BringIn).Should().Be(0);
+		var account = await DbContext.PlayerChipAccounts.FirstAsync(x => x.PlayerId == player.Id);
+		account.Balance.Should().Be(CashierAccountInitializer.StartingChipAmount);
+
+		var registrationLedgerEntry = await DbContext.PlayerChipLedgerEntries
+			.Where(x => x.PlayerId == player.Id && x.ReferenceType == CashierAccountInitializer.RegistrationReferenceType)
+			.SingleAsync();
+
+		registrationLedgerEntry.Type.Should().Be(PlayerChipLedgerEntryType.Add);
+		registrationLedgerEntry.AmountDelta.Should().Be(CashierAccountInitializer.StartingChipAmount);
+		registrationLedgerEntry.BalanceAfter.Should().Be(CashierAccountInitializer.StartingChipAmount);
+
+		var bringInLedgerEntry = await DbContext.PlayerChipLedgerEntries
+			.Where(x => x.PlayerId == player.Id && x.Type == PlayerChipLedgerEntryType.BringIn)
+			.SingleAsync();
+
+		bringInLedgerEntry.AmountDelta.Should().Be(0);
+		bringInLedgerEntry.BalanceAfter.Should().Be(CashierAccountInitializer.StartingChipAmount);
+
+		var gamePlayer = await DbContext.GamePlayers.FirstAsync(x => x.GameId == game.Id && x.PlayerId == player.Id);
+		gamePlayer.ChipStack.Should().Be(100);
 	}
 
 	[Fact]
