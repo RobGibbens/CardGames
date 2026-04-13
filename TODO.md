@@ -3,7 +3,7 @@
 - [ ] Animate the chips going to/from the pot
 - [ ] Tony was trying to join during DC, it stole the choice from Russ
 - [ ] DC - Eric joined, it glitched
-- [ ] Kings and Lows - Discard too fast
+- [x] Kings and Lows - Discard too fast
 - [ ] Kings and Lows - end showdown didn't work
 - [ ] Edit Table not working
 - [ ] Lobby dark theme
