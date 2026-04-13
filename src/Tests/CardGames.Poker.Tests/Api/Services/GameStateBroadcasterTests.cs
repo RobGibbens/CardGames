@@ -1,6 +1,8 @@
 #nullable enable
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using CardGames.Contracts.SignalR;
@@ -16,6 +18,34 @@ namespace CardGames.Poker.Tests.Api.Services;
 public class GameStateBroadcasterTests
 {
     [Fact]
+    public async Task BroadcastGameStateAsync_KingsAndLowsDropOrStay_DelaysTimerUntilDealAnimationCompletes()
+    {
+        var gameId = Guid.NewGuid();
+        var publicState = CreateState(
+            gameId,
+            "KINGSANDLOWS",
+            "DropOrStay",
+            3,
+            currentPhaseRequiresAction: true,
+            seats:
+            [
+                CreateSeat(0, 5, "Alice"),
+                CreateSeat(1, 5, "Bob"),
+                CreateSeat(2, 5, "Cara"),
+                CreateSeat(3, 5, "Drew")
+            ]);
+        var (sut, tableStateBuilder, actionTimerService, _) = CreateSubject(publicState);
+        var expectedStartDelay = TimeSpan.FromMilliseconds(15850);
+
+        await sut.BroadcastGameStateAsync(gameId);
+
+        actionTimerService.Received(1)
+            .StartTimer(gameId, -1, IActionTimerService.DefaultTimerDurationSeconds, Arg.Any<Func<Guid, int, Task>?>(), expectedStartDelay);
+        await tableStateBuilder.Received(1)
+            .BuildPublicStateAsync(gameId, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task BroadcastGameStateAsync_ScrewYourNeighborKeepOrTrade_UsesThirtySecondTimer()
     {
         var gameId = Guid.NewGuid();
@@ -25,7 +55,7 @@ public class GameStateBroadcasterTests
         await sut.BroadcastGameStateAsync(gameId);
 
         actionTimerService.Received(1)
-            .StartTimer(gameId, 3, 30, Arg.Any<Func<Guid, int, Task>?>());
+            .StartTimer(gameId, 3, 30, Arg.Any<Func<Guid, int, Task>?>(), TimeSpan.Zero);
         await tableStateBuilder.Received(1)
             .BuildPublicStateAsync(gameId, Arg.Any<CancellationToken>());
     }
@@ -40,7 +70,7 @@ public class GameStateBroadcasterTests
         await sut.BroadcastGameStateAsync(gameId);
 
         actionTimerService.Received(1)
-            .StartTimer(gameId, 1, IActionTimerService.DefaultTimerDurationSeconds, Arg.Any<Func<Guid, int, Task>?>());
+            .StartTimer(gameId, 1, IActionTimerService.DefaultTimerDurationSeconds, Arg.Any<Func<Guid, int, Task>?>(), TimeSpan.Zero);
     }
 
     [Fact]
@@ -53,7 +83,7 @@ public class GameStateBroadcasterTests
         await sut.BroadcastGameStateAsync(gameId);
 
         actionTimerService.Received(1)
-            .StartTimer(gameId, -1, IActionTimerService.DefaultTimerDurationSeconds, Arg.Any<Func<Guid, int, Task>?>());
+            .StartTimer(gameId, -1, IActionTimerService.DefaultTimerDurationSeconds, Arg.Any<Func<Guid, int, Task>?>(), TimeSpan.Zero);
     }
 
     [Fact]
@@ -116,7 +146,8 @@ public class GameStateBroadcasterTests
         string gameTypeCode,
         string currentPhase,
         int currentActorSeatIndex,
-        bool currentPhaseRequiresAction = false)
+        bool currentPhaseRequiresAction = false,
+        SeatPublicDto[]? seats = null)
     {
         return new TableStatePublicDto
         {
@@ -125,7 +156,27 @@ public class GameStateBroadcasterTests
             CurrentPhase = currentPhase,
             CurrentActorSeatIndex = currentActorSeatIndex,
             CurrentPhaseRequiresAction = currentPhaseRequiresAction,
-            Seats = Array.Empty<SeatPublicDto>()
+            Seats = seats ?? []
+        };
+    }
+
+    private static SeatPublicDto CreateSeat(int seatIndex, int cardCount, string playerName)
+    {
+        return new SeatPublicDto
+        {
+            SeatIndex = seatIndex,
+            IsOccupied = true,
+            IsSittingOut = false,
+            IsFolded = false,
+            PlayerName = playerName,
+            Cards = Enumerable.Range(0, cardCount)
+                .Select(index => new CardPublicDto
+                {
+                    IsFaceUp = true,
+                    Rank = ((index % 9) + 2).ToString(),
+                    Suit = "Hearts"
+                })
+                .ToArray()
         };
     }
 }

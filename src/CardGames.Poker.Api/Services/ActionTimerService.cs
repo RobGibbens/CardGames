@@ -33,17 +33,23 @@ public sealed class ActionTimerService : IActionTimerService, IDisposable
     }
 
     /// <inheritdoc />
-    public void StartTimer(Guid gameId, int playerSeatIndex, int durationSeconds = IActionTimerService.DefaultTimerDurationSeconds, Func<Guid, int, Task>? onExpired = null)
+    public void StartTimer(Guid gameId, int playerSeatIndex, int durationSeconds = IActionTimerService.DefaultTimerDurationSeconds, Func<Guid, int, Task>? onExpired = null, TimeSpan? startDelay = null)
     {
         // Stop any existing timer for this game
         StopTimer(gameId);
+
+        var effectiveStartDelay = startDelay.GetValueOrDefault();
+        if (effectiveStartDelay < TimeSpan.Zero)
+        {
+            effectiveStartDelay = TimeSpan.Zero;
+        }
 
         var state = new ActionTimerState
         {
             GameId = gameId,
             PlayerSeatIndex = playerSeatIndex,
             DurationSeconds = durationSeconds,
-            StartedAtUtc = DateTimeOffset.UtcNow
+            StartedAtUtc = DateTimeOffset.UtcNow.Add(effectiveStartDelay)
         };
 
         var timerState = new GameTimerState
@@ -64,8 +70,8 @@ public sealed class ActionTimerService : IActionTimerService, IDisposable
         _activeTimers[gameId] = timerState;
 
         _logger.LogInformation(
-            "Started action timer for game {GameId}, player seat {SeatIndex}, duration {Duration}s",
-            gameId, playerSeatIndex, durationSeconds);
+            "Started action timer for game {GameId}, player seat {SeatIndex}, duration {Duration}s, start delay {StartDelayMs}ms",
+            gameId, playerSeatIndex, durationSeconds, effectiveStartDelay.TotalMilliseconds);
 
         // Broadcast initial timer state
         _ = BroadcastTimerStateAsync(gameId, state);

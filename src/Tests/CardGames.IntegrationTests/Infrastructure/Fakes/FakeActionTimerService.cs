@@ -4,7 +4,7 @@ namespace CardGames.IntegrationTests.Infrastructure.Fakes;
 
 public class FakeActionTimerService : IActionTimerService
 {
-    public void StartTimer(Guid gameId, int playerSeatIndex, int durationSeconds = 60, Func<Guid, int, Task>? onExpired = null)
+    public void StartTimer(Guid gameId, int playerSeatIndex, int durationSeconds = 60, Func<Guid, int, Task>? onExpired = null, TimeSpan? startDelay = null)
     {
         // No-op for tests
     }

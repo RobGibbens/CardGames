@@ -10,6 +10,9 @@ namespace CardGames.Poker.Api.Services;
 /// </summary>
 public sealed class GameStateBroadcaster : IGameStateBroadcaster
 {
+    private const int ClientDealAnimationInitialDelayMs = 100;
+    private const int ClientDealAnimationStepDelayMs = 750;
+
     private readonly IHubContext<GameHub> _hubContext;
     private readonly ITableStateBuilder _tableStateBuilder;
     private readonly IActionTimerService _actionTimerService;
@@ -136,11 +139,10 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
             gameId, effectiveActorSeatIndex, state.CurrentPhase);
 
         var durationSeconds = IActionTimerService.DefaultTimerDurationSeconds;
+        var startDelay = GetActionTimerStartDelay(state);
 
         // Use 30 seconds for short decision phases.
-        if ((string.Equals(state.GameTypeCode, PokerGameMetadataRegistry.KingsAndLowsCode, StringComparison.OrdinalIgnoreCase) &&
-             string.Equals(state.CurrentPhase, "DropOrStay", StringComparison.OrdinalIgnoreCase)) ||
-            (string.Equals(state.GameTypeCode, PokerGameMetadataRegistry.ScrewYourNeighborCode, StringComparison.OrdinalIgnoreCase) &&
+        if ((string.Equals(state.GameTypeCode, PokerGameMetadataRegistry.ScrewYourNeighborCode, StringComparison.OrdinalIgnoreCase) &&
              string.Equals(state.CurrentPhase, "KeepOrTrade", StringComparison.OrdinalIgnoreCase)) ||
             (string.Equals(state.GameTypeCode, PokerGameMetadataRegistry.TollboothCode, StringComparison.OrdinalIgnoreCase) &&
              string.Equals(state.CurrentPhase, "TollboothOffer", StringComparison.OrdinalIgnoreCase)) ||
@@ -154,6 +156,7 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
             gameId,
             effectiveActorSeatIndex,
             durationSeconds: durationSeconds,
+            startDelay: startDelay,
             onExpired: async (gId, seatIndex) =>
             {
                 _logger.LogInformation(
@@ -161,6 +164,41 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
                     gId, seatIndex);
                 await _autoActionService.PerformAutoActionAsync(gId, seatIndex);
             });
+    }
+
+    private static TimeSpan GetActionTimerStartDelay(TableStatePublicDto state)
+    {
+        if (string.Equals(state.GameTypeCode, PokerGameMetadataRegistry.KingsAndLowsCode, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(state.CurrentPhase, "DropOrStay", StringComparison.OrdinalIgnoreCase))
+        {
+            return CalculateKingsAndLowsDropOrStayStartDelay(state);
+        }
+
+        return TimeSpan.Zero;
+    }
+
+    private static TimeSpan CalculateKingsAndLowsDropOrStayStartDelay(TableStatePublicDto state)
+    {
+        var activeSeatCount = state.Seats.Count(static seat => seat.IsOccupied && !seat.IsSittingOut && !seat.IsFolded);
+        if (activeSeatCount == 0)
+        {
+            return TimeSpan.Zero;
+        }
+
+        var cardsPerSeat = state.Seats
+            .Where(static seat => seat.IsOccupied && !seat.IsSittingOut && !seat.IsFolded)
+            .Select(static seat => seat.Cards.Count)
+            .DefaultIfEmpty(0)
+            .Max();
+
+        if (cardsPerSeat == 0)
+        {
+            return TimeSpan.Zero;
+        }
+
+        var animationSteps = (activeSeatCount * cardsPerSeat) + 1;
+        var totalDelayMs = ClientDealAnimationInitialDelayMs + (animationSteps * ClientDealAnimationStepDelayMs);
+        return TimeSpan.FromMilliseconds(totalDelayMs);
     }
 
         /// <inheritdoc />
