@@ -3,12 +3,13 @@
 - [ ] Animate the chips going to/from the pot
 - [ ] Tony was trying to join during DC, it stole the choice from Russ
 - [ ] DC - Eric joined, it glitched
-
+- [ ] Kings and Lows - Discard too fast
+- [ ] Kings and Lows - end showdown didn't work
+ 
 ## Still to do
 
 - [ ] Lobby - Filter by status
 - [ ] Work on isolating games code more
-- [x] Either remove "confirm login" or set up email
 - [ ] Add option to treat coins as money
 
 - [ ] Add leagues
@@ -334,3 +335,5 @@
 - [x] "Add Chips:" on the dashboard is the wrong color
 - [x] Allow private tables - need an invite / password
 - [x] Rabbit hunt
+- [x] Make the Wild Cards modal movable
+- [x] Either remove "confirm login" or set up email
