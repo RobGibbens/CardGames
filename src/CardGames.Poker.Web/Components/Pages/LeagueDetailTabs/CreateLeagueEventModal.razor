@@ -37,7 +37,7 @@
 				<div class="league-form-inline-fields league-form-inline-fields-schedule">
 					<div class="league-form-inline-field league-form-inline-field-scheduled-date">
 						<label class="form-label small" for="one-off-scheduled-date">Scheduled date</label>
-						<InputDate id="one-off-scheduled-date" class="form-control league-modal-date-input" @bind-Value="_scheduledDate" />
+						<InputDate id="one-off-scheduled-date" class="form-control league-modal-date-input" @bind-Value="_scheduledDate" @bind-Value:after="OnScheduledDateChanged" />
 					</div>
 					<div class="league-form-inline-field league-form-inline-field-scheduled-time">
 						<label class="form-label small" for="one-off-scheduled-time">Start time</label>
@@ -157,7 +157,7 @@
 	private ILogger<CreateLeagueEventModal> Logger { get; set; } = default!;
 
 	private string _name = string.Empty;
-	private DateTime? _scheduledDate = DateTime.UtcNow.Date.AddMinutes(30);
+	private DateTime? _scheduledDate;
 	private string _scheduledTime = LeagueTimeZoneHelper.DefaultTimeText;
 	private string _selectedTimeZoneId = "UTC";
 	private string? _notes;
@@ -179,6 +179,8 @@
 	private IJSObjectReference? _timeZoneModule;
 	private string? _resolvedBrowserTimeZoneId;
 	private List<BrowserTimeZoneOption> _resolvedTimeZones = [];
+	private DateTime? _autoScheduledDate;
+	private string? _autoScheduledTime;
 
 	private bool IsEditMode => EditingEvent is not null;
 
@@ -441,6 +443,8 @@
 		_smallBlind = EditingEvent.SmallBlind ?? 5;
 		_bigBlind = EditingEvent.BigBlind ?? 10;
 		_tournamentBuyIn = EditingEvent.TournamentBuyIn ?? DefaultTournamentBuyIn;
+		_autoScheduledDate = null;
+		_autoScheduledTime = null;
 		_errorMessage = null;
 		OnGameTypeChanged();
 	}
@@ -448,8 +452,7 @@
 	private void ResetForm()
 	{
 		_name = string.Empty;
-		_scheduledDate = LeagueTimeZoneHelper.GetNextLocalEventDate(EffectiveBrowserTimeZoneId);
-		_scheduledTime = LeagueTimeZoneHelper.DefaultTimeText;
+		ApplyDefaultSchedule(EffectiveBrowserTimeZoneId);
 		_selectedTimeZoneId = EffectiveBrowserTimeZoneId;
 		_autoSelectedTimeZoneId = EffectiveBrowserTimeZoneId;
 		_notes = null;
@@ -460,6 +463,27 @@
 		_bigBlind = 10;
 		_tournamentBuyIn = DefaultTournamentBuyIn;
 		_errorMessage = null;
+	}
+
+	private void ApplyDefaultSchedule(string? timeZoneId)
+	{
+		var defaultSchedule = LeagueTimeZoneHelper.GetDefaultLocalScheduledDateTime(timeZoneId);
+		_scheduledDate = defaultSchedule.Date;
+		_scheduledTime = defaultSchedule.TimeText;
+		_autoScheduledDate = defaultSchedule.Date;
+		_autoScheduledTime = defaultSchedule.TimeText;
+	}
+
+	private bool IsUsingAutoScheduledValues()
+	{
+		return _scheduledDate == _autoScheduledDate
+			&& string.Equals(_scheduledTime, _autoScheduledTime, StringComparison.Ordinal);
+	}
+
+	private void ClearAutoScheduledValues()
+	{
+		_autoScheduledDate = null;
+		_autoScheduledTime = null;
 	}
 
 	private void OnGameTypeChanged()
@@ -517,6 +541,12 @@
 	private void OnScheduledTimeChanged(ChangeEventArgs args)
 	{
 		_scheduledTime = args.Value?.ToString() ?? string.Empty;
+		ClearAutoScheduledValues();
+	}
+
+	private void OnScheduledDateChanged()
+	{
+		ClearAutoScheduledValues();
 	}
 
 	private void OnTimeZoneSelectionChanged()
@@ -531,18 +561,31 @@
 			return;
 		}
 
+		var previousAutoSelectedTimeZoneId = _autoSelectedTimeZoneId;
+		var shouldRefreshAutoScheduledValues = IsUsingAutoScheduledValues()
+			&& !string.IsNullOrWhiteSpace(previousAutoSelectedTimeZoneId)
+			&& !string.Equals(previousAutoSelectedTimeZoneId, EffectiveBrowserTimeZoneId, StringComparison.Ordinal);
+
 		if (string.Equals(_selectedTimeZoneId, EffectiveBrowserTimeZoneId, StringComparison.Ordinal))
 		{
 			_autoSelectedTimeZoneId = EffectiveBrowserTimeZoneId;
+			if (shouldRefreshAutoScheduledValues)
+			{
+				ApplyDefaultSchedule(EffectiveBrowserTimeZoneId);
+			}
 			return;
 		}
 
 		if (string.IsNullOrWhiteSpace(_selectedTimeZoneId)
 			|| string.Equals(_selectedTimeZoneId, "UTC", StringComparison.Ordinal)
-			|| string.Equals(_selectedTimeZoneId, _autoSelectedTimeZoneId, StringComparison.Ordinal))
+			|| string.Equals(_selectedTimeZoneId, previousAutoSelectedTimeZoneId, StringComparison.Ordinal))
 		{
 			_selectedTimeZoneId = EffectiveBrowserTimeZoneId;
 			_autoSelectedTimeZoneId = EffectiveBrowserTimeZoneId;
+			if (shouldRefreshAutoScheduledValues)
+			{
+				ApplyDefaultSchedule(EffectiveBrowserTimeZoneId);
+			}
 		}
 	}
 

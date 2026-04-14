@@ -3,10 +3,7 @@
 - [ ] Animate the chips going to/from the pot
 - [ ] Tony was trying to join during DC, it stole the choice from Russ
 - [ ] DC - Eric joined, it glitched
-- [x] Kings and Lows - Discard too fast
 - [ ] Kings and Lows - end showdown didn't work
-- [x] Edit Table not working
-- [ ] Lobby dark theme
  
 ## Still to do
 
@@ -339,3 +336,6 @@
 - [x] Rabbit hunt
 - [x] Make the Wild Cards modal movable
 - [x] Either remove "confirm login" or set up email
+- [x] Kings and Lows - Discard too fast
+- [x] Edit Table not working
+- [x] Lobby dark theme

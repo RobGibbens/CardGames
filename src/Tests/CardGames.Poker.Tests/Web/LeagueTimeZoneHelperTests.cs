@@ -20,4 +20,16 @@ public class LeagueTimeZoneHelperTests
 		LeagueTimeZoneHelper.ConvertUtcToLocalDate(utcValue, timeZoneId).Should().Be(localDate);
 		LeagueTimeZoneHelper.ConvertUtcToTimeText(utcValue, timeZoneId).Should().Be("19:30");
 	}
+
+	[Fact]
+	public void GetDefaultLocalScheduledDateTime_UsesLocalNowPlusThirtyMinutes()
+	{
+		var utcNow = new DateTimeOffset(2026, 4, 15, 1, 48, 0, TimeSpan.Zero);
+		var timeZoneId = "America/Los_Angeles";
+
+		var scheduled = LeagueTimeZoneHelper.GetDefaultLocalScheduledDateTime(timeZoneId, utcNow);
+
+		scheduled.Date.Should().Be(new DateTime(2026, 4, 14));
+		scheduled.TimeText.Should().Be("19:18");
+	}
 }

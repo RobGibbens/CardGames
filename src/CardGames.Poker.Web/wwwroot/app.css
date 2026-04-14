@@ -2561,6 +2561,11 @@ a:hover {
     min-height: 400px;
 }
 
+.lobby-group-section {
+    background: var(--bg-secondary);
+    border-color: var(--border-color) !important;
+}
+
 .lobby-group-section + .lobby-group-section {
     margin-top: 2.5rem;
 }
@@ -2620,7 +2625,7 @@ a:hover {
 /* View Toggle Buttons */
 .btn-view-toggle {
     background: var(--background);
-    color: black;
+    color: var(--text-muted);
     border: 1px solid var(--border);
     /* padding: 0.75rem 1rem;
     border-radius: 10px; */

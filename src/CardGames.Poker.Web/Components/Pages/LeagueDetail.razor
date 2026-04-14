@@ -2329,8 +2329,9 @@ DateTimeKind.Utc)) : null,
 		_editingSeasonEventId = null;
 		_seasonEventName = string.Empty;
 		_seasonEventSequence = null;
-		_seasonEventScheduledDate = LeagueTimeZoneHelper.GetNextLocalEventDate(BrowserTimeZoneId);
-		_seasonEventScheduledTime = LeagueTimeZoneHelper.DefaultTimeText;
+		var defaultSchedule = LeagueTimeZoneHelper.GetDefaultLocalScheduledDateTime(BrowserTimeZoneId);
+		_seasonEventScheduledDate = defaultSchedule.Date;
+		_seasonEventScheduledTime = defaultSchedule.TimeText;
 		_seasonEventTimeZoneId = BrowserTimeZoneId;
 		_seasonEventNotes = null;
 		_seasonEventGameTypeCode = string.Empty;

@@ -99,6 +99,13 @@ public static class LeagueTimeZoneHelper
 		return localValue?.ToString("g", CultureInfo.CurrentCulture) ?? utcValue.Value.ToString("g", CultureInfo.CurrentCulture);
 	}
 
+	public static (DateTime Date, string TimeText) GetDefaultLocalScheduledDateTime(string? timeZoneId, DateTimeOffset? utcNow = null)
+	{
+		var scheduledAtUtc = (utcNow ?? DateTimeOffset.UtcNow).AddMinutes(30);
+		var localValue = ConvertUtcToLocal(scheduledAtUtc, timeZoneId) ?? scheduledAtUtc;
+		return (localValue.Date, localValue.ToString("HH:mm", CultureInfo.InvariantCulture));
+	}
+
 	public static DateTime GetNextLocalEventDate(string? timeZoneId)
 	{
 		var localNow = ConvertUtcToLocal(DateTimeOffset.UtcNow, timeZoneId) ?? DateTimeOffset.UtcNow;
