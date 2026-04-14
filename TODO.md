@@ -5,7 +5,7 @@
 - [ ] DC - Eric joined, it glitched
 - [x] Kings and Lows - Discard too fast
 - [ ] Kings and Lows - end showdown didn't work
-- [ ] Edit Table not working
+- [x] Edit Table not working
 - [ ] Lobby dark theme
  
 ## Still to do

@@ -11,6 +11,11 @@ namespace CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetTableSettings;
 /// </summary>
 public static class GetTableSettingsMapper
 {
+    private const string DealersChoiceGameTypeCode = "DEALERSCHOICE";
+    private const string DealersChoiceGameTypeName = "Dealer's Choice";
+    private const int DealersChoiceMinPlayers = 2;
+    private const int DealersChoiceMaxPlayers = 8;
+
     /// <summary>
     /// Phases during which table settings can be edited.
     /// </summary>
@@ -29,14 +34,14 @@ public static class GetTableSettingsMapper
     public static GetTableSettingsResponse MapToResponse(Game game, int seatedPlayerCount)
     {
         ArgumentNullException.ThrowIfNull(game);
-        ArgumentNullException.ThrowIfNull(game.GameType);
+        var (gameTypeCode, gameTypeName, minPlayers, maxPlayers) = ResolveGameType(game);
 
         return new GetTableSettingsResponse
         {
             GameId = game.Id,
             Name = game.Name,
-            GameTypeCode = game.GameType.Code,
-            GameTypeName = game.GameType.Name,
+            GameTypeCode = gameTypeCode,
+            GameTypeName = gameTypeName,
             CurrentPhase = game.CurrentPhase,
             IsEditable = IsPhaseEditable(game.CurrentPhase),
             Ante = game.Ante,
@@ -45,8 +50,8 @@ public static class GetTableSettingsMapper
             BigBlind = game.BigBlind,
 			MaxBuyIn = game.MaxBuyIn,
             AreOddsVisibleToAllPlayers = game.AreOddsVisibleToAllPlayers,
-            MaxPlayers = game.GameType.MaxPlayers,
-            MinPlayers = game.GameType.MinPlayers,
+            MaxPlayers = maxPlayers,
+            MinPlayers = minPlayers,
             SeatedPlayerCount = seatedPlayerCount,
             CreatedById = game.CreatedById,
             CreatedByName = game.CreatedByName,
@@ -66,14 +71,14 @@ public static class GetTableSettingsMapper
     public static TableSettingsDto MapToDto(Game game, int seatedPlayerCount)
     {
         ArgumentNullException.ThrowIfNull(game);
-        ArgumentNullException.ThrowIfNull(game.GameType);
+        var (gameTypeCode, gameTypeName, minPlayers, maxPlayers) = ResolveGameType(game);
 
         return new TableSettingsDto
         {
             GameId = game.Id,
             Name = game.Name,
-            GameTypeCode = game.GameType.Code,
-            GameTypeName = game.GameType.Name,
+            GameTypeCode = gameTypeCode,
+            GameTypeName = gameTypeName,
             CurrentPhase = game.CurrentPhase,
             IsEditable = IsPhaseEditable(game.CurrentPhase),
             Ante = game.Ante,
@@ -82,8 +87,8 @@ public static class GetTableSettingsMapper
             BigBlind = game.BigBlind,
 			MaxBuyIn = game.MaxBuyIn,
             AreOddsVisibleToAllPlayers = game.AreOddsVisibleToAllPlayers,
-            MaxPlayers = game.GameType.MaxPlayers,
-            MinPlayers = game.GameType.MinPlayers,
+            MaxPlayers = maxPlayers,
+            MinPlayers = minPlayers,
             SeatedPlayerCount = seatedPlayerCount,
             CreatedById = game.CreatedById,
             CreatedByName = game.CreatedByName,
@@ -92,6 +97,23 @@ public static class GetTableSettingsMapper
             UpdatedByName = game.UpdatedByName,
             RowVersion = game.RowVersion.ToBase64String()
         };
+        }
+
+        internal static (string GameTypeCode, string GameTypeName, int MinPlayers, int MaxPlayers) ResolveGameType(Game game)
+        {
+            ArgumentNullException.ThrowIfNull(game);
+
+            if (game.GameType is not null)
+            {
+                return (game.GameType.Code, game.GameType.Name, game.GameType.MinPlayers, game.GameType.MaxPlayers);
+            }
+
+            if (game.IsDealersChoice)
+            {
+                return (DealersChoiceGameTypeCode, DealersChoiceGameTypeName, DealersChoiceMinPlayers, DealersChoiceMaxPlayers);
+            }
+
+            return (string.Empty, "Unknown Game", 0, 0);
         }
 
         /// <summary>

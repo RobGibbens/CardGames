@@ -233,5 +233,28 @@ public class CommonQueryHandlerTests : IntegrationTestBase
         result!.RowVersion.Should().NotBeNullOrEmpty();
     }
 
+    [Fact]
+    public async Task GetTableSettings_GameWithoutGameType_ReturnsFallbackTypeValues()
+    {
+        // Arrange
+        var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 2);
+        setup.Game.GameType = null;
+        setup.Game.GameTypeId = null;
+        await DbContext.SaveChangesAsync();
+        DbContext.ChangeTracker.Clear();
+
+        var query = new GetTableSettingsQuery(setup.Game.Id);
+
+        // Act
+        var result = await Mediator.Send(query);
+
+        // Assert
+        result.Should().NotBeNull();
+        result!.GameTypeCode.Should().BeEmpty();
+        result.GameTypeName.Should().Be("Unknown Game");
+        result.MaxPlayers.Should().Be(0);
+        result.MinPlayers.Should().Be(0);
+    }
+
     #endregion
 }

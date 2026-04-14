@@ -212,7 +212,7 @@
                                         (_gameResponse?.CurrentPhase == GamePhase.WaitingForPlayers.ToString() || _gameResponse?.CurrentPhase ==
                                         GamePhase.WaitingToStart.ToString())
                         {
-                            <a href="/table/@GameId/edit" class="btn btn-secondary btn-sm">
+                            <a href="/table/@GameId/edit" class="btn btn-secondary btn-sm" data-enhance-nav="false">
                                 <i class="fa-regular fa-pen-to-square"></i>
                                 Edit Table
                             </a>
@@ -5492,7 +5492,7 @@
         return TimeSpan.FromMilliseconds(millisecondsUntilNextBoundary);
     }
 
-    public async ValueTask DisposeAsync()
+    public ValueTask DisposeAsync()
     {
         _disposed = true;
 
@@ -5530,7 +5530,21 @@
         // Leave the game and disconnect
         if (_currentGameId.HasValue)
         {
-            await GameHubClient.LeaveGameAsync(_currentGameId.Value);
+            _ = LeaveGameSilentlyAsync(_currentGameId.Value);
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    private async Task LeaveGameSilentlyAsync(Guid gameId)
+    {
+        try
+        {
+            await GameHubClient.LeaveGameAsync(gameId);
+        }
+        catch
+        {
+            // Ignore errors during navigation cleanup.
         }
     }
 

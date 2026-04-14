@@ -3,6 +3,8 @@
 @rendermode InteractiveServer
 @implements IAsyncDisposable
 
+@using System.Net
+@using System.Text.Json
 @using CardGames.Contracts.SignalR
 @using CardGames.Poker.Api.Contracts
 @using CardGames.Poker.Api.Clients
@@ -49,7 +51,7 @@
                 <div class="error-icon">??</div>
                 <h3>Failed to Load</h3>
                 <p>@loadError</p>
-                <button class="btn btn-primary" @onclick="LoadSettingsAsync">Try Again</button>
+                <button class="btn btn-primary" @onclick="LoadSettingsAndStartLiveUpdatesAsync">Try Again</button>
             </div>
         }
         else if (!isEditable)
@@ -71,7 +73,7 @@
                         <span class="step-number"><i class="fa-regular fa-sliders"></i></span>
                         <div class="step-info">
                             <h2 class="step-title">Table Configuration</h2>
-                            <p class="step-description">Update the game settings for @gameTypeName</p>
+                            <p class="step-description">Update the game settings for @DisplayGameTypeName</p>
                         </div>
                     </div>
 
@@ -89,28 +91,39 @@
                             </div>
                         </div>
 
-                        <div class="form-row two-columns">
-                            <div class="form-group">
-                                <label class="form-label" for="ante">Ante</label>
-                                <input type="number"
-                                       id="ante"
-                                       class="form-input"
-                                       min="0"
-                                       max="10000"
-                                       @bind="ante" />
-                                <span class="form-hint">Mandatory bet before each hand (0 for none)</span>
+                        @if (!isDealersChoiceTable)
+                        {
+                            <div class="form-row two-columns">
+                                <div class="form-group">
+                                    <label class="form-label" for="ante">Ante</label>
+                                    <input type="number"
+                                           id="ante"
+                                           class="form-input"
+                                           min="0"
+                                           max="10000"
+                                           @bind="ante" />
+                                    <span class="form-hint">Mandatory bet before each hand (0 for none)</span>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="minBet">Minimum Bet</label>
+                                    <input type="number"
+                                           id="minBet"
+                                           class="form-input"
+                                           min="1"
+                                           max="100000"
+                                           @bind="minBet" />
+                                    <span class="form-hint">Minimum bet during play</span>
+                                </div>
                             </div>
-                            <div class="form-group">
-                                <label class="form-label" for="minBet">Minimum Bet</label>
-                                <input type="number"
-                                       id="minBet"
-                                       class="form-input"
-                                       min="1"
-                                       max="100000"
-                                       @bind="minBet" />
-                                <span class="form-hint">Minimum bet during play</span>
+                        }
+                        else
+                        {
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <span class="form-hint"><i class="fa-regular fa-info-circle"></i> The dealer will set the ante and minimum bet each hand.</span>
+                                </div>
                             </div>
-                        </div>
+                        }
 
                         @if (hasBlindFields)
                         {
@@ -149,7 +162,7 @@
                         <div class="form-row info-row">
                             <div class="info-item">
                                 <span class="info-label">Game Type</span>
-                                <span class="info-value">@gameTypeName</span>
+                                <span class="info-value">@DisplayGameTypeName</span>
                             </div>
                             <div class="info-item">
                                 <span class="info-label">Players</span>
@@ -171,7 +184,7 @@
                         <div class="conflict-content">
                             <h4>Settings Changed</h4>
                             <p>Another user has updated the table settings. Please refresh to see the latest changes.</p>
-                            <button class="btn btn-secondary" @onclick="LoadSettingsAsync">
+                            <button class="btn btn-secondary" @onclick="LoadSettingsAndStartLiveUpdatesAsync">
                                 <i class="fa-regular fa-arrows-rotate"></i>
                                 Refresh Settings
                             </button>
@@ -224,6 +237,8 @@
     [Parameter]
     public Guid GameId { get; set; }
 
+    private const string DealersChoiceGameTypeCode = "DEALERSCHOICE";
+
     private bool isLoading = true;
     private bool isSaving;
     private bool hasConflict;
@@ -240,7 +255,10 @@
     private int seatedPlayerCount;
     private int maxPlayers;
     private string? createdByName;
+    private bool isDealersChoiceTable;
     private bool hasBlindFields;
+    private bool isSubscribedToTableSettingsUpdates;
+    private bool hasJoinedSignalRGame;
 
     // Form fields
     private string tableName = "";
@@ -249,12 +267,35 @@
     private int? smallBlind;
     private int? bigBlind;
 
+    private string DisplayGameTypeName => string.IsNullOrWhiteSpace(gameTypeName)
+        ? (isDealersChoiceTable ? "Dealer's Choice" : "Unknown Game")
+        : gameTypeName;
+
     private bool ShowBigBlindError => hasBlindFields && bigBlind.HasValue && smallBlind.HasValue && bigBlind <= smallBlind;
 
-    protected override async Task OnInitializedAsync()
+    protected override Task OnInitializedAsync()
+    {
+        return Task.CompletedTask;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        await LoadSettingsAndStartLiveUpdatesAsync();
+    }
+
+    private async Task LoadSettingsAndStartLiveUpdatesAsync()
     {
         await LoadSettingsAsync();
-        await SetupSignalRAsync();
+
+        if (loadError is null)
+        {
+            _ = EnsureSignalRAsync();
+        }
     }
 
     private async Task LoadSettingsAsync()
@@ -279,7 +320,7 @@
             }
             else
             {
-                loadError = "Failed to load table settings.";
+                loadError = FormatLoadError(response.StatusCode, response.Error?.Content);
             }
         }
         catch (Exception ex)
@@ -299,11 +340,13 @@
         isEditable = settings.IsEditable ?? false;
         rowVersion = settings.RowVersion;
         gameTypeName = settings.GameTypeName;
+        isDealersChoiceTable = string.Equals(settings.GameTypeCode, DealersChoiceGameTypeCode, StringComparison.OrdinalIgnoreCase)
+                              || string.Equals(settings.GameTypeName, "Dealer's Choice", StringComparison.OrdinalIgnoreCase);
         currentPhase = settings.CurrentPhase;
         seatedPlayerCount = settings.SeatedPlayerCount ?? 0;
         maxPlayers = settings.MaxPlayers ?? 0;
         createdByName = settings.CreatedByName;
-        hasBlindFields = settings.SmallBlind is not null
+        hasBlindFields = !isDealersChoiceTable && (settings.SmallBlind is not null
                          || settings.BigBlind is not null
                          || string.Equals(settings.GameTypeCode, "HOLDEM", StringComparison.OrdinalIgnoreCase)
                          || string.Equals(settings.GameTypeCode, "REDRIVER", StringComparison.OrdinalIgnoreCase)
@@ -314,7 +357,7 @@
                          || string.Equals(settings.GameTypeCode, "HOLDTHEBASEBALL", StringComparison.OrdinalIgnoreCase)
                          || string.Equals(settings.GameTypeCode, "PHILSMOM", StringComparison.OrdinalIgnoreCase)
                          || string.Equals(settings.GameTypeCode, "CRAZYPINEAPPLE", StringComparison.OrdinalIgnoreCase)
-                         || string.Equals(settings.GameTypeCode, "KLONDIKE", StringComparison.OrdinalIgnoreCase);
+                         || string.Equals(settings.GameTypeCode, "KLONDIKE", StringComparison.OrdinalIgnoreCase));
 
         // Populate form fields
         tableName = settings.Name ?? "";
@@ -386,20 +429,32 @@
         }
     }
 
-    private async Task SetupSignalRAsync()
+    private async Task EnsureSignalRAsync()
     {
-        try
+        if (!isSubscribedToTableSettingsUpdates)
         {
             GameHubClient.OnTableSettingsUpdated += HandleTableSettingsUpdated;
+            isSubscribedToTableSettingsUpdates = true;
+        }
 
+        if (hasJoinedSignalRGame && GameHubClient.IsConnected)
+        {
+            return;
+        }
+
+        try
+        {
             if (!GameHubClient.IsConnected)
             {
                 await GameHubClient.ConnectAsync();
             }
+
             await GameHubClient.JoinGameAsync(GameId);
+            hasJoinedSignalRGame = true;
         }
         catch (Exception ex)
         {
+            hasJoinedSignalRGame = false;
             Logger.LogWarning(ex, "Failed to connect to SignalR for game {GameId}", GameId);
         }
     }
@@ -425,17 +480,66 @@
         });
     }
 
-    public async ValueTask DisposeAsync()
+    public ValueTask DisposeAsync()
     {
-        GameHubClient.OnTableSettingsUpdated -= HandleTableSettingsUpdated;
+        if (isSubscribedToTableSettingsUpdates)
+        {
+            GameHubClient.OnTableSettingsUpdated -= HandleTableSettingsUpdated;
+        }
+
+        if (hasJoinedSignalRGame)
+        {
+            _ = LeaveGameSilentlyAsync(GameId);
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    private static string FormatLoadError(HttpStatusCode statusCode, string? errorContent)
+    {
+        var serverMessage = TryExtractErrorMessage(errorContent);
+        return string.IsNullOrWhiteSpace(serverMessage)
+            ? $"Failed to load table settings ({(int)statusCode})."
+            : serverMessage;
+    }
+
+    private static string? TryExtractErrorMessage(string? errorContent)
+    {
+        if (string.IsNullOrWhiteSpace(errorContent))
+        {
+            return null;
+        }
 
         try
         {
-            await GameHubClient.LeaveGameAsync(GameId);
+            using var document = JsonDocument.Parse(errorContent);
+            var root = document.RootElement;
+
+            foreach (var propertyName in new[] { "message", "detail", "title" })
+            {
+                if (root.TryGetProperty(propertyName, out var property) && property.ValueKind == JsonValueKind.String)
+                {
+                    return property.GetString();
+                }
+            }
+        }
+        catch (JsonException)
+        {
+            // Fall back to the raw response below.
+        }
+
+        return errorContent.Trim();
+    }
+
+    private async Task LeaveGameSilentlyAsync(Guid gameId)
+    {
+        try
+        {
+            await GameHubClient.LeaveGameAsync(gameId);
         }
         catch
         {
-            // Ignore errors during cleanup
+            // Ignore errors during navigation cleanup.
         }
     }
 }
