@@ -804,6 +804,13 @@ public sealed record PlayerVsDeckStateDto
 		/// List of players who are short on chips.
 		/// </summary>
 		public IReadOnlyList<ShortPlayerDto>? ShortPlayers { get; init; }
+
+		/// <summary>
+		/// Pause type used by the table UI.
+		/// ChipCoverage: players must cover current pot.
+		/// RebuyGrace: busted players can rebuy before game ends.
+		/// </summary>
+		public string PauseType { get; init; } = "ChipCoverage";
 	}
 
 	/// <summary>

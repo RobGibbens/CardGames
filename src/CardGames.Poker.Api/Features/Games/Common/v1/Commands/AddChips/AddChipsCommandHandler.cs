@@ -69,11 +69,13 @@ public sealed class AddChipsCommandHandler(
 				AddChipsErrorCode.PlayerNotInGame,
 				"Player has already left this game.");
 		}
-		// Determine if chips should be applied immediately
-		// Kings and Lows: always immediate
-		// Other games: immediate if BetweenHands, otherwise queue
+		// Determine if chips should be applied immediately.
+		// During chip-related pauses and between-hands waiting states, apply immediately so play can resume.
 		bool applyImmediately = string.Equals(game.GameType.Code, PokerGameMetadataRegistry.KingsAndLowsCode, StringComparison.OrdinalIgnoreCase)
-			|| string.Equals(game.CurrentPhase, "BetweenHands", StringComparison.OrdinalIgnoreCase);
+			|| game.IsPausedForChipCheck
+			|| game.IsPausedForRebuyGrace
+			|| string.Equals(game.CurrentPhase, "BetweenHands", StringComparison.OrdinalIgnoreCase)
+			|| string.Equals(game.CurrentPhase, "WaitingForPlayers", StringComparison.OrdinalIgnoreCase);
 
 		string message;
 		if (applyImmediately)
@@ -88,6 +90,33 @@ public sealed class AddChipsCommandHandler(
 			logger.LogInformation(
 				"Added {Amount} chips immediately to player {PlayerId} in game {GameId}",
 				command.Amount, command.PlayerId, command.GameId);
+
+			// If a cash-game rebuy grace pause is active and enough funded players now exist,
+			// clear the pause and schedule the next hand immediately.
+			if (game.IsPausedForRebuyGrace)
+			{
+				var ante = game.Ante ?? 0;
+				var eligiblePlayers = game.GamePlayers
+					.Where(gp =>
+						gp.Status == GamePlayerStatus.Active &&
+						!gp.IsSittingOut &&
+						gp.LeftAtHandNumber == -1 &&
+						gp.ChipStack >= ante)
+					.ToList();
+
+				if (eligiblePlayers.Count >= 2)
+				{
+					game.IsPausedForChipCheck = false;
+					game.ChipCheckPauseStartedAt = null;
+					game.ChipCheckPauseEndsAt = null;
+					game.IsPausedForRebuyGrace = false;
+					game.RebuyGraceStartedAt = null;
+					game.RebuyGraceEndsAt = null;
+					game.NextHandStartsAt = DateTimeOffset.UtcNow;
+					game.Status = GameStatus.BetweenHands;
+					message = $"{command.Amount} chips added. Rebuy successful — resuming play.";
+				}
+			}
 		}
 		else
 		{

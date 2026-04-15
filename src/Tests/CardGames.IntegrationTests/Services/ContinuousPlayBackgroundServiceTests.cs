@@ -402,6 +402,48 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task ProcessGamesReadyForNextHandAsync_CashGameSingleFundedPlayer_StartsRebuyGracePause()
+    {
+        // Arrange
+        var now = DateTimeOffset.UtcNow;
+        var game = new Game
+        {
+            Id = Guid.NewGuid(),
+            CurrentPhase = "Complete",
+            Status = GameStatus.InProgress,
+            NextHandStartsAt = now.AddSeconds(-1),
+            CurrentHandNumber = 1,
+            Ante = 10,
+            GameType = new GameType { Code = "TESTGAME", Name = "Test Game" }
+        };
+
+        var funded = new GamePlayer { GameId = game.Id, PlayerId = Guid.NewGuid(), Status = GamePlayerStatus.Active, SeatPosition = 0, ChipStack = 1000, LeftAtHandNumber = -1 };
+        var busted = new GamePlayer { GameId = game.Id, PlayerId = Guid.NewGuid(), Status = GamePlayerStatus.Active, SeatPosition = 1, ChipStack = 0, LeftAtHandNumber = -1 };
+        game.GamePlayers.Add(funded);
+        game.GamePlayers.Add(busted);
+
+        _dbContext.Games.Add(game);
+        await _dbContext.SaveChangesAsync();
+
+        var handler = _flowHandlerFactory.SetHandlerForCode("TESTGAME");
+        handler.RequiresChipCoverageCheck = false;
+
+        // Act
+        await _service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+
+        // Assert
+        var updatedGame = await _dbContext.Games.FindAsync(game.Id);
+        updatedGame.Should().NotBeNull();
+        updatedGame!.IsPausedForRebuyGrace.Should().BeTrue();
+        updatedGame.IsPausedForChipCheck.Should().BeTrue();
+        updatedGame.RebuyGraceEndsAt.Should().NotBeNull();
+        updatedGame.CurrentPhase.Should().Be("WaitingForPlayers");
+        updatedGame.Status.Should().Be(GameStatus.BetweenHands);
+        handler.DealCardsCalled.Should().BeFalse();
+        _broadcaster.ToastNotifications.Should().ContainSingle(t => t.GameId == game.Id && t.Message.Contains("Rebuy window started"));
+    }
+
+    [Fact]
     public async Task ProcessGamesReadyForNextHandAsync_FinalizesQueuedLeave_CreditsWallet()
     {
         // Arrange

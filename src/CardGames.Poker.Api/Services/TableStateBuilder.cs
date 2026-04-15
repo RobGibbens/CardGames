@@ -2996,36 +2996,52 @@ public sealed class TableStateBuilder : ITableStateBuilder
 	/// </summary>
 	private static ChipCheckPauseStateDto? BuildChipCheckPauseState(
 		Game game,
-				List<GamePlayer> gamePlayers,
-				int currentPot)
+		List<GamePlayer> gamePlayers,
+		int currentPot)
 	{
 		if (!game.IsPausedForChipCheck)
 		{
 			return null;
 		}
 
-		var shortPlayers = gamePlayers
-			.Where(gp => gp.Status == Entities.GamePlayerStatus.Active &&
-						 !gp.IsSittingOut &&
-						 gp.ChipStack < currentPot &&
-						 !gp.AutoDropOnDropOrStay)
-			.Select(gp => new ShortPlayerDto
-			{
-				SeatIndex = gp.SeatPosition,
-				PlayerName = gp.Player?.Name ?? $"Seat {gp.SeatPosition}",
-				PlayerFirstName = gp.Player?.Name?.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault(),
-				CurrentChips = gp.ChipStack,
-				ChipsNeeded = currentPot - gp.ChipStack
-			})
-			.ToList();
+		var isRebuyGracePause = game.IsPausedForRebuyGrace;
+		var shortPlayers = isRebuyGracePause
+			? gamePlayers
+				.Where(gp => gp.Status == Entities.GamePlayerStatus.Active &&
+							 gp.LeftAtHandNumber == -1 &&
+							 gp.ChipStack <= 0)
+				.Select(gp => new ShortPlayerDto
+				{
+					SeatIndex = gp.SeatPosition,
+					PlayerName = gp.Player?.Name ?? $"Seat {gp.SeatPosition}",
+					PlayerFirstName = gp.Player?.Name?.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault(),
+					CurrentChips = gp.ChipStack,
+					ChipsNeeded = Math.Max(1, (game.Ante ?? 0) - gp.ChipStack)
+				})
+				.ToList()
+			: gamePlayers
+				.Where(gp => gp.Status == Entities.GamePlayerStatus.Active &&
+							 !gp.IsSittingOut &&
+							 gp.ChipStack < currentPot &&
+							 !gp.AutoDropOnDropOrStay)
+				.Select(gp => new ShortPlayerDto
+				{
+					SeatIndex = gp.SeatPosition,
+					PlayerName = gp.Player?.Name ?? $"Seat {gp.SeatPosition}",
+					PlayerFirstName = gp.Player?.Name?.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault(),
+					CurrentChips = gp.ChipStack,
+					ChipsNeeded = currentPot - gp.ChipStack
+				})
+				.ToList();
 
 		return new ChipCheckPauseStateDto
 		{
 			IsPaused = true,
-			PauseStartedAt = game.ChipCheckPauseStartedAt,
-			PauseEndsAt = game.ChipCheckPauseEndsAt,
-			PotAmountToCover = currentPot,
-			ShortPlayers = shortPlayers
+			PauseStartedAt = isRebuyGracePause ? game.RebuyGraceStartedAt : game.ChipCheckPauseStartedAt,
+			PauseEndsAt = isRebuyGracePause ? game.RebuyGraceEndsAt : game.ChipCheckPauseEndsAt,
+			PotAmountToCover = isRebuyGracePause ? Math.Max(1, game.Ante ?? 0) : currentPot,
+			ShortPlayers = shortPlayers,
+			PauseType = isRebuyGracePause ? "RebuyGrace" : "ChipCoverage"
 		};
 	}
 

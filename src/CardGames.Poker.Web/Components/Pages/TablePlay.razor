@@ -484,17 +484,26 @@
                                 OnAcknowledge="@HandlePotMatchAcknowledge" />
         }
 
-        <!-- Chip Coverage Pause Overlay (shown if paused for chip check and player is short) -->
+        <!-- Chip Coverage/Rebuy Pause Overlay (shown if paused and current player needs chips) -->
         @if (_isPausedForChipCheck && IsCurrentPlayerShortOnChips)
         {
             <ChipCoveragePauseOverlay PotAmount="@_chipCheckPotAmount" ShortPlayers="@GetShortPlayers()"
                                       IsCurrentPlayerShort="@IsCurrentPlayerShortOnChips" CurrentPlayerChips="@GetCurrentPlayerChips()"
                                       SecondsRemaining="@GetChipCheckSecondsRemaining()" GameId="@GameId" PlayerId="@(_currentPlayerId ?? Guid.Empty)"
-                                      OnChipsAdded="@OnChipsAddedAsync" />
+                                      OnChipsAdded="@OnChipsAddedAsync" IsRebuyGrace="@_isRebuyGracePause" />
         }
 
-        <!-- Players who are NOT short on chips just see the normal table -->
-        <!-- The short player's seat will show "Waiting for chips" status -->
+        @if (_isPausedForChipCheck && _isRebuyGracePause && !IsCurrentPlayerShortOnChips)
+        {
+            <div class="table-overlay waiting-overlay">
+                <div class="overlay-content">
+                    <div class="overlay-icon"><i class="fa-solid fa-clock"></i></div>
+                    <h2>Waiting for Rebuy</h2>
+                    <p class="overlay-hint">Other players can add chips to continue this cash game.</p>
+                    <p class="overlay-hint">Time remaining: <strong>@TimeSpan.FromSeconds(GetChipCheckSecondsRemaining()).ToString(@"m\:ss")</strong></p>
+                </div>
+            </div>
+        }
 
         <!-- Dealer's Choice Overlay (shown when waiting for dealer to pick the next game) -->
         @if (IsDealersChoicePhase)
@@ -514,7 +523,7 @@
         }
 
         <!-- Waiting/Pre-game overlay (only when waiting for more players, not when game is ready to start) -->
-        @if (_gameResponse?.CurrentPhase == GamePhase.WaitingForPlayers.ToString() && (!_isSeated || IsSittingOut ||
+        @if (!_isPausedForChipCheck && _gameResponse?.CurrentPhase == GamePhase.WaitingForPlayers.ToString() && (!_isSeated || IsSittingOut ||
             !_isReady))
         {
             <div class="table-overlay waiting-overlay">
@@ -733,6 +742,7 @@
 
     // Chip check pause state (for Kings and Lows)
     private bool _isPausedForChipCheck;
+    private bool _isRebuyGracePause;
     private DateTimeOffset? _chipCheckPauseEndsAt;
     private int _chipCheckPotAmount;
 
@@ -1401,12 +1411,14 @@
             if (state.ChipCheckPause is not null)
             {
                 _isPausedForChipCheck = state.ChipCheckPause.IsPaused;
+                _isRebuyGracePause = string.Equals(state.ChipCheckPause.PauseType, "RebuyGrace", StringComparison.OrdinalIgnoreCase);
                 _chipCheckPauseEndsAt = state.ChipCheckPause.PauseEndsAt;
                 _chipCheckPotAmount = state.ChipCheckPause.PotAmountToCover;
             }
             else
             {
                 _isPausedForChipCheck = false;
+                _isRebuyGracePause = false;
                 _chipCheckPauseEndsAt = null;
                 _chipCheckPotAmount = 0;
             }
@@ -1721,12 +1733,14 @@
             if (state.ChipCheckPause is not null)
             {
                 _isPausedForChipCheck = state.ChipCheckPause.IsPaused;
+                _isRebuyGracePause = string.Equals(state.ChipCheckPause.PauseType, "RebuyGrace", StringComparison.OrdinalIgnoreCase);
                 _chipCheckPauseEndsAt = state.ChipCheckPause.PauseEndsAt;
                 _chipCheckPotAmount = state.ChipCheckPause.PotAmountToCover;
             }
             else
             {
                 _isPausedForChipCheck = false;
+                _isRebuyGracePause = false;
                 _chipCheckPauseEndsAt = null;
                 _chipCheckPotAmount = 0;
             }
@@ -2172,10 +2186,9 @@
                     lastActionDescription = "Dropped";
                     lastActionTime = existingSeat.LastActionTime ?? DateTimeOffset.UtcNow;
                 }
-                else if (IsKingsAndLows && _isPausedForChipCheck && IsPlayerShortOnChips(publicSeat.SeatIndex, publicSeat.Chips))
+                else if (_isPausedForChipCheck && IsPlayerShortOnChips(publicSeat.SeatIndex, publicSeat.Chips))
                 {
-                    // Show "Waiting for chips" status for players who are short during chip check pause
-                    lastActionDescription = "Waiting for chips";
+                    lastActionDescription = _isRebuyGracePause ? "Rebuy needed" : "Waiting for chips";
                     lastActionTime = DateTimeOffset.UtcNow;
                 }
                 else
