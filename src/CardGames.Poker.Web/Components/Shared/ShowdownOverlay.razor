@@ -19,7 +19,7 @@
                     <i class="fa-solid fa-trophy"></i>
                 </div>
                 <div class="showdown-heading">
-                    <h2 class="showdown-title">Showdown</h2>
+                    <h2 class="showdown-title">@GetOverlayTitle()</h2>
                     <div class="showdown-subtitle">@GetOutcomeSubtitle()</div>
                 </div>
             </div>
@@ -1021,6 +1021,8 @@
 
         return "Results are in";
     }
+
+    private string GetOverlayTitle() => IsGameEnded ? "Game Over" : "Showdown";
 
     private static string DisplayFirstName(ShowdownPlayerHand? hand)
     {

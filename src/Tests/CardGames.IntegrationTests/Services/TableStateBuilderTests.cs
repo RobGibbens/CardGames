@@ -829,6 +829,41 @@ public class TableStateBuilderTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task BuildPublicStateAsync_RebuyGracePause_IncludesBustedSitOutPlayersInShortPlayers()
+    {
+        var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 2, startingChips: 100, ante: 10);
+
+        var players = await DbContext.GamePlayers
+            .Include(gp => gp.Player)
+            .Where(gp => gp.GameId == setup.Game.Id)
+            .OrderBy(gp => gp.SeatPosition)
+            .ToListAsync();
+
+        players[0].ChipStack = 100;
+        players[0].Status = GamePlayerStatus.Active;
+        players[0].IsSittingOut = false;
+        players[1].ChipStack = 0;
+        players[1].Status = GamePlayerStatus.SittingOut;
+        players[1].IsSittingOut = true;
+
+        setup.Game.IsPausedForChipCheck = true;
+        setup.Game.IsPausedForRebuyGrace = true;
+        setup.Game.RebuyGraceStartedAt = DateTimeOffset.UtcNow;
+        setup.Game.RebuyGraceEndsAt = DateTimeOffset.UtcNow.AddSeconds(ContinuousPlayBackgroundService.CashRebuyGraceDurationSeconds);
+
+        await DbContext.SaveChangesAsync();
+
+        var result = await TableStateBuilder.BuildPublicStateAsync(setup.Game.Id);
+
+        result.Should().NotBeNull();
+        result!.ChipCheckPause.Should().NotBeNull();
+        result.ChipCheckPause!.PauseType.Should().Be("RebuyGrace");
+        result.ChipCheckPause.ShortPlayers.Should().ContainSingle();
+        result.ChipCheckPause.ShortPlayers![0].PlayerName.Should().Be(players[1].Player!.Name);
+        result.ChipCheckPause.ShortPlayers[0].CurrentChips.Should().Be(0);
+    }
+
+    [Fact]
     public async Task BuildPublicStateAsync_FollowTheQueen_DynamicWildRank_UsesNextCardAfterQueenInGlobalDealOrder()
     {
         // Arrange

@@ -100,6 +100,24 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
     /// </summary>
     private void ManageActionTimer(Guid gameId, TableStatePublicDto state)
     {
+        var existingTimer = _actionTimerService.GetTimerState(gameId);
+
+        if (state.ChipCheckPause?.IsPaused == true)
+        {
+            if (existingTimer is not null && existingTimer.TimerType == ActionTimerType.ChipCheckPause)
+            {
+                return;
+            }
+
+            if (existingTimer is not null)
+            {
+                _logger.LogDebug("Stopping non-pause timer for game {GameId} because chip check pause is active", gameId);
+                _actionTimerService.StopTimer(gameId);
+            }
+
+            return;
+        }
+
         // Check if we're in a phase that requires player action
         var requiresAction = ActionPhases.Contains(state.CurrentPhase) ||
                              state.CurrentPhaseRequiresAction;
@@ -112,7 +130,7 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
         if (!requiresAction || (currentActorSeatIndex < 0 && !isSimultaneousAction) || state.IsPaused)
         {
             // Stop timer if no action needed, no actor (and not simultaneous), or game is paused
-            if (_actionTimerService.IsTimerActive(gameId))
+            if (existingTimer is not null)
             {
                 _logger.LogDebug("Stopping action timer for game {GameId} - no action required", gameId);
                 _actionTimerService.StopTimer(gameId);
@@ -122,9 +140,9 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 
         // Check if the current actor has changed
         var effectiveActorSeatIndex = isSimultaneousAction ? -1 : currentActorSeatIndex;
-        var existingTimer = _actionTimerService.GetTimerState(gameId);
-        
-        if (existingTimer is not null && existingTimer.PlayerSeatIndex == effectiveActorSeatIndex)
+        if (existingTimer is not null &&
+            existingTimer.TimerType == ActionTimerType.PlayerAction &&
+            existingTimer.PlayerSeatIndex == effectiveActorSeatIndex)
         {
             // Same player/state, timer already running - don't restart
             _logger.LogDebug(

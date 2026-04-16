@@ -9,7 +9,7 @@ public class FakeActionTimerService : IActionTimerService
         // No-op for tests
     }
 
-    public void StartChipCheckPauseTimer(Guid gameId, int durationSeconds = 120, Func<Guid, Task>? onExpired = null)
+    public void StartChipCheckPauseTimer(Guid gameId, int durationSeconds = 120, Func<Guid, Task>? onExpired = null, DateTimeOffset? startedAtUtc = null)
     {
         // No-op for tests
     }

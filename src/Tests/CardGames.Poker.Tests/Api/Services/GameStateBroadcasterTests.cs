@@ -87,6 +87,44 @@ public class GameStateBroadcasterTests
     }
 
     [Fact]
+    public async Task BroadcastGameStateAsync_ChipCheckPause_PreservesExistingPauseTimer()
+    {
+        var gameId = Guid.NewGuid();
+        var publicState = CreateState(
+            gameId,
+            "FIVECARDDRAW",
+            "WaitingForPlayers",
+            -1,
+            isPaused: true,
+            chipCheckPause: new ChipCheckPauseStateDto
+            {
+                IsPaused = true,
+                PauseStartedAt = DateTimeOffset.UtcNow,
+                PauseEndsAt = DateTimeOffset.UtcNow.AddMinutes(5),
+                PotAmountToCover = 10,
+                ShortPlayers = []
+            });
+
+        var existingTimer = new ActionTimerState
+        {
+            GameId = gameId,
+            PlayerSeatIndex = -1,
+            TimerType = ActionTimerType.ChipCheckPause,
+            DurationSeconds = 300,
+            StartedAtUtc = DateTimeOffset.UtcNow
+        };
+
+        var (sut, _, actionTimerService, _) = CreateSubject(publicState);
+        actionTimerService.GetTimerState(gameId).Returns(existingTimer);
+
+        await sut.BroadcastGameStateAsync(gameId);
+
+        actionTimerService.DidNotReceiveWithAnyArgs().StopTimer(default);
+        actionTimerService.DidNotReceiveWithAnyArgs().StartTimer(default, default, default, default, default);
+        actionTimerService.DidNotReceiveWithAnyArgs().StartChipCheckPauseTimer(default, default, default, default);
+    }
+
+    [Fact]
     public async Task BroadcastTableToastAsync_SendsToastToGameGroup()
     {
         var gameId = Guid.NewGuid();
@@ -147,7 +185,9 @@ public class GameStateBroadcasterTests
         string currentPhase,
         int currentActorSeatIndex,
         bool currentPhaseRequiresAction = false,
-        SeatPublicDto[]? seats = null)
+        SeatPublicDto[]? seats = null,
+        bool isPaused = false,
+        ChipCheckPauseStateDto? chipCheckPause = null)
     {
         return new TableStatePublicDto
         {
@@ -156,7 +196,9 @@ public class GameStateBroadcasterTests
             CurrentPhase = currentPhase,
             CurrentActorSeatIndex = currentActorSeatIndex,
             CurrentPhaseRequiresAction = currentPhaseRequiresAction,
-            Seats = seats ?? []
+            Seats = seats ?? [],
+            IsPaused = isPaused,
+            ChipCheckPause = chipCheckPause
         };
     }
 

@@ -1,3 +1,4 @@
+using System.Reflection;
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
@@ -402,7 +403,7 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task ProcessGamesReadyForNextHandAsync_CashGameSingleFundedPlayer_StartsRebuyGracePause()
+    public async Task ProcessGamesReadyForNextHandAsync_CashGameSingleFundedPlayerAndBustedSitOut_StartsRebuyGracePause()
     {
         // Arrange
         var now = DateTimeOffset.UtcNow;
@@ -418,7 +419,16 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
         };
 
         var funded = new GamePlayer { GameId = game.Id, PlayerId = Guid.NewGuid(), Status = GamePlayerStatus.Active, SeatPosition = 0, ChipStack = 1000, LeftAtHandNumber = -1 };
-        var busted = new GamePlayer { GameId = game.Id, PlayerId = Guid.NewGuid(), Status = GamePlayerStatus.Active, SeatPosition = 1, ChipStack = 0, LeftAtHandNumber = -1 };
+        var busted = new GamePlayer
+        {
+            GameId = game.Id,
+            PlayerId = Guid.NewGuid(),
+            Status = GamePlayerStatus.SittingOut,
+            IsSittingOut = true,
+            SeatPosition = 1,
+            ChipStack = 0,
+            LeftAtHandNumber = -1
+        };
         game.GamePlayers.Add(funded);
         game.GamePlayers.Add(busted);
 
@@ -441,6 +451,50 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
         updatedGame.Status.Should().Be(GameStatus.BetweenHands);
         handler.DealCardsCalled.Should().BeFalse();
         _broadcaster.ToastNotifications.Should().ContainSingle(t => t.GameId == game.Id && t.Message.Contains("Rebuy window started"));
+    }
+
+    [Fact]
+    public async Task HandleCashGameRebuyGraceTimerExpiredAsync_EndsGameAndStartsLobbyCountdown()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var game = new Game
+        {
+            Id = Guid.NewGuid(),
+            CurrentPhase = "WaitingForPlayers",
+            Status = GameStatus.BetweenHands,
+            CurrentHandNumber = 1,
+            IsPausedForChipCheck = true,
+            ChipCheckPauseStartedAt = now.AddMinutes(-5),
+            ChipCheckPauseEndsAt = now.AddSeconds(-1),
+            IsPausedForRebuyGrace = true,
+            RebuyGraceStartedAt = now.AddMinutes(-5),
+            RebuyGraceEndsAt = now.AddSeconds(-1)
+        };
+
+        _dbContext.Games.Add(game);
+        await _dbContext.SaveChangesAsync();
+
+        var method = typeof(ContinuousPlayBackgroundService).GetMethod(
+            "HandleCashGameRebuyGraceTimerExpiredAsync",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+
+        method.Should().NotBeNull("the rebuy grace expiry callback should exist so the server can end paused cash games");
+
+        var task = method!.Invoke(_service, [game.Id]) as Task;
+        task.Should().NotBeNull();
+        await task!;
+
+        var updatedGame = await _dbContext.Games.FindAsync(game.Id);
+        updatedGame.Should().NotBeNull();
+        updatedGame!.CurrentPhase.Should().Be("Ended");
+        updatedGame.Status.Should().Be(GameStatus.Completed);
+        updatedGame.HandCompletedAt.Should().NotBeNull();
+        updatedGame.NextHandStartsAt.Should().NotBeNull();
+        updatedGame.NextHandStartsAt.Should().BeAfter(updatedGame.HandCompletedAt!.Value);
+        updatedGame.NextHandStartsAt.Should().BeOnOrBefore(updatedGame.HandCompletedAt.Value.AddSeconds(ContinuousPlayBackgroundService.CashRebuyGameOverDisplayDurationSeconds + 1));
+        updatedGame.IsPausedForChipCheck.Should().BeFalse();
+        updatedGame.IsPausedForRebuyGrace.Should().BeFalse();
+        _broadcaster.ToastNotifications.Should().Contain(t => t.GameId == game.Id && t.Message.Contains("Game ended"));
     }
 
     [Fact]

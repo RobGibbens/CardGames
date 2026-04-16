@@ -32,7 +32,12 @@ public interface IActionTimerService
     /// <param name="gameId">The game ID.</param>
     /// <param name="durationSeconds">The timer duration in seconds (default 2 minutes).</param>
     /// <param name="onExpired">Callback invoked when the timer expires.</param>
-    void StartChipCheckPauseTimer(Guid gameId, int durationSeconds = DefaultChipCheckPauseDurationSeconds, Func<Guid, Task>? onExpired = null);
+    /// <param name="startedAtUtc">Optional UTC timestamp when the countdown started.</param>
+    void StartChipCheckPauseTimer(
+        Guid gameId,
+        int durationSeconds = DefaultChipCheckPauseDurationSeconds,
+        Func<Guid, Task>? onExpired = null,
+        DateTimeOffset? startedAtUtc = null);
 
     /// <summary>
     /// Stops the action timer for a game.

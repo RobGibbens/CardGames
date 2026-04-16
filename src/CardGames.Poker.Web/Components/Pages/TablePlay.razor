@@ -1397,6 +1397,7 @@
             // Update Dealer's Choice state from SignalR
             _isDealersChoice = state.IsDealersChoice;
             _dealersChoiceDealerPosition = state.DealersChoiceDealerPosition;
+            _actionTimerState = state.ActionTimer;
 
             // Dealer's Choice: load available games when entering WaitingForDealerChoice
             if (_isDealersChoice
@@ -1729,6 +1730,7 @@
 
             _isDealersChoice = state.IsDealersChoice;
             _dealersChoiceDealerPosition = state.DealersChoiceDealerPosition;
+            _actionTimerState = state.ActionTimer;
 
             if (state.ChipCheckPause is not null)
             {
@@ -7049,6 +7051,12 @@ HandType.HighCard
     /// </summary>
     private int GetChipCheckSecondsRemaining()
     {
+        if (_isPausedForChipCheck &&
+            _actionTimerState is { IsActive: true, PlayerSeatIndex: -1 })
+        {
+            return Math.Max(0, _actionTimerState.SecondsRemaining);
+        }
+
         if (!_chipCheckPauseEndsAt.HasValue)
         {
             return 0;

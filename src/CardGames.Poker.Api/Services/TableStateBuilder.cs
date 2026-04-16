@@ -3007,7 +3007,7 @@ public sealed class TableStateBuilder : ITableStateBuilder
 		var isRebuyGracePause = game.IsPausedForRebuyGrace;
 		var shortPlayers = isRebuyGracePause
 			? gamePlayers
-				.Where(gp => gp.Status == Entities.GamePlayerStatus.Active &&
+				.Where(gp => gp.Status is Entities.GamePlayerStatus.Active or Entities.GamePlayerStatus.SittingOut &&
 							 gp.LeftAtHandNumber == -1 &&
 							 gp.ChipStack <= 0)
 				.Select(gp => new ShortPlayerDto

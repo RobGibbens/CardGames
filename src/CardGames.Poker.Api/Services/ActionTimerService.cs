@@ -78,7 +78,11 @@ public sealed class ActionTimerService : IActionTimerService, IDisposable
     }
 
     /// <inheritdoc />
-    public void StartChipCheckPauseTimer(Guid gameId, int durationSeconds = IActionTimerService.DefaultChipCheckPauseDurationSeconds, Func<Guid, Task>? onExpired = null)
+    public void StartChipCheckPauseTimer(
+        Guid gameId,
+        int durationSeconds = IActionTimerService.DefaultChipCheckPauseDurationSeconds,
+        Func<Guid, Task>? onExpired = null,
+        DateTimeOffset? startedAtUtc = null)
     {
         // Stop any existing timer for this game
         StopTimer(gameId);
@@ -88,7 +92,7 @@ public sealed class ActionTimerService : IActionTimerService, IDisposable
             GameId = gameId,
             PlayerSeatIndex = -1, // No specific player for chip check pause
             DurationSeconds = durationSeconds,
-            StartedAtUtc = DateTimeOffset.UtcNow,
+            StartedAtUtc = startedAtUtc ?? DateTimeOffset.UtcNow,
             TimerType = ActionTimerType.ChipCheckPause
         };
 

@@ -38,7 +38,8 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 	/// to the next player. This gives all players time to see the revealed third card.
 	/// </summary>
 	public const int InBetweenRevealDisplayDurationSeconds = 5;
-	public const int CashRebuyGraceDurationSeconds = 300;
+	public const int CashRebuyGraceDurationSeconds = 20;
+	public const int CashRebuyGameOverDisplayDurationSeconds = 15;
 
 	private readonly IServiceScopeFactory _scopeFactory;
 	private readonly ILogger<ContinuousPlayBackgroundService> _logger;
@@ -89,6 +90,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		var broadcaster = scope.ServiceProvider.GetRequiredService<IGameStateBroadcaster>();
 		var handHistoryRecorder = scope.ServiceProvider.GetRequiredService<IHandHistoryRecorder>();
 		var playerChipWalletService = scope.ServiceProvider.GetRequiredService<IPlayerChipWalletService>();
+		var actionTimerService = scope.ServiceProvider.GetService(typeof(IActionTimerService)) as IActionTimerService;
 
 		var now = DateTimeOffset.UtcNow;
 
@@ -121,7 +123,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			{
 				try
 				{
-					await StartNextHandAsync(scope, context, broadcaster, playerChipWalletService, game, now, cancellationToken);
+					await StartNextHandAsync(scope, context, broadcaster, playerChipWalletService, actionTimerService, game, now, cancellationToken);
 				}
 				catch (Exception ex)
 				{
@@ -523,6 +525,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		CardsDbContext context,
 		IGameStateBroadcaster broadcaster,
 		IPlayerChipWalletService playerChipWalletService,
+		IActionTimerService? actionTimerService,
 		Game game,
 		DateTimeOffset now,
 		CancellationToken cancellationToken)
@@ -738,9 +741,13 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 								_logger.LogInformation(
 									"[CHIP-CHECK-BG] Game {GameId} still paused for chip check. {Count} player(s) need chips. Ends at {EndTime}",
 									game.Id, playersNeedingChips.Count, game.ChipCheckPauseEndsAt);
-								await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
-								return; // Don't start the hand yet
-							}
+							actionTimerService?.StartChipCheckPauseTimer(
+								game.Id,
+								durationSeconds: (int)Math.Ceiling(chipCheckConfig.PauseDuration.TotalSeconds),
+								startedAtUtc: now);
+							await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
+							return; // Don't start the hand yet
+						}
 						}
 						else
 						{
@@ -832,6 +839,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		if (await TryHandleCashGameRebuyGraceAsync(
 			context,
 			broadcaster,
+			actionTimerService,
 			game,
 			eligiblePlayers,
 			ante,
@@ -1145,6 +1153,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 	private async Task<bool> TryHandleCashGameRebuyGraceAsync(
 		CardsDbContext context,
 		IGameStateBroadcaster broadcaster,
+		IActionTimerService? actionTimerService,
 		Game game,
 		List<GamePlayer> eligiblePlayers,
 		int ante,
@@ -1157,7 +1166,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		}
 
 		var bustedPlayers = game.GamePlayers
-			.Where(gp => gp.Status == GamePlayerStatus.Active &&
+			.Where(gp => gp.Status is GamePlayerStatus.Active or GamePlayerStatus.SittingOut &&
 						 gp.LeftAtHandNumber == -1 &&
 						 gp.ChipStack <= 0)
 			.ToList();
@@ -1201,11 +1210,11 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 				"Cash rebuy grace expired for game {GameId}; ending game",
 				game.Id);
 
-			game.CurrentPhase = nameof(Phases.Complete);
+			game.CurrentPhase = "Ended";
 			game.Status = GameStatus.Completed;
 			game.EndedAt = now;
 			game.HandCompletedAt = now;
-			game.NextHandStartsAt = null;
+			game.NextHandStartsAt = now.AddSeconds(CashRebuyGameOverDisplayDurationSeconds);
 			game.IsPausedForChipCheck = false;
 			game.ChipCheckPauseStartedAt = null;
 			game.ChipCheckPauseEndsAt = null;
@@ -1266,6 +1275,11 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		}
 
 		await context.SaveChangesAsync(cancellationToken);
+		actionTimerService?.StartChipCheckPauseTimer(
+			game.Id,
+			durationSeconds: CashRebuyGraceDurationSeconds,
+			onExpired: HandleCashGameRebuyGraceTimerExpiredAsync,
+			startedAtUtc: now);
 		await broadcaster.BroadcastTableToastAsync(
 			new TableToastNotificationDto
 			{
@@ -1277,6 +1291,54 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			cancellationToken);
 		await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
 		return true;
+	}
+
+	private async Task HandleCashGameRebuyGraceTimerExpiredAsync(Guid gameId)
+	{
+		using var scope = _scopeFactory.CreateScope();
+		var context = scope.ServiceProvider.GetRequiredService<CardsDbContext>();
+		var broadcaster = scope.ServiceProvider.GetRequiredService<IGameStateBroadcaster>();
+		var now = DateTimeOffset.UtcNow;
+
+		var game = await context.Games
+			.FirstOrDefaultAsync(g => g.Id == gameId, CancellationToken.None);
+
+		if (game is null ||
+			!game.IsPausedForRebuyGrace ||
+			!game.RebuyGraceEndsAt.HasValue ||
+			now < game.RebuyGraceEndsAt.Value)
+		{
+			return;
+		}
+
+		_logger.LogInformation(
+			"Cash rebuy grace timer expired for game {GameId}; ending game",
+			gameId);
+
+		game.CurrentPhase = "Ended";
+		game.Status = GameStatus.Completed;
+		game.EndedAt = now;
+		game.HandCompletedAt = now;
+		game.NextHandStartsAt = now.AddSeconds(CashRebuyGameOverDisplayDurationSeconds);
+		game.IsPausedForChipCheck = false;
+		game.ChipCheckPauseStartedAt = null;
+		game.ChipCheckPauseEndsAt = null;
+		game.IsPausedForRebuyGrace = false;
+		game.RebuyGraceStartedAt = null;
+		game.RebuyGraceEndsAt = null;
+		game.UpdatedAt = now;
+
+		await context.SaveChangesAsync(CancellationToken.None);
+		await broadcaster.BroadcastTableToastAsync(
+			new TableToastNotificationDto
+			{
+				GameId = gameId,
+				Message = "Rebuy timer expired. Game ended.",
+				Type = "warning",
+				DurationMs = 6000
+			},
+			CancellationToken.None);
+		await broadcaster.BroadcastGameStateAsync(gameId, CancellationToken.None);
 	}
 
 	private async Task<bool> TryTransitionTerminalDealersChoiceScrewYourNeighborAsync(
