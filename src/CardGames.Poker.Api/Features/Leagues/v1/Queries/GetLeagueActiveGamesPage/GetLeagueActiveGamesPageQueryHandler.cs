@@ -40,6 +40,7 @@ public sealed class GetLeagueActiveGamesPageQueryHandler(
 				&& seasonEvent.Status != Data.Entities.LeagueSeasonEventStatus.Canceled
 			join game in context.Games.AsNoTracking() on (seasonEvent.LaunchedGameId ?? Guid.Empty) equals game.Id into games
 			from game in games.DefaultIfEmpty()
+			where game == null || game.Status != Data.Entities.GameStatus.Completed
 			join gameType in context.GameTypes.AsNoTracking() on game.GameTypeId equals gameType.Id into gameTypes
 			from gameType in gameTypes.DefaultIfEmpty()
 			select new LeagueActiveGameEntryDto
@@ -64,6 +65,7 @@ public sealed class GetLeagueActiveGamesPageQueryHandler(
 				&& oneOffEvent.Status != Data.Entities.LeagueOneOffEventStatus.Canceled
 			join game in context.Games.AsNoTracking() on (oneOffEvent.LaunchedGameId ?? Guid.Empty) equals game.Id into games
 			from game in games.DefaultIfEmpty()
+			where game == null || game.Status != Data.Entities.GameStatus.Completed
 			join gameType in context.GameTypes.AsNoTracking() on game.GameTypeId equals gameType.Id into gameTypes
 			from gameType in gameTypes.DefaultIfEmpty()
 			select new LeagueActiveGameEntryDto

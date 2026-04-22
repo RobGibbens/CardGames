@@ -6,7 +6,7 @@
 		<div class="league-detail-card-header">
 			<h3><i class="fa-solid fa-trophy"></i> Season Event Results</h3>
 			<div class="league-detail-card-actions">
-				@if (Seasons.Count > 0)
+				@if (ShowSeasonSelector && Seasons.Count > 0)
 				{
 					<select class="league-detail-season-select" @onchange="OnSeasonSelectorChanged">
 						@foreach (var season in Seasons)
@@ -67,6 +67,38 @@
 			</div>
 		}
 	</section>
+
+	@if (CompletedOneOffEvents.Count > 0)
+	{
+		<section class="league-detail-card">
+			<div class="league-detail-card-header">
+				<h3><i class="fa-solid fa-sparkles"></i> Completed One-Off Events</h3>
+			</div>
+
+			<div class="league-detail-results-table">
+				<div class="league-detail-results-header-row">
+					<span>Event</span>
+					<span>Scheduled</span>
+					<span>Status</span>
+					<span>Actions</span>
+				</div>
+				@foreach (var oneOffEvent in CompletedOneOffEvents)
+				{
+					<div class="league-detail-results-row">
+						<span class="league-detail-results-name">@oneOffEvent.Name</span>
+						<span class="league-detail-results-date">@FormatDate(oneOffEvent.ScheduledAtUtc)</span>
+						<span class="league-detail-event-status league-detail-event-status-completed">@oneOffEvent.Status</span>
+						<div class="league-detail-results-actions">
+							@if (oneOffEvent.LaunchedGameId.HasValue)
+							{
+								<button class="btn btn-sm btn-outline-primary league-action-btn" @onclick="() => OpenTable.InvokeAsync(oneOffEvent.LaunchedGameId.Value)">Open Table</button>
+							}
+						</div>
+					</div>
+				}
+			</div>
+		</section>
+	}
 </div>
 
 @code {
@@ -81,6 +113,9 @@
 
 	[Parameter, EditorRequired]
 	public List<LeagueSeasonEventDto> SeasonEvents { get; set; } = [];
+
+	[Parameter]
+	public List<LeagueOneOffEventDto> CompletedOneOffEvents { get; set; } = [];
 
 	[Parameter]
 	public Guid? LaunchingSeasonEventId { get; set; }
@@ -105,6 +140,9 @@
 
 	[Parameter]
 	public EventCallback<Guid> LaunchSeasonEvent { get; set; }
+
+	[Parameter]
+	public bool ShowSeasonSelector { get; set; } = true;
 
 	private string FormatDate(DateTimeOffset? value)
 	{

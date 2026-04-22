@@ -359,6 +359,33 @@ namespace CardGames.Poker.Api.Clients
         [Get("/api/v1/leagues/{leagueId}/members")]
         Task<IApiResponse<ICollection<LeagueMemberDto>>> GetLeagueMembersAsync(System.Guid leagueId, CancellationToken cancellationToken = default);
 
+        /// <summary>Get league active games page</summary>
+        /// <remarks>Returns a paged list of active launched league games for an active league member.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>401</term>
+        /// <description>Unauthorized</description>
+        /// </item>
+        /// <item>
+        /// <term>403</term>
+        /// <description>Forbidden</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json")]
+        [Get("/api/v1/leagues/{leagueId}/active-games")]
+        Task<IApiResponse<LeagueActiveGamesPageDto>> GetLeagueActiveGamesPageAsync(System.Guid leagueId, [Query] int? pageSize, [Query] int? pageNumber, [Query] int? take, [Query] int? skip, CancellationToken cancellationToken = default);
+
         /// <summary>Get league membership history</summary>
         /// <remarks>Returns membership timeline events for active members.</remarks>
         /// <returns>
@@ -976,6 +1003,146 @@ namespace CardGames.Poker.Api.Clients
         [Get("/api/v1/leagues/{leagueId}/seasons/{seasonId}/events")]
         Task<IApiResponse<ICollection<LeagueSeasonEventDto>>> GetLeagueSeasonEventsAsync(System.Guid leagueId, System.Guid seasonId, CancellationToken cancellationToken = default);
 
+        /// <summary>Update league season event</summary>
+        /// <remarks>Updates a planned, unlaunched season event within a league.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>204</term>
+        /// <description>No Content</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>401</term>
+        /// <description>Unauthorized</description>
+        /// </item>
+        /// <item>
+        /// <term>403</term>
+        /// <description>Forbidden</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/problem+json", "Content-Type: application/json")]
+        [Put("/api/v1/leagues/{leagueId}/seasons/{seasonId}/events/{eventId}")]
+        Task<IApiResponse> UpdateLeagueSeasonEventAsync(System.Guid leagueId, System.Guid seasonId, System.Guid eventId, [Body] UpdateLeagueSeasonEventRequest body, CancellationToken cancellationToken = default);
+
+        /// <summary>Delete league season event</summary>
+        /// <remarks>Deletes a planned, unlaunched season event.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>204</term>
+        /// <description>No Content</description>
+        /// </item>
+        /// <item>
+        /// <term>401</term>
+        /// <description>Unauthorized</description>
+        /// </item>
+        /// <item>
+        /// <term>403</term>
+        /// <description>Forbidden</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// <item>
+        /// <term>500</term>
+        /// <description>Internal Server Error</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/problem+json")]
+        [Delete("/api/v1/leagues/{leagueId}/seasons/{seasonId}/events/{eventId}")]
+        Task<IApiResponse> DeleteLeagueSeasonEventAsync(System.Guid leagueId, System.Guid seasonId, System.Guid eventId, CancellationToken cancellationToken = default);
+
+        /// <summary>Get league season events page</summary>
+        /// <remarks>Returns a paged list of season-linked events for an active member of the league.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>401</term>
+        /// <description>Unauthorized</description>
+        /// </item>
+        /// <item>
+        /// <term>403</term>
+        /// <description>Forbidden</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json")]
+        [Get("/api/v1/leagues/{leagueId}/seasons/{seasonId}/events/page")]
+        Task<IApiResponse<LeagueSeasonEventsPageDto>> GetLeagueSeasonEventsPageAsync(System.Guid leagueId, System.Guid seasonId, [Query] int? pageSize, [Query] int? pageNumber, [Query] int? take, [Query] int? skip, CancellationToken cancellationToken = default);
+
+        /// <summary>Get recent completed season events</summary>
+        /// <remarks>Returns the most recent completed events for a selected league season.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>401</term>
+        /// <description>Unauthorized</description>
+        /// </item>
+        /// <item>
+        /// <term>403</term>
+        /// <description>Forbidden</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json")]
+        [Get("/api/v1/leagues/{leagueId}/seasons/{seasonId}/events/recent-completed")]
+        Task<IApiResponse<ICollection<LeagueSeasonEventDto>>> GetRecentCompletedLeagueSeasonEventsAsync(System.Guid leagueId, System.Guid seasonId, [Query] int? take, CancellationToken cancellationToken = default);
+
         /// <summary>Ingest league season event results</summary>
         /// <remarks>Ingests ranked member results for a season event and updates league standings.</remarks>
         /// <returns>
@@ -1115,6 +1282,138 @@ namespace CardGames.Poker.Api.Clients
         [Headers("Accept: application/json")]
         [Get("/api/v1/leagues/{leagueId}/events/one-off")]
         Task<IApiResponse<ICollection<LeagueOneOffEventDto>>> GetLeagueOneOffEventsAsync(System.Guid leagueId, CancellationToken cancellationToken = default);
+
+        /// <summary>Update league one-off event</summary>
+        /// <remarks>Updates a planned, unlaunched one-off event within a league.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>204</term>
+        /// <description>No Content</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>401</term>
+        /// <description>Unauthorized</description>
+        /// </item>
+        /// <item>
+        /// <term>403</term>
+        /// <description>Forbidden</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/problem+json", "Content-Type: application/json")]
+        [Put("/api/v1/leagues/{leagueId}/events/one-off/{eventId}")]
+        Task<IApiResponse> UpdateLeagueOneOffEventAsync(System.Guid leagueId, System.Guid eventId, [Body] UpdateLeagueOneOffEventRequest body, CancellationToken cancellationToken = default);
+
+        /// <summary>Delete league one-off event</summary>
+        /// <remarks>Deletes a planned, unlaunched one-off event.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>204</term>
+        /// <description>No Content</description>
+        /// </item>
+        /// <item>
+        /// <term>401</term>
+        /// <description>Unauthorized</description>
+        /// </item>
+        /// <item>
+        /// <term>403</term>
+        /// <description>Forbidden</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// <item>
+        /// <term>500</term>
+        /// <description>Internal Server Error</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/problem+json")]
+        [Delete("/api/v1/leagues/{leagueId}/events/one-off/{eventId}")]
+        Task<IApiResponse> DeleteLeagueOneOffEventAsync(System.Guid leagueId, System.Guid eventId, CancellationToken cancellationToken = default);
+
+        /// <summary>Get league one-off events page</summary>
+        /// <remarks>Returns a paged list of one-off events for an active member of the league.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>401</term>
+        /// <description>Unauthorized</description>
+        /// </item>
+        /// <item>
+        /// <term>403</term>
+        /// <description>Forbidden</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json")]
+        [Get("/api/v1/leagues/{leagueId}/events/one-off/page")]
+        Task<IApiResponse<LeagueOneOffEventsPageDto>> GetLeagueOneOffEventsPageAsync(System.Guid leagueId, [Query] int? pageSize, [Query] int? pageNumber, [Query] bool? includeCompleted, [Query] int? take, [Query] int? skip, CancellationToken cancellationToken = default);
+
+        /// <summary>Get league upcoming events page</summary>
+        /// <remarks>Returns a paged list of upcoming league events for an active league member.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>401</term>
+        /// <description>Unauthorized</description>
+        /// </item>
+        /// <item>
+        /// <term>403</term>
+        /// <description>Forbidden</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json")]
+        [Get("/api/v1/leagues/{leagueId}/events/upcoming")]
+        Task<IApiResponse<LeagueUpcomingEventsPageDto>> GetLeagueUpcomingEventsPageAsync(System.Guid leagueId, [Query] int? pageSize, [Query] int? pageNumber, [Query] int? take, [Query] int? skip, CancellationToken cancellationToken = default);
 
         /// <summary>Get league standings</summary>
         /// <remarks>Returns current league standings for active league members.</remarks>
@@ -2419,6 +2718,65 @@ namespace CardGames.Poker.Api.Clients
         Task<IApiResponse> IrishHoldEmFoldDuringDrawAsync(System.Guid gameId, [Body] FoldDuringDrawRequest body, CancellationToken cancellationToken = default);
     }
 
+    /// <summary>AceChoice</summary>
+    [System.CodeDom.Compiler.GeneratedCode("Refitter", "1.7.0.0")]
+    public partial interface IInBetweenApi
+    {
+        /// <summary>AceChoice</summary>
+        /// <remarks>Declare an Ace as high or low when it is the first boundary card in In-Between.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/games/in-between/{gameId}/ace-choice")]
+        Task<IApiResponse<AceChoiceSuccessful>> InBetweenAceChoiceAsync(System.Guid gameId, [Body] AceChoiceRequest body, CancellationToken cancellationToken = default);
+
+        /// <summary>PlaceBet</summary>
+        /// <remarks>Place a bet (or pass with amount 0) during an In-Between turn.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/games/in-between/{gameId}/place-bet")]
+        Task<IApiResponse<PlaceBetSuccessful>> InBetweenPlaceBetAsync(System.Guid gameId, [Body] PlaceBetRequest body, CancellationToken cancellationToken = default);
+    }
+
     /// <summary>Start Hand</summary>
     [System.CodeDom.Compiler.GeneratedCode("Refitter", "1.7.0.0")]
     public partial interface IHoldTheBaseballApi
@@ -3532,6 +3890,10 @@ namespace CardGames.Poker.Api.Clients
         /// <description>OK</description>
         /// </item>
         /// <item>
+        /// <term>202</term>
+        /// <description>Accepted</description>
+        /// </item>
+        /// <item>
         /// <term>400</term>
         /// <description>Bad Request</description>
         /// </item>
@@ -3618,6 +3980,40 @@ namespace CardGames.Poker.Api.Clients
         [Headers("Accept: application/json, application/problem+json")]
         [Post("/api/v1/games/{gameId}/leave")]
         Task<IApiResponse<LeaveGameSuccessful>> LeaveGameAsync(System.Guid gameId, CancellationToken cancellationToken = default);
+
+        /// <summary>Resolve Join Request</summary>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>400</term>
+        /// <description>Bad Request</description>
+        /// </item>
+        /// <item>
+        /// <term>403</term>
+        /// <description>Forbidden</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json", "Content-Type: application/json")]
+        [Post("/api/v1/games/{gameId}/join-requests/{joinRequestId}/resolve")]
+        Task<IApiResponse<ResolveJoinRequestSuccessful>> ResolveJoinRequestAsync(System.Guid gameId, System.Guid joinRequestId, [Body] ResolveJoinRequestRequest body, CancellationToken cancellationToken = default);
 
         /// <summary>Toggle Sit Out Status</summary>
         /// <remarks>Updates the sitting out status of the current player for the specified game.</remarks>
@@ -3875,6 +4271,54 @@ namespace CardGames.Poker.Api.Clients
         [Headers("Accept: application/json, application/problem+json")]
         [Get("/api/v1/games/{gameId}/history")]
         Task<IApiResponse<HandHistoryListDto>> GetHandHistoryAsync(System.Guid gameId, [Query] int? take, [Query] int? skip, CancellationToken cancellationToken = default);
+
+        /// <summary>Get Pending Join Requests For Host</summary>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Get("/api/v1/games/join-requests/pending-for-host")]
+        Task<IApiResponse> GetPendingJoinRequestsForHostAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>GetRabbitHunt</summary>
+        /// <remarks>Returns the exact remaining community cards that would have been revealed if the hand had continued to a full board. The response is private to the requesting player and does not affect game outcome.</remarks>
+        /// <returns>
+        /// A <see cref="Task"/> representing the <see cref="IApiResponse"/> instance containing the result:
+        /// <list type="table">
+        /// <listheader>
+        /// <term>Status</term>
+        /// <description>Description</description>
+        /// </listheader>
+        /// <item>
+        /// <term>200</term>
+        /// <description>OK</description>
+        /// </item>
+        /// <item>
+        /// <term>401</term>
+        /// <description>Unauthorized</description>
+        /// </item>
+        /// <item>
+        /// <term>404</term>
+        /// <description>Not Found</description>
+        /// </item>
+        /// <item>
+        /// <term>409</term>
+        /// <description>Conflict</description>
+        /// </item>
+        /// </list>
+        /// </returns>
+        [Headers("Accept: application/json, application/problem+json")]
+        [Get("/api/v1/games/{gameId}/rabbit-hunt")]
+        Task<IApiResponse<GetRabbitHuntSuccessful>> GetRabbitHuntAsync(System.Guid gameId, CancellationToken cancellationToken = default);
     }
 
     /// <summary>Select Showcase Card</summary>
@@ -4230,6 +4674,53 @@ namespace CardGames.Poker.Api.Contracts
     using System = global::System;
 
     
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record AceChoiceRequest
+    {
+        [JsonConstructor]
+        public AceChoiceRequest(bool @aceIsHigh, System.Guid @playerId)
+        {
+            this.PlayerId = @playerId;
+            this.AceIsHigh = @aceIsHigh;
+        }
+
+        [JsonPropertyName("playerId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid PlayerId { get; init; }
+
+        [JsonPropertyName("aceIsHigh")]
+        public bool AceIsHigh { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record AceChoiceSuccessful
+    {
+        [JsonConstructor]
+        public AceChoiceSuccessful(bool @aceIsHigh, System.Guid @gameId, string @nextSubPhase, System.Guid @playerId)
+        {
+            this.GameId = @gameId;
+            this.PlayerId = @playerId;
+            this.AceIsHigh = @aceIsHigh;
+            this.NextSubPhase = @nextSubPhase;
+        }
+
+        [JsonPropertyName("gameId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid GameId { get; init; }
+
+        [JsonPropertyName("playerId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid PlayerId { get; init; }
+
+        [JsonPropertyName("aceIsHigh")]
+        public bool AceIsHigh { get; init; }
+
+        [JsonPropertyName("nextSubPhase")]
+        public string NextSubPhase { get; init; }
+
+    }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial record AcknowledgePotMatchSuccessful
@@ -4980,7 +5471,7 @@ namespace CardGames.Poker.Api.Contracts
     public partial record CreateGameCommand
     {
         [JsonConstructor]
-        public CreateGameCommand(ICollection<string> @allowedDealerChoiceGameCodes, int @ante, bool? @areOddsVisibleToAllPlayers, int? @bigBlind, string @gameCode, System.Guid @gameId, string @gameName, bool? @isDealersChoice, int? @maxBuyIn, int @minBet, ICollection<PlayerInfo> @players, int? @smallBlind)
+        public CreateGameCommand(ICollection<string> @allowedDealerChoiceGameCodes, int @ante, bool? @areOddsVisibleToAllPlayers, int? @bigBlind, string @gameCode, System.Guid @gameId, string @gameName, bool? @isDealersChoice, int? @maxBuyIn, int @minBet, ICollection<PlayerInfo> @players, bool? @requiresJoinApproval, int? @smallBlind, int? @tournamentBuyIn)
         {
             this.GameId = @gameId;
             this.GameCode = @gameCode;
@@ -4992,6 +5483,8 @@ namespace CardGames.Poker.Api.Contracts
             this.SmallBlind = @smallBlind;
             this.BigBlind = @bigBlind;
             this.MaxBuyIn = @maxBuyIn;
+            this.TournamentBuyIn = @tournamentBuyIn;
+            this.RequiresJoinApproval = @requiresJoinApproval;
             this.AreOddsVisibleToAllPlayers = @areOddsVisibleToAllPlayers;
             this.AllowedDealerChoiceGameCodes = @allowedDealerChoiceGameCodes;
         }
@@ -5035,6 +5528,13 @@ namespace CardGames.Poker.Api.Contracts
         [JsonPropertyName("maxBuyIn")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? MaxBuyIn { get; init; }
+
+        [JsonPropertyName("tournamentBuyIn")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? TournamentBuyIn { get; init; }
+
+        [JsonPropertyName("requiresJoinApproval")]
+        public bool? RequiresJoinApproval { get; init; }
 
         [JsonPropertyName("areOddsVisibleToAllPlayers")]
         public bool? AreOddsVisibleToAllPlayers { get; init; }
@@ -5095,7 +5595,7 @@ namespace CardGames.Poker.Api.Contracts
     public partial record CreateLeagueOneOffEventRequest
     {
         [JsonConstructor]
-        public CreateLeagueOneOffEventRequest(int? @ante, LeagueOneOffEventType? @eventType, string @gameTypeCode, int? @minBet, string @name, string @notes, System.DateTimeOffset? @scheduledAtUtc)
+        public CreateLeagueOneOffEventRequest(int? @ante, int? @bigBlind, LeagueOneOffEventType? @eventType, string @gameTypeCode, int? @minBet, string @name, string @notes, System.DateTimeOffset? @scheduledAtUtc, int? @smallBlind, int? @tournamentBuyIn)
         {
             this.Name = @name;
             this.ScheduledAtUtc = @scheduledAtUtc;
@@ -5104,6 +5604,9 @@ namespace CardGames.Poker.Api.Contracts
             this.GameTypeCode = @gameTypeCode;
             this.Ante = @ante;
             this.MinBet = @minBet;
+            this.SmallBlind = @smallBlind;
+            this.BigBlind = @bigBlind;
+            this.TournamentBuyIn = @tournamentBuyIn;
         }
 
         [JsonPropertyName("name")]
@@ -5130,13 +5633,25 @@ namespace CardGames.Poker.Api.Contracts
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? MinBet { get; init; }
 
+        [JsonPropertyName("smallBlind")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? SmallBlind { get; init; }
+
+        [JsonPropertyName("bigBlind")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? BigBlind { get; init; }
+
+        [JsonPropertyName("tournamentBuyIn")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? TournamentBuyIn { get; init; }
+
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial record CreateLeagueOneOffEventResponse
     {
         [JsonConstructor]
-        public CreateLeagueOneOffEventResponse(int? @ante, System.DateTimeOffset? @createdAtUtc, string @createdByUserId, System.Guid @eventId, LeagueOneOffEventType? @eventType, string @gameTypeCode, System.Guid @leagueId, int? @minBet, string @name, string @notes, System.DateTimeOffset? @scheduledAtUtc, LeagueOneOffEventStatus? @status)
+        public CreateLeagueOneOffEventResponse(int? @ante, int? @bigBlind, System.DateTimeOffset? @createdAtUtc, string @createdByUserId, System.Guid @eventId, LeagueOneOffEventType? @eventType, string @gameTypeCode, System.Guid @leagueId, int? @minBet, string @name, string @notes, System.DateTimeOffset? @scheduledAtUtc, int? @smallBlind, LeagueOneOffEventStatus? @status, int? @tournamentBuyIn)
         {
             this.EventId = @eventId;
             this.LeagueId = @leagueId;
@@ -5150,6 +5665,9 @@ namespace CardGames.Poker.Api.Contracts
             this.GameTypeCode = @gameTypeCode;
             this.Ante = @ante;
             this.MinBet = @minBet;
+            this.SmallBlind = @smallBlind;
+            this.BigBlind = @bigBlind;
+            this.TournamentBuyIn = @tournamentBuyIn;
         }
 
         [JsonPropertyName("eventId")]
@@ -5193,6 +5711,18 @@ namespace CardGames.Poker.Api.Contracts
         [JsonPropertyName("minBet")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? MinBet { get; init; }
+
+        [JsonPropertyName("smallBlind")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? SmallBlind { get; init; }
+
+        [JsonPropertyName("bigBlind")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? BigBlind { get; init; }
+
+        [JsonPropertyName("tournamentBuyIn")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? TournamentBuyIn { get; init; }
 
     }
 
@@ -5256,12 +5786,18 @@ namespace CardGames.Poker.Api.Contracts
     public partial record CreateLeagueSeasonEventRequest
     {
         [JsonConstructor]
-        public CreateLeagueSeasonEventRequest(string @name, string @notes, System.DateTimeOffset? @scheduledAtUtc, int? @sequenceNumber)
+        public CreateLeagueSeasonEventRequest(int? @ante, int? @bigBlind, string @gameTypeCode, int? @minBet, string @name, string @notes, System.DateTimeOffset? @scheduledAtUtc, int? @sequenceNumber, int? @smallBlind, int? @tournamentBuyIn)
         {
             this.Name = @name;
             this.SequenceNumber = @sequenceNumber;
             this.ScheduledAtUtc = @scheduledAtUtc;
             this.Notes = @notes;
+            this.GameTypeCode = @gameTypeCode;
+            this.Ante = @ante;
+            this.MinBet = @minBet;
+            this.SmallBlind = @smallBlind;
+            this.BigBlind = @bigBlind;
+            this.TournamentBuyIn = @tournamentBuyIn;
         }
 
         [JsonPropertyName("name")]
@@ -5278,13 +5814,36 @@ namespace CardGames.Poker.Api.Contracts
         [JsonPropertyName("notes")]
         public string Notes { get; init; }
 
+        [JsonPropertyName("gameTypeCode")]
+        public string GameTypeCode { get; init; }
+
+        [JsonPropertyName("ante")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? Ante { get; init; }
+
+        [JsonPropertyName("minBet")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? MinBet { get; init; }
+
+        [JsonPropertyName("smallBlind")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? SmallBlind { get; init; }
+
+        [JsonPropertyName("bigBlind")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? BigBlind { get; init; }
+
+        [JsonPropertyName("tournamentBuyIn")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? TournamentBuyIn { get; init; }
+
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial record CreateLeagueSeasonEventResponse
     {
         [JsonConstructor]
-        public CreateLeagueSeasonEventResponse(System.DateTimeOffset? @createdAtUtc, string @createdByUserId, System.Guid @eventId, System.Guid @leagueId, string @name, string @notes, System.DateTimeOffset? @scheduledAtUtc, System.Guid @seasonId, int? @sequenceNumber, LeagueSeasonEventStatus? @status)
+        public CreateLeagueSeasonEventResponse(int? @ante, int? @bigBlind, System.DateTimeOffset? @createdAtUtc, string @createdByUserId, System.Guid @eventId, string @gameTypeCode, System.Guid @leagueId, int? @minBet, string @name, string @notes, System.DateTimeOffset? @scheduledAtUtc, System.Guid @seasonId, int? @sequenceNumber, int? @smallBlind, LeagueSeasonEventStatus? @status, int? @tournamentBuyIn)
         {
             this.EventId = @eventId;
             this.LeagueId = @leagueId;
@@ -5296,6 +5855,12 @@ namespace CardGames.Poker.Api.Contracts
             this.Notes = @notes;
             this.CreatedByUserId = @createdByUserId;
             this.CreatedAtUtc = @createdAtUtc;
+            this.GameTypeCode = @gameTypeCode;
+            this.Ante = @ante;
+            this.MinBet = @minBet;
+            this.SmallBlind = @smallBlind;
+            this.BigBlind = @bigBlind;
+            this.TournamentBuyIn = @tournamentBuyIn;
         }
 
         [JsonPropertyName("eventId")]
@@ -5333,6 +5898,29 @@ namespace CardGames.Poker.Api.Contracts
 
         [JsonPropertyName("createdAtUtc")]
         public System.DateTimeOffset? CreatedAtUtc { get; init; }
+
+        [JsonPropertyName("gameTypeCode")]
+        public string GameTypeCode { get; init; }
+
+        [JsonPropertyName("ante")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? Ante { get; init; }
+
+        [JsonPropertyName("minBet")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? MinBet { get; init; }
+
+        [JsonPropertyName("smallBlind")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? SmallBlind { get; init; }
+
+        [JsonPropertyName("bigBlind")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? BigBlind { get; init; }
+
+        [JsonPropertyName("tournamentBuyIn")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? TournamentBuyIn { get; init; }
 
     }
 
@@ -5985,7 +6573,7 @@ namespace CardGames.Poker.Api.Contracts
     public partial record GetActiveGamesResponse
     {
         [JsonConstructor]
-        public GetActiveGamesResponse(System.DateTimeOffset @createdAt, string @createdById, string @createdByName, string @currentPhase, string @currentPhaseDescription, string @gameTypeCode, string @gameTypeDescription, System.Guid? @gameTypeId, string @gameTypeImageName, string @gameTypeMetadataName, string @gameTypeName, System.Guid @id, bool @isDealersChoice, string @name, string @rowVersion, GameStatus @status)
+        public GetActiveGamesResponse(System.DateTimeOffset @createdAt, string @createdById, string @createdByName, string @currentPhase, string @currentPhaseDescription, string @gameTypeCode, string @gameTypeDescription, System.Guid? @gameTypeId, string @gameTypeImageName, string @gameTypeMetadataName, string @gameTypeName, System.Guid @id, bool @isDealersChoice, System.Guid? @leagueId, string @name, string @rowVersion, GameStatus @status, int? @tournamentBuyIn)
         {
             this.Id = @id;
             this.GameTypeId = @gameTypeId;
@@ -6002,6 +6590,8 @@ namespace CardGames.Poker.Api.Contracts
             this.CreatedById = @createdById;
             this.CreatedByName = @createdByName;
             this.RowVersion = @rowVersion;
+            this.LeagueId = @leagueId;
+            this.TournamentBuyIn = @tournamentBuyIn;
             this.IsDealersChoice = @isDealersChoice;
         }
 
@@ -6057,6 +6647,13 @@ namespace CardGames.Poker.Api.Contracts
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string RowVersion { get; init; }
 
+        [JsonPropertyName("leagueId")]
+        public System.Guid? LeagueId { get; init; }
+
+        [JsonPropertyName("tournamentBuyIn")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? TournamentBuyIn { get; init; }
+
         [JsonPropertyName("isDealersChoice")]
         public bool IsDealersChoice { get; init; }
 
@@ -6066,7 +6663,7 @@ namespace CardGames.Poker.Api.Contracts
     public partial record GetAvailablePokerGamesResponse
     {
         [JsonConstructor]
-        public GetAvailablePokerGamesResponse(string @code, string @description, string @imageName, int @maximumNumberOfPlayers, int @minimumNumberOfPlayers, string @name, VariantType? @variantType)
+        public GetAvailablePokerGamesResponse(string @code, string @description, bool? @hasAntes, bool? @hasBlinds, string @imageName, int @maximumNumberOfPlayers, int @minimumNumberOfPlayers, string @name, VariantType? @variantType)
         {
             this.Code = @code;
             this.Name = @name;
@@ -6075,6 +6672,8 @@ namespace CardGames.Poker.Api.Contracts
             this.MaximumNumberOfPlayers = @maximumNumberOfPlayers;
             this.ImageName = @imageName;
             this.VariantType = @variantType;
+            this.HasAntes = @hasAntes;
+            this.HasBlinds = @hasBlinds;
         }
 
         [JsonPropertyName("code")]
@@ -6104,6 +6703,12 @@ namespace CardGames.Poker.Api.Contracts
 
         [JsonPropertyName("variantType")]
         public VariantType? VariantType { get; init; }
+
+        [JsonPropertyName("hasAntes")]
+        public bool? HasAntes { get; init; }
+
+        [JsonPropertyName("hasBlinds")]
+        public bool? HasBlinds { get; init; }
 
     }
 
@@ -6455,9 +7060,10 @@ namespace CardGames.Poker.Api.Contracts
     public partial record GetGameResponse
     {
         [JsonConstructor]
-        public GetGameResponse(int? @ante, bool? @areOddsVisibleToAllPlayers, int? @bigBet, int? @bigBlind, int? @bringIn, int @bringInPlayerIndex, bool @canContinue, System.DateTimeOffset @createdAt, string @createdById, string @createdByName, int @currentDrawPlayerIndex, int @currentHandNumber, string @currentPhase, string @currentPhaseDescription, int @currentPlayerIndex, int @dealerPosition, int? @dealersChoiceDealerPosition, System.DateTimeOffset? @endedAt, string @gameSettings, string @gameTypeCode, System.Guid? @gameTypeId, string @gameTypeName, System.Guid @id, bool? @isDealersChoice, int? @maxBuyIn, int @maximumNumberOfPlayers, int? @minBet, int @minimumNumberOfPlayers, string @name, int? @randomSeed, string @rowVersion, int? @smallBet, int? @smallBlind, System.DateTimeOffset? @startedAt, GameStatus @status, System.DateTimeOffset @updatedAt)
+        public GetGameResponse(int? @ante, bool? @areOddsVisibleToAllPlayers, int? @bigBet, int? @bigBlind, int? @bringIn, int @bringInPlayerIndex, bool @canContinue, System.DateTimeOffset @createdAt, string @createdById, string @createdByName, int @currentDrawPlayerIndex, int @currentHandNumber, string @currentPhase, string @currentPhaseDescription, int @currentPlayerIndex, int @dealerPosition, int? @dealersChoiceDealerPosition, System.DateTimeOffset? @endedAt, string @gameSettings, string @gameTypeCode, System.Guid? @gameTypeId, string @gameTypeName, System.Guid @id, bool? @isDealersChoice, System.Guid? @leagueId, int? @maxBuyIn, int @maximumNumberOfPlayers, int? @minBet, int @minimumNumberOfPlayers, string @name, int? @randomSeed, bool? @requiresJoinApproval, string @rowVersion, int? @smallBet, int? @smallBlind, System.DateTimeOffset? @startedAt, GameStatus @status, int? @tournamentBuyIn, System.DateTimeOffset @updatedAt)
         {
             this.Id = @id;
+            this.LeagueId = @leagueId;
             this.GameTypeId = @gameTypeId;
             this.GameTypeCode = @gameTypeCode;
             this.GameTypeName = @gameTypeName;
@@ -6476,6 +7082,7 @@ namespace CardGames.Poker.Api.Contracts
             this.BigBet = @bigBet;
             this.MinBet = @minBet;
             this.MaxBuyIn = @maxBuyIn;
+            this.TournamentBuyIn = @tournamentBuyIn;
             this.GameSettings = @gameSettings;
             this.Status = @status;
             this.CurrentPlayerIndex = @currentPlayerIndex;
@@ -6493,11 +7100,15 @@ namespace CardGames.Poker.Api.Contracts
             this.IsDealersChoice = @isDealersChoice;
             this.DealersChoiceDealerPosition = @dealersChoiceDealerPosition;
             this.AreOddsVisibleToAllPlayers = @areOddsVisibleToAllPlayers;
+            this.RequiresJoinApproval = @requiresJoinApproval;
         }
 
         [JsonPropertyName("id")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public System.Guid Id { get; init; }
+
+        [JsonPropertyName("leagueId")]
+        public System.Guid? LeagueId { get; init; }
 
         [JsonPropertyName("gameTypeId")]
         public System.Guid? GameTypeId { get; init; }
@@ -6570,6 +7181,10 @@ namespace CardGames.Poker.Api.Contracts
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? MaxBuyIn { get; init; }
 
+        [JsonPropertyName("tournamentBuyIn")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? TournamentBuyIn { get; init; }
+
         [JsonPropertyName("gameSettings")]
         public string GameSettings { get; init; }
 
@@ -6631,6 +7246,9 @@ namespace CardGames.Poker.Api.Contracts
 
         [JsonPropertyName("areOddsVisibleToAllPlayers")]
         public bool? AreOddsVisibleToAllPlayers { get; init; }
+
+        [JsonPropertyName("requiresJoinApproval")]
+        public bool? RequiresJoinApproval { get; init; }
 
     }
 
@@ -6749,6 +7367,54 @@ namespace CardGames.Poker.Api.Contracts
         [JsonPropertyName("name")]
         [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
         public string Name { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record GetRabbitHuntSuccessful
+    {
+        [JsonConstructor]
+        public GetRabbitHuntSuccessful(ICollection<RabbitHuntCardDto> @communityCards, System.Guid? @gameId, string @gameTypeCode, int? @handNumber, ICollection<RabbitHuntCardDto> @newlyRevealedCards, ICollection<ShowdownCard> @playerCards, ICollection<RabbitHuntCardDto> @previouslyVisibleCards, string @projectedHandEvaluationDescription)
+        {
+            this.GameId = @gameId;
+            this.HandNumber = @handNumber;
+            this.GameTypeCode = @gameTypeCode;
+            this.PlayerCards = @playerCards;
+            this.CommunityCards = @communityCards;
+            this.PreviouslyVisibleCards = @previouslyVisibleCards;
+            this.NewlyRevealedCards = @newlyRevealedCards;
+            this.ProjectedHandEvaluationDescription = @projectedHandEvaluationDescription;
+        }
+
+        [JsonPropertyName("gameId")]
+        public System.Guid? GameId { get; init; }
+
+        [JsonPropertyName("handNumber")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? HandNumber { get; init; }
+
+        [JsonPropertyName("gameTypeCode")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string GameTypeCode { get; init; }
+
+        [JsonPropertyName("playerCards")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public ICollection<ShowdownCard> PlayerCards { get; init; }
+
+        [JsonPropertyName("communityCards")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public ICollection<RabbitHuntCardDto> CommunityCards { get; init; }
+
+        [JsonPropertyName("previouslyVisibleCards")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public ICollection<RabbitHuntCardDto> PreviouslyVisibleCards { get; init; }
+
+        [JsonPropertyName("newlyRevealedCards")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public ICollection<RabbitHuntCardDto> NewlyRevealedCards { get; init; }
+
+        [JsonPropertyName("projectedHandEvaluationDescription")]
+        public string ProjectedHandEvaluationDescription { get; init; }
 
     }
 
@@ -7169,12 +7835,14 @@ namespace CardGames.Poker.Api.Contracts
     public partial record LaunchLeagueEventSessionRequest
     {
         [JsonConstructor]
-        public LaunchLeagueEventSessionRequest(int? @ante, string @gameCode, string @gameName, int? @hostStartingChips, int? @minBet)
+        public LaunchLeagueEventSessionRequest(int? @ante, int? @bigBlind, string @gameCode, string @gameName, int? @hostStartingChips, int? @minBet, int? @smallBlind)
         {
             this.GameCode = @gameCode;
             this.GameName = @gameName;
             this.Ante = @ante;
             this.MinBet = @minBet;
+            this.SmallBlind = @smallBlind;
+            this.BigBlind = @bigBlind;
             this.HostStartingChips = @hostStartingChips;
         }
 
@@ -7192,6 +7860,14 @@ namespace CardGames.Poker.Api.Contracts
         [JsonPropertyName("minBet")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? MinBet { get; init; }
+
+        [JsonPropertyName("smallBlind")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? SmallBlind { get; init; }
+
+        [JsonPropertyName("bigBlind")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? BigBlind { get; init; }
 
         [JsonPropertyName("hostStartingChips")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
@@ -7235,6 +7911,95 @@ namespace CardGames.Poker.Api.Contracts
 
         [JsonPropertyName("launchedAtUtc")]
         public System.DateTimeOffset? LaunchedAtUtc { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record LeagueActiveGameEntryDto
+    {
+        [JsonConstructor]
+        public LeagueActiveGameEntryDto(string @createdByName, string @currentPhase, string @eventType, System.Guid @gameId, string @gameTypeName, string @name, int? @playerCount, System.DateTimeOffset? @startedAt)
+        {
+            this.GameId = @gameId;
+            this.Name = @name;
+            this.EventType = @eventType;
+            this.StartedAt = @startedAt;
+            this.CurrentPhase = @currentPhase;
+            this.PlayerCount = @playerCount;
+            this.CreatedByName = @createdByName;
+            this.GameTypeName = @gameTypeName;
+        }
+
+        [JsonPropertyName("gameId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid GameId { get; init; }
+
+        [JsonPropertyName("name")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Name { get; init; }
+
+        [JsonPropertyName("eventType")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string EventType { get; init; }
+
+        [JsonPropertyName("startedAt")]
+        public System.DateTimeOffset? StartedAt { get; init; }
+
+        [JsonPropertyName("currentPhase")]
+        public string CurrentPhase { get; init; }
+
+        [JsonPropertyName("playerCount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? PlayerCount { get; init; }
+
+        [JsonPropertyName("createdByName")]
+        public string CreatedByName { get; init; }
+
+        [JsonPropertyName("gameTypeName")]
+        public string GameTypeName { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record LeagueActiveGamesPageDto
+    {
+        [JsonConstructor]
+        public LeagueActiveGamesPageDto(ICollection<LeagueActiveGameEntryDto> @entries, bool @hasMore, int @pageNumber, int @pageSize, int @totalCount, int @totalPages)
+        {
+            this.Entries = @entries;
+            this.HasMore = @hasMore;
+            this.TotalCount = @totalCount;
+            this.PageNumber = @pageNumber;
+            this.PageSize = @pageSize;
+            this.TotalPages = @totalPages;
+        }
+
+        [JsonPropertyName("entries")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public ICollection<LeagueActiveGameEntryDto> Entries { get; init; }
+
+        [JsonPropertyName("hasMore")]
+        public bool HasMore { get; init; }
+
+        [JsonPropertyName("totalCount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int TotalCount { get; init; }
+
+        [JsonPropertyName("pageNumber")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int PageNumber { get; init; }
+
+        [JsonPropertyName("pageSize")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int PageSize { get; init; }
+
+        [JsonPropertyName("totalPages")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int TotalPages { get; init; }
 
     }
 
@@ -7542,7 +8307,7 @@ namespace CardGames.Poker.Api.Contracts
     public partial record LeagueOneOffEventDto
     {
         [JsonConstructor]
-        public LeagueOneOffEventDto(int? @ante, System.DateTimeOffset? @createdAtUtc, string @createdByUserId, System.Guid @eventId, LeagueOneOffEventType? @eventType, string @gameTypeCode, System.Guid? @launchedGameId, System.Guid @leagueId, int? @minBet, string @name, string @notes, System.DateTimeOffset? @scheduledAtUtc, LeagueOneOffEventStatus? @status)
+        public LeagueOneOffEventDto(int? @ante, int? @bigBlind, System.DateTimeOffset? @createdAtUtc, string @createdByUserId, System.Guid @eventId, LeagueOneOffEventType? @eventType, string @gameTypeCode, string @gameTypeName, System.Guid? @launchedGameId, System.Guid @leagueId, int? @minBet, string @name, string @notes, System.DateTimeOffset? @scheduledAtUtc, int? @smallBlind, LeagueOneOffEventStatus? @status, int? @tournamentBuyIn)
         {
             this.EventId = @eventId;
             this.LeagueId = @leagueId;
@@ -7555,8 +8320,12 @@ namespace CardGames.Poker.Api.Contracts
             this.CreatedAtUtc = @createdAtUtc;
             this.LaunchedGameId = @launchedGameId;
             this.GameTypeCode = @gameTypeCode;
+            this.GameTypeName = @gameTypeName;
             this.Ante = @ante;
             this.MinBet = @minBet;
+            this.SmallBlind = @smallBlind;
+            this.BigBlind = @bigBlind;
+            this.TournamentBuyIn = @tournamentBuyIn;
         }
 
         [JsonPropertyName("eventId")]
@@ -7596,6 +8365,9 @@ namespace CardGames.Poker.Api.Contracts
         [JsonPropertyName("gameTypeCode")]
         public string GameTypeCode { get; init; }
 
+        [JsonPropertyName("gameTypeName")]
+        public string GameTypeName { get; init; }
+
         [JsonPropertyName("ante")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? Ante { get; init; }
@@ -7603,6 +8375,61 @@ namespace CardGames.Poker.Api.Contracts
         [JsonPropertyName("minBet")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? MinBet { get; init; }
+
+        [JsonPropertyName("smallBlind")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? SmallBlind { get; init; }
+
+        [JsonPropertyName("bigBlind")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? BigBlind { get; init; }
+
+        [JsonPropertyName("tournamentBuyIn")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? TournamentBuyIn { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record LeagueOneOffEventsPageDto
+    {
+        [JsonConstructor]
+        public LeagueOneOffEventsPageDto(ICollection<LeagueOneOffEventDto> @entries, bool @hasMore, int @pageNumber, int @pageSize, int @totalCount, int @totalPages)
+        {
+            this.Entries = @entries;
+            this.HasMore = @hasMore;
+            this.TotalCount = @totalCount;
+            this.PageNumber = @pageNumber;
+            this.PageSize = @pageSize;
+            this.TotalPages = @totalPages;
+        }
+
+        [JsonPropertyName("entries")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public ICollection<LeagueOneOffEventDto> Entries { get; init; }
+
+        [JsonPropertyName("hasMore")]
+        public bool HasMore { get; init; }
+
+        [JsonPropertyName("totalCount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int TotalCount { get; init; }
+
+        [JsonPropertyName("pageNumber")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int PageNumber { get; init; }
+
+        [JsonPropertyName("pageSize")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int PageSize { get; init; }
+
+        [JsonPropertyName("totalPages")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int TotalPages { get; init; }
 
     }
 
@@ -7706,7 +8533,7 @@ namespace CardGames.Poker.Api.Contracts
     public partial record LeagueSeasonEventDto
     {
         [JsonConstructor]
-        public LeagueSeasonEventDto(System.DateTimeOffset? @createdAtUtc, string @createdByUserId, System.Guid @eventId, System.Guid? @launchedGameId, System.Guid @leagueId, string @name, string @notes, System.DateTimeOffset? @scheduledAtUtc, System.Guid @seasonId, int? @sequenceNumber, LeagueSeasonEventStatus? @status)
+        public LeagueSeasonEventDto(int? @ante, int? @bigBlind, System.DateTimeOffset? @createdAtUtc, string @createdByUserId, System.Guid @eventId, string @gameTypeCode, System.Guid? @launchedGameId, System.Guid @leagueId, int? @minBet, string @name, string @notes, System.DateTimeOffset? @scheduledAtUtc, System.Guid @seasonId, int? @sequenceNumber, int? @smallBlind, LeagueSeasonEventStatus? @status, int? @tournamentBuyIn)
         {
             this.EventId = @eventId;
             this.LeagueId = @leagueId;
@@ -7719,6 +8546,12 @@ namespace CardGames.Poker.Api.Contracts
             this.CreatedByUserId = @createdByUserId;
             this.CreatedAtUtc = @createdAtUtc;
             this.LaunchedGameId = @launchedGameId;
+            this.GameTypeCode = @gameTypeCode;
+            this.Ante = @ante;
+            this.MinBet = @minBet;
+            this.SmallBlind = @smallBlind;
+            this.BigBlind = @bigBlind;
+            this.TournamentBuyIn = @tournamentBuyIn;
         }
 
         [JsonPropertyName("eventId")]
@@ -7760,6 +8593,29 @@ namespace CardGames.Poker.Api.Contracts
         [JsonPropertyName("launchedGameId")]
         public System.Guid? LaunchedGameId { get; init; }
 
+        [JsonPropertyName("gameTypeCode")]
+        public string GameTypeCode { get; init; }
+
+        [JsonPropertyName("ante")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? Ante { get; init; }
+
+        [JsonPropertyName("minBet")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? MinBet { get; init; }
+
+        [JsonPropertyName("smallBlind")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? SmallBlind { get; init; }
+
+        [JsonPropertyName("bigBlind")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? BigBlind { get; init; }
+
+        [JsonPropertyName("tournamentBuyIn")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? TournamentBuyIn { get; init; }
+
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
@@ -7789,6 +8645,49 @@ namespace CardGames.Poker.Api.Contracts
         [JsonPropertyName("chipsDelta")]
         [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
         public int? ChipsDelta { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record LeagueSeasonEventsPageDto
+    {
+        [JsonConstructor]
+        public LeagueSeasonEventsPageDto(ICollection<LeagueSeasonEventDto> @entries, bool @hasMore, int @pageNumber, int @pageSize, int @totalCount, int @totalPages)
+        {
+            this.Entries = @entries;
+            this.HasMore = @hasMore;
+            this.TotalCount = @totalCount;
+            this.PageNumber = @pageNumber;
+            this.PageSize = @pageSize;
+            this.TotalPages = @totalPages;
+        }
+
+        [JsonPropertyName("entries")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public ICollection<LeagueSeasonEventDto> Entries { get; init; }
+
+        [JsonPropertyName("hasMore")]
+        public bool HasMore { get; init; }
+
+        [JsonPropertyName("totalCount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int TotalCount { get; init; }
+
+        [JsonPropertyName("pageNumber")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int PageNumber { get; init; }
+
+        [JsonPropertyName("pageSize")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int PageSize { get; init; }
+
+        [JsonPropertyName("totalPages")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int TotalPages { get; init; }
 
     }
 
@@ -7899,6 +8798,72 @@ namespace CardGames.Poker.Api.Contracts
 
         [JsonPropertyName("createdAtUtc")]
         public System.DateTimeOffset? CreatedAtUtc { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record LeagueUpcomingEventEntryDto
+    {
+        [JsonConstructor]
+        public LeagueUpcomingEventEntryDto(LeagueOneOffEventDto @oneOffEvent, LeagueSeasonEventDto @seasonEvent, System.DateTimeOffset @sortAt)
+        {
+            this.SortAt = @sortAt;
+            this.SeasonEvent = @seasonEvent;
+            this.OneOffEvent = @oneOffEvent;
+        }
+
+        [JsonPropertyName("sortAt")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.DateTimeOffset SortAt { get; init; }
+
+        [JsonPropertyName("seasonEvent")]
+        public LeagueSeasonEventDto SeasonEvent { get; init; }
+
+        [JsonPropertyName("oneOffEvent")]
+        public LeagueOneOffEventDto OneOffEvent { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record LeagueUpcomingEventsPageDto
+    {
+        [JsonConstructor]
+        public LeagueUpcomingEventsPageDto(ICollection<LeagueUpcomingEventEntryDto> @entries, bool @hasMore, int @pageNumber, int @pageSize, int @totalCount, int @totalPages)
+        {
+            this.Entries = @entries;
+            this.HasMore = @hasMore;
+            this.TotalCount = @totalCount;
+            this.PageNumber = @pageNumber;
+            this.PageSize = @pageSize;
+            this.TotalPages = @totalPages;
+        }
+
+        [JsonPropertyName("entries")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public ICollection<LeagueUpcomingEventEntryDto> Entries { get; init; }
+
+        [JsonPropertyName("hasMore")]
+        public bool HasMore { get; init; }
+
+        [JsonPropertyName("totalCount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int TotalCount { get; init; }
+
+        [JsonPropertyName("pageNumber")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int PageNumber { get; init; }
+
+        [JsonPropertyName("pageSize")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int PageSize { get; init; }
+
+        [JsonPropertyName("totalPages")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int TotalPages { get; init; }
 
     }
 
@@ -8079,6 +9044,76 @@ namespace CardGames.Poker.Api.Contracts
 
         [JsonPropertyName("isTerminal")]
         public bool? IsTerminal { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record PlaceBetRequest
+    {
+        [JsonConstructor]
+        public PlaceBetRequest(int @amount, System.Guid @playerId)
+        {
+            this.PlayerId = @playerId;
+            this.Amount = @amount;
+        }
+
+        [JsonPropertyName("playerId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid PlayerId { get; init; }
+
+        [JsonPropertyName("amount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int Amount { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record PlaceBetSuccessful
+    {
+        [JsonConstructor]
+        public PlaceBetSuccessful(int @amount, string @description, System.Guid @gameId, string @nextPhase, int? @nextPlayerSeatIndex, System.Guid @playerId, int? @potAmount, string @turnResult)
+        {
+            this.GameId = @gameId;
+            this.PlayerId = @playerId;
+            this.Amount = @amount;
+            this.TurnResult = @turnResult;
+            this.Description = @description;
+            this.NextPhase = @nextPhase;
+            this.NextPlayerSeatIndex = @nextPlayerSeatIndex;
+            this.PotAmount = @potAmount;
+        }
+
+        [JsonPropertyName("gameId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid GameId { get; init; }
+
+        [JsonPropertyName("playerId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid PlayerId { get; init; }
+
+        [JsonPropertyName("amount")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int Amount { get; init; }
+
+        [JsonPropertyName("turnResult")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string TurnResult { get; init; }
+
+        [JsonPropertyName("description")]
+        public string Description { get; init; }
+
+        [JsonPropertyName("nextPhase")]
+        public string NextPhase { get; init; }
+
+        [JsonPropertyName("nextPlayerSeatIndex")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? NextPlayerSeatIndex { get; init; }
+
+        [JsonPropertyName("potAmount")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? PotAmount { get; init; }
 
     }
 
@@ -8453,6 +9488,96 @@ namespace CardGames.Poker.Api.Contracts
 
         [JsonPropertyName("nextDrawPlayerName")]
         public string NextDrawPlayerName { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record RabbitHuntCardDto
+    {
+        [JsonConstructor]
+        public RabbitHuntCardDto(ShowdownCard @card, int? @dealOrder, string @dealtAtPhase, bool? @isKlondikeCard, bool? @wasAlreadyVisible)
+        {
+            this.Card = @card;
+            this.DealOrder = @dealOrder;
+            this.WasAlreadyVisible = @wasAlreadyVisible;
+            this.IsKlondikeCard = @isKlondikeCard;
+            this.DealtAtPhase = @dealtAtPhase;
+        }
+
+        [JsonPropertyName("card")]
+        [System.ComponentModel.DataAnnotations.Required]
+        public ShowdownCard Card { get; init; }
+
+        [JsonPropertyName("dealOrder")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? DealOrder { get; init; }
+
+        [JsonPropertyName("wasAlreadyVisible")]
+        public bool? WasAlreadyVisible { get; init; }
+
+        [JsonPropertyName("isKlondikeCard")]
+        public bool? IsKlondikeCard { get; init; }
+
+        [JsonPropertyName("dealtAtPhase")]
+        public string DealtAtPhase { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record ResolveJoinRequestRequest
+    {
+        [JsonConstructor]
+        public ResolveJoinRequestRequest(bool @approved, int? @approvedBuyIn, string @denialReason)
+        {
+            this.Approved = @approved;
+            this.ApprovedBuyIn = @approvedBuyIn;
+            this.DenialReason = @denialReason;
+        }
+
+        [JsonPropertyName("approved")]
+        public bool Approved { get; init; }
+
+        [JsonPropertyName("approvedBuyIn")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ApprovedBuyIn { get; init; }
+
+        [JsonPropertyName("denialReason")]
+        public string DenialReason { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record ResolveJoinRequestSuccessful
+    {
+        [JsonConstructor]
+        public ResolveJoinRequestSuccessful(int? @approvedBuyIn, System.Guid @gameId, System.Guid @joinRequestId, int? @seatIndex, string @status)
+        {
+            this.GameId = @gameId;
+            this.JoinRequestId = @joinRequestId;
+            this.Status = @status;
+            this.ApprovedBuyIn = @approvedBuyIn;
+            this.SeatIndex = @seatIndex;
+        }
+
+        [JsonPropertyName("gameId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid GameId { get; init; }
+
+        [JsonPropertyName("joinRequestId")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public System.Guid JoinRequestId { get; init; }
+
+        [JsonPropertyName("status")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Status { get; init; }
+
+        [JsonPropertyName("approvedBuyIn")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? ApprovedBuyIn { get; init; }
+
+        [JsonPropertyName("seatIndex")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? SeatIndex { get; init; }
 
     }
 
@@ -8881,6 +10006,119 @@ namespace CardGames.Poker.Api.Contracts
     }
 
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record UpdateLeagueOneOffEventRequest
+    {
+        [JsonConstructor]
+        public UpdateLeagueOneOffEventRequest(int? @ante, int? @bigBlind, LeagueOneOffEventType? @eventType, string @gameTypeCode, int? @minBet, string @name, string @notes, System.DateTimeOffset? @scheduledAtUtc, int? @smallBlind, int? @tournamentBuyIn)
+        {
+            this.Name = @name;
+            this.ScheduledAtUtc = @scheduledAtUtc;
+            this.EventType = @eventType;
+            this.Notes = @notes;
+            this.GameTypeCode = @gameTypeCode;
+            this.Ante = @ante;
+            this.MinBet = @minBet;
+            this.SmallBlind = @smallBlind;
+            this.BigBlind = @bigBlind;
+            this.TournamentBuyIn = @tournamentBuyIn;
+        }
+
+        [JsonPropertyName("name")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Name { get; init; }
+
+        [JsonPropertyName("scheduledAtUtc")]
+        public System.DateTimeOffset? ScheduledAtUtc { get; init; }
+
+        [JsonPropertyName("eventType")]
+        public LeagueOneOffEventType? EventType { get; init; }
+
+        [JsonPropertyName("notes")]
+        public string Notes { get; init; }
+
+        [JsonPropertyName("gameTypeCode")]
+        public string GameTypeCode { get; init; }
+
+        [JsonPropertyName("ante")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? Ante { get; init; }
+
+        [JsonPropertyName("minBet")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? MinBet { get; init; }
+
+        [JsonPropertyName("smallBlind")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? SmallBlind { get; init; }
+
+        [JsonPropertyName("bigBlind")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? BigBlind { get; init; }
+
+        [JsonPropertyName("tournamentBuyIn")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? TournamentBuyIn { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial record UpdateLeagueSeasonEventRequest
+    {
+        [JsonConstructor]
+        public UpdateLeagueSeasonEventRequest(int? @ante, int? @bigBlind, string @gameTypeCode, int? @minBet, string @name, string @notes, System.DateTimeOffset? @scheduledAtUtc, int? @sequenceNumber, int? @smallBlind, int? @tournamentBuyIn)
+        {
+            this.Name = @name;
+            this.SequenceNumber = @sequenceNumber;
+            this.ScheduledAtUtc = @scheduledAtUtc;
+            this.Notes = @notes;
+            this.GameTypeCode = @gameTypeCode;
+            this.Ante = @ante;
+            this.MinBet = @minBet;
+            this.SmallBlind = @smallBlind;
+            this.BigBlind = @bigBlind;
+            this.TournamentBuyIn = @tournamentBuyIn;
+        }
+
+        [JsonPropertyName("name")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        public string Name { get; init; }
+
+        [JsonPropertyName("sequenceNumber")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? SequenceNumber { get; init; }
+
+        [JsonPropertyName("scheduledAtUtc")]
+        public System.DateTimeOffset? ScheduledAtUtc { get; init; }
+
+        [JsonPropertyName("notes")]
+        public string Notes { get; init; }
+
+        [JsonPropertyName("gameTypeCode")]
+        public string GameTypeCode { get; init; }
+
+        [JsonPropertyName("ante")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? Ante { get; init; }
+
+        [JsonPropertyName("minBet")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? MinBet { get; init; }
+
+        [JsonPropertyName("smallBlind")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? SmallBlind { get; init; }
+
+        [JsonPropertyName("bigBlind")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? BigBlind { get; init; }
+
+        [JsonPropertyName("tournamentBuyIn")]
+        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
+        public int? TournamentBuyIn { get; init; }
+
+    }
+
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.6.2.0 (NJsonSchema v11.5.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial record UpdateTableSettingsRequest
     {
         [JsonConstructor]
@@ -9278,6 +10516,23 @@ namespace CardGames.Poker.Api.Clients
                 });
 
             builder?.Invoke(clientBuilderIIrishHoldEmApi);
+
+            var clientBuilderIInBetweenApi = services
+                .AddRefitClient<IInBetweenApi>(settings)
+                .ConfigureHttpClient(c => c.BaseAddress = baseUrl);
+
+            clientBuilderIInBetweenApi
+                .AddStandardResilienceHandler(config =>
+                {
+                    config.Retry = new HttpRetryStrategyOptions
+                    {
+                        UseJitter = true,
+                        MaxRetryAttempts = 3,
+                        Delay = TimeSpan.FromSeconds(0.5)
+                    };
+                });
+
+            builder?.Invoke(clientBuilderIInBetweenApi);
 
             var clientBuilderIHoldTheBaseballApi = services
                 .AddRefitClient<IHoldTheBaseballApi>(settings)

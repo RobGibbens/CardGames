@@ -10,6 +10,7 @@ namespace CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetGame;
 public sealed record GetGameResponse
 {
 	public required Guid Id { get; init; }
+	public Guid? LeagueId { get; init; }
 	public Guid? GameTypeId { get; init; }
 	public required string? GameTypeCode { get; init; }
 	public required string? GameTypeName { get; init; }

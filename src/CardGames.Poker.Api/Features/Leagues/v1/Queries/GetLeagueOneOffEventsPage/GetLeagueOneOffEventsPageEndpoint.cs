@@ -13,6 +13,7 @@ public static class GetLeagueOneOffEventsPageEndpoint
 					IMediator mediator,
 					int? pageSize = null,
 					int? pageNumber = null,
+					bool? includeCompleted = null,
 					int? take = null,
 					int? skip = null,
 					CancellationToken cancellationToken = default) =>
@@ -25,7 +26,9 @@ public static class GetLeagueOneOffEventsPageEndpoint
 						resolvedPageNumber = Math.Max(1, (skip.Value / resolvedPageSize) + 1);
 					}
 
-					var result = await mediator.Send(new GetLeagueOneOffEventsPageQuery(leagueId, resolvedPageSize, resolvedPageNumber), cancellationToken);
+					var result = await mediator.Send(
+						new GetLeagueOneOffEventsPageQuery(leagueId, resolvedPageSize, resolvedPageNumber, includeCompleted ?? true),
+						cancellationToken);
 
 					return result.Match(
 						success => Results.Ok(success),

@@ -236,16 +236,32 @@ public class Game : EntityWithRowVersion
 	public bool IsPausedForChipCheck { get; set; }
 
 	/// <summary>
+	/// Indicates whether the game is paused for a cash-game rebuy grace period.
+	/// When true, busted players have a limited window to add chips before the game ends.
+	/// </summary>
+	public bool IsPausedForRebuyGrace { get; set; }
+
+	/// <summary>
 	/// The date and time when the chip check pause was initiated.
 	/// Used to track the duration of the pause.
 	/// </summary>
 	public DateTimeOffset? ChipCheckPauseStartedAt { get; set; }
 
 	/// <summary>
+	/// The date and time when the rebuy grace pause was initiated.
+	/// </summary>
+	public DateTimeOffset? RebuyGraceStartedAt { get; set; }
+
+	/// <summary>
 	/// The date and time when the chip check pause will expire.
 	/// After this time, players without sufficient chips will be auto-dropped.
 	/// </summary>
 	public DateTimeOffset? ChipCheckPauseEndsAt { get; set; }
+
+	/// <summary>
+	/// The date and time when the rebuy grace pause will expire.
+	/// </summary>
+	public DateTimeOffset? RebuyGraceEndsAt { get; set; }
 
 	/// <summary>
 	/// Whether this is a Dealer's Choice table where the dealer picks the game type each hand.

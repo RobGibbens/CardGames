@@ -39,22 +39,11 @@ public sealed class AddAccountChipsCommandHandler(
 		}
 
 		var now = DateTimeOffset.UtcNow;
-
-		var account = await context.PlayerChipAccounts
-			.FirstOrDefaultAsync(x => x.PlayerId == player.Id, cancellationToken);
-
-		if (account is null)
-		{
-			account = new PlayerChipAccount
-			{
-				PlayerId = player.Id,
-				Balance = 0,
-				CreatedAtUtc = now,
-				UpdatedAtUtc = now
-			};
-
-			context.PlayerChipAccounts.Add(account);
-		}
+		var account = await CashierAccountInitializer.EnsureRegistrationCreditAsync(
+			context,
+			player.Id,
+			currentUserService.UserId,
+			cancellationToken);
 
 		account.Balance += request.Amount;
 		account.UpdatedAtUtc = now;

@@ -217,6 +217,7 @@
 			{
 				<LeagueDetailResultsTab Seasons="_seasons" SelectedSeasonId="_selectedSeasonId"
 									CanManageLeague="CanManageLeague" SeasonEvents="_seasonEvents"
+									CompletedOneOffEvents="CompletedOneOffEvents"
 									BrowserTimeZoneId="@BrowserTimeZoneId"
 									LaunchingSeasonEventId="_launchingSeasonEventId" OnSeasonSelectorChanged="OnSeasonSelectorChanged"
 									OpenSeasonEventModal="OpenSeasonEventModal" EditSeasonEvent="OpenSeasonEventEditor"
@@ -235,17 +236,12 @@
 			@* ═══════════ TAB 4: SCHEDULE ═══════════ *@
 			@if (_activeTab == LeagueDetailTab.Schedule)
 			{
-				<LeagueDetailScheduleTab CanManageLeague="CanManageLeague" Seasons="_seasons" SelectedSeasonId="_selectedSeasonId"
-									 SeasonEventsPage="_scheduleSeasonEventsPage" OneOffEventsPage="_scheduleOneOffEventsPage"
-									 IsLoadingSeasonEventsPage="_isLoadingScheduleSeasonEventsPage"
+				<LeagueDetailScheduleTab LeagueId="LeagueId" CanManageLeague="CanManageLeague" Seasons="_seasons" SelectedSeasonId="_selectedSeasonId"
+									 OneOffEventsPage="_scheduleOneOffEventsPage"
 									 IsLoadingOneOffEventsPage="_isLoadingScheduleOneOffEventsPage"
-									 LoadSeasonEventsPage="LoadSeasonEventsPageAsync" LoadOneOffEventsPage="LoadOneOffEventsPageAsync"
-									 LaunchingSeasonEventId="_launchingSeasonEventId" BrowserTimeZoneId="@BrowserTimeZoneId"
+									 LoadOneOffEventsPage="LoadOneOffEventsPageAsync" BrowserTimeZoneId="@BrowserTimeZoneId"
 									 LaunchingOneOffEventId="_launchingOneOffEventId" OpenSeasonModal="OpenSeasonModal"
-									 SelectSeason="SelectSeasonAsync" DeselectSeason="DeselectSeasonAsync"
-									 OpenSeasonEventModal="OpenSeasonEventModal" EditSeasonEvent="OpenSeasonEventEditor"
-									 DeleteSeasonEvent="OpenDeleteSeasonEventDialog" OpenTable="OpenTable"
-									 LaunchSeasonEvent="LaunchSeasonEventAsync" OpenOneOffModal="OpenOneOffModal"
+									 OpenTable="OpenTable" OpenOneOffModal="OpenOneOffModal"
 									 EditOneOffEvent="OpenOneOffEventEditor" DeleteOneOffEvent="OpenDeleteOneOffEventDialog"
 									 LaunchOneOffEvent="LaunchOneOffEventAsync" />
 			}
@@ -692,6 +688,11 @@
 	private bool IsManager => HasManagerAuthorityRole(_leagueDetail?.MyRole);
 	private bool CanManageLeague => HasLeagueManagementRole(_leagueDetail?.MyRole);
 	private bool HasLeagueAccess => _leagueDetail is not null;
+	private List<LeagueOneOffEventDto> CompletedOneOffEvents => _oneOffEvents
+		.Where(x => x.Status == LeagueOneOffEventStatus.Completed)
+		.OrderByDescending(x => x.ScheduledAtUtc)
+		.ThenByDescending(x => x.CreatedAtUtc)
+		.ToList();
 	private string SeasonEventModalTitle => _editingSeasonEventId.HasValue ? "Edit Season Event" : "Create Season Event";
 	private string SeasonEventSubmitLabel => _editingSeasonEventId.HasValue ? "Save Changes" : "Create Season Event";
 
@@ -841,6 +842,7 @@
 		if (tab == LeagueDetailTab.Results)
 		{
 			await EnsureSeasonEventsLoadedAsync();
+			await EnsureOneOffEventsLoadedAsync();
 		}
 
 		if (tab == LeagueDetailTab.Schedule)
@@ -1170,7 +1172,7 @@
 		_isLoadingScheduleOneOffEventsPage = true;
 		try
 		{
-			var response = await LeaguesApi.GetOneOffEventsPageAsync(LeagueId, SchedulePageSize, pageNumber);
+			var response = await LeaguesApi.GetOneOffEventsPageAsync(LeagueId, SchedulePageSize, pageNumber, includeCompleted: false);
 			if (response.IsSuccessStatusCode && response.Content is not null)
 			{
 				_scheduleOneOffEventsPage = response.Content;
@@ -1306,6 +1308,7 @@
 
 			upcomingItems.AddRange(_oneOffEvents
 				.Where(oneOffEvent => oneOffEvent.Status != LeagueOneOffEventStatus.Completed
+					&& !oneOffEvent.LaunchedGameId.HasValue
 					&& oneOffEvent.Status != LeagueOneOffEventStatus.Canceled)
 				.Select(oneOffEvent => new UpcomingEventFallbackItem(
 					oneOffEvent.ScheduledAtUtc,
@@ -1322,6 +1325,7 @@
 			{
 				upcomingItems.AddRange(_seasonEvents
 					.Where(seasonEvent => seasonEvent.Status != LeagueSeasonEventStatus.Completed
+						&& !seasonEvent.LaunchedGameId.HasValue
 						&& seasonEvent.Status != LeagueSeasonEventStatus.Canceled)
 					.Select(seasonEvent => new UpcomingEventFallbackItem(
 						seasonEvent.ScheduledAtUtc ?? seasonEvent.CreatedAtUtc,
@@ -2332,8 +2336,9 @@ DateTimeKind.Utc)) : null,
 		_editingSeasonEventId = null;
 		_seasonEventName = string.Empty;
 		_seasonEventSequence = null;
-		_seasonEventScheduledDate = LeagueTimeZoneHelper.GetNextLocalEventDate(BrowserTimeZoneId);
-		_seasonEventScheduledTime = LeagueTimeZoneHelper.DefaultTimeText;
+		var defaultSchedule = LeagueTimeZoneHelper.GetDefaultLocalScheduledDateTime(BrowserTimeZoneId);
+		_seasonEventScheduledDate = defaultSchedule.Date;
+		_seasonEventScheduledTime = defaultSchedule.TimeText;
 		_seasonEventTimeZoneId = BrowserTimeZoneId;
 		_seasonEventNotes = null;
 		_seasonEventGameTypeCode = string.Empty;

@@ -18,14 +18,14 @@ public static class UpdateTableSettingsMapper
     public static UpdateTableSettingsResponse MapToResponse(Game game, int seatedPlayerCount)
     {
         ArgumentNullException.ThrowIfNull(game);
-        ArgumentNullException.ThrowIfNull(game.GameType);
+        var (gameTypeCode, gameTypeName, minPlayers, maxPlayers) = GetTableSettingsMapper.ResolveGameType(game);
 
         return new UpdateTableSettingsResponse
         {
             GameId = game.Id,
             Name = game.Name,
-            GameTypeCode = game.GameType.Code,
-            GameTypeName = game.GameType.Name,
+            GameTypeCode = gameTypeCode,
+            GameTypeName = gameTypeName,
             CurrentPhase = game.CurrentPhase,
             IsEditable = GetTableSettingsMapper.IsPhaseEditable(game.CurrentPhase),
             Ante = game.Ante,
@@ -33,8 +33,8 @@ public static class UpdateTableSettingsMapper
             SmallBlind = game.SmallBlind,
             BigBlind = game.BigBlind,
             AreOddsVisibleToAllPlayers = game.AreOddsVisibleToAllPlayers,
-            MaxPlayers = game.GameType.MaxPlayers,
-            MinPlayers = game.GameType.MinPlayers,
+            MaxPlayers = maxPlayers,
+            MinPlayers = minPlayers,
             SeatedPlayerCount = seatedPlayerCount,
             CreatedById = game.CreatedById,
             CreatedByName = game.CreatedByName,

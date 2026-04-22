@@ -1,6 +1,8 @@
+using System.Reflection;
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Features.Leagues.v1.Commands.IngestLeagueSeasonEventResults;
 using CardGames.Poker.Api.GameFlow;
 using CardGames.Poker.Games.GameFlow;
 using CardGames.Contracts.SignalR;
@@ -71,6 +73,48 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
         updatedGame!.Status.Should().Be(GameStatus.Completed);
         updatedGame.CurrentPhase.Should().Be("Complete");
         _broadcaster.Broadcasts.Should().ContainSingle(b => b.GameId == game.Id);
+    }
+
+    [Fact]
+    public async Task ProcessGamesReadyForNextHandAsync_AbandonedLinkedOneOffGame_MarksEventCompleted()
+    {
+        var league = new League
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test League",
+            CreatedByUserId = "test-user",
+            CreatedAtUtc = DateTimeOffset.UtcNow
+        };
+        var game = new Game
+        {
+            Id = Guid.NewGuid(),
+            CurrentPhase = "Dealing",
+            Status = GameStatus.InProgress,
+            GamePlayers = new List<GamePlayer>(),
+            UpdatedAt = DateTimeOffset.UtcNow.AddMinutes(-1)
+        };
+        var oneOffEvent = new LeagueOneOffEvent
+        {
+            Id = Guid.NewGuid(),
+            LeagueId = league.Id,
+            Name = "Cash Game",
+            CreatedByUserId = "test-user",
+            CreatedAtUtc = DateTimeOffset.UtcNow,
+            Status = LeagueOneOffEventStatus.Planned,
+            EventType = LeagueOneOffEventType.CashGame,
+            LaunchedGameId = game.Id
+        };
+
+        _dbContext.Leagues.Add(league);
+        _dbContext.Games.Add(game);
+        _dbContext.LeagueOneOffEvents.Add(oneOffEvent);
+        await _dbContext.SaveChangesAsync();
+
+        await _service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+
+        var updatedEvent = await _dbContext.LeagueOneOffEvents.FindAsync(oneOffEvent.Id);
+        updatedEvent.Should().NotBeNull();
+        updatedEvent!.Status.Should().Be(LeagueOneOffEventStatus.Completed);
     }
 
     [Fact]
@@ -402,6 +446,157 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task ProcessGamesReadyForNextHandAsync_CashGameSingleFundedPlayerAndBustedSitOut_StartsRebuyGracePause()
+    {
+        // Arrange
+        var now = DateTimeOffset.UtcNow;
+        var game = new Game
+        {
+            Id = Guid.NewGuid(),
+            CurrentPhase = "Complete",
+            Status = GameStatus.InProgress,
+            NextHandStartsAt = now.AddSeconds(-1),
+            CurrentHandNumber = 1,
+            Ante = 10,
+            GameType = new GameType { Code = "TESTGAME", Name = "Test Game" }
+        };
+
+        var funded = new GamePlayer { GameId = game.Id, PlayerId = Guid.NewGuid(), Status = GamePlayerStatus.Active, SeatPosition = 0, ChipStack = 1000, LeftAtHandNumber = -1 };
+        var busted = new GamePlayer
+        {
+            GameId = game.Id,
+            PlayerId = Guid.NewGuid(),
+            Status = GamePlayerStatus.SittingOut,
+            IsSittingOut = true,
+            SeatPosition = 1,
+            ChipStack = 0,
+            LeftAtHandNumber = -1
+        };
+        game.GamePlayers.Add(funded);
+        game.GamePlayers.Add(busted);
+
+        _dbContext.Games.Add(game);
+        await _dbContext.SaveChangesAsync();
+
+        var handler = _flowHandlerFactory.SetHandlerForCode("TESTGAME");
+        handler.RequiresChipCoverageCheck = false;
+
+        // Act
+        await _service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+
+        // Assert
+        var updatedGame = await _dbContext.Games.FindAsync(game.Id);
+        updatedGame.Should().NotBeNull();
+        updatedGame!.IsPausedForRebuyGrace.Should().BeTrue();
+        updatedGame.IsPausedForChipCheck.Should().BeTrue();
+        updatedGame.RebuyGraceEndsAt.Should().NotBeNull();
+        updatedGame.CurrentPhase.Should().Be("WaitingForPlayers");
+        updatedGame.Status.Should().Be(GameStatus.BetweenHands);
+        handler.DealCardsCalled.Should().BeFalse();
+        _broadcaster.ToastNotifications.Should().ContainSingle(t => t.GameId == game.Id && t.Message.Contains("Rebuy window started"));
+    }
+
+    [Fact]
+    public async Task HandleCashGameRebuyGraceTimerExpiredAsync_EndsGameAndStartsLobbyCountdown()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var game = new Game
+        {
+            Id = Guid.NewGuid(),
+            CurrentPhase = "WaitingForPlayers",
+            Status = GameStatus.BetweenHands,
+            CurrentHandNumber = 1,
+            IsPausedForChipCheck = true,
+            ChipCheckPauseStartedAt = now.AddMinutes(-5),
+            ChipCheckPauseEndsAt = now.AddSeconds(-1),
+            IsPausedForRebuyGrace = true,
+            RebuyGraceStartedAt = now.AddMinutes(-5),
+            RebuyGraceEndsAt = now.AddSeconds(-1)
+        };
+
+        _dbContext.Games.Add(game);
+        await _dbContext.SaveChangesAsync();
+
+        var method = typeof(ContinuousPlayBackgroundService).GetMethod(
+            "HandleCashGameRebuyGraceTimerExpiredAsync",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+
+        method.Should().NotBeNull("the rebuy grace expiry callback should exist so the server can end paused cash games");
+
+        var task = method!.Invoke(_service, [game.Id]) as Task;
+        task.Should().NotBeNull();
+        await task!;
+
+        var updatedGame = await _dbContext.Games.FindAsync(game.Id);
+        updatedGame.Should().NotBeNull();
+        updatedGame!.CurrentPhase.Should().Be("Ended");
+        updatedGame.Status.Should().Be(GameStatus.Completed);
+        updatedGame.HandCompletedAt.Should().NotBeNull();
+        updatedGame.NextHandStartsAt.Should().NotBeNull();
+        updatedGame.NextHandStartsAt.Should().BeAfter(updatedGame.HandCompletedAt!.Value);
+        updatedGame.NextHandStartsAt.Should().BeOnOrBefore(updatedGame.HandCompletedAt.Value.AddSeconds(ContinuousPlayBackgroundService.CashRebuyGameOverDisplayDurationSeconds + 1));
+        updatedGame.IsPausedForChipCheck.Should().BeFalse();
+        updatedGame.IsPausedForRebuyGrace.Should().BeFalse();
+        _broadcaster.ToastNotifications.Should().Contain(t => t.GameId == game.Id && t.Message.Contains("Game ended"));
+    }
+
+    [Fact]
+    public async Task HandleCashGameRebuyGraceTimerExpiredAsync_MarksLinkedOneOffEventCompleted()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var league = new League
+        {
+            Id = Guid.NewGuid(),
+            Name = "Cash League",
+            CreatedByUserId = "test-user",
+            CreatedAtUtc = now.AddDays(-1)
+        };
+        var game = new Game
+        {
+            Id = Guid.NewGuid(),
+            CurrentPhase = "WaitingForPlayers",
+            Status = GameStatus.BetweenHands,
+            CurrentHandNumber = 1,
+            IsPausedForChipCheck = true,
+            ChipCheckPauseStartedAt = now.AddMinutes(-5),
+            ChipCheckPauseEndsAt = now.AddSeconds(-1),
+            IsPausedForRebuyGrace = true,
+            RebuyGraceStartedAt = now.AddMinutes(-5),
+            RebuyGraceEndsAt = now.AddSeconds(-1)
+        };
+        var oneOffEvent = new LeagueOneOffEvent
+        {
+            Id = Guid.NewGuid(),
+            LeagueId = league.Id,
+            Name = "Cash One-Off",
+            CreatedByUserId = "test-user",
+            CreatedAtUtc = now.AddHours(-1),
+            EventType = LeagueOneOffEventType.CashGame,
+            Status = LeagueOneOffEventStatus.Planned,
+            LaunchedGameId = game.Id
+        };
+
+        _dbContext.Leagues.Add(league);
+        _dbContext.Games.Add(game);
+        _dbContext.LeagueOneOffEvents.Add(oneOffEvent);
+        await _dbContext.SaveChangesAsync();
+
+        var method = typeof(ContinuousPlayBackgroundService).GetMethod(
+            "HandleCashGameRebuyGraceTimerExpiredAsync",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+
+        method.Should().NotBeNull();
+
+        var task = method!.Invoke(_service, [game.Id]) as Task;
+        task.Should().NotBeNull();
+        await task!;
+
+        var updatedEvent = await _dbContext.LeagueOneOffEvents.FindAsync(oneOffEvent.Id);
+        updatedEvent.Should().NotBeNull();
+        updatedEvent!.Status.Should().Be(LeagueOneOffEventStatus.Completed);
+    }
+
+    [Fact]
     public async Task ProcessGamesReadyForNextHandAsync_FinalizesQueuedLeave_CreditsWallet()
     {
         // Arrange
@@ -532,6 +727,8 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
         private readonly IHandHistoryRecorder _recorder;
         private readonly IGameFlowHandlerFactory _handlerFactory;
         private readonly IPlayerChipWalletService _playerChipWalletService;
+        private readonly ILeagueBroadcaster _leagueBroadcaster;
+        private readonly LeagueGameCompletionSyncService _leagueCompletionSyncService;
 
         public FakeServiceProvider(
             CardsDbContext dbContext, 
@@ -544,6 +741,11 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
             _recorder = recorder;
             _handlerFactory = handlerFactory;
 			_playerChipWalletService = new PlayerChipWalletService(_dbContext);
+			_leagueBroadcaster = new FakeLeagueBroadcaster();
+			_leagueCompletionSyncService = new LeagueGameCompletionSyncService(
+				_dbContext,
+				_leagueBroadcaster,
+				new FakeLogger<LeagueGameCompletionSyncService>());
         }
 
         public object? GetService(Type serviceType)
@@ -553,7 +755,32 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
             if (serviceType == typeof(IHandHistoryRecorder)) return _recorder;
             if (serviceType == typeof(IGameFlowHandlerFactory)) return _handlerFactory;
 			if (serviceType == typeof(IPlayerChipWalletService)) return _playerChipWalletService;
+			if (serviceType == typeof(ILeagueBroadcaster)) return _leagueBroadcaster;
+			if (serviceType == typeof(LeagueGameCompletionSyncService)) return _leagueCompletionSyncService;
             return null;
+        }
+    }
+
+    private class FakeLeagueBroadcaster : ILeagueBroadcaster
+    {
+        public Task BroadcastLeagueEventChangedAsync(LeagueEventChangedDto eventChanged, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task BroadcastEventSessionLaunchedAsync(LeagueEventSessionLaunchedDto sessionLaunched, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task BroadcastJoinRequestSubmittedAsync(LeagueJoinRequestSubmittedDto joinRequestSubmitted, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task BroadcastJoinRequestUpdatedAsync(LeagueJoinRequestUpdatedDto joinRequestUpdated, string? requesterUserId = null, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
         }
     }
 

@@ -2,6 +2,9 @@
 
 @using static CardGames.Poker.Web.Components.Pages.TablePlay
 @using CardGames.Contracts.SignalR
+@using Microsoft.JSInterop
+
+@inject IJSRuntime JSRuntime
 
 <div class="table-canvas">
 	<!-- Poker table background -->
@@ -193,16 +196,16 @@
 	</div>
 
 	<!-- Wild Cards Panel (top-right corner, outside the table) -->
-	@if (HasWildCards && WildCards is { Count: > 0 })
+	@if (ShowWildCardsPanel)
 	{
-		<div class="wild-cards-panel">
-			<div class="wild-cards-header">
+		<div @ref="_wildCardsPanelRef" class="wild-cards-panel">
+			<div @ref="_wildCardsHandleRef" class="wild-cards-header drag-handle">
 				<i class="fa-solid fa-star wild-cards-icon"></i>
 				<span class="wild-cards-title">Wild Cards</span>
 			</div>
 			<div class="wild-cards-list">
 				@foreach
-					(var wildCard in WildCards)
+					(var wildCard in WildCards!)
 				{
 					<div class="wild-card-item @(wildCard.IsPersonalized ? "personalized" : "")">
 						@if
@@ -229,6 +232,8 @@
 </div>
 
 @code {
+	private const string WildCardsPanelStorageKey = "cardGames.panelPosition.wildCardsPanel";
+
 	[Parameter]
 	public List<SeatInfo> Seats { get; set; } = [];
 
@@ -298,6 +303,12 @@
 	[Parameter]
 	public IReadOnlyList<CardPublicDto>? CommunityCards { get; set; }
 
+	private ElementReference _wildCardsPanelRef;
+	private ElementReference _wildCardsHandleRef;
+	private bool _wildCardsPanelDragInitialized;
+
+	private bool ShowWildCardsPanel => HasWildCards && WildCards is { Count: > 0 };
+
 	private bool HasExtraCommunityCards => RegularCommunityCards is { Count: > 5 };
 
 	private bool IsInBetween => string.Equals(GameTypeCode, "INBETWEEN", StringComparison.OrdinalIgnoreCase);
@@ -321,6 +332,23 @@
 	}
 
 	private ElementReference _deckRef;
+
+	protected override void OnParametersSet()
+	{
+		if (!ShowWildCardsPanel)
+		{
+			_wildCardsPanelDragInitialized = false;
+		}
+	}
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (ShowWildCardsPanel && !_wildCardsPanelDragInitialized)
+		{
+			_wildCardsPanelDragInitialized = true;
+			await JSRuntime.InvokeVoidAsync("draggablePanel.init", _wildCardsPanelRef, _wildCardsHandleRef, WildCardsPanelStorageKey);
+		}
+	}
 
 	/// <summary>
 	/// Represents a card being animated from the deck to a player's hand.

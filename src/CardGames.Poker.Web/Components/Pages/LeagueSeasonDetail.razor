@@ -1,0 +1,1469 @@
+@page "/leagues/{LeagueId:guid}/seasons/{SeasonId:guid}"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@implements IAsyncDisposable
+
+@using CardGames.Contracts.SignalR
+@using CardGames.Poker.Api.Clients
+@using CardGames.Poker.Api.Contracts
+@using CardGames.Poker.Web.Components.Pages.LeagueDetailTabs
+@using CardGames.Poker.Web.Components.Shared
+@using CardGames.Poker.Web.Services
+@using CardGames.Poker.Web.Utilities
+@using Microsoft.AspNetCore.Authorization
+@using System.Net
+@using System.Security.Claims
+@using System.Text.Json
+
+@inject ILeaguesApi LeaguesApi
+@inject LeagueHubClient LeagueHubClient
+@inject ILogger<LeagueSeasonDetail> Logger
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IProfileApi ProfileApi
+@inject IAvailablePokerGamesApi AvailableGamesApi
+
+<PageTitle>@PageTitleText</PageTitle>
+
+<AuthenticatedNavBar />
+
+<NoChipsModal @bind-IsVisible="_showNoChipsModal" OnClose="HandleNoChipsModalClose" />
+
+<ConfirmDialog @bind-IsVisible="_showDeleteEventConfirmation"
+			   Title="Delete Event"
+			   Message="@_deleteEventConfirmationMessage"
+			   ConfirmText="Delete"
+			   CancelText="Cancel"
+			   ProcessingText="Deleting..."
+			   IconClass="fa-trash"
+			   ConfirmButtonClass="btn-danger"
+			   IsProcessing="_isDeletingEvent"
+			   AllowOverlayDismiss="false"
+			   ShowCloseButton="true"
+			   OnConfirm="ConfirmDeleteEventAsync"
+			   OnCancel="CancelDeleteEvent" />
+
+<main class="lobby-main">
+	<div class="lobby-container">
+		<div class="league-detail-header season-detail-header">
+			<div class="league-detail-header-left">
+				<button type="button" class="league-detail-btn season-detail-back-btn" @onclick="NavigateBackToLeague">
+					<i class="fa-solid fa-arrow-left"></i>
+					<span>Back to League</span>
+				</button>
+				<div class="league-detail-icon season-detail-icon">
+					<i class="fa-solid fa-calendar-days"></i>
+				</div>
+				<div class="league-detail-header-info">
+					<div class="season-detail-breadcrumb">@(_leagueDetail?.Name ?? "League")</div>
+					<h1 class="league-detail-name">@(_season?.Name ?? "Season")</h1>
+					@if (_season is not null)
+					{
+						<div class="league-detail-meta season-detail-meta">
+							<span><i class="fa-solid fa-flag-checkered"></i> @_season.Status</span>
+							<span><i class="fa-solid fa-list-ol"></i> @(_season.PlannedEventCount?.ToString() ?? "-") planned</span>
+							<span><i class="fa-solid fa-calendar-range"></i> @FormatSeasonWindow()</span>
+						</div>
+					}
+				</div>
+			</div>
+			@if (_leagueDetail is not null)
+			{
+				<div class="league-detail-header-right season-detail-header-right">
+					<span class="league-detail-role-badge">@_leagueDetail.MyRole</span>
+					@if (CanManageLeague)
+					{
+						<button type="button" class="league-detail-btn league-detail-btn-create" @onclick="OpenSeasonEventModal">
+							<i class="fa-solid fa-plus"></i>
+							<span>Create Event</span>
+						</button>
+					}
+				</div>
+			}
+		</div>
+
+		@if (!string.IsNullOrWhiteSpace(_message))
+		{
+			<div class="league-detail-message @(_isError ? "league-detail-message-error" : "league-detail-message-success")" role="alert">
+				<i class="fa-solid @(_isError ? "fa-triangle-exclamation" : "fa-circle-check")"></i>
+				<span>@_message</span>
+			</div>
+		}
+
+		@if (_isLoading)
+		{
+			<div class="league-detail-loading">
+				<i class="fa-solid fa-spinner fa-spin"></i>
+				<span>Loading season...</span>
+			</div>
+		}
+		else if (_isAwaitingApproval)
+		{
+			<div class="league-detail-awaiting">
+				<i class="fa-solid fa-clock"></i>
+				<div>
+					<div class="fw-semibold">Awaiting league access</div>
+					<div class="text-muted small">You need league access before viewing this season.</div>
+				</div>
+			</div>
+		}
+		else if (_leagueDetail is null || _season is null)
+		{
+			<div class="league-detail-loading">
+				<i class="fa-solid fa-circle-exclamation"></i>
+				<span>Unable to load this season.</span>
+			</div>
+		}
+		else
+		{
+			<nav class="lobby-tabs" role="tablist" aria-label="Season sections">
+				<button type="button" class="lobby-tab @(_activeTab == LeagueSeasonDetailTab.Schedule ? "active" : "")" role="tab"
+						aria-selected="@(_activeTab == LeagueSeasonDetailTab.Schedule)"
+						@onclick="() => SetActiveTab(LeagueSeasonDetailTab.Schedule)">
+					<span class="lobby-tab-icon"><i class="fa-thin fa-calendar-days"></i></span>
+					<span class="lobby-tab-text">Schedule</span>
+					@if (CalendarEventCount > 0)
+					{
+						<span class="lobby-tab-badge">@CalendarEventCount</span>
+					}
+				</button>
+				<button type="button" class="lobby-tab @(_activeTab == LeagueSeasonDetailTab.Results ? "active" : "")" role="tab"
+						aria-selected="@(_activeTab == LeagueSeasonDetailTab.Results)"
+						@onclick="() => SetActiveTab(LeagueSeasonDetailTab.Results)">
+					<span class="lobby-tab-icon"><i class="fa-thin fa-trophy"></i></span>
+					<span class="lobby-tab-text">Results</span>
+					@if (CompletedEventCount > 0)
+					{
+						<span class="lobby-tab-badge">@CompletedEventCount</span>
+					}
+				</button>
+				<button type="button" class="lobby-tab @(_activeTab == LeagueSeasonDetailTab.Standings ? "active" : "")" role="tab"
+						aria-selected="@(_activeTab == LeagueSeasonDetailTab.Standings)"
+						@onclick="() => SetActiveTab(LeagueSeasonDetailTab.Standings)">
+					<span class="lobby-tab-icon"><i class="fa-thin fa-ranking-star"></i></span>
+					<span class="lobby-tab-text">Standings</span>
+				</button>
+			</nav>
+
+			@if (_activeTab == LeagueSeasonDetailTab.Schedule)
+			{
+				<section class="league-detail-card">
+					<div class="league-detail-card-header">
+						<h3><i class="fa-solid fa-calendar-days"></i> Event Calendar</h3>
+						<div class="league-detail-card-actions">
+							<span class="season-detail-calendar-summary">Highlighted dates have scheduled events.</span>
+							@if (CanManageLeague)
+							{
+								<button type="button" class="league-detail-btn league-detail-btn-create" @onclick="OpenSeasonEventModal">
+									<i class="fa-solid fa-plus"></i>
+									<span>Create Event</span>
+								</button>
+							}
+						</div>
+					</div>
+					<div class="season-detail-schedule-grid">
+						<div class="season-detail-calendar-panel">
+							<div class="season-detail-calendar-frame" @ref="_calendarHost">
+								<BbCalendar @bind-Selected="SelectedCalendarDate"
+											ShowOutsideDays="true"
+											Class="season-detail-calendar" />
+							</div>
+						</div>
+						<div class="season-detail-day-panel">
+							<div class="season-detail-day-header">
+								<div>
+									<div class="season-detail-day-kicker">Selected Date</div>
+									<h3>@FormatSelectedCalendarDate()</h3>
+								</div>
+								<span class="league-detail-event-status">@SelectedDateEvents.Count event@(SelectedDateEvents.Count == 1 ? string.Empty : "s")</span>
+							</div>
+
+							@if (SelectedDateEvents.Count == 0)
+							{
+								<p class="league-detail-empty season-detail-day-empty">No events scheduled for this date.</p>
+							}
+							else
+							{
+								<div class="league-detail-active-games-list">
+									@foreach (var seasonEvent in SelectedDateEvents)
+									{
+										<div class="league-detail-active-game-card league-event-season">
+											<div class="league-detail-active-game-top">
+												<div class="league-detail-active-game-info">
+													<span class="league-detail-active-game-name">@seasonEvent.Name</span>
+													<div class="league-detail-active-game-meta">
+														<span class="league-detail-active-game-meta-item">
+															<i class="fa-solid fa-trophy league-event-type-icon-season"></i> Season Event
+														</span>
+														@if (!string.IsNullOrWhiteSpace(seasonEvent.GameTypeCode))
+														{
+															<span class="league-detail-active-game-meta-item">
+																<i class="fa-solid fa-cards"></i> @seasonEvent.GameTypeCode
+															</span>
+														}
+														<span class="league-detail-active-game-meta-item league-event-badge-season">@seasonEvent.Status</span>
+													</div>
+												</div>
+											</div>
+											<div class="league-detail-active-game-details">
+												<div class="league-detail-active-game-detail">
+													<i class="fa-solid fa-list-ol"></i>
+													<span>Seq @((seasonEvent.SequenceNumber?.ToString()) ?? "-")</span>
+												</div>
+												<div class="league-detail-active-game-detail">
+													<i class="fa-solid fa-calendar"></i>
+													<span>@FormatDate(seasonEvent.ScheduledAtUtc)</span>
+												</div>
+												<div class="league-detail-active-game-detail">
+													<i class="fa-solid fa-coins"></i>
+													<span>@FormatSeasonEventStakes(seasonEvent)</span>
+												</div>
+											</div>
+											@if (!string.IsNullOrWhiteSpace(seasonEvent.Notes))
+											{
+												<p class="season-detail-event-notes">@seasonEvent.Notes</p>
+											}
+											@if ((CanManageLeague && CanEditSeasonEvent(seasonEvent)) || seasonEvent.LaunchedGameId.HasValue)
+											{
+												<div class="league-detail-active-game-actions">
+													@if (CanManageLeague && CanEditSeasonEvent(seasonEvent))
+													{
+														<button type="button" class="btn btn-sm btn-outline-secondary league-action-btn" @onclick="() => OpenSeasonEventEditor(seasonEvent)">
+															<i class="fa-solid fa-pen-to-square"></i> Edit
+														</button>
+														<button type="button" class="btn btn-sm btn-danger league-action-btn" @onclick="() => OpenDeleteSeasonEventDialog(seasonEvent)" title="Delete season event">
+															<i class="fa-regular fa-trash"></i>
+														</button>
+														<button type="button" class="btn btn-sm btn-primary league-action-btn" @onclick="() => LaunchSeasonEventAsync(seasonEvent.EventId)" disabled="@(IsLaunchingSeasonEvent(seasonEvent.EventId))">
+															<i class="fa-solid fa-play"></i> Launch Play
+														</button>
+													}
+													@if (seasonEvent.LaunchedGameId.HasValue)
+													{
+														<button type="button" class="league-detail-active-game-join-btn" @onclick="() => OpenTable(seasonEvent.LaunchedGameId.Value)">
+															<i class="fa-solid fa-right-to-bracket"></i> Join
+														</button>
+													}
+												</div>
+											}
+										</div>
+									}
+								</div>
+							}
+						</div>
+					</div>
+				</section>
+			}
+
+			@if (_activeTab == LeagueSeasonDetailTab.Results)
+			{
+				<LeagueDetailResultsTab Seasons="SeasonSelectorOptions"
+									SelectedSeasonId="SeasonId"
+									CanManageLeague="CanManageLeague"
+									SeasonEvents="_seasonEvents"
+									BrowserTimeZoneId="@BrowserTimeZoneId"
+									LaunchingSeasonEventId="_launchingSeasonEventId"
+									OpenSeasonEventModal="OpenSeasonEventModal"
+									EditSeasonEvent="OpenSeasonEventEditor"
+									DeleteSeasonEvent="OpenDeleteSeasonEventDialog"
+									OpenTable="OpenTable"
+									LaunchSeasonEvent="LaunchSeasonEventAsync"
+									ShowSeasonSelector="false" />
+			}
+
+			@if (_activeTab == LeagueSeasonDetailTab.Standings)
+			{
+				<LeagueDetailStandingsTab SelectedSeasonId="SeasonId"
+									  SelectedSeasonName="@_season.Name"
+									  MyStanding="_myStanding"
+									  RankMovementByUserId="_rankMovementByUserId"
+									  Standings="_standings"
+									  IsLoading="_isLoading"
+									  CurrentUserId="_currentUserId"
+									  LoadStandings="LoadStandingsAsync" />
+			}
+		}
+	</div>
+</main>
+
+@if (_showSeasonEventModal)
+{
+	<div class="confirm-dialog-overlay">
+		<div class="confirm-dialog league-form-modal season-event-modal" @onclick:stopPropagation>
+			<div class="confirm-dialog-header league-form-modal-header">
+				<h3 class="confirm-dialog-title mb-0">@SeasonEventModalTitle</h3>
+				<button type="button" class="league-modal-close-btn" aria-label="Close" @onclick="CloseSeasonEventModal">
+					<i class="fa-solid fa-xmark" aria-hidden="true"></i>
+				</button>
+			</div>
+			<div class="confirm-dialog-body league-form-modal-body text-start">
+				<div class="form-floating" data-label="Event name">
+					<InputText id="season-event-name" class="form-control league-modal-input" @bind-Value="_seasonEventName"
+							   maxlength="120" placeholder="Event name" />
+				</div>
+				<div class="form-floating" data-label="Sequence (optional)">
+					<InputNumber id="season-event-sequence" class="form-control league-modal-input"
+							 @bind-Value="_seasonEventSequence" placeholder="Sequence" />
+				</div>
+				<div class="row league-form-inline-fields">
+					<div class="col-md-4 league-form-inline-field">
+						<label class="form-label small" for="season-event-date">Scheduled date</label>
+						<InputDate id="season-event-date" class="form-control league-modal-date-input" @bind-Value="_seasonEventScheduledDate" />
+					</div>
+					<div class="col-md-3 league-form-inline-field">
+						<label class="form-label small" for="season-event-time">Start time</label>
+						<input id="season-event-time" type="time" class="form-control league-modal-input league-modal-date-input" value="@_seasonEventScheduledTime" @onchange="OnSeasonEventScheduledTimeChanged" />
+					</div>
+					<div class="col-md-5 league-form-inline-field">
+						<label class="form-label small" for="season-event-time-zone">Time zone</label>
+						<InputSelect id="season-event-time-zone" class="form-select league-modal-input league-modal-date-input" @bind-Value="_seasonEventTimeZoneId">
+							@foreach (var timeZone in TimeZoneOptions)
+							{
+								<option value="@timeZone.Id">@timeZone.DisplayName</option>
+							}
+						</InputSelect>
+					</div>
+				</div>
+				<div class="form-floating" data-label="Notes (optional)">
+					<InputText id="season-event-notes" class="form-control league-modal-input"
+							   @bind-Value="_seasonEventNotes" maxlength="512" placeholder="Notes (optional)" />
+				</div>
+				<div class="form-floating" data-label="Game Variant">
+					@if (_isLoadingAvailableLeagueGames)
+					{
+						<p class="text-muted small">Loading game variants...</p>
+					}
+					else
+					{
+						<InputSelect id="season-event-game-type" class="form-control league-modal-input" @bind-Value="_seasonEventGameTypeCode" @bind-Value:after="OnSeasonEventGameTypeChanged">
+							<option value="">-- Select a game --</option>
+							@foreach (var game in _availableLeagueGames)
+							{
+								<option value="@game.Code">@game.Name</option>
+							}
+						</InputSelect>
+					}
+				</div>
+				@if (SeasonEventSelectedGameHasBlinds)
+				{
+					<div class="league-form-inline-fields league-form-inline-fields-bets">
+						<div class="league-form-inline-field">
+							<div class="form-floating" data-label="Small Blind">
+								<InputNumber id="season-event-small-blind" class="form-control league-modal-input" @bind-Value="_seasonEventSmallBlind" min="1" max="1000" />
+							</div>
+						</div>
+						<div class="league-form-inline-field">
+							<div class="form-floating" data-label="Big Blind">
+								<InputNumber id="season-event-big-blind" class="form-control league-modal-input" @bind-Value="_seasonEventBigBlind" min="1" max="2000" />
+							</div>
+						</div>
+					</div>
+				}
+				else
+				{
+					<div class="league-form-inline-fields league-form-inline-fields-bets">
+						<div class="league-form-inline-field">
+							<div class="form-floating" data-label="Ante">
+								<InputNumber id="season-event-ante" class="form-control league-modal-input" @bind-Value="_seasonEventAnte" min="1" max="100" />
+							</div>
+						</div>
+						<div class="league-form-inline-field">
+							<div class="form-floating" data-label="Minimum Bet">
+								<InputNumber id="season-event-min-bet" class="form-control league-modal-input" @bind-Value="_seasonEventMinBet" min="1" max="1000" />
+							</div>
+						</div>
+					</div>
+				}
+				<div class="join-buy-in-modal-controls">
+					<label class="form-label mb-1" for="season-event-tournament-buy-in-slider">Tournament buy-in</label>
+					<input id="season-event-tournament-buy-in-slider"
+						   type="range"
+						   class="bet-slider"
+						   style="@GetSeasonEventTournamentBuyInSliderStyle()"
+						   min="@GetSeasonEventTournamentBuyInMin()"
+						   max="@GetSeasonEventTournamentBuyInMax()"
+						   step="@GetSeasonEventTournamentBuyInStep()"
+						   @bind="_seasonEventTournamentBuyIn"
+						   @bind:event="oninput"
+						   @bind:after="NormalizeSeasonEventTournamentBuyIn" />
+					<div class="bet-slider-labels">
+						<span>Min @GetSeasonEventTournamentBuyInMin().ToString("N0")</span>
+						<span>Max @GetSeasonEventTournamentBuyInMax().ToString("N0")</span>
+					</div>
+
+					<input id="season-event-tournament-buy-in-input"
+						   class="form-input join-buy-in-input"
+						   type="number"
+						   min="@GetSeasonEventTournamentBuyInMin()"
+						   max="@GetSeasonEventTournamentBuyInMax()"
+						   step="1"
+						   @bind="_seasonEventTournamentBuyIn"
+						   @bind:after="ClampSeasonEventTournamentBuyIn" />
+				</div>
+				<div class="league-form-modal-actions">
+					<button type="button" class="btn btn-sm btn-secondary league-action-btn" @onclick="CloseSeasonEventModal"
+							disabled="@_isSubmittingSeasonEvent">Cancel</button>
+					<button type="button" class="btn btn-sm btn-primary league-action-btn" @onclick="SaveSeasonEventAsync"
+							disabled="@_isSubmittingSeasonEvent">@SeasonEventSubmitLabel</button>
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+@code {
+	[Parameter]
+	public Guid LeagueId { get; set; }
+
+	[Parameter]
+	public Guid SeasonId { get; set; }
+
+	private bool _isLoading;
+	private bool _isError;
+	private string? _message;
+	private bool _isAwaitingApproval;
+	private LeagueDetailDto? _leagueDetail;
+	private LeagueSeasonDto? _season;
+	private List<LeagueSeasonDto> _seasons = [];
+	private List<LeagueSeasonEventDto> _seasonEvents = [];
+	private List<LeagueStandingEntryDto> _standings = [];
+	private bool _isLoadingAvailableLeagueGames;
+	private List<GetAvailablePokerGamesResponse> _availableLeagueGames = [];
+	private string _seasonEventName = string.Empty;
+	private int? _seasonEventSequence;
+	private DateTime? _seasonEventScheduledDate;
+	private string _seasonEventScheduledTime = LeagueTimeZoneHelper.DefaultTimeText;
+	private string _seasonEventTimeZoneId = "UTC";
+	private string? _seasonEventNotes;
+	private string _seasonEventGameTypeCode = string.Empty;
+	private int _seasonEventAnte = 10;
+	private int _seasonEventMinBet = 20;
+	private int _seasonEventSmallBlind = 5;
+	private int _seasonEventBigBlind = 10;
+	private int _seasonEventTournamentBuyIn = DefaultTournamentBuyIn;
+	private bool _isSubmittingSeasonEvent;
+	private bool _showSeasonEventModal;
+	private Guid? _editingSeasonEventId;
+	private Guid? _launchingSeasonEventId;
+	private bool _showNoChipsModal;
+	private bool _showDeleteEventConfirmation;
+	private bool _isDeletingEvent;
+	private string _deleteEventConfirmationMessage = string.Empty;
+	private PendingSeasonEventDeletion? _pendingEventDeletion;
+	private string? _currentUserId;
+	private Dictionary<string, int> _rankMovementByUserId = new(StringComparer.Ordinal);
+	private LeagueStandingEntryDto? _myStanding;
+	private bool _isLeagueHubSubscriptionInitialized;
+	private bool _pendingLeagueHubSubscriptionSync;
+	private bool _isSyncingLeagueHubSubscription;
+	private const string LeagueSeasonDetailModulePath = "/Components/Pages/LeagueSeasonDetail.razor.js";
+	private IJSObjectReference? _leagueSeasonDetailModule;
+	private string? _browserTimeZoneId;
+	private List<BrowserTimeZoneOption> _availableTimeZones = [];
+	private bool _hasResolvedBrowserTimeZone;
+	private LeagueSeasonDetailTab _activeTab = LeagueSeasonDetailTab.Schedule;
+	private DateTime? _selectedCalendarDate;
+	private ElementReference _calendarHost;
+	private string? _calendarHighlightSignature;
+
+	private enum LeagueSeasonDetailTab
+	{
+		Schedule,
+		Results,
+		Standings
+	}
+
+	private sealed class PendingSeasonEventDeletion
+	{
+		public Guid EventId { get; init; }
+
+		public required string EventName { get; init; }
+	}
+
+	private const int DefaultTournamentBuyIn = 100;
+
+	private string PageTitleText => $"{_season?.Name ?? "Season Detail"} - Dealer's Choice Poker";
+	private bool CanManageLeague => HasLeagueManagementRole(_leagueDetail?.MyRole);
+	private string BrowserTimeZoneId => string.IsNullOrWhiteSpace(_browserTimeZoneId) ? "UTC" : _browserTimeZoneId;
+	private DateTime? SelectedCalendarDate
+	{
+		get => _selectedCalendarDate;
+		set
+		{
+			var normalized = value?.Date;
+			if (_selectedCalendarDate != normalized)
+			{
+				_calendarHighlightSignature = null;
+			}
+
+			_selectedCalendarDate = normalized;
+		}
+	}
+	private IReadOnlyList<BrowserTimeZoneOption> TimeZoneOptions => _availableTimeZones.Count > 0
+		? _availableTimeZones
+		: [new BrowserTimeZoneOption(BrowserTimeZoneId, BrowserTimeZoneId)];
+	private string SeasonEventModalTitle => _editingSeasonEventId.HasValue ? "Edit Season Event" : "Create Season Event";
+	private string SeasonEventSubmitLabel => _editingSeasonEventId.HasValue ? "Save Changes" : "Create Season Event";
+	private GetAvailablePokerGamesResponse? SelectedSeasonEventGame => _availableLeagueGames.FirstOrDefault(game => string.Equals(game.Code, _seasonEventGameTypeCode, StringComparison.OrdinalIgnoreCase));
+	private bool SeasonEventSelectedGameHasBlinds => UsesBlinds(_seasonEventGameTypeCode);
+	private List<LeagueSeasonDto> SeasonSelectorOptions => _season is null ? [] : [_season];
+	private List<LeagueSeasonEventDto> SelectedDateEvents => _selectedCalendarDate.HasValue
+		? _seasonEvents
+			.Where(seasonEvent => GetLocalEventDate(seasonEvent) == _selectedCalendarDate.Value.Date)
+			.OrderBy(seasonEvent => seasonEvent.ScheduledAtUtc ?? DateTimeOffset.MaxValue)
+			.ThenBy(seasonEvent => seasonEvent.SequenceNumber ?? int.MaxValue)
+			.ToList()
+		: [];
+	private int CalendarEventCount => GetCalendarEventDateKeys().Count;
+	private int CompletedEventCount => _seasonEvents.Count(seasonEvent => seasonEvent.Status == LeagueSeasonEventStatus.Completed);
+
+	private static bool HasLeagueManagementRole(LeagueRole? role)
+	{
+		return role is LeagueRole.Admin or LeagueRole.Manager or LeagueRole.Owner;
+	}
+
+	private static bool UsesBlinds(string? gameTypeCode)
+	{
+		return gameTypeCode?.Trim().ToUpperInvariant() is "BOBBARKER"
+			or "CRAZYPINEAPPLE"
+			or "HOLDEM"
+			or "HOLDTHEBASEBALL"
+			or "IRISHHOLDEM"
+			or "KLONDIKE"
+			or "NEBRASKA"
+			or "OMAHA"
+			or "PHILSMOM"
+			or "REDRIVER"
+			or "SOUTHDAKOTA";
+	}
+
+	protected override async Task OnParametersSetAsync()
+	{
+		await LoadAllAsync();
+	}
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (!_hasResolvedBrowserTimeZone)
+		{
+			_hasResolvedBrowserTimeZone = true;
+
+			try
+			{
+				_leagueSeasonDetailModule = await JSRuntime.InvokeAsync<IJSObjectReference>("import", LeagueSeasonDetailModulePath);
+				var timeZoneSetup = await _leagueSeasonDetailModule.InvokeAsync<BrowserTimeZoneSetup>("getTimeZoneSetup");
+				_browserTimeZoneId = string.IsNullOrWhiteSpace(timeZoneSetup.BrowserTimeZoneId) ? "UTC" : timeZoneSetup.BrowserTimeZoneId;
+				_availableTimeZones = timeZoneSetup.TimeZones
+					.Where(option => !string.IsNullOrWhiteSpace(option.Id))
+					.DistinctBy(option => option.Id)
+					.ToList();
+
+				EnsureSelectedCalendarDate(forceReevaluate: true);
+				StateHasChanged();
+			}
+			catch (InvalidOperationException)
+			{
+			}
+			catch (JSDisconnectedException)
+			{
+			}
+			catch (JSException ex)
+			{
+				Logger.LogDebug(ex, "Failed resolving browser time zone for league season page {LeagueId}/{SeasonId}", LeagueId, SeasonId);
+			}
+		}
+
+		if (_pendingLeagueHubSubscriptionSync && !_isSyncingLeagueHubSubscription && !_isLoading)
+		{
+			await RunPendingLeagueHubSubscriptionSyncAsync();
+		}
+
+		await EnsureCalendarHighlightsAsync();
+	}
+
+	private async Task LoadAllAsync()
+	{
+		_isLoading = true;
+		_message = null;
+		_isError = false;
+		_isAwaitingApproval = false;
+
+		try
+		{
+			await LoadCurrentUserAsync();
+			await LoadDetailAsync();
+
+			if (_leagueDetail is null)
+			{
+				return;
+			}
+
+			await LoadSeasonAsync();
+			if (_season is null)
+			{
+				_message = "Unable to load this season.";
+				_isError = true;
+				return;
+			}
+
+			await LoadSeasonEventsAsync();
+			await LoadStandingsAsync();
+			await LoadAvailableLeagueGamesAsync();
+		}
+		catch (Exception ex)
+		{
+			Logger.LogError(ex, "Failed loading league season detail page for {LeagueId}/{SeasonId}", LeagueId, SeasonId);
+			_message = "Unable to load this season right now.";
+			_isError = true;
+		}
+		finally
+		{
+			_isLoading = false;
+			_pendingLeagueHubSubscriptionSync = true;
+		}
+	}
+
+	private async Task RunPendingLeagueHubSubscriptionSyncAsync()
+	{
+		_isSyncingLeagueHubSubscription = true;
+		try
+		{
+			await SyncLeagueHubSubscriptionAsync();
+		}
+		finally
+		{
+			_isSyncingLeagueHubSubscription = false;
+			_pendingLeagueHubSubscriptionSync = false;
+		}
+	}
+
+	private void SetActiveTab(LeagueSeasonDetailTab tab)
+	{
+		_activeTab = tab;
+		if (tab == LeagueSeasonDetailTab.Schedule)
+		{
+			_calendarHighlightSignature = null;
+		}
+	}
+
+	private async Task SyncLeagueHubSubscriptionAsync()
+	{
+		try
+		{
+			if (!_isLeagueHubSubscriptionInitialized)
+			{
+				LeagueHubClient.OnLeagueEventChanged += HandleLeagueEventChangedAsync;
+				LeagueHubClient.OnLeagueEventSessionLaunched += HandleLeagueEventSessionLaunchedAsync;
+				_isLeagueHubSubscriptionInitialized = true;
+			}
+
+			if (_leagueDetail is not null)
+			{
+				await LeagueHubClient.ConnectAsync();
+				await LeagueHubClient.SetViewedLeaguesAsync([LeagueId]);
+				await LeagueHubClient.SetManagedLeaguesAsync(CanManageLeague ? [LeagueId] : []);
+			}
+		}
+		catch (Exception ex)
+		{
+			Logger.LogWarning(ex, "Failed syncing league SignalR subscription for season page {LeagueId}/{SeasonId}", LeagueId, SeasonId);
+		}
+	}
+
+	private async Task HandleLeagueEventSessionLaunchedAsync(LeagueEventSessionLaunchedDto payload)
+	{
+		await InvokeAsync(async () =>
+		{
+			if (payload.LeagueId != LeagueId || _leagueDetail is null)
+			{
+				return;
+			}
+
+			try
+			{
+				await ReloadSeasonStateAsync();
+			}
+			catch (Exception ex)
+			{
+				Logger.LogWarning(ex, "Error reloading league season state for {LeagueId}/{SeasonId} after session launch", LeagueId, SeasonId);
+			}
+
+			StateHasChanged();
+		});
+	}
+
+	private async Task HandleLeagueEventChangedAsync(LeagueEventChangedDto payload)
+	{
+		await InvokeAsync(async () =>
+		{
+			if (payload.LeagueId != LeagueId || _leagueDetail is null)
+			{
+				return;
+			}
+
+			try
+			{
+				await ReloadSeasonStateAsync();
+			}
+			catch (Exception ex)
+			{
+				Logger.LogWarning(ex, "Error reloading league season state for {LeagueId}/{SeasonId} after {ChangeKind}", LeagueId, SeasonId, payload.ChangeKind);
+			}
+
+			StateHasChanged();
+		});
+	}
+
+	private async Task ReloadSeasonStateAsync()
+	{
+		await LoadSeasonAsync();
+		if (_season is null)
+		{
+			return;
+		}
+
+		await LoadSeasonEventsAsync();
+		await LoadStandingsAsync();
+	}
+
+	private async Task LoadDetailAsync()
+	{
+		var response = await LeaguesApi.GetLeagueDetailAsync(LeagueId);
+		if (response.IsSuccessStatusCode && response.Content is not null)
+		{
+			_leagueDetail = response.Content;
+			_isAwaitingApproval = false;
+			return;
+		}
+
+		_leagueDetail = null;
+		if (response.StatusCode == HttpStatusCode.Forbidden)
+		{
+			_isAwaitingApproval = true;
+		}
+	}
+
+	private async Task LoadSeasonAsync()
+	{
+		var response = await LeaguesApi.GetSeasonsAsync(LeagueId);
+		_seasons = response.IsSuccessStatusCode && response.Content is not null ? response.Content.ToList() : [];
+		_season = _seasons.FirstOrDefault(season => season.SeasonId == SeasonId);
+	}
+
+	private async Task LoadSeasonEventsAsync()
+	{
+		var response = await LeaguesApi.GetSeasonEventsAsync(LeagueId, SeasonId);
+		_seasonEvents = response.IsSuccessStatusCode && response.Content is not null
+			? response.Content
+				.OrderBy(seasonEvent => seasonEvent.ScheduledAtUtc ?? DateTimeOffset.MaxValue)
+				.ThenBy(seasonEvent => seasonEvent.SequenceNumber ?? int.MaxValue)
+				.ToList()
+			: [];
+
+		EnsureSelectedCalendarDate();
+	}
+
+	private async Task LoadStandingsAsync()
+	{
+		var previousRankByUserId = _standings.ToDictionary(standing => standing.UserId, standing => standing.Rank, StringComparer.Ordinal);
+		var response = await LeaguesApi.GetLeagueStandingsAsync(LeagueId, SeasonId);
+
+		if (response.IsSuccessStatusCode && response.Content is not null)
+		{
+			_standings = response.Content.ToList();
+			_rankMovementByUserId = new Dictionary<string, int>(StringComparer.Ordinal);
+
+			foreach (var standing in _standings)
+			{
+				if (previousRankByUserId.TryGetValue(standing.UserId, out var previousRank))
+				{
+					_rankMovementByUserId[standing.UserId] = previousRank - standing.Rank;
+				}
+			}
+
+			_myStanding = _standings.FirstOrDefault(IsCurrentUserStanding);
+			return;
+		}
+
+		_standings = [];
+		_rankMovementByUserId.Clear();
+		_myStanding = null;
+	}
+
+	private async Task LoadAvailableLeagueGamesAsync()
+	{
+		if (_availableLeagueGames.Count > 0 || _isLoadingAvailableLeagueGames)
+		{
+			return;
+		}
+
+		_isLoadingAvailableLeagueGames = true;
+		try
+		{
+			var response = await AvailableGamesApi.GetAvailablePokerGamesAsync(string.Empty);
+			if (response.IsSuccessStatusCode && response.Content is not null)
+			{
+				_availableLeagueGames = response.Content.ToList();
+			}
+		}
+		catch (Exception ex)
+		{
+			Logger.LogWarning(ex, "Failed loading available league games for league season page {LeagueId}/{SeasonId}", LeagueId, SeasonId);
+		}
+		finally
+		{
+			_isLoadingAvailableLeagueGames = false;
+		}
+	}
+
+	private async Task LoadCurrentUserAsync()
+	{
+		var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+		var user = authState.User;
+
+		if (user.Identity?.IsAuthenticated != true)
+		{
+			_currentUserId = null;
+			return;
+		}
+
+		_currentUserId = user.FindFirstValue(ClaimTypes.NameIdentifier)
+			?? user.FindFirstValue("sub")
+			?? user.Identity?.Name;
+	}
+
+	private void EnsureSelectedCalendarDate(bool forceReevaluate = false)
+	{
+		var today = LeagueTimeZoneHelper.ConvertUtcToLocalDate(DateTimeOffset.UtcNow, BrowserTimeZoneId)?.Date ?? DateTime.UtcNow.Date;
+
+		if (!forceReevaluate && _selectedCalendarDate.HasValue)
+		{
+			_selectedCalendarDate = _selectedCalendarDate.Value.Date;
+			return;
+		}
+
+		var eventDates = _seasonEvents
+			.Select(GetLocalEventDate)
+			.Where(date => date.HasValue)
+			.Select(date => date!.Value)
+			.Distinct()
+			.OrderBy(date => date)
+			.ToList();
+
+		var nextDate = eventDates.FirstOrDefault(date => date >= today);
+		if (nextDate != default)
+		{
+			_selectedCalendarDate = nextDate;
+			return;
+		}
+
+		if (eventDates.Count > 0)
+		{
+			_selectedCalendarDate = eventDates[0];
+			return;
+		}
+
+		var seasonStart = LeagueTimeZoneHelper.ConvertUtcToLocalDate(_season?.StartsAtUtc, BrowserTimeZoneId)?.Date;
+		_selectedCalendarDate = seasonStart ?? today;
+	}
+
+	private List<string> GetCalendarEventDateKeys()
+	{
+		return _seasonEvents
+			.Select(GetLocalEventDate)
+			.Where(date => date.HasValue)
+			.Select(date => date!.Value.ToString("yyyyMMdd"))
+			.Distinct(StringComparer.Ordinal)
+			.OrderBy(date => date, StringComparer.Ordinal)
+			.ToList();
+	}
+
+	private async Task EnsureCalendarHighlightsAsync()
+	{
+		if (_activeTab != LeagueSeasonDetailTab.Schedule || _leagueSeasonDetailModule is null || _season is null)
+		{
+			return;
+		}
+
+		var dateKeys = GetCalendarEventDateKeys();
+		var signature = string.Join('|', dateKeys);
+		if (signature == _calendarHighlightSignature)
+		{
+			return;
+		}
+
+		try
+		{
+			await _leagueSeasonDetailModule.InvokeVoidAsync("updateCalendarEventHighlights", _calendarHost, dateKeys);
+			_calendarHighlightSignature = signature;
+		}
+		catch (InvalidOperationException)
+		{
+		}
+		catch (JSDisconnectedException)
+		{
+		}
+		catch (JSException ex)
+		{
+			Logger.LogDebug(ex, "Failed updating calendar highlights for league season page {LeagueId}/{SeasonId}", LeagueId, SeasonId);
+		}
+	}
+
+	private async Task SaveSeasonEventAsync()
+	{
+		if (_season is null)
+		{
+			_message = "Season details are not available.";
+			_isError = true;
+			return;
+		}
+
+		if (string.IsNullOrWhiteSpace(_seasonEventName))
+		{
+			_message = "Season event name is required.";
+			_isError = true;
+			return;
+		}
+
+		if (string.IsNullOrWhiteSpace(_seasonEventGameTypeCode))
+		{
+			_message = "Select a game variant for the season event.";
+			_isError = true;
+			return;
+		}
+
+		if (!LeagueTimeZoneHelper.TryConvertLocalToUtc(_seasonEventScheduledDate, _seasonEventScheduledTime, _seasonEventTimeZoneId, out var scheduledAtUtc, out var errorMessage))
+		{
+			_message = errorMessage;
+			_isError = true;
+			return;
+		}
+
+		if (!LeagueTimeZoneHelper.IsScheduledAtInFuture(scheduledAtUtc))
+		{
+			_message = LeagueTimeZoneHelper.ScheduledAtUtcMustBeInFutureMessage;
+			_isError = true;
+			return;
+		}
+
+		if (!TryValidateSeasonEventTournamentBuyIn(out var tournamentBuyInError))
+		{
+			_message = tournamentBuyInError;
+			_isError = true;
+			return;
+		}
+
+		if (SeasonEventSelectedGameHasBlinds)
+		{
+			if (_seasonEventSmallBlind <= 0)
+			{
+				_message = "Small blind must be greater than 0.";
+				_isError = true;
+				return;
+			}
+
+			if (_seasonEventBigBlind <= _seasonEventSmallBlind)
+			{
+				_message = "Big blind must be greater than small blind.";
+				_isError = true;
+				return;
+			}
+		}
+		else
+		{
+			if (_seasonEventAnte <= 0)
+			{
+				_message = "Ante must be greater than 0.";
+				_isError = true;
+				return;
+			}
+
+			if (_seasonEventMinBet <= 0)
+			{
+				_message = "Minimum bet must be greater than 0.";
+				_isError = true;
+				return;
+			}
+		}
+
+		_isSubmittingSeasonEvent = true;
+		var isEditing = _editingSeasonEventId.HasValue;
+		try
+		{
+			Refit.IApiResponse response;
+			if (isEditing)
+			{
+				response = await LeaguesApi.UpdateSeasonEventAsync(LeagueId, SeasonId, _editingSeasonEventId!.Value, new UpdateLeagueSeasonEventRequest
+				{
+					Name = _seasonEventName.Trim(),
+					SequenceNumber = _seasonEventSequence,
+					ScheduledAtUtc = scheduledAtUtc,
+					Notes = string.IsNullOrWhiteSpace(_seasonEventNotes) ? null : _seasonEventNotes.Trim(),
+					GameTypeCode = _seasonEventGameTypeCode,
+					Ante = SeasonEventSelectedGameHasBlinds ? 0 : _seasonEventAnte,
+					MinBet = SeasonEventSelectedGameHasBlinds ? _seasonEventBigBlind : _seasonEventMinBet,
+					SmallBlind = SeasonEventSelectedGameHasBlinds ? _seasonEventSmallBlind : null,
+					BigBlind = SeasonEventSelectedGameHasBlinds ? _seasonEventBigBlind : null,
+					TournamentBuyIn = _seasonEventTournamentBuyIn
+				});
+			}
+			else
+			{
+				response = await LeaguesApi.CreateSeasonEventAsync(LeagueId, SeasonId, new CreateLeagueSeasonEventRequest
+				{
+					Name = _seasonEventName.Trim(),
+					SequenceNumber = _seasonEventSequence,
+					ScheduledAtUtc = scheduledAtUtc,
+					Notes = string.IsNullOrWhiteSpace(_seasonEventNotes) ? null : _seasonEventNotes.Trim(),
+					GameTypeCode = _seasonEventGameTypeCode,
+					Ante = SeasonEventSelectedGameHasBlinds ? 0 : _seasonEventAnte,
+					MinBet = SeasonEventSelectedGameHasBlinds ? _seasonEventBigBlind : _seasonEventMinBet,
+					SmallBlind = SeasonEventSelectedGameHasBlinds ? _seasonEventSmallBlind : null,
+					BigBlind = SeasonEventSelectedGameHasBlinds ? _seasonEventBigBlind : null,
+					TournamentBuyIn = _seasonEventTournamentBuyIn
+				});
+			}
+
+			if (response.IsSuccessStatusCode)
+			{
+				ResetSeasonEventDraft();
+				_showSeasonEventModal = false;
+				_message = isEditing ? "Season event updated." : "Season event created.";
+				_isError = false;
+				await LoadSeasonEventsAsync();
+				return;
+			}
+
+			_message = TryExtractApiErrorMessage(response) ?? (isEditing ? "Failed to update season event." : "Failed to create season event.");
+			_isError = true;
+		}
+		catch (Exception ex)
+		{
+			Logger.LogError(ex, "Failed to save season event for league season page {LeagueId}/{SeasonId}", LeagueId, SeasonId);
+			_message = isEditing ? "Failed to update season event." : "Failed to create season event.";
+			_isError = true;
+		}
+		finally
+		{
+			_isSubmittingSeasonEvent = false;
+		}
+	}
+
+	private void OpenSeasonEventModal()
+	{
+		if (_season is null)
+		{
+			return;
+		}
+
+		ResetSeasonEventDraft();
+		_showSeasonEventModal = true;
+	}
+
+	private void OpenSeasonEventEditor(LeagueSeasonEventDto seasonEvent)
+	{
+		if (!CanEditSeasonEvent(seasonEvent))
+		{
+			return;
+		}
+
+		PopulateSeasonEventDraft(seasonEvent);
+		_showSeasonEventModal = true;
+	}
+
+	private Task OpenDeleteSeasonEventDialog(LeagueSeasonEventDto seasonEvent)
+	{
+		if (!CanEditSeasonEvent(seasonEvent))
+		{
+			return Task.CompletedTask;
+		}
+
+		_pendingEventDeletion = new PendingSeasonEventDeletion
+		{
+			EventId = seasonEvent.EventId,
+			EventName = seasonEvent.Name
+		};
+		_deleteEventConfirmationMessage = $"Are you sure you want to delete \"{seasonEvent.Name}\"? This action cannot be undone.";
+		_showDeleteEventConfirmation = true;
+		return Task.CompletedTask;
+	}
+
+	private void CloseSeasonEventModal()
+	{
+		if (_isSubmittingSeasonEvent)
+		{
+			return;
+		}
+
+		ResetSeasonEventDraft();
+		_showSeasonEventModal = false;
+	}
+
+	private void ResetSeasonEventDraft()
+	{
+		_editingSeasonEventId = null;
+		_seasonEventName = string.Empty;
+		_seasonEventSequence = null;
+		var defaultSchedule = LeagueTimeZoneHelper.GetDefaultLocalScheduledDateTime(BrowserTimeZoneId);
+		_seasonEventScheduledDate = defaultSchedule.Date;
+		_seasonEventScheduledTime = defaultSchedule.TimeText;
+		_seasonEventTimeZoneId = BrowserTimeZoneId;
+		_seasonEventNotes = null;
+		_seasonEventGameTypeCode = string.Empty;
+		_seasonEventAnte = 10;
+		_seasonEventMinBet = 20;
+		_seasonEventSmallBlind = 5;
+		_seasonEventBigBlind = 10;
+		_seasonEventTournamentBuyIn = DefaultTournamentBuyIn;
+	}
+
+	private void PopulateSeasonEventDraft(LeagueSeasonEventDto seasonEvent)
+	{
+		_editingSeasonEventId = seasonEvent.EventId;
+		_seasonEventName = seasonEvent.Name;
+		_seasonEventSequence = seasonEvent.SequenceNumber;
+		_seasonEventScheduledDate = LeagueTimeZoneHelper.ConvertUtcToLocalDate(seasonEvent.ScheduledAtUtc, BrowserTimeZoneId);
+		_seasonEventScheduledTime = LeagueTimeZoneHelper.ConvertUtcToTimeText(seasonEvent.ScheduledAtUtc, BrowserTimeZoneId);
+		_seasonEventTimeZoneId = BrowserTimeZoneId;
+		_seasonEventNotes = seasonEvent.Notes;
+		_seasonEventGameTypeCode = seasonEvent.GameTypeCode ?? string.Empty;
+		_seasonEventAnte = seasonEvent.Ante ?? 10;
+		_seasonEventMinBet = seasonEvent.MinBet ?? 20;
+		_seasonEventSmallBlind = seasonEvent.SmallBlind ?? 5;
+		_seasonEventBigBlind = seasonEvent.BigBlind ?? 10;
+		_seasonEventTournamentBuyIn = seasonEvent.TournamentBuyIn ?? DefaultTournamentBuyIn;
+		OnSeasonEventGameTypeChanged();
+	}
+
+	private void OnSeasonEventGameTypeChanged()
+	{
+		if (SeasonEventSelectedGameHasBlinds)
+		{
+			if (_seasonEventSmallBlind <= 0)
+			{
+				_seasonEventSmallBlind = 5;
+			}
+
+			if (_seasonEventBigBlind <= _seasonEventSmallBlind)
+			{
+				_seasonEventBigBlind = Math.Max(_seasonEventSmallBlind * 2, 10);
+			}
+
+			_seasonEventMinBet = _seasonEventBigBlind;
+			_seasonEventAnte = 0;
+			return;
+		}
+
+		if (_seasonEventAnte <= 0)
+		{
+			_seasonEventAnte = 10;
+		}
+
+		if (_seasonEventMinBet <= 0)
+		{
+			_seasonEventMinBet = 20;
+		}
+	}
+
+	private bool TryValidateSeasonEventTournamentBuyIn(out string? errorMessage)
+	{
+		NormalizeSeasonEventTournamentBuyIn();
+		if (_seasonEventTournamentBuyIn < GetSeasonEventTournamentBuyInMin() || _seasonEventTournamentBuyIn > GetSeasonEventTournamentBuyInMax())
+		{
+			errorMessage = $"Tournament buy-in must be between {GetSeasonEventTournamentBuyInMin():N0} and {GetSeasonEventTournamentBuyInMax():N0}.";
+			return false;
+		}
+
+		errorMessage = null;
+		return true;
+	}
+
+	private void NormalizeSeasonEventTournamentBuyIn()
+	{
+		var min = GetSeasonEventTournamentBuyInMin();
+		var max = GetSeasonEventTournamentBuyInMax();
+		var step = GetSeasonEventTournamentBuyInStep();
+		var clamped = Math.Clamp(_seasonEventTournamentBuyIn, min, max);
+
+		if (step > 1)
+		{
+			var snapped = ((clamped - min) / step) * step + min;
+			clamped = Math.Clamp(snapped, min, max);
+		}
+
+		_seasonEventTournamentBuyIn = clamped;
+	}
+
+	private void ClampSeasonEventTournamentBuyIn()
+	{
+		_seasonEventTournamentBuyIn = Math.Clamp(_seasonEventTournamentBuyIn, GetSeasonEventTournamentBuyInMin(), GetSeasonEventTournamentBuyInMax());
+	}
+
+	private static int GetSeasonEventTournamentBuyInMin() => 1;
+
+	private static int GetSeasonEventTournamentBuyInStep() => 100;
+
+	private static int GetSeasonEventTournamentBuyInMax() => LeagueEventBuyInRules.MaxTournamentBuyIn;
+
+	private string GetSeasonEventTournamentBuyInSliderStyle()
+	{
+		var min = GetSeasonEventTournamentBuyInMin();
+		var max = GetSeasonEventTournamentBuyInMax();
+		if (max <= min)
+		{
+			return "--slider-progress: 0%;";
+		}
+
+		var progress = (_seasonEventTournamentBuyIn - min) * 100.0 / (max - min);
+		return $"--slider-progress: {progress:F1}%;";
+	}
+
+	private void OnSeasonEventScheduledTimeChanged(ChangeEventArgs args)
+	{
+		_seasonEventScheduledTime = args.Value?.ToString() ?? string.Empty;
+	}
+
+	private static bool CanEditSeasonEvent(LeagueSeasonEventDto seasonEvent)
+	{
+		return seasonEvent.Status == LeagueSeasonEventStatus.Planned && !seasonEvent.LaunchedGameId.HasValue;
+	}
+
+	private async Task ConfirmDeleteEventAsync()
+	{
+		if (_pendingEventDeletion is null || _isDeletingEvent)
+		{
+			return;
+		}
+
+		_isDeletingEvent = true;
+		try
+		{
+			var response = await LeaguesApi.DeleteSeasonEventAsync(LeagueId, SeasonId, _pendingEventDeletion.EventId);
+			if (response.IsSuccessStatusCode)
+			{
+				await LoadSeasonEventsAsync();
+				await LoadStandingsAsync();
+				_message = "Season event deleted.";
+				_isError = false;
+				CancelDeleteEvent();
+				return;
+			}
+
+			_message = TryExtractApiErrorMessage(response) ?? "Failed to delete event.";
+			_isError = true;
+		}
+		catch (Exception ex)
+		{
+			Logger.LogError(ex, "Failed deleting league season event {LeagueId}/{SeasonId}/{EventId}", LeagueId, SeasonId, _pendingEventDeletion.EventId);
+			_message = "Failed to delete event.";
+			_isError = true;
+		}
+		finally
+		{
+			_isDeletingEvent = false;
+			_showDeleteEventConfirmation = false;
+			_pendingEventDeletion = null;
+		}
+	}
+
+	private void CancelDeleteEvent()
+	{
+		if (_isDeletingEvent)
+		{
+			return;
+		}
+
+		_showDeleteEventConfirmation = false;
+		_pendingEventDeletion = null;
+	}
+
+	private async Task LaunchSeasonEventAsync(Guid eventId)
+	{
+		_launchingSeasonEventId = eventId;
+		await LaunchSeasonEventCoreAsync(eventId, $"Failed to launch table from season event {eventId} in league {LeagueId} season {SeasonId}");
+	}
+
+	private async Task LaunchSeasonEventCoreAsync(Guid eventId, string logMessage)
+	{
+		try
+		{
+			var seasonEvent = _seasonEvents.FirstOrDefault(candidate => candidate.EventId == eventId);
+			var response = await LeaguesApi.LaunchSeasonEventSessionAsync(LeagueId, SeasonId, eventId, new LaunchLeagueEventSessionRequest
+			{
+				GameCode = seasonEvent?.GameTypeCode ?? "FIVECARDDRAW",
+				Ante = seasonEvent?.Ante ?? 10,
+				MinBet = seasonEvent?.MinBet ?? 20,
+				SmallBlind = seasonEvent?.SmallBlind,
+				BigBlind = seasonEvent?.BigBlind,
+				HostStartingChips = seasonEvent?.TournamentBuyIn ?? DefaultTournamentBuyIn
+			});
+
+			if (response.IsSuccessStatusCode && response.Content is not null)
+			{
+				NavigationManager.NavigateTo(BuildLeagueTablePath(response.Content.TablePath));
+				return;
+			}
+
+			_message = "Failed to launch table from season event.";
+			_isError = true;
+		}
+		catch (Exception ex)
+		{
+			Logger.LogError(ex, logMessage);
+			_message = "Failed to launch table from season event.";
+			_isError = true;
+		}
+		finally
+		{
+			_launchingSeasonEventId = null;
+		}
+	}
+
+	private async Task OpenTable(Guid gameId)
+	{
+		try
+		{
+			var cashierSummary = await ProfileApi.GetCashierSummaryAsync();
+			if (cashierSummary.IsSuccessStatusCode && (cashierSummary.Content?.CurrentBalance ?? 0) <= 0)
+			{
+				NavigationManager.NavigateTo(BuildLeagueTablePath($"/table/{gameId}"));
+				return;
+			}
+		}
+		catch (Exception ex)
+		{
+			Logger.LogWarning(ex, "Failed to check chip balance before opening table from league season page");
+		}
+
+		NavigationManager.NavigateTo(BuildLeagueTablePath($"/table/{gameId}"));
+	}
+
+	private void NavigateBackToLeague()
+	{
+		NavigationManager.NavigateTo($"/leagues/{LeagueId}");
+	}
+
+	private void HandleNoChipsModalClose()
+	{
+		_showNoChipsModal = false;
+	}
+
+	private string FormatSeasonWindow()
+	{
+		var start = FormatDate(_season?.StartsAtUtc);
+		var end = FormatDate(_season?.EndsAtUtc);
+		if (string.IsNullOrWhiteSpace(start) && string.IsNullOrWhiteSpace(end))
+		{
+			return "Dates TBD";
+		}
+
+		return $"{start} - {end}";
+	}
+
+	private string FormatDate(DateTimeOffset? value)
+	{
+		return LeagueTimeZoneHelper.FormatDateTime(value, BrowserTimeZoneId);
+	}
+
+	private string FormatSelectedCalendarDate()
+	{
+		return _selectedCalendarDate?.ToString("dddd, MMMM d, yyyy") ?? "No date selected";
+	}
+
+	private string FormatSeasonEventStakes(LeagueSeasonEventDto seasonEvent)
+	{
+		if ((seasonEvent.SmallBlind ?? 0) > 0 && (seasonEvent.BigBlind ?? 0) > 0)
+		{
+			return $"{seasonEvent.SmallBlind}/{seasonEvent.BigBlind} blinds • {seasonEvent.TournamentBuyIn ?? DefaultTournamentBuyIn:N0} buy-in";
+		}
+
+		return $"Ante {seasonEvent.Ante ?? 0} • Min bet {seasonEvent.MinBet ?? 0} • {seasonEvent.TournamentBuyIn ?? DefaultTournamentBuyIn:N0} buy-in";
+	}
+
+	private DateTime? GetLocalEventDate(LeagueSeasonEventDto seasonEvent)
+	{
+		return LeagueTimeZoneHelper.ConvertUtcToLocalDate(seasonEvent.ScheduledAtUtc, BrowserTimeZoneId)?.Date;
+	}
+
+	private bool IsCurrentUserStanding(LeagueStandingEntryDto standing)
+	{
+		return !string.IsNullOrWhiteSpace(_currentUserId)
+			&& string.Equals(standing.UserId, _currentUserId, StringComparison.Ordinal);
+	}
+
+	private bool IsLaunchingSeasonEvent(Guid eventId)
+	{
+		return _launchingSeasonEventId.HasValue && _launchingSeasonEventId.Value == eventId;
+	}
+
+	private static string BuildLeagueTablePath(string tablePath)
+	{
+		if (string.IsNullOrWhiteSpace(tablePath))
+		{
+			return tablePath;
+		}
+
+		if (tablePath.Contains("autojoin=", StringComparison.OrdinalIgnoreCase))
+		{
+			return tablePath;
+		}
+
+		return tablePath.Contains('?', StringComparison.Ordinal)
+			? $"{tablePath}&autojoin=1"
+			: $"{tablePath}?autojoin=1";
+	}
+
+	private static string? TryExtractApiErrorMessage(Refit.IApiResponse response)
+	{
+		var content = response.Error?.Content;
+		if (string.IsNullOrWhiteSpace(content))
+		{
+			return response.Error?.Message;
+		}
+
+		try
+		{
+			using var document = JsonDocument.Parse(content);
+			if (document.RootElement.ValueKind == JsonValueKind.Object)
+			{
+				if (document.RootElement.TryGetProperty("message", out var messageProperty))
+				{
+					return messageProperty.GetString();
+				}
+
+				if (document.RootElement.TryGetProperty("Message", out var messagePascalCaseProperty))
+				{
+					return messagePascalCaseProperty.GetString();
+				}
+			}
+		}
+		catch (JsonException)
+		{
+		}
+
+		return content;
+	}
+
+	public async ValueTask DisposeAsync()
+	{
+		if (_isLeagueHubSubscriptionInitialized)
+		{
+			LeagueHubClient.OnLeagueEventChanged -= HandleLeagueEventChangedAsync;
+			LeagueHubClient.OnLeagueEventSessionLaunched -= HandleLeagueEventSessionLaunchedAsync;
+			_isLeagueHubSubscriptionInitialized = false;
+		}
+
+		if (_leagueSeasonDetailModule is not null)
+		{
+			try
+			{
+				await _leagueSeasonDetailModule.InvokeVoidAsync("disposeCalendarEventHighlights", _calendarHost);
+				await _leagueSeasonDetailModule.DisposeAsync();
+			}
+			catch (JSDisconnectedException)
+			{
+			}
+		}
+	}
+}

@@ -3,20 +3,33 @@
 - [ ] Animate the chips going to/from the pot
 - [ ] Tony was trying to join during DC, it stole the choice from Russ
 - [ ] DC - Eric joined, it glitched
-- [x] Rabbit hunt
+- [ ] Kings and Lows - end showdown didn't work
 
 ## Still to do
 
 - [ ] Lobby - Filter by status
+- [ ] League tabs not colored in dark mode correctly
 - [ ] Work on isolating games code more
-- [ ] Either remove "confirm login" or set up email
+- [ ] Add option to treat coins as money
+- [ ] Remove the scrollbar from the Showdown
 
 - [ ] Add leagues
+  - [x] When a league game ends, redirect to the league page
+  - [ ] When a league game ends, it shouldn't show as an Active Game
+  - [ ] When a league game ends, it should show as recent results
+  - [ ] When a league game ends, it should update the leaders of the season
+  - [ ] When a league game ends, it should show on the results tab
+  - [ ] When a league game ends, it should show on the standings tab
 - [ ] Add seasons
+  - [ ] Change UI - Hard to find seasons
+  - [ ] Change UI - Hard to find events
+  - [ ] Create event modal too big
+  - [ ] Event doesn't need sequence, just order by date
+  - [ ] Event should take blind and ante preferences
+  - [ ] When there is an error, it doesn't show the message on the modal, it shows it behind it
 - [ ] Add tournaments
-  - [ ] Active games should not be listed in upcoming also
+  - [x] Active games should not be listed in upcoming also
   - [ ] Tournaments blinds should increase as time goes on
-  - [ ] Active games should have an info button to see who's playing
   - [ ] When the tournament ends, it just says "Waiting for Players" . We should have a nice summary page.
   - [x] League games should be noted on the lobby page
   - [x] Texas Hold Em, not collecting blinds
@@ -92,6 +105,7 @@
 - [ ] Add Pittsburgh
 - [ ] Add Squid Game
 - [ ] Add Hall of Mirrors
+- [ ] Friends (friend card kills the hand)
 
 - [x] Add Texas Hold'em
 - [x] Add Omaha
@@ -126,7 +140,7 @@
 
 ### Other Poker Variants
 
-- [ ] Add In Between
+- [x] Add In Between
 - [ ] Add Bzzjt
 - [ ] Add Guts
 - [x] Add Screw Your Neighbor
@@ -327,3 +341,9 @@
 - [x] Click Leave Table : {"message":"You are not seated at this table or have already left"}
 - [x] "Add Chips:" on the dashboard is the wrong color
 - [x] Allow private tables - need an invite / password
+- [x] Rabbit hunt
+- [x] Make the Wild Cards modal movable
+- [x] Either remove "confirm login" or set up email
+- [x] Kings and Lows - Discard too fast
+- [x] Edit Table not working
+- [x] Lobby dark theme

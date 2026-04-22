@@ -30,6 +30,7 @@ using CardGames.Poker.Api.Infrastructure.Storage;
 using System.Security.Claims;
 using CardGames.Poker.Api.Features.Leagues.v1;
 using CardGames.Poker.Api.Features.Leagues.v1.Telemetry;
+using CardGames.Poker.Api.Features.Leagues.v1.Commands.IngestLeagueSeasonEventResults;
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Testing;
@@ -111,7 +112,8 @@ public class Program
         builder.Services.AddScoped<IGameStateBroadcaster, GameStateBroadcaster>();
         builder.Services.AddScoped<IGameJoinRequestBroadcaster, GameJoinRequestBroadcaster>();
         builder.Services.AddScoped<ILobbyBroadcaster, LobbyBroadcaster>();
-		builder.Services.AddScoped<ILeagueBroadcaster, LeagueBroadcaster>();
+        builder.Services.AddScoped<ILeagueBroadcaster, LeagueBroadcaster>();
+        builder.Services.AddScoped<LeagueGameCompletionSyncService>();
         builder.Services.AddScoped<IHandHistoryRecorder, HandHistoryRecorder>();
 		builder.Services.AddScoped<IPlayerChipWalletService, PlayerChipWalletService>();
 		builder.Services.AddScoped<IHandSettlementService, HandSettlementService>();
@@ -160,7 +162,8 @@ public class Program
             })
             .AddScoped(typeof(IPipelineBehavior<,>), typeof(LoggingPipelineBehavior<,>))
             .AddScoped(typeof(IPipelineBehavior<,>), typeof(GameStateBroadcastingBehavior<,>))
-            .AddScoped(typeof(IPipelineBehavior<,>), typeof(LobbyStateBroadcastingBehavior<,>));
+            .AddScoped(typeof(IPipelineBehavior<,>), typeof(LobbyStateBroadcastingBehavior<,>))
+            .AddScoped(typeof(IPipelineBehavior<,>), typeof(LeagueGameCompletionSyncBehavior<,>));
 
         builder.Services.AddDistributedMemoryCache();
 
@@ -312,10 +315,7 @@ public class Program
                         // note: this option is only necessary when versioning by url segment. the SubstitutionFormat
                         // can also be used to control the format of the API version in route templates
                         options.SubstituteApiVersionInUrl = true;
-                    })
-                // this enables binding ApiVersion as a endpoint callback parameter. if you don't use it, then
-                // you should remove this configuration.
-                .EnableApiVersionBinding();
+                    });
 
         var app = builder.Build();
 

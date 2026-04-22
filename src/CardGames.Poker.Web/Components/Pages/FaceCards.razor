@@ -1,0 +1,100 @@
+@page "/face-cards"
+@rendermode InteractiveServer
+
+<PageTitle>Face Cards Gallery - Dealer's Choice Poker</PageTitle>
+
+<CardGames.Poker.Web.Components.Shared.SiteNavBar />
+
+<main class="face-cards-page">
+    <section class="face-cards-hero">
+        <div class="face-cards-hero-copy">
+            <p class="face-cards-kicker">Card Art Archive</p>
+            <h1 class="face-cards-title">Face Cards, Suit by Suit</h1>
+            <p class="face-cards-subtitle">
+                A clean gallery of the jack, queen, and king artwork already bundled with the web app.
+                Each image is loaded from the existing cards folder with no duplicate assets.
+            </p>
+        </div>
+
+        <div class="face-cards-summary" aria-label="Gallery summary">
+            <div class="face-cards-summary-item">
+                <span class="face-cards-summary-value">12</span>
+                <span class="face-cards-summary-label">Images</span>
+            </div>
+            <div class="face-cards-summary-item">
+                <span class="face-cards-summary-value">4</span>
+                <span class="face-cards-summary-label">Suits</span>
+            </div>
+            <div class="face-cards-summary-item">
+                <span class="face-cards-summary-value">3</span>
+                <span class="face-cards-summary-label">Ranks</span>
+            </div>
+        </div>
+    </section>
+
+    <section class="face-cards-gallery" aria-labelledby="face-cards-gallery-title">
+        <div class="face-cards-gallery-header">
+            <p class="face-cards-kicker">Gallery</p>
+            <h2 id="face-cards-gallery-title" class="face-cards-gallery-title">All Face Cards</h2>
+        </div>
+
+        <div class="face-cards-suits">
+            @foreach (var suit in Suits)
+            {
+                <section class="face-cards-suit" aria-labelledby="@GetSuitHeadingId(suit)">
+                    <header class="face-cards-suit-header">
+                        <div class="face-cards-suit-badge @GetSuitAccentClass(suit)">
+                            <span class="face-cards-suit-symbol" aria-hidden="true">@suit.Symbol</span>
+                            <h3 id="@GetSuitHeadingId(suit)" class="face-cards-suit-title">@suit.Label</h3>
+                        </div>
+                    </header>
+
+                    <div class="face-cards-grid">
+                        @foreach (var rank in FaceRanks)
+                        {
+                            var cardName = $"{rank.Label} of {suit.Label}";
+
+                            <figure class="face-cards-card">
+                                <img class="face-cards-card-image"
+                                     src="@GetCardImagePath(suit, rank)"
+                                     alt="@cardName"
+                                     loading="lazy" />
+                                <figcaption class="face-cards-card-caption">@cardName</figcaption>
+                            </figure>
+                        }
+                    </div>
+                </section>
+            }
+        </div>
+    </section>
+</main>
+
+@code {
+    private static readonly SuitDefinition[] Suits =
+    [
+        new("Spades", "spades", "♠"),
+        new("Hearts", "hearts", "♥"),
+        new("Diamonds", "diamonds", "♦"),
+        new("Clubs", "clubs", "♣")
+    ];
+
+    private static readonly RankDefinition[] FaceRanks =
+    [
+        new("jack", "Jack"),
+        new("queen", "Queen"),
+        new("king", "King")
+    ];
+
+    private static string GetCardImagePath(SuitDefinition suit, RankDefinition rank)
+        => $"/images/cards/{suit.Slug}-{rank.Slug}.png";
+
+    private static string GetSuitHeadingId(SuitDefinition suit)
+        => $"face-cards-{suit.Slug}";
+
+    private static string GetSuitAccentClass(SuitDefinition suit)
+        => suit.Slug is "hearts" or "diamonds" ? "is-red" : "is-dark";
+
+    private sealed record SuitDefinition(string Label, string Slug, string Symbol);
+
+    private sealed record RankDefinition(string Slug, string Label);
+}

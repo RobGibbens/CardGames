@@ -37,6 +37,7 @@ public sealed class GetLeagueOneOffEventsPageQueryHandler(
 		var query =
 			from oneOffEvent in context.LeagueOneOffEvents.AsNoTracking()
 			where oneOffEvent.LeagueId == request.LeagueId
+				&& (request.IncludeCompleted || oneOffEvent.Status != Data.Entities.LeagueOneOffEventStatus.Completed)
 			join gameType in context.GameTypes.AsNoTracking()
 				on oneOffEvent.GameTypeCode equals gameType.Code into gameTypes
 			from gameType in gameTypes.DefaultIfEmpty()

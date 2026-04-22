@@ -32,7 +32,14 @@
                 </span>
             </div>
             <div class="timer-warning">
-                If you don't add chips, you'll automatically drop from the next hand.
+                @if (IsRebuyGrace)
+                {
+                    <span>If no one rebuys before the timer ends, this game will end and everyone will return to the lobby.</span>
+                }
+                else
+                {
+                    <span>If you don't add chips, you'll automatically drop from the next hand.</span>
+                }
             </div>
         </div>
 
@@ -130,6 +137,12 @@
     /// </summary>
     [Parameter]
     public EventCallback OnChipsAdded { get; set; }
+
+    /// <summary>
+    /// Whether this pause is a cash-game rebuy grace window.
+    /// </summary>
+    [Parameter]
+    public bool IsRebuyGrace { get; set; }
 
     [Inject]
     private IGamesApi GamesApiClient { get; set; } = null!;

@@ -13,11 +13,11 @@
     --card-shadow-hover: 0 8px 40px rgba(0, 0, 0, 0.15);
 
     /* Brand colors - Red & Black theme */
-    --primary: #dc2626;
+    /* --primary: #dc2626; */
     --primary-hover: #b91c1c;
     --primary-dark: #b91c1c;
     --primary-light: #ef4444;
-    --accent: #1a1a1a;
+    /* --accent: #1a1a1a; */
     --accent-light: #2d2d2d;
     --gradient-primary: linear-gradient(135deg, #dc2626 0%, #7f1d1d 50%, #1a1a1a 100%);
     --gradient-hero: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 25%, #4a1010 50%, #7f1d1d 75%, #dc2626 100%);
@@ -40,11 +40,6 @@
 }
 
 /* ===== Table Play Action Panel ===== */
-/*
-   NOTE: `.action-panel` is used by the Table Play page.
-   Keep all rules for it in the Table Play section below.
-   (This early block previously conflicted with the later Table Play rules.)
-*/
 
 /* Dark theme */
 [data-theme="dark"] {
@@ -1813,6 +1808,7 @@ a:hover {
 
 .league-club-card .league-club-footer {
     padding: 0 1rem 1rem;
+    background-color: inherit;
 }
 
 .league-club-card:hover {
@@ -2462,10 +2458,11 @@ a:hover {
 
 .lobby-tab-icon {
     font-size: 1rem;
+    color: var(--secondary);
 }
 
 .lobby-tab-text {
-    font-family: var(--font-primary) !important;
+    color: inherit !important;
     font-weight: 300 !important;
     font-variation-settings: "wght" 300;
 }
@@ -2565,6 +2562,11 @@ a:hover {
     min-height: 400px;
 }
 
+.lobby-group-section {
+    background: var(--bg-secondary);
+    border-color: var(--border-color) !important;
+}
+
 .lobby-group-section + .lobby-group-section {
     margin-top: 2.5rem;
 }
@@ -2623,24 +2625,25 @@ a:hover {
 
 /* View Toggle Buttons */
 .btn-view-toggle {
-    background: var(--bg-tertiary);
-    color: var(--text-secondary);
-    border: 1px solid var(--border-color);
-    padding: 0.75rem 1rem;
-    border-radius: 10px;
+    background: var(--background);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    /* padding: 0.75rem 1rem;
+    border-radius: 10px; */
     transition: all var(--transition-normal);
 }
 
-.btn-view-toggle:hover {
+/* .btn-view-toggle:hover {
     background: var(--bg-secondary);
     color: var(--primary);
-    border-color: var(--primary);
-}
+    /* border-color: var(--primary);
+} */
+
 
 .btn-view-toggle.active {
-    background: var(--primary);
+    background: var(--secondary);
     color: white;
-    border-color: var(--primary);
+    border: 1px solid var(--border);
 }
 
 /* Tables Grid */
@@ -2943,6 +2946,7 @@ a:hover {
 
     .lobby-tab-icon {
         font-size: 1.25rem;
+        color: var(--secondary);
     }
 
     .lobby-filters {
@@ -7274,6 +7278,52 @@ playing-card.card-wild-highlight {
     flex-wrap: wrap;
 }
 
+.season-detail-schedule-grid {
+    display: grid;
+    grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
+    gap: 1.25rem;
+    align-items: start;
+}
+
+.season-detail-calendar-panel,
+.season-detail-day-panel {
+    min-width: 0;
+}
+
+.season-detail-calendar-frame {
+    position: sticky;
+    top: 1rem;
+}
+
+.season-detail-day-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.season-detail-day-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.season-detail-day-header h3 {
+    margin: 0.25rem 0 0;
+}
+
+.season-detail-day-kicker,
+.season-detail-calendar-summary {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+.season-detail-day-empty {
+    text-align: left;
+    padding: 0;
+}
+
 .league-detail-empty {
     color: var(--text-muted);
     font-size: 0.85rem;
@@ -7612,6 +7662,14 @@ playing-card.card-wild-highlight {
         text-align: center;
         order: -1;
     }
+
+    .season-detail-schedule-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .season-detail-calendar-frame {
+        position: static;
+    }
 }
 
 /* ── Season Row Highlight ── */
@@ -7627,10 +7685,46 @@ playing-card.card-wild-highlight {
     box-shadow: 0 0 0 1px var(--primary);
 }
 
+.league-detail-season-link-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-left: auto;
+}
+
+.league-detail-season-link-hint i {
+    font-size: 0.72rem;
+}
+
 .league-detail-season-selected {
     border-left-color: var(--primary);
     border-left-width: 4px;
     background: rgba(220, 38, 38, 0.06);
+}
+
+.season-detail-calendar button.season-detail-calendar-day-has-event {
+    position: relative;
+}
+
+.season-detail-calendar button.season-detail-calendar-day-has-event::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: 0.32rem;
+    width: 0.38rem;
+    height: 0.38rem;
+    border-radius: 999px;
+    background: var(--primary);
+    transform: translateX(-50%);
+    pointer-events: none;
+}
+
+.season-detail-calendar td[aria-selected] button.season-detail-calendar-day-has-event::after,
+.season-detail-calendar button.season-detail-calendar-day-has-event[aria-selected]::after {
+    background: var(--secondary);
 }
 
 /* ── Season Events (nested children) ── */

@@ -22,7 +22,8 @@ public interface IActionTimerService
     /// <param name="playerSeatIndex">The seat index of the player whose turn it is.</param>
     /// <param name="durationSeconds">The timer duration in seconds.</param>
     /// <param name="onExpired">Callback invoked when the timer expires.</param>
-    void StartTimer(Guid gameId, int playerSeatIndex, int durationSeconds = DefaultTimerDurationSeconds, Func<Guid, int, Task>? onExpired = null);
+    /// <param name="startDelay">Optional delay before the countdown begins.</param>
+    void StartTimer(Guid gameId, int playerSeatIndex, int durationSeconds = DefaultTimerDurationSeconds, Func<Guid, int, Task>? onExpired = null, TimeSpan? startDelay = null);
 
     /// <summary>
     /// Starts a chip check pause timer for a game.
@@ -31,7 +32,12 @@ public interface IActionTimerService
     /// <param name="gameId">The game ID.</param>
     /// <param name="durationSeconds">The timer duration in seconds (default 2 minutes).</param>
     /// <param name="onExpired">Callback invoked when the timer expires.</param>
-    void StartChipCheckPauseTimer(Guid gameId, int durationSeconds = DefaultChipCheckPauseDurationSeconds, Func<Guid, Task>? onExpired = null);
+    /// <param name="startedAtUtc">Optional UTC timestamp when the countdown started.</param>
+    void StartChipCheckPauseTimer(
+        Guid gameId,
+        int durationSeconds = DefaultChipCheckPauseDurationSeconds,
+        Func<Guid, Task>? onExpired = null,
+        DateTimeOffset? startedAtUtc = null);
 
     /// <summary>
     /// Stops the action timer for a game.
@@ -81,7 +87,8 @@ public sealed record ActionTimerState
     public required int DurationSeconds { get; init; }
 
     /// <summary>
-    /// The UTC timestamp when the timer was started.
+    /// The UTC timestamp when the countdown starts.
+    /// This may be in the future when a timer has an initial delay.
     /// </summary>
     public required DateTimeOffset StartedAtUtc { get; init; }
 
@@ -93,6 +100,11 @@ public sealed record ActionTimerState
         get
         {
             var elapsed = DateTimeOffset.UtcNow - StartedAtUtc;
+            if (elapsed <= TimeSpan.Zero)
+            {
+                return DurationSeconds;
+            }
+
             var remaining = DurationSeconds - (int)elapsed.TotalSeconds;
             return Math.Max(0, remaining);
         }

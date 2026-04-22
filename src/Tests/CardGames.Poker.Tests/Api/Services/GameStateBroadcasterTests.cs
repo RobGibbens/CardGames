@@ -1,6 +1,8 @@
 #nullable enable
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using CardGames.Contracts.SignalR;
@@ -16,6 +18,34 @@ namespace CardGames.Poker.Tests.Api.Services;
 public class GameStateBroadcasterTests
 {
     [Fact]
+    public async Task BroadcastGameStateAsync_KingsAndLowsDropOrStay_DelaysTimerUntilDealAnimationCompletes()
+    {
+        var gameId = Guid.NewGuid();
+        var publicState = CreateState(
+            gameId,
+            "KINGSANDLOWS",
+            "DropOrStay",
+            3,
+            currentPhaseRequiresAction: true,
+            seats:
+            [
+                CreateSeat(0, 5, "Alice"),
+                CreateSeat(1, 5, "Bob"),
+                CreateSeat(2, 5, "Cara"),
+                CreateSeat(3, 5, "Drew")
+            ]);
+        var (sut, tableStateBuilder, actionTimerService, _) = CreateSubject(publicState);
+        var expectedStartDelay = TimeSpan.FromMilliseconds(15850);
+
+        await sut.BroadcastGameStateAsync(gameId);
+
+        actionTimerService.Received(1)
+            .StartTimer(gameId, -1, IActionTimerService.DefaultTimerDurationSeconds, Arg.Any<Func<Guid, int, Task>?>(), expectedStartDelay);
+        await tableStateBuilder.Received(1)
+            .BuildPublicStateAsync(gameId, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task BroadcastGameStateAsync_ScrewYourNeighborKeepOrTrade_UsesThirtySecondTimer()
     {
         var gameId = Guid.NewGuid();
@@ -25,7 +55,7 @@ public class GameStateBroadcasterTests
         await sut.BroadcastGameStateAsync(gameId);
 
         actionTimerService.Received(1)
-            .StartTimer(gameId, 3, 30, Arg.Any<Func<Guid, int, Task>?>());
+            .StartTimer(gameId, 3, 30, Arg.Any<Func<Guid, int, Task>?>(), TimeSpan.Zero);
         await tableStateBuilder.Received(1)
             .BuildPublicStateAsync(gameId, Arg.Any<CancellationToken>());
     }
@@ -40,7 +70,7 @@ public class GameStateBroadcasterTests
         await sut.BroadcastGameStateAsync(gameId);
 
         actionTimerService.Received(1)
-            .StartTimer(gameId, 1, IActionTimerService.DefaultTimerDurationSeconds, Arg.Any<Func<Guid, int, Task>?>());
+            .StartTimer(gameId, 1, IActionTimerService.DefaultTimerDurationSeconds, Arg.Any<Func<Guid, int, Task>?>(), TimeSpan.Zero);
     }
 
     [Fact]
@@ -53,7 +83,45 @@ public class GameStateBroadcasterTests
         await sut.BroadcastGameStateAsync(gameId);
 
         actionTimerService.Received(1)
-            .StartTimer(gameId, -1, IActionTimerService.DefaultTimerDurationSeconds, Arg.Any<Func<Guid, int, Task>?>());
+            .StartTimer(gameId, -1, IActionTimerService.DefaultTimerDurationSeconds, Arg.Any<Func<Guid, int, Task>?>(), TimeSpan.Zero);
+    }
+
+    [Fact]
+    public async Task BroadcastGameStateAsync_ChipCheckPause_PreservesExistingPauseTimer()
+    {
+        var gameId = Guid.NewGuid();
+        var publicState = CreateState(
+            gameId,
+            "FIVECARDDRAW",
+            "WaitingForPlayers",
+            -1,
+            isPaused: true,
+            chipCheckPause: new ChipCheckPauseStateDto
+            {
+                IsPaused = true,
+                PauseStartedAt = DateTimeOffset.UtcNow,
+                PauseEndsAt = DateTimeOffset.UtcNow.AddMinutes(5),
+                PotAmountToCover = 10,
+                ShortPlayers = []
+            });
+
+        var existingTimer = new ActionTimerState
+        {
+            GameId = gameId,
+            PlayerSeatIndex = -1,
+            TimerType = ActionTimerType.ChipCheckPause,
+            DurationSeconds = 300,
+            StartedAtUtc = DateTimeOffset.UtcNow
+        };
+
+        var (sut, _, actionTimerService, _) = CreateSubject(publicState);
+        actionTimerService.GetTimerState(gameId).Returns(existingTimer);
+
+        await sut.BroadcastGameStateAsync(gameId);
+
+        actionTimerService.DidNotReceiveWithAnyArgs().StopTimer(default);
+        actionTimerService.DidNotReceiveWithAnyArgs().StartTimer(default, default, default, default, default);
+        actionTimerService.DidNotReceiveWithAnyArgs().StartChipCheckPauseTimer(default, default, default, default);
     }
 
     [Fact]
@@ -116,7 +184,10 @@ public class GameStateBroadcasterTests
         string gameTypeCode,
         string currentPhase,
         int currentActorSeatIndex,
-        bool currentPhaseRequiresAction = false)
+        bool currentPhaseRequiresAction = false,
+        SeatPublicDto[]? seats = null,
+        bool isPaused = false,
+        ChipCheckPauseStateDto? chipCheckPause = null)
     {
         return new TableStatePublicDto
         {
@@ -125,7 +196,29 @@ public class GameStateBroadcasterTests
             CurrentPhase = currentPhase,
             CurrentActorSeatIndex = currentActorSeatIndex,
             CurrentPhaseRequiresAction = currentPhaseRequiresAction,
-            Seats = Array.Empty<SeatPublicDto>()
+            Seats = seats ?? [],
+            IsPaused = isPaused,
+            ChipCheckPause = chipCheckPause
+        };
+    }
+
+    private static SeatPublicDto CreateSeat(int seatIndex, int cardCount, string playerName)
+    {
+        return new SeatPublicDto
+        {
+            SeatIndex = seatIndex,
+            IsOccupied = true,
+            IsSittingOut = false,
+            IsFolded = false,
+            PlayerName = playerName,
+            Cards = Enumerable.Range(0, cardCount)
+                .Select(index => new CardPublicDto
+                {
+                    IsFaceUp = true,
+                    Rank = ((index % 9) + 2).ToString(),
+                    Suit = "Hearts"
+                })
+                .ToArray()
         };
     }
 }

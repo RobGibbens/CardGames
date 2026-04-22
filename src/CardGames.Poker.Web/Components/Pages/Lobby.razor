@@ -4,6 +4,7 @@
 @rendermode InteractiveServer
 @implements IAsyncDisposable
 
+@using BlazorBlueprint.Primitives.Services
 @using CardGames.Contracts.SignalR
 @using CardGames.Poker.Api.Clients
 @using CardGames.Poker.Api.Contracts
@@ -15,17 +16,7 @@
 
 <PageTitle>Lobby - Dealer's Choice Poker</PageTitle>
 
-<ConfirmDialog @bind-IsVisible="_showDeleteConfirmation"
-               Title="Delete Table"
-               Message="@_deleteConfirmationMessage"
-               ConfirmText="Delete"
-               CancelText="Cancel"
-               ProcessingText="Deleting..."
-               IconClass="fa-trash"
-               ConfirmButtonClass="btn-danger"
-               IsProcessing="_isDeleting"
-               OnConfirm="ConfirmDeleteTableAsync"
-               OnCancel="CancelDelete" />
+
 
 <NoChipsModal @bind-IsVisible="_showNoChipsModal" OnClose="HandleNoChipsModalClose" />
 
@@ -50,9 +41,9 @@
         <!-- Tab Navigation -->
         <div class="lobby-tabs">
             <a href="/lobby" class="lobby-tab @(IsActiveTab("") ? "active" : "")">
-                <span class="lobby-tab-icon"><i class="fa-thin fa-bullseye"></i></span>
+                <span class="lobby-tab-icon"><i class="fa-solid fa-cards"></i></span>
                 <span class="lobby-tab-text">My Tables</span>
-                <span class="lobby-tab-badge">@_myTablesCount</span>
+                <BbBadge Variant="BadgeVariant.Secondary">@_myTablesCount</BbBadge>
             </a>
         </div>
 
@@ -60,6 +51,7 @@
         <div class="lobby-filters">
             <div class="filter-group">
                 <label class="filter-label">Variant</label>
+
                 <select class="filter-select" @bind="_selectedVariant" @bind:after="OnSelectedVariantChangedAsync">
                     <option value="">All Variants</option>
                     @foreach (var gameType in _availableGameTypes)
@@ -88,14 +80,24 @@
             <button class="filter-clear-btn" @onclick="ClearFilters">
                 <span><i class="fa-thin fa-circle-x"></i></span> Clear Filters
             </button>
-            <div class="view-toggle-group" style="margin-left: auto; display: flex; gap: 0.5rem;">
-                <button class="btn btn-view-toggle @(_viewMode == "grid" ? "active" : "")" @onclick="@(() => _viewMode = "grid")" title="Grid View">
+            <BbButtonGroup AriaLabel="Lobby view mode">
+                <BbButton Variant="ButtonVariant.Outline"
+                          Size="ButtonSize.Icon"
+                          Class='@GetViewToggleButtonClass("grid")'
+                          OnClick='@(() => SetViewMode("grid"))'
+                          AriaLabel="Grid view"
+                          title="Grid View">
                     <i class="fa-solid fa-th-large"></i>
-                </button>
-                <button class="btn btn-view-toggle @(_viewMode == "list" ? "active" : "")" @onclick="@(() => _viewMode = "list")" title="List View">
+                </BbButton>
+                <BbButton Variant="ButtonVariant.Outline"
+                          Size="ButtonSize.Icon"
+                          Class='@GetViewToggleButtonClass("list")'
+                          OnClick='@(() => SetViewMode("list"))'
+                          AriaLabel="List view"
+                          title="List View">
                     <i class="fa-solid fa-list"></i>
-                </button>
-            </div>
+                </BbButton>
+            </BbButtonGroup>
         </div>
 
         <!-- Tables Grid -->
@@ -132,7 +134,8 @@
                         var group = groupedTables[groupIndex];
 
                         <section class="@GetGroupSectionClass(groupIndex)">
-                            <div class="d-flex flex-wrap align-items-baseline justify-content-between gap-2 border-bottom pb-2 mb-3">
+                            <div
+                                class="d-flex flex-wrap align-items-baseline justify-content-between gap-2 border-bottom pb-2 mb-3">
                                 <div>
                                     <h2 class="h5 mb-1">@group.DisplayName</h2>
                                     <p class="text-muted small mb-0">@GetTableCountLabel(group.Tables.Count)</p>
@@ -155,10 +158,11 @@
                         var group = groupedTables[groupIndex];
 
                         <section class="@GetGroupSectionClass(groupIndex)">
-                            <div class="d-flex flex-wrap align-items-baseline justify-content-between gap-2 border-bottom pb-2 mb-3">
+                            <div
+                                class="d-flex flex-wrap align-items-baseline justify-content-between gap-2 border-bottom pb-2 mb-3">
                                 <div>
-                                    <h2 class="h5 mb-1">@group.DisplayName</h2>
-                                    <p class="text-muted small mb-0">@GetTableCountLabel(group.Tables.Count)</p>
+                                    <BbTypographyH2>@group.DisplayName</BbTypographyH2>
+                                    <BbTypographyMuted>@GetTableCountLabel(group.Tables.Count)</BbTypographyMuted>
                                 </div>
                             </div>
 
@@ -181,7 +185,8 @@
                                         {
                                             <tr>
                                                 <td class="text-end">
-                                                    <button class="btn btn-sm btn-primary" @onclick="() => NavigateToTableWithChipCheckAsync(table.Id)">Join</button>
+                                                    <BbButton Variant="ButtonVariant.Secondary"
+                                                              @onclick="() => NavigateToTableWithChipCheckAsync(table.Id)">Join</BbButton>
                                                 </td>
                                                 <td>@FormatGameTypeName(table)</td>
                                                 <td>@table.TableTypeLabel</td>
@@ -192,12 +197,9 @@
                                                 <td class="text-end">
                                                     @if (CanDeleteTable(table))
                                                     {
-                                                        <button class="btn btn-sm btn-primary" 
-                                                                @onclick="() => HandleDeleteTableAsync(table.Id)"
-                                                                disabled="@_isDeleting"
-                                                                title="Delete table">
-                                                            <i class="fa-regular fa-trash"></i>
-                                                        </button>
+                                                        <BbButton Variant="ButtonVariant.Destructive"
+                                                                  Disabled="@_isDeleting"
+                                                                  @onclick="() => HandleDeleteTableAsync(table.Id)"><i class="fa-solid fa-trash"></i></BbButton>
                                                     }
                                                 </td>
                                             </tr>
@@ -210,8 +212,37 @@
                 }
             }
         </div>
+
+        <BbAlertDialog @bind-Open="_showDeleteConfirmation">
+            <BbAlertDialogContent>
+                <BbAlertDialogHeader>
+                    <BbAlertDialogTitle>Delete Table</BbAlertDialogTitle>
+                    <BbAlertDialogDescription>@_deleteConfirmationMessage</BbAlertDialogDescription>
+                </BbAlertDialogHeader>
+                <BbAlertDialogFooter>
+                    <BbAlertDialogCancel>
+                        <BbButton Variant="ButtonVariant.Outline" Disabled="@_isDeleting"
+                                  @onclick="CancelDelete">Cancel</BbButton>
+                    </BbAlertDialogCancel>
+                    <BbButton Variant="ButtonVariant.Destructive" Disabled="@_isDeleting"
+                              @onclick="ConfirmDeleteTableAsync">
+                        @if (_isDeleting)
+                        {
+                            <span class="spinner-border spinner-border-sm" role="status"
+                                  aria-hidden="true"></span>
+                            <span>Deleting...</span>
+                        }
+                        else
+                        {
+                            <span>Delete</span>
+                        }
+                    </BbButton>
+                </BbAlertDialogFooter>
+            </BbAlertDialogContent>
+        </BbAlertDialog>
     </div>
 </main>
+<BbPortalHost />
 
 @code {
     [Parameter]
@@ -308,13 +339,13 @@
 
         // Check if game already exists in the list
         var existingIndex = _allTables.FindIndex(t => t.Id == gameCreated.GameId);
-		var gameTypeDescription = gameCreated.GameTypeDescription ?? string.Empty;
-		var gameTypeImageName = gameCreated.GameTypeImageName ?? string.Empty;
-		var gameTypeMetadataName = gameCreated.GameTypeMetadataName ?? string.Empty;
-		var gameName = gameCreated.Name ?? string.Empty;
-		var gameStatus = Enum.TryParse<GameStatus>(gameCreated.Status, out var status)
-			? status
-			: GameStatus.WaitingForPlayers;
+        var gameTypeDescription = gameCreated.GameTypeDescription ?? string.Empty;
+        var gameTypeImageName = gameCreated.GameTypeImageName ?? string.Empty;
+        var gameTypeMetadataName = gameCreated.GameTypeMetadataName ?? string.Empty;
+        var gameName = gameCreated.Name ?? string.Empty;
+        var gameStatus = Enum.TryParse<GameStatus>(gameCreated.Status, out var status)
+            ? status
+            : GameStatus.WaitingForPlayers;
 
         // Convert GameCreatedDto to GetActiveGamesResponse and add to the list
         // The constructor takes parameters in alphabetical order (generated by NSwag)
@@ -452,6 +483,16 @@
         await LoadAvailableGamesAsync();
     }
 
+    private void SetViewMode(string viewMode)
+    {
+        _viewMode = viewMode;
+    }
+
+    private string GetViewToggleButtonClass(string viewMode)
+    {
+        return _viewMode == viewMode ? "btn-view-toggle active" : "btn-view-toggle";
+    }
+
     private bool IsActiveTab(string tab)
     {
         return string.Equals(Tab ?? "", tab, StringComparison.OrdinalIgnoreCase);
@@ -469,7 +510,7 @@
 
     private bool CanDeleteTable(GetActiveGamesResponse table)
     {
-        return !string.IsNullOrEmpty(_currentUserId) && 
+        return !string.IsNullOrEmpty(_currentUserId) &&
                string.Equals(table.CreatedById, _currentUserId, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -573,7 +614,7 @@
 
     private static string GetGroupSectionClass(int _)
     {
-        return "lobby-group-section border rounded-3 bg-white p-3";
+        return "lobby-group-section border rounded-3 p-3";
     }
 
     private string FormatGameTypeName(GetActiveGamesResponse table)

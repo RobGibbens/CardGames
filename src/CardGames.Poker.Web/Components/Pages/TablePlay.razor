@@ -212,7 +212,7 @@
                                         (_gameResponse?.CurrentPhase == GamePhase.WaitingForPlayers.ToString() || _gameResponse?.CurrentPhase ==
                                         GamePhase.WaitingToStart.ToString())
                         {
-                            <a href="/table/@GameId/edit" class="btn btn-secondary btn-sm">
+                            <a href="/table/@GameId/edit" class="btn btn-secondary btn-sm" data-enhance-nav="false">
                                 <i class="fa-regular fa-pen-to-square"></i>
                                 Edit Table
                             </a>
@@ -484,17 +484,26 @@
                                 OnAcknowledge="@HandlePotMatchAcknowledge" />
         }
 
-        <!-- Chip Coverage Pause Overlay (shown if paused for chip check and player is short) -->
+        <!-- Chip Coverage/Rebuy Pause Overlay (shown if paused and current player needs chips) -->
         @if (_isPausedForChipCheck && IsCurrentPlayerShortOnChips)
         {
             <ChipCoveragePauseOverlay PotAmount="@_chipCheckPotAmount" ShortPlayers="@GetShortPlayers()"
                                       IsCurrentPlayerShort="@IsCurrentPlayerShortOnChips" CurrentPlayerChips="@GetCurrentPlayerChips()"
                                       SecondsRemaining="@GetChipCheckSecondsRemaining()" GameId="@GameId" PlayerId="@(_currentPlayerId ?? Guid.Empty)"
-                                      OnChipsAdded="@OnChipsAddedAsync" />
+                                      OnChipsAdded="@OnChipsAddedAsync" IsRebuyGrace="@_isRebuyGracePause" />
         }
 
-        <!-- Players who are NOT short on chips just see the normal table -->
-        <!-- The short player's seat will show "Waiting for chips" status -->
+        @if (_isPausedForChipCheck && _isRebuyGracePause && !IsCurrentPlayerShortOnChips)
+        {
+            <div class="table-overlay waiting-overlay">
+                <div class="overlay-content">
+                    <div class="overlay-icon"><i class="fa-solid fa-clock"></i></div>
+                    <h2>Waiting for Rebuy</h2>
+                    <p class="overlay-hint">Other players can add chips to continue this cash game.</p>
+                    <p class="overlay-hint">Time remaining: <strong>@TimeSpan.FromSeconds(GetChipCheckSecondsRemaining()).ToString(@"m\:ss")</strong></p>
+                </div>
+            </div>
+        }
 
         <!-- Dealer's Choice Overlay (shown when waiting for dealer to pick the next game) -->
         @if (IsDealersChoicePhase)
@@ -514,7 +523,7 @@
         }
 
         <!-- Waiting/Pre-game overlay (only when waiting for more players, not when game is ready to start) -->
-        @if (_gameResponse?.CurrentPhase == GamePhase.WaitingForPlayers.ToString() && (!_isSeated || IsSittingOut ||
+        @if (!_isPausedForChipCheck && _gameResponse?.CurrentPhase == GamePhase.WaitingForPlayers.ToString() && (!_isSeated || IsSittingOut ||
             !_isReady))
         {
             <div class="table-overlay waiting-overlay">
@@ -733,6 +742,7 @@
 
     // Chip check pause state (for Kings and Lows)
     private bool _isPausedForChipCheck;
+    private bool _isRebuyGracePause;
     private DateTimeOffset? _chipCheckPauseEndsAt;
     private int _chipCheckPotAmount;
 
@@ -844,6 +854,7 @@
     private bool _initialized;
     private bool _shouldAutoJoinFromQuery;
     private bool _autoJoinIntentConsumed;
+    private Guid? _leagueId;
 
     private bool HasFixedTournamentBuyIn => (_gameResponse?.TournamentBuyIn ?? 0) > 0;
     private bool IsLeagueTournament => HasFixedTournamentBuyIn;
@@ -1387,6 +1398,7 @@
             // Update Dealer's Choice state from SignalR
             _isDealersChoice = state.IsDealersChoice;
             _dealersChoiceDealerPosition = state.DealersChoiceDealerPosition;
+            _actionTimerState = state.ActionTimer;
 
             // Dealer's Choice: load available games when entering WaitingForDealerChoice
             if (_isDealersChoice
@@ -1401,12 +1413,14 @@
             if (state.ChipCheckPause is not null)
             {
                 _isPausedForChipCheck = state.ChipCheckPause.IsPaused;
+                _isRebuyGracePause = string.Equals(state.ChipCheckPause.PauseType, "RebuyGrace", StringComparison.OrdinalIgnoreCase);
                 _chipCheckPauseEndsAt = state.ChipCheckPause.PauseEndsAt;
                 _chipCheckPotAmount = state.ChipCheckPause.PotAmountToCover;
             }
             else
             {
                 _isPausedForChipCheck = false;
+                _isRebuyGracePause = false;
                 _chipCheckPauseEndsAt = null;
                 _chipCheckPotAmount = 0;
             }
@@ -1717,16 +1731,19 @@
 
             _isDealersChoice = state.IsDealersChoice;
             _dealersChoiceDealerPosition = state.DealersChoiceDealerPosition;
+            _actionTimerState = state.ActionTimer;
 
             if (state.ChipCheckPause is not null)
             {
                 _isPausedForChipCheck = state.ChipCheckPause.IsPaused;
+                _isRebuyGracePause = string.Equals(state.ChipCheckPause.PauseType, "RebuyGrace", StringComparison.OrdinalIgnoreCase);
                 _chipCheckPauseEndsAt = state.ChipCheckPause.PauseEndsAt;
                 _chipCheckPotAmount = state.ChipCheckPause.PotAmountToCover;
             }
             else
             {
                 _isPausedForChipCheck = false;
+                _isRebuyGracePause = false;
                 _chipCheckPauseEndsAt = null;
                 _chipCheckPotAmount = 0;
             }
@@ -1764,7 +1781,7 @@
         {
             _hasRequestedLeave = false;
             await GameHubClient.LeaveGameAsync(GameId);
-            NavigationManager.NavigateTo("/lobby");
+            NavigateToExitDestination();
             return;
         }
 
@@ -2172,10 +2189,9 @@
                     lastActionDescription = "Dropped";
                     lastActionTime = existingSeat.LastActionTime ?? DateTimeOffset.UtcNow;
                 }
-                else if (IsKingsAndLows && _isPausedForChipCheck && IsPlayerShortOnChips(publicSeat.SeatIndex, publicSeat.Chips))
+                else if (_isPausedForChipCheck && IsPlayerShortOnChips(publicSeat.SeatIndex, publicSeat.Chips))
                 {
-                    // Show "Waiting for chips" status for players who are short during chip check pause
-                    lastActionDescription = "Waiting for chips";
+                    lastActionDescription = _isRebuyGracePause ? "Rebuy needed" : "Waiting for chips";
                     lastActionTime = DateTimeOffset.UtcNow;
                 }
                 else
@@ -2499,6 +2515,7 @@
             {
                 var gamesResponse = gameResponse.Content;
                 _gameTypeCode = gamesResponse.GameTypeCode;
+                _leagueId = gamesResponse.LeagueId;
 
                 _gameResponse = CreateLocalGameResponse(gamesResponse);
                 _allowedDealerChoiceGameCodes = ParseAllowedDealerChoiceGameCodes(gamesResponse.GameSettings);
@@ -2599,10 +2616,23 @@
             updatedAt: gamesResponse.UpdatedAt)
         {
             AreOddsVisibleToAllPlayers = gamesResponse.AreOddsVisibleToAllPlayers,
+            LeagueId = gamesResponse.LeagueId,
             MaxBuyIn = gamesResponse.MaxBuyIn,
             RequiresJoinApproval = gamesResponse.RequiresJoinApproval,
             TournamentBuyIn = gamesResponse.TournamentBuyIn
         };
+    }
+
+    private void NavigateToExitDestination()
+    {
+        NavigationManager.NavigateTo(GetExitDestination(_leagueId));
+    }
+
+    private static string GetExitDestination(Guid? leagueId)
+    {
+        return leagueId.HasValue
+            ? $"/leagues/{leagueId.Value}"
+            : "/lobby";
     }
 
     private async Task GetPlayersAndUpdateSeatsAsync()
@@ -2750,13 +2780,13 @@
 
                 // Immediate leave - disconnect from SignalR and navigate to lobby
                 await GameHubClient.LeaveGameAsync(GameId);
-                NavigationManager.NavigateTo("/lobby");
+                NavigateToExitDestination();
             }
             else
             {
                 // If not seated or already left, just navigate to lobby
                 await GameHubClient.LeaveGameAsync(GameId);
-                NavigationManager.NavigateTo("/lobby");
+                NavigateToExitDestination();
             }
         }
         catch (Exception ex)
@@ -5398,7 +5428,7 @@
                 if (IsEndedPhase || IsGameCompleted)
                 {
                     await GameHubClient.LeaveGameAsync(GameId);
-                    NavigationManager.NavigateTo("/lobby");
+                    NavigateToExitDestination();
                 }
                 else
                 {
@@ -5492,7 +5522,7 @@
         return TimeSpan.FromMilliseconds(millisecondsUntilNextBoundary);
     }
 
-    public async ValueTask DisposeAsync()
+    public ValueTask DisposeAsync()
     {
         _disposed = true;
 
@@ -5530,7 +5560,21 @@
         // Leave the game and disconnect
         if (_currentGameId.HasValue)
         {
-            await GameHubClient.LeaveGameAsync(_currentGameId.Value);
+            _ = LeaveGameSilentlyAsync(_currentGameId.Value);
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    private async Task LeaveGameSilentlyAsync(Guid gameId)
+    {
+        try
+        {
+            await GameHubClient.LeaveGameAsync(gameId);
+        }
+        catch
+        {
+            // Ignore errors during navigation cleanup.
         }
     }
 
@@ -7022,6 +7066,12 @@ HandType.HighCard
     /// </summary>
     private int GetChipCheckSecondsRemaining()
     {
+        if (_isPausedForChipCheck &&
+            _actionTimerState is { IsActive: true, PlayerSeatIndex: -1 })
+        {
+            return Math.Max(0, _actionTimerState.SecondsRemaining);
+        }
+
         if (!_chipCheckPauseEndsAt.HasValue)
         {
             return 0;

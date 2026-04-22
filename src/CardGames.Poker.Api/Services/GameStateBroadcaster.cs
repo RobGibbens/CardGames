@@ -10,6 +10,9 @@ namespace CardGames.Poker.Api.Services;
 /// </summary>
 public sealed class GameStateBroadcaster : IGameStateBroadcaster
 {
+    private const int ClientDealAnimationInitialDelayMs = 100;
+    private const int ClientDealAnimationStepDelayMs = 750;
+
     private readonly IHubContext<GameHub> _hubContext;
     private readonly ITableStateBuilder _tableStateBuilder;
     private readonly IActionTimerService _actionTimerService;
@@ -97,6 +100,24 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
     /// </summary>
     private void ManageActionTimer(Guid gameId, TableStatePublicDto state)
     {
+        var existingTimer = _actionTimerService.GetTimerState(gameId);
+
+        if (state.ChipCheckPause?.IsPaused == true)
+        {
+            if (existingTimer is not null && existingTimer.TimerType == ActionTimerType.ChipCheckPause)
+            {
+                return;
+            }
+
+            if (existingTimer is not null)
+            {
+                _logger.LogDebug("Stopping non-pause timer for game {GameId} because chip check pause is active", gameId);
+                _actionTimerService.StopTimer(gameId);
+            }
+
+            return;
+        }
+
         // Check if we're in a phase that requires player action
         var requiresAction = ActionPhases.Contains(state.CurrentPhase) ||
                              state.CurrentPhaseRequiresAction;
@@ -109,7 +130,7 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
         if (!requiresAction || (currentActorSeatIndex < 0 && !isSimultaneousAction) || state.IsPaused)
         {
             // Stop timer if no action needed, no actor (and not simultaneous), or game is paused
-            if (_actionTimerService.IsTimerActive(gameId))
+            if (existingTimer is not null)
             {
                 _logger.LogDebug("Stopping action timer for game {GameId} - no action required", gameId);
                 _actionTimerService.StopTimer(gameId);
@@ -119,9 +140,9 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 
         // Check if the current actor has changed
         var effectiveActorSeatIndex = isSimultaneousAction ? -1 : currentActorSeatIndex;
-        var existingTimer = _actionTimerService.GetTimerState(gameId);
-        
-        if (existingTimer is not null && existingTimer.PlayerSeatIndex == effectiveActorSeatIndex)
+        if (existingTimer is not null &&
+            existingTimer.TimerType == ActionTimerType.PlayerAction &&
+            existingTimer.PlayerSeatIndex == effectiveActorSeatIndex)
         {
             // Same player/state, timer already running - don't restart
             _logger.LogDebug(
@@ -136,11 +157,10 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
             gameId, effectiveActorSeatIndex, state.CurrentPhase);
 
         var durationSeconds = IActionTimerService.DefaultTimerDurationSeconds;
+        var startDelay = GetActionTimerStartDelay(state);
 
         // Use 30 seconds for short decision phases.
-        if ((string.Equals(state.GameTypeCode, PokerGameMetadataRegistry.KingsAndLowsCode, StringComparison.OrdinalIgnoreCase) &&
-             string.Equals(state.CurrentPhase, "DropOrStay", StringComparison.OrdinalIgnoreCase)) ||
-            (string.Equals(state.GameTypeCode, PokerGameMetadataRegistry.ScrewYourNeighborCode, StringComparison.OrdinalIgnoreCase) &&
+        if ((string.Equals(state.GameTypeCode, PokerGameMetadataRegistry.ScrewYourNeighborCode, StringComparison.OrdinalIgnoreCase) &&
              string.Equals(state.CurrentPhase, "KeepOrTrade", StringComparison.OrdinalIgnoreCase)) ||
             (string.Equals(state.GameTypeCode, PokerGameMetadataRegistry.TollboothCode, StringComparison.OrdinalIgnoreCase) &&
              string.Equals(state.CurrentPhase, "TollboothOffer", StringComparison.OrdinalIgnoreCase)) ||
@@ -154,6 +174,7 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
             gameId,
             effectiveActorSeatIndex,
             durationSeconds: durationSeconds,
+            startDelay: startDelay,
             onExpired: async (gId, seatIndex) =>
             {
                 _logger.LogInformation(
@@ -161,6 +182,41 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
                     gId, seatIndex);
                 await _autoActionService.PerformAutoActionAsync(gId, seatIndex);
             });
+    }
+
+    private static TimeSpan GetActionTimerStartDelay(TableStatePublicDto state)
+    {
+        if (string.Equals(state.GameTypeCode, PokerGameMetadataRegistry.KingsAndLowsCode, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(state.CurrentPhase, "DropOrStay", StringComparison.OrdinalIgnoreCase))
+        {
+            return CalculateKingsAndLowsDropOrStayStartDelay(state);
+        }
+
+        return TimeSpan.Zero;
+    }
+
+    private static TimeSpan CalculateKingsAndLowsDropOrStayStartDelay(TableStatePublicDto state)
+    {
+        var activeSeatCount = state.Seats.Count(static seat => seat.IsOccupied && !seat.IsSittingOut && !seat.IsFolded);
+        if (activeSeatCount == 0)
+        {
+            return TimeSpan.Zero;
+        }
+
+        var cardsPerSeat = state.Seats
+            .Where(static seat => seat.IsOccupied && !seat.IsSittingOut && !seat.IsFolded)
+            .Select(static seat => seat.Cards.Count)
+            .DefaultIfEmpty(0)
+            .Max();
+
+        if (cardsPerSeat == 0)
+        {
+            return TimeSpan.Zero;
+        }
+
+        var animationSteps = (activeSeatCount * cardsPerSeat) + 1;
+        var totalDelayMs = ClientDealAnimationInitialDelayMs + (animationSteps * ClientDealAnimationStepDelayMs);
+        return TimeSpan.FromMilliseconds(totalDelayMs);
     }
 
         /// <inheritdoc />

@@ -14,7 +14,7 @@ public sealed class GetCashierSummaryQueryHandler(
 {
 	public async Task<CashierSummaryDto> Handle(GetCashierSummaryQuery request, CancellationToken cancellationToken)
 	{
-		var player = await CashierPlayerResolver.TryResolveAsync(context, currentUserService, cancellationToken);
+		var player = await CashierPlayerResolver.ResolveOrCreateAsync(context, currentUserService, cancellationToken);
 		if (player is null)
 		{
 			return new CashierSummaryDto
@@ -25,9 +25,16 @@ public sealed class GetCashierSummaryQueryHandler(
 			};
 		}
 
-		var account = await context.PlayerChipAccounts
-			.AsNoTracking()
-			.FirstOrDefaultAsync(x => x.PlayerId == player.Id, cancellationToken);
+		var account = await CashierAccountInitializer.EnsureRegistrationCreditAsync(
+			context,
+			player.Id,
+			currentUserService.UserId,
+			cancellationToken);
+
+		if (context.ChangeTracker.HasChanges())
+		{
+			await context.SaveChangesAsync(cancellationToken);
+		}
 
 		var lastTransactionAtUtc = await context.PlayerChipLedgerEntries
 			.AsNoTracking()
@@ -38,7 +45,7 @@ public sealed class GetCashierSummaryQueryHandler(
 
 		return new CashierSummaryDto
 		{
-			CurrentBalance = account?.Balance ?? 0,
+			CurrentBalance = account.Balance,
 			PendingBalanceChange = 0,
 			LastTransactionAtUtc = lastTransactionAtUtc
 		};

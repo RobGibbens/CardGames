@@ -394,6 +394,9 @@ namespace CardGames.Poker.Api.Migrations
                     b.Property<bool>("IsPausedForChipCheck")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsPausedForRebuyGrace")
+                        .HasColumnType("bit");
+
                     b.Property<int?>("MaxBuyIn")
                         .HasColumnType("int");
 
@@ -412,6 +415,12 @@ namespace CardGames.Poker.Api.Migrations
 
                     b.Property<int?>("RandomSeed")
                         .HasColumnType("int");
+
+                    b.Property<DateTimeOffset?>("RebuyGraceEndsAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset?>("RebuyGraceStartedAt")
+                        .HasColumnType("datetimeoffset");
 
                     b.Property<bool>("RequiresJoinApproval")
                         .ValueGeneratedOnAdd()
