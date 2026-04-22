@@ -4,7 +4,7 @@ using OneOf;
 
 namespace CardGames.Poker.Api.Features.Leagues.v1.Queries.GetLeagueOneOffEventsPage;
 
-public sealed record GetLeagueOneOffEventsPageQuery(Guid LeagueId, int PageSize, int PageNumber)
+public sealed record GetLeagueOneOffEventsPageQuery(Guid LeagueId, int PageSize, int PageNumber, bool IncludeCompleted = true)
 	: IRequest<OneOf<LeagueOneOffEventsPageDto, GetLeagueOneOffEventsPageError>>;
 
 public enum GetLeagueOneOffEventsPageErrorCode

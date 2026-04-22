@@ -156,6 +156,7 @@ public partial interface ILeaguesApi
 		Guid leagueId,
 		[AliasAs("pageSize")][Query] int? pageSize = 5,
 		[AliasAs("pageNumber")][Query] int? pageNumber = 1,
+		[AliasAs("includeCompleted")][Query] bool? includeCompleted = true,
 		CancellationToken cancellationToken = default);
 
 	[Headers("Accept: application/json, application/problem+json")]

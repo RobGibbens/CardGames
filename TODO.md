@@ -11,6 +11,7 @@
 - [ ] League tabs not colored in dark mode correctly
 - [ ] Work on isolating games code more
 - [ ] Add option to treat coins as money
+- [ ] Remove the scrollbar from the Showdown
 
 - [ ] Add leagues
   - [x] When a league game ends, redirect to the league page

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Features.Leagues.v1.Commands.IngestLeagueSeasonEventResults;
 using CardGames.Poker.Api.GameFlow;
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Betting;
@@ -88,6 +89,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		using var scope = _scopeFactory.CreateScope();
 		var context = scope.ServiceProvider.GetRequiredService<CardsDbContext>();
 		var broadcaster = scope.ServiceProvider.GetRequiredService<IGameStateBroadcaster>();
+		var leagueCompletionSync = scope.ServiceProvider.GetService<LeagueGameCompletionSyncService>();
 		var handHistoryRecorder = scope.ServiceProvider.GetRequiredService<IHandHistoryRecorder>();
 		var playerChipWalletService = scope.ServiceProvider.GetRequiredService<IPlayerChipWalletService>();
 		var actionTimerService = scope.ServiceProvider.GetService(typeof(IActionTimerService)) as IActionTimerService;
@@ -95,7 +97,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		var now = DateTimeOffset.UtcNow;
 
 		// Check for abandoned games (all players left after game started)
-		await ProcessAbandonedGamesAsync(context, broadcaster, now, cancellationToken);
+		await ProcessAbandonedGamesAsync(context, broadcaster, leagueCompletionSync, now, cancellationToken);
 
 		// Process DrawComplete games that are ready to transition to Showdown
 		await ProcessDrawCompleteGamesAsync(context, broadcaster, handHistoryRecorder, now, cancellationToken);
@@ -139,6 +141,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 	private async Task ProcessAbandonedGamesAsync(
 		CardsDbContext context,
 		IGameStateBroadcaster broadcaster,
+		LeagueGameCompletionSyncService? leagueCompletionSync,
 		DateTimeOffset now,
 		CancellationToken cancellationToken)
 	{
@@ -203,6 +206,10 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			game.RebuyGraceEndsAt = null;
 
 				await context.SaveChangesAsync(cancellationToken);
+				if (leagueCompletionSync is not null)
+				{
+					await leagueCompletionSync.SyncLeagueEventCompletionAsync(game.Id, cancellationToken);
+				}
 				await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
 			}
 		}
@@ -597,6 +604,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		// For standard games, use GameType.Code (reliably loaded after ReloadAsync + Reference load above).
 		var flowHandlerFactory = scope.ServiceProvider.GetRequiredService<IGameFlowHandlerFactory>();
 		var flowHandler = flowHandlerFactory.GetHandler(game.CurrentHandGameTypeCode ?? game.GameType?.Code);
+		var leagueCompletionSync = scope.ServiceProvider.GetService<LeagueGameCompletionSyncService>();
 
 		// 2. Apply pending chips to player stacks (validate cashier balance first)
 		var playersWithPendingChips = game.GamePlayers
@@ -810,6 +818,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			game.UpdatedAt = now;
 
 			await context.SaveChangesAsync(cancellationToken);
+			await SyncLeagueCompletionIfNeededAsync(leagueCompletionSync, game.Id, cancellationToken);
 			await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
 			return;
 		}
@@ -839,6 +848,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		if (await TryHandleCashGameRebuyGraceAsync(
 			context,
 			broadcaster,
+			leagueCompletionSync,
 			actionTimerService,
 			game,
 			eligiblePlayers,
@@ -1153,6 +1163,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 	private async Task<bool> TryHandleCashGameRebuyGraceAsync(
 		CardsDbContext context,
 		IGameStateBroadcaster broadcaster,
+		LeagueGameCompletionSyncService? leagueCompletionSync,
 		IActionTimerService? actionTimerService,
 		Game game,
 		List<GamePlayer> eligiblePlayers,
@@ -1224,6 +1235,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			game.UpdatedAt = now;
 
 			await context.SaveChangesAsync(cancellationToken);
+			await SyncLeagueCompletionIfNeededAsync(leagueCompletionSync, game.Id, cancellationToken);
 			await broadcaster.BroadcastTableToastAsync(
 				new TableToastNotificationDto
 				{
@@ -1298,6 +1310,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		using var scope = _scopeFactory.CreateScope();
 		var context = scope.ServiceProvider.GetRequiredService<CardsDbContext>();
 		var broadcaster = scope.ServiceProvider.GetRequiredService<IGameStateBroadcaster>();
+		var leagueCompletionSync = scope.ServiceProvider.GetService<LeagueGameCompletionSyncService>();
 		var now = DateTimeOffset.UtcNow;
 
 		var game = await context.Games
@@ -1329,6 +1342,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		game.UpdatedAt = now;
 
 		await context.SaveChangesAsync(CancellationToken.None);
+		await SyncLeagueCompletionIfNeededAsync(leagueCompletionSync, game.Id, CancellationToken.None);
 		await broadcaster.BroadcastTableToastAsync(
 			new TableToastNotificationDto
 			{
@@ -1339,6 +1353,19 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			},
 			CancellationToken.None);
 		await broadcaster.BroadcastGameStateAsync(gameId, CancellationToken.None);
+	}
+
+	private static async Task SyncLeagueCompletionIfNeededAsync(
+		LeagueGameCompletionSyncService? leagueCompletionSync,
+		Guid gameId,
+		CancellationToken cancellationToken)
+	{
+		if (leagueCompletionSync is null)
+		{
+			return;
+		}
+
+		await leagueCompletionSync.SyncLeagueEventCompletionAsync(gameId, cancellationToken);
 	}
 
 	private async Task<bool> TryTransitionTerminalDealersChoiceScrewYourNeighborAsync(
