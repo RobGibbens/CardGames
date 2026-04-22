@@ -13,7 +13,7 @@
 - [ ] Add option to treat coins as money
 
 - [ ] Add leagues
-  - [ ] When a league game ends, redirect to the league page
+  - [x] When a league game ends, redirect to the league page
   - [ ] When a league game ends, it shouldn't show as an Active Game
   - [ ] When a league game ends, it should show as recent results
   - [ ] When a league game ends, it should update the leaders of the season
