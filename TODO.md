@@ -4,14 +4,21 @@
 - [ ] Tony was trying to join during DC, it stole the choice from Russ
 - [ ] DC - Eric joined, it glitched
 - [ ] Kings and Lows - end showdown didn't work
- 
+
 ## Still to do
 
 - [ ] Lobby - Filter by status
+- [ ] League tabs not colored in dark mode correctly
 - [ ] Work on isolating games code more
 - [ ] Add option to treat coins as money
 
 - [ ] Add leagues
+  - [ ] When a league game ends, redirect to the league page
+  - [ ] When a league game ends, it shouldn't show as an Active Game
+  - [ ] When a league game ends, it should show as recent results
+  - [ ] When a league game ends, it should update the leaders of the season
+  - [ ] When a league game ends, it should show on the results tab
+  - [ ] When a league game ends, it should show on the standings tab
 - [ ] Add seasons
   - [ ] Change UI - Hard to find seasons
   - [ ] Change UI - Hard to find events

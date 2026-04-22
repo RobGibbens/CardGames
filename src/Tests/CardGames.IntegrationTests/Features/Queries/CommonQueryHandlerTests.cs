@@ -3,6 +3,7 @@ using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetGames;
 using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetGameRules;
 using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetTableSettings;
 using CardGames.Poker.Api.Games;
+using CardGames.Poker.Api.Data.Entities;
 
 namespace CardGames.IntegrationTests.Features.Queries;
 
@@ -27,6 +28,86 @@ public class CommonQueryHandlerTests : IntegrationTestBase
         result.Should().NotBeNull();
         result!.Id.Should().Be(setup.Game.Id);
         result.GameTypeCode.Should().Be("FIVECARDDRAW");
+        result.LeagueId.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetGame_LeagueSeasonEventLaunch_ReturnsLeagueId()
+    {
+        var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 4);
+
+        var league = new League
+        {
+            Name = "Query Season League",
+            CreatedByUserId = "season-owner",
+            CreatedAtUtc = DateTimeOffset.UtcNow
+        };
+
+        var season = new LeagueSeason
+        {
+            LeagueId = league.Id,
+            Name = "Season One",
+            Status = LeagueSeasonStatus.InProgress,
+            CreatedByUserId = "season-owner",
+            CreatedAtUtc = DateTimeOffset.UtcNow
+        };
+
+        var seasonEvent = new LeagueSeasonEvent
+        {
+            LeagueId = league.Id,
+            LeagueSeasonId = season.Id,
+            Name = "Season Event",
+            Status = LeagueSeasonEventStatus.Planned,
+            CreatedByUserId = "season-owner",
+            CreatedAtUtc = DateTimeOffset.UtcNow,
+            LaunchedGameId = setup.Game.Id,
+            GameTypeCode = "FIVECARDDRAW"
+        };
+
+        DbContext.Leagues.Add(league);
+        DbContext.LeagueSeasons.Add(season);
+        DbContext.LeagueSeasonEvents.Add(seasonEvent);
+        await DbContext.SaveChangesAsync();
+
+        var result = await Mediator.Send(new GetGameQuery(setup.Game.Id));
+
+        result.Should().NotBeNull();
+        result!.LeagueId.Should().Be(league.Id);
+    }
+
+    [Fact]
+    public async Task GetGame_LeagueOneOffLaunch_ReturnsLeagueId()
+    {
+        var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 4);
+
+        var league = new League
+        {
+            Name = "Query One-Off League",
+            CreatedByUserId = "oneoff-owner",
+            CreatedAtUtc = DateTimeOffset.UtcNow
+        };
+
+        var oneOffEvent = new LeagueOneOffEvent
+        {
+            LeagueId = league.Id,
+            Name = "One-Off Event",
+            ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(1),
+            EventType = LeagueOneOffEventType.Tournament,
+            Status = LeagueOneOffEventStatus.Planned,
+            CreatedByUserId = "oneoff-owner",
+            CreatedAtUtc = DateTimeOffset.UtcNow,
+            LaunchedGameId = setup.Game.Id,
+            GameTypeCode = "FIVECARDDRAW"
+        };
+
+        DbContext.Leagues.Add(league);
+        DbContext.LeagueOneOffEvents.Add(oneOffEvent);
+        await DbContext.SaveChangesAsync();
+
+        var result = await Mediator.Send(new GetGameQuery(setup.Game.Id));
+
+        result.Should().NotBeNull();
+        result!.LeagueId.Should().Be(league.Id);
     }
 
     [Fact]

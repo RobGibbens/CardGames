@@ -53,11 +53,32 @@ public class GetGameQueryHandler(CardsDbContext context, HybridCache hybridCache
 				{
 					return null;
 				}
-				
-				return response;
+
+				var leagueId = await ResolveLeagueIdAsync(request.GameId, cancellationToken);
+				return response with { LeagueId = leagueId };
 			},
 			cancellationToken: cancellationToken,
 			tags: [Feature.Version, Feature.Name, nameof(GetGameQuery)]
 		);
+	}
+
+	private async Task<Guid?> ResolveLeagueIdAsync(Guid gameId, CancellationToken cancellationToken)
+	{
+		var seasonEventLeagueId = await context.LeagueSeasonEvents
+			.AsNoTracking()
+			.Where(x => x.LaunchedGameId == gameId)
+			.Select(x => (Guid?)x.LeagueId)
+			.FirstOrDefaultAsync(cancellationToken);
+
+		if (seasonEventLeagueId.HasValue)
+		{
+			return seasonEventLeagueId;
+		}
+
+		return await context.LeagueOneOffEvents
+			.AsNoTracking()
+			.Where(x => x.LaunchedGameId == gameId)
+			.Select(x => (Guid?)x.LeagueId)
+			.FirstOrDefaultAsync(cancellationToken);
 	}
 }

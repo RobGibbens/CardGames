@@ -4,6 +4,9 @@ namespace CardGames.Poker.Api.Contracts;
 
 public partial record GetGameResponse
 {
+	[JsonPropertyName("leagueId")]
+	public Guid? LeagueId { get; init; }
+
 	[JsonPropertyName("isDealersChoice")]
 	public bool IsDealersChoice { get; init; }
 

@@ -854,6 +854,7 @@
     private bool _initialized;
     private bool _shouldAutoJoinFromQuery;
     private bool _autoJoinIntentConsumed;
+    private Guid? _leagueId;
 
     private bool HasFixedTournamentBuyIn => (_gameResponse?.TournamentBuyIn ?? 0) > 0;
     private bool IsLeagueTournament => HasFixedTournamentBuyIn;
@@ -1780,7 +1781,7 @@
         {
             _hasRequestedLeave = false;
             await GameHubClient.LeaveGameAsync(GameId);
-            NavigationManager.NavigateTo("/lobby");
+            NavigateToExitDestination();
             return;
         }
 
@@ -2514,6 +2515,7 @@
             {
                 var gamesResponse = gameResponse.Content;
                 _gameTypeCode = gamesResponse.GameTypeCode;
+                _leagueId = gamesResponse.LeagueId;
 
                 _gameResponse = CreateLocalGameResponse(gamesResponse);
                 _allowedDealerChoiceGameCodes = ParseAllowedDealerChoiceGameCodes(gamesResponse.GameSettings);
@@ -2614,10 +2616,23 @@
             updatedAt: gamesResponse.UpdatedAt)
         {
             AreOddsVisibleToAllPlayers = gamesResponse.AreOddsVisibleToAllPlayers,
+            LeagueId = gamesResponse.LeagueId,
             MaxBuyIn = gamesResponse.MaxBuyIn,
             RequiresJoinApproval = gamesResponse.RequiresJoinApproval,
             TournamentBuyIn = gamesResponse.TournamentBuyIn
         };
+    }
+
+    private void NavigateToExitDestination()
+    {
+        NavigationManager.NavigateTo(GetExitDestination(_leagueId));
+    }
+
+    private static string GetExitDestination(Guid? leagueId)
+    {
+        return leagueId.HasValue
+            ? $"/leagues/{leagueId.Value}"
+            : "/lobby";
     }
 
     private async Task GetPlayersAndUpdateSeatsAsync()
@@ -2765,13 +2780,13 @@
 
                 // Immediate leave - disconnect from SignalR and navigate to lobby
                 await GameHubClient.LeaveGameAsync(GameId);
-                NavigationManager.NavigateTo("/lobby");
+                NavigateToExitDestination();
             }
             else
             {
                 // If not seated or already left, just navigate to lobby
                 await GameHubClient.LeaveGameAsync(GameId);
-                NavigationManager.NavigateTo("/lobby");
+                NavigateToExitDestination();
             }
         }
         catch (Exception ex)
@@ -5413,7 +5428,7 @@
                 if (IsEndedPhase || IsGameCompleted)
                 {
                     await GameHubClient.LeaveGameAsync(GameId);
-                    NavigationManager.NavigateTo("/lobby");
+                    NavigateToExitDestination();
                 }
                 else
                 {
