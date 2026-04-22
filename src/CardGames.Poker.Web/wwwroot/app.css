@@ -1808,6 +1808,7 @@ a:hover {
 
 .league-club-card .league-club-footer {
     padding: 0 1rem 1rem;
+    background-color: inherit;
 }
 
 .league-club-card:hover {
@@ -2461,7 +2462,7 @@ a:hover {
 }
 
 .lobby-tab-text {
-    color: var(--secondary) !important;
+    color: inherit !important;
     font-weight: 300 !important;
     font-variation-settings: "wght" 300;
 }
