@@ -72,13 +72,6 @@
 			{
 				<div class="league-detail-header-right season-detail-header-right">
 					<span class="league-detail-role-badge">@_leagueDetail.MyRole</span>
-					@if (CanManageLeague)
-					{
-						<button type="button" class="league-detail-btn league-detail-btn-create" @onclick="OpenSeasonEventModal">
-							<i class="fa-solid fa-plus"></i>
-							<span>Create Event</span>
-						</button>
-					}
 				</div>
 			}
 		</div>
@@ -403,6 +396,8 @@
 		</div>
 	</div>
 }
+
+<BlazorBlueprint.Primitives.Services.BbOverlayPortalHost />
 
 @code {
 	[Parameter]

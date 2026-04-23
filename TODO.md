@@ -23,7 +23,7 @@
   - [ ] When a league game ends, it should show on the standings tab
 - [ ] Add seasons
   - [ ] Create season event doesn't just appear on the season page
-  - [ ] Event Calendar - month and year drop down don't work
+  - [x] Event Calendar - month and year drop down don't work
   - [ ] Remove the Back to League button
   - [ ] Season page has two Create Event buttons
   - [ ] Events don't need names, just use date

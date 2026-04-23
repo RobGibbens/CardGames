@@ -1,6 +1,7 @@
 ﻿@inherits LayoutComponentBase
 
 @using CardGames.Poker.Web.Components.Shared
+@using BlazorBlueprint.Primitives.Services
 
 <JoinApprovalHost @rendermode="InteractiveServer" />
 
@@ -11,4 +12,4 @@
     <a href="." class="reload">Reload</a>
     <span class="dismiss"><i class="fa-thin fa-circle-x"></i></span>
 </div>
-<BbPortalHost />
+<BlazorBlueprint.Primitives.Services.BbPortalHost />
