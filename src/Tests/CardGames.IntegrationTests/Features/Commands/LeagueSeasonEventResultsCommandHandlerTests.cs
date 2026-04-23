@@ -160,8 +160,6 @@ public class LeagueSeasonEventResultsCommandHandlerTests : IntegrationTestBase
 
 		var createEvent = await Mediator.Send(new CreateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId, new CreateLeagueSeasonEventRequest
 		{
-			Name = "Results Week 1",
-			SequenceNumber = 1,
 			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(3)
 		}));
 

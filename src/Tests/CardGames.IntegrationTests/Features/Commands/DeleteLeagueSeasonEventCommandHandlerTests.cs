@@ -35,8 +35,6 @@ public class DeleteLeagueSeasonEventCommandHandlerTests : IntegrationTestBase
 
 		var createEvent = await Mediator.Send(new CreateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId, new CreateLeagueSeasonEventRequest
 		{
-			Name = "Week 1",
-			SequenceNumber = 1,
 			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(3)
 		}));
 
@@ -75,7 +73,6 @@ public class DeleteLeagueSeasonEventCommandHandlerTests : IntegrationTestBase
 
 		var createEvent = await Mediator.Send(new CreateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId, new CreateLeagueSeasonEventRequest
 		{
-			Name = "Week 1",
 			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(3)
 		}));
 
@@ -108,7 +105,6 @@ public class DeleteLeagueSeasonEventCommandHandlerTests : IntegrationTestBase
 
 		var createEvent = await Mediator.Send(new CreateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId, new CreateLeagueSeasonEventRequest
 		{
-			Name = "Week 1",
 			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(3)
 		}));
 

@@ -12,6 +12,7 @@
 - [ ] Work on isolating games code more
 - [ ] Add option to treat coins as money
 - [ ] Remove the scrollbar from the Showdown
+- [ ] The Launch Play button is too big and the style is wrong
 
 - [ ] Add leagues
   - [x] When a league game ends, redirect to the league page
@@ -21,6 +22,7 @@
   - [ ] When a league game ends, it should show on the results tab
   - [ ] When a league game ends, it should show on the standings tab
 - [ ] Add seasons
+  - [ ] Create season event doesn't just appear on the season page
   - [ ] Event Calendar - month and year drop down don't work
   - [ ] Remove the Back to League button
   - [ ] Season page has two Create Event buttons

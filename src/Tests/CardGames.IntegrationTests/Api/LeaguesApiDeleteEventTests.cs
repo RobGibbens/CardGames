@@ -147,8 +147,6 @@ public class LeaguesApiDeleteEventTests(ApiWebApplicationFactory factory) : ApiI
 
 		var createEventResponse = await PostAsync($"/api/v1/leagues/{league.LeagueId}/seasons/{season!.SeasonId}/events", new CreateLeagueSeasonEventRequest
 		{
-			Name = eventName,
-			SequenceNumber = sequenceNumber,
 			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(3)
 		});
 		createEventResponse.StatusCode.Should().Be(HttpStatusCode.Created);

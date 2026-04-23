@@ -55,8 +55,6 @@ public class LeaguesApiStandingsScaffoldTests(ApiWebApplicationFactory factory) 
 
 		var createEventResponse = await PostAsync($"/api/v1/leagues/{league.LeagueId}/seasons/{season!.SeasonId}/events", new CreateLeagueSeasonEventRequest
 		{
-			Name = "Week 1",
-			SequenceNumber = 1,
 			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(3)
 		});
 		createEventResponse.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -172,8 +170,6 @@ public class LeaguesApiStandingsScaffoldTests(ApiWebApplicationFactory factory) 
 
 		var createEventResponse = await PostAsync($"/api/v1/leagues/{league.LeagueId}/seasons/{season!.SeasonId}/events", new CreateLeagueSeasonEventRequest
 		{
-			Name = "Week 1",
-			SequenceNumber = 1,
 			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(3)
 		});
 		createEventResponse.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -292,8 +288,6 @@ public class LeaguesApiStandingsScaffoldTests(ApiWebApplicationFactory factory) 
 
 		var seasonOneEventResponse = await PostAsync($"/api/v1/leagues/{league.LeagueId}/seasons/{seasonOne!.SeasonId}/events", new CreateLeagueSeasonEventRequest
 		{
-			Name = "Season 1 Week 1",
-			SequenceNumber = 1,
 			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(3)
 		});
 		seasonOneEventResponse.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -302,8 +296,6 @@ public class LeaguesApiStandingsScaffoldTests(ApiWebApplicationFactory factory) 
 
 		var seasonTwoEventResponse = await PostAsync($"/api/v1/leagues/{league.LeagueId}/seasons/{seasonTwo!.SeasonId}/events", new CreateLeagueSeasonEventRequest
 		{
-			Name = "Season 2 Week 1",
-			SequenceNumber = 1,
 			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(10)
 		});
 		seasonTwoEventResponse.StatusCode.Should().Be(HttpStatusCode.Created);

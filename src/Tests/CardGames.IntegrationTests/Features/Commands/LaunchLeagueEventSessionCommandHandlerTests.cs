@@ -36,8 +36,6 @@ public class LaunchLeagueEventSessionCommandHandlerTests : IntegrationTestBase
 
 		var createEvent = await Mediator.Send(new CreateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId, new CreateLeagueSeasonEventRequest
 		{
-			Name = "Week 2",
-			SequenceNumber = 2,
 			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(2),
 			GameTypeCode = "HOLDEM",
 			Ante = 0,
@@ -143,8 +141,6 @@ public class LaunchLeagueEventSessionCommandHandlerTests : IntegrationTestBase
 
 		var createEvent = await Mediator.Send(new CreateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId, new CreateLeagueSeasonEventRequest
 		{
-			Name = "Week 1",
-			SequenceNumber = 1,
 			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(2),
 			TournamentBuyIn = 250
 		}));

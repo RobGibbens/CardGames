@@ -365,14 +365,6 @@
 				</button>
 			</div>
 			<div class="confirm-dialog-body league-form-modal-body text-start">
-				<div class="form-floating" data-label="Event name">
-					<InputText id="season-event-name" class="form-control league-modal-input" @bind-Value="_seasonEventName"
-							   maxlength="120" placeholder="Event name" />
-				</div>
-				<div class="form-floating" data-label="Sequence (optional)">
-					<InputNumber id="season-event-sequence" class="form-control league-modal-input"
-							 @bind-Value="_seasonEventSequence" placeholder="Sequence" />
-				</div>
 				<div class="row league-form-inline-fields">
 					<div class="col-md-4 league-form-inline-field">
 						<label class="form-label small" for="season-event-date">Scheduled date</label>
@@ -549,8 +541,6 @@
 	private bool _isSubmittingSeason;
 	private bool _showSeasonModal;
 
-	private string _seasonEventName = string.Empty;
-	private int? _seasonEventSequence;
 	private DateTime? _seasonEventScheduledDate;
 	private string _seasonEventScheduledTime = LeagueTimeZoneHelper.DefaultTimeText;
 	private string _seasonEventTimeZoneId = "UTC";
@@ -2044,13 +2034,6 @@ DateTimeKind.Utc)) : null,
 			return;
 		}
 
-		if (string.IsNullOrWhiteSpace(_seasonEventName))
-		{
-			_message = "Season event name is required.";
-			_isError = true;
-			return;
-		}
-
 		if (string.IsNullOrWhiteSpace(_seasonEventGameTypeCode))
 		{
 			_message = "Select a game variant for the season event.";
@@ -2121,8 +2104,6 @@ DateTimeKind.Utc)) : null,
 			{
 				response = await LeaguesApi.UpdateSeasonEventAsync(LeagueId, _selectedSeasonId.Value, _editingSeasonEventId!.Value, new UpdateLeagueSeasonEventRequest
 				{
-					Name = _seasonEventName.Trim(),
-					SequenceNumber = _seasonEventSequence,
 					ScheduledAtUtc = scheduledAtUtc,
 					Notes = string.IsNullOrWhiteSpace(_seasonEventNotes) ? null : _seasonEventNotes.Trim(),
 					GameTypeCode = _seasonEventGameTypeCode,
@@ -2137,8 +2118,6 @@ DateTimeKind.Utc)) : null,
 			{
 				response = await LeaguesApi.CreateSeasonEventAsync(LeagueId, _selectedSeasonId.Value, new CreateLeagueSeasonEventRequest
 				{
-					Name = _seasonEventName.Trim(),
-					SequenceNumber = _seasonEventSequence,
 					ScheduledAtUtc = scheduledAtUtc,
 					Notes = string.IsNullOrWhiteSpace(_seasonEventNotes) ? null : _seasonEventNotes.Trim(),
 					GameTypeCode = _seasonEventGameTypeCode,
@@ -2334,8 +2313,6 @@ DateTimeKind.Utc)) : null,
 	private void ResetSeasonEventDraft()
 	{
 		_editingSeasonEventId = null;
-		_seasonEventName = string.Empty;
-		_seasonEventSequence = null;
 		var defaultSchedule = LeagueTimeZoneHelper.GetDefaultLocalScheduledDateTime(BrowserTimeZoneId);
 		_seasonEventScheduledDate = defaultSchedule.Date;
 		_seasonEventScheduledTime = defaultSchedule.TimeText;
@@ -2352,8 +2329,6 @@ DateTimeKind.Utc)) : null,
 	private void PopulateSeasonEventDraft(LeagueSeasonEventDto seasonEvent)
 	{
 		_editingSeasonEventId = seasonEvent.EventId;
-		_seasonEventName = seasonEvent.Name;
-		_seasonEventSequence = seasonEvent.SequenceNumber;
 		_seasonEventScheduledDate = LeagueTimeZoneHelper.ConvertUtcToLocalDate(seasonEvent.ScheduledAtUtc, BrowserTimeZoneId);
 		_seasonEventScheduledTime = LeagueTimeZoneHelper.ConvertUtcToTimeText(seasonEvent.ScheduledAtUtc, BrowserTimeZoneId);
 		_seasonEventTimeZoneId = BrowserTimeZoneId;

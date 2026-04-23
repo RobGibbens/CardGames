@@ -5786,10 +5786,8 @@ namespace CardGames.Poker.Api.Contracts
     public partial record CreateLeagueSeasonEventRequest
     {
         [JsonConstructor]
-        public CreateLeagueSeasonEventRequest(int? @ante, int? @bigBlind, string @gameTypeCode, int? @minBet, string @name, string @notes, System.DateTimeOffset? @scheduledAtUtc, int? @sequenceNumber, int? @smallBlind, int? @tournamentBuyIn)
+        public CreateLeagueSeasonEventRequest(int? @ante, int? @bigBlind, string @gameTypeCode, int? @minBet, string @notes, System.DateTimeOffset? @scheduledAtUtc, int? @smallBlind, int? @tournamentBuyIn)
         {
-            this.Name = @name;
-            this.SequenceNumber = @sequenceNumber;
             this.ScheduledAtUtc = @scheduledAtUtc;
             this.Notes = @notes;
             this.GameTypeCode = @gameTypeCode;
@@ -5799,14 +5797,6 @@ namespace CardGames.Poker.Api.Contracts
             this.BigBlind = @bigBlind;
             this.TournamentBuyIn = @tournamentBuyIn;
         }
-
-        [JsonPropertyName("name")]
-        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
-        public string Name { get; init; }
-
-        [JsonPropertyName("sequenceNumber")]
-        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
-        public int? SequenceNumber { get; init; }
 
         [JsonPropertyName("scheduledAtUtc")]
         public System.DateTimeOffset? ScheduledAtUtc { get; init; }
@@ -10065,10 +10055,8 @@ namespace CardGames.Poker.Api.Contracts
     public partial record UpdateLeagueSeasonEventRequest
     {
         [JsonConstructor]
-        public UpdateLeagueSeasonEventRequest(int? @ante, int? @bigBlind, string @gameTypeCode, int? @minBet, string @name, string @notes, System.DateTimeOffset? @scheduledAtUtc, int? @sequenceNumber, int? @smallBlind, int? @tournamentBuyIn)
+        public UpdateLeagueSeasonEventRequest(int? @ante, int? @bigBlind, string @gameTypeCode, int? @minBet, string @notes, System.DateTimeOffset? @scheduledAtUtc, int? @smallBlind, int? @tournamentBuyIn)
         {
-            this.Name = @name;
-            this.SequenceNumber = @sequenceNumber;
             this.ScheduledAtUtc = @scheduledAtUtc;
             this.Notes = @notes;
             this.GameTypeCode = @gameTypeCode;
@@ -10078,14 +10066,6 @@ namespace CardGames.Poker.Api.Contracts
             this.BigBlind = @bigBlind;
             this.TournamentBuyIn = @tournamentBuyIn;
         }
-
-        [JsonPropertyName("name")]
-        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
-        public string Name { get; init; }
-
-        [JsonPropertyName("sequenceNumber")]
-        [System.ComponentModel.DataAnnotations.RegularExpression(@"^-?(?:0|[1-9]\d*)$")]
-        public int? SequenceNumber { get; init; }
 
         [JsonPropertyName("scheduledAtUtc")]
         public System.DateTimeOffset? ScheduledAtUtc { get; init; }

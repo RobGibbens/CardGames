@@ -5,6 +5,7 @@ using CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeague;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueSeason;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueSeasonEvent;
 using CardGames.Poker.Api.Infrastructure;
+using System.Globalization;
 
 namespace CardGames.IntegrationTests.Features.Commands;
 
@@ -32,17 +33,17 @@ public class CreateLeagueSeasonEventCommandHandlerTests : IntegrationTestBase
 		}));
 
 		createSeason.IsT0.Should().BeTrue();
+		var scheduledAtUtc = DateTimeOffset.UtcNow.AddDays(7);
 
 		var result = await Mediator.Send(new CreateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId, new CardGames.Poker.Api.Contracts.CreateLeagueSeasonEventRequest
 		{
-			Name = "Week 1",
-			SequenceNumber = 1,
-			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(7)
+			ScheduledAtUtc = scheduledAtUtc
 		}));
 
 		result.IsT0.Should().BeTrue();
 		result.AsT0.SeasonId.Should().Be(createSeason.AsT0.SeasonId);
-		result.AsT0.SequenceNumber.Should().Be(1);
+		result.AsT0.Name.Should().Be(FormatExpectedSeasonEventName(scheduledAtUtc));
+		result.AsT0.SequenceNumber.Should().BeNull();
 		fakeLeagueBroadcaster.EventChangedNotifications.Should().ContainSingle();
 		fakeLeagueBroadcaster.EventChangedNotifications[0].LeagueId.Should().Be(leagueId);
 		fakeLeagueBroadcaster.EventChangedNotifications[0].EventId.Should().Be(result.AsT0.EventId);
@@ -72,20 +73,23 @@ public class CreateLeagueSeasonEventCommandHandlerTests : IntegrationTestBase
 		}));
 
 		createSeason.IsT0.Should().BeTrue();
+		var scheduledAtUtc = DateTimeOffset.UtcNow.AddDays(7);
 
 		var result = await Mediator.Send(new CreateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId, new CardGames.Poker.Api.Contracts.CreateLeagueSeasonEventRequest
 		{
-			Name = "Week 2",
-			SequenceNumber = 2,
-			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(7),
+			ScheduledAtUtc = scheduledAtUtc,
 			TournamentBuyIn = 1800
 		}));
 
 		result.IsT0.Should().BeTrue();
+		result.AsT0.Name.Should().Be(FormatExpectedSeasonEventName(scheduledAtUtc));
+		result.AsT0.SequenceNumber.Should().BeNull();
 		result.AsT0.TournamentBuyIn.Should().Be(1800);
 
 		var savedEvent = await DbContext.LeagueSeasonEvents.FindAsync(result.AsT0.EventId);
 		savedEvent.Should().NotBeNull();
+		savedEvent!.Name.Should().Be(FormatExpectedSeasonEventName(scheduledAtUtc));
+		savedEvent.SequenceNumber.Should().BeNull();
 		savedEvent!.TournamentBuyIn.Should().Be(1800);
 	}
 
@@ -113,13 +117,16 @@ public class CreateLeagueSeasonEventCommandHandlerTests : IntegrationTestBase
 
 		var result = await Mediator.Send(new CreateLeagueSeasonEventCommand(leagueId, createSeason.AsT0.SeasonId, new CreateLeagueSeasonEventRequest
 		{
-			Name = "Week 1",
-			SequenceNumber = 1,
 			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(-1)
 		}));
 
 		result.IsT1.Should().BeTrue();
 		result.AsT1.Code.Should().Be(CreateLeagueSeasonEventErrorCode.InvalidRequest);
 		result.AsT1.Message.Should().Be("Scheduled date/time must be in the future.");
+	}
+
+	private static string FormatExpectedSeasonEventName(DateTimeOffset scheduledAtUtc)
+	{
+		return scheduledAtUtc.ToUniversalTime().ToString("yyyy-MM-dd-HH-mm-ss", CultureInfo.InvariantCulture);
 	}
 }

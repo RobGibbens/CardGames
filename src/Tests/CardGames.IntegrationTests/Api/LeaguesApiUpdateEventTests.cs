@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using CardGames.IntegrationTests.Infrastructure;
@@ -30,8 +31,6 @@ public class LeaguesApiUpdateEventTests(ApiWebApplicationFactory factory) : ApiI
 
 		var response = await Client.PutAsJsonAsync($"/api/v1/leagues/{leagueId}/seasons/{seasonId}/events/{eventId}", new UpdateLeagueSeasonEventRequest
 		{
-			Name = "Week 1 Updated",
-			SequenceNumber = 3,
 			ScheduledAtUtc = scheduledAtUtc,
 			Notes = "Updated schedule details"
 		}, JsonOptions);
@@ -40,8 +39,8 @@ public class LeaguesApiUpdateEventTests(ApiWebApplicationFactory factory) : ApiI
 
 		var storedEvent = await DbContext.LeagueSeasonEvents.FindAsync(eventId);
 		storedEvent.Should().NotBeNull();
-		storedEvent!.Name.Should().Be("Week 1 Updated");
-		storedEvent.SequenceNumber.Should().Be(3);
+		storedEvent!.Name.Should().Be(FormatExpectedSeasonEventName(scheduledAtUtc));
+		storedEvent.SequenceNumber.Should().BeNull();
 		storedEvent.ScheduledAtUtc.Should().Be(scheduledAtUtc);
 		storedEvent.Notes.Should().Be("Updated schedule details");
 	}
@@ -66,7 +65,6 @@ public class LeaguesApiUpdateEventTests(ApiWebApplicationFactory factory) : ApiI
 		SetUser("league-update-season-member");
 		var response = await Client.PutAsJsonAsync($"/api/v1/leagues/{leagueId}/seasons/{seasonId}/events/{eventId}", new UpdateLeagueSeasonEventRequest
 		{
-			Name = "Week 1 Updated",
 			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(14)
 		}, JsonOptions);
 
@@ -86,7 +84,6 @@ public class LeaguesApiUpdateEventTests(ApiWebApplicationFactory factory) : ApiI
 
 		var response = await Client.PutAsJsonAsync($"/api/v1/leagues/{leagueId}/seasons/{seasonId}/events/{eventId}", new UpdateLeagueSeasonEventRequest
 		{
-			Name = "Week 1 Updated",
 			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(14)
 		}, JsonOptions);
 
@@ -197,8 +194,6 @@ public class LeaguesApiUpdateEventTests(ApiWebApplicationFactory factory) : ApiI
 
 		var createEventResponse = await PostAsync($"/api/v1/leagues/{league.LeagueId}/seasons/{season!.SeasonId}/events", new CreateLeagueSeasonEventRequest
 		{
-			Name = eventName,
-			SequenceNumber = sequenceNumber,
 			ScheduledAtUtc = DateTimeOffset.UtcNow.AddDays(3)
 		});
 		createEventResponse.StatusCode.Should().Be(HttpStatusCode.Created);
@@ -240,5 +235,10 @@ public class LeaguesApiUpdateEventTests(ApiWebApplicationFactory factory) : ApiI
 	{
 		Client.DefaultRequestHeaders.Remove(TestAuthHandler.UserHeader);
 		Client.DefaultRequestHeaders.Add(TestAuthHandler.UserHeader, userId);
+	}
+
+	private static string FormatExpectedSeasonEventName(DateTimeOffset scheduledAtUtc)
+	{
+		return scheduledAtUtc.ToUniversalTime().ToString("yyyy-MM-dd-HH-mm-ss", CultureInfo.InvariantCulture);
 	}
 }

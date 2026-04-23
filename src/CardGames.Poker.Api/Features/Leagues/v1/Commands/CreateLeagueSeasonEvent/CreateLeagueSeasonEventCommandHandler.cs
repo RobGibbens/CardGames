@@ -9,6 +9,7 @@ using CardGames.Poker.Api.Services;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OneOf;
+using System.Globalization;
 
 namespace CardGames.Poker.Api.Features.Leagues.v1.Commands.CreateLeagueSeasonEvent;
 
@@ -23,16 +24,6 @@ public sealed class CreateLeagueSeasonEventCommandHandler(
 		if (!currentUserService.IsAuthenticated || string.IsNullOrWhiteSpace(currentUserService.UserId))
 		{
 			return new CreateLeagueSeasonEventError(CreateLeagueSeasonEventErrorCode.Unauthorized, "User is not authenticated.");
-		}
-
-		if (string.IsNullOrWhiteSpace(request.Request.Name))
-		{
-			return new CreateLeagueSeasonEventError(CreateLeagueSeasonEventErrorCode.InvalidRequest, "Event name is required.");
-		}
-
-		if (request.Request.SequenceNumber.HasValue && request.Request.SequenceNumber.Value <= 0)
-		{
-			return new CreateLeagueSeasonEventError(CreateLeagueSeasonEventErrorCode.InvalidRequest, "Sequence number must be greater than zero when provided.");
 		}
 
 		var leagueExists = await context.Leagues
@@ -98,25 +89,13 @@ public sealed class CreateLeagueSeasonEventCommandHandler(
 			return new CreateLeagueSeasonEventError(CreateLeagueSeasonEventErrorCode.InvalidRequest, tournamentBuyInError);
 		}
 
-		if (request.Request.SequenceNumber.HasValue)
-		{
-			var sequenceInUse = await context.LeagueSeasonEvents
-				.AsNoTracking()
-				.AnyAsync(x => x.LeagueSeasonId == request.SeasonId && x.SequenceNumber == request.Request.SequenceNumber, cancellationToken);
-
-			if (sequenceInUse)
-			{
-				return new CreateLeagueSeasonEventError(CreateLeagueSeasonEventErrorCode.InvalidRequest, "Sequence number already exists for this season.");
-			}
-		}
-
 		var seasonEvent = new LeagueSeasonEvent
 		{
 			Id = Guid.CreateVersion7(),
 			LeagueId = request.LeagueId,
 			LeagueSeasonId = request.SeasonId,
-			Name = request.Request.Name.Trim(),
-			SequenceNumber = request.Request.SequenceNumber,
+			Name = GenerateSeasonEventName(request.Request.ScheduledAtUtc),
+			SequenceNumber = null,
 			ScheduledAtUtc = request.Request.ScheduledAtUtc,
 			Status = Data.Entities.LeagueSeasonEventStatus.Planned,
 			Notes = string.IsNullOrWhiteSpace(request.Request.Notes) ? null : request.Request.Notes.Trim(),
@@ -176,5 +155,10 @@ public sealed class CreateLeagueSeasonEventCommandHandler(
 		}
 
 		return null;
+	}
+
+	private static string GenerateSeasonEventName(DateTimeOffset scheduledAtUtc)
+	{
+		return scheduledAtUtc.ToUniversalTime().ToString("yyyy-MM-dd-HH-mm-ss", CultureInfo.InvariantCulture);
 	}
 }
