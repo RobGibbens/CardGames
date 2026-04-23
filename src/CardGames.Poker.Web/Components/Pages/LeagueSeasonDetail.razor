@@ -290,7 +290,7 @@
 @if (_showSeasonEventModal)
 {
 	<div class="confirm-dialog-overlay">
-		<div class="confirm-dialog league-form-modal season-event-modal" @onclick:stopPropagation>
+		<div class="confirm-dialog league-form-modal season-event-modal create-league-event-modal" @onclick:stopPropagation>
 			<div class="confirm-dialog-header league-form-modal-header">
 				<h3 class="confirm-dialog-title mb-0">@SeasonEventModalTitle</h3>
 				<button type="button" class="league-modal-close-btn" aria-label="Close" @onclick="CloseSeasonEventModal">
@@ -306,16 +306,16 @@
 					<InputNumber id="season-event-sequence" class="form-control league-modal-input"
 							 @bind-Value="_seasonEventSequence" placeholder="Sequence" />
 				</div>
-				<div class="row league-form-inline-fields">
-					<div class="col-md-4 league-form-inline-field">
+				<div class="league-form-inline-fields league-form-inline-fields-schedule">
+					<div class="league-form-inline-field league-form-inline-field-scheduled-date">
 						<label class="form-label small" for="season-event-date">Scheduled date</label>
 						<InputDate id="season-event-date" class="form-control league-modal-date-input" @bind-Value="_seasonEventScheduledDate" />
 					</div>
-					<div class="col-md-3 league-form-inline-field">
+					<div class="league-form-inline-field league-form-inline-field-scheduled-time">
 						<label class="form-label small" for="season-event-time">Start time</label>
 						<input id="season-event-time" type="time" class="form-control league-modal-input league-modal-date-input" value="@_seasonEventScheduledTime" @onchange="OnSeasonEventScheduledTimeChanged" />
 					</div>
-					<div class="col-md-5 league-form-inline-field">
+					<div class="league-form-inline-field league-form-inline-field-time-zone">
 						<label class="form-label small" for="season-event-time-zone">Time zone</label>
 						<InputSelect id="season-event-time-zone" class="form-select league-modal-input league-modal-date-input" @bind-Value="_seasonEventTimeZoneId">
 							@foreach (var timeZone in TimeZoneOptions)

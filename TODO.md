@@ -21,9 +21,13 @@
   - [ ] When a league game ends, it should show on the results tab
   - [ ] When a league game ends, it should show on the standings tab
 - [ ] Add seasons
+  - [ ] Event Calendar - month and year drop down don't work
+  - [ ] Remove the Back to League button
+  - [ ] Season page has two Create Event buttons
+  - [ ] Events don't need names, just use date
   - [ ] Change UI - Hard to find seasons
   - [ ] Change UI - Hard to find events
-  - [ ] Create event modal too big
+  - [ ] Create season event modal too big
   - [ ] Event doesn't need sequence, just order by date
   - [ ] Event should take blind and ante preferences
   - [ ] When there is an error, it doesn't show the message on the modal, it shows it behind it
