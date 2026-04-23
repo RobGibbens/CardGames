@@ -7,11 +7,12 @@
 
 ## Still to do
 
+- [ ] Played baseball, immediately went all in, deal went crazy
 - [ ] Lobby - Filter by status
-- [ ] League tabs not colored in dark mode correctly
+- [x] League tabs not colored in dark mode correctly
 - [ ] Work on isolating games code more
 - [ ] Add option to treat coins as money
-- [ ] Remove the scrollbar from the Showdown
+- [x] Remove the scrollbar from the Showdown
 - [ ] The Launch Play button is too big and the style is wrong
 
 - [ ] Add leagues
@@ -22,14 +23,14 @@
   - [ ] When a league game ends, it should show on the results tab
   - [ ] When a league game ends, it should show on the standings tab
 - [ ] Add seasons
-  - [ ] Create season event doesn't just appear on the season page
+  - [x] Create season event doesn't just appear on the season page
   - [x] Event Calendar - month and year drop down don't work
-  - [ ] Remove the Back to League button
-  - [ ] Season page has two Create Event buttons
-  - [ ] Events don't need names, just use date
+  - [x] Remove the Back to League button
+  - [x] Season page has two Create Event buttons
+  - [x] Events don't need names, just use date
   - [ ] Change UI - Hard to find seasons
   - [ ] Change UI - Hard to find events
-  - [ ] Create season event modal too big
+  - [x] Create season event modal too big
   - [ ] Event doesn't need sequence, just order by date
   - [ ] Event should take blind and ante preferences
   - [ ] When there is an error, it doesn't show the message on the modal, it shows it behind it
