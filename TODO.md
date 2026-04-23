@@ -15,7 +15,7 @@
 
 - [ ] Add leagues
   - [x] When a league game ends, redirect to the league page
-  - [ ] When a league game ends, it shouldn't show as an Active Game
+  - [x] When a league game ends, it shouldn't show as an Active Game
   - [ ] When a league game ends, it should show as recent results
   - [ ] When a league game ends, it should update the leaders of the season
   - [ ] When a league game ends, it should show on the results tab
