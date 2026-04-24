@@ -97,7 +97,7 @@
 									<button class="btn btn-sm btn-danger league-action-btn" @onclick="() => DeleteOneOffEvent.InvokeAsync(oneOff)" title="Delete one-off event">
 										<i class="fa-regular fa-trash"></i>
 									</button>
-									<button class="btn btn-sm btn-primary league-action-btn" @onclick="() => LaunchOneOffEvent.InvokeAsync(oneOff.EventId)" disabled="@(LaunchingOneOffEventId == oneOff.EventId)">
+									<button class="league-detail-primary-action-btn" @onclick="() => LaunchOneOffEvent.InvokeAsync(oneOff.EventId)" disabled="@(LaunchingOneOffEventId == oneOff.EventId)">
 										<i class="fa-solid fa-play"></i> Launch Play
 									</button>
 								}

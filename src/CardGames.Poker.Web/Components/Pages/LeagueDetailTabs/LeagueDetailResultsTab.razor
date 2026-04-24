@@ -59,7 +59,7 @@
 							}
 							else if (CanManageLeague)
 							{
-								<button class="btn btn-sm btn-primary league-action-btn" @onclick="() => LaunchSeasonEvent.InvokeAsync(seasonEvent.EventId)" disabled="@(LaunchingSeasonEventId == seasonEvent.EventId)">Launch Play</button>
+								<button class="league-detail-primary-action-btn" @onclick="() => LaunchSeasonEvent.InvokeAsync(seasonEvent.EventId)" disabled="@(LaunchingSeasonEventId == seasonEvent.EventId)">Launch Play</button>
 							}
 						</div>
 					</div>

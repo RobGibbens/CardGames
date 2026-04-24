@@ -145,7 +145,7 @@
 												<button class="btn btn-sm btn-danger league-action-btn" @onclick="() => DeleteSeasonEvent.InvokeAsync(se)" @onclick:stopPropagation title="Delete season event">
 													<i class="fa-regular fa-trash"></i>
 												</button>
-												<button class="btn btn-sm btn-primary league-action-btn" @onclick="() => LaunchSeasonEvent.InvokeAsync(se)" @onclick:stopPropagation disabled="@(LaunchingSeasonEventId == se.EventId)">
+												<button class="league-detail-primary-action-btn" @onclick="() => LaunchSeasonEvent.InvokeAsync(se)" @onclick:stopPropagation disabled="@(LaunchingSeasonEventId == se.EventId)">
 													<i class="fa-solid fa-play"></i> Launch Play
 												</button>
 											}
@@ -199,7 +199,7 @@
 												<button class="btn btn-sm btn-danger league-action-btn" @onclick="() => DeleteOneOffEvent.InvokeAsync(oo)" @onclick:stopPropagation title="Delete one-off event">
 													<i class="fa-regular fa-trash"></i>
 												</button>
-												<button class="btn btn-sm btn-primary league-action-btn" @onclick="() => LaunchOneOffEvent.InvokeAsync(oo)" @onclick:stopPropagation disabled="@(LaunchingOneOffEventId == oo.EventId)">
+												<button class="league-detail-primary-action-btn" @onclick="() => LaunchOneOffEvent.InvokeAsync(oo)" @onclick:stopPropagation disabled="@(LaunchingOneOffEventId == oo.EventId)">
 													<i class="fa-solid fa-play"></i> Launch Play
 												</button>
 											}

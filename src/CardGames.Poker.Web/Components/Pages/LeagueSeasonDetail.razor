@@ -224,7 +224,7 @@
 														<button type="button" class="btn btn-sm btn-danger league-action-btn" @onclick="() => OpenDeleteSeasonEventDialog(seasonEvent)" title="Delete season event">
 															<i class="fa-regular fa-trash"></i>
 														</button>
-														<button type="button" class="btn btn-sm btn-primary league-action-btn" @onclick="() => LaunchSeasonEventAsync(seasonEvent.EventId)" disabled="@(IsLaunchingSeasonEvent(seasonEvent.EventId))">
+														<button type="button" class="league-detail-primary-action-btn" @onclick="() => LaunchSeasonEventAsync(seasonEvent.EventId)" disabled="@(IsLaunchingSeasonEvent(seasonEvent.EventId))">
 															<i class="fa-solid fa-play"></i> Launch Play
 														</button>
 													}

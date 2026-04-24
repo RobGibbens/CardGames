@@ -7575,6 +7575,10 @@ playing-card.card-wild-highlight {
 
 .league-detail-active-game-join-btn {
     align-self: flex-end;
+}
+
+.league-detail-active-game-join-btn,
+.league-detail-primary-action-btn {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
@@ -7589,16 +7593,26 @@ playing-card.card-wild-highlight {
     transition: background 0.15s, transform 0.1s;
 }
 
-.league-detail-active-game-join-btn:hover {
+.league-detail-active-game-join-btn:hover:not(:disabled),
+.league-detail-primary-action-btn:hover:not(:disabled) {
     background: var(--primary-hover);
     transform: translateY(-1px);
 }
 
-.league-detail-active-game-join-btn:active {
+.league-detail-active-game-join-btn:active:not(:disabled),
+.league-detail-primary-action-btn:active:not(:disabled) {
     transform: translateY(0);
 }
 
-.league-detail-active-game-join-btn i {
+.league-detail-active-game-join-btn:disabled,
+.league-detail-primary-action-btn:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.league-detail-active-game-join-btn i,
+.league-detail-primary-action-btn i {
     font-size: 0.75rem;
 }
 
