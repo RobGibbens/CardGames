@@ -24,7 +24,7 @@
 										</span>
 									}
 									<span class="league-detail-active-game-meta-item">
-										<i class="fa-solid fa-tag"></i> @game.EventType
+										<i class="@GetActiveGameEventIconCssClass(game.EventType)"></i> @FormatActiveGameEventType(game.EventType)
 									</span>
 								</div>
 							</div>
@@ -402,6 +402,29 @@
 			LeagueOneOffEventType.Tournament => "Tournament",
 			LeagueOneOffEventType.CashGame => "Cash Game",
 			_ => "One-Off"
+		};
+	}
+
+	private static string FormatActiveGameEventType(string? eventType)
+	{
+		return eventType switch
+		{
+			"Tournament" => "One-Off Tournament",
+			"Cash Game" => "One-Off Cash Game",
+			"Season Event" => "Season Event",
+			_ when !string.IsNullOrWhiteSpace(eventType) => eventType,
+			_ => "League Event"
+		};
+	}
+
+	private static string GetActiveGameEventIconCssClass(string? eventType)
+	{
+		return eventType switch
+		{
+			"Tournament" => "fa-solid fa-ranking-star league-event-type-icon-oneoff",
+			"Cash Game" => "fa-solid fa-dice league-event-type-icon-oneoff",
+			"Season Event" => "fa-solid fa-trophy league-event-type-icon-season",
+			_ => "fa-solid fa-tag"
 		};
 	}
 
