@@ -6375,6 +6375,22 @@ playing-card.card-wild-highlight {
     text-align: center;
 }
 
+.confirm-dialog-header-with-close {
+    position: relative;
+}
+
+.confirm-dialog-heading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.confirm-dialog-header-with-close .league-modal-close-btn {
+    position: absolute;
+    top: 1.25rem;
+    right: 1.25rem;
+}
+
 .confirm-dialog-icon {
     font-size: 2.5rem;
     color: var(--primary);
@@ -7492,6 +7508,7 @@ playing-card.card-wild-highlight {
 }
 
 .league-detail-active-game-card {
+    position: relative;
     display: flex;
     flex-direction: column;
     gap: 0.6rem;
@@ -7501,6 +7518,29 @@ playing-card.card-wild-highlight {
     border: 1px solid var(--border-color, rgba(255, 255, 255, 0.06));
     border-left: 3px solid var(--primary);
     transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.league-detail-event-corner-actions {
+    position: absolute;
+    top: 0.75rem;
+    right: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    z-index: 1;
+}
+
+.league-detail-event-corner-btn {
+    min-width: 2.25rem;
+    min-height: 2.25rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.35rem 0.55rem;
+}
+
+.league-detail-active-game-card:has(.league-detail-event-corner-actions) .league-detail-active-game-top {
+    padding-right: 5.5rem;
 }
 
 .league-detail-active-game-card:hover {

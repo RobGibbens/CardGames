@@ -115,6 +115,17 @@
 							{
 								var se = upcomingEvent.SeasonEvent;
 								<div class="league-detail-active-game-card league-event-season">
+									@if (CanManageLeague && CanEditSeasonEvent(se))
+									{
+										<div class="league-detail-event-corner-actions">
+											<button class="btn btn-sm btn-outline-secondary league-action-btn league-detail-event-corner-btn" @onclick="() => EditSeasonEvent.InvokeAsync(se)" @onclick:stopPropagation title="Edit season event" aria-label="Edit season event">
+												<i class="fa-solid fa-pen-to-square"></i>
+											</button>
+											<button class="btn btn-sm btn-danger league-action-btn league-detail-event-corner-btn" @onclick="() => DeleteSeasonEvent.InvokeAsync(se)" @onclick:stopPropagation title="Delete season event" aria-label="Delete season event">
+												<i class="fa-regular fa-trash"></i>
+											</button>
+										</div>
+									}
 									<div class="league-detail-active-game-top">
 										<div class="league-detail-active-game-info">
 											<span class="league-detail-active-game-name">@se.Name</span>
@@ -139,12 +150,6 @@
 										<div class="league-detail-active-game-actions">
 											@if (CanManageLeague && CanEditSeasonEvent(se))
 											{
-												<button class="btn btn-sm btn-outline-secondary league-action-btn" @onclick="() => EditSeasonEvent.InvokeAsync(se)" @onclick:stopPropagation>
-													<i class="fa-solid fa-pen-to-square"></i> Edit
-												</button>
-												<button class="btn btn-sm btn-danger league-action-btn" @onclick="() => DeleteSeasonEvent.InvokeAsync(se)" @onclick:stopPropagation title="Delete season event">
-													<i class="fa-regular fa-trash"></i>
-												</button>
 												<button class="league-detail-primary-action-btn" @onclick="() => LaunchSeasonEvent.InvokeAsync(se)" @onclick:stopPropagation disabled="@(LaunchingSeasonEventId == se.EventId)">
 													<i class="fa-solid fa-play"></i> Launch Play
 												</button>
@@ -163,6 +168,17 @@
 							{
 								var oo = upcomingEvent.OneOffEvent;
 								<div class="league-detail-active-game-card league-event-oneoff">
+									@if (CanManageLeague && CanEditOneOffEvent(oo))
+									{
+										<div class="league-detail-event-corner-actions">
+											<BbButton Variant="ButtonVariant.Secondary"
+													  AdditionalAttributes="@CreateIconActionAttributes("Edit one-off event")"
+													  @onclick="() => EditOneOffEvent.InvokeAsync(oo)"><i class="fa-solid fa-pen-to-square"></i></BbButton>
+											<BbButton Variant="ButtonVariant.Destructive"
+													  AdditionalAttributes="@CreateIconActionAttributes("Delete one-off event")"
+													  @onclick="() => DeleteOneOffEvent.InvokeAsync(oo)"><i class="fa-solid fa-trash"></i></BbButton>
+										</div>
+									}
 									<div class="league-detail-active-game-top">
 										<div class="league-detail-active-game-info">
 											<span class="league-detail-active-game-name">@oo.Name</span>
@@ -193,12 +209,6 @@
 										<div class="league-detail-active-game-actions">
 											@if (CanManageLeague && CanEditOneOffEvent(oo))
 											{
-												<button class="btn btn-sm btn-outline-secondary league-action-btn" @onclick="() => EditOneOffEvent.InvokeAsync(oo)" @onclick:stopPropagation>
-													<i class="fa-solid fa-pen-to-square"></i> Edit
-												</button>
-												<button class="btn btn-sm btn-danger league-action-btn" @onclick="() => DeleteOneOffEvent.InvokeAsync(oo)" @onclick:stopPropagation title="Delete one-off event">
-													<i class="fa-regular fa-trash"></i>
-												</button>
 												<button class="league-detail-primary-action-btn" @onclick="() => LaunchOneOffEvent.InvokeAsync(oo)" @onclick:stopPropagation disabled="@(LaunchingOneOffEventId == oo.EventId)">
 													<i class="fa-solid fa-play"></i> Launch Play
 												</button>
@@ -441,6 +451,16 @@
 	private static bool CanEditOneOffEvent(LeagueOneOffEventDto oneOffEvent)
 	{
 		return oneOffEvent.Status == LeagueOneOffEventStatus.Planned && !oneOffEvent.LaunchedGameId.HasValue;
+	}
+
+	private static Dictionary<string, object> CreateIconActionAttributes(string actionLabel)
+	{
+		return new Dictionary<string, object>(StringComparer.Ordinal)
+		{
+			["class"] = "league-detail-event-corner-btn",
+			["title"] = actionLabel,
+			["aria-label"] = actionLabel
+		};
 	}
 
 	private string GetRankMovementLabel(string userId)

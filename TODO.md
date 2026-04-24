@@ -13,7 +13,7 @@
 - [ ] Work on isolating games code more
 - [ ] Add option to treat coins as money
 - [x] Remove the scrollbar from the Showdown
-- [ ] The Launch Play button is too big and the style is wrong
+- [x] The Launch Play button is too big and the style is wrong
 
 - [ ] Add leagues
   - [x] When a league game ends, redirect to the league page
