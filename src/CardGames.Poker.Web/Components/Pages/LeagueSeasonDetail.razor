@@ -141,7 +141,6 @@
 					<div class="league-detail-card-header">
 						<h3><i class="fa-solid fa-calendar-days"></i> Event Calendar</h3>
 						<div class="league-detail-card-actions">
-							<span class="season-detail-calendar-summary">Highlighted dates have scheduled events.</span>
 							@if (CanManageLeague)
 							{
 								<button type="button" class="league-detail-btn league-detail-btn-create" @onclick="OpenSeasonEventModal">
@@ -162,7 +161,6 @@
 						<div class="season-detail-day-panel">
 							<div class="season-detail-day-header">
 								<div>
-									<div class="season-detail-day-kicker">Selected Date</div>
 									<h3>@FormatSelectedCalendarDate()</h3>
 								</div>
 								<span class="league-detail-event-status">@SelectedDateEvents.Count event@(SelectedDateEvents.Count == 1 ? string.Empty : "s")</span>

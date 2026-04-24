@@ -32,7 +32,7 @@
   - [ ] Change UI - Hard to find events
   - [x] Create season event modal too big
   - [ ] Event doesn't need sequence, just order by date
-  - [ ] Event should take blind and ante preferences
+  - [x] Event should take blind and ante preferences
   - [ ] When there is an error, it doesn't show the message on the modal, it shows it behind it
 - [ ] Add tournaments
   - [x] Active games should not be listed in upcoming also

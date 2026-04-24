@@ -423,15 +423,18 @@
 				{
 					<div class="league-form-inline-fields league-form-inline-fields-bets">
 						<div class="league-form-inline-field">
-							<div class="form-floating" data-label="Ante">
+							<div class="form-floating" data-label="@SeasonEventAnteLabel">
 								<InputNumber id="season-event-ante" class="form-control league-modal-input" @bind-Value="_seasonEventAnte" min="1" max="100" />
 							</div>
 						</div>
-						<div class="league-form-inline-field">
-							<div class="form-floating" data-label="Minimum Bet">
-								<InputNumber id="season-event-min-bet" class="form-control league-modal-input" @bind-Value="_seasonEventMinBet" min="1" max="1000" />
+						@if (SeasonEventSelectedGameShowsMinimumBet)
+						{
+							<div class="league-form-inline-field">
+								<div class="form-floating" data-label="Minimum Bet">
+									<InputNumber id="season-event-min-bet" class="form-control league-modal-input" @bind-Value="_seasonEventMinBet" min="1" max="1000" />
+								</div>
 							</div>
-						</div>
+						}
 					</div>
 				}
 				<div class="join-buy-in-modal-controls">
@@ -718,22 +721,10 @@
 
 	private GetAvailablePokerGamesResponse? SelectedSeasonEventGame => _availableLeagueGames.FirstOrDefault(game => string.Equals(game.Code, _seasonEventGameTypeCode, StringComparison.OrdinalIgnoreCase));
 
-	private bool SeasonEventSelectedGameHasBlinds => UsesBlinds(_seasonEventGameTypeCode);
-
-	private static bool UsesBlinds(string? gameTypeCode)
-	{
-		return gameTypeCode?.Trim().ToUpperInvariant() is "BOBBARKER"
-			or "CRAZYPINEAPPLE"
-			or "HOLDEM"
-			or "HOLDTHEBASEBALL"
-			or "IRISHHOLDEM"
-			or "KLONDIKE"
-			or "NEBRASKA"
-			or "OMAHA"
-			or "PHILSMOM"
-			or "REDRIVER"
-			or "SOUTHDAKOTA";
-	}
+	private bool SeasonEventSelectedGameHasBlinds => GameVariantHelper.HasBlinds(SelectedSeasonEventGame, _seasonEventGameTypeCode);
+	private bool SeasonEventSelectedGameShowsMinimumBet => GameVariantHelper.ShowsMinimumBet(_seasonEventGameTypeCode);
+	private bool SeasonEventSelectedGameIsScrewYourNeighbor => GameVariantHelper.IsScrewYourNeighbor(_seasonEventGameTypeCode);
+	private string SeasonEventAnteLabel => SeasonEventSelectedGameIsScrewYourNeighbor ? "Chip stack amount" : "Ante";
 
 	protected override async Task OnParametersSetAsync()
 	{
@@ -2087,7 +2078,7 @@ DateTimeKind.Utc)) : null,
 				return;
 			}
 
-			if (_seasonEventMinBet <= 0)
+			if (SeasonEventSelectedGameShowsMinimumBet && _seasonEventMinBet <= 0)
 			{
 				_message = "Minimum bet must be greater than 0.";
 				_isError = true;

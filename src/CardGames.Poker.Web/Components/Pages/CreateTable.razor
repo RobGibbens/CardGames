@@ -5,6 +5,7 @@
 @using CardGames.Poker.Api.Clients
 @using CardGames.Poker.Api.Contracts
 @using CardGames.Poker.Web.Components.Shared
+@using CardGames.Poker.Web.Utilities
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.JSInterop
 @implements IAsyncDisposable
@@ -1258,10 +1259,10 @@
 	private bool ShowBigBlindError => _hasBlinds && _bigBlind > 0 && _smallBlind > 0 && _bigBlind <= _smallBlind;
 
 	private bool IsScrewYourNeighbor =>
-	   IsScrewYourNeighborCode(_selectedVariant?.Code);
+	   GameVariantHelper.IsScrewYourNeighbor(_selectedVariant?.Code);
 
 	private bool IsInBetween =>
-		IsInBetweenCode(_selectedVariant?.Code);
+		GameVariantHelper.IsInBetween(_selectedVariant?.Code);
 
 	private bool ShowMinimumBetInput => !IsScrewYourNeighbor && !IsInBetween;
 
@@ -1622,10 +1623,8 @@
 			name: variant.Name,
 			variantType: VariantType.Other
 		);
-		_isDealersChoice = variant.Code == DealersChoiceCode;
-		_hasBlinds = !_isDealersChoice
-			 && !IsScrewYourNeighborCode(_selectedVariant.Code)
-			 && _selectedVariant.VariantType == VariantType.HoldEm;
+		_isDealersChoice = GameVariantHelper.IsDealersChoice(variant.Code);
+		_hasBlinds = GameVariantHelper.HasBlinds(_selectedVariant);
 
 		if (_hasBlinds)
 		{
@@ -1868,16 +1867,6 @@
 	{
 		return string.IsNullOrWhiteSpace(_variantSearch)
 			|| gameName.Contains(_variantSearch, StringComparison.OrdinalIgnoreCase);
-	}
-
-	private static bool IsScrewYourNeighborCode(string? gameCode)
-	{
-		return string.Equals(gameCode, ScrewYourNeighborCode, StringComparison.OrdinalIgnoreCase);
-	}
-
-	private static bool IsInBetweenCode(string? gameCode)
-	{
-		return string.Equals(gameCode, InBetweenCode, StringComparison.OrdinalIgnoreCase);
 	}
 
 	private async Task SetVariantViewModeAsync(string mode)
