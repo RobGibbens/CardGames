@@ -9,6 +9,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="wwwroot\css\themes\**" />
+    <Content Remove="wwwroot\css\themes\**" />
+    <EmbeddedResource Remove="wwwroot\css\themes\**" />
+    <None Remove="wwwroot\css\themes\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Blazor-ApexCharts" Version="6.1.0" />
     <PackageReference Include="BlazorBlueprint.Components" Version="3.9.6" />
     <PackageReference Include="FindRazorSourceFile" Version="1.1.1">

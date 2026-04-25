@@ -78,6 +78,17 @@
                     <ValidationMessage For="() => Input.PhoneNumber" class="text-danger" />
                 </div>
 
+                <div class="form-floating mb-3" data-label="Site Theme">
+                    <InputSelect @bind-Value="Input.Theme" id="Input.Theme" class="form-select">
+                        <option value="">Default (Astrovista)</option>
+                        @foreach (var themeName in AvailableThemes)
+                        {
+                            <option value="@themeName">@FormatThemeName(themeName)</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="() => Input.Theme" class="text-danger" />
+                </div>
+
                 <div class="account-profile-actions">
                     <button type="submit" class="btn btn-primary btn-lg">Save changes</button>
                 </div>
@@ -96,6 +107,9 @@
     private string? avatarUrl;
     private string? firstName;
     private string? lastName;
+    private string? theme;
+
+    private static readonly string[] AvailableThemes = ["astrovista.css", "claudeplus.css", "lightgreen.css"];
 
     [CascadingParameter]
     private HttpContext HttpContext { get; set; } = default!;
@@ -120,11 +134,13 @@
         avatarUrl = NormalizeStoredAvatar(user.AvatarUrl);
         firstName = NormalizeStoredText(user.FirstName);
         lastName = NormalizeStoredText(user.LastName);
+        theme = NormalizeStoredTheme(user.Theme);
 
         Input.PhoneNumber ??= phoneNumber;
         Input.AvatarUrl ??= avatarUrl;
         Input.FirstName ??= firstName;
         Input.LastName ??= lastName;
+        Input.Theme ??= theme;
     }
 
     private async Task OnValidSubmitAsync()
@@ -186,14 +202,17 @@
 
         var firstNameToPersist = NormalizeStoredText(Input.FirstName);
         var lastNameToPersist = NormalizeStoredText(Input.LastName);
+        var themeToPersist = NormalizeStoredTheme(Input.Theme);
 
         if (!string.Equals(avatarUrlToPersist, avatarUrl, StringComparison.Ordinal)
             || !string.Equals(firstNameToPersist, firstName, StringComparison.Ordinal)
-            || !string.Equals(lastNameToPersist, lastName, StringComparison.Ordinal))
+            || !string.Equals(lastNameToPersist, lastName, StringComparison.Ordinal)
+            || !string.Equals(themeToPersist, theme, StringComparison.Ordinal))
         {
             user.FirstName = firstNameToPersist;
             user.LastName = lastNameToPersist;
             user.AvatarUrl = avatarUrlToPersist;
+            user.Theme = themeToPersist;
             var updateProfileResult = await UserManager.UpdateAsync(user);
             if (!updateProfileResult.Succeeded)
             {
@@ -204,6 +223,7 @@
             firstName = firstNameToPersist;
             lastName = lastNameToPersist;
             avatarUrl = avatarUrlToPersist;
+            theme = themeToPersist;
         }
 
         await SignInManager.RefreshSignInAsync(user);
@@ -257,6 +277,25 @@
         }
 
         return value.Trim();
+    }
+
+    private static string? NormalizeStoredTheme(string? value)
+    {
+        var normalized = NormalizeStoredText(value);
+        if (normalized is null)
+        {
+            return null;
+        }
+
+        return AvailableThemes.Contains(normalized, StringComparer.OrdinalIgnoreCase)
+            ? normalized
+            : null;
+    }
+
+    private static string FormatThemeName(string fileName)
+    {
+        var nameWithoutExtension = fileName.Replace(".css", "", StringComparison.OrdinalIgnoreCase);
+        return char.ToUpperInvariant(nameWithoutExtension[0]) + nameWithoutExtension[1..];
     }
 
     private static string? NormalizeAvatarUrl(string? url)
@@ -342,5 +381,9 @@
         [Phone]
         [Display(Name = "Phone number")]
         public string? PhoneNumber { get; set; }
+
+        [StringLength(100)]
+        [Display(Name = "Site theme")]
+        public string? Theme { get; set; }
     }
 }

@@ -17,5 +17,9 @@ public class ApplicationUser : IdentityUser
 	[PersonalData]
 	[MaxLength(512)]
 	public string? AvatarUrl { get; set; }
+
+	[PersonalData]
+	[MaxLength(100)]
+	public string? Theme { get; set; }
 }
 
