@@ -1,0 +1,69 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/Main Projects/">
+    <Project Path="CardGames.AppHost/CardGames.AppHost.csproj" />
+    <Project Path="CardGames.Contracts/CardGames.Contracts.csproj" />
+    <Project Path="CardGames.Poker.Api/CardGames.Poker.Api.csproj" />
+    <Project Path="CardGames.Poker.Web/CardGames.Poker.Web.csproj" />
+  </Folder>
+  <Folder Name="/Other Projects/">
+    <Project Path="CardGames.Core.Benchmarks/CardGames.Core.Benchmarks.csproj" />
+    <Project Path="CardGames.Core.French/CardGames.Core.French.csproj" />
+    <Project Path="CardGames.Core/CardGames.Core.csproj" />
+    <Project Path="CardGames.MigrationService/CardGames.MigrationService.csproj" />
+    <Project Path="CardGames.Playground.Runner/CardGames.Poker.Benchmarks.csproj" />
+    <Project Path="CardGames.Playground/CardGames.Playground.csproj" />
+    <Project Path="CardGames.Poker.Events/CardGames.Poker.Events.csproj" />
+    <Project Path="CardGames.Poker/CardGames.Poker.csproj" />
+    <Project Path="CardGames.ServiceDefaults/CardGames.ServiceDefaults.csproj" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path="../TODO.md" />
+    <File Path="Coverage.json" />
+    <File Path="TableSeat.png" />
+  </Folder>
+  <Folder Name="/Solution Items/docs/">
+    <File Path="../docs/Acey-Deucey Rules.md" />
+    <File Path="../docs/ADDING_NEW_GAMES.md" />
+    <File Path="../docs/ARCHITECTURE.md" />
+    <File Path="../docs/ContinuousPlay.md" />
+    <File Path="../docs/Dashboard.md" />
+    <File Path="../docs/DYNAMIC_UI_PLAN.md" />
+    <File Path="../docs/EditTable.md" />
+    <File Path="../docs/FollowTheQueenPRD.md" />
+    <File Path="../docs/GameSpecificFeatureFolders.md" />
+    <File Path="../docs/GameTypes.md" />
+    <File Path="../docs/GameTypes2.md" />
+    <File Path="../docs/GameTypes3.md" />
+    <File Path="../docs/History.md" />
+    <File Path="../docs/IMPLEMENTATION_STATUS.md" />
+    <File Path="../docs/IMPLEMENTATION_SUMMARY.md" />
+    <File Path="../docs/KingsAndLowsPlan.md" />
+    <File Path="../docs/LeaveTable.md" />
+    <File Path="../docs/MaxDiscards.md" />
+    <File Path="../docs/plan-dealing.prompt.md" />
+    <File Path="../docs/plan-sevenCardStud.prompt.md" />
+    <File Path="../docs/plan-twosJacksManWithTheAxe.prompt.md" />
+    <File Path="../docs/PlayPage.md" />
+    <File Path="../docs/PRD.md" />
+    <File Path="../docs/README_KINGS_AND_LOWS.md" />
+    <File Path="../docs/Screw Your Neighbor rules.md" />
+    <File Path="../docs/sevenCardStudDesignDoc.md" />
+    <File Path="../docs/SignalRPRD.md" />
+    <File Path="../docs/Stateless.md" />
+    <File Path="../docs/Yahoo.md" />
+    <File Path="docs/RefactorBackgroundServices.md" />
+    <File Path="TexasHoldEmRules.md" />
+  </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="Tests/CardGames.Core.French.Tests/CardGames.Core.French.Tests.csproj" />
+    <Project Path="Tests/CardGames.Core.Tests/CardGames.Core.Tests.csproj" />
+    <Project Path="Tests/CardGames.IntegrationTests/CardGames.IntegrationTests.csproj" />
+    <Project Path="Tests/CardGames.Poker.CLI.Tests/CardGames.Poker.CLI.Tests.csproj" />
+    <Project Path="Tests/CardGames.Poker.Tests/CardGames.Poker.Tests.csproj" />
+  </Folder>
+</Solution>
