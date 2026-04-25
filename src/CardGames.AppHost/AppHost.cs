@@ -49,17 +49,17 @@ var web = builder.AddProject<Projects.CardGames_Poker_Web>("web")
 	.WithReference(api)
 	.WaitFor(api);
 
-var options = new DevTunnelOptions
-{
-	Description = "localhost environment tunnel",
-	Labels = new[] { "qa", "testing" }.ToList(),
-	AllowAnonymous = false
-};
-var tunnel = builder.AddDevTunnel("poker-tunnel", "poker-tunnel", options)
-	.WithReference(web)
-	.WithReference(api)
-	.WithAnonymousAccess()
-	.WaitFor(web);
+//var options = new DevTunnelOptions
+//{
+//	Description = "localhost environment tunnel",
+//	Labels = new[] { "qa", "testing" }.ToList(),
+//	AllowAnonymous = false
+//};
+//var tunnel = builder.AddDevTunnel("poker-tunnel", "poker-tunnel", options)
+//	.WithReference(web)
+//	.WithReference(api)
+//	.WithAnonymousAccess()
+//	.WaitFor(web);
 
 //var cli = builder.AddProject<Projects.CardGames_Poker_CLI>("cli")
 //	.WithReference(api)
