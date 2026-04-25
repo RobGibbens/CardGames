@@ -79,7 +79,7 @@
                 </div>
 
                 <div class="form-floating mb-3" data-label="Site Theme">
-                    <select @bind="Input.Theme" id="Input.Theme" name="Input.Theme" class="filter-select">
+                    <select @bind="Input.Theme" id="Input.Theme" name="Input.Theme" class="filter-select" data-site-theme-select>
                         <option value="">Default (Astrovista)</option>
                         @foreach (var themeName in AvailableThemes)
                         {
@@ -88,6 +88,12 @@
                     </select>
                     <ValidationMessage For="() => Input.Theme" class="text-danger" />
                 </div>
+
+                <script type="module">
+                    import { bindSiteThemeSelect } from "/themePreference.js";
+
+                    bindSiteThemeSelect("#Input\\.Theme");
+                </script>
 
                 <div class="account-profile-actions">
                     <button type="submit" class="btn btn-primary btn-lg">Save changes</button>

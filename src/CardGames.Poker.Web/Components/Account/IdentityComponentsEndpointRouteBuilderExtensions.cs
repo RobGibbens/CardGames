@@ -91,6 +91,38 @@ internal static class IdentityComponentsEndpointRouteBuilderExtensions
 
         var manageGroup = accountGroup.MapGroup("/Manage").RequireAuthorization();
 
+        manageGroup.MapPost("/SiteTheme", async (
+            HttpContext context,
+            [FromServices] UserManager<ApplicationUser> userManager,
+            [FromServices] SignInManager<ApplicationUser> signInManager,
+            [FromServices] IAntiforgery antiforgery,
+            [FromForm] string? theme) =>
+        {
+            await antiforgery.ValidateRequestAsync(context);
+
+            var normalizedTheme = NormalizeSiteTheme(theme);
+            var user = await userManager.GetUserAsync(context.User);
+            if (user is null)
+            {
+                return Results.NotFound($"Unable to load user with ID '{userManager.GetUserId(context.User)}'.");
+            }
+
+            if (string.Equals(user.Theme, normalizedTheme, StringComparison.Ordinal))
+            {
+                return TypedResults.Ok();
+            }
+
+            user.Theme = normalizedTheme;
+            var updateResult = await userManager.UpdateAsync(user);
+            if (!updateResult.Succeeded)
+            {
+                return Results.ValidationProblem(updateResult.Errors.ToDictionary(error => error.Code, error => new[] { error.Description }));
+            }
+
+            await signInManager.RefreshSignInAsync(user);
+            return TypedResults.Ok();
+        });
+
         manageGroup.MapPost("/LinkExternalLogin", async (
             HttpContext context,
             [FromServices] SignInManager<ApplicationUser> signInManager,
@@ -148,5 +180,20 @@ internal static class IdentityComponentsEndpointRouteBuilderExtensions
         });
 
         return accountGroup;
+    }
+
+    private static string? NormalizeSiteTheme(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var normalized = value.Trim();
+        return normalized.Equals("astrovista.css", StringComparison.OrdinalIgnoreCase)
+            || normalized.Equals("claudeplus.css", StringComparison.OrdinalIgnoreCase)
+            || normalized.Equals("lightgreen.css", StringComparison.OrdinalIgnoreCase)
+            ? normalized
+            : null;
     }
 }
