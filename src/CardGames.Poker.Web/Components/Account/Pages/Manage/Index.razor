@@ -79,13 +79,13 @@
                 </div>
 
                 <div class="form-floating mb-3" data-label="Site Theme">
-                    <InputSelect @bind-Value="Input.Theme" id="Input.Theme" class="form-select">
+                    <select @bind="Input.Theme" id="Input.Theme" name="Input.Theme" class="filter-select">
                         <option value="">Default (Astrovista)</option>
                         @foreach (var themeName in AvailableThemes)
                         {
                             <option value="@themeName">@FormatThemeName(themeName)</option>
                         }
-                    </InputSelect>
+                    </select>
                     <ValidationMessage For="() => Input.Theme" class="text-danger" />
                 </div>
 

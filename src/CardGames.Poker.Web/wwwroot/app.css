@@ -1232,7 +1232,13 @@ a:hover {
     padding-bottom: 0.625rem;
 }
 
-.auth-form .form-control:focus {
+.auth-form .form-floating > select {
+    padding-top: 1.625rem;
+    padding-bottom: 0.625rem;
+}
+
+.auth-form .form-control:focus,
+.auth-form select:focus {
     background: var(--bg-secondary);
     border-color: var(--primary);
     box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
@@ -1259,7 +1265,8 @@ a:hover {
 }
 
 .auth-form .form-floating[data-label]:focus-within::after,
-.auth-form .form-floating[data-label]:has(.form-control:not(:placeholder-shown))::after {
+.auth-form .form-floating[data-label]:has(.form-control:not(:placeholder-shown))::after,
+.auth-form .form-floating[data-label]:has(select)::after {
     opacity: 0.65;
     top: 0;
     transform: scale(0.85) translateY(0.5rem);
