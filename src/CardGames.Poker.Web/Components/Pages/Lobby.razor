@@ -117,9 +117,10 @@
                     <p class="empty-description">@GetEmptyDescription()</p>
                     @if (IsActiveTab(""))
                     {
-                        <a href="/table/create" class="btn btn-primary">
+                        <BbButton Variant="ButtonVariant.Default" OnClick='@(() => NavigationManager.NavigateTo("/table/create"))'><i class="fa-thin fa-plus"></i> Create a Table</BbButton>
+                        @* <a href="/table/create" class="btn btn-primary">
                             <span><i class="fa-thin fa-plus"></i></span> Create a Table
-                        </a>
+                        </a> *@
                     }
                 </div>
             }

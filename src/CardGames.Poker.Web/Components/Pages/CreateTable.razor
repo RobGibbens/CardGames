@@ -77,14 +77,24 @@
 									   @bind="_variantSearch"
 									   @bind:event="oninput" />
 							</div>
-							<div class="view-toggle-group">
-								<button class="btn btn-view-toggle @(_variantViewMode == "grid" ? "active" : "")" @onclick="@(() => SetVariantViewModeAsync("grid"))" title="Grid View">
+							<BbButtonGroup>
+								<BbButton Variant="@(_variantViewMode == "grid" ? ButtonVariant.Secondary : ButtonVariant.Outline)"
+										  Size="ButtonSize.Icon"
+										  Class='@($"{(_variantViewMode == "grid" ? "active" : string.Empty)}")'
+										  OnClick='@(() => SetVariantViewModeAsync("grid"))'
+										  AriaLabel="Grid view"
+										  title="Grid View">
 									<i class="fa-solid fa-th-large"></i>
-								</button>
-								<button class="btn btn-view-toggle @(_variantViewMode == "list" ? "active" : "")" @onclick="@(() => SetVariantViewModeAsync("list"))" title="List View">
+								</BbButton>
+								<BbButton Variant="@(_variantViewMode == "list" ? ButtonVariant.Secondary : ButtonVariant.Outline)"
+										  Size="ButtonSize.Icon"
+										  Class='@($"btn-view-toggle {(_variantViewMode == "list" ? "active" : string.Empty)}")'
+										  OnClick='@(() => SetVariantViewModeAsync("list"))'
+										  AriaLabel="List view"
+										  title="List View">
 									<i class="fa-solid fa-list"></i>
-								</button>
-							</div>
+								</BbButton>
+							</BbButtonGroup>
 						</div>
 					}
 					@if (_favoriteVariantsError is not null)

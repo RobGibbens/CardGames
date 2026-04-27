@@ -2469,7 +2469,7 @@ a:hover {
 }
 
 .lobby-tab-text {
-    color: inherit !important;
+    color: var(--primary-foreground) !important;
     font-weight: 300 !important;
     font-variation-settings: "wght" 300;
 }
@@ -2630,41 +2630,6 @@ a:hover {
     margin-bottom: 1.5rem;
 }
 
-/* View Toggle Buttons */
-.btn-view-toggle {
-    background: var(--background);
-    color: var(--text-muted);
-    border: 1px solid var(--border);
-    /* padding: 0.75rem 1rem;
-    border-radius: 10px; */
-    transition: all var(--transition-normal);
-}
-
-/* .btn-view-toggle:hover {
-    background: var(--bg-secondary);
-    color: var(--primary);
-    /* border-color: var(--primary);
-} */
-
-
-.btn-view-toggle.active {
-    background: var(--secondary) !important;
-    color: var(--secondary-foreground) !important;
-    border-color: var(--secondary) !important;
-}
-
-.btn-view-toggle.active:hover,
-.btn-view-toggle.active:focus-visible {
-    background: var(--secondary) !important;
-    color: var(--secondary-foreground) !important;
-    border-color: var(--secondary) !important;
-}
-
-.btn-view-toggle.active i,
-.btn-view-toggle.active:hover i,
-.btn-view-toggle.active:focus-visible i {
-    color: inherit;
-}
 
 /* Tables Grid */
 .tables-grid {
