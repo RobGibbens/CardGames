@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Text.Json;
+using CardGames.Poker.Web.Components.Shared;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -95,12 +96,13 @@ internal static class IdentityComponentsEndpointRouteBuilderExtensions
             HttpContext context,
             [FromServices] UserManager<ApplicationUser> userManager,
             [FromServices] SignInManager<ApplicationUser> signInManager,
+            [FromServices] IWebHostEnvironment environment,
             [FromServices] IAntiforgery antiforgery,
             [FromForm] string? theme) =>
         {
             await antiforgery.ValidateRequestAsync(context);
 
-            var normalizedTheme = NormalizeSiteTheme(theme);
+            var normalizedTheme = NormalizeSiteTheme(theme, environment);
             var user = await userManager.GetUserAsync(context.User);
             if (user is null)
             {
@@ -182,7 +184,7 @@ internal static class IdentityComponentsEndpointRouteBuilderExtensions
         return accountGroup;
     }
 
-    private static string? NormalizeSiteTheme(string? value)
+    private static string? NormalizeSiteTheme(string? value, IWebHostEnvironment environment)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
@@ -190,9 +192,7 @@ internal static class IdentityComponentsEndpointRouteBuilderExtensions
         }
 
         var normalized = value.Trim();
-        return normalized.Equals("astrovista.css", StringComparison.OrdinalIgnoreCase)
-            || normalized.Equals("claudeplus.css", StringComparison.OrdinalIgnoreCase)
-            || normalized.Equals("lightgreen.css", StringComparison.OrdinalIgnoreCase)
+        return SiteThemeCatalog.IsAvailableTheme(environment, normalized)
             ? normalized
             : null;
     }

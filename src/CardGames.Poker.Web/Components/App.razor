@@ -1,5 +1,14 @@
-﻿<!DOCTYPE html>
-<html lang="en">
+﻿@using System.Text.Json
+@using CardGames.Poker.Web.Components.Shared
+@inject IWebHostEnvironment WebHostEnvironment
+
+@{
+    var availableSiteThemes = SiteThemeCatalog.GetAvailableThemes(WebHostEnvironment);
+    var defaultSiteTheme = SiteThemeCatalog.GetDefaultTheme(WebHostEnvironment);
+}
+
+<!DOCTYPE html>
+<html lang="en" data-site-theme-default="@defaultSiteTheme" data-site-theme-options="@JsonSerializer.Serialize(availableSiteThemes)">
 
 <head>
     <meta charset="utf-8" />
@@ -10,8 +19,21 @@
         // Also watches for Blazor enhanced navigation stripping data-theme.
         (function() {
             var siteThemePreferenceKey = "siteThemeStylesheet";
-            var defaultSiteThemeStylesheet = "astrovista.css";
-            var availableSiteThemeStylesheets = ["astrovista.css", "claudeplus.css", "lightgreen.css"];
+            var htmlDataset = document.documentElement.dataset;
+            var defaultSiteThemeStylesheet = htmlDataset.siteThemeDefault || "astrovista.css";
+            var availableSiteThemeStylesheets = getAvailableSiteThemeStylesheets();
+
+            function getAvailableSiteThemeStylesheets() {
+                try {
+                    var parsed = JSON.parse(htmlDataset.siteThemeOptions || "[]");
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        return parsed;
+                    }
+                } catch {
+                }
+
+                return [defaultSiteThemeStylesheet];
+            }
 
             function getTheme() {
                 var s = localStorage.getItem("themePreference") || localStorage.getItem("theme");
@@ -46,16 +68,18 @@
 
     <link rel="stylesheet" href="/assets/fontawesome/css/fontawesome.min.css" />
     <link rel="stylesheet" href="/assets/fontawesome/css/all.min.css" />
-
+     
 
     <link rel="stylesheet" href="@Assets["CardGames.Poker.Web.styles.css"]" />
     <link rel="stylesheet" href="_content/Blazor-ApexCharts/css/apexcharts.css" />
 
     <!-- Theme variables (customize colors, radius, etc.) -->
-    <link id="site-theme-stylesheet" href="css/astrovista.css" rel="stylesheet" />
+    <link id="site-theme-stylesheet" href="css/@defaultSiteTheme" rel="stylesheet" />
     <script>
         (function() {
-            var siteThemeStylesheet = document.documentElement.getAttribute("data-site-theme-stylesheet") || "astrovista.css";
+            var siteThemeStylesheet = document.documentElement.getAttribute("data-site-theme-stylesheet")
+                || document.documentElement.dataset.siteThemeDefault
+                || "astrovista.css";
             var link = document.getElementById("site-theme-stylesheet");
             if (link) {
                 link.href = "css/" + siteThemeStylesheet;

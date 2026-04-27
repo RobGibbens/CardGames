@@ -2648,9 +2648,22 @@ a:hover {
 
 
 .btn-view-toggle.active {
-    background: var(--secondary);
-    color: white;
-    border: 1px solid var(--border);
+    background: var(--secondary) !important;
+    color: var(--secondary-foreground) !important;
+    border-color: var(--secondary) !important;
+}
+
+.btn-view-toggle.active:hover,
+.btn-view-toggle.active:focus-visible {
+    background: var(--secondary) !important;
+    color: var(--secondary-foreground) !important;
+    border-color: var(--secondary) !important;
+}
+
+.btn-view-toggle.active i,
+.btn-view-toggle.active:hover i,
+.btn-view-toggle.active:focus-visible i {
+    color: inherit;
 }
 
 /* Tables Grid */

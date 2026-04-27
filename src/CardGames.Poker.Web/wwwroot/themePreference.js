@@ -2,13 +2,14 @@ const themePreferenceKey = "themePreference";
 const legacyThemeKey = "theme";
 const systemThemeQuery = "(prefers-color-scheme: dark)";
 const siteThemePreferenceKey = "siteThemeStylesheet";
-const defaultSiteThemeStylesheet = "astrovista.css";
-const availableSiteThemeStylesheets = ["astrovista.css", "claudeplus.css", "lightgreen.css"];
+const defaultSiteThemeStylesheet = document.documentElement.dataset.siteThemeDefault || "astrovista.css";
+const availableSiteThemeStylesheets = getAvailableSiteThemeStylesheets();
 
 let mediaQueryList = null;
 let systemThemeHandler = null;
 let initialized = false;
 let siteThemeInitialized = false;
+let siteThemeLinkObserver = null;
 
 export function getStoredThemePreference() {
     return normalizePreference(localStorage.getItem(themePreferenceKey) ?? localStorage.getItem(legacyThemeKey));
@@ -62,6 +63,8 @@ export function initializeSiteThemeStylesheet() {
 
     siteThemeInitialized = true;
     applySiteThemeStylesheet(getStoredSiteThemeStylesheet());
+    ensureSiteThemeStylesheetLink();
+    attachSiteThemeLinkObserver();
     document.addEventListener("change", handleSiteThemeSelectChange);
 }
 
@@ -134,6 +137,47 @@ function normalizeSiteThemeStylesheet(value) {
         : defaultSiteThemeStylesheet;
 }
 
+function ensureSiteThemeStylesheetLink() {
+    const normalizedStylesheet = getStoredSiteThemeStylesheet();
+    const stylesheetLink = document.getElementById("site-theme-stylesheet");
+    const expectedHref = new URL(`css/${normalizedStylesheet}`, document.baseURI).href;
+
+    document.documentElement.setAttribute("data-site-theme-stylesheet", normalizedStylesheet);
+
+    if (stylesheetLink instanceof HTMLLinkElement && stylesheetLink.href !== expectedHref) {
+        stylesheetLink.href = expectedHref;
+    }
+}
+
+function attachSiteThemeLinkObserver() {
+    if (siteThemeLinkObserver !== null) {
+        return;
+    }
+
+    siteThemeLinkObserver = new MutationObserver(() => {
+        ensureSiteThemeStylesheetLink();
+    });
+
+    siteThemeLinkObserver.observe(document.head, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ["href", "id"]
+    });
+}
+
+function getAvailableSiteThemeStylesheets() {
+    try {
+        const parsed = JSON.parse(document.documentElement.dataset.siteThemeOptions ?? "[]");
+        if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed;
+        }
+    } catch {
+    }
+
+    return [defaultSiteThemeStylesheet];
+}
+
 function handleSiteThemeSelectChange(event) {
     if (event.target instanceof HTMLSelectElement && event.target.matches("[data-site-theme-select]")) {
         applySiteThemeStylesheet(event.target.value);
@@ -175,4 +219,7 @@ initializeSiteThemeStylesheet();
 document.addEventListener("blazor:enhancedload", () => {
     applyThemePreference(getStoredThemePreference());
     applySiteThemeStylesheet(getStoredSiteThemeStylesheet());
+    requestAnimationFrame(() => {
+        ensureSiteThemeStylesheetLink();
+    });
 });

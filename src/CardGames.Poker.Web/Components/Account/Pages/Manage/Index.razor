@@ -5,6 +5,7 @@
 @using CardGames.Poker.Web.Infrastructure.Validation
 @using CardGames.Poker.Web.Components.Shared
 @using Microsoft.AspNetCore.Http
+@using Microsoft.AspNetCore.Hosting
 @using Microsoft.AspNetCore.Identity
 @using CardGames.Poker.Web.Data
 @using Refit
@@ -14,6 +15,7 @@
 @inject IdentityRedirectManager RedirectManager
 @inject IProfileApi ProfileApi
 @inject NavigationManager NavigationManager
+@inject IWebHostEnvironment WebHostEnvironment
 
 <PageTitle>Profile</PageTitle>
 
@@ -80,7 +82,7 @@
 
                 <div class="form-floating mb-3" data-label="Site Theme">
                     <select @bind="Input.Theme" id="Input.Theme" name="Input.Theme" class="filter-select" data-site-theme-select>
-                        <option value="">Default (Astrovista)</option>
+                        <option value="">Default (@FormatThemeName(DefaultTheme))</option>
                         @foreach (var themeName in AvailableThemes)
                         {
                             <option value="@themeName">@FormatThemeName(themeName)</option>
@@ -115,7 +117,9 @@
     private string? lastName;
     private string? theme;
 
-    private static readonly string[] AvailableThemes = ["astrovista.css", "claudeplus.css", "lightgreen.css"];
+    private IReadOnlyList<string> AvailableThemes { get; set; } = [];
+
+    private string DefaultTheme { get; set; } = SiteThemeCatalog.DefaultTheme;
 
     [CascadingParameter]
     private HttpContext HttpContext { get; set; } = default!;
@@ -133,6 +137,9 @@
             RedirectManager.RedirectToInvalidUser(UserManager, HttpContext);
             return;
         }
+
+        AvailableThemes = SiteThemeCatalog.GetAvailableThemes(WebHostEnvironment);
+        DefaultTheme = SiteThemeCatalog.GetDefaultTheme(WebHostEnvironment);
 
         username = await UserManager.GetUserNameAsync(user);
         userId = await UserManager.GetUserIdAsync(user);
@@ -285,7 +292,7 @@
         return value.Trim();
     }
 
-    private static string? NormalizeStoredTheme(string? value)
+    private string? NormalizeStoredTheme(string? value)
     {
         var normalized = NormalizeStoredText(value);
         if (normalized is null)
@@ -293,7 +300,7 @@
             return null;
         }
 
-        return AvailableThemes.Contains(normalized, StringComparer.OrdinalIgnoreCase)
+        return SiteThemeCatalog.IsAvailableTheme(WebHostEnvironment, normalized)
             ? normalized
             : null;
     }
