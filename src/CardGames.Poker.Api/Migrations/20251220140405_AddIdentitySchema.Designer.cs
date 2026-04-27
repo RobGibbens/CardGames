@@ -70,6 +70,10 @@ namespace CardGames.Poker.Api.Migrations
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("Theme")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<bool>("TwoFactorEnabled")
                         .HasColumnType("bit");
 

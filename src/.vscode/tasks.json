@@ -12,7 +12,7 @@
 			"label": "build",
 			"type": "process",
 			"command": "dotnet",
-			"args": ["build", "${workspaceFolder}/CardGames.sln", "-c", "Debug"],
+			"args": ["build", "${workspaceFolder}/CardGames.slnx", "-c", "Debug"],
 			"problemMatcher": "$msCompile"
 		}
 	]

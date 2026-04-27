@@ -14,20 +14,27 @@ namespace CardGames.Poker.Api.Migrations
 		/// <inheritdoc />
 		protected override void Up(MigrationBuilder migrationBuilder)
 		{
-			migrationBuilder.AddColumn<string>(
-				name: "Theme",
-				table: "AspNetUsers",
-				type: "nvarchar(100)",
-				maxLength: 100,
-				nullable: true);
+			migrationBuilder.Sql(
+				"""
+				IF OBJECT_ID(N'[dbo].[AspNetUsers]', N'U') IS NOT NULL
+				   AND COL_LENGTH(N'[dbo].[AspNetUsers]', N'Theme') IS NULL
+				BEGIN
+				    ALTER TABLE [dbo].[AspNetUsers] ADD [Theme] nvarchar(100) NULL;
+				END
+				""");
 		}
 
 		/// <inheritdoc />
 		protected override void Down(MigrationBuilder migrationBuilder)
 		{
-			migrationBuilder.DropColumn(
-				name: "Theme",
-				table: "AspNetUsers");
+			migrationBuilder.Sql(
+				"""
+				IF OBJECT_ID(N'[dbo].[AspNetUsers]', N'U') IS NOT NULL
+				   AND COL_LENGTH(N'[dbo].[AspNetUsers]', N'Theme') IS NOT NULL
+				BEGIN
+				    ALTER TABLE [dbo].[AspNetUsers] DROP COLUMN [Theme];
+				END
+				""");
 		}
 	}
 }
