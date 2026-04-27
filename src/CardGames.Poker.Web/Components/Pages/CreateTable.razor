@@ -495,15 +495,9 @@
 																	@game.MinimumNumberOfPlayers-@game.MaximumNumberOfPlayers
 																</span>
 																<div class="create-table-dc-variant-toggle">
-																	<button class="game-info-odds-toggle-switch @(isAllowed ? "is-on" : "is-off")"
-																			type="button"
-																			role="switch"
-																			aria-checked="@isAllowed"
-																			aria-label="@($"Toggle {game.Name}")"
-																			@onclick="() => ToggleAllowedDealerChoiceGame(game.Code)">
-																		<span class="game-info-odds-toggle-text">@(isAllowed ? "ON" : "OFF")</span>
-																		<span class="game-info-odds-toggle-thumb" aria-hidden="true"></span>
-																	</button>
+																	<BbSwitch Checked="@isAllowed"
+																			  CheckedChanged="@(_ => ToggleAllowedDealerChoiceGame(game.Code))"
+																			  AriaLabel="@($"Toggle {game.Name}")" />
 																</div>
 															</div>
 														}
@@ -531,16 +525,10 @@
 								<div class="form-group">
 									<label class="form-label" for="requiresJoinApproval">Host Approval</label>
 									<div class="create-table-odds-visibility-control">
-										<button class="game-info-odds-toggle-switch @(_requiresJoinApproval ? "is-on" : "is-off")"
-												type="button"
-												id="requiresJoinApproval"
-												role="switch"
-												aria-checked="@_requiresJoinApproval"
-												aria-label="Toggle host approval for joining"
-												@onclick="ToggleJoinApproval">
-											<span class="game-info-odds-toggle-text">@(_requiresJoinApproval ? "ON" : "OFF")</span>
-											<span class="game-info-odds-toggle-thumb" aria-hidden="true"></span>
-										</button>
+										<BbSwitch Checked="@_requiresJoinApproval"
+												  CheckedChanged="@(_ => ToggleJoinApproval())"
+												  Id="requiresJoinApproval"
+												  AriaLabel="Toggle host approval for joining" />
 										<span class="form-hint odds-visibility-hint">Require host approval before players can join this table</span>
 									</div>
 								</div>
@@ -552,16 +540,10 @@
 									<div class="form-group">
 										<label class="form-label" for="areOddsVisibleToAllPlayers">Odds Visibility</label>
 										<div class="create-table-odds-visibility-control">
-											<button class="game-info-odds-toggle-switch @(_areOddsVisibleToAllPlayers ? "is-on" : "is-off")"
-													type="button"
-													id="areOddsVisibleToAllPlayers"
-													role="switch"
-													aria-checked="@_areOddsVisibleToAllPlayers"
-													aria-label="Toggle odds visibility for everyone"
-													@onclick="ToggleOddsVisibility">
-												<span class="game-info-odds-toggle-text">@(_areOddsVisibleToAllPlayers ? "ON" : "OFF")</span>
-												<span class="game-info-odds-toggle-thumb" aria-hidden="true"></span>
-											</button>
+											<BbSwitch Checked="@_areOddsVisibleToAllPlayers"
+													  CheckedChanged="@(_ => ToggleOddsVisibility())"
+													  Id="areOddsVisibleToAllPlayers"
+													  AriaLabel="Toggle odds visibility for everyone" />
 											<span class="form-hint odds-visibility-hint">Allow all players to see hand-odds in the dashboard</span>
 										</div>
 									</div>
@@ -579,20 +561,21 @@
 								@_createError
 							</div>
 						}
-						<button class="btn btn-primary btn-lg create-table-btn"
-								@onclick="CreateTableAsync"
-								disabled="@(!CanCreate || _isCreating)">
-							@if (_isCreating)
-							{
+						@if 
+						(_isCreating)
+						{
+							<BbButton Variant="ButtonVariant.Default" OnClick="CreateTableAsync" Disabled="true">
 								<span class="loading-spinner-small"></span>
-								<span>Creating...</span>
-							}
-							else
-							{
+								Creating...
+							</BbButton>
+						}
+						else
+						{
+							<BbButton Variant="ButtonVariant.Default" OnClick="CreateTableAsync" Disabled="@(!CanCreate)">
 								<i class="fa-regular fa-check"></i>
-								<span>Create Table</span>
-							}
-						</button>
+								Create Table
+							</BbButton>
+						}
 						<p class="create-hint">After creating the table, go to Lobby and click Join to enter the game.</p>
 					</div>
 				}
@@ -821,17 +804,17 @@
 		transition: border-color 0.15s ease, opacity 0.15s ease;
 	}
 
-	.create-table-dc-variant:hover {
-		border-color: var(--primary);
-	}
+		.create-table-dc-variant:hover {
+			border-color: var(--primary);
+		}
 
-	.create-table-dc-variant.dc-variant-off {
-		opacity: 0.5;
-	}
+		.create-table-dc-variant.dc-variant-off {
+			opacity: 0.5;
+		}
 
-	.create-table-dc-variant.dc-variant-off:hover {
-		opacity: 0.7;
-	}
+			.create-table-dc-variant.dc-variant-off:hover {
+				opacity: 0.7;
+			}
 
 	.create-table-dc-variant-icon {
 		grid-row: 1 / 3;
@@ -844,12 +827,12 @@
 		border-radius: 8px;
 	}
 
-	.create-table-dc-variant-icon img {
-		width: 100%;
-		height: 100%;
-		object-fit: contain;
-		border-radius: 8px;
-	}
+		.create-table-dc-variant-icon img {
+			width: 100%;
+			height: 100%;
+			object-fit: contain;
+			border-radius: 8px;
+		}
 
 	.create-table-dc-variant-icon-fallback {
 		font-size: 1.4rem;
