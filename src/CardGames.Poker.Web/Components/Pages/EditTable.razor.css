@@ -21,7 +21,7 @@
 
 .info-label {
     font-size: 0.75rem;
-    color: var(--text-secondary, #a0a0a0);
+    color: var(--secondary-foreground, #a0a0a0);
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
@@ -57,7 +57,7 @@
 
 .conflict-content p {
     margin: 0 0 0.75rem 0;
-    color: var(--text-secondary, #a0a0a0);
+    color: var(--secondary-foreground, #a0a0a0);
     font-size: 0.9rem;
 }
 
@@ -84,7 +84,7 @@
 
 /* Phase info */
 .phase-info {
-    color: var(--text-secondary, #a0a0a0);
+    color: var(--secondary-foreground, #a0a0a0);
     font-size: 0.9rem;
     margin-top: 0.5rem;
 }

@@ -1,16 +1,7 @@
 /* ===== CSS Variables & Theme System ===== */
 :root {
     /* Light theme (default) */
-    --bg-primary: #fafafa;
-    --bg-secondary: #ffffff;
     --bg-tertiary: #f5f5f5;
-    --text-primary: #1a1a1a;
-    --text-secondary: #4a4a4a;
-    --text-muted: #6a6a6a;
-    --border-color: rgba(0, 0, 0, 0.1);
-    --card-bg: #ffffff;
-    --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-    --card-shadow-hover: 0 8px 40px rgba(0, 0, 0, 0.15);
 
     /* Brand colors - Red & Black theme */
     /* --primary: #dc2626; */
@@ -44,17 +35,7 @@
 /* Dark theme */
 [data-theme="dark"] {
     color-scheme: dark;
-    --bg-primary: #0a0a0a;
-    --bg-secondary: #141414;
     --bg-tertiary: #1a1a1a;
-    --text-primary: #f5f5f5;
-    --text-secondary: #d4d4d4;
-    --text-muted: #a3a3a3;
-    --border-color: rgba(255, 255, 255, 0.1);
-    --card-bg: #1a1a1a;
-    --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-    --card-shadow-hover: 0 8px 40px rgba(220, 38, 38, 0.2);
-    --gradient-card: linear-gradient(145deg, rgba(220, 38, 38, 0.1) 0%, rgba(45, 45, 45, 0.3) 100%);
 }
 
 /* ===== Base Styles ===== */
@@ -68,8 +49,8 @@ html {
 
 body {
     font-family: var(--font-primary);
-    background-color: var(--bg-primary);
-    color: var(--text-primary);
+    background-color: var(--background);
+    color: var(--foreground);
     line-height: 1.6;
     margin: 0;
     padding: 0;
@@ -96,9 +77,9 @@ body {
     width: 36px;
     height: 36px;
     border-radius: 999px;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     background: rgba(255, 255, 255, 0.75);
-    color: var(--text-primary);
+    color: var(--foreground);
     font-size: 22px;
     line-height: 1;
     display: inline-flex;
@@ -148,7 +129,7 @@ body {
 
 .showdown-hint {
     margin-top: 1rem;
-    color: var(--text-muted);
+    color: var(--muted);
 }
 
 .showdown-win {
@@ -315,9 +296,9 @@ a:hover {
     left: 0;
     right: 0;
     z-index: 1000;
-    background: var(--bg-secondary);
+    background: var(--secondary);
     backdrop-filter: blur(10px);
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border);
     transition: all var(--transition-normal);
 }
 
@@ -341,12 +322,12 @@ a:hover {
     gap: 0.75rem;
     font-size: 1.5rem;
     font-weight: 800;
-    color: var(--text-primary);
+    color: var(--foreground);
     text-decoration: none;
 }
 
 .nav-logo:hover {
-    color: var(--text-primary);
+    color: var(--foreground);
 }
 
 .nav-logo-icon {
@@ -376,7 +357,7 @@ a:hover {
 }
 
 .nav-links a {
-    color: var(--text-secondary);
+    color: var(--secondary-foreground);
     font-family: var(--font-primary);
     font-weight: 300;
     font-size: 0.95rem;
@@ -412,7 +393,7 @@ a:hover {
 /* Theme Toggle */
 .theme-toggle {
     background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     border-radius: 50%;
     width: 44px;
     height: 44px;
@@ -422,7 +403,7 @@ a:hover {
     justify-content: center;
     font-size: 1.25rem;
     transition: all var(--transition-normal);
-    color: var(--text-primary);
+    color: var(--foreground);
 }
 
 .theme-toggle:hover {
@@ -444,7 +425,7 @@ a:hover {
     display: block;
     width: 24px;
     height: 2px;
-    background: var(--text-primary);
+    background: var(--foreground);
     margin: 5px 0;
     transition: all var(--transition-normal);
 }
@@ -493,8 +474,8 @@ a:hover {
 
 .btn-secondary {
     background: var(--bg-tertiary);
-    color: var(--text-primary);
-    border: 1px solid var(--border-color);
+    color: var(--foreground);
+    border: 1px solid var(--border);
 }
 
 .btn-secondary:hover {
@@ -721,7 +702,7 @@ a:hover {
 .section-badge {
     display: inline-block;
     background: var(--gradient-card);
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     padding: 0.375rem 1rem;
     border-radius: 50px;
     font-size: 0.8rem;
@@ -734,18 +715,18 @@ a:hover {
 
 .section-title {
     font-size: clamp(2rem, 4vw, 3rem);
-    color: var(--text-primary);
+    color: var(--foreground);
     margin-bottom: 1rem;
 }
 
 .section-subtitle {
     font-size: 1.125rem;
-    color: var(--text-secondary);
+    color: var(--secondary-foreground);
 }
 
 /* ===== Features Section ===== */
 .features {
-    background: var(--bg-secondary);
+    background: var(--secondary);
 }
 
 .features-grid {
@@ -755,8 +736,8 @@ a:hover {
 }
 
 .feature-card {
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
+    background: var(--card);
+    border: 1px solid var(--border);
     border-radius: 16px;
     padding: 2rem;
     transition: all var(--transition-normal);
@@ -790,7 +771,7 @@ a:hover {
     width: 56px;
     height: 56px;
     background: var(--gradient-card);
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     border-radius: 12px;
     display: flex;
     align-items: center;
@@ -812,19 +793,19 @@ a:hover {
 .feature-title {
     font-size: 1.25rem;
     font-weight: 700;
-    color: var(--text-primary);
+    color: var(--foreground);
     margin-bottom: 0.75rem;
 }
 
 .feature-description {
-    color: var(--text-secondary);
+    color: var(--secondary-foreground);
     font-size: 0.95rem;
     line-height: 1.7;
 }
 
 /* ===== How It Works Section ===== */
 .how-it-works {
-    background: var(--bg-primary);
+    background: var(--background);
 }
 
 .steps-container {
@@ -861,19 +842,19 @@ a:hover {
 .step-title {
     font-size: 1.375rem;
     font-weight: 700;
-    color: var(--text-primary);
+    color: var(--foreground);
     margin-bottom: 0.5rem;
 }
 
 .step-description {
-    color: var(--text-secondary);
+    color: var(--secondary-foreground);
     font-size: 1rem;
     line-height: 1.7;
 }
 
 /* ===== Variants Section ===== */
 .variants {
-    background: var(--bg-secondary);
+    background: var(--secondary);
 }
 
 .variants-grid {
@@ -883,8 +864,8 @@ a:hover {
 }
 
 .variant-card {
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
+    background: var(--card);
+    border: 1px solid var(--border);
     border-radius: 16px;
     padding: 1.5rem;
     text-align: center;
@@ -925,13 +906,13 @@ a:hover {
 .variant-name {
     font-size: 1.125rem;
     font-weight: 700;
-    color: var(--text-primary);
+    color: var(--card-foreground);
     margin-bottom: 0.5rem;
 }
 
 .variant-description {
     font-size: 0.875rem;
-    color: var(--text-muted);
+    color: var(--muted-foreground);
     flex: 1;
 }
 
@@ -1015,7 +996,7 @@ a:hover {
 /* ===== Footer ===== */
 .footer {
     background: var(--bg-tertiary);
-    border-top: 1px solid var(--border-color);
+    border-top: 1px solid var(--border);
     padding: 4rem 0 2rem;
 }
 
@@ -1042,7 +1023,7 @@ a:hover {
     gap: 0.75rem;
     font-size: 1.375rem;
     font-weight: 800;
-    color: var(--text-primary);
+    color: var(--foreground);
     margin-bottom: 1rem;
 }
 
@@ -1059,7 +1040,7 @@ a:hover {
 }
 
 .footer-description {
-    color: var(--text-muted);
+    color: var(--muted);
     font-size: 0.95rem;
     line-height: 1.7;
 }
@@ -1067,7 +1048,7 @@ a:hover {
 .footer-column h4 {
     font-size: 0.875rem;
     font-weight: 700;
-    color: var(--text-primary);
+    color: var(--foreground);
     text-transform: uppercase;
     letter-spacing: 1px;
     margin-bottom: 1.25rem;
@@ -1084,7 +1065,7 @@ a:hover {
 }
 
 .footer-links a {
-    color: var(--text-muted);
+    color: var(--muted);
     font-size: 0.95rem;
     transition: color var(--transition-fast);
 }
@@ -1098,11 +1079,11 @@ a:hover {
     align-items: center;
     justify-content: space-between;
     padding-top: 2rem;
-    border-top: 1px solid var(--border-color);
+    border-top: 1px solid var(--border);
 }
 
 .footer-copyright {
-    color: var(--text-muted);
+    color: var(--muted);
     font-size: 0.875rem;
 }
 
@@ -1114,13 +1095,13 @@ a:hover {
 .footer-social a {
     width: 40px;
     height: 40px;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
+    background: var(--secondary);
+    border: 1px solid var(--border);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--text-muted);
+    color: var(--muted);
     font-size: 1.125rem;
     transition: all var(--transition-normal);
 }
@@ -1161,7 +1142,7 @@ a:hover {
 }
 
 .auth-card {
-    background: var(--card-bg);
+    background: var(--card);
     border-radius: 20px;
     padding: 2.5rem;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
@@ -1179,7 +1160,7 @@ a:hover {
     gap: 0.75rem;
     font-size: 1.5rem;
     font-weight: 800;
-    color: var(--text-primary);
+    color: var(--foreground);
     margin-bottom: 1.5rem;
 }
 
@@ -1198,12 +1179,12 @@ a:hover {
 .auth-title {
     font-size: 1.75rem;
     font-weight: 700;
-    color: var(--text-primary);
+    color: var(--foreground);
     margin-bottom: 0.5rem;
 }
 
 .auth-subtitle {
-    color: var(--text-muted);
+    color: var(--muted);
     font-size: 0.95rem;
 }
 
@@ -1215,11 +1196,11 @@ a:hover {
 .auth-form .form-control {
     width: 100%;
     background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     border-radius: 10px;
     padding: 1rem;
     font-size: 1rem;
-    color: var(--text-primary);
+    color: var(--foreground);
     transition: all var(--transition-normal);
 }
 
@@ -1239,13 +1220,13 @@ a:hover {
 
 .auth-form .form-control:focus,
 .auth-form select:focus {
-    background: var(--bg-secondary);
+    background: var(--secondary);
     border-color: var(--primary);
     box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
 }
 
 .auth-form .form-floating > label {
-    color: var(--text-muted);
+    color: var(--muted);
 }
 
 .auth-form .form-floating[data-label]::after {
@@ -1261,7 +1242,7 @@ a:hover {
     pointer-events: none;
     transform-origin: 0 0;
     transition: all .2s ease-in-out;
-    color: var(--text-muted);
+    color: var(--muted);
 }
 
 .auth-form .form-floating[data-label]:focus-within::after,
@@ -1292,7 +1273,7 @@ a:hover {
     align-items: center;
     gap: 1rem;
     margin: 1.5rem 0;
-    color: var(--text-muted);
+    color: var(--muted);
     font-size: 0.875rem;
 }
 
@@ -1301,7 +1282,7 @@ a:hover {
     content: '';
     flex: 1;
     height: 1px;
-    background: var(--border-color);
+    background: var(--border);
 }
 
 .auth-social {
@@ -1318,16 +1299,16 @@ a:hover {
     width: 100%;
     padding: 0.875rem;
     background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     border-radius: 10px;
-    color: var(--text-primary);
+    color: var(--foreground);
     font-weight: 500;
     cursor: pointer;
     transition: all var(--transition-normal);
 }
 
 .auth-social-btn:hover {
-    background: var(--bg-secondary);
+    background: var(--secondary);
     border-color: var(--primary);
     transform: translateY(-2px);
 }
@@ -1335,7 +1316,7 @@ a:hover {
 .auth-footer {
     text-align: center;
     margin-top: 1.5rem;
-    color: var(--text-muted);
+    color: var(--muted);
     font-size: 0.95rem;
 }
 
@@ -1396,10 +1377,10 @@ a:hover {
         top: 100%;
         left: 0;
         right: 0;
-        background: var(--bg-secondary);
+        background: var(--secondary);
         flex-direction: column;
         padding: 1rem;
-        border-bottom: 1px solid var(--border-color);
+        border-bottom: 1px solid var(--border);
         gap: 0;
     }
 
@@ -1521,17 +1502,17 @@ a:hover {
     align-items: center;
     gap: 0.5rem;
     background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     border-radius: 50px;
     padding: 0.375rem 0.75rem 0.375rem 0.375rem;
     cursor: pointer;
     transition: all var(--transition-normal);
-    color: var(--text-primary);
+    color: var(--foreground);
 }
 
 .user-menu-trigger:hover {
     border-color: var(--primary);
-    background: var(--bg-secondary);
+    background: var(--secondary);
 }
 
 .user-avatar {
@@ -1566,7 +1547,7 @@ a:hover {
 
 .user-menu-arrow {
     font-size: 0.625rem;
-    color: var(--text-muted);
+    color: var(--muted);
     transition: transform var(--transition-fast);
 }
 
@@ -1578,8 +1559,8 @@ a:hover {
     position: absolute;
     top: calc(100% + 0.5rem);
     right: 0;
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
+    background: var(--card);
+    border: 1px solid var(--border);
     border-radius: 12px;
     box-shadow: var(--card-shadow-hover);
     min-width: 200px;
@@ -1594,7 +1575,7 @@ a:hover {
     gap: 0.75rem;
     padding: 0.75rem 1rem;
     border-radius: 8px;
-    color: var(--text-secondary);
+    color: var(--secondary-foreground);
     font-size: 0.95rem;
     transition: all var(--transition-fast);
     width: 100%;
@@ -1606,12 +1587,12 @@ a:hover {
 
 .user-menu-item:hover {
     background: var(--bg-tertiary);
-    color: var(--text-primary);
+    color: var(--foreground);
 }
 
 .user-menu-divider {
     border: none;
-    border-top: 1px solid var(--border-color);
+    border-top: 1px solid var(--border);
     margin: 0.5rem 0;
 }
 
@@ -1642,7 +1623,7 @@ a:hover {
 /* ===== Lobby Styles ===== */
 .lobby-main {
     min-height: 100vh;
-    background: var(--bg-primary);
+    background: var(--background);
     padding-top: 90px;
     padding-bottom: 3rem;
 }
@@ -1662,8 +1643,8 @@ a:hover {
     gap: 1.5rem;
     margin-bottom: 2rem;
     padding: 2rem;
-    background: var(--gradient-card);
-    border: 1px solid var(--border-color);
+    background: var(--card);
+    border: 1px solid var(--border);
     border-radius: 20px;
 }
 
@@ -1677,7 +1658,7 @@ a:hover {
     gap: 0.75rem;
     font-size: 2rem;
     font-weight: 800;
-    color: var(--text-primary);
+    color: var(--card-foreground);
     margin-bottom: 0.5rem;
 }
 
@@ -1686,7 +1667,7 @@ a:hover {
 }
 
 .lobby-subtitle {
-    color: var(--text-secondary);
+    color: var(--secondary-foreground);
     font-size: 1.125rem;
     margin: 0;
 }
@@ -1717,9 +1698,9 @@ a:hover {
 
 .cashier-panel {
     margin-top: 1.5rem;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     border-radius: 16px;
-    background: var(--bg-secondary);
+    background: var(--secondary);
 }
 
 .cashier-panel:first-of-type {
@@ -1798,12 +1779,12 @@ a:hover {
     margin: 0;
     font-size: 1.35rem;
     font-weight: 700;
-    color: var(--text-primary);
+    color: var(--foreground);
 }
 
 /* League club cards */
 .league-club-card {
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     border-left: 3px solid var(--primary);
     border-radius: 10px;
     transition: border-color 0.15s, box-shadow 0.15s;
@@ -1930,7 +1911,7 @@ a:hover {
 }
 
 .league-membership-history-title {
-    color: var(--text-primary);
+    color: var(--foreground);
 }
 
 .league-membership-history-title-icon {
@@ -1940,7 +1921,7 @@ a:hover {
     align-items: center;
     justify-content: center;
     border-radius: 999px;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     background: var(--bg-tertiary);
     color: black;
     font-size: 1.1rem;
@@ -1989,7 +1970,7 @@ a:hover {
 
 .league-membership-history-user {
     line-height: 1.15;
-    color: var(--text-primary);
+    color: var(--foreground);
 }
 
 .league-membership-history-event {
@@ -2013,7 +1994,7 @@ a:hover {
 .league-schedule-tabs {
     display: inline-flex;
     align-items: stretch;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     border-radius: 12px;
     background: var(--bg-tertiary);
     overflow: hidden;
@@ -2022,9 +2003,9 @@ a:hover {
 
 .league-schedule-tab {
     border: 0;
-    border-right: 1px solid var(--border-color);
+    border-right: 1px solid var(--border);
     background: transparent;
-    color: var(--text-primary);
+    color: var(--foreground);
     font-weight: 700;
     font-size: 1.05rem;
     line-height: 1;
@@ -2037,8 +2018,8 @@ a:hover {
 }
 
 .league-schedule-tab:hover {
-    background: var(--bg-secondary);
-    color: var(--text-primary);
+    background: var(--secondary);
+    color: var(--foreground);
 }
 
 .league-schedule-tab:focus-visible {
@@ -2061,7 +2042,7 @@ a:hover {
 }
 
 .league-standings-rules {
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     border-radius: 12px;
     background: var(--bg-tertiary);
     padding: 0.875rem 1rem;
@@ -2078,9 +2059,9 @@ a:hover {
 }
 
 .league-my-progress {
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     border-radius: 12px;
-    background: var(--bg-secondary);
+    background: var(--secondary);
     padding: 0.875rem 1rem;
     display: flex;
     flex-direction: column;
@@ -2101,7 +2082,7 @@ a:hover {
 }
 
 .league-progress-item {
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     border-radius: 10px;
     background: var(--bg-tertiary);
     padding: 0.625rem 0.75rem;
@@ -2111,13 +2092,13 @@ a:hover {
     font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.03em;
-    color: var(--text-muted);
+    color: var(--muted);
 }
 
 .league-progress-value {
     font-size: 1.125rem;
     font-weight: 700;
-    color: var(--text-primary);
+    color: var(--foreground);
 }
 
 .league-standings-list .list-group-item {
@@ -2148,9 +2129,9 @@ a:hover {
     padding: 0.15rem 0.55rem;
     font-size: 0.72rem;
     font-weight: 700;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     background: var(--bg-tertiary);
-    color: var(--text-secondary);
+    color: var(--secondary-foreground);
     min-width: 5.5rem;
 }
 
@@ -2165,8 +2146,8 @@ a:hover {
 }
 
 .league-rank-movement-neutral {
-    border-color: var(--border-color);
-    color: var(--text-muted);
+    border-color: var(--border);
+    color: var(--muted);
 }
 
 .cashier-balance-grid {
@@ -2179,7 +2160,7 @@ a:hover {
 .cashier-balance-card {
     min-width: 240px;
     padding: 0.875rem 1rem;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     border-radius: 12px;
     background: var(--bg-tertiary);
 }
@@ -2197,7 +2178,7 @@ a:hover {
 }
 
 .cashier-ledger-table-wrap {
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     border-radius: 12px;
     overflow: hidden;
 }
@@ -2208,7 +2189,7 @@ a:hover {
 
 .cashier-ledger-table thead th {
     background: var(--bg-tertiary);
-    color: var(--text-secondary);
+    color: var(--secondary-foreground);
     font-size: 0.76rem;
     font-weight: 700;
     letter-spacing: 0.035em;
@@ -2283,15 +2264,15 @@ a:hover {
     width: auto;
     min-width: 5rem;
     background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     border-radius: 10px;
-    color: var(--text-primary);
+    color: var(--foreground);
     padding: 0.4rem 2rem 0.4rem 0.75rem;
     line-height: 1.2;
 }
 
 .cashier-page-size:focus {
-    background: var(--bg-secondary);
+    background: var(--secondary);
     border-color: var(--primary);
     box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
 }
@@ -2301,7 +2282,7 @@ a:hover {
     align-items: center;
     gap: 0.5rem;
     padding: 0.3rem 0.5rem;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     border-radius: 999px;
     background: var(--bg-tertiary);
 }
@@ -2309,7 +2290,7 @@ a:hover {
 .cashier-pager-status {
     font-size: 0.85rem;
     font-weight: 600;
-    color: var(--text-secondary);
+    color: var(--secondary-foreground);
     padding: 0 0.35rem;
     white-space: nowrap;
 }
@@ -2383,7 +2364,7 @@ a:hover {
     --tab-curve: 8px;
     display: flex;
     gap: 0;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border);
     margin-bottom: 1.5rem;
     overflow: visible;
 }
@@ -2397,7 +2378,7 @@ a:hover {
     border: 1px solid transparent;
     border-radius: var(--tab-curve) var(--tab-curve) 0 0;
     background: transparent;
-    color: var(--text-secondary);
+    color: var(--secondary-foreground);
     font-weight: 500;
     font-size: 0.95rem;
     cursor: pointer;
@@ -2406,16 +2387,16 @@ a:hover {
 }
 
 .lobby-tab:hover:not(.active) {
-    color: var(--text-primary);
+    color: var(--foreground);
     background: var(--bg-tertiary);
 }
 
 .lobby-tab.active {
     color: var(--primary);
     font-weight: 600;
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    border-bottom-color: var(--bg-primary);
+    background: var(--background);
+    border: 1px solid var(--border);
+    border-bottom-color: var(--background);
     border-radius: var(--tab-curve) var(--tab-curve) 0 0;
     margin-bottom: -1px;
     position: relative;
@@ -2436,18 +2417,18 @@ a:hover {
 .lobby-tab.active::before {
     left: calc(-1 * var(--tab-curve) - 1px);
     background: radial-gradient(circle at 100% 100%,
-        var(--bg-primary) calc(var(--tab-curve) - 1px),
-        var(--border-color) calc(var(--tab-curve) - 1px),
-        var(--border-color) var(--tab-curve),
+        var(--background) calc(var(--tab-curve) - 1px),
+        var(--border) calc(var(--tab-curve) - 1px),
+        var(--border) var(--tab-curve),
         transparent var(--tab-curve));
 }
 
 .lobby-tab.active::after {
     right: calc(-1 * var(--tab-curve) - 1px);
     background: radial-gradient(circle at 0% 100%,
-        var(--bg-primary) calc(var(--tab-curve) - 1px),
-        var(--border-color) calc(var(--tab-curve) - 1px),
-        var(--border-color) var(--tab-curve),
+        var(--background) calc(var(--tab-curve) - 1px),
+        var(--border) calc(var(--tab-curve) - 1px),
+        var(--border) var(--tab-curve),
         transparent var(--tab-curve));
 }
 
@@ -2465,18 +2446,18 @@ a:hover {
 
 .lobby-tab-icon {
     font-size: 1rem;
-    color: var(--secondary);
+    color: var(--primary);
 }
 
 .lobby-tab-text {
-    color: var(--primary-foreground) !important;
+    color: var(--primary) !important;
     font-weight: 300 !important;
     font-variation-settings: "wght" 300;
 }
 
 .lobby-tab-badge {
     background: var(--bg-tertiary);
-    color: var(--text-muted);
+    color: var(--muted);
     padding: 0.125rem 0.5rem;
     border-radius: 20px;
     font-size: 0.75rem;
@@ -2505,8 +2486,8 @@ a:hover {
     gap: 1rem;
     align-items: flex-end;
     padding: 1.5rem;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
+    background: var(--secondary);
+    border: 1px solid var(--border);
     border-radius: 16px;
     margin-bottom: 2rem;
 }
@@ -2522,17 +2503,17 @@ a:hover {
 .filter-label {
     font-size: 0.75rem;
     font-weight: 600;
-    color: var(--text-muted);
+    color: var(--secondary-foreground);
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 
 .filter-select {
     padding: 0.75rem 1rem;
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
+    background: var(--background);
+    border: 1px solid var(--border);
     border-radius: 10px;
-    color: var(--text-primary);
+    color: var(--foreground);
     font-size: 0.95rem;
     cursor: pointer;
     transition: all var(--transition-normal);
@@ -2550,9 +2531,10 @@ a:hover {
     gap: 0.5rem;
     padding: 0.75rem 1rem;
     background: transparent;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     border-radius: 10px;
-    color: var(--text-muted);
+    background: var(--primary);
+    color: var(--primary-foreground);
     font-size: 0.875rem;
     cursor: pointer;
     transition: all var(--transition-normal);
@@ -2570,8 +2552,8 @@ a:hover {
 }
 
 .lobby-group-section {
-    background: var(--bg-secondary);
-    border-color: var(--border-color) !important;
+    background: var(--secondary);
+    border-color: var(--border) !important;
 }
 
 .lobby-group-section + .lobby-group-section {
@@ -2584,13 +2566,13 @@ a:hover {
     align-items: center;
     justify-content: center;
     padding: 4rem;
-    color: var(--text-muted);
+    color: var(--muted);
 }
 
 .loading-spinner {
     width: 48px;
     height: 48px;
-    border: 3px solid var(--border-color);
+    border: 3px solid var(--border);
     border-top-color: var(--primary);
     border-radius: 50%;
     animation: spin 1s linear infinite;
@@ -2605,8 +2587,8 @@ a:hover {
     justify-content: center;
     padding: 4rem 2rem;
     text-align: center;
-    background: var(--bg-secondary);
-    border: 2px dashed var(--border-color);
+    background: var(--secondary);
+    border: 2px dashed var(--border);
     border-radius: 20px;
 }
 
@@ -2619,12 +2601,12 @@ a:hover {
 .empty-title {
     font-size: 1.5rem;
     font-weight: 700;
-    color: var(--text-primary);
+    color: var(--foreground);
     margin-bottom: 0.75rem;
 }
 
 .empty-description {
-    color: var(--text-secondary);
+    color: var(--secondary-foreground);
     font-size: 1rem;
     max-width: 400px;
     margin-bottom: 1.5rem;
@@ -2640,8 +2622,8 @@ a:hover {
 
 /* Tables List */
 .tables-list {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
+    background: var(--secondary);
+    border: 1px solid var(--border);
     border-radius: 16px;
     padding: 1.5rem;
     width: 100%;
@@ -2657,19 +2639,19 @@ a:hover {
 .tables-list th {
     font-size: 0.75rem;
     font-weight: 600;
-    color: var(--text-muted);
+    color: var(--muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
     padding: 1rem;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border);
     text-align: left;
 }
 
 .tables-list td {
     padding: 1rem;
     vertical-align: middle;
-    border-bottom: 1px solid var(--border-color);
-    color: var(--text-primary);
+    border-bottom: 1px solid var(--border);
+    color: var(--foreground);
     font-size: 0.95rem;
 }
 
@@ -2683,8 +2665,8 @@ a:hover {
 
 /* Table Card */
 .table-card {
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
+    background: var(--card);
+    border: 1px solid var(--border);
     border-radius: 16px;
     padding: 1.5rem;
     transition: all var(--transition-normal);
@@ -2774,7 +2756,7 @@ a:hover {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    color: var(--text-muted);
+    color: var(--muted);
     font-size: 0.875rem;
 }
 
@@ -2789,7 +2771,7 @@ a:hover {
 .table-card-name {
     font-size: 1.25rem;
     font-weight: 700;
-    color: var(--text-primary);
+    color: var(--foreground);
     margin-bottom: 1rem;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -2808,7 +2790,7 @@ a:hover {
     align-items: center;
     gap: 0.5rem;
     font-size: 0.875rem;
-    color: var(--text-secondary);
+    color: var(--secondary-foreground);
 }
 
 .info-icon {
@@ -2817,12 +2799,12 @@ a:hover {
 }
 
 .info-label {
-    color: var(--text-muted);
+    color: var(--muted);
 }
 
 .info-value {
     font-weight: 500;
-    color: var(--text-primary);
+    color: var(--foreground);
 }
 
 .table-card-status {
@@ -2857,7 +2839,7 @@ a:hover {
 }
 
 .status-text {
-    color: var(--text-secondary);
+    color: var(--secondary-foreground);
 }
 
 .table-card-seats {
@@ -2884,7 +2866,7 @@ a:hover {
 
 .seat-empty {
     background: var(--bg-tertiary);
-    border: 2px dashed var(--border-color);
+    border: 2px dashed var(--border);
 }
 
 .table-card-actions {
@@ -2956,7 +2938,7 @@ a:hover {
 /* ===== Create Table Page Styles ===== */
 .create-table-main {
     min-height: 100vh;
-    background: var(--bg-primary);
+    background: var(--background);
     padding-top: 90px;
     padding-bottom: 3rem;
 }
@@ -2976,7 +2958,7 @@ a:hover {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    color: var(--text-muted);
+    color: var(--muted);
     font-size: 0.875rem;
     font-weight: 500;
     margin-bottom: 1rem;
@@ -2989,8 +2971,8 @@ a:hover {
 
 .create-table-header-content {
     padding: 2rem;
-    background: var(--gradient-card);
-    border: 1px solid var(--border-color);
+    background: var(--card);
+    border: 1px solid var(--border);
     border-radius: 20px;
 }
 
@@ -3000,12 +2982,12 @@ a:hover {
     gap: 0.75rem;
     font-size: 2rem;
     font-weight: 800;
-    color: var(--text-primary);
+    color: var(--card-foreground);
     margin-bottom: 0.5rem;
 }
 
 .create-table-subtitle {
-    color: var(--text-secondary);
+    color: var(--secondary-foreground);
     font-size: 1.125rem;
     margin: 0;
 }
@@ -3019,8 +3001,8 @@ a:hover {
     justify-content: center;
     padding: 4rem 2rem;
     text-align: center;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
+    background: var(--secondary);
+    border: 1px solid var(--border);
     border-radius: 20px;
 }
 
@@ -3031,12 +3013,12 @@ a:hover {
 
 .create-table-error h3 {
     font-size: 1.5rem;
-    color: var(--text-primary);
+    color: var(--foreground);
     margin-bottom: 0.5rem;
 }
 
 .create-table-error p {
-    color: var(--text-secondary);
+    color: var(--secondary-foreground);
     margin-bottom: 1.5rem;
 }
 
@@ -3049,8 +3031,8 @@ a:hover {
 
 /* Step Sections */
 .create-step {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
+    background: var(--card);
+    border: 1px solid var(--border);
     border-radius: 20px;
     padding: 2rem;
 }
@@ -3083,12 +3065,12 @@ a:hover {
 .step-title {
     font-size: 1.375rem;
     font-weight: 700;
-    color: var(--text-primary);
+    color: var(--foreground);
     margin-bottom: 0.25rem;
 }
 
 .step-description {
-    color: var(--text-secondary);
+    color: var(--secondary-foreground);
     font-size: 0.95rem;
     margin: 0;
 }
@@ -3135,7 +3117,7 @@ a:hover {
     justify-content: center;
     gap: 0.5rem;
     font-size: 0.8rem;
-    color: var(--text-muted);
+    color: var(--muted-foreground);
     margin-top: 0.75rem;
 }
 
@@ -3147,7 +3129,7 @@ a:hover {
 
 .variant-badge.coming-soon {
     background: var(--bg-tertiary);
-    color: var(--text-muted);
+    color: var(--muted);
 }
 
 .variant-selected-indicator {
@@ -3156,14 +3138,14 @@ a:hover {
     right: 0.75rem;
     width: 28px;
     height: 28px;
-    background: var(--secondary);
-    color: var(--secondary-foreground);
+    background: var(--primary);
+    color: var(--primary-foreground);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 0.875rem;
-    font-weight: 700;
+    font-weight: 900;
 }
 
 /* Settings Form */
@@ -3198,15 +3180,15 @@ a:hover {
 .form-label {
     font-size: 0.875rem;
     font-weight: 600;
-    color: var(--text-primary);
+    color: var(--foreground);
 }
 
 .form-input {
     padding: 0.875rem 1rem;
     background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     border-radius: 10px;
-    color: var(--text-primary);
+    color: var(--foreground);
     font-size: 1rem;
     transition: all var(--transition-normal);
 }
@@ -3215,16 +3197,16 @@ a:hover {
     outline: none;
     border-color: var(--primary);
     box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
-    background: var(--bg-secondary);
+    background: var(--secondary);
 }
 
 .form-input::placeholder {
-    color: var(--text-muted);
+    color: var(--muted);
 }
 
 .form-hint {
     font-size: 0.75rem;
-    color: var(--text-muted);
+    color: var(--muted-foreground);
 }
 
 .form-hint-error {
@@ -3242,15 +3224,11 @@ a:hover {
     flex-wrap: wrap;
 }
 
-.odds-visibility-hint {
-    font-size: 0.95rem;
-}
-
 .odds-section-hint {
     margin-bottom: 0.75rem;
     font-size: 0.78rem;
     line-height: 1.4;
-    color: var(--text-muted);
+    color: var(--muted);
 }
 
 .game-info-odds-toggle-switch {
@@ -3339,14 +3317,14 @@ a:hover {
     gap: 1rem;
     padding: 0.75rem 1rem;
     background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     border-radius: 12px;
 }
 
 .player-seat {
     font-size: 0.875rem;
     font-weight: 600;
-    color: var(--text-muted);
+    color: var(--muted);
     min-width: 60px;
 }
 
@@ -3373,7 +3351,7 @@ a:hover {
 
 .btn-remove {
     background: transparent;
-    color: var(--text-muted);
+    color: var(--muted);
 }
 
 .btn-remove:hover {
@@ -3392,8 +3370,8 @@ a:hover {
     align-items: center;
     gap: 1rem;
     padding: 2rem;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
+    background: var(--secondary);
+    border: 1px solid var(--border);
     border-radius: 20px;
 }
 
@@ -3429,7 +3407,7 @@ a:hover {
 }
 
 .create-hint {
-    color: var(--text-muted);
+    color: var(--muted);
     font-size: 0.875rem;
     margin: 0;
 }
@@ -5051,7 +5029,7 @@ playing-card.card-wild-highlight {
     text-align: center;
     max-width: 500px;
     padding: 3rem 2rem;
-    background: var(--card-bg);
+    background: var(--card);
     border: 1px solid rgba(255, 255, 255, 0.24);
     border-radius: 24px;
     box-shadow: 0 18px 42px rgba(0, 0, 0, 0.5), 0 0 22px rgba(226, 232, 240, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
@@ -5065,19 +5043,19 @@ playing-card.card-wild-highlight {
 .overlay-content h2 {
     font-size: 2rem;
     font-weight: 800;
-    color: var(--text-primary);
+    color: var(--foreground);
     margin-bottom: 0.5rem;
 }
 
 .overlay-content p {
     font-size: 1.125rem;
-    color: var(--text-secondary);
+    color: var(--secondary-foreground);
     margin-bottom: 1.5rem;
 }
 
 .overlay-hint {
     font-size: 0.95rem;
-    color: var(--text-muted);
+    color: var(--muted);
 }
 
 /* Ready status in waiting overlay */
@@ -5097,7 +5075,7 @@ playing-card.card-wild-highlight {
     padding: 0.75rem;
     background: var(--bg-tertiary);
     border-radius: 12px;
-    border: 2px solid var(--border-color);
+    border: 2px solid var(--border);
     min-width: 100px;
 }
 
@@ -5122,7 +5100,7 @@ playing-card.card-wild-highlight {
 .ready-name {
     font-size: 0.875rem;
     font-weight: 600;
-    color: var(--text-primary);
+    color: var(--foreground);
 }
 
 .ready-badge {
@@ -5170,7 +5148,7 @@ playing-card.card-wild-highlight {
 .standing-name {
     flex: 1;
     font-weight: 600;
-    color: var(--text-primary);
+    color: var(--foreground);
 }
 
 .standing-chips {
@@ -5899,10 +5877,10 @@ playing-card.card-wild-highlight {
 /* ===== Confirmation Dialog ===== */
 .confirm-dialog-overlay {
     --confirm-overlay-backdrop: rgba(15, 23, 42, 0.5);
-    --confirm-overlay-surface: var(--card-bg);
+    --confirm-overlay-surface: var(--card);
     --confirm-overlay-surface-border: rgba(15, 23, 42, 0.12);
-    --confirm-overlay-text-primary: var(--text-primary);
-    --confirm-overlay-text-secondary: var(--text-secondary);
+    --confirm-overlay-text-primary: var(--foreground);
+    --confirm-overlay-text-secondary: var(--secondary-foreground);
     --confirm-overlay-secondary-bg: #f3f4f6;
     --confirm-overlay-secondary-border: #d1d5db;
     --confirm-overlay-secondary-text: #111827;
@@ -6221,9 +6199,9 @@ playing-card.card-wild-highlight {
 .league-form-modal .league-modal-date-input {
     width: 100%;
     background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     border-radius: 10px;
-    color: var(--text-primary);
+    color: var(--foreground);
     font-family: var(--font-primary);
     font-size: 1rem;
     line-height: 1.5;
@@ -6234,7 +6212,7 @@ playing-card.card-wild-highlight {
 }
 
 .league-form-modal .league-modal-date-input:focus {
-    background: var(--bg-secondary);
+    background: var(--secondary);
     border-color: var(--primary);
     box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
 }
@@ -6265,10 +6243,10 @@ playing-card.card-wild-highlight {
 .one-off-event-modal .form-floating > .form-select {
     width: 100%;
     background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     border-radius: 10px;
     padding: 1rem;
-    color: var(--text-primary);
+    color: var(--foreground);
     font-family: var(--font-primary);
     font-size: 1rem;
     line-height: 1.5;
@@ -6300,7 +6278,7 @@ playing-card.card-wild-highlight {
     pointer-events: none;
     transform-origin: 0 0;
     transition: all .2s ease-in-out;
-    color: var(--text-muted);
+    color: var(--muted);
 }
 
 
@@ -6338,7 +6316,7 @@ playing-card.card-wild-highlight {
 .season-event-modal .form-floating > .form-select:focus,
 .one-off-event-modal .form-floating > .form-control:focus,
 .one-off-event-modal .form-floating > .form-select:focus {
-    background: var(--bg-secondary);
+    background: var(--secondary);
     border-color: var(--primary);
     box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
 }
@@ -6497,7 +6475,7 @@ playing-card.card-wild-highlight {
         var(--bg-tertiary) var(--join-buy-in-progress, 0%),
         var(--bg-tertiary) 100%
     );
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
 }
 
 .join-buy-in-modal-controls .bet-slider::-webkit-slider-thumb {
@@ -6516,7 +6494,7 @@ playing-card.card-wild-highlight {
     height: 10px;
     border-radius: 999px;
     background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
 }
 
 .join-buy-in-modal-controls .bet-slider::-moz-range-progress {
@@ -6538,9 +6516,9 @@ playing-card.card-wild-highlight {
 .join-buy-in-modal .join-buy-in-input {
     width: 100%;
     background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     border-radius: 10px;
-    color: var(--text-primary);
+    color: var(--foreground);
     font-family: var(--font-primary);
     font-size: 1rem;
     line-height: 1.5;
@@ -6550,7 +6528,7 @@ playing-card.card-wild-highlight {
 }
 
 .join-buy-in-modal .join-buy-in-input:focus {
-    background: var(--bg-secondary);
+    background: var(--secondary);
     border-color: var(--primary);
     box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
 }
@@ -6809,7 +6787,7 @@ playing-card.card-wild-highlight {
 
 .account-manage-nav-description {
     margin: -0.25rem 0 1rem;
-    color: var(--text-muted);
+    color: var(--muted);
     font-size: 0.9rem;
 }
 
@@ -6826,7 +6804,7 @@ playing-card.card-wild-highlight {
     display: block;
     padding: 0.625rem 0.75rem;
     border-radius: 0.625rem;
-    color: var(--text-secondary);
+    color: var(--secondary-foreground);
     font-weight: 600;
     text-decoration: none;
     border: 1px solid transparent;
@@ -6834,9 +6812,9 @@ playing-card.card-wild-highlight {
 }
 
 .account-manage-nav-link:hover {
-    color: var(--text-primary);
+    color: var(--foreground);
     background: var(--bg-tertiary);
-    border-color: var(--border-color);
+    border-color: var(--border);
 }
 
 .account-manage-nav-link.active {
@@ -6856,7 +6834,7 @@ playing-card.card-wild-highlight {
 
 .account-profile-subtitle {
     margin: 0;
-    color: var(--text-muted);
+    color: var(--muted);
 }
 
 .account-profile-form {
@@ -6873,9 +6851,9 @@ playing-card.card-wild-highlight {
 .account-avatar-panel,
 .account-details-panel {
     padding: 1rem;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     border-radius: 0.875rem;
-    background: var(--bg-secondary);
+    background: var(--secondary);
 }
 
 .account-details-panel {
@@ -6891,7 +6869,7 @@ playing-card.card-wild-highlight {
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     background: var(--bg-tertiary);
     overflow: hidden;
 }
@@ -6903,14 +6881,14 @@ playing-card.card-wild-highlight {
 }
 
 .account-avatar-fallback {
-    color: var(--text-secondary);
+    color: var(--secondary-foreground);
     font-size: 2rem;
     font-weight: 700;
 }
 
 .account-avatar-help {
     margin: 0.5rem 0 1rem;
-    color: var(--text-muted);
+    color: var(--muted);
     font-size: 0.85rem;
     line-height: 1.5;
 }
@@ -7009,13 +6987,13 @@ playing-card.card-wild-highlight {
     font-weight: 700;
     margin: 0;
     line-height: 1.2;
-    color: var(--text-primary);
+    color: var(--foreground);
 }
 
 .league-detail-description {
     margin: 0.15rem 0 0;
     font-size: 0.875rem;
-    color: var(--text-secondary);
+    color: var(--secondary-foreground);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -7024,7 +7002,7 @@ playing-card.card-wild-highlight {
 
 .league-detail-meta {
     font-size: 0.75rem;
-    color: var(--text-muted);
+    color: var(--muted);
     margin-top: 0.15rem;
 }
 
@@ -7052,7 +7030,7 @@ playing-card.card-wild-highlight {
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 2px solid var(--bg-primary);
+    border: 2px solid var(--background);
     margin-left: -8px;
     cursor: default;
     text-transform: uppercase;
@@ -7064,7 +7042,7 @@ playing-card.card-wild-highlight {
 
 .league-detail-avatar-more {
     background: var(--bg-tertiary);
-    color: var(--text-secondary);
+    color: var(--secondary-foreground);
     font-size: 0.7rem;
 }
 
@@ -7079,8 +7057,8 @@ playing-card.card-wild-highlight {
     text-transform: uppercase;
     letter-spacing: 0.04em;
     background: var(--bg-tertiary);
-    color: var(--text-secondary);
-    border: 1px solid var(--border-color);
+    color: var(--secondary-foreground);
+    border: 1px solid var(--border);
 }
 
 /* ── Header Action Buttons ── */
@@ -7099,20 +7077,20 @@ playing-card.card-wild-highlight {
     border-radius: 8px;
     font-size: 0.8rem;
     font-weight: 600;
-    border: 1px solid var(--border-color);
-    background: var(--bg-secondary);
-    color: var(--text-primary);
+    border: 1px solid var(--border);
+    background: var(--secondary);
+    color: var(--foreground);
     cursor: pointer;
     transition: background 0.15s, border-color 0.15s;
 }
 
 .league-detail-btn:hover {
     background: var(--bg-tertiary);
-    border-color: var(--text-muted);
+    border-color: var(--muted);
 }
 
 .league-detail-btn-share {
-    background: var(--bg-secondary);
+    background: var(--secondary);
 }
 
 .league-detail-btn-create {
@@ -7149,8 +7127,8 @@ playing-card.card-wild-highlight {
     right: 0;
     z-index: 100;
     min-width: 200px;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
+    background: var(--secondary);
+    border: 1px solid var(--border);
     border-radius: 10px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
     padding: 0.35rem 0;
@@ -7165,7 +7143,7 @@ playing-card.card-wild-highlight {
     padding: 0.55rem 1rem;
     font-size: 0.85rem;
     font-weight: 500;
-    color: var(--text-primary);
+    color: var(--foreground);
     background: transparent;
     border: none;
     cursor: pointer;
@@ -7180,7 +7158,7 @@ playing-card.card-wild-highlight {
 .league-detail-create-dropdown-item i {
     width: 1.1rem;
     text-align: center;
-    color: var(--text-secondary);
+    color: var(--secondary-foreground);
 }
 
 .league-detail-btn-refresh {
@@ -7222,13 +7200,13 @@ playing-card.card-wild-highlight {
     gap: 0.75rem;
     padding: 2.5rem 1.5rem;
     justify-content: center;
-    color: var(--text-secondary);
+    color: var(--secondary-foreground);
     font-size: 0.95rem;
 }
 
 .league-detail-awaiting {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
+    background: var(--secondary);
+    border: 1px solid var(--border);
     border-radius: 12px;
     padding: 1.5rem;
 }
@@ -7243,8 +7221,8 @@ playing-card.card-wild-highlight {
 
 /* ── Cards ── */
 .league-detail-card {
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
+    background: var(--background);
+    border: 1px solid var(--border);
     border-radius: 12px;
     padding: 1.25rem;
 }
@@ -7262,7 +7240,7 @@ playing-card.card-wild-highlight {
     margin: 0;
     font-size: 1rem;
     font-weight: 700;
-    color: var(--text-primary);
+    color: var(--foreground);
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -7316,7 +7294,7 @@ playing-card.card-wild-highlight {
 
 .season-detail-day-kicker,
 .season-detail-calendar-summary {
-    color: var(--text-muted);
+    color: var(--muted);
     font-size: 0.85rem;
 }
 
@@ -7326,7 +7304,7 @@ playing-card.card-wild-highlight {
 }
 
 .league-detail-empty {
-    color: var(--text-muted);
+    color: var(--muted);
     font-size: 0.85rem;
     text-align: center;
     padding: 1.5rem 0;
@@ -7366,8 +7344,8 @@ playing-card.card-wild-highlight {
     align-items: center;
     padding: 0.75rem 1rem;
     border-radius: 10px;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.06));
+    background: var(--secondary);
+    border: 1px solid var(--border, rgba(255, 255, 255, 0.06));
     border-left: 3px solid var(--primary);
     transition: border-color 0.15s, box-shadow 0.15s;
     cursor: pointer;
@@ -7390,12 +7368,12 @@ playing-card.card-wild-highlight {
 .league-detail-event-name {
     font-weight: 600;
     font-size: 0.85rem;
-    color: var(--text-primary);
+    color: var(--foreground);
 }
 
 .league-detail-event-date {
     font-size: 0.75rem;
-    color: var(--text-muted);
+    color: var(--muted);
 }
 
 .league-detail-event-status {
@@ -7406,7 +7384,7 @@ playing-card.card-wild-highlight {
     padding: 0.15rem 0.6rem;
     border-radius: 999px;
     background: var(--bg-tertiary);
-    color: var(--text-secondary);
+    color: var(--secondary-foreground);
     flex-shrink: 0;
 }
 
@@ -7435,7 +7413,7 @@ playing-card.card-wild-highlight {
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: var(--text-muted);
+    color: var(--muted);
     padding: 0.25rem 0.25rem 0;
 }
 
@@ -7499,8 +7477,8 @@ playing-card.card-wild-highlight {
     gap: 0.6rem;
     padding: 0.75rem 1rem;
     border-radius: 10px;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.06));
+    background: var(--secondary);
+    border: 1px solid var(--border, rgba(255, 255, 255, 0.06));
     border-left: 3px solid var(--primary);
     transition: border-color 0.15s, box-shadow 0.15s;
 }
@@ -7550,7 +7528,7 @@ playing-card.card-wild-highlight {
 .league-detail-active-game-name {
     font-weight: 700;
     font-size: 0.95rem;
-    color: var(--text-primary);
+    color: var(--foreground);
 }
 
 .league-detail-active-game-meta {
@@ -7566,7 +7544,7 @@ playing-card.card-wild-highlight {
     gap: 0.3rem;
     font-size: 0.75rem;
     font-weight: 500;
-    color: var(--text-secondary);
+    color: var(--secondary-foreground);
     background: var(--bg-tertiary);
     padding: 0.15rem 0.5rem;
     border-radius: 999px;
@@ -7588,7 +7566,7 @@ playing-card.card-wild-highlight {
     align-items: center;
     gap: 0.35rem;
     font-size: 0.78rem;
-    color: var(--text-muted);
+    color: var(--muted);
 }
 
 .league-detail-active-game-detail i {
@@ -7648,12 +7626,12 @@ playing-card.card-wild-highlight {
     gap: 0.75rem 1rem;
     margin-top: 0.75rem;
     padding-top: 0.75rem;
-    border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.06));
+    border-top: 1px solid var(--border, rgba(255, 255, 255, 0.06));
 }
 
 .league-detail-active-games-meta {
     font-size: 0.8rem;
-    color: var(--text-muted);
+    color: var(--muted);
 }
 
 .league-detail-active-games-pager {
@@ -7671,7 +7649,7 @@ playing-card.card-wild-highlight {
 .league-detail-active-games-pager-status {
     font-size: 0.8rem;
     font-weight: 600;
-    color: var(--text-secondary);
+    color: var(--secondary-foreground);
     white-space: nowrap;
 }
 
@@ -7715,7 +7693,7 @@ playing-card.card-wild-highlight {
 .league-detail-season-row {
     cursor: pointer;
     transition: border-color 0.15s, box-shadow 0.15s;
-    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.06));
+    border: 1px solid var(--border, rgba(255, 255, 255, 0.06));
     border-left: 3px solid var(--primary);
 }
 
@@ -7728,7 +7706,7 @@ playing-card.card-wild-highlight {
     display: inline-flex;
     align-items: center;
     gap: 0.45rem;
-    color: var(--text-muted);
+    color: var(--muted);
     font-size: 0.8rem;
     font-weight: 600;
     margin-left: auto;
@@ -7820,7 +7798,7 @@ playing-card.card-wild-highlight {
     font-weight: 700;
     font-size: 0.75rem;
     background: var(--bg-tertiary);
-    color: var(--text-secondary);
+    color: var(--secondary-foreground);
     flex-shrink: 0;
 }
 
@@ -7862,7 +7840,7 @@ playing-card.card-wild-highlight {
 .league-detail-leader-name {
     font-weight: 600;
     font-size: 0.85rem;
-    color: var(--text-primary);
+    color: var(--foreground);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -7870,7 +7848,7 @@ playing-card.card-wild-highlight {
 
 .league-detail-leader-points {
     font-size: 0.75rem;
-    color: var(--text-muted);
+    color: var(--muted);
 }
 
 /* ── My Progress Card ── */
@@ -7892,12 +7870,12 @@ playing-card.card-wild-highlight {
 .league-detail-progress-stat-value {
     font-size: 1.15rem;
     font-weight: 700;
-    color: var(--text-primary);
+    color: var(--foreground);
 }
 
 .league-detail-progress-stat-label {
     font-size: 0.7rem;
-    color: var(--text-muted);
+    color: var(--muted);
     text-transform: uppercase;
     letter-spacing: 0.04em;
 }
@@ -7906,16 +7884,16 @@ playing-card.card-wild-highlight {
 .league-detail-season-select {
     padding: 0.35rem 0.75rem;
     border-radius: 8px;
-    border: 1px solid var(--border-color);
-    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    background: var(--secondary);
     font-size: 0.8rem;
-    color: var(--text-primary);
+    color: var(--foreground);
     cursor: pointer;
 }
 
 .league-detail-season-scope {
     font-size: 0.8rem;
-    color: var(--text-muted);
+    color: var(--muted);
     font-weight: 600;
     margin-bottom: 0.25rem;
 }
@@ -7925,7 +7903,7 @@ playing-card.card-wild-highlight {
     display: flex;
     flex-direction: column;
     gap: 0;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     border-radius: 10px;
     overflow: hidden;
 }
@@ -7938,9 +7916,9 @@ playing-card.card-wild-highlight {
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: var(--text-muted);
-    background: var(--bg-secondary);
-    border-bottom: 1px solid var(--border-color);
+    color: var(--muted);
+    background: var(--secondary);
+    border-bottom: 1px solid var(--border);
 }
 
 .league-detail-results-row {
@@ -7949,7 +7927,7 @@ playing-card.card-wild-highlight {
     padding: 0.6rem 0.75rem;
     font-size: 0.85rem;
     align-items: center;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border);
 }
 
 .league-detail-results-row:last-child {
@@ -7958,12 +7936,12 @@ playing-card.card-wild-highlight {
 
 .league-detail-results-name {
     font-weight: 600;
-    color: var(--text-primary);
+    color: var(--foreground);
 }
 
 .league-detail-results-date {
     font-size: 0.8rem;
-    color: var(--text-muted);
+    color: var(--muted);
 }
 
 .league-detail-results-actions {
@@ -7977,7 +7955,7 @@ playing-card.card-wild-highlight {
     display: flex;
     flex-direction: column;
     gap: 0;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
     border-radius: 10px;
     overflow: hidden;
 }
@@ -7990,9 +7968,9 @@ playing-card.card-wild-highlight {
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: var(--text-muted);
-    background: var(--bg-secondary);
-    border-bottom: 1px solid var(--border-color);
+    color: var(--muted);
+    background: var(--secondary);
+    border-bottom: 1px solid var(--border);
 }
 
 .league-detail-standings-row {
@@ -8001,7 +7979,7 @@ playing-card.card-wild-highlight {
     padding: 0.6rem 0.75rem;
     font-size: 0.85rem;
     align-items: center;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border);
 }
 
 .league-detail-standings-row:last-child {
@@ -8019,7 +7997,7 @@ playing-card.card-wild-highlight {
 
 .league-detail-standings-rank {
     font-weight: 700;
-    color: var(--text-primary);
+    color: var(--foreground);
 }
 
 .league-detail-standings-player {
@@ -8027,7 +8005,7 @@ playing-card.card-wild-highlight {
     align-items: center;
     gap: 0.3rem;
     font-weight: 600;
-    color: var(--text-primary);
+    color: var(--foreground);
 }
 
 .league-detail-standings-pts {
@@ -8039,7 +8017,7 @@ playing-card.card-wild-highlight {
     display: flex;
     align-items: flex-start;
     gap: 0.75rem;
-    background: var(--bg-secondary);
+    background: var(--secondary);
 }
 
 .league-detail-rules-icon {
@@ -8053,7 +8031,7 @@ playing-card.card-wild-highlight {
     margin: 0.3rem 0 0;
     padding-left: 1.1rem;
     font-size: 0.8rem;
-    color: var(--text-secondary);
+    color: var(--secondary-foreground);
     line-height: 1.8;
 }
 
@@ -8070,9 +8048,9 @@ playing-card.card-wild-highlight {
     gap: 0.35rem;
     padding: 0.5rem 1rem;
     border-radius: 8px;
-    border: 1px solid var(--border-color);
-    background: var(--bg-secondary);
-    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    background: var(--secondary);
+    color: var(--secondary-foreground);
     font-size: 0.8rem;
     font-weight: 600;
     cursor: pointer;
@@ -8101,8 +8079,8 @@ playing-card.card-wild-highlight {
 }
 
 .league-detail-member-card {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.06));
+    background: var(--secondary);
+    border: 1px solid var(--border, rgba(255, 255, 255, 0.06));
     border-left: 3px solid var(--primary);
     border-radius: 10px;
     padding: 0.75rem 1rem;
@@ -8146,7 +8124,7 @@ playing-card.card-wild-highlight {
 .league-detail-member-name {
     font-weight: 600;
     font-size: 0.85rem;
-    color: var(--text-primary);
+    color: var(--foreground);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -8162,7 +8140,7 @@ playing-card.card-wild-highlight {
 
 .league-detail-member-joined {
     font-size: 0.7rem;
-    color: var(--text-muted);
+    color: var(--muted);
 }
 
 .league-detail-member-card-actions {
@@ -8189,14 +8167,14 @@ playing-card.card-wild-highlight {
     width: 30px;
     height: 30px;
     border-radius: 50%;
-    background: var(--bg-secondary);
+    background: var(--secondary);
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--text-muted);
+    color: var(--muted);
     font-size: 0.75rem;
     flex-shrink: 0;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border);
 }
 
 .league-detail-history-content {
@@ -8209,17 +8187,17 @@ playing-card.card-wild-highlight {
 .league-detail-history-user {
     font-weight: 600;
     font-size: 0.85rem;
-    color: var(--text-primary);
+    color: var(--foreground);
 }
 
 .league-detail-history-event {
     font-size: 0.8rem;
-    color: var(--text-secondary);
+    color: var(--secondary-foreground);
 }
 
 .league-detail-history-time {
     font-size: 0.7rem;
-    color: var(--text-muted);
+    color: var(--muted);
     display: flex;
     align-items: center;
     gap: 0.3rem;
@@ -8233,7 +8211,7 @@ playing-card.card-wild-highlight {
 .league-detail-sub-header {
     font-size: 0.85rem;
     font-weight: 700;
-    color: var(--text-primary);
+    color: var(--foreground);
     margin: 0.5rem 0;
 }
 
@@ -8249,8 +8227,8 @@ playing-card.card-wild-highlight {
     justify-content: space-between;
     align-items: center;
     padding: 0.75rem 1rem;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.06));
+    background: var(--secondary);
+    border: 1px solid var(--border, rgba(255, 255, 255, 0.06));
     border-left: 3px solid var(--primary);
     border-radius: 10px;
     transition: border-color 0.15s, box-shadow 0.15s;
@@ -8268,12 +8246,12 @@ playing-card.card-wild-highlight {
     flex-direction: column;
     gap: 0.1rem;
     font-size: 0.8rem;
-    color: var(--text-secondary);
+    color: var(--secondary-foreground);
 }
 
 .league-detail-invite-code {
     font-size: 0.75rem;
-    color: var(--text-muted);
+    color: var(--muted);
 }
 
 .league-detail-invite-actions {

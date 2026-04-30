@@ -23,7 +23,7 @@
 }
 
 #components-reconnect-modal {
-    background-color: var(--card-bg, #ffffff);
+    background-color: var(--card, #ffffff);
     color: var(--text-primary, #1a1a1a);
     width: 38rem;
     max-width: 90vw;
@@ -118,13 +118,13 @@
 
 .reconnect-status-text {
     font-size: 0.95rem;
-    color: var(--text-secondary, #4a4a4a);
+    color: var(--secondary-foreground, #4a4a4a);
     line-height: 1.5;
 }
 
 .reconnect-attempt-info {
     font-size: 0.8rem;
-    color: var(--text-muted, #6a6a6a);
+    color: var(--muted, #6a6a6a);
     margin-top: 0.25rem;
 }
 

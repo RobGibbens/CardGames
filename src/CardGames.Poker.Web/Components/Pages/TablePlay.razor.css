@@ -65,18 +65,18 @@
 /* Join buy-in overlay theme handling (scoped to TablePlay) */
 .confirm-dialog-overlay {
     --join-overlay-backdrop: var(--confirm-overlay-backdrop, rgba(15, 23, 42, 0.5));
-    --join-overlay-surface: var(--confirm-overlay-surface, var(--card-bg, #ffffff));
-    --join-overlay-surface-border: var(--confirm-overlay-surface-border, var(--border-color, rgba(15, 23, 42, 0.12)));
+    --join-overlay-surface: var(--confirm-overlay-surface, var(--card, #ffffff));
+    --join-overlay-surface-border: var(--confirm-overlay-surface-border, var(--border, rgba(15, 23, 42, 0.12)));
     --join-overlay-text-primary: var(--confirm-overlay-text-primary, var(--text-primary, #111827));
-    --join-overlay-text-secondary: var(--confirm-overlay-text-secondary, var(--text-secondary, #4b5563));
+    --join-overlay-text-secondary: var(--confirm-overlay-text-secondary, var(--secondary-foreground, #4b5563));
     --join-overlay-secondary-bg: var(--confirm-overlay-secondary-bg, var(--bg-tertiary, #f3f4f6));
-    --join-overlay-secondary-border: var(--confirm-overlay-secondary-border, var(--border-color, #d1d5db));
+    --join-overlay-secondary-border: var(--confirm-overlay-secondary-border, var(--border, #d1d5db));
     --join-overlay-secondary-text: var(--confirm-overlay-secondary-text, var(--text-primary, #111827));
     --join-overlay-primary-bg: var(--confirm-overlay-primary-bg, var(--primary, #dc2626));
     --join-overlay-primary-border: var(--confirm-overlay-primary-border, var(--primary, #dc2626));
     --join-overlay-primary-text: var(--confirm-overlay-primary-text, #ffffff);
     --join-overlay-input-bg: var(--bg-tertiary, #f9fafb);
-    --join-overlay-input-border: var(--border-color, #d1d5db);
+    --join-overlay-input-border: var(--border, #d1d5db);
     --join-overlay-media-filter: var(--confirm-overlay-media-filter, none);
     background-color: var(--join-overlay-backdrop);
 }

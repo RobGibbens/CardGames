@@ -24,10 +24,6 @@
 	<div class="create-table-container">
 		<!-- Page Header -->
 		<div class="create-table-header">
-			<a href="/lobby" class="back-link">
-				<i class="fa-regular fa-arrow-left"></i>
-				Back to Lobby
-			</a>
 			<div class="create-table-header-content">
 				<h1 class="create-table-title">
 					<i class="fa-regular fa-plus"></i>
@@ -68,30 +64,27 @@
 					@if (_selectedVariant is null)
 					{
 						<div class="form-row variant-search-row">
-							<div class="form-group">
-								<label class="form-label" for="variantSearch">Search Variants</label>
-								<input type="text"
-									   id="variantSearch"
-									   class="form-input"
-									   placeholder="Search by game name"
-									   @bind="_variantSearch"
-									   @bind:event="oninput" />
-							</div>
+							<BbField>
+								<BbFieldLabel>Search Variants</BbFieldLabel>
+								<BbFieldContent>
+									<BbInput id="variantSearch" Type="InputType.Text" Placeholder="Search by game name"
+											 @bind="_variantSearch" @bind:event="oninput" />
+								</BbFieldContent>
+							</BbField>
+
 							<BbButtonGroup>
-								<BbButton Variant="@(_variantViewMode == "grid" ? ButtonVariant.Secondary : ButtonVariant.Outline)"
-										  Size="ButtonSize.Icon"
-										  Class='@($"{(_variantViewMode == "grid" ? "active" : string.Empty)}")'
-										  OnClick='@(() => SetVariantViewModeAsync("grid"))'
-										  AriaLabel="Grid view"
-										  title="Grid View">
+								<BbButton
+									Variant="@(_variantViewMode == "grid" ? ButtonVariant.Secondary : ButtonVariant.Outline)"
+									Size="ButtonSize.Icon"
+									Class='@($"{(_variantViewMode == "grid" ? "active" : string.Empty)}")'
+									OnClick='@(() => SetVariantViewModeAsync("grid"))' AriaLabel="Grid view" title="Grid View">
 									<i class="fa-solid fa-th-large"></i>
 								</BbButton>
-								<BbButton Variant="@(_variantViewMode == "list" ? ButtonVariant.Secondary : ButtonVariant.Outline)"
-										  Size="ButtonSize.Icon"
-										  Class='@($"btn-view-toggle {(_variantViewMode == "list" ? "active" : string.Empty)}")'
-										  OnClick='@(() => SetVariantViewModeAsync("list"))'
-										  AriaLabel="List view"
-										  title="List View">
+								<BbButton
+									Variant="@(_variantViewMode == "list" ? ButtonVariant.Secondary : ButtonVariant.Outline)"
+									Size="ButtonSize.Icon"
+									Class='@($"btn-view-toggle {(_variantViewMode == "list" ? "active" : string.Empty)}")'
+									OnClick='@(() => SetVariantViewModeAsync("list"))' AriaLabel="List view" title="List View">
 									<i class="fa-solid fa-list"></i>
 								</BbButton>
 							</BbButtonGroup>
@@ -114,18 +107,16 @@
 								}
 								@if (_variantViewMode == "grid" || _selectedVariant is not null)
 								{
+									<!-- GRID/IMAGE VIEW -->
 									<div class="variants-grid @(_selectedVariant is not null ? "has-selection" : "")">
 										@foreach (var game in FavoriteVariantGroup.Cards)
 										{
 											var isAvailable = IsVariantAvailable(game.Code);
 											<div class="variant-card @GetVariantCardClasses(game) @(!isAvailable ? "disabled" : "")"
-												 data-variant-code="@game.Code"
-												 @onclick="() => SelectVariantAsync(game, isAvailable)">
-												<button class="@GetFavoriteButtonClasses(game.Code)"
-														type="button"
+												 data-variant-code="@game.Code" @onclick="() => SelectVariantAsync(game, isAvailable)">
+												<button class="@GetFavoriteButtonClasses(game.Code)" type="button"
 														aria-label="@GetFavoriteButtonLabel(game)"
-														aria-pressed="@IsFavoriteVariant(game.Code)"
-														title="@GetFavoriteButtonLabel(game)"
+														aria-pressed="@IsFavoriteVariant(game.Code)" title="@GetFavoriteButtonLabel(game)"
 														disabled="@(!CanManageFavoriteVariants)"
 														@onclick="() => ToggleFavoriteVariantAsync(game.Code)"
 														@onclick:stopPropagation="true">
@@ -134,11 +125,13 @@
 												<div class="variant-icon">
 													@if (!string.IsNullOrEmpty(game.ImageName))
 													{
-														<img src="/images/games/@(game.ImageName)" alt="@game.Name" class="variant-icon-image" />
+														<img src="/images/games/@(game.ImageName)" alt="@game.Name"
+															 class="variant-icon-image" />
 													}
 													else if (game.Code == DealersChoiceCode)
 													{
-														<img src="/images/games/dealerschoice.png" alt="@game.Name" class="variant-icon-image" />
+														<img src="/images/games/dealerschoice.png" alt="@game.Name"
+															 class="variant-icon-image" />
 													}
 													else
 													{
@@ -161,7 +154,7 @@
 												}
 												@if (_selectedVariant?.Code == game.Code)
 												{
-													<span class="variant-selected-indicator"><i class="fa-thin fa-check"></i></span>
+													<span class="variant-selected-indicator"><i class="fa-solid fa-check"></i></span>
 												}
 											</div>
 										}
@@ -169,13 +162,13 @@
 								}
 								else
 								{
+									<!-- LIST VIEW -->
 									<div class="variants-list">
 										@foreach (var game in FavoriteVariantGroup.Cards)
 										{
 											var isAvailable = IsVariantAvailable(game.Code);
 											<div class="variant-list-row @(!isAvailable ? "disabled" : "") @(_selectedVariant?.Code == game.Code ? "selected" : "")"
-												 data-variant-code="@game.Code"
-												 @onclick="() => SelectVariantAsync(game, isAvailable)">
+												 data-variant-code="@game.Code" @onclick="() => SelectVariantAsync(game, isAvailable)">
 												<div class="variant-list-row-icon">
 													@if (!string.IsNullOrEmpty(game.ImageName))
 													{
@@ -200,11 +193,9 @@
 														@game.MinimumNumberOfPlayers-@game.MaximumNumberOfPlayers
 													</span>
 													<button class="@GetFavoriteButtonClasses(game.Code, isListButton: true)"
-															type="button"
-															aria-label="@GetFavoriteButtonLabel(game)"
+															type="button" aria-label="@GetFavoriteButtonLabel(game)"
 															aria-pressed="@IsFavoriteVariant(game.Code)"
-															title="@GetFavoriteButtonLabel(game)"
-															disabled="@(!CanManageFavoriteVariants)"
+															title="@GetFavoriteButtonLabel(game)" disabled="@(!CanManageFavoriteVariants)"
 															@onclick="() => ToggleFavoriteVariantAsync(game.Code)"
 															@onclick:stopPropagation="true">
 														<i class="@GetFavoriteButtonIconClasses(game.Code)"></i>
@@ -239,13 +230,10 @@
 										{
 											var isAvailable = IsVariantAvailable(game.Code);
 											<div class="variant-card @GetVariantCardClasses(game) @(!isAvailable ? "disabled" : "")"
-												 data-variant-code="@game.Code"
-												 @onclick="() => SelectVariantAsync(game, isAvailable)">
-												<button class="@GetFavoriteButtonClasses(game.Code)"
-														type="button"
+												 data-variant-code="@game.Code" @onclick="() => SelectVariantAsync(game, isAvailable)">
+												<button class="@GetFavoriteButtonClasses(game.Code)" type="button"
 														aria-label="@GetFavoriteButtonLabel(game)"
-														aria-pressed="@IsFavoriteVariant(game.Code)"
-														title="@GetFavoriteButtonLabel(game)"
+														aria-pressed="@IsFavoriteVariant(game.Code)" title="@GetFavoriteButtonLabel(game)"
 														disabled="@(!CanManageFavoriteVariants)"
 														@onclick="() => ToggleFavoriteVariantAsync(game.Code)"
 														@onclick:stopPropagation="true">
@@ -254,11 +242,13 @@
 												<div class="variant-icon">
 													@if (!string.IsNullOrEmpty(game.ImageName))
 													{
-														<img src="/images/games/@(game.ImageName)" alt="@game.Name" class="variant-icon-image" />
+														<img src="/images/games/@(game.ImageName)" alt="@game.Name"
+															 class="variant-icon-image" />
 													}
 													else if (game.Code == DealersChoiceCode)
 													{
-														<img src="/images/games/dealerschoice.png" alt="@game.Name" class="variant-icon-image" />
+														<img src="/images/games/dealerschoice.png" alt="@game.Name"
+															 class="variant-icon-image" />
 													}
 													else
 													{
@@ -294,8 +284,7 @@
 										{
 											var isAvailable = IsVariantAvailable(game.Code);
 											<div class="variant-list-row @(!isAvailable ? "disabled" : "") @(_selectedVariant?.Code == game.Code ? "selected" : "")"
-												 data-variant-code="@game.Code"
-												 @onclick="() => SelectVariantAsync(game, isAvailable)">
+												 data-variant-code="@game.Code" @onclick="() => SelectVariantAsync(game, isAvailable)">
 												<div class="variant-list-row-icon">
 													@if (!string.IsNullOrEmpty(game.ImageName))
 													{
@@ -320,11 +309,9 @@
 														@game.MinimumNumberOfPlayers-@game.MaximumNumberOfPlayers
 													</span>
 													<button class="@GetFavoriteButtonClasses(game.Code, isListButton: true)"
-															type="button"
-															aria-label="@GetFavoriteButtonLabel(game)"
+															type="button" aria-label="@GetFavoriteButtonLabel(game)"
 															aria-pressed="@IsFavoriteVariant(game.Code)"
-															title="@GetFavoriteButtonLabel(game)"
-															disabled="@(!CanManageFavoriteVariants)"
+															title="@GetFavoriteButtonLabel(game)" disabled="@(!CanManageFavoriteVariants)"
 															@onclick="() => ToggleFavoriteVariantAsync(game.Code)"
 															@onclick:stopPropagation="true">
 														<i class="@GetFavoriteButtonIconClasses(game.Code)"></i>
@@ -357,20 +344,19 @@
 						<div class="settings-form">
 							<div class="form-row">
 								<div class="form-group">
-									<label class="form-label" for="tableName">Table Name</label>
+									
 									<div class="table-name-input-row">
-										<input type="text"
-											   id="tableName"
-											   class="form-input"
-											   placeholder="e.g., Dealer's Choice Poker"
-											   value="@_tableNameInput"
-											   @oninput="OnTableNameInput"
-											   maxlength="50" />
-										<button class="table-name-generate-button"
-												type="button"
-												title="Generate table name"
-												aria-label="Generate table name"
-												@onclick="GenerateTableNameAsync"
+										<BbField>
+											<BbFieldLabel>Table Name</BbFieldLabel>
+											<BbFieldContent>
+												<BbInput id="tableName" Type="InputType.Text"
+														 Placeholder="e.g., Dealer's Choice Poker" @bind="_tableNameInput"
+														 @oninput="OnTableNameInput" maxlength="50" />
+											</BbFieldContent>
+										</BbField>
+
+										<button class="table-name-generate-button" type="button" title="Generate table name"
+												aria-label="Generate table name" @onclick="GenerateTableNameAsync"
 												disabled="@(_isGeneratingTableName || _selectedVariant is null)">
 											@if (_isGeneratingTableName)
 											{
@@ -392,24 +378,15 @@
 									<div class="form-row two-columns">
 										<div class="form-group">
 											<label class="form-label" for="smallBlind">Small Blind</label>
-											<input type="number"
-												   id="smallBlind"
-												   class="form-input"
-												   min="1"
-												   max="50000"
-												   value="@_smallBlindInput"
-												   @oninput="OnSmallBlindInput" />
+											<input type="number" id="smallBlind" class="form-input" min="1" max="50000"
+												   value="@_smallBlindInput" @oninput="OnSmallBlindInput" />
 											<span class="form-hint">Small blind amount</span>
 										</div>
 										<div class="form-group">
 											<label class="form-label" for="bigBlind">Big Blind</label>
-											<input type="number"
-												   id="bigBlind"
-												   class="form-input @(ShowBigBlindError ? "input-error" : "")"
-												   min="1"
-												   max="100000"
-												   value="@_bigBlindInput"
-												   @oninput="OnBigBlindInput" />
+											<input type="number" id="bigBlind"
+												   class="form-input @(ShowBigBlindError ? "input-error" : "")" min="1" max="100000"
+												   value="@_bigBlindInput" @oninput="OnBigBlindInput" />
 											@if (ShowBigBlindError)
 											{
 												<span class="form-hint form-hint-error">Big blind must be greater than small blind.</span>
@@ -425,685 +402,671 @@
 								{
 									<div class="form-row @(ShowMinimumBetInput ? "two-columns" : string.Empty)">
 										<div class="form-group">
-											<label class="form-label" for="ante">@(IsScrewYourNeighbor ? "Chip stack amount" : "Ante")</label>
-											<input type="number"
-												   id="ante"
-												   class="form-input"
-												   min="1"
-												   max="100"
-												   value="@_anteInput"
-												   @oninput="OnAnteInput" />
-											<span class="form-hint">@(IsScrewYourNeighbor ? "Chips per stack (3 stacks)" : "Mandatory bet before each hand")</span>
-										</div>
-										@if (ShowMinimumBetInput)
-										{
-											<div class="form-group">
-												<label class="form-label" for="minBet">Minimum Bet</label>
-												<input type="number"
-													   id="minBet"
-													   class="form-input"
-													   min="1"
-													   max="1000"
-													   value="@_minBetInput"
-													   @oninput="OnMinimumBetInput" />
-												<span class="form-hint">Minimum bet during play</span>
+											<label class="form-label" for="ante">@(IsScrewYourNeighbor ? "Chip stack amount" :
+																				"Ante")</label>
+												<input type="number" id="ante" class="form-input" min="1" max="100" value="@_anteInput"
+													   @oninput="OnAnteInput" />
+												<span class="form-hint">@(IsScrewYourNeighbor ? "Chips per stack (3 stacks)" : "Mandatory bet before each hand")</span>
 											</div>
-										}
-									</div>
-								}
-							}
-							else
-							{
-								<div class="form-row">
-									<div class="form-group">
-										<span class="form-hint"><i class="fa-regular fa-info-circle"></i> The dealer will set the ante and minimum bet each hand.</span>
-									</div>
-								</div>
-								<div class="form-row">
-									<div class="form-group">
-										<label class="form-label">Allowed Dealer's Choice Variants</label>
-										<span class="form-hint">Choose which game variants the dealer may select at this table. At least one variant must remain enabled.</span>
-										<div class="create-table-dealers-choice-selection-groups">
-											@foreach (var group in DealerChoiceAllowedVariantGroups)
+											@if (ShowMinimumBetInput)
 											{
-												if (group.Cards.Count == 0)
-												{
-													continue;
-												}
-
-												<section class="create-table-dealers-choice-selection-group">
-													<h3 class="create-table-dealers-choice-selection-group-title">@group.Title</h3>
-													<div class="create-table-dealers-choice-selection-list">
-														@foreach (var game in group.Cards)
-														{
-															var isAllowed = IsDealerChoiceGameAllowed(game.Code);
-															<div class="create-table-dc-variant @(!isAllowed ? "dc-variant-off" : string.Empty)">
-																<div class="create-table-dc-variant-icon">
-																	@if (!string.IsNullOrEmpty(game.ImageName))
-																	{
-																		<img src="/images/games/@(game.ImageName)" alt="@game.Name" />
-																	}
-																	else
-																	{
-																		<span class="create-table-dc-variant-icon-fallback"><i class="fa-thin fa-card-club"></i></span>
-																	}
-																</div>
-																<span class="create-table-dc-variant-name">@game.Name</span>
-																<span class="create-table-dc-variant-desc">@game.Description</span>
-																<span class="create-table-dc-variant-players">
-																	<i class="fa-regular fa-users"></i>
-																	@game.MinimumNumberOfPlayers-@game.MaximumNumberOfPlayers
-																</span>
-																<div class="create-table-dc-variant-toggle">
-																	<BbSwitch Checked="@isAllowed"
-																			  CheckedChanged="@(_ => ToggleAllowedDealerChoiceGame(game.Code))"
-																			  AriaLabel="@($"Toggle {game.Name}")" />
-																</div>
-															</div>
-														}
-													</div>
-												</section>
+												<div class="form-group">
+													<label class="form-label" for="minBet">Minimum Bet</label>
+													<input type="number" id="minBet" class="form-input" min="1" max="1000" value="@_minBetInput"
+														   @oninput="OnMinimumBetInput" />
+													<span class="form-hint">Minimum bet during play</span>
+												</div>
 											}
 										</div>
-									</div>
-								</div>
-							}
-
-							<div class="form-row">
-								<div class="form-group">
-									<label class="form-label" for="maxBuyIn">Max Buy-In</label>
-									<input type="number"
-										   id="maxBuyIn"
-										   class="form-input"
-										   min="@GetConfiguredMinimumBuyIn()"
-										   max="1000000"
-										   placeholder="No limit"
-										   value="@_maxBuyInInput"
-										   @oninput="OnMaxBuyInInput" />
-									<span class="form-hint">Optional. Leave blank for no limit. Minimum @GetConfiguredMinimumBuyIn().ToString("N0").</span>
-								</div>
-								<div class="form-group">
-									<label class="form-label" for="requiresJoinApproval">Host Approval</label>
-									<div class="create-table-odds-visibility-control">
-										<BbSwitch Checked="@_requiresJoinApproval"
-												  CheckedChanged="@(_ => ToggleJoinApproval())"
-												  Id="requiresJoinApproval"
-												  AriaLabel="Toggle host approval for joining" />
-										<span class="form-hint odds-visibility-hint">Require host approval before players can join this table</span>
-									</div>
-								</div>
-							</div>
-
-							@if (!IsScrewYourNeighbor && !IsInBetween)
-							{
-								<div class="form-row">
-									<div class="form-group">
-										<label class="form-label" for="areOddsVisibleToAllPlayers">Odds Visibility</label>
-										<div class="create-table-odds-visibility-control">
-											<BbSwitch Checked="@_areOddsVisibleToAllPlayers"
-													  CheckedChanged="@(_ => ToggleOddsVisibility())"
-													  Id="areOddsVisibleToAllPlayers"
-													  AriaLabel="Toggle odds visibility for everyone" />
-											<span class="form-hint odds-visibility-hint">Allow all players to see hand-odds in the dashboard</span>
+									}
+								}
+							else
+								{
+									<div class="form-row">
+										<div class="form-group">
+											<span class="form-hint"><i class="fa-regular fa-info-circle"></i> The dealer will set the
+												ante and minimum bet each hand.</span>
+											</div>
 										</div>
-									</div>
+										<div class="form-row">
+											<div class="form-group">
+												<label class="form-label">Allowed Dealer's Choice Variants</label>
+												<span class="form-hint">Choose which game variants the dealer may select at this table. At
+													least one variant must remain enabled.</span>
+													<div class="create-table-dealers-choice-selection-groups">
+														@foreach (var group in DealerChoiceAllowedVariantGroups)
+														{
+															if (group.Cards.Count == 0)
+															{
+																continue;
+															}
+
+															<section class="create-table-dealers-choice-selection-group">
+																<h3 class="create-table-dealers-choice-selection-group-title">@group.Title</h3>
+																<div class="create-table-dealers-choice-selection-list">
+																	@foreach (var game in group.Cards)
+																	{
+																		var isAllowed = IsDealerChoiceGameAllowed(game.Code);
+																		<div
+																			class="create-table-dc-variant @(!isAllowed ? "dc-variant-off" : string.Empty)">
+																			<div class="create-table-dc-variant-icon">
+																				@if (!string.IsNullOrEmpty(game.ImageName))
+																				{
+																					<img src="/images/games/@(game.ImageName)" alt="@game.Name" />
+																				}
+																				else
+																				{
+																					<span class="create-table-dc-variant-icon-fallback"><i
+																						class="fa-thin fa-card-club"></i></span>
+																					}
+																				</div>
+																				<span class="create-table-dc-variant-name">@game.Name</span>
+																				<span class="create-table-dc-variant-desc">@game.Description</span>
+																				<span class="create-table-dc-variant-players">
+																					<i class="fa-regular fa-users"></i>
+																					@game.MinimumNumberOfPlayers-@game.MaximumNumberOfPlayers
+																				</span>
+																				<div class="create-table-dc-variant-toggle">
+																					<BbSwitch Checked="@isAllowed"
+																							  CheckedChanged="@(_ => ToggleAllowedDealerChoiceGame(game.Code))"
+																							  AriaLabel="@($"Toggle {game.Name}")" />
+																				</div>
+																			</div>
+																		}
+																	</div>
+																</section>
+															}
+														</div>
+													</div>
+												</div>
+											}
+
+											<div class="form-row">
+												<div class="form-group">
+
+													<!--TODO: Use configured min amount -->
+													<!-- 	bind-Value="_maxBuyInInput"
+									oninput="OnMaxBuyInInput"
+							-->
+													<BbFormFieldNumericInput TValue="int" @bind-Value="_maxBuyInInput" Label="Max Buy-In"
+																			 ShowButtons="true" Step="1" DecimalPlaces="0" Min="1"
+																			 HelperText="Optional. Leave blank for no limit." />
+
+												</div>
+												<div class="form-group">
+													
+													<BbFormFieldSwitch Label="Host Approval" @bind-Checked="_requiresJoinApproval"
+																	   HelperText="Require host approval before players can join this table."
+																	   AriaLabel="Toggle host approval for joining" />
+												</div>
+											</div>
+
+											@if (!IsScrewYourNeighbor && !IsInBetween)
+											{
+												<div class="form-row">
+													<div class="form-group">
+															<BbFormFieldSwitch Label="Odds Visibility" 
+																		@bind-Checked="_areOddsVisibleToAllPlayers"
+																	   HelperText="Allow all players to see hand-odds in the dashboard."
+																	   AriaLabel="Toggle odds visibility for everyone" />
+														</div>
+													</div>
+												}
+											</div>
+										</section>
+
+										<!-- Create Button -->
+										<div class="create-actions animate-fade-in-up animate-delay-2">
+											@if (_createError is not null)
+											{
+												<div class="create-error-message">
+													<i class="fa-regular fa-circle-exclamation"></i>
+													@_createError
+												</div>
+											}
+											@if
+																	(_isCreating)
+											{
+												<BbButton Variant="ButtonVariant.Default" OnClick="CreateTableAsync" Disabled="true">
+													<span class="loading-spinner-small"></span>
+													Creating...
+												</BbButton>
+											}
+											else
+											{
+												<BbButton Variant="ButtonVariant.Default" OnClick="CreateTableAsync" Disabled="@(!CanCreate)">
+													<i class="fa-regular fa-check"></i>
+													Create Table
+												</BbButton>
+											}
+											<p class="create-hint">After creating the table, go to Lobby and click Join to enter the game.</p>
+										</div>
+									}
 								</div>
 							}
 						</div>
-					</section>
+					</main>
 
-					<!-- Create Button -->
-					<div class="create-actions animate-fade-in-up animate-delay-2">
-						@if (_createError is not null)
-						{
-							<div class="create-error-message">
-								<i class="fa-regular fa-circle-exclamation"></i>
-								@_createError
-							</div>
+					<style>
+						.create-step .variant-card.selected-layout {
+							display: grid;
+							grid-column: 1 / -1;
+							width: 100%;
+							grid-template-columns: minmax(260px, 380px) minmax(0, 1fr);
+							align-items: stretch;
+							gap: 1rem;
+							transition: grid-template-columns 460ms ease, transform 460ms ease, opacity 460ms ease;
 						}
-						@if 
-						(_isCreating)
-						{
-							<BbButton Variant="ButtonVariant.Default" OnClick="CreateTableAsync" Disabled="true">
-								<span class="loading-spinner-small"></span>
-								Creating...
-							</BbButton>
+
+						.create-step .variants-grid.has-selection .variant-card {
+							transition: transform 460ms ease, opacity 460ms ease, max-height 460ms ease, margin 460ms ease, padding 460ms ease;
+							transform-origin: top center;
+							opacity: 1;
+							transform: translateY(0) scale(1);
+							max-height: 42rem;
+							will-change: transform, opacity, max-height;
 						}
-						else
-						{
-							<BbButton Variant="ButtonVariant.Default" OnClick="CreateTableAsync" Disabled="@(!CanCreate)">
-								<i class="fa-regular fa-check"></i>
-								Create Table
-							</BbButton>
+
+						.create-step .variants-grid.has-selection .variant-card.collapsing-out {
+							opacity: 0;
+							transform: scale(0.96) translateY(-6px);
+							pointer-events: none;
+							max-height: 0;
+							padding-top: 0;
+							padding-bottom: 0;
+							margin: 0;
+							overflow: hidden;
 						}
-						<p class="create-hint">After creating the table, go to Lobby and click Join to enter the game.</p>
-					</div>
-				}
-			</div>
-		}
-	</div>
-</main>
-
-<style>
-	.create-step .variant-card.selected-layout {
-		display: grid;
-		grid-column: 1 / -1;
-		width: 100%;
-		grid-template-columns: minmax(260px, 380px) minmax(0, 1fr);
-		align-items: stretch;
-		gap: 1rem;
-		transition: grid-template-columns 460ms ease, transform 460ms ease, opacity 460ms ease;
-	}
-
-	.create-step .variants-grid.has-selection .variant-card {
-		transition: transform 460ms ease, opacity 460ms ease, max-height 460ms ease, margin 460ms ease, padding 460ms ease;
-		transform-origin: top center;
-		opacity: 1;
-		transform: translateY(0) scale(1);
-		max-height: 42rem;
-		will-change: transform, opacity, max-height;
-	}
-
-		.create-step .variants-grid.has-selection .variant-card.collapsing-out {
-			opacity: 0;
-			transform: scale(0.96) translateY(-6px);
-			pointer-events: none;
-			max-height: 0;
-			padding-top: 0;
-			padding-bottom: 0;
-			margin: 0;
-			overflow: hidden;
-		}
-
-	.create-step .variant-group.selection-hidden {
-		display: none;
-	}
-
-	.create-step .variants-grid.has-selection .variant-card.collapsing-out {
-		display: none;
-	}
-
-	.create-step .variant-group.selected-group {
-		margin-top: 0.75rem;
-	}
-
-	.create-step .variant-card.selected-layout .variant-icon {
-		width: 100%;
-		margin: 0;
-		height: 100%;
-		min-height: 220px;
-	}
-
-	.create-step .variant-card.selected-layout .variant-icon-image,
-	.create-step .variant-card.selected-layout .variant-icon-fallback {
-		width: 100%;
-		height: 100%;
-		border-radius: 0.75rem;
-	}
-
-	.create-step .variant-card.selected-layout .variant-content {
-		display: flex;
-		flex-direction: column;
-		justify-content: center;
-		min-width: 0;
-	}
-
-		.create-step .variant-card.selected-layout .variant-content .variant-name {
-			margin-top: 0;
-			font-size: clamp(1.8rem, 2.6vw, 2.5rem);
-			line-height: 1.15;
-			margin-bottom: 0.75rem;
-		}
-
-	.create-table-favorites-message {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.5rem;
-		margin-top: 1rem;
-		padding: 0.75rem 1rem;
-		border-radius: 0.85rem;
-		border: 1px solid rgba(251, 191, 36, 0.3);
-		background: rgba(120, 53, 15, 0.16);
-		color: rgba(254, 240, 138, 0.96);
-	}
-
-	.variant-favorite-button {
-		position: absolute;
-		top: 0.75rem;
-		left: 0.75rem;
-		width: 2.25rem;
-		height: 2.25rem;
-		border: 1px solid rgba(15, 23, 42, 0.12);
-		border-radius: 999px;
-		background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(244, 246, 248, 0.94) 100%);
-		color: rgba(71, 85, 105, 0.96);
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8);
-		backdrop-filter: blur(8px);
-		transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
-		z-index: 1;
-	}
-
-		.variant-favorite-button:hover:not(:disabled) {
-			transform: translateY(-1px);
-			border-color: rgba(217, 119, 6, 0.28);
-			background: linear-gradient(180deg, rgba(255, 251, 235, 0.98) 0%, rgba(254, 243, 199, 0.92) 100%);
-			color: rgba(180, 83, 9, 0.98);
-			box-shadow: 0 14px 28px rgba(217, 119, 6, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.82);
-		}
-
-		.variant-favorite-button.active {
-			border-color: rgba(217, 119, 6, 0.34);
-			background: linear-gradient(180deg, rgba(255, 248, 220, 0.98) 0%, rgba(252, 211, 77, 0.68) 100%);
-			color: rgba(161, 98, 7, 1);
-			box-shadow: 0 14px 30px rgba(217, 119, 6, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.88);
-		}
-
-			.variant-favorite-button.active:hover:not(:disabled) {
-				border-color: rgba(180, 83, 9, 0.42);
-				background: linear-gradient(180deg, rgba(255, 250, 229, 1) 0%, rgba(250, 204, 21, 0.76) 100%);
-				color: rgba(146, 64, 14, 1);
-				box-shadow: 0 16px 32px rgba(180, 83, 9, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.92);
-			}
-
-		.variant-favorite-button:focus-visible {
-			outline: none;
-			box-shadow: 0 0 0 4px rgba(252, 211, 77, 0.24), 0 14px 30px rgba(15, 23, 42, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.88);
-		}
-
-		.variant-favorite-button:disabled {
-			opacity: 0.55;
-			cursor: not-allowed;
-			box-shadow: 0 8px 16px rgba(15, 23, 42, 0.05);
-		}
-
-	.variant-list-row-actions {
-		display: flex;
-		align-items: center;
-		gap: 0.75rem;
-		justify-self: end;
-	}
-
-	.variant-favorite-button.variant-list-button {
-		position: static;
-		width: 2rem;
-		height: 2rem;
-		flex-shrink: 0;
-	}
-
-	[data-theme="dark"] .variant-favorite-button {
-		border-color: rgba(148, 163, 184, 0.24);
-		background: linear-gradient(180deg, rgba(30, 41, 59, 0.96) 0%, rgba(15, 23, 42, 0.94) 100%);
-		color: rgba(226, 232, 240, 0.92);
-		box-shadow: 0 12px 24px rgba(2, 6, 23, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.06);
-	}
-
-		[data-theme="dark"] .variant-favorite-button:hover:not(:disabled) {
-			border-color: rgba(251, 191, 36, 0.36);
-			background: linear-gradient(180deg, rgba(69, 39, 12, 0.96) 0%, rgba(41, 24, 10, 0.94) 100%);
-			color: rgba(253, 230, 138, 0.98);
-			box-shadow: 0 14px 28px rgba(120, 53, 15, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-		}
-
-		[data-theme="dark"] .variant-favorite-button.active {
-			border-color: rgba(245, 158, 11, 0.42);
-			background: linear-gradient(180deg, rgba(120, 53, 15, 0.98) 0%, rgba(146, 64, 14, 0.94) 100%);
-			color: rgba(254, 240, 138, 1);
-			box-shadow: 0 16px 30px rgba(120, 53, 15, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-		}
-
-			[data-theme="dark"] .variant-favorite-button.active:hover:not(:disabled) {
-				border-color: rgba(252, 211, 77, 0.5);
-				background: linear-gradient(180deg, rgba(146, 64, 14, 1) 0%, rgba(180, 83, 9, 0.96) 100%);
-				color: rgba(254, 249, 195, 1);
-			}
-
-		[data-theme="dark"] .variant-favorite-button:focus-visible {
-			box-shadow: 0 0 0 4px rgba(250, 204, 21, 0.2), 0 16px 30px rgba(2, 6, 23, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-		}
-
-	.create-table-dealers-choice-selection-groups {
-		display: flex;
-		flex-direction: column;
-		gap: 1rem;
-		margin-top: 1rem;
-	}
-
-	.create-table-dealers-choice-selection-group {
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
-	}
-
-	.create-table-dealers-choice-selection-group-title {
-		margin: 0;
-		font-size: 1rem;
-		font-weight: 700;
-		color: var(--text-primary, #fff);
-	}
-
-	.create-table-dealers-choice-selection-list {
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
-	}
-
-	.create-table-dc-variant {
-		display: grid;
-		grid-template-columns: 60px minmax(0, 1fr) auto auto;
-		grid-template-rows: auto auto;
-		gap: 0.15rem 0.75rem;
-		align-items: center;
-		padding: 0.75rem 1rem;
-		background: var(--card-bg, var(--bg-secondary));
-		border: 1px solid var(--border-color, rgba(255, 255, 255, 0.06));
-		border-radius: 12px;
-		color: var(--text-primary, #fff);
-		transition: border-color 0.15s ease, opacity 0.15s ease;
-	}
-
-		.create-table-dc-variant:hover {
-			border-color: var(--primary);
-		}
-
-		.create-table-dc-variant.dc-variant-off {
-			opacity: 0.5;
-		}
-
-			.create-table-dc-variant.dc-variant-off:hover {
-				opacity: 0.7;
-			}
-
-	.create-table-dc-variant-icon {
-		grid-row: 1 / 3;
-		width: 60px;
-		height: 60px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		overflow: hidden;
-		border-radius: 8px;
-	}
-
-		.create-table-dc-variant-icon img {
-			width: 100%;
-			height: 100%;
-			object-fit: contain;
-			border-radius: 8px;
-		}
-
-	.create-table-dc-variant-icon-fallback {
-		font-size: 1.4rem;
-		line-height: 1;
-	}
-
-	.create-table-dc-variant-name {
-		grid-column: 2;
-		grid-row: 1;
-		font-size: 0.95rem;
-		font-weight: 700;
-		color: var(--text-primary, #fff);
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		align-self: end;
-	}
-
-	.create-table-dc-variant-desc {
-		grid-column: 2;
-		grid-row: 2;
-		font-size: 0.85rem;
-		color: var(--text-muted, #aaa);
-		line-height: 1.35;
-		align-self: start;
-	}
-
-	.create-table-dc-variant-players {
-		grid-column: 3;
-		grid-row: 1 / 3;
-		font-size: 0.8rem;
-		color: var(--text-muted, #aaa);
-		white-space: nowrap;
-		display: flex;
-		align-items: center;
-		gap: 0.3rem;
-	}
-
-	.create-table-dc-variant-toggle {
-		grid-column: 4;
-		grid-row: 1 / 3;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		padding-left: 0.5rem;
-	}
-
-		.create-table-dc-variant-toggle .game-info-odds-toggle-switch {
-			flex-shrink: 0;
-			min-width: 84px;
-		}
-
-	@@media (max-width: 768px) {
-		.create-table-dc-variant {
-			grid-template-columns: 40px minmax(0, 1fr) auto auto;
-			padding: 0.6rem 0.75rem;
-		}
-
-		.create-table-dc-variant-icon {
-			width: 40px;
-			height: 40px;
-		}
-	}
-
-	.table-name-input-row {
-		display: flex;
-		align-items: stretch;
-		gap: 0.75rem;
-	}
-
-		.table-name-input-row .form-input {
-			flex: 1 1 auto;
-			min-width: 0;
-		}
-
-	.table-name-generate-button {
-		flex: 0 0 auto;
-		width: 3rem;
-		min-width: 3rem;
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		border: 1px solid rgba(148, 163, 184, 0.28);
-		border-radius: 0.85rem;
-		background: rgba(15, 23, 42, 0.72);
-		color: rgba(248, 250, 252, 0.95);
-		transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
-	}
-
-		.table-name-generate-button:hover:not(:disabled) {
-			background: rgba(30, 41, 59, 0.9);
-			border-color: rgba(148, 163, 184, 0.45);
-			transform: translateY(-1px);
-		}
-
-		.table-name-generate-button:disabled {
-			opacity: 0.6;
-			cursor: not-allowed;
-		}
-
-	/* Variant search row layout */
-	.variant-search-row {
-		display: flex;
-		align-items: flex-end;
-		gap: 1rem;
-	}
-
-		.variant-search-row .form-group {
-			flex: 1 1 auto;
-			min-width: 0;
-		}
-
-		.variant-search-row .view-toggle-group {
-			display: flex;
-			gap: 0.5rem;
-			flex-shrink: 0;
-			padding-bottom: 0.15rem;
-		}
-
-	/* Variant list view */
-	.variants-list {
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
-	}
-
-	.variant-list-row {
-		display: grid;
-		grid-template-columns: 60px minmax(0, 1fr) auto;
-		gap: 0.75rem;
-		align-items: center;
-		padding: 0.75rem 1rem;
-		background: var(--card-bg);
-		border: 1px solid var(--border-color);
-		border-radius: 12px;
-		cursor: pointer;
-		transition: all var(--transition-normal);
-		position: relative;
-		min-height: 0;
-	}
-
-		.variant-list-row:hover {
-			transform: translateY(-1px);
-			box-shadow: var(--card-shadow-hover);
-			border-color: var(--primary);
-		}
-
-		.variant-list-row.selected {
-			border-color: var(--primary);
-			box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2);
-		}
-
-		.variant-list-row.disabled {
-			opacity: 0.6;
-			cursor: not-allowed;
-		}
-
-			.variant-list-row.disabled:hover {
-				transform: none;
-				box-shadow: none;
-				border-color: var(--border-color);
-			}
-
-	.variant-list-row-icon {
-		width: 60px;
-		height: 60px;
-		flex-shrink: 0;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		overflow: hidden;
-		border-radius: 8px;
-	}
-
-		.variant-list-row-icon img {
-			width: 100%;
-			height: 100%;
-			object-fit: contain;
-			border-radius: 8px;
-		}
-
-		.variant-list-row-icon .variant-icon-fallback {
-			font-size: 1.4rem;
-			line-height: 1;
-		}
-
-	.variant-list-row-info {
-		display: flex;
-		flex-direction: column;
-		gap: 0.15rem;
-		min-width: 0;
-	}
-
-	.variant-list-row-name {
-		font-size: 0.95rem;
-		font-weight: 700;
-		color: var(--text-primary);
-	}
-
-	.variant-list-row-description {
-		font-size: 0.85rem;
-		color: var(--text-muted);
-		line-height: 1.35;
-	}
-
-	.variant-list-row-players {
-		font-size: 0.8rem;
-		color: var(--text-muted);
-		white-space: nowrap;
-		display: flex;
-		align-items: center;
-		gap: 0.3rem;
-	}
-
-	.variant-list-row .variant-badge.coming-soon {
-		position: absolute;
-		top: 0.65rem;
-		right: 0.75rem;
-		transform: none;
-		margin: 0;
-	}
-
-	@@media (max-width: 768px) {
-		.create-step .variant-card.selected-layout {
-			grid-template-columns: 1fr;
-		}
-
-			.create-step .variant-card.selected-layout .variant-icon {
-				min-height: 190px;
-			}
-
-		.create-table-dealers-choice-selection-item {
-			grid-template-columns: minmax(0, 1fr) auto;
-			align-items: start;
-		}
-
-			.create-table-dealers-choice-selection-item .game-info-odds-toggle-switch {
-				margin-top: 0.1rem;
-			}
-
-		.table-name-input-row {
-			gap: 0.5rem;
-		}
-
-		.variant-list-row {
-			grid-template-columns: 40px minmax(80px, 1fr) auto;
-		}
-
-		.variant-list-row-description {
-			display: none;
-		}
-
-		.variant-list-row-icon {
-			width: 40px;
-			height: 40px;
-		}
-
-		.variant-search-row {
-			flex-wrap: wrap;
-		}
-
-		.variant-list-row-actions {
-			gap: 0.5rem;
-		}
-
-		.variant-favorite-button {
-			width: 2rem;
-			height: 2rem;
-		}
-	}
-</style>
+
+						.create-step .variant-group.selection-hidden {
+							display: none;
+						}
+
+						.create-step .variants-grid.has-selection .variant-card.collapsing-out {
+							display: none;
+						}
+
+						.create-step .variant-group.selected-group {
+							margin-top: 0.75rem;
+						}
+
+						.create-step .variant-card.selected-layout .variant-icon {
+							width: 100%;
+							margin: 0;
+							height: 100%;
+							min-height: 220px;
+						}
+
+						.create-step .variant-card.selected-layout .variant-icon-image,
+						.create-step .variant-card.selected-layout .variant-icon-fallback {
+							width: 100%;
+							height: 100%;
+							border-radius: 0.75rem;
+						}
+
+						.create-step .variant-card.selected-layout .variant-content {
+							display: flex;
+							flex-direction: column;
+							justify-content: center;
+							min-width: 0;
+						}
+
+						.create-step .variant-card.selected-layout .variant-content .variant-name {
+							margin-top: 0;
+							font-size: clamp(1.8rem, 2.6vw, 2.5rem);
+							line-height: 1.15;
+							margin-bottom: 0.75rem;
+						}
+
+						.create-table-favorites-message {
+							display: inline-flex;
+							align-items: center;
+							gap: 0.5rem;
+							margin-top: 1rem;
+							padding: 0.75rem 1rem;
+							border-radius: 0.85rem;
+							border: 1px solid rgba(251, 191, 36, 0.3);
+							background: rgba(120, 53, 15, 0.16);
+							color: rgba(254, 240, 138, 0.96);
+						}
+
+						.variant-favorite-button {
+							position: absolute;
+							top: 0.75rem;
+							left: 0.75rem;
+							width: 2.25rem;
+							height: 2.25rem;
+							border: 1px solid rgba(15, 23, 42, 0.12);
+							border-radius: 999px;
+							background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(244, 246, 248, 0.94) 100%);
+							color: rgba(71, 85, 105, 0.96);
+							display: inline-flex;
+							align-items: center;
+							justify-content: center;
+							box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+							backdrop-filter: blur(8px);
+							transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+							z-index: 1;
+						}
+
+						.variant-favorite-button:hover:not(:disabled) {
+							transform: translateY(-1px);
+							border-color: rgba(217, 119, 6, 0.28);
+							background: linear-gradient(180deg, rgba(255, 251, 235, 0.98) 0%, rgba(254, 243, 199, 0.92) 100%);
+							color: rgba(180, 83, 9, 0.98);
+							box-shadow: 0 14px 28px rgba(217, 119, 6, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.82);
+						}
+
+						.variant-favorite-button.active {
+							border-color: rgba(217, 119, 6, 0.34);
+							background: linear-gradient(180deg, rgba(255, 248, 220, 0.98) 0%, rgba(252, 211, 77, 0.68) 100%);
+							color: rgba(161, 98, 7, 1);
+							box-shadow: 0 14px 30px rgba(217, 119, 6, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.88);
+						}
+
+						.variant-favorite-button.active:hover:not(:disabled) {
+							border-color: rgba(180, 83, 9, 0.42);
+							background: linear-gradient(180deg, rgba(255, 250, 229, 1) 0%, rgba(250, 204, 21, 0.76) 100%);
+							color: rgba(146, 64, 14, 1);
+							box-shadow: 0 16px 32px rgba(180, 83, 9, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.92);
+						}
+
+						.variant-favorite-button:focus-visible {
+							outline: none;
+							box-shadow: 0 0 0 4px rgba(252, 211, 77, 0.24), 0 14px 30px rgba(15, 23, 42, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.88);
+						}
+
+						.variant-favorite-button:disabled {
+							opacity: 0.55;
+							cursor: not-allowed;
+							box-shadow: 0 8px 16px rgba(15, 23, 42, 0.05);
+						}
+
+						.variant-list-row-actions {
+							display: flex;
+							align-items: center;
+							gap: 0.75rem;
+							justify-self: end;
+						}
+
+						.variant-favorite-button.variant-list-button {
+							position: static;
+							width: 2rem;
+							height: 2rem;
+							flex-shrink: 0;
+						}
+
+						[data-theme="dark"] .variant-favorite-button {
+							border-color: rgba(148, 163, 184, 0.24);
+							background: linear-gradient(180deg, rgba(30, 41, 59, 0.96) 0%, rgba(15, 23, 42, 0.94) 100%);
+							color: rgba(226, 232, 240, 0.92);
+							box-shadow: 0 12px 24px rgba(2, 6, 23, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+						}
+
+						[data-theme="dark"] .variant-favorite-button:hover:not(:disabled) {
+							border-color: rgba(251, 191, 36, 0.36);
+							background: linear-gradient(180deg, rgba(69, 39, 12, 0.96) 0%, rgba(41, 24, 10, 0.94) 100%);
+							color: rgba(253, 230, 138, 0.98);
+							box-shadow: 0 14px 28px rgba(120, 53, 15, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+						}
+
+						[data-theme="dark"] .variant-favorite-button.active {
+							border-color: rgba(245, 158, 11, 0.42);
+							background: linear-gradient(180deg, rgba(120, 53, 15, 0.98) 0%, rgba(146, 64, 14, 0.94) 100%);
+							color: rgba(254, 240, 138, 1);
+							box-shadow: 0 16px 30px rgba(120, 53, 15, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+						}
+
+						[data-theme="dark"] .variant-favorite-button.active:hover:not(:disabled) {
+							border-color: rgba(252, 211, 77, 0.5);
+							background: linear-gradient(180deg, rgba(146, 64, 14, 1) 0%, rgba(180, 83, 9, 0.96) 100%);
+							color: rgba(254, 249, 195, 1);
+						}
+
+						[data-theme="dark"] .variant-favorite-button:focus-visible {
+							box-shadow: 0 0 0 4px rgba(250, 204, 21, 0.2), 0 16px 30px rgba(2, 6, 23, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+						}
+
+						.create-table-dealers-choice-selection-groups {
+							display: flex;
+							flex-direction: column;
+							gap: 1rem;
+							margin-top: 1rem;
+						}
+
+						.create-table-dealers-choice-selection-group {
+							display: flex;
+							flex-direction: column;
+							gap: 0.5rem;
+						}
+
+						.create-table-dealers-choice-selection-group-title {
+							margin: 0;
+							font-size: 1rem;
+							font-weight: 700;
+							color: var(--card-foreground);
+						}
+
+						.create-table-dealers-choice-selection-list {
+							display: flex;
+							flex-direction: column;
+							gap: 0.5rem;
+						}
+
+						.create-table-dc-variant {
+							display: grid;
+							grid-template-columns: 60px minmax(0, 1fr) auto auto;
+							grid-template-rows: auto auto;
+							gap: 0.15rem 0.75rem;
+							align-items: center;
+							padding: 0.75rem 1rem;
+							background: var(--card, var(--secondary));
+							border: 1px solid var(--border, rgba(255, 255, 255, 0.06));
+							border-radius: 12px;
+							color: var(--text-primary, #fff);
+							transition: border-color 0.15s ease, opacity 0.15s ease;
+						}
+
+						.create-table-dc-variant:hover {
+							border-color: var(--primary);
+						}
+
+						.create-table-dc-variant.dc-variant-off {
+							opacity: 0.5;
+						}
+
+						.create-table-dc-variant.dc-variant-off:hover {
+							opacity: 0.7;
+						}
+
+						.create-table-dc-variant-icon {
+							grid-row: 1 / 3;
+							width: 60px;
+							height: 60px;
+							display: flex;
+							align-items: center;
+							justify-content: center;
+							overflow: hidden;
+							border-radius: 8px;
+						}
+
+						.create-table-dc-variant-icon img {
+							width: 100%;
+							height: 100%;
+							object-fit: contain;
+							border-radius: 8px;
+						}
+
+						.create-table-dc-variant-icon-fallback {
+							font-size: 1.4rem;
+							line-height: 1;
+						}
+
+						.create-table-dc-variant-name {
+							grid-column: 2;
+							grid-row: 1;
+							font-size: 0.95rem;
+							font-weight: 700;
+							color: var(--card-foreground);
+							white-space: nowrap;
+							overflow: hidden;
+							text-overflow: ellipsis;
+							align-self: end;
+						}
+
+						.create-table-dc-variant-desc {
+							grid-column: 2;
+							grid-row: 2;
+							font-size: 0.85rem;
+							color: var(--muted-foreground);
+							line-height: 1.35;
+							align-self: start;
+						}
+
+						.create-table-dc-variant-players {
+							grid-column: 3;
+							grid-row: 1 / 3;
+							font-size: 0.8rem;
+							color: var(--muted-foreground);
+							white-space: nowrap;
+							display: flex;
+							align-items: center;
+							gap: 0.3rem;
+						}
+
+						.create-table-dc-variant-toggle {
+							grid-column: 4;
+							grid-row: 1 / 3;
+							display: flex;
+							align-items: center;
+							justify-content: center;
+							padding-left: 0.5rem;
+						}
+
+						.create-table-dc-variant-toggle .game-info-odds-toggle-switch {
+							flex-shrink: 0;
+							min-width: 84px;
+						}
+
+						@@media (max-width: 768px) {
+							.create-table-dc-variant {
+								grid-template-columns: 40px minmax(0, 1fr) auto auto;
+								padding: 0.6rem 0.75rem;
+							}
+
+							.create-table-dc-variant-icon {
+								width: 40px;
+								height: 40px;
+							}
+						}
+
+						.table-name-input-row {
+							display: flex;
+							align-items: stretch;
+							gap: 0.75rem;
+						}
+
+						.table-name-input-row .form-input {
+							flex: 1 1 auto;
+							min-width: 0;
+						}
+
+						.table-name-generate-button {
+							flex: 0 0 auto;
+							width: 3rem;
+							min-width: 3rem;
+							display: inline-flex;
+							align-items: center;
+							justify-content: center;
+							border: 1px solid rgba(148, 163, 184, 0.28);
+							border-radius: 0.85rem;
+							background: rgba(15, 23, 42, 0.72);
+							color: rgba(248, 250, 252, 0.95);
+							transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
+						}
+
+						.table-name-generate-button:hover:not(:disabled) {
+							background: rgba(30, 41, 59, 0.9);
+							border-color: rgba(148, 163, 184, 0.45);
+							transform: translateY(-1px);
+						}
+
+						.table-name-generate-button:disabled {
+							opacity: 0.6;
+							cursor: not-allowed;
+						}
+
+						/* Variant search row layout */
+						.variant-search-row {
+							display: flex;
+							align-items: flex-end;
+							gap: 1rem;
+						}
+
+						.variant-search-row .form-group {
+							flex: 1 1 auto;
+							min-width: 0;
+						}
+
+						.variant-search-row .view-toggle-group {
+							display: flex;
+							gap: 0.5rem;
+							flex-shrink: 0;
+							padding-bottom: 0.15rem;
+						}
+
+						/* Variant list view */
+						.variants-list {
+							display: flex;
+							flex-direction: column;
+							gap: 0.5rem;
+						}
+
+						.variant-list-row {
+							display: grid;
+							grid-template-columns: 60px minmax(0, 1fr) auto;
+							gap: 0.75rem;
+							align-items: center;
+							padding: 0.75rem 1rem;
+							background: var(--card);
+							border: 1px solid var(--border);
+							border-radius: 12px;
+							cursor: pointer;
+							transition: all var(--transition-normal);
+							position: relative;
+							min-height: 0;
+						}
+
+						.variant-list-row:hover {
+							transform: translateY(-1px);
+							box-shadow: var(--card-shadow-hover);
+							border-color: var(--primary);
+						}
+
+						.variant-list-row.selected {
+							border-color: var(--primary);
+							box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2);
+						}
+
+						.variant-list-row.disabled {
+							opacity: 0.6;
+							cursor: not-allowed;
+						}
+
+						.variant-list-row.disabled:hover {
+							transform: none;
+							box-shadow: none;
+							border-color: var(--border);
+						}
+
+						.variant-list-row-icon {
+							width: 60px;
+							height: 60px;
+							flex-shrink: 0;
+							display: flex;
+							align-items: center;
+							justify-content: center;
+							overflow: hidden;
+							border-radius: 8px;
+						}
+
+						.variant-list-row-icon img {
+							width: 100%;
+							height: 100%;
+							object-fit: contain;
+							border-radius: 8px;
+						}
+
+						.variant-list-row-icon .variant-icon-fallback {
+							font-size: 1.4rem;
+							line-height: 1;
+						}
+
+						.variant-list-row-info {
+							display: flex;
+							flex-direction: column;
+							gap: 0.15rem;
+							min-width: 0;
+						}
+
+						.variant-list-row-name {
+							font-size: 0.95rem;
+							font-weight: 700;
+							color: var(--card-foreground);
+						}
+
+						.variant-list-row-description {
+							font-size: 0.85rem;
+							color: var(--muted-foreground);
+							line-height: 1.35;
+						}
+
+						.variant-list-row-players {
+							font-size: 0.8rem;
+							color: var(--muted-foreground);
+							white-space: nowrap;
+							display: flex;
+							align-items: center;
+							gap: 0.3rem;
+						}
+
+						.variant-list-row .variant-badge.coming-soon {
+							position: absolute;
+							top: 0.65rem;
+							right: 0.75rem;
+							transform: none;
+							margin: 0;
+						}
+
+						@@media (max-width: 768px) {
+							.create-step .variant-card.selected-layout {
+								grid-template-columns: 1fr;
+							}
+
+							.create-step .variant-card.selected-layout .variant-icon {
+								min-height: 190px;
+							}
+
+							.create-table-dealers-choice-selection-item {
+								grid-template-columns: minmax(0, 1fr) auto;
+								align-items: start;
+							}
+
+							.create-table-dealers-choice-selection-item .game-info-odds-toggle-switch {
+								margin-top: 0.1rem;
+							}
+
+							.table-name-input-row {
+								gap: 0.5rem;
+							}
+
+							.variant-list-row {
+								grid-template-columns: 40px minmax(80px, 1fr) auto;
+							}
+
+							.variant-list-row-description {
+								display: none;
+							}
+
+							.variant-list-row-icon {
+								width: 40px;
+								height: 40px;
+							}
+
+							.variant-search-row {
+								flex-wrap: wrap;
+							}
+
+							.variant-list-row-actions {
+								gap: 0.5rem;
+							}
+
+							.variant-favorite-button {
+								width: 2rem;
+								height: 2rem;
+							}
+						}
+					</style>
 
 @code {
 	private string _variantViewMode = "grid";
@@ -1125,7 +1088,7 @@
 	private int _bigBlind = 2;
 	private string _bigBlindInput = "2";
 	private int? _maxBuyIn;
-	private string _maxBuyInInput = string.Empty;
+	private int _maxBuyInInput;
 	private bool _requiresJoinApproval;
 	private bool _areOddsVisibleToAllPlayers = true;
 	private bool _canManageFavoriteVariants = true;
@@ -1260,7 +1223,7 @@
 	private bool ShowMinimumBetInput => !IsScrewYourNeighbor && !IsInBetween;
 
 	private bool HasValidMaxBuyIn =>
-		string.IsNullOrWhiteSpace(_maxBuyInInput)
+		_maxBuyInInput > 0
 		|| (_maxBuyIn.HasValue && _maxBuyIn.Value >= GetConfiguredMinimumBuyIn());
 
 	private bool CanManageFavoriteVariants => _canManageFavoriteVariants && !_isUpdatingFavoriteVariants;
@@ -1510,7 +1473,8 @@
 	{
 		_favoriteVariantCodes.Clear();
 
-		foreach (var gameCode in favoriteVariants.FavoriteVariantCodes.Select(NormalizeVariantCode).Where(code => !string.IsNullOrWhiteSpace(code)))
+		foreach (var gameCode in favoriteVariants.FavoriteVariantCodes.Select(NormalizeVariantCode).Where(code =>
+!string.IsNullOrWhiteSpace(code)))
 		{
 			_favoriteVariantCodes.Add(gameCode);
 		}
@@ -1765,7 +1729,7 @@
 
 	private async Task OnMaxBuyInInput(ChangeEventArgs args)
 	{
-		_maxBuyInInput = args.Value?.ToString() ?? string.Empty;
+		//_maxBuyInInput = args.Value?.ToString() ?? string.Empty;
 		await DebounceCanCreateUpdateAsync();
 	}
 
@@ -1796,7 +1760,7 @@
 		_bigBlind = ParseBufferedInteger(_bigBlindInput);
 		_ante = ParseBufferedInteger(_anteInput);
 		_minBet = ParseBufferedInteger(_minBetInput);
-		_maxBuyIn = ParseBufferedNullableInteger(_maxBuyInInput);
+		_maxBuyIn = _maxBuyInInput;
 	}
 
 	private void SyncBufferedCanCreateInputs()
@@ -1806,7 +1770,7 @@
 		_bigBlindInput = _bigBlind.ToString();
 		_anteInput = _ante.ToString();
 		_minBetInput = _minBet.ToString();
-		_maxBuyInInput = _maxBuyIn?.ToString() ?? string.Empty;
+		_maxBuyInInput = _maxBuyIn ?? 0;
 	}
 
 	private static int ParseBufferedInteger(string value)

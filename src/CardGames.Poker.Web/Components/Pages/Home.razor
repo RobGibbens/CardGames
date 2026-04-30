@@ -218,7 +218,7 @@
                     <div class="variant-icon"><i class="fa-thin fa-face-grin-tongue-wink"></i></div>
                     <h3 class="variant-name">Loading…</h3>
                     <p class="variant-description">Fetching available poker variants.</p>
-                    <span class="variant-badge" style="background: var(--text-muted);">Loading</span>
+                    <span class="variant-badge" style="background: var(--muted);">Loading</span>
                 </div>
             }
             else if (!string.IsNullOrWhiteSpace(_availableGamesErrorMessage))
@@ -227,7 +227,7 @@
                     <div class="variant-icon"><i class="fa-thin fa-face-grin-tongue-wink"></i></div>
                     <h3 class="variant-name">Unable to load variants</h3>
                     <p class="variant-description">@_availableGamesErrorMessage</p>
-                    <span class="variant-badge" style="background: var(--text-muted);">Unavailable</span>
+                    <span class="variant-badge" style="background: var(--muted);">Unavailable</span>
                 </div>
             }
             else if ((_availableGames?.Count ?? 0) == 0)
@@ -236,7 +236,7 @@
                     <div class="variant-icon"><i class="fa-thin fa-face-grin-tongue-wink"></i></div>
                     <h3 class="variant-name">No variants available</h3>
                     <p class="variant-description">No poker variants are currently available.</p>
-                    <span class="variant-badge" style="background: var(--text-muted);">Unavailable</span>
+                    <span class="variant-badge" style="background: var(--muted);">Unavailable</span>
                 </div>
             }
             else

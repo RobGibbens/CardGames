@@ -48,7 +48,7 @@
     max-width: 62ch;
     margin: 0;
     font-size: 1.05rem;
-    color: var(--text-secondary);
+    color: var(--secondary-foreground);
 }
 
 .face-cards-summary {
@@ -89,7 +89,7 @@
 }
 
 .face-cards-summary-label {
-    color: var(--text-muted);
+    color: var(--muted);
     text-transform: uppercase;
     letter-spacing: 0.08em;
     font-size: 0.78rem;
@@ -117,8 +117,8 @@
 .face-cards-suit {
     padding: 1.5rem;
     border-radius: 32px;
-    border: 1px solid var(--border-color);
-    background: color-mix(in srgb, var(--card-bg) 92%, transparent);
+    border: 1px solid var(--border);
+    background: color-mix(in srgb, var(--card) 92%, transparent);
     box-shadow: var(--card-shadow);
 }
 
@@ -200,7 +200,7 @@
     text-align: center;
     font-size: 0.95rem;
     font-weight: 700;
-    color: var(--text-secondary);
+    color: var(--secondary-foreground);
 }
 
 @media (max-width: 900px) {
