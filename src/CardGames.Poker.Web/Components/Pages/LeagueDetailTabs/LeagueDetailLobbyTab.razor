@@ -74,9 +74,7 @@
 	<div class="league-detail-lobby-grid">
 		<div class="league-detail-lobby-main">
 			<section class="league-detail-card">
-				<div class="league-detail-card-header">
-					<h3><i class="fa-solid fa-flag-checkered"></i> Recent Results</h3>
-				</div>
+				<BbTypographyH4><i class="fa-solid fa-flag-checkered"></i> Recent Results</BbTypographyH4>
 				@if (RecentCompletedEvents.Count == 0)
 				{
 					<p class="league-detail-empty">No completed events yet.</p>
@@ -99,9 +97,9 @@
 			</section>
 
 			<section class="league-detail-card">
-				<div class="league-detail-card-header">
-					<h3><i class="fa-solid fa-calendar-star"></i> Upcoming Events</h3>
-				</div>
+				<BbTypographyH4>
+					<i class="fa-solid fa-calendar-star"></i> Upcoming Events
+				</BbTypographyH4>
 				@if (UpcomingEventsPage.TotalCount == 0)
 				{
 					<p class="league-detail-empty">No upcoming events scheduled.</p>
@@ -243,9 +241,9 @@
 
 		<aside class="league-detail-lobby-sidebar">
 			<section class="league-detail-card league-detail-leaders-card">
-				<div class="league-detail-card-header">
-					<h3><i class="fa-solid fa-crown"></i> Leaders of the Season</h3>
-				</div>
+				<BbTypographyH4>
+					<i class="fa-solid fa-crown"></i> Leaders of the Season
+				</BbTypographyH4>
 				@if (Standings.Count == 0)
 				{
 					<p class="league-detail-empty">No standings yet.</p>

@@ -2446,11 +2446,11 @@ a:hover {
 
 .lobby-tab-icon {
     font-size: 1rem;
-    color: var(--primary);
+    color: var(--primary-foreground);
 }
 
 .lobby-tab-text {
-    color: var(--primary) !important;
+    color: var(--primary-foreground) !important;
     font-weight: 300 !important;
     font-variation-settings: "wght" 300;
 }
@@ -2913,7 +2913,7 @@ a:hover {
 
     .lobby-tab-icon {
         font-size: 1.25rem;
-        color: var(--secondary);
+        color: var(--primary-foreground);
     }
 
     .lobby-filters {

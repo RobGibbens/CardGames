@@ -1,18 +1,17 @@
 @using CardGames.Poker.Api.Contracts
 
 <div class="league-detail-tab-content">
-	<section class="league-detail-card league-detail-rules-box">
-		<div class="league-detail-rules-icon"><i class="fa-solid fa-scale-balanced"></i></div>
-		<div>
-			<div class="fw-semibold">Scoring &amp; Tie-break Rules</div>
-			<ul class="league-detail-rules-list">
-				<li>Ranked by total points (highest first).</li>
-				<li>Tie-break #1: total chips delta (highest first).</li>
-				<li>Tie-break #2: earliest standings update wins.</li>
-				<li>Standings refresh after result ingestion.</li>
-			</ul>
-		</div>
-	</section>
+	<BbCard>
+		<BbCardHeader>
+			<BbTypographyH4><i class="fa-solid fa-scale-balanced"></i> Scoring &amp; Tie-break Rules</BbTypographyH4>
+		</BbCardHeader>
+		<ul class="league-detail-rules-list">
+			<li>Ranked by total points (highest first).</li>
+			<li>Tie-break #1: total chips delta (highest first).</li>
+			<li>Tie-break #2: earliest standings update wins.</li>
+			<li>Standings refresh after result ingestion.</li>
+		</ul>
+	</BbCard>
 
 	@if (SelectedSeasonId.HasValue)
 	{

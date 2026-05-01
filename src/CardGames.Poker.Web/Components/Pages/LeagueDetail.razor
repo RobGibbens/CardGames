@@ -73,7 +73,10 @@
 						@foreach (var member in _members.Take(5))
 						{
 							var initial = (member.UserDisplayName ?? member.UserId)?[..1].ToUpperInvariant() ?? "?";
-							<div class="league-detail-avatar" title="@(member.UserDisplayName ?? member.UserId)">@initial</div>
+							<BbAvatar Size="AvatarSize.Small">
+								<BbAvatarImage Source="" Alt="User" />
+								<BbAvatarFallback>@initial</BbAvatarFallback>
+							</BbAvatar>
 						}
 						@if (_leagueDetail?.ActiveMemberCount > 5)
 						{
@@ -584,7 +587,7 @@
 	private string? _browserTimeZoneId;
 	private List<BrowserTimeZoneOption> _availableTimeZones = [];
 	private LeagueDetailTab _activeTab = LeagueDetailTab.Lobby;
-
+	private string _selectedTab = "lobby";
 	private enum LeagueDetailTab
 	{
 		Lobby,
