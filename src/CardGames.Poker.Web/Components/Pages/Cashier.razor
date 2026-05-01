@@ -26,145 +26,83 @@
             </div>
         </div>
 
-        <section class="cashier-panel">
-            <div class="cashier-panel-body">
-                <div class="cashier-section-header">
-                    <h2 class="cashier-section-title">Chip balance</h2>
-                    <button class="btn btn-sm btn-outline-secondary" @onclick="LoadAsync" disabled="@_isLoading">
-                        <i class="fa-solid fa-rotate-right"></i>
-                        Refresh
-                    </button>
+        <BbCard>
+            <BbCardHeader>
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <BbCardTitle>Chip Balance</BbCardTitle>
+                            <BbBadge>@_summary?.CurrentBalance.ToString("N0")</BbBadge>
+                        </div>
+                        <BbCardDescription>Manage your chip balance and transactions.</BbCardDescription>
+                    </div>
+
+                    <BbPopover @bind-Open="_isAddChipsPopoverOpen">
+                        <BbPopoverTrigger AsChild>
+                            <BbButton Variant="ButtonVariant.Outline"><i class="fa-solid fa-plus me-1"></i> Add Chips
+                            </BbButton>
+                        </BbPopoverTrigger>
+                        <BbPopoverContent class="w-80">
+                            <div class="grid gap-4">
+                                <div class="flex items-center justify-between">
+                                    <BbFormFieldNumericInput TValue="int" @bind-Value="_chipAmount" Label="Amount"
+                                                             ShowButtons="true" Step="100" DecimalPlaces="0" Min="1"
+                                                             HelperText="Use buttons or type a value" />
+                                </div>
+                                <BbButton OnClick="SubmitAddChipsAsync">Add Chips</BbButton>
+                            </div>
+                        </BbPopoverContent>
+                    </BbPopover>
+
+
+                    
                 </div>
-
-                @if (_isLoading)
+            </BbCardHeader>
+            <BbCardContent class="space-y-3">
+                @foreach (var entry in _ledgerEntries)
                 {
-                    <p class="mb-0 text-muted">Loading cashier data...</p>
-                }
-                else
-                {
-                    <div class="cashier-balance-grid" role="status" aria-live="polite">
-                        <div class="cashier-balance-card">
-                            <div class="small text-muted text-uppercase">Current balance</div>
-                            <div class="display-5 fw-bold mb-0">@((_summary?.CurrentBalance ?? 0).ToString("N0"))</div>
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <BbAvatar class="h-8 w-8">
+                                <BbAvatarFallback><i class="fa-solid fa-plus"></i></BbAvatarFallback>
+                            </BbAvatar>
+                            <div>
+                                <p class="text-sm font-medium">@FormatDelta(entry.AmountDelta)</p>
+                                <p class="text-xs text-muted-foreground">@FormatTimestamp(entry.OccurredAtUtc)</p>
+                            </div>
                         </div>
-                        <div class="cashier-last-transaction">
-                            <div class="small text-muted">Last transaction</div>
-                            <div>@FormatTimestamp(_summary?.LastTransactionAtUtc)</div>
-                        </div>
+                        <BbBadge Variant="BadgeVariant.Secondary">@FormatContext(entry)</BbBadge>
                     </div>
+                    <BbSeparator />
                 }
 
-                @if (!string.IsNullOrWhiteSpace(_error))
-                {
-                    <div class="alert alert-warning mb-0" role="alert">@_error</div>
-                }
-            </div>
-        </section>
+            </BbCardContent>
+            <BbCardFooter class="flex items-center justify-between">
+                <BbPagination>
+                    <BbPaginationContent>
+                        <BbPaginationItem>
+                            <BbPaginationFirst OnClick="@LoadFirstPageAsync" />
+                        </BbPaginationItem>
+                        <BbPaginationItem>
+                            <BbPaginationPrevious OnClick="@LoadPreviousPageAsync" />
+                        </BbPaginationItem>
 
-        <section class="cashier-panel">
-            <div class="cashier-panel-body">
-                <h2 class="cashier-section-title">Add chips</h2>
+                        <BbPaginationItem>
+                            <BbPaginationNext OnClick="@LoadNextPageAsync" />
+                        </BbPaginationItem>
+                        <BbPaginationItem>
+                            <BbPaginationLast OnClick="@LoadLastPageAsync" />
+                        </BbPaginationItem>
+                    </BbPaginationContent>
+                </BbPagination>
+            </BbCardFooter>
+        </BbCard>
 
-                <div class="row g-3 align-items-end cashier-input-row auth-form">
-                    <div class="col-md-4">
-                        <div class="form-floating mb-3" data-label="Amount">
-                            <InputNumber id="cashier-amount" class="form-control" @bind-Value="_chipAmount" min="1" step="100" placeholder="Amount" disabled="@(_isLoading || _isSubmittingAddChips)" />
-                        </div>
-                    </div>
-                    <div class="col-md-5">
-                        <div class="form-floating mb-3" data-label="Reason (optional)">
-                            <InputText id="cashier-reason" class="form-control" maxlength="120" @bind-Value="_chipReason" placeholder="Reason (optional)" disabled="@(_isLoading || _isSubmittingAddChips)" />
-                        </div>
-                    </div>
-                    <div class="col-md-3 d-grid cashier-add-button-col">
-                        <button class="btn btn-primary" @onclick="SubmitAddChipsAsync" disabled="@(_isLoading || _isSubmittingAddChips)">
-                            @if (_isSubmittingAddChips)
-                            {
-                                <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
-                            }
-                            Add Chips
-                        </button>
-                    </div>
-                </div>
-
-                @if (!string.IsNullOrWhiteSpace(_addChipsMessage))
-                {
-                    <div class="alert @(_addChipsMessageIsError ? "alert-warning" : "alert-success") mt-3 mb-0" role="alert">@_addChipsMessage</div>
-                }
-            </div>
-        </section>
-
-        <section class="cashier-panel">
-            <div class="cashier-panel-body d-flex flex-column gap-3">
-                <div class="cashier-section-header">
-                    <h2 class="cashier-section-title">Ledger</h2>
-                </div>
-
-                @if (_isLoading)
-                {
-                    <p class="mb-0 text-muted">Loading ledger...</p>
-                }
-                else if (_ledgerEntries.Count == 0)
-                {
-                    <p class="mb-0 text-muted">No chip transactions yet.</p>
-                }
-                else
-                {
-                    <div class="table-responsive cashier-ledger-table-wrap">
-                        <table class="table table-sm table-hover align-middle mb-0 cashier-ledger-table">
-                            <thead>
-                                <tr>
-                                    <th>When</th>
-                                    <th>Type</th>
-                                    <th class="text-end">Delta</th>
-                                    <th class="text-end">Balance After</th>
-                                    <th>Context</th>
-                                    <th>Note</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var entry in _ledgerEntries)
-                                {
-                                    <tr>
-                                        <td>@FormatTimestamp(entry.OccurredAtUtc)</td>
-                                        <td>@FormatLedgerType(entry.Type.ToString())</td>
-                                        <td class="text-end @GetDeltaClass(entry.AmountDelta)">@FormatDelta(entry.AmountDelta)</td>
-                                        <td class="text-end">@entry.BalanceAfter.ToString("N0")</td>
-                                        <td>@FormatContext(entry)</td>
-                                        <td>@(string.IsNullOrWhiteSpace(entry.Reason) ? "-" : entry.Reason)</td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                }
-
-                <div class="cashier-ledger-footer">
-                    <div class="small text-muted cashier-ledger-meta">
-                        Showing @_ledgerEntries.Count of @_totalCount transactions. Page @_pageNumber of @TotalPages.
-                    </div>
-
-                    <div class="cashier-pager-toolbar">
-                        <label class="small text-muted mb-0" for="ledger-page-size">Rows per page</label>
-                        <select id="ledger-page-size" class="form-control cashier-page-size" value="@_pageSize" @onchange="OnPageSizeChangedAsync" disabled="@_isLoading">
-                            @foreach (var option in PageSizeOptions)
-                            {
-                                <option value="@option">@option</option>
-                            }
-                        </select>
-                        <div class="cashier-pager-buttons" role="group" aria-label="Ledger page navigation">
-                            <button class="btn btn-sm btn-outline-secondary" @onclick="LoadFirstPageAsync" disabled="@(_isLoading || !HasPreviousPage)">First</button>
-                            <button class="btn btn-sm btn-outline-secondary" @onclick="LoadPreviousPageAsync" disabled="@(_isLoading || !HasPreviousPage)">Previous</button>
-                            <span class="cashier-pager-status">Page @_pageNumber of @TotalPages</span>
-                            <button class="btn btn-sm btn-outline-secondary" @onclick="LoadNextPageAsync" disabled="@(_isLoading || !HasNextPage)">Next</button>
-                            <button class="btn btn-sm btn-outline-secondary" @onclick="LoadLastPageAsync" disabled="@(_isLoading || !HasNextPage)">Last</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
     </div>
 </main>
+
+<BlazorBlueprint.Primitives.Services.BbPortalHost />
+<BlazorBlueprint.Primitives.Services.BbOverlayPortalHost />
 
 @code {
     private const int DefaultPageSize = 10;
@@ -180,6 +118,7 @@
 
     private int _chipAmount = 500;
     private string? _chipReason;
+    private bool _isAddChipsPopoverOpen;
     private bool _isSubmittingAddChips;
     private string? _addChipsMessage;
     private bool _addChipsMessageIsError;
@@ -277,6 +216,7 @@
             {
                 _chipAmount = 500;
                 _chipReason = null;
+                _isAddChipsPopoverOpen = false;
                 _pageNumber = 1;
                 _addChipsMessage = response.Content.Message;
                 await LoadAsync();
