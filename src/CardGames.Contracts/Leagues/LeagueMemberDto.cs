@@ -6,6 +6,8 @@ public sealed record LeagueMemberDto
 
 	public string? UserDisplayName { get; init; }
 
+	public string? AvatarUrl { get; init; }
+
 	public LeagueRole Role { get; init; }
 
 	public bool IsActive { get; init; }

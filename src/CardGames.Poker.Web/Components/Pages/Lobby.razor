@@ -48,201 +48,202 @@
         </div>
 
         <!-- Filters Section -->
-        <div class="lobby-filters">
-            <div class="filter-group">
-                <label class="filter-label">Variant</label>
+        <BbCard>
+            <BbCardContent>
+                <div class="flex flex-nowrap items-end gap-3 overflow-x-auto">
+                    <div class="filter-group shrink-0 grow-0">
+                        <label class="filter-label">Variant</label>
 
-                <select class="filter-select" @bind="_selectedVariant" @bind:after="OnSelectedVariantChangedAsync">
-                    <option value="">All Variants</option>
-                    @foreach (var gameType in _availableGameTypes)
-                    {
-                        <option value="@gameType.Name">@gameType.Name</option>
-                    }
-                </select>
-            </div>
-            <div class="filter-group">
-                <label class="filter-label">Seats</label>
-                <select class="filter-select" @bind="_selectedSeats">
-                    <option value="">Any Size</option>
-                    <option value="2">Heads Up (2)</option>
-                    <option value="6">6-Max</option>
-                    <option value="9">Full Ring (9)</option>
-                </select>
-            </div>
-            <div class="filter-group">
-                <label class="filter-label">Status</label>
-                <select class="filter-select" @bind="_selectedStatus">
-                    <option value="">All</option>
-                    <option value="waiting">Waiting for Players</option>
-                    <option value="inprogress">In Progress</option>
-                </select>
-            </div>
-            <button class="filter-clear-btn" @onclick="ClearFilters">
-                <span><i class="fa-thin fa-circle-x"></i></span> Clear Filters
-            </button>
-            <BbButtonGroup AriaLabel="Lobby view mode">
-                <BbButton Variant="ButtonVariant.Outline"
-                          Size="ButtonSize.Icon"
-                          Class='@GetViewToggleButtonClass("grid")'
-                          OnClick='@(() => SetViewMode("grid"))'
-                          AriaLabel="Grid view"
-                          title="Grid View">
-                    <i class="fa-solid fa-th-large"></i>
-                </BbButton>
-                <BbButton Variant="ButtonVariant.Outline"
-                          Size="ButtonSize.Icon"
-                          Class='@GetViewToggleButtonClass("list")'
-                          OnClick='@(() => SetViewMode("list"))'
-                          AriaLabel="List view"
-                          title="List View">
-                    <i class="fa-solid fa-list"></i>
-                </BbButton>
-            </BbButtonGroup>
-        </div>
+                        <select class="filter-select" @bind="_selectedVariant"
+                                @bind:after="OnSelectedVariantChangedAsync">
+                            <option value="">All Variants</option>
+                            @foreach (var gameType in _availableGameTypes)
+                            {
+                                <option value="@gameType.Name">@gameType.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="filter-group shrink-0 grow-0">
+                        <label class="filter-label">Seats</label>
+                        <select class="filter-select" @bind="_selectedSeats">
+                            <option value="">Any Size</option>
+                            <option value="2">Heads Up (2)</option>
+                            <option value="6">6-Max</option>
+                            <option value="9">Full Ring (9)</option>
+                        </select>
+                    </div>
+                    <div class="filter-group shrink-0 grow-0">
+                        <label class="filter-label">Status</label>
+                        <select class="filter-select" @bind="_selectedStatus">
+                            <option value="">All</option>
+                            <option value="waiting">Waiting for Players</option>
+                            <option value="inprogress">In Progress</option>
+                        </select>
+                    </div>
+                    <BbButton Class="ms-auto shrink-0" OnClick="ClearFilters" Variant="ButtonVariant.Outline"><i
+                        class="fa-thin fa-circle-x"></i> Clear Filters</BbButton>
 
-        <!-- Tables Grid -->
-        <div class="lobby-content">
-            @if (_isLoading)
-            {
-                <div class="lobby-loading">
-                    <div class="loading-spinner"></div>
-                    <p>Loading tables...</p>
-                </div>
-            }
-            else if (_filteredTables.Count == 0)
-            {
-                <div class="lobby-empty">
-                    <div class="empty-icon"><i class="fa-thin fa-bullseye"></i></div>
-                    <h3 class="empty-title">@GetEmptyTitle()</h3>
-                    <p class="empty-description">@GetEmptyDescription()</p>
-                    @if (IsActiveTab(""))
-                    {
-                        <BbButton Variant="ButtonVariant.Default" OnClick='@(() => NavigationManager.NavigateTo("/table/create"))'><i class="fa-thin fa-plus"></i> Create a Table</BbButton>
-                        @* <a href="/table/create" class="btn btn-primary">
-                            <span><i class="fa-thin fa-plus"></i></span> Create a Table
-                        </a> *@
-                    }
-                </div>
-            }
-            else
-            {
-                var groupedTables = GetFilteredTableGroups();
+                        <BbButtonGroup Class="shrink-0" AriaLabel="Lobby view mode">
+                            <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Icon"
+                                      Class='@GetViewToggleButtonClass("grid")' OnClick='@(() => SetViewMode("grid"))'
+                                      AriaLabel="Grid view" title="Grid View">
+                                <i class="fa-solid fa-th-large"></i>
+                            </BbButton>
+                            <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Icon"
+                                      Class='@GetViewToggleButtonClass("list")' OnClick='@(() => SetViewMode("list"))'
+                                      AriaLabel="List view" title="List View">
+                                <i class="fa-solid fa-list"></i>
+                            </BbButton>
+                        </BbButtonGroup>
+                    </div>
+                </BbCardContent>
+            </BbCard>
 
-                @if (_viewMode == "grid")
+            <!-- Tables Grid -->
+            <div class="lobby-content">
+                @if (_isLoading)
                 {
-                    @for (var groupIndex = 0; groupIndex < groupedTables.Count; groupIndex++)
-                    {
-                        var group = groupedTables[groupIndex];
-
-                        <section class="@GetGroupSectionClass(groupIndex)">
-                            <div
-                                class="d-flex flex-wrap align-items-baseline justify-content-between gap-2 border-bottom pb-2 mb-3">
-                                <div>
-                                    <h2 class="h5 mb-1">@group.DisplayName</h2>
-                                    <p class="text-muted small mb-0">@GetTableCountLabel(group.Tables.Count)</p>
-                                </div>
-                            </div>
-
-                            <div class="tables-grid">
-                                @foreach (var table in group.Tables)
-                                {
-                                    <TableCard Table="table" CurrentUserId="@_currentUserId" OnDelete="HandleDeleteTableAsync" />
-                                }
-                            </div>
-                        </section>
-                    }
+                    <div class="lobby-loading">
+                        <div class="loading-spinner"></div>
+                        <p>Loading tables...</p>
+                    </div>
                 }
-                else
+                else if (_filteredTables.Count == 0)
                 {
-                    @for (var groupIndex = 0; groupIndex < groupedTables.Count; groupIndex++)
-                    {
-                        var group = groupedTables[groupIndex];
-
-                        <section class="@GetGroupSectionClass(groupIndex)">
-                            <div
-                                class="d-flex flex-wrap align-items-baseline justify-content-between gap-2 border-bottom pb-2 mb-3">
-                                <div>
-                                    <BbTypographyH2>@group.DisplayName</BbTypographyH2>
-                                    <BbTypographyMuted>@GetTableCountLabel(group.Tables.Count)</BbTypographyMuted>
-                                </div>
+                    <BbCard>
+                        <BbCardContent Class="relative flex min-h-64 items-center justify-center">
+                            @if (IsActiveTab(""))
+                            {
+                                <BbButton Class="absolute right-4 top-4" Variant="ButtonVariant.Ghost"
+                                          OnClick='@(() => NavigationManager.NavigateTo("/table/create"))'><i class="fa-thin fa-plus"></i>
+                                    Create a Table</BbButton>
+                            }
+                            <div class="flex flex-col items-center justify-center text-center">
+                                <div class="empty-icon"><i class="fa-thin fa-bullseye"></i></div>
+                                <h3 class="empty-title">@GetEmptyTitle()</h3>
+                                <BbTypographyMuted>@GetEmptyDescription()</BbTypographyMuted>
                             </div>
+                        </BbCardContent>
+                    </BbCard>
+                    }
+            else
+                    {
+                        var groupedTables = GetFilteredTableGroups();
 
-                            <div class="tables-list">
-                                <table class="table table-hover mb-0">
-                                    <thead>
-                                        <tr>
-                                            <th></th>
-                                            <th>Game Type</th>
-                                            <th>Type</th>
-                                            <th>Scope</th>
-                                            <th>Table Name</th>
-                                            <th>Host</th>
-                                            <th>Phase</th>
-                                            <th></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
+                        @if (_viewMode == "grid")
+                        {
+                            @for (var groupIndex = 0; groupIndex < groupedTables.Count; groupIndex++)
+                            {
+                                var group = groupedTables[groupIndex];
+
+                                <section class="@GetGroupSectionClass(groupIndex)">
+                                    <div
+                                        class="d-flex flex-wrap align-items-baseline justify-content-between gap-2 border-bottom pb-2 mb-3">
+                                        <div>
+                                            <h2 class="h5 mb-1">@group.DisplayName</h2>
+                                            <p class="text-muted small mb-0">@GetTableCountLabel(group.Tables.Count)</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="tables-grid">
                                         @foreach (var table in group.Tables)
                                         {
-                                            <tr>
-                                                <td class="text-end">
-                                                    <BbButton Variant="ButtonVariant.Secondary"
-                                                              @onclick="() => NavigateToTableWithChipCheckAsync(table.Id)">Join</BbButton>
-                                                </td>
-                                                <td>@FormatGameTypeName(table)</td>
-                                                <td>@table.TableTypeLabel</td>
-                                                <td>@table.TableScopeLabel</td>
-                                                <td>@table.Name</td>
-                                                <td>@table.CreatedByName</td>
-                                                <td>@table.CurrentPhaseDescription</td>
-                                                <td class="text-end">
-                                                    @if (CanDeleteTable(table))
-                                                    {
-                                                        <BbButton Variant="ButtonVariant.Destructive"
-                                                                  Disabled="@_isDeleting"
-                                                                  @onclick="() => HandleDeleteTableAsync(table.Id)"><i class="fa-solid fa-trash"></i></BbButton>
-                                                    }
-                                                </td>
-                                            </tr>
+                                            <TableCard Table="table" CurrentUserId="@_currentUserId" OnDelete="HandleDeleteTableAsync" />
                                         }
-                                    </tbody>
-                                </table>
-                            </div>
-                        </section>
-                    }
-                }
-            }
-        </div>
-
-        <BbAlertDialog @bind-Open="_showDeleteConfirmation">
-            <BbAlertDialogContent>
-                <BbAlertDialogHeader>
-                    <BbAlertDialogTitle>Delete Table</BbAlertDialogTitle>
-                    <BbAlertDialogDescription>@_deleteConfirmationMessage</BbAlertDialogDescription>
-                </BbAlertDialogHeader>
-                <BbAlertDialogFooter>
-                    <BbAlertDialogCancel>
-                        <BbButton Variant="ButtonVariant.Outline" Disabled="@_isDeleting"
-                                  @onclick="CancelDelete">Cancel</BbButton>
-                    </BbAlertDialogCancel>
-                    <BbButton Variant="ButtonVariant.Destructive" Disabled="@_isDeleting"
-                              @onclick="ConfirmDeleteTableAsync">
-                        @if (_isDeleting)
-                        {
-                            <span class="spinner-border spinner-border-sm" role="status"
-                                  aria-hidden="true"></span>
-                            <span>Deleting...</span>
+                                    </div>
+                                </section>
+                            }
                         }
                         else
                         {
-                            <span>Delete</span>
+                            @for (var groupIndex = 0; groupIndex < groupedTables.Count; groupIndex++)
+                            {
+                                var group = groupedTables[groupIndex];
+
+                                <section class="@GetGroupSectionClass(groupIndex)">
+                                    <div
+                                        class="d-flex flex-wrap align-items-baseline justify-content-between gap-2 border-bottom pb-2 mb-3">
+                                        <div>
+                                            <BbTypographyH2>@group.DisplayName</BbTypographyH2>
+                                            <BbTypographyMuted>@GetTableCountLabel(group.Tables.Count)</BbTypographyMuted>
+                                        </div>
+                                    </div>
+
+                                    <div class="tables-list">
+                                        <table class="table table-hover mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th></th>
+                                                    <th>Game Type</th>
+                                                    <th>Type</th>
+                                                    <th>Scope</th>
+                                                    <th>Table Name</th>
+                                                    <th>Host</th>
+                                                    <th>Phase</th>
+                                                    <th></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var table in group.Tables)
+                                                {
+                                                    <tr>
+                                                        <td class="text-end">
+                                                            <BbButton Variant="ButtonVariant.Secondary"
+                                                                      @onclick="() => NavigateToTableWithChipCheckAsync(table.Id)">Join</BbButton>
+                                                        </td>
+                                                        <td>@FormatGameTypeName(table)</td>
+                                                        <td>@table.TableTypeLabel</td>
+                                                        <td>@table.TableScopeLabel</td>
+                                                        <td>@table.Name</td>
+                                                        <td>@table.CreatedByName</td>
+                                                        <td>@table.CurrentPhaseDescription</td>
+                                                        <td class="text-end">
+                                                            @if (CanDeleteTable(table))
+                                                            {
+                                                                <BbButton Variant="ButtonVariant.Destructive" Disabled="@_isDeleting"
+                                                                          @onclick="() => HandleDeleteTableAsync(table.Id)"><i
+                                                                    class="fa-solid fa-trash"></i></BbButton>
+                                                                }
+                                                            </td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </section>
+                                }
+                            }
                         }
-                    </BbButton>
-                </BbAlertDialogFooter>
-            </BbAlertDialogContent>
-        </BbAlertDialog>
-    </div>
-</main>
+                    </div>
+
+                    <BbAlertDialog @bind-Open="_showDeleteConfirmation">
+                        <BbAlertDialogContent>
+                            <BbAlertDialogHeader>
+                                <BbAlertDialogTitle>Delete Table</BbAlertDialogTitle>
+                                <BbAlertDialogDescription>@_deleteConfirmationMessage</BbAlertDialogDescription>
+                            </BbAlertDialogHeader>
+                            <BbAlertDialogFooter>
+                                <BbAlertDialogCancel>
+                                    <BbButton Variant="ButtonVariant.Outline" Disabled="@_isDeleting" @onclick="CancelDelete">Cancel
+                                    </BbButton>
+                                </BbAlertDialogCancel>
+                                <BbButton Variant="ButtonVariant.Destructive" Disabled="@_isDeleting"
+                                          @onclick="ConfirmDeleteTableAsync">
+                                    @if (_isDeleting)
+                                    {
+                                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                        <span>Deleting...</span>
+                                    }
+                                    else
+                                    {
+                                        <span>Delete</span>
+                                    }
+                                </BbButton>
+                            </BbAlertDialogFooter>
+                        </BbAlertDialogContent>
+                    </BbAlertDialog>
+                </div>
+            </main>
 <BlazorBlueprint.Primitives.Services.BbPortalHost />
 
 @code {

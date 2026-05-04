@@ -8195,10 +8195,11 @@ namespace CardGames.Poker.Api.Contracts
     public partial record LeagueMemberDto
     {
         [JsonConstructor]
-        public LeagueMemberDto(bool? @isActive, System.DateTimeOffset? @joinedAtUtc, System.DateTimeOffset? @leftAtUtc, LeagueRole? @role, string @userDisplayName, string @userId)
+        public LeagueMemberDto(string @avatarUrl, bool? @isActive, System.DateTimeOffset? @joinedAtUtc, System.DateTimeOffset? @leftAtUtc, LeagueRole? @role, string @userDisplayName, string @userId)
         {
             this.UserId = @userId;
             this.UserDisplayName = @userDisplayName;
+            this.AvatarUrl = @avatarUrl;
             this.Role = @role;
             this.IsActive = @isActive;
             this.JoinedAtUtc = @joinedAtUtc;
@@ -8211,6 +8212,9 @@ namespace CardGames.Poker.Api.Contracts
 
         [JsonPropertyName("userDisplayName")]
         public string UserDisplayName { get; init; }
+
+        [JsonPropertyName("avatarUrl")]
+        public string AvatarUrl { get; init; }
 
         [JsonPropertyName("role")]
         public LeagueRole? Role { get; init; }

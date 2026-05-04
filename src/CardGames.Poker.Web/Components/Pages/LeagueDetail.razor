@@ -54,16 +54,15 @@
 				<div class="league-detail-icon">
 					<i class="fa-solid fa-shield-halved"></i>
 				</div>
-				<div class="league-detail-header-info">
-					<h1 class="league-detail-name">@(_leagueDetail?.Name ?? "League")</h1>
+				<div>
+					<BbTypographyH2>@(_leagueDetail?.Name ?? "League")</BbTypographyH2>
 					@if (!string.IsNullOrWhiteSpace(_leagueDetail?.Description))
 					{
-						<p class="league-detail-description">@_leagueDetail.Description</p>
+						<BbTypographyMuted>@_leagueDetail.Description</BbTypographyMuted>
 					}
-					<div class="league-detail-meta">
-						Created by @(_leagueDetail?.CreatedByDisplayName ?? _leagueDetail?.CreatedByUserId) &bull;
+					<BbTypographyMuted>Created by @(_leagueDetail?.CreatedByDisplayName ?? _leagueDetail?.CreatedByUserId) &bull;
 						@(_leagueDetail?.CreatedAtUtc.ToLocalTime().ToString("MMM d, yyyy"))
-					</div>
+					</BbTypographyMuted>
 				</div>
 			</div>
 			<div class="league-detail-header-right">
@@ -74,7 +73,7 @@
 						{
 							var initial = (member.UserDisplayName ?? member.UserId)?[..1].ToUpperInvariant() ?? "?";
 							<BbAvatar Size="AvatarSize.Small">
-								<BbAvatarImage Source="" Alt="User" />
+								<BbAvatarImage Source="@member.AvatarUrl" Alt="User" />
 								<BbAvatarFallback>@initial</BbAvatarFallback>
 							</BbAvatar>
 						}
@@ -84,41 +83,24 @@
 						}
 					}
 				</div>
-				<span class="league-detail-role-badge">@_leagueDetail?.MyRole</span>
+				<BbBadge>@_leagueDetail?.MyRole</BbBadge>
 				<div class="league-detail-header-actions">
 					@if (CanManageLeague)
 					{
-						<button class="league-detail-btn league-detail-btn-share" @onclick="OpenInviteModal">
-							<i class="fa-solid fa-share-nodes"></i>
-							<span>Share</span>
-						</button>
-						<div class="league-detail-create-dropdown-wrapper">
-							<button class="league-detail-btn league-detail-btn-create" @onclick="ToggleCreateDropdown"
-									@onclick:stopPropagation>
-								<i class="fa-solid fa-plus"></i>
-								<span>Create</span>
-								<i class="fa-solid fa-chevron-down league-detail-create-chevron"></i>
-							</button>
-							@if (_showCreateDropdown)
-							{
-								<div class="league-detail-create-dropdown-backdrop" @onclick="CloseCreateDropdown"></div>
-								<div class="league-detail-create-dropdown" @onclick:stopPropagation>
-									<button class="league-detail-create-dropdown-item" @onclick="OpenCreateCashGame">
-										<i class="fa-solid fa-coins"></i>
-										<span>Create Cash Game</span>
-									</button>
-									<button class="league-detail-create-dropdown-item" @onclick="OpenCreateTournament">
-										<i class="fa-solid fa-trophy"></i>
-										<span>Create Tournament</span>
-									</button>
-								</div>
-							}
-						</div>
+						<BbButton Variant="ButtonVariant.Outline" OnClick="OpenInviteModal"><i class="fa-solid fa-share-nodes"></i> Share</BbButton>
+						
+						<BbDropdownMenu>
+							<BbDropdownMenuTrigger>
+								<BbButton Variant="ButtonVariant.Default"><i class="fa-solid fa-plus"></i> Create <i class="fa-solid fa-chevron-down"></i></BbButton>
+							</BbDropdownMenuTrigger>
+							<BbDropdownMenuContent>
+								<BbDropdownMenuItem OnClick="OpenCreateCashGame"><Icon><i class="fa-solid fa-coins"></i> </Icon><ChildContent>Create Cash Game</ChildContent> </BbDropdownMenuItem>
+								<BbDropdownMenuItem OnClick="OpenCreateTournament"><Icon><i class="fa-solid fa-trophy"></i></Icon><ChildContent>Create Tournament</ChildContent></BbDropdownMenuItem>
+							</BbDropdownMenuContent>
+						</BbDropdownMenu>
 					}
-					<button class="league-detail-btn league-detail-btn-refresh" aria-label="Refresh"
-							@onclick="LoadAllAsync" disabled="@_isLoading">
-						<i class="fa-solid fa-rotate-right"></i>
-					</button>
+
+					<BbButton Size="ButtonSize.Icon" Variant="ButtonVariant.Ghost" OnClick="LoadAllAsync" Disabled="@_isLoading"><i class="fa-solid fa-rotate-right"></i></BbButton>
 				</div>
 			</div>
 		</div>
@@ -479,6 +461,9 @@
 
 <CreateLeagueEventModal Show="_showOneOffModal" EventType="_oneOffType" LeagueId="LeagueId" EditingEvent="_editingOneOffEvent"
 						BrowserTimeZoneId="@BrowserTimeZoneId" AvailableTimeZones="TimeZoneOptions" OnClose="CloseOneOffModal" OnSaved="HandleOneOffSaved" />
+
+<BlazorBlueprint.Primitives.Services.BbPortalHost />
+<BlazorBlueprint.Primitives.Services.BbOverlayPortalHost />
 
 @code {
 	[Parameter]

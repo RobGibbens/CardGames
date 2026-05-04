@@ -5,12 +5,14 @@
 		<BbCardHeader>
 			<BbTypographyH4><i class="fa-solid fa-scale-balanced"></i> Scoring &amp; Tie-break Rules</BbTypographyH4>
 		</BbCardHeader>
-		<ul class="league-detail-rules-list">
+		<p>
+		<ul>
 			<li>Ranked by total points (highest first).</li>
 			<li>Tie-break #1: total chips delta (highest first).</li>
 			<li>Tie-break #2: earliest standings update wins.</li>
 			<li>Standings refresh after result ingestion.</li>
 		</ul>
+		</p>
 	</BbCard>
 
 	@if (SelectedSeasonId.HasValue)
@@ -46,48 +48,52 @@
 		</section>
 	}
 
-	<section class="league-detail-card">
-		<div class="league-detail-card-header">
-			<h3><i class="fa-solid fa-ranking-star"></i> Leaderboard</h3>
-			<button class="league-detail-btn league-detail-btn-refresh" @onclick="LoadStandings" disabled="@IsLoading" aria-label="Refresh standings">
-				<i class="fa-solid fa-rotate-right"></i>
-			</button>
-		</div>
-		@if (Standings.Count == 0)
-		{
-			<p class="league-detail-empty">No standings yet.</p>
-		}
-		else
-		{
-			<div class="league-detail-standings-table">
-				<div class="league-detail-standings-header-row">
-					<span>Rank</span>
-					<span>Player</span>
-					<span>Points</span>
-					<span>Events</span>
-					<span>Chips &Delta;</span>
-					<span>Movement</span>
-				</div>
-				@foreach (var standing in Standings)
-				{
-					<div class="league-detail-standings-row @(standing.Rank <= 3 ? "league-detail-standings-top" : "") @(IsCurrentUserStanding(standing) ? "league-detail-standings-me" : "")">
-						<span class="league-detail-standings-rank">@GetRankPrefix(standing.Rank) #@standing.Rank</span>
-						<span class="league-detail-standings-player">
-							@(standing.UserDisplayName ?? standing.UserId)
-							@if (IsCurrentUserStanding(standing))
-							{
-								<span class="league-you-chip">You</span>
-							}
-						</span>
-						<span class="league-detail-standings-pts fw-semibold">@standing.TotalPoints</span>
-						<span>@standing.TotalEvents</span>
-						<span>@FormatChipsDelta(standing.TotalChipsDelta)</span>
-						<span class="league-rank-chip @GetRankMovementCssClass(standing.UserId)">@GetRankMovementLabel(standing.UserId)</span>
-					</div>
-				}
+	<BbCard>
+		<BbCardHeader>
+			<div class="flex items-center justify-between gap-3">
+				<BbTypographyH4><i class="fa-solid fa-ranking-star"></i> Leaderboard</BbTypographyH4>
+				<BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.Icon" OnClick="LoadStandings" Disabled="@IsLoading"><i class="fa-solid fa-rotate-right"></i></BbButton>
 			</div>
-		}
-	</section>
+		</BbCardHeader>
+		<BbCardContent>
+			@if (Standings.Count == 0)
+			{
+				<BbTypographyMuted>No standings yet.</BbTypographyMuted>
+			}
+			else
+			{
+				<div class="league-detail-standings-table">
+					<div class="league-detail-standings-header-row">
+						<span>Rank</span>
+						<span>Player</span>
+						<span>Points</span>
+						<span>Events</span>
+						<span>Chips &Delta;</span>
+						<span>Movement</span>
+					</div>
+					@foreach (var standing in Standings)
+					{
+						<div class="league-detail-standings-row @(standing.Rank <= 3 ? "league-detail-standings-top" : "") @(IsCurrentUserStanding(standing) ? "league-detail-standings-me" : "")">
+							<span class="league-detail-standings-rank">@GetRankPrefix(standing.Rank) #@standing.Rank</span>
+							<span class="league-detail-standings-player">
+								@(standing.UserDisplayName ?? standing.UserId)
+								@if (IsCurrentUserStanding(standing))
+								{
+									<span class="league-you-chip">You</span>
+								}
+							</span>
+							<span class="league-detail-standings-pts fw-semibold">@standing.TotalPoints</span>
+							<span>@standing.TotalEvents</span>
+							<span>@FormatChipsDelta(standing.TotalChipsDelta)</span>
+							<span class="league-rank-chip @GetRankMovementCssClass(standing.UserId)">@GetRankMovementLabel(standing.UserId)</span>
+						</div>
+					}
+				</div>
+			}
+		</BbCardContent>
+
+	</BbCard>
+	
 </div>
 
 @code {

@@ -44,7 +44,7 @@ public sealed class GetLeagueMembersQueryHandler(
 			})
 			.ToListAsync(cancellationToken);
 
-		var displayNamesByUserId = await LeagueUserDisplayNameResolver.GetDisplayNamesByUserIdAsync(
+		var userProfilesByUserId = await LeagueUserDisplayNameResolver.GetUserProfilesByUserIdAsync(
 			context,
 			members.Select(x => x.UserId),
 			cancellationToken);
@@ -53,7 +53,8 @@ public sealed class GetLeagueMembersQueryHandler(
 			.Select(x => new LeagueMemberDto
 			{
 				UserId = x.UserId,
-				UserDisplayName = LeagueUserDisplayNameResolver.GetDisplayNameOrFallback(displayNamesByUserId, x.UserId),
+				UserDisplayName = LeagueUserDisplayNameResolver.GetDisplayNameOrFallback(userProfilesByUserId, x.UserId),
+				AvatarUrl = LeagueUserDisplayNameResolver.GetAvatarUrlOrNull(userProfilesByUserId, x.UserId),
 				Role = (Contracts.LeagueRole)x.Role,
 				IsActive = x.IsActive,
 				JoinedAtUtc = x.JoinedAtUtc,
