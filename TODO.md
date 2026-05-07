@@ -4,6 +4,7 @@
 - [ ] Tony was trying to join during DC, it stole the choice from Russ
 - [ ] DC - Eric joined, it glitched
 - [ ] Kings and Lows - end showdown didn't work
+- [ ] DC, Bob Barker, no ante to begin
 
 ## Still to do
 

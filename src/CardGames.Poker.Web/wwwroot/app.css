@@ -2469,7 +2469,7 @@ a:hover {
 }
 
 .lobby-tab-text {
-    color: inherit !important;
+    color: var(--secondary);
     font-weight: 300 !important;
     font-variation-settings: "wght" 300;
 }

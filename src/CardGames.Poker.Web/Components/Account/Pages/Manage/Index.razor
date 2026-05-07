@@ -194,16 +194,17 @@
             }
         }
 
-        if (Input.PhoneNumber != phoneNumber)
+        var phoneNumberToPersist = NormalizeStoredText(Input.PhoneNumber);
+        if (!string.Equals(phoneNumberToPersist, phoneNumber, StringComparison.Ordinal))
         {
-            var setPhoneResult = await UserManager.SetPhoneNumberAsync(user, Input.PhoneNumber);
+            var setPhoneResult = await UserManager.SetPhoneNumberAsync(user, phoneNumberToPersist);
             if (!setPhoneResult.Succeeded)
             {
                 RedirectManager.RedirectToCurrentPageWithStatus("Error: Failed to set phone number.", HttpContext);
                 return;
             }
 
-            phoneNumber = Input.PhoneNumber;
+            phoneNumber = phoneNumberToPersist;
         }
 
         var firstNameToPersist = NormalizeStoredText(Input.FirstName);
@@ -384,7 +385,7 @@
         [Display(Name = "Avatar image")]
         public IFormFile? AvatarFile { get; set; }
 
-        [Phone]
+        [OptionalPhone]
         [Display(Name = "Phone number")]
         public string? PhoneNumber { get; set; }
 

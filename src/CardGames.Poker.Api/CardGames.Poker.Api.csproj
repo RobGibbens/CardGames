@@ -41,9 +41,9 @@
 		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
 		<PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.7" />
-		<PackageReference Include="Microsoft.Identity.Web" Version="4.8.0" />
-		<PackageReference Include="Microsoft.Identity.Web.DownstreamApi" Version="4.8.0" />
-		<PackageReference Include="Microsoft.Identity.Web.UI" Version="4.8.0" />
+		<PackageReference Include="Microsoft.Identity.Web" Version="4.9.0" />
+		<PackageReference Include="Microsoft.Identity.Web.DownstreamApi" Version="4.9.0" />
+		<PackageReference Include="Microsoft.Identity.Web.UI" Version="4.9.0" />
 
 		<PackageReference Include="OneOf" Version="3.0.271" />
 		<PackageReference Include="Aspire.Azure.Storage.Blobs" Version="13.2.4" />
@@ -57,7 +57,7 @@
 		<PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.15.2" />
 		<PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.15.1" />
 		<PackageReference Include="Riok.Mapperly" Version="4.3.1" />
-		<PackageReference Include="Scalar.AspNetCore" Version="2.14.4" />
+		<PackageReference Include="Scalar.AspNetCore" Version="2.14.11" />
 		<PackageReference Include="SharpGrip.FluentValidation.AutoValidation.Endpoints" Version="2.0.0" />
 		<PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.7" />
 
