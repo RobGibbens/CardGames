@@ -5,6 +5,7 @@
 - [ ] DC - Eric joined, it glitched
 - [ ] Kings and Lows - end showdown didn't work
 - [ ] DC, Bob Barker, no ante to begin
+- [ ] Have all 3 players go all in. 2 lose, 1 wins. As soon as one rebuys, the other can't
 
 ## Still to do
 

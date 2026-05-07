@@ -574,6 +574,23 @@ public class ProcessBettingActionCommandHandler(
 
 		var dealtStreets = new List<string>();
 
+		// Pre-compute each player's current dealt card count once. We increment in-memory as we
+		// assign cards because SaveChangesAsync is only called once at the end of the run-out, so
+		// re-querying the database for each card would yield the same starting value and produce
+		// duplicate DealOrder values across the run-out streets. Duplicate DealOrder values cause
+		// the UI to render the run-out cards in the wrong slots (e.g. a Seventh Street hole card
+		// appearing as a face-down board card on Fifth Street).
+		var playerNextDealOrder = new Dictionary<Guid, int>();
+		foreach (var player in playersToReceiveCards)
+		{
+			var existingCardCount = await context.GameCards
+				.CountAsync(gc => gc.GamePlayerId == player.Id &&
+								  gc.HandNumber == game.CurrentHandNumber &&
+								  gc.Location != CardLocation.Deck &&
+								  !gc.IsDiscarded, cancellationToken);
+			playerNextDealOrder[player.Id] = existingCardCount + 1;
+		}
+
 		for (var streetIdx = startIndex; streetIdx < streetOrder.Length; streetIdx++)
 		{
 			var street = streetOrder[streetIdx];
@@ -588,13 +605,7 @@ public class ProcessBettingActionCommandHandler(
 					break;
 				}
 
-				var existingCardCount = await context.GameCards
-					.CountAsync(gc => gc.GamePlayerId == player.Id &&
-									  gc.HandNumber == game.CurrentHandNumber &&
-									  gc.Location != CardLocation.Deck &&
-									  !gc.IsDiscarded, cancellationToken);
-
-				var playerDealOrder = existingCardCount + 1;
+				var playerDealOrder = playerNextDealOrder[player.Id]++;
 				var gameCard = deckCards[deckIndex++];
 
 				var location = street == nameof(Phases.SeventhStreet) ? CardLocation.Hole : CardLocation.Board;

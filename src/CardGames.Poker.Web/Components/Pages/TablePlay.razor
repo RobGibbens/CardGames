@@ -1445,9 +1445,13 @@
                 ResetDrawPanelStateForNewHand();
             }
 
+            var hasIncomingAllInRunout = HasActiveAllInRunout(state);
+
             // Check for Card Deal Animation trigger (all supported variants)
-            // Detect ANY increase in cards for active players
-            if (UsesCardDealAnimation && !_dealAnimationInProgress && !_runoutAnimationInProgress)
+            // Detect ANY increase in cards for active players.
+            // All-in runout owns the dealing sequence for that update and must not overlap
+            // with the generic stud/card deal animation.
+            if (UsesCardDealAnimation && !_dealAnimationInProgress && !_runoutAnimationInProgress && !hasIncomingAllInRunout)
             {
                 // Identify active players who are not folded in the NEW state (since if folded, they don't get new cards)
                 var activeSeatIndices = _seats
@@ -1484,7 +1488,7 @@
             // IMPORTANT: Check for All-In Runout BEFORE updating seats
             // This ensures we capture initial card counts and set the animation flag
             // before UpdateSeatsFromPublicState would overwrite cards with full runout cards
-            if (state.AllInRunout is not null && state.AllInRunout.IsActive && !_runoutAnimationInProgress)
+            if (hasIncomingAllInRunout && !_runoutAnimationInProgress)
             {
                 _allInRunoutState = state.AllInRunout;
 
@@ -2260,6 +2264,11 @@
                 _seats[i] = new SeatInfo { SeatIndex = i };
             }
         }
+    }
+
+    private static bool HasActiveAllInRunout(TableStatePublicDto state)
+    {
+        return state.AllInRunout is { IsActive: true };
     }
 
     private void UpdateShowdownFromPublicState(ShowdownPublicDto showdown, bool delayShowingOverlay = false)
@@ -4018,8 +4027,9 @@
     }
 
     /// <summary>
-    /// Updates a seat's cards by appending the next visible runout card.
-    /// The initial cards are preserved, and runout cards are added one by one.
+    /// Updates a seat's cards by appending the next dealt runout card.
+    /// The initial cards are preserved, and runout cards are added in deal order,
+    /// including face-down placeholders so later streets keep the correct positions.
     /// </summary>
     private void UpdateSeatWithRunoutCards(int seatIndex, int visibleRunoutCards)
     {
@@ -4053,26 +4063,33 @@
             allCards.Add(existingCards[i]);
         }
 
-        // Then add only the VISIBLE runout cards (face up)
+        // Then add the runout cards that have been dealt so far, preserving face-down placeholders.
         for (var i = 0; i < visibleRunoutCards && i < runoutCards.Count; i++)
         {
             var runoutCard = runoutCards[i];
-            allCards.Add(new CardInfo
-            {
-                Rank = runoutCard.Rank,
-                Suit = runoutCard.Suit,
-                IsFaceUp = true,
-                IsPubliclyVisible = true,
-                IsSelected = false,
-                DealOrder = initialCardCount + i,
-                IsWild = IsWildCard(runoutCard.Rank, runoutCard.Suit)
-            });
+            allCards.Add(CreateRunoutCardInfo(runoutCard, initialCardCount, i));
         }
 
         _seats[seatIndex].Cards = allCards;
 
         Logger.LogDebug("UpdateSeatWithRunoutCards: Seat {SeatIndex} now has {CardCount} cards",
         seatIndex, allCards.Count);
+    }
+
+    private CardInfo CreateRunoutCardInfo(CardPublicDto runoutCard, int initialCardCount, int runoutCardIndex)
+    {
+        var isFaceUp = runoutCard.IsFaceUp;
+
+        return new CardInfo
+        {
+            Rank = isFaceUp ? runoutCard.Rank : null,
+            Suit = isFaceUp ? runoutCard.Suit : null,
+            IsFaceUp = isFaceUp,
+            IsPubliclyVisible = isFaceUp,
+            IsSelected = false,
+            DealOrder = initialCardCount + runoutCardIndex,
+            IsWild = isFaceUp && IsWildCard(runoutCard.Rank, runoutCard.Suit)
+        };
     }
 
     private void StartCardDealAnimation(TableStatePublicDto state, int startCardIndex, int numberOfCardsToDeal, int detectedSeatIndex = -1)
