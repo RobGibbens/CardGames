@@ -4,18 +4,20 @@
 - [ ] Tony was trying to join during DC, it stole the choice from Russ
 - [ ] DC - Eric joined, it glitched
 - [ ] Kings and Lows - end showdown didn't work
-- [ ] DC, Bob Barker, no ante to begin
-- [ ] Have all 3 players go all in. 2 lose, 1 wins. As soon as one rebuys, the other can't
 
 ## Still to do
 
-- [ ] Played baseball, immediately went all in, deal went crazy
 - [ ] Lobby - Filter by status
-- [x] League tabs not colored in dark mode correctly
 - [ ] Work on isolating games code more
 - [ ] Add option to treat coins as money
-- [x] Remove the scrollbar from the Showdown
-- [x] The Launch Play button is too big and the style is wrong
+- [ ] Productize it - deployment and hosting (Hetzner)
+- [ ] Make sure that we're not showing the hand in the showdown when we're not supposed to
+- [ ] Check for security issues
+- [ ] Add a "Rules" property to each game
+- [ ] Refactor TablePlay
+- [ ] <https://github.com/leeoades/FunctionalStateMachine>
+- [ ] Add individual control to sounds
+- [ ] During Phil's mom, it plays the alert every time a player takes an action
 
 - [ ] Add leagues
   - [x] When a league game ends, redirect to the league page
@@ -59,16 +61,6 @@
   - [x] When the host clicks "Launch Play" it auto buys in for 100
   - [x] When the host clicks "Launch Play", send a signalr message to update the schedule and lobby pages
   - [x] When joining a tournament, you shouldn't be able to change the buy-in amount
-
-- [ ] Productize it - deployment and hosting (Hetzner)
-
-- [ ] Make sure that we're not showing the hand in the showdown when we're not supposed to
-- [ ] Check for security issues
-- [ ] Add a "Rules" property to each game
-- [ ] Refactor TablePlay
-- [ ] <https://github.com/leeoades/FunctionalStateMachine>
-- [ ] Add individual control to sounds
-- [ ] During Phil's mom, it plays the alert every time a player takes an action
 
 ### P1 - Can't play without these
 
@@ -356,3 +348,9 @@
 - [x] Kings and Lows - Discard too fast
 - [x] Edit Table not working
 - [x] Lobby dark theme
+- [x] Played baseball, immediately went all in, deal went crazy
+- [x] Have all 3 players go all in. 2 lose, 1 wins. As soon as one rebuys, the other can't
+- [x] DC, Bob Barker, no ante to begin
+- [x] League tabs not colored in dark mode correctly
+- [x] Remove the scrollbar from the Showdown
+- [x] The Launch Play button is too big and the style is wrong

@@ -864,6 +864,50 @@ public class TableStateBuilderTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task BuildPublicStateAsync_RebuyGracePause_KeepsMultipleZeroChipObserversInShortPlayersAfterAnotherPlayerRebuys()
+    {
+        var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 4, startingChips: 100, ante: 10);
+
+        var players = await DbContext.GamePlayers
+            .Include(gp => gp.Player)
+            .Where(gp => gp.GameId == setup.Game.Id)
+            .OrderBy(gp => gp.SeatPosition)
+            .ToListAsync();
+
+        players[0].ChipStack = 100;
+        players[0].Status = GamePlayerStatus.Active;
+        players[0].IsSittingOut = false;
+
+        players[1].ChipStack = 75;
+        players[1].Status = GamePlayerStatus.Active;
+        players[1].IsSittingOut = false;
+
+        players[2].ChipStack = 0;
+        players[2].Status = GamePlayerStatus.SittingOut;
+        players[2].IsSittingOut = true;
+
+        players[3].ChipStack = 0;
+        players[3].Status = GamePlayerStatus.SittingOut;
+        players[3].IsSittingOut = true;
+
+        setup.Game.IsPausedForChipCheck = true;
+        setup.Game.IsPausedForRebuyGrace = true;
+        setup.Game.RebuyGraceStartedAt = DateTimeOffset.UtcNow;
+        setup.Game.RebuyGraceEndsAt = DateTimeOffset.UtcNow.AddSeconds(ContinuousPlayBackgroundService.CashRebuyGraceDurationSeconds);
+
+        await DbContext.SaveChangesAsync();
+
+        var result = await TableStateBuilder.BuildPublicStateAsync(setup.Game.Id);
+
+        result.Should().NotBeNull();
+        result!.ChipCheckPause.Should().NotBeNull();
+        result.ChipCheckPause!.PauseType.Should().Be("RebuyGrace");
+        result.ChipCheckPause.ShortPlayers.Should().HaveCount(2);
+        result.ChipCheckPause.ShortPlayers!.Select(sp => sp.SeatIndex).Should().BeEquivalentTo([players[2].SeatPosition, players[3].SeatPosition]);
+        result.ChipCheckPause.ShortPlayers.Select(sp => sp.CurrentChips).Should().OnlyContain(chips => chips == 0);
+    }
+
+    [Fact]
     public async Task BuildPublicStateAsync_FollowTheQueen_DynamicWildRank_UsesNextCardAfterQueenInGlobalDealOrder()
     {
         // Arrange

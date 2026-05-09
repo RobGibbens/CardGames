@@ -541,6 +541,100 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task ProcessGamesReadyForNextHandAsync_RebuyGraceActiveWithRemainingBustedPlayers_KeepsPauseActive()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var game = new Game
+        {
+            Id = Guid.NewGuid(),
+            CurrentPhase = "WaitingForPlayers",
+            Status = GameStatus.BetweenHands,
+            NextHandStartsAt = now.AddSeconds(-1),
+            CurrentHandNumber = 1,
+            Ante = 10,
+            IsPausedForChipCheck = true,
+            ChipCheckPauseStartedAt = now.AddSeconds(-10),
+            ChipCheckPauseEndsAt = now.AddSeconds(10),
+            IsPausedForRebuyGrace = true,
+            RebuyGraceStartedAt = now.AddSeconds(-10),
+            RebuyGraceEndsAt = now.AddSeconds(10),
+            GameType = new GameType { Code = "TESTGAME", Name = "Test Game" }
+        };
+
+        var fundedOne = new GamePlayer { GameId = game.Id, PlayerId = Guid.NewGuid(), Status = GamePlayerStatus.Active, SeatPosition = 0, ChipStack = 100, LeftAtHandNumber = -1 };
+        var fundedTwo = new GamePlayer { GameId = game.Id, PlayerId = Guid.NewGuid(), Status = GamePlayerStatus.Active, SeatPosition = 1, ChipStack = 50, IsSittingOut = false, LeftAtHandNumber = -1 };
+        var busted = new GamePlayer { GameId = game.Id, PlayerId = Guid.NewGuid(), Status = GamePlayerStatus.SittingOut, SeatPosition = 2, ChipStack = 0, IsSittingOut = true, LeftAtHandNumber = -1 };
+        game.GamePlayers.Add(fundedOne);
+        game.GamePlayers.Add(fundedTwo);
+        game.GamePlayers.Add(busted);
+
+        _dbContext.Games.Add(game);
+        await _dbContext.SaveChangesAsync();
+
+        var handler = _flowHandlerFactory.SetHandlerForCode("TESTGAME");
+        handler.RequiresChipCoverageCheck = false;
+
+        await _service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+
+        var updatedGame = await _dbContext.Games.FindAsync(game.Id);
+        updatedGame.Should().NotBeNull();
+        updatedGame!.IsPausedForRebuyGrace.Should().BeTrue();
+        updatedGame.IsPausedForChipCheck.Should().BeTrue();
+        updatedGame.Status.Should().Be(GameStatus.BetweenHands);
+        handler.DealCardsCalled.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task HandleCashGameRebuyGraceTimerExpiredAsync_WithTwoFundedPlayers_ResumesPlay()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var game = new Game
+        {
+            Id = Guid.NewGuid(),
+            CurrentPhase = "WaitingForPlayers",
+            Status = GameStatus.BetweenHands,
+            CurrentHandNumber = 1,
+            Ante = 10,
+            IsPausedForChipCheck = true,
+            ChipCheckPauseStartedAt = now.AddMinutes(-5),
+            ChipCheckPauseEndsAt = now.AddSeconds(-1),
+            IsPausedForRebuyGrace = true,
+            RebuyGraceStartedAt = now.AddMinutes(-5),
+            RebuyGraceEndsAt = now.AddSeconds(-1)
+        };
+
+        game.GamePlayers.Add(new GamePlayer { GameId = game.Id, PlayerId = Guid.NewGuid(), Status = GamePlayerStatus.Active, SeatPosition = 0, ChipStack = 100, LeftAtHandNumber = -1 });
+        game.GamePlayers.Add(new GamePlayer { GameId = game.Id, PlayerId = Guid.NewGuid(), Status = GamePlayerStatus.Active, SeatPosition = 1, ChipStack = 25, LeftAtHandNumber = -1 });
+        game.GamePlayers.Add(new GamePlayer { GameId = game.Id, PlayerId = Guid.NewGuid(), Status = GamePlayerStatus.SittingOut, SeatPosition = 2, ChipStack = 0, IsSittingOut = true, LeftAtHandNumber = -1 });
+
+        _dbContext.Games.Add(game);
+        await _dbContext.SaveChangesAsync();
+
+        var method = typeof(ContinuousPlayBackgroundService).GetMethod(
+            "HandleCashGameRebuyGraceTimerExpiredAsync",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+
+        method.Should().NotBeNull();
+
+        var task = method!.Invoke(_service, [game.Id]) as Task;
+        task.Should().NotBeNull();
+        await task!;
+
+        var updatedGame = await _dbContext.Games
+            .Include(g => g.GamePlayers)
+            .FirstAsync(g => g.Id == game.Id);
+
+        updatedGame.IsPausedForChipCheck.Should().BeFalse();
+        updatedGame.IsPausedForRebuyGrace.Should().BeFalse();
+        updatedGame.Status.Should().Be(GameStatus.BetweenHands);
+        updatedGame.CurrentPhase.Should().Be("WaitingForPlayers");
+        updatedGame.NextHandStartsAt.Should().NotBeNull();
+        updatedGame.EndedAt.Should().BeNull();
+        updatedGame.GamePlayers.Should().ContainSingle(gp => gp.ChipStack == 0 && gp.Status == GamePlayerStatus.SittingOut && gp.IsSittingOut);
+        _broadcaster.ToastNotifications.Should().Contain(t => t.GameId == game.Id && t.Message.Contains("Resuming play without busted players"));
+    }
+
+    [Fact]
     public async Task HandleCashGameRebuyGraceTimerExpiredAsync_MarksLinkedOneOffEventCompleted()
     {
         var now = DateTimeOffset.UtcNow;

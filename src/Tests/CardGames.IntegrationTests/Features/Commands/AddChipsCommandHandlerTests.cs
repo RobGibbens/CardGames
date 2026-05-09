@@ -230,4 +230,58 @@ public class AddChipsCommandHandlerTests : IntegrationTestBase
         result.AsT0.Message.Should().NotBeNullOrEmpty();
         result.AsT0.Message.Should().Contain("100");
     }
+
+    [Fact]
+    public async Task Handle_RebuyGraceWithOtherBustedPlayers_KeepsSharedPauseActive()
+    {
+        var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 3, startingChips: 100, ante: 10);
+
+        setup.Game.CurrentPhase = nameof(Phases.WaitingForPlayers);
+        setup.Game.Status = GameStatus.BetweenHands;
+        setup.Game.IsPausedForChipCheck = true;
+        setup.Game.ChipCheckPauseStartedAt = DateTimeOffset.UtcNow.AddSeconds(-5);
+        setup.Game.ChipCheckPauseEndsAt = DateTimeOffset.UtcNow.AddSeconds(15);
+        setup.Game.IsPausedForRebuyGrace = true;
+        setup.Game.RebuyGraceStartedAt = DateTimeOffset.UtcNow.AddSeconds(-5);
+        setup.Game.RebuyGraceEndsAt = DateTimeOffset.UtcNow.AddSeconds(15);
+
+        var fundedPlayer = setup.GamePlayers[0];
+        fundedPlayer.ChipStack = 100;
+        fundedPlayer.Status = GamePlayerStatus.Active;
+        fundedPlayer.IsSittingOut = false;
+
+        var rebuyingPlayer = setup.GamePlayers[1];
+        rebuyingPlayer.ChipStack = 0;
+        rebuyingPlayer.Status = GamePlayerStatus.SittingOut;
+        rebuyingPlayer.IsSittingOut = true;
+
+        var stillBustedPlayer = setup.GamePlayers[2];
+        stillBustedPlayer.ChipStack = 0;
+        stillBustedPlayer.Status = GamePlayerStatus.SittingOut;
+        stillBustedPlayer.IsSittingOut = true;
+
+        await DbContext.SaveChangesAsync();
+
+        var result = await Mediator.Send(new AddChipsCommand(setup.Game.Id, rebuyingPlayer.PlayerId, 50));
+
+        result.IsT0.Should().BeTrue();
+        result.AsT0.AppliedImmediately.Should().BeTrue();
+
+        var updatedGame = await DbContext.Games.FindAsync(setup.Game.Id);
+        updatedGame.Should().NotBeNull();
+        updatedGame!.IsPausedForRebuyGrace.Should().BeTrue();
+        updatedGame.IsPausedForChipCheck.Should().BeTrue();
+        updatedGame.NextHandStartsAt.Should().BeNull();
+
+        var updatedRebuyingPlayer = await DbContext.GamePlayers.FindAsync(rebuyingPlayer.Id);
+        updatedRebuyingPlayer.Should().NotBeNull();
+        updatedRebuyingPlayer!.ChipStack.Should().Be(50);
+        updatedRebuyingPlayer.Status.Should().Be(GamePlayerStatus.Active);
+        updatedRebuyingPlayer.IsSittingOut.Should().BeFalse();
+
+        var updatedStillBustedPlayer = await DbContext.GamePlayers.FindAsync(stillBustedPlayer.Id);
+        updatedStillBustedPlayer.Should().NotBeNull();
+        updatedStillBustedPlayer!.Status.Should().Be(GamePlayerStatus.SittingOut);
+        updatedStillBustedPlayer.IsSittingOut.Should().BeTrue();
+    }
 }

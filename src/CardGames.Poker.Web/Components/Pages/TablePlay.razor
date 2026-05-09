@@ -7034,10 +7034,12 @@ HandType.HighCard
     /// Gets whether the current player is short on chips for the pot.
     /// </summary>
     private bool IsCurrentPlayerShortOnChips =>
-    _isSeated &&
-    _currentPlayerSeatIndex >= 0 &&
-    _currentPlayerSeatIndex < _seats.Count &&
-    _seats[_currentPlayerSeatIndex].Chips < _chipCheckPotAmount;
+    _isRebuyGracePause
+        ? IsCurrentPlayerInRebuyGraceShortPlayers()
+        : _isSeated &&
+          _currentPlayerSeatIndex >= 0 &&
+          _currentPlayerSeatIndex < _seats.Count &&
+          _seats[_currentPlayerSeatIndex].Chips < _chipCheckPotAmount;
 
     /// <summary>
     /// Checks if a specific player (by seat index) is short on chips for the pot.
@@ -7070,12 +7072,32 @@ HandType.HighCard
     /// </summary>
     private IReadOnlyList<ChipCoveragePauseOverlay.ShortPlayerInfo> GetShortPlayers()
     {
+        if (_isRebuyGracePause)
+        {
+            return _tableState?.ChipCheckPause?.ShortPlayers?
+                .Select(sp => new ChipCoveragePauseOverlay.ShortPlayerInfo(
+                    sp.PlayerFirstName ?? sp.PlayerName,
+                    sp.CurrentChips))
+                .ToList()
+                ?? [];
+        }
+
         return _seats
-        .Where(s => s.IsOccupied && !s.IsSittingOut && s.Chips < _chipCheckPotAmount)
-        .Select(s => new ChipCoveragePauseOverlay.ShortPlayerInfo(
-        s.PlayerFirstName ?? s.PlayerName ?? "Unknown",
-        s.Chips))
-        .ToList();
+            .Where(s => s.IsOccupied && !s.IsSittingOut && s.Chips < _chipCheckPotAmount)
+            .Select(s => new ChipCoveragePauseOverlay.ShortPlayerInfo(
+                s.PlayerFirstName ?? s.PlayerName ?? "Unknown",
+                s.Chips))
+            .ToList();
+    }
+
+    private bool IsCurrentPlayerInRebuyGraceShortPlayers()
+    {
+        if (!_isSeated || _currentPlayerSeatIndex < 0)
+        {
+            return false;
+        }
+
+        return _tableState?.ChipCheckPause?.ShortPlayers?.Any(sp => sp.SeatIndex == _currentPlayerSeatIndex) == true;
     }
 
     /// <summary>
