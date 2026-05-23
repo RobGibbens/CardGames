@@ -55,6 +55,13 @@ public sealed class AddChipsCommandHandler(
 				"This game has ended and chips cannot be added.");
 		}
 
+		if (game.TournamentBuyIn.HasValue)
+		{
+			return new AddChipsError(
+				AddChipsErrorCode.TournamentRebuyNotAllowed,
+				"Tournament tables do not allow rebuys after play begins.");
+		}
+
 		// Find the game player
 		var gamePlayer = game.GamePlayers.FirstOrDefault(gp => gp.PlayerId == command.PlayerId);
 		if (gamePlayer is null)

@@ -650,6 +650,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 
 		// 3. Check for eligible players (occupied, not sitting out, chips >= ante, hasn't left)
 		var ante = game.Ante ?? 0;
+		var isTournamentGame = game.TournamentBuyIn.HasValue;
 		var eligiblePlayers = game.GamePlayers
 			.Where(gp => gp.Status == GamePlayerStatus.Active &&
 						 !gp.IsSittingOut &&
@@ -657,11 +658,26 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 						 gp.LeftAtHandNumber == -1)
 			.ToList();
 
+		var tournamentBustedPlayers = isTournamentGame
+			? game.GamePlayers
+				.Where(gp => gp.Status != GamePlayerStatus.Left &&
+							 gp.LeftAtHandNumber == -1 &&
+							 gp.ChipStack <= 0)
+				.ToList()
+			: new List<GamePlayer>();
+
+		if (tournamentBustedPlayers.Count > 0)
+		{
+			MarkTournamentBustedPlayersAsObservers(tournamentBustedPlayers, now);
+		}
+
 		// Auto-sit-out players with insufficient chips (including 0 chips)
 		var insufficientChipPlayers = game.GamePlayers
 			.Where(gp => gp.Status == GamePlayerStatus.Active &&
 						 !gp.IsSittingOut &&
-						 (gp.ChipStack <= 0 || (ante > 0 && gp.ChipStack < ante)) &&
+						 (isTournamentGame
+							 ? ante > 0 && gp.ChipStack > 0 && gp.ChipStack < ante
+							 : gp.ChipStack <= 0 || (ante > 0 && gp.ChipStack < ante)) &&
 						 gp.LeftAtHandNumber == -1)
 			.ToList();
 
@@ -680,7 +696,7 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 		// (e.g. TryTransitionTerminalDealersChoiceScrewYourNeighborAsync) use
 		// the correct count. Without this, ante=0 games could include 0-chip
 		// players who were just sat out, inflating the count.
-		if (insufficientChipPlayers.Count > 0)
+		if (tournamentBustedPlayers.Count > 0 || insufficientChipPlayers.Count > 0)
 		{
 			eligiblePlayers = game.GamePlayers
 				.Where(gp => gp.Status == GamePlayerStatus.Active &&
@@ -688,6 +704,17 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 							 gp.ChipStack >= ante &&
 							 gp.LeftAtHandNumber == -1)
 				.ToList();
+		}
+
+		if (await TryCompleteTournamentWhenOneFundedPlayerRemainsAsync(
+			context,
+			broadcaster,
+			leagueCompletionSync,
+			game,
+			now,
+			cancellationToken))
+		{
+			return;
 		}
 
 			// 3a. For games with chip coverage check requirement, check if any player cannot cover the current pot
@@ -1427,6 +1454,77 @@ public sealed class ContinuousPlayBackgroundService : BackgroundService
 			gamePlayer.IsSittingOut = true;
 			gamePlayer.Status = GamePlayerStatus.SittingOut;
 		}
+	}
+
+	private static void MarkTournamentBustedPlayersAsObservers(IEnumerable<GamePlayer> gamePlayers, DateTimeOffset eliminatedAt)
+	{
+		foreach (var gamePlayer in gamePlayers)
+		{
+			gamePlayer.IsSittingOut = true;
+			gamePlayer.Status = GamePlayerStatus.Eliminated;
+			gamePlayer.HasFolded = true;
+			gamePlayer.IsAllIn = false;
+			gamePlayer.FinalChipCount = 0;
+			gamePlayer.LeftAt ??= eliminatedAt;
+		}
+	}
+
+	private async Task<bool> TryCompleteTournamentWhenOneFundedPlayerRemainsAsync(
+		CardsDbContext context,
+		IGameStateBroadcaster broadcaster,
+		LeagueGameCompletionSyncService? leagueCompletionSync,
+		Game game,
+		DateTimeOffset now,
+		CancellationToken cancellationToken)
+	{
+		if (!game.TournamentBuyIn.HasValue)
+		{
+			return false;
+		}
+
+		var playersWithChips = game.GamePlayers
+			.Where(gp => gp.Status != GamePlayerStatus.Left &&
+						 gp.LeftAtHandNumber == -1 &&
+						 gp.ChipStack > 0)
+			.ToList();
+
+		if (playersWithChips.Count > 1)
+		{
+			return false;
+		}
+
+		var winner = playersWithChips.SingleOrDefault();
+		game.CurrentPhase = "Ended";
+		game.Status = GameStatus.Completed;
+		game.EndedAt = now;
+		game.HandCompletedAt = now;
+		game.NextHandStartsAt = null;
+		game.IsPausedForChipCheck = false;
+		game.ChipCheckPauseStartedAt = null;
+		game.ChipCheckPauseEndsAt = null;
+		game.IsPausedForRebuyGrace = false;
+		game.RebuyGraceStartedAt = null;
+		game.RebuyGraceEndsAt = null;
+		game.UpdatedAt = now;
+
+		await context.SaveChangesAsync(cancellationToken);
+		await SyncLeagueCompletionIfNeededAsync(leagueCompletionSync, game.Id, cancellationToken);
+
+		var toastMessage = winner is null
+			? "Tournament ended. No players had chips remaining."
+			: $"Tournament complete. {winner.Player?.Name ?? $"Seat {winner.SeatPosition + 1}"} wins.";
+
+		await broadcaster.BroadcastTableToastAsync(
+			new TableToastNotificationDto
+			{
+				GameId = game.Id,
+				Message = toastMessage,
+				Type = "success",
+				DurationMs = 6000
+			},
+			cancellationToken);
+		await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
+		return true;
 	}
 
 	private static async Task SyncLeagueCompletionIfNeededAsync(

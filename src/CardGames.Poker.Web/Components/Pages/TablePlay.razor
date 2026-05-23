@@ -18,6 +18,7 @@
 @using CardGames.Poker.Web.Components.Shared
 @using CardGames.Poker.Web.Extensions
 @using CardGames.Poker.Web.Services
+@using IApiResponse = Refit.IApiResponse
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.JSInterop
 @using System.Security.Claims
@@ -3294,6 +3295,7 @@
 
             // Don't proceed to deal — the backend sets the phase to WaitingForDealerChoice
             // and SignalR will trigger the dealer selection modal
+            await ResyncTableAfterManualStartAsync();
             return;
         }
 
@@ -3459,8 +3461,12 @@
         }
         else if (IsHoldEm || IsRedRiver || IsKlondike)
         {
-            // Hold'Em family start handles blinds + deal in a single call.
-            var startResponse = await HoldEmApi.HoldEmStartHandAsync(GameId);
+            // League tournaments use the generic start endpoint because launched scheduled events
+            // already flow through the generic handler in backend coverage.
+            IApiResponse startResponse = ShouldStartHoldEmFamilyGameViaGenericEndpoint()
+                ? await GamesApiClient.GenericStartHandAsync(GameId)
+                : await HoldEmApi.HoldEmStartHandAsync(GameId);
+
             if (!startResponse.IsSuccessStatusCode)
             {
                 Logger.LogWarning("Failed to start Hold'Em hand: {StatusCode}", startResponse.StatusCode);
@@ -3566,8 +3572,56 @@
                 "Add an explicit branch for this game type in StartNewHandAsync.");
         }
 
-        // SignalR will broadcast the updated state - no need to refresh manually
-        await TryLoadShowdownAsync();
+        await ResyncTableAfterManualStartAsync();
+    }
+
+    /// <summary>
+    /// Refreshes the current table snapshot after a successful manual game start.
+    /// </summary>
+    private async Task ResyncTableAfterManualStartAsync()
+    {
+        var wasConnected = GameHubClient.IsConnected;
+
+        try
+        {
+            if (wasConnected)
+            {
+                await GameHubClient.JoinGameAsync(GameId);
+                return;
+            }
+
+            await ConnectAndJoinGameAsync();
+            if (ResolvePostStartResyncTarget(wasConnected, GameHubClient.IsConnected) != PostStartResyncTarget.HttpReload)
+            {
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Failed to resync table state via SignalR after manually starting game {GameId}", GameId);
+        }
+
+        Logger.LogInformation("Falling back to HTTP table reload after manual game start for game {GameId}", GameId);
+        await LoadDataAsync();
+    }
+
+    private static PostStartResyncTarget ResolvePostStartResyncTarget(bool wasConnected, bool isConnectedAfterReconnectAttempt)
+    {
+        if (wasConnected)
+        {
+            return PostStartResyncTarget.HubSnapshot;
+        }
+
+        return isConnectedAfterReconnectAttempt
+            ? PostStartResyncTarget.HubReconnect
+            : PostStartResyncTarget.HttpReload;
+    }
+
+    private enum PostStartResyncTarget
+    {
+        HubSnapshot,
+        HubReconnect,
+        HttpReload
     }
 
     // Polling methods removed - SignalR handles state updates
@@ -5481,6 +5535,11 @@
         }
 
         SyncCountdownWithServer(_tableState);
+    }
+
+    private bool ShouldStartHoldEmFamilyGameViaGenericEndpoint()
+    {
+        return IsLeagueTournament && (IsHoldEm || IsRedRiver || IsKlondike);
     }
 
     private static DateTimeOffset? ResolveCountdownDeadlineUtc(TableStatePublicDto state, bool isEndedPhase, bool isGameCompleted)

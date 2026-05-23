@@ -232,6 +232,27 @@ public class AddChipsCommandHandlerTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task Handle_TournamentTable_ReturnsTournamentRebuyNotAllowed()
+    {
+        var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 2, startingChips: 500);
+        setup.Game.TournamentBuyIn = 500;
+        await DbContext.SaveChangesAsync();
+
+        var player = setup.GamePlayers[0];
+        var initialChips = player.ChipStack;
+
+        var result = await Mediator.Send(new AddChipsCommand(setup.Game.Id, player.PlayerId, 100));
+
+        result.IsT1.Should().BeTrue();
+        result.AsT1.Code.Should().Be(AddChipsErrorCode.TournamentRebuyNotAllowed);
+
+        var updatedPlayer = await DbContext.GamePlayers.FindAsync(player.Id);
+        updatedPlayer.Should().NotBeNull();
+        updatedPlayer!.ChipStack.Should().Be(initialChips);
+        updatedPlayer.PendingChipsToAdd.Should().Be(0);
+    }
+
+    [Fact]
     public async Task Handle_RebuyGraceWithOtherBustedPlayers_KeepsSharedPauseActive()
     {
         var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 3, startingChips: 100, ante: 10);

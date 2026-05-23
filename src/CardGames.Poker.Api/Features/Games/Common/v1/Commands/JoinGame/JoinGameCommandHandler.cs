@@ -140,7 +140,8 @@ public sealed class JoinGameCommandHandler(
 		var maxPlayers = game.GameType?.MaxPlayers ?? MaxSeatIndex + 1;
 		var activePlayerCount = game.GamePlayers.Count(gp =>
 			gp.Status == GamePlayerStatus.Active ||
-			gp.Status == GamePlayerStatus.SittingOut);
+			gp.Status == GamePlayerStatus.SittingOut ||
+			gp.Status == GamePlayerStatus.Eliminated);
 
 		if (activePlayerCount >= maxPlayers)
 		{
@@ -152,7 +153,7 @@ public sealed class JoinGameCommandHandler(
 		// Check if player is already seated in this game
 		var existingGamePlayer = game.GamePlayers.FirstOrDefault(gp =>
 			gp.Player.Name.Equals(playerName, StringComparison.OrdinalIgnoreCase) &&
-			(gp.Status == GamePlayerStatus.Active || gp.Status == GamePlayerStatus.SittingOut));
+			(gp.Status == GamePlayerStatus.Active || gp.Status == GamePlayerStatus.SittingOut || gp.Status == GamePlayerStatus.Eliminated));
 
 		if (existingGamePlayer is not null)
 		{
@@ -179,7 +180,7 @@ public sealed class JoinGameCommandHandler(
 		// Check if the seat is already occupied
 		var seatOccupied = game.GamePlayers.Any(gp =>
 			gp.SeatPosition == command.SeatIndex &&
-			(gp.Status == GamePlayerStatus.Active || gp.Status == GamePlayerStatus.SittingOut));
+			(gp.Status == GamePlayerStatus.Active || gp.Status == GamePlayerStatus.SittingOut || gp.Status == GamePlayerStatus.Eliminated));
 
 		if (seatOccupied)
 		{
@@ -396,7 +397,7 @@ public sealed class JoinGameCommandHandler(
 		var occupiedSeats = game.GamePlayers
 			.Where(gp =>
 				gp.Id != previousGamePlayer.Id &&
-				(gp.Status == GamePlayerStatus.Active || gp.Status == GamePlayerStatus.SittingOut))
+				(gp.Status == GamePlayerStatus.Active || gp.Status == GamePlayerStatus.SittingOut || gp.Status == GamePlayerStatus.Eliminated))
 			.Select(gp => gp.SeatPosition)
 			.ToHashSet();
 

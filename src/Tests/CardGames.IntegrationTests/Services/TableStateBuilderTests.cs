@@ -908,6 +908,34 @@ public class TableStateBuilderTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task BuildPublicStateAsync_EliminatedTournamentPlayer_IsShownAsObserving()
+    {
+        var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 2, startingChips: 100, ante: 10);
+
+        var players = await DbContext.GamePlayers
+            .Include(gp => gp.Player)
+            .Where(gp => gp.GameId == setup.Game.Id)
+            .OrderBy(gp => gp.SeatPosition)
+            .ToListAsync();
+
+        players[1].ChipStack = 0;
+        players[1].Status = GamePlayerStatus.Eliminated;
+        players[1].IsSittingOut = true;
+        players[1].HasFolded = true;
+        setup.Game.TournamentBuyIn = 100;
+
+        await DbContext.SaveChangesAsync();
+
+        var result = await TableStateBuilder.BuildPublicStateAsync(setup.Game.Id);
+
+        result.Should().NotBeNull();
+        result!.Seats.Should().ContainSingle(s =>
+            s.SeatIndex == players[1].SeatPosition &&
+            s.SittingOutReason == "Observing" &&
+            s.IsSittingOut);
+    }
+
+    [Fact]
     public async Task BuildPublicStateAsync_FollowTheQueen_DynamicWildRank_UsesNextCardAfterQueenInGlobalDealOrder()
     {
         // Arrange

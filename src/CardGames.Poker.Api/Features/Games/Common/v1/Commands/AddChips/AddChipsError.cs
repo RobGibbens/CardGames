@@ -23,7 +23,12 @@ public enum AddChipsErrorCode
 	/// <summary>
 	/// Cannot add chips because the game has ended.
 	/// </summary>
-	GameEnded
+	GameEnded,
+
+	/// <summary>
+	/// Cannot add chips because tournament tables do not allow rebuys.
+	/// </summary>
+	TournamentRebuyNotAllowed
 }
 
 /// <summary>

@@ -28,6 +28,7 @@ public static class AddChipsEndpoint
 						AddChipsErrorCode.PlayerNotInGame => Results.BadRequest(new { error.Message }),
 						AddChipsErrorCode.InvalidAmount => Results.BadRequest(new { error.Message }),
 						AddChipsErrorCode.GameEnded => Results.BadRequest(new { error.Message }),
+						AddChipsErrorCode.TournamentRebuyNotAllowed => Results.Conflict(new { error.Message }),
 						_ => Results.Problem(error.Message)
 					}
 				);
@@ -36,11 +37,13 @@ public static class AddChipsEndpoint
 			.WithSummary("Add Chips")
 			.WithDescription(
 				"Adds chips to a player's stack in the game. " +
+				"Tournament tables do not allow rebuys. " +
 				"For Kings and Lows, chips are added immediately. " +
 				"For other game types, chips are added immediately if the game is between hands, " +
 				"otherwise they are queued and will be added at the start of the next hand.\n\n" +
 				"**Validations:**\n" +
 				"- Game must exist and not be ended\n" +
+				"- Tournament tables do not allow rebuys\n" +
 				"- Player must be part of the game\n" +
 				"- Amount must be positive\n\n" +
 				"**Response:**\n" +

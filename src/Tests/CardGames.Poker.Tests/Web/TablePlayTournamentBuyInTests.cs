@@ -50,6 +50,36 @@ public class TablePlayTournamentBuyInTests
         GetPrivateProperty<bool>(tablePlay, "IsLeagueTournament").Should().BeFalse();
     }
 
+    [Fact]
+    public void ShouldStartHoldEmFamilyGameViaGenericEndpoint_ReturnsTrue_ForHoldEmLeagueTournament()
+    {
+        var tablePlay = new TablePlay();
+        SetPrivateField(tablePlay, "_gameResponse", CreateGameResponse(tournamentBuyIn: 250));
+        SetPrivateField(tablePlay, "_gameTypeCode", "HOLDEM");
+
+        InvokeBooleanInstanceMethod(tablePlay, "ShouldStartHoldEmFamilyGameViaGenericEndpoint").Should().BeTrue();
+    }
+
+    [Fact]
+    public void ShouldStartHoldEmFamilyGameViaGenericEndpoint_ReturnsFalse_ForNonTournamentHoldEmTable()
+    {
+        var tablePlay = new TablePlay();
+        SetPrivateField(tablePlay, "_gameResponse", CreateGameResponse(tournamentBuyIn: null));
+        SetPrivateField(tablePlay, "_gameTypeCode", "HOLDEM");
+
+        InvokeBooleanInstanceMethod(tablePlay, "ShouldStartHoldEmFamilyGameViaGenericEndpoint").Should().BeFalse();
+    }
+
+    [Fact]
+    public void ShouldStartHoldEmFamilyGameViaGenericEndpoint_ReturnsTrue_ForRedRiverLeagueTournament()
+    {
+        var tablePlay = new TablePlay();
+        SetPrivateField(tablePlay, "_gameResponse", CreateGameResponse(tournamentBuyIn: 250));
+        SetPrivateField(tablePlay, "_gameTypeCode", "REDRIVER");
+
+        InvokeBooleanInstanceMethod(tablePlay, "ShouldStartHoldEmFamilyGameViaGenericEndpoint").Should().BeTrue();
+    }
+
     private static GetGameResponse InvokeCreateLocalGameResponse(GetGameResponse source)
     {
         var method = typeof(TablePlay).GetMethod("CreateLocalGameResponse", BindingFlags.Static | BindingFlags.NonPublic);
@@ -65,6 +95,16 @@ public class TablePlayTournamentBuyInTests
         var method = typeof(TablePlay).GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic);
         method.Should().NotBeNull($"TablePlay should expose {methodName} for join buy-in initialization");
         method!.Invoke(tablePlay, null);
+    }
+
+    private static bool InvokeBooleanInstanceMethod(TablePlay tablePlay, string methodName)
+    {
+        var method = typeof(TablePlay).GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic);
+        method.Should().NotBeNull($"TablePlay should expose {methodName} for Hold'Em-family start routing");
+
+        var value = method!.Invoke(tablePlay, null);
+        value.Should().BeOfType<bool>();
+        return (bool)value!;
     }
 
     private static void SetPrivateField<T>(TablePlay tablePlay, string fieldName, T value)

@@ -1872,6 +1872,135 @@ a:hover {
     justify-content: center;
 }
 
+.join-league-panel {
+    overflow: hidden;
+}
+
+.join-league-panel-body {
+    position: relative;
+    gap: 1.75rem !important;
+}
+
+.join-league-header {
+    align-items: flex-start;
+    margin-bottom: 0.25rem;
+}
+
+.join-league-header-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    max-width: 44rem;
+}
+
+.join-league-subtitle {
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.join-league-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.join-league-status {
+    border-radius: 12px;
+}
+
+.join-league-preview-card {
+    border-left-width: 4px;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 4%, var(--bg-secondary)) 0%, var(--bg-secondary) 100%);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+}
+
+.join-league-preview-body {
+    padding: 1.5rem;
+    gap: 1.25rem;
+}
+
+.join-league-preview-body .league-club-title-group {
+    gap: 0.55rem;
+}
+
+.join-league-preview-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1.25rem;
+}
+
+.join-league-preview-kicker {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--primary) 12%, white);
+    color: var(--primary);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.join-league-members-pill {
+    flex-shrink: 0;
+}
+
+.join-league-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+}
+
+.join-league-detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-height: 7.5rem;
+    padding: 1.1rem 1.15rem;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--bg-tertiary) 70%, white);
+}
+
+.join-league-detail-label {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.join-league-detail-value {
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    font-weight: 600;
+    line-height: 1.5;
+}
+
+.join-league-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding-top: 0.25rem;
+}
+
+.join-league-action-btn {
+    min-width: 11rem;
+}
+
+.join-league-actions .btn-secondary {
+    background: var(--confirm-overlay-secondary-bg);
+    border-color: var(--confirm-overlay-secondary-border);
+    color: var(--confirm-overlay-secondary-text);
+}
+
+.join-league-actions .btn-secondary:hover:not(:disabled) {
+    filter: brightness(0.95);
+}
+
 .league-member-actions {
     position: absolute;
     top: 1rem;
@@ -2326,6 +2455,18 @@ a:hover {
 
     .cashier-section-title {
         font-size: 1.2rem;
+    }
+
+    .join-league-action-btn {
+        width: 100%;
+    }
+
+    .join-league-preview-header {
+        flex-direction: column;
+    }
+
+    .join-league-members-pill {
+        align-self: flex-start;
     }
 
     .cashier-ledger-table thead th,
@@ -8257,6 +8398,10 @@ playing-card.card-wild-highlight {
     font-weight: 700;
     color: var(--text-primary);
     margin: 0.5rem 0;
+}
+
+.league-detail-join-request-actions {
+    margin-top: 0.5rem;
 }
 
 /* ── Invites List ── */

@@ -203,33 +203,38 @@ public sealed class LeagueGameCompletionSyncService
 	/// </summary>
 	private static List<(string PlayerNameOrUserId, int Placement)> DerivePlayerPlacementsFromGameState(Game game)
 	{
-		var result = new List<(string, int)>();
+		var placements = new List<(string, int)>();
 
-		// Separate active and eliminated players
-		var activePlayers = game.GamePlayers
-			.Where(gp => gp.Status == GamePlayerStatus.Active)
-			.OrderByDescending(gp => gp.ChipStack) // Highest chip stack is best among active
+		var remainingPlayers = game.GamePlayers
+			.Where(gp => gp.Status != GamePlayerStatus.Left && gp.ChipStack > 0)
+			.OrderByDescending(gp => gp.ChipStack)
+			.ThenBy(gp => gp.SeatPosition)
 			.ToList();
 
-		var eliminatedPlayers = game.GamePlayers
-			.Where(gp => gp.Status == GamePlayerStatus.Left || gp.Status == GamePlayerStatus.SittingOut)
-			.OrderByDescending(gp => gp.LeftAt ?? gp.JoinedAt) // Later departure is better
+		var finishedPlayers = game.GamePlayers
+			.Where(gp => gp.ChipStack <= 0 || gp.Status != GamePlayerStatus.Active)
+			.OrderByDescending(GetTournamentFinishTime)
+			.ThenByDescending(gp => gp.FinalChipCount ?? gp.ChipStack)
+			.ThenBy(gp => gp.SeatPosition)
 			.ToList();
 
-		// Placements: eliminated players are ranked from last to first,
-		// then active players are ranked by chips (highest = best overall placement)
+		var orderedByBestFinish = remainingPlayers
+			.Concat(finishedPlayers)
+			.DistinctBy(gp => gp.Id)
+			.ToList();
+
 		var placement = 1;
-
-		foreach (var player in eliminatedPlayers.Reverse<GamePlayer>())
+		foreach (var player in orderedByBestFinish)
 		{
-			result.Add((player.Player?.Id.ToString() ?? $"player-{player.Id}", placement++));
+			placements.Add((player.Player?.Id.ToString() ?? $"player-{player.Id}", placement++));
 		}
 
-		foreach (var player in activePlayers)
-		{
-			result.Add((player.Player?.Id.ToString() ?? $"player-{player.Id}", placement++));
-		}
+		return placements;
+	}
 
-		return result;
+	private static DateTimeOffset GetTournamentFinishTime(GamePlayer gamePlayer)
+	{
+		return gamePlayer.LeftAt
+			?? gamePlayer.JoinedAt;
 	}
 }

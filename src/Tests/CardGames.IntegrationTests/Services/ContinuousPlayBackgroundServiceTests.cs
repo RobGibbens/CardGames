@@ -317,6 +317,126 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
         var updatedP2 = await _dbContext.GamePlayers.FindAsync(p2.Id);
         updatedP2!.IsSittingOut.Should().BeTrue(); // Should be sat out
     }
+
+    [Fact]
+    public async Task ProcessGamesReadyForNextHandAsync_TournamentBustedPlayer_RemainsSeatedAsObserver()
+    {
+        // Arrange
+        var now = DateTimeOffset.UtcNow;
+        var game = new Game
+        {
+            Id = Guid.NewGuid(),
+            CurrentPhase = "Complete",
+            Status = GameStatus.InProgress,
+            NextHandStartsAt = now.AddSeconds(-1),
+            CurrentHandNumber = 2,
+            Ante = 10,
+            TournamentBuyIn = 100,
+            GameType = new GameType { Code = "TESTGAME", Name = "Test Game" }
+        };
+
+        var fundedPlayer = new GamePlayer
+        {
+            GameId = game.Id,
+            PlayerId = Guid.NewGuid(),
+            Status = GamePlayerStatus.Active,
+            SeatPosition = 0,
+            ChipStack = 100,
+            LeftAtHandNumber = -1
+        };
+
+        var bustedPlayer = new GamePlayer
+        {
+            GameId = game.Id,
+            PlayerId = Guid.NewGuid(),
+            Status = GamePlayerStatus.Active,
+            SeatPosition = 1,
+            ChipStack = 0,
+            LeftAtHandNumber = -1
+        };
+
+        game.GamePlayers.Add(fundedPlayer);
+        game.GamePlayers.Add(bustedPlayer);
+
+        _dbContext.Games.Add(game);
+        await _dbContext.SaveChangesAsync();
+
+        var handler = _flowHandlerFactory.SetHandlerForCode("TESTGAME");
+        handler.InitialPhase = "Dealing";
+
+        // Act
+        await _service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+
+        // Assert
+        var updatedGame = await _dbContext.Games
+            .Include(g => g.GamePlayers)
+            .FirstAsync(g => g.Id == game.Id);
+
+        var updatedBustedPlayer = updatedGame.GamePlayers.Single(gp => gp.SeatPosition == 1);
+        updatedBustedPlayer.Status.Should().Be(GamePlayerStatus.Eliminated);
+        updatedBustedPlayer.IsSittingOut.Should().BeTrue();
+        updatedBustedPlayer.FinalChipCount.Should().Be(0);
+        updatedBustedPlayer.LeftAt.Should().NotBeNull();
+
+        updatedGame.CurrentPhase.Should().Be("Ended");
+        updatedGame.Status.Should().Be(GameStatus.Completed);
+    }
+
+    [Fact]
+    public async Task ProcessGamesReadyForNextHandAsync_TournamentWithSingleFundedPlayer_CompletesGame()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var game = new Game
+        {
+            Id = Guid.NewGuid(),
+            CurrentPhase = "Complete",
+            Status = GameStatus.InProgress,
+            NextHandStartsAt = now.AddSeconds(-1),
+            CurrentHandNumber = 3,
+            Ante = 10,
+            TournamentBuyIn = 100,
+            GameType = new GameType { Code = "TESTGAME", Name = "Test Game" }
+        };
+
+        game.GamePlayers.Add(new GamePlayer
+        {
+            GameId = game.Id,
+            PlayerId = Guid.NewGuid(),
+            Status = GamePlayerStatus.Active,
+            SeatPosition = 0,
+            ChipStack = 120,
+            LeftAtHandNumber = -1
+        });
+
+        game.GamePlayers.Add(new GamePlayer
+        {
+            GameId = game.Id,
+            PlayerId = Guid.NewGuid(),
+            Status = GamePlayerStatus.Active,
+            SeatPosition = 1,
+            ChipStack = 0,
+            LeftAtHandNumber = -1
+        });
+
+        _dbContext.Games.Add(game);
+        await _dbContext.SaveChangesAsync();
+
+        var handler = _flowHandlerFactory.SetHandlerForCode("TESTGAME");
+        handler.InitialPhase = "Dealing";
+
+        await _service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+
+        var updatedGame = await _dbContext.Games
+            .Include(g => g.GamePlayers)
+            .FirstAsync(g => g.Id == game.Id);
+
+        updatedGame.Status.Should().Be(GameStatus.Completed);
+        updatedGame.CurrentPhase.Should().Be("Ended");
+        updatedGame.HandCompletedAt.Should().NotBeNull();
+        updatedGame.EndedAt.Should().NotBeNull();
+        updatedGame.NextHandStartsAt.Should().BeNull();
+        _broadcaster.ToastNotifications.Should().Contain(t => t.GameId == game.Id && t.Message.Contains("Tournament complete"));
+    }
     
     [Fact]
     public async Task ProcessGamesReadyForNextHandAsync_ReadyForNextHand_CollectsAntes()

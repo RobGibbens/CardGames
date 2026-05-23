@@ -754,6 +754,11 @@ public sealed class TableStateBuilder : ITableStateBuilder
 
 	private static string? GetSittingOutReason(GamePlayer gamePlayer, int ante, int currentHandNumber)
 	{
+		if (gamePlayer.Status == GamePlayerStatus.Eliminated)
+		{
+			return "Observing";
+		}
+
 		if (gamePlayer.IsSittingOut)
 		{
 			if (gamePlayer.ChipStack < ante && ante > 0)
