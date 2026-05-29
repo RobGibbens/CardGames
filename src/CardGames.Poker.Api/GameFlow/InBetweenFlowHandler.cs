@@ -172,6 +172,24 @@ public sealed class InBetweenFlowHandler : BaseGameFlowHandler
 		var state = GetState(game);
 		state.DeckRefreshedThisTurn = false;
 
+		var existingBoundaryCards = await context.GameCards
+			.Where(gc => gc.GameId == game.Id &&
+			             gc.HandNumber == game.CurrentHandNumber &&
+			             gc.Location == CardLocation.Community &&
+			             !gc.IsDiscarded)
+			.OrderBy(gc => gc.DealOrder)
+			.Take(2)
+			.ToListAsync(cancellationToken);
+
+		if (existingBoundaryCards.Count == 2)
+		{
+			state.SubPhase = existingBoundaryCards[0].Symbol == CardSymbol.Ace && !state.AceIsHigh.HasValue
+				? TurnSubPhase.AwaitingAceChoice
+				: TurnSubPhase.AwaitingBetOrPass;
+			SetState(game, state);
+			return;
+		}
+
 		// Check deck and refresh if needed
 		var deckCards = await GetAvailableDeckCardsAsync(context, game, cancellationToken);
 
