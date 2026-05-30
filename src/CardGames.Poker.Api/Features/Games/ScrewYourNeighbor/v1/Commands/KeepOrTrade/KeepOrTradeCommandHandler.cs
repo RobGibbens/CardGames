@@ -24,6 +24,8 @@ public class KeepOrTradeCommandHandler(
 		KeepOrTradeCommand command,
 		CancellationToken cancellationToken)
 	{
+		context.ChangeTracker.Clear();
+
 		var now = DateTimeOffset.UtcNow;
 
 		// 1. Load the game with players, cards

@@ -17,6 +17,8 @@ public sealed class ProcessBuyCardCommandHandler(CardsDbContext context, IMediat
 		ProcessBuyCardCommand command,
 		CancellationToken cancellationToken)
 	{
+		context.ChangeTracker.Clear();
+
 		var now = DateTimeOffset.UtcNow;
 
 		var game = await context.Games

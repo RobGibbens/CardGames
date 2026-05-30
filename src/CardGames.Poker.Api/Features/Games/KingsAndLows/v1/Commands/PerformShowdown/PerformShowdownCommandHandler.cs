@@ -462,6 +462,15 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 			playerHandEvaluations[gamePlayer.Player.Name] = (wildHand, cards, gamePlayer, wildIndexes);
 		}
 
+		if (playerHandEvaluations.Count == 0)
+		{
+			return new PerformShowdownError
+			{
+				Message = "No eligible winning hand could be determined at showdown.",
+				Code = PerformShowdownErrorCode.InvalidGameState
+			};
+		}
+
 		// 8. Determine winners (highest strength)
 		var maxStrength = playerHandEvaluations.Values.Max(h => h.hand.Strength);
 		var winners = playerHandEvaluations
