@@ -1,0 +1,106 @@
+@if (ShowJoinBuyInModal)
+{
+    <div class="confirm-dialog-overlay">
+        <div class="confirm-dialog league-form-modal join-buy-in-modal" @onclick:stopPropagation>
+            <div class="confirm-dialog-header league-form-modal-header">
+                <h3 class="confirm-dialog-title mb-0">Join Seat @((PendingJoinSeatIndex ?? 0) + 1)</h3>
+                <button class="league-modal-close-btn" type="button" @onclick="OnCloseJoinBuyInModal" aria-label="Close buy-in dialog" disabled="@IsJoiningSeat">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="confirm-dialog-body league-form-modal-body text-start">
+                <p class="confirm-dialog-message mb-2 text-start">
+                    Account balance: <strong>@JoinBuyInBalance.ToString("N0")</strong>
+                </p>
+
+                <div class="join-buy-in-modal-controls">
+                    <label class="form-label mb-1" for="join-buy-in-slider">Buy-in amount</label>
+                    <input id="join-buy-in-slider"
+                           type="range"
+                           class="bet-slider"
+                           style="@GetJoinBuyInSliderStyle"
+                           min="@JoinBuyInMin"
+                           max="@JoinBuyInMax"
+                           step="@JoinBuyInStep"
+                           @bind="JoinBuyInAmount"
+                           @bind:event="oninput"
+                           @bind:after="OnNormalizeJoinBuyIn"
+                           disabled="@(IsScrewYourNeighbor || HasFixedTournamentBuyIn)" />
+                    <div class="bet-slider-labels">
+                        <span>Min @JoinBuyInMin.ToString("N0")</span>
+                        <span>Max @JoinBuyInMax.ToString("N0")</span>
+                    </div>
+
+                    <input id="join-buy-in-input"
+                           class="form-input join-buy-in-input"
+                           type="number"
+                           min="@JoinBuyInMin"
+                           max="@JoinBuyInMax"
+                           step="1"
+                           @bind="JoinBuyInAmount"
+                           @bind:after="OnClampJoinBuyIn"
+                           disabled="@(IsScrewYourNeighbor || HasFixedTournamentBuyIn)" />
+                </div>
+            </div>
+            <div class="confirm-dialog-footer join-buy-in-modal-footer">
+                <button class="btn btn-secondary confirm-dialog-btn" type="button" @onclick="OnCloseJoinBuyInModal" disabled="@IsJoiningSeat">
+                    Cancel
+                </button>
+                <button class="btn btn-primary confirm-dialog-btn join-buy-in-submit-btn" type="button" @onclick="OnSubmitJoinBuyInAsync" disabled="@IsJoiningSeat">
+                    @if (IsJoiningSeat)
+                    {
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    }
+                    Join Table
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (ShowJoinApprovalPendingModal)
+{
+    <div class="confirm-dialog-overlay">
+        <div class="confirm-dialog league-form-modal join-buy-in-modal join-approval-pending-modal" @onclick:stopPropagation>
+            <div class="confirm-dialog-header league-form-modal-header">
+                <h3 class="confirm-dialog-title mb-0">Waiting for Approval</h3>
+            </div>
+            <div class="confirm-dialog-body league-form-modal-body text-start">
+                <p class="confirm-dialog-message mb-2 text-start">
+                    Your request to join is pending approval from <strong>@JoinApprovalHostName</strong>.
+                </p>
+                <p class="confirm-dialog-message mb-0 text-start">
+                    Requested buy-in: <strong>@PendingApprovalBuyIn.ToString("N0")</strong>
+                </p>
+            </div>
+            <div class="confirm-dialog-footer join-buy-in-modal-footer">
+                <div class="waiting-approval-indicator">
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    <span>Waiting on host response</span>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool ShowJoinBuyInModal { get; set; }
+    [Parameter] public int? PendingJoinSeatIndex { get; set; }
+    [Parameter] public bool IsJoiningSeat { get; set; }
+    [Parameter] public int JoinBuyInBalance { get; set; }
+    [Parameter] public int JoinBuyInAmount { get; set; }
+    [Parameter] public EventCallback<int> JoinBuyInAmountChanged { get; set; }
+    [Parameter] public string GetJoinBuyInSliderStyle { get; set; } = string.Empty;
+    [Parameter] public int JoinBuyInMin { get; set; }
+    [Parameter] public int JoinBuyInMax { get; set; }
+    [Parameter] public int JoinBuyInStep { get; set; }
+    [Parameter] public bool IsScrewYourNeighbor { get; set; }
+    [Parameter] public bool HasFixedTournamentBuyIn { get; set; }
+    [Parameter] public EventCallback OnNormalizeJoinBuyIn { get; set; }
+    [Parameter] public EventCallback OnClampJoinBuyIn { get; set; }
+    [Parameter] public EventCallback OnCloseJoinBuyInModal { get; set; }
+    [Parameter] public EventCallback OnSubmitJoinBuyInAsync { get; set; }
+    [Parameter] public bool ShowJoinApprovalPendingModal { get; set; }
+    [Parameter] public string? JoinApprovalHostName { get; set; }
+    [Parameter] public int PendingApprovalBuyIn { get; set; }
+}
