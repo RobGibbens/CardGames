@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.SignalR;
 
 namespace CardGames.Poker.Api.Hubs;
 
-[Authorize(AuthenticationSchemes = HeaderAuthenticationHandler.SchemeName)]
+[Authorize(AuthenticationSchemes = InternalApiAuthenticationHandler.SchemeName)]
 public sealed class NotificationHub(ILogger<NotificationHub> logger) : Hub
 {
 	public override async Task OnConnectedAsync()

@@ -31,11 +31,21 @@ builder.Services.AddAuthorization();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IdentityRedirectManager>();
 builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
+builder.Services
+	.AddOptions<InternalApiAuthOptions>()
+	.Bind(builder.Configuration.GetSection(InternalApiAuthOptions.SectionName))
+	.Validate(options => !string.IsNullOrWhiteSpace(options.Issuer), "Internal API auth issuer is required.")
+	.Validate(options => !string.IsNullOrWhiteSpace(options.Audience), "Internal API auth audience is required.")
+	.Validate(options => !string.IsNullOrWhiteSpace(options.SigningKey), "Internal API auth signing key is required.")
+	.Validate(options => options.SigningKey.Length >= 32, "Internal API auth signing key must be at least 32 characters.")
+	.Validate(options => options.TokenLifetimeMinutes is > 0 and <= 60, "Internal API auth token lifetime must be between 1 and 60 minutes.")
+	.ValidateOnStart();
 
 // Register services for forwarding user identity to backend API
 builder.Services.AddScoped<CircuitServicesAccessor>();
 builder.Services.AddScoped<CircuitHandler, CircuitServicesActivityHandler>();
 builder.Services.AddTransient<AuthenticationStateHandler>();
+builder.Services.AddSingleton<InternalApiUserTokenFactory>();
 
 // Register SignalR game hub client (scoped per Blazor circuit)
 builder.Services.AddScoped<GameHubClient>();

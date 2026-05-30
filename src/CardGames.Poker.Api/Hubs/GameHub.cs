@@ -10,7 +10,7 @@ namespace CardGames.Poker.Api.Hubs;
 /// SignalR hub for real-time poker game state updates.
 /// Clients join per-game groups to receive table state broadcasts.
 /// </summary>
-[Authorize(AuthenticationSchemes = HeaderAuthenticationHandler.SchemeName)]
+[Authorize(AuthenticationSchemes = InternalApiAuthenticationHandler.SchemeName)]
 public sealed class GameHub : Hub
 {
     private readonly ITableStateBuilder _tableStateBuilder;

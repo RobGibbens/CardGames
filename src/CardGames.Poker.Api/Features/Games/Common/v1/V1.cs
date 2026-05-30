@@ -19,6 +19,7 @@ using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetHandHistory;
 using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetPendingJoinRequestsForHost;
 using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetRabbitHunt;
 using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetCurrentBettingRound;
+using CardGames.Poker.Api.Features.Games;
 using SharpGrip.FluentValidation.AutoValidation.Endpoints.Extensions;
 
 namespace CardGames.Poker.Api.Features.Games.Common.v1;
@@ -32,28 +33,46 @@ public static class V1
 			.WithTags([Feature.Name])
 			.AddFluentValidationAutoValidation();
 
+		var commandGroup = mapGroup.MapGroup(string.Empty)
+			.RequireAuthorization();
+
+		var hostCommandGroup = commandGroup.MapGroup(string.Empty)
+			.RequireGameHostAuthorization();
+
+		var playerCommandGroup = commandGroup.MapGroup(string.Empty)
+			.RequireCallerOwnsTargetPlayerAuthorization();
+
+		var authenticatedQueryGroup = mapGroup.MapGroup(string.Empty)
+			.RequireAuthorization();
+
+		var participantQueryGroup = authenticatedQueryGroup.MapGroup(string.Empty)
+			.RequireGameParticipantAuthorization();
+
+		var currentDrawPlayerQueryGroup = authenticatedQueryGroup.MapGroup(string.Empty)
+			.RequireGameCurrentDrawPlayerAuthorization();
+
 		//Commands
-		mapGroup.MapAddChips();
-		mapGroup.MapChooseDealerGame();
-		mapGroup.MapCreateGame();
-		mapGroup.MapDeleteGame();
-		mapGroup.MapJoinGame();
-		mapGroup.MapLeaveGame();
-		mapGroup.MapResolveJoinRequest();
-		mapGroup.MapSitOut();
-		mapGroup.MapToggleOddsVisibility();
-		mapGroup.MapUpdateTableSettings();
+		playerCommandGroup.MapAddChips();
+		commandGroup.MapChooseDealerGame();
+		commandGroup.MapCreateGame();
+		hostCommandGroup.MapDeleteGame();
+		commandGroup.MapJoinGame();
+		commandGroup.MapLeaveGame();
+		hostCommandGroup.MapResolveJoinRequest();
+		commandGroup.MapSitOut();
+		hostCommandGroup.MapToggleOddsVisibility();
+		hostCommandGroup.MapUpdateTableSettings();
 		
 		//Queries
-		mapGroup.MapGetCurrentBettingRound();
-		mapGroup.MapGetCurrentDrawPlayer();
+		participantQueryGroup.MapGetCurrentBettingRound();
+		currentDrawPlayerQueryGroup.MapGetCurrentDrawPlayer();
 		mapGroup.MapGetGame();
-		mapGroup.MapGetGamePlayers();
+		participantQueryGroup.MapGetGamePlayers();
 		mapGroup.MapGetGameRules();
 		mapGroup.MapGetGames();
-		mapGroup.MapGetHandHistory();
-		mapGroup.MapGetPendingJoinRequestsForHost();
-		mapGroup.MapGetRabbitHunt();
+		participantQueryGroup.MapGetHandHistory();
+		authenticatedQueryGroup.MapGetPendingJoinRequestsForHost();
+		participantQueryGroup.MapGetRabbitHunt();
 		mapGroup.MapGetTableSettings();
 	}
 }

@@ -11,7 +11,7 @@ namespace CardGames.Poker.Api.Hubs;
 /// SignalR hub for real-time league management updates.
 /// Clients can join per-league management groups when authorized.
 /// </summary>
-[Authorize(AuthenticationSchemes = HeaderAuthenticationHandler.SchemeName)]
+[Authorize(AuthenticationSchemes = InternalApiAuthenticationHandler.SchemeName)]
 public sealed class LeagueHub(CardsDbContext context, ILogger<LeagueHub> logger) : Hub
 {
 	private const string ManagedLeagueGroupPrefix = "league:managed:";

@@ -1,9 +1,8 @@
 using CardGames.Contracts.SignalR;
+using CardGames.Poker.Web.Infrastructure;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.SignalR.Client;
-using System.Security.Claims;
 using System.Text.Json.Serialization;
-using System.Web;
 
 namespace CardGames.Poker.Web.Services;
 
@@ -14,6 +13,7 @@ namespace CardGames.Poker.Web.Services;
 public sealed class LeagueHubClient : IAsyncDisposable
 {
 	private readonly IConfiguration _configuration;
+	private readonly InternalApiUserTokenFactory _internalApiUserTokenFactory;
 	private readonly AuthenticationStateProvider _authStateProvider;
 	private readonly ILogger<LeagueHubClient> _logger;
 
@@ -55,10 +55,12 @@ public sealed class LeagueHubClient : IAsyncDisposable
 	public LeagueHubClient(
 		IConfiguration configuration,
 		AuthenticationStateProvider authStateProvider,
+		InternalApiUserTokenFactory internalApiUserTokenFactory,
 		ILogger<LeagueHubClient> logger)
 	{
 		_configuration = configuration;
 		_authStateProvider = authStateProvider;
+		_internalApiUserTokenFactory = internalApiUserTokenFactory;
 		_logger = logger;
 	}
 
@@ -80,24 +82,12 @@ public sealed class LeagueHubClient : IAsyncDisposable
 			}
 		}
 
-		var userInfo = await GetUserInfoAsync();
-		var hubUrl = GetHubUrl(userInfo);
+		var hubUrl = GetHubUrl();
 
 		_hubConnection = new HubConnectionBuilder()
 			.WithUrl(hubUrl, options =>
 			{
-				if (userInfo is not null)
-				{
-					options.Headers["X-User-Authenticated"] = "true";
-					if (!string.IsNullOrEmpty(userInfo.Value.UserId))
-					{
-						options.Headers["X-User-Id"] = userInfo.Value.UserId;
-					}
-					if (!string.IsNullOrEmpty(userInfo.Value.UserName))
-					{
-						options.Headers["X-User-Name"] = userInfo.Value.UserName;
-					}
-				}
+				options.AccessTokenProvider = () => GetAccessTokenAsync();
 			})
 			.AddJsonProtocol(options =>
 			{
@@ -502,56 +492,25 @@ public sealed class LeagueHubClient : IAsyncDisposable
 		return Task.CompletedTask;
 	}
 
-	private string GetHubUrl((string? UserId, string? UserName)? userInfo)
+	private string GetHubUrl()
 	{
 		var baseUrl = _configuration["Services:Api:Https:0"]
 			?? _configuration["Services:Api:Http:0"]
 			?? "https://localhost:7001";
 
-		var url = $"{baseUrl}/hubs/leagues";
-
-		if (userInfo is not null)
-		{
-			var queryParams = new List<string> { "authenticated=true" };
-			if (!string.IsNullOrEmpty(userInfo.Value.UserId))
-			{
-				queryParams.Add($"userId={HttpUtility.UrlEncode(userInfo.Value.UserId)}");
-			}
-			if (!string.IsNullOrEmpty(userInfo.Value.UserName))
-			{
-				queryParams.Add($"userName={HttpUtility.UrlEncode(userInfo.Value.UserName)}");
-			}
-			url = $"{url}?{string.Join("&", queryParams)}";
-		}
-
-		return url;
+		return $"{baseUrl}/hubs/leagues";
 	}
 
-	private async Task<(string? UserId, string? UserName)?> GetUserInfoAsync()
+	private async Task<string?> GetAccessTokenAsync()
 	{
 		try
 		{
 			var authState = await _authStateProvider.GetAuthenticationStateAsync();
-			var user = authState.User;
-
-			if (user.Identity?.IsAuthenticated != true)
-			{
-				return null;
-			}
-
-			var userId = user.FindFirstValue(ClaimTypes.NameIdentifier)
-						 ?? user.FindFirstValue("sub");
-
-			var userName = user.FindFirstValue(ClaimTypes.Email)
-						   ?? user.FindFirstValue("email")
-						   ?? user.FindFirstValue("preferred_username")
-						   ?? user.Identity?.Name;
-
-			return (userId, userName);
+			return _internalApiUserTokenFactory.CreateToken(authState.User);
 		}
 		catch (Exception ex)
 		{
-			_logger.LogWarning(ex, "Failed to get user info for SignalR");
+			_logger.LogWarning(ex, "Failed to create internal hub token");
 			return null;
 		}
 	}

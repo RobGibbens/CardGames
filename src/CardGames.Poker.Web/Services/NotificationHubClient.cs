@@ -1,14 +1,14 @@
 using CardGames.Contracts.SignalR;
+using CardGames.Poker.Web.Infrastructure;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.SignalR.Client;
-using System.Security.Claims;
-using System.Web;
 
 namespace CardGames.Poker.Web.Services;
 
 public sealed class NotificationHubClient : IAsyncDisposable
 {
 	private readonly IConfiguration _configuration;
+	private readonly InternalApiUserTokenFactory _internalApiUserTokenFactory;
 	private readonly AuthenticationStateProvider _authStateProvider;
 	private readonly ILogger<NotificationHubClient> _logger;
 	private HubConnection? _hubConnection;
@@ -21,10 +21,12 @@ public sealed class NotificationHubClient : IAsyncDisposable
 	public NotificationHubClient(
 		IConfiguration configuration,
 		AuthenticationStateProvider authStateProvider,
+		InternalApiUserTokenFactory internalApiUserTokenFactory,
 		ILogger<NotificationHubClient> logger)
 	{
 		_configuration = configuration;
 		_authStateProvider = authStateProvider;
+		_internalApiUserTokenFactory = internalApiUserTokenFactory;
 		_logger = logger;
 	}
 
@@ -35,28 +37,12 @@ public sealed class NotificationHubClient : IAsyncDisposable
 			return;
 		}
 
-		var userInfo = await GetUserInfoAsync();
-		var hubUrl = GetHubUrl(userInfo);
+		var hubUrl = GetHubUrl();
 
 		_hubConnection = new HubConnectionBuilder()
 			.WithUrl(hubUrl, options =>
 			{
-				if (userInfo is not null)
-				{
-					options.Headers["X-User-Authenticated"] = "true";
-					if (!string.IsNullOrEmpty(userInfo.Value.UserId))
-					{
-						options.Headers["X-User-Id"] = userInfo.Value.UserId;
-					}
-					if (!string.IsNullOrEmpty(userInfo.Value.UserName))
-					{
-						options.Headers["X-User-Name"] = userInfo.Value.UserName;
-					}
-					if (!string.IsNullOrEmpty(userInfo.Value.UserEmail))
-					{
-						options.Headers["X-User-Email"] = userInfo.Value.UserEmail;
-					}
-				}
+				options.AccessTokenProvider = () => GetAccessTokenAsync();
 			})
 			.WithAutomaticReconnect(new[]
 			{
@@ -91,68 +77,25 @@ public sealed class NotificationHubClient : IAsyncDisposable
 		}
 	}
 
-	private string GetHubUrl((string? UserId, string? UserName, string? UserEmail)? userInfo)
+	private string GetHubUrl()
 	{
 		var baseUrl = _configuration["Services:Api:Https:0"]
 			?? _configuration["Services:Api:Http:0"]
 			?? "https://localhost:7001";
 
-		var url = $"{baseUrl}/hubs/notifications";
-		if (userInfo is not null)
-		{
-			var queryParams = new List<string> { "authenticated=true" };
-			if (!string.IsNullOrEmpty(userInfo.Value.UserId))
-			{
-				queryParams.Add($"userId={HttpUtility.UrlEncode(userInfo.Value.UserId)}");
-			}
-			if (!string.IsNullOrEmpty(userInfo.Value.UserName))
-			{
-				queryParams.Add($"userName={HttpUtility.UrlEncode(userInfo.Value.UserName)}");
-			}
-			if (!string.IsNullOrEmpty(userInfo.Value.UserEmail))
-			{
-				queryParams.Add($"userEmail={HttpUtility.UrlEncode(userInfo.Value.UserEmail)}");
-			}
-			url = $"{url}?{string.Join("&", queryParams)}";
-		}
-
-		return url;
+		return $"{baseUrl}/hubs/notifications";
 	}
 
-	private async Task<(string? UserId, string? UserName, string? UserEmail)?> GetUserInfoAsync()
+	private async Task<string?> GetAccessTokenAsync()
 	{
 		try
 		{
 			var authState = await _authStateProvider.GetAuthenticationStateAsync();
-			var user = authState.User;
-
-			if (user.Identity?.IsAuthenticated != true)
-			{
-				return null;
-			}
-
-			var userId = user.FindFirstValue(ClaimTypes.NameIdentifier)
-				?? user.FindFirstValue("sub");
-
-			var userEmail = user.FindFirstValue(ClaimTypes.Email)
-				?? user.FindFirstValue("email");
-
-			var userName = userEmail
-				?? user.FindFirstValue("preferred_username")
-				?? user.Identity?.Name;
-
-			// If the IdP doesn't expose an email claim, fall back to treating the username
-			// as an email if it looks like one. This enables server-side SignalR routing
-			// via IUserIdProvider when the database uses email/name as the stable key.
-			userEmail ??= (!string.IsNullOrWhiteSpace(userName) && userName.Contains('@'))
-				? userName
-				: null;
-
-			return (userId, userName, userEmail);
+			return _internalApiUserTokenFactory.CreateToken(authState.User);
 		}
 		catch (Exception ex)
 		{
-			_logger.LogWarning(ex, "Failed to get user info for notifications hub");
+			_logger.LogWarning(ex, "Failed to create internal hub token");
 			return null;
 		}
 	}

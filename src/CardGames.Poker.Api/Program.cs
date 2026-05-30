@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Options;
 using Microsoft.Identity.Web;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -32,6 +33,7 @@ using CardGames.Poker.Api.Features.Leagues.v1;
 using CardGames.Poker.Api.Features.Leagues.v1.Telemetry;
 using CardGames.Poker.Api.Features.Leagues.v1.Commands.IngestLeagueSeasonEventResults;
 using CardGames.Poker.Api.Games;
+using CardGames.Poker.Api.Features.Games;
 using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Testing;
 using Microsoft.AspNetCore.Identity;
@@ -47,36 +49,40 @@ public class Program
         builder.AddServiceDefaults();
 
         // Add services to the container.
+        builder.Services
+            .AddOptions<InternalApiAuthOptions>()
+            .Bind(builder.Configuration.GetSection(InternalApiAuthOptions.SectionName))
+            .Validate(options => !string.IsNullOrWhiteSpace(options.Issuer), "Internal API auth issuer is required.")
+            .Validate(options => !string.IsNullOrWhiteSpace(options.Audience), "Internal API auth audience is required.")
+            .Validate(options => !string.IsNullOrWhiteSpace(options.SigningKey), "Internal API auth signing key is required.")
+            .Validate(options => options.SigningKey.Length >= 32, "Internal API auth signing key must be at least 32 characters.")
+            .ValidateOnStart();
+
         builder.Services.AddAuthentication(options =>
             {
-                // Select auth scheme based on request characteristics
-                options.DefaultScheme = "SmartAuth";
-                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultScheme = "ApiAuth";
+                options.DefaultChallengeScheme = "ApiAuth";
             })
-            .AddPolicyScheme("SmartAuth", "JWT or Header authentication", options =>
+            .AddPolicyScheme("ApiAuth", "JWT or internal web authentication", options =>
             {
                 options.ForwardDefaultSelector = context =>
                 {
-                    var hasHeaderAuth =
-                        context.Request.Headers.ContainsKey("X-User-Authenticated") ||
-                        context.Request.Headers.ContainsKey("X-User-Id");
-
-                    return hasHeaderAuth
-                        ? HeaderAuthenticationHandler.SchemeName
+                    return context.Request.Headers.ContainsKey(InternalApiAuthenticationHandler.InternalTokenHeaderName)
+                        ? InternalApiAuthenticationHandler.SchemeName
                         : JwtBearerDefaults.AuthenticationScheme;
                 };
             })
             .AddMicrosoftIdentityWebApi(builder.Configuration.GetSection("AzureAd"));
 
-        // Add header-based auth scheme for SignalR from Blazor frontend (separate registration)
         builder.Services.AddAuthentication()
-            .AddScheme<AuthenticationSchemeOptions, HeaderAuthenticationHandler>(
-                HeaderAuthenticationHandler.SchemeName, _ => { });
+            .AddScheme<AuthenticationSchemeOptions, InternalApiAuthenticationHandler>(
+                InternalApiAuthenticationHandler.SchemeName, _ => { });
 
         // Configure authorization with multiple schemes
         builder.Services.AddAuthorization();
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+        builder.Services.AddScoped<IGameAuthorizationService, GameAuthorizationService>();
         builder.Services.Configure<DevelopmentUserSeedOptions>(
             builder.Configuration.GetSection(DevelopmentUserSeedOptions.SectionName));
 
@@ -357,7 +363,7 @@ public class Program
     app.UseRateLimiter();
         app.UseAuthorization();
 
-        // Map SignalR hubs with header-based auth for Blazor clients
+        // SignalR hubs only accept the dedicated internal-user token path.
         app.MapHub<GameHub>("/hubs/game");
         app.MapHub<LobbyHub>("/hubs/lobby");
 		app.MapHub<NotificationHub>("/hubs/notifications");
@@ -369,20 +375,6 @@ public class Program
     private static string BuildLeagueJoinRequestPartitionKey(HttpContext context)
     {
         var userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-        if (string.IsNullOrWhiteSpace(userId)
-            && context.Request.Headers.TryGetValue("X-User-Id", out var headerUserId)
-            && !string.IsNullOrWhiteSpace(headerUserId.ToString()))
-        {
-            userId = headerUserId.ToString();
-        }
-
-        if (string.IsNullOrWhiteSpace(userId)
-            && context.Request.Headers.TryGetValue("X-Test-UserId", out var testHeaderUserId)
-            && !string.IsNullOrWhiteSpace(testHeaderUserId.ToString()))
-        {
-            userId = testHeaderUserId.ToString();
-        }
 
         if (string.IsNullOrWhiteSpace(userId))
         {

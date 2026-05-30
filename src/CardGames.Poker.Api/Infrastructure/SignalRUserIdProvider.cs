@@ -6,7 +6,7 @@ namespace CardGames.Poker.Api.Infrastructure;
 /// <summary>
 /// Maps SignalR user identity to the application's stable user id.
 /// Uses the email claim to match how players are stored in the database (by name/email).
-/// This enables <c>Clients.User(userId)</c> routing for header-authenticated SignalR connections.
+/// This enables <c>Clients.User(userId)</c> routing for internal-token-authenticated SignalR connections.
 /// </summary>
 public sealed class SignalRUserIdProvider : IUserIdProvider
 {

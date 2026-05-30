@@ -1,4 +1,5 @@
 using Asp.Versioning.Builder;
+using CardGames.Poker.Api.Features.Games;
 using CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.AcknowledgePotMatch;
 using CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.DeckDraw;
 using CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.DrawCards;
@@ -19,14 +20,24 @@ public static class V1
 			.WithTags([Feature.Name])
 			.AddFluentValidationAutoValidation();
 
-		mapGroup
-			.MapStartHand()
-			.MapDropOrStay()
-			.MapDrawCards()
-			.MapDeckDraw()
-			.MapPerformShowdown()
-			.MapAcknowledgePotMatch()
-			.MapResumeAfterChipCheck()
-			;
+		var authenticatedGroup = mapGroup.MapGroup(string.Empty)
+			.RequireAuthorization();
+
+		var hostCommandGroup = authenticatedGroup.MapGroup(string.Empty)
+			.RequireGameHostAuthorization();
+
+		var playerCommandGroup = authenticatedGroup.MapGroup(string.Empty)
+			.RequireCallerOwnsTargetPlayerAuthorization();
+
+		var participantCommandGroup = authenticatedGroup.MapGroup(string.Empty)
+			.RequireGameParticipantAuthorization();
+
+		hostCommandGroup.MapStartHand();
+		playerCommandGroup.MapDropOrStay();
+		playerCommandGroup.MapDrawCards();
+		playerCommandGroup.MapDeckDraw();
+		participantCommandGroup.MapPerformShowdown();
+		participantCommandGroup.MapAcknowledgePotMatch();
+		hostCommandGroup.MapResumeAfterChipCheck();
 	}
 }

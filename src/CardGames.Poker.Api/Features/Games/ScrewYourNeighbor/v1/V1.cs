@@ -1,4 +1,5 @@
 using Asp.Versioning.Builder;
+using CardGames.Poker.Api.Features.Games;
 using CardGames.Poker.Api.Features.Games.ScrewYourNeighbor.v1.Commands.KeepOrTrade;
 using SharpGrip.FluentValidation.AutoValidation.Endpoints.Extensions;
 
@@ -13,7 +14,11 @@ public static class V1
 			.WithTags([Feature.Name])
 			.AddFluentValidationAutoValidation();
 
-		mapGroup
+		var playerCommandGroup = mapGroup.MapGroup(string.Empty)
+			.RequireAuthorization()
+			.RequireCallerOwnsTargetPlayerAuthorization();
+
+		playerCommandGroup
 			.MapKeepOrTrade();
 	}
 }

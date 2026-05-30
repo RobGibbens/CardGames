@@ -1,4 +1,5 @@
 using Asp.Versioning.Builder;
+using CardGames.Poker.Api.Features.Games;
 using CardGames.Poker.Api.Features.Games.GoodBadUgly.v1.Commands.DealHands;
 using CardGames.Poker.Api.Features.Games.GoodBadUgly.v1.Commands.PerformShowdown;
 using CardGames.Poker.Api.Features.Games.GoodBadUgly.v1.Commands.ProcessBettingAction;
@@ -15,9 +16,20 @@ public static class V1
 			.WithTags([Feature.Name])
 			.AddFluentValidationAutoValidation();
 
-		mapGroup
-			.MapDealHands()
-			.MapProcessBettingAction()
-			.MapPerformShowdown();
+		var authenticatedGroup = mapGroup.MapGroup(string.Empty)
+			.RequireAuthorization();
+
+		var hostCommandGroup = authenticatedGroup.MapGroup(string.Empty)
+			.RequireGameHostAuthorization();
+
+		var currentPlayerCommandGroup = authenticatedGroup.MapGroup(string.Empty)
+			.RequireGameCurrentPlayerAuthorization();
+
+		var participantCommandGroup = authenticatedGroup.MapGroup(string.Empty)
+			.RequireGameParticipantAuthorization();
+
+		hostCommandGroup.MapDealHands();
+		currentPlayerCommandGroup.MapProcessBettingAction();
+		participantCommandGroup.MapPerformShowdown();
 	}
 }

@@ -1,4 +1,5 @@
 ﻿using Asp.Versioning.Builder;
+using CardGames.Poker.Api.Features.Games;
 using CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe.v1.Commands.CollectAntes;
 using CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe.v1.Commands.DealHands;
 using CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe.v1.Commands.PerformShowdown;
@@ -20,15 +21,37 @@ public static class V1
 			.WithTags([Feature.Name])
 			.AddFluentValidationAutoValidation();
 
-	mapGroup
-			.MapStartHand()
-			.MapCollectAntes()
-			.MapDealHands()
-			.MapProcessBettingAction()
-			.MapProcessDraw()
-			.MapPerformShowdown()
-			.MapGetCurrentPlayerTurn()
-			.MapGetCurrentBettingRound()
-			;
+		var commandGroup = mapGroup.MapGroup(string.Empty)
+			.RequireAuthorization();
+
+		var hostCommandGroup = commandGroup.MapGroup(string.Empty)
+			.RequireGameHostAuthorization();
+
+		var currentPlayerCommandGroup = commandGroup.MapGroup(string.Empty)
+			.RequireGameCurrentPlayerAuthorization();
+
+		var currentDrawCommandGroup = commandGroup.MapGroup(string.Empty)
+			.RequireGameCurrentDrawPlayerAuthorization();
+
+		var participantCommandGroup = commandGroup.MapGroup(string.Empty)
+			.RequireGameParticipantAuthorization();
+
+		var currentPlayerQueryGroup = mapGroup.MapGroup(string.Empty)
+			.RequireAuthorization()
+			.RequireGameCurrentPlayerAuthorization();
+
+		var participantQueryGroup = mapGroup.MapGroup(string.Empty)
+			.RequireAuthorization()
+			.RequireGameParticipantAuthorization();
+
+		hostCommandGroup.MapStartHand();
+		hostCommandGroup.MapCollectAntes();
+		hostCommandGroup.MapDealHands();
+		currentPlayerCommandGroup.MapProcessBettingAction();
+		currentDrawCommandGroup.MapProcessDraw();
+		participantCommandGroup.MapPerformShowdown();
+
+		currentPlayerQueryGroup.MapGetCurrentPlayerTurn();
+		participantQueryGroup.MapGetCurrentBettingRound();
 	}
 }

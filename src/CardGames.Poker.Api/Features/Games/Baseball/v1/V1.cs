@@ -1,4 +1,5 @@
 using Asp.Versioning.Builder;
+using CardGames.Poker.Api.Features.Games;
 using CardGames.Poker.Api.Features.Games.Baseball.v1.Commands.CollectAntes;
 using CardGames.Poker.Api.Features.Games.Baseball.v1.Commands.DealHands;
 using CardGames.Poker.Api.Features.Games.Baseball.v1.Commands.PerformShowdown;
@@ -19,13 +20,32 @@ public static class V1
 			.WithTags([Feature.Name])
 			.AddFluentValidationAutoValidation();
 
-		mapGroup
-			.MapStartHand()
-			.MapCollectAntes()
-			.MapDealHands()
-			.MapProcessBettingAction()
-			.MapProcessBuyCard()
-			.MapPerformShowdown()
-			.MapGetCurrentPlayerTurn();
+		var commandGroup = mapGroup.MapGroup(string.Empty)
+			.RequireAuthorization();
+
+		var hostCommandGroup = commandGroup.MapGroup(string.Empty)
+			.RequireGameHostAuthorization();
+
+		var currentPlayerCommandGroup = commandGroup.MapGroup(string.Empty)
+			.RequireGameCurrentPlayerAuthorization();
+
+		var playerCommandGroup = commandGroup.MapGroup(string.Empty)
+			.RequireCallerOwnsTargetPlayerAuthorization();
+
+		var participantCommandGroup = commandGroup.MapGroup(string.Empty)
+			.RequireGameParticipantAuthorization();
+
+		var currentPlayerQueryGroup = mapGroup.MapGroup(string.Empty)
+			.RequireAuthorization()
+			.RequireGameCurrentPlayerAuthorization();
+
+		hostCommandGroup.MapStartHand();
+		hostCommandGroup.MapCollectAntes();
+		hostCommandGroup.MapDealHands();
+		currentPlayerCommandGroup.MapProcessBettingAction();
+		playerCommandGroup.MapProcessBuyCard();
+		participantCommandGroup.MapPerformShowdown();
+
+		currentPlayerQueryGroup.MapGetCurrentPlayerTurn();
 	}
 }

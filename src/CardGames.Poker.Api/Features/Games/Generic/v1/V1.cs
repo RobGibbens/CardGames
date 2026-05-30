@@ -1,4 +1,5 @@
 using Asp.Versioning.Builder;
+using CardGames.Poker.Api.Features.Games;
 using CardGames.Poker.Api.Features.Games.Generic.v1.Commands.PerformShowdown;
 using CardGames.Poker.Api.Features.Games.Generic.v1.Commands.StartHand;
 using CardGames.Poker.Api.Features.Games.Generic.v1.Queries.GetGeneratedTableName;
@@ -26,9 +27,19 @@ public static class V1
             .WithTags([Feature.Name])
             .AddFluentValidationAutoValidation();
 
+        var commandGroup = mapGroup.MapGroup(string.Empty)
+            .RequireAuthorization();
+
+        var hostCommandGroup = commandGroup.MapGroup(string.Empty)
+            .RequireGameHostAuthorization();
+
+        var participantCommandGroup = commandGroup.MapGroup(string.Empty)
+            .RequireGameParticipantAuthorization();
+
         mapGroup
-            .MapGetGeneratedTableName()
-            .MapStartHand()
-            .MapPerformShowdown();
+            .MapGetGeneratedTableName();
+
+        hostCommandGroup.MapStartHand();
+        participantCommandGroup.MapPerformShowdown();
     }
 }

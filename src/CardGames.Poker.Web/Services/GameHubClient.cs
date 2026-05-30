@@ -1,10 +1,9 @@
 using CardGames.Contracts.SignalR;
 using CardGames.Contracts.TableSettings;
+using CardGames.Poker.Web.Infrastructure;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
-using System.Security.Claims;
-using System.Web;
 
 namespace CardGames.Poker.Web.Services;
 
@@ -15,6 +14,7 @@ namespace CardGames.Poker.Web.Services;
 public sealed class GameHubClient : IAsyncDisposable
 {
     private readonly IConfiguration _configuration;
+    private readonly InternalApiUserTokenFactory _internalApiUserTokenFactory;
     private readonly AuthenticationStateProvider _authStateProvider;
     private readonly ILogger<GameHubClient> _logger;
 
@@ -83,10 +83,12 @@ public sealed class GameHubClient : IAsyncDisposable
     public GameHubClient(
         IConfiguration configuration,
         AuthenticationStateProvider authStateProvider,
+        InternalApiUserTokenFactory internalApiUserTokenFactory,
         ILogger<GameHubClient> logger)
     {
         _configuration = configuration;
         _authStateProvider = authStateProvider;
+        _internalApiUserTokenFactory = internalApiUserTokenFactory;
         _logger = logger;
     }
 
@@ -104,31 +106,13 @@ public sealed class GameHubClient : IAsyncDisposable
             }
         }
 
-        // Get user info for authentication
-        var userInfo = await GetUserInfoAsync();
-        var hubUrl = GetHubUrl(userInfo);
+        var hubUrl = GetHubUrl();
         _logger.LogInformation("Connecting to game hub at {HubUrl}", hubUrl);
 
         _hubConnection = new HubConnectionBuilder()
             .WithUrl(hubUrl, options =>
             {
-                // Add user identity headers for authentication
-                if (userInfo is not null)
-                {
-                    options.Headers["X-User-Authenticated"] = "true";
-                    if (!string.IsNullOrEmpty(userInfo.Value.UserId))
-                    {
-                        options.Headers["X-User-Id"] = userInfo.Value.UserId;
-                    }
-                    if (!string.IsNullOrEmpty(userInfo.Value.UserName))
-                    {
-                        options.Headers["X-User-Name"] = userInfo.Value.UserName;
-                    }
-                    if (!string.IsNullOrEmpty(userInfo.Value.UserEmail))
-                    {
-                        options.Headers["X-User-Email"] = userInfo.Value.UserEmail;
-                    }
-                }
+                options.AccessTokenProvider = () => GetAccessTokenAsync();
             })
             .AddJsonProtocol(options =>
             {
@@ -249,7 +233,7 @@ public sealed class GameHubClient : IAsyncDisposable
         OnConnectionStateChanged?.Invoke(HubConnectionState.Disconnected);
     }
 
-    private string GetHubUrl((string? UserId, string? UserName, string? UserEmail)? userInfo)
+    private string GetHubUrl()
     {
         // Use service discovery URL pattern matching the API client configuration
         // The API is accessible at "https+http://api" via Aspire service discovery
@@ -257,65 +241,19 @@ public sealed class GameHubClient : IAsyncDisposable
             ?? _configuration["Services:Api:Http:0"]
             ?? "https://localhost:7001";
 
-        var url = $"{baseUrl}/hubs/game";
-
-        // Add user identity as query parameters for WebSocket upgrade request
-        // (headers are not reliably sent during WebSocket handshake)
-        if (userInfo is not null)
-        {
-            var queryParams = new List<string> { "authenticated=true" };
-            if (!string.IsNullOrEmpty(userInfo.Value.UserId))
-            {
-                queryParams.Add($"userId={HttpUtility.UrlEncode(userInfo.Value.UserId)}");
-            }
-            if (!string.IsNullOrEmpty(userInfo.Value.UserName))
-            {
-                queryParams.Add($"userName={HttpUtility.UrlEncode(userInfo.Value.UserName)}");
-            }
-            if (!string.IsNullOrEmpty(userInfo.Value.UserEmail))
-            {
-                queryParams.Add($"userEmail={HttpUtility.UrlEncode(userInfo.Value.UserEmail)}");
-            }
-            url = $"{url}?{string.Join("&", queryParams)}";
-        }
-
-        return url;
+        return $"{baseUrl}/hubs/game";
     }
 
-    private async Task<(string? UserId, string? UserName, string? UserEmail)?> GetUserInfoAsync()
+    private async Task<string?> GetAccessTokenAsync()
     {
         try
         {
             var authState = await _authStateProvider.GetAuthenticationStateAsync();
-            var user = authState.User;
-
-            if (user.Identity?.IsAuthenticated != true)
-            {
-                return null;
-            }
-
-            var userId = user.FindFirstValue(ClaimTypes.NameIdentifier)
-                         ?? user.FindFirstValue("sub");
-
-            var userEmail = user.FindFirstValue(ClaimTypes.Email)
-                         ?? user.FindFirstValue("email");
-
-            var userName = userEmail
-                           ?? user.FindFirstValue("preferred_username")
-                           ?? user.Identity?.Name;
-
-            // If the IdP doesn't expose an email claim, fall back to treating the username
-            // as an email if it looks like one. This enables server-side SignalR routing
-            // via IUserIdProvider when the database uses email/name as the stable key.
-            userEmail ??= (!string.IsNullOrWhiteSpace(userName) && userName.Contains('@'))
-                ? userName
-                : null;
-
-            return (userId, userName, userEmail);
+            return _internalApiUserTokenFactory.CreateToken(authState.User);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to get user info for SignalR");
+            _logger.LogWarning(ex, "Failed to create internal hub token");
             return null;
         }
     }

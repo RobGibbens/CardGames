@@ -1,4 +1,5 @@
 using Asp.Versioning.Builder;
+using CardGames.Poker.Api.Features.Games;
 using CardGames.Poker.Api.Features.Games.Tollbooth.v1.Commands.ChooseCard;
 using CardGames.Poker.Api.Features.Games.Tollbooth.v1.Commands.CollectAntes;
 using CardGames.Poker.Api.Features.Games.Tollbooth.v1.Commands.DealHands;
@@ -19,13 +20,32 @@ public static class V1
 			.WithTags(["Tollbooth"])
 			.AddFluentValidationAutoValidation();
 
-		mapGroup
-			.MapStartHand()
-			.MapCollectAntes()
-			.MapDealHands()
-			.MapProcessBettingAction()
-			.MapChooseCard()
-			.MapPerformShowdown()
-			.MapGetCurrentPlayerTurn();
+		var commandGroup = mapGroup.MapGroup(string.Empty)
+			.RequireAuthorization();
+
+		var hostCommandGroup = commandGroup.MapGroup(string.Empty)
+			.RequireGameHostAuthorization();
+
+		var currentPlayerCommandGroup = commandGroup.MapGroup(string.Empty)
+			.RequireGameCurrentPlayerAuthorization();
+
+		var currentDrawCommandGroup = commandGroup.MapGroup(string.Empty)
+			.RequireGameCurrentDrawPlayerAuthorization();
+
+		var participantCommandGroup = commandGroup.MapGroup(string.Empty)
+			.RequireGameParticipantAuthorization();
+
+		var currentPlayerQueryGroup = mapGroup.MapGroup(string.Empty)
+			.RequireAuthorization()
+			.RequireGameCurrentPlayerAuthorization();
+
+		hostCommandGroup.MapStartHand();
+		hostCommandGroup.MapCollectAntes();
+		hostCommandGroup.MapDealHands();
+		currentPlayerCommandGroup.MapProcessBettingAction();
+		currentDrawCommandGroup.MapChooseCard();
+		participantCommandGroup.MapPerformShowdown();
+
+		currentPlayerQueryGroup.MapGetCurrentPlayerTurn();
 	}
 }

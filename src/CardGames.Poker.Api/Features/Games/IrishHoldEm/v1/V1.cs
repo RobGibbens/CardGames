@@ -1,4 +1,5 @@
 using Asp.Versioning.Builder;
+using CardGames.Poker.Api.Features.Games;
 using CardGames.Poker.Api.Features.Games.IrishHoldEm.v1.Commands.FoldDuringDraw;
 using CardGames.Poker.Api.Features.Games.IrishHoldEm.v1.Commands.ProcessDiscard;
 using SharpGrip.FluentValidation.AutoValidation.Endpoints.Extensions;
@@ -14,7 +15,11 @@ public static class V1
 			.WithTags(["Irish Hold 'Em"])
 			.AddFluentValidationAutoValidation();
 
-		mapGroup.MapProcessDiscard();
-		mapGroup.MapFoldDuringDraw();
+		var currentDrawCommandGroup = mapGroup.MapGroup(string.Empty)
+			.RequireAuthorization()
+			.RequireGameCurrentDrawPlayerAuthorization();
+
+		currentDrawCommandGroup.MapProcessDiscard();
+		currentDrawCommandGroup.MapFoldDuringDraw();
 	}
 }

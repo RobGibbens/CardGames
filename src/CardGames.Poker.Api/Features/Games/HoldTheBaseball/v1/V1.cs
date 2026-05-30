@@ -1,4 +1,5 @@
 using Asp.Versioning.Builder;
+using CardGames.Poker.Api.Features.Games;
 using CardGames.Poker.Api.Features.Games.HoldTheBaseball.v1.Commands.PerformShowdown;
 using CardGames.Poker.Api.Features.Games.HoldTheBaseball.v1.Commands.ProcessBettingAction;
 using CardGames.Poker.Api.Features.Games.HoldTheBaseball.v1.Commands.StartHand;
@@ -15,11 +16,21 @@ public static class V1
 			.WithTags([Feature.Name])
 			.AddFluentValidationAutoValidation();
 
-		mapGroup
-			.MapStartHand()
-			.MapProcessBettingAction();
+		var authenticatedGroup = mapGroup.MapGroup(string.Empty)
+			.RequireAuthorization();
 
-		mapGroup
-			.MapPerformShowdown();
+		var hostCommandGroup = authenticatedGroup.MapGroup(string.Empty)
+			.RequireGameHostAuthorization();
+
+		var currentPlayerCommandGroup = authenticatedGroup.MapGroup(string.Empty)
+			.RequireGameCurrentPlayerAuthorization();
+
+		var participantCommandGroup = authenticatedGroup.MapGroup(string.Empty)
+			.RequireGameParticipantAuthorization();
+
+		hostCommandGroup.MapStartHand();
+		currentPlayerCommandGroup.MapProcessBettingAction();
+
+		participantCommandGroup.MapPerformShowdown();
 	}
 }

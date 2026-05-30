@@ -4,12 +4,11 @@ namespace CardGames.Poker.Api.Infrastructure;
 
 /// <summary>
 /// Implementation of <see cref="ICurrentUserService"/> that retrieves user information
-/// from the current HTTP context's claims principal or custom headers from Blazor frontend.
+/// from the current HTTP context's claims principal.
 /// </summary>
 public class CurrentUserService(IHttpContextAccessor httpContextAccessor) : ICurrentUserService
 {
 	private ClaimsPrincipal? User => httpContextAccessor.HttpContext?.User;
-	private HttpContext? HttpContext => httpContextAccessor.HttpContext;
 
 	/// <inheritdoc />
 	public string? UserId
@@ -23,12 +22,6 @@ public class CurrentUserService(IHttpContextAccessor httpContextAccessor) : ICur
 			if (!string.IsNullOrWhiteSpace(claimUserId))
 			{
 				return claimUserId;
-			}
-
-			if (HttpContext?.Request.Headers.TryGetValue("X-User-Id", out var headerUserId) == true)
-			{
-				var value = headerUserId.ToString();
-				return string.IsNullOrWhiteSpace(value) ? null : value;
 			}
 
 			return null;
@@ -50,12 +43,6 @@ public class CurrentUserService(IHttpContextAccessor httpContextAccessor) : ICur
 				return claimUserName;
 			}
 
-			if (HttpContext?.Request.Headers.TryGetValue("X-User-Name", out var headerUserName) == true)
-			{
-				var value = headerUserName.ToString();
-				return string.IsNullOrWhiteSpace(value) ? null : value;
-			}
-
 			return null;
 		}
 	}
@@ -73,12 +60,6 @@ public class CurrentUserService(IHttpContextAccessor httpContextAccessor) : ICur
 				return claimEmail;
 			}
 
-			if (HttpContext?.Request.Headers.TryGetValue("X-User-Email", out var headerEmail) == true)
-			{
-				var value = headerEmail.ToString();
-				return string.IsNullOrWhiteSpace(value) ? null : value;
-			}
-
 			return null;
 		}
 	}
@@ -91,11 +72,6 @@ public class CurrentUserService(IHttpContextAccessor httpContextAccessor) : ICur
 			if (User?.Identity?.IsAuthenticated == true)
 			{
 				return true;
-			}
-
-			if (HttpContext?.Request.Headers.TryGetValue("X-User-Authenticated", out var headerAuth) == true)
-			{
-				return string.Equals(headerAuth.ToString(), "true", StringComparison.OrdinalIgnoreCase);
 			}
 
 			return false;

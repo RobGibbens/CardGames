@@ -9,7 +9,7 @@ namespace CardGames.Poker.Api.Hubs;
 /// SignalR hub for real-time lobby updates.
 /// Clients join the lobby group to receive game creation/deletion notifications.
 /// </summary>
-[Authorize(AuthenticationSchemes = HeaderAuthenticationHandler.SchemeName)]
+[Authorize(AuthenticationSchemes = InternalApiAuthenticationHandler.SchemeName)]
 public sealed class LobbyHub : Hub
 {
     private readonly ILogger<LobbyHub> _logger;

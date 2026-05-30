@@ -1,4 +1,5 @@
 using Asp.Versioning.Builder;
+using CardGames.Poker.Api.Features.Games;
 using CardGames.Poker.Api.Features.Games.InBetween.v1.Commands.AceChoice;
 using CardGames.Poker.Api.Features.Games.InBetween.v1.Commands.PlaceBet;
 using SharpGrip.FluentValidation.AutoValidation.Endpoints.Extensions;
@@ -14,7 +15,11 @@ public static class V1
 			.WithTags([Feature.Name])
 			.AddFluentValidationAutoValidation();
 
-		mapGroup
+		var playerCommandGroup = mapGroup.MapGroup(string.Empty)
+			.RequireAuthorization()
+			.RequireCallerOwnsTargetPlayerAuthorization();
+
+		playerCommandGroup
 			.MapAceChoice()
 			.MapPlaceBet();
 	}
