@@ -1,0 +1,117 @@
+<div class="table-controls-strip">
+    <button class="btn btn-secondary btn-sm leave-table-btn" @onclick="OnLeaveTableAsync">
+        <i class="fa-regular fa-arrow-left"></i>
+        Leave Table
+    </button>
+
+    @if (IsSeated)
+    {
+        <button class="btn btn-secondary btn-sm ms-2" @onclick="OnToggleSitOutAsync"
+                title="@(IsSittingOut ? "Join the game" : "Sit out next hand")">
+            <i class="fa-solid @(IsSittingOut ? "fa-user-check" : "fa-user-clock")"></i>
+            @(IsSittingOut ? "I'm Back" : "Sit out next hand")
+        </button>
+    }
+
+    <button class="btn btn-secondary btn-sm ms-2" @onclick="OnToggleDealSoundMuteAsync"
+            title="@(IsDealSoundMuted ? "Unmute table sounds" : "Mute table sounds")">
+        <i class="fa-solid @(IsDealSoundMuted ? "fa-volume-xmark" : "fa-volume-high")"></i>
+    </button>
+
+    <button class="btn btn-secondary btn-sm ms-2 game-info-toggle-btn" type="button"
+            @onclick="OnToggleGameInfoOverlay"
+            title="@(ShowGameInfoOverlay ? "Hide game information" : "Show game information")"
+            aria-expanded="@ShowGameInfoOverlay"
+            aria-controls="game-info-overlay-panel">
+        <i class="fa-solid fa-circle-info"></i>
+    </button>
+
+    @if (ShowGameVariantBadges)
+    {
+        <div class="game-variant-badges">
+            <span class="game-variant-label">
+                <i class="fa-solid fa-cards"></i>
+                @GameInfoTypeContext
+            </span>
+
+            @if (IsLeagueTournament)
+            {
+                <span class="game-variant-label">
+                    <i class="fa-solid fa-trophy"></i>
+                    Tournament
+                </span>
+            }
+        </div>
+    }
+
+    <div class="table-controls-right">
+        @if (ShowHostControls)
+        {
+            <div class="host-controls">
+                @if (ShowHostStartControls)
+                {
+                    <a href="/table/@GameId/edit" class="btn btn-secondary btn-sm" data-enhance-nav="false">
+                        <i class="fa-regular fa-pen-to-square"></i>
+                        Edit Table
+                    </a>
+                    <button class="btn btn-primary btn-sm" @onclick="OnStartGameAsync" disabled="@(!CanStartGame || IsDealersChoiceWaitingForSelectedGameStart)">
+                        <i class="fa-regular fa-play"></i>
+                        @(IsDealersChoiceWaitingForSelectedGameStart
+                            ? "Starting..."
+                            : (!CanStartGame ? "Waiting for more players" : "Start Game"))
+                    </button>
+                }
+                else if (ShowHostInGameControls)
+                {
+                    @if (IsPaused)
+                    {
+                        <button class="btn btn-secondary btn-sm" @onclick="OnResumeGameAsync">
+                            <i class="fa-regular fa-play"></i>
+                        </button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-secondary btn-sm" @onclick="OnPauseGameAsync">
+                            <i class="fa-regular fa-pause"></i>
+                        </button>
+                    }
+
+                    <button class="btn btn-sm btn-end-game" @onclick="OnEndGameAsync">
+                        <i class="fa-solid fa-octagon"></i>
+                    </button>
+                }
+            </div>
+        }
+
+        <div class="connection-indicator @(IsConnected ? "connected" : "disconnected")"
+             title="@(IsConnected ? "Connected" : "Disconnected")">
+            <span class="connection-dot"></span>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public Guid GameId { get; set; }
+    [Parameter] public bool IsSeated { get; set; }
+    [Parameter] public bool IsSittingOut { get; set; }
+    [Parameter] public bool IsDealSoundMuted { get; set; }
+    [Parameter] public bool ShowGameInfoOverlay { get; set; }
+    [Parameter] public bool ShowGameVariantBadges { get; set; }
+    [Parameter] public string GameInfoTypeContext { get; set; } = string.Empty;
+    [Parameter] public bool IsLeagueTournament { get; set; }
+    [Parameter] public bool ShowHostControls { get; set; }
+    [Parameter] public bool ShowHostStartControls { get; set; }
+    [Parameter] public bool ShowHostInGameControls { get; set; }
+    [Parameter] public bool IsPaused { get; set; }
+    [Parameter] public bool CanStartGame { get; set; }
+    [Parameter] public bool IsDealersChoiceWaitingForSelectedGameStart { get; set; }
+    [Parameter] public bool IsConnected { get; set; }
+    [Parameter] public EventCallback OnLeaveTableAsync { get; set; }
+    [Parameter] public EventCallback OnToggleSitOutAsync { get; set; }
+    [Parameter] public EventCallback OnToggleDealSoundMuteAsync { get; set; }
+    [Parameter] public EventCallback OnToggleGameInfoOverlay { get; set; }
+    [Parameter] public EventCallback OnStartGameAsync { get; set; }
+    [Parameter] public EventCallback OnPauseGameAsync { get; set; }
+    [Parameter] public EventCallback OnResumeGameAsync { get; set; }
+    [Parameter] public EventCallback OnEndGameAsync { get; set; }
+}

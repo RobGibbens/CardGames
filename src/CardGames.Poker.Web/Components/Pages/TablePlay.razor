@@ -55,91 +55,24 @@
 
 <NoChipsModal @bind-IsVisible="_showNoChipsModal" OnClose="HandleNoChipsModalClose" />
 
-@if (_showJoinBuyInModal)
-{
-    <div class="confirm-dialog-overlay">
-        <div class="confirm-dialog league-form-modal join-buy-in-modal" @onclick:stopPropagation>
-            <div class="confirm-dialog-header league-form-modal-header">
-                <h3 class="confirm-dialog-title mb-0">Join Seat @((_pendingJoinSeatIndex ?? 0) + 1)</h3>
-                <button class="league-modal-close-btn" type="button" @onclick="CloseJoinBuyInModal" aria-label="Close buy-in dialog" disabled="@_isJoiningSeat">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
-            <div class="confirm-dialog-body league-form-modal-body text-start">
-                <p class="confirm-dialog-message mb-2 text-start">
-                    Account balance: <strong>@_joinBuyInBalance.ToString("N0")</strong>
-                </p>
-
-                <div class="join-buy-in-modal-controls">
-                    <label class="form-label mb-1" for="join-buy-in-slider">Buy-in amount</label>
-                    <input id="join-buy-in-slider"
-                           type="range"
-                           class="bet-slider"
-                              style="@GetJoinBuyInSliderStyle()"
-                           min="@GetJoinBuyInMin()"
-                           max="@GetJoinBuyInMax()"
-                           step="@GetJoinBuyInStep()"
-                           @bind="_joinBuyInAmount"
-                           @bind:event="oninput"
-                           @bind:after="NormalizeJoinBuyIn"
-                           disabled="@(IsScrewYourNeighbor || HasFixedTournamentBuyIn)" />
-                    <div class="bet-slider-labels">
-                        <span>Min @GetJoinBuyInMin().ToString("N0")</span>
-                        <span>Max @GetJoinBuyInMax().ToString("N0")</span>
-                    </div>
-
-                    <input id="join-buy-in-input"
-                              class="form-input join-buy-in-input"
-                           type="number"
-                           min="@GetJoinBuyInMin()"
-                           max="@GetJoinBuyInMax()"
-                           step="1"
-                           @bind="_joinBuyInAmount"
-                           @bind:after="ClampJoinBuyIn"
-                           disabled="@(IsScrewYourNeighbor || HasFixedTournamentBuyIn)" />
-
-                </div>
-            </div>
-            <div class="confirm-dialog-footer join-buy-in-modal-footer">
-                <button class="btn btn-secondary confirm-dialog-btn" type="button" @onclick="CloseJoinBuyInModal" disabled="@_isJoiningSeat">
-                    Cancel
-                </button>
-                <button class="btn btn-primary confirm-dialog-btn join-buy-in-submit-btn" type="button" @onclick="SubmitJoinBuyInAsync" disabled="@_isJoiningSeat">
-                    @if (_isJoiningSeat)
-                    {
-                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                    }
-                    Join Table
-                </button>
-            </div>
-        </div>
-    </div>
-}
-
-@if (_showJoinApprovalPendingModal)
-{
-    <div class="confirm-dialog-overlay">
-        <div class="confirm-dialog league-form-modal join-buy-in-modal join-approval-pending-modal" @onclick:stopPropagation>
-            <div class="confirm-dialog-header league-form-modal-header">
-                <h3 class="confirm-dialog-title mb-0">Waiting for Approval</h3>
-            </div>
-            <div class="confirm-dialog-body league-form-modal-body text-start">
-                <p class="confirm-dialog-message mb-2 text-start">
-                    Your request to join is pending approval from <strong>@_joinApprovalHostName</strong>.
-                </p>
-                <p class="confirm-dialog-message mb-0 text-start">
-                    Requested buy-in: <strong>@_pendingApprovalBuyIn.ToString("N0")</strong>
-                </p>
-            </div>
-            <div class="confirm-dialog-footer join-buy-in-modal-footer">
-                <div class="waiting-approval-indicator">
-                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                    <span>Waiting on host response</span>
-                </div>
-            </div>
-        </div>
-    </div>
-}
+<TablePlayJoinModals ShowJoinBuyInModal="@_showJoinBuyInModal"
+                     PendingJoinSeatIndex="@_pendingJoinSeatIndex"
+                     IsJoiningSeat="@_isJoiningSeat"
+                     JoinBuyInBalance="@_joinBuyInBalance"
+                     @bind-JoinBuyInAmount="@_joinBuyInAmount"
+                     GetJoinBuyInSliderStyle="@GetJoinBuyInSliderStyle()"
+                     JoinBuyInMin="@GetJoinBuyInMin()"
+                     JoinBuyInMax="@GetJoinBuyInMax()"
+                     JoinBuyInStep="@GetJoinBuyInStep()"
+                     IsScrewYourNeighbor="@IsScrewYourNeighbor"
+                     HasFixedTournamentBuyIn="@HasFixedTournamentBuyIn"
+                     OnNormalizeJoinBuyIn="NormalizeJoinBuyIn"
+                     OnClampJoinBuyIn="ClampJoinBuyIn"
+                     OnCloseJoinBuyInModal="CloseJoinBuyInModal"
+                     OnSubmitJoinBuyInAsync="SubmitJoinBuyInAsync"
+                     ShowJoinApprovalPendingModal="@_showJoinApprovalPendingModal"
+                     JoinApprovalHostName="@_joinApprovalHostName"
+                     PendingApprovalBuyIn="@_pendingApprovalBuyIn" />
 
 <!-- Toast notifications -->
 @if (_toastMessages.Count > 0)
@@ -156,105 +89,29 @@
 
 <main class="table-play-main">
     <!-- Leave Table / Controls Strip -->
-    <div class="table-controls-strip">
-        <button class="btn btn-secondary btn-sm leave-table-btn" @onclick="LeaveTableAsync">
-            <i class="fa-regular fa-arrow-left"></i>
-            Leave Table
-        </button>
-
-        @if (_isSeated)
-        {
-            <button class="btn btn-secondary btn-sm ms-2" @onclick="ToggleSitOutAsync"
-                    title="@(IsSittingOut ? "Join the game" : "Sit out next hand")">
-                <i class="fa-solid @(IsSittingOut ? "fa-user-check" : "fa-user-clock")"></i>
-                @(IsSittingOut ? "I'm Back" : "Sit out next hand")
-            </button>
-        }
-
-        <button class="btn btn-secondary btn-sm ms-2" @onclick="ToggleDealSoundMuteAsync"
-            title="@(_isDealSoundMuted ? "Unmute table sounds" : "Mute table sounds")">
-            <i class="fa-solid @(_isDealSoundMuted ? "fa-volume-xmark" : "fa-volume-high")"></i>
-            @(_isDealSoundMuted ? "" : "")
-        </button>
-
-        <button class="btn btn-secondary btn-sm ms-2 game-info-toggle-btn" type="button"
-                @onclick="ToggleGameInfoOverlay"
-                title="@(_showGameInfoOverlay ? "Hide game information" : "Show game information")"
-                aria-expanded="@_showGameInfoOverlay"
-                aria-controls="game-info-overlay-panel">
-            <i class="fa-solid fa-circle-info"></i>
-        </button>
-
-        @if (!_isLoading && !string.IsNullOrWhiteSpace(_gameTypeCode))
-        {
-            <div class="game-variant-badges">
-                <span class="game-variant-label">
-                    <i class="fa-solid fa-cards"></i>
-                    @GetGameInfoTypeContext()
-                </span>
-
-                @if (IsLeagueTournament)
-                {
-                    <span class="game-variant-label">
-                        <i class="fa-solid fa-trophy"></i>
-                        Tournament
-                    </span>
-                }
-            </div>
-        }
-
-        <div class="table-controls-right">
-            @if (!_isLoading)
-            {
-                if (_isHost)
-                {
-                    <div class="host-controls">
-                        @if
-                                        (_gameResponse?.CurrentPhase == GamePhase.WaitingForPlayers.ToString() || _gameResponse?.CurrentPhase ==
-                                        GamePhase.WaitingToStart.ToString())
-                        {
-                            <a href="/table/@GameId/edit" class="btn btn-secondary btn-sm" data-enhance-nav="false">
-                                <i class="fa-regular fa-pen-to-square"></i>
-                                Edit Table
-                            </a>
-                            <button class="btn btn-primary btn-sm" @onclick="StartGameAsync" disabled="@(!_canStartGame || IsDealersChoiceWaitingForSelectedGameStart)">
-                                <i class="fa-regular fa-play"></i>
-                                @(IsDealersChoiceWaitingForSelectedGameStart
-                                    ? "Starting..."
-                                    : (((_gameResponse?.CurrentPhase == GamePhase.WaitingForPlayers.ToString() ||
-                                        _gameResponse?.CurrentPhase == GamePhase.WaitingToStart.ToString()) && !_canStartGame)
-                                        ? "Waiting for more players"
-                                        : "Start Game"))
-                            </button>
-                        }
-                        else if (_gameResponse is not null && _gameResponse.CurrentPhase != GamePhase.Ended.ToString())
-                        {
-                            @if (_isPaused)
-                            {
-                                <button class="btn btn-secondary btn-sm" @onclick="ResumeGameAsync">
-                                    <i class="fa-regular fa-play"></i>
-                                </button>
-                            }
-                            else
-                            {
-                                <button class="btn btn-secondary btn-sm" @onclick="PauseGameAsync">
-                                    <i class="fa-regular fa-pause"></i>
-                                </button>
-                            }
-
-                            <button class="btn btn-sm btn-end-game" @onclick="EndGameAsync">
-                                <i class="fa-solid fa-octagon"></i>
-                            </button>
-                        }
-                    </div>
-                }
-            }
-            <div class="connection-indicator @(_isConnected ? "connected" : "disconnected")"
-                 title="@(_isConnected ? "Connected" : "Disconnected")">
-                <span class="connection-dot"></span>
-            </div>
-        </div>
-    </div>
+    <TablePlayControlsStrip GameId="@GameId"
+                            IsSeated="@_isSeated"
+                            IsSittingOut="@IsSittingOut"
+                            IsDealSoundMuted="@_isDealSoundMuted"
+                            ShowGameInfoOverlay="@_showGameInfoOverlay"
+                            ShowGameVariantBadges="@ShowGameVariantBadges"
+                            GameInfoTypeContext="@GetGameInfoTypeContext()"
+                            IsLeagueTournament="@IsLeagueTournament"
+                            ShowHostControls="@ShouldShowHostControls"
+                            ShowHostStartControls="@ShouldShowHostStartControls"
+                            ShowHostInGameControls="@ShouldShowHostInGameControls"
+                            IsPaused="@_isPaused"
+                            CanStartGame="@_canStartGame"
+                            IsDealersChoiceWaitingForSelectedGameStart="@IsDealersChoiceWaitingForSelectedGameStart"
+                            IsConnected="@_isConnected"
+                            OnLeaveTableAsync="LeaveTableAsync"
+                            OnToggleSitOutAsync="ToggleSitOutAsync"
+                            OnToggleDealSoundMuteAsync="ToggleDealSoundMuteAsync"
+                            OnToggleGameInfoOverlay="ToggleGameInfoOverlay"
+                            OnStartGameAsync="StartGameAsync"
+                            OnPauseGameAsync="PauseGameAsync"
+                            OnResumeGameAsync="ResumeGameAsync"
+                            OnEndGameAsync="EndGameAsync" />
 
     @if (_showGameInfoOverlay)
     {
@@ -278,60 +135,36 @@
 
     @if (!_isLoading)
     {
-        var temp = "";
-        <!-- Main Table Area -->
-        <div class="table-play-area">
-            <TableCanvas Seats="@_seats" Pot="@_pot" CurrentPhase="@_gameResponse?.CurrentPhase"
-                         CurrentPhaseDescription="@_gameResponse?.CurrentPhaseDescription"
-                         CurrentActorSeatIndex="@_currentActorSeatIndex" DealerSeatIndex="@_dealerSeatIndex"
-                         OnSeatClick="HandleSeatClickAsync" DisableSeatSelectionForCurrentUser="@_isSeated"
-                         CurrentPlayerSeatIndex="@_currentPlayerSeatIndex" GameTypeCode="@_gameTypeCode"
-                         IsPausedForChipCheck="@_isPausedForChipCheck"
-                         FlyingCard="@_flyingCard"
-                         HasWildCards="@HasWildCards"
-                         WildCards="@GetWildCardsForDisplay()"
-                         CommunityCards="@GetVisibleCommunityCards()"
-                         Ante="@_ante"
-                         SynBonusChipsBySeat="@_synBonusChipsBySeat" />
-
-            <!-- Dashboard Panel (left side) -->
-            @if (_isSeated)
-            {
-                <DashboardPanel>
-                    <DashboardSection Title="Chips" Icon="fa-solid fa-coins"
-                                      IsExpanded="@DashboardState.IsSectionExpanded("Chips")"
-                                      IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("Chips", value))">
-                        <ChipManagementSection ChipHistory="@_chipHistory" GameId="@GameId"
-                                               PlayerId="@(_currentPlayerId ?? Guid.Empty)" GameTypeCode="@_gameResponse?.GameTypeCode"
-                                               OnChipsAdded="@OnChipsAddedAsync" />
-                    </DashboardSection>
-
-                    <DashboardSection Title="Leaderboard" Icon="fa-solid fa-trophy"
-                                      IsExpanded="@DashboardState.IsSectionExpanded("Leaderboard")"
-                                      IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("Leaderboard", value))">
-                        <LeaderboardSection Players="@GetLeaderboardPlayers()" />
-                    </DashboardSection>
-
-                    @if (SupportsOdds && (_gameResponse?.AreOddsVisibleToAllPlayers ?? true))
-                    {
-                        <DashboardSection Title="Odds" Icon="fa-solid fa-chart-simple"
-                                          IsExpanded="@DashboardState.IsSectionExpanded("Odds")"
-                                          IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("Odds", value))">
-                            <OddsSection HandOdds="@handOdds" GameTypeCode="@_gameTypeCode" />
-                        </DashboardSection>
-                    }
-
-                    <DashboardSection Title="Hand History" Icon="fa-solid fa-clock-rotate-left"
-                                      IsExpanded="@DashboardState.IsSectionExpanded("HandHistory")"
-                                      IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("HandHistory", value))">
-                        <HandHistorySection Entries="@_handHistoryEntries" GameTypeCode="@_gameTypeCode" />
-                    </DashboardSection>
-                </DashboardPanel>
-            }
-        </div>
+        <TablePlayTableArea Seats="@_seats"
+                            Pot="@_pot"
+                            CurrentPhase="@_gameResponse?.CurrentPhase"
+                            CurrentPhaseDescription="@_gameResponse?.CurrentPhaseDescription"
+                            CurrentActorSeatIndex="@_currentActorSeatIndex"
+                            DealerSeatIndex="@_dealerSeatIndex"
+                            OnSeatClick="HandleSeatClickAsync"
+                            DisableSeatSelectionForCurrentUser="@_isSeated"
+                            CurrentPlayerSeatIndex="@_currentPlayerSeatIndex"
+                            GameTypeCode="@_gameTypeCode"
+                            IsPausedForChipCheck="@_isPausedForChipCheck"
+                            FlyingCard="@_flyingCard"
+                            HasWildCards="@HasWildCards"
+                            WildCards="@GetWildCardsForDisplay()"
+                            CommunityCards="@GetVisibleCommunityCards()"
+                            Ante="@_ante"
+                            SynBonusChipsBySeat="@_synBonusChipsBySeat"
+                            IsSeated="@_isSeated"
+                            ChipHistory="@_chipHistory"
+                            GameId="@GameId"
+                            PlayerId="@(_currentPlayerId ?? Guid.Empty)"
+                            OnChipsAdded="@OnChipsAddedAsync"
+                            LeaderboardPlayers="@GetLeaderboardPlayers()"
+                            SupportsOdds="@SupportsOdds"
+                            AreOddsVisibleToAllPlayers="@(_gameResponse?.AreOddsVisibleToAllPlayers ?? true)"
+                            HandOdds="@handOdds"
+                            HandHistoryEntries="@_handHistoryEntries" />
 
         <!-- Action Panel (only shown when it's player's turn during betting phase and player has cards) -->
-        @if (_isPlayerTurn && IsBettingPhase && CurrentPlayerHandCards.Count > 0 && !IsCardDealingVisualInProgress)
+        @if (ShouldShowActionPanel)
         {
             <ActionPanel LegalActions="@_legalActions" MinBet="@_currentMinBet" MaxBet="@_currentMaxBet"
                          CurrentBetToCall="@_currentBetToCall" PlayerChips="@_playerChips"
@@ -343,7 +176,7 @@
 
         <!-- Decision Panel (shown during decision phase like Drop/Stay) -->
         <!-- Note: Kings and Lows DropOrStay and Screw Your Neighbor KeepOrTrade have their own overlays, so exclude them here -->
-        @if (_isPlayerTurn && IsDecisionPhase && !(HasDropOrStay && IsDropOrStayPhase) && !(HasKeepOrTrade && IsKeepOrTradePhase) && !IsInBetween && !IsCardDealingVisualInProgress)
+        @if (ShouldShowDecisionPanel)
         {
             <DecisionPanel Title="@GetDecisionTitle()" Subtitle="@GetDecisionSubtitle()"
                            AvailableActions="@CurrentPhaseAvailableActions" OnDecision="@HandleDecisionAsync"
@@ -351,11 +184,7 @@
         }
 
         <!-- Draw Panel (only shown when it's player's turn during draw phase, or forced visible during animation/DrawComplete) -->
-        @if
-                (!IsCardDealingVisualInProgress &&
-                !IsTollboothOfferPhase &&
-                ((IsDrawingPhase && (_isPlayerDrawTurn || _isPlayerTurn)) || _forceShowDrawPanel || IsDrawCompletePhase) &&
-            IsParticipatingInHand)
+        @if (ShouldShowDrawPanel)
         {
             <DrawPanel Cards="@_currentPlayerDrawCards" SelectedIndices="@_selectedDiscardIndices"
                        OnToggleSelection="ToggleDiscardSelectionAsync" OnDraw="HandleDrawActionAsync" IsSubmitting="@_isSubmittingDraw"
@@ -378,7 +207,7 @@
         }
 
         <!-- Draw Phase Waiting Indicator (shown to other players during draw phase) -->
-        @if (IsDrawingPhase && !IsTollboothOfferPhase && !(_isPlayerDrawTurn || _isPlayerTurn) && _currentDrawPlayer is not null)
+        @if (ShouldShowDrawWaitingIndicator)
         {
             <div class="draw-phase-indicator">
                 <div class="draw-phase-content">
@@ -524,8 +353,7 @@
         }
 
         <!-- Waiting/Pre-game overlay (only when waiting for more players, not when game is ready to start) -->
-        @if (!_isPausedForChipCheck && _gameResponse?.CurrentPhase == GamePhase.WaitingForPlayers.ToString() && (!_isSeated || IsSittingOut ||
-            !_isReady))
+        @if (ShouldShowWaitingForPlayersOverlay)
         {
             <div class="table-overlay waiting-overlay">
                 <div class="overlay-content">
@@ -593,9 +421,7 @@
         } *@
 
         <!-- Paused overlay -->
-        @if (_isPaused && _gameResponse is not null && _gameResponse.CurrentPhase != GamePhase.WaitingForPlayers.ToString() && _gameResponse.CurrentPhase
-            != GamePhase.Ended.ToString() && _gameResponse.CurrentPhase != GamePhase.WaitingToStart.ToString()
-            && _gameResponse.CurrentPhase != GamePhase.WaitingForDealerChoice.ToString())
+        @if (ShouldShowPausedOverlay)
         {
             <div class="table-overlay paused-overlay">
                 <div class="overlay-content">
@@ -1013,6 +839,64 @@
     _currentPlayerSeatIndex >= 0 &&
     _currentPlayerSeatIndex < _seats.Count &&
     _seats[_currentPlayerSeatIndex].IsSittingOut;
+
+    private bool IsInWaitingState =>
+    _gameResponse?.CurrentPhase == GamePhase.WaitingForPlayers.ToString() ||
+    _gameResponse?.CurrentPhase == GamePhase.WaitingToStart.ToString();
+
+    private bool IsGameActive =>
+    _gameResponse is not null && _gameResponse.CurrentPhase != GamePhase.Ended.ToString();
+
+    private bool ShowGameVariantBadges =>
+    !_isLoading && !string.IsNullOrWhiteSpace(_gameTypeCode);
+
+    private bool ShouldShowHostControls =>
+    !_isLoading && _isHost;
+
+    private bool ShouldShowHostStartControls =>
+    ShouldShowHostControls && IsInWaitingState;
+
+    private bool ShouldShowHostInGameControls =>
+    ShouldShowHostControls && IsGameActive && !IsInWaitingState;
+
+    private bool ShouldShowActionPanel =>
+    _isPlayerTurn &&
+    IsBettingPhase &&
+    CurrentPlayerHandCards.Count > 0 &&
+    !IsCardDealingVisualInProgress;
+
+    private bool ShouldShowDecisionPanel =>
+    _isPlayerTurn &&
+    IsDecisionPhase &&
+    !(HasDropOrStay && IsDropOrStayPhase) &&
+    !(HasKeepOrTrade && IsKeepOrTradePhase) &&
+    !IsInBetween &&
+    !IsCardDealingVisualInProgress;
+
+    private bool ShouldShowDrawPanel =>
+    !IsCardDealingVisualInProgress &&
+    !IsTollboothOfferPhase &&
+    ((IsDrawingPhase && (_isPlayerDrawTurn || _isPlayerTurn)) || _forceShowDrawPanel || IsDrawCompletePhase) &&
+    IsParticipatingInHand;
+
+    private bool ShouldShowDrawWaitingIndicator =>
+    IsDrawingPhase &&
+    !IsTollboothOfferPhase &&
+    !(_isPlayerDrawTurn || _isPlayerTurn) &&
+    _currentDrawPlayer is not null;
+
+    private bool ShouldShowWaitingForPlayersOverlay =>
+    !_isPausedForChipCheck &&
+    _gameResponse?.CurrentPhase == GamePhase.WaitingForPlayers.ToString() &&
+    (!_isSeated || IsSittingOut || !_isReady);
+
+    private bool ShouldShowPausedOverlay =>
+    _isPaused &&
+    _gameResponse is not null &&
+    _gameResponse.CurrentPhase != GamePhase.WaitingForPlayers.ToString() &&
+    _gameResponse.CurrentPhase != GamePhase.Ended.ToString() &&
+    _gameResponse.CurrentPhase != GamePhase.WaitingToStart.ToString() &&
+    _gameResponse.CurrentPhase != GamePhase.WaitingForDealerChoice.ToString();
 
     // Special rules helper properties - driven by SignalR state
     private bool HasWildCards =>
@@ -7864,4 +7748,3 @@ HandType.HighCard
         await Task.CompletedTask;
     }
 }
-

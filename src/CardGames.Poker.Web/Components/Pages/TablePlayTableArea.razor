@@ -1,0 +1,92 @@
+@using static CardGames.Poker.Web.Components.Pages.TablePlay
+@using CardGames.Contracts.SignalR
+@using CardGames.Poker.Web.Components.Shared
+@using CardGames.Poker.Web.Services
+
+<div class="table-play-area">
+    <TableCanvas Seats="@Seats"
+                 Pot="@Pot"
+                 CurrentPhase="@CurrentPhase"
+                 CurrentPhaseDescription="@CurrentPhaseDescription"
+                 CurrentActorSeatIndex="@CurrentActorSeatIndex"
+                 DealerSeatIndex="@DealerSeatIndex"
+                 OnSeatClick="OnSeatClick"
+                 DisableSeatSelectionForCurrentUser="@DisableSeatSelectionForCurrentUser"
+                 CurrentPlayerSeatIndex="@CurrentPlayerSeatIndex"
+                 GameTypeCode="@GameTypeCode"
+                 IsPausedForChipCheck="@IsPausedForChipCheck"
+                 FlyingCard="@FlyingCard"
+                 HasWildCards="@HasWildCards"
+                 WildCards="@WildCards"
+                 CommunityCards="@CommunityCards"
+                 Ante="@Ante"
+                 SynBonusChipsBySeat="@SynBonusChipsBySeat" />
+
+    @if (IsSeated)
+    {
+        <DashboardPanel>
+            <DashboardSection Title="Chips" Icon="fa-solid fa-coins"
+                              IsExpanded="@DashboardState.IsSectionExpanded("Chips")"
+                              IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("Chips", value))">
+                <ChipManagementSection ChipHistory="@ChipHistory"
+                                       GameId="@GameId"
+                                       PlayerId="@PlayerId"
+                                       GameTypeCode="@GameTypeCode"
+                                       OnChipsAdded="@OnChipsAdded" />
+            </DashboardSection>
+
+            <DashboardSection Title="Leaderboard" Icon="fa-solid fa-trophy"
+                              IsExpanded="@DashboardState.IsSectionExpanded("Leaderboard")"
+                              IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("Leaderboard", value))">
+                <LeaderboardSection Players="@LeaderboardPlayers" />
+            </DashboardSection>
+
+            @if (SupportsOdds && AreOddsVisibleToAllPlayers)
+            {
+                <DashboardSection Title="Odds" Icon="fa-solid fa-chart-simple"
+                                  IsExpanded="@DashboardState.IsSectionExpanded("Odds")"
+                                  IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("Odds", value))">
+                    <OddsSection HandOdds="@HandOdds" GameTypeCode="@GameTypeCode" />
+                </DashboardSection>
+            }
+
+            <DashboardSection Title="Hand History" Icon="fa-solid fa-clock-rotate-left"
+                              IsExpanded="@DashboardState.IsSectionExpanded("HandHistory")"
+                              IsExpandedChanged="@(value => DashboardState.SetSectionExpanded("HandHistory", value))">
+                <HandHistorySection Entries="@HandHistoryEntries" GameTypeCode="@GameTypeCode" />
+            </DashboardSection>
+        </DashboardPanel>
+    }
+</div>
+
+@code {
+    [Parameter] public List<SeatInfo> Seats { get; set; } = [];
+    [Parameter] public int Pot { get; set; }
+    [Parameter] public string? CurrentPhase { get; set; }
+    [Parameter] public string? CurrentPhaseDescription { get; set; }
+    [Parameter] public int CurrentActorSeatIndex { get; set; } = -1;
+    [Parameter] public int DealerSeatIndex { get; set; } = -1;
+    [Parameter] public EventCallback<int> OnSeatClick { get; set; }
+    [Parameter] public bool DisableSeatSelectionForCurrentUser { get; set; }
+    [Parameter] public int CurrentPlayerSeatIndex { get; set; } = -1;
+    [Parameter] public string? GameTypeCode { get; set; }
+    [Parameter] public bool IsPausedForChipCheck { get; set; }
+    [Parameter] public TableCanvas.FlyingCardInfo? FlyingCard { get; set; }
+    [Parameter] public bool HasWildCards { get; set; }
+    [Parameter] public IReadOnlyList<TableCanvas.WildCardDisplay>? WildCards { get; set; }
+    [Parameter] public IReadOnlyList<CardPublicDto>? CommunityCards { get; set; }
+    [Parameter] public int Ante { get; set; }
+    [Parameter] public IReadOnlyDictionary<int, int>? SynBonusChipsBySeat { get; set; }
+    [Parameter] public bool IsSeated { get; set; }
+    [Parameter] public ChipHistoryDto? ChipHistory { get; set; }
+    [Parameter] public Guid GameId { get; set; }
+    [Parameter] public Guid PlayerId { get; set; }
+    [Parameter] public EventCallback OnChipsAdded { get; set; }
+    [Parameter] public IReadOnlyList<LeaderboardSection.LeaderboardPlayer> LeaderboardPlayers { get; set; } = [];
+    [Parameter] public bool SupportsOdds { get; set; }
+    [Parameter] public bool AreOddsVisibleToAllPlayers { get; set; }
+    [Parameter] public List<HandTypeOddsDto> HandOdds { get; set; } = [];
+    [Parameter] public List<HandHistoryEntryDto> HandHistoryEntries { get; set; } = [];
+
+    [Inject] public DashboardState DashboardState { get; set; } = null!;
+}
