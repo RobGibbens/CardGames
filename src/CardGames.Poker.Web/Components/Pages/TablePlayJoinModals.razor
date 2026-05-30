@@ -24,7 +24,7 @@
                            step="@JoinBuyInStep"
                            @bind="JoinBuyInAmount"
                            @bind:event="oninput"
-                           @bind:after="OnNormalizeJoinBuyIn"
+                           @bind:after="NormalizeJoinBuyInAsync"
                            disabled="@(IsScrewYourNeighbor || HasFixedTournamentBuyIn)" />
                     <div class="bet-slider-labels">
                         <span>Min @JoinBuyInMin.ToString("N0")</span>
@@ -38,7 +38,7 @@
                            max="@JoinBuyInMax"
                            step="1"
                            @bind="JoinBuyInAmount"
-                           @bind:after="OnClampJoinBuyIn"
+                           @bind:after="ClampJoinBuyInAsync"
                            disabled="@(IsScrewYourNeighbor || HasFixedTournamentBuyIn)" />
                 </div>
             </div>
@@ -103,4 +103,10 @@
     [Parameter] public bool ShowJoinApprovalPendingModal { get; set; }
     [Parameter] public string? JoinApprovalHostName { get; set; }
     [Parameter] public int PendingApprovalBuyIn { get; set; }
+
+    private Task NormalizeJoinBuyInAsync() =>
+    OnNormalizeJoinBuyIn.InvokeAsync();
+
+    private Task ClampJoinBuyInAsync() =>
+    OnClampJoinBuyIn.InvokeAsync();
 }
