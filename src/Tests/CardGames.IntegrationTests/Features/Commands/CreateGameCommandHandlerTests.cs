@@ -1,4 +1,5 @@
 using CardGames.Poker.Api.Features.Games.Common.v1.Commands.CreateGame;
+using CardGames.Poker.Api.Features.Games.ActiveGames.v1.Queries.GetActiveGames;
 using CardGames.Poker.Api.Games;
 
 namespace CardGames.IntegrationTests.Features.Commands;
@@ -126,6 +127,33 @@ public class CreateGameCommandHandlerTests : IntegrationTestBase
 
         var game = await DbContext.Games.FirstAsync(g => g.Id == gameId);
         game.MaxBuyIn.Should().Be(250);
+    }
+
+    [Fact]
+    public async Task Handle_AfterActiveGamesCacheIsPrimed_InvalidatesCachedActiveGamesList()
+    {
+        var initialGames = await Mediator.Send(new GetActiveGamesQuery());
+        initialGames.Should().BeEmpty();
+
+        var gameId = Guid.NewGuid();
+        var createResult = await Mediator.Send(new CreateGameCommand(
+            gameId,
+            PokerGameMetadataRegistry.FiveCardDrawCode,
+            "Fresh Lobby Table",
+            10,
+            20,
+            [new PlayerInfo("Player1", 1000), new PlayerInfo("Player2", 1000)]));
+
+        createResult.IsT0.Should().BeTrue();
+
+        using var freshScope = CreateNewScope();
+        var freshMediator = freshScope.ServiceProvider.GetRequiredService<IMediator>();
+
+        var activeGames = await freshMediator.Send(new GetActiveGamesQuery());
+
+        activeGames.Should().ContainSingle(game =>
+            game.Id == gameId &&
+            game.Name == "Fresh Lobby Table");
     }
 
     [Fact]

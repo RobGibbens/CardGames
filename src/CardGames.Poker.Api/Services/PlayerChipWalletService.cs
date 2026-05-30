@@ -17,7 +17,7 @@ public sealed class PlayerChipWalletService(CardsDbContext context) : IPlayerChi
 
 		if (context.Entry(account).State == EntityState.Added)
 		{
-			await context.SaveChangesAsync(cancellationToken);
+			account = await SaveNewAccountOrLoadExistingAsync(playerId, account, cancellationToken);
 		}
 
 		return account.Balance;
@@ -160,5 +160,32 @@ public sealed class PlayerChipWalletService(CardsDbContext context) : IPlayerChi
 		}
 
 		return account;
+	}
+
+	private async Task<PlayerChipAccount> SaveNewAccountOrLoadExistingAsync(
+		Guid playerId,
+		PlayerChipAccount account,
+		CancellationToken cancellationToken)
+	{
+		try
+		{
+			await context.SaveChangesAsync(cancellationToken);
+			return account;
+		}
+		catch (DbUpdateException)
+		{
+			context.ChangeTracker.Clear();
+
+			var existingAccount = await context.PlayerChipAccounts
+				.AsNoTracking()
+				.SingleOrDefaultAsync(x => x.PlayerId == playerId, cancellationToken);
+
+			if (existingAccount is not null)
+			{
+				return existingAccount;
+			}
+
+			throw;
+		}
 	}
 }

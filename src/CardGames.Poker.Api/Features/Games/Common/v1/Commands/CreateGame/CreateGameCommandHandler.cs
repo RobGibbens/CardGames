@@ -3,6 +3,7 @@ using CardGames.Poker.Api.Data.Entities;
 using CardGames.Poker.Api.Features.Games.Common;
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Api.Infrastructure;
+using Microsoft.Extensions.Caching.Hybrid;
 using CardGames.Poker.Betting;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -13,7 +14,8 @@ namespace CardGames.Poker.Api.Features.Games.Common.v1.Commands.CreateGame;
 
 public class CreateGameCommandHandler(
 	CardsDbContext context,
-	ICurrentUserService currentUserService)
+	ICurrentUserService currentUserService,
+	HybridCache hybridCache)
 	: IRequestHandler<CreateGameCommand, OneOf<CreateGameSuccessful, CreateGameConflict>>
 {
 	public async Task<OneOf<CreateGameSuccessful, CreateGameConflict>> Handle(CreateGameCommand command, CancellationToken cancellationToken)
@@ -195,6 +197,7 @@ public class CreateGameCommandHandler(
 		context.Pots.Add(mainPot);
 
 		await context.SaveChangesAsync(cancellationToken);
+		await hybridCache.RemoveByTagAsync(nameof(Features.Games.ActiveGames), cancellationToken);
 
 		return new CreateGameSuccessful
 		{
