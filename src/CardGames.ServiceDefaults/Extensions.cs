@@ -67,7 +67,7 @@ public static class Extensions
 
         builder.Services.AddOpenTelemetry()
             .ConfigureResource(resource => resource.AddService(
-                // Honour OTEL_SERVICE_NAME when present (e.g. cardgames-poker-api), otherwise fall
+                // Honor OTEL_SERVICE_NAME when present (e.g. cardgames-poker-api), otherwise fall
                 // back to the host's application name. Applied once so traces, metrics, and logs agree.
                 serviceName: builder.Configuration["OTEL_SERVICE_NAME"] ?? builder.Environment.ApplicationName))
             .WithMetrics(metrics =>
