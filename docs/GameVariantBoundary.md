@@ -45,7 +45,7 @@ fails when a variant is wired into the domain but not into the active web router
 * **Intentionally not standard-betting (special-action variants):** a few variants drive play
   through their own action families instead of the standard betting table:
   * `KINGSANDLOWS` — no betting; uses drop-or-stay, draw, and acknowledge-pot-match.
-  * `SCREWYORNEIGHBOR` (`SCREWYOURNEIGHBOR`) — uses keep-or-trade.
+  * `SCREWYOURNEIGHBOR` — uses keep-or-trade.
   * `INBETWEEN` — uses its own directly-exposed ace-choice / place-bet router methods.
 
   These are the **only** variants exempt from a standard betting route. The exemption list is
