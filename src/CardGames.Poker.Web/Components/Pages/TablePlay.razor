@@ -2488,6 +2488,42 @@
         }
     }
 
+    /// <summary>
+    /// Applies the centralized <see cref="TableRefreshPolicy"/> for a given interaction.
+    /// This is the single place the page turns a refresh decision into a concrete action,
+    /// keeping post-action behavior consistent and avoiding refetches that would only
+    /// duplicate hub broadcasts. The full policy is documented in <c>docs/TableRefreshPolicy.md</c>.
+    /// </summary>
+    private async Task ApplyRefreshPolicyAsync(TableInteraction interaction)
+    {
+        var kind = TableRefreshPolicy.ResolveRefreshKind(interaction);
+        switch (kind)
+        {
+            case TableRefreshKind.Full:
+                await LoadDataAsync();
+                break;
+            case TableRefreshKind.Slice:
+                await ApplySliceRefreshAsync(interaction);
+                break;
+            case TableRefreshKind.HubDriven:
+            case TableRefreshKind.LocalOnly:
+            default:
+                // Nothing to fetch: an authoritative hub broadcast or a local transition
+                // already covers this interaction, so an immediate refetch would be wasteful.
+                Logger.LogDebug(
+                    "Refresh policy for {Interaction} is {Kind}; skipping direct refetch",
+                    interaction,
+                    kind);
+                break;
+        }
+    }
+
+    private Task ApplySliceRefreshAsync(TableInteraction interaction) => interaction switch
+    {
+        TableInteraction.TableSettingsPush => RefreshOddsVisibilityFromServerAsync(),
+        _ => Task.CompletedTask,
+    };
+
     private static GetGameResponse CreateLocalGameResponse(GetGameResponse gamesResponse)
     {
         return new GetGameResponse(
@@ -2971,7 +3007,7 @@
 
         if (string.Equals(notification.Status, "Approved", StringComparison.OrdinalIgnoreCase))
         {
-            await LoadDataAsync();
+            await ApplyRefreshPolicyAsync(TableInteraction.JoinRequestApproved);
             await ShowToastAsync("The host approved your join request.", "success");
         }
         else
@@ -3501,7 +3537,7 @@
         }
 
         Logger.LogInformation("Falling back to HTTP table reload after manual game start for game {GameId}", GameId);
-        await LoadDataAsync();
+        await ApplyRefreshPolicyAsync(TableInteraction.ManualStartFallback);
     }
 
     private static PostStartResyncTarget ResolvePostStartResyncTarget(bool wasConnected, bool isConnectedAfterReconnectAttempt)
@@ -4622,7 +4658,7 @@
             return;
         }
 
-        await RefreshOddsVisibilityFromServerAsync();
+        await ApplyRefreshPolicyAsync(TableInteraction.TableSettingsPush);
         await InvokeStateHasChangedAsync();
     }
 
@@ -4734,7 +4770,9 @@
                 return;
             }
 
-            // SignalR will broadcast the updated state - no need to refresh manually
+            // Betting action: TableRefreshPolicy = HubDriven. The server broadcasts the
+            // updated table state over SignalR, so we deliberately do not refetch here
+            // (see docs/TableRefreshPolicy.md).
         }
         finally
         {
@@ -7678,7 +7716,9 @@ HandType.HighCard
     /// </summary>
     private async Task OnChipsAddedAsync()
     {
-        // State will be automatically refreshed via SignalR
+        // Add chips: TableRefreshPolicy = HubDriven. The cashier update is broadcast over
+        // SignalR, so the page waits for that push instead of refetching (see
+        // docs/TableRefreshPolicy.md).
         await Task.CompletedTask;
     }
 }
