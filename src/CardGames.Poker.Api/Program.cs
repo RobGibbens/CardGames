@@ -197,6 +197,7 @@ public class Program
                 x.AddMeter("CardGames.Poker.Api.Leagues");
                 x.AddMeter(BroadcastTelemetry.MeterName);
                 x.AddMeter(ContinuousPlayTelemetry.MeterName);
+                x.AddMeter(HandHistoryTelemetry.MeterName);
 
                 x.AddFusionCacheInstrumentation(o =>
                 {
@@ -212,6 +213,7 @@ public class Program
         builder.Services.AddSingleton<LeaguesTelemetry>();
         builder.Services.AddSingleton<BroadcastTelemetry>();
         builder.Services.AddSingleton<ContinuousPlayTelemetry>();
+        builder.Services.AddSingleton<HandHistoryTelemetry>();
         builder.Services.AddRateLimiter(limiterOptions =>
         {
             limiterOptions.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
