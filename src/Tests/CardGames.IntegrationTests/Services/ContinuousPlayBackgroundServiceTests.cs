@@ -18,6 +18,7 @@ namespace CardGames.IntegrationTests.Services;
 public class ContinuousPlayBackgroundServiceTests : IDisposable
 {
     private readonly CardsDbContext _dbContext;
+    private readonly DbContextOptions<CardsDbContext> _dbOptions;
     private readonly FakeServiceScopeFactory _scopeFactory;
     private readonly ContinuousPlayBackgroundService _service;
     private readonly FakeLogger<ContinuousPlayBackgroundService> _logger;
@@ -27,12 +28,12 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
 
     public ContinuousPlayBackgroundServiceTests()
     {
-        var options = new DbContextOptionsBuilder<CardsDbContext>()
+        _dbOptions = new DbContextOptionsBuilder<CardsDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .EnableSensitiveDataLogging()
             .Options;
 
-        _dbContext = new CardsDbContext(options);
+        _dbContext = new CardsDbContext(_dbOptions);
         _logger = new FakeLogger<ContinuousPlayBackgroundService>();
         
         _flowHandlerFactory = new FakeGameFlowHandlerFactory();
