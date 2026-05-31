@@ -478,7 +478,7 @@
 
     // Game state
     private bool _isPaused;
-    private int _pot; // TODO: Get from server
+    private int _pot;
     private int _dealerSeatIndex = 0;
     private int _currentActorSeatIndex = -1;
 
@@ -488,7 +488,11 @@
     private bool _isReady;
     private bool _hasRequestedLeave;
     private int _currentPlayerSeatIndex = -1;
-    private int _playerChips = 100; // TODO: Get from server
+    // Authoritative chip count for the seated player, sourced from server-driven seat state.
+    private int _playerChips =>
+        _currentPlayerSeatIndex >= 0 && _currentPlayerSeatIndex < _seats.Count
+            ? _seats[_currentPlayerSeatIndex].Chips
+            : 0;
     private int _joinBuyInAmount = 100;
 	private bool _joinBuyInInitializedFromTable;
     private bool _showJoinBuyInModal;
@@ -503,7 +507,7 @@
     private bool _isPlayerTurn;
     private bool _isSubmittingAction;
 
-    private string? _currentPlayerName; // TODO: Get from auth
+    private string? _currentPlayerName;
     private Guid? _currentPlayerId; // Player ID for API calls (hand history, etc.)
 
     // Action state
@@ -2922,7 +2926,6 @@
             };
             _isSeated = true;
             _currentPlayerSeatIndex = seatIndex;
-			_playerChips = _joinBuyInAmount;
             CloseJoinBuyInModal();
 
             Logger.LogInformation(
