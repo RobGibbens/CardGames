@@ -1,6 +1,8 @@
 using CardGames.Contracts.SignalR;
 using CardGames.Poker.Api.Hubs;
+using CardGames.Poker.Api.Infrastructure.Telemetry;
 using Microsoft.AspNetCore.SignalR;
+using System.Diagnostics;
 
 namespace CardGames.Poker.Api.Services;
 
@@ -9,7 +11,8 @@ namespace CardGames.Poker.Api.Services;
 /// </summary>
 public sealed class LeagueBroadcaster(
 	IHubContext<LeagueHub> hubContext,
-	ILogger<LeagueBroadcaster> logger)
+	ILogger<LeagueBroadcaster> logger,
+	BroadcastTelemetry telemetry)
 	: ILeagueBroadcaster
 {
 	/// <inheritdoc />
@@ -19,8 +22,13 @@ public sealed class LeagueBroadcaster(
 
 		var groupName = LeagueHub.GetViewedLeagueGroupName(eventChanged.LeagueId);
 
-		await hubContext.Clients.Group(groupName)
-			.SendAsync("LeagueEventChanged", eventChanged, cancellationToken);
+		await SendLeagueBroadcastAsync(
+			hubContext.Clients.Group(groupName),
+			"LeagueEventChanged",
+			eventChanged,
+			eventChanged.LeagueId,
+			null,
+			cancellationToken);
 
 		logger.LogInformation(
 			"Broadcast LeagueEventChanged for league {LeagueId}, event {EventId}, change {ChangeKind} to group {GroupName}",
@@ -37,8 +45,13 @@ public sealed class LeagueBroadcaster(
 
 		var groupName = LeagueHub.GetViewedLeagueGroupName(sessionLaunched.LeagueId);
 
-		await hubContext.Clients.Group(groupName)
-			.SendAsync("LeagueEventSessionLaunched", sessionLaunched, cancellationToken);
+		await SendLeagueBroadcastAsync(
+			hubContext.Clients.Group(groupName),
+			"LeagueEventSessionLaunched",
+			sessionLaunched,
+			sessionLaunched.LeagueId,
+			sessionLaunched.GameId,
+			cancellationToken);
 
 		logger.LogInformation(
 			"Broadcast LeagueEventSessionLaunched for league {LeagueId}, event {EventId}, game {GameId} to group {GroupName}",
@@ -55,8 +68,13 @@ public sealed class LeagueBroadcaster(
 
 		var groupName = LeagueHub.GetManagedLeagueGroupName(joinRequestSubmitted.LeagueId);
 
-		await hubContext.Clients.Group(groupName)
-			.SendAsync("LeagueJoinRequestSubmitted", joinRequestSubmitted, cancellationToken);
+		await SendLeagueBroadcastAsync(
+			hubContext.Clients.Group(groupName),
+			"LeagueJoinRequestSubmitted",
+			joinRequestSubmitted,
+			joinRequestSubmitted.LeagueId,
+			null,
+			cancellationToken);
 
 		logger.LogInformation(
 			"Broadcast LeagueJoinRequestSubmitted for league {LeagueId}, request {JoinRequestId} to group {GroupName}",
@@ -83,8 +101,13 @@ public sealed class LeagueBroadcaster(
 			groupNames.Add(LeagueHub.GetJoinRequesterGroupName(requesterUserId));
 		}
 
-		await hubContext.Clients.Groups(groupNames.ToList())
-			.SendAsync("LeagueJoinRequestUpdated", joinRequestUpdated, cancellationToken);
+		await SendLeagueBroadcastAsync(
+			hubContext.Clients.Groups(groupNames.ToList()),
+			"LeagueJoinRequestUpdated",
+			joinRequestUpdated,
+			joinRequestUpdated.LeagueId,
+			null,
+			cancellationToken);
 
 		logger.LogInformation(
 			"Broadcast LeagueJoinRequestUpdated for league {LeagueId}, request {JoinRequestId} status {Status} to groups {GroupNames}",
@@ -92,5 +115,38 @@ public sealed class LeagueBroadcaster(
 			joinRequestUpdated.JoinRequestId,
 			joinRequestUpdated.Status,
 			groupNames);
+	}
+
+	private async Task SendLeagueBroadcastAsync(
+		IClientProxy clientProxy,
+		string eventName,
+		object payload,
+		Guid leagueId,
+		Guid? gameId,
+		CancellationToken cancellationToken)
+	{
+		using var activity = PokerActivitySource.Source.StartActivity("realtime.broadcast");
+		activity?.SetTag("hub", "league");
+		activity?.SetTag("event", eventName);
+		activity?.SetTag("league.id", leagueId);
+		if (gameId.HasValue)
+		{
+			activity?.SetTag("game.id", gameId.Value);
+		}
+
+		var stopwatch = Stopwatch.StartNew();
+		try
+		{
+			await clientProxy.SendAsync(eventName, payload, cancellationToken);
+			activity?.SetStatus(ActivityStatusCode.Ok);
+			telemetry.RecordBroadcast("league", eventName, "ok", stopwatch.Elapsed.TotalMilliseconds);
+		}
+		catch (Exception ex)
+		{
+			activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+			telemetry.RecordBroadcast("league", eventName, "failed", stopwatch.Elapsed.TotalMilliseconds);
+			logger.LogError(ex, "Error broadcasting {EventName} for league {LeagueId}", eventName, leagueId);
+			throw;
+		}
 	}
 }

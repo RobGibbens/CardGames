@@ -1,7 +1,9 @@
 using CardGames.Contracts.SignalR;
 using CardGames.Poker.Api.Games;
 using CardGames.Poker.Api.Hubs;
+using CardGames.Poker.Api.Infrastructure.Telemetry;
 using Microsoft.AspNetCore.SignalR;
+using System.Diagnostics;
 
 namespace CardGames.Poker.Api.Services;
 
@@ -18,6 +20,7 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
     private readonly IActionTimerService _actionTimerService;
     private readonly IAutoActionService _autoActionService;
     private readonly ILogger<GameStateBroadcaster> _logger;
+    private readonly BroadcastTelemetry _telemetry;
 
     /// <summary>
     /// Phases that require a player action timer.
@@ -43,13 +46,15 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
         ITableStateBuilder tableStateBuilder,
         IActionTimerService actionTimerService,
         IAutoActionService autoActionService,
-        ILogger<GameStateBroadcaster> logger)
+        ILogger<GameStateBroadcaster> logger,
+        BroadcastTelemetry telemetry)
     {
         _hubContext = hubContext;
         _tableStateBuilder = tableStateBuilder;
         _actionTimerService = actionTimerService;
         _autoActionService = autoActionService;
         _logger = logger;
+        _telemetry = telemetry;
     }
 
     /// <inheritdoc />
@@ -67,8 +72,13 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
                     "Broadcasting public state for game {GameId}, phase: {Phase}, seats: {SeatCount}",
                     gameId, publicState.CurrentPhase, publicState.Seats.Count);
 
-                await _hubContext.Clients.Group(groupName)
-                    .SendAsync("TableStateUpdated", publicState, cancellationToken);
+                await SendGameBroadcastAsync(
+                    _hubContext.Clients.Group(groupName),
+                    "TableStateUpdated",
+                    publicState,
+                    gameId,
+                    null,
+                    cancellationToken);
 
                 _logger.LogDebug("Broadcast public state to group {GroupName}", groupName);
 
@@ -230,8 +240,13 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
             var publicState = await _tableStateBuilder.BuildPublicStateAsync(gameId, cancellationToken);
             if (publicState is not null)
             {
-                await _hubContext.Clients.User(userId)
-                    .SendAsync("TableStateUpdated", publicState, cancellationToken);
+                await SendGameBroadcastAsync(
+                    _hubContext.Clients.User(userId),
+                    "TableStateUpdated",
+                    publicState,
+                    gameId,
+                    userId,
+                    cancellationToken);
             }
 
             // Send private state to the user
@@ -255,8 +270,13 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
                     "Sending private state to user {UserId} for game {GameId}: {CardCount} cards, seat {SeatPosition}",
                     userId, gameId, privateState.Hand.Count, privateState.SeatPosition);
 
-                await _hubContext.Clients.User(userId)
-                    .SendAsync("PrivateStateUpdated", privateState, cancellationToken);
+                await SendGameBroadcastAsync(
+                    _hubContext.Clients.User(userId),
+                    "PrivateStateUpdated",
+                    privateState,
+                    gameId,
+                    userId,
+                    cancellationToken);
 
                 _logger.LogDebug("Sent private state to user {UserId} for game {GameId}", userId, gameId);
             }
@@ -292,8 +312,13 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
                 };
 
                 // Send to all in the group except the player who just joined
-                await _hubContext.Clients.GroupExcept(groupName, [playerName])
-                    .SendAsync("PlayerJoined", notification, cancellationToken);
+                await SendGameBroadcastAsync(
+                    _hubContext.Clients.GroupExcept(groupName, [playerName]),
+                    "PlayerJoined",
+                    notification,
+                    gameId,
+                    null,
+                    cancellationToken);
 
                 _logger.LogInformation(
                     "Broadcast PlayerJoined notification for {PlayerName} at seat {SeatIndex} in game {GameId}",
@@ -316,8 +341,13 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 
                     try
                     {
-                        await _hubContext.Clients.Group(groupName)
-                            .SendAsync("TableToastNotification", notification, cancellationToken);
+                        await SendGameBroadcastAsync(
+                            _hubContext.Clients.Group(groupName),
+                            "TableToastNotification",
+                            notification,
+                            notification.GameId,
+                            null,
+                            cancellationToken);
 
                         _logger.LogInformation(
                             "Broadcast TableToastNotification for game {GameId}: {Message}",
@@ -341,8 +371,13 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 
                             try
                             {
-                                await _hubContext.Clients.Group(groupName)
-                                    .SendAsync("TableSettingsUpdated", notification, cancellationToken);
+                                await SendGameBroadcastAsync(
+                                    _hubContext.Clients.Group(groupName),
+                                    "TableSettingsUpdated",
+                                    notification,
+                                    notification.GameId,
+                                    notification.UpdatedById,
+                                    cancellationToken);
 
                                 _logger.LogInformation(
                                     "Broadcast TableSettingsUpdated notification for game {GameId} by user {UserId}",
@@ -367,8 +402,13 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 
                             try
                             {
-                                await _hubContext.Clients.Group(groupName)
-                                    .SendAsync("OddsVisibilityUpdated", notification, cancellationToken);
+                                await SendGameBroadcastAsync(
+                                    _hubContext.Clients.Group(groupName),
+                                    "OddsVisibilityUpdated",
+                                    notification,
+                                    notification.GameId,
+                                    notification.UpdatedById,
+                                    cancellationToken);
 
                                 _logger.LogInformation(
                                     "Broadcast OddsVisibilityUpdated notification for game {GameId} by user {UserId}",
@@ -406,8 +446,13 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
                                     DisplayDurationSeconds = 5
                                 };
 
-                                await _hubContext.Clients.Group(groupName)
-                                    .SendAsync("PlayerActionPerformed", notification, cancellationToken);
+                                await SendGameBroadcastAsync(
+                                    _hubContext.Clients.Group(groupName),
+                                    "PlayerActionPerformed",
+                                    notification,
+                                    gameId,
+                                    null,
+                                    cancellationToken);
 
                                 _logger.LogDebug(
                                     "Broadcast PlayerActionPerformed for game {GameId}, seat {SeatIndex}: {Action}",
@@ -419,6 +464,39 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
                                     "Failed to broadcast PlayerActionPerformed for game {GameId}, seat {SeatIndex}",
                                     gameId, seatIndex);
                                 // Don't throw - the action was successful, just the notification failed
+                            }
+                        }
+
+                        private async Task SendGameBroadcastAsync(
+                            IClientProxy clientProxy,
+                            string eventName,
+                            object payload,
+                            Guid gameId,
+                            string? userId,
+                            CancellationToken cancellationToken)
+                        {
+                            using var activity = PokerActivitySource.Source.StartActivity("realtime.broadcast");
+                            activity?.SetTag("hub", "game");
+                            activity?.SetTag("event", eventName);
+                            activity?.SetTag("game.id", gameId);
+                            if (!string.IsNullOrWhiteSpace(userId))
+                            {
+                                activity?.SetTag("user.id", userId);
+                            }
+
+                            var stopwatch = Stopwatch.StartNew();
+                            try
+                            {
+                                await clientProxy.SendAsync(eventName, payload, cancellationToken);
+                                activity?.SetStatus(ActivityStatusCode.Ok);
+                                _telemetry.RecordBroadcast("game", eventName, "ok", stopwatch.Elapsed.TotalMilliseconds);
+                            }
+                            catch (Exception ex)
+                            {
+                                activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+                                _telemetry.RecordBroadcast("game", eventName, "failed", stopwatch.Elapsed.TotalMilliseconds);
+                                _logger.LogError(ex, "Error broadcasting {EventName} for game {GameId}", eventName, gameId);
+                                throw;
                             }
                         }
 

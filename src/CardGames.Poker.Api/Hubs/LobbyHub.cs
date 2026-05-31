@@ -33,6 +33,7 @@ public sealed class LobbyHub : Hub
     public async Task JoinLobby()
     {
         var userId = GetUserIdentifier();
+        using var scope = CreateScope(userId);
 
         await Groups.AddToGroupAsync(Context.ConnectionId, LobbyGroupName);
 
@@ -47,6 +48,7 @@ public sealed class LobbyHub : Hub
     public async Task LeaveLobby()
     {
         var userId = GetUserIdentifier();
+        using var scope = CreateScope(userId);
 
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, LobbyGroupName);
 
@@ -59,6 +61,7 @@ public sealed class LobbyHub : Hub
     public override async Task OnConnectedAsync()
     {
         var userId = GetUserIdentifier();
+        using var scope = CreateScope(userId);
         _logger.LogInformation("User {UserId} connected to lobby hub with connection {ConnectionId}",
             userId ?? "unknown", Context.ConnectionId);
 
@@ -69,6 +72,7 @@ public sealed class LobbyHub : Hub
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
         var userId = GetUserIdentifier();
+        using var scope = CreateScope(userId);
 
         if (exception is not null)
         {
@@ -88,5 +92,14 @@ public sealed class LobbyHub : Hub
     private string? GetUserIdentifier()
     {
         return Context.UserIdentifier ?? Context.User?.Identity?.Name;
+    }
+
+    private IDisposable? CreateScope(string? userId)
+    {
+        return _logger.BeginScope(new Dictionary<string, object>
+        {
+            ["ConnectionId"] = Context.ConnectionId,
+            ["UserId"] = userId ?? "anonymous"
+        });
     }
 }

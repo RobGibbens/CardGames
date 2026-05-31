@@ -1,12 +1,14 @@
 #nullable enable
 
 using System;
+using System.Diagnostics.Metrics;
 using System.Threading;
 using System.Threading.Tasks;
 using CardGames.Contracts.SignalR;
 using CardGames.Poker.Api.Hubs;
 using CardGames.Poker.Api.Services;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Xunit;
@@ -39,7 +41,9 @@ public class LeagueBroadcasterTests
 		var hubContext = Substitute.For<IHubContext<LeagueHub>>();
 		hubContext.Clients.Returns(clients);
 
-		var sut = new LeagueBroadcaster(hubContext, Substitute.For<ILogger<LeagueBroadcaster>>());
+		using var serviceProvider = new ServiceCollection().AddMetrics().BuildServiceProvider();
+		var telemetry = new BroadcastTelemetry(serviceProvider.GetRequiredService<IMeterFactory>());
+		var sut = new LeagueBroadcaster(hubContext, Substitute.For<ILogger<LeagueBroadcaster>>(), telemetry);
 
 		await sut.BroadcastEventSessionLaunchedAsync(payload);
 
