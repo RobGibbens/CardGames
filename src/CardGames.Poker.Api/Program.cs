@@ -19,6 +19,7 @@ using OpenTelemetry.Trace;
 using Scalar.AspNetCore;
 using System.Threading.RateLimiting;
 using CardGames.Poker.Api.Infrastructure.PipelineBehaviors;
+using CardGames.Poker.Api.Infrastructure.Telemetry;
 using MediatR;
 using ZiggyCreatures.Caching.Fusion;
 using ZiggyCreatures.Caching.Fusion.Serialization.SystemTextJson;
@@ -158,6 +159,7 @@ public class Program
                 cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly());
                 cfg.LicenseKey = "eyJhbGciOiJSUzI1NiIsImtpZCI6Ikx1Y2t5UGVubnlTb2Z0d2FyZUxpY2Vuc2VLZXkvYmJiMTNhY2I1OTkwNGQ4OWI0Y2IxYzg1ZjA4OGNjZjkiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2x1Y2t5cGVubnlzb2Z0d2FyZS5jb20iLCJhdWQiOiJMdWNreVBlbm55U29mdHdhcmUiLCJleHAiOiIxNzg2NTc5MjAwIiwiaWF0IjoiMTc1NTA1Mjg0NSIsImFjY291bnRfaWQiOiIwMTk3ZDFlN2Q4ZmQ3NWRjYmIwODA1OWVlZGEyZDU0ZCIsImN1c3RvbWVyX2lkIjoiY3RtXzAxano4eWdiMmJ4cTY3N2VhdmNqcmR6cTg1Iiwic3ViX2lkIjoiLSIsImVkaXRpb24iOiIwIiwidHlwZSI6IjIifQ.CpYPuTeHrEmaVt4v2sk5dDH9UGc-QkA7ThBphJcUFA8jr27yDsvD6Ts_CYiySDRzEQdbXeorGfx2ce1Ue5vZ8pk3c7qAj717cU-BP4qdk18dz1LXXkDgQj6v61hvg3OTdGUfV6wxR0Mq2NITiKIPz7q5v052KDXfaXSlwECSRTGwVGuTrn8q0JpcKuS8ZtcM9x32YiEXyiFR3f4cPiMePLMZvOZO-TOeMdVHUJDbAxbra-j5nScamIWbpnrlp4-8SQLYo9VR8xajnmQAiql6Vc5Zk_sKziZSmYcQmr52BFfP5K15STtgA3u9YQ4qQMNFcQ9jEK0BnTFCE45iHvcC3A";
             })
+            .AddScoped(typeof(IPipelineBehavior<,>), typeof(TracingPipelineBehavior<,>))
             .AddScoped(typeof(IPipelineBehavior<,>), typeof(LoggingPipelineBehavior<,>))
             .AddScoped(typeof(IPipelineBehavior<,>), typeof(GameStateBroadcastingBehavior<,>))
             .AddScoped(typeof(IPipelineBehavior<,>), typeof(LobbyStateBroadcastingBehavior<,>))
@@ -183,6 +185,7 @@ public class Program
 
                 // Resource, ASP.NET Core/HttpClient instrumentation and exporters come from ServiceDefaults.
                 x.AddSource("Azure.Messaging.ServiceBus");
+                x.AddSource(PokerActivitySource.Name);
             })
             .WithMetrics(x =>
             {
