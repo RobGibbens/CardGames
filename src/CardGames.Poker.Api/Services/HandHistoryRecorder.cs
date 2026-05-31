@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
+using CardGames.Poker.Api.Infrastructure.Telemetry;
 using Microsoft.EntityFrameworkCore;
 
 namespace CardGames.Poker.Api.Services;
@@ -11,17 +13,26 @@ public sealed class HandHistoryRecorder : IHandHistoryRecorder
 {
     private readonly CardsDbContext _context;
     private readonly ILogger<HandHistoryRecorder> _logger;
+    private readonly HandHistoryTelemetry _telemetry;
 
-    public HandHistoryRecorder(CardsDbContext context, ILogger<HandHistoryRecorder> logger)
+    public HandHistoryRecorder(CardsDbContext context, ILogger<HandHistoryRecorder> logger, HandHistoryTelemetry telemetry)
     {
         _context = context;
         _logger = logger;
+        _telemetry = telemetry;
     }
 
     /// <inheritdoc />
     public async Task<bool> RecordHandHistoryAsync(RecordHandHistoryParameters parameters, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(parameters);
+
+        using var activity = PokerActivitySource.Source.StartActivity("hand_history.record");
+        activity?.SetTag("game.id", parameters.GameId);
+        activity?.SetTag("hand.number", parameters.HandNumber);
+
+        // Resolve the low-cardinality variant code for the metric tag (best-effort).
+        var gameType = await ResolveGameTypeCodeAsync(parameters.GameId, cancellationToken);
 
         // Check for existing record (idempotency)
         var existingRecord = await _context.HandHistories
@@ -51,6 +62,8 @@ public sealed class HandHistoryRecorder : IHandHistoryRecorder
                 handHistory.EndReason,
                 parameters.TotalPot);
 
+            _telemetry.RecordOutcome(gameType, "recorded");
+
             return true;
         }
         catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
@@ -64,14 +77,35 @@ public sealed class HandHistoryRecorder : IHandHistoryRecorder
         }
         catch (Exception ex)
         {
+            _telemetry.RecordOutcome(gameType, "failed");
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             _logger.LogError(
                 ex,
                 "Failed to record hand history for GameId={GameId}, HandNumber={HandNumber}",
                 parameters.GameId,
                 parameters.HandNumber);
 
-            // Per requirements: log and continue, don't crash the game loop
-            return false;
+            throw;
+        }
+    }
+
+    private async Task<string> ResolveGameTypeCodeAsync(Guid gameId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var code = await _context.Games
+                .AsNoTracking()
+                .Where(g => g.Id == gameId)
+                .Select(g => g.CurrentHandGameTypeCode ?? (g.GameType != null ? g.GameType.Code : null))
+                .FirstOrDefaultAsync(cancellationToken);
+
+            return string.IsNullOrWhiteSpace(code) ? "unknown" : code;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // game_type is a best-effort low-cardinality tag; never let resolving it break recording.
+            _logger.LogDebug(ex, "Failed to resolve game type code for GameId={GameId}.", gameId);
+            return "unknown";
         }
     }
 
