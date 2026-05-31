@@ -133,7 +133,8 @@ public struct Unit { }
 ///   entry is the most common source of "works for some actions but not others" bugs.</item>
 ///   <item>Add or update a test in <c>GameApiRouterTests</c> asserting the new mapping.</item>
 /// </list>
-/// <para>See <c>docs/WebRouterDesign.md</c> for the repo-facing description of this design.</para>
+/// <para>See <c>docs/WebRouterDesign.md</c> for the repo-facing description of this design,
+/// and <c>docs/GameVariantBoundary.md</c> for the full cross-layer variant onboarding checklist.</para>
 /// </remarks>
 public class GameApiRouter : IGameApiRouter
 {
@@ -275,6 +276,29 @@ public class GameApiRouter : IGameApiRouter
             [KingsAndLows] = RouteKingsAndLowsAcknowledgePotMatchAsync
         };
     }
+
+    /// <summary>
+    /// Game codes wired into the <b>betting</b> action family. Betting is mandatory for every
+    /// standard variant, so this is the canonical "is this variant wired into the active web
+    /// router?" check. The boundary test in <c>GameVariantBoundaryTests</c> asserts every domain
+    /// variant either appears here or is an explicitly documented special-action variant.
+    /// </summary>
+    public IReadOnlyCollection<string> SupportedBettingGameCodes => _bettingActionRoutes.Keys;
+
+    /// <summary>Game codes wired into the <b>draw / discard</b> action family.</summary>
+    public IReadOnlyCollection<string> SupportedDrawGameCodes => _drawRoutes.Keys;
+
+    /// <summary>Game codes wired into the optional <b>drop-or-stay</b> action family.</summary>
+    public IReadOnlyCollection<string> SupportedDropOrStayGameCodes => _dropOrStayRoutes.Keys;
+
+    /// <summary>Game codes wired into the optional <b>keep-or-trade</b> action family.</summary>
+    public IReadOnlyCollection<string> SupportedKeepOrTradeGameCodes => _keepOrTradeRoutes.Keys;
+
+    /// <summary>Game codes wired into the optional <b>buy-card</b> action family.</summary>
+    public IReadOnlyCollection<string> SupportedBuyCardGameCodes => _buyCardRoutes.Keys;
+
+    /// <summary>Game codes wired into the optional <b>acknowledge-pot-match</b> action family.</summary>
+    public IReadOnlyCollection<string> SupportedAcknowledgePotMatchGameCodes => _acknowledgePotMatchRoutes.Keys;
 
     public async Task<RouterResponse<ProcessBettingActionSuccessful>> ProcessBettingActionAsync(
         string gameCode,
