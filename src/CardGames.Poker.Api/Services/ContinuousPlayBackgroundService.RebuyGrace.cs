@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
@@ -29,22 +30,78 @@ public sealed partial class ContinuousPlayBackgroundService
 			return false;
 		}
 
-		var bustedPlayers = game.GamePlayers
-			.Where(gp => gp.Status is GamePlayerStatus.Active or GamePlayerStatus.SittingOut &&
-						 gp.LeftAtHandNumber == -1 &&
-						 gp.ChipStack <= 0)
-			.ToList();
-
-		if (game.IsPausedForRebuyGrace && game.RebuyGraceEndsAt.HasValue)
+		using var activity = StartContinuousPlayActivity(game, PhaseRebuyGrace);
+		try
 		{
-			if (now < game.RebuyGraceEndsAt.Value)
+			var bustedPlayers = game.GamePlayers
+				.Where(gp => gp.Status is GamePlayerStatus.Active or GamePlayerStatus.SittingOut &&
+							 gp.LeftAtHandNumber == -1 &&
+							 gp.ChipStack <= 0)
+				.ToList();
+
+			if (game.IsPausedForRebuyGrace && game.RebuyGraceEndsAt.HasValue)
 			{
-				if (bustedPlayers.Count > 0)
+				if (now < game.RebuyGraceEndsAt.Value)
 				{
+					if (bustedPlayers.Count > 0)
+					{
+						await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
+						RecordGameProcessed(PhaseRebuyGrace, OutcomeSkipped);
+						return true;
+					}
+
+					game.IsPausedForChipCheck = false;
+					game.ChipCheckPauseStartedAt = null;
+					game.ChipCheckPauseEndsAt = null;
+					game.IsPausedForRebuyGrace = false;
+					game.RebuyGraceStartedAt = null;
+					game.RebuyGraceEndsAt = null;
+					game.UpdatedAt = now;
+
+					await context.SaveChangesAsync(cancellationToken);
 					await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
-					return true;
+					RecordGameProcessed(PhaseRebuyGrace, OutcomeAdvanced);
+					return false;
 				}
 
+				if (eligiblePlayers.Count >= 2)
+				{
+					SetBustedPlayersToObserve(game.GamePlayers);
+					ClearCashGameRebuyGracePause(game, now, scheduleNextHand: true);
+
+					await context.SaveChangesAsync(cancellationToken);
+					await broadcaster.BroadcastTableToastAsync(
+						new TableToastNotificationDto
+						{
+							GameId = game.Id,
+							Message = "Rebuy timer expired. Resuming play without busted players.",
+							Type = "info",
+							DurationMs = 5000
+						},
+						cancellationToken);
+					await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
+					RecordGameProcessed(PhaseRebuyGrace, OutcomeAdvanced);
+					return false;
+				}
+			}
+
+			if (eligiblePlayers.Count != 1 || bustedPlayers.Count == 0)
+			{
+				return false;
+			}
+
+			// Grace window expired with no successful rebuy; end the game for everyone.
+			if (game.IsPausedForRebuyGrace && game.RebuyGraceEndsAt.HasValue && now >= game.RebuyGraceEndsAt.Value)
+			{
+				_logger.LogInformation(
+					"Cash rebuy grace expired for game {GameId}; ending game",
+					game.Id);
+
+				game.CurrentPhase = "Ended";
+				game.Status = GameStatus.Completed;
+				game.EndedAt = now;
+				game.HandCompletedAt = now;
+				game.NextHandStartsAt = now.AddSeconds(CashRebuyGameOverDisplayDurationSeconds);
 				game.IsPausedForChipCheck = false;
 				game.ChipCheckPauseStartedAt = null;
 				game.ChipCheckPauseEndsAt = null;
@@ -54,124 +111,83 @@ public sealed partial class ContinuousPlayBackgroundService
 				game.UpdatedAt = now;
 
 				await context.SaveChangesAsync(cancellationToken);
-				await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
-				return false;
-			}
-
-			if (eligiblePlayers.Count >= 2)
-			{
-				SetBustedPlayersToObserve(game.GamePlayers);
-				ClearCashGameRebuyGracePause(game, now, scheduleNextHand: true);
-
-				await context.SaveChangesAsync(cancellationToken);
+				await SyncLeagueCompletionIfNeededAsync(leagueCompletionSync, game.Id, cancellationToken);
 				await broadcaster.BroadcastTableToastAsync(
 					new TableToastNotificationDto
 					{
 						GameId = game.Id,
-						Message = "Rebuy timer expired. Resuming play without busted players.",
-						Type = "info",
-						DurationMs = 5000
+						Message = "Rebuy timer expired. Game ended.",
+						Type = "warning",
+						DurationMs = 6000
 					},
 					cancellationToken);
 				await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
-				return false;
+				RecordGameProcessed(PhaseRebuyGrace, OutcomeAdvanced);
+				return true;
 			}
-		}
 
-		if (eligiblePlayers.Count != 1 || bustedPlayers.Count == 0)
-		{
-			return false;
-		}
-
-		// Grace window expired with no successful rebuy; end the game for everyone.
-		if (game.IsPausedForRebuyGrace && game.RebuyGraceEndsAt.HasValue && now >= game.RebuyGraceEndsAt.Value)
-		{
 			_logger.LogInformation(
-				"Cash rebuy grace expired for game {GameId}; ending game",
-				game.Id);
+				"Cash game {GameId} entering rebuy grace window; funded players: {FundedCount}, busted players: {BustedCount}",
+				game.Id,
+				eligiblePlayers.Count,
+				bustedPlayers.Count);
 
-			game.CurrentPhase = "Ended";
-			game.Status = GameStatus.Completed;
-			game.EndedAt = now;
-			game.HandCompletedAt = now;
-			game.NextHandStartsAt = now.AddSeconds(CashRebuyGameOverDisplayDurationSeconds);
-			game.IsPausedForChipCheck = false;
-			game.ChipCheckPauseStartedAt = null;
-			game.ChipCheckPauseEndsAt = null;
-			game.IsPausedForRebuyGrace = false;
-			game.RebuyGraceStartedAt = null;
-			game.RebuyGraceEndsAt = null;
+			game.IsPausedForChipCheck = true;
+			game.ChipCheckPauseStartedAt = now;
+			game.ChipCheckPauseEndsAt = now.AddSeconds(CashRebuyGraceDurationSeconds);
+			game.IsPausedForRebuyGrace = true;
+			game.RebuyGraceStartedAt = now;
+			game.RebuyGraceEndsAt = now.AddSeconds(CashRebuyGraceDurationSeconds);
+			game.CurrentPhase = nameof(Phases.WaitingForPlayers);
+			game.NextHandStartsAt = null;
+			game.Status = GameStatus.BetweenHands;
 			game.UpdatedAt = now;
 
+			var existingCardsToRemove = await context.GameCards
+				.Where(gc => gc.GameId == game.Id)
+				.ToListAsync(cancellationToken);
+
+			if (existingCardsToRemove.Count > 0)
+			{
+				context.GameCards.RemoveRange(existingCardsToRemove);
+			}
+
+			foreach (var gamePlayer in game.GamePlayers.Where(gp => gp.Status == GamePlayerStatus.Active))
+			{
+				gamePlayer.CurrentBet = 0;
+				gamePlayer.TotalContributedThisHand = 0;
+				gamePlayer.HasFolded = false;
+				gamePlayer.IsAllIn = false;
+				gamePlayer.HasDrawnThisRound = false;
+				gamePlayer.DropOrStayDecision = null;
+				gamePlayer.IsSittingOut = gamePlayer.ChipStack < ante || gamePlayer.ChipStack <= 0;
+			}
+
 			await context.SaveChangesAsync(cancellationToken);
-			await SyncLeagueCompletionIfNeededAsync(leagueCompletionSync, game.Id, cancellationToken);
+			actionTimerService?.StartChipCheckPauseTimer(
+				game.Id,
+				durationSeconds: CashRebuyGraceDurationSeconds,
+				onExpired: HandleCashGameRebuyGraceTimerExpiredAsync,
+				startedAtUtc: now);
 			await broadcaster.BroadcastTableToastAsync(
 				new TableToastNotificationDto
 				{
 					GameId = game.Id,
-					Message = "Rebuy timer expired. Game ended.",
-					Type = "warning",
-					DurationMs = 6000
+					Message = $"Rebuy window started: {CashRebuyGraceDurationSeconds} seconds remaining.",
+					Type = "info",
+					DurationMs = 5000
 				},
 				cancellationToken);
 			await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
+			RecordGameProcessed(PhaseRebuyGrace, OutcomeAdvanced);
 			return true;
 		}
-
-		_logger.LogInformation(
-			"Cash game {GameId} entering rebuy grace window; funded players: {FundedCount}, busted players: {BustedCount}",
-			game.Id,
-			eligiblePlayers.Count,
-			bustedPlayers.Count);
-
-		game.IsPausedForChipCheck = true;
-		game.ChipCheckPauseStartedAt = now;
-		game.ChipCheckPauseEndsAt = now.AddSeconds(CashRebuyGraceDurationSeconds);
-		game.IsPausedForRebuyGrace = true;
-		game.RebuyGraceStartedAt = now;
-		game.RebuyGraceEndsAt = now.AddSeconds(CashRebuyGraceDurationSeconds);
-		game.CurrentPhase = nameof(Phases.WaitingForPlayers);
-		game.NextHandStartsAt = null;
-		game.Status = GameStatus.BetweenHands;
-		game.UpdatedAt = now;
-
-		var existingCardsToRemove = await context.GameCards
-			.Where(gc => gc.GameId == game.Id)
-			.ToListAsync(cancellationToken);
-
-		if (existingCardsToRemove.Count > 0)
+		catch (Exception ex)
 		{
-			context.GameCards.RemoveRange(existingCardsToRemove);
+			activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+			RecordGameProcessed(PhaseRebuyGrace, OutcomeFailed);
+			throw;
 		}
-
-		foreach (var gamePlayer in game.GamePlayers.Where(gp => gp.Status == GamePlayerStatus.Active))
-		{
-			gamePlayer.CurrentBet = 0;
-			gamePlayer.TotalContributedThisHand = 0;
-			gamePlayer.HasFolded = false;
-			gamePlayer.IsAllIn = false;
-			gamePlayer.HasDrawnThisRound = false;
-			gamePlayer.DropOrStayDecision = null;
-			gamePlayer.IsSittingOut = gamePlayer.ChipStack < ante || gamePlayer.ChipStack <= 0;
-		}
-
-		await context.SaveChangesAsync(cancellationToken);
-		actionTimerService?.StartChipCheckPauseTimer(
-			game.Id,
-			durationSeconds: CashRebuyGraceDurationSeconds,
-			onExpired: HandleCashGameRebuyGraceTimerExpiredAsync,
-			startedAtUtc: now);
-		await broadcaster.BroadcastTableToastAsync(
-			new TableToastNotificationDto
-			{
-				GameId = game.Id,
-				Message = $"Rebuy window started: {CashRebuyGraceDurationSeconds} seconds remaining.",
-				Type = "info",
-				DurationMs = 5000
-			},
-			cancellationToken);
-		await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
-		return true;
 	}
 
 	private async Task HandleCashGameRebuyGraceTimerExpiredAsync(Guid gameId)

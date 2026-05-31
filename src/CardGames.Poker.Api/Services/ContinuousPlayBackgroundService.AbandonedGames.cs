@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
@@ -59,37 +60,49 @@ public sealed partial class ContinuousPlayBackgroundService
 
 		foreach (var game in activeGames)
 		{
-			// Check if all players have left (no active, connected players remaining)
-			var activePlayers = game.GamePlayers
-				.Where(gp => gp.Status == GamePlayerStatus.Active &&
-							 gp.LeftAtHandNumber == -1)
-				.ToList();
-
-			if (activePlayers.Count == 0)
+			using var activity = StartContinuousPlayActivity(game, PhaseAbandoned);
+			try
 			{
-				_logger.LogInformation(
-					"Game {GameId} has no remaining players, marking as complete",
-					game.Id);
+				// Check if all players have left (no active, connected players remaining)
+				var activePlayers = game.GamePlayers
+					.Where(gp => gp.Status == GamePlayerStatus.Active &&
+								 gp.LeftAtHandNumber == -1)
+					.ToList();
 
-			game.CurrentPhase = nameof(Phases.Complete);
-			game.Status = GameStatus.Completed;
-			game.EndedAt = now;
-			game.UpdatedAt = now;
-			game.NextHandStartsAt = null;
-			game.HandCompletedAt = null;
-			game.IsPausedForChipCheck = false;
-			game.ChipCheckPauseStartedAt = null;
-			game.ChipCheckPauseEndsAt = null;
-			game.IsPausedForRebuyGrace = false;
-			game.RebuyGraceStartedAt = null;
-			game.RebuyGraceEndsAt = null;
-
-				await context.SaveChangesAsync(cancellationToken);
-				if (leagueCompletionSync is not null)
+				if (activePlayers.Count == 0)
 				{
-					await leagueCompletionSync.SyncLeagueEventCompletionAsync(game.Id, cancellationToken);
+					_logger.LogInformation(
+						"Game {GameId} has no remaining players, marking as complete",
+						game.Id);
+
+					game.CurrentPhase = nameof(Phases.Complete);
+					game.Status = GameStatus.Completed;
+					game.EndedAt = now;
+					game.UpdatedAt = now;
+					game.NextHandStartsAt = null;
+					game.HandCompletedAt = null;
+					game.IsPausedForChipCheck = false;
+					game.ChipCheckPauseStartedAt = null;
+					game.ChipCheckPauseEndsAt = null;
+					game.IsPausedForRebuyGrace = false;
+					game.RebuyGraceStartedAt = null;
+					game.RebuyGraceEndsAt = null;
+
+					await context.SaveChangesAsync(cancellationToken);
+					await SyncLeagueCompletionIfNeededAsync(leagueCompletionSync, game.Id, cancellationToken);
+					await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
+					RecordGameProcessed(PhaseAbandoned, OutcomeAdvanced);
 				}
-				await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
+				else
+				{
+					RecordGameProcessed(PhaseAbandoned, OutcomeSkipped);
+				}
+			}
+			catch (Exception ex)
+			{
+				activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+				RecordGameProcessed(PhaseAbandoned, OutcomeFailed);
+				throw;
 			}
 		}
 	}

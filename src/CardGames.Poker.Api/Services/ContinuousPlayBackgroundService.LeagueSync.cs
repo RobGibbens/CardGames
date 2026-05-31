@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
@@ -13,16 +14,28 @@ namespace CardGames.Poker.Api.Services;
 
 public sealed partial class ContinuousPlayBackgroundService
 {
-	private static async Task SyncLeagueCompletionIfNeededAsync(
+	private async Task SyncLeagueCompletionIfNeededAsync(
 		LeagueGameCompletionSyncService? leagueCompletionSync,
 		Guid gameId,
 		CancellationToken cancellationToken)
 	{
+		using var activity = StartContinuousPlayActivity(gameId, null, PhaseLeagueSync);
 		if (leagueCompletionSync is null)
 		{
+			RecordGameProcessed(PhaseLeagueSync, OutcomeSkipped);
 			return;
 		}
 
-		await leagueCompletionSync.SyncLeagueEventCompletionAsync(gameId, cancellationToken);
+		try
+		{
+			await leagueCompletionSync.SyncLeagueEventCompletionAsync(gameId, cancellationToken);
+			RecordGameProcessed(PhaseLeagueSync, OutcomeAdvanced);
+		}
+		catch (Exception ex)
+		{
+			activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+			RecordGameProcessed(PhaseLeagueSync, OutcomeFailed);
+			throw;
+		}
 	}
 }

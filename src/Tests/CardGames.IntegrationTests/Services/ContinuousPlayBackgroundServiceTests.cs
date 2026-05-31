@@ -1,3 +1,4 @@
+using System.Diagnostics.Metrics;
 using System.Reflection;
 using CardGames.Poker.Api.Services;
 using CardGames.Poker.Api.Data;
@@ -248,6 +249,110 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
         handler.DealCardsCalled.Should().BeTrue();
         handler.PrepareForNewHandCalled.Should().BeTrue();
         handler.OnHandStartingCalled.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ProcessGamesReadyForNextHandAsync_ReadyForNextHand_RecordsAdvancedMetric()
+    {
+        // Arrange
+        var measurements = new List<CounterMeasurement>();
+        using var listener = StartContinuousPlayMeterListener(measurements);
+        using var telemetryServices = new ServiceCollection().AddMetrics().BuildServiceProvider();
+        using var service = new ContinuousPlayBackgroundService(
+            _scopeFactory,
+            _logger,
+            new ContinuousPlayTelemetry(telemetryServices.GetRequiredService<IMeterFactory>()));
+        var now = DateTimeOffset.UtcNow;
+        var game = new Game
+        {
+            Id = Guid.NewGuid(),
+            CurrentPhase = "Complete",
+            Status = GameStatus.InProgress,
+            NextHandStartsAt = now.AddSeconds(-1),
+            CurrentHandNumber = 1,
+            GameType = new GameType { Code = "METRICGAME", Name = "Metric Game" },
+            DealerPosition = 0
+        };
+
+        game.GamePlayers.Add(new GamePlayer { GameId = game.Id, PlayerId = Guid.NewGuid(), Status = GamePlayerStatus.Active, SeatPosition = 0, ChipStack = 1000, LeftAtHandNumber = -1 });
+        game.GamePlayers.Add(new GamePlayer { GameId = game.Id, PlayerId = Guid.NewGuid(), Status = GamePlayerStatus.Active, SeatPosition = 1, ChipStack = 1000, LeftAtHandNumber = -1 });
+
+        _dbContext.Games.Add(game);
+        await _dbContext.SaveChangesAsync();
+
+        _flowHandlerFactory.SetHandlerForCode("METRICGAME");
+
+        // Act
+        await service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+
+        // Assert
+        measurements.Any(m =>
+            m.InstrumentName == "continuous_play_games_processed_total" &&
+            m.Value == 1 &&
+            m.Tags.TryGetValue("phase", out var phase) &&
+            (string?)phase == "next_hand" &&
+            m.Tags.TryGetValue("outcome", out var outcome) &&
+            (string?)outcome == "advanced")
+            .Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ProcessGamesReadyForNextHandAsync_ReadyForNextHand_RecordsFailedMetricAndContinues()
+    {
+        // Arrange
+        var measurements = new List<CounterMeasurement>();
+        using var listener = StartContinuousPlayMeterListener(measurements);
+        using var telemetryServices = new ServiceCollection().AddMetrics().BuildServiceProvider();
+        using var service = new ContinuousPlayBackgroundService(
+            _scopeFactory,
+            _logger,
+            new ContinuousPlayTelemetry(telemetryServices.GetRequiredService<IMeterFactory>()));
+        var now = DateTimeOffset.UtcNow;
+        var failingGame = new Game
+        {
+            Id = Guid.NewGuid(),
+            CurrentPhase = "Complete",
+            Status = GameStatus.InProgress,
+            NextHandStartsAt = now.AddSeconds(-1),
+            CurrentHandNumber = 1,
+            GameType = new GameType { Code = "FAILINGMETRICGAME", Name = "Failing Metric Game" },
+            DealerPosition = 0
+        };
+        var succeedingGame = new Game
+        {
+            Id = Guid.NewGuid(),
+            CurrentPhase = "Complete",
+            Status = GameStatus.InProgress,
+            NextHandStartsAt = now.AddSeconds(-1),
+            CurrentHandNumber = 1,
+            GameType = new GameType { Code = "CONTINUEMETRICGAME", Name = "Continue Metric Game" },
+            DealerPosition = 0
+        };
+
+        AddActivePlayers(failingGame);
+        AddActivePlayers(succeedingGame);
+        _dbContext.Games.AddRange(failingGame, succeedingGame);
+        await _dbContext.SaveChangesAsync();
+
+        _flowHandlerFactory.SetHandlerForCode("FAILINGMETRICGAME").ThrowOnPrepareForNewHand = true;
+        _flowHandlerFactory.SetHandlerForCode("CONTINUEMETRICGAME");
+
+        // Act
+        var act = () => service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+
+        // Assert
+        await act.Should().NotThrowAsync();
+        measurements.Any(m =>
+            m.InstrumentName == "continuous_play_games_processed_total" &&
+            m.Value == 1 &&
+            m.Tags.TryGetValue("phase", out var phase) &&
+            (string?)phase == "next_hand" &&
+            m.Tags.TryGetValue("outcome", out var outcome) &&
+            (string?)outcome == "failed")
+            .Should().BeTrue();
+
+        var updatedSucceedingGame = await _dbContext.Games.FindAsync(succeedingGame.Id);
+        updatedSucceedingGame!.CurrentHandNumber.Should().Be(2);
     }
 
     [Fact]
@@ -1320,6 +1425,39 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
         }
     }
 
+    private sealed record CounterMeasurement(string InstrumentName, long Value, Dictionary<string, object?> Tags);
+
+    private static MeterListener StartContinuousPlayMeterListener(List<CounterMeasurement> measurements)
+    {
+        var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, meterListener) =>
+        {
+            if (instrument.Meter.Name == ContinuousPlayTelemetry.MeterName &&
+                instrument.Name == "continuous_play_games_processed_total")
+            {
+                meterListener.EnableMeasurementEvents(instrument);
+            }
+        };
+        listener.SetMeasurementEventCallback<long>((instrument, measurement, tags, _) =>
+        {
+            var tagValues = new Dictionary<string, object?>();
+            foreach (var tag in tags)
+            {
+                tagValues[tag.Key] = tag.Value;
+            }
+
+            measurements.Add(new CounterMeasurement(instrument.Name, measurement, tagValues));
+        });
+        listener.Start();
+        return listener;
+    }
+
+    private static void AddActivePlayers(Game game)
+    {
+        game.GamePlayers.Add(new GamePlayer { GameId = game.Id, PlayerId = Guid.NewGuid(), Status = GamePlayerStatus.Active, SeatPosition = 0, ChipStack = 1000, LeftAtHandNumber = -1 });
+        game.GamePlayers.Add(new GamePlayer { GameId = game.Id, PlayerId = Guid.NewGuid(), Status = GamePlayerStatus.Active, SeatPosition = 1, ChipStack = 1000, LeftAtHandNumber = -1 });
+    }
+
     private class FakeServiceScopeFactory : IServiceScopeFactory
     {
         private readonly CardsDbContext _dbContext;
@@ -1522,6 +1660,7 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
         public bool OnHandStartingCalled { get; set; }
         public bool PrepareForNewHandCalled { get; set; }
         public bool OnHandCompletedCalled { get; set; }
+        public bool ThrowOnPrepareForNewHand { get; set; }
 
         public FakeGameFlowHandler(string code)
         {
@@ -1553,6 +1692,11 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
             CancellationToken cancellationToken)
         {
             PrepareForNewHandCalled = true;
+            if (ThrowOnPrepareForNewHand)
+            {
+                throw new InvalidOperationException("Forced prepare failure");
+            }
+
             return Task.CompletedTask;
         }
 

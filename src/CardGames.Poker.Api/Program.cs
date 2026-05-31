@@ -195,6 +195,7 @@ public class Program
             {
                 x.AddPrometheusExporter();
                 x.AddMeter("CardGames.Poker.Api.Leagues");
+                x.AddMeter(ContinuousPlayTelemetry.MeterName);
 
                 x.AddFusionCacheInstrumentation(o =>
                 {
@@ -208,6 +209,7 @@ public class Program
         builder.Services.ConfigureHttpClientDefaults(http => http.AddStandardResilienceHandler());
         builder.Services.AddMetrics();
         builder.Services.AddSingleton<LeaguesTelemetry>();
+        builder.Services.AddSingleton<ContinuousPlayTelemetry>();
         builder.Services.AddRateLimiter(limiterOptions =>
         {
             limiterOptions.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -373,4 +375,3 @@ public class Program
         return $"{LeagueRateLimitPolicies.JoinAndRequestFlow}:{userId}";
     }
 }
-

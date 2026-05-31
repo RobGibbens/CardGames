@@ -86,7 +86,7 @@ public sealed partial class ContinuousPlayBackgroundService
 		game.OriginalDealersChoiceDealerPosition = null;
 	}
 
-	private async Task StartNextHandAsync(
+	private async Task<string> StartNextHandAsync(
 		IServiceScope scope,
 		CardsDbContext context,
 		IGameStateBroadcaster broadcaster,
@@ -123,7 +123,7 @@ public sealed partial class ContinuousPlayBackgroundService
 				game.CurrentPhase,
 				game.Status,
 				game.NextHandStartsAt);
-			return;
+			return OutcomeSkipped;
 		}
 
 		// 1. Finalize leave requests for players who were waiting for the hand to finish
@@ -273,7 +273,7 @@ public sealed partial class ContinuousPlayBackgroundService
 			now,
 			cancellationToken))
 		{
-			return;
+			return OutcomeSkipped;
 		}
 
 			// 3a. For games with chip coverage check requirement, check if any player cannot cover the current pot
@@ -340,7 +340,7 @@ public sealed partial class ContinuousPlayBackgroundService
 								durationSeconds: (int)Math.Ceiling(chipCheckConfig.PauseDuration.TotalSeconds),
 								startedAtUtc: now);
 							await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
-							return; // Don't start the hand yet
+							return OutcomeSkipped; // Don't start the hand yet
 						}
 						}
 						else
@@ -361,7 +361,7 @@ public sealed partial class ContinuousPlayBackgroundService
 
 							await context.SaveChangesAsync(cancellationToken);
 							await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
-							return; // Don't start the hand - wait for players to add chips
+							return OutcomeSkipped; // Don't start the hand - wait for players to add chips
 						}
 					}
 					else if (game.IsPausedForChipCheck)
@@ -406,7 +406,7 @@ public sealed partial class ContinuousPlayBackgroundService
 			await context.SaveChangesAsync(cancellationToken);
 			await SyncLeagueCompletionIfNeededAsync(leagueCompletionSync, game.Id, cancellationToken);
 			await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
-			return;
+			return OutcomeSkipped;
 		}
 
 		if (await TryTransitionTerminalDealersChoiceScrewYourNeighborAsync(
@@ -418,7 +418,7 @@ public sealed partial class ContinuousPlayBackgroundService
 			now,
 			cancellationToken))
 		{
-			return;
+			return OutcomeSkipped;
 		}
 
 		if (await TryTransitionTerminalDealersChoiceInBetweenAsync(
@@ -428,7 +428,7 @@ public sealed partial class ContinuousPlayBackgroundService
 			now,
 			cancellationToken))
 		{
-			return;
+			return OutcomeSkipped;
 		}
 
 		if (await TryHandleCashGameRebuyGraceAsync(
@@ -442,7 +442,7 @@ public sealed partial class ContinuousPlayBackgroundService
 			now,
 			cancellationToken))
 		{
-			return;
+			return OutcomeSkipped;
 		}
 
 		// Check minimum player count
@@ -467,7 +467,7 @@ public sealed partial class ContinuousPlayBackgroundService
 					now,
 					cancellationToken,
 					"Dealer's Choice game {GameId}: variant ended with insufficient players, waiting for dealer at seat {DcDealerSeat} to choose next game");
-				return;
+				return OutcomeSkipped;
 			}
 
 			_logger.LogInformation(
@@ -511,7 +511,7 @@ public sealed partial class ContinuousPlayBackgroundService
 
 			await context.SaveChangesAsync(cancellationToken);
 			await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
-			return;
+			return OutcomeSkipped;
 		}
 
 		// SYN in DC stores pre-SYN chip snapshots in VariantState; preserve across multi-hand rounds.
@@ -661,7 +661,7 @@ public sealed partial class ContinuousPlayBackgroundService
 					now,
 					cancellationToken,
 					"Dealer's Choice game {GameId}: variant finished, waiting for dealer at seat {DcDealerSeat} to choose next game");
-				return;
+				return OutcomeSkipped;
 			}
 
 			_logger.LogInformation(
@@ -744,6 +744,7 @@ public sealed partial class ContinuousPlayBackgroundService
 
 		// Broadcast updated state
 		await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
+		return OutcomeAdvanced;
 	}
 
 	private static void SetBustedPlayersToObserve(IEnumerable<GamePlayer> gamePlayers)
