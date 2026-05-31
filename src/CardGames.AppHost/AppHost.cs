@@ -32,6 +32,7 @@ var migrations = builder.AddProject<Projects.CardGames_MigrationService>("migrat
 	.WaitFor(sqldb);
 
 var api = builder.AddProject<Projects.CardGames_Poker_Api>("api")
+.WithEnvironment("OTEL_SERVICE_NAME", "cardgames-poker-api")
 .WithReference(serviceBus)
 .WaitFor(serviceBus)
 .WithReference(cache)
