@@ -1,65 +1,55 @@
 ﻿using MediatR;
 using System.Diagnostics;
-using System.Reflection;
 
 namespace CardGames.Poker.Api.Infrastructure.PipelineBehaviors;
 
 public class LoggingPipelineBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse> where TRequest : IRequest<TResponse>
 {
-	private readonly ILogger<LoggingPipelineBehavior<TRequest, TResponse>> _logger;
+private readonly ILogger<LoggingPipelineBehavior<TRequest, TResponse>> _logger;
 
-	public LoggingPipelineBehavior(ILogger<LoggingPipelineBehavior<TRequest, TResponse>> logger)
-	{
-		_logger = logger ?? throw new ArgumentNullException(nameof(logger));
-	}
+public LoggingPipelineBehavior(ILogger<LoggingPipelineBehavior<TRequest, TResponse>> logger)
+{
+_logger = logger ?? throw new ArgumentNullException(nameof(logger));
+}
 
-	public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
-	{
-		var stopwatch = new Stopwatch();
-		stopwatch.Start();
+public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
+{
+// Use the short type name as a stable, low-cardinality correlation key. The request
+// instance itself is intentionally NOT logged: dumping every property would leak
+// secrets, tokens, and PII (passwords, emails, private cards, full payloads) and add
+// high-volume noise. Structured identifiers should be logged explicitly by handlers.
+var requestType = typeof(TRequest).Name;
 
-		try
-		{
-			LogRequest(request);
+using var scope = _logger.BeginScope(new Dictionary<string, object>
+{
+["RequestType"] = requestType
+});
 
-			var response = await next(cancellationToken);
+var stopwatch = Stopwatch.StartNew();
 
-			LogResponse(response, stopwatch.ElapsedMilliseconds);
+try
+{
+_logger.LogDebug("Handling {RequestType}", requestType);
 
-			return response;
-		}
-		catch (Exception ex)
-		{
-			LogError(ex);
-			throw;
-		}
-		finally
-		{
-			stopwatch.Stop();
-		}
-	}
+var response = await next(cancellationToken);
 
-	private void LogRequest(TRequest request)
-	{
-		_logger.LogInformation("Handling {RequestType} at {Timestamp}", typeof(TRequest).FullName, DateTime.UtcNow);
-		foreach (var property in GetProperties(request))
-		{
-			_logger.LogInformation("{Property} : {@Value}", property.Name, property.GetValue(request, null));
-		}
-	}
+stopwatch.Stop();
+_logger.LogInformation(
+"Handled {RequestType} in {ElapsedMilliseconds}ms",
+requestType,
+stopwatch.ElapsedMilliseconds);
 
-	private void LogResponse(TResponse response, long elapsedMilliseconds)
-	{
-		_logger.LogInformation("Handled {ResponseType} at {Timestamp} (Elapsed: {Elapsed}ms)", typeof(TResponse).FullName, DateTime.UtcNow, elapsedMilliseconds);
-	}
-
-	private void LogError(Exception ex)
-	{
-		_logger.LogError(ex, "An error occurred at {Timestamp}", DateTime.UtcNow);
-	}
-
-	private IEnumerable<PropertyInfo> GetProperties(TRequest request)
-	{
-		return request.GetType().GetProperties();
-	}
+return response;
+}
+catch (Exception ex)
+{
+stopwatch.Stop();
+_logger.LogError(
+ex,
+"Error handling {RequestType} after {ElapsedMilliseconds}ms",
+requestType,
+stopwatch.ElapsedMilliseconds);
+throw;
+}
+}
 }
