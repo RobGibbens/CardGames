@@ -31,6 +31,7 @@
 @inject GameHubClient GameHubClient
 @inject DashboardState DashboardState
 @inject TablePlayToastState ToastState
+@inject TablePlayAudioState Audio
 @inject GameRulesService GameRulesService
 @inject ILogger<TablePlay> Logger
 @inject ITwosJacksManWithTheAxeApi TwosJacksManWithTheAxeApi
@@ -84,7 +85,7 @@
     <TablePlayControlsStrip GameId="@GameId"
                             IsSeated="@_isSeated"
                             IsSittingOut="@IsSittingOut"
-                            IsDealSoundMuted="@_isDealSoundMuted"
+                            IsDealSoundMuted="@Audio.IsMuted"
                             ShowGameInfoOverlay="@_showGameInfoOverlay"
                             ShowGameVariantBadges="@ShowGameVariantBadges"
                             GameInfoTypeContext="@GetGameInfoTypeContext()"

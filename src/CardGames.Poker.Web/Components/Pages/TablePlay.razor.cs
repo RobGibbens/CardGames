@@ -138,7 +138,6 @@ public partial class TablePlay
     private bool _isProcessingKeepOrTrade;
     private string? _synKeepOrTradeDecision;
     private HashSet<string> _synAnimatedTradeKeys = [];
-    private HashSet<string> _playedTableSoundKeys = [];
     private List<int> _pendingSynTradeAnimationSeatIndices = [];
     private bool _synChipAnimationFired;
     private Dictionary<int, int> _synBonusChipsBySeat = new();
@@ -241,7 +240,6 @@ public partial class TablePlay
     private CardGames.Contracts.SignalR.ChipHistoryDto? _chipHistory;
     private int _handNumber = 0;
 
-    private bool _isDealSoundMuted;
     private bool _isJsInteropReady;
     private int _previousFaceUpCommunityCardCount;
     private bool _showGameInfoOverlay;
@@ -496,7 +494,7 @@ public partial class TablePlay
 
         try
         {
-            _isDealSoundMuted = await JSRuntime.InvokeAsync<bool>("cardGamesAudio.getMuted");
+            await Audio.InitializeMuteStateAsync();
             _isJsInteropReady = true;
             await TryPlayTableSoundEffectsAsync(_tableState?.SoundEffects);
             await FlushPendingScrewYourNeighborTradeAnimationsAsync();
@@ -957,7 +955,7 @@ public partial class TablePlay
                         _previousPhaseCategory = null;
                         _isAcknowledgingPotMatch = false;
                         _synAnimatedTradeKeys.Clear();
-                        _playedTableSoundKeys.Clear();
+                        Audio.ResetPlayedSoundKeys();
 
                         // Reset All-In Runout state for new hand
                         _allInRunoutState = null;
@@ -3672,29 +3670,22 @@ public partial class TablePlay
         return ConvertCardsToShowdownCards(communityCards).ToList();
     }
 
-    private async Task PlayTurnAlertSoundAsync()
+    private Task PlayTurnAlertSoundAsync()
     {
         if (IsCardDealingVisualInProgress || _communityCardRevealInProgress)
         {
             _pendingTurnAlertSound = true;
-            return;
+            return Task.CompletedTask;
         }
 
         _pendingTurnAlertSound = false;
 
-        if (_isDealSoundMuted || !_isJsInteropReady)
+        if (!_isJsInteropReady)
         {
-            return;
+            return Task.CompletedTask;
         }
 
-        try
-        {
-            await JSRuntime.InvokeVoidAsync("cardGamesAudio.playSoundEffect", "/sounds/alert.mp3");
-        }
-        catch (Exception ex)
-        {
-            Logger.LogDebug(ex, "Unable to play turn alert sound");
-        }
+        return Audio.PlayTurnAlertAsync();
     }
 
     private async Task TryPlayPendingTurnAlertSoundAsync()
@@ -3708,72 +3699,19 @@ public partial class TablePlay
         await PlayTurnAlertSoundAsync();
     }
 
-    private async Task PlayDealCardSoundAsync(int cardCount)
+    private Task PlayDealCardSoundAsync(int cardCount) => Audio.PlayDealCardAsync(cardCount);
+
+    private Task TryPlayTableSoundEffectsAsync(IReadOnlyList<TableSoundEffectDto>? soundEffects)
     {
-        if (cardCount <= 0 || _isDealSoundMuted)
+        if (!_isJsInteropReady)
         {
-            return;
+            return Task.CompletedTask;
         }
 
-        try
-        {
-            await JSRuntime.InvokeVoidAsync("cardGamesAudio.playDealCard", cardCount);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogDebug(ex, "Unable to play deal-card sound effect");
-        }
+        return Audio.PlayTableSoundEffectsAsync(soundEffects);
     }
 
-    private async Task TryPlayTableSoundEffectsAsync(IReadOnlyList<TableSoundEffectDto>? soundEffects)
-    {
-        if (soundEffects is null || soundEffects.Count == 0 || _isDealSoundMuted || !_isJsInteropReady)
-        {
-            return;
-        }
-
-        foreach (var soundEffect in soundEffects)
-        {
-            await TryPlayTableSoundEffectAsync(soundEffect);
-        }
-    }
-
-    private async Task TryPlayTableSoundEffectAsync(TableSoundEffectDto soundEffect)
-    {
-        if (string.IsNullOrWhiteSpace(soundEffect.CueKey) || string.IsNullOrWhiteSpace(soundEffect.Source))
-        {
-            return;
-        }
-
-        if (!_playedTableSoundKeys.Add(soundEffect.CueKey))
-        {
-            return;
-        }
-
-        try
-        {
-            await JSRuntime.InvokeVoidAsync("cardGamesAudio.playSoundEffect", soundEffect.Source);
-        }
-        catch (Exception ex)
-        {
-            _playedTableSoundKeys.Remove(soundEffect.CueKey);
-            Logger.LogDebug(ex, "Unable to play {SoundEventKey} sound effect", soundEffect.EventKey);
-        }
-    }
-
-    private async Task ToggleDealSoundMuteAsync()
-    {
-        _isDealSoundMuted = !_isDealSoundMuted;
-
-        try
-        {
-            await JSRuntime.InvokeVoidAsync("cardGamesAudio.setMuted", _isDealSoundMuted);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogDebug(ex, "Unable to toggle deal-card sound mute state");
-        }
-    }
+    private Task ToggleDealSoundMuteAsync() => Audio.ToggleMuteAsync();
 
     private void ToggleGameInfoOverlay()
     {
