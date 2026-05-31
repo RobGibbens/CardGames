@@ -42,11 +42,17 @@ public class GetGameQueryHandler(CardsDbContext context, HybridCache hybridCache
 			$"{Feature.Version}-{request.CacheKey}",
 			async _ =>
 			{
+				var playersWithChips = await context.GamePlayers
+					.AsNoTracking()
+					.CountAsync(gp => gp.GameId == request.GameId && gp.ChipStack > 0, cancellationToken);
+
+				var canContinue = GameContinuationPolicy.CanContinue(playersWithChips);
+
 				var response = await context.Games
 					.Include(g => g.GameType)
 					.Where(g => g.Id == request.GameId)
 					.AsNoTracking()
-					.ProjectToResponse(minPlayers, maxPlayers)
+					.ProjectToResponse(minPlayers, maxPlayers, canContinue)
 					.FirstOrDefaultAsync(cancellationToken);
 
 				if (response is null)
