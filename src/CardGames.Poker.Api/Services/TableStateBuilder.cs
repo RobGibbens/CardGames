@@ -1,7 +1,4 @@
 using System;
-using System.Security.Cryptography;
-using System.Text.Json;
-using System.Text;
 using CardGames.Contracts.SignalR;
 using CardGames.Core.Extensions;
 using CardGames.Core.French.Cards;
