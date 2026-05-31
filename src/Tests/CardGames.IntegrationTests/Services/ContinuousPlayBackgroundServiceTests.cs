@@ -1223,10 +1223,13 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
         // simulating a concurrent polling cycle that preloaded the game while it
         // was still "ready" (stale view of the world).
         await using var staleContext = new CardsDbContext(_dbOptions);
-        _ = await staleContext.Games
+        // Preload the game into the stale context's change tracker while it still
+        // looks "ready", capturing a stale snapshot that must not cause a re-advance.
+        var staleGameSnapshot = await staleContext.Games
             .Include(g => g.GamePlayers)
             .Include(g => g.GameType)
             .FirstAsync(g => g.Id == game.Id);
+        staleGameSnapshot.CurrentHandNumber.Should().Be(1);
 
         var staleBroadcaster = new FakeGameStateBroadcaster();
         var staleFlowFactory = new FakeGameFlowHandlerFactory();
