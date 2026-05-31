@@ -182,12 +182,13 @@ public class GameStateBroadcasterTests
         clientProxy.SendCoreAsync(Arg.Any<string>(), Arg.Any<object?[]>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException(failure));
 
-        await sut.BroadcastTableToastAsync(new TableToastNotificationDto
+        var exception = await Record.ExceptionAsync(() => sut.BroadcastTableToastAsync(new TableToastNotificationDto
         {
             GameId = gameId,
             Message = "Starting new deck"
-        });
+        }));
 
+        Assert.Null(exception);
         Assert.Contains(measurements, measurement => HasTags(measurement.Tags, "game", "TableToastNotification", "failed"));
         Assert.Contains(logger.Entries, entry => entry.Level == LogLevel.Error && entry.Exception == failure);
     }

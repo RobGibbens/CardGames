@@ -495,7 +495,7 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
                             {
                                 activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
                                 _telemetry.RecordBroadcast("game", eventName, "failed", stopwatch.Elapsed.TotalMilliseconds);
-                                _logger.LogError(ex, "Failed to broadcast {EventName} for game {GameId}", eventName, gameId);
+                                _logger.LogError(ex, "Error broadcasting {EventName} for game {GameId}", eventName, gameId);
                                 throw;
                             }
                         }
