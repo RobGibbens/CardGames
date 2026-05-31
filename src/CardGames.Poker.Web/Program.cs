@@ -61,6 +61,9 @@ builder.Services.AddScoped<NotificationHubClient>();
 // Register Dashboard UI state service (scoped per Blazor circuit)
 builder.Services.AddScoped<DashboardState>();
 
+// Register table-page toast notification state service (scoped per Blazor circuit)
+builder.Services.AddScoped<TablePlayToastState>();
+
 // Register memory cache for game rules caching
 builder.Services.AddMemoryCache();
 

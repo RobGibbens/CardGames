@@ -30,6 +30,7 @@
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject GameHubClient GameHubClient
 @inject DashboardState DashboardState
+@inject TablePlayToastState ToastState
 @inject GameRulesService GameRulesService
 @inject ILogger<TablePlay> Logger
 @inject ITwosJacksManWithTheAxeApi TwosJacksManWithTheAxeApi
@@ -76,7 +77,7 @@
                      PendingApprovalBuyIn="@_pendingApprovalBuyIn" />
 
 <!-- Toast notifications -->
-<TablePlayToastNotifications Messages="@_toastMessages" />
+<TablePlayToastNotifications Messages="@ToastState.Messages" />
 
 <main class="table-play-main">
     <!-- Leave Table / Controls Strip -->

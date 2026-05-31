@@ -70,6 +70,4 @@ public partial class TablePlay
     }
 
     public record PlayerActionRequest(BettingActionType Action, int? Amount);
-
-    public record ToastMessage(string Message, string Type);
 }

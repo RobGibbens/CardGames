@@ -241,9 +241,6 @@ public partial class TablePlay
     private CardGames.Contracts.SignalR.ChipHistoryDto? _chipHistory;
     private int _handNumber = 0;
 
-    // Toast notification state
-    private List<ToastMessage> _toastMessages = [];
-
     private bool _isDealSoundMuted;
     private bool _isJsInteropReady;
     private int _previousFaceUpCommunityCardCount;
@@ -417,6 +414,9 @@ public partial class TablePlay
         InitializeSeats();
         CaptureAutoJoinIntentFromUri();
 
+        // Subscribe to circuit-scoped toast state so the page re-renders when toasts change.
+        ToastState.OnChanged += OnToastStateChanged;
+
         // Subscribe to SignalR events
         GameHubClient.OnTableStateUpdated += HandleTableStateUpdatedAsync;
         GameHubClient.OnPrivateStateUpdated += HandlePrivateStateUpdatedAsync;
@@ -563,20 +563,8 @@ public partial class TablePlay
         await ShowToastAsync(notification.Message, notification.Type, notification.DurationMs);
     }
 
-    private async Task ShowToastAsync(string message, string type = "info", int durationMs = 4000)
-    {
-        var toast = new ToastMessage(message, type);
-        _toastMessages.Add(toast);
-        await InvokeStateHasChangedAsync();
-
-        // Auto-dismiss after duration
-        _ = Task.Run(async () =>
-        {
-            await Task.Delay(durationMs);
-            _toastMessages.Remove(toast);
-            await InvokeStateHasChangedAsync();
-        });
-    }
+    private Task ShowToastAsync(string message, string type = "info", int durationMs = 4000)
+        => ToastState.ShowAsync(message, type, durationMs);
 
     private async Task HandleTableStateUpdatedAsync(TableStatePublicDto state)
     {
@@ -4809,6 +4797,9 @@ public partial class TablePlay
         GameHubClient.OnTableToastNotification -= HandleTableToastNotificationAsync;
         NotificationHubClient.OnGameJoinRequestResolved -= HandleJoinRequestResolvedAsync;
 
+        // Unsubscribe from circuit-scoped toast state.
+        ToastState.OnChanged -= OnToastStateChanged;
+
         // Leave the game and disconnect
         if (_currentGameId.HasValue)
         {
@@ -4817,6 +4808,8 @@ public partial class TablePlay
 
         return ValueTask.CompletedTask;
     }
+
+    private void OnToastStateChanged() => _ = InvokeStateHasChangedAsync();
 
     private async Task LeaveGameSilentlyAsync(Guid gameId)
     {
