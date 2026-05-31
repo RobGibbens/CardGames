@@ -15,7 +15,6 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
 using Microsoft.Identity.Web;
 using OpenTelemetry.Metrics;
-using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Scalar.AspNetCore;
 using System.Threading.RateLimiting;
@@ -154,13 +153,6 @@ public class Program
             .WithRegisteredDistributedCache()
             .AsHybridCache();
 
-        builder.Logging.AddOpenTelemetry(x =>
-        {
-            x.IncludeScopes = true;
-            x.IncludeFormattedMessage = true;
-        });
-
-
         builder.Services.AddMediatR(cfg =>
             {
                 cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly());
@@ -189,23 +181,13 @@ public class Program
                     o.IncludeMemoryLevel = true;
                 });
 
-                x.SetResourceBuilder(ResourceBuilder.CreateDefault()
-                 .AddService("api"))
-                 .AddAspNetCoreInstrumentation() // For HTTP request tracing
-                 .AddHttpClientInstrumentation() // For outgoing HTTP calls
-                 .AddConsoleExporter(); // Use other exporters as needed
-                
+                // Resource, ASP.NET Core/HttpClient instrumentation and exporters come from ServiceDefaults.
                 x.AddSource("Azure.Messaging.ServiceBus");
             })
             .WithMetrics(x =>
             {
                 x.AddPrometheusExporter();
-                x.AddMeter("Forkful.ApiService");
                 x.AddMeter("CardGames.Poker.Api.Leagues");
-                x.SetResourceBuilder(ResourceBuilder.CreateDefault()
-                    .AddService("api"))
-                    .AddAspNetCoreInstrumentation() // Captures request metrics
-                    .AddConsoleExporter(); // Export metrics to the console
 
                 x.AddFusionCacheInstrumentation(o =>
                 {
