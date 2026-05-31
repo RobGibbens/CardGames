@@ -1,5 +1,6 @@
-﻿using MediatR;
 using System.Diagnostics;
+using System.Reflection;
+using MediatR;
 
 namespace CardGames.Poker.Api.Infrastructure.PipelineBehaviors;
 
@@ -20,10 +21,17 @@ public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TRe
 // high-volume noise. Structured identifiers should be logged explicitly by handlers.
 var requestType = typeof(TRequest).Name;
 
-using var scope = _logger.BeginScope(new Dictionary<string, object>
+var scopeValues = new Dictionary<string, object>
 {
 ["RequestType"] = requestType
-});
+};
+AddScopeValue(scopeValues, request, "GameId");
+AddScopeValue(scopeValues, request, "HandNumber");
+AddScopeValue(scopeValues, request, "UserId");
+AddScopeValue(scopeValues, request, "LeagueId");
+AddScopeValue(scopeValues, request, "ConnectionId");
+
+using var scope = _logger.BeginScope(scopeValues);
 
 var stopwatch = Stopwatch.StartNew();
 
@@ -50,6 +58,16 @@ ex,
 requestType,
 stopwatch.ElapsedMilliseconds);
 throw;
+}
+}
+
+private static void AddScopeValue(Dictionary<string, object> scopeValues, TRequest request, string propertyName)
+{
+var property = typeof(TRequest).GetProperty(propertyName, BindingFlags.Instance | BindingFlags.Public);
+var value = property?.GetValue(request);
+if (value is not null)
+{
+scopeValues[propertyName] = value;
 }
 }
 }

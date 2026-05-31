@@ -141,6 +141,7 @@ public sealed partial class ContinuousPlayBackgroundService : BackgroundService
 
 			foreach (var game in gamesReadyForNextHand)
 			{
+				using var logScope = BeginGameScope(game);
 				using var activity = StartContinuousPlayActivity(game, PhaseNextHand);
 				try
 				{
@@ -164,6 +165,24 @@ public sealed partial class ContinuousPlayBackgroundService : BackgroundService
 
 	private void RecordGameProcessed(string phase, string outcome)
 		=> _telemetry?.RecordGameProcessed(phase, outcome);
+
+	private IDisposable? BeginGameScope(Game game)
+		=> BeginGameScope(game.Id, game.CurrentHandNumber);
+
+	private IDisposable? BeginGameScope(Guid gameId, int? handNumber)
+	{
+		var values = new Dictionary<string, object>
+		{
+			["GameId"] = gameId
+		};
+
+		if (handNumber.HasValue)
+		{
+			values["HandNumber"] = handNumber.Value;
+		}
+
+		return _logger.BeginScope(values);
+	}
 
 	private static Activity? StartContinuousPlayActivity(Game game, string phase)
 		=> StartContinuousPlayActivity(game.Id, game.CurrentHandNumber, phase);

@@ -60,6 +60,7 @@ public sealed partial class ContinuousPlayBackgroundService
 
 		foreach (var game in activeGames)
 		{
+			using var logScope = BeginGameScope(game);
 			using var activity = StartContinuousPlayActivity(game, PhaseAbandoned);
 			try
 			{

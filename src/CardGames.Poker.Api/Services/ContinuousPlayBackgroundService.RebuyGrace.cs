@@ -30,6 +30,7 @@ public sealed partial class ContinuousPlayBackgroundService
 			return false;
 		}
 
+		using var logScope = BeginGameScope(game);
 		using var activity = StartContinuousPlayActivity(game, PhaseRebuyGrace);
 		try
 		{
@@ -209,6 +210,8 @@ public sealed partial class ContinuousPlayBackgroundService
 		{
 			return;
 		}
+
+		using var logScope = BeginGameScope(game);
 
 		var ante = game.Ante ?? 0;
 		var eligiblePlayers = game.GamePlayers

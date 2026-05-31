@@ -16,6 +16,7 @@ namespace CardGames.Poker.Tests.Api.Infrastructure.PipelineBehaviors;
 public class LoggingPipelineBehaviorTests
 {
 	private sealed record SensitiveRequest(string Password, string Email) : IRequest<string>;
+	private sealed record GameActionRequest(Guid GameId, Guid UserId, int HandNumber) : IRequest<string>;
 
 	[Fact]
 	public async Task Handle_DoesNotLogRequestPropertyValues()
@@ -46,6 +47,22 @@ public class LoggingPipelineBehaviorTests
 
 		logger.Entries.Should().Contain(e =>
 			e.Level == LogLevel.Information && e.Message.Contains("Handled"));
+	}
+
+	[Fact]
+	public async Task Handle_IncludesStandardBusinessIdentifiersInScope()
+	{
+		var logger = new CapturingLogger<LoggingPipelineBehavior<GameActionRequest, string>>();
+		var behavior = new LoggingPipelineBehavior<GameActionRequest, string>(logger);
+		var request = new GameActionRequest(Guid.NewGuid(), Guid.NewGuid(), 12);
+
+		await behavior.Handle(request, _ => Task.FromResult("ok"), CancellationToken.None);
+
+		var scope = logger.Scopes.Should().ContainSingle().Which;
+		scope.Should().ContainKey("RequestType").WhoseValue.Should().Be(nameof(GameActionRequest));
+		scope.Should().ContainKey("GameId").WhoseValue.Should().Be(request.GameId);
+		scope.Should().ContainKey("UserId").WhoseValue.Should().Be(request.UserId);
+		scope.Should().ContainKey("HandNumber").WhoseValue.Should().Be(request.HandNumber);
 	}
 
 	[Fact]

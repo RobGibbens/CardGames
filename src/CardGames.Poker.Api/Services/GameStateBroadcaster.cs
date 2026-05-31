@@ -61,6 +61,7 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
     public async Task BroadcastGameStateAsync(Guid gameId, CancellationToken cancellationToken = default)
     {
         var groupName = GetGroupName(gameId);
+        using var scope = CreateScope(gameId);
 
         try
         {
@@ -187,10 +188,11 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
             startDelay: startDelay,
             onExpired: async (gId, seatIndex) =>
             {
-                _logger.LogInformation(
-                    "Timer expired for game {GameId}, player seat {SeatIndex} - performing auto-action",
-                    gId, seatIndex);
-                await _autoActionService.PerformAutoActionAsync(gId, seatIndex);
+            using var timerScope = CreateScope(gId);
+            _logger.LogInformation(
+                "Timer expired for game {GameId}, player seat {SeatIndex} - performing auto-action",
+                gId, seatIndex);
+            await _autoActionService.PerformAutoActionAsync(gId, seatIndex);
             });
     }
 
@@ -233,6 +235,7 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
         public async Task BroadcastGameStateToUserAsync(Guid gameId, string userId, CancellationToken cancellationToken = default)
         {
             var groupName = GetGroupName(gameId);
+            using var scope = CreateScope(gameId, userId);
 
             try
             {
@@ -263,6 +266,7 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
 
         private async Task SendPrivateStateToUserAsync(Guid gameId, string userId, CancellationToken cancellationToken)
         {
+            using var scope = CreateScope(gameId, userId);
             var privateState = await _tableStateBuilder.BuildPrivateStateAsync(gameId, userId, cancellationToken);
             if (privateState is not null)
             {
@@ -297,6 +301,7 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
             CancellationToken cancellationToken = default)
         {
             var groupName = GetGroupName(gameId);
+            using var scope = CreateScope(gameId);
 
             try
             {
@@ -338,6 +343,7 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
                     CancellationToken cancellationToken = default)
                 {
                     var groupName = GetGroupName(notification.GameId);
+                    using var scope = CreateScope(notification.GameId);
 
                     try
                     {
@@ -368,8 +374,9 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
                     CancellationToken cancellationToken = default)
                 {
                     var groupName = GetGroupName(notification.GameId);
+                    using var scope = CreateScope(notification.GameId, notification.UpdatedById);
 
-                            try
+                    try
                             {
                                 await SendGameBroadcastAsync(
                                     _hubContext.Clients.Group(groupName),
@@ -399,6 +406,7 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
                             CancellationToken cancellationToken = default)
                         {
                             var groupName = GetGroupName(notification.GameId);
+                            using var scope = CreateScope(notification.GameId, notification.UpdatedById);
 
                             try
                             {
@@ -433,6 +441,7 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
                             CancellationToken cancellationToken = default)
                         {
                             var groupName = GetGroupName(gameId);
+                            using var scope = CreateScope(gameId);
 
                             try
                             {
@@ -475,6 +484,7 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
                             string? userId,
                             CancellationToken cancellationToken)
                         {
+                            using var scope = CreateScope(gameId, userId);
                             using var activity = PokerActivitySource.Source.StartActivity("realtime.broadcast");
                             activity?.SetTag("hub", "game");
                             activity?.SetTag("event", eventName);
@@ -498,6 +508,21 @@ public sealed class GameStateBroadcaster : IGameStateBroadcaster
                                 _logger.LogError(ex, "Error broadcasting {EventName} for game {GameId}", eventName, gameId);
                                 throw;
                             }
+                        }
+
+                        private IDisposable? CreateScope(Guid gameId, string? userId = null)
+                        {
+                            var values = new Dictionary<string, object>
+                            {
+                                ["GameId"] = gameId
+                            };
+
+                            if (!string.IsNullOrWhiteSpace(userId))
+                            {
+                                values["UserId"] = userId;
+                            }
+
+                            return _logger.BeginScope(values);
                         }
 
                         private static string GetGroupName(Guid gameId) => $"{GameGroupPrefix}{gameId}";

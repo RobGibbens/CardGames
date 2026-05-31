@@ -44,6 +44,7 @@ public sealed partial class ContinuousPlayBackgroundService
 
 		foreach (var game in gamesReadyForShowdown)
 		{
+			using var logScope = BeginGameScope(game);
 			using var activity = StartContinuousPlayActivity(game, PhaseDrawTransition);
 			try
 			{
@@ -194,6 +195,7 @@ public sealed partial class ContinuousPlayBackgroundService
 
 		foreach (var game in gamesReadyForShowdown)
 		{
+			using var logScope = BeginGameScope(game);
 			using var activity = StartContinuousPlayActivity(game, PhaseDrawTransition);
 			try
 			{
@@ -244,6 +246,7 @@ public sealed partial class ContinuousPlayBackgroundService
 
 		foreach (var game in gamesReady)
 		{
+			using var logScope = BeginGameScope(game);
 			using var activity = StartContinuousPlayActivity(game, PhaseDrawTransition);
 			try
 			{
