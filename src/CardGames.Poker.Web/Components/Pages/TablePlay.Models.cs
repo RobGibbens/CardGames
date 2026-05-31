@@ -1,29 +1,5 @@
 using System.ComponentModel;
-using System.Net;
-using System.Net.Http;
-using System.Net.Http.Json;
-using System.Security.Claims;
-using System.Text.Json;
-using CardGames.Contracts.SignalR;
-using CardGames.Core.French.Cards;
-using CardGames.Poker.Api.Clients;
 using CardGames.Poker.Api.Contracts;
-using CardGames.Poker.Evaluation;
-using CardGames.Poker.Hands.DrawHands;
-using CardGames.Poker.Hands.HandTypes;
-using CardGames.Poker.Hands.StudHands;
-using CardGames.Poker.Hands.WildCards;
-using CardGames.Poker.Web.Components.Shared;
-using CardGames.Poker.Web.Extensions;
-using CardGames.Poker.Web.Infrastructure.Validation;
-using CardGames.Poker.Web.Services;
-using CardGames.Poker.Web.Services.TableActions;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.Components.Web;
-using Microsoft.JSInterop;
-using IApiResponse = Refit.IApiResponse;
 
 namespace CardGames.Poker.Web.Components.Pages;
 
