@@ -91,13 +91,22 @@ public sealed class HandHistoryRecorder : IHandHistoryRecorder
 
     private async Task<string> ResolveGameTypeCodeAsync(Guid gameId, CancellationToken cancellationToken)
     {
-        var code = await _context.Games
-            .AsNoTracking()
-            .Where(g => g.Id == gameId)
-            .Select(g => g.CurrentHandGameTypeCode ?? (g.GameType != null ? g.GameType.Code : null))
-            .FirstOrDefaultAsync(cancellationToken);
+        try
+        {
+            var code = await _context.Games
+                .AsNoTracking()
+                .Where(g => g.Id == gameId)
+                .Select(g => g.CurrentHandGameTypeCode ?? (g.GameType != null ? g.GameType.Code : null))
+                .FirstOrDefaultAsync(cancellationToken);
 
-        return string.IsNullOrWhiteSpace(code) ? "unknown" : code;
+            return string.IsNullOrWhiteSpace(code) ? "unknown" : code;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // game_type is a best-effort low-cardinality tag; never let resolving it break recording.
+            _logger.LogDebug(ex, "Failed to resolve game type code for GameId={GameId}.", gameId);
+            return "unknown";
+        }
     }
 
     private static HandHistory CreateHandHistoryEntity(RecordHandHistoryParameters parameters)
