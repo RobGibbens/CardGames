@@ -8,11 +8,10 @@ namespace CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetGame;
 [Mapper(RequiredMappingStrategy = RequiredMappingStrategy.Target)]
 public static partial class GetGameMapper
 {
-	public static GetGameResponse ToResponse(this Game model, int minimumNumberOfPlayers, int maximumNumberOfPlayers)
+	// This mapper is pure projection. Business-derived values such as CanContinue are decided by an
+	// authoritative layer (see GameContinuationPolicy) and passed in already computed.
+	public static GetGameResponse ToResponse(this Game model, int minimumNumberOfPlayers, int maximumNumberOfPlayers, bool canContinue)
 	{
-		// This is a simplified logic. You may need to reconstruct the game from model for full logic.
-		// Here, we use GamePlayers and chip stacks to determine CanContinue.
-		var activePlayers = model.GamePlayers?.Count(gp => gp.ChipStack > 0) ?? 0;
 		return new GetGameResponse
 		{
 			Id = model.Id,
@@ -47,7 +46,7 @@ public static partial class GetGameMapper
 			EndedAt = model.EndedAt,
 			CreatedById = model.CreatedById,
 			CreatedByName = model.CreatedByName,
-			CanContinue = activePlayers >= 2,
+			CanContinue = canContinue,
 			RowVersion = MapRowVersion(model.RowVersion),
 			IsDealersChoice = model.IsDealersChoice,
 			DealersChoiceDealerPosition = model.DealersChoiceDealerPosition,
@@ -56,9 +55,9 @@ public static partial class GetGameMapper
 		};
 	}
 
-	public static IQueryable<GetGameResponse> ProjectToResponse(this IQueryable<Game> query, int minimumNumberOfPlayers, int maximumNumberOfPlayers)
+	public static IQueryable<GetGameResponse> ProjectToResponse(this IQueryable<Game> query, int minimumNumberOfPlayers, int maximumNumberOfPlayers, bool canContinue)
 	{
-		return query.Select(model => ToResponse(model, minimumNumberOfPlayers, maximumNumberOfPlayers));
+		return query.Select(model => ToResponse(model, minimumNumberOfPlayers, maximumNumberOfPlayers, canContinue));
 	}
 
 	private static string MapRowVersion(byte[] rowVersion) => rowVersion.ToBase64String();

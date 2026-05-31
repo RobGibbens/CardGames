@@ -158,6 +158,43 @@ public class CommonQueryHandlerTests : IntegrationTestBase
         result!.GameTypeCode.Should().Be(gameTypeCode);
     }
 
+    [Fact]
+    public async Task GetGame_TwoOrMorePlayersHaveChips_CanContinueIsTrue()
+    {
+        // Arrange
+        var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 4);
+        var query = new GetGameQuery(setup.Game.Id);
+
+        // Act
+        var result = await Mediator.Send(query);
+
+        // Assert
+        result.Should().NotBeNull();
+        result!.CanContinue.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GetGame_OnlyOnePlayerHasChips_CanContinueIsFalse()
+    {
+        // Arrange
+        var setup = await DatabaseSeeder.CreateCompleteGameSetupAsync(DbContext, "FIVECARDDRAW", 4);
+        foreach (var gamePlayer in setup.GamePlayers.Skip(1))
+        {
+            gamePlayer.ChipStack = 0;
+        }
+
+        await DbContext.SaveChangesAsync();
+
+        var query = new GetGameQuery(setup.Game.Id);
+
+        // Act
+        var result = await Mediator.Send(query);
+
+        // Assert
+        result.Should().NotBeNull();
+        result!.CanContinue.Should().BeFalse();
+    }
+
     #endregion
 
     #region GetGamesQueryHandler Tests
