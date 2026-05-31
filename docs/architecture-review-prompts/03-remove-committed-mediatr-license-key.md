@@ -14,9 +14,9 @@ alter MediatR behaviour.
 
 ### Context (verify before editing)
 
-- `src/CardGames.Poker.Api/Program.cs` registers MediatR around lines 157–166 and sets
-  `cfg.LicenseKey = "******";` on **line 160** — a long JWT-style string committed in
-  plaintext.
+- `src/CardGames.Poker.Api/Program.cs` registers MediatR around lines 157–166 and assigns
+  `cfg.LicenseKey` to a hard-coded literal on **line 160** — a long credential string committed in
+  plaintext that must be removed entirely (do not reproduce its value anywhere).
 - Configuration is already available via `builder.Configuration`. The project already binds options
   sections (e.g. `InternalApiAuthOptions`, `AvatarStorageOptions`) and uses Aspire/user-secrets.
 
