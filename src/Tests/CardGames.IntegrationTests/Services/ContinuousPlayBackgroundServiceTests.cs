@@ -18,6 +18,7 @@ namespace CardGames.IntegrationTests.Services;
 public class ContinuousPlayBackgroundServiceTests : IDisposable
 {
     private readonly CardsDbContext _dbContext;
+    private readonly DbContextOptions<CardsDbContext> _dbOptions;
     private readonly FakeServiceScopeFactory _scopeFactory;
     private readonly ContinuousPlayBackgroundService _service;
     private readonly FakeLogger<ContinuousPlayBackgroundService> _logger;
@@ -27,12 +28,12 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
 
     public ContinuousPlayBackgroundServiceTests()
     {
-        var options = new DbContextOptionsBuilder<CardsDbContext>()
+        _dbOptions = new DbContextOptionsBuilder<CardsDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .EnableSensitiveDataLogging()
             .Options;
 
-        _dbContext = new CardsDbContext(options);
+        _dbContext = new CardsDbContext(_dbOptions);
         _logger = new FakeLogger<ContinuousPlayBackgroundService>();
         
         _flowHandlerFactory = new FakeGameFlowHandlerFactory();
@@ -878,7 +879,429 @@ public class ContinuousPlayBackgroundServiceTests : IDisposable
         finalizedPlayer.Status.Should().Be(GamePlayerStatus.Left);
         finalizedPlayer.FinalChipCount.Should().Be(250);
     }
-    
+
+    // ---------------------------------------------------------------------
+    // Transition safety tests
+    //
+    // These tests lock down the continuous-progression behaviour at the
+    // transition level: timing boundaries, idempotency, retry safety,
+    // stale/concurrent EF state, and one-time side effects (broadcast /
+    // league completion sync). They are intended to fail loudly if a future
+    // refactor of ContinuousPlayBackgroundService removes a timing guard,
+    // drops an idempotency guard, or duplicates a side effect.
+    // ---------------------------------------------------------------------
+
+    private static GamePlayer ActivePlayer(Guid gameId, int seat, int chips = 1000) => new()
+    {
+        GameId = gameId,
+        PlayerId = Guid.NewGuid(),
+        Status = GamePlayerStatus.Active,
+        SeatPosition = seat,
+        ChipStack = chips,
+        LeftAtHandNumber = -1
+    };
+
+    // --- A. Timing boundaries ------------------------------------------------
+
+    [Fact]
+    public async Task ProcessGamesReadyForNextHandAsync_DoesNotStartNextHand_BeforeScheduledTime()
+    {
+        // Arrange: next hand scheduled in the future — threshold not yet crossed.
+        var now = DateTimeOffset.UtcNow;
+        var game = new Game
+        {
+            Id = Guid.NewGuid(),
+            CurrentPhase = "Complete",
+            Status = GameStatus.InProgress,
+            NextHandStartsAt = now.AddSeconds(30),
+            CurrentHandNumber = 1,
+            GameType = new GameType { Code = "TESTGAME", Name = "Test Game" }
+        };
+        game.GamePlayers.Add(ActivePlayer(game.Id, 0));
+        game.GamePlayers.Add(ActivePlayer(game.Id, 1));
+        _dbContext.Games.Add(game);
+        await _dbContext.SaveChangesAsync();
+
+        var handler = _flowHandlerFactory.SetHandlerForCode("TESTGAME");
+        handler.InitialPhase = "Dealing";
+
+        // Act
+        await _service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+
+        // Assert: nothing advanced before the scheduled time.
+        var updatedGame = await _dbContext.Games.FindAsync(game.Id);
+        updatedGame!.CurrentHandNumber.Should().Be(1);
+        updatedGame.CurrentPhase.Should().Be("Complete");
+        handler.DealCardsCalled.Should().BeFalse();
+        _broadcaster.Broadcasts.Should().NotContain(b => b.GameId == game.Id);
+    }
+
+    [Fact]
+    public async Task ProcessGamesReadyForNextHandAsync_StartsNextHand_AtScheduledThreshold()
+    {
+        // Arrange: NextHandStartsAt exactly at "now" exercises the inclusive `<= now` boundary.
+        var now = DateTimeOffset.UtcNow;
+        var game = new Game
+        {
+            Id = Guid.NewGuid(),
+            CurrentPhase = "Complete",
+            Status = GameStatus.InProgress,
+            NextHandStartsAt = now,
+            CurrentHandNumber = 1,
+            GameType = new GameType { Code = "TESTGAME", Name = "Test Game" }
+        };
+        game.GamePlayers.Add(ActivePlayer(game.Id, 0));
+        game.GamePlayers.Add(ActivePlayer(game.Id, 1));
+        _dbContext.Games.Add(game);
+        await _dbContext.SaveChangesAsync();
+
+        var handler = _flowHandlerFactory.SetHandlerForCode("TESTGAME");
+        handler.InitialPhase = "Dealing";
+
+        // Act
+        await _service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+
+        // Assert
+        var updatedGame = await _dbContext.Games.FindAsync(game.Id);
+        updatedGame!.CurrentHandNumber.Should().Be(2);
+        updatedGame.CurrentPhase.Should().Be("Dealing");
+        updatedGame.NextHandStartsAt.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ProcessGamesReadyForNextHandAsync_DrawComplete_DoesNotTransition_BeforeDisplayWindowExpires()
+    {
+        // Arrange: draw completed "now" — the display window has not yet elapsed.
+        var now = DateTimeOffset.UtcNow;
+        var game = new Game
+        {
+            Id = Guid.NewGuid(),
+            CurrentPhase = "DrawComplete",
+            Status = GameStatus.InProgress,
+            DrawCompletedAt = now,
+            GameType = new GameType { Code = "TESTGAME", Name = "Test Game" }
+        };
+        game.GamePlayers.Add(ActivePlayer(game.Id, 0));
+        game.GamePlayers.Add(ActivePlayer(game.Id, 1));
+        _dbContext.Games.Add(game);
+        await _dbContext.SaveChangesAsync();
+
+        var handler = _flowHandlerFactory.SetHandlerForCode("TESTGAME");
+        handler.NextPhase = "Showdown";
+
+        // Act
+        await _service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+
+        // Assert: still in DrawComplete, no transition work performed.
+        var updatedGame = await _dbContext.Games.FindAsync(game.Id);
+        updatedGame!.CurrentPhase.Should().Be("DrawComplete");
+        handler.ProcessDrawCompleteCalled.Should().BeFalse();
+        _broadcaster.Broadcasts.Should().NotContain(b => b.GameId == game.Id);
+    }
+
+    [Fact]
+    public async Task ProcessGamesReadyForNextHandAsync_DrawComplete_Transitions_JustAfterWindowBoundary()
+    {
+        // Arrange: draw completed just past the display window boundary.
+        var now = DateTimeOffset.UtcNow;
+        var game = new Game
+        {
+            Id = Guid.NewGuid(),
+            CurrentPhase = "DrawComplete",
+            Status = GameStatus.InProgress,
+            DrawCompletedAt = now.AddSeconds(-(ContinuousPlayBackgroundService.DrawCompleteDisplayDurationSeconds + 1)),
+            GameType = new GameType { Code = "TESTGAME", Name = "Test Game" }
+        };
+        game.GamePlayers.Add(ActivePlayer(game.Id, 0));
+        game.GamePlayers.Add(ActivePlayer(game.Id, 1));
+        _dbContext.Games.Add(game);
+        await _dbContext.SaveChangesAsync();
+
+        var handler = _flowHandlerFactory.SetHandlerForCode("TESTGAME");
+        handler.NextPhase = "Showdown";
+
+        // Act
+        await _service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+
+        // Assert
+        var updatedGame = await _dbContext.Games.FindAsync(game.Id);
+        updatedGame!.CurrentPhase.Should().Be("Showdown");
+        handler.ProcessDrawCompleteCalled.Should().BeTrue();
+        _broadcaster.Broadcasts.Should().Contain(b => b.GameId == game.Id);
+    }
+
+    [Fact]
+    public async Task ProcessGamesReadyForNextHandAsync_KlondikeReveal_DoesNotTransition_BeforeWindowExpires()
+    {
+        // Arrange: reveal window is 20s; only 10s have elapsed.
+        var now = DateTimeOffset.UtcNow;
+        var game = new Game
+        {
+            Id = Guid.NewGuid(),
+            CurrentPhase = "KlondikeReveal",
+            Status = GameStatus.InProgress,
+            DrawCompletedAt = now.AddSeconds(-10),
+            GameType = new GameType { Code = "KLONDIKE", Name = "Klondike" }
+        };
+        game.GamePlayers.Add(ActivePlayer(game.Id, 0));
+        game.GamePlayers.Add(ActivePlayer(game.Id, 1));
+        _dbContext.Games.Add(game);
+        await _dbContext.SaveChangesAsync();
+
+        // Act
+        await _service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+
+        // Assert: not advanced and not abandoned (active players present).
+        var updatedGame = await _dbContext.Games.FindAsync(game.Id);
+        updatedGame!.CurrentPhase.Should().Be("KlondikeReveal");
+        updatedGame.Status.Should().Be(GameStatus.InProgress);
+        _broadcaster.Broadcasts.Should().NotContain(b => b.GameId == game.Id);
+    }
+
+    [Fact]
+    public async Task ProcessGamesReadyForNextHandAsync_KlondikeReveal_Transitions_AfterWindowExpires()
+    {
+        // Arrange: reveal window is 20s; 25s have elapsed.
+        var now = DateTimeOffset.UtcNow;
+        var game = new Game
+        {
+            Id = Guid.NewGuid(),
+            CurrentPhase = "KlondikeReveal",
+            Status = GameStatus.InProgress,
+            DrawCompletedAt = now.AddSeconds(-(ContinuousPlayBackgroundService.KlondikeRevealDisplayDurationSeconds + 5)),
+            GameType = new GameType { Code = "KLONDIKE", Name = "Klondike" }
+        };
+        game.GamePlayers.Add(ActivePlayer(game.Id, 0));
+        game.GamePlayers.Add(ActivePlayer(game.Id, 1));
+        _dbContext.Games.Add(game);
+        await _dbContext.SaveChangesAsync();
+
+        // Act
+        await _service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+
+        // Assert
+        var updatedGame = await _dbContext.Games.FindAsync(game.Id);
+        updatedGame!.CurrentPhase.Should().Be("Showdown");
+        _broadcaster.Broadcasts.Should().Contain(b => b.GameId == game.Id);
+    }
+
+    // --- B/C. Idempotency & retry safety ------------------------------------
+
+    [Fact]
+    public async Task ProcessGamesReadyForNextHandAsync_RunTwice_DoesNotStartTwoHands()
+    {
+        // Arrange
+        var now = DateTimeOffset.UtcNow;
+        var game = new Game
+        {
+            Id = Guid.NewGuid(),
+            CurrentPhase = "Complete",
+            Status = GameStatus.InProgress,
+            NextHandStartsAt = now.AddSeconds(-1),
+            CurrentHandNumber = 1,
+            GameType = new GameType { Code = "TESTGAME", Name = "Test Game" },
+            DealerPosition = 0
+        };
+        game.GamePlayers.Add(ActivePlayer(game.Id, 0));
+        game.GamePlayers.Add(ActivePlayer(game.Id, 1));
+        _dbContext.Games.Add(game);
+        await _dbContext.SaveChangesAsync();
+
+        var handler = _flowHandlerFactory.SetHandlerForCode("TESTGAME");
+        handler.InitialPhase = "Dealing";
+
+        // Act: first run advances exactly one hand.
+        await _service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+        var afterFirst = await _dbContext.Games.FindAsync(game.Id);
+        afterFirst!.CurrentHandNumber.Should().Be(2);
+        afterFirst.NextHandStartsAt.Should().BeNull();
+        var broadcastsAfterFirst = _broadcaster.Broadcasts.Count(b => b.GameId == game.Id);
+
+        // Act: second run is a safe no-op (NextHandStartsAt guard already cleared).
+        await _service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+
+        // Assert: no second hand, no duplicated broadcast.
+        var afterSecond = await _dbContext.Games.FindAsync(game.Id);
+        afterSecond!.CurrentHandNumber.Should().Be(2);
+        afterSecond.CurrentPhase.Should().Be("Dealing");
+        _broadcaster.Broadcasts.Count(b => b.GameId == game.Id).Should().Be(broadcastsAfterFirst);
+    }
+
+    [Fact]
+    public async Task ProcessGamesReadyForNextHandAsync_AbandonedGame_RunTwice_DoesNotDuplicateCompletion()
+    {
+        // Arrange: an abandoned game (no remaining players).
+        var game = new Game
+        {
+            Id = Guid.NewGuid(),
+            CurrentPhase = "Dealing",
+            Status = GameStatus.InProgress,
+            GamePlayers = new List<GamePlayer>(),
+            UpdatedAt = DateTimeOffset.UtcNow.AddMinutes(-1)
+        };
+        _dbContext.Games.Add(game);
+        await _dbContext.SaveChangesAsync();
+
+        // Act: run the progression routine twice.
+        await _service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+        await _service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+
+        // Assert: completed once; the completed game is excluded on the second pass,
+        // so the completion broadcast is not duplicated.
+        var updatedGame = await _dbContext.Games.FindAsync(game.Id);
+        updatedGame!.Status.Should().Be(GameStatus.Completed);
+        updatedGame.CurrentPhase.Should().Be("Complete");
+        _broadcaster.Broadcasts.Count(b => b.GameId == game.Id).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task ProcessGamesReadyForNextHandAsync_DrawComplete_RunTwice_IsIdempotent()
+    {
+        // Arrange: a DrawComplete game whose display window has expired.
+        var now = DateTimeOffset.UtcNow;
+        var game = new Game
+        {
+            Id = Guid.NewGuid(),
+            CurrentPhase = "DrawComplete",
+            Status = GameStatus.InProgress,
+            DrawCompletedAt = now.AddSeconds(-10),
+            GameType = new GameType { Code = "TESTGAME", Name = "Test Game" }
+        };
+        game.GamePlayers.Add(ActivePlayer(game.Id, 0));
+        game.GamePlayers.Add(ActivePlayer(game.Id, 1));
+        _dbContext.Games.Add(game);
+        await _dbContext.SaveChangesAsync();
+
+        var handler = _flowHandlerFactory.SetHandlerForCode("TESTGAME");
+        handler.NextPhase = "Showdown";
+
+        // Act: first run transitions to Showdown.
+        await _service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+        var afterFirst = await _dbContext.Games.FindAsync(game.Id);
+        afterFirst!.CurrentPhase.Should().Be("Showdown");
+        handler.ProcessDrawCompleteCalled.Should().BeTrue();
+        var broadcastsAfterFirst = _broadcaster.Broadcasts.Count(b => b.GameId == game.Id);
+
+        // Reset the call flag to detect any duplicate transition on the second pass.
+        handler.ProcessDrawCompleteCalled = false;
+
+        // Act: second run must not re-process (game is no longer in DrawComplete).
+        await _service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+
+        // Assert
+        var afterSecond = await _dbContext.Games.FindAsync(game.Id);
+        afterSecond!.CurrentPhase.Should().Be("Showdown");
+        handler.ProcessDrawCompleteCalled.Should().BeFalse();
+        _broadcaster.Broadcasts.Count(b => b.GameId == game.Id).Should().Be(broadcastsAfterFirst);
+    }
+
+    // --- D. Stale / concurrent EF state -------------------------------------
+
+    [Fact]
+    public async Task ProcessGamesReadyForNextHandAsync_StaleConcurrentContext_DoesNotDoubleAdvance()
+    {
+        // Arrange: a game ready for its next hand.
+        var now = DateTimeOffset.UtcNow;
+        var game = new Game
+        {
+            Id = Guid.NewGuid(),
+            CurrentPhase = "Complete",
+            Status = GameStatus.InProgress,
+            NextHandStartsAt = now.AddSeconds(-1),
+            CurrentHandNumber = 1,
+            GameType = new GameType { Code = "TESTGAME", Name = "Test Game" },
+            DealerPosition = 0
+        };
+        game.GamePlayers.Add(ActivePlayer(game.Id, 0));
+        game.GamePlayers.Add(ActivePlayer(game.Id, 1));
+        _dbContext.Games.Add(game);
+        await _dbContext.SaveChangesAsync();
+
+        _flowHandlerFactory.SetHandlerForCode("TESTGAME").InitialPhase = "Dealing";
+
+        // A second service with its own EF context over the SAME in-memory store,
+        // simulating a concurrent polling cycle that preloaded the game while it
+        // was still "ready" (stale view of the world).
+        await using var staleContext = new CardsDbContext(_dbOptions);
+        // Preload the game into the stale context's change tracker while it still
+        // looks "ready", capturing a stale snapshot that must not cause a re-advance.
+        var staleGameSnapshot = await staleContext.Games
+            .Include(g => g.GamePlayers)
+            .Include(g => g.GameType)
+            .FirstAsync(g => g.Id == game.Id);
+        staleGameSnapshot.CurrentHandNumber.Should().Be(1);
+
+        var staleBroadcaster = new FakeGameStateBroadcaster();
+        var staleFlowFactory = new FakeGameFlowHandlerFactory();
+        staleFlowFactory.SetHandlerForCode("TESTGAME").InitialPhase = "Dealing";
+        var staleScopeFactory = new FakeServiceScopeFactory(
+            staleContext, staleBroadcaster, new FakeHandHistoryRecorder(), staleFlowFactory);
+        using var staleService = new ContinuousPlayBackgroundService(
+            staleScopeFactory, new FakeLogger<ContinuousPlayBackgroundService>());
+
+        // Act: the primary service advances the hand first.
+        await _service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+
+        // Then the stale/concurrent service runs the same progression path.
+        await staleService.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+
+        // Assert: exactly one advancement survived; no double-advance or duplicate side effect.
+        await using var verifyContext = new CardsDbContext(_dbOptions);
+        var persisted = await verifyContext.Games.FindAsync(game.Id);
+        persisted!.CurrentHandNumber.Should().Be(2);
+        persisted.CurrentPhase.Should().Be("Dealing");
+        persisted.NextHandStartsAt.Should().BeNull();
+        staleBroadcaster.Broadcasts.Should().NotContain(b => b.GameId == game.Id);
+    }
+
+    // --- F. One-time side effects -------------------------------------------
+
+    [Fact]
+    public async Task ProcessGamesReadyForNextHandAsync_AbandonedLinkedOneOffGame_RunTwice_SyncsCompletionOnce()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var league = new League
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test League",
+            CreatedByUserId = "test-user",
+            CreatedAtUtc = now
+        };
+        var game = new Game
+        {
+            Id = Guid.NewGuid(),
+            CurrentPhase = "Dealing",
+            Status = GameStatus.InProgress,
+            GamePlayers = new List<GamePlayer>(),
+            UpdatedAt = now.AddMinutes(-1)
+        };
+        var oneOffEvent = new LeagueOneOffEvent
+        {
+            Id = Guid.NewGuid(),
+            LeagueId = league.Id,
+            Name = "Cash Game",
+            CreatedByUserId = "test-user",
+            CreatedAtUtc = now,
+            Status = LeagueOneOffEventStatus.Planned,
+            EventType = LeagueOneOffEventType.CashGame,
+            LaunchedGameId = game.Id
+        };
+
+        _dbContext.Leagues.Add(league);
+        _dbContext.Games.Add(game);
+        _dbContext.LeagueOneOffEvents.Add(oneOffEvent);
+        await _dbContext.SaveChangesAsync();
+
+        // Act: run the abandoned-game path twice.
+        await _service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+        await _service.ProcessGamesReadyForNextHandAsync(CancellationToken.None);
+
+        // Assert: the linked event is completed and the completion broadcast happens once.
+        var updatedEvent = await _dbContext.LeagueOneOffEvents.FindAsync(oneOffEvent.Id);
+        updatedEvent!.Status.Should().Be(LeagueOneOffEventStatus.Completed);
+        _broadcaster.Broadcasts.Count(b => b.GameId == game.Id).Should().Be(1);
+    }
+
     // Fakes
     private class FakeLogger<T> : ILogger<T>
     {
