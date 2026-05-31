@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json;
 using CardGames.Poker.Api.Data;
 using CardGames.Poker.Api.Data.Entities;
@@ -43,6 +44,7 @@ public sealed partial class ContinuousPlayBackgroundService
 
 		foreach (var game in gamesReadyForShowdown)
 		{
+			using var activity = StartContinuousPlayActivity(game, PhaseDrawTransition);
 			try
 			{
 				_logger.LogInformation(
@@ -77,6 +79,7 @@ public sealed partial class ContinuousPlayBackgroundService
 					}
 
 					await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
+					RecordGameProcessed(PhaseDrawTransition, OutcomeSkipped);
 					continue;
 				}
 
@@ -126,9 +129,12 @@ public sealed partial class ContinuousPlayBackgroundService
 
 				await context.SaveChangesAsync(cancellationToken);
 				await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
+				RecordGameProcessed(PhaseDrawTransition, OutcomeAdvanced);
 			}
 			catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException ex)
 			{
+				activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+				RecordGameProcessed(PhaseDrawTransition, OutcomeFailed);
 				// Concurrency conflict — another handler (e.g., the API PerformShowdown endpoint)
 				// modified the game simultaneously. Reload and check if the work is already done.
 				_logger.LogWarning(
@@ -157,6 +163,8 @@ public sealed partial class ContinuousPlayBackgroundService
 			}
 			catch (Exception ex)
 			{
+				activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+				RecordGameProcessed(PhaseDrawTransition, OutcomeFailed);
 				_logger.LogError(ex, "Failed to process DrawComplete for game {GameId}", game.Id);
 			}
 		}
@@ -186,6 +194,7 @@ public sealed partial class ContinuousPlayBackgroundService
 
 		foreach (var game in gamesReadyForShowdown)
 		{
+			using var activity = StartContinuousPlayActivity(game, PhaseDrawTransition);
 			try
 			{
 				_logger.LogInformation(
@@ -197,9 +206,12 @@ public sealed partial class ContinuousPlayBackgroundService
 
 				await context.SaveChangesAsync(cancellationToken);
 				await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
+				RecordGameProcessed(PhaseDrawTransition, OutcomeAdvanced);
 			}
 			catch (Exception ex)
 			{
+				activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+				RecordGameProcessed(PhaseDrawTransition, OutcomeFailed);
 				_logger.LogError(ex, "Failed to process KlondikeReveal for game {GameId}", game.Id);
 			}
 		}
@@ -232,6 +244,7 @@ public sealed partial class ContinuousPlayBackgroundService
 
 		foreach (var game in gamesReady)
 		{
+			using var activity = StartContinuousPlayActivity(game, PhaseDrawTransition);
 			try
 			{
 				_logger.LogInformation(
@@ -244,9 +257,12 @@ public sealed partial class ContinuousPlayBackgroundService
 					context, game, handHistoryRecorder, now, cancellationToken);
 
 				await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
+				RecordGameProcessed(PhaseDrawTransition, OutcomeAdvanced);
 			}
 			catch (Exception ex)
 			{
+				activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+				RecordGameProcessed(PhaseDrawTransition, OutcomeFailed);
 				_logger.LogError(ex, "Failed to process In-Between resolution for game {GameId}", game.Id);
 			}
 		}
