@@ -29,7 +29,7 @@ public class TableActionExecutorTests
                 return Task.CompletedTask;
             });
 
-        public TableActionOptions Options(Action<TableActionOptions>? _ = null) => new()
+        public TableActionOptions Options() => new()
         {
             IsBusy = () => Busy,
             SetBusy = busy =>

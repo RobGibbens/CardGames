@@ -82,7 +82,7 @@ public sealed class TableActionExecutor
 
                 if (!string.IsNullOrWhiteSpace(options.SuccessMessage))
                 {
-                    await _notifyAsync(options.SuccessMessage!, options.SuccessToastType, options.ToastDurationMs)
+                    await _notifyAsync(options.SuccessMessage, options.SuccessToastType, options.ToastDurationMs)
                         .ConfigureAwait(false);
                 }
             }
@@ -95,7 +95,7 @@ public sealed class TableActionExecutor
                     var message = ResolveFailureMessage(options, result.Error);
                     if (!string.IsNullOrWhiteSpace(message))
                     {
-                        await _notifyAsync(message!, options.FailureToastType, options.ToastDurationMs)
+                        await _notifyAsync(message, options.FailureToastType, options.ToastDurationMs)
                             .ConfigureAwait(false);
                     }
                 }
