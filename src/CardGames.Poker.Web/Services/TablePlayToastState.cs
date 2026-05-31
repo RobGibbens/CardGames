@@ -15,12 +15,24 @@ public sealed record ToastMessage(string Message, string Type);
 /// </summary>
 public sealed class TablePlayToastState
 {
+    private readonly object _gate = new();
     private readonly List<ToastMessage> _messages = [];
 
     /// <summary>
-    /// The toast messages currently visible, in insertion order.
+    /// The toast messages currently visible, in insertion order. Returns a stable
+    /// snapshot so callers (e.g. component rendering) can enumerate safely while the
+    /// list is mutated from background auto-dismiss tasks.
     /// </summary>
-    public IReadOnlyList<ToastMessage> Messages => _messages;
+    public IReadOnlyList<ToastMessage> Messages
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _messages.ToArray();
+            }
+        }
+    }
 
     /// <summary>
     /// Raised whenever the toast list changes (added or auto-dismissed).
@@ -36,14 +48,20 @@ public sealed class TablePlayToastState
     public Task ShowAsync(string message, string type = "info", int durationMs = 4000)
     {
         var toast = new ToastMessage(message, type);
-        _messages.Add(toast);
+        lock (_gate)
+        {
+            _messages.Add(toast);
+        }
         NotifyChanged();
 
         // Auto-dismiss after duration.
         _ = Task.Run(async () =>
         {
             await Task.Delay(durationMs);
-            _messages.Remove(toast);
+            lock (_gate)
+            {
+                _messages.Remove(toast);
+            }
             NotifyChanged();
         });
 
