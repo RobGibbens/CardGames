@@ -4,7 +4,6 @@ using CardGames.Poker.Web.Components.Account;
 using CardGames.Poker.Web.Data;
 using CardGames.Poker.Web.Infrastructure;
 using CardGames.Poker.Web.Services;
-using CardGames.Poker.Web.Services.GameApi;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OAuth.Claims;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -192,9 +191,6 @@ builder.Services
 	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"))
 	.AddHttpMessageHandler<AuthenticationStateHandler>();
 
-// Register Game API Router
-// builder.Services.AddScoped<IGameApiRouter, GameApiRouter>();
-
 builder.Services
 	.AddRefitClient<IAvailablePokerGamesApi>(
 		settingsAction: _ => new RefitSettings(),
@@ -239,14 +235,7 @@ builder.Services
 	.ConfigureHttpClient(c => c.BaseAddress = new Uri("https+http://api"))
 	.AddHttpMessageHandler<AuthenticationStateHandler>();
 
-// Register Game API Client Wrappers and Router
-builder.Services.AddScoped<IGameApiClient, FiveCardDrawApiClientWrapper>();
-builder.Services.AddScoped<IGameApiClient, SevenCardStudApiClientWrapper>();
-builder.Services.AddScoped<IGameApiClient, RazzApiClientWrapper>();
-builder.Services.AddScoped<IGameApiClient, FollowTheQueenApiClientWrapper>();
-builder.Services.AddScoped<IGameApiClient, KingsAndLowsApiClientWrapper>();
-builder.Services.AddScoped<IGameApiClient, TwosJacksManWithTheAxeApiClientWrapper>();
-builder.Services.AddScoped<IGameApiClient, HoldEmApiClientWrapper>();
+// Register Game API Router
 builder.Services.AddScoped<CardGames.Poker.Web.Services.IGameApiRouter, CardGames.Poker.Web.Services.GameApiRouter>();
 
 builder.Services.AddAuthentication(options =>
