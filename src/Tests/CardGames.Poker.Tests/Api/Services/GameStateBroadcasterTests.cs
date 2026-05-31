@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.Metrics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -9,6 +10,7 @@ using CardGames.Contracts.SignalR;
 using CardGames.Poker.Api.Hubs;
 using CardGames.Poker.Api.Services;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Xunit;
@@ -147,7 +149,53 @@ public class GameStateBroadcasterTests
             Arg.Any<CancellationToken>());
     }
 
-    private static (GameStateBroadcaster Sut, ITableStateBuilder TableStateBuilder, IActionTimerService ActionTimerService, IClientProxy ClientProxy) CreateSubject(TableStatePublicDto publicState)
+    [Fact]
+    public async Task BroadcastTableToastAsync_Success_RecordsOkMetric()
+    {
+        var gameId = Guid.NewGuid();
+        var publicState = CreateState(gameId, "SCREWYOURNEIGHBOR", "KeepOrTrade", 1);
+        using var serviceProvider = new ServiceCollection().AddMetrics().BuildServiceProvider();
+        using var listener = CreateCounterListener(out var measurements);
+        var telemetry = new BroadcastTelemetry(serviceProvider.GetRequiredService<IMeterFactory>());
+        var (sut, _, _, _) = CreateSubject(publicState, telemetry: telemetry);
+
+        await sut.BroadcastTableToastAsync(new TableToastNotificationDto
+        {
+            GameId = gameId,
+            Message = "Starting new deck"
+        });
+
+        Assert.Contains(measurements, measurement => HasTags(measurement.Tags, "game", "TableToastNotification", "ok"));
+    }
+
+    [Fact]
+    public async Task BroadcastTableToastAsync_SendFails_RecordsFailedMetricAndLogsErrorWithoutThrowing()
+    {
+        var gameId = Guid.NewGuid();
+        var publicState = CreateState(gameId, "SCREWYOURNEIGHBOR", "KeepOrTrade", 1);
+        using var serviceProvider = new ServiceCollection().AddMetrics().BuildServiceProvider();
+        using var listener = CreateCounterListener(out var measurements);
+        var telemetry = new BroadcastTelemetry(serviceProvider.GetRequiredService<IMeterFactory>());
+        var logger = new CapturingLogger<GameStateBroadcaster>();
+        var failure = new InvalidOperationException("send failed");
+        var (sut, _, _, clientProxy) = CreateSubject(publicState, logger, telemetry);
+        clientProxy.SendCoreAsync(Arg.Any<string>(), Arg.Any<object?[]>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(failure));
+
+        await sut.BroadcastTableToastAsync(new TableToastNotificationDto
+        {
+            GameId = gameId,
+            Message = "Starting new deck"
+        });
+
+        Assert.Contains(measurements, measurement => HasTags(measurement.Tags, "game", "TableToastNotification", "failed"));
+        Assert.Contains(logger.Entries, entry => entry.Level == LogLevel.Error && entry.Exception == failure);
+    }
+
+    private static (GameStateBroadcaster Sut, ITableStateBuilder TableStateBuilder, IActionTimerService ActionTimerService, IClientProxy ClientProxy) CreateSubject(
+        TableStatePublicDto publicState,
+        ILogger<GameStateBroadcaster>? logger = null,
+        BroadcastTelemetry? telemetry = null)
     {
         var tableStateBuilder = Substitute.For<ITableStateBuilder>();
         tableStateBuilder.BuildPublicStateAsync(publicState.GameId, Arg.Any<CancellationToken>())
@@ -174,9 +222,64 @@ public class GameStateBroadcasterTests
             tableStateBuilder,
             actionTimerService,
             Substitute.For<IAutoActionService>(),
-            Substitute.For<ILogger<GameStateBroadcaster>>());
+            logger ?? Substitute.For<ILogger<GameStateBroadcaster>>(),
+            telemetry ?? CreateTelemetry());
 
         return (sut, tableStateBuilder, actionTimerService, clientProxy);
+    }
+
+    private static BroadcastTelemetry CreateTelemetry()
+    {
+        var serviceProvider = new ServiceCollection().AddMetrics().BuildServiceProvider();
+        return new BroadcastTelemetry(serviceProvider.GetRequiredService<IMeterFactory>());
+    }
+
+    private static MeterListener CreateCounterListener(out List<(long Value, KeyValuePair<string, object?>[] Tags)> measurements)
+    {
+        measurements = [];
+        var capturedMeasurements = measurements;
+        var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, meterListener) =>
+        {
+            if (instrument.Meter.Name == BroadcastTelemetry.MeterName &&
+                instrument.Name == "realtime_broadcasts_total")
+            {
+                meterListener.EnableMeasurementEvents(instrument);
+            }
+        };
+        listener.SetMeasurementEventCallback<long>((_, value, tags, _) =>
+        {
+            capturedMeasurements.Add((value, tags.ToArray()));
+        });
+        listener.Start();
+        return listener;
+    }
+
+    private static bool HasTags(KeyValuePair<string, object?>[] tags, string hub, string eventName, string outcome)
+    {
+        return tags.Any(tag => tag.Key == "hub" && Equals(tag.Value, hub)) &&
+            tags.Any(tag => tag.Key == "event" && Equals(tag.Value, eventName)) &&
+            tags.Any(tag => tag.Key == "outcome" && Equals(tag.Value, outcome));
+    }
+
+    private sealed class CapturingLogger<T> : ILogger<T>
+    {
+        public List<(LogLevel Level, Exception? Exception)> Entries { get; } = [];
+
+        public IDisposable BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            Entries.Add((logLevel, exception));
+        }
+
+        private sealed class NullScope : IDisposable
+        {
+            public static readonly NullScope Instance = new();
+            public void Dispose() { }
+        }
     }
 
     private static TableStatePublicDto CreateState(

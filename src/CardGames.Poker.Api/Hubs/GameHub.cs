@@ -37,6 +37,7 @@ public sealed class GameHub : Hub
     public async Task JoinGame(Guid gameId)
     {
         var userId = Context.UserIdentifier ?? GetUserIdentifier();
+        using var scope = CreateScope(userId, gameId);
         if (string.IsNullOrEmpty(userId))
         {
             _logger.LogWarning("User attempted to join game {GameId} without valid identifier", gameId);
@@ -63,6 +64,7 @@ public sealed class GameHub : Hub
     public async Task LeaveGame(Guid gameId)
     {
         var userId = Context.UserIdentifier ?? GetUserIdentifier();
+        using var scope = CreateScope(userId, gameId);
         var groupName = GetGroupName(gameId);
 
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
@@ -76,6 +78,7 @@ public sealed class GameHub : Hub
     public override async Task OnConnectedAsync()
     {
         var userId = Context.UserIdentifier ?? GetUserIdentifier();
+        using var scope = CreateScope(userId);
         _logger.LogInformation("User {UserId} connected with connection {ConnectionId}",
             userId ?? "unknown", Context.ConnectionId);
 
@@ -85,7 +88,8 @@ public sealed class GameHub : Hub
     /// <inheritdoc />
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
-        var userId = GetUserIdentifier();
+        var userId = Context.UserIdentifier ?? GetUserIdentifier();
+        using var scope = CreateScope(userId);
 
         if (exception is not null)
         {
@@ -148,6 +152,22 @@ public sealed class GameHub : Hub
             ?? Context.User?.FindFirst("email")?.Value
             ?? Context.User?.FindFirst("preferred_username")?.Value
             ?? Context.User?.Identity?.Name;
+    }
+
+    private IDisposable? CreateScope(string? userId, Guid? gameId = null)
+    {
+        var values = new Dictionary<string, object>
+        {
+            ["ConnectionId"] = Context.ConnectionId,
+            ["UserId"] = userId ?? "anonymous"
+        };
+
+        if (gameId.HasValue)
+        {
+            values["GameId"] = gameId.Value;
+        }
+
+        return _logger.BeginScope(values);
     }
 
     /// <summary>
