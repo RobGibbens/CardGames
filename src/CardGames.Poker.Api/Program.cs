@@ -182,6 +182,10 @@ public class Program
                 {
                     o.IncludeMemoryLevel = true;
                 });
+                x.AddEntityFrameworkCoreInstrumentation(o =>
+                {
+                    o.SetDbStatementForText = builder.Environment.IsDevelopment();
+                });
 
                 // Resource, ASP.NET Core/HttpClient instrumentation and exporters come from ServiceDefaults.
                 x.AddSource("Azure.Messaging.ServiceBus");
