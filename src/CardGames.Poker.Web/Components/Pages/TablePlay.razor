@@ -76,17 +76,7 @@
                      PendingApprovalBuyIn="@_pendingApprovalBuyIn" />
 
 <!-- Toast notifications -->
-@if (_toastMessages.Count > 0)
-{
-    <div class="toast-container">
-        @foreach (var toast in _toastMessages)
-        {
-            <div class="toast-notification @toast.Type">
-                <span class="toast-message">@toast.Message</span>
-            </div>
-        }
-    </div>
-}
+<TablePlayToastNotifications Messages="@_toastMessages" />
 
 <main class="table-play-main">
     <!-- Leave Table / Controls Strip -->
