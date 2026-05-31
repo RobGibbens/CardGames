@@ -42,6 +42,7 @@ Use this when adding a variant that is mostly a tweak of an existing flow family
 
 5. Web router + game-type conditionals
 - Add routing constants and maps in `src/CardGames.Poker.Web/Services/IGameApiRouter.cs`.
+  See `docs/WebRouterDesign.md` for the router design and the per-variant wiring checklist.
 - Add game code in UI conditionals where behavior differs:
   - draw/discard constraints
   - Hold 'Em-style display toggles

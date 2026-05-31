@@ -258,7 +258,7 @@ For variants in that category, plan for changes in these seams:
 - API feature folder and endpoint registration under `src/CardGames.Poker.Api/Features/Games/{Variant}`.
 - Contracts for Refit or SignalR DTO extensions under `src/CardGames.Contracts/`.
 - `TableStateBuilder` and showdown settlement shaping in the API.
-- Web router mappings in `src/CardGames.Poker.Web/Services/IGameApiRouter.cs`.
+- Web router mappings in `src/CardGames.Poker.Web/Services/IGameApiRouter.cs` (see `docs/WebRouterDesign.md`).
 - Localized UI updates in table-play or overlay components rather than broad UI rewrites.
 
 ### Phases

@@ -103,6 +103,38 @@ public class RouterResponse<T>
 
 public struct Unit { }
 
+/// <summary>
+/// Active web-side game router. Translates a game's stable game code (for example
+/// <c>"HOLDEM"</c>) into the correct backend API call for each player action
+/// (betting, draw, drop-or-stay, keep-or-trade, buy-card, acknowledge-pot-match).
+/// </summary>
+/// <remarks>
+/// <para><b>Design.</b> Routing uses one case-insensitive dispatch dictionary per action
+/// kind (for example <see cref="_bettingActionRoutes"/> and <see cref="_drawRoutes"/>).
+/// Each dictionary maps a game code constant to a small <c>Route…Async</c> method that
+/// calls the relevant Refit API and normalizes the result through
+/// <see cref="RouterResponse{T}.FromRefit{TRefit}(Refit.IApiResponse{TRefit}, System.Func{TRefit, T})"/>.
+/// The dictionaries are the single, auditable source of truth for which game supports
+/// which action: to see everything a game supports, search the maps for its constant.</para>
+///
+/// <para><b>Behavior when a game code is missing.</b> Betting and draw are required for
+/// every active game, so a missing entry throws <see cref="NotSupportedException"/> to
+/// surface the gap loudly. The optional actions (drop-or-stay, keep-or-trade, buy-card,
+/// acknowledge-pot-match) return a <see cref="RouterResponse{T}.Failure"/> because most
+/// games legitimately do not support them.</para>
+///
+/// <para><b>Adding a new game variant.</b> Follow this checklist so the variant is wired
+/// up consistently in every place it is needed:</para>
+/// <list type="number">
+///   <item>Add a <c>private const string</c> game code constant in the region below.</item>
+///   <item>Add a <c>Route…Async</c> method (or reuse an existing one — Hold 'Em-family
+///   variants reuse <see cref="RouteHoldEmBettingActionAsync"/>).</item>
+///   <item>Register the variant in every action dictionary it participates in. Omitting an
+///   entry is the most common source of "works for some actions but not others" bugs.</item>
+///   <item>Add or update a test in <c>GameApiRouterTests</c> asserting the new mapping.</item>
+/// </list>
+/// <para>See <c>docs/WebRouterDesign.md</c> for the repo-facing description of this design.</para>
+/// </remarks>
 public class GameApiRouter : IGameApiRouter
 {
     private static readonly StringComparer GameCodeComparer = StringComparer.OrdinalIgnoreCase;
@@ -179,28 +211,33 @@ public class GameApiRouter : IGameApiRouter
         _tollboothApi = tollboothApi;
         _inBetweenApi = inBetweenApi;
 
+        // Betting-action dispatch table. Each game code maps to the route that forwards
+        // the betting action to the correct API. Hold 'Em-family variants share the Hold 'Em
+        // betting endpoint, so they all point at the single RouteHoldEmBettingActionAsync method.
         _bettingActionRoutes = new Dictionary<string, Func<Guid, ProcessBettingActionRequest, Task<RouterResponse<ProcessBettingActionSuccessful>>>>(GameCodeComparer)
         {
+            // Hold 'Em-family variants (all forwarded to the Hold 'Em betting endpoint).
             [HoldEm] = RouteHoldEmBettingActionAsync,
-            [RedRiver] = RouteRedRiverBettingActionAsync,
-            [Omaha] = RouteOmahaBettingActionAsync,
-            [Nebraska] = RouteNebraskaBettingActionAsync,
-            [SouthDakota] = RouteSouthDakotaBettingActionAsync,
-            [BobBarker] = RouteBobBarkerBettingActionAsync,
-            [IrishHoldEm] = RouteIrishHoldEmBettingActionAsync,
-            [PhilsMom] = RoutePhilsMomBettingActionAsync,
-            [CrazyPineapple] = RouteCrazyPineappleBettingActionAsync,
+            [RedRiver] = RouteHoldEmBettingActionAsync,
+            [Omaha] = RouteHoldEmBettingActionAsync,
+            [Nebraska] = RouteHoldEmBettingActionAsync,
+            [SouthDakota] = RouteHoldEmBettingActionAsync,
+            [BobBarker] = RouteHoldEmBettingActionAsync,
+            [IrishHoldEm] = RouteHoldEmBettingActionAsync,
+            [PhilsMom] = RouteHoldEmBettingActionAsync,
+            [CrazyPineapple] = RouteHoldEmBettingActionAsync,
+            [HoldTheBaseball] = RouteHoldEmBettingActionAsync,
+            [Klondike] = RouteHoldEmBettingActionAsync,
+            // Variants with their own betting endpoints.
             [TwosJacksManWithTheAxe] = RouteTwosJacksManWithTheAxeBettingActionAsync,
             [SevenCardStud] = RouteSevenCardStudBettingActionAsync,
             [PairPressure] = RoutePairPressureBettingActionAsync,
             [Razz] = RouteSevenCardStudBettingActionAsync,
             [GoodBadUgly] = RouteGoodBadUglyBettingActionAsync,
             [Baseball] = RouteBaseballBettingActionAsync,
-            [HoldTheBaseball] = RouteHoldTheBaseballBettingActionAsync,
             [FollowTheQueen] = RouteFollowTheQueenBettingActionAsync,
             [Tollbooth] = RouteTollboothBettingActionAsync,
-            [FiveCardDraw] = RouteFiveCardDrawBettingActionAsync,
-            [Klondike] = RouteKlondikeBettingActionAsync
+            [FiveCardDraw] = RouteFiveCardDrawBettingActionAsync
         };
 
         _drawRoutes = new Dictionary<string, Func<Guid, Guid, int, List<int>, Task<RouterResponse<ProcessDrawResult>>>>(GameCodeComparer)
@@ -336,46 +373,6 @@ public class GameApiRouter : IGameApiRouter
             await _followTheQueenApi.FollowTheQueenProcessBettingActionAsync(gameId, request));
 
     private async Task<RouterResponse<ProcessBettingActionSuccessful>> RouteHoldEmBettingActionAsync(Guid gameId, ProcessBettingActionRequest request)
-        => RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
-            await _holdEmApi.HoldEmProcessBettingActionAsync(gameId, request));
-
-    private async Task<RouterResponse<ProcessBettingActionSuccessful>> RouteRedRiverBettingActionAsync(Guid gameId, ProcessBettingActionRequest request)
-        => RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
-            await _holdEmApi.HoldEmProcessBettingActionAsync(gameId, request));
-
-    private async Task<RouterResponse<ProcessBettingActionSuccessful>> RouteKlondikeBettingActionAsync(Guid gameId, ProcessBettingActionRequest request)
-        => RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
-            await _holdEmApi.HoldEmProcessBettingActionAsync(gameId, request));
-
-    private async Task<RouterResponse<ProcessBettingActionSuccessful>> RouteHoldTheBaseballBettingActionAsync(Guid gameId, ProcessBettingActionRequest request)
-        => RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
-            await _holdEmApi.HoldEmProcessBettingActionAsync(gameId, request));
-
-    private async Task<RouterResponse<ProcessBettingActionSuccessful>> RouteOmahaBettingActionAsync(Guid gameId, ProcessBettingActionRequest request)
-        => RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
-            await _holdEmApi.HoldEmProcessBettingActionAsync(gameId, request));
-
-    private async Task<RouterResponse<ProcessBettingActionSuccessful>> RouteNebraskaBettingActionAsync(Guid gameId, ProcessBettingActionRequest request)
-        => RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
-            await _holdEmApi.HoldEmProcessBettingActionAsync(gameId, request));
-
-    private async Task<RouterResponse<ProcessBettingActionSuccessful>> RouteSouthDakotaBettingActionAsync(Guid gameId, ProcessBettingActionRequest request)
-        => RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
-            await _holdEmApi.HoldEmProcessBettingActionAsync(gameId, request));
-
-    private async Task<RouterResponse<ProcessBettingActionSuccessful>> RouteBobBarkerBettingActionAsync(Guid gameId, ProcessBettingActionRequest request)
-        => RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
-            await _holdEmApi.HoldEmProcessBettingActionAsync(gameId, request));
-
-    private async Task<RouterResponse<ProcessBettingActionSuccessful>> RouteIrishHoldEmBettingActionAsync(Guid gameId, ProcessBettingActionRequest request)
-        => RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
-            await _holdEmApi.HoldEmProcessBettingActionAsync(gameId, request));
-
-    private async Task<RouterResponse<ProcessBettingActionSuccessful>> RoutePhilsMomBettingActionAsync(Guid gameId, ProcessBettingActionRequest request)
-        => RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
-            await _holdEmApi.HoldEmProcessBettingActionAsync(gameId, request));
-
-    private async Task<RouterResponse<ProcessBettingActionSuccessful>> RouteCrazyPineappleBettingActionAsync(Guid gameId, ProcessBettingActionRequest request)
         => RouterResponse<ProcessBettingActionSuccessful>.FromRefit(
             await _holdEmApi.HoldEmProcessBettingActionAsync(gameId, request));
 
