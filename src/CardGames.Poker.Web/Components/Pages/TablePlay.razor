@@ -18,6 +18,7 @@
 @using CardGames.Poker.Web.Components.Shared
 @using CardGames.Poker.Web.Extensions
 @using CardGames.Poker.Web.Services
+@using CardGames.Poker.Web.Services.TableActions
 @using IApiResponse = Refit.IApiResponse
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.JSInterop
@@ -462,6 +463,16 @@
     public Guid GameId { get; set; }
 
     private bool _disposed;
+
+    // Consolidated table-action lifecycle (guard, loading state, refresh, logging, notifications).
+    private TableActionExecutor? _tableActions;
+
+    private TableActionExecutor TableActions =>
+        _tableActions ??= new TableActionExecutor(
+            Logger,
+            InvokeStateHasChangedAsync,
+            (message, type, durationMs) => ShowToastAsync(message, type, durationMs));
+
 
     // Connection state (driven by SignalR)
     private bool _isConnected = false;
@@ -2626,24 +2637,25 @@
 
     private async Task ToggleSitOutAsync()
     {
-        try
-        {
-            var newState = !IsSittingOut;
-            var response = await GamesApiClient.ToggleSitOutAsync(
-            GameId,
-            new ToggleSitOutRequest { IsSittingOut = newState });
-
-            if (response.IsSuccessStatusCode && response.Content != null)
+        var newState = !IsSittingOut;
+        await TableActions.ExecuteAsync<ToggleSitOutSuccessful>(
+            async () =>
             {
-                var result = response.Content;
-                await ShowToastAsync(result.Message, "info");
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Failed to toggle sit out status");
-            await ShowToastAsync("Failed to update status", "error");
-        }
+                var response = await GamesApiClient.ToggleSitOutAsync(
+                    GameId,
+                    new ToggleSitOutRequest { IsSittingOut = newState });
+                return TableActionResult<ToggleSitOutSuccessful>.From(response);
+            },
+            onSuccess: result => result.Content is not null
+                ? ShowToastAsync(result.Content.Message, "info")
+                : Task.CompletedTask,
+            new TableActionOptions
+            {
+                ActionName = "toggle sit out",
+                ShowFailureToast = false,
+                ShowExceptionToast = true,
+                FailureMessage = "Failed to update status",
+            });
     }
 
     private async Task LeaveTableAsync()
@@ -4735,37 +4747,7 @@
     /// Returns null if the input is not valid JSON or has no "message" property.
     /// </summary>
     private static string? ExtractJsonErrorMessage(string? errorBody)
-    {
-        if (string.IsNullOrWhiteSpace(errorBody))
-        {
-            return null;
-        }
-
-        // Fast path: if it doesn't look like JSON, return as-is
-        if (!errorBody.TrimStart().StartsWith('{'))
-        {
-            return errorBody;
-        }
-
-        try
-        {
-            using var doc = System.Text.Json.JsonDocument.Parse(errorBody);
-            if (doc.RootElement.TryGetProperty("message", out var messageElement))
-            {
-                return messageElement.GetString();
-            }
-            if (doc.RootElement.TryGetProperty("Message", out var messageElementUpper))
-            {
-                return messageElementUpper.GetString();
-            }
-        }
-        catch (System.Text.Json.JsonException)
-        {
-            // Not valid JSON — return as-is
-        }
-
-        return errorBody;
-    }
+        => TableActionError.FromBody(errorBody);
 
     /// <summary>
     /// Checks whether an API error body indicates the game has already advanced
@@ -4791,39 +4773,7 @@
     /// The API returns errors as JSON objects with a "message" property.
     /// </summary>
     private string ExtractErrorMessage(Refit.ApiException? exception)
-    {
-        if (exception is null)
-        {
-            return "An unknown error occurred.";
-        }
-
-        if (string.IsNullOrWhiteSpace(exception.Content))
-        {
-            return exception.Message ?? "An error occurred.";
-        }
-
-        try
-        {
-            // Parse the JSON response: {"message": "..."}
-            using var doc = System.Text.Json.JsonDocument.Parse(exception.Content);
-            if (doc.RootElement.TryGetProperty("message", out var messageElement))
-            {
-                return messageElement.GetString() ?? "An error occurred.";
-            }
-            // Fallback: try "Message" with capital M
-            if (doc.RootElement.TryGetProperty("Message", out var messageElementUpper))
-            {
-                return messageElementUpper.GetString() ?? "An error occurred.";
-            }
-        }
-        catch (System.Text.Json.JsonException)
-        {
-            // If JSON parsing fails, return the raw content
-            return exception.Content;
-        }
-
-        return exception.Message ?? "An error occurred.";
-    }
+        => TableActionError.FromException(exception);
 
     private void ResetDrawPanelStateForNewHand()
     {
@@ -6285,57 +6235,46 @@ HandType.HighCard
             return;
         }
 
-        _isProcessingBuyCard = true;
-        try
-        {
-            var request = new ProcessBuyCardRequest(_currentPlayerId.Value, accept);
-            var response = await GameApiRouter.ProcessBuyCardAsync(_gameTypeCode ?? "", GameId, request);
-
-            if (!response.IsSuccess)
+        await TableActions.ExecuteAsync(
+            async () =>
             {
-                await ShowToastAsync(response.Error ?? "Failed to process buy card decision.", "error");
-            }
-        }
-        finally
-        {
-            _isProcessingBuyCard = false;
-        }
+                var request = new ProcessBuyCardRequest(_currentPlayerId.Value, accept);
+                var response = await GameApiRouter.ProcessBuyCardAsync(_gameTypeCode ?? "", GameId, request);
+                return TableActionResult.From(response);
+            },
+            new TableActionOptions
+            {
+                ActionName = "buy card decision",
+                IsBusy = () => _isProcessingBuyCard,
+                SetBusy = busy => _isProcessingBuyCard = busy,
+                RethrowOnException = true,
+                FailureFallbackMessage = "Failed to process buy card decision.",
+            });
     }
 
     private async Task HandleTollboothChoiceAsync(string choice)
     {
-        if (_isProcessingTollboothChoice)
-        {
-            return;
-        }
-
-        _isProcessingTollboothChoice = true;
-        StateHasChanged();
-
-        try
-        {
-            var request = new TollboothChooseCardRequest
+        await TableActions.ExecuteAsync(
+            async () =>
             {
-                Choice = choice,
-                PlayerSeatIndex = _currentPlayerSeatIndex >= 0 ? _currentPlayerSeatIndex : null
-            };
+                var request = new TollboothChooseCardRequest
+                {
+                    Choice = choice,
+                    PlayerSeatIndex = _currentPlayerSeatIndex >= 0 ? _currentPlayerSeatIndex : null
+                };
 
-            var response = await GameApiRouter.TollboothChooseCardAsync(GameId, request);
-
-            if (!response.IsSuccess)
+                var response = await GameApiRouter.TollboothChooseCardAsync(GameId, request);
+                return TableActionResult.From(response);
+            },
+            new TableActionOptions
             {
-                await ShowToastAsync(response.Error ?? "Failed to process tollbooth choice.", "error");
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error processing tollbooth choice");
-        }
-        finally
-        {
-            _isProcessingTollboothChoice = false;
-            StateHasChanged();
-        }
+                ActionName = "tollbooth choice",
+                IsBusy = () => _isProcessingTollboothChoice,
+                SetBusy = busy => _isProcessingTollboothChoice = busy,
+                RefreshOnStart = true,
+                RefreshOnComplete = true,
+                FailureFallbackMessage = "Failed to process tollbooth choice.",
+            });
     }
 
     /// <summary>
@@ -7255,38 +7194,31 @@ HandType.HighCard
     /// </summary>
     private async Task HandleInBetweenAceChoiceAsync(bool aceIsHigh)
     {
-        if (_isProcessingInBetween) return;
-        _isProcessingInBetween = true;
-        StateHasChanged();
+        await TableActions.ExecuteAsync<InBetweenAceChoiceSuccessful>(
+            async () =>
+            {
+                var request = new InBetweenAceChoiceRequest(
+                    playerId: _currentPlayerId ?? Guid.Empty,
+                    aceIsHigh: aceIsHigh);
 
-        try
-        {
-            var request = new InBetweenAceChoiceRequest(
-                playerId: _currentPlayerId ?? Guid.Empty,
-                aceIsHigh: aceIsHigh);
-
-            var response = await InBetweenApi.InBetweenAceChoiceAsync(GameId, request);
-
-            if (response.IsSuccessStatusCode)
+                var response = await InBetweenApi.InBetweenAceChoiceAsync(GameId, request);
+                return TableActionResult<InBetweenAceChoiceSuccessful>.From(response);
+            },
+            onSuccess: _ =>
             {
                 _ibAceChoiceRequired = false;
                 _ibShowBetControls = true;
-            }
-            else
+                return Task.CompletedTask;
+            },
+            new TableActionOptions
             {
-                Logger.LogWarning("Ace choice failed: {Error}", response.Error?.Content);
-                await ShowToastAsync("Failed to submit ace choice.", "error");
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error submitting In-Between ace choice");
-        }
-        finally
-        {
-            _isProcessingInBetween = false;
-            StateHasChanged();
-        }
+                ActionName = "In-Between ace choice",
+                IsBusy = () => _isProcessingInBetween,
+                SetBusy = busy => _isProcessingInBetween = busy,
+                RefreshOnStart = true,
+                RefreshOnComplete = true,
+                FailureMessage = "Failed to submit ace choice.",
+            });
     }
 
     /// <summary>
@@ -7294,21 +7226,24 @@ HandType.HighCard
     /// </summary>
     private async Task HandleInBetweenPlaceBetAsync(int amount)
     {
-        if (_isProcessingInBetween) return;
-        _isProcessingInBetween = true;
-        StateHasChanged();
-
-        try
-        {
-            var request = new InBetweenPlaceBetRequest(
-                playerId: _currentPlayerId ?? Guid.Empty,
-                amount: amount);
-
-            var response = await InBetweenApi.InBetweenPlaceBetAsync(GameId, request);
-
-            if (response.IsSuccessStatusCode && response.Content is not null)
+        await TableActions.ExecuteAsync<InBetweenPlaceBetSuccessful>(
+            async () =>
             {
-                _ibLastTurnDescription = response.Content.Description;
+                var request = new InBetweenPlaceBetRequest(
+                    playerId: _currentPlayerId ?? Guid.Empty,
+                    amount: amount);
+
+                var response = await InBetweenApi.InBetweenPlaceBetAsync(GameId, request);
+                var result = TableActionResult<InBetweenPlaceBetSuccessful>.From(response);
+
+                // A success status without content is treated as a failure (no turn data).
+                return result.IsSuccess && result.Content is null
+                    ? TableActionResult<InBetweenPlaceBetSuccessful>.Fail(result.Error, result.StatusCode)
+                    : result;
+            },
+            onSuccess: result =>
+            {
+                _ibLastTurnDescription = result.Content!.Description;
                 _ibShowBetControls = false;
                 _ibAceChoiceRequired = false;
                 _ibShowDealPrompt = false;
@@ -7319,22 +7254,18 @@ HandType.HighCard
                 {
                     _ibWaitingForReveal = true;
                 }
-            }
-            else
+
+                return Task.CompletedTask;
+            },
+            new TableActionOptions
             {
-                Logger.LogWarning("In-Between place bet failed: {Error}", response.Error?.Content);
-                await ShowToastAsync("Failed to place bet.", "error");
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error placing In-Between bet");
-        }
-        finally
-        {
-            _isProcessingInBetween = false;
-            StateHasChanged();
-        }
+                ActionName = "In-Between place bet",
+                IsBusy = () => _isProcessingInBetween,
+                SetBusy = busy => _isProcessingInBetween = busy,
+                RefreshOnStart = true,
+                RefreshOnComplete = true,
+                FailureMessage = "Failed to place bet.",
+            });
     }
 
     /// <summary>
