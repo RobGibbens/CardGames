@@ -75,25 +75,22 @@ public sealed partial class ContinuousPlayBackgroundService
 						"Game {GameId} has no remaining players, marking as complete",
 						game.Id);
 
-			game.CurrentPhase = nameof(Phases.Complete);
-			game.Status = GameStatus.Completed;
-			game.EndedAt = now;
-			game.UpdatedAt = now;
-			game.NextHandStartsAt = null;
-			game.HandCompletedAt = null;
-			game.IsPausedForChipCheck = false;
-			game.ChipCheckPauseStartedAt = null;
-			game.ChipCheckPauseEndsAt = null;
-			game.IsPausedForRebuyGrace = false;
-			game.RebuyGraceStartedAt = null;
-			game.RebuyGraceEndsAt = null;
+					game.CurrentPhase = nameof(Phases.Complete);
+					game.Status = GameStatus.Completed;
+					game.EndedAt = now;
+					game.UpdatedAt = now;
+					game.NextHandStartsAt = null;
+					game.HandCompletedAt = null;
+					game.IsPausedForChipCheck = false;
+					game.ChipCheckPauseStartedAt = null;
+					game.ChipCheckPauseEndsAt = null;
+					game.IsPausedForRebuyGrace = false;
+					game.RebuyGraceStartedAt = null;
+					game.RebuyGraceEndsAt = null;
 
-				await context.SaveChangesAsync(cancellationToken);
-				if (leagueCompletionSync is not null)
-				{
-					await leagueCompletionSync.SyncLeagueEventCompletionAsync(game.Id, cancellationToken);
-				}
-				await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
+					await context.SaveChangesAsync(cancellationToken);
+					await SyncLeagueCompletionIfNeededAsync(leagueCompletionSync, game.Id, cancellationToken);
+					await broadcaster.BroadcastGameStateAsync(game.Id, cancellationToken);
 					RecordGameProcessed(PhaseAbandoned, OutcomeAdvanced);
 				}
 				else
