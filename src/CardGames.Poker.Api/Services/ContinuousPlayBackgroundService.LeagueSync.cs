@@ -19,6 +19,7 @@ public sealed partial class ContinuousPlayBackgroundService
 		Guid gameId,
 		CancellationToken cancellationToken)
 	{
+		using var logScope = BeginGameScope(gameId, null);
 		using var activity = StartContinuousPlayActivity(gameId, null, PhaseLeagueSync);
 		if (leagueCompletionSync is null)
 		{

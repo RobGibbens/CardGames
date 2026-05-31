@@ -150,6 +150,24 @@ public class GameStateBroadcasterTests
     }
 
     [Fact]
+    public async Task BroadcastTableToastAsync_CreatesGameIdScope()
+    {
+        var gameId = Guid.NewGuid();
+        var publicState = CreateState(gameId, "SCREWYOURNEIGHBOR", "KeepOrTrade", 1);
+        var logger = new CapturingLogger<GameStateBroadcaster>();
+        var (sut, _, _, _) = CreateSubject(publicState, logger);
+
+        await sut.BroadcastTableToastAsync(new TableToastNotificationDto
+        {
+            GameId = gameId,
+            Message = "Starting new deck"
+        });
+
+        Assert.Contains(logger.Scopes, scope =>
+            scope.TryGetValue("GameId", out var value) && Equals(value, gameId));
+    }
+
+    [Fact]
     public async Task BroadcastTableToastAsync_Success_RecordsOkMetric()
     {
         var gameId = Guid.NewGuid();
@@ -266,8 +284,17 @@ public class GameStateBroadcasterTests
     private sealed class CapturingLogger<T> : ILogger<T>
     {
         public List<(LogLevel Level, Exception? Exception)> Entries { get; } = [];
+        public List<IReadOnlyDictionary<string, object>> Scopes { get; } = [];
 
-        public IDisposable BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
+        public IDisposable BeginScope<TState>(TState state) where TState : notnull
+        {
+            if (state is IEnumerable<KeyValuePair<string, object>> pairs)
+            {
+                Scopes.Add(pairs.ToDictionary(pair => pair.Key, pair => pair.Value));
+            }
+
+            return NullScope.Instance;
+        }
 
         public bool IsEnabled(LogLevel logLevel) => true;
 

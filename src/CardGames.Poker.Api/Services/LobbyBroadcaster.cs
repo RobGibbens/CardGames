@@ -32,6 +32,7 @@ public sealed class LobbyBroadcaster : ILobbyBroadcaster
     public async Task BroadcastGameCreatedAsync(GameCreatedDto gameCreated, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(gameCreated);
+        using var scope = CreateScope(gameCreated.GameId);
 
         await SendLobbyBroadcastAsync("GameCreated", gameCreated, gameCreated.GameId, cancellationToken);
 
@@ -43,6 +44,7 @@ public sealed class LobbyBroadcaster : ILobbyBroadcaster
     /// <inheritdoc />
     public async Task BroadcastGameDeletedAsync(Guid gameId, CancellationToken cancellationToken = default)
     {
+        using var scope = CreateScope(gameId);
         await SendLobbyBroadcastAsync("GameDeleted", gameId, gameId, cancellationToken);
 
         _logger.LogInformation(
@@ -52,6 +54,7 @@ public sealed class LobbyBroadcaster : ILobbyBroadcaster
 
     private async Task SendLobbyBroadcastAsync(string eventName, object payload, Guid gameId, CancellationToken cancellationToken)
     {
+        using var scope = CreateScope(gameId);
         using var activity = PokerActivitySource.Source.StartActivity("realtime.broadcast");
         activity?.SetTag("hub", "lobby");
         activity?.SetTag("event", eventName);
@@ -72,5 +75,13 @@ public sealed class LobbyBroadcaster : ILobbyBroadcaster
             _logger.LogError(ex, "Error broadcasting {EventName} for game {GameId} to lobby", eventName, gameId);
             throw;
         }
+    }
+
+    private IDisposable? CreateScope(Guid gameId)
+    {
+        return _logger.BeginScope(new Dictionary<string, object>
+        {
+            ["GameId"] = gameId
+        });
     }
 }

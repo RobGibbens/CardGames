@@ -19,6 +19,7 @@ public sealed class LeagueBroadcaster(
 	public async Task BroadcastLeagueEventChangedAsync(LeagueEventChangedDto eventChanged, CancellationToken cancellationToken = default)
 	{
 		ArgumentNullException.ThrowIfNull(eventChanged);
+		using var scope = CreateScope(eventChanged.LeagueId);
 
 		var groupName = LeagueHub.GetViewedLeagueGroupName(eventChanged.LeagueId);
 
@@ -42,6 +43,7 @@ public sealed class LeagueBroadcaster(
 	public async Task BroadcastEventSessionLaunchedAsync(LeagueEventSessionLaunchedDto sessionLaunched, CancellationToken cancellationToken = default)
 	{
 		ArgumentNullException.ThrowIfNull(sessionLaunched);
+		using var scope = CreateScope(sessionLaunched.LeagueId, sessionLaunched.GameId);
 
 		var groupName = LeagueHub.GetViewedLeagueGroupName(sessionLaunched.LeagueId);
 
@@ -65,6 +67,7 @@ public sealed class LeagueBroadcaster(
 	public async Task BroadcastJoinRequestSubmittedAsync(LeagueJoinRequestSubmittedDto joinRequestSubmitted, CancellationToken cancellationToken = default)
 	{
 		ArgumentNullException.ThrowIfNull(joinRequestSubmitted);
+		using var scope = CreateScope(joinRequestSubmitted.LeagueId);
 
 		var groupName = LeagueHub.GetManagedLeagueGroupName(joinRequestSubmitted.LeagueId);
 
@@ -90,6 +93,7 @@ public sealed class LeagueBroadcaster(
 		CancellationToken cancellationToken = default)
 	{
 		ArgumentNullException.ThrowIfNull(joinRequestUpdated);
+		using var scope = CreateScope(joinRequestUpdated.LeagueId);
 
 		var groupNames = new HashSet<string>(StringComparer.Ordinal)
 		{
@@ -125,6 +129,7 @@ public sealed class LeagueBroadcaster(
 		Guid? gameId,
 		CancellationToken cancellationToken)
 	{
+		using var scope = CreateScope(leagueId, gameId);
 		using var activity = PokerActivitySource.Source.StartActivity("realtime.broadcast");
 		activity?.SetTag("hub", "league");
 		activity?.SetTag("event", eventName);
@@ -148,5 +153,20 @@ public sealed class LeagueBroadcaster(
 			logger.LogError(ex, "Error broadcasting {EventName} for league {LeagueId}", eventName, leagueId);
 			throw;
 		}
+	}
+
+	private IDisposable? CreateScope(Guid leagueId, Guid? gameId = null)
+	{
+		var values = new Dictionary<string, object>
+		{
+			["LeagueId"] = leagueId
+		};
+
+		if (gameId.HasValue)
+		{
+			values["GameId"] = gameId.Value;
+		}
+
+		return logger.BeginScope(values);
 	}
 }

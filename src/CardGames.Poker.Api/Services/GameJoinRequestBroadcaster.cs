@@ -16,6 +16,7 @@ public sealed class GameJoinRequestBroadcaster(
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(hostUserRoutingKey);
 		ArgumentNullException.ThrowIfNull(payload);
+		using var scope = CreateScope(payload.GameId, hostUserRoutingKey);
 
 		await SendNotificationBroadcastAsync(
 			hubContext.Clients.User(hostUserRoutingKey),
@@ -36,6 +37,7 @@ public sealed class GameJoinRequestBroadcaster(
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(playerUserRoutingKey);
 		ArgumentNullException.ThrowIfNull(payload);
+		using var scope = CreateScope(payload.GameId, playerUserRoutingKey);
 
 		await SendNotificationBroadcastAsync(
 			hubContext.Clients.User(playerUserRoutingKey),
@@ -61,6 +63,7 @@ public sealed class GameJoinRequestBroadcaster(
 		string userId,
 		CancellationToken cancellationToken)
 	{
+		using var scope = CreateScope(gameId, userId);
 		using var activity = PokerActivitySource.Source.StartActivity("realtime.broadcast");
 		activity?.SetTag("hub", "notification");
 		activity?.SetTag("event", eventName);
@@ -81,5 +84,14 @@ public sealed class GameJoinRequestBroadcaster(
 			logger.LogError(ex, "Error broadcasting {EventName} for game {GameId} to user {UserId}", eventName, gameId, userId);
 			throw;
 		}
+	}
+
+	private IDisposable? CreateScope(Guid gameId, string userId)
+	{
+		return logger.BeginScope(new Dictionary<string, object>
+		{
+			["GameId"] = gameId,
+			["UserId"] = userId
+		});
 	}
 }
