@@ -11,6 +11,12 @@ namespace CardGames.Poker.Api.Games;
 /// <remarks>
 /// New game types are automatically discovered when they implement <see cref="IPokerGame"/>
 /// and are decorated with <see cref="PokerGameMetadataAttribute"/>. No manual registration required.
+/// <para>
+/// This registry is the authoritative source for "which variants exist". Discovery here is only
+/// the first onboarding step: a variant must also be wired into the API slices, contracts, the
+/// active web router, table-state assembly, and tests. See <c>docs/GameVariantBoundary.md</c> for
+/// the full cross-layer onboarding checklist that keeps a variant from being partially supported.
+/// </para>
 /// </remarks>
 public static class PokerGameMetadataRegistry
 {
