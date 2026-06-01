@@ -99,7 +99,6 @@ public class Program
         });
         builder.Services.AddResponseCompression();
         builder.Services.AddEndpointsApiExplorer();
-        builder.Services.AddValidatorsFromAssemblyContaining<IValidationMarker>();
         builder.Services.AddFluentValidationAutoValidation();
 
         // Add SignalR services with JSON options to handle circular references
