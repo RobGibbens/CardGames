@@ -8,6 +8,7 @@ using CardGames.Poker.Api.Features.Profile.v1.Queries.GetFavoriteVariants;
 using CardGames.Poker.Api.Features.Profile.v1.Queries.GetCashierLedger;
 using CardGames.Poker.Api.Features.Profile.v1.Queries.GetCashierSummary;
 using CardGames.Poker.Api.Features.Profile.v1.Queries.GetGamePreferences;
+using SharpGrip.FluentValidation.AutoValidation.Endpoints.Extensions;
 
 namespace CardGames.Poker.Api.Features.Profile.v1;
 
@@ -17,7 +18,8 @@ public static class V1
 	{
 		var mapGroup = app.MapGroup("/api/v{version:apiVersion}/profile")
 			.HasApiVersion(1.0)
-			.WithTags([Feature.Name]);
+			.WithTags([Feature.Name])
+			.AddFluentValidationAutoValidation();
 
 		mapGroup.MapUploadAvatar();
 		mapGroup.MapGetAvatar();

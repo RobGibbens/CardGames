@@ -5,6 +5,8 @@ using CardGames.Poker.Api.Features;
 using CardGames.Poker.Api.GameFlow;
 using CardGames.Poker.Api.Infrastructure;
 using CardGames.Poker.Api.Infrastructure.Middleware;
+using FluentValidation;
+using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
@@ -97,7 +99,8 @@ public class Program
         });
         builder.Services.AddResponseCompression();
         builder.Services.AddEndpointsApiExplorer();
-        builder.Services.AddValidation();
+        builder.Services.AddValidatorsFromAssemblyContaining<IValidationMarker>();
+        builder.Services.AddFluentValidationAutoValidation();
 
         // Add SignalR services with JSON options to handle circular references
         builder.Services.AddSignalR()
@@ -163,6 +166,7 @@ public class Program
 
         builder.Services.AddDistributedMemoryCache();
 
+        builder.Services.AddValidatorsFromAssembly(typeof(MapFeatureEndpoints).Assembly);
         builder.AddAzureServiceBusClient(connectionName: "messaging");
 
         builder.Services.AddOpenTelemetry()

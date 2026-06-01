@@ -124,8 +124,7 @@ public class GamesApiTests : ApiIntegrationTestBase
         var playerId = DbContext.GamePlayers
             .Where(x => x.GameId == gameId)
             .Select(x => x.PlayerId)
-            .First()
-            ;
+            .First();
 
         // Act
         var response = await PostAsync(

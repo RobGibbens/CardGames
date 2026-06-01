@@ -7,6 +7,7 @@ using CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.DropOrStay;
 using CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.PerformShowdown;
 using CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.ResumeAfterChipCheck;
 using CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.StartHand;
+using SharpGrip.FluentValidation.AutoValidation.Endpoints.Extensions;
 
 namespace CardGames.Poker.Api.Features.Games.KingsAndLows.v1;
 
@@ -16,7 +17,8 @@ public static class V1
 	{
 		var mapGroup = app.MapGroup("/api/v{version:apiVersion}/games/kings-and-lows")
 			.HasApiVersion(1.0)
-			.WithTags([Feature.Name]);
+			.WithTags([Feature.Name])
+			.AddFluentValidationAutoValidation();
 
 		var authenticatedGroup = mapGroup.MapGroup(string.Empty)
 			.RequireAuthorization();

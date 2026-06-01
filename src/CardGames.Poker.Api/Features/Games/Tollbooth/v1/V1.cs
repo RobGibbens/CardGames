@@ -7,6 +7,7 @@ using CardGames.Poker.Api.Features.Games.Tollbooth.v1.Commands.PerformShowdown;
 using CardGames.Poker.Api.Features.Games.Tollbooth.v1.Commands.ProcessBettingAction;
 using CardGames.Poker.Api.Features.Games.Tollbooth.v1.Commands.StartHand;
 using CardGames.Poker.Api.Features.Games.Tollbooth.v1.Queries.GetCurrentPlayerTurn;
+using SharpGrip.FluentValidation.AutoValidation.Endpoints.Extensions;
 
 namespace CardGames.Poker.Api.Features.Games.Tollbooth.v1;
 
@@ -16,7 +17,8 @@ public static class V1
 	{
 		var mapGroup = app.MapGroup("/api/v{version:apiVersion}/games/tollbooth")
 			.HasApiVersion(1.0)
-			.WithTags(["Tollbooth"]);
+			.WithTags(["Tollbooth"])
+			.AddFluentValidationAutoValidation();
 
 		var commandGroup = mapGroup.MapGroup(string.Empty)
 			.RequireAuthorization();

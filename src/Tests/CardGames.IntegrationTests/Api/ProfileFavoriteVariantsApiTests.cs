@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using CardGames.IntegrationTests.Infrastructure;
 using CardGames.Poker.Api.Contracts;
+using Microsoft.AspNetCore.Mvc;
 
 namespace CardGames.IntegrationTests.Api;
 
@@ -53,6 +54,24 @@ public class ProfileFavoriteVariantsApiTests(ApiWebApplicationFactory factory) :
 		preferences.DefaultBigBlind.Should().Be(2);
 		preferences.DefaultAnte.Should().Be(5);
 		preferences.DefaultMinimumBet.Should().Be(10);
+	}
+
+	[Fact]
+	public async Task UpdateFavoriteVariants_BlankCode_ReturnsBadRequestProblemDetails()
+	{
+		SetUser("favorite-variants-user-invalid");
+
+		var response = await Client.PutAsJsonAsync(FavoriteVariantsEndpoint, new UpdateFavoriteVariantsRequest
+		{
+			FavoriteVariantCodes = ["HOLDEM", " "]
+		});
+
+		response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+		var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+		problem.Should().NotBeNull();
+		problem!.Status.Should().Be(400);
+		problem.Errors.Should().ContainKey(nameof(UpdateFavoriteVariantsRequest.FavoriteVariantCodes));
 	}
 
 	private void SetUser(string userId)

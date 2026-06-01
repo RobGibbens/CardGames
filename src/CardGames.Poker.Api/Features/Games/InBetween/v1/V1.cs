@@ -2,6 +2,7 @@ using Asp.Versioning.Builder;
 using CardGames.Poker.Api.Features.Games;
 using CardGames.Poker.Api.Features.Games.InBetween.v1.Commands.AceChoice;
 using CardGames.Poker.Api.Features.Games.InBetween.v1.Commands.PlaceBet;
+using SharpGrip.FluentValidation.AutoValidation.Endpoints.Extensions;
 
 namespace CardGames.Poker.Api.Features.Games.InBetween.v1;
 
@@ -11,7 +12,8 @@ public static class V1
 	{
 		var mapGroup = app.MapGroup("/api/v{version:apiVersion}/games/in-between")
 			.HasApiVersion(1.0)
-			.WithTags([Feature.Name]);
+			.WithTags([Feature.Name])
+			.AddFluentValidationAutoValidation();
 
 		var playerCommandGroup = mapGroup.MapGroup(string.Empty)
 			.RequireAuthorization()
