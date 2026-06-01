@@ -7,6 +7,7 @@ using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetGames;
 using CardGames.Poker.Api.Features.Games.KingsAndLows.v1.Commands.StartHand;
 using CardGames.Poker.Api.Games;
 using FluentAssertions;
+using Microsoft.AspNetCore.Mvc;
 
 namespace CardGames.IntegrationTests.Api;
 
@@ -99,5 +100,43 @@ public class GamesApiTests : ApiIntegrationTestBase
         game.Should().NotBeNull();
         // Kings And Lows starts with Dealing? Or WaitingForPlayers -> Playing
         game!.Status.Should().Be(GameStatus.InProgress);
+    }
+
+    [Fact]
+    public async Task AddChips_InvalidPayload_ReturnsBadRequestProblemDetails()
+    {
+        // Arrange
+        var gameId = Guid.NewGuid();
+        var command = new CreateGameCommand(
+            gameId,
+            PokerGameMetadataRegistry.HoldEmCode,
+            "Validation Test Game",
+            10,
+            20,
+            new List<PlayerInfo>
+            {
+                new("Player1", 1000),
+                new("Player2", 1000)
+            });
+
+        await PostAsync("api/v1/games", command);
+
+        var playerId = DbContext.GamePlayers
+            .Where(x => x.GameId == gameId)
+            .Select(x => x.PlayerId)
+            .First();
+
+        // Act
+        var response = await PostAsync(
+            $"api/v1/games/{gameId}/players/{playerId}/add-chips",
+            new { amount = 0 });
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+        problem.Should().NotBeNull();
+        problem!.Status.Should().Be(400);
+        problem.Errors.Should().ContainKey(nameof(CardGames.Contracts.AddChips.AddChipsRequest.Amount));
     }
 }
