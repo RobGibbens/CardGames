@@ -1,0 +1,18 @@
+@using CardGames.Poker.Web.Services
+
+@if (Messages.Count > 0)
+{
+    <div class="toast-container">
+        @foreach (var toast in Messages)
+        {
+            <div class="toast-notification @toast.Type">
+                <span class="toast-message">@toast.Message</span>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public IReadOnlyList<ToastMessage> Messages { get; set; } = [];
+}

@@ -4,6 +4,7 @@ using System.Reflection;
 using CardGames.Contracts.SignalR;
 using static CardGames.Poker.Web.Components.Pages.TablePlay;
 using CardGames.Poker.Web.Components.Pages;
+using CardGames.Poker.Web.Services;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
@@ -19,7 +20,7 @@ public class TablePlayCountdownTests
         var clientUtcNow = new DateTimeOffset(2026, 4, 5, 12, 0, 0, 750, TimeSpan.Zero);
         var serverClockOffset = TimeSpan.FromMilliseconds(1500);
 
-        var result = InvokeCalculateSecondsUntilDeadline(deadlineUtc, clientUtcNow, serverClockOffset);
+        var result = TablePlayCountdownState.CalculateSecondsUntilDeadline(deadlineUtc, clientUtcNow, serverClockOffset);
 
         result.Should().Be(8);
     }
@@ -31,7 +32,7 @@ public class TablePlayCountdownTests
         var nextHandStartsAtUtc = handCompletedAtUtc.AddSeconds(10);
         var state = CreateTableState(handCompletedAtUtc, nextHandStartsAtUtc);
 
-        var result = InvokeResolveCountdownDeadlineUtc(state, isEndedPhase: true, isGameCompleted: true);
+        var result = TablePlayCountdownState.ResolveDeadlineUtc(state, isEndedPhase: true, isGameCompleted: true);
 
         result.Should().Be(nextHandStartsAtUtc);
     }
@@ -42,7 +43,7 @@ public class TablePlayCountdownTests
         var handCompletedAtUtc = new DateTimeOffset(2026, 4, 5, 12, 0, 0, TimeSpan.Zero);
         var state = CreateTableState(handCompletedAtUtc, nextHandStartsAtUtc: null);
 
-        var result = InvokeResolveCountdownDeadlineUtc(state, isEndedPhase: true, isGameCompleted: false);
+        var result = TablePlayCountdownState.ResolveDeadlineUtc(state, isEndedPhase: true, isGameCompleted: false);
 
         result.Should().Be(handCompletedAtUtc.AddSeconds(10));
     }
@@ -138,33 +139,6 @@ public class TablePlayCountdownTests
         seats[0].Cards[6].IsPubliclyVisible.Should().BeTrue();
         seats[0].Cards[6].Rank.Should().Be("7");
         seats[0].Cards[6].Suit.Should().Be("Diamonds");
-    }
-
-    private static int InvokeCalculateSecondsUntilDeadline(
-        DateTimeOffset? deadlineUtc,
-        DateTimeOffset clientUtcNow,
-        TimeSpan serverClockOffset)
-    {
-        var method = typeof(TablePlay).GetMethod("CalculateSecondsUntilDeadline", BindingFlags.Static | BindingFlags.NonPublic);
-
-        method.Should().NotBeNull("TablePlay should calculate countdown seconds from the server-authored deadline");
-
-        var result = method!.Invoke(null, [deadlineUtc, clientUtcNow, serverClockOffset]);
-        result.Should().BeOfType<int>();
-        return (int)result!;
-    }
-
-    private static DateTimeOffset? InvokeResolveCountdownDeadlineUtc(
-        TableStatePublicDto state,
-        bool isEndedPhase,
-        bool isGameCompleted)
-    {
-        var method = typeof(TablePlay).GetMethod("ResolveCountdownDeadlineUtc", BindingFlags.Static | BindingFlags.NonPublic);
-
-        method.Should().NotBeNull("TablePlay should resolve countdown deadlines from shared server timestamps");
-
-        var result = method!.Invoke(null, [state, isEndedPhase, isGameCompleted]);
-        return result.Should().BeAssignableTo<DateTimeOffset?>().Subject;
     }
 
     private static CardInfo InvokeCreateRunoutCardInfo(CardPublicDto runoutCard, int initialCardCount, int runoutCardIndex)
