@@ -32,6 +32,7 @@
 @inject DashboardState DashboardState
 @inject TablePlayToastState ToastState
 @inject TablePlayAudioState Audio
+@inject TablePlayCountdownState Countdown
 @inject GameRulesService GameRulesService
 @inject ILogger<TablePlay> Logger
 @inject ITwosJacksManWithTheAxeApi TwosJacksManWithTheAxeApi
@@ -433,7 +434,7 @@
             ShouldDisplayShowdownOverlay &&
             _showdownResult is not null &&
             !_runoutAnimationInProgress &&
-            (IsShowdownPhase || _isResultsPhase || IsEndedPhase || IsGameCompleted || _secondsUntilNextHand > 0))
+            (IsShowdownPhase || _isResultsPhase || IsEndedPhase || IsGameCompleted || Countdown.SecondsUntilNextHand > 0))
         {
             <ShowdownOverlay ShowdownResult="@_showdownResult" ShowdownWon="@_showdownWon" ShowdownLost="@_showdownLost"
                              GameTypeCode="@_gameTypeCode"
@@ -445,7 +446,7 @@
                              IsRabbitHuntLoading="@_rabbitHuntLoadInFlight"
                              RabbitHuntError="@_rabbitHuntError"
                              OnRabbitHunt="@LoadRabbitHuntAsync"
-                             SecondsUntilNextHand="@_secondsUntilNextHand" IsGameEnded="@(IsEndedPhase || IsGameCompleted)" OnClose="@CloseShowdownOverlay" />
+                             SecondsUntilNextHand="@Countdown.SecondsUntilNextHand" IsGameEnded="@(IsEndedPhase || IsGameCompleted)" OnClose="@CloseShowdownOverlay" />
         }
     }
 </main>

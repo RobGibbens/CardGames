@@ -50,7 +50,6 @@ public partial class TablePlay
 
     private bool _isLoading = true;
 
-    private const int CompletedGameReturnToLobbyDurationSeconds = 10;
     private const double ScrewYourNeighborDealerTradeShowdownDelaySeconds = 4.5;
     private const int ScrewYourNeighborTradeAnimationDurationMs = 650;
 
@@ -225,11 +224,8 @@ public partial class TablePlay
 
 
     // Continuous play state
-    private int _secondsUntilNextHand;
     private bool _isResultsPhase;
     private Timer? _countdownTimer;
-    private DateTimeOffset? _countdownDeadlineUtc;
-    private TimeSpan _serverClockOffset;
 
     // Hand odds state
     private List<HandTypeOddsDto> handOdds = [];
@@ -906,19 +902,18 @@ public partial class TablePlay
 
             // Handle continuous play countdown from the server-authored deadline.
             _isResultsPhase = state.IsResultsPhase;
-            SyncCountdownWithServer(state);
+            Countdown.SyncWithServer(state, IsEndedPhase, IsGameCompleted);
 
-            bool keepCountdownRunning = _showShowdownOverlay && _countdownDeadlineUtc.HasValue && _secondsUntilNextHand > 0;
+            bool keepCountdownRunning = _showShowdownOverlay && Countdown.HasDeadline && Countdown.SecondsUntilNextHand > 0;
 
-            if ((_isResultsPhase || IsEndedPhase || IsGameCompleted || keepCountdownRunning) && _countdownDeadlineUtc.HasValue)
+            if ((_isResultsPhase || IsEndedPhase || IsGameCompleted || keepCountdownRunning) && Countdown.HasDeadline)
             {
                 StartCountdownTimer();
             }
             else if (!_isResultsPhase && !IsEndedPhase && !IsGameCompleted && !keepCountdownRunning)
             {
                 StopCountdownTimer();
-                _countdownDeadlineUtc = null;
-                _secondsUntilNextHand = 0;
+                Countdown.Reset();
                 // Clear showdown overlay when new hand starts
                 if (!IsShowdownPhase && !IsGameCompleted)
                 {
@@ -1624,7 +1619,7 @@ public partial class TablePlay
                 _isResultsPhase = true;
                 RefreshCountdownFromCurrentTableState();
 
-                if (_countdownDeadlineUtc.HasValue)
+                if (Countdown.HasDeadline)
                 {
                     StartCountdownTimer();
                 }
@@ -2973,7 +2968,7 @@ public partial class TablePlay
             _isResultsPhase = true;
             RefreshCountdownFromCurrentTableState();
 
-            if (_countdownDeadlineUtc.HasValue)
+            if (Countdown.HasDeadline)
             {
                 StartCountdownTimer();
             }
@@ -3090,7 +3085,7 @@ public partial class TablePlay
                 _isResultsPhase = true;
                 RefreshCountdownFromCurrentTableState();
 
-                if (_countdownDeadlineUtc.HasValue)
+                if (Countdown.HasDeadline)
                 {
                     StartCountdownTimer();
                 }
@@ -4577,25 +4572,25 @@ public partial class TablePlay
     private void StartCountdownTimer()
     {
         StopCountdownTimer();
-        RefreshCountdownSeconds();
+        Countdown.RefreshSeconds();
 
-        if (_countdownDeadlineUtc is null)
+        if (!Countdown.HasDeadline)
         {
             return;
         }
 
         _countdownTimer = new System.Threading.Timer(async _ =>
         {
-            RefreshCountdownSeconds();
+            Countdown.RefreshSeconds();
 
-            if (_secondsUntilNextHand > 0)
+            if (Countdown.SecondsUntilNextHand > 0)
             {
                 await InvokeStateHasChangedAsync();
             }
             else
             {
                 StopCountdownTimer();
-                _countdownDeadlineUtc = null;
+                Countdown.Reset();
 
                 // If game is ended and timer reached 0, redirect to lobby
                 if (IsEndedPhase || IsGameCompleted)
@@ -4611,7 +4606,7 @@ public partial class TablePlay
                     await InvokeStateHasChangedAsync();
                 }
             }
-        }, null, GetCountdownTimerDueTime(), TimeSpan.FromSeconds(1));
+        }, null, Countdown.GetTimerDueTime(), TimeSpan.FromSeconds(1));
     }
 
     private void StopCountdownTimer()
@@ -4620,84 +4615,20 @@ public partial class TablePlay
         _countdownTimer = null;
     }
 
-    private void SyncCountdownWithServer(TableStatePublicDto state)
-    {
-        _serverClockOffset = state.ServerUtcNow - DateTimeOffset.UtcNow;
-        _countdownDeadlineUtc = ResolveCountdownDeadlineUtc(state, IsEndedPhase, IsGameCompleted);
-        RefreshCountdownSeconds();
-    }
-
     private void RefreshCountdownFromCurrentTableState()
     {
         if (_tableState is null)
         {
-            _countdownDeadlineUtc = null;
-            _secondsUntilNextHand = 0;
+            Countdown.Reset();
             return;
         }
 
-        SyncCountdownWithServer(_tableState);
+        Countdown.SyncWithServer(_tableState, IsEndedPhase, IsGameCompleted);
     }
 
     private bool ShouldStartHoldEmFamilyGameViaGenericEndpoint()
     {
         return IsLeagueTournament && (IsHoldEm || IsRedRiver || IsKlondike);
-    }
-
-    private static DateTimeOffset? ResolveCountdownDeadlineUtc(TableStatePublicDto state, bool isEndedPhase, bool isGameCompleted)
-    {
-        if (state.NextHandStartsAtUtc.HasValue)
-        {
-            return state.NextHandStartsAtUtc.Value;
-        }
-
-        if ((isEndedPhase || isGameCompleted) && state.HandCompletedAtUtc.HasValue)
-        {
-            return state.HandCompletedAtUtc.Value.AddSeconds(CompletedGameReturnToLobbyDurationSeconds);
-        }
-
-        return null;
-    }
-
-    private void RefreshCountdownSeconds()
-    {
-        _secondsUntilNextHand = CalculateSecondsUntilDeadline(_countdownDeadlineUtc, DateTimeOffset.UtcNow, _serverClockOffset);
-    }
-
-    private static int CalculateSecondsUntilDeadline(DateTimeOffset? deadlineUtc, DateTimeOffset clientUtcNow, TimeSpan serverClockOffset)
-    {
-        if (!deadlineUtc.HasValue)
-        {
-            return 0;
-        }
-
-        var adjustedServerNow = clientUtcNow + serverClockOffset;
-        var remaining = deadlineUtc.Value - adjustedServerNow;
-        return Math.Max(0, (int)Math.Ceiling(remaining.TotalSeconds));
-    }
-
-    private TimeSpan GetCountdownTimerDueTime()
-    {
-        if (!_countdownDeadlineUtc.HasValue)
-        {
-            return Timeout.InfiniteTimeSpan;
-        }
-
-        var adjustedServerNow = DateTimeOffset.UtcNow + _serverClockOffset;
-        var remaining = _countdownDeadlineUtc.Value - adjustedServerNow;
-
-        if (remaining <= TimeSpan.Zero)
-        {
-            return TimeSpan.Zero;
-        }
-
-        var millisecondsUntilNextBoundary = remaining.TotalMilliseconds % 1000;
-        if (millisecondsUntilNextBoundary < 1)
-        {
-            millisecondsUntilNextBoundary = 1000;
-        }
-
-        return TimeSpan.FromMilliseconds(millisecondsUntilNextBoundary);
     }
 
     public ValueTask DisposeAsync()

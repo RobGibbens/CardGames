@@ -64,6 +64,7 @@ builder.Services.AddScoped<DashboardState>();
 // Register table-page toast notification state service (scoped per Blazor circuit)
 builder.Services.AddScoped<TablePlayToastState>();
 builder.Services.AddScoped<TablePlayAudioState>();
+builder.Services.AddScoped<TablePlayCountdownState>();
 
 // Register memory cache for game rules caching
 builder.Services.AddMemoryCache();
