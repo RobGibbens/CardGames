@@ -3,7 +3,6 @@ using CardGames.Poker.Api.Features.Games;
 using CardGames.Poker.Api.Features.Games.GoodBadUgly.v1.Commands.DealHands;
 using CardGames.Poker.Api.Features.Games.GoodBadUgly.v1.Commands.PerformShowdown;
 using CardGames.Poker.Api.Features.Games.GoodBadUgly.v1.Commands.ProcessBettingAction;
-using SharpGrip.FluentValidation.AutoValidation.Endpoints.Extensions;
 
 namespace CardGames.Poker.Api.Features.Games.GoodBadUgly.v1;
 
@@ -13,8 +12,7 @@ public static class V1
 	{
 		var mapGroup = app.MapGroup("/api/v{version:apiVersion}/games/good-bad-ugly")
 			.HasApiVersion(1.0)
-			.WithTags([Feature.Name])
-			.AddFluentValidationAutoValidation();
+			.WithTags([Feature.Name]);
 
 		var authenticatedGroup = mapGroup.MapGroup(string.Empty)
 			.RequireAuthorization();

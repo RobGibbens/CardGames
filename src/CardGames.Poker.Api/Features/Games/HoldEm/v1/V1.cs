@@ -3,7 +3,6 @@ using CardGames.Poker.Api.Features.Games.HoldEm.v1.Commands.PerformShowdown;
 using CardGames.Poker.Api.Features.Games.HoldEm.v1.Commands.ProcessBettingAction;
 using CardGames.Poker.Api.Features.Games.HoldEm.v1.Commands.StartHand;
 using CardGames.Poker.Api.Features.Games;
-using SharpGrip.FluentValidation.AutoValidation.Endpoints.Extensions;
 
 namespace CardGames.Poker.Api.Features.Games.HoldEm.v1;
 
@@ -13,8 +12,7 @@ public static class V1
 	{
 		var mapGroup = app.MapGroup("/api/v{version:apiVersion}/games/hold-em")
 			.HasApiVersion(1.0)
-			.WithTags([Feature.Name])
-			.AddFluentValidationAutoValidation();
+			.WithTags([Feature.Name]);
 
 		var authenticatedGroup = mapGroup.MapGroup(string.Empty)
 			.RequireAuthorization();

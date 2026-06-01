@@ -20,7 +20,6 @@ using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetPendingJoinRequest
 using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetRabbitHunt;
 using CardGames.Poker.Api.Features.Games.Common.v1.Queries.GetCurrentBettingRound;
 using CardGames.Poker.Api.Features.Games;
-using SharpGrip.FluentValidation.AutoValidation.Endpoints.Extensions;
 
 namespace CardGames.Poker.Api.Features.Games.Common.v1;
 
@@ -30,8 +29,7 @@ public static class V1
 	{
 		var mapGroup = app.MapGroup("/api/v{version:apiVersion}/games")
 			.HasApiVersion(1.0)
-			.WithTags([Feature.Name])
-			.AddFluentValidationAutoValidation();
+			.WithTags([Feature.Name]);
 
 		var commandGroup = mapGroup.MapGroup(string.Empty)
 			.RequireAuthorization();

@@ -7,7 +7,6 @@ using CardGames.Poker.Api.Features.Games.Baseball.v1.Commands.ProcessBettingActi
 using CardGames.Poker.Api.Features.Games.Baseball.v1.Commands.ProcessBuyCard;
 using CardGames.Poker.Api.Features.Games.Baseball.v1.Commands.StartHand;
 using CardGames.Poker.Api.Features.Games.Baseball.v1.Queries.GetCurrentPlayerTurn;
-using SharpGrip.FluentValidation.AutoValidation.Endpoints.Extensions;
 
 namespace CardGames.Poker.Api.Features.Games.Baseball.v1;
 
@@ -17,8 +16,7 @@ public static class V1
 	{
 		var mapGroup = app.MapGroup("/api/v{version:apiVersion}/games/baseball")
 			.HasApiVersion(1.0)
-			.WithTags([Feature.Name])
-			.AddFluentValidationAutoValidation();
+			.WithTags([Feature.Name]);
 
 		var commandGroup = mapGroup.MapGroup(string.Empty)
 			.RequireAuthorization();

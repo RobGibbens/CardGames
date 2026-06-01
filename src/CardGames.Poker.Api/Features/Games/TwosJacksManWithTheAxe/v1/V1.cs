@@ -8,7 +8,6 @@ using CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe.v1.Commands.Proc
 using CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe.v1.Commands.StartHand;
 using CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe.v1.Queries.GetCurrentBettingRound;
 using CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe.v1.Queries.GetCurrentPlayerTurn;
-using SharpGrip.FluentValidation.AutoValidation.Endpoints.Extensions;
 
 namespace CardGames.Poker.Api.Features.Games.TwosJacksManWithTheAxe.v1;
 
@@ -18,8 +17,7 @@ public static class V1
 	{
 		var mapGroup = app.MapGroup("/api/v{version:apiVersion}/games/twos-jacks-man-with-the-axe")
 			.HasApiVersion(1.0)
-			.WithTags([Feature.Name])
-			.AddFluentValidationAutoValidation();
+			.WithTags([Feature.Name]);
 
 		var commandGroup = mapGroup.MapGroup(string.Empty)
 			.RequireAuthorization();
