@@ -27,12 +27,18 @@ public class KingsAndLowsApiClientWrapper(IKingsAndLowsApi client, IFiveCardDraw
     {
         var request = new DrawCardsRequest(discardIndices, playerId);
         var response = await client.KingsAndLowsDrawCardsAsync(gameId, request);
-        
-        var result = new ProcessDrawResult
+
+		string? errorMessage = null;
+		if (response?.Error is ApiException apiException)
+		{
+			errorMessage = apiException.Content;
+		}
+
+		var result = new ProcessDrawResult
         {
-            IsSuccess = response.IsSuccessStatusCode,
-            ErrorMessage = response.Error?.Content,
-            NewHandDescription = response.Content?.NewHandDescription
+            IsSuccess = response?.IsSuccessStatusCode ?? false,
+            ErrorMessage = errorMessage,
+            NewHandDescription = response?.Content?.NewHandDescription
         };
 
         if (response.IsSuccessStatusCode && response.Content != null)

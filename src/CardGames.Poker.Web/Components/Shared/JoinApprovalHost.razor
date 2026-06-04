@@ -3,6 +3,7 @@
 @using CardGames.Contracts.SignalR
 @using CardGames.Poker.Api.Clients
 @using CardGames.Poker.Web.Services
+@using Refit
 
 @inject NotificationHubClient NotificationHubClient
 @inject IGamesApi GamesApiClient
@@ -82,7 +83,12 @@
 
             if (!response.IsSuccessStatusCode)
             {
-                _joinApprovalError = response.Error?.Content ?? "Unable to resolve the join request right now.";
+                string errorMessage = string.Empty;
+                if (response?.Error is ApiException apiException)
+                {
+                    errorMessage = apiException.Content ?? string.Empty;
+                }
+                _joinApprovalError = string.IsNullOrEmpty(errorMessage) ? "Unable to resolve the join request right now." : errorMessage;
                 return;
             }
 

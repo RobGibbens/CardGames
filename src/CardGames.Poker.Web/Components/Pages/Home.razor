@@ -369,7 +369,12 @@
                 return;
             }
 
-            _availableGamesErrorMessage = response.Error?.Content ?? "The server returned an error.";
+            string? errorMessage = null;
+            if (response?.Error is ApiException apiException)
+            {
+	            errorMessage = apiException.Content;
+            }
+            _availableGamesErrorMessage = errorMessage ?? "The server returned an error.";
         }
         catch (ApiException ex)
         {

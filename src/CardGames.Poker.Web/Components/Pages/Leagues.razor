@@ -1,5 +1,5 @@
 @page "/leagues"
-@attribute [Authorize]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @rendermode InteractiveServer
 @implements IAsyncDisposable
 
@@ -7,7 +7,7 @@
 @using CardGames.Poker.Api.Contracts
 @using CardGames.Poker.Web.Components.Shared
 @using CardGames.Poker.Web.Services
-@using Microsoft.AspNetCore.Authorization
+@using Refit
 
 @inject ILeaguesApi LeaguesApi
 @inject LeagueHubClient LeagueHubClient
@@ -856,15 +856,19 @@ x.Role == LeagueRole.Owner)))
 			}
 			else
 			{
-				var errorContent = response.Error?.Content;
-				if (string.IsNullOrWhiteSpace(errorContent))
+				string? errorMessage = null;
+				if (response?.Error is ApiException apiException)
+				{
+					errorMessage = apiException.Content;
+				}
+
+				if (string.IsNullOrWhiteSpace(errorMessage))
 				{
 					_message = $"Failed to create league (HTTP {(int)response.StatusCode}).";
 				}
 				else
 				{
-					_message = $"Failed to create league (HTTP {(int)response.StatusCode}): {errorContent[..Math.Min(200,
-errorContent.Length)]}";
+					_message = $"Failed to create league (HTTP {(int)response.StatusCode}): {errorMessage[..Math.Min(200, errorMessage.Length)]}";
 				}
 				_isError = true;
 			}
@@ -913,7 +917,13 @@ errorContent.Length)]}";
 			}
 			else
 			{
-				_joinMessage = GetJoinErrorMessage(response.Error?.Content, "That code is invalid or expired. Ask the league admin for a new code.");
+				string? errorMessage = null;
+				if (response?.Error is ApiException apiException)
+				{
+					errorMessage = apiException.Content;
+				}
+
+				_joinMessage = GetJoinErrorMessage(errorMessage, "That code is invalid or expired. Ask the league admin for a new code.");
 				_isJoinError = true;
 			}
 		}
@@ -966,7 +976,13 @@ errorContent.Length)]}";
 			}
 			else
 			{
-				_joinMessage = GetJoinErrorMessage(response.Error?.Content, "Unable to submit your request with this code.");
+				string? errorMessage = null;
+				if (response?.Error is ApiException apiException)
+				{
+					errorMessage = apiException.Content;
+				}
+
+				_joinMessage = GetJoinErrorMessage(errorMessage, "Unable to submit your request with this code.");
 				_isJoinError = true;
 			}
 		}

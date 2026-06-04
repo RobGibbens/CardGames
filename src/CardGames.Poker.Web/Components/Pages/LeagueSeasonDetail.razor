@@ -1,5 +1,5 @@
 @page "/leagues/{LeagueId:guid}/seasons/{SeasonId:guid}"
-@attribute [Authorize]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @rendermode InteractiveServer
 @implements IAsyncDisposable
 
@@ -10,10 +10,10 @@
 @using CardGames.Poker.Web.Components.Shared
 @using CardGames.Poker.Web.Services
 @using CardGames.Poker.Web.Utilities
-@using Microsoft.AspNetCore.Authorization
 @using System.Net
 @using System.Security.Claims
 @using System.Text.Json
+@using Refit
 
 @inject ILeaguesApi LeaguesApi
 @inject LeagueHubClient LeagueHubClient
@@ -1380,15 +1380,20 @@
 
 	private static string? TryExtractApiErrorMessage(Refit.IApiResponse response)
 	{
-		var content = response.Error?.Content;
-		if (string.IsNullOrWhiteSpace(content))
+		string? errorMessage = null;
+		if (response?.Error is ApiException apiException)
+		{
+			errorMessage = apiException.Content;
+		}
+
+		if (string.IsNullOrWhiteSpace(errorMessage))
 		{
 			return response.Error?.Message;
 		}
 
 		try
 		{
-			using var document = JsonDocument.Parse(content);
+			using var document = JsonDocument.Parse(errorMessage);
 			if (document.RootElement.ValueKind == JsonValueKind.Object)
 			{
 				if (document.RootElement.TryGetProperty("message", out var messageProperty))
@@ -1406,7 +1411,7 @@
 		{
 		}
 
-		return content;
+		return errorMessage;
 	}
 
 	public async ValueTask DisposeAsync()

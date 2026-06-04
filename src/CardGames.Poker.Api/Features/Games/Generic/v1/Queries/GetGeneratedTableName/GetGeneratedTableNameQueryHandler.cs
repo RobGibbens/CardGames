@@ -1,5 +1,5 @@
 using MediatR;
-using GitHub.Copilot.SDK;
+using GitHub.Copilot;
 
 namespace CardGames.Poker.Api.Features.Games.Generic.v1.Queries.GetGeneratedTableName;
 
@@ -17,7 +17,7 @@ public class GetGeneratedTableNameQueryHandler : IRequestHandler<GetGeneratedTab
             {
                 Model = "gpt-5.1-mini",
                 OnPermissionRequest = PermissionHandler.ApproveAll
-            });
+            }, cancellationToken);
 
             var prompt =
                 $"""

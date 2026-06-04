@@ -1,5 +1,5 @@
 @page "/table/{GameId:guid}"
-@attribute [Authorize]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @rendermode InteractiveServer
 @implements IAsyncDisposable
 
@@ -19,9 +19,9 @@
 @using CardGames.Poker.Web.Extensions
 @using CardGames.Poker.Web.Services
 @using IApiResponse = Refit.IApiResponse
-@using Microsoft.AspNetCore.Authorization
 @using Microsoft.JSInterop
 @using System.Security.Claims
+@using Refit
 
 @inject NavigationManager NavigationManager
 @inject IGamesApi GamesApiClient
@@ -664,7 +664,7 @@
     private int _currentPlayerSeatIndex = -1;
     private int _playerChips = 100; // TODO: Get from server
     private int _joinBuyInAmount = 100;
-	private bool _joinBuyInInitializedFromTable;
+    private bool _joinBuyInInitializedFromTable;
     private bool _showJoinBuyInModal;
     private bool _isJoiningSeat;
     private int? _pendingJoinSeatIndex;
@@ -894,7 +894,7 @@
     private bool IsIrishStyleHoldEm => IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple;
     private bool IsSevenCardStudStyle => IsSevenCardStud || IsPairPressure;
     private bool UsesCardDealAnimation => IsSevenCardStudStyle || IsRazz || IsGoodBadUgly || IsBaseball || IsFollowTheQueen || IsFiveCardDraw || IsTwosJacksManWithTheAxe || IsKingsAndLows || IsHoldEm || IsRedRiver || IsKlondike || IsHoldTheBaseball || IsOmaha || IsNebraska || IsSouthDakota || IsBobBarker || IsIrishHoldEm || IsPhilsMom || IsCrazyPineapple || IsScrewYourNeighbor || IsTollbooth || IsInBetween;
-    
+
     private int DealAnimationDelayMs => 750;
 
     // Game rules for dynamic UI rendering
@@ -1390,7 +1390,7 @@
             };
 
             _ante = state.Ante;
-			NormalizeJoinBuyIn();
+            NormalizeJoinBuyIn();
             _pot = state.TotalPot;
             _dealerSeatIndex = state.DealerSeatIndex;
             _currentActorSeatIndex = state.CurrentActorSeatIndex;
@@ -1728,7 +1728,7 @@
             Logger.LogDebug("Received SignalR update before initial data loaded, applying minimal public state update");
 
             _ante = state.Ante;
-			NormalizeJoinBuyIn();
+            NormalizeJoinBuyIn();
             _pot = state.TotalPot;
             _dealerSeatIndex = state.DealerSeatIndex;
             _currentActorSeatIndex = state.CurrentActorSeatIndex;
@@ -2533,7 +2533,7 @@
                 _currentActorSeatIndex = _gameResponse.CurrentPlayerIndex;
                 _dealerSeatIndex = _gameResponse.DealerPosition;
                 _ante = _gameResponse.Ante ?? _ante;
-				InitializeJoinBuyInFromTable();
+                InitializeJoinBuyInFromTable();
 
                 // Capture Dealer's Choice fields
                 _isDealersChoice = gamesResponse.IsDealersChoice;
@@ -2987,8 +2987,8 @@
 
             if (response.StatusCode == HttpStatusCode.Accepted)
             {
-                var hostName = TryGetHeaderValue(response.Headers, "X-Host-Name");
-                var joinRequestIdValue = TryGetHeaderValue(response.Headers, "X-Join-Request-Id");
+                var hostName = TryGetHeaderValue(response?.Headers, "X-Host-Name");
+                var joinRequestIdValue = TryGetHeaderValue(response?.Headers, "X-Join-Request-Id");
                 Guid? joinRequestId = Guid.TryParse(joinRequestIdValue, out var parsedJoinRequestId)
                     ? parsedJoinRequestId
                     : null;
@@ -3001,10 +3001,18 @@
 
             if (!response.IsSuccessStatusCode)
             {
-                Logger.LogWarning("Failed to join game at seat {SeatIndex}: {StatusCode} - {Error}",
-                seatIndex, response.StatusCode, response.Error?.Content);
+                string? errorMessage = null;
+                ApiException? apiException = null;
+                if (response?.Error is ApiException)
+	            {
+		            apiException = response.Error as ApiException;
+		            errorMessage = apiException?.Content;
+	            }
 
-                var joinMessage = ExtractErrorMessage(response.Error);
+                Logger.LogWarning("Failed to join game at seat {SeatIndex}: {StatusCode} - {Error}",
+                seatIndex, response?.StatusCode ?? HttpStatusCode.BadRequest, errorMessage);
+
+                var joinMessage = ExtractErrorMessage(apiException);
                 if (IsNoChipsMessage(joinMessage))
                 {
                     CloseJoinBuyInModal();
@@ -3775,8 +3783,13 @@
 
             if (showdownResponse is not { IsSuccessStatusCode: true, Content: not null })
             {
+	            string? errorMessage = null;
+	            if (showdownResponse?.Error is ApiException apiException)
+	            {
+		            errorMessage = apiException.Content;
+	            }
                 Logger.LogWarning("TryLoadShowdownAsync: Showdown API failed or returned no content. StatusCode={StatusCode}, Error={Error}",
-                showdownResponse?.StatusCode, showdownResponse?.Error?.Content);
+                showdownResponse?.StatusCode, errorMessage);
                 return;
             }
 
@@ -7336,9 +7349,13 @@ HandType.HighCard
             }
             else
             {
-                var errorContent = response.Error?.Content ?? "";
-                if (errorContent.Contains("Ace", StringComparison.OrdinalIgnoreCase) &&
-                    errorContent.Contains("high or low", StringComparison.OrdinalIgnoreCase))
+	            string errorMessage = string.Empty;
+	            if (response?.Error is ApiException apiException)
+	            {
+		            errorMessage = apiException.Content ?? string.Empty;
+	            }
+                if (errorMessage.Contains("Ace", StringComparison.OrdinalIgnoreCase) &&
+                    errorMessage.Contains("high or low", StringComparison.OrdinalIgnoreCase))
                 {
                     _ibAceChoiceRequired = true;
                     _ibShowBetControls = false;
@@ -7387,7 +7404,12 @@ HandType.HighCard
             }
             else
             {
-                Logger.LogWarning("Ace choice failed: {Error}", response.Error?.Content);
+                string errorMessage = string.Empty;
+                if (response?.Error is ApiException apiException)
+                {
+                    errorMessage = apiException.Content ?? string.Empty;
+                }
+                Logger.LogWarning("Ace choice failed: {Error}", errorMessage);
                 await ShowToastAsync("Failed to submit ace choice.", "error");
             }
         }
@@ -7435,7 +7457,12 @@ HandType.HighCard
             }
             else
             {
-                Logger.LogWarning("In-Between place bet failed: {Error}", response.Error?.Content);
+                string errorMessage = string.Empty;
+                if (response?.Error is ApiException apiException)
+                {
+                    errorMessage = apiException.Content ?? string.Empty;
+                }
+                Logger.LogWarning("In-Between place bet failed: {Error}", errorMessage);
                 await ShowToastAsync("Failed to place bet.", "error");
             }
         }

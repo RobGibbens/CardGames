@@ -1,5 +1,5 @@
 @page "/table/{GameId:guid}/edit"
-@attribute [Authorize]
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @rendermode InteractiveServer
 @implements IAsyncDisposable
 
@@ -10,7 +10,7 @@
 @using CardGames.Poker.Api.Clients
 @using CardGames.Poker.Web.Components.Shared
 @using CardGames.Poker.Web.Services
-@using Microsoft.AspNetCore.Authorization
+@using Refit
 
 @inject NavigationManager NavigationManager
 @inject IGamesApi GamesApi
@@ -320,7 +320,12 @@
             }
             else
             {
-                loadError = FormatLoadError(response.StatusCode, response.Error?.Content);
+	            var errorMessage = string.Empty;
+	            if (response?.Error is ApiException apiException)
+	            {
+		            errorMessage = apiException.Content;
+	            }
+                loadError = FormatLoadError(response.StatusCode ?? HttpStatusCode.BadRequest, errorMessage);
             }
         }
         catch (Exception ex)
@@ -414,7 +419,12 @@
             }
             else
             {
-                saveError = response.Error?.Content ?? "Failed to save settings.";
+	            string? errorMessage = null;
+	            if (response?.Error is ApiException apiException)
+	            {
+		            errorMessage = apiException.Content;
+	            }
+                saveError = errorMessage ?? "Failed to save settings.";
             }
         }
         catch (Exception ex)
