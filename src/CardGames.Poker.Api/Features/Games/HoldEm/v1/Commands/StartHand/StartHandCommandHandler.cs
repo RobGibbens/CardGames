@@ -26,6 +26,7 @@ public class StartHandCommandHandler(
 
 		var game = await context.Games
 			.Include(g => g.GamePlayers)
+			.ThenInclude(gamePlayer => gamePlayer.Player)
 			.Include(g => g.GameType)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 

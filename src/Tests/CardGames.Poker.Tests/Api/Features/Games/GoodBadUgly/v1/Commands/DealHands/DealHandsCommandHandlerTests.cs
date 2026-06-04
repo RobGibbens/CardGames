@@ -1,6 +1,7 @@
 #nullable enable
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -116,7 +117,7 @@ public class DealHandsCommandHandlerTests
 			.ToListAsync();
 
 		persistedPlayerCards.Should().HaveCount(8);
-		persistedPlayerCards.Should().NotContain(gameCard => staleCardIds.Contains(gameCard.Id));
+		persistedPlayerCards.Should().NotContain(gameCard => ((IEnumerable<Guid>)staleCardIds).Contains(gameCard.Id));
 
 		persistedPlayerCards
 			.Where(gameCard => gameCard.GamePlayerId == firstPlayerId)

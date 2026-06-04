@@ -42,7 +42,7 @@ public class GetActiveGamesQueryHandler(CardsDbContext context, HybridCache hybr
 					.Where(x => x.LaunchedGameId.HasValue)
 					.Where(x => x.Status != Data.Entities.LeagueSeasonEventStatus.Completed)
 					.Where(x => x.Status != Data.Entities.LeagueSeasonEventStatus.Canceled)
-					.Where(x => gameIds.Contains(x.LaunchedGameId!.Value))
+					.Where(x => ((IEnumerable<Guid>)gameIds).Contains(x.LaunchedGameId!.Value))
 					.Select(x => new { GameId = x.LaunchedGameId!.Value, x.LeagueId })
 					.ToListAsync(cancellationToken);
 
@@ -56,7 +56,7 @@ public class GetActiveGamesQueryHandler(CardsDbContext context, HybridCache hybr
 					.Where(x => x.LaunchedGameId.HasValue)
 					.Where(x => x.Status != Data.Entities.LeagueOneOffEventStatus.Completed)
 					.Where(x => x.Status != Data.Entities.LeagueOneOffEventStatus.Canceled)
-					.Where(x => gameIds.Contains(x.LaunchedGameId!.Value))
+					.Where(x => ((IEnumerable<Guid>)gameIds).Contains(x.LaunchedGameId!.Value))
 					.Select(x => new { GameId = x.LaunchedGameId!.Value, x.LeagueId })
 					.ToListAsync(cancellationToken);
 

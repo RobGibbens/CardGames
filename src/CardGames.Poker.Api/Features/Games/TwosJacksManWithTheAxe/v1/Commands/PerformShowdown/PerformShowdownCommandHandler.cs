@@ -96,7 +96,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 		if (playersInHand.Count == 1)
 		{
 			var winner = playersInHand[0];
-			
+
 			if (!isAlreadyAwarded)
 			{
 				winner.ChipStack += totalPot;
@@ -104,13 +104,13 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 				// Mark pots as awarded
 				foreach (var pot in currentHandPots)
 				{
-						pot.IsAwarded = true;
-						pot.AwardedAt = now;
-						pot.WinReason = "All others folded";
+					pot.IsAwarded = true;
+					pot.AwardedAt = now;
+					pot.WinReason = "All others folded";
 
-						var winnerPayoutsList = new[] { new { playerId = winner.PlayerId.ToString(), playerName = winner.Player.Name, amount = totalPot } };
-						pot.WinnerPayouts = System.Text.Json.JsonSerializer.Serialize(winnerPayoutsList);
-					}
+					var winnerPayoutsList = new[] { new { playerId = winner.PlayerId.ToString(), playerName = winner.Player.Name, amount = totalPot } };
+					pot.WinnerPayouts = System.Text.Json.JsonSerializer.Serialize(winnerPayoutsList);
+				}
 
 				game.CurrentPhase = nameof(Phases.Complete);
 				game.UpdatedAt = now;
@@ -402,8 +402,8 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 	}
 
 	/// <summary>
-	/// Moves the dealer button to the next occupied seat position (clockwise).
-	/// Skips empty seats but allows sitting-out players to hold the button.
+	/// Moves the dealer button to the next occupied seat position (clockwise). Skips empty seats but allows sitting-out
+	/// players to hold the button.
 	/// </summary>
 	private static void MoveDealer(Game game)
 	{

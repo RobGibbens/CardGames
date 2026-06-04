@@ -485,7 +485,7 @@ public class DealHandsCommandHandler(
 			.GroupBy(c => c.GamePlayerId!.Value)
 			.ToDictionary(g => g.Key, g => g.ToList());
 
-       int bestSeatPosition = -1;
+		int bestSeatPosition = -1;
 		long bestStrength = -1;
 
 		foreach (var player in activePlayers)
@@ -494,7 +494,7 @@ public class DealHandsCommandHandler(
 				? cards.Where(c => c.IsVisible && !c.IsDiscarded).ToList()
 				: [];
 
-         var strength = EvaluateVisibleHand(boardCards, includeWildCards: true);
+			var strength = EvaluateVisibleHand(boardCards, includeWildCards: true);
 
 			if (strength > bestStrength)
 			{
@@ -522,17 +522,17 @@ public class DealHandsCommandHandler(
 			.First();
 	}
 
-  private static long EvaluateVisibleHand(List<GameCard> boardCards, bool includeWildCards)
+	private static long EvaluateVisibleHand(List<GameCard> boardCards, bool includeWildCards)
 	{
 		if (boardCards.Count == 0) return 0;
 
-     var cards = boardCards.OrderByDescending(c => GetCardValue(c.Symbol)).ToList();
+		var cards = boardCards.OrderByDescending(c => GetCardValue(c.Symbol)).ToList();
 		var valueCounts = cards
 			.Where(c => !includeWildCards || !IsBaseballWild(c.Symbol))
 			.GroupBy(c => GetCardValue(c.Symbol))
 			.OrderByDescending(g => g.Count())
 			.ThenByDescending(g => g.Key)
-          .Select(g => new { Value = g.Key, Count = g.Count() })
+		  .Select(g => new { Value = g.Key, Count = g.Count() })
 			.ToList();
 
 		if (includeWildCards)
@@ -562,26 +562,26 @@ public class DealHandsCommandHandler(
 		}
 
 		long strength = 0;
-     var maxCount = valueCounts.First().Count;
+		var maxCount = valueCounts.First().Count;
 
 		if (maxCount >= 4)
 		{
-          strength = 7_000_000 + valueCounts.First().Value * 1000;
+			strength = 7_000_000 + valueCounts.First().Value * 1000;
 		}
 		else if (maxCount >= 3)
 		{
-          strength = 4_000_000 + valueCounts.First().Value * 1000;
+			strength = 4_000_000 + valueCounts.First().Value * 1000;
 		}
 		else if (maxCount >= 2)
 		{
-            var pairs = valueCounts.Where(g => g.Count >= 2).ToList();
+			var pairs = valueCounts.Where(g => g.Count >= 2).ToList();
 			if (pairs.Count >= 2)
 			{
-             strength = 3_000_000 + pairs[0].Value * 1000 + pairs[1].Value * 10;
+				strength = 3_000_000 + pairs[0].Value * 1000 + pairs[1].Value * 10;
 			}
 			else
 			{
-             strength = 2_000_000 + pairs[0].Value * 1000;
+				strength = 2_000_000 + pairs[0].Value * 1000;
 			}
 		}
 		else
@@ -589,11 +589,11 @@ public class DealHandsCommandHandler(
 			strength = 1_000_000;
 		}
 
-     var kickerValues = valueCounts
-			.SelectMany(v => Enumerable.Repeat(v.Value, v.Count))
-			.OrderByDescending(v => v)
-			.Take(4)
-			.ToList();
+		var kickerValues = valueCounts
+			   .SelectMany(v => Enumerable.Repeat(v.Value, v.Count))
+			   .OrderByDescending(v => v)
+			   .Take(4)
+			   .ToList();
 
 		if (kickerValues.Count == 0)
 		{
@@ -602,7 +602,7 @@ public class DealHandsCommandHandler(
 
 		foreach (var kickerValue in kickerValues)
 		{
-           strength = strength * 15 + kickerValue;
+			strength = strength * 15 + kickerValue;
 		}
 
 		if (cards.Count > 0)

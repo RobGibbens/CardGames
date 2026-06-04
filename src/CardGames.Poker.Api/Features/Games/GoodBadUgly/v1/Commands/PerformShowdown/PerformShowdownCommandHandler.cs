@@ -107,13 +107,13 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 				// Mark pots as awarded
 				foreach (var pot in currentHandPots)
 				{
-						pot.IsAwarded = true;
-						pot.AwardedAt = now;
-						pot.WinReason = "All others folded";
+					pot.IsAwarded = true;
+					pot.AwardedAt = now;
+					pot.WinReason = "All others folded";
 
-						var winnerPayoutsList = new[] { new { playerId = winner.PlayerId.ToString(), playerName = winner.Player.Name, amount = totalPot } };
-						pot.WinnerPayouts = System.Text.Json.JsonSerializer.Serialize(winnerPayoutsList);
-					}
+					var winnerPayoutsList = new[] { new { playerId = winner.PlayerId.ToString(), playerName = winner.Player.Name, amount = totalPot } };
+					pot.WinnerPayouts = System.Text.Json.JsonSerializer.Serialize(winnerPayoutsList);
+				}
 
 				game.CurrentPhase = nameof(Phases.Complete);
 				game.UpdatedAt = now;
@@ -371,65 +371,65 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 				cancellationToken);
 		}
 
-				// 13. Build response
-				var playerHandsList = playerHandEvaluations.Select(kvp =>
+		// 13. Build response
+		var playerHandsList = playerHandEvaluations.Select(kvp =>
+		{
+			var isWinner = winners.Contains(kvp.Key);
+			usersByEmail.TryGetValue(kvp.Value.gamePlayer.Player.Email ?? string.Empty, out var user);
+
+			// Get the best 5-card hand and find their indexes in the original card list
+			var bestHand = kvp.Value.hand.GetBestHand();
+			var cardsList = kvp.Value.cards.ToList();
+			var bestCardIndexes = new List<int>();
+			var usedIndexes = new HashSet<int>();
+
+			foreach (var bestCard in bestHand)
+			{
+				for (var i = 0; i < cardsList.Count; i++)
 				{
-					var isWinner = winners.Contains(kvp.Key);
-					usersByEmail.TryGetValue(kvp.Value.gamePlayer.Player.Email ?? string.Empty, out var user);
-
-					// Get the best 5-card hand and find their indexes in the original card list
-					var bestHand = kvp.Value.hand.GetBestHand();
-					var cardsList = kvp.Value.cards.ToList();
-					var bestCardIndexes = new List<int>();
-					var usedIndexes = new HashSet<int>();
-
-					foreach (var bestCard in bestHand)
+					if (!usedIndexes.Contains(i) &&
+						cardsList[i].Suit == (CardSuit)bestCard.Suit &&
+						cardsList[i].Symbol == (CardSymbol)bestCard.Symbol)
 					{
-						for (var i = 0; i < cardsList.Count; i++)
-						{
-							if (!usedIndexes.Contains(i) &&
-								cardsList[i].Suit == (CardSuit)bestCard.Suit &&
-								cardsList[i].Symbol == (CardSymbol)bestCard.Symbol)
-							{
-								bestCardIndexes.Add(i);
-								usedIndexes.Add(i);
-								break;
-							}
-						}
+						bestCardIndexes.Add(i);
+						usedIndexes.Add(i);
+						break;
 					}
-
-					return new ShowdownPlayerHand
-					{
-						PlayerName = kvp.Key,
-						PlayerFirstName = user?.FirstName,
-						Cards = kvp.Value.cards.Select(c => new ShowdownCard
-						{
-							Suit = c.Suit,
-							Symbol = c.Symbol
-						}).ToList(),
-						HandType = kvp.Value.hand.Type.ToString(),
-						HandStrength = kvp.Value.hand.Strength,
-						IsWinner = isWinner,
-						AmountWon = payouts.GetValueOrDefault(kvp.Key, 0),
-						BestCardIndexes = bestCardIndexes,
-						IsEliminatedByUgly = isGoodBadUgly && string.Equals(
-							kvp.Value.gamePlayer.VariantState, "UGLY_ELIMINATED", StringComparison.OrdinalIgnoreCase)
-					};
-				}).OrderByDescending(h => h.HandStrength ?? 0).ToList();
-
-				return new PerformShowdownSuccessful
-				{
-					GameId = game.Id,
-					WonByFold = false,
-					CurrentPhase = game.CurrentPhase,
-					Payouts = payouts,
-					PlayerHands = playerHandsList
-				};
+				}
 			}
 
+			return new ShowdownPlayerHand
+			{
+				PlayerName = kvp.Key,
+				PlayerFirstName = user?.FirstName,
+				Cards = kvp.Value.cards.Select(c => new ShowdownCard
+				{
+					Suit = c.Suit,
+					Symbol = c.Symbol
+				}).ToList(),
+				HandType = kvp.Value.hand.Type.ToString(),
+				HandStrength = kvp.Value.hand.Strength,
+				IsWinner = isWinner,
+				AmountWon = payouts.GetValueOrDefault(kvp.Key, 0),
+				BestCardIndexes = bestCardIndexes,
+				IsEliminatedByUgly = isGoodBadUgly && string.Equals(
+					kvp.Value.gamePlayer.VariantState, "UGLY_ELIMINATED", StringComparison.OrdinalIgnoreCase)
+			};
+		}).OrderByDescending(h => h.HandStrength ?? 0).ToList();
+
+		return new PerformShowdownSuccessful
+		{
+			GameId = game.Id,
+			WonByFold = false,
+			CurrentPhase = game.CurrentPhase,
+			Payouts = payouts,
+			PlayerHands = playerHandsList
+		};
+	}
+
 	/// <summary>
-	/// Moves the dealer button to the next occupied seat position (clockwise).
-	/// Skips empty seats but allows sitting-out players to hold the button.
+	/// Moves the dealer button to the next occupied seat position (clockwise). Skips empty seats but allows sitting-out
+	/// players to hold the button.
 	/// </summary>
 	private static void MoveDealer(Game game)
 	{
@@ -524,7 +524,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 			// Get cards for this player if they reached showdown
 			List<string>? showdownCards = null;
 			var reachedShowdown = !gp.HasFolded && !wonByFold;
-			if (reachedShowdown && playerHandEvaluations != null && 
+			if (reachedShowdown && playerHandEvaluations != null &&
 				playerHandEvaluations.TryGetValue(gp.Player.Name, out var handEvaluation))
 			{
 				// Get the best 5-card hand from the 7 cards

@@ -140,7 +140,7 @@ public sealed class IngestLeagueSeasonEventResultsCommandHandler(
 
 		var activeMemberIds = await context.LeagueMembersCurrent
 			.AsNoTracking()
-			.Where(x => x.LeagueId == request.LeagueId && x.IsActive && memberIds.Contains(x.UserId))
+			.Where(x => x.LeagueId == request.LeagueId && x.IsActive && ((IEnumerable<string>)memberIds).Contains(x.UserId))
 			.Select(x => x.UserId)
 			.ToListAsync(cancellationToken);
 

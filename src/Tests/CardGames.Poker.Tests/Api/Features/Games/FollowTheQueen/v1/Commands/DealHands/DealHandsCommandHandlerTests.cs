@@ -116,7 +116,7 @@ public class DealHandsCommandHandlerTests
 			.ToListAsync();
 
 		persistedPlayerCards.Should().HaveCount(6);
-		persistedPlayerCards.Should().NotContain(gameCard => staleCardIds.Contains(gameCard.Id));
+		persistedPlayerCards.Should().NotContain(gameCard => ((IEnumerable<Guid>)staleCardIds).Contains(gameCard.Id));
 
 		persistedPlayerCards
 			.Where(gameCard => gameCard.GamePlayerId == firstPlayerId)

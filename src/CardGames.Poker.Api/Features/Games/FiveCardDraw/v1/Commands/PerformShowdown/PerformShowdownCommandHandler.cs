@@ -100,7 +100,7 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 		if (playersInHand.Count == 1)
 		{
 			var winner = playersInHand[0];
-			
+
 			if (!isAlreadyAwarded)
 			{
 				winner.ChipStack += totalPot;
@@ -108,13 +108,13 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 				// Mark pots as awarded
 				foreach (var pot in currentHandPots)
 				{
-						pot.IsAwarded = true;
-						pot.AwardedAt = now;
-						pot.WinReason = "All others folded";
+					pot.IsAwarded = true;
+					pot.AwardedAt = now;
+					pot.WinReason = "All others folded";
 
-						var winnerPayoutsList = new[] { new { playerId = winner.PlayerId.ToString(), playerName = winner.Player.Name, amount = totalPot } };
-						pot.WinnerPayouts = System.Text.Json.JsonSerializer.Serialize(winnerPayoutsList);
-					}
+					var winnerPayoutsList = new[] { new { playerId = winner.PlayerId.ToString(), playerName = winner.Player.Name, amount = totalPot } };
+					pot.WinnerPayouts = System.Text.Json.JsonSerializer.Serialize(winnerPayoutsList);
+				}
 
 				game.CurrentPhase = nameof(Phases.Complete);
 				game.UpdatedAt = now;
@@ -172,292 +172,292 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 			};
 		}
 
-			// 7. Evaluate all hands
-			var playerHandEvaluations = new Dictionary<string, (HandBase hand, List<GameCard> cards, GamePlayer gamePlayer)>();
-			var handEvaluator = handEvaluatorFactory.GetEvaluator(gameTypeCode);
-			var isRazz = string.Equals(gameTypeCode, "RAZZ", StringComparison.OrdinalIgnoreCase);
+		// 7. Evaluate all hands
+		var playerHandEvaluations = new Dictionary<string, (HandBase hand, List<GameCard> cards, GamePlayer gamePlayer)>();
+		var handEvaluator = handEvaluatorFactory.GetEvaluator(gameTypeCode);
+		var isRazz = string.Equals(gameTypeCode, "RAZZ", StringComparison.OrdinalIgnoreCase);
 
 
-			foreach (var gamePlayer in playersInHand)
+		foreach (var gamePlayer in playersInHand)
+		{
+			if (!playerCardGroups.TryGetValue(gamePlayer.Id, out var cards) || cards.Count < 5)
 			{
-				if (!playerCardGroups.TryGetValue(gamePlayer.Id, out var cards) || cards.Count < 5)
-				{
-					continue; // Skip players without valid hands
-				}
-
-				if (isRazz)
-				{
-					var allCardsByDealOrder = cards
-						.OrderBy(c => c.DealOrder)
-						.Select(c => new Card(MapSuit(c.Suit), MapSymbol(c.Symbol)))
-						.ToList();
-
-					var holeCards = cards
-						.Where(c => c.Location == CardLocation.Hole)
-						.OrderBy(c => c.DealOrder)
-						.Select(c => new Card(MapSuit(c.Suit), MapSymbol(c.Symbol)))
-						.ToList();
-
-					var boardCards = cards
-						.Where(c => c.Location == CardLocation.Board)
-						.OrderBy(c => c.DealOrder)
-						.Select(c => new Card(MapSuit(c.Suit), MapSymbol(c.Symbol)))
-						.ToList();
-
-					if (allCardsByDealOrder.Count < 5)
-					{
-						continue;
-					}
-
-					// Prefer canonical stud positional cards, but fall back to all dealt cards if card locations are inconsistent.
-					var razzHand = holeCards.Count >= 3
-						? new RazzHand(holeCards.Take(2).ToList(), boardCards.Take(4).ToList(), [holeCards[2]])
-						: new RazzHand([], allCardsByDealOrder, []);
-					playerHandEvaluations[gamePlayer.Player.Name] = (razzHand, cards, gamePlayer);
-				}
-				else if (handEvaluator.SupportsPositionalCards)
-				{
-					var holeCards = cards
-						.Where(c => c.Location == CardLocation.Hole || c.Location == CardLocation.Hand)
-						.OrderBy(c => c.DealOrder)
-						.Select(c => new Card(MapSuit(c.Suit), MapSymbol(c.Symbol)))
-						.ToList();
-
-					var boardCards = cards
-						.Where(c => c.Location == CardLocation.Board)
-						.OrderBy(c => c.DealOrder)
-						.Select(c => new Card(MapSuit(c.Suit), MapSymbol(c.Symbol)))
-						.ToList();
-
-					if (holeCards.Count + boardCards.Count < 5)
-					{
-						continue;
-					}
-
-					var downCards = cards
-						.Where(c => c.Location == CardLocation.Hole)
-						.OrderBy(c => c.DealOrder)
-						.Skip(2)
-						.Select(c => new Card(MapSuit(c.Suit), MapSymbol(c.Symbol)))
-						.ToList();
-
-					var hand = handEvaluator.CreateHand(holeCards.Take(2).ToList(), boardCards, downCards);
-					playerHandEvaluations[gamePlayer.Player.Name] = (hand, cards, gamePlayer);
-				}
-				else
-				{
-					var coreCards = cards.Select(c => new Card(MapSuit(c.Suit), MapSymbol(c.Symbol))).ToList();
-					var drawHand = new DrawHand(coreCards);
-					playerHandEvaluations[gamePlayer.Player.Name] = (drawHand, cards, gamePlayer);
-				}
+				continue; // Skip players without valid hands
 			}
 
-			// 8. Award each pot to the best hand among ELIGIBLE players only
-			var payouts = new Dictionary<string, int>();
-			var allWinners = new HashSet<string>();
-			string? overallWinReason = null;
-
-			if (!isAlreadyAwarded)
+			if (isRazz)
 			{
-				// Order pots by PotOrder (main pot first, then side pots)
-				var orderedPots = currentHandPots.OrderBy(p => p.PotOrder).ToList();
+				var allCardsByDealOrder = cards
+					.OrderBy(c => c.DealOrder)
+					.Select(c => new Card(MapSuit(c.Suit), MapSymbol(c.Symbol)))
+					.ToList();
 
-				foreach (var pot in orderedPots)
+				var holeCards = cards
+					.Where(c => c.Location == CardLocation.Hole)
+					.OrderBy(c => c.DealOrder)
+					.Select(c => new Card(MapSuit(c.Suit), MapSymbol(c.Symbol)))
+					.ToList();
+
+				var boardCards = cards
+					.Where(c => c.Location == CardLocation.Board)
+					.OrderBy(c => c.DealOrder)
+					.Select(c => new Card(MapSuit(c.Suit), MapSymbol(c.Symbol)))
+					.ToList();
+
+				if (allCardsByDealOrder.Count < 5)
 				{
-					if (pot.Amount == 0)
-					{
-						continue;
-					}
-
-					// Get eligible players for this pot from contributions
-					var eligiblePlayerIds = pot.Contributions
-						.Where(c => c.IsEligibleToWin)
-						.Select(c => c.GamePlayerId)
-						.ToHashSet();
-
-					// If no contribution records exist, fall back to all players in hand
-					// (handles legacy data or pots created before side pot calculation)
-					if (eligiblePlayerIds.Count == 0)
-					{
-						eligiblePlayerIds = playersInHand.Select(p => p.Id).ToHashSet();
-					}
-
-					// Filter hand evaluations to only eligible players
-					var eligibleHands = playerHandEvaluations
-						.Where(kvp => eligiblePlayerIds.Contains(kvp.Value.gamePlayer.Id))
-						.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-
-					if (eligibleHands.Count == 0)
-					{
-						continue; // No eligible players for this pot (shouldn't happen)
-					}
-
-					// Determine winner(s) for this pot
-					var maxStrength = eligibleHands.Values.Max(h => h.hand.Strength);
-					var potWinners = eligibleHands
-						.Where(kvp => kvp.Value.hand.Strength == maxStrength)
-						.Select(kvp => kvp.Key)
-						.ToList();
-
-					// Calculate payouts for this pot
-					var potPayoutPerWinner = pot.Amount / potWinners.Count;
-					var potRemainder = pot.Amount % potWinners.Count;
-
-					var potPayoutsList = new List<object>();
-					foreach (var winner in potWinners)
-					{
-						var payout = potPayoutPerWinner;
-						if (potRemainder > 0)
-						{
-							payout++;
-							potRemainder--;
-						}
-
-						// Add to total payouts
-						if (payouts.TryGetValue(winner, out var existingPayout))
-						{
-							payouts[winner] = existingPayout + payout;
-						}
-						else
-						{
-							payouts[winner] = payout;
-						}
-
-						allWinners.Add(winner);
-
-						var gp = eligibleHands[winner].gamePlayer;
-						potPayoutsList.Add(new { playerId = gp.PlayerId.ToString(), playerName = winner, amount = payout });
-					}
-
-					// Mark pot as awarded
-					var winningHand = eligibleHands[potWinners[0]].hand;
-					var winningHandType = winningHand is RazzHand razzHand
-						? RazzHand.GetLowHandDescription(razzHand.GetBestLowHand())
-						: winningHand.Type.ToString();
-					var winReason = potWinners.Count > 1
-						? $"Split pot - {winningHandType}"
-						: winningHandType;
-
-					pot.IsAwarded = true;
-					pot.AwardedAt = now;
-					pot.WinReason = winReason;
-					pot.WinnerPayouts = System.Text.Json.JsonSerializer.Serialize(potPayoutsList);
-
-					// Track overall win reason (use main pot's reason)
-					if (pot.PotOrder == 0)
-					{
-						overallWinReason = winReason;
-					}
+					continue;
 				}
 
-				// Update player chip stacks
-				foreach (var payout in payouts)
+				// Prefer canonical stud positional cards, but fall back to all dealt cards if card locations are inconsistent.
+				var razzHand = holeCards.Count >= 3
+					? new RazzHand(holeCards.Take(2).ToList(), boardCards.Take(4).ToList(), [holeCards[2]])
+					: new RazzHand([], allCardsByDealOrder, []);
+				playerHandEvaluations[gamePlayer.Player.Name] = (razzHand, cards, gamePlayer);
+			}
+			else if (handEvaluator.SupportsPositionalCards)
+			{
+				var holeCards = cards
+					.Where(c => c.Location == CardLocation.Hole || c.Location == CardLocation.Hand)
+					.OrderBy(c => c.DealOrder)
+					.Select(c => new Card(MapSuit(c.Suit), MapSymbol(c.Symbol)))
+					.ToList();
+
+				var boardCards = cards
+					.Where(c => c.Location == CardLocation.Board)
+					.OrderBy(c => c.DealOrder)
+					.Select(c => new Card(MapSuit(c.Suit), MapSymbol(c.Symbol)))
+					.ToList();
+
+				if (holeCards.Count + boardCards.Count < 5)
 				{
-					var gamePlayer = playerHandEvaluations[payout.Key].gamePlayer;
-					gamePlayer.ChipStack += payout.Value;
+					continue;
 				}
 
-				// 12. Update game state
-				game.CurrentPhase = nameof(Phases.Complete);
-				game.UpdatedAt = now;
-				game.HandCompletedAt = now;
-				game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);
-				UpdateSitOutStatus(game);
-				MoveDealer(game);
+				var downCards = cards
+					.Where(c => c.Location == CardLocation.Hole)
+					.OrderBy(c => c.DealOrder)
+					.Skip(2)
+					.Select(c => new Card(MapSuit(c.Suit), MapSymbol(c.Symbol)))
+					.ToList();
 
-				// Settle hand results to cashier ledger
-				await handSettlementService.SettleHandAsync(game, payouts, cancellationToken);
-
-				await context.SaveChangesAsync(cancellationToken);
-
-				// Record hand history for showdown
-				var winnerInfos = allWinners.Select(w =>
-				{
-					var gp = playerHandEvaluations[w].gamePlayer;
-					return (gp.PlayerId, w, payouts[w]);
-				}).ToList();
-
-				await RecordHandHistoryAsync(
-					game,
-					game.GamePlayers.ToList(),
-					now,
-					totalPot,
-					wonByFold: false,
-					winners: winnerInfos,
-					winnerNames: allWinners.ToList(),
-					winningHandDescription: overallWinReason,
-					playerCardGroups: playerCardGroups,
-					cancellationToken);
+				var hand = handEvaluator.CreateHand(holeCards.Take(2).ToList(), boardCards, downCards);
+				playerHandEvaluations[gamePlayer.Player.Name] = (hand, cards, gamePlayer);
 			}
 			else
 			{
-				// Pots already awarded - just build payouts for response
-				foreach (var pot in currentHandPots.Where(p => p.WinnerPayouts != null))
+				var coreCards = cards.Select(c => new Card(MapSuit(c.Suit), MapSymbol(c.Symbol))).ToList();
+				var drawHand = new DrawHand(coreCards);
+				playerHandEvaluations[gamePlayer.Player.Name] = (drawHand, cards, gamePlayer);
+			}
+		}
+
+		// 8. Award each pot to the best hand among ELIGIBLE players only
+		var payouts = new Dictionary<string, int>();
+		var allWinners = new HashSet<string>();
+		string? overallWinReason = null;
+
+		if (!isAlreadyAwarded)
+		{
+			// Order pots by PotOrder (main pot first, then side pots)
+			var orderedPots = currentHandPots.OrderBy(p => p.PotOrder).ToList();
+
+			foreach (var pot in orderedPots)
+			{
+				if (pot.Amount == 0)
 				{
-					try
+					continue;
+				}
+
+				// Get eligible players for this pot from contributions
+				var eligiblePlayerIds = pot.Contributions
+					.Where(c => c.IsEligibleToWin)
+					.Select(c => c.GamePlayerId)
+					.ToHashSet();
+
+				// If no contribution records exist, fall back to all players in hand
+				// (handles legacy data or pots created before side pot calculation)
+				if (eligiblePlayerIds.Count == 0)
+				{
+					eligiblePlayerIds = playersInHand.Select(p => p.Id).ToHashSet();
+				}
+
+				// Filter hand evaluations to only eligible players
+				var eligibleHands = playerHandEvaluations
+					.Where(kvp => eligiblePlayerIds.Contains(kvp.Value.gamePlayer.Id))
+					.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+				if (eligibleHands.Count == 0)
+				{
+					continue; // No eligible players for this pot (shouldn't happen)
+				}
+
+				// Determine winner(s) for this pot
+				var maxStrength = eligibleHands.Values.Max(h => h.hand.Strength);
+				var potWinners = eligibleHands
+					.Where(kvp => kvp.Value.hand.Strength == maxStrength)
+					.Select(kvp => kvp.Key)
+					.ToList();
+
+				// Calculate payouts for this pot
+				var potPayoutPerWinner = pot.Amount / potWinners.Count;
+				var potRemainder = pot.Amount % potWinners.Count;
+
+				var potPayoutsList = new List<object>();
+				foreach (var winner in potWinners)
+				{
+					var payout = potPayoutPerWinner;
+					if (potRemainder > 0)
 					{
-						var potPayouts = System.Text.Json.JsonSerializer.Deserialize<List<Dictionary<string, object>>>(pot.WinnerPayouts!);
-						if (potPayouts != null)
-						{
-							foreach (var potPayout in potPayouts)
-							{
-								if (potPayout.TryGetValue("playerName", out var nameObj) && 
-									potPayout.TryGetValue("amount", out var amountObj))
-								{
-									var name = nameObj.ToString()!;
-									var amount = Convert.ToInt32(((System.Text.Json.JsonElement)amountObj).GetInt32());
-									if (payouts.TryGetValue(name, out var existing))
-									{
-										payouts[name] = existing + amount;
-									}
-									else
-									{
-										payouts[name] = amount;
-									}
-									allWinners.Add(name);
-								}
-							}
-						}
+						payout++;
+						potRemainder--;
 					}
-					catch
+
+					// Add to total payouts
+					if (payouts.TryGetValue(winner, out var existingPayout))
 					{
-						// Ignore parsing errors for legacy data
+						payouts[winner] = existingPayout + payout;
 					}
+					else
+					{
+						payouts[winner] = payout;
+					}
+
+					allWinners.Add(winner);
+
+					var gp = eligibleHands[winner].gamePlayer;
+					potPayoutsList.Add(new { playerId = gp.PlayerId.ToString(), playerName = winner, amount = payout });
+				}
+
+				// Mark pot as awarded
+				var winningHand = eligibleHands[potWinners[0]].hand;
+				var winningHandType = winningHand is RazzHand razzHand
+					? RazzHand.GetLowHandDescription(razzHand.GetBestLowHand())
+					: winningHand.Type.ToString();
+				var winReason = potWinners.Count > 1
+					? $"Split pot - {winningHandType}"
+					: winningHandType;
+
+				pot.IsAwarded = true;
+				pot.AwardedAt = now;
+				pot.WinReason = winReason;
+				pot.WinnerPayouts = System.Text.Json.JsonSerializer.Serialize(potPayoutsList);
+
+				// Track overall win reason (use main pot's reason)
+				if (pot.PotOrder == 0)
+				{
+					overallWinReason = winReason;
 				}
 			}
 
-			// 13. Build response
-			var playerHandsList = playerHandEvaluations.Select(kvp =>
+			// Update player chip stacks
+			foreach (var payout in payouts)
 			{
-				var isWinner = allWinners.Contains(kvp.Key);
-				usersByEmail.TryGetValue(kvp.Value.gamePlayer.Player.Email ?? string.Empty, out var user);
-				return new ShowdownPlayerHand
-				{
-					PlayerName = kvp.Key,
-					PlayerFirstName = user?.FirstName,
-					Cards = kvp.Value.cards.Select(c => new ShowdownCard
-					{
-						Suit = c.Suit,
-						Symbol = c.Symbol
-					}).ToList(),
-					HandType = kvp.Value.hand is RazzHand razzHand
-						? RazzHand.GetLowHandDescription(razzHand.GetBestLowHand())
-						: kvp.Value.hand.Type.ToString(),
-					HandStrength = kvp.Value.hand.Strength,
-					IsWinner = isWinner,
-					AmountWon = payouts.GetValueOrDefault(kvp.Key, 0)
-				};
-			}).OrderByDescending(h => h.HandStrength ?? 0).ToList();
+				var gamePlayer = playerHandEvaluations[payout.Key].gamePlayer;
+				gamePlayer.ChipStack += payout.Value;
+			}
 
-			return new PerformShowdownSuccessful
+			// 12. Update game state
+			game.CurrentPhase = nameof(Phases.Complete);
+			game.UpdatedAt = now;
+			game.HandCompletedAt = now;
+			game.NextHandStartsAt = now.AddSeconds(ContinuousPlayBackgroundService.ResultsDisplayDurationSeconds);
+			UpdateSitOutStatus(game);
+			MoveDealer(game);
+
+			// Settle hand results to cashier ledger
+			await handSettlementService.SettleHandAsync(game, payouts, cancellationToken);
+
+			await context.SaveChangesAsync(cancellationToken);
+
+			// Record hand history for showdown
+			var winnerInfos = allWinners.Select(w =>
 			{
-				GameId = game.Id,
-				WonByFold = false,
-				CurrentPhase = game.CurrentPhase,
-				Payouts = payouts,
-				PlayerHands = playerHandsList
-			};
+				var gp = playerHandEvaluations[w].gamePlayer;
+				return (gp.PlayerId, w, payouts[w]);
+			}).ToList();
+
+			await RecordHandHistoryAsync(
+				game,
+				game.GamePlayers.ToList(),
+				now,
+				totalPot,
+				wonByFold: false,
+				winners: winnerInfos,
+				winnerNames: allWinners.ToList(),
+				winningHandDescription: overallWinReason,
+				playerCardGroups: playerCardGroups,
+				cancellationToken);
 		}
+		else
+		{
+			// Pots already awarded - just build payouts for response
+			foreach (var pot in currentHandPots.Where(p => p.WinnerPayouts != null))
+			{
+				try
+				{
+					var potPayouts = System.Text.Json.JsonSerializer.Deserialize<List<Dictionary<string, object>>>(pot.WinnerPayouts!);
+					if (potPayouts != null)
+					{
+						foreach (var potPayout in potPayouts)
+						{
+							if (potPayout.TryGetValue("playerName", out var nameObj) &&
+								potPayout.TryGetValue("amount", out var amountObj))
+							{
+								var name = nameObj.ToString()!;
+								var amount = Convert.ToInt32(((System.Text.Json.JsonElement)amountObj).GetInt32());
+								if (payouts.TryGetValue(name, out var existing))
+								{
+									payouts[name] = existing + amount;
+								}
+								else
+								{
+									payouts[name] = amount;
+								}
+								allWinners.Add(name);
+							}
+						}
+					}
+				}
+				catch
+				{
+					// Ignore parsing errors for legacy data
+				}
+			}
+		}
+
+		// 13. Build response
+		var playerHandsList = playerHandEvaluations.Select(kvp =>
+		{
+			var isWinner = allWinners.Contains(kvp.Key);
+			usersByEmail.TryGetValue(kvp.Value.gamePlayer.Player.Email ?? string.Empty, out var user);
+			return new ShowdownPlayerHand
+			{
+				PlayerName = kvp.Key,
+				PlayerFirstName = user?.FirstName,
+				Cards = kvp.Value.cards.Select(c => new ShowdownCard
+				{
+					Suit = c.Suit,
+					Symbol = c.Symbol
+				}).ToList(),
+				HandType = kvp.Value.hand is RazzHand razzHand
+					? RazzHand.GetLowHandDescription(razzHand.GetBestLowHand())
+					: kvp.Value.hand.Type.ToString(),
+				HandStrength = kvp.Value.hand.Strength,
+				IsWinner = isWinner,
+				AmountWon = payouts.GetValueOrDefault(kvp.Key, 0)
+			};
+		}).OrderByDescending(h => h.HandStrength ?? 0).ToList();
+
+		return new PerformShowdownSuccessful
+		{
+			GameId = game.Id,
+			WonByFold = false,
+			CurrentPhase = game.CurrentPhase,
+			Payouts = payouts,
+			PlayerHands = playerHandsList
+		};
+	}
 
 	/// <summary>
 	/// Updates the status of players with zero chips to sitting out.
@@ -475,8 +475,8 @@ public class PerformShowdownCommandHandler(CardsDbContext context, IHandHistoryR
 	}
 
 	/// <summary>
-	/// Moves the dealer button to the next occupied seat position (clockwise).
-	/// Skips empty seats but allows sitting-out players to hold the button.
+	/// Moves the dealer button to the next occupied seat position (clockwise). Skips empty seats but allows sitting-out
+	/// players to hold the button.
 	/// </summary>
 	private static void MoveDealer(Game game)
 	{

@@ -22,7 +22,7 @@ internal static class LeagueUserDisplayNameResolver
 
 		var users = await context.Users
 			.AsNoTracking()
-			.Where(u => distinctUserIds.Contains(u.Id))
+			.Where(u => ((IEnumerable<string>)distinctUserIds).Contains(u.Id))
 			.Select(u => new
 			{
 				u.Id,

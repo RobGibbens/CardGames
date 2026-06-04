@@ -157,7 +157,7 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 		for (int i = 0; i < discardIndices.Count; i++)
 		{
 			var cardFromDeck = deckCards[i];
-			
+
 			// Update the card: move from deck to player's hand
 			cardFromDeck.GamePlayerId = gamePlayer.Id;
 			cardFromDeck.Location = CardLocation.Hand;
@@ -167,7 +167,7 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 			cardFromDeck.IsDrawnCard = true;
 			cardFromDeck.DrawnAtRound = 1; // First draw round
 			cardFromDeck.DealtAt = now;
-			
+
 			playerCards.Add(cardFromDeck);
 			newCardInfos.Add(new CardInfo
 			{
@@ -224,10 +224,10 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 				// Note: Showdown will be performed by ContinuousPlayBackgroundService after delay
 			}
 
-				nextPhase = game.CurrentPhase;
-				game.CurrentDrawPlayerIndex = -1;
-				game.CurrentPlayerIndex = -1;
-			}
+			nextPhase = game.CurrentPhase;
+			game.CurrentDrawPlayerIndex = -1;
+			game.CurrentPlayerIndex = -1;
+		}
 		else
 		{
 			// Find next player to draw (circular, starting after current player)
@@ -251,39 +251,39 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 			}
 		}
 
-			// 12. Evaluate the new hand to get the description
-			string? newHandDescription = null;
-			if (playerCards.Count == 5)
-			{
-				var coreCards = playerCards.Select(c => new CardGames.Core.French.Cards.Card(
-					(CardGames.Core.French.Cards.Suit)(int)c.Suit,
-					(CardGames.Core.French.Cards.Symbol)(int)c.Symbol
-				)).ToList();
-				var newHand = new KingsAndLowsDrawHand(coreCards);
-				newHandDescription = HandDescriptionFormatter.GetHandDescription(newHand);
-			}
-
-			// 13. Persist changes
-			game.UpdatedAt = now;
-			await context.SaveChangesAsync(cancellationToken);
-
-			return new DrawCardsSuccessful
-			{
-				GameId = game.Id,
-				PlayerId = command.PlayerId,
-				PlayerName = gamePlayer.Player?.Name,
-				PlayerSeatIndex = gamePlayer.SeatPosition,
-				CardsDiscarded = discardIndices.Count,
-				CardsDrawn = discardIndices.Count,
-				DiscardedCards = discardedCardInfos,
-				NewCards = newCardInfos,
-				DrawPhaseComplete = drawPhaseComplete,
-				NextPhase = nextPhase,
-				NextPlayerId = nextPlayerId,
-				NextPlayerName = nextPlayerName,
-				NewHandDescription = newHandDescription
-			};
+		// 12. Evaluate the new hand to get the description
+		string? newHandDescription = null;
+		if (playerCards.Count == 5)
+		{
+			var coreCards = playerCards.Select(c => new CardGames.Core.French.Cards.Card(
+				(CardGames.Core.French.Cards.Suit)(int)c.Suit,
+				(CardGames.Core.French.Cards.Symbol)(int)c.Symbol
+			)).ToList();
+			var newHand = new KingsAndLowsDrawHand(coreCards);
+			newHandDescription = HandDescriptionFormatter.GetHandDescription(newHand);
 		}
+
+		// 13. Persist changes
+		game.UpdatedAt = now;
+		await context.SaveChangesAsync(cancellationToken);
+
+		return new DrawCardsSuccessful
+		{
+			GameId = game.Id,
+			PlayerId = command.PlayerId,
+			PlayerName = gamePlayer.Player?.Name,
+			PlayerSeatIndex = gamePlayer.SeatPosition,
+			CardsDiscarded = discardIndices.Count,
+			CardsDrawn = discardIndices.Count,
+			DiscardedCards = discardedCardInfos,
+			NewCards = newCardInfos,
+			DrawPhaseComplete = drawPhaseComplete,
+			NextPhase = nextPhase,
+			NextPlayerId = nextPlayerId,
+			NextPlayerName = nextPlayerName,
+			NewHandDescription = newHandDescription
+		};
+	}
 
 	/// <summary>
 	/// Performs showdown, determines winner/losers, distributes pot, and transitions to PotMatching phase.
@@ -439,72 +439,71 @@ public class DrawCardsCommandHandler(CardsDbContext context)
 		return $"{symbolStr}{suitStr}";
 	}
 
-		/// <summary>
-		/// Moves the dealer button to the next occupied seat position (clockwise).
-		/// </summary>
-		private static void MoveDealer(Game game)
+	/// <summary>
+	/// Moves the dealer button to the next occupied seat position (clockwise).
+	/// </summary>
+	private static void MoveDealer(Game game)
+	{
+		var activePlayers = game.GamePlayers
+			.Where(gp => gp.Status == GamePlayerStatus.Active && !gp.IsSittingOut)
+			.OrderBy(gp => gp.SeatPosition)
+			.Select(gp => gp.SeatPosition)
+			.ToList();
+
+		if (activePlayers.Count == 0)
 		{
-			var activePlayers = game.GamePlayers
-				.Where(gp => gp.Status == GamePlayerStatus.Active && !gp.IsSittingOut)
+			activePlayers = game.GamePlayers
+				.Where(gp => gp.Status == GamePlayerStatus.Active)
 				.OrderBy(gp => gp.SeatPosition)
 				.Select(gp => gp.SeatPosition)
 				.ToList();
-
-			if (activePlayers.Count == 0)
-			{
-				activePlayers = game.GamePlayers
-					.Where(gp => gp.Status == GamePlayerStatus.Active)
-					.OrderBy(gp => gp.SeatPosition)
-					.Select(gp => gp.SeatPosition)
-					.ToList();
-			}
-
-			if (activePlayers.Count == 0)
-			{
-				return;
-			}
-
-			var currentPosition = game.DealerPosition;
-			var seatsAfterCurrent = activePlayers.Where(pos => pos > currentPosition).ToList();
-
-			game.DealerPosition = seatsAfterCurrent.Count > 0
-				? seatsAfterCurrent.First()
-				: activePlayers.First();
 		}
 
-		/// <summary>
-		/// Deals a 5-card hand for the deck in player vs deck scenario.
-		/// Uses cards from the persisted shuffled deck.
-		/// </summary>
-		private static async Task DealDeckHandAsync(
-			Game game,
-			CardsDbContext dbContext,
-			DateTimeOffset now,
-			CancellationToken cancellationToken)
+		if (activePlayers.Count == 0)
 		{
-			// Get cards still in the deck (not yet dealt to any player or discarded)
-			// IMPORTANT: Filter by GamePlayerId == null to ensure we don't grab cards 
-			// that have been assigned to players during the draw phase
-			var deckCards = await dbContext.GameCards
-				.Where(gc => gc.GameId == game.Id && 
-				             gc.HandNumber == game.CurrentHandNumber && 
-				             gc.Location == CardLocation.Deck &&
-				             gc.GamePlayerId == null &&
-				             !gc.IsDiscarded)
-				.OrderBy(gc => gc.DealOrder)
-				.Take(5)
-				.ToListAsync(cancellationToken);
+			return;
+		}
 
-			// Deal 5 cards from the deck to "the deck's hand" (GamePlayerId = null, Location = Board)
-			for (int i = 0; i < deckCards.Count; i++)
-			{
-				var card = deckCards[i];
-				card.GamePlayerId = null; // Deck cards have no player
-				card.Location = CardLocation.Board; // Board represents deck hand
-				card.DealOrder = i + 1;
-				card.DealtAtPhase = nameof(Phases.PlayerVsDeck);
-				card.IsVisible = true; // Deck cards are visible to all
-				card.DealtAt = now;
-			}
+		var currentPosition = game.DealerPosition;
+		var seatsAfterCurrent = activePlayers.Where(pos => pos > currentPosition).ToList();
+
+		game.DealerPosition = seatsAfterCurrent.Count > 0
+			? seatsAfterCurrent.First()
+			: activePlayers.First();
+	}
+
+	/// <summary>
+	/// Deals a 5-card hand for the deck in player vs deck scenario. Uses cards from the persisted shuffled deck.
+	/// </summary>
+	private static async Task DealDeckHandAsync(
+		Game game,
+		CardsDbContext dbContext,
+		DateTimeOffset now,
+		CancellationToken cancellationToken)
+	{
+		// Get cards still in the deck (not yet dealt to any player or discarded)
+		// IMPORTANT: Filter by GamePlayerId == null to ensure we don't grab cards 
+		// that have been assigned to players during the draw phase
+		var deckCards = await dbContext.GameCards
+			.Where(gc => gc.GameId == game.Id &&
+						 gc.HandNumber == game.CurrentHandNumber &&
+						 gc.Location == CardLocation.Deck &&
+						 gc.GamePlayerId == null &&
+						 !gc.IsDiscarded)
+			.OrderBy(gc => gc.DealOrder)
+			.Take(5)
+			.ToListAsync(cancellationToken);
+
+		// Deal 5 cards from the deck to "the deck's hand" (GamePlayerId = null, Location = Board)
+		for (int i = 0; i < deckCards.Count; i++)
+		{
+			var card = deckCards[i];
+			card.GamePlayerId = null; // Deck cards have no player
+			card.Location = CardLocation.Board; // Board represents deck hand
+			card.DealOrder = i + 1;
+			card.DealtAtPhase = nameof(Phases.PlayerVsDeck);
+			card.IsVisible = true; // Deck cards are visible to all
+			card.DealtAt = now;
 		}
 	}
+}

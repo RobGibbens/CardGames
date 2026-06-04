@@ -25,6 +25,7 @@ public class AcknowledgePotMatchCommandHandler(CardsDbContext context)
 		// 1. Load the game with its players and pots
 		var game = await context.Games
 			.Include(g => g.GamePlayers)
+			.ThenInclude(gamePlayer => gamePlayer.Player)
 			.Include(g => g.Pots)
 			.FirstOrDefaultAsync(g => g.Id == command.GameId, cancellationToken);
 

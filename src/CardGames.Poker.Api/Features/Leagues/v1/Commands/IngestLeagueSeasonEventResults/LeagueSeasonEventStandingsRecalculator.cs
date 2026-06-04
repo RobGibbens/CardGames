@@ -25,7 +25,7 @@ internal static class LeagueSeasonEventStandingsRecalculator
 
 		var aggregates = await context.LeagueSeasonEventResults
 			.AsNoTracking()
-			.Where(x => x.LeagueId == leagueId && normalizedMemberIds.Contains(x.UserId))
+			.Where(x => x.LeagueId == leagueId && ((IEnumerable<string>)normalizedMemberIds).Contains(x.UserId))
 			.GroupBy(x => x.UserId)
 			.Select(group => new
 			{
@@ -38,7 +38,7 @@ internal static class LeagueSeasonEventStandingsRecalculator
 
 		var latestResultByUserId = await context.LeagueSeasonEventResults
 			.AsNoTracking()
-			.Where(x => x.LeagueId == leagueId && normalizedMemberIds.Contains(x.UserId))
+			.Where(x => x.LeagueId == leagueId && ((IEnumerable<string>)normalizedMemberIds).Contains(x.UserId))
 			.GroupBy(x => x.UserId)
 			.Select(group => group
 				.OrderByDescending(x => x.RecordedAtUtc)
@@ -53,7 +53,7 @@ internal static class LeagueSeasonEventStandingsRecalculator
 			.ToDictionaryAsync(x => x.UserId, StringComparer.Ordinal, cancellationToken);
 
 		var standingsByUserId = await context.LeagueStandingsCurrent
-			.Where(x => x.LeagueId == leagueId && normalizedMemberIds.Contains(x.UserId))
+			.Where(x => x.LeagueId == leagueId && ((IEnumerable<string>)normalizedMemberIds).Contains(x.UserId))
 			.ToDictionaryAsync(x => x.UserId, StringComparer.Ordinal, cancellationToken);
 
 		var now = DateTimeOffset.UtcNow;
